@@ -1,0 +1,100 @@
+# Publishes the web app to GitHub Pages on every push to main.
+#
+# Pages only serves static files, so the app's Maia proxy route
+# (src/app/api/maia) can't run there. This workflow deploys the same proxy as
+# a Cloudflare Worker (workers/maia-proxy) and builds the app to call it.
+# Setup is in README.md, under "Web deploys".
+name: Web
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # A newer push makes this build worthless; deploys still never overlap.
+    concurrency:
+      group: pages-build-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install
+        run: yarn install --immutable
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Deploy the Maia proxy to Cloudflare
+        id: proxy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PAGES_ORIGIN: ${{ steps.pages.outputs.origin }}
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.ndjson
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Add the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repository secrets. The web app needs the Maia proxy; see README.md, Web deploys."
+            exit 1
+          fi
+          npx --yes wrangler@4.163.0 deploy \
+            --config workers/maia-proxy/wrangler.jsonc \
+            --var "ALLOWED_ORIGINS:$PAGES_ORIGIN"
+          url=$(jq -r 'select(.type == "deploy") | .targets[0] // empty' "$WRANGLER_OUTPUT_FILE_PATH")
+          if [ -z "$url" ]; then
+            echo "::error::Wrangler deployed no workers.dev URL. Open Workers in the Cloudflare dashboard once to choose a workers.dev subdomain."
+            exit 1
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Export the web app
+        env:
+          PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          EXPO_PUBLIC_MAIA_PROXY_URL: ${{ steps.proxy.outputs.url }}
+        run: |
+          yarn expo export --platform web
+          # Pages shows 404.html for any path it has no file for.
+          cp dist/+not-found.html dist/404.html
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

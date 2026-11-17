@@ -1,15 +1,22 @@
 import { RestEndpoint } from '@data-client/rest';
 
+import { MAIA_API_ORIGIN } from '@/server/maiaProxy';
+
 /**
  * Maia (https://www.maiachess.com) is a neural network chess engine trained
  * to play like people of a given rating rather than to play the best move.
  *
  * The browser can't call Maia's API directly (it sends no CORS headers), so
- * the web build goes through this app's own API route, which forwards to it
- * (src/app/api/maia). Native apps aren't subject to CORS and call it directly.
+ * the web build goes through a proxy that forwards to it: this app's own API
+ * route (src/app/api/maia), or, on GitHub Pages, which only serves static
+ * files, the Cloudflare Worker at EXPO_PUBLIC_MAIA_PROXY_URL
+ * (workers/maia-proxy). Native apps aren't subject to CORS and call Maia
+ * directly.
  */
-export const MAIA_API_ORIGIN = 'https://www.maiachess.com/api/v1';
-const urlPrefix = process.env.EXPO_OS === 'web' ? '/api/maia' : MAIA_API_ORIGIN;
+const urlPrefix =
+  process.env.EXPO_OS !== 'web'
+    ? MAIA_API_ORIGIN
+    : process.env.EXPO_PUBLIC_MAIA_PROXY_URL || '/api/maia';
 
 /** Maia models, by the rating of the players each was trained on. */
 export const MAIA_RATINGS = [1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900] as const;
