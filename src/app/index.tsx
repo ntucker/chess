@@ -1,18 +1,19 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Button, Separator, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
+import { Button, Separator, Stack, Surface, useTheme } from '@reactive/silk-native';
 import Head from 'expo-router/head';
 import { useEffect, useEffectEvent, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Board from '@/components/Board';
+import { Eyebrow } from '@/components/Eyebrow';
 import { GameStatus } from '@/components/GameStatus';
 import { Header } from '@/components/Header';
 import { PlayerBar } from '@/components/PlayerBar';
 import { Scoresheet } from '@/components/Scoresheet';
 import { SideChooser } from '@/components/SideChooser';
 import { Transport } from '@/components/Transport';
-import type { Color } from '@/game/replay';
+import { type Color, opposite } from '@/game/replay';
 import { useGame } from '@/game/useGame';
 import type { MaiaRating } from '@/resources/maia';
 
@@ -21,7 +22,7 @@ const RATING: MaiaRating = 1500;
 
 export default function PlayScreen() {
   const game = useGame(RATING);
-  const { playerColor, line, ply, plies, current, latest, thinking, failed, goto } = game;
+  const { playerColor, line, ply, plies, current, latest, thinking, error, goto } = game;
   const [nextColor, setNextColor] = useState<Color>(playerColor);
   const { theme } = useTheme();
   const { color } = theme.semantic;
@@ -29,7 +30,7 @@ export default function PlayScreen() {
   const atLatest = ply === line.length;
   // While Maia thinks the player can still go back and try another move.
   const canMove = !current.result && current.turn === playerColor && !(atLatest && thinking);
-  const maiaColor: Color = playerColor === 'white' ? 'black' : 'white';
+  const maiaColor = opposite(playerColor);
   // Nothing to lose yet: the player hasn't moved.
   const untouched = line.length <= (playerColor === 'black' ? 1 : 0);
 
@@ -116,15 +117,14 @@ export default function PlayScreen() {
                   latest={latest}
                   viewing={atLatest ? undefined : ply}
                   total={line.length}
+                  rating={RATING}
                   thinking={thinking}
-                  error={failed?.error}
+                  error={error}
                   onRetry={game.retry}
                 />
                 <Separator />
                 <Stack gap="3">
-                  <Text role="caption" tone="secondary" style={styles.eyebrow}>
-                    Play as
-                  </Text>
+                  <Eyebrow>Play as</Eyebrow>
                   <View style={styles.row}>
                     <View style={styles.fill}>
                       <SideChooser value={nextColor} onChange={chooseSide} />
@@ -136,9 +136,7 @@ export default function PlayScreen() {
                 </Stack>
                 <Separator />
                 <Stack gap="3">
-                  <Text role="caption" tone="secondary" style={styles.eyebrow}>
-                    Scoresheet
-                  </Text>
+                  <Eyebrow>Scoresheet</Eyebrow>
                   <Scoresheet plies={plies} ply={ply} onGoto={goto} />
                 </Stack>
               </Stack>
@@ -187,6 +185,5 @@ const styles = StyleSheet.create({
   },
   boardClip: { flex: 1, borderRadius: 9, overflow: 'hidden' },
   program: { flexGrow: 1, flexShrink: 1, flexBasis: 300, maxWidth: 400, padding: 24 },
-  eyebrow: { textTransform: 'uppercase', letterSpacing: 1.6 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
 });

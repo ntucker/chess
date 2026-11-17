@@ -1,7 +1,8 @@
 import { Text, useTheme } from '@reactive/silk-native';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import type { Color } from '@/game/replay';
+import { COLORS, type Color } from '@/game/replay';
+import { pieceColors } from '@/theme/theme';
 
 interface Props {
   readonly value: Color;
@@ -18,7 +19,7 @@ export function SideChooser({ value, onChange }: Props) {
       accessibilityLabel="Play as"
       style={[styles.track, { backgroundColor: color.surfaceSunken, borderColor: color.borderSubtle }]}
     >
-      {(['white', 'black'] as const).map((side) => {
+      {COLORS.map((side) => {
         const selected = side === value;
         return (
           <Pressable
@@ -42,7 +43,7 @@ export function SideChooser({ value, onChange }: Props) {
               style={[
                 styles.swatch,
                 {
-                  backgroundColor: side === 'white' ? '#fbf7ef' : '#17111f',
+                  backgroundColor: pieceColors[side],
                   borderColor: color.tones.neutral.border,
                 },
               ]}

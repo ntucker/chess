@@ -2,9 +2,11 @@ import { Chess } from 'chessops/chess';
 import { chessgroundDests } from 'chessops/compat';
 import { makeFen, parseFen } from 'chessops/fen';
 import { makeSanAndPlay } from 'chessops/san';
-import { makeSquare, parseSquare, parseUci } from 'chessops/util';
+import type { Color } from 'chessops/types';
+import { makeSquare, opposite, parseSquare, parseUci } from 'chessops/util';
 
-export type Color = 'white' | 'black';
+export { COLORS, type Color } from 'chessops/types';
+export { opposite } from 'chessops/util';
 
 /** One position in a game, as the board and the move list show it. */
 export interface Ply {
@@ -77,8 +79,7 @@ function describe(
 }
 
 function gameResult(pos: Chess, repetitions: number): GameResult | undefined {
-  if (pos.isCheckmate())
-    return { winner: pos.turn === 'white' ? 'black' : 'white', reason: 'checkmate' };
+  if (pos.isCheckmate()) return { winner: opposite(pos.turn), reason: 'checkmate' };
   if (pos.isStalemate()) return { reason: 'stalemate' };
   if (pos.isInsufficientMaterial()) return { reason: 'insufficient material' };
   if (repetitions >= 3) return { reason: 'threefold repetition' };

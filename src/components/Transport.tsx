@@ -16,19 +16,21 @@ export function Transport({ ply, total, onGoto }: Props) {
   const buttons: {
     label: string;
     icon: ComponentProps<typeof Ionicons>['name'];
+    /** The skip icons are drawn smaller so the step arrows lead. */
+    size: number;
     target: number;
     disabled: boolean;
   }[] = [
-    { label: 'First move', icon: 'play-skip-back', target: 0, disabled: ply === 0 },
-    { label: 'Back', icon: 'chevron-back', target: ply - 1, disabled: ply === 0 },
-    { label: 'Forward', icon: 'chevron-forward', target: ply + 1, disabled: ply === total },
-    { label: 'Latest move', icon: 'play-skip-forward', target: total, disabled: ply === total },
+    { label: 'First move', icon: 'play-skip-back', size: 16, target: 0, disabled: ply === 0 },
+    { label: 'Back', icon: 'chevron-back', size: 22, target: ply - 1, disabled: ply === 0 },
+    { label: 'Forward', icon: 'chevron-forward', size: 22, target: ply + 1, disabled: ply === total },
+    { label: 'Latest move', icon: 'play-skip-forward', size: 16, target: total, disabled: ply === total },
   ];
   return (
     <View
       style={[styles.bar, { backgroundColor: color.surfaceRaised, borderColor: color.borderSubtle }]}
     >
-      {buttons.map(({ label, icon, target, disabled }) => (
+      {buttons.map(({ label, icon, size, target, disabled }) => (
         <Pressable
           key={label}
           accessibilityRole="button"
@@ -43,7 +45,7 @@ export function Transport({ ply, total, onGoto }: Props) {
         >
           <Ionicons
             name={icon}
-            size={label === 'Back' || label === 'Forward' ? 22 : 16}
+            size={size}
             color={disabled ? color.tones.neutral.disabledFg : color.textPrimary}
           />
         </Pressable>

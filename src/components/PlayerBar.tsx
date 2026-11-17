@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { Color } from '@/game/replay';
+import { pieceColors } from '@/theme/theme';
 
 interface Props {
   readonly name: string;
@@ -25,7 +26,7 @@ export function PlayerBar({ name, detail, color, toMove, thinking, children }: P
         style={[
           styles.piece,
           {
-            backgroundColor: color === 'white' ? '#fbf7ef' : '#17111f',
+            backgroundColor: pieceColors[color],
             borderColor: toMove ? c.tones.accent.solid : c.tones.neutral.border,
           },
         ]}

@@ -1,7 +1,8 @@
 import { Button, Inline, Stack, Text } from '@reactive/silk-native';
-import { StyleSheet } from 'react-native';
 
+import { Eyebrow } from '@/components/Eyebrow';
 import type { Color, Ply } from '@/game/replay';
+import type { MaiaRating } from '@/resources/maia';
 
 interface Props {
   readonly playerColor: Color;
@@ -10,23 +11,33 @@ interface Props {
   /** The ply on the board when it isn't the latest. */
   readonly viewing?: number;
   readonly total: number;
+  readonly rating: MaiaRating;
   readonly thinking: boolean;
   readonly error?: Error;
   readonly onRetry: () => void;
 }
 
 /** The headline of the panel: whose move it is, or how the game ended. */
-export function GameStatus({ playerColor, latest, viewing, total, thinking, error, onRetry }: Props) {
-  const { title, detail } = describe(playerColor, latest, thinking);
+export function GameStatus({
+  playerColor,
+  latest,
+  viewing,
+  total,
+  rating,
+  thinking,
+  error,
+  onRetry,
+}: Props) {
+  const { title, detail } = describe(playerColor, latest, rating, thinking);
   return (
     <Stack gap="2">
-      <Text role="caption" tone="secondary" style={styles.eyebrow}>
+      <Eyebrow>
         {viewing === undefined
           ? 'Now playing'
           : viewing === 0
             ? 'Replaying · starting position'
             : `Replaying move ${viewing} of ${total}`}
-      </Text>
+      </Eyebrow>
       <Text role="headingLg" accessibilityRole="header" accessibilityLiveRegion="polite">
         {title}
       </Text>
@@ -35,7 +46,7 @@ export function GameStatus({ playerColor, latest, viewing, total, thinking, erro
           ? detail
           : 'Play a move here to try a different line, or skip ahead to the latest move.'}
       </Text>
-      {error && !thinking ? (
+      {error ? (
         <Inline gap="3" align="center">
           <Text role="bodySm" tone="danger">
             Maia didn&apos;t answer.
@@ -49,7 +60,7 @@ export function GameStatus({ playerColor, latest, viewing, total, thinking, erro
   );
 }
 
-function describe(playerColor: Color, latest: Ply, thinking: boolean) {
+function describe(playerColor: Color, latest: Ply, rating: MaiaRating, thinking: boolean) {
   const { result } = latest;
   if (result?.winner === playerColor)
     return { title: 'Checkmate. Bravo!', detail: 'You won. Take a bow, then start a new game.' };
@@ -63,10 +74,6 @@ function describe(playerColor: Color, latest: Ply, thinking: boolean) {
     };
   return {
     title: thinking ? 'Maia is thinking…' : "Maia's move.",
-    detail: 'Maia plays the way people rated about 1500 do.',
+    detail: `Maia plays the way people rated about ${rating} do.`,
   };
 }
-
-const styles = StyleSheet.create({
-  eyebrow: { textTransform: 'uppercase', letterSpacing: 1.6 },
-});

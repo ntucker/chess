@@ -17,6 +17,12 @@ export const brand = {
   curtain: '#8f1b35',
 } as const;
 
+/** The discs that stand for each side outside the board. */
+export const pieceColors = {
+  white: '#fbf7ef',
+  black: '#17111f',
+} as const;
+
 /** Font files loaded at startup (see src/app/_layout.tsx), by family name. */
 export const fonts = {
   /** Display serif for headlines and the wordmark. Has one weight. */
