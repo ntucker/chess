@@ -68,14 +68,14 @@ coords {
   font-weight: 400;
 }
 .orientation-white .ranks :nth-child(odd),
-.orientation-white .files :nth-child(even),
+.orientation-white .files :nth-child(odd),
 .orientation-black .ranks :nth-child(even),
-.orientation-black .files :nth-child(odd) {
+.orientation-black .files :nth-child(even) {
   color: var(--light);
 }
 .orientation-white .ranks :nth-child(even),
-.orientation-white .files :nth-child(odd),
+.orientation-white .files :nth-child(even),
 .orientation-black .ranks :nth-child(odd),
-.orientation-black .files :nth-child(even) {
+.orientation-black .files :nth-child(odd) {
   color: var(--dark);
 }
