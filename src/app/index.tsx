@@ -1,4 +1,3 @@
-import { useController, useLoading } from '@data-client/react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Button, Separator, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
 import Head from 'expo-router/head';
@@ -13,27 +12,19 @@ import { PlayerBar } from '@/components/PlayerBar';
 import { Scoresheet } from '@/components/Scoresheet';
 import { SideChooser } from '@/components/SideChooser';
 import { Transport } from '@/components/Transport';
-import { type Color, replay, toUci } from '@/game/replay';
+import type { Color } from '@/game/replay';
 import { useGame } from '@/game/useGame';
-import { getMaiaMove, type MaiaRating } from '@/resources/maia';
+import type { MaiaRating } from '@/resources/maia';
 
 /** Maia's strength for now; picking it comes with the opening lessons. */
 const RATING: MaiaRating = 1500;
 
 export default function PlayScreen() {
-  const { playerColor, line, ply, plies, current, latest, dispatch } = useGame();
+  const game = useGame(RATING);
+  const { playerColor, line, ply, plies, current, latest, thinking, failed, goto } = game;
   const [nextColor, setNextColor] = useState<Color>(playerColor);
-  const ctrl = useController();
   const { theme } = useTheme();
   const { color } = theme.semantic;
-
-  const [askMaia, thinking, error] = useLoading(async (after: readonly string[]) => {
-    const { top_move } = await ctrl.fetch(getMaiaMove, { rating: RATING }, after);
-    if (replay([...after, top_move]).length !== after.length + 2) {
-      throw new Error(`Maia answered with an illegal move: ${top_move}`);
-    }
-    dispatch({ type: 'reply', after, uci: top_move });
-  });
 
   const atLatest = ply === line.length;
   // While Maia thinks the player can still go back and try another move.
@@ -42,24 +33,10 @@ export default function PlayScreen() {
   // Nothing to lose yet: the player hasn't moved.
   const untouched = line.length <= (playerColor === 'black' ? 1 : 0);
 
-  const handleMove = (from: string, to: string) => {
-    const uci = toUci(current, from, to);
-    const next = [...line.slice(0, ply), uci];
-    dispatch({ type: 'move', uci });
-    if (!replay(next).at(-1)?.result) askMaia(next);
-  };
-
-  const newGame = (side: Color) => {
-    dispatch({ type: 'newGame', playerColor: side });
-    if (side === 'black') askMaia([]);
-  };
-
   const chooseSide = (side: Color) => {
     setNextColor(side);
-    if (untouched && side !== playerColor) newGame(side);
+    if (untouched && side !== playerColor) game.newGame(side);
   };
-
-  const goto = (target: number) => dispatch({ type: 'goto', ply: target });
 
   // Arrow keys step through the moves on the web.
   const onKey = useEffectEvent((event: KeyboardEvent) => {
@@ -124,7 +101,7 @@ export default function PlayScreen() {
                     dests={current.dests}
                     lastMove={current.move ? [current.move.from, current.move.to] : undefined}
                     check={current.check}
-                    onMove={handleMove}
+                    onMove={game.move}
                     dom={{ style: styles.fill, scrollEnabled: false }}
                   />
                 </View>
@@ -140,8 +117,8 @@ export default function PlayScreen() {
                   viewing={atLatest ? undefined : ply}
                   total={line.length}
                   thinking={thinking}
-                  error={error}
-                  onRetry={() => askMaia(line)}
+                  error={failed?.error}
+                  onRetry={game.retry}
                 />
                 <Separator />
                 <Stack gap="3">
@@ -152,7 +129,7 @@ export default function PlayScreen() {
                     <View style={styles.fill}>
                       <SideChooser value={nextColor} onChange={chooseSide} />
                     </View>
-                    <Button tone="accent" variant="solid" onPress={() => newGame(nextColor)}>
+                    <Button tone="accent" variant="solid" onPress={() => game.newGame(nextColor)}>
                       <Ionicons name="refresh" size={15} /> New game
                     </Button>
                   </View>
