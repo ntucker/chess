@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title">
+  <title id="title">Opening Night</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b1430"/>
+      <stop offset="1" stop-color="#0d0a18"/>
+    </linearGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe7a8" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#ffd166" stop-opacity="0.12"/>
+    </linearGradient>
+    <radialGradient id="pool" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffd166" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#ffd166" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="curtain" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7a1530"/>
+      <stop offset="0.5" stop-color="#b3243f"/>
+      <stop offset="1" stop-color="#7a1530"/>
+    </linearGradient>
+    <clipPath id="tile"><rect width="1024" height="1024" rx="224"/></clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="1024" height="1024" fill="url(#bg)"/>
+    <!-- spotlight -->
+    <path d="M440 0 H584 L800 860 H224 Z" fill="url(#beam)"/>
+    <ellipse cx="512" cy="860" rx="300" ry="70" fill="url(#pool)"/>
+    <!-- stage: a strip of board squares -->
+    <g transform="translate(0 860)">
+      <rect width="1024" height="164" fill="#2a1f3d"/>
+      <g fill="#3b2d55">
+        <rect x="0" width="128" height="82"/><rect x="256" width="128" height="82"/>
+        <rect x="512" width="128" height="82"/><rect x="768" width="128" height="82"/>
+        <rect x="128" y="82" width="128" height="82"/><rect x="384" y="82" width="128" height="82"/>
+        <rect x="640" y="82" width="128" height="82"/><rect x="896" y="82" width="128" height="82"/>
+      </g>
+    </g>
+    <!-- knight -->
+    <path fill="#fff8e7" d="
+      M 316 860 H 708 V 806 H 664
+      C 700 700 712 600 692 500
+      C 672 400 628 316 566 266
+      L 556 190 L 508 246
+      C 436 258 376 316 326 396
+      L 276 470
+      C 262 494 274 520 302 524
+      L 352 524
+      C 384 524 414 508 444 482
+      C 468 470 486 494 478 534
+      C 456 630 392 700 378 806
+      H 316 Z"/>
+    <path d="M 640 330 C 664 380 676 440 676 500" stroke="#e8dcc0" stroke-width="14" fill="none" stroke-linecap="round"/>
+    <circle cx="500" cy="330" r="18" fill="#1b1430"/>
+    <!-- curtains -->
+    <path d="M0 0 H300 C 260 160 230 300 120 420 C 80 470 40 520 0 560 Z" fill="url(#curtain)"/>
+    <path d="M1024 0 H724 C 764 160 794 300 904 420 C 944 470 984 520 1024 560 Z" fill="url(#curtain)"/>
+    <rect width="1024" height="72" fill="#5c0f24"/>
+    <path d="M0 72 Q 128 128 256 72 T 512 72 T 768 72 T 1024 72 V 40 H 0 Z" fill="#8f1b35"/>
+  </g>
+</svg>
