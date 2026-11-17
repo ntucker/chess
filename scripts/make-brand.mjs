@@ -119,25 +119,29 @@ function curtain() {
   const end = SIZE + BLEED;
   // A fold of the upper cloth, from a span of the top edge down to a span of the tieback.
   const fold = ([a, b], [c, d], [bend1, bend2]) =>
-    `<path d="M${a} 0H${b}C${bend1[0]} ${bend1[1]} ${bend1[2]} ${bend1[3]} ${x + d} ${top}H${x + c}C${bend2[0]} ${bend2[1]} ${bend2[2]} ${bend2[3]} ${a} 0Z"/>`;
-  // A fold of the cloth below the tieback, between two x positions at the tieback.
-  const fall = (a, b, lean) =>
-    `<path d="M${a} ${bottom}H${b}C${b + lean + 8} 640 ${b + lean} 840 ${b - lean} 1030V${end}H${a - lean - 8}V1030C${a + lean} 840 ${a + lean + 8} 640 ${a} ${bottom}Z"/>`;
+    `<path d="M${a} ${-BLEED}H${b}V0C${bend1.join(' ')} ${x + d} ${top}H${x + c}C${bend2.join(' ')} ${a} 0Z"/>`;
+  // A fold of the cloth below the tieback, from a span of the tieback to a span of the hem.
+  const fall = ([a, b], [c, d]) =>
+    `<path d="M${a} ${bottom}H${b}C${b + 8} 640 ${d} 800 ${d} ${SIZE}V${end}H${c}V${SIZE}C${c} 800 ${a + 8} 640 ${a} ${bottom}Z"/>`;
+  // A straight fold of the cloth that hangs outside the canvas.
+  const outer = (a, b) => rect({ x: a, y: -BLEED, width: b - a, height: end + BLEED });
   return `
-<path fill="${brand.curtain}" d="M${-BLEED} ${-BLEED}H512V0C404 64 236 240 ${x + 40} ${top}V${bottom}C166 600 160 800 132 1030V${end}H${-BLEED}Z"/>
+<path fill="${brand.curtain}" d="M${-BLEED} ${-BLEED}H512V0C404 64 236 240 ${x + 40} ${top}V${bottom}C168 600 136 780 136 ${SIZE}V${end}H${-BLEED}Z"/>
 <g fill="${color.sheen}">
+${outer(-246, -206)}${outer(-104, -62)}
 ${fold([70, 120], [-44, -30], [[112, 170, 96, 330], [56, 320, 66, 160]])}
 ${fold([236, 276], [2, 8], [[246, 160, 180, 320], [150, 320, 214, 160]])}
 ${fold([372, 404], [25, 28], [[344, 130, 244, 290], [226, 290, 322, 130]])}
-${fall(74, 92, 6)}
+${fall([74, 92], [62, 80])}
 </g>
 <g fill="${color.fold}">
-<path d="M0 0H44C40 180 40 330 ${x - 52} ${top}H0Z"/>
+${outer(-176, -128)}${outer(-36, 0)}
+${fold([0, 44], [-74, -52], [[40, 180, 40, 330], [0, 330, 0, 180]])}
 ${fold([150, 212], [-24, 0], [[190, 170, 146, 330], [112, 320, 140, 160]])}
 ${fold([300, 352], [10, 24], [[310, 150, 226, 316], [200, 320, 270, 150]])}
 ${fold([430, 470], [30, 38], [[400, 90, 268, 256], [250, 270, 370, 100]])}
-${fall(36, 70, 2)}
-${fall(100, 126, 10)}
+${fall([36, 70], [26, 58])}
+${fall([100, 126], [86, 110])}
 </g>
 <path fill="${color.shadow}" opacity="0.5" d="M${-BLEED} ${bottom}H${x + 44}L${x + 46} ${bottom + 36}H${-BLEED}Z"/>
 <path fill="none" stroke="url(#edgeLight)" stroke-width="6" stroke-linecap="round" d="M498 12C394 74 232 244 ${x + 40} ${top - 2}"/>
