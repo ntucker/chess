@@ -9,7 +9,7 @@ import Board from '@/components/Board';
 import { Eyebrow } from '@/components/Eyebrow';
 import { GameStatus } from '@/components/GameStatus';
 import { Header } from '@/components/Header';
-import { PlayerBar } from '@/components/PlayerBar';
+import { PLAYER_BAR_HEIGHT, PlayerBar } from '@/components/PlayerBar';
 import { Scoresheet } from '@/components/Scoresheet';
 import { SideChooser } from '@/components/SideChooser';
 import { Transport } from '@/components/Transport';
@@ -156,8 +156,20 @@ const spotlight = (scheme: 'light' | 'dark') => ({
       : 'radial-gradient(ellipse 70% 55% at 35% -5%, rgba(143, 27, 53, 0.09), rgba(143, 27, 53, 0) 70%)',
 });
 
+/** Space between the board and the name bars above and below it. */
+const BOARD_COLUMN_GAP = 4;
+/** How far the board sits below the top of its column (Maia's name bar). */
+const BOARD_OFFSET = PLAYER_BAR_HEIGHT + BOARD_COLUMN_GAP;
+/** Space above the program when it wraps below the board. */
+const WRAPPED_GAP = 32;
+
 // Board and program sit side by side when there's room and wrap into a column
 // when there isn't, without measuring the window (which the server can't).
+// Side by side, the program should start level with the board, BOARD_OFFSET
+// below the column's top; wrapped, it should start WRAPPED_GAP below the
+// column. The program's top margin is WRAPPED_GAP for the wrapped case, and
+// the column is raised by the rest of BOARD_OFFSET (a negative margin, offset
+// by the stage's padding) so the side-by-side case lines up too.
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   page: { paddingHorizontal: 20, paddingVertical: 20, gap: 20, alignItems: 'center' },
@@ -169,9 +181,17 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     alignItems: 'flex-start',
-    gap: 32,
+    columnGap: 32,
+    paddingTop: BOARD_OFFSET - WRAPPED_GAP,
   },
-  boardColumn: { flexGrow: 1, flexShrink: 1, flexBasis: 320, maxWidth: 600, gap: 4 },
+  boardColumn: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 320,
+    maxWidth: 600,
+    marginTop: WRAPPED_GAP - BOARD_OFFSET,
+    gap: BOARD_COLUMN_GAP,
+  },
   frame: {
     aspectRatio: 1,
     borderRadius: 10,
@@ -184,6 +204,13 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   boardClip: { flex: 1, borderRadius: 9, overflow: 'hidden' },
-  program: { flexGrow: 1, flexShrink: 1, flexBasis: 300, maxWidth: 400, padding: 24 },
+  program: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 300,
+    maxWidth: 400,
+    marginTop: WRAPPED_GAP,
+    padding: 24,
+  },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
 });

@@ -16,6 +16,9 @@ interface Props {
   readonly children?: ReactNode;
 }
 
+/** Fixed, so the screen can line other content up with the board below it. */
+export const PLAYER_BAR_HEIGHT = 60;
+
 /** A name plate above or below the board, lit while that side is to move. */
 export function PlayerBar({ name, detail, color, toMove, thinking, children }: Props) {
   const { theme } = useTheme();
@@ -46,7 +49,7 @@ export function PlayerBar({ name, detail, color, toMove, thinking, children }: P
 }
 
 const styles = StyleSheet.create({
-  bar: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  bar: { flexDirection: 'row', alignItems: 'center', gap: 12, height: PLAYER_BAR_HEIGHT },
   piece: { width: 28, height: 28, borderRadius: 14, borderWidth: 2.5 },
   names: { flex: 1, minWidth: 0 },
 });
