@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/brand/logo.svg" width="128" alt="Opening Night logo: a chess knight in a spotlight between theater curtains"></p>
+<p align="center"><img src="assets/brand/logo.svg" width="128" alt="Opening Night logo: a red theater curtain parted in the shape of a chess knight, with stage light coming through"></p>
 
 # Opening Night
 
@@ -25,6 +25,7 @@ yarn web        # or: yarn ios, yarn android
 | `yarn typecheck` | Type-check with TypeScript |
 | `yarn lint` | Lint with ESLint |
 | `yarn vendor:silk [path]` | Rebuild the vendored Silk packages from a Silk checkout (default `../silk`) |
+| `yarn brand` | Redraw the logo and every icon made from it (see [Logo](#logo)) |
 
 ## How it fits together
 
@@ -40,3 +41,9 @@ yarn web        # or: yarn ios, yarn android
 Maia's API doesn't allow calls from other websites, so the web build asks this app's own server route (`src/app/api/maia/`), which forwards the request. The iOS and Android apps call Maia directly.
 
 Silk isn't on npm yet, so the app installs it from the tarballs in `vendor/`.
+
+## Logo
+
+The logo is a theater curtain parted in the shape of a chess knight, with the stage light coming through. `scripts/make-brand.mjs` draws it: the knight is a list of points at the top of that file, and the curtain's folds are computed from the knight, so they gather wherever it pushes them aside.
+
+`yarn brand` writes the logo (`assets/brand/logo.svg`), the knight on its own (`assets/brand/knight.svg`), and the app icon, Android icon layers, splash image, favicon and header mark in `assets/images/`. The images are rendered with [Playwright](https://playwright.dev)'s Chromium, which isn't one of the app's dependencies; without it the script writes the two SVGs and stops.
