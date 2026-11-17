@@ -1008,6 +1008,27 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@expo-google-fonts/dm-mono@npm:^0.4.2":
+  version: 0.4.2
+  resolution: "@expo-google-fonts/dm-mono@npm:0.4.2"
+  checksum: 10c0/b435be4e21ab4e0fbd35b2453d8d5ad34197dcb84f4953afea87a44ce57f88e05698e556876e6310980a282a89796b71de579ac8a3aaa106e3ec4cc6915199a3
+  languageName: node
+  linkType: hard
+
+"@expo-google-fonts/dm-serif-display@npm:^0.4.2":
+  version: 0.4.2
+  resolution: "@expo-google-fonts/dm-serif-display@npm:0.4.2"
+  checksum: 10c0/e71f796a45ba3c5a7fc44e868b921a302c939b7e459ad127797dbb4d20e9c15e8093db4401b88dfe057f3d4bdab60bb2c221eb0a079243a9ea28bd137bf90798
+  languageName: node
+  linkType: hard
+
+"@expo-google-fonts/instrument-sans@npm:^0.4.2":
+  version: 0.4.2
+  resolution: "@expo-google-fonts/instrument-sans@npm:0.4.2"
+  checksum: 10c0/4b240f9b29e8b4b402bdcffdfae8c89dedc06bc75e0e2a34a5d13b3b5b440baf714245f07ce716450fd2a3e2de8476044c8bf2d11a148f1aef4211fef4680c5d
+  languageName: node
+  linkType: hard
+
 "@expo/cli@npm:^58.1.20":
   version: 58.1.20
   resolution: "@expo/cli@npm:58.1.20"
@@ -1538,6 +1559,17 @@ __metadata:
   version: 9.3.2
   resolution: "@expo/sudo-prompt@npm:9.3.2"
   checksum: 10c0/032652bf1c3f326c9c194f336de5821b9ece9d48b22e3e277950d939fcd728c85459680a9771705904d375f128221cca2e1e91c5d7a85cf3c07fe6f88c361e9d
+  languageName: node
+  linkType: hard
+
+"@expo/vector-icons@npm:^15.1.1":
+  version: 15.1.1
+  resolution: "@expo/vector-icons@npm:15.1.1"
+  peerDependencies:
+    expo-font: ">=14.0.4"
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/fdd50c90484934204b90d345904fa69ca788a5de704d62b3cb580c52aa4cf4bffe1c05c509d043cf2b6842f1bdad6b78585524f3c6ae5f77e36385d83c0aa577
   languageName: node
   linkType: hard
 
@@ -6600,6 +6632,10 @@ __metadata:
   dependencies:
     "@data-client/react": "npm:^0.19.0-beta-20261113052655-f7af45aa6ae4b5ee5e7106b731e1f2b2b152533a"
     "@data-client/rest": "npm:^0.19.0-beta-20261115003601-9e33ac1ca5414daa43a80e5119067fc14b3c2576"
+    "@expo-google-fonts/dm-mono": "npm:^0.4.2"
+    "@expo-google-fonts/dm-serif-display": "npm:^0.4.2"
+    "@expo-google-fonts/instrument-sans": "npm:^0.4.2"
+    "@expo/vector-icons": "npm:^15.1.1"
     "@lichess-org/chessground": "npm:^10.5.0"
     "@reactive/silk-core": "file:./vendor/reactive-silk-core.tgz"
     "@reactive/silk-native": "file:./vendor/reactive-silk-native.tgz"

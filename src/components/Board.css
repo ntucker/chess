@@ -3,4 +3,75 @@ html,
 body {
   margin: 0;
   overflow: hidden;
+  background: transparent;
+}
+
+/*
+ * Opening Night's board: parchment and plum squares, lit in spotlight gold.
+ * Replaces chessground's brown theme; colors come from src/theme/theme.ts.
+ */
+/* Chessground sizes the board to whole pixels per square; center what's left. */
+cg-container {
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+cg-board {
+  --light: #ecdfc6;
+  --dark: #8a6c93;
+  --gold: 217, 164, 65;
+  --ink: 34, 26, 51;
+  background-color: var(--light);
+  /* A 2x2 tile, light at top left as on a1-h8, repeated four times each way. */
+  background-image: conic-gradient(
+    var(--dark) 0 25%,
+    var(--light) 0 50%,
+    var(--dark) 0 75%,
+    var(--light) 0
+  );
+  background-size: 25% 25%;
+}
+
+cg-board square.last-move {
+  background-color: rgba(var(--gold), 0.5);
+}
+cg-board square.selected {
+  background-color: rgba(var(--gold), 0.75);
+}
+cg-board square.move-dest {
+  background: radial-gradient(rgba(var(--ink), 0.38) 19%, rgba(var(--ink), 0) 20%);
+}
+cg-board square.oc.move-dest {
+  background: radial-gradient(transparent 0%, transparent 78%, rgba(var(--ink), 0.38) 79%);
+}
+cg-board square.move-dest:hover,
+cg-board square.move-dest.hover {
+  background: rgba(var(--gold), 0.45);
+}
+cg-board square.check {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(214, 40, 57, 1) 0%,
+    rgba(214, 40, 57, 0.85) 30%,
+    rgba(214, 40, 57, 0) 80%
+  );
+}
+
+/* Coordinates in the corner squares, in the color of the other square. */
+coords {
+  font-family: 'DMMono_400Regular', ui-monospace, monospace;
+  font-weight: 400;
+}
+.orientation-white .ranks :nth-child(odd),
+.orientation-white .files :nth-child(even),
+.orientation-black .ranks :nth-child(even),
+.orientation-black .files :nth-child(odd) {
+  color: var(--light, #ecdfc6);
+}
+.orientation-white .ranks :nth-child(even),
+.orientation-white .files :nth-child(odd),
+.orientation-black .ranks :nth-child(odd),
+.orientation-black .files :nth-child(even) {
+  color: #8a6c93;
 }

@@ -4,7 +4,6 @@
 // runs in a web view (an Expo DOM component); on the web it renders inline.
 // Props cross that boundary as JSON, and onMove becomes an async message.
 import '@lichess-org/chessground/assets/chessground.base.css';
-import '@lichess-org/chessground/assets/chessground.brown.css';
 import '@lichess-org/chessground/assets/chessground.cburnett.css';
 import './Board.css';
 

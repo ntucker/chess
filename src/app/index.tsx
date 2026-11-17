@@ -1,13 +1,18 @@
 import { useController, useLoading } from '@data-client/react';
-import { Stack, Surface } from '@reactive/silk-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Button, Separator, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
 import Head from 'expo-router/head';
+import { useEffect, useEffectEvent, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Board from '@/components/Board';
-import { GameControls } from '@/components/GameControls';
 import { GameStatus } from '@/components/GameStatus';
-import { MoveList } from '@/components/MoveList';
+import { Header } from '@/components/Header';
+import { PlayerBar } from '@/components/PlayerBar';
+import { Scoresheet } from '@/components/Scoresheet';
+import { SideChooser } from '@/components/SideChooser';
+import { Transport } from '@/components/Transport';
 import { type Color, replay, toUci } from '@/game/replay';
 import { useGame } from '@/game/useGame';
 import { getMaiaMove, type MaiaRating } from '@/resources/maia';
@@ -17,7 +22,10 @@ const RATING: MaiaRating = 1500;
 
 export default function PlayScreen() {
   const { playerColor, line, ply, plies, current, latest, dispatch } = useGame();
+  const [nextColor, setNextColor] = useState<Color>(playerColor);
   const ctrl = useController();
+  const { theme } = useTheme();
+  const { color } = theme.semantic;
 
   const [askMaia, thinking, error] = useLoading(async (after: readonly string[]) => {
     const { top_move } = await ctrl.fetch(getMaiaMove, { rating: RATING }, after);
@@ -30,6 +38,9 @@ export default function PlayScreen() {
   const atLatest = ply === line.length;
   // While Maia thinks the player can still go back and try another move.
   const canMove = !current.result && current.turn === playerColor && !(atLatest && thinking);
+  const maiaColor: Color = playerColor === 'white' ? 'black' : 'white';
+  // Nothing to lose yet: the player hasn't moved.
+  const untouched = line.length <= (playerColor === 'black' ? 1 : 0);
 
   const handleMove = (from: string, to: string) => {
     const uci = toUci(current, from, to);
@@ -38,74 +49,167 @@ export default function PlayScreen() {
     if (!replay(next).at(-1)?.result) askMaia(next);
   };
 
-  const newGame = (color: Color) => {
-    dispatch({ type: 'newGame', playerColor: color });
-    if (color === 'black') askMaia([]);
+  const newGame = (side: Color) => {
+    dispatch({ type: 'newGame', playerColor: side });
+    if (side === 'black') askMaia([]);
   };
 
+  const chooseSide = (side: Color) => {
+    setNextColor(side);
+    if (untouched && side !== playerColor) newGame(side);
+  };
+
+  const goto = (target: number) => dispatch({ type: 'goto', ply: target });
+
+  // Arrow keys step through the moves on the web.
+  const onKey = useEffectEvent((event: KeyboardEvent) => {
+    const targets: Record<string, number> = {
+      ArrowLeft: ply - 1,
+      ArrowRight: ply + 1,
+      Home: 0,
+      End: line.length,
+    };
+    if (event.key in targets) {
+      event.preventDefault();
+      goto(targets[event.key]);
+    }
+  });
+  useEffect(() => {
+    if (process.env.EXPO_OS !== 'web') return;
+    const listener = (event: KeyboardEvent) => onKey(event);
+    window.addEventListener('keydown', listener);
+    return () => window.removeEventListener('keydown', listener);
+  }, []);
+
+  const opponent = (
+    <PlayerBar
+      name="Maia"
+      detail={`Plays like a ${RATING} · ${maiaColor === 'white' ? 'White' : 'Black'}`}
+      color={maiaColor}
+      toMove={!latest.result && latest.turn === maiaColor}
+      thinking={thinking}
+    />
+  );
+  const you = (
+    <PlayerBar
+      name="You"
+      detail={playerColor === 'white' ? 'White' : 'Black'}
+      color={playerColor}
+      toMove={!latest.result && latest.turn === playerColor}
+    >
+      <Transport ply={ply} total={line.length} onGoto={goto} />
+    </PlayerBar>
+  );
+
   return (
-    <Surface elevation="sunken" radius="none" style={styles.fill}>
+    <View style={[styles.fill, { backgroundColor: color.surface }, spotlight(theme.colorScheme)]}>
       <Head>
         <title>Opening Night</title>
       </Head>
       <SafeAreaView style={styles.fill}>
         <ScrollView contentContainerStyle={styles.page}>
-          <View style={styles.board}>
-            <Board
-              fen={current.fen}
-              orientation={playerColor}
-              turnColor={current.turn}
-              movableColor={canMove ? playerColor : undefined}
-              dests={current.dests}
-              lastMove={current.move ? [current.move.from, current.move.to] : undefined}
-              check={current.check}
-              onMove={handleMove}
-              dom={{ style: styles.fill, scrollEnabled: false }}
-            />
+          <View style={styles.header}>
+            <Header />
           </View>
-          <Surface elevation="raised" radius="lg" style={styles.panel}>
-            <Stack gap="4">
-              <GameStatus
-                playerColor={playerColor}
-                latest={latest}
-                viewing={atLatest ? undefined : ply}
-                total={line.length}
-                thinking={thinking}
-                error={error}
-                onRetry={() => askMaia(line)}
-              />
-              <GameControls
-                playerColor={playerColor}
-                ply={ply}
-                total={line.length}
-                onNewGame={newGame}
-                onGoto={(target) => dispatch({ type: 'goto', ply: target })}
-              />
-              <MoveList
-                plies={plies}
-                ply={ply}
-                onGoto={(target) => dispatch({ type: 'goto', ply: target })}
-              />
-            </Stack>
-          </Surface>
+          <View style={styles.stage}>
+            <View style={styles.boardColumn}>
+              {opponent}
+              <View style={[styles.frame, { borderColor: color.borderSubtle }]}>
+                <View style={styles.boardClip}>
+                  <Board
+                    fen={current.fen}
+                    orientation={playerColor}
+                    turnColor={current.turn}
+                    movableColor={canMove ? playerColor : undefined}
+                    dests={current.dests}
+                    lastMove={current.move ? [current.move.from, current.move.to] : undefined}
+                    check={current.check}
+                    onMove={handleMove}
+                    dom={{ style: styles.fill, scrollEnabled: false }}
+                  />
+                </View>
+              </View>
+              {you}
+            </View>
+
+            <Surface elevation="raised" radius="lg" border="subtle" style={styles.program}>
+              <Stack gap="5">
+                <GameStatus
+                  playerColor={playerColor}
+                  latest={latest}
+                  viewing={atLatest ? undefined : ply}
+                  total={line.length}
+                  thinking={thinking}
+                  error={error}
+                  onRetry={() => askMaia(line)}
+                />
+                <Separator />
+                <Stack gap="3">
+                  <Text role="caption" tone="secondary" style={styles.eyebrow}>
+                    Play as
+                  </Text>
+                  <View style={styles.row}>
+                    <View style={styles.fill}>
+                      <SideChooser value={nextColor} onChange={chooseSide} />
+                    </View>
+                    <Button tone="accent" variant="solid" onPress={() => newGame(nextColor)}>
+                      <Ionicons name="refresh" size={15} /> New game
+                    </Button>
+                  </View>
+                </Stack>
+                <Separator />
+                <Stack gap="3">
+                  <Text role="caption" tone="secondary" style={styles.eyebrow}>
+                    Scoresheet
+                  </Text>
+                  <Scoresheet plies={plies} ply={ply} onGoto={goto} />
+                </Stack>
+              </Stack>
+            </Surface>
+          </View>
         </ScrollView>
       </SafeAreaView>
-    </Surface>
+    </View>
   );
 }
 
-// Board and panel sit side by side when there's room and wrap into a column
+/** A soft pool of light from above, on platforms that draw CSS gradients. */
+const spotlight = (scheme: 'light' | 'dark') => ({
+  backgroundImage:
+    scheme === 'dark'
+      ? 'radial-gradient(ellipse 70% 55% at 35% -5%, rgba(217, 164, 65, 0.22), rgba(217, 164, 65, 0) 70%)'
+      : 'radial-gradient(ellipse 70% 55% at 35% -5%, rgba(143, 27, 53, 0.09), rgba(143, 27, 53, 0) 70%)',
+});
+
+// Board and program sit side by side when there's room and wrap into a column
 // when there isn't, without measuring the window (which the server can't).
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  page: {
+  page: { paddingHorizontal: 20, paddingVertical: 20, gap: 20, alignItems: 'center' },
+  header: { width: '100%', maxWidth: 1040 },
+  stage: {
+    width: '100%',
+    maxWidth: 1040,
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
     alignItems: 'flex-start',
-    gap: 24,
-    padding: 16,
+    gap: 32,
   },
-  board: { flexGrow: 1, flexShrink: 1, flexBasis: 320, maxWidth: 640, aspectRatio: 1 },
-  panel: { flexGrow: 1, flexBasis: 280, maxWidth: 400, padding: 16 },
+  boardColumn: { flexGrow: 1, flexShrink: 1, flexBasis: 320, maxWidth: 600, gap: 4 },
+  frame: {
+    aspectRatio: 1,
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 0,
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 12,
+  },
+  boardClip: { flex: 1, borderRadius: 9, overflow: 'hidden' },
+  program: { flexGrow: 1, flexShrink: 1, flexBasis: 300, maxWidth: 400, padding: 24 },
+  eyebrow: { textTransform: 'uppercase', letterSpacing: 1.6 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
 });

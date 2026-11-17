@@ -1,4 +1,5 @@
-import { Badge, Button, Inline, Spinner, Stack, Text } from '@reactive/silk-native';
+import { Button, Inline, Stack, Text } from '@reactive/silk-native';
+import { StyleSheet } from 'react-native';
 
 import type { Color, Ply } from '@/game/replay';
 
@@ -14,47 +15,58 @@ interface Props {
   readonly onRetry: () => void;
 }
 
-/** Whose move it is, how the game ended, or why Maia hasn't answered. */
-export function GameStatus({
-  playerColor,
-  latest,
-  viewing,
-  total,
-  thinking,
-  error,
-  onRetry,
-}: Props) {
+/** The headline of the panel: whose move it is, or how the game ended. */
+export function GameStatus({ playerColor, latest, viewing, total, thinking, error, onRetry }: Props) {
+  const { title, detail } = describe(playerColor, latest, thinking);
   return (
     <Stack gap="2">
-      <Inline gap="2" justify="between">
-        <Text role="heading">{headline(playerColor, latest, thinking)}</Text>
-        {thinking ? <Spinner size="sm" /> : null}
-      </Inline>
-      {viewing !== undefined ? (
-        <Badge tone="accent">{`Viewing move ${viewing} of ${total}`}</Badge>
-      ) : null}
+      <Text role="caption" tone="secondary" style={styles.eyebrow}>
+        {viewing === undefined
+          ? 'Now playing'
+          : viewing === 0
+            ? 'Replaying · starting position'
+            : `Replaying move ${viewing} of ${total}`}
+      </Text>
+      <Text role="headingLg" accessibilityRole="header" accessibilityLiveRegion="polite">
+        {title}
+      </Text>
+      <Text role="bodySm" tone="secondary">
+        {viewing === undefined
+          ? detail
+          : 'Play a move here to try a different line, or skip ahead to the latest move.'}
+      </Text>
       {error && !thinking ? (
-        <Stack gap="2">
-          <Text tone="danger" role="bodySm">
-            Maia didn&apos;t answer. Check your connection and try again.
+        <Inline gap="3" align="center">
+          <Text role="bodySm" tone="danger">
+            Maia didn&apos;t answer.
           </Text>
-          <Inline>
-            <Button size="sm" variant="soft" tone="danger" onPress={onRetry}>
-              Try again
-            </Button>
-          </Inline>
-        </Stack>
+          <Button size="sm" variant="soft" tone="danger" onPress={onRetry}>
+            Try again
+          </Button>
+        </Inline>
       ) : null}
     </Stack>
   );
 }
 
-function headline(playerColor: Color, latest: Ply, thinking: boolean): string {
+function describe(playerColor: Color, latest: Ply, thinking: boolean) {
   const { result } = latest;
-  if (result) {
-    if (!result.winner) return `Draw by ${result.reason}`;
-    return result.winner === playerColor ? 'Checkmate. You win!' : 'Checkmate. Maia wins.';
-  }
-  if (latest.turn === playerColor) return 'Your move';
-  return thinking ? 'Maia is thinking…' : "Maia's move";
+  if (result?.winner === playerColor)
+    return { title: 'Checkmate. Bravo!', detail: 'You won. Take a bow, then start a new game.' };
+  if (result?.winner)
+    return { title: 'Checkmate.', detail: 'Maia won this one. Step back through it to see where it turned.' };
+  if (result) return { title: 'A draw.', detail: `By ${result.reason}.` };
+  if (latest.turn === playerColor)
+    return {
+      title: 'Your move.',
+      detail: latest.move ? `Maia played ${latest.move.san}.` : 'Drag a piece, or tap it and then its square.',
+    };
+  return {
+    title: thinking ? 'Maia is thinking…' : "Maia's move.",
+    detail: 'Maia plays the way people rated about 1500 do.',
+  };
 }
+
+const styles = StyleSheet.create({
+  eyebrow: { textTransform: 'uppercase', letterSpacing: 1.6 },
+});
