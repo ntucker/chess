@@ -91,6 +91,12 @@ function gameResult(pos: Chess, repetitions: number): GameResult | undefined {
   return undefined;
 }
 
+/** The position after `line`, ready for the board. */
+export function lastPosition(line: readonly string[]): Position {
+  const plies = replay(line);
+  return analyze(plies[plies.length - 1]);
+}
+
 /** Whether `uci` is a legal move in the position `fen`. */
 export function isLegal(fen: string, uci: string): boolean {
   const move = parseUci(uci);

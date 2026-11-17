@@ -3,14 +3,8 @@ import { useReducer } from 'react';
 
 import { getMaiaMove, type MaiaRating } from '@/resources/maia';
 
-import { awaitsMaia, gameReducer, initialGame } from './game';
-import { analyze, type Color, isLegal, replay, toUci } from './replay';
-
-/** The last position of `line`, ready for the board. */
-const lastPosition = (line: readonly string[]) => {
-  const plies = replay(line);
-  return analyze(plies[plies.length - 1]);
-};
+import { type GameAction, gameReducer, initialGame } from './game';
+import { analyze, type Color, replay, toUci } from './replay';
 
 /**
  * A game against Maia: its moves and positions, the move on the board, and
@@ -21,20 +15,17 @@ const lastPosition = (line: readonly string[]) => {
 export function useGame(rating: MaiaRating) {
   const ctrl = useController();
   const [state, dispatch] = useReducer(gameReducer, initialGame);
-  const { game, playerColor, line, ply, maia } = state;
+  const { playerColor, line, ply, maia } = state;
   const plies = replay(line);
   const latest = analyze(plies[plies.length - 1]);
   const atLatest = ply === line.length;
   const current = atLatest ? latest : analyze(plies[ply]);
   const thinking = maia.status === 'thinking';
 
-  /** Asks Maia to answer `after`, which ends in the position `fen`. */
-  const ask = async (forGame: number, after: readonly string[], fen: string) => {
+  /** Asks Maia to answer `after`, the moves of game `forGame`. */
+  const ask = async (forGame: number, after: readonly string[]) => {
     try {
       const { top_move } = await ctrl.fetch(getMaiaMove, { rating }, after);
-      if (!isLegal(fen, top_move)) {
-        throw new Error(`Maia answered with an illegal move: ${top_move}`);
-      }
       dispatch({ type: 'reply', game: forGame, after, uci: top_move });
     } catch (error) {
       dispatch({
@@ -44,6 +35,13 @@ export function useGame(rating: MaiaRating) {
         error: error instanceof Error ? error : new Error(String(error)),
       });
     }
+  };
+
+  /** Dispatches `action`, and asks Maia to move if it leaves her thinking. */
+  const act = (action: GameAction) => {
+    const next = gameReducer(state, action);
+    dispatch(action);
+    if (next.maia.status === 'thinking') ask(next.game, next.line);
   };
 
   return {
@@ -64,22 +62,13 @@ export function useGame(rating: MaiaRating) {
     error: maia.status === 'failed' ? maia.error : undefined,
     /** Plays the player's move between two squares on the shown position. */
     move(from: string, to: string) {
-      const next = [...line.slice(0, ply), toUci(current, from, to)];
-      const position = lastPosition(next);
-      const asks = awaitsMaia(position, playerColor);
-      dispatch({ type: 'move', line: next, ask: asks });
-      if (asks) ask(game, next, position.fen);
+      act({ type: 'move', uci: toUci(current, from, to) });
     },
     newGame(side: Color) {
-      const start = lastPosition([]);
-      const asks = awaitsMaia(start, side);
-      dispatch({ type: 'newGame', playerColor: side, ask: asks });
-      if (asks) ask(game + 1, [], start.fen);
+      act({ type: 'newGame', playerColor: side });
     },
     retry() {
-      if (maia.status !== 'failed') return;
-      dispatch({ type: 'retry' });
-      ask(game, line, latest.fen);
+      if (maia.status === 'failed') act({ type: 'retry' });
     },
     goto(target: number) {
       dispatch({ type: 'goto', ply: target });
