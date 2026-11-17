@@ -1,7 +1,7 @@
-import { Text, useTheme } from '@reactive/silk-native';
+import { Surface, Text, useTheme } from '@reactive/silk-native';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { COLORS, type Color } from '@/game/replay';
+import { COLORS, type Color, colorName } from '@/game/replay';
 import { pieceColors } from '@/theme/theme';
 
 interface Props {
@@ -14,10 +14,12 @@ export function SideChooser({ value, onChange }: Props) {
   const { theme } = useTheme();
   const { color, shadow } = theme.semantic;
   return (
-    <View
+    <Surface
+      elevation="sunken"
+      border="subtle"
       accessibilityRole="radiogroup"
       accessibilityLabel="Play as"
-      style={[styles.track, { backgroundColor: color.surfaceSunken, borderColor: color.borderSubtle }]}
+      style={styles.track}
     >
       {COLORS.map((side) => {
         const selected = side === value;
@@ -49,17 +51,17 @@ export function SideChooser({ value, onChange }: Props) {
               ]}
             />
             <Text role="label" tone={selected ? 'primary' : 'secondary'}>
-              {side === 'white' ? 'White' : 'Black'}
+              {colorName(side)}
             </Text>
           </Pressable>
         );
       })}
-    </View>
+    </Surface>
   );
 }
 
 const styles = StyleSheet.create({
-  track: { flexDirection: 'row', borderRadius: 999, borderWidth: 1, padding: 3 },
+  track: { flexDirection: 'row', borderRadius: 999, padding: 3 },
   option: {
     flex: 1,
     flexDirection: 'row',

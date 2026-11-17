@@ -11,11 +11,27 @@ import {
  * (velvet plum, lit by a gold spotlight); light mode is the printed program
  * (ivory paper, plum ink, curtain-red accents).
  */
-export const brand = {
+const brand = {
   velvet: '#3b2d55',
   spotlight: '#d9a441',
   curtain: '#8f1b35',
 } as const;
+
+const rgba = (hex: string, alpha: number) => {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+};
+const pool = (hex: string, alpha: number) =>
+  `radial-gradient(ellipse 70% 55% at 35% -5%, ${rgba(hex, alpha)}, ${rgba(hex, 0)} 70%)`;
+
+/**
+ * A soft pool of light from above the stage, as a CSS background image (drawn
+ * on the web; native ignores it).
+ */
+export const spotlight: Readonly<Record<ColorScheme, string>> = {
+  dark: pool(brand.spotlight, 0.22),
+  light: pool(brand.curtain, 0.09),
+};
 
 /** The discs that stand for each side outside the board. */
 export const pieceColors = {
@@ -117,6 +133,8 @@ function buildTheme(colorScheme: ColorScheme): Theme {
       radius: { sm: 6, md: 10, lg: 16 },
       shadow: {
         raised: { offsetY: 10, blur: 30, opacity: dark ? 0.45 : 0.1 },
+        // The board, lifted off the stage.
+        overlay: { offsetY: 14, blur: 56, opacity: 0.35 },
       },
     },
   });

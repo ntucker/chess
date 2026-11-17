@@ -55,7 +55,6 @@ export default function Board({
       free: false,
       color: movableColor,
       dests: new Map(Object.entries(dests)) as Map<Key, Key[]>,
-      showDests: true,
     },
   };
 

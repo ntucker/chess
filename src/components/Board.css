@@ -17,11 +17,15 @@ cg-container {
   transform: translate(-50%, -50%);
 }
 
-cg-board {
+/* On the wrapper, so the coordinates (beside cg-board, not in it) see them. */
+.cg-wrap {
   --light: #ecdfc6;
   --dark: #8a6c93;
   --gold: 217, 164, 65;
   --ink: 34, 26, 51;
+}
+
+cg-board {
   background-color: var(--light);
   /* A 2x2 tile, light at top left as on a1-h8, repeated four times each way. */
   background-image: conic-gradient(
@@ -67,11 +71,11 @@ coords {
 .orientation-white .files :nth-child(even),
 .orientation-black .ranks :nth-child(even),
 .orientation-black .files :nth-child(odd) {
-  color: var(--light, #ecdfc6);
+  color: var(--light);
 }
 .orientation-white .ranks :nth-child(even),
 .orientation-white .files :nth-child(odd),
 .orientation-black .ranks :nth-child(odd),
 .orientation-black .files :nth-child(even) {
-  color: #8a6c93;
+  color: var(--dark);
 }

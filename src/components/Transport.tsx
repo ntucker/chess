@@ -35,7 +35,6 @@ export function Transport({ ply, total, onGoto }: Props) {
           key={label}
           accessibilityRole="button"
           accessibilityLabel={label}
-          accessibilityState={{ disabled }}
           disabled={disabled}
           onPress={() => onGoto(target)}
           style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [

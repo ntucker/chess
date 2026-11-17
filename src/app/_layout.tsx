@@ -27,7 +27,7 @@ export default function RootLayout() {
 
   return (
     <DataProvider>
-      <SilkProvider theme={themes[colorScheme]} defaults={{ Button: { variant: 'soft' } }}>
+      <SilkProvider theme={themes[colorScheme]}>
         <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
         <Stack screenOptions={{ headerShown: false }} />
       </SilkProvider>

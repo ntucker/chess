@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Button, Separator, Stack, Surface, useTheme } from '@reactive/silk-native';
+import { Button, Inline, Separator, Stack, Surface, useTheme } from '@reactive/silk-native';
 import Head from 'expo-router/head';
 import { useEffect, useEffectEvent, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -13,30 +13,26 @@ import { PLAYER_BAR_HEIGHT, PlayerBar } from '@/components/PlayerBar';
 import { Scoresheet } from '@/components/Scoresheet';
 import { SideChooser } from '@/components/SideChooser';
 import { Transport } from '@/components/Transport';
-import { type Color, opposite } from '@/game/replay';
+import { type Color, colorName, opposite } from '@/game/replay';
 import { useGame } from '@/game/useGame';
 import type { MaiaRating } from '@/resources/maia';
+import { spotlight } from '@/theme/theme';
 
 /** Maia's strength for now; picking it comes with the opening lessons. */
 const RATING: MaiaRating = 1500;
 
 export default function PlayScreen() {
   const game = useGame(RATING);
-  const { playerColor, line, ply, plies, current, latest, thinking, error, goto } = game;
+  const { playerColor, line, ply, current, toMove, thinking, goto } = game;
   const [nextColor, setNextColor] = useState<Color>(playerColor);
   const { theme } = useTheme();
-  const { color } = theme.semantic;
-
-  const atLatest = ply === line.length;
-  // While Maia thinks the player can still go back and try another move.
-  const canMove = !current.result && current.turn === playerColor && !(atLatest && thinking);
+  const { color, radius } = theme.semantic;
   const maiaColor = opposite(playerColor);
-  // Nothing to lose yet: the player hasn't moved.
-  const untouched = line.length <= (playerColor === 'black' ? 1 : 0);
 
   const chooseSide = (side: Color) => {
     setNextColor(side);
-    if (untouched && side !== playerColor) game.newGame(side);
+    // Nothing to lose yet, so switch sides right away.
+    if (!game.started && side !== playerColor) game.newGame(side);
   };
 
   // Arrow keys step through the moves on the web.
@@ -59,28 +55,13 @@ export default function PlayScreen() {
     return () => window.removeEventListener('keydown', listener);
   }, []);
 
-  const opponent = (
-    <PlayerBar
-      name="Maia"
-      detail={`Plays like a ${RATING} · ${maiaColor === 'white' ? 'White' : 'Black'}`}
-      color={maiaColor}
-      toMove={!latest.result && latest.turn === maiaColor}
-      thinking={thinking}
-    />
-  );
-  const you = (
-    <PlayerBar
-      name="You"
-      detail={playerColor === 'white' ? 'White' : 'Black'}
-      color={playerColor}
-      toMove={!latest.result && latest.turn === playerColor}
-    >
-      <Transport ply={ply} total={line.length} onGoto={goto} />
-    </PlayerBar>
-  );
-
   return (
-    <View style={[styles.fill, { backgroundColor: color.surface }, spotlight(theme.colorScheme)]}>
+    <View
+      style={[
+        styles.fill,
+        { backgroundColor: color.surface, backgroundImage: spotlight[theme.colorScheme] },
+      ]}
+    >
       <Head>
         <title>Opening Night</title>
       </Head>
@@ -91,14 +72,20 @@ export default function PlayScreen() {
           </View>
           <View style={styles.stage}>
             <View style={styles.boardColumn}>
-              {opponent}
-              <View style={[styles.frame, { borderColor: color.borderSubtle }]}>
-                <View style={styles.boardClip}>
+              <PlayerBar
+                name="Maia"
+                detail={`Plays like a ${RATING} · ${colorName(maiaColor)}`}
+                color={maiaColor}
+                toMove={toMove === maiaColor}
+                thinking={thinking}
+              />
+              <Surface elevation="overlay" radius="md" border="subtle" style={styles.frame}>
+                <View style={[styles.fill, { borderRadius: radius.md - 1, overflow: 'hidden' }]}>
                   <Board
                     fen={current.fen}
                     orientation={playerColor}
                     turnColor={current.turn}
-                    movableColor={canMove ? playerColor : undefined}
+                    movableColor={game.canMove ? playerColor : undefined}
                     dests={current.dests}
                     lastMove={current.move ? [current.move.from, current.move.to] : undefined}
                     check={current.check}
@@ -106,38 +93,45 @@ export default function PlayScreen() {
                     dom={{ style: styles.fill, scrollEnabled: false }}
                   />
                 </View>
-              </View>
-              {you}
+              </Surface>
+              <PlayerBar
+                name="You"
+                detail={colorName(playerColor)}
+                color={playerColor}
+                toMove={toMove === playerColor}
+              >
+                <Transport ply={ply} total={line.length} onGoto={goto} />
+              </PlayerBar>
             </View>
 
             <Surface elevation="raised" radius="lg" border="subtle" style={styles.program}>
               <Stack gap="5">
                 <GameStatus
                   playerColor={playerColor}
-                  latest={latest}
-                  viewing={atLatest ? undefined : ply}
+                  latest={game.latest}
+                  viewing={game.atLatest ? undefined : ply}
                   total={line.length}
                   rating={RATING}
                   thinking={thinking}
-                  error={error}
+                  error={game.error}
                   onRetry={game.retry}
                 />
                 <Separator />
                 <Stack gap="3">
                   <Eyebrow>Play as</Eyebrow>
-                  <View style={styles.row}>
+                  <Inline gap="3" align="center" wrap="nowrap">
                     <View style={styles.fill}>
                       <SideChooser value={nextColor} onChange={chooseSide} />
                     </View>
-                    <Button tone="accent" variant="solid" onPress={() => game.newGame(nextColor)}>
+                    <Button onPress={() => game.newGame(nextColor)}>
                       <Ionicons name="refresh" size={15} /> New game
                     </Button>
-                  </View>
+                  </Inline>
                 </Stack>
                 <Separator />
                 <Stack gap="3">
                   <Eyebrow>Scoresheet</Eyebrow>
-                  <Scoresheet plies={plies} ply={ply} onGoto={goto} />
+                  <Scoresheet plies={game.plies} ply={ply} onGoto={goto} />
                 </Stack>
               </Stack>
             </Surface>
@@ -147,14 +141,6 @@ export default function PlayScreen() {
     </View>
   );
 }
-
-/** A soft pool of light from above, on platforms that draw CSS gradients. */
-const spotlight = (scheme: 'light' | 'dark') => ({
-  backgroundImage:
-    scheme === 'dark'
-      ? 'radial-gradient(ellipse 70% 55% at 35% -5%, rgba(217, 164, 65, 0.22), rgba(217, 164, 65, 0) 70%)'
-      : 'radial-gradient(ellipse 70% 55% at 35% -5%, rgba(143, 27, 53, 0.09), rgba(143, 27, 53, 0) 70%)',
-});
 
 /** Space between the board and the name bars above and below it. */
 const BOARD_COLUMN_GAP = 4;
@@ -172,7 +158,7 @@ const WRAPPED_GAP = 32;
 // by the stage's padding) so the side-by-side case lines up too.
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  page: { paddingHorizontal: 20, paddingVertical: 20, gap: 20, alignItems: 'center' },
+  page: { padding: 20, gap: 20, alignItems: 'center' },
   header: { width: '100%', maxWidth: 1040 },
   stage: {
     width: '100%',
@@ -192,18 +178,7 @@ const styles = StyleSheet.create({
     marginTop: WRAPPED_GAP - BOARD_OFFSET,
     gap: BOARD_COLUMN_GAP,
   },
-  frame: {
-    aspectRatio: 1,
-    borderRadius: 10,
-    borderWidth: 1,
-    padding: 0,
-    shadowColor: '#000',
-    shadowOpacity: 0.35,
-    shadowRadius: 28,
-    shadowOffset: { width: 0, height: 14 },
-    elevation: 12,
-  },
-  boardClip: { flex: 1, borderRadius: 9, overflow: 'hidden' },
+  frame: { aspectRatio: 1 },
   program: {
     flexGrow: 1,
     flexShrink: 1,
@@ -212,5 +187,4 @@ const styles = StyleSheet.create({
     marginTop: WRAPPED_GAP,
     padding: 24,
   },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
 });

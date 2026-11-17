@@ -1,13 +1,13 @@
 import { Button, Inline, Stack, Text } from '@reactive/silk-native';
 
 import { Eyebrow } from '@/components/Eyebrow';
-import type { Color, Ply } from '@/game/replay';
+import type { Color, Position } from '@/game/replay';
 import type { MaiaRating } from '@/resources/maia';
 
 interface Props {
   readonly playerColor: Color;
   /** The latest position of the game. */
-  readonly latest: Ply;
+  readonly latest: Position;
   /** The ply on the board when it isn't the latest. */
   readonly viewing?: number;
   readonly total: number;
@@ -18,33 +18,16 @@ interface Props {
 }
 
 /** The headline of the panel: whose move it is, or how the game ended. */
-export function GameStatus({
-  playerColor,
-  latest,
-  viewing,
-  total,
-  rating,
-  thinking,
-  error,
-  onRetry,
-}: Props) {
-  const { title, detail } = describe(playerColor, latest, rating, thinking);
+export function GameStatus({ error, onRetry, ...game }: Props) {
+  const { eyebrow, title, detail } = describe(game);
   return (
     <Stack gap="2">
-      <Eyebrow>
-        {viewing === undefined
-          ? 'Now playing'
-          : viewing === 0
-            ? 'Replaying · starting position'
-            : `Replaying move ${viewing} of ${total}`}
-      </Eyebrow>
+      <Eyebrow>{eyebrow}</Eyebrow>
       <Text role="headingLg" accessibilityRole="header" accessibilityLiveRegion="polite">
         {title}
       </Text>
       <Text role="bodySm" tone="secondary">
-        {viewing === undefined
-          ? detail
-          : 'Play a move here to try a different line, or skip ahead to the latest move.'}
+        {detail}
       </Text>
       {error ? (
         <Inline gap="3" align="center">
@@ -60,7 +43,19 @@ export function GameStatus({
   );
 }
 
-function describe(playerColor: Color, latest: Ply, rating: MaiaRating, thinking: boolean) {
+type Game = Omit<Props, 'error' | 'onRetry'>;
+
+function describe({ viewing, total, ...game }: Game) {
+  const { title, detail } = describeLatest(game);
+  if (viewing === undefined) return { eyebrow: 'Now playing', title, detail };
+  return {
+    eyebrow: viewing === 0 ? 'Replaying · starting position' : `Replaying move ${viewing} of ${total}`,
+    title,
+    detail: 'Play a move here to try a different line, or skip ahead to the latest move.',
+  };
+}
+
+function describeLatest({ playerColor, latest, rating, thinking }: Omit<Game, 'viewing' | 'total'>) {
   const { result } = latest;
   if (result?.winner === playerColor)
     return { title: 'Checkmate. Bravo!', detail: 'You won. Take a bow, then start a new game.' };

@@ -3,17 +3,17 @@ import { useReducer } from 'react';
 
 import { getMaiaMove, type MaiaRating } from '@/resources/maia';
 
-import { type Color, replay, toUci } from './replay';
+import { analyze, type Color, isLegal, type Position, replay, toUci } from './replay';
 
 /** What Maia is doing about the latest position. */
-export type MaiaStatus =
+type MaiaStatus =
   | { readonly status: 'idle' }
   /** Answering the moves in `line`. */
   | { readonly status: 'thinking' }
   /** Didn't answer the moves in `line`. */
   | { readonly status: 'failed'; readonly error: Error };
 
-export interface GameState {
+interface GameState {
   /** Counts games, so answers to an earlier game's request are dropped. */
   readonly game: number;
   readonly playerColor: Color;
@@ -24,13 +24,11 @@ export interface GameState {
   readonly maia: MaiaStatus;
 }
 
-export type GameAction =
-  | { readonly type: 'newGame'; readonly playerColor: Color }
-  /**
-   * The player's move from the shown position; moves after it are dropped.
-   * `ask` when Maia should answer it (the game isn't over).
-   */
-  | { readonly type: 'move'; readonly uci: string; readonly ask: boolean }
+type GameAction =
+  /** `ask` when Maia moves first. */
+  | { readonly type: 'newGame'; readonly playerColor: Color; readonly ask: boolean }
+  /** The game after the player's move; `ask` when Maia should answer it. */
+  | { readonly type: 'move'; readonly line: readonly string[]; readonly ask: boolean }
   /** Maia's answer, applied only if it answers the request still out. */
   | {
       readonly type: 'reply';
@@ -50,7 +48,7 @@ export type GameAction =
 const IDLE: MaiaStatus = { status: 'idle' };
 const THINKING: MaiaStatus = { status: 'thinking' };
 
-export function gameReducer(state: GameState, action: GameAction): GameState {
+function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'newGame':
       return {
@@ -58,12 +56,15 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         playerColor: action.playerColor,
         line: [],
         ply: 0,
-        maia: action.playerColor === 'black' ? THINKING : IDLE,
+        maia: action.ask ? THINKING : IDLE,
       };
-    case 'move': {
-      const line = playFromShown(state, action.uci);
-      return { ...state, line, ply: line.length, maia: action.ask ? THINKING : IDLE };
-    }
+    case 'move':
+      return {
+        ...state,
+        line: action.line,
+        ply: action.line.length,
+        maia: action.ask ? THINKING : IDLE,
+      };
     case 'reply': {
       if (!answers(state, action)) return state;
       const line = [...state.line, action.uci];
@@ -82,15 +83,22 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   }
 }
 
-/** The line after playing `uci` on the shown position, dropping later moves. */
-const playFromShown = (state: GameState, uci: string) => [...state.line.slice(0, state.ply), uci];
-
 /** Whether a response is for the request this game is waiting on. */
 const answers = (state: GameState, response: { game: number; after: readonly string[] }) =>
   response.game === state.game &&
   state.maia.status === 'thinking' &&
   state.line.length === response.after.length &&
   state.line.every((uci, i) => uci === response.after[i]);
+
+/** Maia moves when it's her turn and the game goes on. */
+const awaitsMaia = (position: Position, playerColor: Color) =>
+  !position.result && position.turn !== playerColor;
+
+/** The last position of `line`, ready for the board. */
+const lastPosition = (line: readonly string[]) => {
+  const plies = replay(line);
+  return analyze(plies[plies.length - 1]);
+};
 
 /**
  * A game against Maia: its moves and positions, the move on the board, and
@@ -107,20 +115,25 @@ export function useGame(rating: MaiaRating) {
     ply: 0,
     maia: IDLE,
   });
-  const plies = replay(state.line);
-  const current = plies[state.ply];
+  const { game, playerColor, line, ply, maia } = state;
+  const plies = replay(line);
+  const latest = analyze(plies[plies.length - 1]);
+  const atLatest = ply === line.length;
+  const current = atLatest ? latest : analyze(plies[ply]);
+  const thinking = maia.status === 'thinking';
 
-  const ask = async (game: number, after: readonly string[]) => {
+  /** Asks Maia to answer `after`, which ends in the position `fen`. */
+  const ask = async (forGame: number, after: readonly string[], fen: string) => {
     try {
       const { top_move } = await ctrl.fetch(getMaiaMove, { rating }, after);
-      if (replay([...after, top_move]).length !== after.length + 2) {
+      if (!isLegal(fen, top_move)) {
         throw new Error(`Maia answered with an illegal move: ${top_move}`);
       }
-      dispatch({ type: 'reply', game, after, uci: top_move });
+      dispatch({ type: 'reply', game: forGame, after, uci: top_move });
     } catch (error) {
       dispatch({
         type: 'failed',
-        game,
+        game: forGame,
         after,
         error: error instanceof Error ? error : new Error(String(error)),
       });
@@ -128,31 +141,42 @@ export function useGame(rating: MaiaRating) {
   };
 
   return {
-    ...state,
+    playerColor,
+    line,
+    ply,
     plies,
     current,
-    latest: plies[plies.length - 1],
-    thinking: state.maia.status === 'thinking',
-    error: state.maia.status === 'failed' ? state.maia.error : undefined,
+    latest,
+    atLatest,
+    /** Whose move it is in the latest position; none once the game is over. */
+    toMove: latest.result ? undefined : latest.turn,
+    // While Maia thinks the player can still go back and try another move.
+    canMove: !current.result && current.turn === playerColor && !(atLatest && thinking),
+    /** Whether the player has made a move, so a new game would lose something. */
+    started: plies.some((p) => p.move && p.turn !== playerColor),
+    thinking,
+    error: maia.status === 'failed' ? maia.error : undefined,
     /** Plays the player's move between two squares on the shown position. */
     move(from: string, to: string) {
-      const uci = toUci(current, from, to);
-      const line = playFromShown(state, uci);
-      const ends = replay(line).at(-1)?.result !== undefined;
-      dispatch({ type: 'move', uci, ask: !ends });
-      if (!ends) ask(state.game, line);
+      const next = [...line.slice(0, ply), toUci(current, from, to)];
+      const position = lastPosition(next);
+      const asks = awaitsMaia(position, playerColor);
+      dispatch({ type: 'move', line: next, ask: asks });
+      if (asks) ask(game, next, position.fen);
     },
-    newGame(playerColor: Color) {
-      dispatch({ type: 'newGame', playerColor });
-      if (playerColor === 'black') ask(state.game + 1, []);
+    newGame(side: Color) {
+      const start = lastPosition([]);
+      const asks = awaitsMaia(start, side);
+      dispatch({ type: 'newGame', playerColor: side, ask: asks });
+      if (asks) ask(game + 1, [], start.fen);
     },
     retry() {
-      if (state.maia.status !== 'failed') return;
+      if (maia.status !== 'failed') return;
       dispatch({ type: 'retry' });
-      ask(state.game, state.line);
+      ask(game, line, latest.fen);
     },
-    goto(ply: number) {
-      dispatch({ type: 'goto', ply });
+    goto(target: number) {
+      dispatch({ type: 'goto', ply: target });
     },
   };
 }
