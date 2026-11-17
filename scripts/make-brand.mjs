@@ -2,10 +2,10 @@
 //
 //   node scripts/make-brand.mjs
 //
-// The logo is a chess knight cut out of a closed theater curtain, with the
-// stage light coming through it. The knight is drawn by hand (`KNIGHT` below);
-// the curtain is computed from it, so its folds bunch up wherever the knight
-// pushes them aside. Change the knight and the curtain follows.
+// The logo is a gold chess knight standing in a spotlight on a dark stage,
+// framed by two red curtains tied back at the sides. Everything is drawn on a
+// 1024 grid: the knight from the points in `KNIGHT`, the stage and curtains
+// from the shapes in `stage()` and `curtain()`.
 //
 // The SVGs in assets/brand need nothing but Node. The PNGs in assets/images
 // are rendered with Playwright's Chromium, which this app doesn't depend on:
@@ -17,21 +17,32 @@ import { fileURLToPath } from 'node:url';
 const SIZE = 1024;
 const root = fileURLToPath(new URL('..', import.meta.url));
 
-const color = {
-  curtain: '#84152f',
-  foldLight: '#c9304d',
-  foldDark: '#2c0714',
-  eye: '#7a1530',
-  shade: '#12081c',
-  stage: '#1b1430',
-  glow: '#ffb85c',
-  lightCore: '#fff6dc',
-  lightMid: '#f7cf74',
-  light: '#d9a441',
+// The three brand colors, as in src/theme/theme.ts.
+const brand = {
+  velvet: '#3b2d55',
+  spotlight: '#d9a441',
+  curtain: '#8f1b35',
 };
 
-// The knight, facing left on a 1024 grid. Each point is [x, y]; a third
-// element marks a corner, and the rest are joined by a smooth curve.
+const color = {
+  // The stage: the back wall, the dark it fades to, the beam and the floor.
+  night: '#231a3a',
+  dark: '#0e0a18',
+  beam: '#9a86c8',
+  floorFar: '#1a1229',
+  floorNear: '#0c0814',
+  // The curtains' folds, from the lit side to the deepest shadow.
+  sheen: '#a8223f',
+  fold: '#6c1329',
+  shadow: '#4c0c1c',
+  // The knight, from where the light hits it outward, and its eye.
+  lightCore: '#fff6dc',
+  lightMid: '#f7cf74',
+  eye: '#2a1838',
+};
+
+// The knight, facing left. Each point is [x, y]; a third element marks a
+// corner, and the rest are joined by a smooth curve.
 const KNIGHT = {
   body: [
     [372, 772, 1], [356, 726], [366, 668], [404, 606], [446, 548],
@@ -43,248 +54,146 @@ const KNIGHT = {
   ],
   // A lens between two corners, bulging toward `over` and `under`.
   eye: { from: [386, 370], to: [446, 334], over: [402, 328], under: [426, 368] },
-  collar: { x: 338, y: 784, w: 404, h: 26, r: 13 },
-  foot: { x: 296, y: 822, w: 488, h: 46, r: 12 },
-  // The line above the ear where the two curtains meet.
-  seam: 482,
+  collar: { x: 338, y: 784, width: 404, height: 26, rx: 13 },
+  foot: { x: 296, y: 822, width: 488, height: 46, rx: 12 },
 };
+
+// The stage floor starts behind the knight's foot and the knight stands on it.
+const HORIZON = KNIGHT.foot.y;
+const STAND = KNIGHT.foot.y + KNIGHT.foot.height;
+// The canvas can be drawn smaller than the picture (see `logo`), so every
+// backdrop shape runs this far past its edges.
+const BLEED = 300;
 
 const round = (n) => +n.toFixed(1);
 
-/** Cubic Bezier segments through `points`: Catmull-Rom, broken at corners. */
-function segments(points, closed) {
+/** A closed path through `points`: Catmull-Rom curves, broken at corners. */
+function smoothPath(points) {
   const n = points.length;
-  const out = [];
-  for (let i = 0; i < (closed ? n : n - 1); i++) {
+  let d = `M${points[0][0]} ${points[0][1]}`;
+  for (let i = 0; i < n; i++) {
     const p1 = points[i];
     const p2 = points[(i + 1) % n];
     const p0 = p1[2] ? p1 : points[(i - 1 + n) % n];
     const p3 = p2[2] ? p2 : points[(i + 2) % n];
-    out.push([
-      p1,
-      [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6],
-      [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6],
-      p2,
-    ]);
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += `C${round(c1[0])} ${round(c1[1])} ${round(c2[0])} ${round(c2[1])} ${p2[0]} ${p2[1]}`;
   }
-  return out;
+  return `${d}Z`;
 }
 
-function pathData(points, closed = true) {
-  const segs = segments(points, closed);
-  const start = segs[0][0];
-  const curves = segs.map(
-    ([, c1, c2, p]) =>
-      `C${round(c1[0])} ${round(c1[1])} ${round(c2[0])} ${round(c2[1])} ${round(p[0])} ${round(p[1])}`,
-  );
-  return `M${round(start[0])} ${round(start[1])}${curves.join('')}${closed ? 'Z' : ''}`;
-}
+const rect = (attrs) =>
+  `<rect ${Object.entries(attrs).map(([key, value]) => `${key}="${value}"`).join(' ')}/>`;
 
-/** The knight scaled about the center of the canvas. */
-function placeKnight(scale) {
-  const at = (v) => SIZE / 2 + (v - SIZE / 2) * scale;
-  const box = ({ x, y, w, h, r }) => ({
-    x: at(x),
-    y: at(y),
-    w: w * scale,
-    h: h * scale,
-    r: r * scale,
-  });
-  const point = ([x, y]) => `${round(at(x))} ${round(at(y))}`;
-  const { from, to, over, under } = KNIGHT.eye;
+const knightBody = smoothPath(KNIGHT.body);
+const knightEye = (({ from, to, over, under }) =>
+  `M${from.join(' ')}Q${over.join(' ')} ${to.join(' ')}Q${under.join(' ')} ${from.join(' ')}Z`)(KNIGHT.eye);
+const knightBase = rect(KNIGHT.collar) + rect(KNIGHT.foot);
+const knightOutline = `<path d="${knightBody}"/>${knightBase}`;
+
+/** The knight in one color, with the eye cut out of it. */
+const flatKnight = `<path fill-rule="evenodd" d="${knightBody}${knightEye}"/>${knightBase}`;
+
+/** The knight in gold, lit from the front, with a haze of light around it. */
+function knight() {
   return {
-    body: KNIGHT.body.map(([x, y, corner]) => [at(x), at(y), corner]),
-    eye: `M${point(from)}Q${point(over)} ${point(to)}Q${point(under)} ${point(from)}Z`,
-    collar: box(KNIGHT.collar),
-    foot: box(KNIGHT.foot),
-    seam: at(KNIGHT.seam),
+    defs: `
+<filter id="haze" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="56"/></filter>
+<radialGradient id="light" cx="490" cy="430" r="470" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${color.lightCore}"/><stop offset="0.4" stop-color="${color.lightMid}"/><stop offset="1" stop-color="${brand.spotlight}"/></radialGradient>`,
+    art: `
+<g filter="url(#haze)" fill="${color.lightMid}" opacity="0.22">${knightOutline}</g>
+<g fill="url(#light)">${knightOutline}</g>
+<path fill="${color.eye}" d="${knightEye}"/>`,
   };
-}
-
-/** The knight's outline; `eyeHole` cuts the eye out of it. */
-function knightShapes(knight, eyeHole = false) {
-  const rect = ({ x, y, w, h, r }) =>
-    `<rect x="${round(x)}" y="${round(y)}" width="${round(w)}" height="${round(h)}" rx="${round(r)}"/>`;
-  const body = eyeHole
-    ? `<path fill-rule="evenodd" d="${pathData(knight.body)}${knight.eye}"/>`
-    : `<path d="${pathData(knight.body)}"/>`;
-  return `${body}${rect(knight.collar)}${rect(knight.foot)}`;
-}
-
-/** How far left and right the knight reaches on each row of the canvas. */
-function knightEdges(knight) {
-  const left = new Array(SIZE).fill(null);
-  const right = new Array(SIZE).fill(null);
-  const mark = (x, y) => {
-    if (y < 0 || y >= SIZE) return;
-    if (left[y] === null || x < left[y]) left[y] = x;
-    if (right[y] === null || x > right[y]) right[y] = x;
-  };
-  const outline = [];
-  for (const [p0, c1, c2, p3] of segments(knight.body, true)) {
-    for (let step = 0; step < 24; step++) {
-      const t = step / 24;
-      const m = 1 - t;
-      outline.push([0, 1].map((k) =>
-        m * m * m * p0[k] + 3 * m * m * t * c1[k] + 3 * m * t * t * c2[k] + t * t * t * p3[k],
-      ));
-    }
-  }
-  outline.forEach(([x0, y0], i) => {
-    const [x1, y1] = outline[(i + 1) % outline.length];
-    for (let y = Math.ceil(Math.min(y0, y1)); y <= Math.max(y0, y1); y++) {
-      mark(y1 === y0 ? x0 : x0 + ((x1 - x0) * (y - y0)) / (y1 - y0), y);
-    }
-  });
-  for (const { x, y, w, h } of [knight.collar, knight.foot]) {
-    for (let row = Math.ceil(y); row <= y + h; row++) {
-      mark(x, row);
-      mark(x + w, row);
-    }
-  }
-  // Above the ear the curtains meet at the seam; below the foot and in the
-  // gaps of the base they hang where the nearest row above left them.
-  for (const edge of [left, right]) {
-    let last = knight.seam;
-    for (let y = 0; y < SIZE; y++) {
-      if (edge[y] === null) edge[y] = last;
-      else last = edge[y];
-    }
-  }
-  return { left, right };
-}
-
-/** Widen `edge` by `reach` rows (so cloth clears every bump), then smooth it. */
-function drapeEdge(edge, pick, reach, sigma) {
-  const widened = edge.map((_, y) => {
-    let v = edge[y];
-    for (let k = Math.max(0, y - reach); k <= Math.min(SIZE - 1, y + reach); k++) v = pick(v, edge[k]);
-    return v;
-  });
-  const radius = Math.ceil(sigma * 3);
-  return widened.map((_, y) => {
-    let sum = 0;
-    let weight = 0;
-    for (let k = -radius; k <= radius; k++) {
-      const w = Math.exp((-k * k) / (2 * sigma * sigma));
-      sum += widened[Math.min(SIZE - 1, Math.max(0, y + k))] * w;
-      weight += w;
-    }
-    return sum / weight;
-  });
 }
 
 /**
- * The curtain's fold lines. Each curtain hangs in even folds from the top and
- * is pushed aside by the knight on each row. The folds nearest the knight take
- * most of the push and follow its outline closely; the ones farther out move
- * less and only follow its general shape, the way gathered cloth does.
+ * The left curtain: it hangs from the top, is gathered by a gold tieback at
+ * the side and falls straight from there. Its folds fan out from the tieback.
  */
-function curtainFolds(knight, scale) {
-  const { left, right } = knightEdges(knight);
-  const reach = Math.round(50 * scale);
-  const edges = {
-    left: [drapeEdge(left, Math.min, reach, 36 * scale), drapeEdge(left, Math.min, reach, 120 * scale)],
-    right: [drapeEdge(right, Math.max, reach, 36 * scale), drapeEdge(right, Math.max, reach, 120 * scale)],
-  };
-  const rows = [];
-  for (let y = 0; y < SIZE; y += 24) rows.push(y);
-  rows.push(SIZE - 1);
+function curtain() {
+  const x = 74; // where the tieback gathers the cloth
+  const top = 456;
+  const bottom = 484;
+  const end = SIZE + BLEED;
+  // A fold of the upper cloth, from a span of the top edge down to a span of the tieback.
+  const fold = ([a, b], [c, d], [bend1, bend2]) =>
+    `<path d="M${a} 0H${b}C${bend1[0]} ${bend1[1]} ${bend1[2]} ${bend1[3]} ${x + d} ${top}H${x + c}C${bend2[0]} ${bend2[1]} ${bend2[2]} ${bend2[3]} ${a} 0Z"/>`;
+  // A fold of the cloth below the tieback, between two x positions at the tieback.
+  const fall = (a, b, lean) =>
+    `<path d="M${a} ${bottom}H${b}C${b + lean + 8} 640 ${b + lean} 840 ${b - lean} 1030V${end}H${a - lean - 8}V1030C${a + lean} 840 ${a + lean + 8} 640 ${a} ${bottom}Z"/>`;
+  return `
+<path fill="${brand.curtain}" d="M${-BLEED} ${-BLEED}H512V0C404 64 236 240 ${x + 40} ${top}V${bottom}C166 600 160 800 132 1030V${end}H${-BLEED}Z"/>
+<g fill="${color.sheen}">
+${fold([70, 120], [-44, -30], [[112, 170, 96, 330], [56, 320, 66, 160]])}
+${fold([236, 276], [2, 8], [[246, 160, 180, 320], [150, 320, 214, 160]])}
+${fold([372, 404], [25, 28], [[344, 130, 244, 290], [226, 290, 322, 130]])}
+${fall(74, 92, 6)}
+</g>
+<g fill="${color.fold}">
+<path d="M0 0H44C40 180 40 330 ${x - 52} ${top}H0Z"/>
+${fold([150, 212], [-24, 0], [[190, 170, 146, 330], [112, 320, 140, 160]])}
+${fold([300, 352], [10, 24], [[310, 150, 226, 316], [200, 320, 270, 150]])}
+${fold([430, 470], [30, 38], [[400, 90, 268, 256], [250, 270, 370, 100]])}
+${fall(36, 70, 2)}
+${fall(100, 126, 10)}
+</g>
+<path fill="${color.shadow}" opacity="0.5" d="M${-BLEED} ${bottom}H${x + 44}L${x + 46} ${bottom + 36}H${-BLEED}Z"/>
+<path fill="none" stroke="url(#edgeLight)" stroke-width="6" stroke-linecap="round" d="M498 12C394 74 232 244 ${x + 40} ${top - 2}"/>
+${rect({ x: -BLEED, y: top, width: BLEED + x + 48, height: bottom - top, rx: 14, fill: brand.spotlight })}
+${rect({ x: -BLEED, y: top, width: BLEED + x + 48, height: 10, rx: 5, fill: color.lightMid, opacity: 0.8 })}`;
+}
 
-  let valleys = '';
-  let ridges = '';
-  for (const side of ['left', 'right']) {
-    const [close, loose] = edges[side];
-    const width = side === 'left' ? knight.seam : SIZE - knight.seam;
-    const count = Math.round(width / (80 * scale));
-    // `u` runs from 0 at the edge of the canvas to 1 at the knight.
-    const line = (u) =>
-      pathData(
-        rows.map((y, i) => {
-          const edge = loose[y] + (close[y] - loose[y]) * u * u;
-          const pushed = Math.abs(edge - knight.seam) * u ** 1.5;
-          const fromSide = u * width - pushed;
-          return [side === 'left' ? fromSide : SIZE - fromSide, y, i === 0 || i === rows.length - 1];
-        }),
-        false,
-      );
-    for (let k = 0; k <= count; k++) {
-      valleys += `<path d="${line(k / count)}"/>`;
-      if (k < count) ridges += `<path d="${line((k + 0.45) / count)}"/>`;
-    }
-  }
-  return { valleys, ridges };
+/** The stage behind the knight: back wall, beam, floor, pool of light, curtains. */
+function stage() {
+  const all = { x: -BLEED, y: -BLEED, width: SIZE + 2 * BLEED, height: SIZE + 2 * BLEED };
+  return {
+    defs: `
+<filter id="beamEdge" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2"/></filter>
+<filter id="poolEdge" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="5"/></filter>
+<radialGradient id="wall" cx="512" cy="400" r="700" gradientUnits="userSpaceOnUse"><stop offset="0.25" stop-color="${color.night}"/><stop offset="1" stop-color="${color.dark}"/></radialGradient>
+<linearGradient id="beam" x1="0" y1="0" x2="0" y2="${STAND}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${color.beam}" stop-opacity="0.5"/><stop offset="1" stop-color="${color.beam}" stop-opacity="0.1"/></linearGradient>
+<linearGradient id="floor" x1="0" y1="${HORIZON}" x2="0" y2="${SIZE}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${color.floorFar}"/><stop offset="1" stop-color="${color.floorNear}"/></linearGradient>
+<radialGradient id="pool"><stop offset="0" stop-color="${color.lightCore}" stop-opacity="0.95"/><stop offset="0.7" stop-color="${color.lightMid}" stop-opacity="0.55"/><stop offset="1" stop-color="${brand.spotlight}" stop-opacity="0.3"/></radialGradient>
+<linearGradient id="edgeLight" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color.lightMid}" stop-opacity="0"/><stop offset="0.55" stop-color="${color.lightMid}" stop-opacity="0.85"/><stop offset="1" stop-color="${color.lightMid}" stop-opacity="0.2"/></linearGradient>
+<linearGradient id="topShade" x1="0" y1="0" x2="0" y2="320" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${color.dark}" stop-opacity="0.4"/><stop offset="1" stop-color="${color.dark}" stop-opacity="0"/></linearGradient>`,
+    art: `
+${rect({ ...all, fill: 'url(#wall)' })}
+${rect({ ...all, y: HORIZON, fill: 'url(#floor)' })}
+<path filter="url(#beamEdge)" fill="url(#beam)" d="M462 ${-BLEED}H562L912 ${STAND}H168Z"/>
+<ellipse filter="url(#poolEdge)" cx="540" cy="${STAND - 2}" rx="390" ry="50" fill="url(#pool)"/>
+${curtain()}
+<g transform="translate(${SIZE} 0) scale(-1 1)">${curtain()}</g>
+${rect({ ...all, height: BLEED + 320, fill: 'url(#topShade)' })}`,
+  };
 }
 
 /**
  * One picture of the logo as an SVG string.
  *
- * - `scale` sizes the knight about the center (the curtain always fills the canvas).
- * - `curtain` draws the curtain and stage; `knight` draws the knight and its glow.
+ * - `scale` shrinks or grows the whole picture about the center of the canvas.
+ * - `layers` picks what to draw: the `stage`, the `knight`, or both.
  * - `corner` rounds the canvas into a tile.
- * - `flat` draws the knight alone in one color, for single-color uses.
+ * - `flat` draws the knight alone in that color, for single-color uses.
  */
-function logo({ scale = 1, curtain = true, knight: showKnight = true, corner = 0, flat } = {}) {
-  const knight = placeKnight(scale);
-  const shapes = knightShapes(knight);
-  const open = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SIZE} ${SIZE}"`;
-  if (flat) return `${open} fill="${flat}">\n${knightShapes(knight, true)}\n</svg>\n`;
-
-  const px = (n) => round(n * scale);
-  const at = (v) => round(SIZE / 2 + (v - SIZE / 2) * scale);
-  const stageY = round(knight.foot.y + knight.foot.h);
-  const { x: footX, w: footW } = knight.foot;
-  const blur = (id, amount, pad = 40) =>
-    `<filter id="${id}" x="-${pad}%" y="-${pad}%" width="${100 + 2 * pad}%" height="${100 + 2 * pad}%"><feGaussianBlur stdDeviation="${px(amount)}"/></filter>`;
-
-  const defs = [];
-  let art = '';
+function logo({ scale = 1, layers = ['stage', 'knight'], corner = 0, flat } = {}) {
+  const parts = flat ? [] : layers.map((layer) => ({ stage, knight })[layer]());
+  let defs = parts.map((part) => part.defs).join('');
+  let art = flat ? `\n${flatKnight}` : parts.map((part) => part.art).join('');
+  if (scale !== 1) {
+    const shift = round((SIZE / 2) * (1 - scale));
+    art = `\n<g transform="translate(${shift} ${shift}) scale(${scale})">${art}\n</g>`;
+  }
   if (corner) {
-    defs.push(`<clipPath id="tile"><rect width="${SIZE}" height="${SIZE}" rx="${corner}"/></clipPath>`);
+    defs += `\n<clipPath id="tile">${rect({ width: SIZE, height: SIZE, rx: corner })}</clipPath>`;
+    art = `\n<g clip-path="url(#tile)">${art}\n</g>`;
   }
-  if (curtain) {
-    const { valleys, ridges } = curtainFolds(knight, scale);
-    defs.push(
-      blur('soft', 8, 10),
-      blur('spill', 8, 20),
-      `<linearGradient id="shade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color.shade}" stop-opacity="0.6"/><stop offset="0.28" stop-color="${color.shade}" stop-opacity="0"/><stop offset="0.7" stop-color="${color.shade}" stop-opacity="0"/><stop offset="1" stop-color="${color.shade}" stop-opacity="0.45"/></linearGradient>`,
-      `<linearGradient id="floorLight" x1="0" y1="${stageY}" x2="0" y2="${SIZE}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${color.lightMid}" stop-opacity="0.8"/><stop offset="1" stop-color="${color.light}" stop-opacity="0"/></linearGradient>`,
-      `<radialGradient id="footlight" cx="${at(540)}" cy="${stageY}" r="${px(520)}" gradientUnits="userSpaceOnUse" gradientTransform="translate(0 ${stageY}) scale(1 0.12) translate(0 ${-stageY})"><stop offset="0" stop-color="${color.lightMid}" stop-opacity="0.9"/><stop offset="1" stop-color="${color.light}" stop-opacity="0"/></radialGradient>`,
-      `<clipPath id="drape"><rect width="${SIZE}" height="${stageY}"/></clipPath>`,
-    );
-    art += `
-<rect width="${SIZE}" height="${SIZE}" fill="${color.stage}"/>
-<path filter="url(#spill)" fill="url(#floorLight)" d="M${round(footX - px(6))} ${stageY}H${round(footX + footW + px(6))}L${round(footX + footW + (SIZE - stageY))} ${SIZE + 20}H${round(footX - (SIZE - stageY))}Z"/>
-<rect y="${stageY}" width="${SIZE}" height="${round(SIZE - stageY)}" fill="url(#footlight)"/>
-<g clip-path="url(#drape)">
-<rect width="${SIZE}" height="${stageY}" fill="${color.curtain}"/>
-<g filter="url(#soft)" fill="none">
-<g stroke="${color.foldDark}" stroke-width="${px(18)}" opacity="0.85">${valleys}</g>
-<g stroke="${color.foldLight}" stroke-width="${px(26)}" opacity="0.75">${ridges}</g>
-</g>
-<rect width="${SIZE}" height="${stageY}" fill="url(#shade)"/>
-</g>`;
-  }
-  if (showKnight) {
-    defs.push(
-      blur('glow', 46),
-      blur('rim', 12),
-      `<radialGradient id="light" cx="${at(490)}" cy="${at(430)}" r="${px(470)}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${color.lightCore}"/><stop offset="0.4" stop-color="${color.lightMid}"/><stop offset="1" stop-color="${color.light}"/></radialGradient>`,
-    );
-    // The glow is the light catching the cloth, so it stops at the stage.
-    art += `
-<g${curtain ? ' clip-path="url(#drape)"' : ''}>
-<g filter="url(#glow)" fill="${color.glow}" opacity="0.4">${shapes}</g>
-<g filter="url(#rim)" fill="${color.glow}" stroke="${color.glow}" stroke-width="${px(10)}" opacity="0.55">${shapes}</g>
-</g>
-<g fill="url(#light)">${shapes}</g>
-<path fill="${color.eye}" d="${knight.eye}"/>`;
-  }
-  const body = corner ? `<g clip-path="url(#tile)">${art}\n</g>` : art.trimStart();
-  return `${open}>\n<defs>\n${defs.join('\n')}\n</defs>\n${body}\n</svg>\n`;
+  const fill = flat ? ` fill="${flat}"` : '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SIZE} ${SIZE}"${fill}>${defs ? `\n<defs>${defs}\n</defs>` : ''}${art}\n</svg>\n`;
 }
 
-// Android crops its icons to the middle two thirds, so the knight is smaller there.
+// Android crops its icons to the middle two thirds, so the picture is smaller there.
 const ANDROID = 0.66;
 
 const svgs = {
@@ -292,16 +201,16 @@ const svgs = {
     '<svg ',
     '<svg role="img" aria-label="Opening Night" ',
   ),
-  'assets/brand/knight.svg': logo({ flat: color.light }),
+  'assets/brand/knight.svg': logo({ flat: brand.spotlight }),
 };
 
 const pngs = [
   { file: 'icon.png', size: 1024, svg: logo(), opaque: true },
-  { file: 'android-icon-background.png', size: 1024, svg: logo({ scale: ANDROID, knight: false }), opaque: true },
-  { file: 'android-icon-foreground.png', size: 1024, svg: logo({ scale: ANDROID, curtain: false }) },
+  { file: 'android-icon-background.png', size: 1024, svg: logo({ scale: ANDROID, layers: ['stage'] }), opaque: true },
+  { file: 'android-icon-foreground.png', size: 1024, svg: logo({ scale: ANDROID, layers: ['knight'] }) },
   { file: 'android-icon-monochrome.png', size: 1024, svg: logo({ scale: ANDROID, flat: '#fff' }) },
   // Android 12 and later crop the splash image to a circle two thirds as wide.
-  { file: 'splash-icon.png', size: 512, svg: logo({ scale: 0.76, curtain: false }) },
+  { file: 'splash-icon.png', size: 512, svg: logo({ scale: 0.76, layers: ['knight'] }) },
   { file: 'logo-mark.png', size: 160, svg: logo() },
   { file: 'favicon.png', size: 48, svg: logo({ scale: 1.12, corner: 230 }) },
 ];
