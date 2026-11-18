@@ -34,9 +34,9 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
 5. Keep the PR mergeable, but act only on a real conflict with its base. Simple conflicts (lockfiles,
    adjacent edits, generated files): hand to a Sonnet subagent with branch, base and how to validate.
    Logic conflicts: resolve yourself.
-6. After every push, run workflow `user-kit:post-push-review` with the Workflow tool (the Skill tool
-   lists it too and points to the workflow) with
+6. After every push, run workflow `user-kit:post-push-review` with the Workflow tool, passing
    `{ range: "<sha before push>..HEAD", goals: "<project goal>", repo: "<checkout path>" }`.
+   The Skill tool lists it too and points to the workflow.
    Without the Workflow tool or that workflow, run Haiku subagents in parallel for goals, repo rules,
    engineering, adversarial, reuse and React data flow. Verify each finding; fix real ones, reject the
    rest with a reason. Do not launch them while the person is actively writing in your thread:
@@ -91,8 +91,9 @@ Link the upstream PR from the chess PR, and say "merge <upstream PR> first" when
 
 Work needing the person's PC (Android device or emulator, local tools) runs on GLADOS, a Windows PC,
 in WSL: threads start a Remote Control session (`start_remote_control`). GLADOS can't build or run
-iOS (no Mac); iOS is still a target, so keep iOS code paths working. When a change touches iOS-only
-code (native modules, worklets, `Platform.OS` branches), say in the PR that iOS is unverified.
+iOS (no Mac); iOS is still a target, so keep iOS code paths working. When a change touches code with an
+iOS path (native modules, worklets, a `Platform.OS === 'ios'` branch), say in the PR that iOS is
+unverified.
 
 ## Keeping this file current
 
