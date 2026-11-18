@@ -104,7 +104,7 @@ export default function PlayScreen() {
               </PlayerBar>
             </View>
 
-            <Surface elevation="raised" radius="lg" border="subtle" style={styles.program}>
+            <View style={styles.program}>
               <Stack gap="5">
                 <GameStatus
                   playerColor={playerColor}
@@ -134,7 +134,7 @@ export default function PlayScreen() {
                   <Scoresheet plies={game.plies} ply={ply} onGoto={goto} />
                 </Stack>
               </Stack>
-            </Surface>
+            </View>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     alignItems: 'flex-start',
-    columnGap: 32,
+    columnGap: 48,
     paddingTop: BOARD_OFFSET - WRAPPED_GAP,
   },
   boardColumn: {
@@ -183,8 +183,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     flexShrink: 1,
     flexBasis: 300,
-    maxWidth: 400,
+    maxWidth: 360,
     marginTop: WRAPPED_GAP,
-    padding: 24,
   },
 });
