@@ -24,6 +24,7 @@ export function startStockfishWorker(
   onError: (message: string) => void,
 ): StockfishWorker {
   const script = URL.createObjectURL(new Blob([loader], { type: 'text/javascript' }));
+  const ownsWasm = typeof wasm !== 'string';
   const wasmUrl = typeof wasm === 'string' ? wasm : URL.createObjectURL(wasm);
   const worker = new Worker(`${script}#${encodeURIComponent(wasmUrl)}`);
   worker.onmessage = ({ data }: MessageEvent<unknown>) => {
@@ -36,7 +37,7 @@ export function startStockfishWorker(
       worker.terminate();
       // Blob addresses keep their bytes alive until they're revoked.
       URL.revokeObjectURL(script);
-      if (wasmUrl !== wasm) URL.revokeObjectURL(wasmUrl);
+      if (ownsWasm) URL.revokeObjectURL(wasmUrl);
     },
   };
 }

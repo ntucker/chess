@@ -17,7 +17,10 @@ export type Send = (command: string) => void;
 export interface Connection {
   /** Hands the connection a line the engine printed. */
   receive(line: string): void;
-  /** Disconnects, failing any evaluation that is waiting for an answer. */
+  /**
+   * Disconnects. What's waiting for an answer stays queued for the next
+   * engine attached.
+   */
   detach(): void;
 }
 
@@ -42,23 +45,17 @@ export class SupersededError extends Error {
 let connected: { send: Send; ready: boolean } | undefined;
 let running: Search | undefined;
 let waiting: Search | undefined;
-/** Why the engine couldn't run, until one is attached again. */
-let failure: Error | undefined;
 
 /**
  * Connects the engine that `send` talks to. The host that runs the engine
- * (StockfishHost) calls this once the engine has started, and hands every
- * line it prints to the returned connection.
+ * (StockfishHost) calls this once the engine has started, hands every line
+ * it prints to the returned connection, and detaches it when the engine is
+ * stopped or fails. Requests made while no engine is connected wait for one.
  */
 export function attachStockfish(send: Send): Connection {
+  requeueRunning();
   const session = { send, ready: false };
-  // A search the last engine was running will never finish there: run it
-  // again on this one, unless a newer request is waiting.
-  if (running && !running.superseded && !waiting) waiting = running;
-  else running?.reject(new SupersededError());
-  running = undefined;
   connected = session;
-  failure = undefined;
   send('uci');
   return {
     receive(line) {
@@ -67,20 +64,9 @@ export function attachStockfish(send: Send): Connection {
     detach() {
       if (connected !== session) return;
       connected = undefined;
-      stopAll(new Error('Stockfish stopped'));
+      requeueRunning();
     },
   };
-}
-
-/**
- * Reports that the engine couldn't start or stopped working: what's waiting
- * fails with `error`, and so does every request until an engine is attached
- * again, instead of waiting for one that isn't coming.
- */
-export function failStockfish(error: Error): void {
-  connected = undefined;
-  failure = error;
-  stopAll(error);
 }
 
 /**
@@ -90,7 +76,6 @@ export function failStockfish(error: Error): void {
  * which then fails with a SupersededError.
  */
 export function stockfishEvaluation(line: readonly string[]): Promise<Evaluation> {
-  if (failure) return Promise.reject(failure);
   return new Promise((resolve, reject) => {
     waiting?.reject(new SupersededError());
     waiting = { line, resolve, reject };
@@ -134,8 +119,14 @@ function startNext() {
   connected.send(GO);
 }
 
-function stopAll(error: Error) {
-  running?.reject(error);
-  waiting?.reject(error);
-  running = waiting = undefined;
+/**
+ * The search the engine was running will never finish there: queue it again
+ * for the next engine, unless a newer request replaced it.
+ */
+function requeueRunning() {
+  if (running && !running.superseded && !waiting) {
+    running.last = undefined;
+    waiting = running;
+  } else running?.reject(new SupersededError());
+  running = undefined;
 }

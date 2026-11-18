@@ -20,8 +20,6 @@ function scripted() {
   return { sent, print: (line: string) => connection.receive(line), connection };
 }
 
-const flush = () => new Promise((resolve) => setTimeout(resolve));
-
 describe('the engine lifecycle', () => {
   it('runs a search again on an engine that takes over mid-search', async () => {
     const first = scripted();
@@ -39,31 +37,30 @@ describe('the engine lifecycle', () => {
     expect((await evaluation).pawns).toBe(-0.3);
   });
 
-  it('fails what is waiting, and new requests, until an engine is attached', async () => {
-    const evaluation = engine.stockfishEvaluation([]);
-    engine.failStockfish(new Error('no engine'));
-    await expect(evaluation).rejects.toThrow('no engine');
-    await expect(engine.stockfishEvaluation(['d2d4'])).rejects.toThrow('no engine');
+  it('keeps what is waiting for the next engine when one stops', async () => {
+    const first = scripted();
+    first.print('uciok');
+    const evaluation = engine.stockfishEvaluation(['d2d4']);
+    first.print('info depth 10 score cp 900');
+    first.connection.detach(); // It crashed, or Maia was chosen.
 
-    const { print, sent } = scripted();
-    const later = engine.stockfishEvaluation(['d2d4']);
-    print('uciok');
-    expect(sent).toContain('position startpos moves d2d4');
-    print('info depth 12 score cp -20');
-    print('bestmove d7d5');
-    expect((await later).pawns).toBe(0.2);
+    const second = scripted();
+    second.print('uciok');
+    expect(second.sent).toContain('position startpos moves d2d4');
+    // The old engine's score isn't carried over to the new one.
+    second.print('bestmove d7d5');
+    await expect(evaluation).rejects.toThrow('without a score');
   });
 
-  it('fails what is waiting when the engine is stopped', async () => {
-    const { print, connection } = scripted();
+  it('drops a waiting search for a newer one while no engine is connected', async () => {
+    const older = engine.stockfishEvaluation(['e2e4']);
+    const newer = engine.stockfishEvaluation(['d2d4']);
+    await expect(older).rejects.toBeInstanceOf(engine.SupersededError);
+    const { print, sent } = scripted();
     print('uciok');
-    const evaluation = engine.stockfishEvaluation([]);
-    connection.detach();
-    await expect(evaluation).rejects.toThrow('Stockfish stopped');
-    // A stopped engine isn't a failure: the next request waits for an engine.
-    let settled = false;
-    void engine.stockfishEvaluation([]).finally(() => (settled = true));
-    await flush();
-    expect(settled).toBe(false);
+    expect(sent).not.toContain('position startpos moves e2e4');
+    print('info depth 12 score cp -20');
+    print('bestmove d7d5');
+    expect((await newer).pawns).toBe(0.2);
   });
 });

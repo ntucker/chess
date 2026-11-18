@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 
 import { assetUrl } from '@/files/assetUrl';
 
-import { attachStockfish, type Connection, failStockfish } from './engine';
+import { attachStockfish, type Connection } from './engine';
 import { LOADER, WASM } from './files';
 import { startStockfishWorker, type StockfishWorker } from './worker';
 
@@ -15,11 +15,6 @@ export function StockfishHost() {
     let engine: StockfishWorker | undefined;
     let connection: Connection | undefined;
     let unmounted = false;
-    const fail = (error: Error) => {
-      if (unmounted) return;
-      console.error(error);
-      failStockfish(error);
-    };
     (async () => {
       const response = await fetch(assetUrl(LOADER));
       if (!response.ok) throw new Error(`Stockfish's loader: HTTP ${response.status}`);
@@ -29,11 +24,16 @@ export function StockfishHost() {
         loader,
         assetUrl(WASM),
         (line) => connection?.receive(line),
-        (message) => fail(new Error(message)),
+        (message) => {
+          // Evaluations wait for an engine again; choosing Maia and then
+          // Stockfish starts a new one.
+          console.error(`Stockfish stopped: ${message}`);
+          connection?.detach();
+        },
       );
       connection = attachStockfish(started.send);
       engine = started;
-    })().catch(fail);
+    })().catch((error: unknown) => console.error(error));
     return () => {
       unmounted = true;
       engine?.terminate();

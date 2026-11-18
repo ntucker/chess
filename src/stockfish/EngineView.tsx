@@ -28,7 +28,7 @@ interface Props {
   readonly onLoad: () => void;
   /** A line the engine printed that the app needs (`isNeeded`). */
   readonly onLine: (line: string) => void;
-  /** The engine failed to start or crashed. */
+  /** The engine failed to start or crashed; it answers nothing more. */
   readonly onError: (message: string) => void;
   readonly dom?: DOMProps;
 }
@@ -42,15 +42,20 @@ export default function EngineView({ ref, onLoad, onLine, onError }: Props) {
       start(...[loader, wasmBase64]: Parameters<DOMImperativeFactory[string]>) {
         if (typeof loader !== 'string' || typeof wasmBase64 !== 'string') return;
         worker.current?.terminate();
-        const bytes = Uint8Array.from(atob(wasmBase64), (c) => c.charCodeAt(0));
-        worker.current = startStockfishWorker(
-          loader,
-          new Blob([bytes], { type: 'application/wasm' }),
-          (line) => {
-            if (isNeeded(line)) onLine(line);
-          },
-          onError,
-        );
+        worker.current = null;
+        try {
+          const bytes = Uint8Array.from(atob(wasmBase64), (c) => c.charCodeAt(0));
+          worker.current = startStockfishWorker(
+            loader,
+            new Blob([bytes], { type: 'application/wasm' }),
+            (line) => {
+              if (isNeeded(line)) onLine(line);
+            },
+            onError,
+          );
+        } catch (error) {
+          onError(String(error));
+        }
       },
       send(...[command]: Parameters<DOMImperativeFactory[string]>) {
         if (typeof command === 'string') worker.current?.send(command);
