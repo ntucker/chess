@@ -8,11 +8,14 @@ class FakeWorker {
   static last: FakeWorker;
   onmessage?: (event: { data: unknown }) => void;
   onerror?: (event: { message: string }) => void;
+  readonly sent: unknown[] = [];
   terminated = false;
   constructor(readonly url: string) {
     FakeWorker.last = this;
   }
-  postMessage() {}
+  postMessage(message: unknown) {
+    this.sent.push(message);
+  }
   terminate() {
     this.terminated = true;
   }
@@ -53,7 +56,12 @@ describe('startStockfishWorker', () => {
     expect(live.size).toBe(2);
     FakeWorker.last.onmessage?.({ data: 'uciok' });
     expect(lines).toEqual(['uciok']);
-    expect(live.size).toBe(0);
+    expect(revoked).toEqual(['blob:1', 'blob:2']);
+  });
+
+  it('sends commands to the worker', () => {
+    start().send('uci');
+    expect(FakeWorker.last.sent).toEqual(['uci']);
   });
 
   it('stops a worker that crashes and frees its files before reporting it', () => {
@@ -63,6 +71,7 @@ describe('startStockfishWorker', () => {
     );
     FakeWorker.last.onerror?.({ message: 'out of memory' });
     expect(reported).toEqual(['out of memory, stopped: true, files: 0']);
+    expect(revoked).toEqual(['blob:1', 'blob:2']);
   });
 
   it('reports a crash with no message as stopped', () => {
