@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useTheme } from '@reactive/silk-native';
+import { Pressable, useTheme } from '@reactive/silk-native';
 import type { ComponentProps } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 interface Props {
   readonly ply: number;

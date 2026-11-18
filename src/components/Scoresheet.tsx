@@ -1,6 +1,6 @@
-import { Surface, Text, useTheme } from '@reactive/silk-native';
+import { Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
 import { useRef } from 'react';
-import { Pressable, ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
+import { ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
 
 import type { Ply } from '@/game/replay';
 import { fonts } from '@/theme/theme';
@@ -30,6 +30,7 @@ export function Scoresheet({ plies, ply, onGoto }: Props) {
         <ScrollView
           ref={scroll}
           style={styles.scroll}
+          contentContainerStyle={styles.content}
           onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: true })}
         >
           {rows.map((white, i) => (
@@ -105,9 +106,19 @@ function Row({ white, whiteSan, blackSan, selected, striped, onGoto }: RowProps)
 const styles = StyleSheet.create({
   sheet: { overflow: 'hidden' },
   scroll: { maxHeight: 280 },
+  // Room for the first and last cells' focus rings, which the scroll clips.
+  content: { paddingVertical: 2 },
   empty: { padding: 16, textAlign: 'center' },
-  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 2 },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
   number: { width: 36, textAlign: 'right', paddingRight: 10, fontFamily: fonts.mono },
-  cell: { flex: 1, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 5 },
+  // Overrides the theme's 2px focus-ring offset: 1px out, the 2px ring fits
+  // in the 4px between cells.
+  cell: { flex: 1, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 5, outlineOffset: 1 },
   san: { fontFamily: fonts.mono, fontSize: 15 },
 });

@@ -1,11 +1,8 @@
 // What React Native Web adds to Pressable, which React Native's types leave out.
+// (Silk's Pressable passes `hovered` to style functions itself.)
 import 'react-native';
 
 declare module 'react-native' {
-  interface PressableStateCallbackType {
-    /** Whether the pointer is over it (web only). */
-    readonly hovered?: boolean;
-  }
   interface PressableProps {
     /** Renders it as an anchor to this URL (web only). */
     readonly href?: string;

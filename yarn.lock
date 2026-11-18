@@ -3011,13 +3011,13 @@ __metadata:
 
 "@reactive/silk-native@file:./vendor/reactive-silk-native.tgz::locator=opening-night%40workspace%3A.":
   version: 0.0.0
-  resolution: "@reactive/silk-native@file:./vendor/reactive-silk-native.tgz#./vendor/reactive-silk-native.tgz::hash=fe272e&locator=opening-night%40workspace%3A."
+  resolution: "@reactive/silk-native@file:./vendor/reactive-silk-native.tgz#./vendor/reactive-silk-native.tgz::hash=f9ccd5&locator=opening-night%40workspace%3A."
   dependencies:
     "@reactive/silk-core": "npm:0.0.0"
   peerDependencies:
     react: ^19.0.0
     react-native: ">=0.83.0"
-  checksum: 10c0/ff7e9eaca74850a56c32e0819c9c341d429b35d1c8c399e864a2a2bab4260fdad631f9d5eb3fd8c5f212de683401c43c5854a503f152284c3140248d499c0eff
+  checksum: 10c0/f0501412a1179bc73f005fb7fd4697b3b1e4e3ff9a6ae60e5ee8cab308333d0683fcc8115e32ca9ca5434d12b579b55540a426bd627ec4e49cb003801fcc606f
   languageName: node
   linkType: hard
 

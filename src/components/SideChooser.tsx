@@ -1,5 +1,5 @@
-import { Surface, Text, useTheme } from '@reactive/silk-native';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
+import { StyleSheet, View } from 'react-native';
 
 import { COLORS, type Color, colorName } from '@/game/replay';
 import { pieceColors } from '@/theme/theme';
