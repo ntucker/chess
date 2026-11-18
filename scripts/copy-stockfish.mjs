@@ -5,7 +5,7 @@
 // The engine is Stockfish 19 "lite" (a small network), single-threaded, built
 // for WebAssembly by the `stockfish` npm package (https://github.com/nmrugg/stockfish.js),
 // pinned in devDependencies. Both platforms run it in a Web Worker: on the web
-// directly, on iOS and Android inside a hidden web view (src/stockfish).
+// directly, on Android inside a hidden web view (src/stockfish).
 //
 // Stockfish is GPL-3.0 licensed. The app ships it unmodified, as separate
 // files it talks to only through UCI text commands, with its license next to

@@ -1,4 +1,4 @@
-// localStorage on iOS and Android, where the app remembers its settings
+// localStorage on Android, where the app remembers its settings
 // (src/evaluation/useEvaluationEngine.ts). The web has its own.
 import 'expo-sqlite/localStorage/install';
 

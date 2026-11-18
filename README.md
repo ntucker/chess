@@ -63,7 +63,7 @@ The bar beside the board shows how the position stands: White's share of the bar
 
 On 240 positions from club-level games, judged against full Stockfish 19 at depth 24, Stockfish lite at depth 12 was off by 3.4 percentage points of expected score on average, and Maia 1900 by 10.4. Maia also misses mates: after 1. e4 e5 2. Qh5 d6 3. Nf3 Be6 4. Nc3 Nf6 5. Qh4 Be7 6. Ng5 O-O 7. Bd3 Bd7 8. Nd5 Nxd5, White mates with Qxh7, and Maia gives White 59%.
 
-Stockfish runs in a Web Worker. On the web that's in the page; on iOS and Android, whose JavaScript engine (Hermes) has no WebAssembly, it's inside a hidden web view (`src/stockfish/EngineView.tsx`, an Expo DOM component). Either way it searches off every thread that draws the app. It is licensed under the GPL-3.0 and ships unmodified as separate files that the app only talks to with UCI text commands; see `assets/stockfish/LICENSE` and the source at https://github.com/nmrugg/stockfish.js and https://github.com/official-stockfish/Stockfish.
+Stockfish runs in a Web Worker. On the web that's in the page; on Android, whose JavaScript engine (Hermes) has no WebAssembly, it's inside a hidden web view (`src/stockfish/EngineView.tsx`, an Expo DOM component). Either way it searches off every thread that draws the app. It is licensed under the GPL-3.0 and ships unmodified as separate files that the app only talks to with UCI text commands; see `assets/stockfish/LICENSE` and the source at https://github.com/nmrugg/stockfish.js and https://github.com/official-stockfish/Stockfish.
 
 ## Web deploys
 

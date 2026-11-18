@@ -2,8 +2,8 @@ import { useSyncExternalStore } from 'react';
 
 import { DEFAULT_ENGINE, type EvaluationEngine } from './evaluation';
 
-// The engine the evaluation bar uses, remembered in localStorage (on iOS and
-// Android, expo-sqlite provides it; see src/app/_layout.tsx).
+// The engine the evaluation bar uses, remembered in localStorage (on Android,
+// expo-sqlite provides it; see src/app/_layout.tsx).
 
 const KEY = 'evaluationEngine';
 const listeners = new Set<() => void>();

@@ -1,6 +1,6 @@
 'use dom';
 
-// The hidden web view that runs Stockfish on iOS and Android, where the app's
+// The hidden web view that runs Stockfish on Android, where the app's
 // own JavaScript engine (Hermes) has no WebAssembly. It's an Expo DOM
 // component, like the board, so it runs in its own web view; the engine runs
 // in a Web Worker inside it, off every thread the app draws with.

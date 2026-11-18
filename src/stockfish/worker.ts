@@ -14,7 +14,7 @@ export interface StockfishWorker {
  * was served with. `onLine` gets each line the engine prints, and `onError`
  * the message if the worker fails to start or crashes.
  *
- * Runs on the web and inside the hidden web view on iOS and Android
+ * Runs on the web and inside the hidden web view on Android
  * (EngineView), so it may only use the DOM.
  */
 export function startStockfishWorker(
