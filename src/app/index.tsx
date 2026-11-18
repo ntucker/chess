@@ -6,10 +6,11 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Board from '@/components/Board';
+import { EvaluationBar } from '@/components/EvaluationBar';
 import { Eyebrow } from '@/components/Eyebrow';
 import { GameStatus } from '@/components/GameStatus';
 import { Header } from '@/components/Header';
-import { PLAYER_BAR_HEIGHT, PlayerBar } from '@/components/PlayerBar';
+import { PLAYER_BAR_HEIGHT, PLAYER_DISC, PlayerBar } from '@/components/PlayerBar';
 import { Scoresheet } from '@/components/Scoresheet';
 import { SideChooser } from '@/components/SideChooser';
 import { Transport } from '@/components/Transport';
@@ -80,21 +81,28 @@ export default function PlayScreen() {
                 thinking={thinking}
                 material={game.material[maiaColor]}
               />
-              <Surface elevation="overlay" radius="md" border="subtle" style={styles.frame}>
-                <View style={[styles.fill, { borderRadius: radius.md - 1, overflow: 'hidden' }]}>
-                  <Board
-                    fen={current.fen}
-                    orientation={playerColor}
-                    turnColor={current.turn}
-                    movableColor={game.canMove ? playerColor : undefined}
-                    dests={current.dests}
-                    lastMove={current.move ? [current.move.from, current.move.to] : undefined}
-                    check={current.check}
-                    onMove={game.move}
-                    dom={{ style: styles.fill, scrollEnabled: false }}
-                  />
-                </View>
-              </Surface>
+              <View style={styles.boardRow}>
+                <EvaluationBar
+                  line={line.slice(0, ply)}
+                  orientation={playerColor}
+                  style={styles.evaluation}
+                />
+                <Surface elevation="overlay" radius="md" border="subtle" style={styles.frame}>
+                  <View style={[styles.fill, { borderRadius: radius.md - 1, overflow: 'hidden' }]}>
+                    <Board
+                      fen={current.fen}
+                      orientation={playerColor}
+                      turnColor={current.turn}
+                      movableColor={game.canMove ? playerColor : undefined}
+                      dests={current.dests}
+                      lastMove={current.move ? [current.move.from, current.move.to] : undefined}
+                      check={current.check}
+                      onMove={game.move}
+                      dom={{ style: styles.fill, scrollEnabled: false }}
+                    />
+                  </View>
+                </Surface>
+              </View>
               <PlayerBar
                 name="You"
                 detail={colorName(playerColor)}
@@ -146,6 +154,10 @@ export default function PlayScreen() {
 
 /** Space between the board and the name bars above and below it. */
 const BOARD_COLUMN_GAP = 4;
+/** The evaluation bar's width. */
+const EVALUATION_BAR_WIDTH = 22;
+/** The board's largest size. */
+const BOARD_MAX = 600;
 /** How far the board sits below the top of its column (Maia's name bar). */
 const BOARD_OFFSET = PLAYER_BAR_HEIGHT + BOARD_COLUMN_GAP;
 /** Space above the program when it wraps below the board. */
@@ -176,11 +188,19 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     flexShrink: 1,
     flexBasis: 320,
-    maxWidth: 600,
+    maxWidth: BOARD_MAX + PLAYER_DISC.size + PLAYER_DISC.gap,
     marginTop: WRAPPED_GAP - BOARD_OFFSET,
     gap: BOARD_COLUMN_GAP,
   },
-  frame: { aspectRatio: 1 },
+  // The evaluation bar sits in the column of the players' discs, between
+  // them, and the board lines up with the names beside the discs.
+  boardRow: { flexDirection: 'row', gap: PLAYER_DISC.gap },
+  // Narrower than the discs, and centered under them.
+  evaluation: {
+    width: EVALUATION_BAR_WIDTH,
+    marginHorizontal: (PLAYER_DISC.size - EVALUATION_BAR_WIDTH) / 2,
+  },
+  frame: { flex: 1, aspectRatio: 1 },
   program: {
     flexGrow: 1,
     flexShrink: 1,

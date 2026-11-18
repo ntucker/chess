@@ -8,7 +8,7 @@ import {
 
 import { loadOnce } from './loadOnce';
 import { type MaiaRating, MODELS } from './models';
-import { type MaiaNetwork, parseNetwork, policyLogits } from './network';
+import { forward, type MaiaNetwork, type NetworkOutput, parseNetwork } from './network';
 
 /**
  * Where the networks live on the background runtime: each rating's network
@@ -37,8 +37,8 @@ const loadNetwork = loadOnce(async (rating: MaiaRating) => {
   );
 });
 
-/** `policyLogits` for `rating`'s network, run on a background JavaScript runtime. */
-export async function runNetwork(rating: MaiaRating, planes: Float32Array): Promise<Float32Array> {
+/** `forward` for `rating`'s network, run on a background JavaScript runtime. */
+export async function runNetwork(rating: MaiaRating, planes: Float32Array): Promise<NetworkOutput> {
   await loadNetwork(rating);
   return runOnRuntimeAsync(
     getRuntime(),
@@ -46,7 +46,7 @@ export async function runNetwork(rating: MaiaRating, planes: Float32Array): Prom
       'worklet';
       const network = (globalThis as MaiaGlobal).maiaNetworks?.[r];
       if (!network) throw new Error(`Maia ${r} isn't loaded`);
-      return policyLogits(network, input);
+      return forward(network, input);
     },
     rating,
     planes,

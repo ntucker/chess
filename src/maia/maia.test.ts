@@ -6,8 +6,8 @@ import { join } from 'node:path';
 import { SquareSet } from 'chessops/squareSet';
 import { makeUci } from 'chessops/util';
 
-import { bestMove, prepareMove } from './maia';
-import { type MaiaNetwork, parseNetwork, policyLogits } from './network';
+import { bestMove, evaluation, JUDGE_RATING, prepareInput } from './maia';
+import { forward, type MaiaNetwork, parseNetwork } from './network';
 import { POLICY_SLOTS, policySlot } from './policy';
 import REFERENCE from './reference-moves.json';
 
@@ -16,13 +16,14 @@ const load = (rating: number) =>
 const networks = new Map([1100, 1900].map((rating) => [rating, load(rating)]));
 const maia1100 = networks.get(1100)!;
 
+const prepare = (line: string) => prepareInput(line ? line.split(' ') : []);
 const think = (network: MaiaNetwork, line: string) => {
-  const prepared = prepareMove(line ? line.split(' ') : []);
-  return { ...prepared, logits: policyLogits(network, prepared.planes) };
+  const prepared = prepare(line);
+  return { ...prepared, ...forward(network, prepared.planes) };
 };
 const play = (line: string) => {
-  const { pos, logits } = think(maia1100, line);
-  return bestMove(pos, logits);
+  const { pos, policy } = think(maia1100, line);
+  return bestMove(pos, policy);
 };
 
 describe('policy', () => {
@@ -70,16 +71,19 @@ describe('bestMove', () => {
   // A failure means the engine broke, unless scripts/convert-maia.mjs changed
   // and the two best moves score almost the same: that implementation reads
   // the original weights, which the app's 16-bit copies can tip in a near tie.
+  // For networks with a value head it also gives the win, draw and loss
+  // chances, rounded to 4 places, which must match to within 0.0005.
   it.each(REFERENCE)('Maia $rating after "$line" plays $move', ({ rating, line, ...want }) => {
-    const { pos, logits } = think(networks.get(rating)!, line);
-    expect(bestMove(pos, logits)).toBe(want.move);
+    const { pos, policy, wdl } = think(networks.get(rating)!, line);
+    expect(bestMove(pos, policy)).toBe(want.move);
+    want.wdl?.forEach((chance, i) => expect(wdl?.[i]).toBeCloseTo(chance, 3));
     if ('bestPromotion' in want) {
       let best = { uci: '', score: -Infinity };
       for (const [from, dests] of pos.allDests()) {
         if (!pos.board.pawn.has(from)) continue;
         for (const to of dests.intersect(SquareSet.backranks())) {
           for (const promotion of ['queen', 'rook', 'bishop', 'knight'] as const) {
-            const score = logits[policySlot({ from, to, promotion }, pos.turn === 'black')!];
+            const score = policy[policySlot({ from, to, promotion }, pos.turn === 'black')!];
             if (score > best.score) best = { uci: makeUci({ from, to, promotion }), score };
           }
         }
@@ -90,5 +94,30 @@ describe('bestMove', () => {
 
   it('rejects an illegal line', () => {
     expect(() => play('e2e5')).toThrow('Illegal move e2e5');
+  });
+});
+
+describe('evaluation', () => {
+  const after = (line: string) => prepare(line).pos;
+  const wdl = (win: number, draw: number, loss: number) => new Float32Array([win, draw, loss]);
+
+  it('reads the chances of the side to move as White\'s', () => {
+    expect(evaluation(after(''), wdl(0.6, 0.2, 0.2))).toEqual({
+      score: expect.closeTo(0.7, 6),
+      pawns: expect.closeTo(0.9 * Math.tan(1.5637541897 * 0.4), 6),
+    });
+    expect(evaluation(after('e2e4'), wdl(0.6, 0.2, 0.2))).toEqual({
+      score: expect.closeTo(0.3, 6),
+      pawns: expect.closeTo(-0.9 * Math.tan(1.5637541897 * 0.4), 6),
+    });
+  });
+
+  it('calls an even position even', () => {
+    expect(evaluation(after('e2e4'), wdl(0.3, 0.4, 0.3))).toEqual({ score: 0.5, pawns: 0 });
+  });
+
+  it('comes from a network with a value head', () => {
+    expect(think(load(JUDGE_RATING), '').wdl).toHaveLength(3);
+    expect(think(maia1100, '').wdl).toBeUndefined();
   });
 });

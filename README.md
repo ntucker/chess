@@ -48,6 +48,8 @@ Maia is a set of neural networks, one for each rating from 1100 to 1900, trained
 
 The networks ship with the app (`assets/maia/`, 1.2 MB each) and run on the device in plain TypeScript (`src/maia/network.ts`), so the app needs no server and works offline. A move takes about 25 ms on a laptop. It is worked out off the main thread (a Web Worker on the web, a background JavaScript runtime on iOS and Android), so the app keeps responding meanwhile. `yarn maia` downloads the original models from the [Maia repository](https://github.com/CSSLab/maia-chess) and rewrites them in the app's smaller format (`scripts/convert-maia.mjs` describes it).
 
+Each network can also estimate how often each side wins, draws or loses from a position, learned from the results of games between players of its rating. The evaluation bar beside the board shows the 1900 network's estimate as White's share of the bar, and converts it to pawns the way Leela Chess Zero does. Only that network keeps this part (its file is 1.7 MB), and the app loads it alongside the network Maia plays with. It is a rough guide: Maia judges positions much less accurately than a chess engine such as Stockfish.
+
 The models are licensed under the GPL-3.0, which is different from the app's own license; see `assets/maia/LICENSE`.
 
 ## Web deploys
