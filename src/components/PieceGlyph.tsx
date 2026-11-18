@@ -89,13 +89,12 @@ const shapes: Record<MaterialRole, (line: string) => ReactElement> = {
   ),
   queen: () => (
     <>
-      <G stroke="none">
-        <Circle cx={6} cy={12} r={2.75} />
-        <Circle cx={14} cy={9} r={2.75} />
-        <Circle cx={22.5} cy={8} r={2.75} />
-        <Circle cx={31} cy={9} r={2.75} />
-        <Circle cx={39} cy={12} r={2.75} />
-      </G>
+      {/* Outlined like the rest, so the crown's pearls show on either background. */}
+      <Circle cx={6} cy={12} r={2.25} />
+      <Circle cx={14} cy={9} r={2.25} />
+      <Circle cx={22.5} cy={8} r={2.25} />
+      <Circle cx={31} cy={9} r={2.25} />
+      <Circle cx={39} cy={12} r={2.25} />
       <Path
         d="M9 26c8.5-1.5 21-1.5 27 0l2.5-12.5L31 25l-.3-14.1-5.2 13.6-3-14.5-3 14.5-5.2-13.6L14 25 6.5 13.5 9 26z"
         strokeLinecap="butt"
