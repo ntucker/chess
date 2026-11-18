@@ -1,7 +1,7 @@
 'use dom';
 
-// Chessground draws the board with the DOM, so on iOS and Android this file
-// runs in a web view (an Expo DOM component); on the web it renders inline.
+// Chessground draws the board with the DOM, so on Android this file runs in
+// a web view (an Expo DOM component); on the web it renders inline.
 // Props cross that boundary as JSON, and onMove becomes an async message.
 import '@lichess-org/chessground/assets/chessground.base.css';
 import '@lichess-org/chessground/assets/chessground.cburnett.css';

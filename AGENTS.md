@@ -1,4 +1,4 @@
-This is Opening Night, an Expo app for learning chess openings by playing them. Read `GOALS.md` before you design a feature or choose between approaches: it says what the app is for and which platforms matter (the web now, Android eventually, no iOS).
+This is Opening Night, an Expo app for learning chess openings by playing them. Read `GOALS.md` before you design a feature or choose between approaches: it says what the app is for and which platforms it targets.
 
 ## Project
 
