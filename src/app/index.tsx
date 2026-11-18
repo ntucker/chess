@@ -170,6 +170,12 @@ const WRAPPED_GAP = 32;
 // column. The program's top margin is WRAPPED_GAP for the wrapped case, and
 // the column is raised by the rest of BOARD_OFFSET (a negative margin, offset
 // by the stage's padding) so the side-by-side case lines up too.
+//
+// The stage stretches its children rather than aligning them to the start of
+// their line: in a wrapping row, Yoga (React Native's layout engine) drops a
+// child's top margin when aligned to the start, so on Android the program
+// would ride up over the player's name bar. Stretching only adds empty space
+// below the shorter of the two.
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   page: { padding: 20, gap: 20, alignItems: 'center' },
@@ -180,7 +186,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    alignItems: 'flex-start',
     columnGap: 48,
     paddingTop: BOARD_OFFSET - WRAPPED_GAP,
   },
