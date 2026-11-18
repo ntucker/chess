@@ -1,6 +1,6 @@
-import { a11yState, Pressable, Text, useTheme } from '@reactive/silk-native';
+import { a11yState, Inline, Pressable, Text, useTheme } from '@reactive/silk-native';
 import { useId } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { EVALUATION_ENGINES, type EvaluationEngine } from '@/evaluation/evaluation';
 import { setEvaluationEngine, useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
@@ -29,10 +29,12 @@ export function EvaluationEngineChoice() {
   const { color } = useTheme().theme.semantic;
   const id = useId();
   return (
-    <View
+    <Inline
+      gap="0"
+      align="center"
+      wrap="wrap"
       accessibilityRole="radiogroup"
       accessibilityLabel="Evaluation bar"
-      style={[styles.item, styles.wrap]}
     >
       <Text role="caption" tone="secondary">
         Evaluation by
@@ -44,7 +46,7 @@ export function EvaluationEngineChoice() {
         return (
           // Each dot follows its engine in one group, so a wrapped line
           // starts with an engine, never a dot.
-          <View key={value} style={styles.item}>
+          <Inline key={value} gap="0" align="center" wrap="nowrap">
             <Pressable
               accessibilityRole="radio"
               accessibilityLabel={label}
@@ -71,7 +73,8 @@ export function EvaluationEngineChoice() {
               )}
             </Pressable>
             {WEB ? (
-              // Hidden from browsing too: it's read only as the description.
+              // aria-hidden keeps it out of the reading order; the radio's
+              // aria-describedby still reads it as the description.
               <Text nativeID={hintId} aria-hidden style={styles.visuallyHidden}>
                 {hint}
               </Text>
@@ -81,17 +84,15 @@ export function EvaluationEngineChoice() {
                 ·
               </Text>
             ) : null}
-          </View>
+          </Inline>
         );
       })}
-    </View>
+    </Inline>
   );
 }
 
 const styles = StyleSheet.create({
-  item: { flexDirection: 'row', alignItems: 'center', columnGap: 2 },
-  wrap: { flexWrap: 'wrap' },
-  option: { borderRadius: 4, paddingHorizontal: 2, paddingVertical: 2 },
+  option: { borderRadius: 4, paddingHorizontal: 4, paddingVertical: 2 },
   // Out of sight and out of layout, but still readable as a description.
   visuallyHidden: {
     position: 'absolute',
