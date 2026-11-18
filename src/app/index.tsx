@@ -188,8 +188,8 @@ const styles = StyleSheet.create({
     marginTop: WRAPPED_GAP - BOARD_OFFSET,
     gap: BOARD_COLUMN_GAP,
   },
-  // The evaluation bar runs from one player's disc to the other's, and the
-  // board lines up with the names beside the discs.
+  // The evaluation bar sits in the column of the players' discs, between
+  // them, and the board lines up with the names beside the discs.
   boardRow: { flexDirection: 'row', gap: PLAYER_DISC.gap },
   evaluation: { width: PLAYER_DISC.size },
   frame: { flex: 1, aspectRatio: 1 },

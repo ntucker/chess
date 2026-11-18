@@ -38,6 +38,8 @@ MAIA = 'https://raw.githubusercontent.com/CSSLab/maia-chess/master/maia_weights'
 LC0 = 'https://raw.githubusercontent.com/LeelaChessZero/lc0/b38ed00a25baed9554d2675ec376bd50dad18195'
 OPENINGS = 'https://raw.githubusercontent.com/lichess-org/chess-openings/3ba6b20d31b2e6125cb0e6a2e792f400717d9d39'
 RATINGS = [1100, 1900]
+# The ratings whose networks the app ships with a value head (VALUE_RATINGS in scripts/convert-maia.mjs).
+VALUE_RATINGS = [1900]
 PROMOTIONS_PER_SIDE = 6
 
 
@@ -104,32 +106,25 @@ def layer(fields):
     return np.float32(low) * (1 - theta) + np.float32(high) * theta
 
 
-def conv_block(fields):
-    """A ConvBlock's weights [outputs, inputs, 3, 3] and biases, with batch norm folded in.
+def conv_block(fields, kernel=3):
+    """A ConvBlock's weights [outputs, inputs, kernel, kernel] and biases, with batch norm folded in.
 
     Maia's last policy convolution has biases and no batch norm; every other
     convolution has batch norm and no biases.
     """
     weights, biases, means = (layer(message(fields, n)) for n in (1, 2, 3))
     if not len(means):
-        return weights.reshape(len(biases), -1, 3, 3), biases
+        return weights.reshape(len(biases), -1, kernel, kernel), biases
     assert not len(biases), 'a convolution with both biases and batch norm'
     variances, gammas, betas = (layer(message(fields, n)) for n in (4, 5, 6))
     scale = gammas / np.sqrt(variances + 1e-5)
     weights = weights.reshape(len(means), -1) * scale[:, None]
-    return weights.reshape(len(means), -1, 3, 3), betas - scale * means
+    return weights.reshape(len(means), -1, kernel, kernel), betas - scale * means
 
 
 def dense_layer(fields, weights_field, outputs):
     """A fully connected layer's weights [outputs, inputs] and biases, from Weights fields."""
     return layer(message(fields, weights_field)).reshape(outputs, -1), layer(message(fields, weights_field + 1))
-
-
-def value_conv(fields):
-    """The value head's 1x1 convolution: weights [outputs, inputs] and biases, with batch norm folded in."""
-    weights, means, variances, gammas, betas = (layer(message(fields, n)) for n in (1, 3, 4, 5, 6))
-    scale = gammas / np.sqrt(variances + 1e-5)
-    return weights.reshape(len(means), -1) * scale[:, None], betas - scale * means
 
 
 def load(rating):
@@ -148,7 +143,7 @@ def load(rating):
         'blocks': blocks,
         'policy1': conv_block(message(weights, 11)),
         'policy': conv_block(message(weights, 3)),
-        'value': value_conv(message(weights, 6)),
+        'value': conv_block(message(weights, 6), kernel=1),
         'value1': dense_layer(weights, 7, 128),
         'value2': dense_layer(weights, 9, 3),
     }
@@ -186,10 +181,10 @@ def forward(net, planes):
         y = conv3(relu(conv3(x, *conv1)), *conv2)
         x = relu(squeeze_excite(y, *se) + x)
     p = conv3(relu(conv3(x, *net['policy1'])), *net['policy'])
-    weights, biases = net['value']
-    v = relu(weights @ x.reshape(x.shape[0], 64) + biases[:, None])
-    hidden = relu(net['value1'][0] @ v.reshape(-1) + net['value1'][1])
-    logits = net['value2'][0] @ hidden + net['value2'][1]
+    (conv_w, conv_b), (w1, b1), (w2, b2) = net['value'], net['value1'], net['value2']
+    v = relu(conv_w[:, :, 0, 0] @ x.reshape(x.shape[0], 64) + conv_b[:, None])
+    hidden = relu(w1 @ v.reshape(-1) + b1)
+    logits = w2 @ hidden + b2
     wdl = np.exp(logits - logits.max())
     return p.reshape(-1), wdl / wdl.sum()
 
@@ -290,6 +285,14 @@ def first_promotion(rng):
     return None
 
 
+def reference_row(rating, board, move_scores, wdl, **extra):
+    """A row of the output: the move Maia plays, `extra`, and the value head's chances where the app ships it."""
+    row = {'rating': rating, 'line': line(board), 'move': lc0_uci(board, best(move_scores)), **extra}
+    if rating in VALUE_RATINGS:
+        row['wdl'] = wdl
+    return row
+
+
 def promotion_positions(net, slots, rating):
     """Positions from seeded random games where a pawn can promote, PROMOTIONS_PER_SIDE with each side to move.
 
@@ -307,13 +310,8 @@ def promotion_positions(net, slots, rating):
         if found[board.turn] >= PROMOTIONS_PER_SIDE // 2 and not any(map(board.is_capture, promotions)):
             continue
         move_scores, wdl = evaluate(net, slots, board)
-        rows.append({
-            'rating': rating,
-            'line': line(board),
-            'move': lc0_uci(board, best(move_scores)),
-            'bestPromotion': best({m: move_scores[m] for m in promotions}).uci(),
-            'wdl': wdl,
-        })
+        best_promotion = best({m: move_scores[m] for m in promotions}).uci()
+        rows.append(reference_row(rating, board, move_scores, wdl, bestPromotion=best_promotion))
         found[board.turn] += 1
     return rows
 
@@ -325,9 +323,7 @@ def main():
     rows = []
     for rating in RATINGS:
         for board in openings:
-            move_scores, wdl = evaluate(nets[rating], slots, board)
-            move = best(move_scores)
-            rows.append({'rating': rating, 'line': line(board), 'move': lc0_uci(board, move), 'wdl': wdl})
+            rows.append(reference_row(rating, board, *evaluate(nets[rating], slots, board)))
     for rating in RATINGS:
         rows += promotion_positions(nets[rating], slots, rating)
     sys.stdout.write('[\n' + ',\n'.join('  ' + json.dumps(row) for row in rows) + '\n]\n')

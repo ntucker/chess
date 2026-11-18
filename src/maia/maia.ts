@@ -5,6 +5,7 @@ import { makeUci, opposite } from 'chessops/util';
 
 import { playLine } from '@/game/replay';
 
+import type { MaiaRating } from './models';
 import { INPUT_PLANES } from './network';
 import { policySlot } from './policy';
 
@@ -31,12 +32,12 @@ export function prepareInput(line: readonly string[]): { pos: Chess; planes: Flo
 }
 
 /**
- * The legal move in `pos` that the network's output `logits` rates highest,
+ * The legal move in `pos` that the network's `policy` output rates highest,
  * in UCI with castling as the king taking its rook (`e1h1`). Like Maia on
  * lichess and maiachess.com, this plays the move the network thinks a person
  * of its rating most likely plays, without searching.
  */
-export function bestMove(pos: Chess, logits: Float32Array): string {
+export function bestMove(pos: Chess, policy: Float32Array): string {
   let best: NormalMove | undefined;
   let bestScore = -Infinity;
   for (const [from, dests] of pos.allDests()) {
@@ -45,8 +46,8 @@ export function bestMove(pos: Chess, logits: Float32Array): string {
       for (const promotion of promotes ? PROMOTIONS : [undefined]) {
         const move = { from, to, promotion };
         const slot = policySlot(move, pos.turn === 'black');
-        if (slot !== undefined && logits[slot] > bestScore) {
-          bestScore = logits[slot];
+        if (slot !== undefined && policy[slot] > bestScore) {
+          bestScore = policy[slot];
           best = move;
         }
       }
@@ -55,6 +56,13 @@ export function bestMove(pos: Chess, logits: Float32Array): string {
   if (!best) throw new Error('Maia has no legal move');
   return makeUci(best);
 }
+
+/**
+ * The network that judges positions for the evaluation bar. Of Maia's
+ * networks, 1900's value head comes closest to Stockfish's evaluations, and
+ * only it ships with one (VALUE_RATINGS in scripts/convert-maia.mjs).
+ */
+export const JUDGE_RATING: MaiaRating = 1900;
 
 /** How a position stands, from White's side. */
 export interface Evaluation {

@@ -5,14 +5,16 @@
 // Maia (https://github.com/CSSLab/maia-chess) is a set of Leela Chess Zero
 // networks, one per rating from 1100 to 1900, trained to predict the moves
 // people of that rating play. Each comes as an lc0 weights file: a gzipped
-// protobuf. This script keeps the residual tower, the policy head (which move
-// a person would play) and the value head (how often each side wins, draws or
-// loses from here), folds each batch norm into the convolution before it, and
-// writes assets/maia/maia-<rating>.bin in the format src/maia/network.ts reads:
+// protobuf. This script keeps the residual tower and the policy head (which
+// move a person would play), plus the value head (how often each side wins,
+// draws or loses from here) for VALUE_RATINGS, folds each batch norm into the
+// convolution before it, and writes assets/maia/maia-<rating>.bin in the format
+// src/maia/network.ts reads:
 //
 //   "MAIA", then uint16 version, blocks, channels, SE channels, then tensors in
 //   the order network.ts lists them, each as float32 min, float32 max, uint32
 //   count and `count` uint16 values v standing for min + (max - min) * v / 65535.
+//   Version 1 ends after the policy head; version 2 goes on with the value head.
 //
 // All numbers are little-endian. The models are GPL-3.0 licensed; their
 // license is copied next to them.
@@ -22,6 +24,10 @@ import { gunzipSync } from 'node:zlib';
 
 const SOURCE = 'https://raw.githubusercontent.com/CSSLab/maia-chess/master';
 const RATINGS = [1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900];
+// The networks that judge positions for the evaluation bar
+// (src/components/EvaluationBar.tsx). Only they keep the value head, which
+// adds 0.5 MB to a network.
+const VALUE_RATINGS = [1900];
 const outDir = fileURLToPath(new URL('../assets/maia/', import.meta.url));
 
 /** The fields of a protobuf message, by number, each a list of raw values. */
@@ -113,7 +119,7 @@ function convBlock(fields) {
   return [weights, folded];
 }
 
-function convert(gzipped) {
+function convert(gzipped, withValue) {
   const net = readMessage(gunzipSync(gzipped));
   const weights = message(net, 10);
   const residual = weights.get(2) ?? [];
@@ -134,18 +140,19 @@ function convert(gzipped) {
       layer(message(se, 4)),
     );
   }
-  tensors.push(
-    ...convBlock(message(weights, 11)),
-    ...convBlock(message(weights, 3)),
-    ...convBlock(message(weights, 6)),
-    ...[7, 8, 9, 10].map((n) => layer(message(weights, n))),
-  );
+  tensors.push(...convBlock(message(weights, 11)), ...convBlock(message(weights, 3)));
+  if (withValue) {
+    tensors.push(
+      ...convBlock(message(weights, 6)),
+      ...[7, 8, 9, 10].map((n) => layer(message(weights, n))),
+    );
+  }
 
   const size = 12 + tensors.reduce((sum, t) => sum + 12 + t.length * 2, 0);
   const out = new DataView(new ArrayBuffer(size));
   let at = 0;
   for (const c of 'MAIA') out.setUint8(at++, c.charCodeAt(0));
-  for (const n of [2, residual.length, channels, seChannels]) {
+  for (const n of [withValue ? 2 : 1, residual.length, channels, seChannels]) {
     out.setUint16(at, n, true);
     at += 2;
   }
@@ -178,7 +185,8 @@ async function download(path) {
 mkdirSync(outDir, { recursive: true });
 writeFileSync(`${outDir}LICENSE`, await download('LICENSE'));
 for (const rating of RATINGS) {
-  const bin = convert(await download(`maia_weights/maia-${rating}.pb.gz`));
+  const gzipped = await download(`maia_weights/maia-${rating}.pb.gz`);
+  const bin = convert(gzipped, VALUE_RATINGS.includes(rating));
   writeFileSync(`${outDir}maia-${rating}.bin`, bin);
   console.log(`assets/maia/maia-${rating}.bin (${(bin.length / 1e6).toFixed(2)} MB)`);
 }

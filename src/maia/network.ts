@@ -19,19 +19,16 @@ export const INPUT_PLANES = 112;
 const POLICY_PLANES = 80;
 const PADDED = 100;
 
-interface Conv {
-  readonly weights: Float32Array; // [outputs][inputs][3][3]
-  readonly biases: Float32Array; // [outputs]
-}
-
-interface Dense {
-  readonly weights: Float32Array; // [outputs][inputs]
+/** A convolution's or dense layer's weights and biases. */
+interface Layer {
+  /** [outputs][inputs][3][3] for a 3x3 convolution, [outputs][inputs] otherwise. */
+  readonly weights: Float32Array;
   readonly biases: Float32Array; // [outputs]
 }
 
 interface ResidualBlock {
-  readonly conv1: Conv;
-  readonly conv2: Conv;
+  readonly conv1: Layer;
+  readonly conv2: Layer;
   readonly se: {
     readonly w1: Float32Array; // [seChannels][channels]
     readonly b1: Float32Array;
@@ -71,7 +68,7 @@ function unpad(planes: Float32Array, count: number): Float32Array {
  * inputs in local variables, which runs about 5 times faster than looping
  * over each square, with or without a JIT.
  */
-function convolve(input: Float32Array, inputs: number, conv: Conv, relu: boolean): Float32Array {
+function convolve(input: Float32Array, inputs: number, conv: Layer, relu: boolean): Float32Array {
   const outputs = conv.biases.length;
   const out = new Float32Array(outputs * PADDED);
   const w = conv.weights;
@@ -162,7 +159,7 @@ function squeezeExcite(
  * A 1x1 convolution with ReLU, from padded planes to unpadded planes: each
  * output square is a weighted sum of the input channels on that square.
  */
-function pointwise(input: Float32Array, inputs: number, conv: Conv): Float32Array {
+function pointwise(input: Float32Array, inputs: number, conv: Layer): Float32Array {
   const outputs = conv.biases.length;
   const out = new Float32Array(outputs * 64);
   for (let o = 0; o < outputs; o++) {
@@ -179,16 +176,35 @@ function pointwise(input: Float32Array, inputs: number, conv: Conv): Float32Arra
   return out;
 }
 
+function softmax(logits: Float32Array): Float32Array {
+  const max = Math.max(...logits);
+  const out = logits.map((v) => Math.exp(v - max));
+  const sum = out.reduce((a, b) => a + b, 0);
+  return out.map((v) => v / sum);
+}
+
+/** The value head: a 1x1 convolution, then two dense layers. */
+interface ValueHead {
+  readonly conv: Layer;
+  readonly hidden: Layer;
+  readonly out: Layer;
+}
+
+/** How likely the side to move is to win, draw and lose, from the tower's output `x`. */
+function winDrawLoss(x: Float32Array, channels: number, head: ValueHead): Float32Array {
+  const { conv, hidden, out } = head;
+  const h = dense(pointwise(x, channels, conv), hidden.weights, hidden.biases, true);
+  return softmax(dense(h, out.weights, out.biases, false));
+}
+
 /** A network's weights, as `parseNetwork` reads them. */
 export interface MaiaNetwork {
-  readonly input: Conv;
+  readonly input: Layer;
   readonly blocks: readonly ResidualBlock[];
-  readonly policy1: Conv;
-  readonly policy: Conv;
-  /** The value head: a 1x1 convolution, then two dense layers. */
-  readonly value: Conv;
-  readonly value1: Dense;
-  readonly value2: Dense;
+  readonly policy1: Layer;
+  readonly policy: Layer;
+  /** Only the networks that judge positions have one (see scripts/convert-maia.mjs). */
+  readonly value?: ValueHead;
 }
 
 /** Reads a network from a .bin file's bytes. */
@@ -203,7 +219,9 @@ export function parseNetwork(bytes: ArrayBuffer | Uint8Array): MaiaNetwork {
     view.getUint8(2),
     view.getUint8(3),
   );
-  if (magic !== 'MAIA' || view.getUint16(4, true) !== 2) {
+  // Version 2 adds the value head.
+  const version = view.getUint16(4, true);
+  if (magic !== 'MAIA' || (version !== 1 && version !== 2)) {
     throw new Error('Not a Maia network file');
   }
   const blockCount = view.getUint16(6, true);
@@ -228,30 +246,21 @@ export function parseNetwork(bytes: ArrayBuffer | Uint8Array): MaiaNetwork {
     const conv2 = layer();
     blocks.push({ conv1, conv2, se: { w1: tensor(), b1: tensor(), w2: tensor(), b2: tensor() } });
   }
-  return {
-    input,
-    blocks,
-    policy1: layer(),
-    policy: layer(),
-    value: layer(),
-    value1: layer(),
-    value2: layer(),
-  };
+  const policy1 = layer();
+  const policy = layer();
+  const value = version === 2 ? { conv: layer(), hidden: layer(), out: layer() } : undefined;
+  return { input, blocks, policy1, policy, value };
 }
 
 /** What the network makes of a position (see `forward`). */
 export interface NetworkOutput {
   /** A score for every kind of move from every square (80 planes x 64 squares; see `policySlot`). */
   readonly policy: Float32Array;
-  /** How likely the side to move is to win, draw and lose, adding up to 1. */
-  readonly wdl: Float32Array;
-}
-
-function softmax(logits: Float32Array): Float32Array {
-  const max = Math.max(...logits);
-  const out = logits.map((v) => Math.exp(v - max));
-  const sum = out.reduce((a, b) => a + b, 0);
-  return out.map((v) => v / sum);
+  /**
+   * How likely the side to move is to win, draw and lose, adding up to 1;
+   * absent for a network without a value head.
+   */
+  readonly wdl?: Float32Array;
 }
 
 /** Runs the network on input planes from `prepareInput`. */
@@ -265,9 +274,6 @@ export function forward(network: MaiaNetwork, planes: Float32Array): NetworkOutp
   }
   const p = convolve(x, c, network.policy1, true);
   const policy = unpad(convolve(p, c, network.policy, false), POLICY_PLANES);
-
-  const v = pointwise(x, c, network.value);
-  const hidden = dense(v, network.value1.weights, network.value1.biases, true);
-  const wdl = softmax(dense(hidden, network.value2.weights, network.value2.biases, false));
+  const wdl = network.value && winDrawLoss(x, c, network.value);
   return { policy, wdl };
 }

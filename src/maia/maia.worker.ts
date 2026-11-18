@@ -23,10 +23,8 @@ self.onmessage = async ({ data }: MessageEvent<MaiaRequest>) => {
   const { id, url, planes } = data;
   try {
     const output = forward(await loadNetwork(url), planes);
-    self.postMessage({ id, output } satisfies MaiaResponse, [
-      output.policy.buffer,
-      output.wdl.buffer,
-    ]);
+    const buffers = [output.policy.buffer, output.wdl?.buffer].filter((b) => b !== undefined);
+    self.postMessage({ id, output } satisfies MaiaResponse, buffers);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     self.postMessage({ id, error: message } satisfies MaiaResponse);

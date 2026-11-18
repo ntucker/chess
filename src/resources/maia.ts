@@ -1,6 +1,7 @@
 import { Endpoint } from '@data-client/rest';
 
 import { maiaEvaluation, maiaMove } from '@/maia/engine';
+import { JUDGE_RATING } from '@/maia/maia';
 
 // Maia (https://www.maiachess.com) is a neural network trained to play like
 // people of a given rating rather than to play the best move. Its networks
@@ -17,16 +18,19 @@ import { maiaEvaluation, maiaMove } from '@/maia/engine';
  */
 export const getMaiaMove = new Endpoint(maiaMove, { name: 'getMaiaMove' });
 
+export type { Evaluation } from '@/maia/maia';
+
 /**
- * How the position after the moves played so far stands, as Maia judges it:
- * White's expected score and advantage in pawns. A position's evaluation
- * never changes, so it is kept for as long as the app runs.
+ * How the position after the moves played so far stands: White's expected
+ * score and advantage in pawns, as Maia's judging network sees it. A
+ * position's evaluation never changes, so it is kept for as long as the app
+ * runs.
  *
  * ```ts
- * const { score, pawns } = useSuspense(getMaiaEvaluation, 1900, ['e2e4']);
+ * const { score, pawns } = useSuspense(getEvaluation, ['e2e4']);
  * ```
  */
-export const getMaiaEvaluation = new Endpoint(maiaEvaluation, {
-  name: 'getMaiaEvaluation',
-  dataExpiryLength: Infinity,
-});
+export const getEvaluation = new Endpoint(
+  (line: readonly string[]) => maiaEvaluation(JUDGE_RATING, line),
+  { name: 'getEvaluation', dataExpiryLength: Infinity },
+);

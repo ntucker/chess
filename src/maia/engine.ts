@@ -20,5 +20,7 @@ export async function maiaEvaluation(
   line: readonly string[],
 ): Promise<Evaluation> {
   const { pos, planes } = prepareInput(line);
-  return evaluation(pos, (await runNetwork(rating, planes)).wdl);
+  const { wdl } = await runNetwork(rating, planes);
+  if (!wdl) throw new Error(`Maia ${rating} has no value head to judge positions with`);
+  return evaluation(pos, wdl);
 }

@@ -1,20 +1,12 @@
 import { AsyncBoundary, useSuspense } from '@data-client/react';
-import { Text, useTheme } from '@reactive/silk-native';
-import { useDeferredValue } from 'react';
+import { a11yValue, Text, useReducedMotion, useTheme } from '@reactive/silk-native';
+import { useDeferredValue, useMemo } from 'react';
 import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { type Color, colorName, type GameResult, lastPosition, opposite } from '@/game/replay';
-import type { Evaluation } from '@/maia/maia';
-import type { MaiaRating } from '@/maia/models';
-import { getMaiaEvaluation } from '@/resources/maia';
+import { type Evaluation, getEvaluation } from '@/resources/maia';
 import { fonts, pieceColors } from '@/theme/theme';
-
-/**
- * The Maia network that judges positions. Of Maia's networks, 1900's value
- * head comes closest to Stockfish's evaluations.
- */
-const JUDGE: MaiaRating = 1900;
 
 interface Props {
   /** The moves (UCI) that reach the position on the board. */
@@ -31,36 +23,41 @@ interface Props {
  * leading side's advantage in pawns at its end. It keeps showing the last
  * position's evaluation until the new one is ready.
  */
-export function EvaluationBar(props: Props) {
-  const { orientation, style } = props;
+export function EvaluationBar({ line, orientation, style }: Props) {
+  // A failed evaluation leaves the bar empty only until the board shows
+  // another position: the boundary calls each new listener it gets.
+  const position = line.join(' ');
+  const resetOnMove = useMemo(() => resetFor(position), [position]);
+  const empty = <Bar orientation={orientation} style={style} />;
   return (
-    <AsyncBoundary
-      fallback={<Bar orientation={orientation} style={style} />}
-      errorComponent={() => <Bar orientation={orientation} style={style} />}
-    >
-      <EvaluatedBar {...props} />
+    <AsyncBoundary fallback={empty} errorComponent={() => empty} listen={resetOnMove}>
+      <EvaluatedBar position={position} orientation={orientation} style={style} />
     </AsyncBoundary>
   );
 }
 
-function EvaluatedBar({ line, orientation, style }: Props) {
+/** A boundary listener for `position` that clears any error as soon as it's attached. */
+const resetFor = (_position: string) => (reset: () => void) => {
+  reset();
+  return () => {};
+};
+
+function EvaluatedBar({
+  position,
+  orientation,
+  style,
+}: Omit<Props, 'line'> & { readonly position: string }) {
   // Starts empty, so neither the server nor the first render runs the
   // network, and then trails the board until the evaluation is ready.
-  const moves = useDeferredValue<string | null>(line.join(' '), null);
-  const shown = moves === null ? null : moves.split(' ').filter(Boolean);
-  const evaluation = useSuspense(
-    getMaiaEvaluation,
-    ...(shown === null ? ([null] as const) : ([JUDGE, shown] as const)),
-  );
-  if (!shown || !evaluation) return <Bar orientation={orientation} style={style} />;
-  const { result } = lastPosition(shown);
-  return (
-    <Bar
-      orientation={orientation}
-      style={style}
-      {...(result ? resultReading(result) : evaluationReading(evaluation))}
-    />
-  );
+  const moves = useDeferredValue<string | null>(position, null);
+  const shown = moves === null ? null : moves ? moves.split(' ') : [];
+  const result = shown && lastPosition(shown).result;
+  // A finished game needs no evaluation; null skips the fetch.
+  const evaluation = useSuspense(getEvaluation, shown && !result ? shown : null);
+  const reading = result
+    ? resultReading(result)
+    : evaluation && evaluationReading(evaluation);
+  return <Bar orientation={orientation} style={style} {...reading} />;
 }
 
 interface Reading {
@@ -73,17 +70,12 @@ interface Reading {
 }
 
 function evaluationReading({ score, pawns }: Evaluation): Reading {
-  const size = Math.abs(pawns);
-  const label = size < 10 ? size.toFixed(1) : String(Math.min(99, Math.round(size)));
-  // An even position shows 0.0 at White's end, even when Black is a hair ahead.
-  const leader = pawns < 0 && label !== '0.0' ? 'black' : 'white';
-  return {
-    score,
-    label,
-    leader,
-    description:
-      label === '0.0' ? 'Even' : `${colorName(leader)} is ahead by ${label} pawns`,
-  };
+  // Tenths of a pawn below 10, whole pawns from there up to 99.
+  const tenths = Math.round(Math.abs(pawns) * 10) / 10;
+  const label = tenths < 10 ? tenths.toFixed(1) : String(Math.min(99, Math.round(tenths)));
+  if (tenths === 0) return { score, label, leader: 'white', description: 'Even' };
+  const leader = pawns < 0 ? 'black' : 'white';
+  return { score, label, leader, description: `${colorName(leader)} is ahead by ${label} pawns` };
 }
 
 function resultReading({ winner }: GameResult): Reading {
@@ -102,7 +94,8 @@ function Bar({
   ...reading
 }: Partial<Reading> & Pick<Props, 'orientation' | 'style'>) {
   const { theme } = useTheme();
-  const { color } = theme.semantic;
+  const { color, motion } = theme.semantic;
+  const reducedMotion = useReducedMotion();
   const score = reading.score ?? 0.5;
   // White fills from whichever end is White's.
   const whiteEnd = orientation === 'white' ? 'bottom' : 'top';
@@ -112,10 +105,7 @@ function Bar({
       accessible
       accessibilityRole="progressbar"
       accessibilityLabel={`Evaluation: ${reading.description ?? 'not ready'}`}
-      // The web ignores accessibilityValue; these work on every platform.
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={Math.round(score * 100)}
+      {...a11yValue({ min: 0, max: 100, now: Math.round(score * 100) })}
       style={[
         styles.track,
         style,
@@ -135,8 +125,9 @@ function Bar({
           // A Reanimated CSS transition, which StyleSheet's types don't know.
           {
             transitionProperty: 'height',
-            transitionDuration: 450,
-            transitionTimingFunction: 'ease-in-out',
+            transitionDuration: reducedMotion ? 0 : motion.slow.durationMs,
+            // Reanimated takes a curve object, not the theme's CSS string.
+            transitionTimingFunction: 'ease-out',
           },
         ]}
       />
