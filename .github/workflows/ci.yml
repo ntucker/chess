@@ -12,9 +12,10 @@ on:
 permissions:
   contents: read
 
-# A newer push to the same branch or pull request makes this run worthless.
+# A newer push to a pull request makes its older run worthless. On main each
+# commit gets its own group, so every commit there is checked.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -40,15 +41,16 @@ jobs:
         id: install
         run: yarn install --immutable
 
-      # The checks after Install run even when an earlier one fails, so one
-      # run reports every kind of failure.
+      # Each check runs whenever Install succeeded, even if an earlier check
+      # failed, so one run reports every kind of failure.
       - name: Lint
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: yarn lint
 
       - name: Typecheck
-        if: ${{ !cancelled() && steps.install.outcome != 'failure' }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: yarn typecheck
 
       - name: Test
-        if: ${{ !cancelled() && steps.install.outcome != 'failure' }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: yarn test
