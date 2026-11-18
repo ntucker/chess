@@ -24,8 +24,10 @@ yarn web        # or: yarn ios, yarn android
 | `yarn web` / `yarn ios` / `yarn android` | Start it and open that platform |
 | `yarn typecheck` | Type-check with TypeScript |
 | `yarn lint` | Lint with ESLint |
+| `yarn test` | Run the unit tests (Jest) |
 | `yarn vendor:silk [path]` | Rebuild the vendored Silk packages from a Silk checkout (default `../silk`) |
 | `yarn brand` | Redraw the logo and every icon made from it (see [Logo](#logo)) |
+| `yarn maia` | Download Maia's models and convert them for the app (see [Maia](#maia)) |
 
 ## How it fits together
 
@@ -36,29 +38,26 @@ yarn web        # or: yarn ios, yarn android
 | Design system | [Silk](https://github.com/reactive/silk) (`@reactive/silk-native`) | `src/components/` |
 | Board | [chessground](https://github.com/lichess-org/chessground) in an [Expo DOM component](https://docs.expo.dev/guides/dom-components/) | `src/components/Board.tsx` |
 | Chess rules | [chessops](https://github.com/niklasf/chessops) | `src/game/` |
-| Engine | [Maia](https://www.maiachess.com) | `src/resources/maia.ts` |
-
-Maia's API doesn't allow calls from other websites, so the web build asks a proxy that forwards the request: this app's own server route (`src/app/api/maia/`), or, on GitHub Pages, a Cloudflare Worker (see [Web deploys](#web-deploys)). The iOS and Android apps call Maia directly.
+| Engine | [Maia](https://github.com/CSSLab/maia-chess), run on the device | `src/maia/` |
 
 Silk isn't on npm yet, so the app installs it from the tarballs in `vendor/`.
 
+## Maia
+
+Maia is a set of neural networks, one for each rating from 1100 to 1900, trained on lichess games to predict the move a player of that rating would make. For example, the 1100 network opens 1. e4 and answers 1. e4 with 1... e5. The app plays the move its network rates most likely, as Maia does on lichess, without searching ahead.
+
+The networks ship with the app (`assets/maia/`, 1.2 MB each) and run on the device in plain TypeScript (`src/maia/network.ts`), so the app needs no server and works offline. A move takes about 25 ms on a laptop. It is worked out off the main thread (a Web Worker on the web, a background JavaScript runtime on iOS and Android), so the app keeps responding meanwhile. `yarn maia` downloads the original models from the [Maia repository](https://github.com/CSSLab/maia-chess) and rewrites them in the app's smaller format (`scripts/convert-maia.mjs` describes it).
+
+The models are licensed under the GPL-3.0, which is different from the app's own license; see `assets/maia/LICENSE`.
+
 ## Web deploys
 
-Every push to `main` publishes the web app to GitHub Pages, at https://ntucker.github.io/chess/ (`.github/workflows/web.yml`). Pages only serves files, so the build is exported as static HTML, and the server route that forwards requests to Maia can't run there. The workflow deploys the same forwarding code as a Cloudflare Worker (`workers/maia-proxy/`) and builds the app to call it. The Worker only answers requests from the Pages site's origin and only forwards Maia's move request, so other web pages can't use it as a proxy. Scripts outside a browser can set any origin; if that ever costs quota, add a Cloudflare rate-limiting rule.
-
-One-time setup:
-
-1. In the repository's **Settings → Pages**, set **Source** to **GitHub Actions**.
-2. Sign in to [Cloudflare](https://dash.cloudflare.com) (the free plan is enough) and open **Workers & Pages** once, so the account gets a `workers.dev` subdomain.
-3. Under **My Profile → API Tokens**, create a token from the **Edit Cloudflare Workers** template.
-4. In the repository's **Settings → Secrets and variables → Actions**, add two secrets: `CLOUDFLARE_API_TOKEN` (the token) and `CLOUDFLARE_ACCOUNT_ID` (shown on the account's home page in the Cloudflare dashboard).
-
-Then push to `main`, or run the **Web** workflow from the Actions tab.
+Every push to `main` publishes the web app to GitHub Pages, at https://ntucker.github.io/chess/ (`.github/workflows/web.yml`). The one-time setup is to set **Source** to **GitHub Actions** in the repository's **Settings → Pages**. After that, push to `main` or run the **Web** workflow from the Actions tab.
 
 To try the Pages build locally, export it the way the workflow does and serve `dist/` at `/chess/`:
 
 ```bash
-PAGES_BASE_PATH=/chess EXPO_PUBLIC_MAIA_PROXY_URL=https://opening-night-maia.<subdomain>.workers.dev yarn expo export --platform web
+PAGES_BASE_PATH=/chess yarn expo export --platform web
 ```
 
 ## Logo

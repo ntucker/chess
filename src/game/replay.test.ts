@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import { INITIAL_FEN } from 'chessops/fen';
 
-import { analyze, isLegal, lastPosition, replay, toUci } from './replay';
+import { analyze, lastPosition, lineMove, replay, toUci } from './replay';
 
 describe('replay', () => {
   it('returns a position per move, with SAN', () => {
@@ -40,13 +40,20 @@ describe('analyze', () => {
   });
 });
 
-describe('isLegal', () => {
+describe('lineMove', () => {
   it.each([
-    ['e2e4', true],
-    ['e2e5', false],
-    ['nonsense', false],
-  ])('%s is %s from the start', (uci, legal) => {
-    expect(isLegal(INITIAL_FEN, uci)).toBe(legal);
+    ['e2e4', 'e2e4'],
+    ['e2e5', undefined],
+    ['nonsense', undefined],
+  ])('%s from the start is %s', (uci, recorded) => {
+    expect(lineMove(INITIAL_FEN, uci)).toBe(recorded);
+  });
+
+  it('writes castling as the king moving two squares', () => {
+    const fen = 'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1';
+    expect(lineMove(fen, 'e1h1')).toBe('e1g1');
+    expect(lineMove(fen, 'e1g1')).toBe('e1g1');
+    expect(lineMove(fen, 'e1a1')).toBe('e1c1');
   });
 });
 

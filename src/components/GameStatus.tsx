@@ -2,7 +2,7 @@ import { Button, Inline, Stack, Text } from '@reactive/silk-native';
 
 import { Eyebrow } from '@/components/Eyebrow';
 import type { Color, Position } from '@/game/replay';
-import type { MaiaRating } from '@/resources/maia';
+import type { MaiaRating } from '@/maia/models';
 
 interface Props {
   readonly playerColor: Color;

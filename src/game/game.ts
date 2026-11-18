@@ -2,7 +2,7 @@
  * The state of a game against Maia, as a reducer: the moves, the move on the
  * board, and the one request to Maia that may be out.
  */
-import { type Color, isLegal, lastPosition } from './replay';
+import { type Color, lastPosition, lineMove } from './replay';
 
 /** What Maia is doing about the latest position. */
 type MaiaStatus =
@@ -59,15 +59,19 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'newGame':
       return start({ ...state, game: state.game + 1, playerColor: action.playerColor }, []);
-    case 'move':
-      return start(state, [...state.line.slice(0, state.ply), action.uci]);
+    case 'move': {
+      const before = state.line.slice(0, state.ply);
+      const uci = lineMove(lastPosition(before).fen, action.uci);
+      return uci ? start(state, [...before, uci]) : state;
+    }
     case 'reply': {
       if (!answers(state, action)) return state;
-      if (!isLegal(lastPosition(state.line).fen, action.uci)) {
+      const uci = lineMove(lastPosition(state.line).fen, action.uci);
+      if (!uci) {
         const error = new Error(`Maia answered with an illegal move: ${action.uci}`);
         return { ...state, maia: { status: 'failed', error } };
       }
-      const line = [...state.line, action.uci];
+      const line = [...state.line, uci];
       // Follow the reply only if the player was looking at the latest move.
       const ply = state.ply === state.line.length ? line.length : state.ply;
       return { ...state, line, ply, maia: IDLE };

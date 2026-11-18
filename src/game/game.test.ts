@@ -29,6 +29,23 @@ describe('when Maia moves', () => {
     expect(state).toMatchObject({ line: ['f2f3', 'e7e5', 'g2g4', 'd8h4'], maia: { status: 'idle' } });
   });
 
+  it('records castling the same way whoever castles', () => {
+    // Italian Game: the player castles by dragging the king onto its rook,
+    // and Maia answers the way lc0 writes castling.
+    const line = ['e2e4', 'e7e5', 'g1f3', 'b8c6', 'f1c4', 'f8c5', 'd2d3', 'g8f6'];
+    let state = play(
+      white,
+      ...line.map((uci, i): GameAction =>
+        i % 2 === 0
+          ? { type: 'move', uci }
+          : { type: 'reply', game: 1, after: line.slice(0, i), uci },
+      ),
+    );
+    state = gameReducer(state, { type: 'move', uci: 'e1h1' });
+    state = gameReducer(state, { type: 'reply', game: 1, after: [...line, 'e1g1'], uci: 'e8h8' });
+    expect(state.line.slice(-2)).toEqual(['e1g1', 'e8g8']);
+  });
+
   it('fails on an illegal answer instead of playing it', () => {
     const state = play(white, e4, { type: 'reply', game: 1, after: ['e2e4'], uci: 'e7e4' });
     expect(state.line).toEqual(['e2e4']);
