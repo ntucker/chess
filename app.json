@@ -7,9 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "openingnight",
     "userInterfaceStyle": "automatic",
-    "ios": {
-      "supportsTablet": true
-    },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#1b1430",
