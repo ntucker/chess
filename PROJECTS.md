@@ -92,8 +92,9 @@ Link the upstream PR from the chess PR, and say "merge <upstream PR> first" when
 Work needing the person's PC (Android device or emulator, local tools) runs on GLADOS, a Windows PC,
 in WSL: threads start a Remote Control session (`start_remote_control`). GLADOS can't build or run
 iOS (no Mac); iOS is still a target, so keep iOS code paths working. When a change adds or edits
-iOS-specific code (an iOS native module or config, an `ios` branch of `Platform.OS` or
-`Platform.select`), say in the PR that iOS is unverified.
+code that runs on iOS but not on web (a native module or config, a worklet such as
+`src/maia/runNetwork.ts`, an `ios` branch of `Platform.OS` or `Platform.select`), say in the PR that
+iOS is unverified.
 
 ## Keeping this file current
 
