@@ -24,7 +24,7 @@ jobs:
   check:
     name: Lint, typecheck and test
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
 
     steps:
       - name: Checkout
@@ -41,6 +41,10 @@ jobs:
 
       - name: Install
         id: install
+        # Yarn turns on hardened mode for public pull requests, which re-resolves
+        # the lockfile (about 5 s). Keep it only for forks, whose authors can't push.
+        env:
+          YARN_ENABLE_HARDENED_MODE: ${{ github.event.pull_request.head.repo.fork && '1' || '0' }}
         run: yarn install --immutable
 
       # Each check runs whenever Install succeeded, even if an earlier check

@@ -40,6 +40,10 @@ jobs:
           cache: yarn
 
       - name: Install
+        # Yarn turns on hardened mode for public pull requests, which re-resolves
+        # the lockfile (about 5 s). Keep it only for forks, whose authors can't push.
+        env:
+          YARN_ENABLE_HARDENED_MODE: ${{ github.event.pull_request.head.repo.fork && '1' || '0' }}
         run: yarn install --immutable
 
       - name: Setup Pages
