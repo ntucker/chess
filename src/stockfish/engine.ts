@@ -43,10 +43,10 @@ let running: Search | undefined;
 /** Searches waiting for the engine, newest last; the newest runs first. */
 const pending: Search[] = [];
 /**
- * Where the running search goes back into `pending` once it stops: below the
- * newer request that stopped it. Undefined while it isn't being stopped.
+ * The newer request that stopped the running search, which goes back into
+ * `pending` just below it once it stops. Undefined while it isn't stopping.
  */
-let stoppedAt: number | undefined;
+let stoppedBy: Search | undefined;
 
 /**
  * Connects the engine that `send` talks to. The host that runs the engine
@@ -75,13 +75,16 @@ export function attachStockfish(send: Send): Connection {
  * How the position after `line` (UCI moves from the starting position)
  * stands, as Stockfish judges it. Stockfish works on one position at a time,
  * newest first: a newer request stops the search under way, which runs again
- * from the start once the newer ones are done. No request is dropped.
+ * from the start once the newer ones are done. No request is dropped, so a
+ * position the board steps past is still searched later (move labels need
+ * every position of the game anyway).
  */
 export function stockfishEvaluation(line: readonly string[]): Promise<Evaluation> {
   return new Promise((resolve, reject) => {
-    pending.push({ line, resolve, reject });
-    if (running && stoppedAt === undefined) {
-      stoppedAt = pending.length - 1;
+    const search: Search = { line, resolve, reject };
+    pending.push(search);
+    if (running && !stoppedBy) {
+      stoppedBy = search;
       connected?.send('stop');
     }
     startNext();
@@ -100,17 +103,17 @@ function handleLine(session: Session, line: string) {
   else if (line.startsWith('bestmove')) {
     const search = running;
     running = undefined;
-    if (stoppedAt !== undefined) requeue(search);
+    if (stoppedBy) requeue(search);
     else if (search.last) search.resolve(evaluation(search.last, search.line, line));
     else search.reject(new Error('Stockfish finished without a score'));
     startNext();
   }
 }
 
-/** The evaluation a finished search gives, with the move its `bestmove` line names. */
-function evaluation(score: Score, line: readonly string[], bestmove: string): Evaluation {
-  const best = parseBestMove(bestmove);
-  return { ...evaluationFromScore(score, line.length), ...(best && { best }) };
+/** A finished search's evaluation, with the move its `bestmove` line names. */
+function evaluation(score: Score, moves: readonly string[], bestmoveLine: string): Evaluation {
+  const best = parseBestMove(bestmoveLine);
+  return { ...evaluationFromScore(score, moves.length), ...(best && { best }) };
 }
 
 function startNext() {
@@ -130,8 +133,9 @@ function startNext() {
  */
 function requeue(search: Search) {
   search.last = undefined;
-  pending.splice(stoppedAt ?? pending.length, 0, search);
-  stoppedAt = undefined;
+  const at = stoppedBy ? pending.indexOf(stoppedBy) : -1;
+  pending.splice(at < 0 ? pending.length : at, 0, search);
+  stoppedBy = undefined;
 }
 
 /** The search the engine was running will never finish there: the next engine runs it. */

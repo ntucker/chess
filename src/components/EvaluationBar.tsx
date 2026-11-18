@@ -6,7 +6,7 @@ import Animated, { type CSSTransitionTimingFunction, cubicBezier } from 'react-n
 
 import { type Color, colorName, type GameResult, lastPosition, opposite } from '@/game/replay';
 import { useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
-import type { Evaluation, EvaluationEngine } from '@/evaluation/evaluation';
+import { type Evaluation, type EvaluationEngine, resultEvaluation } from '@/evaluation/evaluation';
 import { getEvaluation } from '@/resources/evaluation';
 import { fonts, pieceColors } from '@/theme/theme';
 
@@ -103,10 +103,12 @@ function evaluationReading({ score, pawns, mate }: Evaluation): Reading {
   return { score, label, leader, description: `${colorName(leader)} is ahead by ${label} pawns` };
 }
 
-function resultReading({ winner }: GameResult): Reading {
-  if (!winner) return { score: 0.5, label: '½', leader: 'white', description: 'Drawn' };
+function resultReading(result: GameResult): Reading {
+  const { winner } = result;
+  const { score } = resultEvaluation(result);
+  if (!winner) return { score, label: '½', leader: 'white', description: 'Drawn' };
   return {
-    score: winner === 'white' ? 1 : 0,
+    score,
     label: winner === 'white' ? '1-0' : '0-1',
     leader: winner,
     description: `${colorName(winner)} won`,

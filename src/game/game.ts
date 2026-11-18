@@ -100,8 +100,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, maia: { status: 'failed', error: action.error } };
     case 'judged': {
       if (action.game !== state.game || !startsWith(state.line, action.line)) return state;
-      const judged = action.line.length - 1;
-      const qualities = state.line.map((_, n) => (n === judged ? action.quality : state.qualities[n]));
+      const labelled = action.line.length - 1;
+      const qualities = state.line.map((_, n) => (n === labelled ? action.quality : state.qualities[n]));
       return { ...state, qualities };
     }
     case 'retry':

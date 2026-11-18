@@ -2,7 +2,7 @@ import { useController } from '@data-client/react';
 import { useReducer } from 'react';
 
 import { classifyMove } from '@/analysis/quality';
-import type { Evaluation } from '@/evaluation/evaluation';
+import { type Evaluation, resultEvaluation } from '@/evaluation/evaluation';
 import { useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
 import type { MaiaRating } from '@/maia/models';
 import { getEvaluation } from '@/resources/evaluation';
@@ -10,7 +10,7 @@ import { getMaiaMove } from '@/resources/maia';
 
 import { type GameAction, gameReducer, type GameState, initialGame } from './game';
 import { material } from './material';
-import { analyze, type Color, type GameResult, lastPosition, replay, toUci } from './replay';
+import { analyze, type Color, lastPosition, replay, toUci } from './replay';
 
 /** The least time Maia takes to reply, so a fast answer reads as a reply, not a reflex. */
 const THINKING_MS = 400;
@@ -67,7 +67,7 @@ export function useGame(rating: MaiaRating) {
         before: evaluations[0],
         after: evaluations[1],
         uci: judged[judged.length - 1],
-        mover: before.length % 2 === 0 ? 'white' : 'black',
+        mover: lastPosition(before).turn,
       });
       dispatch({ type: 'judged', game, line: judged, quality });
     } catch {
@@ -123,7 +123,3 @@ export function useGame(rating: MaiaRating) {
   };
 }
 
-/** A finished game's evaluation: the winner scores 1, a draw 0.5 each. */
-function resultEvaluation({ winner }: GameResult): Evaluation {
-  return { score: winner === 'white' ? 1 : winner === 'black' ? 0 : 0.5, pawns: 0 };
-}

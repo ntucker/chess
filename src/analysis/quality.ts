@@ -9,9 +9,7 @@ import type { Color } from '@/game/replay';
  * The labels, from best to worst. `book` is the opening guide's own move; it
  * comes from lesson data, so `classifyMove` never returns it.
  */
-export const MOVE_QUALITIES = ['book', 'best', 'good', 'inaccuracy', 'mistake', 'blunder'] as const;
-
-export type MoveQuality = (typeof MOVE_QUALITIES)[number];
+export type MoveQuality = 'book' | 'best' | 'good' | 'inaccuracy' | 'mistake' | 'blunder';
 
 /**
  * The least expected score (0 to 1, the mover's) a move must give away for
@@ -40,12 +38,12 @@ export interface JudgedMove {
 
 /**
  * A move's label. It's the best if it's the move the engine would have
- * played; an engine that names none (Maia) counts a move that gives nothing
- * away as the best. Otherwise the expected score it gives away decides.
+ * played, or gives nothing away (another mate, or an engine that names no
+ * move, like Maia). Otherwise the expected score it gives away decides.
  */
 export function classifyMove({ before, after, uci, mover }: JudgedMove): MoveQuality {
   const whiteLoss = before.score - after.score;
   const loss = mover === 'white' ? whiteLoss : -whiteLoss;
-  if (before.best ? uci === before.best : loss <= 0) return 'best';
+  if (uci === before.best || loss <= 0) return 'best';
   return LEAST_LOSS.find(([least]) => loss >= least)?.[1] ?? 'good';
 }

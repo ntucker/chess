@@ -106,7 +106,11 @@ export default function Board({
   );
 }
 
-/** The ink that rings a badge on the board, to set it off from the squares. */
+/**
+ * The ink that rings a badge on the board, to set it off from the squares:
+ * theme.ts's pieceColors.black, copied because theme.ts imports Silk, which
+ * this web view doesn't load.
+ */
 const BADGE_RING = '#17111f';
 /** A badge's size and center on its square, in hundredths of the square. */
 const BADGE = { size: 34, x: 82, y: 18 } as const;

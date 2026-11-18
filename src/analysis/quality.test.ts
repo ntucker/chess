@@ -17,7 +17,8 @@ describe('classifyMove', () => {
   it('labels other moves by the expected score they give away', () => {
     const white = (after: number) =>
       classifyMove({ before: at(0.6, 'e2e4'), after: at(after), uci: 'd2d4', mover: 'white' });
-    expect(white(0.62)).toBe('good');
+    expect(white(0.62)).toBe('best');
+    expect(white(0.59)).toBe('good');
     expect(white(0.56)).toBe('good');
     expect(white(0.54)).toBe('inaccuracy');
     expect(white(0.51)).toBe('inaccuracy');
@@ -30,16 +31,20 @@ describe('classifyMove', () => {
   it("measures Black's loss from Black's side", () => {
     const black = (after: number) =>
       classifyMove({ before: at(0.4, 'e7e5'), after: at(after), uci: 'g7g5', mover: 'black' });
-    expect(black(0.3)).toBe('good');
+    expect(black(0.43)).toBe('good');
     expect(black(0.47)).toBe('inaccuracy');
     expect(black(0.85)).toBe('blunder');
   });
 
-  it('calls a move the best when the engine names none and the move gives nothing away', () => {
-    const maia = (after: number) =>
-      classifyMove({ before: at(0.5), after: at(after), uci: 'e2e4', mover: 'white' });
-    expect(maia(0.51)).toBe('best');
-    expect(maia(0.49)).toBe('good');
+  it('calls a move that gives nothing away the best, whichever move the engine names', () => {
+    const white = (after: number, best?: string) =>
+      classifyMove({ before: at(0.5, best), after: at(after), uci: 'e2e4', mover: 'white' });
+    expect(white(0.51)).toBe('best');
+    expect(white(0.49)).toBe('good');
+    // Mate with another move than the engine's: the game is won either way.
+    expect(classifyMove({ before: at(1, 'h4h7'), after: at(1), uci: 'h4h8', mover: 'white' })).toBe(
+      'best',
+    );
   });
 
   it('calls missing a mate a blunder', () => {
