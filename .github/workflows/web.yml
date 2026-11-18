@@ -1,11 +1,6 @@
 # Publishes the web app to GitHub Pages on every push to main. Pull requests
 # run the same static export without deploying, so a change that breaks the
-# Pages build fails before merge.
-#
-# Pages only serves static files, so the app's Maia proxy route
-# (src/app/api/maia) can't run there. This workflow deploys the same proxy as
-# a Cloudflare Worker (workers/maia-proxy) and builds the app to call it.
-# Setup is in README.md, under "Web deploys".
+# Pages build fails before merge. Setup is in README.md, under "Web deploys".
 name: Web
 
 on:
@@ -29,8 +24,6 @@ jobs:
     concurrency:
       group: pages-build-${{ github.ref }}
       cancel-in-progress: true
-    env:
-      WRANGLER: wrangler@4.163.0
 
     steps:
       - name: Checkout
@@ -53,40 +46,10 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
 
-      - name: Deploy the Maia proxy to Cloudflare
-        id: proxy
-        if: github.event_name != 'pull_request'
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          PAGES_ORIGIN: ${{ steps.pages.outputs.origin }}
-          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-output.ndjson
-        run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
-            echo "::error::Add the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repository secrets. The web app needs the Maia proxy; see README.md, Web deploys."
-            exit 1
-          fi
-          npx --yes "$WRANGLER" deploy \
-            --config workers/maia-proxy/wrangler.jsonc \
-            --var "ALLOWED_ORIGINS:$PAGES_ORIGIN"
-          url=$(jq -r 'select(.type == "deploy") | .targets[0] // empty' "$WRANGLER_OUTPUT_FILE_PATH")
-          if [ -z "$url" ]; then
-            echo "::error::Wrangler deployed no workers.dev URL. Open Workers in the Cloudflare dashboard once to choose a workers.dev subdomain."
-            exit 1
-          fi
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-
-      # Main bundles the Worker when it deploys; pull requests only check that
-      # it still bundles.
-      - name: Check that the Maia proxy bundles
-        if: github.event_name == 'pull_request'
-        run: npx --yes "$WRANGLER" deploy --dry-run --config workers/maia-proxy/wrangler.jsonc
-
       - name: Export the web app
         env:
           # Pull requests skip Setup Pages, so they build for the usual /chess.
           PAGES_BASE_PATH: ${{ github.event_name == 'pull_request' && '/chess' || steps.pages.outputs.base_path }}
-          EXPO_PUBLIC_MAIA_PROXY_URL: ${{ steps.proxy.outputs.url }}
         run: |
           yarn expo export --platform web
           # Pages shows 404.html for any path it has no file for.

@@ -25,8 +25,8 @@ export function useGame(rating: MaiaRating) {
   /** Asks Maia to answer `after`, the moves of game `forGame`. */
   const ask = async (forGame: number, after: readonly string[]) => {
     try {
-      const { top_move } = await ctrl.fetch(getMaiaMove, { rating }, after);
-      dispatch({ type: 'reply', game: forGame, after, uci: top_move });
+      const uci = await ctrl.fetch(getMaiaMove, rating, after);
+      dispatch({ type: 'reply', game: forGame, after, uci });
     } catch (error) {
       dispatch({
         type: 'failed',
