@@ -44,7 +44,7 @@ Silk isn't on npm yet, so the app installs it from the tarballs in `vendor/`.
 
 ## Web deploys
 
-Every push to `main` publishes the web app to GitHub Pages, at https://ntucker.github.io/chess/ (`.github/workflows/web.yml`). Pages only serves files, so the build is exported as static HTML, and the server route that forwards requests to Maia can't run there. The workflow deploys the same forwarding code as a Cloudflare Worker (`workers/maia-proxy/`) and builds the app to call it. The Worker only answers the Pages site, so other sites can't use it as a proxy.
+Every push to `main` publishes the web app to GitHub Pages, at https://ntucker.github.io/chess/ (`.github/workflows/web.yml`). Pages only serves files, so the build is exported as static HTML, and the server route that forwards requests to Maia can't run there. The workflow deploys the same forwarding code as a Cloudflare Worker (`workers/maia-proxy/`) and builds the app to call it. The Worker only answers requests from the Pages site's origin and only forwards Maia's move request, so other web pages can't use it as a proxy. Scripts outside a browser can set any origin; if that ever costs quota, add a Cloudflare rate-limiting rule.
 
 One-time setup:
 

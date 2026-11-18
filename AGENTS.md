@@ -3,7 +3,7 @@ This is Opening Night, an Expo app (iOS, Android and web) for learning chess ope
 ## Project
 
 - `src/app/` Expo Router screens; `src/app/api/` server routes for the web build (the Maia proxy).
-- GitHub Pages (`.github/workflows/web.yml`) gets a static export instead: `app.config.ts` switches `web.output` to `static` and sets the `/chess` base path when `PAGES_BASE_PATH` is set. API routes don't exist there, so Maia requests go to the Cloudflare Worker in `workers/maia-proxy/` (URL baked in as `EXPO_PUBLIC_MAIA_PROXY_URL`). The forwarding code both share is `src/server/maiaProxy.ts`; keep it free of app imports, since the Worker bundles it.
+- GitHub Pages (`.github/workflows/web.yml`) gets a static export instead: `app.config.ts` switches `web.output` to `static` and sets the `/chess` base path when `PAGES_BASE_PATH` is set. API routes don't exist there, so Maia requests go to the Cloudflare Worker in `workers/maia-proxy/` (URL baked in as `EXPO_PUBLIC_MAIA_PROXY_URL`). The forwarding code both share is `src/server/maiaProxy.ts`, and Maia's URL is in `src/resources/maiaApi.ts`; the Worker bundles both, so keep them free of app imports. Pull requests run the static export too, without deploying, so a change that breaks the Pages build fails before merge.
 - `src/game/` chess rules and game state, built on `chessops`. Pure functions: no React Native imports.
 - `src/components/Board.tsx` the board: `@lichess-org/chessground` in an Expo DOM component (`'use dom'`), so it runs in a web view on native. Its props must be JSON; function props become async messages.
 - `src/resources/` API endpoints. The engine is Maia (maiachess.com), reached through `getMaiaMove`.

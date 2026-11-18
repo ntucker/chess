@@ -1,4 +1,6 @@
-# Publishes the web app to GitHub Pages on every push to main.
+# Publishes the web app to GitHub Pages on every push to main. Pull requests
+# run the same static export without deploying, so a change that breaks the
+# Pages build fails before merge.
 #
 # Pages only serves static files, so the app's Maia proxy route
 # (src/app/api/maia) can't run there. This workflow deploys the same proxy as
@@ -9,6 +11,7 @@ name: Web
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -44,10 +47,12 @@ jobs:
 
       - name: Setup Pages
         id: pages
+        if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
 
       - name: Deploy the Maia proxy to Cloudflare
         id: proxy
+        if: github.event_name != 'pull_request'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -70,7 +75,8 @@ jobs:
 
       - name: Export the web app
         env:
-          PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          # Pull requests skip Setup Pages, so they build for the usual /chess.
+          PAGES_BASE_PATH: ${{ github.event_name == 'pull_request' && '/chess' || steps.pages.outputs.base_path }}
           EXPO_PUBLIC_MAIA_PROXY_URL: ${{ steps.proxy.outputs.url }}
         run: |
           yarn expo export --platform web
@@ -78,6 +84,7 @@ jobs:
           cp dist/+not-found.html dist/404.html
 
       - name: Upload artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v4
         with:
           path: dist
@@ -85,6 +92,7 @@ jobs:
   deploy:
     name: Deploy
     needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:

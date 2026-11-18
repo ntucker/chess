@@ -1,16 +1,14 @@
-/**
- * Maia's API (https://www.maiachess.com), and the request this app forwards
- * to it for browsers, which can't call it themselves because it sends no
- * CORS headers. Two places forward it: the web server's API route
- * (src/app/api/maia) and the Cloudflare Worker that the GitHub Pages build
- * uses instead (workers/maia-proxy). The Worker bundles this file, so it
- * must not import app code.
- */
-export const MAIA_API_ORIGIN = 'https://www.maiachess.com/api/v1';
+import { MAIA_API_ORIGIN } from '../resources/maiaApi';
 
 /**
  * Asks Maia for its move, passing on the query string and body of a request
  * for `/play/get_move` (see `getMaiaMove` in src/resources/maia.ts).
+ *
+ * Browsers can't call Maia themselves (it sends no CORS headers), so two
+ * places forward their requests with this: the web server's API route
+ * (src/app/api/maia) and the Cloudflare Worker that the GitHub Pages build
+ * uses instead (workers/maia-proxy). The Worker bundles this file, so it may
+ * only import modules that have no imports of their own.
  */
 export async function forwardMaiaMove(request: Request): Promise<Response> {
   const { search } = new URL(request.url);

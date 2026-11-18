@@ -1,6 +1,6 @@
 import { RestEndpoint } from '@data-client/rest';
 
-import { MAIA_API_ORIGIN } from '@/server/maiaProxy';
+import { MAIA_API_ORIGIN } from './maiaApi';
 
 /**
  * Maia (https://www.maiachess.com) is a neural network chess engine trained
