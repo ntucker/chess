@@ -1,9 +1,13 @@
-import { Inline, Text } from '@reactive/silk-native';
+import { Inline, Separator, Text } from '@reactive/silk-native';
 import { Image, StyleSheet } from 'react-native';
 
+import { SourceLink } from '@/components/SourceLink';
 import { fonts } from '@/theme/theme';
 
-/** The wordmark: the logo, the name in the display serif, and the tagline. */
+/**
+ * The wordmark (the logo, the name in the display serif, and the tagline),
+ * with a link to the source at the far end.
+ */
 export function Header() {
   return (
     <Inline gap="2" align="center" justify="between">
@@ -17,9 +21,13 @@ export function Header() {
           Opening Night
         </Text>
       </Inline>
-      <Text role="caption" tone="secondary" style={styles.tagline}>
-        Learn your lines
-      </Text>
+      <Inline gap="3" align="center" wrap="nowrap">
+        <Text role="caption" tone="secondary" style={styles.tagline}>
+          Learn your lines
+        </Text>
+        <Separator orientation="vertical" style={styles.rule} />
+        <SourceLink />
+      </Inline>
     </Inline>
   );
 }
@@ -28,4 +36,5 @@ const styles = StyleSheet.create({
   logo: { width: 40, height: 40, borderRadius: 10 },
   wordmark: { fontFamily: fonts.display, fontSize: 26, letterSpacing: 0.2 },
   tagline: { fontFamily: fonts.displayItalic, fontSize: 17 },
+  rule: { height: 18, alignSelf: 'center' },
 });
