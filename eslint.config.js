@@ -18,6 +18,7 @@ module.exports = defineConfig([
                 'TouchableOpacity',
                 'TouchableHighlight',
                 'TouchableWithoutFeedback',
+                'TouchableNativeFeedback',
               ],
               message:
                 "Use Pressable from '@reactive/silk-native', which shows the keyboard focus ring.",
