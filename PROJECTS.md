@@ -15,15 +15,16 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
 - Default for advisors and subagents: the strongest model (latest Fable). Exceptions:
   - Haiku: post-push reviews.
   - Sonnet: simple merge conflicts.
-- Workers rely on user-kit's skills (`user-kit:<name>`). If one you need is missing, use the fallback
-  the step gives; with none, pause that step. Either way, tell the coordinator, who asks the person to
-  install user-kit.
+- Workers rely on user-kit's skills (Skill tool) and workflows (Workflow tool), both named
+  `user-kit:<name>`. If one you need is missing, use the fallback the step gives; with none, pause
+  that step. Either way, tell the coordinator, who asks the person to install user-kit.
 
 ## PR lifecycle
 
 1. Branch from `main`. Stack a PR on another only when it needs that PR's unmerged code; then rebase
    your own branches (`--force-with-lease`) and say "merge #N first". Rebasing applies only to your
-   own stacked branches; update any other PR from its base with a merge commit.
+   own stacked branches; update any other PR from its base with a merge commit, because force-pushing
+   a shared branch drops others' commits.
 2. Never push throwaway branches (workers cannot delete remote branches).
 3. Open the PR and watch it right away (`subscribe_pr_activity`). Mark it ready for review once
    validated; Bugbot skips drafts.
@@ -32,12 +33,12 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
 5. Keep the PR mergeable, but act only on a real conflict with its base. Simple conflicts (lockfiles,
    adjacent edits, generated files): hand to a Sonnet subagent with branch, base and how to validate.
    Logic conflicts: resolve yourself.
-6. After every push, run user-kit's `post-push-review` with
+6. After every push, with the Workflow tool, run workflow `user-kit:post-push-review` with
    `{ range: "<sha before push>..HEAD", goals: "<project goal>", repo: "<checkout path>" }`.
-   Without it, run Haiku subagents in parallel for goals, repo rules, engineering, adversarial, reuse
-   and React data flow. Verify each finding; fix real ones, reject the rest with a reason. Do not
-   launch them while the person is actively writing in your thread: subagents can pick up the message
-   and reply in your name.
+   Without the Workflow tool or that workflow, run Haiku subagents in parallel for goals, repo rules,
+   engineering, adversarial, reuse and React data flow. Verify each finding; fix real ones, reject the
+   rest with a reason. Do not launch them while the person is actively writing in your thread:
+   subagents can pick up the message and reply in your name.
 7. Once the change is verified correct, run skill "simplify", verify its findings, and push the
    cleanups (a push, so step 6 runs again) before calling the PR done.
 8. The person squash-merges. A worker's PR ends when it merges, not when it is handed over.
@@ -47,16 +48,18 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
 - A description states what landing the PR does. Its numbers (test counts, timings, match rates) come
   from one measurement of the PR's final head against its base. Never report or pool runs made while
   iterating. Say plainly when a case shows no difference.
-- Visible UI changes include screenshots, web export served at `/chess/`. Add light and dark versions
-  only when the change looks different between the two (colors, theme tokens, images).
-- PRs build the web export but don't deploy it; the site updates when `main` changes.
+- Visible UI changes include screenshots of the web export, built and served locally as README.md,
+  "Web deploys" describes (PRs don't deploy a preview). Add light and dark versions only when the
+  change looks different between the two (colors, theme tokens, images).
 
 ## Follow-ups
 
 Never leave one dangling. Fold it into the PR if it improves it, reject it with a stated reason, or
 hand it on:
 
-- Project-scope work: tell the coordinator, with a self-contained brief. The coordinator queues it.
+- Project-scope work: tell the coordinator, with a self-contained brief. The coordinator adds it to
+  the work queue (the work-queue tool, never the queue file by hand) and runs at most 3 workers at once
+  unless the person sets another cap.
 - Work outside the project's scope: draft a GitHub issue on `ntucker/chess` (self-contained) and hand
   it to the coordinator. File it yourself only when the person asked in their own words.
 - The same holds for any other write outside the repo and your PR (GitHub comments elsewhere, Slack).
@@ -86,7 +89,8 @@ Link the upstream PR from the chess PR, and say "merge <upstream PR> first" when
 ## Person's machine
 
 Work needing the person's PC (Android device or emulator, local tools) runs on GLADOS, a Windows PC,
-in WSL: threads start a Remote Control session (`start_remote_control`). There are no iOS builds.
+in WSL: threads start a Remote Control session (`start_remote_control`). GLADOS can't build or run
+iOS (no Mac); iOS is still a target, so keep iOS code paths working.
 
 ## Keeping this file current
 

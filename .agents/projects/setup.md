@@ -14,7 +14,8 @@ Ask the person for anything you cannot find in the project's settings:
 
 ## 2. Point every agent at `PROJECTS.md`
 
-Give the person this text to paste in Project settings, Instructions:
+Once `PROJECTS.md` is on `main` (agents can't read it before), give the person this text to paste in
+Project settings, Instructions:
 
 > Every agent working on ntucker/chess, at the start of its task: read `PROJECTS.md` from `main`
 > (`curl -fsSL https://raw.githubusercontent.com/ntucker/chess/main/PROJECTS.md`, or in a checkout
@@ -34,10 +35,10 @@ One file per subject, only what `PROJECTS.md` and the repo don't say:
 
 ## 4. Check user-kit
 
-Workers rely on user-kit's skills (`PROJECTS.md`, "Roles and models"). Confirm they load, for example
-`user-kit:post-push-review`. If they don't, ask the person to install user-kit.
+Workers rely on user-kit's skills and workflows (`PROJECTS.md`, "Roles and models"). Confirm they load,
+for example the `post-push-review` workflow. If they don't, ask the person to install user-kit.
 
 ## 5. Work queue
 
-Keep follow-ups in the project's work queue (`work-queue.json` in the project files, one item per
-follow-up with what it waits on), and run at most 3 workers at once unless the person sets another cap.
+Confirm the work-queue tool loads; follow-ups go there (`PROJECTS.md`, "Follow-ups"). Ask the person
+whether to keep the default cap of 3 workers at once, and save any other cap to project memory.
