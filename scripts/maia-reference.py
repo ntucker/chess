@@ -1,4 +1,4 @@
-"""Writes src/maia/reference-moves.json, the moves the app's Maia engine is tested against.
+"""Writes src/maia/reference-moves.json, the moves and values the app's Maia engine is tested against.
 
     python3 -m venv .venv-maia
     .venv-maia/bin/pip install -r scripts/maia-reference.requirements.txt
@@ -120,6 +120,18 @@ def conv_block(fields):
     return weights.reshape(len(means), -1, 3, 3), betas - scale * means
 
 
+def dense_layer(fields, weights_field, outputs):
+    """A fully connected layer's weights [outputs, inputs] and biases, from Weights fields."""
+    return layer(message(fields, weights_field)).reshape(outputs, -1), layer(message(fields, weights_field + 1))
+
+
+def value_conv(fields):
+    """The value head's 1x1 convolution: weights [outputs, inputs] and biases, with batch norm folded in."""
+    weights, means, variances, gammas, betas = (layer(message(fields, n)) for n in (1, 3, 4, 5, 6))
+    scale = gammas / np.sqrt(variances + 1e-5)
+    return weights.reshape(len(means), -1) * scale[:, None], betas - scale * means
+
+
 def load(rating):
     net = read_message(gzip.decompress(download(f'{MAIA}/maia-{rating}.pb.gz')))
     weights = message(net, 10)
@@ -136,6 +148,9 @@ def load(rating):
         'blocks': blocks,
         'policy1': conv_block(message(weights, 11)),
         'policy': conv_block(message(weights, 3)),
+        'value': value_conv(message(weights, 6)),
+        'value1': dense_layer(weights, 7, 128),
+        'value2': dense_layer(weights, 9, 3),
     }
 
 
@@ -165,13 +180,18 @@ def squeeze_excite(y, w1, b1, w2, b2):
 
 
 def forward(net, planes):
-    """The policy head's 80 planes x 64 squares, flattened."""
+    """The policy head's 80 planes x 64 squares, flattened, and the value head's win, draw and loss chances."""
     x = relu(conv3(planes, *net['input']))
     for conv1, conv2, *se in net['blocks']:
         y = conv3(relu(conv3(x, *conv1)), *conv2)
         x = relu(squeeze_excite(y, *se) + x)
     p = conv3(relu(conv3(x, *net['policy1'])), *net['policy'])
-    return p.reshape(-1)
+    weights, biases = net['value']
+    v = relu(weights @ x.reshape(x.shape[0], 64) + biases[:, None])
+    hidden = relu(net['value1'][0] @ v.reshape(-1) + net['value1'][1])
+    logits = net['value2'][0] @ hidden + net['value2'][1]
+    wdl = np.exp(logits - logits.max())
+    return p.reshape(-1), wdl / wdl.sum()
 
 
 def encode(board):
@@ -217,10 +237,11 @@ def lc0_name(board, move):
     return name.removesuffix('n')
 
 
-def scores(net, slots, board):
-    """Each legal move's score, by the move."""
-    out = forward(net, encode(board))
-    return {move: out[slots[lc0_name(board, move)]] for move in board.legal_moves}
+def evaluate(net, slots, board):
+    """Each legal move's score, by the move, and the side to move's win, draw and loss chances, rounded."""
+    policy, wdl = forward(net, encode(board))
+    move_scores = {move: policy[slots[lc0_name(board, move)]] for move in board.legal_moves}
+    return move_scores, [round(float(v), 4) for v in wdl]
 
 
 def best(move_scores):
@@ -285,12 +306,13 @@ def promotion_positions(net, slots, rating):
         promotions = [m for m in board.legal_moves if m.promotion]
         if found[board.turn] >= PROMOTIONS_PER_SIDE // 2 and not any(map(board.is_capture, promotions)):
             continue
-        move_scores = scores(net, slots, board)
+        move_scores, wdl = evaluate(net, slots, board)
         rows.append({
             'rating': rating,
             'line': line(board),
             'move': lc0_uci(board, best(move_scores)),
             'bestPromotion': best({m: move_scores[m] for m in promotions}).uci(),
+            'wdl': wdl,
         })
         found[board.turn] += 1
     return rows
@@ -303,8 +325,9 @@ def main():
     rows = []
     for rating in RATINGS:
         for board in openings:
-            move = best(scores(nets[rating], slots, board))
-            rows.append({'rating': rating, 'line': line(board), 'move': lc0_uci(board, move)})
+            move_scores, wdl = evaluate(nets[rating], slots, board)
+            move = best(move_scores)
+            rows.append({'rating': rating, 'line': line(board), 'move': lc0_uci(board, move), 'wdl': wdl})
     for rating in RATINGS:
         rows += promotion_positions(nets[rating], slots, rating)
     sys.stdout.write('[\n' + ',\n'.join('  ' + json.dumps(row) for row in rows) + '\n]\n')

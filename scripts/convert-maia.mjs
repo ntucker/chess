@@ -5,10 +5,10 @@
 // Maia (https://github.com/CSSLab/maia-chess) is a set of Leela Chess Zero
 // networks, one per rating from 1100 to 1900, trained to predict the moves
 // people of that rating play. Each comes as an lc0 weights file: a gzipped
-// protobuf. This script keeps only what picking a move needs (the residual
-// tower and the policy head, not the value head), folds each batch norm into
-// the convolution before it, and writes assets/maia/maia-<rating>.bin in the
-// format src/maia/network.ts reads:
+// protobuf. This script keeps the residual tower, the policy head (which move
+// a person would play) and the value head (how often each side wins, draws or
+// loses from here), folds each batch norm into the convolution before it, and
+// writes assets/maia/maia-<rating>.bin in the format src/maia/network.ts reads:
 //
 //   "MAIA", then uint16 version, blocks, channels, SE channels, then tensors in
 //   the order network.ts lists them, each as float32 min, float32 max, uint32
@@ -134,13 +134,18 @@ function convert(gzipped) {
       layer(message(se, 4)),
     );
   }
-  tensors.push(...convBlock(message(weights, 11)), ...convBlock(message(weights, 3)));
+  tensors.push(
+    ...convBlock(message(weights, 11)),
+    ...convBlock(message(weights, 3)),
+    ...convBlock(message(weights, 6)),
+    ...[7, 8, 9, 10].map((n) => layer(message(weights, n))),
+  );
 
   const size = 12 + tensors.reduce((sum, t) => sum + 12 + t.length * 2, 0);
   const out = new DataView(new ArrayBuffer(size));
   let at = 0;
   for (const c of 'MAIA') out.setUint8(at++, c.charCodeAt(0));
-  for (const n of [1, residual.length, channels, seChannels]) {
+  for (const n of [2, residual.length, channels, seChannels]) {
     out.setUint16(at, n, true);
     at += 2;
   }

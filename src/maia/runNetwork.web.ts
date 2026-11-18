@@ -2,11 +2,12 @@ import { Asset } from 'expo-asset';
 
 import type { MaiaRequest, MaiaResponse } from './maia.worker';
 import { type MaiaRating, MODELS } from './models';
+import type { NetworkOutput } from './network';
 
 let worker: Worker | undefined;
 let nextId = 0;
 interface Pending {
-  resolve(logits: Float32Array): void;
+  resolve(output: NetworkOutput): void;
   reject(error: Error): void;
 }
 const pending = new Map<number, Pending>();
@@ -18,7 +19,7 @@ function getWorker(): Worker {
   started.onmessage = ({ data }: MessageEvent<MaiaResponse>) => {
     const request = pending.get(data.id);
     pending.delete(data.id);
-    if ('logits' in data) request?.resolve(data.logits);
+    if ('output' in data) request?.resolve(data.output);
     else request?.reject(new Error(data.error));
   };
   started.onerror = (event) => {
@@ -32,8 +33,8 @@ function getWorker(): Worker {
   return (worker = started);
 }
 
-/** `policyLogits` for `rating`'s network, run in a Web Worker. */
-export function runNetwork(rating: MaiaRating, planes: Float32Array): Promise<Float32Array> {
+/** `forward` for `rating`'s network, run in a Web Worker. */
+export function runNetwork(rating: MaiaRating, planes: Float32Array): Promise<NetworkOutput> {
   // The worker may run from a blob: URL, so give it an absolute address.
   const url = new URL(Asset.fromModule(MODELS[rating]).uri, location.href).href;
   const id = nextId++;

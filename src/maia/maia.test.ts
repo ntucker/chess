@@ -6,8 +6,8 @@ import { join } from 'node:path';
 import { SquareSet } from 'chessops/squareSet';
 import { makeUci } from 'chessops/util';
 
-import { bestMove, prepareMove } from './maia';
-import { type MaiaNetwork, parseNetwork, policyLogits } from './network';
+import { bestMove, prepareInput } from './maia';
+import { forward, type MaiaNetwork, parseNetwork } from './network';
 import { POLICY_SLOTS, policySlot } from './policy';
 import REFERENCE from './reference-moves.json';
 
@@ -17,12 +17,12 @@ const networks = new Map([1100, 1900].map((rating) => [rating, load(rating)]));
 const maia1100 = networks.get(1100)!;
 
 const think = (network: MaiaNetwork, line: string) => {
-  const prepared = prepareMove(line ? line.split(' ') : []);
-  return { ...prepared, logits: policyLogits(network, prepared.planes) };
+  const prepared = prepareInput(line ? line.split(' ') : []);
+  return { ...prepared, ...forward(network, prepared.planes) };
 };
 const play = (line: string) => {
-  const { pos, logits } = think(maia1100, line);
-  return bestMove(pos, logits);
+  const { pos, policy } = think(maia1100, line);
+  return bestMove(pos, policy);
 };
 
 describe('policy', () => {
@@ -70,16 +70,19 @@ describe('bestMove', () => {
   // A failure means the engine broke, unless scripts/convert-maia.mjs changed
   // and the two best moves score almost the same: that implementation reads
   // the original weights, which the app's 16-bit copies can tip in a near tie.
+  // The win, draw and loss chances come rounded to 4 places; the 16-bit
+  // weights move them by less than 0.001.
   it.each(REFERENCE)('Maia $rating after "$line" plays $move', ({ rating, line, ...want }) => {
-    const { pos, logits } = think(networks.get(rating)!, line);
-    expect(bestMove(pos, logits)).toBe(want.move);
+    const { pos, policy, wdl } = think(networks.get(rating)!, line);
+    expect(bestMove(pos, policy)).toBe(want.move);
+    want.wdl.forEach((chance, i) => expect(wdl[i]).toBeCloseTo(chance, 3));
     if ('bestPromotion' in want) {
       let best = { uci: '', score: -Infinity };
       for (const [from, dests] of pos.allDests()) {
         if (!pos.board.pawn.has(from)) continue;
         for (const to of dests.intersect(SquareSet.backranks())) {
           for (const promotion of ['queen', 'rook', 'bishop', 'knight'] as const) {
-            const score = logits[policySlot({ from, to, promotion }, pos.turn === 'black')!];
+            const score = policy[policySlot({ from, to, promotion }, pos.turn === 'black')!];
             if (score > best.score) best = { uci: makeUci({ from, to, promotion }), score };
           }
         }

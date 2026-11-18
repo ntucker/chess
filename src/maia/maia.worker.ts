@@ -1,8 +1,8 @@
 /// <reference lib="webworker" />
 import { loadOnce } from './loadOnce';
-import { parseNetwork, policyLogits } from './network';
+import { forward, type NetworkOutput, parseNetwork } from './network';
 
-/** Asks for the policy output for `planes`, from the network at `url`. */
+/** Asks for the network at `url`'s output for `planes`. */
 export interface MaiaRequest {
   readonly id: number;
   readonly url: string;
@@ -10,7 +10,7 @@ export interface MaiaRequest {
 }
 
 export type MaiaResponse =
-  | { readonly id: number; readonly logits: Float32Array }
+  | { readonly id: number; readonly output: NetworkOutput }
   | { readonly id: number; readonly error: string };
 
 const loadNetwork = loadOnce(async (url: string) => {
@@ -22,8 +22,11 @@ const loadNetwork = loadOnce(async (url: string) => {
 self.onmessage = async ({ data }: MessageEvent<MaiaRequest>) => {
   const { id, url, planes } = data;
   try {
-    const logits = policyLogits(await loadNetwork(url), planes);
-    self.postMessage({ id, logits } satisfies MaiaResponse, [logits.buffer]);
+    const output = forward(await loadNetwork(url), planes);
+    self.postMessage({ id, output } satisfies MaiaResponse, [
+      output.policy.buffer,
+      output.wdl.buffer,
+    ]);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     self.postMessage({ id, error: message } satisfies MaiaResponse);

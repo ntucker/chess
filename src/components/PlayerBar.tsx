@@ -18,6 +18,8 @@ interface Props {
 
 /** Fixed, so the screen can line other content up with the board below it. */
 export const PLAYER_BAR_HEIGHT = 60;
+/** The disc's size and the space after it, so the screen can line things up with them. */
+export const PLAYER_DISC = { size: 28, gap: 12 } as const;
 
 /** A name plate above or below the board, lit while that side is to move. */
 export function PlayerBar({ name, detail, color, toMove, thinking, children }: Props) {
@@ -49,7 +51,12 @@ export function PlayerBar({ name, detail, color, toMove, thinking, children }: P
 }
 
 const styles = StyleSheet.create({
-  bar: { flexDirection: 'row', alignItems: 'center', gap: 12, height: PLAYER_BAR_HEIGHT },
-  piece: { width: 28, height: 28, borderRadius: 14, borderWidth: 2.5 },
+  bar: { flexDirection: 'row', alignItems: 'center', gap: PLAYER_DISC.gap, height: PLAYER_BAR_HEIGHT },
+  piece: {
+    width: PLAYER_DISC.size,
+    height: PLAYER_DISC.size,
+    borderRadius: PLAYER_DISC.size / 2,
+    borderWidth: 2.5,
+  },
   names: { flex: 1, minWidth: 0 },
 });

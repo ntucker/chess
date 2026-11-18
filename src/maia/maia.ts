@@ -21,7 +21,7 @@ interface Seen {
  * The position after `line` (UCI moves from the starting position) and the
  * network's input for it.
  */
-export function prepareMove(line: readonly string[]): { pos: Chess; planes: Float32Array } {
+export function prepareInput(line: readonly string[]): { pos: Chess; planes: Float32Array } {
   const history = Array.from(playLine(line), ({ pos, repetitions }) => ({
     pos: pos.clone(),
     repeated: repetitions > 1,
@@ -54,6 +54,27 @@ export function bestMove(pos: Chess, logits: Float32Array): string {
   }
   if (!best) throw new Error('Maia has no legal move');
   return makeUci(best);
+}
+
+/** How a position stands, from White's side. */
+export interface Evaluation {
+  /** White's expected score: 0 if Black wins, 0.5 if even, 1 if White wins. */
+  readonly score: number;
+  /** White's advantage in pawns, negative when Black is ahead. */
+  readonly pawns: number;
+}
+
+/**
+ * How `pos` stands, from the network's output `wdl`: the side to move's
+ * chances to win, draw and lose. Maia learned them from games between people
+ * of its rating, so they say how such players tend to score from here. Pawns
+ * come from the expected score the way Leela Chess Zero converts it
+ * (`90 * tan(1.5637541897 * q)` centipawns, where q runs from -1 to 1).
+ */
+export function evaluation(pos: Chess, wdl: Float32Array): Evaluation {
+  const [win, , loss] = wdl;
+  const q = pos.turn === 'white' ? win - loss : loss - win;
+  return { score: (1 + q) / 2, pawns: 0.9 * Math.tan(1.5637541897 * q) };
 }
 
 /**
