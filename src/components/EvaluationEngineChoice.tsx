@@ -1,10 +1,12 @@
 import { a11yState, Pressable, Text, useTheme } from '@reactive/silk-native';
-import { Fragment } from 'react';
+import { useId } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { EVALUATION_ENGINES, type EvaluationEngine } from '@/evaluation/evaluation';
 import { setEvaluationEngine, useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
 import { JUDGE_RATING } from '@/maia/maia';
+
+const WEB = process.env.EXPO_OS === 'web';
 
 const ENGINE_CHOICES: Record<EvaluationEngine, { label: string; hint: string }> = {
   stockfish: {
@@ -25,6 +27,7 @@ const ENGINE_CHOICES: Record<EvaluationEngine, { label: string; hint: string }> 
 export function EvaluationEngineChoice() {
   const engine = useEvaluationEngine();
   const { color } = useTheme().theme.semantic;
+  const id = useId();
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel="Evaluation bar" style={styles.row}>
       <Text role="caption" tone="secondary">
@@ -33,8 +36,11 @@ export function EvaluationEngineChoice() {
       {EVALUATION_ENGINES.map((value, index) => {
         const selected = value === engine;
         const { label, hint } = ENGINE_CHOICES[value];
+        const hintId = `${id}-${value}`;
         return (
-          <Fragment key={value}>
+          // Each dot stays with the engine after it, so a wrapped line never
+          // starts with one.
+          <View key={value} style={styles.item}>
             {index > 0 ? (
               <Text role="caption" tone="secondary" aria-hidden>
                 ·
@@ -44,6 +50,9 @@ export function EvaluationEngineChoice() {
               accessibilityRole="radio"
               accessibilityLabel={label}
               accessibilityHint={hint}
+              // React Native Web ignores accessibilityHint, so the web reads
+              // the hint from the hidden text below.
+              {...(WEB ? { 'aria-describedby': hintId } : {})}
               {...a11yState({ checked: selected })}
               hitSlop={8}
               onPress={() => setEvaluationEngine(value)}
@@ -62,7 +71,12 @@ export function EvaluationEngineChoice() {
                 </Text>
               )}
             </Pressable>
-          </Fragment>
+            {WEB ? (
+              <Text nativeID={hintId} style={styles.visuallyHidden}>
+                {hint}
+              </Text>
+            ) : null}
+          </View>
         );
       })}
     </View>
@@ -70,6 +84,15 @@ export function EvaluationEngineChoice() {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', columnGap: 2 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 2 },
+  item: { flexDirection: 'row', alignItems: 'center', columnGap: 2 },
   option: { borderRadius: 4, paddingHorizontal: 2, paddingVertical: 2 },
+  // Out of sight and out of layout, but still readable as a description.
+  visuallyHidden: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    overflow: 'hidden',
+    opacity: 0,
+  },
 });
