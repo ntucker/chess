@@ -12,6 +12,6 @@ export interface Evaluation {
 }
 
 /** The engines that can judge positions for the evaluation bar. */
-export type EvaluationEngine = 'stockfish' | 'maia';
+export const EVALUATION_ENGINES = ['stockfish', 'maia'] as const;
 
-export const DEFAULT_ENGINE: EvaluationEngine = 'stockfish';
+export type EvaluationEngine = (typeof EVALUATION_ENGINES)[number];

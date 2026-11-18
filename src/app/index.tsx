@@ -15,7 +15,7 @@ import { PLAYER_BAR_HEIGHT, PLAYER_DISC, PlayerBar } from '@/components/PlayerBa
 import { Scoresheet } from '@/components/Scoresheet';
 import { SideChooser } from '@/components/SideChooser';
 import { Transport } from '@/components/Transport';
-import type { EvaluationEngine } from '@/evaluation/evaluation';
+import { EVALUATION_ENGINES, type EvaluationEngine } from '@/evaluation/evaluation';
 import { setEvaluationEngine, useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
 import { type Color, colorName, opposite } from '@/game/replay';
 import { useGame } from '@/game/useGame';
@@ -26,15 +26,21 @@ import { spotlight } from '@/theme/theme';
 /** Maia's strength for now; picking it comes with the opening lessons. */
 const RATING: MaiaRating = 1500;
 
-const ENGINES = [
-  { value: 'stockfish', label: 'Stockfish' },
-  { value: 'maia', label: 'Maia' },
-] as const;
-
-const ENGINE_NOTES: Record<EvaluationEngine, string> = {
-  stockfish: 'How the position stands, judged by the Stockfish chess engine.',
-  maia: `How players rated about ${JUDGE_RATING} tend to score from here. Uses less memory.`,
+const ENGINE_CHOICES: Record<EvaluationEngine, { label: string; note: string }> = {
+  stockfish: {
+    label: 'Stockfish',
+    note: 'How the position stands, judged by the Stockfish chess engine.',
+  },
+  maia: {
+    label: 'Maia',
+    note: `How players rated about ${JUDGE_RATING} tend to score from here. Uses less memory.`,
+  },
 };
+
+const ENGINE_OPTIONS = EVALUATION_ENGINES.map((value) => ({
+  value,
+  label: ENGINE_CHOICES[value].label,
+}));
 
 export default function PlayScreen() {
   const game = useGame(RATING);
@@ -158,12 +164,12 @@ export default function PlayScreen() {
                   <Eyebrow>Evaluation bar</Eyebrow>
                   <PillChoice
                     label="Evaluation bar"
-                    options={ENGINES}
+                    options={ENGINE_OPTIONS}
                     value={engine}
                     onChange={setEvaluationEngine}
                   />
                   <Text role="caption" tone="secondary">
-                    {ENGINE_NOTES[engine]}
+                    {ENGINE_CHOICES[engine].note}
                   </Text>
                 </Stack>
                 <Separator />

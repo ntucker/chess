@@ -44,7 +44,13 @@ export class SupersededError extends Error {
   }
 }
 
-let connected: { send: Send; ready: boolean } | undefined;
+/** An attached engine, and whether it has finished its handshake. */
+interface Session {
+  readonly send: Send;
+  ready: boolean;
+}
+
+let connected: Session | undefined;
 let running: Search | undefined;
 let waiting: Search | undefined;
 
@@ -56,12 +62,12 @@ let waiting: Search | undefined;
  */
 export function attachStockfish(send: Send): Connection {
   handOverRunning();
-  const session = { send, ready: false };
+  const session: Session = { send, ready: false };
   connected = session;
   send('uci');
   return {
     receive(line) {
-      if (connected === session) handleLine(line);
+      if (connected === session) handleLine(session, line);
     },
     detach() {
       if (connected !== session) return;
@@ -89,10 +95,9 @@ export function stockfishEvaluation(line: readonly string[]): Promise<Evaluation
   });
 }
 
-function handleLine(line: string) {
-  if (!connected) return;
+function handleLine(session: Session, line: string) {
   if (line === 'uciok') {
-    connected.ready = true;
+    session.ready = true;
     startNext();
     return;
   }
