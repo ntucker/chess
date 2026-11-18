@@ -3,14 +3,26 @@ import { describe, expect, it } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { bestMove, prepareMove } from './maia';
-import { parseNetwork, policyLogits } from './network';
-import { POLICY_SLOTS, policySlot } from './policy';
+import { SquareSet } from 'chessops/squareSet';
+import { makeUci } from 'chessops/util';
 
-const maia1100 = parseNetwork(readFileSync(join(__dirname, '../../assets/maia/maia-1100.bin')));
+import { bestMove, prepareMove } from './maia';
+import { type MaiaNetwork, parseNetwork, policyLogits } from './network';
+import { POLICY_SLOTS, policySlot } from './policy';
+import REFERENCE from './reference-moves.json';
+
+const load = (rating: number) =>
+  parseNetwork(readFileSync(join(__dirname, `../../assets/maia/maia-${rating}.bin`)));
+const networks = new Map([1100, 1900].map((rating) => [rating, load(rating)]));
+const maia1100 = networks.get(1100)!;
+
+const think = (network: MaiaNetwork, line: string) => {
+  const prepared = prepareMove(line ? line.split(' ') : []);
+  return { ...prepared, logits: policyLogits(network, prepared.planes) };
+};
 const play = (line: string) => {
-  const { pos, planes } = prepareMove(line ? line.split(' ') : []);
-  return bestMove(pos, policyLogits(maia1100, planes));
+  const { pos, logits } = think(maia1100, line);
+  return bestMove(pos, logits);
 };
 
 describe('policy', () => {
@@ -48,6 +60,29 @@ describe('bestMove', () => {
     ['d2d4 g8f6 c2c4 g7g6 b1c3 f8g7 e2e4 d7d6 f2f3', 'e8h8'],
   ])('castles as the king taking its rook after %s', (line, move) => {
     expect(play(line)).toBe(move);
+  });
+
+  // reference-moves.json: positions from lichess's openings list, then
+  // random games stopped where a pawn can promote, with the move a separate
+  // NumPy implementation of the network (using lc0's own move tables) picks.
+  // For promotions it also gives the promotion that implementation rates
+  // highest, which checks the promotion slots even when another move wins.
+  it.each(REFERENCE)('Maia $rating after "$line" plays $move', ({ rating, line, ...want }) => {
+    const { pos, logits } = think(networks.get(rating)!, line);
+    expect(bestMove(pos, logits)).toBe(want.move);
+    if ('bestPromotion' in want) {
+      let best = { uci: '', score: -Infinity };
+      for (const [from, dests] of pos.allDests()) {
+        if (!pos.board.pawn.has(from)) continue;
+        for (const to of dests.intersect(SquareSet.backranks())) {
+          for (const promotion of ['queen', 'rook', 'bishop', 'knight'] as const) {
+            const score = logits[policySlot({ from, to, promotion }, pos.turn === 'black')!];
+            if (score > best.score) best = { uci: makeUci({ from, to, promotion }), score };
+          }
+        }
+      }
+      expect(best.uci).toBe(want.bestPromotion);
+    }
   });
 
   it('rejects an illegal line', () => {
