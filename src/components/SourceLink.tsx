@@ -1,21 +1,17 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from '@reactive/silk-native';
-import { Linking, Pressable, StyleSheet } from 'react-native';
+import { Linking, Pressable, type PressableProps, StyleSheet } from 'react-native';
 
 /** Where Opening Night's source code lives. */
 const SOURCE_URL = 'https://github.com/ntucker/chess';
 
-const web = process.env.EXPO_OS === 'web';
-
-// On the web the button is a real anchor that opens a new tab, through React
-// Native Web's `href` and `hrefAttrs` (missing from React Native's types).
-// expo-router's `<Link asChild>` would do the same, but it replaces the
-// Pressable's style function, which drops the button's size and hover state.
-const anchor = web
-  ? ({ href: SOURCE_URL, hrefAttrs: { target: '_blank', rel: 'noopener noreferrer' } } as object)
-  : {};
-
-type State = { pressed: boolean; hovered?: boolean };
+// On the web it is a real anchor that opens a new tab; elsewhere pressing it
+// opens the browser. (expo-router's `<Link asChild>` would drop the Pressable's
+// style function, and with it the size and hover state.)
+const opensSource: PressableProps =
+  process.env.EXPO_OS === 'web'
+    ? { href: SOURCE_URL, hrefAttrs: { target: '_blank', rel: 'noopener noreferrer' } }
+    : { onPress: () => Linking.openURL(SOURCE_URL) };
 
 /**
  * The GitHub mark, linking to the app's source. It stays quiet in the
@@ -26,16 +22,15 @@ export function SourceLink() {
   const { color } = theme.semantic;
   return (
     <Pressable
-      {...anchor}
-      onPress={web ? undefined : () => Linking.openURL(SOURCE_URL)}
+      {...opensSource}
       accessibilityRole="link"
       accessibilityLabel="Source code on GitHub"
-      style={({ pressed, hovered }: State) => [
+      style={({ pressed, hovered }) => [
         styles.button,
         (pressed || hovered) && { backgroundColor: color.tones.neutral.subtle },
       ]}
     >
-      {({ pressed, hovered }: State) => (
+      {({ pressed, hovered }) => (
         <Ionicons
           name="logo-github"
           size={20}
