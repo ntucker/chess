@@ -46,3 +46,7 @@ yarn-error.*
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
+
+# scripts/maia-reference.py
+.venv-maia/
+__pycache__/
