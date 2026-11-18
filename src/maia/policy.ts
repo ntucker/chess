@@ -5,33 +5,9 @@
  * White's). Castling is the king taking its own rook (`e1h1`), and a
  * promotion to a knight is the plain pawn move (`a7a8`).
  */
-const FILES = 'abcdefgh';
-const squareName = (square: number) => `${FILES[square % 8]}${Math.floor(square / 8) + 1}`;
 
-/** The vocabulary, in lc0's order. */
-export const POLICY_MOVES: readonly string[] = (() => {
-  const moves: string[] = [];
-  // Every queen or knight move from each square, by origin then destination.
-  for (let from = 0; from < 64; from++) {
-    for (let to = 0; to < 64; to++) {
-      const df = Math.abs((to % 8) - (from % 8));
-      const dr = Math.abs(Math.floor(to / 8) - Math.floor(from / 8));
-      const queen = to !== from && (df === 0 || dr === 0 || df === dr);
-      const knight = df * dr === 2;
-      if (queen || knight) moves.push(squareName(from) + squareName(to));
-    }
-  }
-  // Then promotions to a queen, rook or bishop from the 7th rank.
-  for (let file = 0; file < 8; file++) {
-    for (const toFile of [file - 1, file, file + 1]) {
-      if (toFile < 0 || toFile > 7) continue;
-      for (const piece of 'qrb') {
-        moves.push(`${FILES[file]}7${FILES[toFile]}8${piece}`);
-      }
-    }
-  }
-  return moves;
-})();
+import type { NormalMove } from 'chessops/types';
+import { makeSquare, roleToChar } from 'chessops/util';
 
 const KNIGHT_JUMPS = [
   [1, 2],
@@ -71,29 +47,48 @@ function policyPlane(df: number, dr: number, promotion: string): number {
   return direction * 7 + distance - 1;
 }
 
-/**
- * Where each vocabulary move's score sits in the network's policy output
- * (plane * 64 + origin square), by its index in `POLICY_MOVES`.
- */
-export const POLICY_OUTPUT_INDEX: Int16Array = Int16Array.from(POLICY_MOVES, (move) => {
-  const from = FILES.indexOf(move[0]) + 8 * (Number(move[1]) - 1);
-  const to = FILES.indexOf(move[2]) + 8 * (Number(move[3]) - 1);
-  const df = (to % 8) - (from % 8);
-  const dr = Math.floor(to / 8) - Math.floor(from / 8);
-  return policyPlane(df, dr, move.slice(4)) * 64 + from;
-});
-
-const VOCABULARY_INDEX = new Map(POLICY_MOVES.map((move, i) => [move, i]));
+const slot = (from: number, to: number, promotion = '') =>
+  policyPlane((to % 8) - (from % 8), Math.floor(to / 8) - Math.floor(from / 8), promotion) * 64 +
+  from;
 
 /**
- * The index in `POLICY_MOVES` of a legal move, given as UCI with castling
- * as king takes rook, or undefined if lc0 has no name for it.
+ * lc0's move names, each with where its score sits in the network's policy
+ * output (plane * 64 + origin square).
  */
-export function policyIndex(uci: string, blackToMove: boolean): number | undefined {
-  let move = uci.length === 5 && uci[4] === 'n' ? uci.slice(0, 4) : uci;
-  if (blackToMove) {
-    const mirror = (rank: string) => String(9 - Number(rank));
-    move = move[0] + mirror(move[1]) + move[2] + mirror(move[3]) + move.slice(4);
+export const POLICY_SLOTS: ReadonlyMap<string, number> = (() => {
+  const slots = new Map<string, number>();
+  // Every queen or knight move from each square.
+  for (let from = 0; from < 64; from++) {
+    for (let to = 0; to < 64; to++) {
+      const df = Math.abs((to % 8) - (from % 8));
+      const dr = Math.abs(Math.floor(to / 8) - Math.floor(from / 8));
+      const queen = to !== from && (df === 0 || dr === 0 || df === dr);
+      const knight = df * dr === 2;
+      if (queen || knight) slots.set(makeSquare(from) + makeSquare(to), slot(from, to));
+    }
   }
-  return VOCABULARY_INDEX.get(move);
+  // Promotions to a queen, rook or bishop, from the 7th rank to the 8th.
+  for (let from = 48; from < 56; from++) {
+    for (const to of [from + 7, from + 8, from + 9]) {
+      if (Math.abs((to % 8) - (from % 8)) > 1) continue;
+      for (const piece of 'qrb') {
+        slots.set(makeSquare(from) + makeSquare(to) + piece, slot(from, to, piece));
+      }
+    }
+  }
+  return slots;
+})();
+
+/**
+ * Where a legal move's score sits in the network's policy output, or
+ * undefined if lc0 has no name for it. Castling must be written as the king
+ * taking its rook, as chessops writes it.
+ */
+export function policySlot(move: NormalMove, blackToMove: boolean): number | undefined {
+  const mirror = blackToMove ? 56 : 0;
+  const promotion =
+    move.promotion && move.promotion !== 'knight' ? roleToChar(move.promotion) : '';
+  return POLICY_SLOTS.get(
+    makeSquare(move.from ^ mirror) + makeSquare(move.to ^ mirror) + promotion,
+  );
 }

@@ -7,7 +7,7 @@ import { getMaiaMove } from '@/resources/maia';
 import { type GameAction, gameReducer, initialGame } from './game';
 import { analyze, type Color, replay, toUci } from './replay';
 
-/** Maia answers in milliseconds; a pause makes it read as a reply, not a reflex. */
+/** The least time Maia takes to reply, so a fast answer reads as a reply, not a reflex. */
 const THINKING_MS = 400;
 
 /**

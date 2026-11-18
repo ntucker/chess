@@ -46,7 +46,7 @@ Silk isn't on npm yet, so the app installs it from the tarballs in `vendor/`.
 
 Maia is a set of neural networks, one for each rating from 1100 to 1900, trained on lichess games to predict the move a player of that rating would make. For example, the 1100 network opens 1. e4 and answers 1. e4 with 1... e5. The app plays the move its network rates most likely, as Maia does on lichess, without searching ahead.
 
-The networks ship with the app (`assets/maia/`, 1.2 MB each) and run on the device in plain TypeScript (`src/maia/network.ts`), so the app needs no server and works offline. A move takes about a tenth of a second on a laptop. It is worked out off the main thread (a Web Worker on the web, a background JavaScript runtime on iOS and Android), so the app keeps responding meanwhile. `yarn maia` downloads the original models from the [Maia repository](https://github.com/CSSLab/maia-chess) and rewrites them in the app's smaller format (`scripts/convert-maia.mjs` describes it).
+The networks ship with the app (`assets/maia/`, 1.2 MB each) and run on the device in plain TypeScript (`src/maia/network.ts`), so the app needs no server and works offline. A move takes about 25 ms on a laptop. It is worked out off the main thread (a Web Worker on the web, a background JavaScript runtime on iOS and Android), so the app keeps responding meanwhile. `yarn maia` downloads the original models from the [Maia repository](https://github.com/CSSLab/maia-chess) and rewrites them in the app's smaller format (`scripts/convert-maia.mjs` describes it).
 
 The models are licensed under the GPL-3.0, which is different from the app's own license; see `assets/maia/LICENSE`.
 

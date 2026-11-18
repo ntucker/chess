@@ -1,9 +1,9 @@
-import { Chess } from 'chessops/chess';
+import { castlingSide, Chess } from 'chessops/chess';
 import { chessgroundDests, chessgroundMove } from 'chessops/compat';
 import { makeFen, parseFen } from 'chessops/fen';
 import { makeSanAndPlay } from 'chessops/san';
 import type { Color } from 'chessops/types';
-import { opposite, parseSquare, parseUci } from 'chessops/util';
+import { kingCastlesTo, makeUci, opposite, parseSquare, parseUci } from 'chessops/util';
 
 export { COLORS, type Color } from 'chessops/types';
 export { opposite } from 'chessops/util';
@@ -43,31 +43,53 @@ export interface GameResult {
     | 'fifty-move rule';
 }
 
+/** A position reached while playing a line (see `playLine`). */
+export interface Step {
+  /** The position. Every step shares one object, so read it before the next. */
+  readonly pos: Chess;
+  /** How many times this position has occurred so far, counting this time. */
+  readonly repetitions: number;
+  /** The move that led here: absent for the starting position. */
+  readonly move?: Ply['move'];
+}
+
 /**
- * Plays `line` (UCI moves) from the starting position and returns every
- * position along the way, so that index `n` is the position after `n` moves.
- * Stops early at the first move that isn't legal.
+ * Plays `line` (UCI moves) from the starting position, yielding the start and
+ * then the position after each move. Stops early at the first move that isn't
+ * legal.
  */
-export function replay(line: readonly string[]): Ply[] {
+export function* playLine(line: readonly string[]): Generator<Step> {
   const pos = Chess.default();
   const seen = new Map<string, number>();
-  const ply = (move?: Ply['move']): Ply => {
+  const step = (move?: Ply['move']): Step => {
     // Repetition compares placement, turn, castling and en passant (EPD).
     const key = makeFen(pos.toSetup(), { epd: true });
     const repetitions = (seen.get(key) ?? 0) + 1;
     seen.set(key, repetitions);
-    return { fen: makeFen(pos.toSetup()), turn: pos.turn, move, repetitions };
+    return { pos, repetitions, move };
   };
 
-  const plies = [ply()];
+  yield step();
   for (const uci of line) {
     const move = parseUci(uci);
-    if (!move || !pos.isLegal(move)) break;
+    if (!move || !pos.isLegal(move)) return;
     const [from, to] = chessgroundMove(move);
     const san = makeSanAndPlay(pos, move);
-    plies.push(ply({ uci, san, from, to }));
+    yield step({ uci, san, from, to });
   }
-  return plies;
+}
+
+/**
+ * Every position of `line`, so that index `n` is the position after `n`
+ * moves. Stops early at the first move that isn't legal.
+ */
+export function replay(line: readonly string[]): Ply[] {
+  return Array.from(playLine(line), ({ pos, repetitions, move }) => ({
+    fen: makeFen(pos.toSetup()),
+    turn: pos.turn,
+    move,
+    repetitions,
+  }));
 }
 
 /** Adds the legal moves, check and result, which cost a move search each. */
@@ -97,10 +119,19 @@ export function lastPosition(line: readonly string[]): Position {
   return analyze(plies[plies.length - 1]);
 }
 
-/** Whether `uci` is a legal move in the position `fen`. */
-export function isLegal(fen: string, uci: string): boolean {
+/**
+ * `uci` as a line records it, or undefined if it isn't legal in `fen`.
+ * Castling is written as the king's two-square move (`e1g1`), whether it
+ * comes that way or as the king taking its rook (`e1h1`), as Maia and a king
+ * dragged onto its rook write it.
+ */
+export function lineMove(fen: string, uci: string): string | undefined {
+  const pos = Chess.fromSetup(parseFen(fen).unwrap()).unwrap();
   const move = parseUci(uci);
-  return !!move && Chess.fromSetup(parseFen(fen).unwrap()).unwrap().isLegal(move);
+  if (!move || !pos.isLegal(move)) return undefined;
+  const side = castlingSide(pos, move);
+  if (!side || !('from' in move)) return uci;
+  return makeUci({ from: move.from, to: kingCastlesTo(pos.turn, side) });
 }
 
 /** The UCI for a move between two squares, promoting pawns to queens. */

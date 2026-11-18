@@ -1,17 +1,16 @@
 /// <reference lib="webworker" />
 import { loadOnce } from './loadOnce';
-import { chooseMove } from './maia';
-import { parseNetwork } from './network';
+import { parseNetwork, policyLogits } from './network';
 
-/** Asks for Maia's move after `line`, with the network at `url`. */
+/** Asks for the policy output for `planes`, from the network at `url`. */
 export interface MaiaRequest {
   readonly id: number;
   readonly url: string;
-  readonly line: readonly string[];
+  readonly planes: Float32Array;
 }
 
 export type MaiaResponse =
-  | { readonly id: number; readonly move: string }
+  | { readonly id: number; readonly logits: Float32Array }
   | { readonly id: number; readonly error: string };
 
 const loadNetwork = loadOnce(async (url: string) => {
@@ -21,12 +20,12 @@ const loadNetwork = loadOnce(async (url: string) => {
 });
 
 self.onmessage = async ({ data }: MessageEvent<MaiaRequest>) => {
-  const { id, url, line } = data;
-  let reply: MaiaResponse;
+  const { id, url, planes } = data;
   try {
-    reply = { id, move: chooseMove(await loadNetwork(url), line) };
+    const logits = policyLogits(await loadNetwork(url), planes);
+    self.postMessage({ id, logits } satisfies MaiaResponse, [logits.buffer]);
   } catch (error) {
-    reply = { id, error: error instanceof Error ? error.message : String(error) };
+    const message = error instanceof Error ? error.message : String(error);
+    self.postMessage({ id, error: message } satisfies MaiaResponse);
   }
-  self.postMessage(reply);
 };

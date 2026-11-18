@@ -1,13 +1,15 @@
-import { castlingSide, Chess } from 'chessops/chess';
-import { makeFen } from 'chessops/fen';
-import type { Color, Role } from 'chessops/types';
-import { makeUci, parseUci } from 'chessops/util';
+import type { Chess } from 'chessops/chess';
+import { SquareSet } from 'chessops/squareSet';
+import { type NormalMove, ROLES } from 'chessops/types';
+import { makeUci, opposite } from 'chessops/util';
 
-import { INPUT_PLANES, type MaiaNetwork, policyLogits } from './network';
-import { POLICY_OUTPUT_INDEX, policyIndex } from './policy';
+import { playLine } from '@/game/replay';
+
+import { INPUT_PLANES } from './network';
+import { policySlot } from './policy';
 
 const HISTORY = 8;
-const ROLES: readonly Role[] = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
+const PROMOTIONS = ['queen', 'rook', 'bishop', 'knight'] as const;
 
 interface Seen {
   readonly pos: Chess;
@@ -16,76 +18,42 @@ interface Seen {
 }
 
 /**
- * Maia's move after `line` (UCI moves from the starting position), in UCI
- * (`e2e4`, `e1g1` to castle, `e7e8q`). Like Maia on lichess and maiachess.com,
- * it plays the move its network rates most likely for a person of its rating,
- * without searching.
- */
-export function chooseMove(network: MaiaNetwork, line: readonly string[]): string {
-  const { pos, planes } = prepareMove(line);
-  return bestMove(pos, policyLogits(network, planes));
-}
-
-/**
- * The position after `line` and the network's input for it: the first half of
- * `chooseMove`, for running the network somewhere else.
+ * The position after `line` (UCI moves from the starting position) and the
+ * network's input for it.
  */
 export function prepareMove(line: readonly string[]): { pos: Chess; planes: Float32Array } {
-  const history = playLine(line);
+  const history = Array.from(playLine(line), ({ pos, repetitions }) => ({
+    pos: pos.clone(),
+    repeated: repetitions > 1,
+  }));
+  if (history.length <= line.length) throw new Error(`Illegal move ${line[history.length - 1]}`);
   return { pos: history[history.length - 1].pos, planes: encodeInput(history) };
 }
 
-/** The legal move in `pos` that the network's output `logits` rates highest. */
+/**
+ * The legal move in `pos` that the network's output `logits` rates highest,
+ * in UCI with castling as the king taking its rook (`e1h1`). Like Maia on
+ * lichess and maiachess.com, this plays the move the network thinks a person
+ * of its rating most likely plays, without searching.
+ */
 export function bestMove(pos: Chess, logits: Float32Array): string {
-  let best: string | undefined;
+  let best: NormalMove | undefined;
   let bestScore = -Infinity;
   for (const [from, dests] of pos.allDests()) {
-    const promotes =
-      pos.board.get(from)?.role === 'pawn' && (pos.turn === 'white' ? from >= 48 : from < 16);
     for (const to of dests) {
-      for (const promotion of promotes ? (['queen', 'rook', 'bishop', 'knight'] as const) : [undefined]) {
-        // chessops, like lc0, writes castling as the king taking its rook.
+      const promotes = pos.board.pawn.has(from) && SquareSet.backranks().has(to);
+      for (const promotion of promotes ? PROMOTIONS : [undefined]) {
         const move = { from, to, promotion };
-        const index = policyIndex(makeUci(move), pos.turn === 'black');
-        if (index === undefined) continue;
-        const score = logits[POLICY_OUTPUT_INDEX[index]];
-        if (score > bestScore) {
-          bestScore = score;
-          best = toStandardUci(pos, move);
+        const slot = policySlot(move, pos.turn === 'black');
+        if (slot !== undefined && logits[slot] > bestScore) {
+          bestScore = logits[slot];
+          best = move;
         }
       }
     }
   }
   if (!best) throw new Error('Maia has no legal move');
-  return best;
-}
-
-/** UCI for `move`, with castling as the king's two-square move (`e1g1`). */
-function toStandardUci(pos: Chess, move: { from: number; to: number; promotion?: Role }) {
-  const side = castlingSide(pos, move);
-  if (!side) return makeUci(move);
-  const rank = move.from & ~7;
-  return makeUci({ from: move.from, to: rank + (side === 'h' ? 6 : 2) });
-}
-
-/** Every position of the game, from the start. */
-function playLine(line: readonly string[]): Seen[] {
-  const pos = Chess.default();
-  const counts = new Map<string, number>();
-  const seen = (): Seen => {
-    const key = makeFen(pos.toSetup(), { epd: true });
-    const count = counts.get(key) ?? 0;
-    counts.set(key, count + 1);
-    return { pos: pos.clone(), repeated: count > 0 };
-  };
-  const history = [seen()];
-  for (const uci of line) {
-    const move = parseUci(uci);
-    if (!move || !pos.isLegal(move)) throw new Error(`Illegal move ${uci}`);
-    pos.play(move);
-    history.push(seen());
-  }
-  return history;
+  return makeUci(best);
 }
 
 /**
@@ -105,8 +73,8 @@ function playLine(line: readonly string[]): Seen[] {
 function encodeInput(history: readonly Seen[]): Float32Array {
   const planes = new Float32Array(INPUT_PLANES * 64);
   const current = history[history.length - 1].pos;
-  const us: Color = current.turn;
-  const them: Color = us === 'white' ? 'black' : 'white';
+  const us = current.turn;
+  const them = opposite(us);
   const mirror = us === 'black' ? 56 : 0;
   const fill = (plane: number, value = 1) => planes.fill(value, plane * 64, plane * 64 + 64);
 
@@ -114,8 +82,9 @@ function encodeInput(history: readonly Seen[]): Float32Array {
     const { pos, repeated } = history[history.length - 1 - i];
     const base = i * 13;
     ROLES.forEach((role, r) => {
-      const pieces = pos.board.pieces(us, role);
-      for (const square of pieces) planes[(base + r) * 64 + (square ^ mirror)] = 1;
+      for (const square of pos.board.pieces(us, role)) {
+        planes[(base + r) * 64 + (square ^ mirror)] = 1;
+      }
       for (const square of pos.board.pieces(them, role)) {
         planes[(base + 6 + r) * 64 + (square ^ mirror)] = 1;
       }
