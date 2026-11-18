@@ -17,4 +17,6 @@ lesson, not just a giant book to read.
 
 ## Platforms
 
-Mostly focused on the web right now. Ship Android eventually. No iOS.
+- Web first: build, test and polish every feature there.
+- Android later: keep it possible, but don't test features on it. A basic proof of concept is enough.
+- No iOS.
