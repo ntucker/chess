@@ -1,6 +1,6 @@
-import { a11yState, Surface, Text, useTheme } from '@reactive/silk-native';
+import { a11yState, Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 interface PillOption<T extends string> {
   readonly value: T;
