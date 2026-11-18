@@ -42,7 +42,7 @@ MAIA = 'https://raw.githubusercontent.com/CSSLab/maia-chess/master/maia_weights'
 LC0 = 'https://raw.githubusercontent.com/LeelaChessZero/lc0/b38ed00a25baed9554d2675ec376bd50dad18195'
 OPENINGS = 'https://raw.githubusercontent.com/lichess-org/chess-openings/3ba6b20d31b2e6125cb0e6a2e792f400717d9d39'
 RATINGS = [1100, 1900]
-PIECES = [chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN, chess.KING]
+PROMOTIONS_PER_SIDE = 6
 
 
 def download(url):
@@ -50,15 +50,17 @@ def download(url):
         return response.read()
 
 
-# lc0's move names in vocabulary order, and where each sits in the policy output.
-_encoder = download(f'{LC0}/src/neural/encoder.cc').decode()
-MOVES = re.findall(r'"([a-h][1-8][a-h][1-8][qrb]?)"', _encoder[_encoder.index('kMoveStrs'):])
-assert len(MOVES) == 1858, len(MOVES)
-VOCABULARY = {move: i for i, move in enumerate(MOVES)}
-_policy_map = download(f'{LC0}/src/neural/tables/policy_map.h').decode()
-_table = _policy_map[_policy_map.index('kConvPolicyMap[] = {') + 20:].split('};')[0]
-CONV_POLICY_MAP = [int(v) for v in re.findall(r'-?\d+', _table)]
-assert len(CONV_POLICY_MAP) == 73 * 64, len(CONV_POLICY_MAP)  # the first 73 of the 80 output planes
+def policy_slots():
+    """Where each lc0 move name's score sits in the flattened policy output."""
+    encoder = download(f'{LC0}/src/neural/encoder.cc').decode()
+    moves = re.findall(r'"([a-h][1-8][a-h][1-8][qrb]?)"', encoder[encoder.index('kMoveStrs'):])
+    assert len(moves) == 1858, len(moves)
+    policy_map = download(f'{LC0}/src/neural/tables/policy_map.h').decode()
+    table = policy_map[policy_map.index('kConvPolicyMap[] = {') + 20:].split('};')[0]
+    # One entry for each square of the first 73 of the policy's 80 planes: a move's index, or -1.
+    move_indexes = [int(v) for v in re.findall(r'-?\d+', table)]
+    assert len(move_indexes) == 73 * 64, len(move_indexes)
+    return {moves[move]: slot for slot, move in enumerate(move_indexes) if move >= 0}
 
 
 def read_message(data):
@@ -82,9 +84,6 @@ def read_message(data):
         wire = key & 7
         if wire == 0:
             value = varint()
-        elif wire == 1:
-            value = struct.unpack_from('<d', data, at)[0]
-            at += 8
         elif wire == 2:
             length = varint()
             value = data[at:at + length]
@@ -113,26 +112,19 @@ def layer(fields):
 
 
 def conv_block(fields):
-    """A ConvBlock's weights [outputs, inputs, 3, 3] and biases, with batch norm folded in."""
-    weights = layer(message(fields, 1))
-    biases = layer(message(fields, 2))
-    means = layer(message(fields, 3))
-    variances = layer(message(fields, 4))
-    gammas = layer(message(fields, 5))
-    betas = layer(message(fields, 6))
-    outputs = len(means) or len(biases)
-    if not len(biases):
-        biases = np.zeros(outputs, np.float32)
-    weights = weights.reshape(outputs, -1)
-    if len(means):
-        if not len(gammas):
-            gammas = np.ones(outputs, np.float32)
-        if not len(betas):
-            betas = np.zeros(outputs, np.float32)
-        scale = gammas / np.sqrt(variances + 1e-5)
-        weights = weights * scale[:, None]
-        biases = -scale * (means - biases) + betas
-    return weights.reshape(outputs, -1, 3, 3), biases
+    """A ConvBlock's weights [outputs, inputs, 3, 3] and biases, with batch norm folded in.
+
+    Maia's last policy convolution has biases and no batch norm; every other
+    convolution has batch norm and no biases.
+    """
+    weights, biases, means = (layer(message(fields, n)) for n in (1, 2, 3))
+    if not len(means):
+        return weights.reshape(len(biases), -1, 3, 3), biases
+    assert not len(biases), 'a convolution with both biases and batch norm'
+    variances, gammas, betas = (layer(message(fields, n)) for n in (4, 5, 6))
+    scale = gammas / np.sqrt(variances + 1e-5)
+    weights = weights.reshape(len(means), -1) * scale[:, None]
+    return weights.reshape(len(means), -1, 3, 3), betas - scale * means
 
 
 def load(rating):
@@ -170,16 +162,21 @@ def relu(v):
     return np.maximum(v, 0)
 
 
+def squeeze_excite(y, w1, b1, w2, b2):
+    """y with each channel scaled and shifted by gates computed from every channel's mean."""
+    channels = y.shape[0]
+    hidden = relu(w1.reshape(-1, channels) @ y.reshape(channels, 64).mean(1) + b1)
+    gates = w2.reshape(2 * channels, -1) @ hidden + b2
+    gamma = 1 / (1 + np.exp(-gates[:channels]))
+    return gamma[:, None, None] * y + gates[channels:, None, None]
+
+
 def forward(net, planes):
     """The policy head's 80 planes x 64 squares, flattened."""
     x = relu(conv3(planes, *net['input']))
-    for conv1, conv2, w1, b1, w2, b2 in net['blocks']:
+    for conv1, conv2, *se in net['blocks']:
         y = conv3(relu(conv3(x, *conv1)), *conv2)
-        channels = y.shape[0]
-        hidden = relu(w1.reshape(-1, channels) @ y.reshape(channels, 64).mean(1) + b1)
-        gates = w2.reshape(2 * channels, -1) @ hidden + b2
-        gamma = 1 / (1 + np.exp(-gates[:channels]))
-        x = relu(gamma[:, None, None] * y + gates[channels:, None, None] + x)
+        x = relu(squeeze_excite(y, *se) + x)
     p = conv3(relu(conv3(x, *net['policy1'])), *net['policy'])
     return p.reshape(-1)
 
@@ -196,7 +193,7 @@ def encode(board):
         history.append(b.copy())
     for i, h in enumerate(history):
         base = i * 13
-        for k, piece in enumerate(PIECES):
+        for k, piece in enumerate(chess.PIECE_TYPES):
             for s in h.pieces(piece, us):
                 planes[base + k, flip(s)] = 1
             for s in h.pieces(piece, not us):
@@ -220,28 +217,21 @@ def encode(board):
 
 def lc0_uci(board, move):
     """UCI as lc0 writes it: castling as the king taking its rook (e1h1)."""
-    uci = move.uci()
-    if board.is_castling(move):
-        uci = uci[:2] + ('h' if move.to_square % 8 == 6 else 'a') + uci[3]
-    return uci
+    return board.uci(move, chess960=True)
 
 
-def scores(net, board):
+def lc0_name(board, move):
+    """The move's name in lc0's vocabulary: lc0's UCI seen from the side to move, with knight promotions as plain moves."""
+    name = lc0_uci(board, move)
+    if board.turn == chess.BLACK:
+        name = name.translate(str.maketrans('12345678', '87654321'))
+    return name.removesuffix('n')
+
+
+def scores(net, slots, board):
     """Each legal move's score, by the move."""
     out = forward(net, encode(board))
-    policy = np.full(1858, -np.inf, np.float32)
-    for i, j in enumerate(CONV_POLICY_MAP):
-        if j >= 0:
-            policy[j] = out[i]
-    result = {}
-    for move in board.legal_moves:
-        name = lc0_uci(board, move)
-        if board.turn == chess.BLACK:
-            name = name[0] + str(9 - int(name[1])) + name[2] + str(9 - int(name[3])) + name[4:]
-        if name.endswith('n'):
-            name = name[:4]
-        result[move] = policy[VOCABULARY[name]]
-    return result
+    return {move: out[slots[lc0_name(board, move)]] for move in board.legal_moves}
 
 
 def best(move_scores):
@@ -262,62 +252,70 @@ def opening_positions():
         for token in row['pgn'].split():
             if not token.endswith('.'):
                 board.push_san(token)
-        if not board.is_game_over():
-            boards.append(board)
+        boards.append(board)
     return boards
 
 
 def line(board):
-    replay = chess.Board()
-    moves = []
-    for move in board.move_stack:
-        moves.append(lc0_uci(replay, move))
-        replay.push(move)
-    return ' '.join(moves)
+    """The moves played, as the app records them: castling as the king's two-square move (e1g1)."""
+    return ' '.join(move.uci() for move in board.move_stack)
 
 
-def promotion_positions(net, rating):
-    """Positions from seeded random games where a pawn can promote: 6 with each side to move."""
+def first_promotion(rng):
+    """A random game, mostly pawn moves, up to where a pawn can promote: its board, or None if no pawn could within 160 moves."""
+    board = chess.Board()
+    for _ in range(160):
+        moves = list(board.legal_moves)
+        if not moves:
+            return None
+        if any(move.promotion for move in moves):
+            return board
+        pawn_moves = [m for m in moves if board.piece_type_at(m.from_square) == chess.PAWN]
+        if pawn_moves and rng.random() < 0.7:
+            board.push(rng.choice(pawn_moves))
+        else:
+            board.push(rng.choice(moves))
+    return None
+
+
+def promotion_positions(net, slots, rating):
+    """Positions from seeded random games where a pawn can promote, PROMOTIONS_PER_SIDE with each side to move.
+
+    After the first half for a side, only positions where a pawn can promote by
+    capturing count, so both kinds of promotion are tested.
+    """
     rng = random.Random(rating)
     found = {chess.WHITE: 0, chess.BLACK: 0}
     rows = []
-    while min(found.values()) < 6:
-        board = chess.Board()
-        for _ in range(160):
-            moves = list(board.legal_moves)
-            if not moves:
-                break
-            promotions = [m for m in moves if m.promotion]
-            if promotions:
-                captures = [m for m in promotions if board.is_capture(m)]
-                if found[board.turn] < 6 and (captures or found[board.turn] < 3):
-                    move_scores = scores(net, board)
-                    rows.append({
-                        'rating': rating,
-                        'line': ' '.join(m.uci() for m in board.move_stack),
-                        'move': lc0_uci(board, best(move_scores)),
-                        'bestPromotion': best({m: move_scores[m] for m in promotions}).uci(),
-                    })
-                    found[board.turn] += 1
-                break
-            pawn_moves = [m for m in moves if board.piece_type_at(m.from_square) == chess.PAWN]
-            if pawn_moves and rng.random() < 0.7:
-                board.push(rng.choice(pawn_moves))
-            else:
-                board.push(rng.choice(moves))
+    while min(found.values()) < PROMOTIONS_PER_SIDE:
+        board = first_promotion(rng)
+        if board is None or found[board.turn] == PROMOTIONS_PER_SIDE:
+            continue
+        promotions = [m for m in board.legal_moves if m.promotion]
+        if found[board.turn] >= PROMOTIONS_PER_SIDE // 2 and not any(map(board.is_capture, promotions)):
+            continue
+        move_scores = scores(net, slots, board)
+        rows.append({
+            'rating': rating,
+            'line': line(board),
+            'move': lc0_uci(board, best(move_scores)),
+            'bestPromotion': best({m: move_scores[m] for m in promotions}).uci(),
+        })
+        found[board.turn] += 1
     return rows
 
 
 def main():
+    slots = policy_slots()
     nets = {rating: load(rating) for rating in RATINGS}
     openings = opening_positions()
     rows = []
     for rating in RATINGS:
         for board in openings:
-            move = best(scores(nets[rating], board))
+            move = best(scores(nets[rating], slots, board))
             rows.append({'rating': rating, 'line': line(board), 'move': lc0_uci(board, move)})
     for rating in RATINGS:
-        rows += promotion_positions(nets[rating], rating)
+        rows += promotion_positions(nets[rating], slots, rating)
     sys.stdout.write('[\n' + ',\n'.join('  ' + json.dumps(row) for row in rows) + '\n]\n')
 
 
