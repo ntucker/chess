@@ -117,7 +117,8 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   number: { width: 36, textAlign: 'right', paddingRight: 10, fontFamily: fonts.mono },
-  // The focus ring sits 1px out, so it fits in the 4px between cells.
+  // Overrides the theme's 2px focus-ring offset: 1px out, the 2px ring fits
+  // in the 4px between cells.
   cell: { flex: 1, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 5, outlineOffset: 1 },
   san: { fontFamily: fonts.mono, fontSize: 15 },
 });
