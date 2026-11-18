@@ -1,5 +1,6 @@
 # Lints, typechecks and runs the unit tests on every pull request and every
-# push to main. The web export is checked separately, in web.yml.
+# push to main, except changes to Markdown alone. The web export is checked
+# separately, in web.yml.
 name: CI
 
 on:
