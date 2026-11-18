@@ -2,7 +2,7 @@ import { AsyncBoundary, useSuspense } from '@data-client/react';
 import { a11yValue, Text, useReducedMotion, useTheme } from '@reactive/silk-native';
 import { useDeferredValue, useMemo } from 'react';
 import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
-import Animated from 'react-native-reanimated';
+import Animated, { type CSSTransitionTimingFunction, cubicBezier } from 'react-native-reanimated';
 
 import { type Color, colorName, type GameResult, lastPosition, opposite } from '@/game/replay';
 import { type Evaluation, getEvaluation } from '@/resources/maia';
@@ -132,9 +132,7 @@ function Bar({
           {
             transitionProperty: 'height',
             transitionDuration: reducedMotion ? 0 : motion.slow.durationMs,
-            // Reanimated can't read the theme's CSS easing string; ease-out is
-            // the nearest named curve.
-            transitionTimingFunction: 'ease-out',
+            transitionTimingFunction: timingFunction(motion.slow.easing),
           },
         ]}
       />
@@ -156,6 +154,18 @@ function Bar({
       ) : null}
     </View>
   );
+}
+
+/**
+ * A theme easing, which is a CSS string, as a Reanimated timing function.
+ * Reanimated takes the named curves as strings but a `cubic-bezier(...)` only
+ * as its own object.
+ */
+function timingFunction(easing: string): CSSTransitionTimingFunction {
+  const bezier = /^cubic-bezier\((.*)\)$/.exec(easing);
+  if (!bezier) return easing as CSSTransitionTimingFunction;
+  const [x1, y1, x2, y2] = bezier[1].split(',').map(Number);
+  return cubicBezier(x1, y1, x2, y2);
 }
 
 const styles = StyleSheet.create({
