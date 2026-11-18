@@ -13,6 +13,7 @@ import { PLAYER_BAR_HEIGHT, PlayerBar } from '@/components/PlayerBar';
 import { Scoresheet } from '@/components/Scoresheet';
 import { SideChooser } from '@/components/SideChooser';
 import { Transport } from '@/components/Transport';
+import { material } from '@/game/material';
 import { type Color, colorName, opposite } from '@/game/replay';
 import { useGame } from '@/game/useGame';
 import type { MaiaRating } from '@/maia/models';
@@ -28,6 +29,8 @@ export default function PlayScreen() {
   const { theme } = useTheme();
   const { color, radius } = theme.semantic;
   const maiaColor = opposite(playerColor);
+  // Follows the board, so stepping back through the moves shows what was up then.
+  const edge = material(current.fen);
 
   const chooseSide = (side: Color) => {
     setNextColor(side);
@@ -78,6 +81,7 @@ export default function PlayScreen() {
                 color={maiaColor}
                 toMove={toMove === maiaColor}
                 thinking={thinking}
+                material={edge[maiaColor]}
               />
               <Surface elevation="overlay" radius="md" border="subtle" style={styles.frame}>
                 <View style={[styles.fill, { borderRadius: radius.md - 1, overflow: 'hidden' }]}>
@@ -99,6 +103,7 @@ export default function PlayScreen() {
                 detail={colorName(playerColor)}
                 color={playerColor}
                 toMove={toMove === playerColor}
+                material={edge[playerColor]}
               >
                 <Transport ply={ply} total={line.length} onGoto={goto} />
               </PlayerBar>
