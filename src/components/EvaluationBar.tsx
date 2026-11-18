@@ -66,8 +66,8 @@ function EvaluatedBar({
   const result = shown && lastPosition(shown).result;
   // A finished game needs no evaluation; null skips the fetch.
   const evaluation = useSuspense(
-    getEvaluation,
-    ...(judge && shown && !result ? ([judge, shown] as const) : [null]),
+    getEvaluation[judge ?? 'stockfish'],
+    judge && shown && !result ? shown : null,
   );
   const reading = result
     ? resultReading(result)

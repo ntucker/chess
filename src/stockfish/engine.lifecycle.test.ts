@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 import type * as Engine from './engine';
 
-// The engine's start, restart and failure, against scripted engines whose
+// The engine's start, takeover and stopping, against scripted engines whose
 // every command is recorded and whose every line the test writes.
 let engine: typeof Engine;
 

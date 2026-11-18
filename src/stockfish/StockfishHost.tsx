@@ -32,6 +32,7 @@ export function StockfishHost() {
       engine.start(loader, wasm);
       connection.current = attachStockfish((command) => engine.send(command));
     } catch (error) {
+      // Evaluations wait for an engine, as after a crash (below).
       console.error(error);
     }
   };

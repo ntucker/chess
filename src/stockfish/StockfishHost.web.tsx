@@ -25,15 +25,18 @@ export function StockfishHost() {
         assetUrl(WASM),
         (line) => connection?.receive(line),
         (message) => {
-          // Evaluations wait for an engine again; choosing Maia and then
-          // Stockfish starts a new one.
+          // Evaluations wait for an engine again (see engine.ts); choosing
+          // Maia and then Stockfish starts a new one.
           console.error(`Stockfish stopped: ${message}`);
           connection?.detach();
         },
       );
       connection = attachStockfish(started.send);
       engine = started;
-    })().catch((error: unknown) => console.error(error));
+    })()
+      // Evaluations wait for an engine, as after a crash (above). Failing
+      // them would make the bar ask again at once, over and over.
+      .catch((error: unknown) => console.error(error));
     return () => {
       unmounted = true;
       engine?.terminate();

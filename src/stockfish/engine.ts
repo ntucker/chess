@@ -53,7 +53,7 @@ let waiting: Search | undefined;
  * stopped or fails. Requests made while no engine is connected wait for one.
  */
 export function attachStockfish(send: Send): Connection {
-  requeueRunning();
+  handOverRunning();
   const session = { send, ready: false };
   connected = session;
   send('uci');
@@ -64,7 +64,7 @@ export function attachStockfish(send: Send): Connection {
     detach() {
       if (connected !== session) return;
       connected = undefined;
-      requeueRunning();
+      handOverRunning();
     },
   };
 }
@@ -120,10 +120,11 @@ function startNext() {
 }
 
 /**
- * The search the engine was running will never finish there: queue it again
- * for the next engine, unless a newer request replaced it.
+ * The search the engine was running will never finish there: hands it to
+ * the next engine, or fails it with SupersededError if a newer request
+ * replaced it.
  */
-function requeueRunning() {
+function handOverRunning() {
   if (running && !running.superseded && !waiting) {
     running.last = undefined;
     waiting = running;

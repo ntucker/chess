@@ -30,8 +30,8 @@ describe('getEvaluation', () => {
     };
 
     // The board steps from the start to A, and on to B before A is done.
-    const a = controller.fetch(getEvaluation, 'stockfish', ['e2e4']);
-    const b = controller.fetch(getEvaluation, 'stockfish', ['e2e4', 'e7e5']);
+    const a = controller.fetch(getEvaluation.stockfish, ['e2e4']);
+    const b = controller.fetch(getEvaluation.stockfish, ['e2e4', 'e7e5']);
     await finish('e2e4', 1, 25); // B stops A's search, which then fails.
     await expect(a).rejects.toBeInstanceOf(SupersededError);
     await finish('e2e4 e7e5', 1, 40);
@@ -39,9 +39,11 @@ describe('getEvaluation', () => {
 
     // Then it steps back to A. A's failure says nothing about A, so A is
     // evaluated again (useSuspense uses the same test as fetchIfStale)
-    // rather than failing again at once. Stepping takes at least 1 ms.
+    // rather than failing again at once. A kept failure counts as fresh
+    // until the millisecond after it was saved (errorExpiryLength 0), and
+    // stepping back takes longer than that.
     await new Promise((resolve) => setTimeout(resolve, 2));
-    const again = controller.fetchIfStale(getEvaluation, 'stockfish', ['e2e4']);
+    const again = controller.fetchIfStale(getEvaluation.stockfish, ['e2e4']);
     await finish('e2e4', 2, -30);
     expect((await again)?.pawns).toBe(0.3);
     engine.detach();
