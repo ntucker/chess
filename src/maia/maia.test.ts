@@ -3,10 +3,10 @@ import { describe, expect, it } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { chooseMove, MaiaNetwork } from './maia';
+import { chooseMove, parseNetwork } from './maia';
 import { POLICY_MOVES, POLICY_OUTPUT_INDEX, policyIndex } from './policy';
 
-const maia1100 = MaiaNetwork.parse(
+const maia1100 = parseNetwork(
   readFileSync(join(__dirname, '../../assets/maia/maia-1100.bin')),
 );
 const play = (line: string) => chooseMove(maia1100, line ? line.split(' ') : []);

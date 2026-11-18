@@ -3,10 +3,10 @@ import { makeFen } from 'chessops/fen';
 import type { Color, Role } from 'chessops/types';
 import { makeUci, parseUci } from 'chessops/util';
 
-import { INPUT_PLANES, type MaiaNetwork } from './network';
+import { INPUT_PLANES, type MaiaNetwork, policyLogits } from './network';
 import { POLICY_OUTPUT_INDEX, policyIndex } from './policy';
 
-export { MaiaNetwork } from './network';
+export { type MaiaNetwork, parseNetwork, policyLogits } from './network';
 
 const HISTORY = 8;
 const ROLES: readonly Role[] = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
@@ -24,10 +24,21 @@ interface Seen {
  * without searching.
  */
 export function chooseMove(network: MaiaNetwork, line: readonly string[]): string {
-  const history = playLine(line);
-  const pos = history[history.length - 1].pos;
-  const logits = network.policyLogits(encodeInput(history));
+  const { pos, planes } = prepareMove(line);
+  return bestMove(pos, policyLogits(network, planes));
+}
 
+/**
+ * The position after `line` and the network's input for it: the first half of
+ * `chooseMove`, for running the network somewhere else.
+ */
+export function prepareMove(line: readonly string[]): { pos: Chess; planes: Float32Array } {
+  const history = playLine(line);
+  return { pos: history[history.length - 1].pos, planes: encodeInput(history) };
+}
+
+/** The legal move in `pos` that the network's output `logits` rates highest. */
+export function bestMove(pos: Chess, logits: Float32Array): string {
   let best: string | undefined;
   let bestScore = -Infinity;
   for (const [from, dests] of pos.allDests()) {

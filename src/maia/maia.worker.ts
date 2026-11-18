@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-import { chooseMove, MaiaNetwork } from './maia';
+import { chooseMove, type MaiaNetwork, parseNetwork } from './maia';
 
 /** Asks for Maia's move after `line`, with the network at `url`. */
 export interface MaiaRequest {
@@ -17,7 +17,7 @@ const networks = new Map<string, Promise<MaiaNetwork>>();
 async function load(url: string): Promise<MaiaNetwork> {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
-  return MaiaNetwork.parse(await response.arrayBuffer());
+  return parseNetwork(await response.arrayBuffer());
 }
 
 self.onmessage = async ({ data }: MessageEvent<MaiaRequest>) => {
