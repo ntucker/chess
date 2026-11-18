@@ -41,4 +41,5 @@ for example the `post-push-review` workflow. If they don't, ask the person to in
 ## 5. Work queue
 
 Confirm the work-queue tool loads; follow-ups go there (`PROJECTS.md`, "Follow-ups"). Ask the person
-whether to keep the default cap of 3 workers at once, and save any other cap to project memory.
+whether to change the worker cap (`PROJECTS.md`, "Roles and models"), and save any other cap to
+project memory.

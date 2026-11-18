@@ -15,6 +15,7 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
 - Default for advisors and subagents: the strongest model (latest Fable). Exceptions:
   - Haiku: post-push reviews.
   - Sonnet: simple merge conflicts.
+- The coordinator runs at most 3 workers at once, unless the person set another cap in project memory.
 - Workers rely on user-kit's skills (Skill tool) and workflows (Workflow tool), both named
   `user-kit:<name>`. If one you need is missing, use the fallback the step gives; with none, pause
   that step. Either way, tell the coordinator, who asks the person to install user-kit.
@@ -33,7 +34,8 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
 5. Keep the PR mergeable, but act only on a real conflict with its base. Simple conflicts (lockfiles,
    adjacent edits, generated files): hand to a Sonnet subagent with branch, base and how to validate.
    Logic conflicts: resolve yourself.
-6. After every push, with the Workflow tool, run workflow `user-kit:post-push-review` with
+6. After every push, run workflow `user-kit:post-push-review` with the Workflow tool (the Skill tool
+   lists it too and points to the workflow) with
    `{ range: "<sha before push>..HEAD", goals: "<project goal>", repo: "<checkout path>" }`.
    Without the Workflow tool or that workflow, run Haiku subagents in parallel for goals, repo rules,
    engineering, adversarial, reuse and React data flow. Verify each finding; fix real ones, reject the
@@ -48,8 +50,8 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
 - A description states what landing the PR does. Its numbers (test counts, timings, match rates) come
   from one measurement of the PR's final head against its base. Never report or pool runs made while
   iterating. Say plainly when a case shows no difference.
-- Visible UI changes include screenshots of the web export, built and served locally as README.md,
-  "Web deploys" describes (PRs don't deploy a preview). Add light and dark versions only when the
+- Visible UI changes include screenshots of the web export, built and served locally as described
+  in the "Web deploys" section of README.md (PRs don't deploy a preview). Add light and dark versions only when the
   change looks different between the two (colors, theme tokens, images).
 
 ## Follow-ups
@@ -58,8 +60,7 @@ Never leave one dangling. Fold it into the PR if it improves it, reject it with 
 hand it on:
 
 - Project-scope work: tell the coordinator, with a self-contained brief. The coordinator adds it to
-  the work queue (the work-queue tool, never the queue file by hand) and runs at most 3 workers at once
-  unless the person sets another cap.
+  the work queue (the work-queue tool, never the queue file by hand).
 - Work outside the project's scope: draft a GitHub issue on `ntucker/chess` (self-contained) and hand
   it to the coordinator. File it yourself only when the person asked in their own words.
 - The same holds for any other write outside the repo and your PR (GitHub comments elsewhere, Slack).
@@ -90,7 +91,8 @@ Link the upstream PR from the chess PR, and say "merge <upstream PR> first" when
 
 Work needing the person's PC (Android device or emulator, local tools) runs on GLADOS, a Windows PC,
 in WSL: threads start a Remote Control session (`start_remote_control`). GLADOS can't build or run
-iOS (no Mac); iOS is still a target, so keep iOS code paths working.
+iOS (no Mac); iOS is still a target, so keep iOS code paths working. When a change touches iOS-only
+code (native modules, worklets, `Platform.OS` branches), say in the PR that iOS is unverified.
 
 ## Keeping this file current
 
