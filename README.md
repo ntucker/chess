@@ -38,9 +38,28 @@ yarn web        # or: yarn ios, yarn android
 | Chess rules | [chessops](https://github.com/niklasf/chessops) | `src/game/` |
 | Engine | [Maia](https://www.maiachess.com) | `src/resources/maia.ts` |
 
-Maia's API doesn't allow calls from other websites, so the web build asks this app's own server route (`src/app/api/maia/`), which forwards the request. The iOS and Android apps call Maia directly.
+Maia's API doesn't allow calls from other websites, so the web build asks a proxy that forwards the request: this app's own server route (`src/app/api/maia/`), or, on GitHub Pages, a Cloudflare Worker (see [Web deploys](#web-deploys)). The iOS and Android apps call Maia directly.
 
 Silk isn't on npm yet, so the app installs it from the tarballs in `vendor/`.
+
+## Web deploys
+
+Every push to `main` publishes the web app to GitHub Pages, at https://ntucker.github.io/chess/ (`.github/workflows/web.yml`). Pages only serves files, so the build is exported as static HTML, and the server route that forwards requests to Maia can't run there. The workflow deploys the same forwarding code as a Cloudflare Worker (`workers/maia-proxy/`) and builds the app to call it. The Worker only answers requests from the Pages site's origin and only forwards Maia's move request, so other web pages can't use it as a proxy. Scripts outside a browser can set any origin; if that ever costs quota, add a Cloudflare rate-limiting rule.
+
+One-time setup:
+
+1. In the repository's **Settings → Pages**, set **Source** to **GitHub Actions**.
+2. Sign in to [Cloudflare](https://dash.cloudflare.com) (the free plan is enough) and open **Workers & Pages** once, so the account gets a `workers.dev` subdomain.
+3. Under **My Profile → API Tokens**, create a token from the **Edit Cloudflare Workers** template.
+4. In the repository's **Settings → Secrets and variables → Actions**, add two secrets: `CLOUDFLARE_API_TOKEN` (the token) and `CLOUDFLARE_ACCOUNT_ID` (shown on the account's home page in the Cloudflare dashboard).
+
+Then push to `main`, or run the **Web** workflow from the Actions tab.
+
+To try the Pages build locally, export it the way the workflow does and serve `dist/` at `/chess/`:
+
+```bash
+PAGES_BASE_PATH=/chess EXPO_PUBLIC_MAIA_PROXY_URL=https://opening-night-maia.<subdomain>.workers.dev yarn expo export --platform web
+```
 
 ## Logo
 

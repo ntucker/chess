@@ -1,0 +1,14 @@
+// .github/workflows/web.yml deploys this on every push to main, replacing
+// ALLOWED_ORIGINS with the Pages site's origin.
+{
+  "name": "opening-night-maia",
+  "main": "index.ts",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": true },
+  "vars": {
+    // Expo's dev server, for trying the Worker locally (`wrangler dev`).
+    "ALLOWED_ORIGINS": "http://localhost:8081"
+  }
+}
