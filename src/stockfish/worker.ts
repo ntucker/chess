@@ -12,7 +12,8 @@ export interface StockfishWorker {
  * bytes; the loader reads the address from its own address's hash. Running
  * the loader from a Blob means it works whatever MIME type the loader file
  * was served with. `onLine` gets each line the engine prints, and `onError`
- * the message if the worker fails to start or crashes.
+ * the message if the worker fails to start or crashes (it's then
+ * already stopped).
  *
  * Runs on the web and inside the hidden web view on Android
  * (EngineView), so it may only use the DOM.
@@ -38,12 +39,15 @@ export function startStockfishWorker(
     freeFiles();
     if (typeof data === 'string') onLine(data);
   };
-  worker.onerror = (event) => onError(event.message || 'Stockfish stopped');
-  return {
-    send: (command) => worker.postMessage(command),
-    terminate() {
-      worker.terminate();
-      freeFiles();
-    },
+  const terminate = () => {
+    worker.terminate();
+    freeFiles();
   };
+  // A worker that fails to start or crashes answers nothing more: stop it
+  // and free its files before reporting it.
+  worker.onerror = (event) => {
+    terminate();
+    onError(event.message || 'Stockfish stopped');
+  };
+  return { send: (command) => worker.postMessage(command), terminate };
 }
