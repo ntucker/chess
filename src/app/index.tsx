@@ -78,6 +78,7 @@ export default function PlayScreen() {
                 color={maiaColor}
                 toMove={toMove === maiaColor}
                 thinking={thinking}
+                material={game.material[maiaColor]}
               />
               <Surface elevation="overlay" radius="md" border="subtle" style={styles.frame}>
                 <View style={[styles.fill, { borderRadius: radius.md - 1, overflow: 'hidden' }]}>
@@ -99,6 +100,7 @@ export default function PlayScreen() {
                 detail={colorName(playerColor)}
                 color={playerColor}
                 toMove={toMove === playerColor}
+                material={game.material[playerColor]}
               >
                 <Transport ply={ply} total={line.length} onGoto={goto} />
               </PlayerBar>
