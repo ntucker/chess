@@ -10,16 +10,19 @@ on:
     paths-ignore: ['**/*.md']
   workflow_dispatch:
 
+# Only the deploy job, which never runs on pull requests, may write to Pages.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      # Setup Pages reads the site's settings (its base path).
+      pages: read
     # A newer push makes this build worthless; deploys still never overlap.
     concurrency:
       group: pages-build-${{ github.ref }}
@@ -68,6 +71,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency: pages
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
