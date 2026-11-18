@@ -1,13 +1,10 @@
+import { MAIA_MOVE_PATH } from '../../src/resources/maiaApi';
 import { forwardMaiaMove } from '../../src/server/maiaProxy';
 
 /**
- * A Cloudflare Worker that forwards the web app's requests for Maia's move
- * to Maia's API, adding the CORS headers Maia leaves out. The GitHub Pages
- * build needs it because Pages only serves static files, so the app's own
- * API route (src/app/api/maia) doesn't exist there.
- *
- * It answers only `POST /play/get_move`, and only for pages on
- * ALLOWED_ORIGINS, so it can't be used as a general-purpose proxy.
+ * The Maia proxy for the GitHub Pages build (see src/server/maiaProxy.ts),
+ * adding the CORS headers Maia leaves out. It answers only Maia's move
+ * request, and only for pages on ALLOWED_ORIGINS.
  */
 export interface Env {
   /** Origins that may call it, comma-separated: `https://ntucker.github.io`. */
@@ -21,7 +18,7 @@ export default {
     if (!allowed.includes(origin)) {
       return new Response('Origin not allowed', { status: 403 });
     }
-    if (new URL(request.url).pathname !== '/play/get_move') {
+    if (new URL(request.url).pathname !== MAIA_MOVE_PATH) {
       return withCors(new Response('Not found', { status: 404 }), origin);
     }
     if (request.method === 'OPTIONS') {

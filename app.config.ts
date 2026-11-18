@@ -1,11 +1,9 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 
 /**
- * app.json, plus the changes for the GitHub Pages build
- * (.github/workflows/web.yml), which sets PAGES_BASE_PATH to the path the
- * site is served from (`/chess`, or empty on a custom domain). Pages only
- * serves files, so the web build is exported as static HTML instead of
- * server-rendered, and every URL in it starts with that path.
+ * app.json, plus the GitHub Pages build (.github/workflows/web.yml): when
+ * PAGES_BASE_PATH is set (`/chess`, or empty on a custom domain), export
+ * static HTML instead of server rendering, under that path.
  */
 export default ({ config }: ConfigContext): ExpoConfig => {
   const basePath = process.env.PAGES_BASE_PATH;

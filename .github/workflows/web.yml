@@ -12,6 +12,7 @@ on:
   push:
     branches: [main]
   pull_request:
+    paths-ignore: ['**/*.md']
   workflow_dispatch:
 
 permissions:
@@ -73,6 +74,12 @@ jobs:
           fi
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
+      # Main bundles the Worker when it deploys; pull requests only check that
+      # it still bundles.
+      - name: Check that the Maia proxy bundles
+        if: github.event_name == 'pull_request'
+        run: npx --yes wrangler@4.163.0 deploy --dry-run --config workers/maia-proxy/wrangler.jsonc
+
       - name: Export the web app
         env:
           # Pull requests skip Setup Pages, so they build for the usual /chess.
@@ -95,9 +102,7 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    concurrency:
-      group: pages
-      cancel-in-progress: false
+    concurrency: pages
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

@@ -3,11 +3,14 @@ import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import worker from './index';
 
 const env = { ALLOWED_ORIGINS: 'https://ntucker.github.io, http://localhost:8081' };
-const url = 'https://proxy.example/play/get_move?maia_name=maia_kdd_1500';
 
 function request(init: RequestInit & { origin?: string; path?: string } = {}) {
-  const { origin = 'https://ntucker.github.io', path, ...rest } = init;
-  return new Request(path ? `https://proxy.example${path}` : url, {
+  const {
+    origin = 'https://ntucker.github.io',
+    path = '/play/get_move?maia_name=maia_kdd_1500',
+    ...rest
+  } = init;
+  return new Request(`https://proxy.example${path}`, {
     method: 'POST',
     body: '["e2e4"]',
     ...rest,

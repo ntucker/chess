@@ -1,8 +1,5 @@
-// The Maia proxy for the GitHub Pages build (see index.ts).
-// .github/workflows/web.yml deploys it on every push to main, replacing
-// ALLOWED_ORIGINS with the Pages site's origin. To deploy it by hand:
-//   npx wrangler@4.163.0 deploy --config workers/maia-proxy/wrangler.jsonc \
-//     --var ALLOWED_ORIGINS:https://<user>.github.io
+// .github/workflows/web.yml deploys this on every push to main, replacing
+// ALLOWED_ORIGINS with the Pages site's origin.
 {
   "name": "opening-night-maia",
   "main": "index.ts",
