@@ -1,3 +1,7 @@
+// localStorage on Android, where the app remembers its settings
+// (src/evaluation/useEvaluationEngine.ts). The web has its own.
+import 'expo-sqlite/localStorage/install';
+
 import { DataProvider } from '@data-client/react';
 import { DMMono_400Regular } from '@expo-google-fonts/dm-mono';
 import {
@@ -10,6 +14,8 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
+import { useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
+import { StockfishHost } from '@/stockfish/StockfishHost';
 import { themes } from '@/theme/theme';
 import { useColorScheme } from '@/theme/useColorScheme';
 
@@ -30,7 +36,16 @@ export default function RootLayout() {
       <SilkProvider theme={themes[colorScheme]}>
         <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
         <Stack screenOptions={{ headerShown: false }} />
+        <EvaluationEngineHost />
       </SilkProvider>
     </DataProvider>
   );
+}
+
+/**
+ * Runs Stockfish while the evaluation bar uses it. Choosing Maia instead
+ * stops it, which frees its memory.
+ */
+function EvaluationEngineHost() {
+  return useEvaluationEngine() === 'stockfish' ? <StockfishHost /> : null;
 }

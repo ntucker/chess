@@ -5,7 +5,9 @@ import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 import Animated, { type CSSTransitionTimingFunction, cubicBezier } from 'react-native-reanimated';
 
 import { type Color, colorName, type GameResult, lastPosition, opposite } from '@/game/replay';
-import { type Evaluation, getEvaluation } from '@/resources/maia';
+import { useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
+import type { Evaluation, EvaluationEngine } from '@/evaluation/evaluation';
+import { getEvaluation } from '@/resources/evaluation';
 import { fonts, pieceColors } from '@/theme/theme';
 
 interface Props {
@@ -20,46 +22,53 @@ interface Props {
 /**
  * A column beside the board that fills with White from White's end and Black
  * from Black's, in proportion to how each side is expected to score, with the
- * leading side's advantage in pawns at its end. It keeps showing the last
- * position's evaluation until the new one is ready.
+ * leading side's advantage in pawns (or moves to mate) at its end, as the
+ * engine chosen in the settings judges it. It keeps showing the last
+ * evaluation until the new one is ready.
  */
 export function EvaluationBar({ line, orientation, style }: Props) {
+  const engine = useEvaluationEngine();
   const position = line.join(' ');
   // A failed evaluation leaves the bar empty only until the board shows
-  // another position. AsyncBoundary attaches its `listen` again whenever the
-  // function changes, so a new listener per position that resets at once
-  // clears the last position's error.
-  const resetOnMove = useMemo(() => resetListener(position), [position]);
+  // another position or the setting picks another engine. AsyncBoundary
+  // attaches its `listen` again whenever the function changes, so a new
+  // listener for each that resets at once clears the last one's error.
+  const resetOnChange = useMemo(() => resetListener(engine, position), [engine, position]);
   const empty = <Bar orientation={orientation} style={style} />;
   return (
-    <AsyncBoundary fallback={empty} errorComponent={() => empty} listen={resetOnMove}>
-      <EvaluatedBar position={position} orientation={orientation} style={style} />
+    <AsyncBoundary fallback={empty} errorComponent={() => empty} listen={resetOnChange}>
+      <EvaluatedBar engine={engine} position={position} orientation={orientation} style={style} />
     </AsyncBoundary>
   );
 }
 
 /**
  * A boundary listener that resets the boundary as soon as it's attached. It
- * ignores `position`: taking it only makes each position's listener a
- * distinct function.
+ * ignores its arguments: taking them only makes each engine and position's
+ * listener a distinct function.
  */
-const resetListener = (_position: string) => (reset: () => void) => {
+const resetListener = (_engine: EvaluationEngine, _position: string) => (reset: () => void) => {
   reset();
   return () => {};
 };
 
 function EvaluatedBar({
+  engine,
   position,
   orientation,
   style,
-}: Omit<Props, 'line'> & { readonly position: string }) {
-  // Starts empty, so neither the server nor the first render runs the
-  // network, and then trails the board until the evaluation is ready.
+}: Omit<Props, 'line'> & { readonly engine: EvaluationEngine; readonly position: string }) {
+  // Both start empty, so neither the server nor the first render runs an
+  // engine, and then trail the board together (React updates every deferred
+  // value of a render at once) until the evaluation is ready.
+  const judge = useDeferredValue<EvaluationEngine | null>(engine, null);
   const moves = useDeferredValue<string | null>(position, null);
   const shown = moves === null ? null : moves ? moves.split(' ') : [];
   const result = shown && lastPosition(shown).result;
-  // A finished game needs no evaluation; null skips the fetch.
-  const evaluation = useSuspense(getEvaluation, shown && !result ? shown : null);
+  // Null, which skips the fetch, on the first render (nothing deferred yet)
+  // and once the game is over.
+  const fetchArgs = judge && shown && !result ? ([judge, shown] as const) : null;
+  const evaluation = useSuspense(getEvaluation, ...(fetchArgs ?? [null]));
   const reading = result
     ? resultReading(result)
     : evaluation && evaluationReading(evaluation);
@@ -75,7 +84,17 @@ interface Reading {
   readonly description: string;
 }
 
-function evaluationReading({ score, pawns }: Evaluation): Reading {
+function evaluationReading({ score, pawns, mate }: Evaluation): Reading {
+  if (mate !== undefined) {
+    const leader = score < 0.5 ? 'black' : 'white';
+    const moves = Math.abs(mate);
+    return {
+      score,
+      label: `M${moves}`,
+      leader,
+      description: `${colorName(leader)} mates in ${moves} ${moves === 1 ? 'move' : 'moves'}`,
+    };
+  }
   // Tenths of a pawn below 10, whole pawns from there up to 99.
   const tenths = Math.round(Math.abs(pawns) * 10) / 10;
   const label = tenths < 10 ? tenths.toFixed(1) : String(Math.min(99, Math.round(tenths)));

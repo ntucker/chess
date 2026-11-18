@@ -3870,6 +3870,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"await-lock@npm:^2.2.2":
+  version: 2.2.2
+  resolution: "await-lock@npm:2.2.2"
+  checksum: 10c0/bedf00dad44c6325a655bf3bd523ab9e1ce41023da6a8c379990c76ac1d942ac7e5301627ab84ba37917ab5247506ba429b7f6e4bf77074093f255571b9ad5ee
+  languageName: node
+  linkType: hard
+
 "babel-jest@npm:30.5.2, babel-jest@npm:^30.0.0":
   version: 30.5.2
   resolution: "babel-jest@npm:30.5.2"
@@ -5783,6 +5790,19 @@ __metadata:
   peerDependencies:
     expo: "*"
   checksum: 10c0/fbf0a862836d643b6974fb45beca0282db91c0482b3ea0973b4a09d9682f544c281da0452b89697dbc2609cf363244ed8d02468e1a2ac7d75ccfdc8890ad245a
+  languageName: node
+  linkType: hard
+
+"expo-sqlite@npm:~58.0.17":
+  version: 58.0.18
+  resolution: "expo-sqlite@npm:58.0.18"
+  dependencies:
+    await-lock: "npm:^2.2.2"
+  peerDependencies:
+    expo: "*"
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/72eb09da293b6df562224fde8c2fcdbe4a8fcd4e3b3e2cedef3e8f15c0ab6b26458e18f1b10f0d402f593024c04a28553cae28cef1000bba99adb5878666770c
   languageName: node
   linkType: hard
 
@@ -9132,6 +9152,7 @@ __metadata:
     expo-linking: "npm:~58.0.17"
     expo-router: "npm:~58.0.31"
     expo-splash-screen: "npm:~58.0.14"
+    expo-sqlite: "npm:~58.0.17"
     expo-status-bar: "npm:~58.0.5"
     expo-system-ui: "npm:~58.0.7"
     jest: "npm:^30.5.2"
@@ -9146,6 +9167,7 @@ __metadata:
     react-native-svg: "npm:15.16.0"
     react-native-web: "npm:~0.21.4"
     react-native-worklets: "npm:0.13.0"
+    stockfish: "npm:19.0.1"
     typescript: "npm:~6.0.3"
   languageName: unknown
   linkType: soft
@@ -10452,6 +10474,15 @@ __metadata:
   version: 2.0.2
   resolution: "statuses@npm:2.0.2"
   checksum: 10c0/a9947d98ad60d01f6b26727570f3bcceb6c8fa789da64fe6889908fe2e294d57503b14bf2b5af7605c2d36647259e856635cd4c49eab41667658ec9d0080ec3f
+  languageName: node
+  linkType: hard
+
+"stockfish@npm:19.0.1":
+  version: 19.0.1
+  resolution: "stockfish@npm:19.0.1"
+  bin:
+    stockfish: scripts/cli.js
+  checksum: 10c0/a25d8f17d5bb6dbabc3589f84bdec68f7b19c649ae89a430c8189eeea34ec34d500627514dfc918d51267cc387b255e69d55b104df50eae77339968d24f0ef0c
   languageName: node
   linkType: hard
 
