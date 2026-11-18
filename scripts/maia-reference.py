@@ -17,12 +17,8 @@ nothing with the app:
   lc0's own move list and policy map (src/neural/encoder.cc and
   src/neural/tables/policy_map.h at lc0 v0.32.0), downloaded when it runs.
 
-The positions are 150 from lichess's openings list for each rating, then 12 per
-rating from random games stopped where a pawn can promote, with the promotion
-the network rates highest. Everything is seeded and downloaded at pinned
-versions, so the output only changes when this script or the models change.
-Rerun it after changing the models or adding positions or ratings, and review
-the moves that changed.
+Everything is seeded and downloaded at pinned versions, so the output only
+changes when this script or the models change. AGENTS.md says when to rerun it.
 """
 
 import csv
@@ -56,7 +52,7 @@ def policy_slots():
     moves = re.findall(r'"([a-h][1-8][a-h][1-8][qrb]?)"', encoder[encoder.index('kMoveStrs'):])
     assert len(moves) == 1858, len(moves)
     policy_map = download(f'{LC0}/src/neural/tables/policy_map.h').decode()
-    table = policy_map[policy_map.index('kConvPolicyMap[] = {') + 20:].split('};')[0]
+    table = policy_map.split('kConvPolicyMap[] = {')[1].split('};')[0]
     # One entry for each square of the first 73 of the policy's 80 planes: a move's index, or -1.
     move_indexes = [int(v) for v in re.findall(r'-?\d+', table)]
     assert len(move_indexes) == 73 * 64, len(move_indexes)
@@ -103,10 +99,7 @@ def message(fields, n):
 
 def layer(fields):
     """A Weights.Layer, decoded from LINEAR16."""
-    params = fields.get(3, [b''])[0]
-    if not params:
-        return np.zeros(0, np.float32)
-    theta = np.frombuffer(params, dtype='<u2').astype(np.float32) / 65535.0
+    theta = np.frombuffer(fields.get(3, [b''])[0], dtype='<u2').astype(np.float32) / 65535.0
     low, high = fields.get(1, [0.0])[0], fields.get(2, [0.0])[0]
     return np.float32(low) * (1 - theta) + np.float32(high) * theta
 
@@ -185,7 +178,7 @@ def encode(board):
     """lc0's 112 input planes for a board whose move stack starts from the starting position."""
     planes = np.zeros((112, 64), np.float32)
     us = board.turn
-    flip = (lambda s: s ^ 56) if us == chess.BLACK else (lambda s: s)
+    flip = chess.square_mirror if us == chess.BLACK else (lambda s: s)
     history = [board.copy()]
     b = board.copy()
     while len(history) < 8 and b.move_stack:
@@ -193,23 +186,16 @@ def encode(board):
         history.append(b.copy())
     for i, h in enumerate(history):
         base = i * 13
-        for k, piece in enumerate(chess.PIECE_TYPES):
-            for s in h.pieces(piece, us):
-                planes[base + k, flip(s)] = 1
-            for s in h.pieces(piece, not us):
-                planes[base + 6 + k, flip(s)] = 1
+        for offset, color in ((0, us), (6, not us)):
+            for k, piece in enumerate(chess.PIECE_TYPES):
+                for s in h.pieces(piece, color):
+                    planes[base + offset + k, flip(s)] = 1
         if h.is_repetition(2):
             planes[base + 12] = 1
-    if board.has_queenside_castling_rights(us):
-        planes[104] = 1
-    if board.has_kingside_castling_rights(us):
-        planes[105] = 1
-    if board.has_queenside_castling_rights(not us):
-        planes[106] = 1
-    if board.has_kingside_castling_rights(not us):
-        planes[107] = 1
-    if us == chess.BLACK:
-        planes[108] = 1
+    for plane, color in ((104, us), (106, not us)):
+        planes[plane] = board.has_queenside_castling_rights(color)
+        planes[plane + 1] = board.has_kingside_castling_rights(color)
+    planes[108] = us == chess.BLACK
     planes[109] = board.halfmove_clock
     planes[111] = 1
     return planes.reshape(112, 8, 8)
@@ -221,7 +207,10 @@ def lc0_uci(board, move):
 
 
 def lc0_name(board, move):
-    """The move's name in lc0's vocabulary: lc0's UCI seen from the side to move, with knight promotions as plain moves."""
+    """The move's name in lc0's vocabulary.
+
+    That is lc0's UCI seen from the side to move, with knight promotions as plain moves.
+    """
     name = lc0_uci(board, move)
     if board.turn == chess.BLACK:
         name = name.translate(str.maketrans('12345678', '87654321'))
@@ -244,8 +233,7 @@ def opening_positions():
     for name in 'abcde':
         tsv = download(f'{OPENINGS}/{name}.tsv').decode()
         rows += list(csv.DictReader(io.StringIO(tsv), delimiter='\t'))
-    random.seed(1)
-    random.shuffle(rows)
+    random.Random(1).shuffle(rows)
     boards = []
     for row in rows[:150]:
         board = chess.Board()
@@ -262,7 +250,10 @@ def line(board):
 
 
 def first_promotion(rng):
-    """A random game, mostly pawn moves, up to where a pawn can promote: its board, or None if no pawn could within 160 moves."""
+    """A random game, mostly pawn moves, played until a pawn can promote.
+
+    Returns that board, or None if no pawn could promote within 160 moves.
+    """
     board = chess.Board()
     for _ in range(160):
         moves = list(board.legal_moves)

@@ -67,6 +67,9 @@ describe('bestMove', () => {
   // NumPy implementation of the network (using lc0's own move tables) picks.
   // For promotions it also gives the promotion that implementation rates
   // highest, which checks the promotion slots even when another move wins.
+  // A failure means the engine broke, unless scripts/convert-maia.mjs changed
+  // and the two best moves score almost the same: that implementation reads
+  // the original weights, which the app's 16-bit copies can tip in a near tie.
   it.each(REFERENCE)('Maia $rating after "$line" plays $move', ({ rating, line, ...want }) => {
     const { pos, logits } = think(networks.get(rating)!, line);
     expect(bestMove(pos, logits)).toBe(want.move);
