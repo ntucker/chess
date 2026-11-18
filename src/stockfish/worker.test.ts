@@ -59,18 +59,11 @@ describe('startStockfishWorker', () => {
     expect(revoked).toEqual(['blob:1', 'blob:2']);
   });
 
-  it('passes on only the lines the app needs', () => {
+  it('filters what the engine prints (forwardNeededLines)', () => {
     const lines: string[] = [];
     start((line) => lines.push(line));
-    for (const data of [
-      'Stockfish 19',
-      'uciok',
-      'info depth 1 score cp 20 nodes 20',
-      'info depth 2 score cp 31 nodes 80',
-      'bestmove e2e4 ponder e7e5',
-    ])
-      FakeWorker.last.onmessage?.({ data });
-    expect(lines).toEqual(['uciok', 'info depth 2 score cp 31 nodes 80', 'bestmove e2e4 ponder e7e5']);
+    for (const data of ['Stockfish 19', 'uciok']) FakeWorker.last.onmessage?.({ data });
+    expect(lines).toEqual(['uciok']);
   });
 
   it('sends commands to the worker', () => {
