@@ -13,14 +13,13 @@ const JUDGES: Record<EvaluationEngine, (line: readonly string[]) => Promise<Eval
 
 /**
  * How the position after the moves played so far stands, as `engine` judges
- * it: White's expected score, advantage in pawns, and moves to mate when
- * Stockfish sees one. Both engines run on the device, off the main thread.
+ * it: White's expected score, advantage in pawns, and moves to mate and the
+ * best move when Stockfish sees them. Both engines run on the device, off the main thread.
  * A position's evaluation never changes, so it is kept for as long as the app
  * runs.
  *
  * - `stockfish`: Stockfish 19 lite (src/stockfish). It needs StockfishHost
- *   mounted, and a newer position stops the search for an older one (see
- *   SupersededError).
+ *   mounted, and searches one position at a time, newest first.
  * - `maia`: Maia 1900's value head, how players of that rating tend to score
  *   from here (src/maia).
  *

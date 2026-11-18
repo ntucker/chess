@@ -25,7 +25,7 @@ const RATING: MaiaRating = 1500;
 
 export default function PlayScreen() {
   const game = useGame(RATING);
-  const { playerColor, line, ply, current, toMove, thinking, goto } = game;
+  const { playerColor, line, qualities, ply, current, toMove, thinking, goto } = game;
   const [nextColor, setNextColor] = useState<Color>(playerColor);
   const { theme } = useTheme();
   const { color, radius } = theme.semantic;
@@ -97,6 +97,7 @@ export default function PlayScreen() {
                       movableColor={game.canMove ? playerColor : undefined}
                       dests={current.dests}
                       lastMove={current.move ? [current.move.from, current.move.to] : undefined}
+                      lastMoveQuality={qualities[ply - 1]}
                       check={current.check}
                       onMove={game.move}
                       dom={{ style: styles.fill, scrollEnabled: false }}
@@ -142,7 +143,7 @@ export default function PlayScreen() {
                 <Separator />
                 <Stack gap="3">
                   <Eyebrow>Scoresheet</Eyebrow>
-                  <Scoresheet plies={game.plies} ply={ply} onGoto={goto} />
+                  <Scoresheet plies={game.plies} qualities={qualities} ply={ply} onGoto={goto} />
                 </Stack>
                 <EvaluationEngineChoice />
               </Stack>

@@ -1,6 +1,12 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { evaluationFromScore, forwardNeededLines, parseScore, positionCommand } from './uci';
+import {
+  evaluationFromScore,
+  forwardNeededLines,
+  parseBestMove,
+  parseScore,
+  positionCommand,
+} from './uci';
 
 describe('parseScore', () => {
   it("reads a finished depth's score", () => {
@@ -22,6 +28,14 @@ describe('parseScore', () => {
     expect(parseScore('info depth 18 currmove e2e4 currmovenumber 1')).toBe(undefined);
     expect(parseScore('info string NNUE evaluation using nn-61e7af4bb97d.nnue')).toBe(undefined);
     expect(parseScore('bestmove e2e4 ponder e7e5')).toBe(undefined);
+  });
+});
+
+describe('parseBestMove', () => {
+  it('reads the move, and nothing once the game is over', () => {
+    expect(parseBestMove('bestmove e2e4 ponder e7e5')).toBe('e2e4');
+    expect(parseBestMove('bestmove e1g1')).toBe('e1g1');
+    expect(parseBestMove('bestmove (none)')).toBe(undefined);
   });
 });
 

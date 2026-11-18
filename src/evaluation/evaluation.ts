@@ -9,6 +9,8 @@ export interface Evaluation {
    * negative when Black does, 0 when the side to move is already mated.
    */
   readonly mate?: number;
+  /** The move the engine would play here (UCI), when it names one; Maia's value head doesn't. */
+  readonly best?: string;
 }
 
 /** The engines that can judge positions for the evaluation bar. */

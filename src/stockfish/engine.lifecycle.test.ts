@@ -52,15 +52,36 @@ describe('the engine lifecycle', () => {
     await expect(evaluation).rejects.toThrow('without a score');
   });
 
-  it('drops a waiting search for a newer one while no engine is connected', async () => {
+  it('runs the newest waiting search first, then the older ones', async () => {
     const older = engine.stockfishEvaluation(['e2e4']);
     const newer = engine.stockfishEvaluation(['d2d4']);
-    await expect(older).rejects.toBeInstanceOf(engine.SupersededError);
     const { print, sent } = scripted();
     print('uciok');
-    expect(sent).not.toContain('position startpos moves e2e4');
+    expect(sent.at(-2)).toBe('position startpos moves d2d4');
+    print('info depth 12 score cp -20');
+    print('bestmove d7d5');
+    expect(await newer).toEqual({ score: expect.any(Number), pawns: 0.2, best: 'd7d5' });
+    expect(sent.at(-2)).toBe('position startpos moves e2e4');
+    print('info depth 12 score cp -30');
+    print('bestmove e7e5');
+    expect((await older).pawns).toBe(0.3);
+  });
+
+  it('runs a stopped search again from the start, after the request that stopped it', async () => {
+    const { print, sent } = scripted();
+    print('uciok');
+    const older = engine.stockfishEvaluation(['e2e4']);
+    print('info depth 10 score cp 900');
+    const newer = engine.stockfishEvaluation(['d2d4']);
+    expect(sent.at(-1)).toBe('stop');
+    print('bestmove e7e5'); // The stopped search's answer is thrown away.
+    expect(sent.at(-2)).toBe('position startpos moves d2d4');
     print('info depth 12 score cp -20');
     print('bestmove d7d5');
     expect((await newer).pawns).toBe(0.2);
+    expect(sent.at(-2)).toBe('position startpos moves e2e4');
+    print('info depth 12 score cp -30');
+    print('bestmove e7e5');
+    expect((await older).pawns).toBe(0.3);
   });
 });
