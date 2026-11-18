@@ -26,7 +26,7 @@ yarn web        # or: yarn ios, yarn android
 | `yarn lint` | Lint with ESLint |
 | `yarn test` | Run the unit tests (Jest) |
 | `yarn vendor:silk [path]` | Rebuild the vendored Silk packages from a Silk checkout (default `../silk`) |
-| `yarn brand` | Redraw the logo and every icon made from it (see [Logo](#logo)) |
+| `yarn brand` | Redraw the logo and every icon made from it (`scripts/make-brand.mjs`) |
 | `yarn maia` | Download Maia's models and convert them for the app (see [Maia](#maia)) |
 
 ## How it fits together
@@ -59,9 +59,3 @@ To try the Pages build locally, export it the way the workflow does and serve `d
 ```bash
 PAGES_BASE_PATH=/chess yarn expo export --platform web
 ```
-
-## Logo
-
-The logo is a gold chess knight standing in a spotlight on a dark stage, framed by two red curtains. `scripts/make-brand.mjs` draws it: the knight is a list of points at the top of that file, and the stage and curtains are the shapes below it.
-
-`yarn brand` writes the logo (`assets/brand/logo.svg`), the knight on its own (`assets/brand/knight.svg`), and the app icon, Android icon layers, splash image, favicon and header mark in `assets/images/`. The images are rendered with [Playwright](https://playwright.dev)'s Chromium, which isn't one of the app's dependencies; without it the script writes the two SVGs and stops.
