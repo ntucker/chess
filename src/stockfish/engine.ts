@@ -40,7 +40,10 @@ interface Session {
 
 let connected: Session | undefined;
 let running: Search | undefined;
-/** Searches waiting for the engine, newest last; the newest runs first. */
+/**
+ * Searches waiting for the engine. The last runs next: the newest request, or
+ * a search a stopped engine handed back.
+ */
 const pending: Search[] = [];
 
 /**

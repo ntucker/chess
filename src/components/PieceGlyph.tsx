@@ -3,7 +3,7 @@ import Svg, { Circle, G, Path } from 'react-native-svg';
 
 import type { MaterialRole } from '@/game/material';
 import { type Color, opposite } from '@/game/replay';
-import { pieceColors } from '@/theme/theme';
+import { pieceColors } from '@/theme/pieceColors';
 
 interface Props {
   readonly role: MaterialRole;

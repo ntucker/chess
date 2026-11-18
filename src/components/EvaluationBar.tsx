@@ -8,7 +8,8 @@ import { type Color, colorName, type GameResult, lastPosition, opposite } from '
 import { useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
 import { type Evaluation, type EvaluationEngine, resultEvaluation } from '@/evaluation/evaluation';
 import { getEvaluation } from '@/resources/evaluation';
-import { fonts, pieceColors } from '@/theme/theme';
+import { pieceColors } from '@/theme/pieceColors';
+import { fonts } from '@/theme/theme';
 
 interface Props {
   /** The moves (UCI) that reach the position on the board. */

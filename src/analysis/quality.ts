@@ -39,7 +39,9 @@ export interface JudgedMove {
 /**
  * A move's label. It's the best if it's the move the engine would have
  * played, or gives nothing away (another mate, or an engine that names no
- * move, like Maia). Otherwise the expected score it gives away decides.
+ * move, like Maia). That's broader than chess.com, which keeps "best" for
+ * the engine's own move: a second move that loses nothing is as good for
+ * learning an opening. Otherwise the expected score it gives away decides.
  */
 export function classifyMove({ before, after, uci, mover }: JudgedMove): MoveQuality {
   const whiteLoss = before.score - after.score;

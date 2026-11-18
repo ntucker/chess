@@ -106,6 +106,8 @@ export default function Board({
   );
 }
 
+/** The ink that rings a badge on the board, to set it off from the squares. */
+const BADGE_RING = pieceColors.black;
 /** A badge's size and center on its square, in hundredths of the square. */
 const BADGE = { size: 34, x: 82, y: 18 } as const;
 
@@ -114,7 +116,7 @@ function cornerBadge(quality: MoveQuality): string {
   const scale = BADGE.size / BADGE_BOX;
   const x = BADGE.x - BADGE.size / 2;
   const y = BADGE.y - BADGE.size / 2;
-  return `<g transform="translate(${x} ${y}) scale(${scale})">${badgeMarkup(quality, pieceColors.black)}</g>`;
+  return `<g transform="translate(${x} ${y}) scale(${scale})">${badgeMarkup(quality, BADGE_RING)}</g>`;
 }
 
 /**

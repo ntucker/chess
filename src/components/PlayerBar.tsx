@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import type { Material } from '@/game/material';
 import { type Color, opposite } from '@/game/replay';
-import { pieceColors } from '@/theme/theme';
+import { pieceColors } from '@/theme/pieceColors';
 
 import { Captures } from './Captures';
 

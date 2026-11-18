@@ -33,8 +33,6 @@ export const spotlight: Readonly<Record<ColorScheme, string>> = {
   light: pool(brand.curtain, 0.09),
 };
 
-export { pieceColors } from './pieceColors';
-
 /** Font files loaded at startup (see src/app/_layout.tsx), by family name. */
 export const fonts = {
   /** Display serif for headlines and the wordmark. Has one weight. */

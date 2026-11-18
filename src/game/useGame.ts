@@ -82,6 +82,8 @@ export function useGame(rating: MaiaRating) {
     const from = rendered.current;
     const next = gameReducer(from, action);
     dispatch(action);
+    // Nothing changed (a late reply, an illegal move), so nothing to start.
+    if (next === from) return;
     if (next.maia.status === 'thinking') ask(next);
     if (next.line !== from.line && next.line.length) judge(next.game, next.line);
   };
