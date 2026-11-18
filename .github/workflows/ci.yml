@@ -1,0 +1,64 @@
+# Lints, typechecks and runs the unit tests on every pull request and every
+# push to main, except changes to Markdown alone. The web export is checked
+# separately, in web.yml.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**/*.md']
+  pull_request:
+    paths-ignore: ['**/*.md']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to a pull request makes its older run worthless. Every other run
+# gets its own group, so no push to main is cancelled before it is checked.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, typecheck and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install
+        id: install
+        # Yarn turns on hardened mode for public pull requests: it re-resolves the
+        # lockfile to catch tampering, which costs about 5 s. Only fork pull
+        # requests keep it: branches in this repo come from people with write
+        # access, who are trusted with yarn.lock. Other events never use it.
+        env:
+          YARN_ENABLE_HARDENED_MODE: ${{ github.event.pull_request.head.repo.fork && '1' || '0' }}
+        run: yarn install --immutable
+
+      # Each check runs whenever Install succeeded, even if an earlier check
+      # failed, so one run reports every kind of failure.
+      - name: Lint
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: yarn lint
+
+      - name: Typecheck
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: yarn typecheck
+
+      - name: Test
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: yarn test

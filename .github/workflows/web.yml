@@ -10,10 +10,11 @@ on:
     paths-ignore: ['**/*.md']
   workflow_dispatch:
 
+# Setup Pages reads the site's settings (its base path). Only the deploy job,
+# which never runs on pull requests, may write to Pages.
 permissions:
   contents: read
-  pages: write
-  id-token: write
+  pages: read
 
 jobs:
   build:
@@ -39,6 +40,12 @@ jobs:
           cache: yarn
 
       - name: Install
+        # Yarn turns on hardened mode for public pull requests: it re-resolves the
+        # lockfile to catch tampering, which costs about 5 s. Only fork pull
+        # requests keep it: branches in this repo come from people with write
+        # access, who are trusted with yarn.lock. Other events never use it.
+        env:
+          YARN_ENABLE_HARDENED_MODE: ${{ github.event.pull_request.head.repo.fork && '1' || '0' }}
         run: yarn install --immutable
 
       - name: Setup Pages
@@ -68,6 +75,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency: pages
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
