@@ -65,10 +65,10 @@ function EvaluatedBar({
   const moves = useDeferredValue<string | null>(position, null);
   const shown = moves === null ? null : moves ? moves.split(' ') : [];
   const result = shown && lastPosition(shown).result;
-  // A finished game needs no evaluation, and neither does the first render.
-  const args = judge && shown && !result ? ([judge, shown] as const) : null;
-  // A null argument skips the fetch.
-  const evaluation = useSuspense(getEvaluation, ...(args ?? [null]));
+  // Null, which skips the fetch, on the first render (nothing deferred yet)
+  // and once the game is over.
+  const fetchArgs = judge && shown && !result ? ([judge, shown] as const) : null;
+  const evaluation = useSuspense(getEvaluation, ...(fetchArgs ?? [null]));
   const reading = result
     ? resultReading(result)
     : evaluation && evaluationReading(evaluation);
