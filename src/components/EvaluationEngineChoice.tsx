@@ -29,7 +29,11 @@ export function EvaluationEngineChoice() {
   const { color } = useTheme().theme.semantic;
   const id = useId();
   return (
-    <View accessibilityRole="radiogroup" accessibilityLabel="Evaluation bar" style={styles.row}>
+    <View
+      accessibilityRole="radiogroup"
+      accessibilityLabel="Evaluation bar"
+      style={[styles.item, styles.wrap]}
+    >
       <Text role="caption" tone="secondary">
         Evaluation by
       </Text>
@@ -38,14 +42,9 @@ export function EvaluationEngineChoice() {
         const { label, hint } = ENGINE_CHOICES[value];
         const hintId = `${id}-${value}`;
         return (
-          // Each dot stays with the engine after it, so a wrapped line never
-          // starts with one.
+          // Each dot follows its engine in one group, so a wrapped line
+          // starts with an engine, never a dot.
           <View key={value} style={styles.item}>
-            {index > 0 ? (
-              <Text role="caption" tone="secondary" aria-hidden>
-                ·
-              </Text>
-            ) : null}
             <Pressable
               accessibilityRole="radio"
               accessibilityLabel={label}
@@ -72,8 +71,14 @@ export function EvaluationEngineChoice() {
               )}
             </Pressable>
             {WEB ? (
-              <Text nativeID={hintId} style={styles.visuallyHidden}>
+              // Hidden from browsing too: it's read only as the description.
+              <Text nativeID={hintId} aria-hidden style={styles.visuallyHidden}>
                 {hint}
+              </Text>
+            ) : null}
+            {index < EVALUATION_ENGINES.length - 1 ? (
+              <Text role="caption" tone="secondary" aria-hidden>
+                ·
               </Text>
             ) : null}
           </View>
@@ -84,8 +89,8 @@ export function EvaluationEngineChoice() {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 2 },
   item: { flexDirection: 'row', alignItems: 'center', columnGap: 2 },
+  wrap: { flexWrap: 'wrap' },
   option: { borderRadius: 4, paddingHorizontal: 2, paddingVertical: 2 },
   // Out of sight and out of layout, but still readable as a description.
   visuallyHidden: {
