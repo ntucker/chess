@@ -24,10 +24,12 @@ interface Props {
  * position's evaluation until the new one is ready.
  */
 export function EvaluationBar({ line, orientation, style }: Props) {
-  // A failed evaluation leaves the bar empty only until the board shows
-  // another position: the boundary calls each new listener it gets.
   const position = line.join(' ');
-  const resetOnMove = useMemo(() => resetFor(position), [position]);
+  // A failed evaluation leaves the bar empty only until the board shows
+  // another position. AsyncBoundary attaches its `listen` again whenever the
+  // function changes, so a new listener per position that resets at once
+  // clears the last position's error.
+  const resetOnMove = useMemo(() => resetListener(position), [position]);
   const empty = <Bar orientation={orientation} style={style} />;
   return (
     <AsyncBoundary fallback={empty} errorComponent={() => empty} listen={resetOnMove}>
@@ -36,8 +38,12 @@ export function EvaluationBar({ line, orientation, style }: Props) {
   );
 }
 
-/** A boundary listener for `position` that clears any error as soon as it's attached. */
-const resetFor = (_position: string) => (reset: () => void) => {
+/**
+ * A boundary listener that resets the boundary as soon as it's attached. It
+ * ignores `position`: taking it only makes each position's listener a
+ * distinct function.
+ */
+const resetListener = (_position: string) => (reset: () => void) => {
   reset();
   return () => {};
 };
@@ -126,7 +132,8 @@ function Bar({
           {
             transitionProperty: 'height',
             transitionDuration: reducedMotion ? 0 : motion.slow.durationMs,
-            // Reanimated takes a curve object, not the theme's CSS string.
+            // Reanimated can't read the theme's CSS easing string; ease-out is
+            // the nearest named curve.
             transitionTimingFunction: 'ease-out',
           },
         ]}

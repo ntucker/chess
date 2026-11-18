@@ -152,6 +152,8 @@ export default function PlayScreen() {
 
 /** Space between the board and the name bars above and below it. */
 const BOARD_COLUMN_GAP = 4;
+/** The evaluation bar's width. */
+const EVALUATION_BAR_WIDTH = 22;
 /** The board's largest size. */
 const BOARD_MAX = 600;
 /** How far the board sits below the top of its column (Maia's name bar). */
@@ -191,7 +193,11 @@ const styles = StyleSheet.create({
   // The evaluation bar sits in the column of the players' discs, between
   // them, and the board lines up with the names beside the discs.
   boardRow: { flexDirection: 'row', gap: PLAYER_DISC.gap },
-  evaluation: { width: PLAYER_DISC.size },
+  // Narrower than the discs, and centered under them.
+  evaluation: {
+    width: EVALUATION_BAR_WIDTH,
+    marginHorizontal: (PLAYER_DISC.size - EVALUATION_BAR_WIDTH) / 2,
+  },
   frame: { flex: 1, aspectRatio: 1 },
   program: {
     flexGrow: 1,
