@@ -17,6 +17,7 @@ import { useEffect, useEffectEvent, useRef } from 'react';
 import type { MoveQuality } from '@/analysis/quality';
 import type { Color } from '@/game/replay';
 import { BADGE_BOX, badgeMarkup, qualityLooks } from '@/theme/moveQuality';
+import { pieceColors } from '@/theme/pieceColors';
 
 export interface BoardProps {
   readonly fen: string;
@@ -91,10 +92,9 @@ export default function Board({
     const board = api.current;
     if (!board) return;
     board.set(config);
-    // Chessground draws on the next frame; this frame comes after it.
-    const frame = requestAnimationFrame(() =>
-      glow(board, label?.square, label && qualityLooks[label.quality].color),
-    );
+    // Chessground draws the new position in set() or on a frame it asked for
+    // first, so this frame comes after the draw.
+    const frame = requestAnimationFrame(() => glow(board, label));
     return () => cancelAnimationFrame(frame);
   });
 
@@ -106,12 +106,6 @@ export default function Board({
   );
 }
 
-/**
- * The ink that rings a badge on the board, to set it off from the squares:
- * theme.ts's pieceColors.black, copied because theme.ts imports Silk, which
- * this web view doesn't load.
- */
-const BADGE_RING = '#17111f';
 /** A badge's size and center on its square, in hundredths of the square. */
 const BADGE = { size: 34, x: 82, y: 18 } as const;
 
@@ -120,18 +114,18 @@ function cornerBadge(quality: MoveQuality): string {
   const scale = BADGE.size / BADGE_BOX;
   const x = BADGE.x - BADGE.size / 2;
   const y = BADGE.y - BADGE.size / 2;
-  return `<g transform="translate(${x} ${y}) scale(${scale})">${badgeMarkup(quality, BADGE_RING)}</g>`;
+  return `<g transform="translate(${x} ${y}) scale(${scale})">${badgeMarkup(quality, pieceColors.black)}</g>`;
 }
 
 /**
- * Lights the piece on `square` with a glow in `color`, and puts out any other.
- * Chessground has no way to style one piece, so this marks its element
+ * Lights the labelled piece with a glow in its label's color, and puts out any
+ * other. Chessground has no way to style one piece, so this marks its element
  * directly, after each draw (Board.css draws the glow).
  */
-function glow(board: Api, square: Key | undefined, color: string | undefined) {
+function glow(board: Api, label: { square: Key; quality: MoveQuality } | undefined) {
   for (const piece of board.state.dom.elements.board.querySelectorAll<PieceNode>('piece')) {
-    const lit = piece.cgKey === square && !piece.cgFading;
+    const lit = label !== undefined && piece.cgKey === label.square && !piece.cgFading;
     piece.classList.toggle('glow', lit);
-    if (lit && color) piece.style.setProperty('--glow', color);
+    if (lit) piece.style.setProperty('--glow', qualityLooks[label.quality].color);
   }
 }

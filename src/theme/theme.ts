@@ -33,11 +33,7 @@ export const spotlight: Readonly<Record<ColorScheme, string>> = {
   light: pool(brand.curtain, 0.09),
 };
 
-/** The discs that stand for each side outside the board. */
-export const pieceColors = {
-  white: '#fbf7ef',
-  black: '#17111f',
-} as const;
+export { pieceColors } from './pieceColors';
 
 /** Font files loaded at startup (see src/app/_layout.tsx), by family name. */
 export const fonts = {

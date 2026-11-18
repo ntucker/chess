@@ -42,11 +42,6 @@ let connected: Session | undefined;
 let running: Search | undefined;
 /** Searches waiting for the engine, newest last; the newest runs first. */
 const pending: Search[] = [];
-/**
- * The newer request that stopped the running search, which goes back into
- * `pending` just below it once it stops. Undefined while it isn't stopping.
- */
-let stoppedBy: Search | undefined;
 
 /**
  * Connects the engine that `send` talks to. The host that runs the engine
@@ -73,20 +68,14 @@ export function attachStockfish(send: Send): Connection {
 
 /**
  * How the position after `line` (UCI moves from the starting position)
- * stands, as Stockfish judges it. Stockfish works on one position at a time,
- * newest first: a newer request stops the search under way, which runs again
- * from the start once the newer ones are done. No request is dropped, so a
- * position the board steps past is still searched later (move labels need
- * every position of the game anyway).
+ * stands, as Stockfish judges it. Stockfish works on one position at a time:
+ * the search under way finishes, then the newest request waiting runs. No
+ * request is dropped, so a position the board steps past is still searched
+ * (move labels need every position of the game anyway).
  */
 export function stockfishEvaluation(line: readonly string[]): Promise<Evaluation> {
   return new Promise((resolve, reject) => {
-    const search: Search = { line, resolve, reject };
-    pending.push(search);
-    if (running && !stoppedBy) {
-      stoppedBy = search;
-      connected?.send('stop');
-    }
+    pending.push({ line, resolve, reject });
     startNext();
   });
 }
@@ -103,8 +92,7 @@ function handleLine(session: Session, line: string) {
   else if (line.startsWith('bestmove')) {
     const search = running;
     running = undefined;
-    if (stoppedBy) requeue(search);
-    else if (search.last) search.resolve(evaluation(search.last, search.line, line));
+    if (search.last) search.resolve(evaluation(search.last, search.line, line));
     else search.reject(new Error('Stockfish finished without a score'));
     startNext();
   }
@@ -120,6 +108,7 @@ function startNext() {
   if (!connected?.ready || running) return;
   running = pending.pop();
   if (!running) return;
+  running.last = undefined;
   // A fresh start for every position, so a position always gets the same
   // evaluation whatever came before it.
   connected.send('ucinewgame');
@@ -127,19 +116,8 @@ function startNext() {
   connected.send(GO);
 }
 
-/**
- * Puts a search that didn't finish back to wait, from the start: below the
- * request that stopped it, or on top if nothing newer came.
- */
-function requeue(search: Search) {
-  search.last = undefined;
-  const at = stoppedBy ? pending.indexOf(stoppedBy) : -1;
-  pending.splice(at < 0 ? pending.length : at, 0, search);
-  stoppedBy = undefined;
-}
-
-/** The search the engine was running will never finish there: the next engine runs it. */
+/** The search the engine was running will never finish there: the next engine runs it first. */
 function handOverRunning() {
-  if (running) requeue(running);
+  if (running) pending.push(running);
   running = undefined;
 }

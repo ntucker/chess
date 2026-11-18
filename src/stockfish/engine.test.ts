@@ -63,7 +63,7 @@ describe('stockfishEvaluation', () => {
     expect(Math.abs((await evaluation).pawns)).toBeLessThan(1);
   }, 30_000);
 
-  it('finishes a position after a newer one that stopped it', async () => {
+  it('answers every position asked for, one at a time', async () => {
     const older = stockfishEvaluation(['d2d4']);
     const newer = stockfishEvaluation(['d2d4', 'd7d5']);
     const finished: string[] = [];
@@ -71,6 +71,7 @@ describe('stockfishEvaluation', () => {
       older.then(() => finished.push('older')),
       newer.then(() => finished.push('newer')),
     ]);
-    expect(finished).toEqual(['newer', 'older']);
+    // The first had already started, so it finishes first.
+    expect(finished).toEqual(['older', 'newer']);
   }, 30_000);
 });

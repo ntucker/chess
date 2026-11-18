@@ -1,8 +1,7 @@
 import { useController } from '@data-client/react';
-import { useReducer } from 'react';
+import { useLayoutEffect, useReducer, useRef } from 'react';
 
 import { classifyMove } from '@/analysis/quality';
-import { type Evaluation, resultEvaluation } from '@/evaluation/evaluation';
 import { useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
 import type { MaiaRating } from '@/maia/models';
 import { getEvaluation } from '@/resources/evaluation';
@@ -32,6 +31,12 @@ export function useGame(rating: MaiaRating) {
   const atLatest = ply === line.length;
   const current = atLatest ? latest : analyze(plies[ply]);
   const thinking = maia.status === 'thinking';
+  // The state as last rendered, which Maia's reply applies to: it arrives
+  // after renders that the request that asked for it didn't see.
+  const rendered = useRef(state);
+  useLayoutEffect(() => {
+    rendered.current = state;
+  });
 
   /** Asks Maia to answer the moves of `asked`, the state that wants her reply. */
   const ask = async (asked: GameState) => {
@@ -41,7 +46,7 @@ export function useGame(rating: MaiaRating) {
         ctrl.fetch(getMaiaMove, rating, after),
         new Promise((resolve) => setTimeout(resolve, THINKING_MS)),
       ]);
-      act({ type: 'reply', game, after, uci }, asked);
+      act({ type: 'reply', game, after, uci });
     } catch (error) {
       dispatch({
         type: 'failed',
@@ -52,17 +57,14 @@ export function useGame(rating: MaiaRating) {
     }
   };
 
-  /** How the position after `moves` stands: from the engine, or from the result once the game is over. */
-  const evaluate = async (moves: readonly string[]): Promise<Evaluation> => {
-    const { result } = lastPosition(moves);
-    return result ? resultEvaluation(result) : ctrl.fetchIfStale(getEvaluation, engine, moves);
-  };
-
   /** Labels the last move of `judged`, the moves of game `game`. */
   const judge = async (game: number, judged: readonly string[]) => {
     const before = judged.slice(0, -1);
     try {
-      const evaluations = await Promise.all([evaluate(before), evaluate(judged)]);
+      const evaluations = await Promise.all([
+        ctrl.fetchIfStale(getEvaluation, engine, before),
+        ctrl.fetchIfStale(getEvaluation, engine, judged),
+      ]);
       const quality = classifyMove({
         before: evaluations[0],
         after: evaluations[1],
@@ -75,12 +77,9 @@ export function useGame(rating: MaiaRating) {
     }
   };
 
-  /**
-   * Dispatches `action`, then asks Maia to move if it leaves her thinking and
-   * judges the move it adds. `from` is the state the action applies to: the
-   * one rendered, or for Maia's reply, the state that asked for it.
-   */
-  const act = (action: GameAction, from: GameState = state) => {
+  /** Dispatches `action`, then asks Maia to move if it leaves her thinking and judges the move it adds. */
+  const act = (action: GameAction) => {
+    const from = rendered.current;
     const next = gameReducer(from, action);
     dispatch(action);
     if (next.maia.status === 'thinking') ask(next);

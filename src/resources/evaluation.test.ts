@@ -17,16 +17,12 @@ describe('getEvaluation', () => {
     const sent: string[] = [];
     const engine = attachStockfish((command) => sent.push(command));
     engine.receive('uciok');
-    /** Waits for `sent` to hold `count` copies of `command` (the store calls the endpoint asynchronously). */
-    const sentTimes = async (command: string, count: number) => {
-      for (let tick = 0; sent.filter((c) => c === command).length < count; tick++) {
-        if (tick > 100) throw new Error(`Stockfish was never sent ${command}`);
+    /** Answers the search for `moves` once it starts (the store calls the endpoint asynchronously). */
+    const finish = async (moves: string, centipawns: number) => {
+      for (let tick = 0; !sent.includes(`position startpos moves ${moves}`); tick++) {
+        if (tick > 100) throw new Error(`Stockfish never searched ${moves}`);
         await new Promise((resolve) => setTimeout(resolve));
       }
-    };
-    /** Answers the search for `moves` once it has started `count` times. */
-    const finish = async (moves: string, count: number, centipawns: number) => {
-      await sentTimes(`position startpos moves ${moves}`, count);
       engine.receive(`info depth 12 score cp ${centipawns}`);
       engine.receive('bestmove a7a6');
     };
@@ -34,16 +30,21 @@ describe('getEvaluation', () => {
     // The board steps from the start to A, and on to B before A is done.
     const a = controller.fetch(getEvaluation, 'stockfish', ['e2e4']);
     const b = controller.fetch(getEvaluation, 'stockfish', ['e2e4', 'e7e5']);
-    await sentTimes('stop', 1);
-    await finish('e2e4', 1, 900); // B stopped A's search, so this answer is thrown away,
-    await finish('e2e4 e7e5', 1, 40); // and B runs first.
-    expect((await b).pawns).toBe(0.4);
-    await finish('e2e4', 2, 25); // Then A runs again, from the start.
+    await finish('e2e4', 25); // A finishes,
     expect((await a).pawns).toBe(-0.25);
+    await finish('e2e4 e7e5', 40); // then B runs.
+    expect((await b).pawns).toBe(0.4);
 
     // Stepping back to A finds it in the store, with no new search.
     expect((await controller.fetchIfStale(getEvaluation, 'stockfish', ['e2e4'])).pawns).toBe(-0.25);
-    expect(sent.filter((c) => c === 'position startpos moves e2e4')).toHaveLength(2);
+    expect(sent.filter((c) => c === 'position startpos moves e2e4')).toHaveLength(1);
     engine.detach();
+  });
+
+  it("scores a finished game by its result, without asking the engine", async () => {
+    const { controller } = prepareStore(initialState, () => [new NetworkManager()], Controller);
+    // Fool's mate: Black wins.
+    const mated = ['f2f3', 'e7e5', 'g2g4', 'd8h4'];
+    expect(await controller.fetch(getEvaluation, 'stockfish', mated)).toEqual({ score: 0, pawns: 0 });
   });
 });
