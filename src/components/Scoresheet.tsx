@@ -11,7 +11,7 @@ import { QualityBadge } from './QualityBadge';
 interface Props {
   /** Every position of the game; `plies[n]` follows the nth move. */
   readonly plies: readonly Ply[];
-  /** Each move's label once it's judged: `qualities[n - 1]` labels the nth move. */
+  /** Each move's label once it's judged: `qualities[n]` labels the move that leads to `plies[n + 1]`. */
   readonly qualities: readonly (MoveQuality | undefined)[];
   readonly ply: number;
   readonly onGoto: (ply: number) => void;

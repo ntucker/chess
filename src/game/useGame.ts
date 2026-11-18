@@ -7,7 +7,7 @@ import type { MaiaRating } from '@/maia/models';
 import { getEvaluation } from '@/resources/evaluation';
 import { getMaiaMove } from '@/resources/maia';
 
-import { type GameAction, gameReducer, type GameState, initialGame } from './game';
+import { type GameAction, gameReducer, initialGame } from './game';
 import { material } from './material';
 import { analyze, type Color, lastPosition, replay, toUci } from './replay';
 
@@ -38,9 +38,8 @@ export function useGame(rating: MaiaRating) {
     rendered.current = state;
   });
 
-  /** Asks Maia to answer the moves of `asked`, the state that wants her reply. */
-  const ask = async (asked: GameState) => {
-    const { game, line: after } = asked;
+  /** Asks Maia to answer `after`, the moves of game `game`. */
+  const ask = async (game: number, after: readonly string[]) => {
     try {
       const [uci] = await Promise.all([
         ctrl.fetch(getMaiaMove, rating, after),
@@ -59,17 +58,17 @@ export function useGame(rating: MaiaRating) {
 
   /** Labels the last move of `judged`, the moves of game `game`. */
   const judge = async (game: number, judged: readonly string[]) => {
-    const before = judged.slice(0, -1);
+    const previous = judged.slice(0, -1);
     try {
-      const evaluations = await Promise.all([
-        ctrl.fetchIfStale(getEvaluation, engine, before),
+      const [before, after] = await Promise.all([
+        ctrl.fetchIfStale(getEvaluation, engine, previous),
         ctrl.fetchIfStale(getEvaluation, engine, judged),
       ]);
       const quality = classifyMove({
-        before: evaluations[0],
-        after: evaluations[1],
+        before,
+        after,
         uci: judged[judged.length - 1],
-        mover: lastPosition(before).turn,
+        mover: lastPosition(previous).turn,
       });
       dispatch({ type: 'judged', game, line: judged, quality });
     } catch {
@@ -85,14 +84,14 @@ export function useGame(rating: MaiaRating) {
     // Nothing changed (a late reply, an illegal move: the reducer returns the
     // same state), so nothing to start.
     if (next === from) return;
-    if (next.maia.status === 'thinking') ask(next);
+    if (next.maia.status === 'thinking') ask(next.game, next.line);
     if (next.line !== from.line && next.line.length) judge(next.game, next.line);
   };
 
   return {
     playerColor,
     line,
-    /** Each move's label once it's judged: `qualities[n]` labels the move that leads to `plies[n + 1]`. */
+    /** Each move's label once it's judged: `qualities[n]` labels `line[n]`, the move that leads to `plies[n + 1]`. */
     qualities,
     ply,
     plies,

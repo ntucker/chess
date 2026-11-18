@@ -9,6 +9,8 @@ import type { MoveQuality } from '@/analysis/quality';
 
 /** The badge's box: a 24 by 24 square, holding a disc of radius 12. */
 export const BADGE_BOX = 24;
+/** Every glyph's color. */
+const GLYPH_INK = '#fff';
 
 /** A glyph's path, and whether it's filled (the star) or stroked. */
 interface QualityGlyph {
@@ -76,8 +78,8 @@ export const qualityLooks: Readonly<Record<MoveQuality, QualityLook>> = {
 export function badgeMarkup(quality: MoveQuality, ring?: string): string {
   const { color, glyph } = qualityLooks[quality];
   const paint = glyph.filled
-    ? 'fill="#fff"'
-    : 'fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"';
+    ? `fill="${GLYPH_INK}"`
+    : `fill="none" stroke="${GLYPH_INK}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"`;
   const outline = ring ? ` stroke="${ring}" stroke-width="1.5"` : '';
   return `<circle cx="12" cy="12" r="${ring ? 11.25 : 12}" fill="${color}"${outline}/><path d="${glyph.d}" ${paint}/>`;
 }

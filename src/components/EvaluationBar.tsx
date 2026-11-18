@@ -65,11 +65,11 @@ function EvaluatedBar({
   const judge = useDeferredValue<EvaluationEngine | null>(engine, null);
   const moves = useDeferredValue<string | null>(position, null);
   const shown = moves === null ? null : moves ? moves.split(' ') : [];
-  const result = shown && lastPosition(shown).result;
-  // Null, which skips the fetch, on the first render (nothing deferred yet)
-  // and once the game is over.
-  const fetchArgs = judge && shown && !result ? ([judge, shown] as const) : null;
+  // Null, which skips the fetch, on the first render (nothing deferred yet).
+  const fetchArgs = judge && shown ? ([judge, shown] as const) : null;
   const evaluation = useSuspense(getEvaluation, ...(fetchArgs ?? [null]));
+  // A finished game reads as its result (1-0, ½) rather than an advantage.
+  const result = shown && lastPosition(shown).result;
   const reading = result
     ? resultReading(result)
     : evaluation && evaluationReading(evaluation);
