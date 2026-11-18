@@ -2,8 +2,10 @@ import { Asset } from 'expo-asset';
 import { File } from 'expo-file-system';
 import { createWorkletRuntime, runOnRuntimeAsync, type WorkletRuntime } from 'react-native-worklets';
 
-import { bestMove, type MaiaNetwork, parseNetwork, policyLogits, prepareMove } from './maia';
+import { loadOnce } from './loadOnce';
+import { bestMove, prepareMove } from './maia';
 import { type MaiaRating, MODELS } from './models';
+import { type MaiaNetwork, parseNetwork, policyLogits } from './network';
 
 /**
  * Where the networks live on the background runtime: each rating's network
@@ -15,14 +17,14 @@ interface MaiaGlobal {
 }
 
 let runtime: WorkletRuntime | undefined;
-const loaded = new Map<MaiaRating, Promise<void>>();
+const getRuntime = () => (runtime ??= createWorkletRuntime({ name: 'maia' }));
 
 /** Reads `rating`'s network from the app's assets into the background runtime. */
-async function load(target: WorkletRuntime, rating: MaiaRating): Promise<void> {
+const loadNetwork = loadOnce(async (rating: MaiaRating) => {
   const asset = await Asset.fromModule(MODELS[rating]).downloadAsync();
   const bytes = await new File(asset.localUri ?? asset.uri).arrayBuffer();
   await runOnRuntimeAsync(
-    target,
+    getRuntime(),
     (r: MaiaRating, b: ArrayBuffer) => {
       'worklet';
       const scope = globalThis as MaiaGlobal;
@@ -31,7 +33,7 @@ async function load(target: WorkletRuntime, rating: MaiaRating): Promise<void> {
     rating,
     bytes,
   );
-}
+});
 
 /**
  * Maia's move after `line` (see `chooseMove`). The network runs on a
@@ -39,18 +41,10 @@ async function load(target: WorkletRuntime, rating: MaiaRating): Promise<void> {
  * the rules (cheap) stay on this thread.
  */
 export async function maiaMove(rating: MaiaRating, line: readonly string[]): Promise<string> {
-  runtime ??= createWorkletRuntime({ name: 'maia' });
-  let ready = loaded.get(rating);
-  if (!ready) {
-    ready = load(runtime, rating);
-    // Forget a failed read, so asking again tries again.
-    ready.catch(() => loaded.delete(rating));
-    loaded.set(rating, ready);
-  }
-  await ready;
+  await loadNetwork(rating);
   const { pos, planes } = prepareMove(line);
   const logits = await runOnRuntimeAsync(
-    runtime,
+    getRuntime(),
     (r: MaiaRating, input: Float32Array) => {
       'worklet';
       const network = (globalThis as MaiaGlobal).maiaNetworks?.[r];

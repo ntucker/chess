@@ -187,7 +187,7 @@ export function parseNetwork(bytes: ArrayBuffer | Uint8Array): MaiaNetwork {
 
 /**
  * Scores every kind of move from every square (80 planes x 64 squares; see
- * `POLICY_OUTPUT_INDEX`) for input planes from `encodeInput`.
+ * `POLICY_OUTPUT_INDEX`) for input planes from `prepareMove`.
  */
 export function policyLogits(network: MaiaNetwork, planes: Float32Array): Float32Array {
   const c = network.channels;

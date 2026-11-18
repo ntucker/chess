@@ -3,7 +3,8 @@ import { describe, expect, it } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { chooseMove, parseNetwork } from './maia';
+import { chooseMove } from './maia';
+import { parseNetwork } from './network';
 import { POLICY_MOVES, POLICY_OUTPUT_INDEX, policyIndex } from './policy';
 
 const maia1100 = parseNetwork(

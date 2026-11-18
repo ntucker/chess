@@ -1,10 +1,14 @@
 import { useController } from '@data-client/react';
 import { useReducer } from 'react';
 
-import { getMaiaMove, type MaiaRating } from '@/resources/maia';
+import type { MaiaRating } from '@/maia/models';
+import { getMaiaMove } from '@/resources/maia';
 
 import { type GameAction, gameReducer, initialGame } from './game';
 import { analyze, type Color, replay, toUci } from './replay';
+
+/** Maia answers in milliseconds; a pause makes it read as a reply, not a reflex. */
+const THINKING_MS = 400;
 
 /**
  * A game against Maia: its moves and positions, the move on the board, and
@@ -25,7 +29,10 @@ export function useGame(rating: MaiaRating) {
   /** Asks Maia to answer `after`, the moves of game `forGame`. */
   const ask = async (forGame: number, after: readonly string[]) => {
     try {
-      const uci = await ctrl.fetch(getMaiaMove, rating, after);
+      const [uci] = await Promise.all([
+        ctrl.fetch(getMaiaMove, rating, after),
+        new Promise((resolve) => setTimeout(resolve, THINKING_MS)),
+      ]);
       dispatch({ type: 'reply', game: forGame, after, uci });
     } catch (error) {
       dispatch({

@@ -6,8 +6,6 @@ import { makeUci, parseUci } from 'chessops/util';
 import { INPUT_PLANES, type MaiaNetwork, policyLogits } from './network';
 import { POLICY_OUTPUT_INDEX, policyIndex } from './policy';
 
-export { type MaiaNetwork, parseNetwork, policyLogits } from './network';
-
 const HISTORY = 8;
 const ROLES: readonly Role[] = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
 
@@ -104,7 +102,7 @@ function playLine(line: readonly string[]): Seen[] {
  * - 108: whether Black is to move. 109: moves since a capture or pawn move.
  *   110: zeros. 111: ones.
  */
-export function encodeInput(history: readonly Seen[]): Float32Array {
+function encodeInput(history: readonly Seen[]): Float32Array {
   const planes = new Float32Array(INPUT_PLANES * 64);
   const current = history[history.length - 1].pos;
   const us: Color = current.turn;

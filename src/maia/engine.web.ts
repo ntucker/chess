@@ -22,6 +22,7 @@ function getWorker(): Worker {
     // request and start a new worker next time.
     for (const request of pending.values()) request.reject(new Error(event.message));
     pending.clear();
+    started.terminate();
     worker = undefined;
   };
   return (worker = started);

@@ -15,7 +15,7 @@ import { SideChooser } from '@/components/SideChooser';
 import { Transport } from '@/components/Transport';
 import { type Color, colorName, opposite } from '@/game/replay';
 import { useGame } from '@/game/useGame';
-import type { MaiaRating } from '@/resources/maia';
+import type { MaiaRating } from '@/maia/models';
 import { spotlight } from '@/theme/theme';
 
 /** Maia's strength for now; picking it comes with the opening lessons. */
