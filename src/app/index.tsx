@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Button, Inline, Separator, Stack, Surface, useTheme } from '@reactive/silk-native';
+import { Button, Inline, Separator, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
 import Head from 'expo-router/head';
 import { useEffect, useEffectEvent, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -10,10 +10,13 @@ import { EvaluationBar } from '@/components/EvaluationBar';
 import { Eyebrow } from '@/components/Eyebrow';
 import { GameStatus } from '@/components/GameStatus';
 import { Header } from '@/components/Header';
+import { PillChoice } from '@/components/PillChoice';
 import { PLAYER_BAR_HEIGHT, PLAYER_DISC, PlayerBar } from '@/components/PlayerBar';
 import { Scoresheet } from '@/components/Scoresheet';
 import { SideChooser } from '@/components/SideChooser';
 import { Transport } from '@/components/Transport';
+import type { EvaluationEngine } from '@/evaluation/evaluation';
+import { setEvaluationEngine, useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
 import { type Color, colorName, opposite } from '@/game/replay';
 import { useGame } from '@/game/useGame';
 import type { MaiaRating } from '@/maia/models';
@@ -22,6 +25,16 @@ import { spotlight } from '@/theme/theme';
 /** Maia's strength for now; picking it comes with the opening lessons. */
 const RATING: MaiaRating = 1500;
 
+const ENGINES = [
+  { value: 'stockfish', label: 'Stockfish' },
+  { value: 'maia', label: 'Maia' },
+] as const;
+
+const ENGINE_NOTES: Record<EvaluationEngine, string> = {
+  stockfish: 'How the position really stands, by the strongest chess engine.',
+  maia: 'How players rated about 1900 tend to score from here. Uses less memory.',
+};
+
 export default function PlayScreen() {
   const game = useGame(RATING);
   const { playerColor, line, ply, current, toMove, thinking, goto } = game;
@@ -29,6 +42,7 @@ export default function PlayScreen() {
   const { theme } = useTheme();
   const { color, radius } = theme.semantic;
   const maiaColor = opposite(playerColor);
+  const engine = useEvaluationEngine();
 
   const chooseSide = (side: Color) => {
     setNextColor(side);
@@ -137,6 +151,19 @@ export default function PlayScreen() {
                       <Ionicons name="refresh" size={15} /> New game
                     </Button>
                   </Inline>
+                </Stack>
+                <Separator />
+                <Stack gap="3">
+                  <Eyebrow>Evaluation bar</Eyebrow>
+                  <PillChoice
+                    label="Evaluation bar"
+                    options={ENGINES}
+                    value={engine}
+                    onChange={setEvaluationEngine}
+                  />
+                  <Text role="caption" tone="secondary">
+                    {ENGINE_NOTES[engine]}
+                  </Text>
                 </Stack>
                 <Separator />
                 <Stack gap="3">

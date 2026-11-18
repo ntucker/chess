@@ -1,4 +1,6 @@
-import { bestMove, type Evaluation, evaluation, prepareInput } from './maia';
+import type { Evaluation } from '@/evaluation/evaluation';
+
+import { bestMove, evaluation, prepareInput } from './maia';
 import type { MaiaRating } from './models';
 import { runNetwork } from './runNetwork';
 

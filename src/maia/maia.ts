@@ -3,6 +3,7 @@ import { SquareSet } from 'chessops/squareSet';
 import { type NormalMove, ROLES } from 'chessops/types';
 import { makeUci, opposite } from 'chessops/util';
 
+import type { Evaluation } from '@/evaluation/evaluation';
 import { playLine } from '@/game/replay';
 
 import type { MaiaRating } from './models';
@@ -63,14 +64,6 @@ export function bestMove(pos: Chess, policy: Float32Array): string {
  * only it ships with one (VALUE_RATINGS in scripts/convert-maia.mjs).
  */
 export const JUDGE_RATING: MaiaRating = 1900;
-
-/** How a position stands, from White's side. */
-export interface Evaluation {
-  /** White's expected score: 0 if Black wins, 0.5 if even, 1 if White wins. */
-  readonly score: number;
-  /** White's advantage in pawns, negative when Black is ahead. */
-  readonly pawns: number;
-}
 
 /**
  * How `pos` stands, from the network's output `wdl`: the side to move's

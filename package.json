@@ -21,6 +21,7 @@
     "expo-linking": "~58.0.17",
     "expo-router": "~58.0.31",
     "expo-splash-screen": "~58.0.14",
+    "expo-sqlite": "~58.0.17",
     "expo-status-bar": "~58.0.5",
     "expo-system-ui": "~58.0.7",
     "react": "19.3.0",
@@ -43,6 +44,7 @@
     "eslint-config-expo": "~58.0.4",
     "jest": "^30.5.2",
     "jest-expo": "~58.0.14",
+    "stockfish": "19.0.1",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -54,7 +56,8 @@
     "test": "jest",
     "vendor:silk": "node ./scripts/vendor-silk.mjs",
     "brand": "node ./scripts/make-brand.mjs",
-    "maia": "node ./scripts/convert-maia.mjs"
+    "maia": "node ./scripts/convert-maia.mjs",
+    "stockfish": "node ./scripts/copy-stockfish.mjs"
   },
   "private": true,
   "packageManager": "yarn@4.18.1",
