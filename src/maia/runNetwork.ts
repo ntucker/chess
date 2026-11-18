@@ -1,10 +1,10 @@
-import { Asset } from 'expo-asset';
-import { File } from 'expo-file-system';
 import {
   createWorkletRuntime,
   runOnRuntimeAsync,
   type WorkletRuntime,
 } from 'react-native-worklets';
+
+import { readAsset } from '@/files/readAsset';
 
 import { loadOnce } from './loadOnce';
 import { type MaiaRating, MODELS } from './models';
@@ -24,8 +24,7 @@ const getRuntime = () => (runtime ??= createWorkletRuntime({ name: 'maia' }));
 
 /** Reads `rating`'s network from the app's assets into the background runtime. */
 const loadNetwork = loadOnce(async (rating: MaiaRating) => {
-  const asset = await Asset.fromModule(MODELS[rating]).downloadAsync();
-  const bytes = await new File(asset.localUri ?? asset.uri).arrayBuffer();
+  const bytes = await (await readAsset(MODELS[rating])).arrayBuffer();
   await runOnRuntimeAsync(
     getRuntime(),
     (r: MaiaRating, b: ArrayBuffer) => {

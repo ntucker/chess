@@ -4,8 +4,9 @@ import { evaluationFromScore, type Info, parseInfo, positionCommand } from './uc
 
 /**
  * How long one evaluation searches: 100,000 positions, which reaches about
- * depth 16 and takes about 0.3 s on a recent phone, or 1.5 s at most on a slow
- * one. A node limit gives the same evaluation on every device.
+ * depth 16 and takes about 0.3 s on a recent phone. A node limit gives the
+ * same evaluation on every device that reaches it; a phone too slow to
+ * reach it in 1.5 s stops there with a shallower one.
  */
 const GO = 'go nodes 100000 movetime 1500';
 
@@ -41,6 +42,8 @@ export class SupersededError extends Error {
 let connected: { send: Send; ready: boolean } | undefined;
 let running: Search | undefined;
 let waiting: Search | undefined;
+/** Why the engine couldn't run, until one is attached again. */
+let failure: Error | undefined;
 
 /**
  * Connects the engine that `send` talks to. The host that runs the engine
@@ -55,10 +58,11 @@ export function attachStockfish(send: Send): Connection {
   else running?.reject(new SupersededError());
   running = undefined;
   connected = session;
+  failure = undefined;
   send('uci');
   return {
     receive(line) {
-      if (connected === session) receive(line);
+      if (connected === session) handleLine(line);
     },
     detach() {
       if (connected !== session) return;
@@ -69,12 +73,24 @@ export function attachStockfish(send: Send): Connection {
 }
 
 /**
+ * Reports that the engine couldn't start or stopped working: what's waiting
+ * fails with `error`, and so does every request until an engine is attached
+ * again, instead of waiting for one that isn't coming.
+ */
+export function failStockfish(error: Error): void {
+  connected = undefined;
+  failure = error;
+  stopAll(error);
+}
+
+/**
  * How the position after `line` (UCI moves from the starting position)
  * stands, as Stockfish judges it. Stockfish works on one position at a time
  * and only the newest request matters, so a newer request stops this one,
  * which then fails with a SupersededError.
  */
 export function stockfishEvaluation(line: readonly string[]): Promise<Evaluation> {
+  if (failure) return Promise.reject(failure);
   return new Promise((resolve, reject) => {
     waiting?.reject(new SupersededError());
     waiting = { line, resolve, reject };
@@ -86,7 +102,7 @@ export function stockfishEvaluation(line: readonly string[]): Promise<Evaluation
   });
 }
 
-function receive(line: string) {
+function handleLine(line: string) {
   if (!connected) return;
   if (line === 'uciok') {
     connected.send('setoption name Hash value 16');

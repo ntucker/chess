@@ -27,55 +27,52 @@ interface Props {
  */
 export function EvaluationBar({ line, orientation, style }: Props) {
   const engine = useEvaluationEngine();
-  // What to evaluate, as one string so it can trail the board as one value.
-  const position = `${engine}:${line.join(' ')}`;
+  const position = line.join(' ');
   // A failed evaluation leaves the bar empty only until the board shows
-  // another position. AsyncBoundary attaches its `listen` again whenever the
-  // function changes, so a new listener per position that resets at once
-  // clears the last position's error.
-  const resetOnMove = useMemo(() => resetListener(position), [position]);
+  // another position or the setting picks another engine. AsyncBoundary
+  // attaches its `listen` again whenever the function changes, so a new
+  // listener for each that resets at once clears the last one's error.
+  const resetOnChange = useMemo(() => resetListener(engine, position), [engine, position]);
   const empty = <Bar orientation={orientation} style={style} />;
   return (
-    <AsyncBoundary fallback={empty} errorComponent={() => empty} listen={resetOnMove}>
-      <EvaluatedBar position={position} orientation={orientation} style={style} />
+    <AsyncBoundary fallback={empty} errorComponent={() => empty} listen={resetOnChange}>
+      <EvaluatedBar engine={engine} position={position} orientation={orientation} style={style} />
     </AsyncBoundary>
   );
 }
 
 /**
  * A boundary listener that resets the boundary as soon as it's attached. It
- * ignores `position`: taking it only makes each position's listener a
- * distinct function.
+ * ignores its arguments: taking them only makes each engine and position's
+ * listener a distinct function.
  */
-const resetListener = (_position: string) => (reset: () => void) => {
+const resetListener = (_engine: EvaluationEngine, _position: string) => (reset: () => void) => {
   reset();
   return () => {};
 };
 
 function EvaluatedBar({
+  engine,
   position,
   orientation,
   style,
-}: Omit<Props, 'line'> & { readonly position: string }) {
-  // Starts empty, so neither the server nor the first render runs an
-  // engine, and then trails the board until the evaluation is ready.
-  const deferred = useDeferredValue<string | null>(position, null);
-  const [engine, moves] = deferred === null ? [] : splitPosition(deferred);
-  const result = moves && lastPosition(moves).result;
+}: Omit<Props, 'line'> & { readonly engine: EvaluationEngine; readonly position: string }) {
+  // Both start empty, so neither the server nor the first render runs an
+  // engine, and then trail the board together (React updates every deferred
+  // value of a render at once) until the evaluation is ready.
+  const judge = useDeferredValue<EvaluationEngine | null>(engine, null);
+  const moves = useDeferredValue<string | null>(position, null);
+  const shown = moves === null ? null : moves ? moves.split(' ') : [];
+  const result = shown && lastPosition(shown).result;
   // A finished game needs no evaluation; null skips the fetch.
   const evaluation = useSuspense(
     getEvaluation,
-    ...(engine && moves && !result ? ([engine, moves] as const) : [null]),
+    ...(judge && shown && !result ? ([judge, shown] as const) : [null]),
   );
   const reading = result
     ? resultReading(result)
     : evaluation && evaluationReading(evaluation);
   return <Bar orientation={orientation} style={style} {...reading} />;
-}
-
-function splitPosition(position: string): [EvaluationEngine, string[]] {
-  const [engine, moves] = position.split(':');
-  return [engine as EvaluationEngine, moves ? moves.split(' ') : []];
 }
 
 interface Reading {

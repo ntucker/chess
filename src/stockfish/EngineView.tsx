@@ -9,7 +9,7 @@ import { useDOMImperativeHandle } from 'expo/dom';
 import { type Ref, useEffect, useRef } from 'react';
 
 import { isNeeded } from './uci';
-import { startStockfishWorker } from './worker';
+import { startStockfishWorker, type StockfishWorker } from './worker';
 
 export interface EngineViewRef {
   /**
@@ -28,11 +28,13 @@ interface Props {
   readonly onLoad: () => void;
   /** A line the engine printed that the app needs (`isNeeded`). */
   readonly onLine: (line: string) => void;
+  /** The engine failed to start or crashed. */
+  readonly onError: (message: string) => void;
   readonly dom?: DOMProps;
 }
 
-export default function EngineView({ ref, onLoad, onLine }: Props) {
-  const worker = useRef<Worker>(null);
+export default function EngineView({ ref, onLoad, onLine, onError }: Props) {
+  const worker = useRef<StockfishWorker>(null);
   useDOMImperativeHandle(
     // Calls cross from the app as JSON; EngineViewRef says which.
     ref as Ref<DOMImperativeFactory>,
@@ -41,16 +43,20 @@ export default function EngineView({ ref, onLoad, onLine }: Props) {
         if (typeof loader !== 'string' || typeof wasmBase64 !== 'string') return;
         worker.current?.terminate();
         const bytes = Uint8Array.from(atob(wasmBase64), (c) => c.charCodeAt(0));
-        const wasm = URL.createObjectURL(new Blob([bytes], { type: 'application/wasm' }));
-        worker.current = startStockfishWorker(loader, wasm, (line) => {
-          if (isNeeded(line)) onLine(line);
-        });
+        worker.current = startStockfishWorker(
+          loader,
+          new Blob([bytes], { type: 'application/wasm' }),
+          (line) => {
+            if (isNeeded(line)) onLine(line);
+          },
+          onError,
+        );
       },
       send(...[command]: Parameters<DOMImperativeFactory[string]>) {
-        worker.current?.postMessage(command);
+        if (typeof command === 'string') worker.current?.send(command);
       },
     }),
-    [onLine],
+    [onLine, onError],
   );
   useEffect(() => {
     onLoad();

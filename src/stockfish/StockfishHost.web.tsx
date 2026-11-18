@@ -1,12 +1,10 @@
-import { Asset } from 'expo-asset';
 import { useEffect } from 'react';
 
-import { attachStockfish, type Connection } from './engine';
-import { LOADER, WASM } from './files';
-import { startStockfishWorker } from './worker';
+import { assetUrl } from '@/files/assetUrl';
 
-/** An asset's address, absolute so the worker can fetch it from a Blob. */
-const assetUrl = (module: number) => new URL(Asset.fromModule(module).uri, location.href).href;
+import { attachStockfish, type Connection, failStockfish } from './engine';
+import { LOADER, WASM } from './files';
+import { startStockfishWorker, type StockfishWorker } from './worker';
 
 /**
  * Runs Stockfish in a Web Worker for as long as it's mounted and connects it
@@ -14,25 +12,31 @@ const assetUrl = (module: number) => new URL(Asset.fromModule(module).uri, locat
  */
 export function StockfishHost() {
   useEffect(() => {
-    let worker: Worker | undefined;
+    let engine: StockfishWorker | undefined;
     let connection: Connection | undefined;
     let unmounted = false;
+    const fail = (error: Error) => {
+      if (unmounted) return;
+      console.error(error);
+      failStockfish(error);
+    };
     (async () => {
       const response = await fetch(assetUrl(LOADER));
       if (!response.ok) throw new Error(`Stockfish's loader: HTTP ${response.status}`);
       const loader = await response.text();
       if (unmounted) return;
-      const started = startStockfishWorker(loader, assetUrl(WASM), (line) =>
-        connection?.receive(line),
+      const started = startStockfishWorker(
+        loader,
+        assetUrl(WASM),
+        (line) => connection?.receive(line),
+        (message) => fail(new Error(message)),
       );
-      // A worker that fails to start or crashes fails what's waiting for it.
-      started.onerror = () => connection?.detach();
-      connection = attachStockfish((command) => started.postMessage(command));
-      worker = started;
-    })().catch((error: unknown) => console.error(error));
+      connection = attachStockfish(started.send);
+      engine = started;
+    })().catch(fail);
     return () => {
       unmounted = true;
-      worker?.terminate();
+      engine?.terminate();
       connection?.detach();
     };
   }, []);

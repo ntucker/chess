@@ -1,28 +1,11 @@
-import { Asset } from 'expo-asset';
-import { File } from 'expo-file-system';
 import { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { attachStockfish, type Connection } from './engine';
+import { readAsset } from '@/files/readAsset';
+
+import { attachStockfish, type Connection, failStockfish } from './engine';
 import EngineView, { type EngineViewRef } from './EngineView';
 import { LOADER, WASM } from './files';
-
-async function readFile(module: number): Promise<File> {
-  const { localUri } = await Asset.fromModule(module).downloadAsync();
-  if (!localUri) throw new Error('Stockfish is missing from the app');
-  return new File(localUri);
-}
-
-let files: Promise<{ loader: string; wasm: string }> | undefined;
-
-/** The engine's files, read from the app's assets once (again after a failure). */
-function engineFiles() {
-  files ??= Promise.all([readFile(LOADER), readFile(WASM)]).then(
-    async ([loader, wasm]) => ({ loader: await loader.text(), wasm: await wasm.base64() }),
-  );
-  files.catch(() => (files = undefined));
-  return files;
-}
 
 /**
  * Runs Stockfish for as long as it's mounted, in a hidden web view
@@ -32,24 +15,51 @@ function engineFiles() {
 export function StockfishHost() {
   const view = useRef<EngineViewRef>(null);
   const connection = useRef<Connection>(null);
+  const unmounted = useRef(false);
 
+  const fail = (error: Error) => {
+    if (unmounted.current) return;
+    console.error(error);
+    failStockfish(error);
+  };
   // Also runs after the web view's page reloads, which Expo does when the
-  // system ends the web view's process.
+  // system ends the web view's process. The new engine then takes over the
+  // search the old one was running. The files are read each time rather
+  // than kept, so choosing Maia frees them too.
   const onLoad = async () => {
-    const { loader, wasm } = await engineFiles();
-    const engine = view.current;
-    if (!engine) return;
-    engine.start(loader, wasm);
-    connection.current?.detach();
-    connection.current = attachStockfish((command) => engine.send(command));
+    try {
+      const [loader, wasm] = await Promise.all([
+        readAsset(LOADER).then((file) => file.text()),
+        readAsset(WASM).then((file) => file.base64()),
+      ]);
+      const engine = view.current;
+      if (!engine || unmounted.current) return;
+      engine.start(loader, wasm);
+      connection.current = attachStockfish((command) => engine.send(command));
+    } catch (error) {
+      fail(error instanceof Error ? error : new Error(String(error)));
+    }
   };
   const onLine = (line: string) => connection.current?.receive(line);
+  const onError = (message: string) => fail(new Error(message));
 
-  useEffect(() => () => connection.current?.detach(), []);
+  useEffect(() => {
+    unmounted.current = false;
+    return () => {
+      unmounted.current = true;
+      connection.current?.detach();
+    };
+  }, []);
 
   return (
     <View pointerEvents="none" style={styles.hidden}>
-      <EngineView ref={view} onLoad={onLoad} onLine={onLine} dom={{ style: styles.hidden }} />
+      <EngineView
+        ref={view}
+        onLoad={onLoad}
+        onLine={onLine}
+        onError={onError}
+        dom={{ style: styles.hidden }}
+      />
     </View>
   );
 }

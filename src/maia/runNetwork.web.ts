@@ -1,4 +1,4 @@
-import { Asset } from 'expo-asset';
+import { assetUrl } from '@/files/assetUrl';
 
 import type { MaiaRequest, MaiaResponse } from './maia.worker';
 import { type MaiaRating, MODELS } from './models';
@@ -35,8 +35,7 @@ function getWorker(): Worker {
 
 /** `forward` for `rating`'s network, run in a Web Worker. */
 export function runNetwork(rating: MaiaRating, planes: Float32Array): Promise<NetworkOutput> {
-  // The worker may run from a blob: URL, so give it an absolute address.
-  const url = new URL(Asset.fromModule(MODELS[rating]).uri, location.href).href;
+  const url = assetUrl(MODELS[rating]);
   const id = nextId++;
   return new Promise((resolve, reject) => {
     pending.set(id, { resolve, reject });

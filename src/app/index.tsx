@@ -31,7 +31,7 @@ const ENGINES = [
 ] as const;
 
 const ENGINE_NOTES: Record<EvaluationEngine, string> = {
-  stockfish: 'How the position really stands, by the strongest chess engine.',
+  stockfish: 'How the position stands, judged by the Stockfish chess engine.',
   maia: 'How players rated about 1900 tend to score from here. Uses less memory.',
 };
 
