@@ -43,8 +43,8 @@ jobs:
         id: install
         # Yarn turns on hardened mode for public pull requests: it re-resolves the
         # lockfile to catch tampering, which costs about 5 s. Only fork pull
-        # requests keep it, because anyone who can push a branch here can push
-        # yarn.lock to main anyway. Other events never use hardened mode.
+        # requests keep it: branches in this repo come from people with write
+        # access, who are trusted with yarn.lock. Other events never use it.
         env:
           YARN_ENABLE_HARDENED_MODE: ${{ github.event.pull_request.head.repo.fork && '1' || '0' }}
         run: yarn install --immutable
