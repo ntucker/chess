@@ -1,9 +1,15 @@
 import { Endpoint } from '@data-client/rest';
 
-import type { EvaluationEngine } from '@/evaluation/evaluation';
+import type { Evaluation, EvaluationEngine } from '@/evaluation/evaluation';
 import { maiaEvaluation } from '@/maia/engine';
 import { JUDGE_RATING } from '@/maia/maia';
 import { stockfishEvaluation } from '@/stockfish/engine';
+
+/** How each engine evaluates the position after `line`. */
+const JUDGES: Record<EvaluationEngine, (line: readonly string[]) => Promise<Evaluation>> = {
+  stockfish: stockfishEvaluation,
+  maia: (line) => maiaEvaluation(JUDGE_RATING, line),
+};
 
 /**
  * How the position after the moves played so far stands, as `engine` judges
@@ -24,7 +30,6 @@ import { stockfishEvaluation } from '@/stockfish/engine';
  * ```
  */
 export const getEvaluation = new Endpoint(
-  (engine: EvaluationEngine, line: readonly string[]) =>
-    engine === 'maia' ? maiaEvaluation(JUDGE_RATING, line) : stockfishEvaluation(line),
+  (engine: EvaluationEngine, line: readonly string[]) => JUDGES[engine](line),
   { name: 'getEvaluation', dataExpiryLength: Infinity },
 );

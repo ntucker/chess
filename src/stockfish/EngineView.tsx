@@ -8,7 +8,7 @@ import type { DOMImperativeFactory, DOMProps } from 'expo/dom';
 import { useDOMImperativeHandle } from 'expo/dom';
 import { type Ref, useEffect, useRef } from 'react';
 
-import { neededLines } from './uci';
+import { forwardNeededLines } from './uci';
 import { startStockfishWorker, type StockfishWorker } from './worker';
 
 export interface EngineViewRef {
@@ -26,7 +26,7 @@ interface Props {
   readonly ref: Ref<EngineViewRef>;
   /** Called each time the page (re)loads, for the app to call `start`. */
   readonly onLoad: () => void;
-  /** A line the engine printed that the app needs (`neededLines`). */
+  /** A line the engine printed that the app needs (`forwardNeededLines`). */
   readonly onLine: (line: string) => void;
   /** The engine failed to start or crashed; it answers nothing more. */
   readonly onError: (message: string) => void;
@@ -47,7 +47,7 @@ export default function EngineView({ ref, onLoad, onLine, onError }: Props) {
           worker.current = startStockfishWorker(
             loader,
             new Blob([decodeBase64(wasmBase64)], { type: 'application/wasm' }),
-            neededLines(onLine),
+            forwardNeededLines(onLine),
             onError,
           );
         } catch (error) {

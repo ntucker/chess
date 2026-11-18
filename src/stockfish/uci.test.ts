@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { evaluationFromScore, neededLines, parseScore, positionCommand } from './uci';
+import { evaluationFromScore, forwardNeededLines, parseScore, positionCommand } from './uci';
 
 describe('parseScore', () => {
   it("reads a finished depth's score", () => {
@@ -25,10 +25,10 @@ describe('parseScore', () => {
   });
 });
 
-describe('neededLines', () => {
+describe('forwardNeededLines', () => {
   it('passes on the handshake, and each search\'s last score with its best move', () => {
     const passed: string[] = [];
-    const pass = neededLines((line) => passed.push(line));
+    const pass = forwardNeededLines((line) => passed.push(line));
     for (const line of [
       'id name Stockfish 19',
       'uciok',

@@ -50,13 +50,13 @@ export function evaluationFromScore(score: Score, plies: number): Evaluation {
 }
 
 /**
- * Passes on only the lines the app needs from the engine: the handshake
+ * Wraps `onLine` to pass on only the lines the app needs from the engine: the handshake
  * (`uciok`), and for each search its last finished score just before its
  * `bestmove`. The engine runs in a web view on Android, and every line that
  * crosses into the app costs a trip across the bridge, so this runs where
  * the engine does: one search prints about 17 lines, and 2 cross.
  */
-export function neededLines(onLine: (line: string) => void): (line: string) => void {
+export function forwardNeededLines(onLine: (line: string) => void): (line: string) => void {
   let lastScore: string | undefined;
   return (line) => {
     if (parseScore(line)) lastScore = line;

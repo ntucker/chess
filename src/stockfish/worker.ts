@@ -28,13 +28,14 @@ export function startStockfishWorker(
   const wasmUrl = ownsWasm ? URL.createObjectURL(wasm) : wasm;
   const worker = new Worker(`${script}#${encodeURIComponent(wasmUrl)}`);
   // Blob addresses keep their bytes alive until they're revoked. The engine
-  // has read both files by the time it prints anything.
-  const revoke = () => {
+  // has read both files by the time it prints anything, so its first line
+  // frees them.
+  const freeFiles = () => {
     URL.revokeObjectURL(script);
     if (ownsWasm) URL.revokeObjectURL(wasmUrl);
   };
   worker.onmessage = ({ data }: MessageEvent<unknown>) => {
-    revoke();
+    freeFiles();
     if (typeof data === 'string') onLine(data);
   };
   worker.onerror = (event) => onError(event.message || 'Stockfish stopped');
@@ -42,7 +43,7 @@ export function startStockfishWorker(
     send: (command) => worker.postMessage(command),
     terminate() {
       worker.terminate();
-      revoke();
+      freeFiles();
     },
   };
 }
