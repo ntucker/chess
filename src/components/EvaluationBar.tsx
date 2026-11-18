@@ -6,7 +6,8 @@ import Animated, { type CSSTransitionTimingFunction, cubicBezier } from 'react-n
 
 import { type Color, colorName, type GameResult, lastPosition, opposite } from '@/game/replay';
 import { useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
-import { type Evaluation, type EvaluationEngine, getEvaluation } from '@/resources/evaluation';
+import type { Evaluation, EvaluationEngine } from '@/evaluation/evaluation';
+import { getEvaluation } from '@/resources/evaluation';
 import { fonts, pieceColors } from '@/theme/theme';
 
 interface Props {
@@ -66,8 +67,8 @@ function EvaluatedBar({
   const result = shown && lastPosition(shown).result;
   // A finished game needs no evaluation; null skips the fetch.
   const evaluation = useSuspense(
-    getEvaluation[judge ?? 'stockfish'],
-    judge && shown && !result ? shown : null,
+    getEvaluation,
+    ...(judge && shown && !result ? ([judge, shown] as const) : [null]),
   );
   const reading = result
     ? resultReading(result)

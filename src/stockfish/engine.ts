@@ -1,6 +1,6 @@
 import type { Evaluation } from '@/evaluation/evaluation';
 
-import { evaluationFromScore, type Info, parseInfo, positionCommand } from './uci';
+import { evaluationFromScore, parseScore, positionCommand, type Score } from './uci';
 
 /**
  * How long one evaluation searches: 100,000 positions, which reaches about
@@ -11,7 +11,7 @@ import { evaluationFromScore, type Info, parseInfo, positionCommand } from './uc
 const GO = 'go nodes 100000 movetime 1500';
 
 /** Sends one UCI command to the engine. */
-export type Send = (command: string) => void;
+type Send = (command: string) => void;
 
 /** An engine the app is connected to. */
 export interface Connection {
@@ -28,8 +28,8 @@ interface Search {
   readonly line: readonly string[];
   resolve(evaluation: Evaluation): void;
   reject(error: Error): void;
-  /** The deepest finished depth so far. */
-  last?: Info;
+  /** The score of the deepest depth finished so far. */
+  last?: Score;
   /** Whether a newer request replaced it; its answer is then thrown away. */
   superseded?: boolean;
 }
@@ -38,7 +38,9 @@ interface Search {
 export class SupersededError extends Error {
   constructor() {
     super('A newer position replaced this one before Stockfish finished');
-    this.name = 'SupersededError';
+    // Data Client keeps nothing for a request that fails with an AbortError,
+    // as if it never ran, so coming back to this position evaluates it.
+    this.name = 'AbortError';
   }
 }
 
@@ -90,18 +92,17 @@ export function stockfishEvaluation(line: readonly string[]): Promise<Evaluation
 function handleLine(line: string) {
   if (!connected) return;
   if (line === 'uciok') {
-    connected.send('setoption name Hash value 16');
     connected.ready = true;
     startNext();
     return;
   }
   if (!running) return;
-  const info = parseInfo(line);
-  if (info) running.last = info;
+  const score = parseScore(line);
+  if (score) running.last = score;
   else if (line.startsWith('bestmove')) {
     const { last, superseded, line: moves } = running;
     if (superseded) running.reject(new SupersededError());
-    else if (last) running.resolve(evaluationFromScore(last.score, moves.length));
+    else if (last) running.resolve(evaluationFromScore(last, moves.length));
     else running.reject(new Error('Stockfish finished without a score'));
     running = undefined;
     startNext();

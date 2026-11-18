@@ -1,37 +1,51 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { evaluationFromScore, isNeeded, parseInfo, positionCommand } from './uci';
+import { evaluationFromScore, neededLines, parseScore, positionCommand } from './uci';
 
-describe('parseInfo', () => {
-  it('reads a finished depth', () => {
+describe('parseScore', () => {
+  it("reads a finished depth's score", () => {
     expect(
-      parseInfo(
+      parseScore(
         'info depth 16 seldepth 22 multipv 1 score cp -34 nodes 98123 nps 400000 hashfull 120 tbhits 0 time 245 pv e7e5 g1f3',
       ),
-    ).toEqual({ depth: 16, score: { kind: 'cp', value: -34 } });
-    expect(parseInfo('info depth 3 seldepth 2 multipv 1 score mate -1 nodes 40 pv d8h4')).toEqual({
-      depth: 3,
-      score: { kind: 'mate', value: -1 },
+    ).toEqual({ kind: 'cp', value: -34 });
+    expect(parseScore('info depth 3 seldepth 2 multipv 1 score mate -1 nodes 40 pv d8h4')).toEqual({
+      kind: 'mate',
+      value: -1,
     });
   });
 
   it('skips bounds and other lines', () => {
-    expect(parseInfo('info depth 18 seldepth 25 score cp 40 lowerbound nodes 3 pv e2e4')).toBe(
+    expect(parseScore('info depth 18 seldepth 25 score cp 40 lowerbound nodes 3 pv e2e4')).toBe(
       undefined,
     );
-    expect(parseInfo('info depth 18 currmove e2e4 currmovenumber 1')).toBe(undefined);
-    expect(parseInfo('info string NNUE evaluation using nn-61e7af4bb97d.nnue')).toBe(undefined);
-    expect(parseInfo('bestmove e2e4 ponder e7e5')).toBe(undefined);
+    expect(parseScore('info depth 18 currmove e2e4 currmovenumber 1')).toBe(undefined);
+    expect(parseScore('info string NNUE evaluation using nn-61e7af4bb97d.nnue')).toBe(undefined);
+    expect(parseScore('bestmove e2e4 ponder e7e5')).toBe(undefined);
   });
 });
 
-describe('isNeeded', () => {
-  it('keeps the handshake, finished depths and the best move', () => {
-    expect(isNeeded('uciok')).toBe(true);
-    expect(isNeeded('bestmove e2e4 ponder e7e5')).toBe(true);
-    expect(isNeeded('info depth 5 score cp 20 nodes 100 pv e2e4')).toBe(true);
-    expect(isNeeded('id name Stockfish 19')).toBe(false);
-    expect(isNeeded('info depth 5 currmove e2e4 currmovenumber 1')).toBe(false);
+describe('neededLines', () => {
+  it('passes on the handshake, and each search\'s last score with its best move', () => {
+    const passed: string[] = [];
+    const pass = neededLines((line) => passed.push(line));
+    for (const line of [
+      'id name Stockfish 19',
+      'uciok',
+      'info depth 1 score cp 10 nodes 20 pv e2e4',
+      'info depth 2 currmove e2e4 currmovenumber 1',
+      'info depth 2 score cp 30 lowerbound nodes 40 pv e2e4',
+      'info depth 2 score cp 20 nodes 60 pv e2e4',
+      'bestmove e2e4 ponder e7e5',
+      'bestmove (none)',
+    ])
+      pass(line);
+    expect(passed).toEqual([
+      'uciok',
+      'info depth 2 score cp 20 nodes 60 pv e2e4',
+      'bestmove e2e4 ponder e7e5',
+      'bestmove (none)',
+    ]);
   });
 });
 

@@ -5,27 +5,22 @@ import type { Evaluation } from '@/evaluation/evaluation';
 // engine's score out of the lines it prints while it searches.
 
 /** A score as Stockfish reports it, from the side to move's point of view. */
-export type Score =
-  | { readonly kind: 'cp'; readonly value: number }
-  | { readonly kind: 'mate'; readonly value: number };
-
-/** One finished depth of a search. */
-export interface Info {
-  readonly depth: number;
-  readonly score: Score;
+export interface Score {
+  readonly kind: 'cp' | 'mate';
+  readonly value: number;
 }
 
 /**
- * The finished depth an `info` line reports, or undefined for any other line.
- * Lines whose score is only a bound (`lowerbound`, `upperbound`) come before
- * the depth is finished, so they are skipped too.
+ * The score of a finished depth that an `info` line reports, or undefined
+ * for any other line. Lines whose score is only a bound (`lowerbound`,
+ * `upperbound`) come before the depth is finished, so they are skipped too.
  */
-export function parseInfo(line: string): Info | undefined {
+export function parseScore(line: string): Score | undefined {
   if (!line.startsWith('info ') || / (lower|upper)bound\b/.test(line)) return undefined;
-  const match = / depth (\d+)\b.* score (cp|mate) (-?\d+)\b/.exec(line);
+  const match = / depth \d+\b.* score (cp|mate) (-?\d+)\b/.exec(line);
   if (!match) return undefined;
-  const [, depth, kind, value] = match;
-  return { depth: Number(depth), score: { kind: kind as Score['kind'], value: Number(value) } };
+  const [, kind, value] = match;
+  return { kind: kind as Score['kind'], value: Number(value) };
 }
 
 /**
@@ -55,12 +50,21 @@ export function evaluationFromScore(score: Score, plies: number): Evaluation {
 }
 
 /**
- * Whether the app needs `line` from the engine: the handshake, finished
- * depths and the end of a search. Everything else is dropped where the engine
- * runs, so less crosses into the app.
+ * Passes on only the lines the app needs from the engine: the handshake
+ * (`uciok`), and for each search its last finished score just before its
+ * `bestmove`. The engine runs in a web view on Android, and every line that
+ * crosses into the app costs a trip across the bridge, so this runs where
+ * the engine does: one search prints about 17 lines, and 2 cross.
  */
-export function isNeeded(line: string): boolean {
-  return (
-    line === 'uciok' || line.startsWith('bestmove') || parseInfo(line) !== undefined
-  );
+export function neededLines(onLine: (line: string) => void): (line: string) => void {
+  let lastScore: string | undefined;
+  return (line) => {
+    if (parseScore(line)) lastScore = line;
+    else if (line === 'uciok') onLine(line);
+    else if (line.startsWith('bestmove')) {
+      if (lastScore) onLine(lastScore);
+      lastScore = undefined;
+      onLine(line);
+    }
+  };
 }

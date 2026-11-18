@@ -8,7 +8,7 @@ import type { DOMImperativeFactory, DOMProps } from 'expo/dom';
 import { useDOMImperativeHandle } from 'expo/dom';
 import { type Ref, useEffect, useRef } from 'react';
 
-import { isNeeded } from './uci';
+import { neededLines } from './uci';
 import { startStockfishWorker, type StockfishWorker } from './worker';
 
 export interface EngineViewRef {
@@ -26,7 +26,7 @@ interface Props {
   readonly ref: Ref<EngineViewRef>;
   /** Called each time the page (re)loads, for the app to call `start`. */
   readonly onLoad: () => void;
-  /** A line the engine printed that the app needs (`isNeeded`). */
+  /** A line the engine printed that the app needs (`neededLines`). */
   readonly onLine: (line: string) => void;
   /** The engine failed to start or crashed; it answers nothing more. */
   readonly onError: (message: string) => void;
@@ -44,13 +44,10 @@ export default function EngineView({ ref, onLoad, onLine, onError }: Props) {
         worker.current?.terminate();
         worker.current = null;
         try {
-          const bytes = Uint8Array.from(atob(wasmBase64), (c) => c.charCodeAt(0));
           worker.current = startStockfishWorker(
             loader,
-            new Blob([bytes], { type: 'application/wasm' }),
-            (line) => {
-              if (isNeeded(line)) onLine(line);
-            },
+            new Blob([decodeBase64(wasmBase64)], { type: 'application/wasm' }),
+            neededLines(onLine),
             onError,
           );
         } catch (error) {
@@ -70,4 +67,12 @@ export default function EngineView({ ref, onLoad, onLine, onError }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return null;
+}
+
+/** Bytes from base64, without a callback per byte (the WebAssembly is 1.8 MB). */
+function decodeBase64(base64: string): Uint8Array<ArrayBuffer> {
+  const text = atob(base64);
+  const bytes = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i++) bytes[i] = text.charCodeAt(i);
+  return bytes;
 }

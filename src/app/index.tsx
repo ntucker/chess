@@ -19,6 +19,7 @@ import type { EvaluationEngine } from '@/evaluation/evaluation';
 import { setEvaluationEngine, useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
 import { type Color, colorName, opposite } from '@/game/replay';
 import { useGame } from '@/game/useGame';
+import { JUDGE_RATING } from '@/maia/maia';
 import type { MaiaRating } from '@/maia/models';
 import { spotlight } from '@/theme/theme';
 
@@ -32,7 +33,7 @@ const ENGINES = [
 
 const ENGINE_NOTES: Record<EvaluationEngine, string> = {
   stockfish: 'How the position stands, judged by the Stockfish chess engine.',
-  maia: 'How players rated about 1900 tend to score from here. Uses less memory.',
+  maia: `How players rated about ${JUDGE_RATING} tend to score from here. Uses less memory.`,
 };
 
 export default function PlayScreen() {

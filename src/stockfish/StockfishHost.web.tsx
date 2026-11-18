@@ -20,7 +20,7 @@ export function StockfishHost() {
       if (!response.ok) throw new Error(`Stockfish's loader: HTTP ${response.status}`);
       const loader = await response.text();
       if (unmounted) return;
-      const started = startStockfishWorker(
+      engine = startStockfishWorker(
         loader,
         assetUrl(WASM),
         (line) => connection?.receive(line),
@@ -31,11 +31,9 @@ export function StockfishHost() {
           connection?.detach();
         },
       );
-      connection = attachStockfish(started.send);
-      engine = started;
+      connection = attachStockfish(engine.send);
     })()
-      // Evaluations wait for an engine, as after a crash (above). Failing
-      // them would make the bar ask again at once, over and over.
+      // Evaluations wait for an engine, as after a crash (above).
       .catch((error: unknown) => console.error(error));
     return () => {
       unmounted = true;

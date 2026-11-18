@@ -1,8 +1,8 @@
-import { Surface, Text, useTheme } from '@reactive/silk-native';
+import { a11yState, Surface, Text, useTheme } from '@reactive/silk-native';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
-export interface PillOption<T extends string> {
+interface PillOption<T extends string> {
   readonly value: T;
   readonly label: string;
   /** Drawn before the label. */
@@ -35,8 +35,7 @@ export function PillChoice<T extends string>({ label, options, value, onChange }
           <Pressable
             key={option.value}
             accessibilityRole="radio"
-            accessibilityState={{ checked: selected }}
-            aria-checked={selected}
+            {...a11yState({ checked: selected })}
             onPress={() => onChange(option.value)}
             style={[
               styles.option,
