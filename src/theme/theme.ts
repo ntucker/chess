@@ -51,7 +51,7 @@ export const fonts = {
 } as const;
 
 // Silk picks a font by family slot (sans, serif, mono) and a weight, but each
-// loaded file is its own family on iOS and Android, so a weight the file
+// loaded file is its own family on Android, so a weight the file
 // doesn't have would be ignored there and faked on the web. Every role uses
 // its file's own weight instead; the display serif carries the hierarchy.
 const typography: SemanticTokens['typography'] = {

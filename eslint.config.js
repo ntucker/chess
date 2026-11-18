@@ -6,8 +6,8 @@ module.exports = defineConfig([
   expoConfig,
   { ignores: ['dist/*', 'vendor/*'] },
   {
-    // network.ts is a worklet file, run on a background runtime on iOS and
-    // Android. Worklets can call only other worklets, created in order.
+    // network.ts is a worklet file, run on a background runtime on Android.
+    // Worklets can call only other worklets, created in order.
     files: ['src/maia/network.ts'],
     rules: {
       'no-restricted-syntax': [

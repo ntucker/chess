@@ -1,4 +1,4 @@
-This is Opening Night, an Expo app (iOS, Android and web) for learning chess openings by playing them.
+This is Opening Night, an Expo app for learning chess openings by playing them. Read `GOALS.md` before you design a feature or choose between approaches: it says what the app is for and which platforms it targets.
 
 ## Project
 
@@ -9,7 +9,7 @@ This is Opening Night, an Expo app (iOS, Android and web) for learning chess ope
 - `src/components/Board.tsx` the board: `@lichess-org/chessground` in an Expo DOM component (`'use dom'`), so it runs in a web view on native. Its props must be JSON; function props become async messages.
 - `src/maia/` the Maia engine, run on the device:
   - lc0's input encoding and move names are in `maia.ts` and `policy.ts`, the network itself in `network.ts`. The networks are assets (`assets/maia/*.bin`, written by `yarn maia`; Metro bundles `.bin` files because of `metro.config.js`), listed in `models.ts`.
-  - `engine.ts` plays a move: the rules run on the calling thread, and the network runs off it through `runNetwork.ts` (a react-native-worklets background runtime on iOS and Android) or `runNetwork.web.ts` (`maia.worker.ts`, a Web Worker).
+  - `engine.ts` plays a move: the rules run on the calling thread, and the network runs off it through `runNetwork.ts` (a react-native-worklets background runtime on native) or `runNetwork.web.ts` (`maia.worker.ts`, a Web Worker).
   - `network.ts` is a worklet file: it may not import anything, and each function must come before the functions that call it (`yarn lint` enforces both).
   - Maia writes castling as the king taking its rook (`e1h1`). The game records every move through `lineMove` in `src/game/replay.ts`, which writes castling as the king's two-square move (`e1g1`).
   - `maia.test.ts` checks the engine against `reference-moves.json`, the moves a separate reference implementation of the network picks in 162 positions for each of the 1100 and 1900 networks and, for the 1900 network, the win, draw and loss chances it gives them, so a failure there means the engine broke, not that the expected move needs updating. The one exception is a position where the two best moves score almost the same, after a change to `scripts/convert-maia.mjs`: the app's weights are 16-bit copies of the originals and can tip a near tie.
@@ -42,8 +42,9 @@ Run lint, typecheck and tests before declaring any task done. Tests sit next to 
 
 ## Native builds
 
-- `ios/` and `android/` are generated (Continuous Native Generation) and ignored by git. Configure native behavior in `app.json`, `app.config.ts` and config plugins rather than creating or editing those directories.
-- Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or an EAS build.
+- iOS is not a target (see `GOALS.md`): don't add iOS-only code or config, or spend effort verifying iOS. Android will ship later, so keep native code paths working.
+- `android/` (and `ios/`) are generated (Continuous Native Generation) and ignored by git. Configure native behavior in `app.json`, `app.config.ts` and config plugins rather than creating or editing those directories.
+- Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:android` locally, or an EAS build.
 - EAS isn't set up yet (there is no `eas.json`). When it is needed, run its CLI as `npx eas-cli@latest <command>` rather than a bare `eas`.
 - Prefer Expo's own modules over third-party libraries, and check your available skills before adding a dependency.
 

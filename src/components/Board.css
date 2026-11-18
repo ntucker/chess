@@ -1,4 +1,4 @@
-/* On iOS and Android the board is the whole page of its web view. */
+/* On Android the board is the whole page of its web view. */
 html,
 body {
   margin: 0;

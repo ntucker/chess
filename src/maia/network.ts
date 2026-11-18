@@ -10,8 +10,8 @@
  * Activations are kept per channel on a 10x10 grid: the 8x8 board with a
  * border of zeros, so a 3x3 convolution needs no edge checks.
  *
- * The 'worklet' directive above lets the iOS and Android apps run these
- * functions on a background thread (see engine.ts). It keeps this file free of
+ * The 'worklet' directive above lets the Android app run these functions on
+ * a background thread (see engine.ts). It keeps this file free of
  * imports: a worklet can only call other worklets. Worklets are created in
  * order, so each function must come after the ones it calls.
  */

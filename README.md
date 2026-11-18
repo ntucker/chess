@@ -2,7 +2,7 @@
 
 # Opening Night
 
-Learn your lines. An app for learning chess openings by playing them, for iOS, Android and the web.
+Learn your lines. An app for learning chess openings by playing them, on the web now and on Android later. [GOALS.md](GOALS.md) says what it aims to be.
 
 For now it has one screen: a game against [Maia](https://www.maiachess.com), an engine trained to play like people rather than to find the best move. You can play either color, step back and forward through the moves, play a different move from any earlier position, and start over.
 
@@ -13,7 +13,7 @@ You need Node.js 22 or later, with Corepack enabled for Yarn 4.
 ```bash
 corepack enable
 yarn install
-yarn web        # or: yarn ios, yarn android
+yarn web        # or: yarn android
 ```
 
 `yarn start` opens the Expo dev server, where you can pick a platform or scan the QR code with [Expo Go](https://expo.dev/go).
@@ -21,7 +21,7 @@ yarn web        # or: yarn ios, yarn android
 | Script | What it does |
 | --- | --- |
 | `yarn start` | Start the Expo dev server |
-| `yarn web` / `yarn ios` / `yarn android` | Start it and open that platform |
+| `yarn web` / `yarn android` | Start it and open that platform |
 | `yarn typecheck` | Type-check with TypeScript |
 | `yarn lint` | Lint with ESLint |
 | `yarn test` | Run the unit tests (Jest) |
@@ -46,7 +46,7 @@ Silk isn't on npm yet, so the app installs it from the tarballs in `vendor/`.
 
 Maia is a set of neural networks, one for each rating from 1100 to 1900, trained on lichess games to predict the move a player of that rating would make. For example, the 1100 network opens 1. e4 and answers 1. e4 with 1... e5. The app plays the move its network rates most likely, as Maia does on lichess, without searching ahead.
 
-The networks ship with the app (`assets/maia/`, 1.2 MB each) and run on the device in plain TypeScript (`src/maia/network.ts`), so the app needs no server and works offline. A move takes about 25 ms on a laptop. It is worked out off the main thread (a Web Worker on the web, a background JavaScript runtime on iOS and Android), so the app keeps responding meanwhile. `yarn maia` downloads the original models from the [Maia repository](https://github.com/CSSLab/maia-chess) and rewrites them in the app's smaller format (`scripts/convert-maia.mjs` describes it).
+The networks ship with the app (`assets/maia/`, 1.2 MB each) and run on the device in plain TypeScript (`src/maia/network.ts`), so the app needs no server and works offline. A move takes about 25 ms on a laptop. It is worked out off the main thread (a Web Worker on the web, a background JavaScript runtime on Android), so the app keeps responding meanwhile. `yarn maia` downloads the original models from the [Maia repository](https://github.com/CSSLab/maia-chess) and rewrites them in the app's smaller format (`scripts/convert-maia.mjs` describes it).
 
 Each network can also estimate how often each side wins, draws or loses from a position, learned from the results of games between players of its rating. The evaluation bar beside the board shows the 1900 network's estimate as White's share of the bar, and converts it to pawns the way Leela Chess Zero does. Only that network keeps this part (its file is 1.7 MB), and the app loads it alongside the network Maia plays with. It is a rough guide: Maia judges positions much less accurately than a chess engine such as Stockfish.
 
