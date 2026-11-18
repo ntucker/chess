@@ -70,6 +70,6 @@ export function EvaluationEngineChoice() {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', columnGap: 2 },
+  row: { flexDirection: 'row', alignItems: 'center', columnGap: 2 },
   option: { borderRadius: 4, paddingHorizontal: 2, paddingVertical: 2 },
 });
