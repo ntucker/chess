@@ -96,6 +96,17 @@ describe('answers from Maia that come too late', () => {
 });
 
 describe('gameReducer', () => {
+  // useGame starts nothing (no Maia request, no judging) for an action that
+  // returns the same state, so these must not copy it.
+  it('returns the same state for a late answer or an illegal move', () => {
+    const replaced = play(white, e4, { type: 'goto', ply: 0 }, { type: 'move', uci: 'd2d4' });
+    expect(gameReducer(replaced, { type: 'reply', game: 1, after: ['e2e4'], uci: 'e7e5' })).toBe(
+      replaced,
+    );
+    const started = play(white);
+    expect(gameReducer(started, { type: 'move', uci: 'e2e5' })).toBe(started);
+  });
+
   it('retries the line that failed', () => {
     const error = new Error('down');
     const failed = play(white, e4, { type: 'failed', game: 1, after: ['e2e4'], error });
