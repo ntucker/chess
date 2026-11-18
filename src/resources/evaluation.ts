@@ -18,10 +18,9 @@ const JUDGES: Record<EvaluationEngine, (line: readonly string[]) => Promise<Eval
  * A position's evaluation never changes, so it is kept for as long as the app
  * runs.
  *
- * - `stockfish`: Stockfish 19 lite, searching about 16 moves deep
- *   (src/stockfish). It needs StockfishHost mounted. A request that a newer
- *   position replaces fails with SupersededError, an AbortError, which Data
- *   Client doesn't keep, so coming back to that position evaluates it.
+ * - `stockfish`: Stockfish 19 lite (src/stockfish). It needs StockfishHost
+ *   mounted, and a newer position stops the search for an older one (see
+ *   SupersededError).
  * - `maia`: Maia 1900's value head, how players of that rating tend to score
  *   from here (src/maia).
  *

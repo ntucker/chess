@@ -1,3 +1,5 @@
+import { forwardNeededLines } from './uci';
+
 /** Stockfish running in a Web Worker. */
 export interface StockfishWorker {
   /** Sends the engine one UCI command. */
@@ -11,7 +13,8 @@ export interface StockfishWorker {
  * JavaScript loader, and `wasm` its WebAssembly, as an address or as the
  * bytes; the loader reads the address from its own address's hash. Running
  * the loader from a Blob means it works whatever MIME type the loader file
- * was served with. `onLine` gets each line the engine prints, and `onError`
+ * was served with. `onLine` gets each line of the engine's that the app
+ * needs (`forwardNeededLines`), and `onError`
  * the message if the worker fails to start or crashes (it's then
  * already stopped).
  *
@@ -35,9 +38,10 @@ export function startStockfishWorker(
     URL.revokeObjectURL(script);
     if (ownsWasm) URL.revokeObjectURL(wasmUrl);
   };
+  const forward = forwardNeededLines(onLine);
   worker.onmessage = ({ data }: MessageEvent<unknown>) => {
     freeFiles();
-    if (typeof data === 'string') onLine(data);
+    if (typeof data === 'string') forward(data);
   };
   const terminate = () => {
     worker.terminate();

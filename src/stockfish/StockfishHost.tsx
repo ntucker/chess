@@ -30,7 +30,9 @@ export function StockfishHost() {
       const engine = view.current;
       if (!engine || unmounted.current) return;
       engine.start(loader, wasm);
-      connection.current = attachStockfish((command) => engine.send(command));
+      // Expo's ref hands out a standalone function, so no closure here keeps
+      // the files read above alive.
+      connection.current = attachStockfish(engine.send);
     } catch (error) {
       // Evaluations wait for an engine, as after a crash (below).
       console.error(error);

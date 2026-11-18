@@ -30,8 +30,6 @@ interface Search {
   reject(error: Error): void;
   /** The score of the deepest depth finished so far. */
   last?: Score;
-  /** Whether a newer request replaced it; its answer is then thrown away. */
-  superseded?: boolean;
 }
 
 /** The error a request gets when a newer one replaces it before it's done. */
@@ -85,12 +83,11 @@ export function attachStockfish(send: Send): Connection {
  */
 export function stockfishEvaluation(line: readonly string[]): Promise<Evaluation> {
   return new Promise((resolve, reject) => {
+    // While a search runs, a waiting request means a newer one replaced it,
+    // so only the first replacement stops it.
+    if (running && !waiting) connected?.send('stop');
     waiting?.reject(new SupersededError());
     waiting = { line, resolve, reject };
-    if (running && !running.superseded) {
-      running.superseded = true;
-      connected?.send('stop');
-    }
     startNext();
   });
 }
@@ -105,8 +102,8 @@ function handleLine(session: Session, line: string) {
   const score = parseScore(line);
   if (score) running.last = score;
   else if (line.startsWith('bestmove')) {
-    const { last, superseded, line: moves } = running;
-    if (superseded) running.reject(new SupersededError());
+    const { last, line: moves } = running;
+    if (waiting) running.reject(new SupersededError());
     else if (last) running.resolve(evaluationFromScore(last, moves.length));
     else running.reject(new Error('Stockfish finished without a score'));
     running = undefined;
@@ -131,7 +128,7 @@ function startNext() {
  * replaced it.
  */
 function handOverRunning() {
-  if (running && !running.superseded && !waiting) {
+  if (running && !waiting) {
     running.last = undefined;
     waiting = running;
   } else running?.reject(new SupersededError());
