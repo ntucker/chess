@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Button, Inline, Separator, Stack, Surface, useTheme } from '@reactive/silk-native';
 import Head from 'expo-router/head';
 import { useEffect, useEffectEvent, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { type DimensionValue, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Board from '@/components/Board';
@@ -10,7 +10,7 @@ import { EvaluationBar } from '@/components/EvaluationBar';
 import { EvaluationEngineChoice } from '@/components/EvaluationEngineChoice';
 import { Eyebrow } from '@/components/Eyebrow';
 import { GameStatus } from '@/components/GameStatus';
-import { Header } from '@/components/Header';
+import { HEADER_HEIGHT, Header } from '@/components/Header';
 import { PLAYER_BAR_HEIGHT, PLAYER_DISC, PlayerBar } from '@/components/PlayerBar';
 import { Scoresheet } from '@/components/Scoresheet';
 import { SideChooser } from '@/components/SideChooser';
@@ -158,10 +158,39 @@ export default function PlayScreen() {
 const BOARD_COLUMN_GAP = 4;
 /** The evaluation bar's width. */
 const EVALUATION_BAR_WIDTH = 22;
-/** The board's largest size. */
-const BOARD_MAX = 600;
 /** How far the board sits below the top of its column (Maia's name bar). */
 const BOARD_OFFSET = PLAYER_BAR_HEIGHT + BOARD_COLUMN_GAP;
+/** The board's largest size. */
+const BOARD_MAX = 720;
+/** The width the column adds beside the board: the players' discs and their gap. */
+const BESIDE_BOARD = PLAYER_DISC.size + PLAYER_DISC.gap;
+/** The board column's largest width. */
+const BOARD_COLUMN_MAX = BOARD_MAX + BESIDE_BOARD;
+/** The program's largest width. */
+const PROGRAM_MAX = 400;
+/** Space between the board column and the program. */
+const STAGE_GAP = 48;
+/** Wide enough for the board and the program at their largest. */
+const STAGE_MAX = BOARD_COLUMN_MAX + STAGE_GAP + PROGRAM_MAX;
+/** The page's padding, and the space between the header and the stage. */
+const PAGE_SPACE = 20;
+/**
+ * Height around the board: the page's top and bottom padding and the gap
+ * below the header (3 × PAGE_SPACE), the header, and both name bars.
+ */
+const AROUND_BOARD = 3 * PAGE_SPACE + HEADER_HEIGHT + 2 * BOARD_OFFSET;
+/** On the web, the smallest the board shrinks to in a short window. */
+const BOARD_MIN_WEB = 320;
+/**
+ * The board column's width limit. On the web the board also shrinks to fit
+ * the window's height, so the player's name bar and the move buttons stay in
+ * view. CSS does it, since the server can't measure the window; React
+ * Native's types don't know CSS functions, hence the cast.
+ */
+const BOARD_COLUMN_LIMIT =
+  process.env.EXPO_OS === 'web'
+    ? (`calc(clamp(${BOARD_MIN_WEB}px, 100svh - ${AROUND_BOARD}px, ${BOARD_MAX}px) + ${BESIDE_BOARD}px)` as DimensionValue)
+    : BOARD_COLUMN_MAX;
 /** Space above the program when it wraps below the board. */
 const WRAPPED_GAP = 32;
 
@@ -180,22 +209,22 @@ const WRAPPED_GAP = 32;
 // below the shorter of the two.
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  page: { padding: 20, gap: 20, alignItems: 'center' },
-  header: { width: '100%', maxWidth: 1040 },
+  page: { padding: PAGE_SPACE, gap: PAGE_SPACE, alignItems: 'center' },
+  header: { width: '100%', maxWidth: STAGE_MAX },
   stage: {
     width: '100%',
-    maxWidth: 1040,
+    maxWidth: STAGE_MAX,
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    columnGap: 48,
+    columnGap: STAGE_GAP,
     paddingTop: BOARD_OFFSET - WRAPPED_GAP,
   },
   boardColumn: {
     flexGrow: 1,
     flexShrink: 1,
     flexBasis: 320,
-    maxWidth: BOARD_MAX + PLAYER_DISC.size + PLAYER_DISC.gap,
+    maxWidth: BOARD_COLUMN_LIMIT,
     marginTop: WRAPPED_GAP - BOARD_OFFSET,
     gap: BOARD_COLUMN_GAP,
   },
@@ -212,7 +241,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     flexShrink: 1,
     flexBasis: 300,
-    maxWidth: 360,
+    maxWidth: PROGRAM_MAX,
     marginTop: WRAPPED_GAP,
   },
 });
