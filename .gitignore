@@ -49,3 +49,4 @@ yarn-error.*
 
 # scripts/maia-reference.py
 .venv-maia/
+__pycache__/
