@@ -103,6 +103,7 @@ function handleLine(session: Session, line: string) {
   if (score) running.last = score;
   else if (line.startsWith('bestmove')) {
     const { last, line: moves } = running;
+    // A request waiting behind a running search is a newer one that replaced it.
     if (waiting) running.reject(new SupersededError());
     else if (last) running.resolve(evaluationFromScore(last, moves.length));
     else running.reject(new Error('Stockfish finished without a score'));

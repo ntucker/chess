@@ -13,10 +13,9 @@ export interface StockfishWorker {
  * JavaScript loader, and `wasm` its WebAssembly, as an address or as the
  * bytes; the loader reads the address from its own address's hash. Running
  * the loader from a Blob means it works whatever MIME type the loader file
- * was served with. `onLine` gets each line of the engine's that the app
- * needs (`forwardNeededLines`), and `onError`
- * the message if the worker fails to start or crashes (it's then
- * already stopped).
+ * was served with. `onLine` gets only the lines the app needs from the
+ * engine (see `forwardNeededLines`), and `onError` gets the message if the
+ * worker fails to start or crashes (it's then already stopped).
  *
  * Runs on the web and inside the hidden web view on Android
  * (EngineView), so it may only use the DOM.

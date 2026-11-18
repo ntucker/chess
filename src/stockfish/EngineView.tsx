@@ -41,6 +41,7 @@ export default function EngineView({ ref, onLoad, onLine, onError }: Props) {
       start(...[loader, wasmBase64]: Parameters<DOMImperativeFactory[string]>) {
         if (typeof loader !== 'string' || typeof wasmBase64 !== 'string') return;
         worker.current?.terminate();
+        worker.current = null;
         try {
           worker.current = startStockfishWorker(
             loader,
