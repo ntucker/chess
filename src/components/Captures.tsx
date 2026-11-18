@@ -14,7 +14,7 @@ const OVERLAP = SIZE * 0.45;
 
 interface Props extends Material {
   /** The color of the pieces listed: the other side's. */
-  readonly color: Color;
+  readonly pieceColor: Color;
 }
 
 /**
@@ -23,7 +23,7 @@ interface Props extends Material {
  * stacked. Pieces both sides have lost cancel out (see `material`), so this
  * is empty when material is even.
  */
-export function Captures({ pieces, lead, color }: Props) {
+export function Captures({ pieces, lead, pieceColor }: Props) {
   const { theme } = useTheme();
   if (pieces.length === 0) return null;
 
@@ -35,15 +35,17 @@ export function Captures({ pieces, lead, color }: Props) {
         </Text>
       ) : null}
       {/* Pieces that don't fit wrap onto a second line, which is hidden, so a
-          narrow bar drops pieces from the end rather than cutting one in half. */}
+          narrow bar drops pieces from the end rather than cutting one in half.
+          The empty first item lets even the first piece wrap away. */}
       <View style={styles.pieces}>
+        <View style={styles.lineStart} />
         {pieces.map((role, i) => (
           <View
             // Pieces never reorder, so their place in the list names them.
             key={i}
             style={i > 0 && (role === pieces[i - 1] ? styles.stacked : styles.nextGroup)}
           >
-            <PieceGlyph role={role} color={color} size={SIZE} />
+            <PieceGlyph role={role} color={pieceColor} size={SIZE} />
           </View>
         ))}
       </View>
@@ -65,7 +67,8 @@ function spokenSummary(pieces: readonly MaterialRole[], lead: number) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, minWidth: 0 },
+  // Gives way long before the name beside it does.
+  row: { flexDirection: 'row', alignItems: 'center', flexShrink: 1000, minWidth: 0 },
   pieces: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -74,6 +77,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     overflow: 'hidden',
   },
+  lineStart: { width: 0, height: SIZE },
   stacked: { marginLeft: -OVERLAP },
   nextGroup: { marginLeft: 1 },
   lead: { fontFamily: fonts.mono, marginRight: 8, flexShrink: 0 },

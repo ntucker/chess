@@ -49,10 +49,10 @@ export function PlayerBar({
       />
       <View style={styles.names}>
         <View style={styles.nameLine}>
-          <Text role="headingSm" style={styles.name}>
+          <Text role="headingSm" numberOfLines={1} style={styles.name}>
             {name}
           </Text>
-          <Captures {...material} color={opposite(color)} />
+          <Captures {...material} pieceColor={opposite(color)} />
         </View>
         <Text role="caption" tone={toMove ? 'accent' : 'secondary'} numberOfLines={1}>
           {toMove ? `${detail} · to move` : detail}
@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
   piece: { width: 28, height: 28, borderRadius: 14, borderWidth: 2.5 },
   names: { flex: 1, minWidth: 0 },
   nameLine: { flexDirection: 'row', alignItems: 'center', gap: 10, overflow: 'hidden' },
-  // The name stays whole and the captured pieces give way; past that, on the
-  // narrowest screens, the line is clipped rather than run under the controls.
-  name: { flexShrink: 0 },
+  // The captured pieces give way first (see Captures), then the name ends in
+  // an ellipsis; the line is clipped rather than run under the controls.
+  name: { flexShrink: 1, minWidth: 0 },
 });

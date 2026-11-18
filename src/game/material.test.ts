@@ -33,6 +33,15 @@ describe('material', () => {
     });
   });
 
+  it('gives Black the lead when Black is ahead', () => {
+    // Black has won a rook for a pawn.
+    const fen = 'rnbqkbnr/ppppppp1/8/8/8/8/PPPPPPPP/1NBQKBNR w Kkq - 0 1';
+    expect(material(fen)).toEqual({
+      white: { pieces: ['pawn'], lead: 0 },
+      black: { pieces: ['rook'], lead: 4 },
+    });
+  });
+
   it('counts a promoted pawn as its new piece', () => {
     // White has queened its h-pawn: a queen up, a pawn down, eight points ahead.
     const fen = 'rnbqkbnr/pppppppp/8/8/3Q4/8/PPPPPPP1/RNBQKBNR w KQkq - 0 1';

@@ -11,7 +11,10 @@ import type { Color } from './replay';
 /** The roles that count. */
 export type MaterialRole = Exclude<Role, 'king'>;
 
-/** The usual piece values, in pawns, most valuable first, as pieces are listed. */
+/** Most valuable first, as pieces are listed. */
+const ROLES: readonly MaterialRole[] = ['queen', 'rook', 'bishop', 'knight', 'pawn'];
+
+/** The usual piece values, in pawns. */
 const VALUES: Readonly<Record<MaterialRole, number>> = {
   queen: 9,
   rook: 5,
@@ -19,7 +22,6 @@ const VALUES: Readonly<Record<MaterialRole, number>> = {
   knight: 3,
   pawn: 1,
 };
-const ROLES = Object.keys(VALUES) as MaterialRole[];
 
 export interface Material {
   /** The other side's pieces this side is up, most valuable first. */
