@@ -4,15 +4,12 @@
  * pieces it is up, plus a points lead for the side ahead.
  */
 import { parseFen } from 'chessops/fen';
-import type { Role } from 'chessops/types';
 
 import type { Color } from './replay';
 
-/** The roles that count. */
-export type MaterialRole = Exclude<Role, 'king'>;
-
-/** Most valuable first, as pieces are listed. */
-const ROLES: readonly MaterialRole[] = ['queen', 'rook', 'bishop', 'knight', 'pawn'];
+/** The roles that count, most valuable first, as pieces are listed. */
+const ROLES = ['queen', 'rook', 'bishop', 'knight', 'pawn'] as const;
+export type MaterialRole = (typeof ROLES)[number];
 
 /** The usual piece values, in pawns. */
 const VALUES: Readonly<Record<MaterialRole, number>> = {

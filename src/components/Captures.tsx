@@ -67,7 +67,8 @@ function spokenSummary(pieces: readonly MaterialRole[], lead: number) {
 }
 
 const styles = StyleSheet.create({
-  // Gives way long before the name beside it does.
+  // flexShrink is a weight against the name's 1 in PlayerBar: kept far above
+  // it so this row gives way long before the name does.
   row: { flexDirection: 'row', alignItems: 'center', flexShrink: 1000, minWidth: 0 },
   pieces: {
     flexDirection: 'row',
@@ -77,6 +78,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     overflow: 'hidden',
   },
+  // An empty first item, so even the first piece can wrap onto the hidden line.
   lineStart: { width: 0, height: SIZE },
   stacked: { marginLeft: -OVERLAP },
   nextGroup: { marginLeft: 1 },
