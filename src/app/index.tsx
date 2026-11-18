@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Button, Inline, Separator, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
+import { Button, Inline, Separator, Stack, Surface, useTheme } from '@reactive/silk-native';
 import Head from 'expo-router/head';
 import { useEffect, useEffectEvent, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -7,40 +7,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Board from '@/components/Board';
 import { EvaluationBar } from '@/components/EvaluationBar';
+import { EvaluationEngineChoice } from '@/components/EvaluationEngineChoice';
 import { Eyebrow } from '@/components/Eyebrow';
 import { GameStatus } from '@/components/GameStatus';
 import { Header } from '@/components/Header';
-import { PillChoice } from '@/components/PillChoice';
 import { PLAYER_BAR_HEIGHT, PLAYER_DISC, PlayerBar } from '@/components/PlayerBar';
 import { Scoresheet } from '@/components/Scoresheet';
 import { SideChooser } from '@/components/SideChooser';
 import { Transport } from '@/components/Transport';
-import { EVALUATION_ENGINES, type EvaluationEngine } from '@/evaluation/evaluation';
-import { setEvaluationEngine, useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
 import { type Color, colorName, opposite } from '@/game/replay';
 import { useGame } from '@/game/useGame';
-import { JUDGE_RATING } from '@/maia/maia';
 import type { MaiaRating } from '@/maia/models';
 import { spotlight } from '@/theme/theme';
 
 /** Maia's strength for now; picking it comes with the opening lessons. */
 const RATING: MaiaRating = 1500;
-
-const ENGINE_CHOICES: Record<EvaluationEngine, { label: string; note: string }> = {
-  stockfish: {
-    label: 'Stockfish',
-    note: 'How the position stands, judged by the Stockfish chess engine.',
-  },
-  maia: {
-    label: 'Maia',
-    note: `How players rated about ${JUDGE_RATING} tend to score from here. Uses less memory.`,
-  },
-};
-
-const ENGINE_OPTIONS = EVALUATION_ENGINES.map((value) => ({
-  value,
-  label: ENGINE_CHOICES[value].label,
-}));
 
 export default function PlayScreen() {
   const game = useGame(RATING);
@@ -49,7 +30,6 @@ export default function PlayScreen() {
   const { theme } = useTheme();
   const { color, radius } = theme.semantic;
   const maiaColor = opposite(playerColor);
-  const engine = useEvaluationEngine();
 
   const chooseSide = (side: Color) => {
     setNextColor(side);
@@ -161,22 +141,10 @@ export default function PlayScreen() {
                 </Stack>
                 <Separator />
                 <Stack gap="3">
-                  <Eyebrow>Evaluation bar</Eyebrow>
-                  <PillChoice
-                    label="Evaluation bar"
-                    options={ENGINE_OPTIONS}
-                    value={engine}
-                    onChange={setEvaluationEngine}
-                  />
-                  <Text role="caption" tone="secondary">
-                    {ENGINE_CHOICES[engine].note}
-                  </Text>
-                </Stack>
-                <Separator />
-                <Stack gap="3">
                   <Eyebrow>Scoresheet</Eyebrow>
                   <Scoresheet plies={game.plies} ply={ply} onGoto={goto} />
                 </Stack>
+                <EvaluationEngineChoice />
               </Stack>
             </View>
           </View>

@@ -56,7 +56,7 @@ The models are licensed under the GPL-3.0, which is different from the app's own
 
 ## Evaluation bar
 
-The bar beside the board shows how the position stands: White's share of the bar is White's expected score, and the leading side's end shows its advantage in pawns, or `M3` when it mates in 3. A setting in the side panel picks who judges:
+The bar beside the board shows how the position stands: White's share of the bar is White's expected score, and the leading side's end shows its advantage in pawns, or `M3` when it mates in 3. A footnote under the scoresheet ("Evaluation by Stockfish · Maia") picks who judges:
 
 - **Stockfish** (the default): Stockfish 19 lite, a 1.8 MB WebAssembly build with a small network, searching 100,000 positions (about depth 16). On a recent phone that takes about 0.3 s. Pawns turn into an expected score with lichess's curve.
 - **Maia**: the 1900 network's estimate of how players of that rating score from here, converted to pawns the way Leela Chess Zero does. It uses less memory, since Stockfish isn't started.
