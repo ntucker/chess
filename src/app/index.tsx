@@ -219,11 +219,9 @@ const BOARD_MIN_WEB = 320;
  * view. CSS does it, since the server can't measure the window; React
  * Native's types don't know CSS functions, hence the cast.
  */
-const BOARD_COLUMN_LIMIT: DimensionValue =
+const BOARD_COLUMN_LIMIT =
   process.env.EXPO_OS === 'web'
-    ? (`clamp(${BOARD_MIN_WEB + BESIDE_BOARD}px, ` +
-        `calc(100svh - ${AROUND_BOARD - BESIDE_BOARD}px), ` +
-        `${BOARD_COLUMN_MAX}px)` as DimensionValue)
+    ? (`calc(clamp(${BOARD_MIN_WEB}px, 100svh - ${AROUND_BOARD}px, ${BOARD_MAX}px) + ${BESIDE_BOARD}px)` as DimensionValue)
     : BOARD_COLUMN_MAX;
 /** Space above the program when it wraps below the board. */
 const WRAPPED_GAP = 32;
