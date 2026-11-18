@@ -9,7 +9,7 @@ import Board from '@/components/Board';
 import { EvaluationBar } from '@/components/EvaluationBar';
 import { Eyebrow } from '@/components/Eyebrow';
 import { GameStatus } from '@/components/GameStatus';
-import { Header } from '@/components/Header';
+import { HEADER_HEIGHT, Header } from '@/components/Header';
 import { PillChoice } from '@/components/PillChoice';
 import { PLAYER_BAR_HEIGHT, PLAYER_DISC, PlayerBar } from '@/components/PlayerBar';
 import { Scoresheet } from '@/components/Scoresheet';
@@ -194,8 +194,10 @@ const EVALUATION_BAR_WIDTH = 22;
 const BOARD_OFFSET = PLAYER_BAR_HEIGHT + BOARD_COLUMN_GAP;
 /** The board's largest size. */
 const BOARD_MAX = 720;
-/** The board column's largest width: the board plus the players' discs beside it. */
-const BOARD_COLUMN_MAX = BOARD_MAX + PLAYER_DISC.size + PLAYER_DISC.gap;
+/** The width the column adds beside the board: the players' discs and their gap. */
+const BESIDE_BOARD = PLAYER_DISC.size + PLAYER_DISC.gap;
+/** The board column's largest width. */
+const BOARD_COLUMN_MAX = BOARD_MAX + BESIDE_BOARD;
 /** The program's largest width. */
 const PROGRAM_MAX = 400;
 /** Space between the board column and the program. */
@@ -204,22 +206,24 @@ const STAGE_GAP = 48;
 const STAGE_MAX = BOARD_COLUMN_MAX + STAGE_GAP + PROGRAM_MAX;
 /** The page's padding, and the space between the header and the stage. */
 const PAGE_SPACE = 20;
-/** The header's height (its wordmark line). */
-const HEADER_HEIGHT = 44;
-/** Everything above and below the board: the page's padding, the header, and both name bars. */
+/**
+ * Height around the board: the page's top and bottom padding and the gap
+ * below the header (3 × PAGE_SPACE), the header, and both name bars.
+ */
 const AROUND_BOARD = 3 * PAGE_SPACE + HEADER_HEIGHT + 2 * BOARD_OFFSET;
-/** The board's smallest size when the window is short. */
-const BOARD_MIN = 320;
-/** The width beside the board, which the column adds to it. */
-const BESIDE_BOARD = BOARD_COLUMN_MAX - BOARD_MAX;
+/** On the web, the smallest the board shrinks to in a short window. */
+const BOARD_MIN_WEB = 320;
 /**
  * The board column's width limit. On the web the board also shrinks to fit
  * the window's height, so the player's name bar and the move buttons stay in
- * view; CSS does it, since the server can't measure the window.
+ * view. CSS does it, since the server can't measure the window; React
+ * Native's types don't know CSS functions, hence the cast.
  */
 const BOARD_COLUMN_LIMIT: DimensionValue =
   process.env.EXPO_OS === 'web'
-    ? (`clamp(${BOARD_MIN + BESIDE_BOARD}px, calc(100svh - ${AROUND_BOARD - BESIDE_BOARD}px), ${BOARD_COLUMN_MAX}px)` as DimensionValue)
+    ? (`clamp(${BOARD_MIN_WEB + BESIDE_BOARD}px, ` +
+        `calc(100svh - ${AROUND_BOARD - BESIDE_BOARD}px), ` +
+        `${BOARD_COLUMN_MAX}px)` as DimensionValue)
     : BOARD_COLUMN_MAX;
 /** Space above the program when it wraps below the board. */
 const WRAPPED_GAP = 32;

@@ -4,6 +4,9 @@ import { Image, StyleSheet } from 'react-native';
 import { SourceLink } from '@/components/SourceLink';
 import { fonts } from '@/theme/theme';
 
+/** The header's height on one line: its logo, the tallest thing in it. */
+export const HEADER_HEIGHT = 40;
+
 /**
  * The wordmark (the logo, the name in the display serif, and the tagline),
  * with a link to the source at the far end.
@@ -33,7 +36,7 @@ export function Header() {
 }
 
 const styles = StyleSheet.create({
-  logo: { width: 40, height: 40, borderRadius: 10 },
+  logo: { width: HEADER_HEIGHT, height: HEADER_HEIGHT, borderRadius: 10 },
   wordmark: { fontFamily: fonts.display, fontSize: 26, letterSpacing: 0.2 },
   tagline: { fontFamily: fonts.displayItalic, fontSize: 17 },
   rule: { height: 18, alignSelf: 'center' },
