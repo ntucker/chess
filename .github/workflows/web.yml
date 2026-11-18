@@ -10,19 +10,17 @@ on:
     paths-ignore: ['**/*.md']
   workflow_dispatch:
 
-# Only the deploy job, which never runs on pull requests, may write to Pages.
+# Setup Pages reads the site's settings (its base path). Only the deploy job,
+# which never runs on pull requests, may write to Pages.
 permissions:
   contents: read
+  pages: read
 
 jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    permissions:
-      contents: read
-      # Setup Pages reads the site's settings (its base path).
-      pages: read
     # A newer push makes this build worthless; deploys still never overlap.
     concurrency:
       group: pages-build-${{ github.ref }}

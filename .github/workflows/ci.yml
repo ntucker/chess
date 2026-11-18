@@ -5,6 +5,7 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore: ['**/*.md']
   pull_request:
     paths-ignore: ['**/*.md']
   workflow_dispatch:
@@ -12,10 +13,10 @@ on:
 permissions:
   contents: read
 
-# A newer push to a pull request makes its older run worthless. On main each
-# commit gets its own group, so every commit there is checked.
+# A newer push to a pull request makes its older run worthless. Every other run
+# gets its own group, so no push to main is cancelled before it is checked.
 concurrency:
-  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  group: ci-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
