@@ -2,6 +2,7 @@ import { Text, useTheme } from '@reactive/silk-native';
 import { StyleSheet, View } from 'react-native';
 
 import type { Material, MaterialRole } from '@/game/material';
+import type { Color } from '@/game/replay';
 import { fonts } from '@/theme/theme';
 
 import { PieceGlyph } from './PieceGlyph';
@@ -11,39 +12,47 @@ const SIZE = 22;
 /** How much of a glyph the next piece of the same kind covers. */
 const OVERLAP = SIZE * 0.45;
 
+interface Props extends Material {
+  /** The color of the pieces listed: the other side's. */
+  readonly color: Color;
+}
+
 /**
- * The pieces one side is up, grouped by kind with each group's pieces
- * stacked, and its lead in points (`+2`) when it's ahead. Pieces both sides
- * have lost cancel out (see `material`), so this is empty when material is
- * even.
+ * One side's lead in points (`+2`) when it's ahead, then the other side's
+ * pieces it is up, in their own color, grouped by kind with each group
+ * stacked. Pieces both sides have lost cancel out (see `material`), so this
+ * is empty when material is even.
  */
-export function Captures({ pieces, lead }: Material) {
+export function Captures({ pieces, lead, color }: Props) {
   const { theme } = useTheme();
-  const { color } = theme.semantic;
   if (pieces.length === 0) return null;
 
   return (
-    <View accessible accessibilityLabel={describe(pieces, lead)} style={styles.row}>
-      {pieces.map((role, i) => (
-        <View
-          // Pieces never reorder, so their place in the list names them.
-          key={i}
-          style={i > 0 && (role === pieces[i - 1] ? styles.stacked : styles.nextGroup)}
-        >
-          <PieceGlyph role={role} ink={color.textSecondary} cut={color.surface} size={SIZE} />
-        </View>
-      ))}
+    <View accessible accessibilityLabel={spokenSummary(pieces, lead)} style={styles.row}>
       {lead > 0 ? (
-        <Text role="label" style={[styles.lead, { color: color.textPrimary }]}>
+        <Text role="label" style={[styles.lead, { color: theme.semantic.color.textPrimary }]}>
           +{lead}
         </Text>
       ) : null}
+      {/* Pieces that don't fit wrap onto a second line, which is hidden, so a
+          narrow bar drops pieces from the end rather than cutting one in half. */}
+      <View style={styles.pieces}>
+        {pieces.map((role, i) => (
+          <View
+            // Pieces never reorder, so their place in the list names them.
+            key={i}
+            style={i > 0 && (role === pieces[i - 1] ? styles.stacked : styles.nextGroup)}
+          >
+            <PieceGlyph role={role} color={color} size={SIZE} />
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
 
 /** "Up a rook and 2 pawns, 7 points ahead", for screen readers. */
-function describe(pieces: readonly MaterialRole[], lead: number) {
+function spokenSummary(pieces: readonly MaterialRole[], lead: number) {
   const counts = new Map<MaterialRole, number>();
   for (const role of pieces) counts.set(role, (counts.get(role) ?? 0) + 1);
   const parts = Array.from(counts, ([role, n]) =>
@@ -56,8 +65,16 @@ function describe(pieces: readonly MaterialRole[], lead: number) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, overflow: 'hidden' },
+  row: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, minWidth: 0 },
+  pieces: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    height: SIZE,
+    flexShrink: 1,
+    overflow: 'hidden',
+  },
   stacked: { marginLeft: -OVERLAP },
   nextGroup: { marginLeft: 1 },
-  lead: { fontFamily: fonts.mono, marginLeft: 6 },
+  lead: { fontFamily: fonts.mono, marginRight: 8, flexShrink: 0 },
 });

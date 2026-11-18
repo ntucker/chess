@@ -4,14 +4,14 @@
  * pieces it is up, plus a points lead for the side ahead.
  */
 import { parseFen } from 'chessops/fen';
-import type { Color, Role } from 'chessops/types';
-import { opposite } from 'chessops/util';
+import type { Role } from 'chessops/types';
 
-/** The roles that count, most valuable first, as the pieces are listed. */
+import type { Color } from './replay';
+
+/** The roles that count. */
 export type MaterialRole = Exclude<Role, 'king'>;
-const ROLES: readonly MaterialRole[] = ['queen', 'rook', 'bishop', 'knight', 'pawn'];
 
-/** The usual piece values, in pawns. */
+/** The usual piece values, in pawns, most valuable first, as pieces are listed. */
 const VALUES: Readonly<Record<MaterialRole, number>> = {
   queen: 9,
   rook: 5,
@@ -19,6 +19,7 @@ const VALUES: Readonly<Record<MaterialRole, number>> = {
   knight: 3,
   pawn: 1,
 };
+const ROLES = Object.keys(VALUES) as MaterialRole[];
 
 export interface Material {
   /** The other side's pieces this side is up, most valuable first. */
@@ -33,16 +34,16 @@ export interface Material {
  */
 export function material(fen: string): Readonly<Record<Color, Material>> {
   const { board } = parseFen(fen).unwrap();
-  const ahead = (color: Color): Material => {
-    const pieces: MaterialRole[] = [];
-    let score = 0;
-    for (const role of ROLES) {
-      const diff =
-        board.pieces(color, role).size() - board.pieces(opposite(color), role).size();
-      score += diff * VALUES[role];
-      for (let i = 0; i < diff; i++) pieces.push(role);
-    }
-    return { pieces, lead: Math.max(0, score) };
+  const up: Record<Color, MaterialRole[]> = { white: [], black: [] };
+  /** White's lead in points; negative when Black leads. */
+  let score = 0;
+  for (const role of ROLES) {
+    const diff = board.pieces('white', role).size() - board.pieces('black', role).size();
+    score += diff * VALUES[role];
+    for (let i = 0; i < Math.abs(diff); i++) up[diff > 0 ? 'white' : 'black'].push(role);
+  }
+  return {
+    white: { pieces: up.white, lead: Math.max(0, score) },
+    black: { pieces: up.black, lead: Math.max(0, -score) },
   };
-  return { white: ahead('white'), black: ahead('black') };
 }

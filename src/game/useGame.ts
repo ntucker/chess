@@ -5,6 +5,7 @@ import type { MaiaRating } from '@/maia/models';
 import { getMaiaMove } from '@/resources/maia';
 
 import { type GameAction, gameReducer, initialGame } from './game';
+import { material } from './material';
 import { analyze, type Color, replay, toUci } from './replay';
 
 /** The least time Maia takes to reply, so a fast answer reads as a reply, not a reflex. */
@@ -57,6 +58,8 @@ export function useGame(rating: MaiaRating) {
     ply,
     plies,
     current,
+    /** What each side is up on the board shown, so it follows the moves stepped through. */
+    material: material(current.fen),
     latest,
     atLatest,
     /** Whose move it is in the latest position; none once the game is over. */

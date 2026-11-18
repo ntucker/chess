@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { Material } from '@/game/material';
-import type { Color } from '@/game/replay';
+import { type Color, opposite } from '@/game/replay';
 import { pieceColors } from '@/theme/theme';
 
 import { Captures } from './Captures';
@@ -49,10 +49,10 @@ export function PlayerBar({
       />
       <View style={styles.names}>
         <View style={styles.nameLine}>
-          <Text role="headingSm" numberOfLines={1} style={styles.name}>
+          <Text role="headingSm" style={styles.name}>
             {name}
           </Text>
-          <Captures {...material} />
+          <Captures {...material} color={opposite(color)} />
         </View>
         <Text role="caption" tone={toMove ? 'accent' : 'secondary'} numberOfLines={1}>
           {toMove ? `${detail} · to move` : detail}
@@ -68,7 +68,8 @@ const styles = StyleSheet.create({
   bar: { flexDirection: 'row', alignItems: 'center', gap: 12, height: PLAYER_BAR_HEIGHT },
   piece: { width: 28, height: 28, borderRadius: 14, borderWidth: 2.5 },
   names: { flex: 1, minWidth: 0 },
-  nameLine: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  // The name stays whole; a long run of captured pieces is clipped instead.
+  nameLine: { flexDirection: 'row', alignItems: 'center', gap: 10, overflow: 'hidden' },
+  // The name stays whole and the captured pieces give way; past that, on the
+  // narrowest screens, the line is clipped rather than run under the controls.
   name: { flexShrink: 0 },
 });

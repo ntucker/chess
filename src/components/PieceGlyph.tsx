@@ -2,57 +2,58 @@ import type { ReactElement } from 'react';
 import Svg, { Circle, G, Path } from 'react-native-svg';
 
 import type { MaterialRole } from '@/game/material';
+import { type Color, opposite } from '@/game/replay';
+import { pieceColors } from '@/theme/theme';
 
 interface Props {
   readonly role: MaterialRole;
-  /** The piece's color. */
-  readonly ink: string;
-  /** The color its outline and inner lines are cut in: whatever is behind it. */
-  readonly cut: string;
+  readonly color: Color;
   readonly size: number;
 }
 
 /**
- * A chess piece drawn in one color, small enough to sit in a line of text.
- * The shapes are the board's own cburnett pieces (by Colin M.L. Burnett, as
- * chessground ships them), with the black set's white detail lines and black
- * outline both cut in the background color, so pieces stay apart where they
- * overlap.
+ * A chess piece small enough to sit in a line of text, in the same colors as
+ * the discs that stand for each side. The shapes are the board's own cburnett
+ * pieces (by Colin M.L. Burnett, GPLv2+ as lichess lists them; the board shows
+ * the same art through chessground), copied from chessground's cburnett CSS
+ * because React Native can't draw that CSS's SVG images. Outline and inner
+ * lines are drawn in the other side's color, so a black piece stays visible on
+ * the dark stage, a white one on the light paper, and stacked pieces stay apart.
  */
-export function PieceGlyph({ role, ink, cut, size }: Props) {
-  const Shape = shapes[role];
+export function PieceGlyph({ role, color, size }: Props) {
+  const line = pieceColors[opposite(color)];
   return (
     <Svg width={size} height={size} viewBox="0 0 45 45">
       <G
-        fill={ink}
+        fill={pieceColors[color]}
         fillRule="evenodd"
-        stroke={cut}
+        stroke={line}
         strokeWidth={1.5}
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        <Shape cut={cut} />
+        {shapes[role](line)}
       </G>
     </Svg>
   );
 }
 
-/** Each piece's paths, drawn in the ink and outline its group sets. */
-const shapes: Record<MaterialRole, (props: { cut: string }) => ReactElement> = {
+/** Each piece's paths, in the fill and line color their group sets. */
+const shapes: Record<MaterialRole, (line: string) => ReactElement> = {
   pawn: () => (
     <Path d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" />
   ),
-  knight: ({ cut }) => (
+  knight: (line) => (
     <>
       <Path d="M22 10c10.5 1 16.5 8 16 29H15c0-9 10-6.5 8-21" />
       <Path d="M24 18c.38 2.91-5.55 7.37-8 9-3 2-2.82 4.34-5 4-1.042-.94 1.41-3.04 0-3-1 0 .19 1.23-1 2-1 0-4.003 1-4-4 0-2 6-12 6-12s1.89-1.9 2-3.5c-.73-.994-.5-2-.5-3 1-1 3 2.5 3 2.5h2s.78-1.992 2.5-3c1 0 1 3 1 3" />
       <Path
         d="M9.5 25.5a.5.5 0 1 1-1 0 .5.5 0 1 1 1 0zm5.433-9.75a.5 1.5 30 1 1-.866-.5.5 1.5 30 1 1 .866.5z"
-        fill={cut}
+        fill={line}
       />
       <Path
         d="M24.55 10.4l-.45 1.45.5.15c3.15 1 5.65 2.49 7.9 6.75S35.75 29.06 35.25 39l-.05.5h2.25l.05-.5c.5-10.06-.88-16.85-3.25-21.34-2.37-4.49-5.79-6.64-9.19-7.16l-.51-.1z"
-        fill={cut}
+        fill={line}
         stroke="none"
       />
     </>
