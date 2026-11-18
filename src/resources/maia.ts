@@ -12,7 +12,8 @@ import { MAIA_API_ORIGIN, MAIA_MOVE_PATH } from './maiaApi';
 const urlPrefix =
   process.env.EXPO_OS !== 'web'
     ? MAIA_API_ORIGIN
-    : process.env.EXPO_PUBLIC_MAIA_PROXY_URL || '/api/maia';
+    : // `||`, not `??`: the pull-request build sets the proxy URL to ''.
+      process.env.EXPO_PUBLIC_MAIA_PROXY_URL || '/api/maia';
 
 /** Maia models, by the rating of the players each was trained on. */
 export const MAIA_RATINGS = [1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900] as const;
