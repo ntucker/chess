@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useTheme } from '@reactive/silk-native';
-import { Linking, Pressable, type PressableProps, StyleSheet } from 'react-native';
+import { Pressable, type PressableProps, useTheme } from '@reactive/silk-native';
+import { Linking, StyleSheet } from 'react-native';
 
 /** Where Opening Night's source code lives. */
 const SOURCE_URL = 'https://github.com/ntucker/chess';
@@ -8,7 +8,7 @@ const SOURCE_URL = 'https://github.com/ntucker/chess';
 // On the web it is a real anchor that opens a new tab; elsewhere pressing it
 // opens the browser. (expo-router's `<Link asChild>` would drop the Pressable's
 // style function, and with it the size and hover state.)
-const opensSource: PressableProps =
+const opensSource: Pick<PressableProps, 'href' | 'hrefAttrs' | 'onPress'> =
   process.env.EXPO_OS === 'web'
     ? { href: SOURCE_URL, hrefAttrs: { target: '_blank', rel: 'noopener noreferrer' } }
     : { onPress: () => Linking.openURL(SOURCE_URL) };
