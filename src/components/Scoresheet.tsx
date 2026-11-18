@@ -74,7 +74,7 @@ function Row({ white, whiteSan, blackSan, selected, striped, onGoto }: RowProps)
         accessibilityRole="button"
         accessibilityState={{ selected: current }}
         onPress={() => onGoto(n)}
-        style={({ hovered }: { hovered?: boolean }) => [
+        style={({ hovered }: { pressed: boolean; hovered?: boolean }) => [
           styles.cell,
           current
             ? { backgroundColor: color.tones.accent.solid }

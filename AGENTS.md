@@ -1,33 +1,33 @@
-This is Opening Night, an Expo app (iOS, Android and web) for learning chess openings by playing them. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
+This is Opening Night, an Expo app (iOS, Android and web) for learning chess openings by playing them.
 
 ## Project
 
-- `src/app/` Expo Router screens.
+- `src/app/` Expo Router screens: every file there is a route and `_layout.tsx` files define navigators, so components, hooks and helpers live outside it.
 - The web app is a static export (`web.output: "static"`), deployed to GitHub Pages by `.github/workflows/web.yml`; `app.config.ts` sets the `/chess` base path when `PAGES_BASE_PATH` is set. Pull requests run the export without deploying. There is no server: don't add API routes.
-- `src/game/` chess rules and game state, built on `chessops`. Pure functions: no React Native imports.
+- The web build pre-renders HTML, so nothing may read the window size or color scheme during the first render. Use `src/theme/useColorScheme.ts`, and lay out with flexbox rather than `useWindowDimensions`.
+- `src/game/` chess rules and game state, built on `chessops`. `game.ts` (the reducer) and `replay.ts` (the rules) are pure functions with no React or React Native imports; `useGame.ts` connects them to React and to Maia.
 - `src/components/Board.tsx` the board: `@lichess-org/chessground` in an Expo DOM component (`'use dom'`), so it runs in a web view on native. Its props must be JSON; function props become async messages.
-- `src/maia/` the Maia engine, run on the device: lc0's input encoding and move names (`maia.ts`, `policy.ts`) and the network itself (`network.ts`). The networks are assets (`assets/maia/*.bin`, written by `yarn maia`; Metro bundles `.bin` files because of `metro.config.js`), listed in `models.ts`. `engine.ts` plays a move: the rules run on the calling thread, and the network runs off it through `runNetwork.ts` (a react-native-worklets background runtime on iOS and Android) or `runNetwork.web.ts` (`maia.worker.ts`, a Web Worker). Maia writes castling as the king taking its rook; the game records every move through `lineMove` in `src/game/replay.ts`, which writes castling as the king's two-square move. `network.ts` is a worklet file: it may not import anything, and each function must come before the functions that call it (`yarn lint` enforces both). `maia.test.ts` checks the engine against `reference-moves.json`, the moves a separate reference implementation of the network picks in 324 positions, so a failure there means the engine broke, not that the expected move needs updating. The one exception is a position where the two best moves score almost the same, after a change to `scripts/convert-maia.mjs`: the app's weights are 16-bit copies of the originals and can tip a near tie. `scripts/maia-reference.py` writes that file from lc0's original `.pb.gz` weights, not the app's `.bin` files (setup and usage in its docstring; Python only, never bundled). Rerun it only after changing the models or adding positions or ratings, and review each move that changes.
-- `src/resources/` Data Client endpoints. `getMaiaMove` asks the engine for its move.
+- `src/maia/` the Maia engine, run on the device:
+  - lc0's input encoding and move names are in `maia.ts` and `policy.ts`, the network itself in `network.ts`. The networks are assets (`assets/maia/*.bin`, written by `yarn maia`; Metro bundles `.bin` files because of `metro.config.js`), listed in `models.ts`.
+  - `engine.ts` plays a move: the rules run on the calling thread, and the network runs off it through `runNetwork.ts` (a react-native-worklets background runtime on iOS and Android) or `runNetwork.web.ts` (`maia.worker.ts`, a Web Worker).
+  - `network.ts` is a worklet file: it may not import anything, and each function must come before the functions that call it (`yarn lint` enforces both).
+  - Maia writes castling as the king taking its rook (`e1h1`). The game records every move through `lineMove` in `src/game/replay.ts`, which writes castling as the king's two-square move (`e1g1`).
+  - `maia.test.ts` checks the engine against `reference-moves.json`, the moves a separate reference implementation of the network picks in 324 positions, so a failure there means the engine broke, not that the expected move needs updating. The one exception is a position where the two best moves score almost the same, after a change to `scripts/convert-maia.mjs`: the app's weights are 16-bit copies of the originals and can tip a near tie.
+  - `scripts/maia-reference.py` writes `reference-moves.json` from lc0's original `.pb.gz` weights, not the app's `.bin` files (setup and usage in its docstring; Python only, never bundled). Rerun it only after changing the models or adding positions or ratings, and review each move that changes.
+- `src/resources/` Reactive Data Client endpoints. Async data goes through Data Client, even with no server: `getMaiaMove` wraps the on-device engine, and `useGame.ts` calls it with `ctrl.fetch`. Read the matching `data-client-*` skill before writing, changing or debugging code that loads or changes data. After adding, removing or upgrading `@data-client/*` packages, run `yarn data-client-skills` and commit the skill links in `.agents/skills`.
 - UI is built from `@reactive/silk-native` (Silk's React Native renderer), themed in `src/theme/theme.ts`: a theater look, with velvet plum and spotlight gold in dark mode and ivory paper with curtain red in light mode, DM Serif Display for headlines, Instrument Sans for text and DM Mono for notation. Use Silk's components and recipe props first; custom pieces read colors from `useTheme()` rather than hard-coding them (the board's CSS in `Board.css` is the exception, since it runs in a web view). Check new theme colors with Silk's `checkThemeContrast`. Silk isn't on npm yet: it installs from `vendor/*.tgz`, rebuilt with `yarn vendor:silk` from a Silk checkout.
 - The logo and every icon in `assets/images/` are drawn by `scripts/make-brand.mjs` (`yarn brand`). Change the script and run it again rather than editing the images.
-- The web build pre-renders HTML, so nothing may read the window size or color scheme during the first render. Use `src/theme/useColorScheme.ts`, and lay out with flexbox rather than `useWindowDimensions`.
 
-This app manages server state (fetching, caching, mutations and real-time updates) with Reactive Data Client. Use it for all server data, and read the matching `data-client-*` skill before writing, changing or debugging code that loads or changes data. After adding, removing or upgrading `@data-client/*` packages, run `yarn data-client-skills` and commit the skill links.
+## Expo has changed: check the docs, not your memory
 
-## Expo has changed — do not trust your training data
-
-Expo ships breaking changes every SDK release. APIs you remember are likely renamed, moved, or removed. Before writing any code that touches an Expo, EAS, or React Native API:
-
-1. Read the major version of the `expo` package in `package.json`.
-2. Fetch the matching versioned docs: `https://docs.expo.dev/versions/v<major>.0.0/`
-3. For anything else, fetch https://docs.expo.dev/llms.txt — an index of all Expo docs with corrections to common LLM misconceptions. Follow its links to the specific page you need; never answer from memory.
+Expo ships breaking changes every SDK release, so APIs you remember may be renamed, moved or removed. Before writing code that touches an Expo, EAS or React Native API, read the major version of `expo` in `package.json` and fetch the matching docs (`https://docs.expo.dev/versions/v<major>.0.0/`, or https://docs.expo.dev/llms.txt for an index of every page). If the docs can't be reached from your environment, read the installed package's types and README in `node_modules` instead.
 
 ## Commands
 
-The package manager is Yarn 4. Yarn holds back package versions published less than a day ago (`npmMinimalAgeGate`), so a brand-new release may not install until the next day.
+The package manager is Yarn 4, through Corepack. Yarn holds back package versions published less than a day ago (`npmMinimalAgeGate`), so a brand-new release may not install until the next day.
 
 ```bash
-npx expo install <package>  # ALWAYS use instead of npm/yarn/pnpm/bun add — resolves SDK-compatible versions
+npx expo install <package>  # add packages with this, not yarn add: it picks versions that match the Expo SDK
 npx expo start              # start the dev server
 yarn lint                   # lint
 yarn typecheck              # typecheck
@@ -36,21 +36,17 @@ npx expo-doctor             # diagnose dependency and config issues
 npx expo install --fix      # fix incompatible package versions
 ```
 
-Run lint, typecheck and tests before declaring any task done. Game logic in `src/game/` is pure and tested next to it (`*.test.ts`); import `describe`, `it` and `expect` from `@jest/globals`, since TypeScript 6 doesn't load global test types.
+If `npx expo install` can't reach Expo's servers, run it with `EXPO_OFFLINE=1`, which takes versions from the list bundled with the installed `expo` package.
 
-## Navigation & Routing
+Run lint, typecheck and tests before declaring any task done. Tests sit next to the code they cover (`*.test.ts`); import `describe`, `it` and `expect` from `@jest/globals`, since TypeScript 6 doesn't load global test types.
 
-- Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
-- Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
-- Docs: https://docs.expo.dev/router/introduction.md
+## Native builds
 
-## Building with EAS
+- `ios/` and `android/` are generated (Continuous Native Generation) and ignored by git. Configure native behavior in `app.json`, `app.config.ts` and config plugins rather than creating or editing those directories.
+- Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or an EAS build.
+- EAS isn't set up yet (there is no `eas.json`). When it is needed, run its CLI as `npx eas-cli@latest <command>` rather than a bare `eas`.
+- Prefer Expo's own modules over third-party libraries, and check your available skills before adding a dependency.
 
-Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode or Android Studio required. Run EAS CLI as `npx eas-cli@latest <command>`; substitute that for bare `eas` in docs examples.
-Docs: https://docs.expo.dev/eas/index.md
+## Keeping this file useful
 
-## Rules
-
-- If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
-- Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
-- Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+When you work out a non-obvious procedure or trap during a task (a command that fails in some environment, a test that must be read a certain way), write it down briefly in that same task, where its topic lives: the script's header comment, the skill that owns it, or this file.
