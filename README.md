@@ -29,7 +29,7 @@ yarn web        # or: yarn android
 | `yarn brand` | Redraw the logo and every icon made from it (`scripts/make-brand.mjs`) |
 | `yarn maia` | Download Maia's models and convert them for the app (see [Maia](#maia)) |
 | `yarn stockfish` | Copy Stockfish from the pinned `stockfish` package into `assets/stockfish/` (see [Evaluation bar](#evaluation-bar)) |
-| `yarn import-study <id>` | Turn a lichess study into a lesson file in `assets/lessons/`, with popularity from the lichess explorer (usage in `scripts/import-study/index.ts`) |
+| `yarn import-study <id>` | Turn a lichess study into a lesson file in `assets/lessons/`, with popularity from the lichess explorer, which needs a lichess token in `LICHESS_TOKEN` (usage in `scripts/import-study/index.ts`) |
 
 ## How it fits together
 

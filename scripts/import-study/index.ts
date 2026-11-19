@@ -12,8 +12,9 @@
  * only recounts popularity in an existing lesson file.
  *
  * Popularity comes from the lichess opening explorer, which needs a lichess
- * token: set LICHESS_TOKEN, or run where a proxy adds it (Node's fetch uses
- * HTTPS_PROXY only with NODE_USE_ENV_PROXY=1, which the yarn script sets).
+ * token (a personal token with no scopes is enough): set LICHESS_TOKEN, or
+ * run where a proxy adds it (Node's fetch uses HTTPS_PROXY only with
+ * NODE_USE_ENV_PROXY=1, which the yarn script sets).
  * Answers are cached in IMPORT_STUDY_CACHE (default .cache/import-study), so
  * a stopped crawl resumes. Lichess allows about 24 requests a minute, so the
  * first crawl of the Caro-Kann takes about four hours; later runs read the
@@ -77,7 +78,6 @@ function writeLesson(file: string, lesson: Lesson) {
   writeFileSync(file, json);
   console.log(`wrote ${file}: ${Buffer.byteLength(json)} bytes`);
 }
-
 
 /** The study's PGN, downloaded once into the cache. */
 async function studyPgn(studyId: string): Promise<string> {

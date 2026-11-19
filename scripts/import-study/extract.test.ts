@@ -27,6 +27,12 @@ describe('extractChapter', () => {
     ]);
   });
 
+  it('reads a header whose Idea line is empty', () => {
+    const [chapter] = parseStudy('1. e4 { Idea:\nMain line: 1.e4 c6\nWatch out: } 1... c6 *', () => true);
+    const header = extractChapter(chapter, 'black').notes.find(({ move }) => move?.san === 'c6');
+    expect(header?.note.original).toContain('Main line:');
+  });
+
   it('finds a header after an "Extra:" line too', () => {
     const header = extractChapter(classical, 'black').notes.find(({ move }) => move?.san === 'Bf5');
     expect(header?.note.text).toBe('Extra: only needed if White plays 3.Nc3.');

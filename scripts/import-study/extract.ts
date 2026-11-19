@@ -64,7 +64,7 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
 
   for (const move of chapterMoves(chapter)) {
     const { comment } = move;
-    const header = move.ply === 1 && commentPart(comment, 'Idea') ? readHeader(chapter, comment) : undefined;
+    const header = move.ply === 1 && commentPart(comment, 'Idea') !== undefined ? readHeader(chapter, comment) : undefined;
     // A header is about the whole chapter: it goes where the chapter's main line ends, not on move 1.
     const target = header?.mainLineEnd ?? move;
     const traps = trapLines(move);
