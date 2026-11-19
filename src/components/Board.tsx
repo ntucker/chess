@@ -47,11 +47,11 @@ export interface BoardProps {
   readonly onHold?: (square: Square | null) => void;
   /**
    * A square was clicked or tapped, empty or not, including the press that
-   * starts a drag and the one that ends a move. While a move is previewed the
-   * board shows it played, so chessground can't play it; a click on its
-   * square comes here instead.
+   * starts a drag and the one that ends a move, with the square picked
+   * before it, if any. While a move is previewed the board shows it played,
+   * so chessground can't play it; a click on its square comes here instead.
    */
-  readonly onPress?: (square: Square) => void;
+  readonly onPress?: (square: Square, selected?: Square) => void;
   readonly dom?: DOMProps;
 }
 
@@ -75,7 +75,9 @@ export default function Board({
   const handleMove = useEffectEvent((from: string, to: string) => onMove(from, to));
   const handleHover = useEffectEvent((square: Square | null) => onHover?.(square));
   const handleHold = useEffectEvent((square: Square | null) => onHold?.(square));
-  const handlePress = useEffectEvent((square: Square) => onPress?.(square));
+  const handlePress = useEffectEvent((square: Square, selected?: Square) =>
+    onPress?.(square, selected),
+  );
 
   // Props arrive as fresh objects on every render (and as JSON on Android),
   // so the board is updated by what they say, not by their identity.
@@ -120,12 +122,23 @@ export default function Board({
     const board = Chessground(target, {
       ...position,
       premovable: { enabled: false },
-      events: { select: (square) => handlePress(square as Square), change: () => markAfterDraw() },
+      events: {
+        select: (square) => handlePress(square as Square, picked),
+        change: () => markAfterDraw(),
+      },
       movable: { ...position.movable, events: { after: (from, to) => handleMove(from, to) } },
       // Added to chessground's own brushes, which it keeps.
       drawable: { brushes: toneBrushes as DrawBrushes },
     });
     api.current = board;
+    // The square picked before a press. Chessground reports the press after it
+    // has acted on it, when a refused move has already dropped the pick, so
+    // it is read as the press starts, before chessground sees it.
+    let picked: Square | undefined;
+    const notePick = () => {
+      picked = board.state.selected as Square | undefined;
+    };
+    target.addEventListener('pointerdown', notePick, { capture: true });
     const stopWatching = watchPointer<Square>(
       target,
       target.ownerDocument,
@@ -134,6 +147,7 @@ export default function Board({
     );
     return () => {
       cancelAnimationFrame(frame.current);
+      target.removeEventListener('pointerdown', notePick, { capture: true });
       stopWatching();
       board.destroy();
       api.current = null;

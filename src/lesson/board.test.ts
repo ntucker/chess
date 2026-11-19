@@ -1,8 +1,9 @@
 import { describe, expect, it } from '@jest/globals';
 
+import type { Square } from '@/board/drawing';
 import { lastPosition } from '@/game/replay';
 
-import { lessonBoard, pressedCandidate } from './board';
+import { boardPress, lessonBoard } from './board';
 import { guidance, type LessonSwitches } from './guidance';
 import { ADVANCE, SAMPLE, sampleView, uciLine } from './lesson.fixture';
 import { type Pointer, preview } from './view';
@@ -92,12 +93,29 @@ describe('lessonBoard', () => {
   });
 });
 
-describe('pressedCandidate', () => {
-  it("plays a sliding preview's move when its square is pressed, and nothing elsewhere", () => {
-    const { shown } = board(ADVANCE, { at: 'square', square: 'f5' });
-    expect(pressedCandidate(shown, 'f5')?.san).toBe('Bf5');
-    expect(pressedCandidate(shown, 'c8')).toBeUndefined();
-    const pointedPiece = board(ADVANCE, { at: 'square', square: 'c8' }).shown;
-    expect(pressedCandidate(pointedPiece, 'f5')).toBeUndefined();
+describe('boardPress', () => {
+  const press = (pointer: Pointer, square: Square, selected?: Square, canMove = true) => {
+    const { shown, input } = board(ADVANCE, pointer);
+    return boardPress(shown, input.current, canMove, square, selected);
+  };
+  const BF5 = { at: 'square', square: 'f5' } as const;
+
+  it("plays a sliding preview's move when its square is pressed", () => {
+    expect(press(BF5, 'f5')).toMatchObject({ kind: 'candidate', candidate: { san: 'Bf5' } });
+    expect(press(BF5, 'f5', 'c8')).toMatchObject({ kind: 'candidate', candidate: { san: 'Bf5' } });
+  });
+
+  it('plays the move of a piece picked before the preview slid, in place of the preview', () => {
+    expect(press(BF5, 'f6', 'g8')).toEqual({ kind: 'move', from: 'g8', to: 'f6' });
+    expect(press(BF5, 'f5', 'e7')).toEqual({ kind: 'end' });
+  });
+
+  it('ends the preview on a press anywhere else, or while the learner may not move', () => {
+    expect(press(BF5, 'c8')).toEqual({ kind: 'end' });
+    expect(press(BF5, 'f5', undefined, false)).toEqual({ kind: 'end' });
+  });
+
+  it('leaves presses to the board when no preview slides', () => {
+    expect(press({ at: 'square', square: 'c8' }, 'f5')).toBeUndefined();
   });
 });

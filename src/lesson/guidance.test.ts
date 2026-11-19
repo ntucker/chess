@@ -238,16 +238,17 @@ describe('guidance', () => {
       expect(explore(ADVANCE, { preview: previewing }).best).toBeUndefined();
     });
 
-    it('leaves the board as it is for a note with nothing to draw', () => {
-      const text = { text: 'Just words.' };
+    it.each([
+      ['a text note', { text: 'Just words.' }],
+      [
+        'a material imbalance',
+        { text: 'A piece for a pawn.', ideas: [{ type: 'imbalance', side: 'white', kind: 'material' }] },
+      ],
+    ] as const)('leaves the board as it is for %s, which draws nothing', (_, note) => {
       const view = sampleView(ADVANCE);
-      const withText = { ...view, notes: [...view.notes, { note: text, after: view.key }] };
-      const pointing = guidance({
-        view: withText,
-        mode: 'explore',
-        switches: ALL_ON,
-        pointed: text,
-      });
+      const withNote = { ...view, notes: [...view.notes, { note, after: view.key }] };
+      const pointing = guidance({ view: withNote, mode: 'explore', switches: ALL_ON, pointed: note });
+      expect(pointing.pointable).not.toContain(note);
       expect(pointing.drawnCandidates).toHaveLength(2);
     });
 

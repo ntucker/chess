@@ -20,6 +20,7 @@ const playing = (more: Partial<Playing> = {}): Peek => ({
   candidate: ROW,
   note: PLAN,
   played: PLAN,
+  from: ROW,
   step: 1,
   auto: true,
   ...more,
@@ -88,15 +89,47 @@ describe('peekReducer', () => {
       playing({ step: 0 }),
     ],
     [
-      'pointing is ignored while an idea plays',
+      'pointing while an idea plays leaves the playback and its candidate as they are',
       playing(),
       [
         { type: 'candidate', key: HERE, candidate: SQUARE },
         { type: 'note', key: HERE, note: STRUCTURE },
       ],
-      playing(),
+      playing({ candidate: SQUARE, note: STRUCTURE }),
     ],
-    ['leaving does not stop a playback', playing(), [{ type: 'leave' }], playing()],
+    [
+      'leaving does not stop a playback',
+      playing(),
+      [{ type: 'leave' }],
+      playing({ candidate: undefined, note: undefined }),
+    ],
+    [
+      'stopping returns to what is pointed at now',
+      playing(),
+      [{ type: 'candidate', key: HERE, candidate: SQUARE }, { type: 'stop' }],
+      pointing({ candidate: SQUARE }),
+    ],
+    [
+      'a note let go while another note plays is not pointed at once it stops',
+      pointing({ note: PLAN }),
+      [
+        { type: 'play', key: HERE, note: PLAN },
+        { type: 'note', key: HERE, note: STRUCTURE },
+        { type: 'play', key: HERE, note: STRUCTURE },
+        { type: 'stop' },
+        { type: 'leaveNote', key: HERE, note: STRUCTURE },
+      ],
+      pointing(),
+    ],
+    [
+      "a second playback plays from the first one's candidate",
+      playing(),
+      [
+        { type: 'candidate', key: HERE, candidate: SQUARE },
+        { type: 'play', key: HERE, note: STRUCTURE },
+      ],
+      playing({ candidate: SQUARE, note: undefined, played: STRUCTURE, step: 0 }),
+    ],
     ['a playback steps by itself', playing(), [{ type: 'step' }], playing({ step: 2 })],
     [
       'stepping it by hand stops it stepping by itself',

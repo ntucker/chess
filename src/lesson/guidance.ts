@@ -111,6 +111,13 @@ export interface Guidance {
   readonly trap?: LandedTrap;
 }
 
+/**
+ * Whether `idea` draws on the board (`ideaDrawings`): an evaluation and a
+ * material imbalance are only words.
+ */
+const drawsOnBoard = (idea: Idea) =>
+  idea.type !== 'evaluation' && !(idea.type === 'imbalance' && idea.kind === 'material');
+
 export function guidance(input: GuidanceInput): Guidance {
   const {
     view,
@@ -134,7 +141,7 @@ export function guidance(input: GuidanceInput): Guidance {
   // is: a text note, or one about another position (the one a move was played in).
   const pointable = notes
     .filter(({ after }) => after === shownKey(view.key, preview))
-    .filter(({ note }) => note.ideas?.some((idea) => idea.type !== 'evaluation' && allowed(idea)))
+    .filter(({ note }) => note.ideas?.some((idea) => drawsOnBoard(idea) && allowed(idea)))
     .map(({ note }) => note);
   const pointedNote = !playing && pointed && pointable.includes(pointed) ? pointed : undefined;
   const board = boardShown({ candidates, preview, ideas, playing, pointed: pointedNote });

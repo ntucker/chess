@@ -1,9 +1,10 @@
 /**
  * What the lesson's board shows beyond the game, as a reducer: what the
  * learner points at (a candidate, by its list row or a board square, and a
- * note on the idea card), or a note's idea playing back. One at a time:
- * while an idea plays, the board is its own and pointing waits. Each peek
- * belongs to the position it started in, and ends once the board moves on.
+ * note on the idea card), or a note's idea playing back. While an idea
+ * plays, the board is its own: pointing goes on out of sight, and the board
+ * shows it once the playback stops. Each peek belongs to the position it
+ * started in, and ends once the board moves on.
  */
 import type { Note, PositionKey } from './lesson';
 import type { Pointer } from './view';
@@ -17,11 +18,13 @@ interface Pointing {
 
 export type Peek =
   | (Pointing & { readonly kind: 'point' })
-  /** A note's idea playing back, beside the pointing it started from. */
+  /** A note's idea playing back, beside what the learner points at meanwhile. */
   | (Pointing & {
       readonly kind: 'play';
       /** The note whose idea plays back, pointed at or not. */
       readonly played: Note;
+      /** The candidate previewed when it started, whose position it plays in. */
+      readonly from?: Pointer;
       /** Which board of the playback: 0 is where the idea starts. */
       readonly step: number;
       /** It steps by itself until the learner steps it. */
@@ -45,15 +48,18 @@ export type PeekAction =
    * focus stays.
    */
   | { readonly type: 'leaveNote'; readonly key: PositionKey; readonly note: Note }
-  /** The learner leaves the candidates and the idea card. A playback goes on. */
+  /** The learner leaves the candidates and the idea card. A playback goes on, pointing at nothing. */
   | { readonly type: 'leave' }
-  /** Plays `note`'s idea back from the candidate pointed at now. */
+  /**
+   * Plays `note`'s idea back from the candidate pointed at now, or from the
+   * one the playback on the board plays from.
+   */
   | { readonly type: 'play'; readonly key: PositionKey; readonly note: Note }
   /** The playback's next board, by itself. */
   | { readonly type: 'step' }
   /** The learner steps the playback to board `step`. */
   | { readonly type: 'goto'; readonly step: number }
-  /** Back to the game, pointing as the playback started. */
+  /** Back to the game, pointing at what the learner points at now. */
   | { readonly type: 'stop' };
 
 export function peekReducer(peek: Peek | undefined, action: PeekAction): Peek | undefined {
@@ -63,7 +69,6 @@ export function peekReducer(peek: Peek | undefined, action: PeekAction): Peek | 
     case 'candidate':
     case 'note': {
       const here = peek?.key === action.key ? peek : undefined;
-      if (here?.kind === 'play') return peek;
       const now: Pointing = here ?? { key: action.key };
       const next: Pointing =
         action.type === 'note'
@@ -72,18 +77,23 @@ export function peekReducer(peek: Peek | undefined, action: PeekAction): Peek | 
             ? { key: action.key, candidate: action.candidate }
             : { ...now, candidate: undefined };
       // Pointing that changes nothing keeps the same state, so nothing re-renders.
-      return samePointing(now, next) ? peek : { ...next, kind: 'point' };
+      if (samePointing(now, next)) return peek;
+      return here?.kind === 'play'
+        ? { ...here, candidate: next.candidate, note: next.note }
+        : { ...next, kind: 'point' };
     }
     case 'leaveNote':
-      return peek?.kind === 'point' && peek.key === action.key && peek.note === action.note
+      return peek?.key === action.key && peek.note === action.note
         ? { ...peek, note: undefined }
         : peek;
     case 'leave':
-      return peek?.kind === 'play' ? peek : undefined;
+      return peek?.kind === 'play' ? { ...peek, candidate: undefined, note: undefined } : undefined;
     case 'play': {
-      const { candidate, note } = peek?.key === action.key ? peek : {};
+      const here = peek?.key === action.key ? peek : undefined;
+      const { candidate, note } = here ?? {};
+      const from = here?.kind === 'play' ? here.from : candidate;
       const played = action.note;
-      return { kind: 'play', key: action.key, candidate, note, played, step: 0, auto: true };
+      return { kind: 'play', key: action.key, candidate, note, from, played, step: 0, auto: true };
     }
     case 'step':
       return peek?.kind === 'play' ? { ...peek, step: peek.step + 1 } : peek;

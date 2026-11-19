@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { a11yState, Badge, Button, Pressable, Stack, Text, useTheme } from '@reactive/silk-native';
-import { useState } from 'react';
+import { type FocusEvent as ReactFocusEvent, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { Tone } from '@/board/drawing';
@@ -109,6 +109,13 @@ function NoteView({
   const point = () => {
     if (pointable && !pointed) onPoint(note);
   };
+  // Keyboard focus on its buttons points at it too; the panel ends it. Focus
+  // from a tap or click on a button doesn't, so Play keeps the pointing it
+  // started from: the pointer has its own rules.
+  const focus = (event: unknown) => {
+    const { target } = event as ReactFocusEvent<Element>;
+    if (target.matches(':focus-visible')) point();
+  };
 
   return (
     <Stack
@@ -120,8 +127,8 @@ function NoteView({
         // Whether lit or not: a switch may hide the ideas of the note pointed at.
         if (hovers(nativeEvent.pointerType)) onLeave(note);
       }}
-      // Keyboard focus on its buttons points at it too; the panel ends it.
-      onFocus={point}
+      // Only the web has keyboard focus here.
+      onFocus={process.env.EXPO_OS === 'web' ? focus : undefined}
       style={[
         styles.note,
         {

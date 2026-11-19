@@ -1,4 +1,5 @@
 import { Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
+import { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { Uci } from '@/lesson/lesson';
@@ -61,6 +62,9 @@ export function CandidateList({
   );
 }
 
+/** How long the mouse rests on a row before it points at it. */
+const ROW_REST_MS = 150;
+
 interface RowProps {
   readonly candidate: Candidate;
   readonly main: boolean;
@@ -79,6 +83,14 @@ function Row({ candidate, main, pointed, leadsTo, share, playable, onPlay, onPoi
   const { move, san } = candidate;
   const tone = toneColors[main ? 'main' : 'other'];
   const point = () => onPoint(move.uci);
+  // The mouse points at a row once it rests there, so one crossed on the way
+  // from another row down to the idea card leaves that row's preview be.
+  const resting = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const stopResting = () => {
+    clearTimeout(resting.current);
+    resting.current = undefined;
+  };
+  useEffect(() => stopResting, []);
 
   return (
     <Pressable
@@ -93,8 +105,13 @@ function Row({ candidate, main, pointed, leadsTo, share, playable, onPlay, onPoi
       // previews nothing until the mouse moves. Leaving keeps the preview
       // (the screen ends it), so the learner can go on to its notes.
       onPointerMove={({ nativeEvent }) => {
-        if (!pointed && hovers(nativeEvent.pointerType)) point();
+        if (pointed || resting.current || !hovers(nativeEvent.pointerType)) return;
+        resting.current = setTimeout(() => {
+          resting.current = undefined;
+          point();
+        }, ROW_REST_MS);
       }}
+      onPointerLeave={stopResting}
       onFocus={point}
       style={({ pressed }) => [
         styles.row,

@@ -17,7 +17,7 @@ import { gameOpponent } from '@/resources/opponent';
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNeedsStockfish } from '@/stockfish/demand';
 
-import { lessonBoard, pressedCandidate } from './board';
+import { boardPress, lessonBoard } from './board';
 import { ideaPlayback } from './drawings';
 import { guidance, type LessonSwitches, notePlayback, type PlayedBack } from './guidance';
 import type { Lesson, Note, Uci } from './lesson';
@@ -84,7 +84,8 @@ export function useLesson(lesson: Lesson) {
   if (peek && peek.key !== key) dispatch({ type: 'board', key });
   const here = peek?.key === key ? peek : undefined;
   const playing = here?.kind === 'play' ? here : undefined;
-  const pointer = here?.candidate;
+  // A playback plays in its candidate's position, wherever the pointer goes.
+  const pointer = playing ? playing.from : here?.candidate;
   const shown = guidance({
     view,
     mode: 'explore',
@@ -102,7 +103,7 @@ export function useLesson(lesson: Lesson) {
     if (!stepping) return;
     const timer = setTimeout(() => dispatch({ type: 'step' }), PLAYBACK_STEP_MS);
     return () => clearTimeout(timer);
-  }, [stepping, playing?.step]);
+  }, [stepping, playing?.step, playing?.played]);
 
   // A square under the mouse or a finger previews the candidate there. A
   // square without one ends any preview, as leaving the board does; it is
@@ -128,9 +129,12 @@ export function useLesson(lesson: Lesson) {
     onMove: game.move,
     onHover: pointSquare,
     onHold: pointSquare,
-    onPress: (square) => {
-      const pressed = !frame && game.canMove && pressedCandidate(shown, square);
-      if (pressed) play(pressed);
+    onPress: (square, selected) => {
+      const press = !frame && boardPress(shown, current, game.canMove, square, selected);
+      if (!press) return;
+      if (press.kind === 'candidate') play(press.candidate);
+      else if (press.kind === 'move') game.move(press.from, press.to);
+      else dispatch({ type: 'candidate', key });
     },
   };
   // The opponent's reply would move the board on and end a playback at once,
