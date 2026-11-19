@@ -5,36 +5,42 @@ import { STUDY_PGN } from './fixture';
 import { parseStudy } from './study';
 
 const [advance, classical] = parseStudy(STUDY_PGN, () => true);
-const { notes, branches, choices, rejected, contradicted } = extractChapter(advance, 'black');
-const noteOn = (san: string) => notes.filter(({ move }) => move?.san === san).map(({ note }) => note);
+const { moveNotes, positionNotes, branches, choices, rejected, contradicted } = extractChapter(advance, 'black');
+const noteOn = (san: string) => moveNotes.filter(({ move }) => move.san === san).map(({ note }) => note);
 
 describe('extractChapter', () => {
-  it('puts the chapter header where its main line ends, with its plan before that move', () => {
+  it('puts the chapter header where its main line ends, and its plan on the position before that move', () => {
     const [header] = noteOn('Bf5');
     expect(header.text).toBe('Idea: Against 3.e5, develop with ...Bf5, ...e6 and ...c5.');
     expect(header.original).toContain('Watch out:');
-    expect(header.ideas).toEqual([
+    expect(header.ideas).toBeUndefined();
+    const bf5 = moveNotes.find(({ move }) => move.san === 'Bf5')!.move;
+    expect(positionNotes.filter(({ pos }) => pos === bf5.before).map(({ note }) => note)).toEqual([
       {
-        type: 'plan',
-        side: 'black',
-        routes: [
-          { from: 'c8', to: 'f5' },
-          { from: 'e7', to: 'e6' },
-          { from: 'c6', to: 'c5' },
+        text: '...Bf5, ...e6 and ...c5',
+        ideas: [
+          {
+            type: 'plan',
+            side: 'black',
+            routes: [
+              { from: 'c8', to: 'f5' },
+              { from: 'e7', to: 'e6' },
+              { from: 'c6', to: 'c5' },
+            ],
+          },
         ],
-        at: 'before',
       },
     ]);
   });
 
   it('reads a header whose Idea line is empty', () => {
     const [chapter] = parseStudy('1. e4 { Idea:\nMain line: 1.e4 c6\nWatch out: } 1... c6 *', () => true);
-    const header = extractChapter(chapter, 'black').notes.find(({ move }) => move?.san === 'c6');
+    const header = extractChapter(chapter, 'black').moveNotes.find(({ move }) => move.san === 'c6');
     expect(header?.note.original).toContain('Main line:');
   });
 
   it('finds a header after an "Extra:" line too', () => {
-    const header = extractChapter(classical, 'black').notes.find(({ move }) => move?.san === 'Bf5');
+    const header = extractChapter(classical, 'black').moveNotes.find(({ move }) => move.san === 'Bf5');
     expect(header?.note.text).toBe('Extra: only needed if White plays 3.Nc3.');
   });
 
@@ -65,6 +71,7 @@ describe('extractChapter', () => {
   });
 
   it('reads a trap line and adds its moves to the guide', () => {
+    expect(noteOn('Bd7')[0].text).toBe('5.e6? fxe6 and White is clearly worse.');
     expect(noteOn('Bd7')[0].ideas).toEqual([{ type: 'trap', moves: ['e5e6', 'f7e6'], verdict: 'blackClearly' }]);
     expect(branches.map(({ spot, ucis }) => [spot.move?.san, ucis])).toContainEqual(['Bd7', ['e5e6', 'f7e6']]);
   });

@@ -36,6 +36,8 @@ describe('shorten', () => {
     expect(shorten('The knight is lost on move 12. Black resigns.')).toBe('The knight is lost on move 12.');
     expect(shorten('Black should play Nf6! Then White is stuck.')).toBe('Black should play Nf6!');
     expect(shorten('...Nc6! Black plans ...Nb4. More.')).toBe('...Nc6! Black plans ...Nb4.');
+    expect(shorten('12. Nf3! Black is lost. More.')).toBe('12. Nf3! Black is lost.');
+    expect(shorten('Nf3! Nf6! Black is lost. More.')).toBe('Nf3! Nf6! Black is lost.');
   });
 
   it('cuts a long sentence at the word limit', () => {

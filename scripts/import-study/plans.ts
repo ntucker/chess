@@ -30,9 +30,7 @@ export function planLists(move: StudyMove, text: string, header = false): Found[
     const blackMoves = playedBy(spot, 'black');
     if (sans.some((san) => blackMoves.has(san))) return [];
     const routes = planRoutes(spot, sans);
-    return routes
-      ? [{ spot, idea: { type: 'plan', side: 'black', routes }, label: `Plan: ${text.slice(index, end)}` }]
-      : [];
+    return routes ? [{ spot, idea: { type: 'plan', side: 'black', routes }, label: text.slice(index, end) }] : [];
   });
 }
 

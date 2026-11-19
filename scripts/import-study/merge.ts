@@ -104,11 +104,16 @@ class DraftTree {
 }
 
 /** Adds `chapter`'s moves, book marks, notes and choice-guide risks to `tree`. */
-function addChapter(tree: DraftTree, chapter: Chapter, { notes, choices }: ChapterNotes, side: Color) {
+function addChapter(
+  tree: DraftTree,
+  chapter: Chapter,
+  { moveNotes, positionNotes, choices }: ChapterNotes,
+  side: Color,
+) {
   const book = bookMoves(chapter, side, new Set(choices.map((choice) => choice.move)));
   for (const move of chapterMoves(chapter)) tree.move(move.before, move.uci).book ||= book.has(move);
-  for (const { move, note } of notes)
-    addNote(move ? tree.move(move.before, move.uci).notes : tree.entry(tree.startKey).notes, note);
+  for (const { move, note } of moveNotes) addNote(tree.move(move.before, move.uci).notes, note);
+  for (const { pos, note } of positionNotes) addNote(tree.entry(positionKey(pos)).notes, note);
   for (const choice of choices) {
     const move = tree.move(choice.move.before, choice.move.uci);
     move.book = true;

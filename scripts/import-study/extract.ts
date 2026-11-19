@@ -6,6 +6,7 @@
  * the first move's comment with an "Idea:" line (extra chapters put an
  * "Extra:" line before it).
  */
+import type { Chess } from 'chessops/chess';
 import type { Color } from 'chessops/types';
 
 import { checkIdea } from '@/lesson/check';
@@ -19,8 +20,10 @@ import { direction, namedMoves, shorten, textVerdicts } from './text';
 import { trapLines, watchOuts } from './traps';
 
 export interface ChapterNotes {
-  /** Notes on a move, or on the chapter's start when `move` is undefined. */
-  readonly notes: readonly { readonly move?: StudyMove; readonly note: Note }[];
+  /** Notes on a move, said once it is played. */
+  readonly moveNotes: readonly { readonly move: StudyMove; readonly note: Note }[];
+  /** Notes on a position, said while it is on the board. */
+  readonly positionNotes: readonly { readonly pos: Chess; readonly note: Note }[];
   /** Move sequences from comment text, to add to the guide. */
   readonly branches: readonly { readonly spot: Spot; readonly ucis: readonly Uci[] }[];
   readonly choices: readonly Choice[];
@@ -56,7 +59,8 @@ const EVALUATION_TEXT: Readonly<Record<Evaluation, string>> = {
 const SEQUENCE = /\d+\s?\.(?:\.\.)?\s?[^\s,;()]+(?:\s+(?:\d+\s?\.(?:\.\.)?\s?)?[KQRBNOa-h][^\s,;()]*)+/g;
 
 export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
-  const notes: { move?: StudyMove; note: Note }[] = [];
+  const moveNotes: { move: StudyMove; note: Note }[] = [];
+  const positionNotes: { pos: Chess; note: Note }[] = [];
   const branches: { spot: Spot; ucis: readonly Uci[] }[] = [];
   const choices: Choice[] = [];
   const rejected: { idea: Idea; why: string; comment: string }[] = [];
@@ -84,14 +88,13 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
       const why = checkIdea(idea, { after: spot.pos });
       if (why) rejected.push({ idea, why, comment });
       else if (spot.move === target) own.push(idea);
-      // An idea about the position before the commented move: the note says it before the move is played.
-      else if (spot.move === target.parent) own.push({ ...idea, at: 'before' });
-      else notes.push({ move: spot.move, note: { text: shorten(label), ideas: [idea] } });
+      // An idea about another position (often the one before the commented move) is said there.
+      else positionNotes.push({ pos: spot.pos, note: { text: noteText(label), ideas: [idea] } });
     }
     const text = comment || (own[0]?.type === 'evaluation' ? EVALUATION_TEXT[own[0].value] : '');
-    if (text) notes.push({ move: target, note: note(text, own) });
+    if (text) moveNotes.push({ move: target, note: note(text, own) });
   }
-  return { notes, branches, choices, rejected, contradicted };
+  return { moveNotes, positionNotes, branches, choices, rejected, contradicted };
 }
 
 /** The plans `move`'s comment states; a chapter header's watch-outs count as plans of the chapter. */
@@ -108,8 +111,11 @@ function sequences(move: StudyMove) {
   });
 }
 
+/** `text` shortened to a note's sentence, without a "Plan:" or "Trap:" label: the note's ideas show its kind. */
+const noteText = (text: string) => shorten(text).replace(/^(?:Plan|Trap):\s*/, '');
+
 function note(comment: string, ideas: readonly Idea[]): Note {
-  const text = shorten(comment);
+  const text = noteText(comment);
   return { text, ...(text !== comment && { original: comment }), ...(ideas.length > 0 && { ideas }) };
 }
 

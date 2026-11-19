@@ -67,8 +67,11 @@ export function sentenceEnds(text: string): number[] {
     const next = text.slice(end).trimStart().split(/\s/, 1)[0];
     const nextIsMove = next.startsWith('...') || MOVE_WORD.test(next);
     const moveNumber = /^\d+$/.test(word) && marks.startsWith('.') && nextIsMove;
-    // A move that opens its sentence (`Ng3!? White wants…`) heads it; it doesn't end it.
-    const opensSentence = text.slice(ends.at(-1) ?? 0, match.index).trim() === '';
+    // A move that opens its sentence (`Ng3!? White wants…`, `12. Nf3! Black…`) heads it; it doesn't end it.
+    const opensSentence = text
+      .slice(ends.at(-1) ?? 0, match.index)
+      .split(/\s+/)
+      .every((before) => before === '' || /^(?:\d+\.*|\.\.\.)$/.test(before) || MOVE_WORD.test(before));
     const newSentence = /^[A-Z]/.test(next) && !nextIsMove && !opensSentence;
     const glyph = !marks.includes('.') && MOVE_WORD.test(word) && !newSentence;
     if (!moveNumber && !glyph) ends.push(end);
