@@ -46,7 +46,10 @@ export function ConversionReview({ id }: { readonly id: LessonId }) {
       intro="Each note of the lesson beside the study comment it was written from. The board draws the note's ideas in the position they are about."
     >
       <BrowserOnly fallback={<Spinner />}>
-        <AsyncBoundary fallback={<Spinner />} errorComponent={({ error }) => <Text role="body">{error.message}</Text>}>
+        <AsyncBoundary
+          fallback={<Spinner />}
+          errorComponent={({ error }) => <Text role="body">{error.message}</Text>}
+        >
           <Review key={id} id={id} />
         </AsyncBoundary>
       </BrowserOnly>
@@ -66,7 +69,12 @@ function Review({ id }: { readonly id: LessonId }) {
       (type === 'any' || item.note.ideas?.some((idea) => idea.type === type)),
   );
   const pages = Math.max(1, Math.ceil(shown.length / PAGE));
-  const counts: Record<NoteShows | 'all', number> = { all: items.length, drawn: 0, badge: 0, text: 0 };
+  const counts: Record<NoteShows | 'all', number> = {
+    all: items.length,
+    drawn: 0,
+    badge: 0,
+    text: 0,
+  };
   for (const item of items) counts[item.kind]++;
   const choose = (change: () => void) => {
     change();
@@ -159,8 +167,9 @@ function ReviewCard({ item, learner }: { readonly item: ReviewItem; readonly lea
         <Eyebrow>Lesson</Eyebrow>
         <Text role="body">{note.text}</Text>
         <Text role="caption" tone="secondary" style={devStyles.mono}>
-          {ideas.map((idea) => (idea.type === 'evaluation' ? `evaluation: ${idea.value}` : idea.type)).join(' · ') ||
-            'text only'}
+          {ideas
+            .map((idea) => (idea.type === 'evaluation' ? `evaluation: ${idea.value}` : idea.type))
+            .join(' · ') || 'text only'}
         </Text>
       </Stack>
       <FramedBoard>

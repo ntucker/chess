@@ -23,7 +23,9 @@ describe('shipped lessons', () => {
   });
 
   it.each(ids)('%s is in the index as its file says', (id) => {
-    expect(LESSON_INDEX[id as keyof typeof LESSON_INDEX]).toEqual(indexEntry(readShippedLesson(id)));
+    expect(LESSON_INDEX[id as keyof typeof LESSON_INDEX]).toEqual(
+      indexEntry(readShippedLesson(id)),
+    );
   });
 
   it('teaches one side, since the start position takes its side from the first lesson', () => {

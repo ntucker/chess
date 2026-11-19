@@ -41,6 +41,7 @@ The package manager is Yarn 4, through Corepack. Yarn holds back package version
 ```bash
 npx expo install <package>  # add packages with this, not yarn add: it picks versions that match the Expo SDK
 npx expo start              # start the dev server
+yarn format                 # format with Prettier
 yarn lint                   # lint
 yarn typecheck              # typecheck
 yarn test                   # unit tests (Jest, jest-expo preset)
@@ -50,7 +51,7 @@ npx expo install --fix      # fix incompatible package versions
 
 If `npx expo install` can't reach Expo's servers, run it with `EXPO_OFFLINE=1`, which takes versions from the list bundled with the installed `expo` package.
 
-Run lint, typecheck and tests before declaring any task done. Tests sit next to the code they cover (`*.test.ts`); import `describe`, `it` and `expect` from `@jest/globals`, since TypeScript 6 doesn't load global test types.
+Run format, lint, typecheck and tests before declaring any task done. Tests sit next to the code they cover (`*.test.ts`); import `describe`, `it` and `expect` from `@jest/globals`, since TypeScript 6 doesn't load global test types.
 
 ## Native builds
 

@@ -29,7 +29,12 @@ export interface AnswerNote {
 }
 
 export type AnswerIdea =
-  | { readonly type: 'purpose'; readonly from: SquareName; readonly relation: Relation; readonly targets: SquareName[] }
+  | {
+      readonly type: 'purpose';
+      readonly from: SquareName;
+      readonly relation: Relation;
+      readonly targets: SquareName[];
+    }
   | {
       readonly type: 'pressure';
       readonly side: Color;
@@ -37,9 +42,23 @@ export type AnswerIdea =
       readonly attackers: SquareName[];
       readonly defenders: SquareName[];
     }
-  | { readonly type: 'plan'; readonly side: Color; readonly routes: Route[]; readonly goals?: SquareName[] }
-  | { readonly type: 'threat'; readonly side: Color; readonly move: string; readonly answer?: string }
-  | { readonly type: 'trap'; readonly moves: string[]; readonly verdict: Evaluation | 'losesMaterial' }
+  | {
+      readonly type: 'plan';
+      readonly side: Color;
+      readonly routes: Route[];
+      readonly goals?: SquareName[];
+    }
+  | {
+      readonly type: 'threat';
+      readonly side: Color;
+      readonly move: string;
+      readonly answer?: string;
+    }
+  | {
+      readonly type: 'trap';
+      readonly moves: string[];
+      readonly verdict: Evaluation | 'losesMaterial';
+    }
   | { readonly type: 'line'; readonly moves: string[]; readonly verdict: Evaluation }
   | { readonly type: 'structure'; readonly side: Color; readonly features: AnswerFeature[] }
   | { readonly type: 'imbalance'; readonly side: Color; readonly kind: ImbalanceKind }
@@ -52,7 +71,10 @@ export type AnswerFeature =
 
 // ---------------------------------------------------------------- schema
 
-const strings = (pattern?: string) => ({ type: 'array', items: { type: 'string', ...(pattern && { pattern }) } });
+const strings = (pattern?: string) => ({
+  type: 'array',
+  items: { type: 'string', ...(pattern && { pattern }) },
+});
 const squares = strings('^[a-h][1-8]$');
 const files = strings('^[a-h]$');
 const side = { enum: ['white', 'black'] };
@@ -69,7 +91,12 @@ const kind = (name: string) => ({ const: name });
 
 const feature = {
   anyOf: [
-    object({ kind: { enum: ['isolatedPawn', 'backwardPawn', 'passedPawn', 'pawnChain', 'weakSquare', 'outpost'] }, squares }),
+    object({
+      kind: {
+        enum: ['isolatedPawn', 'backwardPawn', 'passedPawn', 'pawnChain', 'weakSquare', 'outpost'],
+      },
+      squares,
+    }),
     object({ kind: { enum: ['doubledPawns', 'openFile', 'halfOpenFile', 'pawnMajority'] }, files }),
     object({ kind: kind('pawnBreak'), move: { type: 'string' } }),
   ],
@@ -83,21 +110,36 @@ const idea = {
       relation: { enum: RELATIONS },
       targets: squares,
     }),
-    object({ type: kind('pressure'), side, target: { type: 'string' }, attackers: squares, defenders: squares }),
+    object({
+      type: kind('pressure'),
+      side,
+      target: { type: 'string' },
+      attackers: squares,
+      defenders: squares,
+    }),
     object(
       {
         type: kind('plan'),
         side,
         routes: {
           type: 'array',
-          items: object({ from: { type: 'string' }, to: { type: 'string' }, moves: { type: 'integer' } }, ['moves']),
+          items: object(
+            { from: { type: 'string' }, to: { type: 'string' }, moves: { type: 'integer' } },
+            ['moves'],
+          ),
         },
         goals: squares,
       },
       ['goals'],
     ),
-    object({ type: kind('threat'), side, move: { type: 'string' }, answer: { type: 'string' } }, ['answer']),
-    object({ type: kind('trap'), moves: strings(), verdict: { enum: [...evaluation.enum, 'losesMaterial'] } }),
+    object({ type: kind('threat'), side, move: { type: 'string' }, answer: { type: 'string' } }, [
+      'answer',
+    ]),
+    object({
+      type: kind('trap'),
+      moves: strings(),
+      verdict: { enum: [...evaluation.enum, 'losesMaterial'] },
+    }),
     object({ type: kind('line'), moves: strings(), verdict: evaluation }),
     object({ type: kind('structure'), side, features: { type: 'array', items: feature } }),
     object({ type: kind('imbalance'), side, kind: { enum: IMBALANCE_KINDS } }),
@@ -112,7 +154,11 @@ export const SCHEMA = object({
       id: { type: 'string' },
       notes: {
         type: 'array',
-        items: object({ about: { enum: ['move', 'before'] }, text: { type: 'string' }, ideas: { type: 'array', items: idea } }),
+        items: object({
+          about: { enum: ['move', 'before'] },
+          text: { type: 'string' },
+          ideas: { type: 'array', items: idea },
+        }),
       },
     }),
   },
@@ -126,7 +172,9 @@ export function asAnswer(value: unknown): Answer | undefined {
     Array.isArray(answer.notes) &&
     answer.notes.every(
       (note) =>
-        (note?.about === 'move' || note?.about === 'before') && typeof note.text === 'string' && Array.isArray(note.ideas),
+        (note?.about === 'move' || note?.about === 'before') &&
+        typeof note.text === 'string' &&
+        Array.isArray(note.ideas),
     );
   return ok ? answer : undefined;
 }

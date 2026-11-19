@@ -3,8 +3,9 @@
  * facts about the position on the board, what the learner points at (a
  * candidate, by its list row or a piece dragged onto its square, and a note
  * on the idea card), an idea playing back, the mode (Explore or Practice),
- * the learner's progress marks, and the board. With auto play the learner
- * moves their own side; with auto play off, either.
+ * the learner's progress marks, and the board. Where the opponent plays its
+ * own moves (`opponentPlays`) the learner moves their own side; elsewhere,
+ * either.
  */
 import { useController } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
@@ -26,7 +27,7 @@ import { guidance, type LessonMode, notePlayback, type PlayedBack } from './guid
 import type { Lesson, Note, PositionKey, Uci } from './lesson';
 import { earnedMark, rowMarks, steering } from './marks';
 import { lessonOpponent } from './opponent';
-import { beforeSideMoves } from './practice';
+import { beforeSideMoves, opponentPlays } from './practice';
 import { initialScreen, screenReducer } from './screen';
 import { bookMoves, type Candidate, isBook } from './select';
 import { lessonView, type Pointer, preview, type ShownNote } from './view';
@@ -74,19 +75,17 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   const { mode } = modeState;
   const progress = useLessonProgress(lesson.id);
   const record = useProgressDispatch();
-  // Nobody replies with auto play off (the learner picks the opponent's
-  // move), nor at the start, where the first move picks the opening. In a
-  // clean Practice run the opponent steers to lines not yet passed, so runs
-  // with auto play on can pass every row, not only its most played replies.
-  const rival =
-    settings.auto && store[0].ply > 0
-      ? lessonOpponent(
-          lesson,
-          opponent,
-          gameOpponent(ctrl, opponent),
-          steering(lesson, progress, modeState),
-        )
-      : undefined;
+  // With no opponent, nobody replies: the learner picks the opponent's move.
+  // In a clean Practice run the opponent steers to lines not yet passed, so
+  // runs with auto play on can pass every row, not only its most played replies.
+  const rival = opponentPlays(mode, settings.auto, store[0])
+    ? lessonOpponent(
+        lesson,
+        opponent,
+        gameOpponent(ctrl, opponent),
+        steering(lesson, progress, modeState),
+      )
+    : undefined;
   const game = useGame(store, rival, {
     side: lesson.side,
     active: focused,

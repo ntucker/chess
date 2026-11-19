@@ -40,7 +40,7 @@ describe('parseBestMove', () => {
 });
 
 describe('forwardNeededLines', () => {
-  it('passes on the handshake, and each search\'s last score with its best move', () => {
+  it("passes on the handshake, and each search's last score with its best move", () => {
     const passed: string[] = [];
     const pass = forwardNeededLines((line) => passed.push(line));
     for (const line of [
@@ -66,7 +66,9 @@ describe('forwardNeededLines', () => {
 describe('positionCommand', () => {
   it('plays the line from the starting position', () => {
     expect(positionCommand([])).toBe('position startpos');
-    expect(positionCommand(['e2e4', 'e7e5', 'g1f3'])).toBe('position startpos moves e2e4 e7e5 g1f3');
+    expect(positionCommand(['e2e4', 'e7e5', 'g1f3'])).toBe(
+      'position startpos moves e2e4 e7e5 g1f3',
+    );
   });
 });
 
@@ -96,7 +98,10 @@ describe('evaluationFromScore', () => {
       mate: 3,
     });
     // Black to move mates in 1.
-    expect(evaluationFromScore({ kind: 'mate', value: 1 }, 1)).toMatchObject({ score: 0, mate: -1 });
+    expect(evaluationFromScore({ kind: 'mate', value: 1 }, 1)).toMatchObject({
+      score: 0,
+      mate: -1,
+    });
     // White to move is already mated.
     expect(evaluationFromScore({ kind: 'mate', value: 0 }, 2)).toMatchObject({ score: 0, mate: 0 });
   });

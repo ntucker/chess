@@ -3,7 +3,13 @@
  * with the positions around it and its comment as plain text.
  */
 import type { Chess } from 'chessops/chess';
-import { parseComment, parsePgn, startingPosition, type ChildNode, type PgnNodeData } from 'chessops/pgn';
+import {
+  parseComment,
+  parsePgn,
+  startingPosition,
+  type ChildNode,
+  type PgnNodeData,
+} from 'chessops/pgn';
 import { parseUci } from 'chessops/util';
 
 import { sanToUci } from '@/game/replay';
