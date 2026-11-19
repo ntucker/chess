@@ -73,10 +73,10 @@ export function useGame(
   // shares the request still running, so the engine searches once.
   useEffect(() => {
     if (!active || !thinking) return;
-    let wanted = true;
-    ask(moves, () => wanted);
+    let ignore = false;
+    ask(moves, () => !ignore);
     return () => {
-      wanted = false;
+      ignore = true;
     };
   }, [active, thinking, moves, opponent?.id]);
 
