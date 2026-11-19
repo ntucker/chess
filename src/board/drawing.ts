@@ -7,8 +7,8 @@
  * Only types are imported, so the board and its callers share this file
  * without depending on each other.
  */
-import type { MoveQuality } from "@/analysis/quality";
-import type { Piece, SquareName } from "chessops/types";
+import type { MoveQuality } from '@/analysis/quality';
+import type { Piece, SquareName } from 'chessops/types';
 
 /** A square's name, like `e4` (chessops' type, so lesson data needs no conversion). */
 export type Square = SquareName;
@@ -23,14 +23,7 @@ export type Square = SquareName;
  * - `danger`: what goes wrong, like a threat or a trap.
  * - `target`: what is aimed at: a piece or square under attack or wanted.
  */
-export const TONES = [
-  "main",
-  "other",
-  "engine",
-  "plan",
-  "danger",
-  "target",
-] as const;
+export const TONES = ['main', 'other', 'engine', 'plan', 'danger', 'target'] as const;
 export type Tone = (typeof TONES)[number];
 
 /**
@@ -39,13 +32,13 @@ export type Tone = (typeof TONES)[number];
  */
 export type Drawing =
   /** The piece on `square` lights up. Pieces are lit, never their squares. */
-  | { readonly kind: "glow"; readonly square: Square; readonly tone: Tone }
+  | { readonly kind: 'glow'; readonly square: Square; readonly tone: Tone }
   /**
    * An arrow. `step` numbers it, for a sequence of moves (a trap's moves, a
    * plan's routes); `dashed` marks a move that isn't on the board yet (a plan).
    */
   | {
-      readonly kind: "arrow";
+      readonly kind: 'arrow';
       readonly from: Square;
       readonly to: Square;
       readonly tone: Tone;
@@ -53,46 +46,23 @@ export type Drawing =
       readonly dashed?: boolean;
     }
   /** A line through squares in order, without a head: a pawn chain. Drawn under the pieces. */
-  | {
-      readonly kind: "line";
-      readonly squares: readonly Square[];
-      readonly tone: Tone;
-    }
+  | { readonly kind: 'line'; readonly squares: readonly Square[]; readonly tone: Tone }
   /** A ring around a square: a target, or a pawn with a structural feature. */
-  | { readonly kind: "ring"; readonly square: Square; readonly tone: Tone }
+  | { readonly kind: 'ring'; readonly square: Square; readonly tone: Tone }
   /**
    * Empty squares tinted: an open file, an area, a weak square. Pieces are
    * never shown by their square; glow or ring them instead.
    */
-  | {
-      readonly kind: "tint";
-      readonly squares: readonly Square[];
-      readonly tone: Tone;
-    }
+  | { readonly kind: 'tint'; readonly squares: readonly Square[]; readonly tone: Tone }
   /** A short tag on a square, like "3 v 2". Keep it to a few characters. */
-  | {
-      readonly kind: "label";
-      readonly square: Square;
-      readonly text: string;
-      readonly tone: Tone;
-    }
+  | { readonly kind: 'label'; readonly square: Square; readonly text: string; readonly tone: Tone }
   /** A see-through piece on `square`: where a piece was, or will be. */
-  | {
-      readonly kind: "ghost";
-      readonly square: Square;
-      readonly piece: Readonly<Pick<Piece, "role" | "color">>;
-    }
+  | { readonly kind: 'ghost'; readonly square: Square; readonly piece: Readonly<Pick<Piece, 'role' | 'color'>> }
   /** A move label's badge on the piece on `square`, which also glows in the label's color. */
-  | {
-      readonly kind: "badge";
-      readonly square: Square;
-      readonly quality: MoveQuality;
-    }
+  | { readonly kind: 'badge'; readonly square: Square; readonly quality: MoveQuality }
   /** Every piece fades except those on `except`: to show a pawn structure. */
-  | { readonly kind: "fade"; readonly except: readonly Square[] };
+  | { readonly kind: 'fade'; readonly except: readonly Square[] };
 
 /** A move label's badge on the piece that moved to `square`, once both are known. */
-export const lastMoveBadge = (
-  square: Square | undefined,
-  quality: MoveQuality | undefined,
-): Drawing[] => (square && quality ? [{ kind: "badge", square, quality }] : []);
+export const lastMoveBadge = (square: Square | undefined, quality: MoveQuality | undefined): Drawing[] =>
+  square && quality ? [{ kind: 'badge', square, quality }] : [];

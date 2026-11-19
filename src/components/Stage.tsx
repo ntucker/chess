@@ -1,19 +1,14 @@
-import { Surface, useTheme } from "@reactive/silk-native";
-import Head from "expo-router/head";
-import type { ReactNode } from "react";
-import {
-  type DimensionValue,
-  ScrollView,
-  StyleSheet,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Surface, useTheme } from '@reactive/silk-native';
+import Head from 'expo-router/head';
+import type { ReactNode } from 'react';
+import { type DimensionValue, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import Board, { type BoardProps } from "@/components/Board";
-import { EvaluationBar } from "@/components/EvaluationBar";
-import { HEADER_HEIGHT, Header } from "@/components/Header";
-import { PLAYER_BAR_HEIGHT, PLAYER_DISC } from "@/components/PlayerBar";
-import { spotlight } from "@/theme/theme";
+import Board, { type BoardProps } from '@/components/Board';
+import { EvaluationBar } from '@/components/EvaluationBar';
+import { HEADER_HEIGHT, Header } from '@/components/Header';
+import { PLAYER_BAR_HEIGHT, PLAYER_DISC } from '@/components/PlayerBar';
+import { spotlight } from '@/theme/theme';
 
 interface StageProps {
   /** The browser tab's title. */
@@ -69,30 +64,18 @@ interface BoardColumnProps {
   readonly bottom: ReactNode;
   /** The moves up to the position the evaluation bar judges. */
   readonly evaluated: readonly string[];
-  readonly board: Omit<BoardProps, "dom">;
+  readonly board: Omit<BoardProps, 'dom'>;
 }
 
 /** The board in its frame, with the evaluation bar beside it and a name bar above and below. */
-export function BoardColumn({
-  top,
-  bottom,
-  evaluated,
-  board,
-}: BoardColumnProps) {
+export function BoardColumn({ top, bottom, evaluated, board }: BoardColumnProps) {
   return (
     <>
       {top}
       <View style={styles.boardRow}>
-        <EvaluationBar
-          line={evaluated}
-          orientation={board.orientation}
-          style={styles.evaluation}
-        />
+        <EvaluationBar line={evaluated} orientation={board.orientation} style={styles.evaluation} />
         <BoardFrame>
-          <Board
-            {...board}
-            dom={{ style: styles.fill, scrollEnabled: false }}
-          />
+          <Board {...board} dom={{ style: styles.fill, scrollEnabled: false }} />
         </BoardFrame>
       </View>
       {bottom}
@@ -104,11 +87,7 @@ export function BoardColumn({
  * Where the board column stands while what it shows loads: the frame and the
  * space around it, so nothing moves when the board arrives.
  */
-export function BoardColumnPlaceholder({
-  children,
-}: {
-  readonly children?: ReactNode;
-}) {
+export function BoardColumnPlaceholder({ children }: { readonly children?: ReactNode }) {
   return (
     <>
       <View style={styles.barSpace} />
@@ -126,17 +105,9 @@ export function BoardColumnPlaceholder({
 function BoardFrame({ children }: { readonly children: ReactNode }) {
   const { theme } = useTheme();
   return (
-    <Surface
-      elevation="overlay"
-      radius="md"
-      border="subtle"
-      style={styles.frame}
-    >
+    <Surface elevation="overlay" radius="md" border="subtle" style={styles.frame}>
       <View
-        style={[
-          styles.fill,
-          { borderRadius: theme.semantic.radius.md - 1, overflow: "hidden" },
-        ]}
+        style={[styles.fill, { borderRadius: theme.semantic.radius.md - 1, overflow: 'hidden' }]}
       >
         {children}
       </View>
@@ -178,7 +149,7 @@ const BOARD_MIN_WEB = 320;
  * Native's types don't know CSS functions, hence the cast.
  */
 const BOARD_COLUMN_LIMIT =
-  process.env.EXPO_OS === "web"
+  process.env.EXPO_OS === 'web'
     ? (`calc(clamp(${BOARD_MIN_WEB}px, 100svh - ${AROUND_BOARD}px, ${BOARD_MAX}px) + ${BESIDE_BOARD}px)` as DimensionValue)
     : BOARD_COLUMN_MAX;
 /** Space above the program when it wraps below the board. */
@@ -199,15 +170,15 @@ const WRAPPED_GAP = 32;
 // below the shorter of the two.
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  center: { alignItems: "center", justifyContent: "center" },
-  page: { padding: PAGE_SPACE, gap: PAGE_SPACE, alignItems: "center" },
-  header: { width: "100%", maxWidth: STAGE_MAX },
+  center: { alignItems: 'center', justifyContent: 'center' },
+  page: { padding: PAGE_SPACE, gap: PAGE_SPACE, alignItems: 'center' },
+  header: { width: '100%', maxWidth: STAGE_MAX },
   stage: {
-    width: "100%",
+    width: '100%',
     maxWidth: STAGE_MAX,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     columnGap: STAGE_GAP,
     paddingTop: BOARD_OFFSET - WRAPPED_GAP,
   },
@@ -222,7 +193,7 @@ const styles = StyleSheet.create({
   barSpace: { height: PLAYER_BAR_HEIGHT },
   // The evaluation bar sits in the column of the players' discs, between
   // them, and the board lines up with the names beside the discs.
-  boardRow: { flexDirection: "row", gap: PLAYER_DISC.gap },
+  boardRow: { flexDirection: 'row', gap: PLAYER_DISC.gap },
   // Narrower than the discs, and centered under them.
   evaluation: {
     width: EVALUATION_BAR_WIDTH,

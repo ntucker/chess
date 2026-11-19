@@ -142,6 +142,10 @@ export function useGame(opponent: GameOpponent) {
     move(from: string, to: string) {
       act({ type: 'move', uci: toUci(current, from, to) });
     },
+    /** Plays the player's move `uci` on the shown position, promotion included. */
+    play(uci: string) {
+      act({ type: 'move', uci });
+    },
     newGame(side: Color) {
       act({ type: 'newGame', playerColor: side });
     },

@@ -1,10 +1,11 @@
-import { Pressable, Surface, Text, useTheme } from "@reactive/silk-native";
-import { StyleSheet, View } from "react-native";
+import { Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
+import { StyleSheet, View } from 'react-native';
 
-import type { Uci } from "@/lesson/lesson";
-import type { Candidate } from "@/lesson/select";
-import { fonts } from "@/theme/theme";
-import { toneColors } from "@/theme/drawingTones";
+import type { Uci } from '@/lesson/lesson';
+import type { Candidate } from '@/lesson/select';
+import { QualityBadge } from '@/components/QualityBadge';
+import { fonts } from '@/theme/theme';
+import { toneColors } from '@/theme/drawingTones';
 
 interface Props {
   readonly candidates: readonly Candidate[];
@@ -67,28 +68,19 @@ interface RowProps {
   readonly onPoint: (uci: Uci | undefined) => void;
 }
 
-function Row({
-  candidate,
-  main,
-  pointed,
-  leadsTo,
-  share,
-  playable,
-  onPlay,
-  onPoint,
-}: RowProps) {
+function Row({ candidate, main, pointed, leadsTo, share, playable, onPlay, onPoint }: RowProps) {
   const { theme } = useTheme();
   const { color } = theme.semantic;
   const { move, san } = candidate;
-  const tone = toneColors[main ? "main" : "other"];
+  const tone = toneColors[main ? 'main' : 'other'];
   const point = () => onPoint(move.uci);
   const leave = () => onPoint(undefined);
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${san}${move.book ? ", book move" : ""}${share === undefined ? "" : `, ${percent(share)} of games`}`}
-      accessibilityHint={playable ? "Plays this move" : undefined}
+      accessibilityLabel={`${san}${move.book ? ', book move' : ''}${share === undefined ? '' : `, ${percent(share)} of games`}`}
+      accessibilityHint={playable ? 'Plays this move' : undefined}
       // Not disabled: the opponent's rows still preview while not playable.
       accessibilityState={{ disabled: !playable }}
       onPress={playable ? () => onPlay(candidate) : undefined}
@@ -109,14 +101,7 @@ function Row({
           <Text role="body" style={styles.san}>
             {san}
           </Text>
-          {move.book ? (
-            <Text
-              role="caption"
-              style={[styles.tag, { color: tone, borderColor: tone }]}
-            >
-              Book
-            </Text>
-          ) : null}
+          {move.book ? <QualityBadge quality="book" size={BOOK_BADGE_SIZE} /> : null}
           {move.risk ? (
             <Text role="caption" tone="secondary" style={styles.risk}>
               {move.risk}
@@ -131,18 +116,8 @@ function Row({
       </View>
       {share === undefined ? null : (
         <View style={styles.share}>
-          <View
-            style={[
-              styles.track,
-              { backgroundColor: color.tones.neutral.subtle },
-            ]}
-          >
-            <View
-              style={[
-                styles.fillBar,
-                { width: `${share * 100}%`, backgroundColor: tone },
-              ]}
-            />
+          <View style={[styles.track, { backgroundColor: color.tones.neutral.subtle }]}>
+            <View style={[styles.fillBar, { width: `${share * 100}%`, backgroundColor: tone }]} />
           </View>
           <Text role="caption" tone="secondary" style={styles.percent}>
             {percent(share)}
@@ -153,13 +128,16 @@ function Row({
   );
 }
 
+/** The book badge, as in the scoresheet, about the height of the notation's capitals. */
+const BOOK_BADGE_SIZE = 16;
+
 const percent = (share: number) => `${Math.round(share * 100)}%`;
 
 const styles = StyleSheet.create({
-  list: { overflow: "hidden", paddingVertical: 4 },
+  list: { overflow: 'hidden', paddingVertical: 4 },
   row: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -167,20 +145,11 @@ const styles = StyleSheet.create({
   },
   dot: { width: 10, height: 10, borderRadius: 5 },
   move: { flex: 1, gap: 1 },
-  title: { flexDirection: "row", alignItems: "center", gap: 8 },
+  title: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   san: { fontFamily: fonts.mono, fontSize: 17 },
-  tag: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 7,
-    paddingVertical: 1,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    fontSize: 10,
-  },
-  risk: { textTransform: "capitalize" },
-  share: { width: 92, flexDirection: "row", alignItems: "center", gap: 8 },
-  track: { flex: 1, height: 4, borderRadius: 2, overflow: "hidden" },
-  fillBar: { height: "100%", borderRadius: 2 },
-  percent: { width: 32, textAlign: "right", fontFamily: fonts.mono },
+  risk: { textTransform: 'capitalize' },
+  share: { width: 92, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  track: { flex: 1, height: 4, borderRadius: 2, overflow: 'hidden' },
+  fillBar: { height: '100%', borderRadius: 2 },
+  percent: { width: 32, textAlign: 'right', fontFamily: fonts.mono },
 });

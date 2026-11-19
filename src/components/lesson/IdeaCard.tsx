@@ -1,8 +1,8 @@
-import { Stack, Text, useTheme } from "@reactive/silk-native";
-import { StyleSheet, View } from "react-native";
+import { Stack, Text, useTheme } from '@reactive/silk-native';
+import { StyleSheet, View } from 'react-native';
 
-import { Eyebrow } from "@/components/Eyebrow";
-import type { ShownNote } from "@/lesson/view";
+import { Eyebrow } from '@/components/Eyebrow';
+import type { ShownNote } from '@/lesson/view';
 
 interface Props {
   readonly title: string;
