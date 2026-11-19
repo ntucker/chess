@@ -97,10 +97,23 @@ function recordedCounts(key: PositionKey, counts: LichessCounts): MoveCounts {
   return Object.fromEntries(Object.entries(counts).map(([uci, games]) => [recordedMove(pos, uci) ?? uci, games]));
 }
 
+/**
+ * The cached answers. A line a stopped crawl cut short is skipped, so its
+ * question is asked again, and ended, so the next answer gets its own line.
+ */
 function readCache(file: string): Map<string, LichessCounts> {
   if (!existsSync(file)) return new Map();
-  const lines = readFileSync(file, 'utf8').split('\n').filter(Boolean);
-  return new Map(lines.map((line) => JSON.parse(line) as [string, LichessCounts]));
+  const text = readFileSync(file, 'utf8');
+  if (text && !text.endsWith('\n')) appendFileSync(file, '\n');
+  return new Map(text.split('\n').filter(Boolean).flatMap(parsedLine));
+}
+
+function parsedLine(line: string): [string, LichessCounts][] {
+  try {
+    return [JSON.parse(line) as [string, LichessCounts]];
+  } catch {
+    return [];
+  }
 }
 
 /**

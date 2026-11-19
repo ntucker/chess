@@ -6,6 +6,8 @@
  * parse the study → read each chapter's fixed formats → merge the chapters
  * into one position tree → add popularity → checkLesson → write
  * assets/lessons/<id>.json and register it in src/resources/lesson.ts.
+ * `caro-kann` names a study listed in studies.ts. With --no-popularity the
+ * file is written without counts, replacing any it had.
  *
  *   yarn import-study --popularity assets/lessons/caro-kann.json
  *
@@ -49,7 +51,7 @@ async function main() {
     writeLesson(file, await withPopularity(readLesson(JSON.parse(readFileSync(file, 'utf8')))));
     return;
   }
-  const study = STUDIES[first as keyof typeof STUDIES];
+  const study = Object.hasOwn(STUDIES, first) ? STUDIES[first as keyof typeof STUDIES] : undefined;
   if (!study) throw new Error(USAGE);
   const chapters = parseStudy(await studyPgn(study.study), study.chapters);
   const extracted = chapters.map((chapter) => extractChapter(chapter, study.info.side));
