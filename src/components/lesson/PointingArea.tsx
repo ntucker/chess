@@ -16,10 +16,12 @@ interface Props {
  */
 export function PointingArea({ onLeave, children }: Props) {
   // The DOM's own focus event, which bubbles from the buttons inside: focus
-  // that moves to another of them stays in.
+  // that moves to another of them stays in. Focus that goes nowhere is a tap
+  // or click on something that takes no focus, such as a note's words, which
+  // the pointer handles, not the keyboard.
   const blur = (event: unknown) => {
     const { currentTarget, relatedTarget } = event as ReactFocusEvent<HTMLElement>;
-    if (!(relatedTarget instanceof Node && currentTarget.contains(relatedTarget))) onLeave();
+    if (relatedTarget instanceof Node && !currentTarget.contains(relatedTarget)) onLeave();
   };
   return (
     <Stack
