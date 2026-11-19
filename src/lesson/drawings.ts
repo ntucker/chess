@@ -13,7 +13,7 @@ import { type Color, FILE_NAMES, type FileName, type Piece, type SquareName } fr
 import { makeSquare, opposite, parseSquare } from 'chessops/util';
 
 import type { Drawing, Tone } from '@/board/drawing';
-import { parsePositionKey, pieceAt, playLine } from '@/game/replay';
+import { parsePositionKey, pieceAt, playLine, type Position } from '@/game/replay';
 
 import type { Guidance, ShownIdea } from './guidance';
 import type { Idea, Imbalance, PositionKey, Structure, StructureFeature, Uci } from './lesson';
@@ -164,14 +164,14 @@ export function ideaTone(idea: Idea, learner: Color): Tone {
  * One board of an idea's playback, shaped like the game's own boards
  * (`Position`) so the board shows either the same way.
  */
-export interface PlaybackFrame {
-  /** The board as FEN: only the pieces for a plan, whose boards aren't games. */
+export interface PlaybackFrame extends Pick<Position, 'fen' | 'turn' | 'check'> {
+  /**
+   * A plan's boards aren't games: its FEN is only the pieces, its side is to
+   * move throughout, and it is never in check.
+   */
   readonly fen: string;
-  /** The side to move; a plan's own side throughout, since only it moves. */
-  readonly turn: Color;
-  readonly check: boolean;
   /** The move that led here; absent on the first frame. */
-  readonly move?: { readonly from: SquareName; readonly to: SquareName };
+  readonly move?: Pick<NonNullable<Position['move']>, 'from' | 'to'>;
 }
 
 /** The ideas that play back: a plan's routes, a line's or trap's moves. */
