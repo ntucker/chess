@@ -18,7 +18,6 @@ import { parsePosition, parsePositionKey, positionKey, recordedMove } from '@/ga
 import {
   EVALUATIONS,
   IMBALANCE_KINDS,
-  ideaPosition,
   MAX_NOTE_WORDS,
   RELATIONS,
   RISKS,
@@ -57,19 +56,12 @@ export interface LessonProblem {
   readonly message: string;
 }
 
-/** The positions an idea may refer to (see `Idea`). */
-export interface IdeaPositions {
-  /** The note's position, or the position after the note's move. */
-  readonly after: Chess;
-  /** The position before the note's move; absent for a position's notes. */
-  readonly before?: Chess;
-}
-
-/** Why `idea` is false in its position, or undefined if it holds. */
-export function checkIdea(idea: Idea, positions: IdeaPositions): string | undefined {
+/**
+ * Why `idea` is false in `pos`, or undefined if it holds. `pos` is the note's
+ * position, or the position after the note's move (see `Idea`).
+ */
+export function checkIdea(idea: Idea, pos: Chess): string | undefined {
   try {
-    const pos = ideaPosition(idea, positions);
-    if (!pos) fail(`at 'before' only applies to a move's ideas`);
     CHECKS[idea.type](pos, idea as never);
     return undefined;
   } catch (error) {
@@ -127,7 +119,7 @@ function checkPosition(lesson: Lesson, key: string, entry: LessonPosition, repor
   if (!(entry.variation in lesson.variations)) {
     report(`${at}.variation`, `${entry.variation} is not in variations`);
   }
-  checkNotes(entry.notes, { after: pos }, `${at}.notes`, report);
+  checkNotes(entry.notes, pos, `${at}.notes`, report);
   const next: string[] = [];
   const seen = new Set<string>();
   entry.moves.forEach((move, i) => {
@@ -137,7 +129,7 @@ function checkPosition(lesson: Lesson, key: string, entry: LessonPosition, repor
     const after = checkMove(lesson, pos, move, path, report);
     if (!after) return;
     next.push(positionKey(after));
-    checkNotes(move.notes, { before: pos, after }, `${path}.notes`, report);
+    checkNotes(move.notes, after, `${path}.notes`, report);
   });
   return next;
 }
@@ -207,7 +199,7 @@ const isCount = (n: number) => Number.isInteger(n) && n >= 0;
 
 function checkNotes(
   notes: readonly Note[] | undefined,
-  positions: IdeaPositions,
+  pos: Chess,
   path: string,
   report: Report,
 ) {
@@ -216,7 +208,7 @@ function checkNotes(
     if (words === 0) report(`${path}[${i}].text`, 'is empty');
     if (words > MAX_NOTE_WORDS) report(`${path}[${i}].text`, `has ${words} words (most ${MAX_NOTE_WORDS})`);
     note.ideas?.forEach((idea, j) => {
-      const problem = checkIdea(idea, positions);
+      const problem = checkIdea(idea, pos);
       if (problem) report(`${path}[${i}].ideas[${j}]`, `${idea.type}: ${problem}`);
     });
   });

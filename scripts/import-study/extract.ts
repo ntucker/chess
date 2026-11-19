@@ -104,7 +104,7 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
     const own: Found[] = [];
     for (const item of found) {
       const { spot, idea, label } = item;
-      const why = checkIdea(idea, { after: spot.pos });
+      const why = checkIdea(idea, spot.pos);
       if (why) rejected.push({ idea, why, comment });
       else if (spot.move === target) own.push(item);
       // An idea about another position (often the one before the commented move) is said there.

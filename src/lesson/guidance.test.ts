@@ -90,9 +90,9 @@ describe('guidance', () => {
     });
 
     it('draws each idea in the position it is checked in', () => {
-      // dxc5's note shows the pawn on d4 attacking c5, before the capture.
-      const [capture] = shown([...ADVANCE, 'c5', 'dxc5'], 'explore').ideas;
-      expect(capture).toMatchObject({ idea: { at: 'before' }, at: keyAfter(...ADVANCE, 'c5') });
+      // The position after ...c5 has its own note: the pawn on d4 attacks c5.
+      const attack = shown([...ADVANCE, 'c5'], 'explore').ideas.find(({ idea }) => idea.type === 'purpose');
+      expect(attack).toMatchObject({ idea: { from: 'd4' }, at: keyAfter(...ADVANCE, 'c5') });
       const ideas = shown(ADVANCE, 'explore').ideas;
       expect(ideas.map(({ at }) => at)).toEqual(ideas.map(() => keyAfter(...ADVANCE)));
     });

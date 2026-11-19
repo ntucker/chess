@@ -24,7 +24,7 @@
  * guidance stays in lesson terms; lessonDrawings (./drawings.ts) turns it
  * into board shapes.
  */
-import { type Idea, ideaPosition, type Note, type PositionKey, type Uci } from './lesson';
+import type { Idea, Note, PositionKey, Uci } from './lesson';
 import { type Candidate, mainCandidate } from './select';
 import type { LandedTrap, LessonView, Preview, ShownNote } from './view';
 
@@ -192,10 +192,7 @@ const hasTrap = (note: Note) => note.ideas?.some(({ type }) => type === 'trap') 
 
 /** `shown`'s ideas that `allowed` lets through, each with the position it is checked in. */
 const noteIdeas = (shown: ShownNote, allowed: (idea: Idea) => boolean): ShownIdea[] =>
-  (shown.note.ideas ?? [])
-    .filter(allowed)
-    // checkIdea refuses `at: 'before'` on a position's note, so every idea has a position.
-    .map((idea) => ({ idea, at: ideaPosition(idea, shown)! }));
+  (shown.note.ideas ?? []).filter(allowed).map((idea) => ({ idea, at: shown.after }));
 
 /**
  * One plan at a time on each position: two plans' numbered routes would read
