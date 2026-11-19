@@ -2,7 +2,7 @@ import { castlingSide, Chess } from 'chessops/chess';
 import { chessgroundDests, chessgroundMove } from 'chessops/compat';
 import { makeFen, parseFen } from 'chessops/fen';
 import { makeSanAndPlay } from 'chessops/san';
-import type { Color, Piece } from 'chessops/types';
+import type { Color, Piece, SquareName } from 'chessops/types';
 import { kingCastlesTo, makeUci, opposite, parseSquare, parseUci } from 'chessops/util';
 
 export { COLORS, type Color } from 'chessops/types';
@@ -18,8 +18,8 @@ export interface Ply {
   readonly move?: {
     readonly uci: string;
     readonly san: string;
-    readonly from: string;
-    readonly to: string;
+    readonly from: SquareName;
+    readonly to: SquareName;
   };
   /** How many times this position has occurred so far, counting this time. */
   readonly repetitions: number;
@@ -70,6 +70,8 @@ export function parsePositionKey(key: string): Chess | undefined {
 export interface Step {
   /** The position. Every step shares one object, so read it before the next. */
   readonly pos: Chess;
+  /** The position's key (see `positionKey`). */
+  readonly key: string;
   /** How many times this position has occurred so far, counting this time. */
   readonly repetitions: number;
   /** The move that led here: absent for the starting position. */
@@ -88,17 +90,27 @@ export function* playLine(line: readonly string[]): Generator<Step> {
     const key = positionKey(pos);
     const repetitions = (seen.get(key) ?? 0) + 1;
     seen.set(key, repetitions);
-    return { pos, repetitions, move };
+    return { pos, key, repetitions, move };
   };
 
   yield step();
   for (const uci of line) {
-    const move = parseUci(uci);
-    if (!move || !pos.isLegal(move)) return;
-    const [from, to] = chessgroundMove(move);
-    const san = makeSanAndPlay(pos, move);
-    yield step({ uci, san, from, to });
+    const move = playMove(pos, uci);
+    if (!move) return;
+    yield step(move);
   }
+}
+
+/**
+ * Plays `uci` on `pos` and describes it as a ply records it, or returns
+ * undefined, playing nothing, if it isn't legal there.
+ */
+export function playMove(pos: Chess, uci: string): Ply['move'] {
+  const move = parseUci(uci);
+  if (!move || !pos.isLegal(move)) return undefined;
+  const [from, to] = chessgroundMove(move);
+  const san = makeSanAndPlay(pos, move);
+  return { uci, san, from, to };
 }
 
 /**

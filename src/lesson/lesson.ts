@@ -156,6 +156,16 @@ export type Idea =
   | Imbalance
   | EvaluationIdea;
 
+/**
+ * Of a note's positions, the one `idea` is checked in: `after` (a position's
+ * own, or the one after a move), or `before` the move when the idea says
+ * `at: 'before'`. Undefined for `at: 'before'` on a position's note.
+ */
+export const ideaPosition = <P>(
+  idea: Idea,
+  positions: { readonly after: P; readonly before?: P },
+) => (idea.at === 'before' ? positions.before : positions.after);
+
 interface IdeaBase {
   /**
    * Which position a move's idea is about: after the move (the default) or

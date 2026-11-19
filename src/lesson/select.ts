@@ -1,0 +1,134 @@
+/**
+ * Reading the lesson tree: where a position stands in the guide, and the
+ * guide's moves there (the candidate moves) in the order the screen lists
+ * them. Pure functions over the lesson file, like the rest of src/lesson/.
+ */
+import type { Piece, SquareName } from 'chessops/types';
+import { parseSquare } from 'chessops/util';
+
+import { parsePositionKey, playLine, playMove, positionKey } from '@/game/replay';
+import type { Opponent } from '@/opponent/opponent';
+
+import {
+  type Lesson,
+  type LessonMove,
+  type LessonPosition,
+  type PositionKey,
+  ratingBandIndex,
+  type Uci,
+  type Variation,
+  type VariationId,
+} from './lesson';
+
+/**
+ * Where a position stands in the guide. `inside`: the guide has moves here.
+ * `end`: the guide has notes here but no moves, so a line of it ends here.
+ * `beyond`: the guide doesn't know the position. Past `inside`, the
+ * opponent engine plays and Stockfish's top moves are listed.
+ */
+export type GuidePosition =
+  | { readonly place: 'inside' | 'end'; readonly entry: LessonPosition }
+  | { readonly place: 'beyond' };
+
+export function guidePosition(lesson: Lesson, key: PositionKey): GuidePosition {
+  const entry = lesson.positions[key] as LessonPosition | undefined;
+  if (!entry) return { place: 'beyond' };
+  return { place: entry.moves.length ? 'inside' : 'end', entry };
+}
+
+/** One of the guide's moves at a position, with what its list row shows. */
+export interface Candidate {
+  /** The move as the lesson file stores it: book flag, risk, notes. */
+  readonly move: LessonMove;
+  readonly san: string;
+  readonly from: SquareName;
+  /** Where the piece lands; the king's square for castling. */
+  readonly to: SquareName;
+  readonly piece: Piece;
+  /** The position the move leads to. */
+  readonly next: PositionKey;
+  /** The variation of `next`, or undefined when the move leads beyond the guide. */
+  readonly variation?: VariationId;
+  /**
+   * The move's share of the candidates' games in the band, from 0 to 1;
+   * undefined when the band has no games for this move or for any of them.
+   */
+  readonly share?: number;
+}
+
+/**
+ * The guide's moves at `key`, most played in `band` first (an index into
+ * `LessonMove.games`). Moves without counts follow those with counts; ties,
+ * and moves without counts, keep the file's order, which puts the main line
+ * first. Empty unless `key` is inside the guide.
+ */
+export function candidates(
+  lesson: Lesson,
+  key: PositionKey,
+  band: number | undefined,
+): Candidate[] {
+  const guide = guidePosition(lesson, key);
+  const pos = guide.place === 'inside' ? parsePositionKey(key) : undefined;
+  if (guide.place !== 'inside' || !pos) return [];
+
+  const count = (move: LessonMove) => (band === undefined ? undefined : move.games?.[band]);
+  const total = guide.entry.moves.reduce((sum, move) => sum + (count(move) ?? 0), 0);
+  const rows = guide.entry.moves.map((move): Candidate => {
+    const after = pos.clone();
+    const played = playMove(after, move.uci);
+    // checkLesson proves every guide move legal, so this is a broken file.
+    if (!played) throw new Error(`Guide move ${move.uci} is illegal in ${key}`);
+    const { san, from, to } = played;
+    const next = positionKey(after);
+    const games = count(move);
+    return {
+      move,
+      san,
+      from,
+      to,
+      piece: pos.board.get(parseSquare(from)!)!,
+      next,
+      variation: lesson.positions[next]?.variation,
+      share: total > 0 && games !== undefined ? games / total : undefined,
+    };
+  });
+  // Array.sort is stable, so equal counts keep the file's order.
+  return rows.sort((a, b) => (count(b.move) ?? -1) - (count(a.move) ?? -1));
+}
+
+/** `uci` as the guide stores it at `key`, or undefined if it isn't a guide move there. */
+export const guideMove = (lesson: Lesson, key: PositionKey, uci: Uci): LessonMove | undefined =>
+  lesson.positions[key]?.moves.find((move) => move.uci === uci);
+
+/**
+ * Which popularity band "most common" reads for `opponent`: the highest band
+ * at or below its rating (1500 reads 1400), and the top band for Stockfish.
+ * Undefined when the lesson has no counts.
+ */
+export function opponentBand(lesson: Lesson, opponent: Opponent): number | undefined {
+  if (!lesson.popularity) return undefined;
+  return ratingBandIndex(lesson.popularity, opponent === 'stockfish' ? Infinity : opponent);
+}
+
+/** The variation `id` and its ancestors, the opening itself first. */
+export function variationPath(lesson: Lesson, id: VariationId): Variation[] {
+  const path: Variation[] = [];
+  for (let at: VariationId | undefined = id; at !== undefined; at = lesson.variations[at]?.parent) {
+    path.unshift(lesson.variations[at]);
+  }
+  return path;
+}
+
+/**
+ * The variation a line is in at its last position, as `variationPath`: that
+ * position's, or beyond the guide, that of the last guide position it passed.
+ */
+export function lineVariation(lesson: Lesson, keys: readonly PositionKey[]): Variation[] {
+  const last = keys.findLast((key) => lesson.positions[key]);
+  return last ? variationPath(lesson, lesson.positions[last].variation) : [];
+}
+
+/** The key of each position in `line`: index `n` is the position after `n` moves. */
+export function lineKeys(line: readonly Uci[]): PositionKey[] {
+  return Array.from(playLine(line), ({ key }) => key);
+}
