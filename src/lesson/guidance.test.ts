@@ -336,7 +336,7 @@ describe('guidance', () => {
       expect(sans(resting.candidates)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2']);
       expect(sans(resting.drawnCandidates)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2']);
       expect(resting.rareCount).toBe(1);
-      const onPawn = preview(WITH_RARE, view, { at: 'square', square: 'f2' });
+      const onPawn = preview(WITH_RARE, view, { at: 'drag', from: 'f2', to: 'f3' });
       const pointing = guidance({ view, mode: 'explore', switches: ALL_ON, preview: onPawn });
       expect(sans(pointing.drawnCandidates)).toEqual(['f3']);
     });

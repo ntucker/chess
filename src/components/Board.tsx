@@ -18,7 +18,7 @@ import { useEffect, useEffectEvent, useMemo, useRef } from 'react';
 
 import { type Drawing, type Square, squareOffset, TONES } from '@/board/drawing';
 import { type BoardMarks, boardMarks, toneBrushes } from '@/board/marks';
-import { watchPointer } from '@/board/pointer';
+import { type Drag, watchDrag } from '@/board/pointer';
 import {
   NO_PREVIEW,
   type Pieces,
@@ -57,12 +57,10 @@ export interface BoardProps {
   readonly drawings?: readonly Drawing[];
   readonly onMove: (from: string, to: string) => void;
   /**
-   * The square under the mouse, or null once it leaves the board. It doesn't
-   * change while a mouse button is down, so a drag never starts a preview.
+   * Each square a piece being dragged is over, and null once it is back on
+   * its own square, off the board, or dropped.
    */
-  readonly onHover?: (square: Square | null) => void;
-  /** The square a finger presses and holds, or null once it lifts. */
-  readonly onHold?: (square: Square | null) => void;
+  readonly onDrag?: (drag: Drag<Square> | null) => void;
   /**
    * A square was clicked or tapped, empty or not, including the press that
    * starts a drag and the one that ends a move, with the square picked
@@ -83,16 +81,14 @@ export default function Board({
   preview,
   drawings = [],
   onMove,
-  onHover,
-  onHold,
+  onDrag,
   onPress,
 }: BoardProps) {
   const element = useRef<HTMLDivElement>(null);
   const api = useRef<Api>(null);
   // Chessground and the pointer listeners keep the callbacks they were given.
   const handleMove = useEffectEvent((from: string, to: string) => onMove(from, to));
-  const handleHover = useEffectEvent((square: Square | null) => onHover?.(square));
-  const handleHold = useEffectEvent((square: Square | null) => onHold?.(square));
+  const handleDrag = useEffectEvent((drag: Drag<Square> | null) => onDrag?.(drag));
   const handlePress = useEffectEvent((square: Square, selected?: Square) =>
     onPress?.(square, selected),
   );
@@ -210,11 +206,14 @@ export default function Board({
       catchUp();
     });
     resizes.observe(target);
-    const stopWatching = watchPointer<Square>(
-      target,
+    const stopWatching = watchDrag<Square>(
       target.ownerDocument,
+      () => {
+        const drag = board.state.draggable.current;
+        return drag?.started ? (drag.orig as Square) : undefined;
+      },
       (x, y) => board.getKeyAtDomPos([x, y]) as Square | undefined,
-      { hover: handleHover, hold: handleHold },
+      handleDrag,
     );
     return () => {
       cancelAnimationFrame(frame.current);

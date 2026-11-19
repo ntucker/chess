@@ -10,6 +10,7 @@ import { useIsFocused } from 'expo-router';
 import { useEffect, useMemo, useReducer } from 'react';
 
 import type { Square } from '@/board/drawing';
+import type { Drag } from '@/board/pointer';
 import type { BoardProps } from '@/components/Board';
 import { parsePositionKey, toUci } from '@/game/replay';
 import { useGame } from '@/game/useGame';
@@ -111,11 +112,11 @@ export function useLesson(lesson: Lesson) {
     return () => clearTimeout(timer);
   }, [stepping, playing?.step, playing?.played]);
 
-  // A square under the mouse or a finger previews the candidate there. A
-  // square without one ends any preview, as leaving the board does; it is
-  // kept as no pointer, so moving on over such squares re-renders nothing.
-  const pointSquare = (square: Square | null) => {
-    const at: Pointer | undefined = square ? { at: 'square', square } : undefined;
+  // A piece dragged over a square previews its candidate there. A square
+  // without one ends any preview, as dropping the piece does; it is kept as
+  // no pointer, so dragging on over such squares re-renders nothing.
+  const pointDrag = (drag: Drag<Square> | null) => {
+    const at: Pointer | undefined = drag ? { at: 'drag', ...drag } : undefined;
     const candidate = at && preview(lesson, view, at) ? at : undefined;
     dispatch({ type: 'candidate', key, candidate });
   };
@@ -139,8 +140,7 @@ export function useLesson(lesson: Lesson) {
       frame,
     }),
     onMove: (from, to) => playMove(toUci(current, from, to)),
-    onHover: pointSquare,
-    onHold: pointSquare,
+    onDrag: pointDrag,
     onPress: (square, selected) => {
       const press = !frame && boardPress(shown, current, canMove, square, selected);
       if (press === 'end') dispatch({ type: 'candidate', key });

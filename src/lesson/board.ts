@@ -2,9 +2,9 @@
  * What the lesson's board shows: the game's position, with a previewed move
  * drawn played over it, or a board of an idea playing back, with guidance's
  * drawings.
- * Whether the learner points at a candidate list row or at a board square,
- * the preview comes from `preview` (./view.ts) through guidance, so both
- * pointers show a candidate the same way.
+ * Whether the learner points at a candidate list row or drags a piece over
+ * a square, the preview comes from `preview` (./view.ts) through guidance,
+ * so both show a candidate the same way.
  */
 import type { Square } from '@/board/drawing';
 import { lastMoveBadge } from '@/board/drawing';
@@ -35,7 +35,7 @@ interface LessonBoardInput {
 }
 
 /** The board's props, all but its callbacks. */
-export type LessonBoard = Omit<BoardProps, 'dom' | 'onMove' | 'onHover' | 'onHold' | 'onPress'>;
+export type LessonBoard = Omit<BoardProps, 'dom' | 'onMove' | 'onDrag' | 'onPress'>;
 
 /**
  * The board for a lesson. A sliding preview draws the position after its
