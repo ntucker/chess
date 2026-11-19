@@ -6,7 +6,7 @@
  * and the board. With auto play the learner moves their own side; with auto
  * play off, either.
  */
-import { useController } from '@data-client/react';
+import { useController, useDLE } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
 import { useEffect, useMemo, useReducer } from 'react';
 
@@ -15,6 +15,7 @@ import type { Drag } from '@/board/pointer';
 import type { BoardProps } from '@/components/Board';
 import { dropMove, parsePositionKey } from '@/game/replay';
 import { type GameStore, useGame } from '@/game/useGame';
+import { getEvaluation } from '@/resources/evaluation';
 import { gameOpponent } from '@/resources/opponent';
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNeedsStockfish } from '@/stockfish/demand';
@@ -101,6 +102,12 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   const playing = here?.kind === 'play' ? here : undefined;
   // A playback plays in its candidate's position, wherever the pointer goes.
   const pointer = playing ? playing.from : here?.candidate;
+  // Stockfish's best move for the board's position, whatever engine judges
+  // the bar; only Explore shows it, so Practice asks for nothing.
+  const { data: engine } = useDLE(
+    getEvaluation,
+    ...(focused && mode === 'explore' ? (['stockfish', moves.slice(0, ply)] as const) : [null]),
+  );
   const shown = guidance({
     view,
     mode,
@@ -109,6 +116,7 @@ export function useLesson(lesson: Lesson, store: GameStore) {
     dragged: pointer?.at === 'drag' ? pointer.from : undefined,
     pointed: here?.note,
     playing: playing?.played,
+    engine,
   });
   const frames = shown.playing
     ? ideaPlayback(shown.playing.idea, parsePositionKey(shown.playing.at)!)
