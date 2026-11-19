@@ -1,8 +1,10 @@
 import { Button, Inline, Stack, Text } from '@reactive/silk-native';
+import { View } from 'react-native';
 
 import { Eyebrow } from '@/components/Eyebrow';
 import type { Color, Position } from '@/game/replay';
 import { describeOpponent, type Opponent } from '@/opponent/opponent';
+import { phonePart } from '@/theme/phone';
 
 interface Props {
   readonly playerColor: Color;
@@ -33,13 +35,23 @@ interface HeadlineProps {
   readonly detail: string;
   /** The opponent `who` didn't answer, and `onRetry` asks it again. */
   readonly failure?: { readonly who: string; readonly onRetry: () => void };
+  /** The header shows the eyebrow on a phone (Stage's `place`), so the headline leaves it out there. */
+  readonly eyebrowInHeader?: boolean;
 }
 
 /** A panel's headline, announced as it changes, with a retry when the opponent didn't answer. */
-export function StatusHeadline({ eyebrow, title, detail, failure }: HeadlineProps) {
+export function StatusHeadline({
+  eyebrow,
+  title,
+  detail,
+  failure,
+  eyebrowInHeader,
+}: HeadlineProps) {
   return (
     <Stack gap="2">
-      <Eyebrow>{eyebrow}</Eyebrow>
+      <View {...(eyebrowInHeader ? phonePart('in-header') : {})}>
+        <Eyebrow>{eyebrow}</Eyebrow>
+      </View>
       <Text role="headingLg" accessibilityRole="header" accessibilityLiveRegion="polite">
         {title}
       </Text>

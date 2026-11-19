@@ -18,6 +18,8 @@ import { spotlight } from '@/theme/theme';
 interface StageProps {
   /** The browser tab's title. */
   readonly title: string;
+  /** Where the page is, such as the lesson's line: the header names it on a phone. */
+  readonly place?: string;
   /** The board column (`BoardColumn`), or a stand-in the same size while it loads. */
   readonly board: ReactNode;
   /** The panel beside the board, or below it on a narrow screen. */
@@ -30,7 +32,7 @@ interface StageProps {
  * they line up the same way. On a phone-width web page the panel goes below
  * the board and scrolls on its own, so the board stays in view (phone.css).
  */
-export function Stage({ title, board, program }: StageProps) {
+export function Stage({ title, place, board, program }: StageProps) {
   const { theme } = useTheme();
   return (
     <View
@@ -49,7 +51,7 @@ export function Stage({ title, board, program }: StageProps) {
         <ScrollView>
           <View {...phonePart('page')} style={styles.page}>
             <View style={styles.header}>
-              <Header />
+              <Header place={place} />
             </View>
             <View {...phonePart('stage')} style={styles.stage}>
               <View {...phonePart('board-column')} style={styles.boardColumn}>

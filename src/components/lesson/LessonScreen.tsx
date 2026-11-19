@@ -97,6 +97,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
   return (
     <Stage
       title={`${lesson.title} · Opening Night`}
+      place={view.variation.at(-1)?.name ?? lesson.title}
       board={
         <BoardColumn
           game={game}
@@ -112,6 +113,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
           <StatusHeadline
             {...status}
             failure={game.error && { who: described.name, onRetry: game.retry }}
+            eyebrowInHeader
           />
           <Separator />
           {/* Leaving a row for the idea card keeps its preview, so its notes can be pointed at. */}

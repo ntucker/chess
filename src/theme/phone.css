@@ -4,14 +4,20 @@
  * applies: each length falls back to the wide value written beside it in
  * code, and each part keeps its wide layout.
  */
+/* The header's place shows only on a phone (see below). */
+:root [data-phone='place'] {
+  display: none;
+}
+
 @media (max-width: 599.98px) {
   /* Lengths, read by `phoneLength` (phone.ts). */
   :root {
     /* Page padding and the gap below the header (Stage.tsx). */
-    --page-space: 12px;
+    --page-space: 10px;
     /* The logo, as tall as the source link beside it: the header's height (Header.tsx). */
-    --header-height: 36px;
-    --wordmark-size: 22px;
+    --header-height: 28px;
+    --source-link-size: 28px;
+    --wordmark-size: 18px;
     /* The name bars above and below the board (PlayerBar.tsx). */
     --player-bar-height: 52px;
     /* Space between the board column and the panel below it (Stage.tsx). */
@@ -32,9 +38,18 @@
    * it scrolls in the space that's left, so a previewed move stays in view.
    * Two selectors' weight, to win over React Native Web's one-class styles.
    */
-  /* The header drops its tagline (Header.tsx). */
-  :root [data-phone='tagline'] {
+  /*
+   * The header (Header.tsx) names the page's place, such as the lesson's line,
+   * instead of the app, and drops its tagline. What it names, the panel's own
+   * label leaves out (in-header).
+   */
+  :root [data-phone='wordmark'],
+  :root [data-phone='tagline'],
+  :root [data-phone='in-header'] {
     display: none;
+  }
+  :root [data-phone='place'] {
+    display: block;
   }
   :root [data-phone='page'] {
     height: 100dvh;

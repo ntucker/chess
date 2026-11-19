@@ -8,11 +8,21 @@ export const PHONE_LENGTHS = [
   'player-bar-height',
   'wrapped-gap',
   'board-min',
+  'source-link-size',
   'panel-reserve',
 ] as const;
 
 /** The parts of the page that phone.css lays out differently on a phone-width web page. */
-export const PHONE_PARTS = ['tagline', 'page', 'stage', 'board-column', 'program'] as const;
+export const PHONE_PARTS = [
+  'wordmark',
+  'place',
+  'tagline',
+  'in-header',
+  'page',
+  'stage',
+  'board-column',
+  'program',
+] as const;
 
 /**
  * A length that is shorter on a phone-width web page, or a sum of such
