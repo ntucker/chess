@@ -1,5 +1,6 @@
-import { AsyncBoundary, useSuspense } from '@data-client/react';
+import { AsyncBoundary, useController, useSuspense } from '@data-client/react';
 import { Separator, Spinner, Stack } from '@reactive/silk-native';
+import { useMemo, useReducer } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
@@ -10,12 +11,16 @@ import { OpponentChoice } from '@/components/OpponentChoice';
 import { Scoresheet } from '@/components/Scoresheet';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import type { MoveQuality } from '@/analysis/quality';
+import { gameReducer, startGame } from '@/game/game';
 import { colorName, opposite } from '@/game/replay';
+import type { GameStore } from '@/game/useGame';
+import type { Uci } from '@/lesson/lesson';
+import { lessonOf, openingsLesson, withOpenings } from '@/lesson/openings';
 import type { Candidate } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
 import type { LessonView } from '@/lesson/view';
 import { describeOpponent } from '@/opponent/opponent';
-import { getLesson, LESSONS, type LessonId } from '@/resources/lesson';
+import { getLesson, LESSON_INDEX, LESSONS, type LessonId } from '@/resources/lesson';
 import { useSettings } from '@/settings/SettingsProvider';
 import { qualityLooks } from '@/theme/moveQuality';
 
@@ -27,27 +32,57 @@ import { PointingArea } from './PointingArea';
 import { TrapCard } from './TrapCard';
 
 /**
- * The lesson `id` as a page. The exported HTML holds only its frame: the
- * lesson loads in the browser, since reading it during the export hangs it.
+ * The openings as a page: the start position, where the learner picks an
+ * opening by its first move (src/lesson/openings.ts), then that opening's
+ * lesson. With `id` it starts in that lesson, its first move played. The
+ * exported HTML holds only its frame: lessons load in the browser, since
+ * reading one during the export hangs it.
  */
-export function LessonPage({ id }: { readonly id: string }) {
-  if (!Object.hasOwn(LESSONS, id)) return <LessonPlaceholder message="There is no lesson here." />;
+export function LessonPage({ id }: { readonly id?: string }) {
+  if (id !== undefined && !Object.hasOwn(LESSONS, id)) {
+    return <LessonPlaceholder message="There is no lesson here." />;
+  }
+  // The lesson's main-line first move, played so the page opens in it.
+  const start = id === undefined ? [] : LESSON_INDEX[id as LessonId].firstMoves.slice(0, 1);
   return (
     <BrowserOnly fallback={<LessonPlaceholder />}>
-      <AsyncBoundary
-        fallback={<LessonPlaceholder />}
-        errorComponent={({ error }) => <LessonPlaceholder message={error.message} />}
-      >
-        {/* A game belongs to one lesson: another lesson starts its own. */}
-        <LessonScreen key={id} id={id as LessonId} />
-      </AsyncBoundary>
+      {/* Another address starts its own game. */}
+      <Openings key={id} start={start} />
     </BrowserOnly>
   );
 }
 
-/** The lesson `id`, played on the board, in Explore or Practice. */
-function LessonScreen({ id }: { readonly id: LessonId }) {
-  const lesson = useSuspense(getLesson, id);
+/**
+ * One game across every opening: its first move picks the lesson, which
+ * loads once picked. The game is held here, above the boundary, so its moves
+ * stay while the lesson loads, and stepping back to the start to pick
+ * another opening carries on the same game. The screen stays too, so the
+ * mode chosen carries over; a Practice run restarts at the learner's first
+ * move anyway, and what the learner points at belongs to a position.
+ */
+function Openings({ start }: { readonly start: readonly Uci[] }) {
+  const store = useReducer(gameReducer, start, startGame);
+  return (
+    <AsyncBoundary
+      fallback={<LessonPlaceholder />}
+      errorComponent={({ error }) => <LessonPlaceholder message={error.message} />}
+    >
+      <LessonScreen id={lessonOf(LESSON_INDEX, store[0].moves)} store={store} />
+    </AsyncBoundary>
+  );
+}
+
+/** The start position before an opening is picked. */
+const OPENINGS = openingsLesson(LESSON_INDEX);
+
+/**
+ * The lesson `id` played on the board, in Explore or Practice, or before
+ * one is picked, the start position's openings alone.
+ */
+function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: GameStore }) {
+  const ctrl = useController();
+  const picked = useSuspense(getLesson, id ?? null);
+  const lesson = useMemo(() => (picked ? withOpenings(picked, LESSON_INDEX) : OPENINGS), [picked]);
   const {
     game,
     opponent,
@@ -67,7 +102,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
     modeState,
     startsRun,
     chooseMode,
-  } = useLesson(lesson);
+  } = useLesson(lesson, store);
   const { mode } = modeState;
   const { auto } = useSettings();
   const learner = lesson.side;
@@ -77,7 +112,10 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
   const { trap } = guidance;
   // The card is for notes, or for the notes of a candidate pointed at.
   const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
+  // The start lists the openings, whichever lesson is loaded.
+  const picking = view.ply === 0;
   const status = describeStatus(view, {
+    picking,
     title: lesson.title,
     rival: colorName(rival),
     engine: described.name,
@@ -90,11 +128,21 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
       modeState.mode === 'practice' ? { clean: modeState.clean, verdict: game.quality } : undefined,
   });
 
+  const opening = (uci: Uci) => (picking ? lessonOf(LESSON_INDEX, [uci]) : undefined);
   const line = view.variation.at(-1);
   const leadsTo = (candidate: Candidate) => {
+    const into = opening(candidate.move.uci);
+    if (into) return LESSON_INDEX[into].title;
     if (candidate.variation === undefined) return 'Leaves the guide';
-    const into = lesson.variations[candidate.variation];
-    return into === line ? undefined : into.name;
+    const variation = lesson.variations[candidate.variation];
+    return variation === line ? undefined : variation.name;
+  };
+  // Pointing at an opening starts loading its lesson, so playing it needn't wait.
+  const pointCandidate = (uci: Uci) => {
+    const into = opening(uci);
+    // A failure shows once the opening is picked.
+    if (into) ctrl.fetchIfStale(getLesson, into).catch(() => {});
+    pointRow(uci);
   };
 
   return (
@@ -103,7 +151,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
       // Only the latest line's name, since the path won't fit a phone. A
       // sub-line's name starts with its parent's ("Advance Variation: Tal…");
       // the opening's own name is what goes unsaid.
-      place={line?.name ?? lesson.title}
+      place={picking ? OPENINGS.title : (line?.name ?? lesson.title)}
       board={
         <BoardColumn
           game={game}
@@ -142,7 +190,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
                   <Eyebrow>
                     {view.learnerToMove
                       ? 'Your candidates'
-                      : `${colorName(rival)}'s likely replies`}
+                      : `${colorName(rival)}'s ${picking ? 'first move' : 'likely replies'}`}
                   </Eyebrow>
                   <CandidateList
                     candidates={guidance.candidates}
@@ -154,7 +202,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
                     leadsTo={leadsTo}
                     playable={canPlay}
                     onPlay={play}
-                    onPoint={pointRow}
+                    onPoint={pointCandidate}
                     onTabOut={leave}
                   />
                 </Stack>
@@ -196,6 +244,8 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
 }
 
 interface StatusInput {
+  /** Whether the board shows the start, where the first move picks the opening. */
+  readonly picking: boolean;
   /** The lesson's title, for a position before any variation. */
   readonly title: string;
   /** The opponent's side, as shown: "White". */
@@ -227,8 +277,14 @@ interface StatusInput {
  */
 function describeStatus(
   view: LessonView,
-  { title, rival, engine, thinking, viewing, auto, lineEnded, startsRun, practice }: StatusInput,
+  { picking, title, rival, engine, thinking, viewing, auto, lineEnded, startsRun, practice }: StatusInput,
 ) {
+  if (picking)
+    return {
+      eyebrow: OPENINGS.title,
+      title: 'Pick an opening.',
+      detail: `Each of ${rival}'s first moves leads to the defence you learn against it. Play one on the board or in the list.`,
+    };
   const eyebrow = view.variation.map(({ name }) => name).join(' · ') || title;
   // Beyond the guide with auto play off, nobody replies: the learner moves both sides.
   const playOn = auto ? `play on against ${engine}` : 'play on, moving both sides';

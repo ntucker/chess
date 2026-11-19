@@ -72,6 +72,9 @@
       {
         "displayName": "native",
         "preset": "jest-expo",
+        "moduleNameMapper": {
+          "^@/assets/(.*)$": "<rootDir>/assets/$1"
+        },
         "testPathIgnorePatterns": [
           "/node_modules/",
           "\\.web\\.test\\.tsx?$"
@@ -80,6 +83,9 @@
       {
         "displayName": "web",
         "preset": "jest-expo/web",
+        "moduleNameMapper": {
+          "^@/assets/(.*)$": "<rootDir>/assets/$1"
+        },
         "testMatch": [
           "<rootDir>/src/**/*.web.test.ts?(x)"
         ],

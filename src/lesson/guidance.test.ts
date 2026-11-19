@@ -161,6 +161,11 @@ describe('guidance', () => {
       });
     });
 
+    it('shows the first moves at the start, where they pick the opening, with auto play on', () => {
+      const start = shown([], 'practice', { auto: true }, { pointer: { at: 'row', uci: 'e2e4' } });
+      expect(summary(start)).toMatchObject({ candidates: ['e4'], preview: 'e4', best: undefined });
+    });
+
     it("shows, right after the learner's move, its notes and then those of the position it was played in", () => {
       const notes = shown([...ADVANCE, 'Bf5'], 'practice').notes;
       expect(notes.map(({ note, after }) => [note.ideas?.map(({ type }) => type), after])).toEqual([

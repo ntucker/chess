@@ -6,7 +6,8 @@
  * parse the study → read each chapter's fixed formats → rewrite the comments
  * with AI (./convert) → merge the chapters into one
  * position tree → add popularity → checkLesson → write
- * assets/lessons/<id>.json and register it in src/resources/lesson.ts.
+ * assets/lessons/<id>.json, register it in src/resources/lesson.ts and list
+ * it in assets/lessons/index.json.
  * `caro-kann` names a study listed in studies.ts. With --no-popularity the
  * file is written without counts, replacing any it had.
  *
@@ -43,7 +44,7 @@ import { extractChapter } from './extract';
 import { lessonJson } from './lessonJson';
 import { mergeChapters } from './merge';
 import { addPopularity, lichessExplorer } from './popularity';
-import { registerLesson } from './register';
+import { indexLesson, registerLesson } from './register';
 import { report } from './report';
 import { parseStudy } from './study';
 import { STUDIES } from './studies';
@@ -63,7 +64,7 @@ async function main() {
     writeLesson(file, await withPopularity(readLesson(JSON.parse(readFileSync(file, 'utf8')))));
     return;
   }
-  const study = Object.hasOwn(STUDIES, first) ? STUDIES[first as keyof typeof STUDIES] : undefined;
+  const study = Object.hasOwn(STUDIES, first) ? STUDIES[first] : undefined;
   // An unknown flag must fail rather than be ignored: a mistyped --no-model would call the model for an hour.
   if (!study || rest.some((flag) => !STUDY_FLAGS.includes(flag))) throw new Error(USAGE);
   const chapters = parseStudy(await studyPgn(study.study), study.chapters);
@@ -79,10 +80,11 @@ async function main() {
   cli.saveUsed();
   const { extracted } = converted;
   console.log(convertReport(converted.report));
-  let lesson: Lesson = mergeChapters(study.info, chapters, extracted);
+  let lesson: Lesson = mergeChapters(study.info, chapters, extracted, study.chapterName);
   if (!rest.includes('--no-popularity')) lesson = await withPopularity(lesson);
   writeLesson(join(ROOT, `assets/lessons/${lesson.id}.json`), lesson);
   registerLesson(join(ROOT, 'src/resources/lesson.ts'), lesson.id);
+  indexLesson(join(ROOT, 'assets/lessons/index.json'), lesson);
   console.log(report(lesson, chapters, extracted));
 }
 

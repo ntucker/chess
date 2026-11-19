@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { act } from 'react';
+import { act, useReducer } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
-import type { GameOpponent } from './game';
+import { type GameOpponent, gameReducer, initialGame } from './game';
 import type { Color } from './replay';
 import { useGame } from './useGame';
 
@@ -29,7 +29,7 @@ const renders: ReturnType<typeof useGame>[] = [];
 const game = () => renders[renders.length - 1];
 
 function Game(props: { opponent?: GameOpponent; side: Color; active: boolean }) {
-  renders.push(useGame(props.opponent, { ...props, judge: 'stockfish' }));
+  renders.push(useGame(useReducer(gameReducer, initialGame), props.opponent, { ...props, judge: 'stockfish' }));
   return null;
 }
 

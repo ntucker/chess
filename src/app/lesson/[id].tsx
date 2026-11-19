@@ -8,7 +8,7 @@ export function generateStaticParams(): { id: LessonId }[] {
   return Object.keys(LESSONS).map((id) => ({ id: id as LessonId }));
 }
 
-/** A lesson, at /lesson/<id>. */
+/** A lesson, at /lesson/<id>: the openings page, starting with the lesson's first move played. */
 export default function LessonRoute() {
   const { id } = useLocalSearchParams<{ id: string }>();
   return <LessonPage id={id} />;

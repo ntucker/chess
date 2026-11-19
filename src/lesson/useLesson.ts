@@ -14,7 +14,7 @@ import type { Square } from '@/board/drawing';
 import type { Drag } from '@/board/pointer';
 import type { BoardProps } from '@/components/Board';
 import { dropMove, parsePositionKey } from '@/game/replay';
-import { useGame } from '@/game/useGame';
+import { type GameStore, useGame } from '@/game/useGame';
 import { gameOpponent } from '@/resources/opponent';
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNeedsStockfish } from '@/stockfish/demand';
@@ -55,7 +55,12 @@ export interface Playback {
   readonly stop: () => void;
 }
 
-export function useLesson(lesson: Lesson) {
+/**
+ * `lesson` played on the board, the game held in `store`. The start position
+ * is where the learner picks the opening (src/lesson/openings.ts): nobody
+ * replies there, so the learner plays the first move whoever's turn it is.
+ */
+export function useLesson(lesson: Lesson, store: GameStore) {
   const ctrl = useController();
   const settings = useSettings();
   const { opponent } = settings;
@@ -63,11 +68,13 @@ export function useLesson(lesson: Lesson) {
   // Moves are labelled by Stockfish whatever judges the bar: Maia's judgement
   // could call a book move a mistake. So Stockfish runs while this is in front.
   useNeedsStockfish(focused);
-  // With auto play off nobody replies: the learner picks the opponent's move.
-  const rival = settings.auto
-    ? lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent))
-    : undefined;
-  const game = useGame(rival, {
+  // Nobody replies with auto play off (the learner picks the opponent's
+  // move), nor at the start, where the first move picks the opening.
+  const rival =
+    settings.auto && store[0].ply > 0
+      ? lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent))
+      : undefined;
+  const game = useGame(store, rival, {
     side: lesson.side,
     active: focused,
     judge: 'stockfish',
