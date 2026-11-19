@@ -31,7 +31,6 @@ import {
   linePlace,
   lineVariation,
   opponentBand,
-  splitRare,
 } from './select';
 
 /**
@@ -83,13 +82,7 @@ export interface LessonView {
   readonly lineEnd?: number;
   /** The variation the board is in, the opening itself first (see `lineVariation`). */
   readonly variation: readonly Variation[];
-  /** The candidates the list shows (see `splitRare`). */
   readonly candidates: readonly Candidate[];
-  /**
-   * The rare candidates the list leaves off: previewed and drawn only when
-   * the learner points at the board square of one.
-   */
-  readonly rare: readonly Candidate[];
   /** The idea card's notes: the move that led here, then the position. */
   readonly notes: readonly ShownNote[];
   /** The notes of the position the move that led here was played in. */
@@ -111,8 +104,6 @@ export function lessonView({ lesson, line, ply, opponent }: LessonViewInput): Le
     .slice(0, ply + 1)
     .map((at, n) => linePlace(lesson, at, n ? guideMoves[n - 1] : undefined));
   const lineEnd = places.lastIndexOf('end');
-  const all = candidates(lesson, key, opponentBand(lesson, opponent));
-  const { likely, rare } = splitRare(lesson, key, all);
   return {
     key,
     ply,
@@ -120,8 +111,7 @@ export function lessonView({ lesson, line, ply, opponent }: LessonViewInput): Le
     place: places[ply],
     lineEnd: lineEnd === -1 ? undefined : lineEnd,
     variation: lineVariation(lesson, keys.slice(0, ply + 1)),
-    candidates: likely,
-    rare,
+    candidates: candidates(lesson, key, opponentBand(lesson, opponent)),
     notes: arrivalNotes(lesson, keys, guideMoves, ply),
     playedFrom: ply === 0 ? [] : positionNotes(lesson, keys[ply - 1]),
     guideMoves,
@@ -151,15 +141,14 @@ export const shownKey = (key: PositionKey, preview?: Preview): PositionKey =>
   preview?.slide ? preview.candidate.next : key;
 
 /**
- * The candidate `pointer` previews in `view`. A row previews its move. A
- * destination square previews the most common candidate landing there, a
- * listed one before a rare one. A piece's own square previews its most
- * common candidate without sliding, so the piece can still be dragged
- * anywhere legal.
+ * The candidate `pointer` previews in `view`. A row previews its move (a
+ * rare one has no row). A destination square previews the most common
+ * candidate landing there. A
+ * piece's own square previews its most common candidate without sliding, so
+ * the piece can still be dragged anywhere legal.
  */
 export function preview(lesson: Lesson, view: LessonView, pointer: Pointer): Preview | undefined {
-  const among = pointer.at === 'row' ? view.candidates : [...view.candidates, ...view.rare];
-  const found = pointed(among, pointer);
+  const found = pointed(view.candidates, pointer);
   if (!found) return undefined;
   const { move, next } = found.candidate;
   return { ...found, notes: cardNotes(lesson, move, view.key, next) };
@@ -167,7 +156,7 @@ export function preview(lesson: Lesson, view: LessonView, pointer: Pointer): Pre
 
 function pointed(shown: readonly Candidate[], pointer: Pointer) {
   if (pointer.at === 'row') {
-    const candidate = shown.find(({ move }) => move.uci === pointer.uci);
+    const candidate = shown.find(({ move, rare }) => !rare && move.uci === pointer.uci);
     return candidate && { candidate, slide: true };
   }
   const landing = shown.find(({ to }) => to === pointer.square);

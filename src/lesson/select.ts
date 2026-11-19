@@ -69,7 +69,20 @@ export interface Candidate {
    * undefined when the band has no games for this move or for any of them.
    */
   readonly share?: number;
+  /**
+   * An opponent's move played under `RARE_SHARE` of the time (see
+   * `candidates`): the list and the board's arrows leave it off, and only
+   * pointing at its piece or landing square shows it.
+   */
+  readonly rare?: boolean;
 }
+
+/**
+ * An opponent's candidate played less often than this, as a share of the
+ * candidates' games, is rare. A study can give twenty rare replies a line
+ * each, and listing them all buries the few that are played.
+ */
+export const RARE_SHARE = 0.05;
 
 /** The candidate to look at first: the book move, or else the most played. */
 export const mainCandidate = (candidates: readonly Candidate[]): Candidate | undefined =>
@@ -80,6 +93,10 @@ export const mainCandidate = (candidates: readonly Candidate[]): Candidate | und
  * `LessonMove.games`). Moves without counts follow those with counts; ties,
  * and moves without counts, keep the file's order, which puts the main line
  * first. Empty unless `key` is inside the guide.
+ *
+ * On the opponent's turn a candidate under `RARE_SHARE` is `rare`, unless
+ * it is the most played, has no counts, or starts a trap the position's
+ * notes show. The learner's candidates never are.
  */
 export function candidates(
   lesson: Lesson,
@@ -112,37 +129,12 @@ export function candidates(
     };
   });
   // Array.sort is stable, so equal counts keep the file's order.
-  return rows.sort((a, b) => (count(b.move) ?? -1) - (count(a.move) ?? -1));
-}
-
-/**
- * An opponent's candidate played less often than this, as a share of the
- * candidates' games, is rare (see `splitRare`).
- */
-export const RARE_SHARE = 0.05;
-
-/**
- * `all`, the candidates at `key` in list order, split into the ones the list
- * shows and the rare ones it leaves off. On the learner's turn none are
- * rare. On the opponent's, the most played never is, nor one without counts
- * or one starting a trap the position's notes show; any other is rare below
- * `RARE_SHARE`. A study can give twenty rare replies a line each, and
- * listing them all buries the few that are played.
- */
-export function splitRare(
-  lesson: Lesson,
-  key: PositionKey,
-  all: readonly Candidate[],
-): { readonly likely: Candidate[]; readonly rare: Candidate[] } {
-  const entry = lesson.positions[key] as LessonPosition | undefined;
-  if (!entry || parsePositionKey(key)?.turn === lesson.side) return { likely: [...all], rare: [] };
-  const traps = new Set(trapStarts(entry));
-  const isRare = ({ move, share }: Candidate, n: number) =>
-    n > 0 && share !== undefined && share < RARE_SHARE && !traps.has(move.uci);
-  return {
-    likely: all.filter((candidate, n) => !isRare(candidate, n)),
-    rare: all.filter(isRare),
-  };
+  rows.sort((a, b) => (count(b.move) ?? -1) - (count(a.move) ?? -1));
+  if (pos.turn === lesson.side) return rows;
+  const traps = trapStarts(guide.entry);
+  const isRare = ({ move, share }: Candidate) =>
+    share !== undefined && share < RARE_SHARE && !traps.includes(move.uci);
+  return rows.map((row, n) => (n > 0 && isRare(row) ? { ...row, rare: true } : row));
 }
 
 /** The first move of each trap in a position's notes: the move that falls in. */

@@ -144,9 +144,9 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
                     onPoint={pointRow}
                     onTabOut={leave}
                   />
-                  {guidance.rare.length ? (
+                  {guidance.rareCount ? (
                     <Text role="caption" tone="secondary">
-                      {rareHint(guidance.rare.length, colorName(rival))}
+                      {rareHint(guidance.rareCount, colorName(rival))}
                     </Text>
                   ) : null}
                 </Stack>
@@ -212,9 +212,8 @@ interface StatusInput {
 
 /** The line under the list that says the guide covers `count` rarer replies it leaves off. */
 const rareHint = (count: number, rival: string) =>
-  count === 1
-    ? `The guide covers one rarer reply too. Point at a ${rival} piece to see it.`
-    : `The guide covers ${count} rarer replies too. Point at a ${rival} piece to see them.`;
+  `The guide covers ${count} rarer ${count === 1 ? 'reply' : 'replies'} too. ` +
+  `Point at a ${rival} piece to see ${count === 1 ? 'it' : 'them'}.`;
 
 /**
  * The panel's headline: where the lesson stands and whose move it is. In

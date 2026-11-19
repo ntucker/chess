@@ -5,12 +5,11 @@ import { makeUci } from 'chessops/util';
 import { parsePositionKey } from '@/game/replay';
 
 import type { Idea, Lesson, Note, PositionKey } from './lesson';
-import { ADVANCE, keyAfter, MAIN, SAMPLE, uciLine, withMoves } from './lesson.fixture';
+import { ADVANCE, keyAfter, MAIN, SAMPLE, uciLine, WITH_RARE, withMoves } from './lesson.fixture';
 import {
   bookMoves,
   candidates,
   RARE_SHARE,
-  splitRare,
   guideMove,
   guidePosition,
   lineKeys,
@@ -121,54 +120,45 @@ describe('candidates', () => {
     const beyond = withMoves(SAMPLE, key, (moves) => [...moves, { uci: 'f1c4' }]);
     expect(candidates(beyond, key, 2).at(-1)).toMatchObject({ san: 'Bc4', variation: undefined });
   });
-});
+  describe('rare moves', () => {
+    const rareOnes = (lesson: Lesson, at: PositionKey, band: number | undefined) =>
+      candidates(lesson, at, band)
+        .filter(({ rare }) => rare)
+        .map(({ move }) => move.uci);
 
-describe('splitRare', () => {
-  const key = keyAfter(...MAIN);
-  // 1 game of 2,751 in the 1400 band: under RARE_SHARE.
-  const withRare = withMoves(SAMPLE, key, (moves) => [
-    ...moves,
-    { uci: 'f2f3', games: [1, 1, 1, 1, 1] },
-  ]);
-  const split = (lesson: Lesson, at: PositionKey, band: number | undefined) => {
-    const { likely, rare } = splitRare(lesson, at, candidates(lesson, at, band));
-    return { likely: likely.map(({ move }) => move.uci), rare: rare.map(({ move }) => move.uci) };
-  };
-
-  it("leaves a rarely played opponent's move off the list", () => {
-    expect(split(withRare, key, 2)).toEqual({
-      likely: ['e4e5', 'e4d5', 'b1c3', 'b1d2'],
-      rare: ['f2f3'],
+    it("marks a rarely played opponent's move rare", () => {
+      expect(ucis(WITH_RARE, key, 2)).toEqual(['e4e5', 'e4d5', 'b1c3', 'b1d2', 'f2f3']);
+      expect(rareOnes(WITH_RARE, key, 2)).toEqual(['f2f3']);
     });
-  });
 
-  it('lists a rarely played move that starts a trap the position shows', () => {
-    const trap: Idea = { type: 'trap', moves: ['f2f3', 'd5e4'], verdict: 'losesMaterial' };
-    const shown = withNotes(withRare, key, [{ text: 'f3 falls in.', ideas: [trap] }]);
-    expect(split(shown, key, 2).rare).toEqual([]);
-  });
+    it('never marks a move that starts a trap the position shows', () => {
+      const trap: Idea = { type: 'trap', moves: ['f2f3', 'd5e4'], verdict: 'losesMaterial' };
+      const shown = withNotes(WITH_RARE, key, [{ text: 'f3 falls in.', ideas: [trap] }]);
+      expect(rareOnes(shown, key, 2)).toEqual([]);
+    });
 
-  it('lists every move without counts', () => {
-    expect(split(withRare, key, undefined).rare).toEqual([]);
-  });
+    it('never marks a move without counts', () => {
+      expect(rareOnes(WITH_RARE, key, undefined)).toEqual([]);
+    });
 
-  it('lists the most played move when every move is rare', () => {
-    const pos = parsePositionKey(key)!;
-    const every = [...pos.allDests()].flatMap(([from, dests]) =>
-      [...dests].map((to) => ({ uci: makeUci({ from, to }), games: [1, 1, 1, 1, 1] })),
-    );
-    expect(every.length).toBeGreaterThan(1 / RARE_SHARE);
-    const allRare = withMoves(SAMPLE, key, () => every);
-    expect(split(allRare, key, 2).likely).toEqual([every[0].uci]);
-  });
+    it('never marks the most played move, even when every move is rare', () => {
+      const pos = parsePositionKey(key)!;
+      const every = [...pos.allDests()].flatMap(([from, dests]) =>
+        [...dests].map((to) => ({ uci: makeUci({ from, to }), games: [1, 1, 1, 1, 1] })),
+      );
+      expect(every.length).toBeGreaterThan(1 / RARE_SHARE);
+      const allRare = withMoves(SAMPLE, key, () => every);
+      expect(rareOnes(allRare, key, 2)).toEqual(every.slice(1).map(({ uci }) => uci));
+    });
 
-  it("lists every learner's move, however rarely played", () => {
-    const learnerKey = keyAfter('e4');
-    const rarely = withMoves(SAMPLE, learnerKey, ([c6]) => [
-      { ...c6, games: [1000, 1000, 1000, 1000, 1000] },
-      { uci: 'd7d6', games: [1, 1, 1, 1, 1] },
-    ]);
-    expect(split(rarely, learnerKey, 2)).toEqual({ likely: ['c7c6', 'd7d6'], rare: [] });
+    it("never marks the learner's moves, however rarely played", () => {
+      const learnerKey = keyAfter('e4');
+      const rarely = withMoves(SAMPLE, learnerKey, ([c6]) => [
+        { ...c6, games: [1000, 1000, 1000, 1000, 1000] },
+        { uci: 'd7d6', games: [1, 1, 1, 1, 1] },
+      ]);
+      expect(rareOnes(rarely, learnerKey, 2)).toEqual([]);
+    });
   });
 });
 
