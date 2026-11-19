@@ -45,7 +45,7 @@ export interface Playing {
 /** The idea card's play-through controls (see `ideaPlayback`). */
 export interface Playback {
   readonly playing?: Playing;
-  /** Which kind of idea of `note` plays back, if any. */
+  /** Which kind of idea of `note` can play back now, if any. */
   readonly playable: (note: ShownNote) => PlayedBack['type'] | undefined;
   /** Plays `note`'s idea from its start, one board after another. */
   readonly play: (note: ShownNote) => void;
@@ -134,9 +134,12 @@ export function useLesson(lesson: Lesson) {
     check: shownBoard.check,
     onMove: game.move,
   };
+  // The opponent's reply would move the board on and end a playback at once,
+  // so none starts while one is on its way to the position shown.
+  const replying = game.thinking && game.atLatest;
   const playback: Playback = {
     playing: playing && frame && { note: playing.note, step: playing.step, steps: frames.length },
-    playable: (note) => notePlayback(shown, note)?.idea.type,
+    playable: (note) => (replying ? undefined : notePlayback(shown, note)?.idea.type),
     // From the preview on screen, which a playing note keeps after the pointer leaves.
     play: (note) =>
       setStarted({ key: view.key, note: note.note, row: previewRow, step: 0, auto: true }),
