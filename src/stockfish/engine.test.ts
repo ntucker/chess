@@ -17,11 +17,21 @@ beforeAll(async () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- a CommonJS build with no types
   const start = require('stockfish/bin/stockfish-19-lite-single.js') as () => NodeEngine;
   engine = await start();
-  // The engine can't take a command from inside its own output callback, so
-  // each one waits a tick, as messages to a Web Worker do.
-  connection = attachStockfish((command) => setTimeout(() => engine.processCommand(command)));
+  connection = attachNodeEngine();
   engine.listener = (line) => connection.receive(line);
 }, 30_000);
+
+/**
+ * Attaches the Node engine. The engine can't take a command from inside its
+ * own output callback, so each one waits a tick, as messages to a Web Worker
+ * do. Nothing restarts it.
+ */
+function attachNodeEngine() {
+  return attachStockfish((command) => setTimeout(() => engine.processCommand(command)), {
+    ready() {},
+    failed() {},
+  });
+}
 
 afterAll(() => {
   connection.detach();
@@ -59,7 +69,7 @@ describe('stockfishEvaluation', () => {
   it('waits for an engine that starts later', async () => {
     connection.detach();
     const evaluation = stockfishEvaluation(['e2e4']);
-    connection = attachStockfish((command) => setTimeout(() => engine.processCommand(command)));
+    connection = attachNodeEngine();
     expect(Math.abs((await evaluation).pawns)).toBeLessThan(1);
   }, 30_000);
 

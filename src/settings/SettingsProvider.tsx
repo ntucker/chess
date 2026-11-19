@@ -7,6 +7,8 @@ import {
   useReducer,
 } from 'react';
 
+import { requireProvider } from '@/context/requireProvider';
+
 import {
   DEFAULT_SETTINGS,
   parseSettings,
@@ -64,20 +66,13 @@ export function SettingsProvider({ children }: { readonly children: ReactNode })
 }
 
 /** The learner's settings. Throws outside SettingsProvider. */
-export const useSettings = () => requireProvider(use(SettingsContext));
+export const useSettings = () => requireProvider(use(SettingsContext), 'SettingsProvider');
 
 /**
  * Changes settings: `dispatch({ type: 'chosen', choice: { opponent: 1900 } })`.
  * Throws outside SettingsProvider.
  */
-export const useSettingsDispatch = () => requireProvider(use(DispatchContext));
-
-function requireProvider<T>(value: T | null): T {
-  if (value === null) {
-    throw new Error('Settings are read inside SettingsProvider (src/app/_layout.tsx)');
-  }
-  return value;
-}
+export const useSettingsDispatch = () => requireProvider(use(DispatchContext), 'SettingsProvider');
 
 /** The remembered settings, or undefined when nothing is remembered. */
 function loadSettings(): Settings | undefined {

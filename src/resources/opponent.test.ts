@@ -5,7 +5,7 @@ import { attachStockfish } from '@/stockfish/engine';
 
 import { getEvaluation } from './evaluation';
 import { fetchOpponentMove } from './opponent';
-import { newController, waitForSearch } from './testing';
+import { newController, NO_RESTARTS, waitForSearch } from './testing';
 
 // Maia runs on a worklet runtime, which Jest doesn't have, so it's scripted.
 jest.mock('@/maia/engine', () => ({ maiaMove: jest.fn() }));
@@ -21,7 +21,7 @@ describe('fetchOpponentMove', () => {
   it("plays Stockfish's best move, from the search that evaluated the position", async () => {
     const controller = newController();
     const sent: string[] = [];
-    const engine = attachStockfish((command) => sent.push(command));
+    const engine = attachStockfish((command) => sent.push(command), NO_RESTARTS);
     engine.receive('uciok');
 
     // The evaluation bar judges the position,

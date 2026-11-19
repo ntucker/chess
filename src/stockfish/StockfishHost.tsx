@@ -3,19 +3,34 @@ import { StyleSheet, View } from 'react-native';
 
 import { readAsset } from '@/files/readAsset';
 
-import { attachStockfish, type Connection } from './engine';
+import { attachStockfish, type Connection, type Supervisor } from './engine';
 import EngineView, { type EngineViewRef } from './EngineView';
 import { LOADER, WASM } from './files';
+import { useRestarts } from './restarts';
 
 /**
  * Runs Stockfish for as long as it's mounted, in a hidden web view
- * (EngineView), and connects it to stockfishEvaluation. Unmounting it frees
- * the engine and its web view.
+ * (EngineView), and connects it to stockfishEvaluation. An engine that
+ * crashes, stops answering or can't start gets a new web view. Unmounting it
+ * frees the engine and its web view.
  */
 export function StockfishHost() {
+  const [running, supervisor] = useRestarts();
+  return (
+    <View pointerEvents="none" style={styles.hidden}>
+      {running ? <Engine supervisor={supervisor} /> : null}
+    </View>
+  );
+}
+
+/**
+ * One engine in its own web view. Each restart mounts a new one, with its own
+ * ref: Expo's DOM component binds a ref to the first web view it's given.
+ */
+function Engine({ supervisor }: { readonly supervisor: Supervisor }) {
   const view = useRef<EngineViewRef>(null);
   const connection = useRef<Connection>(null);
-  const unmounted = useRef(false);
+  const stopped = useRef(false);
 
   // Also runs after the web view's page reloads, which Expo does when the
   // system ends the web view's process. The new engine then takes over the
@@ -28,41 +43,35 @@ export function StockfishHost() {
         readAsset(WASM).then((file) => file.base64()),
       ]);
       const engine = view.current;
-      if (!engine || unmounted.current) return;
+      if (!engine || stopped.current) return;
       engine.start(loader, wasm);
       // Expo's ref hands out standalone functions, which need no `this`.
-      connection.current = attachStockfish(engine.send);
+      connection.current = attachStockfish(engine.send, supervisor);
     } catch (error) {
-      // Evaluations wait for an engine, as after a crash (below).
+      if (stopped.current) return;
       console.error(error);
+      supervisor.failed();
     }
   };
   const onLine = (line: string) => connection.current?.receive(line);
-  // Evaluations wait for an engine again: the next page load starts one, as
-  // does choosing Maia and then Stockfish.
-  const onError = (message: string) => {
-    console.error(`Stockfish stopped: ${message}`);
-    connection.current?.detach();
-  };
+  const onError = (message: string) => connection.current?.fail(message);
 
   useEffect(() => {
-    unmounted.current = false;
+    stopped.current = false;
     return () => {
-      unmounted.current = true;
+      stopped.current = true;
       connection.current?.detach();
     };
   }, []);
 
   return (
-    <View pointerEvents="none" style={styles.hidden}>
-      <EngineView
-        ref={view}
-        onLoad={onLoad}
-        onLine={onLine}
-        onError={onError}
-        dom={{ style: styles.hidden }}
-      />
-    </View>
+    <EngineView
+      ref={view}
+      onLoad={onLoad}
+      onLine={onLine}
+      onError={onError}
+      dom={{ style: styles.hidden }}
+    />
   );
 }
 

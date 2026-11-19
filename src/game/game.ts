@@ -83,5 +83,5 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
  * by an opponent since replaced doesn't count, so the new one is asked.
  */
 export function failure({ failed }: GameState, opponent: string | undefined) {
-  return failed?.opponent === opponent ? failed?.error : undefined;
+  return failed && failed.opponent === opponent ? failed.error : undefined;
 }
