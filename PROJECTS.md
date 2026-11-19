@@ -44,7 +44,12 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
 7. Once the change is verified correct, run skill "simplify", verify its findings, and push the
    cleanups (a push, so step 6 runs again) before calling the PR done. If the change has
    architecture implications, then run skill `user-kit:clean-code` the same way.
-8. The person squash-merges. A worker's PR ends when it merges, not when it is handed over.
+8. A PR that builds a piece of an approved plan can autoland (`docs/plans/README.md`). Its
+   description says `Plan piece: <plan>/<piece>` and explains any difference in `Plan deviations:`.
+   Once steps 3 to 7 are done and every Bugbot and Staff comment is answered, add the `autoland`
+   label. Fix what the Interface review rejects (a push reruns it). If it is wrong, say why on the PR
+   and tell the person, who merges by hand. The person squash-merges every other PR. A worker's PR
+   ends when it merges, not when it is handed over.
 
 ## PR descriptions
 

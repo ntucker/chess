@@ -1,0 +1,30 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["verdict", "summary", "findings"],
+  "properties": {
+    "verdict": {
+      "type": "string",
+      "enum": ["approve", "reject"],
+      "description": "approve only when no finding is blocking"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Two to four sentences: what the piece promises, what you checked and used, and the verdict's reason"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["severity", "title", "where", "detail"],
+        "properties": {
+          "severity": { "type": "string", "enum": ["blocking", "nit"] },
+          "title": { "type": "string", "description": "The problem, in under ten words" },
+          "where": { "type": "string", "description": "path:line, a route, or a flow" },
+          "detail": { "type": "string", "description": "What you saw, and what the plan or the code says instead" }
+        }
+      }
+    }
+  }
+}
