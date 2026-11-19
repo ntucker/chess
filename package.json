@@ -68,6 +68,28 @@
     "@reactive/silk-core": "file:./vendor/reactive-silk-core.tgz"
   },
   "jest": {
-    "preset": "jest-expo"
+    "projects": [
+      {
+        "displayName": "native",
+        "preset": "jest-expo",
+        "testPathIgnorePatterns": [
+          "/node_modules/",
+          "\\.web\\.test\\.tsx?$"
+        ]
+      },
+      {
+        "displayName": "web",
+        "preset": "jest-expo/web",
+        "testMatch": [
+          "<rootDir>/src/**/*.web.test.ts?(x)"
+        ],
+        "transformIgnorePatterns": [
+          "/node_modules/(?!(.pnpm|react-native|@react-native|expo|@expo|@lichess-org))"
+        ],
+        "transform": {
+          "\\.css$": "jest-expo/src/preset/assetFileTransformer.js"
+        }
+      }
+    ]
   }
 }
