@@ -44,6 +44,7 @@ export function lichessExplorer({
   fetch: get = fetch,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 }: ExplorerOptions): Explorer {
+  mkdirSync(dirname(cacheFile), { recursive: true });
   const cache = readCache(cacheFile);
   let lastRequest = -Infinity;
   const paced = async (url: URL) => {
@@ -81,7 +82,6 @@ export function lichessExplorer({
 }
 
 function readCache(file: string): Map<string, MoveCounts> {
-  mkdirSync(dirname(file), { recursive: true });
   if (!existsSync(file)) return new Map();
   const lines = readFileSync(file, 'utf8').split('\n').filter(Boolean);
   return new Map(lines.map((line) => JSON.parse(line) as [string, MoveCounts]));

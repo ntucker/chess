@@ -26,6 +26,7 @@ import { checkLesson } from '@/lesson/check';
 import { readLesson, type Lesson } from '@/lesson/lesson';
 
 import { extractChapter } from './extract';
+import { lessonJson } from './lessonJson';
 import { mergeChapters } from './merge';
 import { addPopularity, lichessExplorer } from './popularity';
 import { registerLesson } from './register';
@@ -77,11 +78,6 @@ function writeLesson(file: string, lesson: Lesson) {
   console.log(`wrote ${file}: ${Buffer.byteLength(json)} bytes`);
 }
 
-/** `lesson` as JSON with one position per line, so a rerun's diff shows only the positions that changed. */
-function lessonJson({ positions, ...rest }: Lesson): string {
-  const lines = Object.entries(positions).map(([key, entry]) => `${JSON.stringify(key)}:${JSON.stringify(entry)}`);
-  return `${JSON.stringify(rest).slice(0, -1)},"positions":{\n${lines.join(',\n')}\n}}\n`;
-}
 
 /** The study's PGN, downloaded once into the cache. */
 async function studyPgn(studyId: string): Promise<string> {

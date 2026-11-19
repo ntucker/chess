@@ -2,7 +2,9 @@
  * The fixed formats of one chapter's comments, read without AI: the chapter
  * header, traps, plan lists, choice guides, evaluation glyphs, and move
  * sequences that exist only in comment text. Each comment becomes one note on
- * its move; the AI step (later) rewrites the notes' text.
+ * its move; the AI step (later) rewrites the notes' text. A chapter header is
+ * the first move's comment with an "Idea:" line (extra chapters put an
+ * "Extra:" line before it).
  */
 import type { Color } from 'chessops/types';
 
@@ -62,7 +64,7 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
 
   for (const move of chapterMoves(chapter)) {
     const { comment } = move;
-    const header = move.ply === 1 && /^Idea:/m.test(comment) ? readHeader(chapter, comment) : undefined;
+    const header = move.ply === 1 && commentPart(comment, 'Idea') ? readHeader(chapter, comment) : undefined;
     // A header is about the whole chapter: it goes where the chapter's main line ends, not on move 1.
     const target = header?.mainLineEnd ?? move;
     const traps = trapLines(move);
@@ -117,8 +119,11 @@ interface Header {
   readonly mainLineEnd?: StudyMove;
 }
 
+/** The rest of `comment`'s line that starts with `name:`, if it has one. */
+const commentPart = (comment: string, name: string) => comment.match(new RegExp(`^${name}:[ \\t]*(.*)$`, 'm'))?.[1];
+
 function readHeader(chapter: Chapter, comment: string): Header {
-  const part = (name: string) => comment.match(new RegExp(`^${name}:\\s*(.*)$`, 'm'))?.[1] ?? '';
+  const part = (name: string) => commentPart(comment, name) ?? '';
   let mainLineEnd: StudyMove | undefined;
   let next = chapter.moves;
   for (const named of namedMoves(part('Main line'))) {
