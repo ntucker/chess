@@ -25,7 +25,10 @@ export const UNTOUCHED: LessonProgress = { seen: [], passed: [] };
 export type ProgressAction =
   /** The remembered progress, read once as the app starts. */
   | { readonly type: 'loaded'; readonly progress: Progress }
-  /** The lesson `lesson` showed `key` in Explore (`seen`), or a clean run reached it as a line's end (`passed`). */
+  /**
+   * The lesson `lesson` showed `key` in Explore (`seen`), or a clean run
+   * reached it as a line's end (`passed`).
+   */
   | {
       readonly type: 'marked';
       readonly lesson: string;

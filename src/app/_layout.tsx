@@ -1,5 +1,5 @@
 // localStorage on Android, where the app remembers its settings and progress
-// (src/context/useRememberedReducer.ts). The web has its own.
+// (src/context/storage.ts). The web has its own.
 import 'expo-sqlite/localStorage/install';
 
 import { DataProvider } from '@data-client/react';
