@@ -2,7 +2,7 @@
  * Reading moves and verdicts out of the study's comment text. Move numbers in
  * the text are often off by one or two, so they only break ties (see line.ts).
  */
-import type { Chess } from 'chessops/chess';
+import { castlingSide, type Chess } from 'chessops/chess';
 import type { Color, NormalMove } from 'chessops/types';
 import { makeSquare, opposite, parseUci, squareFile } from 'chessops/util';
 
@@ -112,19 +112,20 @@ export function sideDoes(side: Color, learner: Color, phrase: string): string {
 export function moveInWords(pos: Chess, uci: Uci): string {
   const move = parseUci(uci) as NormalMove;
   const piece = pos.board.getRole(move.from)!;
-  const files = squareFile(move.to) - squareFile(move.from);
   const square = makeSquare(move.to);
-  const capture = pos.board.occupied.has(move.to) || (piece === 'pawn' && files !== 0);
+  const castles = castlingSide(pos, move);
+  const capture =
+    !castles &&
+    (pos.board.occupied.has(move.to) || (piece === 'pawn' && squareFile(move.to) !== squareFile(move.from)));
   const after = pos.clone();
   after.play(move);
   const mate = after.isCheckmate();
   const check = after.isCheck();
-  const castles = piece === 'king' && Math.abs(files) === 2;
   if (check && !castles && !move.promotion && !capture) {
     return `${mate ? 'Mating' : 'Checking'} with the ${piece} on ${square}`;
   }
   const moved = castles
-    ? `Castling ${files > 0 ? 'short' : 'long'}`
+    ? `Castling ${castles === 'h' ? 'short' : 'long'}`
     : capture
       ? `Taking on ${square} with the ${piece}`
       : piece === 'pawn'

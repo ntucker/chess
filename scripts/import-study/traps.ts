@@ -49,7 +49,8 @@ export function trapLines(move: StudyMove, learner: Color): TrapLine[] {
 
 /**
  * A trap's note in words, since its play-through shows the moves: its
- * tempting move, and `result` ("is losing") for the side that plays it.
+ * tempting move, and `result` ("is losing") for the side that plays it,
+ * which is the side to move in `pos` (a trap's first move is the loser's).
  */
 function trapText(pos: Chess, first: Uci, learner: Color, result: string): string {
   return `${moveInWords(pos, first)} falls into a trap: ${sideDoes(pos.turn, learner, result)}.`;
