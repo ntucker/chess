@@ -1,0 +1,8 @@
+# Data in its own compact layout, mostly written by scripts (yarn brand, maia,
+# stockfish, import-study; scripts/maia-reference.py).
+assets/
+vendor/
+src/lesson/fixtures/
+src/maia/reference-moves.json
+# Prettier pads Markdown tables into very wide rows.
+*.md
