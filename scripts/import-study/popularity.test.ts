@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -109,7 +109,7 @@ describe('lichessExplorer', () => {
     expect(requests).toHaveLength(2);
   });
 
-  it('asks again for an answer whose cache line a stopped crawl cut short', async () => {
+  it('asks again for an answer whose cache line a stopped crawl cut short, and resumes after', async () => {
     const cacheFile = join(mkdtempSync(join(tmpdir(), 'explorer-')), 'explorer.jsonl');
     writeFileSync(cacheFile, `${JSON.stringify([`1400 ${key()}`, { e2e4: 10 }])}\n["1600 ${key()}",{"e2`);
     let requests = 0;
@@ -117,11 +117,14 @@ describe('lichessExplorer', () => {
       requests++;
       return answer(200, { moves: [{ uci: 'e2e4', white: 20, draws: 0, black: 0 }] });
     }) as typeof globalThis.fetch;
-    const explorer = lichessExplorer({ cacheFile, fetch, sleep: async () => {} });
+    const openExplorer = () => lichessExplorer({ cacheFile, fetch, sleep: async () => {} });
+    const explorer = openExplorer();
     expect(await explorer(key(), 1400)).toEqual({ e2e4: 10 });
     expect(await explorer(key(), 1600)).toEqual({ e2e4: 20 });
+    const resumed = openExplorer();
+    expect(await resumed(key(), 1400)).toEqual({ e2e4: 10 });
+    expect(await resumed(key(), 1600)).toEqual({ e2e4: 20 });
     expect(requests).toBe(1);
-    expect(readFileSync(cacheFile, 'utf8').split('\n').at(-2)).toBe(JSON.stringify([`1600 ${key()}`, { e2e4: 20 }]));
   });
 
   it("answers castling as the king's two-square move (e1g1), also from its cache", async () => {

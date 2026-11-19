@@ -4,7 +4,7 @@
  * refuses requests without a lichess token, and lichess asks for one request
  * at a time and a full minute's pause after a 429.
  */
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, truncateSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 import { parsePosition, parsePositionKey, positionKey, recordedMove } from '@/game/replay';
@@ -51,9 +51,7 @@ export function lichessExplorer({
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 }: ExplorerOptions): Explorer {
   mkdirSync(dirname(cacheFile), { recursive: true });
-  const { answers: cache, cut } = readCache(cacheFile);
-  // The first answer starts a new line after a cut one.
-  let separator = cut ? '\n' : '';
+  const cache = openCache(cacheFile);
   let lastRequest = -Infinity;
   const paced = async (url: URL) => {
     await sleep(Math.max(0, lastRequest + REQUEST_INTERVAL_MS - Date.now()));
@@ -83,8 +81,7 @@ export function lichessExplorer({
       const body = (await response.json()) as { moves: { uci: string; white: number; draws: number; black: number }[] };
       const counts = Object.fromEntries(body.moves.map((move) => [move.uci, move.white + move.draws + move.black]));
       cache.set(id, counts);
-      appendFileSync(cacheFile, `${separator}${JSON.stringify([id, counts])}\n`);
-      separator = '';
+      appendFileSync(cacheFile, `${JSON.stringify([id, counts])}\n`);
       return counts;
     }
   };
@@ -101,18 +98,16 @@ function recordedCounts(key: PositionKey, counts: LichessCounts): MoveCounts {
 }
 
 /**
- * The cached answers, and whether the file ends in a line a stopped crawl cut
- * short. Only the last line can be: it is dropped, so its question is asked again.
+ * The cached answers. A last line a stopped crawl left unfinished is cut off
+ * the file, so its question is asked again.
  */
-function readCache(file: string): { answers: Map<string, LichessCounts>; cut: boolean } {
-  if (!existsSync(file)) return { answers: new Map(), cut: false };
-  const lines = readFileSync(file, 'utf8').split('\n');
-  // A whole file ends in a newline, so the last piece is empty; otherwise it is the cut line.
-  const last = lines.pop();
-  return {
-    answers: new Map(lines.filter(Boolean).map((line) => JSON.parse(line) as [string, LichessCounts])),
-    cut: !!last,
-  };
+function openCache(file: string): Map<string, LichessCounts> {
+  if (!existsSync(file)) return new Map();
+  const data = readFileSync(file);
+  const whole = data.lastIndexOf('\n') + 1;
+  if (whole < data.length) truncateSync(file, whole);
+  const lines = data.subarray(0, whole).toString('utf8').split('\n').filter(Boolean);
+  return new Map(lines.map((line) => JSON.parse(line) as [string, LichessCounts]));
 }
 
 /**
