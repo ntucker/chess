@@ -51,6 +51,10 @@ export interface LandedTrap {
   readonly trap: Trap;
   /** Where in the line the tempting move is: `line[ply]`. */
   readonly ply: number;
+  /** The position the tempting move is played in. */
+  readonly at: PositionKey;
+  /** The position after the trap's last move, where it lands. */
+  readonly end: PositionKey;
 }
 
 export interface LessonViewInput {
@@ -189,7 +193,9 @@ function landedTrap(
     for (const shown of notes) {
       for (const trap of shown.note.ideas ?? []) {
         if (trap.type !== 'trap' || ideaPosition(trap, shown) !== key) continue;
-        if (trap.moves.every((uci, n) => uci === played[ply + n])) return { trap, ply };
+        if (trap.moves.every((uci, n) => uci === played[ply + n])) {
+          return { trap, ply, at: key, end: keys[ply + trap.moves.length] };
+        }
       }
     }
   }

@@ -45,6 +45,7 @@ export function useGame(opponent: GameOpponent | undefined, { side, active, judg
   const qualities = useMoveQualities(plies, ply, judge);
   const error = failure(state, opponent?.id);
   const thinking = !!opponent && !latest.result && latest.turn !== side && !error;
+  const replying = atLatest && thinking;
 
   const ask = useEffectEvent(async (after: readonly string[]) => {
     if (!opponent) return;
@@ -82,10 +83,15 @@ export function useGame(opponent: GameOpponent | undefined, { side, active, judg
     /** Whose move it is in the latest position; none once the game is over. */
     toMove: latest.result ? undefined : latest.turn,
     // While the opponent thinks the player can still go back and try another move.
-    canMove: !current.result && current.turn === side && !(atLatest && thinking),
+    canMove: !current.result && current.turn === side && !replying,
     /** Whether the player has made a move, so a new game would lose something. */
     started: plies.some((p) => p.move && p.turn !== side),
     thinking,
+    /**
+     * Whether the opponent is replying while the board shows the latest move.
+     * The board follows a reply only from there, so it will move on by itself.
+     */
+    replying,
     error,
     /** Plays the player's move between two squares on the shown position. */
     move(from: string, to: string) {

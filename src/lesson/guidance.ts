@@ -12,8 +12,8 @@
  * - Traps: with "show traps" on, a trap's sequence is drawn before the
  *   learner commits; off, it isn't. A trap fallen into is shown either way.
  *
- * guidance stays in lesson terms; piece D's lessonDrawings (planned for
- * src/lesson/drawings.ts) turns it into board shapes.
+ * guidance stays in lesson terms; lessonDrawings (./drawings.ts) turns it
+ * into board shapes.
  */
 import { type Idea, ideaPosition, type PositionKey, type Uci } from './lesson';
 import type { Candidate } from './select';

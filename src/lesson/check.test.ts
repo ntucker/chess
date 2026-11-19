@@ -224,6 +224,7 @@ const CASES: [name: string, at: IdeaPositions, idea: Idea, holds: boolean][] = [
   ['material', AT.bishops, { type: 'imbalance', side: 'white', kind: 'material' }, true],
   ['no bishop pair for black', AT.bishops, { type: 'imbalance', side: 'black', kind: 'bishopPair' }, false],
   ['white has more space after e5', AT.e5, { type: 'imbalance', side: 'white', kind: 'space' }, true],
+  ['black has less space after e5', AT.e5, { type: 'imbalance', side: 'black', kind: 'space' }, false],
   ['evaluation', AT.dxc5, { type: 'evaluation', value: 'whiteSlightly' }, true],
   ['evaluation outside the scale', AT.dxc5, { type: 'evaluation', value: 'unclear' } as unknown as Idea, false],
   ['unknown relation', AT.Qa5, { ...purpose('a5', 'attacks', 'b5'), relation: 'hits' } as unknown as Idea, false],

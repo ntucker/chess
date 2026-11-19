@@ -69,6 +69,15 @@ describe('useGame', () => {
     expect(game().thinking).toBe(false);
   });
 
+  it('is replying only while the board shows the position the reply will follow', async () => {
+    const maia = scripted('1500');
+    await render({ opponent: maia.opponent, side: 'white', active: true });
+    await act(async () => game().play('e2e4'));
+    expect(game()).toMatchObject({ thinking: true, replying: true });
+    await act(async () => game().goto(0));
+    expect(game()).toMatchObject({ thinking: true, replying: false });
+  });
+
   it('asks nobody when there is no opponent', async () => {
     await render({ side: 'black', active: true });
     expect(game().thinking).toBe(false);

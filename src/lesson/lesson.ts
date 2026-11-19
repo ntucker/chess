@@ -297,7 +297,8 @@ export type StructureFeature =
 
 /**
  * An imbalance in `side`'s favor: both bishops against fewer, more material,
- * or more space (pawns further up the board, see `space` in ./pawns.ts).
+ * or more space (more squares in the opponent's half its pawns attack, see
+ * `spaceSquares` in ./pawns.ts).
  */
 export interface Imbalance extends IdeaBase {
   readonly type: 'imbalance';
