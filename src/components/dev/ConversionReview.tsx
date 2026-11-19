@@ -47,7 +47,7 @@ export function ConversionReview({ id }: { readonly id: LessonId }) {
     >
       <BrowserOnly fallback={<Spinner />}>
         <AsyncBoundary fallback={<Spinner />} errorComponent={({ error }) => <Text role="body">{error.message}</Text>}>
-          <Review id={id} />
+          <Review key={id} id={id} />
         </AsyncBoundary>
       </BrowserOnly>
     </DevPage>

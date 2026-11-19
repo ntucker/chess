@@ -29,6 +29,7 @@ export function reviewItems(lesson: Lesson): ReviewItem[] {
   const items: ReviewItem[] = [];
   const seen = new Set<PositionKey>([positionKey(start)]);
   const queue: { pos: Chess; sans: string[] }[] = [{ pos: start, sans: [] }];
+  // A first-in, first-out walk: `for...of` also visits the entries pushed while it runs.
   for (const at of queue) {
     const key = positionKey(at.pos);
     const entry = lesson.positions[key];
