@@ -4,14 +4,16 @@
  * passed once clean Practice runs have reached every guide line end they can
  * reach through it. A clean run plays only the learner's book moves, so the
  * line ends below a learner's non-book move never count, and that move's own
- * row can't be passed.
+ * row can't be passed. The same walk steers Practice's opponent to the
+ * lines still to pass (`steering`).
  */
 import { parsePositionKey, playMove, positionKey } from '@/game/replay';
 import { type LessonProgress, type Mark, positionHash } from '@/progress/progress';
 
 import type { Lesson, LessonMove, PositionKey, Uci } from './lesson';
+import type { ReplyChoice } from './opponent';
 import type { ModeState } from './practice';
-import { type Candidate, guidePosition } from './select';
+import { guidePosition } from './select';
 import type { LessonView } from './view';
 
 /**
@@ -41,18 +43,21 @@ export function rowMarks(
 }
 
 /**
- * The opponent's reply in Practice, steering toward lines not yet passed:
- * the first of `replies` (most played first) below which a clean run can
- * still reach a line end not passed, or the first when every one is passed.
- * The opponent's own replies never spoil a run, so each is open to steer to.
+ * How the opponent picks its reply during a clean Practice run (undefined
+ * otherwise, so it plays its most played): the first of the replies (most
+ * played first) below which the run can still reach a line end not passed,
+ * or the first when every one is passed. The opponent's own replies never
+ * spoil a run, so each is open to steer to.
  */
-export function steeredReply(
+export function steering(
   lesson: Lesson,
   progress: LessonProgress,
-  replies: readonly Candidate[],
-): Candidate | undefined {
+  mode: ModeState,
+): ReplyChoice | undefined {
+  if (mode.mode !== 'practice' || !mode.clean) return undefined;
   const passed = new Set(progress.passed);
-  return replies.find(({ next }) => cleanEnds(lesson, passed, next) === 'open') ?? replies[0];
+  return (replies) =>
+    replies.find(({ next }) => cleanEnds(lesson, passed, next) === 'open') ?? replies[0];
 }
 
 /** Any opponent's move can be part of a clean run; of the learner's, only book moves. */

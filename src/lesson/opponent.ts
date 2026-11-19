@@ -8,7 +8,7 @@ import type { Opponent } from '@/opponent/opponent';
 import type { Lesson } from './lesson';
 import { type Candidate, candidates, lineKeys, opponentBand } from './select';
 
-/** Picks the guide's reply from its moves, most played first. */
+/** Picks the guide's reply from its moves, most played first; undefined hands over to the engine. */
 export type ReplyChoice = (replies: readonly Candidate[]) => Candidate | undefined;
 
 /**
@@ -18,7 +18,7 @@ export type ReplyChoice = (replies: readonly Candidate[]) => Candidate | undefin
  * counts in the file's order (the main line first). From the first position
  * beyond the guide, or at a guide line's end, `beyond` plays. `choose`,
  * when given, picks among the guide's moves instead (Practice steers to
- * lines not yet passed: `steeredReply`).
+ * lines not yet passed: `steering` in `marks.ts`).
  *
  * ```ts
  * useGame(store, lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent)), {

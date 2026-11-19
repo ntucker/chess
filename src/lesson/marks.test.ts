@@ -4,7 +4,7 @@ import { type LessonProgress, positionHash } from '@/progress/progress';
 
 import type { Lesson, LessonMove, PositionKey } from './lesson';
 import { keyAfter, SAMPLE, uciLine, withMoves } from './lesson.fixture';
-import { earnedMark, rowMarks, steeredReply } from './marks';
+import { earnedMark, rowMarks, steering } from './marks';
 import { lessonView } from './view';
 
 /** A move after `sans`, written in SAN, as the guide stores it. */
@@ -146,13 +146,12 @@ describe('rowMarks', () => {
   });
 });
 
-describe('steeredReply', () => {
+describe('steering', () => {
   // After 1.e4 c6 White's replies are d4 (a line end) and Nc3 (on to ...d5's end), in that order.
-  const reply = (passed: PositionKey[]) => {
-    const line = uciLine('e4', 'c6');
-    const view = lessonView({ lesson: LESSON, line, ply: line.length, opponent: 1500 });
-    return steeredReply(LESSON, progress([], passed), view.candidates)?.san;
-  };
+  const line = uciLine('e4', 'c6');
+  const { candidates } = lessonView({ lesson: LESSON, line, ply: line.length, opponent: 1500 });
+  const clean = { mode: 'practice', clean: true } as const;
+  const reply = (passed: PositionKey[]) => steering(LESSON, progress([], passed), clean)!(candidates)?.san;
 
   it('plays the most played reply below which a line end is still to pass', () => {
     expect(reply([])).toBe('d4');
@@ -162,5 +161,11 @@ describe('steeredReply', () => {
 
   it('plays the most played reply once every line below is passed', () => {
     expect(reply([ENDS.d4, ENDS.d5])).toBe('d4');
+  });
+
+  it('steers only a clean Practice run, which alone can pass a line', () => {
+    const done = progress([], [ENDS.d4]);
+    expect(steering(LESSON, done, { mode: 'explore' })).toBeUndefined();
+    expect(steering(LESSON, done, { mode: 'practice', clean: false })).toBeUndefined();
   });
 });
