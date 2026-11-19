@@ -352,6 +352,19 @@ describe('guidance', () => {
       expect(over.drawn).toEqual(pickedUp.drawn);
     });
 
+    it('previews a rare move from its row only while the list shows it', () => {
+      const view = sampleView(MAIN, { lesson: WITH_RARE });
+      const row = preview(WITH_RARE, view, { at: 'row', uci: 'h2h3' });
+      const input = { view, mode: 'explore' as const, switches: ALL_ON, preview: row };
+      expect(guidance(input).preview).toBeUndefined();
+      expect(guidance({ ...input, rareShown: true }).preview?.candidate.san).toBe('h3');
+      // Dragging its piece previews it either way.
+      const onH3 = preview(WITH_RARE, view, { at: 'drag', from: 'h2', to: 'h3' });
+      expect(guidance({ ...input, preview: onH3, dragged: 'h2' }).preview?.candidate.san).toBe(
+        'h3',
+      );
+    });
+
     it("hides a dragged piece's candidates in Practice on the learner's turn", () => {
       const view = sampleView(ADVANCE);
       const shown = guidance({ view, mode: 'practice', switches: ALL_ON, dragged: 'c8' });

@@ -58,6 +58,8 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
     canPlay,
     play,
     pointedNote,
+    rareShown,
+    showRare,
     pointRow,
     pointNote,
     leaveNote,
@@ -143,17 +145,17 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
                       : `${colorName(rival)}'s likely replies`}
                   </Eyebrow>
                   <CandidateList
-                    // Each position's list starts with its rare rows hidden.
-                    key={view.key}
                     candidates={guidance.candidates}
                     rare={guidance.rare}
+                    rareShown={rareShown}
+                    onShowRare={showRare}
                     main={guidance.main}
                     pointed={preview?.move.uci}
                     leadsTo={leadsTo}
                     playable={canPlay}
                     onPlay={play}
                     onPoint={pointRow}
-                    onLeave={leave}
+                    onTabOut={leave}
                   />
                 </Stack>
               ) : null}

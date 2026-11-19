@@ -33,7 +33,21 @@ describe('screenReducer', () => {
     expect(pointing.peek).toMatchObject({ kind: 'point', candidate: { at: 'row', uci: 'e2e4' } });
   });
 
+  it("shows a position's rare rows until they are hidden or the board moves on", () => {
+    const shown = run(POINT, { type: 'rare', key: 'k', shown: true });
+    expect(shown.rareShown).toBe('k');
+    expect(shown.peek).toBeDefined();
+    const hidden = screenReducer(shown, { type: 'rare', key: 'k', shown: false });
+    expect(hidden.rareShown).toBeUndefined();
+    expect(screenReducer(shown, { type: 'board', key: 'k' })).toBe(shown);
+    const movedOn = screenReducer(shown, { type: 'board', key: 'other' });
+    expect(movedOn).toEqual({ mode: shown.mode, peek: undefined, rareShown: undefined });
+  });
+
   it('keeps the same state when nothing changes', () => {
+    expect(screenReducer(initialScreen, { type: 'rare', key: 'k', shown: false })).toBe(
+      initialScreen,
+    );
     expect(screenReducer(initialScreen, { type: 'leave' })).toBe(initialScreen);
     const explore: ScreenAction = { type: 'modeChosen', mode: 'explore', untouched: true };
     expect(screenReducer(initialScreen, explore)).toBe(initialScreen);
