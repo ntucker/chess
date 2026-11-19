@@ -209,7 +209,17 @@ export default function Board({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => setBoard(position), [position]);
+  // The preview last shown. When the game reaches it, as the learner plays
+  // the previewed move, its pieces are already drawn where they land, so the
+  // board takes the new position at once instead of sliding them again.
+  const shownPreview = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const played = shownPreview.current !== undefined && sameBoard(shownPreview.current, fen);
+    setBoard({ ...position, animation: { enabled: !played } });
+  }, [position, fen]);
+  useEffect(() => {
+    shownPreview.current = preview;
+  }, [preview]);
 
   useEffect(() => setBoard(marksConfig(marks)), [marks]);
 
@@ -223,6 +233,9 @@ export default function Board({
     </div>
   );
 }
+
+/** Whether two FENs place the same pieces, whatever their other fields. */
+const sameBoard = (a: string, b: string) => a.split(' ')[0] === b.split(' ')[0];
 
 /** The arrows, circles and tints that draw `marks`. */
 const marksConfig = (marks: BoardMarks): Config => ({
@@ -304,7 +317,7 @@ function markPieces(
     const square = piece.cgKey as Square;
     piece.classList.toggle('away', away.has(square));
     piece.classList.toggle('taken', taken.has(square));
-    // A captured piece on its way out, or one the preview replaces, is not shown as it is.
+    // A piece the preview moves or takes, and a captured one on its way out, get no look.
     const shown = !piece.cgFading && !away.has(square) && !taken.has(square);
     mark(piece, shown ? piece.cgKey : undefined);
   }
