@@ -30,11 +30,12 @@ export function rowMarks(
   { candidates, learnerToMove }: Pick<LessonView, 'candidates' | 'learnerToMove'>,
 ): ReadonlyMap<Uci, Mark> {
   const seen = new Set(progress.seen);
-  const ends = endsBelow(lesson, new Set(progress.passed));
+  const passed = new Set(progress.passed);
   const marks = new Map<Uci, Mark>();
   for (const { move, next } of candidates) {
-    if (inCleanRun(move, learnerToMove) && ends(next) === 'passed') marks.set(move.uci, 'passed');
-    else if (seen.has(positionHash(next))) marks.set(move.uci, 'seen');
+    if (inCleanRun(move, learnerToMove) && cleanEnds(lesson, passed, next) === 'passed') {
+      marks.set(move.uci, 'passed');
+    } else if (seen.has(positionHash(next))) marks.set(move.uci, 'seen');
   }
   return marks;
 }
@@ -43,50 +44,28 @@ export function rowMarks(
 const inCleanRun = (move: LessonMove, learner: boolean) => !learner || move.book === true;
 
 /**
- * The line ends a clean run can reach from a position: `none`, all of them
- * `passed`, or some still `open`.
+ * Where the clean runs from `start` stand, given the line ends `passed` (as
+ * `positionHash`es): no line end reachable (`none`), all of them passed
+ * (`passed`), or some still `open`. Walks each position once, so a line that
+ * comes back to a position adds nothing, and stops at the first open end.
  */
-type EndsStatus = 'none' | 'open' | 'passed';
-
-/**
- * Where the clean runs from a guide move's position stand, given the line
- * ends `passed` (as `positionHash`es). Remembers each position it answers
- * for, since lines that transpose share what follows.
- */
-function endsBelow(lesson: Lesson, passed: ReadonlySet<string>) {
-  const known = new Map<PositionKey, EndsStatus>();
-  // The positions on the walk now, by how deep in it each is.
-  const walking = new Map<PositionKey, number>();
-  /** The status of `key`, and the depth of the shallowest position on the walk it came back to. */
-  const walk = (key: PositionKey, depth: number): [EndsStatus, number] => {
+function cleanEnds(
+  lesson: Lesson,
+  passed: ReadonlySet<string>,
+  start: PositionKey,
+): 'none' | 'open' | 'passed' {
+  const visited = new Set<PositionKey>();
+  const toVisit = [start];
+  let status: 'none' | 'passed' = 'none';
+  for (let key = toVisit.pop(); key !== undefined; key = toVisit.pop()) {
+    if (visited.has(key)) continue;
+    visited.add(key);
     // Reached by a guide move, a position the guide has no moves at ends a line.
-    if (guidePosition(lesson, key).place !== 'inside') {
-      return [passed.has(positionHash(key)) ? 'passed' : 'open', Infinity];
-    }
-    const answer = known.get(key);
-    if (answer) return [answer, Infinity];
-    // A line that comes back to a position adds no end of its own.
-    const at = walking.get(key);
-    if (at !== undefined) return ['none', at];
-    walking.set(key, depth);
-    let status: EndsStatus = 'none';
-    let back = Infinity;
-    for (const next of cleanNext(lesson, key)) {
-      const [ends, reached] = walk(next, depth + 1);
-      back = Math.min(back, reached);
-      if (ends === 'open') {
-        status = 'open';
-        break;
-      }
-      if (ends === 'passed') status = 'passed';
-    }
-    walking.delete(key);
-    // A walk that came back to a position above this one hasn't counted that
-    // position's other lines yet, so only an open line is sure here.
-    if (status === 'open' || back >= depth) known.set(key, status);
-    return [status, back];
-  };
-  return (key: PositionKey) => walk(key, 0)[0];
+    if (guidePosition(lesson, key).place === 'inside') toVisit.push(...cleanNext(lesson, key));
+    else if (passed.has(positionHash(key))) status = 'passed';
+    else return 'open';
+  }
+  return status;
 }
 
 /** Each lesson's `cleanNext` answers: a lesson never changes, and replaying moves is slow. */

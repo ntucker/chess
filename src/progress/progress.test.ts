@@ -39,7 +39,10 @@ describe('progressReducer', () => {
   it('keeps marks earned before the remembered progress loads', () => {
     const early = run(NO_PROGRESS, marked('seen'));
     const remembered = run(NO_PROGRESS, marked('seen'), marked('seen', AFTER_E4));
-    expect(run(early, { type: 'loaded', progress: remembered })).toEqual(remembered);
+    const loaded = run(early, { type: 'loaded', progress: remembered });
+    expect(loaded).toEqual(remembered);
+    // Nothing new keeps the state, so a tab taking in its own save neither renders nor saves again.
+    expect(run(loaded, { type: 'loaded', progress: early })).toBe(loaded);
   });
 });
 

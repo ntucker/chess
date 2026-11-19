@@ -23,7 +23,7 @@ export const NO_PROGRESS: Progress = {};
 export const UNTOUCHED: LessonProgress = { seen: [], passed: [] };
 
 export type ProgressAction =
-  /** The remembered progress, read once as the app starts. */
+  /** The remembered progress, read as the app starts or another tab saves it. */
   | { readonly type: 'loaded'; readonly progress: Progress }
   /**
    * The lesson `lesson` showed `key` in Explore (`seen`), or a clean run
@@ -38,13 +38,13 @@ export type ProgressAction =
 
 /**
  * The progress after `action`. Marks are only ever added; adding one already
- * there keeps the state. Loading keeps any mark earned before the remembered
- * progress arrived.
+ * there keeps the state. Loading adds the remembered marks to any earned
+ * before they arrived, or saved since by another tab.
  */
 export function progressReducer(progress: Progress, action: ProgressAction): Progress {
   switch (action.type) {
     case 'loaded':
-      return mergeProgress(action.progress, progress);
+      return withRemembered(progress, action.progress);
     case 'marked': {
       const lesson = progress[action.lesson] ?? UNTOUCHED;
       const hash = positionHash(action.key);
@@ -55,16 +55,24 @@ export function progressReducer(progress: Progress, action: ProgressAction): Pro
   }
 }
 
-function mergeProgress(into: Progress, more: Progress): Progress {
-  const merged: Record<string, LessonProgress> = { ...into };
-  for (const [id, lesson] of Object.entries(more)) {
-    const was = merged[id] ?? UNTOUCHED;
-    merged[id] = {
-      seen: [...new Set([...was.seen, ...lesson.seen])],
-      passed: [...new Set([...was.passed, ...lesson.passed])],
-    };
+/** `progress` with every mark of `remembered` added, or `progress` itself when none is new. */
+function withRemembered(progress: Progress, remembered: Progress): Progress {
+  let merged: Record<string, LessonProgress> | undefined;
+  for (const [id, lesson] of Object.entries(remembered)) {
+    const now = progress[id] ?? UNTOUCHED;
+    const seen = union(now.seen, lesson.seen);
+    const passed = union(now.passed, lesson.passed);
+    if (seen !== now.seen || passed !== now.passed)
+      (merged ??= { ...progress })[id] = { seen, passed };
   }
-  return merged;
+  return merged ?? progress;
+}
+
+/** `have` with the hashes of `more` it lacks added after, or `have` itself when it lacks none. */
+function union(have: readonly string[], more: readonly string[]): readonly string[] {
+  const known = new Set(have);
+  const extra = more.filter((hash) => !known.has(hash));
+  return extra.length ? [...have, ...extra] : have;
 }
 
 /**

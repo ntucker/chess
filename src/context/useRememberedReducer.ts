@@ -11,7 +11,7 @@ interface Remembered<S, A> {
   readonly key: string;
   /** The remembered state, or undefined when nothing is remembered (read with `./storage.ts`). */
   readonly recall: () => S | undefined;
-  /** The action that takes in the remembered state, once the web page starts. */
+  /** The action that takes in the remembered state, as the web page starts or another tab saves. */
   readonly loaded: (remembered: S) => A;
 }
 
@@ -19,7 +19,8 @@ interface Remembered<S, A> {
  * `useReducer` for state the device remembers, saved after each change. On
  * native the first render already has the remembered state. On the web it
  * starts from `initial`, as the pre-rendered page does, and dispatches
- * `loaded` with the remembered state once the page starts.
+ * `loaded` with the remembered state once the page starts, and again each
+ * time another tab saves it.
  */
 export function useRememberedReducer<S, A>(
   reducer: (state: S, action: A) => S,
@@ -35,8 +36,16 @@ export function useRememberedReducer<S, A>(
     if (remembered !== undefined) dispatch(loaded(remembered));
   });
   useEffect(() => {
-    if (!NATIVE) load();
-  }, []);
+    if (NATIVE) return;
+    load();
+    // Another tab saved: take in what it remembers, so this tab's next save
+    // doesn't drop it.
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === key) load();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [key]);
 
   useEffect(() => {
     // `initial` itself means nothing changed or was remembered yet. On the
