@@ -11,16 +11,15 @@ import { indexLesson, registerLesson } from './register';
 const tempFile = (name: string) => join(mkdtempSync(join(tmpdir(), 'register-')), name);
 
 describe('registerLesson', () => {
-  it('adds a lesson to LESSONS once', () => {
+  it('adds a lesson to LESSONS once, quoting its key only when Prettier would', () => {
     const file = tempFile('lesson.ts');
     writeFileSync(
       file,
-      "export const LESSONS = {\n  'a': () => import('@/assets/lessons/a.json'),\n};\n",
+      "export const LESSONS = {\n  a: () => import('@/assets/lessons/a.json'),\n};\n",
     );
-    registerLesson(file, 'b');
-    registerLesson(file, 'b');
+    for (const id of ['b', 'c-d', 'b', 'c-d']) registerLesson(file, id);
     expect(readFileSync(file, 'utf8')).toBe(
-      "export const LESSONS = {\n  'a': () => import('@/assets/lessons/a.json'),\n  'b': () => import('@/assets/lessons/b.json'),\n};\n",
+      "export const LESSONS = {\n  a: () => import('@/assets/lessons/a.json'),\n  b: () => import('@/assets/lessons/b.json'),\n  'c-d': () => import('@/assets/lessons/c-d.json'),\n};\n",
     );
   });
 

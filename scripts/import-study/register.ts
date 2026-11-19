@@ -5,13 +5,13 @@ import { indexEntry, type IndexEntry } from '@/lesson/openings';
 
 /**
  * Adds lesson `id` to the `LESSONS` registry in `file` (src/resources/lesson.ts) unless it is there.
- * Matches the quoted key, which Prettier keeps only while one key needs quotes (`quoteProps:
- * "consistent"`); register.test.ts fails if it stops.
+ * Writes and finds the key as Prettier formats it: quoted only when it isn't an identifier.
  */
 export function registerLesson(file: string, id: string) {
   const source = readFileSync(file, 'utf8');
-  if (source.includes(`'${id}':`)) return;
-  const entry = `  '${id}': () => import('@/assets/lessons/${id}.json'),\n`;
+  const key = /^[A-Za-z_$][\w$]*$/.test(id) ? id : `'${id}'`;
+  if (source.includes(`\n  ${key}:`)) return;
+  const entry = `  ${key}: () => import('@/assets/lessons/${id}.json'),\n`;
   const updated = source.replace(/(export const LESSONS = \{\n(?:.*\n)*?)(\};)/, `$1${entry}$2`);
   if (updated === source) throw new Error(`Could not find LESSONS in ${file}`);
   writeFileSync(file, updated);

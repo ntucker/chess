@@ -13,7 +13,7 @@ const INDEX = {
     source: source('Kampf'),
     firstMoves: ['e2e4'],
   },
-  'slav': { title: 'Slav Defence', side: 'black', source: source('Matkun'), firstMoves: ['d2d4'] },
+  slav: { title: 'Slav Defence', side: 'black', source: source('Matkun'), firstMoves: ['d2d4'] },
 } as const;
 
 const startMoves = (lesson: typeof SAMPLE) =>

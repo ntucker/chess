@@ -25,7 +25,7 @@ export const STUDIES: Readonly<Record<string, Study>> = {
       },
     },
   },
-  'slav': {
+  slav: {
     study: 'LGKgEao4',
     chapters: () => true,
     chapterName: (title: string) => {
@@ -48,7 +48,7 @@ export const STUDIES: Readonly<Record<string, Study>> = {
 
 /** The Slav study's chapter titles, which follow no pattern, as variation names; undefined for the opening itself. */
 const SLAV_CHAPTERS: Readonly<Record<string, string | undefined>> = {
-  'Introduction': undefined,
+  Introduction: undefined,
   'Slav Defense : Pure Slav': 'Pure Slav',
   'Introduction to Semi-Slav': 'Semi-Slav',
   'Slav Defense: Semi Slav 5.e3': 'Semi-Slav: 5.e3',

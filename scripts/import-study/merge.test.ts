@@ -34,7 +34,7 @@ describe('mergeChapters', () => {
 
   it('groups chapter variations by the title before the colon, joining (I) and (II)', () => {
     expect(lesson.variations).toEqual({
-      'test': { name: 'Caro-Kann' },
+      test: { name: 'Caro-Kann' },
       'advance-variation': { name: 'Advance Variation', parent: 'test' },
       'advance-variation-short-variation': {
         name: 'Advance Variation: Short Variation',
@@ -56,8 +56,8 @@ describe('mergeChapters', () => {
       (title) => (title.includes('Advance') ? 'Advance: Short' : undefined),
     );
     expect(named.variations).toEqual({
-      'test': { name: 'Caro-Kann' },
-      'advance': { name: 'Advance', parent: 'test' },
+      test: { name: 'Caro-Kann' },
+      advance: { name: 'Advance', parent: 'test' },
       'advance-short': { name: 'Advance: Short', parent: 'advance' },
     });
     expect(named.positions[keyAfter('e4', 'c6', 'Nc3', 'd5', 'd4')].variation).toBe('test');
