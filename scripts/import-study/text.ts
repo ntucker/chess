@@ -50,20 +50,28 @@ export function namedMoves(text: string): NamedMove[] {
 /** `san` without check marks, so it compares with the study's own moves. */
 export const plainSan = (san: string) => san.replace(/[+#!?]+$/, '');
 
-const MOVE_WORD = new RegExp(String.raw`^(?:\d+\s?(?:\.\.\.|\.)|\.\.\.)?${SAN}$`);
+/** A word that is a move, numbered or not, with any glyph or punctuation after it. */
+const MOVE_WORD = new RegExp(String.raw`^(?:\d+\s?(?:\.\.\.|\.)|\.\.\.)?${SAN}[!?.,;:)]*$`);
 
 /**
  * Where each sentence of `text` ends (the index after its punctuation). Chess
- * punctuation is not an end: a move number (`4.`, `15...`) or a glyph on a
- * move (`5.e6?`, `Nf3!`).
+ * punctuation is not an end: a move number before its move (`4. Nf3`,
+ * `15... Bxc6`), or a glyph on a move (`5.e6? fxe6`) unless a new sentence
+ * starts after it (`Play Nf3! Black is stuck.`) and the move doesn't open its own.
  */
 export function sentenceEnds(text: string): number[] {
   const ends: number[] = [];
   for (const match of text.matchAll(/(\S*?)([.!?]+)(?=\s|$)/g)) {
     const [, word, marks] = match;
-    const moveNumber = /^\d+$/.test(word) && marks.startsWith('.');
-    const glyph = !marks.includes('.') && MOVE_WORD.test(word);
-    if (!moveNumber && !glyph) ends.push(match.index + match[0].length);
+    const end = match.index + match[0].length;
+    const next = text.slice(end).trimStart().split(/\s/, 1)[0];
+    const nextIsMove = next.startsWith('...') || MOVE_WORD.test(next);
+    const moveNumber = /^\d+$/.test(word) && marks.startsWith('.') && nextIsMove;
+    // A move that opens its sentence (`Ng3!? White wants…`) heads it; it doesn't end it.
+    const opensSentence = text.slice(ends.at(-1) ?? 0, match.index).trim() === '';
+    const newSentence = /^[A-Z]/.test(next) && !nextIsMove && !opensSentence;
+    const glyph = !marks.includes('.') && MOVE_WORD.test(word) && !newSentence;
+    if (!moveNumber && !glyph) ends.push(end);
   }
   return ends;
 }

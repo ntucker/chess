@@ -32,6 +32,12 @@ describe('shorten', () => {
     expect(shorten('Trap: 15...bxc6? Nxc6 wins. More.')).toBe('Trap: 15...bxc6? Nxc6 wins.');
   });
 
+  it('ends a sentence at a number or a move that ends it', () => {
+    expect(shorten('The knight is lost on move 12. Black resigns.')).toBe('The knight is lost on move 12.');
+    expect(shorten('Black should play Nf6! Then White is stuck.')).toBe('Black should play Nf6!');
+    expect(shorten('...Nc6! Black plans ...Nb4. More.')).toBe('...Nc6! Black plans ...Nb4.');
+  });
+
   it('cuts a long sentence at the word limit', () => {
     const long = Array.from({ length: 30 }, (_, i) => `w${i}`).join(' ');
     expect(shorten(long).split(' ')).toHaveLength(20);
