@@ -3,9 +3,10 @@
  * learner's switches: the only place that decides what is hidden.
  *
  * - Explore shows every note on the idea card. The board draws the
- *   candidates, and a note's ideas only when the learner points at it, since
- *   both would share the board's colors; a previewed move draws its own
- *   ideas, and where no candidates are listed every note's ideas are.
+ *   candidates, and a note's ideas only when the learner points at it (but
+ *   see "Moves on the board" below), since both would share the board's
+ *   colors; a previewed move draws its own ideas, and where no candidates
+ *   are listed every note's ideas are.
  *   Only a note about the position on the board can be pointed at, and
  *   Stockfish's best move shows only while nothing is previewed, pointed at
  *   or playing back.
@@ -120,8 +121,8 @@ export interface Guidance {
   readonly pointed?: Note;
   /**
    * Stockfish's best move to mark, with "moves on the board" on, while nothing
-   * is previewed, pointed at or playing back. Inside the guide the candidates are what is highlighted, so
-   * it is tagged only when it isn't one of them.
+   * is previewed, pointed at or playing back. Inside the guide the candidates
+   * are what is highlighted, so it is tagged only when it isn't one of them.
    */
   readonly best?: Uci;
   /** Stockfish's top three, listed only beyond the guide. */

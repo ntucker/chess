@@ -293,6 +293,13 @@ describe('guidance', () => {
       expect(types(pointing.drawn)).toEqual(['structure', 'structure']);
     });
 
+    it("draws the learner's move's ideas on the opponent's turn with 'moves on the board' off", () => {
+      const played = shown([...ADVANCE, 'Bf5'], 'practice', { auto: false, showMoves: false });
+      const move = played.notes.find(({ before }) => before !== undefined);
+      expect(played.drawnCandidates).toEqual([]);
+      expect(played.drawn.map(({ idea }) => idea)).toEqual(move?.note.ideas);
+    });
+
     it("keeps Stockfish's best off the resting board with 'moves on the board' off", () => {
       expect(explore(ADVANCE).best).toBe('g8f6');
       expect(explore(ADVANCE, { switches: { ...ALL_ON, showMoves: false } }).best).toBeUndefined();
