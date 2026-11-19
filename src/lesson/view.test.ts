@@ -197,6 +197,14 @@ describe('preview', () => {
     expect(preview(lesson, shown, drag('b1', 'd2'))).toMatchObject({ candidate: { san: 'Nd2' } });
   });
 
+  it("previews a castle with the king dropped on its square or on the rook's", () => {
+    const beforeCastling = [...ADVANCE, 'Bf5', 'Nf3', 'e6', 'Be2', 'c5'];
+    const castle = { candidate: { san: 'O-O' } };
+    expect(previewing(beforeCastling, drag('e1', 'g1'))).toMatchObject(castle);
+    expect(previewing(beforeCastling, drag('e1', 'h1'))).toMatchObject(castle);
+    expect(previewing(beforeCastling, drag('h1', 'f1'))).toBeUndefined();
+  });
+
   describe('a rare move', () => {
     const rareView = view(MAIN, { lesson: WITH_RARE });
 

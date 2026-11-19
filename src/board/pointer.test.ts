@@ -10,8 +10,8 @@ function setup() {
   let dragging: string | undefined;
   const report = jest.fn<(drag: Drag<string> | null) => void>();
   const stop = watchDrag(page, () => dragging, squareAt, report);
-  const fire = (type: string, clientX = 0) =>
-    page.dispatchEvent(Object.assign(new Event(type), { clientX, clientY: 0 }));
+  const fire = (type: string, clientX = 0, isPrimary = true) =>
+    page.dispatchEvent(Object.assign(new Event(type), { clientX, clientY: 0, isPrimary }));
   const drag = (from: string | undefined) => {
     dragging = from;
   };
@@ -60,7 +60,9 @@ describe('watchDrag', () => {
     const { report, stop, fire, drag } = setup();
     drag('a1');
     fire('pointermove', 15);
+    drag(undefined);
     fire('pointercancel');
+    drag('a1');
     fire('pointermove', 25);
     stop();
     fire('pointermove', 35);
@@ -70,6 +72,14 @@ describe('watchDrag', () => {
       [{ from: 'a1', to: 'c1' }],
       [null],
     ]);
+  });
+
+  it('keeps the drag when a second finger lifts', () => {
+    const { report, fire, drag } = setup();
+    drag('a1');
+    fire('pointermove', 15);
+    fire('pointerup', 15, false);
+    expect(report.mock.calls).toEqual([[{ from: 'a1', to: 'b1' }]]);
   });
 });
 

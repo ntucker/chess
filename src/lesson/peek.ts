@@ -1,7 +1,7 @@
 /**
  * What the lesson's board shows beyond the game, as a reducer: what the
- * learner points at (a candidate, by its list row or a board square, and a
- * note on the idea card), or a note's idea playing back. While an idea
+ * learner points at (a candidate, by its list row or a piece dragged onto
+ * its square, and a note on the idea card), or a note's idea playing back. While an idea
  * plays, the board is its own: pointing goes on out of sight, and the board
  * shows it once the playback stops. Each peek belongs to the position it
  * started in, and ends once the board moves on.
@@ -35,8 +35,9 @@ export type PeekAction =
   /** The board shows `key`: a peek from another position ends. */
   | { readonly type: 'board'; readonly key: PositionKey }
   /**
-   * The learner points at a candidate, by its row or square, which leaves
-   * the card's note; or at a square without one, which keeps it.
+   * The learner points at a candidate, by its row or by dragging its piece
+   * there, which leaves the card's note; or drags onto no candidate, which
+   * keeps it.
    */
   | { readonly type: 'candidate'; readonly key: PositionKey; readonly candidate?: Pointer }
   /** The learner points at a note on the idea card, or at none. */

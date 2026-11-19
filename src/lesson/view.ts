@@ -10,6 +10,7 @@
  */
 import type { SquareName } from 'chessops/types';
 
+import type { Drag } from '@/board/pointer';
 import { parsePositionKey } from '@/game/replay';
 import type { Opponent } from '@/opponent/opponent';
 
@@ -123,7 +124,7 @@ export function lessonView({ lesson, line, ply, opponent }: LessonViewInput): Le
 /** What the learner points at: a row of the candidate list, or a piece dragged over a square. */
 export type Pointer =
   | { readonly at: 'row'; readonly uci: Uci }
-  | { readonly at: 'drag'; readonly from: SquareName; readonly to: SquareName };
+  | ({ readonly at: 'drag' } & Drag<SquareName>);
 
 /**
  * A candidate move shown before it is played. `slide`: the board shows the
@@ -160,9 +161,13 @@ function pointed(shown: readonly Candidate[], pointer: Pointer) {
     const candidate = shown.find(({ move, rare }) => !rare && move.uci === pointer.uci);
     return candidate && { candidate, slide: true };
   }
-  const candidate = shown.find(({ from, to }) => from === pointer.from && to === pointer.to);
+  const candidate = shown.find((it) => it.from === pointer.from && dropsOn(it, pointer.to));
   return candidate && { candidate, slide: false };
 }
+
+/** Whether dropping a candidate's piece on `square` plays it: its square, or a castle's rook. */
+const dropsOn = ({ san, from, to }: Candidate, square: SquareName) =>
+  to === square || (san.startsWith('O-O') && square === `${to[0] === 'g' ? 'h' : 'a'}${from[1]}`);
 
 /** The idea card for a move from `before` to `after`: the move's notes, then the position's. */
 function cardNotes(

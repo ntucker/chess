@@ -88,6 +88,8 @@ export default function Board({
   const api = useRef<Api>(null);
   // Chessground and the pointer listeners keep the callbacks they were given.
   const handleMove = useEffectEvent((from: string, to: string) => onMove(from, to));
+  const squareAt = (x: number, y: number) =>
+    api.current?.getKeyAtDomPos([x, y]) as Square | undefined;
   const handleDrag = useEffectEvent((drag: Drag<Square> | null) => onDrag?.(drag));
   const handlePress = useEffectEvent((square: Square, selected?: Square) =>
     onPress?.(square, selected),
@@ -162,7 +164,7 @@ export default function Board({
   // draws it, so its slide is turned off. The position effect below turns the
   // animation back on as the game reaches the preview.
   const skipPreviewSlide = useEffectEvent((picked: Square | undefined, x: number, y: number) => {
-    const square = api.current?.getKeyAtDomPos([x, y]) as Square | undefined;
+    const square = squareAt(x, y);
     const boardPlays =
       picked && square && api.current?.state.movable.dests?.get(picked)?.includes(square);
     if (boardPlays && playsPreview(layer, picked, square))
@@ -212,7 +214,7 @@ export default function Board({
         const drag = board.state.draggable.current;
         return drag?.started ? (drag.orig as Square) : undefined;
       },
-      (x, y) => board.getKeyAtDomPos([x, y]) as Square | undefined,
+      squareAt,
       handleDrag,
     );
     return () => {
