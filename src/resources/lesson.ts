@@ -10,7 +10,7 @@ import type { IndexEntry } from '@/lesson/openings';
  */
 export const LESSONS = {
   'caro-kann': () => import('@/assets/lessons/caro-kann.json'),
-  slav: () => import('@/assets/lessons/slav.json'),
+  'slav': () => import('@/assets/lessons/slav.json'),
 };
 
 export type LessonId = keyof typeof LESSONS;
