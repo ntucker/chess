@@ -77,6 +77,8 @@ export interface LessonView {
   readonly candidates: readonly Candidate[];
   /** The idea card's notes: the move that led here, then the position. */
   readonly notes: readonly ShownNote[];
+  /** The notes of the position the move that led here was played in. */
+  readonly playedFrom: readonly ShownNote[];
   /**
    * Each move of `line` as the guide stores it where it was played, or
    * undefined where it wasn't a guide move. A book move's has `book: true`.
@@ -97,6 +99,7 @@ export function lessonView({ lesson, line, ply, opponent }: LessonViewInput): Le
     variation: lineVariation(lesson, keys.slice(0, ply + 1)),
     candidates: candidates(lesson, key, opponentBand(lesson, opponent)),
     notes: arrivalNotes(lesson, keys, guideMoves, ply),
+    playedFrom: ply === 0 ? [] : positionNotes(lesson, keys[ply - 1]),
     guideMoves,
     trap: landedTrap(lesson, line.slice(0, ply), keys, guideMoves),
   };

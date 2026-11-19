@@ -1,27 +1,29 @@
 /**
  * The lesson screen's wiring: a game against the guide-first opponent, the
- * facts about the position on the board, the move the learner's pointer
- * previews, an idea playing back, and what the board draws. Explore only so
- * far, with the opponent replying by itself.
+ * facts about the position on the board, what the learner points at (a
+ * candidate, by its list row or a board square, and a note on the idea
+ * card), an idea playing back, and the board. Explore only so far, with the
+ * opponent replying by itself.
  */
 import { useController } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 
-import { lastMoveBadge } from '@/board/drawing';
+import type { Square } from '@/board/drawing';
 import type { BoardProps } from '@/components/Board';
-import { lastPosition, parsePositionKey } from '@/game/replay';
+import { parsePositionKey } from '@/game/replay';
 import { useGame } from '@/game/useGame';
 import { gameOpponent } from '@/resources/opponent';
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNeedsStockfish } from '@/stockfish/demand';
 
-import { ideaPlayback, lessonDrawings, notePlayback, type PlayedBack } from './drawings';
-import { guidance, type LessonSwitches } from './guidance';
-import type { Lesson, Note, PositionKey, Uci } from './lesson';
+import { lessonBoard, pressedCandidate } from './board';
+import { ideaPlayback } from './drawings';
+import { guidance, type LessonSwitches, notePlayback, type PlayedBack } from './guidance';
+import type { Lesson, Note, PositionKey } from './lesson';
 import { lessonOpponent } from './opponent';
 import type { Candidate } from './select';
-import { lessonView, preview, type ShownNote } from './view';
+import { lessonView, type Pointer, preview, type ShownNote } from './view';
 
 /** Explore with the opponent replying and ideas drawn, until the screen offers switches. */
 const SWITCHES: LessonSwitches = {
@@ -54,6 +56,13 @@ export interface Playback {
   readonly stop: () => void;
 }
 
+/** What the learner points at, in the position it was pointed at in. */
+interface Pointing {
+  readonly key: PositionKey;
+  readonly candidate?: Pointer;
+  readonly note?: Note;
+}
+
 export function useLesson(lesson: Lesson) {
   const ctrl = useController();
   const { opponent } = useSettings();
@@ -71,38 +80,43 @@ export function useLesson(lesson: Lesson) {
     () => lessonView({ lesson, line: moves, ply, opponent }),
     [lesson, moves, ply, opponent],
   );
-  // The candidate list row the learner points at, and the position it was
-  // pointed at in. A row that leaves the list (played, or stepped away from)
-  // never reports a hover-out or blur, so the pointer ends when the board
-  // moves on; otherwise stepping back would preview that row again.
-  const [pointer, setPointer] = useState<{ readonly key: PositionKey; readonly uci: Uci }>();
-  if (pointer && pointer.key !== view.key) setPointer(undefined);
-  const pointed = pointer?.key === view.key ? pointer.uci : undefined;
+  // A row that leaves the list (played, or stepped away from) never reports
+  // a hover-out or blur, so pointing ends when the board moves on; otherwise
+  // stepping back would preview that row again.
+  const [pointing, setPointing] = useState<Pointing>();
+  if (pointing && pointing.key !== view.key) setPointing(undefined);
+  const pointed = pointing?.key === view.key ? pointing : undefined;
+  const pointAt = (change: (now: Pointing) => Omit<Pointing, 'key'>) =>
+    setPointing((now) => ({
+      key: view.key,
+      ...change(now?.key === view.key ? now : { key: view.key }),
+    }));
   // The note whose idea plays back, the position it was started in, and the
-  // row pointed at then, if any. It ends, like the pointer, once the board
+  // candidate pointed at then, if any. It ends, like pointing, once the board
   // moves on. While it plays, the board is its own: the preview it started
   // from stays, so the note stays on the card, and no other is previewed.
   const [started, setStarted] = useState<{
     readonly key: PositionKey;
     readonly note: Note;
-    readonly row?: Uci;
+    readonly pointer?: Pointer;
     readonly step: number;
     /** It steps by itself until the learner steps it. */
     readonly auto: boolean;
   }>();
   if (started && started.key !== view.key) setStarted(undefined);
   const playing = started?.key === view.key ? started : undefined;
-  const previewRow = playing ? playing.row : pointed;
+  const pointer = playing ? playing.pointer : pointed?.candidate;
   const shown = guidance({
     view,
     mode: 'explore',
     switches: SWITCHES,
-    preview:
-      previewRow === undefined ? undefined : preview(lesson, view, { at: 'row', uci: previewRow }),
+    preview: pointer && preview(lesson, view, pointer),
+    pointed: pointed?.note,
+    playing: playing?.note,
   });
-  const played = playing && shown.notes.find(({ note }) => note === playing.note);
-  const idea = played && notePlayback(shown, played);
-  const frames = idea ? ideaPlayback(idea.idea, parsePositionKey(idea.at)!) : [];
+  const frames = shown.playing
+    ? ideaPlayback(shown.playing.idea, parsePositionKey(shown.playing.at)!)
+    : [];
   const frame = playing && frames[playing.step];
   const stepping = playing?.auto && playing.step < frames.length - 1;
   useEffect(() => {
@@ -113,38 +127,47 @@ export function useLesson(lesson: Lesson) {
     );
     return () => clearTimeout(timer);
   }, [stepping, playing?.step]);
-  const slid = shown.preview?.slide ? shown.preview.candidate : undefined;
-  const previewed = slid && lastPosition([...moves.slice(0, ply), slid.move.uci]);
-  const board = previewed ?? current;
-  const shownBoard = frame ?? board;
-  // A playback's boards aren't games: nothing moves on them and nothing is drawn.
-  const boardProps: Omit<BoardProps, 'dom'> = {
-    fen: shownBoard.fen,
-    orientation: lesson.side,
-    turnColor: shownBoard.turn,
-    movableColor: game.canMove && !previewed && !frame ? lesson.side : undefined,
-    dests: frame ? {} : board.dests,
-    lastMove: shownBoard.move && [shownBoard.move.from, shownBoard.move.to],
-    drawings: frame
-      ? []
-      : [
-          ...lessonDrawings(shown, slid ? slid.next : view.key, lesson.side),
-          ...lastMoveBadge(previewed ? undefined : current.move?.to, game.quality),
-        ],
-    check: shownBoard.check,
+
+  // A square under the mouse or a finger previews; leaving the board ends
+  // only a preview pointed at from the board.
+  const pointSquare = (square: Square | null) =>
+    pointAt((now) =>
+      square
+        ? { ...now, candidate: { at: 'square', square } }
+        : { ...now, candidate: now.candidate?.at === 'square' ? undefined : now.candidate },
+    );
+  const play = (candidate: Candidate) => game.play(candidate.move.uci);
+  const board: Omit<BoardProps, 'dom'> = {
+    ...lessonBoard({
+      side: lesson.side,
+      view,
+      guidance: shown,
+      moves,
+      ply,
+      current,
+      canMove: game.canMove,
+      quality: game.quality,
+      frame,
+    }),
     onMove: game.move,
+    onHover: pointSquare,
+    onHold: pointSquare,
+    onPress: (square) => {
+      const pressed = !frame && game.canMove && pressedCandidate(shown, square);
+      if (pressed) play(pressed);
+    },
   };
   // The opponent's reply would move the board on and end a playback at once,
   // so none starts while one is on its way to the position shown.
   const playable = (note: ShownNote) =>
-    game.replying ? undefined : notePlayback(shown, note)?.idea.type;
+    game.replying ? undefined : notePlayback(shown.ideas, note.note)?.idea.type;
   const playback: Playback = {
     playing: playing && frame && { note: playing.note, step: playing.step, steps: frames.length },
     playable,
     // From the preview on screen, which a playing note keeps after the pointer leaves.
     play: (note) => {
       if (playable(note)) {
-        setStarted({ key: view.key, note: note.note, row: previewRow, step: 0, auto: true });
+        setStarted({ key: view.key, note: note.note, pointer, step: 0, auto: true });
       }
     },
     goto: (step) => setStarted((now) => now && { ...now, step, auto: false }),
@@ -156,15 +179,22 @@ export function useLesson(lesson: Lesson) {
     opponent,
     view,
     guidance: shown,
-    board: boardProps,
+    board,
     playback,
     /** Whether the learner may play the candidates now (they are the side to move's). */
     canPlay: game.canMove,
-    play: (candidate: Candidate) => game.play(candidate.move.uci),
-    /** The candidate list row the learner points at. */
-    pointed,
-    /** The learner points at a candidate list row, or at none. */
-    point: (uci: Uci | undefined) =>
-      setPointer(uci === undefined ? undefined : { key: view.key, uci }),
+    play,
+    /** The note pointed at on the idea card. */
+    pointedNote: pointed?.note,
+    /**
+     * The learner points at a candidate list row. Leaving a row keeps its
+     * preview, so the learner can move on to its notes; `leave` ends it.
+     */
+    pointRow: (uci: Candidate['move']['uci']) =>
+      pointAt((now) => ({ ...now, candidate: { at: 'row', uci } })),
+    /** The learner points at a note on the idea card, or at none. */
+    pointNote: (note: Note | undefined) => pointAt((now) => ({ ...now, note })),
+    /** The learner leaves the candidates and the idea card: their previews end. */
+    leave: () => setPointing(undefined),
   };
 }

@@ -11,12 +11,9 @@ import { Eyebrow } from '@/components/Eyebrow';
 import { FootnoteLink } from '@/components/FootnoteLink';
 import { GameStatus } from '@/components/GameStatus';
 import { OpponentChoice } from '@/components/OpponentChoice';
-import { PlayerBar } from '@/components/PlayerBar';
 import { Scoresheet } from '@/components/Scoresheet';
 import { SideChooser } from '@/components/SideChooser';
 import { BoardColumn, Stage } from '@/components/Stage';
-import { Transport } from '@/components/Transport';
-import { useStepKeys } from '@/components/useStepKeys';
 import { type Color, colorName, opposite } from '@/game/replay';
 import { useGame } from '@/game/useGame';
 import { describeOpponent } from '@/opponent/opponent';
@@ -35,8 +32,7 @@ export default function PlayScreen() {
     active: useIsFocused(),
     judge: evaluationEngine,
   });
-  const { moves, ply, current, toMove, thinking, goto } = game;
-  const opponentColor = opposite(playerColor);
+  const { moves, ply, current, thinking, goto } = game;
 
   const newGame = (side: Color) => {
     setPlayerColor(side);
@@ -48,35 +44,17 @@ export default function PlayScreen() {
     if (!game.started && side !== playerColor) newGame(side);
   };
 
-  useStepKeys(ply, moves.length, goto);
-
   return (
     <Stage
       title="Free play · Opening Night"
       board={
         <BoardColumn
-          top={
-            <PlayerBar
-              name={described.name}
-              detail={`${described.tagline} · ${colorName(opponentColor)}`}
-              color={opponentColor}
-              toMove={toMove === opponentColor}
-              thinking={thinking}
-              material={game.material[opponentColor]}
-            />
-          }
-          bottom={
-            <PlayerBar
-              name="You"
-              detail={colorName(playerColor)}
-              color={playerColor}
-              toMove={toMove === playerColor}
-              material={game.material[playerColor]}
-            >
-              <Transport ply={ply} total={moves.length} onGoto={goto} />
-            </PlayerBar>
-          }
-          evaluated={moves.slice(0, ply)}
+          game={game}
+          side={playerColor}
+          rival={{
+            name: described.name,
+            detail: `${described.tagline} · ${colorName(opposite(playerColor))}`,
+          }}
           board={{
             fen: current.fen,
             orientation: playerColor,

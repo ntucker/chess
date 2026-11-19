@@ -7,8 +7,9 @@ import type { Tone } from '@/board/drawing';
 import { Eyebrow } from '@/components/Eyebrow';
 import { Transport } from '@/components/Transport';
 import type { Color } from '@/game/replay';
-import { ideaTone, type PlayedBack } from '@/lesson/drawings';
-import type { Evaluation, Idea } from '@/lesson/lesson';
+import { ideaTone } from '@/lesson/drawings';
+import type { PlayedBack } from '@/lesson/guidance';
+import type { Evaluation, Idea, Note } from '@/lesson/lesson';
 import type { Playback, Playing } from '@/lesson/useLesson';
 import type { ShownNote } from '@/lesson/view';
 import { toneColors } from '@/theme/drawingTones';
@@ -20,27 +21,32 @@ interface Props {
   readonly learner: Color;
   /** Plays a note's plan, line or trap through on the board. */
   readonly playback: Playback;
+  /** The note pointed at, whose ideas the board draws. */
+  readonly pointed?: Note;
+  /** The learner points at a note that draws on the board, or leaves it. */
+  readonly onPoint: (note: Note | undefined) => void;
 }
 
 /**
  * What the guide says about the position, or about the move being previewed:
  * each note's kind, its sentence, the study's own words behind "More", the
- * study's verdict, and a play-through for a plan, a line or a trap.
+ * study's verdict, and a play-through for a plan, a line or a trap. Pointing
+ * at a note that draws on the board lights its rule in its kind's color.
  */
-export function IdeaCard({ title, notes, learner, playback }: Props) {
-  const { theme } = useTheme();
-  const { color } = theme.semantic;
+export function IdeaCard({ title, notes, learner, playback, pointed, onPoint }: Props) {
   return (
     <Stack gap="3">
       <Eyebrow>{title}</Eyebrow>
       {notes.length ? (
-        <View style={[styles.notes, { borderColor: color.tones.accent.solid }]}>
+        <View>
           {notes.map((shown) => (
             <NoteView
               key={shown.note.text + (shown.before ?? '')}
               shown={shown}
               learner={learner}
               playback={playback}
+              pointed={shown.note === pointed}
+              onPoint={onPoint}
             />
           ))}
         </View>
@@ -57,11 +63,17 @@ function NoteView({
   shown,
   learner,
   playback,
+  pointed,
+  onPoint,
 }: {
   readonly shown: ShownNote;
   readonly learner: Color;
   readonly playback: Playback;
+  readonly pointed: boolean;
+  readonly onPoint: (note: Note | undefined) => void;
 }) {
+  const { theme } = useTheme();
+  const { color } = theme.semantic;
   const { note } = shown;
   const [more, setMore] = useState(false);
   // The note's first drawn idea, which names its kind; none for text or a verdict alone.
@@ -70,9 +82,31 @@ function NoteView({
   const playing = playback.playing?.note === note ? playback.playing : undefined;
   const original = note.original && note.original !== note.text ? note.original : undefined;
   const playable = playback.playable(shown);
+  // Only a note that draws reacts: pointing at text alone would just empty the board.
+  const point = (pointerType: string) => {
+    if (drawn && pointerType !== 'touch') onPoint(note);
+  };
+  const lit = pointed && drawn;
 
   return (
-    <Stack gap="2">
+    <Stack
+      gap="2"
+      onPointerEnter={({ nativeEvent }) => point(nativeEvent.pointerType)}
+      onPointerLeave={({ nativeEvent }) => {
+        if (pointed && nativeEvent.pointerType !== 'touch') onPoint(undefined);
+      }}
+      // Keyboard focus on its buttons points at it too; the panel ends it.
+      onFocus={() => point('keyboard')}
+      style={[
+        styles.note,
+        lit
+          ? {
+              borderColor: toneColors[ideaTone(drawn, learner)],
+              backgroundColor: color.tones.neutral.subtle,
+            }
+          : { borderColor: color.tones.accent.solid },
+      ]}
+    >
       {drawn || verdict ? (
         <View style={styles.heading}>
           {drawn ? <KindTag label={KINDS[drawn.type]} tone={ideaTone(drawn, learner)} /> : <View />}
@@ -185,7 +219,15 @@ const VERDICTS: Readonly<Record<Evaluation, { glyph: string; words: string }>> =
 };
 
 const styles = StyleSheet.create({
-  notes: { borderLeftWidth: 2, paddingLeft: 14, gap: 16 },
+  // Each note carries its piece of the rule, so a pointed one can light its own.
+  note: {
+    borderLeftWidth: 2,
+    paddingLeft: 14,
+    paddingRight: 8,
+    paddingVertical: 8,
+    borderTopRightRadius: 6,
+    borderBottomRightRadius: 6,
+  },
   heading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   kind: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dot: { width: 8, height: 8, borderRadius: 4 },

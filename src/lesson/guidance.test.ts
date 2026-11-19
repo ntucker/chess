@@ -1,6 +1,15 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { guidance, type Guidance, type LessonMode, type LessonSwitches } from './guidance';
+import {
+  guidance,
+  type Guidance,
+  type GuidanceInput,
+  type LessonMode,
+  type LessonSwitches,
+  notePlayback,
+  type ShownIdea,
+} from './guidance';
+import type { Idea } from './lesson';
 import { ADVANCE, keyAfter, MAIN, SAMPLE, sampleView, TRAP, TRAP_PUNISHED } from './lesson.fixture';
 import { type Pointer, preview } from './view';
 
@@ -133,13 +142,107 @@ describe('guidance', () => {
       expect(summary(auto)).toMatchObject({
         candidates: [],
         preview: undefined,
-        notes: ['move'],
+        notes: ['move', 'position'],
         best: undefined,
       });
     });
 
+    it("shows, right after the learner's move, its notes and then those of the position it was played in", () => {
+      const notes = shown([...ADVANCE, 'Bf5'], 'practice').notes;
+      expect(notes.map(({ note, after }) => [note.ideas?.map(({ type }) => type), after])).toEqual([
+        [['plan'], keyAfter(...ADVANCE, 'Bf5')],
+        [['structure', 'structure'], keyAfter(...ADVANCE)],
+      ]);
+    });
+
+    it("hides the position's own notes on the learner's turn, but not a trap's warning with traps shown", () => {
+      // The trap's note as a note about the position, where the importer now puts such notes.
+      const view = sampleView(TRAP);
+      const own = { ...view, notes: view.notes.map(({ note, after }) => ({ note, after })) };
+      const practice = (showTraps: boolean) =>
+        guidance({ view: own, mode: 'practice', switches: { ...ALL_ON, showTraps } }).notes;
+      expect(practice(true)).toHaveLength(1);
+      expect(practice(false)).toEqual([]);
+      expect(summary(shown(ADVANCE, 'practice')).notes).toEqual(['move']);
+    });
+
     it('draws the ideas of the move played, whatever "show ideas on board" says', () => {
       expect(shown(ADVANCE, 'practice', { showIdeas: false }).ideas).toHaveLength(2);
+    });
+  });
+
+  describe('what the board draws', () => {
+    const explore = (sans: string[], input: Partial<GuidanceInput> = {}) =>
+      guidance({ view: sampleView(sans), mode: 'explore', switches: ALL_ON, ...input });
+    const types = (ideas: readonly ShownIdea[]) => ideas.map(({ idea }) => idea.type);
+
+    it('draws the candidates without the ideas, until a note is pointed at', () => {
+      const plain = explore(ADVANCE);
+      expect(plain.drawnCandidates).toEqual(plain.candidates);
+      expect(plain.drawn).toEqual([]);
+      const [, position] = plain.notes;
+      const pointing = explore(ADVANCE, { pointed: position.note });
+      expect(pointing.drawnCandidates).toEqual([]);
+      expect(types(pointing.drawn)).toEqual(['structure', 'structure']);
+    });
+
+    it('leaves the board as it is for a note with nothing to draw', () => {
+      const text = { text: 'Just words.' };
+      const view = sampleView(ADVANCE);
+      const withText = { ...view, notes: [...view.notes, { note: text, after: view.key }] };
+      const pointing = guidance({
+        view: withText,
+        mode: 'explore',
+        switches: ALL_ON,
+        pointed: text,
+      });
+      expect(pointing.drawnCandidates).toHaveLength(2);
+    });
+
+    it("draws a sliding preview's ideas in place of the candidates", () => {
+      const view = sampleView(ADVANCE);
+      const previewing = preview(SAMPLE, view, { at: 'row', uci: 'c8f5' });
+      const shownPreview = explore(ADVANCE, { preview: previewing });
+      expect(shownPreview.drawnCandidates).toEqual([]);
+      expect(types(shownPreview.drawn)).toEqual(['plan']);
+    });
+
+    it('draws every idea where no candidates are drawn', () => {
+      const end = [...ADVANCE, 'Bf5', 'Nf3', 'e6', 'Be2', 'c5', 'O-O', 'Nc6'];
+      expect(types(explore(end).drawn).length).toBeGreaterThan(0);
+    });
+
+    it('draws only the first of several plans, whose numbers would run together', () => {
+      const plan = (from: string): Idea => ({
+        type: 'plan',
+        side: 'black',
+        routes: [{ from: from as never, to: 'a6' }],
+      });
+      const view = sampleView([...ADVANCE, 'a6']);
+      const note = { text: 'Two plans.', ideas: [plan('a7'), plan('b7')] };
+      const two = { ...view, notes: [{ note, after: view.key }] };
+      const drawn = guidance({ view: two, mode: 'explore', switches: ALL_ON }).drawn;
+      expect(drawn.map(({ idea }) => idea)).toEqual([plan('a7')]);
+    });
+
+    it('draws nothing while a note plays back, and names the idea playing', () => {
+      const view = sampleView(TRAP);
+      const [trap] = view.notes;
+      const playing = guidance({ view, mode: 'explore', switches: ALL_ON, playing: trap.note });
+      expect(playing.playing?.idea.type).toBe('trap');
+      expect(playing.drawn).toEqual([]);
+      expect(playing.drawnCandidates).toEqual([]);
+    });
+  });
+
+  describe('notePlayback', () => {
+    it("plays a note's trap back while traps are shown, and not otherwise", () => {
+      const view = sampleView(TRAP);
+      const [trap] = view.notes;
+      const ideas = (showTraps: boolean) =>
+        guidance({ view, mode: 'explore', switches: { ...ALL_ON, showTraps } }).ideas;
+      expect(notePlayback(ideas(true), trap.note)?.idea.type).toBe('trap');
+      expect(notePlayback(ideas(false), trap.note)).toBeUndefined();
     });
   });
 

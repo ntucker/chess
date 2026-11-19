@@ -35,6 +35,9 @@ interface Options {
  * dropped; one from an opponent since replaced still answers the same
  * position, so the first answer wins.
  */
+/** A game on a screen: what `useGame` returns. */
+export type Game = ReturnType<typeof useGame>;
+
 export function useGame(opponent: GameOpponent | undefined, { side, active, judge }: Options) {
   const [state, dispatch] = useReducer(gameReducer, initialGame);
   const { moves, ply } = state;

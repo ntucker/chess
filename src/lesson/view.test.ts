@@ -45,6 +45,13 @@ describe('lessonView', () => {
     expect(view([...ADVANCE, 'a6']).notes).toEqual([]);
   });
 
+  it('keeps the notes of the position the last move was played in', () => {
+    const played = view([...ADVANCE, 'Bf5']).playedFrom;
+    expect(played.map(({ after }) => after)).toEqual([keyAfter(...ADVANCE)]);
+    expect(played.every(({ before }) => before === undefined)).toBe(true);
+    expect(view([]).playedFrom).toEqual([]);
+  });
+
   it('names the variation, keeping the last one passed beyond the guide', () => {
     const names = (sans: string[]) => view(sans).variation.map(({ name }) => name);
     expect(names(ADVANCE)).toEqual(['Caro-Kann Defence', 'Advance Variation']);

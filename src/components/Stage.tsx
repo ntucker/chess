@@ -7,7 +7,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Board, { type BoardProps } from '@/components/Board';
 import { EvaluationBar } from '@/components/EvaluationBar';
 import { HEADER_HEIGHT, Header } from '@/components/Header';
-import { PLAYER_BAR_HEIGHT, PLAYER_DISC } from '@/components/PlayerBar';
+import { PLAYER_BAR_HEIGHT, PLAYER_DISC, PlayerBar } from '@/components/PlayerBar';
+import { Transport } from '@/components/Transport';
+import { useStepKeys } from '@/components/useStepKeys';
+import { type Color, colorName, opposite } from '@/game/replay';
+import type { Game } from '@/game/useGame';
 import { spotlight } from '@/theme/theme';
 
 interface StageProps {
@@ -54,28 +58,54 @@ export function Stage({ title, board, program }: StageProps) {
   );
 }
 
+/** The opponent's name bar: who plays the other side, and how. */
+export interface Rival {
+  readonly name: string;
+  readonly detail: string;
+}
+
 interface BoardColumnProps {
-  /** The name bar above the board: the opponent's `PlayerBar`. */
-  readonly top: ReactNode;
-  /** The name bar below the board: the player's. */
-  readonly bottom: ReactNode;
-  /** The moves up to the position the evaluation bar judges. */
-  readonly evaluated: readonly string[];
+  /** The game on the board. */
+  readonly game: Game;
+  /** The player's side, at the bottom. */
+  readonly side: Color;
+  readonly rival: Rival;
   readonly board: Omit<BoardProps, 'dom'>;
 }
 
-/** The board in its frame, with the evaluation bar beside it and a name bar above and below. */
-export function BoardColumn({ top, bottom, evaluated, board }: BoardColumnProps) {
+/**
+ * The board in its frame, with the evaluation bar beside it, the opponent's
+ * name bar above it and the player's below, holding the move stepper. The
+ * arrow keys step through the moves too.
+ */
+export function BoardColumn({ game, side, rival, board }: BoardColumnProps) {
+  const { moves, ply, goto } = game;
+  const other = opposite(side);
+  useStepKeys(ply, moves.length, goto);
   return (
     <>
-      {top}
+      <PlayerBar
+        {...rival}
+        color={other}
+        toMove={game.toMove === other}
+        thinking={game.thinking}
+        material={game.material[other]}
+      />
       <View style={styles.boardRow}>
-        <EvaluationBar line={evaluated} orientation={board.orientation} style={styles.evaluation} />
+        <EvaluationBar line={moves.slice(0, ply)} orientation={side} style={styles.evaluation} />
         <BoardFrame>
           <Board {...board} dom={{ style: styles.fill, scrollEnabled: false }} />
         </BoardFrame>
       </View>
-      {bottom}
+      <PlayerBar
+        name="You"
+        detail={colorName(side)}
+        color={side}
+        toMove={game.toMove === side}
+        material={game.material[side]}
+      >
+        <Transport ply={ply} total={moves.length} onGoto={goto} />
+      </PlayerBar>
     </>
   );
 }

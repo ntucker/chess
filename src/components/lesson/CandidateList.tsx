@@ -11,15 +11,18 @@ interface Props {
   readonly candidates: readonly Candidate[];
   /** The candidate the board draws as the main one (see `candidateDrawings`). */
   readonly main?: Candidate;
-  /** The row being previewed. */
+  /** The row previewed on the board, whether its row or a board square is pointed at. */
   readonly pointed?: Uci;
   /** Where each move leads, when it enters another variation. */
   readonly leadsTo: (candidate: Candidate) => string | undefined;
   /** The rows are the learner's to play now; otherwise they only preview. */
   readonly playable: boolean;
   readonly onPlay: (candidate: Candidate) => void;
-  /** The learner points at a row (hover or keyboard focus), or leaves it. */
-  readonly onPoint: (uci: Uci | undefined) => void;
+  /**
+   * The learner points at a row: the mouse moves over it, keyboard focus
+   * lands on it, or a finger holds it (or taps it, when it isn't playable).
+   */
+  readonly onPoint: (uci: Uci) => void;
 }
 
 /**
@@ -66,7 +69,7 @@ interface RowProps {
   readonly share?: number;
   readonly playable: boolean;
   readonly onPlay: (candidate: Candidate) => void;
-  readonly onPoint: (uci: Uci | undefined) => void;
+  readonly onPoint: (uci: Uci) => void;
 }
 
 function Row({ candidate, main, pointed, leadsTo, share, playable, onPlay, onPoint }: RowProps) {
@@ -75,7 +78,6 @@ function Row({ candidate, main, pointed, leadsTo, share, playable, onPlay, onPoi
   const { move, san } = candidate;
   const tone = toneColors[main ? 'main' : 'other'];
   const point = () => onPoint(move.uci);
-  const leave = () => onPoint(undefined);
 
   return (
     <Pressable
@@ -84,11 +86,15 @@ function Row({ candidate, main, pointed, leadsTo, share, playable, onPlay, onPoi
       accessibilityHint={playable ? 'Plays this move' : undefined}
       // Not disabled: the opponent's rows still preview while not playable.
       accessibilityState={{ disabled: !playable }}
-      onPress={playable ? () => onPlay(candidate) : undefined}
-      onHoverIn={point}
-      onHoverOut={leave}
+      onPress={playable ? () => onPlay(candidate) : point}
+      onLongPress={point}
+      // A move, not an enter: a list that changes under a still mouse
+      // previews nothing until the mouse moves. Leaving keeps the preview
+      // (the screen ends it), so the learner can go on to its notes.
+      onPointerMove={({ nativeEvent }) => {
+        if (!pointed && nativeEvent.pointerType !== 'touch') point();
+      }}
       onFocus={point}
-      onBlur={leave}
       style={({ pressed }) => [
         styles.row,
         (pointed || (pressed && playable)) && {
