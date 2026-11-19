@@ -1,5 +1,5 @@
-import { describeOpponent, type Opponent, OPPONENT_PRESETS } from '@/opponent/opponent';
-import { useSettingsDispatch } from '@/settings/SettingsProvider';
+import { describeOpponent, OPPONENT_PRESETS } from '@/opponent/opponent';
+import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
 
 import { FootnoteChoice } from './FootnoteChoice';
 
@@ -12,7 +12,8 @@ const OPTIONS = OPPONENT_PRESETS.map((opponent) => {
  * A footnote that picks how hard the opponent plays, easiest first:
  * "Play against 1100 · 1500 · 1900 · Stockfish".
  */
-export function OpponentChoice({ opponent }: { readonly opponent: Opponent }) {
+export function OpponentChoice() {
+  const { opponent } = useSettings();
   const dispatch = useSettingsDispatch();
   return (
     <FootnoteChoice

@@ -150,7 +150,7 @@ export default function PlayScreen() {
                   <Scoresheet plies={game.plies} qualities={qualities} ply={ply} onGoto={goto} />
                 </Stack>
                 <Stack gap="1">
-                  <OpponentChoice opponent={opponent} />
+                  <OpponentChoice />
                   <EvaluationEngineChoice />
                 </Stack>
               </Stack>
