@@ -8,6 +8,7 @@ import { readLesson } from '@/lesson/lesson';
  */
 export const LESSONS = {
   'caro-kann-sample': () => import('@/assets/lessons/caro-kann-sample.json'),
+  'caro-kann': () => import('@/assets/lessons/caro-kann.json'),
 };
 
 export type LessonId = keyof typeof LESSONS;

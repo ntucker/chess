@@ -2,8 +2,8 @@
  * The rules checker for lesson files: tests every fact a lesson states
  * against the board, so nothing false is drawn. Judgments come from the study
  * and are only checked to be legal or well formed: verdicts, evaluations,
- * risk tags, and a threat's answer. The importer (planned) will run it and
- * drop ideas that fail; a test runs it on every lesson the app ships.
+ * risk tags, and a threat's answer. The importer (scripts/import-study)
+ * drops ideas that fail it; a test runs it on every lesson the app ships.
  */
 import { attacks, between, pawnAttacks, ray } from 'chessops/attacks';
 import type { Board } from 'chessops/board';
@@ -254,7 +254,7 @@ function played(pos: Chess, ucis: readonly string[]): Chess {
 }
 
 /** A copy of `pos` with `color` to move, as if the other side passed. */
-function withTurn(pos: Chess, color: Color): Chess {
+export function withTurn(pos: Chess, color: Color): Chess {
   const copy = pos.clone();
   if (copy.turn !== color) {
     copy.turn = color;
