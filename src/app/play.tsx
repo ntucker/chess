@@ -111,7 +111,7 @@ export default function PlayScreen() {
           <Stack gap="1">
             <OpponentChoice />
             <EvaluationEngineChoice />
-            <FootnoteLink href="/" dismissTo>
+            <FootnoteLink href="/" back>
               Back to the lesson
             </FootnoteLink>
           </Stack>
