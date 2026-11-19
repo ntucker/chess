@@ -11,7 +11,7 @@
 import type { SquareName } from 'chessops/types';
 
 import type { Drag } from '@/board/pointer';
-import { lineMove, parsePositionKey, toUci } from '@/game/replay';
+import { dropMove, parsePositionKey } from '@/game/replay';
 import type { Opponent } from '@/opponent/opponent';
 
 import {
@@ -162,9 +162,7 @@ function pointed({ key, candidates }: LessonView, pointer: Pointer) {
     return candidate && { candidate, slide: true };
   }
   if (!pointer.to) return undefined;
-  // The move the drop would play, as the game records it: a king dropped on
-  // its rook castles, and a pawn promotes to a queen.
-  const uci = lineMove(key, toUci({ fen: key }, pointer.from, pointer.to));
+  const uci = dropMove(key, pointer.from, pointer.to);
   const candidate = uci && candidates.find(({ move }) => move.uci === uci);
   return candidate && { candidate, slide: false };
 }

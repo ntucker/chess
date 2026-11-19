@@ -13,7 +13,7 @@ import { useEffect, useMemo, useReducer } from 'react';
 import type { Square } from '@/board/drawing';
 import type { Drag } from '@/board/pointer';
 import type { BoardProps } from '@/components/Board';
-import { lineMove, parsePositionKey, toUci } from '@/game/replay';
+import { dropMove, parsePositionKey } from '@/game/replay';
 import { useGame } from '@/game/useGame';
 import { gameOpponent } from '@/resources/opponent';
 import { useSettings } from '@/settings/SettingsProvider';
@@ -126,8 +126,7 @@ export function useLesson(lesson: Lesson) {
   const playMove = (uci: string) => {
     if (!canMove) return;
     const learner = current.turn === lesson.side;
-    // A king dropped on its rook castles, as the game records it.
-    const book = isBook(lesson, key, lineMove(current.fen, uci) ?? uci);
+    const book = isBook(lesson, key, uci);
     dispatch({ type: 'played', learner, book, first: startsRun, replaces: ply < moves.length });
     game.play(uci);
   };
@@ -142,7 +141,11 @@ export function useLesson(lesson: Lesson) {
       quality: game.quality,
       frame,
     }),
-    onMove: (from, to) => playMove(toUci(current, from, to)),
+    // As the game records it, so a king dropped on its rook is the book castle.
+    onMove: (from, to) => {
+      const uci = dropMove(current.fen, from, to);
+      if (uci) playMove(uci);
+    },
     onDrag: pointDrag,
     onPress: (square, selected) => {
       const press = !frame && boardPress(shown, current, canMove, square, selected);

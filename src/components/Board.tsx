@@ -221,7 +221,7 @@ export default function Board({
         return drag?.started ? (drag.orig as Square) : undefined;
       },
       squareAt,
-      ({ from, to }) => to !== undefined && boardPlays(board, from, to),
+      (from, to) => boardPlays(board, from, to),
       handleDrag,
     );
     return () => {

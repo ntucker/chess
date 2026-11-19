@@ -7,7 +7,7 @@ const squareAt = (x: number) =>
   x >= 0 && x < 80 ? `${'abcdefgh'[Math.floor(x / 10)]}1` : undefined;
 
 /** Moves the dragged piece can make: only onto d1. */
-const plays = ({ to }: Drag<string>) => to === 'd1';
+const plays = (_from: string, to: string) => to === 'd1';
 
 function setup() {
   const page = new EventTarget();

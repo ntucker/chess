@@ -30,7 +30,7 @@ export function watchDrag<S extends string>(
   page: PointerSource,
   dragged: () => S | undefined,
   squareAt: (x: number, y: number) => S | undefined,
-  plays: (drag: Drag<S>) => boolean,
+  plays: (from: S, to: S) => boolean,
   report: (drag: Drag<S> | null) => void,
 ): () => void {
   let over: Drag<S> | null = null;
@@ -39,18 +39,22 @@ export function watchDrag<S extends string>(
     over = next;
     report(next);
   };
-  const onMove = ({ isPrimary, clientX, clientY }: PointerEvent) => {
+  // The square a piece from `from` is over: none over its own square.
+  const target = (from: S, { clientX, clientY }: PointerEvent) => {
+    const to = squareAt(clientX, clientY);
+    return to === from ? undefined : to;
+  };
+  const onMove = (event: PointerEvent) => {
     // Chessground drags with one finger; a second one moves nothing.
-    if (!isPrimary) return;
+    if (!event.isPrimary) return;
     const from = dragged();
-    const to = from && squareAt(clientX, clientY);
-    show(from ? { from, to: to === from ? undefined : to } : null);
+    show(from ? { from, to: target(from, event) } : null);
   };
   // The drop is where the pointer lifts, which a last move may not have reached.
-  const onUp = ({ isPrimary, clientX, clientY }: PointerEvent) => {
-    if (!isPrimary) return;
-    const to = over && squareAt(clientX, clientY);
-    if (over && to && to !== over.from && plays({ from: over.from, to })) over = null;
+  const onUp = (event: PointerEvent) => {
+    if (!event.isPrimary) return;
+    const to = over && target(over.from, event);
+    if (over && to && plays(over.from, to)) over = null;
     else show(null);
   };
   const onCancel = ({ isPrimary }: PointerEvent) => {
