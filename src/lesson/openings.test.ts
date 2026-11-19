@@ -24,7 +24,7 @@ describe('lessonOf', () => {
 });
 
 describe('openingsLesson', () => {
-  it("lists every first move for the lessons' side, in the index's order, and passes the checker", () => {
+  it("lists every lesson's first moves in the index's order, and passes the checker", () => {
     const openings = openingsLesson(INDEX);
     expect(openings.side).toBe('black');
     expect(startMoves(openings)).toEqual(['e2e4', 'd2d4']);

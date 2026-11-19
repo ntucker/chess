@@ -26,7 +26,7 @@ describe('shipped lessons', () => {
     expect(LESSON_INDEX[id as keyof typeof LESSON_INDEX]).toEqual(indexEntry(readShippedLesson(id)));
   });
 
-  it('teaches one side, since the start position lists one side’s openings', () => {
+  it('teaches one side, since the start position takes its side from the first lesson', () => {
     expect(new Set(Object.values(LESSON_INDEX).map(({ side }) => side)).size).toBe(1);
   });
 

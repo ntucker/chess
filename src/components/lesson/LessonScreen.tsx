@@ -42,7 +42,7 @@ export function LessonPage({ id }: { readonly id?: string }) {
   if (id !== undefined && !Object.hasOwn(LESSONS, id)) {
     return <LessonPlaceholder message="There is no lesson here." />;
   }
-  // The first of its first moves: the study's main line.
+  // The lesson's main-line first move, played so the page opens in it.
   const start = id === undefined ? [] : LESSON_INDEX[id as LessonId].firstMoves.slice(0, 1);
   return (
     <BrowserOnly fallback={<LessonPlaceholder />}>
