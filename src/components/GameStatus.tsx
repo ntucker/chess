@@ -5,6 +5,7 @@ import { Eyebrow } from '@/components/Eyebrow';
 import type { Color, Position } from '@/game/replay';
 import { describeOpponent, type Opponent } from '@/opponent/opponent';
 import { phoneLength, phonePart } from '@/theme/phone';
+import { typography } from '@/theme/theme';
 
 interface Props {
   readonly playerColor: Color;
@@ -124,9 +125,10 @@ function describeLatest({
   };
 }
 
-/** The headline's size: theme.ts's headingLg, a size smaller on a phone-width web page. */
-const TITLE_SIZE = phoneLength('headline-size', 32);
+/** The headline's size: its role's, a size smaller on a phone-width web page. */
+const { size, lineHeight } = typography.headingLg;
+const TITLE_SIZE = phoneLength('headline-size', size);
 
 const styles = StyleSheet.create({
-  title: { fontSize: TITLE_SIZE.value, lineHeight: TITLE_SIZE.times(1.15).value },
+  title: { fontSize: TITLE_SIZE.value, lineHeight: TITLE_SIZE.times(lineHeight).value },
 });

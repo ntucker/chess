@@ -2,7 +2,7 @@ import { Inline, Separator, Text } from '@reactive/silk-native';
 import { Image, StyleSheet } from 'react-native';
 
 import { SourceLink } from '@/components/SourceLink';
-import { phoneLength, phonePart } from '@/theme/phone';
+import { PHONE_LAYOUT, phoneLength, phonePart } from '@/theme/phone';
 import { fonts } from '@/theme/theme';
 
 /** The header's height: its logo, the tallest thing in it. Shorter on a phone. */
@@ -21,7 +21,7 @@ interface Props {
  */
 export function Header({ place }: Props) {
   // Only phone.css shows it, so a native app keeps the name.
-  const shownPlace = process.env.EXPO_OS === 'web' ? place : undefined;
+  const shownPlace = PHONE_LAYOUT ? place : undefined;
   return (
     <Inline gap="2" align="center" justify="between" wrap="nowrap">
       <Inline gap="3" align="center" wrap="nowrap" style={styles.brand}>

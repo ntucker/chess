@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import type { Material } from '@/game/material';
 import { type Color, opposite } from '@/game/replay';
-import { phoneLength, phonePart } from '@/theme/phone';
+import { PHONE_LAYOUT, phoneLength, phonePart } from '@/theme/phone';
 import { pieceColors } from '@/theme/pieceColors';
 
 import { Captures } from './Captures';
@@ -83,7 +83,7 @@ export function PlayerBar({
         <Text {...caption} {...(brief ? phonePart('wide-only') : {})}>
           {turn(detail)}
         </Text>
-        {brief && process.env.EXPO_OS === 'web' ? (
+        {brief && PHONE_LAYOUT ? (
           <Text {...caption} {...phonePart('phone-only')}>
             {turn(brief)}
           </Text>

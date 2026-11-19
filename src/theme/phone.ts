@@ -1,5 +1,12 @@
 import './phone.css';
 
+/**
+ * Whether phone.css can apply: only on the web. Off it every length is its
+ * wide value, no part is tagged, and text that only a phone shows isn't
+ * rendered at all.
+ */
+export const PHONE_LAYOUT = process.env.EXPO_OS === 'web';
+
 /** The lengths phone.css shortens on a phone-width web page. */
 export const PHONE_LENGTHS = [
   'page-space',
@@ -79,7 +86,7 @@ function asLength(other: PhoneLength | number) {
  * Web passes the string through to CSS. Never do arithmetic on it.
  */
 export function phoneCalc(css: string, wide: number): number {
-  return process.env.EXPO_OS === 'web' ? (`calc(${css})` as unknown as number) : wide;
+  return PHONE_LAYOUT ? (`calc(${css})` as unknown as number) : wide;
 }
 
 /**
@@ -87,5 +94,5 @@ export function phoneCalc(css: string, wide: number): number {
  * differently on a phone-width web page. Nothing elsewhere.
  */
 export function phonePart(part: (typeof PHONE_PARTS)[number]) {
-  return process.env.EXPO_OS === 'web' ? { dataSet: { phone: part } } : {};
+  return PHONE_LAYOUT ? { dataSet: { phone: part } } : {};
 }
