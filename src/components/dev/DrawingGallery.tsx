@@ -126,20 +126,21 @@ function PreviewDemo() {
   const candidates = atStart ? CANDIDATES : [];
   const pointed = candidates.find(({ uci }) => pointer === from(uci));
   const previewed = candidates.find(({ uci }) => pointer === to(uci));
-  const current = lastPosition(line);
-  const position = previewed ? lastPosition([...line, previewed.uci]) : current;
+  const beforePreview = lastPosition(line);
+  const position = previewed ? lastPosition([...line, previewed.uci]) : beforePreview;
   const candidateMarks = (shown: readonly Candidate[]) =>
     shown.flatMap(({ uci, tone }): Drawing[] => [
       { kind: 'glow', square: from(uci), tone },
       { kind: 'arrow', from: from(uci), to: to(uci), tone },
     ]);
-  const ghost = (square: Square): Drawing[] => {
-    const piece = pieceAt(current.fen, square);
+  // Read before the preview, which moves the piece off its square.
+  const ghostMarks = (square: Square): Drawing[] => {
+    const piece = pieceAt(beforePreview.fen, square);
     return piece ? [{ kind: 'ghost', square, piece }] : [];
   };
   const drawings: Drawing[] = previewed
     ? [
-        ...ghost(from(previewed.uci)),
+        ...ghostMarks(from(previewed.uci)),
         { kind: 'glow', square: to(previewed.uci), tone: previewed.tone },
         ...previewed.idea,
       ]

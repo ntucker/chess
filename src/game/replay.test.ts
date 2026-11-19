@@ -62,6 +62,7 @@ describe('pieceAt', () => {
     const { fen } = lastPosition(['e2e4']);
     expect(pieceAt(fen, 'e4')).toMatchObject({ role: 'pawn', color: 'white' });
     expect(pieceAt(fen, 'e2')).toBeUndefined();
+    expect(pieceAt(fen, 'z9')).toBeUndefined();
   });
 });
 
