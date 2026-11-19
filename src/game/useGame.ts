@@ -5,20 +5,12 @@ import { classifyMove } from '@/analysis/quality';
 import { useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
 import { getEvaluation } from '@/resources/evaluation';
 
-import { type GameAction, gameReducer, initialGame } from './game';
+import { type GameAction, type GameOpponent, gameReducer, initialGame } from './game';
 import { material } from './material';
 import { analyze, type Color, lastPosition, replay, toUci } from './replay';
 
 /** The least time the opponent takes to reply, so a fast answer reads as a reply, not a reflex. */
 const THINKING_MS = 400;
-
-/** Who a game is against. */
-export interface GameOpponent {
-  /** Names the opponent, so the game notices when a different one takes over. */
-  readonly id: string;
-  /** The opponent's move (UCI) after `line`, the moves so far. */
-  reply(line: readonly string[]): Promise<string>;
-}
 
 /**
  * A game against `opponent`: its moves and positions, how good each move was,
@@ -51,8 +43,8 @@ export function useGame(opponent: GameOpponent) {
 
   /** Asks the opponent to answer `after`, the moves of game `game`. */
   const ask = async (game: number, after: readonly string[]) => {
-    const ask = ++asks.current;
-    const replaced = () => ask !== asks.current;
+    const request = ++asks.current;
+    const replaced = () => request !== asks.current;
     try {
       const [uci] = await Promise.all([
         opponent.reply(after),

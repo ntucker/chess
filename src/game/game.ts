@@ -7,6 +7,14 @@ import type { MoveQuality } from '@/analysis/quality';
 
 import { type Color, lastPosition, lineMove } from './replay';
 
+/** Who a game is against. */
+export interface GameOpponent {
+  /** Names the opponent, so the game notices when a different one takes over. */
+  readonly id: string;
+  /** The opponent's move (UCI) after `line`, the moves so far. */
+  reply(line: readonly string[]): Promise<string>;
+}
+
 /** What the opponent is doing about the latest position. */
 type OpponentStatus =
   | { readonly status: 'idle' }

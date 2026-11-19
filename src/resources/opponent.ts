@@ -1,6 +1,6 @@
 import type { Controller } from '@data-client/react';
 
-import type { GameOpponent } from '@/game/useGame';
+import type { GameOpponent } from '@/game/game';
 import type { Opponent } from '@/opponent/opponent';
 
 import { getEvaluation } from './evaluation';
