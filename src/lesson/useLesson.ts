@@ -78,17 +78,18 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   const rival = opponentPlays(mode, settings.auto, store[0])
     ? lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent))
     : undefined;
-  const [{ moves: line }] = store;
-  const book = useMemo(() => bookMoves(lesson, line), [lesson, line]);
+  const [{ moves }] = store;
+  const book = useMemo(() => bookMoves(lesson, moves), [lesson, moves]);
   const game = useGame(store, rival, {
     side: lesson.side,
     active: focused,
     judge: 'stockfish',
     book,
   });
-  const { moves, ply, plies, current, canMove } = game;
+  const { ply, plies, current, canMove } = game;
   // A move played before the learner's first starts a Practice run (`modeReducer`).
   const startsRun = beforeSideMoves(plies, lesson.side, ply);
+  const kinds = moveKinds(plies, lesson.side, book);
   const view = useMemo(
     () => lessonView({ lesson, line: moves, ply, opponent }),
     [lesson, moves, ply, opponent],
@@ -96,7 +97,6 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   // A Practice run counts the game's moves as the screen gets them, whoever
   // played them and however many landed at once.
   if (modeState.mode === 'practice' && modeState.line !== moves) {
-    const kinds = moveKinds(plies, lesson.side, book);
     dispatch({ type: 'moved', from: modeState.line, line: moves, kinds });
   }
   const { key } = view;
@@ -201,10 +201,7 @@ export function useLesson(lesson: Lesson, store: GameStore) {
     /** A move played on the board now starts a Practice run: no move of the learner's comes before. */
     startsRun,
     /** The learner chooses Explore or Practice. */
-    chooseMode: (mode: LessonMode) => {
-      const kinds = moveKinds(plies, lesson.side, book);
-      dispatch({ type: 'modeChosen', mode, line: moves, kinds });
-    },
+    chooseMode: (mode: LessonMode) => dispatch({ type: 'modeChosen', mode, line: moves, kinds }),
     /** The note pointed at on the idea card. */
     pointedNote: shown.pointed,
     /** The candidate list shows its rare rows (`Guidance.rare`). */

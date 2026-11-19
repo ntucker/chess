@@ -110,15 +110,14 @@ function cleanAfter(
   { from, line, kinds }: Extract<ModeAction, { type: 'moved' }>,
 ): boolean {
   if (untouched(kinds)) return true;
-  // The same rule as `beforeSideMoves`, which tells the learner a move starts a run.
-  const firstLearner = kinds.findIndex((kind) => kind !== 'opponent');
   const kept = sharedMoves(from, line);
   const takenBack = kept < from.length;
   // A new line's last move was just played (`GameState.moves`), even when
   // it is the move that was there before.
-  const firstPlayed = Math.min(kept, line.length - 1);
-  if (kinds.slice(firstPlayed).includes('slip')) return false;
-  return firstLearner >= firstPlayed || (clean && !takenBack);
+  const playedFrom = Math.min(kept, line.length - 1);
+  if (kinds.slice(playedFrom).includes('slip')) return false;
+  // Played at or before the learner's first move, as `beforeSideMoves` tells them.
+  return untouched(kinds.slice(0, playedFrom)) || (clean && !takenBack);
 }
 
 /** No move is the learner's. */
