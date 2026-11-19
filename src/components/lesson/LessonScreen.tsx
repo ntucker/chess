@@ -44,7 +44,7 @@ export function LessonPage({ id }: { readonly id: string }) {
 /** The lesson `id`, played on the board: Explore, with the guide's opponent replying. */
 function LessonScreen({ id }: { readonly id: LessonId }) {
   const lesson = useSuspense(getLesson, id);
-  const { game, opponent, view, guidance, board, canPlay, play, point, pointed } =
+  const { game, opponent, view, guidance, board, playback, canPlay, play, point, pointed } =
     useLesson(lesson);
   const { line, ply, goto } = game;
   const learner = lesson.side;
@@ -119,7 +119,11 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
               />
             </Stack>
           ) : null}
-          <IdeaCard title={preview ? `If ${preview.san}` : 'The idea'} notes={guidance.notes} />
+          <IdeaCard
+            title={preview ? `If ${preview.san}` : 'The idea'}
+            notes={guidance.notes}
+            playback={playback}
+          />
           <Separator />
           <Stack gap="3">
             <Eyebrow>Scoresheet</Eyebrow>

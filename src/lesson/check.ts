@@ -10,7 +10,7 @@ import type { Board } from 'chessops/board';
 import { Chess } from 'chessops/chess';
 import { SquareSet } from 'chessops/squareSet';
 import { COLORS, type Color, FILE_NAMES, type NormalMove, type Piece, type Square } from 'chessops/types';
-import { kingCastlesTo, makeSquare, opposite, parseSquare, parseUci, rookCastlesTo } from 'chessops/util';
+import { makeSquare, opposite, parseSquare, parseUci } from 'chessops/util';
 
 import { balance, points, VALUES } from '@/game/material';
 import { parsePosition, parsePositionKey, positionKey, recordedMove } from '@/game/replay';
@@ -49,6 +49,7 @@ import {
   space,
   stopSquare,
 } from './pawns';
+import { PlanBoard } from './plan';
 
 /** One thing wrong with a lesson, and where: a path into the file. */
 export interface LessonProblem {
@@ -409,29 +410,13 @@ function reaches(board: Board, from: Square, to: Square, moves: number): boolean
   return false;
 }
 
-/**
- * The rook's move when the king route `from`-`to` is castling `color` may
- * still play on `board`, where earlier routes left the squares in
- * `vacated` empty; or undefined.
- */
-function castlingRook(pos: Chess, board: Board, vacated: SquareSet, color: Color, from: Square, to: Square) {
-  const side = to > from ? 'h' : 'a';
-  const rook = pos.castles.rook[color][side];
-  // Only the king that has not moved yet, from its square in `pos`, castles.
-  const king = pos.board.kingOf(color);
-  if (rook === undefined || from !== king || vacated.has(king) || vacated.has(rook)) return undefined;
-  if (kingCastlesTo(color, side) !== to) return undefined;
-  if (pos.castles.path[color][side].intersects(board.occupied)) return undefined;
-  return { from: rook, to: rookCastlesTo(color, side) };
-}
-
 function checkPlan(pos: Chess, idea: Plan) {
   oneOf(COLORS, idea.side, 'side');
   if (idea.routes.length === 0) fail('needs a route');
-  const board = pos.board.clone();
+  const plan = new PlanBoard(pos);
+  const { board } = plan;
   // Where each route's piece stands now: a piece that moves again leaves its earlier end.
   const ends = new Set<Square>();
-  let vacated = SquareSet.empty();
   idea.routes.forEach((route, i) => {
     const what = `route ${i + 1}`;
     const piece = pieceAt(board, route.from, `${what} from`);
@@ -441,13 +426,10 @@ function checkPlan(pos: Chess, idea: Plan) {
     const from = square(route.from);
     const to = square(route.to);
     if (board.get(to)?.color === idea.side) fail(`${what}: ${route.to} holds ${idea.side}'s own piece`);
-    const rook = piece.role === 'king' ? castlingRook(pos, board, vacated, idea.side, from, to) : undefined;
-    if (rook) board.set(rook.to, board.take(rook.from)!);
-    else if (!reaches(board, from, to, moves)) {
+    const before = board.clone();
+    if (!plan.play(from, to) && !reaches(before, from, to, moves)) {
       fail(`${what}: the ${piece.role} on ${route.from} cannot reach ${route.to} in ${moves} move(s)`);
     }
-    board.set(to, board.take(from)!);
-    vacated = vacated.with(from);
     ends.delete(from);
     ends.add(to);
   });
