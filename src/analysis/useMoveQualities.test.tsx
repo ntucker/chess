@@ -6,6 +6,7 @@ import { createRoot, type Root } from 'test-renderer';
 import type { Evaluation } from '@/evaluation/evaluation';
 import { replay } from '@/game/replay';
 import { getEvaluation } from '@/resources/evaluation';
+import { DEFAULT_SETTINGS } from '@/settings/settings';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 
 import type { MoveQuality } from './quality';
@@ -20,12 +21,13 @@ jest.mock('@/stockfish/engine', () => ({
   },
 }));
 
-// Maia's engine needs a native worklet runtime; these tests judge with Stockfish.
-jest.mock('@/maia/engine', () => ({}));
+// Maia's engine needs a native worklet runtime; these tests judge with the default, Stockfish.
+jest.mock('@/maia/engine', () => ({ maiaEvaluation: jest.fn() }));
 
 const MOVES = ['e2e4', 'e7e5', 'g1f3'];
 const PLIES = replay(MOVES);
-const even = (score: number): Evaluation => ({ score, pawns: 0 });
+const scored = (score: number): Evaluation => ({ score, pawns: 0 });
+const ENGINE = DEFAULT_SETTINGS.evaluationEngine;
 
 let root: Root | undefined;
 const controllers: Controller[] = [];
@@ -77,14 +79,14 @@ describe('useMoveQualities', () => {
     expect(renders.at(-1)).toEqual([undefined, undefined, undefined]);
   });
 
-  it('labels every move whose two positions are known, the shown one or not', async () => {
+  it('labels each move once both its positions are known, not only the shown one', async () => {
     await render(3);
     const [ctrl] = controllers;
     await act(async () => {
-      // White keeps an even game, then Black gives a fifth of the expected score away.
-      ctrl.setResponse(getEvaluation, 'stockfish', [], even(0.5));
-      ctrl.setResponse(getEvaluation, 'stockfish', ['e2e4'], even(0.5));
-      ctrl.setResponse(getEvaluation, 'stockfish', ['e2e4', 'e7e5'], even(0.75));
+      // White's move changes nothing; Black's gives a quarter of the expected score away.
+      ctrl.setResponse(getEvaluation, ENGINE, [], scored(0.5));
+      ctrl.setResponse(getEvaluation, ENGINE, ['e2e4'], scored(0.5));
+      ctrl.setResponse(getEvaluation, ENGINE, ['e2e4', 'e7e5'], scored(0.75));
     });
     expect(renders.at(-1)).toEqual(['best', 'blunder', undefined]);
   });
