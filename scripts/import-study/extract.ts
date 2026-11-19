@@ -2,9 +2,10 @@
  * The fixed formats of one chapter's comments, read without AI: the chapter
  * header, traps, plan lists, choice guides, evaluation glyphs, and move
  * sequences that exist only in comment text. Each comment becomes one note on
- * its move, and an idea about another position becomes a note on that one; the AI step (later) rewrites the notes' text. A chapter header is
- * the first move's comment with an "Idea:" line (extra chapters put an
- * "Extra:" line before it).
+ * its move, and an idea about another position becomes a note on that one;
+ * the AI step (later) rewrites the notes' text. A chapter header is the first
+ * move's comment with an "Idea:" line (extra chapters put an "Extra:" line
+ * before it).
  */
 import type { Chess } from 'chessops/chess';
 import type { Color } from 'chessops/types';
@@ -114,9 +115,9 @@ function sequences(move: StudyMove) {
 /** `text` shortened to a note's sentence, without a "Plan:" or "Trap:" label: the note's ideas show its kind. */
 const noteText = (text: string) => shorten(text).replace(/^(?:Plan|Trap):\s*/, '');
 
-function note(comment: string, ideas: readonly Idea[]): Note {
-  const text = noteText(comment);
-  return { text, ...(text !== comment && { original: comment }), ...(ideas.length > 0 && { ideas }) };
+function note(source: string, ideas: readonly Idea[]): Note {
+  const text = noteText(source);
+  return { text, ...(text !== source && { original: source }), ...(ideas.length > 0 && { ideas }) };
 }
 
 interface Header {
