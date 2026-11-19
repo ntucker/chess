@@ -109,7 +109,8 @@ function NoteView({
           borderTopRightRadius: theme.semantic.radius.sm,
           borderBottomRightRadius: theme.semantic.radius.sm,
         },
-        pointed && drawn
+        // Lit while its ideas are on the board: pointed at, or playing back.
+        (pointed || playing) && drawn
           ? {
               borderColor: toneColors[ideaTone(drawn, learner)],
               backgroundColor: color.tones.neutral.subtle,
