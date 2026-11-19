@@ -145,6 +145,8 @@ export default function Board({
   // `sized` follows chessground's measurements rather than the layout now,
   // since chessground draws with the size it measured until it measures again:
   // it is read when chessground is made, and then after each of its resizes.
+  // A redraw chessground queued while the board still had a size runs after it
+  // is hidden, so hiding also takes the drawn shapes away until it comes back.
   const sized = useRef(false);
   const pending = useRef(false);
   const setBoard = useEffectEvent((config: Config) => {
@@ -205,6 +207,10 @@ export default function Board({
     // first, so chessground has measured the board by the time this runs.
     const resizes = new ResizeObserver(([entry]) => {
       sized.current = entry.contentRect.width > 0 && entry.contentRect.height > 0;
+      if (!sized.current) {
+        board.set({ drawable: { autoShapes: [] } });
+        pending.current = true;
+      }
       catchUp();
     });
     resizes.observe(target);

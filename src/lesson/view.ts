@@ -144,9 +144,9 @@ export const shownKey = (key: PositionKey, preview?: Preview): PositionKey =>
 
 /**
  * The candidate `pointer` previews in `view`. A row previews its move,
- * sliding (a rare one has no row). A piece dragged over a square previews
- * its candidate landing there, rare ones too, without sliding, since the
- * piece itself is there. Example: after 1.e4, dragging the c7 pawn over c6
+ * sliding, rare or not. A piece dragged over a square previews its
+ * candidate landing there, rare ones too, without sliding, since the piece
+ * itself is there. Example: after 1.e4, dragging the c7 pawn over c6
  * previews 1...c6; over c4, nothing.
  */
 export function preview(lesson: Lesson, view: LessonView, pointer: Pointer): Preview | undefined {
@@ -158,7 +158,7 @@ export function preview(lesson: Lesson, view: LessonView, pointer: Pointer): Pre
 
 function pointed({ key, candidates }: LessonView, pointer: Pointer) {
   if (pointer.at === 'row') {
-    const candidate = candidates.find(({ move, rare }) => !rare && move.uci === pointer.uci);
+    const candidate = candidates.find(({ move }) => move.uci === pointer.uci);
     return candidate && { candidate, slide: true };
   }
   if (!pointer.to) return undefined;

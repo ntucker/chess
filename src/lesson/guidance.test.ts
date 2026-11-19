@@ -329,24 +329,24 @@ describe('guidance', () => {
       expect(types(shownPreview.drawn)).toEqual(['plan']);
     });
 
-    it('leaves a rare move off the list and the board until its piece is dragged', () => {
+    it('leaves rare moves off the list and the board until one is previewed or dragged', () => {
       const view = sampleView(MAIN, { lesson: WITH_RARE });
       const sans = (candidates: readonly Candidate[]) => candidates.map(({ san }) => san);
       const resting = guidance({ view, mode: 'explore', switches: ALL_ON });
-      expect(sans(resting.candidates)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2']);
-      expect(sans(resting.drawnCandidates)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2']);
-      expect(resting.rareCount).toBe(1);
+      expect(sans(resting.candidates)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2', 'f3']);
+      expect(sans(resting.drawnCandidates)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2', 'f3']);
+      expect(sans(resting.rare)).toEqual(['h3', 'a3', 'g3', 'b3']);
       // Picked up, the pawn draws its rare move at once, and the same over
       // its landing square, so nothing on the board moves as it is dragged.
-      const pickedUp = guidance({ view, mode: 'explore', switches: ALL_ON, dragged: 'f2' });
-      expect(sans(pickedUp.drawnCandidates)).toEqual(['f3']);
-      const onF3 = preview(WITH_RARE, view, { at: 'drag', from: 'f2', to: 'f3' });
+      const pickedUp = guidance({ view, mode: 'explore', switches: ALL_ON, dragged: 'h2' });
+      expect(sans(pickedUp.drawnCandidates)).toEqual(['h3']);
+      const onH3 = preview(WITH_RARE, view, { at: 'drag', from: 'h2', to: 'h3' });
       const over = guidance({
         view,
         mode: 'explore',
         switches: ALL_ON,
-        preview: onF3,
-        dragged: 'f2',
+        preview: onH3,
+        dragged: 'h2',
       });
       expect(over.drawnCandidates).toEqual(pickedUp.drawnCandidates);
       expect(over.drawn).toEqual(pickedUp.drawn);
@@ -360,7 +360,7 @@ describe('guidance', () => {
 
     it("doesn't tag a rare move as Stockfish's best", () => {
       const view = sampleView(MAIN, { lesson: WITH_RARE });
-      const shown = guidance({ view, mode: 'explore', switches: ALL_ON, engine: { best: 'f2f3' } });
+      const shown = guidance({ view, mode: 'explore', switches: ALL_ON, engine: { best: 'h2h3' } });
       expect(shown.best).toBeUndefined();
     });
 

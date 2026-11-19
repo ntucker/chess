@@ -208,12 +208,15 @@ describe('preview', () => {
   describe('a rare move', () => {
     const rareView = view(MAIN, { lesson: WITH_RARE });
 
-    it('previews when its piece is dragged there, but has no row', () => {
-      expect(preview(WITH_RARE, rareView, drag('f2', 'f3'))).toMatchObject({
-        candidate: { san: 'f3', rare: true },
+    it('previews when its piece is dragged there, and from its row', () => {
+      expect(preview(WITH_RARE, rareView, drag('h2', 'h3'))).toMatchObject({
+        candidate: { san: 'h3', rare: true },
         slide: false,
       });
-      expect(preview(WITH_RARE, rareView, { at: 'row', uci: 'f2f3' })).toBeUndefined();
+      expect(preview(WITH_RARE, rareView, { at: 'row', uci: 'h2h3' })).toMatchObject({
+        candidate: { san: 'h3' },
+        slide: true,
+      });
     });
   });
 });

@@ -68,6 +68,30 @@
     "@reactive/silk-core": "file:./vendor/reactive-silk-core.tgz"
   },
   "jest": {
-    "preset": "jest-expo"
+    "projects": [
+      {
+        "displayName": "native",
+        "preset": "jest-expo",
+        "testPathIgnorePatterns": [
+          "/node_modules/",
+          "\\.web\\.test\\.tsx?$"
+        ]
+      },
+      {
+        "displayName": "web",
+        "preset": "jest-expo/web",
+        "testMatch": [
+          "<rootDir>/src/**/*.web.test.ts?(x)"
+        ],
+        "transformIgnorePatterns": [
+          "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|standard-navigation|@lichess-org))",
+          "/node_modules/react-native-reanimated/plugin/",
+          "/node_modules/@react-native/babel-preset/"
+        ],
+        "transform": {
+          "\\.css$": "jest-expo/src/preset/assetFileTransformer.js"
+        }
+      }
+    ]
   }
 }
