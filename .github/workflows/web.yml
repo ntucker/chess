@@ -58,14 +58,13 @@ jobs:
         id: pages
         uses: actions/configure-pages@v5
 
+      # Previews skip minifying, which takes about 40% of the export, so they
+      # come up sooner.
       - name: Export the web app
         env:
           PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}${{ github.event_name == 'pull_request' && format('/pr-preview/pr-{0}', github.event.number) || '' }}
-          # Previews skip minifying, which takes about 40% of the export, so
-          # they come up sooner. The app behaves the same.
-          MINIFY: ${{ github.event_name == 'pull_request' && '--no-minify' || '' }}
         run: |
-          yarn expo export --platform web $MINIFY
+          yarn expo export --platform web ${{ github.event_name == 'pull_request' && '--no-minify' || '' }}
           # Pages shows the site's root 404.html for any path it has no file for.
           cp dist/+not-found.html dist/404.html
 
@@ -80,18 +79,20 @@ jobs:
     name: Publish
     needs: build
     # Runs after a build, or alone when a pull request closes. Only main
-    # replaces the site. Fork pull requests get a read-only token, so they
-    # never publish.
+    # replaces the site. Fork and Dependabot pull requests get a read-only
+    # token, so they never publish.
     if: >-
       !cancelled()
       && (needs.build.result == 'success' || github.event.action == 'closed')
       && (github.event_name == 'pull_request'
-        && github.event.pull_request.head.repo.full_name == github.repository
+        && !github.event.pull_request.head.repo.fork
+        && github.actor != 'dependabot[bot]'
         || github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # One publish per target at a time, so a close waits for the preview it
-    # removes. Different targets retry on each other's pushes below.
+    # removes. Different targets retry on each other's pushes below. (One
+    # group for all would cancel all but the newest waiting run.)
     concurrency:
       group: pages-publish-${{ github.event.pull_request.number || 'main' }}
     permissions:
@@ -112,29 +113,20 @@ jobs:
           path: site
 
       - name: Update the gh-pages branch
-        id: push
         env:
-          SITE: ${{ github.event.action != 'closed' && format('{0}/site', github.workspace) || '' }}
           GIT_AUTHOR_NAME: github-actions[bot]
           GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
           GIT_COMMITTER_NAME: github-actions[bot]
           GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
         run: |
-          # A build that finishes after its pull request closed would bring
-          # back the preview that closing removed.
-          if [ -n "$SITE" ] && [ -n "$PR" ] && [ "$(gh pr view "$PR" -R "$GITHUB_REPOSITORY" --json state --jq .state)" != OPEN ]; then
-            echo "#$PR is closed; not publishing its preview."
-            exit 0
-          fi
           # gh-pages holds a single commit, so old builds don't pile up in every
           # clone. Each run rebuilds that commit from the branch's current tree
           # and pushes only if nobody pushed in between; otherwise it retries.
+          # Every run also keeps previews only for open pull requests, which
+          # removes a closed one's, even when its last build finished late.
+          shopt -s nullglob
+          site="$GITHUB_WORKSPACE/site"
           pages="$RUNNER_TEMP/pages"
-          # Publishing main also drops previews whose pull request closed
-          # without one of these runs removing them.
-          if [ "$TARGET" = . ]; then
-            open=" $(gh pr list -R "$GITHUB_REPOSITORY" --state open --limit 1000 --json number --jq '.[].number' | tr '\n' ' ') "
-          fi
           for attempt in 1 2 3 4 5; do
             cd "$RUNNER_TEMP" && rm -rf "$pages" && git init -q "$pages" && cd "$pages"
             git remote add origin "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git"
@@ -143,54 +135,53 @@ jobs:
               lease=$(git rev-parse FETCH_HEAD)
               git checkout -q FETCH_HEAD
             fi
+            # Listed after the fetch, so a preview pushed since then is kept.
+            open=$(gh pr list -R "$GITHUB_REPOSITORY" --state open --limit 1000 --json number --jq '.[].number')
+            for preview in pr-preview/pr-*; do
+              grep -qx "${preview#pr-preview/pr-}" <<< "$open" || rm -rf "$preview"
+            done
             if [ "$TARGET" = . ]; then
               find . -mindepth 1 -maxdepth 1 ! -name .git ! -name pr-preview -exec rm -rf {} +
-              for preview in pr-preview/pr-*; do
-                if [ -d "$preview" ] && [[ "$open" != *" ${preview#pr-preview/pr-} "* ]]; then
-                  rm -rf "$preview"
-                fi
-              done
             else
               rm -rf "$TARGET"
             fi
-            if [ -n "$SITE" ]; then
-              mkdir -p "$TARGET" && cp -R "$SITE/." "$TARGET/"
+            if [ -d "$site" ] && { [ "$TARGET" = . ] || grep -qx "$PR" <<< "$open"; }; then
+              mkdir -p "$TARGET"
+              cp -R "$site/." "$TARGET/"
             fi
             # Pages would otherwise run Jekyll, which drops _expo/.
             touch .nojekyll
             git add -A
-            commit=$(git commit-tree "$(git write-tree)" -m "$([ -n "$SITE" ] && echo Publish || echo Remove) $TARGET (run $GITHUB_RUN_ID)")
-            if git push -q --force-with-lease="gh-pages:$lease" origin "$commit:refs/heads/gh-pages"; then
-              echo "published=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
+            commit=$(git commit-tree "$(git write-tree)" -m "Web run $GITHUB_RUN_ID ($GITHUB_EVENT_NAME${PR:+ #$PR})")
+            git push -q --force-with-lease="gh-pages:$lease" origin "$commit:refs/heads/gh-pages" && exit 0
             sleep $((attempt * 5))
           done
           exit 1
 
       - name: Comment the preview address
-        if: github.event_name == 'pull_request' && steps.push.outputs.published == 'true'
+        if: github.event_name == 'pull_request'
         env:
           CLOSED: ${{ github.event.action == 'closed' }}
-          URL: ${{ needs.build.outputs.site-url }}/pr-preview/pr-${{ github.event.pull_request.number }}/
+          URL: ${{ needs.build.outputs.site-url }}/${{ env.TARGET }}/
           SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           # One comment per pull request, updated on every push.
           marker='<!-- web-preview -->'
-          if [ "$CLOSED" = true ]; then
-            body="$marker
-          Preview removed: this pull request closed."
-          else
-            body="$marker
-          **Preview:** $URL
+          body="Preview removed: this pull request closed."
+          if [ "$CLOSED" != true ]; then
+            body="**Preview:** $URL
 
           Built from $SHA, without minifying. Pages takes about a minute to serve a new build."
           fi
+          # Every matching id, first one kept (head -n 1 could fail the step
+          # under pipefail by closing the pipe early).
           ids=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
             --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id")
           id=${ids%%$'\n'*}
           if [ -n "$id" ]; then
-            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -f body="$body" > /dev/null
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -f body="$marker
+          $body" > /dev/null
           elif [ "$CLOSED" != true ]; then
-            gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -f body="$body" > /dev/null
+            gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -f body="$marker
+          $body" > /dev/null
           fi
