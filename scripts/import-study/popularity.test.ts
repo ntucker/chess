@@ -43,8 +43,16 @@ describe('addPopularity', () => {
     };
     const result = await addPopularity(lesson, explorer, '2026-11-19');
 
-    expect([...new Set(asked.map(([at]) => at))]).toEqual([AFTER_C6, AFTER_D5, AFTER_BF5, AFTER_E5, AFTER_NF3]);
-    expect(asked.filter(([at]) => at === AFTER_NF3).map(([, band]) => band)).toEqual(RATING_BANDS.slice(1));
+    expect([...new Set(asked.map(([at]) => at))]).toEqual([
+      AFTER_C6,
+      AFTER_D5,
+      AFTER_BF5,
+      AFTER_E5,
+      AFTER_NF3,
+    ]);
+    expect(asked.filter(([at]) => at === AFTER_NF3).map(([, band]) => band)).toEqual(
+      RATING_BANDS.slice(1),
+    );
     expect(result.popularity).toEqual({
       ratingBands: RATING_BANDS,
       speeds: ['blitz', 'rapid', 'classical'],
@@ -67,7 +75,12 @@ describe('addPopularity', () => {
       () => true,
     );
     const small = mergeChapters(
-      { id: 'test', title: 'Test', side: 'black', source: { title: 'Test', author: 'Test', url: '' } },
+      {
+        id: 'test',
+        title: 'Test',
+        side: 'black',
+        source: { title: 'Test', author: 'Test', url: '' },
+      },
       transposing,
       transposing.map((chapter) => extractChapter(chapter, 'black')),
     );
@@ -78,18 +91,22 @@ describe('addPopularity', () => {
     };
     await addPopularity(small, explorer, '2026-11-19');
 
-    expect(asked.filter((at) => at === key('e4', 'c6', 'd4', 'd5', 'Nc3', 'dxe4', 'Nxe4'))).toHaveLength(
-      RATING_BANDS.length,
-    );
+    expect(
+      asked.filter((at) => at === key('e4', 'c6', 'd4', 'd5', 'Nc3', 'dxe4', 'Nxe4')),
+    ).toHaveLength(RATING_BANDS.length);
   });
 });
 
 describe('lichessExplorer', () => {
-  const answer = (status: number, body: unknown = {}) => new Response(JSON.stringify(body), { status });
+  const answer = (status: number, body: unknown = {}) =>
+    new Response(JSON.stringify(body), { status });
 
   it('waits a minute after a 429, sends the token, and answers from its cache after', async () => {
     const cacheFile = join(mkdtempSync(join(tmpdir(), 'explorer-')), 'explorer.jsonl');
-    const replies = [answer(429), answer(200, { moves: [{ uci: 'e2e4', white: 5, draws: 1, black: 4 }] })];
+    const replies = [
+      answer(429),
+      answer(200, { moves: [{ uci: 'e2e4', white: 5, draws: 1, black: 4 }] }),
+    ];
     const requests: [URL, RequestInit | undefined][] = [];
     const waits: number[] = [];
     const fetch = (async (url: URL, init?: RequestInit) => {
@@ -111,7 +128,10 @@ describe('lichessExplorer', () => {
 
   it('asks again for an answer whose cache line a stopped crawl cut short, and resumes after', async () => {
     const cacheFile = join(mkdtempSync(join(tmpdir(), 'explorer-')), 'explorer.jsonl');
-    writeFileSync(cacheFile, `${JSON.stringify([`1400 ${key()}`, { e2e4: 10 }])}\n["1600 ${key()}",{"e2`);
+    writeFileSync(
+      cacheFile,
+      `${JSON.stringify([`1400 ${key()}`, { e2e4: 10 }])}\n["1600 ${key()}",{"e2`,
+    );
     let requests = 0;
     const fetch = (async () => {
       requests++;

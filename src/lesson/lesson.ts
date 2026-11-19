@@ -154,15 +154,7 @@ export const noteShows = (ideas: readonly Idea[] = []): NoteShows =>
  * that position, and one in a move's notes in the position after the move.
  */
 export type Idea =
-  | Purpose
-  | Pressure
-  | Plan
-  | Threat
-  | Trap
-  | Line
-  | Structure
-  | Imbalance
-  | EvaluationIdea;
+  Purpose | Pressure | Plan | Threat | Trap | Line | Structure | Imbalance | EvaluationIdea;
 
 /** What one piece does to its targets. The piece is the one on `from`. */
 export interface Purpose {
@@ -184,7 +176,15 @@ export interface Purpose {
  * - `aims`: the piece is a line piece whose line reaches the target once the
  *   pieces between are gone, and at least one piece is between ("x-ray").
  */
-export const RELATIONS = ['attacks', 'defends', 'controls', 'checks', 'pins', 'blocks', 'aims'] as const;
+export const RELATIONS = [
+  'attacks',
+  'defends',
+  'controls',
+  'checks',
+  'pins',
+  'blocks',
+  'aims',
+] as const;
 export type Relation = (typeof RELATIONS)[number];
 
 /**
@@ -269,12 +269,7 @@ export interface Structure {
 export type StructureFeature =
   | {
       readonly kind:
-        | 'isolatedPawn'
-        | 'backwardPawn'
-        | 'passedPawn'
-        | 'pawnChain'
-        | 'weakSquare'
-        | 'outpost';
+        'isolatedPawn' | 'backwardPawn' | 'passedPawn' | 'pawnChain' | 'weakSquare' | 'outpost';
       readonly squares: readonly SquareName[];
     }
   | {
@@ -315,4 +310,3 @@ export const EVALUATIONS = [
   'blackWinning',
 ] as const;
 export type Evaluation = (typeof EVALUATIONS)[number];
-

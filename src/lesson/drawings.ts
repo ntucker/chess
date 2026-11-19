@@ -124,16 +124,14 @@ export function ideaDrawings(idea: Idea, position: Chess, learner: Color): Drawi
     case 'plan': {
       const numbered = idea.routes.length > 1;
       return [
-        ...idea.routes.map(
-          ({ from, to }, n): Drawing => ({
-            kind: 'arrow',
-            from,
-            to,
-            tone,
-            dashed: true,
-            step: numbered ? n + 1 : undefined,
-          }),
-        ),
+        ...idea.routes.map(({ from, to }, n): Drawing => ({
+          kind: 'arrow',
+          from,
+          to,
+          tone,
+          dashed: true,
+          step: numbered ? n + 1 : undefined,
+        })),
         ...(idea.goals ?? []).map((square): Drawing => ({ kind: 'ring', square, tone: 'target' })),
       ];
     }
@@ -260,7 +258,11 @@ function structureDrawings({ side, features }: Structure, board: Board, tone: To
 function imbalanceDrawings({ side, kind }: Imbalance, board: Board, tone: Tone): Drawing[] {
   switch (kind) {
     case 'bishopPair':
-      return squaresOf(board.pieces(side, 'bishop')).map((square) => ({ kind: 'glow', square, tone }));
+      return squaresOf(board.pieces(side, 'bishop')).map((square) => ({
+        kind: 'glow',
+        square,
+        tone,
+      }));
     case 'space':
       return marked(squaresOf(spaceSquares(board, side)), tone, board);
     case 'material':
@@ -280,14 +282,23 @@ const rings = (squares: readonly SquareName[], tone: Tone): Drawing[] =>
  */
 function marked(squares: readonly SquareName[], tone: Tone, board: Board): Drawing[] {
   const occupied = (square: SquareName) => board.has(parseSquare(square)!);
-  return [...tint(squares.filter((square) => !occupied(square)), tone), ...rings(squares.filter(occupied), tone)];
+  return [
+    ...tint(
+      squares.filter((square) => !occupied(square)),
+      tone,
+    ),
+    ...rings(squares.filter(occupied), tone),
+  ];
 }
 
 const tint = (squares: SquareName[], tone: Tone): Drawing[] =>
   squares.length ? [{ kind: 'tint', squares, tone }] : [];
 
 const fileSquares = (files: readonly FileName[]) =>
-  files.reduce((set, file) => set.union(SquareSet.fromFile(FILE_NAMES.indexOf(file))), SquareSet.empty());
+  files.reduce(
+    (set, file) => set.union(SquareSet.fromFile(FILE_NAMES.indexOf(file))),
+    SquareSet.empty(),
+  );
 
 /** `side`'s pawns on `files`. */
 const filePawns = (board: Board, side: Color, files: readonly FileName[]) =>
@@ -303,7 +314,8 @@ const moveArrow = (uci: Uci, tone: Tone, step?: number): Extract<Drawing, { kind
 });
 
 /** Stockfish's best move, where guidance marks it (see `Guidance.best`). */
-const bestDrawings = (best: Uci | undefined): Drawing[] => (best ? [moveArrow(best, 'engine')] : []);
+const bestDrawings = (best: Uci | undefined): Drawing[] =>
+  best ? [moveArrow(best, 'engine')] : [];
 
 /**
  * A trap the line fell into, while the board shows where it landed: the

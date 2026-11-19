@@ -21,7 +21,10 @@ export function DevPage({
     <View
       style={[
         devStyles.fill,
-        { backgroundColor: theme.semantic.color.surface, backgroundImage: spotlight[theme.colorScheme] },
+        {
+          backgroundColor: theme.semantic.color.surface,
+          backgroundImage: spotlight[theme.colorScheme],
+        },
       ]}
     >
       <SafeAreaView style={devStyles.fill}>
@@ -49,7 +52,9 @@ export function FramedBoard({ children }: { readonly children: ReactNode }) {
   const { theme } = useTheme();
   return (
     <Surface elevation="overlay" radius="md" border="subtle" style={styles.frame}>
-      <View style={[devStyles.fill, { borderRadius: theme.semantic.radius.md - 1, overflow: 'hidden' }]}>
+      <View
+        style={[devStyles.fill, { borderRadius: theme.semantic.radius.md - 1, overflow: 'hidden' }]}
+      >
         {children}
       </View>
     </Surface>

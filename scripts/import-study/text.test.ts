@@ -27,7 +27,9 @@ describe('shorten', () => {
   });
 
   it('reads past move numbers and glyphs on moves', () => {
-    expect(shorten('Trap: 5.e6? fxe6 and White is worse. Then more.')).toBe('Trap: 5.e6? fxe6 and White is worse.');
+    expect(shorten('Trap: 5.e6? fxe6 and White is worse. Then more.')).toBe(
+      'Trap: 5.e6? fxe6 and White is worse.',
+    );
     expect(shorten('After 4. Nf3 Black plays ...e6! with ease. Next.')).toBe(
       'After 4. Nf3 Black plays ...e6! with ease.',
     );
@@ -35,7 +37,9 @@ describe('shorten', () => {
   });
 
   it('ends a sentence at a number or a move that ends it', () => {
-    expect(shorten('The knight is lost on move 12. Black resigns.')).toBe('The knight is lost on move 12.');
+    expect(shorten('The knight is lost on move 12. Black resigns.')).toBe(
+      'The knight is lost on move 12.',
+    );
     expect(shorten('Black should play Nf6! Then White is stuck.')).toBe('Black should play Nf6!');
     expect(shorten('...Nc6! Black plans ...Nb4. More.')).toBe('...Nc6! Black plans ...Nb4.');
     expect(shorten('12. Nf3! Black is lost. More.')).toBe('12. Nf3! Black is lost.');
@@ -86,13 +90,19 @@ describe('moveInWords', () => {
   });
 
   it('says check, mate and promotion', () => {
-    expect(words('4k3/5p2/8/8/2B5/8/8/4K3 w - - 0 1', 'Bxf7+')).toBe('Taking on f7 with the bishop, giving check');
-    expect(words('4r1k1/5ppp/8/8/8/8/5PPP/4R1K1 b - - 0 1', 'Rxe1#')).toBe('Taking on e1 with the rook, giving mate');
+    expect(words('4k3/5p2/8/8/2B5/8/8/4K3 w - - 0 1', 'Bxf7+')).toBe(
+      'Taking on f7 with the bishop, giving check',
+    );
+    expect(words('4r1k1/5ppp/8/8/8/8/5PPP/4R1K1 b - - 0 1', 'Rxe1#')).toBe(
+      'Taking on e1 with the rook, giving mate',
+    );
     expect(words('rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2', 'Qh4#')).toBe(
       'Mating with the queen on h4',
     );
     expect(words('5k2/8/8/8/8/8/8/4K2R w K - 0 1', 'O-O+')).toBe('Castling short, giving check');
-    expect(words('8/4P3/8/8/8/8/k7/4K3 w - - 0 1', 'e8=Q')).toBe('Pushing the pawn to e8 and promoting to a queen');
+    expect(words('8/4P3/8/8/8/8/k7/4K3 w - - 0 1', 'e8=Q')).toBe(
+      'Pushing the pawn to e8 and promoting to a queen',
+    );
     expect(words('3r4/4Pk2/8/8/8/8/8/4K3 w - - 0 1', 'exd8=N+')).toBe(
       'Taking on d8 with the pawn and promoting to a knight, giving check',
     );

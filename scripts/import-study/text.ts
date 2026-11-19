@@ -39,7 +39,11 @@ export function namedMoves(text: string): NamedMove[] {
     } else if (bareDots) {
       moves.push({ san, side: 'black' });
     } else {
-      moves.push({ san, ply: previous?.ply && previous.ply + 1, side: previous?.side && opposite(previous.side) });
+      moves.push({
+        san,
+        ply: previous?.ply && previous.ply + 1,
+        side: previous?.side && opposite(previous.side),
+      });
     }
   }
   return moves;
@@ -72,7 +76,9 @@ export function sentenceEnds(text: string): number[] {
     const opensSentence = text
       .slice(ends.at(-1) ?? 0, match.index)
       .split(/\s+/)
-      .every((before) => before === '' || /^(?:\d+\.*|\.\.\.)$/.test(before) || MOVE_WORD.test(before));
+      .every(
+        (before) => before === '' || /^(?:\d+\.*|\.\.\.)$/.test(before) || MOVE_WORD.test(before),
+      );
     const newSentence = /^[A-Z]/.test(next) && !nextIsMove && !opensSentence;
     const glyph = !marks.includes('.') && MOVE_WORD.test(word) && !newSentence;
     if (!moveNumber && !glyph) ends.push(end);
@@ -89,7 +95,9 @@ export function shorten(text: string): string {
   const trimmed = text.trim();
   const sentence = trimmed.slice(0, sentenceEnds(trimmed)[0] ?? trimmed.length);
   const words = sentence.split(/\s+/).filter(Boolean);
-  return words.length <= MAX_NOTE_WORDS ? words.join(' ') : `${words.slice(0, MAX_NOTE_WORDS).join(' ')}…`;
+  return words.length <= MAX_NOTE_WORDS
+    ? words.join(' ')
+    : `${words.slice(0, MAX_NOTE_WORDS).join(' ')}…`;
 }
 
 /**
@@ -116,7 +124,8 @@ export function moveInWords(pos: Chess, uci: Uci): string {
   const castles = castlingSide(pos, move);
   const capture =
     !castles &&
-    (pos.board.occupied.has(move.to) || (piece === 'pawn' && squareFile(move.to) !== squareFile(move.from)));
+    (pos.board.occupied.has(move.to) ||
+      (piece === 'pawn' && squareFile(move.to) !== squareFile(move.from)));
   const after = pos.clone();
   after.play(move);
   const mate = after.isCheckmate();
@@ -150,7 +159,13 @@ const stands = (words: string) =>
 const VERDICTS: readonly [RegExp, (side: Color) => Direction][] = [
   [stands('better|winning'), (side) => side],
   [stands('worse|losing|lost'), (side) => opposite(side)],
-  [new RegExp(String.raw`\b${SIDE} keeps? (?:a|the) (?:small|slight) (?:edge|plus|advantage)\b`, 'g'), (side) => side],
+  [
+    new RegExp(
+      String.raw`\b${SIDE} keeps? (?:a|the) (?:small|slight) (?:edge|plus|advantage)\b`,
+      'g',
+    ),
+    (side) => side,
+  ],
   [new RegExp(String.raw`\bsmall ${SIDE} edge\b`, 'g'), (side) => side],
   [
     /\b(?:position|game|line|it) is (?:\w+ )?(?:equal|level|balanced)\b|\b(?:roughly|dead|about|completely) (?:equal|level)\b|\bequal position\b/g,

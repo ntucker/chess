@@ -41,9 +41,7 @@ function policyPlane(df: number, dr: number, promotion: string): number {
   const jump = KNIGHT_JUMPS.findIndex(([f, r]) => f === df && r === dr);
   if (jump >= 0) return 56 + jump;
   const distance = Math.max(Math.abs(df), Math.abs(dr));
-  const direction = DIRECTIONS.findIndex(
-    ([f, r]) => f === df / distance && r === dr / distance,
-  );
+  const direction = DIRECTIONS.findIndex(([f, r]) => f === df / distance && r === dr / distance);
   return direction * 7 + distance - 1;
 }
 
@@ -86,8 +84,7 @@ export const POLICY_SLOTS: ReadonlyMap<string, number> = (() => {
  */
 export function policySlot(move: NormalMove, blackToMove: boolean): number | undefined {
   const mirror = blackToMove ? 56 : 0;
-  const promotion =
-    move.promotion && move.promotion !== 'knight' ? roleToChar(move.promotion) : '';
+  const promotion = move.promotion && move.promotion !== 'knight' ? roleToChar(move.promotion) : '';
   return POLICY_SLOTS.get(
     makeSquare(move.from ^ mirror) + makeSquare(move.to ^ mirror) + promotion,
   );

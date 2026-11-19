@@ -33,7 +33,8 @@ export function trapLines(move: StudyMove, learner: Color): TrapLine[] {
       const outcome = sideDoes(fell, learner, result);
       const text = `${outcome[0].toUpperCase()}${outcome.slice(1)} at the end of this line.`;
       // A line has no "loses material" verdict: a sacrifice the study says mates is winning.
-      const evaluation = verdict === 'losesMaterial' ? (`${opposite(fell)}Winning` as const) : verdict;
+      const evaluation =
+        verdict === 'losesMaterial' ? (`${opposite(fell)}Winning` as const) : verdict;
       return [{ spot, idea: { type: 'line', moves, verdict: evaluation }, text, original: span }];
     }
     return [
@@ -84,7 +85,9 @@ export function watchOuts(chapter: Chapter, watchOut: string, learner: Color): F
     const bait = nearestMatch(chapterMoves(chapter), named, named.ply);
     if (!bait) return [];
     const moves = [...mainLine(bait)].slice(0, TRAP_PLIES).map((move) => move.uci);
-    const spot = bait.parent ? { move: bait.parent, pos: bait.parent.after } : { pos: chapter.start };
+    const spot = bait.parent
+      ? { move: bait.parent, pos: bait.parent.after }
+      : { pos: chapter.start };
     const idea = { type: 'trap', moves, verdict: 'losesMaterial' } as const;
     const text = trapText(spot.pos, moves[0], learner, loses);
     return [{ spot, idea, text, original: `Watch out: ${span}.` }];

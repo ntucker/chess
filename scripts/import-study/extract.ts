@@ -79,7 +79,8 @@ const EVALUATION_TEXT: Readonly<Record<Evaluation, string>> = {
 };
 
 /** Two or more moves in a row, the first numbered: `9...Qa5+ 10.Nc3 e6`. */
-const SEQUENCE = /\d+\s?\.(?:\.\.)?\s?[^\s,;()]+(?:\s+(?:\d+\s?\.(?:\.\.)?\s?)?[KQRBNOa-h][^\s,;()]*)+/g;
+const SEQUENCE =
+  /\d+\s?\.(?:\.\.)?\s?[^\s,;()]+(?:\s+(?:\d+\s?\.(?:\.\.)?\s?)?[KQRBNOa-h][^\s,;()]*)+/g;
 
 export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
   const moveNotes: MoveNote[] = [];
@@ -102,7 +103,10 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
       ...traps,
       ...(evaluation && evaluation !== 'contradicted' ? [evaluation] : []),
     ];
-    branches.push(...traps.map(({ spot, idea }) => ({ spot, ucis: idea.moves })), ...sequences(move));
+    branches.push(
+      ...traps.map(({ spot, idea }) => ({ spot, ucis: idea.moves })),
+      ...sequences(move),
+    );
     choices.push(...choiceGuide(move, learner));
 
     const own: Found[] = [];
@@ -130,8 +134,17 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
 }
 
 /** The plans `move`'s comment states; a chapter header's watch-outs count as plans of the chapter. */
-function plans(chapter: Chapter, move: StudyMove, header: Header | undefined, learner: Color): Found[] {
-  if (header) return [...planLists(move, header.idea, learner, true), ...watchOuts(chapter, header.watchOut, learner)];
+function plans(
+  chapter: Chapter,
+  move: StudyMove,
+  header: Header | undefined,
+  learner: Color,
+): Found[] {
+  if (header)
+    return [
+      ...planLists(move, header.idea, learner, true),
+      ...watchOuts(chapter, header.watchOut, learner),
+    ];
   return move.comment ? planLists(move, move.comment, learner) : [];
 }
 
@@ -166,7 +179,8 @@ interface Header {
 }
 
 /** The rest of `comment`'s line that starts with `name:`, if it has one. */
-const commentPart = (comment: string, name: string) => comment.match(new RegExp(`^${name}:[ \\t]*(.*)$`, 'm'))?.[1];
+const commentPart = (comment: string, name: string) =>
+  comment.match(new RegExp(`^${name}:[ \\t]*(.*)$`, 'm'))?.[1];
 
 /** The chapter header in `comment`, the first move's, if it has an "Idea:" line. */
 function readHeader(chapter: Chapter, comment: string): Header | undefined {
@@ -193,5 +207,9 @@ function glyphEvaluation(move: StudyMove, learner: Color): Found | 'contradicted
   if (!value) return undefined;
   const verdicts = textVerdicts(move.comment, learner);
   if (verdicts.size > 0 && !verdicts.has(direction(value))) return 'contradicted';
-  return { spot: { move, pos: move.after }, idea: { type: 'evaluation', value }, text: EVALUATION_TEXT[value] };
+  return {
+    spot: { move, pos: move.after },
+    idea: { type: 'evaluation', value },
+    text: EVALUATION_TEXT[value],
+  };
 }

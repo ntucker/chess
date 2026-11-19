@@ -55,7 +55,9 @@ export function noteComment(moveNote: MoveNote, chapter: ChapterNotes): Comment 
   const comment = fragment ? `${previous} ${source.comment}` : source.comment;
   const extracted = [
     ...(note.ideas ?? []),
-    ...chapter.positionNotes.filter((other) => other.source === source).flatMap((other) => other.note.ideas ?? []),
+    ...chapter.positionNotes
+      .filter((other) => other.source === source)
+      .flatMap((other) => other.note.ideas ?? []),
   ];
   const fenBefore = makeFen(move.before.toSetup());
   return {
@@ -100,7 +102,9 @@ function pieces(pos: Chess): Record<Color, string> {
   const list = (color: Color) =>
     ROLES.toReversed()
       .flatMap((role) =>
-        [...pos.board.pieces(color, role)].map((sq) => `${roleToChar(role).toUpperCase()}${makeSquare(sq)}`),
+        [...pos.board.pieces(color, role)].map(
+          (sq) => `${roleToChar(role).toUpperCase()}${makeSquare(sq)}`,
+        ),
       )
       .join(' ');
   return Object.fromEntries(COLORS.map((color) => [color, list(color)])) as Record<Color, string>;
