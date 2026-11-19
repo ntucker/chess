@@ -10,7 +10,6 @@ import { OpponentChoice } from '@/components/OpponentChoice';
 import { Scoresheet } from '@/components/Scoresheet';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { colorName, opposite } from '@/game/replay';
-import { mainCandidate } from '@/lesson/drawings';
 import type { Candidate } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
 import type { LessonView } from '@/lesson/view';
@@ -43,8 +42,20 @@ export function LessonPage({ id }: { readonly id: string }) {
 /** The lesson `id`, played on the board: Explore, with the guide's opponent replying. */
 function LessonScreen({ id }: { readonly id: LessonId }) {
   const lesson = useSuspense(getLesson, id);
-  const lessonState = useLesson(lesson);
-  const { game, opponent, view, guidance, board, playback, canPlay, play } = lessonState;
+  const {
+    game,
+    opponent,
+    view,
+    guidance,
+    board,
+    playback,
+    canPlay,
+    play,
+    pointedNote,
+    pointRow,
+    pointNote,
+    leave,
+  } = useLesson(lesson);
   const learner = lesson.side;
   const rival = opposite(learner);
   const described = describeOpponent(opponent);
@@ -69,7 +80,6 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
       board={
         <BoardColumn
           game={game}
-          side={learner}
           rival={{
             name: colorName(rival),
             detail: `The guide's moves, then ${described.tagline.toLowerCase()}`,
@@ -85,7 +95,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
           />
           <Separator />
           {/* Leaving a row for the idea card keeps its preview, so its notes can be pointed at. */}
-          <PointingArea onLeave={lessonState.leave}>
+          <PointingArea onLeave={leave}>
             {guidance.candidates.length ? (
               <Stack gap="3">
                 <Eyebrow>
@@ -93,12 +103,12 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
                 </Eyebrow>
                 <CandidateList
                   candidates={guidance.candidates}
-                  main={mainCandidate(guidance.candidates)}
+                  main={guidance.main}
                   pointed={preview?.move.uci}
                   leadsTo={leadsTo}
                   playable={canPlay}
                   onPlay={play}
-                  onPoint={lessonState.pointRow}
+                  onPoint={pointRow}
                 />
               </Stack>
             ) : null}
@@ -107,8 +117,9 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
               notes={guidance.notes}
               learner={learner}
               playback={playback}
-              pointed={lessonState.pointedNote}
-              onPoint={lessonState.pointNote}
+              pointable={guidance.pointable}
+              pointed={pointedNote}
+              onPoint={pointNote}
             />
           </PointingArea>
           <Separator />

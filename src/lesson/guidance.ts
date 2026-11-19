@@ -24,7 +24,7 @@
  * into board shapes.
  */
 import { type Idea, ideaPosition, type Note, type PositionKey, type Uci } from './lesson';
-import type { Candidate } from './select';
+import { type Candidate, mainCandidate } from './select';
 import type { LandedTrap, LessonView, Preview, ShownNote } from './view';
 
 export type LessonMode = 'explore' | 'practice';
@@ -73,9 +73,13 @@ export type ShownPlayback = ShownIdea & { readonly idea: PlayedBack };
 export interface Guidance {
   /** The candidate list. */
   readonly candidates: readonly Candidate[];
+  /** The candidate to look at first (`mainCandidate`), drawn and listed as the main one. */
+  readonly main?: Candidate;
   readonly preview?: Preview;
   /** The idea card's notes: the preview's while a move is previewed. */
   readonly notes: readonly ShownNote[];
+  /** Of those notes, the ones the learner can point at: their ideas draw on the board. */
+  readonly pointable: readonly Note[];
   /** The ideas of those notes the switches allow: what can be drawn or played back. */
   readonly ideas: readonly ShownIdea[];
   /** Of `ideas`, those the board draws now; of several plans, only the first. */
@@ -85,8 +89,9 @@ export interface Guidance {
   /** The idea playing back, once its note's playback has started. */
   readonly playing?: ShownPlayback;
   /**
-   * Stockfish's best move to mark. Inside the guide the candidates are what
-   * is highlighted, so it is tagged only when it isn't one of them.
+   * Stockfish's best move to mark, while nothing is previewed. Inside the
+   * guide the candidates are what is highlighted, so it is tagged only when
+   * it isn't one of them.
    */
   readonly best?: Uci;
   /** Stockfish's top three, listed only beyond the guide. */
@@ -106,37 +111,61 @@ export function guidance(input: GuidanceInput): Guidance {
   const candidates = choices ? view.candidates : [];
   const playing = input.playing && notePlayback(ideas, input.playing);
   // A note with nothing to draw leaves the board as it is.
-  const pointedNote = notes.find(
-    ({ note }) =>
-      note === pointed && note.ideas?.some((idea) => idea.type !== 'evaluation' && allowed(idea)),
-  );
-  const drawnCandidates =
-    playing || pointedNote || preview?.slide
-      ? []
-      : preview
-        ? candidates.filter(({ from }) => from === preview.candidate.from)
-        : candidates;
-  const drawn = playing
-    ? []
-    : pointedNote
-      ? noteIdeas(pointedNote, allowed)
-      : preview || !drawnCandidates.length
-        ? ideas
-        : ideas.filter(({ idea }) => idea.type === 'trap');
-  const best = explore ? engine?.best : undefined;
+  const pointable = notes
+    .filter(({ note }) => note.ideas?.some((idea) => idea.type !== 'evaluation' && allowed(idea)))
+    .map(({ note }) => note);
+  const pointedNote = notes.find(({ note }) => note === pointed && pointable.includes(note));
+  const board = boardShown({ candidates, preview, ideas, playing, pointed: pointedNote, allowed });
+  const best = explore && !preview ? engine?.best : undefined;
 
   return {
     candidates,
+    main: mainCandidate(candidates),
     preview,
     notes,
+    pointable,
     ideas,
-    drawn: firstPlanOnly(drawn),
-    drawnCandidates,
+    drawn: firstPlanOnly(board.drawn),
+    drawnCandidates: board.candidates,
     playing,
     best: view.candidates.some(({ move }) => move.uci === best) ? undefined : best,
     top: explore && view.place !== 'inside' ? (engine?.top ?? []) : [],
     trap: view.trap,
   };
+}
+
+/**
+ * What the board draws: nothing while a note plays back; a pointed note's
+ * ideas alone; a preview's ideas, with the pointed piece's candidates when
+ * it doesn't slide; or else the candidates, with only traps beside them
+ * (every idea where there are none).
+ */
+function boardShown({
+  candidates,
+  preview,
+  ideas,
+  playing,
+  pointed,
+  allowed,
+}: {
+  readonly candidates: readonly Candidate[];
+  readonly preview?: Preview;
+  readonly ideas: readonly ShownIdea[];
+  readonly playing?: ShownPlayback;
+  readonly pointed?: ShownNote;
+  readonly allowed: (idea: Idea) => boolean;
+}): { readonly candidates: readonly Candidate[]; readonly drawn: readonly ShownIdea[] } {
+  if (playing) return { candidates: [], drawn: [] };
+  if (pointed) return { candidates: [], drawn: noteIdeas(pointed, allowed) };
+  if (preview) {
+    const { slide, candidate } = preview;
+    return {
+      candidates: slide ? [] : candidates.filter(({ from }) => from === candidate.from),
+      drawn: ideas,
+    };
+  }
+  if (!candidates.length) return { candidates, drawn: ideas };
+  return { candidates, drawn: ideas.filter(({ idea }) => idea.type === 'trap') };
 }
 
 /** The idea card's notes when no move is previewed. */

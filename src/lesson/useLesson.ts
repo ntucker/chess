@@ -20,7 +20,7 @@ import { useNeedsStockfish } from '@/stockfish/demand';
 import { lessonBoard, pressedCandidate } from './board';
 import { ideaPlayback } from './drawings';
 import { guidance, type LessonSwitches, notePlayback, type PlayedBack } from './guidance';
-import type { Lesson, Note, PositionKey } from './lesson';
+import type { Lesson, Note, PositionKey, Uci } from './lesson';
 import { lessonOpponent } from './opponent';
 import type { Candidate } from './select';
 import { lessonView, type Pointer, preview, type ShownNote } from './view';
@@ -86,11 +86,13 @@ export function useLesson(lesson: Lesson) {
   const [pointing, setPointing] = useState<Pointing>();
   if (pointing && pointing.key !== view.key) setPointing(undefined);
   const pointed = pointing?.key === view.key ? pointing : undefined;
-  const pointAt = (change: (now: Pointing) => Omit<Pointing, 'key'>) =>
-    setPointing((now) => ({
-      key: view.key,
-      ...change(now?.key === view.key ? now : { key: view.key }),
-    }));
+  // Pointing that changes nothing keeps the same state, so nothing re-renders.
+  const pointAt = (change: (now: Pointing) => Pointing) =>
+    setPointing((now) => {
+      const here = now?.key === view.key ? now : { key: view.key };
+      const next = change(here);
+      return samePointing(here, next) ? now : next;
+    });
   // The note whose idea plays back, the position it was started in, and the
   // candidate pointed at then, if any. It ends, like pointing, once the board
   // moves on. While it plays, the board is its own: the preview it started
@@ -128,19 +130,21 @@ export function useLesson(lesson: Lesson) {
     return () => clearTimeout(timer);
   }, [stepping, playing?.step]);
 
-  // A square under the mouse or a finger previews; leaving the board ends
-  // only a preview pointed at from the board.
-  const pointSquare = (square: Square | null) =>
+  // A square under the mouse or a finger previews, if a candidate is there.
+  // Any other square ends a preview, and so does leaving the board, which
+  // a row's preview never reaches; squares that preview nothing change nothing.
+  const pointSquare = (square: Square | null) => {
+    const at: Pointer | undefined = square ? { at: 'square', square } : undefined;
+    const candidate = at && preview(lesson, view, at) ? at : undefined;
     pointAt((now) =>
-      square
-        ? { ...now, candidate: { at: 'square', square } }
-        : { ...now, candidate: now.candidate?.at === 'square' ? undefined : now.candidate },
+      square === null && now.candidate?.at === 'row' ? now : { ...now, candidate },
     );
+  };
   const play = (candidate: Candidate) => game.play(candidate.move.uci);
   const board: Omit<BoardProps, 'dom'> = {
     ...lessonBoard({
       side: lesson.side,
-      view,
+      key: view.key,
       guidance: shown,
       moves,
       ply,
@@ -190,11 +194,18 @@ export function useLesson(lesson: Lesson) {
      * The learner points at a candidate list row. Leaving a row keeps its
      * preview, so the learner can move on to its notes; `leave` ends it.
      */
-    pointRow: (uci: Candidate['move']['uci']) =>
-      pointAt((now) => ({ ...now, candidate: { at: 'row', uci } })),
+    pointRow: (uci: Uci) => pointAt((now) => ({ ...now, candidate: { at: 'row', uci } })),
     /** The learner points at a note on the idea card, or at none. */
     pointNote: (note: Note | undefined) => pointAt((now) => ({ ...now, note })),
     /** The learner leaves the candidates and the idea card: their previews end. */
     leave: () => setPointing(undefined),
   };
 }
+
+const samePointer = (a?: Pointer, b?: Pointer) =>
+  a === b ||
+  (a?.at === 'row' && b?.at === 'row' && a.uci === b.uci) ||
+  (a?.at === 'square' && b?.at === 'square' && a.square === b.square);
+
+const samePointing = (a: Pointing, b: Pointing) =>
+  a.key === b.key && a.note === b.note && samePointer(a.candidate, b.candidate);

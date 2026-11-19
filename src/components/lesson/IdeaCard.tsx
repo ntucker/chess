@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { Tone } from '@/board/drawing';
+import { hovers } from '@/board/pointer';
 import { Eyebrow } from '@/components/Eyebrow';
 import { Transport } from '@/components/Transport';
 import type { Color } from '@/game/replay';
@@ -21,6 +22,8 @@ interface Props {
   readonly learner: Color;
   /** Plays a note's plan, line or trap through on the board. */
   readonly playback: Playback;
+  /** The notes whose ideas draw on the board when pointed at. */
+  readonly pointable: readonly Note[];
   /** The note pointed at, whose ideas the board draws. */
   readonly pointed?: Note;
   /** The learner points at a note that draws on the board, or leaves it. */
@@ -33,7 +36,7 @@ interface Props {
  * study's verdict, and a play-through for a plan, a line or a trap. Pointing
  * at a note that draws on the board lights its rule in its kind's color.
  */
-export function IdeaCard({ title, notes, learner, playback, pointed, onPoint }: Props) {
+export function IdeaCard({ title, notes, learner, playback, pointable, pointed, onPoint }: Props) {
   return (
     <Stack gap="3">
       <Eyebrow>{title}</Eyebrow>
@@ -45,6 +48,7 @@ export function IdeaCard({ title, notes, learner, playback, pointed, onPoint }: 
               shown={shown}
               learner={learner}
               playback={playback}
+              pointable={pointable.includes(shown.note)}
               pointed={shown.note === pointed}
               onPoint={onPoint}
             />
@@ -63,12 +67,14 @@ function NoteView({
   shown,
   learner,
   playback,
+  pointable,
   pointed,
   onPoint,
 }: {
   readonly shown: ShownNote;
   readonly learner: Color;
   readonly playback: Playback;
+  readonly pointable: boolean;
   readonly pointed: boolean;
   readonly onPoint: (note: Note | undefined) => void;
 }) {
@@ -82,24 +88,24 @@ function NoteView({
   const playing = playback.playing?.note === note ? playback.playing : undefined;
   const original = note.original && note.original !== note.text ? note.original : undefined;
   const playable = playback.playable(shown);
-  // Only a note that draws reacts: pointing at text alone would just empty the board.
-  const point = (pointerType: string) => {
-    if (drawn && pointerType !== 'touch') onPoint(note);
+  const point = () => {
+    if (pointable && !pointed) onPoint(note);
   };
-  const lit = pointed && drawn;
 
   return (
     <Stack
       gap="2"
-      onPointerEnter={({ nativeEvent }) => point(nativeEvent.pointerType)}
+      onPointerEnter={({ nativeEvent }) => {
+        if (hovers(nativeEvent.pointerType)) point();
+      }}
       onPointerLeave={({ nativeEvent }) => {
-        if (pointed && nativeEvent.pointerType !== 'touch') onPoint(undefined);
+        if (pointed && hovers(nativeEvent.pointerType)) onPoint(undefined);
       }}
       // Keyboard focus on its buttons points at it too; the panel ends it.
-      onFocus={() => point('keyboard')}
+      onFocus={point}
       style={[
         styles.note,
-        lit
+        pointed && drawn
           ? {
               borderColor: toneColors[ideaTone(drawn, learner)],
               backgroundColor: color.tones.neutral.subtle,

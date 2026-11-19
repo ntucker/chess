@@ -10,7 +10,7 @@ import { HEADER_HEIGHT, Header } from '@/components/Header';
 import { PLAYER_BAR_HEIGHT, PLAYER_DISC, PlayerBar } from '@/components/PlayerBar';
 import { Transport } from '@/components/Transport';
 import { useStepKeys } from '@/components/useStepKeys';
-import { type Color, colorName, opposite } from '@/game/replay';
+import { colorName, opposite } from '@/game/replay';
 import type { Game } from '@/game/useGame';
 import { spotlight } from '@/theme/theme';
 
@@ -58,18 +58,12 @@ export function Stage({ title, board, program }: StageProps) {
   );
 }
 
-/** The opponent's name bar: who plays the other side, and how. */
-export interface Rival {
-  readonly name: string;
-  readonly detail: string;
-}
-
 interface BoardColumnProps {
   /** The game on the board. */
   readonly game: Game;
-  /** The player's side, at the bottom. */
-  readonly side: Color;
-  readonly rival: Rival;
+  /** The opponent's name bar: who plays the other side, and how. */
+  readonly rival: { readonly name: string; readonly detail: string };
+  /** The board, with the player's side (`orientation`) at the bottom. */
   readonly board: Omit<BoardProps, 'dom'>;
 }
 
@@ -78,8 +72,9 @@ interface BoardColumnProps {
  * name bar above it and the player's below, holding the move stepper. The
  * arrow keys step through the moves too.
  */
-export function BoardColumn({ game, side, rival, board }: BoardColumnProps) {
+export function BoardColumn({ game, rival, board }: BoardColumnProps) {
   const { moves, ply, goto } = game;
+  const side = board.orientation;
   const other = opposite(side);
   useStepKeys(ply, moves.length, goto);
   return (

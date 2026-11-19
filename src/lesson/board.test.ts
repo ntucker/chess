@@ -21,7 +21,7 @@ function board(sans: string[], pointer?: Pointer) {
   });
   const input = {
     side: SAMPLE.side,
-    view,
+    key: view.key,
     guidance: shown,
     moves,
     ply: moves.length,

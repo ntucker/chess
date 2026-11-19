@@ -50,7 +50,6 @@ export default function PlayScreen() {
       board={
         <BoardColumn
           game={game}
-          side={playerColor}
           rival={{
             name: described.name,
             detail: `${described.tagline} · ${colorName(opposite(playerColor))}`,

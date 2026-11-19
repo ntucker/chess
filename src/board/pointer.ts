@@ -3,6 +3,12 @@
 // rests on once it has stayed still for HOLD_MS. Moves still belong to
 // chessground: a click, a tap or a drag plays as before.
 
+/**
+ * Whether a pointer of `pointerType` hovers: a mouse does; a finger or pen
+ * only presses. The board and the panels beside it go by the same rule.
+ */
+export const hovers = (pointerType: string) => pointerType === 'mouse';
+
 /** How long a finger must rest to hold, as Android's long press. */
 export const HOLD_MS = 400;
 /** How far a finger may wander, in CSS pixels, and still hold. */
@@ -66,7 +72,7 @@ export function watchPointer<S extends string>(
   };
 
   const onMove = (event: PointerEvent) => {
-    if (event.pointerType === 'mouse') {
+    if (hovers(event.pointerType)) {
       if (event.buttons === 0 && !pressing) hover(squareAt(event.clientX, event.clientY) ?? null);
     } else if (touch?.id === event.pointerId && Math.hypot(event.clientX - touch.x, event.clientY - touch.y) > HOLD_SLOP) {
       // A finger that wanders is dragging; once it has held, this changes nothing.
@@ -74,7 +80,7 @@ export function watchPointer<S extends string>(
     }
   };
   const onDown = (event: PointerEvent) => {
-    if (event.pointerType === 'mouse') {
+    if (hovers(event.pointerType)) {
       pressing = true;
       return;
     }
@@ -91,7 +97,7 @@ export function watchPointer<S extends string>(
   };
   // Listened for on the page, so a button released off the board counts.
   const onUp = (event: PointerEvent) => {
-    if (event.pointerType === 'mouse') {
+    if (hovers(event.pointerType)) {
       if (!pressing) return;
       pressing = false;
       const square = squareAt(event.clientX, event.clientY) ?? null;

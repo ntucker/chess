@@ -18,65 +18,60 @@ import type { Guidance, PlayedBack } from './guidance';
 import type { Idea, Imbalance, PositionKey, Structure, StructureFeature, Uci } from './lesson';
 import { relativeRank, spaceSquares } from './pawns';
 import { planBoards } from './plan';
-import type { Candidate } from './select';
+import { type Candidate, mainCandidate } from './select';
 import type { LandedTrap } from './view';
 
 /**
  * The board's drawings for `guidance` while the board shows `shown`, for a
  * learner playing `learner`: the candidates and ideas guidance draws (ideas
  * only on the position they are about), a sliding preview's ghost where its
- * piece stood and a glow where it lands, and, when nothing is previewed,
- * Stockfish's best move and a trap fallen into.
+ * piece stood and a glow where it lands, Stockfish's best move and a trap
+ * fallen into.
  */
 export function lessonDrawings(guidance: Guidance, shown: PositionKey, learner: Color): Drawing[] {
-  const { preview } = guidance;
+  const { main } = guidance;
   const ideas = guidance.drawn.filter(({ at }) => at === shown).map(({ idea }) => idea);
   // Parsed only where there are ideas to draw, since this runs as the pointer moves.
   const position = ideas.length ? parsePositionKey(shown)! : undefined;
-  const slid = preview?.slide ? preview.candidate : undefined;
+  const slid = slidCandidate(guidance);
   return [
-    ...(slid ? slideDrawings(slid, guidance.candidates) : []),
-    ...candidateDrawings(guidance.drawnCandidates, guidance.candidates),
+    ...(slid ? [ghost(slid.from, slid.piece), glow(slid.to, candidateTone(slid, main))] : []),
+    ...candidateDrawings(guidance.drawnCandidates, main),
     ...ideas.flatMap((idea) => ideaDrawings(idea, position!, learner)),
-    ...(preview
-      ? []
-      : [
-          ...bestDrawings(guidance.best),
-          ...(guidance.trap ? landedTrapDrawings(guidance.trap, shown) : []),
-        ]),
+    ...bestDrawings(guidance.best),
+    ...(guidance.trap ? landedTrapDrawings(guidance.trap, shown) : []),
   ];
 }
 
-/**
- * A candidate shown played: a ghost of its piece where it stood, and its
- * piece lit where it landed, in the tone of its arrow.
- */
-const slideDrawings = (slid: Candidate, candidates: readonly Candidate[]): Drawing[] => [
-  ghost(slid.from, slid.piece),
-  { kind: 'glow', square: slid.to, tone: slid === mainCandidate(candidates) ? 'main' : 'other' },
-];
+/** The candidate a sliding preview shows played, if any. */
+export const slidCandidate = ({ preview }: Guidance): Candidate | undefined =>
+  preview?.slide ? preview.candidate : undefined;
 
-/** The candidate to look at first: the book move, or else the most played. */
-export const mainCandidate = (candidates: readonly Candidate[]): Candidate | undefined =>
-  candidates.find(({ move }) => move.book) ?? candidates[0];
+/** A candidate's tone: the main one's, or an alternative's. */
+const candidateTone = (candidate: Candidate, main: Candidate | undefined): Tone =>
+  candidate === main ? 'main' : 'other';
+
+const glow = (square: SquareName, tone: Tone): Drawing => ({ kind: 'glow', square, tone });
 
 /**
- * Each of `drawn`'s pieces lit, with an arrow to where it goes: the main one
- * of `among` (`mainCandidate`) in the main tone, the rest as alternatives.
+ * Each candidate's piece lit, with an arrow to where it goes: `main` (see
+ * `mainCandidate`) in the main tone, the rest as alternatives.
  */
 export function candidateDrawings(
-  drawn: readonly Candidate[],
-  among: readonly Candidate[] = drawn,
+  candidates: readonly Candidate[],
+  main = mainCandidate(candidates),
 ): Drawing[] {
-  const main = mainCandidate(among);
-  const draw = ({ from, to }: Candidate, tone: Tone): Drawing[] => [
-    { kind: 'glow', square: from, tone },
-    { kind: 'arrow', from, to, tone },
-  ];
+  const draw = (candidate: Candidate): Drawing[] => {
+    const tone = candidateTone(candidate, main);
+    return [
+      glow(candidate.from, tone),
+      { kind: 'arrow', from: candidate.from, to: candidate.to, tone },
+    ];
+  };
   // The main move last, so its glow wins where two candidates move one piece.
   return [
-    ...drawn.filter((c) => c !== main).flatMap((c) => draw(c, 'other')),
-    ...(main && drawn.includes(main) ? draw(main, 'main') : []),
+    ...candidates.filter((c) => c !== main).flatMap(draw),
+    ...candidates.filter((c) => c === main).flatMap(draw),
   ];
 }
 

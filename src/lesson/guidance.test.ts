@@ -173,7 +173,13 @@ describe('guidance', () => {
 
   describe('what the board draws', () => {
     const explore = (sans: string[], input: Partial<GuidanceInput> = {}) =>
-      guidance({ view: sampleView(sans), mode: 'explore', switches: ALL_ON, ...input });
+      guidance({
+        view: sampleView(sans),
+        mode: 'explore',
+        switches: ALL_ON,
+        engine: ENGINE,
+        ...input,
+      });
     const types = (ideas: readonly ShownIdea[]) => ideas.map(({ idea }) => idea.type);
 
     it('draws the candidates without the ideas, until a note is pointed at', () => {
@@ -184,6 +190,18 @@ describe('guidance', () => {
       const pointing = explore(ADVANCE, { pointed: position.note });
       expect(pointing.drawnCandidates).toEqual([]);
       expect(types(pointing.drawn)).toEqual(['structure', 'structure']);
+    });
+
+    it('lets only notes whose ideas draw be pointed at, as the switches allow', () => {
+      const [move, position] = explore(ADVANCE).notes;
+      expect(explore(ADVANCE).pointable).toEqual([move.note, position.note]);
+      expect(explore(ADVANCE, { switches: { ...ALL_ON, showIdeas: false } }).pointable).toEqual([]);
+    });
+
+    it("hides Stockfish's best move while a move is previewed", () => {
+      expect(explore(ADVANCE).best).toBe('g8f6');
+      const previewing = preview(SAMPLE, sampleView(ADVANCE), { at: 'row', uci: 'c8f5' });
+      expect(explore(ADVANCE, { preview: previewing }).best).toBeUndefined();
     });
 
     it('leaves the board as it is for a note with nothing to draw', () => {

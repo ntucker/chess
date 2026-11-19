@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import type { Uci } from '@/lesson/lesson';
 import type { Candidate } from '@/lesson/select';
+import { hovers } from '@/board/pointer';
 import { QualityBadge } from '@/components/QualityBadge';
 import { fonts } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
@@ -92,7 +93,7 @@ function Row({ candidate, main, pointed, leadsTo, share, playable, onPlay, onPoi
       // previews nothing until the mouse moves. Leaving keeps the preview
       // (the screen ends it), so the learner can go on to its notes.
       onPointerMove={({ nativeEvent }) => {
-        if (!pointed && nativeEvent.pointerType !== 'touch') point();
+        if (!pointed && hovers(nativeEvent.pointerType)) point();
       }}
       onFocus={point}
       style={({ pressed }) => [

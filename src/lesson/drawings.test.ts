@@ -9,7 +9,6 @@ import {
   ideaDrawings,
   ideaPlayback,
   lessonDrawings,
-  mainCandidate,
 } from './drawings';
 import { guidance, type LessonSwitches } from './guidance';
 import type { Idea } from './lesson';
@@ -23,6 +22,7 @@ import {
   TRAP_PUNISHED,
   uciLine,
 } from './lesson.fixture';
+import { mainCandidate } from './select';
 import { preview } from './view';
 
 const SWITCHES: LessonSwitches = {

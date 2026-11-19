@@ -11,16 +11,16 @@ import type { BoardProps } from '@/components/Board';
 import type { MoveQuality } from '@/analysis/quality';
 import { type Color, lastPosition, type Position } from '@/game/replay';
 
-import { lessonDrawings, type PlaybackFrame } from './drawings';
+import { lessonDrawings, type PlaybackFrame, slidCandidate } from './drawings';
 import type { Guidance } from './guidance';
-import type { Uci } from './lesson';
+import type { PositionKey, Uci } from './lesson';
 import type { Candidate } from './select';
-import type { LessonView } from './view';
 
-export interface LessonBoardInput {
+interface LessonBoardInput {
   /** The learner's side, at the bottom of the board. */
   readonly side: Color;
-  readonly view: LessonView;
+  /** The game's position on the board (`LessonView.key`). */
+  readonly key: PositionKey;
   readonly guidance: Guidance;
   /** The game's moves, and how many of them the board shows. */
   readonly moves: readonly Uci[];
@@ -46,7 +46,7 @@ export type LessonBoard = Omit<BoardProps, 'dom' | 'onMove' | 'onHover' | 'onHol
  */
 export function lessonBoard({
   side,
-  view,
+  key,
   guidance,
   moves,
   ply,
@@ -69,16 +69,12 @@ export function lessonBoard({
     drawings: frame
       ? []
       : [
-          ...lessonDrawings(guidance, slid ? slid.next : view.key, side),
+          ...lessonDrawings(guidance, slid ? slid.next : key, side),
           ...lastMoveBadge(previewed ? undefined : current.move?.to, quality),
         ],
     check: shown.check,
   };
 }
-
-/** The candidate a sliding preview shows played, if any. */
-const slidCandidate = ({ preview }: Guidance): Candidate | undefined =>
-  preview?.slide ? preview.candidate : undefined;
 
 /**
  * The candidate a press on `square` plays: a sliding preview's, pressed where
