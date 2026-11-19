@@ -92,11 +92,8 @@ export const mainCandidate = (candidates: readonly Candidate[]): Candidate | und
  * The guide's moves at `key`, most played in `band` first (an index into
  * `LessonMove.games`). Moves without counts follow those with counts; ties,
  * and moves without counts, keep the file's order, which puts the main line
- * first. Empty unless `key` is inside the guide.
- *
- * On the opponent's turn a candidate under `RARE_SHARE` is `rare`, unless
- * it is the most played, has no counts, or starts a trap the position's
- * notes show; rare ones come last. The learner's candidates never are.
+ * first. Empty unless `key` is inside the guide. On the opponent's turn the
+ * rare ones are marked and come last (`rareLast`).
  */
 export function candidates(
   lesson: Lesson,
@@ -130,11 +127,18 @@ export function candidates(
   });
   // Array.sort is stable, so equal counts keep the file's order.
   rows.sort((a, b) => (count(b.move) ?? -1) - (count(a.move) ?? -1));
-  if (pos.turn === lesson.side) return rows;
-  const traps = trapStarts(guide.entry);
-  const isRare = ({ move, share }: Candidate) =>
-    share !== undefined && share < RARE_SHARE && !traps.includes(move.uci);
-  const marked = rows.map((row, n) => (n > 0 && isRare(row) ? { ...row, rare: true } : row));
+  return pos.turn === lesson.side ? rows : rareLast(rows, trapStarts(guide.entry));
+}
+
+/**
+ * The opponent's `rows`, most played first, with the rare ones marked and
+ * moved last. A row under `RARE_SHARE` is rare unless it is the most played,
+ * has no counts, or starts one of `traps`.
+ */
+function rareLast(rows: readonly Candidate[], traps: readonly Uci[]): Candidate[] {
+  const isRare = ({ move, share }: Candidate, n: number) =>
+    n > 0 && share !== undefined && share < RARE_SHARE && !traps.includes(move.uci);
+  const marked = rows.map((row, n) => (isRare(row, n) ? { ...row, rare: true } : row));
   return [...marked.filter(({ rare }) => !rare), ...marked.filter(({ rare }) => rare)];
 }
 
