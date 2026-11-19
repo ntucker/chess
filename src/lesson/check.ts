@@ -26,6 +26,7 @@ import {
   type Imbalance,
   type Lesson,
   type LessonMove,
+  type LessonPosition,
   type Line,
   type Note,
   type Plan,
@@ -77,10 +78,12 @@ export function checkIdea(idea: Idea, positions: IdeaPositions): string | undefi
   }
 }
 
+type Report = (path: string, message: string) => void;
+
 /** Everything wrong with `lesson`; empty when it is sound. */
 export function checkLesson(lesson: Lesson): LessonProblem[] {
   const problems: LessonProblem[] = [];
-  const report = (path: string, message: string) => problems.push({ path, message });
+  const report: Report = (path, message) => problems.push({ path, message });
 
   if (!COLORS.includes(lesson.side)) report('side', `${lesson.side} is not a color`);
   const bands = lesson.popularity?.ratingBands ?? [];
@@ -99,33 +102,43 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
 
   const children = new Map<string, string[]>();
   for (const [key, entry] of Object.entries(lesson.positions)) {
-    const at = `positions[${JSON.stringify(key)}]`;
-    const pos = parsePosition(`${key} 0 1`);
-    if (!pos || positionKey(pos) !== key) {
-      report(at, 'key is not a position key (FEN without move counters, see positionKey)');
-      continue;
-    }
-    children.set(key, []);
-    if (!(entry.variation in lesson.variations)) {
-      report(`${at}.variation`, `${entry.variation} is not in variations`);
-    }
-    checkNotes(entry.notes, { after: pos }, `${at}.notes`, report);
-    const seen = new Set<string>();
-    entry.moves.forEach((move, i) => {
-      const path = `${at}.moves[${i}]`;
-      if (seen.has(move.uci)) report(path, `${move.uci} is listed twice`);
-      seen.add(move.uci);
-      const after = checkMove(lesson, pos, move, path, report);
-      if (!after) return;
-      children.get(key)!.push(positionKey(after));
-      checkNotes(move.notes, { before: pos, after }, `${path}.notes`, report);
-    });
+    const next = checkPosition(lesson, key, entry, report);
+    if (next) children.set(key, next);
   }
   const reached = reachable(startKey, children);
   for (const key of children.keys()) {
     if (!reached.has(key)) report(`positions[${JSON.stringify(key)}]`, 'is not reachable from start');
   }
   return problems;
+}
+
+/**
+ * Checks one entry of `lesson.positions`, and returns the keys its moves
+ * lead to, or undefined when `key` is not a position key.
+ */
+function checkPosition(lesson: Lesson, key: string, entry: LessonPosition, report: Report): string[] | undefined {
+  const at = `positions[${JSON.stringify(key)}]`;
+  const pos = parsePosition(`${key} 0 1`);
+  if (!pos || positionKey(pos) !== key) {
+    report(at, 'key is not a position key (FEN without move counters, see positionKey)');
+    return undefined;
+  }
+  if (!(entry.variation in lesson.variations)) {
+    report(`${at}.variation`, `${entry.variation} is not in variations`);
+  }
+  checkNotes(entry.notes, { after: pos }, `${at}.notes`, report);
+  const next: string[] = [];
+  const seen = new Set<string>();
+  entry.moves.forEach((move, i) => {
+    const path = `${at}.moves[${i}]`;
+    if (seen.has(move.uci)) report(path, `${move.uci} is listed twice`);
+    seen.add(move.uci);
+    const after = checkMove(lesson, pos, move, path, report);
+    if (!after) return;
+    next.push(positionKey(after));
+    checkNotes(move.notes, { before: pos, after }, `${path}.notes`, report);
+  });
+  return next;
 }
 
 /** Every position key reachable from `start` along `children`. */
@@ -142,8 +155,6 @@ function reachable(start: string, children: ReadonlyMap<string, readonly string[
   }
   return reached;
 }
-
-type Report = (path: string, message: string) => void;
 
 function checkVariations(lesson: Lesson, report: Report) {
   const roots = Object.keys(lesson.variations).filter((id) => lesson.variations[id].parent === undefined);
@@ -382,11 +393,11 @@ function steps(board: Board, from: Square, piece: Piece): Square[] {
     return [...attacks(piece, from, board.occupied).diff(board[piece.color])];
   }
   const out: Square[] = [];
-  const forward = piece.color === 'white' ? 8 : -8;
-  const one = from + forward;
-  if (one >= 0 && one < 64 && !board.has(one)) {
+  const one = stopSquare(piece.color, from);
+  if (one !== undefined && !board.has(one)) {
     out.push(one);
-    if (relativeRank(piece.color, from) === 1 && !board.has(one + forward)) out.push(one + forward);
+    const two = stopSquare(piece.color, one);
+    if (relativeRank(piece.color, from) === 1 && two !== undefined && !board.has(two)) out.push(two);
   }
   return out.concat([...pawnAttacks(piece.color, from).intersect(board[opposite(piece.color)])]);
 }
