@@ -24,7 +24,7 @@ import { boardPress, lessonBoard } from './board';
 import { ideaPlayback } from './drawings';
 import { guidance, type LessonMode, notePlayback, type PlayedBack } from './guidance';
 import type { Lesson, Note, PositionKey, Uci } from './lesson';
-import { earnedMark, rowMarks } from './marks';
+import { earnedMark, rowMarks, steeredReply } from './marks';
 import { lessonOpponent } from './opponent';
 import { beforeSideMoves } from './practice';
 import { initialScreen, screenReducer } from './screen';
@@ -70,11 +70,22 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   // Moves are labelled by Stockfish whatever judges the bar: Maia's judgement
   // could call a book move a mistake. So Stockfish runs while this is in front.
   useNeedsStockfish(focused);
+  const [{ mode: modeState, peek, rareKey }, dispatch] = useReducer(screenReducer, initialScreen);
+  const { mode } = modeState;
+  const progress = useLessonProgress(lesson.id);
+  const record = useProgressDispatch();
   // Nobody replies with auto play off (the learner picks the opponent's
-  // move), nor at the start, where the first move picks the opening.
+  // move), nor at the start, where the first move picks the opening. In
+  // Practice the opponent steers to lines not yet passed, so clean runs with
+  // auto play on can pass every row, not only its most played replies.
   const rival =
     settings.auto && store[0].ply > 0
-      ? lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent))
+      ? lessonOpponent(
+          lesson,
+          opponent,
+          gameOpponent(ctrl, opponent),
+          mode === 'practice' ? (replies) => steeredReply(lesson, progress, replies) : undefined,
+        )
       : undefined;
   const game = useGame(store, rival, {
     side: lesson.side,
@@ -93,8 +104,6 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   // a hover-out or blur, so a peek ends when the board moves on; otherwise
   // stepping back would preview that row again. Shown rare rows end too, so
   // each position's list starts with them hidden.
-  const [{ mode: modeState, peek, rareKey }, dispatch] = useReducer(screenReducer, initialScreen);
-  const { mode } = modeState;
   const { key } = view;
   const stale = (at?: PositionKey) => at !== undefined && at !== key;
   if (stale(peek?.key) || stale(rareKey)) dispatch({ type: 'board', key });
@@ -104,8 +113,6 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   // candidate rows show what is earned below them. An effect, since a
   // position shows by many events (a move, a step, the opponent's reply, a
   // mode change), and showing it is what earns the mark.
-  const progress = useLessonProgress(lesson.id);
-  const record = useProgressDispatch();
   const earned = earnedMark(view.place, modeState);
   useEffect(() => {
     if (earned) record({ type: 'marked', lesson: lesson.id, mark: earned, key });

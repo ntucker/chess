@@ -11,7 +11,7 @@ import { type LessonProgress, type Mark, positionHash } from '@/progress/progres
 
 import type { Lesson, LessonMove, PositionKey, Uci } from './lesson';
 import type { ModeState } from './practice';
-import { guidePosition } from './select';
+import { type Candidate, guidePosition } from './select';
 import type { LessonView } from './view';
 
 /**
@@ -38,6 +38,21 @@ export function rowMarks(
     } else if (seen.has(positionHash(next))) marks.set(move.uci, 'seen');
   }
   return marks;
+}
+
+/**
+ * The opponent's reply in Practice, steering toward lines not yet passed:
+ * the first of `replies` (most played first) below which a clean run can
+ * still reach a line end not passed, or the first when every one is passed.
+ * The opponent's own replies never spoil a run, so each is open to steer to.
+ */
+export function steeredReply(
+  lesson: Lesson,
+  progress: LessonProgress,
+  replies: readonly Candidate[],
+): Candidate | undefined {
+  const passed = new Set(progress.passed);
+  return replies.find(({ next }) => cleanEnds(lesson, passed, next) === 'open') ?? replies[0];
 }
 
 /** Any opponent's move can be part of a clean run; of the learner's, only book moves. */

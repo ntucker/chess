@@ -38,6 +38,20 @@ describe('lessonOpponent', () => {
     expect(beyond.reply.mock.calls).toEqual([[uciLine('e4', 'e5')], [end]]);
   });
 
+  it("plays the reply a choice picks among the guide's moves, most played first", async () => {
+    const offered: string[] = [];
+    const last = lessonOpponent(SAMPLE, 1500, engine('h2h3'), (replies) => {
+      offered.push(...replies.map(({ move }) => move.uci));
+      return replies.at(-1);
+    });
+    const reply = await last.reply(uciLine(...MAIN));
+    expect(offered[0]).toBe('e4e5');
+    expect(offered.length).toBeGreaterThan(1);
+    expect(reply).toBe(offered.at(-1));
+    // A choice is another opponent: an answer chosen without it no longer fits.
+    expect(last.id).not.toBe(lessonOpponent(SAMPLE, 1500, engine('h2h3')).id);
+  });
+
   it('is a different opponent for another lesson or engine', () => {
     const one = lessonOpponent(SAMPLE, 1500, engine('a2a3'));
     expect(one.id).toBe('caro-kann-sample:engine');

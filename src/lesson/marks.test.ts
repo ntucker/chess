@@ -4,7 +4,7 @@ import { type LessonProgress, positionHash } from '@/progress/progress';
 
 import type { Lesson, LessonMove, PositionKey } from './lesson';
 import { keyAfter, SAMPLE, uciLine, withMoves } from './lesson.fixture';
-import { earnedMark, rowMarks } from './marks';
+import { earnedMark, rowMarks, steeredReply } from './marks';
 import { lessonView } from './view';
 
 /** A move after `sans`, written in SAN, as the guide stores it. */
@@ -143,5 +143,24 @@ describe('rowMarks', () => {
 
   it('marks nothing with no progress', () => {
     expect(marksAfter(progress([], []), LESSON, 'e4')).toEqual({ c6: undefined, e5: undefined });
+  });
+});
+
+describe('steeredReply', () => {
+  // After 1.e4 c6 White's replies are d4 (a line end) and Nc3 (on to ...d5's end), in that order.
+  const reply = (passed: PositionKey[]) => {
+    const line = uciLine('e4', 'c6');
+    const view = lessonView({ lesson: LESSON, line, ply: line.length, opponent: 1500 });
+    return steeredReply(LESSON, progress([], passed), view.candidates)?.san;
+  };
+
+  it('plays the most played reply below which a line end is still to pass', () => {
+    expect(reply([])).toBe('d4');
+    expect(reply([ENDS.d4])).toBe('Nc3');
+    expect(reply([ENDS.d5])).toBe('d4');
+  });
+
+  it('plays the most played reply once every line below is passed', () => {
+    expect(reply([ENDS.d4, ENDS.d5])).toBe('d4');
   });
 });
