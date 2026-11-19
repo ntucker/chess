@@ -126,9 +126,9 @@ function describeLatest({
 }
 
 /** The headline's size: its role's, a size smaller on a phone-width web page. */
-const { size, lineHeight } = typography.headingLg;
-const TITLE_SIZE = phoneLength('headline-size', size);
+const HEADLINE = typography.headingLg;
+const TITLE_SIZE = phoneLength('headline-size', HEADLINE.size);
 
 const styles = StyleSheet.create({
-  title: { fontSize: TITLE_SIZE.value, lineHeight: TITLE_SIZE.times(lineHeight).value },
+  title: { fontSize: TITLE_SIZE.value, lineHeight: TITLE_SIZE.times(HEADLINE.lineHeight).value },
 });
