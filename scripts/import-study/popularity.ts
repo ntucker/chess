@@ -7,7 +7,7 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-import { parsePosition, parsePositionKey, positionKey } from '@/game/replay';
+import { parsePosition, parsePositionKey, positionKey, recordedMove } from '@/game/replay';
 import type { Lesson, PositionKey, Uci } from '@/lesson/lesson';
 
 import { played } from './study';
@@ -37,7 +37,11 @@ const NO_BANDS: readonly boolean[] = RATING_BANDS.map(() => false);
 /** Measured: one request every 2.5 s draws no 429s (about 24 a minute); faster ones do. */
 const REQUEST_INTERVAL_MS = 2_500;
 
-/** The lichess explorer, answering from `cacheFile` first. */
+/**
+ * The lichess explorer, answering from `cacheFile` first. The cache keeps
+ * lichess's own UCI (castling as the king taking its rook, `e1h1`); answers
+ * use the lesson's (`e1g1`).
+ */
 export function lichessExplorer({
   token,
   cacheFile,
@@ -52,7 +56,7 @@ export function lichessExplorer({
     lastRequest = Date.now();
     return get(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
   };
-  return async (key, band) => {
+  const answer = async (key: PositionKey, band: number): Promise<MoveCounts> => {
     const id = `${band} ${key}`;
     const cached = cache.get(id);
     if (cached) return cached;
@@ -79,6 +83,13 @@ export function lichessExplorer({
       return counts;
     }
   };
+  return async (key, band) => recordedCounts(key, await answer(key, band));
+}
+
+/** `counts` with each move as lesson files write it (`recordedMove`). */
+function recordedCounts(key: PositionKey, counts: MoveCounts): MoveCounts {
+  const pos = parsePositionKey(key)!;
+  return Object.fromEntries(Object.entries(counts).map(([uci, games]) => [recordedMove(pos, uci) ?? uci, games]));
 }
 
 function readCache(file: string): Map<string, MoveCounts> {
