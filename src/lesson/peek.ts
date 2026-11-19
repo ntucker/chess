@@ -48,7 +48,7 @@ export type PeekAction =
    * focus stays.
    */
   | { readonly type: 'leaveNote'; readonly key: PositionKey; readonly note: Note }
-  /** The learner leaves the candidates and the idea card. A playback goes on, pointing at nothing. */
+  /** The learner leaves the candidates and the idea card. A playback goes on, pointing at none. */
   | { readonly type: 'leave' }
   /**
    * Plays `note`'s idea back from the candidate pointed at now, or from the
