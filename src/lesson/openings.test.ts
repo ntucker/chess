@@ -47,7 +47,7 @@ describe('openingsLesson', () => {
     const [slav] = openingsLesson(index).positions[keyAfter()].moves;
     expect(slav.notes).toEqual([
       {
-        text: "Slav Defence, from Matkun's lichess study, Kitsune's lichess study and Wikibooks Chess Opening Theory (CC BY-SA 4.0).",
+        text: "Slav Defence, from Matkun's lichess study, Kitsune's lichess study and Wikibooks Chess Opening Theory by Wikibooks contributors (CC BY-SA 4.0).",
       },
     ]);
   });

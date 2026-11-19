@@ -293,6 +293,21 @@ describe('checkLesson', () => {
     const wikibooks = { title: 'Chess Opening Theory', author: 'Wikibooks contributors', url: 'https://en.wikibooks.org/wiki/Chess_Opening_Theory' };
     const license = { name: 'CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' };
     expect(checkLesson({ ...lesson, sources: [] }).map((p) => p.path)).toEqual(['sources']);
+    const [study] = lesson.sources;
+    expect(
+      checkLesson({
+        ...lesson,
+        sources: [
+          { ...study, author: ' ' },
+          { ...study, url: 'lichess.org/study/test' },
+          { ...study, license: { name: 'CC BY 4.0', url: 'creativecommons' } },
+        ],
+      }),
+    ).toEqual([
+      { path: 'sources[0]', message: 'needs a title and an author' },
+      { path: 'sources[1].url', message: 'lichess.org/study/test is not a URL' },
+      { path: 'sources[2].license', message: 'needs a name and a URL' },
+    ]);
     expect(checkLesson({ ...lesson, sources: [...lesson.sources, wikibooks] })).toEqual([
       { path: 'sources[1].license', message: 'is required for en.wikibooks.org, whose text is share-alike' },
     ]);

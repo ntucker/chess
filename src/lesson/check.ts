@@ -150,8 +150,8 @@ function reachable(start: string, children: ReadonlyMap<string, readonly string[
   return reached;
 }
 
-/** Wikibooks text is CC BY-SA 4.0: a lesson adapting it must say so. */
-const SHARE_ALIKE_HOSTS = ['wikibooks.org'];
+/** Hosts whose text is CC BY-SA 4.0 (Wikimedia projects): a lesson adapting it must say so. */
+const SHARE_ALIKE_HOSTS = ['wikibooks.org', 'wikipedia.org'];
 
 function checkSources({ sources }: Lesson, report: Report) {
   if (sources.length === 0) report('sources', 'needs at least one source');

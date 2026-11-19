@@ -53,10 +53,14 @@ const openingMoves = (index: LessonIndex) =>
     })),
   );
 
-/** How a note names `source`: a lichess study by its author, anything else by its title and license. */
+/**
+ * How a note names `source`: a lichess study by its author, anything else by
+ * its title, author and license. A note is plain text, so the license's link
+ * stays in the lesson file.
+ */
 function credit({ title, author, url, license }: LessonSource): string {
   if (new URL(url).hostname === 'lichess.org') return `${author}'s lichess study`;
-  return license ? `${title} (${license.name})` : title;
+  return `${title} by ${author}${license ? ` (${license.name})` : ''}`;
 }
 
 /** `items` as an English list: "a", "a and b", "a, b and c". */
