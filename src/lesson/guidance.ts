@@ -20,9 +20,9 @@
  *   the opponent just plays. Stockfish's moves stay hidden.
  * - Traps: with "show traps" on, a trap's sequence is drawn before the
  *   learner commits, beside the candidates; off, it isn't. A trap fallen
- *   into is shown either way, and plays back, for as many moves of the line
- *   as the trap has. With traps hidden, no note that holds a trap shows in
- *   Practice, on any turn.
+ *   into is shown either way, and plays back, through the trap's moves and
+ *   the learner's turn after them. With traps hidden, no note that holds a
+ *   trap shows in Practice, on any turn.
  * - While a note's idea plays back, the board is the playback's: nothing else
  *   is drawn, and the preview it started from stays.
  *
@@ -109,7 +109,7 @@ export interface Guidance {
   readonly best?: Uci;
   /** Stockfish's top three, listed only beyond the guide. */
   readonly top: readonly Uci[];
-  /** A trap the line fell into, while the board is within its moves. */
+  /** A trap the line fell into, while its card shows (see `trapShown`). */
   readonly trap?: LandedTrap;
 }
 
@@ -126,17 +126,16 @@ export function guidance(input: GuidanceInput): Guidance {
   const explore = mode === 'explore';
   const choices = explore || (!view.learnerToMove && !switches.auto);
   const preview = choices ? pointerPreview : undefined;
-  // A previewed reply's notes can warn of the learner's trap after it.
-  // Explore shows every note, as restingNotes does.
+  // In Practice a previewed reply leads to the learner's move, so its notes
+  // are kept as on the learner's turn. Explore shows every note.
   const notes = preview
-    ? preview.notes.filter(({ note }) => explore || !trapHidden(note, switches.showTraps))
+    ? preview.notes.filter((shown) => explore || beforeMove(shown, switches.showTraps))
     : restingNotes(view, explore, switches.showTraps);
   const allowed = (idea: Idea) =>
     idea.type === 'trap' ? switches.showTraps : !explore || switches.showIdeas;
   const ideas = notes.flatMap((shown) => noteIdeas(shown, allowed));
   const candidates = choices ? view.candidates : [];
-  const trap =
-    view.trap && view.ply - view.trap.ply <= view.trap.trap.moves.length ? view.trap : undefined;
+  const trap = view.trap && trapShown(view, view.trap) ? view.trap : undefined;
   const playable = [
     ...ideas.filter(playsBack),
     ...(trap ? [{ idea: trap.trap, at: trap.note.after }] : []),
@@ -213,10 +212,7 @@ function restingNotes(
   if (explore) return view.notes;
   // The position's own notes would hint at the move. A trap's warning, on
   // the position or on the move into it, shows only with traps shown.
-  if (view.learnerToMove)
-    return view.notes.filter(({ note, before }) =>
-      hasTrap(note) ? showTraps : before !== undefined,
-    );
+  if (view.learnerToMove) return view.notes.filter((shown) => beforeMove(shown, showTraps));
   // Right after the learner's move: what it was for, now that it's played.
   // With traps hidden, no note holding a trap shows, on any position or
   // move, so the learner can still fall in; a trap fallen into shows through
@@ -227,6 +223,24 @@ function restingNotes(
 }
 
 const hasTrap = (note: Note) => note.ideas?.some(({ type }) => type === 'trap') ?? false;
+
+/**
+ * Whether a note shows in Practice before the learner moves: the move into
+ * the position, not the position's own notes, which would hint at the move;
+ * a trap's warning only with traps shown.
+ */
+const beforeMove = ({ note, before }: ShownNote, showTraps: boolean) =>
+  hasTrap(note) ? showTraps : before !== undefined;
+
+/**
+ * Whether the card for a trap fallen into still shows: while the board is
+ * within the trap's moves, and at the learner's turn right after them, so an
+ * opponent's reply on Auto doesn't take it away before the learner reads it.
+ */
+function trapShown(view: LessonView, trap: LandedTrap): boolean {
+  const past = view.ply - trap.ply - trap.trap.moves.length;
+  return past <= 0 || (past === 1 && view.learnerToMove);
+}
 
 /** In Practice with traps hidden, a note that holds a trap stays off the card. */
 const trapHidden = (note: Note, showTraps: boolean) => !showTraps && hasTrap(note);

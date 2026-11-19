@@ -11,6 +11,7 @@ import {
   TRAP_PUNISHED,
   uciLine,
   withMoves,
+  withTrapMoves,
 } from './lesson.fixture';
 import { guideMove, lineKeys } from './select';
 import { lessonView, type Pointer, preview } from './view';
@@ -25,6 +26,17 @@ describe('lessonView', () => {
     expect(view(ADVANCE)).toMatchObject({ learnerToMove: true, place: 'inside' });
     expect(view([...ADVANCE, 'Bf5', 'Nf3', 'e6', 'Be2', 'c5', 'O-O', 'Nc6']).place).toBe('end');
     expect(view([...ADVANCE, 'a6']).place).toBe('beyond');
+  });
+
+  it("ends a guide line where the guide's move leads off the file, as the shipped lessons do", () => {
+    const lesson = readShippedLesson('caro-kann');
+    const line: string[] = [];
+    for (let key = lineKeys(line).at(-1)!; lesson.positions[key]; key = lineKeys(line).at(-1)!) {
+      line.push(lesson.positions[key].moves[0].uci);
+    }
+    const at = (ply: number) => lessonView({ lesson, line, ply, opponent: 1500 });
+    expect(at(line.length)).toMatchObject({ place: 'end', lineEnd: line.length });
+    expect(at(line.length - 1)).toMatchObject({ place: 'inside', lineEnd: undefined });
   });
 
   it("lists the candidates in the opponent's band", () => {
@@ -127,13 +139,7 @@ describe('lessonView', () => {
 
     it('lands a one-move trap at its only move', () => {
       const { moves } = view(LANDED).trap!.trap;
-      const lesson: typeof SAMPLE = JSON.parse(
-        JSON.stringify(SAMPLE, (_, value) =>
-          value?.type === 'trap' && String(value.moves) === String(moves)
-            ? { ...value, moves: moves.slice(0, 1) }
-            : value,
-        ),
-      );
+      const lesson = withTrapMoves(SAMPLE, moves, moves.slice(0, 1));
       const line = uciLine(...TRAP, 'Nxe5');
       expect(lessonView({ lesson, line, ply: line.length, opponent: 1500 }).trap).toMatchObject({
         ply: TRAP.length,

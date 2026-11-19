@@ -202,30 +202,32 @@ function describeStatus(
   { title, rival, engine, thinking, viewing, auto, practice }: StatusInput,
 ) {
   const eyebrow = view.variation.map(({ name }) => name).join(' · ') || title;
-  if (practice && view.place === 'end')
-    return practice.clean
+  // Beyond the guide on "I choose", nobody replies: the learner moves both sides.
+  const playOn = auto ? `play on against ${engine}` : 'play on, moving both sides';
+  if (atLineEnd(view))
+    return !practice
       ? {
           eyebrow,
-          title: 'Line complete.',
-          detail: 'A clean run: each of your moves from the book, and nothing taken back.',
-        }
-      : {
-          eyebrow,
           title: 'End of this line.',
-          detail:
-            'This run had a slip or a take-back. Go back to your first move and play it through clean.',
-        };
-  if (view.place === 'beyond')
+          detail: `The guide stops here. Step back to try another branch, or ${playOn}.`,
+        }
+      : practice.clean
+        ? {
+            eyebrow,
+            title: 'Line complete.',
+            detail: 'A clean run: each of your moves from the book, and nothing taken back.',
+          }
+        : {
+            eyebrow,
+            title: 'End of this line.',
+            detail:
+              'This run had a slip or a take-back. Go back to your first move and play it through clean.',
+          };
+  if (view.place !== 'inside')
     return {
       eyebrow,
       title: 'Off the guide.',
-      detail: `This position isn't in the lesson. ${engine} plays on; step back to return to the guide.`,
-    };
-  if (view.place === 'end')
-    return {
-      eyebrow,
-      title: 'End of this line.',
-      detail: `The guide stops here. Step back to try another branch, or play on against ${engine}.`,
+      detail: `This position isn't in the lesson. Step back to return to the guide, or ${playOn}.`,
     };
   if (view.learnerToMove)
     return {
@@ -249,6 +251,15 @@ function describeStatus(
       ? 'Point at a reply to see what it aims for.'
       : 'Point at a reply to see what it aims for, then play it.',
   };
+}
+
+/**
+ * Whether the headline tells of a guide line's end: at it, and at the
+ * learner's turn right after it, so an opponent playing on by itself doesn't
+ * take the news away at once.
+ */
+function atLineEnd({ lineEnd, ply, learnerToMove }: LessonView): boolean {
+  return lineEnd !== undefined && (ply === lineEnd || (ply === lineEnd + 1 && learnerToMove));
 }
 
 /** The detail under "Your move.", by mode and whether an earlier move is shown. */

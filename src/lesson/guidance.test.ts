@@ -10,8 +10,18 @@ import {
   type ShownIdea,
 } from './guidance';
 import type { Idea } from './lesson';
-import { ADVANCE, keyAfter, MAIN, SAMPLE, sampleView, TRAP, TRAP_PUNISHED } from './lesson.fixture';
-import { type Pointer, preview } from './view';
+import {
+  ADVANCE,
+  keyAfter,
+  MAIN,
+  SAMPLE,
+  sampleView,
+  TRAP,
+  TRAP_PUNISHED,
+  uciLine,
+  withTrapMoves,
+} from './lesson.fixture';
+import { lessonView, type Pointer, preview } from './view';
 
 /** The trap the sample sets, fallen into: the tempting move and the punishing reply. */
 const LANDED = [...TRAP, 'Nxe5', 'Nxe5'];
@@ -215,6 +225,14 @@ describe('guidance', () => {
       expect(summary(shown(ADVANCE, 'practice')).notes).toEqual(['move']);
     });
 
+    it('keeps a previewed reply\'s next position notes off the card on "I choose", as on the learner\'s turn', () => {
+      const previewed = (mode: LessonMode, uci: string) =>
+        summary(shown(MAIN, mode, { auto: false }, { pointer: { at: 'row', uci } })).notes;
+      const replies = ['e4e5', 'e4d5', 'b1c3', 'b1d2'];
+      expect(replies.flatMap((uci) => previewed('explore', uci))).toContain('position');
+      expect(replies.flatMap((uci) => previewed('practice', uci))).not.toContain('position');
+    });
+
     it('keeps a hidden trap\'s warning off a previewed reply on "I choose"', () => {
       const pointer: Pointer = { at: 'row', uci: 'c2c3' };
       const traps = (showTraps: boolean) =>
@@ -397,9 +415,20 @@ describe('guidance', () => {
       }
     });
 
-    it('shows a trap fallen into until the line has gone as many moves as the trap has', () => {
+    it('shows a trap fallen into through its moves and the learner\'s turn after them', () => {
       expect(shown(TRAP_PUNISHED, 'explore').trap).toMatchObject({ ply: TRAP.length });
       expect(shown([...TRAP_PUNISHED, 'a6'], 'explore').trap).toBeUndefined();
+      // Cut to end on the learner's move, the trap stays through the opponent's reply.
+      const { moves } = sampleView(LANDED).trap!.trap;
+      const lesson = withTrapMoves(SAMPLE, moves, moves.slice(0, -1));
+      const trapAt = (sans: string[]) => {
+        const line = uciLine(...sans);
+        const view = lessonView({ lesson, line, ply: line.length, opponent: 1500 });
+        return guidance({ view, mode: 'explore', switches: ALL_ON }).trap;
+      };
+      expect(trapAt(TRAP_PUNISHED.slice(0, -1))).toBeDefined();
+      expect(trapAt(TRAP_PUNISHED)).toBeDefined();
+      expect(trapAt([...TRAP_PUNISHED, 'a6'])).toBeUndefined();
     });
   });
 });

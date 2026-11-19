@@ -27,8 +27,8 @@ import {
   candidates,
   type GuidePosition,
   guideMove,
-  guidePosition,
   lineKeys,
+  linePlace,
   lineVariation,
   opponentBand,
 } from './select';
@@ -74,7 +74,10 @@ export interface LessonView {
   /** How many moves of the line the board shows. */
   readonly ply: number;
   readonly learnerToMove: boolean;
+  /** Where the board's position stands in the guide (see `linePlace`). */
   readonly place: GuidePosition['place'];
+  /** The latest ply, up to the board, whose position ends a guide line. */
+  readonly lineEnd?: number;
   /** The variation the board is in, the opening itself first (see `lineVariation`). */
   readonly variation: readonly Variation[];
   readonly candidates: readonly Candidate[];
@@ -95,11 +98,16 @@ export function lessonView({ lesson, line, ply, opponent }: LessonViewInput): Le
   const keys = lineKeys(line);
   const key = keys[ply];
   const guideMoves = line.map((uci, n) => guideMove(lesson, keys[n], uci));
+  const places = keys
+    .slice(0, ply + 1)
+    .map((at, n) => linePlace(lesson, at, n ? guideMoves[n - 1] : undefined));
+  const lineEnd = places.lastIndexOf('end');
   return {
     key,
     ply,
     learnerToMove: parsePositionKey(key)!.turn === lesson.side,
-    place: guidePosition(lesson, key).place,
+    place: places[ply],
+    lineEnd: lineEnd === -1 ? undefined : lineEnd,
     variation: lineVariation(lesson, keys.slice(0, ply + 1)),
     candidates: candidates(lesson, key, opponentBand(lesson, opponent)),
     notes: arrivalNotes(lesson, keys, guideMoves, ply),
