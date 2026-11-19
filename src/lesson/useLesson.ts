@@ -39,8 +39,11 @@ export function useLesson(lesson: Lesson) {
     [lesson, line, ply, opponent],
   );
   // The candidate list row the learner points at, and the position it was
-  // pointed at in: it counts only while the board shows that position.
+  // pointed at in. A row that leaves the list (played, or stepped away from)
+  // never reports a hover-out or blur, so the pointer ends when the board
+  // moves on; otherwise stepping back would preview that row again.
   const [pointer, setPointer] = useState<{ readonly key: PositionKey; readonly uci: Uci }>();
+  if (pointer && pointer.key !== view.key) setPointer(undefined);
   const pointed = pointer?.key === view.key ? pointer.uci : undefined;
   const shown = guidance({
     view,
@@ -88,12 +91,7 @@ export function useLesson(lesson: Lesson) {
     board: boardProps,
     /** Whether the learner may play the candidates now (they are the side to move's). */
     canPlay: canMove,
-    // The played row leaves the list without a hover-out, so stepping back
-    // would otherwise preview it again.
-    play: (candidate: Candidate) => {
-      setPointer(undefined);
-      game.play(candidate.move.uci);
-    },
+    play: (candidate: Candidate) => game.play(candidate.move.uci),
     /** The candidate list row the learner points at. */
     pointed,
     /** The learner points at a candidate list row, or at none. */
