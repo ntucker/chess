@@ -32,12 +32,13 @@ const dashedBrush = (tone: Tone) => `${tone}-dashed`;
  * Board.css dashes the arrows that use it.
  */
 export const toneBrushes: Record<string, DrawBrush> = Object.fromEntries(
-  TONES.flatMap((tone) => [tone, dashedBrush(tone)].map((key): [string, DrawBrush] => [key, brush(key, tone)])),
+  TONES.flatMap((tone) =>
+    [tone, dashedBrush(tone)].map((key): [string, DrawBrush] => [
+      key,
+      { key, color: toneColors[tone], opacity: 1, lineWidth: 10 },
+    ]),
+  ),
 );
-
-function brush(key: string, tone: Tone): DrawBrush {
-  return { key, color: toneColors[tone], opacity: 1, lineWidth: 10 };
-}
 
 /** How `drawings` look on a board seen from `orientation`'s side. */
 export function boardMarks(drawings: readonly Drawing[], orientation: Color): BoardMarks {
@@ -79,7 +80,7 @@ export function boardMarks(drawings: readonly Drawing[], orientation: Color): Bo
         });
         break;
       case 'ghost':
-        shapes.push({ orig: drawing.square, piece: { ...drawing.piece } });
+        shapes.push({ orig: drawing.square, piece: drawing.piece });
         break;
       case 'badge':
         shapes.push({ orig: drawing.square, customSvg: { html: badgeCorner(drawing.quality) } });

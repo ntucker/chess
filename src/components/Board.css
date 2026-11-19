@@ -73,6 +73,7 @@ cg-board piece.faded {
  * Chessground can't dash an arrow; its dashed brushes are named *-dashed
  * (marks.ts). This finds them by the arrowhead chessground names after the
  * brush (url(#arrowhead-<brush>)), so check dashed arrows after upgrading it.
+ * A shape with brush `modifiers` gets a renamed brush and loses its dashes.
  */
 .cg-shapes line[marker-end*='-dashed)'] {
   stroke-dasharray: 0.14 0.34;

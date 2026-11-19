@@ -8,7 +8,7 @@
  * without depending on each other.
  */
 import type { MoveQuality } from '@/analysis/quality';
-import type { Color, Role, SquareName } from 'chessops/types';
+import type { Piece, SquareName } from 'chessops/types';
 
 /** A square's name, like `e4` (chessops' type, so lesson data needs no conversion). */
 export type Square = SquareName;
@@ -57,7 +57,7 @@ export type Drawing =
   /** A short tag on a square, like "3 v 2". Keep it to a few characters. */
   | { readonly kind: 'label'; readonly square: Square; readonly text: string; readonly tone: Tone }
   /** A see-through piece on `square`: where a piece was, or will be. */
-  | { readonly kind: 'ghost'; readonly square: Square; readonly piece: { readonly role: Role; readonly color: Color } }
+  | { readonly kind: 'ghost'; readonly square: Square; readonly piece: Readonly<Pick<Piece, 'role' | 'color'>> }
   /** A move label's badge on the piece on `square`, which also glows in the label's color. */
   | { readonly kind: 'badge'; readonly square: Square; readonly quality: MoveQuality }
   /** Every piece fades except those on `except`: to show a pawn structure. */

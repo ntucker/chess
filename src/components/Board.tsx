@@ -55,8 +55,6 @@ export interface BoardProps {
   readonly dom?: DOMProps;
 }
 
-const NO_DRAWINGS: readonly Drawing[] = [];
-
 export default function Board({
   fen,
   orientation,
@@ -65,7 +63,7 @@ export default function Board({
   dests,
   lastMove,
   check,
-  drawings = NO_DRAWINGS,
+  drawings = [],
   onMove,
   onHover,
   onHold,

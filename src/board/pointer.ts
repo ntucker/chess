@@ -47,26 +47,13 @@ export function watchPointer<S extends string>(
   // Reports on release wait a turn, until chessground has handled the same
   // release (its mouseup and touchend come after pointerup): a preview that
   // starts or ends at once would change the position under a piece being
-  // dropped, and chessground would refuse the move.
-  const pending = new Set<ReturnType<typeof setTimeout>>();
-  const afterRelease = (send: () => void) => {
-    const timer = setTimeout(() => {
-      pending.delete(timer);
-      send();
-    }, 0);
-    pending.add(timer);
-    return timer;
-  };
-  // The waiting report of a mouse release, which any newer hover or release replaces.
-  let releaseTimer: ReturnType<typeof setTimeout> | undefined;
-  const cancelRelease = () => {
-    clearTimeout(releaseTimer);
-    if (releaseTimer !== undefined) pending.delete(releaseTimer);
-    releaseTimer = undefined;
-  };
+  // dropped, and chessground would refuse the move. A newer hover or release
+  // replaces a mouse release's waiting report.
+  let mouseRelease: ReturnType<typeof setTimeout> | undefined;
+  let fingerRelease: ReturnType<typeof setTimeout> | undefined;
 
   const hover = (square: S | null) => {
-    cancelRelease();
+    clearTimeout(mouseRelease);
     if (square === hovered) return;
     hovered = square;
     report.hover(square);
@@ -74,18 +61,16 @@ export function watchPointer<S extends string>(
   const endTouch = () => {
     if (!touch) return;
     clearTimeout(touch.timer);
-    if (touch.held) afterRelease(() => report.hold(null));
+    if (touch.held) fingerRelease = setTimeout(() => report.hold(null), 0);
     touch = undefined;
   };
 
   const onMove = (event: PointerEvent) => {
     if (event.pointerType === 'mouse') {
       if (event.buttons === 0 && !pressing) hover(squareAt(event.clientX, event.clientY) ?? null);
-    } else if (touch && event.pointerId === touch.id && !touch.held) {
-      if (Math.hypot(event.clientX - touch.x, event.clientY - touch.y) > HOLD_SLOP) {
-        clearTimeout(touch.timer);
-        touch.timer = undefined;
-      }
+    } else if (touch?.id === event.pointerId && Math.hypot(event.clientX - touch.x, event.clientY - touch.y) > HOLD_SLOP) {
+      // A finger that wanders is dragging; once it has held, this changes nothing.
+      clearTimeout(touch.timer);
     }
   };
   const onDown = (event: PointerEvent) => {
@@ -110,8 +95,8 @@ export function watchPointer<S extends string>(
       if (!pressing) return;
       pressing = false;
       const square = squareAt(event.clientX, event.clientY) ?? null;
-      cancelRelease();
-      releaseTimer = afterRelease(() => hover(square));
+      clearTimeout(mouseRelease);
+      mouseRelease = setTimeout(() => hover(square), 0);
     } else if (touch && event.pointerId === touch.id) {
       endTouch();
     }
@@ -133,7 +118,8 @@ export function watchPointer<S extends string>(
     page.removeEventListener('pointercancel', onUp);
     // Whoever listens is being torn down: waiting release reports are dropped,
     // and a held finger's release goes out now rather than after a turn.
-    for (const timer of pending) clearTimeout(timer);
+    clearTimeout(mouseRelease);
+    clearTimeout(fingerRelease);
     if (touch?.held) report.hold(null);
     clearTimeout(touch?.timer);
     touch = undefined;
