@@ -1,0 +1,186 @@
+import { Pressable, Surface, Text, useTheme } from "@reactive/silk-native";
+import { StyleSheet, View } from "react-native";
+
+import type { Uci } from "@/lesson/lesson";
+import type { Candidate } from "@/lesson/select";
+import { fonts } from "@/theme/theme";
+import { toneColors } from "@/theme/drawingTones";
+
+interface Props {
+  readonly candidates: readonly Candidate[];
+  /** The candidate the board draws as the main one (see `candidateDrawings`). */
+  readonly main?: Candidate;
+  /** The row being previewed. */
+  readonly pointed?: Uci;
+  /** Where each move leads, when it enters another variation. */
+  readonly leadsTo: (candidate: Candidate) => string | undefined;
+  readonly canPlay: (candidate: Candidate) => boolean;
+  readonly onPlay: (candidate: Candidate) => void;
+  /** The learner points at a row (hover or keyboard focus), or leaves it. */
+  readonly onPoint: (uci: Uci | undefined) => void;
+}
+
+/**
+ * The guide's moves at the position on the board, one row each, most played
+ * first. Pointing at a row previews its move on the board; pressing it plays
+ * the move when it's the learner's to play. Each row's dot matches its arrow
+ * on the board.
+ */
+export function CandidateList({
+  candidates,
+  main,
+  pointed,
+  leadsTo,
+  canPlay,
+  onPlay,
+  onPoint,
+}: Props) {
+  return (
+    <Surface elevation="sunken" border="subtle" radius="md" style={styles.list}>
+      {candidates.map((candidate) => (
+        <Row
+          key={candidate.move.uci}
+          candidate={candidate}
+          main={candidate === main}
+          pointed={candidate.move.uci === pointed}
+          leadsTo={leadsTo(candidate)}
+          // A lone move's share is always all of the games.
+          share={candidates.length > 1 ? candidate.share : undefined}
+          playable={canPlay(candidate)}
+          onPlay={onPlay}
+          onPoint={onPoint}
+        />
+      ))}
+    </Surface>
+  );
+}
+
+interface RowProps {
+  readonly candidate: Candidate;
+  readonly main: boolean;
+  readonly pointed: boolean;
+  readonly leadsTo?: string;
+  /** The move's share of the games, when worth showing. */
+  readonly share?: number;
+  readonly playable: boolean;
+  readonly onPlay: (candidate: Candidate) => void;
+  readonly onPoint: (uci: Uci | undefined) => void;
+}
+
+function Row({
+  candidate,
+  main,
+  pointed,
+  leadsTo,
+  share,
+  playable,
+  onPlay,
+  onPoint,
+}: RowProps) {
+  const { theme } = useTheme();
+  const { color } = theme.semantic;
+  const { move, san } = candidate;
+  const tone = toneColors[main ? "main" : "other"];
+  const point = () => onPoint(move.uci);
+  const leave = () => onPoint(undefined);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${san}${move.book ? ", book move" : ""}${share === undefined ? "" : `, ${percent(share)} of games`}`}
+      accessibilityHint={playable ? "Plays this move" : undefined}
+      // Not disabled: the opponent's rows still preview while not playable.
+      accessibilityState={{ disabled: !playable }}
+      onPress={playable ? () => onPlay(candidate) : undefined}
+      onHoverIn={point}
+      onHoverOut={leave}
+      onFocus={point}
+      onBlur={leave}
+      style={({ pressed }) => [
+        styles.row,
+        (pointed || (pressed && playable)) && {
+          backgroundColor: color.tones.neutral.subtle,
+        },
+      ]}
+    >
+      <View style={[styles.dot, { backgroundColor: tone }]} />
+      <View style={styles.move}>
+        <View style={styles.title}>
+          <Text role="body" style={styles.san}>
+            {san}
+          </Text>
+          {move.book ? (
+            <Text
+              role="caption"
+              style={[styles.tag, { color: tone, borderColor: tone }]}
+            >
+              Book
+            </Text>
+          ) : null}
+          {move.risk ? (
+            <Text role="caption" tone="secondary" style={styles.risk}>
+              {move.risk}
+            </Text>
+          ) : null}
+        </View>
+        {leadsTo ? (
+          <Text role="caption" tone="secondary" numberOfLines={1}>
+            {leadsTo}
+          </Text>
+        ) : null}
+      </View>
+      {share === undefined ? null : (
+        <View style={styles.share}>
+          <View
+            style={[
+              styles.track,
+              { backgroundColor: color.tones.neutral.subtle },
+            ]}
+          >
+            <View
+              style={[
+                styles.fillBar,
+                { width: `${share * 100}%`, backgroundColor: tone },
+              ]}
+            />
+          </View>
+          <Text role="caption" tone="secondary" style={styles.percent}>
+            {percent(share)}
+          </Text>
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+const percent = (share: number) => `${Math.round(share * 100)}%`;
+
+const styles = StyleSheet.create({
+  list: { overflow: "hidden", paddingVertical: 4 },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    outlineOffset: -2,
+  },
+  dot: { width: 10, height: 10, borderRadius: 5 },
+  move: { flex: 1, gap: 1 },
+  title: { flexDirection: "row", alignItems: "center", gap: 8 },
+  san: { fontFamily: fonts.mono, fontSize: 17 },
+  tag: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 1,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    fontSize: 10,
+  },
+  risk: { textTransform: "capitalize" },
+  share: { width: 92, flexDirection: "row", alignItems: "center", gap: 8 },
+  track: { flex: 1, height: 4, borderRadius: 2, overflow: "hidden" },
+  fillBar: { height: "100%", borderRadius: 2 },
+  percent: { width: 32, textAlign: "right", fontFamily: fonts.mono },
+});
