@@ -5,8 +5,7 @@
  */
 import type { Trap } from '@/lesson/lesson';
 
-import type { Found } from './extract';
-import { nearestMatch, placeSequence } from './line';
+import { nearestMatch, placeSequence, type Found } from './line';
 import { chapterMoves, mainLine, type Chapter, type StudyMove } from './study';
 import { namedMoves, plainSan, SAN } from './text';
 

@@ -63,9 +63,7 @@ describe('extractChapter', () => {
   });
 
   it('refuses a watch-out trap that loses nothing', () => {
-    expect(rejected).toEqual([
-      expect.objectContaining({ why: 'black does not lose material: balance goes 0 to 0' }),
-    ]);
+    expect(rejected).toEqual([expect.objectContaining({ why: 'black does not lose material: balance goes 0 to 0' })]);
   });
 
   it('reads the choice guide, risk included', () => {

@@ -32,7 +32,11 @@ export function namedMoves(text: string): NamedMove[] {
     const previous = moves.at(-1);
     if (number) {
       const black = dots === '...';
-      moves.push({ san: plainSan(san), ply: 2 * (Number(number) - 1) + (black ? 2 : 1), side: black ? 'black' : 'white' });
+      moves.push({
+        san: plainSan(san),
+        ply: 2 * (Number(number) - 1) + (black ? 2 : 1),
+        side: black ? 'black' : 'white',
+      });
     } else if (bareDots) {
       moves.push({ san: plainSan(san), side: 'black' });
     } else {
@@ -67,11 +71,20 @@ export function direction(value: Evaluation): Direction {
 
 const SIDE = String.raw`(White|Black|You|you)`;
 const VERDICTS: readonly [RegExp, (side: Color) => Direction][] = [
-  [new RegExp(String.raw`\b${SIDE} (?:is|are|stands?) (?:(?!not\b)\w+ ){0,2}(?:better|winning)\b`, 'g'), (side) => side],
-  [new RegExp(String.raw`\b${SIDE} (?:is|are|stands?) (?:(?!not\b)\w+ ){0,2}(?:worse|losing|lost)\b`, 'g'), (side) => opposite(side)],
+  [
+    new RegExp(String.raw`\b${SIDE} (?:is|are|stands?) (?:(?!not\b)\w+ ){0,2}(?:better|winning)\b`, 'g'),
+    (side) => side,
+  ],
+  [
+    new RegExp(String.raw`\b${SIDE} (?:is|are|stands?) (?:(?!not\b)\w+ ){0,2}(?:worse|losing|lost)\b`, 'g'),
+    (side) => opposite(side),
+  ],
   [new RegExp(String.raw`\b${SIDE} keeps? (?:a|the) (?:small|slight) (?:edge|plus|advantage)\b`, 'g'), (side) => side],
   [new RegExp(String.raw`\bsmall ${SIDE} edge\b`, 'g'), (side) => side],
-  [/\b(?:position|game|line|it) is (?:\w+ )?(?:equal|level|balanced)\b|\b(?:roughly|dead|about|completely) (?:equal|level)\b|\bequal position\b/g, () => 'equal'],
+  [
+    /\b(?:position|game|line|it) is (?:\w+ )?(?:equal|level|balanced)\b|\b(?:roughly|dead|about|completely) (?:equal|level)\b|\bequal position\b/g,
+    () => 'equal',
+  ],
 ];
 
 /** The directions of the verdicts `text` states, reading "you" as `learner`. */

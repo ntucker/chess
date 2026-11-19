@@ -6,7 +6,7 @@
 import type { Chess } from 'chessops/chess';
 import type { Color } from 'chessops/types';
 
-import type { Uci } from '@/lesson/lesson';
+import type { Idea, Uci } from '@/lesson/lesson';
 
 import { mainLine, played, sanToUci, type StudyMove } from './study';
 import type { NamedMove } from './text';
@@ -18,6 +18,14 @@ import type { NamedMove } from './text';
 export interface Spot {
   readonly move?: StudyMove;
   readonly pos: Chess;
+}
+
+/** An idea a comment states, and the position it is about. */
+export interface Found {
+  readonly spot: Spot;
+  readonly idea: Idea;
+  /** What the idea says, as the text of its own note when it lands away from its comment. */
+  readonly label: string;
 }
 
 /** The moves from the chapter's start to `move`, then on along its main continuation. */

@@ -3,12 +3,9 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { Chess } from 'chessops/chess';
-import { parseSan } from 'chessops/san';
-
-import { positionKey } from '@/game/replay';
 import { checkLesson } from '@/lesson/check';
 import type { PositionKey } from '@/lesson/lesson';
+import { keyAfter as key } from '@/lesson/lesson.fixture';
 
 import { extractChapter } from './extract';
 import { STUDY_PGN } from './fixture';
@@ -23,12 +20,6 @@ const lesson = mergeChapters(
   chapters.map((chapter) => extractChapter(chapter, 'black')),
 );
 
-function key(...sans: string[]): PositionKey {
-  const pos = Chess.default();
-  for (const san of sans) pos.play(parseSan(pos, san)!);
-  return positionKey(pos);
-}
-
 const AFTER_C6 = key('e4', 'c6'); // White: d4 or Nc3
 const AFTER_D5 = key('e4', 'c6', 'd4', 'd5'); // White: e5 or Nc3
 const AFTER_E5 = key('e4', 'c6', 'd4', 'd5', 'e5'); // Black: Bf5 or c5
@@ -36,7 +27,7 @@ const AFTER_BF5 = key('e4', 'c6', 'd4', 'd5', 'e5', 'Bf5'); // White: Nf3 or g4
 const AFTER_NF3 = key('e4', 'c6', 'd4', 'd5', 'e5', 'Bf5', 'Nf3'); // Black: e6 or Qb6
 
 describe('addPopularity', () => {
-  it('asks about positions with a choice, the opponent\'s first, and skips bands no game reaches', async () => {
+  it("asks about positions with a choice, the opponent's first, and skips bands no game reaches", async () => {
     const asked: [PositionKey, number][] = [];
     // No 1000-rated game plays 4.Nf3 in this fake explorer.
     const counts: Record<PositionKey, MoveCounts> = {
@@ -54,7 +45,11 @@ describe('addPopularity', () => {
 
     expect([...new Set(asked.map(([at]) => at))]).toEqual([AFTER_C6, AFTER_D5, AFTER_BF5, AFTER_E5, AFTER_NF3]);
     expect(asked.filter(([at]) => at === AFTER_NF3).map(([, band]) => band)).toEqual(RATING_BANDS.slice(1));
-    expect(result.popularity).toEqual({ ratingBands: RATING_BANDS, speeds: ['blitz', 'rapid', 'classical'], date: '2026-11-19' });
+    expect(result.popularity).toEqual({
+      ratingBands: RATING_BANDS,
+      speeds: ['blitz', 'rapid', 'classical'],
+      date: '2026-11-19',
+    });
     expect(result.positions[AFTER_NF3].moves.map((move) => [move.uci, move.games])).toEqual([
       ['e7e6', [0, 9, 9, 9, 9]],
       ['d8b6', [0, 0, 0, 0, 0]],
@@ -62,6 +57,30 @@ describe('addPopularity', () => {
     // A position without a choice is not measured.
     expect(result.positions[key('e4')].moves[0].games).toBeUndefined();
     expect(checkLesson(result)).toEqual([]);
+  });
+
+  it('asks about a position one move order reaches, though another counted 0 games', async () => {
+    // Both chapters reach 3.Nc3 dxe4 4.Nxe4, where Black chooses; no game in the fake explorer plays 2.Nc3.
+    const transposing = parseStudy(
+      `[Event "🔵 01 Classical"]\n\n1. e4 c6 2. d4 d5 3. Nc3 dxe4 4. Nxe4 Bf5 (4... Nf6) *\n\n` +
+        `[Event "🔵 02 Two Knights"]\n\n1. e4 c6 2. Nc3 d5 3. d4 *\n`,
+      () => true,
+    );
+    const small = mergeChapters(
+      { id: 'test', title: 'Test', side: 'black', source: { title: 'Test', author: 'Test', url: '' } },
+      transposing,
+      transposing.map((chapter) => extractChapter(chapter, 'black')),
+    );
+    const asked: PositionKey[] = [];
+    const explorer = async (at: PositionKey): Promise<MoveCounts> => {
+      asked.push(at);
+      return at === AFTER_C6 ? { d2d4: 10 } : { c8f5: 5, g8f6: 5 };
+    };
+    await addPopularity(small, explorer, '2026-11-19');
+
+    expect(asked.filter((at) => at === key('e4', 'c6', 'd4', 'd5', 'Nc3', 'dxe4', 'Nxe4'))).toHaveLength(
+      RATING_BANDS.length,
+    );
   });
 });
 

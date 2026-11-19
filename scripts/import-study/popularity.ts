@@ -4,8 +4,7 @@
  * refuses requests without a lichess token, and lichess asks for one request
  * at a time and a full minute's pause after a 429.
  */
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 
 import { parsePosition, parsePositionKey, positionKey } from '@/game/replay';
 import type { Lesson, PositionKey, Uci } from '@/lesson/lesson';
@@ -32,7 +31,8 @@ interface ExplorerOptions {
 /** The most moves the explorer lists for a position: more than any guide position has. */
 const MAX_MOVES = 100;
 const RETRY_AFTER_MS = 60_000;
-const NOT_SKIPPED: readonly boolean[] = RATING_BANDS.map(() => false);
+const ALL_BANDS: readonly boolean[] = RATING_BANDS.map(() => true);
+const NO_BANDS: readonly boolean[] = RATING_BANDS.map(() => false);
 /** Measured: one request every 2.5 s draws no 429s (about 24 a minute); faster ones do. */
 const REQUEST_INTERVAL_MS = 2_500;
 
@@ -80,7 +80,6 @@ export function lichessExplorer({
 }
 
 function readCache(file: string): Map<string, MoveCounts> {
-  mkdirSync(dirname(file), { recursive: true });
   if (!existsSync(file)) return new Map();
   const lines = readFileSync(file, 'utf8').split('\n').filter(Boolean);
   return new Map(lines.map((line) => JSON.parse(line) as [string, MoveCounts]));
@@ -92,9 +91,11 @@ function readCache(file: string): Map<string, MoveCounts> {
  * the learner's. Moves without a choice get no counts ("not measured"), and
  * counts already in `lesson` are replaced.
  *
- * A band is not asked about where no game can reach the position, because an
- * earlier position counted 0 games for the move into it: its moves count 0
- * there. (A transposition from outside the guide could in theory reach it.)
+ * A band is not asked about where no game can reach the position, because
+ * every move into it counted 0 games there, or left a position no game
+ * reaches: its moves count 0 there. (A transposition from outside the guide
+ * could in theory reach it, and a move into it from a position later in the
+ * crawl is not seen in time.)
  */
 export async function addPopularity(
   lesson: Lesson,
@@ -104,24 +105,32 @@ export async function addPopularity(
 ): Promise<Lesson> {
   const order = byDistance(lesson);
   const counts = new Map<PositionKey, readonly number[][]>();
-  const unreached = new Map<PositionKey, boolean[]>();
   let asked = 0;
   const crawl = async (wanted: (key: PositionKey) => boolean) => {
+    /** Per band, whether some game can reach each position, as far as the counts so far tell. */
+    const reached = new Map([[order[0], ALL_BANDS]]);
     for (const key of order) {
       const pos = parsePositionKey(key)!;
       const moves = lesson.positions[key].moves;
-      const skip = unreached.get(key) ?? NOT_SKIPPED;
+      const reach = reached.get(key) ?? ALL_BANDS;
       if (wanted(key) && !counts.has(key)) {
         const answers: (MoveCounts | undefined)[] = [];
-        for (const [i, band] of RATING_BANDS.entries()) answers.push(skip[i] ? undefined : await explorer(key, band));
-        counts.set(key, moves.map((move) => answers.map((answer) => answer?.[move.uci] ?? 0)));
+        for (const [i, band] of RATING_BANDS.entries()) answers.push(reach[i] ? await explorer(key, band) : undefined);
+        counts.set(
+          key,
+          moves.map((move) => answers.map((answer) => answer?.[move.uci] ?? 0)),
+        );
         onProgress?.(++asked);
       }
       const games = counts.get(key);
       moves.forEach((move, m) => {
         const next = positionKey(played(pos, move.uci));
-        const nextSkip = unreached.get(next) ?? NOT_SKIPPED;
-        unreached.set(next, nextSkip.map((was, i) => was || skip[i] || games?.[m][i] === 0));
+        // Unmeasured moves (no counts) are assumed played.
+        const reachedBefore = reached.get(next) ?? NO_BANDS;
+        reached.set(
+          next,
+          reachedBefore.map((was, i) => was || (reach[i] && games?.[m][i] !== 0)),
+        );
       });
     }
   };

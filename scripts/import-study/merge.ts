@@ -44,58 +44,17 @@ export function mergeChapters(
   chapters: readonly Chapter[],
   extracted: readonly ChapterNotes[],
 ): Lesson {
-  const { variations, chapterVariation } = chapterVariations(info, chapters);
-  const positions = new Map<PositionKey, DraftPosition>();
-  const entry = (key: PositionKey) => {
-    let draft = positions.get(key);
-    if (!draft) positions.set(key, (draft = { moves: new Map(), notes: [] }));
-    return draft;
-  };
-  const draftMove = (pos: Chess, uci: Uci) => {
-    const moves = entry(positionKey(pos)).moves;
-    let move = moves.get(uci);
-    if (!move) moves.set(uci, (move = { uci, book: false, notes: [] }));
-    return move;
-  };
+  if (chapters.length === 0) throw new Error(`No chapters to merge for lesson ${info.id}`);
   const start = chapters[0].start;
   if (chapters.some((chapter) => positionKey(chapter.start) !== positionKey(start))) {
     throw new Error('Every chapter of a lesson must start from the same position');
   }
-  const startKey = positionKey(start);
-  entry(startKey);
-
-  chapters.forEach((chapter, i) => {
-    const { notes, choices } = extracted[i];
-    const book = bookMoves(chapter, info.side, new Set(choices.map((choice) => choice.move)));
-    for (const move of chapterMoves(chapter)) draftMove(move.before, move.uci).book ||= book.has(move);
-    for (const { move, note } of notes) addNote(move ? draftMove(move.before, move.uci).notes : entry(startKey).notes, note);
-    for (const choice of choices) {
-      const move = draftMove(choice.move.before, choice.move.uci);
-      move.book = true;
-      move.risk ??= choice.risk;
-    }
-  });
-
+  const tree = new DraftTree(start);
+  chapters.forEach((chapter, i) => addChapter(tree, chapter, extracted[i], info.side));
+  const { variations, chapterVariation } = chapterVariations(info, chapters);
   const variationOf = positionVariations(info.id, variations, chapters, chapterVariation);
-  // Sequences from comment text: the variation of the position they leave from.
-  for (const { branches } of extracted) {
-    for (const { spot, ucis } of branches) {
-      let pos = spot.pos;
-      // A sequence may leave from where the study stops: then the variation of the move into it.
-      const variation =
-        variationOf.get(positionKey(pos)) ?? (spot.move && variationOf.get(positionKey(spot.move.before))) ?? info.id;
-      for (const uci of ucis) {
-        const key = positionKey(pos);
-        if (!variationOf.has(key)) variationOf.set(key, variation);
-        draftMove(pos, uci);
-        pos = played(pos, uci);
-      }
-    }
-  }
-  // A position the guide stops at needs no entry unless it has notes.
-  for (const [key, draft] of positions) {
-    if (draft.moves.size === 0 && draft.notes.length === 0 && key !== startKey) positions.delete(key);
-  }
+  for (const { branches } of extracted) addBranches(tree, branches, variationOf, info.id);
+  tree.dropEmpty();
 
   return {
     format: LESSON_FORMAT,
@@ -106,9 +65,74 @@ export function mergeChapters(
     source: info.source,
     variations,
     positions: Object.fromEntries(
-      [...positions].map(([key, draft]) => [key, finish(draft, variationOf.get(key) ?? info.id)]),
+      [...tree.positions].map(([key, draft]) => [key, finish(draft, variationOf.get(key) ?? info.id)]),
     ),
   };
+}
+
+/** The merged positions while they are built, each created on first use. */
+class DraftTree {
+  readonly positions = new Map<PositionKey, DraftPosition>();
+  readonly startKey: PositionKey;
+
+  constructor(start: Chess) {
+    this.startKey = positionKey(start);
+    this.entry(this.startKey);
+  }
+
+  entry(key: PositionKey): DraftPosition {
+    let draft = this.positions.get(key);
+    if (!draft) this.positions.set(key, (draft = { moves: new Map(), notes: [] }));
+    return draft;
+  }
+
+  move(pos: Chess, uci: Uci): DraftMove {
+    const moves = this.entry(positionKey(pos)).moves;
+    let move = moves.get(uci);
+    if (!move) moves.set(uci, (move = { uci, book: false, notes: [] }));
+    return move;
+  }
+
+  /** Drops positions the guide stops at: they need no entry unless they have notes. */
+  dropEmpty() {
+    for (const [key, draft] of this.positions) {
+      if (draft.moves.size === 0 && draft.notes.length === 0 && key !== this.startKey) this.positions.delete(key);
+    }
+  }
+}
+
+/** Adds `chapter`'s moves, book marks, notes and choice-guide risks to `tree`. */
+function addChapter(tree: DraftTree, chapter: Chapter, { notes, choices }: ChapterNotes, side: Color) {
+  const book = bookMoves(chapter, side, new Set(choices.map((choice) => choice.move)));
+  for (const move of chapterMoves(chapter)) tree.move(move.before, move.uci).book ||= book.has(move);
+  for (const { move, note } of notes)
+    addNote(move ? tree.move(move.before, move.uci).notes : tree.entry(tree.startKey).notes, note);
+  for (const choice of choices) {
+    const move = tree.move(choice.move.before, choice.move.uci);
+    move.book = true;
+    move.risk ??= choice.risk;
+  }
+}
+
+/** Adds sequences from comment text, each position in the variation of the position the sequence leaves from. */
+function addBranches(
+  tree: DraftTree,
+  branches: ChapterNotes['branches'],
+  variationOf: Map<PositionKey, VariationId>,
+  root: VariationId,
+) {
+  for (const { spot, ucis } of branches) {
+    let pos = spot.pos;
+    // A sequence may leave from where the study stops: then the variation of the move into it.
+    const variation =
+      variationOf.get(positionKey(pos)) ?? (spot.move && variationOf.get(positionKey(spot.move.before))) ?? root;
+    for (const uci of ucis) {
+      const key = positionKey(pos);
+      if (!variationOf.has(key)) variationOf.set(key, variation);
+      tree.move(pos, uci);
+      pos = played(pos, uci);
+    }
+  }
 }
 
 /**
@@ -206,7 +230,9 @@ function finish(draft: DraftPosition, variation: VariationId): LessonPosition {
  * names the chapter's own variation, and numbered parts (I), (II) are one.
  */
 function chapterVariations(info: LessonInfo, chapters: readonly Chapter[]) {
-  const variations: Record<VariationId, Variation> = { [info.id]: { name: info.title } };
+  const variations: Record<VariationId, Variation> = {
+    [info.id]: { name: info.title },
+  };
   const chapterVariation = chapters.map(({ title }) => {
     const name = title.replace(/^\P{L}*\d+\s+/u, '').replace(/\s+\((?:I|II|III|IV|V)\)$/, '');
     const [group] = name.includes(':') ? name.split(/:\s*/, 2) : [undefined];
@@ -237,7 +263,11 @@ function depth(variations: Readonly<Record<VariationId, Variation>>, id: Variati
 }
 
 /** The narrowest variation that holds all of `ids`. */
-function narrowest(variations: Readonly<Record<VariationId, Variation>>, ids: ReadonlySet<VariationId>, root: VariationId) {
+function narrowest(
+  variations: Readonly<Record<VariationId, Variation>>,
+  ids: ReadonlySet<VariationId>,
+  root: VariationId,
+) {
   const chain = (id: VariationId) => {
     const path: VariationId[] = [];
     for (let at: VariationId | undefined = id; at; at = variations[at].parent) path.unshift(at);
@@ -246,9 +276,8 @@ function narrowest(variations: Readonly<Record<VariationId, Variation>>, ids: Re
   const paths = [...ids].map(chain);
   if (paths.length === 0) return root;
   let common = root;
-  for (let depth = 0; paths.every((path) => path[depth] !== undefined && path[depth] === paths[0][depth]); depth++) {
-    common = paths[0][depth];
+  for (let level = 0; paths.every((path) => path[level] !== undefined && path[level] === paths[0][level]); level++) {
+    common = paths[0][level];
   }
   return common;
 }
-

@@ -8,8 +8,7 @@ import type { SquareName } from 'chessops/types';
 import { withTurn } from '@/lesson/check';
 import type { Route } from '@/lesson/lesson';
 
-import type { Found } from './extract';
-import { findOnLine, playedBy, type Spot } from './line';
+import { findOnLine, playedBy, type Found, type Spot } from './line';
 import { played, sanToUci, type StudyMove } from './study';
 import { namedMoves, plainSan, SAN } from './text';
 
@@ -28,10 +27,12 @@ export function planLists(move: StudyMove, text: string, header = false): Found[
   return moveLists(text).flatMap(({ index, end, sans }) => {
     const spot = planSpot(move, text.slice(sentenceStart(text, index), index), header);
     if (!spot) return [];
-    const played = playedBy(spot, 'black');
-    if (sans.some((san) => played.has(san))) return [];
+    const blackMoves = playedBy(spot, 'black');
+    if (sans.some((san) => blackMoves.has(san))) return [];
     const routes = planRoutes(spot, sans);
-    return routes ? [{ spot, idea: { type: 'plan', side: 'black', routes }, label: `Plan: ${text.slice(index, end)}` }] : [];
+    return routes
+      ? [{ spot, idea: { type: 'plan', side: 'black', routes }, label: `Plan: ${text.slice(index, end)}` }]
+      : [];
   });
 }
 
@@ -42,7 +43,11 @@ function moveLists(text: string): { index: number; end: number; sans: string[] }
   const close = () => {
     if (current.length >= 2) {
       const last = current[current.length - 1];
-      lists.push({ index: current[0].index!, end: last.index! + last[0].length, sans: current.map((m) => plainSan(m[1])) });
+      lists.push({
+        index: current[0].index!,
+        end: last.index! + last[0].length,
+        sans: current.map((m) => plainSan(m[1])),
+      });
     }
   };
   for (const match of text.matchAll(LISTED)) {
@@ -65,7 +70,12 @@ function sentenceStart(text: string, index: number): number {
 /** Where a plan applies, from the text of its sentence before the list. */
 function planSpot(move: StudyMove, before: string, header: boolean): Spot | undefined {
   const anchor = header ? before : before.match(/After\s+(.+)$/)?.[1];
-  const named = anchor === undefined ? undefined : namedMoves(anchor).filter((m) => m.ply).at(-1);
+  const named =
+    anchor === undefined
+      ? undefined
+      : namedMoves(anchor)
+          .filter((m) => m.ply)
+          .at(-1);
   if (!named) return header ? { pos: move.before } : { move, pos: move.after };
   const found = findOnLine(move, named);
   return found && { move: found, pos: found.after };

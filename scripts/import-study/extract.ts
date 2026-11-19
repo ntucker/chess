@@ -10,19 +10,11 @@ import { checkIdea } from '@/lesson/check';
 import type { Evaluation, Idea, Note, Uci } from '@/lesson/lesson';
 
 import { choiceGuide, type Choice } from './choices';
-import { placeSequence, type Spot } from './line';
+import { placeSequence, type Found, type Spot } from './line';
 import { planLists } from './plans';
 import { chapterMoves, type Chapter, type StudyMove } from './study';
 import { direction, namedMoves, shorten, textVerdicts } from './text';
 import { trapLines, watchOuts } from './traps';
-
-/** An idea a comment states, and the position it is about. */
-export interface Found {
-  readonly spot: Spot;
-  readonly idea: Idea;
-  /** What the idea says, as the text of its own note when it lands away from its comment. */
-  readonly label: string;
-}
 
 export interface ChapterNotes {
   /** Notes on a move, or on the chapter's start when `move` is undefined. */
@@ -69,37 +61,27 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
   let contradicted = 0;
 
   for (const move of chapterMoves(chapter)) {
-    const found: Found[] = [];
     const { comment } = move;
     const header = move.ply === 1 && /^\s*Idea:/.test(comment) ? readHeader(chapter, comment) : undefined;
     // A header is about the whole chapter: it goes where the chapter's main line ends, not on move 1.
     const target = header?.mainLineEnd ?? move;
-    if (header) {
-      found.push(...planLists(move, header.idea, true), ...watchOuts(chapter, header.watchOut));
-    } else if (comment) {
-      found.push(...planLists(move, comment));
-    }
-    for (const trap of trapLines(move)) {
-      found.push(trap);
-      branches.push({ spot: trap.spot, ucis: trap.idea.moves });
-    }
-    for (const run of comment.match(SEQUENCE) ?? []) {
-      const placed = placeSequence(move, namedMoves(run));
-      if (placed && placed.ucis.length > 1) branches.push(placed);
-    }
-    choices.push(...choiceGuide(move, learner));
+    const traps = trapLines(move);
     const evaluation = glyphEvaluation(move, learner);
     if (evaluation === 'contradicted') contradicted++;
-    else if (evaluation) found.push({ spot: { move, pos: move.after }, idea: evaluation, label: EVALUATION_TEXT[evaluation.value] });
+    const found: Found[] = [
+      ...plans(chapter, move, header),
+      ...traps,
+      ...(typeof evaluation === 'object' ? [evaluation] : []),
+    ];
+    branches.push(...traps.map(({ spot, idea }) => ({ spot, ucis: idea.moves })), ...sequences(move));
+    choices.push(...choiceGuide(move, learner));
 
     const own: Idea[] = [];
     for (const { spot, idea, label } of found) {
       const why = checkIdea(idea, { after: spot.pos });
-      if (why) {
-        rejected.push({ idea, why, comment });
-        continue;
-      }
-      if (spot.move === target) own.push(idea);
+      if (why) rejected.push({ idea, why, comment });
+      else if (spot.move === target) own.push(idea);
+      // An idea about the position before the commented move: the note says it before the move is played.
       else if (spot.move === target.parent) own.push({ ...idea, at: 'before' });
       else notes.push({ move: spot.move, note: { text: shorten(label), ideas: [idea] } });
     }
@@ -107,6 +89,20 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
     if (text) notes.push({ move: target, note: note(text, own) });
   }
   return { notes, branches, choices, rejected, contradicted };
+}
+
+/** The plans `move`'s comment states; a chapter header's watch-outs count as plans of the chapter. */
+function plans(chapter: Chapter, move: StudyMove, header: Header | undefined): Found[] {
+  if (header) return [...planLists(move, header.idea, true), ...watchOuts(chapter, header.watchOut)];
+  return move.comment ? planLists(move, move.comment) : [];
+}
+
+/** Sequences of two or more moves that `move`'s comment writes out, placed in the tree. */
+function sequences(move: StudyMove) {
+  return (move.comment.match(SEQUENCE) ?? []).flatMap((run) => {
+    const placed = placeSequence(move, namedMoves(run));
+    return placed && placed.ucis.length > 1 ? [placed] : [];
+  });
 }
 
 function note(comment: string, ideas: readonly Idea[]): Note {
@@ -138,10 +134,10 @@ function readHeader(chapter: Chapter, comment: string): Header {
  * The move's evaluation glyph, unless its comment states verdicts and none
  * agrees with the glyph: then the text wins and the glyph is dropped.
  */
-function glyphEvaluation(move: StudyMove, learner: Color): (Idea & { type: 'evaluation' }) | 'contradicted' | undefined {
+function glyphEvaluation(move: StudyMove, learner: Color): Found | 'contradicted' | undefined {
   const value = move.nags.map((nag) => NAG_EVALUATIONS[nag]).find(Boolean);
   if (!value) return undefined;
   const verdicts = textVerdicts(move.comment, learner);
   if (verdicts.size > 0 && !verdicts.has(direction(value))) return 'contradicted';
-  return { type: 'evaluation', value };
+  return { spot: { move, pos: move.after }, idea: { type: 'evaluation', value }, label: EVALUATION_TEXT[value] };
 }

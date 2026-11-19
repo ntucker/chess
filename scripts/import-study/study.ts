@@ -72,7 +72,10 @@ function readMoves(
       after,
       parent,
       children,
-      comment: comments.map((raw) => parseComment(raw).text.trim()).filter(Boolean).join('\n'),
+      comment: comments
+        .map((raw) => parseComment(raw).text.trim())
+        .filter(Boolean)
+        .join('\n'),
       nags: node.data.nags ?? [],
     };
     children.push(...readMoves(node.children, after, ply + 1, move));

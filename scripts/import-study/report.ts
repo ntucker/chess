@@ -10,7 +10,9 @@ export function report(lesson: Lesson, chapters: readonly Chapter[], extracted: 
   const moves = entries.flatMap((entry) => entry.moves);
   const notes = [...entries.flatMap((entry) => entry.notes ?? []), ...moves.flatMap((move) => move.notes ?? [])];
   const ideas = tally(notes.flatMap((note) => note.ideas ?? []).map((idea) => idea.type));
-  const rejected = tally(extracted.flatMap((e) => e.rejected).map(({ idea, why }) => `${idea.type}: ${why.replace(/[a-h][1-8]|\d+/g, '#')}`));
+  const rejected = tally(
+    extracted.flatMap((e) => e.rejected).map(({ idea, why }) => `${idea.type}: ${why.replace(/[a-h][1-8]|\d+/g, '#')}`),
+  );
   const rows: [string, unknown][] = [
     ['chapters', chapters.length],
     ['positions', entries.length],
@@ -23,10 +25,16 @@ export function report(lesson: Lesson, chapters: readonly Chapter[], extracted: 
     ['ideas', ideas],
     ['ideas the checker refused', rejected],
     ['evaluation glyphs dropped for contradicting the text', extracted.reduce((sum, e) => sum + e.contradicted, 0)],
-    ['moves only in comment text (traps and sequences)', moves.length - new Set(chapters.flatMap((c) => [...chapterMoves(c)].map((m) => `${positionKey(m.before)} ${m.uci}`))).size],
+    [
+      'moves only in comment text (traps and sequences)',
+      moves.length -
+        new Set(chapters.flatMap((c) => [...chapterMoves(c)].map((m) => `${positionKey(m.before)} ${m.uci}`))).size,
+    ],
     ['file size (bytes)', JSON.stringify(lesson).length],
   ];
-  return rows.map(([name, value]) => `${name}: ${typeof value === 'object' ? JSON.stringify(value, null, 1) : value}`).join('\n');
+  return rows
+    .map(([name, value]) => `${name}: ${typeof value === 'object' ? JSON.stringify(value, null, 1) : value}`)
+    .join('\n');
 }
 
 function tally(values: readonly string[]): Record<string, number> {
