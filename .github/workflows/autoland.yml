@@ -6,10 +6,10 @@
 # the PR is squash-merged. Rules: docs/plans/README.md.
 #
 # pull_request_target runs this file as it is on main, so a PR cannot change
-# the rules that judge it. That event also runs the PR's code with this
-# workflow's token, so only branches in this repo (people with write access)
-# are handled, the checkout keeps no credentials, and secrets reach only the
-# steps that need them.
+# the rules that judge it. Only branches in this repo (people with write
+# access) are handled. The PR's code runs only in the build job, which has a
+# read-only token, no secrets and no cache; the jobs holding the Claude token
+# or a write token only read the PR's files and serve its built web app.
 name: Autoland
 
 on:
@@ -71,16 +71,60 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
         run: |
           blocked=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename' \
-            | grep -E '^(docs/plans/|\.github/|\.agents/projects/|PROJECTS\.md$)' || true)
+            | grep -E '^(docs/plans/|\.github/|\.agents/projects/|PROJECTS\.md$|\.claude/|\.mcp\.json$)|(^|/)CLAUDE\.md$' || true)
           if [[ -n $blocked ]]; then
-            echo "::error::Only Nathaniel merges changes to plans, workflows and the project process:"
+            echo "::error::Only Nathaniel merges changes to plans, workflows, agent settings and the project process:"
             printf '%s\n' "$blocked"
             exit 1
           fi
 
+  build:
+    name: Autoland build
+    needs: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: autoland-build-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the PR
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      # No dependency cache: this event saves caches where main's workflows
+      # read them, and the PR's code must not write there.
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Install
+        run: yarn install --immutable
+
+      - name: Export the web app
+        run: |
+          yarn expo export --platform web
+          # Pages shows 404.html for any path it has no file for.
+          cp dist/+not-found.html dist/404.html
+
+      - name: Upload the web app
+        uses: actions/upload-artifact@v5
+        with:
+          name: autoland-web-${{ github.event.pull_request.number }}
+          path: dist
+          retention-days: 3
+
   review:
     name: Interface review
-    needs: gate
+    needs: [gate, build]
     runs-on: ubuntu-latest
     timeout-minutes: 90
     # A newer push makes this review worthless.
@@ -97,6 +141,7 @@ jobs:
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
 
     steps:
+      # For reading only: nothing from it runs in this job.
       - name: Checkout the PR
         uses: actions/checkout@v7
         with:
@@ -115,24 +160,19 @@ jobs:
             AGENTS.md
           persist-credentials: false
 
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
+      - name: Download the web app
+        uses: actions/download-artifact@v5
         with:
-          node-version: 22
-          cache: yarn
+          name: autoland-web-${{ github.event.pull_request.number }}
+          path: ${{ runner.temp }}/web
 
-      - name: Install
-        run: yarn install --immutable
-
-      - name: Export and serve the web app
+      # Serves the files the way Pages does: /play is play.html, and 404.html
+      # answers any other path.
+      - name: Serve the web app
         run: |
-          yarn expo export --platform web
-          npx expo serve --port 8081 > .autoland/serve.log 2>&1 &
+          npx -y serve@14.2.7 --listen 8081 "$RUNNER_TEMP/web" > "$RUNNER_TEMP/serve.log" 2>&1 &
           for _ in $(seq 60); do curl -fs http://localhost:8081 > /dev/null && exit 0; sleep 1; done
-          cat .autoland/serve.log
+          cat "$RUNNER_TEMP/serve.log"
           exit 1
 
       # Bugbot's comments are part of what the reviewer checks, so its review
@@ -219,6 +259,10 @@ jobs:
             --json-schema "$(cat "$main/.github/autoland/verdict.schema.json")" \
             --output-format json > "$GITHUB_WORKSPACE/.autoland/result.json"
           jq -e '.structured_output.verdict' "$GITHUB_WORKSPACE/.autoland/result.json" > /dev/null
+          # The token is in the reviewer's environment; it must never reach a public comment.
+          if grep -qF "$CLAUDE_CODE_OAUTH_TOKEN" "$GITHUB_WORKSPACE/.autoland/result.json"; then
+            echo "::error::The review quoted the Claude token, so it will not be posted"; exit 1
+          fi
 
       - name: Upload screenshots
         if: ${{ !cancelled() }}
@@ -232,7 +276,6 @@ jobs:
         if: ${{ !cancelled() && steps.review.outcome == 'success' }}
         env:
           GH_TOKEN: ${{ github.token }}
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           out=.autoland/result.json
@@ -241,10 +284,6 @@ jobs:
             $r.summary + "\n\n" +
             ([$r.findings[] | "- **" + .severity + "** " + .title + " (`" + .where + "`): " + .detail] | join("\n")) +
             "\n\nScreenshots and log: " + $run + "\n\n---\n_Generated by [Claude Code](https://claude.ai/code)_"' "$out" > .autoland/comment.md
-          # The token is in the reviewer's environment; it must never reach a public comment.
-          if grep -qF "$CLAUDE_CODE_OAUTH_TOKEN" .autoland/comment.md; then
-            echo "::error::The review quoted the Claude token, so it was not posted"; exit 1
-          fi
           gh pr comment "$PR" --body-file .autoland/comment.md
           [[ $(jq -r '.structured_output.verdict' "$out") == approve ]]
 
@@ -269,11 +308,17 @@ jobs:
 
     steps:
       # Every other check on the reviewed commit must finish, CI and the web
-      # build must pass, nothing may fail, and the Staff reviewer's latest
-      # verdict must not be CHANGE_THIS_PR. A push, a removed label, a draft
-      # or a "changes requested" review stops the landing.
-      - name: Wait for the other checks
+      # build must pass (unless the PR changes only Markdown, which they skip),
+      # and nothing may fail. The Staff reviewer's latest comment must give a
+      # verdict on this commit (`**Staff Reviewer:** LGTM at <sha>`) other than
+      # CHANGE_THIS_PR. A push, a removed label, a draft or a "changes
+      # requested" review stops the landing.
+      - name: Wait for the other checks and Staff
         run: |
+          required='["Lint, typecheck and test", "Build"]'
+          if gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename' | grep -qv '\.md$'; then :; else
+            required='[]'
+          fi
           for _ in $(seq 80); do
             pr=$(gh pr view "$PR" --json state,isDraft,headRefOid,labels,reviewDecision)
             jq -e --arg sha "$HEAD_SHA" '.state == "OPEN" and (.isDraft | not) and .headRefOid == $sha
@@ -286,20 +331,24 @@ jobs:
                 or .conclusion == "action_required")' <<< "$runs" > /dev/null; then
               echo "::error::A check failed: $runs"; exit 1
             fi
-            staff=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --jq '.[]
-              | select(.user.login == "ntucker" and (.body | startswith("**Staff Reviewer:**")))
-              | .body | split("\n")[0]' | tail -n 1)
-            if [[ $staff == *CHANGE_THIS_PR* ]]; then
+            staff=$({ gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" \
+                        --jq '.[] | {login: .user.login, body, at: .created_at}'
+                      gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" \
+                        --jq '.[] | {login: .user.login, body, at: .submitted_at}'
+                    } | jq -rs '[.[] | select(.login == "ntucker" and (.body | startswith("**Staff Reviewer:**")))]
+                                | sort_by(.at) | last // {} | .body // "" | split("\n")[0]')
+            on_head=false
+            [[ $staff == *" at ${HEAD_SHA:0:8}"* ]] && on_head=true
+            if [[ $on_head == true && $staff == *CHANGE_THIS_PR* ]]; then
               echo "::error::The Staff reviewer asked for changes: $staff"; exit 1
             fi
-            if [[ -n $staff ]] && jq -e 'all(.status == "completed")
-                and any(.name == "Lint, typecheck and test" and .conclusion == "success")
-                and any(.name == "Build" and .conclusion == "success")' <<< "$runs" > /dev/null; then
+            if [[ $on_head == true ]] && jq -e --argjson required "$required" '. as $runs | all(.status == "completed")
+                and ($required | all(. as $name | $runs | any(.name == $name and .conclusion == "success")))' <<< "$runs" > /dev/null; then
               exit 0
             fi
             sleep 30
           done
-          echo "::error::Checks or the Staff review did not finish in time"; exit 1
+          echo "::error::Checks or a Staff verdict on ${HEAD_SHA:0:8} did not arrive in time"; exit 1
 
       # Merges made with this workflow's token start no other workflows, so it
       # starts the deploy and main's CI itself.
