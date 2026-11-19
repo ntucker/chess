@@ -43,6 +43,7 @@ export function mergeChapters(
   info: LessonInfo,
   chapters: readonly Chapter[],
   extracted: readonly ChapterNotes[],
+  chapterName: ChapterName = numberedChapterName,
 ): Lesson {
   if (chapters.length === 0) throw new Error(`No chapters to merge for lesson ${info.id}`);
   const start = chapters[0].start;
@@ -51,7 +52,7 @@ export function mergeChapters(
   }
   const tree = new DraftTree(start);
   chapters.forEach((chapter, i) => addChapter(tree, chapter, extracted[i], info.side));
-  const { variations, chapterVariation } = chapterVariations(info, chapters);
+  const { variations, chapterVariation } = chapterVariations(info, chapters, chapterName);
   const variationOf = positionVariations(info.id, variations, chapters, chapterVariation);
   for (const { branches } of extracted) addBranches(tree, branches, variationOf, info.id);
   tree.dropEmpty();
@@ -234,16 +235,26 @@ function finish(draft: DraftPosition, variation: VariationId): LessonPosition {
 }
 
 /**
- * Variations from chapter titles like "🔵 01 Exchange Variation: Rubinstein
- * Variation (I)": the part before the colon groups chapters, the part after
- * names the chapter's own variation, and numbered parts (I), (II) are one.
+ * The variation a chapter title names, as "Group: Variation" (the part before
+ * the colon groups chapters), or undefined for a chapter about the opening
+ * itself. Each study titles its chapters its own way (studies.ts).
  */
-function chapterVariations(info: LessonInfo, chapters: readonly Chapter[]) {
+export type ChapterName = (title: string) => string | undefined;
+
+/**
+ * Chapter titles like "🔵 01 Exchange Variation: Rubinstein Variation (I)":
+ * the colour and number go, and numbered parts (I), (II) are one.
+ */
+const numberedChapterName: ChapterName = (title) =>
+  title.replace(/^\P{L}*\d+\s+/u, '').replace(/\s+\((?:I|II|III|IV|V)\)$/, '');
+
+function chapterVariations(info: LessonInfo, chapters: readonly Chapter[], chapterName: ChapterName) {
   const variations: Record<VariationId, Variation> = {
     [info.id]: { name: info.title },
   };
   const chapterVariation = chapters.map(({ title }) => {
-    const name = title.replace(/^\P{L}*\d+\s+/u, '').replace(/\s+\((?:I|II|III|IV|V)\)$/, '');
+    const name = chapterName(title);
+    if (name === undefined) return info.id;
     const [group] = name.includes(':') ? name.split(/:\s*/, 2) : [undefined];
     let parent = info.id;
     if (group) {

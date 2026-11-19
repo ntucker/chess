@@ -1,6 +1,8 @@
 import { Endpoint } from '@data-client/rest';
 
+import INDEX from '@/assets/lessons/index.json';
 import { readLesson } from '@/lesson/lesson';
+import type { IndexEntry } from '@/lesson/openings';
 
 /**
  * Every lesson the app ships, by id: one static JSON file each, loaded only
@@ -8,12 +10,17 @@ import { readLesson } from '@/lesson/lesson';
  */
 export const LESSONS = {
   'caro-kann': () => import('@/assets/lessons/caro-kann.json'),
+  'slav': () => import('@/assets/lessons/slav.json'),
 };
 
 export type LessonId = keyof typeof LESSONS;
 
-/** The lesson the home page opens, until there is a picker. */
-export const HOME_LESSON: LessonId = 'caro-kann';
+/**
+ * What the start position shows of each lesson before it loads, in the order
+ * it lists them (src/lesson/openings.ts). The importer writes it beside the
+ * lesson files, and src/resources/lesson.test.ts holds it to them.
+ */
+export const LESSON_INDEX = INDEX as Readonly<Record<LessonId, IndexEntry>>;
 
 /**
  * The lesson for one opening (see src/lesson/lesson.ts). It ships with the

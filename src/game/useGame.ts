@@ -1,9 +1,9 @@
-import { useEffect, useEffectEvent, useReducer } from 'react';
+import { type Dispatch, useEffect, useEffectEvent } from 'react';
 
 import { useMoveQualities } from '@/analysis/useMoveQualities';
 import type { EvaluationEngine } from '@/evaluation/evaluation';
 
-import { failure, type GameAction, type GameOpponent, gameReducer, initialGame } from './game';
+import { failure, type GameAction, type GameOpponent, type GameState } from './game';
 import { material } from './material';
 import { analyze, type Color, replay, toUci } from './replay';
 
@@ -25,6 +25,13 @@ interface Options {
 }
 
 /**
+ * A game's state and its dispatch: `useReducer(gameReducer, initialGame)`,
+ * held by the screen, so the screen can read the moves before it knows the
+ * rest of what `useGame` takes (a lesson is picked by its first move).
+ */
+export type GameStore = readonly [GameState, Dispatch<GameAction>];
+
+/**
  * A game against `opponent`, or against nobody when it's undefined: its moves
  * and positions, the move on the board, its label, and whether the opponent
  * is thinking. Who the opponent is, is the caller's business.
@@ -38,10 +45,10 @@ interface Options {
  * is the one that counts.
  */
 export function useGame(
+  [state, dispatch]: GameStore,
   opponent: GameOpponent | undefined,
   { side, active, judge, book }: Options,
 ) {
-  const [state, dispatch] = useReducer(gameReducer, initialGame);
   const { moves, ply } = state;
   const plies = replay(moves);
   const latest = analyze(plies[plies.length - 1]);
