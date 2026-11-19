@@ -7,9 +7,10 @@
  * into one position tree → add popularity → checkLesson → write
  * assets/lessons/<id>.json and register it in src/resources/lesson.ts.
  *
- *   yarn import-study --popularity assets/lessons/caro-kann-sample.json
+ *   yarn import-study --popularity assets/lessons/caro-kann.json
  *
- * only recounts popularity in an existing lesson file.
+ * only recounts popularity in an existing lesson file (never the sample, whose
+ * invented counts the tests rely on).
  *
  * Popularity comes from the lichess opening explorer, which needs a lichess
  * token (a personal token with no scopes is enough): set LICHESS_TOKEN, or
