@@ -75,7 +75,7 @@ export function claudeCli({ learner, cacheFile, callModel = true, log = console.
       } else asking.push(comment);
     }
     if (!callModel) {
-      log(`convert: ${answers.size} answered from ${cacheFile}; ${asking.length} missing there keep the importer's notes`);
+      log(`convert: ${answers.size} answered from ${cacheFile}; ${asking.length} missing there, which keep the importer's notes`);
       return answers;
     }
     const batches = chunks(asking, BATCH);

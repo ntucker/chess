@@ -51,20 +51,21 @@ import { STUDIES } from './studies';
 const ROOT = join(__dirname, '../..');
 
 const CACHE = process.env.IMPORT_STUDY_CACHE ?? join(ROOT, '.cache/import-study');
-const FLAGS = ['--no-model', '--no-popularity'];
-const USAGE = `Usage: yarn import-study <${Object.keys(STUDIES).join('|')}> [--no-model] [--no-popularity] | --popularity <lesson file>`;
+const STUDY_FLAGS = ['--no-model', '--no-popularity'];
+const USAGE = `Usage: yarn import-study <${Object.keys(STUDIES).join('|')}> ${STUDY_FLAGS.map((flag) => `[${flag}]`).join(' ')} | --popularity <lesson file>`;
 
 async function main() {
   mkdirSync(CACHE, { recursive: true });
   const [first, ...rest] = process.argv.slice(2);
-  if (first === '--popularity' && rest[0]) {
+  if (first === '--popularity') {
+    if (rest.length !== 1) throw new Error(USAGE);
     const file = rest[0];
     writeLesson(file, await withPopularity(readLesson(JSON.parse(readFileSync(file, 'utf8')))));
     return;
   }
   const study = Object.hasOwn(STUDIES, first) ? STUDIES[first as keyof typeof STUDIES] : undefined;
   // An unknown flag must fail rather than be ignored: a mistyped --no-model would call the model for an hour.
-  if (!study || rest.some((flag) => !FLAGS.includes(flag))) throw new Error(USAGE);
+  if (!study || rest.some((flag) => !STUDY_FLAGS.includes(flag))) throw new Error(USAGE);
   const chapters = parseStudy(await studyPgn(study.study), study.chapters);
   const cli = claudeCli({
     learner: study.info.side,

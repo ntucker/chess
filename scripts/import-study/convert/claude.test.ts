@@ -65,12 +65,16 @@ describe('claudeCli', () => {
 
   it('answers from the file alone without the model, and drops nothing', async () => {
     const cacheFile = await answersFile([comments[0], comments[1]]);
+    const bin = process.env.CLAUDE_BIN;
     process.env.CLAUDE_BIN = join(dir, 'missing');
-    const cli = claudeCli({ learner: 'black', cacheFile, log, callModel: false });
-    expect(ids(await cli.ask(MODELS.convert, [comments[0]]))).toEqual([comments[0].id]);
-    expect(ids(await cli.ask(MODELS.retry, [comments[1]]))).toEqual([]);
-    cli.saveUsed();
-    expect(lines(cacheFile)).toHaveLength(2);
-    process.env.CLAUDE_BIN = join(dir, 'claude');
+    try {
+      const cli = claudeCli({ learner: 'black', cacheFile, log, callModel: false });
+      expect(ids(await cli.ask(MODELS.convert, [comments[0]]))).toEqual([comments[0].id]);
+      expect(ids(await cli.ask(MODELS.retry, [comments[1]]))).toEqual([]);
+      cli.saveUsed();
+      expect(lines(cacheFile)).toHaveLength(2);
+    } finally {
+      process.env.CLAUDE_BIN = bin;
+    }
   });
 });
