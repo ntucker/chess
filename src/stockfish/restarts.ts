@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react';
 
 import type { Supervisor } from './engine';
 
-/** The pause before the first restart. Each failure in a row doubles it, up to `LONGEST_PAUSE_MS`. */
+/**
+ * The pause before the first restart. Each failure in a row doubles it, up to
+ * `LONGEST_PAUSE_MS`, so an engine that can't start isn't restarted in a tight loop.
+ */
 const FIRST_PAUSE_MS = 1000;
 const LONGEST_PAUSE_MS = 30_000;
 

@@ -16,7 +16,11 @@ import { candidates, lineKeys, opponentBand } from './select';
  * beyond the guide, or at a guide line's end, `beyond` plays.
  *
  * ```ts
- * useGame(lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent)), options);
+ * useGame(lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent)), {
+ *   side: lesson.side,
+ *   active: useIsFocused(),
+ *   judge: 'stockfish',
+ * });
  * ```
  */
 export function lessonOpponent(
