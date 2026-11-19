@@ -1,5 +1,5 @@
 import { useController } from '@data-client/react';
-import { useEffect, useEffectEvent, useLayoutEffect, useReducer, useRef } from 'react';
+import { useEffectEvent, useLayoutEffect, useReducer, useRef } from 'react';
 
 import { classifyMove } from '@/analysis/quality';
 import { useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
@@ -18,8 +18,8 @@ const THINKING_MS = 400;
  * opponent is, is the caller's business. Every request the opponent or the
  * evaluation engine hasn't answered is tied to the game and moves it was
  * asked about, so a new game or a different move makes its answer (or
- * failure) count for nothing. A different opponent answers a request still
- * out in place of the one first asked.
+ * failure) count for nothing. Choosing a different opponent asks it in
+ * place of the one first asked, whether that one is still thinking or failed.
  */
 export function useGame(opponent: GameOpponent) {
   const ctrl = useController();
@@ -97,16 +97,22 @@ export function useGame(opponent: GameOpponent) {
     if (next.line !== from.line && next.line.length) judge(next.game, next.line);
   };
 
+  /** Asks the opponent again about the moves it failed to answer. */
+  const retry = () => act({ type: 'retry' });
+
   // A different opponent answers the request still out, or the one that
   // failed. Waiting for the old one could take forever: choosing Maia for both
   // the opponent and the evaluation bar stops Stockfish (src/app/_layout.tsx).
   // And a failure left up would name the new opponent, which was never asked.
+  // A failure goes through retry, since only a thinking game takes an answer.
   const onOpponentChange = useEffectEvent(() => {
     const { opponent: status, game, line: moves } = rendered.current;
     if (status.status === 'thinking') ask(game, moves);
-    else if (status.status === 'failed') act({ type: 'retry' });
+    else if (status.status === 'failed') retry();
   });
-  useEffect(() => onOpponentChange(), [opponent.id]);
+  // A layout effect, so the old opponent's request is replaced as the switch
+  // commits: a passive effect leaves a gap in which its failure still counts.
+  useLayoutEffect(() => onOpponentChange(), [opponent.id]);
 
   return {
     playerColor,
@@ -135,9 +141,7 @@ export function useGame(opponent: GameOpponent) {
     newGame(side: Color) {
       act({ type: 'newGame', playerColor: side });
     },
-    retry() {
-      if (state.opponent.status === 'failed') act({ type: 'retry' });
-    },
+    retry,
     goto(target: number) {
       dispatch({ type: 'goto', ply: target });
     },
