@@ -19,12 +19,13 @@ export function StockfishHost() {
     let engine: StockfishWorker | undefined;
     let connection: Connection | undefined;
     let stopped = false;
+    const downloads = new AbortController();
     (async () => {
       // Downloaded here, not by the worker, so the engine's time to answer
       // (engine.ts) starts once it has its files, however slow the network.
       const [loader, wasm] = await Promise.all([
-        download(LOADER).then((file) => file.text()),
-        download(WASM).then((file) => file.blob()),
+        download(LOADER, downloads.signal).then((file) => file.text()),
+        download(WASM, downloads.signal).then((file) => file.blob()),
       ]);
       if (stopped) return;
       engine = startStockfishWorker(
@@ -41,6 +42,7 @@ export function StockfishHost() {
     });
     return () => {
       stopped = true;
+      downloads.abort();
       engine?.terminate();
       connection?.detach();
     };
@@ -48,8 +50,9 @@ export function StockfishHost() {
   return null;
 }
 
-async function download(asset: number): Promise<Response> {
-  const response = await fetch(assetUrl(asset));
-  if (!response.ok) throw new Error(`${assetUrl(asset)}: HTTP ${response.status}`);
+async function download(asset: number, signal: AbortSignal): Promise<Response> {
+  const url = assetUrl(asset);
+  const response = await fetch(url, { signal });
+  if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
   return response;
 }
