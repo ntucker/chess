@@ -90,9 +90,6 @@ export default function Board({
   const handleMove = useEffectEvent((from: string, to: string) => onMove(from, to));
   const squareAt = (x: number, y: number) =>
     api.current?.getKeyAtDomPos([x, y]) as Square | undefined;
-  // Whether the board would play the piece on `from` dropped on `to`.
-  const boardPlays = (from: Square, to: Square) =>
-    !!api.current?.state.movable.dests?.get(from)?.includes(to);
   const handleDrag = useEffectEvent((drag: Drag<Square> | null) => onDrag?.(drag));
   const handlePress = useEffectEvent((square: Square, selected?: Square) =>
     onPress?.(square, selected),
@@ -168,7 +165,9 @@ export default function Board({
   // animation back on as the game reaches the preview.
   const skipPreviewSlide = useEffectEvent((picked: Square | undefined, x: number, y: number) => {
     const square = squareAt(x, y);
-    if (picked && square && boardPlays(picked, square) && playsPreview(layer, picked, square))
+    const board = api.current;
+    if (!picked || !square || !board) return;
+    if (boardPlays(board, picked, square) && playsPreview(layer, picked, square))
       setBoard({ animation: { enabled: false } });
   });
 
@@ -216,7 +215,7 @@ export default function Board({
         return drag?.started ? (drag.orig as Square) : undefined;
       },
       squareAt,
-      ({ from, to }) => to !== undefined && boardPlays(from, to),
+      ({ from, to }) => to !== undefined && boardPlays(board, from, to),
       handleDrag,
     );
     return () => {
@@ -259,6 +258,14 @@ export default function Board({
     </div>
   );
 }
+
+/**
+ * Whether `board` would play the piece on `from` dropped on `to`. Ask on
+ * pointerdown or pointerup: chessground clears its legal moves once it plays
+ * one, on the mouseup or touchend that follows.
+ */
+const boardPlays = (board: Api, from: Square, to: Square) =>
+  !!board.state.movable.dests?.get(from)?.includes(to);
 
 /** The arrows, circles and tints that draw `marks`. */
 const marksConfig = (marks: BoardMarks): Config => ({
