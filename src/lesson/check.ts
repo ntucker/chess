@@ -416,8 +416,10 @@ function reaches(board: Board, from: Square, to: Square, moves: number): boolean
 function castlingRook(pos: Chess, board: Board, vacated: SquareSet, color: Color, from: Square, to: Square) {
   const side = to > from ? 'h' : 'a';
   const rook = pos.castles.rook[color][side];
-  if (rook === undefined || vacated.has(from) || vacated.has(rook)) return undefined;
-  if (board.kingOf(color) !== from || kingCastlesTo(color, side) !== to) return undefined;
+  // Only the king that has not moved yet, from its square in `pos`, castles.
+  const king = pos.board.kingOf(color);
+  if (rook === undefined || from !== king || vacated.has(king) || vacated.has(rook)) return undefined;
+  if (kingCastlesTo(color, side) !== to) return undefined;
   if (pos.castles.path[color][side].intersects(board.occupied)) return undefined;
   return { from: rook, to: rookCastlesTo(color, side) };
 }
