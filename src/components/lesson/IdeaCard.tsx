@@ -33,8 +33,9 @@ interface Props {
 /**
  * What the guide says about the position, or about the move being previewed:
  * each note's kind, its sentence, the study's own words behind "More", the
- * study's verdict, and a play-through for a plan, a line or a trap. Pointing
- * at a note that draws on the board lights its rule in its kind's color.
+ * study's verdict, and a play-through for a plan, a line or a trap. A note
+ * whose idea is on the board, pointed at or playing back, lights its rule in
+ * that idea's color.
  */
 export function IdeaCard({ title, notes, learner, playback, pointable, pointed, onPoint }: Props) {
   return (
@@ -88,6 +89,9 @@ function NoteView({
   const playing = playback.playing?.note === note ? playback.playing : undefined;
   const original = note.original && note.original !== note.text ? note.original : undefined;
   const playable = playback.playable(shown);
+  // The idea on the board, whose color lights the rule: the one playing back,
+  // or while pointed at, the note's first.
+  const lit = playing ? note.ideas?.find(({ type }) => type === playable) : pointed && drawn;
   const point = () => {
     if (pointable && !pointed) onPoint(note);
   };
@@ -109,10 +113,9 @@ function NoteView({
           borderTopRightRadius: theme.semantic.radius.sm,
           borderBottomRightRadius: theme.semantic.radius.sm,
         },
-        // Lit while its ideas are on the board: pointed at, or playing back.
-        (pointed || playing) && drawn
+        lit
           ? {
-              borderColor: toneColors[ideaTone(drawn, learner)],
+              borderColor: toneColors[ideaTone(lit, learner)],
               backgroundColor: color.tones.neutral.subtle,
             }
           : { borderColor: color.tones.accent.solid },
