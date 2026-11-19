@@ -3,10 +3,11 @@
  * facts about the position on the board, what the learner points at (a
  * candidate, by its list row or a piece dragged onto its square, and a note
  * on the idea card), an idea playing back, the mode (Explore or Practice),
- * and the board. Where the opponent plays its own moves (`opponentPlays`)
- * the learner moves their own side; elsewhere, either.
+ * Stockfish's best move in Explore, and the board. Where the opponent plays
+ * its own moves (`opponentPlays`) the learner moves their own side;
+ * elsewhere, either.
  */
-import { useController } from '@data-client/react';
+import { useCache, useController, useFetch } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
 import { useEffect, useMemo, useReducer } from 'react';
 
@@ -15,6 +16,7 @@ import type { Drag } from '@/board/pointer';
 import type { BoardProps } from '@/components/Board';
 import { dropMove, parsePositionKey } from '@/game/replay';
 import { type GameStore, useGame } from '@/game/useGame';
+import { getEvaluation } from '@/resources/evaluation';
 import { gameOpponent } from '@/resources/opponent';
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNeedsStockfish } from '@/stockfish/demand';
@@ -107,6 +109,15 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   const playing = here?.kind === 'play' ? here : undefined;
   // A playback plays in its candidate's position, wherever the pointer goes.
   const pointer = playing ? playing.from : here?.candidate;
+  // Stockfish's best move for the board's position, whatever engine judges
+  // the bar; only Explore shows it, so Practice asks for nothing. Not useDLE:
+  // with nullable args it types this endpoint's data as undefined.
+  const evaluationArgs =
+    focused && mode === 'explore'
+      ? (['stockfish', moves.slice(0, ply)] as const)
+      : ([null] as const);
+  useFetch(getEvaluation, ...evaluationArgs);
+  const engine = useCache(getEvaluation, ...evaluationArgs);
   const shown = guidance({
     view,
     mode,
@@ -115,6 +126,7 @@ export function useLesson(lesson: Lesson, store: GameStore) {
     dragged: pointer?.at === 'drag' ? pointer.from : undefined,
     pointed: here?.note,
     playing: playing?.played,
+    engine,
   });
   const frames = shown.playing
     ? ideaPlayback(shown.playing.idea, parsePositionKey(shown.playing.at)!)
