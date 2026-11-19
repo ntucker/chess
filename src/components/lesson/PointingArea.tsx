@@ -24,7 +24,7 @@ export function PointingArea({ onLeave, children }: Props) {
   // click on something that takes no focus, such as a note's words, which
   // the pointer handles, not the keyboard.
   const press = useRef({ down: false, upAt: -Infinity });
-  const lift = ({ nativeEvent }: { nativeEvent: { pointerType: string } }) => {
+  const endPress = ({ nativeEvent }: { nativeEvent: { pointerType: string } }) => {
     const finger = !hovers(nativeEvent.pointerType);
     press.current = { down: false, upAt: finger ? performance.now() : press.current.upAt };
   };
@@ -47,11 +47,12 @@ export function PointingArea({ onLeave, children }: Props) {
       onPointerDown={() => {
         press.current = { ...press.current, down: true };
       }}
-      onPointerUp={lift}
-      onPointerCancel={lift}
+      onPointerUp={endPress}
+      onPointerCancel={endPress}
       onPointerLeave={(event) => {
-        // A press released outside never comes up here.
-        if (press.current.down) lift(event);
+        // A press released outside never comes up here, so it ends as it
+        // leaves. A pointer leaving with nothing pressed has no press to end.
+        if (press.current.down) endPress(event);
         // A finger leaves whenever it lifts, which would end every preview a tap starts.
         if (hovers(event.nativeEvent.pointerType)) onLeave();
       }}

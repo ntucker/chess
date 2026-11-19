@@ -110,7 +110,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
                   playable={canPlay}
                   onPlay={play}
                   onPoint={pointRow}
-                  onLeave={leave}
+                  onTabOut={leave}
                 />
               </Stack>
             ) : null}

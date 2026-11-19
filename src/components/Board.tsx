@@ -141,21 +141,27 @@ export default function Board({
       drawable: { brushes: toneBrushes as DrawBrushes },
     });
     api.current = board;
+    // A preview a hover starts or ends reaches chessground before the next
+    // press: a quick click right after a hover would otherwise land on the
+    // board as it was, and chessground would refuse or misplay it. This holds
+    // on the web, where the board renders inline in the screen's React tree;
+    // on Android its props come back by message. React can't flush from this
+    // effect's cleanup, where stopping reports a held finger's release.
+    let live = true;
+    const flush = (report: () => void) => (live ? flushSync(report) : report());
     const stopWatching = watchPointer<Square>(
       target,
       target.ownerDocument,
       (x, y) => board.getKeyAtDomPos([x, y]) as Square | undefined,
-      // A preview a hover starts or ends reaches chessground before the next
-      // press: a quick click right after a hover would otherwise land on the
-      // board as it was, and chessground would refuse or misplay it.
       {
-        hover: (square) => flushSync(() => handleHover(square)),
-        hold: (square) => flushSync(() => handleHold(square)),
+        hover: (square) => flush(() => handleHover(square)),
+        hold: (square) => flush(() => handleHold(square)),
       },
     );
     return () => {
       cancelAnimationFrame(frame.current);
       target.removeEventListener('pointerdown', notePick, { capture: true });
+      live = false;
       stopWatching();
       board.destroy();
       api.current = null;

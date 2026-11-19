@@ -1,5 +1,5 @@
 import { Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
-import { useEffect, useRef } from 'react';
+import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { Uci } from '@/lesson/lesson';
@@ -29,7 +29,7 @@ interface Props {
    * Keyboard focus moves on past the last row. The preview ends first, so the
    * idea card focus lands in shows the position's own notes.
    */
-  readonly onLeave: () => void;
+  readonly onTabOut: () => void;
 }
 
 /**
@@ -46,7 +46,7 @@ export function CandidateList({
   playable,
   onPlay,
   onPoint,
-  onLeave,
+  onTabOut,
 }: Props) {
   return (
     <Surface elevation="sunken" border="subtle" radius="md" style={styles.list}>
@@ -62,7 +62,7 @@ export function CandidateList({
           playable={playable}
           onPlay={onPlay}
           onPoint={onPoint}
-          onTabOut={index === candidates.length - 1 ? onLeave : undefined}
+          onTabOut={index === candidates.length - 1 ? onTabOut : undefined}
         />
       ))}
     </Surface>
@@ -135,7 +135,7 @@ function Row({
       onPointerLeave={stopResting}
       // Before the browser moves focus, so it lands among the notes shown next.
       onKeyDown={(event: unknown) => {
-        const { key, shiftKey } = event as KeyboardEvent;
+        const { key, shiftKey } = event as ReactKeyboardEvent;
         if (key === 'Tab' && !shiftKey) onTabOut?.();
       }}
       onFocus={point}
