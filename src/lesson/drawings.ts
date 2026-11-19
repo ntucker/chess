@@ -9,7 +9,7 @@ import type { Board } from 'chessops/board';
 import type { Chess } from 'chessops/chess';
 import { makeBoardFen, makeFen } from 'chessops/fen';
 import { SquareSet } from 'chessops/squareSet';
-import { type Color, FILE_NAMES, type FileName, type SquareName } from 'chessops/types';
+import { type Color, FILE_NAMES, type FileName, type Piece, type SquareName } from 'chessops/types';
 import { makeSquare, opposite, parseSquare } from 'chessops/util';
 
 import type { Drawing, Tone } from '@/board/drawing';
@@ -38,10 +38,13 @@ export function lessonDrawings(guidance: Guidance, shown: PositionKey, learner: 
   // One plan at a time: two plans' numbered routes would read as one sequence.
   const firstPlan = here.find(({ type }) => type === 'plan');
   const ideas = here.filter((idea) => idea.type !== 'plan' || idea === firstPlan);
-  // Parsed only where there are ideas, since this runs as the pointer moves.
-  const position = ideas.length ? parsePositionKey(shown)! : undefined;
-  const draw = (some: readonly Idea[]) => some.flatMap((idea) => ideaDrawings(idea, position!, learner));
-  if (preview?.slide) return [ghost(preview.candidate), ...draw(ideas)];
+  // Parsed only where there are ideas to draw, since this runs as the pointer moves.
+  const draw = (some: readonly Idea[]) => {
+    if (!some.length) return [];
+    const position = parsePositionKey(shown)!;
+    return some.flatMap((idea) => ideaDrawings(idea, position, learner));
+  };
+  if (preview?.slide) return [ghost(preview.candidate.from, preview.candidate.piece), ...draw(ideas)];
   if (preview) return [...candidateDrawings([preview.candidate]), ...draw(ideas)];
   const facts = [...bestDrawings(guidance.best), ...(guidance.trap ? landedTrapDrawings(guidance.trap, shown) : [])];
   if (!candidates.length) return [...draw(ideas), ...facts];
@@ -76,22 +79,21 @@ export function candidateDrawings(candidates: readonly Candidate[]): Drawing[] {
  * stay apart.
  */
 export function ideaDrawings(idea: Idea, position: Chess, learner: Color): Drawing[] {
-  const sideTone = (side: Color) => toneOf(side, learner);
+  const tone = ideaTone(idea, learner);
   switch (idea.type) {
     case 'purpose':
       return [
-        { kind: 'glow', square: idea.from, tone: 'main' },
+        { kind: 'glow', square: idea.from, tone },
         ...idea.targets.flatMap((target): Drawing[] => [
-          { kind: 'arrow', from: idea.from, to: target, tone: 'main' },
+          { kind: 'arrow', from: idea.from, to: target, tone },
           { kind: 'ring', square: target, tone: 'target' },
         ]),
       ];
-    case 'pressure':
+    case 'pressure': {
+      const defending = toneOf(opposite(idea.side), learner);
       return [
-        ...idea.attackers.map((square): Drawing => ({ kind: 'glow', square, tone: sideTone(idea.side) })),
-        ...idea.defenders.map(
-          (square): Drawing => ({ kind: 'glow', square, tone: sideTone(opposite(idea.side)) }),
-        ),
+        ...idea.attackers.map((square): Drawing => ({ kind: 'glow', square, tone })),
+        ...idea.defenders.map((square): Drawing => ({ kind: 'glow', square, tone: defending })),
         { kind: 'ring', square: idea.target, tone: 'target' },
         {
           kind: 'label',
@@ -100,6 +102,7 @@ export function ideaDrawings(idea: Idea, position: Chess, learner: Color): Drawi
           tone: 'target',
         },
       ];
+    }
     case 'plan': {
       const numbered = idea.routes.length > 1;
       return [
@@ -108,7 +111,7 @@ export function ideaDrawings(idea: Idea, position: Chess, learner: Color): Drawi
             kind: 'arrow',
             from,
             to,
-            tone: 'plan',
+            tone,
             dashed: true,
             step: numbered ? n + 1 : undefined,
           }),
@@ -118,18 +121,18 @@ export function ideaDrawings(idea: Idea, position: Chess, learner: Color): Drawi
     }
     case 'threat':
       return [
-        moveArrow(idea.move, 'danger'),
+        moveArrow(idea.move, tone),
         ...(idea.answer === undefined ? [] : [moveArrow(idea.answer, 'main')]),
       ];
     case 'trap':
       // The tempting move and the reply that punishes it; the rest plays back.
-      return idea.moves.slice(0, 2).map((uci, n) => moveArrow(uci, 'danger', n + 1));
+      return idea.moves.slice(0, 2).map((uci, n) => moveArrow(uci, tone, n + 1));
     case 'line':
-      return [moveArrow(idea.moves[0], 'main')];
+      return [moveArrow(idea.moves[0], tone)];
     case 'structure':
-      return structureDrawings(idea, position.board, sideTone(idea.side));
+      return structureDrawings(idea, position.board, tone);
     case 'imbalance':
-      return imbalanceDrawings(idea, position.board, sideTone(idea.side));
+      return imbalanceDrawings(idea, position.board, tone);
     case 'evaluation':
       return [];
   }
@@ -138,7 +141,7 @@ export function ideaDrawings(idea: Idea, position: Chess, learner: Color): Drawi
 /** A side's tone: the main one for `learner`'s, the other for its opponent's. */
 const toneOf = (side: Color, learner: Color): Tone => (side === learner ? 'main' : 'other');
 
-/** The tone an idea's drawings lead with, for the idea card to match the board. */
+/** The tone an idea's drawings lead with; the idea card's dot matches it. */
 export function ideaTone(idea: Idea, learner: Color): Tone {
   switch (idea.type) {
     case 'plan':
@@ -150,7 +153,9 @@ export function ideaTone(idea: Idea, learner: Color): Tone {
     case 'structure':
     case 'imbalance':
       return toneOf(idea.side, learner);
-    default:
+    case 'purpose':
+    case 'line':
+    case 'evaluation':
       return 'main';
   }
 }
@@ -189,16 +194,18 @@ export function ideaPlayback(idea: Idea, position: Chess): PlaybackFrame[] {
 /** The ideas that play back: a plan's routes, a line's or trap's moves. */
 export type PlayedBack = Extract<Idea, { type: 'plan' | 'line' | 'trap' }>;
 
-const playsBack = (idea: Idea): idea is PlayedBack =>
-  idea.type === 'plan' || idea.type === 'line' || idea.type === 'trap';
+/** An idea shown on the board that plays back. */
+type ShownPlayback = ShownIdea & { readonly idea: PlayedBack };
+
+const playsBack = (shown: ShownIdea): shown is ShownPlayback =>
+  shown.idea.type === 'plan' || shown.idea.type === 'line' || shown.idea.type === 'trap';
 
 /**
  * The idea of `note` that plays back on the board, of those `guidance` draws
  * (so a trap plays back only while traps are shown); or undefined.
  */
-export function notePlayback(guidance: Guidance, { note }: ShownNote) {
-  const found = guidance.ideas.find(({ idea }) => playsBack(idea) && note.ideas?.includes(idea));
-  return found as (ShownIdea & { readonly idea: PlayedBack }) | undefined;
+export function notePlayback(guidance: Guidance, { note }: ShownNote): ShownPlayback | undefined {
+  return guidance.ideas.filter(playsBack).find(({ idea }) => note.ideas?.includes(idea));
 }
 
 const squaresOf = (set: SquareSet): SquareName[] => [...set].map(makeSquare);
@@ -307,12 +314,13 @@ const bestDrawings = (best: Uci | undefined): Drawing[] => (best ? [moveArrow(be
 function landedTrapDrawings({ trap, at, end }: LandedTrap, shown: PositionKey): Drawing[] {
   if (end !== shown) return [];
   const tempting = moveArrow(trap.moves[0], 'danger');
-  const { role, color } = parsePositionKey(at)!.board.get(parseSquare(tempting.from)!)!;
-  return [{ kind: 'ghost', square: tempting.from, piece: { role, color } }, tempting];
+  const piece = parsePositionKey(at)!.board.get(parseSquare(tempting.from)!)!;
+  return [ghost(tempting.from, piece), tempting];
 }
 
-const ghost = ({ from, piece: { role, color } }: Candidate): Drawing => ({
+/** A faint `piece` on `square`, where it stood before moving. */
+const ghost = (square: SquareName, { role, color }: Piece): Drawing => ({
   kind: 'ghost',
-  square: from,
+  square,
   piece: { role, color },
 });

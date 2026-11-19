@@ -88,6 +88,7 @@ describe('lessonView', () => {
         trap: { type: 'trap', verdict: 'losesMaterial' },
       });
       expect(trap!.trap.moves).toEqual(uciLine(...TRAP_PUNISHED).slice(TRAP.length));
+      expect(trap).toMatchObject({ at: keyAfter(...TRAP), end: keyAfter(...TRAP_PUNISHED) });
     });
 
     it('follows the cursor, and stays after the line goes on', () => {

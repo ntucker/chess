@@ -193,7 +193,9 @@ function landedTrap(
     for (const shown of notes) {
       for (const trap of shown.note.ideas ?? []) {
         if (trap.type !== 'trap' || ideaPosition(trap, shown) !== key) continue;
-        if (trap.moves.every((uci, n) => uci === played[ply + n])) return { trap, ply, at: key, end: keys[ply + trap.moves.length] };
+        if (trap.moves.every((uci, n) => uci === played[ply + n])) {
+          return { trap, ply, at: key, end: keys[ply + trap.moves.length] };
+        }
       }
     }
   }

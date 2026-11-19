@@ -10,6 +10,7 @@ import {
   ideaPlayback,
   lessonDrawings,
   mainCandidate,
+  notePlayback,
 } from './drawings';
 import { guidance, type LessonSwitches } from './guidance';
 import type { Idea } from './lesson';
@@ -274,5 +275,18 @@ describe('lessonDrawings', () => {
       ideas: [plan('b8', 'c6'), plan('e7', 'e6')].map((idea) => ({ idea, at })),
     };
     expect(lessonDrawings(shown, at, 'black')).toEqual(drawn(plan('b8', 'c6'), after(...ADVANCE)));
+  });
+});
+
+describe('notePlayback', () => {
+  const trapNote = (traps: boolean) => {
+    const { shown } = explore(TRAP, undefined, { ...SWITCHES, showTraps: traps });
+    const note = shown.notes.find(({ note }) => note.ideas?.some(({ type }) => type === 'trap'))!;
+    return notePlayback(shown, note);
+  };
+
+  it("plays a note's trap back while traps are shown, and not otherwise", () => {
+    expect(trapNote(true)?.idea.type).toBe('trap');
+    expect(trapNote(false)).toBeUndefined();
   });
 });

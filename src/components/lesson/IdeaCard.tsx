@@ -3,6 +3,7 @@ import { Badge, Button, Pressable, Stack, Text, useTheme } from '@reactive/silk-
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import type { Tone } from '@/board/drawing';
 import { Eyebrow } from '@/components/Eyebrow';
 import { Transport } from '@/components/Transport';
 import type { Color } from '@/game/replay';
@@ -11,7 +12,6 @@ import type { Evaluation, Idea } from '@/lesson/lesson';
 import type { Playback } from '@/lesson/useLesson';
 import type { ShownNote } from '@/lesson/view';
 import { toneColors } from '@/theme/drawingTones';
-import type { Tone } from '@/board/drawing';
 
 interface Props {
   readonly title: string;
@@ -64,8 +64,8 @@ function NoteView({
 }) {
   const { note } = shown;
   const [more, setMore] = useState(false);
-  // The kind of the note's first drawn idea; none for text or a verdict alone.
-  const kind = note.ideas?.find((idea) => idea.type !== 'evaluation');
+  // The note's first drawn idea, which names its kind; none for text or a verdict alone.
+  const drawn = note.ideas?.find((idea) => idea.type !== 'evaluation');
   const verdict = note.ideas?.find((idea) => idea.type === 'evaluation')?.value;
   const playing = playback.playing?.note === note ? playback.playing : undefined;
   const original = note.original && note.original !== note.text ? note.original : undefined;
@@ -73,9 +73,9 @@ function NoteView({
 
   return (
     <Stack gap="2">
-      {kind || verdict ? (
+      {drawn || verdict ? (
         <View style={styles.heading}>
-          {kind ? <KindTag label={KINDS[kind.type]} tone={ideaTone(kind, learner)} /> : <View />}
+          {drawn ? <KindTag label={KINDS[drawn.type]} tone={ideaTone(drawn, learner)} /> : <View />}
           {verdict ? <Verdict value={verdict} /> : null}
         </View>
       ) : null}
