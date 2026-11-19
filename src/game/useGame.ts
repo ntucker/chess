@@ -97,12 +97,14 @@ export function useGame(opponent: GameOpponent) {
     if (next.line !== from.line && next.line.length) judge(next.game, next.line);
   };
 
-  // A different opponent answers the request still out. Waiting for the old
-  // one could take forever: choosing Maia for both the opponent and the
-  // evaluation bar stops Stockfish (src/app/_layout.tsx).
+  // A different opponent answers the request still out, or the one that
+  // failed. Waiting for the old one could take forever: choosing Maia for both
+  // the opponent and the evaluation bar stops Stockfish (src/app/_layout.tsx).
+  // And a failure left up would name the new opponent, which was never asked.
   const onOpponentChange = useEffectEvent(() => {
     const { opponent: status, game, line: moves } = rendered.current;
     if (status.status === 'thinking') ask(game, moves);
+    else if (status.status === 'failed') act({ type: 'retry' });
   });
   useEffect(() => onOpponentChange(), [opponent.id]);
 
