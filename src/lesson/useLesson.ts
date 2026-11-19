@@ -3,10 +3,10 @@
  * facts about the position on the board, what the learner points at (a
  * candidate, by its list row or a piece dragged onto its square, and a note
  * on the idea card), an idea playing back, the mode (Explore or Practice),
- * and the board. With auto play the learner moves their own side; with auto
- * play off, either.
+ * Stockfish's best move in Explore, and the board. With auto play the
+ * learner moves their own side; with auto play off, either.
  */
-import { useController, useDLE } from '@data-client/react';
+import { useCache, useController, useFetch } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
 import { useEffect, useMemo, useReducer } from 'react';
 
@@ -104,10 +104,12 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   const pointer = playing ? playing.from : here?.candidate;
   // Stockfish's best move for the board's position, whatever engine judges
   // the bar; only Explore shows it, so Practice asks for nothing.
-  const { data: engine } = useDLE(
-    getEvaluation,
-    ...(focused && mode === 'explore' ? (['stockfish', moves.slice(0, ply)] as const) : [null]),
-  );
+  const evaluationArgs =
+    focused && mode === 'explore'
+      ? (['stockfish', moves.slice(0, ply)] as const)
+      : ([null] as const);
+  useFetch(getEvaluation, ...evaluationArgs);
+  const engine = useCache(getEvaluation, ...evaluationArgs);
   const shown = guidance({
     view,
     mode,
