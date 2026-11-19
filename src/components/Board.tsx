@@ -119,16 +119,18 @@ export default function Board({
 
   // A screen left underneath stays mounted but hidden, where the board has no
   // size and chessground would draw its arrows at NaN. Changes made while it
-  // is hidden wait, and go to chessground once the board shows again.
-  const behind = useRef(false);
-  const shows = () => !!element.current?.getClientRects().length;
+  // is hidden wait, and go to chessground once the board has a size again.
+  // `sized` is the size chessground last measured, not the size now, since
+  // chessground draws with that until its own resize observer runs.
+  const sized = useRef(true);
+  const pending = useRef(false);
   const setBoard = useEffectEvent((config: Config) => {
-    if (shows()) api.current?.set(config);
-    else behind.current = true;
+    if (sized.current) api.current?.set(config);
+    else pending.current = true;
   });
   const catchUp = useEffectEvent(() => {
-    if (!behind.current || !shows()) return;
-    behind.current = false;
+    if (!pending.current || !sized.current) return;
+    pending.current = false;
     api.current?.set(position);
     api.current?.set(marksConfig(marks));
     markAfterDraw();
@@ -158,10 +160,13 @@ export default function Board({
       drawable: { brushes: toneBrushes as DrawBrushes },
     });
     api.current = board;
-    // Made after chessground's own observer, so chessground has measured the
-    // board again by the time this catches up.
-    const showing = new ResizeObserver(() => catchUp());
-    showing.observe(target);
+    // Made after chessground's own observer, which ResizeObserver notifies
+    // first, so chessground has measured the board by the time this runs.
+    const resizes = new ResizeObserver(([entry]) => {
+      sized.current = entry.contentRect.width > 0 && entry.contentRect.height > 0;
+      catchUp();
+    });
+    resizes.observe(target);
     // A preview a hover starts or ends reaches chessground before the next
     // press: a quick click right after a hover would otherwise land on the
     // board as it was, and chessground would refuse or misplay it. This holds
@@ -184,7 +189,7 @@ export default function Board({
       target.removeEventListener('pointerdown', notePick, { capture: true });
       live = false;
       stopWatching();
-      showing.disconnect();
+      resizes.disconnect();
       board.destroy();
       api.current = null;
     };
