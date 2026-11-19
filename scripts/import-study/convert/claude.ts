@@ -1,15 +1,18 @@
 /**
  * Asks Claude through the Claude Code CLI (`claude -p`), so a conversion runs
  * on the account Claude Code is signed in to (or CLAUDE_CODE_OAUTH_TOKEN in
- * CI) and needs no API key. Each answer is cached by its comment, model and
- * prompt in a JSON-lines file, so a stopped run resumes, a rerun asks
- * nothing, and only comments whose text or position changed are asked again.
+ * CI) and needs no API key. Each answer is kept by its comment, model and
+ * prompt in the study's committed answers file, so a stopped run resumes, a
+ * rerun anywhere asks nothing, and only comments whose text or position
+ * changed are asked again.
  */
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 
 import type { Color } from 'chessops/types';
 import { opposite } from 'chessops/util';
+
+import { renameSync, writeFileSync } from 'node:fs';
 
 import { colorName } from '@/game/replay';
 
@@ -33,11 +36,20 @@ const PARALLEL = 4;
 
 interface Options {
   readonly learner: Color;
+  /** The study's answers file (JSON lines), committed beside the importer. */
   readonly cacheFile: string;
+  /** False answers only from the file and calls no model: other comments stay unconverted. */
+  readonly callModel?: boolean;
   readonly log?: (message: string) => void;
 }
 
-export function claudeCli({ learner, cacheFile, log = console.log }: Options): Ask {
+export interface ClaudeCli {
+  readonly ask: Ask;
+  /** Rewrites the answers file with only the answers this run used, so stale ones don't pile up. */
+  readonly saveUsed: () => void;
+}
+
+export function claudeCli({ learner, cacheFile, callModel = true, log = console.log }: Options): ClaudeCli {
   const prompt = PROMPT.replaceAll('{LEARNER}', colorName(learner)).replaceAll(
     '{OPPONENT}',
     colorName(opposite(learner)),
@@ -46,14 +58,23 @@ export function claudeCli({ learner, cacheFile, log = console.log }: Options): A
   const keyOf = (model: Model, comment: Comment) =>
     createHash('sha256').update(JSON.stringify([model, prompt, comment])).digest('hex');
 
-  return async (model, comments) => {
+  const used = new Set<string>();
+
+  const ask: Ask = async (model, comments) => {
     const answers = new Map<string, Answer>();
     const keys = new Map(comments.map((comment) => [comment.id, keyOf(model, comment)]));
     const asking: Comment[] = [];
     for (const comment of comments) {
-      const cached = cache.get(keys.get(comment.id)!);
-      if (cached) answers.set(comment.id, { ...cached, id: comment.id });
-      else asking.push(comment);
+      const key = keys.get(comment.id)!;
+      const cached = cache.get(key);
+      if (cached) {
+        used.add(key);
+        answers.set(comment.id, { ...cached, id: comment.id });
+      } else asking.push(comment);
+    }
+    if (!callModel) {
+      log(`convert: ${answers.size} answered from ${cacheFile}, ${asking.length} not there keep the importer's notes`);
+      return answers;
     }
     const batches = chunks(asking, BATCH);
     log(`convert: ${answers.size} cached, asking ${model} about ${asking.length} in ${batches.length} requests`);
@@ -67,6 +88,7 @@ export function claudeCli({ learner, cacheFile, log = console.log }: Options): A
         for (const answer of result.answers) {
           if (!asked.has(answer.id)) continue;
           const key = keys.get(answer.id)!;
+          used.add(key);
           answers.set(answer.id, answer);
           cache.set(key, answer);
           appendJsonLine(cacheFile, { key, answer });
@@ -78,6 +100,14 @@ export function claudeCli({ learner, cacheFile, log = console.log }: Options): A
     });
     return answers;
   };
+
+  const saveUsed = () => {
+    const lines = [...used].sort().map((key) => `${JSON.stringify({ key, answer: cache.get(key) })}\n`);
+    writeFileSync(`${cacheFile}.tmp`, lines.join(''));
+    renameSync(`${cacheFile}.tmp`, cacheFile);
+  };
+
+  return { ask, saveUsed };
 }
 
 function readCache(file: string): Map<string, Answer> {

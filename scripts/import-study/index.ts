@@ -1,19 +1,22 @@
 /**
  * Imports a lichess study as a lesson file (format: src/lesson/lesson.ts):
  *
- *   yarn import-study caro-kann [--no-convert] [--no-popularity]
+ *   yarn import-study caro-kann [--no-model] [--no-popularity]
  *
  * parse the study → read each chapter's fixed formats → rewrite the comments
- * with AI (./convert, skipped with --no-convert) → merge the chapters into one
+ * with AI (./convert) → merge the chapters into one
  * position tree → add popularity → checkLesson → write
  * assets/lessons/<id>.json and register it in src/resources/lesson.ts.
  * `caro-kann` names a study listed in studies.ts. With --no-popularity the
  * file is written without counts, replacing any it had.
  *
  * The AI step runs the Claude Code CLI (`claude`, signed in, or
- * CLAUDE_CODE_OAUTH_TOKEN set) and caches each answer in
- * IMPORT_STUDY_CACHE/convert.jsonl: the first Caro-Kann run asks about 190
- * requests (about an hour); later runs ask only about changed comments.
+ * CLAUDE_CODE_OAUTH_TOKEN set) and keeps each answer in
+ * scripts/import-study/answers/<name>.jsonl, which is committed: a run asks
+ * only about comments that changed (all of them after a prompt.ts edit:
+ * about 190 requests and an hour for the Caro-Kann), then rewrites the file
+ * with the answers it used. --no-model takes answers from the file only and
+ * calls no model; comments missing there keep the importer's notes.
  *
  *   yarn import-study --popularity assets/lessons/caro-kann.json
  *
@@ -48,7 +51,7 @@ import { STUDIES } from './studies';
 const ROOT = join(__dirname, '../..');
 
 const CACHE = process.env.IMPORT_STUDY_CACHE ?? join(ROOT, '.cache/import-study');
-const USAGE = `Usage: yarn import-study <${Object.keys(STUDIES).join('|')}> [--no-convert] [--no-popularity] | --popularity <lesson file>`;
+const USAGE = `Usage: yarn import-study <${Object.keys(STUDIES).join('|')}> [--no-model] [--no-popularity] | --popularity <lesson file>`;
 
 async function main() {
   mkdirSync(CACHE, { recursive: true });
@@ -61,13 +64,18 @@ async function main() {
   const study = Object.hasOwn(STUDIES, first) ? STUDIES[first as keyof typeof STUDIES] : undefined;
   if (!study) throw new Error(USAGE);
   const chapters = parseStudy(await studyPgn(study.study), study.chapters);
-  let extracted = chapters.map((chapter) => extractChapter(chapter, study.info.side));
-  if (!rest.includes('--no-convert')) {
-    const ask = claudeCli({ learner: study.info.side, cacheFile: join(CACHE, 'convert.jsonl') });
-    const converted = await convertChapters(extracted, ask);
-    extracted = converted.extracted;
-    console.log(convertReport(converted.report));
-  }
+  const cli = claudeCli({
+    learner: study.info.side,
+    cacheFile: join(ROOT, `scripts/import-study/answers/${first}.jsonl`),
+    callModel: !rest.includes('--no-model'),
+  });
+  const converted = await convertChapters(
+    chapters.map((chapter) => extractChapter(chapter, study.info.side)),
+    cli.ask,
+  );
+  cli.saveUsed();
+  const { extracted } = converted;
+  console.log(convertReport(converted.report));
   let lesson: Lesson = mergeChapters(study.info, chapters, extracted);
   if (!rest.includes('--no-popularity')) lesson = await withPopularity(lesson);
   writeLesson(join(ROOT, `assets/lessons/${lesson.id}.json`), lesson);
