@@ -1,0 +1,1363 @@
+{
+ "format": 1,
+ "id": "caro-kann-sample",
+ "title": "Caro-Kann (sample)",
+ "side": "black",
+ "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+ "source": {
+  "title": "Greatest Caro Kann: Living Repertoire",
+  "author": "Kampfschach_Official",
+  "url": "https://lichess.org/study/8Uztu7Xx"
+ },
+ "popularity": {
+  "ratingBands": [
+   1000,
+   1200,
+   1400,
+   1600,
+   1800
+  ],
+  "speeds": [
+   "blitz",
+   "rapid",
+   "classical"
+  ],
+  "date": "2026-11-18"
+ },
+ "variations": {
+  "caro-kann": {
+   "name": "Caro-Kann Defence"
+  },
+  "advance": {
+   "name": "Advance Variation",
+   "parent": "caro-kann"
+  },
+  "short": {
+   "name": "Short Variation",
+   "parent": "advance"
+  },
+  "nc3-g4": {
+   "name": "Advance with Nc3 and g4",
+   "parent": "advance"
+  },
+  "botvinnik-carls": {
+   "name": "Botvinnik–Carls",
+   "parent": "advance"
+  },
+  "exchange": {
+   "name": "Exchange Variation",
+   "parent": "caro-kann"
+  },
+  "classical": {
+   "name": "Classical Variation",
+   "parent": "caro-kann"
+  }
+ },
+ "positions": {
+  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -": {
+   "variation": "caro-kann",
+   "moves": [
+    {
+     "uci": "e2e4",
+     "games": [
+      52000,
+      61000,
+      66000,
+      64000,
+      51000
+     ]
+    }
+   ],
+   "notes": [
+    {
+     "text": "You will play the Caro-Kann: a solid answer to e4 that keeps your pieces free."
+    }
+   ]
+  },
+  "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -": {
+   "variation": "caro-kann",
+   "moves": [
+    {
+     "uci": "c7c6",
+     "book": true,
+     "games": [
+      3100,
+      4200,
+      5200,
+      5600,
+      5000
+     ],
+     "notes": [
+      {
+       "text": "You prepare d5, hitting White's centre with a pawn your c-pawn backs up.",
+       "ideas": [
+        {
+         "type": "purpose",
+         "from": "c6",
+         "relation": "controls",
+         "targets": [
+          "d5"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -": {
+   "variation": "caro-kann",
+   "moves": [
+    {
+     "uci": "d2d4",
+     "games": [
+      1500,
+      2300,
+      3200,
+      3700,
+      3500
+     ]
+    }
+   ]
+  },
+  "rnbqkbnr/pp1ppppp/2p5/8/3PP3/8/PPP2PPP/RNBQKBNR b KQkq -": {
+   "variation": "caro-kann",
+   "moves": [
+    {
+     "uci": "d7d5",
+     "book": true,
+     "games": [
+      1300,
+      2100,
+      3000,
+      3500,
+      3400
+     ],
+     "notes": [
+      {
+       "text": "Your d-pawn attacks e4. White must push it, trade it, or defend it.",
+       "ideas": [
+        {
+         "type": "purpose",
+         "from": "d5",
+         "relation": "attacks",
+         "targets": [
+          "e4"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "rnbqkbnr/pp2pppp/2p5/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq -": {
+   "variation": "caro-kann",
+   "moves": [
+    {
+     "uci": "e4e5",
+     "games": [
+      300,
+      560,
+      960,
+      1250,
+      1300
+     ],
+     "notes": [
+      {
+       "text": "White grabs space and takes f6 away from your knight.",
+       "ideas": [
+        {
+         "type": "purpose",
+         "from": "e5",
+         "relation": "controls",
+         "targets": [
+          "d6",
+          "f6"
+         ]
+        },
+        {
+         "type": "imbalance",
+         "side": "white",
+         "kind": "space"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "uci": "e4d5",
+     "games": [
+      620,
+      780,
+      820,
+      760,
+      620
+     ],
+     "notes": [
+      {
+       "text": "White releases the tension. The position opens up early."
+      }
+     ]
+    },
+    {
+     "uci": "b1c3",
+     "games": [
+      280,
+      470,
+      690,
+      830,
+      820
+     ]
+    },
+    {
+     "uci": "b1d2",
+     "games": [
+      90,
+      170,
+      280,
+      390,
+      430
+     ],
+     "notes": [
+      {
+       "text": "Same idea as Nc3, keeping the c-pawn free. It usually leads to the same position."
+      }
+     ]
+    }
+   ]
+  },
+  "rnbqkbnr/pp2pppp/2p5/3pP3/3P4/8/PPP2PPP/RNBQKBNR b KQkq -": {
+   "variation": "advance",
+   "moves": [
+    {
+     "uci": "c8f5",
+     "book": true,
+     "risk": "safe",
+     "games": [
+      150,
+      300,
+      560,
+      780,
+      850
+     ],
+     "notes": [
+      {
+       "text": "Your light bishop gets out before you play e6, so it never gets locked in.",
+       "ideas": [
+        {
+         "type": "plan",
+         "side": "black",
+         "routes": [
+          {
+           "from": "e7",
+           "to": "e6"
+          },
+          {
+           "from": "c6",
+           "to": "c5"
+          }
+         ],
+         "goals": [
+          "d4"
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "uci": "c6c5",
+     "book": true,
+     "risk": "sharp",
+     "games": [
+      90,
+      150,
+      230,
+      290,
+      300
+     ],
+     "notes": [
+      {
+       "text": "You strike the base of the chain at once, then pile up on d4.",
+       "ideas": [
+        {
+         "type": "plan",
+         "side": "black",
+         "routes": [
+          {
+           "from": "b8",
+           "to": "c6"
+          },
+          {
+           "from": "d8",
+           "to": "b6"
+          }
+         ],
+         "goals": [
+          "d4"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "notes": [
+    {
+     "text": "White's pawns point at your king. Strike at the base of the chain, d4.",
+     "ideas": [
+      {
+       "type": "structure",
+       "side": "white",
+       "features": [
+        {
+         "kind": "pawnChain",
+         "squares": [
+          "d4",
+          "e5"
+         ]
+        }
+       ]
+      },
+      {
+       "type": "structure",
+       "side": "black",
+       "features": [
+        {
+         "kind": "pawnBreak",
+         "move": "c6c5"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/8/PPP2PPP/RNBQKBNR w KQkq -": {
+   "variation": "advance",
+   "moves": [
+    {
+     "uci": "g1f3",
+     "games": [
+      60,
+      130,
+      270,
+      400,
+      460
+     ]
+    },
+    {
+     "uci": "b1c3",
+     "games": [
+      50,
+      90,
+      150,
+      210,
+      240
+     ],
+     "notes": [
+      {
+       "text": "White aims g4 at your bishop. Expect a sharp fight."
+      }
+     ]
+    }
+   ]
+  },
+  "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R b KQkq -": {
+   "variation": "short",
+   "moves": [
+    {
+     "uci": "e7e6",
+     "book": true,
+     "games": [
+      50,
+      110,
+      240,
+      360,
+      420
+     ],
+     "notes": [
+      {
+       "text": "A solid wall. Your dark bishop is free and d5 is held.",
+       "ideas": [
+        {
+         "type": "purpose",
+         "from": "e6",
+         "relation": "defends",
+         "targets": [
+          "d5"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "rn1qkbnr/pp3ppp/2p1p3/3pPb2/3P4/5N2/PPP2PPP/RNBQKB1R w KQkq -": {
+   "variation": "short",
+   "moves": [
+    {
+     "uci": "f1e2",
+     "games": [
+      30,
+      70,
+      150,
+      240,
+      290
+     ]
+    }
+   ]
+  },
+  "rn1qkbnr/pp3ppp/2p1p3/3pPb2/3P4/5N2/PPP1BPPP/RNBQK2R b KQkq -": {
+   "variation": "short",
+   "moves": [
+    {
+     "uci": "c6c5",
+     "book": true,
+     "games": [
+      20,
+      50,
+      110,
+      180,
+      220
+     ],
+     "notes": [
+      {
+       "text": "Now the break: c5 hits d4 with your bishop already outside the chain."
+      }
+     ]
+    }
+   ]
+  },
+  "rn1qkbnr/pp3ppp/4p3/2ppPb2/3P4/5N2/PPP1BPPP/RNBQK2R w KQkq -": {
+   "variation": "short",
+   "moves": [
+    {
+     "uci": "e1g1",
+     "games": [
+      10,
+      30,
+      70,
+      120,
+      150
+     ]
+    }
+   ]
+  },
+  "rn1qkbnr/pp3ppp/4p3/2ppPb2/3P4/5N2/PPP1BPPP/RNBQ1RK1 b kq -": {
+   "variation": "short",
+   "moves": [
+    {
+     "uci": "b8c6",
+     "book": true,
+     "games": [
+      8,
+      20,
+      50,
+      90,
+      120
+     ],
+     "notes": [
+      {
+       "text": "Two pieces now hit d4 and White must keep defending it.",
+       "ideas": [
+        {
+         "type": "pressure",
+         "side": "black",
+         "target": "d4",
+         "attackers": [
+          "c5",
+          "c6"
+         ],
+         "defenders": [
+          "f3",
+          "d1"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "r2qkbnr/pp3ppp/2n1p3/2ppPb2/3P4/5N2/PPP1BPPP/RNBQ1RK1 w kq -": {
+   "variation": "short",
+   "moves": [],
+   "notes": [
+    {
+     "text": "A balanced fight around d4.",
+     "ideas": [
+      {
+       "type": "evaluation",
+       "value": "equal"
+      }
+     ]
+    }
+   ]
+  },
+  "rn1qkbnr/pp2pppp/2p5/3pPb2/3P4/2N5/PPP2PPP/R1BQKBNR b KQkq -": {
+   "variation": "nc3-g4",
+   "moves": [
+    {
+     "uci": "e7e6",
+     "book": true,
+     "games": [
+      40,
+      80,
+      130,
+      190,
+      220
+     ]
+    }
+   ]
+  },
+  "rn1qkbnr/pp3ppp/2p1p3/3pPb2/3P4/2N5/PPP2PPP/R1BQKBNR w KQkq -": {
+   "variation": "nc3-g4",
+   "moves": [
+    {
+     "uci": "g2g4",
+     "games": [
+      30,
+      50,
+      80,
+      120,
+      140
+     ],
+     "notes": [
+      {
+       "text": "White chases your bishop. It must step back to g6.",
+       "ideas": [
+        {
+         "type": "purpose",
+         "from": "g4",
+         "relation": "attacks",
+         "targets": [
+          "f5"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "rn1qkbnr/pp3ppp/2p1p3/3pPb2/3P2P1/2N5/PPP2P1P/R1BQKBNR b KQkq -": {
+   "variation": "nc3-g4",
+   "moves": [
+    {
+     "uci": "f5g6",
+     "book": true,
+     "games": [
+      28,
+      48,
+      78,
+      116,
+      136
+     ]
+    }
+   ]
+  },
+  "rn1qkbnr/pp3ppp/2p1p1b1/3pP3/3P2P1/2N5/PPP2P1P/R1BQKBNR w KQkq -": {
+   "variation": "nc3-g4",
+   "moves": [
+    {
+     "uci": "g1e2",
+     "games": [
+      12,
+      22,
+      40,
+      64,
+      80
+     ]
+    }
+   ]
+  },
+  "rn1qkbnr/pp3ppp/2p1p1b1/3pP3/3P2P1/2N5/PPP1NP1P/R1BQKB1R b KQkq -": {
+   "variation": "nc3-g4",
+   "moves": [
+    {
+     "uci": "c6c5",
+     "book": true,
+     "games": [
+      10,
+      18,
+      34,
+      56,
+      72
+     ],
+     "notes": [
+      {
+       "text": "Hit back in the centre while White's kingside pawns are far forward.",
+       "ideas": [
+        {
+         "type": "structure",
+         "side": "black",
+         "features": [
+          {
+           "kind": "pawnBreak",
+           "move": "c5d4"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "rn1qkbnr/pp3ppp/4p1b1/2ppP3/3P2P1/2N5/PPP1NP1P/R1BQKB1R w KQkq -": {
+   "variation": "nc3-g4",
+   "moves": [],
+   "notes": [
+    {
+     "text": "Sharp, with chances for both sides.",
+     "ideas": [
+      {
+       "type": "evaluation",
+       "value": "equal"
+      }
+     ]
+    }
+   ]
+  },
+  "rnbqkbnr/pp2pppp/8/2ppP3/3P4/8/PPP2PPP/RNBQKBNR w KQkq -": {
+   "variation": "botvinnik-carls",
+   "moves": [
+    {
+     "uci": "d4c5",
+     "games": [
+      50,
+      80,
+      110,
+      130,
+      130
+     ],
+     "notes": [
+      {
+       "text": "White takes the pawn. You will win it back with quick development.",
+       "ideas": [
+        {
+         "type": "purpose",
+         "at": "before",
+         "from": "d4",
+         "relation": "attacks",
+         "targets": [
+          "c5"
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "uci": "c2c3",
+     "games": [
+      30,
+      55,
+      90,
+      120,
+      130
+     ],
+     "notes": [
+      {
+       "text": "White props up d4. This is the French structure with your bishop free."
+      }
+     ]
+    }
+   ]
+  },
+  "rnbqkbnr/pp2pppp/8/2PpP3/8/8/PPP2PPP/RNBQKBNR b KQkq -": {
+   "variation": "botvinnik-carls",
+   "moves": [
+    {
+     "uci": "b8c6",
+     "book": true,
+     "games": [
+      40,
+      66,
+      92,
+      110,
+      112
+     ]
+    }
+   ]
+  },
+  "r1bqkbnr/pp2pppp/2n5/2PpP3/8/8/PPP2PPP/RNBQKBNR w KQkq -": {
+   "variation": "botvinnik-carls",
+   "moves": [
+    {
+     "uci": "g1f3",
+     "games": [
+      30,
+      50,
+      70,
+      84,
+      86
+     ]
+    }
+   ]
+  },
+  "r1bqkbnr/pp2pppp/2n5/2PpP3/8/5N2/PPP2PPP/RNBQKB1R b KQkq -": {
+   "variation": "botvinnik-carls",
+   "moves": [
+    {
+     "uci": "c8g4",
+     "book": true,
+     "games": [
+      24,
+      40,
+      56,
+      68,
+      70
+     ],
+     "notes": [
+      {
+       "text": "Your bishop pins the knight that guards e5.",
+       "ideas": [
+        {
+         "type": "purpose",
+         "from": "g4",
+         "relation": "pins",
+         "targets": [
+          "f3"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "r2qkbnr/pp2pppp/2n5/2PpP3/6b1/5N2/PPP2PPP/RNBQKB1R w KQkq -": {
+   "variation": "botvinnik-carls",
+   "moves": [
+    {
+     "uci": "f1b5",
+     "games": [
+      10,
+      16,
+      22,
+      26,
+      26
+     ],
+     "notes": [
+      {
+       "text": "White pins your knight to your king in return.",
+       "ideas": [
+        {
+         "type": "purpose",
+         "from": "b5",
+         "relation": "pins",
+         "targets": [
+          "c6"
+         ]
+        },
+        {
+         "type": "purpose",
+         "from": "b5",
+         "relation": "aims",
+         "targets": [
+          "e8"
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "uci": "c2c3",
+     "games": [
+      8,
+      14,
+      20,
+      26,
+      28
+     ],
+     "notes": [
+      {
+       "text": "Don't grab e5: after the trades, a check on b5 wins your queen.",
+       "ideas": [
+        {
+         "type": "trap",
+         "moves": [
+          "c6e5",
+          "f3e5",
+          "g4d1",
+          "f1b5",
+          "d8d7",
+          "b5d7",
+          "e8d8",
+          "e1d1"
+         ],
+         "verdict": "losesMaterial"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "r2qkbnr/pp2pppp/2n5/1BPpP3/6b1/5N2/PPP2PPP/RNBQK2R b KQkq -": {
+   "variation": "botvinnik-carls",
+   "moves": [
+    {
+     "uci": "d8a5",
+     "book": true,
+     "games": [
+      8,
+      13,
+      18,
+      22,
+      22
+     ],
+     "notes": [
+      {
+       "text": "Check, and your queen hits the bishop on b5 too.",
+       "ideas": [
+        {
+         "type": "purpose",
+         "from": "a5",
+         "relation": "checks",
+         "targets": [
+          "e1"
+         ]
+        },
+        {
+         "type": "purpose",
+         "from": "a5",
+         "relation": "attacks",
+         "targets": [
+          "b5"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "r3kbnr/pp2pppp/2n5/qBPpP3/6b1/5N2/PPP2PPP/RNBQK2R w KQkq -": {
+   "variation": "botvinnik-carls",
+   "moves": [],
+   "notes": [
+    {
+     "text": "You win back the c5 pawn soon.",
+     "ideas": [
+      {
+       "type": "evaluation",
+       "value": "equal"
+      }
+     ]
+    }
+   ]
+  },
+  "r2qkbnr/pp2pppp/2n5/2PpP3/6b1/2P2N2/PP3PPP/RNBQKB1R b KQkq -": {
+   "variation": "botvinnik-carls",
+   "moves": [
+    {
+     "uci": "e7e6",
+     "book": true,
+     "games": [
+      6,
+      10,
+      15,
+      20,
+      22
+     ],
+     "notes": [
+      {
+       "text": "Free your dark bishop to take back on c5.",
+       "ideas": [
+        {
+         "type": "purpose",
+         "from": "f8",
+         "relation": "attacks",
+         "targets": [
+          "c5"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "r2qkbnr/pp3ppp/2n1p3/2PpP3/6b1/2P2N2/PP3PPP/RNBQKB1R w KQkq -": {
+   "variation": "botvinnik-carls",
+   "moves": []
+  },
+  "rnbqkbnr/pp2pppp/8/2ppP3/3P4/2P5/PP3PPP/RNBQKBNR b KQkq -": {
+   "variation": "botvinnik-carls",
+   "moves": [
+    {
+     "uci": "b8c6",
+     "book": true,
+     "games": [
+      26,
+      48,
+      80,
+      106,
+      116
+     ],
+     "notes": [
+      {
+       "text": "Your knight joins the c-pawn against d4.",
+       "ideas": [
+        {
+         "type": "pressure",
+         "side": "black",
+         "target": "d4",
+         "attackers": [
+          "c5",
+          "c6"
+         ],
+         "defenders": [
+          "c3",
+          "d1"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "r1bqkbnr/pp2pppp/2n5/2ppP3/3P4/2P5/PP3PPP/RNBQKBNR w KQkq -": {
+   "variation": "botvinnik-carls",
+   "moves": [
+    {
+     "uci": "g1f3",
+     "games": [
+      20,
+      38,
+      64,
+      86,
+      94
+     ]
+    }
+   ]
+  },
+  "r1bqkbnr/pp2pppp/2n5/2ppP3/3P4/2P2N2/PP3PPP/RNBQKB1R b KQkq -": {
+   "variation": "botvinnik-carls",
+   "moves": [
+    {
+     "uci": "c8g4",
+     "book": true,
+     "games": [
+      12,
+      22,
+      38,
+      52,
+      58
+     ],
+     "notes": [
+      {
+       "text": "Pin the knight that defends d4, adding one more attacker.",
+       "ideas": [
+        {
+         "type": "purpose",
+         "from": "g4",
+         "relation": "pins",
+         "targets": [
+          "f3"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "r2qkbnr/pp2pppp/2n5/2ppP3/3P2b1/2P2N2/PP3PPP/RNBQKB1R w KQkq -": {
+   "variation": "botvinnik-carls",
+   "moves": []
+  },
+  "rnbqkbnr/pp2pppp/2p5/3P4/3P4/8/PPP2PPP/RNBQKBNR b KQkq -": {
+   "variation": "exchange",
+   "moves": [
+    {
+     "uci": "c6d5",
+     "book": true,
+     "games": [
+      580,
+      740,
+      790,
+      740,
+      600
+     ],
+     "notes": [
+      {
+       "text": "Take back toward the centre. Your c-file is now half open."
+      }
+     ]
+    }
+   ]
+  },
+  "rnbqkbnr/pp2pppp/8/3p4/3P4/8/PPP2PPP/RNBQKBNR w KQkq -": {
+   "variation": "exchange",
+   "moves": [
+    {
+     "uci": "f1d3",
+     "games": [
+      260,
+      340,
+      360,
+      330,
+      260
+     ]
+    }
+   ],
+   "notes": [
+    {
+     "text": "The files decide plans: you use the c-file, White the e-file.",
+     "ideas": [
+      {
+       "type": "structure",
+       "side": "black",
+       "features": [
+        {
+         "kind": "halfOpenFile",
+         "files": [
+          "c"
+         ]
+        }
+       ]
+      },
+      {
+       "type": "structure",
+       "side": "white",
+       "features": [
+        {
+         "kind": "halfOpenFile",
+         "files": [
+          "e"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "rnbqkbnr/pp2pppp/8/3p4/3P4/3B4/PPP2PPP/RNBQK1NR b KQkq -": {
+   "variation": "exchange",
+   "moves": [
+    {
+     "uci": "b8c6",
+     "book": true,
+     "games": [
+      230,
+      300,
+      320,
+      300,
+      240
+     ],
+     "notes": [
+      {
+       "text": "Develop and watch d4. The knight makes White's c3 almost forced.",
+       "ideas": [
+        {
+         "type": "purpose",
+         "from": "c6",
+         "relation": "attacks",
+         "targets": [
+          "d4"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "r1bqkbnr/pp2pppp/2n5/3p4/3P4/3B4/PPP2PPP/RNBQK1NR w KQkq -": {
+   "variation": "exchange",
+   "moves": [
+    {
+     "uci": "c2c3",
+     "games": [
+      190,
+      250,
+      270,
+      250,
+      200
+     ]
+    }
+   ]
+  },
+  "r1bqkbnr/pp2pppp/2n5/3p4/3P4/2PB4/PP3PPP/RNBQK1NR b KQkq -": {
+   "variation": "exchange",
+   "moves": [
+    {
+     "uci": "g8f6",
+     "book": true,
+     "games": [
+      170,
+      220,
+      240,
+      220,
+      180
+     ]
+    }
+   ]
+  },
+  "r1bqkb1r/pp2pppp/2n2n2/3p4/3P4/2PB4/PP3PPP/RNBQK1NR w KQkq -": {
+   "variation": "exchange",
+   "moves": [
+    {
+     "uci": "c1f4",
+     "games": [
+      80,
+      110,
+      120,
+      110,
+      90
+     ]
+    }
+   ]
+  },
+  "r1bqkb1r/pp2pppp/2n2n2/3p4/3P1B2/2PB4/PP3PPP/RN1QK1NR b KQkq -": {
+   "variation": "exchange",
+   "moves": [
+    {
+     "uci": "c8g4",
+     "book": true,
+     "games": [
+      60,
+      80,
+      90,
+      85,
+      70
+     ],
+     "notes": [
+      {
+       "text": "If the queen hits b7, jump to a5 and block the check: you are fine.",
+       "ideas": [
+        {
+         "type": "line",
+         "moves": [
+          "d1b3",
+          "c6a5",
+          "b3a4",
+          "g4d7"
+         ],
+         "verdict": "equal"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "r2qkb1r/pp2pppp/2n2n2/3p4/3P1Bb1/2PB4/PP3PPP/RN1QK1NR w KQkq -": {
+   "variation": "exchange",
+   "moves": [],
+   "notes": [
+    {
+     "text": "White has a small edge from the extra tempo.",
+     "ideas": [
+      {
+       "type": "evaluation",
+       "value": "whiteSlightly"
+      }
+     ]
+    }
+   ]
+  },
+  "rnbqkbnr/pp2pppp/2p5/3p4/3PP3/2N5/PPP2PPP/R1BQKBNR b KQkq -": {
+   "variation": "classical",
+   "moves": [
+    {
+     "uci": "d5e4",
+     "book": true,
+     "games": [
+      260,
+      440,
+      650,
+      790,
+      780
+     ],
+     "notes": [
+      {
+       "text": "Give up the centre for a moment to free your light bishop."
+      }
+     ]
+    }
+   ]
+  },
+  "rnbqkbnr/pp2pppp/2p5/8/3Pp3/2N5/PPP2PPP/R1BQKBNR w KQkq -": {
+   "variation": "classical",
+   "moves": [
+    {
+     "uci": "c3e4",
+     "games": [
+      250,
+      430,
+      640,
+      780,
+      770
+     ]
+    }
+   ]
+  },
+  "rnbqkbnr/pp2pppp/2p5/8/3PN3/8/PPP2PPP/R1BQKBNR b KQkq -": {
+   "variation": "classical",
+   "moves": [
+    {
+     "uci": "c8f5",
+     "book": true,
+     "games": [
+      170,
+      300,
+      470,
+      600,
+      610
+     ],
+     "notes": [
+      {
+       "text": "Your bishop develops with a hit on the knight.",
+       "ideas": [
+        {
+         "type": "purpose",
+         "from": "f5",
+         "relation": "attacks",
+         "targets": [
+          "e4"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "rn1qkbnr/pp2pppp/2p5/5b2/3PN3/8/PPP2PPP/R1BQKBNR w KQkq -": {
+   "variation": "classical",
+   "moves": [
+    {
+     "uci": "e4g3",
+     "games": [
+      150,
+      270,
+      430,
+      560,
+      580
+     ]
+    }
+   ]
+  },
+  "rn1qkbnr/pp2pppp/2p5/5b2/3P4/6N1/PPP2PPP/R1BQKBNR b KQkq -": {
+   "variation": "classical",
+   "moves": [
+    {
+     "uci": "f5g6",
+     "book": true,
+     "games": [
+      148,
+      266,
+      424,
+      552,
+      572
+     ]
+    }
+   ]
+  },
+  "rn1qkbnr/pp2pppp/2p3b1/8/3P4/6N1/PPP2PPP/R1BQKBNR w KQkq -": {
+   "variation": "classical",
+   "moves": [
+    {
+     "uci": "h2h4",
+     "games": [
+      90,
+      170,
+      290,
+      400,
+      440
+     ],
+     "notes": [
+      {
+       "text": "White threatens h5, trapping your bishop. Make room with h6.",
+       "ideas": [
+        {
+         "type": "threat",
+         "side": "white",
+         "move": "h4h5",
+         "answer": "h7h6"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "rn1qkbnr/pp2pppp/2p3b1/8/3P3P/6N1/PPP2PP1/R1BQKBNR b KQkq -": {
+   "variation": "classical",
+   "moves": [
+    {
+     "uci": "h7h6",
+     "book": true,
+     "games": [
+      88,
+      166,
+      284,
+      392,
+      432
+     ],
+     "notes": [
+      {
+       "text": "Now h5 just pushes the bishop to h7, where it stays safe."
+      }
+     ]
+    }
+   ]
+  },
+  "rn1qkbnr/pp2ppp1/2p3bp/8/3P3P/6N1/PPP2PP1/R1BQKBNR w KQkq -": {
+   "variation": "classical",
+   "moves": [],
+   "notes": [
+    {
+     "text": "The main line: solid for you, a little more space for White.",
+     "ideas": [
+      {
+       "type": "evaluation",
+       "value": "whiteSlightly"
+      }
+     ]
+    }
+   ]
+  },
+  "rnbqkbnr/pp2pppp/2p5/3p4/3PP3/8/PPPN1PPP/R1BQKBNR b KQkq -": {
+   "variation": "classical",
+   "moves": [
+    {
+     "uci": "d5e4",
+     "book": true,
+     "games": [
+      85,
+      160,
+      265,
+      370,
+      410
+     ]
+    }
+   ]
+  },
+  "rnbqkbnr/pp2pppp/2p5/8/3Pp3/8/PPPN1PPP/R1BQKBNR w KQkq -": {
+   "variation": "classical",
+   "moves": [
+    {
+     "uci": "d2e4",
+     "games": [
+      84,
+      158,
+      262,
+      366,
+      406
+     ]
+    }
+   ]
+  }
+ }
+}
