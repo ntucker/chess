@@ -120,6 +120,11 @@ function NoteView({
         // Whether lit or not: a switch may hide the ideas of the note pointed at.
         if (hovers(nativeEvent.pointerType)) onLeave(note);
       }}
+      // A tap on a touch screen points at it, as a candidate row's tap does; a
+      // scroll cancels the pointer, so it points at nothing.
+      onPointerUp={({ nativeEvent }) => {
+        if (!hovers(nativeEvent.pointerType)) point();
+      }}
       // Keyboard focus on its buttons points at it too; the panel ends it.
       onFocus={point}
       style={[
