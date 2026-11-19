@@ -11,7 +11,7 @@ import {
 import { InstrumentSans_400Regular } from '@expo-google-fonts/instrument-sans';
 import { SilkProvider } from '@reactive/silk-native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
 import { SettingsProvider, useSettings } from '@/settings/SettingsProvider';
@@ -45,11 +45,15 @@ export default function RootLayout() {
 }
 
 /**
- * Runs Stockfish while the evaluation bar or the opponent uses it. Choosing
- * Maia for the bar and a rating for the opponent stops it, which frees its
- * memory.
+ * Runs Stockfish while the evaluation bar or the opponent uses it, and on a
+ * lesson, which always labels moves with it. In free play, choosing Maia for
+ * the bar and a rating for the opponent stops it, which frees its memory.
  */
 function StockfishWhileChosen() {
   const { evaluationEngine, opponent } = useSettings();
-  return evaluationEngine === 'stockfish' || opponent === 'stockfish' ? <StockfishHost /> : null;
+  const pathname = usePathname();
+  const lesson = pathname === '/' || pathname.startsWith('/lesson/');
+  return evaluationEngine === 'stockfish' || opponent === 'stockfish' || lesson ? (
+    <StockfishHost />
+  ) : null;
 }

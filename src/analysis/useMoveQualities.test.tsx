@@ -6,8 +6,6 @@ import { createRoot, type Root } from 'test-renderer';
 import type { Evaluation } from '@/evaluation/evaluation';
 import { replay } from '@/game/replay';
 import { getEvaluation } from '@/resources/evaluation';
-import { DEFAULT_SETTINGS } from '@/settings/settings';
-import { SettingsProvider } from '@/settings/SettingsProvider';
 
 import type { MoveQuality } from './quality';
 import { useMoveQualities } from './useMoveQualities';
@@ -21,13 +19,12 @@ jest.mock('@/stockfish/engine', () => ({
   },
 }));
 
-// Maia's engine needs a native worklet runtime; these tests judge with the default, Stockfish.
+// Maia's engine needs a native worklet runtime; these tests judge with Stockfish.
 jest.mock('@/maia/engine', () => ({ maiaEvaluation: jest.fn() }));
 
 const MOVES = ['e2e4', 'e7e5', 'g1f3'];
 const PLIES = replay(MOVES);
 const scored = (score: number): Evaluation => ({ score, pawns: 0 });
-const ENGINE = DEFAULT_SETTINGS.evaluationEngine;
 
 let root: Root | undefined;
 const controllers: Controller[] = [];
@@ -35,7 +32,7 @@ const renders: (readonly (MoveQuality | undefined)[])[] = [];
 
 function Labels({ shown }: { readonly shown: number }) {
   controllers.push(useController());
-  renders.push(useMoveQualities(PLIES, shown));
+  renders.push(useMoveQualities(PLIES, shown, 'stockfish'));
   return null;
 }
 
@@ -44,18 +41,12 @@ const render = (shown: number) =>
     root ??= createRoot();
     root.render(
       <DataProvider>
-        <SettingsProvider>
-          <Labels shown={shown} />
-        </SettingsProvider>
+        <Labels shown={shown} />
       </DataProvider>,
     );
   });
 
 beforeEach(() => {
-  Object.defineProperty(globalThis, 'localStorage', {
-    configurable: true,
-    value: { getItem: () => null, setItem: () => {} },
-  });
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 });
 
@@ -84,9 +75,9 @@ describe('useMoveQualities', () => {
     const [ctrl] = controllers;
     await act(async () => {
       // White's move changes nothing; Black's gives a quarter of the expected score away.
-      ctrl.setResponse(getEvaluation, ENGINE, [], scored(0.5));
-      ctrl.setResponse(getEvaluation, ENGINE, ['e2e4'], scored(0.5));
-      ctrl.setResponse(getEvaluation, ENGINE, ['e2e4', 'e7e5'], scored(0.75));
+      ctrl.setResponse(getEvaluation, 'stockfish', [], scored(0.5));
+      ctrl.setResponse(getEvaluation, 'stockfish', ['e2e4'], scored(0.5));
+      ctrl.setResponse(getEvaluation, 'stockfish', ['e2e4', 'e7e5'], scored(0.75));
     });
     expect(renders.at(-1)).toEqual(['best', 'blunder', undefined]);
   });

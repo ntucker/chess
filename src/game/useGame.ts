@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useReducer } from 'react';
 
 import { useMoveQualities } from '@/analysis/useMoveQualities';
+import type { EvaluationEngine } from '@/evaluation/evaluation';
 
 import { failure, type GameOpponent, gameReducer, initialGame } from './game';
 import { material } from './material';
@@ -17,6 +18,8 @@ interface Options {
    * opponent nothing, and asks once it's in front again.
    */
   readonly active: boolean;
+  /** The engine that judges each move for its label. */
+  readonly judge: EvaluationEngine;
 }
 
 /**
@@ -32,14 +35,14 @@ interface Options {
  * dropped; one from an opponent since replaced still answers the same
  * position, so the first answer wins.
  */
-export function useGame(opponent: GameOpponent | undefined, { side, active }: Options) {
+export function useGame(opponent: GameOpponent | undefined, { side, active, judge }: Options) {
   const [state, dispatch] = useReducer(gameReducer, initialGame);
   const { moves, ply } = state;
   const plies = replay(moves);
   const latest = analyze(plies[plies.length - 1]);
   const atLatest = ply === moves.length;
   const current = atLatest ? latest : analyze(plies[ply]);
-  const qualities = useMoveQualities(plies, ply);
+  const qualities = useMoveQualities(plies, ply, judge);
   const error = failure(state, opponent?.id);
   const thinking = !!opponent && !latest.result && latest.turn !== side && !error;
 

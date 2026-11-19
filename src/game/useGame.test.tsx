@@ -29,7 +29,7 @@ const renders: ReturnType<typeof useGame>[] = [];
 const game = () => renders[renders.length - 1];
 
 function Game(props: { opponent?: GameOpponent; side: Color; active: boolean }) {
-  renders.push(useGame(props.opponent, props));
+  renders.push(useGame(props.opponent, { ...props, judge: 'stockfish' }));
   return null;
 }
 

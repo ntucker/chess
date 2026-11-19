@@ -1,16 +1,16 @@
 import { StateContext, useController, useFetch } from '@data-client/react';
 import { use } from 'react';
 
+import type { EvaluationEngine } from '@/evaluation/evaluation';
 import type { Ply } from '@/game/replay';
 import { getEvaluation } from '@/resources/evaluation';
-import { useSettings } from '@/settings/SettingsProvider';
 
 import { classifyMove, type MoveQuality } from './quality';
 
 /**
  * Each move's label, from the evaluations of the positions before and after
- * it as the chosen engine judges them: `qualities[n]` labels the move that
- * leads to `plies[n + 1]`, once both are known.
+ * it as `engine` judges them: `qualities[n]` labels the move that leads to
+ * `plies[n + 1]`, once both are known.
  *
  * Only the move leading to `plies[shown]` (the board's) asks for its
  * evaluations: a search costs up to a second on a phone, and the engine runs
@@ -18,14 +18,14 @@ import { classifyMove, type MoveQuality } from './quality';
  * each move.
  *
  * ```ts
- * const qualities = useMoveQualities(plies, ply);
+ * const qualities = useMoveQualities(plies, ply, 'stockfish');
  * ```
  */
 export function useMoveQualities(
   plies: readonly Ply[],
   shown: number,
+  engine: EvaluationEngine,
 ): readonly (MoveQuality | undefined)[] {
-  const engine = useSettings().evaluationEngine;
   const state = use(StateContext);
   const ctrl = useController();
   const moves = plies.slice(1).map(({ move }) => move!.uci);

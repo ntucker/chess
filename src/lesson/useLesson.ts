@@ -36,6 +36,9 @@ export function useLesson(lesson: Lesson) {
   const game = useGame(lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent)), {
     side: lesson.side,
     active: useIsFocused(),
+    // Always Stockfish, whatever judges the bar: Maia's judgement could call a
+    // book move a mistake.
+    judge: 'stockfish',
   });
   const { moves, ply, current } = game;
   const view = useMemo(

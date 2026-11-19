@@ -25,7 +25,7 @@ import { useSettings } from '@/settings/SettingsProvider';
 
 export default function PlayScreen() {
   const ctrl = useController();
-  const { opponent } = useSettings();
+  const { opponent, evaluationEngine } = useSettings();
   const described = describeOpponent(opponent);
   // The side of the game on the board, and the side the next game will take.
   const [playerColor, setPlayerColor] = useState<Color>('white');
@@ -33,6 +33,7 @@ export default function PlayScreen() {
   const game = useGame(gameOpponent(ctrl, opponent), {
     side: playerColor,
     active: useIsFocused(),
+    judge: evaluationEngine,
   });
   const { moves, ply, current, toMove, thinking, goto } = game;
   const opponentColor = opposite(playerColor);
