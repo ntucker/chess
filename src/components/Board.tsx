@@ -163,7 +163,7 @@ export default function Board({
 
   // A press that plays the previewed move with the picked piece: chessground
   // plays it itself, and would slide the piece to where the preview already
-  // draws it, so it plays it at once. The position effect below turns the
+  // draws it, so its slide is turned off. The position effect below turns the
   // animation back on as the game reaches the preview.
   const skipPreviewSlide = useEffectEvent((picked: Square | undefined, x: number, y: number) => {
     const square = api.current?.getKeyAtDomPos([x, y]) as Square | undefined;
@@ -181,10 +181,12 @@ export default function Board({
     // pick, so it is read as the press starts: a capture listener on the
     // board's own element runs before chessground's handlers inside it.
     let picked: Square | undefined;
-    const notePick = ({ button, shiftKey, clientX, clientY }: PointerEvent) => {
+    const notePick = (press: PointerEvent) => {
       picked = api.current?.state.selected as Square | undefined;
-      // Chessground draws an arrow for any other press, and plays no move.
-      if (button === 0 && !shiftKey) skipPreviewSlide(picked, clientX, clientY);
+      // Chessground plays a move only for one finger or the left button alone,
+      // without shift, which draws an arrow instead.
+      if (press.isPrimary && press.buttons === 1 && !press.shiftKey)
+        skipPreviewSlide(picked, press.clientX, press.clientY);
     };
     target.addEventListener('pointerdown', notePick, { capture: true });
     const board = Chessground(target, {
