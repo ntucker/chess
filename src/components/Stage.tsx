@@ -1,7 +1,7 @@
 import { Surface, useTheme } from '@reactive/silk-native';
 import Head from 'expo-router/head';
 import type { ReactNode } from 'react';
-import { type DimensionValue, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Board, { type BoardProps } from '@/components/Board';
@@ -12,6 +12,7 @@ import { Transport } from '@/components/Transport';
 import { useStepKeys } from '@/components/useStepKeys';
 import { colorName, opposite } from '@/game/replay';
 import type { Game } from '@/game/useGame';
+import { phoneCalc, phoneLength } from '@/theme/phone';
 import { spotlight } from '@/theme/theme';
 
 interface StageProps {
@@ -141,8 +142,10 @@ function BoardFrame({ children }: { readonly children: ReactNode }) {
 const BOARD_COLUMN_GAP = 4;
 /** The evaluation bar's width. */
 const EVALUATION_BAR_WIDTH = 22;
-/** How far the board sits below the top of its column (the opponent's name bar). */
-const BOARD_OFFSET = PLAYER_BAR_HEIGHT + BOARD_COLUMN_GAP;
+/** How far the board sits below the top of its column (the opponent's name bar), as CSS. */
+const BOARD_OFFSET_CSS = `${PLAYER_BAR_HEIGHT.css} + ${BOARD_COLUMN_GAP}px`;
+/** The same, off the web. */
+const BOARD_OFFSET = PLAYER_BAR_HEIGHT.wide + BOARD_COLUMN_GAP;
 /** The board's largest size. */
 const BOARD_MAX = 720;
 /** The width the column adds beside the board: the players' discs and their gap. */
@@ -156,26 +159,25 @@ const STAGE_GAP = 48;
 /** Wide enough for the board and the program at their largest. */
 const STAGE_MAX = BOARD_COLUMN_MAX + STAGE_GAP + PROGRAM_MAX;
 /** The page's padding, and the space between the header and the stage. */
-const PAGE_SPACE = 20;
+const PAGE_SPACE = phoneLength('page-space', 20);
 /**
  * Height around the board: the page's top and bottom padding and the gap
  * below the header (3 × PAGE_SPACE), the header, and both name bars.
  */
-const AROUND_BOARD = 3 * PAGE_SPACE + HEADER_HEIGHT + 2 * BOARD_OFFSET;
+const AROUND_BOARD_CSS = `3 * ${PAGE_SPACE.css} + ${HEADER_HEIGHT.css} + 2 * (${BOARD_OFFSET_CSS})`;
 /** On the web, the smallest the board shrinks to in a short window. */
 const BOARD_MIN_WEB = 320;
 /**
  * The board column's width limit. On the web the board also shrinks to fit
  * the window's height, so the player's name bar and the move buttons stay in
- * view. CSS does it, since the server can't measure the window; React
- * Native's types don't know CSS functions, hence the cast.
+ * view. CSS does it, since the server can't measure the window.
  */
-const BOARD_COLUMN_LIMIT =
-  process.env.EXPO_OS === 'web'
-    ? (`calc(clamp(${BOARD_MIN_WEB}px, 100svh - ${AROUND_BOARD}px, ${BOARD_MAX}px) + ${BESIDE_BOARD}px)` as DimensionValue)
-    : BOARD_COLUMN_MAX;
+const BOARD_COLUMN_LIMIT = phoneCalc(
+  `clamp(${BOARD_MIN_WEB}px, 100svh - (${AROUND_BOARD_CSS}), ${BOARD_MAX}px) + ${BESIDE_BOARD}px`,
+  BOARD_COLUMN_MAX,
+);
 /** Space above the program when it wraps below the board. */
-const WRAPPED_GAP = 32;
+const WRAPPED_GAP = phoneLength('wrapped-gap', 32);
 
 // Board and program sit side by side when there's room and wrap into a column
 // when there isn't, without measuring the window (which the server can't).
@@ -193,7 +195,7 @@ const WRAPPED_GAP = 32;
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  page: { padding: PAGE_SPACE, gap: PAGE_SPACE, alignItems: 'center' },
+  page: { padding: PAGE_SPACE.value, gap: PAGE_SPACE.value, alignItems: 'center' },
   header: { width: '100%', maxWidth: STAGE_MAX },
   stage: {
     width: '100%',
@@ -202,17 +204,23 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     columnGap: STAGE_GAP,
-    paddingTop: BOARD_OFFSET - WRAPPED_GAP,
+    paddingTop: phoneCalc(
+      `${BOARD_OFFSET_CSS} - ${WRAPPED_GAP.css}`,
+      BOARD_OFFSET - WRAPPED_GAP.wide,
+    ),
   },
   boardColumn: {
     flexGrow: 1,
     flexShrink: 1,
     flexBasis: 320,
     maxWidth: BOARD_COLUMN_LIMIT,
-    marginTop: WRAPPED_GAP - BOARD_OFFSET,
+    marginTop: phoneCalc(
+      `${WRAPPED_GAP.css} - (${BOARD_OFFSET_CSS})`,
+      WRAPPED_GAP.wide - BOARD_OFFSET,
+    ),
     gap: BOARD_COLUMN_GAP,
   },
-  barSpace: { height: PLAYER_BAR_HEIGHT },
+  barSpace: { height: PLAYER_BAR_HEIGHT.value },
   // The evaluation bar sits in the column of the players' discs, between
   // them, and the board lines up with the names beside the discs.
   boardRow: { flexDirection: 'row', gap: PLAYER_DISC.gap },
@@ -227,6 +235,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     flexBasis: 300,
     maxWidth: PROGRAM_MAX,
-    marginTop: WRAPPED_GAP,
+    marginTop: WRAPPED_GAP.value,
   },
 });

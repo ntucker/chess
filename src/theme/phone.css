@@ -1,0 +1,21 @@
+/*
+ * Lengths for a phone-width web page, as CSS variables that `phoneLength`
+ * (phone.ts) reads. Everywhere else the variables are unset and each length
+ * falls back to the wide value written beside it in code. A media query,
+ * since the pre-rendered page can't measure the window.
+ */
+@media (max-width: 599.98px) {
+  :root {
+    /* Page padding and the gap below the header (Stage.tsx). */
+    --page-space: 12px;
+    /* The logo, as tall as the source link beside it: the header's height (Header.tsx). */
+    --header-height: 36px;
+    --wordmark-size: 22px;
+    /* Hides the header's tagline (Header.tsx). */
+    --wide-only: none;
+    /* The name bars above and below the board (PlayerBar.tsx). */
+    --player-bar-height: 52px;
+    /* Space between the board column and the panel below it (Stage.tsx). */
+    --wrapped-gap: 20px;
+  }
+}
