@@ -3,7 +3,7 @@ import { parseFen } from 'chessops/fen';
 import { makeSquare } from 'chessops/util';
 
 import type { Square } from './drawing';
-import { type Pieces, previewLayer } from './preview';
+import { type Pieces, previewLayer, samePlacement } from './preview';
 
 /** The pieces of a FEN's board. */
 function pieces(fen: string): Pieces {
@@ -61,5 +61,14 @@ describe('previewLayer', () => {
       away: new Set(['b7']),
       taken: new Set(['a8']),
     });
+  });
+});
+
+describe('samePlacement', () => {
+  it('compares where the pieces stand, not the turn, castling or move counters', () => {
+    expect(samePlacement(AFTER_E4, AFTER_E4.replace(' b KQkq - 0 1', ' w - -'))).toBe(true);
+    expect(
+      samePlacement(AFTER_E4, 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1'),
+    ).toBe(false);
   });
 });

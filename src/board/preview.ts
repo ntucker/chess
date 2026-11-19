@@ -53,3 +53,6 @@ export function previewLayer(game: Pieces, preview: Pieces): PreviewLayer {
   });
   return { pieces, away, taken: new Set(left.filter((square) => !away.has(square))) };
 }
+
+/** Whether two FENs place the same pieces, whatever their other fields. */
+export const samePlacement = (a: string, b: string) => a.split(' ')[0] === b.split(' ')[0];

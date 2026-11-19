@@ -25,6 +25,7 @@ import {
   type PreviewLayer,
   type PreviewPiece,
   previewLayer,
+  samePlacement,
 } from '@/board/preview';
 import type { Color } from '@/game/replay';
 import { toneColors } from '@/theme/drawingTones';
@@ -215,10 +216,10 @@ export default function Board({
   // board takes the new position at once instead of sliding them again.
   const shownPreview = useRef<string | undefined>(undefined);
   useEffect(() => {
-    const played = shownPreview.current !== undefined && sameBoard(shownPreview.current, fen);
-    setBoard({ ...position, animation: { enabled: !played } });
+    const reached = shownPreview.current !== undefined && samePlacement(shownPreview.current, fen);
+    setBoard({ ...position, animation: { enabled: !reached } });
     // Chessground keeps the setting, and a move made on the board next should slide.
-    if (played) setBoard({ animation: { enabled: true } });
+    if (reached) setBoard({ animation: { enabled: true } });
   }, [position, fen]);
   // Declared after the effect above, which runs first, so it still reads the
   // preview of the render before.
@@ -238,9 +239,6 @@ export default function Board({
     </div>
   );
 }
-
-/** Whether two FENs place the same pieces, whatever their other fields. */
-const sameBoard = (a: string, b: string) => a.split(' ')[0] === b.split(' ')[0];
 
 /** The arrows, circles and tints that draw `marks`. */
 const marksConfig = (marks: BoardMarks): Config => ({
@@ -323,7 +321,7 @@ function markPieces(
     const square = piece.cgKey as Square;
     piece.classList.toggle('away', away.has(square));
     piece.classList.toggle('taken', taken.has(square));
-    // A piece the preview moves or takes, and a captured one on its way out, get no look.
+    // A piece the preview moves or takes, or a captured one on its way out, isn't lit or faded.
     const shown = !piece.cgFading && !away.has(square) && !taken.has(square);
     mark(piece, shown ? piece.cgKey : undefined);
   }
