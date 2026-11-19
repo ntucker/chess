@@ -83,10 +83,7 @@ export function useLesson(lesson: Lesson) {
   // A row that leaves the list (played, or stepped away from) never reports
   // a hover-out or blur, so a peek ends when the board moves on; otherwise
   // stepping back would preview that row again.
-  const [{ mode: modeState, peek, rareShown: rareKey }, dispatch] = useReducer(
-    screenReducer,
-    initialScreen,
-  );
+  const [{ mode: modeState, peek, rareKey }, dispatch] = useReducer(screenReducer, initialScreen);
   const { mode } = modeState;
   const { key } = view;
   const stale = (at?: PositionKey) => at !== undefined && at !== key;
@@ -102,7 +99,6 @@ export function useLesson(lesson: Lesson) {
     switches: settings,
     preview: pointer && preview(lesson, view, pointer),
     dragged: pointer?.at === 'drag' ? pointer.from : undefined,
-    rareShown,
     pointed: here?.note,
     playing: playing?.played,
   });
@@ -203,7 +199,8 @@ export function useLesson(lesson: Lesson) {
     /** The candidate list shows its rare rows (`Guidance.rare`). */
     rareShown,
     /** The learner shows or hides the candidate list's rare rows. */
-    showRare: (shown: boolean) => dispatch({ type: 'rare', key, shown }),
+    showRare: (visible: boolean) =>
+      dispatch({ type: 'rare', key, shown: visible, rows: shown.rare.map(({ move }) => move.uci) }),
     /**
      * The learner points at a candidate list row. Leaving a row keeps its
      * preview, so the learner can move on to its notes; `leave` ends it.

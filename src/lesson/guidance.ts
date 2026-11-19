@@ -31,8 +31,8 @@
  *   else on it; the idea card shows the move under it.
  * - Rare candidates (`Candidate.rare`) are left off the list, which shows
  *   them only when asked, and off the board's arrows; Stockfish's best isn't
- *   tagged on one either. Only a preview of one from its listed row, or
- *   dragging its piece, draws it.
+ *   tagged on one either. Only a preview of one, or dragging its piece,
+ *   draws it.
  *
  * guidance stays in lesson terms; lessonDrawings (./drawings.ts) turns it
  * into board shapes, and says which ideas draw nothing (`drawsOnBoard`).
@@ -64,8 +64,6 @@ export interface GuidanceInput {
   readonly preview?: Preview;
   /** The square of the piece the learner drags, while they do. */
   readonly dragged?: Candidate['from'];
-  /** The candidate list shows its rare rows, so they can be previewed by row. */
-  readonly rareShown?: boolean;
   /** The note the learner points at on the idea card. */
   readonly pointed?: Note;
   /** The note whose idea plays back on the board. */
@@ -88,7 +86,7 @@ export type ShownPlayback = ShownIdea & { readonly idea: PlayedBack };
 export interface Guidance {
   /** The candidate list. */
   readonly candidates: readonly Candidate[];
-  /** The rare candidates, which the list shows only when asked (`rareShown`). */
+  /** The rare candidates, which the list shows only when asked. */
   readonly rare: readonly Candidate[];
   /** The candidate to look at first (`mainCandidate`), drawn and listed as the main one. */
   readonly main?: Candidate;
@@ -136,16 +134,13 @@ export function guidance(input: GuidanceInput): Guidance {
     switches,
     preview: pointerPreview,
     dragged: pointerDragged,
-    rareShown,
     pointed,
     playing: playingNote,
     engine,
   } = input;
   const explore = mode === 'explore';
   const choices = explore || (!view.learnerToMove && !switches.auto);
-  // A row hidden from the list previews nothing, though the learner pointed at it.
-  const hiddenRow = !pointerDragged && !rareShown && pointerPreview?.candidate.rare;
-  const preview = choices && !hiddenRow ? pointerPreview : undefined;
+  const preview = choices ? pointerPreview : undefined;
   const dragged = choices ? pointerDragged : undefined;
   // In Practice a previewed reply leads to the learner's move, so its notes
   // are kept as on the learner's turn. Explore shows every note.
