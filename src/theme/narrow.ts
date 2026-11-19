@@ -5,9 +5,9 @@ import './narrow.css';
  * wide value, no part is tagged, and text that only a narrow page shows isn't
  * rendered at all.
  */
-export const NARROW_LAYOUT = process.env.EXPO_OS === 'web';
+export const NARROW_CSS_LOADS = process.env.EXPO_OS === 'web';
 
-/** The lengths narrow.css shortens on a narrow web page. */
+/** The lengths narrow.css shortens. */
 export const NARROW_LENGTHS = [
   'page-space',
   'header-height',
@@ -25,7 +25,7 @@ export const NARROW_LENGTHS = [
   'panel-reserve',
 ] as const;
 
-/** The parts of the page that narrow.css lays out differently on a narrow web page. */
+/** The parts of the page that narrow.css lays out differently. */
 export const NARROW_PARTS = [
   'wide-only',
   'narrow-only',
@@ -53,7 +53,7 @@ export interface NarrowLength {
   times(factor: number): NarrowLength;
 }
 
-/** The length `--<name>` in narrow.css on a narrow web page, `wide` pixels elsewhere. */
+/** The length `--<name>` from narrow.css, or `wide` pixels where it isn't set. */
 export function narrowLength(name: (typeof NARROW_LENGTHS)[number], wide: number) {
   return makeLength(wide, `var(--${name}, ${wide}px)`);
 }
@@ -86,13 +86,13 @@ function asLength(other: NarrowLength | number) {
  * Web passes the string through to CSS. Never do arithmetic on it.
  */
 export function narrowCalc(css: string, wide: number): number {
-  return NARROW_LAYOUT ? (`calc(${css})` as unknown as number) : wide;
+  return NARROW_CSS_LOADS ? (`calc(${css})` as unknown as number) : wide;
 }
 
 /**
- * Props that name a part of the page for narrow.css, which lays it out
- * differently on a narrow web page. Nothing elsewhere.
+ * Props that name a part of the page for narrow.css to lay out. Nothing off
+ * the web.
  */
 export function narrowPart(part: (typeof NARROW_PARTS)[number]) {
-  return NARROW_LAYOUT ? { dataSet: { narrow: part } } : {};
+  return NARROW_CSS_LOADS ? { dataSet: { narrow: part } } : {};
 }

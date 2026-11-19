@@ -13,7 +13,7 @@ import { Transport } from '@/components/Transport';
 import { useStepKeys } from '@/components/useStepKeys';
 import { colorName, opposite } from '@/game/replay';
 import type { Game } from '@/game/useGame';
-import { NARROW_LAYOUT, narrowCalc, narrowLength, narrowPart } from '@/theme/narrow';
+import { NARROW_CSS_LOADS, narrowCalc, narrowLength, narrowPart } from '@/theme/narrow';
 import { spotlight } from '@/theme/theme';
 
 interface StageProps {
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: STAGE_MAX,
     flexDirection: 'row',
-    flexWrap: NARROW_LAYOUT ? 'nowrap' : 'wrap',
+    flexWrap: NARROW_CSS_LOADS ? 'nowrap' : 'wrap',
     justifyContent: 'center',
     columnGap: STAGE_GAP,
     paddingTop: COLUMN_RAISE.value,

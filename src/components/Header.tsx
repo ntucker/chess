@@ -2,7 +2,7 @@ import { Inline, Separator, Text } from '@reactive/silk-native';
 import { Image, StyleSheet } from 'react-native';
 
 import { SourceLink } from '@/components/SourceLink';
-import { NARROW_LAYOUT, narrowLength, narrowPart } from '@/theme/narrow';
+import { NARROW_CSS_LOADS, narrowLength, narrowPart } from '@/theme/narrow';
 import { fonts } from '@/theme/theme';
 
 /** The header's height: its logo, the tallest thing in it. Shorter on a narrow web page. */
@@ -21,7 +21,7 @@ interface Props {
  */
 export function Header({ place }: Props) {
   // Only narrow.css shows it, so a native app keeps the name.
-  const shownPlace = NARROW_LAYOUT ? place : undefined;
+  const shownPlace = NARROW_CSS_LOADS ? place : undefined;
   return (
     <Inline gap="2" align="center" justify="between" wrap="nowrap">
       <Inline gap="3" align="center" wrap="nowrap" style={styles.brand}>

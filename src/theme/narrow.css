@@ -5,7 +5,7 @@
  * narrow window. Everywhere else none of this
  * applies: each length falls back to the wide value written beside it in
  * code, and each part keeps its wide layout. The one exception is the rule
- * just below, which keeps narrow-only parts hidden until a narrow page shows them.
+ * just below, which keeps narrow-only parts hidden outside the media query.
  */
 :root [data-narrow='narrow-only'] {
   display: none;

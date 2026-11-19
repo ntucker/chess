@@ -4,7 +4,7 @@ import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 
 import type { Material } from '@/game/material';
 import { type Color, opposite } from '@/game/replay';
-import { NARROW_LAYOUT, narrowLength, narrowPart } from '@/theme/narrow';
+import { NARROW_CSS_LOADS, narrowLength, narrowPart } from '@/theme/narrow';
 import { pieceColors } from '@/theme/pieceColors';
 
 import { Captures } from './Captures';
@@ -78,7 +78,7 @@ export function PlayerBar({
         <Text {...caption} {...(brief ? narrowPart('wide-only') : {})}>
           {turn(detail)}
         </Text>
-        {brief && NARROW_LAYOUT ? (
+        {brief && NARROW_CSS_LOADS ? (
           <Text {...caption} {...narrowPart('narrow-only')}>
             {turn(brief)}
           </Text>
