@@ -1,26 +1,19 @@
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  jest,
-} from "@jest/globals";
-import { act } from "react";
-import { createRoot, type Root } from "test-renderer";
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { act } from 'react';
+import { createRoot, type Root } from 'test-renderer';
 
-import { StockfishWhileNeeded, useNeedsStockfish } from "./demand";
+import { StockfishWhileNeeded, useNeedsStockfish } from './demand';
 
 // The settings pick Maia for both, so only screens ask for Stockfish.
-const mockSettings = { evaluationEngine: "maia", opponent: 1500 };
-jest.mock("@/settings/SettingsProvider", () => ({
+const mockSettings = { evaluationEngine: 'maia', opponent: 1500 };
+jest.mock('@/settings/SettingsProvider', () => ({
   useSettings: () => mockSettings,
 }));
 
 // How many hosts are mounted now.
 let mockHosts = 0;
-jest.mock("./StockfishHost", () => {
-  const { useEffect } = jest.requireActual<typeof import("react")>("react");
+jest.mock('./StockfishHost', () => {
+  const { useEffect } = jest.requireActual<typeof import('react')>('react');
   return {
     StockfishHost: () => {
       useEffect(() => {
@@ -54,10 +47,8 @@ const render = (screens: readonly boolean[]) =>
   });
 
 beforeEach(() => {
-  (
-    globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
-  ).IS_REACT_ACT_ENVIRONMENT = true;
-  mockSettings.evaluationEngine = "maia";
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  mockSettings.evaluationEngine = 'maia';
 });
 
 afterEach(async () => {
@@ -65,8 +56,8 @@ afterEach(async () => {
   root = undefined;
 });
 
-describe("StockfishWhileNeeded", () => {
-  it("runs Stockfish only while a screen needs it", async () => {
+describe('StockfishWhileNeeded', () => {
+  it('runs Stockfish only while a screen needs it', async () => {
     await render([false]);
     expect(mockHosts).toBe(0);
     await render([true]);
@@ -75,7 +66,7 @@ describe("StockfishWhileNeeded", () => {
     expect(mockHosts).toBe(0);
   });
 
-  it("keeps it running until the last screen that needs it lets go", async () => {
+  it('keeps it running until the last screen that needs it lets go', async () => {
     await render([true, true]);
     expect(mockHosts).toBe(1);
     await render([true]);
@@ -84,8 +75,8 @@ describe("StockfishWhileNeeded", () => {
     expect(mockHosts).toBe(0);
   });
 
-  it("runs it while the settings use it, whatever the screens need", async () => {
-    mockSettings.evaluationEngine = "stockfish";
+  it('runs it while the settings use it, whatever the screens need', async () => {
+    mockSettings.evaluationEngine = 'stockfish';
     await render([]);
     expect(mockHosts).toBe(1);
   });

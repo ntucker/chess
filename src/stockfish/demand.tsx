@@ -6,16 +6,14 @@ import {
   use,
   useEffect,
   useState,
-} from "react";
+} from 'react';
 
-import { useSettings } from "@/settings/SettingsProvider";
+import { useSettings } from '@/settings/SettingsProvider';
 
-import { StockfishHost } from "./StockfishHost";
+import { StockfishHost } from './StockfishHost';
 
 /** Counts the screens that need Stockfish now. */
-const DemandContext = createContext<
-  Dispatch<SetStateAction<number>> | undefined
->(undefined);
+const DemandContext = createContext<Dispatch<SetStateAction<number>> | undefined>(undefined);
 
 /**
  * Runs Stockfish while the evaluation bar or the opponent uses it, or a
@@ -23,15 +21,10 @@ const DemandContext = createContext<
  * with it). Otherwise it stops, which frees its memory. The root layout
  * renders it once around every screen.
  */
-export function StockfishWhileNeeded({
-  children,
-}: {
-  readonly children: ReactNode;
-}) {
+export function StockfishWhileNeeded({ children }: { readonly children: ReactNode }) {
   const { evaluationEngine, opponent } = useSettings();
   const [screens, setScreens] = useState(0);
-  const needed =
-    evaluationEngine === "stockfish" || opponent === "stockfish" || screens > 0;
+  const needed = evaluationEngine === 'stockfish' || opponent === 'stockfish' || screens > 0;
   return (
     <DemandContext value={setScreens}>
       {children}
@@ -47,8 +40,7 @@ export function StockfishWhileNeeded({
  */
 export function useNeedsStockfish(needed: boolean) {
   const setScreens = use(DemandContext);
-  if (!setScreens)
-    throw new Error("useNeedsStockfish is used inside StockfishWhileNeeded");
+  if (!setScreens) throw new Error('useNeedsStockfish must be used inside StockfishWhileNeeded');
   useEffect(() => {
     if (!needed) return;
     setScreens((screens) => screens + 1);
