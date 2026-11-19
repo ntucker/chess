@@ -94,11 +94,11 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
     const header = move.ply === 1 ? readHeader(chapter, comment) : undefined;
     // A header is about the whole chapter: it goes where the chapter's main line ends, not on move 1.
     const target = header?.mainLineEnd ?? move;
-    const traps = trapLines(move);
+    const traps = trapLines(move, learner);
     const evaluation = glyphEvaluation(move, learner);
     if (evaluation === 'contradicted') contradicted++;
     const found: Found[] = [
-      ...plans(chapter, move, header),
+      ...plans(chapter, move, header, learner),
       ...traps,
       ...(evaluation && evaluation !== 'contradicted' ? [evaluation] : []),
     ];
@@ -107,15 +107,15 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
 
     const own: Found[] = [];
     for (const item of found) {
-      const { spot, idea, label } = item;
+      const { spot, idea } = item;
       const why = checkIdea(idea, spot.pos);
       if (why) rejected.push({ idea, why, comment });
       else if (spot.move === target) own.push(item);
       // An idea about another position (often the one before the commented move) is said there.
-      else positionNotes.push({ pos: spot.pos, note: note(label, [idea]), source: move });
+      else positionNotes.push({ pos: spot.pos, note: awayNote(item), source: move });
     }
-    // Without a comment, an evaluation glyph's label is the note.
-    const text = comment || own.find(({ idea }) => idea.type === 'evaluation')?.label;
+    // Without a comment, an evaluation glyph's text is the note.
+    const text = comment || own.find(({ idea }) => idea.type === 'evaluation')?.text;
     if (text)
       moveNotes.push({
         move: target,
@@ -130,9 +130,9 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
 }
 
 /** The plans `move`'s comment states; a chapter header's watch-outs count as plans of the chapter. */
-function plans(chapter: Chapter, move: StudyMove, header: Header | undefined): Found[] {
-  if (header) return [...planLists(move, header.idea, true), ...watchOuts(chapter, header.watchOut)];
-  return move.comment ? planLists(move, move.comment) : [];
+function plans(chapter: Chapter, move: StudyMove, header: Header | undefined, learner: Color): Found[] {
+  if (header) return [...planLists(move, header.idea, learner, true), ...watchOuts(chapter, header.watchOut, learner)];
+  return move.comment ? planLists(move, move.comment, learner) : [];
 }
 
 /** Sequences of two or more moves that `move`'s comment writes out, placed in the tree. */
@@ -143,8 +143,13 @@ function sequences(move: StudyMove) {
   });
 }
 
+/** The note of an idea that lands away from its comment, with the study's words in `original`. */
+function awayNote({ idea, label, text }: Found): Note {
+  return { text, ...(text !== label && { original: label }), ideas: [idea] };
+}
+
 /**
- * A note on `source` (a comment, or an idea's label): its first sentence
+ * A note on `source` (a comment, or an evaluation glyph's text): its first sentence
  * without a "Plan:" or "Trap:" label, since the note's ideas show its kind,
  * and the full wording in `original` when that differs.
  */
@@ -188,5 +193,6 @@ function glyphEvaluation(move: StudyMove, learner: Color): Found | 'contradicted
   if (!value) return undefined;
   const verdicts = textVerdicts(move.comment, learner);
   if (verdicts.size > 0 && !verdicts.has(direction(value))) return 'contradicted';
-  return { spot: { move, pos: move.after }, idea: { type: 'evaluation', value }, label: EVALUATION_TEXT[value] };
+  const text = EVALUATION_TEXT[value];
+  return { spot: { move, pos: move.after }, idea: { type: 'evaluation', value }, label: text, text };
 }

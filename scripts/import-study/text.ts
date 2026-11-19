@@ -5,6 +5,7 @@
 import type { Color } from 'chessops/types';
 import { opposite } from 'chessops/util';
 
+import { colorName } from '@/game/replay';
 import { MAX_NOTE_WORDS, type Evaluation } from '@/lesson/lesson';
 
 /** One move in SAN, without annotation glyphs. */
@@ -88,6 +89,33 @@ export function shorten(text: string): string {
   const sentence = trimmed.slice(0, sentenceEnds(trimmed)[0] ?? trimmed.length);
   const words = sentence.split(/\s+/).filter(Boolean);
   return words.length <= MAX_NOTE_WORDS ? words.join(' ') : `${words.slice(0, MAX_NOTE_WORDS).join(' ')}…`;
+}
+
+/**
+ * `side` doing `phrase` (written for one side: "is losing", "drops a piece"),
+ * spoken to the learner as "you": "Black is losing", or "you are losing".
+ */
+export function sideDoes(side: Color, learner: Color, phrase: string): string {
+  if (side !== learner) return `${colorName(side)} ${phrase}`;
+  return `you ${phrase.replace(/^is\b/, 'are').replace(/^(\w+)s\b/, '$1')}`;
+}
+
+const PIECES: Readonly<Record<string, string>> = { K: 'king', Q: 'queen', R: 'rook', B: 'bishop', N: 'knight' };
+
+/**
+ * A move in words, to open a sentence without notation: `Nxd4` "Taking on d4
+ * with the knight", `Qa5+` "Checking with the queen on a5", `c4` "Pushing
+ * the pawn to c4".
+ */
+export function moveInWords(san: string): string {
+  if (san.startsWith('O-O-O')) return 'Castling long';
+  if (san.startsWith('O-O')) return 'Castling short';
+  const piece = PIECES[san[0]] ?? 'pawn';
+  const square = san.match(/[a-h][1-8](?=\W*$|=)/)?.[0];
+  const check = /[+#]/.test(san);
+  if (san.includes('x')) return `Taking on ${square} with the ${piece}${check ? ' with check' : ''}`;
+  if (check) return `Checking with the ${piece} on ${square}`;
+  return piece === 'pawn' ? `Pushing the pawn to ${square}` : `Moving the ${piece} to ${square}`;
 }
 
 /** Who a verdict favors: the evaluation's direction. */

@@ -54,9 +54,10 @@ export function IdeaCard({
       <Eyebrow>{title}</Eyebrow>
       {notes.length ? (
         <View>
-          {notes.map((shown) => (
+          {notes.map((shown, i) => (
             <NoteView
-              key={shown.note.text + (shown.before ?? '')}
+              // Two traps with one tempting move can read alike, so the place breaks the tie.
+              key={`${i} ${shown.note.text}${shown.before ?? ''}`}
               shown={shown}
               learner={learner}
               playback={playback}

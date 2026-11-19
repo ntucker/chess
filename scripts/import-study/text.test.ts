@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { namedMoves, shorten, textVerdicts } from './text';
+import { moveInWords, namedMoves, shorten, sideDoes, textVerdicts } from './text';
 
 describe('namedMoves', () => {
   it('reads numbered and bare moves, continuing the count', () => {
@@ -56,5 +56,26 @@ describe('textVerdicts', () => {
     ['White is not better after this.', []],
   ])('%s', (text, directions) => {
     expect([...textVerdicts(text, 'black')]).toEqual(directions);
+  });
+});
+
+describe('sideDoes', () => {
+  it('names the other side, and speaks to the learner as "you"', () => {
+    expect(sideDoes('white', 'black', 'is losing')).toBe('White is losing');
+    expect(sideDoes('black', 'black', 'is in big trouble')).toBe('you are in big trouble');
+    expect(sideDoes('black', 'black', 'gets mated')).toBe('you get mated');
+    expect(sideDoes('black', 'black', 'drops a piece')).toBe('you drop a piece');
+  });
+});
+
+describe('moveInWords', () => {
+  it('says a move without notation, naming its square', () => {
+    expect(moveInWords('Nxd4')).toBe('Taking on d4 with the knight');
+    expect(moveInWords('exd5')).toBe('Taking on d5 with the pawn');
+    expect(moveInWords('Bxf7+')).toBe('Taking on f7 with the bishop with check');
+    expect(moveInWords('Qa5+')).toBe('Checking with the queen on a5');
+    expect(moveInWords('Nbd7')).toBe('Moving the knight to d7');
+    expect(moveInWords('h6')).toBe('Pushing the pawn to h6');
+    expect(moveInWords('O-O-O')).toBe('Castling long');
   });
 });

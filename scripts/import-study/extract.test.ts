@@ -17,7 +17,8 @@ describe('extractChapter', () => {
     const bf5 = moveNotes.find(({ move }) => move.san === 'Bf5')!.move;
     expect(positionNotes.filter(({ pos }) => pos === bf5.before).map(({ note }) => note)).toEqual([
       {
-        text: '...Bf5, ...e6 and ...c5',
+        text: 'Your plan from here, one move at a time.',
+        original: '...Bf5, ...e6 and ...c5',
         ideas: [
           {
             type: 'plan',
@@ -82,6 +83,23 @@ describe('extractChapter', () => {
 
   it('refuses a watch-out trap that loses nothing', () => {
     expect(rejected).toEqual([expect.objectContaining({ why: 'black does not lose material: balance goes 0 to 0' })]);
+  });
+
+  it('writes a trap that lands before its comment in words, the moves left to its play-through', () => {
+    const [chapter] = parseStudy(
+      '1. e4 c6 2. d4 d5 3. e5 Bf5 4. Nf3 { Trap: 3...c5? 4.dxc5 and Black is worse. } *',
+      () => true,
+    );
+    const trapNote = (learner: 'white' | 'black') =>
+      extractChapter(chapter, learner).positionNotes.map(({ note }) => note);
+    expect(trapNote('black')).toEqual([
+      {
+        text: 'Pushing the pawn to c5 falls into a trap: you are worse.',
+        original: 'Trap: 3...c5? 4.dxc5 and Black is worse.',
+        ideas: [{ type: 'trap', moves: ['c6c5', 'd4c5'], verdict: 'whiteSlightly' }],
+      },
+    ]);
+    expect(trapNote('white')[0].text).toBe('Pushing the pawn to c5 falls into a trap: Black is worse.');
   });
 
   it('reads the choice guide, risk included', () => {

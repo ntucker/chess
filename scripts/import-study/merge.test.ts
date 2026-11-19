@@ -87,7 +87,10 @@ describe('mergeChapters', () => {
 
   it('puts an idea about the position before a move on that position', () => {
     expect(at('e4', 'c6', 'd4', 'd5', 'e5').notes).toEqual([
-      expect.objectContaining({ text: '...Bf5, ...e6 and ...c5', ideas: [expect.objectContaining({ type: 'plan' })] }),
+      expect.objectContaining({
+        original: '...Bf5, ...e6 and ...c5',
+        ideas: [expect.objectContaining({ type: 'plan' })],
+      }),
     ]);
   });
 
