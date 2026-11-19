@@ -76,6 +76,8 @@ describe('playsPreview', () => {
       'r1bqk2r/ppppbppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQ1RK1 b kq - 5 4',
     );
     expect(playsPreview(castled, 'e1', 'g1')).toBe(true);
+    expect(playsPreview(castled, 'e1', 'h1')).toBe(true);
+    expect(playsPreview(castled, 'h1', 'f1')).toBe(false);
   });
 });
 

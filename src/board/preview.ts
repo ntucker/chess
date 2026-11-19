@@ -57,10 +57,19 @@ export function previewLayer(game: Pieces, preview: Pieces): PreviewLayer {
 /**
  * Whether moving the piece on `from` to `to` plays the move `layer` previews,
  * whose pieces are already drawn where it lands. Example: with 1...c6
- * previewed, c7 to c6 does; c7 to c5 doesn't.
+ * previewed, c7 to c6 does; c7 to c5 doesn't. A previewed castle is played by
+ * the king, onto its square or onto the rook's; the rook's own path is a
+ * plain rook move.
  */
-export const playsPreview = (layer: PreviewLayer, from: Square, to: Square) =>
-  layer.pieces.some((piece) => piece.from === from && piece.square === to);
+export function playsPreview(layer: PreviewLayer, from: Square, to: Square): boolean {
+  const moved = (piece: PreviewPiece) => piece.from !== piece.square;
+  const king = layer.pieces.find((piece) => piece.piece.role === 'king' && moved(piece));
+  if (!king) return layer.pieces.some((piece) => piece.from === from && piece.square === to);
+  const ontoRook = layer.pieces.some(
+    (piece) => piece.piece.role === 'rook' && moved(piece) && piece.from === to,
+  );
+  return from === king.from && (to === king.square || ontoRook);
+}
 
 /** Whether two FENs place the same pieces, whatever their other fields. */
 export const samePlacement = (a: string, b: string) => a.split(' ')[0] === b.split(' ')[0];
