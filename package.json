@@ -45,6 +45,7 @@
     "jest": "^30.5.2",
     "jest-expo": "~58.0.14",
     "stockfish": "19.0.1",
+    "tsx": "^4.23.15",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -57,7 +58,8 @@
     "vendor:silk": "node ./scripts/vendor-silk.mjs",
     "brand": "node ./scripts/make-brand.mjs",
     "maia": "node ./scripts/convert-maia.mjs",
-    "stockfish": "node ./scripts/copy-stockfish.mjs"
+    "stockfish": "node ./scripts/copy-stockfish.mjs",
+    "import-study": "NODE_USE_ENV_PROXY=1 tsx scripts/import-study/index.ts"
   },
   "private": true,
   "packageManager": "yarn@4.18.1",

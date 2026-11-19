@@ -1,8 +1,8 @@
 /**
  * The lesson file: everything Opening Night teaches about one opening, as one
  * static JSON file per opening in assets/lessons, read through `getLesson`.
- * `checkLesson` (./check.ts) tests every file; the importer (planned:
- * scripts/import-study) will run it too, so a lesson that imports can't fail
+ * `checkLesson` (./check.ts) tests every file; the importer
+ * (scripts/import-study) runs it too, so a lesson that imports can't fail
  * in the app.
  *
  * The opening is one move tree keyed by position, never a list of fixed
