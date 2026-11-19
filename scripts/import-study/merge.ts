@@ -245,7 +245,7 @@ export type ChapterName = (title: string) => string | undefined;
  * Chapter titles like "🔵 01 Exchange Variation: Rubinstein Variation (I)":
  * the colour and number go, and numbered parts (I), (II) are one.
  */
-export const numberedChapterName: ChapterName = (title) =>
+const numberedChapterName: ChapterName = (title) =>
   title.replace(/^\P{L}*\d+\s+/u, '').replace(/\s+\((?:I|II|III|IV|V)\)$/, '');
 
 function chapterVariations(info: LessonInfo, chapters: readonly Chapter[], chapterName: ChapterName) {

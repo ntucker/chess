@@ -42,10 +42,12 @@ export function LessonPage({ id }: { readonly id?: string }) {
   if (id !== undefined && !Object.hasOwn(LESSONS, id)) {
     return <LessonPlaceholder message="There is no lesson here." />;
   }
+  // The first of its first moves: the study's main line.
   const start = id === undefined ? [] : LESSON_INDEX[id as LessonId].firstMoves.slice(0, 1);
   return (
     <BrowserOnly fallback={<LessonPlaceholder />}>
-      <Openings start={start} />
+      {/* Another address starts its own game. */}
+      <Openings key={id} start={start} />
     </BrowserOnly>
   );
 }
@@ -54,7 +56,9 @@ export function LessonPage({ id }: { readonly id?: string }) {
  * One game across every opening: its first move picks the lesson, which
  * loads once picked. The game is held here, above the boundary, so its moves
  * stay while the lesson loads, and stepping back to the start to pick
- * another opening carries on the same game.
+ * another opening carries on the same game. The screen stays too, so the
+ * mode chosen carries over; a Practice run restarts at the learner's first
+ * move anyway, and what the learner points at belongs to a position.
  */
 function Openings({ start }: { readonly start: readonly Uci[] }) {
   const store = useReducer(gameReducer, start, startGame);
@@ -108,7 +112,10 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
   const { trap } = guidance;
   // The card is for notes, or for the notes of a candidate pointed at.
   const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
+  // The start lists the openings, whichever lesson is loaded.
+  const picking = view.ply === 0;
   const status = describeStatus(view, {
+    picking,
     title: lesson.title,
     rival: colorName(rival),
     engine: described.name,
@@ -121,8 +128,6 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
       modeState.mode === 'practice' ? { clean: modeState.clean, verdict: game.quality } : undefined,
   });
 
-  // The start lists the openings, whichever lesson is loaded.
-  const picking = view.ply === 0;
   const opening = (uci: Uci) => (picking ? lessonOf(LESSON_INDEX, [uci]) : undefined);
   const line = view.variation.at(-1);
   const leadsTo = (candidate: Candidate) => {
@@ -239,6 +244,8 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
 }
 
 interface StatusInput {
+  /** Whether the board shows the start, where the first move picks the opening. */
+  readonly picking: boolean;
   /** The lesson's title, for a position before any variation. */
   readonly title: string;
   /** The opponent's side, as shown: "White". */
@@ -270,9 +277,9 @@ interface StatusInput {
  */
 function describeStatus(
   view: LessonView,
-  { title, rival, engine, thinking, viewing, auto, lineEnded, startsRun, practice }: StatusInput,
+  { picking, title, rival, engine, thinking, viewing, auto, lineEnded, startsRun, practice }: StatusInput,
 ) {
-  if (view.ply === 0)
+  if (picking)
     return {
       eyebrow: OPENINGS.title,
       title: 'Pick an opening.',

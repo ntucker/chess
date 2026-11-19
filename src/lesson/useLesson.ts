@@ -57,8 +57,8 @@ export interface Playback {
 
 /**
  * `lesson` played on the board, the game held in `store`. The start position
- * is where the learner picks the opening (src/lesson/openings.ts): there they
- * always play the first move, and nobody replies before it.
+ * is where the learner picks the opening (src/lesson/openings.ts): nobody
+ * replies there, so the learner plays the first move whoever's turn it is.
  */
 export function useLesson(lesson: Lesson, store: GameStore) {
   const ctrl = useController();
@@ -69,10 +69,9 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   // could call a book move a mistake. So Stockfish runs while this is in front.
   useNeedsStockfish(focused);
   // Nobody replies with auto play off (the learner picks the opponent's
-  // move), nor before the first move, which picks the opening.
-  const picking = store[0].moves.length === 0;
+  // move), nor at the start, where the first move picks the opening.
   const rival =
-    settings.auto && !picking
+    settings.auto && store[0].ply > 0
       ? lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent))
       : undefined;
   const game = useGame(store, rival, {
@@ -81,9 +80,7 @@ export function useLesson(lesson: Lesson, store: GameStore) {
     judge: 'stockfish',
     book: (line) => bookMoves(lesson, line),
   });
-  const { moves, ply, plies, current } = game;
-  // The learner plays the first move whoever's it is: it picks the opening.
-  const canMove = game.canMove || ply === 0;
+  const { moves, ply, plies, current, canMove } = game;
   // A move played before the learner's first starts a Practice run.
   const startsRun = beforeSideMoves(plies, lesson.side, ply);
   const view = useMemo(

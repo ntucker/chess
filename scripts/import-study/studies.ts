@@ -1,7 +1,7 @@
 /** The lichess studies the app ships as lessons, by lesson id. */
 import type { ChapterName, LessonInfo } from './merge';
 
-interface Study {
+export interface Study {
   readonly study: string;
   readonly chapters: (title: string) => boolean;
   /** The variation each chapter names; the importer's default reads titles like the Caro-Kann's. */

@@ -9,24 +9,22 @@ const source = (author: string) => ({ title: 'A study', author, url: '' });
 const INDEX = {
   'caro-kann': { title: 'Caro-Kann Defence', side: 'black', source: source('Kampf'), firstMoves: ['e2e4'] },
   slav: { title: 'Slav Defence', side: 'black', source: source('Matkun'), firstMoves: ['d2d4'] },
-  london: { title: 'London System', side: 'white', source: source('Jobava'), firstMoves: ['d2d4'] },
 } as const;
-const BLACK = { 'caro-kann': INDEX['caro-kann'], slav: INDEX.slav };
 
 const startMoves = (lesson: typeof SAMPLE) =>
   candidates(lesson, keyAfter(), undefined).map(({ move }) => move.uci);
 
 describe('lessonOf', () => {
   it('picks the lesson by its first move, and none before one', () => {
-    expect(lessonOf(BLACK, uciLine('d4', 'd5', 'c4'))).toBe('slav');
-    expect(lessonOf(BLACK, uciLine('e4'))).toBe('caro-kann');
-    expect(lessonOf(BLACK, uciLine('c4'))).toBeUndefined();
-    expect(lessonOf(BLACK, [])).toBeUndefined();
+    expect(lessonOf(INDEX, uciLine('d4', 'd5', 'c4'))).toBe('slav');
+    expect(lessonOf(INDEX, uciLine('e4'))).toBe('caro-kann');
+    expect(lessonOf(INDEX, uciLine('c4'))).toBeUndefined();
+    expect(lessonOf(INDEX, [])).toBeUndefined();
   });
 });
 
 describe('openingsLesson', () => {
-  it("lists the first lesson's side's first moves, in the index's order, and passes the checker", () => {
+  it("lists every first move for the lessons' side, in the index's order, and passes the checker", () => {
     const openings = openingsLesson(INDEX);
     expect(openings.side).toBe('black');
     expect(startMoves(openings)).toEqual(['e2e4', 'd2d4']);
@@ -41,7 +39,7 @@ describe('openingsLesson', () => {
 
 describe('withOpenings', () => {
   it("lists every opening at the lesson's start, its own move keeping what the file says", () => {
-    const lesson = withOpenings(SAMPLE, BLACK);
+    const lesson = withOpenings(SAMPLE, INDEX);
     expect(startMoves(lesson)).toEqual(['e2e4', 'd2d4']);
     const own = (l: typeof SAMPLE) => l.positions[keyAfter()].moves.find(({ uci }) => uci === 'e2e4')!;
     expect(own(lesson)).toEqual({

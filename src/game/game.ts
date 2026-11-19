@@ -46,10 +46,10 @@ export type GameAction =
   | { readonly type: 'retry' }
   | { readonly type: 'goto'; readonly ply: number };
 
-export const initialGame: GameState = { moves: [], ply: 0 };
-
 /** A game that has played `moves`, showing the latest: `useReducer(gameReducer, moves, startGame)`. */
 export const startGame = (moves: readonly string[]): GameState => ({ moves, ply: moves.length });
+
+export const initialGame = startGame([]);
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
