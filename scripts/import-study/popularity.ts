@@ -19,6 +19,8 @@ const SPEEDS = ['blitz', 'rapid', 'classical'];
 
 /** Games per move in one position and band; a move missing from it was not played. */
 export type MoveCounts = Readonly<Record<Uci, number>>;
+/** Games per move as lichess writes moves (castling as the king taking its rook, `e1h1`). */
+type LichessCounts = Readonly<Record<string, number>>;
 export type Explorer = (key: PositionKey, band: number) => Promise<MoveCounts>;
 
 interface ExplorerOptions {
@@ -56,7 +58,7 @@ export function lichessExplorer({
     lastRequest = Date.now();
     return get(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
   };
-  const answer = async (key: PositionKey, band: number): Promise<MoveCounts> => {
+  const answer = async (key: PositionKey, band: number): Promise<LichessCounts> => {
     const id = `${band} ${key}`;
     const cached = cache.get(id);
     if (cached) return cached;
@@ -76,7 +78,7 @@ export function lichessExplorer({
         continue;
       }
       if (!response.ok) throw new Error(`Explorer answered ${response.status} for ${id}`);
-      const body = (await response.json()) as { moves: { uci: Uci; white: number; draws: number; black: number }[] };
+      const body = (await response.json()) as { moves: { uci: string; white: number; draws: number; black: number }[] };
       const counts = Object.fromEntries(body.moves.map((move) => [move.uci, move.white + move.draws + move.black]));
       cache.set(id, counts);
       appendFileSync(cacheFile, `${JSON.stringify([id, counts])}\n`);
@@ -90,15 +92,15 @@ export function lichessExplorer({
  * `counts` with each move as lesson files write it (`recordedMove`). A move
  * `recordedMove` rejects keeps lichess's key, which no lesson move asks for.
  */
-function recordedCounts(key: PositionKey, counts: MoveCounts): MoveCounts {
+function recordedCounts(key: PositionKey, counts: LichessCounts): MoveCounts {
   const pos = parsePositionKey(key)!;
   return Object.fromEntries(Object.entries(counts).map(([uci, games]) => [recordedMove(pos, uci) ?? uci, games]));
 }
 
-function readCache(file: string): Map<string, MoveCounts> {
+function readCache(file: string): Map<string, LichessCounts> {
   if (!existsSync(file)) return new Map();
   const lines = readFileSync(file, 'utf8').split('\n').filter(Boolean);
-  return new Map(lines.map((line) => JSON.parse(line) as [string, MoveCounts]));
+  return new Map(lines.map((line) => JSON.parse(line) as [string, LichessCounts]));
 }
 
 /**

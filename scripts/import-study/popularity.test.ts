@@ -109,7 +109,7 @@ describe('lichessExplorer', () => {
     expect(requests).toHaveLength(2);
   });
 
-  it('answers castling as lesson files write it, also from its cache', async () => {
+  it("answers castling as the king's two-square move (e1g1), also from its cache", async () => {
     const cacheFile = join(mkdtempSync(join(tmpdir(), 'explorer-')), 'explorer.jsonl');
     let requests = 0;
     const fetch = (async () => {
