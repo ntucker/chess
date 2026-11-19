@@ -164,6 +164,20 @@ describe('extractChapter', () => {
     );
   });
 
+  it('words a watch-out that drops a piece, and keeps the study line as the original', () => {
+    const [chapter] = parseStudy(
+      '1. e4 { Idea:\nMain line: 1.e4 e5\nWatch out: ...Bc5? drops a piece on move 2. } 1... e5 2. d4 Bc5 3. dxc5 *',
+      () => true,
+    );
+    const notes = extractChapter(chapter, 'black').positionNotes.map(({ note }) => note);
+    expect(notes).toContainEqual(
+      expect.objectContaining({
+        text: 'Moving the bishop to c5 falls into a trap: you drop a piece.',
+        original: 'Watch out: ...Bc5? drops a piece on move 2.',
+      }),
+    );
+  });
+
   it('reads the choice guide, risk included', () => {
     expect(choices.map(({ move, risk }) => [move.san, risk])).toEqual([['Bf5', 'safe']]);
   });
