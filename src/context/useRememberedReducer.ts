@@ -22,7 +22,8 @@ interface Remembered<S, A> {
  * `loaded` with the remembered state once the page starts, and again each
  * time another tab saves it. The reducer decides what `loaded` keeps:
  * settings take the other tab's choice, progress merges both tabs' marks (and
- * saves the merge, so a tab that saved over another's marks gets them back).
+ * saves the merge, so marks a tab saved over come back, unless the overwrite
+ * held nothing that tab lacked).
  */
 export function useRememberedReducer<S, A>(
   reducer: (state: S, action: A) => S,

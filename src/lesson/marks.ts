@@ -49,7 +49,8 @@ const inCleanRun = (move: LessonMove, learner: boolean) => !learner || move.book
  * (`passed`), or some still `open`. Walks each position once, so a line that
  * comes back to a position adds nothing, and stops at the first open end.
  * Each row walks on its own: sharing answers between rows went wrong on
- * cycles, and a fresh walk costs about 12 ms for the whole list at worst.
+ * cycles, and once `cleanNext` has the lesson's moves, walking the whole
+ * list took 11 to 13 ms on the Caro-Kann's widest position (measured by hand).
  */
 function cleanEnds(
   lesson: Lesson,
