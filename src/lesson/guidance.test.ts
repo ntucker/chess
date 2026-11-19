@@ -222,16 +222,9 @@ describe('guidance', () => {
       expect(explore(ADVANCE, { pointed: position.note }).pointed).toBe(position.note);
       const off = { ...ALL_ON, showIdeas: false };
       expect(explore(ADVANCE, { pointed: position.note, switches: off }).pointed).toBeUndefined();
-      const view = sampleView(TRAP);
-      const [trap] = view.notes;
-      const playing = guidance({
-        view,
-        mode: 'explore',
-        switches: ALL_ON,
-        pointed: trap.note,
-        playing: trap.note,
-      });
-      expect(playing.pointed).toBeUndefined();
+      const [trap] = explore(TRAP).notes;
+      expect(explore(TRAP, { pointed: trap.note }).pointed).toBe(trap.note);
+      expect(explore(TRAP, { pointed: trap.note, playing: trap.note }).pointed).toBeUndefined();
     });
 
     it("hides Stockfish's best move while a note is pointed at", () => {

@@ -103,8 +103,7 @@ function NoteView({
         if (hovers(nativeEvent.pointerType)) point();
       }}
       onPointerLeave={({ nativeEvent }) => {
-        // Even when not lit: the note may be pointed at but hidden by a switch.
-        if (hovers(nativeEvent.pointerType)) onPoint(undefined);
+        if (pointed && hovers(nativeEvent.pointerType)) onPoint(undefined);
       }}
       // Keyboard focus on its buttons points at it too; the panel ends it.
       onFocus={point}
