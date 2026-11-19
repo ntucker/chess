@@ -47,7 +47,7 @@ export interface Playback {
   readonly playing?: Playing;
   /** Which kind of idea of `note` can play back now, if any. */
   readonly playable: (note: ShownNote) => PlayedBack['type'] | undefined;
-  /** Plays `note`'s idea from its start, one board after another. */
+  /** Plays `note`'s idea from its start, one board after another; nothing unless `playable`. */
   readonly play: (note: ShownNote) => void;
   /** Shows the playing idea's board `step`, and stops stepping by itself. */
   readonly goto: (step: number) => void;

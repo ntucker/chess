@@ -45,7 +45,6 @@ export function useGame(opponent: GameOpponent | undefined, { side, active, judg
   const qualities = useMoveQualities(plies, ply, judge);
   const error = failure(state, opponent?.id);
   const thinking = !!opponent && !latest.result && latest.turn !== side && !error;
-  // The reply will land on the board shown, which follows it from the latest move.
   const replying = atLatest && thinking;
 
   const ask = useEffectEvent(async (after: readonly string[]) => {
