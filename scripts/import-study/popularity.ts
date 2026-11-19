@@ -114,7 +114,7 @@ export async function addPopularity(
     const reached = new Map([[start, ALL_BANDS]]);
     for (const [key, next] of order) {
       const moves = lesson.positions[key].moves;
-      // `order` is breadth first, so a move into this position was seen before it.
+      // The position that first led here comes earlier in `order`, so this one has an entry.
       const here = reached.get(key)!;
       if (wanted(key) && !counts.has(key)) {
         const answers: (MoveCounts | undefined)[] = [];
