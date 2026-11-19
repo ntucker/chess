@@ -145,8 +145,8 @@ export function candidates(
 function rareLast(rows: readonly Candidate[], traps: readonly Uci[]): Candidate[] {
   const isRare = ({ move, share }: Candidate, n: number) =>
     n >= ALWAYS_LISTED && share !== undefined && share < RARE_SHARE && !traps.includes(move.uci);
-  if (rows.filter(isRare).length < FEWEST_RARE) return [...rows];
   const marked = rows.map((row, n) => (isRare(row, n) ? { ...row, rare: true } : row));
+  if (marked.filter(({ rare }) => rare).length < FEWEST_RARE) return [...rows];
   return [...marked.filter(({ rare }) => !rare), ...marked.filter(({ rare }) => rare)];
 }
 
