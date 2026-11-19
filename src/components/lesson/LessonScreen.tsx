@@ -1,5 +1,5 @@
 import { AsyncBoundary, useSuspense } from '@data-client/react';
-import { Separator, Spinner, Stack } from '@reactive/silk-native';
+import { Separator, Spinner, Stack, Text } from '@reactive/silk-native';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
@@ -144,6 +144,11 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
                     onPoint={pointRow}
                     onTabOut={leave}
                   />
+                  {guidance.rareCount ? (
+                    <Text role="caption" tone="secondary">
+                      {rareHint(guidance.rareCount, colorName(rival))}
+                    </Text>
+                  ) : null}
                 </Stack>
               ) : null}
               <IdeaCard
@@ -204,6 +209,11 @@ interface StatusInput {
     readonly startsRun: boolean;
   };
 }
+
+/** The line under the list that says the guide covers `count` rarer replies it leaves off. */
+const rareHint = (count: number, rival: string) =>
+  `The guide covers ${count} rarer ${count === 1 ? 'reply' : 'replies'} too. ` +
+  `Point at a ${rival} piece to see ${count === 1 ? 'it' : 'them'}.`;
 
 /**
  * The panel's headline: where the lesson stands and whose move it is. In

@@ -82,6 +82,7 @@ export interface LessonView {
   readonly lineEnd?: number;
   /** The variation the board is in, the opening itself first (see `lineVariation`). */
   readonly variation: readonly Variation[];
+  /** The guide's moves, rare ones last (`Candidate.rare`); the list is `Guidance.candidates`. */
   readonly candidates: readonly Candidate[];
   /** The idea card's notes: the move that led here, then the position. */
   readonly notes: readonly ShownNote[];
@@ -141,10 +142,12 @@ export const shownKey = (key: PositionKey, preview?: Preview): PositionKey =>
   preview?.slide ? preview.candidate.next : key;
 
 /**
- * The candidate `pointer` previews in `view`. A row previews its move. A
- * destination square previews the most common candidate landing there. A
- * piece's own square previews its most common candidate without sliding, so
- * the piece can still be dragged anywhere legal.
+ * The candidate `pointer` previews in `view`. A row previews its move (a
+ * rare one has no row). A destination square previews the most common
+ * candidate landing there, and a piece's own square its most common
+ * candidate without sliding, so the piece can still be dragged anywhere
+ * legal. Either takes a listed candidate before a rare one, since rare ones
+ * come last in `view.candidates`.
  */
 export function preview(lesson: Lesson, view: LessonView, pointer: Pointer): Preview | undefined {
   const found = pointed(view.candidates, pointer);
@@ -155,7 +158,7 @@ export function preview(lesson: Lesson, view: LessonView, pointer: Pointer): Pre
 
 function pointed(shown: readonly Candidate[], pointer: Pointer) {
   if (pointer.at === 'row') {
-    const candidate = shown.find(({ move }) => move.uci === pointer.uci);
+    const candidate = shown.find(({ move, rare }) => !rare && move.uci === pointer.uci);
     return candidate && { candidate, slide: true };
   }
   const landing = shown.find(({ to }) => to === pointer.square);

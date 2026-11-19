@@ -26,6 +26,9 @@
  *   Practice, on any turn.
  * - While a note's idea plays back, the board is the playback's: nothing else
  *   is drawn, and the preview it started from stays.
+ * - Rare candidates (`Candidate.rare`) are left off the list and the board's
+ *   arrows, and Stockfish's best isn't tagged on one; only pointing at its
+ *   piece or landing square shows it.
  *
  * guidance stays in lesson terms; lessonDrawings (./drawings.ts) turns it
  * into board shapes, and says which ideas draw nothing (`drawsOnBoard`).
@@ -77,6 +80,8 @@ export type ShownPlayback = ShownIdea & { readonly idea: PlayedBack };
 export interface Guidance {
   /** The candidate list. */
   readonly candidates: readonly Candidate[];
+  /** How many rare candidates the list leaves off. */
+  readonly rareCount: number;
   /** The candidate to look at first (`mainCandidate`), drawn and listed as the main one. */
   readonly main?: Candidate;
   readonly preview?: Preview;
@@ -137,7 +142,8 @@ export function guidance(input: GuidanceInput): Guidance {
   const allowed = (idea: Idea) =>
     idea.type === 'trap' ? switches.showTraps : !explore || switches.showIdeas;
   const ideas = notes.flatMap((shown) => noteIdeas(shown, allowed));
-  const candidates = choices ? view.candidates : [];
+  const withRare = choices ? view.candidates : [];
+  const candidates = withRare.filter(({ rare }) => !rare);
   const trap = view.trap && trapShown(view, view.trap) ? view.trap : undefined;
   const playable = [
     ...ideas.filter(playsBack),
@@ -151,11 +157,12 @@ export function guidance(input: GuidanceInput): Guidance {
     .filter(({ note }) => note.ideas?.some((idea) => drawsOnBoard(idea) && allowed(idea)))
     .map(({ note }) => note);
   const pointedNote = !playing && pointed && pointable.includes(pointed) ? pointed : undefined;
-  const board = boardShown({ candidates, preview, ideas, playing, pointed: pointedNote });
+  const board = boardShown({ candidates, withRare, preview, ideas, playing, pointed: pointedNote });
   const best = explore && !preview && !playing && !pointedNote ? engine?.best : undefined;
 
   return {
     candidates,
+    rareCount: withRare.length - candidates.length,
     main: mainCandidate(candidates),
     preview,
     notes,
@@ -175,18 +182,20 @@ export function guidance(input: GuidanceInput): Guidance {
 
 /**
  * What the board draws: nothing while a note plays back; a pointed note's
- * ideas alone; a preview's ideas, with the pointed piece's candidates when
- * it doesn't slide; or else the candidates, with only traps beside them
- * (every idea where there are none).
+ * ideas alone; a preview's ideas, with all the pointed piece's candidates
+ * (rare ones too) when it doesn't slide; or else the listed candidates, with
+ * only traps beside them (every idea where there are none).
  */
 function boardShown({
   candidates,
+  withRare,
   preview,
   ideas,
   playing,
   pointed,
 }: {
   readonly candidates: readonly Candidate[];
+  readonly withRare: readonly Candidate[];
   readonly preview?: Preview;
   readonly ideas: readonly ShownIdea[];
   readonly playing?: ShownPlayback;
@@ -199,7 +208,7 @@ function boardShown({
   if (preview) {
     const { slide, candidate } = preview;
     return {
-      candidates: slide ? [] : candidates.filter(({ from }) => from === candidate.from),
+      candidates: slide ? [] : withRare.filter(({ from }) => from === candidate.from),
       drawn: ideas,
     };
   }

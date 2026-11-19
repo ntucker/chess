@@ -10,6 +10,7 @@ import {
   TRAP,
   TRAP_PUNISHED,
   uciLine,
+  WITH_RARE,
   withMoves,
   withTrapMoves,
 } from './lesson.fixture';
@@ -193,5 +194,21 @@ describe('preview', () => {
     // Bd2 100 against Nd2 90 in the 1000 band, but 100 against 280 in the 1400 band.
     expect(d2(1100)).toMatchObject({ candidate: { san: 'Bd2' }, slide: true });
     expect(d2(1500)).toMatchObject({ candidate: { san: 'Nd2' }, slide: true });
+  });
+
+  describe('a rare move', () => {
+    const rareView = view(MAIN, { lesson: WITH_RARE });
+
+    it('previews from its squares, but has no row', () => {
+      expect(preview(WITH_RARE, rareView, at('f3'))).toMatchObject({
+        candidate: { san: 'f3', rare: true },
+        slide: true,
+      });
+      expect(preview(WITH_RARE, rareView, at('f2'))).toMatchObject({
+        candidate: { san: 'f3' },
+        slide: false,
+      });
+      expect(preview(WITH_RARE, rareView, { at: 'row', uci: 'f2f3' })).toBeUndefined();
+    });
   });
 });

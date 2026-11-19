@@ -10,6 +10,7 @@ import {
   type ShownIdea,
 } from './guidance';
 import type { Idea } from './lesson';
+import type { Candidate } from './select';
 import {
   ADVANCE,
   keyAfter,
@@ -19,6 +20,7 @@ import {
   TRAP,
   TRAP_PUNISHED,
   uciLine,
+  WITH_RARE,
   withTrapMoves,
 } from './lesson.fixture';
 import { lessonView, type Pointer, preview } from './view';
@@ -325,6 +327,24 @@ describe('guidance', () => {
       const shownPreview = explore(ADVANCE, { preview: previewing });
       expect(shownPreview.drawnCandidates).toEqual([]);
       expect(types(shownPreview.drawn)).toEqual(['plan']);
+    });
+
+    it('leaves a rare move off the list and the board until its piece is pointed at', () => {
+      const view = sampleView(MAIN, { lesson: WITH_RARE });
+      const sans = (candidates: readonly Candidate[]) => candidates.map(({ san }) => san);
+      const resting = guidance({ view, mode: 'explore', switches: ALL_ON });
+      expect(sans(resting.candidates)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2']);
+      expect(sans(resting.drawnCandidates)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2']);
+      expect(resting.rareCount).toBe(1);
+      const onPawn = preview(WITH_RARE, view, { at: 'square', square: 'f2' });
+      const pointing = guidance({ view, mode: 'explore', switches: ALL_ON, preview: onPawn });
+      expect(sans(pointing.drawnCandidates)).toEqual(['f3']);
+    });
+
+    it("doesn't tag a rare move as Stockfish's best", () => {
+      const view = sampleView(MAIN, { lesson: WITH_RARE });
+      const shown = guidance({ view, mode: 'explore', switches: ALL_ON, engine: { best: 'f2f3' } });
+      expect(shown.best).toBeUndefined();
     });
 
     it('draws every idea where no candidates are drawn', () => {
