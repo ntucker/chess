@@ -61,7 +61,7 @@ export function PlayerBar({
     role: 'caption',
     tone: toMove ? 'accent' : 'secondary',
     numberOfLines: 1,
-    style: styles.detail,
+    style: styles.detailText,
   } as const;
   return (
     <View style={[styles.bar, children ? styles.controlsBar : styles.namesBar]}>
@@ -111,9 +111,9 @@ const styles = StyleSheet.create({
     borderWidth: DISC_BORDER.value,
   },
   names: { flex: 1, minWidth: 0 },
-  // On a phone-width web page the name's line and the detail share one line:
-  // short of room both give way in proportion, the captured pieces first
-  // (see Captures) and the detail with an ellipsis.
+  // Where the name's line and the detail share a row (a phone-width web
+  // page), both give way in proportion when short of room; elsewhere they
+  // stack, and these shrink rules have nothing to do.
   nameLine: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -122,7 +122,8 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     minWidth: 0,
   },
-  detail: { flexShrink: 1, minWidth: 0 },
+  // The detail ends in an ellipsis as it gives way.
+  detailText: { flexShrink: 1, minWidth: 0 },
   // The captured pieces give way first (see Captures), then the name ends in
   // an ellipsis; the line is clipped rather than run under the controls.
   name: { flexShrink: 1, minWidth: 0 },

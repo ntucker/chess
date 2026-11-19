@@ -209,7 +209,8 @@ interface StatusInput {
   readonly lineEnded: boolean;
   /**
    * No move of the learner's comes before the board's position: the learner
-   * has yet to move (`beforeSideMoves`).
+   * has yet to move, and a move there starts a Practice run, so it's no
+   * take-back (`beforeSideMoves`).
    */
   readonly startsRun: boolean;
   /** In Practice: whether the run is clean, and the label of the move the board shows. */
