@@ -62,3 +62,7 @@ export type Drawing =
   | { readonly kind: 'badge'; readonly square: Square; readonly quality: MoveQuality }
   /** Every piece fades except those on `except`: to show a pawn structure. */
   | { readonly kind: 'fade'; readonly except: readonly Square[] };
+
+/** A move label's badge on the piece that moved to `square`, once both are known. */
+export const lastMoveBadge = (square: Square | undefined, quality: MoveQuality | undefined): Drawing[] =>
+  square && quality ? [{ kind: 'badge', square, quality }] : [];

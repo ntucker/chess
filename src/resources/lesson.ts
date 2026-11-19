@@ -12,6 +12,9 @@ export const LESSONS = {
 
 export type LessonId = keyof typeof LESSONS;
 
+/** The lesson the home page opens, until there is a picker. */
+export const HOME_LESSON: LessonId = 'caro-kann-sample';
+
 /**
  * The lesson for one opening (see src/lesson/lesson.ts). It ships with the
  * app and never changes, so it is kept for as long as the app runs.
