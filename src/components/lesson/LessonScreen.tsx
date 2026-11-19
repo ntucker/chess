@@ -1,5 +1,6 @@
 import { AsyncBoundary, useController, useSuspense } from '@data-client/react';
 import { Separator, Spinner, Stack } from '@reactive/silk-native';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -10,11 +11,12 @@ import { StatusHeadline } from '@/components/GameStatus';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { Scoresheet } from '@/components/Scoresheet';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
+import { useLongWait } from '@/components/useLongWait';
 import type { MoveQuality } from '@/analysis/quality';
 import { colorName, opposite } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
 import type { Uci } from '@/lesson/lesson';
-import { lessonOf, openingsLesson, withOpenings } from '@/lesson/openings';
+import { lessonOf, lessonsFrom, openingsLesson, withOpenings } from '@/lesson/openings';
 import type { Candidate } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
 import type { LessonView } from '@/lesson/view';
@@ -65,7 +67,7 @@ function Openings({ address }: { readonly address?: LessonId }) {
   return (
     <AsyncBoundary
       fallback={<LessonPlaceholder />}
-      errorComponent={({ error }) => <LessonPlaceholder message={error.message} />}
+      errorComponent={LessonFailure}
     >
       <LessonScreen id={picked} store={store} />
     </AsyncBoundary>
@@ -75,11 +77,6 @@ function Openings({ address }: { readonly address?: LessonId }) {
 /** The start position before an opening is picked. */
 const OPENINGS = openingsLesson(LESSON_INDEX);
 
-/** The lessons whose first move a piece on `square` plays. */
-const openingsFrom = (square: string) =>
-  (Object.keys(LESSON_INDEX) as LessonId[]).filter((id) =>
-    LESSON_INDEX[id].firstMoves.some((uci) => uci.startsWith(square)),
-  );
 
 /**
  * The lesson `id` played on the board, in Explore or Practice, or before
@@ -98,7 +95,7 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
     playback,
     canPlay,
     play,
-    loading,
+    pending,
     pointedNote,
     rareShown,
     showRare,
@@ -121,9 +118,10 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
   const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
   // The start lists the openings, whichever lesson is loaded.
   const picking = view.ply === 0;
+  const longWait = useLongWait(pending);
   const status = describeStatus(view, {
     picking,
-    loading: useLongWait(loading),
+    loading: longWait,
     title: lesson.title,
     rival: colorName(rival),
     engine: described.name,
@@ -155,7 +153,7 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
     pointRow(uci);
   };
   const onDrag: typeof board.onDrag = (drag) => {
-    if (picking && drag) openingsFrom(drag.from).forEach(load);
+    if (picking && drag) lessonsFrom(LESSON_INDEX, drag.from).forEach(load);
     board.onDrag?.(drag);
   };
 
@@ -385,23 +383,23 @@ const YOUR_MOVE = {
 } as const;
 
 /**
- * Whether `pending` has lasted a moment: a wait shorter than that shows
- * nothing, so a quick one doesn't flicker.
+ * A lesson that failed to load. The boundary stays mounted across addresses,
+ * so going to another address (Back to the start) tries again.
  */
-function useLongWait(pending: boolean) {
-  const [long, setLong] = useState(false);
+function LessonFailure({
+  error,
+  resetErrorBoundary,
+}: {
+  readonly error: Error;
+  readonly resetErrorBoundary: () => void;
+}) {
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const [failedAt] = useState(id);
   useEffect(() => {
-    if (!pending) return;
-    const timer = setTimeout(() => setLong(true), LONG_WAIT_MS);
-    return () => {
-      clearTimeout(timer);
-      setLong(false);
-    };
-  }, [pending]);
-  return pending && long;
+    if (id !== failedAt) resetErrorBoundary();
+  }, [id, failedAt, resetErrorBoundary]);
+  return <LessonPlaceholder message={error.message} />;
 }
-
-const LONG_WAIT_MS = 500;
 
 /** The headline while a lesson loads. */
 const LOADING = { title: 'Setting the stage…', detail: 'Loading the lesson.' } as const;

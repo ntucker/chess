@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import { checkLesson } from './check';
 import { keyAfter, SAMPLE, uciLine } from './lesson.fixture';
-import { indexEntry, lessonOf, openingsLesson, withOpenings } from './openings';
+import { indexEntry, lessonOf, lessonsFrom, openingsLesson, withOpenings } from './openings';
 import { candidates } from './select';
 
 const source = (author: string) => ({ title: 'A study', author, url: '' });
@@ -20,6 +20,14 @@ describe('lessonOf', () => {
     expect(lessonOf(INDEX, uciLine('e4'))).toBe('caro-kann');
     expect(lessonOf(INDEX, uciLine('c4'))).toBeUndefined();
     expect(lessonOf(INDEX, [])).toBeUndefined();
+  });
+});
+
+describe('lessonsFrom', () => {
+  it('lists the lessons whose first move leaves the square', () => {
+    expect(lessonsFrom(INDEX, 'e2')).toEqual(['caro-kann']);
+    expect(lessonsFrom(INDEX, 'd2')).toEqual(['slav']);
+    expect(lessonsFrom(INDEX, 'g1')).toEqual([]);
   });
 });
 

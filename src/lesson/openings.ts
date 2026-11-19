@@ -44,6 +44,13 @@ export function lessonOf<Id extends string>(
   return (Object.keys(index) as Id[]).find((id) => index[id].firstMoves.includes(first));
 }
 
+/** The lessons a piece on `square` picks: those with a first move from there. */
+export function lessonsFrom<Id extends string>(index: LessonIndex<Id>, square: string): Id[] {
+  return (Object.keys(index) as Id[]).filter((id) =>
+    index[id].firstMoves.some((uci) => uci.slice(0, 2) === square),
+  );
+}
+
 /** Every lesson's first moves, in the index's order, each crediting its study. */
 const openingMoves = (index: LessonIndex) =>
   Object.values(index).flatMap(({ title, source, firstMoves: ucis }) =>

@@ -6,7 +6,7 @@ import type { LessonId } from '@/resources/lesson';
 
 import { useOpeningsGame } from './useOpeningsGame';
 
-const mockRouter = { push: jest.fn(), replace: jest.fn() };
+const mockRouter = { push: jest.fn(), replace: jest.fn(), dismissTo: jest.fn() };
 jest.mock('expo-router', () => ({ useRouter: () => mockRouter }));
 
 let root: Root | undefined;
@@ -35,6 +35,7 @@ afterEach(() => {
   root = undefined;
   mockRouter.push.mockClear();
   mockRouter.replace.mockClear();
+  mockRouter.dismissTo.mockClear();
 });
 
 describe('useOpeningsGame', () => {
@@ -84,5 +85,15 @@ describe('useOpeningsGame', () => {
     expect(moves()).toEqual(['d2d4']);
     expect(mockRouter.push).toHaveBeenCalledTimes(1);
     expect(mockRouter.replace).not.toHaveBeenCalled();
+  });
+
+  it('returns to the start when a first move picks no lesson', async () => {
+    await show('caro-kann');
+    await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
+    await play('g1f3');
+    expect(mockRouter.dismissTo).toHaveBeenCalledWith('/');
+    // Arriving there keeps the game.
+    await show();
+    expect(moves()).toEqual(['g1f3']);
   });
 });
