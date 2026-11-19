@@ -42,7 +42,8 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
    rest with a reason. Do not launch them while the person is actively writing in your thread:
    subagents can pick up the message and reply in your name.
 7. Once the change is verified correct, run skill "simplify", verify its findings, and push the
-   cleanups (a push, so step 6 runs again) before calling the PR done.
+   cleanups (a push, so step 6 runs again) before calling the PR done. If the change has
+   architecture implications, then run skill `user-kit:clean-code` the same way.
 8. The person squash-merges. A worker's PR ends when it merges, not when it is handed over.
 
 ## PR descriptions
