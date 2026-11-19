@@ -76,8 +76,12 @@ export function lichessExplorer({
         continue;
       }
       if (!response.ok) throw new Error(`Explorer answered ${response.status} for ${id}`);
-      const body = (await response.json()) as { moves: { uci: string; white: number; draws: number; black: number }[] };
-      const counts = Object.fromEntries(body.moves.map((move) => [move.uci, move.white + move.draws + move.black]));
+      const body = (await response.json()) as {
+        moves: { uci: string; white: number; draws: number; black: number }[];
+      };
+      const counts = Object.fromEntries(
+        body.moves.map((move) => [move.uci, move.white + move.draws + move.black]),
+      );
       cache.set(id, counts);
       appendJsonLine(cacheFile, [id, counts]);
       return counts;
@@ -92,7 +96,9 @@ export function lichessExplorer({
  */
 function recordedCounts(key: PositionKey, counts: LichessCounts): MoveCounts {
   const pos = parsePositionKey(key)!;
-  return Object.fromEntries(Object.entries(counts).map(([uci, games]) => [recordedMove(pos, uci) ?? uci, games]));
+  return Object.fromEntries(
+    Object.entries(counts).map(([uci, games]) => [recordedMove(pos, uci) ?? uci, games]),
+  );
 }
 
 /**
@@ -126,7 +132,8 @@ export async function addPopularity(
       const here = reached.get(key)!;
       if (wanted(key) && !counts.has(key)) {
         const answers: (MoveCounts | undefined)[] = [];
-        for (const [i, band] of RATING_BANDS.entries()) answers.push(here[i] ? await explorer(key, band) : undefined);
+        for (const [i, band] of RATING_BANDS.entries())
+          answers.push(here[i] ? await explorer(key, band) : undefined);
         counts.set(
           key,
           moves.map((move) => answers.map((answer) => answer?.[move.uci] ?? 0)),
@@ -156,7 +163,9 @@ export async function addPopularity(
       Object.entries(lesson.positions).map(([key, entry]) => {
         const games = counts.get(key);
         // Counts already in the file are replaced, or dropped where nothing was asked.
-        const moves = entry.moves.map(({ games: _, ...move }, m) => (games ? { ...move, games: games[m] } : move));
+        const moves = entry.moves.map(({ games: _, ...move }, m) =>
+          games ? { ...move, games: games[m] } : move,
+        );
         return [key, { ...entry, moves }];
       }),
     ),

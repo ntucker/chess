@@ -34,7 +34,12 @@ describe('policy', () => {
   });
 
   it('mirrors Black moves and writes knight promotions as plain moves', () => {
-    const e2 = 12, e4 = 28, e5 = 36, e7 = 52, a7 = 48, a8 = 56;
+    const e2 = 12,
+      e4 = 28,
+      e5 = 36,
+      e7 = 52,
+      a7 = 48,
+      a8 = 56;
     expect(policySlot({ from: e7, to: e5 }, true)).toBe(policySlot({ from: e2, to: e4 }, false));
     expect(policySlot({ from: a7, to: a8, promotion: 'knight' }, false)).toBe(
       POLICY_SLOTS.get('a7a8'),
@@ -101,7 +106,7 @@ describe('evaluation', () => {
   const after = (line: string) => prepare(line).pos;
   const wdl = (win: number, draw: number, loss: number) => new Float32Array([win, draw, loss]);
 
-  it('reads the chances of the side to move as White\'s', () => {
+  it("reads the chances of the side to move as White's", () => {
     expect(evaluation(after(''), wdl(0.6, 0.2, 0.2))).toEqual({
       score: expect.closeTo(0.7, 6),
       pawns: expect.closeTo(0.9 * Math.tan(1.5637541897 * 0.4), 6),
