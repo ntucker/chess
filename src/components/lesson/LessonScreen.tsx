@@ -263,7 +263,10 @@ function describeStatus(
   };
 }
 
-/** The detail under "Your move.", by mode and whether an earlier move is shown. */
+/**
+ * The detail under "Your move.", by mode and whether an earlier move is
+ * shown; `restart` is Practice's when a move there starts a run.
+ */
 const YOUR_MOVE = {
   explore: {
     latest: 'Point at a candidate or a note to see it on the board, then play any move you like.',
