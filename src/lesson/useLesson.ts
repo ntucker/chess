@@ -82,7 +82,8 @@ export function useLesson(lesson: Lesson) {
   );
   // A row that leaves the list (played, or stepped away from) never reports
   // a hover-out or blur, so a peek ends when the board moves on; otherwise
-  // stepping back would preview that row again.
+  // stepping back would preview that row again. Shown rare rows end too, so
+  // each position's list starts with them hidden.
   const [{ mode: modeState, peek, rareKey }, dispatch] = useReducer(screenReducer, initialScreen);
   const { mode } = modeState;
   const { key } = view;

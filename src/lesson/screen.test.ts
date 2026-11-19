@@ -42,13 +42,19 @@ describe('screenReducer', () => {
   });
 
   it("shows a position's rare rows until they are hidden or the board moves on", () => {
-    const shown = run({ type: 'rare', key: 'k', shown: true, rows: [] });
+    const shown = run(rare(true, []));
     expect(shown.rareKey).toBe('k');
-    const hidden = screenReducer(shown, { type: 'rare', key: 'k', shown: false, rows: [] });
+    const hidden = screenReducer(shown, rare(false, []));
     expect(hidden.rareKey).toBeUndefined();
     expect(screenReducer(shown, { type: 'board', key: 'k' })).toBe(shown);
     const movedOn = screenReducer(shown, { type: 'board', key: 'other' });
     expect(movedOn).toEqual({ mode: shown.mode, peek: undefined, rareKey: undefined });
+  });
+
+  it('ends a peek from another position when the board moves on, and keeps one from here', () => {
+    const pointing = run(POINT);
+    expect(screenReducer(pointing, { type: 'board', key: 'k' })).toBe(pointing);
+    expect(screenReducer(pointing, { type: 'board', key: 'other' }).peek).toBeUndefined();
   });
 
   it("ends a hidden row's preview, so showing the rows again doesn't bring it back", () => {

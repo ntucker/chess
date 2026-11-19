@@ -1,7 +1,8 @@
 /**
  * The lesson screen's one reducer: the mode (`practice.ts`), what the board
  * shows beyond the game (`peek.ts`), and whether the candidate list shows its
- * rare rows. The game itself is `useGame`'s.
+ * rare rows. The last two belong to a position and end when the board moves
+ * on. The game itself is `useGame`'s.
  */
 import type { PositionKey, Uci } from './lesson';
 import { type Peek, type PeekAction, peekReducer } from './peek';
@@ -12,8 +13,8 @@ export interface ScreenState {
   readonly peek?: Peek;
   /**
    * The position whose candidate list shows its rare rows (`Candidate.rare`).
-   * Every other position's list hides them, and the board moving on (the
-   * peek's `board` action) hides them again, so each list starts hidden.
+   * Every other position's list hides them, and the board moving on hides
+   * them again, so each list starts hidden.
    */
   readonly rareKey?: PositionKey;
 }
@@ -30,7 +31,13 @@ interface RareAction {
   readonly rows: readonly Uci[];
 }
 
-export type ScreenAction = ModeAction | PeekAction | RareAction;
+/** The board shows `key`: a peek or shown rare rows from another position end. */
+interface BoardAction {
+  readonly type: 'board';
+  readonly key: PositionKey;
+}
+
+export type ScreenAction = ModeAction | PeekAction | RareAction | BoardAction;
 
 export const initialScreen: ScreenState = { mode: initialMode };
 
@@ -49,8 +56,11 @@ export function screenReducer(state: ScreenState, action: ScreenAction): ScreenS
       : state.peek;
     return rareKey === state.rareKey && peek === state.peek ? state : { ...state, peek, rareKey };
   }
+  if (action.type === 'board') {
+    const peek = state.peek?.key === action.key ? state.peek : undefined;
+    const rareKey = state.rareKey === action.key ? state.rareKey : undefined;
+    return peek === state.peek && rareKey === state.rareKey ? state : { ...state, peek, rareKey };
+  }
   const peek = peekReducer(state.peek, action);
-  const rareKey =
-    action.type === 'board' && state.rareKey !== action.key ? undefined : state.rareKey;
-  return peek === state.peek && rareKey === state.rareKey ? state : { ...state, peek, rareKey };
+  return peek === state.peek ? state : { ...state, peek };
 }

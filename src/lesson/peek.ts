@@ -4,7 +4,8 @@
  * its square, and a note on the idea card), or a note's idea playing back.
  * While an idea plays, the board is its own: pointing goes on out of sight,
  * and the board shows it once the playback stops. Each peek belongs to the
- * position it started in, and ends once the board moves on.
+ * position it started in, and ends once the board moves on (the screen's
+ * `board` action).
  */
 import type { Note, PositionKey } from './lesson';
 import type { Pointer } from './view';
@@ -32,8 +33,6 @@ export type Peek =
     });
 
 export type PeekAction =
-  /** The board shows `key`: a peek from another position ends. */
-  | { readonly type: 'board'; readonly key: PositionKey }
   /**
    * The learner points at a candidate, by its row or by dragging its piece
    * there, which leaves the card's note; or drags onto no candidate, which
@@ -65,8 +64,6 @@ export type PeekAction =
 
 export function peekReducer(peek: Peek | undefined, action: PeekAction): Peek | undefined {
   switch (action.type) {
-    case 'board':
-      return peek?.key === action.key ? peek : undefined;
     case 'candidate':
     case 'note': {
       const here = peek?.key === action.key ? peek : undefined;
