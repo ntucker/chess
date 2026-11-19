@@ -160,6 +160,19 @@ export default function Board({
     markAfterDraw();
   });
 
+  // A press that plays the previewed move with the picked piece: chessground
+  // plays it itself, and would slide the piece to where the preview already
+  // draws it, so it plays it at once. The position effect below turns the
+  // animation back on as the game reaches the preview.
+  const holdStill = useEffectEvent((picked: Square | undefined, x: number, y: number) => {
+    const board = api.current;
+    const square = board?.getKeyAtDomPos([x, y]) as Square | undefined;
+    if (!board || !picked || !square || !board.state.movable.dests?.get(picked)?.includes(square))
+      return;
+    if (layer.pieces.some((piece) => piece.from === picked && piece.square === square))
+      board.set({ animation: { enabled: false } });
+  });
+
   useEffect(() => {
     const target = element.current;
     if (!target) return;
@@ -168,8 +181,9 @@ export default function Board({
     // pick, so it is read as the press starts: a capture listener on the
     // board's own element runs before chessground's handlers inside it.
     let picked: Square | undefined;
-    const notePick = () => {
+    const notePick = ({ clientX, clientY }: PointerEvent) => {
       picked = api.current?.state.selected as Square | undefined;
+      holdStill(picked, clientX, clientY);
     };
     target.addEventListener('pointerdown', notePick, { capture: true });
     const board = Chessground(target, {
