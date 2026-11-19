@@ -217,6 +217,8 @@ export default function Board({
   useEffect(() => {
     const played = shownPreview.current !== undefined && sameBoard(shownPreview.current, fen);
     setBoard({ ...position, animation: { enabled: !played } });
+    // Chessground keeps the setting, and a move made on the board next should slide.
+    if (played) setBoard({ animation: { enabled: true } });
   }, [position, fen]);
   // Declared after the effect above, which runs first, so it still reads the
   // preview of the render before.
