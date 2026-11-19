@@ -75,7 +75,7 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   const { mode } = modeState;
   const progress = useLessonProgress(lesson.id);
   const record = useProgressDispatch();
-  // With no opponent, nobody replies: the learner picks the opponent's move.
+  // The opponent replies only where `opponentPlays` says; elsewhere the learner picks its move.
   // In a clean Practice run the opponent steers to lines not yet passed, so
   // runs with auto play on can pass every row, not only its most played replies.
   const rival = opponentPlays(mode, settings.auto, store[0])
