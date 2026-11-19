@@ -1,5 +1,5 @@
 import { AsyncBoundary, useSuspense } from '@data-client/react';
-import { Separator, Spinner, Stack, Text } from '@reactive/silk-native';
+import { Separator, Spinner, Stack } from '@reactive/silk-native';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
@@ -192,15 +192,11 @@ function LessonPlaceholder({ message }: { readonly message?: string }) {
       }
       program={
         <View style={styles.placeholder}>
-          <Stack gap="2">
-            <Eyebrow>Lesson</Eyebrow>
-            <Text role="headingLg" accessibilityRole="header">
-              {message ? 'Curtain stays down.' : 'Setting the stage…'}
-            </Text>
-            <Text role="bodySm" tone="secondary">
-              {message ?? 'Loading the lesson.'}
-            </Text>
-          </Stack>
+          <StatusHeadline
+            eyebrow="Lesson"
+            title={message ? 'Curtain stays down.' : 'Setting the stage…'}
+            detail={message ?? 'Loading the lesson.'}
+          />
         </View>
       }
     />

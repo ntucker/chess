@@ -39,7 +39,7 @@ export function useLesson(lesson: Lesson) {
     [lesson, line, ply, opponent],
   );
   // The candidate list row the learner points at, and the position it was
-  // pointed at in: once the board moves on, it points at nothing.
+  // pointed at in: it counts only while the board shows that position.
   const [pointer, setPointer] = useState<{ readonly key: PositionKey; readonly uci: Uci }>();
   const pointed = pointer?.key === view.key ? pointer.uci : undefined;
   const shown = guidance({
@@ -88,7 +88,12 @@ export function useLesson(lesson: Lesson) {
     board: boardProps,
     /** Whether the learner may play the candidates now (they are the side to move's). */
     canPlay: canMove,
-    play: (candidate: Candidate) => game.play(candidate.move.uci),
+    // The played row leaves the list without a hover-out, so stepping back
+    // would otherwise preview it again.
+    play: (candidate: Candidate) => {
+      setPointer(undefined);
+      game.play(candidate.move.uci);
+    },
     /** The candidate list row the learner points at. */
     pointed,
     /** The learner points at a candidate list row, or at none. */
