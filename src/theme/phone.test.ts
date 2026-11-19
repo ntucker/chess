@@ -10,7 +10,12 @@ jest.mock('./phone.css', () => ({}));
 describe('phone.css', () => {
   // Everything in it sits inside the phone-width media query.
   const css = readFileSync(join(__dirname, 'phone.css'), 'utf8');
-  const phone = css.slice(css.indexOf('@media (max-width:'));
+  const start = css.indexOf('@media (max-width:');
+  const phone = css.slice(start);
+
+  it('has the media query', () => {
+    expect(start).toBeGreaterThan(-1);
+  });
 
   it.each(PHONE_LENGTHS)('sets --%s', (name) => {
     expect(phone).toMatch(new RegExp(`--${name}: `));

@@ -179,7 +179,7 @@ const PANEL_RESERVE = phoneLength('panel-reserve', 0);
  * the window's height, so the player's name bar and the move buttons stay in
  * view, and on a phone the start of the panel too. CSS does it, since the
  * server can't measure the window. Native has no window to fit, so its limit
- * is the largest board, BOARD_COLUMN_MAX. `clamp()` has no PhoneLength form,
+ * is the largest board column, BOARD_COLUMN_MAX. `clamp()` has no PhoneLength form,
  * so the web's clamp and that native number are written apart.
  */
 const BOARD_COLUMN_LIMIT = phoneCalc(

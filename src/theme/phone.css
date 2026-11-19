@@ -27,12 +27,12 @@
   }
 
   /*
-   * Parts, named by `phonePart` (phone.ts). The header drops its tagline
-   * (Header.tsx). The page (Stage.tsx) fills the
+   * Parts, named by `phonePart` (phone.ts). The page (Stage.tsx) fills the
    * screen and never scrolls: the board stays at the top, and the panel below
    * it scrolls in the space that's left, so a previewed move stays in view.
    * Two selectors' weight, to win over React Native Web's one-class styles.
    */
+  /* The header drops its tagline (Header.tsx). */
   :root [data-phone='tagline'] {
     display: none;
   }
