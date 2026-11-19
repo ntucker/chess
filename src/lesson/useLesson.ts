@@ -136,13 +136,17 @@ export function useLesson(lesson: Lesson) {
   };
   // The opponent's reply would move the board on and end a playback at once,
   // so none starts while one is on its way to the position shown.
-  const replying = game.thinking && game.atLatest;
+  const playable = (note: ShownNote) =>
+    game.replying ? undefined : notePlayback(shown, note)?.idea.type;
   const playback: Playback = {
     playing: playing && frame && { note: playing.note, step: playing.step, steps: frames.length },
-    playable: (note) => (replying ? undefined : notePlayback(shown, note)?.idea.type),
+    playable,
     // From the preview on screen, which a playing note keeps after the pointer leaves.
-    play: (note) =>
-      setStarted({ key: view.key, note: note.note, row: previewRow, step: 0, auto: true }),
+    play: (note) => {
+      if (playable(note)) {
+        setStarted({ key: view.key, note: note.note, row: previewRow, step: 0, auto: true });
+      }
+    },
     goto: (step) => setStarted((now) => now && { ...now, step, auto: false }),
     stop: () => setStarted(undefined),
   };
