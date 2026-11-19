@@ -9,6 +9,7 @@ import {
   type ModeAction,
   modeReducer,
   type ModeState,
+  picksReply,
   type PlayedMove,
 } from './practice';
 
@@ -87,5 +88,23 @@ describe('beforeSideMoves', () => {
 
   it('starts a clean run when Practice is chosen on a line with no move of the learner yet', () => {
     expect(run(initialMode, chosen('practice', true))).toEqual(practice(true));
+  });
+});
+
+describe('picksReply', () => {
+  it('lets the learner pick every opponent move with auto play off', () => {
+    expect(picksReply('explore', false, true)).toBe(true);
+    expect(picksReply('practice', false, true)).toBe(true);
+  });
+
+  it('lets the learner pick one opponent move stepped back in Explore with auto play on', () => {
+    expect(picksReply('explore', true, false)).toBe(true);
+    // At the latest move auto play answers, as it does once the picked move is played.
+    expect(picksReply('explore', true, true)).toBe(false);
+  });
+
+  it('keeps Practice with auto play on to the opponent, stepped back or not', () => {
+    expect(picksReply('practice', true, false)).toBe(false);
+    expect(picksReply('practice', true, true)).toBe(false);
   });
 });

@@ -91,6 +91,7 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
     board,
     playback,
     canPlay,
+    picksReply,
     play,
     pointedNote,
     rareShown,
@@ -122,6 +123,7 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
     thinking: game.thinking,
     viewing: !game.atLatest,
     auto,
+    picksReply,
     lineEnded: guidance.lineEnded,
     startsRun,
     practice:
@@ -255,8 +257,10 @@ interface StatusInput {
   readonly thinking: boolean;
   /** The board shows an earlier move than the latest. */
   readonly viewing: boolean;
-  /** The opponent replies by itself; off, the learner picks its move. */
+  /** Auto play: the opponent plays on by itself past the guide. */
   readonly auto: boolean;
+  /** On the opponent's turn the learner picks its move, rather than the opponent playing it. */
+  readonly picksReply: boolean;
   /** The headline tells of a guide line's end (`Guidance.lineEnded`). */
   readonly lineEnded: boolean;
   /**
@@ -277,7 +281,19 @@ interface StatusInput {
  */
 function describeStatus(
   view: LessonView,
-  { picking, title, rival, engine, thinking, viewing, auto, lineEnded, startsRun, practice }: StatusInput,
+  {
+    picking,
+    title,
+    rival,
+    engine,
+    thinking,
+    viewing,
+    auto,
+    picksReply,
+    lineEnded,
+    startsRun,
+    practice,
+  }: StatusInput,
 ) {
   if (picking)
     return {
@@ -320,9 +336,10 @@ function describeStatus(
           ? YOUR_MOVE.practice.restart
           : YOUR_MOVE[practice ? 'practice' : 'explore'][viewing ? 'viewing' : 'latest'],
     };
-  let reply = `Choose ${rival}'s reply.`;
-  if (auto) reply = `${rival}'s move.`;
-  if (thinking) reply = `${rival} is choosing…`;
+  // Stepped back, the opponent thinking about the latest move isn't this one's news.
+  let reply = `${rival}'s move.`;
+  if (thinking && !viewing) reply = `${rival} is choosing…`;
+  if (picksReply) reply = `Choose ${rival}'s reply.`;
   if (practice && view.ply > 0)
     return {
       eyebrow,
@@ -333,9 +350,9 @@ function describeStatus(
     eyebrow,
     title: reply,
     seenHint: !startsRun,
-    detail: auto
-      ? 'Point at a reply to see what it aims for.'
-      : 'Point at a reply to see what it aims for, then play it.',
+    detail: picksReply
+      ? 'Point at a reply to see what it aims for, then play it.'
+      : 'Point at a reply to see what it aims for.',
   };
 }
 

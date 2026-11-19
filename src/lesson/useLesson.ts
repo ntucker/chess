@@ -3,8 +3,9 @@
  * facts about the position on the board, what the learner points at (a
  * candidate, by its list row or a piece dragged onto its square, and a note
  * on the idea card), an idea playing back, the mode (Explore or Practice),
- * and the board. With auto play the learner moves their own side; with auto
- * play off, either.
+ * and the board. With auto play the learner moves their own side, and picks
+ * the opponent's move only after stepping back in Explore; with auto play
+ * off, either side (`picksReply`).
  */
 import { useController } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
@@ -24,7 +25,7 @@ import { ideaPlayback } from './drawings';
 import { guidance, type LessonMode, notePlayback, type PlayedBack } from './guidance';
 import type { Lesson, Note, PositionKey, Uci } from './lesson';
 import { lessonOpponent } from './opponent';
-import { beforeSideMoves } from './practice';
+import { beforeSideMoves, picksReply } from './practice';
 import { initialScreen, screenReducer } from './screen';
 import { bookMoves, type Candidate, isBook } from './select';
 import { lessonView, type Pointer, preview, type ShownNote } from './view';
@@ -80,7 +81,7 @@ export function useLesson(lesson: Lesson, store: GameStore) {
     judge: 'stockfish',
     book: (line) => bookMoves(lesson, line),
   });
-  const { moves, ply, plies, current, canMove } = game;
+  const { moves, ply, plies, current } = game;
   // A move played before the learner's first starts a Practice run.
   const startsRun = beforeSideMoves(plies, lesson.side, ply);
   const view = useMemo(
@@ -93,6 +94,10 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   // each position's list starts with them hidden.
   const [{ mode: modeState, peek, rareKey }, dispatch] = useReducer(screenReducer, initialScreen);
   const { mode } = modeState;
+  // Picking the opponent's move from an earlier position drops the moves
+  // after it, as any move there does; auto play then answers the learner's next.
+  const picks = picksReply(mode, !!rival, game.atLatest);
+  const canMove = picks ? !current.result : game.canMove;
   const { key } = view;
   const stale = (at?: PositionKey) => at !== undefined && at !== key;
   if (stale(peek?.key) || stale(rareKey)) dispatch({ type: 'board', key });
@@ -194,6 +199,8 @@ export function useLesson(lesson: Lesson, store: GameStore) {
     playback,
     /** Whether the learner may play the side to move's candidates now. */
     canPlay: canMove,
+    /** On the opponent's turn the learner picks its move (`picksReply`). */
+    picksReply: picks,
     play,
     /** Explore, or Practice with whether the run is clean. */
     modeState,

@@ -25,6 +25,16 @@ export const initialMode: ModeState = { mode: 'explore' };
 export const beforeSideMoves = (plies: readonly Ply[], side: Color, count: number) =>
   plies.slice(0, count).every(({ turn }) => turn !== side);
 
+/**
+ * Whether the learner picks the opponent's move on its turn, rather than the
+ * opponent playing it. With auto play off, always. With it on, only in
+ * Explore on an earlier move than the latest: stepped back, the learner can
+ * try one reply and see where it leads, and auto play answers the moves
+ * after it. At the latest move, and in Practice, the opponent plays its own.
+ */
+export const picksReply = (mode: LessonMode, auto: boolean, atLatest: boolean) =>
+  !auto || (mode === 'explore' && !atLatest);
+
 /** Facts about a move the learner played, on the lesson screen. */
 export interface PlayedMove {
   /** The learner's own side moved, rather than picking the opponent's move. */
