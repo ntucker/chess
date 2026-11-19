@@ -3,7 +3,7 @@ import { parseFen } from 'chessops/fen';
 import { makeSquare } from 'chessops/util';
 
 import type { Square } from './drawing';
-import { type Pieces, previewLayer, squareOffset } from './preview';
+import { type Pieces, previewLayer } from './preview';
 
 /** The pieces of a FEN's board. */
 function pieces(fen: string): Pieces {
@@ -61,14 +61,5 @@ describe('previewLayer', () => {
       away: new Set(['b7']),
       taken: new Set(['a8']),
     });
-  });
-});
-
-describe('squareOffset', () => {
-  it('counts from the top left corner as each side sees the board', () => {
-    expect(squareOffset('a8', 'white')).toEqual([0, 0]);
-    expect(squareOffset('c6', 'white')).toEqual([2, 2]);
-    expect(squareOffset('a8', 'black')).toEqual([7, 7]);
-    expect(squareOffset('h1', 'black')).toEqual([0, 0]);
   });
 });

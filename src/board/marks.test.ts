@@ -3,6 +3,7 @@ import { describe, expect, it } from '@jest/globals';
 import { toneColors } from '@/theme/drawingTones';
 import { qualityLooks } from '@/theme/moveQuality';
 
+import { squareOffset } from './drawing';
 import { boardMarks, toneBrushes } from './marks';
 
 describe('boardMarks', () => {
@@ -107,5 +108,14 @@ describe('boardMarks', () => {
     expect(label.orig).toBe('d5');
     expect(label.customSvg?.html).toContain('3 v &lt;2&gt;');
     expect(label.customSvg?.html).toContain(toneColors.target);
+  });
+});
+
+describe('squareOffset', () => {
+  it('counts from the top left corner as each side sees the board', () => {
+    expect(squareOffset('a8', 'white')).toEqual([0, 0]);
+    expect(squareOffset('c6', 'white')).toEqual([2, 2]);
+    expect(squareOffset('a8', 'black')).toEqual([7, 7]);
+    expect(squareOffset('h1', 'black')).toEqual([0, 0]);
   });
 });

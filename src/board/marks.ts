@@ -5,8 +5,7 @@ import type { DrawBrush, DrawShape } from '@lichess-org/chessground/draw';
 import type { Key } from '@lichess-org/chessground/types';
 
 import type { MoveQuality } from '@/analysis/quality';
-import { type Drawing, type Square, TONES, type Tone } from '@/board/drawing';
-import { squareOffset } from '@/board/preview';
+import { type Drawing, type Square, squareOffset, TONES, type Tone } from '@/board/drawing';
 import type { Color } from '@/game/replay';
 import { toneColors } from '@/theme/drawingTones';
 import { BADGE_BOX, badgeMarkup, qualityLooks } from '@/theme/moveQuality';
@@ -117,9 +116,8 @@ function lineMarkup(squares: readonly Square[], orientation: Color, color: strin
 
 /** How many squares right and down `to` is from `from`, as the board is seen. */
 function offset(from: Square, to: Square, orientation: Color): [number, number] {
-  const [[fromX, fromY], [toX, toY]] = [from, to].map((square) =>
-    squareOffset(square, orientation),
-  );
+  const [fromX, fromY] = squareOffset(from, orientation);
+  const [toX, toY] = squareOffset(to, orientation);
   return [toX - fromX, toY - fromY];
 }
 

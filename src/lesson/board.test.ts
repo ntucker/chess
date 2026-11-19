@@ -24,8 +24,6 @@ function board(sans: string[], pointer?: Pointer) {
     side: SAMPLE.side,
     key: view.key,
     guidance: shown,
-    moves,
-    ply: moves.length,
     current: lastPosition(moves),
     canMove: true,
   };
@@ -48,12 +46,9 @@ describe('lessonBoard', () => {
     const row = board(ADVANCE, { at: 'row', uci: 'c8f5' }).board;
     expect(board(ADVANCE, { at: 'square', square: 'f5' }).board).toEqual(row);
     // The move drawn played over the game, which stays as it is and movable.
-    expect(row.preview).toBe(lastPosition(uciLine(...ADVANCE, 'Bf5')).fen);
-    expect(row).toMatchObject({
-      ...board(ADVANCE).board,
-      preview: row.preview,
-      drawings: row.drawings,
-    });
+    expect(row.preview).toBe(sampleView([...ADVANCE, 'Bf5']).key);
+    const game = board(ADVANCE).board;
+    expect(row).toMatchObject({ fen: game.fen, movableColor: 'black', dests: game.dests });
     expect(row.drawings).toContainEqual({ kind: 'glow', square: 'f5', tone: 'main' });
   });
 
@@ -95,18 +90,22 @@ describe('lessonBoard', () => {
 });
 
 describe('boardPress', () => {
-  const press = (pointer: Pointer, square: Square, selected?: Square, canMove = true) =>
-    boardPress(board(ADVANCE, pointer).shown, canMove, square, selected);
+  const press = (pointer: Pointer, square: Square, selected?: Square, canMove = true) => {
+    const { shown, input } = board(ADVANCE, pointer);
+    return boardPress(shown, input.current, canMove, square, selected);
+  };
   const BF5 = { at: 'square', square: 'f5' } as const;
 
   it("plays a sliding preview's move when its square is pressed", () => {
     expect(press(BF5, 'f5')).toMatchObject({ san: 'Bf5' });
   });
 
-  it('ends the preview when a piece is picked, and leaves the press to the board', () => {
+  it("ends the preview when the board plays the press as the picked piece's move", () => {
     // The board plays Bf5 itself with the bishop picked, and Nf6 with the knight.
     expect(press(BF5, 'f5', 'c8')).toBe('end');
     expect(press(BF5, 'f6', 'g8')).toBe('end');
+    // A picked piece that can't move there leaves the press to the preview.
+    expect(press(BF5, 'f5', 'e7')).toMatchObject({ san: 'Bf5' });
   });
 
   it('ends the preview on a press anywhere else, or while the learner may not move', () => {

@@ -133,8 +133,6 @@ export function useLesson(lesson: Lesson) {
       side: lesson.side,
       key,
       guidance: shown,
-      moves,
-      ply,
       current,
       canMove,
       quality: game.quality,
@@ -144,7 +142,7 @@ export function useLesson(lesson: Lesson) {
     onHover: pointSquare,
     onHold: pointSquare,
     onPress: (square, selected) => {
-      const press = !frame && boardPress(shown, canMove, square, selected);
+      const press = !frame && boardPress(shown, current, canMove, square, selected);
       if (press === 'end') dispatch({ type: 'candidate', key });
       else if (press) play(press);
     },

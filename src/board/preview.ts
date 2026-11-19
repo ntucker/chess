@@ -2,20 +2,17 @@
 // the game's, drawn over it, while the game's own board stays as it is, so
 // presses and drags always reach the game. Pure, so it's tested without a DOM;
 // imports only types, since the board runs in a web view on Android.
-import type { Piece } from 'chessops/types';
-
-import type { Square } from '@/board/drawing';
-import type { Color } from '@/game/replay';
+import type { BoardPiece, Square } from '@/board/drawing';
 
 /** The pieces of a position by square. */
-export type Pieces = ReadonlyMap<Square, Readonly<Pick<Piece, 'role' | 'color'>>>;
+export type Pieces = ReadonlyMap<Square, BoardPiece>;
 
 /** A piece of the previewed position drawn over the game's board. */
 export interface PreviewPiece {
   readonly square: Square;
   /** Where it slides from: the square it left, or `square` for a piece that only appears. */
   readonly from: Square;
-  readonly piece: Readonly<Pick<Piece, 'role' | 'color'>>;
+  readonly piece: BoardPiece;
 }
 
 /** How the game's board looks under a previewed position. */
@@ -45,7 +42,7 @@ export function previewLayer(game: Pieces, preview: Pieces): PreviewLayer {
   const left = [...game.keys()].filter((square) => !same(square));
   const arrived = [...preview.entries()].filter(([square]) => !same(square));
   const away = new Set<Square>();
-  const leaving = ({ color, role }: Pick<Piece, 'role' | 'color'>) =>
+  const leaving = ({ color, role }: BoardPiece) =>
     left.find(
       (at) => !away.has(at) && game.get(at)?.color === color && game.get(at)?.role === role,
     );
@@ -55,15 +52,4 @@ export function previewLayer(game: Pieces, preview: Pieces): PreviewLayer {
     return { square, from: from ?? square, piece };
   });
   return { pieces, away, taken: new Set(left.filter((square) => !away.has(square))) };
-}
-
-/**
- * How many squares right and down `square` is from the board's top left
- * corner, as seen from `orientation`'s side. (Chessground's key2pos does
- * this, but chessground ships only ES modules, which Jest can't load.)
- */
-export function squareOffset(square: Square, orientation: Color): readonly [number, number] {
-  const file = square.charCodeAt(0) - 'a'.charCodeAt(0);
-  const rank = Number(square[1]) - 1;
-  return orientation === 'white' ? [file, 7 - rank] : [7 - file, rank];
 }

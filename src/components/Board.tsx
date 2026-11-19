@@ -16,7 +16,7 @@ import type { Key, PieceNode } from '@lichess-org/chessground/types';
 import type { DOMProps } from 'expo/dom';
 import { useEffect, useEffectEvent, useMemo, useRef } from 'react';
 
-import { type Drawing, type Square, TONES } from '@/board/drawing';
+import { type Drawing, type Square, squareOffset, TONES } from '@/board/drawing';
 import { type BoardMarks, boardMarks, toneBrushes } from '@/board/marks';
 import { watchPointer } from '@/board/pointer';
 import {
@@ -25,7 +25,6 @@ import {
   type PreviewLayer,
   type PreviewPiece,
   previewLayer,
-  squareOffset,
 } from '@/board/preview';
 import type { Color } from '@/game/replay';
 import { toneColors } from '@/theme/drawingTones';
@@ -134,8 +133,8 @@ export default function Board({
     cancelAnimationFrame(frame.current);
     frame.current = requestAnimationFrame(() => {
       if (!api.current) return;
-      drawPreview(api.current, layer, orientation);
-      markPieces(api.current, marks, layer);
+      const shown = drawPreview(api.current, layer, orientation);
+      markPieces(api.current, marks, layer, shown);
     });
   });
 
@@ -245,10 +244,11 @@ const PREVIEW_TAG = 'cg-preview';
 
 /**
  * Draws the preview's pieces in their own layer, each placed by its square
- * so it follows the board's size without measuring it. A piece already drawn
- * stays, so redrawing the same preview never restarts its slide.
+ * so it follows the board's size without measuring it, and returns the
+ * layer. A piece already drawn stays, so redrawing the same preview never
+ * restarts its slide.
  */
-function drawPreview(board: Api, { pieces }: PreviewLayer, orientation: Color) {
+function drawPreview(board: Api, { pieces }: PreviewLayer, orientation: Color): HTMLElement {
   const { container, board: squares } = board.state.dom.elements;
   let layer = container.querySelector<HTMLElement>(PREVIEW_TAG);
   if (!layer) {
@@ -265,18 +265,20 @@ function drawPreview(board: Api, { pieces }: PreviewLayer, orientation: Color) {
   for (const piece of [...layer.children] as HTMLElement[]) {
     if (!wanted.delete(piece.dataset.key!)) piece.remove();
   }
-  for (const [key, { from, square, piece: drawn }] of wanted) {
+  const added = [...wanted].map(([key, { from, square, piece: drawn }]) => {
     const piece = document.createElement('piece');
     piece.className = `${drawn.color} ${drawn.role}`;
     piece.dataset.key = key;
     piece.dataset.square = square;
     place(piece, from);
     layer.appendChild(piece);
-    if (from === square) continue;
-    // Laid out where it starts, so the move to its square slides (Board.css).
-    piece.getBoundingClientRect();
-    place(piece, square);
-  }
+    return { piece, square };
+  });
+  if (!added.length) return layer;
+  // Laid out where they start, once, so the moves to their squares slide (Board.css).
+  layer.getBoundingClientRect();
+  for (const { piece, square } of added) place(piece, square);
+  return layer;
 }
 
 /**
@@ -285,8 +287,14 @@ function drawPreview(board: Api, { pieces }: PreviewLayer, orientation: Color) {
  * their elements directly (Board.css draws each look). The drawings are about
  * the position shown, so they mark the preview's pieces where it has them.
  */
-function markPieces(board: Api, { glows, unfaded }: BoardMarks, { away, taken }: PreviewLayer) {
-  const mark = (piece: HTMLElement, square: Key | undefined) => {
+function markPieces(
+  board: Api,
+  { glows, unfaded }: BoardMarks,
+  { away, taken }: PreviewLayer,
+  preview: HTMLElement,
+) {
+  // Marks `piece` by the drawings at `square`; without one it gets no look.
+  const mark = (piece: HTMLElement, square?: Key) => {
     const glow = square && glows.get(square);
     piece.classList.toggle('glow', !!glow);
     if (glow) piece.style.setProperty('--glow', glow);
@@ -300,8 +308,7 @@ function markPieces(board: Api, { glows, unfaded }: BoardMarks, { away, taken }:
     const shown = !piece.cgFading && !away.has(square) && !taken.has(square);
     mark(piece, shown ? piece.cgKey : undefined);
   }
-  const layer = board.state.dom.elements.container.querySelector(PREVIEW_TAG);
-  for (const piece of layer?.querySelectorAll<HTMLElement>('piece') ?? []) {
+  for (const piece of preview.querySelectorAll<HTMLElement>('piece')) {
     mark(piece, piece.dataset.square as Key);
   }
 }

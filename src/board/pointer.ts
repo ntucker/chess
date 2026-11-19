@@ -39,7 +39,7 @@ type PointerSource = Pick<GlobalEventHandlers, 'addEventListener' | 'removeEvent
  *
  * While a mouse button is down the hover doesn't change, so a drag never
  * starts or ends a preview halfway; the square under the mouse is reported
- * just after the button comes up, wherever that is.
+ * as the button comes up, wherever that is.
  */
 export function watchPointer<S extends string>(
   board: PointerSource,
@@ -50,16 +50,8 @@ export function watchPointer<S extends string>(
   let hovered: S | null = null;
   let pressing = false;
   let touch: Finger | undefined;
-  // Reports on release wait a turn, until chessground has handled the same
-  // release (its mouseup and touchend come after pointerup): a preview that
-  // starts or ends at once would change the position under a piece being
-  // dropped, and chessground would refuse the move. A newer hover or release
-  // replaces a mouse release's waiting report.
-  let mouseRelease: ReturnType<typeof setTimeout> | undefined;
-  let fingerRelease: ReturnType<typeof setTimeout> | undefined;
 
   const hover = (square: S | null) => {
-    clearTimeout(mouseRelease);
     if (square === hovered) return;
     hovered = square;
     report.hover(square);
@@ -67,7 +59,7 @@ export function watchPointer<S extends string>(
   const endTouch = () => {
     if (!touch) return;
     clearTimeout(touch.timer);
-    if (touch.held) fingerRelease = setTimeout(() => report.hold(null), 0);
+    if (touch.held) report.hold(null);
     touch = undefined;
   };
 
@@ -100,9 +92,7 @@ export function watchPointer<S extends string>(
     if (hovers(event.pointerType)) {
       if (!pressing) return;
       pressing = false;
-      const square = squareAt(event.clientX, event.clientY) ?? null;
-      clearTimeout(mouseRelease);
-      mouseRelease = setTimeout(() => hover(square), 0);
+      hover(squareAt(event.clientX, event.clientY) ?? null);
     } else if (touch && event.pointerId === touch.id) {
       endTouch();
     }
@@ -122,12 +112,7 @@ export function watchPointer<S extends string>(
     board.removeEventListener('pointerleave', onLeave);
     page.removeEventListener('pointerup', onUp);
     page.removeEventListener('pointercancel', onUp);
-    // Whoever listens is being torn down: waiting release reports are dropped,
-    // and a held finger's release goes out now rather than after a turn.
-    clearTimeout(mouseRelease);
-    clearTimeout(fingerRelease);
-    if (touch?.held) report.hold(null);
-    clearTimeout(touch?.timer);
-    touch = undefined;
+    // A held finger's release goes out, so whoever listens isn't left holding.
+    endTouch();
   };
 }

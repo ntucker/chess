@@ -10,11 +10,11 @@ import type { Square } from '@/board/drawing';
 import { lastMoveBadge } from '@/board/drawing';
 import type { BoardProps } from '@/components/Board';
 import type { MoveQuality } from '@/analysis/quality';
-import { type Color, lastPosition, type Position } from '@/game/replay';
+import type { Color, Position } from '@/game/replay';
 
 import { lessonDrawings, type PlaybackFrame, slidCandidate } from './drawings';
 import type { Guidance } from './guidance';
-import type { PositionKey, Uci } from './lesson';
+import type { PositionKey } from './lesson';
 import type { Candidate } from './select';
 import { shownKey } from './view';
 
@@ -24,10 +24,7 @@ interface LessonBoardInput {
   /** The game's position on the board (`LessonView.key`). */
   readonly key: PositionKey;
   readonly guidance: Guidance;
-  /** The game's moves, and how many of them the board shows. */
-  readonly moves: readonly Uci[];
-  readonly ply: number;
-  /** The game's position after `moves.slice(0, ply)`. */
+  /** The game's position on the board. */
   readonly current: Position;
   /** Whether the learner may move on `current` now, for the side to move. */
   readonly canMove: boolean;
@@ -50,8 +47,6 @@ export function lessonBoard({
   side,
   key,
   guidance,
-  moves,
-  ply,
   current,
   canMove,
   quality,
@@ -66,7 +61,7 @@ export function lessonBoard({
     movableColor: canMove && !frame ? current.turn : undefined,
     dests: frame ? {} : current.dests,
     lastMove: shown.move && [shown.move.from, shown.move.to],
-    preview: frame || !slid ? undefined : lastPosition([...moves.slice(0, ply), slid.move.uci]).fen,
+    preview: frame || !slid ? undefined : slid.next,
     drawings: frame
       ? []
       : [
@@ -78,21 +73,24 @@ export function lessonBoard({
 }
 
 /**
- * What a press on `square` does to a sliding preview: it plays the preview's
- * candidate when pressed where the preview shows its piece, unless a piece
- * was picked before the press (`selected`), whose press the board plays as
- * usual; any other press `'end'`s it. Example: previewing Bf5, a click on f5
- * plays Bf5, and a click on any other square ends the preview, so a finger,
- * which never hovers off it, gets back to the game. Without a sliding
- * preview, nothing.
+ * What a press on `square` does to a sliding preview, while the game is at
+ * `current`: a press where the preview shows its piece plays the preview's
+ * candidate, unless the board plays the press itself, as the move of a piece
+ * picked before it (`selected`), so no move is played twice. Any other press
+ * `'end'`s the preview, and the board handles it as usual. Example:
+ * previewing Bf5, a click on f5 plays Bf5, and a click on any other square
+ * ends the preview, so a finger, which never hovers off it, gets back to the
+ * game. Without a sliding preview, nothing.
  */
 export function boardPress(
   guidance: Guidance,
+  current: Position,
   canMove: boolean,
   square: Square,
   selected?: Square,
 ): Candidate | 'end' | undefined {
   const slid = slidCandidate(guidance);
   if (!slid) return undefined;
-  return canMove && !selected && slid.to === square ? slid : 'end';
+  const boardPlays = selected !== undefined && current.dests[selected]?.includes(square);
+  return canMove && !boardPlays && slid.to === square ? slid : 'end';
 }
