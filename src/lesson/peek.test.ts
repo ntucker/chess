@@ -155,8 +155,6 @@ describe('peekReducer', () => {
       [{ type: 'play', key: HERE, note: PLAN }, { type: 'stop' }],
       pointing({ candidate: ROW }),
     ],
-    ['the board moving on ends a playback', playing(), [{ type: 'board', key: THERE }], undefined],
-    ['the board staying keeps it', playing(), [{ type: 'board', key: HERE }], playing()],
   ])('%s', (_, peek, actions, expected) => {
     expect(reduce(peek, ...actions)).toEqual(expected);
   });

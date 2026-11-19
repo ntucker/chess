@@ -1,5 +1,5 @@
 import { a11yState, Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
-import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from 'react';
+import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { Uci } from '@/lesson/lesson';
@@ -11,8 +11,11 @@ import { toneColors } from '@/theme/drawingTones';
 
 interface Props {
   readonly candidates: readonly Candidate[];
-  /** Rare candidates, listed after the others only once the learner asks. */
+  /** Rare candidates, listed after the others while `rareShown`. */
   readonly rare: readonly Candidate[];
+  readonly rareShown: boolean;
+  /** The learner shows or hides the rare rows. */
+  readonly onShowRare: (shown: boolean) => void;
   /** The candidate the board draws as the main one (see `candidateDrawings`). */
   readonly main?: Candidate;
   /** The row previewed, whether its row is pointed at or its piece dragged onto its square. */
@@ -28,11 +31,10 @@ interface Props {
    */
   readonly onPoint: (uci: Uci) => void;
   /**
-   * The preview ends: keyboard focus moves on past the list, so the idea card
-   * focus lands in shows the position's own notes; or the rare row previewed
-   * is hidden.
+   * Keyboard focus moves on past the list. The preview ends first, so the
+   * idea card focus lands in shows the position's own notes.
    */
-  readonly onLeave: () => void;
+  readonly onTabOut: () => void;
 }
 
 /**
@@ -40,21 +42,22 @@ interface Props {
  * first. Pointing at a row previews its move on the board; pressing it plays
  * the move when it's the learner's to play. Each row's dot matches its arrow
  * on the board; a rare row's dot is hollow, since the board draws no arrow
- * for it. A list resets to hiding its rare rows when it remounts.
+ * for it.
  */
 export function CandidateList({
   candidates,
   rare,
+  rareShown,
+  onShowRare,
   main,
   pointed,
   leadsTo,
   playable,
   onPlay,
   onPoint,
-  onLeave,
+  onTabOut,
 }: Props) {
-  const [showRare, setShowRare] = useState(false);
-  const rows = showRare ? [...candidates, ...rare] : candidates;
+  const rows = rareShown ? [...candidates, ...rare] : candidates;
   return (
     <Surface elevation="sunken" border="subtle" radius="md" style={styles.list}>
       {rows.map((candidate, index) => (
@@ -69,19 +72,15 @@ export function CandidateList({
           playable={playable}
           onPlay={onPlay}
           onPoint={onPoint}
-          onTabOut={!rare.length && index === rows.length - 1 ? onLeave : undefined}
+          onTabOut={!rare.length && index === rows.length - 1 ? onTabOut : undefined}
         />
       ))}
       {rare.length ? (
         <RareToggle
           count={rare.length}
-          shown={showRare}
-          onToggle={() => {
-            // A hidden row's preview would stay on the board with no row to show it.
-            if (showRare && rare.some(({ move }) => move.uci === pointed)) onLeave();
-            setShowRare(!showRare);
-          }}
-          onTabOut={onLeave}
+          shown={rareShown}
+          onToggle={() => onShowRare(!rareShown)}
+          onTabOut={onTabOut}
         />
       ) : null}
     </Surface>

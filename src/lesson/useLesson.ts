@@ -22,7 +22,7 @@ import { useNeedsStockfish } from '@/stockfish/demand';
 import { boardPress, lessonBoard } from './board';
 import { ideaPlayback } from './drawings';
 import { guidance, type LessonMode, notePlayback, type PlayedBack } from './guidance';
-import type { Lesson, Note, Uci } from './lesson';
+import type { Lesson, Note, PositionKey, Uci } from './lesson';
 import { lessonOpponent } from './opponent';
 import { beforeSideMoves } from './practice';
 import { initialScreen, screenReducer } from './screen';
@@ -82,11 +82,14 @@ export function useLesson(lesson: Lesson) {
   );
   // A row that leaves the list (played, or stepped away from) never reports
   // a hover-out or blur, so a peek ends when the board moves on; otherwise
-  // stepping back would preview that row again.
-  const [{ mode: modeState, peek }, dispatch] = useReducer(screenReducer, initialScreen);
+  // stepping back would preview that row again. Shown rare rows end too, so
+  // each position's list starts with them hidden.
+  const [{ mode: modeState, peek, rareKey }, dispatch] = useReducer(screenReducer, initialScreen);
   const { mode } = modeState;
   const { key } = view;
-  if (peek && peek.key !== key) dispatch({ type: 'board', key });
+  const stale = (at?: PositionKey) => at !== undefined && at !== key;
+  if (stale(peek?.key) || stale(rareKey)) dispatch({ type: 'board', key });
+  const rareShown = rareKey === key;
   const here = peek?.key === key ? peek : undefined;
   const playing = here?.kind === 'play' ? here : undefined;
   // A playback plays in its candidate's position, wherever the pointer goes.
@@ -194,6 +197,11 @@ export function useLesson(lesson: Lesson) {
       dispatch({ type: 'modeChosen', mode, untouched: !game.started }),
     /** The note pointed at on the idea card. */
     pointedNote: shown.pointed,
+    /** The candidate list shows its rare rows (`Guidance.rare`). */
+    rareShown,
+    /** The learner shows or hides the candidate list's rare rows. */
+    showRare: (visible: boolean) =>
+      dispatch({ type: 'rare', key, shown: visible, rows: shown.rare.map(({ move }) => move.uci) }),
     /**
      * The learner points at a candidate list row. Leaving a row keeps its
      * preview, so the learner can move on to its notes; `leave` ends it.
