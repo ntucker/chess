@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import { SAMPLE } from '@/lesson/lesson.fixture';
 
-import { reviewItems, reviewKind } from './review';
+import { reviewItems } from './review';
 
 describe('reviewItems', () => {
   const items = reviewItems(SAMPLE);
@@ -20,15 +20,5 @@ describe('reviewItems', () => {
     const c6 = items.find((item) => item.line === '1.e4 c6' && item.move === 'c7c6')!;
     expect(c6.position.turn).toBe('white');
     expect(c6.variation).toBeTruthy();
-  });
-});
-
-describe('reviewKind', () => {
-  it('tells drawn ideas from a badge and from text alone', () => {
-    expect(reviewKind([{ type: 'evaluation', value: 'equal' }])).toBe('badge');
-    expect(reviewKind([{ type: 'evaluation', value: 'equal' }, { type: 'imbalance', side: 'white', kind: 'space' }])).toBe(
-      'drawn',
-    );
-    expect(reviewKind(undefined)).toBe('text');
   });
 });

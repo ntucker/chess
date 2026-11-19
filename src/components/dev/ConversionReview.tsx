@@ -9,14 +9,14 @@ import { BrowserOnly } from '@/components/BrowserOnly';
 import { Eyebrow } from '@/components/Eyebrow';
 import type { Color } from '@/game/replay';
 import { ideaDrawings } from '@/lesson/drawings';
-import type { Idea } from '@/lesson/lesson';
+import type { Idea, NoteShows } from '@/lesson/lesson';
 import { getLesson, type LessonId } from '@/resources/lesson';
 
 import { DevPage, devStyles, FramedBoard } from './DevPage';
-import { reviewItems, type ReviewItem, type ReviewKind } from './review';
+import { reviewItems, type ReviewItem } from './review';
 
 const PAGE = 12;
-const KINDS: readonly { readonly kind: ReviewKind | 'all'; readonly label: string }[] = [
+const KINDS: readonly { readonly kind: NoteShows | 'all'; readonly label: string }[] = [
   { kind: 'all', label: 'All' },
   { kind: 'drawn', label: 'Drawn' },
   { kind: 'badge', label: 'Badge only' },
@@ -57,7 +57,7 @@ export function ConversionReview({ id }: { readonly id: LessonId }) {
 function Review({ id }: { readonly id: LessonId }) {
   const lesson = useSuspense(getLesson, id);
   const items = reviewItems(lesson);
-  const [kind, setKind] = useState<ReviewKind | 'all'>('all');
+  const [kind, setKind] = useState<NoteShows | 'all'>('all');
   const [type, setType] = useState<Idea['type'] | 'any'>('any');
   const [page, setPage] = useState(0);
   const shown = items.filter(
@@ -66,7 +66,8 @@ function Review({ id }: { readonly id: LessonId }) {
       (type === 'any' || item.note.ideas?.some((idea) => idea.type === type)),
   );
   const pages = Math.max(1, Math.ceil(shown.length / PAGE));
-  const at = Math.min(page, pages - 1);
+  const counts: Record<NoteShows | 'all', number> = { all: items.length, drawn: 0, badge: 0, text: 0 };
+  for (const item of items) counts[item.kind]++;
   const choose = (change: () => void) => {
     change();
     setPage(0);
@@ -82,7 +83,7 @@ function Review({ id }: { readonly id: LessonId }) {
               variant={kind === option.kind ? 'solid' : 'soft'}
               onPress={() => choose(() => setKind(option.kind))}
             >
-              {`${option.label} (${option.kind === 'all' ? items.length : items.filter((item) => item.kind === option.kind).length})`}
+              {`${option.label} (${counts[option.kind]})`}
             </Button>
           ))}
         </Inline>
@@ -98,14 +99,14 @@ function Review({ id }: { readonly id: LessonId }) {
             </Button>
           ))}
         </Inline>
-        <Pager at={at} pages={pages} count={shown.length} onPage={setPage} />
+        <Pager at={page} pages={pages} count={shown.length} onPage={setPage} />
       </Stack>
       <View style={devStyles.grid}>
-        {shown.slice(at * PAGE, (at + 1) * PAGE).map((item) => (
+        {shown.slice(page * PAGE, (page + 1) * PAGE).map((item) => (
           <ReviewCard key={item.key} item={item} learner={lesson.side} />
         ))}
       </View>
-      <Pager at={at} pages={pages} count={shown.length} onPage={setPage} />
+      <Pager at={page} pages={pages} count={shown.length} onPage={setPage} />
     </Stack>
   );
 }

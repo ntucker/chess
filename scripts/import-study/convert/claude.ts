@@ -48,9 +48,10 @@ export function claudeCli({ learner, cacheFile, log = console.log }: Options): A
 
   return async (model, comments) => {
     const answers = new Map<string, Answer>();
+    const keys = new Map(comments.map((comment) => [comment.id, keyOf(model, comment)]));
     const asking: Comment[] = [];
     for (const comment of comments) {
-      const cached = cache.get(keyOf(model, comment));
+      const cached = cache.get(keys.get(comment.id)!);
       if (cached) answers.set(comment.id, { ...cached, id: comment.id });
       else asking.push(comment);
     }
@@ -60,15 +61,15 @@ export function claudeCli({ learner, cacheFile, log = console.log }: Options): A
     let cost = 0;
     await pool(batches, PARALLEL, async (group) => {
       try {
-        const byId = new Map(group.map((comment) => [comment.id, comment]));
         const result = await request(model, prompt, group);
         cost += result.cost;
+        const asked = new Set(group.map((comment) => comment.id));
         for (const answer of result.answers) {
-          const comment = byId.get(answer.id);
-          if (!comment) continue;
+          if (!asked.has(answer.id)) continue;
+          const key = keys.get(answer.id)!;
           answers.set(answer.id, answer);
-          cache.set(keyOf(model, comment), answer);
-          appendJsonLine(cacheFile, { key: keyOf(model, comment), answer });
+          cache.set(key, answer);
+          appendJsonLine(cacheFile, { key, answer });
         }
       } catch (error) {
         log(`convert: a request failed, its ${group.length} comments stay unconverted: ${String(error)}`);

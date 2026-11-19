@@ -9,9 +9,8 @@
  * the lesson file it writes is committed, so the site build and the tests
  * never call a model.
  */
-import { reviewKind, type ReviewKind } from '@/components/dev/review';
 import { positionKey } from '@/game/replay';
-import type { Note } from '@/lesson/lesson';
+import { noteShows, type Note, type NoteShows } from '@/lesson/lesson';
 
 import type { ChapterNotes, MoveNote, PositionNote } from '../extract';
 import type { Answer, AnswerIdea } from './answer';
@@ -26,7 +25,7 @@ export interface ConvertReport {
   /** Ideas the model wrote that the lesson keeps. */
   readonly kept: number;
   /** What each comment ends up showing: something drawn, only an evaluation badge, or text alone. */
-  readonly shows: Readonly<Record<ReviewKind, number>>;
+  readonly shows: Readonly<Record<NoteShows, number>>;
   readonly rejected: readonly { readonly idea: AnswerIdea; readonly why: string }[];
 }
 
@@ -38,14 +37,14 @@ export async function convertChapters(
   const jobs = extracted.map((chapter) =>
     chapter.moveNotes.map((moveNote) => ({ moveNote, comment: noteComment(moveNote, chapter) })),
   );
+  const all = jobs.flat();
   const comments = new Map<string, Comment>();
-  for (const { comment } of jobs.flat()) if (comment) comments.set(comment.id, comment);
+  for (const { comment } of all) if (comment) comments.set(comment.id, comment);
 
-  const first = await ask(MODELS.convert, [...comments.values()]);
   const converted = new Map<string, Converted>();
   const retry: Comment[] = [];
   const convert = (answers: Map<string, Answer>) => {
-    for (const { moveNote, comment } of jobs.flat()) {
+    for (const { moveNote, comment } of all) {
       const answer = comment && answers.get(comment.id);
       if (!answer) continue;
       const result = convertedNotes(comment, answer, moveNote.move, moveNote.note.ideas ?? []);
@@ -55,7 +54,7 @@ export async function convertChapters(
       if (!previous || result.kept > previous.kept) converted.set(comment.id, result);
     }
   };
-  convert(first);
+  convert(await ask(MODELS.convert, [...comments.values()]));
   for (const [id, result] of converted) {
     if (result.kept === 0 && result.rejected.some(({ idea }) => idea.type !== 'evaluation')) retry.push(comments.get(id)!);
   }
@@ -88,11 +87,11 @@ export async function convertChapters(
     return { ...chapter, moveNotes, positionNotes };
   });
   const results = [...converted.values()];
-  const shows: Record<ReviewKind, number> = { drawn: 0, badge: 0, text: 0 };
+  const shows: Record<NoteShows, number> = { drawn: 0, badge: 0, text: 0 };
   for (const [id, comment] of comments) {
     const result = converted.get(id);
     const notes = result ? [...result.move, ...result.before] : [];
-    shows[reviewKind([...comment.extracted, ...notes.flatMap((note) => note.ideas ?? [])])]++;
+    shows[noteShows([...comment.extracted, ...notes.flatMap((note) => note.ideas ?? [])])]++;
   }
   return {
     extracted: chapters,

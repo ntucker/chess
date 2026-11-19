@@ -6,8 +6,8 @@ import type { Chess } from 'chessops/chess';
 import { makeSanAndPlay } from 'chessops/san';
 import { parseUci } from 'chessops/util';
 
-import { parsePosition, positionKey } from '@/game/replay';
-import type { Idea, Lesson, Note, PositionKey, Uci } from '@/lesson/lesson';
+import { numberedLine, parsePosition, positionKey } from '@/game/replay';
+import { noteShows, type Lesson, type Note, type NoteShows, type PositionKey, type Uci } from '@/lesson/lesson';
 
 export interface ReviewItem {
   /** Unique within the lesson. */
@@ -20,14 +20,8 @@ export interface ReviewItem {
   readonly position: Chess;
   /** The note's move, for a note on a move. */
   readonly move?: Uci;
-  readonly kind: ReviewKind;
+  readonly kind: NoteShows;
 }
-
-/** What a note shows: something drawn on the board, only an evaluation badge, or text alone. */
-export type ReviewKind = 'drawn' | 'badge' | 'text';
-
-export const reviewKind = (ideas: readonly Idea[] = []): ReviewKind =>
-  ideas.some((idea) => idea.type !== 'evaluation') ? 'drawn' : ideas.length > 0 ? 'badge' : 'text';
 
 /** The notes of `lesson`, in the order a walk from the start first reaches their positions. */
 export function reviewItems(lesson: Lesson): ReviewItem[] {
@@ -35,7 +29,7 @@ export function reviewItems(lesson: Lesson): ReviewItem[] {
   const items: ReviewItem[] = [];
   const seen = new Set<PositionKey>([positionKey(start)]);
   const queue: { pos: Chess; sans: string[] }[] = [{ pos: start, sans: [] }];
-  for (let at = queue.shift(); at; at = queue.shift()) {
+  for (const at of queue) {
     const key = positionKey(at.pos);
     const entry = lesson.positions[key];
     if (!entry) continue;
@@ -43,12 +37,12 @@ export function reviewItems(lesson: Lesson): ReviewItem[] {
     const add = (note: Note, i: number, position: Chess, sans: string[], move?: Uci) =>
       items.push({
         key: `${key} ${move ?? ''} ${i}`,
-        line: numbered(sans),
+        line: numberedLine(sans),
         variation,
         note,
         position,
         move,
-        kind: reviewKind(note.ideas),
+        kind: noteShows(note.ideas),
       });
     entry.notes?.forEach((note, i) => add(note, i, at.pos, at.sans));
     for (const move of entry.moves) {
@@ -64,9 +58,4 @@ export function reviewItems(lesson: Lesson): ReviewItem[] {
     }
   }
   return items;
-}
-
-/** `sans` numbered from the first move: `1.e4 c6 2.d4`. */
-function numbered(sans: readonly string[]): string {
-  return sans.map((san, i) => (i % 2 === 0 ? `${i / 2 + 1}.${san}` : san)).join(' ');
 }

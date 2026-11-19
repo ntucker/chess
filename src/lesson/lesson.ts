@@ -143,6 +143,12 @@ export interface Note {
 
 export const MAX_NOTE_WORDS = 20;
 
+/** What a note shows: something drawn on the board, only an evaluation badge, or text alone. */
+export type NoteShows = 'drawn' | 'badge' | 'text';
+
+export const noteShows = (ideas: readonly Idea[] = []): NoteShows =>
+  ideas.some((idea) => idea.type !== 'evaluation') ? 'drawn' : ideas.length > 0 ? 'badge' : 'text';
+
 /**
  * Something the board can draw. An idea in a position's notes is checked in
  * that position, and one in a move's notes in the position after the move.

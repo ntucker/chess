@@ -7,9 +7,11 @@ import { createHash } from 'node:crypto';
 import type { Chess } from 'chessops/chess';
 import { makeFen } from 'chessops/fen';
 import { makeSan } from 'chessops/san';
+import { SquareSet } from 'chessops/squareSet';
 import { COLORS, ROLES, type Color } from 'chessops/types';
 import { makeSquare, roleToChar } from 'chessops/util';
 
+import { numberedLine } from '@/game/replay';
 import type { Idea } from '@/lesson/lesson';
 
 import type { ChapterNotes, MoveNote } from '../extract';
@@ -87,13 +89,10 @@ function previousComment(move: StudyMove): string {
 function lineTo(move: StudyMove): string {
   const moves: StudyMove[] = [];
   for (let at: StudyMove | undefined = move; at; at = at.parent) moves.unshift(at);
-  return moves
-    .map((at, i) => {
-      const number = Math.ceil(at.ply / 2);
-      if (at.ply % 2 === 1) return `${number}.${at.san}`;
-      return i === 0 ? `${number}...${at.san}` : at.san;
-    })
-    .join(' ');
+  return numberedLine(
+    moves.map((at) => at.san),
+    moves[0].ply,
+  );
 }
 
 /** Each side's pieces by square, like `Ke1 Qd1 Pe4`. */
@@ -112,7 +111,7 @@ function legalMoves(pos: Chess): string[] {
   const sans = new Set<string>();
   for (const [from, dests] of pos.allDests()) {
     for (const to of dests) {
-      const promotes = pos.board.getRole(from) === 'pawn' && (to >> 3 === 0 || to >> 3 === 7);
+      const promotes = pos.board.pawn.has(from) && SquareSet.backranks().has(to);
       sans.add(makeSan(pos, { from, to, ...(promotes && { promotion: 'queen' as const }) }));
     }
   }

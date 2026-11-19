@@ -59,10 +59,11 @@ export function convertedNotes(
       })
       .filter((note) => note.text);
   const before = notesAbout('before');
-  const [first, ...rest] = notesAbout('move');
+  const moves = notesAbout('move');
+  const [first, ...rest] = moves;
   const move =
     own.length === 0
-      ? [first, ...rest].filter(Boolean)
+      ? moves
       : [lessonNote(first?.text ?? noteText(comment.comment), comment.comment, [...own, ...(first?.ideas ?? [])]), ...rest];
   return { move, before, kept, rejected };
 }
@@ -98,11 +99,9 @@ class IllegalSan extends Error {}
 
 /** `san` in `pos` as UCI. */
 function uci(pos: Chess, san: string): Uci {
-  return sanToUci(pos, san) ?? fail(`${san} is not legal for ${pos.turn} here`);
-}
-
-function fail(message: string): never {
-  throw new IllegalSan(message);
+  const move = sanToUci(pos, san);
+  if (!move) throw new IllegalSan(`${san} is not legal for ${pos.turn} here`);
+  return move;
 }
 
 /** The UCI moves of `sans`, played one after another from `pos`. */
