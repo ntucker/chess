@@ -89,7 +89,10 @@ async function main() {
 }
 
 function withPopularity(lesson: Lesson): Promise<Lesson> {
-  const explorer = lichessExplorer({ token: process.env.LICHESS_TOKEN, cacheFile: join(CACHE, 'explorer.jsonl') });
+  const explorer = lichessExplorer({
+    token: process.env.LICHESS_TOKEN,
+    cacheFile: join(CACHE, 'explorer.jsonl'),
+  });
   const date = new Date().toISOString().slice(0, 10);
   return addPopularity(lesson, explorer, date, (asked) => {
     if (asked % 50 === 0) console.log(`popularity: ${asked} positions`);

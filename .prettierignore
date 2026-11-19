@@ -1,0 +1,6 @@
+# Data kept in its own compact layout, mostly written by scripts.
+assets/
+src/lesson/fixtures/
+src/maia/reference-moves.json
+# Prettier pads Markdown tables into very wide rows.
+*.md

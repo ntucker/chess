@@ -9,13 +9,19 @@ import { parseStudy } from './study';
 
 const chapters = parseStudy(STUDY_PGN, () => true);
 const lesson = mergeChapters(
-  { id: 'test', title: 'Caro-Kann', side: 'black', source: { title: 'Test', author: 'Test', url: '' } },
+  {
+    id: 'test',
+    title: 'Caro-Kann',
+    side: 'black',
+    source: { title: 'Test', author: 'Test', url: '' },
+  },
   chapters,
   chapters.map((chapter) => extractChapter(chapter, 'black')),
 );
 
 const at = (...sans: string[]) => lesson.positions[keyAfter(...sans)];
-const moves = (...sans: string[]) => at(...sans).moves.map(({ uci, book, risk }) => [uci, book ?? false, risk]);
+const moves = (...sans: string[]) =>
+  at(...sans).moves.map(({ uci, book, risk }) => [uci, book ?? false, risk]);
 
 describe('mergeChapters', () => {
   it('refuses a lesson without chapters', () => {
@@ -30,9 +36,15 @@ describe('mergeChapters', () => {
     expect(lesson.variations).toEqual({
       test: { name: 'Caro-Kann' },
       'advance-variation': { name: 'Advance Variation', parent: 'test' },
-      'advance-variation-short-variation': { name: 'Advance Variation: Short Variation', parent: 'advance-variation' },
+      'advance-variation-short-variation': {
+        name: 'Advance Variation: Short Variation',
+        parent: 'advance-variation',
+      },
       'classical-variation': { name: 'Classical Variation', parent: 'test' },
-      'classical-variation-capablanca': { name: 'Classical Variation: Capablanca', parent: 'classical-variation' },
+      'classical-variation-capablanca': {
+        name: 'Classical Variation: Capablanca',
+        parent: 'classical-variation',
+      },
     });
   });
 
@@ -58,7 +70,9 @@ describe('mergeChapters', () => {
 
   it("names a side line after where it leaves the main line, but no wider than its chapter's group", () => {
     expect(at('e4', 'c6', 'Nc3').variation).toBe('advance-variation');
-    expect(at('e4', 'c6', 'd4', 'd5', 'e5', 'Bf5', 'g4').variation).toBe('advance-variation-short-variation');
+    expect(at('e4', 'c6', 'd4', 'd5', 'e5', 'Bf5', 'g4').variation).toBe(
+      'advance-variation-short-variation',
+    );
   });
 
   it('names a transposition after the chapter whose main line reaches it', () => {
@@ -75,7 +89,9 @@ describe('mergeChapters', () => {
 
   it("keeps book replies to the opponent's side lines, but none after a dubious learner move", () => {
     expect(moves('e4', 'c6', 'd4', 'd5', 'e5', 'Bf5', 'g4')).toEqual([['f5d7', true, undefined]]);
-    expect(moves('e4', 'c6', 'd4', 'd5', 'e5', 'Bf5', 'Nf3', 'Qb6', 'Nc3')).toEqual([['e7e6', false, undefined]]);
+    expect(moves('e4', 'c6', 'd4', 'd5', 'e5', 'Bf5', 'Nf3', 'Qb6', 'Nc3')).toEqual([
+      ['e7e6', false, undefined],
+    ]);
   });
 
   it('adds sequences from comment text in the variation they leave from', () => {
@@ -87,7 +103,10 @@ describe('mergeChapters', () => {
 
   it('puts an idea about the position before a move on that position', () => {
     expect(at('e4', 'c6', 'd4', 'd5', 'e5').notes).toEqual([
-      expect.objectContaining({ text: '...Bf5, ...e6 and ...c5', ideas: [expect.objectContaining({ type: 'plan' })] }),
+      expect.objectContaining({
+        text: '...Bf5, ...e6 and ...c5',
+        ideas: [expect.objectContaining({ type: 'plan' })],
+      }),
     ]);
   });
 

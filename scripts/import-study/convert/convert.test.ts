@@ -20,14 +20,18 @@ function fakeAsk(answers: Partial<Record<Model, Record<string, AnswerNote[]>>>) 
     asked.push([model, comments.map((comment) => comment.move)]);
     const notes = answers[model] ?? {};
     return new Map(
-      comments.flatMap((comment) => (notes[comment.move] ? [[comment.id, { id: comment.id, notes: notes[comment.move] }]] : [])),
+      comments.flatMap((comment) =>
+        notes[comment.move] ? [[comment.id, { id: comment.id, notes: notes[comment.move] }]] : [],
+      ),
     );
   };
   return { ask, asked };
 }
 
-const notesOn = (chapter: Awaited<ReturnType<typeof convertChapters>>['extracted'][number], san: string) =>
-  chapter.moveNotes.filter(({ move }) => move.san === san).map(({ note }) => note);
+const notesOn = (
+  chapter: Awaited<ReturnType<typeof convertChapters>>['extracted'][number],
+  san: string,
+) => chapter.moveNotes.filter(({ move }) => move.san === san).map(({ note }) => note);
 
 describe('convertChapters', () => {
   it('rewrites a note, keeps the importer’s ideas, and turns SAN into checked UCI', async () => {
@@ -49,12 +53,20 @@ describe('convertChapters', () => {
         ],
       },
     });
-    const { extracted: [chapter], report } = await convertChapters(extracted, ask);
+    const {
+      extracted: [chapter],
+      report,
+    } = await convertChapters(extracted, ask);
     const [note] = notesOn(chapter, 'Nf3');
     expect(note.text).toBe('Develop with e6 and c5, then bring your knight to c6.');
     expect(note.original).toBe('You plan ...e6, ...c5 and ...Nc6.');
     expect(note.ideas?.map((idea) => idea.type)).toEqual(['plan', 'evaluation', 'threat']);
-    expect(note.ideas?.at(-1)).toEqual({ type: 'threat', side: 'white', move: 'f3h4', answer: 'e7e6' });
+    expect(note.ideas?.at(-1)).toEqual({
+      type: 'threat',
+      side: 'white',
+      move: 'f3h4',
+      answer: 'e7e6',
+    });
     expect(report.rejected.map(({ why }) => why)).toEqual([
       'a threat is never a move by the side to move',
       'an evaluation was already extracted',
@@ -75,9 +87,13 @@ describe('convertChapters', () => {
         ],
       },
     });
-    const { extracted: [chapter] } = await convertChapters(extracted, ask);
+    const {
+      extracted: [chapter],
+    } = await convertChapters(extracted, ask);
     const nf3 = chapter.moveNotes.find(({ move }) => move.san === 'Nf3')!.move;
-    expect(chapter.positionNotes.filter(({ pos }) => pos === nf3.before).map(({ note }) => note)).toContainEqual({
+    expect(
+      chapter.positionNotes.filter(({ pos }) => pos === nf3.before).map(({ note }) => note),
+    ).toContainEqual({
       text: 'White can bring the knight out to f3.',
       original: 'You plan ...e6, ...c5 and ...Nc6.',
       ideas: [{ type: 'purpose', from: 'g1', relation: 'controls', targets: ['f3'] }],
@@ -86,13 +102,27 @@ describe('convertChapters', () => {
 
   it('asks Opus again when every idea was refused, and keeps the answer with more ideas', async () => {
     const wrong: AnswerNote[] = [
-      { about: 'move', text: 'Your bishop hits e4.', ideas: [{ type: 'purpose', from: 'c8', relation: 'attacks', targets: ['e4'] }] },
+      {
+        about: 'move',
+        text: 'Your bishop hits e4.',
+        ideas: [{ type: 'purpose', from: 'c8', relation: 'attacks', targets: ['e4'] }],
+      },
     ];
     const right: AnswerNote[] = [
-      { about: 'move', text: 'Your bishop eyes the c2 pawn.', ideas: [{ type: 'purpose', from: 'f5', relation: 'attacks', targets: ['c2'] }] },
+      {
+        about: 'move',
+        text: 'Your bishop eyes the c2 pawn.',
+        ideas: [{ type: 'purpose', from: 'f5', relation: 'attacks', targets: ['c2'] }],
+      },
     ];
-    const { ask, asked } = fakeAsk({ [MODELS.convert]: { Be2: wrong }, [MODELS.retry]: { Be2: right } });
-    const { extracted: [chapter], report } = await convertChapters(extracted, ask);
+    const { ask, asked } = fakeAsk({
+      [MODELS.convert]: { Be2: wrong },
+      [MODELS.retry]: { Be2: right },
+    });
+    const {
+      extracted: [chapter],
+      report,
+    } = await convertChapters(extracted, ask);
     expect(asked.at(-1)).toEqual([MODELS.retry, ['Be2']]);
     expect(report.retried).toBe(1);
     expect(notesOn(chapter, 'Be2')[0].text).toBe('Your bishop eyes the c2 pawn.');
@@ -100,14 +130,19 @@ describe('convertChapters', () => {
 
   it('keeps the importer’s note where the model gave no answer', async () => {
     const { ask } = fakeAsk({});
-    const { extracted: [chapter], report } = await convertChapters(extracted, ask);
+    const {
+      extracted: [chapter],
+      report,
+    } = await convertChapters(extracted, ask);
     expect(chapter.moveNotes).toEqual(extracted[0].moveNotes);
     expect(report.unconverted).toBe(report.comments);
   });
 
   it('keeps the importer’s note when the answer has no note at all', async () => {
     const { ask } = fakeAsk({ [MODELS.convert]: { Be2: [] } });
-    const { extracted: [chapter] } = await convertChapters(extracted, ask);
+    const {
+      extracted: [chapter],
+    } = await convertChapters(extracted, ask);
     expect(notesOn(chapter, 'Be2')).toEqual(notesOn(extracted[0], 'Be2'));
   });
 
@@ -126,16 +161,27 @@ describe('convertChapters', () => {
         ],
       },
     });
-    const { extracted: [chapter] } = await convertChapters(chapters, ask);
-    const before = chapter.positionNotes.filter(({ pos }) => positionKey(pos) === positionKey(e6.before));
-    expect(before.map(({ note }) => note.text)).toEqual(['Grabbing b2 with the queen here gets her chased.']);
+    const {
+      extracted: [chapter],
+    } = await convertChapters(chapters, ask);
+    const before = chapter.positionNotes.filter(
+      ({ pos }) => positionKey(pos) === positionKey(e6.before),
+    );
+    expect(before.map(({ note }) => note.text)).toEqual([
+      'Grabbing b2 with the queen here gets her chased.',
+    ]);
     expect(before[0].note.ideas?.map((idea) => idea.type)).toEqual(['trap']);
   });
 
   it('cuts a sentence over the word limit', async () => {
-    const long = 'one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty twentyone.';
-    const { ask } = fakeAsk({ [MODELS.convert]: { Be2: [{ about: 'move', text: long, ideas: [] }] } });
-    const { extracted: [chapter] } = await convertChapters(extracted, ask);
+    const long =
+      'one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty twentyone.';
+    const { ask } = fakeAsk({
+      [MODELS.convert]: { Be2: [{ about: 'move', text: long, ideas: [] }] },
+    });
+    const {
+      extracted: [chapter],
+    } = await convertChapters(extracted, ask);
     expect(notesOn(chapter, 'Be2')[0].text.split(' ')).toHaveLength(20);
   });
 });
@@ -149,20 +195,32 @@ describe('noteComment', () => {
   };
 
   it('joins a fragment starting with "..." to the comment before it', () => {
-    const comment = commentOn('1. e4 { White takes the centre. } 1... c6 2. d4 { ...and builds a big one. } *', 'd4');
+    const comment = commentOn(
+      '1. e4 { White takes the centre. } 1... c6 2. d4 { ...and builds a big one. } *',
+      'd4',
+    );
     expect(comment?.comment).toBe('White takes the centre. ...and builds a big one.');
     expect(comment?.previousComment).toBe('');
   });
 
   it('leaves a comment that starts with a move alone', () => {
-    const comment = commentOn('1. e4 { White takes the centre. } 1... c6 2. d4 { ...d5 is the answer. } *', 'd4');
+    const comment = commentOn(
+      '1. e4 { White takes the centre. } 1... c6 2. d4 { ...d5 is the answer. } *',
+      'd4',
+    );
     expect(comment?.comment).toBe('...d5 is the answer.');
     expect(comment?.previousComment).toBe('White takes the centre.');
   });
 
   it('gives the position: the line, whose turn, the pieces and the legal moves', () => {
     const comment = commentOn('1. e4 c6 2. d4 { The centre. } *', 'd4')!;
-    expect(comment).toMatchObject({ line: '1.e4 c6 2.d4', move: 'd4', moved: 'white', toMove: 'black', check: false });
+    expect(comment).toMatchObject({
+      line: '1.e4 c6 2.d4',
+      move: 'd4',
+      moved: 'white',
+      toMove: 'black',
+      check: false,
+    });
     expect(comment.piecesAfter.white).toContain('Pd4');
     expect(comment.legalAfter).toContain('d5');
   });

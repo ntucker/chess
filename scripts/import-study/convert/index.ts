@@ -41,7 +41,10 @@ export async function convertChapters(
   ask: Ask,
 ): Promise<{ extracted: ChapterNotes[]; report: ConvertReport }> {
   const jobs = extracted.map((chapter) =>
-    chapter.moveNotes.map((moveNote): Job => ({ moveNote, comment: noteComment(moveNote, chapter) })),
+    chapter.moveNotes.map((moveNote): Job => ({
+      moveNote,
+      comment: noteComment(moveNote, chapter),
+    })),
   );
   const comments = new Map<string, Comment>();
   for (const { comment } of jobs.flat()) if (comment) comments.set(comment.id, comment);
@@ -74,7 +77,9 @@ async function convertComments(
     }
   };
   keepBetter(await ask(MODELS.convert, [...comments.values()]));
-  const retry = [...converted].filter(([, result]) => allRefused(result)).map(([id]) => comments.get(id)!);
+  const retry = [...converted]
+    .filter(([, result]) => allRefused(result))
+    .map(([id]) => comments.get(id)!);
   if (retry.length > 0) keepBetter(await ask(MODELS.retry, retry));
   return { converted, retried: retry.length };
 }
@@ -107,7 +112,9 @@ function convertedChapter(
     const [first, ...rest] = result.before;
     if (!first) continue;
     const key = positionKey(move.before);
-    const own = chapter.positionNotes.filter((other) => other.source === source && positionKey(other.pos) === key);
+    const own = chapter.positionNotes.filter(
+      (other) => other.source === source && positionKey(other.pos) === key,
+    );
     for (const other of own) joined.add(other);
     const ideas = [...own.flatMap((other) => other.note.ideas ?? []), ...(first.ideas ?? [])];
     const note: Note = { ...first, ...(ideas.length > 0 && { ideas }) };
@@ -140,17 +147,29 @@ function convertedReport(
 }
 
 /** `report` as lines for the person running the import. */
-export function convertReport({ comments, unconverted, retried, kept, shows, rejected }: ConvertReport): string {
+export function convertReport({
+  comments,
+  unconverted,
+  retried,
+  kept,
+  shows,
+  rejected,
+}: ConvertReport): string {
   const why: Record<string, number> = {};
   for (const { idea, why: reason } of rejected) {
     const key = `${idea.type}: ${reason.replace(/[a-h][1-8]|\d+|[KQRBN]?[a-h]?x?[a-h][1-8][+#]?/g, '#')}`;
     why[key] = (why[key] ?? 0) + 1;
   }
-  const top = Object.entries(why).sort(([, a], [, b]) => b - a).slice(0, 15);
+  const top = Object.entries(why)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 15);
   return [
     `converted comments: ${comments - unconverted} of ${comments} (${retried} asked again of ${MODELS.retry})`,
     `comments shown as: ${Object.entries(shows)
-      .map(([kind, count]) => `${kind} ${count} (${Math.round((100 * count) / Math.max(1, comments))}%)`)
+      .map(
+        ([kind, count]) =>
+          `${kind} ${count} (${Math.round((100 * count) / Math.max(1, comments))}%)`,
+      )
       .join(', ')}`,
     `AI ideas kept: ${kept}, dropped: ${rejected.length}`,
     ...top.map(([reason, count]) => `  ${count} ${reason}`),

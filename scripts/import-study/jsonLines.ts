@@ -2,7 +2,15 @@
  * The importer's caches: one JSON value per line, appended as answers arrive,
  * so a stopped run keeps what it already fetched.
  */
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, truncateSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  truncateSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname } from 'node:path';
 
 /** Every value in `file`. A last line a stopped run left half-written is cut off. */
