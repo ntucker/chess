@@ -21,10 +21,10 @@ import { shownKey } from './view';
 interface LessonBoardInput {
   /** The learner's side, at the bottom of the board. */
   readonly side: Color;
-  /** The game's position on the board (`LessonView.key`). */
+  /** The game's position on the board (`LessonView.key`), as guidance's drawings name it. */
   readonly key: PositionKey;
   readonly guidance: Guidance;
-  /** The game's position on the board. */
+  /** The same position played out: its FEN, turn and legal moves. */
   readonly current: Position;
   /** Whether the learner may move on `current` now, for the side to move. */
   readonly canMove: boolean;

@@ -43,7 +43,8 @@ export interface BoardProps {
    * A position to show over `fen` without playing it, like a move pointed at
    * before it's played: the pieces that differ slide to where it has them,
    * leaving a ghost where they stood (src/board/preview.ts). The board under
-   * it stays `fen`'s, so presses and drags still play on the game.
+   * it stays `fen`'s, so presses and drags still play on the game. Only its
+   * piece placement is read, so a FEN without move counters will do.
    */
   readonly preview?: string;
   /**
@@ -133,8 +134,8 @@ export default function Board({
     cancelAnimationFrame(frame.current);
     frame.current = requestAnimationFrame(() => {
       if (!api.current) return;
-      const shown = drawPreview(api.current, layer, orientation);
-      markPieces(api.current, marks, layer, shown);
+      const previewElement = drawPreview(api.current, layer, orientation);
+      markPieces(api.current, marks, layer, previewElement);
     });
   });
 
@@ -217,6 +218,8 @@ export default function Board({
     const played = shownPreview.current !== undefined && sameBoard(shownPreview.current, fen);
     setBoard({ ...position, animation: { enabled: !played } });
   }, [position, fen]);
+  // Declared after the effect above, which runs first, so it still reads the
+  // preview of the render before.
   useEffect(() => {
     shownPreview.current = preview;
   }, [preview]);
@@ -278,15 +281,16 @@ function drawPreview(board: Api, { pieces }: PreviewLayer, orientation: Color): 
   for (const piece of [...layer.children] as HTMLElement[]) {
     if (!wanted.delete(piece.dataset.key!)) piece.remove();
   }
-  const added = [...wanted].map(([key, { from, square, piece: drawn }]) => {
+  const added: { piece: HTMLElement; square: Square }[] = [];
+  for (const [key, { from, square, piece: drawn }] of wanted) {
     const piece = document.createElement('piece');
     piece.className = `${drawn.color} ${drawn.role}`;
     piece.dataset.key = key;
     piece.dataset.square = square;
     place(piece, from);
     layer.appendChild(piece);
-    return { piece, square };
-  });
+    added.push({ piece, square });
+  }
   if (!added.length) return layer;
   // Laid out where they start, once, so the moves to their squares slide (Board.css).
   layer.getBoundingClientRect();
