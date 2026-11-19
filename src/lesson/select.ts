@@ -75,8 +75,10 @@ export function candidates(
   const total = guide.entry.moves.reduce((sum, move) => sum + (count(move) ?? 0), 0);
   const rows = guide.entry.moves.map((move): Candidate => {
     const after = pos.clone();
-    // checkLesson proves every guide move legal.
-    const { san, from, to } = playMove(after, move.uci)!;
+    const played = playMove(after, move.uci);
+    // checkLesson proves every guide move legal, so this is a broken file.
+    if (!played) throw new Error(`Guide move ${move.uci} is illegal in ${key}`);
+    const { san, from, to } = played;
     const next = positionKey(after);
     const games = count(move);
     return {

@@ -11,7 +11,7 @@ import {
   uciLine,
   withMoves,
 } from './lesson.fixture';
-import { lineKeys } from './select';
+import { guideMove, lineKeys } from './select';
 import { lessonView, type Pointer, preview } from './view';
 
 describe('lessonView', () => {
@@ -34,7 +34,7 @@ describe('lessonView', () => {
 
   it('shows the notes of the move that led here, then those of the position', () => {
     const keys = lineKeys(uciLine(...ADVANCE));
-    const e5 = SAMPLE.positions[keys[4]].moves.find(({ uci }) => uci === 'e4e5')!;
+    const e5 = guideMove(SAMPLE, keys[4], 'e4e5')!;
     expect(view(ADVANCE).notes).toEqual([
       ...e5.notes!.map((note) => ({ note, before: keys[4], after: keys[5] })),
       ...SAMPLE.positions[keys[5]].notes!.map((note) => ({ note, after: keys[5] })),

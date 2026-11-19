@@ -12,7 +12,8 @@
  * - Traps: with "show traps" on, a trap's sequence is drawn before the
  *   learner commits; off, it isn't. A trap fallen into is shown either way.
  *
- * guidance stays in lesson terms; drawings.ts turns it into board shapes.
+ * guidance stays in lesson terms; piece D's lessonDrawings (planned for
+ * src/lesson/drawings.ts) turns it into board shapes.
  */
 import { type Idea, ideaPosition, type PositionKey, type Uci } from './lesson';
 import type { Candidate } from './select';
@@ -89,6 +90,7 @@ export function guidance({ view, mode, switches, preview, engine }: GuidanceInpu
     ideas: notes.flatMap((shown) =>
       (shown.note.ideas ?? [])
         .filter(drawn)
+        // checkIdea refuses `at: 'before'` on a position's note, so every idea has a position.
         .map((idea) => ({ idea, at: ideaPosition(idea, shown)! })),
     ),
     best: view.candidates.some(({ move }) => move.uci === best) ? undefined : best,

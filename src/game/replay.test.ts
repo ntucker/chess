@@ -1,8 +1,34 @@
 import { describe, expect, it } from '@jest/globals';
 
+import { Chess } from 'chessops/chess';
 import { INITIAL_FEN } from 'chessops/fen';
 
-import { analyze, lastPosition, lineMove, pieceAt, replay, toUci } from './replay';
+import {
+  analyze,
+  lastPosition,
+  lineMove,
+  pieceAt,
+  playMove,
+  positionKey,
+  replay,
+  toUci,
+} from './replay';
+
+describe('playMove', () => {
+  it('plays a legal move and describes it', () => {
+    const pos = Chess.default();
+    expect(playMove(pos, 'g1f3')).toEqual({ uci: 'g1f3', san: 'Nf3', from: 'g1', to: 'f3' });
+    expect(pos.turn).toBe('black');
+  });
+
+  it('plays nothing for an illegal or unreadable move', () => {
+    const pos = Chess.default();
+    const before = positionKey(pos);
+    expect(playMove(pos, 'e2e5')).toBeUndefined();
+    expect(playMove(pos, 'nonsense')).toBeUndefined();
+    expect(positionKey(pos)).toBe(before);
+  });
+});
 
 describe('replay', () => {
   it('returns a position per move, with SAN', () => {
