@@ -28,7 +28,7 @@ interface Props {
   readonly pointed?: Note;
   /** The learner points at a note that draws on the board. */
   readonly onPoint: (note: Note) => void;
-  /** The pointer leaves a note. */
+  /** The learner lets a note go: the mouse leaves it, or a second tap. */
   readonly onLeave: (note: Note) => void;
 }
 
@@ -120,14 +120,6 @@ function NoteView({
         // Whether lit or not: a switch may hide the ideas of the note pointed at.
         if (hovers(nativeEvent.pointerType)) onLeave(note);
       }}
-      // On a touch screen a tap points at the note, and another tap lets it go,
-      // so the candidates' arrows come back; a tap on its buttons counts too.
-      // A scroll cancels the pointer, so it points at nothing.
-      onPointerUp={({ nativeEvent }) => {
-        if (hovers(nativeEvent.pointerType)) return;
-        if (pointed) onLeave(note);
-        else point();
-      }}
       // Keyboard focus on its buttons points at it too; the panel ends it.
       onFocus={point}
       style={[
@@ -144,18 +136,35 @@ function NoteView({
           : { borderColor: color.tones.accent.solid },
       ]}
     >
-      {drawn || verdict ? (
-        <View style={styles.heading}>
-          {drawn ? <KindTag label={KINDS[drawn.type]} tone={ideaTone(drawn, learner)} /> : <View />}
-          {verdict ? <Verdict value={verdict} /> : null}
-        </View>
-      ) : null}
-      <Text role="body">{note.text}</Text>
-      {more && original ? (
-        <Text role="bodySm" tone="secondary">
-          {original}
-        </Text>
-      ) : null}
+      <Stack
+        gap="2"
+        // On a touch screen a tap on the note's words points at it, and another
+        // lets it go, so the candidates' arrows come back. Its buttons don't
+        // toggle it, so Play keeps the pointing it started from. A scroll
+        // cancels the pointer, so it points at nothing.
+        onPointerUp={({ nativeEvent }) => {
+          if (hovers(nativeEvent.pointerType)) return;
+          if (pointed) onLeave(note);
+          else point();
+        }}
+      >
+        {drawn || verdict ? (
+          <View style={styles.heading}>
+            {drawn ? (
+              <KindTag label={KINDS[drawn.type]} tone={ideaTone(drawn, learner)} />
+            ) : (
+              <View />
+            )}
+            {verdict ? <Verdict value={verdict} /> : null}
+          </View>
+        ) : null}
+        <Text role="body">{note.text}</Text>
+        {more && original ? (
+          <Text role="bodySm" tone="secondary">
+            {original}
+          </Text>
+        ) : null}
+      </Stack>
       {original || playable ? (
         <View style={styles.actions}>
           {playing ? (

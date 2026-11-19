@@ -174,7 +174,7 @@ export function useLesson(lesson: Lesson) {
     pointRow: (uci: Uci) => dispatch({ type: 'candidate', key, candidate: { at: 'row', uci } }),
     /** The learner points at a note on the idea card, or at none. */
     pointNote: (note: Note | undefined) => dispatch({ type: 'note', key, note }),
-    /** The pointer leaves a note on the idea card. */
+    /** The learner lets a note on the idea card go: the mouse leaves it, or a second tap. */
     leaveNote: (note: Note) => dispatch({ type: 'leaveNote', key, note }),
     /** The learner leaves the candidates and the idea card: their previews end. */
     leave: () => dispatch({ type: 'leave' }),

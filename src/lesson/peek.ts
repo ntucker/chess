@@ -39,9 +39,10 @@ export type PeekAction =
   /** The learner points at a note on the idea card, or at none. */
   | { readonly type: 'note'; readonly key: PositionKey; readonly note?: Note }
   /**
-   * The pointer leaves `note` on the idea card: it is no longer pointed at,
-   * if it was, even while a switch hides its ideas. Another note pointed at by
-   * keyboard focus stays.
+   * The learner lets `note` on the idea card go (the mouse leaves it, or a
+   * second tap on a touch screen): it is no longer pointed at, if it was,
+   * even while a switch hides its ideas. Another note pointed at by keyboard
+   * focus stays.
    */
   | { readonly type: 'leaveNote'; readonly key: PositionKey; readonly note: Note }
   /** The learner leaves the candidates and the idea card. A playback goes on. */
