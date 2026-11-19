@@ -9,7 +9,7 @@ import { getEvaluation } from './evaluation';
 import { fetchOpponentMove } from './opponent';
 
 // Maia runs on a worklet runtime, which Jest doesn't have, so it's scripted.
-jest.mock('@/maia/engine', () => ({ maiaMove: jest.fn(), maiaEvaluation: jest.fn() }));
+jest.mock('@/maia/engine', () => ({ maiaMove: jest.fn() }));
 
 const newStore = () =>
   prepareStore(initialState, () => [new NetworkManager()], Controller).controller;

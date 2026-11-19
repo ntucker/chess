@@ -42,20 +42,20 @@ export function useGame(opponent: GameOpponent) {
   // The state as last rendered, which the opponent's reply applies to: it arrives
   // after renders that the request that asked for it didn't see.
   const rendered = useRef(state);
-  const renderedOpponent = useRef(opponent.id);
   useLayoutEffect(() => {
     rendered.current = state;
-    renderedOpponent.current = opponent.id;
   });
+  // Counts requests to the opponent. Only the latest may answer: an earlier
+  // one asked about moves since replaced, or an opponent since replaced.
+  const asks = useRef(0);
 
   /** Asks the opponent to answer `after`, the moves of game `game`. */
   const ask = async (game: number, after: readonly string[]) => {
-    const { id, reply } = opponent;
-    /** Whether a different opponent took over, and was asked in turn. */
-    const replaced = () => renderedOpponent.current !== id;
+    const ask = ++asks.current;
+    const replaced = () => ask !== asks.current;
     try {
       const [uci] = await Promise.all([
-        reply(after),
+        opponent.reply(after),
         new Promise((resolve) => setTimeout(resolve, THINKING_MS)),
       ]);
       if (!replaced()) act({ type: 'reply', game, after, uci });
