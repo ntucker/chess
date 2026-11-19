@@ -88,16 +88,19 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
         : undefined,
   });
 
+  const line = view.variation.at(-1);
   const leadsTo = (candidate: Candidate) => {
     if (candidate.variation === undefined) return 'Leaves the guide';
     const into = lesson.variations[candidate.variation];
-    return into === view.variation.at(-1) ? undefined : into.name;
+    return into === line ? undefined : into.name;
   };
 
   return (
     <Stage
       title={`${lesson.title} · Opening Night`}
-      place={view.variation.at(-1)?.name ?? lesson.title}
+      // Only the latest line's name: on a phone the path won't fit, and a
+      // line's name already starts with its parent's ("Advance Variation: Tal…").
+      place={line?.name ?? lesson.title}
       board={
         <BoardColumn
           game={game}

@@ -35,7 +35,10 @@ interface HeadlineProps {
   readonly detail: string;
   /** The opponent `who` didn't answer, and `onRetry` asks it again. */
   readonly failure?: { readonly who: string; readonly onRetry: () => void };
-  /** The header shows the eyebrow on a phone (Stage's `place`), so the headline leaves it out there. */
+  /**
+   * The header names the line on a phone (Stage's `place`), so the headline
+   * leaves its eyebrow out there.
+   */
   readonly eyebrowInHeader?: boolean;
 }
 
@@ -49,9 +52,13 @@ export function StatusHeadline({
 }: HeadlineProps) {
   return (
     <Stack gap="2">
-      <View {...(eyebrowInHeader ? phonePart('in-header') : {})}>
+      {eyebrowInHeader ? (
+        <View {...phonePart('in-header')}>
+          <Eyebrow>{eyebrow}</Eyebrow>
+        </View>
+      ) : (
         <Eyebrow>{eyebrow}</Eyebrow>
-      </View>
+      )}
       <Text role="headingLg" accessibilityRole="header" accessibilityLiveRegion="polite">
         {title}
       </Text>

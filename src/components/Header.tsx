@@ -15,11 +15,13 @@ interface Props {
 
 /**
  * The wordmark (the logo, the name in the display serif, and the tagline),
- * with a link to the source at the far end. On a phone it's one slim row: a
- * smaller logo, the page's `place` (or the name, when there is none), and no
- * tagline.
+ * with a link to the source at the far end. On a phone-width web page it's
+ * one slim row: a smaller logo, the page's `place` (or the name, when there
+ * is none), and no tagline.
  */
-export function Header({ place }: Props) {
+export function Header({ place: shownPlace }: Props) {
+  // Only phone.css shows it, so a native app keeps the name.
+  const place = process.env.EXPO_OS === 'web' ? shownPlace : undefined;
   return (
     <Inline gap="2" align="center" justify="between" wrap="nowrap">
       <Inline gap="3" align="center" wrap="nowrap" style={styles.brand}>

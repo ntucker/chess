@@ -8,7 +8,7 @@ import { PHONE_LENGTHS, PHONE_PARTS, phoneLength } from './phone';
 jest.mock('./phone.css', () => ({}));
 
 describe('phone.css', () => {
-  // Everything in it sits inside the phone-width media query.
+  // The phone rules sit inside the phone-width media query.
   const css = readFileSync(join(__dirname, 'phone.css'), 'utf8');
   const start = css.indexOf('@media (max-width:');
   const phone = css.slice(start);
@@ -23,6 +23,12 @@ describe('phone.css', () => {
 
   it.each(PHONE_PARTS)('lays out the %s', (part) => {
     expect(phone).toContain(`[data-phone='${part}']`);
+  });
+
+  it('gives the panel a floor, so the page scrolls rather than squeeze it to nothing', () => {
+    const program = phone.slice(phone.indexOf("[data-phone='program']"));
+    expect(program).toMatch(/min-height: [1-9]\d*px;/);
+    expect(phone).toMatch(/\[data-phone='page'\] \{\s*min-height: 100dvh;/);
   });
 });
 
