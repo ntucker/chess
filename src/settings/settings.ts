@@ -1,5 +1,5 @@
 import { EVALUATION_ENGINES, type EvaluationEngine } from '@/evaluation/evaluation';
-import { DEFAULT_OPPONENT, type Opponent, OPPONENTS } from '@/opponent/opponent';
+import { type Opponent, OPPONENTS } from '@/opponent/opponent';
 
 /** What the learner chose, remembered on the device as one object. */
 export interface Settings {
@@ -11,7 +11,8 @@ export interface Settings {
 
 /** The settings before the learner chooses, which the pre-rendered page shows. */
 export const DEFAULT_SETTINGS: Settings = {
-  opponent: DEFAULT_OPPONENT,
+  // Maia at club level.
+  opponent: 1500,
   evaluationEngine: 'stockfish',
 };
 

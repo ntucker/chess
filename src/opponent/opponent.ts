@@ -13,9 +13,6 @@ export const OPPONENTS: readonly Opponent[] = [...MAIA_RATINGS, 'stockfish'];
 /** The opponents the footnote offers: Beginner, Club and Advanced Maia, then Stockfish. */
 export const OPPONENT_PRESETS: readonly Opponent[] = [1100, 1500, 1900, 'stockfish'];
 
-/** Who the learner plays until they choose: Maia at club level. */
-export const DEFAULT_OPPONENT: Opponent = 1500;
-
 /**
  * How `opponent` is shown: its name, its step on the difficulty ladder, a few
  * words for its name plate, and one sentence on how it plays.
