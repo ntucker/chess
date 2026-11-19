@@ -39,7 +39,12 @@ export function Header({ place }: Props) {
           Opening Night
         </Text>
         {shownPlace ? (
-          <Text {...narrowPart('narrow-only')} role="heading" numberOfLines={1} style={styles.place}>
+          <Text
+            {...narrowPart('narrow-only')}
+            role="heading"
+            numberOfLines={1}
+            style={styles.place}
+          >
             {shownPlace}
           </Text>
         ) : null}
