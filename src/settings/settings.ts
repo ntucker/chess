@@ -30,13 +30,15 @@ export function settingsReducer(settings: Settings, action: SettingsAction): Set
   }
 }
 
+/** The settings saved as `text` (JSON), read as settingsFrom does. */
+export const parseSettings = (text: string) => settingsFrom(parseObject(text));
+
 /**
- * The settings saved as `text` (JSON). A value that is missing, or no longer
- * one of its choices, reads as its default, so a setting added or removed
- * later keeps the rest.
+ * The settings in `stored`. A value that is missing, or no longer one of its
+ * choices, reads as its default, so a setting added or removed later keeps
+ * the rest.
  */
-export function parseSettings(text: string): Settings {
-  const stored = parseObject(text);
+export function settingsFrom(stored: Partial<Record<keyof Settings, unknown>>): Settings {
   return {
     opponent: oneOf(OPPONENTS, stored.opponent) ?? DEFAULT_SETTINGS.opponent,
     evaluationEngine:

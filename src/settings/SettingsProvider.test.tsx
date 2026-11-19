@@ -1,14 +1,17 @@
-import { beforeEach, describe, expect, it } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { act } from 'react';
-import { createRoot } from 'test-renderer';
+import { createRoot, type Root } from 'test-renderer';
 
 import type { Settings } from './settings';
 import { SettingsProvider, useSettings, useSettingsDispatch } from './SettingsProvider';
 
-// Jest runs as native (EXPO_OS is 'ios'), where the first render already has
-// the remembered settings. The web's load after hydration is checked in the
-// browser.
+// Babel builds process.env.EXPO_OS in, and Jest builds for iOS, so these run
+// the native path: the first render already has the remembered settings. The
+// web path (defaults first, then the remembered settings once the page
+// starts) is checked in the browser.
 let stored: Record<string, string>;
+let root: Root | undefined;
+
 beforeEach(() => {
   stored = {};
   Object.defineProperty(globalThis, 'localStorage', {
@@ -21,6 +24,11 @@ beforeEach(() => {
     },
   });
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+});
+
+afterEach(async () => {
+  await act(async () => root?.unmount());
+  root = undefined;
 });
 
 /** Renders the provider, and answers every settings value its child rendered with. */
@@ -36,7 +44,8 @@ async function renderSettings(choose?: Partial<Settings>) {
     return null;
   }
   await act(async () => {
-    createRoot().render(
+    root = createRoot();
+    root.render(
       <SettingsProvider>
         <Child />
       </SettingsProvider>,
@@ -48,17 +57,20 @@ async function renderSettings(choose?: Partial<Settings>) {
 describe('SettingsProvider', () => {
   it('renders the remembered settings from the first frame on native', async () => {
     stored.settings = JSON.stringify({ opponent: 1900, evaluationEngine: 'maia' });
-    expect(await renderSettings()).toEqual([{ opponent: 1900, evaluationEngine: 'maia' }]);
+    const seen = await renderSettings();
+    expect(seen[0]).toEqual({ opponent: 1900, evaluationEngine: 'maia' });
   });
 
   it('reads the evaluation engine saved before settings were one object', async () => {
     stored.evaluationEngine = 'maia';
-    expect((await renderSettings())[0]).toEqual({ opponent: 1500, evaluationEngine: 'maia' });
+    const seen = await renderSettings();
+    expect(seen[0]).toEqual({ opponent: 1500, evaluationEngine: 'maia' });
   });
 
   it('saves a choice, and nothing before one', async () => {
     await renderSettings();
     expect(stored).toEqual({});
+    await act(async () => root?.unmount());
     await renderSettings({ opponent: 'stockfish' });
     expect(JSON.parse(stored.settings)).toEqual({
       opponent: 'stockfish',

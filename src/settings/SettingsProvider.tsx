@@ -10,6 +10,7 @@ import {
 import {
   DEFAULT_SETTINGS,
   parseSettings,
+  settingsFrom,
   type Settings,
   type SettingsAction,
   settingsReducer,
@@ -39,13 +40,13 @@ const DispatchContext = createContext<Dispatch<SettingsAction> | null>(null);
  */
 export function SettingsProvider({ children }: { readonly children: ReactNode }) {
   const [settings, dispatch] = useReducer(settingsReducer, undefined, () =>
-    NATIVE ? loadSettings() : DEFAULT_SETTINGS,
+    (NATIVE && loadSettings()) || DEFAULT_SETTINGS,
   );
 
   useEffect(() => {
     if (NATIVE) return;
     const remembered = loadSettings();
-    if (remembered !== DEFAULT_SETTINGS) dispatch({ type: 'loaded', settings: remembered });
+    if (remembered) dispatch({ type: 'loaded', settings: remembered });
   }, []);
 
   useEffect(() => {
@@ -62,27 +63,28 @@ export function SettingsProvider({ children }: { readonly children: ReactNode })
   );
 }
 
-/** The learner's settings. */
-export const useSettings = () => provided(use(SettingsContext));
+/** The learner's settings. Throws outside SettingsProvider. */
+export const useSettings = () => requireProvider(use(SettingsContext));
 
-/** Changes settings: `dispatch({ type: 'chosen', choice: { opponent: 1900 } })`. */
-export const useSettingsDispatch = () => provided(use(DispatchContext));
+/**
+ * Changes settings: `dispatch({ type: 'chosen', choice: { opponent: 1900 } })`.
+ * Throws outside SettingsProvider.
+ */
+export const useSettingsDispatch = () => requireProvider(use(DispatchContext));
 
-function provided<T>(value: T | null): T {
+function requireProvider<T>(value: T | null): T {
   if (value === null) {
     throw new Error('Settings are read inside SettingsProvider (src/app/_layout.tsx)');
   }
   return value;
 }
 
-/** The remembered settings, or DEFAULT_SETTINGS itself when none are. */
-function loadSettings(): Settings {
+/** The remembered settings, or undefined when nothing is remembered. */
+function loadSettings(): Settings | undefined {
   const stored = readStorage(KEY);
   if (stored != null) return parseSettings(stored);
   const evaluationEngine = readStorage(LEGACY_EVALUATION_ENGINE_KEY);
-  return evaluationEngine == null
-    ? DEFAULT_SETTINGS
-    : parseSettings(JSON.stringify({ evaluationEngine }));
+  return evaluationEngine == null ? undefined : settingsFrom({ evaluationEngine });
 }
 
 function readStorage(key: string) {
