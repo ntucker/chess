@@ -86,8 +86,8 @@ export function useLesson(lesson: Lesson) {
     view,
     guidance: shown,
     board: boardProps,
-    /** Whether the learner may play `candidate` now. */
-    canPlay: (candidate: Candidate) => canMove && candidate.piece.color === lesson.side,
+    /** Whether the learner may play the candidates now (they are the side to move's). */
+    canPlay: canMove,
     play: (candidate: Candidate) => game.play(candidate.move.uci),
     /** The candidate list row the learner points at. */
     pointed,

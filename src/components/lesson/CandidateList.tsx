@@ -15,7 +15,8 @@ interface Props {
   readonly pointed?: Uci;
   /** Where each move leads, when it enters another variation. */
   readonly leadsTo: (candidate: Candidate) => string | undefined;
-  readonly canPlay: (candidate: Candidate) => boolean;
+  /** The rows are the learner's to play now; otherwise they only preview. */
+  readonly playable: boolean;
   readonly onPlay: (candidate: Candidate) => void;
   /** The learner points at a row (hover or keyboard focus), or leaves it. */
   readonly onPoint: (uci: Uci | undefined) => void;
@@ -32,7 +33,7 @@ export function CandidateList({
   main,
   pointed,
   leadsTo,
-  canPlay,
+  playable,
   onPlay,
   onPoint,
 }: Props) {
@@ -47,7 +48,7 @@ export function CandidateList({
           leadsTo={leadsTo(candidate)}
           // A lone move's share is always all of the games.
           share={candidates.length > 1 ? candidate.share : undefined}
-          playable={canPlay(candidate)}
+          playable={playable}
           onPlay={onPlay}
           onPoint={onPoint}
         />

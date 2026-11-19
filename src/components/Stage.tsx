@@ -17,8 +17,6 @@ interface StageProps {
   readonly board: ReactNode;
   /** The panel beside the board, or below it on a narrow screen. */
   readonly program: ReactNode;
-  /** Extra tags for the page's head, like `<meta name="robots">`. */
-  readonly head?: ReactNode;
 }
 
 /**
@@ -26,7 +24,7 @@ interface StageProps {
  * it on the stage background. Every screen that shows a board uses it, so
  * they line up the same way.
  */
-export function Stage({ title, board, program, head }: StageProps) {
+export function Stage({ title, board, program }: StageProps) {
   const { theme } = useTheme();
   return (
     <View
@@ -40,7 +38,6 @@ export function Stage({ title, board, program, head }: StageProps) {
     >
       <Head>
         <title>{title}</title>
-        {head}
       </Head>
       <SafeAreaView style={styles.fill}>
         <ScrollView contentContainerStyle={styles.page}>

@@ -1,8 +1,10 @@
-import { useSuspense } from '@data-client/react';
+import { AsyncBoundary, useSuspense } from '@data-client/react';
 import { Separator, Spinner, Stack, Text } from '@reactive/silk-native';
 import { StyleSheet, View } from 'react-native';
 
+import { BrowserOnly } from '@/components/BrowserOnly';
 import { Eyebrow } from '@/components/Eyebrow';
+import { FootnoteLink } from '@/components/FootnoteLink';
 import { StatusHeadline } from '@/components/GameStatus';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { PlayerBar } from '@/components/PlayerBar';
@@ -16,16 +18,31 @@ import type { Candidate } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
 import type { LessonView } from '@/lesson/view';
 import { describeOpponent } from '@/opponent/opponent';
-import { getLesson, type LessonId } from '@/resources/lesson';
+import { getLesson, LESSONS, type LessonId } from '@/resources/lesson';
 
 import { CandidateList } from './CandidateList';
 import { IdeaCard } from './IdeaCard';
 
-/** Lesson pages aren't linked from the app yet, so search engines skip them. */
-const NO_INDEX = <meta name="robots" content="noindex" />;
+/**
+ * The lesson `id` as a page. The exported HTML holds only its frame: the
+ * lesson loads in the browser, since reading it during the export hangs it.
+ */
+export function LessonPage({ id }: { readonly id: string }) {
+  if (!Object.hasOwn(LESSONS, id)) return <LessonPlaceholder message="There is no lesson here." />;
+  return (
+    <BrowserOnly fallback={<LessonPlaceholder />}>
+      <AsyncBoundary
+        fallback={<LessonPlaceholder />}
+        errorComponent={({ error }) => <LessonPlaceholder message={error.message} />}
+      >
+        <LessonScreen id={id as LessonId} />
+      </AsyncBoundary>
+    </BrowserOnly>
+  );
+}
 
 /** The lesson `id`, played on the board: Explore, with the guide's opponent replying. */
-export function LessonScreen({ id }: { readonly id: LessonId }) {
+function LessonScreen({ id }: { readonly id: LessonId }) {
   const lesson = useSuspense(getLesson, id);
   const { game, opponent, view, guidance, board, canPlay, play, point, pointed } =
     useLesson(lesson);
@@ -52,7 +69,6 @@ export function LessonScreen({ id }: { readonly id: LessonId }) {
   return (
     <Stage
       title={`${lesson.title} · Opening Night`}
-      head={NO_INDEX}
       board={
         <BoardColumn
           top={
@@ -97,7 +113,7 @@ export function LessonScreen({ id }: { readonly id: LessonId }) {
                 main={mainCandidate(guidance.candidates)}
                 pointed={pointed}
                 leadsTo={leadsTo}
-                canPlay={canPlay}
+                playable={canPlay}
                 onPlay={play}
                 onPoint={point}
               />
@@ -109,7 +125,10 @@ export function LessonScreen({ id }: { readonly id: LessonId }) {
             <Eyebrow>Scoresheet</Eyebrow>
             <Scoresheet plies={game.plies} qualities={game.qualities} ply={ply} onGoto={goto} />
           </Stack>
-          <OpponentChoice />
+          <Stack gap="1">
+            <OpponentChoice />
+            <FootnoteLink href="/play">Or play a free game, from the first move</FootnoteLink>
+          </Stack>
         </Stack>
       }
     />
@@ -162,11 +181,10 @@ function describeStatus(
 }
 
 /** The lesson page before the lesson arrives, or with `message` when it can't be shown. */
-export function LessonPlaceholder({ message }: { readonly message?: string }) {
+function LessonPlaceholder({ message }: { readonly message?: string }) {
   return (
     <Stage
       title="Lesson · Opening Night"
-      head={NO_INDEX}
       board={
         <BoardColumnPlaceholder>
           {message ? null : <Spinner label="Loading the lesson" />}
