@@ -121,21 +121,22 @@ export function useLesson(lesson: Lesson) {
   }, [focused]);
 
   const board = previewed ?? current;
+  const shownBoard = frame ?? board;
   // A playback's boards aren't games: nothing moves on them and nothing is drawn.
   const boardProps: Omit<BoardProps, 'dom'> = {
-    fen: frame?.fen ?? board.fen,
+    fen: shownBoard.fen,
     orientation: lesson.side,
-    turnColor: board.turn,
+    turnColor: shownBoard.turn,
     movableColor: canMove && !previewed && !frame ? lesson.side : undefined,
     dests: frame ? {} : board.dests,
-    lastMove: frame ? frame.move : board.move && [board.move.from, board.move.to],
+    lastMove: shownBoard.move && [shownBoard.move.from, shownBoard.move.to],
     drawings: frame
       ? []
       : [
           ...lessonDrawings(shown, slid ? slid.next : view.key, lesson.side),
           ...lastMoveBadge(previewed ? undefined : current.move?.to, game.qualities[ply - 1]),
         ],
-    check: !frame && board.check,
+    check: shownBoard.check,
     onMove: game.move,
   };
   const playback: Playback = {

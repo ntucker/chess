@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Badge, Button, Pressable, Stack, Text, useTheme } from '@reactive/silk-native';
+import { a11yState, Badge, Button, Pressable, Stack, Text, useTheme } from '@reactive/silk-native';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -9,7 +9,7 @@ import { Transport } from '@/components/Transport';
 import type { Color } from '@/game/replay';
 import { ideaTone, type PlayedBack } from '@/lesson/drawings';
 import type { Evaluation, Idea } from '@/lesson/lesson';
-import type { Playback } from '@/lesson/useLesson';
+import type { Playback, Playing } from '@/lesson/useLesson';
 import type { ShownNote } from '@/lesson/view';
 import { toneColors } from '@/theme/drawingTones';
 
@@ -98,7 +98,7 @@ function NoteView({
           {original ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityState={{ expanded: more }}
+              {...a11yState({ expanded: more })}
               onPress={() => setMore(!more)}
               style={styles.more}
             >
@@ -119,7 +119,7 @@ function PlayingControls({
   goto,
   stop,
 }: {
-  readonly playing: NonNullable<Playback['playing']>;
+  readonly playing: Playing;
 } & Pick<Playback, 'goto' | 'stop'>) {
   const { theme } = useTheme();
   return (

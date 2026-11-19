@@ -195,7 +195,13 @@ describe('ideaPlayback', () => {
       { type: 'plan', side: 'white', routes: [{ from: 'g1', to: 'f3' }, { from: 'f1', to: 'e2' }, { from: 'e1', to: 'g1' }] },
       after('e4', 'e5'),
     );
-    expect(frames.map(({ move }) => move)).toEqual([undefined, ['g1', 'f3'], ['f1', 'e2'], ['e1', 'g1']]);
+    expect(frames.map(({ move }) => move && [move.from, move.to])).toEqual([
+      undefined,
+      ['g1', 'f3'],
+      ['f1', 'e2'],
+      ['e1', 'g1'],
+    ]);
+    expect(frames.every(({ turn, check }) => turn === 'white' && !check)).toBe(true);
     expect(frames[0].fen).toBe('rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR');
     expect(frames[3].fen).toBe('rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPPBPPP/RNBQ1RK1');
   });
@@ -204,12 +210,11 @@ describe('ideaPlayback', () => {
     const moves = uciLine(...TRAP_PUNISHED).slice(TRAP.length);
     const frames = ideaPlayback({ type: 'trap', moves, verdict: 'losesMaterial' }, after(...TRAP));
     expect(frames).toHaveLength(moves.length + 1);
-    expect(frames[1].move).toEqual(['c6', 'e5']);
-    expect(parseFen(frames.at(-1)!.fen).unwrap().turn).toBe('black');
-  });
-
-  it('is empty for an idea that does not play back', () => {
-    expect(ideaPlayback({ type: 'evaluation', value: 'equal' }, after(...ADVANCE))).toEqual([]);
+    expect(frames[1].move).toMatchObject({ from: 'c6', to: 'e5' });
+    expect(frames.map(({ turn }) => turn)).toEqual(
+      frames.map(({ fen }) => parseFen(fen).unwrap().turn),
+    );
+    expect(frames.at(-1)!.turn).toBe('black');
   });
 });
 

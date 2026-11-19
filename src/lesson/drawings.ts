@@ -13,7 +13,7 @@ import { type Color, FILE_NAMES, type FileName, type Piece, type SquareName } fr
 import { makeSquare, opposite, parseSquare } from 'chessops/util';
 
 import type { Drawing, Tone } from '@/board/drawing';
-import { parsePositionKey, playLine } from '@/game/replay';
+import { parsePositionKey, pieceAt, playLine } from '@/game/replay';
 
 import type { Guidance, ShownIdea } from './guidance';
 import type { Idea, Imbalance, PositionKey, Structure, StructureFeature, Uci } from './lesson';
@@ -160,39 +160,46 @@ export function ideaTone(idea: Idea, learner: Color): Tone {
   }
 }
 
-/** One board of an idea's playback, and the move that led to it. */
+/**
+ * One board of an idea's playback, shaped like the game's own boards
+ * (`Position`) so the board shows either the same way.
+ */
 export interface PlaybackFrame {
   /** The board as FEN: only the pieces for a plan, whose boards aren't games. */
   readonly fen: string;
-  /** The move that led here, from and to; absent on the first frame. */
-  readonly move?: readonly [SquareName, SquareName];
-}
-
-/**
- * The boards `idea` steps through from `position`, the position it is
- * checked in: a plan's routes, a line's or trap's moves. Empty for an idea
- * that doesn't play back.
- */
-export function ideaPlayback(idea: Idea, position: Chess): PlaybackFrame[] {
-  switch (idea.type) {
-    case 'plan':
-      return planBoards(position, idea).map((board, n) => {
-        const route = idea.routes[n - 1];
-        return { fen: makeBoardFen(board), move: route && [route.from, route.to] };
-      });
-    case 'line':
-    case 'trap':
-      return Array.from(playLine(idea.moves, position.clone()), ({ pos, move }) => ({
-        fen: makeFen(pos.toSetup()),
-        move: move && [move.from, move.to],
-      }));
-    default:
-      return [];
-  }
+  /** The side to move; a plan's own side throughout, since only it moves. */
+  readonly turn: Color;
+  readonly check: boolean;
+  /** The move that led here; absent on the first frame. */
+  readonly move?: { readonly from: SquareName; readonly to: SquareName };
 }
 
 /** The ideas that play back: a plan's routes, a line's or trap's moves. */
 export type PlayedBack = Extract<Idea, { type: 'plan' | 'line' | 'trap' }>;
+
+/**
+ * The boards `idea` steps through from `position`, the position it is
+ * checked in: a plan's routes, a line's or trap's moves.
+ */
+export function ideaPlayback(idea: PlayedBack, position: Chess): PlaybackFrame[] {
+  switch (idea.type) {
+    case 'plan':
+      return planBoards(position, idea).map((board, n) => ({
+        fen: makeBoardFen(board),
+        turn: idea.side,
+        check: false,
+        move: idea.routes[n - 1],
+      }));
+    case 'line':
+    case 'trap':
+      return Array.from(playLine(idea.moves, position.clone()), ({ pos, move }) => ({
+        fen: makeFen(pos.toSetup()),
+        turn: pos.turn,
+        check: pos.isCheck(),
+        move,
+      }));
+  }
+}
 
 /** An idea shown on the board that plays back. */
 type ShownPlayback = ShownIdea & { readonly idea: PlayedBack };
@@ -201,7 +208,7 @@ const playsBack = (shown: ShownIdea): shown is ShownPlayback =>
   shown.idea.type === 'plan' || shown.idea.type === 'line' || shown.idea.type === 'trap';
 
 /**
- * The idea of `note` that plays back on the board, of those `guidance` draws
+ * The idea of `note` that plays back on the board, of those `guidance` shows
  * (so a trap plays back only while traps are shown); or undefined.
  */
 export function notePlayback(guidance: Guidance, { note }: ShownNote): ShownPlayback | undefined {
@@ -238,7 +245,8 @@ function structureDrawings({ side, features }: Structure, board: Board, tone: To
         return rings(filePawns(board, side, f.files), tone);
       case 'openFile':
       case 'halfOpenFile':
-        return marked(squaresOf(fileSquares(f.files)), tone, board, false);
+        // Only the empty squares: the file's pieces aren't part of it.
+        return tint(squaresOf(fileSquares(f.files).diff(board.occupied)), tone);
       case 'pawnBreak':
         return [moveArrow(f.move, tone)];
     }
@@ -260,8 +268,10 @@ function imbalanceDrawings({ side, kind }: Imbalance, board: Board, tone: Tone):
         (set, pawn) => set.union(pawnAttacks(side, pawn)),
         SquareSet.empty(),
       );
-      const squares = squaresOf(taken.diff(board.occupied)).filter((square) => rank(side, square) >= 4);
-      return squares.length ? [{ kind: 'tint', squares, tone }] : [];
+      return tint(
+        squaresOf(taken.diff(board.occupied)).filter((square) => rank(side, square) >= 4),
+        tone,
+      );
     }
     case 'material':
       return [];
@@ -276,17 +286,15 @@ const rings = (squares: readonly SquareName[], tone: Tone): Drawing[] =>
 
 /**
  * `squares` marked in `tone`: the empty ones tinted, and the occupied ones
- * ringed, since a square with a piece is never tinted (or left out, when
- * `ringPieces` is false: an open file's pieces aren't part of it).
+ * ringed, since a square with a piece is never tinted.
  */
-function marked(squares: readonly SquareName[], tone: Tone, board: Board, ringPieces = true): Drawing[] {
+function marked(squares: readonly SquareName[], tone: Tone, board: Board): Drawing[] {
   const occupied = (square: SquareName) => board.has(parseSquare(square)!);
-  const empty = squares.filter((square) => !occupied(square));
-  return [
-    ...(empty.length ? [{ kind: 'tint', squares: empty, tone } as const] : []),
-    ...(ringPieces ? rings(squares.filter(occupied), tone) : []),
-  ];
+  return [...tint(squares.filter((square) => !occupied(square)), tone), ...rings(squares.filter(occupied), tone)];
 }
+
+const tint = (squares: SquareName[], tone: Tone): Drawing[] =>
+  squares.length ? [{ kind: 'tint', squares, tone }] : [];
 
 const fileSquares = (files: readonly FileName[]) =>
   files.reduce((set, file) => set.union(SquareSet.fromFile(FILE_NAMES.indexOf(file))), SquareSet.empty());
@@ -314,7 +322,7 @@ const bestDrawings = (best: Uci | undefined): Drawing[] => (best ? [moveArrow(be
 function landedTrapDrawings({ trap, at, end }: LandedTrap, shown: PositionKey): Drawing[] {
   if (end !== shown) return [];
   const tempting = moveArrow(trap.moves[0], 'danger');
-  const piece = parsePositionKey(at)!.board.get(parseSquare(tempting.from)!)!;
+  const piece = pieceAt(at, tempting.from)!;
   return [ghost(tempting.from, piece), tempting];
 }
 
