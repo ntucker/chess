@@ -1,6 +1,7 @@
 import {
   createContext,
   type Dispatch,
+  type ReactElement,
   type ReactNode,
   type SetStateAction,
   use,
@@ -24,7 +25,7 @@ export function StockfishWhileNeeded({
   host,
   children,
 }: {
-  readonly host: ReactNode;
+  readonly host: ReactElement;
   readonly children: ReactNode;
 }) {
   const { evaluationEngine, opponent } = useSettings();
