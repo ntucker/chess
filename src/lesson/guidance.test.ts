@@ -155,6 +155,12 @@ describe('guidance', () => {
       ]);
     });
 
+    it('lets only the notes about the position on the board be pointed at', () => {
+      // The second note is about the position the move was played in.
+      const practice = shown([...ADVANCE, 'Bf5'], 'practice');
+      expect(practice.pointable).toEqual([practice.notes[0].note]);
+    });
+
     it("hides the position's own notes on the learner's turn, but not a trap's warning with traps shown", () => {
       // The trap's note as a note about the position, where the importer now puts such notes.
       const view = sampleView(TRAP);
@@ -196,6 +202,11 @@ describe('guidance', () => {
       const [move, position] = explore(ADVANCE).notes;
       expect(explore(ADVANCE).pointable).toEqual([move.note, position.note]);
       expect(explore(ADVANCE, { switches: { ...ALL_ON, showIdeas: false } }).pointable).toEqual([]);
+    });
+
+    it("hides Stockfish's best move while a note is pointed at", () => {
+      const [, position] = explore(ADVANCE).notes;
+      expect(explore(ADVANCE, { pointed: position.note }).best).toBeUndefined();
     });
 
     it("hides Stockfish's best move while a move is previewed", () => {

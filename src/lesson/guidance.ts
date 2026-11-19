@@ -90,9 +90,9 @@ export interface Guidance {
   /** The idea playing back, once its note's playback has started. */
   readonly playing?: ShownPlayback;
   /**
-   * Stockfish's best move to mark, while nothing is previewed. Inside the
-   * guide the candidates are what is highlighted, so it is tagged only when
-   * it isn't one of them.
+   * Stockfish's best move to mark, while nothing is previewed, pointed at or
+   * playing back. Inside the guide the candidates are what is highlighted, so
+   * it is tagged only when it isn't one of them.
    */
   readonly best?: Uci;
   /** Stockfish's top three, listed only beyond the guide. */
@@ -119,13 +119,17 @@ export function guidance(input: GuidanceInput): Guidance {
   const ideas = notes.flatMap((shown) => noteIdeas(shown, allowed));
   const candidates = choices ? view.candidates : [];
   const playing = playingNote && notePlayback(ideas, playingNote);
-  // A note with nothing to draw leaves the board as it is.
+  // A note with nothing to draw on the board's position leaves the board as it
+  // is: a text note, or one about another position (the one a move was played in).
+  const onBoard = preview?.slide ? preview.candidate.next : view.key;
   const pointable = notes
+    .filter(({ after }) => after === onBoard)
     .filter(({ note }) => note.ideas?.some((idea) => idea.type !== 'evaluation' && allowed(idea)))
     .map(({ note }) => note);
   const pointedNote = pointed && pointable.includes(pointed) ? pointed : undefined;
-  const board = boardShown({ candidates, preview, ideas, playing, pointed: pointedNote });
-  const best = explore && !preview && !playing ? engine?.best : undefined;
+  const shown = boardShown({ candidates, preview, ideas, playing, pointed: pointedNote });
+  // Stockfish's arrow only on the game's own board, beside the candidates.
+  const best = explore && !preview && !playing && !pointedNote ? engine?.best : undefined;
 
   return {
     candidates,
@@ -134,8 +138,8 @@ export function guidance(input: GuidanceInput): Guidance {
     notes,
     pointable,
     ideas,
-    drawn: firstPlanOnly(board.drawn),
-    drawnCandidates: board.candidates,
+    drawn: firstPlanOnly(shown.drawn),
+    drawnCandidates: shown.candidates,
     playing,
     best: view.candidates.some(({ move }) => move.uci === best) ? undefined : best,
     top: explore && view.place !== 'inside' ? (engine?.top ?? []) : [],
