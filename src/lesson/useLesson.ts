@@ -134,6 +134,7 @@ export function useLesson(lesson: Lesson) {
       if (!press) return;
       if (press.kind === 'candidate') play(press.candidate);
       else if (press.kind === 'move') game.move(press.from, press.to);
+      // No candidate: the preview ends.
       else dispatch({ type: 'candidate', key });
     },
   };

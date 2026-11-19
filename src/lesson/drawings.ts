@@ -84,6 +84,13 @@ export function candidateDrawings(
 }
 
 /**
+ * Whether `idea` draws on the board at all (`ideaDrawings`): an evaluation
+ * and a material imbalance are only words.
+ */
+export const drawsOnBoard = (idea: Idea) =>
+  idea.type !== 'evaluation' && !(idea.type === 'imbalance' && idea.kind === 'material');
+
+/**
  * What `idea` draws in `position`, the position it is checked in. A side's
  * own pieces and squares are drawn in the main tone when it is `learner`'s
  * side and as the other side's otherwise, so both sides' features in one note

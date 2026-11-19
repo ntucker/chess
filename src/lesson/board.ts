@@ -90,7 +90,7 @@ export type Press =
  * What a press on `square` does. Without a sliding preview, nothing here:
  * the board plays moves itself. With one, chessground can't move, so a press
  * where the preview's piece stands plays it, unless the learner had picked
- * another piece (`selected`), whose move there is played instead. Example:
+ * another piece (`selected`) that can move there, whose move is played instead. Example:
  * with the queen on d8 picked, a click on d5 previewing cxd5 plays Qxd5. Any
  * other press ends the preview, so a finger, which never hovers off it, can
  * get back to the game.
@@ -104,10 +104,9 @@ export function boardPress(
 ): Press | undefined {
   const slid = slidCandidate(guidance);
   if (!slid) return undefined;
-  if (canMove && selected && selected !== slid.from) {
-    return current.dests[selected]?.includes(square)
-      ? { kind: 'move', from: selected, to: square }
-      : { kind: 'end' };
+  if (!canMove) return { kind: 'end' };
+  if (selected && selected !== slid.from && current.dests[selected]?.includes(square)) {
+    return { kind: 'move', from: selected, to: square };
   }
-  return canMove && slid.to === square ? { kind: 'candidate', candidate: slid } : { kind: 'end' };
+  return slid.to === square ? { kind: 'candidate', candidate: slid } : { kind: 'end' };
 }

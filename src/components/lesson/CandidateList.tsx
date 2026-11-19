@@ -105,7 +105,9 @@ function Row({ candidate, main, pointed, leadsTo, share, playable, onPlay, onPoi
       // previews nothing until the mouse moves. Leaving keeps the preview
       // (the screen ends it), so the learner can go on to its notes.
       onPointerMove={({ nativeEvent }) => {
-        if (pointed || resting.current || !hovers(nativeEvent.pointerType)) return;
+        if (pointed || !hovers(nativeEvent.pointerType)) return;
+        // Each move starts the wait again: a mouse still crossing the row isn't resting.
+        clearTimeout(resting.current);
         resting.current = setTimeout(() => {
           resting.current = undefined;
           point();

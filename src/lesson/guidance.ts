@@ -27,6 +27,7 @@
  * guidance stays in lesson terms; lessonDrawings (./drawings.ts) turns it
  * into board shapes.
  */
+import { drawsOnBoard } from './drawings';
 import type { Idea, Note, PositionKey, Uci } from './lesson';
 import { type Candidate, mainCandidate } from './select';
 import { type LandedTrap, type LessonView, type Preview, type ShownNote, shownKey } from './view';
@@ -110,13 +111,6 @@ export interface Guidance {
   readonly top: readonly Uci[];
   readonly trap?: LandedTrap;
 }
-
-/**
- * Whether `idea` draws on the board (`ideaDrawings`): an evaluation and a
- * material imbalance are only words.
- */
-const drawsOnBoard = (idea: Idea) =>
-  idea.type !== 'evaluation' && !(idea.type === 'imbalance' && idea.kind === 'material');
 
 export function guidance(input: GuidanceInput): Guidance {
   const {

@@ -119,6 +119,14 @@ export default function Board({
   useEffect(() => {
     const target = element.current;
     if (!target) return;
+    // The square picked before a press. Chessground reports the press after it
+    // has acted on it, when a refused move has already dropped the pick, so
+    // it is read as the press starts, before chessground sees it.
+    let picked: Square | undefined;
+    const notePick = () => {
+      picked = api.current?.state.selected as Square | undefined;
+    };
+    target.addEventListener('pointerdown', notePick, { capture: true });
     const board = Chessground(target, {
       ...position,
       premovable: { enabled: false },
@@ -131,14 +139,6 @@ export default function Board({
       drawable: { brushes: toneBrushes as DrawBrushes },
     });
     api.current = board;
-    // The square picked before a press. Chessground reports the press after it
-    // has acted on it, when a refused move has already dropped the pick, so
-    // it is read as the press starts, before chessground sees it.
-    let picked: Square | undefined;
-    const notePick = () => {
-      picked = board.state.selected as Square | undefined;
-    };
-    target.addEventListener('pointerdown', notePick, { capture: true });
     const stopWatching = watchPointer<Square>(
       target,
       target.ownerDocument,

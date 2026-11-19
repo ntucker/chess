@@ -107,7 +107,9 @@ describe('boardPress', () => {
 
   it('plays the move of a piece picked before the preview slid, in place of the preview', () => {
     expect(press(BF5, 'f6', 'g8')).toEqual({ kind: 'move', from: 'g8', to: 'f6' });
-    expect(press(BF5, 'f5', 'e7')).toEqual({ kind: 'end' });
+    // A picked piece that can't move there leaves the press to the preview.
+    expect(press(BF5, 'f5', 'e7')).toMatchObject({ kind: 'candidate', candidate: { san: 'Bf5' } });
+    expect(press(BF5, 'f6', 'e7')).toEqual({ kind: 'end' });
   });
 
   it('ends the preview on a press anywhere else, or while the learner may not move', () => {
