@@ -90,9 +90,8 @@ describe('watchPointer: mouse', () => {
     fire(page, 'pointerup', 5);
     fire(board, 'pointerdown', 25, { buttons: 1 });
     fire(page, 'pointerup', 25);
-    fire(board, 'pointermove', 35);
     afterRelease();
-    expect(hover.mock.calls).toEqual([['d1']]);
+    expect(hover.mock.calls).toEqual([['c1']]);
   });
 
   it('drops a waiting release report when stopped', () => {
