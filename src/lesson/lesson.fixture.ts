@@ -17,7 +17,8 @@ export const LESSON_FOLDER = join(__dirname, '../../assets/lessons');
 const readLessonFile = (file: string): Lesson => readLesson(JSON.parse(readFileSync(file, 'utf8')));
 
 /** The lesson shipped as `assets/lessons/<id>.json`. */
-export const readShippedLesson = (id: string): Lesson => readLessonFile(join(LESSON_FOLDER, `${id}.json`));
+export const readShippedLesson = (id: string): Lesson =>
+  readLessonFile(join(LESSON_FOLDER, `${id}.json`));
 
 /**
  * A hand-made lesson for tests: the Caro-Kann's first six moves, at least one
@@ -50,7 +51,11 @@ export function withMoves(
 }
 
 /** `lesson` with the trap whose moves are `moves` playing `edited` instead. */
-export function withTrapMoves(lesson: Lesson, moves: readonly Uci[], edited: readonly Uci[]): Lesson {
+export function withTrapMoves(
+  lesson: Lesson,
+  moves: readonly Uci[],
+  edited: readonly Uci[],
+): Lesson {
   return JSON.parse(
     JSON.stringify(lesson, (_, value) =>
       value?.type === 'trap' && String(value.moves) === String(moves)

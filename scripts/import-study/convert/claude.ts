@@ -51,14 +51,21 @@ export interface ClaudeCli {
   readonly saveUsed: () => void;
 }
 
-export function claudeCli({ learner, cacheFile, callModel = true, log = console.log }: Options): ClaudeCli {
+export function claudeCli({
+  learner,
+  cacheFile,
+  callModel = true,
+  log = console.log,
+}: Options): ClaudeCli {
   const prompt = PROMPT.replaceAll('{LEARNER}', colorName(learner)).replaceAll(
     '{OPPONENT}',
     colorName(opposite(learner)),
   );
   const cache = readCache(cacheFile);
   const keyOf = (model: Model, comment: Comment) =>
-    createHash('sha256').update(JSON.stringify([model, prompt, comment])).digest('hex');
+    createHash('sha256')
+      .update(JSON.stringify([model, prompt, comment]))
+      .digest('hex');
 
   const used = new Set<string>();
 
@@ -75,11 +82,15 @@ export function claudeCli({ learner, cacheFile, callModel = true, log = console.
       } else asking.push(comment);
     }
     if (!callModel) {
-      log(`convert: ${answers.size} answered from ${cacheFile}; ${asking.length} missing there, which keep the importer's notes`);
+      log(
+        `convert: ${answers.size} answered from ${cacheFile}; ${asking.length} missing there, which keep the importer's notes`,
+      );
       return answers;
     }
     const batches = chunks(asking, BATCH);
-    log(`convert: ${answers.size} cached, asking ${model} about ${asking.length} in ${batches.length} requests`);
+    log(
+      `convert: ${answers.size} cached, asking ${model} about ${asking.length} in ${batches.length} requests`,
+    );
     let done = 0;
     let cost = 0;
     await pool(batches, PARALLEL, async (group) => {
@@ -96,7 +107,9 @@ export function claudeCli({ learner, cacheFile, callModel = true, log = console.
           appendJsonLine(cacheFile, { key, answer });
         }
       } catch (error) {
-        log(`convert: a request failed, its ${group.length} comments stay unconverted: ${String(error)}`);
+        log(
+          `convert: a request failed, its ${group.length} comments stay unconverted: ${String(error)}`,
+        );
       }
       log(`convert: ${++done}/${batches.length} requests, ${cost.toFixed(2)} USD at list price`);
     });
@@ -148,7 +161,9 @@ function request(
     '--no-session-persistence',
   ];
   return new Promise((resolve, reject) => {
-    const child = spawn(process.env.CLAUDE_BIN ?? 'claude', args, { stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = spawn(process.env.CLAUDE_BIN ?? 'claude', args, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
     const timer = setTimeout(() => child.kill(), 20 * 60_000);
     let out = '';
     let err = '';
@@ -164,14 +179,17 @@ function request(
           structured_output?: unknown;
           total_cost_usd?: number;
         };
-        if (code !== 0 || result.is_error) throw new Error(`claude exited ${code}: ${result.result ?? err}`);
+        if (code !== 0 || result.is_error)
+          throw new Error(`claude exited ${code}: ${result.result ?? err}`);
         const { comments: answers } = (result.structured_output ?? {}) as { comments?: unknown[] };
         resolve({
           answers: (answers ?? []).flatMap((answer) => asAnswer(answer) ?? []),
           cost: result.total_cost_usd ?? 0,
         });
       } catch (error) {
-        reject(error instanceof SyntaxError ? new Error(`claude exited ${code}: ${err || out}`) : error);
+        reject(
+          error instanceof SyntaxError ? new Error(`claude exited ${code}: ${err || out}`) : error,
+        );
       }
     });
     child.stdin.end(JSON.stringify(comments));

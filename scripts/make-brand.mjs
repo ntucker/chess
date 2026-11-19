@@ -45,12 +45,32 @@ const color = {
 // corner, and the rest are joined by a smooth curve.
 const KNIGHT = {
   body: [
-    [372, 772, 1], [356, 726], [366, 668], [404, 606], [446, 548],
+    [372, 772, 1],
+    [356, 726],
+    [366, 668],
+    [404, 606],
+    [446, 548],
     [470, 490, 1], // throat
-    [424, 520], [370, 540], [322, 548], [284, 538], [259, 510], [255, 474], // jaw, muzzle
-    [272, 444], [304, 412], [350, 368], [400, 306], [436, 262],
-    [446, 252, 1], [482, 150, 1], [530, 226, 1], // ear
-    [612, 268], [688, 352], [734, 470], [744, 600], [730, 700], [708, 772, 1],
+    [424, 520],
+    [370, 540],
+    [322, 548],
+    [284, 538],
+    [259, 510],
+    [255, 474], // jaw, muzzle
+    [272, 444],
+    [304, 412],
+    [350, 368],
+    [400, 306],
+    [436, 262],
+    [446, 252, 1],
+    [482, 150, 1],
+    [530, 226, 1], // ear
+    [612, 268],
+    [688, 352],
+    [734, 470],
+    [744, 600],
+    [730, 700],
+    [708, 772, 1],
   ],
   // A lens between two corners, bulging toward `over` and `under`.
   eye: { from: [386, 370], to: [446, 334], over: [402, 328], under: [426, 368] },
@@ -84,11 +104,15 @@ function smoothPath(points) {
 }
 
 const rect = (attrs) =>
-  `<rect ${Object.entries(attrs).map(([key, value]) => `${key}="${value}"`).join(' ')}/>`;
+  `<rect ${Object.entries(attrs)
+    .map(([key, value]) => `${key}="${value}"`)
+    .join(' ')}/>`;
 
 const knightBody = smoothPath(KNIGHT.body);
 const knightEye = (({ from, to, over, under }) =>
-  `M${from.join(' ')}Q${over.join(' ')} ${to.join(' ')}Q${under.join(' ')} ${from.join(' ')}Z`)(KNIGHT.eye);
+  `M${from.join(' ')}Q${over.join(' ')} ${to.join(' ')}Q${under.join(' ')} ${from.join(' ')}Z`)(
+  KNIGHT.eye,
+);
 const knightBase = rect(KNIGHT.collar) + rect(KNIGHT.foot);
 const knightOutline = `<path d="${knightBody}"/>${knightBase}`;
 
@@ -129,17 +153,66 @@ function curtain() {
 <path fill="${brand.curtain}" d="M${-BLEED} ${-BLEED}H512V0C404 64 236 240 ${x + 40} ${top}V${bottom}C168 600 136 780 136 ${SIZE}V${end}H${-BLEED}Z"/>
 <g fill="${color.sheen}">
 ${outer(-246, -206)}${outer(-104, -62)}
-${fold([70, 120], [-44, -30], [[112, 170, 96, 330], [56, 320, 66, 160]])}
-${fold([236, 276], [2, 8], [[246, 160, 180, 320], [150, 320, 214, 160]])}
-${fold([372, 404], [25, 28], [[344, 130, 244, 290], [226, 290, 322, 130]])}
+${fold(
+  [70, 120],
+  [-44, -30],
+  [
+    [112, 170, 96, 330],
+    [56, 320, 66, 160],
+  ],
+)}
+${fold(
+  [236, 276],
+  [2, 8],
+  [
+    [246, 160, 180, 320],
+    [150, 320, 214, 160],
+  ],
+)}
+${fold(
+  [372, 404],
+  [25, 28],
+  [
+    [344, 130, 244, 290],
+    [226, 290, 322, 130],
+  ],
+)}
 ${fall([74, 92], [62, 80])}
 </g>
 <g fill="${color.fold}">
 ${outer(-176, -128)}${outer(-36, 0)}
-${fold([0, 44], [-74, -52], [[40, 180, 40, 330], [0, 330, 0, 180]])}
-${fold([150, 212], [-24, 0], [[190, 170, 146, 330], [112, 320, 140, 160]])}
-${fold([300, 352], [10, 24], [[310, 150, 226, 316], [200, 320, 270, 150]])}
-${fold([430, 470], [30, 38], [[400, 90, 268, 256], [250, 270, 370, 100]])}
+${fold(
+  [0, 44],
+  [-74, -52],
+  [
+    [40, 180, 40, 330],
+    [0, 330, 0, 180],
+  ],
+)}
+${fold(
+  [150, 212],
+  [-24, 0],
+  [
+    [190, 170, 146, 330],
+    [112, 320, 140, 160],
+  ],
+)}
+${fold(
+  [300, 352],
+  [10, 24],
+  [
+    [310, 150, 226, 316],
+    [200, 320, 270, 150],
+  ],
+)}
+${fold(
+  [430, 470],
+  [30, 38],
+  [
+    [400, 90, 268, 256],
+    [250, 270, 370, 100],
+  ],
+)}
 ${fall([36, 70], [26, 58])}
 ${fall([100, 126], [86, 110])}
 </g>
@@ -210,8 +283,17 @@ const svgs = {
 
 const pngs = [
   { file: 'icon.png', size: 1024, svg: logo(), opaque: true },
-  { file: 'android-icon-background.png', size: 1024, svg: logo({ scale: ANDROID, layers: ['stage'] }), opaque: true },
-  { file: 'android-icon-foreground.png', size: 1024, svg: logo({ scale: ANDROID, layers: ['knight'] }) },
+  {
+    file: 'android-icon-background.png',
+    size: 1024,
+    svg: logo({ scale: ANDROID, layers: ['stage'] }),
+    opaque: true,
+  },
+  {
+    file: 'android-icon-foreground.png',
+    size: 1024,
+    svg: logo({ scale: ANDROID, layers: ['knight'] }),
+  },
   { file: 'android-icon-monochrome.png', size: 1024, svg: logo({ scale: ANDROID, flat: '#fff' }) },
   // Android 12 and later crop the splash image to a circle two thirds as wide.
   { file: 'splash-icon.png', size: 512, svg: logo({ scale: 0.76, layers: ['knight'] }) },

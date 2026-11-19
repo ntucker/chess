@@ -48,7 +48,9 @@ const guardedByPawn = (board: Board, color: Color, square: Square) =>
 
 /** A pawn of `color` could still attack `square` some day by moving up. */
 const pawnCanReach = (board: Board, color: Color, square: Square) =>
-  adjacentFilePawns(board, color, square).some((pawn) => relativeRank(color, pawn) < relativeRank(color, square));
+  adjacentFilePawns(board, color, square).some(
+    (pawn) => relativeRank(color, pawn) < relativeRank(color, square),
+  );
 
 /** No pawn of the same color on a neighboring file. */
 export const isIsolated = (board: Board, color: Color, square: Square) =>
@@ -69,7 +71,8 @@ export function isPassed(board: Board, color: Color, square: Square): boolean {
  */
 export function isBackward(board: Board, color: Color, square: Square): boolean {
   const rank = relativeRank(color, square);
-  if (adjacentFilePawns(board, color, square).some((pawn) => relativeRank(color, pawn) <= rank)) return false;
+  if (adjacentFilePawns(board, color, square).some((pawn) => relativeRank(color, pawn) <= rank))
+    return false;
   const stop = stopSquare(color, square);
   return stop !== undefined && guardedByPawn(board, opposite(color), stop);
 }

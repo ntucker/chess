@@ -36,10 +36,13 @@ export function useMoveQualities(
   // The moves before each position: `lines[n]` leads to `plies[n]`.
   const lines = plies.map((_, n) => moves.slice(0, n));
   const judged = shown > 0 && !book[shown - 1];
-  const evaluationArgs = (line: readonly string[]) => (judged ? ([engine, line] as const) : ([null] as const));
+  const evaluationArgs = (line: readonly string[]) =>
+    judged ? ([engine, line] as const) : ([null] as const);
   useFetch(getEvaluation, ...evaluationArgs(lines[shown - 1]));
   useFetch(getEvaluation, ...evaluationArgs(lines[shown]));
-  const evaluations = lines.map((line) => ctrl.getResponse(getEvaluation, engine, line, state).data);
+  const evaluations = lines.map(
+    (line) => ctrl.getResponse(getEvaluation, engine, line, state).data,
+  );
   return moves.map((uci, n) => {
     if (book[n]) return 'book';
     const before = evaluations[n];

@@ -67,8 +67,10 @@ export type Drawing =
   | { readonly kind: 'fade'; readonly except: readonly Square[] };
 
 /** A move label's badge on the piece that moved to `square`, once both are known. */
-export const lastMoveBadge = (square: Square | undefined, quality: MoveQuality | undefined): Drawing[] =>
-  square && quality ? [{ kind: 'badge', square, quality }] : [];
+export const lastMoveBadge = (
+  square: Square | undefined,
+  quality: MoveQuality | undefined,
+): Drawing[] => (square && quality ? [{ kind: 'badge', square, quality }] : []);
 
 /**
  * How many squares right and down `square` is from the board's top left
