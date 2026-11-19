@@ -60,7 +60,6 @@ describe('candidates', () => {
       san: 'e5',
       from: 'e4',
       to: 'e5',
-      piece: { role: 'pawn', color: 'white' },
       next: keyAfter(...MAIN, 'e5'),
       variation: 'advance',
     });

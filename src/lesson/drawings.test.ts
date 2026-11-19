@@ -229,11 +229,10 @@ describe('lessonDrawings', () => {
     expect(lessonDrawings(shown, view.key, 'black')).toEqual(candidateDrawings(shown.candidates));
   });
 
-  it("draws a sliding preview's ghost and the ideas about the position after it", () => {
+  it("lights a sliding preview's piece where it lands, and draws the ideas about the position after it", () => {
     const { shown } = explore(['e4'], 'c7c6');
     const { next } = shown.preview!.candidate;
     expect(lessonDrawings(shown, next, 'black')).toEqual([
-      { kind: 'ghost', square: 'c7', piece: { role: 'pawn', color: 'black' } },
       { kind: 'glow', square: 'c6', tone: 'main' },
       { kind: 'glow', square: 'c6', tone: 'main' },
       { kind: 'arrow', from: 'c6', to: 'd5', tone: 'main' },
@@ -244,7 +243,6 @@ describe('lessonDrawings', () => {
   it('leaves out ideas about another position than the one shown', () => {
     const { view, shown } = explore(['e4'], 'c7c6');
     expect(lessonDrawings(shown, view.key, 'black')).toEqual([
-      { kind: 'ghost', square: 'c7', piece: { role: 'pawn', color: 'black' } },
       { kind: 'glow', square: 'c6', tone: 'main' },
     ]);
   });

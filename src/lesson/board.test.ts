@@ -24,8 +24,6 @@ function board(sans: string[], pointer?: Pointer) {
     side: SAMPLE.side,
     key: view.key,
     guidance: shown,
-    moves,
-    ply: moves.length,
     current: lastPosition(moves),
     canMove: true,
   };
@@ -47,20 +45,17 @@ describe('lessonBoard', () => {
   it('shows a candidate the same way whether its row or its destination square is pointed at', () => {
     const row = board(ADVANCE, { at: 'row', uci: 'c8f5' }).board;
     expect(board(ADVANCE, { at: 'square', square: 'f5' }).board).toEqual(row);
-    // The move shown played, with the bishop's ghost on c8; it can't be moved on.
-    expect(row.fen).toBe(lastPosition(uciLine(...ADVANCE, 'Bf5')).fen);
-    expect(row.lastMove).toEqual(['c8', 'f5']);
-    expect(row.movableColor).toBeUndefined();
-    expect(row.drawings).toContainEqual({
-      kind: 'ghost',
-      square: 'c8',
-      piece: { role: 'bishop', color: 'black' },
-    });
+    // The move drawn played over the game, which stays as it is and movable.
+    expect(row.preview).toBe(sampleView([...ADVANCE, 'Bf5']).key);
+    const game = board(ADVANCE).board;
+    expect(row).toMatchObject({ fen: game.fen, movableColor: 'black', dests: game.dests });
+    expect(row.drawings).toContainEqual({ kind: 'glow', square: 'f5', tone: 'main' });
   });
 
   it('keeps the piece pointed at in place, so it can still be dragged, and draws its candidate', () => {
     const pointed = board(ADVANCE, { at: 'square', square: 'c8' }).board;
     expect(pointed.fen).toBe(board(ADVANCE).board.fen);
+    expect(pointed.preview).toBeUndefined();
     expect(pointed.movableColor).toBe('black');
     expect(pointed.drawings).toContainEqual({ kind: 'arrow', from: 'c8', to: 'f5', tone: 'main' });
     expect(pointed.drawings).not.toContainEqual(expect.objectContaining({ to: 'c5' }));
@@ -73,6 +68,7 @@ describe('lessonBoard', () => {
       fen: frame.fen,
       movableColor: undefined,
       dests: {},
+      preview: undefined,
       drawings: [],
     });
   });
@@ -101,20 +97,20 @@ describe('boardPress', () => {
   const BF5 = { at: 'square', square: 'f5' } as const;
 
   it("plays a sliding preview's move when its square is pressed", () => {
-    expect(press(BF5, 'f5')).toMatchObject({ kind: 'candidate', candidate: { san: 'Bf5' } });
-    expect(press(BF5, 'f5', 'c8')).toMatchObject({ kind: 'candidate', candidate: { san: 'Bf5' } });
+    expect(press(BF5, 'f5')).toMatchObject({ san: 'Bf5' });
   });
 
-  it('plays the move of a piece picked before the preview slid, in place of the preview', () => {
-    expect(press(BF5, 'f6', 'g8')).toEqual({ kind: 'move', from: 'g8', to: 'f6' });
+  it("ends the preview when the board plays the press as the picked piece's move", () => {
+    // The board plays Bf5 itself with the bishop picked, and Nf6 with the knight.
+    expect(press(BF5, 'f5', 'c8')).toBe('end');
+    expect(press(BF5, 'f6', 'g8')).toBe('end');
     // A picked piece that can't move there leaves the press to the preview.
-    expect(press(BF5, 'f5', 'e7')).toMatchObject({ kind: 'candidate', candidate: { san: 'Bf5' } });
-    expect(press(BF5, 'f6', 'e7')).toEqual({ kind: 'end' });
+    expect(press(BF5, 'f5', 'e7')).toMatchObject({ san: 'Bf5' });
   });
 
   it('ends the preview on a press anywhere else, or while the learner may not move', () => {
-    expect(press(BF5, 'c8')).toEqual({ kind: 'end' });
-    expect(press(BF5, 'f5', undefined, false)).toEqual({ kind: 'end' });
+    expect(press(BF5, 'c8')).toBe('end');
+    expect(press(BF5, 'f5', undefined, false)).toBe('end');
   });
 
   it('leaves presses to the board when no preview slides', () => {

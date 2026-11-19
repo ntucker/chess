@@ -133,8 +133,6 @@ export function useLesson(lesson: Lesson) {
       side: lesson.side,
       key,
       guidance: shown,
-      moves,
-      ply,
       current,
       canMove,
       quality: game.quality,
@@ -145,11 +143,8 @@ export function useLesson(lesson: Lesson) {
     onHold: pointSquare,
     onPress: (square, selected) => {
       const press = !frame && boardPress(shown, current, canMove, square, selected);
-      if (!press) return;
-      if (press.kind === 'candidate') play(press.candidate);
-      else if (press.kind === 'move') playMove(toUci(current, press.from, press.to));
-      // No candidate: the preview ends.
-      else dispatch({ type: 'candidate', key });
+      if (press === 'end') dispatch({ type: 'candidate', key });
+      else if (press) play(press);
     },
   };
   // The opponent's reply would move the board on and end a playback at once,

@@ -3,8 +3,7 @@
  * guide's moves there (the candidate moves) in the order the screen lists
  * them. Pure functions over the lesson file, like the rest of src/lesson/.
  */
-import type { Piece, SquareName } from 'chessops/types';
-import { parseSquare } from 'chessops/util';
+import type { SquareName } from 'chessops/types';
 
 import { parsePositionKey, playLine, playMove, positionKey } from '@/game/replay';
 import type { Opponent } from '@/opponent/opponent';
@@ -59,7 +58,6 @@ export interface Candidate {
   readonly from: SquareName;
   /** Where the piece lands; the king's square for castling. */
   readonly to: SquareName;
-  readonly piece: Piece;
   /** The position the move leads to. */
   readonly next: PositionKey;
   /** The variation of `next`, or undefined when the move leads beyond the guide. */
@@ -119,7 +117,6 @@ export function candidates(
       san,
       from,
       to,
-      piece: pos.board.get(parseSquare(from)!)!,
       next,
       variation: lesson.positions[next]?.variation,
       share: total > 0 && games !== undefined ? games / total : undefined,

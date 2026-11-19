@@ -8,10 +8,13 @@
  * without depending on each other.
  */
 import type { MoveQuality } from '@/analysis/quality';
-import type { Piece, SquareName } from 'chessops/types';
+import type { Color, Piece, SquareName } from 'chessops/types';
 
 /** A square's name, like `e4` (chessops' type, so lesson data needs no conversion). */
 export type Square = SquareName;
+
+/** A piece as the board draws it. */
+export type BoardPiece = Readonly<Pick<Piece, 'role' | 'color'>>;
 
 /**
  * How much a drawing stands out and what it means to the eye, not its color
@@ -57,7 +60,7 @@ export type Drawing =
   /** A short tag on a square, like "3 v 2". Keep it to a few characters. */
   | { readonly kind: 'label'; readonly square: Square; readonly text: string; readonly tone: Tone }
   /** A see-through piece on `square`: where a piece was, or will be. */
-  | { readonly kind: 'ghost'; readonly square: Square; readonly piece: Readonly<Pick<Piece, 'role' | 'color'>> }
+  | { readonly kind: 'ghost'; readonly square: Square; readonly piece: BoardPiece }
   /** A move label's badge on the piece on `square`, which also glows in the label's color. */
   | { readonly kind: 'badge'; readonly square: Square; readonly quality: MoveQuality }
   /** Every piece fades except those on `except`: to show a pawn structure. */
@@ -66,3 +69,14 @@ export type Drawing =
 /** A move label's badge on the piece that moved to `square`, once both are known. */
 export const lastMoveBadge = (square: Square | undefined, quality: MoveQuality | undefined): Drawing[] =>
   square && quality ? [{ kind: 'badge', square, quality }] : [];
+
+/**
+ * How many squares right and down `square` is from the board's top left
+ * corner, as seen from `orientation`'s side. (Chessground's key2pos does
+ * this, but chessground ships only ES modules, which Jest can't load.)
+ */
+export function squareOffset(square: Square, orientation: Color): readonly [number, number] {
+  const file = square.charCodeAt(0) - 'a'.charCodeAt(0);
+  const rank = Number(square[1]) - 1;
+  return orientation === 'white' ? [file, 7 - rank] : [7 - file, rank];
+}
