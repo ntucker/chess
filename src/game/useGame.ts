@@ -104,7 +104,8 @@ export function useGame(opponent: GameOpponent) {
   // failed. Waiting for the old one could take forever: choosing Maia for both
   // the opponent and the evaluation bar stops Stockfish (src/app/_layout.tsx).
   // And a failure left up would name the new opponent, which was never asked.
-  // A failure goes through retry, since only a thinking game takes an answer.
+  // For a failure, the retry action turns the game back to thinking, and act
+  // then asks.
   const onOpponentChange = useEffectEvent(() => {
     const { opponent: status, game, line: moves } = rendered.current;
     if (status.status === 'thinking') ask(game, moves);
@@ -112,6 +113,8 @@ export function useGame(opponent: GameOpponent) {
   });
   // A layout effect, so the old opponent's request is replaced as the switch
   // commits: a passive effect leaves a gap in which its failure still counts.
+  // It reads rendered.current, so it must stay declared after the layout
+  // effect that updates it (layout effects run in order).
   useLayoutEffect(() => onOpponentChange(), [opponent.id]);
 
   return {
