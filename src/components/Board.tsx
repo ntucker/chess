@@ -168,9 +168,8 @@ export default function Board({
     // Made after chessground's own observer, which ResizeObserver notifies
     // first, so chessground has measured the board by the time this runs.
     const resizes = new ResizeObserver(([entry]) => {
-      const wasSized = sized.current;
       sized.current = entry.contentRect.width > 0 && entry.contentRect.height > 0;
-      if (wasSized && !sized.current) {
+      if (!sized.current) {
         board.set({ drawable: { autoShapes: [] } });
         pending.current = true;
       }

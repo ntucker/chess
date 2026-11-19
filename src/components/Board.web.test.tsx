@@ -12,7 +12,8 @@ import Board, { type BoardProps } from './Board';
 let size = 320;
 const frames = new Map<number, FrameRequestCallback>();
 let lastFrame = 0;
-const observers: { callback: ResizeObserverCallback; targets: Element[] }[] = [];
+const observers: ResizeObserverCallback[] = [];
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 /** Runs the frames asked for so far, late enough to finish any slide. */
 const frame = () =>
@@ -27,10 +28,8 @@ const frame = () =>
 const resize = (to: number) =>
   act(() => {
     size = to;
-    for (const { callback, targets } of observers) {
-      const entries = targets.map((target) => ({ target, contentRect: { width: size, height: size } }));
-      callback(entries as unknown as ResizeObserverEntry[], {} as ResizeObserver);
-    }
+    const entries = [{ contentRect: { width: size, height: size } }] as unknown as ResizeObserverEntry[];
+    for (const callback of observers) callback(entries, {} as ResizeObserver);
   });
 
 /** Every SVG attribute chessground wrote with NaN in it. */
@@ -41,7 +40,7 @@ const nans = () =>
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const AFTER_E4 = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
-const board = (props: Partial<BoardProps>): BoardProps => ({
+const board = (props: Partial<BoardProps> = {}): BoardProps => ({
   fen: START,
   orientation: 'white',
   turnColor: 'white',
@@ -53,7 +52,6 @@ const board = (props: Partial<BoardProps>): BoardProps => ({
 
 let root: Root;
 beforeEach(() => {
-  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   size = 320;
   frames.clear();
   observers.length = 0;
@@ -63,33 +61,24 @@ beforeEach(() => {
   };
   window.cancelAnimationFrame = (id) => frames.delete(id ?? 0);
   window.ResizeObserver = class {
-    private readonly entry: (typeof observers)[number];
     constructor(callback: ResizeObserverCallback) {
-      this.entry = { callback, targets: [] };
-      observers.push(this.entry);
+      observers.push(callback);
     }
-    observe(target: Element) {
-      this.entry.targets.push(target);
-    }
+    observe() {}
     unobserve() {}
-    disconnect() {
-      this.entry.targets = [];
-    }
+    disconnect() {}
   };
   Element.prototype.getBoundingClientRect = () => new DOMRect(0, 0, size, size);
   root = createRoot(document.body.appendChild(document.createElement('div')));
 });
-afterEach(() => {
-  act(() => root.unmount());
-  document.body.innerHTML = '';
-});
+afterEach(() => act(() => root.unmount()));
 
 describe('a board covered while chessground has a redraw queued', () => {
   it.each<[string, Drawing[], string]>([
     ['free play', [{ kind: 'badge', square: 'e4', quality: 'best' }], 'svg.cg-custom-svgs g[transform]'],
     ['the lesson', [{ kind: 'arrow', from: 'c7', to: 'c6', tone: 'main' }], 'svg.cg-shapes line'],
   ])('draws nothing at NaN in %s, and draws again once uncovered', async (_, drawings, drawn) => {
-    act(() => root.render(<Board {...board({})} />));
+    act(() => root.render(<Board {...board()} />));
     frame();
     // The move slides, and its drawings are set, on frames still to come.
     act(() =>
