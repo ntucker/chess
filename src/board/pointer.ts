@@ -37,12 +37,13 @@ export function watchDrag<S extends string>(
     over = next;
     report(next);
   };
-  const onMove = ({ clientX, clientY }: PointerEvent) => {
+  const onMove = ({ isPrimary, clientX, clientY }: PointerEvent) => {
+    // Chessground drags with one finger; a second one moves nothing.
+    if (!isPrimary) return;
     const from = dragged();
     const to = from && squareAt(clientX, clientY);
     show(from && to && to !== from ? { from, to } : null);
   };
-  // A second finger lifting leaves the drag to the first.
   const onUp = ({ isPrimary }: PointerEvent) => {
     if (isPrimary) show(null);
   };

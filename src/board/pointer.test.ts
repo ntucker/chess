@@ -74,10 +74,11 @@ describe('watchDrag', () => {
     ]);
   });
 
-  it('keeps the drag when a second finger lifts', () => {
+  it('keeps the drag when a second finger moves or lifts', () => {
     const { report, fire, drag } = setup();
     drag('a1');
     fire('pointermove', 15);
+    fire('pointermove', 35, false);
     fire('pointerup', 15, false);
     expect(report.mock.calls).toEqual([[{ from: 'a1', to: 'b1' }]]);
   });
