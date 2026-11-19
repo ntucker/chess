@@ -142,8 +142,7 @@ export const MAX_NOTE_WORDS = 20;
 
 /**
  * Something the board can draw. An idea in a position's notes is checked in
- * that position. An idea in a move's notes is checked in the position after
- * the move, or before it when `at` is `'before'`.
+ * that position, and one in a move's notes in the position after the move.
  */
 export type Idea =
   | Purpose
@@ -156,27 +155,8 @@ export type Idea =
   | Imbalance
   | EvaluationIdea;
 
-/**
- * Of a note's positions, the one `idea` is checked in: `after` (a position's
- * own, or the one after a move), or `before` the move when the idea says
- * `at: 'before'`. Undefined for `at: 'before'` on a position's note.
- */
-export const ideaPosition = <P>(
-  idea: Idea,
-  positions: { readonly after: P; readonly before?: P },
-) => (idea.at === 'before' ? positions.before : positions.after);
-
-interface IdeaBase {
-  /**
-   * Which position a move's idea is about: after the move (the default) or
-   * before it, to show what the move used or changed. Not allowed in a
-   * position's notes.
-   */
-  readonly at?: 'before';
-}
-
 /** What one piece does to its targets. The piece is the one on `from`. */
-export interface Purpose extends IdeaBase {
+export interface Purpose {
   readonly type: 'purpose';
   readonly from: SquareName;
   readonly relation: Relation;
@@ -202,7 +182,7 @@ export type Relation = (typeof RELATIONS)[number];
  * Several pieces of `side` bearing on one target, against its defenders.
  * Pieces lined up behind each other on one line (a battery) all count.
  */
-export interface Pressure extends IdeaBase {
+export interface Pressure {
   readonly type: 'pressure';
   readonly side: Color;
   readonly target: SquareName;
@@ -216,7 +196,7 @@ export interface Pressure extends IdeaBase {
  * Moves one side wants, in order, ignoring the other side's replies. Routes
  * are applied one after another on one board; the other side's pieces stay.
  */
-export interface Plan extends IdeaBase {
+export interface Plan {
   readonly type: 'plan';
   readonly side: Color;
   readonly routes: readonly Route[];
@@ -239,7 +219,7 @@ export interface Route {
  * What `side` does next if it is ignored. When `side` is not to move, the
  * threat is read as if the other side passed.
  */
-export interface Threat extends IdeaBase {
+export interface Threat {
   readonly type: 'threat';
   readonly side: Color;
   readonly move: Uci;
@@ -256,21 +236,21 @@ export interface Threat extends IdeaBase {
  * and falls in. `verdict` judges the final position; `losesMaterial` means
  * that side ends at least two points worse off, or mated.
  */
-export interface Trap extends IdeaBase {
+export interface Trap {
   readonly type: 'trap';
   readonly moves: readonly Uci[];
   readonly verdict: Evaluation | 'losesMaterial';
 }
 
 /** A short line with both sides' moves that is not a trap, and its verdict. */
-export interface Line extends IdeaBase {
+export interface Line {
   readonly type: 'line';
   readonly moves: readonly Uci[];
   readonly verdict: Evaluation;
 }
 
 /** Pawn-structure features of `side`'s pawns (or files half-open for it). */
-export interface Structure extends IdeaBase {
+export interface Structure {
   readonly type: 'structure';
   readonly side: Color;
   readonly features: readonly StructureFeature[];
@@ -300,7 +280,7 @@ export type StructureFeature =
  * or more space (more squares in the opponent's half its pawns attack, see
  * `spaceSquares` in ./pawns.ts).
  */
-export interface Imbalance extends IdeaBase {
+export interface Imbalance {
   readonly type: 'imbalance';
   readonly side: Color;
   readonly kind: ImbalanceKind;
@@ -310,7 +290,7 @@ export const IMBALANCE_KINDS = ['bishopPair', 'material', 'space'] as const;
 export type ImbalanceKind = (typeof IMBALANCE_KINDS)[number];
 
 /** Who is better, as the study judges it. */
-export interface EvaluationIdea extends IdeaBase {
+export interface EvaluationIdea {
   readonly type: 'evaluation';
   readonly value: Evaluation;
 }

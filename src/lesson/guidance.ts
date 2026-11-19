@@ -15,7 +15,7 @@
  * guidance stays in lesson terms; lessonDrawings (./drawings.ts) turns it
  * into board shapes.
  */
-import { type Idea, ideaPosition, type PositionKey, type Uci } from './lesson';
+import { type Idea, type PositionKey, type Uci } from './lesson';
 import type { Candidate } from './select';
 import type { LandedTrap, LessonView, Preview, ShownNote } from './view';
 
@@ -90,8 +90,7 @@ export function guidance({ view, mode, switches, preview, engine }: GuidanceInpu
     ideas: notes.flatMap((shown) =>
       (shown.note.ideas ?? [])
         .filter(drawn)
-        // checkIdea refuses `at: 'before'` on a position's note, so every idea has a position.
-        .map((idea) => ({ idea, at: ideaPosition(idea, shown)! })),
+        .map((idea) => ({ idea, at: shown.after })),
     ),
     best: view.candidates.some(({ move }) => move.uci === best) ? undefined : best,
     top: explore && view.place !== 'inside' ? (engine?.top ?? []) : [],

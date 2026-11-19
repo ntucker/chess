@@ -11,8 +11,7 @@
  *
  *   yarn import-study --popularity assets/lessons/caro-kann.json
  *
- * only recounts popularity in an existing lesson file (never the sample, whose
- * invented counts the tests rely on).
+ * only recounts popularity in an existing lesson file.
  *
  * Popularity comes from the lichess opening explorer, which needs a lichess
  * token (a personal token with no scopes is enough): set LICHESS_TOKEN, or

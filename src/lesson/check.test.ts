@@ -3,35 +3,32 @@ import { Chess } from 'chessops/chess';
 import { parseFen } from 'chessops/fen';
 import { parseSan } from 'chessops/san';
 
-import { checkIdea, checkLesson, type IdeaPositions } from './check';
+import { checkIdea, checkLesson } from './check';
 import { positionKey } from '@/game/replay';
 
 import { type Idea, type Lesson, LESSON_FORMAT, type Purpose } from './lesson';
+import { SAMPLE } from './lesson.fixture';
 
-/** The positions around the last of `sans`, played from the start. */
-function around(sans: string[]): IdeaPositions {
+/** The position after `sans`, played from the start. */
+function after(sans: string[]): Chess {
   const pos = Chess.default();
-  let before = pos.clone();
-  for (const san of sans) {
-    before = pos.clone();
-    pos.play(parseSan(pos, san)!);
-  }
-  return { before, after: pos };
+  for (const san of sans) pos.play(parseSan(pos, san)!);
+  return pos;
 }
 
-function fen(text: string): IdeaPositions {
-  return { after: Chess.fromSetup(parseFen(text).unwrap()).unwrap() };
+function fen(text: string): Chess {
+  return Chess.fromSetup(parseFen(text).unwrap()).unwrap();
 }
 
 const ADVANCE = ['e4', 'c6', 'd4', 'd5', 'e5', 'c5'];
 const AT = {
-  e5: around(ADVANCE.slice(0, 5)),
-  dxc5: around([...ADVANCE, 'dxc5']),
-  Bg4: around([...ADVANCE, 'dxc5', 'Nc6', 'Nf3', 'Bg4']),
-  Bb5: around([...ADVANCE, 'dxc5', 'Nc6', 'Nf3', 'Bg4', 'Bb5']),
-  Qa5: around([...ADVANCE, 'dxc5', 'Nc6', 'Nf3', 'Bg4', 'Bb5', 'Qa5+']),
-  c3: around([...ADVANCE, 'dxc5', 'Nc6', 'Nf3', 'Bg4', 'c3']),
-  Qa4: around([...ADVANCE, 'dxc5', 'Nc6', 'Nf3', 'Bg4', 'c3', 'a6', 'Qb3', 'Qd7', 'Nd4', 'e6', 'Qa4']),
+  e5: after(ADVANCE.slice(0, 5)),
+  dxc5: after([...ADVANCE, 'dxc5']),
+  Bg4: after([...ADVANCE, 'dxc5', 'Nc6', 'Nf3', 'Bg4']),
+  Bb5: after([...ADVANCE, 'dxc5', 'Nc6', 'Nf3', 'Bg4', 'Bb5']),
+  Qa5: after([...ADVANCE, 'dxc5', 'Nc6', 'Nf3', 'Bg4', 'Bb5', 'Qa5+']),
+  c3: after([...ADVANCE, 'dxc5', 'Nc6', 'Nf3', 'Bg4', 'c3']),
+  Qa4: after([...ADVANCE, 'dxc5', 'Nc6', 'Nf3', 'Bg4', 'c3', 'a6', 'Qb3', 'Qd7', 'Nd4', 'e6', 'Qa4']),
   isolated: fen('4k3/pp3ppp/8/3p4/8/8/PP3PPP/4K3 w - - 0 1'),
   doubled: fen('4k3/pp3p1p/5p2/8/8/8/PP3PPP/4K3 w - - 0 1'),
   battery: fen('3rk3/3r4/8/3p4/4P3/2N5/8/3QK3 w - - 0 1'),
@@ -53,7 +50,7 @@ const purpose = (from: Purpose['from'], relation: Purpose['relation'], ...target
 });
 
 // Ported from the trial's validate.py self-test, plus the version 2 types.
-const CASES: [name: string, at: IdeaPositions, idea: Idea, holds: boolean][] = [
+const CASES: [name: string, at: Chess, idea: Idea, holds: boolean][] = [
   ['queen attacks bishop', AT.Qa5, purpose('a5', 'attacks', 'b5'), true],
   ['queen gives check', AT.Qa5, purpose('a5', 'checks', 'e1'), true],
   ['queen x-ray through b5 is not an attack', AT.Qa5, purpose('a5', 'attacks', 'c5'), false],
@@ -154,7 +151,7 @@ const CASES: [name: string, at: IdeaPositions, idea: Idea, holds: boolean][] = [
   ],
   ['one-move trap does not show material loss', AT.c3, { type: 'trap', moves: ['c6e5'], verdict: 'losesMaterial' }, false],
   ['trap with an illegal move', AT.c3, { type: 'trap', moves: ['c6e4'], verdict: 'whiteWinning' }, false],
-  ['trap before the move', AT.c3, { type: 'trap', at: 'before', moves: ['d1d5'], verdict: 'blackWinning' }, true],
+  ['trap a move earlier', AT.Bg4, { type: 'trap', moves: ['d1d5'], verdict: 'blackWinning' }, true],
   ['line with both sides moves', AT.dxc5, { type: 'line', moves: ['e7e6', 'g1f3', 'f8c5'], verdict: 'equal' }, true],
   ['line with an illegal move', AT.dxc5, { type: 'line', moves: ['e7e6', 'f8c5'], verdict: 'equal' }, false],
   ['isolated d5', AT.isolated, { type: 'structure', side: 'black', features: [{ kind: 'isolatedPawn', squares: ['d5'] }] }, true],
@@ -237,20 +234,17 @@ describe('checkIdea', () => {
     else expect(problem).toEqual(expect.any(String));
   });
 
-  it('checks a before-idea in the position before the move', () => {
-    // After 7.dxc5 the d4 pawn is gone; before it, the pawn attacked c5.
-    expect(checkIdea({ ...purpose('d4', 'attacks', 'c5'), at: 'before' }, AT.dxc5)).toBeUndefined();
+  it('checks a move\'s idea in the position after the move', () => {
+    // After 7.dxc5 the d4 pawn is gone.
     expect(checkIdea(purpose('d4', 'attacks', 'c5'), AT.dxc5)).toMatch('d4 is empty');
-  });
-
-  it("refuses a before-idea in a position's notes", () => {
-    expect(checkIdea({ type: 'evaluation', value: 'equal', at: 'before' }, { after: AT.e5.after })).toMatch(
-      "only applies to a move's ideas",
-    );
   });
 });
 
 describe('checkLesson', () => {
+  it('passes the sample lesson the tests use', () => {
+    expect(checkLesson(SAMPLE)).toEqual([]);
+  });
+
   const start = Chess.default();
   const afterE4 = start.clone();
   afterE4.play(parseSan(afterE4, 'e4')!);
@@ -332,7 +326,7 @@ describe('checkLesson', () => {
   });
 
   it('refuses positions that only reach each other', () => {
-    const island = (sans: string[]) => positionKey(around(sans).after);
+    const island = (sans: string[]) => positionKey(after(sans));
     const problems = checkLesson({
       ...lesson,
       positions: {
