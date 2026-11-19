@@ -134,10 +134,15 @@ describe('gameReducer', () => {
   });
 
   it('drops the moves after the shown one when a move is played there', () => {
-    const state = play(e4, { type: 'move', uci: 'e7e5' }, { type: 'goto', ply: 1 }, {
-      type: 'move',
-      uci: 'c7c5',
-    });
+    const state = play(
+      e4,
+      { type: 'move', uci: 'e7e5' },
+      { type: 'goto', ply: 1 },
+      {
+        type: 'move',
+        uci: 'c7c5',
+      },
+    );
     expect(state).toEqual({ moves: ['e2e4', 'c7c5'], ply: 2 });
   });
 

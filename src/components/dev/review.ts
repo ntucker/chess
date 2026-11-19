@@ -7,7 +7,14 @@ import { makeSanAndPlay } from 'chessops/san';
 import { parseUci } from 'chessops/util';
 
 import { numberedLine, parsePosition, positionKey } from '@/game/replay';
-import { noteShows, type Lesson, type Note, type NoteShows, type PositionKey, type Uci } from '@/lesson/lesson';
+import {
+  noteShows,
+  type Lesson,
+  type Note,
+  type NoteShows,
+  type PositionKey,
+  type Uci,
+} from '@/lesson/lesson';
 
 export interface ReviewItem {
   /** Unique within the lesson. */

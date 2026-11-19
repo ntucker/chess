@@ -25,5 +25,7 @@ mkdirSync(resolve(app, 'vendor'), { recursive: true });
 for (const name of ['silk-core', 'silk-native']) {
   run(['pack', '-o', resolve(app, `vendor/reactive-${name}.tgz`)], resolve(silk, 'packages', name));
 }
-const commit = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: silk }).toString().trim();
+const commit = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: silk })
+  .toString()
+  .trim();
 console.log(`\nVendored Silk at ${commit}. Run \`yarn install\` to pick it up.`);

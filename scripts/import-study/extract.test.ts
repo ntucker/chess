@@ -5,8 +5,12 @@ import { STUDY_PGN } from './fixture';
 import { parseStudy } from './study';
 
 const [advance, classical] = parseStudy(STUDY_PGN, () => true);
-const { moveNotes, positionNotes, branches, choices, rejected, contradicted } = extractChapter(advance, 'black');
-const noteOn = (san: string) => moveNotes.filter(({ move }) => move.san === san).map(({ note }) => note);
+const { moveNotes, positionNotes, branches, choices, rejected, contradicted } = extractChapter(
+  advance,
+  'black',
+);
+const noteOn = (san: string) =>
+  moveNotes.filter(({ move }) => move.san === san).map(({ note }) => note);
 
 describe('extractChapter', () => {
   it('puts the chapter header where its main line ends, and its plan on the position before that move', () => {
@@ -34,13 +38,18 @@ describe('extractChapter', () => {
   });
 
   it('reads a header whose Idea line is empty', () => {
-    const [chapter] = parseStudy('1. e4 { Idea:\nMain line: 1.e4 c6\nWatch out: } 1... c6 *', () => true);
+    const [chapter] = parseStudy(
+      '1. e4 { Idea:\nMain line: 1.e4 c6\nWatch out: } 1... c6 *',
+      () => true,
+    );
     const header = extractChapter(chapter, 'black').moveNotes.find(({ move }) => move.san === 'c6');
     expect(header?.note.original).toContain('Main line:');
   });
 
   it('finds a header after an "Extra:" line too', () => {
-    const header = extractChapter(classical, 'black').moveNotes.find(({ move }) => move.san === 'Bf5');
+    const header = extractChapter(classical, 'black').moveNotes.find(
+      ({ move }) => move.san === 'Bf5',
+    );
     expect(header?.note.text).toBe('Extra: only needed if White plays 3.Nc3.');
   });
 
@@ -72,16 +81,26 @@ describe('extractChapter', () => {
 
   it('reads a trap line and adds its moves to the guide', () => {
     expect(noteOn('Bd7')[0].text).toBe('5.e6? fxe6 and White is clearly worse.');
-    expect(noteOn('Bd7')[0].ideas).toEqual([{ type: 'trap', moves: ['e5e6', 'f7e6'], verdict: 'blackClearly' }]);
-    expect(branches.map(({ spot, ucis }) => [spot.move?.san, ucis])).toContainEqual(['Bd7', ['e5e6', 'f7e6']]);
+    expect(noteOn('Bd7')[0].ideas).toEqual([
+      { type: 'trap', moves: ['e5e6', 'f7e6'], verdict: 'blackClearly' },
+    ]);
+    expect(branches.map(({ spot, ucis }) => [spot.move?.san, ucis])).toContainEqual([
+      'Bd7',
+      ['e5e6', 'f7e6'],
+    ]);
   });
 
   it('turns a sequence in comment text into moves, castling as the king moves', () => {
-    expect(branches.map(({ spot, ucis }) => [spot.move?.san, ucis])).toContainEqual(['Be2', ['b8d7', 'e1g1', 'g8e7']]);
+    expect(branches.map(({ spot, ucis }) => [spot.move?.san, ucis])).toContainEqual([
+      'Be2',
+      ['b8d7', 'e1g1', 'g8e7'],
+    ]);
   });
 
   it('refuses a watch-out trap that loses nothing', () => {
-    expect(rejected).toEqual([expect.objectContaining({ why: 'black does not lose material: balance goes 0 to 0' })]);
+    expect(rejected).toEqual([
+      expect.objectContaining({ why: 'black does not lose material: balance goes 0 to 0' }),
+    ]);
   });
 
   it('reads the choice guide, risk included', () => {

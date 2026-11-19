@@ -29,7 +29,9 @@ const renders: ReturnType<typeof useGame>[] = [];
 const game = () => renders[renders.length - 1];
 
 function Game(props: { opponent?: GameOpponent; side: Color; active: boolean }) {
-  renders.push(useGame(useReducer(gameReducer, initialGame), props.opponent, { ...props, judge: 'stockfish' }));
+  renders.push(
+    useGame(useReducer(gameReducer, initialGame), props.opponent, { ...props, judge: 'stockfish' }),
+  );
   return null;
 }
 
@@ -107,7 +109,7 @@ describe('useGame', () => {
     expect(game().started).toBe(true);
   });
 
-  it('asks a newly chosen opponent at once, and drops the old one\'s answer', async () => {
+  it("asks a newly chosen opponent at once, and drops the old one's answer", async () => {
     const maia = scripted('1500');
     const stockfish = scripted('stockfish');
     await render({ opponent: maia.opponent, side: 'white', active: true });

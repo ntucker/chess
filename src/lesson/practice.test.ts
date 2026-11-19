@@ -9,6 +9,7 @@ import {
   type ModeAction,
   modeReducer,
   type ModeState,
+  opponentPlays,
   type PlayedMove,
 } from './practice';
 
@@ -87,5 +88,29 @@ describe('beforeSideMoves', () => {
 
   it('starts a clean run when Practice is chosen on a line with no move of the learner yet', () => {
     expect(run(initialMode, chosen('practice', true))).toEqual(practice(true));
+  });
+});
+
+describe('opponentPlays', () => {
+  const at = (ply: number) => ({ moves: uciLine('e4', 'c6', 'd4'), ply });
+
+  it('leaves every opponent move to the learner with auto play off', () => {
+    expect(opponentPlays('explore', false, at(3))).toBe(false);
+    expect(opponentPlays('practice', false, at(3))).toBe(false);
+  });
+
+  it('leaves the first move, which picks the opening, to the learner', () => {
+    expect(opponentPlays('practice', true, at(0))).toBe(false);
+  });
+
+  it('leaves one opponent move to the learner stepped back in Explore', () => {
+    expect(opponentPlays('explore', true, at(2))).toBe(false);
+    // At the latest move auto play answers, as it does once the picked move is played.
+    expect(opponentPlays('explore', true, at(3))).toBe(true);
+  });
+
+  it('keeps Practice with auto play on to the opponent, stepped back or not', () => {
+    expect(opponentPlays('practice', true, at(2))).toBe(true);
+    expect(opponentPlays('practice', true, at(3))).toBe(true);
   });
 });

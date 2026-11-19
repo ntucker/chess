@@ -28,14 +28,18 @@ const frame = () =>
 const resize = (to: number) =>
   act(() => {
     size = to;
-    const entries = [{ contentRect: { width: size, height: size } }] as unknown as ResizeObserverEntry[];
+    const entries = [
+      { contentRect: { width: size, height: size } },
+    ] as unknown as ResizeObserverEntry[];
     for (const callback of observers) callback(entries, {} as ResizeObserver);
   });
 
 /** Every SVG attribute chessground wrote with NaN in it. */
 const nans = () =>
   [...document.querySelectorAll('cg-container svg *')].flatMap((el) =>
-    [...el.attributes].filter((a) => a.value.includes('NaN')).map((a) => `<${el.tagName} ${a.name}="${a.value}">`),
+    [...el.attributes]
+      .filter((a) => a.value.includes('NaN'))
+      .map((a) => `<${el.tagName} ${a.name}="${a.value}">`),
   );
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -75,7 +79,11 @@ afterEach(() => act(() => root.unmount()));
 
 describe('a board covered while chessground has a redraw queued', () => {
   it.each<[string, Drawing[], string]>([
-    ['free play', [{ kind: 'badge', square: 'e4', quality: 'best' }], 'svg.cg-custom-svgs g[transform]'],
+    [
+      'free play',
+      [{ kind: 'badge', square: 'e4', quality: 'best' }],
+      'svg.cg-custom-svgs g[transform]',
+    ],
     ['the lesson', [{ kind: 'arrow', from: 'c7', to: 'c6', tone: 'main' }], 'svg.cg-shapes line'],
   ])('draws nothing at NaN in %s, and draws again once uncovered', async (_, drawings, drawn) => {
     act(() => root.render(<Board {...board()} />));
@@ -83,7 +91,9 @@ describe('a board covered while chessground has a redraw queued', () => {
     // The move slides, and its drawings are set, on frames still to come.
     act(() =>
       root.render(
-        <Board {...board({ fen: AFTER_E4, turnColor: 'black', lastMove: ['e2', 'e4'], drawings })} />,
+        <Board
+          {...board({ fen: AFTER_E4, turnColor: 'black', lastMove: ['e2', 'e4'], drawings })}
+        />,
       ),
     );
     resize(0);

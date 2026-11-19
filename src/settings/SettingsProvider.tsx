@@ -1,11 +1,4 @@
-import {
-  createContext,
-  type Dispatch,
-  type ReactNode,
-  use,
-  useEffect,
-  useReducer,
-} from 'react';
+import { createContext, type Dispatch, type ReactNode, use, useEffect, useReducer } from 'react';
 
 import { requireProvider } from '@/context/requireProvider';
 

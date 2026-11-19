@@ -13,7 +13,9 @@ describe('drawingExamples', () => {
   });
 
   it('shows every drawing kind', () => {
-    const kinds = new Set(drawingExamples.flatMap(({ drawings }) => drawings.map((drawing) => drawing.kind)));
+    const kinds = new Set(
+      drawingExamples.flatMap(({ drawings }) => drawings.map((drawing) => drawing.kind)),
+    );
     const all: Record<Drawing['kind'], true> = {
       glow: true,
       arrow: true,

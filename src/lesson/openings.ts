@@ -82,7 +82,9 @@ export function openingsLesson(index: LessonIndex): Lesson {
     title: 'Openings',
     side,
     start: INITIAL_FEN,
-    sources: [{ title: 'Opening Night', author: 'Opening Night', url: 'https://github.com/ntucker/chess' }],
+    sources: [
+      { title: 'Opening Night', author: 'Opening Night', url: 'https://github.com/ntucker/chess' },
+    ],
     variations: { [OPENINGS_VARIATION]: { name: 'Openings' } },
     positions: {
       [START_KEY]: { variation: OPENINGS_VARIATION, moves: openingMoves(index) },

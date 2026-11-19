@@ -123,8 +123,7 @@ export function lessonView({ lesson, line, ply, opponent }: LessonViewInput): Le
 
 /** What the learner points at: a row of the candidate list, or a piece dragged over a square. */
 export type Pointer =
-  | { readonly at: 'row'; readonly uci: Uci }
-  | ({ readonly at: 'drag' } & Drag<SquareName>);
+  { readonly at: 'row'; readonly uci: Uci } | ({ readonly at: 'drag' } & Drag<SquareName>);
 
 /**
  * A candidate move shown before it is played. `slide`: the board shows the

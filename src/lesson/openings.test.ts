@@ -5,9 +5,18 @@ import { keyAfter, SAMPLE, uciLine } from './lesson.fixture';
 import { indexEntry, lessonOf, openingsLesson, withOpenings } from './openings';
 import { candidates } from './select';
 
-const study = (author: string) => ({ title: 'A study', author, url: 'https://lichess.org/study/abcd1234' });
+const study = (author: string) => ({
+  title: 'A study',
+  author,
+  url: 'https://lichess.org/study/abcd1234',
+});
 const INDEX = {
-  'caro-kann': { title: 'Caro-Kann Defence', side: 'black', sources: [study('Kampf')], firstMoves: ['e2e4'] },
+  'caro-kann': {
+    title: 'Caro-Kann Defence',
+    side: 'black',
+    sources: [study('Kampf')],
+    firstMoves: ['e2e4'],
+  },
   slav: { title: 'Slav Defence', side: 'black', sources: [study('Matkun')], firstMoves: ['d2d4'] },
 } as const;
 
@@ -43,7 +52,9 @@ describe('openingsLesson', () => {
       url: 'https://en.wikibooks.org/wiki/Chess_Opening_Theory',
       license: { name: 'CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },
     };
-    const index = { slav: { ...INDEX.slav, sources: [study('Matkun'), study('Kitsune'), wikibooks] } };
+    const index = {
+      slav: { ...INDEX.slav, sources: [study('Matkun'), study('Kitsune'), wikibooks] },
+    };
     const [slav] = openingsLesson(index).positions[keyAfter()].moves;
     expect(slav.notes).toEqual([
       {
@@ -57,10 +68,14 @@ describe('withOpenings', () => {
   it("lists every opening at the lesson's start, its own move keeping what the file says", () => {
     const lesson = withOpenings(SAMPLE, INDEX);
     expect(startMoves(lesson)).toEqual(['e2e4', 'd2d4']);
-    const own = (l: typeof SAMPLE) => l.positions[keyAfter()].moves.find(({ uci }) => uci === 'e2e4')!;
+    const own = (l: typeof SAMPLE) =>
+      l.positions[keyAfter()].moves.find(({ uci }) => uci === 'e2e4')!;
     expect(own(lesson)).toEqual({
       ...own(SAMPLE),
-      notes: [{ text: "Caro-Kann Defence, from Kampf's lichess study." }, ...(own(SAMPLE).notes ?? [])],
+      notes: [
+        { text: "Caro-Kann Defence, from Kampf's lichess study." },
+        ...(own(SAMPLE).notes ?? []),
+      ],
     });
     expect(lesson.positions[keyAfter('e4')]).toBe(SAMPLE.positions[keyAfter('e4')]);
     expect(checkLesson(lesson)).toEqual([]);
