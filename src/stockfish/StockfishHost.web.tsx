@@ -20,13 +20,16 @@ export function StockfishHost() {
     let connection: Connection | undefined;
     let stopped = false;
     (async () => {
-      const response = await fetch(assetUrl(LOADER));
-      if (!response.ok) throw new Error(`Stockfish's loader: HTTP ${response.status}`);
-      const loader = await response.text();
+      // Downloaded here, not by the worker, so the engine's time to answer
+      // (engine.ts) starts once it has its files, however slow the network.
+      const [loader, wasm] = await Promise.all([
+        download(LOADER).then((file) => file.text()),
+        download(WASM).then((file) => file.blob()),
+      ]);
       if (stopped) return;
       engine = startStockfishWorker(
         loader,
-        assetUrl(WASM),
+        new Blob([wasm], { type: 'application/wasm' }),
         (line) => connection?.receive(line),
         (message) => connection?.fail(message),
       );
@@ -43,4 +46,10 @@ export function StockfishHost() {
     };
   }, [running, supervisor]);
   return null;
+}
+
+async function download(asset: number): Promise<Response> {
+  const response = await fetch(assetUrl(asset));
+  if (!response.ok) throw new Error(`${assetUrl(asset)}: HTTP ${response.status}`);
+  return response;
 }

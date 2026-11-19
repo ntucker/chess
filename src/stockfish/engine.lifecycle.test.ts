@@ -89,10 +89,9 @@ describe('the engine lifecycle', () => {
   it('restarts an engine that stops answering', () => {
     jest.useFakeTimers();
     try {
-      // One that never finishes its handshake gets a minute (the web
-      // downloads the WebAssembly meanwhile),
+      // An engine that never finishes its handshake gets 10 s.
       const silent = scripted();
-      jest.advanceTimersByTime(59_999);
+      jest.advanceTimersByTime(9_999);
       expect(silent.supervisor.failed).not.toHaveBeenCalled();
       jest.advanceTimersByTime(1);
       expect(silent.supervisor.failed).toHaveBeenCalledTimes(1);
@@ -100,7 +99,8 @@ describe('the engine lifecycle', () => {
       const stuck = scripted();
       stuck.print('uciok');
       void engine.stockfishEvaluation(['e2e4']);
-      stuck.print('info depth 10 score cp 20'); // and one thinking, but never done, 10 s.
+      // So does one that thinks but never finishes its search.
+      stuck.print('info depth 10 score cp 20');
       jest.advanceTimersByTime(9_999);
       expect(stuck.supervisor.failed).not.toHaveBeenCalled();
       jest.advanceTimersByTime(1);

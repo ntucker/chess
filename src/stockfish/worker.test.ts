@@ -87,10 +87,4 @@ describe('startStockfishWorker', () => {
     FakeWorker.last.onerror?.({ message: '' });
     expect(reported).toEqual(['Stockfish stopped']);
   });
-
-  it('frees only its own file when handed the WebAssembly by address', () => {
-    startStockfishWorker('loader', 'https://example.test/stockfish.wasm', () => {}, () => {});
-    FakeWorker.last.onmessage?.({ data: 'uciok' });
-    expect(new Set(revoked)).toEqual(new Set(['blob:1']));
-  });
 });

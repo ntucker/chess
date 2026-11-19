@@ -14,10 +14,10 @@ interface Restarts extends Supervisor {
 
 /**
  * Restarts for a host's engine: `failed()` stops it at once
- * (`setRunning(false)`) and starts a new one (`setRunning(true)`) after a pause that doubles with each
- * failure since an engine last finished its handshake (`ready()`), so an
- * engine that can't start isn't restarted in a tight loop. A failure while
- * a restart waits is the same failure.
+ * (`setRunning(false)`) and starts a new one (`setRunning(true)`) after a
+ * pause that doubles with each failure since an engine last finished its
+ * handshake (`ready()`), so an engine that can't start isn't restarted in a
+ * tight loop. A failure while a restart waits is the same failure.
  */
 export function restarts(setRunning: (running: boolean) => void): Restarts {
   let failures = 0;

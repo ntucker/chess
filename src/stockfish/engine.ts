@@ -11,18 +11,12 @@ import { evaluationFromScore, parseBestMove, parseScore, positionCommand, type S
 const GO = 'go nodes 100000 movetime 1500';
 
 /**
- * How long a search may take (it stops itself after 1.5 s). An engine that
- * takes longer is stuck, as when Android drops the web view a command went
- * to, and is restarted.
+ * How long the engine may take to answer: its handshake (once its host has
+ * handed it its files), or a search (which stops itself after 1.5 s). One
+ * that takes longer is stuck, as when Android drops the web view a command
+ * went to, and is restarted.
  */
-const SEARCH_MS = 10_000;
-
-/**
- * How long a new engine may take to finish its handshake. On the web this
- * includes downloading the 1.8 MB WebAssembly, so a slow connection gets a
- * minute before the download starts over.
- */
-const HANDSHAKE_MS = 60_000;
+const ANSWER_MS = 10_000;
 
 /** How many engines a search is tried on before it's given up on. */
 const TRIES = 2;
@@ -95,7 +89,7 @@ export function attachStockfish(send: Send, supervisor: Supervisor): Connection 
   const session: Session = { send, supervisor, ready: false };
   connected = session;
   send('uci');
-  awaitAnswer(session, HANDSHAKE_MS);
+  awaitAnswer(session);
   return {
     receive(line) {
       if (connected === session) handleLine(session, line);
@@ -160,13 +154,13 @@ function startNext() {
   connected.send('ucinewgame');
   connected.send(positionCommand(running.line));
   connected.send(GO);
-  awaitAnswer(connected, SEARCH_MS);
+  awaitAnswer(connected);
 }
 
-/** Fails `session` unless it answers within `ms`. */
-function awaitAnswer(session: Session, ms: number) {
+/** Fails `session` unless it answers within `ANSWER_MS`. */
+function awaitAnswer(session: Session) {
   clearTimeout(watchdog);
-  watchdog = setTimeout(() => fail(session, 'it stopped answering'), ms);
+  watchdog = setTimeout(() => fail(session, 'it stopped answering'), ANSWER_MS);
 }
 
 /**
