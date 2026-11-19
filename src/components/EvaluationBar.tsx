@@ -5,7 +5,7 @@ import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 import Animated, { type CSSTransitionTimingFunction, cubicBezier } from 'react-native-reanimated';
 
 import { type Color, colorName, type GameResult, lastPosition, opposite } from '@/game/replay';
-import { useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
+import { useSettings } from '@/settings/SettingsProvider';
 import { type Evaluation, type EvaluationEngine, resultEvaluation } from '@/evaluation/evaluation';
 import { getEvaluation } from '@/resources/evaluation';
 import { pieceColors } from '@/theme/pieceColors';
@@ -28,7 +28,7 @@ interface Props {
  * evaluation until the new one is ready.
  */
 export function EvaluationBar({ line, orientation, style }: Props) {
-  const engine = useEvaluationEngine();
+  const engine = useSettings().evaluationEngine;
   const position = line.join(' ');
   // A failed evaluation leaves the bar empty only until the board shows
   // another position or the setting picks another engine. AsyncBoundary

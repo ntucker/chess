@@ -1,6 +1,6 @@
 import { EVALUATION_ENGINES, type EvaluationEngine } from '@/evaluation/evaluation';
-import { setEvaluationEngine, useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
 import { JUDGE_RATING } from '@/maia/maia';
+import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
 
 import { FootnoteChoice } from './FootnoteChoice';
 
@@ -22,13 +22,15 @@ const OPTIONS = EVALUATION_ENGINES.map((value) => ({ value, ...CHOICES[value] })
  * Stockfish · Maia".
  */
 export function EvaluationEngineChoice() {
+  const { evaluationEngine } = useSettings();
+  const dispatch = useSettingsDispatch();
   return (
     <FootnoteChoice
       name="Evaluation bar"
       lead="Evaluation by"
       options={OPTIONS}
-      value={useEvaluationEngine()}
-      onChange={setEvaluationEngine}
+      value={evaluationEngine}
+      onChange={(choice) => dispatch({ type: 'chosen', choice: { evaluationEngine: choice } })}
     />
   );
 }

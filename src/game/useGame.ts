@@ -2,8 +2,8 @@ import { useController } from '@data-client/react';
 import { useEffectEvent, useLayoutEffect, useReducer, useRef } from 'react';
 
 import { classifyMove } from '@/analysis/quality';
-import { useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
 import { getEvaluation } from '@/resources/evaluation';
+import { useSettings } from '@/settings/SettingsProvider';
 
 import { type GameAction, type GameOpponent, gameReducer, initialGame } from './game';
 import { material } from './material';
@@ -23,7 +23,7 @@ const THINKING_MS = 400;
  */
 export function useGame(opponent: GameOpponent) {
   const ctrl = useController();
-  const engine = useEvaluationEngine();
+  const engine = useSettings().evaluationEngine;
   const [state, dispatch] = useReducer(gameReducer, initialGame);
   const { playerColor, line, qualities, ply } = state;
   const plies = replay(line);

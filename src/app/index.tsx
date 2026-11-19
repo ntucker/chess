@@ -20,13 +20,13 @@ import { Transport } from '@/components/Transport';
 import { type Color, colorName, opposite } from '@/game/replay';
 import { useGame } from '@/game/useGame';
 import { describeOpponent } from '@/opponent/opponent';
-import { useOpponent } from '@/opponent/useOpponent';
 import { gameOpponent } from '@/resources/opponent';
+import { useSettings } from '@/settings/SettingsProvider';
 import { spotlight } from '@/theme/theme';
 
 export default function PlayScreen() {
   const ctrl = useController();
-  const opponent = useOpponent();
+  const { opponent } = useSettings();
   const described = describeOpponent(opponent);
   const game = useGame(gameOpponent(ctrl, opponent));
   const { playerColor, line, qualities, ply, current, toMove, thinking, goto } = game;

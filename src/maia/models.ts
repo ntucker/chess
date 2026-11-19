@@ -1,3 +1,5 @@
+import type { MaiaRating } from './ratings';
+
 /** Maia's networks, by the rating of the players each was trained on. */
 /* eslint-disable @typescript-eslint/no-require-imports -- Metro bundles an asset for each static require. */
 export const MODELS = {
@@ -10,7 +12,5 @@ export const MODELS = {
   1700: require('@/assets/maia/maia-1700.bin'),
   1800: require('@/assets/maia/maia-1800.bin'),
   1900: require('@/assets/maia/maia-1900.bin'),
-} as const;
+} as const satisfies Record<MaiaRating, number>;
 /* eslint-enable @typescript-eslint/no-require-imports */
-
-export type MaiaRating = keyof typeof MODELS;

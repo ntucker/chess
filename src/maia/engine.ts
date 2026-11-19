@@ -1,7 +1,7 @@
 import type { Evaluation } from '@/evaluation/evaluation';
 
 import { bestMove, evaluation, prepareInput } from './maia';
-import type { MaiaRating } from './models';
+import type { MaiaRating } from './ratings';
 import { runNetwork } from './runNetwork';
 
 // The rules run here; the network runs off the main thread, so the app keeps

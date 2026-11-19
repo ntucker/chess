@@ -1,7 +1,8 @@
 import { assetUrl } from '@/files/assetUrl';
 
 import type { MaiaRequest, MaiaResponse } from './maia.worker';
-import { type MaiaRating, MODELS } from './models';
+import { MODELS } from './models';
+import type { MaiaRating } from './ratings';
 import type { NetworkOutput } from './network';
 
 let worker: Worker | undefined;

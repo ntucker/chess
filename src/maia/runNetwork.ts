@@ -7,7 +7,8 @@ import {
 import { readAsset } from '@/files/readAsset';
 
 import { loadOnce } from './loadOnce';
-import { type MaiaRating, MODELS } from './models';
+import { MODELS } from './models';
+import type { MaiaRating } from './ratings';
 import { forward, type MaiaNetwork, type NetworkOutput, parseNetwork } from './network';
 
 /**

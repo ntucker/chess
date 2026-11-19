@@ -1,14 +1,11 @@
-import { type MaiaRating, MODELS } from '@/maia/models';
+import { MAIA_RATINGS, type MaiaRating } from '@/maia/ratings';
 
 /**
  * Who the learner plays against, as one ladder of difficulty: Maia at a
  * rating, 1100 to 1900, playing the way people of that rating do, and
- * Stockfish above them all, playing the move it judges best. The rating also
- * picks the lichess rating band in lessons.
+ * Stockfish above them all, playing the move it judges best.
  */
 export type Opponent = MaiaRating | 'stockfish';
-
-const MAIA_RATINGS = Object.keys(MODELS).map(Number) as MaiaRating[];
 
 /** Every opponent, easiest first. */
 export const OPPONENTS: readonly Opponent[] = [...MAIA_RATINGS, 'stockfish'];
@@ -20,18 +17,20 @@ export const OPPONENT_PRESETS = [1100, 1500, 1900, 'stockfish'] as const satisfi
 export const DEFAULT_OPPONENT: Opponent = 1500;
 
 /**
- * How `opponent` is shown: its name, a few words for its name plate, and one
- * sentence on how it plays.
+ * How `opponent` is shown: its name, its step on the difficulty ladder, a few
+ * words for its name plate, and one sentence on how it plays.
  */
 export function describeOpponent(opponent: Opponent) {
   return opponent === 'stockfish'
     ? {
         name: 'Stockfish',
+        level: 'Stockfish',
         tagline: 'Plays its best move',
         style: 'Stockfish plays the move it judges best.',
       }
     : {
         name: 'Maia',
+        level: String(opponent),
         tagline: `Plays like a ${opponent}`,
         style: `Maia plays the way people rated about ${opponent} do.`,
       };

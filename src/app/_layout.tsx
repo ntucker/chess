@@ -1,5 +1,5 @@
 // localStorage on Android, where the app remembers its settings
-// (src/settings/setting.ts). The web has its own.
+// (src/settings/SettingsProvider.tsx). The web has its own.
 import 'expo-sqlite/localStorage/install';
 
 import { DataProvider } from '@data-client/react';
@@ -14,8 +14,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
-import { useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
-import { useOpponent } from '@/opponent/useOpponent';
+import { SettingsProvider, useSettings } from '@/settings/SettingsProvider';
 import { StockfishHost } from '@/stockfish/StockfishHost';
 import { themes } from '@/theme/theme';
 import { useColorScheme } from '@/theme/useColorScheme';
@@ -34,11 +33,13 @@ export default function RootLayout() {
 
   return (
     <DataProvider>
+      <SettingsProvider>
       <SilkProvider theme={themes[colorScheme]}>
         <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
         <Stack screenOptions={{ headerShown: false }} />
         <StockfishWhileChosen />
       </SilkProvider>
+      </SettingsProvider>
     </DataProvider>
   );
 }
@@ -49,6 +50,6 @@ export default function RootLayout() {
  * memory.
  */
 function StockfishWhileChosen() {
-  const players = [useEvaluationEngine(), useOpponent()];
-  return players.includes('stockfish') ? <StockfishHost /> : null;
+  const { evaluationEngine, opponent } = useSettings();
+  return evaluationEngine === 'stockfish' || opponent === 'stockfish' ? <StockfishHost /> : null;
 }
