@@ -35,7 +35,8 @@ export function LessonPage({ id }: { readonly id: string }) {
         fallback={<LessonPlaceholder />}
         errorComponent={({ error }) => <LessonPlaceholder message={error.message} />}
       >
-        <LessonScreen id={id as LessonId} />
+        {/* A game belongs to one lesson: another lesson starts its own. */}
+        <LessonScreen key={id} id={id as LessonId} />
       </AsyncBoundary>
     </BrowserOnly>
   );

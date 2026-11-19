@@ -82,5 +82,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
  * The failure `opponent` (by id) left on the latest moves, if any. A failure
  * by an opponent since replaced doesn't count, so the new one is asked.
  */
-export const failure = (state: GameState, opponent: string | undefined) =>
-  state.failed?.opponent === opponent ? state.failed?.error : undefined;
+export function failure({ failed }: GameState, opponent: string | undefined) {
+  return failed?.opponent === opponent ? failed?.error : undefined;
+}

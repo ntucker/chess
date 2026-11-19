@@ -57,6 +57,8 @@ export function useGame(opponent: GameOpponent | undefined, { side, active }: Op
       dispatch({ type: 'failed', error, ...answer });
     }
   });
+  // Coming back to the front while a request is out asks again; Data Client
+  // shares the request still running, so the engine searches once.
   useEffect(() => {
     if (active && thinking) ask(moves);
   }, [active, thinking, moves, opponent?.id]);
