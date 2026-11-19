@@ -160,8 +160,10 @@ jobs:
             git add -A
             tree=$(git write-tree)
             # An unchanged tree (say, a close after a run already dropped the
-            # preview) skips the push, which would only rebuild Pages.
-            if [ -z "$lease" ] || [ "$tree" != "$(git rev-parse "$lease^{tree}")" ]; then
+            # preview) skips the push, which would only rebuild Pages. A re-run
+            # or manual run still pushes, to retry a failed Pages build.
+            if [ -z "$lease" ] || [ "$tree" != "$(git rev-parse "$lease^{tree}")" ] \
+              || [ "$GITHUB_RUN_ATTEMPT" -gt 1 ] || [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
               commit=$(git commit-tree "$tree" -m "Web run $GITHUB_RUN_ID ($GITHUB_EVENT_NAME${PR:+ #$PR})")
               if ! git push -q --force-with-lease="gh-pages:$lease" origin "$commit:refs/heads/gh-pages"; then
                 sleep $((attempt * 5))
