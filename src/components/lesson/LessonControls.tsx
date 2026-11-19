@@ -44,7 +44,7 @@ export function LessonControls({ mode, onMode }: Props) {
         </View>
       </View>
       <View style={styles.toggles}>
-        {/* Practice draws no ideas until a move is played, so the switch is Explore's. */}
+        {/* Guidance ignores this switch in Practice, so it's Explore's. */}
         {mode === 'explore' ? (
           <Toggle
             label="Ideas on the board"

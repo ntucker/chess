@@ -9,9 +9,9 @@ import type { Color, Ply } from '@/game/replay';
 import type { LessonMode } from './guidance';
 
 export type ModeState =
-  | { readonly mode: 'explore' }
+  | { readonly mode: Extract<LessonMode, 'explore'> }
   | {
-      readonly mode: 'practice';
+      readonly mode: Extract<LessonMode, 'practice'>;
       /** No non-book move and no take-back since the learner's first move. */
       readonly clean: boolean;
     };

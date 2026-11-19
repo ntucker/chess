@@ -165,6 +165,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
               plies={game.plies}
               qualities={game.qualities}
               ply={game.ply}
+              // A record of the line, so it outlives the trap's card.
               trapped={view.trap && view.trap.ply + 1}
               onGoto={game.goto}
             />
@@ -226,7 +227,7 @@ function describeStatus(
       eyebrow,
       title: 'End of this line.',
       detail: practice
-        ? 'This run had a slip or a take-back. Go back to your first move and play it through clean.'
+        ? 'This run wasn’t clean: a slip, a take-back, or Practice chosen after your first move. Go back to your first move and play it through.'
         : `The guide stops here. Step back to try another branch, or ${playOn}.`,
     };
   // An `end` place is always a line end the headline tells (see above).
