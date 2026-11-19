@@ -1,5 +1,5 @@
 // localStorage on Android, where the app remembers its settings
-// (src/evaluation/useEvaluationEngine.ts). The web has its own.
+// (src/settings/SettingsProvider.tsx). The web has its own.
 import 'expo-sqlite/localStorage/install';
 
 import { DataProvider } from '@data-client/react';
@@ -14,7 +14,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
-import { useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
+import { SettingsProvider, useSettings } from '@/settings/SettingsProvider';
 import { StockfishHost } from '@/stockfish/StockfishHost';
 import { themes } from '@/theme/theme';
 import { useColorScheme } from '@/theme/useColorScheme';
@@ -33,19 +33,23 @@ export default function RootLayout() {
 
   return (
     <DataProvider>
-      <SilkProvider theme={themes[colorScheme]}>
-        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-        <Stack screenOptions={{ headerShown: false }} />
-        <EvaluationEngineHost />
-      </SilkProvider>
+      <SettingsProvider>
+        <SilkProvider theme={themes[colorScheme]}>
+          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+          <Stack screenOptions={{ headerShown: false }} />
+          <StockfishWhileChosen />
+        </SilkProvider>
+      </SettingsProvider>
     </DataProvider>
   );
 }
 
 /**
- * Runs Stockfish while the evaluation bar uses it. Choosing Maia instead
- * stops it, which frees its memory.
+ * Runs Stockfish while the evaluation bar or the opponent uses it. Choosing
+ * Maia for the bar and a rating for the opponent stops it, which frees its
+ * memory.
  */
-function EvaluationEngineHost() {
-  return useEvaluationEngine() === 'stockfish' ? <StockfishHost /> : null;
+function StockfishWhileChosen() {
+  const { evaluationEngine, opponent } = useSettings();
+  return evaluationEngine === 'stockfish' || opponent === 'stockfish' ? <StockfishHost /> : null;
 }

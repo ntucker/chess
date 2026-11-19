@@ -1,3 +1,4 @@
+import { useController } from '@data-client/react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Button, Inline, Separator, Stack, Surface, useTheme } from '@reactive/silk-native';
 import Head from 'expo-router/head';
@@ -11,25 +12,28 @@ import { EvaluationEngineChoice } from '@/components/EvaluationEngineChoice';
 import { Eyebrow } from '@/components/Eyebrow';
 import { GameStatus } from '@/components/GameStatus';
 import { HEADER_HEIGHT, Header } from '@/components/Header';
+import { OpponentChoice } from '@/components/OpponentChoice';
 import { PLAYER_BAR_HEIGHT, PLAYER_DISC, PlayerBar } from '@/components/PlayerBar';
 import { Scoresheet } from '@/components/Scoresheet';
 import { SideChooser } from '@/components/SideChooser';
 import { Transport } from '@/components/Transport';
 import { type Color, colorName, opposite } from '@/game/replay';
 import { useGame } from '@/game/useGame';
-import type { MaiaRating } from '@/maia/models';
+import { describeOpponent } from '@/opponent/opponent';
+import { gameOpponent } from '@/resources/opponent';
+import { useSettings } from '@/settings/SettingsProvider';
 import { spotlight } from '@/theme/theme';
 
-/** Maia's strength for now; picking it comes with the opening lessons. */
-const RATING: MaiaRating = 1500;
-
 export default function PlayScreen() {
-  const game = useGame(RATING);
+  const ctrl = useController();
+  const { opponent } = useSettings();
+  const described = describeOpponent(opponent);
+  const game = useGame(gameOpponent(ctrl, opponent));
   const { playerColor, line, qualities, ply, current, toMove, thinking, goto } = game;
   const [nextColor, setNextColor] = useState<Color>(playerColor);
   const { theme } = useTheme();
   const { color, radius } = theme.semantic;
-  const maiaColor = opposite(playerColor);
+  const opponentColor = opposite(playerColor);
 
   const chooseSide = (side: Color) => {
     setNextColor(side);
@@ -75,12 +79,12 @@ export default function PlayScreen() {
           <View style={styles.stage}>
             <View style={styles.boardColumn}>
               <PlayerBar
-                name="Maia"
-                detail={`Plays like a ${RATING} · ${colorName(maiaColor)}`}
-                color={maiaColor}
-                toMove={toMove === maiaColor}
+                name={described.name}
+                detail={`${described.tagline} · ${colorName(opponentColor)}`}
+                color={opponentColor}
+                toMove={toMove === opponentColor}
                 thinking={thinking}
-                material={game.material[maiaColor]}
+                material={game.material[opponentColor]}
               />
               <View style={styles.boardRow}>
                 <EvaluationBar
@@ -123,7 +127,7 @@ export default function PlayScreen() {
                   latest={game.latest}
                   viewing={game.atLatest ? undefined : ply}
                   total={line.length}
-                  rating={RATING}
+                  opponent={opponent}
                   thinking={thinking}
                   error={game.error}
                   onRetry={game.retry}
@@ -145,7 +149,10 @@ export default function PlayScreen() {
                   <Eyebrow>Scoresheet</Eyebrow>
                   <Scoresheet plies={game.plies} qualities={qualities} ply={ply} onGoto={goto} />
                 </Stack>
-                <EvaluationEngineChoice />
+                <Stack gap="1">
+                  <OpponentChoice />
+                  <EvaluationEngineChoice />
+                </Stack>
               </Stack>
             </View>
           </View>
@@ -159,7 +166,7 @@ export default function PlayScreen() {
 const BOARD_COLUMN_GAP = 4;
 /** The evaluation bar's width. */
 const EVALUATION_BAR_WIDTH = 22;
-/** How far the board sits below the top of its column (Maia's name bar). */
+/** How far the board sits below the top of its column (the opponent's name bar). */
 const BOARD_OFFSET = PLAYER_BAR_HEIGHT + BOARD_COLUMN_GAP;
 /** The board's largest size. */
 const BOARD_MAX = 720;

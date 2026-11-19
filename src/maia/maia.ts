@@ -6,7 +6,7 @@ import { makeUci, opposite } from 'chessops/util';
 import type { Evaluation } from '@/evaluation/evaluation';
 import { playLine } from '@/game/replay';
 
-import type { MaiaRating } from './models';
+import type { MaiaRating } from './ratings';
 import { INPUT_PLANES } from './network';
 import { policySlot } from './policy';
 

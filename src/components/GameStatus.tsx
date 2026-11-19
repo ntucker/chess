@@ -2,7 +2,7 @@ import { Button, Inline, Stack, Text } from '@reactive/silk-native';
 
 import { Eyebrow } from '@/components/Eyebrow';
 import type { Color, Position } from '@/game/replay';
-import type { MaiaRating } from '@/maia/models';
+import { describeOpponent, type Opponent } from '@/opponent/opponent';
 
 interface Props {
   readonly playerColor: Color;
@@ -11,7 +11,7 @@ interface Props {
   /** The ply on the board when it isn't the latest. */
   readonly viewing?: number;
   readonly total: number;
-  readonly rating: MaiaRating;
+  readonly opponent: Opponent;
   readonly thinking: boolean;
   readonly error?: Error;
   readonly onRetry: () => void;
@@ -32,7 +32,7 @@ export function GameStatus({ error, onRetry, ...game }: Props) {
       {error ? (
         <Inline gap="3" align="center">
           <Text role="bodySm" tone="danger">
-            Maia didn&apos;t answer.
+            {describeOpponent(game.opponent).name} didn&apos;t answer.
           </Text>
           <Button size="sm" variant="soft" tone="danger" onPress={onRetry}>
             Try again
@@ -55,20 +55,21 @@ function describe({ viewing, total, ...game }: Game) {
   };
 }
 
-function describeLatest({ playerColor, latest, rating, thinking }: Omit<Game, 'viewing' | 'total'>) {
+function describeLatest({ playerColor, latest, opponent, thinking }: Omit<Game, 'viewing' | 'total'>) {
   const { result } = latest;
+  const { name, style } = describeOpponent(opponent);
   if (result?.winner === playerColor)
     return { title: 'Checkmate. Bravo!', detail: 'You won. Take a bow, then start a new game.' };
   if (result?.winner)
-    return { title: 'Checkmate.', detail: 'Maia won this one. Step back through it to see where it turned.' };
+    return { title: 'Checkmate.', detail: `${name} won this one. Step back through it to see where it turned.` };
   if (result) return { title: 'A draw.', detail: `By ${result.reason}.` };
   if (latest.turn === playerColor)
     return {
       title: 'Your move.',
-      detail: latest.move ? `Maia played ${latest.move.san}.` : 'Drag a piece, or tap it and then its square.',
+      detail: latest.move ? `${name} played ${latest.move.san}.` : 'Drag a piece, or tap it and then its square.',
     };
   return {
-    title: thinking ? 'Maia is thinking…' : "Maia's move.",
-    detail: `Maia plays the way people rated about ${rating} do.`,
+    title: thinking ? `${name} is thinking…` : `${name}'s move.`,
+    detail: style,
   };
 }
