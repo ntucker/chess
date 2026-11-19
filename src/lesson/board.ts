@@ -15,6 +15,7 @@ import { lessonDrawings, type PlaybackFrame, slidCandidate } from './drawings';
 import type { Guidance } from './guidance';
 import type { PositionKey, Uci } from './lesson';
 import type { Candidate } from './select';
+import { shownKey } from './view';
 
 interface LessonBoardInput {
   /** The learner's side, at the bottom of the board. */
@@ -69,7 +70,7 @@ export function lessonBoard({
     drawings: frame
       ? []
       : [
-          ...lessonDrawings(guidance, slid ? slid.next : key, side),
+          ...lessonDrawings(guidance, shownKey(key, guidance.preview), side),
           ...lastMoveBadge(previewed ? undefined : current.move?.to, quality),
         ],
     check: shown.check,

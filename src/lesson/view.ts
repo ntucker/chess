@@ -120,6 +120,10 @@ export interface Preview {
   readonly notes: readonly ShownNote[];
 }
 
+/** The position the board shows: a sliding preview's, after its move, or the game's `key`. */
+export const shownKey = (key: PositionKey, preview?: Preview): PositionKey =>
+  preview?.slide ? preview.candidate.next : key;
+
 /**
  * The candidate `pointer` previews in `view`. A row previews its move. A
  * destination square previews the most common candidate landing there. A

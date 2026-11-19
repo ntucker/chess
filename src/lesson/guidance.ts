@@ -7,14 +7,17 @@
  *   both would share the board's colors; a previewed move draws its own
  *   ideas, and where no candidates are drawn every note's ideas are. "Show
  *   ideas on board" turns idea drawings off; the card still shows its notes.
+ *   Only a note about the position on the board can be pointed at, and
+ *   Stockfish's best move shows only while nothing is previewed, pointed at
+ *   or playing back.
  * - Practice hides every hint while it is the learner's turn: no candidates,
  *   previews, best move or top moves, and of the notes only those of the move
  *   just played, and a trap's warning while traps are shown. Right after the
  *   learner's move the card shows what it was for: the move's notes, then
- *   those of the position it was played in. On the opponent's turn it shows
- *   the opponent's candidates, and their previews, only on "I choose", since
- *   the learner has to pick one; on Auto the opponent just plays. Stockfish's
- *   moves stay hidden.
+ *   those of the position it was played in, which can't be pointed at. On
+ *   the opponent's turn it shows the opponent's candidates, and their
+ *   previews, only on "I choose", since the learner has to pick one; on Auto
+ *   the opponent just plays. Stockfish's moves stay hidden.
  * - Traps: with "show traps" on, a trap's sequence is drawn before the
  *   learner commits, beside the candidates; off, it isn't. A trap fallen
  *   into is shown either way.
@@ -26,7 +29,7 @@
  */
 import type { Idea, Note, PositionKey, Uci } from './lesson';
 import { type Candidate, mainCandidate } from './select';
-import type { LandedTrap, LessonView, Preview, ShownNote } from './view';
+import { type LandedTrap, type LessonView, type Preview, type ShownNote, shownKey } from './view';
 
 export type LessonMode = 'explore' | 'practice';
 
@@ -79,7 +82,10 @@ export interface Guidance {
   readonly preview?: Preview;
   /** The idea card's notes: the preview's while a move is previewed. */
   readonly notes: readonly ShownNote[];
-  /** Of those notes, the ones the learner can point at: their ideas draw on the board. */
+  /**
+   * Of those notes, the ones the learner can point at: those about the
+   * position on the board (`shownKey`) whose ideas draw.
+   */
   readonly pointable: readonly Note[];
   /** The ideas of those notes the switches allow: what can be drawn or played back. */
   readonly ideas: readonly ShownIdea[];
@@ -121,14 +127,12 @@ export function guidance(input: GuidanceInput): Guidance {
   const playing = playingNote && notePlayback(ideas, playingNote);
   // A note with nothing to draw on the board's position leaves the board as it
   // is: a text note, or one about another position (the one a move was played in).
-  const onBoard = preview?.slide ? preview.candidate.next : view.key;
   const pointable = notes
-    .filter(({ after }) => after === onBoard)
+    .filter(({ after }) => after === shownKey(view.key, preview))
     .filter(({ note }) => note.ideas?.some((idea) => idea.type !== 'evaluation' && allowed(idea)))
     .map(({ note }) => note);
   const pointedNote = pointed && pointable.includes(pointed) ? pointed : undefined;
-  const shown = boardShown({ candidates, preview, ideas, playing, pointed: pointedNote });
-  // Stockfish's arrow only on the game's own board, beside the candidates.
+  const board = boardShown({ candidates, preview, ideas, playing, pointed: pointedNote });
   const best = explore && !preview && !playing && !pointedNote ? engine?.best : undefined;
 
   return {
@@ -138,8 +142,8 @@ export function guidance(input: GuidanceInput): Guidance {
     notes,
     pointable,
     ideas,
-    drawn: firstPlanOnly(shown.drawn),
-    drawnCandidates: shown.candidates,
+    drawn: firstPlanOnly(board.drawn),
+    drawnCandidates: board.candidates,
     playing,
     best: view.candidates.some(({ move }) => move.uci === best) ? undefined : best,
     top: explore && view.place !== 'inside' ? (engine?.top ?? []) : [],

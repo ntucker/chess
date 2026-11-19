@@ -159,6 +159,19 @@ describe('guidance', () => {
       // The second note is about the position the move was played in.
       const practice = shown([...ADVANCE, 'Bf5'], 'practice');
       expect(practice.pointable).toEqual([practice.notes[0].note]);
+      // Pointing at the other leaves the board as it is.
+      const view = sampleView(ADVANCE);
+      const [, position] = view.notes;
+      const elsewhere = { ...view, notes: [{ ...position, after: keyAfter('e4') }] };
+      const pointing = guidance({
+        view: elsewhere,
+        mode: 'explore',
+        switches: ALL_ON,
+        engine: ENGINE,
+        pointed: position.note,
+      });
+      expect(pointing.drawnCandidates).toEqual(pointing.candidates);
+      expect(pointing.best).toBe('g8f6');
     });
 
     it("hides the position's own notes on the learner's turn, but not a trap's warning with traps shown", () => {
