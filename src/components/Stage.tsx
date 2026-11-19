@@ -176,6 +176,8 @@ const BOARD_COLUMN_LIMIT = phoneCalc(
 );
 /** Space above the program when it wraps below the board. */
 const WRAPPED_GAP = phoneLength('wrapped-gap', 32);
+/** How far the column is raised so the program lines up beside it (see below). */
+const COLUMN_RAISE = BOARD_OFFSET.minus(WRAPPED_GAP);
 
 // Board and program sit side by side when there's room and wrap into a column
 // when there isn't, without measuring the window (which the server can't).
@@ -202,14 +204,14 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     columnGap: STAGE_GAP,
-    paddingTop: BOARD_OFFSET.minus(WRAPPED_GAP).value,
+    paddingTop: COLUMN_RAISE.value,
   },
   boardColumn: {
     flexGrow: 1,
     flexShrink: 1,
     flexBasis: 320,
     maxWidth: BOARD_COLUMN_LIMIT,
-    marginTop: WRAPPED_GAP.minus(BOARD_OFFSET).value,
+    marginTop: COLUMN_RAISE.times(-1).value,
     gap: BOARD_COLUMN_GAP,
   },
   barSpace: { height: PLAYER_BAR_HEIGHT.value },

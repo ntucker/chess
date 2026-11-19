@@ -32,16 +32,25 @@ export function phoneLength(name: (typeof PHONE_LENGTHS)[number], wide: number) 
 }
 
 function length(wide: number, css: string): PhoneLength {
-  const of = (other: PhoneLength | number) =>
-    typeof other === 'number' ? length(other, `${other}px`) : other;
   return {
     wide,
     css,
     value: phoneCalc(css, wide),
-    plus: (other) => length(wide + of(other).wide, `(${css} + ${of(other).css})`),
-    minus: (other) => length(wide - of(other).wide, `(${css} - ${of(other).css})`),
+    plus: (other) => {
+      const o = asLength(other);
+      return length(wide + o.wide, `(${css} + ${o.css})`);
+    },
+    minus: (other) => {
+      const o = asLength(other);
+      return length(wide - o.wide, `(${css} - ${o.css})`);
+    },
     times: (factor) => length(wide * factor, `(${css} * ${factor})`),
   };
+}
+
+/** A fixed number of pixels, as a PhoneLength. */
+function asLength(other: PhoneLength | number) {
+  return typeof other === 'number' ? length(other, `${other}px`) : other;
 }
 
 /**
