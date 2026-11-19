@@ -1,6 +1,6 @@
 import { AsyncBoundary, useController, useSuspense } from '@data-client/react';
 import { Separator, Spinner, Stack } from '@reactive/silk-native';
-import { useMemo } from 'react';
+import { useDeferredValue, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
@@ -63,17 +63,25 @@ export function LessonPage({ id }: { readonly id?: string }) {
  * reopens it and the browser's Back returns to the start.
  */
 function Openings({ address }: { readonly address?: LessonId }) {
-  const { store, picked } = useOpeningsGame(address);
-  // A failed lesson clears on another address (Back to the start). A `key`
-  // would remount the page and lose the game, so the boundary resets instead.
-  const resetOnAddress = useMemo(() => resetListener(address), [address]);
+  const [game, dispatch] = useOpeningsGame(address);
+  // The page shows the game as it stood until the lesson it now plays has
+  // loaded: picking an opening, or going Back or Forward to one, keeps the
+  // page on screen rather than a placeholder, while the address moves at once.
+  const shown = useDeferredValue(game);
+  const loading = useLongWait(shown !== game);
+  const lesson = lessonOf(LESSON_INDEX, shown.moves);
+  // A failed lesson clears once the page shows another (Back to the start).
+  // A `key` would remount the page and lose the game, so the boundary resets.
+  const resetOnLesson = useMemo(() => resetListener(lesson), [lesson]);
   return (
     <AsyncBoundary
-      fallback={<LessonPlaceholder />}
+      // Untitled: React renders this fallback, uncommitted, whenever a lesson
+      // loads in the background, and the tab's title would take it.
+      fallback={<LessonPlaceholder untitled />}
       errorComponent={LessonFailure}
-      listen={resetOnAddress}
+      listen={resetOnLesson}
     >
-      <LessonScreen id={picked} store={store} />
+      <LessonScreen id={lesson} store={[shown, dispatch]} loading={loading} />
     </AsyncBoundary>
   );
 }
@@ -85,7 +93,16 @@ const OPENINGS = openingsLesson(LESSON_INDEX);
  * The lesson `id` played on the board, in Explore or Practice, or before
  * one is picked, the start position's openings alone.
  */
-function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: GameStore }) {
+function LessonScreen({
+  id,
+  store,
+  loading,
+}: {
+  readonly id?: LessonId;
+  readonly store: GameStore;
+  /** The game has moved on to a lesson that has been loading long enough to say so. */
+  readonly loading: boolean;
+}) {
   const ctrl = useController();
   const picked = useSuspense(getLesson, id ?? null);
   const lesson = useMemo(() => (picked ? withOpenings(picked, LESSON_INDEX) : OPENINGS), [picked]);
@@ -98,7 +115,6 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
     playback,
     canPlay,
     play,
-    pending,
     pointedNote,
     rareShown,
     showRare,
@@ -121,10 +137,9 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
   const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
   // The start lists the openings, whichever lesson is loaded.
   const picking = view.ply === 0;
-  const longWait = useLongWait(pending);
   const status = describeStatus(view, {
     picking,
-    loading: longWait,
+    loading,
     title: lesson.title,
     rival: colorName(rival),
     engine: described.name,
@@ -262,7 +277,7 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
 interface StatusInput {
   /** Whether the board shows the start, where the first move picks the opening. */
   readonly picking: boolean;
-  /** The opening picked has been loading long enough to say so. */
+  /** The game has moved on to a lesson that has been loading long enough to say so. */
   readonly loading: boolean;
   /** The lesson's title, for a position before any variation. */
   readonly title: string;
@@ -309,7 +324,7 @@ function describeStatus(
     practice,
   }: StatusInput,
 ) {
-  if (picking && loading) return { eyebrow: OPENINGS.title, ...LOADING };
+  if (loading) return { eyebrow: picking ? OPENINGS.title : title, ...LOADING };
   if (picking)
     return {
       eyebrow: OPENINGS.title,
@@ -394,11 +409,20 @@ function LessonFailure({ error }: { readonly error: Error }) {
 /** The headline while a lesson loads. */
 const LOADING = { title: 'Setting the stage…', detail: 'Loading the lesson.' } as const;
 
-/** The lesson page before the lesson arrives, or with `message` when it can't be shown. */
-function LessonPlaceholder({ message }: { readonly message?: string }) {
+/**
+ * The lesson page before the lesson arrives, or with `message` when it can't
+ * be shown; `untitled` leaves the tab's title as it is.
+ */
+function LessonPlaceholder({
+  message,
+  untitled,
+}: {
+  readonly message?: string;
+  readonly untitled?: boolean;
+}) {
   return (
     <Stage
-      title="Lesson · Opening Night"
+      title={untitled ? undefined : 'Lesson · Opening Night'}
       board={
         <BoardColumnPlaceholder>
           {message ? null : <Spinner label="Loading the lesson" />}

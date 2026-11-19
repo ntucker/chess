@@ -14,7 +14,7 @@ const startOf = (id: LessonId | undefined) =>
 const lessonHref = (id: LessonId) => `/lesson/${id}` as const;
 
 /**
- * The openings page's game, kept in step with its address: `/`, the start,
+ * The openings page's game store, kept in step with its address: `/`, the start,
  * or `/lesson/<id>`, the lesson `address` names. The game starts where the
  * address says. Picking a lesson moves to its address: from `/` it adds one
  * to the history, from another lesson it replaces that one, so the browser's
@@ -42,5 +42,5 @@ export function useOpeningsGame(address: LessonId | undefined) {
     else if (address === undefined) router.push(lessonHref(picked));
     else router.replace(lessonHref(picked));
   }, [picked, address, router]);
-  return { store, picked };
+  return store;
 }

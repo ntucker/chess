@@ -24,10 +24,10 @@ const show = (address?: LessonId) =>
     root ??= createRoot();
     root.render(<Page address={address} />);
   });
-const moves = () => latest().store[0].moves;
+const moves = () => latest()[0].moves;
 const play = (...ucis: string[]) =>
   act(() => {
-    for (const uci of ucis) latest().store[1]({ type: 'move', uci });
+    for (const uci of ucis) latest()[1]({ type: 'move', uci });
   });
 
 afterEach(() => {
@@ -40,12 +40,10 @@ describe('useOpeningsGame', () => {
   it('starts where the address says', async () => {
     await show();
     expect(moves()).toEqual([]);
-    expect(latest().picked).toBe(undefined);
     act(() => root?.unmount());
     root = undefined;
     await show('slav');
     expect(moves()).toEqual(['d2d4']);
-    expect(latest().picked).toBe('slav');
     expect(mockRouter.push).not.toHaveBeenCalled();
     expect(mockRouter.replace).not.toHaveBeenCalled();
   });
@@ -65,7 +63,7 @@ describe('useOpeningsGame', () => {
   it("replaces a lesson's address when another is picked from it", async () => {
     await show('caro-kann');
     await play('c7c6');
-    await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
+    await act(() => latest()[1]({ type: 'goto', ply: 0 }));
     await play('d2d4');
     expect(mockRouter.replace).toHaveBeenCalledWith('/lesson/slav');
     expect(mockRouter.push).not.toHaveBeenCalled();
@@ -87,7 +85,7 @@ describe('useOpeningsGame', () => {
 
   it('returns to the start when a first move picks no lesson', async () => {
     await show('caro-kann');
-    await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
+    await act(() => latest()[1]({ type: 'goto', ply: 0 }));
     await play('g1f3');
     expect(mockRouter.dismissTo).toHaveBeenCalledWith('/');
     // Arriving there keeps the game.

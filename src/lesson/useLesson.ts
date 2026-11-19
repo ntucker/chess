@@ -8,7 +8,7 @@
  */
 import { useController } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
-import { useEffect, useMemo, useReducer, useTransition } from 'react';
+import { useEffect, useMemo, useReducer } from 'react';
 
 import type { Square } from '@/board/drawing';
 import type { Drag } from '@/board/pointer';
@@ -132,20 +132,13 @@ export function useLesson(lesson: Lesson, store: GameStore) {
     const candidate = at && !preview(lesson, view, at) ? { ...at, to: undefined } : at;
     dispatch({ type: 'candidate', key, candidate });
   };
-  const [pending, startPending] = useTransition();
   // One event for a move: the game plays it, and the mode learns what it was.
   const playMove = (uci: string) => {
     if (!canMove) return;
     const learner = current.turn === lesson.side;
     const book = isBook(lesson, key, uci);
-    const played = () => {
-      dispatch({ type: 'played', learner, book, first: startsRun, replaces: ply < moves.length });
-      game.play(uci);
-    };
-    // A move at the start picks the opening, whose lesson may still be
-    // loading: the start stays on screen meanwhile, rather than a placeholder.
-    if (ply === 0) startPending(played);
-    else played();
+    dispatch({ type: 'played', learner, book, first: startsRun, replaces: ply < moves.length });
+    game.play(uci);
   };
   const play = (candidate: Candidate) => playMove(candidate.move.uci);
   const board: Omit<BoardProps, 'dom'> = {
@@ -199,8 +192,6 @@ export function useLesson(lesson: Lesson, store: GameStore) {
     guidance: shown,
     board,
     playback,
-    /** A move at the start is waiting for the lesson it picks to load. */
-    pending,
     /** Whether the learner may play the side to move's candidates now. */
     canPlay: canMove,
     play,
