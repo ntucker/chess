@@ -3,46 +3,46 @@ import { useLayoutEffect, useReducer, useRef } from 'react';
 
 import { classifyMove } from '@/analysis/quality';
 import { useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
-import type { MaiaRating } from '@/maia/models';
 import { getEvaluation } from '@/resources/evaluation';
-import { getMaiaMove } from '@/resources/maia';
 
 import { type GameAction, gameReducer, initialGame } from './game';
 import { material } from './material';
 import { analyze, type Color, lastPosition, replay, toUci } from './replay';
 
-/** The least time Maia takes to reply, so a fast answer reads as a reply, not a reflex. */
+/** The least time the opponent takes to reply, so a fast answer reads as a reply, not a reflex. */
 const THINKING_MS = 400;
 
 /**
- * A game against Maia: its moves and positions, how good each move was, the
- * move on the board, and whether Maia is thinking. Every request Maia or the
- * evaluation engine hasn't answered is tied to the game and moves it was
- * asked about, so a new game or a different move makes its answer (or
- * failure) count for nothing.
+ * A game against an opponent: its moves and positions, how good each move
+ * was, the move on the board, and whether the opponent is thinking. `reply`
+ * answers the moves so far with the opponent's move (UCI); who the opponent
+ * is, is the caller's business. Every request the opponent or the evaluation
+ * engine hasn't answered is tied to the game and moves it was asked about, so
+ * a new game or a different move makes its answer (or failure) count for
+ * nothing.
  */
-export function useGame(rating: MaiaRating) {
+export function useGame(reply: (line: readonly string[]) => Promise<string>) {
   const ctrl = useController();
   const engine = useEvaluationEngine();
   const [state, dispatch] = useReducer(gameReducer, initialGame);
-  const { playerColor, line, qualities, ply, maia } = state;
+  const { playerColor, line, qualities, ply } = state;
   const plies = replay(line);
   const latest = analyze(plies[plies.length - 1]);
   const atLatest = ply === line.length;
   const current = atLatest ? latest : analyze(plies[ply]);
-  const thinking = maia.status === 'thinking';
-  // The state as last rendered, which Maia's reply applies to: it arrives
+  const thinking = state.opponent.status === 'thinking';
+  // The state as last rendered, which the opponent's reply applies to: it arrives
   // after renders that the request that asked for it didn't see.
   const rendered = useRef(state);
   useLayoutEffect(() => {
     rendered.current = state;
   });
 
-  /** Asks Maia to answer `after`, the moves of game `game`. */
+  /** Asks the opponent to answer `after`, the moves of game `game`. */
   const ask = async (game: number, after: readonly string[]) => {
     try {
       const [uci] = await Promise.all([
-        ctrl.fetch(getMaiaMove, rating, after),
+        reply(after),
         new Promise((resolve) => setTimeout(resolve, THINKING_MS)),
       ]);
       act({ type: 'reply', game, after, uci });
@@ -76,7 +76,10 @@ export function useGame(rating: MaiaRating) {
     }
   };
 
-  /** Dispatches `action`, then asks Maia to move if it leaves her thinking and judges the move it adds. */
+  /**
+   * Dispatches `action`, then asks the opponent to move if it leaves it
+   * thinking, and judges the move it adds.
+   */
   const act = (action: GameAction) => {
     const from = rendered.current;
     const next = gameReducer(from, action);
@@ -84,7 +87,7 @@ export function useGame(rating: MaiaRating) {
     // Nothing changed (a late reply, an illegal move: the reducer returns the
     // same state), so nothing to start.
     if (next === from) return;
-    if (next.maia.status === 'thinking') ask(next.game, next.line);
+    if (next.opponent.status === 'thinking') ask(next.game, next.line);
     if (next.line !== from.line && next.line.length) judge(next.game, next.line);
   };
 
@@ -102,12 +105,12 @@ export function useGame(rating: MaiaRating) {
     atLatest,
     /** Whose move it is in the latest position; none once the game is over. */
     toMove: latest.result ? undefined : latest.turn,
-    // While Maia thinks the player can still go back and try another move.
+    // While the opponent thinks the player can still go back and try another move.
     canMove: !current.result && current.turn === playerColor && !(atLatest && thinking),
     /** Whether the player has made a move, so a new game would lose something. */
     started: plies.some((p) => p.move && p.turn !== playerColor),
     thinking,
-    error: maia.status === 'failed' ? maia.error : undefined,
+    error: state.opponent.status === 'failed' ? state.opponent.error : undefined,
     /** Plays the player's move between two squares on the shown position. */
     move(from: string, to: string) {
       act({ type: 'move', uci: toUci(current, from, to) });
@@ -116,7 +119,7 @@ export function useGame(rating: MaiaRating) {
       act({ type: 'newGame', playerColor: side });
     },
     retry() {
-      if (maia.status === 'failed') act({ type: 'retry' });
+      if (state.opponent.status === 'failed') act({ type: 'retry' });
     },
     goto(target: number) {
       dispatch({ type: 'goto', ply: target });

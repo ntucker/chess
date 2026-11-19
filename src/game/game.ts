@@ -1,13 +1,14 @@
 /**
- * The state of a game against Maia, as a reducer: the moves, how good each
- * was, the move on the board, and the one request to Maia that may be out.
+ * The state of a game against an engine (the opponent), as a reducer: the
+ * moves, how good each was, the move on the board, and the one request to
+ * the opponent that may be out.
  */
 import type { MoveQuality } from '@/analysis/quality';
 
 import { type Color, lastPosition, lineMove } from './replay';
 
-/** What Maia is doing about the latest position. */
-type MaiaStatus =
+/** What the opponent is doing about the latest position. */
+type OpponentStatus =
   | { readonly status: 'idle' }
   /** Answering the moves in `line`. */
   | { readonly status: 'thinking' }
@@ -24,14 +25,14 @@ export interface GameState {
   readonly qualities: readonly (MoveQuality | undefined)[];
   /** How many moves of `line` the board shows: `line.length` is the latest. */
   readonly ply: number;
-  readonly maia: MaiaStatus;
+  readonly opponent: OpponentStatus;
 }
 
 export type GameAction =
   | { readonly type: 'newGame'; readonly playerColor: Color }
   /** The player's move from the shown position; moves after it are dropped. */
   | { readonly type: 'move'; readonly uci: string }
-  /** Maia's answer, applied only if it answers the request still out. */
+  /** The opponent's answer, applied only if it answers the request still out. */
   | {
       readonly type: 'reply';
       readonly game: number;
@@ -54,8 +55,8 @@ export type GameAction =
   | { readonly type: 'retry' }
   | { readonly type: 'goto'; readonly ply: number };
 
-const IDLE: MaiaStatus = { status: 'idle' };
-const THINKING: MaiaStatus = { status: 'thinking' };
+const IDLE: OpponentStatus = { status: 'idle' };
+const THINKING: OpponentStatus = { status: 'thinking' };
 
 /** Before the first game: the player is White and nothing is played. */
 export const initialGame: GameState = {
@@ -64,7 +65,7 @@ export const initialGame: GameState = {
   line: [],
   qualities: [],
   ply: 0,
-  maia: IDLE,
+  opponent: IDLE,
 };
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
@@ -87,17 +88,17 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (!answers(state, action)) return state;
       const uci = lineMove(lastPosition(state.line).fen, action.uci);
       if (!uci) {
-        const error = new Error(`Maia answered with an illegal move: ${action.uci}`);
-        return { ...state, maia: { status: 'failed', error } };
+        const error = new Error(`The opponent answered with an illegal move: ${action.uci}`);
+        return { ...state, opponent: { status: 'failed', error } };
       }
       const line = [...state.line, uci];
       // Follow the reply only if the player was looking at the latest move.
       const ply = state.ply === state.line.length ? line.length : state.ply;
-      return { ...state, line, ply, maia: IDLE };
+      return { ...state, line, ply, opponent: IDLE };
     }
     case 'failed':
       if (!answers(state, action)) return state;
-      return { ...state, maia: { status: 'failed', error: action.error } };
+      return { ...state, opponent: { status: 'failed', error: action.error } };
     case 'judged': {
       if (action.game !== state.game || !startsWith(state.line, action.line)) return state;
       const labelled = action.line.length - 1;
@@ -105,24 +106,24 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, qualities };
     }
     case 'retry':
-      if (state.maia.status !== 'failed') return state;
-      return { ...state, maia: THINKING };
+      if (state.opponent.status !== 'failed') return state;
+      return { ...state, opponent: THINKING };
     case 'goto':
       return { ...state, ply: Math.max(0, Math.min(action.ply, state.line.length)) };
   }
 }
 
-/** Shows the latest move of `line`, with Maia thinking if it's her turn. */
+/** Shows the latest move of `line`, with the opponent thinking if it's its turn. */
 function start(state: GameState, line: readonly string[]): GameState {
   const position = lastPosition(line);
-  const maiaToMove = !position.result && position.turn !== state.playerColor;
-  return { ...state, line, ply: line.length, maia: maiaToMove ? THINKING : IDLE };
+  const opponentToMove = !position.result && position.turn !== state.playerColor;
+  return { ...state, line, ply: line.length, opponent: opponentToMove ? THINKING : IDLE };
 }
 
 /** Whether a response is for the request this game is waiting on. */
 const answers = (state: GameState, response: { game: number; after: readonly string[] }) =>
   response.game === state.game &&
-  state.maia.status === 'thinking' &&
+  state.opponent.status === 'thinking' &&
   state.line.length === response.after.length &&
   startsWith(state.line, response.after);
 
