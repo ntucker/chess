@@ -19,6 +19,7 @@ function board(sans: string[], pointer?: Pointer) {
     mode: 'explore',
     switches: SWITCHES,
     preview: pointer && preview(SAMPLE, view, pointer),
+    dragged: pointer?.at === 'drag' ? pointer.from : undefined,
   });
   const input = {
     side: SAMPLE.side,

@@ -1,8 +1,8 @@
 /**
  * The lesson screen's wiring: a game against the guide-first opponent, the
  * facts about the position on the board, what the learner points at (a
- * candidate, by its list row or a board square, and a note on the idea
- * card), an idea playing back, the mode (Explore or Practice), and the
+ * candidate, by its list row or a piece dragged onto its square, and a note
+ * on the idea card), an idea playing back, the mode (Explore or Practice), and the
  * board. On Auto the learner moves their own side; on "I choose", either.
  */
 import { useController } from '@data-client/react';
@@ -12,7 +12,7 @@ import { useEffect, useMemo, useReducer } from 'react';
 import type { Square } from '@/board/drawing';
 import type { Drag } from '@/board/pointer';
 import type { BoardProps } from '@/components/Board';
-import { parsePositionKey, toUci } from '@/game/replay';
+import { lineMove, parsePositionKey, toUci } from '@/game/replay';
 import { useGame } from '@/game/useGame';
 import { gameOpponent } from '@/resources/opponent';
 import { useSettings } from '@/settings/SettingsProvider';
@@ -95,6 +95,7 @@ export function useLesson(lesson: Lesson) {
     mode,
     switches: settings,
     preview: pointer && preview(lesson, view, pointer),
+    dragged: pointer?.at === 'drag' ? pointer.from : undefined,
     pointed: here?.note,
     playing: playing?.played,
   });
@@ -112,19 +113,20 @@ export function useLesson(lesson: Lesson) {
     return () => clearTimeout(timer);
   }, [stepping, playing?.step, playing?.played]);
 
-  // A piece dragged over a square previews its candidate there. A square
-  // without one ends any preview, as dropping the piece does; it is kept as
-  // no pointer, so dragging on over such squares re-renders nothing.
+  // A piece dragged over a square previews its candidate there. Over a
+  // square without one it is only the piece, so dragging on over such
+  // squares re-renders nothing.
   const pointDrag = (drag: Drag<Square> | null) => {
     const at: Pointer | undefined = drag ? { at: 'drag', ...drag } : undefined;
-    const candidate = at && preview(lesson, view, at) ? at : undefined;
+    const candidate = at && !preview(lesson, view, at) ? { ...at, to: undefined } : at;
     dispatch({ type: 'candidate', key, candidate });
   };
   // One event for a move: the game plays it, and the mode learns what it was.
   const playMove = (uci: string) => {
     if (!canMove) return;
     const learner = current.turn === lesson.side;
-    const book = isBook(lesson, key, uci);
+    // A king dropped on its rook castles, as the game records it.
+    const book = isBook(lesson, key, lineMove(current.fen, uci) ?? uci);
     dispatch({ type: 'played', learner, book, first: startsRun, replaces: ply < moves.length });
     game.play(uci);
   };

@@ -57,8 +57,8 @@ export interface BoardProps {
   readonly drawings?: readonly Drawing[];
   readonly onMove: (from: string, to: string) => void;
   /**
-   * Each square a piece being dragged is over, and null once it is back on
-   * its own square, off the board, or dropped.
+   * Each square a piece being dragged is over (none over its own square or
+   * off the board), and null once the drag ends without a move.
    */
   readonly onDrag?: (drag: Drag<Square> | null) => void;
   /**
@@ -215,6 +215,7 @@ export default function Board({
         return drag?.started ? (drag.orig as Square) : undefined;
       },
       squareAt,
+      ({ from, to }) => to !== undefined && !!board.state.movable.dests?.get(from)?.includes(to),
       handleDrag,
     );
     return () => {

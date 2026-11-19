@@ -161,6 +161,7 @@ function pointed({ key, candidates }: LessonView, pointer: Pointer) {
     const candidate = candidates.find(({ move, rare }) => !rare && move.uci === pointer.uci);
     return candidate && { candidate, slide: true };
   }
+  if (!pointer.to) return undefined;
   // The move the drop would play, as the game records it: a king dropped on
   // its rook castles, and a pawn promotes to a queen.
   const uci = lineMove(key, toUci({ fen: key }, pointer.from, pointer.to));

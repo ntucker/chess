@@ -26,9 +26,12 @@
  *   Practice, on any turn.
  * - While a note's idea plays back, the board is the playback's: nothing else
  *   is drawn, and the preview it started from stays.
+ * - While a piece is dragged, the board draws only its candidates, rare ones
+ *   too, wherever it is over, so dragging across the board moves nothing
+ *   else on it; the idea card shows the move under it.
  * - Rare candidates (`Candidate.rare`) are left off the list and the board's
- *   arrows, and Stockfish's best isn't tagged on one; only pointing at its
- *   piece or landing square shows it.
+ *   arrows, and Stockfish's best isn't tagged on one; only dragging their
+ *   piece shows them.
  *
  * guidance stays in lesson terms; lessonDrawings (./drawings.ts) turns it
  * into board shapes, and says which ideas draw nothing (`drawsOnBoard`).
@@ -58,6 +61,8 @@ export interface GuidanceInput {
   readonly switches: LessonSwitches;
   /** The move the learner's pointer previews (`preview` in ./view.ts). */
   readonly preview?: Preview;
+  /** The square of the piece the learner drags, while they do. */
+  readonly dragged?: Candidate['from'];
   /** The note the learner points at on the idea card. */
   readonly pointed?: Note;
   /** The note whose idea plays back on the board. */
@@ -127,6 +132,7 @@ export function guidance(input: GuidanceInput): Guidance {
     mode,
     switches,
     preview: pointerPreview,
+    dragged: pointerDragged,
     pointed,
     playing: playingNote,
     engine,
@@ -134,6 +140,7 @@ export function guidance(input: GuidanceInput): Guidance {
   const explore = mode === 'explore';
   const choices = explore || (!view.learnerToMove && !switches.auto);
   const preview = choices ? pointerPreview : undefined;
+  const dragged = choices ? pointerDragged : undefined;
   // In Practice a previewed reply leads to the learner's move, so its notes
   // are kept as on the learner's turn. Explore shows every note.
   const notes = preview
@@ -157,8 +164,17 @@ export function guidance(input: GuidanceInput): Guidance {
     .filter(({ note }) => note.ideas?.some((idea) => drawsOnBoard(idea) && allowed(idea)))
     .map(({ note }) => note);
   const pointedNote = !playing && pointed && pointable.includes(pointed) ? pointed : undefined;
-  const board = boardShown({ candidates, withRare, preview, ideas, playing, pointed: pointedNote });
-  const best = explore && !preview && !playing && !pointedNote ? engine?.best : undefined;
+  const board = boardShown({
+    candidates,
+    withRare,
+    preview,
+    dragged,
+    ideas,
+    playing,
+    pointed: pointedNote,
+  });
+  const best =
+    explore && !preview && !dragged && !playing && !pointedNote ? engine?.best : undefined;
 
   return {
     candidates,
@@ -182,14 +198,15 @@ export function guidance(input: GuidanceInput): Guidance {
 
 /**
  * What the board draws: nothing while a note plays back; a pointed note's
- * ideas alone; a preview's ideas, with all the pointed piece's candidates
- * (rare ones too) when it doesn't slide; or else the listed candidates, with
- * only traps beside them (every idea where there are none).
+ * ideas alone; a sliding preview's ideas; a dragged piece's candidates alone
+ * (rare ones too); or else the listed candidates, with only traps
+ * beside them (every idea where there are none).
  */
 function boardShown({
   candidates,
   withRare,
   preview,
+  dragged,
   ideas,
   playing,
   pointed,
@@ -197,6 +214,7 @@ function boardShown({
   readonly candidates: readonly Candidate[];
   readonly withRare: readonly Candidate[];
   readonly preview?: Preview;
+  readonly dragged?: Candidate['from'];
   readonly ideas: readonly ShownIdea[];
   readonly playing?: ShownPlayback;
   readonly pointed?: Note;
@@ -205,13 +223,8 @@ function boardShown({
   if (pointed) {
     return { candidates: [], drawn: ideas.filter(({ idea }) => pointed.ideas?.includes(idea)) };
   }
-  if (preview) {
-    const { slide, candidate } = preview;
-    return {
-      candidates: slide ? [] : withRare.filter(({ from }) => from === candidate.from),
-      drawn: ideas,
-    };
-  }
+  if (preview?.slide) return { candidates: [], drawn: ideas };
+  if (dragged) return { candidates: withRare.filter(({ from }) => from === dragged), drawn: [] };
   if (!candidates.length) return { candidates, drawn: ideas };
   return { candidates, drawn: ideas.filter(({ idea }) => idea.type === 'trap') };
 }

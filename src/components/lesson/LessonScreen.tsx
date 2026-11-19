@@ -220,7 +220,7 @@ interface StatusInput {
 /** The line under the list that says the guide covers `count` rarer replies it leaves off. */
 const rareHint = (count: number, rival: string) =>
   `The guide covers ${count} rarer ${count === 1 ? 'reply' : 'replies'} too. ` +
-  `Point at a ${rival} piece to see ${count === 1 ? 'it' : 'them'}.`;
+  `Drag a ${rival} piece to see ${count === 1 ? 'it' : 'them'}.`;
 
 /**
  * The panel's headline: where the lesson stands and whose move it is. In

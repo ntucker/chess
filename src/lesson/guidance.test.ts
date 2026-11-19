@@ -329,16 +329,33 @@ describe('guidance', () => {
       expect(types(shownPreview.drawn)).toEqual(['plan']);
     });
 
-    it('leaves a rare move off the list and the board until its piece is pointed at', () => {
+    it('leaves a rare move off the list and the board until its piece is dragged', () => {
       const view = sampleView(MAIN, { lesson: WITH_RARE });
       const sans = (candidates: readonly Candidate[]) => candidates.map(({ san }) => san);
       const resting = guidance({ view, mode: 'explore', switches: ALL_ON });
       expect(sans(resting.candidates)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2']);
       expect(sans(resting.drawnCandidates)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2']);
       expect(resting.rareCount).toBe(1);
-      const onPawn = preview(WITH_RARE, view, { at: 'drag', from: 'f2', to: 'f3' });
-      const pointing = guidance({ view, mode: 'explore', switches: ALL_ON, preview: onPawn });
-      expect(sans(pointing.drawnCandidates)).toEqual(['f3']);
+      // Picked up, the pawn draws its rare move at once, and the same over
+      // its landing square, so nothing on the board moves as it is dragged.
+      const pickedUp = guidance({ view, mode: 'explore', switches: ALL_ON, dragged: 'f2' });
+      expect(sans(pickedUp.drawnCandidates)).toEqual(['f3']);
+      const onF3 = preview(WITH_RARE, view, { at: 'drag', from: 'f2', to: 'f3' });
+      const over = guidance({
+        view,
+        mode: 'explore',
+        switches: ALL_ON,
+        preview: onF3,
+        dragged: 'f2',
+      });
+      expect(over.drawnCandidates).toEqual(pickedUp.drawnCandidates);
+      expect(over.drawn).toEqual(pickedUp.drawn);
+    });
+
+    it("hides a dragged piece's candidates in Practice on the learner's turn", () => {
+      const view = sampleView(ADVANCE);
+      const shown = guidance({ view, mode: 'practice', switches: ALL_ON, dragged: 'c8' });
+      expect(shown.drawnCandidates).toEqual([]);
     });
 
     it("doesn't tag a rare move as Stockfish's best", () => {
