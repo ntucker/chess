@@ -16,6 +16,7 @@ import { StatusBar } from 'expo-status-bar';
 
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { StockfishWhileNeeded } from '@/stockfish/demand';
+import { StockfishHost } from '@/stockfish/StockfishHost';
 import { themes } from '@/theme/theme';
 import { useColorScheme } from '@/theme/useColorScheme';
 
@@ -36,7 +37,7 @@ export default function RootLayout() {
       <SettingsProvider>
         <SilkProvider theme={themes[colorScheme]}>
           <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-          <StockfishWhileNeeded>
+          <StockfishWhileNeeded host={<StockfishHost />}>
             <Stack screenOptions={{ headerShown: false }} />
           </StockfishWhileNeeded>
         </SilkProvider>
