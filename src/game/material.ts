@@ -5,6 +5,7 @@
  */
 import type { Board } from 'chessops/board';
 import { parseFen } from 'chessops/fen';
+import { opposite } from 'chessops/util';
 
 import type { Color } from './replay';
 
@@ -26,6 +27,11 @@ export function points(board: Board, color: Color): number {
   return ROLES.reduce((sum, role) => sum + VALUES[role] * board.pieces(color, role).size(), 0);
 }
 
+/** How many points `color` is ahead on `board`; negative when behind. */
+export function balance(board: Board, color: Color): number {
+  return points(board, color) - points(board, opposite(color));
+}
+
 export interface Material {
   /** The other side's pieces this side is up, most valuable first. */
   readonly pieces: readonly MaterialRole[];
@@ -41,7 +47,7 @@ export function material(fen: string): Readonly<Record<Color, Material>> {
   const { board } = parseFen(fen).unwrap();
   const up: Record<Color, MaterialRole[]> = { white: [], black: [] };
   /** White's lead in points; negative when Black leads. */
-  const score = points(board, 'white') - points(board, 'black');
+  const score = balance(board, 'white');
   for (const role of ROLES) {
     const diff = board.pieces('white', role).size() - board.pieces('black', role).size();
     for (let i = 0; i < Math.abs(diff); i++) up[diff > 0 ? 'white' : 'black'].push(role);

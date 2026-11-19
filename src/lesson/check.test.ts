@@ -323,7 +323,9 @@ describe('checkLesson', () => {
       side: 'white',
       routes: [{ from: 'h1', to: 'h3' }, { from: 'e1', to: 'g1' }],
     };
-    expect(checkIdea(idea, fen('r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1'))).toMatch(/cannot reach g1/);
+    const corners = fen('r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1');
+    expect(checkIdea({ ...idea, routes: [idea.routes[1]] }, corners)).toBeUndefined();
+    expect(checkIdea(idea, corners)).toMatch(/cannot reach g1/);
   });
 
   it('refuses positions that only reach each other', () => {

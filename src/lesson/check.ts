@@ -12,7 +12,7 @@ import { SquareSet } from 'chessops/squareSet';
 import { COLORS, type Color, FILE_NAMES, type NormalMove, type Piece, type Square } from 'chessops/types';
 import { kingCastlesTo, makeSquare, opposite, parseSquare, parseUci, rookCastlesTo } from 'chessops/util';
 
-import { points, VALUES } from '@/game/material';
+import { balance, points, VALUES } from '@/game/material';
 import { parsePosition, parsePositionKey, positionKey, recordedMove } from '@/game/replay';
 
 import {
@@ -410,13 +410,13 @@ function reaches(board: Board, from: Square, to: Square, moves: number): boolean
 
 /**
  * The rook's move when the king route `from`-`to` is castling `color` may
- * still play on `board`, where earlier routes left the squares in `moved`; or
- * undefined.
+ * still play on `board`, where earlier routes left the squares in
+ * `vacated` empty; or undefined.
  */
-function castlingRook(pos: Chess, board: Board, moved: SquareSet, color: Color, from: Square, to: Square) {
+function castlingRook(pos: Chess, board: Board, vacated: SquareSet, color: Color, from: Square, to: Square) {
   const side = to > from ? 'h' : 'a';
   const rook = pos.castles.rook[color][side];
-  if (rook === undefined || moved.has(from) || moved.has(rook)) return undefined;
+  if (rook === undefined || vacated.has(from) || vacated.has(rook)) return undefined;
   if (board.kingOf(color) !== from || kingCastlesTo(color, side) !== to) return undefined;
   if (pos.castles.path[color][side].intersects(board.occupied)) return undefined;
   return { from: rook, to: rookCastlesTo(color, side) };
@@ -428,7 +428,7 @@ function checkPlan(pos: Chess, idea: Plan) {
   const board = pos.board.clone();
   // Where each route's piece stands now: a piece that moves again leaves its earlier end.
   const ends = new Set<Square>();
-  let moved = SquareSet.empty();
+  let vacated = SquareSet.empty();
   idea.routes.forEach((route, i) => {
     const what = `route ${i + 1}`;
     const piece = pieceAt(board, route.from, `${what} from`);
@@ -438,13 +438,13 @@ function checkPlan(pos: Chess, idea: Plan) {
     const from = square(route.from);
     const to = square(route.to);
     if (board.get(to)?.color === idea.side) fail(`${what}: ${route.to} holds ${idea.side}'s own piece`);
-    const rook = piece.role === 'king' ? castlingRook(pos, board, moved, idea.side, from, to) : undefined;
+    const rook = piece.role === 'king' ? castlingRook(pos, board, vacated, idea.side, from, to) : undefined;
     if (rook) board.set(rook.to, board.take(rook.from)!);
     else if (!reaches(board, from, to, moves)) {
       fail(`${what}: the ${piece.role} on ${route.from} cannot reach ${route.to} in ${moves} move(s)`);
     }
     board.set(to, board.take(from)!);
-    moved = moved.with(from);
+    vacated = vacated.with(from);
     ends.delete(from);
     ends.add(to);
   });
@@ -473,10 +473,10 @@ function checkTrap(pos: Chess, idea: Trap) {
     oneOf(EVALUATIONS, idea.verdict, 'verdict');
     return;
   }
-  const balance = (p: Chess) => points(p.board, victim) - points(p.board, opposite(victim));
+  const lead = (p: Chess) => balance(p.board, victim);
   const mated = end.isCheckmate() && end.turn === victim;
-  if (!mated && balance(end) - balance(pos) > -2) {
-    fail(`${victim} does not lose material: balance goes ${balance(pos)} to ${balance(end)}`);
+  if (!mated && lead(end) - lead(pos) > -2) {
+    fail(`${victim} does not lose material: balance goes ${lead(pos)} to ${lead(end)}`);
   }
 }
 
@@ -536,7 +536,7 @@ function checkFeature(pos: Chess, color: Color, feature: StructureFeature) {
     case 'doubledPawns':
     case 'openFile':
     case 'halfOpenFile': {
-      const [holds, says] = FILE_FEATURES[feature.kind];
+      const { holds, says } = FILE_FEATURES[feature.kind];
       for (const name of nonEmpty(feature.files)) {
         if (!holds(count(color, name), count(opposite(color), name))) fail(says(name, color));
       }
@@ -568,11 +568,17 @@ function checkFeature(pos: Chess, color: Color, feature: StructureFeature) {
 /** For each file feature: whether it holds given each side's pawns on the file, and why not. */
 const FILE_FEATURES: Record<
   'doubledPawns' | 'openFile' | 'halfOpenFile',
-  readonly [(own: number, other: number) => boolean, (file: string, color: Color) => string]
+  {
+    readonly holds: (own: number, other: number) => boolean;
+    readonly says: (file: string, color: Color) => string;
+  }
 > = {
-  doubledPawns: [(own) => own >= 2, (file, color) => `${color} has no doubled pawns on the ${file}-file`],
-  openFile: [(own, other) => own === 0 && other === 0, (file) => `the ${file}-file is not open`],
-  halfOpenFile: [(own, other) => own === 0 && other > 0, (file, color) => `the ${file}-file is not half-open for ${color}`],
+  doubledPawns: { holds: (own) => own >= 2, says: (file, color) => `${color} has no doubled pawns on the ${file}-file` },
+  openFile: { holds: (own, other) => own === 0 && other === 0, says: (file) => `the ${file}-file is not open` },
+  halfOpenFile: {
+    holds: (own, other) => own === 0 && other > 0,
+    says: (file, color) => `the ${file}-file is not half-open for ${color}`,
+  },
 };
 
 function checkImbalance(pos: Chess, idea: Imbalance) {
