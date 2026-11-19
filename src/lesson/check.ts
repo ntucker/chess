@@ -18,6 +18,7 @@ import { parsePosition, parsePositionKey, positionKey, recordedMove } from '@/ga
 import {
   EVALUATIONS,
   IMBALANCE_KINDS,
+  ideaPosition,
   MAX_NOTE_WORDS,
   RELATIONS,
   RISKS,
@@ -66,7 +67,7 @@ export interface IdeaPositions {
 /** Why `idea` is false in its position, or undefined if it holds. */
 export function checkIdea(idea: Idea, positions: IdeaPositions): string | undefined {
   try {
-    const pos = idea.at === 'before' ? positions.before : positions.after;
+    const pos = ideaPosition(idea, positions);
     if (!pos) fail(`at 'before' only applies to a move's ideas`);
     CHECKS[idea.type](pos, idea as never);
     return undefined;
