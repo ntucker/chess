@@ -147,3 +147,14 @@ describe('gameReducer', () => {
     expect(gameReducer(state, { type: 'goto', ply: 9 }).ply).toBe(1);
   });
 });
+
+describe('a new game', () => {
+  it('starts from the starting position, or having played the moves it names', () => {
+    const played = play(e4, { type: 'move', uci: 'c7c6' });
+    expect(gameReducer(played, { type: 'newGame' })).toEqual({ moves: [], ply: 0 });
+    expect(gameReducer(played, { type: 'newGame', moves: ['d2d4'] })).toEqual({
+      moves: ['d2d4'],
+      ply: 1,
+    });
+  });
+});

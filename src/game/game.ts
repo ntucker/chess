@@ -36,8 +36,8 @@ interface Answer {
 }
 
 export type GameAction =
-  /** A new game from the starting position. */
-  | { readonly type: 'newGame' }
+  /** A new game from the starting position, or having played `moves`. */
+  | { readonly type: 'newGame'; readonly moves?: readonly string[] }
   /** A move from the shown position; moves after it are dropped. */
   | { readonly type: 'move'; readonly uci: string }
   | ({ readonly type: 'reply'; readonly uci: string } & Answer)
@@ -54,7 +54,7 @@ export const initialGame = startGame([]);
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'newGame':
-      return { moves: [], ply: 0 };
+      return startGame(action.moves ?? []);
     case 'move': {
       const before = state.moves.slice(0, state.ply);
       const uci = lineMove(lastPosition(before).fen, action.uci);

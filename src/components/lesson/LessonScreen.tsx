@@ -1,6 +1,6 @@
 import { AsyncBoundary, useController, useSuspense } from '@data-client/react';
 import { Separator, Spinner, Stack } from '@reactive/silk-native';
-import { useMemo, useReducer } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
@@ -11,7 +11,6 @@ import { OpponentChoice } from '@/components/OpponentChoice';
 import { Scoresheet } from '@/components/Scoresheet';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import type { MoveQuality } from '@/analysis/quality';
-import { gameReducer, startGame } from '@/game/game';
 import { colorName, opposite } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
 import type { Uci } from '@/lesson/lesson';
@@ -30,24 +29,22 @@ import { IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
 import { TrapCard } from './TrapCard';
+import { useOpeningsGame } from './useOpeningsGame';
 
 /**
  * The openings as a page: the start position, where the learner picks an
  * opening by its first move (src/lesson/openings.ts), then that opening's
- * lesson. With `id` it starts in that lesson, its first move played. The
- * exported HTML holds only its frame: lessons load in the browser, since
- * reading one during the export hangs it.
+ * lesson. `id` is the lesson the address names (`/lesson/<id>`), none at the
+ * start. The exported HTML holds only its frame: lessons load in the
+ * browser, since reading one during the export hangs it.
  */
 export function LessonPage({ id }: { readonly id?: string }) {
   if (id !== undefined && !Object.hasOwn(LESSONS, id)) {
     return <LessonPlaceholder message="There is no lesson here." />;
   }
-  // The lesson's main-line first move, played so the page opens in it.
-  const start = id === undefined ? [] : LESSON_INDEX[id as LessonId].firstMoves.slice(0, 1);
   return (
     <BrowserOnly fallback={<LessonPlaceholder />}>
-      {/* Another address starts its own game. */}
-      <Openings key={id} start={start} />
+      <Openings address={id as LessonId | undefined} />
     </BrowserOnly>
   );
 }
@@ -59,21 +56,30 @@ export function LessonPage({ id }: { readonly id?: string }) {
  * another opening carries on the same game. The screen stays too, so the
  * mode chosen carries over; a Practice run restarts at the learner's first
  * move anyway, and what the learner points at belongs to a position.
+ *
+ * The address follows the lesson picked (`useOpeningsGame`), so a reload
+ * reopens it and the browser's Back returns to the start.
  */
-function Openings({ start }: { readonly start: readonly Uci[] }) {
-  const store = useReducer(gameReducer, start, startGame);
+function Openings({ address }: { readonly address?: LessonId }) {
+  const { store, picked } = useOpeningsGame(address);
   return (
     <AsyncBoundary
       fallback={<LessonPlaceholder />}
       errorComponent={({ error }) => <LessonPlaceholder message={error.message} />}
     >
-      <LessonScreen id={lessonOf(LESSON_INDEX, store[0].moves)} store={store} />
+      <LessonScreen id={picked} store={store} />
     </AsyncBoundary>
   );
 }
 
 /** The start position before an opening is picked. */
 const OPENINGS = openingsLesson(LESSON_INDEX);
+
+/** The lessons whose first move a piece on `square` plays. */
+const openingsFrom = (square: string) =>
+  (Object.keys(LESSON_INDEX) as LessonId[]).filter((id) =>
+    LESSON_INDEX[id].firstMoves.some((uci) => uci.startsWith(square)),
+  );
 
 /**
  * The lesson `id` played on the board, in Explore or Practice, or before
@@ -92,6 +98,7 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
     playback,
     canPlay,
     play,
+    loading,
     pointedNote,
     rareShown,
     showRare,
@@ -116,6 +123,7 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
   const picking = view.ply === 0;
   const status = describeStatus(view, {
     picking,
+    loading: useLongWait(loading),
     title: lesson.title,
     rival: colorName(rival),
     engine: described.name,
@@ -137,12 +145,18 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
     const variation = lesson.variations[candidate.variation];
     return variation === line ? undefined : variation.name;
   };
-  // Pointing at an opening starts loading its lesson, so playing it needn't wait.
+  // Pointing at an opening, or picking up a piece that plays one, starts
+  // loading its lesson, so playing it needn't wait. A failure shows once the
+  // opening is picked.
+  const load = (id: LessonId) => ctrl.fetchIfStale(getLesson, id).catch(() => {});
   const pointCandidate = (uci: Uci) => {
     const into = opening(uci);
-    // A failure shows once the opening is picked.
-    if (into) ctrl.fetchIfStale(getLesson, into).catch(() => {});
+    if (into) load(into);
     pointRow(uci);
+  };
+  const onDrag: typeof board.onDrag = (drag) => {
+    if (picking && drag) openingsFrom(drag.from).forEach(load);
+    board.onDrag?.(drag);
   };
 
   return (
@@ -161,7 +175,7 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
             brief: described.tagline,
             children: <AutoPlay />,
           }}
-          board={board}
+          board={{ ...board, onDrag }}
         />
       }
       program={
@@ -246,6 +260,8 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
 interface StatusInput {
   /** Whether the board shows the start, where the first move picks the opening. */
   readonly picking: boolean;
+  /** The opening picked has been loading long enough to say so. */
+  readonly loading: boolean;
   /** The lesson's title, for a position before any variation. */
   readonly title: string;
   /** The opponent's side, as shown: "White". */
@@ -277,8 +293,21 @@ interface StatusInput {
  */
 function describeStatus(
   view: LessonView,
-  { picking, title, rival, engine, thinking, viewing, auto, lineEnded, startsRun, practice }: StatusInput,
+  {
+    picking,
+    loading,
+    title,
+    rival,
+    engine,
+    thinking,
+    viewing,
+    auto,
+    lineEnded,
+    startsRun,
+    practice,
+  }: StatusInput,
 ) {
+  if (picking && loading) return { eyebrow: OPENINGS.title, ...LOADING };
   if (picking)
     return {
       eyebrow: OPENINGS.title,
@@ -355,6 +384,28 @@ const YOUR_MOVE = {
   },
 } as const;
 
+/**
+ * Whether `pending` has lasted a moment: a wait shorter than that shows
+ * nothing, so a quick one doesn't flicker.
+ */
+function useLongWait(pending: boolean) {
+  const [long, setLong] = useState(false);
+  useEffect(() => {
+    if (!pending) return;
+    const timer = setTimeout(() => setLong(true), LONG_WAIT_MS);
+    return () => {
+      clearTimeout(timer);
+      setLong(false);
+    };
+  }, [pending]);
+  return pending && long;
+}
+
+const LONG_WAIT_MS = 500;
+
+/** The headline while a lesson loads. */
+const LOADING = { title: 'Setting the stage…', detail: 'Loading the lesson.' } as const;
+
 /** The lesson page before the lesson arrives, or with `message` when it can't be shown. */
 function LessonPlaceholder({ message }: { readonly message?: string }) {
   return (
@@ -369,8 +420,8 @@ function LessonPlaceholder({ message }: { readonly message?: string }) {
         <View style={styles.placeholder}>
           <StatusHeadline
             eyebrow="Lesson"
-            title={message ? 'Curtain stays down.' : 'Setting the stage…'}
-            detail={message ?? 'Loading the lesson.'}
+            title={message ? 'Curtain stays down.' : LOADING.title}
+            detail={message ?? LOADING.detail}
           />
         </View>
       }
