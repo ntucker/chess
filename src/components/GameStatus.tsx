@@ -50,15 +50,10 @@ export function StatusHeadline({
   failure,
   eyebrowInHeader,
 }: HeadlineProps) {
+  const label = <Eyebrow>{eyebrow}</Eyebrow>;
   return (
     <Stack gap="2">
-      {eyebrowInHeader ? (
-        <View {...phonePart('in-header')}>
-          <Eyebrow>{eyebrow}</Eyebrow>
-        </View>
-      ) : (
-        <Eyebrow>{eyebrow}</Eyebrow>
-      )}
+      {eyebrowInHeader ? <View {...phonePart('in-header')}>{label}</View> : label}
       <Text role="headingLg" accessibilityRole="header" accessibilityLiveRegion="polite">
         {title}
       </Text>

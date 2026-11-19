@@ -19,9 +19,9 @@ interface Props {
  * one slim row: a smaller logo, the page's `place` (or the name, when there
  * is none), and no tagline.
  */
-export function Header({ place: shownPlace }: Props) {
+export function Header({ place }: Props) {
   // Only phone.css shows it, so a native app keeps the name.
-  const place = process.env.EXPO_OS === 'web' ? shownPlace : undefined;
+  const shownPlace = process.env.EXPO_OS === 'web' ? place : undefined;
   return (
     <Inline gap="2" align="center" justify="between" wrap="nowrap">
       <Inline gap="3" align="center" wrap="nowrap" style={styles.brand}>
@@ -31,16 +31,16 @@ export function Header({ place: shownPlace }: Props) {
           accessibilityIgnoresInvertColors
         />
         <Text
-          {...(place ? phonePart('wordmark') : {})}
+          {...(shownPlace ? phonePart('wordmark') : {})}
           role="heading"
           accessibilityRole="header"
           style={styles.wordmark}
         >
           Opening Night
         </Text>
-        {place ? (
+        {shownPlace ? (
           <Text {...phonePart('place')} role="heading" numberOfLines={1} style={styles.place}>
-            {place}
+            {shownPlace}
           </Text>
         ) : null}
       </Inline>

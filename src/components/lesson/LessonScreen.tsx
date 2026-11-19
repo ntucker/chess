@@ -98,8 +98,9 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
   return (
     <Stage
       title={`${lesson.title} · Opening Night`}
-      // Only the latest line's name: on a phone the path won't fit, and a
-      // line's name already starts with its parent's ("Advance Variation: Tal…").
+      // Only the latest line's name, since the path won't fit a phone. A
+      // sub-line's name starts with its parent's ("Advance Variation: Tal…");
+      // the opening's own name is what goes unsaid.
       place={line?.name ?? lesson.title}
       board={
         <BoardColumn

@@ -26,9 +26,10 @@ describe('phone.css', () => {
   });
 
   it('gives the panel a floor, so the page scrolls rather than squeeze it to nothing', () => {
-    const program = phone.slice(phone.indexOf("[data-phone='program']"));
-    expect(program).toMatch(/min-height: [1-9]\d*px;/);
-    expect(phone).toMatch(/\[data-phone='page'\] \{\s*min-height: 100dvh;/);
+    const rule = (part: string) =>
+      phone.match(new RegExp(`\\[data-phone='${part}'\\] \\{([^}]*)\\}`))?.[1];
+    expect(rule('program')).toMatch(/min-height: [1-9]\d*px;/);
+    expect(rule('page')).toMatch(/^\s*min-height: 100dvh;\s*$/);
   });
 });
 
