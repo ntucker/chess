@@ -64,12 +64,14 @@ export function LessonPage({ id }: { readonly id?: string }) {
  */
 function Openings({ address }: { readonly address?: LessonId }) {
   const { store, picked } = useOpeningsGame(address);
+  // A failed lesson clears on another address (Back to the start). A `key`
+  // would remount the page and lose the game, so the boundary resets instead.
+  const resetOnAddress = useMemo(() => resetListener(address), [address]);
   return (
     <AsyncBoundary
       fallback={<LessonPlaceholder />}
-      errorComponent={({ error }) => <LessonPlaceholder message={error.message} />}
-      // The boundary stays across addresses, so another one (Back to the start) tries again.
-      listen={useMemo(() => resetListener(address), [address])}
+      errorComponent={LessonFailure}
+      listen={resetOnAddress}
     >
       <LessonScreen id={picked} store={store} />
     </AsyncBoundary>
@@ -154,8 +156,8 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
     pointRow(uci);
   };
   const onDrag: typeof board.onDrag = (drag) => {
-    // Once, as the piece is picked up: it is over no other square yet.
-    if (picking && drag && !drag.to) lessonsFrom(LESSON_INDEX, drag.from).forEach(load);
+    // Each report repeats the request, which fetchIfStale makes free.
+    if (picking && drag) lessonsFrom(LESSON_INDEX, drag.from).forEach(load);
     board.onDrag?.(drag);
   };
 
@@ -383,6 +385,11 @@ const YOUR_MOVE = {
     restart: 'Playing here starts a new run from your first move.',
   },
 } as const;
+
+/** The lesson page when its lesson failed to load. */
+function LessonFailure({ error }: { readonly error: Error }) {
+  return <LessonPlaceholder message={error.message} />;
+}
 
 /** The headline while a lesson loads. */
 const LOADING = { title: 'Setting the stage…', detail: 'Loading the lesson.' } as const;
