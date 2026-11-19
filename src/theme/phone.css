@@ -12,10 +12,9 @@
 }
 
 /*
- * The width the board column and the panel need side by side (Stage.tsx):
- * their flex bases (320px and 300px), the gap between them (48px) and the
- * page's padding (2 × 20px). Wider than that they sit side by side, and on
- * the web they never wrap, so below it this layout is the only stacked one.
+ * Just below the width the board column and the panel need side by side,
+ * SIDE_BY_SIDE_MIN (sideBySide.ts). On the web they never wrap, so below it
+ * this layout is the only stacked one.
  */
 @media (max-width: 707.98px) {
   /* Lengths, read by `phoneLength` (phone.ts). */
@@ -84,7 +83,6 @@
   :root [data-phone='stage'] {
     flex: 1 1 auto;
     flex-direction: column;
-    flex-wrap: nowrap;
     align-items: center;
   }
   :root [data-phone='board-column'] {

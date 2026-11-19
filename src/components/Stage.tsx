@@ -8,6 +8,7 @@ import Board, { type BoardProps } from '@/components/Board';
 import { EvaluationBar } from '@/components/EvaluationBar';
 import { HEADER_HEIGHT, Header } from '@/components/Header';
 import { PLAYER_BAR_HEIGHT, PLAYER_DISC, PlayerBar } from '@/components/PlayerBar';
+import { BOARD_COLUMN_BASIS, PAGE_SPACE, PROGRAM_BASIS, STAGE_GAP } from '@/components/sideBySide';
 import { Transport } from '@/components/Transport';
 import { useStepKeys } from '@/components/useStepKeys';
 import { colorName, opposite } from '@/game/replay';
@@ -163,12 +164,8 @@ const BESIDE_BOARD = PLAYER_DISC.size.plus(PLAYER_DISC.gap);
 const BOARD_COLUMN_MAX = BOARD_MAX + BESIDE_BOARD.wide;
 /** The program's largest width. */
 const PROGRAM_MAX = 400;
-/** Space between the board column and the program. */
-const STAGE_GAP = 48;
 /** Wide enough for the board and the program at their largest. */
 const STAGE_MAX = BOARD_COLUMN_MAX + STAGE_GAP + PROGRAM_MAX;
-/** The page's padding, and the space between the header and the stage. */
-const PAGE_SPACE = phoneLength('page-space', 20);
 /**
  * Height around the board: the page's top and bottom padding and the gap
  * below the header (3 × PAGE_SPACE), the header, and both name bars.
@@ -198,8 +195,9 @@ const COLUMN_RAISE = BOARD_OFFSET.minus(WRAPPED_GAP);
 // Board and program sit side by side when there's room and wrap into a column
 // when there isn't, without measuring the window (which the server can't).
 // On the web they never wrap: phone.css stacks them below the width they need
-// side by side, so a stacked page always gets the narrow layout, even where a
-// scrollbar takes some of that width.
+// side by side (SIDE_BY_SIDE_MIN), so a stacked page always gets the narrow
+// layout. Just above it, a page scrollbar can take some of that width; the two
+// then shrink a little below their flex bases rather than stack without it.
 // Side by side, the program should start level with the board, BOARD_OFFSET
 // below the column's top; wrapped, it should start WRAPPED_GAP below the
 // column. The program's top margin is WRAPPED_GAP for the wrapped case, and
@@ -228,7 +226,7 @@ const styles = StyleSheet.create({
   boardColumn: {
     flexGrow: 1,
     flexShrink: 1,
-    flexBasis: 320,
+    flexBasis: BOARD_COLUMN_BASIS,
     maxWidth: BOARD_COLUMN_LIMIT,
     marginTop: COLUMN_RAISE.times(-1).value,
     gap: BOARD_COLUMN_GAP,
@@ -247,7 +245,7 @@ const styles = StyleSheet.create({
   program: {
     flexGrow: 1,
     flexShrink: 1,
-    flexBasis: 300,
+    flexBasis: PROGRAM_BASIS,
     maxWidth: PROGRAM_MAX,
     marginTop: WRAPPED_GAP.value,
   },

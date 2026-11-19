@@ -2,6 +2,7 @@ import { describe, expect, it, jest } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { SIDE_BY_SIDE_MIN } from '../components/sideBySide';
 import { PHONE_LENGTHS, PHONE_PARTS, phoneLength } from './phone';
 
 // Jest can't load a stylesheet; this test reads it as text instead.
@@ -13,8 +14,8 @@ describe('phone.css', () => {
   const start = css.indexOf('@media (max-width:');
   const phone = css.slice(start);
 
-  it('has the media query', () => {
-    expect(start).toBeGreaterThan(-1);
+  it('starts the media query just below where the board and panel fit side by side', () => {
+    expect(css).toContain(`@media (max-width: ${SIDE_BY_SIDE_MIN - 0.02}px) {`);
   });
 
   it.each(PHONE_LENGTHS)('sets --%s', (name) => {
