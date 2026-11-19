@@ -56,7 +56,7 @@ cg-board square.move-dest.hover {
 
 /*
  * Drawings (src/board/drawing.ts). Pieces are lit and faded by markPieces in
- * Board.tsx, which also writes the tinted squares' rules from drawingTones.ts.
+ * Board.tsx; the tinted squares' rules are TINT_CSS there, from drawingTones.ts.
  */
 cg-board piece.glow {
   filter: drop-shadow(0 0 2px var(--glow)) drop-shadow(0 0 6px var(--glow)) drop-shadow(0 0 6px var(--glow));

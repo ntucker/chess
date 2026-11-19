@@ -5,6 +5,8 @@ import { useEffect, useEffectEvent, useState } from 'react';
 import { type DimensionValue, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import type { MoveQuality } from '@/analysis/quality';
+import type { Drawing, Square } from '@/board/drawing';
 import Board from '@/components/Board';
 import { EvaluationBar } from '@/components/EvaluationBar';
 import { EvaluationEngineChoice } from '@/components/EvaluationEngineChoice';
@@ -15,8 +17,6 @@ import { PLAYER_BAR_HEIGHT, PLAYER_DISC, PlayerBar } from '@/components/PlayerBa
 import { Scoresheet } from '@/components/Scoresheet';
 import { SideChooser } from '@/components/SideChooser';
 import { Transport } from '@/components/Transport';
-import type { MoveQuality } from '@/analysis/quality';
-import type { Drawing, Square } from '@/board/drawing';
 import { type Color, colorName, opposite } from '@/game/replay';
 import { useGame } from '@/game/useGame';
 import type { MaiaRating } from '@/maia/models';

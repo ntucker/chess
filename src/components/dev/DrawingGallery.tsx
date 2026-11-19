@@ -7,7 +7,7 @@ import type { Drawing, Square, Tone } from '@/board/drawing';
 import { type DrawingExample, drawingExamples } from '@/board/examples';
 import Board from '@/components/Board';
 import { Eyebrow } from '@/components/Eyebrow';
-import { lastPosition, toUci } from '@/game/replay';
+import { lastPosition, pieceAt, toUci } from '@/game/replay';
 import { fonts, spotlight } from '@/theme/theme';
 
 /**
@@ -126,15 +126,20 @@ function PreviewDemo() {
   const candidates = atStart ? CANDIDATES : [];
   const pointed = candidates.find(({ uci }) => pointer === from(uci));
   const previewed = candidates.find(({ uci }) => pointer === to(uci));
-  const position = lastPosition(previewed ? [...line, previewed.uci] : line);
+  const current = lastPosition(line);
+  const position = previewed ? lastPosition([...line, previewed.uci]) : current;
   const candidateMarks = (shown: readonly Candidate[]) =>
     shown.flatMap(({ uci, tone }): Drawing[] => [
       { kind: 'glow', square: from(uci), tone },
       { kind: 'arrow', from: from(uci), to: to(uci), tone },
     ]);
+  const ghost = (square: Square): Drawing[] => {
+    const piece = pieceAt(current.fen, square);
+    return piece ? [{ kind: 'ghost', square, piece }] : [];
+  };
   const drawings: Drawing[] = previewed
     ? [
-        { kind: 'ghost', square: from(previewed.uci), piece: { role: 'pawn', color: 'black' } },
+        ...ghost(from(previewed.uci)),
         { kind: 'glow', square: to(previewed.uci), tone: previewed.tone },
         ...previewed.idea,
       ]

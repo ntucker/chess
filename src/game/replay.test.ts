@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import { INITIAL_FEN } from 'chessops/fen';
 
-import { analyze, lastPosition, lineMove, replay, toUci } from './replay';
+import { analyze, lastPosition, lineMove, pieceAt, replay, toUci } from './replay';
 
 describe('replay', () => {
   it('returns a position per move, with SAN', () => {
@@ -54,6 +54,14 @@ describe('lineMove', () => {
     expect(lineMove(fen, 'e1h1')).toBe('e1g1');
     expect(lineMove(fen, 'e1g1')).toBe('e1g1');
     expect(lineMove(fen, 'e1a1')).toBe('e1c1');
+  });
+});
+
+describe('pieceAt', () => {
+  it('finds the piece on a square, or nothing', () => {
+    const { fen } = lastPosition(['e2e4']);
+    expect(pieceAt(fen, 'e4')).toMatchObject({ role: 'pawn', color: 'white' });
+    expect(pieceAt(fen, 'e2')).toBeUndefined();
   });
 });
 
