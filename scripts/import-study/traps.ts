@@ -32,7 +32,7 @@ export function trapLines(move: StudyMove, learner: Color): TrapLine[] {
     if (spot.pos.turn !== fell) {
       const outcome = sideDoes(fell, learner, result);
       const text = `${outcome[0].toUpperCase()}${outcome.slice(1)} at the end of this line.`;
-      // A line has no "loses material": a sacrifice that mates or wins material is winning.
+      // A line has no "loses material" verdict: a sacrifice the study says mates is winning.
       const evaluation = verdict === 'losesMaterial' ? (`${opposite(fell)}Winning` as const) : verdict;
       return [{ spot, idea: { type: 'line', moves, verdict: evaluation }, text, original: span }];
     }

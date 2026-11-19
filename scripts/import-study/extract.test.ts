@@ -114,15 +114,19 @@ describe('extractChapter', () => {
         ideas: [{ type: 'line', moves: ['c4f7', 'e8f7', 'f3g5', 'f7g8'], verdict: 'whiteWinning' }],
       },
     ]);
-    const [mating] = parseStudy(
+  });
+
+  it('turns a sacrifice line the study says mates into a winning line for the other side', () => {
+    const [chapter] = parseStudy(
       '1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. d3 { Trap: 4.Bxf7+ Kxf7 5.Ng5+ Kg8 and Black gets mated. } *',
       () => true,
     );
-    expect(extractChapter(mating, 'white').positionNotes.map(({ note }) => note)).toEqual([
-      expect.objectContaining({
+    expect(extractChapter(chapter, 'white').positionNotes.map(({ note }) => note)).toEqual([
+      {
         text: 'Black gets mated at the end of this line.',
-        ideas: [expect.objectContaining({ type: 'line', verdict: 'whiteWinning' })],
-      }),
+        original: 'Trap: 4.Bxf7+ Kxf7 5.Ng5+ Kg8 and Black gets mated.',
+        ideas: [{ type: 'line', moves: ['c4f7', 'e8f7', 'f3g5', 'f7g8'], verdict: 'whiteWinning' }],
+      },
     ]);
   });
 
