@@ -25,13 +25,13 @@ export interface Spot {
 export interface Found {
   readonly spot: Spot;
   readonly idea: Idea;
-  /** The study's words for the idea; for an evaluation glyph, its sentence. */
-  readonly label: string;
   /**
-   * The idea's own note when it lands away from its comment: the label in
-   * words, without the moves its drawing plays.
+   * The idea's own note when it lands away from its comment, in words: the
+   * moves its drawing plays are left out.
    */
   readonly text: string;
+  /** The study's words for the idea, when `text` rewords them. */
+  readonly original?: string;
 }
 
 /** The moves from the chapter's start to `move`, then on along its main continuation. */

@@ -56,8 +56,8 @@ export function IdeaCard({
         <View>
           {notes.map((shown) => (
             <NoteView
-              // Two traps with one tempting move can read alike; the study's words still differ.
-              key={`${shown.note.text}${shown.note.original ?? ''}${shown.before ?? ''}`}
+              // A position's notes differ as a whole (merge.ts drops exact repeats), not always in text.
+              key={JSON.stringify(shown.note) + (shown.before ?? '')}
               shown={shown}
               learner={learner}
               playback={playback}

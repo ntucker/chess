@@ -34,7 +34,7 @@ export function planLists(move: StudyMove, text: string, learner: Color, header 
     const routes = planRoutes(spot, sans);
     if (!routes) return [];
     const idea = { type: 'plan', side: 'black', routes } as const;
-    return [{ spot, idea, label: text.slice(index, end), text: planText(idea.side, learner) }];
+    return [{ spot, idea, text: planText(idea.side, learner), original: text.slice(index, end) }];
   });
 }
 

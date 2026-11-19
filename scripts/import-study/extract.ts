@@ -144,8 +144,8 @@ function sequences(move: StudyMove) {
 }
 
 /** The note of an idea that lands away from its comment, with the study's words in `original`. */
-function awayNote({ idea, label, text }: Found): Note {
-  return { text, ...(text !== label && { original: label }), ideas: [idea] };
+function awayNote({ idea, text, original }: Found): Note {
+  return { text, ...(original && { original }), ideas: [idea] };
 }
 
 /**
@@ -193,6 +193,5 @@ function glyphEvaluation(move: StudyMove, learner: Color): Found | 'contradicted
   if (!value) return undefined;
   const verdicts = textVerdicts(move.comment, learner);
   if (verdicts.size > 0 && !verdicts.has(direction(value))) return 'contradicted';
-  const text = EVALUATION_TEXT[value];
-  return { spot: { move, pos: move.after }, idea: { type: 'evaluation', value }, label: text, text };
+  return { spot: { move, pos: move.after }, idea: { type: 'evaluation', value }, text: EVALUATION_TEXT[value] };
 }

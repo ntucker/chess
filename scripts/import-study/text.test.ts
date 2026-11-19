@@ -1,5 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
+import { parsePosition, sanToUci } from '@/game/replay';
+
 import { moveInWords, namedMoves, shorten, sideDoes, textVerdicts } from './text';
 
 describe('namedMoves', () => {
@@ -69,17 +71,30 @@ describe('sideDoes', () => {
 });
 
 describe('moveInWords', () => {
+  const words = (fen: string, san: string) => {
+    const pos = parsePosition(fen)!;
+    return moveInWords(pos, sanToUci(pos, san)!);
+  };
+
   it('says a move without notation, naming its square', () => {
-    expect(moveInWords('Nxd4')).toBe('Taking on d4 with the knight');
-    expect(moveInWords('exd5')).toBe('Taking on d5 with the pawn');
-    expect(moveInWords('Bxf7+')).toBe('Taking on f7 with the bishop, giving check');
-    expect(moveInWords('Rxe1#')).toBe('Taking on e1 with the rook, giving mate');
-    expect(moveInWords('Nf3#')).toBe('Mating with the knight on f3');
-    expect(moveInWords('e8=Q')).toBe('Pushing the pawn to e8 and promoting to a queen');
-    expect(moveInWords('exd8=N+')).toBe('Taking on d8 with the pawn and promoting to a knight, giving check');
-    expect(moveInWords('Qa5+')).toBe('Checking with the queen on a5');
-    expect(moveInWords('Nbd7')).toBe('Moving the knight to d7');
-    expect(moveInWords('h6')).toBe('Pushing the pawn to h6');
-    expect(moveInWords('O-O-O')).toBe('Castling long');
+    expect(words('4k3/8/8/8/3p4/5N2/8/4K3 w - - 0 1', 'Nxd4')).toBe('Taking on d4 with the knight');
+    expect(words('4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1', 'exd5')).toBe('Taking on d5 with the pawn');
+    expect(words('3qk3/8/8/8/8/8/8/4K3 b - - 0 1', 'Qa5+')).toBe('Checking with the queen on a5');
+    expect(words('1n2k3/8/5n2/8/8/8/8/4K3 b - - 0 1', 'Nbd7')).toBe('Moving the knight to d7');
+    expect(words('4k3/7p/8/8/8/8/8/4K3 b - - 0 1', 'h6')).toBe('Pushing the pawn to h6');
+    expect(words('r3k3/8/8/8/8/8/8/4K3 b q - 0 1', 'O-O-O')).toBe('Castling long');
+  });
+
+  it('says check, mate and promotion', () => {
+    expect(words('4k3/5p2/8/8/2B5/8/8/4K3 w - - 0 1', 'Bxf7+')).toBe('Taking on f7 with the bishop, giving check');
+    expect(words('4r1k1/5ppp/8/8/8/8/5PPP/4R1K1 b - - 0 1', 'Rxe1#')).toBe('Taking on e1 with the rook, giving mate');
+    expect(words('rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2', 'Qh4#')).toBe(
+      'Mating with the queen on h4',
+    );
+    expect(words('5k2/8/8/8/8/8/8/4K2R w K - 0 1', 'O-O+')).toBe('Castling short, giving check');
+    expect(words('8/4P3/8/8/8/8/k7/4K3 w - - 0 1', 'e8=Q')).toBe('Pushing the pawn to e8 and promoting to a queen');
+    expect(words('3r4/4Pk2/8/8/8/8/8/4K3 w - - 0 1', 'exd8=N+')).toBe(
+      'Taking on d8 with the pawn and promoting to a knight, giving check',
+    );
   });
 });
