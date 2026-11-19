@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useReducer, useState } from 'react';
+import { useDeferredValue, useEffect, useReducer, useState } from 'react';
 
 import { gameReducer, startGame } from '@/game/game';
 import type { GameStore } from '@/game/useGame';
@@ -21,11 +21,16 @@ const lessonHref = (id: LessonId) => `/lesson/${id}` as const;
  * Back returns to the start. A first move that picks no lesson returns to
  * `/`. Going Back or Forward to an address the game isn't in starts that
  * address's game; the address catching up with a pick keeps the game.
+ *
+ * The store holds the game as the page shows it: as it stood until the
+ * lesson it now plays has loaded (`useDeferredValue`), so picking an opening,
+ * or going Back or Forward to one, keeps the page on screen rather than a
+ * placeholder, while the address moves at once. `pending` while it lags.
  */
 export function useOpeningsGame(address: LessonId | undefined) {
   const router = useRouter();
-  const store: GameStore = useReducer(gameReducer, address, (id) => startGame(startOf(id)));
-  const [{ moves }, dispatch] = store;
+  const [game, dispatch] = useReducer(gameReducer, address, (id) => startGame(startOf(id)));
+  const { moves } = game;
   /** The lesson the game plays, named by its first move. */
   const picked = lessonOf(LESSON_INDEX, moves);
   // The address the game last caught up with. A new one is checked during
@@ -42,5 +47,7 @@ export function useOpeningsGame(address: LessonId | undefined) {
     else if (address === undefined) router.push(lessonHref(picked));
     else router.replace(lessonHref(picked));
   }, [picked, address, router]);
-  return store;
+  const shown = useDeferredValue(game);
+  const store: GameStore = [shown, dispatch];
+  return { store, pending: shown !== game };
 }

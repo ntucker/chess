@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
-import { act } from 'react';
+import { act, Suspense, use, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
 import type { LessonId } from '@/resources/lesson';
@@ -10,13 +10,32 @@ const mockRouter = { push: jest.fn(), replace: jest.fn(), dismissTo: jest.fn() }
 jest.mock('expo-router', () => ({ useRouter: () => mockRouter }));
 
 let root: Root | undefined;
-/** What the hook answered on each render; the latest last. */
+/** What the hook answered on each committed render; the latest last. */
 const renders: ReturnType<typeof useOpeningsGame>[] = [];
 const latest = () => renders[renders.length - 1];
 
+/** A lesson that never finishes loading, like a slow lesson file. */
+const loadingForever = new Promise<never>(() => {});
+/** Whether lessons load slowly: the page's lesson then waits forever. */
+const slow = { lessons: false };
+
+/** The page's lesson: with slow lessons, it waits once the shown game picks one. */
+function Lesson({ moves }: { readonly moves: readonly string[] }) {
+  if (slow.lessons && moves.length > 0) use(loadingForever);
+  return 'lesson';
+}
+
 function Page({ address }: { readonly address?: LessonId }) {
-  renders.push(useOpeningsGame(address));
-  return null;
+  const answer = useOpeningsGame(address);
+  // On commit: a render that waits for a lesson never shows.
+  useLayoutEffect(() => {
+    renders.push(answer);
+  });
+  return (
+    <Suspense fallback="placeholder">
+      <Lesson moves={answer.store[0].moves} />
+    </Suspense>
+  );
 }
 
 const show = (address?: LessonId) =>
@@ -24,16 +43,17 @@ const show = (address?: LessonId) =>
     root ??= createRoot();
     root.render(<Page address={address} />);
   });
-const moves = () => latest()[0].moves;
+const moves = () => latest().store[0].moves;
 const play = (...ucis: string[]) =>
   act(() => {
-    for (const uci of ucis) latest()[1]({ type: 'move', uci });
+    for (const uci of ucis) latest().store[1]({ type: 'move', uci });
   });
 
 afterEach(() => {
   act(() => root?.unmount());
   root = undefined;
   jest.clearAllMocks();
+  slow.lessons = false;
 });
 
 describe('useOpeningsGame', () => {
@@ -63,7 +83,7 @@ describe('useOpeningsGame', () => {
   it("replaces a lesson's address when another is picked from it", async () => {
     await show('caro-kann');
     await play('c7c6');
-    await act(() => latest()[1]({ type: 'goto', ply: 0 }));
+    await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
     await play('d2d4');
     expect(mockRouter.replace).toHaveBeenCalledWith('/lesson/slav');
     expect(mockRouter.push).not.toHaveBeenCalled();
@@ -85,11 +105,26 @@ describe('useOpeningsGame', () => {
 
   it('returns to the start when a first move picks no lesson', async () => {
     await show('caro-kann');
-    await act(() => latest()[1]({ type: 'goto', ply: 0 }));
+    await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
     await play('g1f3');
     expect(mockRouter.dismissTo).toHaveBeenCalledWith('/');
     // Arriving there keeps the game.
     await show();
     expect(moves()).toEqual(['g1f3']);
+  });
+
+  it('moves the address at the pick, while the page shows the start until the lesson loads', async () => {
+    slow.lessons = true;
+    await show();
+    await play('e2e4');
+    expect(mockRouter.push).toHaveBeenCalledWith('/lesson/caro-kann');
+    expect(moves()).toEqual([]);
+    expect(latest().pending).toBe(true);
+    expect(JSON.stringify(root?.container.toJSON())).not.toContain('placeholder');
+    // Back while it loads: the page is at the start again, with nothing pending.
+    await show('caro-kann');
+    await show();
+    expect(moves()).toEqual([]);
+    expect(latest().pending).toBe(false);
   });
 });

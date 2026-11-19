@@ -1,6 +1,6 @@
 import { AsyncBoundary, useController, useSuspense } from '@data-client/react';
 import { Separator, Spinner, Stack } from '@reactive/silk-native';
-import { useDeferredValue, useMemo } from 'react';
+import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
@@ -63,13 +63,9 @@ export function LessonPage({ id }: { readonly id?: string }) {
  * reopens it and the browser's Back returns to the start.
  */
 function Openings({ address }: { readonly address?: LessonId }) {
-  const [game, dispatch] = useOpeningsGame(address);
-  // The page shows the game as it stood until the lesson it now plays has
-  // loaded: picking an opening, or going Back or Forward to one, keeps the
-  // page on screen rather than a placeholder, while the address moves at once.
-  const shown = useDeferredValue(game);
-  const loading = useLongWait(shown !== game);
-  const lesson = lessonOf(LESSON_INDEX, shown.moves);
+  const { store, pending } = useOpeningsGame(address);
+  const loading = useLongWait(pending);
+  const lesson = lessonOf(LESSON_INDEX, store[0].moves);
   // A failed lesson clears once the page shows another (Back to the start).
   // A `key` would remount the page and lose the game, so the boundary resets.
   const resetOnLesson = useMemo(() => resetListener(lesson), [lesson]);
@@ -81,7 +77,7 @@ function Openings({ address }: { readonly address?: LessonId }) {
       errorComponent={LessonFailure}
       listen={resetOnLesson}
     >
-      <LessonScreen id={lesson} store={[shown, dispatch]} loading={loading} />
+      <LessonScreen id={lesson} store={store} loading={loading} />
     </AsyncBoundary>
   );
 }
