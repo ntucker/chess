@@ -20,8 +20,8 @@ interface Options {
   readonly active: boolean;
   /** The engine that judges each move for its label. */
   readonly judge: EvaluationEngine;
-  /** Which of `moves` a lesson's guide recommends: labelled `book`, never judged. */
-  readonly book?: (moves: readonly string[]) => readonly boolean[];
+  /** Which of the game's moves a lesson's guide recommends: labelled `book`, never judged. */
+  readonly book?: readonly boolean[];
 }
 
 /**
@@ -54,7 +54,7 @@ export function useGame(
   const latest = analyze(plies[plies.length - 1]);
   const atLatest = ply === moves.length;
   const current = atLatest ? latest : analyze(plies[ply]);
-  const qualities = useMoveQualities(plies, ply, judge, book?.(moves));
+  const qualities = useMoveQualities(plies, ply, judge, book);
   const error = failure(state, opponent?.id);
   const thinking = !!opponent && !latest.result && latest.turn !== side && !error;
   const replying = atLatest && thinking;
