@@ -26,8 +26,8 @@
  * token (a personal token with no scopes is enough): set LICHESS_TOKEN, or
  * run where a proxy adds it (Node's fetch uses HTTPS_PROXY only with
  * NODE_USE_ENV_PROXY=1, which the yarn script sets).
- * Answers are cached in IMPORT_STUDY_CACHE (default .cache/import-study), so
- * a stopped crawl resumes. Lichess allows about 24 requests a minute, so the
+ * The study and the explorer's answers are cached in IMPORT_STUDY_CACHE
+ * (default .cache/import-study), so a stopped crawl resumes. Lichess allows about 24 requests a minute, so the
  * first crawl of the Caro-Kann takes about four hours; later runs read the
  * cache.
  */
@@ -51,6 +51,7 @@ import { STUDIES } from './studies';
 const ROOT = join(__dirname, '../..');
 
 const CACHE = process.env.IMPORT_STUDY_CACHE ?? join(ROOT, '.cache/import-study');
+const FLAGS = ['--no-model', '--no-popularity'];
 const USAGE = `Usage: yarn import-study <${Object.keys(STUDIES).join('|')}> [--no-model] [--no-popularity] | --popularity <lesson file>`;
 
 async function main() {
@@ -62,7 +63,8 @@ async function main() {
     return;
   }
   const study = Object.hasOwn(STUDIES, first) ? STUDIES[first as keyof typeof STUDIES] : undefined;
-  if (!study) throw new Error(USAGE);
+  // An unknown flag must fail rather than be ignored: a mistyped --no-model would call the model for an hour.
+  if (!study || rest.some((flag) => !FLAGS.includes(flag))) throw new Error(USAGE);
   const chapters = parseStudy(await studyPgn(study.study), study.chapters);
   const cli = claudeCli({
     learner: study.info.side,

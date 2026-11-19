@@ -12,11 +12,9 @@ import { createHash } from 'node:crypto';
 import type { Color } from 'chessops/types';
 import { opposite } from 'chessops/util';
 
-import { renameSync, writeFileSync } from 'node:fs';
-
 import { colorName } from '@/game/replay';
 
-import { appendJsonLine, readJsonLines } from '../jsonLines';
+import { appendJsonLine, readJsonLines, writeJsonLines } from '../jsonLines';
 
 import { asAnswer, SCHEMA, type Answer } from './answer';
 import type { Comment } from './comments';
@@ -45,7 +43,11 @@ interface Options {
 
 export interface ClaudeCli {
   readonly ask: Ask;
-  /** Rewrites the answers file with only the answers this run used, so stale ones don't pile up. */
+  /**
+   * Rewrites the answers file with only the answers this run used, so stale
+   * ones don't pile up. Does nothing without the model: a run that could not
+   * replace a stale answer must not drop it.
+   */
   readonly saveUsed: () => void;
 }
 
@@ -73,7 +75,7 @@ export function claudeCli({ learner, cacheFile, callModel = true, log = console.
       } else asking.push(comment);
     }
     if (!callModel) {
-      log(`convert: ${answers.size} answered from ${cacheFile}, ${asking.length} not there keep the importer's notes`);
+      log(`convert: ${answers.size} answered from ${cacheFile}; ${asking.length} missing there keep the importer's notes`);
       return answers;
     }
     const batches = chunks(asking, BATCH);
@@ -102,9 +104,11 @@ export function claudeCli({ learner, cacheFile, callModel = true, log = console.
   };
 
   const saveUsed = () => {
-    const lines = [...used].sort().map((key) => `${JSON.stringify({ key, answer: cache.get(key) })}\n`);
-    writeFileSync(`${cacheFile}.tmp`, lines.join(''));
-    renameSync(`${cacheFile}.tmp`, cacheFile);
+    if (!callModel) return;
+    writeJsonLines(
+      cacheFile,
+      [...used].sort().map((key) => ({ key, answer: cache.get(key) })),
+    );
   };
 
   return { ask, saveUsed };

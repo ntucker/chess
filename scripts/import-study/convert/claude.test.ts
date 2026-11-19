@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
-import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -25,11 +25,17 @@ process.stdin.on('end', () => {
 
 describe('claudeCli', () => {
   const dir = mkdtempSync(join(tmpdir(), 'claude-cli-'));
-  const cacheFile = join(dir, 'answers.jsonl');
   const log = () => {};
-  const lines = () => readFileSync(cacheFile, 'utf8').split('\n').filter(Boolean);
   const ids = (answers: Map<string, unknown>) => [...answers.keys()];
   const previousBin = process.env.CLAUDE_BIN;
+  let files = 0;
+  /** A new answers file, with an answer for each of `seeded` asked of the stand-in CLI. */
+  const answersFile = async (seeded: readonly Comment[] = []) => {
+    const cacheFile = join(dir, `answers-${files++}.jsonl`);
+    if (seeded.length > 0) await claudeCli({ learner: 'black', cacheFile, log }).ask(MODELS.convert, seeded);
+    return cacheFile;
+  };
+  const lines = (file: string) => readFileSync(file, 'utf8').split('\n').filter(Boolean);
 
   beforeAll(() => {
     process.env.CLAUDE_BIN = join(dir, 'claude');
@@ -37,20 +43,34 @@ describe('claudeCli', () => {
     chmodSync(process.env.CLAUDE_BIN, 0o755);
   });
   afterAll(() => {
-    process.env.CLAUDE_BIN = previousBin;
+    if (previousBin === undefined) delete process.env.CLAUDE_BIN;
+    else process.env.CLAUDE_BIN = previousBin;
+    rmSync(dir, { recursive: true, force: true });
   });
 
   it('asks the CLI about comments it has no answer for, and keeps each answer in the file', async () => {
+    const cacheFile = await answersFile();
     const answers = await claudeCli({ learner: 'black', cacheFile, log }).ask(MODELS.convert, comments);
-    expect(ids(answers)).toEqual(comments.map((comment: Comment) => comment.id));
-    expect(lines()).toHaveLength(2);
+    expect(ids(answers)).toEqual(comments.map((comment) => comment.id));
+    expect(lines(cacheFile)).toHaveLength(2);
   });
 
-  it('answers from the file alone without calling a model, and keeps only the answers a run used', async () => {
+  it('keeps only the answers a run used', async () => {
+    const cacheFile = await answersFile(comments);
+    const cli = claudeCli({ learner: 'black', cacheFile, log });
+    await cli.ask(MODELS.convert, [comments[0]]);
+    cli.saveUsed();
+    expect(lines(cacheFile)).toHaveLength(1);
+  });
+
+  it('answers from the file alone without the model, and drops nothing', async () => {
+    const cacheFile = await answersFile([comments[0], comments[1]]);
+    process.env.CLAUDE_BIN = join(dir, 'missing');
     const cli = claudeCli({ learner: 'black', cacheFile, log, callModel: false });
     expect(ids(await cli.ask(MODELS.convert, [comments[0]]))).toEqual([comments[0].id]);
     expect(ids(await cli.ask(MODELS.retry, [comments[1]]))).toEqual([]);
     cli.saveUsed();
-    expect(lines()).toHaveLength(1);
+    expect(lines(cacheFile)).toHaveLength(2);
+    process.env.CLAUDE_BIN = join(dir, 'claude');
   });
 });
