@@ -19,11 +19,14 @@ import {
 } from './settings';
 
 // Kept in localStorage (on Android, expo-sqlite provides it; see
-// src/app/_layout.tsx). This file is the only code that touches it.
-const KEY = 'settings';
+// src/app/_layout.tsx). This file is the only code that touches it. Pull
+// request previews share the live site's origin, so their builds set a
+// prefix (.github/workflows/web.yml) to keep their own settings.
+const PREFIX = process.env.EXPO_PUBLIC_STORAGE_PREFIX ?? '';
+const KEY = `${PREFIX}settings`;
 // Before the settings were one object, the evaluation bar's engine was saved
 // alone under this key; it is read once, while nothing is saved under KEY.
-const LEGACY_EVALUATION_ENGINE_KEY = 'evaluationEngine';
+const LEGACY_EVALUATION_ENGINE_KEY = `${PREFIX}evaluationEngine`;
 
 // Native has no pre-rendered page to match, so its first frame can show the
 // remembered settings; the web loads them after hydration.

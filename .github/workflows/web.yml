@@ -1,7 +1,7 @@
 # Publishes the web app to GitHub Pages: every push to main replaces the site,
 # and every pull request from this repository gets a preview under
 # pr-preview/pr-<number>/, linked in a comment on the pull request and removed
-# when it closes. Fork pull requests only build. Setup is in README.md, under
+# when it closes. Fork and Dependabot pull requests only build. Setup is in README.md, under
 # "Web deploys".
 name: Web
 
@@ -63,6 +63,8 @@ jobs:
       - name: Export the web app
         env:
           PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}${{ github.event_name == 'pull_request' && format('/pr-preview/pr-{0}', github.event.number) || '' }}
+          # Previews share the live site's localStorage; this keeps them apart.
+          EXPO_PUBLIC_STORAGE_PREFIX: ${{ github.event_name == 'pull_request' && format('pr-{0}:', github.event.number) || '' }}
         run: |
           yarn expo export --platform web ${{ github.event_name == 'pull_request' && '--no-minify' || '' }}
           # Pages shows the site's root 404.html for any path it has no file for.
@@ -113,6 +115,7 @@ jobs:
           path: site
 
       - name: Update the gh-pages branch
+        id: push
         env:
           GIT_AUTHOR_NAME: github-actions[bot]
           GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
@@ -148,12 +151,16 @@ jobs:
             if [ -d "$site" ] && { [ "$TARGET" = . ] || grep -qx "$PR" <<< "$open"; }; then
               mkdir -p "$TARGET"
               cp -R "$site/." "$TARGET/"
+              copied=true
             fi
             # Pages would otherwise run Jekyll, which drops _expo/.
             touch .nojekyll
             git add -A
             commit=$(git commit-tree "$(git write-tree)" -m "Web run $GITHUB_RUN_ID ($GITHUB_EVENT_NAME${PR:+ #$PR})")
-            git push -q --force-with-lease="gh-pages:$lease" origin "$commit:refs/heads/gh-pages" && exit 0
+            if git push -q --force-with-lease="gh-pages:$lease" origin "$commit:refs/heads/gh-pages"; then
+              echo "copied=${copied:-false}" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             sleep $((attempt * 5))
           done
           exit 1
@@ -161,17 +168,21 @@ jobs:
       - name: Comment the preview address
         if: github.event_name == 'pull_request'
         env:
-          CLOSED: ${{ github.event.action == 'closed' }}
+          COPIED: ${{ steps.push.outputs.copied }}
           URL: ${{ needs.build.outputs.site-url }}/${{ env.TARGET }}/
           SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          # One comment per pull request, updated on every push.
+          # One comment per pull request, updated on every push. A run that
+          # published no preview (its pull request closed) says it's gone.
           marker='<!-- web-preview -->'
-          body="Preview removed: this pull request closed."
-          if [ "$CLOSED" != true ]; then
-            body="**Preview:** $URL
+          if [ "$COPIED" = true ]; then
+            body="$marker
+          **Preview:** $URL
 
           Built from $SHA, without minifying. Pages takes about a minute to serve a new build."
+          else
+            body="$marker
+          Preview removed: this pull request closed."
           fi
           # Every matching id, first one kept (head -n 1 could fail the step
           # under pipefail by closing the pipe early).
@@ -179,9 +190,7 @@ jobs:
             --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | startswith(\"$marker\"))) | .id")
           id=${ids%%$'\n'*}
           if [ -n "$id" ]; then
-            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -f body="$marker
-          $body" > /dev/null
-          elif [ "$CLOSED" != true ]; then
-            gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -f body="$marker
-          $body" > /dev/null
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -f body="$body" > /dev/null
+          elif [ "$COPIED" = true ]; then
+            gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -f body="$body" > /dev/null
           fi
