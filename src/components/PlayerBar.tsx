@@ -12,7 +12,7 @@ import { Captures } from './Captures';
 interface Props {
   readonly name: string;
   readonly detail: string;
-  /** A shorter `detail` for a phone-width web page, where it shares the name's line. */
+  /** A shorter `detail` for a narrow web page, where it shares the name's line. */
   readonly brief?: string;
   readonly color: Color;
   /** It's this player's turn in the latest position. */
@@ -26,7 +26,7 @@ interface Props {
 
 /**
  * Fixed, so the screen can line other content up with the board: a bar with
- * controls at its end, and one with only the names. Shorter on a phone-width
+ * controls at its end, and one with only the names. Shorter on a narrow
  * web page, where the names share one line.
  */
 export const PLAYER_BAR_HEIGHT = {
@@ -35,7 +35,7 @@ export const PLAYER_BAR_HEIGHT = {
 } as const;
 /**
  * The disc's size and the space after it, so the screen can line things up
- * with them. A small dot on a phone-width web page, to give the board room.
+ * with them. A small dot on a narrow web page, to give the board room.
  */
 export const PLAYER_DISC = {
   size: phoneLength('player-disc', 28),
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     borderWidth: DISC_BORDER.value,
   },
   names: { flex: 1, minWidth: 0 },
-  // Where the name's line and the detail share a row (a phone-width web
+  // Where the name's line and the detail share a row (a narrow web
   // page), both give way in proportion when short of room; elsewhere they
   // stack, and these shrink rules have nothing to do.
   nameLine: {
