@@ -83,12 +83,13 @@ export function useLesson(lesson: Lesson) {
   }>();
   if (started && started.key !== view.key) setStarted(undefined);
   const playing = started?.key === view.key ? started : undefined;
-  const row = playing ? playing.row : pointed;
+  const previewRow = playing ? playing.row : pointed;
   const shown = guidance({
     view,
     mode: 'explore',
     switches: SWITCHES,
-    preview: row === undefined ? undefined : preview(lesson, view, { at: 'row', uci: row }),
+    preview:
+      previewRow === undefined ? undefined : preview(lesson, view, { at: 'row', uci: previewRow }),
   });
   const played = playing && shown.notes.find(({ note }) => note === playing.note);
   const idea = played && notePlayback(shown, played);
@@ -140,7 +141,9 @@ export function useLesson(lesson: Lesson) {
   const playback: Playback = {
     playing: playing && frame && { note: playing.note, step: playing.step, steps: frames.length },
     playable: (note) => notePlayback(shown, note)?.idea.type,
-    play: (note) => setStarted({ key: view.key, note: note.note, row: pointed, step: 0, auto: true }),
+    // From the preview on screen, which a playing note keeps after the pointer leaves.
+    play: (note) =>
+      setStarted({ key: view.key, note: note.note, row: previewRow, step: 0, auto: true }),
     goto: (step) => setStarted((now) => now && { ...now, step, auto: false }),
     stop: () => setStarted(undefined),
   };
