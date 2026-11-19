@@ -1,6 +1,16 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { ratingBandIndex, readLesson } from './lesson';
+import { noteShows, ratingBandIndex, readLesson } from './lesson';
+
+describe('noteShows', () => {
+  it('tells drawn ideas from a badge and from text alone', () => {
+    expect(noteShows([{ type: 'evaluation', value: 'equal' }])).toBe('badge');
+    expect(noteShows([{ type: 'evaluation', value: 'equal' }, { type: 'imbalance', side: 'white', kind: 'space' }])).toBe(
+      'drawn',
+    );
+    expect(noteShows(undefined)).toBe('text');
+  });
+});
 
 describe('ratingBandIndex', () => {
   const popularity = { ratingBands: [1000, 1200, 1400, 1600, 1800], speeds: [], date: '2026-11-18' };

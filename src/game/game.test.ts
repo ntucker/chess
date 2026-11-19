@@ -96,6 +96,8 @@ describe('failures', () => {
     expect(failure(failed, 'stockfish')).toBe(error);
     expect(failure(failed, MAIA)).toBe(undefined);
     expect(failure(failed, undefined)).toBe(undefined);
+    // No failure at all, even for no opponent.
+    expect(failure(asked, undefined)).toBe(undefined);
   });
 
   it('clear on retry, keeping the moves and the board', () => {
