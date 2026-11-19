@@ -14,62 +14,81 @@ import { makeSquare, opposite, parseSquare } from 'chessops/util';
 import type { Drawing, Tone } from '@/board/drawing';
 import { parsePositionKey, pieceAt, playLine, type Position } from '@/game/replay';
 
-import type { Guidance, ShownIdea } from './guidance';
+import type { Guidance, PlayedBack } from './guidance';
 import type { Idea, Imbalance, PositionKey, Structure, StructureFeature, Uci } from './lesson';
 import { relativeRank, spaceSquares } from './pawns';
 import { planBoards } from './plan';
-import type { Candidate } from './select';
-import type { LandedTrap, ShownNote } from './view';
+import { type Candidate, mainCandidate } from './select';
+import type { LandedTrap } from './view';
 
 /**
  * The board's drawings for `guidance` while the board shows `shown`, for a
- * learner playing `learner`. A previewed move is drawn with its ideas: a
- * sliding preview leaves a ghost where its piece stood. Otherwise the
- * candidates are drawn without the ideas, since their arrows would share the
- * board's colors, except a trap's, which are drawn in danger's; the ideas
- * only where there are no candidates. That rule is on trial; once settled, it
- * belongs in guidance.ts, which decides what is hidden. Ideas are drawn only
- * on the position they are about, and of several plans only the first.
+ * learner playing `learner`: the candidates and ideas guidance draws (ideas
+ * only on the position they are about), a sliding preview's ghost where its
+ * piece stood and a glow where it lands, Stockfish's best move and a trap
+ * fallen into.
  */
 export function lessonDrawings(guidance: Guidance, shown: PositionKey, learner: Color): Drawing[] {
-  const { preview, candidates } = guidance;
-  const here = guidance.ideas.filter(({ at }) => at === shown).map(({ idea }) => idea);
-  // One plan at a time: two plans' numbered routes would read as one sequence.
-  const firstPlan = here.find(({ type }) => type === 'plan');
-  const ideas = here.filter((idea) => idea.type !== 'plan' || idea === firstPlan);
-  // Parsed only where there are ideas to draw, since this runs as the pointer moves.
-  const draw = (some: readonly Idea[]) => {
-    if (!some.length) return [];
-    const position = parsePositionKey(shown)!;
-    return some.flatMap((idea) => ideaDrawings(idea, position, learner));
-  };
-  if (preview?.slide) return [ghost(preview.candidate.from, preview.candidate.piece), ...draw(ideas)];
-  if (preview) return [...candidateDrawings([preview.candidate]), ...draw(ideas)];
-  const facts = [...bestDrawings(guidance.best), ...(guidance.trap ? landedTrapDrawings(guidance.trap, shown) : [])];
-  if (!candidates.length) return [...draw(ideas), ...facts];
-  return [...candidateDrawings(candidates), ...draw(ideas.filter(({ type }) => type === 'trap')), ...facts];
+  const { main } = guidance;
+  const ideas = guidance.drawn.filter(({ at }) => at === shown).map(({ idea }) => idea);
+  const slid = slidCandidate(guidance);
+  return [
+    ...(slid ? [ghost(slid.from, slid.piece), glow(slid.to, candidateTone(slid, main))] : []),
+    ...candidateDrawings(guidance.drawnCandidates, main),
+    ...ideasDrawings(ideas, shown, learner),
+    ...bestDrawings(guidance.best),
+    ...(guidance.trap ? landedTrapDrawings(guidance.trap, shown) : []),
+  ];
 }
-
-/** The candidate to look at first: the book move, or else the most played. */
-export const mainCandidate = (candidates: readonly Candidate[]): Candidate | undefined =>
-  candidates.find(({ move }) => move.book) ?? candidates[0];
 
 /**
- * Each candidate's piece lit, with an arrow to where it goes: the main one
- * (`mainCandidate`) in the main tone, the rest as alternatives.
+ * `ideas`' drawings on the position `shown`, parsed only when there are some,
+ * since this runs as the pointer moves.
  */
-export function candidateDrawings(candidates: readonly Candidate[]): Drawing[] {
-  const main = mainCandidate(candidates);
-  const draw = ({ from, to }: Candidate, tone: Tone): Drawing[] => [
-    { kind: 'glow', square: from, tone },
-    { kind: 'arrow', from, to, tone },
-  ];
+function ideasDrawings(ideas: readonly Idea[], shown: PositionKey, learner: Color): Drawing[] {
+  if (!ideas.length) return [];
+  const position = parsePositionKey(shown)!;
+  return ideas.flatMap((idea) => ideaDrawings(idea, position, learner));
+}
+
+/** The candidate a sliding preview shows played, if any. */
+export const slidCandidate = ({ preview }: Guidance): Candidate | undefined =>
+  preview?.slide ? preview.candidate : undefined;
+
+/** A candidate's tone: the main one's, or an alternative's. */
+const candidateTone = (candidate: Candidate, main: Candidate | undefined): Tone =>
+  candidate === main ? 'main' : 'other';
+
+const glow = (square: SquareName, tone: Tone): Drawing => ({ kind: 'glow', square, tone });
+
+/**
+ * Each candidate's piece lit, with an arrow to where it goes: `main` (see
+ * `mainCandidate`) in the main tone, the rest as alternatives.
+ */
+export function candidateDrawings(
+  candidates: readonly Candidate[],
+  main = mainCandidate(candidates),
+): Drawing[] {
+  const draw = (candidate: Candidate): Drawing[] => {
+    const tone = candidateTone(candidate, main);
+    return [
+      glow(candidate.from, tone),
+      { kind: 'arrow', from: candidate.from, to: candidate.to, tone },
+    ];
+  };
   // The main move last, so its glow wins where two candidates move one piece.
   return [
-    ...candidates.filter((c) => c !== main).flatMap((c) => draw(c, 'other')),
-    ...(main ? draw(main, 'main') : []),
+    ...candidates.filter((c) => c !== main).flatMap(draw),
+    ...candidates.filter((c) => c === main).flatMap(draw),
   ];
 }
+
+/**
+ * Whether `idea` draws on the board at all (`ideaDrawings`): an evaluation
+ * and a material imbalance are only words.
+ */
+export const drawsOnBoard = (idea: Idea) =>
+  idea.type !== 'evaluation' && !(idea.type === 'imbalance' && idea.kind === 'material');
 
 /**
  * What `idea` draws in `position`, the position it is checked in. A side's
@@ -170,9 +189,6 @@ export interface PlaybackFrame extends Pick<Position, 'fen' | 'turn' | 'check'> 
   readonly move?: Pick<NonNullable<Position['move']>, 'from' | 'to'>;
 }
 
-/** The ideas that play back: a plan's routes, a line's or trap's moves. */
-export type PlayedBack = Extract<Idea, { type: 'plan' | 'line' | 'trap' }>;
-
 /**
  * The boards `idea` steps through from `position`, the position it is
  * checked in: a plan's routes, a line's or trap's moves.
@@ -195,20 +211,6 @@ export function ideaPlayback(idea: PlayedBack, position: Chess): PlaybackFrame[]
         move,
       }));
   }
-}
-
-/** An idea shown on the board that plays back. */
-type ShownPlayback = ShownIdea & { readonly idea: PlayedBack };
-
-const playsBack = (shown: ShownIdea): shown is ShownPlayback =>
-  shown.idea.type === 'plan' || shown.idea.type === 'line' || shown.idea.type === 'trap';
-
-/**
- * The idea of `note` that plays back on the board, of those `guidance` shows
- * (so a trap plays back only while traps are shown); or undefined.
- */
-export function notePlayback(guidance: Guidance, { note }: ShownNote): ShownPlayback | undefined {
-  return guidance.ideas.filter(playsBack).find(({ idea }) => note.ideas?.includes(idea));
 }
 
 const squaresOf = (set: SquareSet): SquareName[] => [...set].map(makeSquare);

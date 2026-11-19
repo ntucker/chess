@@ -9,8 +9,6 @@ import {
   ideaDrawings,
   ideaPlayback,
   lessonDrawings,
-  mainCandidate,
-  notePlayback,
 } from './drawings';
 import { guidance, type LessonSwitches } from './guidance';
 import type { Idea } from './lesson';
@@ -24,6 +22,7 @@ import {
   TRAP_PUNISHED,
   uciLine,
 } from './lesson.fixture';
+import { mainCandidate } from './select';
 import { preview } from './view';
 
 const SWITCHES: LessonSwitches = {
@@ -236,6 +235,7 @@ describe('lessonDrawings', () => {
     expect(lessonDrawings(shown, next, 'black')).toEqual([
       { kind: 'ghost', square: 'c7', piece: { role: 'pawn', color: 'black' } },
       { kind: 'glow', square: 'c6', tone: 'main' },
+      { kind: 'glow', square: 'c6', tone: 'main' },
       { kind: 'arrow', from: 'c6', to: 'd5', tone: 'main' },
       { kind: 'ring', square: 'd5', tone: 'target' },
     ]);
@@ -245,6 +245,7 @@ describe('lessonDrawings', () => {
     const { view, shown } = explore(['e4'], 'c7c6');
     expect(lessonDrawings(shown, view.key, 'black')).toEqual([
       { kind: 'ghost', square: 'c7', piece: { role: 'pawn', color: 'black' } },
+      { kind: 'glow', square: 'c6', tone: 'main' },
     ]);
   });
 
@@ -277,26 +278,27 @@ describe('lessonDrawings', () => {
     ]);
   });
 
-  it('draws only the first of several plans, whose numbers would run together', () => {
-    const plan = (from: string, to: string): Idea => ({ type: 'plan', side: 'black', routes: [{ from: from as never, to: to as never }, { from: 'a7', to: 'a6' }] });
-    const at = keyAfter(...ADVANCE);
-    const shown = {
-      ...guidance({ view: sampleView([...ADVANCE, 'a6']), mode: 'explore', switches: SWITCHES }),
-      ideas: [plan('b8', 'c6'), plan('e7', 'e6')].map((idea) => ({ idea, at })),
-    };
-    expect(lessonDrawings(shown, at, 'black')).toEqual(drawn(plan('b8', 'c6'), after(...ADVANCE)));
+  it("draws a pointed piece's candidates in the tones the list gives them", () => {
+    const view = sampleView(MAIN);
+    const knight = view.candidates.find(({ san }) => san === 'Nc3')!;
+    const pointed = preview(SAMPLE, view, { at: 'square', square: 'b1' });
+    const shown = guidance({ view, mode: 'explore', switches: SWITCHES, preview: pointed });
+    // Both knight moves, alternatives to the main e5.
+    expect(shown.drawnCandidates.map(({ san }) => san)).toEqual(['Nc3', 'Nd2']);
+    expect(lessonDrawings(shown, view.key, 'black')).toContainEqual({
+      kind: 'arrow',
+      from: knight.from,
+      to: knight.to,
+      tone: 'other',
+    });
   });
-});
 
-describe('notePlayback', () => {
-  const trapNote = (traps: boolean) => {
-    const { shown } = explore(TRAP, undefined, { ...SWITCHES, showTraps: traps });
-    const note = shown.notes.find(({ note }) => note.ideas?.some(({ type }) => type === 'trap'))!;
-    return notePlayback(shown, note);
-  };
-
-  it("plays a note's trap back while traps are shown, and not otherwise", () => {
-    expect(trapNote(true)?.idea.type).toBe('trap');
-    expect(trapNote(false)).toBeUndefined();
+  it('draws the ideas guidance draws, and nothing else, while a note is pointed at', () => {
+    const view = sampleView(ADVANCE);
+    const [note] = view.notes;
+    const shown = guidance({ view, mode: 'explore', switches: SWITCHES, pointed: note.note });
+    expect(lessonDrawings(shown, view.key, 'black')).toEqual(
+      shown.drawn.flatMap(({ idea }) => drawn(idea, after(...ADVANCE))),
+    );
   });
 });

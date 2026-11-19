@@ -75,6 +75,8 @@ export interface LessonView {
   readonly candidates: readonly Candidate[];
   /** The idea card's notes: the move that led here, then the position. */
   readonly notes: readonly ShownNote[];
+  /** The notes of the position the move that led here was played in. */
+  readonly playedFrom: readonly ShownNote[];
   /**
    * Each move of `line` as the guide stores it where it was played, or
    * undefined where it wasn't a guide move. A book move's has `book: true`.
@@ -95,6 +97,7 @@ export function lessonView({ lesson, line, ply, opponent }: LessonViewInput): Le
     variation: lineVariation(lesson, keys.slice(0, ply + 1)),
     candidates: candidates(lesson, key, opponentBand(lesson, opponent)),
     notes: arrivalNotes(lesson, keys, guideMoves, ply),
+    playedFrom: ply === 0 ? [] : positionNotes(lesson, keys[ply - 1]),
     guideMoves,
     trap: landedTrap(lesson, line.slice(0, ply), keys, guideMoves),
   };
@@ -116,6 +119,10 @@ export interface Preview {
   /** The move's notes, then those of the position it leads to. */
   readonly notes: readonly ShownNote[];
 }
+
+/** The position the board shows: a sliding preview's, after its move, or the game's `key`. */
+export const shownKey = (key: PositionKey, preview?: Preview): PositionKey =>
+  preview?.slide ? preview.candidate.next : key;
 
 /**
  * The candidate `pointer` previews in `view`. A row previews its move. A

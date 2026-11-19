@@ -1,14 +1,16 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { a11yState, Badge, Button, Pressable, Stack, Text, useTheme } from '@reactive/silk-native';
-import { useState } from 'react';
+import { type FocusEvent as ReactFocusEvent, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { Tone } from '@/board/drawing';
+import { hovers } from '@/board/pointer';
 import { Eyebrow } from '@/components/Eyebrow';
 import { Transport } from '@/components/Transport';
 import type { Color } from '@/game/replay';
-import { ideaTone, type PlayedBack } from '@/lesson/drawings';
-import type { Evaluation, Idea } from '@/lesson/lesson';
+import { ideaTone } from '@/lesson/drawings';
+import type { PlayedBack } from '@/lesson/guidance';
+import type { Evaluation, Idea, Note } from '@/lesson/lesson';
 import type { Playback, Playing } from '@/lesson/useLesson';
 import type { ShownNote } from '@/lesson/view';
 import { toneColors } from '@/theme/drawingTones';
@@ -20,27 +22,48 @@ interface Props {
   readonly learner: Color;
   /** Plays a note's plan, line or trap through on the board. */
   readonly playback: Playback;
+  /** The notes whose ideas draw on the board when pointed at. */
+  readonly pointable: readonly Note[];
+  /** The note pointed at, whose ideas the board draws. */
+  readonly pointed?: Note;
+  /** The learner points at a note that draws on the board. */
+  readonly onPoint: (note: Note) => void;
+  /** The learner lets a note go: the mouse leaves it, or a second tap. */
+  readonly onLeave: (note: Note) => void;
 }
 
 /**
  * What the guide says about the position, or about the move being previewed:
  * each note's kind, its sentence, the study's own words behind "More", the
- * study's verdict, and a play-through for a plan, a line or a trap.
+ * study's verdict, and a play-through for a plan, a line or a trap. A note
+ * whose idea is on the board, pointed at or playing back, lights its rule in
+ * that idea's color.
  */
-export function IdeaCard({ title, notes, learner, playback }: Props) {
-  const { theme } = useTheme();
-  const { color } = theme.semantic;
+export function IdeaCard({
+  title,
+  notes,
+  learner,
+  playback,
+  pointable,
+  pointed,
+  onPoint,
+  onLeave,
+}: Props) {
   return (
     <Stack gap="3">
       <Eyebrow>{title}</Eyebrow>
       {notes.length ? (
-        <View style={[styles.notes, { borderColor: color.tones.accent.solid }]}>
+        <View>
           {notes.map((shown) => (
             <NoteView
               key={shown.note.text + (shown.before ?? '')}
               shown={shown}
               learner={learner}
               playback={playback}
+              pointable={pointable.includes(shown.note)}
+              pointed={shown.note === pointed}
+              onPoint={onPoint}
+              onLeave={onLeave}
             />
           ))}
         </View>
@@ -57,11 +80,21 @@ function NoteView({
   shown,
   learner,
   playback,
+  pointable,
+  pointed,
+  onPoint,
+  onLeave,
 }: {
   readonly shown: ShownNote;
   readonly learner: Color;
   readonly playback: Playback;
+  readonly pointable: boolean;
+  readonly pointed: boolean;
+  readonly onPoint: (note: Note) => void;
+  readonly onLeave: (note: Note) => void;
 }) {
+  const { theme } = useTheme();
+  const { color } = theme.semantic;
   const { note } = shown;
   const [more, setMore] = useState(false);
   // The note's first drawn idea, which names its kind; none for text or a verdict alone.
@@ -70,21 +103,75 @@ function NoteView({
   const playing = playback.playing?.note === note ? playback.playing : undefined;
   const original = note.original && note.original !== note.text ? note.original : undefined;
   const playable = playback.playable(shown);
+  // The idea on the board, whose color lights the rule: the one playing back,
+  // or while pointed at, the note's first.
+  const litIdea = playing ? playing.idea : pointed ? drawn : undefined;
+  const point = () => {
+    if (pointable && !pointed) onPoint(note);
+  };
+  // Keyboard focus on its buttons points at it too; the panel ends it. Focus
+  // from a tap or click on a button doesn't, so Play keeps the pointing it
+  // started from: the pointer has its own rules.
+  const focus = (event: unknown) => {
+    const { target } = event as ReactFocusEvent<Element>;
+    if (target.matches(':focus-visible')) point();
+  };
 
   return (
-    <Stack gap="2">
-      {drawn || verdict ? (
-        <View style={styles.heading}>
-          {drawn ? <KindTag label={KINDS[drawn.type]} tone={ideaTone(drawn, learner)} /> : <View />}
-          {verdict ? <Verdict value={verdict} /> : null}
-        </View>
-      ) : null}
-      <Text role="body">{note.text}</Text>
-      {more && original ? (
-        <Text role="bodySm" tone="secondary">
-          {original}
-        </Text>
-      ) : null}
+    <Stack
+      gap="2"
+      onPointerEnter={({ nativeEvent }) => {
+        if (hovers(nativeEvent.pointerType)) point();
+      }}
+      onPointerLeave={({ nativeEvent }) => {
+        // Whether lit or not: a switch may hide the ideas of the note pointed at.
+        if (hovers(nativeEvent.pointerType)) onLeave(note);
+      }}
+      // Only the web has keyboard focus here.
+      onFocus={process.env.EXPO_OS === 'web' ? focus : undefined}
+      style={[
+        styles.note,
+        {
+          borderTopRightRadius: theme.semantic.radius.sm,
+          borderBottomRightRadius: theme.semantic.radius.sm,
+        },
+        litIdea
+          ? {
+              borderColor: toneColors[ideaTone(litIdea, learner)],
+              backgroundColor: color.tones.neutral.subtle,
+            }
+          : { borderColor: color.tones.accent.solid },
+      ]}
+    >
+      <Stack
+        gap="2"
+        // On a touch screen a tap on the note's words points at it, and another
+        // lets it go, so the candidates' arrows come back. Its buttons don't
+        // toggle it, so Play keeps the pointing it started from. A scroll
+        // cancels the pointer, so it points at nothing.
+        onPointerUp={({ nativeEvent }) => {
+          if (hovers(nativeEvent.pointerType)) return;
+          if (pointed) onLeave(note);
+          else point();
+        }}
+      >
+        {drawn || verdict ? (
+          <View style={styles.heading}>
+            {drawn ? (
+              <KindTag label={KINDS[drawn.type]} tone={ideaTone(drawn, learner)} />
+            ) : (
+              <View />
+            )}
+            {verdict ? <Verdict value={verdict} /> : null}
+          </View>
+        ) : null}
+        <Text role="body">{note.text}</Text>
+        {more && original ? (
+          <Text role="bodySm" tone="secondary">
+            {original}
+          </Text>
+        ) : null}
+      </Stack>
       {original || playable ? (
         <View style={styles.actions}>
           {playing ? (
@@ -185,7 +272,13 @@ const VERDICTS: Readonly<Record<Evaluation, { glyph: string; words: string }>> =
 };
 
 const styles = StyleSheet.create({
-  notes: { borderLeftWidth: 2, paddingLeft: 14, gap: 16 },
+  // Each note carries its piece of the rule, so a pointed one can light its own.
+  note: {
+    borderLeftWidth: 2,
+    paddingLeft: 14,
+    paddingRight: 8,
+    paddingVertical: 8,
+  },
   heading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   kind: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dot: { width: 8, height: 8, borderRadius: 4 },

@@ -114,3 +114,6 @@ export function useGame(opponent: GameOpponent | undefined, { side, active, judg
     },
   };
 }
+
+/** A game on a screen: what `useGame` returns. */
+export type Game = ReturnType<typeof useGame>;

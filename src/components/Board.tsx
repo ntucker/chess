@@ -14,6 +14,7 @@ import type { DrawBrushes } from '@lichess-org/chessground/draw';
 import type { Key, PieceNode } from '@lichess-org/chessground/types';
 import type { DOMProps } from 'expo/dom';
 import { useEffect, useEffectEvent, useMemo, useRef } from 'react';
+import { flushSync } from 'react-dom';
 
 import { type Drawing, type Square, TONES } from '@/board/drawing';
 import { type BoardMarks, boardMarks, toneBrushes } from '@/board/marks';
@@ -47,11 +48,11 @@ export interface BoardProps {
   readonly onHold?: (square: Square | null) => void;
   /**
    * A square was clicked or tapped, empty or not, including the press that
-   * starts a drag and the one that ends a move. While a move is previewed the
-   * board shows it played, so chessground can't play it; a click on its
-   * square comes here instead.
+   * starts a drag and the one that ends a move, with the square picked
+   * before it, if any. While a move is previewed the board shows it played,
+   * so chessground can't play it; a click on its square comes here instead.
    */
-  readonly onPress?: (square: Square) => void;
+  readonly onPress?: (square: Square, selected?: Square) => void;
   readonly dom?: DOMProps;
 }
 
@@ -75,7 +76,9 @@ export default function Board({
   const handleMove = useEffectEvent((from: string, to: string) => onMove(from, to));
   const handleHover = useEffectEvent((square: Square | null) => onHover?.(square));
   const handleHold = useEffectEvent((square: Square | null) => onHold?.(square));
-  const handlePress = useEffectEvent((square: Square) => onPress?.(square));
+  const handlePress = useEffectEvent((square: Square, selected?: Square) =>
+    onPress?.(square, selected),
+  );
 
   // Props arrive as fresh objects on every render (and as JSON on Android),
   // so the board is updated by what they say, not by their identity.
@@ -114,27 +117,82 @@ export default function Board({
     });
   });
 
+  // A screen left underneath stays mounted but hidden, where the board has no
+  // size and chessground would draw its arrows at NaN. Changes made while it
+  // is hidden wait, and go to chessground once the board has a size again.
+  // `sized` follows chessground's measurements rather than the layout now,
+  // since chessground draws with the size it measured until it measures again:
+  // it is read when chessground is made, and then after each of its resizes.
+  const sized = useRef(false);
+  const pending = useRef(false);
+  const setBoard = useEffectEvent((config: Config) => {
+    if (sized.current) api.current?.set(config);
+    else pending.current = true;
+  });
+  const catchUp = useEffectEvent(() => {
+    if (!pending.current || !sized.current) return;
+    pending.current = false;
+    api.current?.set(position);
+    api.current?.set(marksConfig(marks));
+    markAfterDraw();
+  });
+
   useEffect(() => {
     const target = element.current;
     if (!target) return;
+    // The square picked before a press. Chessground reports the press after it
+    // has acted on it, when a refused move has already dropped the pick, so
+    // it is read as the press starts: a capture listener on the board's own
+    // element runs before chessground's handlers on the elements inside it.
+    let picked: Square | undefined;
+    const notePick = () => {
+      picked = api.current?.state.selected as Square | undefined;
+    };
+    target.addEventListener('pointerdown', notePick, { capture: true });
     const board = Chessground(target, {
       ...position,
       premovable: { enabled: false },
-      events: { select: (square) => handlePress(square as Square), change: () => markAfterDraw() },
+      events: {
+        select: (square) => handlePress(square as Square, picked),
+        change: () => markAfterDraw(),
+      },
       movable: { ...position.movable, events: { after: (from, to) => handleMove(from, to) } },
       // Added to chessground's own brushes, which it keeps.
       drawable: { brushes: toneBrushes as DrawBrushes },
     });
     api.current = board;
+    const { width, height } = target.getBoundingClientRect();
+    sized.current = width > 0 && height > 0;
+    // Made after chessground's own observer, which ResizeObserver notifies
+    // first, so chessground has measured the board by the time this runs.
+    const resizes = new ResizeObserver(([entry]) => {
+      sized.current = entry.contentRect.width > 0 && entry.contentRect.height > 0;
+      catchUp();
+    });
+    resizes.observe(target);
+    // A preview a hover starts or ends reaches chessground before the next
+    // press: a quick click right after a hover would otherwise land on the
+    // board as it was, and chessground would refuse or misplay it. This holds
+    // on the web, where the board renders inline in the screen's React tree;
+    // on Android its props come back by message. React can't flush from this
+    // effect's cleanup, where stopping reports a held finger's release.
+    let live = true;
+    const flush = (report: () => void) => (live ? flushSync(report) : report());
     const stopWatching = watchPointer<Square>(
       target,
       target.ownerDocument,
       (x, y) => board.getKeyAtDomPos([x, y]) as Square | undefined,
-      { hover: (square) => handleHover(square), hold: (square) => handleHold(square) },
+      {
+        hover: (square) => flush(() => handleHover(square)),
+        hold: (square) => flush(() => handleHold(square)),
+      },
     );
     return () => {
       cancelAnimationFrame(frame.current);
+      target.removeEventListener('pointerdown', notePick, { capture: true });
+      live = false;
       stopWatching();
+      resizes.disconnect();
       board.destroy();
       api.current = null;
     };
@@ -142,13 +200,9 @@ export default function Board({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    api.current?.set(position);
-  }, [position]);
+  useEffect(() => setBoard(position), [position]);
 
-  useEffect(() => {
-    api.current?.set({ drawable: { autoShapes: marks.shapes }, highlight: { custom: marks.tints } });
-  }, [marks]);
+  useEffect(() => setBoard(marksConfig(marks)), [marks]);
 
   useEffect(() => markAfterDraw(), [position, marks]);
 
@@ -160,6 +214,12 @@ export default function Board({
     </div>
   );
 }
+
+/** The arrows, circles and tints that draw `marks`. */
+const marksConfig = (marks: BoardMarks): Config => ({
+  drawable: { autoShapes: marks.shapes },
+  highlight: { custom: marks.tints },
+});
 
 /**
  * A tinted square in each tone (marks.ts names the classes), under its piece.

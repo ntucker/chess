@@ -1,8 +1,10 @@
 import { Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
+import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { Uci } from '@/lesson/lesson';
 import type { Candidate } from '@/lesson/select';
+import { hovers } from '@/board/pointer';
 import { QualityBadge } from '@/components/QualityBadge';
 import { fonts } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
@@ -11,15 +13,23 @@ interface Props {
   readonly candidates: readonly Candidate[];
   /** The candidate the board draws as the main one (see `candidateDrawings`). */
   readonly main?: Candidate;
-  /** The row being previewed. */
+  /** The row previewed on the board, whether its row or a board square is pointed at. */
   readonly pointed?: Uci;
   /** Where each move leads, when it enters another variation. */
   readonly leadsTo: (candidate: Candidate) => string | undefined;
   /** The rows are the learner's to play now; otherwise they only preview. */
   readonly playable: boolean;
   readonly onPlay: (candidate: Candidate) => void;
-  /** The learner points at a row (hover or keyboard focus), or leaves it. */
-  readonly onPoint: (uci: Uci | undefined) => void;
+  /**
+   * The learner points at a row: the mouse moves over it, keyboard focus
+   * lands on it, or a finger holds it (or taps it, when it isn't playable).
+   */
+  readonly onPoint: (uci: Uci) => void;
+  /**
+   * Keyboard focus moves on past the last row. The preview ends first, so the
+   * idea card focus lands in shows the position's own notes.
+   */
+  readonly onTabOut: () => void;
 }
 
 /**
@@ -36,10 +46,11 @@ export function CandidateList({
   playable,
   onPlay,
   onPoint,
+  onTabOut,
 }: Props) {
   return (
     <Surface elevation="sunken" border="subtle" radius="md" style={styles.list}>
-      {candidates.map((candidate) => (
+      {candidates.map((candidate, index) => (
         <Row
           key={candidate.move.uci}
           candidate={candidate}
@@ -51,11 +62,15 @@ export function CandidateList({
           playable={playable}
           onPlay={onPlay}
           onPoint={onPoint}
+          onTabOut={index === candidates.length - 1 ? onTabOut : undefined}
         />
       ))}
     </Surface>
   );
 }
+
+/** How long the mouse rests on a row before it points at it. */
+const ROW_REST_MS = 150;
 
 interface RowProps {
   readonly candidate: Candidate;
@@ -66,16 +81,35 @@ interface RowProps {
   readonly share?: number;
   readonly playable: boolean;
   readonly onPlay: (candidate: Candidate) => void;
-  readonly onPoint: (uci: Uci | undefined) => void;
+  readonly onPoint: (uci: Uci) => void;
+  /** Tab (forward) leaves this row for whatever follows the list. */
+  readonly onTabOut?: () => void;
 }
 
-function Row({ candidate, main, pointed, leadsTo, share, playable, onPlay, onPoint }: RowProps) {
+function Row({
+  candidate,
+  main,
+  pointed,
+  leadsTo,
+  share,
+  playable,
+  onPlay,
+  onPoint,
+  onTabOut,
+}: RowProps) {
   const { theme } = useTheme();
   const { color } = theme.semantic;
   const { move, san } = candidate;
   const tone = toneColors[main ? 'main' : 'other'];
   const point = () => onPoint(move.uci);
-  const leave = () => onPoint(undefined);
+  // The mouse points at a row once it rests there, so one crossed on the way
+  // from another row down to the idea card leaves that row's preview be.
+  const resting = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const stopResting = () => {
+    clearTimeout(resting.current);
+    resting.current = undefined;
+  };
+  useEffect(() => stopResting, []);
 
   return (
     <Pressable
@@ -84,11 +118,27 @@ function Row({ candidate, main, pointed, leadsTo, share, playable, onPlay, onPoi
       accessibilityHint={playable ? 'Plays this move' : undefined}
       // Not disabled: the opponent's rows still preview while not playable.
       accessibilityState={{ disabled: !playable }}
-      onPress={playable ? () => onPlay(candidate) : undefined}
-      onHoverIn={point}
-      onHoverOut={leave}
+      onPress={playable ? () => onPlay(candidate) : point}
+      onLongPress={point}
+      // A move, not an enter: a list that changes under a still mouse
+      // previews nothing until the mouse moves. Leaving keeps the preview
+      // (the screen ends it), so the learner can go on to its notes.
+      onPointerMove={({ nativeEvent }) => {
+        if (pointed || !hovers(nativeEvent.pointerType)) return;
+        // Each move starts the wait again: a mouse still crossing the row isn't resting.
+        stopResting();
+        resting.current = setTimeout(() => {
+          resting.current = undefined;
+          point();
+        }, ROW_REST_MS);
+      }}
+      onPointerLeave={stopResting}
+      // Before the browser moves focus, so it lands among the notes shown next.
+      onKeyDown={(event: unknown) => {
+        const { key, shiftKey } = event as ReactKeyboardEvent;
+        if (key === 'Tab' && !shiftKey) onTabOut?.();
+      }}
       onFocus={point}
-      onBlur={leave}
       style={({ pressed }) => [
         styles.row,
         (pointed || (pressed && playable)) && {

@@ -7,13 +7,9 @@ import { Eyebrow } from '@/components/Eyebrow';
 import { FootnoteLink } from '@/components/FootnoteLink';
 import { StatusHeadline } from '@/components/GameStatus';
 import { OpponentChoice } from '@/components/OpponentChoice';
-import { PlayerBar } from '@/components/PlayerBar';
 import { Scoresheet } from '@/components/Scoresheet';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
-import { Transport } from '@/components/Transport';
-import { useStepKeys } from '@/components/useStepKeys';
 import { colorName, opposite } from '@/game/replay';
-import { mainCandidate } from '@/lesson/drawings';
 import type { Candidate } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
 import type { LessonView } from '@/lesson/view';
@@ -22,6 +18,7 @@ import { getLesson, LESSONS, type LessonId } from '@/resources/lesson';
 
 import { CandidateList } from './CandidateList';
 import { IdeaCard } from './IdeaCard';
+import { PointingArea } from './PointingArea';
 
 /**
  * The lesson `id` as a page. The exported HTML holds only its frame: the
@@ -45,9 +42,21 @@ export function LessonPage({ id }: { readonly id: string }) {
 /** The lesson `id`, played on the board: Explore, with the guide's opponent replying. */
 function LessonScreen({ id }: { readonly id: LessonId }) {
   const lesson = useSuspense(getLesson, id);
-  const { game, opponent, view, guidance, board, playback, canPlay, play, point, pointed } =
-    useLesson(lesson);
-  const { moves, ply, goto } = game;
+  const {
+    game,
+    opponent,
+    view,
+    guidance,
+    board,
+    playback,
+    canPlay,
+    play,
+    pointedNote,
+    pointRow,
+    pointNote,
+    leaveNote,
+    leave,
+  } = useLesson(lesson);
   const learner = lesson.side;
   const rival = opposite(learner);
   const described = describeOpponent(opponent);
@@ -59,7 +68,6 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
     thinking: game.thinking,
     viewing: !game.atLatest,
   });
-  useStepKeys(ply, moves.length, goto);
 
   const leadsTo = (candidate: Candidate) => {
     if (candidate.variation === undefined) return 'Leaves the guide';
@@ -72,28 +80,11 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
       title={`${lesson.title} · Opening Night`}
       board={
         <BoardColumn
-          top={
-            <PlayerBar
-              name={colorName(rival)}
-              detail={`The guide's moves, then ${described.tagline.toLowerCase()}`}
-              color={rival}
-              toMove={game.toMove === rival}
-              thinking={game.thinking}
-              material={game.material[rival]}
-            />
-          }
-          bottom={
-            <PlayerBar
-              name="You"
-              detail={colorName(learner)}
-              color={learner}
-              toMove={game.toMove === learner}
-              material={game.material[learner]}
-            >
-              <Transport ply={ply} total={moves.length} onGoto={goto} />
-            </PlayerBar>
-          }
-          evaluated={moves.slice(0, ply)}
+          game={game}
+          rival={{
+            name: colorName(rival),
+            detail: `The guide's moves, then ${described.tagline.toLowerCase()}`,
+          }}
           board={board}
         />
       }
@@ -104,32 +95,45 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
             failure={game.error && { who: described.name, onRetry: game.retry }}
           />
           <Separator />
-          {guidance.candidates.length ? (
-            <Stack gap="3">
-              <Eyebrow>
-                {view.learnerToMove ? 'Your candidates' : `${colorName(rival)}'s likely replies`}
-              </Eyebrow>
-              <CandidateList
-                candidates={guidance.candidates}
-                main={mainCandidate(guidance.candidates)}
-                pointed={pointed}
-                leadsTo={leadsTo}
-                playable={canPlay}
-                onPlay={play}
-                onPoint={point}
-              />
-            </Stack>
-          ) : null}
-          <IdeaCard
-            title={preview ? `If ${preview.san}` : 'The idea'}
-            notes={guidance.notes}
-            learner={learner}
-            playback={playback}
-          />
+          {/* Leaving a row for the idea card keeps its preview, so its notes can be pointed at. */}
+          <PointingArea onLeave={leave}>
+            {guidance.candidates.length ? (
+              <Stack gap="3">
+                <Eyebrow>
+                  {view.learnerToMove ? 'Your candidates' : `${colorName(rival)}'s likely replies`}
+                </Eyebrow>
+                <CandidateList
+                  candidates={guidance.candidates}
+                  main={guidance.main}
+                  pointed={preview?.move.uci}
+                  leadsTo={leadsTo}
+                  playable={canPlay}
+                  onPlay={play}
+                  onPoint={pointRow}
+                  onTabOut={leave}
+                />
+              </Stack>
+            ) : null}
+            <IdeaCard
+              title={preview ? `If ${preview.san}` : 'The idea'}
+              notes={guidance.notes}
+              learner={learner}
+              playback={playback}
+              pointable={guidance.pointable}
+              pointed={pointedNote}
+              onPoint={pointNote}
+              onLeave={leaveNote}
+            />
+          </PointingArea>
           <Separator />
           <Stack gap="3">
             <Eyebrow>Scoresheet</Eyebrow>
-            <Scoresheet plies={game.plies} qualities={game.qualities} ply={ply} onGoto={goto} />
+            <Scoresheet
+              plies={game.plies}
+              qualities={game.qualities}
+              ply={game.ply}
+              onGoto={game.goto}
+            />
           </Stack>
           <Stack gap="1">
             <OpponentChoice />
@@ -177,7 +181,7 @@ function describeStatus(
       title: 'Your move.',
       detail: viewing
         ? 'Play a move here to try another branch.'
-        : 'Point at a candidate to see its idea, then play it or any move you like.',
+        : 'Point at a candidate or a note to see it on the board, then play any move you like.',
     };
   return {
     eyebrow,

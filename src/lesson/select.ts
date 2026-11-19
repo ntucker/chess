@@ -56,6 +56,10 @@ export interface Candidate {
   readonly share?: number;
 }
 
+/** The candidate to look at first: the book move, or else the most played. */
+export const mainCandidate = (candidates: readonly Candidate[]): Candidate | undefined =>
+  candidates.find(({ move }) => move.book) ?? candidates[0];
+
 /**
  * The guide's moves at `key`, most played in `band` first (an index into
  * `LessonMove.games`). Moves without counts follow those with counts; ties,
