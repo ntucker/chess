@@ -19,6 +19,7 @@ function board(sans: string[], pointer?: Pointer) {
     mode: 'explore',
     switches: SWITCHES,
     preview: pointer && preview(SAMPLE, view, pointer),
+    dragged: pointer?.at === 'drag' ? pointer.from : undefined,
   });
   const input = {
     side: SAMPLE.side,
@@ -42,18 +43,16 @@ describe('lessonBoard', () => {
     expect(shown.drawings?.filter(({ kind }) => kind === 'arrow')).toHaveLength(2);
   });
 
-  it('shows a candidate the same way whether its row or its destination square is pointed at', () => {
+  it("draws a row's move played over the game, which stays as it is and movable", () => {
     const row = board(ADVANCE, { at: 'row', uci: 'c8f5' }).board;
-    expect(board(ADVANCE, { at: 'square', square: 'f5' }).board).toEqual(row);
-    // The move drawn played over the game, which stays as it is and movable.
     expect(row.preview).toBe(sampleView([...ADVANCE, 'Bf5']).key);
     const game = board(ADVANCE).board;
     expect(row).toMatchObject({ fen: game.fen, movableColor: 'black', dests: game.dests });
     expect(row.drawings).toContainEqual({ kind: 'glow', square: 'f5', tone: 'main' });
   });
 
-  it('keeps the piece pointed at in place, so it can still be dragged, and draws its candidate', () => {
-    const pointed = board(ADVANCE, { at: 'square', square: 'c8' }).board;
+  it("leaves a dragged piece's move unplayed, and draws its candidates", () => {
+    const pointed = board(ADVANCE, { at: 'drag', from: 'c8', to: 'f5' }).board;
     expect(pointed.fen).toBe(board(ADVANCE).board.fen);
     expect(pointed.preview).toBeUndefined();
     expect(pointed.movableColor).toBe('black');
@@ -94,7 +93,7 @@ describe('boardPress', () => {
     const { shown, input } = board(ADVANCE, pointer);
     return boardPress(shown, input.current, canMove, square, selected);
   };
-  const BF5 = { at: 'square', square: 'f5' } as const;
+  const BF5 = { at: 'row', uci: 'c8f5' } as const;
 
   it("plays a sliding preview's move when its square is pressed", () => {
     expect(press(BF5, 'f5')).toMatchObject({ san: 'Bf5' });
@@ -114,6 +113,6 @@ describe('boardPress', () => {
   });
 
   it('leaves presses to the board when no preview slides', () => {
-    expect(press({ at: 'square', square: 'c8' }, 'f5')).toBeUndefined();
+    expect(press({ at: 'drag', from: 'c8', to: 'f5' }, 'f5')).toBeUndefined();
   });
 });

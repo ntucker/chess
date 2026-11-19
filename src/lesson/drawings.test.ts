@@ -279,11 +279,17 @@ describe('lessonDrawings', () => {
     ]);
   });
 
-  it("draws a pointed piece's candidates in the tones the list gives them", () => {
+  it("draws a dragged piece's candidates in the tones the list gives them", () => {
     const view = sampleView(MAIN);
     const knight = view.candidates.find(({ san }) => san === 'Nc3')!;
-    const pointed = preview(SAMPLE, view, { at: 'square', square: 'b1' });
-    const shown = guidance({ view, mode: 'explore', switches: SWITCHES, preview: pointed });
+    const pointed = preview(SAMPLE, view, { at: 'drag', from: 'b1', to: 'c3' });
+    const shown = guidance({
+      view,
+      mode: 'explore',
+      switches: SWITCHES,
+      preview: pointed,
+      dragged: 'b1',
+    });
     // Both knight moves, alternatives to the main e5.
     expect(shown.drawnCandidates.map(({ san }) => san)).toEqual(['Nc3', 'Nd2']);
     expect(lessonDrawings(shown, view.key, 'black')).toContainEqual({

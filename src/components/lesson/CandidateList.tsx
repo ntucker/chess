@@ -15,7 +15,7 @@ interface Props {
   readonly rare: readonly Candidate[];
   /** The candidate the board draws as the main one (see `candidateDrawings`). */
   readonly main?: Candidate;
-  /** The row previewed on the board, whether its row or a board square is pointed at. */
+  /** The row previewed, whether its row is pointed at or its piece dragged onto its square. */
   readonly pointed?: Uci;
   /** Where each move leads, when it enters another variation. */
   readonly leadsTo: (candidate: Candidate) => string | undefined;

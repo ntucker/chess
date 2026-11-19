@@ -197,7 +197,20 @@ export function pieceAt(fen: string, square: string): Piece | undefined {
 
 /** The UCI for a move between two squares, promoting pawns to queens. */
 export function toUci(ply: Ply, from: string, to: string): string {
-  const piece = pieceAt(ply.fen, from);
+  return promotingUci(ply.fen, from, to);
+}
+
+/**
+ * The move a piece dropped from `from` onto `to` plays in `fen`, as a line
+ * records it (`lineMove`), or undefined if it isn't legal. A pawn promotes
+ * to a queen, and a king dropped on its rook castles: `e1h1` is `e1g1`.
+ */
+export function dropMove(fen: string, from: string, to: string): string | undefined {
+  return lineMove(fen, promotingUci(fen, from, to));
+}
+
+function promotingUci(fen: string, from: string, to: string): string {
+  const piece = pieceAt(fen, from);
   const promotes = piece?.role === 'pawn' && (to[1] === '8' || to[1] === '1');
   return `${from}${to}${promotes ? 'q' : ''}`;
 }

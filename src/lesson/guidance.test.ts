@@ -329,16 +329,33 @@ describe('guidance', () => {
       expect(types(shownPreview.drawn)).toEqual(['plan']);
     });
 
-    it('leaves rare moves off the list and the board until one is previewed', () => {
+    it('leaves rare moves off the list and the board until one is previewed or dragged', () => {
       const view = sampleView(MAIN, { lesson: WITH_RARE });
       const sans = (candidates: readonly Candidate[]) => candidates.map(({ san }) => san);
       const resting = guidance({ view, mode: 'explore', switches: ALL_ON });
       expect(sans(resting.candidates)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2', 'f3']);
       expect(sans(resting.drawnCandidates)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2', 'f3']);
       expect(sans(resting.rare)).toEqual(['h3', 'a3', 'g3', 'b3']);
-      const onPawn = preview(WITH_RARE, view, { at: 'square', square: 'h2' });
-      const pointing = guidance({ view, mode: 'explore', switches: ALL_ON, preview: onPawn });
-      expect(sans(pointing.drawnCandidates)).toEqual(['h3']);
+      // Picked up, the pawn draws its rare move at once, and the same over
+      // its landing square, so nothing on the board moves as it is dragged.
+      const pickedUp = guidance({ view, mode: 'explore', switches: ALL_ON, dragged: 'h2' });
+      expect(sans(pickedUp.drawnCandidates)).toEqual(['h3']);
+      const onH3 = preview(WITH_RARE, view, { at: 'drag', from: 'h2', to: 'h3' });
+      const over = guidance({
+        view,
+        mode: 'explore',
+        switches: ALL_ON,
+        preview: onH3,
+        dragged: 'h2',
+      });
+      expect(over.drawnCandidates).toEqual(pickedUp.drawnCandidates);
+      expect(over.drawn).toEqual(pickedUp.drawn);
+    });
+
+    it("hides a dragged piece's candidates in Practice on the learner's turn", () => {
+      const view = sampleView(ADVANCE);
+      const shown = guidance({ view, mode: 'practice', switches: ALL_ON, dragged: 'c8' });
+      expect(shown.drawnCandidates).toEqual([]);
     });
 
     it("doesn't tag a rare move as Stockfish's best", () => {

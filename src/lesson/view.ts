@@ -10,7 +10,8 @@
  */
 import type { SquareName } from 'chessops/types';
 
-import { parsePositionKey } from '@/game/replay';
+import type { Drag } from '@/board/pointer';
+import { dropMove, parsePositionKey } from '@/game/replay';
 import type { Opponent } from '@/opponent/opponent';
 
 import {
@@ -120,15 +121,15 @@ export function lessonView({ lesson, line, ply, opponent }: LessonViewInput): Le
   };
 }
 
-/** What the learner points at: a board square, or a row of the candidate list. */
+/** What the learner points at: a row of the candidate list, or a piece dragged over a square. */
 export type Pointer =
-  | { readonly at: 'square'; readonly square: SquareName }
-  | { readonly at: 'row'; readonly uci: Uci };
+  | { readonly at: 'row'; readonly uci: Uci }
+  | ({ readonly at: 'drag' } & Drag<SquareName>);
 
 /**
  * A candidate move shown before it is played. `slide`: the board shows the
  * position after it (the piece slides there, leaving a ghost); otherwise the
- * board stays put, so the piece pointed at can still be picked up.
+ * board stays put, under the piece being dragged.
  */
 export interface Preview {
   readonly candidate: Candidate;
@@ -142,28 +143,28 @@ export const shownKey = (key: PositionKey, preview?: Preview): PositionKey =>
   preview?.slide ? preview.candidate.next : key;
 
 /**
- * The candidate `pointer` previews in `view`. A row previews its move, rare
- * or not. A destination square previews the most common candidate landing
- * there, and a piece's own square its most common candidate without sliding,
- * so the piece can still be dragged anywhere legal. A square takes a listed
- * candidate before a rare one, since rare ones come last in `view.candidates`.
+ * The candidate `pointer` previews in `view`. A row previews its move,
+ * sliding, rare or not. A piece dragged over a square previews its
+ * candidate landing there, rare ones too, without sliding, since the piece
+ * itself is there. Example: after 1.e4, dragging the c7 pawn over c6
+ * previews 1...c6; over c4, nothing.
  */
 export function preview(lesson: Lesson, view: LessonView, pointer: Pointer): Preview | undefined {
-  const found = pointed(view.candidates, pointer);
+  const found = pointed(view, pointer);
   if (!found) return undefined;
   const { move, next } = found.candidate;
   return { ...found, notes: cardNotes(lesson, move, view.key, next) };
 }
 
-function pointed(shown: readonly Candidate[], pointer: Pointer) {
+function pointed({ key, candidates }: LessonView, pointer: Pointer) {
   if (pointer.at === 'row') {
-    const candidate = shown.find(({ move }) => move.uci === pointer.uci);
+    const candidate = candidates.find(({ move }) => move.uci === pointer.uci);
     return candidate && { candidate, slide: true };
   }
-  const landing = shown.find(({ to }) => to === pointer.square);
-  if (landing) return { candidate: landing, slide: true };
-  const leaving = shown.find(({ from }) => from === pointer.square);
-  return leaving && { candidate: leaving, slide: false };
+  if (!pointer.to) return undefined;
+  const uci = dropMove(key, pointer.from, pointer.to);
+  const candidate = uci && candidates.find(({ move }) => move.uci === uci);
+  return candidate && { candidate, slide: false };
 }
 
 /** The idea card for a move from `before` to `after`: the move's notes, then the position's. */
