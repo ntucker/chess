@@ -23,8 +23,10 @@ A pull request that builds an approved piece can land without a manual merge
    and Staff comment was fixed or rightly rejected. It posts its verdict as a PR comment and keeps its
    screenshots on the workflow run.
 5. If the reviewer approves, **Land** waits for every other check on the same commit. Lint,
-   typecheck and test and the web build must pass, and nothing may fail. A Staff `CHANGE_THIS_PR`
-   naming that commit stops it; agents post as Nathaniel's account too, so no comment can approve.
+   typecheck and test and the web build must pass, and nothing may fail. A Staff comment whose first
+   line is `**Staff Reviewer:** CHANGE_THIS_PR at <sha>` (an optional note in parentheses may follow
+   the verdict) for that commit stops it. Agents post as Nathaniel's account too, so no comment can
+   approve.
    Then it squash-merges and starts the deploy.
 
 A push restarts the review. Removing the label, marking the PR as a draft or requesting changes stops

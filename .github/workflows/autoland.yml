@@ -346,7 +346,8 @@ jobs:
               and ([.labels[].name] | index("autoland")) and .reviewDecision != "CHANGES_REQUESTED"' <<< "$pr" > /dev/null \
               || { echo "::error::The PR moved, lost its label, became a draft or has changes requested: $pr"; return 1; }
           }
-          # Any Staff comment whose verdict is CHANGE_THIS_PR "at <sha>" for this commit stops it.
+          # Any Staff comment whose verdict is CHANGE_THIS_PR for this commit stops it. The first line's
+          # shape is Staff's own: "**Staff Reviewer:** CHANGE_THIS_PR (optional note) at <sha prefix>".
           staff_allows() {
             local comments reviews stops
             comments=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" \
