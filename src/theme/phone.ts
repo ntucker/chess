@@ -1,0 +1,86 @@
+import './phone.css';
+
+/** The lengths phone.css shortens on a phone-width web page. */
+export const PHONE_LENGTHS = [
+  'page-space',
+  'header-height',
+  'wordmark-size',
+  'player-bar-height',
+  'wrapped-gap',
+  'board-min',
+  'source-link-size',
+  'panel-reserve',
+] as const;
+
+/** The parts of the page that phone.css lays out differently on a phone-width web page. */
+export const PHONE_PARTS = [
+  'wordmark',
+  'place',
+  'tagline',
+  'in-header',
+  'page',
+  'stage',
+  'board-column',
+  'program',
+] as const;
+
+/**
+ * A length that is shorter on a phone-width web page, or a sum of such
+ * lengths. Work them out with `plus`, `minus` and `times`, never with the
+ * style value, so the web's CSS and the native number stay one expression.
+ */
+export interface PhoneLength {
+  /** Its pixels on a wide screen, and everywhere off the web. */
+  readonly wide: number;
+  /** As CSS on the web: the phone's length, or `wide`. */
+  readonly css: string;
+  /** As a style value (see `phoneCalc` for its type). */
+  readonly value: number;
+  plus(other: PhoneLength | number): PhoneLength;
+  minus(other: PhoneLength | number): PhoneLength;
+  times(factor: number): PhoneLength;
+}
+
+/** The length `--<name>` in phone.css on a phone-width web page, `wide` pixels elsewhere. */
+export function phoneLength(name: (typeof PHONE_LENGTHS)[number], wide: number) {
+  return makeLength(wide, `var(--${name}, ${wide}px)`);
+}
+
+function makeLength(wide: number, css: string): PhoneLength {
+  return {
+    wide,
+    css,
+    value: phoneCalc(css, wide),
+    plus: (other) => {
+      const operand = asLength(other);
+      return makeLength(wide + operand.wide, `(${css} + ${operand.css})`);
+    },
+    minus: (other) => {
+      const operand = asLength(other);
+      return makeLength(wide - operand.wide, `(${css} - ${operand.css})`);
+    },
+    times: (factor) => makeLength(wide * factor, `(${css} * ${factor})`),
+  };
+}
+
+/** A fixed number of pixels, as a PhoneLength. */
+function asLength(other: PhoneLength | number) {
+  return typeof other === 'number' ? makeLength(other, `${other}px`) : other;
+}
+
+/**
+ * A style value: `calc(<css>)` on the web, `wide` elsewhere. Typed as a
+ * number because React Native's types don't know CSS functions; React Native
+ * Web passes the string through to CSS. Never do arithmetic on it.
+ */
+export function phoneCalc(css: string, wide: number): number {
+  return process.env.EXPO_OS === 'web' ? (`calc(${css})` as unknown as number) : wide;
+}
+
+/**
+ * Props that name a part of the page for phone.css, which lays it out
+ * differently on a phone-width web page. Nothing elsewhere.
+ */
+export function phonePart(part: (typeof PHONE_PARTS)[number]) {
+  return process.env.EXPO_OS === 'web' ? { dataSet: { phone: part } } : {};
+}

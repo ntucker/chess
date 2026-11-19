@@ -88,15 +88,20 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
         : undefined,
   });
 
+  const line = view.variation.at(-1);
   const leadsTo = (candidate: Candidate) => {
     if (candidate.variation === undefined) return 'Leaves the guide';
     const into = lesson.variations[candidate.variation];
-    return into === view.variation.at(-1) ? undefined : into.name;
+    return into === line ? undefined : into.name;
   };
 
   return (
     <Stage
       title={`${lesson.title} · Opening Night`}
+      // Only the latest line's name, since the path won't fit a phone. A
+      // sub-line's name starts with its parent's ("Advance Variation: Tal…");
+      // the opening's own name is what goes unsaid.
+      place={line?.name ?? lesson.title}
       board={
         <BoardColumn
           game={game}
@@ -112,6 +117,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
           <StatusHeadline
             {...status}
             failure={game.error && { who: described.name, onRetry: game.retry }}
+            eyebrowInHeader
           />
           <Separator />
           {/* Leaving a row for the idea card keeps its preview, so its notes can be pointed at. */}

@@ -1,0 +1,81 @@
+/*
+ * How a phone-width web page differs, behind one media query, since the
+ * pre-rendered page can't measure the window. Everywhere else none of this
+ * applies: each length falls back to the wide value written beside it in
+ * code, and each part keeps its wide layout. The one exception is the rule
+ * just below, which keeps the header's place hidden until a phone shows it.
+ */
+/* The header's place shows only on a phone (see below). */
+:root [data-phone='place'] {
+  display: none;
+}
+
+@media (max-width: 599.98px) {
+  /* Lengths, read by `phoneLength` (phone.ts). */
+  :root {
+    /* Page padding and the gap below the header (Stage.tsx). */
+    --page-space: 10px;
+    /* The logo, as tall as the source link beside it: the header's height (Header.tsx). */
+    --header-height: 28px;
+    --source-link-size: 28px;
+    --wordmark-size: 18px;
+    /* The name bars above and below the board (PlayerBar.tsx). */
+    --player-bar-height: 52px;
+    /* Space between the board column and the panel below it (Stage.tsx). */
+    --wrapped-gap: 20px;
+    /*
+     * In a short window the board shrinks, down to this (Stage.tsx), wide
+     * enough for the player's name bar to fit its status beside the move
+     * buttons...
+     */
+    --board-min: 300px;
+    /* ...to leave this much for the panel and the gap above it. */
+    --panel-reserve: 180px;
+  }
+
+  /*
+   * Parts, named by `phonePart` (phone.ts). The page (Stage.tsx) fills the
+   * screen and doesn't scroll: the board stays at the top, and the panel below
+   * it scrolls in the space that's left, so a previewed move stays in view.
+   * Only once the board is at its smallest and the panel at its floor does
+   * the page grow past the screen and scroll instead.
+   * Two selectors' weight, to win over React Native Web's one-class styles.
+   */
+  /*
+   * The header (Header.tsx) names the page's place, such as the lesson's line,
+   * instead of the app, and drops its tagline. What it names, the panel's own
+   * label leaves out (in-header).
+   */
+  :root [data-phone='wordmark'],
+  :root [data-phone='tagline'],
+  :root [data-phone='in-header'] {
+    display: none;
+  }
+  :root [data-phone='place'] {
+    display: block;
+  }
+  :root [data-phone='page'] {
+    min-height: 100dvh;
+  }
+  :root [data-phone='stage'] {
+    flex: 1 1 auto;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+  :root [data-phone='board-column'] {
+    flex: none;
+    width: 100%;
+  }
+  :root [data-phone='program'] {
+    flex: 1 1 0;
+    /* The panel's floor: a few lines of it. */
+    min-height: 120px;
+    width: 100%;
+    overflow-y: auto;
+    /* Fades out the bottom edge to show there's more below; the padding lets the last line clear it. */
+    padding-bottom: 16px;
+    /* A mask reads only alpha, so black here is opaque, not a theme color. */
+    mask-image: linear-gradient(to bottom, black calc(100% - 16px), transparent);
+  }
+}

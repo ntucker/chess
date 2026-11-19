@@ -1,7 +1,7 @@
 import { Surface, useTheme } from '@reactive/silk-native';
 import Head from 'expo-router/head';
 import type { ReactNode } from 'react';
-import { type DimensionValue, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Board, { type BoardProps } from '@/components/Board';
@@ -12,11 +12,14 @@ import { Transport } from '@/components/Transport';
 import { useStepKeys } from '@/components/useStepKeys';
 import { colorName, opposite } from '@/game/replay';
 import type { Game } from '@/game/useGame';
+import { phoneCalc, phoneLength, phonePart } from '@/theme/phone';
 import { spotlight } from '@/theme/theme';
 
 interface StageProps {
   /** The browser tab's title. */
   readonly title: string;
+  /** Where the page is, such as the lesson's line: the header names it on a phone. */
+  readonly place?: string;
   /** The board column (`BoardColumn`), or a stand-in the same size while it loads. */
   readonly board: ReactNode;
   /** The panel beside the board, or below it on a narrow screen. */
@@ -26,9 +29,10 @@ interface StageProps {
 /**
  * A page of the app: the header, then the board column and the panel beside
  * it on the stage background. Every screen that shows a board uses it, so
- * they line up the same way.
+ * they line up the same way. On a phone-width web page the panel goes below
+ * the board and scrolls on its own, so the board stays in view (phone.css).
  */
-export function Stage({ title, board, program }: StageProps) {
+export function Stage({ title, place, board, program }: StageProps) {
   const { theme } = useTheme();
   return (
     <View
@@ -44,13 +48,19 @@ export function Stage({ title, board, program }: StageProps) {
         <title>{title}</title>
       </Head>
       <SafeAreaView style={styles.fill}>
-        <ScrollView contentContainerStyle={styles.page}>
-          <View style={styles.header}>
-            <Header />
-          </View>
-          <View style={styles.stage}>
-            <View style={styles.boardColumn}>{board}</View>
-            <View style={styles.program}>{program}</View>
+        <ScrollView>
+          <View {...phonePart('page')} style={styles.page}>
+            <View style={styles.header}>
+              <Header place={place} />
+            </View>
+            <View {...phonePart('stage')} style={styles.stage}>
+              <View {...phonePart('board-column')} style={styles.boardColumn}>
+                {board}
+              </View>
+              <View {...phonePart('program')} style={styles.program}>
+                {program}
+              </View>
+            </View>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -142,7 +152,7 @@ const BOARD_COLUMN_GAP = 4;
 /** The evaluation bar's width. */
 const EVALUATION_BAR_WIDTH = 22;
 /** How far the board sits below the top of its column (the opponent's name bar). */
-const BOARD_OFFSET = PLAYER_BAR_HEIGHT + BOARD_COLUMN_GAP;
+const BOARD_OFFSET = PLAYER_BAR_HEIGHT.plus(BOARD_COLUMN_GAP);
 /** The board's largest size. */
 const BOARD_MAX = 720;
 /** The width the column adds beside the board: the players' discs and their gap. */
@@ -156,26 +166,32 @@ const STAGE_GAP = 48;
 /** Wide enough for the board and the program at their largest. */
 const STAGE_MAX = BOARD_COLUMN_MAX + STAGE_GAP + PROGRAM_MAX;
 /** The page's padding, and the space between the header and the stage. */
-const PAGE_SPACE = 20;
+const PAGE_SPACE = phoneLength('page-space', 20);
 /**
  * Height around the board: the page's top and bottom padding and the gap
  * below the header (3 × PAGE_SPACE), the header, and both name bars.
  */
-const AROUND_BOARD = 3 * PAGE_SPACE + HEADER_HEIGHT + 2 * BOARD_OFFSET;
+const AROUND_BOARD = PAGE_SPACE.times(3).plus(HEADER_HEIGHT).plus(BOARD_OFFSET.times(2));
 /** On the web, the smallest the board shrinks to in a short window. */
-const BOARD_MIN_WEB = 320;
+const BOARD_MIN_WEB = phoneLength('board-min', 320);
+/** Height kept below the board column for the panel: none beside it, some below it on a phone. */
+const PANEL_RESERVE = phoneLength('panel-reserve', 0);
 /**
  * The board column's width limit. On the web the board also shrinks to fit
  * the window's height, so the player's name bar and the move buttons stay in
- * view. CSS does it, since the server can't measure the window; React
- * Native's types don't know CSS functions, hence the cast.
+ * view, and on a phone the start of the panel too. CSS does it, since the
+ * server can't measure the window. Native has no window to fit, so its limit
+ * is the largest board column, BOARD_COLUMN_MAX. `clamp()` has no PhoneLength form,
+ * so the web's clamp and that native number are written apart.
  */
-const BOARD_COLUMN_LIMIT =
-  process.env.EXPO_OS === 'web'
-    ? (`calc(clamp(${BOARD_MIN_WEB}px, 100svh - ${AROUND_BOARD}px, ${BOARD_MAX}px) + ${BESIDE_BOARD}px)` as DimensionValue)
-    : BOARD_COLUMN_MAX;
+const BOARD_COLUMN_LIMIT = phoneCalc(
+  `clamp(${BOARD_MIN_WEB.css}, 100svh - ${AROUND_BOARD.plus(PANEL_RESERVE).css}, ${BOARD_MAX}px) + ${BESIDE_BOARD}px`,
+  BOARD_COLUMN_MAX,
+);
 /** Space above the program when it wraps below the board. */
-const WRAPPED_GAP = 32;
+const WRAPPED_GAP = phoneLength('wrapped-gap', 32);
+/** How far the column is raised so the program lines up beside it (see below). */
+const COLUMN_RAISE = BOARD_OFFSET.minus(WRAPPED_GAP);
 
 // Board and program sit side by side when there's room and wrap into a column
 // when there isn't, without measuring the window (which the server can't).
@@ -193,7 +209,7 @@ const WRAPPED_GAP = 32;
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  page: { padding: PAGE_SPACE, gap: PAGE_SPACE, alignItems: 'center' },
+  page: { padding: PAGE_SPACE.value, gap: PAGE_SPACE.value, alignItems: 'center' },
   header: { width: '100%', maxWidth: STAGE_MAX },
   stage: {
     width: '100%',
@@ -202,17 +218,17 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     columnGap: STAGE_GAP,
-    paddingTop: BOARD_OFFSET - WRAPPED_GAP,
+    paddingTop: COLUMN_RAISE.value,
   },
   boardColumn: {
     flexGrow: 1,
     flexShrink: 1,
     flexBasis: 320,
     maxWidth: BOARD_COLUMN_LIMIT,
-    marginTop: WRAPPED_GAP - BOARD_OFFSET,
+    marginTop: COLUMN_RAISE.times(-1).value,
     gap: BOARD_COLUMN_GAP,
   },
-  barSpace: { height: PLAYER_BAR_HEIGHT },
+  barSpace: { height: PLAYER_BAR_HEIGHT.value },
   // The evaluation bar sits in the column of the players' discs, between
   // them, and the board lines up with the names beside the discs.
   boardRow: { flexDirection: 'row', gap: PLAYER_DISC.gap },
@@ -227,6 +243,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     flexBasis: 300,
     maxWidth: PROGRAM_MAX,
-    marginTop: WRAPPED_GAP,
+    marginTop: WRAPPED_GAP.value,
   },
 });

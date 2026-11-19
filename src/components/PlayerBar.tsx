@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import type { Material } from '@/game/material';
 import { type Color, opposite } from '@/game/replay';
+import { phoneLength } from '@/theme/phone';
 import { pieceColors } from '@/theme/pieceColors';
 
 import { Captures } from './Captures';
@@ -21,8 +22,11 @@ interface Props {
   readonly children?: ReactNode;
 }
 
-/** Fixed, so the screen can line other content up with the board below it. */
-export const PLAYER_BAR_HEIGHT = 60;
+/**
+ * Fixed, so the screen can line other content up with the board below it.
+ * Shorter on a phone-width web page.
+ */
+export const PLAYER_BAR_HEIGHT = phoneLength('player-bar-height', 60);
 /** The disc's size and the space after it, so the screen can line things up with them. */
 export const PLAYER_DISC = { size: 28, gap: 12 } as const;
 
@@ -67,7 +71,12 @@ export function PlayerBar({
 }
 
 const styles = StyleSheet.create({
-  bar: { flexDirection: 'row', alignItems: 'center', gap: PLAYER_DISC.gap, height: PLAYER_BAR_HEIGHT },
+  bar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: PLAYER_DISC.gap,
+    height: PLAYER_BAR_HEIGHT.value,
+  },
   piece: {
     width: PLAYER_DISC.size,
     height: PLAYER_DISC.size,
