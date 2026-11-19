@@ -46,9 +46,11 @@ export function watchDrag<S extends string>(
     const to = from && squareAt(clientX, clientY);
     show(from ? { from, to: to === from ? undefined : to } : null);
   };
-  const onUp = ({ isPrimary }: PointerEvent) => {
+  // The drop is where the pointer lifts, which a last move may not have reached.
+  const onUp = ({ isPrimary, clientX, clientY }: PointerEvent) => {
     if (!isPrimary) return;
-    if (over?.to && plays(over)) over = null;
+    const to = over && squareAt(clientX, clientY);
+    if (over && to && to !== over.from && plays({ from: over.from, to })) over = null;
     else show(null);
   };
   const onCancel = ({ isPrimary }: PointerEvent) => {

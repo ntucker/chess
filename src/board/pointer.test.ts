@@ -54,6 +54,18 @@ describe('watchDrag', () => {
     expect(report.mock.lastCall).toEqual([{ from: 'a1', to: 'd1' }]);
   });
 
+  it('judges a drop by where the pointer lifts, not the last square it moved over', () => {
+    const { report, fire, drag } = setup();
+    drag('a1');
+    fire('pointermove', 35);
+    fire('pointerup', 25);
+    expect(report.mock.lastCall).toEqual([null]);
+    report.mockClear();
+    fire('pointermove', 25);
+    fire('pointerup', 35);
+    expect(report.mock.calls).toEqual([[{ from: 'a1', to: 'c1' }]]);
+  });
+
   it('reports nothing while no piece is dragged, a mouse passing over included', () => {
     const { report, fire } = setup();
     fire('pointermove', 15);
