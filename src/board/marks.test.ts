@@ -103,7 +103,10 @@ describe('boardMarks', () => {
   });
 
   it('labels a square with escaped text in its tone', () => {
-    const [label] = boardMarks([{ kind: 'label', square: 'd5', text: '3 v <2>', tone: 'target' }], 'white').shapes;
+    const [label] = boardMarks(
+      [{ kind: 'label', square: 'd5', text: '3 v <2>', tone: 'target' }],
+      'white',
+    ).shapes;
     expect(label.orig).toBe('d5');
     expect(label.customSvg?.html).toContain('3 v &lt;2&gt;');
     expect(label.customSvg?.html).toContain(toneColors.target);

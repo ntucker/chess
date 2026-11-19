@@ -12,7 +12,10 @@ const tempFile = (name: string) => join(mkdtempSync(join(tmpdir(), 'register-'))
 describe('registerLesson', () => {
   it('adds a lesson to LESSONS once', () => {
     const file = tempFile('lesson.ts');
-    writeFileSync(file, "export const LESSONS = {\n  'a': () => import('@/assets/lessons/a.json'),\n};\n");
+    writeFileSync(
+      file,
+      "export const LESSONS = {\n  'a': () => import('@/assets/lessons/a.json'),\n};\n",
+    );
     registerLesson(file, 'b');
     registerLesson(file, 'b');
     expect(readFileSync(file, 'utf8')).toBe(
@@ -24,13 +27,23 @@ describe('registerLesson', () => {
 describe('indexLesson', () => {
   it("writes the lesson's entry, keeping the other lessons'", () => {
     const file = tempFile('index.json');
-    const other = { title: 'Slav Defence', side: 'black', source: SAMPLE.source, firstMoves: ['d2d4'] };
+    const other = {
+      title: 'Slav Defence',
+      side: 'black',
+      source: SAMPLE.source,
+      firstMoves: ['d2d4'],
+    };
     writeFileSync(file, JSON.stringify({ slav: other }));
     indexLesson(file, SAMPLE);
     indexLesson(file, SAMPLE);
     expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({
       slav: other,
-      [SAMPLE.id]: { title: SAMPLE.title, side: 'black', source: SAMPLE.source, firstMoves: ['e2e4'] },
+      [SAMPLE.id]: {
+        title: SAMPLE.title,
+        side: 'black',
+        source: SAMPLE.source,
+        firstMoves: ['e2e4'],
+      },
     });
   });
 });

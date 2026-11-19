@@ -277,7 +277,18 @@ interface StatusInput {
  */
 function describeStatus(
   view: LessonView,
-  { picking, title, rival, engine, thinking, viewing, auto, lineEnded, startsRun, practice }: StatusInput,
+  {
+    picking,
+    title,
+    rival,
+    engine,
+    thinking,
+    viewing,
+    auto,
+    lineEnded,
+    startsRun,
+    practice,
+  }: StatusInput,
 ) {
   if (picking)
     return {
