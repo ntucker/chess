@@ -5,8 +5,7 @@
  * - Explore shows every note on the idea card. The board draws the
  *   candidates, and a note's ideas only when the learner points at it, since
  *   both would share the board's colors; a previewed move draws its own
- *   ideas, and where no candidates are drawn every note's ideas are. "Show
- *   ideas on board" turns idea drawings off; the card still shows its notes.
+ *   ideas, and where no candidates are drawn every note's ideas are.
  *   Only a note about the position on the board can be pointed at, and
  *   Stockfish's best move shows only while nothing is previewed, pointed at
  *   or playing back.
@@ -20,6 +19,9 @@
  *   with auto play the opponent just plays. Stockfish's moves stay hidden.
  *   At the start, where the first move picks the opening, nobody replies,
  *   so its candidates and previews show in every mode.
+ * - "Moves on the board" off keeps the candidates' arrows off the resting
+ *   board, in either mode, so the next moves show only once the learner
+ *   points at a row or drags a piece; the list still shows them.
  * - Traps: with "show traps" on, a trap's sequence is drawn before the
  *   learner commits, beside the candidates; off, it isn't. A trap fallen
  *   into is shown either way, and plays back, through the trap's moves and
@@ -49,7 +51,7 @@ import { type LandedTrap, type LessonView, type Preview, type ShownNote, shownKe
 export type LessonMode = 'explore' | 'practice';
 
 /** The learner's switches on the lesson screen. */
-export type LessonSwitches = Pick<Settings, 'auto' | 'showIdeas' | 'showTraps'>;
+export type LessonSwitches = Pick<Settings, 'auto' | 'showMoves' | 'showTraps'>;
 
 /** Stockfish's view of the shown position, as far as it has arrived. */
 export interface EngineView {
@@ -150,8 +152,7 @@ export function guidance(input: GuidanceInput): Guidance {
   const notes = preview
     ? preview.notes.filter((shown) => explore || beforeMove(shown, switches.showTraps))
     : restingNotes(view, explore, switches.showTraps);
-  const allowed = (idea: Idea) =>
-    idea.type === 'trap' ? switches.showTraps : !explore || switches.showIdeas;
+  const allowed = (idea: Idea) => idea.type !== 'trap' || switches.showTraps;
   const ideas = notes.flatMap((shown) => noteIdeas(shown, allowed));
   const withRare = choices ? view.candidates : [];
   const candidates = withRare.filter(({ rare }) => !rare);
@@ -176,6 +177,7 @@ export function guidance(input: GuidanceInput): Guidance {
     ideas,
     playing,
     pointed: pointedNote,
+    showMoves: switches.showMoves,
   });
   const best =
     explore && !preview && !dragged && !playing && !pointedNote ? engine?.best : undefined;
@@ -203,8 +205,8 @@ export function guidance(input: GuidanceInput): Guidance {
 /**
  * What the board draws: nothing while a note plays back; a pointed note's
  * ideas alone; a sliding preview's ideas; a dragged piece's candidates alone
- * (rare ones too); or else the listed candidates, with only traps beside
- * them (every idea where there are none).
+ * (rare ones too); or else the listed candidates (none with `showMoves`
+ * off), with only traps beside them (every idea where none are listed).
  */
 function boardShown({
   candidates,
@@ -214,6 +216,7 @@ function boardShown({
   ideas,
   playing,
   pointed,
+  showMoves,
 }: {
   readonly candidates: readonly Candidate[];
   readonly withRare: readonly Candidate[];
@@ -222,6 +225,7 @@ function boardShown({
   readonly ideas: readonly ShownIdea[];
   readonly playing?: ShownPlayback;
   readonly pointed?: Note;
+  readonly showMoves: boolean;
 }): { readonly candidates: readonly Candidate[]; readonly drawn: readonly ShownIdea[] } {
   if (playing) return { candidates: [], drawn: [] };
   if (pointed) {
@@ -230,7 +234,10 @@ function boardShown({
   if (preview?.slide) return { candidates: [], drawn: ideas };
   if (dragged) return { candidates: withRare.filter(({ from }) => from === dragged), drawn: [] };
   if (!candidates.length) return { candidates, drawn: ideas };
-  return { candidates, drawn: ideas.filter(({ idea }) => idea.type === 'trap') };
+  return {
+    candidates: showMoves ? candidates : [],
+    drawn: ideas.filter(({ idea }) => idea.type === 'trap'),
+  };
 }
 
 /** The idea card's notes when no move is previewed. */

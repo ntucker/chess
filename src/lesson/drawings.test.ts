@@ -27,7 +27,7 @@ import { preview } from './view';
 
 const SWITCHES: LessonSwitches = {
   auto: true,
-  showIdeas: true,
+  showMoves: true,
   showTraps: false,
 };
 

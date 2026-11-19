@@ -9,8 +9,8 @@ export interface Settings {
   readonly evaluationEngine: EvaluationEngine;
   /** In a lesson, the opponent replies by itself (auto play); off, the learner picks its move. */
   readonly auto: boolean;
-  /** In a lesson's Explore mode, ideas are drawn on the board, not only described. */
-  readonly showIdeas: boolean;
+  /** In a lesson, the next moves' arrows are drawn before the learner points at one. */
+  readonly showMoves: boolean;
   /** In a lesson, a trap's moves are drawn before the learner can fall in. */
   readonly showTraps: boolean;
 }
@@ -21,7 +21,7 @@ export const DEFAULT_SETTINGS: Settings = {
   opponent: 1500,
   evaluationEngine: 'stockfish',
   auto: true,
-  showIdeas: true,
+  showMoves: true,
   // Off, the learner can fall into a trap and see it explained.
   showTraps: false,
 };
@@ -60,7 +60,7 @@ export function settingsFrom(stored: StoredSettings): Settings {
     evaluationEngine:
       oneOf(EVALUATION_ENGINES, stored.evaluationEngine) ?? DEFAULT_SETTINGS.evaluationEngine,
     auto: oneOf(BOOLEANS, stored.auto) ?? DEFAULT_SETTINGS.auto,
-    showIdeas: oneOf(BOOLEANS, stored.showIdeas) ?? DEFAULT_SETTINGS.showIdeas,
+    showMoves: oneOf(BOOLEANS, stored.showMoves) ?? DEFAULT_SETTINGS.showMoves,
     showTraps: oneOf(BOOLEANS, stored.showTraps) ?? DEFAULT_SETTINGS.showTraps,
   };
 }
