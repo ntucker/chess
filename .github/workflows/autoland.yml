@@ -167,8 +167,10 @@ jobs:
           path: ${{ runner.temp }}/web
 
       # Serves the files the way Pages does: /play is play.html, and 404.html
-      # answers any other path.
+      # answers any other path. It starts outside the checkout, so npm reads no
+      # .npmrc from the PR.
       - name: Serve the web app
+        working-directory: ${{ runner.temp }}
         run: |
           npx -y serve@14.2.7 --listen 8081 "$RUNNER_TEMP/web" > "$RUNNER_TEMP/serve.log" 2>&1 &
           for _ in $(seq 60); do curl -fs http://localhost:8081 > /dev/null && exit 0; sleep 1; done
