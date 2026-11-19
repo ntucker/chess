@@ -32,7 +32,7 @@ const dashedBrush = (tone: Tone) => `${tone}-dashed`;
  * Board.css dashes the arrows that use it.
  */
 export const toneBrushes: Record<string, DrawBrush> = Object.fromEntries(
-  TONES.flatMap((tone) => [tone, dashedBrush(tone)].map((key) => [key, brush(key, tone)])),
+  TONES.flatMap((tone) => [tone, dashedBrush(tone)].map((key): [string, DrawBrush] => [key, brush(key, tone)])),
 );
 
 function brush(key: string, tone: Tone): DrawBrush {

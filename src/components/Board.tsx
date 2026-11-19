@@ -163,7 +163,10 @@ export default function Board({
   );
 }
 
-/** A tinted square in each tone (marks.ts names the classes), under its piece. */
+/**
+ * A tinted square in each tone (marks.ts names the classes), under its piece.
+ * Written from TONES and toneColors, so a new tone or color needs no CSS edit.
+ */
 const TINT_CSS = TONES.map(
   (tone) =>
     `cg-board square.tint-${tone} { background-color: color-mix(in srgb, ${toneColors[tone]} 40%, transparent); }`,
