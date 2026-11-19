@@ -2,7 +2,7 @@
  * The fixed formats of one chapter's comments, read without AI: the chapter
  * header, traps, plan lists, choice guides, evaluation glyphs, and move
  * sequences that exist only in comment text. Each comment becomes one note on
- * its move; the AI step (later) rewrites the notes' text. A chapter header is
+ * its move, and an idea about another position becomes a note on that one; the AI step (later) rewrites the notes' text. A chapter header is
  * the first move's comment with an "Idea:" line (extra chapters put an
  * "Extra:" line before it).
  */
@@ -89,7 +89,7 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
       if (why) rejected.push({ idea, why, comment });
       else if (spot.move === target) own.push(idea);
       // An idea about another position (often the one before the commented move) is said there.
-      else positionNotes.push({ pos: spot.pos, note: { text: noteText(label), ideas: [idea] } });
+      else positionNotes.push({ pos: spot.pos, note: note(label, [idea]) });
     }
     const text = comment || (own[0]?.type === 'evaluation' ? EVALUATION_TEXT[own[0].value] : '');
     if (text) moveNotes.push({ move: target, note: note(text, own) });

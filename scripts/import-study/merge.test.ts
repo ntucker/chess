@@ -70,6 +70,12 @@ describe('mergeChapters', () => {
     });
   });
 
+  it('puts an idea about the position before a move on that position', () => {
+    expect(at('e4', 'c6', 'd4', 'd5', 'e5').notes).toEqual([
+      expect.objectContaining({ text: '...Bf5, ...e6 and ...c5', ideas: [expect.objectContaining({ type: 'plan' })] }),
+    ]);
+  });
+
   it('leaves out positions where the guide stops', () => {
     expect(at('e4', 'c6', 'd4', 'd5', 'Nc3', 'dxe4', 'Nxe4', 'Bf5')).toBeUndefined();
   });
