@@ -24,9 +24,9 @@ import { ideaPlayback } from './drawings';
 import { guidance, type LessonMode, notePlayback, type PlayedBack } from './guidance';
 import type { Lesson, Note, PositionKey, Uci } from './lesson';
 import { lessonOpponent } from './opponent';
-import { beforeSideMoves, opponentPlays } from './practice';
+import { beforeSideMoves, moveKinds, opponentPlays } from './practice';
 import { initialScreen, screenReducer } from './screen';
-import { bookMoves, type Candidate, isBook } from './select';
+import { bookMoves, type Candidate } from './select';
 import { lessonView, type Pointer, preview, type ShownNote } from './view';
 
 /** How long each board of a playback shows before the next. */
@@ -78,19 +78,27 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   const rival = opponentPlays(mode, settings.auto, store[0])
     ? lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent))
     : undefined;
+  const [{ moves }] = store;
+  const book = useMemo(() => bookMoves(lesson, moves), [lesson, moves]);
   const game = useGame(store, rival, {
     side: lesson.side,
     active: focused,
     judge: 'stockfish',
-    book: (line) => bookMoves(lesson, line),
+    book,
   });
-  const { moves, ply, plies, current, canMove } = game;
-  // A move played before the learner's first starts a Practice run.
+  const { ply, plies, current, canMove } = game;
+  // A move played before the learner's first starts a Practice run (`modeReducer`).
   const startsRun = beforeSideMoves(plies, lesson.side, ply);
+  const kinds = moveKinds(plies, lesson.side, book);
   const view = useMemo(
     () => lessonView({ lesson, line: moves, ply, opponent }),
     [lesson, moves, ply, opponent],
   );
+  // A Practice run counts the game's moves as the screen gets them, whoever
+  // played them and however many landed at once.
+  if (modeState.mode === 'practice' && modeState.line !== moves) {
+    dispatch({ type: 'moved', from: modeState.line, line: moves, kinds });
+  }
   const { key } = view;
   const stale = (at?: PositionKey) => at !== undefined && at !== key;
   if (stale(peek?.key) || stale(rareKey)) dispatch({ type: 'board', key });
@@ -130,13 +138,8 @@ export function useLesson(lesson: Lesson, store: GameStore) {
     const candidate = at && !preview(lesson, view, at) ? { ...at, to: undefined } : at;
     dispatch({ type: 'candidate', key, candidate });
   };
-  // One event for a move: the game plays it, and the mode learns what it was.
   const playMove = (uci: string) => {
-    if (!canMove) return;
-    const learner = current.turn === lesson.side;
-    const book = isBook(lesson, key, uci);
-    dispatch({ type: 'played', learner, book, first: startsRun, replaces: ply < moves.length });
-    game.play(uci);
+    if (canMove) game.play(uci);
   };
   const play = (candidate: Candidate) => playMove(candidate.move.uci);
   const board: Omit<BoardProps, 'dom'> = {
@@ -198,8 +201,7 @@ export function useLesson(lesson: Lesson, store: GameStore) {
     /** A move played on the board now starts a Practice run: no move of the learner's comes before. */
     startsRun,
     /** The learner chooses Explore or Practice. */
-    chooseMode: (mode: LessonMode) =>
-      dispatch({ type: 'modeChosen', mode, untouched: !game.started }),
+    chooseMode: (mode: LessonMode) => dispatch({ type: 'modeChosen', mode, line: moves, kinds }),
     /** The note pointed at on the idea card. */
     pointedNote: shown.pointed,
     /** The candidate list shows its rare rows (`Guidance.rare`). */
