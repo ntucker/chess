@@ -17,8 +17,8 @@ export type ReplyChoice = (replies: readonly Candidate[]) => Candidate | undefin
  * since candidates list the most played first, with ties and moves without
  * counts in the file's order (the main line first). From the first position
  * beyond the guide, or at a guide line's end, `beyond` plays. `choose`,
- * when given, picks among the guide's moves instead (Practice steers to
- * lines not yet passed: `steering` in `marks.ts`).
+ * when given, picks among the guide's moves instead (a clean Practice run
+ * steers to lines not yet passed: `steering` in `marks.ts`).
  *
  * ```ts
  * useGame(store, lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent)), {

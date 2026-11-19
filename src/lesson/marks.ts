@@ -4,8 +4,8 @@
  * passed once clean Practice runs have reached every guide line end they can
  * reach through it. A clean run plays only the learner's book moves, so the
  * line ends below a learner's non-book move never count, and that move's own
- * row can't be passed. The same walk steers Practice's opponent to the
- * lines still to pass (`steering`).
+ * row can't be passed. The same walk steers a clean Practice run's opponent
+ * to the lines still to pass (`steering`).
  */
 import { parsePositionKey, playMove, positionKey } from '@/game/replay';
 import { type LessonProgress, type Mark, positionHash } from '@/progress/progress';

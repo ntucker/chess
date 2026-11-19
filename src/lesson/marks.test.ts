@@ -57,9 +57,9 @@ function marksAfter(lessonProgress: LessonProgress, lesson: Lesson, ...sans: str
   return Object.fromEntries(view.candidates.map(({ san, move: { uci } }) => [san, marks.get(uci)]));
 }
 
-describe('earnedMark', () => {
-  const practice = (clean: boolean) => ({ mode: 'practice', clean }) as const;
+const practice = (clean: boolean) => ({ mode: 'practice', clean }) as const;
 
+describe('earnedMark', () => {
   it('marks any guide position Explore shows as seen', () => {
     expect(earnedMark('inside', { mode: 'explore' })).toBe('seen');
     expect(earnedMark('end', { mode: 'explore' })).toBe('seen');
@@ -150,8 +150,7 @@ describe('steering', () => {
   // After 1.e4 c6 White's replies are d4 (a line end) and Nc3 (on to ...d5's end), in that order.
   const line = uciLine('e4', 'c6');
   const { candidates } = lessonView({ lesson: LESSON, line, ply: line.length, opponent: 1500 });
-  const clean = { mode: 'practice', clean: true } as const;
-  const reply = (passed: PositionKey[]) => steering(LESSON, progress([], passed), clean)!(candidates)?.san;
+  const reply = (passed: PositionKey[]) => steering(LESSON, progress([], passed), practice(true))!(candidates)?.san;
 
   it('plays the most played reply below which a line end is still to pass', () => {
     expect(reply([])).toBe('d4');
@@ -166,6 +165,6 @@ describe('steering', () => {
   it('steers only a clean Practice run, which alone can pass a line', () => {
     const done = progress([], [ENDS.d4]);
     expect(steering(LESSON, done, { mode: 'explore' })).toBeUndefined();
-    expect(steering(LESSON, done, { mode: 'practice', clean: false })).toBeUndefined();
+    expect(steering(LESSON, done, practice(false))).toBeUndefined();
   });
 });
