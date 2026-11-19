@@ -24,13 +24,17 @@ export class PlanBoard {
     this.board = pos.board.clone();
   }
 
-  /** Plays the route `from`-`to` and says whether it was castling. */
-  play(from: Square, to: Square): boolean {
+  /** Whether the route `from`-`to` is castling that the plan may still play. */
+  castles(from: Square, to: Square): boolean {
+    return this.castlingRook(from, to) !== undefined;
+  }
+
+  /** Plays the route `from`-`to`. */
+  play(from: Square, to: Square): void {
     const rook = this.castlingRook(from, to);
     if (rook) this.board.set(rook.to, this.board.take(rook.from)!);
     this.board.set(to, this.board.take(from)!);
     this.vacated = this.vacated.with(from);
-    return rook !== undefined;
   }
 
   /**

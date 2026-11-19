@@ -122,6 +122,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
           <IdeaCard
             title={preview ? `If ${preview.san}` : 'The idea'}
             notes={guidance.notes}
+            learner={learner}
             playback={playback}
           />
           <Separator />

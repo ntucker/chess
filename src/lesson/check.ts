@@ -426,10 +426,10 @@ function checkPlan(pos: Chess, idea: Plan) {
     const from = square(route.from);
     const to = square(route.to);
     if (board.get(to)?.color === idea.side) fail(`${what}: ${route.to} holds ${idea.side}'s own piece`);
-    const before = board.clone();
-    if (!plan.play(from, to) && !reaches(before, from, to, moves)) {
+    if (!plan.castles(from, to) && !reaches(board, from, to, moves)) {
       fail(`${what}: the ${piece.role} on ${route.from} cannot reach ${route.to} in ${moves} move(s)`);
     }
+    plan.play(from, to);
     ends.delete(from);
     ends.add(to);
   });

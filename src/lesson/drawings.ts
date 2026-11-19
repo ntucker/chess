@@ -9,11 +9,11 @@ import type { Board } from 'chessops/board';
 import type { Chess } from 'chessops/chess';
 import { makeBoardFen, makeFen } from 'chessops/fen';
 import { SquareSet } from 'chessops/squareSet';
-import { type Color, FILE_NAMES, type SquareName } from 'chessops/types';
+import { type Color, FILE_NAMES, type FileName, type SquareName } from 'chessops/types';
 import { makeSquare, opposite, parseSquare } from 'chessops/util';
 
 import type { Drawing, Tone } from '@/board/drawing';
-import { parsePositionKey, playMove, positionKey } from '@/game/replay';
+import { parsePositionKey, playLine } from '@/game/replay';
 
 import type { Guidance, ShownIdea } from './guidance';
 import type { Idea, Imbalance, PositionKey, Structure, StructureFeature, Uci } from './lesson';
@@ -34,12 +34,13 @@ import type { LandedTrap, ShownNote } from './view';
  */
 export function lessonDrawings(guidance: Guidance, shown: PositionKey, learner: Color): Drawing[] {
   const { preview, candidates } = guidance;
-  const position = parsePositionKey(shown)!;
   const here = guidance.ideas.filter(({ at }) => at === shown).map(({ idea }) => idea);
   // One plan at a time: two plans' numbered routes would read as one sequence.
   const firstPlan = here.find(({ type }) => type === 'plan');
   const ideas = here.filter((idea) => idea.type !== 'plan' || idea === firstPlan);
-  const draw = (some: readonly Idea[]) => some.flatMap((idea) => ideaDrawings(idea, position, learner));
+  // Parsed only where there are ideas, since this runs as the pointer moves.
+  const position = ideas.length ? parsePositionKey(shown)! : undefined;
+  const draw = (some: readonly Idea[]) => some.flatMap((idea) => ideaDrawings(idea, position!, learner));
   if (preview?.slide) return [ghost(preview.candidate), ...draw(ideas)];
   if (preview) return [...candidateDrawings([preview.candidate]), ...draw(ideas)];
   const facts = [...bestDrawings(guidance.best), ...(guidance.trap ? landedTrapDrawings(guidance.trap, shown) : [])];
@@ -75,7 +76,7 @@ export function candidateDrawings(candidates: readonly Candidate[]): Drawing[] {
  * stay apart.
  */
 export function ideaDrawings(idea: Idea, position: Chess, learner: Color): Drawing[] {
-  const sideTone = (side: Color): Tone => (side === learner ? 'main' : 'other');
+  const sideTone = (side: Color) => toneOf(side, learner);
   switch (idea.type) {
     case 'purpose':
       return [
@@ -134,6 +135,26 @@ export function ideaDrawings(idea: Idea, position: Chess, learner: Color): Drawi
   }
 }
 
+/** A side's tone: the main one for `learner`'s, the other for its opponent's. */
+const toneOf = (side: Color, learner: Color): Tone => (side === learner ? 'main' : 'other');
+
+/** The tone an idea's drawings lead with, for the idea card to match the board. */
+export function ideaTone(idea: Idea, learner: Color): Tone {
+  switch (idea.type) {
+    case 'plan':
+      return 'plan';
+    case 'threat':
+    case 'trap':
+      return 'danger';
+    case 'pressure':
+    case 'structure':
+    case 'imbalance':
+      return toneOf(idea.side, learner);
+    default:
+      return 'main';
+  }
+}
+
 /** One board of an idea's playback, and the move that led to it. */
 export interface PlaybackFrame {
   /** The board as FEN: only the pieces for a plan, whose boards aren't games. */
@@ -155,28 +176,30 @@ export function ideaPlayback(idea: Idea, position: Chess): PlaybackFrame[] {
         return { fen: makeBoardFen(board), move: route && [route.from, route.to] };
       });
     case 'line':
-    case 'trap': {
-      const pos = position.clone();
-      const fen = () => makeFen(pos.toSetup());
-      return [
-        { fen: fen() },
-        ...idea.moves.map((uci) => {
-          const { from, to } = playMove(pos, uci)!;
-          return { fen: fen(), move: [from as SquareName, to as SquareName] as const };
-        }),
-      ];
-    }
+    case 'trap':
+      return Array.from(playLine(idea.moves, position.clone()), ({ pos, move }) => ({
+        fen: makeFen(pos.toSetup()),
+        move: move && [move.from, move.to],
+      }));
     default:
       return [];
   }
 }
 
-/** The types `ideaPlayback` plays back. */
-const PLAYED_BACK: ReadonlySet<Idea['type']> = new Set(['plan', 'line', 'trap']);
+/** The ideas that play back: a plan's routes, a line's or trap's moves. */
+export type PlayedBack = Extract<Idea, { type: 'plan' | 'line' | 'trap' }>;
 
-/** The idea of `note` that plays back on the board, of those `guidance` draws; or undefined. */
-export const notePlayback = (guidance: Guidance, { note }: ShownNote): ShownIdea | undefined =>
-  guidance.ideas.find(({ idea }) => PLAYED_BACK.has(idea.type) && note.ideas?.includes(idea));
+const playsBack = (idea: Idea): idea is PlayedBack =>
+  idea.type === 'plan' || idea.type === 'line' || idea.type === 'trap';
+
+/**
+ * The idea of `note` that plays back on the board, of those `guidance` draws
+ * (so a trap plays back only while traps are shown); or undefined.
+ */
+export function notePlayback(guidance: Guidance, { note }: ShownNote) {
+  const found = guidance.ideas.find(({ idea }) => playsBack(idea) && note.ideas?.includes(idea));
+  return found as (ShownIdea & { readonly idea: PlayedBack }) | undefined;
+}
 
 const squaresOf = (set: SquareSet): SquareName[] => [...set].map(makeSquare);
 
@@ -258,14 +281,11 @@ function marked(squares: readonly SquareName[], tone: Tone, board: Board, ringPi
   ];
 }
 
-const fileSquares = (files: readonly string[]) =>
-  files.reduce(
-    (set, file) => set.union(SquareSet.fromFile(FILE_NAMES.indexOf(file as (typeof FILE_NAMES)[number]))),
-    SquareSet.empty(),
-  );
+const fileSquares = (files: readonly FileName[]) =>
+  files.reduce((set, file) => set.union(SquareSet.fromFile(FILE_NAMES.indexOf(file))), SquareSet.empty());
 
 /** `side`'s pawns on `files`. */
-const filePawns = (board: Board, side: Color, files: readonly string[]) =>
+const filePawns = (board: Board, side: Color, files: readonly FileName[]) =>
   squaresOf(board.pieces(side, 'pawn').intersect(fileSquares(files)));
 
 /** An arrow for a move written in UCI, numbered `step` in a sequence. */
@@ -284,13 +304,10 @@ const bestDrawings = (best: Uci | undefined): Drawing[] => (best ? [moveArrow(be
  * A trap the line fell into, once the board shows its last move: the
  * tempting move as a danger arrow, with a ghost of its piece where it stood.
  */
-function landedTrapDrawings({ trap, at }: LandedTrap, shown: PositionKey): Drawing[] {
-  const before = parsePositionKey(at)!;
-  const end = before.clone();
-  for (const uci of trap.moves) playMove(end, uci);
-  if (positionKey(end) !== shown) return [];
+function landedTrapDrawings({ trap, at, end }: LandedTrap, shown: PositionKey): Drawing[] {
+  if (end !== shown) return [];
   const tempting = moveArrow(trap.moves[0], 'danger');
-  const { role, color } = before.board.get(parseSquare(tempting.from)!)!;
+  const { role, color } = parsePositionKey(at)!.board.get(parseSquare(tempting.from)!)!;
   return [{ kind: 'ghost', square: tempting.from, piece: { role, color } }, tempting];
 }
 

@@ -15,9 +15,9 @@ import { useGame } from '@/game/useGame';
 import { gameOpponent } from '@/resources/opponent';
 import { useSettings } from '@/settings/SettingsProvider';
 
-import { ideaPlayback, lessonDrawings, notePlayback } from './drawings';
+import { ideaPlayback, lessonDrawings, notePlayback, type PlayedBack } from './drawings';
 import { guidance, type LessonSwitches } from './guidance';
-import type { Idea, Lesson, Note, PositionKey, Uci } from './lesson';
+import type { Lesson, Note, PositionKey, Uci } from './lesson';
 import { lessonOpponent } from './opponent';
 import type { Candidate } from './select';
 import { lessonView, preview, type ShownNote } from './view';
@@ -44,8 +44,8 @@ export interface Playing {
 /** The idea card's play-through controls (see `ideaPlayback`). */
 export interface Playback {
   readonly playing?: Playing;
-  /** The idea of `note` that plays back, if any. */
-  readonly playable: (note: ShownNote) => Idea | undefined;
+  /** Which kind of idea of `note` plays back, if any. */
+  readonly playable: (note: ShownNote) => PlayedBack['type'] | undefined;
   /** Plays `note`'s idea from its start, one board after another. */
   readonly play: (note: ShownNote) => void;
   /** Shows the playing idea's board `step`, and stops stepping by itself. */
@@ -120,33 +120,26 @@ export function useLesson(lesson: Lesson) {
   }, [focused]);
 
   const board = previewed ?? current;
-  const boardProps: Omit<BoardProps, 'dom'> = frame
-    ? {
-        fen: frame.fen,
-        orientation: lesson.side,
-        turnColor: board.turn,
-        dests: {},
-        lastMove: frame.move,
-        check: false,
-        onMove: game.move,
-      }
-    : {
-        fen: board.fen,
-        orientation: lesson.side,
-        turnColor: board.turn,
-        movableColor: canMove && !previewed ? lesson.side : undefined,
-        dests: board.dests,
-        lastMove: board.move ? [board.move.from, board.move.to] : undefined,
-        drawings: [
+  // A playback's boards aren't games: nothing moves on them and nothing is drawn.
+  const boardProps: Omit<BoardProps, 'dom'> = {
+    fen: frame?.fen ?? board.fen,
+    orientation: lesson.side,
+    turnColor: board.turn,
+    movableColor: canMove && !previewed && !frame ? lesson.side : undefined,
+    dests: frame ? {} : board.dests,
+    lastMove: frame ? frame.move : board.move && [board.move.from, board.move.to],
+    drawings: frame
+      ? []
+      : [
           ...lessonDrawings(shown, slid ? slid.next : view.key, lesson.side),
           ...lastMoveBadge(previewed ? undefined : current.move?.to, game.qualities[ply - 1]),
         ],
-        check: board.check,
-        onMove: game.move,
-      };
+    check: !frame && board.check,
+    onMove: game.move,
+  };
   const playback: Playback = {
     playing: playing && frame && { note: playing.note, step: playing.step, steps: frames.length },
-    playable: (note) => notePlayback(shown, note)?.idea,
+    playable: (note) => notePlayback(shown, note)?.idea.type,
     play: (note) => setStarted({ key: view.key, note: note.note, step: 0, auto: true }),
     goto: (step) => setStarted((now) => now && { ...now, step, auto: false }),
     stop: () => setStarted(undefined),

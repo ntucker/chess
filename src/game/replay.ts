@@ -79,12 +79,11 @@ export interface Step {
 }
 
 /**
- * Plays `line` (UCI moves) from the starting position, yielding the start and
- * then the position after each move. Stops early at the first move that isn't
- * legal.
+ * Plays `line` (UCI moves) from `pos` (the starting position unless given,
+ * and played on in place), yielding it and then the position after each move.
+ * Stops early at the first move that isn't legal.
  */
-export function* playLine(line: readonly string[]): Generator<Step> {
-  const pos = Chess.default();
+export function* playLine(line: readonly string[], pos = Chess.default()): Generator<Step> {
   const seen = new Map<string, number>();
   const step = (move?: Ply['move']): Step => {
     const key = positionKey(pos);
