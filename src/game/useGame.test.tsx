@@ -8,7 +8,7 @@ import { useGame } from './useGame';
 
 // Labels read the evaluation engines through Data Client; these tests are
 // about the opponent.
-jest.mock('@/analysis/useMoveQuality', () => ({ useMoveQuality: () => undefined }));
+jest.mock('@/analysis/useMoveQualities', () => ({ useMoveQualities: () => [] }));
 
 /** An opponent whose every request waits until the test answers it. */
 function scripted(id: string) {
@@ -112,7 +112,6 @@ describe('useGame', () => {
     const stockfish = scripted('stockfish');
     await render({ opponent: maia.opponent, side: 'white', active: true });
     await act(async () => game().move('e2', 'e4'));
-    stockfish.asked.length = 0;
     await render({ opponent: stockfish.opponent, side: 'white', active: false });
     expect(stockfish.asked).toHaveLength(0);
     await render({ opponent: stockfish.opponent, side: 'white', active: true });

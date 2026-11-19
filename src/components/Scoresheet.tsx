@@ -3,23 +3,22 @@ import { useRef } from 'react';
 import { ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
 
 import type { MoveQuality } from '@/analysis/quality';
-import { useMoveQuality } from '@/analysis/useMoveQuality';
 import type { Ply } from '@/game/replay';
 import { fonts } from '@/theme/theme';
 
 import { QualityBadge } from './QualityBadge';
 
 interface Props {
-  /** Every move of the game, in UCI. */
-  readonly moves: readonly string[];
   /** Every position of the game; `plies[n]` follows the nth move. */
   readonly plies: readonly Ply[];
+  /** Each move's label once it's judged: `qualities[n]` labels the move that leads to `plies[n + 1]`. */
+  readonly qualities: readonly (MoveQuality | undefined)[];
   readonly ply: number;
   readonly onGoto: (ply: number) => void;
 }
 
 /** The moves as a two-column scoresheet (1. e4 e5), each with its label; tap one to see it. */
-export function Scoresheet({ moves, plies, ply, onGoto }: Props) {
+export function Scoresheet({ plies, qualities, ply, onGoto }: Props) {
   const scroll = useRef<ScrollViewInstance>(null);
   const san = (n: number) => plies[n]?.move?.san;
 
@@ -42,10 +41,11 @@ export function Scoresheet({ moves, plies, ply, onGoto }: Props) {
           {rows.map((white, i) => (
             <Row
               key={white}
-              moves={moves}
               white={white}
               whiteSan={san(white)}
               blackSan={san(white + 1)}
+              whiteQuality={qualities[white - 1]}
+              blackQuality={qualities[white]}
               // Only the row holding the shown move gets a value, so the rest
               // keep their props and skip re-rendering as the player steps.
               selected={ply === white || ply === white + 1 ? ply : undefined}
@@ -60,23 +60,30 @@ export function Scoresheet({ moves, plies, ply, onGoto }: Props) {
 }
 
 interface RowProps {
-  readonly moves: readonly string[];
   /** White's ply; Black's is the next one. */
   readonly white: number;
   readonly whiteSan?: string;
   readonly blackSan?: string;
+  readonly whiteQuality?: MoveQuality;
+  readonly blackQuality?: MoveQuality;
   /** The shown ply, when it's in this row. */
   readonly selected?: number;
   readonly striped: boolean;
   readonly onGoto: (ply: number) => void;
 }
 
-function Row({ moves, white, whiteSan, blackSan, selected, striped, onGoto }: RowProps) {
+function Row({
+  white,
+  whiteSan,
+  blackSan,
+  whiteQuality,
+  blackQuality,
+  selected,
+  striped,
+  onGoto,
+}: RowProps) {
   const { theme } = useTheme();
   const { color } = theme.semantic;
-  // Only the board's move asks for evaluations; a row shows what's known.
-  const whiteQuality = useMoveQuality(moves, white, { ask: false });
-  const blackQuality = useMoveQuality(moves, white < moves.length ? white + 1 : 0, { ask: false });
 
   const cell = (n: number, san?: string, quality?: MoveQuality) => {
     if (san === undefined) return <View style={styles.cell} />;

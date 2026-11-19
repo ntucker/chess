@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent, useReducer } from 'react';
 
-import { useMoveQuality } from '@/analysis/useMoveQuality';
+import { useMoveQualities } from '@/analysis/useMoveQualities';
 
 import { failure, type GameOpponent, gameReducer, initialGame } from './game';
 import { material } from './material';
@@ -39,6 +39,7 @@ export function useGame(opponent: GameOpponent | undefined, { side, active }: Op
   const latest = analyze(plies[plies.length - 1]);
   const atLatest = ply === moves.length;
   const current = atLatest ? latest : analyze(plies[ply]);
+  const qualities = useMoveQualities(plies, ply);
   const error = failure(state, opponent?.id);
   const thinking = !!opponent && !latest.result && latest.turn !== side && !error;
 
@@ -65,8 +66,10 @@ export function useGame(opponent: GameOpponent | undefined, { side, active }: Op
     ply,
     plies,
     current,
+    /** Each move's label once it's judged: `qualities[n]` labels `moves[n]`, the move that leads to `plies[n + 1]`. */
+    qualities,
     /** The label of the move that led to `current`, once it's judged. */
-    quality: useMoveQuality(moves, ply, { ask: true }),
+    quality: qualities[ply - 1],
     /** What each side is up on the board shown, so it follows the moves stepped through. */
     material: material(current.fen),
     latest,

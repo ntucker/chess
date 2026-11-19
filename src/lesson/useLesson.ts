@@ -37,10 +37,10 @@ export function useLesson(lesson: Lesson) {
     side: lesson.side,
     active: useIsFocused(),
   });
-  const { moves: line, ply, current } = game;
+  const { moves, ply, current } = game;
   const view = useMemo(
-    () => lessonView({ lesson, line, ply, opponent }),
-    [lesson, line, ply, opponent],
+    () => lessonView({ lesson, line: moves, ply, opponent }),
+    [lesson, moves, ply, opponent],
   );
   // The candidate list row the learner points at, and the position it was
   // pointed at in. A row that leaves the list (played, or stepped away from)
@@ -56,7 +56,7 @@ export function useLesson(lesson: Lesson) {
     preview: pointed === undefined ? undefined : preview(lesson, view, { at: 'row', uci: pointed }),
   });
   const slid = shown.preview?.slide ? shown.preview.candidate : undefined;
-  const previewed = slid && lastPosition([...line.slice(0, ply), slid.move.uci]);
+  const previewed = slid && lastPosition([...moves.slice(0, ply), slid.move.uci]);
   const board = previewed ?? current;
   const boardProps: Omit<BoardProps, 'dom'> = {
     fen: board.fen,

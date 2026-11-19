@@ -123,7 +123,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
           <Separator />
           <Stack gap="3">
             <Eyebrow>Scoresheet</Eyebrow>
-            <Scoresheet moves={moves} plies={game.plies} ply={ply} onGoto={goto} />
+            <Scoresheet plies={game.plies} qualities={game.qualities} ply={ply} onGoto={goto} />
           </Stack>
           <Stack gap="1">
             <OpponentChoice />
