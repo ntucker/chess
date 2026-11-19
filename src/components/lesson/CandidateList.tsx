@@ -1,5 +1,5 @@
 import { Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
-import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef } from 'react';
+import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { Uci } from '@/lesson/lesson';
@@ -11,6 +11,8 @@ import { toneColors } from '@/theme/drawingTones';
 
 interface Props {
   readonly candidates: readonly Candidate[];
+  /** Rare candidates, listed after the others only once the learner asks. */
+  readonly rare: readonly Candidate[];
   /** The candidate the board draws as the main one (see `candidateDrawings`). */
   readonly main?: Candidate;
   /** The row previewed on the board, whether its row or a board square is pointed at. */
@@ -36,10 +38,12 @@ interface Props {
  * The guide's moves at the position on the board, one row each, most played
  * first. Pointing at a row previews its move on the board; pressing it plays
  * the move when it's the learner's to play. Each row's dot matches its arrow
- * on the board.
+ * on the board; a rare row's dot is hollow, since the board draws no arrow
+ * for it. A list resets to hiding its rare rows when it remounts.
  */
 export function CandidateList({
   candidates,
+  rare,
   main,
   pointed,
   leadsTo,
@@ -48,9 +52,11 @@ export function CandidateList({
   onPoint,
   onTabOut,
 }: Props) {
+  const [showRare, setShowRare] = useState(false);
+  const rows = showRare ? [...candidates, ...rare] : candidates;
   return (
     <Surface elevation="sunken" border="subtle" radius="md" style={styles.list}>
-      {candidates.map((candidate, index) => (
+      {rows.map((candidate, index) => (
         <Row
           key={candidate.move.uci}
           candidate={candidate}
@@ -58,14 +64,61 @@ export function CandidateList({
           pointed={candidate.move.uci === pointed}
           leadsTo={leadsTo(candidate)}
           // A lone move's share is always all of the games.
-          share={candidates.length > 1 ? candidate.share : undefined}
+          share={rows.length > 1 ? candidate.share : undefined}
           playable={playable}
           onPlay={onPlay}
           onPoint={onPoint}
-          onTabOut={index === candidates.length - 1 ? onTabOut : undefined}
+          onTabOut={!rare.length && index === rows.length - 1 ? onTabOut : undefined}
         />
       ))}
+      {rare.length ? (
+        <RareToggle
+          count={rare.length}
+          shown={showRare}
+          onToggle={() => setShowRare(!showRare)}
+          onTabOut={onTabOut}
+        />
+      ) : null}
     </Surface>
+  );
+}
+
+/** The last row of a list with rare candidates: shows or hides them. */
+function RareToggle({
+  count,
+  shown,
+  onToggle,
+  onTabOut,
+}: {
+  readonly count: number;
+  readonly shown: boolean;
+  readonly onToggle: () => void;
+  readonly onTabOut: () => void;
+}) {
+  const { theme } = useTheme();
+  const label = shown
+    ? `Hide ${count === 1 ? 'the rarer reply' : 'rarer replies'}`
+    : `Show ${count} rarer ${count === 1 ? 'reply' : 'replies'}`;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ expanded: shown }}
+      onPress={onToggle}
+      onKeyDown={(event: unknown) => {
+        const { key, shiftKey } = event as ReactKeyboardEvent;
+        if (key === 'Tab' && !shiftKey) onTabOut();
+      }}
+      style={({ hovered, pressed }) => [
+        styles.row,
+        styles.toggle,
+        (hovered || pressed) && { backgroundColor: theme.semantic.color.tones.neutral.subtle },
+      ]}
+    >
+      <Text role="caption" tone="secondary">
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -146,7 +199,12 @@ function Row({
         },
       ]}
     >
-      <View style={[styles.dot, { backgroundColor: tone }]} />
+      <View
+        style={[
+          styles.dot,
+          candidate.rare ? { borderWidth: 2, borderColor: tone } : { backgroundColor: tone },
+        ]}
+      />
       <View style={styles.move}>
         <View style={styles.title}>
           <Text role="body" style={styles.san}>
@@ -195,6 +253,8 @@ const styles = StyleSheet.create({
     outlineOffset: -2,
   },
   dot: { width: 10, height: 10, borderRadius: 5 },
+  // Text lines up with the rows' moves, past the dot and its gap.
+  toggle: { paddingLeft: 14 + 10 + 12 },
   move: { flex: 1, gap: 1 },
   title: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   san: { fontFamily: fonts.mono, fontSize: 17 },

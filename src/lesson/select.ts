@@ -68,9 +68,9 @@ export interface Candidate {
    */
   readonly share?: number;
   /**
-   * An opponent's move played under `RARE_SHARE` of the time (see
-   * `candidates`): the list and the board's arrows leave it off, and only
-   * pointing at its piece or landing square shows it.
+   * An opponent's move played under `RARE_SHARE` of the time, in a long list
+   * (see `rareLast`): the list shows it only when asked, and the board's
+   * arrows never do.
    */
   readonly rare?: boolean;
 }
@@ -81,6 +81,15 @@ export interface Candidate {
  * each, and listing them all buries the few that are played.
  */
 export const RARE_SHARE = 0.05;
+
+/** The most played this many candidates are never rare, so a short list hides nothing. */
+export const SHORT_LIST = 5;
+
+/**
+ * Fewer rare candidates than this are listed anyway: the row that shows
+ * them on request would save too little room to be worth a click.
+ */
+export const FEWEST_RARE = 3;
 
 /** The candidate to look at first: the book move, or else the most played. */
 export const mainCandidate = (candidates: readonly Candidate[]): Candidate | undefined =>
@@ -129,12 +138,14 @@ export function candidates(
 
 /**
  * The opponent's `rows`, most played first, with the rare ones marked and
- * moved last. A row under `RARE_SHARE` is rare unless it is the most played,
- * has no counts, or starts one of `traps`.
+ * moved last. A row past the first `SHORT_LIST` is rare under `RARE_SHARE`,
+ * unless it has no counts or starts one of `traps`, and only when at least
+ * `FEWEST_RARE` are.
  */
 function rareLast(rows: readonly Candidate[], traps: readonly Uci[]): Candidate[] {
   const isRare = ({ move, share }: Candidate, n: number) =>
-    n > 0 && share !== undefined && share < RARE_SHARE && !traps.includes(move.uci);
+    n >= SHORT_LIST && share !== undefined && share < RARE_SHARE && !traps.includes(move.uci);
+  if (rows.filter(isRare).length < FEWEST_RARE) return [...rows];
   const marked = rows.map((row, n) => (isRare(row, n) ? { ...row, rare: true } : row));
   return [...marked.filter(({ rare }) => !rare), ...marked.filter(({ rare }) => rare)];
 }

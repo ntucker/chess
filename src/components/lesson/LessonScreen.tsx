@@ -1,5 +1,5 @@
 import { AsyncBoundary, useSuspense } from '@data-client/react';
-import { Separator, Spinner, Stack, Text } from '@reactive/silk-native';
+import { Separator, Spinner, Stack } from '@reactive/silk-native';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
@@ -141,7 +141,10 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
                       : `${colorName(rival)}'s likely replies`}
                   </Eyebrow>
                   <CandidateList
+                    // Each position's list starts with its rare rows hidden.
+                    key={view.key}
                     candidates={guidance.candidates}
+                    rare={guidance.rare}
                     main={guidance.main}
                     pointed={preview?.move.uci}
                     leadsTo={leadsTo}
@@ -150,11 +153,6 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
                     onPoint={pointRow}
                     onTabOut={leave}
                   />
-                  {guidance.rareCount ? (
-                    <Text role="caption" tone="secondary">
-                      {rareHint(guidance.rareCount, colorName(rival))}
-                    </Text>
-                  ) : null}
                 </Stack>
               ) : null}
               <IdeaCard
@@ -216,11 +214,6 @@ interface StatusInput {
   /** In Practice: whether the run is clean, and the label of the move the board shows. */
   readonly practice?: { readonly clean: boolean; readonly verdict?: MoveQuality };
 }
-
-/** The line under the list that says the guide covers `count` rarer replies it leaves off. */
-const rareHint = (count: number, rival: string) =>
-  `The guide covers ${count} rarer ${count === 1 ? 'reply' : 'replies'} too. ` +
-  `Point at a ${rival} piece to see ${count === 1 ? 'it' : 'them'}.`;
 
 /**
  * The panel's headline: where the lesson stands and whose move it is. In

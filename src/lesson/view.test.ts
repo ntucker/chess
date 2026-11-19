@@ -199,16 +199,19 @@ describe('preview', () => {
   describe('a rare move', () => {
     const rareView = view(MAIN, { lesson: WITH_RARE });
 
-    it('previews from its squares, but has no row', () => {
-      expect(preview(WITH_RARE, rareView, at('f3'))).toMatchObject({
-        candidate: { san: 'f3', rare: true },
+    it('previews from its row and its squares', () => {
+      expect(preview(WITH_RARE, rareView, at('h3'))).toMatchObject({
+        candidate: { san: 'h3', rare: true },
         slide: true,
       });
-      expect(preview(WITH_RARE, rareView, at('f2'))).toMatchObject({
-        candidate: { san: 'f3' },
+      expect(preview(WITH_RARE, rareView, at('h2'))).toMatchObject({
+        candidate: { san: 'h3' },
         slide: false,
       });
-      expect(preview(WITH_RARE, rareView, { at: 'row', uci: 'f2f3' })).toBeUndefined();
+      expect(preview(WITH_RARE, rareView, { at: 'row', uci: 'h2h3' })).toMatchObject({
+        candidate: { san: 'h3' },
+        slide: true,
+      });
     });
   });
 });
