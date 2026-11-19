@@ -69,26 +69,26 @@ export function useLesson(lesson: Lesson) {
   const [pointer, setPointer] = useState<{ readonly key: PositionKey; readonly uci: Uci }>();
   if (pointer && pointer.key !== view.key) setPointer(undefined);
   const pointed = pointer?.key === view.key ? pointer.uci : undefined;
-  // The note whose idea plays back, and the position it was started in. It
-  // ends, like the pointer, once the board moves on; while it plays, the
-  // board is its own, so nothing is previewed.
+  // The note whose idea plays back, the position it was started in, and the
+  // row pointed at then, if any. It ends, like the pointer, once the board
+  // moves on. While it plays, the board is its own: the preview it started
+  // from stays, so the note stays on the card, and no other is previewed.
   const [started, setStarted] = useState<{
     readonly key: PositionKey;
     readonly note: Note;
+    readonly row?: Uci;
     readonly step: number;
     /** It steps by itself until the learner steps it. */
     readonly auto: boolean;
   }>();
   if (started && started.key !== view.key) setStarted(undefined);
   const playing = started?.key === view.key ? started : undefined;
+  const row = playing ? playing.row : pointed;
   const shown = guidance({
     view,
     mode: 'explore',
     switches: SWITCHES,
-    preview:
-      pointed === undefined || playing
-        ? undefined
-        : preview(lesson, view, { at: 'row', uci: pointed }),
+    preview: row === undefined ? undefined : preview(lesson, view, { at: 'row', uci: row }),
   });
   const played = playing && shown.notes.find(({ note }) => note === playing.note);
   const idea = played && notePlayback(shown, played);
@@ -140,7 +140,7 @@ export function useLesson(lesson: Lesson) {
   const playback: Playback = {
     playing: playing && frame && { note: playing.note, step: playing.step, steps: frames.length },
     playable: (note) => notePlayback(shown, note)?.idea.type,
-    play: (note) => setStarted({ key: view.key, note: note.note, step: 0, auto: true }),
+    play: (note) => setStarted({ key: view.key, note: note.note, row: pointed, step: 0, auto: true }),
     goto: (step) => setStarted((now) => now && { ...now, step, auto: false }),
     stop: () => setStarted(undefined),
   };
