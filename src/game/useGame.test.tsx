@@ -28,15 +28,8 @@ let root: Root | undefined;
 const renders: ReturnType<typeof useGame>[] = [];
 const game = () => renders[renders.length - 1];
 
-function Game(props: {
-  opponent?: GameOpponent;
-  side: Color;
-  active: boolean;
-  picksReply?: boolean;
-}) {
-  renders.push(
-    useGame(useReducer(gameReducer, initialGame), props.opponent, { ...props, judge: 'stockfish' }),
-  );
+function Game(props: { opponent?: GameOpponent; side: Color; active: boolean }) {
+  renders.push(useGame(useReducer(gameReducer, initialGame), props.opponent, { ...props, judge: 'stockfish' }));
   return null;
 }
 
@@ -91,23 +84,6 @@ describe('useGame', () => {
     expect(game().canMove).toBe(true);
   });
 
-  it("lets the player pick the opponent's move when asked to, and asks the opponent after the player's next", async () => {
-    const maia = scripted('1500');
-    await render({ opponent: maia.opponent, side: 'white', active: true });
-    await act(async () => game().play('e2e4'));
-    maia.asked[0].answer('e7e5');
-    await think();
-    await act(async () => game().goto(1));
-    expect(game().canMove).toBe(false);
-
-    await render({ opponent: maia.opponent, side: 'white', active: true, picksReply: true });
-    expect(game().canMove).toBe(true);
-    await act(async () => game().play('c7c5'));
-    expect(game()).toMatchObject({ moves: ['e2e4', 'c7c5'], thinking: false });
-    await act(async () => game().play('g1f3'));
-    expect(maia.asked.map(({ line }) => line)).toEqual([['e2e4'], ['e2e4', 'c7c5', 'g1f3']]);
-  });
-
   it('drops a failure that arrives once nobody plays the opponent, and asks again on its return', async () => {
     const maia = scripted('1500');
     await render({ opponent: maia.opponent, side: 'white', active: true });
@@ -131,7 +107,7 @@ describe('useGame', () => {
     expect(game().started).toBe(true);
   });
 
-  it("asks a newly chosen opponent at once, and drops the old one's answer", async () => {
+  it('asks a newly chosen opponent at once, and drops the old one\'s answer', async () => {
     const maia = scripted('1500');
     const stockfish = scripted('stockfish');
     await render({ opponent: maia.opponent, side: 'white', active: true });

@@ -91,7 +91,6 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
     board,
     playback,
     canPlay,
-    picksReply,
     play,
     pointedNote,
     rareShown,
@@ -120,10 +119,10 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
     title: lesson.title,
     rival: colorName(rival),
     engine: described.name,
-    thinking: game.thinking,
+    replying: game.replying,
     viewing: !game.atLatest,
     auto,
-    picksReply,
+    canPlay,
     lineEnded: guidance.lineEnded,
     startsRun,
     practice:
@@ -254,13 +253,14 @@ interface StatusInput {
   readonly rival: string;
   /** Who plays past the guide: "Maia". */
   readonly engine: string;
-  readonly thinking: boolean;
+  /** The opponent is replying to the position shown (`Game.replying`). */
+  readonly replying: boolean;
   /** The board shows an earlier move than the latest. */
   readonly viewing: boolean;
   /** Auto play: the opponent plays on by itself past the guide. */
   readonly auto: boolean;
-  /** On the opponent's turn the learner picks its move, rather than the opponent playing it. */
-  readonly picksReply: boolean;
+  /** The learner may play the side to move's move now: on the opponent's turn, they pick it. */
+  readonly canPlay: boolean;
   /** The headline tells of a guide line's end (`Guidance.lineEnded`). */
   readonly lineEnded: boolean;
   /**
@@ -286,10 +286,10 @@ function describeStatus(
     title,
     rival,
     engine,
-    thinking,
+    replying,
     viewing,
     auto,
-    picksReply,
+    canPlay,
     lineEnded,
     startsRun,
     practice,
@@ -336,10 +336,11 @@ function describeStatus(
           ? YOUR_MOVE.practice.restart
           : YOUR_MOVE[practice ? 'practice' : 'explore'][viewing ? 'viewing' : 'latest'],
     };
-  // Stepped back, the opponent thinking about the latest move isn't this one's news.
-  let reply = `${rival}'s move.`;
-  if (thinking && !viewing) reply = `${rival} is choosing…`;
-  if (picksReply) reply = `Choose ${rival}'s reply.`;
+  const reply = canPlay
+    ? `Choose ${rival}'s reply.`
+    : replying
+      ? `${rival} is choosing…`
+      : `${rival}'s move.`;
   if (practice && view.ply > 0)
     return {
       eyebrow,
@@ -350,7 +351,7 @@ function describeStatus(
     eyebrow,
     title: reply,
     seenHint: !startsRun,
-    detail: picksReply
+    detail: canPlay
       ? 'Point at a reply to see what it aims for, then play it.'
       : 'Point at a reply to see what it aims for.',
   };

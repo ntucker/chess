@@ -4,6 +4,7 @@
  * "passed" mark needs (tech plan section 6): the moves alone can't tell it,
  * since a slip taken back leaves only book moves behind.
  */
+import type { GameState } from '@/game/game';
 import type { Color, Ply } from '@/game/replay';
 
 import type { LessonMode } from './guidance';
@@ -26,14 +27,14 @@ export const beforeSideMoves = (plies: readonly Ply[], side: Color, count: numbe
   plies.slice(0, count).every(({ turn }) => turn !== side);
 
 /**
- * Whether the learner picks the opponent's move on its turn, rather than the
- * opponent playing it. With auto play off, always. With it on, only in
- * Explore on an earlier move than the latest: stepped back, the learner can
- * try one reply and see where it leads, and auto play answers the moves
- * after it. At the latest move, and in Practice, the opponent plays its own.
+ * Whether the opponent plays its own move in `game`'s shown position, rather
+ * than the learner picking it. Never with auto play off, nor at the start,
+ * where the first move picks the opening. Nor in Explore on an earlier move
+ * than the latest: stepped back, the learner can try one reply and see where
+ * it leads, and auto play answers their moves after it.
  */
-export const picksReply = (mode: LessonMode, auto: boolean, atLatest: boolean) =>
-  !auto || (mode === 'explore' && !atLatest);
+export const opponentPlays = (mode: LessonMode, auto: boolean, { moves, ply }: GameState) =>
+  auto && ply > 0 && (mode === 'practice' || ply === moves.length);
 
 /** Facts about a move the learner played, on the lesson screen. */
 export interface PlayedMove {

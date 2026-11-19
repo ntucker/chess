@@ -22,12 +22,6 @@ interface Options {
   readonly judge: EvaluationEngine;
   /** Which of `moves` a lesson's guide recommends: labelled `book`, never judged. */
   readonly book?: (moves: readonly string[]) => readonly boolean[];
-  /**
-   * The player picks the opponent's move on the board shown, as with no
-   * opponent. Played from an earlier move, it drops the moves after it, and
-   * the opponent answers the player's next move as usual.
-   */
-  readonly picksReply?: boolean;
 }
 
 /**
@@ -53,7 +47,7 @@ export type GameStore = readonly [GameState, Dispatch<GameAction>];
 export function useGame(
   [state, dispatch]: GameStore,
   opponent: GameOpponent | undefined,
-  { side, active, judge, book, picksReply }: Options,
+  { side, active, judge, book }: Options,
 ) {
   const { moves, ply } = state;
   const plies = replay(moves);
@@ -110,7 +104,7 @@ export function useGame(
     toMove: latest.result ? undefined : latest.turn,
     // While the opponent thinks the player can still go back and try another move.
     // With no opponent, nobody replies: the player moves both sides.
-    canMove: !current.result && !replying && (!opponent || picksReply || current.turn === side),
+    canMove: !current.result && !replying && (!opponent || current.turn === side),
     /** Whether the player has made a move, so a new game would lose something. */
     started: plies.some((p) => p.move && p.turn !== side),
     thinking,
