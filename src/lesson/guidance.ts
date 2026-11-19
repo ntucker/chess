@@ -16,7 +16,7 @@
  *   learner's move the card shows what it was for: the move's notes, then
  *   those of the position it was played in, which can't be pointed at. On
  *   the opponent's turn it shows the opponent's candidates, and their
- *   previews, only on "I choose", since the learner has to pick one; on Auto
+ *   previews, only with auto play off, since the learner has to pick one; with auto play
  *   the opponent just plays. Stockfish's moves stay hidden.
  * - Traps: with "show traps" on, a trap's sequence is drawn before the
  *   learner commits, beside the candidates; off, it isn't. A trap fallen

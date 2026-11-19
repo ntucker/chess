@@ -26,7 +26,7 @@
     --source-link-size: 28px;
     --wordmark-size: 18px;
     /*
-     * The name bars above and below the board (PlayerBar.tsx): the one with
+     * The name bars above and below the board (Stage.tsx): the one with
      * the move stepper as tall as the stepper, the other one line of names.
      */
     --controls-bar-height: 48px;

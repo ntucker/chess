@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Board, { type BoardProps } from '@/components/Board';
 import { EvaluationBar } from '@/components/EvaluationBar';
 import { HEADER_HEIGHT, Header } from '@/components/Header';
-import { PLAYER_BAR_HEIGHT, PLAYER_DISC, PlayerBar } from '@/components/PlayerBar';
+import { PLAYER_DISC, PlayerBar } from '@/components/PlayerBar';
 import { BOARD_COLUMN_BASIS, PAGE_SPACE, PROGRAM_BASIS, STAGE_GAP } from '@/components/sideBySide';
 import { Transport } from '@/components/Transport';
 import { useStepKeys } from '@/components/useStepKeys';
@@ -72,8 +72,8 @@ export function Stage({ title, place, board, program }: StageProps) {
 interface BoardColumnProps {
   /** The game on the board. */
   readonly game: Game;
-  /** The opponent's name bar: who plays the other side, and how. */
-  readonly rival: Pick<ComponentProps<typeof PlayerBar>, 'name' | 'detail' | 'brief'>;
+  /** The opponent's name bar: who plays the other side, and how, and any small control at its end. */
+  readonly rival: Pick<ComponentProps<typeof PlayerBar>, 'name' | 'detail' | 'brief' | 'children'>;
   /** The board, with the player's side (`orientation`) at the bottom. */
   readonly board: Omit<BoardProps, 'dom'>;
 }
@@ -92,6 +92,7 @@ export function BoardColumn({ game, rival, board }: BoardColumnProps) {
     <>
       <PlayerBar
         {...rival}
+        style={styles.namesBar}
         color={other}
         toMove={game.toMove === other}
         thinking={game.thinking}
@@ -106,6 +107,7 @@ export function BoardColumn({ game, rival, board }: BoardColumnProps) {
       <PlayerBar
         name="You"
         detail={colorName(side)}
+        style={styles.controlsBar}
         color={side}
         toMove={game.toMove === side}
         material={game.material[side]}
@@ -123,14 +125,14 @@ export function BoardColumn({ game, rival, board }: BoardColumnProps) {
 export function BoardColumnPlaceholder({ children }: { readonly children?: ReactNode }) {
   return (
     <>
-      <View style={styles.namesBarSpace} />
+      <View style={styles.namesBar} />
       <View style={styles.boardRow}>
         <View style={styles.evaluation} />
         <BoardFrame>
           <View style={[styles.fill, styles.center]}>{children}</View>
         </BoardFrame>
       </View>
-      <View style={styles.controlsBarSpace} />
+      <View style={styles.controlsBar} />
     </>
   );
 }
@@ -148,6 +150,16 @@ function BoardFrame({ children }: { readonly children: ReactNode }) {
   );
 }
 
+/**
+ * The name bars' heights, fixed so the panel lines up with the board: the
+ * player's, with the move stepper, and the opponent's, with only its names
+ * and at most a small switch. Shorter on a narrow web page, where the names
+ * share one line.
+ */
+const PLAYER_BAR_HEIGHT = {
+  controls: phoneLength('controls-bar-height', 60),
+  names: phoneLength('names-bar-height', 60),
+} as const;
 /** Space between the board and the name bars above and below it. */
 const BOARD_COLUMN_GAP = 4;
 /** The evaluation bar's width: a thin strip on a narrow web page. */
@@ -231,8 +243,8 @@ const styles = StyleSheet.create({
     marginTop: COLUMN_RAISE.times(-1).value,
     gap: BOARD_COLUMN_GAP,
   },
-  namesBarSpace: { height: PLAYER_BAR_HEIGHT.names.value },
-  controlsBarSpace: { height: PLAYER_BAR_HEIGHT.controls.value },
+  namesBar: { height: PLAYER_BAR_HEIGHT.names.value },
+  controlsBar: { height: PLAYER_BAR_HEIGHT.controls.value },
   // The evaluation bar sits in the column of the players' discs, between
   // them, and the board lines up with the names beside the discs.
   boardRow: { flexDirection: 'row', gap: PLAYER_DISC.gap.value },

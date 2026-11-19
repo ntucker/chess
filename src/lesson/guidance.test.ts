@@ -73,7 +73,7 @@ describe('guidance', () => {
       expect(shown(ADVANCE, 'explore', {}, { engine: { best: 'c8f5' } }).best).toBeUndefined();
     });
 
-    it("shows the opponent's candidates on Auto and on I choose", () => {
+    it("shows the opponent's candidates with auto play on and off", () => {
       expect(shown(MAIN, 'explore', { auto: true }).candidates).toHaveLength(4);
       expect(shown(MAIN, 'explore', { auto: false }).candidates).toHaveLength(4);
     });
@@ -129,7 +129,7 @@ describe('guidance', () => {
       });
     });
 
-    it("shows the opponent's candidates and previews on I choose, but not Stockfish's moves", () => {
+    it("shows the opponent's candidates and previews with auto play off, but not Stockfish's moves", () => {
       const choosing = shown(
         MAIN,
         'practice',
@@ -227,7 +227,7 @@ describe('guidance', () => {
       expect(summary(shown(ADVANCE, 'practice')).notes).toEqual(['move']);
     });
 
-    it('keeps a previewed reply\'s next position notes off the card on "I choose", as on the learner\'s turn', () => {
+    it('keeps a previewed reply\'s next position notes off the card with auto play off, as on the learner\'s turn', () => {
       const previewed = (mode: LessonMode, uci: string) =>
         summary(shown(MAIN, mode, { auto: false }, { pointer: { at: 'row', uci } })).notes;
       const replies = ['e4e5', 'e4d5', 'b1c3', 'b1d2'];
@@ -235,7 +235,7 @@ describe('guidance', () => {
       expect(replies.flatMap((uci) => previewed('practice', uci))).not.toContain('position');
     });
 
-    it('keeps a hidden trap\'s warning off a previewed reply on "I choose"', () => {
+    it('keeps a hidden trap\'s warning off a previewed reply with auto play off', () => {
       const pointer: Pointer = { at: 'row', uci: 'c2c3' };
       const traps = (showTraps: boolean) =>
         shown(TRAP.slice(0, -1), 'practice', { auto: false, showTraps }, { pointer }).notes.filter(

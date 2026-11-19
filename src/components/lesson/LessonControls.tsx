@@ -10,39 +10,22 @@ const MODES = [
   { value: 'practice', label: 'Practice' },
 ] as const;
 
-const REPLIES = [
-  { value: 'auto', label: 'Auto' },
-  { value: 'choose', label: 'I choose' },
-] as const;
-
 interface Props {
   readonly mode: LessonMode;
   readonly onMode: (mode: LessonMode) => void;
 }
 
 /**
- * The lesson's switches: Explore or Practice, who moves the opponent, and
- * what the board draws. The mode belongs to the screen; the rest are
- * settings, so they are remembered.
+ * The lesson's switches: Explore or Practice, and what the board draws. The
+ * mode belongs to the screen; the rest are settings, so they are remembered.
+ * Who moves the opponent is the opponent's bar's (`AutoPlay`).
  */
 export function LessonControls({ mode, onMode }: Props) {
-  const { auto, showIdeas, showTraps } = useSettings();
+  const { showIdeas, showTraps } = useSettings();
   const dispatch = useSettingsDispatch();
   return (
     <View style={styles.controls}>
-      <View style={styles.pills}>
-        <View style={styles.pill}>
-          <PillChoice label="Mode" options={MODES} value={mode} onChange={onMode} />
-        </View>
-        <View style={styles.pill}>
-          <PillChoice
-            label="The opponent's moves"
-            options={REPLIES}
-            value={auto ? 'auto' : 'choose'}
-            onChange={(reply) => dispatch({ type: 'chosen', choice: { auto: reply === 'auto' } })}
-          />
-        </View>
-      </View>
+      <PillChoice label="Mode" options={MODES} value={mode} onChange={onMode} />
       <View style={styles.toggles}>
         {/* Guidance ignores this switch in Practice, so it's Explore's. */}
         {mode === 'explore' ? (
@@ -82,9 +65,6 @@ function Toggle({
 
 const styles = StyleSheet.create({
   controls: { gap: 14 },
-  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  // Side by side while both fit, stacked on a narrow phone.
-  pill: { flexGrow: 1, flexBasis: 200 },
   toggles: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 24, rowGap: 10 },
   label: { userSelect: 'none' },
 });
