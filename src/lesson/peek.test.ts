@@ -8,7 +8,7 @@ const THERE = 'there' as PositionKey;
 const PLAN: Note = { text: 'A plan.' };
 const STRUCTURE: Note = { text: 'A structure.' };
 const ROW = { at: 'row', uci: 'c7c6' } as const;
-const SQUARE = { at: 'square', square: 'c6' } as const;
+const DRAG = { at: 'drag', from: 'c7', to: 'c6' } as const;
 
 type Pointing = Extract<Peek, { kind: 'point' }>;
 type Playing = Extract<Peek, { kind: 'play' }>;
@@ -47,7 +47,7 @@ describe('peekReducer', () => {
       pointing({ candidate: ROW, note: PLAN }),
     ],
     [
-      'a square with no candidate drops the candidate but keeps the note',
+      'a drag over no candidate drops the candidate but keeps the note',
       pointing({ candidate: ROW, note: PLAN }),
       [{ type: 'candidate', key: HERE }],
       pointing({ note: PLAN }),
@@ -55,8 +55,8 @@ describe('peekReducer', () => {
     [
       'pointing at a candidate drops the note',
       pointing({ note: PLAN }),
-      [{ type: 'candidate', key: HERE, candidate: SQUARE }],
-      pointing({ candidate: SQUARE }),
+      [{ type: 'candidate', key: HERE, candidate: DRAG }],
+      pointing({ candidate: DRAG }),
     ],
     [
       'the pointer leaving a note unpoints it, keeping the candidate',
@@ -92,10 +92,10 @@ describe('peekReducer', () => {
       'pointing while an idea plays leaves the playback and its candidate as they are',
       playing(),
       [
-        { type: 'candidate', key: HERE, candidate: SQUARE },
+        { type: 'candidate', key: HERE, candidate: DRAG },
         { type: 'note', key: HERE, note: STRUCTURE },
       ],
-      playing({ candidate: SQUARE, note: STRUCTURE }),
+      playing({ candidate: DRAG, note: STRUCTURE }),
     ],
     [
       'leaving does not stop a playback',
@@ -106,8 +106,8 @@ describe('peekReducer', () => {
     [
       'stopping returns to what is pointed at now',
       playing(),
-      [{ type: 'candidate', key: HERE, candidate: SQUARE }, { type: 'stop' }],
-      pointing({ candidate: SQUARE }),
+      [{ type: 'candidate', key: HERE, candidate: DRAG }, { type: 'stop' }],
+      pointing({ candidate: DRAG }),
     ],
     [
       'a note let go while another note plays is not pointed at once it stops',
@@ -125,10 +125,10 @@ describe('peekReducer', () => {
       "a second playback plays from the first one's candidate",
       playing(),
       [
-        { type: 'candidate', key: HERE, candidate: SQUARE },
+        { type: 'candidate', key: HERE, candidate: DRAG },
         { type: 'play', key: HERE, note: STRUCTURE },
       ],
-      playing({ candidate: SQUARE, note: undefined, played: STRUCTURE, step: 0 }),
+      playing({ candidate: DRAG, note: undefined, played: STRUCTURE, step: 0 }),
     ],
     ['a playback steps by itself', playing(), [{ type: 'step' }], playing({ step: 2 })],
     [

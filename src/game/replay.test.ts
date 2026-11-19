@@ -5,6 +5,7 @@ import { INITIAL_FEN } from 'chessops/fen';
 
 import {
   analyze,
+  dropMove,
   lastPosition,
   lineMove,
   numberedLine,
@@ -106,5 +107,15 @@ describe('toUci', () => {
     const ply = { fen, turn: 'white', repetitions: 1 } as const;
     expect(toUci(ply, 'b7', 'a8')).toBe('b7a8q');
     expect(toUci(ply, 'g1', 'f3')).toBe('g1f3');
+  });
+});
+
+describe('dropMove', () => {
+  it('records a drop as the line does: promoting, castling onto the rook, and nothing illegal', () => {
+    expect(dropMove('r3k3/1P6/8/8/8/8/8/4K1N1 w - - 0 1', 'b7', 'a8')).toBe('b7a8q');
+    const castles = 'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1';
+    expect(dropMove(castles, 'e1', 'h1')).toBe('e1g1');
+    expect(dropMove(castles, 'e1', 'g1')).toBe('e1g1');
+    expect(dropMove(castles, 'e1', 'e3')).toBeUndefined();
   });
 });

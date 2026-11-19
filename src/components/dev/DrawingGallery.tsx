@@ -11,7 +11,7 @@ import { DevPage, devStyles, FramedBoard } from './DevPage';
 /**
  * Every drawing the board can make, one board per idea type. For checking
  * the board and the idea drawings by eye; the app doesn't link here. Previews
- * on hover and press-and-hold are the lesson's own (src/lesson/board.ts).
+ * are the lesson's own (src/lesson/board.ts).
  */
 export function DrawingGallery() {
   return (

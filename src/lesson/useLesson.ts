@@ -1,18 +1,19 @@
 /**
  * The lesson screen's wiring: a game against the guide-first opponent, the
  * facts about the position on the board, what the learner points at (a
- * candidate, by its list row or a board square, and a note on the idea
- * card), an idea playing back, the mode (Explore or Practice), and the
- * board. With auto play the learner moves their own side; with auto play
- * off, either.
+ * candidate, by its list row or a piece dragged onto its square, and a note
+ * on the idea card), an idea playing back, the mode (Explore or Practice),
+ * and the board. With auto play the learner moves their own side; with auto
+ * play off, either.
  */
 import { useController } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
 import { useEffect, useMemo, useReducer } from 'react';
 
 import type { Square } from '@/board/drawing';
+import type { Drag } from '@/board/pointer';
 import type { BoardProps } from '@/components/Board';
-import { parsePositionKey, toUci } from '@/game/replay';
+import { dropMove, parsePositionKey } from '@/game/replay';
 import { useGame } from '@/game/useGame';
 import { gameOpponent } from '@/resources/opponent';
 import { useSettings } from '@/settings/SettingsProvider';
@@ -95,6 +96,7 @@ export function useLesson(lesson: Lesson) {
     mode,
     switches: settings,
     preview: pointer && preview(lesson, view, pointer),
+    dragged: pointer?.at === 'drag' ? pointer.from : undefined,
     pointed: here?.note,
     playing: playing?.played,
   });
@@ -112,12 +114,12 @@ export function useLesson(lesson: Lesson) {
     return () => clearTimeout(timer);
   }, [stepping, playing?.step, playing?.played]);
 
-  // A square under the mouse or a finger previews the candidate there. A
-  // square without one ends any preview, as leaving the board does; it is
-  // kept as no pointer, so moving on over such squares re-renders nothing.
-  const pointSquare = (square: Square | null) => {
-    const at: Pointer | undefined = square ? { at: 'square', square } : undefined;
-    const candidate = at && preview(lesson, view, at) ? at : undefined;
+  // A piece dragged over a square previews its candidate there. Over a
+  // square without one it is only the piece, so dragging on over such
+  // squares re-renders nothing.
+  const pointDrag = (drag: Drag<Square> | null) => {
+    const at: Pointer | undefined = drag ? { at: 'drag', ...drag } : undefined;
+    const candidate = at && !preview(lesson, view, at) ? { ...at, to: undefined } : at;
     dispatch({ type: 'candidate', key, candidate });
   };
   // One event for a move: the game plays it, and the mode learns what it was.
@@ -139,9 +141,12 @@ export function useLesson(lesson: Lesson) {
       quality: game.quality,
       frame,
     }),
-    onMove: (from, to) => playMove(toUci(current, from, to)),
-    onHover: pointSquare,
-    onHold: pointSquare,
+    // As the game records it, so a king dropped on its rook is the book castle.
+    onMove: (from, to) => {
+      const uci = dropMove(current.fen, from, to);
+      if (uci) playMove(uci);
+    },
+    onDrag: pointDrag,
     onPress: (square, selected) => {
       const press = !frame && boardPress(shown, current, canMove, square, selected);
       if (press === 'end') dispatch({ type: 'candidate', key });

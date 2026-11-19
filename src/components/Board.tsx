@@ -18,7 +18,7 @@ import { useEffect, useEffectEvent, useMemo, useRef } from 'react';
 
 import { type Drawing, type Square, squareOffset, TONES } from '@/board/drawing';
 import { type BoardMarks, boardMarks, toneBrushes } from '@/board/marks';
-import { watchPointer } from '@/board/pointer';
+import { type Drag, watchDrag } from '@/board/pointer';
 import {
   NO_PREVIEW,
   type Pieces,
@@ -57,12 +57,10 @@ export interface BoardProps {
   readonly drawings?: readonly Drawing[];
   readonly onMove: (from: string, to: string) => void;
   /**
-   * The square under the mouse, or null once it leaves the board. It doesn't
-   * change while a mouse button is down, so a drag never starts a preview.
+   * Each square a piece being dragged is over (none over its own square or
+   * off the board), and null once the drag ends without a move.
    */
-  readonly onHover?: (square: Square | null) => void;
-  /** The square a finger presses and holds, or null once it lifts. */
-  readonly onHold?: (square: Square | null) => void;
+  readonly onDrag?: (drag: Drag<Square> | null) => void;
   /**
    * A square was clicked or tapped, empty or not, including the press that
    * starts a drag and the one that ends a move, with the square picked
@@ -83,16 +81,16 @@ export default function Board({
   preview,
   drawings = [],
   onMove,
-  onHover,
-  onHold,
+  onDrag,
   onPress,
 }: BoardProps) {
   const element = useRef<HTMLDivElement>(null);
   const api = useRef<Api>(null);
   // Chessground and the pointer listeners keep the callbacks they were given.
   const handleMove = useEffectEvent((from: string, to: string) => onMove(from, to));
-  const handleHover = useEffectEvent((square: Square | null) => onHover?.(square));
-  const handleHold = useEffectEvent((square: Square | null) => onHold?.(square));
+  const squareAt = (x: number, y: number) =>
+    api.current?.getKeyAtDomPos([x, y]) as Square | undefined;
+  const handleDrag = useEffectEvent((drag: Drag<Square> | null) => onDrag?.(drag));
   const handlePress = useEffectEvent((square: Square, selected?: Square) =>
     onPress?.(square, selected),
   );
@@ -168,10 +166,10 @@ export default function Board({
   // draws it, so its slide is turned off. The position effect below turns the
   // animation back on as the game reaches the preview.
   const skipPreviewSlide = useEffectEvent((picked: Square | undefined, x: number, y: number) => {
-    const square = api.current?.getKeyAtDomPos([x, y]) as Square | undefined;
-    const boardPlays =
-      picked && square && api.current?.state.movable.dests?.get(picked)?.includes(square);
-    if (boardPlays && playsPreview(layer, picked, square))
+    const square = squareAt(x, y);
+    const board = api.current;
+    if (!picked || !square || !board) return;
+    if (boardPlays(board, picked, square) && playsPreview(layer, picked, square))
       setBoard({ animation: { enabled: false } });
   });
 
@@ -216,11 +214,15 @@ export default function Board({
       catchUp();
     });
     resizes.observe(target);
-    const stopWatching = watchPointer<Square>(
-      target,
+    const stopWatching = watchDrag<Square>(
       target.ownerDocument,
-      (x, y) => board.getKeyAtDomPos([x, y]) as Square | undefined,
-      { hover: handleHover, hold: handleHold },
+      () => {
+        const drag = board.state.draggable.current;
+        return drag?.started ? (drag.orig as Square) : undefined;
+      },
+      squareAt,
+      (from, to) => boardPlays(board, from, to),
+      handleDrag,
     );
     return () => {
       cancelAnimationFrame(frame.current);
@@ -262,6 +264,14 @@ export default function Board({
     </div>
   );
 }
+
+/**
+ * Whether `board` would play the piece on `from` dropped on `to`. Ask on
+ * pointerdown or pointerup: chessground clears its legal moves once it plays
+ * one, on the mouseup or touchend that follows.
+ */
+const boardPlays = (board: Api, from: Square, to: Square) =>
+  !!board.state.movable.dests?.get(from)?.includes(to);
 
 /** The arrows, circles and tints that draw `marks`. */
 const marksConfig = (marks: BoardMarks): Config => ({

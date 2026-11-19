@@ -159,7 +159,11 @@ describe('lessonView', () => {
 });
 
 describe('preview', () => {
-  const at = (square: string): Pointer => ({ at: 'square', square: square as never });
+  const drag = (from: string, to: string): Pointer => ({
+    at: 'drag',
+    from: from as never,
+    to: to as never,
+  });
   const previewing = (sans: string[], pointer: Pointer) => preview(SAMPLE, view(sans), pointer);
 
   it("previews a row's move, sliding it, with the move's notes and its position's", () => {
@@ -168,44 +172,45 @@ describe('preview', () => {
     expect(shown!.notes).toEqual(view(ADVANCE).notes);
   });
 
-  it('slides the move landing on a pointed destination', () => {
-    expect(previewing(MAIN, at('d5'))).toMatchObject({ candidate: { san: 'exd5' }, slide: true });
-  });
-
-  it("previews a pointed piece's most common move without sliding it", () => {
-    expect(previewing(MAIN, at('b1'))).toMatchObject({ candidate: { san: 'Nc3' }, slide: false });
-    expect(previewing(MAIN, at('e4'))).toMatchObject({ candidate: { san: 'e5' }, slide: false });
+  it("previews a dragged piece's move onto the square without sliding it, with its notes", () => {
+    const shown = previewing(MAIN, drag('e4', 'e5'));
+    expect(shown).toMatchObject({ candidate: { san: 'e5' }, slide: false });
+    expect(shown!.notes).toEqual(view(ADVANCE).notes);
+    expect(previewing(MAIN, drag('e4', 'd5'))).toMatchObject({ candidate: { san: 'exd5' } });
+    expect(previewing(MAIN, drag('b1', 'c3'))).toMatchObject({ candidate: { san: 'Nc3' } });
   });
 
   it('previews nothing elsewhere', () => {
-    expect(previewing(MAIN, at('h7'))).toBeUndefined();
+    expect(previewing(MAIN, drag('b1', 'a3'))).toBeUndefined();
+    expect(previewing(MAIN, drag('h7', 'h6'))).toBeUndefined();
     expect(previewing(MAIN, { at: 'row', uci: 'a2a3' })).toBeUndefined();
-    expect(previewing([...ADVANCE, 'a6'], at('e5'))).toBeUndefined();
   });
 
-  it('picks the most common of two moves landing on one square', () => {
+  it("previews the dragged piece's move where two land on one square", () => {
     const lesson = withMoves(SAMPLE, keyAfter(...MAIN), (moves) => [
       ...moves,
       { uci: 'c1d2', games: [100, 100, 100, 100, 100] },
     ]);
     const line = uciLine(...MAIN);
-    const d2 = (opponent: 1100 | 1500) =>
-      preview(lesson, lessonView({ lesson, line, ply: line.length, opponent }), at('d2'));
-    // Bd2 100 against Nd2 90 in the 1000 band, but 100 against 280 in the 1400 band.
-    expect(d2(1100)).toMatchObject({ candidate: { san: 'Bd2' }, slide: true });
-    expect(d2(1500)).toMatchObject({ candidate: { san: 'Nd2' }, slide: true });
+    const shown = lessonView({ lesson, line, ply: line.length, opponent: 1500 });
+    expect(preview(lesson, shown, drag('c1', 'd2'))).toMatchObject({ candidate: { san: 'Bd2' } });
+    expect(preview(lesson, shown, drag('b1', 'd2'))).toMatchObject({ candidate: { san: 'Nd2' } });
+  });
+
+  it("previews a castle with the king dropped on its square or on the rook's", () => {
+    const beforeCastling = [...ADVANCE, 'Bf5', 'Nf3', 'e6', 'Be2', 'c5'];
+    const castle = { candidate: { san: 'O-O' } };
+    expect(previewing(beforeCastling, drag('e1', 'g1'))).toMatchObject(castle);
+    expect(previewing(beforeCastling, drag('e1', 'h1'))).toMatchObject(castle);
+    expect(previewing(beforeCastling, drag('h1', 'f1'))).toBeUndefined();
   });
 
   describe('a rare move', () => {
     const rareView = view(MAIN, { lesson: WITH_RARE });
 
-    it('previews from its row and its squares', () => {
-      expect(preview(WITH_RARE, rareView, at('h3'))).toMatchObject({
+    it('previews when its piece is dragged there, and from its row', () => {
+      expect(preview(WITH_RARE, rareView, drag('h2', 'h3'))).toMatchObject({
         candidate: { san: 'h3', rare: true },
-        slide: true,
-      });
-      expect(preview(WITH_RARE, rareView, at('h2'))).toMatchObject({
-        candidate: { san: 'h3' },
         slide: false,
       });
       expect(preview(WITH_RARE, rareView, { at: 'row', uci: 'h2h3' })).toMatchObject({

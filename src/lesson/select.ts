@@ -70,7 +70,7 @@ export interface Candidate {
   /**
    * An opponent's move played under `RARE_SHARE` of the time, in a long list
    * (see `rareLast`): the list shows it only when asked, and the board's
-   * arrows never do.
+   * arrows only while its piece is dragged.
    */
   readonly rare?: boolean;
 }
