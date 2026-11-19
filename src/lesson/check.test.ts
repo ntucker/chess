@@ -303,7 +303,8 @@ describe('checkLesson', () => {
   });
 
   it('refuses book moves for the opponent and castling written as king takes rook', () => {
-    const castling = Chess.fromSetup(parseFen('r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1').unwrap()).unwrap();
+    const castlingFen = 'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1';
+    const castling = Chess.fromSetup(parseFen(castlingFen).unwrap()).unwrap();
     const problems = checkLesson(
       withPosition(positionKey(start), { variation: 'caro', moves: [{ uci: 'e2e4', book: true }] }),
     );
@@ -312,8 +313,17 @@ describe('checkLesson', () => {
       message: "only black's moves are book moves",
     });
     expect(
-      checkLesson({ ...lesson, start: makeFenFull(castling), positions: { [positionKey(castling)]: { variation: 'caro', moves: [{ uci: 'e1h1' }] } } }),
+      checkLesson({ ...lesson, start: castlingFen, positions: { [positionKey(castling)]: { variation: 'caro', moves: [{ uci: 'e1h1' }] } } }),
     ).toContainEqual(expect.objectContaining({ message: "write castling e1h1 as the king's two-square move (e1g1)" }));
+  });
+
+  it('refuses castling in a plan after an earlier route moved the rook', () => {
+    const idea: Idea = {
+      type: 'plan',
+      side: 'white',
+      routes: [{ from: 'h1', to: 'h3' }, { from: 'e1', to: 'g1' }],
+    };
+    expect(checkIdea(idea, fen('r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1'))).toMatch(/cannot reach g1/);
   });
 
   it('refuses positions that only reach each other', () => {
@@ -353,7 +363,3 @@ describe('checkLesson', () => {
     ]);
   });
 });
-
-function makeFenFull(pos: Chess): string {
-  return `${positionKey(pos)} 0 1`;
-}

@@ -41,10 +41,9 @@ export function material(fen: string): Readonly<Record<Color, Material>> {
   const { board } = parseFen(fen).unwrap();
   const up: Record<Color, MaterialRole[]> = { white: [], black: [] };
   /** White's lead in points; negative when Black leads. */
-  let score = 0;
+  const score = points(board, 'white') - points(board, 'black');
   for (const role of ROLES) {
     const diff = board.pieces('white', role).size() - board.pieces('black', role).size();
-    score += diff * VALUES[role];
     for (let i = 0; i < Math.abs(diff); i++) up[diff > 0 ? 'white' : 'black'].push(role);
   }
   return {

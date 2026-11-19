@@ -23,6 +23,21 @@ export const filePawnCount = (board: Board, color: Color, file: number) =>
 export const stopSquare = (color: Color, square: Square) =>
   squareFromCoords(squareFile(square), squareRank(square) + (color === 'white' ? 1 : -1));
 
+/**
+ * The squares a `color` pawn on `square` can move to on `board`: forward to
+ * empty squares (two from its starting rank) and diagonally onto enemy pieces.
+ */
+export function pawnSteps(board: Board, color: Color, square: Square): Square[] {
+  const steps: Square[] = [];
+  const one = stopSquare(color, square);
+  if (one !== undefined && !board.has(one)) {
+    steps.push(one);
+    const two = stopSquare(color, one);
+    if (relativeRank(color, square) === 1 && two !== undefined && !board.has(two)) steps.push(two);
+  }
+  return steps.concat([...pawnAttacks(color, square).intersect(board[opposite(color)])]);
+}
+
 /** `color`'s pawns on the files next to `square`'s. */
 const adjacentFilePawns = (board: Board, color: Color, square: Square) =>
   [...pawns(board, color)].filter((pawn) => Math.abs(squareFile(pawn) - squareFile(square)) === 1);

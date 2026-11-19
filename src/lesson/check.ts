@@ -8,13 +8,12 @@
 import { attacks, between, pawnAttacks, ray } from 'chessops/attacks';
 import type { Board } from 'chessops/board';
 import { Chess } from 'chessops/chess';
-import { parseFen } from 'chessops/fen';
 import { SquareSet } from 'chessops/squareSet';
 import { COLORS, type Color, FILE_NAMES, type NormalMove, type Piece, type Square } from 'chessops/types';
 import { kingCastlesTo, makeSquare, opposite, parseSquare, parseUci, rookCastlesTo } from 'chessops/util';
 
 import { points, VALUES } from '@/game/material';
-import { positionKey, recordedMove } from '@/game/replay';
+import { parsePosition, parsePositionKey, positionKey, recordedMove } from '@/game/replay';
 
 import {
   EVALUATIONS,
@@ -45,7 +44,7 @@ import {
   isPassed,
   isPawnChain,
   isWeakSquare,
-  relativeRank,
+  pawnSteps,
   space,
   stopSquare,
 } from './pawns';
@@ -118,8 +117,8 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
  */
 function checkPosition(lesson: Lesson, key: string, entry: LessonPosition, report: Report): string[] | undefined {
   const at = `positions[${JSON.stringify(key)}]`;
-  const pos = parsePosition(`${key} 0 1`);
-  if (!pos || positionKey(pos) !== key) {
+  const pos = parsePositionKey(key);
+  if (!pos) {
     report(at, 'key is not a position key (FEN without move counters, see positionKey)');
     return undefined;
   }
@@ -229,19 +228,12 @@ function fail(message: string): never {
   throw new Rejection(message);
 }
 
-function parsePosition(fen: string): Chess | undefined {
-  const setup = parseFen(fen);
-  if (setup.isErr) return undefined;
-  const pos = Chess.fromSetup(setup.value);
-  return pos.isOk ? pos.value : undefined;
-}
-
 function square(name: string): Square {
   return parseSquare(name) ?? fail(`${name} is not a square`);
 }
 
-function oneOf<T extends string>(values: readonly T[], value: string, what: string): void {
-  if (!(values as readonly string[]).includes(value)) fail(`${what} ${value} is not one of ${values.join(', ')}`);
+function oneOf(values: readonly string[], value: string, what: string): void {
+  if (!values.includes(value)) fail(`${what} ${value} is not one of ${values.join(', ')}`);
 }
 
 /** `uci` as a legal move in `pos`, written as lesson files write it. */
@@ -387,19 +379,10 @@ function checkPressure(pos: Chess, idea: Pressure) {
   sameSet(idea.defenders, bearing(pos, opposite(idea.side), target), 'the defenders');
 }
 
-/** The squares a piece of `color` on `from` can step to in one move of its own. */
+/** The squares the `piece` on `from` can move to in one move of its own. */
 function steps(board: Board, from: Square, piece: Piece): Square[] {
-  if (piece.role !== 'pawn') {
-    return [...attacks(piece, from, board.occupied).diff(board[piece.color])];
-  }
-  const out: Square[] = [];
-  const one = stopSquare(piece.color, from);
-  if (one !== undefined && !board.has(one)) {
-    out.push(one);
-    const two = stopSquare(piece.color, one);
-    if (relativeRank(piece.color, from) === 1 && two !== undefined && !board.has(two)) out.push(two);
-  }
-  return out.concat([...pawnAttacks(piece.color, from).intersect(board[opposite(piece.color)])]);
+  if (piece.role === 'pawn') return pawnSteps(board, piece.color, from);
+  return [...attacks(piece, from, board.occupied).diff(board[piece.color])];
 }
 
 /** The piece on `from` reaches `to` in at most `moves` moves, capturing only on `to`. */
@@ -427,13 +410,15 @@ function reaches(board: Board, from: Square, to: Square, moves: number): boolean
 
 /**
  * The rook's move when the king route `from`-`to` is castling `color` may
- * still play on `board`, or undefined.
+ * still play on `board`, where earlier routes left the squares in `moved`; or
+ * undefined.
  */
-function castlingRook(pos: Chess, board: Board, color: Color, from: Square, to: Square) {
+function castlingRook(pos: Chess, board: Board, moved: SquareSet, color: Color, from: Square, to: Square) {
   const side = to > from ? 'h' : 'a';
   const rook = pos.castles.rook[color][side];
-  if (board.kingOf(color) !== from || kingCastlesTo(color, side) !== to || rook === undefined) return undefined;
-  if (between(from, rook).intersects(board.occupied)) return undefined;
+  if (rook === undefined || moved.has(from) || moved.has(rook)) return undefined;
+  if (board.kingOf(color) !== from || kingCastlesTo(color, side) !== to) return undefined;
+  if (pos.castles.path[color][side].intersects(board.occupied)) return undefined;
   return { from: rook, to: rookCastlesTo(color, side) };
 }
 
@@ -443,6 +428,7 @@ function checkPlan(pos: Chess, idea: Plan) {
   const board = pos.board.clone();
   // Where each route's piece stands now: a piece that moves again leaves its earlier end.
   const ends = new Set<Square>();
+  let moved = SquareSet.empty();
   idea.routes.forEach((route, i) => {
     const what = `route ${i + 1}`;
     const piece = pieceAt(board, route.from, `${what} from`);
@@ -452,12 +438,13 @@ function checkPlan(pos: Chess, idea: Plan) {
     const from = square(route.from);
     const to = square(route.to);
     if (board.get(to)?.color === idea.side) fail(`${what}: ${route.to} holds ${idea.side}'s own piece`);
-    const rook = piece.role === 'king' ? castlingRook(pos, board, idea.side, from, to) : undefined;
+    const rook = piece.role === 'king' ? castlingRook(pos, board, moved, idea.side, from, to) : undefined;
     if (rook) board.set(rook.to, board.take(rook.from)!);
     else if (!reaches(board, from, to, moves)) {
       fail(`${what}: the ${piece.role} on ${route.from} cannot reach ${route.to} in ${moves} move(s)`);
     }
     board.set(to, board.take(from)!);
+    moved = moved.with(from);
     ends.delete(from);
     ends.add(to);
   });
@@ -547,22 +534,14 @@ function checkFeature(pos: Chess, color: Color, feature: StructureFeature) {
       }
       return;
     case 'doubledPawns':
-      for (const name of nonEmpty(feature.files)) {
-        if (count(color, name) < 2) fail(`${color} has no doubled pawns on the ${name}-file`);
-      }
-      return;
     case 'openFile':
+    case 'halfOpenFile': {
+      const [holds, says] = FILE_FEATURES[feature.kind];
       for (const name of nonEmpty(feature.files)) {
-        const open = count(color, name) === 0 && count(opposite(color), name) === 0;
-        if (!open) fail(`the ${name}-file is not open`);
+        if (!holds(count(color, name), count(opposite(color), name))) fail(says(name, color));
       }
       return;
-    case 'halfOpenFile':
-      for (const name of nonEmpty(feature.files)) {
-        const halfOpen = count(color, name) === 0 && count(opposite(color), name) > 0;
-        if (!halfOpen) fail(`the ${name}-file is not half-open for ${color}`);
-      }
-      return;
+    }
     case 'pawnMajority': {
       const total = (c: Color) => nonEmpty(feature.files).reduce((n, name) => n + count(c, name), 0);
       if (total(color) <= total(opposite(color))) fail(`${color} has no pawn majority on ${feature.files.join('')}`);
@@ -572,13 +551,12 @@ function checkFeature(pos: Chess, color: Color, feature: StructureFeature) {
       const mover = withTurn(pos, color);
       const move = legalMove(mover, feature.move);
       if (mover.board.getRole(move.from) !== 'pawn') fail(`${feature.move} is not a pawn move`);
-      const enemyPawns = mover.board.pieces(opposite(color), 'pawn');
-      // Pawns attack each other mutually, so one test covers both directions.
+      // Contact: the break takes a pawn (en passant too), or stands attacking one (pawns attack mutually).
+      const enemyPawns = (p: Chess) => p.board.pieces(opposite(color), 'pawn');
+      const after = played(mover, [feature.move]);
       const contact =
-        enemyPawns.has(move.to) ||
-        // En passant lands on an empty square beside the pawn it takes.
-        move.to === mover.epSquare ||
-        pawnAttacks(color, move.to).intersects(enemyPawns);
+        enemyPawns(after).size() < enemyPawns(mover).size() ||
+        pawnAttacks(color, move.to).intersects(enemyPawns(after));
       if (!contact) fail(`${feature.move} makes no contact with an enemy pawn`);
       return;
     }
@@ -586,6 +564,16 @@ function checkFeature(pos: Chess, color: Color, feature: StructureFeature) {
       fail(`unknown feature ${(feature as { kind: string }).kind}`);
   }
 }
+
+/** For each file feature: whether it holds given each side's pawns on the file, and why not. */
+const FILE_FEATURES: Record<
+  'doubledPawns' | 'openFile' | 'halfOpenFile',
+  readonly [(own: number, other: number) => boolean, (file: string, color: Color) => string]
+> = {
+  doubledPawns: [(own) => own >= 2, (file, color) => `${color} has no doubled pawns on the ${file}-file`],
+  openFile: [(own, other) => own === 0 && other === 0, (file) => `the ${file}-file is not open`],
+  halfOpenFile: [(own, other) => own === 0 && other > 0, (file, color) => `the ${file}-file is not half-open for ${color}`],
+};
 
 function checkImbalance(pos: Chess, idea: Imbalance) {
   oneOf(COLORS, idea.side, 'side');

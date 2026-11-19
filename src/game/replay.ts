@@ -52,6 +52,20 @@ export function positionKey(pos: Chess): string {
   return makeFen(pos.toSetup(), { epd: true });
 }
 
+/** The position `fen` describes, or undefined if it is not a legal position. */
+export function parsePosition(fen: string): Chess | undefined {
+  const setup = parseFen(fen);
+  if (setup.isErr) return undefined;
+  const pos = Chess.fromSetup(setup.value);
+  return pos.isOk ? pos.value : undefined;
+}
+
+/** The position `key` (see `positionKey`) stands for, or undefined if it is not a position key. */
+export function parsePositionKey(key: string): Chess | undefined {
+  const pos = parsePosition(`${key} 0 1`);
+  return pos && positionKey(pos) === key ? pos : undefined;
+}
+
 /** A position reached while playing a line (see `playLine`). */
 export interface Step {
   /** The position. Every step shares one object, so read it before the next. */
