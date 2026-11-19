@@ -33,9 +33,7 @@ const play = (...ucis: string[]) =>
 afterEach(() => {
   act(() => root?.unmount());
   root = undefined;
-  mockRouter.push.mockClear();
-  mockRouter.replace.mockClear();
-  mockRouter.dismissTo.mockClear();
+  jest.clearAllMocks();
 });
 
 describe('useOpeningsGame', () => {

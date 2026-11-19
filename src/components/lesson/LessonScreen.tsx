@@ -1,7 +1,6 @@
 import { AsyncBoundary, useController, useSuspense } from '@data-client/react';
 import { Separator, Spinner, Stack } from '@reactive/silk-native';
-import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
@@ -10,6 +9,7 @@ import { FootnoteLink } from '@/components/FootnoteLink';
 import { StatusHeadline } from '@/components/GameStatus';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { Scoresheet } from '@/components/Scoresheet';
+import { resetListener } from '@/components/resetListener';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { useLongWait } from '@/components/useLongWait';
 import type { MoveQuality } from '@/analysis/quality';
@@ -67,7 +67,9 @@ function Openings({ address }: { readonly address?: LessonId }) {
   return (
     <AsyncBoundary
       fallback={<LessonPlaceholder />}
-      errorComponent={LessonFailure}
+      errorComponent={({ error }) => <LessonPlaceholder message={error.message} />}
+      // The boundary stays across addresses, so another one (Back to the start) tries again.
+      listen={useMemo(() => resetListener(address), [address])}
     >
       <LessonScreen id={picked} store={store} />
     </AsyncBoundary>
@@ -76,7 +78,6 @@ function Openings({ address }: { readonly address?: LessonId }) {
 
 /** The start position before an opening is picked. */
 const OPENINGS = openingsLesson(LESSON_INDEX);
-
 
 /**
  * The lesson `id` played on the board, in Explore or Practice, or before
@@ -153,7 +154,8 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
     pointRow(uci);
   };
   const onDrag: typeof board.onDrag = (drag) => {
-    if (picking && drag) lessonsFrom(LESSON_INDEX, drag.from).forEach(load);
+    // Once, as the piece is picked up: it is over no other square yet.
+    if (picking && drag && !drag.to) lessonsFrom(LESSON_INDEX, drag.from).forEach(load);
     board.onDrag?.(drag);
   };
 
@@ -381,25 +383,6 @@ const YOUR_MOVE = {
     restart: 'Playing here starts a new run from your first move.',
   },
 } as const;
-
-/**
- * A lesson that failed to load. The boundary stays mounted across addresses,
- * so going to another address (Back to the start) tries again.
- */
-function LessonFailure({
-  error,
-  resetErrorBoundary,
-}: {
-  readonly error: Error;
-  readonly resetErrorBoundary: () => void;
-}) {
-  const { id } = useLocalSearchParams<{ id?: string }>();
-  const [failedAt] = useState(id);
-  useEffect(() => {
-    if (id !== failedAt) resetErrorBoundary();
-  }, [id, failedAt, resetErrorBoundary]);
-  return <LessonPlaceholder message={error.message} />;
-}
 
 /** The headline while a lesson loads. */
 const LOADING = { title: 'Setting the stage…', detail: 'Loading the lesson.' } as const;

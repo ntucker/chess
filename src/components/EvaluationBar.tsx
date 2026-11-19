@@ -4,6 +4,7 @@ import { useDeferredValue, useMemo } from 'react';
 import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 import Animated, { type CSSTransitionTimingFunction, cubicBezier } from 'react-native-reanimated';
 
+import { resetListener } from '@/components/resetListener';
 import { type Color, colorName, type GameResult, lastPosition, opposite } from '@/game/replay';
 import { type Evaluation, type EvaluationEngine, resultEvaluation } from '@/evaluation/evaluation';
 import { getEvaluation } from '@/resources/evaluation';
@@ -32,9 +33,7 @@ export function EvaluationBar({ line, orientation, style }: Props) {
   const engine = useSettings().evaluationEngine;
   const position = line.join(' ');
   // A failed evaluation leaves the bar empty only until the board shows
-  // another position or the setting picks another engine. AsyncBoundary
-  // attaches its `listen` again whenever the function changes, so a new
-  // listener for each that resets at once clears the last one's error.
+  // another position or the setting picks another engine.
   const resetOnChange = useMemo(() => resetListener(engine, position), [engine, position]);
   const empty = <Bar orientation={orientation} style={style} />;
   return (
@@ -43,16 +42,6 @@ export function EvaluationBar({ line, orientation, style }: Props) {
     </AsyncBoundary>
   );
 }
-
-/**
- * A boundary listener that resets the boundary as soon as it's attached. It
- * ignores its arguments: taking them only makes each engine and position's
- * listener a distinct function.
- */
-const resetListener = (_engine: EvaluationEngine, _position: string) => (reset: () => void) => {
-  reset();
-  return () => {};
-};
 
 function EvaluatedBar({
   engine,
