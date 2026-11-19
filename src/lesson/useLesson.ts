@@ -75,30 +75,28 @@ export function useLesson(lesson: Lesson, store: GameStore) {
     settings.auto && store[0].ply > 0
       ? lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent))
       : undefined;
+  const [{ mode: modeState, peek, rareKey }, dispatch] = useReducer(screenReducer, initialScreen);
+  const { mode } = modeState;
+  const learnerPicks = picksReply(mode, settings.auto, store[0].ply === store[0].moves.length);
   const game = useGame(store, rival, {
     side: lesson.side,
     active: focused,
     judge: 'stockfish',
     book: (line) => bookMoves(lesson, line),
+    picksReply: learnerPicks,
   });
-  const { moves, ply, plies, current } = game;
+  const { moves, ply, plies, current, canMove } = game;
   // A move played before the learner's first starts a Practice run.
   const startsRun = beforeSideMoves(plies, lesson.side, ply);
   const view = useMemo(
     () => lessonView({ lesson, line: moves, ply, opponent }),
     [lesson, moves, ply, opponent],
   );
+  const { key } = view;
   // A row that leaves the list (played, or stepped away from) never reports
   // a hover-out or blur, so a peek ends when the board moves on; otherwise
   // stepping back would preview that row again. Shown rare rows end too, so
   // each position's list starts with them hidden.
-  const [{ mode: modeState, peek, rareKey }, dispatch] = useReducer(screenReducer, initialScreen);
-  const { mode } = modeState;
-  // Picking the opponent's move from an earlier position drops the moves
-  // after it, as any move there does; auto play then answers the learner's next.
-  const picks = picksReply(mode, !!rival, game.atLatest);
-  const canMove = picks ? !current.result : game.canMove;
-  const { key } = view;
   const stale = (at?: PositionKey) => at !== undefined && at !== key;
   if (stale(peek?.key) || stale(rareKey)) dispatch({ type: 'board', key });
   const rareShown = rareKey === key;
@@ -200,7 +198,7 @@ export function useLesson(lesson: Lesson, store: GameStore) {
     /** Whether the learner may play the side to move's candidates now. */
     canPlay: canMove,
     /** On the opponent's turn the learner picks its move (`picksReply`). */
-    picksReply: picks,
+    picksReply: learnerPicks,
     play,
     /** Explore, or Practice with whether the run is clean. */
     modeState,
