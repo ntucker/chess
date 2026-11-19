@@ -1,7 +1,7 @@
 import { castlingSide, Chess } from 'chessops/chess';
 import { chessgroundDests, chessgroundMove } from 'chessops/compat';
 import { makeFen, parseFen } from 'chessops/fen';
-import { makeSanAndPlay } from 'chessops/san';
+import { makeSanAndPlay, parseSan } from 'chessops/san';
 import type { Color, Piece, SquareName } from 'chessops/types';
 import { kingCastlesTo, makeUci, opposite, parseSquare, parseUci } from 'chessops/util';
 
@@ -160,6 +160,12 @@ export function lastPosition(line: readonly string[]): Position {
  */
 export function lineMove(fen: string, uci: string): string | undefined {
   return recordedMove(Chess.fromSetup(parseFen(fen).unwrap()).unwrap(), uci);
+}
+
+/** `san` in `pos` as UCI, castling as the game records it (`recordedMove`), if legal. */
+export function sanToUci(pos: Chess, san: string): string | undefined {
+  const move = parseSan(pos, san);
+  return move && recordedMove(pos, makeUci(move));
 }
 
 /** `lineMove` for a position already parsed. */

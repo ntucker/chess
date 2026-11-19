@@ -6,9 +6,10 @@
 import type { Chess } from 'chessops/chess';
 import type { Color } from 'chessops/types';
 
+import { sanToUci } from '@/game/replay';
 import type { Idea, Uci } from '@/lesson/lesson';
 
-import { mainLine, played, sanToUci, type StudyMove } from './study';
+import { mainLine, played, type StudyMove } from './study';
 import type { NamedMove } from './text';
 
 /**

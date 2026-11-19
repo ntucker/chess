@@ -165,7 +165,8 @@ function positionVariations(
   chapters.forEach((chapter, i) => {
     for (const move of mainLine(chapter.moves[0])) add(mainLines, positionKey(move.before), chapterVariation[i]);
   });
-  const named = new Map([...mainLines].map(([key, ids]) => [key, narrowest(variations, ids, root)]));
+  const path = (id: VariationId) => ancestry(variations, id);
+  const named = new Map([...mainLines].map(([key, ids]) => [key, narrowest([...ids].map(path))]));
 
   const group = (chapter: VariationId) => (variations[chapter].parent === root ? chapter : variations[chapter].parent!);
   const sideLines = new Map<PositionKey, Set<VariationId>>();
@@ -182,8 +183,9 @@ function positionVariations(
     }
   });
   for (const [key, ids] of sideLines) {
-    const deepest = Math.max(...[...ids].map((id) => depth(variations, id)));
-    named.set(key, narrowest(variations, new Set([...ids].filter((id) => depth(variations, id) === deepest)), root));
+    const paths = [...ids].map(path);
+    const deepest = Math.max(...paths.map(({ length }) => length));
+    named.set(key, narrowest(paths.filter(({ length }) => length === deepest)));
   }
   return named;
 }
@@ -262,29 +264,17 @@ const slug = (name: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
-/** How many parents `id` has. */
-function depth(variations: Readonly<Record<VariationId, Variation>>, id: VariationId) {
-  let count = 0;
-  for (let at = variations[id].parent; at; at = variations[at].parent) count++;
-  return count;
+/** The variations from the opening down to `id`. */
+function ancestry(variations: Readonly<Record<VariationId, Variation>>, id: VariationId): VariationId[] {
+  const path: VariationId[] = [];
+  for (let at: VariationId | undefined = id; at; at = variations[at].parent) path.unshift(at);
+  return path;
 }
 
-/** The narrowest variation that holds all of `ids`. */
-function narrowest(
-  variations: Readonly<Record<VariationId, Variation>>,
-  ids: ReadonlySet<VariationId>,
-  root: VariationId,
-) {
-  const chain = (id: VariationId) => {
-    const path: VariationId[] = [];
-    for (let at: VariationId | undefined = id; at; at = variations[at].parent) path.unshift(at);
-    return path;
-  };
-  const paths = [...ids].map(chain);
-  if (paths.length === 0) return root;
-  let common = root;
-  for (let level = 0; paths.every((path) => path[level] !== undefined && path[level] === paths[0][level]); level++) {
-    common = paths[0][level];
-  }
-  return common;
+/** The narrowest variation on every one of `paths` (each from `ancestry`, so all start at the opening). */
+function narrowest(paths: readonly (readonly VariationId[])[]): VariationId {
+  const [first] = paths;
+  let level = 0;
+  while (level + 1 < first.length && paths.every((path) => path[level + 1] === first[level + 1])) level++;
+  return first[level];
 }

@@ -5,11 +5,12 @@
  */
 import type { SquareName } from 'chessops/types';
 
+import { sanToUci } from '@/game/replay';
 import { withTurn } from '@/lesson/check';
 import type { Route } from '@/lesson/lesson';
 
 import { findOnLine, playedBy, type Found, type Spot } from './line';
-import { played, sanToUci, type StudyMove } from './study';
+import { played, type StudyMove } from './study';
 import { namedMoves, plainSan, SAN, sentenceEnds } from './text';
 
 const LISTED = new RegExp(String.raw`(?<![\w.\d])\.\.\.(${SAN})(?![\w-])`, 'g');
@@ -34,13 +35,19 @@ export function planLists(move: StudyMove, text: string, header = false): Found[
   });
 }
 
+interface MoveList {
+  readonly index: number;
+  readonly end: number;
+  readonly sans: readonly string[];
+}
+
 /** Runs of two or more `...` moves in `text`, with where each starts and ends. */
-function moveLists(text: string): { index: number; end: number; sans: string[] }[] {
-  const lists: { index: number; end: number; sans: string[] }[] = [];
+function moveLists(text: string): MoveList[] {
+  const lists: MoveList[] = [];
   let current: RegExpMatchArray[] = [];
   const close = () => {
     if (current.length >= 2) {
-      const last = current[current.length - 1];
+      const last = current.at(-1)!;
       lists.push({
         index: current[0].index!,
         end: last.index! + last[0].length,
@@ -69,12 +76,9 @@ function sentenceStart(text: string, index: number): number {
 /** Where a plan applies, from the text of its sentence before the list. */
 function planSpot(move: StudyMove, before: string, header: boolean): Spot | undefined {
   const anchor = header ? before : before.match(/After\s+(.+)$/)?.[1];
-  const named =
-    anchor === undefined
-      ? undefined
-      : namedMoves(anchor)
-          .filter((m) => m.ply)
-          .at(-1);
+  const named = namedMoves(anchor ?? '')
+    .filter((m) => m.ply)
+    .at(-1);
   if (!named) return header ? { pos: move.before } : { move, pos: move.after };
   const found = findOnLine(move, named);
   return found && { move: found, pos: found.after };

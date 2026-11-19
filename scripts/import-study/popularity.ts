@@ -105,16 +105,17 @@ export async function addPopularity(
   date: string,
   onProgress?: (asked: number) => void,
 ): Promise<Lesson> {
-  const order = byDistance(lesson);
+  const start = positionKey(parsePosition(lesson.start)!);
+  const order = byDistance(lesson, start);
   const counts = new Map<PositionKey, readonly number[][]>();
   let asked = 0;
   const crawl = async (wanted: (key: PositionKey) => boolean) => {
     /** Per band, whether some game can reach each position, as far as the counts so far tell. */
-    const reached = new Map([[order[0], ALL_BANDS]]);
-    for (const key of order) {
-      const pos = parsePositionKey(key)!;
+    const reached = new Map([[start, ALL_BANDS]]);
+    for (const [key, next] of order) {
       const moves = lesson.positions[key].moves;
-      const here = reached.get(key) ?? ALL_BANDS;
+      // Breadth first, so a move into each position has been seen.
+      const here = reached.get(key)!;
       if (wanted(key) && !counts.has(key)) {
         const answers: (MoveCounts | undefined)[] = [];
         for (const [i, band] of RATING_BANDS.entries()) answers.push(here[i] ? await explorer(key, band) : undefined);
@@ -125,12 +126,11 @@ export async function addPopularity(
         onProgress?.(++asked);
       }
       const games = counts.get(key);
-      moves.forEach((move, m) => {
-        const next = positionKey(played(pos, move.uci));
+      next.forEach((after, m) => {
         // Unmeasured moves (no counts) are assumed played.
-        const recorded = reached.get(next) ?? NO_BANDS;
+        const recorded = reached.get(after) ?? NO_BANDS;
         reached.set(
-          next,
+          after,
           recorded.map((was, i) => was || (here[i] && games?.[m][i] !== 0)),
         );
       });
@@ -154,19 +154,16 @@ export async function addPopularity(
   };
 }
 
-/** The guide's positions, nearest the start first. */
-function byDistance(lesson: Lesson): PositionKey[] {
-  const start = positionKey(parsePosition(lesson.start)!);
-  const order = [start];
-  const seen = new Set(order);
-  for (let i = 0; i < order.length; i++) {
-    const pos = parsePositionKey(order[i])!;
-    for (const move of lesson.positions[order[i]].moves) {
-      const next = positionKey(played(pos, move.uci));
-      if (next in lesson.positions && !seen.has(next)) {
-        seen.add(next);
-        order.push(next);
-      }
+/** The guide's positions, nearest `start` first, each with the positions its moves lead to. */
+function byDistance(lesson: Lesson, start: PositionKey): Map<PositionKey, PositionKey[]> {
+  const order = new Map<PositionKey, PositionKey[]>([[start, []]]);
+  // A Map's iteration visits the entries added during it, in order.
+  for (const [key, next] of order) {
+    const pos = parsePositionKey(key)!;
+    for (const move of lesson.positions[key].moves) {
+      const after = positionKey(played(pos, move.uci));
+      next.push(after);
+      if (after in lesson.positions && !order.has(after)) order.set(after, []);
     }
   }
   return order;

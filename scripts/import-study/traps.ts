@@ -7,7 +7,7 @@ import type { Trap } from '@/lesson/lesson';
 
 import { nearestMatch, placeSequence, type Found } from './line';
 import { chapterMoves, mainLine, type Chapter, type StudyMove } from './study';
-import { namedMoves, plainSan, SAN } from './text';
+import { namedMoves, plainSan, plyOf, SAN } from './text';
 
 const TRAP = /Trap:\s*(.+?)\s+and\s+(White|Black)\s+(?:is|gets)\s+([^.]+)\./g;
 
@@ -45,7 +45,7 @@ const TRAP_PLIES = 10;
 export function watchOuts(chapter: Chapter, watchOut: string): Found[] {
   return [...watchOut.matchAll(WATCH_OUT)].flatMap(([span, black, san, number]) => {
     const side = black ? 'black' : 'white';
-    const named = { san: plainSan(san), side, ply: 2 * Number(number) - (black ? 0 : 1) } as const;
+    const named = { san: plainSan(san), side, ply: plyOf(Number(number), !!black) } as const;
     const bait = nearestMatch(chapterMoves(chapter), named, named.ply);
     if (!bait) return [];
     const moves = [...mainLine(bait)].slice(0, TRAP_PLIES).map((move) => move.uci);

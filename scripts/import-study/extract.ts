@@ -20,16 +20,34 @@ import { chapterMoves, type Chapter, type StudyMove } from './study';
 import { direction, namedMoves, shorten, textVerdicts } from './text';
 import { trapLines, watchOuts } from './traps';
 
+interface MoveNote {
+  readonly move: StudyMove;
+  readonly note: Note;
+}
+interface PositionNote {
+  readonly pos: Chess;
+  readonly note: Note;
+}
+interface Branch {
+  readonly spot: Spot;
+  readonly ucis: readonly Uci[];
+}
+interface Rejected {
+  readonly idea: Idea;
+  readonly why: string;
+  readonly comment: string;
+}
+
 export interface ChapterNotes {
   /** Notes on a move, said once it is played. */
-  readonly moveNotes: readonly { readonly move: StudyMove; readonly note: Note }[];
+  readonly moveNotes: readonly MoveNote[];
   /** Notes on a position, said while it is on the board. */
-  readonly positionNotes: readonly { readonly pos: Chess; readonly note: Note }[];
+  readonly positionNotes: readonly PositionNote[];
   /** Move sequences from comment text, to add to the guide. */
-  readonly branches: readonly { readonly spot: Spot; readonly ucis: readonly Uci[] }[];
+  readonly branches: readonly Branch[];
   readonly choices: readonly Choice[];
   /** Ideas the checker refused, with why: the study's errors, or ours. */
-  readonly rejected: readonly { readonly idea: Idea; readonly why: string; readonly comment: string }[];
+  readonly rejected: readonly Rejected[];
   /** Evaluation glyphs dropped because the comment's text says otherwise. */
   readonly contradicted: number;
 }
@@ -60,17 +78,16 @@ const EVALUATION_TEXT: Readonly<Record<Evaluation, string>> = {
 const SEQUENCE = /\d+\s?\.(?:\.\.)?\s?[^\s,;()]+(?:\s+(?:\d+\s?\.(?:\.\.)?\s?)?[KQRBNOa-h][^\s,;()]*)+/g;
 
 export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
-  const moveNotes: { move: StudyMove; note: Note }[] = [];
-  const positionNotes: { pos: Chess; note: Note }[] = [];
-  const branches: { spot: Spot; ucis: readonly Uci[] }[] = [];
+  const moveNotes: MoveNote[] = [];
+  const positionNotes: PositionNote[] = [];
+  const branches: Branch[] = [];
   const choices: Choice[] = [];
-  const rejected: { idea: Idea; why: string; comment: string }[] = [];
+  const rejected: Rejected[] = [];
   let contradicted = 0;
 
   for (const move of chapterMoves(chapter)) {
     const { comment } = move;
-    const isHeader = move.ply === 1 && commentPart(comment, 'Idea') !== undefined;
-    const header = isHeader ? readHeader(chapter, comment) : undefined;
+    const header = move.ply === 1 ? readHeader(chapter, comment) : undefined;
     // A header is about the whole chapter: it goes where the chapter's main line ends, not on move 1.
     const target = header?.mainLineEnd ?? move;
     const traps = trapLines(move);
@@ -84,16 +101,25 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
     branches.push(...traps.map(({ spot, idea }) => ({ spot, ucis: idea.moves })), ...sequences(move));
     choices.push(...choiceGuide(move, learner));
 
-    const own: Idea[] = [];
-    for (const { spot, idea, label } of found) {
+    const own: Found[] = [];
+    for (const item of found) {
+      const { spot, idea, label } = item;
       const why = checkIdea(idea, { after: spot.pos });
       if (why) rejected.push({ idea, why, comment });
-      else if (spot.move === target) own.push(idea);
+      else if (spot.move === target) own.push(item);
       // An idea about another position (often the one before the commented move) is said there.
       else positionNotes.push({ pos: spot.pos, note: note(label, [idea]) });
     }
-    const text = comment || (own[0]?.type === 'evaluation' ? EVALUATION_TEXT[own[0].value] : '');
-    if (text) moveNotes.push({ move: target, note: note(text, own) });
+    // Without a comment, only an evaluation glyph can give a move a note: its label says it.
+    const text = comment || own[0]?.label;
+    if (text)
+      moveNotes.push({
+        move: target,
+        note: note(
+          text,
+          own.map(({ idea }) => idea),
+        ),
+      });
   }
   return { moveNotes, positionNotes, branches, choices, rejected, contradicted };
 }
@@ -112,12 +138,13 @@ function sequences(move: StudyMove) {
   });
 }
 
-/** `text` shortened to a note's sentence, without a "Plan:" or "Trap:" label: the note's ideas show its kind. */
-const noteText = (text: string) => shorten(text).replace(/^(?:Plan|Trap):\s*/, '');
-
-/** A note on `source` (a comment, or an idea's label), keeping the study's wording in `original` when the text differs. */
+/**
+ * A note on `source` (a comment, or an idea's label): its first sentence
+ * without a "Plan:" or "Trap:" label, since the note's ideas show its kind,
+ * and the full wording in `original` when that differs.
+ */
 function note(source: string, ideas: readonly Idea[]): Note {
-  const text = noteText(source);
+  const text = shorten(source).replace(/^(?:Plan|Trap):\s*/, '');
   return { text, ...(text !== source && { original: source }), ...(ideas.length > 0 && { ideas }) };
 }
 
@@ -131,7 +158,10 @@ interface Header {
 /** The rest of `comment`'s line that starts with `name:`, if it has one. */
 const commentPart = (comment: string, name: string) => comment.match(new RegExp(`^${name}:[ \\t]*(.*)$`, 'm'))?.[1];
 
-function readHeader(chapter: Chapter, comment: string): Header {
+/** The chapter header in `comment`, the first move's, if it has an "Idea:" line. */
+function readHeader(chapter: Chapter, comment: string): Header | undefined {
+  const idea = commentPart(comment, 'Idea');
+  if (idea === undefined) return undefined;
   const part = (name: string) => commentPart(comment, name) ?? '';
   let mainLineEnd: StudyMove | undefined;
   let next = chapter.moves;
@@ -141,7 +171,7 @@ function readHeader(chapter: Chapter, comment: string): Header {
     mainLineEnd = found;
     next = found.children;
   }
-  return { idea: part('Idea'), watchOut: part('Watch out'), mainLineEnd };
+  return { idea, watchOut: part('Watch out'), mainLineEnd };
 }
 
 /**

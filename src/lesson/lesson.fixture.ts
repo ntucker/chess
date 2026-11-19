@@ -1,12 +1,11 @@
 // For tests only: shipped lessons read from disk (Jest can't run getLesson's
 // import()), the sample lesson, and lines written in SAN for readability.
 import { Chess } from 'chessops/chess';
-import { parseSan } from 'chessops/san';
-import { makeUci } from 'chessops/util';
+import { parseUci } from 'chessops/util';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { recordedMove } from '@/game/replay';
+import { sanToUci } from '@/game/replay';
 
 import { type Lesson, type LessonMove, type PositionKey, readLesson } from './lesson';
 import { lineKeys } from './select';
@@ -24,10 +23,9 @@ export const SAMPLE = readShippedLesson('caro-kann-sample');
 export function uciLine(...sans: string[]): string[] {
   const pos = Chess.default();
   return sans.map((san) => {
-    const move = parseSan(pos, san);
-    if (!move) throw new Error(`Illegal move ${san}`);
-    const uci = recordedMove(pos, makeUci(move))!;
-    pos.play(move);
+    const uci = sanToUci(pos, san);
+    if (!uci) throw new Error(`Illegal move ${san}`);
+    pos.play(parseUci(uci)!);
     return uci;
   });
 }

@@ -4,10 +4,9 @@
  */
 import type { Chess } from 'chessops/chess';
 import { parseComment, parsePgn, startingPosition, type ChildNode, type PgnNodeData } from 'chessops/pgn';
-import { parseSan } from 'chessops/san';
-import { makeUci, parseUci } from 'chessops/util';
+import { parseUci } from 'chessops/util';
 
-import { recordedMove } from '@/game/replay';
+import { sanToUci } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 
 import { plainSan } from './text';
@@ -81,12 +80,6 @@ function readMoves(
     children.push(...readMoves(node.children, after, ply + 1, move));
     return move;
   });
-}
-
-/** `san` in `pos` as lesson files write it (castling as the king's two-square move), if legal. */
-export function sanToUci(pos: Chess, san: string): Uci | undefined {
-  const move = parseSan(pos, san);
-  return move && recordedMove(pos, makeUci(move));
 }
 
 /** A copy of `pos` after the legal move `uci`. */

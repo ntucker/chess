@@ -28,24 +28,23 @@ const NUMBERED = new RegExp(String.raw`(?:(\d+)\s?(\.\.\.|\.)\s?|(\.\.\.))?(${SA
 export function namedMoves(text: string): NamedMove[] {
   const moves: NamedMove[] = [];
   for (const match of text.matchAll(NUMBERED)) {
-    const [, number, dots, bareDots, san] = match;
+    const [, number, dots, bareDots, written] = match;
+    const san = plainSan(written);
     const previous = moves.at(-1);
     if (number) {
       const black = dots === '...';
-      moves.push({
-        san: plainSan(san),
-        ply: 2 * (Number(number) - 1) + (black ? 2 : 1),
-        side: black ? 'black' : 'white',
-      });
+      moves.push({ san, ply: plyOf(Number(number), black), side: black ? 'black' : 'white' });
     } else if (bareDots) {
-      moves.push({ san: plainSan(san), side: 'black' });
+      moves.push({ san, side: 'black' });
     } else {
-      const side = previous?.side && opposite(previous.side);
-      moves.push({ san: plainSan(san), ply: previous?.ply && previous.ply + 1, side });
+      moves.push({ san, ply: previous?.ply && previous.ply + 1, side: previous?.side && opposite(previous.side) });
     }
   }
   return moves;
 }
+
+/** The ply of move `number` by White, or by Black when `black`: 1.e4 is ply 1, 1...c6 ply 2. */
+export const plyOf = (number: number, black: boolean) => 2 * number - (black ? 0 : 1);
 
 /** `san` without check marks, so it compares with the study's own moves. */
 export const plainSan = (san: string) => san.replace(/[+#!?]+$/, '');
@@ -100,15 +99,12 @@ export function direction(value: Evaluation): Direction {
 }
 
 const SIDE = String.raw`(White|Black|You|you)`;
+/** "White is (up to two words, not "not") better": `words` is the last word's alternatives. */
+const stands = (words: string) =>
+  new RegExp(String.raw`\b${SIDE} (?:is|are|stands?) (?:(?!not\b)\w+ ){0,2}(?:${words})\b`, 'g');
 const VERDICTS: readonly [RegExp, (side: Color) => Direction][] = [
-  [
-    new RegExp(String.raw`\b${SIDE} (?:is|are|stands?) (?:(?!not\b)\w+ ){0,2}(?:better|winning)\b`, 'g'),
-    (side) => side,
-  ],
-  [
-    new RegExp(String.raw`\b${SIDE} (?:is|are|stands?) (?:(?!not\b)\w+ ){0,2}(?:worse|losing|lost)\b`, 'g'),
-    (side) => opposite(side),
-  ],
+  [stands('better|winning'), (side) => side],
+  [stands('worse|losing|lost'), (side) => opposite(side)],
   [new RegExp(String.raw`\b${SIDE} keeps? (?:a|the) (?:small|slight) (?:edge|plus|advantage)\b`, 'g'), (side) => side],
   [new RegExp(String.raw`\bsmall ${SIDE} edge\b`, 'g'), (side) => side],
   [
