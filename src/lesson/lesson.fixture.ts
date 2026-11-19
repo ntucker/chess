@@ -14,17 +14,16 @@ import { lessonView, type LessonViewInput } from './view';
 
 export const LESSON_FOLDER = join(__dirname, '../../assets/lessons');
 
+const readLessonFile = (file: string): Lesson => readLesson(JSON.parse(readFileSync(file, 'utf8')));
+
 /** The lesson shipped as `assets/lessons/<id>.json`. */
-export const readShippedLesson = (id: string): Lesson =>
-  readLesson(JSON.parse(readFileSync(join(LESSON_FOLDER, `${id}.json`), 'utf8')));
+export const readShippedLesson = (id: string): Lesson => readLessonFile(join(LESSON_FOLDER, `${id}.json`));
 
 /**
  * A hand-made lesson for tests: the Caro-Kann's first six moves, at least one
  * idea of each type, and invented play counts the tests rely on.
  */
-export const SAMPLE = readLesson(
-  JSON.parse(readFileSync(join(__dirname, 'fixtures/caro-kann-sample.json'), 'utf8')),
-);
+export const SAMPLE = readLessonFile(join(__dirname, 'fixtures/caro-kann-sample.json'));
 
 /** `sans` as UCI moves from the starting position, castling as the game records it. */
 export function uciLine(...sans: string[]): string[] {

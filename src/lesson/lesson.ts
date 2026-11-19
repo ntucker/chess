@@ -12,8 +12,11 @@
  */
 import type { Color, FileName, SquareName } from 'chessops/types';
 
-/** The format this code reads. A file with another number is refused. */
-export const LESSON_FORMAT = 1;
+/**
+ * The format this code reads. A file with another number is refused.
+ * 2: ideas lost `at: 'before'`; each holds in its note's position, or after its move.
+ */
+export const LESSON_FORMAT = 2;
 
 /**
  * A move in UCI, like `g1f3`, with castling written as the king's two-square

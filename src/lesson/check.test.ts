@@ -4,17 +4,13 @@ import { parseFen } from 'chessops/fen';
 import { parseSan } from 'chessops/san';
 
 import { checkIdea, checkLesson } from './check';
-import { positionKey } from '@/game/replay';
+import { parsePositionKey, positionKey } from '@/game/replay';
 
 import { type Idea, type Lesson, LESSON_FORMAT, type Purpose } from './lesson';
-import { SAMPLE } from './lesson.fixture';
+import { keyAfter, SAMPLE } from './lesson.fixture';
 
 /** The position after `sans`, played from the start. */
-function after(sans: string[]): Chess {
-  const pos = Chess.default();
-  for (const san of sans) pos.play(parseSan(pos, san)!);
-  return pos;
-}
+const after = (sans: string[]) => parsePositionKey(keyAfter(...sans))!;
 
 function fen(text: string): Chess {
   return Chess.fromSetup(parseFen(text).unwrap()).unwrap();
@@ -241,10 +237,6 @@ describe('checkIdea', () => {
 });
 
 describe('checkLesson', () => {
-  it('passes the sample lesson the tests use', () => {
-    expect(checkLesson(SAMPLE)).toEqual([]);
-  });
-
   const start = Chess.default();
   const afterE4 = start.clone();
   afterE4.play(parseSan(afterE4, 'e4')!);
@@ -361,4 +353,8 @@ describe('checkLesson', () => {
       { path: `positions["${key}"].notes[0].text`, message: 'has 21 words (most 20)' },
     ]);
   });
+});
+
+it('passes the sample lesson the tests use', () => {
+  expect(checkLesson(SAMPLE)).toEqual([]);
 });
