@@ -12,7 +12,7 @@ import { Transport } from '@/components/Transport';
 import { useStepKeys } from '@/components/useStepKeys';
 import { colorName, opposite } from '@/game/replay';
 import type { Game } from '@/game/useGame';
-import { phoneCalc, phoneLength } from '@/theme/phone';
+import { phoneCalc, phoneLength, phonePart } from '@/theme/phone';
 import { spotlight } from '@/theme/theme';
 
 interface StageProps {
@@ -27,7 +27,8 @@ interface StageProps {
 /**
  * A page of the app: the header, then the board column and the panel beside
  * it on the stage background. Every screen that shows a board uses it, so
- * they line up the same way.
+ * they line up the same way. On a phone-width web page the panel goes below
+ * the board and scrolls on its own, so the board stays in view (phone.css).
  */
 export function Stage({ title, board, program }: StageProps) {
   const { theme } = useTheme();
@@ -45,13 +46,19 @@ export function Stage({ title, board, program }: StageProps) {
         <title>{title}</title>
       </Head>
       <SafeAreaView style={styles.fill}>
-        <ScrollView contentContainerStyle={styles.page}>
-          <View style={styles.header}>
-            <Header />
-          </View>
-          <View style={styles.stage}>
-            <View style={styles.boardColumn}>{board}</View>
-            <View style={styles.program}>{program}</View>
+        <ScrollView>
+          <View {...phonePart('page')} style={styles.page}>
+            <View style={styles.header}>
+              <Header />
+            </View>
+            <View {...phonePart('stage')} style={styles.stage}>
+              <View {...phonePart('board-column')} style={styles.boardColumn}>
+                {board}
+              </View>
+              <View {...phonePart('program')} style={styles.program}>
+                {program}
+              </View>
+            </View>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -164,14 +171,19 @@ const PAGE_SPACE = phoneLength('page-space', 20);
  */
 const AROUND_BOARD = PAGE_SPACE.times(3).plus(HEADER_HEIGHT).plus(BOARD_OFFSET.times(2));
 /** On the web, the smallest the board shrinks to in a short window. */
-const BOARD_MIN_WEB = 320;
+const BOARD_MIN_WEB = phoneLength('board-min', 320);
+/** Height kept below the board column for the panel: none beside it, some below it on a phone. */
+const PANEL_RESERVE = phoneLength('panel-reserve', 0);
 /**
  * The board column's width limit. On the web the board also shrinks to fit
  * the window's height, so the player's name bar and the move buttons stay in
- * view. CSS does it, since the server can't measure the window.
+ * view, and on a phone the start of the panel too. CSS does it, since the
+ * server can't measure the window. Native has no window to fit, so its limit
+ * is the largest board; `clamp()` has no PhoneLength form, hence the two
+ * values written apart.
  */
 const BOARD_COLUMN_LIMIT = phoneCalc(
-  `clamp(${BOARD_MIN_WEB}px, 100svh - ${AROUND_BOARD.css}, ${BOARD_MAX}px) + ${BESIDE_BOARD}px`,
+  `clamp(${BOARD_MIN_WEB.css}, 100svh - ${AROUND_BOARD.plus(PANEL_RESERVE).css}, ${BOARD_MAX}px) + ${BESIDE_BOARD}px`,
   BOARD_COLUMN_MAX,
 );
 /** Space above the program when it wraps below the board. */

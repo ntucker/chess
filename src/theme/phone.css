@@ -1,10 +1,11 @@
 /*
- * Lengths for a phone-width web page, as CSS variables that `phoneLength`
- * (phone.ts) reads. Everywhere else the variables are unset and each length
- * falls back to the wide value written beside it in code. A media query,
- * since the pre-rendered page can't measure the window.
+ * How a phone-width web page differs, behind one media query, since the
+ * pre-rendered page can't measure the window. Everywhere else none of this
+ * applies: each length falls back to the wide value written beside it in
+ * code, and each part keeps its wide layout.
  */
 @media (max-width: 599.98px) {
+  /* Lengths, read by `phoneLength` (phone.ts). */
   :root {
     /* Page padding and the gap below the header (Stage.tsx). */
     --page-space: 12px;
@@ -17,5 +18,39 @@
     --player-bar-height: 52px;
     /* Space between the board column and the panel below it (Stage.tsx). */
     --wrapped-gap: 20px;
+    /* The board shrinks to this in a short window (Stage.tsx)... */
+    --board-min: 280px;
+    /* ...to leave this much for the panel and the gap above it. */
+    --panel-reserve: 180px;
+  }
+
+  /*
+   * Parts, named by `phonePart` (phone.ts) in Stage.tsx. The page fills the
+   * screen and never scrolls: the board stays at the top, and the panel below
+   * it scrolls in the space that's left, so a previewed move stays in view.
+   * Two selectors' weight, to win over React Native Web's one-class styles.
+   */
+  :root [data-phone='page'] {
+    height: 100dvh;
+  }
+  :root [data-phone='stage'] {
+    flex: 1 1 0;
+    min-height: 0;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+  :root [data-phone='board-column'] {
+    flex: none;
+    width: 100%;
+  }
+  :root [data-phone='program'] {
+    flex: 1 1 0;
+    min-height: 0;
+    width: 100%;
+    overflow-y: auto;
+    /* Fades out the bottom edge to show there's more below; the padding lets the last line clear it. */
+    padding-bottom: 16px;
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
   }
 }

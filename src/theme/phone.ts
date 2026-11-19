@@ -7,7 +7,12 @@ export const PHONE_LENGTHS = [
   'wordmark-size',
   'player-bar-height',
   'wrapped-gap',
+  'board-min',
+  'panel-reserve',
 ] as const;
+
+/** The parts of the page that phone.css lays out differently on a phone-width web page. */
+export const PHONE_PARTS = ['page', 'stage', 'board-column', 'program'] as const;
 
 /**
  * A length that is shorter on a phone-width web page, or a sum of such
@@ -28,29 +33,29 @@ export interface PhoneLength {
 
 /** The length `--<name>` in phone.css on a phone-width web page, `wide` pixels elsewhere. */
 export function phoneLength(name: (typeof PHONE_LENGTHS)[number], wide: number) {
-  return length(wide, `var(--${name}, ${wide}px)`);
+  return makeLength(wide, `var(--${name}, ${wide}px)`);
 }
 
-function length(wide: number, css: string): PhoneLength {
+function makeLength(wide: number, css: string): PhoneLength {
   return {
     wide,
     css,
     value: phoneCalc(css, wide),
     plus: (other) => {
-      const o = asLength(other);
-      return length(wide + o.wide, `(${css} + ${o.css})`);
+      const operand = asLength(other);
+      return makeLength(wide + operand.wide, `(${css} + ${operand.css})`);
     },
     minus: (other) => {
-      const o = asLength(other);
-      return length(wide - o.wide, `(${css} - ${o.css})`);
+      const operand = asLength(other);
+      return makeLength(wide - operand.wide, `(${css} - ${operand.css})`);
     },
-    times: (factor) => length(wide * factor, `(${css} * ${factor})`),
+    times: (factor) => makeLength(wide * factor, `(${css} * ${factor})`),
   };
 }
 
 /** A fixed number of pixels, as a PhoneLength. */
 function asLength(other: PhoneLength | number) {
-  return typeof other === 'number' ? length(other, `${other}px`) : other;
+  return typeof other === 'number' ? makeLength(other, `${other}px`) : other;
 }
 
 /**
@@ -65,3 +70,11 @@ export function phoneCalc(css: string, wide: number): number {
 /** The style of what only a wide screen shows: hidden on a phone-width web page. */
 export const wideOnly =
   process.env.EXPO_OS === 'web' ? { display: 'var(--wide-only, flex)' as 'flex' } : {};
+
+/**
+ * Props that name a part of the page for phone.css, which lays it out
+ * differently on a phone-width web page. Nothing elsewhere.
+ */
+export function phonePart(part: (typeof PHONE_PARTS)[number]) {
+  return process.env.EXPO_OS === 'web' ? { dataSet: { phone: part } } : {};
+}
