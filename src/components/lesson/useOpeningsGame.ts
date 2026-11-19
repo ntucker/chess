@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
-import { useDeferredValue, useEffect, useReducer, useState } from 'react';
+import { type Dispatch, useDeferredValue, useEffect, useReducer, useState } from 'react';
 
-import { gameReducer, startGame } from '@/game/game';
+import { type GameAction, gameReducer, startGame } from '@/game/game';
 import type { GameStore } from '@/game/useGame';
 import { lessonOf } from '@/lesson/openings';
 import { LESSON_INDEX, type LessonId } from '@/resources/lesson';
@@ -22,10 +22,14 @@ const lessonHref = (id: LessonId) => `/lesson/${id}` as const;
  * `/`. Going Back or Forward to an address the game isn't in starts that
  * address's game; the address catching up with a pick keeps the game.
  *
- * The store holds the game as the page shows it: as it stood until the
- * lesson it now plays has loaded (`useDeferredValue`), so picking an opening,
- * or going Back or Forward to one, keeps the page on screen rather than a
- * placeholder, while the address moves at once. `pending` while it lags.
+ * The store holds the game as the page shows it (`useDeferredValue`): while
+ * the page's render of a newer game waits, as it does while the lesson that
+ * game plays loads, the page keeps the older one. So picking an opening, or
+ * going Back or Forward to one, keeps the page on screen rather than a
+ * placeholder, while the address moves at once. The store's dispatch acts on
+ * the newer game, so while the page is `behind` it drops the learner's moves
+ * and steps, made on a position the game has left. An opponent's reply
+ * names the position it answers, so it needs no such check.
  */
 export function useOpeningsGame(address: LessonId | undefined) {
   const router = useRouter();
@@ -48,6 +52,22 @@ export function useOpeningsGame(address: LessonId | undefined) {
     else router.replace(lessonHref(picked));
   }, [picked, address, router]);
   const shown = useDeferredValue(game);
-  const store: GameStore = [shown, dispatch];
-  return { store, pending: shown !== game };
+  const behind = shown !== game;
+  const held: Dispatch<GameAction> = (action) => {
+    if (!isInput(action)) dispatch(action);
+  };
+  const store: GameStore = [shown, behind ? held : dispatch];
+  const lesson = lessonOf(LESSON_INDEX, shown.moves);
+  return {
+    store,
+    /** The lesson the page's game plays. */
+    lesson,
+    /** The page shows a game the store has moved on from. */
+    behind,
+    /** The game has moved on to a lesson the page doesn't show yet: it's loading. */
+    pending: lesson !== picked,
+  };
 }
+
+/** What the learner does on the board: made on the position the page shows. */
+const isInput = (action: GameAction) => action.type === 'move' || action.type === 'goto';

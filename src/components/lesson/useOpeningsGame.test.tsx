@@ -127,4 +127,26 @@ describe('useOpeningsGame', () => {
     expect(moves()).toEqual([]);
     expect(latest().pending).toBe(false);
   });
+
+  it("drops the learner's moves and steps while the page shows an older game", async () => {
+    slow.lessons = true;
+    await show();
+    await play('e2e4');
+    await show('caro-kann');
+    expect(latest().behind).toBe(true);
+    expect(latest().pending).toBe(true);
+    // Made on the start the page shows; on the game, a step back would leave
+    // the lesson and the move would answer e4.
+    act(() => latest().store[1]({ type: 'goto', ply: 0 }));
+    await play('d2d4');
+    expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+    expect(latest().lesson).toBeUndefined();
+    // Back to the start: the page shows the game again, and takes moves.
+    await show(undefined);
+    expect(latest().behind).toBe(false);
+    slow.lessons = false;
+    await play('d2d4');
+    expect(mockRouter.push).toHaveBeenLastCalledWith('/lesson/slav');
+  });
 });

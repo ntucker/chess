@@ -59,8 +59,14 @@ export interface Playback {
  * `lesson` played on the board, the game held in `store`. The start position
  * is where the learner picks the opening (src/lesson/openings.ts): nobody
  * replies there, so the learner plays the first move whoever's turn it is.
+ * While `behind`, the store's game has moved on from the one shown, so the
+ * learner can't move.
  */
-export function useLesson(lesson: Lesson, store: GameStore) {
+export function useLesson(
+  lesson: Lesson,
+  store: GameStore,
+  { behind = false }: { readonly behind?: boolean } = {},
+) {
   const ctrl = useController();
   const settings = useSettings();
   const { opponent } = settings;
@@ -84,7 +90,9 @@ export function useLesson(lesson: Lesson, store: GameStore) {
     judge: 'stockfish',
     book: (line) => bookMoves(lesson, line),
   });
-  const { moves, ply, plies, current, canMove } = game;
+  const { moves, ply, plies, current } = game;
+  // A move on a game the store has moved on from would land on another position.
+  const canMove = game.canMove && !behind;
   // A move played before the learner's first starts a Practice run.
   const startsRun = beforeSideMoves(plies, lesson.side, ply);
   const view = useMemo(

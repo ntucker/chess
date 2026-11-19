@@ -63,9 +63,8 @@ export function LessonPage({ id }: { readonly id?: string }) {
  * reopens it and the browser's Back returns to the start.
  */
 function Openings({ address }: { readonly address?: LessonId }) {
-  const { store, pending } = useOpeningsGame(address);
+  const { store, lesson, behind, pending } = useOpeningsGame(address);
   const loading = useLongWait(pending);
-  const lesson = lessonOf(LESSON_INDEX, store[0].moves);
   // A failed lesson clears once the page shows another (Back to the start).
   // A `key` would remount the page and lose the game, so the boundary resets.
   const resetOnLesson = useMemo(() => resetListener(lesson), [lesson]);
@@ -77,7 +76,7 @@ function Openings({ address }: { readonly address?: LessonId }) {
       errorComponent={LessonFailure}
       listen={resetOnLesson}
     >
-      <LessonScreen id={lesson} store={store} loading={loading} />
+      <LessonScreen id={lesson} store={store} behind={behind} loading={loading} />
     </AsyncBoundary>
   );
 }
@@ -92,10 +91,13 @@ const OPENINGS = openingsLesson(LESSON_INDEX);
 function LessonScreen({
   id,
   store,
+  behind,
   loading,
 }: {
   readonly id?: LessonId;
   readonly store: GameStore;
+  /** The board shows a game the store has moved on from: the learner can't move on it. */
+  readonly behind: boolean;
   /** The game has moved on to a lesson that has been loading long enough to say so. */
   readonly loading: boolean;
 }) {
@@ -121,7 +123,7 @@ function LessonScreen({
     modeState,
     startsRun,
     chooseMode,
-  } = useLesson(lesson, store);
+  } = useLesson(lesson, store, { behind });
   const { mode } = modeState;
   const { auto } = useSettings();
   const learner = lesson.side;
