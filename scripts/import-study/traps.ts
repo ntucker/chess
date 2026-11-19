@@ -31,7 +31,7 @@ function trapVerdict(winner: 'white' | 'black', outcome: string): Trap['verdict'
 }
 
 const WATCH_OUT = new RegExp(
-  String.raw`(\.\.\.)?(${SAN})\?\s+(?:loses material|drops a piece)\s+on moves?\s+(\d+)`,
+  String.raw`(\.\.\.)?(${SAN})\?\s+(?:loses material|drops a piece)\s+on moves?\s+(\d+)(?:\s+to\s+\d+)?`,
   'g',
 );
 /** How many plies of the study's continuation a watch-out trap shows. */

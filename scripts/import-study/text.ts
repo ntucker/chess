@@ -50,13 +50,32 @@ export function namedMoves(text: string): NamedMove[] {
 /** `san` without check marks, so it compares with the study's own moves. */
 export const plainSan = (san: string) => san.replace(/[+#!?]+$/, '');
 
+const MOVE_WORD = new RegExp(String.raw`^(?:\d+\s?(?:\.\.\.|\.)|\.\.\.)?${SAN}$`);
+
+/**
+ * Where each sentence of `text` ends (the index after its punctuation). Chess
+ * punctuation is not an end: a move number (`4.`, `15...`) or a glyph on a
+ * move (`5.e6?`, `Nf3!`).
+ */
+export function sentenceEnds(text: string): number[] {
+  const ends: number[] = [];
+  for (const match of text.matchAll(/(\S*?)([.!?]+)(?=\s|$)/g)) {
+    const [, word, marks] = match;
+    const moveNumber = /^\d+$/.test(word) && marks.startsWith('.');
+    const glyph = !marks.includes('.') && MOVE_WORD.test(word);
+    if (!moveNumber && !glyph) ends.push(match.index + match[0].length);
+  }
+  return ends;
+}
+
 /**
  * `text` as a note's sentence: its first sentence, cut to the word limit.
  * A placeholder until the AI step rewrites it; the whole comment stays in
  * the note's `original`.
  */
 export function shorten(text: string): string {
-  const sentence = text.trim().match(/^.+?[.!?](?=\s|$)/s)?.[0] ?? text.trim();
+  const trimmed = text.trim();
+  const sentence = trimmed.slice(0, sentenceEnds(trimmed)[0] ?? trimmed.length);
   const words = sentence.split(/\s+/).filter(Boolean);
   return words.length <= MAX_NOTE_WORDS ? words.join(' ') : `${words.slice(0, MAX_NOTE_WORDS).join(' ')}…`;
 }

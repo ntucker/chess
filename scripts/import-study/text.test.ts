@@ -24,6 +24,14 @@ describe('shorten', () => {
     expect(shorten('White grabs space. Then plays c3.')).toBe('White grabs space.');
   });
 
+  it('reads past move numbers and glyphs on moves', () => {
+    expect(shorten('Trap: 5.e6? fxe6 and White is worse. Then more.')).toBe('Trap: 5.e6? fxe6 and White is worse.');
+    expect(shorten('After 4. Nf3 Black plays ...e6! with ease. Next.')).toBe(
+      'After 4. Nf3 Black plays ...e6! with ease.',
+    );
+    expect(shorten('Trap: 15...bxc6? Nxc6 wins. More.')).toBe('Trap: 15...bxc6? Nxc6 wins.');
+  });
+
   it('cuts a long sentence at the word limit', () => {
     const long = Array.from({ length: 30 }, (_, i) => `w${i}`).join(' ');
     expect(shorten(long).split(' ')).toHaveLength(20);

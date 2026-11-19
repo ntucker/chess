@@ -10,7 +10,7 @@ import type { Route } from '@/lesson/lesson';
 
 import { findOnLine, playedBy, type Found, type Spot } from './line';
 import { played, sanToUci, type StudyMove } from './study';
-import { namedMoves, plainSan, SAN } from './text';
+import { namedMoves, plainSan, SAN, sentenceEnds } from './text';
 
 const LISTED = new RegExp(String.raw`(?<![\w.\d])\.\.\.(${SAN})(?![\w-])`, 'g');
 /** What may stand between two moves of one list. */
@@ -64,7 +64,8 @@ function moveLists(text: string): { index: number; end: number; sans: string[] }
 }
 
 function sentenceStart(text: string, index: number): number {
-  return Math.max(text.lastIndexOf('. ', index), text.lastIndexOf('\n', index), 0);
+  const ended = sentenceEnds(text).filter((end) => end <= index);
+  return Math.max(ended.at(-1) ?? 0, text.lastIndexOf('\n', index) + 1);
 }
 
 /** Where a plan applies, from the text of its sentence before the list. */
