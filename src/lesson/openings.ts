@@ -46,12 +46,10 @@ export function lessonOf<Id extends string>(
 
 /** Every lesson's first moves, in the index's order, each crediting its sources. */
 const openingMoves = (index: LessonIndex) =>
-  Object.values(index).flatMap(({ title, sources, firstMoves: ucis }) =>
-    ucis.map((uci) => ({
-      uci,
-      notes: [{ text: `${title}, from ${listed(sources.map(credit))}.` }],
-    })),
-  );
+  Object.values(index).flatMap(({ title, sources, firstMoves: ucis }) => {
+    const notes = [{ text: `${title}, from ${listed(sources.map(credit))}.` }];
+    return ucis.map((uci) => ({ uci, notes }));
+  });
 
 /**
  * How a note names `source`: a lichess study by its author, anything else by
@@ -59,7 +57,8 @@ const openingMoves = (index: LessonIndex) =>
  * stays in the lesson file.
  */
 function credit({ title, author, url, license }: LessonSource): string {
-  if (new URL(url).hostname === 'lichess.org') return `${author}'s lichess study`;
+  // Not `new URL(url).hostname`: React Native's URL does not implement it.
+  if (url.startsWith('https://lichess.org/')) return `${author}'s lichess study`;
   return `${title} by ${author}${license ? ` (${license.name})` : ''}`;
 }
 
@@ -82,8 +81,11 @@ export function openingsLesson(index: LessonIndex): Lesson {
     title: 'Openings',
     side,
     start: INITIAL_FEN,
+    // Its notes come from the lessons', so it credits their sources, each once.
     sources: [
-      { title: 'Opening Night', author: 'Opening Night', url: 'https://github.com/ntucker/chess' },
+      ...new Map(
+        Object.values(index).flatMap(({ sources }) => sources.map((s) => [s.url, s] as const)),
+      ).values(),
     ],
     variations: { [OPENINGS_VARIATION]: { name: 'Openings' } },
     positions: {

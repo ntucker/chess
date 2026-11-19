@@ -171,7 +171,7 @@ function checkSources({ sources }: Lesson, report: Report) {
   sources.forEach(({ title, author, url, license }, i) => {
     const at = `sources[${i}]`;
     if (!title.trim() || !author.trim()) report(at, 'needs a title and an author');
-    const host = URL.canParse(url) ? new URL(url).hostname : undefined;
+    const host = URL.parse(url)?.hostname;
     if (!host) return report(`${at}.url`, `${url} is not a URL`);
     const shareAlike = SHARE_ALIKE_HOSTS.some(
       (domain) => host === domain || host.endsWith(`.${domain}`),

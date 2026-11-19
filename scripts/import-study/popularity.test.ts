@@ -5,7 +5,7 @@ import { join } from 'node:path';
 
 import { checkLesson } from '@/lesson/check';
 import type { PositionKey } from '@/lesson/lesson';
-import { keyAfter as key } from '@/lesson/lesson.fixture';
+import { keyAfter as key, SAMPLE } from '@/lesson/lesson.fixture';
 
 import { extractChapter } from './extract';
 import { STUDY_PGN } from './fixture';
@@ -19,7 +19,7 @@ const lesson = mergeChapters(
     id: 'test',
     title: 'Test',
     side: 'black',
-    sources: [{ title: 'Test', author: 'Test', url: 'https://lichess.org/study/test' }],
+    sources: SAMPLE.sources,
   },
   chapters,
   chapters.map((chapter) => extractChapter(chapter, 'black')),
@@ -84,7 +84,7 @@ describe('addPopularity', () => {
         id: 'test',
         title: 'Test',
         side: 'black',
-        sources: [{ title: 'Test', author: 'Test', url: 'https://lichess.org/study/test' }],
+        sources: SAMPLE.sources,
       },
       transposing,
       transposing.map((chapter) => extractChapter(chapter, 'black')),
