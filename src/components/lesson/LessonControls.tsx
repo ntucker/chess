@@ -1,9 +1,10 @@
-import { Field, Switch } from '@reactive/silk-native';
 import { StyleSheet, View } from 'react-native';
 
 import { PillChoice } from '@/components/PillChoice';
 import type { LessonMode } from '@/lesson/guidance';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
+
+import { Toggle } from './Toggle';
 
 const MODES = [
   { value: 'explore', label: 'Explore' },
@@ -45,26 +46,7 @@ export function LessonControls({ mode, onMode }: Props) {
   );
 }
 
-/** A switch with its label beside it; the label names it and toggles it too. */
-function Toggle({
-  label,
-  checked,
-  onChange,
-}: {
-  readonly label: string;
-  readonly checked: boolean;
-  readonly onChange: (checked: boolean) => void;
-}) {
-  return (
-    <Field.Root orientation="horizontal">
-      <Switch size="sm" tone="accent" checked={checked} onCheckedChange={onChange} />
-      <Field.Label style={styles.label}>{label}</Field.Label>
-    </Field.Root>
-  );
-}
-
 const styles = StyleSheet.create({
   controls: { gap: 14 },
   toggles: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 24, rowGap: 10 },
-  label: { userSelect: 'none' },
 });

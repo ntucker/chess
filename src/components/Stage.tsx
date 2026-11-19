@@ -72,7 +72,7 @@ export function Stage({ title, place, board, program }: StageProps) {
 interface BoardColumnProps {
   /** The game on the board. */
   readonly game: Game;
-  /** The opponent's name bar: who plays the other side, and how, and any small control at its end. */
+  /** The opponent's name bar: who plays the other side and how, and any small switch at its end. */
   readonly rival: Pick<ComponentProps<typeof PlayerBar>, 'name' | 'detail' | 'brief' | 'children'>;
   /** The board, with the player's side (`orientation`) at the bottom. */
   readonly board: Omit<BoardProps, 'dom'>;

@@ -3,7 +3,8 @@
  * facts about the position on the board, what the learner points at (a
  * candidate, by its list row or a board square, and a note on the idea
  * card), an idea playing back, the mode (Explore or Practice), and the
- * board. With auto play the learner moves their own side; with auto play off, either.
+ * board. With auto play the learner moves their own side; with auto play
+ * off, either.
  */
 import { useController } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
