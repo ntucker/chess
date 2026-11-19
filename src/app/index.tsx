@@ -1,7 +1,6 @@
 import { LessonPage } from '@/components/lesson/LessonScreen';
-import { HOME_LESSON } from '@/resources/lesson';
 
-/** The home page: the lesson, until there are more openings to pick from. */
+/** The home page: the start position, where the learner picks an opening, then its lesson. */
 export default function HomeScreen() {
-  return <LessonPage id={HOME_LESSON} />;
+  return <LessonPage />;
 }

@@ -48,6 +48,9 @@ export type GameAction =
 
 export const initialGame: GameState = { moves: [], ply: 0 };
 
+/** A game that has played `moves`, showing the latest: `useReducer(gameReducer, moves, startGame)`. */
+export const startGame = (moves: readonly string[]): GameState => ({ moves, ply: moves.length });
+
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'newGame':

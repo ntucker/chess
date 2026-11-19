@@ -2,7 +2,7 @@ import { useController } from '@data-client/react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Button, Inline, Separator, Stack } from '@reactive/silk-native';
 import { useIsFocused } from 'expo-router';
-import { useState } from 'react';
+import { useReducer, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { lastMoveBadge } from '@/board/drawing';
@@ -14,6 +14,7 @@ import { OpponentChoice } from '@/components/OpponentChoice';
 import { Scoresheet } from '@/components/Scoresheet';
 import { SideChooser } from '@/components/SideChooser';
 import { BoardColumn, Stage } from '@/components/Stage';
+import { gameReducer, initialGame } from '@/game/game';
 import { type Color, colorName, opposite } from '@/game/replay';
 import { useGame } from '@/game/useGame';
 import { describeOpponent } from '@/opponent/opponent';
@@ -27,7 +28,7 @@ export default function PlayScreen() {
   // The side of the game on the board, and the side the next game will take.
   const [playerColor, setPlayerColor] = useState<Color>('white');
   const [nextColor, setNextColor] = useState<Color>(playerColor);
-  const game = useGame(gameOpponent(ctrl, opponent), {
+  const game = useGame(useReducer(gameReducer, initialGame), gameOpponent(ctrl, opponent), {
     side: playerColor,
     active: useIsFocused(),
     judge: evaluationEngine,

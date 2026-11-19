@@ -36,6 +36,21 @@ describe('mergeChapters', () => {
     });
   });
 
+  it("names variations by the study's own chapter names, a chapter with none being the opening's", () => {
+    const named = mergeChapters(
+      lesson,
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'black')),
+      (title) => (title.includes('Advance') ? 'Advance: Short' : undefined),
+    );
+    expect(named.variations).toEqual({
+      test: { name: 'Caro-Kann' },
+      advance: { name: 'Advance', parent: 'test' },
+      'advance-short': { name: 'Advance: Short', parent: 'advance' },
+    });
+    expect(named.positions[keyAfter('e4', 'c6', 'Nc3', 'd5', 'd4')].variation).toBe('test');
+  });
+
   it("names a shared position after the opening, and one chapter's after that chapter", () => {
     expect(at('e4', 'c6', 'd4', 'd5').variation).toBe('test');
     expect(at('e4', 'c6', 'd4', 'd5', 'e5').variation).toBe('advance-variation-short-variation');
