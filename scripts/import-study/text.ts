@@ -94,6 +94,8 @@ export function shorten(text: string): string {
 /**
  * `side` doing `phrase` (written for one side: "is losing", "drops a piece"),
  * spoken to the learner as "you": "Black is losing", or "you are losing".
+ * Its conjugation only knows the verbs of the trap formats (is, gets, drops,
+ * loses), not free text: "has" would become "ha".
  */
 export function sideDoes(side: Color, learner: Color, phrase: string): string {
   if (side !== learner) return `${colorName(side)} ${phrase}`;
@@ -105,17 +107,26 @@ const PIECES: Readonly<Record<string, string>> = { K: 'king', Q: 'queen', R: 'ro
 /**
  * A move in words, to open a sentence without notation: `Nxd4` "Taking on d4
  * with the knight", `Qa5+` "Checking with the queen on a5", `c4` "Pushing
- * the pawn to c4".
+ * the pawn to c4", `exd8=Q+` "Taking on d8 with the pawn and promoting to a
+ * queen, giving check".
  */
 export function moveInWords(san: string): string {
   if (san.startsWith('O-O-O')) return 'Castling long';
   if (san.startsWith('O-O')) return 'Castling short';
   const piece = PIECES[san[0]] ?? 'pawn';
   const square = san.match(/[a-h][1-8](?=\W*$|=)/)?.[0];
-  const check = /[+#]/.test(san);
-  if (san.includes('x')) return `Taking on ${square} with the ${piece}${check ? ' with check' : ''}`;
-  if (check) return `Checking with the ${piece} on ${square}`;
-  return piece === 'pawn' ? `Pushing the pawn to ${square}` : `Moving the ${piece} to ${square}`;
+  const promotion = PIECES[san.match(/=([QRBN])/)?.[1] ?? ''];
+  const mate = san.includes('#');
+  const check = mate || san.includes('+');
+  const capture = san.includes('x');
+  if (check && !promotion && !capture) return `${mate ? 'Mating' : 'Checking'} with the ${piece} on ${square}`;
+  const move = capture
+    ? `Taking on ${square} with the ${piece}`
+    : piece === 'pawn'
+      ? `Pushing the pawn to ${square}`
+      : `Moving the ${piece} to ${square}`;
+  const promoted = promotion ? ` and promoting to a ${promotion}` : '';
+  return `${move}${promoted}${check ? `, giving ${mate ? 'mate' : 'check'}` : ''}`;
 }
 
 /** Who a verdict favors: the evaluation's direction. */

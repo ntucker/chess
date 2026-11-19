@@ -72,7 +72,11 @@ describe('moveInWords', () => {
   it('says a move without notation, naming its square', () => {
     expect(moveInWords('Nxd4')).toBe('Taking on d4 with the knight');
     expect(moveInWords('exd5')).toBe('Taking on d5 with the pawn');
-    expect(moveInWords('Bxf7+')).toBe('Taking on f7 with the bishop with check');
+    expect(moveInWords('Bxf7+')).toBe('Taking on f7 with the bishop, giving check');
+    expect(moveInWords('Rxe1#')).toBe('Taking on e1 with the rook, giving mate');
+    expect(moveInWords('Nf3#')).toBe('Mating with the knight on f3');
+    expect(moveInWords('e8=Q')).toBe('Pushing the pawn to e8 and promoting to a queen');
+    expect(moveInWords('exd8=N+')).toBe('Taking on d8 with the pawn and promoting to a knight, giving check');
     expect(moveInWords('Qa5+')).toBe('Checking with the queen on a5');
     expect(moveInWords('Nbd7')).toBe('Moving the knight to d7');
     expect(moveInWords('h6')).toBe('Pushing the pawn to h6');

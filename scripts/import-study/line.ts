@@ -25,7 +25,7 @@ export interface Spot {
 export interface Found {
   readonly spot: Spot;
   readonly idea: Idea;
-  /** The study's words for the idea. */
+  /** The study's words for the idea; for an evaluation glyph, its sentence. */
   readonly label: string;
   /**
    * The idea's own note when it lands away from its comment: the label in

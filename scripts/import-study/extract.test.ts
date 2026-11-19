@@ -102,6 +102,29 @@ describe('extractChapter', () => {
     expect(trapNote('white')[0].text).toBe('Pushing the pawn to c5 falls into a trap: Black is worse.');
   });
 
+  it("says only the result of a trap line that starts with the winner's move", () => {
+    const [chapter] = parseStudy(
+      '1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. d3 { Trap: 4.Bxf7+ Kxf7 5.Ng5+ Kg8 and Black is losing. } *',
+      () => true,
+    );
+    expect(extractChapter(chapter, 'black').positionNotes.map(({ note }) => note.text)).toEqual([
+      'You are losing at the end of this line.',
+    ]);
+  });
+
+  it('writes a watch-out in words, and a plan for the side the learner does not play', () => {
+    const [chapter] = parseStudy(
+      '1. e4 { Idea: Play ...Nc6 and ...Nf6.\nMain line: 1.e4 e5\nWatch out: ...Qh4? loses material on move 2. } 1... e5 2. Nf3 Qh4 3. Nxh4 *',
+      () => true,
+    );
+    const asWhite = extractChapter(chapter, 'white').positionNotes.map(({ note }) => note.text);
+    expect(asWhite).toContain("Black's plan from here, one move at a time.");
+    expect(asWhite).toContain('Moving the queen to h4 falls into a trap: Black loses material.');
+    expect(extractChapter(chapter, 'black').positionNotes.map(({ note }) => note.text)).toContain(
+      'Moving the queen to h4 falls into a trap: you lose material.',
+    );
+  });
+
   it('reads the choice guide, risk included', () => {
     expect(choices.map(({ move, risk }) => [move.san, risk])).toEqual([['Bf5', 'safe']]);
   });
