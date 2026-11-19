@@ -110,6 +110,37 @@ describe('rowMarks', () => {
     expect(marksAfter(passed, stuck, 'e4')).toEqual({ c6: 'passed', e5: undefined });
   });
 
+  it('follows a line that comes back to an earlier position, whichever row asks first', () => {
+    // The knights go out and back: 1.Nf3 Nf6 2.Ng1 Ng8 is the start again.
+    // White's 1.e4 and the c4 after ...Nh5 end lines; ...Nh5 also comes back,
+    // through 3.Nf3 Nf6, to the position after 1.Nf3 Nf6.
+    const out = ['Nf3', 'Nf6', 'Ng1'];
+    const h5 = [...out, 'Nh5'];
+    const shuffle: Lesson = {
+      ...LESSON,
+      positions: Object.fromEntries(
+        Object.entries({
+          [START]: [move([], 'Nf3'), move([], 'e4')],
+          [at('Nf3')]: [move(['Nf3'], 'Nf6', true)],
+          [at('Nf3', 'Nf6')]: [move(['Nf3', 'Nf6'], 'Ng1')],
+          [at(...out)]: [move(out, 'Ng8', true), move(out, 'Nh5', true)],
+          [at(...h5)]: [move(h5, 'Nf3'), move(h5, 'c4')],
+          [at(...h5, 'Nf3')]: [move([...h5, 'Nf3'], 'Nf6', true)],
+        }).map(([key, moves]) => [key, { variation: LESSON.positions[START].variation, moves }]),
+      ),
+    };
+    const c4 = at(...h5, 'c4');
+    // ...Nh5 reaches 1.e4's open line through the start, though its walk meets c4 first.
+    expect(marksAfter(progress([], [c4]), shuffle, ...out)).toEqual({
+      Ng8: undefined,
+      Nh5: undefined,
+    });
+    expect(marksAfter(progress([], [c4, at('e4')]), shuffle, ...out)).toEqual({
+      Ng8: 'passed',
+      Nh5: 'passed',
+    });
+  });
+
   it('marks nothing with no progress', () => {
     expect(marksAfter(progress([], []), LESSON, 'e4')).toEqual({ c6: undefined, e5: undefined });
   });

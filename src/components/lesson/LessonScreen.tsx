@@ -20,11 +20,10 @@ import { useSettings } from '@/settings/SettingsProvider';
 import { qualityLooks } from '@/theme/moveQuality';
 
 import { AutoPlay } from './AutoPlay';
-import { CandidateList, listedRows } from './CandidateList';
+import { CandidateList } from './CandidateList';
 import { IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
-import { MarkLegend } from './ProgressMark';
 import { TrapCard } from './TrapCard';
 
 /**
@@ -140,34 +139,23 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
           {ideaCard ? (
             <PointingArea onLeave={leave}>
               {guidance.candidates.length ? (
-                <Stack gap="3">
-                  <View style={styles.listHead}>
-                    <Eyebrow>
-                      {view.learnerToMove
-                        ? 'Your candidates'
-                        : `${colorName(rival)}'s likely replies`}
-                    </Eyebrow>
-                    <MarkLegend
-                      marks={listedRows(guidance.candidates, guidance.rare, rareShown).flatMap(
-                        ({ move }) => marks.get(move.uci) ?? [],
-                      )}
-                    />
-                  </View>
-                  <CandidateList
-                    candidates={guidance.candidates}
-                    rare={guidance.rare}
-                    rareShown={rareShown}
-                    onShowRare={showRare}
-                    main={guidance.main}
-                    pointed={preview?.move.uci}
-                    marks={marks}
-                    leadsTo={leadsTo}
-                    playable={canPlay}
-                    onPlay={play}
-                    onPoint={pointRow}
-                    onTabOut={leave}
-                  />
-                </Stack>
+                <CandidateList
+                  heading={
+                    view.learnerToMove ? 'Your candidates' : `${colorName(rival)}'s likely replies`
+                  }
+                  candidates={guidance.candidates}
+                  rare={guidance.rare}
+                  rareShown={rareShown}
+                  onShowRare={showRare}
+                  main={guidance.main}
+                  pointed={preview?.move.uci}
+                  marks={marks}
+                  leadsTo={leadsTo}
+                  playable={canPlay}
+                  onPlay={play}
+                  onPoint={pointRow}
+                  onTabOut={leave}
+                />
               ) : null}
               <IdeaCard
                 title={preview ? `If ${preview.san}` : 'The idea'}
@@ -334,12 +322,4 @@ function LessonPlaceholder({ message }: { readonly message?: string }) {
 
 const styles = StyleSheet.create({
   placeholder: { minHeight: 200 },
-  listHead: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    columnGap: 16,
-    rowGap: 6,
-  },
 });

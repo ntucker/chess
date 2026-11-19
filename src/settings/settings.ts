@@ -1,3 +1,4 @@
+import { parseStoredObject } from '@/context/storage';
 import { EVALUATION_ENGINES, type EvaluationEngine } from '@/evaluation/evaluation';
 import { type Opponent, OPPONENTS } from '@/opponent/opponent';
 
@@ -45,7 +46,7 @@ export function settingsReducer(settings: Settings, action: SettingsAction): Set
 type StoredSettings = Partial<Record<keyof Settings, unknown>>;
 
 /** The settings saved as `text` (JSON), read as settingsFrom does. */
-export const parseSettings = (text: string) => settingsFrom(parseObject(text));
+export const parseSettings = (text: string) => settingsFrom(parseStoredObject(text));
 
 const BOOLEANS = [true, false] as const;
 
@@ -67,12 +68,3 @@ export function settingsFrom(stored: StoredSettings): Settings {
 
 const oneOf = <T>(choices: readonly T[], value: unknown) =>
   choices.find((choice) => choice === value);
-
-function parseObject(text: string): StoredSettings {
-  try {
-    const parsed: unknown = JSON.parse(text);
-    return typeof parsed === 'object' && parsed !== null ? parsed : {};
-  } catch {
-    return {};
-  }
-}

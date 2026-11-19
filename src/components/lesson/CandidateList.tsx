@@ -1,18 +1,21 @@
-import { a11yState, Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
+import { a11yState, Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
 import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { Uci } from '@/lesson/lesson';
 import type { Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
+import { Eyebrow } from '@/components/Eyebrow';
 import { QualityBadge } from '@/components/QualityBadge';
 import type { Mark } from '@/progress/progress';
 import { fonts } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
 
-import { MARK_NAMES, MARK_SIZE, ProgressMark } from './ProgressMark';
+import { MARK_SIZE, MarkLegend, ProgressMark, SPOKEN_MARKS } from './ProgressMark';
 
 interface Props {
+  /** The list's heading: whose moves these are. */
+  readonly heading: string;
   readonly candidates: readonly Candidate[];
   /** Rare candidates, listed after the others while `rareShown`. */
   readonly rare: readonly Candidate[];
@@ -47,9 +50,11 @@ interface Props {
  * first. Pointing at a row previews its move on the board; pressing it plays
  * the move when it's the learner's to play. Each row's dot matches its arrow
  * on the board; a rare row's dot is hollow, since the board draws no arrow
- * for it. A row's progress mark ends it.
+ * for it. A row's progress mark ends it, and a key beside the heading names
+ * the marks the list shows.
  */
 export function CandidateList({
+  heading,
   candidates,
   rare,
   rareShown,
@@ -63,46 +68,47 @@ export function CandidateList({
   onPoint,
   onTabOut,
 }: Props) {
-  const rows = listedRows(candidates, rare, rareShown);
-  // Every row keeps room for a mark once one has one, so their shares line up.
-  const markSlot = rows.some(({ move }) => marks.has(move.uci));
+  const rows = rareShown ? [...candidates, ...rare] : candidates;
+  const shownMarks = new Set(
+    rows.map(({ move }) => marks.get(move.uci)).filter((mark) => mark !== undefined),
+  );
   return (
-    <Surface elevation="sunken" border="subtle" radius="md" style={styles.list}>
-      {rows.map((candidate, index) => (
-        <Row
-          key={candidate.move.uci}
-          candidate={candidate}
-          main={candidate === main}
-          pointed={candidate.move.uci === pointed}
-          mark={marks.get(candidate.move.uci)}
-          markSlot={markSlot}
-          leadsTo={leadsTo(candidate)}
-          // A lone move's share is always all of the games.
-          share={rows.length > 1 ? candidate.share : undefined}
-          playable={playable}
-          onPlay={onPlay}
-          onPoint={onPoint}
-          onTabOut={!rare.length && index === rows.length - 1 ? onTabOut : undefined}
-        />
-      ))}
-      {rare.length ? (
-        <RareToggle
-          count={rare.length}
-          shown={rareShown}
-          onToggle={() => onShowRare(!rareShown)}
-          onTabOut={onTabOut}
-        />
-      ) : null}
-    </Surface>
+    <Stack gap="3">
+      <View style={styles.head}>
+        <Eyebrow>{heading}</Eyebrow>
+        <MarkLegend marks={shownMarks} />
+      </View>
+      <Surface elevation="sunken" border="subtle" radius="md" style={styles.list}>
+        {rows.map((candidate, index) => (
+          <Row
+            key={candidate.move.uci}
+            candidate={candidate}
+            main={candidate === main}
+            pointed={candidate.move.uci === pointed}
+            mark={marks.get(candidate.move.uci)}
+            // Every row keeps room for a mark once one has one, so their shares line up.
+            markSlot={shownMarks.size > 0}
+            leadsTo={leadsTo(candidate)}
+            // A lone move's share is always all of the games.
+            share={rows.length > 1 ? candidate.share : undefined}
+            playable={playable}
+            onPlay={onPlay}
+            onPoint={onPoint}
+            onTabOut={!rare.length && index === rows.length - 1 ? onTabOut : undefined}
+          />
+        ))}
+        {rare.length ? (
+          <RareToggle
+            count={rare.length}
+            shown={rareShown}
+            onToggle={() => onShowRare(!rareShown)}
+            onTabOut={onTabOut}
+          />
+        ) : null}
+      </Surface>
+    </Stack>
   );
 }
-
-/** The rows a list shows: rare candidates last, while shown. */
-export const listedRows = (
-  candidates: readonly Candidate[],
-  rare: readonly Candidate[],
-  rareShown: boolean,
-) => (rareShown ? [...candidates, ...rare] : candidates);
 
 /** The last row of a list with rare candidates: shows or hides them. */
 function RareToggle({
@@ -202,7 +208,7 @@ function Row({
         san,
         move.book && 'book move',
         share !== undefined && `${percent(share)} of games`,
-        mark && lowerFirst(MARK_NAMES[mark]),
+        mark && SPOKEN_MARKS[mark],
       ]
         .filter(Boolean)
         .join(', ')}
@@ -279,14 +285,19 @@ const BOOK_BADGE_SIZE = 16;
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;
 
-/** `Seen` as it reads inside a sentence: `seen`. */
-const lowerFirst = (name: string) => name[0].toLowerCase() + name.slice(1);
-
 const ROW_INSET = 14;
 const ROW_GAP = 12;
 const DOT_SIZE = 10;
 
 const styles = StyleSheet.create({
+  head: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    columnGap: 16,
+    rowGap: 6,
+  },
   list: { overflow: 'hidden', paddingVertical: 4 },
   row: {
     flexDirection: 'row',

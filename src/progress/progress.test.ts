@@ -60,7 +60,7 @@ describe('parseProgress', () => {
     expect(parseProgress(JSON.stringify({ a: { seen: ['x', 3] }, b: 'oops', c: [1] }))).toEqual({
       a: { seen: ['x'], passed: [] },
     });
-    expect(parseProgress('not json')).toBe(NO_PROGRESS);
-    expect(parseProgress('null')).toBe(NO_PROGRESS);
+    expect(parseProgress('not json')).toEqual({});
+    expect(parseProgress('null')).toEqual({});
   });
 });

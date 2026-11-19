@@ -4,8 +4,7 @@
  * passed once clean Practice runs have reached every guide line end they can
  * reach through it. A clean run plays only the learner's book moves, so the
  * line ends below a learner's non-book move never count, and that move's own
- * row can't be passed. In the Caro-Kann, 645 of its 1,425 line ends lie only
- * below such a move.
+ * row can't be passed.
  */
 import { parsePositionKey, playMove, positionKey } from '@/game/replay';
 import { type LessonProgress, type Mark, positionHash } from '@/progress/progress';
@@ -56,28 +55,38 @@ type EndsStatus = 'none' | 'open' | 'passed';
  */
 function endsBelow(lesson: Lesson, passed: ReadonlySet<string>) {
   const known = new Map<PositionKey, EndsStatus>();
-  const below = (key: PositionKey): EndsStatus => {
+  // The positions on the walk now, by how deep in it each is.
+  const walking = new Map<PositionKey, number>();
+  /** The status of `key`, and the depth of the shallowest position on the walk it came back to. */
+  const walk = (key: PositionKey, depth: number): [EndsStatus, number] => {
     // Reached by a guide move, a position the guide has no moves at ends a line.
     if (guidePosition(lesson, key).place !== 'inside') {
-      return passed.has(positionHash(key)) ? 'passed' : 'open';
+      return [passed.has(positionHash(key)) ? 'passed' : 'open', Infinity];
     }
     const answer = known.get(key);
-    if (answer) return answer;
-    // A line that comes back to this position adds no end of its own.
-    known.set(key, 'none');
+    if (answer) return [answer, Infinity];
+    // A line that comes back to a position adds no end of its own.
+    const at = walking.get(key);
+    if (at !== undefined) return ['none', at];
+    walking.set(key, depth);
     let status: EndsStatus = 'none';
+    let back = Infinity;
     for (const next of cleanNext(lesson, key)) {
-      const ends = below(next);
+      const [ends, reached] = walk(next, depth + 1);
+      back = Math.min(back, reached);
       if (ends === 'open') {
         status = 'open';
         break;
       }
       if (ends === 'passed') status = 'passed';
     }
-    known.set(key, status);
-    return status;
+    walking.delete(key);
+    // A walk that came back to a position above this one hasn't counted that
+    // position's other lines yet, so only an open line is sure here.
+    if (status === 'open' || back >= depth) known.set(key, status);
+    return [status, back];
   };
-  return below;
+  return (key: PositionKey) => walk(key, 0)[0];
 }
 
 /** Each lesson's `cleanNext` answers: a lesson never changes, and replaying moves is slow. */

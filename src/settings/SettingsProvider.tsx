@@ -1,7 +1,8 @@
 import { createContext, type Dispatch, type ReactNode, use } from 'react';
 
 import { requireProvider } from '@/context/requireProvider';
-import { readStorage, useRememberedReducer } from '@/context/useRememberedReducer';
+import { readStorage } from '@/context/storage';
+import { useRememberedReducer } from '@/context/useRememberedReducer';
 
 import {
   DEFAULT_SETTINGS,

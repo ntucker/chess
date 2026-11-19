@@ -1,7 +1,6 @@
 import { type Dispatch, useEffect, useEffectEvent, useReducer } from 'react';
 
-// Kept in localStorage (on Android, expo-sqlite provides it; see
-// src/app/_layout.tsx). This file is the only code that touches it.
+import { writeStorage } from './storage';
 
 // Native has no pre-rendered page to match, so its first frame can show the
 // remembered state; the web loads it after hydration.
@@ -10,7 +9,7 @@ const NATIVE = process.env.EXPO_OS !== 'web';
 interface Remembered<S, A> {
   /** Where the state is saved, as JSON. */
   readonly key: string;
-  /** The remembered state, or undefined when nothing is remembered (read it with `readStorage`). */
+  /** The remembered state, or undefined when nothing is remembered (read with `./storage.ts`). */
   readonly recall: () => S | undefined;
   /** The action that takes in the remembered state, once the web page starts. */
   readonly loaded: (remembered: S) => A;
@@ -47,22 +46,4 @@ export function useRememberedReducer<S, A>(
   }, [key, initial, state]);
 
   return [state, dispatch];
-}
-
-/** The text saved under `key`, or null (or undefined) when there is none. */
-export function readStorage(key: string) {
-  try {
-    return globalThis.localStorage?.getItem(key);
-  } catch {
-    // Storage can be blocked, for example in a private window.
-    return null;
-  }
-}
-
-function writeStorage(key: string, text: string) {
-  try {
-    globalThis.localStorage?.setItem(key, text);
-  } catch {
-    // Kept for this visit only.
-  }
 }

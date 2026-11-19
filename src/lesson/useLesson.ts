@@ -3,8 +3,8 @@
  * facts about the position on the board, what the learner points at (a
  * candidate, by its list row or a piece dragged onto its square, and a note
  * on the idea card), an idea playing back, the mode (Explore or Practice),
- * the learner's progress marks, and the board. With auto play the learner moves their own side; with auto
- * play off, either.
+ * the learner's progress marks, and the board. With auto play the learner
+ * moves their own side; with auto play off, either.
  */
 import { useController } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
@@ -94,7 +94,9 @@ export function useLesson(lesson: Lesson) {
   const rareShown = rareKey === key;
 
   // Progress: the board's position earns its mark once it shows, and the
-  // candidate rows show what is earned below them.
+  // candidate rows show what is earned below them. An effect, since a
+  // position shows by many events (a move, a step, the opponent's reply, a
+  // mode change), and showing it is what earns the mark.
   const progress = useLessonProgress(lesson.id);
   const record = useProgressDispatch();
   const earned = earnedMark(view.place, modeState);

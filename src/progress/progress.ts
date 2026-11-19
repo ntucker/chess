@@ -5,6 +5,7 @@
  * keys, so a lesson's progress stays small however much of it is played.
  * What the marks mean on screen is src/lesson/marks.ts.
  */
+import { isObject, parseStoredObject } from '@/context/storage';
 import type { PositionKey } from '@/lesson/lesson';
 
 /** Two facts about a position, earned independently, so neither overwrites the other. */
@@ -89,24 +90,14 @@ export function positionHash(key: PositionKey): string {
  * lists of strings is dropped, so a damaged save loses only what it damaged.
  */
 export function parseProgress(text: string): Progress {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    return NO_PROGRESS;
-  }
-  if (!isObject(parsed)) return NO_PROGRESS;
   return Object.fromEntries(
-    Object.entries(parsed).flatMap(([id, lesson]) =>
+    Object.entries(parseStoredObject(text)).flatMap(([id, lesson]) =>
       isObject(lesson)
         ? [[id, { seen: strings(lesson.seen), passed: strings(lesson.passed) }]]
         : [],
     ),
   );
 }
-
-const isObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
