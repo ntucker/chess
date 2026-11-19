@@ -54,5 +54,13 @@ export function previewLayer(game: Pieces, preview: Pieces): PreviewLayer {
   return { pieces, away, taken: new Set(left.filter((square) => !away.has(square))) };
 }
 
+/**
+ * Whether moving the piece on `from` to `to` plays the move `layer` previews,
+ * whose pieces are already drawn where it lands. Example: with 1...c6
+ * previewed, c7 to c6 does; c7 to c5 doesn't.
+ */
+export const playsPreview = (layer: PreviewLayer, from: Square, to: Square) =>
+  layer.pieces.some((piece) => piece.from === from && piece.square === to);
+
 /** Whether two FENs place the same pieces, whatever their other fields. */
 export const samePlacement = (a: string, b: string) => a.split(' ')[0] === b.split(' ')[0];

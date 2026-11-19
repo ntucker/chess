@@ -24,6 +24,7 @@ import {
   type Pieces,
   type PreviewLayer,
   type PreviewPiece,
+  playsPreview,
   previewLayer,
   samePlacement,
 } from '@/board/preview';
@@ -164,13 +165,12 @@ export default function Board({
   // plays it itself, and would slide the piece to where the preview already
   // draws it, so it plays it at once. The position effect below turns the
   // animation back on as the game reaches the preview.
-  const holdStill = useEffectEvent((picked: Square | undefined, x: number, y: number) => {
-    const board = api.current;
-    const square = board?.getKeyAtDomPos([x, y]) as Square | undefined;
-    if (!board || !picked || !square || !board.state.movable.dests?.get(picked)?.includes(square))
-      return;
-    if (layer.pieces.some((piece) => piece.from === picked && piece.square === square))
-      board.set({ animation: { enabled: false } });
+  const skipPreviewSlide = useEffectEvent((picked: Square | undefined, x: number, y: number) => {
+    const square = api.current?.getKeyAtDomPos([x, y]) as Square | undefined;
+    const boardPlays =
+      picked && square && api.current?.state.movable.dests?.get(picked)?.includes(square);
+    if (boardPlays && playsPreview(layer, picked, square))
+      setBoard({ animation: { enabled: false } });
   });
 
   useEffect(() => {
@@ -184,7 +184,7 @@ export default function Board({
     const notePick = ({ button, shiftKey, clientX, clientY }: PointerEvent) => {
       picked = api.current?.state.selected as Square | undefined;
       // Chessground draws an arrow for any other press, and plays no move.
-      if (button === 0 && !shiftKey) holdStill(picked, clientX, clientY);
+      if (button === 0 && !shiftKey) skipPreviewSlide(picked, clientX, clientY);
     };
     target.addEventListener('pointerdown', notePick, { capture: true });
     const board = Chessground(target, {

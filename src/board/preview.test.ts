@@ -3,7 +3,7 @@ import { parseFen } from 'chessops/fen';
 import { makeSquare } from 'chessops/util';
 
 import type { Square } from './drawing';
-import { type Pieces, previewLayer, samePlacement } from './preview';
+import { type Pieces, playsPreview, previewLayer, samePlacement } from './preview';
 
 /** The pieces of a FEN's board. */
 function pieces(fen: string): Pieces {
@@ -61,6 +61,21 @@ describe('previewLayer', () => {
       away: new Set(['b7']),
       taken: new Set(['a8']),
     });
+  });
+});
+
+describe('playsPreview', () => {
+  it("is the previewed piece's own move, castling's included", () => {
+    const c6 = layer(AFTER_E4, 'rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2');
+    expect(playsPreview(c6, 'c7', 'c6')).toBe(true);
+    expect(playsPreview(c6, 'c7', 'c5')).toBe(false);
+    expect(playsPreview(c6, 'b8', 'c6')).toBe(false);
+    const before = 'r1bqk2r/ppppbppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4';
+    const castled = layer(
+      before,
+      'r1bqk2r/ppppbppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQ1RK1 b kq - 5 4',
+    );
+    expect(playsPreview(castled, 'e1', 'g1')).toBe(true);
   });
 });
 
