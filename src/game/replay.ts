@@ -2,7 +2,7 @@ import { castlingSide, Chess } from 'chessops/chess';
 import { chessgroundDests, chessgroundMove } from 'chessops/compat';
 import { makeFen, parseFen } from 'chessops/fen';
 import { makeSanAndPlay } from 'chessops/san';
-import type { Color } from 'chessops/types';
+import type { Color, Piece } from 'chessops/types';
 import { kingCastlesTo, makeUci, opposite, parseSquare, parseUci } from 'chessops/util';
 
 export { COLORS, type Color } from 'chessops/types';
@@ -160,11 +160,15 @@ export function recordedMove(pos: Chess, uci: string): string | undefined {
   return makeUci({ from: move.from, to: kingCastlesTo(pos.turn, side) });
 }
 
+/** The piece on `square` (a name like `e4`) in `fen`, if any. */
+export function pieceAt(fen: string, square: string): Piece | undefined {
+  const index = parseSquare(square);
+  return index === undefined ? undefined : parseFen(fen).unwrap().board.get(index);
+}
+
 /** The UCI for a move between two squares, promoting pawns to queens. */
 export function toUci(ply: Ply, from: string, to: string): string {
-  const square = parseSquare(from);
-  const piece =
-    square === undefined ? undefined : parseFen(ply.fen).unwrap().board.get(square);
+  const piece = pieceAt(ply.fen, from);
   const promotes = piece?.role === 'pawn' && (to[1] === '8' || to[1] === '1');
   return `${from}${to}${promotes ? 'q' : ''}`;
 }

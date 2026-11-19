@@ -6,6 +6,8 @@ import { useEffect, useEffectEvent, useState } from 'react';
 import { type DimensionValue, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import type { MoveQuality } from '@/analysis/quality';
+import type { Drawing, Square } from '@/board/drawing';
 import Board from '@/components/Board';
 import { EvaluationBar } from '@/components/EvaluationBar';
 import { EvaluationEngineChoice } from '@/components/EvaluationEngineChoice';
@@ -101,7 +103,7 @@ export default function PlayScreen() {
                       movableColor={game.canMove ? playerColor : undefined}
                       dests={current.dests}
                       lastMove={current.move ? [current.move.from, current.move.to] : undefined}
-                      lastMoveQuality={qualities[ply - 1]}
+                      drawings={lastMoveBadge(current.move?.to, qualities[ply - 1])}
                       check={current.check}
                       onMove={game.move}
                       dom={{ style: styles.fill, scrollEnabled: false }}
@@ -160,6 +162,11 @@ export default function PlayScreen() {
       </SafeAreaView>
     </View>
   );
+}
+
+/** The last move's label, on the piece it moved. */
+function lastMoveBadge(square: string | undefined, quality: MoveQuality | undefined): Drawing[] {
+  return square && quality ? [{ kind: 'badge', square: square as Square, quality }] : [];
 }
 
 /** Space between the board and the name bars above and below it. */
