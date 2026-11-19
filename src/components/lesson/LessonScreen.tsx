@@ -9,16 +9,21 @@ import { StatusHeadline } from '@/components/GameStatus';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { Scoresheet } from '@/components/Scoresheet';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
+import type { MoveQuality } from '@/analysis/quality';
 import { colorName, opposite } from '@/game/replay';
 import type { Candidate } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
 import type { LessonView } from '@/lesson/view';
 import { describeOpponent } from '@/opponent/opponent';
 import { getLesson, LESSONS, type LessonId } from '@/resources/lesson';
+import { useSettings } from '@/settings/SettingsProvider';
+import { qualityLooks } from '@/theme/moveQuality';
 
 import { CandidateList } from './CandidateList';
 import { IdeaCard } from './IdeaCard';
+import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
+import { TrapCard } from './TrapCard';
 
 /**
  * The lesson `id` as a page. The exported HTML holds only its frame: the
@@ -39,7 +44,7 @@ export function LessonPage({ id }: { readonly id: string }) {
   );
 }
 
-/** The lesson `id`, played on the board: Explore, with the guide's opponent replying. */
+/** The lesson `id`, played on the board, in Explore or Practice. */
 function LessonScreen({ id }: { readonly id: LessonId }) {
   const lesson = useSuspense(getLesson, id);
   const {
@@ -56,17 +61,27 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
     pointNote,
     leaveNote,
     leave,
+    modeState,
+    chooseMode,
   } = useLesson(lesson);
+  const { mode } = modeState;
+  const { auto } = useSettings();
   const learner = lesson.side;
   const rival = opposite(learner);
   const described = describeOpponent(opponent);
   const preview = guidance.preview?.candidate;
+  const { trap } = guidance;
+  // The card is for notes, or for the notes of a candidate pointed at.
+  const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
   const status = describeStatus(view, {
     title: lesson.title,
     rival: colorName(rival),
     engine: described.name,
     thinking: game.thinking,
     viewing: !game.atLatest,
+    auto,
+    practice:
+      modeState.mode === 'practice' ? { clean: modeState.clean, verdict: game.quality } : undefined,
   });
 
   const leadsTo = (candidate: Candidate) => {
@@ -96,35 +111,49 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
           />
           <Separator />
           {/* Leaving a row for the idea card keeps its preview, so its notes can be pointed at. */}
-          <PointingArea onLeave={leave}>
-            {guidance.candidates.length ? (
-              <Stack gap="3">
-                <Eyebrow>
-                  {view.learnerToMove ? 'Your candidates' : `${colorName(rival)}'s likely replies`}
-                </Eyebrow>
-                <CandidateList
-                  candidates={guidance.candidates}
-                  main={guidance.main}
-                  pointed={preview?.move.uci}
-                  leadsTo={leadsTo}
-                  playable={canPlay}
-                  onPlay={play}
-                  onPoint={pointRow}
-                  onTabOut={leave}
-                />
-              </Stack>
-            ) : null}
-            <IdeaCard
-              title={preview ? `If ${preview.san}` : 'The idea'}
-              notes={guidance.notes}
+          {trap ? (
+            <TrapCard
+              trap={trap}
+              mistake={game.plies[trap.ply + 1].move!.san}
+              fell={game.plies[trap.ply].turn}
               learner={learner}
               playback={playback}
-              pointable={guidance.pointable}
-              pointed={pointedNote}
-              onPoint={pointNote}
-              onLeave={leaveNote}
+              onBack={() => game.goto(trap.ply)}
             />
-          </PointingArea>
+          ) : null}
+          {ideaCard ? (
+            <PointingArea onLeave={leave}>
+              {guidance.candidates.length ? (
+                <Stack gap="3">
+                  <Eyebrow>
+                    {view.learnerToMove
+                      ? 'Your candidates'
+                      : `${colorName(rival)}'s likely replies`}
+                  </Eyebrow>
+                  <CandidateList
+                    candidates={guidance.candidates}
+                    main={guidance.main}
+                    pointed={preview?.move.uci}
+                    leadsTo={leadsTo}
+                    playable={canPlay}
+                    onPlay={play}
+                    onPoint={pointRow}
+                    onTabOut={leave}
+                  />
+                </Stack>
+              ) : null}
+              <IdeaCard
+                title={preview ? `If ${preview.san}` : 'The idea'}
+                notes={guidance.notes}
+                learner={learner}
+                playback={playback}
+                pointable={guidance.pointable}
+                pointed={pointedNote}
+                onPoint={pointNote}
+                onLeave={leaveNote}
+              />
+            </PointingArea>
+          ) : null}
           <Separator />
           <Stack gap="3">
             <Eyebrow>Scoresheet</Eyebrow>
@@ -132,9 +161,12 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
               plies={game.plies}
               qualities={game.qualities}
               ply={game.ply}
+              trapped={view.trap && view.trap.ply + 1}
               onGoto={game.goto}
             />
           </Stack>
+          <Separator />
+          <LessonControls mode={mode} onMode={chooseMode} />
           <Stack gap="1">
             <OpponentChoice />
             <FootnoteLink href="/play">Or play a free game, from the first move</FootnoteLink>
@@ -155,14 +187,34 @@ interface StatusInput {
   readonly thinking: boolean;
   /** The board shows an earlier move than the latest. */
   readonly viewing: boolean;
+  /** The opponent replies by itself; off, the learner picks its move. */
+  readonly auto: boolean;
+  /** In Practice: whether the run is clean, and the label of the move the board shows. */
+  readonly practice?: { readonly clean: boolean; readonly verdict?: MoveQuality };
 }
 
-/** The panel's headline: where the lesson stands and whose move it is. */
+/**
+ * The panel's headline: where the lesson stands and whose move it is. In
+ * Practice, right after the learner's move, it judges that move first.
+ */
 function describeStatus(
   view: LessonView,
-  { title, rival, engine, thinking, viewing }: StatusInput,
+  { title, rival, engine, thinking, viewing, auto, practice }: StatusInput,
 ) {
   const eyebrow = view.variation.map(({ name }) => name).join(' · ') || title;
+  if (practice && view.place === 'end')
+    return practice.clean
+      ? {
+          eyebrow,
+          title: 'Line complete.',
+          detail: 'A clean run: each of your moves from the book, and nothing taken back.',
+        }
+      : {
+          eyebrow,
+          title: 'End of this line.',
+          detail:
+            'This run had a slip or a take-back. Go back to your first move and play it through clean.',
+        };
   if (view.place === 'beyond')
     return {
       eyebrow,
@@ -179,16 +231,37 @@ function describeStatus(
     return {
       eyebrow,
       title: 'Your move.',
-      detail: viewing
-        ? 'Play a move here to try another branch.'
-        : 'Point at a candidate or a note to see it on the board, then play any move you like.',
+      detail: YOUR_MOVE[practice ? 'practice' : 'explore'][viewing ? 'viewing' : 'latest'],
+    };
+  let reply = `Choose ${rival}'s reply.`;
+  if (auto) reply = `${rival}'s move.`;
+  if (thinking) reply = `${rival} is choosing…`;
+  if (practice && view.ply > 0)
+    return {
+      eyebrow,
+      title: practice.verdict ? `${qualityLooks[practice.verdict].name}.` : 'Checking your move…',
+      detail: reply,
     };
   return {
     eyebrow,
-    title: thinking ? `${rival} is choosing…` : `${rival}'s move.`,
-    detail: 'Point at a reply to see what it aims for.',
+    title: reply,
+    detail: auto
+      ? 'Point at a reply to see what it aims for.'
+      : 'Point at a reply to see what it aims for, then play it.',
   };
 }
+
+/** The detail under "Your move.", by mode and whether an earlier move is shown. */
+const YOUR_MOVE = {
+  explore: {
+    latest: 'Point at a candidate or a note to see it on the board, then play any move you like.',
+    viewing: 'Play a move here to try another branch.',
+  },
+  practice: {
+    latest: 'No hints in Practice. Play the move you would choose.',
+    viewing: 'Playing here takes a move back, which ends a clean run.',
+  },
+} as const;
 
 /** The lesson page before the lesson arrives, or with `message` when it can't be shown. */
 function LessonPlaceholder({ message }: { readonly message?: string }) {

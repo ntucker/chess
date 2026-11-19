@@ -20,6 +20,8 @@ interface Options {
   readonly active: boolean;
   /** The engine that judges each move for its label. */
   readonly judge: EvaluationEngine;
+  /** Which of `moves` a lesson's guide recommends: labelled `book`, never judged. */
+  readonly book?: (moves: readonly string[]) => readonly boolean[];
 }
 
 /**
@@ -35,14 +37,17 @@ interface Options {
  * dropped; one from an opponent since replaced still answers the same
  * position, so the first answer wins.
  */
-export function useGame(opponent: GameOpponent | undefined, { side, active, judge }: Options) {
+export function useGame(
+  opponent: GameOpponent | undefined,
+  { side, active, judge, book }: Options,
+) {
   const [state, dispatch] = useReducer(gameReducer, initialGame);
   const { moves, ply } = state;
   const plies = replay(moves);
   const latest = analyze(plies[plies.length - 1]);
   const atLatest = ply === moves.length;
   const current = atLatest ? latest : analyze(plies[ply]);
-  const qualities = useMoveQualities(plies, ply, judge);
+  const qualities = useMoveQualities(plies, ply, judge, book?.(moves));
   const error = failure(state, opponent?.id);
   const thinking = !!opponent && !latest.result && latest.turn !== side && !error;
   const replying = atLatest && thinking;

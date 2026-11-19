@@ -20,13 +20,17 @@
  *   the opponent just plays. Stockfish's moves stay hidden.
  * - Traps: with "show traps" on, a trap's sequence is drawn before the
  *   learner commits, beside the candidates; off, it isn't. A trap fallen
- *   into is shown either way.
+ *   into is shown either way, and plays back, for as many moves of the line
+ *   as the trap has. With traps hidden, no note that holds a trap shows in
+ *   Practice, on any turn.
  * - While a note's idea plays back, the board is the playback's: nothing else
  *   is drawn, and the preview it started from stays.
  *
  * guidance stays in lesson terms; lessonDrawings (./drawings.ts) turns it
  * into board shapes, and says which ideas draw nothing (`drawsOnBoard`).
  */
+import type { Settings } from '@/settings/settings';
+
 import { drawsOnBoard } from './drawings';
 import type { Idea, Note, PositionKey, Uci } from './lesson';
 import { type Candidate, mainCandidate } from './select';
@@ -35,13 +39,7 @@ import { type LandedTrap, type LessonView, type Preview, type ShownNote, shownKe
 export type LessonMode = 'explore' | 'practice';
 
 /** The learner's switches on the lesson screen. */
-export interface LessonSwitches {
-  /** Auto: the opponent replies by itself. Off is "I choose". */
-  readonly auto: boolean;
-  /** Explore's "show ideas on board". */
-  readonly showIdeas: boolean;
-  readonly showTraps: boolean;
-}
+export type LessonSwitches = Pick<Settings, 'auto' | 'showIdeas' | 'showTraps'>;
 
 /** Stockfish's view of the shown position, as far as it has arrived. */
 export interface EngineView {
@@ -94,6 +92,8 @@ export interface Guidance {
   readonly drawn: readonly ShownIdea[];
   /** The candidates whose arrows the board draws now. */
   readonly drawnCandidates: readonly Candidate[];
+  /** The ideas that can play back: those of `ideas` that play back, and a trap fallen into. */
+  readonly playable: readonly ShownPlayback[];
   /** The idea playing back, once its note's playback has started. */
   readonly playing?: ShownPlayback;
   /**
@@ -109,6 +109,7 @@ export interface Guidance {
   readonly best?: Uci;
   /** Stockfish's top three, listed only beyond the guide. */
   readonly top: readonly Uci[];
+  /** A trap the line fell into, while the board is within its moves. */
   readonly trap?: LandedTrap;
 }
 
@@ -125,12 +126,22 @@ export function guidance(input: GuidanceInput): Guidance {
   const explore = mode === 'explore';
   const choices = explore || (!view.learnerToMove && !switches.auto);
   const preview = choices ? pointerPreview : undefined;
-  const notes = preview?.notes ?? restingNotes(view, explore, switches.showTraps);
+  // A previewed reply's notes can warn of the learner's trap after it.
+  // Explore shows every note, as restingNotes does.
+  const notes = preview
+    ? preview.notes.filter(({ note }) => explore || !trapHidden(note, switches.showTraps))
+    : restingNotes(view, explore, switches.showTraps);
   const allowed = (idea: Idea) =>
     idea.type === 'trap' ? switches.showTraps : !explore || switches.showIdeas;
   const ideas = notes.flatMap((shown) => noteIdeas(shown, allowed));
   const candidates = choices ? view.candidates : [];
-  const playing = playingNote && notePlayback(ideas, playingNote);
+  const trap =
+    view.trap && view.ply - view.trap.ply <= view.trap.trap.moves.length ? view.trap : undefined;
+  const playable = [
+    ...ideas.filter(playsBack),
+    ...(trap ? [{ idea: trap.trap, at: trap.note.after }] : []),
+  ];
+  const playing = playingNote && notePlayback(playable, playingNote);
   // A note with nothing to draw on the board's position leaves the board as it
   // is: a text note, or one about another position (the one a move was played in).
   const pointable = notes
@@ -150,11 +161,12 @@ export function guidance(input: GuidanceInput): Guidance {
     ideas,
     drawn: firstPlanOnly(board.drawn),
     drawnCandidates: board.candidates,
+    playable,
     playing,
     pointed: pointedNote,
     best: view.candidates.some(({ move }) => move.uci === best) ? undefined : best,
     top: explore && view.place !== 'inside' ? (engine?.top ?? []) : [],
-    trap: view.trap,
+    trap,
   };
 }
 
@@ -199,18 +211,25 @@ function restingNotes(
   showTraps: boolean,
 ): readonly ShownNote[] {
   if (explore) return view.notes;
-  // The position's own notes would hint at the move, except a trap's warning.
+  // The position's own notes would hint at the move. A trap's warning, on
+  // the position or on the move into it, shows only with traps shown.
   if (view.learnerToMove)
-    return view.notes.filter(
-      ({ note, before }) => before !== undefined || (showTraps && hasTrap(note)),
+    return view.notes.filter(({ note, before }) =>
+      hasTrap(note) ? showTraps : before !== undefined,
     );
   // Right after the learner's move: what it was for, now that it's played.
+  // With traps hidden, no note holding a trap shows, on any position or
+  // move, so the learner can still fall in; a trap fallen into shows through
+  // `trap` instead, on its own card.
   const played = view.notes.filter(({ before }) => before !== undefined);
   const own = view.notes.filter(({ before }) => before === undefined);
-  return [...played, ...view.playedFrom, ...own];
+  return [...played, ...view.playedFrom, ...own].filter(({ note }) => !trapHidden(note, showTraps));
 }
 
 const hasTrap = (note: Note) => note.ideas?.some(({ type }) => type === 'trap') ?? false;
+
+/** In Practice with traps hidden, a note that holds a trap stays off the card. */
+const trapHidden = (note: Note, showTraps: boolean) => !showTraps && hasTrap(note);
 
 /** `shown`'s ideas that `allowed` lets through, each with the position it is checked in. */
 const noteIdeas = (shown: ShownNote, allowed: (idea: Idea) => boolean): ShownIdea[] =>
@@ -229,10 +248,10 @@ function firstPlanOnly(ideas: readonly ShownIdea[]): readonly ShownIdea[] {
 const playsBack = (shown: ShownIdea): shown is ShownPlayback =>
   shown.idea.type === 'plan' || shown.idea.type === 'line' || shown.idea.type === 'trap';
 
-/**
- * The idea of `note` that plays back, of the `ideas` guidance shows (so a
- * trap plays back only while traps are shown); or undefined.
- */
-export function notePlayback(ideas: readonly ShownIdea[], note: Note): ShownPlayback | undefined {
-  return ideas.filter(playsBack).find(({ idea }) => note.ideas?.includes(idea));
+/** The idea of `note` among `playable` (see `Guidance.playable`), or undefined. */
+export function notePlayback(
+  playable: readonly ShownPlayback[],
+  note: Note,
+): ShownPlayback | undefined {
+  return playable.find(({ idea }) => note.ideas?.includes(idea));
 }

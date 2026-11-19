@@ -76,7 +76,7 @@ export function IdeaCard({
   );
 }
 
-function NoteView({
+export function NoteView({
   shown,
   learner,
   playback,

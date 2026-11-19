@@ -28,7 +28,7 @@ interface LessonBoardInput {
   readonly ply: number;
   /** The game's position after `moves.slice(0, ply)`. */
   readonly current: Position;
-  /** Whether the learner may move on `current` now. */
+  /** Whether the learner may move on `current` now, for the side to move. */
   readonly canMove: boolean;
   /** The label of the move that led to `current`, once it's judged. */
   readonly quality?: MoveQuality;
@@ -64,7 +64,7 @@ export function lessonBoard({
     fen: shown.fen,
     orientation: side,
     turnColor: shown.turn,
-    movableColor: canMove && !previewed && !frame ? side : undefined,
+    movableColor: canMove && !previewed && !frame ? current.turn : undefined,
     dests: frame ? {} : board.dests,
     lastMove: shown.move && [shown.move.from, shown.move.to],
     drawings: frame

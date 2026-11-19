@@ -14,13 +14,20 @@ describe('settings', () => {
       type: 'chosen',
       choice: { opponent: 'stockfish' },
     });
-    expect(chosen).toEqual({ opponent: 'stockfish', evaluationEngine: 'stockfish' });
-    const rated = { opponent: 1900, evaluationEngine: 'maia' } as const;
+    expect(chosen).toEqual({ ...DEFAULT_SETTINGS, opponent: 'stockfish' });
+    const rated = {
+      opponent: 1900,
+      evaluationEngine: 'maia',
+      auto: false,
+      showIdeas: false,
+      showTraps: true,
+    } as const;
     expect(parseSettings(JSON.stringify(rated))).toEqual(rated);
   });
 
   it('reads a value that is missing or no longer a choice as its default', () => {
-    expect(parseSettings('{"opponent":1550,"evaluationEngine":"maia"}')).toEqual({
+    expect(parseSettings('{"opponent":1550,"evaluationEngine":"maia","auto":"no"}')).toEqual({
+      ...DEFAULT_SETTINGS,
       opponent: 1500,
       evaluationEngine: 'maia',
     });

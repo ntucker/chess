@@ -104,6 +104,16 @@ export function candidates(
 export const guideMove = (lesson: Lesson, key: PositionKey, uci: Uci): LessonMove | undefined =>
   lesson.positions[key]?.moves.find((move) => move.uci === uci);
 
+/** Whether the guide recommends `uci` at `key`: a book move. */
+export const isBook = (lesson: Lesson, key: PositionKey, uci: Uci): boolean =>
+  guideMove(lesson, key, uci)?.book === true;
+
+/** Whether each move of `line` is a book move where it was played. */
+export function bookMoves(lesson: Lesson, line: readonly Uci[]): boolean[] {
+  const keys = lineKeys(line);
+  return line.map((uci, n) => isBook(lesson, keys[n], uci));
+}
+
 /**
  * Which popularity band "most common" reads for `opponent`: the highest band
  * at or below its rating (1500 reads 1400), and the top band for Stockfish.

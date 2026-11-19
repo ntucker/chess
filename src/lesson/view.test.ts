@@ -4,6 +4,7 @@ import {
   ADVANCE,
   keyAfter,
   MAIN,
+  readShippedLesson,
   SAMPLE,
   sampleView as view,
   TRAP,
@@ -82,29 +83,52 @@ describe('lessonView', () => {
   });
 
   describe('trap', () => {
-    it('is absent until the whole punishment is played', () => {
+    const LANDED = [...TRAP, 'Nxe5', 'Nxe5'];
+
+    it('follows the line between traps that land alike, in the shipped Caro-Kann', () => {
+      // After 5...Qa5+ 6.Bd2 the guide holds two traps: 6...Qb6 7.fxe4, and 6...Bxc2 7.Qxc2.
+      const lesson = readShippedLesson('caro-kann');
+      const start = ['e4', 'c6', 'd4', 'd5', 'e5', 'Bf5', 'g4', 'Be4', 'f3', 'Qa5+', 'Bd2'];
+      const trapAfter = (...more: string[]) => {
+        const line = uciLine(...start, ...more);
+        return lessonView({ lesson, line, ply: line.length, opponent: 1500 }).trap;
+      };
+      const qb6 = ['d8a5', 'c1d2', 'a5b6', 'f3e4']; // Qa5+ Bd2 Qb6 fxe4
+      const bxc2 = ['d8a5', 'c1d2', 'e4c2', 'd1c2']; // Qa5+ Bd2 Bxc2 Qxc2
+      // At the landing the line hasn't chosen, so the first in note order shows.
+      expect(trapAfter()!.trap.moves.slice(0, 4)).toEqual(qb6);
+      expect(trapAfter('Bxc2', 'Qxc2')!.trap.moves.slice(0, 4)).toEqual(bxc2);
+      expect(trapAfter('Qb6', 'fxe4')!.trap.moves.slice(0, 4)).toEqual(qb6);
+      // Stepped back to the landing, the line has still chosen.
+      const line = uciLine(...start, 'Bxc2', 'Qxc2');
+      const back = lessonView({ lesson, line, ply: start.length, opponent: 1500 }).trap;
+      expect(back!.trap.moves.slice(0, 4)).toEqual(bxc2);
+    });
+
+    it('is absent until the punishing reply is played', () => {
       expect(view(TRAP).trap).toBeUndefined();
-      expect(view(TRAP_PUNISHED.slice(0, -1)).trap).toBeUndefined();
+      expect(view([...TRAP, 'Nxe5']).trap).toBeUndefined();
       expect(view([...TRAP, 'e6']).trap).toBeUndefined();
     });
 
-    it('names the trap and where its tempting move is, once it lands', () => {
-      const { trap } = view(TRAP_PUNISHED);
+    it('lands at the punishing reply, with its note and where its tempting move is', () => {
+      const { trap } = view(LANDED);
       expect(trap).toMatchObject({
         ply: TRAP.length,
+        landed: keyAfter(...LANDED),
         trap: { type: 'trap', verdict: 'losesMaterial' },
       });
       expect(trap!.trap.moves).toEqual(uciLine(...TRAP_PUNISHED).slice(TRAP.length));
-      expect(trap).toMatchObject({ at: keyAfter(...TRAP), end: keyAfter(...TRAP_PUNISHED) });
+      expect(trap!.note).toMatchObject({
+        note: expect.objectContaining({ ideas: expect.arrayContaining([trap!.trap]) }),
+        after: keyAfter(...TRAP),
+      });
     });
 
-    it('follows the cursor, and stays after the line goes on', () => {
-      expect(view(TRAP_PUNISHED, { ply: TRAP_PUNISHED.length - 1 }).trap).toBeUndefined();
-      expect(view([...TRAP_PUNISHED, 'a6']).trap).toMatchObject({ ply: TRAP.length });
-    });
-
-    it('is absent where the line leaves the trap', () => {
-      expect(view([...TRAP, 'Nxe5', 'Nxe5', 'Bxd1', 'Kxd1']).trap).toBeUndefined();
+    it('follows the cursor, and stays as the line goes on, in the trap or out of it', () => {
+      expect(view(LANDED, { ply: LANDED.length - 1 }).trap).toBeUndefined();
+      expect(view(TRAP_PUNISHED).trap).toMatchObject({ ply: TRAP.length });
+      expect(view([...LANDED, 'Be6']).trap).toMatchObject({ ply: TRAP.length });
     });
   });
 });

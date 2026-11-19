@@ -44,15 +44,18 @@ export interface ShownNote {
   readonly before?: PositionKey;
 }
 
-/** A trap the line fell into: its tempting move and whole punishment are played. */
+/**
+ * A trap the line fell into: its tempting move and the punishing reply are
+ * played. The rest of its sequence is only played back.
+ */
 export interface LandedTrap {
   readonly trap: Trap;
+  /** The note that holds the trap, for its card. The tempting move is played in its `after`. */
+  readonly note: ShownNote;
   /** Where in the line the tempting move is: `line[ply]`. */
   readonly ply: number;
-  /** The position the tempting move is played in. */
-  readonly at: PositionKey;
-  /** The position after the trap's last move, where it lands. */
-  readonly end: PositionKey;
+  /** The position after the punishing reply, where the trap lands. */
+  readonly landed: PositionKey;
 }
 
 export interface LessonViewInput {
@@ -68,6 +71,8 @@ export interface LessonViewInput {
 export interface LessonView {
   /** The position on the board. */
   readonly key: PositionKey;
+  /** How many moves of the line the board shows. */
+  readonly ply: number;
   readonly learnerToMove: boolean;
   readonly place: GuidePosition['place'];
   /** The variation the board is in, the opening itself first (see `lineVariation`). */
@@ -82,7 +87,7 @@ export interface LessonView {
    * undefined where it wasn't a guide move. A book move's has `book: true`.
    */
   readonly guideMoves: readonly (LessonMove | undefined)[];
-  /** The latest trap the line, up to the board, fell into. */
+  /** The latest trap the line fell into, up to the board (see `landedTrap`). */
   readonly trap?: LandedTrap;
 }
 
@@ -92,6 +97,7 @@ export function lessonView({ lesson, line, ply, opponent }: LessonViewInput): Le
   const guideMoves = line.map((uci, n) => guideMove(lesson, keys[n], uci));
   return {
     key,
+    ply,
     learnerToMove: parsePositionKey(key)!.turn === lesson.side,
     place: guidePosition(lesson, key).place,
     variation: lineVariation(lesson, keys.slice(0, ply + 1)),
@@ -99,7 +105,7 @@ export function lessonView({ lesson, line, ply, opponent }: LessonViewInput): Le
     notes: arrivalNotes(lesson, keys, guideMoves, ply),
     playedFrom: ply === 0 ? [] : positionNotes(lesson, keys[ply - 1]),
     guideMoves,
-    trap: landedTrap(lesson, line.slice(0, ply), keys, guideMoves),
+    trap: landedTrap(lesson, line, ply, keys, guideMoves),
   };
 }
 
@@ -178,31 +184,46 @@ function arrivalNotes(
   return cardNotes(lesson, guideMoves[ply - 1], keys[ply - 1], keys[ply]);
 }
 
+/** A trap lands once its first two moves are played: the tempting move and the punishing reply. */
+const LANDING_MOVES = 2;
+
 /**
- * The latest trap `played` has gone through to its end. A trap belongs to the
- * position its idea is checked in; this reads the notes about each position
- * on the line: its own, and those of the moves played into and out of it.
+ * The latest trap `line` fell into within its first `shownMoves` moves (see
+ * `LandedTrap`). A trap belongs to the position its idea is checked in, so
+ * this reads the notes about each position on the line: its own, and those
+ * of the move played into it. Traps that land alike (the same tempting move
+ * and reply) part later: the one whose moves the whole line follows furthest
+ * is the one it fell into, even with the board stepped back to the landing;
+ * the first in note order while the line hasn't chosen.
  */
 function landedTrap(
   lesson: Lesson,
-  played: readonly Uci[],
+  line: readonly Uci[],
+  shownMoves: number,
   keys: readonly PositionKey[],
   guideMoves: readonly (LessonMove | undefined)[],
 ): LandedTrap | undefined {
-  for (let ply = played.length - 1; ply >= 0; ply--) {
-    const key = keys[ply];
-    const notes = [
-      ...arrivalNotes(lesson, keys, guideMoves, ply),
-      ...moveNotes(guideMoves[ply], key, keys[ply + 1]),
-    ];
-    for (const shown of notes) {
-      for (const trap of shown.note.ideas ?? []) {
-        if (trap.type !== 'trap' || shown.after !== key) continue;
-        if (trap.moves.every((uci, n) => uci === played[ply + n])) {
-          return { trap, ply, at: key, end: keys[ply + trap.moves.length] };
-        }
+  // How many of `trap`'s moves the line plays from `ply` on.
+  const matchedMoves = (trap: Trap, ply: number) => {
+    const n = trap.moves.findIndex((uci, step) => uci !== line[ply + step]);
+    return n === -1 ? trap.moves.length : n;
+  };
+  for (let ply = shownMoves - LANDING_MOVES; ply >= 0; ply--) {
+    let landed: LandedTrap | undefined;
+    let furthest = 0;
+    for (const note of arrivalNotes(lesson, keys, guideMoves, ply)) {
+      if (note.after !== keys[ply]) continue;
+      for (const trap of note.note.ideas ?? []) {
+        if (trap.type !== 'trap') continue;
+        const landing = Math.min(LANDING_MOVES, trap.moves.length);
+        const matched = matchedMoves(trap, ply);
+        // A tie keeps the first in note order.
+        if (matched < landing || matched <= furthest) continue;
+        furthest = matched;
+        landed = { trap, note, ply, landed: keys[ply + landing] };
       }
     }
+    if (landed) return landed;
   }
   return undefined;
 }

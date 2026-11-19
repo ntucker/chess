@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
 import { useRef } from 'react';
 import { ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
@@ -14,11 +15,16 @@ interface Props {
   /** Each move's label once it's judged: `qualities[n]` labels the move that leads to `plies[n + 1]`. */
   readonly qualities: readonly (MoveQuality | undefined)[];
   readonly ply: number;
+  /** The ply after a move that fell into a trap, marked as the mistake. */
+  readonly trapped?: number;
   readonly onGoto: (ply: number) => void;
 }
 
-/** The moves as a two-column scoresheet (1. e4 e5), each with its label; tap one to see it. */
-export function Scoresheet({ plies, qualities, ply, onGoto }: Props) {
+/**
+ * The moves as a two-column scoresheet (1. e4 e5), each with its label, and
+ * a move that fell into a trap marked; tap one to see it.
+ */
+export function Scoresheet({ plies, qualities, ply, trapped, onGoto }: Props) {
   const scroll = useRef<ScrollViewInstance>(null);
   const san = (n: number) => plies[n]?.move?.san;
 
@@ -49,6 +55,7 @@ export function Scoresheet({ plies, qualities, ply, onGoto }: Props) {
               // Only the row holding the shown move gets a value, so the rest
               // keep their props and skip re-rendering as the player steps.
               selected={ply === white || ply === white + 1 ? ply : undefined}
+              trapped={trapped === white || trapped === white + 1 ? trapped : undefined}
               striped={i % 2 === 1}
               onGoto={onGoto}
             />
@@ -68,6 +75,8 @@ interface RowProps {
   readonly blackQuality?: MoveQuality;
   /** The shown ply, when it's in this row. */
   readonly selected?: number;
+  /** The trapped ply, when it's in this row. */
+  readonly trapped?: number;
   readonly striped: boolean;
   readonly onGoto: (ply: number) => void;
 }
@@ -79,6 +88,7 @@ function Row({
   whiteQuality,
   blackQuality,
   selected,
+  trapped,
   striped,
   onGoto,
 }: RowProps) {
@@ -88,22 +98,29 @@ function Row({
   const cell = (n: number, san?: string, quality?: MoveQuality) => {
     if (san === undefined) return <View style={styles.cell} />;
     const current = n === selected;
+    const trap = n === trapped;
+    const { accent, danger, neutral } = color.tones;
+    // The move shown, a move that fell into a trap, or any other: ink, fill, and fill on hover.
+    const [ink, fill, hoverFill] = current
+      ? [accent.onSolid, accent.solid, accent.solid]
+      : trap
+        ? [danger.text, danger.subtle, danger.subtleHover]
+        : [color.textPrimary, undefined, neutral.subtle];
     return (
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ selected: current }}
+        accessibilityLabel={trap ? `${san}, fell into a trap` : undefined}
         onPress={() => onGoto(n)}
         style={({ hovered }) => [
           styles.cell,
-          current
-            ? { backgroundColor: color.tones.accent.solid }
-            : hovered && { backgroundColor: color.tones.neutral.subtle },
+          { borderRadius: theme.semantic.radius.sm },
+          trap && { borderColor: danger.border },
+          { backgroundColor: hovered ? hoverFill : fill },
         ]}
       >
-        <Text
-          role="body"
-          style={[styles.san, { color: current ? color.tones.accent.onSolid : color.textPrimary }]}
-        >
+        {trap && <Ionicons name="warning" size={BADGE_SIZE - 2} color={ink} />}
+        <Text role="body" style={[styles.san, { color: ink }]}>
           {san}
         </Text>
         {quality && <QualityBadge quality={quality} size={BADGE_SIZE} />}
@@ -146,9 +163,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    // Room for a trapped move's outline, so marking one doesn't shift the row.
+    borderWidth: 1,
+    borderColor: 'transparent',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     outlineOffset: 1,
   },
   san: { fontFamily: fonts.mono, fontSize: 15 },
