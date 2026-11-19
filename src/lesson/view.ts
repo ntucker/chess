@@ -144,9 +144,10 @@ export const shownKey = (key: PositionKey, preview?: Preview): PositionKey =>
 /**
  * The candidate `pointer` previews in `view`. A row previews its move (a
  * rare one has no row). A destination square previews the most common
- * candidate landing there, a listed one before a rare one. A piece's own
- * square previews its most common candidate without sliding, so the piece
- * can still be dragged anywhere legal.
+ * candidate landing there, and a piece's own square its most common
+ * candidate without sliding, so the piece can still be dragged anywhere
+ * legal. Either takes a listed candidate before a rare one, since rare ones
+ * come last in `view.candidates`.
  */
 export function preview(lesson: Lesson, view: LessonView, pointer: Pointer): Preview | undefined {
   const found = pointed(view.candidates, pointer);
