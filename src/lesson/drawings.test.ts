@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 import { Chess } from 'chessops/chess';
 import { parseFen } from 'chessops/fen';
 
-import { parsePosition, parsePositionKey } from '@/game/replay';
+import { parsePositionKey } from '@/game/replay';
 
 import {
   candidateDrawings,
@@ -211,7 +211,7 @@ describe('ideaPlayback', () => {
     const frames = ideaPlayback({ type: 'trap', moves, verdict: 'losesMaterial' }, after(...TRAP));
     expect(frames).toHaveLength(moves.length + 1);
     expect(frames[1].move).toMatchObject({ from: 'c6', to: 'e5' });
-    expect(frames.map(({ turn }) => turn)).toEqual(frames.map(({ fen }) => parsePosition(fen)!.turn));
+    expect(frames.map(({ turn }) => turn)).toEqual(frames.map((frame) => fen(frame.fen).turn));
     expect(frames.at(-1)!.turn).toBe('black');
   });
 

@@ -162,14 +162,11 @@ export function ideaTone(idea: Idea, learner: Color): Tone {
 
 /**
  * One board of an idea's playback, shaped like the game's own boards
- * (`Position`) so the board shows either the same way.
+ * (`Position`) so the board shows either the same way. A plan's boards
+ * aren't games: the FEN is only the pieces, the plan's side is to move
+ * throughout, and it is never in check.
  */
 export interface PlaybackFrame extends Pick<Position, 'fen' | 'turn' | 'check'> {
-  /**
-   * A plan's boards aren't games: its FEN is only the pieces, its side is to
-   * move throughout, and it is never in check.
-   */
-  readonly fen: string;
   /** The move that led here; absent on the first frame. */
   readonly move?: Pick<NonNullable<Position['move']>, 'from' | 'to'>;
 }
