@@ -14,6 +14,7 @@ import type { DrawBrushes } from '@lichess-org/chessground/draw';
 import type { Key, PieceNode } from '@lichess-org/chessground/types';
 import type { DOMProps } from 'expo/dom';
 import { useEffect, useEffectEvent, useMemo, useRef } from 'react';
+import { flushSync } from 'react-dom';
 
 import { type Drawing, type Square, TONES } from '@/board/drawing';
 import { type BoardMarks, boardMarks, toneBrushes } from '@/board/marks';
@@ -121,8 +122,8 @@ export default function Board({
     if (!target) return;
     // The square picked before a press. Chessground reports the press after it
     // has acted on it, when a refused move has already dropped the pick, so
-    // it is read as the press starts, before chessground sees it: a capture
-    // listener added before chessground binds its own.
+    // it is read as the press starts: a capture listener on the board's own
+    // element runs before chessground's handlers on the elements inside it.
     let picked: Square | undefined;
     const notePick = () => {
       picked = api.current?.state.selected as Square | undefined;
@@ -144,7 +145,13 @@ export default function Board({
       target,
       target.ownerDocument,
       (x, y) => board.getKeyAtDomPos([x, y]) as Square | undefined,
-      { hover: (square) => handleHover(square), hold: (square) => handleHold(square) },
+      // A preview a hover starts or ends reaches chessground before the next
+      // press: a quick click right after a hover would otherwise land on the
+      // board as it was, and chessground would refuse or misplay it.
+      {
+        hover: (square) => flushSync(() => handleHover(square)),
+        hold: (square) => flushSync(() => handleHold(square)),
+      },
     );
     return () => {
       cancelAnimationFrame(frame.current);

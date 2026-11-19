@@ -17,7 +17,6 @@ const LIFT_FOCUS_MS = 300;
  * stays pointed at until the mouse leaves the area, or keyboard focus moves
  * out of it. Touch screens have neither, so on them it is only a stack.
  */
-
 export function PointingArea({ onLeave, children }: Props) {
   // A press inside the area: whether the pointer is down, and when a finger
   // last lifted. Its focus change comes while it is down, or for a finger
@@ -52,7 +51,7 @@ export function PointingArea({ onLeave, children }: Props) {
       onPointerCancel={lift}
       onPointerLeave={(event) => {
         // A press released outside never comes up here.
-        lift(event);
+        if (press.current.down) lift(event);
         // A finger leaves whenever it lifts, which would end every preview a tap starts.
         if (hovers(event.nativeEvent.pointerType)) onLeave();
       }}

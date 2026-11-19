@@ -25,6 +25,11 @@ interface Props {
    * lands on it, or a finger holds it (or taps it, when it isn't playable).
    */
   readonly onPoint: (uci: Uci) => void;
+  /**
+   * Keyboard focus moves on past the last row. The preview ends first, so the
+   * idea card focus lands in shows the position's own notes.
+   */
+  readonly onLeave: () => void;
 }
 
 /**
@@ -41,10 +46,11 @@ export function CandidateList({
   playable,
   onPlay,
   onPoint,
+  onLeave,
 }: Props) {
   return (
     <Surface elevation="sunken" border="subtle" radius="md" style={styles.list}>
-      {candidates.map((candidate) => (
+      {candidates.map((candidate, index) => (
         <Row
           key={candidate.move.uci}
           candidate={candidate}
@@ -56,6 +62,7 @@ export function CandidateList({
           playable={playable}
           onPlay={onPlay}
           onPoint={onPoint}
+          onTabOut={index === candidates.length - 1 ? onLeave : undefined}
         />
       ))}
     </Surface>
@@ -75,9 +82,21 @@ interface RowProps {
   readonly playable: boolean;
   readonly onPlay: (candidate: Candidate) => void;
   readonly onPoint: (uci: Uci) => void;
+  /** Tab (forward) leaves this row for whatever follows the list. */
+  readonly onTabOut?: () => void;
 }
 
-function Row({ candidate, main, pointed, leadsTo, share, playable, onPlay, onPoint }: RowProps) {
+function Row({
+  candidate,
+  main,
+  pointed,
+  leadsTo,
+  share,
+  playable,
+  onPlay,
+  onPoint,
+  onTabOut,
+}: RowProps) {
   const { theme } = useTheme();
   const { color } = theme.semantic;
   const { move, san } = candidate;
@@ -114,6 +133,11 @@ function Row({ candidate, main, pointed, leadsTo, share, playable, onPlay, onPoi
         }, ROW_REST_MS);
       }}
       onPointerLeave={stopResting}
+      // Before the browser moves focus, so it lands among the notes shown next.
+      onKeyDown={(event: unknown) => {
+        const { key, shiftKey } = event as KeyboardEvent;
+        if (key === 'Tab' && !shiftKey) onTabOut?.();
+      }}
       onFocus={point}
       style={({ pressed }) => [
         styles.row,
