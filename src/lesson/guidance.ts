@@ -137,8 +137,7 @@ export function guidance(input: GuidanceInput): Guidance {
     idea.type === 'trap' ? switches.showTraps : !explore || switches.showIdeas;
   const ideas = notes.flatMap((shown) => noteIdeas(shown, allowed));
   const candidates = choices ? view.candidates : [];
-  // Up to the trap's last move the line plays: one that leaves it takes the card away.
-  const trap = view.trap && newsShown(view, view.trap.ply + view.trap.movesPlayed) ? view.trap : undefined;
+  const trap = view.trap && trapShown(view, view.trap) ? view.trap : undefined;
   const playable = [
     ...ideas.filter(playsBack),
     ...(trap ? [{ idea: trap.trap, at: trap.note.after }] : []),
@@ -245,6 +244,16 @@ const beforeMove = ({ note, before }: ShownNote, showTraps: boolean) =>
 function newsShown(view: LessonView, ply: number): boolean {
   const movesAfter = view.ply - ply;
   return movesAfter <= 0 || (movesAfter === 1 && view.learnerToMove);
+}
+
+/**
+ * Whether a trap's card still shows: as news of its last move the line plays.
+ * A move off its sequence, by either side, takes the card away at once: the
+ * learner's turn after it is no longer the trap's.
+ */
+function trapShown(view: LessonView, { ply, movesPlayed, trap }: LandedTrap): boolean {
+  const last = ply + movesPlayed;
+  return movesPlayed < trap.moves.length ? view.ply <= last : newsShown(view, last);
 }
 
 /** `shown`'s ideas that `allowed` lets through, each with the position it is checked in. */

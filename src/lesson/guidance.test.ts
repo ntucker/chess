@@ -431,6 +431,8 @@ describe('guidance', () => {
       // A move off the trap's sequence takes the card away before its last move.
       expect(shown([...LANDED, 'Bxd1'], 'explore').trap).toBeDefined();
       expect(shown([...LANDED, 'Qc7'], 'explore').trap).toBeUndefined();
+      // So does the opponent's, even with the learner to move.
+      expect(shown([...LANDED, 'Bxd1', 'Kxd1'], 'explore').trap).toBeUndefined();
       // Cut to end on the learner's move, the trap stays through the opponent's reply.
       const { moves } = sampleView(LANDED).trap!.trap;
       const lesson = withTrapMoves(SAMPLE, moves, moves.slice(0, -1));
