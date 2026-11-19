@@ -196,7 +196,7 @@ export function pieceAt(fen: string, square: string): Piece | undefined {
 }
 
 /** The UCI for a move between two squares, promoting pawns to queens. */
-export function toUci(ply: Ply, from: string, to: string): string {
+export function toUci(ply: Pick<Ply, 'fen'>, from: string, to: string): string {
   const piece = pieceAt(ply.fen, from);
   const promotes = piece?.role === 'pawn' && (to[1] === '8' || to[1] === '1');
   return `${from}${to}${promotes ? 'q' : ''}`;

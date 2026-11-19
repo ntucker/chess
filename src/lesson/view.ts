@@ -11,7 +11,7 @@
 import type { SquareName } from 'chessops/types';
 
 import type { Drag } from '@/board/pointer';
-import { parsePositionKey } from '@/game/replay';
+import { lineMove, parsePositionKey, toUci } from '@/game/replay';
 import type { Opponent } from '@/opponent/opponent';
 
 import {
@@ -150,24 +150,23 @@ export const shownKey = (key: PositionKey, preview?: Preview): PositionKey =>
  * previews 1...c6; over c4, nothing.
  */
 export function preview(lesson: Lesson, view: LessonView, pointer: Pointer): Preview | undefined {
-  const found = pointed(view.candidates, pointer);
+  const found = pointed(view, pointer);
   if (!found) return undefined;
   const { move, next } = found.candidate;
   return { ...found, notes: cardNotes(lesson, move, view.key, next) };
 }
 
-function pointed(shown: readonly Candidate[], pointer: Pointer) {
+function pointed({ key, candidates }: LessonView, pointer: Pointer) {
   if (pointer.at === 'row') {
-    const candidate = shown.find(({ move, rare }) => !rare && move.uci === pointer.uci);
+    const candidate = candidates.find(({ move, rare }) => !rare && move.uci === pointer.uci);
     return candidate && { candidate, slide: true };
   }
-  const candidate = shown.find((it) => it.from === pointer.from && dropsOn(it, pointer.to));
+  // The move the drop would play, as the game records it: a king dropped on
+  // its rook castles, and a pawn promotes to a queen.
+  const uci = lineMove(key, toUci({ fen: key }, pointer.from, pointer.to));
+  const candidate = uci && candidates.find(({ move }) => move.uci === uci);
   return candidate && { candidate, slide: false };
 }
-
-/** Whether dropping a candidate's piece on `square` plays it: its square, or a castle's rook. */
-const dropsOn = ({ san, from, to }: Candidate, square: SquareName) =>
-  to === square || (san.startsWith('O-O') && square === `${to[0] === 'g' ? 'h' : 'a'}${from[1]}`);
 
 /** The idea card for a move from `before` to `after`: the move's notes, then the position's. */
 function cardNotes(
