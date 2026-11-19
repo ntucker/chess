@@ -425,7 +425,7 @@ describe('guidance', () => {
       }
     });
 
-    it('shows a trap fallen into through its moves and the learner\'s turn after them', () => {
+    it('shows a trap fallen into through its moves and the learner\'s turn after them, until the line leaves it', () => {
       expect(shown(TRAP_PUNISHED, 'explore').trap).toMatchObject({ ply: TRAP.length });
       expect(shown([...TRAP_PUNISHED, 'a6'], 'explore').trap).toBeUndefined();
       // A move off the trap's sequence takes the card away before its last move.

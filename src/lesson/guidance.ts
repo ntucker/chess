@@ -21,8 +21,9 @@
  * - Traps: with "show traps" on, a trap's sequence is drawn before the
  *   learner commits, beside the candidates; off, it isn't. A trap fallen
  *   into is shown either way, and plays back, through the trap's moves and
- *   the learner's turn after them. With traps hidden, no note that holds a
- *   trap shows in Practice, on any turn.
+ *   the learner's turn after them; a move off its sequence, by either side,
+ *   ends it at once. With traps hidden, no note that holds a trap shows in
+ *   Practice, on any turn.
  * - While a note's idea plays back, the board is the playback's: nothing else
  *   is drawn, and the preview it started from stays.
  *
@@ -109,7 +110,7 @@ export interface Guidance {
   readonly best?: Uci;
   /** Stockfish's top three, listed only beyond the guide. */
   readonly top: readonly Uci[];
-  /** A trap the line fell into, while its card shows (see `newsShown`). */
+  /** A trap the line fell into, while its card shows (see `trapShown`). */
   readonly trap?: LandedTrap;
   /** The line has reached a guide line's end, and the headline tells it (see `newsShown`). */
   readonly lineEnded: boolean;
