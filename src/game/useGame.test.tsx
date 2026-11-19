@@ -84,6 +84,18 @@ describe('useGame', () => {
     expect(game().canMove).toBe(true);
   });
 
+  it('drops a failure that arrives once nobody plays the opponent, and asks again on its return', async () => {
+    const maia = scripted('1500');
+    await render({ opponent: maia.opponent, side: 'white', active: true });
+    await act(async () => game().move('e2', 'e4'));
+    await render({ side: 'white', active: true });
+    maia.asked[0].fail();
+    await think();
+    expect(game().error).toBe(undefined);
+    await render({ opponent: maia.opponent, side: 'white', active: true });
+    expect(maia.asked).toHaveLength(2);
+  });
+
   it("is started once the player's side has moved, not the other side", async () => {
     await render({ side: 'black', active: true });
     await act(async () => game().play('e2e4'));

@@ -35,8 +35,8 @@ interface Options {
  * An answer counts only while the moves it answers are still the game's (the
  * reducer's one check), so a late one from an earlier position or game is
  * dropped; one from an opponent since replaced still answers the same
- * position, so the first answer wins. With the opponent gone, nobody's
- * answer counts.
+ * position, so the first answer wins. With the opponent gone, no answer
+ * counts, a failure neither: choosing that opponent again asks afresh.
  */
 export function useGame(
   opponent: GameOpponent | undefined,

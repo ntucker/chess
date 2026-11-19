@@ -138,7 +138,7 @@ export function guidance(input: GuidanceInput): Guidance {
   const ideas = notes.flatMap((shown) => noteIdeas(shown, allowed));
   const candidates = choices ? view.candidates : [];
   // Up to the trap's last move the line plays: one that leaves it takes the card away.
-  const trap = view.trap && newsShown(view, view.trap.ply + view.trap.played) ? view.trap : undefined;
+  const trap = view.trap && newsShown(view, view.trap.ply + view.trap.movesPlayed) ? view.trap : undefined;
   const playable = [
     ...ideas.filter(playsBack),
     ...(trap ? [{ idea: trap.trap, at: trap.note.after }] : []),
