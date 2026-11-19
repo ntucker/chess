@@ -18,7 +18,7 @@ export function StockfishHost() {
     if (!running) return;
     let engine: StockfishWorker | undefined;
     let connection: Connection | undefined;
-    // Stops the downloads, and tells what's still running to drop its result.
+    // Aborts the downloads, and tells the start-up after them that the host stopped.
     const stop = new AbortController();
     (async () => {
       // Downloaded here, not by the worker, so the engine's time to answer
