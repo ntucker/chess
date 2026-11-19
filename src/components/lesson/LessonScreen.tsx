@@ -54,6 +54,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
     pointedNote,
     pointRow,
     pointNote,
+    leaveNote,
     leave,
   } = useLesson(lesson);
   const learner = lesson.side;
@@ -120,6 +121,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
               pointable={guidance.pointable}
               pointed={pointedNote}
               onPoint={pointNote}
+              onLeave={leaveNote}
             />
           </PointingArea>
           <Separator />

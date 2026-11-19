@@ -58,6 +58,18 @@ describe('peekReducer', () => {
       pointing({ candidate: SQUARE }),
     ],
     [
+      'the pointer leaving a note unpoints it, keeping the candidate',
+      pointing({ candidate: ROW, note: PLAN }),
+      [{ type: 'leaveNote', key: HERE, note: PLAN }],
+      pointing({ candidate: ROW }),
+    ],
+    [
+      'the pointer leaving another note keeps the one pointed at by keyboard focus',
+      pointing({ note: PLAN }),
+      [{ type: 'leaveNote', key: HERE, note: STRUCTURE }],
+      pointing({ note: PLAN }),
+    ],
+    [
       'leaving ends pointing',
       pointing({ candidate: ROW, note: PLAN }),
       [{ type: 'leave' }],

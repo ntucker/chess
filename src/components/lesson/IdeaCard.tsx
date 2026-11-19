@@ -26,8 +26,10 @@ interface Props {
   readonly pointable: readonly Note[];
   /** The note pointed at, whose ideas the board draws. */
   readonly pointed?: Note;
-  /** The learner points at a note that draws on the board, or leaves it. */
-  readonly onPoint: (note: Note | undefined) => void;
+  /** The learner points at a note that draws on the board. */
+  readonly onPoint: (note: Note) => void;
+  /** The pointer leaves a note. */
+  readonly onLeave: (note: Note) => void;
 }
 
 /**
@@ -37,7 +39,16 @@ interface Props {
  * whose idea is on the board, pointed at or playing back, lights its rule in
  * that idea's color.
  */
-export function IdeaCard({ title, notes, learner, playback, pointable, pointed, onPoint }: Props) {
+export function IdeaCard({
+  title,
+  notes,
+  learner,
+  playback,
+  pointable,
+  pointed,
+  onPoint,
+  onLeave,
+}: Props) {
   return (
     <Stack gap="3">
       <Eyebrow>{title}</Eyebrow>
@@ -52,6 +63,7 @@ export function IdeaCard({ title, notes, learner, playback, pointable, pointed, 
               pointable={pointable.includes(shown.note)}
               pointed={shown.note === pointed}
               onPoint={onPoint}
+              onLeave={onLeave}
             />
           ))}
         </View>
@@ -71,13 +83,15 @@ function NoteView({
   pointable,
   pointed,
   onPoint,
+  onLeave,
 }: {
   readonly shown: ShownNote;
   readonly learner: Color;
   readonly playback: Playback;
   readonly pointable: boolean;
   readonly pointed: boolean;
-  readonly onPoint: (note: Note | undefined) => void;
+  readonly onPoint: (note: Note) => void;
+  readonly onLeave: (note: Note) => void;
 }) {
   const { theme } = useTheme();
   const { color } = theme.semantic;
@@ -103,7 +117,8 @@ function NoteView({
         if (hovers(nativeEvent.pointerType)) point();
       }}
       onPointerLeave={({ nativeEvent }) => {
-        if (pointed && hovers(nativeEvent.pointerType)) onPoint(undefined);
+        // Whether lit or not: a switch may hide the ideas of the note pointed at.
+        if (hovers(nativeEvent.pointerType)) onLeave(note);
       }}
       // Keyboard focus on its buttons points at it too; the panel ends it.
       onFocus={point}

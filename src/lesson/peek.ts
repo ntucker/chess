@@ -38,6 +38,12 @@ export type PeekAction =
   | { readonly type: 'candidate'; readonly key: PositionKey; readonly candidate?: Pointer }
   /** The learner points at a note on the idea card, or at none. */
   | { readonly type: 'note'; readonly key: PositionKey; readonly note?: Note }
+  /**
+   * The pointer leaves `note` on the idea card: it is no longer pointed at,
+   * if it was, even while a switch hides its ideas. Another note pointed at by
+   * keyboard focus stays.
+   */
+  | { readonly type: 'leaveNote'; readonly key: PositionKey; readonly note: Note }
   /** The learner leaves the candidates and the idea card. A playback goes on. */
   | { readonly type: 'leave' }
   /** Plays `note`'s idea back from the candidate pointed at now. */
@@ -67,6 +73,10 @@ export function peekReducer(peek: Peek | undefined, action: PeekAction): Peek | 
       // Pointing that changes nothing keeps the same state, so nothing re-renders.
       return samePointing(now, next) ? peek : { ...next, kind: 'point' };
     }
+    case 'leaveNote':
+      return peek?.kind === 'point' && peek.key === action.key && peek.note === action.note
+        ? { ...peek, note: undefined }
+        : peek;
     case 'leave':
       return peek?.kind === 'play' ? peek : undefined;
     case 'play': {
