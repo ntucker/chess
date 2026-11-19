@@ -21,17 +21,14 @@ import { type Color, colorName, opposite } from '@/game/replay';
 import { useGame } from '@/game/useGame';
 import { describeOpponent } from '@/opponent/opponent';
 import { useOpponent } from '@/opponent/useOpponent';
-import { fetchOpponentMove } from '@/resources/opponent';
+import { gameOpponent } from '@/resources/opponent';
 import { spotlight } from '@/theme/theme';
 
 export default function PlayScreen() {
   const ctrl = useController();
   const opponent = useOpponent();
   const described = describeOpponent(opponent);
-  const game = useGame({
-    id: `${opponent.engine} ${opponent.rating}`,
-    reply: (after) => fetchOpponentMove(ctrl, opponent, after),
-  });
+  const game = useGame(gameOpponent(ctrl, opponent));
   const { playerColor, line, qualities, ply, current, toMove, thinking, goto } = game;
   const [nextColor, setNextColor] = useState<Color>(playerColor);
   const { theme } = useTheme();

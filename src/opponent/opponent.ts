@@ -22,7 +22,10 @@ export interface Opponent {
 /** The opponent's rating until the learner can pick one. */
 export const DEFAULT_OPPONENT_RATING: MaiaRating = 1500;
 
-/** How `opponent` is shown: its name, a few words for its name plate, and one sentence on how it plays. */
+/**
+ * How `opponent` is shown: its name, a few words for its name plate, and one
+ * sentence on how it plays.
+ */
 export function describeOpponent({ engine, rating }: Opponent) {
   return engine === 'maia'
     ? {

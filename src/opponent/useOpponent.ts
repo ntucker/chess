@@ -7,7 +7,11 @@ import {
   type OpponentEngine,
 } from './opponent';
 
-const engineSetting = createSetting<OpponentEngine>('opponentEngine', oneOf(OPPONENT_ENGINES), 'maia');
+const engineSetting = createSetting<OpponentEngine>(
+  'opponentEngine',
+  oneOf(OPPONENT_ENGINES),
+  'maia',
+);
 
 /** Switches the engine that plays the opponent, and remembers it. */
 export const setOpponentEngine = engineSetting.set;

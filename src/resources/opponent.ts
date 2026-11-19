@@ -1,5 +1,6 @@
 import type { Controller } from '@data-client/react';
 
+import type { GameOpponent } from '@/game/useGame';
 import type { Opponent } from '@/opponent/opponent';
 
 import { getEvaluation } from './evaluation';
@@ -32,4 +33,12 @@ export async function fetchOpponentMove(
   const { best } = await ctrl.fetchIfStale(getEvaluation, 'stockfish', line);
   if (!best) throw new Error('Stockfish found no move');
   return best;
+}
+
+/** `opponent` as the opponent of a game (useGame). */
+export function gameOpponent(ctrl: Controller, opponent: Opponent): GameOpponent {
+  return {
+    id: `${opponent.engine} ${opponent.rating}`,
+    reply: (line) => fetchOpponentMove(ctrl, opponent, line),
+  };
 }
