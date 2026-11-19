@@ -115,6 +115,42 @@ export function candidates(
   return rows.sort((a, b) => (count(b.move) ?? -1) - (count(a.move) ?? -1));
 }
 
+/**
+ * An opponent's candidate played less often than this, as a share of the
+ * candidates' games, is rare (see `splitRare`).
+ */
+export const RARE_SHARE = 0.05;
+
+/**
+ * `all`, the candidates at `key` in list order, split into the ones the list
+ * shows and the rare ones it leaves off. On the learner's turn none are
+ * rare. On the opponent's, the most played never is, nor one without counts
+ * or one starting a trap the position's notes show; any other is rare below
+ * `RARE_SHARE`. A study can give twenty rare replies a line each, and
+ * listing them all buries the few that are played.
+ */
+export function splitRare(
+  lesson: Lesson,
+  key: PositionKey,
+  all: readonly Candidate[],
+): { readonly likely: Candidate[]; readonly rare: Candidate[] } {
+  const entry = lesson.positions[key] as LessonPosition | undefined;
+  if (!entry || parsePositionKey(key)?.turn === lesson.side) return { likely: [...all], rare: [] };
+  const traps = new Set(trapStarts(entry));
+  const isRare = ({ move, share }: Candidate, n: number) =>
+    n > 0 && share !== undefined && share < RARE_SHARE && !traps.has(move.uci);
+  return {
+    likely: all.filter((candidate, n) => !isRare(candidate, n)),
+    rare: all.filter(isRare),
+  };
+}
+
+/** The first move of each trap in a position's notes: the move that falls in. */
+const trapStarts = (entry: LessonPosition): Uci[] =>
+  (entry.notes ?? []).flatMap(({ ideas = [] }) =>
+    ideas.flatMap((idea) => (idea.type === 'trap' ? [idea.moves[0]] : [])),
+  );
+
 /** `uci` as the guide stores it at `key`, or undefined if it isn't a guide move there. */
 export const guideMove = (lesson: Lesson, key: PositionKey, uci: Uci): LessonMove | undefined =>
   lesson.positions[key]?.moves.find((move) => move.uci === uci);

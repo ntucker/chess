@@ -194,4 +194,31 @@ describe('preview', () => {
     expect(d2(1100)).toMatchObject({ candidate: { san: 'Bd2' }, slide: true });
     expect(d2(1500)).toMatchObject({ candidate: { san: 'Nd2' }, slide: true });
   });
+
+  describe('a rare move left off the list', () => {
+    // 1 game of 2,751 in the 1400 band.
+    const lesson = withMoves(SAMPLE, keyAfter(...MAIN), (moves) => [
+      ...moves,
+      { uci: 'f2f3', games: [1, 1, 1, 1, 1] },
+    ]);
+    const line = uciLine(...MAIN);
+    const rareView = lessonView({ lesson, line, ply: line.length, opponent: 1500 });
+
+    it('is kept apart from the listed candidates', () => {
+      expect(rareView.candidates.map(({ san }) => san)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2']);
+      expect(rareView.rare.map(({ san }) => san)).toEqual(['f3']);
+    });
+
+    it('previews from its squares, but has no row', () => {
+      expect(preview(lesson, rareView, at('f3'))).toMatchObject({
+        candidate: { san: 'f3' },
+        slide: true,
+      });
+      expect(preview(lesson, rareView, at('f2'))).toMatchObject({
+        candidate: { san: 'f3' },
+        slide: false,
+      });
+      expect(preview(lesson, rareView, { at: 'row', uci: 'f2f3' })).toBeUndefined();
+    });
+  });
 });
