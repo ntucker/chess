@@ -18,16 +18,16 @@ export function StockfishHost() {
     if (!running) return;
     let engine: StockfishWorker | undefined;
     let connection: Connection | undefined;
-    let stopped = false;
-    const downloads = new AbortController();
+    // Stops the downloads, and tells what's still running to drop its result.
+    const stop = new AbortController();
     (async () => {
       // Downloaded here, not by the worker, so the engine's time to answer
       // (engine.ts) starts once it has its files, however slow the network.
       const [loader, wasm] = await Promise.all([
-        download(LOADER, downloads.signal).then((file) => file.text()),
-        download(WASM, downloads.signal).then((file) => file.blob()),
+        download(LOADER, stop.signal).then((file) => file.text()),
+        download(WASM, stop.signal).then((file) => file.blob()),
       ]);
-      if (stopped) return;
+      if (stop.signal.aborted) return;
       engine = startStockfishWorker(
         loader,
         new Blob([wasm], { type: 'application/wasm' }),
@@ -36,13 +36,12 @@ export function StockfishHost() {
       );
       connection = attachStockfish(engine.send, supervisor);
     })().catch((error: unknown) => {
-      if (stopped) return;
+      if (stop.signal.aborted) return;
       console.error(error);
       supervisor.failed();
     });
     return () => {
-      stopped = true;
-      downloads.abort();
+      stop.abort();
       engine?.terminate();
       connection?.detach();
     };
