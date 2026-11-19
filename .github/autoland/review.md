@@ -29,8 +29,9 @@ The plan piece named below is the contract. Nathaniel approved it; nobody approv
 4. **Check the other reviewers.** `threads.json` and `comments.json` hold the comments and review
    summaries from Bugbot (`cursor`) and from Nathaniel's account: the Staff reviewer's comments
    (starting `**Staff Reviewer:**`) and the author's replies. Every point raised must be fixed in the
-   code, or answered with a reason you agree with after checking the code. A follow-up the author
-   handed on counts as answered. An open point, or a rejection you think is wrong, is blocking.
+   code, or answered with a reason you agree with after checking the code. A point its reviewer
+   marked as a follow-up for later counts as answered once the author says where it went. An open
+   point, or a rejection you think is wrong, is blocking.
 5. **Look for bugs at the interfaces**: inputs the contract allows but the code mishandles, state
    that goes stale, work that never stops, errors swallowed. Blocking only if a learner would hit it.
 

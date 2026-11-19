@@ -34,6 +34,7 @@ jobs:
     outputs:
       plan: ${{ steps.piece.outputs.plan }}
       piece: ${{ steps.piece.outputs.piece }}
+      markdown_only: ${{ steps.files.outputs.markdown_only }}
 
     steps:
       - name: Checkout the approved plans on main
@@ -66,16 +67,25 @@ jobs:
           echo "piece=$piece" >> "$GITHUB_OUTPUT"
 
       - name: Refuse changes to approvals and process
+        id: files
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          blocked=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename' \
-            | grep -E '^(docs/plans/|\.github/|\.agents/projects/|PROJECTS\.md$|\.claude/|\.mcp\.json$)|(^|/)CLAUDE\.md$' || true)
+          # A failed listing must stop the gate, not look like an empty PR.
+          files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename')
+          [[ -n $files ]]
+          blocked=$(printf '%s\n' "$files" | grep -E '^(docs/plans/|\.github/|\.agents/projects/|PROJECTS\.md$|\.claude/|\.mcp\.json$)|(^|/)CLAUDE\.md$' || true)
           if [[ -n $blocked ]]; then
             echo "::error::Only Nathaniel merges changes to plans, workflows, agent settings and the project process:"
             printf '%s\n' "$blocked"
             exit 1
+          fi
+          # CI and the web build skip Markdown-only PRs, so Land can't require them.
+          if printf '%s\n' "$files" | grep -qv '\.md$'; then
+            echo "markdown_only=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "markdown_only=true" >> "$GITHUB_OUTPUT"
           fi
 
   build:
@@ -231,8 +241,9 @@ jobs:
               '[.[] | .author |= sub("\\[bot\\]$"; "") | select(.author as $a | $trusted | index($a))] | sort_by(.created_at)' \
               > "$dir/comments.json"
 
-      # Claude runs outside the checkout, so no settings, hooks, CLAUDE.md or
-      # MCP config from the PR load next to the token.
+      # Claude runs outside the checkout and loads only user settings, so no
+      # settings, hooks, CLAUDE.md or MCP config from the PR load next to the
+      # token. It may not read /proc, where its environment is.
       - name: Review
         id: review
         env:
@@ -256,12 +267,12 @@ jobs:
           mkdir -p "$RUNNER_TEMP/review" && cd "$RUNNER_TEMP/review"
           npx -y @anthropic-ai/claude-code@2.1.321 -p "$prompt" \
             --model claude-sonnet-5-5 --effort high --add-dir "$GITHUB_WORKSPACE" \
-            --mcp-config "$mcp" --strict-mcp-config \
-            --allowedTools 'Read,Grep,Glob,mcp__playwright' \
+            --setting-sources user --mcp-config "$mcp" --strict-mcp-config \
+            --allowedTools 'Read,Grep,Glob,mcp__playwright' --disallowedTools 'Read(//proc/**)' \
             --json-schema "$(cat "$main/.github/autoland/verdict.schema.json")" \
             --output-format json > "$GITHUB_WORKSPACE/.autoland/result.json"
           jq -e '.structured_output.verdict' "$GITHUB_WORKSPACE/.autoland/result.json" > /dev/null
-          # The token is in the reviewer's environment; it must never reach a public comment.
+          # Last guard: a review holding a verbatim copy of the token is never posted.
           if grep -qF "$CLAUDE_CODE_OAUTH_TOKEN" "$GITHUB_WORKSPACE/.autoland/result.json"; then
             echo "::error::The review quoted the Claude token, so it will not be posted"; exit 1
           fi
@@ -291,7 +302,7 @@ jobs:
 
   land:
     name: Land
-    needs: review
+    needs: [gate, review]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     concurrency:
@@ -316,11 +327,10 @@ jobs:
       # CHANGE_THIS_PR. A push, a removed label, a draft or a "changes
       # requested" review stops the landing.
       - name: Wait for the other checks and Staff
+        env:
+          REQUIRED: >-
+            ${{ needs.gate.outputs.markdown_only == 'true' && '[]' || '["Lint, typecheck and test", "Build"]' }}
         run: |
-          required='["Lint, typecheck and test", "Build"]'
-          if gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename' | grep -qv '\.md$'; then :; else
-            required='[]'
-          fi
           for _ in $(seq 80); do
             pr=$(gh pr view "$PR" --json state,isDraft,headRefOid,labels,reviewDecision)
             jq -e --arg sha "$HEAD_SHA" '.state == "OPEN" and (.isDraft | not) and .headRefOid == $sha
@@ -344,7 +354,7 @@ jobs:
             if [[ $on_head == true && $staff == *CHANGE_THIS_PR* ]]; then
               echo "::error::The Staff reviewer asked for changes: $staff"; exit 1
             fi
-            if [[ $on_head == true ]] && jq -e --argjson required "$required" '. as $runs | all(.status == "completed")
+            if [[ $on_head == true ]] && jq -e --argjson required "$REQUIRED" '. as $runs | all(.status == "completed")
                 and ($required | all(. as $name | $runs | any(.name == $name and .conclusion == "success")))' <<< "$runs" > /dev/null; then
               exit 0
             fi
