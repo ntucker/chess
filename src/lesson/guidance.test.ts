@@ -285,6 +285,15 @@ describe('guidance', () => {
       expect(types(explore(ADVANCE, { switches: off, preview: previewing }).drawn)).toEqual(['plan']);
       const dragging = explore(ADVANCE, { switches: off, dragged: 'c8' });
       expect(dragging.drawnCandidates.map(({ move }) => move.uci)).toEqual(['c8f5']);
+      const [, position] = resting.notes;
+      const pointing = explore(ADVANCE, { switches: off, pointed: position.note });
+      expect(pointing.pointed).toBe(position.note);
+      expect(types(pointing.drawn)).toEqual(['structure', 'structure']);
+    });
+
+    it("keeps Stockfish's best off the resting board with 'moves on the board' off", () => {
+      expect(explore(ADVANCE).best).toBe('g8f6');
+      expect(explore(ADVANCE, { switches: { ...ALL_ON, showMoves: false } }).best).toBeUndefined();
     });
 
     it('lets only notes whose ideas draw be pointed at', () => {

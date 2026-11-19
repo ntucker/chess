@@ -5,7 +5,7 @@
  * - Explore shows every note on the idea card. The board draws the
  *   candidates, and a note's ideas only when the learner points at it, since
  *   both would share the board's colors; a previewed move draws its own
- *   ideas, and where no candidates are drawn every note's ideas are.
+ *   ideas, and where no candidates are listed every note's ideas are.
  *   Only a note about the position on the board can be pointed at, and
  *   Stockfish's best move shows only while nothing is previewed, pointed at
  *   or playing back.
@@ -19,9 +19,10 @@
  *   with auto play the opponent just plays. Stockfish's moves stay hidden.
  *   At the start, where the first move picks the opening, nobody replies,
  *   so its candidates and previews show in every mode.
- * - "Moves on the board" off keeps the candidates' arrows off the resting
- *   board, in either mode, so the next moves show only once the learner
- *   points at a row or drags a piece; the list still shows them.
+ * - "Moves on the board" off keeps the candidates' arrows and Stockfish's
+ *   best off the resting board, in either mode, so the next moves show only
+ *   once the learner points at a row or drags a piece; the list still shows
+ *   them.
  * - Traps: with "show traps" on, a trap's sequence is drawn before the
  *   learner commits, beside the candidates; off, it isn't. A trap fallen
  *   into is shown either way, and plays back, through the trap's moves and
@@ -180,7 +181,9 @@ export function guidance(input: GuidanceInput): Guidance {
     showMoves: switches.showMoves,
   });
   const best =
-    explore && !preview && !dragged && !playing && !pointedNote ? engine?.best : undefined;
+    explore && switches.showMoves && !preview && !dragged && !playing && !pointedNote
+      ? engine?.best
+      : undefined;
 
   return {
     candidates,
