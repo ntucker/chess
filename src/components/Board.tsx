@@ -181,9 +181,10 @@ export default function Board({
     // pick, so it is read as the press starts: a capture listener on the
     // board's own element runs before chessground's handlers inside it.
     let picked: Square | undefined;
-    const notePick = ({ clientX, clientY }: PointerEvent) => {
+    const notePick = ({ button, shiftKey, clientX, clientY }: PointerEvent) => {
       picked = api.current?.state.selected as Square | undefined;
-      holdStill(picked, clientX, clientY);
+      // Chessground draws an arrow for any other press, and plays no move.
+      if (button === 0 && !shiftKey) holdStill(picked, clientX, clientY);
     };
     target.addEventListener('pointerdown', notePick, { capture: true });
     const board = Chessground(target, {
