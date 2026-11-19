@@ -15,6 +15,8 @@ import { PLAYER_BAR_HEIGHT, PLAYER_DISC, PlayerBar } from '@/components/PlayerBa
 import { Scoresheet } from '@/components/Scoresheet';
 import { SideChooser } from '@/components/SideChooser';
 import { Transport } from '@/components/Transport';
+import type { MoveQuality } from '@/analysis/quality';
+import type { Drawing, Square } from '@/board/drawing';
 import { type Color, colorName, opposite } from '@/game/replay';
 import { useGame } from '@/game/useGame';
 import type { MaiaRating } from '@/maia/models';
@@ -97,7 +99,7 @@ export default function PlayScreen() {
                       movableColor={game.canMove ? playerColor : undefined}
                       dests={current.dests}
                       lastMove={current.move ? [current.move.from, current.move.to] : undefined}
-                      lastMoveQuality={qualities[ply - 1]}
+                      drawings={lastMoveBadge(current.move?.to, qualities[ply - 1])}
                       check={current.check}
                       onMove={game.move}
                       dom={{ style: styles.fill, scrollEnabled: false }}
@@ -153,6 +155,11 @@ export default function PlayScreen() {
       </SafeAreaView>
     </View>
   );
+}
+
+/** The last move's label, on the piece it moved. */
+function lastMoveBadge(square: string | undefined, quality: MoveQuality | undefined): Drawing[] {
+  return square && quality ? [{ kind: 'badge', square: square as Square, quality }] : [];
 }
 
 /** Space between the board and the name bars above and below it. */
