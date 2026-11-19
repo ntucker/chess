@@ -1,37 +1,36 @@
 import { describe, expect, it } from '@jest/globals';
 
 import { guidance, type Guidance, type LessonMode, type LessonSwitches } from './guidance';
-import { MAIN, SAMPLE, uciLine } from './sample.fixture';
-import { lessonView, type LessonViewInput } from './view';
+import { ADVANCE, keyAfter, MAIN, SAMPLE, sampleView, TRAP, TRAP_PUNISHED } from './lesson.fixture';
+import { type Pointer, preview } from './view';
 
 const ALL_ON: LessonSwitches = { auto: true, showIdeas: true, showTraps: true };
-const ADVANCE = [...MAIN, 'e5'];
-const TRAP = [...ADVANCE, 'c5', 'dxc5', 'Nc6', 'Nf3', 'Bg4', 'c3'];
 const ENGINE = { best: 'g8f6', top: ['g8f6', 'c8f5', 'c6c5'] };
 
 function shown(
   sans: string[],
   mode: LessonMode,
   switches: Partial<LessonSwitches> = {},
-  input: Partial<LessonViewInput> = {},
+  {
+    pointer,
+    engine = ENGINE,
+  }: { pointer?: Pointer; engine?: typeof ENGINE | { best: string } } = {},
 ): Guidance {
-  const line = uciLine(...sans);
-  const view = lessonView({
-    lesson: SAMPLE,
-    line,
-    ply: line.length,
-    opponent: 1500,
-    engine: ENGINE,
-    ...input,
+  const view = sampleView(sans);
+  return guidance({
+    view,
+    mode,
+    switches: { ...ALL_ON, ...switches },
+    preview: pointer && preview(SAMPLE, view, pointer),
+    engine,
   });
-  return guidance(view, mode, { ...ALL_ON, ...switches });
 }
 
 /** What a guidance shows, in words: candidates by SAN, notes by kind, ideas by type. */
 const summary = (shown: Guidance) => ({
   candidates: shown.candidates.map(({ san }) => san),
   preview: shown.preview?.candidate.san,
-  notes: shown.notes.map(({ on }) => on),
+  notes: shown.notes.map(({ before }) => (before ? 'move' : 'position')),
   ideas: shown.ideas.map(({ idea }) => idea.type),
   best: shown.best,
   top: shown.top,
@@ -81,16 +80,12 @@ describe('guidance', () => {
       expect(shown(end, 'explore')).toMatchObject({ best: 'g8f6', top: ENGINE.top });
     });
 
-    it('gives each idea the positions around its note', () => {
-      const [first] = shown(ADVANCE, 'explore').ideas;
-      const keys = lessonView({
-        lesson: SAMPLE,
-        line: uciLine(...ADVANCE),
-        ply: 5,
-        opponent: 1500,
-      });
-      expect(first.after).toBe(keys.key);
-      expect(first.before).not.toBe(keys.key);
+    it('draws each idea in the position it is checked in', () => {
+      // dxc5's note shows the pawn on d4 attacking c5, before the capture.
+      const [capture] = shown([...ADVANCE, 'c5', 'dxc5'], 'explore').ideas;
+      expect(capture).toMatchObject({ idea: { at: 'before' }, at: keyAfter(...ADVANCE, 'c5') });
+      const ideas = shown(ADVANCE, 'explore').ideas;
+      expect(ideas.map(({ at }) => at)).toEqual(ideas.map(() => keyAfter(...ADVANCE)));
     });
   });
 
@@ -111,7 +106,7 @@ describe('guidance', () => {
       });
     });
 
-    it("shows the opponent's candidates and previews on I choose", () => {
+    it("shows the opponent's candidates and previews on I choose, but not Stockfish's moves", () => {
       const choosing = shown(
         MAIN,
         'practice',
@@ -121,6 +116,10 @@ describe('guidance', () => {
       expect(summary(choosing)).toMatchObject({
         candidates: ['e5', 'exd5', 'Nc3', 'Nd2'],
         preview: 'Nc3',
+      });
+      expect(summary(shown([...ADVANCE, 'a6'], 'practice', { auto: false }))).toMatchObject({
+        best: undefined,
+        top: [],
       });
     });
 
@@ -156,14 +155,12 @@ describe('guidance', () => {
       }
     });
 
-    it('shows a trap walked into once its punishment is on the board', () => {
-      expect(shown([...TRAP, 'Nxe5'], 'practice', { showTraps: false }).trap).toBeUndefined();
-      expect(shown([...TRAP, 'Nxe5', 'Nxe5'], 'practice', { showTraps: false }).trap).toMatchObject(
-        {
+    it('shows a trap fallen into, with "show traps" on or off', () => {
+      for (const showTraps of [true, false]) {
+        expect(shown(TRAP_PUNISHED, 'practice', { showTraps }).trap).toMatchObject({
           ply: TRAP.length,
-          played: 2,
-        },
-      );
+        });
+      }
     });
   });
 });

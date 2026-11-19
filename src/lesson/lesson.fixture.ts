@@ -1,5 +1,5 @@
-// For tests only: the shipped sample lesson, read from disk (Jest can't run
-// getLesson's import()), and lines written in SAN for readability.
+// For tests only: shipped lessons read from disk (Jest can't run getLesson's
+// import()), the sample lesson, and lines written in SAN for readability.
 import { Chess } from 'chessops/chess';
 import { parseSan } from 'chessops/san';
 import { makeUci } from 'chessops/util';
@@ -8,11 +8,17 @@ import { join } from 'node:path';
 
 import { recordedMove } from '@/game/replay';
 
-import { type Lesson, readLesson } from './lesson';
+import { type Lesson, type LessonMove, type PositionKey, readLesson } from './lesson';
+import { lineKeys } from './select';
+import { lessonView, type LessonViewInput } from './view';
 
-export const SAMPLE: Lesson = readLesson(
-  JSON.parse(readFileSync(join(__dirname, '../../assets/lessons/caro-kann-sample.json'), 'utf8')),
-);
+export const LESSON_FOLDER = join(__dirname, '../../assets/lessons');
+
+/** The lesson shipped as `assets/lessons/<id>.json`. */
+export const readShippedLesson = (id: string): Lesson =>
+  readLesson(JSON.parse(readFileSync(join(LESSON_FOLDER, `${id}.json`), 'utf8')));
+
+export const SAMPLE = readShippedLesson('caro-kann-sample');
 
 /** `sans` as UCI moves from the starting position, castling as the game records it. */
 export function uciLine(...sans: string[]): string[] {
@@ -26,5 +32,41 @@ export function uciLine(...sans: string[]): string[] {
   });
 }
 
-/** The first moves of the Caro-Kann, to the position where White chooses a variation. */
+/** `lesson` with the guide's moves at `key` changed by `edit`. */
+export function withMoves(
+  lesson: Lesson,
+  key: PositionKey,
+  edit: (moves: readonly LessonMove[]) => LessonMove[],
+): Lesson {
+  const entry = lesson.positions[key];
+  return {
+    ...lesson,
+    positions: { ...lesson.positions, [key]: { ...entry, moves: edit(entry.moves) } },
+  };
+}
+
+/** The key of the position after `sans`. */
+export const keyAfter = (...sans: string[]) => lineKeys(uciLine(...sans)).at(-1)!;
+
+/** The sample's view after `sans`, against Maia 1500 unless `input` says otherwise. */
+export function sampleView(sans: string[], input: Partial<LessonViewInput> = {}) {
+  const line = uciLine(...sans);
+  return lessonView({ lesson: SAMPLE, line, ply: line.length, opponent: 1500, ...input });
+}
+
+/** The Caro-Kann's first moves, to where White chooses a variation. */
 export const MAIN = ['e4', 'c6', 'd4', 'd5'];
+export const ADVANCE = [...MAIN, 'e5'];
+/** White's c3 sets a trap: ...Nxe5? Nxe5 Bxd1 Bb5+ Qd7 Bxd7+ Kd8 Kxd1 wins material. */
+export const TRAP = [...ADVANCE, 'c5', 'dxc5', 'Nc6', 'Nf3', 'Bg4', 'c3'];
+export const TRAP_PUNISHED = [
+  ...TRAP,
+  'Nxe5',
+  'Nxe5',
+  'Bxd1',
+  'Bb5+',
+  'Qd7',
+  'Bxd7+',
+  'Kd8',
+  'Kxd1',
+];

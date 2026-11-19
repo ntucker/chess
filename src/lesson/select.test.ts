@@ -1,21 +1,19 @@
 import { describe, expect, it } from '@jest/globals';
 
-import type { Lesson, LessonMove } from './lesson';
-import { MAIN, SAMPLE, uciLine } from './sample.fixture';
-import { candidates, guidePosition, lineKeys, opponentBand, variationPath } from './select';
+import type { Lesson } from './lesson';
+import { ADVANCE, keyAfter, MAIN, SAMPLE, uciLine, withMoves } from './lesson.fixture';
+import {
+  candidates,
+  guideMove,
+  guidePosition,
+  lineKeys,
+  lineVariation,
+  opponentBand,
+  variationPath,
+} from './select';
 
-const keyAfter = (...sans: string[]) => lineKeys(uciLine(...sans)).at(-1)!;
 const ucis = (lesson: Lesson, key: string, band: number | undefined) =>
   candidates(lesson, key, band).map(({ move }) => move.uci);
-
-/** The sample with the moves at `key` changed by `edit`. */
-function withMoves(key: string, edit: (moves: readonly LessonMove[]) => LessonMove[]): Lesson {
-  const entry = SAMPLE.positions[key];
-  return {
-    ...SAMPLE,
-    positions: { ...SAMPLE.positions, [key]: { ...entry, moves: edit(entry.moves) } },
-  };
-}
 
 describe('guidePosition', () => {
   it('is inside the guide where the guide has moves', () => {
@@ -59,16 +57,21 @@ describe('candidates', () => {
   });
 
   it("keeps the file's order for ties and for moves without counts", () => {
-    const tied = withMoves(key, (moves) =>
+    const tied = withMoves(SAMPLE, key, (moves) =>
       moves.map((move) => ({ ...move, games: [1, 1, 1, 1, 1] })),
     );
     expect(ucis(tied, key, 2)).toEqual(['e4e5', 'e4d5', 'b1c3', 'b1d2']);
 
-    const partly = withMoves(key, ([e5, ...rest]) => [{ ...e5, games: undefined }, ...rest]);
+    const partly = withMoves(SAMPLE, key, ([e5, ...rest]) => [
+      { ...e5, games: undefined },
+      ...rest,
+    ]);
     expect(ucis(partly, key, 2)).toEqual(['e4d5', 'b1c3', 'b1d2', 'e4e5']);
     expect(candidates(partly, key, 2).at(-1)!.share).toBeUndefined();
 
-    const none = withMoves(key, (moves) => moves.map((move) => ({ ...move, games: undefined })));
+    const none = withMoves(SAMPLE, key, (moves) =>
+      moves.map((move) => ({ ...move, games: undefined })),
+    );
     expect(ucis(none, key, 2)).toEqual(['e4e5', 'e4d5', 'b1c3', 'b1d2']);
     expect(candidates(none, key, 2).map(({ share }) => share)).toEqual([
       undefined,
@@ -103,7 +106,7 @@ describe('candidates', () => {
   });
 
   it('leaves the variation out for a move that leads beyond the guide', () => {
-    const beyond = withMoves(key, (moves) => [...moves, { uci: 'f1c4' }]);
+    const beyond = withMoves(SAMPLE, key, (moves) => [...moves, { uci: 'f1c4' }]);
     expect(candidates(beyond, key, 2).at(-1)).toMatchObject({ san: 'Bc4', variation: undefined });
   });
 });
@@ -129,9 +132,38 @@ describe('opponentBand', () => {
   });
 });
 
+describe('guideMove', () => {
+  it('finds a move as the guide stores it, and nothing for other moves', () => {
+    expect(guideMove(SAMPLE, keyAfter('e4'), 'c7c6')).toMatchObject({ uci: 'c7c6', book: true });
+    expect(guideMove(SAMPLE, keyAfter('e4'), 'e7e5')).toBeUndefined();
+    expect(guideMove(SAMPLE, keyAfter('e4', 'e5'), 'g1f3')).toBeUndefined();
+  });
+});
+
 describe('variationPath', () => {
   it('lists the opening first', () => {
-    expect(variationPath(SAMPLE, 'short')).toEqual(['caro-kann', 'advance', 'short']);
-    expect(variationPath(SAMPLE, 'caro-kann')).toEqual(['caro-kann']);
+    const names = (id: string) => variationPath(SAMPLE, id).map(({ name }) => name);
+    expect(names('short')).toEqual(['Caro-Kann Defence', 'Advance Variation', 'Short Variation']);
+    expect(names('caro-kann')).toEqual(['Caro-Kann Defence']);
+  });
+});
+
+describe('lineVariation', () => {
+  const names = (sans: string[]) =>
+    lineVariation(SAMPLE, lineKeys(uciLine(...sans))).map(({ name }) => name);
+
+  it("is the last position's variation, or the last one passed beyond the guide", () => {
+    expect(names(MAIN)).toEqual(['Caro-Kann Defence']);
+    expect(names(ADVANCE)).toEqual(['Caro-Kann Defence', 'Advance Variation']);
+    expect(names([...ADVANCE, 'a6', 'Nf3'])).toEqual(['Caro-Kann Defence', 'Advance Variation']);
+  });
+});
+
+describe('lineKeys', () => {
+  it('keys the start and the position after each move', () => {
+    const keys = lineKeys(uciLine('e4', 'c6'));
+    expect(keys).toHaveLength(3);
+    expect(keys[2]).toBe(keyAfter('e4', 'c6'));
+    expect(keys[0]).toBe('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -');
   });
 });

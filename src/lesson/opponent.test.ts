@@ -2,23 +2,14 @@ import { describe, expect, it, jest } from '@jest/globals';
 
 import type { GameOpponent } from '@/game/game';
 
-import { guideReply, lessonOpponent } from './opponent';
-import { MAIN, SAMPLE, uciLine } from './sample.fixture';
-import { candidates, lineKeys } from './select';
+import { MAIN, SAMPLE, uciLine } from './lesson.fixture';
+import { lessonOpponent } from './opponent';
 
 /** An engine that always answers `uci`, recording what it was asked. */
 function engine(uci: string) {
   const reply = jest.fn(async (_line: readonly string[]) => uci);
   return { id: 'engine', reply } satisfies GameOpponent;
 }
-
-describe('guideReply', () => {
-  it('plays the most common candidate, or nothing without one', () => {
-    const key = lineKeys(uciLine(...MAIN)).at(-1)!;
-    expect(guideReply(candidates(SAMPLE, key, 0))).toBe('e4d5');
-    expect(guideReply([])).toBeUndefined();
-  });
-});
 
 describe('lessonOpponent', () => {
   it("plays the guide's most common move for the opponent's rating band", async () => {

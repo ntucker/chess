@@ -3,11 +3,10 @@
  * guide's moves there (the candidate moves) in the order the screen lists
  * them. Pure functions over the lesson file, like the rest of src/lesson/.
  */
-import { makeSan } from 'chessops/san';
 import type { Piece, SquareName } from 'chessops/types';
-import { makeSquare, parseUci } from 'chessops/util';
+import { parseSquare } from 'chessops/util';
 
-import { parsePositionKey, playLine, positionKey } from '@/game/replay';
+import { parsePositionKey, playLine, playMove, positionKey } from '@/game/replay';
 import type { Opponent } from '@/opponent/opponent';
 
 import {
@@ -17,6 +16,7 @@ import {
   type PositionKey,
   ratingBandIndex,
   type Uci,
+  type Variation,
   type VariationId,
 } from './lesson';
 
@@ -58,34 +58,33 @@ export interface Candidate {
 
 /**
  * The guide's moves at `key`, most played in `band` first (an index into
- * `LessonMove.games`). Ties, and moves without counts, keep the file's order,
- * which puts the main line first; so with no counts at all the order is the
- * file's. Empty unless `key` is inside the guide.
+ * `LessonMove.games`). Moves without counts follow those with counts; ties,
+ * and moves without counts, keep the file's order, which puts the main line
+ * first. Empty unless `key` is inside the guide.
  */
 export function candidates(
   lesson: Lesson,
   key: PositionKey,
   band: number | undefined,
 ): Candidate[] {
-  const entry = guidePosition(lesson, key);
-  const pos = entry.place === 'inside' ? parsePositionKey(key) : undefined;
-  if (entry.place !== 'inside' || !pos) return [];
+  const guide = guidePosition(lesson, key);
+  const pos = guide.place === 'inside' ? parsePositionKey(key) : undefined;
+  if (guide.place !== 'inside' || !pos) return [];
 
   const count = (move: LessonMove) => (band === undefined ? undefined : move.games?.[band]);
-  const total = entry.entry.moves.reduce((sum, move) => sum + (count(move) ?? 0), 0);
-  const rows = entry.entry.moves.map((move): Candidate => {
-    const parsed = parseUci(move.uci);
-    if (!parsed || !('from' in parsed)) throw new Error(`Not a board move: ${move.uci}`);
+  const total = guide.entry.moves.reduce((sum, move) => sum + (count(move) ?? 0), 0);
+  const rows = guide.entry.moves.map((move): Candidate => {
     const after = pos.clone();
-    after.play(parsed);
+    // checkLesson proves every guide move legal.
+    const { san, from, to } = playMove(after, move.uci)!;
     const next = positionKey(after);
     const games = count(move);
     return {
       move,
-      san: makeSan(pos, parsed),
-      from: makeSquare(parsed.from),
-      to: makeSquare(parsed.to),
-      piece: pos.board.get(parsed.from)!,
+      san,
+      from,
+      to,
+      piece: pos.board.get(parseSquare(from)!)!,
       next,
       variation: lesson.positions[next]?.variation,
       share: total > 0 && games !== undefined ? games / total : undefined,
@@ -94,6 +93,10 @@ export function candidates(
   // Array.sort is stable, so equal counts keep the file's order.
   return rows.sort((a, b) => (count(b.move) ?? -1) - (count(a.move) ?? -1));
 }
+
+/** `uci` as the guide stores it at `key`, or undefined if it isn't a guide move there. */
+export const guideMove = (lesson: Lesson, key: PositionKey, uci: Uci): LessonMove | undefined =>
+  lesson.positions[key]?.moves.find((move) => move.uci === uci);
 
 /**
  * Which popularity band "most common" reads for `opponent`: the highest band
@@ -106,15 +109,24 @@ export function opponentBand(lesson: Lesson, opponent: Opponent): number | undef
 }
 
 /** The variation `id` and its ancestors, the opening itself first. */
-export function variationPath(lesson: Lesson, id: VariationId): VariationId[] {
-  const path: VariationId[] = [];
+export function variationPath(lesson: Lesson, id: VariationId): Variation[] {
+  const path: Variation[] = [];
   for (let at: VariationId | undefined = id; at !== undefined; at = lesson.variations[at]?.parent) {
-    path.unshift(at);
+    path.unshift(lesson.variations[at]);
   }
   return path;
 }
 
+/**
+ * The variation a line is in at its last position, as `variationPath`: that
+ * position's, or beyond the guide, that of the last guide position it passed.
+ */
+export function lineVariation(lesson: Lesson, keys: readonly PositionKey[]): Variation[] {
+  const last = keys.findLast((key) => lesson.positions[key]);
+  return last ? variationPath(lesson, lesson.positions[last].variation) : [];
+}
+
 /** The key of each position in `line`: index `n` is the position after `n` moves. */
 export function lineKeys(line: readonly Uci[]): PositionKey[] {
-  return Array.from(playLine(line), ({ pos }) => positionKey(pos));
+  return Array.from(playLine(line), ({ key }) => key);
 }
