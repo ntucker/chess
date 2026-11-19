@@ -20,7 +20,9 @@ interface Remembered<S, A> {
  * native the first render already has the remembered state. On the web it
  * starts from `initial`, as the pre-rendered page does, and dispatches
  * `loaded` with the remembered state once the page starts, and again each
- * time another tab saves it.
+ * time another tab saves it. The reducer decides what `loaded` keeps:
+ * settings take the other tab's choice, progress merges both tabs' marks (and
+ * saves the merge, so a tab that saved over another's marks gets them back).
  */
 export function useRememberedReducer<S, A>(
   reducer: (state: S, action: A) => S,

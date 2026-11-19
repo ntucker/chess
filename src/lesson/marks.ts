@@ -48,6 +48,8 @@ const inCleanRun = (move: LessonMove, learner: boolean) => !learner || move.book
  * `positionHash`es): no line end reachable (`none`), all of them passed
  * (`passed`), or some still `open`. Walks each position once, so a line that
  * comes back to a position adds nothing, and stops at the first open end.
+ * Each row walks on its own: sharing answers between rows went wrong on
+ * cycles, and a fresh walk costs about 12 ms for the whole list at worst.
  */
 function cleanEnds(
   lesson: Lesson,

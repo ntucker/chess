@@ -62,8 +62,10 @@ function withRemembered(progress: Progress, remembered: Progress): Progress {
     const now = progress[id] ?? UNTOUCHED;
     const seen = union(now.seen, lesson.seen);
     const passed = union(now.passed, lesson.passed);
-    if (seen !== now.seen || passed !== now.passed)
-      (merged ??= { ...progress })[id] = { seen, passed };
+    if (seen !== now.seen || passed !== now.passed) {
+      merged ??= { ...progress };
+      merged[id] = { seen, passed };
+    }
   }
   return merged ?? progress;
 }

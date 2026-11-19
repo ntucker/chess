@@ -28,7 +28,7 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 export type SettingsAction =
-  /** The remembered settings, read once as the app starts. */
+  /** The remembered settings, read as the app starts or another tab saves them. */
   | { readonly type: 'loaded'; readonly settings: Settings }
   /** The learner chose new values for some settings. */
   | { readonly type: 'chosen'; readonly choice: Partial<Settings> };
