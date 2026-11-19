@@ -38,10 +38,13 @@ describe('getEvaluation', () => {
     engine.detach();
   });
 
-  it("scores a finished game by its result, without asking the engine", async () => {
+  it('scores a finished game by its result, without asking the engine', async () => {
     const controller = newController();
     // Fool's mate: Black wins.
     const mated = ['f2f3', 'e7e5', 'g2g4', 'd8h4'];
-    expect(await controller.fetch(getEvaluation, 'stockfish', mated)).toEqual({ score: 0, pawns: 0 });
+    expect(await controller.fetch(getEvaluation, 'stockfish', mated)).toEqual({
+      score: 0,
+      pawns: 0,
+    });
   });
 });

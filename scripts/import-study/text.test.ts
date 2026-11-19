@@ -25,7 +25,9 @@ describe('shorten', () => {
   });
 
   it('reads past move numbers and glyphs on moves', () => {
-    expect(shorten('Trap: 5.e6? fxe6 and White is worse. Then more.')).toBe('Trap: 5.e6? fxe6 and White is worse.');
+    expect(shorten('Trap: 5.e6? fxe6 and White is worse. Then more.')).toBe(
+      'Trap: 5.e6? fxe6 and White is worse.',
+    );
     expect(shorten('After 4. Nf3 Black plays ...e6! with ease. Next.')).toBe(
       'After 4. Nf3 Black plays ...e6! with ease.',
     );
@@ -33,7 +35,9 @@ describe('shorten', () => {
   });
 
   it('ends a sentence at a number or a move that ends it', () => {
-    expect(shorten('The knight is lost on move 12. Black resigns.')).toBe('The knight is lost on move 12.');
+    expect(shorten('The knight is lost on move 12. Black resigns.')).toBe(
+      'The knight is lost on move 12.',
+    );
     expect(shorten('Black should play Nf6! Then White is stuck.')).toBe('Black should play Nf6!');
     expect(shorten('...Nc6! Black plans ...Nb4. More.')).toBe('...Nc6! Black plans ...Nb4.');
     expect(shorten('12. Nf3! Black is lost. More.')).toBe('12. Nf3! Black is lost.');

@@ -57,9 +57,7 @@ export function Captures({ pieces, lead, pieceColor }: Props) {
 function spokenSummary(pieces: readonly MaterialRole[], lead: number) {
   const counts = new Map<MaterialRole, number>();
   for (const role of pieces) counts.set(role, (counts.get(role) ?? 0) + 1);
-  const parts = Array.from(counts, ([role, n]) =>
-    n === 1 ? `a ${role}` : `${n} ${role}s`,
-  );
+  const parts = Array.from(counts, ([role, n]) => (n === 1 ? `a ${role}` : `${n} ${role}s`));
   const list =
     parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`;
   const ahead = lead > 0 ? `, ${lead} ${lead === 1 ? 'point' : 'points'} ahead` : '';

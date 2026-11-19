@@ -9,7 +9,14 @@ import { attacks, between, pawnAttacks, ray } from 'chessops/attacks';
 import type { Board } from 'chessops/board';
 import { Chess } from 'chessops/chess';
 import { SquareSet } from 'chessops/squareSet';
-import { COLORS, type Color, FILE_NAMES, type NormalMove, type Piece, type Square } from 'chessops/types';
+import {
+  COLORS,
+  type Color,
+  FILE_NAMES,
+  type NormalMove,
+  type Piece,
+  type Square,
+} from 'chessops/types';
 import { makeSquare, opposite, parseSquare, parseUci } from 'chessops/util';
 
 import { balance, points, VALUES } from '@/game/material';
@@ -100,7 +107,8 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
   }
   const reached = reachable(startKey, children);
   for (const key of children.keys()) {
-    if (!reached.has(key)) report(`positions[${JSON.stringify(key)}]`, 'is not reachable from start');
+    if (!reached.has(key))
+      report(`positions[${JSON.stringify(key)}]`, 'is not reachable from start');
   }
   return problems;
 }
@@ -109,7 +117,12 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
  * Checks one entry of `lesson.positions`, and returns the keys its moves
  * lead to, or undefined when `key` is not a position key.
  */
-function checkPosition(lesson: Lesson, key: string, entry: LessonPosition, report: Report): string[] | undefined {
+function checkPosition(
+  lesson: Lesson,
+  key: string,
+  entry: LessonPosition,
+  report: Report,
+): string[] | undefined {
   const at = `positions[${JSON.stringify(key)}]`;
   const pos = parsePositionKey(key);
   if (!pos) {
@@ -150,13 +163,20 @@ function reachable(start: string, children: ReadonlyMap<string, readonly string[
 }
 
 function checkVariations(lesson: Lesson, report: Report) {
-  const roots = Object.keys(lesson.variations).filter((id) => lesson.variations[id].parent === undefined);
-  if (roots.length !== 1) report('variations', `need exactly one without a parent, found ${roots.length}`);
+  const roots = Object.keys(lesson.variations).filter(
+    (id) => lesson.variations[id].parent === undefined,
+  );
+  if (roots.length !== 1)
+    report('variations', `need exactly one without a parent, found ${roots.length}`);
   for (const [id, variation] of Object.entries(lesson.variations)) {
     const at = `variations[${JSON.stringify(id)}]`;
     if (!variation.name.trim()) report(`${at}.name`, 'is empty');
     const ancestors = new Set([id]);
-    for (let parent = variation.parent; parent !== undefined; parent = lesson.variations[parent]?.parent) {
+    for (
+      let parent = variation.parent;
+      parent !== undefined;
+      parent = lesson.variations[parent]?.parent
+    ) {
       if (!(parent in lesson.variations)) {
         report(`${at}.parent`, `${parent} is not in variations`);
         break;
@@ -179,13 +199,15 @@ function checkMove(
   report: Report,
 ): Chess | undefined {
   const { games, risk } = move;
-  if (move.book && pos.turn !== lesson.side) report(`${path}.book`, `only ${lesson.side}'s moves are book moves`);
+  if (move.book && pos.turn !== lesson.side)
+    report(`${path}.book`, `only ${lesson.side}'s moves are book moves`);
   const bands = lesson.popularity?.ratingBands;
   if (games && !bands) report(`${path}.games`, 'needs popularity in the lesson');
   if (games && bands && (games.length !== bands.length || !games.every(isCount))) {
     report(`${path}.games`, 'needs one whole count per rating band');
   }
-  if (risk !== undefined && !RISKS.includes(risk)) report(`${path}.risk`, `${risk} is not one of ${RISKS.join(', ')}`);
+  if (risk !== undefined && !RISKS.includes(risk))
+    report(`${path}.risk`, `${risk} is not one of ${RISKS.join(', ')}`);
   try {
     return played(pos, [move.uci]);
   } catch (error) {
@@ -197,16 +219,12 @@ function checkMove(
 
 const isCount = (n: number) => Number.isInteger(n) && n >= 0;
 
-function checkNotes(
-  notes: readonly Note[] | undefined,
-  pos: Chess,
-  path: string,
-  report: Report,
-) {
+function checkNotes(notes: readonly Note[] | undefined, pos: Chess, path: string, report: Report) {
   notes?.forEach((note, i) => {
     const words = note.text.split(/\s+/).filter(Boolean).length;
     if (words === 0) report(`${path}[${i}].text`, 'is empty');
-    if (words > MAX_NOTE_WORDS) report(`${path}[${i}].text`, `has ${words} words (most ${MAX_NOTE_WORDS})`);
+    if (words > MAX_NOTE_WORDS)
+      report(`${path}[${i}].text`, `has ${words} words (most ${MAX_NOTE_WORDS})`);
     note.ideas?.forEach((idea, j) => {
       const problem = checkIdea(idea, pos);
       if (problem) report(`${path}[${i}].ideas[${j}]`, `${idea.type}: ${problem}`);
@@ -303,10 +321,12 @@ function checkPurpose(pos: Chess, idea: Purpose) {
         if (!hits) fail(`${name} does not control ${at}`);
         break;
       case 'checks':
-        if (!(hits && enemy && there.role === 'king')) fail(`${name} does not check a king on ${at}`);
+        if (!(hits && enemy && there.role === 'king'))
+          fail(`${name} does not check a king on ${at}`);
         break;
       case 'pins':
-        if (!(hits && enemy && pins(board, from, target))) fail(`${name} does not pin the piece on ${at}`);
+        if (!(hits && enemy && pins(board, from, target)))
+          fail(`${name} does not pin the piece on ${at}`);
         break;
       case 'blocks':
         if (!blocks(board, from, target)) {
@@ -325,7 +345,9 @@ function pins(board: Board, from: Square, target: Square): boolean {
   const pinner = board.get(from)!;
   const pinned = board.get(target)!;
   // The next piece past the target on the pinner's line.
-  const next = attacks(pinner, target, board.occupied).intersect(ray(from, target)).intersect(board.occupied);
+  const next = attacks(pinner, target, board.occupied)
+    .intersect(ray(from, target))
+    .intersect(board.occupied);
   const beyond = next.without(from).singleSquare();
   const back = beyond === undefined ? undefined : board.get(beyond);
   return (
@@ -340,12 +362,17 @@ function pins(board: Board, from: Square, target: Square): boolean {
 function blocks(board: Board, from: Square, target: Square): boolean {
   const blocker = board.get(from)!;
   const there = board.get(target);
-  if (there?.role === 'pawn' && there.color !== blocker.color && stopSquare(there.color, target) === from) {
+  if (
+    there?.role === 'pawn' &&
+    there.color !== blocker.color &&
+    stopSquare(there.color, target) === from
+  ) {
     return true;
   }
   const without = board.occupied.without(from);
   for (const sq of board[opposite(blocker.color)].intersect(board.sliders())) {
-    if (between(sq, target).has(from) && attacks(board.get(sq)!, sq, without).has(target)) return true;
+    if (between(sq, target).has(from) && attacks(board.get(sq)!, sq, without).has(target))
+      return true;
   }
   return false;
 }
@@ -412,14 +439,18 @@ function checkPlan(pos: Chess, idea: Plan) {
   idea.routes.forEach((route, i) => {
     const what = `route ${i + 1}`;
     const piece = pieceAt(board, route.from, `${what} from`);
-    if (piece.color !== idea.side) fail(`${what}: the piece on ${route.from} is not ${idea.side}'s`);
+    if (piece.color !== idea.side)
+      fail(`${what}: the piece on ${route.from} is not ${idea.side}'s`);
     const moves = route.moves ?? 1;
     if (!Number.isInteger(moves) || moves < 1 || moves > 4) fail(`${what}: moves must be 1 to 4`);
     const from = square(route.from);
     const to = square(route.to);
-    if (board.get(to)?.color === idea.side) fail(`${what}: ${route.to} holds ${idea.side}'s own piece`);
+    if (board.get(to)?.color === idea.side)
+      fail(`${what}: ${route.to} holds ${idea.side}'s own piece`);
     if (!plan.castles(from, to) && !reaches(board, from, to, moves)) {
-      fail(`${what}: the ${piece.role} on ${route.from} cannot reach ${route.to} in ${moves} move(s)`);
+      fail(
+        `${what}: the ${piece.role} on ${route.from} cannot reach ${route.to} in ${moves} move(s)`,
+      );
     }
     plan.play(from, to);
     ends.delete(from);
@@ -427,7 +458,9 @@ function checkPlan(pos: Chess, idea: Plan) {
   });
   for (const goal of idea.goals ?? []) {
     const sq = square(goal);
-    const covered = [...ends].some((end) => end === sq || attacks(board.get(end)!, end, board.occupied).has(sq));
+    const covered = [...ends].some(
+      (end) => end === sq || attacks(board.get(end)!, end, board.occupied).has(sq),
+    );
     if (!covered) fail(`goal ${goal} is neither a route's end nor attacked from one`);
   }
 }
@@ -481,7 +514,7 @@ function checkFeature(pos: Chess, color: Color, feature: StructureFeature) {
     return FILE_NAMES.indexOf(name as (typeof FILE_NAMES)[number]);
   };
   const count = (c: Color, name: string) => filePawnCount(board, c, file(name));
-  const nonEmpty = <T,>(list: readonly T[]) => {
+  const nonEmpty = <T>(list: readonly T[]) => {
     if (list.length === 0) fail(`${feature.kind} needs at least one entry`);
     return list;
   };
@@ -489,9 +522,12 @@ function checkFeature(pos: Chess, color: Color, feature: StructureFeature) {
     case 'isolatedPawn':
     case 'backwardPawn':
     case 'passedPawn': {
-      const test = { isolatedPawn: isIsolated, backwardPawn: isBackward, passedPawn: isPassed }[feature.kind];
+      const test = { isolatedPawn: isIsolated, backwardPawn: isBackward, passedPawn: isPassed }[
+        feature.kind
+      ];
       for (const name of nonEmpty(feature.squares)) {
-        if (!test(board, color, ownPawn(name))) fail(`the pawn on ${name} is not ${feature.kind.replace('Pawn', '')}`);
+        if (!test(board, color, ownPawn(name)))
+          fail(`the pawn on ${name} is not ${feature.kind.replace('Pawn', '')}`);
       }
       return;
     }
@@ -502,7 +538,8 @@ function checkFeature(pos: Chess, color: Color, feature: StructureFeature) {
       return;
     case 'weakSquare':
       for (const name of nonEmpty(feature.squares)) {
-        if (!isWeakSquare(board, color, square(name))) fail(`${name} is not a hole in ${color}'s camp`);
+        if (!isWeakSquare(board, color, square(name)))
+          fail(`${name} is not a hole in ${color}'s camp`);
       }
       return;
     case 'outpost':
@@ -520,8 +557,10 @@ function checkFeature(pos: Chess, color: Color, feature: StructureFeature) {
       return;
     }
     case 'pawnMajority': {
-      const total = (c: Color) => nonEmpty(feature.files).reduce((n, name) => n + count(c, name), 0);
-      if (total(color) <= total(opposite(color))) fail(`${color} has no pawn majority on ${feature.files.join('')}`);
+      const total = (c: Color) =>
+        nonEmpty(feature.files).reduce((n, name) => n + count(c, name), 0);
+      if (total(color) <= total(opposite(color)))
+        fail(`${color} has no pawn majority on ${feature.files.join('')}`);
       return;
     }
     case 'pawnBreak': {
@@ -550,8 +589,14 @@ const FILE_FEATURES: Record<
     readonly says: (file: string, color: Color) => string;
   }
 > = {
-  doubledPawns: { holds: (own) => own >= 2, says: (file, color) => `${color} has no doubled pawns on the ${file}-file` },
-  openFile: { holds: (own, other) => own === 0 && other === 0, says: (file) => `the ${file}-file is not open` },
+  doubledPawns: {
+    holds: (own) => own >= 2,
+    says: (file, color) => `${color} has no doubled pawns on the ${file}-file`,
+  },
+  openFile: {
+    holds: (own, other) => own === 0 && other === 0,
+    says: (file) => `the ${file}-file is not open`,
+  },
   halfOpenFile: {
     holds: (own, other) => own === 0 && other > 0,
     says: (file, color) => `the ${file}-file is not half-open for ${color}`,
@@ -573,7 +618,9 @@ function checkImbalance(pos: Chess, idea: Imbalance) {
 
 function hasBishopPair(board: Board, color: Color): boolean {
   const bishops = board.pieces(color, 'bishop');
-  return bishops.intersects(SquareSet.lightSquares()) && bishops.intersects(SquareSet.darkSquares());
+  return (
+    bishops.intersects(SquareSet.lightSquares()) && bishops.intersects(SquareSet.darkSquares())
+  );
 }
 
 const CHECKS: { [T in Idea['type']]: (pos: Chess, idea: Extract<Idea, { type: T }>) => void } = {

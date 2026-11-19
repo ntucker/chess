@@ -75,15 +75,31 @@ function convolve(input: Float32Array, inputs: number, conv: Layer, relu: boolea
   for (let o = 0; o < outputs; o++) {
     const bias = conv.biases[o];
     for (let y = 0; y < 8; y++) {
-      let a0 = bias, a1 = bias, a2 = bias, a3 = bias, a4 = bias, a5 = bias, a6 = bias, a7 = bias;
+      let a0 = bias,
+        a1 = bias,
+        a2 = bias,
+        a3 = bias,
+        a4 = bias,
+        a5 = bias,
+        a6 = bias,
+        a7 = bias;
       for (let i = 0; i < inputs; i++) {
         let k = (o * inputs + i) * 9;
         // The kernel's three rows read the padded rows y, y + 1 and y + 2.
         for (let r = i * PADDED + y * 10, end = r + 30; r < end; r += 10, k += 3) {
-          const w0 = w[k], w1 = w[k + 1], w2 = w[k + 2];
-          const p0 = input[r], p1 = input[r + 1], p2 = input[r + 2], p3 = input[r + 3];
-          const p4 = input[r + 4], p5 = input[r + 5], p6 = input[r + 6], p7 = input[r + 7];
-          const p8 = input[r + 8], p9 = input[r + 9];
+          const w0 = w[k],
+            w1 = w[k + 1],
+            w2 = w[k + 2];
+          const p0 = input[r],
+            p1 = input[r + 1],
+            p2 = input[r + 2],
+            p3 = input[r + 3];
+          const p4 = input[r + 4],
+            p5 = input[r + 5],
+            p6 = input[r + 6],
+            p7 = input[r + 7];
+          const p8 = input[r + 8],
+            p9 = input[r + 9];
           a0 += w0 * p0 + w1 * p1 + w2 * p2;
           a1 += w0 * p1 + w1 * p2 + w2 * p3;
           a2 += w0 * p2 + w1 * p3 + w2 * p4;

@@ -1,6 +1,6 @@
-# Lints, typechecks and runs the unit tests on every pull request and every
-# push to main, except changes to Markdown alone. The web export is checked
-# separately, in web.yml.
+# Checks formatting, lints, typechecks and runs the unit tests on every pull
+# request and every push to main, except changes to Markdown alone. The web
+# export is checked separately, in web.yml.
 name: CI
 
 on:
@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   check:
-    name: Lint, typecheck and test
+    name: Format, lint, typecheck and test
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -51,6 +51,10 @@ jobs:
 
       # Each check runs whenever Install succeeded, even if an earlier check
       # failed, so one run reports every kind of failure.
+      - name: Format
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: yarn format:check
+
       - name: Lint
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: yarn lint

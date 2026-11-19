@@ -62,7 +62,14 @@ describe('stockfishEvaluation', () => {
 
   it('gives Black the advantage when Black is a queen up', async () => {
     // 1.e4 e5 2.Qh5 Nc6 3.Qxf7+?? Kxf7: Black is a queen for a pawn up.
-    const { score, pawns } = await stockfishEvaluation(['e2e4', 'e7e5', 'd1h5', 'b8c6', 'h5f7', 'e8f7']);
+    const { score, pawns } = await stockfishEvaluation([
+      'e2e4',
+      'e7e5',
+      'd1h5',
+      'b8c6',
+      'h5f7',
+      'e8f7',
+    ]);
     expect(pawns).toBeLessThan(-5);
     expect(score).toBeLessThan(0.15);
   }, 30_000);

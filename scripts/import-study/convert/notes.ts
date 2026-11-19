@@ -8,7 +8,13 @@ import { isDeepStrictEqual } from 'node:util';
 
 import { sanToUci } from '@/game/replay';
 import { checkIdea, withTurn } from '@/lesson/check';
-import { MAX_NOTE_WORDS, type Idea, type Note, type StructureFeature, type Uci } from '@/lesson/lesson';
+import {
+  MAX_NOTE_WORDS,
+  type Idea,
+  type Note,
+  type StructureFeature,
+  type Uci,
+} from '@/lesson/lesson';
 
 import { played } from '../study';
 import { shorten } from '../text';
@@ -64,7 +70,13 @@ export function convertedNotes(
   const move =
     own.length === 0
       ? moves
-      : [lessonNote(first?.text ?? noteText(comment.comment), comment.comment, [...own, ...(first?.ideas ?? [])]), ...rest];
+      : [
+          lessonNote(first?.text ?? noteText(comment.comment), comment.comment, [
+            ...own,
+            ...(first?.ideas ?? []),
+          ]),
+          ...rest,
+        ];
   return { move, before, kept, rejected };
 }
 
@@ -86,8 +98,10 @@ function lessonNote(text: string, original: string, ideas: readonly Idea[]): Not
 function lessonIdea(raw: AnswerIdea, pos: Chess, extractedEvaluation: boolean): Idea | string {
   try {
     const idea = withUci(raw, pos);
-    if (idea.type === 'threat' && idea.side === pos.turn) return 'a threat is never a move by the side to move';
-    if (idea.type === 'evaluation' && extractedEvaluation) return 'an evaluation was already extracted';
+    if (idea.type === 'threat' && idea.side === pos.turn)
+      return 'a threat is never a move by the side to move';
+    if (idea.type === 'evaluation' && extractedEvaluation)
+      return 'an evaluation was already extracted';
     return checkIdea(idea, pos) ?? idea;
   } catch (error) {
     if (error instanceof IllegalSan) return error.message;
@@ -127,13 +141,20 @@ function withUci(raw: AnswerIdea, pos: Chess): Idea {
     case 'line':
       return { ...raw, moves: line(pos, raw.moves) } as Idea;
     case 'structure':
-      return { ...raw, features: raw.features.map((feature) => structureFeature(feature, pos, raw.side)) };
+      return {
+        ...raw,
+        features: raw.features.map((feature) => structureFeature(feature, pos, raw.side)),
+      };
     default:
       return raw;
   }
 }
 
-function structureFeature(feature: AnswerFeature, pos: Chess, side: Chess['turn']): StructureFeature {
+function structureFeature(
+  feature: AnswerFeature,
+  pos: Chess,
+  side: Chess['turn'],
+): StructureFeature {
   if (feature.kind !== 'pawnBreak') return feature;
   return { kind: 'pawnBreak', move: uci(withTurn(pos, side), feature.move) };
 }

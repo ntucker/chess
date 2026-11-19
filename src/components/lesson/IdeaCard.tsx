@@ -236,7 +236,12 @@ function KindTag({ label, tone }: { readonly label: string; readonly tone: Tone 
 function Verdict({ value }: { readonly value: Evaluation }) {
   const { glyph, words } = VERDICTS[value];
   return (
-    <Badge variant="outline" size="sm" accessible accessibilityLabel={`The study's verdict: ${words}`}>
+    <Badge
+      variant="outline"
+      size="sm"
+      accessible
+      accessibilityLabel={`The study's verdict: ${words}`}
+    >
       {`${glyph}  ${words}`}
     </Badge>
   );
