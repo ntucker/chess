@@ -20,6 +20,7 @@ permissions: {}
 
 env:
   GH_REPO: ${{ github.repository }}
+  FAILED: '["failure", "timed_out", "cancelled", "action_required"]'
   PR: ${{ github.event.pull_request.number }}
   HEAD_SHA: ${{ github.event.pull_request.head.sha }}
 
@@ -194,8 +195,9 @@ jobs:
               '.state == "OPEN" and (.isDraft | not) and .headRefOid == $sha and ([.labels[].name] | index("autoland"))' \
               > /dev/null || { echo "::error::The PR moved, became a draft or lost its label"; exit 1; }
             runs=$(gh api --paginate "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs" \
-              --jq '.check_runs[] | {name, status, conclusion, started_at}' | jq -s 'group_by(.name) | map(max_by(.started_at))')
-            if jq -e 'any(.conclusion | IN("failure", "timed_out", "action_required"))' <<< "$runs" > /dev/null; then
+              --jq '.check_runs[] | select(.name != "Land") | {name, status, conclusion, started_at}' \
+              | jq -s 'group_by(.name) | map(max_by(.started_at))')
+            if jq -e --argjson failed "$FAILED" 'any(.conclusion | IN($failed[]))' <<< "$runs" > /dev/null; then
               echo "::error::A check failed: $runs"; exit 1
             fi
             jq -e 'any(.name == "Cursor Bugbot" and .status == "completed")' <<< "$runs" > /dev/null && exit 0
@@ -330,35 +332,38 @@ jobs:
           REQUIRED: >-
             ${{ needs.gate.outputs.markdown_only == 'true' && '[]' || '["Lint, typecheck and test", "Build"]' }}
         run: |
-          still_landable() {
-            pr=$(gh pr view "$PR" --json state,isDraft,headRefOid,labels,reviewDecision)
+          # Each fetch stops the landing if it fails (set -e is off inside a function called with ||).
+          pr_unchanged() {
+            local pr
+            pr=$(gh pr view "$PR" --json state,isDraft,headRefOid,labels,reviewDecision) || return 1
             jq -e --arg sha "$HEAD_SHA" '.state == "OPEN" and (.isDraft | not) and .headRefOid == $sha
               and ([.labels[].name] | index("autoland")) and .reviewDecision != "CHANGES_REQUESTED"' <<< "$pr" > /dev/null \
-              || { echo "::error::The PR changed since the review: $pr"; return 1; }
-            # The first line reads "**Staff Reviewer:** <VERDICT> at <sha prefix>".
-            staff=$({ gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" \
-                        --jq '.[] | {login: .user.login, body, at: .created_at}'
-                      gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" \
-                        --jq '.[] | {login: .user.login, body, at: .submitted_at}'
-                    } | jq -rs '[.[] | select(.login == "ntucker" and (.body | startswith("**Staff Reviewer:**")))]
-                                | sort_by(.at) | last // {} | .body // "" | split("\n")[0]')
-            if [[ $staff =~ ^\*\*Staff\ Reviewer:\*\*\ CHANGE_THIS_PR(\ \([^\)]*\))?\ at\ ([0-9a-f]{7,40}) \
-                  && $HEAD_SHA == "${BASH_REMATCH[2]}"* ]]; then
-              echo "::error::The Staff reviewer asked for changes: $staff"; return 1
-            fi
+              || { echo "::error::The PR moved, lost its label, became a draft or has changes requested: $pr"; return 1; }
+          }
+          # Any Staff comment whose first line says CHANGE_THIS_PR "at <sha>" for this commit stops it.
+          staff_allows() {
+            local comments reviews stops
+            comments=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" \
+              --jq '.[] | {login: .user.login, body}') || return 1
+            reviews=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" \
+              --jq '.[] | {login: .user.login, body}') || return 1
+            stops=$(jq -rs --arg sha "$HEAD_SHA" '.[] | select(.login == "ntucker")
+              | .body | split("\n")[0] | select(startswith("**Staff Reviewer:**") and contains("CHANGE_THIS_PR"))
+              | select(any(scan(" at ([0-9a-f]{7,40})")[0]; . as $p | $sha | startswith($p)))' <<< "$comments$reviews") || return 1
+            [[ -z $stops ]] || { echo "::error::The Staff reviewer asked for changes: $stops"; return 1; }
           }
           for _ in $(seq 80); do
-            still_landable || exit 1
+            pr_unchanged && staff_allows || exit 1
             runs=$(gh api --paginate "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs" \
               --jq '.check_runs[] | select(.name != "Land") | {name, status, conclusion, started_at}' \
               | jq -s 'group_by(.name) | map(max_by(.started_at))')
-            if jq -e 'any(.conclusion | IN("failure", "timed_out", "cancelled", "action_required"))' <<< "$runs" > /dev/null; then
+            if jq -e --argjson failed "$FAILED" 'any(.conclusion | IN($failed[]))' <<< "$runs" > /dev/null; then
               echo "::error::A check failed: $runs"; exit 1
             fi
             if jq -e --argjson required "$REQUIRED" '. as $runs | all(.status == "completed")
                 and ($required | all(. as $name | $runs | any(.name == $name and .conclusion == "success")))' <<< "$runs" > /dev/null; then
               # Checked again right before merging, so nothing posted while waiting is missed.
-              still_landable || exit 1
+              pr_unchanged && staff_allows || exit 1
               gh pr merge "$PR" --squash --match-head-commit "$HEAD_SHA"
               # Merges made with this workflow's token start no other workflows,
               # so it starts the deploy and main's CI itself.

@@ -46,8 +46,8 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
    architecture implications, then run skill `user-kit:clean-code` the same way.
 8. A PR that builds an approved plan piece autolands: once steps 3 to 7 are done and every Bugbot
    and Staff comment is answered, follow `docs/plans/README.md`. If its review is wrong, say why on
-   the PR and tell the person. The person squash-merges every other PR. A worker's PR ends when it
-   merges, not when it is handed over.
+   the PR and tell the person, who merges it by hand. The person squash-merges every other PR. A
+   worker's PR ends when it merges, not when it is handed over.
 
 ## PR descriptions
 

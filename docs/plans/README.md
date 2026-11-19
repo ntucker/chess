@@ -20,8 +20,8 @@ A pull request that builds an approved piece can land without a manual merge
 4. The **Interface review** check runs a reviewer that has never seen the work: Claude Sonnet at high
    effort, with the instructions in `.github/autoland/review.md`. It waits for Bugbot, uses the
    feature in a browser, checks the code's interfaces against the piece, and checks that every Bugbot
-   and Staff comment was fixed or rightly rejected. It posts its verdict as a PR comment and keeps its screenshots on the
-   workflow run.
+   and Staff comment was fixed or rightly rejected. It posts its verdict as a PR comment and keeps its
+   screenshots on the workflow run.
 5. If the reviewer approves, **Land** waits for every other check on the same commit. Lint,
    typecheck and test and the web build must pass, and nothing may fail. A Staff `CHANGE_THIS_PR`
    naming that commit stops it; agents post as Nathaniel's account too, so no comment can approve.
