@@ -117,6 +117,23 @@ export default function Board({
     });
   });
 
+  // A screen left underneath stays mounted but hidden, where the board has no
+  // size and chessground would draw its arrows at NaN. Changes made while it
+  // is hidden wait, and go to chessground once the board shows again.
+  const behind = useRef(false);
+  const shows = () => !!element.current?.getClientRects().length;
+  const setBoard = useEffectEvent((config: Config) => {
+    if (shows()) api.current?.set(config);
+    else behind.current = true;
+  });
+  const catchUp = useEffectEvent(() => {
+    if (!behind.current || !shows()) return;
+    behind.current = false;
+    api.current?.set(position);
+    api.current?.set(marksConfig(marks));
+    markAfterDraw();
+  });
+
   useEffect(() => {
     const target = element.current;
     if (!target) return;
@@ -141,6 +158,10 @@ export default function Board({
       drawable: { brushes: toneBrushes as DrawBrushes },
     });
     api.current = board;
+    // Made after chessground's own observer, so chessground has measured the
+    // board again by the time this catches up.
+    const showing = new ResizeObserver(() => catchUp());
+    showing.observe(target);
     // A preview a hover starts or ends reaches chessground before the next
     // press: a quick click right after a hover would otherwise land on the
     // board as it was, and chessground would refuse or misplay it. This holds
@@ -163,6 +184,7 @@ export default function Board({
       target.removeEventListener('pointerdown', notePick, { capture: true });
       live = false;
       stopWatching();
+      showing.disconnect();
       board.destroy();
       api.current = null;
     };
@@ -170,13 +192,9 @@ export default function Board({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    api.current?.set(position);
-  }, [position]);
+  useEffect(() => setBoard(position), [position]);
 
-  useEffect(() => {
-    api.current?.set({ drawable: { autoShapes: marks.shapes }, highlight: { custom: marks.tints } });
-  }, [marks]);
+  useEffect(() => setBoard(marksConfig(marks)), [marks]);
 
   useEffect(() => markAfterDraw(), [position, marks]);
 
@@ -188,6 +206,12 @@ export default function Board({
     </div>
   );
 }
+
+/** The arrows, circles and tints that draw `marks`. */
+const marksConfig = (marks: BoardMarks): Config => ({
+  drawable: { autoShapes: marks.shapes },
+  highlight: { custom: marks.tints },
+});
 
 /**
  * A tinted square in each tone (marks.ts names the classes), under its piece.
