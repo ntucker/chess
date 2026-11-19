@@ -4,7 +4,7 @@ import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 
 import type { Material } from '@/game/material';
 import { type Color, opposite } from '@/game/replay';
-import { PHONE_LAYOUT, phoneLength, phonePart } from '@/theme/phone';
+import { NARROW_LAYOUT, narrowLength, narrowPart } from '@/theme/narrow';
 import { pieceColors } from '@/theme/pieceColors';
 
 import { Captures } from './Captures';
@@ -31,10 +31,10 @@ interface Props {
  * with them. A small dot on a narrow web page, to give the board room.
  */
 export const PLAYER_DISC = {
-  size: phoneLength('player-disc', 28),
-  gap: phoneLength('player-disc-gap', 12),
+  size: narrowLength('player-disc', 28),
+  gap: narrowLength('player-disc-gap', 12),
 } as const;
-const DISC_BORDER = phoneLength('player-disc-border', 2.5);
+const DISC_BORDER = narrowLength('player-disc-border', 2.5);
 
 /** A name plate above or below the board, lit while that side is to move. */
 export function PlayerBar({
@@ -68,18 +68,18 @@ export function PlayerBar({
           },
         ]}
       />
-      <View {...phonePart('player-names')} style={styles.names}>
+      <View {...narrowPart('player-names')} style={styles.names}>
         <View style={styles.nameLine}>
           <Text role="headingSm" numberOfLines={1} style={styles.name}>
             {name}
           </Text>
           <Captures {...material} pieceColor={opposite(color)} />
         </View>
-        <Text {...caption} {...(brief ? phonePart('wide-only') : {})}>
+        <Text {...caption} {...(brief ? narrowPart('wide-only') : {})}>
           {turn(detail)}
         </Text>
-        {brief && PHONE_LAYOUT ? (
-          <Text {...caption} {...phonePart('phone-only')}>
+        {brief && NARROW_LAYOUT ? (
+          <Text {...caption} {...narrowPart('narrow-only')}>
             {turn(brief)}
           </Text>
         ) : null}

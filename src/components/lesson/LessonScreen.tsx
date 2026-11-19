@@ -148,7 +148,7 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
   return (
     <Stage
       title={`${lesson.title} · Opening Night`}
-      // Only the latest line's name, since the path won't fit a phone. A
+      // Only the latest line's name, since the path won't fit a narrow page. A
       // sub-line's name starts with its parent's ("Advance Variation: Tal…");
       // the opening's own name is what goes unsaid.
       place={picking ? OPENINGS.title : (line?.name ?? lesson.title)}

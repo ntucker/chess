@@ -2,11 +2,11 @@ import { Inline, Separator, Text } from '@reactive/silk-native';
 import { Image, StyleSheet } from 'react-native';
 
 import { SourceLink } from '@/components/SourceLink';
-import { PHONE_LAYOUT, phoneLength, phonePart } from '@/theme/phone';
+import { NARROW_LAYOUT, narrowLength, narrowPart } from '@/theme/narrow';
 import { fonts } from '@/theme/theme';
 
 /** The header's height: its logo, the tallest thing in it. Shorter on a narrow web page. */
-export const HEADER_HEIGHT = phoneLength('header-height', 40);
+export const HEADER_HEIGHT = narrowLength('header-height', 40);
 
 interface Props {
   /** Where the page is, such as the lesson's line. On a narrow web page it takes the name's place. */
@@ -20,8 +20,8 @@ interface Props {
  * is none), and no tagline.
  */
 export function Header({ place }: Props) {
-  // Only phone.css shows it, so a native app keeps the name.
-  const shownPlace = PHONE_LAYOUT ? place : undefined;
+  // Only narrow.css shows it, so a native app keeps the name.
+  const shownPlace = NARROW_LAYOUT ? place : undefined;
   return (
     <Inline gap="2" align="center" justify="between" wrap="nowrap">
       <Inline gap="3" align="center" wrap="nowrap" style={styles.brand}>
@@ -31,7 +31,7 @@ export function Header({ place }: Props) {
           accessibilityIgnoresInvertColors
         />
         <Text
-          {...(shownPlace ? phonePart('wide-only') : {})}
+          {...(shownPlace ? narrowPart('wide-only') : {})}
           role="heading"
           accessibilityRole="header"
           style={styles.wordmark}
@@ -39,13 +39,13 @@ export function Header({ place }: Props) {
           Opening Night
         </Text>
         {shownPlace ? (
-          <Text {...phonePart('phone-only')} role="heading" numberOfLines={1} style={styles.place}>
+          <Text {...narrowPart('narrow-only')} role="heading" numberOfLines={1} style={styles.place}>
             {shownPlace}
           </Text>
         ) : null}
       </Inline>
       <Inline gap="3" align="center" wrap="nowrap">
-        <Inline {...phonePart('wide-only')} gap="3" align="center" wrap="nowrap">
+        <Inline {...narrowPart('wide-only')} gap="3" align="center" wrap="nowrap">
           <Text role="caption" tone="secondary" style={styles.tagline}>
             Learn your lines
           </Text>
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
   logo: { width: HEADER_HEIGHT.value, height: HEADER_HEIGHT.value, borderRadius: 10 },
   wordmark: {
     fontFamily: fonts.display,
-    fontSize: phoneLength('wordmark-size', 26).value,
+    fontSize: narrowLength('wordmark-size', 26).value,
     letterSpacing: 0.2,
   },
   place: { fontFamily: fonts.display, fontSize: 17, flexShrink: 1, minWidth: 0 },
