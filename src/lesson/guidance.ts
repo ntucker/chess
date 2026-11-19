@@ -96,6 +96,11 @@ export interface Guidance {
   /** The idea playing back, once its note's playback has started. */
   readonly playing?: ShownPlayback;
   /**
+   * The note pointed at whose ideas the board draws: one of `pointable`, and
+   * none while an idea plays back.
+   */
+  readonly pointed?: Note;
+  /**
    * Stockfish's best move to mark, while nothing is previewed, pointed at or
    * playing back. Inside the guide the candidates are what is highlighted, so
    * it is tagged only when it isn't one of them.
@@ -131,7 +136,7 @@ export function guidance(input: GuidanceInput): Guidance {
     .filter(({ after }) => after === shownKey(view.key, preview))
     .filter(({ note }) => note.ideas?.some((idea) => idea.type !== 'evaluation' && allowed(idea)))
     .map(({ note }) => note);
-  const pointedNote = pointed && pointable.includes(pointed) ? pointed : undefined;
+  const pointedNote = !playing && pointed && pointable.includes(pointed) ? pointed : undefined;
   const board = boardShown({ candidates, preview, ideas, playing, pointed: pointedNote });
   const best = explore && !preview && !playing && !pointedNote ? engine?.best : undefined;
 
@@ -145,6 +150,7 @@ export function guidance(input: GuidanceInput): Guidance {
     drawn: firstPlanOnly(board.drawn),
     drawnCandidates: board.candidates,
     playing,
+    pointed: pointedNote,
     best: view.candidates.some(({ move }) => move.uci === best) ? undefined : best,
     top: explore && view.place !== 'inside' ? (engine?.top ?? []) : [],
     trap: view.trap,

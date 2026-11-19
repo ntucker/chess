@@ -217,6 +217,23 @@ describe('guidance', () => {
       expect(explore(ADVANCE, { switches: { ...ALL_ON, showIdeas: false } }).pointable).toEqual([]);
     });
 
+    it('names the pointed note only while its ideas draw, and not during a playback', () => {
+      const [, position] = explore(ADVANCE).notes;
+      expect(explore(ADVANCE, { pointed: position.note }).pointed).toBe(position.note);
+      const off = { ...ALL_ON, showIdeas: false };
+      expect(explore(ADVANCE, { pointed: position.note, switches: off }).pointed).toBeUndefined();
+      const view = sampleView(TRAP);
+      const [trap] = view.notes;
+      const playing = guidance({
+        view,
+        mode: 'explore',
+        switches: ALL_ON,
+        pointed: trap.note,
+        playing: trap.note,
+      });
+      expect(playing.pointed).toBeUndefined();
+    });
+
     it("hides Stockfish's best move while a note is pointed at", () => {
       const [, position] = explore(ADVANCE).notes;
       expect(explore(ADVANCE, { pointed: position.note }).best).toBeUndefined();

@@ -166,7 +166,7 @@ export function useLesson(lesson: Lesson) {
     canPlay: game.canMove,
     play,
     /** The note pointed at on the idea card. */
-    pointedNote: here?.note,
+    pointedNote: shown.pointed,
     /**
      * The learner points at a candidate list row. Leaving a row keeps its
      * preview, so the learner can move on to its notes; `leave` ends it.
