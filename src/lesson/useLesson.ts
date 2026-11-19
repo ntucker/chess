@@ -75,8 +75,6 @@ export function useLesson(lesson: Lesson) {
   // On Auto the learner moves only their own side; on "I choose", either.
   const canMove =
     !current.result && !game.replying && (!settings.auto || current.turn === lesson.side);
-  // A move played before the learner's first starts a Practice run.
-  const first = beforeSideMoves(plies, lesson.side, ply);
   const view = useMemo(
     () => lessonView({ lesson, line: moves, ply, opponent }),
     [lesson, moves, ply, opponent],
@@ -127,6 +125,8 @@ export function useLesson(lesson: Lesson) {
     if (!canMove) return;
     const learner = current.turn === lesson.side;
     const book = isBook(lesson, key, uci);
+    // A move played before the learner's first starts a Practice run.
+    const first = beforeSideMoves(plies, lesson.side, ply);
     dispatch({ type: 'played', learner, book, first, replaces: ply < moves.length });
     game.play(uci);
   };

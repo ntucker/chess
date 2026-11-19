@@ -208,14 +208,16 @@ function landedTrap(
     const n = trap.moves.findIndex((uci, step) => uci !== line[ply + step]);
     return n === -1 ? trap.moves.length : n;
   };
-  for (let ply = shownMoves - LANDING_MOVES; ply >= 0; ply--) {
+  for (let ply = shownMoves - 1; ply >= 0; ply--) {
     let landed: LandedTrap | undefined;
     let furthest = 0;
     for (const note of arrivalNotes(lesson, keys, guideMoves, ply)) {
       if (note.after !== keys[ply]) continue;
       for (const trap of note.note.ideas ?? []) {
         if (trap.type !== 'trap') continue;
+        // A one-move trap lands at its only move.
         const landing = Math.min(LANDING_MOVES, trap.moves.length);
+        if (ply + landing > shownMoves) continue;
         const matched = matchedMoves(trap, ply);
         // A tie keeps the first in note order.
         if (matched < landing || matched <= furthest) continue;

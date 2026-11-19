@@ -125,6 +125,22 @@ describe('lessonView', () => {
       });
     });
 
+    it('lands a one-move trap at its only move', () => {
+      const { moves } = view(LANDED).trap!.trap;
+      const lesson: typeof SAMPLE = JSON.parse(
+        JSON.stringify(SAMPLE, (_, value) =>
+          value?.type === 'trap' && String(value.moves) === String(moves)
+            ? { ...value, moves: moves.slice(0, 1) }
+            : value,
+        ),
+      );
+      const line = uciLine(...TRAP, 'Nxe5');
+      expect(lessonView({ lesson, line, ply: line.length, opponent: 1500 }).trap).toMatchObject({
+        ply: TRAP.length,
+        landed: keyAfter(...TRAP, 'Nxe5'),
+      });
+    });
+
     it('follows the cursor, and stays as the line goes on, in the trap or out of it', () => {
       expect(view(LANDED, { ply: LANDED.length - 1 }).trap).toBeUndefined();
       expect(view(TRAP_PUNISHED).trap).toMatchObject({ ply: TRAP.length });
