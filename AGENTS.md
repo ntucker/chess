@@ -40,7 +40,7 @@ The package manager is Yarn 4, through Corepack. Yarn holds back package version
 ```bash
 npx expo install <package>  # add packages with this, not yarn add: it picks versions that match the Expo SDK
 npx expo start              # start the dev server
-yarn format                 # format with Prettier (.prettierrc.json); CI runs format:check
+yarn format                 # format with Prettier
 yarn lint                   # lint
 yarn typecheck              # typecheck
 yarn test                   # unit tests (Jest, jest-expo preset)

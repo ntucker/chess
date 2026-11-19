@@ -24,7 +24,7 @@ yarn web        # or: yarn android
 | `yarn web` / `yarn android` | Start it and open that platform |
 | `yarn typecheck` | Type-check with TypeScript |
 | `yarn lint` | Lint with ESLint |
-| `yarn format` | Format with Prettier (`yarn format:check` only checks, as CI does) |
+| `yarn format` | Format with Prettier |
 | `yarn test` | Run the unit tests (Jest) |
 | `yarn vendor:silk [path]` | Rebuild the vendored Silk packages from a Silk checkout (default `../silk`) |
 | `yarn brand` | Redraw the logo and every icon made from it (`scripts/make-brand.mjs`) |
