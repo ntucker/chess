@@ -2,12 +2,12 @@ import './phone.css';
 
 /**
  * Whether phone.css can apply: only on the web. Off it every length is its
- * wide value, no part is tagged, and text that only a phone shows isn't
+ * wide value, no part is tagged, and text that only a narrow page shows isn't
  * rendered at all.
  */
 export const PHONE_LAYOUT = process.env.EXPO_OS === 'web';
 
-/** The lengths phone.css shortens on a phone-width web page. */
+/** The lengths phone.css shortens on a narrow web page. */
 export const PHONE_LENGTHS = [
   'page-space',
   'header-height',
@@ -25,7 +25,7 @@ export const PHONE_LENGTHS = [
   'panel-reserve',
 ] as const;
 
-/** The parts of the page that phone.css lays out differently on a phone-width web page. */
+/** The parts of the page that phone.css lays out differently on a narrow web page. */
 export const PHONE_PARTS = [
   'wide-only',
   'phone-only',
@@ -37,7 +37,7 @@ export const PHONE_PARTS = [
 ] as const;
 
 /**
- * A length that is shorter on a phone-width web page, or a sum of such
+ * A length that is shorter on a narrow web page, or a sum of such
  * lengths. Work them out with `plus`, `minus` and `times`, never with the
  * style value, so the web's CSS and the native number stay one expression.
  */
@@ -53,7 +53,7 @@ export interface PhoneLength {
   times(factor: number): PhoneLength;
 }
 
-/** The length `--<name>` in phone.css on a phone-width web page, `wide` pixels elsewhere. */
+/** The length `--<name>` in phone.css on a narrow web page, `wide` pixels elsewhere. */
 export function phoneLength(name: (typeof PHONE_LENGTHS)[number], wide: number) {
   return makeLength(wide, `var(--${name}, ${wide}px)`);
 }
@@ -91,7 +91,7 @@ export function phoneCalc(css: string, wide: number): number {
 
 /**
  * Props that name a part of the page for phone.css, which lays it out
- * differently on a phone-width web page. Nothing elsewhere.
+ * differently on a narrow web page. Nothing elsewhere.
  */
 export function phonePart(part: (typeof PHONE_PARTS)[number]) {
   return PHONE_LAYOUT ? { dataSet: { phone: part } } : {};

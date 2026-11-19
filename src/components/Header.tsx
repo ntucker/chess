@@ -5,17 +5,17 @@ import { SourceLink } from '@/components/SourceLink';
 import { PHONE_LAYOUT, phoneLength, phonePart } from '@/theme/phone';
 import { fonts } from '@/theme/theme';
 
-/** The header's height: its logo, the tallest thing in it. Shorter on a phone. */
+/** The header's height: its logo, the tallest thing in it. Shorter on a narrow web page. */
 export const HEADER_HEIGHT = phoneLength('header-height', 40);
 
 interface Props {
-  /** Where the page is, such as the lesson's line. On a phone it takes the name's place. */
+  /** Where the page is, such as the lesson's line. On a narrow web page it takes the name's place. */
   readonly place?: string;
 }
 
 /**
  * The wordmark (the logo, the name in the display serif, and the tagline),
- * with a link to the source at the far end. On a phone-width web page it's
+ * with a link to the source at the far end. On a narrow web page it's
  * one slim row: a smaller logo, the page's `place` (or the name, when there
  * is none), and no tagline.
  */

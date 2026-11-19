@@ -12,13 +12,13 @@ import { Transport } from '@/components/Transport';
 import { useStepKeys } from '@/components/useStepKeys';
 import { colorName, opposite } from '@/game/replay';
 import type { Game } from '@/game/useGame';
-import { phoneCalc, phoneLength, phonePart } from '@/theme/phone';
+import { PHONE_LAYOUT, phoneCalc, phoneLength, phonePart } from '@/theme/phone';
 import { spotlight } from '@/theme/theme';
 
 interface StageProps {
   /** The browser tab's title. */
   readonly title: string;
-  /** Where the page is, such as the lesson's line: the header names it on a phone. */
+  /** Where the page is, such as the lesson's line: the header names it on a narrow web page. */
   readonly place?: string;
   /** The board column (`BoardColumn`), or a stand-in the same size while it loads. */
   readonly board: ReactNode;
@@ -29,7 +29,7 @@ interface StageProps {
 /**
  * A page of the app: the header, then the board column and the panel beside
  * it on the stage background. Every screen that shows a board uses it, so
- * they line up the same way. On a phone-width web page the panel goes below
+ * they line up the same way. On a narrow web page the panel goes below
  * the board and scrolls on its own, so the board stays in view (phone.css).
  */
 export function Stage({ title, place, board, program }: StageProps) {
@@ -149,7 +149,7 @@ function BoardFrame({ children }: { readonly children: ReactNode }) {
 
 /** Space between the board and the name bars above and below it. */
 const BOARD_COLUMN_GAP = 4;
-/** The evaluation bar's width: a thin strip on a phone-width web page. */
+/** The evaluation bar's width: a thin strip on a narrow web page. */
 const EVALUATION_BAR_WIDTH = phoneLength('evaluation-width', 22);
 /** How far the board sits below the top of its column (the opponent's name bar). */
 const BOARD_OFFSET = PLAYER_BAR_HEIGHT.names.plus(BOARD_COLUMN_GAP);
@@ -176,13 +176,13 @@ const PAGE_SPACE = phoneLength('page-space', 20);
 const AROUND_BOARD = PAGE_SPACE.times(3).plus(HEADER_HEIGHT).plus(BOARD_OFFSET).plus(BOARD_UNDER);
 /** On the web, the smallest the board shrinks to in a short window. */
 const BOARD_MIN_WEB = phoneLength('board-min', 320);
-/** Height kept below the board column for the panel: none beside it, some below it on a phone. */
+/** Height kept below the board column for the panel: none beside it, some below it on a narrow page. */
 const PANEL_RESERVE = phoneLength('panel-reserve', 0);
 /**
  * The board column's width limit. On the web the board also shrinks to fit
  * the window's height, so the player's name bar and the move buttons stay in
- * view, and on a phone the start of the panel too. CSS does it, since the
- * server can't measure the window. Native has no window to fit, so its limit
+ * view, and on a narrow page the start of the panel too. CSS does it, since
+ * the server can't measure the window. Native has no window to fit, so its limit
  * is the largest board column, BOARD_COLUMN_MAX. `clamp()` has no PhoneLength form,
  * so the web's clamp and that native number are written apart.
  */
@@ -197,6 +197,9 @@ const COLUMN_RAISE = BOARD_OFFSET.minus(WRAPPED_GAP);
 
 // Board and program sit side by side when there's room and wrap into a column
 // when there isn't, without measuring the window (which the server can't).
+// On the web they never wrap: phone.css stacks them below the width they need
+// side by side, so a stacked page always gets the narrow layout, even where a
+// scrollbar takes some of that width.
 // Side by side, the program should start level with the board, BOARD_OFFSET
 // below the column's top; wrapped, it should start WRAPPED_GAP below the
 // column. The program's top margin is WRAPPED_GAP for the wrapped case, and
@@ -217,7 +220,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: STAGE_MAX,
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: PHONE_LAYOUT ? 'nowrap' : 'wrap',
     justifyContent: 'center',
     columnGap: STAGE_GAP,
     paddingTop: COLUMN_RAISE.value,

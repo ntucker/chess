@@ -37,11 +37,11 @@ interface HeadlineProps {
   /** The opponent `who` didn't answer, and `onRetry` asks it again. */
   readonly failure?: { readonly who: string; readonly onRetry: () => void };
   /**
-   * The header names the line on a phone (Stage's `place`), so the headline
+   * The header names the line on a narrow web page (Stage's `place`), so the headline
    * leaves its eyebrow out there.
    */
   readonly eyebrowInHeader?: boolean;
-  /** The detail tells how to use the screen, and the learner has seen it: a phone leaves it out. */
+  /** The detail tells how to use the screen, and the learner has seen it: a narrow web page leaves it out. */
   readonly seenHint?: boolean;
 }
 
@@ -125,7 +125,7 @@ function describeLatest({
   };
 }
 
-/** The headline's size: its role's, a size smaller on a phone-width web page. */
+/** The headline's size: its role's, a size smaller on a narrow web page. */
 const HEADLINE = typography.headingLg;
 const TITLE_SIZE = phoneLength('headline-size', HEADLINE.size);
 

@@ -43,7 +43,7 @@ export function SourceLink() {
   );
 }
 
-/** The button's size, smaller on a phone, where the header is slim. */
+/** The button's size, smaller on a narrow web page, where the header is slim. */
 const SIZE = phoneLength('source-link-size', 36);
 
 const styles = StyleSheet.create({

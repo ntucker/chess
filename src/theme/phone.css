@@ -1,15 +1,23 @@
 /*
- * How a phone-width web page differs, behind one media query, since the
- * pre-rendered page can't measure the window. Everywhere else none of this
+ * How a narrow web page differs, behind one media query, since the
+ * pre-rendered page can't measure the window. Narrow means too narrow for
+ * the panel beside the board, so the board sits above it: a phone, or a
+ * narrow window. Everywhere else none of this
  * applies: each length falls back to the wide value written beside it in
  * code, and each part keeps its wide layout. The one exception is the rule
- * just below, which keeps phone-only parts hidden until a phone shows them.
+ * just below, which keeps phone-only parts hidden until a narrow page shows them.
  */
 :root [data-phone='phone-only'] {
   display: none;
 }
 
-@media (max-width: 599.98px) {
+/*
+ * The width the board column and the panel need side by side (Stage.tsx):
+ * their flex bases (320px and 300px), the gap between them (48px) and the
+ * page's padding (2 × 20px). Wider than that they sit side by side, and on
+ * the web they never wrap, so below it this layout is the only stacked one.
+ */
+@media (max-width: 707.98px) {
   /* Lengths, read by `phoneLength` (phone.ts). */
   :root {
     /* Page padding and the gap below the header (Stage.tsx). */

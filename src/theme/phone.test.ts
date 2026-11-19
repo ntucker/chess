@@ -8,7 +8,7 @@ import { PHONE_LENGTHS, PHONE_PARTS, phoneLength } from './phone';
 jest.mock('./phone.css', () => ({}));
 
 describe('phone.css', () => {
-  // The phone rules sit inside the phone-width media query.
+  // The phone rules sit inside the narrow media query.
   const css = readFileSync(join(__dirname, 'phone.css'), 'utf8');
   const start = css.indexOf('@media (max-width:');
   const phone = css.slice(start);
