@@ -1,4 +1,4 @@
-import { Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
+import { a11yState, Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
 import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -28,10 +28,11 @@ interface Props {
    */
   readonly onPoint: (uci: Uci) => void;
   /**
-   * Keyboard focus moves on past the last row. The preview ends first, so the
-   * idea card focus lands in shows the position's own notes.
+   * The preview ends: keyboard focus moves on past the list, so the idea card
+   * focus lands in shows the position's own notes; or the rare row previewed
+   * is hidden.
    */
-  readonly onTabOut: () => void;
+  readonly onLeave: () => void;
 }
 
 /**
@@ -50,7 +51,7 @@ export function CandidateList({
   playable,
   onPlay,
   onPoint,
-  onTabOut,
+  onLeave,
 }: Props) {
   const [showRare, setShowRare] = useState(false);
   const rows = showRare ? [...candidates, ...rare] : candidates;
@@ -68,15 +69,19 @@ export function CandidateList({
           playable={playable}
           onPlay={onPlay}
           onPoint={onPoint}
-          onTabOut={!rare.length && index === rows.length - 1 ? onTabOut : undefined}
+          onTabOut={!rare.length && index === rows.length - 1 ? onLeave : undefined}
         />
       ))}
       {rare.length ? (
         <RareToggle
           count={rare.length}
           shown={showRare}
-          onToggle={() => setShowRare(!showRare)}
-          onTabOut={onTabOut}
+          onToggle={() => {
+            // A hidden row's preview would stay on the board with no row to show it.
+            if (showRare && rare.some(({ move }) => move.uci === pointed)) onLeave();
+            setShowRare(!showRare);
+          }}
+          onTabOut={onLeave}
         />
       ) : null}
     </Surface>
@@ -96,19 +101,15 @@ function RareToggle({
   readonly onTabOut: () => void;
 }) {
   const { theme } = useTheme();
-  const label = shown
-    ? `Hide ${count === 1 ? 'the rarer reply' : 'rarer replies'}`
-    : `Show ${count} rarer ${count === 1 ? 'reply' : 'replies'}`;
+  // Never singular: a list hides rare rows only when at least FEWEST_RARE are rare.
+  const label = shown ? 'Hide rarer replies' : `Show ${count} rarer replies`;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ expanded: shown }}
+      {...a11yState({ expanded: shown })}
       onPress={onToggle}
-      onKeyDown={(event: unknown) => {
-        const { key, shiftKey } = event as ReactKeyboardEvent;
-        if (key === 'Tab' && !shiftKey) onTabOut();
-      }}
+      onKeyDown={tabOut(onTabOut)}
       style={({ hovered, pressed }) => [
         styles.row,
         styles.toggle,
@@ -121,6 +122,15 @@ function RareToggle({
     </Pressable>
   );
 }
+
+/**
+ * A key handler calling `onTabOut` on a forward Tab, before the browser moves
+ * focus, so it lands among the notes shown next.
+ */
+const tabOut = (onTabOut?: () => void) => (event: unknown) => {
+  const { key, shiftKey } = event as ReactKeyboardEvent;
+  if (key === 'Tab' && !shiftKey) onTabOut?.();
+};
 
 /** How long the mouse rests on a row before it points at it. */
 const ROW_REST_MS = 150;
@@ -186,11 +196,7 @@ function Row({
         }, ROW_REST_MS);
       }}
       onPointerLeave={stopResting}
-      // Before the browser moves focus, so it lands among the notes shown next.
-      onKeyDown={(event: unknown) => {
-        const { key, shiftKey } = event as ReactKeyboardEvent;
-        if (key === 'Tab' && !shiftKey) onTabOut?.();
-      }}
+      onKeyDown={tabOut(onTabOut)}
       onFocus={point}
       style={({ pressed }) => [
         styles.row,
@@ -242,19 +248,23 @@ const BOOK_BADGE_SIZE = 16;
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;
 
+const ROW_INSET = 14;
+const ROW_GAP = 12;
+const DOT_SIZE = 10;
+
 const styles = StyleSheet.create({
   list: { overflow: 'hidden', paddingVertical: 4 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 14,
+    gap: ROW_GAP,
+    paddingHorizontal: ROW_INSET,
     paddingVertical: 8,
     outlineOffset: -2,
   },
-  dot: { width: 10, height: 10, borderRadius: 5 },
+  dot: { width: DOT_SIZE, height: DOT_SIZE, borderRadius: DOT_SIZE / 2 },
   // Text lines up with the rows' moves, past the dot and its gap.
-  toggle: { paddingLeft: 14 + 10 + 12 },
+  toggle: { paddingLeft: ROW_INSET + DOT_SIZE + ROW_GAP },
   move: { flex: 1, gap: 1 },
   title: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   san: { fontFamily: fonts.mono, fontSize: 17 },

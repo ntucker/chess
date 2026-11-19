@@ -83,7 +83,7 @@ export interface Candidate {
 export const RARE_SHARE = 0.05;
 
 /** The most played this many candidates are never rare, so a short list hides nothing. */
-export const SHORT_LIST = 5;
+export const ALWAYS_LISTED = 5;
 
 /**
  * Fewer rare candidates than this are listed anyway: the row that shows
@@ -138,13 +138,13 @@ export function candidates(
 
 /**
  * The opponent's `rows`, most played first, with the rare ones marked and
- * moved last. A row past the first `SHORT_LIST` is rare under `RARE_SHARE`,
+ * moved last. A row past the first `ALWAYS_LISTED` is rare under `RARE_SHARE`,
  * unless it has no counts or starts one of `traps`, and only when at least
  * `FEWEST_RARE` are.
  */
 function rareLast(rows: readonly Candidate[], traps: readonly Uci[]): Candidate[] {
   const isRare = ({ move, share }: Candidate, n: number) =>
-    n >= SHORT_LIST && share !== undefined && share < RARE_SHARE && !traps.includes(move.uci);
+    n >= ALWAYS_LISTED && share !== undefined && share < RARE_SHARE && !traps.includes(move.uci);
   if (rows.filter(isRare).length < FEWEST_RARE) return [...rows];
   const marked = rows.map((row, n) => (isRare(row, n) ? { ...row, rare: true } : row));
   return [...marked.filter(({ rare }) => !rare), ...marked.filter(({ rare }) => rare)];

@@ -87,8 +87,8 @@ export const TRAP_PUNISHED = [
 ];
 
 /**
- * The sample with five rarely played replies at `MAIN`, making its list
- * long: f3 (fifth most played, so listed), then h3, a3, g3 and b3, which are rare.
+ * The sample with five more replies at `MAIN`, making its list long: f3
+ * (fifth most played, so listed), then h3, a3, g3 and b3, which are rare.
  */
 export const WITH_RARE = withMoves(SAMPLE, keyAfter(...MAIN), (moves) => [
   ...moves,

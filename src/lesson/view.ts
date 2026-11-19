@@ -142,12 +142,11 @@ export const shownKey = (key: PositionKey, preview?: Preview): PositionKey =>
   preview?.slide ? preview.candidate.next : key;
 
 /**
- * The candidate `pointer` previews in `view`. A row previews its move. A
- * destination square previews the most common
- * candidate landing there, and a piece's own square its most common
- * candidate without sliding, so the piece can still be dragged anywhere
- * legal. Either takes a listed candidate before a rare one, since rare ones
- * come last in `view.candidates`.
+ * The candidate `pointer` previews in `view`. A row previews its move, rare
+ * or not. A destination square previews the most common candidate landing
+ * there, and a piece's own square its most common candidate without sliding,
+ * so the piece can still be dragged anywhere legal. A square takes a listed
+ * candidate before a rare one, since rare ones come last in `view.candidates`.
  */
 export function preview(lesson: Lesson, view: LessonView, pointer: Pointer): Preview | undefined {
   const found = pointed(view.candidates, pointer);
