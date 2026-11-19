@@ -1,19 +1,18 @@
 import { AsyncBoundary, useSuspense } from '@data-client/react';
-import { Button, Inline, Spinner, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
+import { Button, Inline, Spinner, Stack, Text } from '@reactive/silk-native';
 import { makeFen } from 'chessops/fen';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View } from 'react-native';
 
 import Board from '@/components/Board';
 import { BrowserOnly } from '@/components/BrowserOnly';
 import { Eyebrow } from '@/components/Eyebrow';
-import { ideaDrawings } from '@/lesson/drawings';
 import type { Color } from '@/game/replay';
+import { ideaDrawings } from '@/lesson/drawings';
 import type { Idea } from '@/lesson/lesson';
 import { getLesson, type LessonId } from '@/resources/lesson';
-import { fonts, spotlight } from '@/theme/theme';
 
+import { DevPage, devStyles, FramedBoard } from './DevPage';
 import { reviewItems, type ReviewItem, type ReviewKind } from './review';
 
 const PAGE = 12;
@@ -41,45 +40,23 @@ const TYPES: readonly (Idea['type'] | 'any')[] = [
  * eye. The app doesn't link here.
  */
 export function ConversionReview({ id }: { readonly id: LessonId }) {
-  const { theme } = useTheme();
   return (
-    <View
-      style={[
-        styles.fill,
-        { backgroundColor: theme.semantic.color.surface, backgroundImage: spotlight[theme.colorScheme] },
-      ]}
+    <DevPage
+      title="Conversion review"
+      intro="Each note of the lesson beside the study comment it was written from. The board draws the note's ideas in the position they are about."
     >
-      <SafeAreaView style={styles.fill}>
-        <ScrollView contentContainerStyle={styles.page}>
-          <Stack gap="6" style={styles.column}>
-            <Stack gap="2">
-              <Eyebrow>For developers</Eyebrow>
-              <Text role="headingLg" accessibilityRole="header">
-                Conversion review
-              </Text>
-              <Text role="bodySm" tone="secondary">
-                Each note of the lesson beside the study comment it was written from. The board
-                draws the note&apos;s ideas in the position they are about.
-              </Text>
-            </Stack>
-            <BrowserOnly fallback={<Spinner />}>
-              <AsyncBoundary
-                fallback={<Spinner />}
-                errorComponent={({ error }) => <Text role="body">{error.message}</Text>}
-              >
-                <Review id={id} />
-              </AsyncBoundary>
-            </BrowserOnly>
-          </Stack>
-        </ScrollView>
-      </SafeAreaView>
-    </View>
+      <BrowserOnly fallback={<Spinner />}>
+        <AsyncBoundary fallback={<Spinner />} errorComponent={({ error }) => <Text role="body">{error.message}</Text>}>
+          <Review id={id} />
+        </AsyncBoundary>
+      </BrowserOnly>
+    </DevPage>
   );
 }
 
 function Review({ id }: { readonly id: LessonId }) {
   const lesson = useSuspense(getLesson, id);
-  const [items] = useState(() => reviewItems(lesson));
+  const items = reviewItems(lesson);
   const [kind, setKind] = useState<ReviewKind | 'all'>('all');
   const [type, setType] = useState<Idea['type'] | 'any'>('any');
   const [page, setPage] = useState(0);
@@ -123,7 +100,7 @@ function Review({ id }: { readonly id: LessonId }) {
         </Inline>
         <Pager at={at} pages={pages} count={shown.length} onPage={setPage} />
       </Stack>
-      <View style={styles.grid}>
+      <View style={devStyles.grid}>
         {shown.slice(at * PAGE, (at + 1) * PAGE).map((item) => (
           <ReviewCard key={item.key} item={item} learner={lesson.side} />
         ))}
@@ -164,10 +141,10 @@ function ReviewCard({ item, learner }: { readonly item: ReviewItem; readonly lea
   const ideas = note.ideas ?? [];
   const drawings = ideas.flatMap((idea) => ideaDrawings(idea, position, learner));
   return (
-    <Stack gap="3" style={styles.card}>
+    <Stack gap="3" style={devStyles.card}>
       <Stack gap="1">
         <Eyebrow>{item.variation}</Eyebrow>
-        <Text role="caption" tone="secondary" style={styles.mono}>
+        <Text role="caption" tone="secondary" style={devStyles.mono}>
           {item.line || 'Start'}
         </Text>
       </Stack>
@@ -180,12 +157,12 @@ function ReviewCard({ item, learner }: { readonly item: ReviewItem; readonly lea
       <Stack gap="1">
         <Eyebrow>Lesson</Eyebrow>
         <Text role="body">{note.text}</Text>
-        <Text role="caption" tone="secondary" style={styles.mono}>
+        <Text role="caption" tone="secondary" style={devStyles.mono}>
           {ideas.map((idea) => (idea.type === 'evaluation' ? `evaluation: ${idea.value}` : idea.type)).join(' · ') ||
             'text only'}
         </Text>
       </Stack>
-      <Surface elevation="overlay" radius="md" border="subtle" style={styles.frame}>
+      <FramedBoard>
         <Board
           fen={makeFen(position.toSetup())}
           orientation={learner}
@@ -195,19 +172,9 @@ function ReviewCard({ item, learner }: { readonly item: ReviewItem; readonly lea
           check={position.isCheck()}
           drawings={drawings}
           onMove={() => {}}
-          dom={{ style: styles.fill, scrollEnabled: false }}
+          dom={{ style: devStyles.fill, scrollEnabled: false }}
         />
-      </Surface>
+      </FramedBoard>
     </Stack>
   );
 }
-
-const styles = StyleSheet.create({
-  fill: { flex: 1 },
-  page: { padding: 20, alignItems: 'center' },
-  column: { width: '100%', maxWidth: 1100 },
-  frame: { width: '100%', aspectRatio: 1, overflow: 'hidden' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 32 },
-  card: { flexGrow: 1, flexShrink: 1, flexBasis: 280, maxWidth: 340 },
-  mono: { fontFamily: fonts.mono },
-});

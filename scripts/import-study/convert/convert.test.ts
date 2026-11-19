@@ -1,5 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
+import { positionKey } from '@/game/replay';
+
 import { extractChapter } from '../extract';
 import { STUDY_PGN } from '../fixture';
 import { parseStudy } from '../study';
@@ -101,6 +103,33 @@ describe('convertChapters', () => {
     const { extracted: [chapter], report } = await convertChapters(extracted, ask);
     expect(chapter.moveNotes).toEqual(extracted[0].moveNotes);
     expect(report.unconverted).toBe(report.comments);
+  });
+
+  it('keeps the importer’s note when the answer has no note at all', async () => {
+    const { ask } = fakeAsk({ [MODELS.convert]: { Be2: [] } });
+    const { extracted: [chapter] } = await convertChapters(extracted, ask);
+    expect(notesOn(chapter, 'Be2')).toEqual(notesOn(extracted[0], 'Be2'));
+  });
+
+  it('joins the importer’s note on the position before the move to the model’s note there', async () => {
+    const [trapped] = parseStudy(
+      '1. e4 c6 2. d4 d5 3. e5 Bf5 4. Nf3 e6 { Trap: 4...Qb6? 5.Nc3 e6 6.Na4 and Black is clearly worse. } *',
+      () => true,
+    );
+    const chapters = [extractChapter(trapped, 'black')];
+    const e6 = chapters[0].moveNotes.find(({ move }) => move.san === 'e6')!.move;
+    const { ask } = fakeAsk({
+      [MODELS.convert]: {
+        e6: [
+          { about: 'move', text: 'You build your chain calmly.', ideas: [] },
+          { about: 'before', text: 'Grabbing b2 with the queen here gets her chased.', ideas: [] },
+        ],
+      },
+    });
+    const { extracted: [chapter] } = await convertChapters(chapters, ask);
+    const before = chapter.positionNotes.filter(({ pos }) => positionKey(pos) === positionKey(e6.before));
+    expect(before.map(({ note }) => note.text)).toEqual(['Grabbing b2 with the queen here gets her chased.']);
+    expect(before[0].note.ideas?.map((idea) => idea.type)).toEqual(['trap']);
   });
 
   it('cuts a sentence over the word limit', async () => {

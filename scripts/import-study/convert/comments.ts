@@ -45,6 +45,8 @@ const FRAGMENT = new RegExp(String.raw`^\.\.\.(?!\s*${SAN})`);
 export function noteComment(moveNote: MoveNote, chapter: ChapterNotes): Comment | undefined {
   const { move, source, note } = moveNote;
   if (!source.comment) return undefined;
+  // extract.ts moves a chapter's summary comment to where its main line ends, so the
+  // note sits on another move than its comment; the comment before it is from elsewhere.
   const summary = move !== source;
   const previous = summary ? '' : previousComment(source);
   const fragment = FRAGMENT.test(source.comment) && previous;

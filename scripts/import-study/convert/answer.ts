@@ -5,7 +5,16 @@
  */
 import type { Color, SquareName } from 'chessops/types';
 
-import type { Evaluation, ImbalanceKind, Relation, Route, StructureFeature } from '@/lesson/lesson';
+import {
+  EVALUATIONS,
+  IMBALANCE_KINDS,
+  RELATIONS,
+  type Evaluation,
+  type ImbalanceKind,
+  type Relation,
+  type Route,
+  type StructureFeature,
+} from '@/lesson/lesson';
 
 export interface Answer {
   readonly id: string;
@@ -47,9 +56,7 @@ const strings = (pattern?: string) => ({ type: 'array', items: { type: 'string',
 const squares = strings('^[a-h][1-8]$');
 const files = strings('^[a-h]$');
 const side = { enum: ['white', 'black'] };
-const evaluation = {
-  enum: ['equal', 'whiteSlightly', 'whiteClearly', 'whiteWinning', 'blackSlightly', 'blackClearly', 'blackWinning'],
-};
+const evaluation = { enum: EVALUATIONS };
 
 /** An object schema whose properties are all required except `optional`. */
 const object = (properties: Record<string, unknown>, optional: readonly string[] = []) => ({
@@ -73,7 +80,7 @@ const idea = {
     object({
       type: kind('purpose'),
       from: { type: 'string' },
-      relation: { enum: ['attacks', 'defends', 'controls', 'checks', 'pins', 'blocks', 'aims'] },
+      relation: { enum: RELATIONS },
       targets: squares,
     }),
     object({ type: kind('pressure'), side, target: { type: 'string' }, attackers: squares, defenders: squares }),
@@ -93,7 +100,7 @@ const idea = {
     object({ type: kind('trap'), moves: strings(), verdict: { enum: [...evaluation.enum, 'losesMaterial'] } }),
     object({ type: kind('line'), moves: strings(), verdict: evaluation }),
     object({ type: kind('structure'), side, features: { type: 'array', items: feature } }),
-    object({ type: kind('imbalance'), side, kind: { enum: ['bishopPair', 'material', 'space'] } }),
+    object({ type: kind('imbalance'), side, kind: { enum: IMBALANCE_KINDS } }),
     object({ type: kind('evaluation'), value: evaluation }),
   ],
 };

@@ -6,7 +6,7 @@ import type { Chess } from 'chessops/chess';
 import { makeSanAndPlay } from 'chessops/san';
 import { parseUci } from 'chessops/util';
 
-import { parsePosition, parsePositionKey, positionKey } from '@/game/replay';
+import { parsePosition, positionKey } from '@/game/replay';
 import type { Idea, Lesson, Note, PositionKey, Uci } from '@/lesson/lesson';
 
 export interface ReviewItem {
@@ -57,7 +57,7 @@ export function reviewItems(lesson: Lesson): ReviewItem[] {
       const sans = [...at.sans, san];
       move.notes?.forEach((note, i) => add(note, i, after, sans, move.uci));
       const next = positionKey(after);
-      if (!seen.has(next) && parsePositionKey(next)) {
+      if (!seen.has(next)) {
         seen.add(next);
         queue.push({ pos: after, sans });
       }

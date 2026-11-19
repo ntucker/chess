@@ -1,14 +1,14 @@
-import { Button, Inline, Separator, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
+import { Button, Inline, Separator, Stack, Text } from '@reactive/silk-native';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View } from 'react-native';
 
 import type { Drawing, Square, Tone } from '@/board/drawing';
 import { type DrawingExample, drawingExamples } from '@/board/examples';
 import Board from '@/components/Board';
 import { Eyebrow } from '@/components/Eyebrow';
 import { lastPosition, pieceAt, toUci } from '@/game/replay';
-import { fonts, spotlight } from '@/theme/theme';
+
+import { DevPage, devStyles, FramedBoard } from './DevPage';
 
 /**
  * Every drawing the board can make, one board per idea type, and a board that
@@ -16,38 +16,19 @@ import { fonts, spotlight } from '@/theme/theme';
  * idea drawings by eye; the app doesn't link here.
  */
 export function DrawingGallery() {
-  const { theme } = useTheme();
   return (
-    <View
-      style={[
-        styles.fill,
-        { backgroundColor: theme.semantic.color.surface, backgroundImage: spotlight[theme.colorScheme] },
-      ]}
+    <DevPage
+      title="Board drawings"
+      intro="Every shape the board draws, in the positions an idea would draw it. Lessons choose the shapes; the board only draws them and reports the pointer."
     >
-      <SafeAreaView style={styles.fill}>
-        <ScrollView contentContainerStyle={styles.page}>
-          <Stack gap="6" style={styles.column}>
-            <Stack gap="2">
-              <Eyebrow>For developers</Eyebrow>
-              <Text role="headingLg" accessibilityRole="header">
-                Board drawings
-              </Text>
-              <Text role="bodySm" tone="secondary">
-                Every shape the board draws, in the positions an idea would draw it. Lessons
-                choose the shapes; the board only draws them and reports the pointer.
-              </Text>
-            </Stack>
-            <PreviewDemo />
-            <Separator />
-            <View style={styles.grid}>
-              {drawingExamples.map((example) => (
-                <ExampleCard key={example.title} example={example} />
-              ))}
-            </View>
-          </Stack>
-        </ScrollView>
-      </SafeAreaView>
-    </View>
+      <PreviewDemo />
+      <Separator />
+      <View style={devStyles.grid}>
+        {drawingExamples.map((example) => (
+          <ExampleCard key={example.title} example={example} />
+        ))}
+      </View>
+    </DevPage>
   );
 }
 
@@ -55,7 +36,7 @@ function ExampleCard({ example }: { readonly example: DrawingExample }) {
   const position = lastPosition(example.line);
   const kinds = [...new Set(example.drawings.map((drawing) => drawing.kind))];
   return (
-    <Stack gap="3" style={styles.card}>
+    <Stack gap="3" style={devStyles.card}>
       <Stack gap="1">
         <Eyebrow>{example.title}</Eyebrow>
         <Text role="bodySm">{example.sentence}</Text>
@@ -70,10 +51,10 @@ function ExampleCard({ example }: { readonly example: DrawingExample }) {
           check={position.check}
           drawings={example.drawings}
           onMove={() => {}}
-          dom={{ style: styles.fill, scrollEnabled: false }}
+          dom={{ style: devStyles.fill, scrollEnabled: false }}
         />
       </FramedBoard>
-      <Text role="caption" tone="secondary" style={styles.mono}>
+      <Text role="caption" tone="secondary" style={devStyles.mono}>
         {kinds.join(' · ')}
       </Text>
     </Stack>
@@ -172,7 +153,7 @@ function PreviewDemo() {
             onHover={setHovered}
             onHold={setHeld}
             onPress={press}
-            dom={{ style: styles.fill, scrollEnabled: false }}
+            dom={{ style: devStyles.fill, scrollEnabled: false }}
           />
         </FramedBoard>
       </View>
@@ -207,34 +188,16 @@ function Reading({ label, value }: { readonly label: string; readonly value?: st
       <View style={styles.readingLabel}>
         <Eyebrow>{label}</Eyebrow>
       </View>
-      <Text role="bodySm" style={styles.mono}>
+      <Text role="bodySm" style={devStyles.mono}>
         {value ?? '—'}
       </Text>
     </Inline>
   );
 }
 
-function FramedBoard({ children }: { readonly children: React.ReactNode }) {
-  const { theme } = useTheme();
-  return (
-    <Surface elevation="overlay" radius="md" border="subtle" style={styles.frame}>
-      <View style={[styles.fill, { borderRadius: theme.semantic.radius.md - 1, overflow: 'hidden' }]}>
-        {children}
-      </View>
-    </Surface>
-  );
-}
-
 const styles = StyleSheet.create({
-  fill: { flex: 1 },
-  page: { padding: 20, alignItems: 'center' },
-  column: { width: '100%', maxWidth: 1100 },
-  frame: { width: '100%', aspectRatio: 1 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 32 },
-  card: { flexGrow: 1, flexShrink: 1, flexBasis: 280, maxWidth: 340 },
   preview: { flexDirection: 'row', flexWrap: 'wrap', gap: 32, alignItems: 'stretch' },
   previewBoard: { flexGrow: 1, flexShrink: 1, flexBasis: 300, maxWidth: 460 },
   previewPanel: { flexGrow: 1, flexShrink: 1, flexBasis: 260, maxWidth: 400 },
   readingLabel: { width: 128 },
-  mono: { fontFamily: fonts.mono },
 });

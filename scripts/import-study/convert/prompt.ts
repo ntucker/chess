@@ -1,6 +1,6 @@
 /**
  * The instructions the model converts comments with. Changing this text
- * changes every cache key (cache.ts), so the next import converts again.
+ * changes every cache key (claude.ts), so the next import converts again.
  * Its examples are real positions from the Caro-Kann study and pass the
  * checker as written.
  */

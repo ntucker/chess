@@ -7,10 +7,13 @@
  */
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 
 import type { Color } from 'chessops/types';
 import { opposite } from 'chessops/util';
+
+import { colorName } from '@/game/replay';
+
+import { appendJsonLine, readJsonLines } from '../jsonLines';
 
 import { asAnswer, SCHEMA, type Answer } from './answer';
 import type { Comment } from './comments';
@@ -23,18 +26,22 @@ export type Model = (typeof MODELS)[keyof typeof MODELS];
 /** Answers for `comments` by comment id; a comment left out could not be converted this time. */
 export type Ask = (model: Model, comments: readonly Comment[]) => Promise<Map<string, Answer>>;
 
+/** Comments per request: enough to share the prompt, few enough to answer carefully. */
+const BATCH = 20;
+/** Requests at once. */
+const PARALLEL = 4;
+
 interface Options {
   readonly learner: Color;
   readonly cacheFile: string;
-  /** Comments per request: enough to share the prompt, few enough to answer carefully. */
-  readonly batch?: number;
-  /** Requests at once. */
-  readonly parallel?: number;
   readonly log?: (message: string) => void;
 }
 
-export function claudeCli({ learner, cacheFile, batch = 20, parallel = 4, log = console.log }: Options): Ask {
-  const prompt = PROMPT.replaceAll('{LEARNER}', title(learner)).replaceAll('{OPPONENT}', title(opposite(learner)));
+export function claudeCli({ learner, cacheFile, log = console.log }: Options): Ask {
+  const prompt = PROMPT.replaceAll('{LEARNER}', colorName(learner)).replaceAll(
+    '{OPPONENT}',
+    colorName(opposite(learner)),
+  );
   const cache = readCache(cacheFile);
   const keyOf = (model: Model, comment: Comment) =>
     createHash('sha256').update(JSON.stringify([model, prompt, comment])).digest('hex');
@@ -47,11 +54,11 @@ export function claudeCli({ learner, cacheFile, batch = 20, parallel = 4, log = 
       if (cached) answers.set(comment.id, { ...cached, id: comment.id });
       else asking.push(comment);
     }
-    const batches = chunks(asking, batch);
+    const batches = chunks(asking, BATCH);
     log(`convert: ${answers.size} cached, asking ${model} about ${asking.length} in ${batches.length} requests`);
     let done = 0;
     let cost = 0;
-    await pool(batches, parallel, async (group) => {
+    await pool(batches, PARALLEL, async (group) => {
       try {
         const byId = new Map(group.map((comment) => [comment.id, comment]));
         const result = await request(model, prompt, group);
@@ -61,7 +68,7 @@ export function claudeCli({ learner, cacheFile, batch = 20, parallel = 4, log = 
           if (!comment) continue;
           answers.set(answer.id, answer);
           cache.set(keyOf(model, comment), answer);
-          appendFileSync(cacheFile, `${JSON.stringify({ key: keyOf(model, comment), answer })}\n`);
+          appendJsonLine(cacheFile, { key: keyOf(model, comment), answer });
         }
       } catch (error) {
         log(`convert: a request failed, its ${group.length} comments stay unconverted: ${String(error)}`);
@@ -72,14 +79,10 @@ export function claudeCli({ learner, cacheFile, batch = 20, parallel = 4, log = 
   };
 }
 
-const title = (color: Color) => (color === 'white' ? 'White' : 'Black');
-
 function readCache(file: string): Map<string, Answer> {
   const cache = new Map<string, Answer>();
-  if (!existsSync(file)) return cache;
-  for (const line of readFileSync(file, 'utf8').split('\n')) {
-    if (!line) continue;
-    const { key, answer } = JSON.parse(line) as { key: string; answer: unknown };
+  for (const line of readJsonLines(file)) {
+    const { key, answer } = line as { key: string; answer: unknown };
     const valid = asAnswer(answer);
     if (valid) cache.set(key, valid);
   }

@@ -26,9 +26,10 @@ export interface Converted {
 }
 
 /**
- * `answer` for `comment` as notes, checked in `positions`. The importer's own
- * ideas (`comment.extracted` that `own` lists, those already on the move's
- * note) join the first note on the move.
+ * `answer` for `comment` as notes, checked in `positions`. `own` is the
+ * importer's ideas on the move's note: they join the model's first note on the
+ * move. Ideas repeating anything in `comment.extracted` (those, plus the
+ * importer's notes on other positions) are dropped.
  */
 export function convertedNotes(
   comment: Comment,
