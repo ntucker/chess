@@ -14,6 +14,7 @@ import { lastPosition } from '@/game/replay';
 import { useGame } from '@/game/useGame';
 import { gameOpponent } from '@/resources/opponent';
 import { useSettings } from '@/settings/SettingsProvider';
+import { useStockfish } from '@/stockfish/demand';
 
 import { lessonDrawings } from './drawings';
 import { guidance, type LessonSwitches } from './guidance';
@@ -32,12 +33,13 @@ const SWITCHES: LessonSwitches = {
 export function useLesson(lesson: Lesson) {
   const ctrl = useController();
   const { opponent } = useSettings();
-  // The opponent's moves are asked for only while this screen is in front.
+  const focused = useIsFocused();
+  // Moves are labelled by Stockfish whatever judges the bar: Maia's judgement
+  // could call a book move a mistake. So Stockfish runs while this is in front.
+  useStockfish(focused);
   const game = useGame(lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent)), {
     side: lesson.side,
-    active: useIsFocused(),
-    // Always Stockfish, whatever judges the bar: Maia's judgement could call a
-    // book move a mistake.
+    active: focused,
     judge: 'stockfish',
   });
   const { moves, ply, current } = game;

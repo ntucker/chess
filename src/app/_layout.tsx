@@ -11,10 +11,12 @@ import {
 import { InstrumentSans_400Regular } from '@expo-google-fonts/instrument-sans';
 import { SilkProvider } from '@reactive/silk-native';
 import { useFonts } from 'expo-font';
-import { Stack, usePathname } from 'expo-router';
+import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { type ReactNode, useState } from 'react';
 
 import { SettingsProvider, useSettings } from '@/settings/SettingsProvider';
+import { StockfishDemandContext } from '@/stockfish/demand';
 import { StockfishHost } from '@/stockfish/StockfishHost';
 import { themes } from '@/theme/theme';
 import { useColorScheme } from '@/theme/useColorScheme';
@@ -36,8 +38,9 @@ export default function RootLayout() {
       <SettingsProvider>
         <SilkProvider theme={themes[colorScheme]}>
           <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-          <Stack screenOptions={{ headerShown: false }} />
-          <StockfishWhileChosen />
+          <StockfishWhileNeeded>
+            <Stack screenOptions={{ headerShown: false }} />
+          </StockfishWhileNeeded>
         </SilkProvider>
       </SettingsProvider>
     </DataProvider>
@@ -45,15 +48,18 @@ export default function RootLayout() {
 }
 
 /**
- * Runs Stockfish while the evaluation bar or the opponent uses it, and on a
- * lesson, which always labels moves with it. In free play, choosing Maia for
- * the bar and a rating for the opponent stops it, which frees its memory.
+ * Runs Stockfish while the evaluation bar or the opponent uses it, or a
+ * screen in front needs it (useStockfish: a lesson, which always labels moves
+ * with it). Otherwise it stops, which frees its memory.
  */
-function StockfishWhileChosen() {
+function StockfishWhileNeeded({ children }: { readonly children: ReactNode }) {
   const { evaluationEngine, opponent } = useSettings();
-  const pathname = usePathname();
-  const lesson = pathname === '/' || pathname.startsWith('/lesson/');
-  return evaluationEngine === 'stockfish' || opponent === 'stockfish' || lesson ? (
-    <StockfishHost />
-  ) : null;
+  const [screens, setScreens] = useState(0);
+  const needed = evaluationEngine === 'stockfish' || opponent === 'stockfish' || screens > 0;
+  return (
+    <StockfishDemandContext value={setScreens}>
+      {children}
+      {needed ? <StockfishHost /> : null}
+    </StockfishDemandContext>
+  );
 }
