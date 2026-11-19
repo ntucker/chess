@@ -84,6 +84,17 @@ describe('useGame', () => {
     expect(game().canMove).toBe(true);
   });
 
+  it("is started once the player's side has moved, not the other side", async () => {
+    await render({ side: 'black', active: true });
+    await act(async () => game().play('e2e4'));
+    expect(game().started).toBe(false);
+    await act(async () => game().play('c7c6'));
+    expect(game().started).toBe(true);
+    // Stepped back before Black's move, the line still holds it.
+    await act(async () => game().goto(1));
+    expect(game().started).toBe(true);
+  });
+
   it('asks a newly chosen opponent at once, and takes the first answer', async () => {
     const maia = scripted('1500');
     const stockfish = scripted('stockfish');

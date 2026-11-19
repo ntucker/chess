@@ -79,9 +79,13 @@ describe('beforeSideMoves', () => {
   it('keeps a line explored to its end from passing by stepping back, choosing Practice and stepping on', () => {
     // Back at the start the board is before Black's first move, but the line isn't untouched.
     expect(beforeSideMoves(plies, 'black', 0)).toBe(true);
-    const chosenLate = run(initialMode, chosen('practice', false));
-    expect(chosenLate).toEqual(practice(false));
+    const afterStepBack = run(initialMode, chosen('practice', false));
+    expect(afterStepBack).toEqual(practice(false));
     // Playing the first move again, from the start, begins a clean run.
-    expect(run(chosenLate, played({ first: true, replaces: true }))).toEqual(practice(true));
+    expect(run(afterStepBack, played({ first: true, replaces: true }))).toEqual(practice(true));
+  });
+
+  it('starts a clean run when Practice is chosen on a line with no move of the learner yet', () => {
+    expect(run(initialMode, chosen('practice', true))).toEqual(practice(true));
   });
 });
