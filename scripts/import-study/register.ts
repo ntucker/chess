@@ -3,7 +3,11 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import type { Lesson } from '@/lesson/lesson';
 import { indexEntry, type IndexEntry } from '@/lesson/openings';
 
-/** Adds lesson `id` to the `LESSONS` registry in `file` (src/resources/lesson.ts) unless it is there. */
+/**
+ * Adds lesson `id` to the `LESSONS` registry in `file` (src/resources/lesson.ts) unless it is there.
+ * Matches the quoted key, which Prettier keeps only while one key needs quotes (`quoteProps:
+ * "consistent"`); register.test.ts fails if it stops.
+ */
 export function registerLesson(file: string, id: string) {
   const source = readFileSync(file, 'utf8');
   if (source.includes(`'${id}':`)) return;
