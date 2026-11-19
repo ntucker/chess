@@ -16,7 +16,8 @@
  *   the learner has to pick one; on Auto the opponent just plays. Stockfish's
  *   moves stay hidden.
  * - Traps: with "show traps" on, a trap's sequence is drawn before the
- *   learner commits; off, it isn't. A trap fallen into is shown either way.
+ *   learner commits, beside the candidates; off, it isn't. A trap fallen
+ *   into is shown either way.
  * - While a note's idea plays back, the board is the playback's: nothing else
  *   is drawn, and the preview it started from stays.
  *
@@ -101,22 +102,23 @@ export interface Guidance {
 
 export function guidance(input: GuidanceInput): Guidance {
   const { view, mode, switches, pointed, engine } = input;
+  const { preview: pointerPreview, playing: playingNote } = input;
   const explore = mode === 'explore';
   const choices = explore || (!view.learnerToMove && !switches.auto);
-  const preview = choices ? input.preview : undefined;
-  const notes = preview?.notes ?? cardNotes(view, explore, switches.showTraps);
+  const preview = choices ? pointerPreview : undefined;
+  const notes = preview?.notes ?? restingNotes(view, explore, switches.showTraps);
   const allowed = (idea: Idea) =>
     idea.type === 'trap' ? switches.showTraps : !explore || switches.showIdeas;
   const ideas = notes.flatMap((shown) => noteIdeas(shown, allowed));
   const candidates = choices ? view.candidates : [];
-  const playing = input.playing && notePlayback(ideas, input.playing);
+  const playing = playingNote && notePlayback(ideas, playingNote);
   // A note with nothing to draw leaves the board as it is.
   const pointable = notes
     .filter(({ note }) => note.ideas?.some((idea) => idea.type !== 'evaluation' && allowed(idea)))
     .map(({ note }) => note);
-  const pointedNote = notes.find(({ note }) => note === pointed && pointable.includes(note));
-  const board = boardShown({ candidates, preview, ideas, playing, pointed: pointedNote, allowed });
-  const best = explore && !preview ? engine?.best : undefined;
+  const pointedNote = pointed && pointable.includes(pointed) ? pointed : undefined;
+  const board = boardShown({ candidates, preview, ideas, playing, pointed: pointedNote });
+  const best = explore && !preview && !playing ? engine?.best : undefined;
 
   return {
     candidates,
@@ -146,17 +148,17 @@ function boardShown({
   ideas,
   playing,
   pointed,
-  allowed,
 }: {
   readonly candidates: readonly Candidate[];
   readonly preview?: Preview;
   readonly ideas: readonly ShownIdea[];
   readonly playing?: ShownPlayback;
-  readonly pointed?: ShownNote;
-  readonly allowed: (idea: Idea) => boolean;
+  readonly pointed?: Note;
 }): { readonly candidates: readonly Candidate[]; readonly drawn: readonly ShownIdea[] } {
   if (playing) return { candidates: [], drawn: [] };
-  if (pointed) return { candidates: [], drawn: noteIdeas(pointed, allowed) };
+  if (pointed) {
+    return { candidates: [], drawn: ideas.filter(({ idea }) => pointed.ideas?.includes(idea)) };
+  }
   if (preview) {
     const { slide, candidate } = preview;
     return {
@@ -169,7 +171,11 @@ function boardShown({
 }
 
 /** The idea card's notes when no move is previewed. */
-function cardNotes(view: LessonView, explore: boolean, showTraps: boolean): readonly ShownNote[] {
+function restingNotes(
+  view: LessonView,
+  explore: boolean,
+  showTraps: boolean,
+): readonly ShownNote[] {
   if (explore) return view.notes;
   // The position's own notes would hint at the move, except a trap's warning.
   if (view.learnerToMove)
@@ -191,10 +197,14 @@ const noteIdeas = (shown: ShownNote, allowed: (idea: Idea) => boolean): ShownIde
     // checkIdea refuses `at: 'before'` on a position's note, so every idea has a position.
     .map((idea) => ({ idea, at: ideaPosition(idea, shown)! }));
 
-/** One plan at a time: two plans' numbered routes would read as one sequence. */
+/**
+ * One plan at a time on each position: two plans' numbered routes would read
+ * as one sequence. A plan on another position doesn't hide this one's.
+ */
 function firstPlanOnly(ideas: readonly ShownIdea[]): readonly ShownIdea[] {
-  const plan = ideas.find(({ idea }) => idea.type === 'plan');
-  return ideas.filter((shown) => shown.idea.type !== 'plan' || shown === plan);
+  const firstPlan = (at: PositionKey) =>
+    ideas.find((shown) => shown.idea.type === 'plan' && shown.at === at);
+  return ideas.filter((shown) => shown.idea.type !== 'plan' || shown === firstPlan(shown.at));
 }
 
 const playsBack = (shown: ShownIdea): shown is ShownPlayback =>

@@ -31,16 +31,24 @@ import type { LandedTrap } from './view';
 export function lessonDrawings(guidance: Guidance, shown: PositionKey, learner: Color): Drawing[] {
   const { main } = guidance;
   const ideas = guidance.drawn.filter(({ at }) => at === shown).map(({ idea }) => idea);
-  // Parsed only where there are ideas to draw, since this runs as the pointer moves.
-  const position = ideas.length ? parsePositionKey(shown)! : undefined;
   const slid = slidCandidate(guidance);
   return [
     ...(slid ? [ghost(slid.from, slid.piece), glow(slid.to, candidateTone(slid, main))] : []),
     ...candidateDrawings(guidance.drawnCandidates, main),
-    ...ideas.flatMap((idea) => ideaDrawings(idea, position!, learner)),
+    ...ideasDrawings(ideas, shown, learner),
     ...bestDrawings(guidance.best),
     ...(guidance.trap ? landedTrapDrawings(guidance.trap, shown) : []),
   ];
+}
+
+/**
+ * `ideas`' drawings on the position `shown`, parsed only when there are some,
+ * since this runs as the pointer moves.
+ */
+function ideasDrawings(ideas: readonly Idea[], shown: PositionKey, learner: Color): Drawing[] {
+  if (!ideas.length) return [];
+  const position = parsePositionKey(shown)!;
+  return ideas.flatMap((idea) => ideaDrawings(idea, position, learner));
 }
 
 /** The candidate a sliding preview shows played, if any. */

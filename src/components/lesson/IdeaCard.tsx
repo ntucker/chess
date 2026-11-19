@@ -105,6 +105,10 @@ function NoteView({
       onFocus={point}
       style={[
         styles.note,
+        {
+          borderTopRightRadius: theme.semantic.radius.sm,
+          borderBottomRightRadius: theme.semantic.radius.sm,
+        },
         pointed && drawn
           ? {
               borderColor: toneColors[ideaTone(drawn, learner)],
@@ -231,8 +235,6 @@ const styles = StyleSheet.create({
     paddingLeft: 14,
     paddingRight: 8,
     paddingVertical: 8,
-    borderTopRightRadius: 6,
-    borderBottomRightRadius: 6,
   },
   heading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   kind: { flexDirection: 'row', alignItems: 'center', gap: 8 },

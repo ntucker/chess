@@ -108,7 +108,7 @@ export function watchPointer<S extends string>(
     }
   };
   const onLeave = (event: PointerEvent) => {
-    if (event.pointerType === 'mouse' && !pressing) hover(null);
+    if (hovers(event.pointerType) && !pressing) hover(null);
   };
 
   board.addEventListener('pointermove', onMove);

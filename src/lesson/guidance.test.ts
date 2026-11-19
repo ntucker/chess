@@ -243,13 +243,36 @@ describe('guidance', () => {
       expect(drawn.map(({ idea }) => idea)).toEqual([plan('a7')]);
     });
 
+    it("keeps each position's first plan: one on another position doesn't hide it", () => {
+      const plan = (from: string): Idea => ({
+        type: 'plan',
+        side: 'black',
+        routes: [{ from: from as never, to: 'a6' }],
+      });
+      const view = sampleView([...ADVANCE, 'a6']);
+      const before = keyAfter(...ADVANCE);
+      const notes = [
+        { note: { text: 'Earlier.', ideas: [plan('b7')] }, after: before },
+        { note: { text: 'Here.', ideas: [plan('a7')] }, after: view.key },
+      ];
+      const drawn = guidance({ view: { ...view, notes }, mode: 'explore', switches: ALL_ON }).drawn;
+      expect(drawn.map(({ at }) => at)).toEqual([before, view.key]);
+    });
+
     it('draws nothing while a note plays back, and names the idea playing', () => {
       const view = sampleView(TRAP);
       const [trap] = view.notes;
-      const playing = guidance({ view, mode: 'explore', switches: ALL_ON, playing: trap.note });
+      const playing = guidance({
+        view,
+        mode: 'explore',
+        switches: ALL_ON,
+        engine: { best: 'a2a3' },
+        playing: trap.note,
+      });
       expect(playing.playing?.idea.type).toBe('trap');
       expect(playing.drawn).toEqual([]);
       expect(playing.drawnCandidates).toEqual([]);
+      expect(playing.best).toBeUndefined();
     });
   });
 
