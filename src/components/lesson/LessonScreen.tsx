@@ -62,6 +62,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
     leaveNote,
     leave,
     modeState,
+    startsRun,
     chooseMode,
   } = useLesson(lesson);
   const { mode } = modeState;
@@ -82,7 +83,9 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
     auto,
     lineEnded: guidance.lineEnded,
     practice:
-      modeState.mode === 'practice' ? { clean: modeState.clean, verdict: game.quality } : undefined,
+      modeState.mode === 'practice'
+        ? { clean: modeState.clean, verdict: game.quality, startsRun }
+        : undefined,
   });
 
   const leadsTo = (candidate: Candidate) => {
@@ -193,7 +196,12 @@ interface StatusInput {
   /** The headline tells of a guide line's end (`Guidance.lineEnded`). */
   readonly lineEnded: boolean;
   /** In Practice: whether the run is clean, and the label of the move the board shows. */
-  readonly practice?: { readonly clean: boolean; readonly verdict?: MoveQuality };
+  readonly practice?: {
+    readonly clean: boolean;
+    readonly verdict?: MoveQuality;
+    /** A move played now starts a run, so playing from an earlier move is no take-back. */
+    readonly startsRun: boolean;
+  };
 }
 
 /**
@@ -232,7 +240,10 @@ function describeStatus(
     return {
       eyebrow,
       title: 'Your move.',
-      detail: YOUR_MOVE[practice ? 'practice' : 'explore'][viewing ? 'viewing' : 'latest'],
+      detail:
+        practice?.startsRun && viewing
+          ? YOUR_MOVE.practice.restart
+          : YOUR_MOVE[practice ? 'practice' : 'explore'][viewing ? 'viewing' : 'latest'],
     };
   let reply = `Choose ${rival}'s reply.`;
   if (auto) reply = `${rival}'s move.`;
@@ -261,6 +272,7 @@ const YOUR_MOVE = {
   practice: {
     latest: 'No hints in Practice. Play the move you would choose.',
     viewing: 'Playing here takes a move back, which ends a clean run.',
+    restart: 'Playing here starts a new run from your first move.',
   },
 } as const;
 

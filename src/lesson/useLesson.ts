@@ -72,6 +72,8 @@ export function useLesson(lesson: Lesson) {
     book: (line) => bookMoves(lesson, line),
   });
   const { moves, ply, plies, current, canMove } = game;
+  // A move played before the learner's first starts a Practice run.
+  const startsRun = beforeSideMoves(plies, lesson.side, ply);
   const view = useMemo(
     () => lessonView({ lesson, line: moves, ply, opponent }),
     [lesson, moves, ply, opponent],
@@ -122,9 +124,7 @@ export function useLesson(lesson: Lesson) {
     if (!canMove) return;
     const learner = current.turn === lesson.side;
     const book = isBook(lesson, key, uci);
-    // A move played before the learner's first starts a Practice run.
-    const first = beforeSideMoves(plies, lesson.side, ply);
-    dispatch({ type: 'played', learner, book, first, replaces: ply < moves.length });
+    dispatch({ type: 'played', learner, book, first: startsRun, replaces: ply < moves.length });
     game.play(uci);
   };
   const play = (candidate: Candidate) => playMove(candidate.move.uci);
@@ -186,6 +186,8 @@ export function useLesson(lesson: Lesson) {
     play,
     /** Explore, or Practice with whether the run is clean. */
     modeState,
+    /** A move played on the board now starts a Practice run: no move of the learner's comes before. */
+    startsRun,
     /** The learner chooses Explore or Practice. */
     chooseMode: (mode: LessonMode) =>
       dispatch({ type: 'modeChosen', mode, untouched: !game.started }),
