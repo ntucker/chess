@@ -114,6 +114,16 @@ describe('extractChapter', () => {
         ideas: [{ type: 'line', moves: ['c4f7', 'e8f7', 'f3g5', 'f7g8'], verdict: 'whiteWinning' }],
       },
     ]);
+    const [mating] = parseStudy(
+      '1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. d3 { Trap: 4.Bxf7+ Kxf7 5.Ng5+ Kg8 and Black gets mated. } *',
+      () => true,
+    );
+    expect(extractChapter(mating, 'white').positionNotes.map(({ note }) => note)).toEqual([
+      expect.objectContaining({
+        text: 'Black gets mated at the end of this line.',
+        ideas: [expect.objectContaining({ type: 'line', verdict: 'whiteWinning' })],
+      }),
+    ]);
   });
 
   it('writes a watch-out in words, and a plan for the side the learner does not play', () => {
