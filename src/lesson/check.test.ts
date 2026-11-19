@@ -94,6 +94,13 @@ const CASES: [name: string, at: IdeaPositions, idea: Idea, holds: boolean][] = [
     },
     true,
   ],
+  ['plan with a two-square pawn step', AT.dxc5, { type: 'plan', side: 'black', routes: [{ from: 'g7', to: 'g5' }] }, true],
+  [
+    'plan with a two-square step through a piece',
+    fen('4k3/4p3/4N3/8/8/8/8/4K3 b - - 0 1'),
+    { type: 'plan', side: 'black', routes: [{ from: 'e7', to: 'e5' }] },
+    false,
+  ],
   ['plan with a white piece', AT.dxc5, { type: 'plan', side: 'black', routes: [{ from: 'e5', to: 'e6' }] }, false],
   [
     'plan goal attacked from a route end',
