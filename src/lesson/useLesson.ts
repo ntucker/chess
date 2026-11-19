@@ -89,7 +89,7 @@ export function useLesson(lesson: Lesson) {
     switches: SWITCHES,
     preview: pointer && preview(lesson, view, pointer),
     pointed: here?.note,
-    playing: playing?.note,
+    playing: playing?.played,
   });
   const frames = shown.playing
     ? ideaPlayback(shown.playing.idea, parsePositionKey(shown.playing.at)!)
@@ -136,7 +136,7 @@ export function useLesson(lesson: Lesson) {
   const playable = (note: ShownNote) =>
     game.replying ? undefined : notePlayback(shown.ideas, note.note)?.idea.type;
   const playback: Playback = {
-    playing: playing && frame && { note: playing.note, step: playing.step, steps: frames.length },
+    playing: playing && frame && { note: playing.played, step: playing.step, steps: frames.length },
     playable,
     // From the preview on screen, which stays while the idea plays.
     play: (note) => {

@@ -83,7 +83,7 @@ export interface Guidance {
   readonly pointable: readonly Note[];
   /** The ideas of those notes the switches allow: what can be drawn or played back. */
   readonly ideas: readonly ShownIdea[];
-  /** Of `ideas`, those the board draws now; of several plans, only the first. */
+  /** Of `ideas`, those the board draws now; of several plans on one position, only the first. */
   readonly drawn: readonly ShownIdea[];
   /** The candidates whose arrows the board draws now. */
   readonly drawnCandidates: readonly Candidate[];
@@ -101,8 +101,15 @@ export interface Guidance {
 }
 
 export function guidance(input: GuidanceInput): Guidance {
-  const { view, mode, switches, pointed, engine } = input;
-  const { preview: pointerPreview, playing: playingNote } = input;
+  const {
+    view,
+    mode,
+    switches,
+    preview: pointerPreview,
+    pointed,
+    playing: playingNote,
+    engine,
+  } = input;
   const explore = mode === 'explore';
   const choices = explore || (!view.learnerToMove && !switches.auto);
   const preview = choices ? pointerPreview : undefined;

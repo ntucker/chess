@@ -17,10 +17,11 @@ interface Pointing {
 
 export type Peek =
   | (Pointing & { readonly kind: 'point' })
-  /** A note's idea playing back, from the pointing it started from. */
+  /** A note's idea playing back, beside the pointing it started from. */
   | (Pointing & {
       readonly kind: 'play';
-      readonly note: Note;
+      /** The note whose idea plays back, pointed at or not. */
+      readonly played: Note;
       /** Which board of the playback: 0 is where the idea starts. */
       readonly step: number;
       /** It steps by itself until the learner steps it. */
@@ -69,8 +70,9 @@ export function peekReducer(peek: Peek | undefined, action: PeekAction): Peek | 
     case 'leave':
       return peek?.kind === 'play' ? peek : undefined;
     case 'play': {
-      const { candidate } = peek?.key === action.key ? peek : {};
-      return { kind: 'play', key: action.key, candidate, note: action.note, step: 0, auto: true };
+      const { candidate, note } = peek?.key === action.key ? peek : {};
+      const played = action.note;
+      return { kind: 'play', key: action.key, candidate, note, played, step: 0, auto: true };
     }
     case 'step':
       return peek?.kind === 'play' ? { ...peek, step: peek.step + 1 } : peek;
