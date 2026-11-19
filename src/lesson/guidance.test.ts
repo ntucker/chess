@@ -428,6 +428,9 @@ describe('guidance', () => {
     it('shows a trap fallen into through its moves and the learner\'s turn after them', () => {
       expect(shown(TRAP_PUNISHED, 'explore').trap).toMatchObject({ ply: TRAP.length });
       expect(shown([...TRAP_PUNISHED, 'a6'], 'explore').trap).toBeUndefined();
+      // A move off the trap's sequence takes the card away before its last move.
+      expect(shown([...LANDED, 'Bxd1'], 'explore').trap).toBeDefined();
+      expect(shown([...LANDED, 'Qc7'], 'explore').trap).toBeUndefined();
       // Cut to end on the learner's move, the trap stays through the opponent's reply.
       const { moves } = sampleView(LANDED).trap!.trap;
       const lesson = withTrapMoves(SAMPLE, moves, moves.slice(0, -1));

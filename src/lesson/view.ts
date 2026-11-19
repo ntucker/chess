@@ -56,6 +56,8 @@ export interface LandedTrap {
   readonly ply: number;
   /** The position after the punishing reply, where the trap lands. */
   readonly landed: PositionKey;
+  /** How many of its moves the line plays, from the tempting move on; the line leaves it after them. */
+  readonly played: number;
 }
 
 export interface LessonViewInput {
@@ -233,7 +235,7 @@ function landedTrap(
         // A tie keeps the first in note order.
         if (matched < landing || matched <= furthest) continue;
         furthest = matched;
-        landed = { trap, note, ply, landed: keys[ply + landing] };
+        landed = { trap, note, ply, landed: keys[ply + landing], played: matched };
       }
     }
     if (landed) return landed;

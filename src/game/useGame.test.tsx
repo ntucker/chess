@@ -111,6 +111,17 @@ describe('useGame', () => {
     expect(game().moves).toEqual(['e2e4', 'c7c5']);
   });
 
+  it('drops an answer that arrives once nobody plays the opponent', async () => {
+    const maia = scripted('1500');
+    await render({ opponent: maia.opponent, side: 'white', active: true });
+    await act(async () => game().move('e2', 'e4'));
+    await render({ side: 'white', active: true });
+    maia.asked[0].answer('e7e5');
+    await think();
+    expect(game().moves).toEqual(['e2e4']);
+    expect(game().canMove).toBe(true);
+  });
+
   it("asks a newly chosen opponent after the old one failed, and leaves the old one's failure", async () => {
     const maia = scripted('1500');
     const stockfish = scripted('stockfish');

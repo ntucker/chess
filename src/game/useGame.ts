@@ -3,7 +3,7 @@ import { useEffect, useEffectEvent, useReducer } from 'react';
 import { useMoveQualities } from '@/analysis/useMoveQualities';
 import type { EvaluationEngine } from '@/evaluation/evaluation';
 
-import { failure, type GameOpponent, gameReducer, initialGame } from './game';
+import { failure, type GameAction, type GameOpponent, gameReducer, initialGame } from './game';
 import { material } from './material';
 import { analyze, type Color, replay, toUci } from './replay';
 
@@ -35,7 +35,8 @@ interface Options {
  * An answer counts only while the moves it answers are still the game's (the
  * reducer's one check), so a late one from an earlier position or game is
  * dropped; one from an opponent since replaced still answers the same
- * position, so the first answer wins.
+ * position, so the first answer wins. With the opponent gone, nobody's
+ * answer counts.
  */
 export function useGame(
   opponent: GameOpponent | undefined,
@@ -52,6 +53,11 @@ export function useGame(
   const thinking = !!opponent && !latest.result && latest.turn !== side && !error;
   const replying = atLatest && thinking;
 
+  // Read when the answer arrives: once nobody plays the opponent, the player
+  // moves both sides, so an answer still out is dropped.
+  const answered = useEffectEvent((action: GameAction) => {
+    if (opponent) dispatch(action);
+  });
   const ask = useEffectEvent(async (after: readonly string[]) => {
     if (!opponent) return;
     const answer = { after, opponent: opponent.id };
@@ -60,10 +66,10 @@ export function useGame(
         opponent.reply(after),
         new Promise((resolve) => setTimeout(resolve, THINKING_MS)),
       ]);
-      dispatch({ type: 'reply', uci, ...answer });
+      answered({ type: 'reply', uci, ...answer });
     } catch (cause) {
       const error = cause instanceof Error ? cause : new Error(String(cause));
-      dispatch({ type: 'failed', error, ...answer });
+      answered({ type: 'failed', error, ...answer });
     }
   });
   // Coming back to the front while a request is out asks again; Data Client
