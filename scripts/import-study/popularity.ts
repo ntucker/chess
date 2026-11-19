@@ -86,7 +86,10 @@ export function lichessExplorer({
   return async (key, band) => recordedCounts(key, await answer(key, band));
 }
 
-/** `counts` with each move as lesson files write it (`recordedMove`); a move it can't read keeps lichess's key, which no lesson move asks for. */
+/**
+ * `counts` with each move as lesson files write it (`recordedMove`). A move
+ * `recordedMove` rejects keeps lichess's key, which no lesson move asks for.
+ */
 function recordedCounts(key: PositionKey, counts: MoveCounts): MoveCounts {
   const pos = parsePositionKey(key)!;
   return Object.fromEntries(Object.entries(counts).map(([uci, games]) => [recordedMove(pos, uci) ?? uci, games]));
