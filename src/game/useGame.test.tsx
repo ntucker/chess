@@ -107,7 +107,7 @@ describe('useGame', () => {
     expect(game().started).toBe(true);
   });
 
-  it('asks a newly chosen opponent at once, and takes the first answer', async () => {
+  it('asks a newly chosen opponent at once, and drops the old one\'s answer', async () => {
     const maia = scripted('1500');
     const stockfish = scripted('stockfish');
     await render({ opponent: maia.opponent, side: 'white', active: true });
@@ -115,10 +115,24 @@ describe('useGame', () => {
     await render({ opponent: stockfish.opponent, side: 'white', active: true });
     expect(stockfish.asked.map(({ line }) => line)).toEqual([['e2e4']]);
 
+    maia.asked[0].answer('e7e5');
+    await think();
+    expect(game().moves).toEqual(['e2e4']);
     stockfish.asked[0].answer('c7c5');
     await think();
     expect(game().moves).toEqual(['e2e4', 'c7c5']);
+  });
+
+  it('drops an answer that arrives behind another screen, and asks again in front', async () => {
+    const maia = scripted('1500');
+    await render({ opponent: maia.opponent, side: 'white', active: true });
+    await act(async () => game().move('e2', 'e4'));
+    await render({ opponent: maia.opponent, side: 'white', active: false });
     maia.asked[0].answer('e7e5');
+    await think();
+    expect(game().moves).toEqual(['e2e4']);
+    await render({ opponent: maia.opponent, side: 'white', active: true });
+    maia.asked[1].answer('c7c5');
     await think();
     expect(game().moves).toEqual(['e2e4', 'c7c5']);
   });

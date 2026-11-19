@@ -32,11 +32,10 @@ interface Options {
  * The opponent is asked whenever it's its turn at the latest position and it
  * hasn't failed to answer it, so a new game, a move, a retry, a different
  * opponent or the screen coming to the front all ask without special cases.
- * An answer counts only while the moves it answers are still the game's (the
- * reducer's one check), so a late one from an earlier position or game is
- * dropped; one from an opponent since replaced still answers the same
- * position, so the first answer wins. With the opponent gone, no answer
- * counts, a failure neither: choosing that opponent again asks afresh.
+ * Each request belongs to the effect that made it: once anything it asked
+ * with changes (the moves, the opponent, nobody playing it, the screen going
+ * behind), its answer or failure counts for nothing, and the next request
+ * is the one that counts.
  */
 export function useGame(
   opponent: GameOpponent | undefined,
@@ -53,29 +52,32 @@ export function useGame(
   const thinking = !!opponent && !latest.result && latest.turn !== side && !error;
   const replying = atLatest && thinking;
 
-  // Read when the answer arrives: once nobody plays the opponent, the player
-  // moves both sides, so an answer still out is dropped.
-  const answered = useEffectEvent((action: GameAction) => {
-    if (opponent) dispatch(action);
-  });
-  const ask = useEffectEvent(async (after: readonly string[]) => {
+  /** Asks the opponent about `after`, and answers the game while `wanted()`. */
+  const ask = useEffectEvent(async (after: readonly string[], wanted: () => boolean) => {
     if (!opponent) return;
     const answer = { after, opponent: opponent.id };
+    let action: GameAction;
     try {
       const [uci] = await Promise.all([
         opponent.reply(after),
         new Promise((resolve) => setTimeout(resolve, THINKING_MS)),
       ]);
-      answered({ type: 'reply', uci, ...answer });
+      action = { type: 'reply', uci, ...answer };
     } catch (cause) {
       const error = cause instanceof Error ? cause : new Error(String(cause));
-      answered({ type: 'failed', error, ...answer });
+      action = { type: 'failed', error, ...answer };
     }
+    if (wanted()) dispatch(action);
   });
   // Coming back to the front while a request is out asks again; Data Client
   // shares the request still running, so the engine searches once.
   useEffect(() => {
-    if (active && thinking) ask(moves);
+    if (!active || !thinking) return;
+    let ignore = false;
+    ask(moves, () => !ignore);
+    return () => {
+      ignore = true;
+    };
   }, [active, thinking, moves, opponent?.id]);
 
   return {

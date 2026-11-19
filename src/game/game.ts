@@ -27,6 +27,8 @@ export interface GameState {
  * An answer from the opponent to the moves it was asked about. It counts only
  * while those are still the game's moves: the same array, so a later move or
  * a new game, even one from the same position, makes it count for nothing.
+ * `useGame` drops an answer no longer wanted before it gets here; this check
+ * covers one that lands after a move but before React has re-rendered.
  */
 interface Answer {
   readonly after: readonly string[];
