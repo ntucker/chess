@@ -5,7 +5,13 @@ export const PHONE_LENGTHS = [
   'page-space',
   'header-height',
   'wordmark-size',
-  'player-bar-height',
+  'controls-bar-height',
+  'names-bar-height',
+  'player-disc',
+  'player-disc-gap',
+  'player-disc-border',
+  'evaluation-width',
+  'headline-size',
   'wrapped-gap',
   'board-min',
   'source-link-size',
@@ -22,6 +28,11 @@ export const PHONE_PARTS = [
   'stage',
   'board-column',
   'program',
+  'evaluation-label',
+  'player-names',
+  'full-detail',
+  'brief',
+  'seen-hint',
 ] as const;
 
 /**

@@ -3,10 +3,11 @@
  * pre-rendered page can't measure the window. Everywhere else none of this
  * applies: each length falls back to the wide value written beside it in
  * code, and each part keeps its wide layout. The one exception is the rule
- * just below, which keeps the header's place hidden until a phone shows it.
+ * just below, which keeps phone-only text hidden until a phone shows it.
  */
-/* The header's place shows only on a phone (see below). */
-:root [data-phone='place'] {
+/* The header's place and a name bar's brief show only on a phone (see below). */
+:root [data-phone='place'],
+:root [data-phone='brief'] {
   display: none;
 }
 
@@ -19,8 +20,22 @@
     --header-height: 28px;
     --source-link-size: 28px;
     --wordmark-size: 18px;
-    /* The name bars above and below the board (PlayerBar.tsx). */
-    --player-bar-height: 52px;
+    /*
+     * The name bars above and below the board (PlayerBar.tsx): the one with
+     * the move stepper as tall as the stepper, the other one line of names.
+     */
+    --controls-bar-height: 48px;
+    --names-bar-height: 32px;
+    /*
+     * The player's disc becomes a dot, and the evaluation bar beside the
+     * board a thin strip under it, to give the board their width (Stage.tsx).
+     */
+    --player-disc: 10px;
+    --player-disc-gap: 6px;
+    --player-disc-border: 2px;
+    --evaluation-width: 6px;
+    /* The panel's headline, a size smaller: theme.ts's heading (GameStatus.tsx). */
+    --headline-size: 24px;
     /* Space between the board column and the panel below it (Stage.tsx). */
     --wrapped-gap: 20px;
     /*
@@ -53,6 +68,30 @@
   }
   :root [data-phone='place'] {
     display: block;
+  }
+  /* The strip is too thin for the advantage's number; its fill still shows who leads. */
+  :root [data-phone='evaluation-label'] {
+    display: none;
+  }
+  /* A name bar's name and detail share one line, the detail in brief when there is one. */
+  :root [data-phone='player-names'] {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+  }
+  :root [data-phone='player-names'] > :last-child {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  :root [data-phone='full-detail'] {
+    display: none;
+  }
+  :root [data-phone='brief'] {
+    display: block;
+  }
+  /* A how-to hint under the panel's headline shows until it's been seen. */
+  :root [data-phone='seen-hint'] {
+    display: none;
   }
   :root [data-phone='page'] {
     min-height: 100dvh;

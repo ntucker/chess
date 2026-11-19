@@ -35,12 +35,10 @@ describe('phone.css', () => {
 
 describe('phoneLength', () => {
   it('works out the wide value and the CSS from one expression', () => {
-    const offset = phoneLength('player-bar-height', 60).plus(4);
+    const offset = phoneLength('names-bar-height', 60).plus(4);
     const sum = phoneLength('page-space', 20).times(3).minus(offset);
     expect(sum.wide).toBe(60 - 64);
-    expect(sum.css).toBe(
-      '((var(--page-space, 20px) * 3) - (var(--player-bar-height, 60px) + 4px))',
-    );
+    expect(sum.css).toBe('((var(--page-space, 20px) * 3) - (var(--names-bar-height, 60px) + 4px))');
   });
 
   it('adds lengths, and off the web its style value is the wide number', () => {

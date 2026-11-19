@@ -8,6 +8,7 @@ import { type Color, colorName, type GameResult, lastPosition, opposite } from '
 import { type Evaluation, type EvaluationEngine, resultEvaluation } from '@/evaluation/evaluation';
 import { getEvaluation } from '@/resources/evaluation';
 import { useSettings } from '@/settings/SettingsProvider';
+import { phonePart } from '@/theme/phone';
 import { pieceColors } from '@/theme/pieceColors';
 import { fonts } from '@/theme/theme';
 
@@ -161,6 +162,7 @@ function Bar({
       <View style={[styles.midline, { backgroundColor: color.tones.accent.solid }]} />
       {reading.label ? (
         <Text
+          {...phonePart('evaluation-label')}
           role="caption"
           numberOfLines={1}
           style={[

@@ -74,7 +74,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
   const { trap } = guidance;
   // The card is for notes, or for the notes of a candidate pointed at.
   const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
-  const status = describeStatus(view, {
+  const { hint, ...status } = describeStatus(view, {
     title: lesson.title,
     rival: colorName(rival),
     engine: described.name,
@@ -108,6 +108,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
           rival={{
             name: colorName(rival),
             detail: `The guide's moves, then ${described.tagline.toLowerCase()}`,
+            brief: described.tagline,
           }}
           board={board}
         />
@@ -118,6 +119,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
             {...status}
             failure={game.error && { who: described.name, onRetry: game.retry }}
             eyebrowInHeader
+            seenHint={hint && view.ply > (learner === 'white' ? 0 : 1)}
           />
           <Separator />
           {/* Leaving a row for the idea card keeps its preview, so its notes can be pointed at. */}
@@ -224,6 +226,7 @@ const rareHint = (count: number, rival: string) =>
 /**
  * The panel's headline: where the lesson stands and whose move it is. In
  * Practice, right after the learner's move, it judges that move first.
+ * `hint` marks a detail that only tells how to use the screen.
  */
 function describeStatus(
   view: LessonView,
@@ -257,6 +260,7 @@ function describeStatus(
     return {
       eyebrow,
       title: 'Your move.',
+      hint: !practice && !viewing,
       detail:
         practice?.startsRun && viewing
           ? YOUR_MOVE.practice.restart
@@ -274,6 +278,7 @@ function describeStatus(
   return {
     eyebrow,
     title: reply,
+    hint: true,
     detail: auto
       ? 'Point at a reply to see what it aims for.'
       : 'Point at a reply to see what it aims for, then play it.',
