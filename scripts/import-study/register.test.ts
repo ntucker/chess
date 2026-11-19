@@ -24,13 +24,13 @@ describe('registerLesson', () => {
 describe('indexLesson', () => {
   it("writes the lesson's entry, keeping the other lessons'", () => {
     const file = tempFile('index.json');
-    const other = { title: 'Slav Defence', side: 'black', source: SAMPLE.source, firstMoves: ['d2d4'] };
+    const other = { title: 'Slav Defence', side: 'black', sources: SAMPLE.sources, firstMoves: ['d2d4'] };
     writeFileSync(file, JSON.stringify({ slav: other }));
     indexLesson(file, SAMPLE);
     indexLesson(file, SAMPLE);
     expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({
       slav: other,
-      [SAMPLE.id]: { title: SAMPLE.title, side: 'black', source: SAMPLE.source, firstMoves: ['e2e4'] },
+      [SAMPLE.id]: { title: SAMPLE.title, side: 'black', sources: SAMPLE.sources, firstMoves: ['e2e4'] },
     });
   });
 });

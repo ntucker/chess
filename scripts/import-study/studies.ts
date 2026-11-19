@@ -18,11 +18,13 @@ export const STUDIES: Readonly<Record<string, Study>> = {
       id: 'caro-kann',
       title: 'Caro-Kann Defence',
       side: 'black',
-      source: {
-        title: 'Greatest Caro Kann: Living Repertoire',
-        author: 'Kampfschach_Official',
-        url: 'https://lichess.org/study/8Uztu7Xx',
-      },
+      sources: [
+        {
+          title: 'Greatest Caro Kann: Living Repertoire',
+          author: 'Kampfschach_Official',
+          url: 'https://lichess.org/study/8Uztu7Xx',
+        },
+      ],
     },
   },
   slav: {
@@ -37,11 +39,13 @@ export const STUDIES: Readonly<Record<string, Study>> = {
       id: 'slav',
       title: 'Slav Defence',
       side: 'black',
-      source: {
-        title: 'Black repertoaire: Slav Defense',
-        author: 'MMatkun',
-        url: 'https://lichess.org/study/LGKgEao4',
-      },
+      sources: [
+        {
+          title: 'Black repertoaire: Slav Defense',
+          author: 'MMatkun',
+          url: 'https://lichess.org/study/LGKgEao4',
+        },
+      ],
     },
   },
 };

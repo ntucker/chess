@@ -249,7 +249,7 @@ describe('checkLesson', () => {
     title: 'Test',
     side: 'black',
     start: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-    source: { title: 'Test study', author: 'Someone', url: 'https://lichess.org/study/test' },
+    sources: [{ title: 'Test study', author: 'Someone', url: 'https://lichess.org/study/test' }],
     popularity: { ratingBands: [1000, 1200], speeds: ['blitz'], date: '2026-11-18' },
     variations: { caro: { name: 'Caro-Kann' } },
     positions: {
@@ -287,6 +287,16 @@ describe('checkLesson', () => {
       `positions["${key}"].moves[0].notes[0].ideas[0]`,
       `positions["${key}"].moves[1].uci`,
     ]);
+  });
+
+  it('requires a source, and the license of share-alike Wikibooks text', () => {
+    const wikibooks = { title: 'Chess Opening Theory', author: 'Wikibooks contributors', url: 'https://en.wikibooks.org/wiki/Chess_Opening_Theory' };
+    const license = { name: 'CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' };
+    expect(checkLesson({ ...lesson, sources: [] }).map((p) => p.path)).toEqual(['sources']);
+    expect(checkLesson({ ...lesson, sources: [...lesson.sources, wikibooks] })).toEqual([
+      { path: 'sources[1].license', message: 'is required for en.wikibooks.org, whose text is share-alike' },
+    ]);
+    expect(checkLesson({ ...lesson, sources: [...lesson.sources, { ...wikibooks, license }] })).toEqual([]);
   });
 
   it('refuses book moves for the opponent and castling written as king takes rook', () => {

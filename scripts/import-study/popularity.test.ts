@@ -15,7 +15,7 @@ import { parseStudy } from './study';
 
 const chapters = parseStudy(STUDY_PGN, () => true);
 const lesson = mergeChapters(
-  { id: 'test', title: 'Test', side: 'black', source: { title: 'Test', author: 'Test', url: '' } },
+  { id: 'test', title: 'Test', side: 'black', sources: [{ title: 'Test', author: 'Test', url: 'https://lichess.org/study/test' }] },
   chapters,
   chapters.map((chapter) => extractChapter(chapter, 'black')),
 );
@@ -67,7 +67,7 @@ describe('addPopularity', () => {
       () => true,
     );
     const small = mergeChapters(
-      { id: 'test', title: 'Test', side: 'black', source: { title: 'Test', author: 'Test', url: '' } },
+      { id: 'test', title: 'Test', side: 'black', sources: [{ title: 'Test', author: 'Test', url: 'https://lichess.org/study/test' }] },
       transposing,
       transposing.map((chapter) => extractChapter(chapter, 'black')),
     );

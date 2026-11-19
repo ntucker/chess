@@ -9,7 +9,7 @@ import { parseStudy } from './study';
 
 const chapters = parseStudy(STUDY_PGN, () => true);
 const lesson = mergeChapters(
-  { id: 'test', title: 'Caro-Kann', side: 'black', source: { title: 'Test', author: 'Test', url: '' } },
+  { id: 'test', title: 'Caro-Kann', side: 'black', sources: [{ title: 'Test', author: 'Test', url: 'https://lichess.org/study/test' }] },
   chapters,
   chapters.map((chapter) => extractChapter(chapter, 'black')),
 );

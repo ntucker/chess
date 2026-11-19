@@ -83,6 +83,7 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
   if (!bands.every((band, i) => isCount(band) && (i === 0 || band > bands[i - 1]))) {
     report('popularity.ratingBands', 'must be whole numbers in ascending order');
   }
+  checkSources(lesson, report);
   checkVariations(lesson, report);
 
   const start = parsePosition(lesson.start);
@@ -147,6 +148,24 @@ function reachable(start: string, children: ReadonlyMap<string, readonly string[
     }
   }
   return reached;
+}
+
+/** Wikibooks text is CC BY-SA 4.0: a lesson adapting it must say so. */
+const SHARE_ALIKE_HOSTS = ['wikibooks.org'];
+
+function checkSources({ sources }: Lesson, report: Report) {
+  if (sources.length === 0) report('sources', 'needs at least one source');
+  sources.forEach(({ title, author, url, license }, i) => {
+    const at = `sources[${i}]`;
+    if (!title.trim() || !author.trim()) report(at, 'needs a title and an author');
+    const host = URL.canParse(url) ? new URL(url).hostname : undefined;
+    if (!host) return report(`${at}.url`, `${url} is not a URL`);
+    const shareAlike = SHARE_ALIKE_HOSTS.some((domain) => host === domain || host.endsWith(`.${domain}`));
+    if (shareAlike && !license) report(`${at}.license`, `is required for ${host}, whose text is share-alike`);
+    if (license && (!license.name.trim() || !URL.canParse(license.url))) {
+      report(`${at}.license`, 'needs a name and a URL');
+    }
+  });
 }
 
 function checkVariations(lesson: Lesson, report: Report) {
