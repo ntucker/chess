@@ -24,8 +24,8 @@ import type { LandedTrap } from './view';
 /**
  * The board's drawings for `guidance` while the board shows `shown`, for a
  * learner playing `learner`: the candidates and ideas guidance draws (ideas
- * only on the position they are about), a sliding preview's ghost where its
- * piece stood and a glow where it lands, Stockfish's best move and a trap
+ * only on the position they are about), a glow where a sliding preview's
+ * piece lands (the board draws its slide), Stockfish's best move and a trap
  * fallen into.
  */
 export function lessonDrawings(guidance: Guidance, shown: PositionKey, learner: Color): Drawing[] {
@@ -33,7 +33,7 @@ export function lessonDrawings(guidance: Guidance, shown: PositionKey, learner: 
   const ideas = guidance.drawn.filter(({ at }) => at === shown).map(({ idea }) => idea);
   const slid = slidCandidate(guidance);
   return [
-    ...(slid ? [ghost(slid.from, slid.piece), glow(slid.to, candidateTone(slid, main))] : []),
+    ...(slid ? [glow(slid.to, candidateTone(slid, main))] : []),
     ...candidateDrawings(guidance.drawnCandidates, main),
     ...ideasDrawings(ideas, shown, learner),
     ...bestDrawings(guidance.best),

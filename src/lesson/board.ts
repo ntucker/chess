@@ -1,6 +1,7 @@
 /**
- * What the lesson's board shows: the game's position, a previewed move shown
- * played, or a board of an idea playing back, with guidance's drawings.
+ * What the lesson's board shows: the game's position, with a previewed move
+ * drawn played over it, or a board of an idea playing back, with guidance's
+ * drawings.
  * Whether the learner points at a candidate list row or at a board square,
  * the preview comes from `preview` (./view.ts) through guidance, so both
  * pointers show a candidate the same way.
@@ -40,10 +41,10 @@ interface LessonBoardInput {
 export type LessonBoard = Omit<BoardProps, 'dom' | 'onMove' | 'onHover' | 'onHold' | 'onPress'>;
 
 /**
- * The board for a lesson. A sliding preview shows the position after its
- * move, which can't be moved on: chessground would refuse the move it shows
- * played, so a press on its square plays it instead (`boardPress`). A
- * playback's boards aren't games: nothing moves on them and nothing is drawn.
+ * The board for a lesson. A sliding preview draws the position after its
+ * move over the game's, which stays movable underneath, so every press and
+ * drag plays on the game. A playback's boards aren't games: nothing moves on
+ * them and nothing is drawn.
  */
 export function lessonBoard({
   side,
@@ -57,56 +58,41 @@ export function lessonBoard({
   frame,
 }: LessonBoardInput): LessonBoard {
   const slid = slidCandidate(guidance);
-  const previewed = slid && lastPosition([...moves.slice(0, ply), slid.move.uci]);
-  const board = previewed ?? current;
-  const shown = frame ?? board;
+  const shown = frame ?? current;
   return {
     fen: shown.fen,
     orientation: side,
     turnColor: shown.turn,
-    movableColor: canMove && !previewed && !frame ? current.turn : undefined,
-    dests: frame ? {} : board.dests,
+    movableColor: canMove && !frame ? current.turn : undefined,
+    dests: frame ? {} : current.dests,
     lastMove: shown.move && [shown.move.from, shown.move.to],
+    preview: frame || !slid ? undefined : lastPosition([...moves.slice(0, ply), slid.move.uci]).fen,
     drawings: frame
       ? []
       : [
           ...lessonDrawings(guidance, shownKey(key, guidance.preview), side),
-          ...lastMoveBadge(previewed ? undefined : current.move?.to, quality),
+          ...lastMoveBadge(slid ? undefined : current.move?.to, quality),
         ],
     check: shown.check,
   };
 }
 
-/** What a press on the board does while a move is previewed sliding. */
-export type Press =
-  /** Plays the previewed candidate, pressed where its piece now stands. */
-  | { readonly kind: 'candidate'; readonly candidate: Candidate }
-  /** Plays the move of the piece the learner picked before the preview slid. */
-  | { readonly kind: 'move'; readonly from: Square; readonly to: Square }
-  /** Ends the preview, so the board shows the game and can be moved on again. */
-  | { readonly kind: 'end' };
-
 /**
- * What a press on `square` does. Without a sliding preview, nothing here:
- * the board plays moves itself. With one, chessground can't move, so a press
- * where the preview's piece stands plays it, unless the learner had picked
- * another piece (`selected`) that can move there, whose move is played instead. Example:
- * with the queen on d8 picked, a click on d5 previewing cxd5 plays Qxd5. Any
- * other press ends the preview, so a finger, which never hovers off it, can
- * get back to the game.
+ * What a press on `square` does to a sliding preview: it plays the preview's
+ * candidate when pressed where the preview shows its piece, unless a piece
+ * was picked before the press (`selected`), whose press the board plays as
+ * usual; any other press `'end'`s it. Example: previewing Bf5, a click on f5
+ * plays Bf5, and a click on any other square ends the preview, so a finger,
+ * which never hovers off it, gets back to the game. Without a sliding
+ * preview, nothing.
  */
 export function boardPress(
   guidance: Guidance,
-  current: Position,
   canMove: boolean,
   square: Square,
   selected?: Square,
-): Press | undefined {
+): Candidate | 'end' | undefined {
   const slid = slidCandidate(guidance);
   if (!slid) return undefined;
-  if (!canMove) return { kind: 'end' };
-  if (selected && selected !== slid.from && current.dests[selected]?.includes(square)) {
-    return { kind: 'move', from: selected, to: square };
-  }
-  return slid.to === square ? { kind: 'candidate', candidate: slid } : { kind: 'end' };
+  return canMove && !selected && slid.to === square ? slid : 'end';
 }

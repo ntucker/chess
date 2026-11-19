@@ -6,6 +6,7 @@ import type { Key } from '@lichess-org/chessground/types';
 
 import type { MoveQuality } from '@/analysis/quality';
 import { type Drawing, type Square, TONES, type Tone } from '@/board/drawing';
+import { squareOffset } from '@/board/preview';
 import type { Color } from '@/game/replay';
 import { toneColors } from '@/theme/drawingTones';
 import { BADGE_BOX, badgeMarkup, qualityLooks } from '@/theme/moveQuality';
@@ -114,15 +115,12 @@ function lineMarkup(squares: readonly Square[], orientation: Color, color: strin
   );
 }
 
-/**
- * How many squares right and down `to` is from `from`, as the board is seen.
- * (Chessground's key2pos does this, but chessground ships only ES modules,
- * which Jest can't load, and this file is tested.)
- */
+/** How many squares right and down `to` is from `from`, as the board is seen. */
 function offset(from: Square, to: Square, orientation: Color): [number, number] {
-  const right = to.charCodeAt(0) - from.charCodeAt(0);
-  const down = from.charCodeAt(1) - to.charCodeAt(1);
-  return orientation === 'white' ? [right, down] : [-right, -down];
+  const [[fromX, fromY], [toX, toY]] = [from, to].map((square) =>
+    squareOffset(square, orientation),
+  );
+  return [toX - fromX, toY - fromY];
 }
 
 /** A label's pill, along the bottom of its square, so the piece stays in view. */

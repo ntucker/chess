@@ -11,14 +11,22 @@ import { Chessground } from '@lichess-org/chessground';
 import type { Api } from '@lichess-org/chessground/api';
 import type { Config } from '@lichess-org/chessground/config';
 import type { DrawBrushes } from '@lichess-org/chessground/draw';
+import { read } from '@lichess-org/chessground/fen';
 import type { Key, PieceNode } from '@lichess-org/chessground/types';
 import type { DOMProps } from 'expo/dom';
 import { useEffect, useEffectEvent, useMemo, useRef } from 'react';
-import { flushSync } from 'react-dom';
 
 import { type Drawing, type Square, TONES } from '@/board/drawing';
 import { type BoardMarks, boardMarks, toneBrushes } from '@/board/marks';
 import { watchPointer } from '@/board/pointer';
+import {
+  NO_PREVIEW,
+  type Pieces,
+  type PreviewLayer,
+  type PreviewPiece,
+  previewLayer,
+  squareOffset,
+} from '@/board/preview';
 import type { Color } from '@/game/replay';
 import { toneColors } from '@/theme/drawingTones';
 
@@ -33,9 +41,16 @@ export interface BoardProps {
   readonly lastMove?: readonly [string, string];
   readonly check: boolean;
   /**
-   * What to draw over the position. Changing only these never resets the
-   * position, so it can change while a piece is being dragged. A new `fen`
-   * slides the pieces that moved, which is how a previewed move animates.
+   * A position to show over `fen` without playing it, like a move pointed at
+   * before it's played: the pieces that differ slide to where it has them,
+   * leaving a ghost where they stood (src/board/preview.ts). The board under
+   * it stays `fen`'s, so presses and drags still play on the game.
+   */
+  readonly preview?: string;
+  /**
+   * What to draw over the position, or over `preview` while there is one.
+   * Changing only these never resets the position, so it can change while a
+   * piece is being dragged.
    */
   readonly drawings?: readonly Drawing[];
   readonly onMove: (from: string, to: string) => void;
@@ -49,8 +64,7 @@ export interface BoardProps {
   /**
    * A square was clicked or tapped, empty or not, including the press that
    * starts a drag and the one that ends a move, with the square picked
-   * before it, if any. While a move is previewed the board shows it played,
-   * so chessground can't play it; a click on its square comes here instead.
+   * before it, if any. It comes just after the board has acted on the press.
    */
   readonly onPress?: (square: Square, selected?: Square) => void;
   readonly dom?: DOMProps;
@@ -64,6 +78,7 @@ export default function Board({
   dests,
   lastMove,
   check,
+  preview,
   drawings = [],
   onMove,
   onHover,
@@ -104,16 +119,23 @@ export default function Board({
     () => boardMarks(JSON.parse(drawingsKey) as Drawing[], orientation),
     [drawingsKey, orientation],
   );
+  const layer = useMemo(
+    () => (preview ? previewLayer(read(fen) as Pieces, read(preview) as Pieces) : NO_PREVIEW),
+    [fen, preview],
+  );
 
-  // Chessground reuses piece elements as pieces move, so the lit and faded
-  // pieces are marked again whenever the pieces or the drawings change: after
-  // new props, and after a move made on the board. Chessground draws on a
-  // frame it asked for first, so this frame comes after the draw.
+  // Chessground reuses piece elements as pieces move, so the lit, faded and
+  // previewed pieces are marked again whenever the pieces, the drawings or
+  // the preview change: after new props, and after a move made on the board.
+  // Chessground draws on a frame it asked for first, so this frame comes
+  // after the draw.
   const frame = useRef(0);
   const markAfterDraw = useEffectEvent(() => {
     cancelAnimationFrame(frame.current);
     frame.current = requestAnimationFrame(() => {
-      if (api.current) markPieces(api.current, marks);
+      if (!api.current) return;
+      drawPreview(api.current, layer, orientation);
+      markPieces(api.current, marks, layer);
     });
   });
 
@@ -140,10 +162,10 @@ export default function Board({
   useEffect(() => {
     const target = element.current;
     if (!target) return;
-    // The square picked before a press. Chessground reports the press after it
-    // has acted on it, when a refused move has already dropped the pick, so
-    // it is read as the press starts: a capture listener on the board's own
-    // element runs before chessground's handlers on the elements inside it.
+    // The square picked before a press. Chessground reports the press a
+    // moment after it has acted on it, when a move has already dropped the
+    // pick, so it is read as the press starts: a capture listener on the
+    // board's own element runs before chessground's handlers inside it.
     let picked: Square | undefined;
     const notePick = () => {
       picked = api.current?.state.selected as Square | undefined;
@@ -170,27 +192,15 @@ export default function Board({
       catchUp();
     });
     resizes.observe(target);
-    // A preview a hover starts or ends reaches chessground before the next
-    // press: a quick click right after a hover would otherwise land on the
-    // board as it was, and chessground would refuse or misplay it. This holds
-    // on the web, where the board renders inline in the screen's React tree;
-    // on Android its props come back by message. React can't flush from this
-    // effect's cleanup, where stopping reports a held finger's release.
-    let live = true;
-    const flush = (report: () => void) => (live ? flushSync(report) : report());
     const stopWatching = watchPointer<Square>(
       target,
       target.ownerDocument,
       (x, y) => board.getKeyAtDomPos([x, y]) as Square | undefined,
-      {
-        hover: (square) => flush(() => handleHover(square)),
-        hold: (square) => flush(() => handleHold(square)),
-      },
+      { hover: handleHover, hold: handleHold },
     );
     return () => {
       cancelAnimationFrame(frame.current);
       target.removeEventListener('pointerdown', notePick, { capture: true });
-      live = false;
       stopWatching();
       resizes.disconnect();
       board.destroy();
@@ -204,7 +214,7 @@ export default function Board({
 
   useEffect(() => setBoard(marksConfig(marks)), [marks]);
 
-  useEffect(() => markAfterDraw(), [position, marks]);
+  useEffect(() => markAfterDraw(), [position, marks, layer]);
 
   return (
     // Square by its width, since the web view's page has no height to fill.
@@ -230,17 +240,68 @@ const TINT_CSS = TONES.map(
     `cg-board square.tint-${tone} { background-color: color-mix(in srgb, ${toneColors[tone]} 40%, transparent); }`,
 ).join('\n');
 
+/** The preview's own layer, over chessground's pieces and under its arrows. */
+const PREVIEW_TAG = 'cg-preview';
+
 /**
- * Lights and fades pieces. Chessground has no way to style one piece, so this
- * marks their elements directly (Board.css draws the glow and the fade).
+ * Draws the preview's pieces in their own layer, each placed by its square
+ * so it follows the board's size without measuring it. A piece already drawn
+ * stays, so redrawing the same preview never restarts its slide.
  */
-function markPieces(board: Api, { glows, unfaded }: BoardMarks) {
-  for (const piece of board.state.dom.elements.board.querySelectorAll<PieceNode>('piece')) {
-    // A captured piece on its way out keeps neither.
-    const glow = piece.cgFading ? undefined : glows.get(piece.cgKey);
-    const faded = !piece.cgFading && unfaded !== undefined && !unfaded.has(piece.cgKey);
-    piece.classList.toggle('glow', glow !== undefined);
+function drawPreview(board: Api, { pieces }: PreviewLayer, orientation: Color) {
+  const { container, board: squares } = board.state.dom.elements;
+  let layer = container.querySelector<HTMLElement>(PREVIEW_TAG);
+  if (!layer) {
+    layer = document.createElement(PREVIEW_TAG);
+    squares.after(layer);
+  }
+  const place = (piece: HTMLElement, square: Square) => {
+    const [x, y] = squareOffset(square, orientation);
+    piece.style.transform = `translate(${x * 100}%, ${y * 100}%)`;
+  };
+  const wanted = new Map<string, PreviewPiece>(
+    pieces.map((shown) => [`${shown.from}${shown.square}${shown.piece.role}${orientation}`, shown]),
+  );
+  for (const piece of [...layer.children] as HTMLElement[]) {
+    if (!wanted.delete(piece.dataset.key!)) piece.remove();
+  }
+  for (const [key, { from, square, piece: drawn }] of wanted) {
+    const piece = document.createElement('piece');
+    piece.className = `${drawn.color} ${drawn.role}`;
+    piece.dataset.key = key;
+    piece.dataset.square = square;
+    place(piece, from);
+    layer.appendChild(piece);
+    if (from === square) continue;
+    // Laid out where it starts, so the move to its square slides (Board.css).
+    piece.getBoundingClientRect();
+    place(piece, square);
+  }
+}
+
+/**
+ * Lights and fades pieces, and ghosts or hides the game's pieces a preview
+ * moves or takes. Chessground has no way to style one piece, so this marks
+ * their elements directly (Board.css draws each look). The drawings are about
+ * the position shown, so they mark the preview's pieces where it has them.
+ */
+function markPieces(board: Api, { glows, unfaded }: BoardMarks, { away, taken }: PreviewLayer) {
+  const mark = (piece: HTMLElement, square: Key | undefined) => {
+    const glow = square && glows.get(square);
+    piece.classList.toggle('glow', !!glow);
     if (glow) piece.style.setProperty('--glow', glow);
-    piece.classList.toggle('faded', faded);
+    piece.classList.toggle('faded', !!square && unfaded !== undefined && !unfaded.has(square));
+  };
+  for (const piece of board.state.dom.elements.board.querySelectorAll<PieceNode>('piece')) {
+    const square = piece.cgKey as Square;
+    piece.classList.toggle('away', away.has(square));
+    piece.classList.toggle('taken', taken.has(square));
+    // A captured piece on its way out, or one the preview replaces, is not shown as it is.
+    const shown = !piece.cgFading && !away.has(square) && !taken.has(square);
+    mark(piece, shown ? piece.cgKey : undefined);
+  }
+  const layer = board.state.dom.elements.container.querySelector(PREVIEW_TAG);
+  for (const piece of layer?.querySelectorAll<HTMLElement>('piece') ?? []) {
+    mark(piece, piece.dataset.square as Key);
   }
 }

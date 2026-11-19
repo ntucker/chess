@@ -58,16 +58,41 @@ cg-board square.move-dest.hover {
  * Drawings (src/board/drawing.ts). Pieces are lit and faded by markPieces in
  * Board.tsx; the tinted squares' rules are TINT_CSS there, from drawingTones.ts.
  */
-cg-board piece.glow {
+cg-board piece.glow,
+cg-preview piece.glow {
   filter: drop-shadow(0 0 2px var(--glow)) drop-shadow(0 0 6px var(--glow)) drop-shadow(0 0 6px var(--glow));
 }
-cg-board piece.faded {
+cg-board piece.faded,
+cg-preview piece.faded {
   opacity: 0.22;
   filter: grayscale(1);
 }
 /* A ghost: where a piece was, or will be. */
-.cg-wrap cg-auto-pieces piece {
+.cg-wrap cg-auto-pieces piece,
+cg-board piece.away {
   opacity: 0.4;
+}
+
+/*
+ * A previewed position (the board's `preview`), drawn by drawPreview in
+ * Board.tsx over the game's pieces and under the arrows. Its pieces slide in;
+ * the game's pieces it moves fade to a ghost (above), and those it takes hide.
+ */
+.cg-wrap cg-preview {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+cg-preview piece {
+  transition: transform 0.2s ease;
+}
+cg-board piece.away,
+cg-board piece.taken {
+  transition: opacity 0.2s;
+}
+cg-board piece.taken {
+  opacity: 0;
 }
 /*
  * Chessground can't dash an arrow; its dashed brushes are named *-dashed
