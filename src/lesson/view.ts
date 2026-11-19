@@ -82,6 +82,7 @@ export interface LessonView {
   readonly lineEnd?: number;
   /** The variation the board is in, the opening itself first (see `lineVariation`). */
   readonly variation: readonly Variation[];
+  /** The guide's moves, rare ones last (`Candidate.rare`); the list is `Guidance.candidates`. */
   readonly candidates: readonly Candidate[];
   /** The idea card's notes: the move that led here, then the position. */
   readonly notes: readonly ShownNote[];
@@ -143,9 +144,9 @@ export const shownKey = (key: PositionKey, preview?: Preview): PositionKey =>
 /**
  * The candidate `pointer` previews in `view`. A row previews its move (a
  * rare one has no row). A destination square previews the most common
- * candidate landing there. A
- * piece's own square previews its most common candidate without sliding, so
- * the piece can still be dragged anywhere legal.
+ * candidate landing there, a listed one before a rare one. A piece's own
+ * square previews its most common candidate without sliding, so the piece
+ * can still be dragged anywhere legal.
  */
 export function preview(lesson: Lesson, view: LessonView, pointer: Pointer): Preview | undefined {
   const found = pointed(view.candidates, pointer);

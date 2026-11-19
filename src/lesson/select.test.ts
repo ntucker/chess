@@ -137,6 +137,17 @@ describe('candidates', () => {
       expect(rareOnes(shown, key, 2)).toEqual([]);
     });
 
+    it('puts rare moves after listed ones, even a less played trap start', () => {
+      const trap: Idea = { type: 'trap', moves: ['f2f3', 'd5e4'], verdict: 'losesMaterial' };
+      const shown = withNotes(WITH_RARE, key, [{ text: 'f3 falls in.', ideas: [trap] }]);
+      const both = withMoves(shown, key, (moves) => [
+        ...moves,
+        { uci: 'g2g4', games: [2, 2, 2, 2, 2] },
+      ]);
+      expect(ucis(both, key, 2)).toEqual(['e4e5', 'e4d5', 'b1c3', 'b1d2', 'f2f3', 'g2g4']);
+      expect(rareOnes(both, key, 2)).toEqual(['g2g4']);
+    });
+
     it('never marks a move without counts', () => {
       expect(rareOnes(WITH_RARE, key, undefined)).toEqual([]);
     });

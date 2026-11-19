@@ -96,7 +96,7 @@ export const mainCandidate = (candidates: readonly Candidate[]): Candidate | und
  *
  * On the opponent's turn a candidate under `RARE_SHARE` is `rare`, unless
  * it is the most played, has no counts, or starts a trap the position's
- * notes show. The learner's candidates never are.
+ * notes show; rare ones come last. The learner's candidates never are.
  */
 export function candidates(
   lesson: Lesson,
@@ -134,7 +134,8 @@ export function candidates(
   const traps = trapStarts(guide.entry);
   const isRare = ({ move, share }: Candidate) =>
     share !== undefined && share < RARE_SHARE && !traps.includes(move.uci);
-  return rows.map((row, n) => (n > 0 && isRare(row) ? { ...row, rare: true } : row));
+  const marked = rows.map((row, n) => (n > 0 && isRare(row) ? { ...row, rare: true } : row));
+  return [...marked.filter(({ rare }) => !rare), ...marked.filter(({ rare }) => rare)];
 }
 
 /** The first move of each trap in a position's notes: the move that falls in. */

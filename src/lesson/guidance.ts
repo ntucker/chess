@@ -27,7 +27,8 @@
  * - While a note's idea plays back, the board is the playback's: nothing else
  *   is drawn, and the preview it started from stays.
  * - Rare candidates (`Candidate.rare`) are left off the list and the board's
- *   arrows; only pointing at one's piece or landing square shows it.
+ *   arrows, and Stockfish's best isn't tagged on one; only pointing at its
+ *   piece or landing square shows it.
  *
  * guidance stays in lesson terms; lessonDrawings (./drawings.ts) turns it
  * into board shapes, and says which ideas draw nothing (`drawsOnBoard`).
@@ -141,8 +142,8 @@ export function guidance(input: GuidanceInput): Guidance {
   const allowed = (idea: Idea) =>
     idea.type === 'trap' ? switches.showTraps : !explore || switches.showIdeas;
   const ideas = notes.flatMap((shown) => noteIdeas(shown, allowed));
-  const all = choices ? view.candidates : [];
-  const candidates = all.filter(({ rare }) => !rare);
+  const withRare = choices ? view.candidates : [];
+  const candidates = withRare.filter(({ rare }) => !rare);
   const trap = view.trap && trapShown(view, view.trap) ? view.trap : undefined;
   const playable = [
     ...ideas.filter(playsBack),
@@ -156,12 +157,12 @@ export function guidance(input: GuidanceInput): Guidance {
     .filter(({ note }) => note.ideas?.some((idea) => drawsOnBoard(idea) && allowed(idea)))
     .map(({ note }) => note);
   const pointedNote = !playing && pointed && pointable.includes(pointed) ? pointed : undefined;
-  const board = boardShown({ candidates, all, preview, ideas, playing, pointed: pointedNote });
+  const board = boardShown({ candidates, withRare, preview, ideas, playing, pointed: pointedNote });
   const best = explore && !preview && !playing && !pointedNote ? engine?.best : undefined;
 
   return {
     candidates,
-    rareCount: all.length - candidates.length,
+    rareCount: withRare.length - candidates.length,
     main: mainCandidate(candidates),
     preview,
     notes,
@@ -187,14 +188,14 @@ export function guidance(input: GuidanceInput): Guidance {
  */
 function boardShown({
   candidates,
-  all,
+  withRare,
   preview,
   ideas,
   playing,
   pointed,
 }: {
   readonly candidates: readonly Candidate[];
-  readonly all: readonly Candidate[];
+  readonly withRare: readonly Candidate[];
   readonly preview?: Preview;
   readonly ideas: readonly ShownIdea[];
   readonly playing?: ShownPlayback;
@@ -207,7 +208,7 @@ function boardShown({
   if (preview) {
     const { slide, candidate } = preview;
     return {
-      candidates: slide ? [] : all.filter(({ from }) => from === candidate.from),
+      candidates: slide ? [] : withRare.filter(({ from }) => from === candidate.from),
       drawn: ideas,
     };
   }
