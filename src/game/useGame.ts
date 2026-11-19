@@ -88,7 +88,8 @@ export function useGame(
     /** Whose move it is in the latest position; none once the game is over. */
     toMove: latest.result ? undefined : latest.turn,
     // While the opponent thinks the player can still go back and try another move.
-    canMove: !current.result && current.turn === side && !replying,
+    // With no opponent, nobody replies: the player moves both sides.
+    canMove: !current.result && !replying && (!opponent || current.turn === side),
     /** Whether the player has made a move, so a new game would lose something. */
     started: plies.some((p) => p.move && p.turn !== side),
     thinking,

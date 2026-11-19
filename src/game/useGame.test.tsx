@@ -78,10 +78,10 @@ describe('useGame', () => {
     expect(game()).toMatchObject({ thinking: true, replying: false });
   });
 
-  it('asks nobody when there is no opponent', async () => {
+  it('asks nobody when there is no opponent, and lets the player move both sides', async () => {
     await render({ side: 'black', active: true });
     expect(game().thinking).toBe(false);
-    expect(game().canMove).toBe(false);
+    expect(game().canMove).toBe(true);
   });
 
   it('asks a newly chosen opponent at once, and takes the first answer', async () => {

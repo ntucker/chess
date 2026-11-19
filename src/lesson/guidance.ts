@@ -225,7 +225,7 @@ function restingNotes(
   // `trap` instead, on its own card.
   const played = view.notes.filter(({ before }) => before !== undefined);
   const own = view.notes.filter(({ before }) => before === undefined);
-  return [...played, ...view.playedFrom, ...own].filter(({ note }) => !trapHidden(note, showTraps));
+  return [...played, ...view.playedFrom, ...own].filter(({ note }) => showTraps || !hasTrap(note));
 }
 
 const hasTrap = (note: Note) => note.ideas?.some(({ type }) => type === 'trap') ?? false;
@@ -248,9 +248,6 @@ function newsShown(view: LessonView, ply: number): boolean {
   const movesAfter = view.ply - ply;
   return movesAfter <= 0 || (movesAfter === 1 && view.learnerToMove);
 }
-
-/** In Practice with traps hidden, a note that holds a trap stays off the card. */
-const trapHidden = (note: Note, showTraps: boolean) => !showTraps && hasTrap(note);
 
 /** `shown`'s ideas that `allowed` lets through, each with the position it is checked in. */
 const noteIdeas = (shown: ShownNote, allowed: (idea: Idea) => boolean): ShownIdea[] =>

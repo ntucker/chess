@@ -207,25 +207,20 @@ function describeStatus(
   const eyebrow = view.variation.map(({ name }) => name).join(' · ') || title;
   // Beyond the guide on "I choose", nobody replies: the learner moves both sides.
   const playOn = auto ? `play on against ${engine}` : 'play on, moving both sides';
+  if (lineEnded && practice?.clean)
+    return {
+      eyebrow,
+      title: 'Line complete.',
+      detail: 'A clean run: each of your moves from the book, and nothing taken back.',
+    };
   if (lineEnded)
-    return !practice
-      ? {
-          eyebrow,
-          title: 'End of this line.',
-          detail: `The guide stops here. Step back to try another branch, or ${playOn}.`,
-        }
-      : practice.clean
-        ? {
-            eyebrow,
-            title: 'Line complete.',
-            detail: 'A clean run: each of your moves from the book, and nothing taken back.',
-          }
-        : {
-            eyebrow,
-            title: 'End of this line.',
-            detail:
-              'This run had a slip or a take-back. Go back to your first move and play it through clean.',
-          };
+    return {
+      eyebrow,
+      title: 'End of this line.',
+      detail: practice
+        ? 'This run had a slip or a take-back. Go back to your first move and play it through clean.'
+        : `The guide stops here. Step back to try another branch, or ${playOn}.`,
+    };
   // An `end` place is always a line end the headline tells (see above).
   if (view.place === 'beyond')
     return {

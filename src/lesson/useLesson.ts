@@ -22,7 +22,7 @@ import { ideaPlayback } from './drawings';
 import { guidance, type LessonMode, notePlayback, type PlayedBack } from './guidance';
 import type { Lesson, Note, Uci } from './lesson';
 import { lessonOpponent } from './opponent';
-import { beforeSideMoves, modeChosen } from './practice';
+import { beforeSideMoves } from './practice';
 import { initialScreen, screenReducer } from './screen';
 import { bookMoves, type Candidate, isBook } from './select';
 import { lessonView, type Pointer, preview, type ShownNote } from './view';
@@ -71,10 +71,7 @@ export function useLesson(lesson: Lesson) {
     judge: 'stockfish',
     book: (line) => bookMoves(lesson, line),
   });
-  const { moves, ply, plies, current } = game;
-  // On Auto the learner moves only their own side; on "I choose", either.
-  const canMove =
-    !current.result && !game.replying && (!settings.auto || current.turn === lesson.side);
+  const { moves, ply, plies, current, canMove } = game;
   const view = useMemo(
     () => lessonView({ lesson, line: moves, ply, opponent }),
     [lesson, moves, ply, opponent],
@@ -190,7 +187,8 @@ export function useLesson(lesson: Lesson) {
     /** Explore, or Practice with whether the run is clean. */
     modeState,
     /** The learner chooses Explore or Practice. */
-    chooseMode: (chosen: LessonMode) => dispatch(modeChosen(chosen, plies, lesson.side)),
+    chooseMode: (mode: LessonMode) =>
+      dispatch({ type: 'modeChosen', mode, untouched: !game.started }),
     /** The note pointed at on the idea card. */
     pointedNote: shown.pointed,
     /**

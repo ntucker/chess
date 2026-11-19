@@ -9,9 +9,9 @@ import type { Color, Ply } from '@/game/replay';
 import type { LessonMode } from './guidance';
 
 export type ModeState =
-  | { readonly mode: Extract<LessonMode, 'explore'> }
+  | { readonly mode: 'explore' }
   | {
-      readonly mode: Extract<LessonMode, 'practice'>;
+      readonly mode: 'practice';
       /** No non-book move and no take-back since the learner's first move. */
       readonly clean: boolean;
     };
@@ -24,18 +24,6 @@ export const initialMode: ModeState = { mode: 'explore' };
  */
 export const beforeSideMoves = (plies: readonly Ply[], side: Color, count: number) =>
   plies.slice(0, count).every(({ turn }) => turn !== side);
-
-/**
- * The learner chooses `mode` on a line whose positions are `plies`, playing
- * `side`. Practice starts clean only while the whole line holds no move of
- * theirs, wherever the board is: stepping back over moves seen with hints,
- * choosing Practice and stepping on again would otherwise pass unplayed.
- */
-export const modeChosen = (mode: LessonMode, plies: readonly Ply[], side: Color): ModeAction => ({
-  type: 'modeChosen',
-  mode,
-  untouched: beforeSideMoves(plies, side, plies.length - 1),
-});
 
 /** Facts about a move the learner played, on the lesson screen. */
 export interface PlayedMove {
@@ -53,7 +41,11 @@ export type ModeAction =
   | {
       readonly type: 'modeChosen';
       readonly mode: LessonMode;
-      /** The line holds no move of the learner's yet (see `modeChosen`). */
+      /**
+       * The line holds no move of the learner's yet, wherever the board is:
+       * stepping back over moves seen with hints, choosing Practice and
+       * stepping on again would otherwise pass unplayed.
+       */
       readonly untouched: boolean;
     }
   | ({ readonly type: 'played' } & PlayedMove);

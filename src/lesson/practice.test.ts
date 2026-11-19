@@ -6,7 +6,6 @@ import { uciLine } from './lesson.fixture';
 import {
   beforeSideMoves,
   initialMode,
-  modeChosen,
   type ModeAction,
   modeReducer,
   type ModeState,
@@ -67,7 +66,7 @@ describe('modeReducer', () => {
   });
 });
 
-describe('beforeSideMoves and modeChosen', () => {
+describe('beforeSideMoves', () => {
   const plies = replay(uciLine('e4', 'c6', 'd4', 'd5'));
 
   it("counts the side's moves among the first moves of the line", () => {
@@ -78,17 +77,11 @@ describe('beforeSideMoves and modeChosen', () => {
   });
 
   it('keeps a line explored to its end from passing by stepping back, choosing Practice and stepping on', () => {
-    // At the start of the explored line the board is before Black's first move, but the line isn't.
+    // Back at the start the board is before Black's first move, but the line isn't untouched.
     expect(beforeSideMoves(plies, 'black', 0)).toBe(true);
-    const chosen = run(initialMode, modeChosen('practice', plies, 'black'));
-    expect(chosen).toEqual(practice(false));
+    const chosenLate = run(initialMode, chosen('practice', false));
+    expect(chosenLate).toEqual(practice(false));
     // Playing the first move again, from the start, begins a clean run.
-    expect(run(chosen, played({ first: true, replaces: true }))).toEqual(practice(true));
-  });
-
-  it('starts a clean run when Practice is chosen on a line with no move of the learner yet', () => {
-    expect(run(initialMode, modeChosen('practice', plies.slice(0, 2), 'black'))).toEqual(
-      practice(true),
-    );
+    expect(run(chosenLate, played({ first: true, replaces: true }))).toEqual(practice(true));
   });
 });

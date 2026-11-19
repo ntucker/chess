@@ -52,10 +52,8 @@ export function Scoresheet({ plies, qualities, ply, trapped, onGoto }: Props) {
               blackSan={san(white + 1)}
               whiteQuality={qualities[white - 1]}
               blackQuality={qualities[white]}
-              // Only the row holding the shown move gets a value, so the rest
-              // keep their props and skip re-rendering as the player steps.
-              selected={ply === white || ply === white + 1 ? ply : undefined}
-              trapped={trapped === white || trapped === white + 1 ? trapped : undefined}
+              selected={inRow(ply, white)}
+              trapped={inRow(trapped, white)}
               striped={i % 2 === 1}
               onGoto={onGoto}
             />
@@ -141,6 +139,14 @@ function Row({
 
 /** A label's badge beside its move, about the height of the notation's capitals. */
 const BADGE_SIZE = 15;
+
+/**
+ * `ply` when it is in the row whose White move leads to `white` or after it;
+ * only that row gets a value, so the rest keep their props and skip
+ * re-rendering as the player steps.
+ */
+const inRow = (ply: number | undefined, white: number) =>
+  ply === white || ply === white + 1 ? ply : undefined;
 
 const styles = StyleSheet.create({
   sheet: { overflow: 'hidden' },
