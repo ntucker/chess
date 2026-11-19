@@ -19,7 +19,7 @@ describe('settings', () => {
       opponent: 1900,
       evaluationEngine: 'maia',
       auto: false,
-      showIdeas: false,
+      showMoves: false,
       showTraps: true,
     } as const;
     expect(parseSettings(JSON.stringify(rated))).toEqual(rated);

@@ -27,7 +27,7 @@ import { lessonView, type Pointer, preview } from './view';
 
 /** The trap the sample sets, fallen into: the tempting move and the punishing reply. */
 const LANDED = [...TRAP, 'Nxe5', 'Nxe5'];
-const ALL_ON: LessonSwitches = { auto: true, showIdeas: true, showTraps: true };
+const ALL_ON: LessonSwitches = { auto: true, showMoves: true, showTraps: true };
 const ENGINE = { best: 'g8f6', top: ['g8f6', 'c8f5', 'c6c5'] };
 
 function shown(
@@ -76,12 +76,6 @@ describe('guidance', () => {
     it("shows the opponent's candidates with auto play on and off", () => {
       expect(shown(MAIN, 'explore', { auto: true }).candidates).toHaveLength(4);
       expect(shown(MAIN, 'explore', { auto: false }).candidates).toHaveLength(4);
-    });
-
-    it('keeps the notes but draws no ideas with "show ideas on board" off', () => {
-      const off = shown(ADVANCE, 'explore', { showIdeas: false });
-      expect(off.notes).toHaveLength(2);
-      expect(off.ideas).toEqual([]);
     });
 
     it("shows a previewed move's notes and ideas in place of the position's", () => {
@@ -260,10 +254,6 @@ describe('guidance', () => {
       expect(notes(true)).toHaveLength(1);
       expect(notes(false)).toEqual([]);
     });
-
-    it('draws the ideas of the move played, whatever "show ideas on board" says', () => {
-      expect(shown(ADVANCE, 'practice', { showIdeas: false }).ideas).toHaveLength(2);
-    });
   });
 
   describe('what the board draws', () => {
@@ -287,17 +277,46 @@ describe('guidance', () => {
       expect(types(pointing.drawn)).toEqual(['structure', 'structure']);
     });
 
-    it('lets only notes whose ideas draw be pointed at, as the switches allow', () => {
+    it('keeps the arrows off the resting board with "moves on the board" off, until pointed at', () => {
+      const off = { ...ALL_ON, showMoves: false };
+      const resting = explore(ADVANCE, { switches: off });
+      expect(resting.candidates).toEqual(explore(ADVANCE).candidates);
+      expect(resting.drawnCandidates).toEqual([]);
+      // In the arrows' place, the idea of the move just played (3.e5).
+      const [move] = resting.notes;
+      expect(resting.drawn.map(({ idea }) => idea)).toEqual(move.note.ideas);
+      const previewing = preview(SAMPLE, sampleView(ADVANCE), { at: 'row', uci: 'c8f5' });
+      expect(types(explore(ADVANCE, { switches: off, preview: previewing }).drawn)).toEqual([
+        'plan',
+      ]);
+      const dragging = explore(ADVANCE, { switches: off, dragged: 'c8' });
+      expect(dragging.drawnCandidates.map(({ move }) => move.uci)).toEqual(['c8f5']);
+      const [, position] = resting.notes;
+      const pointing = explore(ADVANCE, { switches: off, pointed: position.note });
+      expect(pointing.pointed).toBe(position.note);
+      expect(types(pointing.drawn)).toEqual(['structure', 'structure']);
+    });
+
+    it("draws the learner's move's ideas on the opponent's turn with 'moves on the board' off", () => {
+      const played = shown([...ADVANCE, 'Bf5'], 'practice', { auto: false, showMoves: false });
+      const move = played.notes.find(({ before }) => before !== undefined);
+      expect(played.drawnCandidates).toEqual([]);
+      expect(played.drawn.map(({ idea }) => idea)).toEqual(move?.note.ideas);
+    });
+
+    it("keeps Stockfish's best off the resting board with 'moves on the board' off", () => {
+      expect(explore(ADVANCE).best).toBe('g8f6');
+      expect(explore(ADVANCE, { switches: { ...ALL_ON, showMoves: false } }).best).toBeUndefined();
+    });
+
+    it('lets only notes whose ideas draw be pointed at', () => {
       const [move, position] = explore(ADVANCE).notes;
       expect(explore(ADVANCE).pointable).toEqual([move.note, position.note]);
-      expect(explore(ADVANCE, { switches: { ...ALL_ON, showIdeas: false } }).pointable).toEqual([]);
     });
 
     it('names the pointed note only while its ideas draw, and not during a playback', () => {
       const [, position] = explore(ADVANCE).notes;
       expect(explore(ADVANCE, { pointed: position.note }).pointed).toBe(position.note);
-      const off = { ...ALL_ON, showIdeas: false };
-      expect(explore(ADVANCE, { pointed: position.note, switches: off }).pointed).toBeUndefined();
       const [trap] = explore(TRAP).notes;
       expect(explore(TRAP, { pointed: trap.note }).pointed).toBe(trap.note);
       expect(explore(TRAP, { pointed: trap.note, playing: trap.note }).pointed).toBeUndefined();
