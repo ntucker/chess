@@ -199,8 +199,8 @@ export function guidance(input: GuidanceInput): Guidance {
 /**
  * What the board draws: nothing while a note plays back; a pointed note's
  * ideas alone; a sliding preview's ideas; a dragged piece's candidates alone
- * (rare ones too); or else the listed candidates, with only traps
- * beside them (every idea where there are none).
+ * (rare ones too); or else the listed candidates, with only traps beside
+ * them (every idea where there are none).
  */
 function boardShown({
   candidates,

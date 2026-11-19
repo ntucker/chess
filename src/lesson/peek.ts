@@ -1,10 +1,10 @@
 /**
  * What the lesson's board shows beyond the game, as a reducer: what the
  * learner points at (a candidate, by its list row or a piece dragged onto
- * its square, and a note on the idea card), or a note's idea playing back. While an idea
- * plays, the board is its own: pointing goes on out of sight, and the board
- * shows it once the playback stops. Each peek belongs to the position it
- * started in, and ends once the board moves on.
+ * its square, and a note on the idea card), or a note's idea playing back.
+ * While an idea plays, the board is its own: pointing goes on out of sight,
+ * and the board shows it once the playback stops. Each peek belongs to the
+ * position it started in, and ends once the board moves on.
  */
 import type { Note, PositionKey } from './lesson';
 import type { Pointer } from './view';

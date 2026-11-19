@@ -2,8 +2,9 @@
  * The lesson screen's wiring: a game against the guide-first opponent, the
  * facts about the position on the board, what the learner points at (a
  * candidate, by its list row or a piece dragged onto its square, and a note
- * on the idea card), an idea playing back, the mode (Explore or Practice), and the
- * board. On Auto the learner moves their own side; on "I choose", either.
+ * on the idea card), an idea playing back, the mode (Explore or Practice),
+ * and the board. On Auto the learner moves their own side; on "I choose",
+ * either.
  */
 import { useController } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
