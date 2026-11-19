@@ -18,6 +18,8 @@
  *   the opponent's turn it shows the opponent's candidates, and their
  *   previews, only with auto play off, since the learner has to pick one;
  *   with auto play the opponent just plays. Stockfish's moves stay hidden.
+ *   At the start, where the first move picks the opening, nobody replies,
+ *   so its candidates and previews show in every mode.
  * - Traps: with "show traps" on, a trap's sequence is drawn before the
  *   learner commits, beside the candidates; off, it isn't. A trap fallen
  *   into is shown either way, and plays back, through the trap's moves and
@@ -139,7 +141,8 @@ export function guidance(input: GuidanceInput): Guidance {
     engine,
   } = input;
   const explore = mode === 'explore';
-  const choices = explore || (!view.learnerToMove && !switches.auto);
+  // The start is a choice, not a quiz: its first moves pick the opening.
+  const choices = explore || view.ply === 0 || (!view.learnerToMove && !switches.auto);
   const preview = choices ? pointerPreview : undefined;
   const dragged = choices ? pointerDragged : undefined;
   // In Practice a previewed reply leads to the learner's move, so its notes
