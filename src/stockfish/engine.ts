@@ -1,6 +1,6 @@
 import type { Evaluation } from '@/evaluation/evaluation';
 
-import { evaluationFromScore, parseScore, positionCommand, type Score } from './uci';
+import { evaluationFromScore, parseBestMove, parseScore, positionCommand, type Score } from './uci';
 
 /**
  * How long one evaluation searches: 100,000 positions, which reaches about
@@ -32,16 +32,6 @@ interface Search {
   last?: Score;
 }
 
-/** The error a request gets when a newer one replaces it before it's done. */
-export class SupersededError extends Error {
-  constructor() {
-    super('A newer position replaced this one before Stockfish finished');
-    // Data Client keeps nothing for a request that fails with an AbortError,
-    // as if it never ran, so coming back to this position evaluates it.
-    this.name = 'AbortError';
-  }
-}
-
 /** An attached engine, and whether it has finished its handshake. */
 interface Session {
   readonly send: Send;
@@ -50,7 +40,11 @@ interface Session {
 
 let connected: Session | undefined;
 let running: Search | undefined;
-let waiting: Search | undefined;
+/**
+ * Searches waiting for the engine. The last runs next: the newest request, or
+ * a search a stopped engine handed back.
+ */
+const pending: Search[] = [];
 
 /**
  * Connects the engine that `send` talks to. The host that runs the engine
@@ -77,17 +71,14 @@ export function attachStockfish(send: Send): Connection {
 
 /**
  * How the position after `line` (UCI moves from the starting position)
- * stands, as Stockfish judges it. Stockfish works on one position at a time
- * and only the newest request matters, so a newer request stops this one,
- * which then fails with a SupersededError.
+ * stands, as Stockfish judges it. Stockfish works on one position at a time:
+ * the search under way finishes, then the newest request waiting runs. No
+ * request is dropped, so a position the board steps past is still searched
+ * (move labels need every position of the game anyway).
  */
 export function stockfishEvaluation(line: readonly string[]): Promise<Evaluation> {
   return new Promise((resolve, reject) => {
-    // While a search runs, a waiting request means a newer one replaced it,
-    // so only the first replacement stops it.
-    if (running && !waiting) connected?.send('stop');
-    waiting?.reject(new SupersededError());
-    waiting = { line, resolve, reject };
+    pending.push({ line, resolve, reject });
     startNext();
   });
 }
@@ -102,20 +93,25 @@ function handleLine(session: Session, line: string) {
   const score = parseScore(line);
   if (score) running.last = score;
   else if (line.startsWith('bestmove')) {
-    const { last, line: moves } = running;
-    // A request waiting behind a running search is a newer one that replaced it.
-    if (waiting) running.reject(new SupersededError());
-    else if (last) running.resolve(evaluationFromScore(last, moves.length));
-    else running.reject(new Error('Stockfish finished without a score'));
+    const search = running;
     running = undefined;
+    if (search.last) search.resolve(evaluation(search.last, search.line, line));
+    else search.reject(new Error('Stockfish finished without a score'));
     startNext();
   }
 }
 
+/** A finished search's evaluation, with the move its `bestmove` line names. */
+function evaluation(score: Score, moves: readonly string[], bestmoveLine: string): Evaluation {
+  const best = parseBestMove(bestmoveLine);
+  return { ...evaluationFromScore(score, moves.length), ...(best && { best }) };
+}
+
 function startNext() {
-  if (!connected?.ready || running || !waiting) return;
-  running = waiting;
-  waiting = undefined;
+  if (!connected?.ready || running) return;
+  running = pending.pop();
+  if (!running) return;
+  running.last = undefined;
   // A fresh start for every position, so a position always gets the same
   // evaluation whatever came before it.
   connected.send('ucinewgame');
@@ -123,15 +119,8 @@ function startNext() {
   connected.send(GO);
 }
 
-/**
- * The search the engine was running will never finish there: hands it to
- * the next engine, or fails it with SupersededError if a newer request
- * replaced it.
- */
+/** The search the engine was running will never finish there: the next engine runs it first. */
 function handOverRunning() {
-  if (running && !waiting) {
-    running.last = undefined;
-    waiting = running;
-  } else running?.reject(new SupersededError());
+  if (running) pending.push(running);
   running = undefined;
 }

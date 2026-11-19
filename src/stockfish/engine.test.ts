@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 
-import { attachStockfish, type Connection, stockfishEvaluation, SupersededError } from './engine';
+import { attachStockfish, type Connection, stockfishEvaluation } from './engine';
 
 // The real engine the app ships (the `stockfish` package's Node build of the
 // same lite single-threaded WebAssembly), driven through the app's protocol.
@@ -41,7 +41,12 @@ describe('stockfishEvaluation', () => {
     // 1.e4 e5 2.Qh5 d6 3.Nf3 Be6 4.Nc3 Nf6 5.Qh4 Be7 6.Ng5 O-O 7.Bd3 Bd7
     // 8.Nd5 Nxd5: White mates with Qxh7. Maia 1900 gives White 59%.
     const line = 'e2e4 e7e5 d1h5 d7d6 g1f3 c8e6 b1c3 g8f6 h5h4 f8e7 f3g5 e8g8 f1d3 e6d7 c3d5 f6d5';
-    expect(await stockfishEvaluation(line.split(' '))).toEqual({ score: 1, pawns: 0, mate: 1 });
+    expect(await stockfishEvaluation(line.split(' '))).toEqual({
+      score: 1,
+      pawns: 0,
+      mate: 1,
+      best: 'h4h7',
+    });
   }, 30_000);
 
   it('gives Black the advantage when Black is a queen up', async () => {
@@ -58,10 +63,15 @@ describe('stockfishEvaluation', () => {
     expect(Math.abs((await evaluation).pawns)).toBeLessThan(1);
   }, 30_000);
 
-  it('drops a position when a newer one comes', async () => {
+  it('answers every position asked for, one at a time', async () => {
     const older = stockfishEvaluation(['d2d4']);
     const newer = stockfishEvaluation(['d2d4', 'd7d5']);
-    await expect(older).rejects.toBeInstanceOf(SupersededError);
-    expect(Math.abs((await newer).pawns)).toBeLessThan(1);
+    const finished: string[] = [];
+    await Promise.all([
+      older.then(() => finished.push('older')),
+      newer.then(() => finished.push('newer')),
+    ]);
+    // The first had already started, so it finishes first.
+    expect(finished).toEqual(['older', 'newer']);
   }, 30_000);
 });

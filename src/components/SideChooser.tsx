@@ -2,7 +2,7 @@ import { useTheme } from '@reactive/silk-native';
 import { StyleSheet, View } from 'react-native';
 
 import { COLORS, type Color, colorName } from '@/game/replay';
-import { pieceColors } from '@/theme/theme';
+import { pieceColors } from '@/theme/pieceColors';
 
 import { PillChoice } from './PillChoice';
 

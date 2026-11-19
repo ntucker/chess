@@ -53,6 +53,11 @@ cg-board square.move-dest:hover,
 cg-board square.move-dest.hover {
   background: rgba(var(--gold), 0.45);
 }
+/* The last move's piece, lit in its label's color (see glow in Board.tsx). */
+cg-board piece.glow {
+  filter: drop-shadow(0 0 2px var(--glow)) drop-shadow(0 0 6px var(--glow)) drop-shadow(0 0 6px var(--glow));
+}
+
 cg-board square.check {
   background: radial-gradient(
     ellipse at center,

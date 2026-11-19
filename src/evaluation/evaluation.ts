@@ -1,3 +1,5 @@
+import type { GameResult } from '@/game/replay';
+
 /** How a position stands, from White's side. */
 export interface Evaluation {
   /** White's expected score: 0 if Black wins, 0.5 if even, 1 if White wins. */
@@ -9,6 +11,13 @@ export interface Evaluation {
    * negative when Black does, 0 when the side to move is already mated.
    */
   readonly mate?: number;
+  /** The move the engine would play here (UCI), when it names one; Maia's value head doesn't. */
+  readonly best?: string;
+}
+
+/** How a finished game stands: the winner scores 1, a draw 0.5 each. */
+export function resultEvaluation({ winner }: GameResult): Evaluation {
+  return { score: winner === 'white' ? 1 : winner === 'black' ? 0 : 0.5, pawns: 0 };
 }
 
 /** The engines that can judge positions for the evaluation bar. */

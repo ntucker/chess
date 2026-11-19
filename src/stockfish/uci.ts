@@ -24,6 +24,15 @@ export function parseScore(line: string): Score | undefined {
 }
 
 /**
+ * The move a `bestmove` line names (UCI), or undefined when there is none
+ * because the game is over (`bestmove (none)`).
+ */
+export function parseBestMove(line: string): string | undefined {
+  const move = line.split(' ')[1];
+  return move && move !== '(none)' ? move : undefined;
+}
+
+/**
  * The commands that set up the position after `line` (UCI moves from the
  * starting position, castling as the king's two-square move, `e1g1`, which is
  * how Stockfish writes it in standard chess).

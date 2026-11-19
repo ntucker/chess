@@ -6,9 +6,10 @@ import Animated, { type CSSTransitionTimingFunction, cubicBezier } from 'react-n
 
 import { type Color, colorName, type GameResult, lastPosition, opposite } from '@/game/replay';
 import { useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
-import type { Evaluation, EvaluationEngine } from '@/evaluation/evaluation';
+import { type Evaluation, type EvaluationEngine, resultEvaluation } from '@/evaluation/evaluation';
 import { getEvaluation } from '@/resources/evaluation';
-import { fonts, pieceColors } from '@/theme/theme';
+import { pieceColors } from '@/theme/pieceColors';
+import { fonts } from '@/theme/theme';
 
 interface Props {
   /** The moves (UCI) that reach the position on the board. */
@@ -64,14 +65,14 @@ function EvaluatedBar({
   const judge = useDeferredValue<EvaluationEngine | null>(engine, null);
   const moves = useDeferredValue<string | null>(position, null);
   const shown = moves === null ? null : moves ? moves.split(' ') : [];
+  // A finished game reads as its result (1-0, ½) rather than an advantage,
+  // drawn at once rather than waiting on a fetch.
   const result = shown && lastPosition(shown).result;
   // Null, which skips the fetch, on the first render (nothing deferred yet)
   // and once the game is over.
   const fetchArgs = judge && shown && !result ? ([judge, shown] as const) : null;
   const evaluation = useSuspense(getEvaluation, ...(fetchArgs ?? [null]));
-  const reading = result
-    ? resultReading(result)
-    : evaluation && evaluationReading(evaluation);
+  const reading = result ? resultReading(result) : evaluation && evaluationReading(evaluation);
   return <Bar orientation={orientation} style={style} {...reading} />;
 }
 
@@ -103,10 +104,12 @@ function evaluationReading({ score, pawns, mate }: Evaluation): Reading {
   return { score, label, leader, description: `${colorName(leader)} is ahead by ${label} pawns` };
 }
 
-function resultReading({ winner }: GameResult): Reading {
-  if (!winner) return { score: 0.5, label: '½', leader: 'white', description: 'Drawn' };
+function resultReading(result: GameResult): Reading {
+  const { winner } = result;
+  const { score } = resultEvaluation(result);
+  if (!winner) return { score, label: '½', leader: 'white', description: 'Drawn' };
   return {
-    score: winner === 'white' ? 1 : 0,
+    score,
     label: winner === 'white' ? '1-0' : '0-1',
     leader: winner,
     description: `${colorName(winner)} won`,

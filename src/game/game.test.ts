@@ -96,6 +96,17 @@ describe('answers from Maia that come too late', () => {
 });
 
 describe('gameReducer', () => {
+  // useGame starts nothing (no Maia request, no judging) for an action that
+  // returns the same state, so these must not copy it.
+  it('returns the same state for a late answer or an illegal move', () => {
+    const replaced = play(white, e4, { type: 'goto', ply: 0 }, { type: 'move', uci: 'd2d4' });
+    expect(gameReducer(replaced, { type: 'reply', game: 1, after: ['e2e4'], uci: 'e7e5' })).toBe(
+      replaced,
+    );
+    const started = play(white);
+    expect(gameReducer(started, { type: 'move', uci: 'e2e5' })).toBe(started);
+  });
+
   it('retries the line that failed', () => {
     const error = new Error('down');
     const failed = play(white, e4, { type: 'failed', game: 1, after: ['e2e4'], error });
@@ -120,5 +131,52 @@ describe('gameReducer', () => {
     const state = play(white, e4);
     expect(gameReducer(state, { type: 'goto', ply: -3 }).ply).toBe(0);
     expect(gameReducer(state, { type: 'goto', ply: 9 }).ply).toBe(1);
+  });
+});
+
+describe('move labels', () => {
+  const e5: GameAction = { type: 'reply', game: 1, after: ['e2e4'], uci: 'e7e5' };
+
+  it('labels each move as its judgement comes, in any order', () => {
+    const state = play(
+      white,
+      e4,
+      e5,
+      { type: 'judged', game: 1, line: ['e2e4', 'e7e5'], quality: 'good' },
+      { type: 'judged', game: 1, line: ['e2e4'], quality: 'best' },
+    );
+    expect(state.qualities).toEqual(['best', 'good']);
+  });
+
+  it('drops the labels of moves the player took back, and keeps the rest', () => {
+    const judged = (line: string[]): GameAction => ({ type: 'judged', game: 1, line, quality: 'good' });
+    const state = play(
+      white,
+      e4,
+      e5,
+      { type: 'move', uci: 'g1f3' },
+      judged(['e2e4']),
+      judged(['e2e4', 'e7e5']),
+      judged(['e2e4', 'e7e5', 'g1f3']),
+      { type: 'goto', ply: 2 },
+      { type: 'move', uci: 'd2d4' },
+    );
+    expect(state).toMatchObject({ line: ['e2e4', 'e7e5', 'd2d4'], qualities: ['good', 'good'] });
+  });
+
+  it('drops a label for a move no longer played, or from an earlier game', () => {
+    const replaced = play(white, e4, { type: 'goto', ply: 0 }, { type: 'move', uci: 'd2d4' });
+    expect(
+      gameReducer(replaced, { type: 'judged', game: 1, line: ['e2e4'], quality: 'blunder' }),
+    ).toBe(replaced);
+    const next = play(white, e4, white, e4);
+    expect(gameReducer(next, { type: 'judged', game: 1, line: ['e2e4'], quality: 'blunder' })).toBe(
+      next,
+    );
+  });
+
+  it('starts each game with none', () => {
+    const state = play(white, e4, { type: 'judged', game: 1, line: ['e2e4'], quality: 'best' }, white);
+    expect(state.qualities).toEqual([]);
   });
 });
