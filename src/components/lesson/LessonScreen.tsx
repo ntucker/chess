@@ -226,6 +226,7 @@ function describeStatus(
             detail:
               'This run had a slip or a take-back. Go back to your first move and play it through clean.',
           };
+  // An `end` place is always a line end the headline tells (see above).
   if (view.place === 'beyond')
     return {
       eyebrow,
