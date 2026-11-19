@@ -1,5 +1,5 @@
-// localStorage on Android, where the app remembers its settings
-// (src/settings/SettingsProvider.tsx). The web has its own.
+// localStorage on Android, where the app remembers its settings and progress
+// (src/context/useRememberedReducer.ts). The web has its own.
 import 'expo-sqlite/localStorage/install';
 
 import { DataProvider } from '@data-client/react';
@@ -14,6 +14,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
+import { ProgressProvider } from '@/progress/ProgressProvider';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { StockfishWhileNeeded } from '@/stockfish/demand';
 import { StockfishHost } from '@/stockfish/StockfishHost';
@@ -35,12 +36,14 @@ export default function RootLayout() {
   return (
     <DataProvider>
       <SettingsProvider>
-        <SilkProvider theme={themes[colorScheme]}>
-          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-          <StockfishWhileNeeded host={<StockfishHost />}>
-            <Stack screenOptions={{ headerShown: false }} />
-          </StockfishWhileNeeded>
-        </SilkProvider>
+        <ProgressProvider>
+          <SilkProvider theme={themes[colorScheme]}>
+            <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+            <StockfishWhileNeeded host={<StockfishHost />}>
+              <Stack screenOptions={{ headerShown: false }} />
+            </StockfishWhileNeeded>
+          </SilkProvider>
+        </ProgressProvider>
       </SettingsProvider>
     </DataProvider>
   );

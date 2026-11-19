@@ -3,7 +3,7 @@
  * facts about the position on the board, what the learner points at (a
  * candidate, by its list row or a piece dragged onto its square, and a note
  * on the idea card), an idea playing back, the mode (Explore or Practice),
- * and the board. With auto play the learner moves their own side; with auto
+ * the learner's progress marks, and the board. With auto play the learner moves their own side; with auto
  * play off, either.
  */
 import { useController } from '@data-client/react';
@@ -15,6 +15,7 @@ import type { Drag } from '@/board/pointer';
 import type { BoardProps } from '@/components/Board';
 import { dropMove, parsePositionKey } from '@/game/replay';
 import { useGame } from '@/game/useGame';
+import { useLessonProgress, useProgressDispatch } from '@/progress/ProgressProvider';
 import { gameOpponent } from '@/resources/opponent';
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNeedsStockfish } from '@/stockfish/demand';
@@ -23,6 +24,7 @@ import { boardPress, lessonBoard } from './board';
 import { ideaPlayback } from './drawings';
 import { guidance, type LessonMode, notePlayback, type PlayedBack } from './guidance';
 import type { Lesson, Note, PositionKey, Uci } from './lesson';
+import { earnedMark, rowMarks } from './marks';
 import { lessonOpponent } from './opponent';
 import { beforeSideMoves } from './practice';
 import { initialScreen, screenReducer } from './screen';
@@ -90,6 +92,17 @@ export function useLesson(lesson: Lesson) {
   const stale = (at?: PositionKey) => at !== undefined && at !== key;
   if (stale(peek?.key) || stale(rareKey)) dispatch({ type: 'board', key });
   const rareShown = rareKey === key;
+
+  // Progress: the board's position earns its mark once it shows, and the
+  // candidate rows show what is earned below them.
+  const progress = useLessonProgress(lesson.id);
+  const record = useProgressDispatch();
+  const earned = earnedMark(view.place, modeState);
+  useEffect(() => {
+    if (earned) record({ type: 'marked', lesson: lesson.id, mark: earned, key });
+  }, [earned, key, lesson.id, record]);
+  const marks = useMemo(() => rowMarks(lesson, progress, view), [lesson, progress, view]);
+
   const here = peek?.key === key ? peek : undefined;
   const playing = here?.kind === 'play' ? here : undefined;
   // A playback plays in its candidate's position, wherever the pointer goes.
@@ -195,6 +208,8 @@ export function useLesson(lesson: Lesson) {
     /** The learner chooses Explore or Practice. */
     chooseMode: (mode: LessonMode) =>
       dispatch({ type: 'modeChosen', mode, untouched: !game.started }),
+    /** Each candidate row's progress mark, by its move (`rowMarks`). */
+    marks,
     /** The note pointed at on the idea card. */
     pointedNote: shown.pointed,
     /** The candidate list shows its rare rows (`Guidance.rare`). */
