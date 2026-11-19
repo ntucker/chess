@@ -31,8 +31,10 @@ describe('lessonView', () => {
   it("ends a guide line where the guide's move leads off the file, as the shipped lessons do", () => {
     const lesson = readShippedLesson('caro-kann');
     const line: string[] = [];
-    for (let key = lineKeys(line).at(-1)!; lesson.positions[key]; key = lineKeys(line).at(-1)!) {
-      line.push(lesson.positions[key].moves[0].uci);
+    let entry = lesson.positions[lineKeys(line).at(-1)!];
+    while (entry) {
+      line.push(entry.moves[0].uci);
+      entry = lesson.positions[lineKeys(line).at(-1)!];
     }
     const at = (ply: number) => lessonView({ lesson, line, ply, opponent: 1500 });
     expect(at(line.length)).toMatchObject({ place: 'end', lineEnd: line.length });

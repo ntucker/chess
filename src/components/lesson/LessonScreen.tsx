@@ -80,6 +80,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
     thinking: game.thinking,
     viewing: !game.atLatest,
     auto,
+    lineEnded: guidance.lineEnded,
     practice:
       modeState.mode === 'practice' ? { clean: modeState.clean, verdict: game.quality } : undefined,
   });
@@ -189,6 +190,8 @@ interface StatusInput {
   readonly viewing: boolean;
   /** The opponent replies by itself; off, the learner picks its move. */
   readonly auto: boolean;
+  /** The headline tells of a guide line's end (`Guidance.lineEnded`). */
+  readonly lineEnded: boolean;
   /** In Practice: whether the run is clean, and the label of the move the board shows. */
   readonly practice?: { readonly clean: boolean; readonly verdict?: MoveQuality };
 }
@@ -199,12 +202,12 @@ interface StatusInput {
  */
 function describeStatus(
   view: LessonView,
-  { title, rival, engine, thinking, viewing, auto, practice }: StatusInput,
+  { title, rival, engine, thinking, viewing, auto, lineEnded, practice }: StatusInput,
 ) {
   const eyebrow = view.variation.map(({ name }) => name).join(' · ') || title;
   // Beyond the guide on "I choose", nobody replies: the learner moves both sides.
   const playOn = auto ? `play on against ${engine}` : 'play on, moving both sides';
-  if (atLineEnd(view))
+  if (lineEnded)
     return !practice
       ? {
           eyebrow,
@@ -223,7 +226,7 @@ function describeStatus(
             detail:
               'This run had a slip or a take-back. Go back to your first move and play it through clean.',
           };
-  if (view.place !== 'inside')
+  if (view.place === 'beyond')
     return {
       eyebrow,
       title: 'Off the guide.',
@@ -251,15 +254,6 @@ function describeStatus(
       ? 'Point at a reply to see what it aims for.'
       : 'Point at a reply to see what it aims for, then play it.',
   };
-}
-
-/**
- * Whether the headline tells of a guide line's end: at it, and at the
- * learner's turn right after it, so an opponent playing on by itself doesn't
- * take the news away at once.
- */
-function atLineEnd({ lineEnd, ply, learnerToMove }: LessonView): boolean {
-  return lineEnd !== undefined && (ply === lineEnd || (ply === lineEnd + 1 && learnerToMove));
 }
 
 /** The detail under "Your move.", by mode and whether an earlier move is shown. */

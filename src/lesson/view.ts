@@ -192,7 +192,10 @@ function arrivalNotes(
   return cardNotes(lesson, guideMoves[ply - 1], keys[ply - 1], keys[ply]);
 }
 
-/** A trap lands once its first two moves are played: the tempting move and the punishing reply. */
+/**
+ * A trap lands once its first two moves are played, the tempting move and
+ * the punishing reply; a one-move trap at its only move.
+ */
 const LANDING_MOVES = 2;
 
 /**

@@ -109,8 +109,10 @@ export interface Guidance {
   readonly best?: Uci;
   /** Stockfish's top three, listed only beyond the guide. */
   readonly top: readonly Uci[];
-  /** A trap the line fell into, while its card shows (see `trapShown`). */
+  /** A trap the line fell into, while its card shows (see `newsShown`). */
   readonly trap?: LandedTrap;
+  /** The line has reached a guide line's end, and the headline tells it (see `newsShown`). */
+  readonly lineEnded: boolean;
 }
 
 export function guidance(input: GuidanceInput): Guidance {
@@ -135,7 +137,10 @@ export function guidance(input: GuidanceInput): Guidance {
     idea.type === 'trap' ? switches.showTraps : !explore || switches.showIdeas;
   const ideas = notes.flatMap((shown) => noteIdeas(shown, allowed));
   const candidates = choices ? view.candidates : [];
-  const trap = view.trap && trapShown(view, view.trap) ? view.trap : undefined;
+  const trap =
+    view.trap && newsShown(view, view.trap.ply + view.trap.trap.moves.length)
+      ? view.trap
+      : undefined;
   const playable = [
     ...ideas.filter(playsBack),
     ...(trap ? [{ idea: trap.trap, at: trap.note.after }] : []),
@@ -166,6 +171,7 @@ export function guidance(input: GuidanceInput): Guidance {
     best: view.candidates.some(({ move }) => move.uci === best) ? undefined : best,
     top: explore && view.place !== 'inside' ? (engine?.top ?? []) : [],
     trap,
+    lineEnded: view.lineEnd !== undefined && newsShown(view, view.lineEnd),
   };
 }
 
@@ -233,13 +239,14 @@ const beforeMove = ({ note, before }: ShownNote, showTraps: boolean) =>
   hasTrap(note) ? showTraps : before !== undefined;
 
 /**
- * Whether the card for a trap fallen into still shows: while the board is
- * within the trap's moves, and at the learner's turn right after them, so an
- * opponent's reply on Auto doesn't take it away before the learner reads it.
+ * Whether news that comes with the line's move `ply` (a trap's last move, a
+ * guide line's end) still shows: up to that move, and at the learner's turn
+ * right after it, so an opponent's reply on Auto doesn't take it away before
+ * the learner reads it.
  */
-function trapShown(view: LessonView, trap: LandedTrap): boolean {
-  const past = view.ply - trap.ply - trap.trap.moves.length;
-  return past <= 0 || (past === 1 && view.learnerToMove);
+function newsShown(view: LessonView, ply: number): boolean {
+  const movesAfter = view.ply - ply;
+  return movesAfter <= 0 || (movesAfter === 1 && view.learnerToMove);
 }
 
 /** In Practice with traps hidden, a note that holds a trap stays off the card. */

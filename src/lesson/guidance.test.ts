@@ -378,6 +378,16 @@ describe('guidance', () => {
     });
   });
 
+  describe('lineEnded', () => {
+    it("tells of a guide line's end there, and at the learner's turn right after it", () => {
+      const end = [...ADVANCE, 'Bf5', 'Nf3', 'e6', 'Be2', 'c5', 'O-O', 'Nc6'];
+      expect(shown(end.slice(0, -1), 'practice').lineEnded).toBe(false);
+      expect(shown(end, 'practice').lineEnded).toBe(true);
+      expect(shown([...end, 'h3'], 'practice').lineEnded).toBe(true);
+      expect(shown([...end, 'h3', 'a6'], 'practice').lineEnded).toBe(false);
+    });
+  });
+
   describe('notePlayback', () => {
     it("plays a note's trap back while traps are shown, and not otherwise", () => {
       const view = sampleView(TRAP);
