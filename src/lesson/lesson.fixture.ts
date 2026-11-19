@@ -86,8 +86,13 @@ export const TRAP_PUNISHED = [
   'Kxd1',
 ];
 
-/** The sample with a rare reply at `MAIN`: f3, 1 game of 2,751 in the 1400 band. */
+/**
+ * The sample with five more replies at `MAIN`, making its list long: f3
+ * (fifth most played, so listed), then h3, a3, g3 and b3, which are rare.
+ */
 export const WITH_RARE = withMoves(SAMPLE, keyAfter(...MAIN), (moves) => [
   ...moves,
-  { uci: 'f2f3', games: [1, 1, 1, 1, 1] },
+  { uci: 'f2f3', games: [3, 3, 3, 3, 3] },
+  { uci: 'h2h3', games: [2, 2, 2, 2, 2] },
+  ...['a2a3', 'g2g3', 'b2b3'].map((uci) => ({ uci, games: [1, 1, 1, 1, 1] })),
 ]);

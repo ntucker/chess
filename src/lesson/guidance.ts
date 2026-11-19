@@ -26,9 +26,9 @@
  *   Practice, on any turn.
  * - While a note's idea plays back, the board is the playback's: nothing else
  *   is drawn, and the preview it started from stays.
- * - Rare candidates (`Candidate.rare`) are left off the list and the board's
- *   arrows, and Stockfish's best isn't tagged on one; only pointing at its
- *   piece or landing square shows it.
+ * - Rare candidates (`Candidate.rare`) are left off the list, which shows
+ *   them only when asked, and off the board's arrows; Stockfish's best isn't
+ *   tagged on one either. Only a preview of one draws it.
  *
  * guidance stays in lesson terms; lessonDrawings (./drawings.ts) turns it
  * into board shapes, and says which ideas draw nothing (`drawsOnBoard`).
@@ -80,8 +80,8 @@ export type ShownPlayback = ShownIdea & { readonly idea: PlayedBack };
 export interface Guidance {
   /** The candidate list. */
   readonly candidates: readonly Candidate[];
-  /** How many rare candidates the list leaves off. */
-  readonly rareCount: number;
+  /** The rare candidates, which the list shows only when asked. */
+  readonly rare: readonly Candidate[];
   /** The candidate to look at first (`mainCandidate`), drawn and listed as the main one. */
   readonly main?: Candidate;
   readonly preview?: Preview;
@@ -162,7 +162,7 @@ export function guidance(input: GuidanceInput): Guidance {
 
   return {
     candidates,
-    rareCount: withRare.length - candidates.length,
+    rare: withRare.filter(({ rare }) => rare),
     main: mainCandidate(candidates),
     preview,
     notes,

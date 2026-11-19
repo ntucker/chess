@@ -1,5 +1,5 @@
-import { Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
-import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef } from 'react';
+import { a11yState, Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
+import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { Uci } from '@/lesson/lesson';
@@ -11,6 +11,8 @@ import { toneColors } from '@/theme/drawingTones';
 
 interface Props {
   readonly candidates: readonly Candidate[];
+  /** Rare candidates, listed after the others only once the learner asks. */
+  readonly rare: readonly Candidate[];
   /** The candidate the board draws as the main one (see `candidateDrawings`). */
   readonly main?: Candidate;
   /** The row previewed on the board, whether its row or a board square is pointed at. */
@@ -26,31 +28,36 @@ interface Props {
    */
   readonly onPoint: (uci: Uci) => void;
   /**
-   * Keyboard focus moves on past the last row. The preview ends first, so the
-   * idea card focus lands in shows the position's own notes.
+   * The preview ends: keyboard focus moves on past the list, so the idea card
+   * focus lands in shows the position's own notes; or the rare row previewed
+   * is hidden.
    */
-  readonly onTabOut: () => void;
+  readonly onLeave: () => void;
 }
 
 /**
  * The guide's moves at the position on the board, one row each, most played
  * first. Pointing at a row previews its move on the board; pressing it plays
  * the move when it's the learner's to play. Each row's dot matches its arrow
- * on the board.
+ * on the board; a rare row's dot is hollow, since the board draws no arrow
+ * for it. A list resets to hiding its rare rows when it remounts.
  */
 export function CandidateList({
   candidates,
+  rare,
   main,
   pointed,
   leadsTo,
   playable,
   onPlay,
   onPoint,
-  onTabOut,
+  onLeave,
 }: Props) {
+  const [showRare, setShowRare] = useState(false);
+  const rows = showRare ? [...candidates, ...rare] : candidates;
   return (
     <Surface elevation="sunken" border="subtle" radius="md" style={styles.list}>
-      {candidates.map((candidate, index) => (
+      {rows.map((candidate, index) => (
         <Row
           key={candidate.move.uci}
           candidate={candidate}
@@ -58,16 +65,72 @@ export function CandidateList({
           pointed={candidate.move.uci === pointed}
           leadsTo={leadsTo(candidate)}
           // A lone move's share is always all of the games.
-          share={candidates.length > 1 ? candidate.share : undefined}
+          share={rows.length > 1 ? candidate.share : undefined}
           playable={playable}
           onPlay={onPlay}
           onPoint={onPoint}
-          onTabOut={index === candidates.length - 1 ? onTabOut : undefined}
+          onTabOut={!rare.length && index === rows.length - 1 ? onLeave : undefined}
         />
       ))}
+      {rare.length ? (
+        <RareToggle
+          count={rare.length}
+          shown={showRare}
+          onToggle={() => {
+            // A hidden row's preview would stay on the board with no row to show it.
+            if (showRare && rare.some(({ move }) => move.uci === pointed)) onLeave();
+            setShowRare(!showRare);
+          }}
+          onTabOut={onLeave}
+        />
+      ) : null}
     </Surface>
   );
 }
+
+/** The last row of a list with rare candidates: shows or hides them. */
+function RareToggle({
+  count,
+  shown,
+  onToggle,
+  onTabOut,
+}: {
+  readonly count: number;
+  readonly shown: boolean;
+  readonly onToggle: () => void;
+  readonly onTabOut: () => void;
+}) {
+  const { theme } = useTheme();
+  // Never singular: a list hides rare rows only when at least FEWEST_RARE are rare.
+  const label = shown ? 'Hide rarer replies' : `Show ${count} rarer replies`;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      {...a11yState({ expanded: shown })}
+      onPress={onToggle}
+      onKeyDown={tabOut(onTabOut)}
+      style={({ hovered, pressed }) => [
+        styles.row,
+        styles.toggle,
+        (hovered || pressed) && { backgroundColor: theme.semantic.color.tones.neutral.subtle },
+      ]}
+    >
+      <Text role="caption" tone="secondary">
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+/**
+ * A key handler calling `onTabOut` on a forward Tab, before the browser moves
+ * focus, so it lands among the notes shown next.
+ */
+const tabOut = (onTabOut?: () => void) => (event: unknown) => {
+  const { key, shiftKey } = event as ReactKeyboardEvent;
+  if (key === 'Tab' && !shiftKey) onTabOut?.();
+};
 
 /** How long the mouse rests on a row before it points at it. */
 const ROW_REST_MS = 150;
@@ -133,11 +196,7 @@ function Row({
         }, ROW_REST_MS);
       }}
       onPointerLeave={stopResting}
-      // Before the browser moves focus, so it lands among the notes shown next.
-      onKeyDown={(event: unknown) => {
-        const { key, shiftKey } = event as ReactKeyboardEvent;
-        if (key === 'Tab' && !shiftKey) onTabOut?.();
-      }}
+      onKeyDown={tabOut(onTabOut)}
       onFocus={point}
       style={({ pressed }) => [
         styles.row,
@@ -146,7 +205,12 @@ function Row({
         },
       ]}
     >
-      <View style={[styles.dot, { backgroundColor: tone }]} />
+      <View
+        style={[
+          styles.dot,
+          candidate.rare ? { borderWidth: 2, borderColor: tone } : { backgroundColor: tone },
+        ]}
+      />
       <View style={styles.move}>
         <View style={styles.title}>
           <Text role="body" style={styles.san}>
@@ -184,17 +248,23 @@ const BOOK_BADGE_SIZE = 16;
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;
 
+const ROW_INSET = 14;
+const ROW_GAP = 12;
+const DOT_SIZE = 10;
+
 const styles = StyleSheet.create({
   list: { overflow: 'hidden', paddingVertical: 4 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 14,
+    gap: ROW_GAP,
+    paddingHorizontal: ROW_INSET,
     paddingVertical: 8,
     outlineOffset: -2,
   },
-  dot: { width: 10, height: 10, borderRadius: 5 },
+  dot: { width: DOT_SIZE, height: DOT_SIZE, borderRadius: DOT_SIZE / 2 },
+  // Text lines up with the rows' moves, past the dot and its gap.
+  toggle: { paddingLeft: ROW_INSET + DOT_SIZE + ROW_GAP },
   move: { flex: 1, gap: 1 },
   title: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   san: { fontFamily: fonts.mono, fontSize: 17 },

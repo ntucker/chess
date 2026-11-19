@@ -329,21 +329,21 @@ describe('guidance', () => {
       expect(types(shownPreview.drawn)).toEqual(['plan']);
     });
 
-    it('leaves a rare move off the list and the board until its piece is pointed at', () => {
+    it('leaves rare moves off the list and the board until one is previewed', () => {
       const view = sampleView(MAIN, { lesson: WITH_RARE });
       const sans = (candidates: readonly Candidate[]) => candidates.map(({ san }) => san);
       const resting = guidance({ view, mode: 'explore', switches: ALL_ON });
-      expect(sans(resting.candidates)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2']);
-      expect(sans(resting.drawnCandidates)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2']);
-      expect(resting.rareCount).toBe(1);
-      const onPawn = preview(WITH_RARE, view, { at: 'square', square: 'f2' });
+      expect(sans(resting.candidates)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2', 'f3']);
+      expect(sans(resting.drawnCandidates)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2', 'f3']);
+      expect(sans(resting.rare)).toEqual(['h3', 'a3', 'g3', 'b3']);
+      const onPawn = preview(WITH_RARE, view, { at: 'square', square: 'h2' });
       const pointing = guidance({ view, mode: 'explore', switches: ALL_ON, preview: onPawn });
-      expect(sans(pointing.drawnCandidates)).toEqual(['f3']);
+      expect(sans(pointing.drawnCandidates)).toEqual(['h3']);
     });
 
     it("doesn't tag a rare move as Stockfish's best", () => {
       const view = sampleView(MAIN, { lesson: WITH_RARE });
-      const shown = guidance({ view, mode: 'explore', switches: ALL_ON, engine: { best: 'f2f3' } });
+      const shown = guidance({ view, mode: 'explore', switches: ALL_ON, engine: { best: 'h2h3' } });
       expect(shown.best).toBeUndefined();
     });
 

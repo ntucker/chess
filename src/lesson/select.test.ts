@@ -9,7 +9,9 @@ import { ADVANCE, keyAfter, MAIN, SAMPLE, uciLine, WITH_RARE, withMoves } from '
 import {
   bookMoves,
   candidates,
+  FEWEST_RARE,
   RARE_SHARE,
+  ALWAYS_LISTED,
   guideMove,
   guidePosition,
   lineKeys,
@@ -125,40 +127,57 @@ describe('candidates', () => {
         .filter(({ rare }) => rare)
         .map(({ move }) => move.uci);
 
-    it("marks a rarely played opponent's move rare", () => {
-      expect(ucis(WITH_RARE, key, 2)).toEqual(['e4e5', 'e4d5', 'b1c3', 'b1d2', 'f2f3']);
-      expect(rareOnes(WITH_RARE, key, 2)).toEqual(['f2f3']);
-    });
-
-    it('never marks a move that starts a trap the position shows', () => {
-      const trap: Idea = { type: 'trap', moves: ['f2f3', 'd5e4'], verdict: 'losesMaterial' };
-      const shown = withNotes(WITH_RARE, key, [{ text: 'f3 falls in.', ideas: [trap] }]);
-      expect(rareOnes(shown, key, 2)).toEqual([]);
-    });
-
-    it('puts rare moves after listed ones, even a less played trap start', () => {
-      const trap: Idea = { type: 'trap', moves: ['f2f3', 'd5e4'], verdict: 'losesMaterial' };
-      const shown = withNotes(WITH_RARE, key, [{ text: 'f3 falls in.', ideas: [trap] }]);
-      const both = withMoves(shown, key, (moves) => [
-        ...moves,
-        { uci: 'g2g4', games: [2, 2, 2, 2, 2] },
+    it("marks an opponent's move rare past the most played five", () => {
+      expect(ucis(WITH_RARE, key, 2)).toEqual([
+        'e4e5',
+        'e4d5',
+        'b1c3',
+        'b1d2',
+        'f2f3',
+        'h2h3',
+        'a2a3',
+        'g2g3',
+        'b2b3',
       ]);
-      expect(ucis(both, key, 2)).toEqual(['e4e5', 'e4d5', 'b1c3', 'b1d2', 'f2f3', 'g2g4']);
-      expect(rareOnes(both, key, 2)).toEqual(['g2g4']);
+      expect(rareOnes(WITH_RARE, key, 2)).toEqual(['h2h3', 'a2a3', 'g2g3', 'b2b3']);
+    });
+
+    it('marks rare moves only when at least FEWEST_RARE are rare', () => {
+      // The sample's four and f3 are listed; the rare moves follow.
+      const rareMoves = (n: number) =>
+        withMoves(WITH_RARE, key, (moves) => moves.slice(0, ALWAYS_LISTED + n));
+      expect(rareOnes(rareMoves(FEWEST_RARE - 1), key, 2)).toEqual([]);
+      expect(rareOnes(rareMoves(FEWEST_RARE), key, 2)).toEqual(['h2h3', 'a2a3', 'g2g3']);
+    });
+
+    it('never marks a move in a short list', () => {
+      const short = withMoves(SAMPLE, key, (moves) => [
+        ...moves,
+        { uci: 'f2f3', games: [1, 1, 1, 1, 1] },
+      ]);
+      expect(candidates(short, key, 2)).toHaveLength(ALWAYS_LISTED);
+      expect(rareOnes(short, key, 2)).toEqual([]);
+    });
+
+    it('never marks a move that starts a trap the position shows, and lists it before the rare ones', () => {
+      const trap: Idea = { type: 'trap', moves: ['a2a3', 'd5e4'], verdict: 'losesMaterial' };
+      const shown = withNotes(WITH_RARE, key, [{ text: 'a3 falls in.', ideas: [trap] }]);
+      expect(rareOnes(shown, key, 2)).toEqual(['h2h3', 'g2g3', 'b2b3']);
+      expect(ucis(shown, key, 2)[ALWAYS_LISTED]).toBe('a2a3');
     });
 
     it('never marks a move without counts', () => {
       expect(rareOnes(WITH_RARE, key, undefined)).toEqual([]);
     });
 
-    it('never marks the most played move, even when every move is rare', () => {
+    it('never marks the most played five, even when every move is rarely played', () => {
       const pos = parsePositionKey(key)!;
       const every = [...pos.allDests()].flatMap(([from, dests]) =>
         [...dests].map((to) => ({ uci: makeUci({ from, to }), games: [1, 1, 1, 1, 1] })),
       );
       expect(every.length).toBeGreaterThan(1 / RARE_SHARE);
       const allRare = withMoves(SAMPLE, key, () => every);
-      expect(rareOnes(allRare, key, 2)).toEqual(every.slice(1).map(({ uci }) => uci));
+      expect(rareOnes(allRare, key, 2)).toEqual(every.slice(ALWAYS_LISTED).map(({ uci }) => uci));
     });
 
     it("never marks the learner's moves, however rarely played", () => {
