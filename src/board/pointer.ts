@@ -16,7 +16,7 @@ export interface PointerReports<S extends string> {
 }
 
 /** A finger (or pen) on the board: where it went down, and whether it has held. */
-interface Touch {
+interface Finger {
   readonly id: number;
   readonly x: number;
   readonly y: number;
@@ -33,7 +33,7 @@ type PointerSource = Pick<GlobalEventHandlers, 'addEventListener' | 'removeEvent
  *
  * While a mouse button is down the hover doesn't change, so a drag never
  * starts or ends a preview halfway; the square under the mouse is reported
- * when the button comes up, wherever that is.
+ * just after the button comes up, wherever that is.
  */
 export function watchPointer<S extends string>(
   board: PointerSource,
@@ -43,7 +43,19 @@ export function watchPointer<S extends string>(
 ): () => void {
   let hovered: S | null = null;
   let pressing = false;
-  let touch: Touch | undefined;
+  let touch: Finger | undefined;
+  // Reports on release wait a turn, until chessground has handled the same
+  // release (its mouseup and touchend come after pointerup): a preview that
+  // starts or ends at once would change the position under a piece being
+  // dropped, and chessground would refuse the move.
+  const pending = new Set<ReturnType<typeof setTimeout>>();
+  const afterRelease = (send: () => void) => {
+    const timer = setTimeout(() => {
+      pending.delete(timer);
+      send();
+    }, 0);
+    pending.add(timer);
+  };
 
   const hover = (square: S | null) => {
     if (square === hovered) return;
@@ -53,7 +65,7 @@ export function watchPointer<S extends string>(
   const endTouch = () => {
     if (!touch) return;
     clearTimeout(touch.timer);
-    if (touch.held) report.hold(null);
+    if (touch.held) afterRelease(() => report.hold(null));
     touch = undefined;
   };
 
@@ -76,7 +88,7 @@ export function watchPointer<S extends string>(
     endTouch();
     const square = squareAt(event.clientX, event.clientY);
     if (!square) return;
-    const resting: Touch = { id: event.pointerId, x: event.clientX, y: event.clientY, held: false };
+    const resting: Finger = { id: event.pointerId, x: event.clientX, y: event.clientY, held: false };
     resting.timer = setTimeout(() => {
       resting.held = true;
       report.hold(square);
@@ -88,7 +100,8 @@ export function watchPointer<S extends string>(
     if (event.pointerType === 'mouse') {
       if (!pressing) return;
       pressing = false;
-      hover(squareAt(event.clientX, event.clientY) ?? null);
+      const square = squareAt(event.clientX, event.clientY) ?? null;
+      afterRelease(() => hover(square));
     } else if (touch && event.pointerId === touch.id) {
       endTouch();
     }
@@ -108,6 +121,9 @@ export function watchPointer<S extends string>(
     board.removeEventListener('pointerleave', onLeave);
     page.removeEventListener('pointerup', onUp);
     page.removeEventListener('pointercancel', onUp);
-    endTouch();
+    for (const timer of pending) clearTimeout(timer);
+    if (touch?.held) report.hold(null);
+    clearTimeout(touch?.timer);
+    touch = undefined;
   };
 }

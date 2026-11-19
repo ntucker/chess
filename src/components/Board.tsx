@@ -13,9 +13,9 @@ import type { Config } from '@lichess-org/chessground/config';
 import type { DrawBrushes } from '@lichess-org/chessground/draw';
 import type { Key, PieceNode } from '@lichess-org/chessground/types';
 import type { DOMProps } from 'expo/dom';
-import { type CSSProperties, useEffect, useEffectEvent, useMemo, useRef } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef } from 'react';
 
-import type { Drawing, Square } from '@/board/drawing';
+import { type Drawing, type Square, TONES } from '@/board/drawing';
 import { type BoardMarks, boardMarks, toneBrushes } from '@/board/marks';
 import { watchPointer } from '@/board/pointer';
 import type { Color } from '@/game/replay';
@@ -47,8 +47,9 @@ export interface BoardProps {
   readonly onHold?: (square: Square | null) => void;
   /**
    * A square was clicked or tapped, empty or not, including the press that
-   * starts a drag and the one that ends a move. While a move is previewed its
-   * piece has left its square, so this is how a click there can play it.
+   * starts a drag and the one that ends a move. While a move is previewed the
+   * board shows it played, so chessground can't play it; a click on its
+   * square comes here instead.
    */
   readonly onPress?: (square: Square) => void;
   readonly dom?: DOMProps;
@@ -103,13 +104,25 @@ export default function Board({
     [drawingsKey, orientation],
   );
 
+  // Chessground reuses piece elements as pieces move, so the lit and faded
+  // pieces are marked again whenever the pieces or the drawings change: after
+  // new props, and after a move made on the board. Chessground draws on a
+  // frame it asked for first, so this frame comes after the draw.
+  const frame = useRef(0);
+  const markAfterDraw = useEffectEvent(() => {
+    cancelAnimationFrame(frame.current);
+    frame.current = requestAnimationFrame(() => {
+      if (api.current) markPieces(api.current, marks);
+    });
+  });
+
   useEffect(() => {
     const target = element.current;
     if (!target) return;
     const board = Chessground(target, {
       ...position,
       premovable: { enabled: false },
-      events: { select: (square) => handlePress(square as Square) },
+      events: { select: (square) => handlePress(square as Square), change: () => markAfterDraw() },
       movable: { ...position.movable, events: { after: (from, to) => handleMove(from, to) } },
       // Added to chessground's own brushes, which it keeps.
       drawable: { brushes: toneBrushes as DrawBrushes },
@@ -122,6 +135,7 @@ export default function Board({
       { hover: (square) => handleHover(square), hold: (square) => handleHold(square) },
     );
     return () => {
+      cancelAnimationFrame(frame.current);
       stopWatching();
       board.destroy();
       api.current = null;
@@ -138,29 +152,22 @@ export default function Board({
     api.current?.set({ drawable: { autoShapes: marks.shapes }, highlight: { custom: marks.tints } });
   }, [marks]);
 
-  // Chessground reuses piece elements as pieces move, so the lit and faded
-  // pieces are marked again after every draw. Chessground draws a new
-  // position in set() or on a frame it asked for first, so this frame comes
-  // after the draw.
-  useEffect(() => {
-    const board = api.current;
-    if (!board) return;
-    const frame = requestAnimationFrame(() => markPieces(board, marks));
-    return () => cancelAnimationFrame(frame);
-  });
+  useEffect(() => markAfterDraw(), [position, marks]);
 
   return (
     // Square by its width, since the web view's page has no height to fill.
-    <div style={{ width: '100%', aspectRatio: '1 / 1', touchAction: 'none', ...TONE_VARIABLES }}>
+    <div style={{ width: '100%', aspectRatio: '1 / 1', touchAction: 'none' }}>
+      <style>{TINT_CSS}</style>
       <div ref={element} style={{ width: '100%', height: '100%' }} />
     </div>
   );
 }
 
-/** Each tone's color as a CSS variable, for the tints in Board.css. */
-const TONE_VARIABLES = Object.fromEntries(
-  Object.entries(toneColors).map(([tone, color]) => [`--tone-${tone}`, color]),
-) as CSSProperties;
+/** A tinted square in each tone (marks.ts names the classes), under its piece. */
+const TINT_CSS = TONES.map(
+  (tone) =>
+    `cg-board square.tint-${tone} { background-color: color-mix(in srgb, ${toneColors[tone]} 40%, transparent); }`,
+).join('\n');
 
 /**
  * Lights and fades pieces. Chessground has no way to style one piece, so this
@@ -168,9 +175,11 @@ const TONE_VARIABLES = Object.fromEntries(
  */
 function markPieces(board: Api, { glows, unfaded }: BoardMarks) {
   for (const piece of board.state.dom.elements.board.querySelectorAll<PieceNode>('piece')) {
+    // A captured piece on its way out keeps neither.
     const glow = piece.cgFading ? undefined : glows.get(piece.cgKey);
+    const faded = !piece.cgFading && unfaded !== undefined && !unfaded.has(piece.cgKey);
     piece.classList.toggle('glow', glow !== undefined);
     if (glow) piece.style.setProperty('--glow', glow);
-    piece.classList.toggle('faded', unfaded !== undefined && !piece.cgFading && !unfaded.has(piece.cgKey));
+    piece.classList.toggle('faded', faded);
   }
 }

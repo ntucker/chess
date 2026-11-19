@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import { replay } from '@/game/replay';
 
-import type { DrawingKind } from './drawing';
+import type { Drawing } from './drawing';
 import { drawingExamples } from './examples';
 
 describe('drawingExamples', () => {
@@ -14,7 +14,7 @@ describe('drawingExamples', () => {
 
   it('shows every drawing kind', () => {
     const kinds = new Set(drawingExamples.flatMap(({ drawings }) => drawings.map((drawing) => drawing.kind)));
-    const all: Record<DrawingKind, true> = {
+    const all: Record<Drawing['kind'], true> = {
       glow: true,
       arrow: true,
       line: true,

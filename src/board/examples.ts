@@ -119,8 +119,8 @@ export const drawingExamples: readonly DrawingExample[] = [
     line: ['e2e4', 'c7c6', 'd2d4', 'd7d5', 'e4d5', 'c6d5'],
     drawings: [
       { kind: 'fade', except: ['a2', 'b2', 'c2', 'd4', 'f2', 'g2', 'h2', 'a7', 'b7', 'd5', 'e7', 'f7', 'g7', 'h7'] },
-      { kind: 'tint', squares: ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8'], tone: 'other' },
-      { kind: 'tint', squares: ['e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7', 'e8'], tone: 'main' },
+      { kind: 'tint', squares: ['c3', 'c4', 'c5', 'c6', 'c7'], tone: 'other' },
+      { kind: 'tint', squares: ['e2', 'e3', 'e4', 'e5', 'e6'], tone: 'main' },
     ],
   },
   {

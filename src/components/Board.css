@@ -56,7 +56,7 @@ cg-board square.move-dest.hover {
 
 /*
  * Drawings (src/board/drawing.ts). Pieces are lit and faded by markPieces in
- * Board.tsx; tone colors arrive as --tone-* variables from drawingTones.ts.
+ * Board.tsx, which also writes the tinted squares' rules from drawingTones.ts.
  */
 cg-board piece.glow {
   filter: drop-shadow(0 0 2px var(--glow)) drop-shadow(0 0 6px var(--glow)) drop-shadow(0 0 6px var(--glow));
@@ -69,25 +69,11 @@ cg-board piece.faded {
 .cg-wrap cg-auto-pieces piece {
   opacity: 0.4;
 }
-cg-board square.tint-main {
-  background-color: color-mix(in srgb, var(--tone-main) 40%, transparent);
-}
-cg-board square.tint-other {
-  background-color: color-mix(in srgb, var(--tone-other) 40%, transparent);
-}
-cg-board square.tint-engine {
-  background-color: color-mix(in srgb, var(--tone-engine) 40%, transparent);
-}
-cg-board square.tint-plan {
-  background-color: color-mix(in srgb, var(--tone-plan) 40%, transparent);
-}
-cg-board square.tint-danger {
-  background-color: color-mix(in srgb, var(--tone-danger) 40%, transparent);
-}
-cg-board square.tint-target {
-  background-color: color-mix(in srgb, var(--tone-target) 40%, transparent);
-}
-/* Chessground can't dash an arrow; its dashed brushes are named *-dashed (marks.ts). */
+/*
+ * Chessground can't dash an arrow; its dashed brushes are named *-dashed
+ * (marks.ts). This finds them by the arrowhead chessground names after the
+ * brush (url(#arrowhead-<brush>)), so check dashed arrows after upgrading it.
+ */
 .cg-shapes line[marker-end*='-dashed)'] {
   stroke-dasharray: 0.14 0.34;
 }

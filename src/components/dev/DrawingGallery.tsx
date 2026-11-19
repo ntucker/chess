@@ -8,7 +8,7 @@ import { type DrawingExample, drawingExamples } from '@/board/examples';
 import Board from '@/components/Board';
 import { Eyebrow } from '@/components/Eyebrow';
 import { lastPosition, toUci } from '@/game/replay';
-import { spotlight } from '@/theme/theme';
+import { fonts, spotlight } from '@/theme/theme';
 
 /**
  * Every drawing the board can make, one board per idea type, and a board that
@@ -110,9 +110,10 @@ const from = (uci: string) => uci.slice(0, 2) as Square;
 const to = (uci: string) => uci.slice(2, 4) as Square;
 
 /**
- * A move previewed as if played, with a ghost where its piece stood: the
- * board slides the piece there and back. Hover (or press and hold) a
- * candidate's piece or its square to preview it; click there to play it.
+ * Pointing at a candidate's piece shows its arrow and idea; the piece stays
+ * put, so it can still be dragged. Pointing at where it goes previews the
+ * move as played: the board slides the piece there, with a ghost where it
+ * stood, and back when the pointer leaves. A click there plays it.
  */
 function PreviewDemo() {
   const [line, setLine] = useState(PREVIEW_LINE);
@@ -122,28 +123,30 @@ function PreviewDemo() {
 
   const atStart = line.length === PREVIEW_LINE.length;
   const pointer = held ?? hovered;
-  const previewed = atStart
-    ? CANDIDATES.find(({ uci }) => pointer === from(uci) || pointer === to(uci))
-    : undefined;
+  const candidates = atStart ? CANDIDATES : [];
+  const pointed = candidates.find(({ uci }) => pointer === from(uci));
+  const previewed = candidates.find(({ uci }) => pointer === to(uci));
   const position = lastPosition(previewed ? [...line, previewed.uci] : line);
+  const candidateMarks = (shown: readonly Candidate[]) =>
+    shown.flatMap(({ uci, tone }): Drawing[] => [
+      { kind: 'glow', square: from(uci), tone },
+      { kind: 'arrow', from: from(uci), to: to(uci), tone },
+    ]);
   const drawings: Drawing[] = previewed
     ? [
         { kind: 'ghost', square: from(previewed.uci), piece: { role: 'pawn', color: 'black' } },
         { kind: 'glow', square: to(previewed.uci), tone: previewed.tone },
         ...previewed.idea,
       ]
-    : atStart
-      ? CANDIDATES.flatMap(({ uci, tone }): Drawing[] => [
-          { kind: 'glow', square: from(uci), tone },
-          { kind: 'arrow', from: from(uci), to: to(uci), tone },
-        ])
-      : [];
+    : pointed
+      ? [...candidateMarks([pointed]), ...pointed.idea]
+      : candidateMarks(candidates);
 
+  // While a move is previewed its piece stands on the square pointed at, so
+  // a press there plays it.
   const press = (square: Square) => {
     setPressed(square);
-    if (previewed && (square === from(previewed.uci) || square === to(previewed.uci))) {
-      setLine([...line, previewed.uci]);
-    }
+    if (previewed && square === to(previewed.uci)) setLine([...line, previewed.uci]);
   };
 
   return (
@@ -171,14 +174,15 @@ function PreviewDemo() {
         <Stack gap="1">
           <Eyebrow>Preview</Eyebrow>
           <Text role="body">
-            Hover a glowing pawn or where it goes, or press and hold it on a touch screen. Click
-            to play the move.
+            Hover a glowing pawn to see its idea, or the square it goes to to see the move
+            played. Press and hold does the same on a touch screen. Click or drag to play.
           </Text>
         </Stack>
         <Stack gap="2">
           <Reading label="Mouse over" value={hovered} />
           <Reading label="Finger holds" value={held} />
           <Reading label="Last press" value={pressed} />
+          <Reading label="Pointing at" value={pointed?.uci} />
           <Reading label="Previewing" value={previewed?.uci} />
         </Stack>
         <Inline>
@@ -194,9 +198,9 @@ function PreviewDemo() {
 function Reading({ label, value }: { readonly label: string; readonly value?: string | null }) {
   return (
     <Inline gap="3" align="center">
-      <Text role="caption" tone="secondary" style={styles.readingLabel}>
-        {label}
-      </Text>
+      <View style={styles.readingLabel}>
+        <Eyebrow>{label}</Eyebrow>
+      </View>
       <Text role="bodySm" style={styles.mono}>
         {value ?? '—'}
       </Text>
@@ -225,6 +229,6 @@ const styles = StyleSheet.create({
   preview: { flexDirection: 'row', flexWrap: 'wrap', gap: 32, alignItems: 'stretch' },
   previewBoard: { flexGrow: 1, flexShrink: 1, flexBasis: 300, maxWidth: 460 },
   previewPanel: { flexGrow: 1, flexShrink: 1, flexBasis: 260, maxWidth: 400 },
-  readingLabel: { width: 112, textTransform: 'uppercase', letterSpacing: 1.2 },
-  mono: { fontFamily: 'DMMono_400Regular' },
+  readingLabel: { width: 128 },
+  mono: { fontFamily: fonts.mono },
 });

@@ -28,6 +28,16 @@ function setup() {
   return { board, page, hover, hold, stop, fire };
 }
 
+beforeEach(() => {
+  jest.useFakeTimers();
+});
+afterEach(() => {
+  jest.useRealTimers();
+});
+
+/** Lets reports made on release through: they wait a turn for chessground. */
+const afterRelease = () => jest.advanceTimersByTime(0);
+
 describe('watchPointer: mouse', () => {
   it('reports each new square under the mouse once, and null when it leaves', () => {
     const { board, hover, fire } = setup();
@@ -38,13 +48,15 @@ describe('watchPointer: mouse', () => {
     expect(hover.mock.calls).toEqual([['a1'], ['b1'], [null]]);
   });
 
-  it("doesn't change the hover while a button is down, then reports where it came up", () => {
+  it("doesn't change the hover while a button is down, then reports where it came up, after the drop", () => {
     const { board, page, hover, fire } = setup();
     fire(board, 'pointermove', 5);
     fire(board, 'pointerdown', 5, { buttons: 1 });
     fire(board, 'pointermove', 25, { buttons: 1 });
     fire(board, 'pointerleave', 95, { buttons: 1 });
     fire(page, 'pointerup', 35);
+    expect(hover.mock.calls).toEqual([['a1']]);
+    afterRelease();
     expect(hover.mock.calls).toEqual([['a1'], ['d1']]);
   });
 
@@ -53,6 +65,7 @@ describe('watchPointer: mouse', () => {
     fire(board, 'pointermove', 5);
     fire(board, 'pointerdown', 5, { buttons: 1 });
     fire(page, 'pointerup', 200);
+    afterRelease();
     expect(hover.mock.calls).toEqual([['a1'], [null]]);
   });
 
@@ -64,21 +77,13 @@ describe('watchPointer: mouse', () => {
 
   it('never reports a hold', () => {
     const { board, hold, fire } = setup();
-    jest.useFakeTimers();
     fire(board, 'pointerdown', 5, { buttons: 1 });
     jest.advanceTimersByTime(HOLD_MS * 2);
     expect(hold).not.toHaveBeenCalled();
-    jest.useRealTimers();
   });
 });
 
 describe('watchPointer: touch', () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-  });
-  afterEach(() => {
-    jest.useRealTimers();
-  });
   const finger = { pointerType: 'touch' } as const;
 
   it('reports a hold after the finger rests, and null when it lifts', () => {
@@ -89,6 +94,8 @@ describe('watchPointer: touch', () => {
     jest.advanceTimersByTime(1);
     expect(hold.mock.calls).toEqual([['b1']]);
     fire(page, 'pointerup', 15, finger);
+    expect(hold.mock.calls).toEqual([['b1']]);
+    afterRelease();
     expect(hold.mock.calls).toEqual([['b1'], [null]]);
     expect(hover).not.toHaveBeenCalled();
   });
@@ -108,6 +115,7 @@ describe('watchPointer: touch', () => {
     jest.advanceTimersByTime(HOLD_MS);
     expect(hold.mock.calls).toEqual([['b1']]);
     fire(page, 'pointerup', 15, finger);
+    afterRelease();
 
     hold.mockClear();
     fire(board, 'pointerdown', 15, finger);
@@ -123,6 +131,7 @@ describe('watchPointer: touch', () => {
     jest.advanceTimersByTime(HOLD_MS);
     fire(board, 'pointermove', 60, finger);
     fire(page, 'pointercancel', 60, finger);
+    afterRelease();
     expect(hold.mock.calls).toEqual([['b1'], [null]]);
   });
 

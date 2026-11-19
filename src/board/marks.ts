@@ -4,6 +4,7 @@
 import type { DrawBrush, DrawShape } from '@lichess-org/chessground/draw';
 import type { Key } from '@lichess-org/chessground/types';
 
+import type { MoveQuality } from '@/analysis/quality';
 import { type Drawing, type Square, TONES, type Tone } from '@/board/drawing';
 import type { Color } from '@/game/replay';
 import { toneColors } from '@/theme/drawingTones';
@@ -22,9 +23,8 @@ export interface BoardMarks {
   readonly unfaded?: ReadonlySet<Key>;
 }
 
-/** Board.css dashes arrows whose brush name ends with this. */
-const DASHED_SUFFIX = '-dashed';
-const dashedBrush = (tone: Tone) => `${tone}${DASHED_SUFFIX}`;
+/** A tone's dashed brush; Board.css dashes arrows by this name. */
+const dashedBrush = (tone: Tone) => `${tone}-dashed`;
 
 /**
  * Chessground's brush for each tone, solid and dashed. Chessground can't dash
@@ -32,7 +32,7 @@ const dashedBrush = (tone: Tone) => `${tone}${DASHED_SUFFIX}`;
  * Board.css dashes the arrows that use it.
  */
 export const toneBrushes: Record<string, DrawBrush> = Object.fromEntries(
-  TONES.flatMap((tone) => [brush(tone, tone), brush(dashedBrush(tone), tone)]).map((b) => [b.key, b]),
+  TONES.flatMap((tone) => [tone, dashedBrush(tone)].map((key) => [key, brush(key, tone)])),
 );
 
 function brush(key: string, tone: Tone): DrawBrush {
@@ -82,7 +82,7 @@ export function boardMarks(drawings: readonly Drawing[], orientation: Color): Bo
         shapes.push({ orig: drawing.square, piece: { ...drawing.piece } });
         break;
       case 'badge':
-        shapes.push({ orig: drawing.square, customSvg: { html: badgeCorner(drawing) } });
+        shapes.push({ orig: drawing.square, customSvg: { html: badgeCorner(drawing.quality) } });
         glows.set(drawing.square, qualityLooks[drawing.quality].color);
         break;
       case 'fade':
@@ -113,7 +113,11 @@ function lineMarkup(squares: readonly Square[], orientation: Color, color: strin
   );
 }
 
-/** How many squares right and down `to` is from `from`, as the board is seen. */
+/**
+ * How many squares right and down `to` is from `from`, as the board is seen.
+ * (Chessground's key2pos does this, but chessground ships only ES modules,
+ * which Jest can't load, and this file is tested.)
+ */
 function offset(from: Square, to: Square, orientation: Color): [number, number] {
   const right = to.charCodeAt(0) - from.charCodeAt(0);
   const down = from.charCodeAt(1) - to.charCodeAt(1);
@@ -145,7 +149,7 @@ const BADGE_RING = pieceColors.black;
 const BADGE = { size: 34, x: 82, y: 18 } as const;
 
 /** A label's badge, overlapping the top right corner of its square. */
-function badgeCorner({ quality }: Extract<Drawing, { kind: 'badge' }>): string {
+function badgeCorner(quality: MoveQuality): string {
   const scale = BADGE.size / BADGE_BOX;
   const x = BADGE.x - BADGE.size / 2;
   const y = BADGE.y - BADGE.size / 2;

@@ -10,6 +10,7 @@
 import type { MoveQuality } from '@/analysis/quality';
 import type { Color, Role, SquareName } from 'chessops/types';
 
+/** A square's name, like `e4` (chessops' type, so lesson data needs no conversion). */
 export type Square = SquareName;
 
 /**
@@ -49,8 +50,8 @@ export type Drawing =
   /** A ring around a square: a target, or a pawn with a structural feature. */
   | { readonly kind: 'ring'; readonly square: Square; readonly tone: Tone }
   /**
-   * Squares tinted under the pieces: a file, an area, a weak square. Only for
-   * squares as places; to point at a piece, glow or ring it instead.
+   * Empty squares tinted: an open file, an area, a weak square. Pieces are
+   * never shown by their square; glow or ring them instead.
    */
   | { readonly kind: 'tint'; readonly squares: readonly Square[]; readonly tone: Tone }
   /** A short tag on a square, like "3 v 2". Keep it to a few characters. */
@@ -61,5 +62,3 @@ export type Drawing =
   | { readonly kind: 'badge'; readonly square: Square; readonly quality: MoveQuality }
   /** Every piece fades except those on `except`: to show a pawn structure. */
   | { readonly kind: 'fade'; readonly except: readonly Square[] };
-
-export type DrawingKind = Drawing['kind'];
