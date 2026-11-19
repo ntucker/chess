@@ -18,6 +18,11 @@ on:
 
 permissions: {}
 
+env:
+  GH_REPO: ${{ github.repository }}
+  PR: ${{ github.event.pull_request.number }}
+  HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+
 jobs:
   gate:
     name: Plan approval
@@ -70,23 +75,19 @@ jobs:
         id: files
         env:
           GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.pull_request.number }}
         run: |
           # A failed listing stops the step (bash -e); an empty one would pass every check below.
           files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename')
           [[ -n $files ]] || { echo "::error::GitHub listed no files for this PR"; exit 1; }
-          blocked=$(printf '%s\n' "$files" | grep -E '^(docs/plans/|\.github/|\.agents/projects/|PROJECTS\.md$|\.claude/|\.mcp\.json$)|(^|/)CLAUDE\.md$' || true)
+          blocked=$(printf '%s\n' "$files" | grep -E '^(docs/plans/|\.github/|\.agents/projects/|PROJECTS\.md$|GOALS\.md$|\.claude/|\.mcp\.json$)|(^|/)CLAUDE\.md$' || true)
           if [[ -n $blocked ]]; then
             echo "::error::Only Nathaniel merges changes to plans, workflows, agent settings and the project process:"
             printf '%s\n' "$blocked"
             exit 1
           fi
           # CI and the web build skip Markdown-only PRs, so Land can't require them.
-          if [[ -z $(grep -v '\.md$' <<< "$files") ]]; then
-            echo "markdown_only=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "markdown_only=false" >> "$GITHUB_OUTPUT"
-          fi
+          grep -qv '\.md$' <<< "$files" && md=false || md=true
+          echo "markdown_only=$md" >> "$GITHUB_OUTPUT"
 
   build:
     name: Autoland build
@@ -145,11 +146,6 @@ jobs:
       contents: read
       pull-requests: write
       checks: read
-    env:
-      GH_REPO: ${{ github.repository }}
-      PR: ${{ github.event.pull_request.number }}
-      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-
     steps:
       # For reading only: nothing from it runs in this job.
       - name: Checkout the PR
@@ -183,20 +179,26 @@ jobs:
         working-directory: ${{ runner.temp }}
         run: |
           npx -y serve@14.2.7 --listen 8081 "$RUNNER_TEMP/web" > "$RUNNER_TEMP/serve.log" 2>&1 &
-          for _ in $(seq 60); do curl -fs http://localhost:8081 > /dev/null && exit 0; sleep 1; done
-          cat "$RUNNER_TEMP/serve.log"
-          exit 1
+          curl -fs --retry 60 --retry-delay 1 --retry-connrefused http://localhost:8081 > /dev/null \
+            || { cat "$RUNNER_TEMP/serve.log"; exit 1; }
 
       # Bugbot's comments are part of what the reviewer checks, so its review
-      # of this commit must be finished.
+      # of this commit must be finished. Stops before the costly review if the
+      # PR moved, lost its label or already failed a check.
       - name: Wait for Bugbot
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           for _ in $(seq 40); do
-            status=$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs?check_name=Cursor%20Bugbot" \
-              --jq '.check_runs[0].status // "none"')
-            [[ $status == completed ]] && exit 0
+            gh pr view "$PR" --json state,isDraft,headRefOid,labels | jq -e --arg sha "$HEAD_SHA" \
+              '.state == "OPEN" and (.isDraft | not) and .headRefOid == $sha and ([.labels[].name] | index("autoland"))' \
+              > /dev/null || { echo "::error::The PR moved, became a draft or lost its label"; exit 1; }
+            runs=$(gh api --paginate "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs" \
+              --jq '.check_runs[] | {name, status, conclusion, started_at}' | jq -s 'group_by(.name) | map(max_by(.started_at))')
+            if jq -e 'any(.conclusion | IN("failure", "timed_out", "action_required"))' <<< "$runs" > /dev/null; then
+              echo "::error::A check failed: $runs"; exit 1
+            fi
+            jq -e 'any(.name == "Cursor Bugbot" and .status == "completed")' <<< "$runs" > /dev/null && exit 0
             sleep 30
           done
           echo "::error::Bugbot did not finish in 20 minutes"
@@ -229,7 +231,7 @@ jobs:
               }
             }' --jq '.data.repository.pullRequest.reviewThreads.nodes[]' \
             | jq -s --argjson trusted "$TRUSTED" '[.[]
-                | .comments = [.comments.nodes[] | select(.author.login as $a | $trusted | index($a))]
+                | .comments = [.comments.nodes[] | select(.author.login | IN($trusted[]))]
                 | select(.comments | length > 0)]' > "$dir/threads.json"
           # Review summaries (the Staff review's body) and plain PR comments.
           { gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" \
@@ -237,7 +239,7 @@ jobs:
             gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" \
               --jq '.[] | {kind: "comment", author: .user.login, body, created_at}'
           } | jq -s --argjson trusted "$TRUSTED" \
-              '[.[] | .author |= sub("\\[bot\\]$"; "") | select(.author as $a | $trusted | index($a))] | sort_by(.created_at)' \
+              '[.[] | .author |= sub("\\[bot\\]$"; "") | select(.author | IN($trusted[]))] | sort_by(.created_at)' \
               > "$dir/comments.json"
 
       # Claude runs outside the checkout and loads only user settings, so no
@@ -252,6 +254,7 @@ jobs:
           PIECE: ${{ needs.gate.outputs.piece }}
         run: |
           pr=$GITHUB_WORKSPACE main=$GITHUB_WORKSPACE/.autoland/main ctx=$GITHUB_WORKSPACE/.autoland/context
+          out=$GITHUB_WORKSPACE/.autoland/result.json
           mcp=$(jq -cn --arg out "$GITHUB_WORKSPACE/.autoland/screenshots" '{mcpServers: {playwright: {command: "npx",
             args: ["-y", "@playwright/mcp@0.0.84", "--browser", "chrome", "--headless", "--isolated",
               "--caps", "vision", "--viewport-size", "1280x800", "--output-dir", $out]}}}')
@@ -270,10 +273,10 @@ jobs:
             --setting-sources user --mcp-config "$mcp" --strict-mcp-config \
             --allowedTools 'Read,Grep,Glob,mcp__playwright' --disallowedTools 'Read(//proc/**)' \
             --json-schema "$(cat "$main/.github/autoland/verdict.schema.json")" \
-            --output-format json > "$GITHUB_WORKSPACE/.autoland/result.json"
-          jq -e '.structured_output.verdict' "$GITHUB_WORKSPACE/.autoland/result.json" > /dev/null
+            --output-format json > "$out"
+          jq -e '.structured_output.verdict' "$out" > /dev/null
           # Last guard: a review holding a verbatim copy of the token is never posted.
-          if grep -qF "$CLAUDE_CODE_OAUTH_TOKEN" "$GITHUB_WORKSPACE/.autoland/result.json"; then
+          if grep -qF "$CLAUDE_CODE_OAUTH_TOKEN" "$out"; then
             echo "::error::The review quoted the Claude token, so it will not be posted"; exit 1
           fi
 
@@ -292,11 +295,10 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           out=.autoland/result.json
-          jq -r --arg sha "$HEAD_SHA" --arg run "$RUN_URL" '.structured_output as $r |
-            "<!-- autoland-review -->\n### Autoland review: " + ($r.verdict | ascii_upcase) + " at " + $sha[0:8] + "\n\n" +
-            $r.summary + "\n\n" +
-            ([$r.findings[] | "- **" + .severity + "** " + .title + " (`" + .where + "`): " + .detail] | join("\n")) +
-            "\n\nScreenshots and log: " + $run + "\n\n---\n_Generated by [Claude Code](https://claude.ai/code)_"' "$out" > .autoland/comment.md
+          jq -r --arg sha "${HEAD_SHA:0:8}" --arg run "$RUN_URL" '.structured_output as $r |
+            "<!-- autoland-review -->\n### Autoland review: \($r.verdict | ascii_upcase) at \($sha)\n\n\($r.summary)\n\n" +
+            ([$r.findings[] | "- **\(.severity)** \(.title) (`\(.where)`): \(.detail)"] | join("\n")) +
+            "\n\nScreenshots and log: \($run)\n\n---\n_Generated by [Claude Code](https://claude.ai/code)_"' "$out" > .autoland/comment.md
           gh pr comment "$PR" --body-file .autoland/comment.md
           [[ $(jq -r '.structured_output.verdict' "$out") == approve ]]
 
@@ -315,9 +317,6 @@ jobs:
       actions: write
     env:
       GH_TOKEN: ${{ github.token }}
-      GH_REPO: ${{ github.repository }}
-      PR: ${{ github.event.pull_request.number }}
-      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
 
     steps:
       # Every other check on the reviewed commit must finish, CI and the web
@@ -343,7 +342,8 @@ jobs:
                         --jq '.[] | {login: .user.login, body, at: .submitted_at}'
                     } | jq -rs '[.[] | select(.login == "ntucker" and (.body | startswith("**Staff Reviewer:**")))]
                                 | sort_by(.at) | last // {} | .body // "" | split("\n")[0]')
-            if [[ $staff =~ CHANGE_THIS_PR.*\ at\ ([0-9a-f]{7,40}) && $HEAD_SHA == "${BASH_REMATCH[1]}"* ]]; then
+            if [[ $staff =~ ^\*\*Staff\ Reviewer:\*\*\ CHANGE_THIS_PR(\ \([^\)]*\))?\ at\ ([0-9a-f]{7,40}) \
+                  && $HEAD_SHA == "${BASH_REMATCH[2]}"* ]]; then
               echo "::error::The Staff reviewer asked for changes: $staff"; return 1
             fi
           }
@@ -352,8 +352,7 @@ jobs:
             runs=$(gh api --paginate "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs" \
               --jq '.check_runs[] | select(.name != "Land") | {name, status, conclusion, started_at}' \
               | jq -s 'group_by(.name) | map(max_by(.started_at))')
-            if jq -e 'any(.conclusion == "failure" or .conclusion == "timed_out" or .conclusion == "cancelled"
-                or .conclusion == "action_required")' <<< "$runs" > /dev/null; then
+            if jq -e 'any(.conclusion | IN("failure", "timed_out", "cancelled", "action_required"))' <<< "$runs" > /dev/null; then
               echo "::error::A check failed: $runs"; exit 1
             fi
             if jq -e --argjson required "$REQUIRED" '. as $runs | all(.status == "completed")

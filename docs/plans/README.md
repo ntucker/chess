@@ -12,10 +12,11 @@ A pull request that builds an approved piece can land without a manual merge
 1. Its description has the line `Plan piece: <plan>/<piece>`, such as `Plan piece: opening-lesson/K`,
    where `<plan>` is a file name here without `.md`. Any difference from the plan is explained in a
    `Plan deviations:` line.
-2. Its author adds the `autoland` label once the PR is otherwise done (`PROJECTS.md`, "PR lifecycle").
+2. Its author adds the `autoland` label once the PR is otherwise done. A rejected review is fixed
+   with a push, which reruns it.
 3. The **Plan approval** check confirms the piece is in a plan on `main`, and that the PR changes no
-   plan, workflow, agent setting or project process (`docs/plans/`, `.github/`, `.agents/projects/`,
-   `PROJECTS.md`, `.claude/`, `.mcp.json`, `CLAUDE.md`). Those changes always wait for Nathaniel.
+   plan, goal, workflow, agent setting or project process (the list is in the workflow's gate).
+   Those changes always wait for Nathaniel.
 4. The **Interface review** check runs a reviewer that has never seen the work: Claude Sonnet at high
    effort, with the instructions in `.github/autoland/review.md`. It waits for Bugbot, uses the
    feature in a browser, checks the code's interfaces against the piece, and checks that every Bugbot
