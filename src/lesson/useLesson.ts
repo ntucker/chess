@@ -130,15 +130,13 @@ export function useLesson(lesson: Lesson) {
     return () => clearTimeout(timer);
   }, [stepping, playing?.step]);
 
-  // A square under the mouse or a finger previews, if a candidate is there.
-  // Any other square ends a preview, and so does leaving the board, which
-  // a row's preview never reaches; squares that preview nothing change nothing.
+  // A square under the mouse or a finger previews the candidate there. A
+  // square without one ends any preview, as leaving the board does; it is
+  // kept as no pointer, so moving on over such squares re-renders nothing.
   const pointSquare = (square: Square | null) => {
     const at: Pointer | undefined = square ? { at: 'square', square } : undefined;
-    const candidate = at && preview(lesson, view, at) ? at : undefined;
-    pointAt((now) =>
-      square === null && now.candidate?.at === 'row' ? now : { ...now, candidate },
-    );
+    const previewing = at && preview(lesson, view, at) ? at : undefined;
+    pointAt((now) => ({ ...now, candidate: previewing }));
   };
   const play = (candidate: Candidate) => game.play(candidate.move.uci);
   const board: Omit<BoardProps, 'dom'> = {
