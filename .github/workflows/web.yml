@@ -1,8 +1,8 @@
 # Publishes the web app to GitHub Pages: every push to main replaces the site,
 # and every pull request from this repository gets a preview under
 # pr-preview/pr-<number>/, linked in a comment on the pull request and removed
-# when it closes. Fork and Dependabot pull requests only build. Setup is in README.md, under
-# "Web deploys".
+# when it closes. Fork and Dependabot pull requests only build. Setup is in
+# README.md, under "Web deploys".
 name: Web
 
 on:
@@ -88,7 +88,7 @@ jobs:
       && (needs.build.result == 'success' || github.event.action == 'closed')
       && (github.event_name == 'pull_request'
         && !github.event.pull_request.head.repo.fork
-        && github.actor != 'dependabot[bot]'
+        && github.event.pull_request.user.login != 'dependabot[bot]'
         || github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -132,6 +132,7 @@ jobs:
           pages="$RUNNER_TEMP/pages"
           for attempt in 1 2 3 4 5; do
             cd "$RUNNER_TEMP" && rm -rf "$pages" && git init -q "$pages" && cd "$pages"
+            copied=false
             git remote add origin "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git"
             lease=
             if git fetch -q --depth=1 origin gh-pages; then
@@ -158,7 +159,7 @@ jobs:
             git add -A
             commit=$(git commit-tree "$(git write-tree)" -m "Web run $GITHUB_RUN_ID ($GITHUB_EVENT_NAME${PR:+ #$PR})")
             if git push -q --force-with-lease="gh-pages:$lease" origin "$commit:refs/heads/gh-pages"; then
-              echo "copied=${copied:-false}" >> "$GITHUB_OUTPUT"
+              echo "copied=$copied" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             sleep $((attempt * 5))
