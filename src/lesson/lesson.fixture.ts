@@ -1,5 +1,6 @@
 // For tests only: shipped lessons read from disk (Jest can't run getLesson's
-// import()), the sample lesson, and lines written in SAN for readability.
+// import()), the sample lesson (a test fixture the app doesn't ship), and lines
+// written in SAN for readability.
 import { Chess } from 'chessops/chess';
 import { parseUci } from 'chessops/util';
 import { readFileSync } from 'node:fs';
@@ -13,11 +14,16 @@ import { lessonView, type LessonViewInput } from './view';
 
 export const LESSON_FOLDER = join(__dirname, '../../assets/lessons');
 
-/** The lesson shipped as `assets/lessons/<id>.json`. */
-export const readShippedLesson = (id: string): Lesson =>
-  readLesson(JSON.parse(readFileSync(join(LESSON_FOLDER, `${id}.json`), 'utf8')));
+const readLessonFile = (file: string): Lesson => readLesson(JSON.parse(readFileSync(file, 'utf8')));
 
-export const SAMPLE = readShippedLesson('caro-kann-sample');
+/** The lesson shipped as `assets/lessons/<id>.json`. */
+export const readShippedLesson = (id: string): Lesson => readLessonFile(join(LESSON_FOLDER, `${id}.json`));
+
+/**
+ * A hand-made lesson for tests: the Caro-Kann's first six moves, at least one
+ * idea of each type, and invented play counts the tests rely on.
+ */
+export const SAMPLE = readLessonFile(join(__dirname, 'fixtures/caro-kann-sample.json'));
 
 /** `sans` as UCI moves from the starting position, castling as the game records it. */
 export function uciLine(...sans: string[]): string[] {

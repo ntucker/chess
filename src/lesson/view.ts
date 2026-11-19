@@ -14,7 +14,6 @@ import { parsePositionKey } from '@/game/replay';
 import type { Opponent } from '@/opponent/opponent';
 
 import {
-  ideaPosition,
   type Lesson,
   type LessonMove,
   type Note,
@@ -35,10 +34,9 @@ import {
 } from './select';
 
 /**
- * A note to show, with the positions its ideas may be checked in (see
- * `ideaPosition`): `after` is the note's position, or the position after the
- * note's move; `before` is the position the move was played in, absent for
- * a position's own note.
+ * A note to show: `after` is the note's position, or the position after the
+ * note's move, where its ideas hold; `before` is the position the move was
+ * played in, absent for a position's own note.
  */
 export interface ShownNote {
   readonly note: Note;
@@ -192,7 +190,7 @@ function landedTrap(
     ];
     for (const shown of notes) {
       for (const trap of shown.note.ideas ?? []) {
-        if (trap.type !== 'trap' || ideaPosition(trap, shown) !== key) continue;
+        if (trap.type !== 'trap' || shown.after !== key) continue;
         if (trap.moves.every((uci, n) => uci === played[ply + n])) {
           return { trap, ply, at: key, end: keys[ply + trap.moves.length] };
         }
