@@ -5,9 +5,9 @@ import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 import Animated, { type CSSTransitionTimingFunction, cubicBezier } from 'react-native-reanimated';
 
 import { type Color, colorName, type GameResult, lastPosition, opposite } from '@/game/replay';
-import { useSettings } from '@/settings/SettingsProvider';
 import { type Evaluation, type EvaluationEngine, resultEvaluation } from '@/evaluation/evaluation';
 import { getEvaluation } from '@/resources/evaluation';
+import { useSettings } from '@/settings/SettingsProvider';
 import { pieceColors } from '@/theme/pieceColors';
 import { fonts } from '@/theme/theme';
 

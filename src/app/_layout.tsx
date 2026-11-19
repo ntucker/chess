@@ -34,11 +34,11 @@ export default function RootLayout() {
   return (
     <DataProvider>
       <SettingsProvider>
-      <SilkProvider theme={themes[colorScheme]}>
-        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-        <Stack screenOptions={{ headerShown: false }} />
-        <StockfishWhileChosen />
-      </SilkProvider>
+        <SilkProvider theme={themes[colorScheme]}>
+          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+          <Stack screenOptions={{ headerShown: false }} />
+          <StockfishWhileChosen />
+        </SilkProvider>
       </SettingsProvider>
     </DataProvider>
   );
