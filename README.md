@@ -4,7 +4,7 @@
 
 Learn your lines. An app for learning chess openings by playing them, on the web now and on Android later. [GOALS.md](GOALS.md) says what it aims to be.
 
-For now it has one screen: a game against [Maia](https://www.maiachess.com), an engine trained to play like people rather than to find the best move. You can play either color, step back and forward through the moves, play a different move from any earlier position, and start over.
+For now it has one screen: a game against [Maia](https://www.maiachess.com), an engine trained to play like people rather than to find the best move, or against Stockfish, which plays its best move. You can play either color, step back and forward through the moves, play a different move from any earlier position, and start over.
 
 ## Get started
 
@@ -39,8 +39,8 @@ yarn web        # or: yarn android
 | Design system | [Silk](https://github.com/reactive/silk) (`@reactive/silk-native`) | `src/components/` |
 | Board | [chessground](https://github.com/lichess-org/chessground) in an [Expo DOM component](https://docs.expo.dev/guides/dom-components/) | `src/components/Board.tsx` |
 | Chess rules | [chessops](https://github.com/niklasf/chessops) | `src/game/` |
-| Opponent | [Maia](https://github.com/CSSLab/maia-chess), run on the device | `src/maia/` |
-| Evaluation bar | [Stockfish](https://stockfishchess.org) 19 lite in WebAssembly, run on the device | `src/stockfish/` |
+| Opponent | [Maia](https://github.com/CSSLab/maia-chess) (the default) or Stockfish, run on the device | `src/opponent/` |
+| Evaluation bar, and the opponent when chosen | [Stockfish](https://stockfishchess.org) 19 lite in WebAssembly, run on the device | `src/stockfish/` |
 
 Silk isn't on npm yet, so the app installs it from the tarballs in `vendor/`.
 

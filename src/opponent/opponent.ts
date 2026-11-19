@@ -29,12 +29,12 @@ export const OPPONENT_NAMES: Record<OpponentEngine, string> = {
 
 /** A few words on how `opponent` plays, for its name plate. */
 export function opponentTagline({ engine, rating }: Opponent): string {
-  return engine === 'maia' ? `Plays like a ${rating}` : 'Full strength';
+  return engine === 'maia' ? `Plays like a ${rating}` : 'Plays its best move';
 }
 
 /** One sentence on how `opponent` plays. */
 export function opponentStyle({ engine, rating }: Opponent): string {
   return engine === 'maia'
     ? `Maia plays the way people rated about ${rating} do.`
-    : 'Stockfish plays the move it judges best, at full strength.';
+    : 'Stockfish plays the move it judges best.';
 }

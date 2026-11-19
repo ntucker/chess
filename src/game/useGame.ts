@@ -1,5 +1,5 @@
 import { useController } from '@data-client/react';
-import { useLayoutEffect, useReducer, useRef } from 'react';
+import { useEffect, useEffectEvent, useLayoutEffect, useReducer, useRef } from 'react';
 
 import { classifyMove } from '@/analysis/quality';
 import { useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
@@ -12,16 +12,24 @@ import { analyze, type Color, lastPosition, replay, toUci } from './replay';
 /** The least time the opponent takes to reply, so a fast answer reads as a reply, not a reflex. */
 const THINKING_MS = 400;
 
+/** Who a game is against. */
+export interface GameOpponent {
+  /** Names the opponent, so the game notices when a different one takes over. */
+  readonly id: string;
+  /** The opponent's move (UCI) after `line`, the moves so far. */
+  reply(line: readonly string[]): Promise<string>;
+}
+
 /**
- * A game against an opponent: its moves and positions, how good each move
- * was, the move on the board, and whether the opponent is thinking. `reply`
- * answers the moves so far with the opponent's move (UCI); who the opponent
- * is, is the caller's business. Every request the opponent or the evaluation
- * engine hasn't answered is tied to the game and moves it was asked about, so
- * a new game or a different move makes its answer (or failure) count for
- * nothing.
+ * A game against `opponent`: its moves and positions, how good each move was,
+ * the move on the board, and whether the opponent is thinking. Who the
+ * opponent is, is the caller's business. Every request the opponent or the
+ * evaluation engine hasn't answered is tied to the game and moves it was
+ * asked about, so a new game or a different move makes its answer (or
+ * failure) count for nothing. A different opponent answers a request still
+ * out in place of the one first asked.
  */
-export function useGame(reply: (line: readonly string[]) => Promise<string>) {
+export function useGame(opponent: GameOpponent) {
   const ctrl = useController();
   const engine = useEvaluationEngine();
   const [state, dispatch] = useReducer(gameReducer, initialGame);
@@ -34,19 +42,25 @@ export function useGame(reply: (line: readonly string[]) => Promise<string>) {
   // The state as last rendered, which the opponent's reply applies to: it arrives
   // after renders that the request that asked for it didn't see.
   const rendered = useRef(state);
+  const renderedOpponent = useRef(opponent.id);
   useLayoutEffect(() => {
     rendered.current = state;
+    renderedOpponent.current = opponent.id;
   });
 
   /** Asks the opponent to answer `after`, the moves of game `game`. */
   const ask = async (game: number, after: readonly string[]) => {
+    const { id, reply } = opponent;
+    /** Whether a different opponent took over, and was asked in turn. */
+    const replaced = () => renderedOpponent.current !== id;
     try {
       const [uci] = await Promise.all([
         reply(after),
         new Promise((resolve) => setTimeout(resolve, THINKING_MS)),
       ]);
-      act({ type: 'reply', game, after, uci });
+      if (!replaced()) act({ type: 'reply', game, after, uci });
     } catch (error) {
+      if (replaced()) return;
       dispatch({
         type: 'failed',
         game,
@@ -90,6 +104,15 @@ export function useGame(reply: (line: readonly string[]) => Promise<string>) {
     if (next.opponent.status === 'thinking') ask(next.game, next.line);
     if (next.line !== from.line && next.line.length) judge(next.game, next.line);
   };
+
+  // A different opponent answers the request still out. Waiting for the old
+  // one could take forever: choosing Maia for both the opponent and the
+  // evaluation bar stops Stockfish (src/app/_layout.tsx).
+  const onOpponentChange = useEffectEvent(() => {
+    const { opponent: status, game, line: moves } = rendered.current;
+    if (status.status === 'thinking') ask(game, moves);
+  });
+  useEffect(() => onOpponentChange(), [opponent.id]);
 
   return {
     playerColor,

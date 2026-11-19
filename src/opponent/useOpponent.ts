@@ -7,13 +7,13 @@ import {
   type OpponentEngine,
 } from './opponent';
 
-const engine = createSetting<OpponentEngine>('opponentEngine', oneOf(OPPONENT_ENGINES), 'maia');
+const engineSetting = createSetting<OpponentEngine>('opponentEngine', oneOf(OPPONENT_ENGINES), 'maia');
 
 /** Switches the engine that plays the opponent, and remembers it. */
-export const setOpponentEngine = engine.set;
+export const setOpponentEngine = engineSetting.set;
 
 /** The engine the learner chose to play against. */
-export const useOpponentEngine = engine.useValue;
+export const useOpponentEngine = engineSetting.useValue;
 
 /** Who the learner plays against: the chosen engine, at the opponent's rating. */
 export function useOpponent(): Opponent {

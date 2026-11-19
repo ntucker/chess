@@ -19,8 +19,8 @@ interface Props {
 
 /** The headline of the panel: whose move it is, or how the game ended. */
 export function GameStatus({ error, onRetry, ...game }: Props) {
-  const { eyebrow, title, detail } = describe(game);
   const name = OPPONENT_NAMES[game.opponent.engine];
+  const { eyebrow, title, detail } = describe(game, name);
   return (
     <Stack gap="2">
       <Eyebrow>{eyebrow}</Eyebrow>
@@ -46,8 +46,8 @@ export function GameStatus({ error, onRetry, ...game }: Props) {
 
 type Game = Omit<Props, 'error' | 'onRetry'>;
 
-function describe({ viewing, total, ...game }: Game) {
-  const { title, detail } = describeLatest(game);
+function describe({ viewing, total, ...game }: Game, name: string) {
+  const { title, detail } = describeLatest(game, name);
   if (viewing === undefined) return { eyebrow: 'Now playing', title, detail };
   return {
     eyebrow: viewing === 0 ? 'Replaying · starting position' : `Replaying move ${viewing} of ${total}`,
@@ -56,9 +56,11 @@ function describe({ viewing, total, ...game }: Game) {
   };
 }
 
-function describeLatest({ playerColor, latest, opponent, thinking }: Omit<Game, 'viewing' | 'total'>) {
+function describeLatest(
+  { playerColor, latest, opponent, thinking }: Omit<Game, 'viewing' | 'total'>,
+  name: string,
+) {
   const { result } = latest;
-  const name = OPPONENT_NAMES[opponent.engine];
   if (result?.winner === playerColor)
     return { title: 'Checkmate. Bravo!', detail: 'You won. Take a bow, then start a new game.' };
   if (result?.winner)

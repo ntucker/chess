@@ -27,7 +27,10 @@ import { spotlight } from '@/theme/theme';
 export default function PlayScreen() {
   const ctrl = useController();
   const opponent = useOpponent();
-  const game = useGame((after) => ctrl.fetch(getOpponentMove, opponent, after));
+  const game = useGame({
+    id: `${opponent.engine} ${opponent.rating}`,
+    reply: (after) => ctrl.fetch(getOpponentMove, opponent, after),
+  });
   const { playerColor, line, qualities, ply, current, toMove, thinking, goto } = game;
   const [nextColor, setNextColor] = useState<Color>(playerColor);
   const { theme } = useTheme();

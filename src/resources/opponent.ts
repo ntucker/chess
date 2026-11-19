@@ -24,8 +24,8 @@ const MOVES: Record<
  *
  * - `maia`: the move people rated about the opponent's rating tend to play
  *   (https://www.maiachess.com), from the matching network.
- * - `stockfish`: Stockfish's best move, at full strength whatever the rating.
- *   It needs StockfishHost mounted.
+ * - `stockfish`: Stockfish's best move whatever the rating, from the search
+ *   the evaluation bar uses (about depth 16). It needs StockfishHost mounted.
  *
  * Maia writes castling as the king taking its rook (`e1h1`), Stockfish as
  * the king's two-square move (`e1g1`); `lineMove` reads both.
