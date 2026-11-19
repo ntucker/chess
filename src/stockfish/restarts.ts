@@ -6,20 +6,13 @@ import type { Supervisor } from './engine';
 const FIRST_PAUSE_MS = 1000;
 const LONGEST_PAUSE_MS = 30_000;
 
-/** Restarts an engine host's engine, as `useRestarts` does. */
-interface Restarts extends Supervisor {
-  /** Calls off a restart that's waiting. */
-  cancel(): void;
-}
-
 /**
- * Restarts for a host's engine: `failed()` stops it at once
- * (`setRunning(false)`) and starts a new one (`setRunning(true)`) after a
- * pause that doubles with each failure since an engine last finished its
- * handshake (`ready()`), so an engine that can't start isn't restarted in a
- * tight loop. A failure while a restart waits is the same failure.
+ * Restarts for a host's engine: `failed()` stops it at once and starts a new
+ * one after the pause; `ready()` (a finished handshake) ends the run of
+ * failures; a failure while a restart waits is the same failure; `cancel()`
+ * calls off a waiting restart.
  */
-export function restarts(setRunning: (running: boolean) => void): Restarts {
+export function restarts(setRunning: (running: boolean) => void): Supervisor & { cancel(): void } {
   let failures = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
   return {
@@ -45,10 +38,8 @@ export function restarts(setRunning: (running: boolean) => void): Restarts {
 
 /**
  * Whether a host runs its engine now, and the supervisor to attach it with
- * (`attachStockfish`) and to tell when it fails to start. After a failure
- * `running` is false until the restart: the host stops the failed engine
- * (a stuck one may still be using a core) and starts a new one when it turns
- * true again. Unmounting calls off a waiting restart.
+ * (`attachStockfish`) and to tell when it fails to start. `running` is false
+ * from a failure until the restart, so a stuck engine stops at once.
  */
 export function useRestarts(): readonly [running: boolean, supervisor: Supervisor] {
   const [running, setRunning] = useState(true);
