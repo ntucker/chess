@@ -1,14 +1,12 @@
 import { Text } from '@reactive/silk-native';
 import { type Href, Link, useRouter } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import type { MouseEvent } from 'react';
+import { type GestureResponderEvent, StyleSheet } from 'react-native';
 
 interface Props {
   /** Another screen of the app, without a trailing slash (GitHub Pages 404s on one). */
   readonly href: Href;
-  /**
-   * Go back to the screen underneath, keeping its state, when there is one
-   * (whichever lesson opened this screen); open `href` only when there isn't.
-   */
+  /** Go back to the screen underneath, keeping its state, when there is one; else open `href`. */
   readonly back?: boolean;
   readonly children: string;
 }
@@ -20,7 +18,7 @@ export function FootnoteLink({ href, back, children }: Props) {
     <Link
       href={href}
       onPress={(event) => {
-        if (!back || !router.canGoBack()) return;
+        if (!back || !plainPress(event) || !router.canGoBack()) return;
         event.preventDefault();
         router.back();
       }}
@@ -31,6 +29,11 @@ export function FootnoteLink({ href, back, children }: Props) {
     </Link>
   );
 }
+
+/** A tap, or a left click with no modifier key: other clicks open `href` as the browser does. */
+const plainPress = (event: MouseEvent<HTMLAnchorElement> | GestureResponderEvent) =>
+  !('button' in event) ||
+  (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey);
 
 const styles = StyleSheet.create({
   link: { textDecorationLine: 'underline' },
