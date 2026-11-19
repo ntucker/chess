@@ -57,15 +57,16 @@ export function watchPointer<S extends string>(
     pending.add(timer);
     return timer;
   };
-  // The hover a mouse release will report, which any newer hover replaces.
-  let releaseHover: ReturnType<typeof setTimeout> | undefined;
+  // The waiting report of a mouse release, which any newer hover or release replaces.
+  let releaseTimer: ReturnType<typeof setTimeout> | undefined;
+  const cancelRelease = () => {
+    clearTimeout(releaseTimer);
+    if (releaseTimer !== undefined) pending.delete(releaseTimer);
+    releaseTimer = undefined;
+  };
 
   const hover = (square: S | null) => {
-    if (releaseHover !== undefined) {
-      clearTimeout(releaseHover);
-      pending.delete(releaseHover);
-      releaseHover = undefined;
-    }
+    cancelRelease();
     if (square === hovered) return;
     hovered = square;
     report.hover(square);
@@ -109,10 +110,8 @@ export function watchPointer<S extends string>(
       if (!pressing) return;
       pressing = false;
       const square = squareAt(event.clientX, event.clientY) ?? null;
-      releaseHover = afterRelease(() => {
-        releaseHover = undefined;
-        hover(square);
-      });
+      cancelRelease();
+      releaseTimer = afterRelease(() => hover(square));
     } else if (touch && event.pointerId === touch.id) {
       endTouch();
     }
@@ -132,7 +131,8 @@ export function watchPointer<S extends string>(
     board.removeEventListener('pointerleave', onLeave);
     page.removeEventListener('pointerup', onUp);
     page.removeEventListener('pointercancel', onUp);
-    // Reports go out now, not after a turn: whoever listens is being torn down.
+    // Whoever listens is being torn down: waiting release reports are dropped,
+    // and a held finger's release goes out now rather than after a turn.
     for (const timer of pending) clearTimeout(timer);
     if (touch?.held) report.hold(null);
     clearTimeout(touch?.timer);

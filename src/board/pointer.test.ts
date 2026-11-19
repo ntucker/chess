@@ -84,6 +84,17 @@ describe('watchPointer: mouse', () => {
     expect(hover.mock.calls).toEqual([['b1'], [null]]);
   });
 
+  it('lets a second release replace the first one waiting', () => {
+    const { board, page, hover, fire } = setup();
+    fire(board, 'pointerdown', 5, { buttons: 1 });
+    fire(page, 'pointerup', 5);
+    fire(board, 'pointerdown', 25, { buttons: 1 });
+    fire(page, 'pointerup', 25);
+    fire(board, 'pointermove', 35);
+    afterRelease();
+    expect(hover.mock.calls).toEqual([['d1']]);
+  });
+
   it('drops a waiting release report when stopped', () => {
     const { board, page, hover, stop, fire } = setup();
     fire(board, 'pointerdown', 5, { buttons: 1 });
