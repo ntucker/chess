@@ -40,7 +40,7 @@ const DispatchContext = createContext<Dispatch<SettingsAction> | null>(null);
  */
 export function SettingsProvider({ children }: { readonly children: ReactNode }) {
   const [settings, dispatch] = useReducer(settingsReducer, undefined, () =>
-    (NATIVE && loadSettings()) || DEFAULT_SETTINGS,
+    NATIVE ? (loadSettings() ?? DEFAULT_SETTINGS) : DEFAULT_SETTINGS,
   );
 
   useEffect(() => {

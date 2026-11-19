@@ -30,6 +30,9 @@ export function settingsReducer(settings: Settings, action: SettingsAction): Set
   }
 }
 
+/** Settings as saved: any field may be missing or hold anything. */
+type StoredSettings = Partial<Record<keyof Settings, unknown>>;
+
 /** The settings saved as `text` (JSON), read as settingsFrom does. */
 export const parseSettings = (text: string) => settingsFrom(parseObject(text));
 
@@ -38,7 +41,7 @@ export const parseSettings = (text: string) => settingsFrom(parseObject(text));
  * choices, reads as its default, so a setting added or removed later keeps
  * the rest.
  */
-export function settingsFrom(stored: Partial<Record<keyof Settings, unknown>>): Settings {
+export function settingsFrom(stored: StoredSettings): Settings {
   return {
     opponent: oneOf(OPPONENTS, stored.opponent) ?? DEFAULT_SETTINGS.opponent,
     evaluationEngine:
@@ -49,7 +52,7 @@ export function settingsFrom(stored: Partial<Record<keyof Settings, unknown>>): 
 const oneOf = <T>(choices: readonly T[], value: unknown) =>
   choices.find((choice) => choice === value);
 
-function parseObject(text: string): Partial<Record<keyof Settings, unknown>> {
+function parseObject(text: string): StoredSettings {
   try {
     const parsed: unknown = JSON.parse(text);
     return typeof parsed === 'object' && parsed !== null ? parsed : {};
