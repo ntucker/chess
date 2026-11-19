@@ -280,7 +280,9 @@ describe('guidance', () => {
       const resting = explore(ADVANCE, { switches: off });
       expect(resting.candidates).toEqual(explore(ADVANCE).candidates);
       expect(resting.drawnCandidates).toEqual([]);
-      expect(resting.drawn).toEqual([]);
+      // In the arrows' place, the idea of the move just played (3.e5).
+      const [move] = resting.notes;
+      expect(resting.drawn.map(({ idea }) => idea)).toEqual(move.note.ideas);
       const previewing = preview(SAMPLE, sampleView(ADVANCE), { at: 'row', uci: 'c8f5' });
       expect(types(explore(ADVANCE, { switches: off, preview: previewing }).drawn)).toEqual(['plan']);
       const dragging = explore(ADVANCE, { switches: off, dragged: 'c8' });
