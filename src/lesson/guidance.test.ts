@@ -286,7 +286,9 @@ describe('guidance', () => {
       const [move] = resting.notes;
       expect(resting.drawn.map(({ idea }) => idea)).toEqual(move.note.ideas);
       const previewing = preview(SAMPLE, sampleView(ADVANCE), { at: 'row', uci: 'c8f5' });
-      expect(types(explore(ADVANCE, { switches: off, preview: previewing }).drawn)).toEqual(['plan']);
+      expect(types(explore(ADVANCE, { switches: off, preview: previewing }).drawn)).toEqual([
+        'plan',
+      ]);
       const dragging = explore(ADVANCE, { switches: off, dragged: 'c8' });
       expect(dragging.drawnCandidates.map(({ move }) => move.uci)).toEqual(['c8f5']);
       const [, position] = resting.notes;
