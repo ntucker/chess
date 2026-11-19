@@ -14,7 +14,8 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
-import { SettingsProvider, useSettings } from '@/settings/SettingsProvider';
+import { SettingsProvider } from '@/settings/SettingsProvider';
+import { StockfishWhileNeeded } from '@/stockfish/demand';
 import { StockfishHost } from '@/stockfish/StockfishHost';
 import { themes } from '@/theme/theme';
 import { useColorScheme } from '@/theme/useColorScheme';
@@ -36,20 +37,11 @@ export default function RootLayout() {
       <SettingsProvider>
         <SilkProvider theme={themes[colorScheme]}>
           <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-          <Stack screenOptions={{ headerShown: false }} />
-          <StockfishWhileChosen />
+          <StockfishWhileNeeded host={<StockfishHost />}>
+            <Stack screenOptions={{ headerShown: false }} />
+          </StockfishWhileNeeded>
         </SilkProvider>
       </SettingsProvider>
     </DataProvider>
   );
-}
-
-/**
- * Runs Stockfish while the evaluation bar or the opponent uses it. Choosing
- * Maia for the bar and a rating for the opponent stops it, which frees its
- * memory.
- */
-function StockfishWhileChosen() {
-  const { evaluationEngine, opponent } = useSettings();
-  return evaluationEngine === 'stockfish' || opponent === 'stockfish' ? <StockfishHost /> : null;
 }
