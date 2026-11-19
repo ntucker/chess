@@ -69,11 +69,10 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   // could call a book move a mistake. So Stockfish runs while this is in front.
   useNeedsStockfish(focused);
   // Nobody replies with auto play off (the learner picks the opponent's
-  // move), nor at the start, where the first move picks the opening.
-  const rival =
-    settings.auto && store[0].ply > 0
-      ? lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent))
-      : undefined;
+  // move), nor at the start, where the first move picks the opening: there
+  // the screen behaves as with auto play off.
+  const auto = settings.auto && store[0].ply > 0;
+  const rival = auto ? lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent)) : undefined;
   const game = useGame(store, rival, {
     side: lesson.side,
     active: focused,
@@ -104,7 +103,7 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   const shown = guidance({
     view,
     mode,
-    switches: settings,
+    switches: { ...settings, auto },
     preview: pointer && preview(lesson, view, pointer),
     dragged: pointer?.at === 'drag' ? pointer.from : undefined,
     pointed: here?.note,
