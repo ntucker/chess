@@ -1,6 +1,7 @@
 import { describe, expect, it, jest } from '@jest/globals';
 
 import { attachStockfish } from '@/stockfish/engine';
+import { NO_RESTARTS } from '@/stockfish/testing';
 
 import { getEvaluation } from './evaluation';
 import { newController, waitForSearch } from './testing';
@@ -14,7 +15,7 @@ describe('getEvaluation', () => {
   it('finishes a position the board stepped past, and keeps it', async () => {
     const controller = newController();
     const sent: string[] = [];
-    const engine = attachStockfish((command) => sent.push(command));
+    const engine = attachStockfish((command) => sent.push(command), NO_RESTARTS);
     engine.receive('uciok');
     /** Answers the search for `moves` once it starts. */
     const finish = async (moves: string, centipawns: number) => {

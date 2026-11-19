@@ -2,6 +2,7 @@ import { describe, expect, it, jest } from '@jest/globals';
 
 import { maiaMove } from '@/maia/engine';
 import { attachStockfish } from '@/stockfish/engine';
+import { NO_RESTARTS } from '@/stockfish/testing';
 
 import { getEvaluation } from './evaluation';
 import { fetchOpponentMove } from './opponent';
@@ -21,7 +22,7 @@ describe('fetchOpponentMove', () => {
   it("plays Stockfish's best move, from the search that evaluated the position", async () => {
     const controller = newController();
     const sent: string[] = [];
-    const engine = attachStockfish((command) => sent.push(command));
+    const engine = attachStockfish((command) => sent.push(command), NO_RESTARTS);
     engine.receive('uciok');
 
     // The evaluation bar judges the position,

@@ -10,8 +10,27 @@ import { evaluationFromScore, parseBestMove, parseScore, positionCommand, type S
  */
 const GO = 'go nodes 100000 movetime 1500';
 
+/**
+ * How long the engine may take to answer: its handshake (once its host has
+ * handed it its files), or a search (which stops itself after 1.5 s). One
+ * that takes longer is stuck, as when Android drops the web view a command
+ * went to, and is restarted.
+ */
+const ANSWER_MS = 10_000;
+
+/** How many engines a search is tried on before it's given up on. */
+const TRIES = 2;
+
 /** Sends one UCI command to the engine. */
 type Send = (command: string) => void;
+
+/** What an engine tells the host that started it (`useRestarts`). */
+export interface Supervisor {
+  /** The engine has finished its handshake. */
+  ready(): void;
+  /** The engine crashed or stopped answering: the host starts another. */
+  failed(): void;
+}
 
 /** An engine the app is connected to. */
 export interface Connection {
@@ -22,6 +41,12 @@ export interface Connection {
    * engine attached.
    */
   detach(): void;
+  /**
+   * Disconnects an engine that crashed, and tells the host to start another
+   * (`Supervisor.failed`). The search it was running waits for the next
+   * engine, unless it has now been tried on `TRIES` engines.
+   */
+  fail(message: string): void;
 }
 
 interface Search {
@@ -30,16 +55,21 @@ interface Search {
   reject(error: Error): void;
   /** The score of the deepest depth finished so far. */
   last?: Score;
+  /** How many engines failed while running it. */
+  failures: number;
 }
 
 /** An attached engine, and whether it has finished its handshake. */
 interface Session {
   readonly send: Send;
+  readonly supervisor: Supervisor;
   ready: boolean;
 }
 
 let connected: Session | undefined;
 let running: Search | undefined;
+/** Fails the connected engine if it doesn't answer in time. */
+let watchdog: ReturnType<typeof setTimeout> | undefined;
 /**
  * Searches waiting for the engine. The last runs next: the newest request, or
  * a search a stopped engine handed back.
@@ -49,22 +79,26 @@ const pending: Search[] = [];
 /**
  * Connects the engine that `send` talks to. The host that runs the engine
  * (StockfishHost) calls this once the engine has started, hands every line
- * it prints to the returned connection, and detaches it when the engine is
- * stopped or fails. Requests made while no engine is connected wait for one.
+ * it prints to the returned connection, detaches it when the engine is
+ * stopped, and fails it when the engine crashes. An engine that doesn't
+ * answer in time fails too. Requests made while no engine is connected wait
+ * for one.
  */
-export function attachStockfish(send: Send): Connection {
-  handOverRunning();
-  const session: Session = { send, ready: false };
+export function attachStockfish(send: Send, supervisor: Supervisor): Connection {
+  disconnect();
+  const session: Session = { send, supervisor, ready: false };
   connected = session;
   send('uci');
+  awaitAnswer(session);
   return {
     receive(line) {
       if (connected === session) handleLine(session, line);
     },
     detach() {
-      if (connected !== session) return;
-      connected = undefined;
-      handOverRunning();
+      if (connected === session) disconnect();
+    },
+    fail(message) {
+      fail(session, message);
     },
   };
 }
@@ -78,14 +112,16 @@ export function attachStockfish(send: Send): Connection {
  */
 export function stockfishEvaluation(line: readonly string[]): Promise<Evaluation> {
   return new Promise((resolve, reject) => {
-    pending.push({ line, resolve, reject });
+    pending.push({ line, resolve, reject, failures: 0 });
     startNext();
   });
 }
 
 function handleLine(session: Session, line: string) {
   if (line === 'uciok') {
+    clearTimeout(watchdog);
     session.ready = true;
+    session.supervisor.ready();
     startNext();
     return;
   }
@@ -93,6 +129,7 @@ function handleLine(session: Session, line: string) {
   const score = parseScore(line);
   if (score) running.last = score;
   else if (line.startsWith('bestmove')) {
+    clearTimeout(watchdog);
     const search = running;
     running = undefined;
     if (search.last) search.resolve(evaluation(search.last, search.line, line));
@@ -117,10 +154,40 @@ function startNext() {
   connected.send('ucinewgame');
   connected.send(positionCommand(running.line));
   connected.send(GO);
+  awaitAnswer(connected);
 }
 
-/** The search the engine was running will never finish there: the next engine runs it first. */
-function handOverRunning() {
+/** Fails `session` unless it answers within `ANSWER_MS`. */
+function awaitAnswer(session: Session) {
+  clearTimeout(watchdog);
+  watchdog = setTimeout(() => fail(session, 'it stopped answering'), ANSWER_MS);
+}
+
+/**
+ * Disconnects the connected engine, if any. The search it was running will
+ * never finish there: the next engine runs it first.
+ */
+function disconnect() {
+  clearTimeout(watchdog);
+  connected = undefined;
   if (running) pending.push(running);
   running = undefined;
+}
+
+/**
+ * `session`'s engine crashed or got stuck: if it's still connected,
+ * disconnects it, counting it against its search, and has its host start
+ * another.
+ */
+function fail(session: Session, message: string) {
+  if (connected !== session) return;
+  console.error(`Stockfish stopped: ${message}`);
+  if (running && ++running.failures >= TRIES) {
+    // Most likely this position crashes Stockfish: give up on it rather
+    // than restart engines forever, and let the searches behind it run.
+    running.reject(new Error(`Stockfish stopped ${TRIES} times on this position: ${message}`));
+    running = undefined;
+  }
+  disconnect();
+  session.supervisor.failed();
 }
