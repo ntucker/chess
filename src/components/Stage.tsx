@@ -142,10 +142,8 @@ function BoardFrame({ children }: { readonly children: ReactNode }) {
 const BOARD_COLUMN_GAP = 4;
 /** The evaluation bar's width. */
 const EVALUATION_BAR_WIDTH = 22;
-/** How far the board sits below the top of its column (the opponent's name bar), as CSS. */
-const BOARD_OFFSET_CSS = `${PLAYER_BAR_HEIGHT.css} + ${BOARD_COLUMN_GAP}px`;
-/** The same, off the web. */
-const BOARD_OFFSET = PLAYER_BAR_HEIGHT.wide + BOARD_COLUMN_GAP;
+/** How far the board sits below the top of its column (the opponent's name bar). */
+const BOARD_OFFSET = PLAYER_BAR_HEIGHT.plus(BOARD_COLUMN_GAP);
 /** The board's largest size. */
 const BOARD_MAX = 720;
 /** The width the column adds beside the board: the players' discs and their gap. */
@@ -164,7 +162,7 @@ const PAGE_SPACE = phoneLength('page-space', 20);
  * Height around the board: the page's top and bottom padding and the gap
  * below the header (3 × PAGE_SPACE), the header, and both name bars.
  */
-const AROUND_BOARD_CSS = `3 * ${PAGE_SPACE.css} + ${HEADER_HEIGHT.css} + 2 * (${BOARD_OFFSET_CSS})`;
+const AROUND_BOARD = PAGE_SPACE.times(3).plus(HEADER_HEIGHT).plus(BOARD_OFFSET.times(2));
 /** On the web, the smallest the board shrinks to in a short window. */
 const BOARD_MIN_WEB = 320;
 /**
@@ -173,7 +171,7 @@ const BOARD_MIN_WEB = 320;
  * view. CSS does it, since the server can't measure the window.
  */
 const BOARD_COLUMN_LIMIT = phoneCalc(
-  `clamp(${BOARD_MIN_WEB}px, 100svh - (${AROUND_BOARD_CSS}), ${BOARD_MAX}px) + ${BESIDE_BOARD}px`,
+  `clamp(${BOARD_MIN_WEB}px, 100svh - ${AROUND_BOARD.css}, ${BOARD_MAX}px) + ${BESIDE_BOARD}px`,
   BOARD_COLUMN_MAX,
 );
 /** Space above the program when it wraps below the board. */
@@ -204,20 +202,14 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     columnGap: STAGE_GAP,
-    paddingTop: phoneCalc(
-      `${BOARD_OFFSET_CSS} - ${WRAPPED_GAP.css}`,
-      BOARD_OFFSET - WRAPPED_GAP.wide,
-    ),
+    paddingTop: BOARD_OFFSET.minus(WRAPPED_GAP).value,
   },
   boardColumn: {
     flexGrow: 1,
     flexShrink: 1,
     flexBasis: 320,
     maxWidth: BOARD_COLUMN_LIMIT,
-    marginTop: phoneCalc(
-      `${WRAPPED_GAP.css} - (${BOARD_OFFSET_CSS})`,
-      WRAPPED_GAP.wide - BOARD_OFFSET,
-    ),
+    marginTop: WRAPPED_GAP.minus(BOARD_OFFSET).value,
     gap: BOARD_COLUMN_GAP,
   },
   barSpace: { height: PLAYER_BAR_HEIGHT.value },
