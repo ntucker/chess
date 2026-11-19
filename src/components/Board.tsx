@@ -120,9 +120,10 @@ export default function Board({
   // A screen left underneath stays mounted but hidden, where the board has no
   // size and chessground would draw its arrows at NaN. Changes made while it
   // is hidden wait, and go to chessground once the board has a size again.
-  // `sized` is the size chessground last measured, not the size now, since
-  // chessground draws with that until its own resize observer runs.
-  const sized = useRef(true);
+  // `sized` follows chessground's measurements rather than the layout now,
+  // since chessground draws with the size it measured until it measures again:
+  // it is read when chessground is made, and then after each of its resizes.
+  const sized = useRef(false);
   const pending = useRef(false);
   const setBoard = useEffectEvent((config: Config) => {
     if (sized.current) api.current?.set(config);
@@ -160,6 +161,8 @@ export default function Board({
       drawable: { brushes: toneBrushes as DrawBrushes },
     });
     api.current = board;
+    const { width, height } = target.getBoundingClientRect();
+    sized.current = width > 0 && height > 0;
     // Made after chessground's own observer, which ResizeObserver notifies
     // first, so chessground has measured the board by the time this runs.
     const resizes = new ResizeObserver(([entry]) => {
