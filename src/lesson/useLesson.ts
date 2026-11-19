@@ -39,6 +39,8 @@ const PLAYBACK_STEP_MS = 1100;
 /** An idea playing back on the board: its note on the idea card, and the board it is on. */
 export interface Playing {
   readonly note: Note;
+  /** The idea of `note` the boards play. */
+  readonly idea: PlayedBack;
   /** Which board: 0 is where the idea starts. */
   readonly step: number;
   /** How many boards it steps through. */
@@ -136,7 +138,14 @@ export function useLesson(lesson: Lesson) {
   const playable = (note: ShownNote) =>
     game.replying ? undefined : notePlayback(shown.ideas, note.note)?.idea.type;
   const playback: Playback = {
-    playing: playing && frame && { note: playing.played, step: playing.step, steps: frames.length },
+    playing: shown.playing &&
+      playing &&
+      frame && {
+        note: playing.played,
+        idea: shown.playing.idea,
+        step: playing.step,
+        steps: frames.length,
+      },
     playable,
     // From the preview on screen, which stays while the idea plays.
     play: (note) => {

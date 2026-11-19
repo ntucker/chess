@@ -91,7 +91,7 @@ function NoteView({
   const playable = playback.playable(shown);
   // The idea on the board, whose color lights the rule: the one playing back,
   // or while pointed at, the note's first.
-  const lit = playing ? note.ideas?.find(({ type }) => type === playable) : pointed && drawn;
+  const litIdea = playing ? playing.idea : pointed ? drawn : undefined;
   const point = () => {
     if (pointable && !pointed) onPoint(note);
   };
@@ -113,9 +113,9 @@ function NoteView({
           borderTopRightRadius: theme.semantic.radius.sm,
           borderBottomRightRadius: theme.semantic.radius.sm,
         },
-        lit
+        litIdea
           ? {
-              borderColor: toneColors[ideaTone(lit, learner)],
+              borderColor: toneColors[ideaTone(litIdea, learner)],
               backgroundColor: color.tones.neutral.subtle,
             }
           : { borderColor: color.tones.accent.solid },
