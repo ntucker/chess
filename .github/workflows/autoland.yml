@@ -82,7 +82,7 @@ jobs:
     name: Interface review
     needs: gate
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     # A newer push makes this review worthless.
     concurrency:
       group: autoland-review-${{ github.event.pull_request.number }}
@@ -111,6 +111,8 @@ jobs:
           sparse-checkout: |
             docs/plans
             .github/autoland
+            GOALS.md
+            AGENTS.md
           persist-credentials: false
 
       - name: Enable Corepack
@@ -139,20 +141,23 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for i in $(seq 60); do
+          for i in $(seq 40); do
             status=$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs?check_name=Cursor%20Bugbot" \
               --jq '.check_runs[0].status // "none"')
             [[ $status == completed ]] && exit 0
             [[ $status == none && $i -gt 20 ]] && exit 0
             sleep 30
           done
+          echo "::error::Bugbot did not finish in 20 minutes"
+          exit 1
 
       # Comments come only from Nathaniel's account (Staff and the threads'
       # replies) and Bugbot. Anyone can comment on a public repo, and nobody
-      # else may steer the review.
+      # else may steer the review. REST names Bugbot cursor[bot], GraphQL cursor.
       - name: Collect the PR, its diff and its review threads
         env:
           GH_TOKEN: ${{ github.token }}
+          TRUSTED: '["ntucker", "cursor"]'
         run: |
           dir=.autoland/context
           mkdir -p "$dir"
@@ -172,12 +177,20 @@ jobs:
                 }
               }
             }' --jq '.data.repository.pullRequest.reviewThreads.nodes[]' \
-            | jq -s '[.[] | .comments = [.comments.nodes[] | select(.author.login == "ntucker" or .author.login == "cursor")]
-                       | select(.comments | length > 0)]' > "$dir/threads.json"
-          gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" \
-            --jq '.[] | select(.user.login == "ntucker" or .user.login == "cursor[bot]") | {author: .user.login, body, created_at}' \
-            | jq -s . > "$dir/comments.json"
+            | jq -s --argjson trusted "$TRUSTED" '[.[]
+                | .comments = [.comments.nodes[] | select(.author.login as $a | $trusted | index($a))]
+                | select(.comments | length > 0)]' > "$dir/threads.json"
+          # Review summaries (the Staff review's body) and plain PR comments.
+          { gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews" \
+              --jq '.[] | select(.body != "") | {kind: "review", state, author: .user.login, body, created_at: .submitted_at}'
+            gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" \
+              --jq '.[] | {kind: "comment", author: .user.login, body, created_at}'
+          } | jq -s --argjson trusted "$TRUSTED" \
+              '[.[] | .author |= sub("\\[bot\\]$"; "") | select(.author as $a | $trusted | index($a))] | sort_by(.created_at)' \
+              > "$dir/comments.json"
 
+      # Claude runs outside the checkout, so no settings, hooks, CLAUDE.md or
+      # MCP config from the PR load next to the token.
       - name: Review
         id: review
         env:
@@ -185,23 +198,27 @@ jobs:
           PLAN: ${{ needs.gate.outputs.plan }}
           PIECE: ${{ needs.gate.outputs.piece }}
         run: |
-          mcp='{"mcpServers":{"playwright":{"command":"npx","args":["-y","@playwright/mcp@0.0.84",
-            "--browser","chrome","--headless","--isolated","--caps","vision",
-            "--viewport-size","1280x800","--output-dir",".autoland/screenshots"]}}}'
-          schema=$(cat .autoland/main/.github/autoland/verdict.schema.json)
-          prompt="$(cat .autoland/main/.github/autoland/review.md)
+          pr=$GITHUB_WORKSPACE main=$GITHUB_WORKSPACE/.autoland/main ctx=$GITHUB_WORKSPACE/.autoland/context
+          mcp=$(jq -cn --arg out "$GITHUB_WORKSPACE/.autoland/screenshots" '{mcpServers: {playwright: {command: "npx",
+            args: ["-y", "@playwright/mcp@0.0.84", "--browser", "chrome", "--headless", "--isolated",
+              "--caps", "vision", "--viewport-size", "1280x800", "--output-dir", $out]}}}')
+          prompt="$(cat "$main/.github/autoland/review.md")
 
           Inputs for this review:
-          - Plan piece: $PLAN/$PIECE, in .autoland/main/docs/plans/$PLAN.md
-          - PR #$PR: .autoland/context/pr.md (title and description), .autoland/context/pr.diff
-          - Review threads and comments: .autoland/context/threads.json, .autoland/context/comments.json
+          - Plan piece: $PLAN/$PIECE, in $main/docs/plans/$PLAN.md
+          - Goals and project notes as they are on main: $main/GOALS.md, $main/AGENTS.md
+          - The PR's code (its head): $pr
+          - PR #$PR: $ctx/pr.md (title and description), $ctx/pr.diff
+          - Review threads and comments: $ctx/threads.json, $ctx/comments.json
           - The app, built from this PR: http://localhost:8081"
+          mkdir -p "$RUNNER_TEMP/review" && cd "$RUNNER_TEMP/review"
           npx -y @anthropic-ai/claude-code@2.1.321 -p "$prompt" \
-            --model claude-sonnet-5-5 --effort high \
+            --model claude-sonnet-5-5 --effort high --add-dir "$GITHUB_WORKSPACE" \
             --mcp-config "$mcp" --strict-mcp-config \
-            --allowedTools 'Read,Grep,Glob,Bash(git log:*),Bash(git show:*),Bash(git diff:*),mcp__playwright' \
-            --json-schema "$schema" --output-format json > .autoland/result.json
-          jq -e '.structured_output.verdict' .autoland/result.json > /dev/null
+            --allowedTools 'Read,Grep,Glob,mcp__playwright' \
+            --json-schema "$(cat "$main/.github/autoland/verdict.schema.json")" \
+            --output-format json > "$GITHUB_WORKSPACE/.autoland/result.json"
+          jq -e '.structured_output.verdict' "$GITHUB_WORKSPACE/.autoland/result.json" > /dev/null
 
       - name: Upload screenshots
         if: ${{ !cancelled() }}
@@ -215,6 +232,7 @@ jobs:
         if: ${{ !cancelled() && steps.review.outcome == 'success' }}
         env:
           GH_TOKEN: ${{ github.token }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           out=.autoland/result.json
@@ -223,6 +241,10 @@ jobs:
             $r.summary + "\n\n" +
             ([$r.findings[] | "- **" + .severity + "** " + .title + " (`" + .where + "`): " + .detail] | join("\n")) +
             "\n\nScreenshots and log: " + $run + "\n\n---\n_Generated by [Claude Code](https://claude.ai/code)_"' "$out" > .autoland/comment.md
+          # The token is in the reviewer's environment; it must never reach a public comment.
+          if grep -qF "$CLAUDE_CODE_OAUTH_TOKEN" .autoland/comment.md; then
+            echo "::error::The review quoted the Claude token, so it was not posted"; exit 1
+          fi
           gh pr comment "$PR" --body-file .autoland/comment.md
           [[ $(jq -r '.structured_output.verdict' "$out") == approve ]]
 
@@ -247,7 +269,8 @@ jobs:
 
     steps:
       # Every other check on the reviewed commit must finish, CI and the web
-      # build must pass, and nothing may fail. A push, a removed label, a draft
+      # build must pass, nothing may fail, and the Staff reviewer's latest
+      # verdict must not be CHANGE_THIS_PR. A push, a removed label, a draft
       # or a "changes requested" review stops the landing.
       - name: Wait for the other checks
         run: |
@@ -263,14 +286,20 @@ jobs:
                 or .conclusion == "action_required")' <<< "$runs" > /dev/null; then
               echo "::error::A check failed: $runs"; exit 1
             fi
-            if jq -e 'all(.status == "completed")
+            staff=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --jq '.[]
+              | select(.user.login == "ntucker" and (.body | startswith("**Staff Reviewer:**")))
+              | .body | split("\n")[0]' | tail -n 1)
+            if [[ $staff == *CHANGE_THIS_PR* ]]; then
+              echo "::error::The Staff reviewer asked for changes: $staff"; exit 1
+            fi
+            if [[ -n $staff ]] && jq -e 'all(.status == "completed")
                 and any(.name == "Lint, typecheck and test" and .conclusion == "success")
                 and any(.name == "Build" and .conclusion == "success")' <<< "$runs" > /dev/null; then
               exit 0
             fi
             sleep 30
           done
-          echo "::error::Checks did not finish in time"; exit 1
+          echo "::error::Checks or the Staff review did not finish in time"; exit 1
 
       # Merges made with this workflow's token start no other workflows, so it
       # starts the deploy and main's CI itself.

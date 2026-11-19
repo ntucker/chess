@@ -47,9 +47,9 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
 8. A PR that builds a piece of an approved plan can autoland (`docs/plans/README.md`). Its
    description says `Plan piece: <plan>/<piece>` and explains any difference in `Plan deviations:`.
    Once steps 3 to 7 are done and every Bugbot and Staff comment is answered, add the `autoland`
-   label. Fix what the Interface review rejects (a push reruns it). If it is wrong, say why on the PR
-   and tell the person, who merges by hand. The person squash-merges every other PR. A worker's PR
-   ends when it merges, not when it is handed over.
+   label. Fix what the Interface review rejects (a push reruns it). If the review is wrong, say why on
+   the PR and tell the person, who merges by hand. The person squash-merges every other PR. A
+   worker's PR ends when it merges, not when it is handed over.
 
 ## PR descriptions
 

@@ -21,9 +21,9 @@ A pull request that builds an approved piece can land without a manual merge
    checks the code's interfaces against the piece, and checks that every Bugbot and Staff comment was
    fixed or rightly rejected. It posts its verdict as a PR comment and keeps its screenshots on the
    workflow run.
-5. If the reviewer approves, **Land** waits for every other check on the same commit. Lint, typecheck
-   and test and the web build must pass, and nothing may fail. Then it squash-merges and starts the
-   deploy.
+5. If the reviewer approves, **Land** waits for every other check on the same commit and for a Staff
+   review. Lint, typecheck and test and the web build must pass, nothing may fail, and the latest
+   Staff verdict must not be `CHANGE_THIS_PR`. Then it squash-merges and starts the deploy.
 
 A push restarts the review. Removing the label, marking the PR as a draft or requesting changes stops
 the landing.
