@@ -26,8 +26,8 @@
     --board-min: 280px;
     /*
      * ...to leave this much for the panel and the gap above it. Below about
-     * 640px tall the board has reached its minimum and the panel gets less;
-     * below about 480px the page scrolls again.
+     * 630px tall the board has reached its minimum and the panel gets less;
+     * below about 470px the page scrolls again.
      */
     --panel-reserve: 180px;
   }
