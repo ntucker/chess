@@ -1,13 +1,22 @@
 /**
  * Imports a lichess study as a lesson file (format: src/lesson/lesson.ts):
  *
- *   yarn import-study caro-kann [--no-popularity]
+ *   yarn import-study caro-kann [--no-model] [--no-popularity]
  *
- * parse the study → read each chapter's fixed formats → merge the chapters
- * into one position tree → add popularity → checkLesson → write
+ * parse the study → read each chapter's fixed formats → rewrite the comments
+ * with AI (./convert) → merge the chapters into one
+ * position tree → add popularity → checkLesson → write
  * assets/lessons/<id>.json and register it in src/resources/lesson.ts.
  * `caro-kann` names a study listed in studies.ts. With --no-popularity the
  * file is written without counts, replacing any it had.
+ *
+ * The AI step runs the Claude Code CLI (`claude`, signed in, or
+ * CLAUDE_CODE_OAUTH_TOKEN set) and keeps each answer in
+ * scripts/import-study/answers/<name>.jsonl, which is committed: a run asks
+ * only about comments that changed (all of them after a prompt.ts edit:
+ * about 190 requests and an hour for the Caro-Kann), then rewrites the file
+ * with the answers it used. --no-model takes answers from the file only and
+ * calls no model; comments missing there keep the importer's notes.
  *
  *   yarn import-study --popularity assets/lessons/caro-kann.json
  *
@@ -17,8 +26,8 @@
  * token (a personal token with no scopes is enough): set LICHESS_TOKEN, or
  * run where a proxy adds it (Node's fetch uses HTTPS_PROXY only with
  * NODE_USE_ENV_PROXY=1, which the yarn script sets).
- * Answers are cached in IMPORT_STUDY_CACHE (default .cache/import-study), so
- * a stopped crawl resumes. Lichess allows about 24 requests a minute, so the
+ * The study and the explorer's answers are cached in IMPORT_STUDY_CACHE
+ * (default .cache/import-study), so a stopped crawl resumes. Lichess allows about 24 requests a minute, so the
  * first crawl of the Caro-Kann takes about four hours; later runs read the
  * cache.
  */
@@ -28,6 +37,8 @@ import { join } from 'node:path';
 import { checkLesson } from '@/lesson/check';
 import { readLesson, type Lesson } from '@/lesson/lesson';
 
+import { convertChapters, convertReport } from './convert';
+import { claudeCli } from './convert/claude';
 import { extractChapter } from './extract';
 import { lessonJson } from './lessonJson';
 import { mergeChapters } from './merge';
@@ -40,20 +51,34 @@ import { STUDIES } from './studies';
 const ROOT = join(__dirname, '../..');
 
 const CACHE = process.env.IMPORT_STUDY_CACHE ?? join(ROOT, '.cache/import-study');
-const USAGE = `Usage: yarn import-study <${Object.keys(STUDIES).join('|')}> [--no-popularity] | --popularity <lesson file>`;
+const STUDY_FLAGS = ['--no-model', '--no-popularity'];
+const USAGE = `Usage: yarn import-study <${Object.keys(STUDIES).join('|')}> ${STUDY_FLAGS.map((flag) => `[${flag}]`).join(' ')} | --popularity <lesson file>`;
 
 async function main() {
   mkdirSync(CACHE, { recursive: true });
   const [first, ...rest] = process.argv.slice(2);
-  if (first === '--popularity' && rest[0]) {
+  if (first === '--popularity') {
+    if (rest.length !== 1) throw new Error(USAGE);
     const file = rest[0];
     writeLesson(file, await withPopularity(readLesson(JSON.parse(readFileSync(file, 'utf8')))));
     return;
   }
   const study = Object.hasOwn(STUDIES, first) ? STUDIES[first as keyof typeof STUDIES] : undefined;
-  if (!study) throw new Error(USAGE);
+  // An unknown flag must fail rather than be ignored: a mistyped --no-model would call the model for an hour.
+  if (!study || rest.some((flag) => !STUDY_FLAGS.includes(flag))) throw new Error(USAGE);
   const chapters = parseStudy(await studyPgn(study.study), study.chapters);
-  const extracted = chapters.map((chapter) => extractChapter(chapter, study.info.side));
+  const cli = claudeCli({
+    learner: study.info.side,
+    cacheFile: join(ROOT, `scripts/import-study/answers/${first}.jsonl`),
+    callModel: !rest.includes('--no-model'),
+  });
+  const converted = await convertChapters(
+    chapters.map((chapter) => extractChapter(chapter, study.info.side)),
+    cli.ask,
+  );
+  cli.saveUsed();
+  const { extracted } = converted;
+  console.log(convertReport(converted.report));
   let lesson: Lesson = mergeChapters(study.info, chapters, extracted);
   if (!rest.includes('--no-popularity')) lesson = await withPopularity(lesson);
   writeLesson(join(ROOT, `assets/lessons/${lesson.id}.json`), lesson);

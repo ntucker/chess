@@ -20,13 +20,17 @@ import { chapterMoves, type Chapter, type StudyMove } from './study';
 import { direction, namedMoves, shorten, textVerdicts } from './text';
 import { trapLines, watchOuts } from './traps';
 
-interface MoveNote {
+export interface MoveNote {
   readonly move: StudyMove;
   readonly note: Note;
+  /** The move whose comment the note comes from. */
+  readonly source: StudyMove;
 }
-interface PositionNote {
+export interface PositionNote {
   readonly pos: Chess;
   readonly note: Note;
+  /** The move whose comment the note comes from. */
+  readonly source: StudyMove;
 }
 interface Branch {
   readonly spot: Spot;
@@ -108,7 +112,7 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
       if (why) rejected.push({ idea, why, comment });
       else if (spot.move === target) own.push(item);
       // An idea about another position (often the one before the commented move) is said there.
-      else positionNotes.push({ pos: spot.pos, note: note(label, [idea]) });
+      else positionNotes.push({ pos: spot.pos, note: note(label, [idea]), source: move });
     }
     // Without a comment, an evaluation glyph's label is the note.
     const text = comment || own.find(({ idea }) => idea.type === 'evaluation')?.label;
@@ -119,6 +123,7 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
           text,
           own.map(({ idea }) => idea),
         ),
+        source: move,
       });
   }
   return { moveNotes, positionNotes, branches, choices, rejected, contradicted };

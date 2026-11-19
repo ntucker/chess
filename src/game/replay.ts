@@ -10,6 +10,18 @@ export { opposite } from 'chessops/util';
 
 export const colorName = (color: Color) => (color === 'white' ? 'White' : 'Black');
 
+/** `sans` numbered, the first played at `firstPly` (1 is White's first move): `1.e4 c6 2.d4`, or `2...d5 3.e5`. */
+export function numberedLine(sans: readonly string[], firstPly = 1): string {
+  return sans
+    .map((san, i) => {
+      const ply = firstPly + i;
+      const number = Math.ceil(ply / 2);
+      if (ply % 2 === 1) return `${number}.${san}`;
+      return i === 0 ? `${number}...${san}` : san;
+    })
+    .join(' ');
+}
+
 /** One position in a game, as the move list shows it. */
 export interface Ply {
   readonly fen: string;

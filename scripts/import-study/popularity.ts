@@ -4,12 +4,11 @@
  * refuses requests without a lichess token, and lichess asks for one request
  * at a time and a full minute's pause after a 429.
  */
-import { appendFileSync, existsSync, mkdirSync, readFileSync, truncateSync } from 'node:fs';
-import { dirname } from 'node:path';
 
 import { parsePosition, parsePositionKey, positionKey, recordedMove } from '@/game/replay';
 import type { Lesson, PositionKey, Uci } from '@/lesson/lesson';
 
+import { appendJsonLine, readJsonLines } from './jsonLines';
 import { played } from './study';
 
 /** The explorer's bands the app reads (see `ratingBandIndex`), each counting ratings up to the next. */
@@ -50,8 +49,7 @@ export function lichessExplorer({
   fetch: get = fetch,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 }: ExplorerOptions): Explorer {
-  mkdirSync(dirname(cacheFile), { recursive: true });
-  const cache = openCache(cacheFile);
+  const cache = new Map(readJsonLines(cacheFile) as [string, LichessCounts][]);
   let lastRequest = -Infinity;
   const paced = async (url: URL) => {
     await sleep(Math.max(0, lastRequest + REQUEST_INTERVAL_MS - Date.now()));
@@ -81,7 +79,7 @@ export function lichessExplorer({
       const body = (await response.json()) as { moves: { uci: string; white: number; draws: number; black: number }[] };
       const counts = Object.fromEntries(body.moves.map((move) => [move.uci, move.white + move.draws + move.black]));
       cache.set(id, counts);
-      appendFileSync(cacheFile, `${JSON.stringify([id, counts])}\n`);
+      appendJsonLine(cacheFile, [id, counts]);
       return counts;
     }
   };
@@ -95,19 +93,6 @@ export function lichessExplorer({
 function recordedCounts(key: PositionKey, counts: LichessCounts): MoveCounts {
   const pos = parsePositionKey(key)!;
   return Object.fromEntries(Object.entries(counts).map(([uci, games]) => [recordedMove(pos, uci) ?? uci, games]));
-}
-
-/**
- * The cached answers. A last line a stopped crawl left unfinished is cut off
- * the file, so its question is asked again.
- */
-function openCache(file: string): Map<string, LichessCounts> {
-  if (!existsSync(file)) return new Map();
-  const data = readFileSync(file);
-  const whole = data.lastIndexOf('\n') + 1;
-  if (whole < data.length) truncateSync(file, whole);
-  const lines = data.subarray(0, whole).toString('utf8').split('\n').filter(Boolean);
-  return new Map(lines.map((line) => JSON.parse(line) as [string, LichessCounts]));
 }
 
 /**

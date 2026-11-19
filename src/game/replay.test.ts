@@ -7,12 +7,20 @@ import {
   analyze,
   lastPosition,
   lineMove,
+  numberedLine,
   pieceAt,
   playMove,
   positionKey,
   replay,
   toUci,
 } from './replay';
+
+describe('numberedLine', () => {
+  it('numbers a line from the first move, or from a Black move', () => {
+    expect(numberedLine(['e4', 'c6', 'd4'])).toBe('1.e4 c6 2.d4');
+    expect(numberedLine(['d5', 'e5'], 4)).toBe('2...d5 3.e5');
+  });
+});
 
 describe('playMove', () => {
   it('plays a legal move and describes it', () => {
