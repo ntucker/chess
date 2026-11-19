@@ -50,3 +50,7 @@ yarn-error.*
 # scripts/maia-reference.py
 .venv-maia/
 __pycache__/
+
+# Session bookkeeping from the work-queue mod
+work-queue.json
+work-queue.archive.jsonl
