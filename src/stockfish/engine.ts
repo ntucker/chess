@@ -45,8 +45,6 @@ let running: Search | undefined;
  * a search a stopped engine handed back.
  */
 const pending: Search[] = [];
-/** Each position asked for and not yet finished, by its moves. */
-const unfinished = new Map<string, Promise<Evaluation>>();
 
 /**
  * Connects the engine that `send` talks to. The host that runs the engine
@@ -76,21 +74,13 @@ export function attachStockfish(send: Send): Connection {
  * stands, as Stockfish judges it. Stockfish works on one position at a time:
  * the search under way finishes, then the newest request waiting runs. No
  * request is dropped, so a position the board steps past is still searched
- * (move labels need every position of the game anyway). Asking again for a
- * position not yet finished waits for the same search: the evaluation bar,
- * move labels and the opponent often ask for the same position at once.
+ * (move labels need every position of the game anyway).
  */
 export function stockfishEvaluation(line: readonly string[]): Promise<Evaluation> {
-  const key = line.join(' ');
-  let search = unfinished.get(key);
-  if (!search) {
-    search = new Promise<Evaluation>((resolve, reject) => {
-      pending.push({ line, resolve, reject });
-      startNext();
-    }).finally(() => unfinished.delete(key));
-    unfinished.set(key, search);
-  }
-  return search;
+  return new Promise((resolve, reject) => {
+    pending.push({ line, resolve, reject });
+    startNext();
+  });
 }
 
 function handleLine(session: Session, line: string) {

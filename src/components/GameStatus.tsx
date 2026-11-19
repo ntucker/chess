@@ -2,7 +2,7 @@ import { Button, Inline, Stack, Text } from '@reactive/silk-native';
 
 import { Eyebrow } from '@/components/Eyebrow';
 import type { Color, Position } from '@/game/replay';
-import { type Opponent, OPPONENT_NAMES, opponentStyle } from '@/opponent/opponent';
+import { describeOpponent, type Opponent } from '@/opponent/opponent';
 
 interface Props {
   readonly playerColor: Color;
@@ -19,8 +19,7 @@ interface Props {
 
 /** The headline of the panel: whose move it is, or how the game ended. */
 export function GameStatus({ error, onRetry, ...game }: Props) {
-  const name = OPPONENT_NAMES[game.opponent.engine];
-  const { eyebrow, title, detail } = describe(game, name);
+  const { eyebrow, title, detail } = describe(game);
   return (
     <Stack gap="2">
       <Eyebrow>{eyebrow}</Eyebrow>
@@ -33,7 +32,7 @@ export function GameStatus({ error, onRetry, ...game }: Props) {
       {error ? (
         <Inline gap="3" align="center">
           <Text role="bodySm" tone="danger">
-            {name} didn&apos;t answer.
+            {describeOpponent(game.opponent).name} didn&apos;t answer.
           </Text>
           <Button size="sm" variant="soft" tone="danger" onPress={onRetry}>
             Try again
@@ -46,8 +45,8 @@ export function GameStatus({ error, onRetry, ...game }: Props) {
 
 type Game = Omit<Props, 'error' | 'onRetry'>;
 
-function describe({ viewing, total, ...game }: Game, name: string) {
-  const { title, detail } = describeLatest(game, name);
+function describe({ viewing, total, ...game }: Game) {
+  const { title, detail } = describeLatest(game);
   if (viewing === undefined) return { eyebrow: 'Now playing', title, detail };
   return {
     eyebrow: viewing === 0 ? 'Replaying · starting position' : `Replaying move ${viewing} of ${total}`,
@@ -56,11 +55,9 @@ function describe({ viewing, total, ...game }: Game, name: string) {
   };
 }
 
-function describeLatest(
-  { playerColor, latest, opponent, thinking }: Omit<Game, 'viewing' | 'total'>,
-  name: string,
-) {
+function describeLatest({ playerColor, latest, opponent, thinking }: Omit<Game, 'viewing' | 'total'>) {
   const { result } = latest;
+  const { name, style } = describeOpponent(opponent);
   if (result?.winner === playerColor)
     return { title: 'Checkmate. Bravo!', detail: 'You won. Take a bow, then start a new game.' };
   if (result?.winner)
@@ -73,6 +70,6 @@ function describeLatest(
     };
   return {
     title: thinking ? `${name} is thinking…` : `${name}'s move.`,
-    detail: opponentStyle(opponent),
+    detail: style,
   };
 }

@@ -19,17 +19,18 @@ import { SideChooser } from '@/components/SideChooser';
 import { Transport } from '@/components/Transport';
 import { type Color, colorName, opposite } from '@/game/replay';
 import { useGame } from '@/game/useGame';
-import { OPPONENT_NAMES, opponentTagline } from '@/opponent/opponent';
+import { describeOpponent } from '@/opponent/opponent';
 import { useOpponent } from '@/opponent/useOpponent';
-import { getOpponentMove } from '@/resources/opponent';
+import { fetchOpponentMove } from '@/resources/opponent';
 import { spotlight } from '@/theme/theme';
 
 export default function PlayScreen() {
   const ctrl = useController();
   const opponent = useOpponent();
+  const described = describeOpponent(opponent);
   const game = useGame({
     id: `${opponent.engine} ${opponent.rating}`,
-    reply: (after) => ctrl.fetch(getOpponentMove, opponent, after),
+    reply: (after) => fetchOpponentMove(ctrl, opponent, after),
   });
   const { playerColor, line, qualities, ply, current, toMove, thinking, goto } = game;
   const [nextColor, setNextColor] = useState<Color>(playerColor);
@@ -81,8 +82,8 @@ export default function PlayScreen() {
           <View style={styles.stage}>
             <View style={styles.boardColumn}>
               <PlayerBar
-                name={OPPONENT_NAMES[opponent.engine]}
-                detail={`${opponentTagline(opponent)} · ${colorName(opponentColor)}`}
+                name={described.name}
+                detail={`${described.tagline} · ${colorName(opponentColor)}`}
                 color={opponentColor}
                 toMove={toMove === opponentColor}
                 thinking={thinking}

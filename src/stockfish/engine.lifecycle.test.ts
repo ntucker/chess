@@ -52,21 +52,6 @@ describe('the engine lifecycle', () => {
     await expect(evaluation).rejects.toThrow('without a score');
   });
 
-  it('searches a position once when it is asked for again before it finishes', async () => {
-    const { print, sent } = scripted();
-    print('uciok');
-    const bar = engine.stockfishEvaluation(['e2e4']);
-    const opponent = engine.stockfishEvaluation(['e2e4']);
-    print('info depth 12 score cp 30');
-    print('bestmove c7c6');
-    expect(await opponent).toEqual(await bar);
-    expect(sent.filter((command) => command.startsWith('position'))).toHaveLength(1);
-
-    // Once finished, asking again searches again (Data Client keeps the result).
-    void engine.stockfishEvaluation(['e2e4']);
-    expect(sent.filter((command) => command.startsWith('position'))).toHaveLength(2);
-  });
-
   it('runs the newest waiting search first, then the older ones', async () => {
     const older = engine.stockfishEvaluation(['e2e4']);
     const newer = engine.stockfishEvaluation(['d2d4']);

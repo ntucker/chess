@@ -22,19 +22,17 @@ export interface Opponent {
 /** The opponent's rating until the learner can pick one. */
 export const DEFAULT_OPPONENT_RATING: MaiaRating = 1500;
 
-export const OPPONENT_NAMES: Record<OpponentEngine, string> = {
-  maia: 'Maia',
-  stockfish: 'Stockfish',
-};
-
-/** A few words on how `opponent` plays, for its name plate. */
-export function opponentTagline({ engine, rating }: Opponent): string {
-  return engine === 'maia' ? `Plays like a ${rating}` : 'Plays its best move';
-}
-
-/** One sentence on how `opponent` plays. */
-export function opponentStyle({ engine, rating }: Opponent): string {
+/** How `opponent` is shown: its name, a few words for its name plate, and one sentence on how it plays. */
+export function describeOpponent({ engine, rating }: Opponent) {
   return engine === 'maia'
-    ? `Maia plays the way people rated about ${rating} do.`
-    : 'Stockfish plays the move it judges best.';
+    ? {
+        name: 'Maia',
+        tagline: `Plays like a ${rating}`,
+        style: `Maia plays the way people rated about ${rating} do.`,
+      }
+    : {
+        name: 'Stockfish',
+        tagline: 'Plays its best move',
+        style: 'Stockfish plays the move it judges best.',
+      };
 }
