@@ -306,13 +306,13 @@ const moveArrow = (uci: Uci, tone: Tone, step?: number): Extract<Drawing, { kind
 const bestDrawings = (best: Uci | undefined): Drawing[] => (best ? [moveArrow(best, 'engine')] : []);
 
 /**
- * A trap the line fell into, once the board shows its last move: the
+ * A trap the line fell into, while the board shows where it landed: the
  * tempting move as a danger arrow, with a ghost of its piece where it stood.
  */
-function landedTrapDrawings({ trap, at, end }: LandedTrap, shown: PositionKey): Drawing[] {
-  if (end !== shown) return [];
+function landedTrapDrawings({ trap, note, landed }: LandedTrap, shown: PositionKey): Drawing[] {
+  if (landed !== shown) return [];
   const tempting = moveArrow(trap.moves[0], 'danger');
-  const piece = pieceAt(at, tempting.from)!;
+  const piece = pieceAt(note.after, tempting.from)!;
   return [ghost(tempting.from, piece), tempting];
 }
 

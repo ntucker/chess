@@ -8,7 +8,7 @@ import { join } from 'node:path';
 
 import { sanToUci } from '@/game/replay';
 
-import { type Lesson, type LessonMove, type PositionKey, readLesson } from './lesson';
+import { type Lesson, type LessonMove, type PositionKey, readLesson, type Uci } from './lesson';
 import { lineKeys } from './select';
 import { lessonView, type LessonViewInput } from './view';
 
@@ -47,6 +47,17 @@ export function withMoves(
     ...lesson,
     positions: { ...lesson.positions, [key]: { ...entry, moves: edit(entry.moves) } },
   };
+}
+
+/** `lesson` with the trap whose moves are `moves` playing `edited` instead. */
+export function withTrapMoves(lesson: Lesson, moves: readonly Uci[], edited: readonly Uci[]): Lesson {
+  return JSON.parse(
+    JSON.stringify(lesson, (_, value) =>
+      value?.type === 'trap' && String(value.moves) === String(moves)
+        ? { ...value, moves: edited }
+        : value,
+    ),
+  );
 }
 
 /** The key of the position after `sans`. */

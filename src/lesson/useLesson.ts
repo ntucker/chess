@@ -2,8 +2,8 @@
  * The lesson screen's wiring: a game against the guide-first opponent, the
  * facts about the position on the board, what the learner points at (a
  * candidate, by its list row or a board square, and a note on the idea
- * card), an idea playing back, and the board. Explore only so far, with the
- * opponent replying by itself.
+ * card), an idea playing back, the mode (Explore or Practice), and the
+ * board. On Auto the learner moves their own side; on "I choose", either.
  */
 import { useController } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
@@ -11,7 +11,7 @@ import { useEffect, useMemo, useReducer } from 'react';
 
 import type { Square } from '@/board/drawing';
 import type { BoardProps } from '@/components/Board';
-import { parsePositionKey } from '@/game/replay';
+import { parsePositionKey, toUci } from '@/game/replay';
 import { useGame } from '@/game/useGame';
 import { gameOpponent } from '@/resources/opponent';
 import { useSettings } from '@/settings/SettingsProvider';
@@ -19,19 +19,13 @@ import { useNeedsStockfish } from '@/stockfish/demand';
 
 import { boardPress, lessonBoard } from './board';
 import { ideaPlayback } from './drawings';
-import { guidance, type LessonSwitches, notePlayback, type PlayedBack } from './guidance';
+import { guidance, type LessonMode, notePlayback, type PlayedBack } from './guidance';
 import type { Lesson, Note, Uci } from './lesson';
 import { lessonOpponent } from './opponent';
-import { peekReducer } from './peek';
-import type { Candidate } from './select';
+import { beforeSideMoves } from './practice';
+import { initialScreen, screenReducer } from './screen';
+import { bookMoves, type Candidate, isBook } from './select';
 import { lessonView, type Pointer, preview, type ShownNote } from './view';
-
-/** Explore with the opponent replying and ideas drawn, until the screen offers switches. */
-const SWITCHES: LessonSwitches = {
-  auto: true,
-  showIdeas: true,
-  showTraps: false,
-};
 
 /** How long each board of a playback shows before the next. */
 const PLAYBACK_STEP_MS = 1100;
@@ -61,17 +55,25 @@ export interface Playback {
 
 export function useLesson(lesson: Lesson) {
   const ctrl = useController();
-  const { opponent } = useSettings();
+  const settings = useSettings();
+  const { opponent } = settings;
   const focused = useIsFocused();
   // Moves are labelled by Stockfish whatever judges the bar: Maia's judgement
   // could call a book move a mistake. So Stockfish runs while this is in front.
   useNeedsStockfish(focused);
-  const game = useGame(lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent)), {
+  // On "I choose" nobody replies: the learner picks the opponent's move.
+  const rival = settings.auto
+    ? lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent))
+    : undefined;
+  const game = useGame(rival, {
     side: lesson.side,
     active: focused,
     judge: 'stockfish',
+    book: (line) => bookMoves(lesson, line),
   });
-  const { moves, ply, current } = game;
+  const { moves, ply, plies, current, canMove } = game;
+  // A move played before the learner's first starts a Practice run.
+  const startsRun = beforeSideMoves(plies, lesson.side, ply);
   const view = useMemo(
     () => lessonView({ lesson, line: moves, ply, opponent }),
     [lesson, moves, ply, opponent],
@@ -79,7 +81,8 @@ export function useLesson(lesson: Lesson) {
   // A row that leaves the list (played, or stepped away from) never reports
   // a hover-out or blur, so a peek ends when the board moves on; otherwise
   // stepping back would preview that row again.
-  const [peek, dispatch] = useReducer(peekReducer, undefined);
+  const [{ mode: modeState, peek }, dispatch] = useReducer(screenReducer, initialScreen);
+  const { mode } = modeState;
   const { key } = view;
   if (peek && peek.key !== key) dispatch({ type: 'board', key });
   const here = peek?.key === key ? peek : undefined;
@@ -88,8 +91,8 @@ export function useLesson(lesson: Lesson) {
   const pointer = playing ? playing.from : here?.candidate;
   const shown = guidance({
     view,
-    mode: 'explore',
-    switches: SWITCHES,
+    mode,
+    switches: settings,
     preview: pointer && preview(lesson, view, pointer),
     pointed: here?.note,
     playing: playing?.played,
@@ -97,6 +100,9 @@ export function useLesson(lesson: Lesson) {
   const frames = shown.playing
     ? ideaPlayback(shown.playing.idea, parsePositionKey(shown.playing.at)!)
     : [];
+  // An idea the guidance no longer shows (the mode or a switch changed) stops,
+  // or its peek would hold the board with no controls to end it.
+  if (playing && !shown.playing) dispatch({ type: 'stop' });
   const frame = playing && frames[playing.step];
   const stepping = playing?.auto && playing.step < frames.length - 1;
   useEffect(() => {
@@ -113,7 +119,15 @@ export function useLesson(lesson: Lesson) {
     const candidate = at && preview(lesson, view, at) ? at : undefined;
     dispatch({ type: 'candidate', key, candidate });
   };
-  const play = (candidate: Candidate) => game.play(candidate.move.uci);
+  // One event for a move: the game plays it, and the mode learns what it was.
+  const playMove = (uci: string) => {
+    if (!canMove) return;
+    const learner = current.turn === lesson.side;
+    const book = isBook(lesson, key, uci);
+    dispatch({ type: 'played', learner, book, first: startsRun, replaces: ply < moves.length });
+    game.play(uci);
+  };
+  const play = (candidate: Candidate) => playMove(candidate.move.uci);
   const board: Omit<BoardProps, 'dom'> = {
     ...lessonBoard({
       side: lesson.side,
@@ -122,18 +136,18 @@ export function useLesson(lesson: Lesson) {
       moves,
       ply,
       current,
-      canMove: game.canMove,
+      canMove,
       quality: game.quality,
       frame,
     }),
-    onMove: game.move,
+    onMove: (from, to) => playMove(toUci(current, from, to)),
     onHover: pointSquare,
     onHold: pointSquare,
     onPress: (square, selected) => {
-      const press = !frame && boardPress(shown, current, game.canMove, square, selected);
+      const press = !frame && boardPress(shown, current, canMove, square, selected);
       if (!press) return;
       if (press.kind === 'candidate') play(press.candidate);
-      else if (press.kind === 'move') game.move(press.from, press.to);
+      else if (press.kind === 'move') playMove(toUci(current, press.from, press.to));
       // No candidate: the preview ends.
       else dispatch({ type: 'candidate', key });
     },
@@ -141,7 +155,7 @@ export function useLesson(lesson: Lesson) {
   // The opponent's reply would move the board on and end a playback at once,
   // so none starts while one is on its way to the position shown.
   const playable = (note: ShownNote) =>
-    game.replying ? undefined : notePlayback(shown.ideas, note.note)?.idea.type;
+    game.replying ? undefined : notePlayback(shown.playable, note.note)?.idea.type;
   const playback: Playback = {
     playing: shown.playing &&
       playing &&
@@ -167,9 +181,16 @@ export function useLesson(lesson: Lesson) {
     guidance: shown,
     board,
     playback,
-    /** Whether the learner may play the candidates now (they are the side to move's). */
-    canPlay: game.canMove,
+    /** Whether the learner may play the side to move's candidates now. */
+    canPlay: canMove,
     play,
+    /** Explore, or Practice with whether the run is clean. */
+    modeState,
+    /** A move played on the board now starts a Practice run: no move of the learner's comes before. */
+    startsRun,
+    /** The learner chooses Explore or Practice. */
+    chooseMode: (mode: LessonMode) =>
+      dispatch({ type: 'modeChosen', mode, untouched: !game.started }),
     /** The note pointed at on the idea card. */
     pointedNote: shown.pointed,
     /**

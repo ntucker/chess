@@ -36,6 +36,21 @@ export function guidePosition(lesson: Lesson, key: PositionKey): GuidePosition {
   return { place: entry.moves.length ? 'inside' : 'end', entry };
 }
 
+/**
+ * Where the position `arrivedBy` leads to stands in the guide: as
+ * `guidePosition` says, except that a guide move into a position the file
+ * doesn't hold ends its line there too. The shipped files keep no entry for
+ * a line's last position, so `end` comes mostly from this.
+ */
+export function linePlace(
+  lesson: Lesson,
+  key: PositionKey,
+  arrivedBy: LessonMove | undefined,
+): GuidePosition['place'] {
+  const { place } = guidePosition(lesson, key);
+  return place === 'beyond' && arrivedBy ? 'end' : place;
+}
+
 /** One of the guide's moves at a position, with what its list row shows. */
 export interface Candidate {
   /** The move as the lesson file stores it: book flag, risk, notes. */
@@ -103,6 +118,16 @@ export function candidates(
 /** `uci` as the guide stores it at `key`, or undefined if it isn't a guide move there. */
 export const guideMove = (lesson: Lesson, key: PositionKey, uci: Uci): LessonMove | undefined =>
   lesson.positions[key]?.moves.find((move) => move.uci === uci);
+
+/** Whether the guide recommends `uci` at `key`: a book move. */
+export const isBook = (lesson: Lesson, key: PositionKey, uci: Uci): boolean =>
+  guideMove(lesson, key, uci)?.book === true;
+
+/** Whether each move of `line` is a book move where it was played. */
+export function bookMoves(lesson: Lesson, line: readonly Uci[]): boolean[] {
+  const keys = lineKeys(line);
+  return line.map((uci, n) => isBook(lesson, keys[n], uci));
+}
 
 /**
  * Which popularity band "most common" reads for `opponent`: the highest band

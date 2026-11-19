@@ -259,15 +259,18 @@ describe('lessonDrawings', () => {
     ]);
   });
 
-  it("leaves a ghost of a trap's tempting move once the punishment lands, and only then", () => {
-    const { view, shown } = explore(TRAP_PUNISHED);
-    expect(lessonDrawings(shown, view.key, 'black')).toEqual([
+  it("leaves a ghost of a trap's tempting move where the punishment lands, and only there", () => {
+    const landed = [...TRAP, 'Nxe5', 'Nxe5'];
+    const { view, shown } = explore(landed);
+    expect(lessonDrawings(shown, view.key, 'black').slice(-2)).toEqual([
       { kind: 'ghost', square: 'c6', piece: { role: 'knight', color: 'black' } },
       { kind: 'arrow', from: 'c6', to: 'e5', tone: 'danger', step: undefined },
     ]);
-    const later = explore([...TRAP_PUNISHED, 'a6']);
+    const later = explore([...landed, 'Bxd1']);
     expect(later.shown.trap).toBeDefined();
-    expect(lessonDrawings(later.shown, later.view.key, 'black')).toEqual([]);
+    expect(lessonDrawings(later.shown, later.view.key, 'black')).not.toContainEqual(
+      expect.objectContaining({ kind: 'ghost' }),
+    );
   });
 
   it("marks Stockfish's best move where guidance does", () => {

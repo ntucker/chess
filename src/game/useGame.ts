@@ -3,7 +3,7 @@ import { useEffect, useEffectEvent, useReducer } from 'react';
 import { useMoveQualities } from '@/analysis/useMoveQualities';
 import type { EvaluationEngine } from '@/evaluation/evaluation';
 
-import { failure, type GameOpponent, gameReducer, initialGame } from './game';
+import { failure, type GameAction, type GameOpponent, gameReducer, initialGame } from './game';
 import { material } from './material';
 import { analyze, type Color, replay, toUci } from './replay';
 
@@ -20,6 +20,8 @@ interface Options {
   readonly active: boolean;
   /** The engine that judges each move for its label. */
   readonly judge: EvaluationEngine;
+  /** Which of `moves` a lesson's guide recommends: labelled `book`, never judged. */
+  readonly book?: (moves: readonly string[]) => readonly boolean[];
 }
 
 /**
@@ -33,20 +35,29 @@ interface Options {
  * An answer counts only while the moves it answers are still the game's (the
  * reducer's one check), so a late one from an earlier position or game is
  * dropped; one from an opponent since replaced still answers the same
- * position, so the first answer wins.
+ * position, so the first answer wins. With the opponent gone, no answer
+ * counts, a failure neither: choosing that opponent again asks afresh.
  */
-export function useGame(opponent: GameOpponent | undefined, { side, active, judge }: Options) {
+export function useGame(
+  opponent: GameOpponent | undefined,
+  { side, active, judge, book }: Options,
+) {
   const [state, dispatch] = useReducer(gameReducer, initialGame);
   const { moves, ply } = state;
   const plies = replay(moves);
   const latest = analyze(plies[plies.length - 1]);
   const atLatest = ply === moves.length;
   const current = atLatest ? latest : analyze(plies[ply]);
-  const qualities = useMoveQualities(plies, ply, judge);
+  const qualities = useMoveQualities(plies, ply, judge, book?.(moves));
   const error = failure(state, opponent?.id);
   const thinking = !!opponent && !latest.result && latest.turn !== side && !error;
   const replying = atLatest && thinking;
 
+  // Read when the answer arrives: once nobody plays the opponent, the player
+  // moves both sides, so an answer still out is dropped.
+  const answered = useEffectEvent((action: GameAction) => {
+    if (opponent) dispatch(action);
+  });
   const ask = useEffectEvent(async (after: readonly string[]) => {
     if (!opponent) return;
     const answer = { after, opponent: opponent.id };
@@ -55,10 +66,10 @@ export function useGame(opponent: GameOpponent | undefined, { side, active, judg
         opponent.reply(after),
         new Promise((resolve) => setTimeout(resolve, THINKING_MS)),
       ]);
-      dispatch({ type: 'reply', uci, ...answer });
+      answered({ type: 'reply', uci, ...answer });
     } catch (cause) {
       const error = cause instanceof Error ? cause : new Error(String(cause));
-      dispatch({ type: 'failed', error, ...answer });
+      answered({ type: 'failed', error, ...answer });
     }
   });
   // Coming back to the front while a request is out asks again; Data Client
@@ -83,7 +94,8 @@ export function useGame(opponent: GameOpponent | undefined, { side, active, judg
     /** Whose move it is in the latest position; none once the game is over. */
     toMove: latest.result ? undefined : latest.turn,
     // While the opponent thinks the player can still go back and try another move.
-    canMove: !current.result && current.turn === side && !replying,
+    // With no opponent, nobody replies: the player moves both sides.
+    canMove: !current.result && !replying && (!opponent || current.turn === side),
     /** Whether the player has made a move, so a new game would lose something. */
     started: plies.some((p) => p.move && p.turn !== side),
     thinking,

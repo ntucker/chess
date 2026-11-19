@@ -30,18 +30,18 @@ let root: Root | undefined;
 const controllers: Controller[] = [];
 const renders: (readonly (MoveQuality | undefined)[])[] = [];
 
-function Labels({ shown }: { readonly shown: number }) {
+function Labels({ shown, book }: { readonly shown: number; readonly book?: boolean[] }) {
   controllers.push(useController());
-  renders.push(useMoveQualities(PLIES, shown, 'stockfish'));
+  renders.push(useMoveQualities(PLIES, shown, 'stockfish', book));
   return null;
 }
 
-const render = (shown: number) =>
+const render = (shown: number, book?: boolean[]) =>
   act(async () => {
     root ??= createRoot();
     root.render(
       <DataProvider>
-        <Labels shown={shown} />
+        <Labels shown={shown} book={book} />
       </DataProvider>,
     );
   });
@@ -80,5 +80,11 @@ describe('useMoveQualities', () => {
       ctrl.setResponse(getEvaluation, 'stockfish', ['e2e4', 'e7e5'], scored(0.75));
     });
     expect(renders.at(-1)).toEqual(['best', 'blunder', undefined]);
+  });
+
+  it('labels book moves without asking the engine', async () => {
+    await render(2, [false, true, false]);
+    expect(mockSearched).toEqual([]);
+    expect(renders.at(-1)).toEqual([undefined, 'book', undefined]);
   });
 });

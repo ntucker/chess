@@ -78,10 +78,33 @@ describe('useGame', () => {
     expect(game()).toMatchObject({ thinking: true, replying: false });
   });
 
-  it('asks nobody when there is no opponent', async () => {
+  it('asks nobody when there is no opponent, and lets the player move both sides', async () => {
     await render({ side: 'black', active: true });
     expect(game().thinking).toBe(false);
-    expect(game().canMove).toBe(false);
+    expect(game().canMove).toBe(true);
+  });
+
+  it('drops a failure that arrives once nobody plays the opponent, and asks again on its return', async () => {
+    const maia = scripted('1500');
+    await render({ opponent: maia.opponent, side: 'white', active: true });
+    await act(async () => game().move('e2', 'e4'));
+    await render({ side: 'white', active: true });
+    maia.asked[0].fail();
+    await think();
+    expect(game().error).toBe(undefined);
+    await render({ opponent: maia.opponent, side: 'white', active: true });
+    expect(maia.asked).toHaveLength(2);
+  });
+
+  it("is started once the player's side has moved, not the other side", async () => {
+    await render({ side: 'black', active: true });
+    await act(async () => game().play('e2e4'));
+    expect(game().started).toBe(false);
+    await act(async () => game().play('c7c6'));
+    expect(game().started).toBe(true);
+    // Stepped back before Black's move, the line still holds it.
+    await act(async () => game().goto(1));
+    expect(game().started).toBe(true);
   });
 
   it('asks a newly chosen opponent at once, and takes the first answer', async () => {
@@ -98,6 +121,17 @@ describe('useGame', () => {
     maia.asked[0].answer('e7e5');
     await think();
     expect(game().moves).toEqual(['e2e4', 'c7c5']);
+  });
+
+  it('drops an answer that arrives once nobody plays the opponent', async () => {
+    const maia = scripted('1500');
+    await render({ opponent: maia.opponent, side: 'white', active: true });
+    await act(async () => game().move('e2', 'e4'));
+    await render({ side: 'white', active: true });
+    maia.asked[0].answer('e7e5');
+    await think();
+    expect(game().moves).toEqual(['e2e4']);
+    expect(game().canMove).toBe(true);
   });
 
   it("asks a newly chosen opponent after the old one failed, and leaves the old one's failure", async () => {

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { act } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
-import type { Settings } from './settings';
+import { DEFAULT_SETTINGS, type Settings } from './settings';
 import { SettingsProvider, useSettings, useSettingsDispatch } from './SettingsProvider';
 
 // Babel builds process.env.EXPO_OS in, and Jest builds for iOS, so these run
@@ -58,13 +58,13 @@ describe('SettingsProvider', () => {
   it('renders the remembered settings from the first frame on native', async () => {
     stored.settings = JSON.stringify({ opponent: 1900, evaluationEngine: 'maia' });
     const seen = await renderSettings();
-    expect(seen[0]).toEqual({ opponent: 1900, evaluationEngine: 'maia' });
+    expect(seen[0]).toEqual({ ...DEFAULT_SETTINGS, opponent: 1900, evaluationEngine: 'maia' });
   });
 
   it('reads the evaluation engine saved before settings were one object', async () => {
     stored.evaluationEngine = 'maia';
     const seen = await renderSettings();
-    expect(seen[0]).toEqual({ opponent: 1500, evaluationEngine: 'maia' });
+    expect(seen[0]).toEqual({ ...DEFAULT_SETTINGS, evaluationEngine: 'maia' });
   });
 
   it('saves a choice, and nothing before one', async () => {
@@ -72,9 +72,6 @@ describe('SettingsProvider', () => {
     expect(stored).toEqual({});
     await act(async () => root?.unmount());
     await renderSettings({ opponent: 'stockfish' });
-    expect(JSON.parse(stored.settings)).toEqual({
-      opponent: 'stockfish',
-      evaluationEngine: 'stockfish',
-    });
+    expect(JSON.parse(stored.settings)).toEqual({ ...DEFAULT_SETTINGS, opponent: 'stockfish' });
   });
 });

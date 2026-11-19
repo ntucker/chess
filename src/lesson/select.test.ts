@@ -3,6 +3,7 @@ import { describe, expect, it } from '@jest/globals';
 import type { Lesson } from './lesson';
 import { ADVANCE, keyAfter, MAIN, SAMPLE, uciLine, withMoves } from './lesson.fixture';
 import {
+  bookMoves,
   candidates,
   guideMove,
   guidePosition,
@@ -137,6 +138,19 @@ describe('guideMove', () => {
     expect(guideMove(SAMPLE, keyAfter('e4'), 'c7c6')).toMatchObject({ uci: 'c7c6', book: true });
     expect(guideMove(SAMPLE, keyAfter('e4'), 'e7e5')).toBeUndefined();
     expect(guideMove(SAMPLE, keyAfter('e4', 'e5'), 'g1f3')).toBeUndefined();
+  });
+});
+
+describe('bookMoves', () => {
+  it("marks the learner's guide moves, not the opponent's or moves off the guide", () => {
+    expect(bookMoves(SAMPLE, uciLine(...ADVANCE, 'a6'))).toEqual([
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+    ]);
   });
 });
 

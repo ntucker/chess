@@ -10,9 +10,21 @@ import {
   type ShownIdea,
 } from './guidance';
 import type { Idea } from './lesson';
-import { ADVANCE, keyAfter, MAIN, SAMPLE, sampleView, TRAP, TRAP_PUNISHED } from './lesson.fixture';
-import { type Pointer, preview } from './view';
+import {
+  ADVANCE,
+  keyAfter,
+  MAIN,
+  SAMPLE,
+  sampleView,
+  TRAP,
+  TRAP_PUNISHED,
+  uciLine,
+  withTrapMoves,
+} from './lesson.fixture';
+import { lessonView, type Pointer, preview } from './view';
 
+/** The trap the sample sets, fallen into: the tempting move and the punishing reply. */
+const LANDED = [...TRAP, 'Nxe5', 'Nxe5'];
 const ALL_ON: LessonSwitches = { auto: true, showIdeas: true, showTraps: true };
 const ENGINE = { best: 'g8f6', top: ['g8f6', 'c8f5', 'c6c5'] };
 
@@ -155,6 +167,34 @@ describe('guidance', () => {
       ]);
     });
 
+    it("keeps a hidden trap's note off the card after its tempting move, and once it lands", () => {
+      // The trap's note as a note about the position the tempting move was played in.
+      const [trap] = sampleView(TRAP).notes;
+      const view = {
+        ...sampleView([...TRAP, 'Nxe5']),
+        playedFrom: [{ note: trap.note, after: trap.after }],
+      };
+      const practice = (showTraps: boolean) =>
+        guidance({ view, mode: 'practice', switches: { ...ALL_ON, showTraps } }).notes;
+      expect(practice(true).map(({ note }) => note)).toContain(trap.note);
+      expect(practice(false).map(({ note }) => note)).not.toContain(trap.note);
+    });
+
+    it("keeps a hidden trap's note off the card after the learner's move, on the position or the move", () => {
+      const [trap] = sampleView(TRAP).notes;
+      const after = sampleView([...TRAP, 'Nxe5']);
+      for (const notes of [[{ note: trap.note, after: after.key }], [trap]]) {
+        const practice = (showTraps: boolean) =>
+          guidance({
+            view: { ...after, notes },
+            mode: 'practice',
+            switches: { ...ALL_ON, showTraps },
+          }).notes;
+        expect(practice(true).map(({ note }) => note)).toContain(trap.note);
+        expect(practice(false).map(({ note }) => note)).not.toContain(trap.note);
+      }
+    });
+
     it('lets only the notes about the position on the board be pointed at', () => {
       // The second note is about the position the move was played in.
       const practice = shown([...ADVANCE, 'Bf5'], 'practice');
@@ -183,6 +223,33 @@ describe('guidance', () => {
       expect(practice(true)).toHaveLength(1);
       expect(practice(false)).toEqual([]);
       expect(summary(shown(ADVANCE, 'practice')).notes).toEqual(['move']);
+    });
+
+    it('keeps a previewed reply\'s next position notes off the card on "I choose", as on the learner\'s turn', () => {
+      const previewed = (mode: LessonMode, uci: string) =>
+        summary(shown(MAIN, mode, { auto: false }, { pointer: { at: 'row', uci } })).notes;
+      const replies = ['e4e5', 'e4d5', 'b1c3', 'b1d2'];
+      expect(replies.flatMap((uci) => previewed('explore', uci))).toContain('position');
+      expect(replies.flatMap((uci) => previewed('practice', uci))).not.toContain('position');
+    });
+
+    it('keeps a hidden trap\'s warning off a previewed reply on "I choose"', () => {
+      const pointer: Pointer = { at: 'row', uci: 'c2c3' };
+      const traps = (showTraps: boolean) =>
+        shown(TRAP.slice(0, -1), 'practice', { auto: false, showTraps }, { pointer }).notes.filter(
+          ({ note }) => note.ideas?.some(({ type }) => type === 'trap'),
+        );
+      expect(traps(true)).toHaveLength(1);
+      expect(traps(false)).toEqual([]);
+    });
+
+    it("keeps a hidden trap's warning off the card on the learner's turn when it is on the move into it", () => {
+      const notes = (showTraps: boolean) =>
+        shown(TRAP, 'practice', { showTraps }).notes.filter(({ note }) =>
+          note.ideas?.some(({ type }) => type === 'trap'),
+        );
+      expect(notes(true)).toHaveLength(1);
+      expect(notes(false)).toEqual([]);
     });
 
     it('draws the ideas of the move played, whatever "show ideas on board" says', () => {
@@ -311,14 +378,32 @@ describe('guidance', () => {
     });
   });
 
+  describe('lineEnded', () => {
+    it("tells of a guide line's end there, and at the learner's turn right after it", () => {
+      const end = [...ADVANCE, 'Bf5', 'Nf3', 'e6', 'Be2', 'c5', 'O-O', 'Nc6'];
+      expect(shown(end.slice(0, -1), 'practice').lineEnded).toBe(false);
+      expect(shown(end, 'practice').lineEnded).toBe(true);
+      expect(shown([...end, 'h3'], 'practice').lineEnded).toBe(true);
+      expect(shown([...end, 'h3', 'a6'], 'practice').lineEnded).toBe(false);
+    });
+  });
+
   describe('notePlayback', () => {
     it("plays a note's trap back while traps are shown, and not otherwise", () => {
       const view = sampleView(TRAP);
       const [trap] = view.notes;
-      const ideas = (showTraps: boolean) =>
-        guidance({ view, mode: 'explore', switches: { ...ALL_ON, showTraps } }).ideas;
-      expect(notePlayback(ideas(true), trap.note)?.idea.type).toBe('trap');
-      expect(notePlayback(ideas(false), trap.note)).toBeUndefined();
+      const playable = (showTraps: boolean) =>
+        guidance({ view, mode: 'explore', switches: { ...ALL_ON, showTraps } }).playable;
+      expect(notePlayback(playable(true), trap.note)?.idea.type).toBe('trap');
+      expect(notePlayback(playable(false), trap.note)).toBeUndefined();
+    });
+
+    it('plays a trap fallen into back with traps hidden, from before its tempting move', () => {
+      const { playable, trap } = shown(LANDED, 'practice', { showTraps: false });
+      expect(notePlayback(playable, trap!.note.note)).toEqual({
+        idea: trap!.trap,
+        at: keyAfter(...TRAP),
+      });
     });
   });
 
@@ -336,10 +421,29 @@ describe('guidance', () => {
 
     it('shows a trap fallen into, with "show traps" on or off', () => {
       for (const showTraps of [true, false]) {
-        expect(shown(TRAP_PUNISHED, 'practice', { showTraps }).trap).toMatchObject({
-          ply: TRAP.length,
-        });
+        expect(shown(LANDED, 'practice', { showTraps }).trap).toMatchObject({ ply: TRAP.length });
       }
+    });
+
+    it('shows a trap fallen into through its moves and the learner\'s turn after them, until the line leaves it', () => {
+      expect(shown(TRAP_PUNISHED, 'explore').trap).toMatchObject({ ply: TRAP.length });
+      expect(shown([...TRAP_PUNISHED, 'a6'], 'explore').trap).toBeUndefined();
+      // A move off the trap's sequence takes the card away before its last move.
+      expect(shown([...LANDED, 'Bxd1'], 'explore').trap).toBeDefined();
+      expect(shown([...LANDED, 'Qc7'], 'explore').trap).toBeUndefined();
+      // So does the opponent's, even with the learner to move.
+      expect(shown([...LANDED, 'Bxd1', 'Kxd1'], 'explore').trap).toBeUndefined();
+      // Cut to end on the learner's move, the trap stays through the opponent's reply.
+      const { moves } = sampleView(LANDED).trap!.trap;
+      const lesson = withTrapMoves(SAMPLE, moves, moves.slice(0, -1));
+      const trapAt = (sans: string[]) => {
+        const line = uciLine(...sans);
+        const view = lessonView({ lesson, line, ply: line.length, opponent: 1500 });
+        return guidance({ view, mode: 'explore', switches: ALL_ON }).trap;
+      };
+      expect(trapAt(TRAP_PUNISHED.slice(0, -1))).toBeDefined();
+      expect(trapAt(TRAP_PUNISHED)).toBeDefined();
+      expect(trapAt([...TRAP_PUNISHED, 'a6'])).toBeUndefined();
     });
   });
 });
