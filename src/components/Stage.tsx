@@ -1,6 +1,6 @@
 import { Surface, useTheme } from '@reactive/silk-native';
 import Head from 'expo-router/head';
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -72,7 +72,7 @@ interface BoardColumnProps {
   /** The game on the board. */
   readonly game: Game;
   /** The opponent's name bar: who plays the other side, and how. */
-  readonly rival: { readonly name: string; readonly detail: string };
+  readonly rival: Pick<ComponentProps<typeof PlayerBar>, 'name' | 'detail' | 'brief'>;
   /** The board, with the player's side (`orientation`) at the bottom. */
   readonly board: Omit<BoardProps, 'dom'>;
 }
@@ -122,14 +122,14 @@ export function BoardColumn({ game, rival, board }: BoardColumnProps) {
 export function BoardColumnPlaceholder({ children }: { readonly children?: ReactNode }) {
   return (
     <>
-      <View style={styles.barSpace} />
+      <View style={styles.namesBarSpace} />
       <View style={styles.boardRow}>
         <View style={styles.evaluation} />
         <BoardFrame>
           <View style={[styles.fill, styles.center]}>{children}</View>
         </BoardFrame>
       </View>
-      <View style={styles.barSpace} />
+      <View style={styles.controlsBarSpace} />
     </>
   );
 }
@@ -149,16 +149,18 @@ function BoardFrame({ children }: { readonly children: ReactNode }) {
 
 /** Space between the board and the name bars above and below it. */
 const BOARD_COLUMN_GAP = 4;
-/** The evaluation bar's width. */
-const EVALUATION_BAR_WIDTH = 22;
+/** The evaluation bar's width: a thin strip on a phone-width web page. */
+const EVALUATION_BAR_WIDTH = phoneLength('evaluation-width', 22);
 /** How far the board sits below the top of its column (the opponent's name bar). */
-const BOARD_OFFSET = PLAYER_BAR_HEIGHT.plus(BOARD_COLUMN_GAP);
+const BOARD_OFFSET = PLAYER_BAR_HEIGHT.names.plus(BOARD_COLUMN_GAP);
+/** How far the board sits above the bottom of its column (the player's bar, with the stepper). */
+const BOARD_UNDER = PLAYER_BAR_HEIGHT.controls.plus(BOARD_COLUMN_GAP);
 /** The board's largest size. */
 const BOARD_MAX = 720;
 /** The width the column adds beside the board: the players' discs and their gap. */
-const BESIDE_BOARD = PLAYER_DISC.size + PLAYER_DISC.gap;
+const BESIDE_BOARD = PLAYER_DISC.size.plus(PLAYER_DISC.gap);
 /** The board column's largest width. */
-const BOARD_COLUMN_MAX = BOARD_MAX + BESIDE_BOARD;
+const BOARD_COLUMN_MAX = BOARD_MAX + BESIDE_BOARD.wide;
 /** The program's largest width. */
 const PROGRAM_MAX = 400;
 /** Space between the board column and the program. */
@@ -171,7 +173,7 @@ const PAGE_SPACE = phoneLength('page-space', 20);
  * Height around the board: the page's top and bottom padding and the gap
  * below the header (3 × PAGE_SPACE), the header, and both name bars.
  */
-const AROUND_BOARD = PAGE_SPACE.times(3).plus(HEADER_HEIGHT).plus(BOARD_OFFSET.times(2));
+const AROUND_BOARD = PAGE_SPACE.times(3).plus(HEADER_HEIGHT).plus(BOARD_OFFSET).plus(BOARD_UNDER);
 /** On the web, the smallest the board shrinks to in a short window. */
 const BOARD_MIN_WEB = phoneLength('board-min', 320);
 /** Height kept below the board column for the panel: none beside it, some below it on a phone. */
@@ -185,7 +187,7 @@ const PANEL_RESERVE = phoneLength('panel-reserve', 0);
  * so the web's clamp and that native number are written apart.
  */
 const BOARD_COLUMN_LIMIT = phoneCalc(
-  `clamp(${BOARD_MIN_WEB.css}, 100svh - ${AROUND_BOARD.plus(PANEL_RESERVE).css}, ${BOARD_MAX}px) + ${BESIDE_BOARD}px`,
+  `clamp(${BOARD_MIN_WEB.css}, 100svh - ${AROUND_BOARD.plus(PANEL_RESERVE).css}, ${BOARD_MAX}px) + ${BESIDE_BOARD.css}`,
   BOARD_COLUMN_MAX,
 );
 /** Space above the program when it wraps below the board. */
@@ -228,14 +230,15 @@ const styles = StyleSheet.create({
     marginTop: COLUMN_RAISE.times(-1).value,
     gap: BOARD_COLUMN_GAP,
   },
-  barSpace: { height: PLAYER_BAR_HEIGHT.value },
+  namesBarSpace: { height: PLAYER_BAR_HEIGHT.names.value },
+  controlsBarSpace: { height: PLAYER_BAR_HEIGHT.controls.value },
   // The evaluation bar sits in the column of the players' discs, between
   // them, and the board lines up with the names beside the discs.
-  boardRow: { flexDirection: 'row', gap: PLAYER_DISC.gap },
+  boardRow: { flexDirection: 'row', gap: PLAYER_DISC.gap.value },
   // Narrower than the discs, and centered under them.
   evaluation: {
-    width: EVALUATION_BAR_WIDTH,
-    marginHorizontal: (PLAYER_DISC.size - EVALUATION_BAR_WIDTH) / 2,
+    width: EVALUATION_BAR_WIDTH.value,
+    marginHorizontal: PLAYER_DISC.size.minus(EVALUATION_BAR_WIDTH).times(0.5).value,
   },
   frame: { flex: 1, aspectRatio: 1 },
   program: {

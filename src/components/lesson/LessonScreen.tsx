@@ -82,10 +82,9 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
     viewing: !game.atLatest,
     auto,
     lineEnded: guidance.lineEnded,
+    startsRun,
     practice:
-      modeState.mode === 'practice'
-        ? { clean: modeState.clean, verdict: game.quality, startsRun }
-        : undefined,
+      modeState.mode === 'practice' ? { clean: modeState.clean, verdict: game.quality } : undefined,
   });
 
   const line = view.variation.at(-1);
@@ -108,6 +107,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
           rival={{
             name: colorName(rival),
             detail: `The guide's moves, then ${described.tagline.toLowerCase()}`,
+            brief: described.tagline,
           }}
           board={board}
         />
@@ -207,13 +207,14 @@ interface StatusInput {
   readonly auto: boolean;
   /** The headline tells of a guide line's end (`Guidance.lineEnded`). */
   readonly lineEnded: boolean;
+  /**
+   * No move of the learner's comes before the board's position: the learner
+   * has yet to move, and a move there starts a Practice run, so it's no
+   * take-back (`beforeSideMoves`).
+   */
+  readonly startsRun: boolean;
   /** In Practice: whether the run is clean, and the label of the move the board shows. */
-  readonly practice?: {
-    readonly clean: boolean;
-    readonly verdict?: MoveQuality;
-    /** A move played now starts a run, so playing from an earlier move is no take-back. */
-    readonly startsRun: boolean;
-  };
+  readonly practice?: { readonly clean: boolean; readonly verdict?: MoveQuality };
 }
 
 /** The line under the list that says the guide covers `count` rarer replies it leaves off. */
@@ -224,10 +225,12 @@ const rareHint = (count: number, rival: string) =>
 /**
  * The panel's headline: where the lesson stands and whose move it is. In
  * Practice, right after the learner's move, it judges that move first.
+ * `seenHint` marks a detail that only tells how to use the screen, once the
+ * learner has moved and so has seen it.
  */
 function describeStatus(
   view: LessonView,
-  { title, rival, engine, thinking, viewing, auto, lineEnded, practice }: StatusInput,
+  { title, rival, engine, thinking, viewing, auto, lineEnded, startsRun, practice }: StatusInput,
 ) {
   const eyebrow = view.variation.map(({ name }) => name).join(' · ') || title;
   // Beyond the guide on "I choose", nobody replies: the learner moves both sides.
@@ -257,8 +260,10 @@ function describeStatus(
     return {
       eyebrow,
       title: 'Your move.',
+      // Only Explore's detail at the latest move is how-to; the others say what a move here does.
+      seenHint: !startsRun && !practice && !viewing,
       detail:
-        practice?.startsRun && viewing
+        practice && startsRun && viewing
           ? YOUR_MOVE.practice.restart
           : YOUR_MOVE[practice ? 'practice' : 'explore'][viewing ? 'viewing' : 'latest'],
     };
@@ -274,6 +279,7 @@ function describeStatus(
   return {
     eyebrow,
     title: reply,
+    seenHint: !startsRun,
     detail: auto
       ? 'Point at a reply to see what it aims for.'
       : 'Point at a reply to see what it aims for, then play it.',

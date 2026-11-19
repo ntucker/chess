@@ -1,10 +1,11 @@
 import { Button, Inline, Stack, Text } from '@reactive/silk-native';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Eyebrow } from '@/components/Eyebrow';
 import type { Color, Position } from '@/game/replay';
 import { describeOpponent, type Opponent } from '@/opponent/opponent';
-import { phonePart } from '@/theme/phone';
+import { phoneLength, phonePart } from '@/theme/phone';
+import { typography } from '@/theme/theme';
 
 interface Props {
   readonly playerColor: Color;
@@ -40,6 +41,8 @@ interface HeadlineProps {
    * leaves its eyebrow out there.
    */
   readonly eyebrowInHeader?: boolean;
+  /** The detail tells how to use the screen, and the learner has seen it: a phone leaves it out. */
+  readonly seenHint?: boolean;
 }
 
 /** A panel's headline, announced as it changes, with a retry when the opponent didn't answer. */
@@ -49,15 +52,21 @@ export function StatusHeadline({
   detail,
   failure,
   eyebrowInHeader,
+  seenHint,
 }: HeadlineProps) {
   const label = <Eyebrow>{eyebrow}</Eyebrow>;
   return (
     <Stack gap="2">
-      {eyebrowInHeader ? <View {...phonePart('in-header')}>{label}</View> : label}
-      <Text role="headingLg" accessibilityRole="header" accessibilityLiveRegion="polite">
+      {eyebrowInHeader ? <View {...phonePart('wide-only')}>{label}</View> : label}
+      <Text
+        role="headingLg"
+        accessibilityRole="header"
+        accessibilityLiveRegion="polite"
+        style={styles.title}
+      >
         {title}
       </Text>
-      <Text role="bodySm" tone="secondary">
+      <Text {...(seenHint ? phonePart('wide-only') : {})} role="bodySm" tone="secondary">
         {detail}
       </Text>
       {failure ? (
@@ -115,3 +124,11 @@ function describeLatest({
     detail: style,
   };
 }
+
+/** The headline's size: its role's, a size smaller on a phone-width web page. */
+const HEADLINE = typography.headingLg;
+const TITLE_SIZE = phoneLength('headline-size', HEADLINE.size);
+
+const styles = StyleSheet.create({
+  title: { fontSize: TITLE_SIZE.value, lineHeight: TITLE_SIZE.times(HEADLINE.lineHeight).value },
+});

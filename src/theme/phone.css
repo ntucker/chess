@@ -3,10 +3,9 @@
  * pre-rendered page can't measure the window. Everywhere else none of this
  * applies: each length falls back to the wide value written beside it in
  * code, and each part keeps its wide layout. The one exception is the rule
- * just below, which keeps the header's place hidden until a phone shows it.
+ * just below, which keeps phone-only parts hidden until a phone shows them.
  */
-/* The header's place shows only on a phone (see below). */
-:root [data-phone='place'] {
+:root [data-phone='phone-only'] {
   display: none;
 }
 
@@ -19,8 +18,22 @@
     --header-height: 28px;
     --source-link-size: 28px;
     --wordmark-size: 18px;
-    /* The name bars above and below the board (PlayerBar.tsx). */
-    --player-bar-height: 52px;
+    /*
+     * The name bars above and below the board (PlayerBar.tsx): the one with
+     * the move stepper as tall as the stepper, the other one line of names.
+     */
+    --controls-bar-height: 48px;
+    --names-bar-height: 32px;
+    /*
+     * The player's disc becomes a dot, and the evaluation bar beside the
+     * board a thin strip under it, to give the board their width (Stage.tsx).
+     */
+    --player-disc: 10px;
+    --player-disc-gap: 6px;
+    --player-disc-border: 2px;
+    --evaluation-width: 6px;
+    /* The panel's headline, a size smaller: theme.ts's heading (GameStatus.tsx). */
+    --headline-size: 24px;
     /* Space between the board column and the panel below it (Stage.tsx). */
     --wrapped-gap: 20px;
     /*
@@ -42,17 +55,20 @@
    * Two selectors' weight, to win over React Native Web's one-class styles.
    */
   /*
-   * The header (Header.tsx) names the page's place, such as the lesson's line,
-   * instead of the app, and drops its tagline. What it names, the panel's own
-   * label leaves out (in-header).
+   * Text in two lengths, such as the header's name for the app and for the
+   * page (Header.tsx): each site says why it has a wide-only or phone-only part.
    */
-  :root [data-phone='wordmark'],
-  :root [data-phone='tagline'],
-  :root [data-phone='in-header'] {
+  :root [data-phone='wide-only'] {
     display: none;
   }
-  :root [data-phone='place'] {
+  :root [data-phone='phone-only'] {
     display: block;
+  }
+  /* A name bar's name and detail share one line (PlayerBar.tsx says how they give way). */
+  :root [data-phone='player-names'] {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
   }
   :root [data-phone='page'] {
     min-height: 100dvh;
