@@ -66,7 +66,10 @@ export function mergeChapters(
     source: info.source,
     variations,
     positions: Object.fromEntries(
-      [...tree.positions].map(([key, draft]) => [key, finish(draft, variationOf.get(key) ?? info.id)]),
+      [...tree.positions].map(([key, draft]) => [
+        key,
+        finish(draft, variationOf.get(key) ?? info.id),
+      ]),
     ),
   };
 }
@@ -99,7 +102,8 @@ class DraftTree {
   /** Drops positions the guide stops at: they need no entry unless they have notes. */
   dropEmpty() {
     for (const [key, draft] of this.positions) {
-      if (draft.moves.size === 0 && draft.notes.length === 0 && key !== this.startKey) this.positions.delete(key);
+      if (draft.moves.size === 0 && draft.notes.length === 0 && key !== this.startKey)
+        this.positions.delete(key);
     }
   }
 }
@@ -112,7 +116,8 @@ function addChapter(
   side: Color,
 ) {
   const book = bookMoves(chapter, side, new Set(choices.map((choice) => choice.move)));
-  for (const move of chapterMoves(chapter)) tree.move(move.before, move.uci).book ||= book.has(move);
+  for (const move of chapterMoves(chapter))
+    tree.move(move.before, move.uci).book ||= book.has(move);
   for (const { move, note } of moveNotes) addNote(tree.move(move.before, move.uci).notes, note);
   for (const { pos, note } of positionNotes) addNote(tree.entry(positionKey(pos)).notes, note);
   for (const choice of choices) {
@@ -133,7 +138,9 @@ function addBranches(
     let pos = spot.pos;
     // A sequence may leave from where the study stops: then the variation of the move into it.
     const variation =
-      variationOf.get(positionKey(pos)) ?? (spot.move && variationOf.get(positionKey(spot.move.before))) ?? root;
+      variationOf.get(positionKey(pos)) ??
+      (spot.move && variationOf.get(positionKey(spot.move.before))) ??
+      root;
     for (const uci of ucis) {
       const key = positionKey(pos);
       if (!variationOf.has(key)) variationOf.set(key, variation);
@@ -164,12 +171,14 @@ function positionVariations(
     map.set(key, (map.get(key) ?? new Set()).add(id));
   const mainLines = new Map<PositionKey, Set<VariationId>>();
   chapters.forEach((chapter, i) => {
-    for (const move of mainLine(chapter.moves[0])) add(mainLines, positionKey(move.before), chapterVariation[i]);
+    for (const move of mainLine(chapter.moves[0]))
+      add(mainLines, positionKey(move.before), chapterVariation[i]);
   });
   const path = (id: VariationId) => ancestry(variations, id);
   const named = new Map([...mainLines].map(([key, ids]) => [key, narrowest([...ids].map(path))]));
 
-  const group = (chapter: VariationId) => (variations[chapter].parent === root ? chapter : variations[chapter].parent!);
+  const group = (chapter: VariationId) =>
+    variations[chapter].parent === root ? chapter : variations[chapter].parent!;
   const sideLines = new Map<PositionKey, Set<VariationId>>();
   chapters.forEach((chapter, i) => {
     /** The variation of the last main-line position up to each move. */
@@ -248,7 +257,11 @@ export type ChapterName = (title: string) => string | undefined;
 const numberedChapterName: ChapterName = (title) =>
   title.replace(/^\P{L}*\d+\s+/u, '').replace(/\s+\((?:I|II|III|IV|V)\)$/, '');
 
-function chapterVariations(info: LessonInfo, chapters: readonly Chapter[], chapterName: ChapterName) {
+function chapterVariations(
+  info: LessonInfo,
+  chapters: readonly Chapter[],
+  chapterName: ChapterName,
+) {
   const variations: Record<VariationId, Variation> = {
     [info.id]: { name: info.title },
   };
@@ -276,7 +289,10 @@ const slug = (name: string) =>
     .replace(/^-|-$/g, '');
 
 /** The variations from the opening down to `id`. */
-function ancestry(variations: Readonly<Record<VariationId, Variation>>, id: VariationId): VariationId[] {
+function ancestry(
+  variations: Readonly<Record<VariationId, Variation>>,
+  id: VariationId,
+): VariationId[] {
   const path: VariationId[] = [];
   for (let at: VariationId | undefined = id; at; at = variations[at].parent) path.unshift(at);
   return path;
@@ -286,6 +302,7 @@ function ancestry(variations: Readonly<Record<VariationId, Variation>>, id: Vari
 function narrowest(paths: readonly (readonly VariationId[])[]): VariationId {
   const [first] = paths;
   let level = 0;
-  while (level + 1 < first.length && paths.every((path) => path[level + 1] === first[level + 1])) level++;
+  while (level + 1 < first.length && paths.every((path) => path[level + 1] === first[level + 1]))
+    level++;
   return first[level];
 }

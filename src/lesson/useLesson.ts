@@ -3,8 +3,9 @@
  * facts about the position on the board, what the learner points at (a
  * candidate, by its list row or a piece dragged onto its square, and a note
  * on the idea card), an idea playing back, the mode (Explore or Practice),
- * Stockfish's best move in Explore, and the board. With auto play the
- * learner moves their own side; with auto play off, either.
+ * Stockfish's best move in Explore, and the board. Where the opponent plays
+ * its own moves (`opponentPlays`) the learner moves their own side;
+ * elsewhere, either.
  */
 import { useCache, useController, useFetch } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
@@ -25,7 +26,7 @@ import { ideaPlayback } from './drawings';
 import { guidance, type LessonMode, notePlayback, type PlayedBack } from './guidance';
 import type { Lesson, Note, PositionKey, Uci } from './lesson';
 import { lessonOpponent } from './opponent';
-import { beforeSideMoves } from './practice';
+import { beforeSideMoves, opponentPlays } from './practice';
 import { initialScreen, screenReducer } from './screen';
 import { bookMoves, type Candidate, isBook } from './select';
 import { lessonView, type Pointer, preview, type ShownNote } from './view';
@@ -69,12 +70,16 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   // Moves are labelled by Stockfish whatever judges the bar: Maia's judgement
   // could call a book move a mistake. So Stockfish runs while this is in front.
   useNeedsStockfish(focused);
-  // Nobody replies with auto play off (the learner picks the opponent's
-  // move), nor at the start, where the first move picks the opening.
-  const rival =
-    settings.auto && store[0].ply > 0
-      ? lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent))
-      : undefined;
+  // A row that leaves the list (played, or stepped away from) never reports
+  // a hover-out or blur, so a peek ends when the board moves on; otherwise
+  // stepping back would preview that row again. Shown rare rows end too, so
+  // each position's list starts with them hidden.
+  const [{ mode: modeState, peek, rareKey }, dispatch] = useReducer(screenReducer, initialScreen);
+  const { mode } = modeState;
+  // With no opponent, nobody replies: the learner picks the opponent's move.
+  const rival = opponentPlays(mode, settings.auto, store[0])
+    ? lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent))
+    : undefined;
   const game = useGame(store, rival, {
     side: lesson.side,
     active: focused,
@@ -88,12 +93,6 @@ export function useLesson(lesson: Lesson, store: GameStore) {
     () => lessonView({ lesson, line: moves, ply, opponent }),
     [lesson, moves, ply, opponent],
   );
-  // A row that leaves the list (played, or stepped away from) never reports
-  // a hover-out or blur, so a peek ends when the board moves on; otherwise
-  // stepping back would preview that row again. Shown rare rows end too, so
-  // each position's list starts with them hidden.
-  const [{ mode: modeState, peek, rareKey }, dispatch] = useReducer(screenReducer, initialScreen);
-  const { mode } = modeState;
   const { key } = view;
   const stale = (at?: PositionKey) => at !== undefined && at !== key;
   if (stale(peek?.key) || stale(rareKey)) dispatch({ type: 'board', key });
@@ -103,7 +102,8 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   // A playback plays in its candidate's position, wherever the pointer goes.
   const pointer = playing ? playing.from : here?.candidate;
   // Stockfish's best move for the board's position, whatever engine judges
-  // the bar; only Explore shows it, so Practice asks for nothing.
+  // the bar; only Explore shows it, so Practice asks for nothing. Not useDLE:
+  // with nullable args it types this endpoint's data as undefined.
   const evaluationArgs =
     focused && mode === 'explore'
       ? (['stockfish', moves.slice(0, ply)] as const)

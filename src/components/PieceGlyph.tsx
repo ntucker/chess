@@ -75,10 +75,7 @@ const shapes: Record<MaterialRole, (line: string) => ReactElement> = {
         strokeLinecap="butt"
       />
       <Path d="M14 29.5v-13h17v13H14z" strokeLinecap="butt" strokeLinejoin="miter" />
-      <Path
-        d="M14 16.5L11 14h23l-3 2.5H14zM11 14V9h4v2h5V9h5v2h5V9h4v5H11z"
-        strokeLinecap="butt"
-      />
+      <Path d="M14 16.5L11 14h23l-3 2.5H14zM11 14V9h4v2h5V9h5v2h5V9h4v5H11z" strokeLinecap="butt" />
       <Path
         d="M12 35.5h21m-20-4h19m-18-2h17m-17-13h17M11 14h23"
         fill="none"

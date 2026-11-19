@@ -11,7 +11,9 @@ import { noteComment, type Comment } from './comments';
 
 const [advance] = parseStudy(STUDY_PGN, () => true);
 const chapter = extractChapter(advance, 'black');
-const comments = chapter.moveNotes.flatMap((moveNote) => noteComment(moveNote, chapter) ?? []).slice(0, 2);
+const comments = chapter.moveNotes
+  .flatMap((moveNote) => noteComment(moveNote, chapter) ?? [])
+  .slice(0, 2);
 
 /** A stand-in for the `claude` CLI that answers every comment it reads on stdin with one note. */
 const FAKE_CLAUDE = `#!/usr/bin/env node
@@ -32,7 +34,8 @@ describe('claudeCli', () => {
   /** A new answers file, with an answer for each of `seeded` asked of the stand-in CLI. */
   const answersFile = async (seeded: readonly Comment[] = []) => {
     const cacheFile = join(dir, `answers-${files++}.jsonl`);
-    if (seeded.length > 0) await claudeCli({ learner: 'black', cacheFile, log }).ask(MODELS.convert, seeded);
+    if (seeded.length > 0)
+      await claudeCli({ learner: 'black', cacheFile, log }).ask(MODELS.convert, seeded);
     return cacheFile;
   };
   const lines = (file: string) => readFileSync(file, 'utf8').split('\n').filter(Boolean);
@@ -50,7 +53,10 @@ describe('claudeCli', () => {
 
   it('asks the CLI about comments it has no answer for, and keeps each answer in the file', async () => {
     const cacheFile = await answersFile();
-    const answers = await claudeCli({ learner: 'black', cacheFile, log }).ask(MODELS.convert, comments);
+    const answers = await claudeCli({ learner: 'black', cacheFile, log }).ask(
+      MODELS.convert,
+      comments,
+    );
     expect(ids(answers)).toEqual(comments.map((comment) => comment.id));
     expect(lines(cacheFile)).toHaveLength(2);
   });
