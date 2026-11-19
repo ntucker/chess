@@ -119,7 +119,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
             {...status}
             failure={game.error && { who: described.name, onRetry: game.retry }}
             eyebrowInHeader
-            seenHint={hint && view.ply > (learner === 'white' ? 0 : 1)}
+            seenHint={hint && !startsRun}
           />
           <Separator />
           {/* Leaving a row for the idea card keeps its preview, so its notes can be pointed at. */}

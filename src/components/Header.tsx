@@ -31,7 +31,7 @@ export function Header({ place }: Props) {
           accessibilityIgnoresInvertColors
         />
         <Text
-          {...(shownPlace ? phonePart('wordmark') : {})}
+          {...(shownPlace ? phonePart('wide-only') : {})}
           role="heading"
           accessibilityRole="header"
           style={styles.wordmark}
@@ -39,13 +39,13 @@ export function Header({ place }: Props) {
           Opening Night
         </Text>
         {shownPlace ? (
-          <Text {...phonePart('place')} role="heading" numberOfLines={1} style={styles.place}>
+          <Text {...phonePart('phone-only')} role="heading" numberOfLines={1} style={styles.place}>
             {shownPlace}
           </Text>
         ) : null}
       </Inline>
       <Inline gap="3" align="center" wrap="nowrap">
-        <Inline {...phonePart('tagline')} gap="3" align="center" wrap="nowrap">
+        <Inline {...phonePart('wide-only')} gap="3" align="center" wrap="nowrap">
           <Text role="caption" tone="secondary" style={styles.tagline}>
             Learn your lines
           </Text>

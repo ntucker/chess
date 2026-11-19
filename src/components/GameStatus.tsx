@@ -56,7 +56,7 @@ export function StatusHeadline({
   const label = <Eyebrow>{eyebrow}</Eyebrow>;
   return (
     <Stack gap="2">
-      {eyebrowInHeader ? <View {...phonePart('in-header')}>{label}</View> : label}
+      {eyebrowInHeader ? <View {...phonePart('wide-only')}>{label}</View> : label}
       <Text
         role="headingLg"
         accessibilityRole="header"
@@ -65,7 +65,7 @@ export function StatusHeadline({
       >
         {title}
       </Text>
-      <Text {...(seenHint ? phonePart('seen-hint') : {})} role="bodySm" tone="secondary">
+      <Text {...(seenHint ? phonePart('wide-only') : {})} role="bodySm" tone="secondary">
         {detail}
       </Text>
       {failure ? (

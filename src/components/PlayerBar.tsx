@@ -57,9 +57,13 @@ export function PlayerBar({
   const { theme } = useTheme();
   const { color: c } = theme.semantic;
   const turn = (text: string) => (toMove ? `${text} · to move` : text);
-  const height = (children ? PLAYER_BAR_HEIGHT.controls : PLAYER_BAR_HEIGHT.names).value;
+  const caption = {
+    role: 'caption',
+    tone: toMove ? 'accent' : 'secondary',
+    numberOfLines: 1,
+  } as const;
   return (
-    <View style={[styles.bar, { height }]}>
+    <View style={[styles.bar, children ? styles.controlsBar : styles.namesBar]}>
       <View
         style={[
           styles.piece,
@@ -76,21 +80,11 @@ export function PlayerBar({
           </Text>
           <Captures {...material} pieceColor={opposite(color)} />
         </View>
-        <Text
-          {...(brief ? phonePart('full-detail') : {})}
-          role="caption"
-          tone={toMove ? 'accent' : 'secondary'}
-          numberOfLines={1}
-        >
+        <Text {...caption} {...(brief ? phonePart('wide-only') : {})}>
           {turn(detail)}
         </Text>
         {brief && process.env.EXPO_OS === 'web' ? (
-          <Text
-            {...phonePart('brief')}
-            role="caption"
-            tone={toMove ? 'accent' : 'secondary'}
-            numberOfLines={1}
-          >
+          <Text {...caption} {...phonePart('phone-only')}>
             {turn(brief)}
           </Text>
         ) : null}
@@ -107,6 +101,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: PLAYER_DISC.gap.value,
   },
+  controlsBar: { height: PLAYER_BAR_HEIGHT.controls.value },
+  namesBar: { height: PLAYER_BAR_HEIGHT.names.value },
   piece: {
     width: PLAYER_DISC.size.value,
     height: PLAYER_DISC.size.value,

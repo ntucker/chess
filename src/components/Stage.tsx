@@ -1,6 +1,6 @@
 import { Surface, useTheme } from '@reactive/silk-native';
 import Head from 'expo-router/head';
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -72,7 +72,7 @@ interface BoardColumnProps {
   /** The game on the board. */
   readonly game: Game;
   /** The opponent's name bar: who plays the other side, and how. */
-  readonly rival: { readonly name: string; readonly detail: string; readonly brief?: string };
+  readonly rival: Pick<ComponentProps<typeof PlayerBar>, 'name' | 'detail' | 'brief'>;
   /** The board, with the player's side (`orientation`) at the bottom. */
   readonly board: Omit<BoardProps, 'dom'>;
 }

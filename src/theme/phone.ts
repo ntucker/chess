@@ -20,19 +20,13 @@ export const PHONE_LENGTHS = [
 
 /** The parts of the page that phone.css lays out differently on a phone-width web page. */
 export const PHONE_PARTS = [
-  'wordmark',
-  'place',
-  'tagline',
-  'in-header',
+  'wide-only',
+  'phone-only',
   'page',
   'stage',
   'board-column',
   'program',
-  'evaluation-label',
   'player-names',
-  'full-detail',
-  'brief',
-  'seen-hint',
 ] as const;
 
 /**

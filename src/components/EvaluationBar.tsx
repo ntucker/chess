@@ -161,8 +161,9 @@ function Bar({
       />
       <View style={[styles.midline, { backgroundColor: color.tones.accent.solid }]} />
       {reading.label ? (
+        // A phone's strip is too thin for the number; its fill still shows who leads.
         <Text
-          {...phonePart('evaluation-label')}
+          {...phonePart('wide-only')}
           role="caption"
           numberOfLines={1}
           style={[
