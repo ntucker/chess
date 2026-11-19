@@ -46,7 +46,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
   const lesson = useSuspense(getLesson, id);
   const { game, opponent, view, guidance, board, canPlay, play, point, pointed } =
     useLesson(lesson);
-  const { line, ply, goto } = game;
+  const { moves, ply, goto } = game;
   const learner = lesson.side;
   const rival = opposite(learner);
   const described = describeOpponent(opponent);
@@ -58,7 +58,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
     thinking: game.thinking,
     viewing: !game.atLatest,
   });
-  useStepKeys(ply, line.length, goto);
+  useStepKeys(ply, moves.length, goto);
 
   const leadsTo = (candidate: Candidate) => {
     if (candidate.variation === undefined) return 'Leaves the guide';
@@ -89,10 +89,10 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
               toMove={game.toMove === learner}
               material={game.material[learner]}
             >
-              <Transport ply={ply} total={line.length} onGoto={goto} />
+              <Transport ply={ply} total={moves.length} onGoto={goto} />
             </PlayerBar>
           }
-          evaluated={line.slice(0, ply)}
+          evaluated={moves.slice(0, ply)}
           board={board}
         />
       }
@@ -123,7 +123,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
           <Separator />
           <Stack gap="3">
             <Eyebrow>Scoresheet</Eyebrow>
-            <Scoresheet plies={game.plies} qualities={game.qualities} ply={ply} onGoto={goto} />
+            <Scoresheet moves={moves} plies={game.plies} ply={ply} onGoto={goto} />
           </Stack>
           <Stack gap="1">
             <OpponentChoice />
