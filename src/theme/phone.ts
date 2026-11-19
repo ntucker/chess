@@ -12,7 +12,7 @@ export const PHONE_LENGTHS = [
 ] as const;
 
 /** The parts of the page that phone.css lays out differently on a phone-width web page. */
-export const PHONE_PARTS = ['page', 'stage', 'board-column', 'program'] as const;
+export const PHONE_PARTS = ['tagline', 'page', 'stage', 'board-column', 'program'] as const;
 
 /**
  * A length that is shorter on a phone-width web page, or a sum of such
@@ -66,10 +66,6 @@ function asLength(other: PhoneLength | number) {
 export function phoneCalc(css: string, wide: number): number {
   return process.env.EXPO_OS === 'web' ? (`calc(${css})` as unknown as number) : wide;
 }
-
-/** The style of what only a wide screen shows: hidden on a phone-width web page. */
-export const wideOnly =
-  process.env.EXPO_OS === 'web' ? { display: 'var(--wide-only, flex)' as 'flex' } : {};
 
 /**
  * Props that name a part of the page for phone.css, which lays it out

@@ -8,14 +8,16 @@ import { PHONE_LENGTHS, PHONE_PARTS, phoneLength } from './phone';
 jest.mock('./phone.css', () => ({}));
 
 describe('phone.css', () => {
+  // Everything in it sits inside the phone-width media query.
   const css = readFileSync(join(__dirname, 'phone.css'), 'utf8');
+  const phone = css.slice(css.indexOf('@media (max-width:'));
 
-  it.each([...PHONE_LENGTHS, 'wide-only'])('sets --%s', (name) => {
-    expect(css).toMatch(new RegExp(`--${name}:`));
+  it.each(PHONE_LENGTHS)('sets --%s', (name) => {
+    expect(phone).toMatch(new RegExp(`--${name}: `));
   });
 
   it.each(PHONE_PARTS)('lays out the %s', (part) => {
-    expect(css).toContain(`[data-phone='${part}']`);
+    expect(phone).toContain(`[data-phone='${part}']`);
   });
 });
 
@@ -33,7 +35,7 @@ describe('phoneLength', () => {
     const sum = phoneLength('page-space', 20).plus(phoneLength('header-height', 40));
     expect(sum.wide).toBe(60);
     expect(sum.css).toBe('(var(--page-space, 20px) + var(--header-height, 40px))');
-    // Jest runs as native unless EXPO_OS says web.
-    expect(sum.value).toBe(process.env.EXPO_OS === 'web' ? `calc(${sum.css})` : 60);
+    // Jest builds the native code (EXPO_OS is inlined at build time).
+    expect(sum.value).toBe(60);
   });
 });

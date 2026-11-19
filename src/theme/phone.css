@@ -12,24 +12,30 @@
     /* The logo, as tall as the source link beside it: the header's height (Header.tsx). */
     --header-height: 36px;
     --wordmark-size: 22px;
-    /* Hides the header's tagline (Header.tsx). */
-    --wide-only: none;
     /* The name bars above and below the board (PlayerBar.tsx). */
     --player-bar-height: 52px;
     /* Space between the board column and the panel below it (Stage.tsx). */
     --wrapped-gap: 20px;
-    /* The board shrinks to this in a short window (Stage.tsx)... */
+    /* In a short window the board shrinks, down to this (Stage.tsx)... */
     --board-min: 280px;
-    /* ...to leave this much for the panel and the gap above it. */
+    /*
+     * ...to leave this much for the panel and the gap above it. Below about
+     * 640px tall the board has reached its minimum and the panel gets less;
+     * below about 480px the page scrolls again.
+     */
     --panel-reserve: 180px;
   }
 
   /*
-   * Parts, named by `phonePart` (phone.ts) in Stage.tsx. The page fills the
+   * Parts, named by `phonePart` (phone.ts). The header drops its tagline
+   * (Header.tsx). The page (Stage.tsx) fills the
    * screen and never scrolls: the board stays at the top, and the panel below
    * it scrolls in the space that's left, so a previewed move stays in view.
    * Two selectors' weight, to win over React Native Web's one-class styles.
    */
+  :root [data-phone='tagline'] {
+    display: none;
+  }
   :root [data-phone='page'] {
     height: 100dvh;
   }
@@ -51,6 +57,7 @@
     overflow-y: auto;
     /* Fades out the bottom edge to show there's more below; the padding lets the last line clear it. */
     padding-bottom: 16px;
-    mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
+    /* A mask reads only alpha, so black here is opaque, not a theme color. */
+    mask-image: linear-gradient(to bottom, black calc(100% - 16px), transparent);
   }
 }

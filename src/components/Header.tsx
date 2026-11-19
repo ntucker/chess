@@ -2,7 +2,7 @@ import { Inline, Separator, Text } from '@reactive/silk-native';
 import { Image, StyleSheet } from 'react-native';
 
 import { SourceLink } from '@/components/SourceLink';
-import { phoneLength, wideOnly } from '@/theme/phone';
+import { phoneLength, phonePart } from '@/theme/phone';
 import { fonts } from '@/theme/theme';
 
 /** The header's height: its logo, the tallest thing in it. Shorter on a phone. */
@@ -27,7 +27,7 @@ export function Header() {
         </Text>
       </Inline>
       <Inline gap="3" align="center" wrap="nowrap">
-        <Inline gap="3" align="center" wrap="nowrap" style={wideOnly}>
+        <Inline {...phonePart('tagline')} gap="3" align="center" wrap="nowrap">
           <Text role="caption" tone="secondary" style={styles.tagline}>
             Learn your lines
           </Text>
