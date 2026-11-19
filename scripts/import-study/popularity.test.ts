@@ -109,13 +109,17 @@ describe('lichessExplorer', () => {
     expect(requests).toHaveLength(2);
   });
 
-  it('answers castling as the king two squares, as lesson files write it', async () => {
+  it('answers castling as the king two squares, as lesson files write it, from the explorer and from its cache', async () => {
     const cacheFile = join(mkdtempSync(join(tmpdir(), 'explorer-')), 'explorer.jsonl');
-    const fetch = (async () =>
-      answer(200, { moves: [{ uci: 'e1h1', white: 3, draws: 0, black: 2 }] })) as typeof globalThis.fetch;
-    const explorer = lichessExplorer({ cacheFile, fetch, sleep: async () => {} });
+    let requests = 0;
+    const fetch = (async () => {
+      requests++;
+      return answer(200, { moves: [{ uci: 'e1h1', white: 3, draws: 0, black: 2 }] });
+    }) as typeof globalThis.fetch;
+    const explorer = () => lichessExplorer({ cacheFile, fetch, sleep: async () => {} });
     const castles = key('e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Bc5');
-    expect(await explorer(castles, 1400)).toEqual({ e1g1: 5 });
-    expect(await lichessExplorer({ cacheFile, fetch, sleep: async () => {} })(castles, 1400)).toEqual({ e1g1: 5 });
+    expect(await explorer()(castles, 1400)).toEqual({ e1g1: 5 });
+    expect(await explorer()(castles, 1400)).toEqual({ e1g1: 5 });
+    expect(requests).toBe(1);
   });
 });
