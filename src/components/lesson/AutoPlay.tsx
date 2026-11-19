@@ -1,8 +1,7 @@
 import { StyleSheet } from 'react-native';
 
+import { Toggle } from '@/components/Toggle';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
-
-import { Toggle } from './Toggle';
 
 /**
  * Whether the opponent replies by itself, as a small switch at the end of its

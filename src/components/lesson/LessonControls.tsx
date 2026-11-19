@@ -1,10 +1,9 @@
 import { StyleSheet, View } from 'react-native';
 
 import { PillChoice } from '@/components/PillChoice';
+import { Toggle } from '@/components/Toggle';
 import type { LessonMode } from '@/lesson/guidance';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
-
-import { Toggle } from './Toggle';
 
 const MODES = [
   { value: 'explore', label: 'Explore' },

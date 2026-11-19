@@ -7,7 +7,7 @@ export interface Settings {
   readonly opponent: Opponent;
   /** Who judges positions for the evaluation bar. */
   readonly evaluationEngine: EvaluationEngine;
-  /** In a lesson, the opponent replies by itself (Auto); off, the learner picks its move. */
+  /** In a lesson, the opponent replies by itself (auto play); off, the learner picks its move. */
   readonly auto: boolean;
   /** In a lesson's Explore mode, ideas are drawn on the board, not only described. */
   readonly showIdeas: boolean;
