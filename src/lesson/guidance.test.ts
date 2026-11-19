@@ -99,7 +99,9 @@ describe('guidance', () => {
 
     it('draws each idea in the position it is checked in', () => {
       // The position after ...c5 has its own note: the pawn on d4 attacks c5.
-      const attack = shown([...ADVANCE, 'c5'], 'explore').ideas.find(({ idea }) => idea.type === 'purpose');
+      const attack = shown([...ADVANCE, 'c5'], 'explore').ideas.find(
+        ({ idea }) => idea.type === 'purpose',
+      );
       expect(attack).toMatchObject({ idea: { from: 'd4' }, at: keyAfter(...ADVANCE, 'c5') });
       const ideas = shown(ADVANCE, 'explore').ideas;
       expect(ideas.map(({ at }) => at)).toEqual(ideas.map(() => keyAfter(...ADVANCE)));
@@ -226,7 +228,7 @@ describe('guidance', () => {
       expect(summary(shown(ADVANCE, 'practice')).notes).toEqual(['move']);
     });
 
-    it('keeps a previewed reply\'s next position notes off the card with auto play off, as on the learner\'s turn', () => {
+    it("keeps a previewed reply's next position notes off the card with auto play off, as on the learner's turn", () => {
       const previewed = (mode: LessonMode, uci: string) =>
         summary(shown(MAIN, mode, { auto: false }, { pointer: { at: 'row', uci } })).notes;
       const replies = ['e4e5', 'e4d5', 'b1c3', 'b1d2'];
@@ -234,7 +236,7 @@ describe('guidance', () => {
       expect(replies.flatMap((uci) => previewed('practice', uci))).not.toContain('position');
     });
 
-    it('keeps a hidden trap\'s warning off a previewed reply with auto play off', () => {
+    it("keeps a hidden trap's warning off a previewed reply with auto play off", () => {
       const pointer: Pointer = { at: 'row', uci: 'c2c3' };
       const traps = (showTraps: boolean) =>
         shown(TRAP.slice(0, -1), 'practice', { auto: false, showTraps }, { pointer }).notes.filter(
@@ -333,12 +335,20 @@ describe('guidance', () => {
       ['a text note', { text: 'Just words.' }],
       [
         'a material imbalance',
-        { text: 'A piece for a pawn.', ideas: [{ type: 'imbalance', side: 'white', kind: 'material' }] },
+        {
+          text: 'A piece for a pawn.',
+          ideas: [{ type: 'imbalance', side: 'white', kind: 'material' }],
+        },
       ],
     ] as const)('leaves the board as it is for %s, which draws nothing', (_, note) => {
       const view = sampleView(ADVANCE);
       const withNote = { ...view, notes: [...view.notes, { note, after: view.key }] };
-      const pointing = guidance({ view: withNote, mode: 'explore', switches: ALL_ON, pointed: note });
+      const pointing = guidance({
+        view: withNote,
+        mode: 'explore',
+        switches: ALL_ON,
+        pointed: note,
+      });
       expect(pointing.pointable).not.toContain(note);
       expect(pointing.drawnCandidates).toHaveLength(2);
     });
@@ -484,7 +494,7 @@ describe('guidance', () => {
       }
     });
 
-    it('shows a trap fallen into through its moves and the learner\'s turn after them, until the line leaves it', () => {
+    it("shows a trap fallen into through its moves and the learner's turn after them, until the line leaves it", () => {
       expect(shown(TRAP_PUNISHED, 'explore').trap).toMatchObject({ ply: TRAP.length });
       expect(shown([...TRAP_PUNISHED, 'a6'], 'explore').trap).toBeUndefined();
       // A move off the trap's sequence takes the card away before its last move.

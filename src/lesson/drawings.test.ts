@@ -4,12 +4,7 @@ import { parseFen } from 'chessops/fen';
 
 import { parsePositionKey } from '@/game/replay';
 
-import {
-  candidateDrawings,
-  ideaDrawings,
-  ideaPlayback,
-  lessonDrawings,
-} from './drawings';
+import { candidateDrawings, ideaDrawings, ideaPlayback, lessonDrawings } from './drawings';
 import { guidance, type LessonSwitches } from './guidance';
 import type { Idea } from './lesson';
 import {
@@ -68,7 +63,10 @@ describe('candidateDrawings', () => {
 describe('ideaDrawings', () => {
   it('draws a Purpose as its piece lit, an arrow to each target, and each target ringed', () => {
     expect(
-      drawn({ type: 'purpose', from: 'e5', relation: 'controls', targets: ['d6', 'f6'] }, after(...ADVANCE)),
+      drawn(
+        { type: 'purpose', from: 'e5', relation: 'controls', targets: ['d6', 'f6'] },
+        after(...ADVANCE),
+      ),
     ).toEqual([
       { kind: 'glow', square: 'e5', tone: 'main' },
       { kind: 'arrow', from: 'e5', to: 'd6', tone: 'main' },
@@ -79,7 +77,13 @@ describe('ideaDrawings', () => {
   });
 
   it("draws Pressure as each side's pieces lit in its tone, the target ringed and counted", () => {
-    const pressure: Idea = { type: 'pressure', side: 'black', target: 'd4', attackers: ['c5', 'c6'], defenders: ['c3'] };
+    const pressure: Idea = {
+      type: 'pressure',
+      side: 'black',
+      target: 'd4',
+      attackers: ['c5', 'c6'],
+      defenders: ['c3'],
+    };
     expect(drawn(pressure, after(...ADVANCE, 'c5', 'c3', 'Nc6'))).toEqual([
       { kind: 'glow', square: 'c5', tone: 'main' },
       { kind: 'glow', square: 'c6', tone: 'main' },
@@ -88,15 +92,25 @@ describe('ideaDrawings', () => {
       { kind: 'label', square: 'd4', text: '2 v 1', tone: 'target' },
     ]);
     // The same idea for a learner playing White swaps the tones.
-    expect(ideaDrawings(pressure, after(...ADVANCE), 'white').slice(0, 3).map((d) => 'tone' in d && d.tone)).toEqual(
-      ['other', 'other', 'main'],
-    );
+    expect(
+      ideaDrawings(pressure, after(...ADVANCE), 'white')
+        .slice(0, 3)
+        .map((d) => 'tone' in d && d.tone),
+    ).toEqual(['other', 'other', 'main']);
   });
 
   it('numbers a Plan’s dashed routes and rings its goals; a lone route goes unnumbered', () => {
     expect(
       drawn(
-        { type: 'plan', side: 'black', routes: [{ from: 'b8', to: 'c6' }, { from: 'd8', to: 'b6' }], goals: ['d4'] },
+        {
+          type: 'plan',
+          side: 'black',
+          routes: [
+            { from: 'b8', to: 'c6' },
+            { from: 'd8', to: 'b6' },
+          ],
+          goals: ['d4'],
+        },
         after(...ADVANCE, 'c5'),
       ),
     ).toEqual([
@@ -104,13 +118,17 @@ describe('ideaDrawings', () => {
       { kind: 'arrow', from: 'd8', to: 'b6', tone: 'plan', dashed: true, step: 2 },
       { kind: 'ring', square: 'd4', tone: 'target' },
     ]);
-    expect(drawn({ type: 'plan', side: 'black', routes: [{ from: 'b8', to: 'c6' }] }, after(...ADVANCE))).toEqual([
+    expect(
+      drawn({ type: 'plan', side: 'black', routes: [{ from: 'b8', to: 'c6' }] }, after(...ADVANCE)),
+    ).toEqual([
       { kind: 'arrow', from: 'b8', to: 'c6', tone: 'plan', dashed: true, step: undefined },
     ]);
   });
 
   it('draws a Threat in danger, and its answer as the move to look at', () => {
-    expect(drawn({ type: 'threat', side: 'white', move: 'h4h5', answer: 'h7h6' }, after(...ADVANCE))).toEqual([
+    expect(
+      drawn({ type: 'threat', side: 'white', move: 'h4h5', answer: 'h7h6' }, after(...ADVANCE)),
+    ).toEqual([
       { kind: 'arrow', from: 'h4', to: 'h5', tone: 'danger', step: undefined },
       { kind: 'arrow', from: 'h7', to: 'h6', tone: 'main', step: undefined },
     ]);
@@ -125,9 +143,9 @@ describe('ideaDrawings', () => {
   });
 
   it('draws a Line’s first move', () => {
-    expect(drawn({ type: 'line', moves: ['c6c5', 'c2c3'], verdict: 'equal' }, after(...ADVANCE))).toEqual([
-      { kind: 'arrow', from: 'c6', to: 'c5', tone: 'main', step: undefined },
-    ]);
+    expect(
+      drawn({ type: 'line', moves: ['c6c5', 'c2c3'], verdict: 'equal' }, after(...ADVANCE)),
+    ).toEqual([{ kind: 'arrow', from: 'c6', to: 'c5', tone: 'main', step: undefined }]);
   });
 
   it('fades all but the pawns for a Structure, and marks each feature', () => {
@@ -150,7 +168,11 @@ describe('ideaDrawings', () => {
   });
 
   it('tints a file’s empty squares and rings weak pawns, leaving pieces untinted', () => {
-    const files: Idea = { type: 'structure', side: 'black', features: [{ kind: 'halfOpenFile', files: ['c'] }] };
+    const files: Idea = {
+      type: 'structure',
+      side: 'black',
+      features: [{ kind: 'halfOpenFile', files: ['c'] }],
+    };
     expect(drawn(files, after(...MAIN, 'exd5', 'cxd5')).slice(1)).toEqual([
       { kind: 'tint', squares: ['c3', 'c4', 'c5', 'c6', 'c7'], tone: 'main' },
     ]);
@@ -193,7 +215,15 @@ describe('ideaDrawings', () => {
 describe('ideaPlayback', () => {
   it("steps through a plan's routes on one board, castling with the rook", () => {
     const frames = ideaPlayback(
-      { type: 'plan', side: 'white', routes: [{ from: 'g1', to: 'f3' }, { from: 'f1', to: 'e2' }, { from: 'e1', to: 'g1' }] },
+      {
+        type: 'plan',
+        side: 'white',
+        routes: [
+          { from: 'g1', to: 'f3' },
+          { from: 'f1', to: 'e2' },
+          { from: 'e1', to: 'g1' },
+        ],
+      },
       after('e4', 'e5'),
     );
     expect(frames.map(({ move }) => move && [move.from, move.to])).toEqual([
@@ -217,7 +247,10 @@ describe('ideaPlayback', () => {
   });
 
   it('reports check where a move gives it', () => {
-    const frames = ideaPlayback({ type: 'line', moves: ['d1h5'], verdict: 'equal' }, after('e4', 'f5'));
+    const frames = ideaPlayback(
+      { type: 'line', moves: ['d1h5'], verdict: 'equal' },
+      after('e4', 'f5'),
+    );
     expect(frames.map(({ check }) => check)).toEqual([false, true]);
   });
 });

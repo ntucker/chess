@@ -17,7 +17,9 @@ export function trapLines(move: StudyMove): (Found & { idea: Trap })[] {
     const verdict = trapVerdict(loser === 'White' ? 'black' : 'white', outcome);
     const placed = verdict && placeSequence(move, namedMoves(line));
     if (!placed) return [];
-    return [{ spot: placed.spot, idea: { type: 'trap', moves: placed.ucis, verdict }, label: span }];
+    return [
+      { spot: placed.spot, idea: { type: 'trap', moves: placed.ucis, verdict }, label: span },
+    ];
   });
 }
 
@@ -49,7 +51,15 @@ export function watchOuts(chapter: Chapter, watchOut: string): Found[] {
     const bait = nearestMatch(chapterMoves(chapter), named, named.ply);
     if (!bait) return [];
     const moves = [...mainLine(bait)].slice(0, TRAP_PLIES).map((move) => move.uci);
-    const spot = bait.parent ? { move: bait.parent, pos: bait.parent.after } : { pos: chapter.start };
-    return [{ spot, idea: { type: 'trap', moves, verdict: 'losesMaterial' }, label: `Watch out: ${span}.` }];
+    const spot = bait.parent
+      ? { move: bait.parent, pos: bait.parent.after }
+      : { pos: chapter.start };
+    return [
+      {
+        spot,
+        idea: { type: 'trap', moves, verdict: 'losesMaterial' },
+        label: `Watch out: ${span}.`,
+      },
+    ];
   });
 }

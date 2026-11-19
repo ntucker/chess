@@ -42,18 +42,29 @@ export function findOnLine(move: StudyMove, named: NamedMove): StudyMove | undef
 }
 
 /** Of `moves`, the one `named` names, nearest the ply its number gives (else `ply`). */
-export function nearestMatch(moves: Iterable<StudyMove>, named: NamedMove, ply: number): StudyMove | undefined {
+export function nearestMatch(
+  moves: Iterable<StudyMove>,
+  named: NamedMove,
+  ply: number,
+): StudyMove | undefined {
   const matches = [...moves].filter(
-    (candidate) => candidate.san === named.san && (!named.side || candidate.before.turn === named.side),
+    (candidate) =>
+      candidate.san === named.san && (!named.side || candidate.before.turn === named.side),
   );
   return nearest(matches, named.ply ?? ply, (candidate) => candidate.ply);
 }
 
 /** Where `moves` can be played in a row on the line through `move`, as a spot and its moves in UCI. */
-export function placeSequence(move: StudyMove, moves: readonly NamedMove[]): { spot: Spot; ucis: Uci[] } | undefined {
+export function placeSequence(
+  move: StudyMove,
+  moves: readonly NamedMove[],
+): { spot: Spot; ucis: Uci[] } | undefined {
   if (moves.length === 0) return undefined;
   const line = lineThrough(move);
-  const spots: Spot[] = [{ pos: line[0].before }, ...line.map((at) => ({ move: at, pos: at.after }))];
+  const spots: Spot[] = [
+    { pos: line[0].before },
+    ...line.map((at) => ({ move: at, pos: at.after })),
+  ];
   const fits = spots.flatMap((spot) => {
     const ucis = playable(spot.pos, moves);
     return ucis ? [{ spot, ucis }] : [];
@@ -87,7 +98,8 @@ export function playedBy(spot: Spot, side: Color): Set<string> {
 function nearest<T>(items: readonly T[], target: number, ply: (item: T) => number): T | undefined {
   let best: T | undefined;
   for (const item of items) {
-    if (best === undefined || Math.abs(ply(item) - target) < Math.abs(ply(best) - target)) best = item;
+    if (best === undefined || Math.abs(ply(item) - target) < Math.abs(ply(best) - target))
+      best = item;
   }
   return best;
 }

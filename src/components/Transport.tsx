@@ -23,12 +23,27 @@ export function Transport({ ply, total, onGoto }: Props) {
   }[] = [
     { label: 'First move', icon: 'play-skip-back', size: 16, target: 0, disabled: ply === 0 },
     { label: 'Back', icon: 'chevron-back', size: 22, target: ply - 1, disabled: ply === 0 },
-    { label: 'Forward', icon: 'chevron-forward', size: 22, target: ply + 1, disabled: ply === total },
-    { label: 'Latest move', icon: 'play-skip-forward', size: 16, target: total, disabled: ply === total },
+    {
+      label: 'Forward',
+      icon: 'chevron-forward',
+      size: 22,
+      target: ply + 1,
+      disabled: ply === total,
+    },
+    {
+      label: 'Latest move',
+      icon: 'play-skip-forward',
+      size: 16,
+      target: total,
+      disabled: ply === total,
+    },
   ];
   return (
     <View
-      style={[styles.bar, { backgroundColor: color.surfaceRaised, borderColor: color.borderSubtle }]}
+      style={[
+        styles.bar,
+        { backgroundColor: color.surfaceRaised, borderColor: color.borderSubtle },
+      ]}
     >
       {buttons.map(({ label, icon, size, target, disabled }) => (
         <Pressable
