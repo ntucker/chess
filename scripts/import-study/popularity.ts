@@ -4,7 +4,8 @@
  * refuses requests without a lichess token, and lichess asks for one request
  * at a time and a full minute's pause after a 429.
  */
-import { appendFileSync, existsSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 
 import { parsePosition, parsePositionKey, positionKey } from '@/game/replay';
 import type { Lesson, PositionKey, Uci } from '@/lesson/lesson';
@@ -80,6 +81,7 @@ export function lichessExplorer({
 }
 
 function readCache(file: string): Map<string, MoveCounts> {
+  mkdirSync(dirname(file), { recursive: true });
   if (!existsSync(file)) return new Map();
   const lines = readFileSync(file, 'utf8').split('\n').filter(Boolean);
   return new Map(lines.map((line) => JSON.parse(line) as [string, MoveCounts]));
@@ -112,10 +114,10 @@ export async function addPopularity(
     for (const key of order) {
       const pos = parsePositionKey(key)!;
       const moves = lesson.positions[key].moves;
-      const reach = reached.get(key) ?? ALL_BANDS;
+      const here = reached.get(key) ?? ALL_BANDS;
       if (wanted(key) && !counts.has(key)) {
         const answers: (MoveCounts | undefined)[] = [];
-        for (const [i, band] of RATING_BANDS.entries()) answers.push(reach[i] ? await explorer(key, band) : undefined);
+        for (const [i, band] of RATING_BANDS.entries()) answers.push(here[i] ? await explorer(key, band) : undefined);
         counts.set(
           key,
           moves.map((move) => answers.map((answer) => answer?.[move.uci] ?? 0)),
@@ -126,10 +128,10 @@ export async function addPopularity(
       moves.forEach((move, m) => {
         const next = positionKey(played(pos, move.uci));
         // Unmeasured moves (no counts) are assumed played.
-        const reachedBefore = reached.get(next) ?? NO_BANDS;
+        const recorded = reached.get(next) ?? NO_BANDS;
         reached.set(
           next,
-          reachedBefore.map((was, i) => was || (reach[i] && games?.[m][i] !== 0)),
+          recorded.map((was, i) => was || (here[i] && games?.[m][i] !== 0)),
         );
       });
     }

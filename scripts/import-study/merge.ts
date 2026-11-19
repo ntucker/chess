@@ -80,12 +80,14 @@ class DraftTree {
     this.entry(this.startKey);
   }
 
+  /** The position `key`, added if new. */
   entry(key: PositionKey): DraftPosition {
     let draft = this.positions.get(key);
     if (!draft) this.positions.set(key, (draft = { moves: new Map(), notes: [] }));
     return draft;
   }
 
+  /** The move `uci` from `pos`, added (with its position) if new. */
   move(pos: Chess, uci: Uci): DraftMove {
     const moves = this.entry(positionKey(pos)).moves;
     let move = moves.get(uci);

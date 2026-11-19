@@ -30,7 +30,6 @@ export function report(lesson: Lesson, chapters: readonly Chapter[], extracted: 
       moves.length -
         new Set(chapters.flatMap((c) => [...chapterMoves(c)].map((m) => `${positionKey(m.before)} ${m.uci}`))).size,
     ],
-    ['file size (bytes)', JSON.stringify(lesson).length],
   ];
   return rows
     .map(([name, value]) => `${name}: ${typeof value === 'object' ? JSON.stringify(value, null, 1) : value}`)

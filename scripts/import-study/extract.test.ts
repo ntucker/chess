@@ -4,7 +4,7 @@ import { extractChapter } from './extract';
 import { STUDY_PGN } from './fixture';
 import { parseStudy } from './study';
 
-const [advance] = parseStudy(STUDY_PGN, () => true);
+const [advance, classical] = parseStudy(STUDY_PGN, () => true);
 const { notes, branches, choices, rejected, contradicted } = extractChapter(advance, 'black');
 const noteOn = (san: string) => notes.filter(({ move }) => move?.san === san).map(({ note }) => note);
 
@@ -25,6 +25,11 @@ describe('extractChapter', () => {
         at: 'before',
       },
     ]);
+  });
+
+  it('finds a header after an "Extra:" line too', () => {
+    const header = extractChapter(classical, 'black').notes.find(({ move }) => move?.san === 'Bf5');
+    expect(header?.note.text).toBe('Extra: only needed if White plays 3.Nc3.');
   });
 
   it('reads a plan list and keeps a glyph the text does not contradict', () => {

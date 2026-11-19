@@ -18,6 +18,10 @@ const at = (...sans: string[]) => lesson.positions[keyAfter(...sans)];
 const moves = (...sans: string[]) => at(...sans).moves.map(({ uci, book, risk }) => [uci, book ?? false, risk]);
 
 describe('mergeChapters', () => {
+  it('refuses a lesson without chapters', () => {
+    expect(() => mergeChapters(lesson, [], [])).toThrow('No chapters to merge for lesson test');
+  });
+
   it('writes a lesson the checker accepts', () => {
     expect(checkLesson(lesson)).toEqual([]);
   });

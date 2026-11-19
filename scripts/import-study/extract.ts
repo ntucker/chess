@@ -62,7 +62,7 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
 
   for (const move of chapterMoves(chapter)) {
     const { comment } = move;
-    const header = move.ply === 1 && /^\s*Idea:/.test(comment) ? readHeader(chapter, comment) : undefined;
+    const header = move.ply === 1 && /^Idea:/m.test(comment) ? readHeader(chapter, comment) : undefined;
     // A header is about the whole chapter: it goes where the chapter's main line ends, not on move 1.
     const target = header?.mainLineEnd ?? move;
     const traps = trapLines(move);
@@ -71,7 +71,7 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
     const found: Found[] = [
       ...plans(chapter, move, header),
       ...traps,
-      ...(typeof evaluation === 'object' ? [evaluation] : []),
+      ...(evaluation && evaluation !== 'contradicted' ? [evaluation] : []),
     ];
     branches.push(...traps.map(({ spot, idea }) => ({ spot, ucis: idea.moves })), ...sequences(move));
     choices.push(...choiceGuide(move, learner));
