@@ -3,8 +3,8 @@
  * facts about the position on the board, what the learner points at (a
  * candidate, by its list row or a piece dragged onto its square, and a note
  * on the idea card), an idea playing back, the mode (Explore or Practice),
- * and the board. On Auto the learner moves their own side; on "I choose",
- * either.
+ * and the board. With auto play the learner moves their own side; with auto
+ * play off, either.
  */
 import { useController } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
@@ -63,7 +63,7 @@ export function useLesson(lesson: Lesson) {
   // Moves are labelled by Stockfish whatever judges the bar: Maia's judgement
   // could call a book move a mistake. So Stockfish runs while this is in front.
   useNeedsStockfish(focused);
-  // On "I choose" nobody replies: the learner picks the opponent's move.
+  // With auto play off nobody replies: the learner picks the opponent's move.
   const rival = settings.auto
     ? lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent))
     : undefined;

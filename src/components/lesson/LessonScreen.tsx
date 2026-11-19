@@ -19,6 +19,7 @@ import { getLesson, LESSONS, type LessonId } from '@/resources/lesson';
 import { useSettings } from '@/settings/SettingsProvider';
 import { qualityLooks } from '@/theme/moveQuality';
 
+import { AutoPlay } from './AutoPlay';
 import { CandidateList } from './CandidateList';
 import { IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
@@ -108,6 +109,7 @@ function LessonScreen({ id }: { readonly id: LessonId }) {
             name: colorName(rival),
             detail: `The guide's moves, then ${described.tagline.toLowerCase()}`,
             brief: described.tagline,
+            children: <AutoPlay />,
           }}
           board={board}
         />
@@ -226,7 +228,7 @@ function describeStatus(
   { title, rival, engine, thinking, viewing, auto, lineEnded, startsRun, practice }: StatusInput,
 ) {
   const eyebrow = view.variation.map(({ name }) => name).join(' · ') || title;
-  // Beyond the guide on "I choose", nobody replies: the learner moves both sides.
+  // Beyond the guide with auto play off, nobody replies: the learner moves both sides.
   const playOn = auto ? `play on against ${engine}` : 'play on, moving both sides';
   if (lineEnded && practice?.clean)
     return {

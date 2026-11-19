@@ -1,6 +1,6 @@
 import { Spinner, Text, useTheme } from '@reactive/silk-native';
 import type { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 
 import type { Material } from '@/game/material';
 import { type Color, opposite } from '@/game/replay';
@@ -22,17 +22,10 @@ interface Props {
   readonly material: Material;
   /** Controls at the end of the bar, such as the move stepper. */
   readonly children?: ReactNode;
+  /** The bar's size; the screen fixes its height to line it up with the board. */
+  readonly style?: StyleProp<ViewStyle>;
 }
 
-/**
- * Fixed, so the screen can line other content up with the board: a bar with
- * controls at its end, and one with only the names. Shorter on a narrow
- * web page, where the names share one line.
- */
-export const PLAYER_BAR_HEIGHT = {
-  controls: phoneLength('controls-bar-height', 60),
-  names: phoneLength('names-bar-height', 60),
-} as const;
 /**
  * The disc's size and the space after it, so the screen can line things up
  * with them. A small dot on a narrow web page, to give the board room.
@@ -53,6 +46,7 @@ export function PlayerBar({
   thinking,
   material,
   children,
+  style,
 }: Props) {
   const { theme } = useTheme();
   const { color: c } = theme.semantic;
@@ -64,7 +58,7 @@ export function PlayerBar({
     style: styles.detailText,
   } as const;
   return (
-    <View style={[styles.bar, children ? styles.controlsBar : styles.namesBar]}>
+    <View style={[styles.bar, style]}>
       <View
         style={[
           styles.piece,
@@ -102,8 +96,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: PLAYER_DISC.gap.value,
   },
-  controlsBar: { height: PLAYER_BAR_HEIGHT.controls.value },
-  namesBar: { height: PLAYER_BAR_HEIGHT.names.value },
   piece: {
     width: PLAYER_DISC.size.value,
     height: PLAYER_DISC.size.value,
@@ -111,9 +103,9 @@ const styles = StyleSheet.create({
     borderWidth: DISC_BORDER.value,
   },
   names: { flex: 1, minWidth: 0 },
-  // Where the name's line and the detail share a row (a narrow web
-  // page), both give way in proportion when short of room; elsewhere they
-  // stack, and these shrink rules have nothing to do.
+  // Where the name's line and the detail share a row (a narrow web page),
+  // the detail gives way first when short of room, then the name's line;
+  // elsewhere they stack, and these shrink rules have nothing to do.
   nameLine: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -122,8 +114,10 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     minWidth: 0,
   },
-  // The detail ends in an ellipsis as it gives way.
-  detailText: { flexShrink: 1, minWidth: 0 },
+  // The detail ends in an ellipsis as it gives way. Its flexShrink is a
+  // weight against the name's line's 1, kept far above it, so a short name
+  // ("White") stays whole beside a switch at the bar's end.
+  detailText: { flexShrink: 1000, minWidth: 0 },
   // The captured pieces give way first (see Captures), then the name ends in
   // an ellipsis; the line is clipped rather than run under the controls.
   name: { flexShrink: 1, minWidth: 0 },
