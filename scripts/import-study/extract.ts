@@ -110,8 +110,8 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
       // An idea about another position (often the one before the commented move) is said there.
       else positionNotes.push({ pos: spot.pos, note: note(label, [idea]) });
     }
-    // Without a comment, only an evaluation glyph can give a move a note: its label says it.
-    const text = comment || own[0]?.label;
+    // Without a comment, an evaluation glyph's label is the note.
+    const text = comment || own.find(({ idea }) => idea.type === 'evaluation')?.label;
     if (text)
       moveNotes.push({
         move: target,

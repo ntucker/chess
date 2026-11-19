@@ -114,7 +114,7 @@ export async function addPopularity(
     const reached = new Map([[start, ALL_BANDS]]);
     for (const [key, next] of order) {
       const moves = lesson.positions[key].moves;
-      // Breadth first, so a move into each position has been seen.
+      // `order` is breadth first, so a move into this position was seen before it.
       const here = reached.get(key)!;
       if (wanted(key) && !counts.has(key)) {
         const answers: (MoveCounts | undefined)[] = [];
@@ -126,6 +126,7 @@ export async function addPopularity(
         onProgress?.(++asked);
       }
       const games = counts.get(key);
+      // next[m] is the position moves[m] leads to.
       next.forEach((after, m) => {
         // Unmeasured moves (no counts) are assumed played.
         const recorded = reached.get(after) ?? NO_BANDS;

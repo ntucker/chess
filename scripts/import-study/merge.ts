@@ -271,7 +271,7 @@ function ancestry(variations: Readonly<Record<VariationId, Variation>>, id: Vari
   return path;
 }
 
-/** The narrowest variation on every one of `paths` (each from `ancestry`, so all start at the opening). */
+/** The narrowest variation on every one of `paths`: at least one, each from `ancestry`, so all start at the opening. */
 function narrowest(paths: readonly (readonly VariationId[])[]): VariationId {
   const [first] = paths;
   let level = 0;
