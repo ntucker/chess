@@ -3,7 +3,7 @@ import { describe, expect, it, jest } from '@jest/globals';
 import { attachStockfish } from '@/stockfish/engine';
 
 import { getEvaluation } from './evaluation';
-import { newController, searchStarted } from './testing';
+import { newController, waitForSearch } from './testing';
 
 // Maia runs on a worklet runtime, which Jest doesn't have; only Stockfish is used here.
 jest.mock('@/maia/engine', () => ({ maiaEvaluation: jest.fn() }));
@@ -16,9 +16,9 @@ describe('getEvaluation', () => {
     const sent: string[] = [];
     const engine = attachStockfish((command) => sent.push(command));
     engine.receive('uciok');
-    /** Answers the search for `moves` once it starts (the store calls the endpoint asynchronously). */
+    /** Answers the search for `moves` once it starts. */
     const finish = async (moves: string, centipawns: number) => {
-      await searchStarted(sent, moves);
+      await waitForSearch(sent, moves);
       engine.receive(`info depth 12 score cp ${centipawns}`);
       engine.receive('bestmove a7a6');
     };

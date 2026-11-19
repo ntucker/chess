@@ -5,7 +5,7 @@ import { attachStockfish } from '@/stockfish/engine';
 
 import { getEvaluation } from './evaluation';
 import { fetchOpponentMove } from './opponent';
-import { newController, searchStarted } from './testing';
+import { newController, waitForSearch } from './testing';
 
 // Maia runs on a worklet runtime, which Jest doesn't have, so it's scripted.
 jest.mock('@/maia/engine', () => ({ maiaMove: jest.fn() }));
@@ -26,7 +26,7 @@ describe('fetchOpponentMove', () => {
 
     // The evaluation bar judges the position,
     const evaluation = controller.fetch(getEvaluation, 'stockfish', ['e2e4']);
-    await searchStarted(sent, 'e2e4');
+    await waitForSearch(sent, 'e2e4');
     engine.receive('info depth 12 score cp 30');
     engine.receive('bestmove c7c6 ponder d2d4');
     await evaluation;
