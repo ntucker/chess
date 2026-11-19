@@ -3,6 +3,7 @@
  * pieces that both sides have lost cancel out, so each side keeps only the
  * pieces it is up, plus a points lead for the side ahead.
  */
+import type { Board } from 'chessops/board';
 import { parseFen } from 'chessops/fen';
 
 import type { Color } from './replay';
@@ -12,13 +13,18 @@ const ROLES = ['queen', 'rook', 'bishop', 'knight', 'pawn'] as const;
 export type MaterialRole = (typeof ROLES)[number];
 
 /** The usual piece values, in pawns. */
-const VALUES: Readonly<Record<MaterialRole, number>> = {
+export const VALUES: Readonly<Record<MaterialRole, number>> = {
   queen: 9,
   rook: 5,
   bishop: 3,
   knight: 3,
   pawn: 1,
 };
+
+/** The total value of `color`'s pieces on `board`, in pawns. */
+export function points(board: Board, color: Color): number {
+  return ROLES.reduce((sum, role) => sum + VALUES[role] * board.pieces(color, role).size(), 0);
+}
 
 export interface Material {
   /** The other side's pieces this side is up, most valuable first. */

@@ -43,6 +43,15 @@ export interface GameResult {
     | 'fifty-move rule';
 }
 
+/**
+ * `pos` as a FEN without the move counters (placement, turn, castling, and
+ * en passant only when a capture there is legal): equal for the same position
+ * however it was reached, so it counts repetitions and keys lessons.
+ */
+export function positionKey(pos: Chess): string {
+  return makeFen(pos.toSetup(), { epd: true });
+}
+
 /** A position reached while playing a line (see `playLine`). */
 export interface Step {
   /** The position. Every step shares one object, so read it before the next. */
@@ -62,8 +71,7 @@ export function* playLine(line: readonly string[]): Generator<Step> {
   const pos = Chess.default();
   const seen = new Map<string, number>();
   const step = (move?: Ply['move']): Step => {
-    // Repetition compares placement, turn, castling and en passant (EPD).
-    const key = makeFen(pos.toSetup(), { epd: true });
+    const key = positionKey(pos);
     const repetitions = (seen.get(key) ?? 0) + 1;
     seen.set(key, repetitions);
     return { pos, repetitions, move };
@@ -126,7 +134,11 @@ export function lastPosition(line: readonly string[]): Position {
  * dragged onto its rook write it.
  */
 export function lineMove(fen: string, uci: string): string | undefined {
-  const pos = Chess.fromSetup(parseFen(fen).unwrap()).unwrap();
+  return recordedMove(Chess.fromSetup(parseFen(fen).unwrap()).unwrap(), uci);
+}
+
+/** `lineMove` for a position already parsed. */
+export function recordedMove(pos: Chess, uci: string): string | undefined {
   const move = parseUci(uci);
   if (!move || !pos.isLegal(move)) return undefined;
   const side = castlingSide(pos, move);
