@@ -4,7 +4,6 @@
  * back through. Each idea type draws as the tech plan's section 7 says; a
  * sequence of moves draws its first moves and plays back the rest.
  */
-import { pawnAttacks } from 'chessops/attacks';
 import type { Board } from 'chessops/board';
 import type { Chess } from 'chessops/chess';
 import { makeBoardFen, makeFen } from 'chessops/fen';
@@ -17,7 +16,7 @@ import { parsePositionKey, pieceAt, playLine, type Position } from '@/game/repla
 
 import type { Guidance, ShownIdea } from './guidance';
 import type { Idea, Imbalance, PositionKey, Structure, StructureFeature, Uci } from './lesson';
-import { relativeRank } from './pawns';
+import { relativeRank, spaceSquares } from './pawns';
 import { planBoards } from './plan';
 import type { Candidate } from './select';
 import type { LandedTrap, ShownNote } from './view';
@@ -252,24 +251,16 @@ function structureDrawings({ side, features }: Structure, board: Board, tone: To
 }
 
 /**
- * An imbalance's pieces or squares: both bishops lit, or the empty squares
- * the side's pawns take in the other half of the board. Material draws
+ * An imbalance's pieces or squares: both bishops lit, or the side's space
+ * (`spaceSquares`, the squares the checker counts) marked. Material draws
  * nothing, since the player bars already show who is ahead.
  */
 function imbalanceDrawings({ side, kind }: Imbalance, board: Board, tone: Tone): Drawing[] {
   switch (kind) {
     case 'bishopPair':
       return squaresOf(board.pieces(side, 'bishop')).map((square) => ({ kind: 'glow', square, tone }));
-    case 'space': {
-      const taken = [...board.pieces(side, 'pawn')].reduce(
-        (set, pawn) => set.union(pawnAttacks(side, pawn)),
-        SquareSet.empty(),
-      );
-      return tint(
-        squaresOf(taken.diff(board.occupied)).filter((square) => rank(side, square) >= 4),
-        tone,
-      );
-    }
+    case 'space':
+      return marked(squaresOf(spaceSquares(board, side)), tone, board);
     case 'material':
       return [];
   }

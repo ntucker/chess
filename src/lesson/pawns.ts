@@ -102,15 +102,18 @@ export function isPawnChain(board: Board, color: Color, squares: readonly Square
   );
 }
 
+/** The opponent's half of the board for `color`: ranks 5 to 8 for White, 1 to 4 for Black. */
+const opponentHalf = (color: Color) =>
+  [4, 5, 6, 7].reduce(
+    (set, rank) => set.union(SquareSet.fromRank(color === 'white' ? rank : 7 - rank)),
+    SquareSet.empty(),
+  );
+
 /**
- * How far `color`'s pawns have advanced: for each file, how many ranks its
- * most advanced pawn there has moved from the starting rank.
+ * `color`'s space: the squares in the opponent's half of the board that its
+ * pawns attack. A side with more of them has the space advantage.
  */
-export function space(board: Board, color: Color): number {
-  const furthest = new Map<number, number>();
-  for (const pawn of pawns(board, color)) {
-    const file = squareFile(pawn);
-    furthest.set(file, Math.max(furthest.get(file) ?? 0, relativeRank(color, pawn) - 1));
-  }
-  return [...furthest.values()].reduce((sum, ranks) => sum + ranks, 0);
-}
+export const spaceSquares = (board: Board, color: Color): SquareSet =>
+  [...pawns(board, color)]
+    .reduce((set, pawn) => set.union(pawnAttacks(color, pawn)), SquareSet.empty())
+    .intersect(opponentHalf(color));

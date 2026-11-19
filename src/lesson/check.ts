@@ -46,7 +46,7 @@ import {
   isPawnChain,
   isWeakSquare,
   pawnSteps,
-  space,
+  spaceSquares,
   stopSquare,
 } from './pawns';
 import { PlanBoard } from './plan';
@@ -574,7 +574,7 @@ function checkImbalance(pos: Chess, idea: Imbalance) {
   const holds = {
     bishopPair: () => hasBishopPair(board, idea.side) && !hasBishopPair(board, other),
     material: () => points(board, idea.side) > points(board, other),
-    space: () => space(board, idea.side) > space(board, other),
+    space: () => spaceSquares(board, idea.side).size() > spaceSquares(board, other).size(),
   }[idea.kind]();
   if (!holds) fail(`${idea.side} does not have the ${idea.kind} advantage`);
 }

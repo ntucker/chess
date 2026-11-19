@@ -172,14 +172,16 @@ describe('ideaDrawings', () => {
     ]);
   });
 
-  it('lights the two bishops, tints the space the pawns take, and draws nothing for material', () => {
+  it("lights the two bishops, marks the side's space, and draws nothing for material", () => {
     const bishops = fen('2b1k3/8/8/8/8/8/8/2B1KB2 w - - 0 1');
     expect(drawn({ type: 'imbalance', side: 'white', kind: 'bishopPair' }, bishops)).toEqual([
       { kind: 'glow', square: 'c1', tone: 'other' },
       { kind: 'glow', square: 'f1', tone: 'other' },
     ]);
     expect(drawn({ type: 'imbalance', side: 'white', kind: 'space' }, after(...ADVANCE))).toEqual([
+      // The empty squares tinted; e5 holds a pawn, so it is ringed.
       { kind: 'tint', squares: ['c5', 'd6', 'f6'], tone: 'other' },
+      { kind: 'ring', square: 'e5', tone: 'other' },
     ]);
     expect(drawn({ type: 'imbalance', side: 'white', kind: 'material' }, bishops)).toEqual([]);
   });
