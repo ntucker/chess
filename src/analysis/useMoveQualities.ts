@@ -1,11 +1,11 @@
-import { StateContext, useController, useFetch } from '@data-client/react';
-import { use } from 'react';
+import { StateContext, useController, useFetch } from "@data-client/react";
+import { use } from "react";
 
-import type { EvaluationEngine } from '@/evaluation/evaluation';
-import type { Ply } from '@/game/replay';
-import { getEvaluation } from '@/resources/evaluation';
+import type { EvaluationEngine } from "@/evaluation/evaluation";
+import type { Ply } from "@/game/replay";
+import { getEvaluation } from "@/resources/evaluation";
 
-import { classifyMove, type MoveQuality } from './quality';
+import { classifyMove, type MoveQuality } from "./quality";
 
 /**
  * Each move's label, from the evaluations of the positions before and after
@@ -31,13 +31,18 @@ export function useMoveQualities(
   const moves = plies.slice(1).map(({ move }) => move!.uci);
   // The moves before each position: `lines[n]` leads to `plies[n]`.
   const lines = plies.map((_, n) => moves.slice(0, n));
-  const ask = (line: readonly string[]) => (shown ? ([engine, line] as const) : ([null] as const));
-  useFetch(getEvaluation, ...ask(lines[shown - 1]));
-  useFetch(getEvaluation, ...ask(lines[shown]));
-  const evaluations = lines.map((line) => ctrl.getResponse(getEvaluation, engine, line, state).data);
+  const evaluationArgs = (line: readonly string[]) =>
+    shown ? ([engine, line] as const) : ([null] as const);
+  useFetch(getEvaluation, ...evaluationArgs(lines[shown - 1]));
+  useFetch(getEvaluation, ...evaluationArgs(lines[shown]));
+  const evaluations = lines.map(
+    (line) => ctrl.getResponse(getEvaluation, engine, line, state).data,
+  );
   return moves.map((uci, n) => {
     const before = evaluations[n];
     const after = evaluations[n + 1];
-    return before && after ? classifyMove({ before, after, uci, mover: plies[n].turn }) : undefined;
+    return before && after
+      ? classifyMove({ before, after, uci, mover: plies[n].turn })
+      : undefined;
   });
 }
