@@ -115,6 +115,7 @@ function sequences(move: StudyMove) {
 /** `text` shortened to a note's sentence, without a "Plan:" or "Trap:" label: the note's ideas show its kind. */
 const noteText = (text: string) => shorten(text).replace(/^(?:Plan|Trap):\s*/, '');
 
+/** A note on `source` (a comment, or an idea's label), keeping the study's wording in `original` when the text differs. */
 function note(source: string, ideas: readonly Idea[]): Note {
   const text = noteText(source);
   return { text, ...(text !== source && { original: source }), ...(ideas.length > 0 && { ideas }) };
