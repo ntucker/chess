@@ -107,7 +107,7 @@ function Row({ candidate, main, pointed, leadsTo, share, playable, onPlay, onPoi
       onPointerMove={({ nativeEvent }) => {
         if (pointed || !hovers(nativeEvent.pointerType)) return;
         // Each move starts the wait again: a mouse still crossing the row isn't resting.
-        clearTimeout(resting.current);
+        stopResting();
         resting.current = setTimeout(() => {
           resting.current = undefined;
           point();

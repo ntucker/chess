@@ -121,7 +121,8 @@ export default function Board({
     if (!target) return;
     // The square picked before a press. Chessground reports the press after it
     // has acted on it, when a refused move has already dropped the pick, so
-    // it is read as the press starts, before chessground sees it.
+    // it is read as the press starts, before chessground sees it: a capture
+    // listener added before chessground binds its own.
     let picked: Square | undefined;
     const notePick = () => {
       picked = api.current?.state.selected as Square | undefined;

@@ -9,23 +9,25 @@ interface Props {
   readonly children: ReactNode;
 }
 
+/** How soon after a finger lifts its tap moves focus. */
+const LIFT_FOCUS_MS = 300;
+
 /**
  * The part of the panel the learner points into: what is pointed at inside
  * stays pointed at until the mouse leaves the area, or keyboard focus moves
  * out of it. Touch screens have neither, so on them it is only a stack.
  */
-/** How soon after a finger lifts its tap moves focus. */
-const LIFT_FOCUS_MS = 300;
 
 export function PointingArea({ onLeave, children }: Props) {
-  // A press inside the area: whether the pointer is down, and when it last
-  // came up. Its focus change comes while it is down, or on a touch screen
-  // just after the finger lifts. Focus a press moves to nowhere came from a
-  // tap or click on something that takes no focus, such as a note's words,
-  // which the pointer handles, not the keyboard.
+  // A press inside the area: whether the pointer is down, and when a finger
+  // last lifted. Its focus change comes while it is down, or for a finger
+  // just after it lifts. Focus a press moves to nowhere came from a tap or
+  // click on something that takes no focus, such as a note's words, which
+  // the pointer handles, not the keyboard.
   const press = useRef({ down: false, upAt: -Infinity });
-  const lift = () => {
-    press.current = { down: false, upAt: performance.now() };
+  const lift = ({ nativeEvent }: { nativeEvent: { pointerType: string } }) => {
+    const finger = !hovers(nativeEvent.pointerType);
+    press.current = { down: false, upAt: finger ? performance.now() : press.current.upAt };
   };
   // The DOM's own focus events, which bubble from the buttons inside: focus
   // that moves to another of them stays in, and so does focus a press inside
@@ -48,9 +50,11 @@ export function PointingArea({ onLeave, children }: Props) {
       }}
       onPointerUp={lift}
       onPointerCancel={lift}
-      onPointerLeave={({ nativeEvent }) => {
+      onPointerLeave={(event) => {
+        // A press released outside never comes up here.
+        lift(event);
         // A finger leaves whenever it lifts, which would end every preview a tap starts.
-        if (hovers(nativeEvent.pointerType)) onLeave();
+        if (hovers(event.nativeEvent.pointerType)) onLeave();
       }}
       // Only the web has keyboard focus here.
       onBlur={process.env.EXPO_OS === 'web' ? blur : undefined}

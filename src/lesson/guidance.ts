@@ -25,7 +25,7 @@
  *   is drawn, and the preview it started from stays.
  *
  * guidance stays in lesson terms; lessonDrawings (./drawings.ts) turns it
- * into board shapes.
+ * into board shapes, and says which ideas draw nothing (`drawsOnBoard`).
  */
 import { drawsOnBoard } from './drawings';
 import type { Idea, Note, PositionKey, Uci } from './lesson';
