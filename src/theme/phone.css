@@ -64,14 +64,22 @@
   :root [data-phone='phone-only'] {
     display: block;
   }
-  /* A name bar's name and detail share one line (PlayerBar.tsx); the detail, last, gives way. */
+  /*
+   * A name bar's name and detail share one line (PlayerBar.tsx). Short of
+   * room, both give way in proportion (a React Native Web view doesn't shrink
+   * by default): in the name's part the captured pieces first, and the
+   * detail, last, ends in an ellipsis.
+   */
   :root [data-phone='player-names'] {
     flex-direction: row;
     align-items: baseline;
     gap: 8px;
   }
+  :root [data-phone='player-names'] > :first-child {
+    flex-shrink: 1;
+  }
   :root [data-phone='player-names'] > :last-child {
-    flex: 1 1 0;
+    flex: 1 1 auto;
     min-width: 0;
   }
   :root [data-phone='page'] {
