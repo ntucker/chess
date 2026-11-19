@@ -248,8 +248,8 @@ const beforeMove = ({ note, before }: ShownNote, showTraps: boolean) =>
 /**
  * Whether news that comes with the line's move `ply` (a trap's last move, a
  * guide line's end) still shows: up to that move, and at the learner's turn
- * right after it, so an opponent's reply on Auto doesn't take it away before
- * the learner reads it.
+ * right after it, so an opponent's reply with auto play on doesn't take it
+ * away before the learner reads it.
  */
 function newsShown(view: LessonView, ply: number): boolean {
   const movesAfter = view.ply - ply;

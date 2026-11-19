@@ -146,7 +146,7 @@ describe('guidance', () => {
       });
     });
 
-    it("hides the opponent's candidates on Auto, but not the notes", () => {
+    it("hides the opponent's candidates with auto play on, but not the notes", () => {
       const auto = shown(
         [...ADVANCE, 'Bf5'],
         'practice',
