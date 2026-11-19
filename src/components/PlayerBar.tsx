@@ -61,6 +61,7 @@ export function PlayerBar({
     role: 'caption',
     tone: toMove ? 'accent' : 'secondary',
     numberOfLines: 1,
+    style: styles.detail,
   } as const;
   return (
     <View style={[styles.bar, children ? styles.controlsBar : styles.namesBar]}>
@@ -110,7 +111,18 @@ const styles = StyleSheet.create({
     borderWidth: DISC_BORDER.value,
   },
   names: { flex: 1, minWidth: 0 },
-  nameLine: { flexDirection: 'row', alignItems: 'center', gap: 10, overflow: 'hidden' },
+  // On a phone-width web page the name's line and the detail share one line:
+  // short of room both give way in proportion, the captured pieces first
+  // (see Captures) and the detail with an ellipsis.
+  nameLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    overflow: 'hidden',
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  detail: { flexShrink: 1, minWidth: 0 },
   // The captured pieces give way first (see Captures), then the name ends in
   // an ellipsis; the line is clipped rather than run under the controls.
   name: { flexShrink: 1, minWidth: 0 },
