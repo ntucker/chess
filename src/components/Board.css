@@ -53,9 +53,34 @@ cg-board square.move-dest:hover,
 cg-board square.move-dest.hover {
   background: rgba(var(--gold), 0.45);
 }
-/* The last move's piece, lit in its label's color (see glow in Board.tsx). */
+
+/*
+ * Drawings (src/board/drawing.ts). Pieces are lit and faded by markPieces in
+ * Board.tsx; the tinted squares' rules are TINT_CSS there, from drawingTones.ts.
+ */
 cg-board piece.glow {
   filter: drop-shadow(0 0 2px var(--glow)) drop-shadow(0 0 6px var(--glow)) drop-shadow(0 0 6px var(--glow));
+}
+cg-board piece.faded {
+  opacity: 0.22;
+  filter: grayscale(1);
+}
+/* A ghost: where a piece was, or will be. */
+.cg-wrap cg-auto-pieces piece {
+  opacity: 0.4;
+}
+/*
+ * Chessground can't dash an arrow; its dashed brushes are named *-dashed
+ * (marks.ts). This finds them by the arrowhead chessground names after the
+ * brush (url(#arrowhead-<brush>)), so check dashed arrows after upgrading it.
+ * A shape with brush `modifiers` gets a renamed brush and loses its dashes.
+ */
+.cg-shapes line[marker-end*='-dashed)'] {
+  stroke-dasharray: 0.14 0.34;
+}
+/* Step numbers on arrows, and labels. */
+.cg-custom-svgs text {
+  font-family: 'DMMono_400Regular', ui-monospace, monospace;
 }
 
 cg-board square.check {

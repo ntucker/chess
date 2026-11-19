@@ -2,7 +2,7 @@
 
 // Chessground draws the board with the DOM, so on Android this file runs in
 // a web view (an Expo DOM component); on the web it renders inline.
-// Props cross that boundary as JSON, and onMove becomes an async message.
+// Props cross that boundary as JSON, and function props become async messages.
 import '@lichess-org/chessground/assets/chessground.base.css';
 import '@lichess-org/chessground/assets/chessground.cburnett.css';
 import './Board.css';
@@ -10,14 +10,16 @@ import './Board.css';
 import { Chessground } from '@lichess-org/chessground';
 import type { Api } from '@lichess-org/chessground/api';
 import type { Config } from '@lichess-org/chessground/config';
+import type { DrawBrushes } from '@lichess-org/chessground/draw';
 import type { Key, PieceNode } from '@lichess-org/chessground/types';
 import type { DOMProps } from 'expo/dom';
-import { useEffect, useEffectEvent, useRef } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef } from 'react';
 
-import type { MoveQuality } from '@/analysis/quality';
+import { type Drawing, type Square, TONES } from '@/board/drawing';
+import { type BoardMarks, boardMarks, toneBrushes } from '@/board/marks';
+import { watchPointer } from '@/board/pointer';
 import type { Color } from '@/game/replay';
-import { BADGE_BOX, badgeMarkup, qualityLooks } from '@/theme/moveQuality';
-import { pieceColors } from '@/theme/pieceColors';
+import { toneColors } from '@/theme/drawingTones';
 
 export interface BoardProps {
   readonly fen: string;
@@ -28,10 +30,28 @@ export interface BoardProps {
   /** Legal destinations by origin square. */
   readonly dests: Record<string, string[]>;
   readonly lastMove?: readonly [string, string];
-  /** The last move's label, shown on the piece it moved: a glow and a badge. */
-  readonly lastMoveQuality?: MoveQuality;
   readonly check: boolean;
+  /**
+   * What to draw over the position. Changing only these never resets the
+   * position, so it can change while a piece is being dragged. A new `fen`
+   * slides the pieces that moved, which is how a previewed move animates.
+   */
+  readonly drawings?: readonly Drawing[];
   readonly onMove: (from: string, to: string) => void;
+  /**
+   * The square under the mouse, or null once it leaves the board. It doesn't
+   * change while a mouse button is down, so a drag never starts a preview.
+   */
+  readonly onHover?: (square: Square | null) => void;
+  /** The square a finger presses and holds, or null once it lifts. */
+  readonly onHold?: (square: Square | null) => void;
+  /**
+   * A square was clicked or tapped, empty or not, including the press that
+   * starts a drag and the one that ends a move. While a move is previewed the
+   * board shows it played, so chessground can't play it; a click on its
+   * square comes here instead.
+   */
+  readonly onPress?: (square: Square) => void;
   readonly dom?: DOMProps;
 }
 
@@ -42,92 +62,125 @@ export default function Board({
   movableColor,
   dests,
   lastMove,
-  lastMoveQuality,
   check,
+  drawings = [],
   onMove,
+  onHover,
+  onHold,
+  onPress,
 }: BoardProps) {
   const element = useRef<HTMLDivElement>(null);
   const api = useRef<Api>(null);
-  // Chessground keeps the callbacks it was created with.
+  // Chessground and the pointer listeners keep the callbacks they were given.
   const handleMove = useEffectEvent((from: string, to: string) => onMove(from, to));
+  const handleHover = useEffectEvent((square: Square | null) => onHover?.(square));
+  const handleHold = useEffectEvent((square: Square | null) => onHold?.(square));
+  const handlePress = useEffectEvent((square: Square) => onPress?.(square));
 
-  const label =
-    lastMove && lastMoveQuality ? { square: lastMove[1] as Key, quality: lastMoveQuality } : undefined;
-  const config: Config = {
-    fen,
-    orientation,
-    turnColor,
-    check,
-    lastMove: lastMove ? [...(lastMove as [Key, Key])] : undefined,
-    movable: {
-      free: false,
-      color: movableColor,
-      dests: new Map(Object.entries(dests)) as Map<Key, Key[]>,
-    },
-    drawable: {
-      autoShapes: label ? [{ orig: label.square, customSvg: { html: cornerBadge(label.quality) } }] : [],
-    },
-  };
+  // Props arrive as fresh objects on every render (and as JSON on Android),
+  // so the board is updated by what they say, not by their identity.
+  const destsKey = JSON.stringify(dests);
+  const [lastFrom, lastTo] = lastMove ?? [];
+  const position = useMemo(
+    (): Config => ({
+      fen,
+      orientation,
+      turnColor,
+      check,
+      lastMove: lastFrom && lastTo ? [lastFrom as Key, lastTo as Key] : undefined,
+      movable: {
+        free: false,
+        color: movableColor,
+        dests: new Map(Object.entries(JSON.parse(destsKey))) as Map<Key, Key[]>,
+      },
+    }),
+    [fen, orientation, turnColor, check, lastFrom, lastTo, movableColor, destsKey],
+  );
+  const drawingsKey = JSON.stringify(drawings);
+  const marks = useMemo(
+    () => boardMarks(JSON.parse(drawingsKey) as Drawing[], orientation),
+    [drawingsKey, orientation],
+  );
+
+  // Chessground reuses piece elements as pieces move, so the lit and faded
+  // pieces are marked again whenever the pieces or the drawings change: after
+  // new props, and after a move made on the board. Chessground draws on a
+  // frame it asked for first, so this frame comes after the draw.
+  const frame = useRef(0);
+  const markAfterDraw = useEffectEvent(() => {
+    cancelAnimationFrame(frame.current);
+    frame.current = requestAnimationFrame(() => {
+      if (api.current) markPieces(api.current, marks);
+    });
+  });
 
   useEffect(() => {
-    if (!element.current) return;
-    const board = Chessground(element.current, {
-      ...config,
+    const target = element.current;
+    if (!target) return;
+    const board = Chessground(target, {
+      ...position,
       premovable: { enabled: false },
-      movable: {
-        ...config.movable,
-        events: { after: (from, to) => handleMove(from, to) },
-      },
+      events: { select: (square) => handlePress(square as Square), change: () => markAfterDraw() },
+      movable: { ...position.movable, events: { after: (from, to) => handleMove(from, to) } },
+      // Added to chessground's own brushes, which it keeps.
+      drawable: { brushes: toneBrushes as DrawBrushes },
     });
     api.current = board;
+    const stopWatching = watchPointer<Square>(
+      target,
+      target.ownerDocument,
+      (x, y) => board.getKeyAtDomPos([x, y]) as Square | undefined,
+      { hover: (square) => handleHover(square), hold: (square) => handleHold(square) },
+    );
     return () => {
+      cancelAnimationFrame(frame.current);
+      stopWatching();
       board.destroy();
       api.current = null;
     };
-    // Created once; the effect below keeps it in step with the props.
+    // Created once; the effects below keep it in step with the props.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    const board = api.current;
-    if (!board) return;
-    board.set(config);
-    // Chessground draws the new position in set() or on a frame it asked for
-    // first, so this frame comes after the draw.
-    const frame = requestAnimationFrame(() => glow(board, label));
-    return () => cancelAnimationFrame(frame);
-  });
+    api.current?.set(position);
+  }, [position]);
+
+  useEffect(() => {
+    api.current?.set({ drawable: { autoShapes: marks.shapes }, highlight: { custom: marks.tints } });
+  }, [marks]);
+
+  useEffect(() => markAfterDraw(), [position, marks]);
 
   return (
     // Square by its width, since the web view's page has no height to fill.
     <div style={{ width: '100%', aspectRatio: '1 / 1', touchAction: 'none' }}>
+      <style>{TINT_CSS}</style>
       <div ref={element} style={{ width: '100%', height: '100%' }} />
     </div>
   );
 }
 
-/** The ink that rings a badge on the board, to set it off from the squares. */
-const BADGE_RING = pieceColors.black;
-/** A badge's size and center on its square, in hundredths of the square. */
-const BADGE = { size: 34, x: 82, y: 18 } as const;
-
-/** A label's badge, overlapping the top right corner of its square (drawn in a 100 by 100 box). */
-function cornerBadge(quality: MoveQuality): string {
-  const scale = BADGE.size / BADGE_BOX;
-  const x = BADGE.x - BADGE.size / 2;
-  const y = BADGE.y - BADGE.size / 2;
-  return `<g transform="translate(${x} ${y}) scale(${scale})">${badgeMarkup(quality, BADGE_RING)}</g>`;
-}
+/**
+ * A tinted square in each tone (marks.ts names the classes), under its piece.
+ * Written from TONES and toneColors, so a new tone or color needs no CSS edit.
+ */
+const TINT_CSS = TONES.map(
+  (tone) =>
+    `cg-board square.tint-${tone} { background-color: color-mix(in srgb, ${toneColors[tone]} 40%, transparent); }`,
+).join('\n');
 
 /**
- * Lights the labelled piece with a glow in its label's color, and puts out any
- * other. Chessground has no way to style one piece, so this marks its element
- * directly, after each draw (Board.css draws the glow).
+ * Lights and fades pieces. Chessground has no way to style one piece, so this
+ * marks their elements directly (Board.css draws the glow and the fade).
  */
-function glow(board: Api, label: { square: Key; quality: MoveQuality } | undefined) {
+function markPieces(board: Api, { glows, unfaded }: BoardMarks) {
   for (const piece of board.state.dom.elements.board.querySelectorAll<PieceNode>('piece')) {
-    const lit = label !== undefined && piece.cgKey === label.square && !piece.cgFading;
-    piece.classList.toggle('glow', lit);
-    if (lit) piece.style.setProperty('--glow', qualityLooks[label.quality].color);
+    // A captured piece on its way out keeps neither.
+    const glow = piece.cgFading ? undefined : glows.get(piece.cgKey);
+    const faded = !piece.cgFading && unfaded !== undefined && !unfaded.has(piece.cgKey);
+    piece.classList.toggle('glow', glow !== undefined);
+    if (glow) piece.style.setProperty('--glow', glow);
+    piece.classList.toggle('faded', faded);
   }
 }
