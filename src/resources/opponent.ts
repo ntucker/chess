@@ -10,10 +10,10 @@ import { getMaiaMove } from './maia';
  * The opponent's move after `line` (UCI moves from the starting position), in
  * UCI. Both engines run on the device, off the main thread.
  *
- * - `maia`: the move people rated about the opponent's rating tend to play,
- *   from the matching network.
- * - `stockfish`: Stockfish's best move whatever the rating, from the search
- *   that evaluates the position (`getEvaluation`, about depth 16). A position
+ * - A rating: the move Maia's network for that rating picks, the way people
+ *   rated about that tend to play.
+ * - `stockfish`: Stockfish's best move, from the search that evaluates the
+ *   position (`getEvaluation`, about depth 16). A position
  *   the evaluation bar or move labels already searched, or are searching,
  *   costs no new search. It needs StockfishHost mounted.
  *
@@ -21,15 +21,15 @@ import { getMaiaMove } from './maia';
  * king's two-square move (`e1g1`); `lineMove` reads both.
  *
  * ```ts
- * const uci = await fetchOpponentMove(ctrl, { engine: 'maia', rating: 1500 }, ['e2e4']);
+ * const uci = await fetchOpponentMove(ctrl, 1500, ['e2e4']);
  * ```
  */
 export async function fetchOpponentMove(
   ctrl: Controller,
-  { engine, rating }: Opponent,
+  opponent: Opponent,
   line: readonly string[],
 ): Promise<string> {
-  if (engine === 'maia') return ctrl.fetch(getMaiaMove, rating, line);
+  if (opponent !== 'stockfish') return ctrl.fetch(getMaiaMove, opponent, line);
   const { best } = await ctrl.fetchIfStale(getEvaluation, 'stockfish', line);
   if (!best) throw new Error('Stockfish found no move');
   return best;
@@ -38,7 +38,7 @@ export async function fetchOpponentMove(
 /** `opponent` as the opponent of a game (useGame). */
 export function gameOpponent(ctrl: Controller, opponent: Opponent): GameOpponent {
   return {
-    id: `${opponent.engine} ${opponent.rating}`,
+    id: String(opponent),
     reply: (line) => fetchOpponentMove(ctrl, opponent, line),
   };
 }

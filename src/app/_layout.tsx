@@ -15,7 +15,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
 import { useEvaluationEngine } from '@/evaluation/useEvaluationEngine';
-import { useOpponentEngine } from '@/opponent/useOpponent';
+import { useOpponent } from '@/opponent/useOpponent';
 import { StockfishHost } from '@/stockfish/StockfishHost';
 import { themes } from '@/theme/theme';
 import { useColorScheme } from '@/theme/useColorScheme';
@@ -45,9 +45,10 @@ export default function RootLayout() {
 
 /**
  * Runs Stockfish while the evaluation bar or the opponent uses it. Choosing
- * Maia for both stops it, which frees its memory.
+ * Maia for the bar and a rating for the opponent stops it, which frees its
+ * memory.
  */
 function StockfishWhileChosen() {
-  const engines = [useEvaluationEngine(), useOpponentEngine()];
-  return engines.includes('stockfish') ? <StockfishHost /> : null;
+  const players = [useEvaluationEngine(), useOpponent()];
+  return players.includes('stockfish') ? <StockfishHost /> : null;
 }

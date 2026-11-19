@@ -1,25 +1,11 @@
 import { createSetting, oneOf } from '@/settings/setting';
 
-import {
-  DEFAULT_OPPONENT_RATING,
-  type Opponent,
-  OPPONENT_ENGINES,
-  type OpponentEngine,
-} from './opponent';
+import { DEFAULT_OPPONENT, type Opponent, OPPONENTS } from './opponent';
 
-const engineSetting = createSetting<OpponentEngine>(
-  'opponentEngine',
-  oneOf(OPPONENT_ENGINES),
-  'maia',
-);
+const setting = createSetting<Opponent>('opponentStrength', oneOf(OPPONENTS), DEFAULT_OPPONENT);
 
-/** Switches the engine that plays the opponent, and remembers it. */
-export const setOpponentEngine = engineSetting.set;
+/** Switches who the learner plays against, and remembers it. */
+export const setOpponent = setting.set;
 
-/** The engine the learner chose to play against. */
-export const useOpponentEngine = engineSetting.useValue;
-
-/** Who the learner plays against: the chosen engine, at the opponent's rating. */
-export function useOpponent(): Opponent {
-  return { engine: useOpponentEngine(), rating: DEFAULT_OPPONENT_RATING };
-}
+/** Who the learner chose to play against. */
+export const useOpponent = setting.useValue;

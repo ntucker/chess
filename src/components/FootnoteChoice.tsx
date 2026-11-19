@@ -5,14 +5,14 @@ import { StyleSheet } from 'react-native';
 const WEB = process.env.EXPO_OS === 'web';
 
 /** One option of a FootnoteChoice. */
-export interface FootnoteOption<T extends string> {
+export interface FootnoteOption<T extends string | number> {
   readonly value: T;
   readonly label: string;
   /** What choosing it means, read out by screen readers. */
   readonly hint: string;
 }
 
-interface Props<T extends string> {
+interface Props<T extends string | number> {
   /** What is being chosen, for screen readers. */
   readonly name: string;
   /** The words before the options, like "Evaluation by". */
@@ -27,7 +27,7 @@ interface Props<T extends string> {
  * chosen option in the primary ink. For settings changed rarely, so it stays
  * small and quiet.
  */
-export function FootnoteChoice<T extends string>({
+export function FootnoteChoice<T extends string | number>({
   name,
   lead,
   options,

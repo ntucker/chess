@@ -61,6 +61,6 @@ export function createSetting<T>(
 
 /** Parses stored text that must be one of `choices`, for createSetting. */
 export const oneOf =
-  <T extends string>(choices: readonly T[]) =>
+  <T extends string | number>(choices: readonly T[]) =>
   (stored: string): T | undefined =>
-    choices.find((choice) => choice === stored);
+    choices.find((choice) => String(choice) === stored);

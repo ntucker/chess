@@ -1,21 +1,26 @@
-import { describeOpponent, type Opponent, OPPONENT_ENGINES } from '@/opponent/opponent';
-import { setOpponentEngine } from '@/opponent/useOpponent';
+import { describeOpponent, type Opponent, OPPONENT_PRESETS } from '@/opponent/opponent';
+import { setOpponent } from '@/opponent/useOpponent';
 
 import { FootnoteChoice } from './FootnoteChoice';
 
-/** A footnote that picks the engine playing the opponent: "Play against Maia · Stockfish". */
+const OPTIONS = OPPONENT_PRESETS.map((opponent) => ({
+  value: opponent,
+  label: opponent === 'stockfish' ? 'Stockfish' : String(opponent),
+  hint: describeOpponent(opponent).style,
+}));
+
+/**
+ * A footnote that picks how hard the opponent plays, easiest first:
+ * "Play against 1100 · 1500 · 1900 · Stockfish".
+ */
 export function OpponentChoice({ opponent }: { readonly opponent: Opponent }) {
-  const options = OPPONENT_ENGINES.map((engine) => {
-    const { name, style } = describeOpponent({ ...opponent, engine });
-    return { value: engine, label: name, hint: style };
-  });
   return (
     <FootnoteChoice
       name="Opponent"
       lead="Play against"
-      options={options}
-      value={opponent.engine}
-      onChange={setOpponentEngine}
+      options={OPTIONS}
+      value={opponent}
+      onChange={setOpponent}
     />
   );
 }

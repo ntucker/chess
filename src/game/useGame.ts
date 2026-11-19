@@ -101,8 +101,9 @@ export function useGame(opponent: GameOpponent) {
   const retry = () => act({ type: 'retry' });
 
   // A different opponent answers the request still out, or the one that
-  // failed. Waiting for the old one could take forever: choosing Maia for both
-  // the opponent and the evaluation bar stops Stockfish (src/app/_layout.tsx).
+  // failed. Waiting for the old one could take forever: choosing a Maia rating
+  // for the opponent and Maia for the evaluation bar stops Stockfish
+  // (src/app/_layout.tsx).
   // And a failure left up would name the new opponent, which was never asked.
   // For a failure, the retry action turns the game back to thinking, and act
   // then asks.

@@ -17,7 +17,7 @@ const newStore = () =>
 describe('fetchOpponentMove', () => {
   it("plays Maia's move at the opponent's rating", async () => {
     jest.mocked(maiaMove).mockResolvedValue('e7e5');
-    const move = await fetchOpponentMove(newStore(), { engine: 'maia', rating: 1300 }, ['e2e4']);
+    const move = await fetchOpponentMove(newStore(), 1300, ['e2e4']);
     expect(move).toBe('e7e5');
     expect(maiaMove).toHaveBeenCalledWith(1300, ['e2e4']);
   });
@@ -39,8 +39,7 @@ describe('fetchOpponentMove', () => {
     await evaluation;
 
     // and the opponent plays the move that search found, without searching again.
-    const opponent = { engine: 'stockfish', rating: 1500 } as const;
-    expect(await fetchOpponentMove(controller, opponent, ['e2e4'])).toBe('c7c6');
+    expect(await fetchOpponentMove(controller, 'stockfish', ['e2e4'])).toBe('c7c6');
     expect(sent.filter((command) => command.startsWith('position'))).toHaveLength(1);
     engine.detach();
   });
