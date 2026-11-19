@@ -18,6 +18,3 @@ export async function waitForSearch(sent: readonly string[], moves: string) {
     await new Promise((resolve) => setTimeout(resolve));
   }
 }
-
-/** A supervisor for a scripted Stockfish (`attachStockfish`) that never restarts it. */
-export const NO_RESTARTS = { ready() {}, failed() {} };

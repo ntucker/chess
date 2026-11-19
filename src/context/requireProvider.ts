@@ -4,6 +4,8 @@
  * contexts default to null.
  */
 export function requireProvider<T>(value: T | null, provider: string): T {
-  if (value === null) throw new Error(`Read inside ${provider} (src/app/_layout.tsx)`);
+  if (value === null) {
+    throw new Error(`${provider} is missing above this component (src/app/_layout.tsx)`);
+  }
   return value;
 }

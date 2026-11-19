@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 
 import { attachStockfish, type Connection, stockfishEvaluation } from './engine';
+import { NO_RESTARTS } from './testing';
 
 // The real engine the app ships (the `stockfish` package's Node build of the
 // same lite single-threaded WebAssembly), driven through the app's protocol.
@@ -27,10 +28,10 @@ beforeAll(async () => {
  * do. Nothing restarts it.
  */
 function attachNodeEngine() {
-  return attachStockfish((command) => setTimeout(() => engine.processCommand(command)), {
-    ready() {},
-    failed() {},
-  });
+  return attachStockfish(
+    (command) => setTimeout(() => engine.processCommand(command)),
+    NO_RESTARTS,
+  );
 }
 
 afterAll(() => {

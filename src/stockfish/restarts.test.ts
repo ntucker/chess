@@ -12,22 +12,22 @@ afterEach(() => {
 
 describe('restarts', () => {
   it('waits longer after each failure in a row, up to 30 s', () => {
-    const run = jest.fn();
-    const supervisor = restarts(run);
+    const setRunning = jest.fn();
+    const supervisor = restarts(setRunning);
     const pauses = [1000, 2000, 4000, 8000, 16_000, 30_000, 30_000];
     for (const pause of pauses) {
       supervisor.failed();
-      expect(run).toHaveBeenLastCalledWith(false); // The failed engine stops at once,
+      expect(setRunning).toHaveBeenLastCalledWith(false); // The failed engine stops at once,
       jest.advanceTimersByTime(pause - 1);
-      expect(run).toHaveBeenLastCalledWith(false);
+      expect(setRunning).toHaveBeenLastCalledWith(false);
       jest.advanceTimersByTime(1);
-      expect(run).toHaveBeenLastCalledWith(true); // and the next starts after the pause.
+      expect(setRunning).toHaveBeenLastCalledWith(true); // and the next starts after the pause.
     }
   });
 
   it('starts the pause over once an engine is ready', () => {
-    const run = jest.fn();
-    const supervisor = restarts(run);
+    const setRunning = jest.fn();
+    const supervisor = restarts(setRunning);
     supervisor.failed();
     jest.advanceTimersByTime(1000);
     supervisor.failed();
@@ -35,21 +35,21 @@ describe('restarts', () => {
     supervisor.ready();
     supervisor.failed();
     jest.advanceTimersByTime(1000);
-    expect(run.mock.calls.filter(([running]) => running)).toHaveLength(3);
+    expect(setRunning.mock.calls.filter(([running]) => running)).toHaveLength(3);
   });
 
   it('restarts once for failures while a restart waits, and not at all once cancelled', () => {
-    const run = jest.fn();
-    const supervisor = restarts(run);
+    const setRunning = jest.fn();
+    const supervisor = restarts(setRunning);
     supervisor.failed();
     supervisor.failed();
     jest.advanceTimersByTime(60_000);
-    expect(run.mock.calls).toEqual([[false], [true]]);
+    expect(setRunning.mock.calls).toEqual([[false], [true]]);
 
-    run.mockClear();
+    setRunning.mockClear();
     supervisor.failed();
     supervisor.cancel();
     jest.advanceTimersByTime(60_000);
-    expect(run.mock.calls).toEqual([[false]]);
+    expect(setRunning.mock.calls).toEqual([[false]]);
   });
 });

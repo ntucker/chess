@@ -13,13 +13,13 @@ interface Restarts extends Supervisor {
 }
 
 /**
- * Restarts for a host's engine: `failed()` stops it at once (`run(false)`)
- * and starts a new one (`run(true)`) after a pause that doubles with each
+ * Restarts for a host's engine: `failed()` stops it at once
+ * (`setRunning(false)`) and starts a new one (`setRunning(true)`) after a pause that doubles with each
  * failure since an engine last finished its handshake (`ready()`), so an
  * engine that can't start isn't restarted in a tight loop. A failure while
  * a restart waits is the same failure.
  */
-export function restarts(run: (running: boolean) => void): Restarts {
+export function restarts(setRunning: (running: boolean) => void): Restarts {
   let failures = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
   return {
@@ -30,10 +30,10 @@ export function restarts(run: (running: boolean) => void): Restarts {
       if (timer !== undefined) return;
       const pause = Math.min(FIRST_PAUSE_MS * 2 ** failures, LONGEST_PAUSE_MS);
       failures += 1;
-      run(false);
+      setRunning(false);
       timer = setTimeout(() => {
         timer = undefined;
-        run(true);
+        setRunning(true);
       }, pause);
     },
     cancel() {

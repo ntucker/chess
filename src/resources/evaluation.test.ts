@@ -1,9 +1,10 @@
 import { describe, expect, it, jest } from '@jest/globals';
 
 import { attachStockfish } from '@/stockfish/engine';
+import { NO_RESTARTS } from '@/stockfish/testing';
 
 import { getEvaluation } from './evaluation';
-import { newController, NO_RESTARTS, waitForSearch } from './testing';
+import { newController, waitForSearch } from './testing';
 
 // Maia runs on a worklet runtime, which Jest doesn't have; only Stockfish is used here.
 jest.mock('@/maia/engine', () => ({ maiaEvaluation: jest.fn() }));

@@ -2,10 +2,11 @@ import { describe, expect, it, jest } from '@jest/globals';
 
 import { maiaMove } from '@/maia/engine';
 import { attachStockfish } from '@/stockfish/engine';
+import { NO_RESTARTS } from '@/stockfish/testing';
 
 import { getEvaluation } from './evaluation';
 import { fetchOpponentMove } from './opponent';
-import { newController, NO_RESTARTS, waitForSearch } from './testing';
+import { newController, waitForSearch } from './testing';
 
 // Maia runs on a worklet runtime, which Jest doesn't have, so it's scripted.
 jest.mock('@/maia/engine', () => ({ maiaMove: jest.fn() }));

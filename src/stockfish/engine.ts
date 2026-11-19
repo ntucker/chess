@@ -11,13 +11,20 @@ import { evaluationFromScore, parseBestMove, parseScore, positionCommand, type S
 const GO = 'go nodes 100000 movetime 1500';
 
 /**
- * How long the engine may take to answer: the handshake, or a search
- * (which stops itself after 1.5 s). One that takes longer is stuck, as when
- * Android drops the web view a command went to, and is restarted.
+ * How long a search may take (it stops itself after 1.5 s). An engine that
+ * takes longer is stuck, as when Android drops the web view a command went
+ * to, and is restarted.
  */
-const ANSWER_MS = 10_000;
+const SEARCH_MS = 10_000;
 
-/** How many engines may fail on one search before it's given up on. */
+/**
+ * How long a new engine may take to finish its handshake. On the web this
+ * includes downloading the 1.8 MB WebAssembly, so a slow connection gets a
+ * minute before the download starts over.
+ */
+const HANDSHAKE_MS = 60_000;
+
+/** How many engines a search is tried on before it's given up on. */
 const TRIES = 2;
 
 /** Sends one UCI command to the engine. */
@@ -43,7 +50,7 @@ export interface Connection {
   /**
    * Disconnects an engine that crashed, and tells the host to start another
    * (`Supervisor.failed`). The search it was running waits for the next
-   * engine, unless it has now failed on `TRIES` engines.
+   * engine, unless it has now been tried on `TRIES` engines.
    */
   fail(message: string): void;
 }
@@ -88,7 +95,7 @@ export function attachStockfish(send: Send, supervisor: Supervisor): Connection 
   const session: Session = { send, supervisor, ready: false };
   connected = session;
   send('uci');
-  awaitAnswer();
+  awaitAnswer(session, HANDSHAKE_MS);
   return {
     receive(line) {
       if (connected === session) handleLine(session, line);
@@ -97,7 +104,7 @@ export function attachStockfish(send: Send, supervisor: Supervisor): Connection 
       if (connected === session) disconnect();
     },
     fail(message) {
-      if (connected === session) fail(message);
+      fail(session, message);
     },
   };
 }
@@ -153,13 +160,13 @@ function startNext() {
   connected.send('ucinewgame');
   connected.send(positionCommand(running.line));
   connected.send(GO);
-  awaitAnswer();
+  awaitAnswer(connected, SEARCH_MS);
 }
 
-/** Fails the connected engine unless it answers within `ANSWER_MS`. */
-function awaitAnswer() {
+/** Fails `session` unless it answers within `ms`. */
+function awaitAnswer(session: Session, ms: number) {
   clearTimeout(watchdog);
-  watchdog = setTimeout(() => fail('it stopped answering'), ANSWER_MS);
+  watchdog = setTimeout(() => fail(session, 'it stopped answering'), ms);
 }
 
 /**
@@ -174,11 +181,12 @@ function disconnect() {
 }
 
 /**
- * The connected engine crashed or got stuck: disconnects it, counting it
- * against its search, and has its host start another.
+ * `session`'s engine crashed or got stuck: if it's still connected,
+ * disconnects it, counting it against its search, and has its host start
+ * another.
  */
-function fail(message: string) {
-  const session = connected!;
+function fail(session: Session, message: string) {
+  if (connected !== session) return;
   console.error(`Stockfish stopped: ${message}`);
   if (running && ++running.failures >= TRIES) {
     // Most likely this position crashes Stockfish: give up on it rather
