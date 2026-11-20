@@ -181,6 +181,10 @@ function LessonScreen({
   // Past the guide, a move of Stockfish's can lead back into it.
   const rejoins = ({ variation }: Candidate) =>
     variation === undefined ? undefined : `Rejoins ${lesson.variations[variation].name}`;
+  // Where the move previewed leads, for the idea card to name on a narrow
+  // page, whose chips leave it out. The start's rows show it themselves.
+  const previewLeadsTo =
+    preview && !picking ? (preview.engine ? rejoins(preview) : leadsTo(preview)) : undefined;
   // Pointing at an opening, or picking up a piece that plays one, starts
   // loading its lesson, so playing it needn't wait. A failure shows once the
   // opening is picked.
@@ -245,7 +249,8 @@ function LessonScreen({
                 <CandidateList
                   {...rowProps}
                   heading="Stockfish's top moves"
-                  chips
+                  // Only with the idea card, which names where the move pointed at rejoins.
+                  chips={ideaCard}
                   candidates={guidance.top}
                   rare={[]}
                   rareShown={false}
@@ -277,7 +282,7 @@ function LessonScreen({
               {ideaCard ? (
                 <IdeaCard
                   title={preview ? `If ${preview.san}` : 'The idea'}
-                  leadsTo={preview && (preview.engine ? rejoins(preview) : leadsTo(preview))}
+                  leadsTo={previewLeadsTo}
                   notes={guidance.notes}
                   learner={learner}
                   playback={playback}

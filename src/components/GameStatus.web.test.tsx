@@ -1,3 +1,5 @@
+// Renders Silk, which ships ES modules: the web project's transformIgnorePatterns
+// (package.json) lets @reactive through Babel for it.
 import { describe, expect, it } from '@jest/globals';
 import { SilkProvider } from '@reactive/silk-native';
 import { act } from 'react';
@@ -7,8 +9,6 @@ import { themes } from '@/theme/theme';
 
 import { StatusHeadline } from './GameStatus';
 
-// Silk ships ES modules, so the web project's transformIgnorePatterns lets
-// @reactive through Babel (package.json).
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 /** The narrow part the headline renders, if any. */
