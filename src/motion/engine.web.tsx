@@ -15,7 +15,7 @@ import {
 } from './spring';
 import { View } from 'react-native';
 
-import { ORIGIN, type MotionElement, type Point, type Position } from './types';
+import { type HostProps, ORIGIN, type MotionElement, type Point, type Position } from './types';
 
 interface Glide {
   animation: Animation;
@@ -27,19 +27,19 @@ const glides = new WeakMap<Element, Glide>();
 
 const dom = (el: MotionElement) => el as unknown as HTMLElement;
 
-/** Nothing to add to the view: the engine animates the DOM element itself */
-export function useMotionDriver() {
-  return { attach: detached, props: NO_PROPS };
+/**
+ * The view a `MotionView` renders: a plain one, since the engine animates its
+ * DOM element. An arrival shows until `arrive` starts its fade, which runs
+ * before the browser paints.
+ */
+export function MotionHost({ join, arriving: _, ...rest }: HostProps) {
+  return <View {...rest} ref={join as never} />;
 }
-const NO_PROPS = {};
-const noop = () => undefined;
-const detached = () => noop;
 
-/** The view a `MotionView` renders: a plain one, since this animates its DOM element */
-export const MotionHost = View;
+const noop = () => undefined;
 
 /** Whether `el` can move at all (jsdom has no Web Animations) */
-export const canAnimate = (el: MotionElement) => typeof dom(el).animate === 'function';
+const canAnimate = (el: MotionElement) => typeof dom(el).animate === 'function';
 
 /** Where `el` is on screen now, a glide in flight included, and its size */
 export function measureOf(el: MotionElement): Omit<Position, 'el' | 'parent'> {
@@ -94,6 +94,12 @@ export function lift(el: MotionElement, lifted: boolean) {
 }
 
 const ARRIVE: Keyframe[] = [{ opacity: 0 }, { opacity: 1 }];
+
+/** Nothing to do: an arrival shows unless `arrive` fades it */
+export function appear(_el: MotionElement) {}
+
+/** Nothing to do: `leave` puts a removed item back to fade it out */
+export function expectLeave(_el: MotionElement, _leaving: boolean) {}
 
 /** Fades a new item in */
 export function arrive(el: MotionElement, spring: Spring) {

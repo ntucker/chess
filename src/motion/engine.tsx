@@ -8,7 +8,7 @@
  * that points away from the target, so a reversal would stall instead of
  * turning around with its momentum.
  */
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import Animated, {
   cancelAnimation,
   defineAnimation,
@@ -30,7 +30,7 @@ import {
   type Spring,
   type SpringState,
 } from './spring';
-import { ORIGIN, type MotionElement, type Point, type Position } from './types';
+import { type HostProps, ORIGIN, type MotionElement, type Point, type Position } from './types';
 
 /** Sub-pixel: settles once the remaining motion is invisible */
 const PRECISION = 0.25;
@@ -59,42 +59,40 @@ interface Driver {
   /** Opacity is 1 + fade, so a fade springs from -1 to 0 */
   readonly fade: SharedValue<number>;
   readonly z: SharedValue<number>;
+  /** Whether its `exiting` animation plays when React removes it */
+  readonly leaving: SharedValue<boolean>;
   run?: Run;
 }
 const drivers = new WeakMap<MotionElement, Driver>();
 
 /**
- * The shared values a `MotionView` animates, the style that applies them,
- * and how it leaves: Reanimated keeps a removed view on screen for its
- * `exiting` animation, which React can't.
+ * The view a `MotionView` renders: an Animated.View owning the shared values
+ * the engine moves it with. Reanimated keeps a removed view on screen for its
+ * `exiting` animation, which React can't, so that is how an item leaves; it
+ * plays only when its list expects the item to leave.
  */
-export function useMotionDriver() {
+export function MotionHost({ join, arriving, style, ...rest }: HostProps) {
   const x = useSharedValue(0);
   const y = useSharedValue(0);
-  const fade = useSharedValue(0);
+  const fade = useSharedValue(arriving ? -1 : 0);
   const z = useSharedValue(0);
-  const style = useAnimatedStyle((): ViewStyle => ({
+  const leaving = useSharedValue(false);
+  const animated = useAnimatedStyle((): ViewStyle => ({
     transform: [{ translateX: x.value }, { translateY: y.value }],
     opacity: Math.min(1, 1 + fade.value),
     zIndex: z.value,
   }));
-  const attach = useCallback(
-    (el: MotionElement) => {
-      drivers.set(el, { x, y, fade, z });
-      return () => {
-        drivers.get(el)?.run?.end();
-        drivers.delete(el);
-      };
+  const exiting = useMemo(() => leaveAnimation(leaving), [leaving]);
+  // The driver outlives the ref: the list fades out an item after React removed it.
+  const ref = useCallback(
+    (el: MotionElement | null) => {
+      if (el) drivers.set(el, { x, y, fade, z, leaving });
+      return join(el);
     },
-    [x, y, fade, z],
+    [join, x, y, fade, z, leaving],
   );
-  return { attach, props: { style, exiting: LEAVE } };
+  return <Animated.View {...rest} ref={ref as never} style={[style, animated]} exiting={exiting} />;
 }
-
-/** The view a `MotionView` renders: one Reanimated animates */
-export const MotionHost = Animated.View;
-
-export const canAnimate = (el: MotionElement) => drivers.has(el);
 
 /** Where `el` is on screen now, a glide in flight (its own or a moving parent's) included */
 export function measureOf(el: MotionElement): Omit<Position, 'el' | 'parent'> {
@@ -190,7 +188,22 @@ export function arrive(el: MotionElement, spring: Spring) {
   if (driver) driver.fade.value = springFrom(spring, { offset: -1, velocity: 0 });
 }
 
-/** Nothing to do: the view's `exiting` animation (LEAVE) fades it out */
+/** Shows a new item at once */
+export function appear(el: MotionElement) {
+  const driver = drivers.get(el);
+  if (driver) driver.fade.value = 0;
+}
+
+/**
+ * Arms (or disarms) `el`'s `exiting` animation. Armed before React commits,
+ * since the UI thread decides on it when the commit removes the view.
+ */
+export function expectLeave(el: MotionElement, leaving: boolean) {
+  const driver = drivers.get(el);
+  if (driver) driver.leaving.value = leaving;
+}
+
+/** Nothing to do: the view's armed `exiting` animation fades it out */
 export function leave(_position: Position) {}
 
 /** A shared value's animation from `start` to rest at 0, on the UI thread */
@@ -216,15 +229,22 @@ function springFrom(spring: Spring, start: SpringState): number {
   }) as unknown as number;
 }
 
-/** Quicker than the glide into its place, so it's mostly gone before another item gets there */
-const LEAVE: EntryExitAnimationFunction = () => {
-  'worklet';
-  const timing = { duration: 160, easing: Easing.out(Easing.ease) };
-  return {
-    initialValues: { opacity: 1, transform: [{ translateX: 0 }] },
-    animations: {
-      opacity: withTiming(0, timing),
-      transform: [{ translateX: withTiming(-12, timing) }],
-    },
+/**
+ * How a removed item leaves: armed, it fades out quicker than the glide into
+ * its place, so it's mostly gone before another item gets there; unarmed (its
+ * whole list went, or the list didn't change), it goes at once.
+ */
+function leaveAnimation(leaving: SharedValue<boolean>): EntryExitAnimationFunction {
+  return () => {
+    'worklet';
+    if (!leaving.value) return { initialValues: {}, animations: {} };
+    const timing = { duration: 160, easing: Easing.out(Easing.ease) };
+    return {
+      initialValues: { opacity: 1, transform: [{ translateX: 0 }] },
+      animations: {
+        opacity: withTiming(0, timing),
+        transform: [{ translateX: withTiming(-12, timing) }],
+      },
+    };
   };
-};
+}
