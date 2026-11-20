@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { DataProvider } from '@data-client/react';
 import { act, createElement } from 'react';
-import { createRoot } from 'test-renderer';
+import { createRoot, type Root } from 'test-renderer';
 
 import { maiaMove } from '@/maia/engine';
 import type { Opponent } from '@/opponent/opponent';
@@ -44,9 +44,16 @@ describe('fetchOpponentMove', () => {
 });
 
 describe('useWarmOpponent', () => {
+  let root: Root | undefined;
+
   beforeEach(() => {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     jest.mocked(maiaMove).mockReset().mockResolvedValue('e2e4');
+  });
+
+  afterEach(async () => {
+    await act(async () => root?.unmount());
+    root = undefined;
   });
 
   function Warm({ opponent, active }: { readonly opponent: Opponent; readonly active: boolean }) {
@@ -55,9 +62,8 @@ describe('useWarmOpponent', () => {
   }
   const render = (opponent: Opponent, active: boolean) =>
     act(async () => {
-      createRoot().render(
-        createElement(DataProvider, null, createElement(Warm, { opponent, active })),
-      );
+      root ??= createRoot();
+      root.render(createElement(DataProvider, null, createElement(Warm, { opponent, active })));
     });
 
   it('starts Maia on the starting position before it has to play', async () => {
@@ -65,9 +71,15 @@ describe('useWarmOpponent', () => {
     expect(maiaMove).toHaveBeenCalledWith(1300, []);
   });
 
-  it('starts nothing for Stockfish or behind another screen', async () => {
+  it('starts nothing for Stockfish', async () => {
     await render('stockfish', true);
+    expect(maiaMove).not.toHaveBeenCalled();
+  });
+
+  it('waits behind another screen, and starts once in front', async () => {
     await render(1300, false);
     expect(maiaMove).not.toHaveBeenCalled();
+    await render(1300, true);
+    expect(maiaMove).toHaveBeenCalledWith(1300, []);
   });
 });

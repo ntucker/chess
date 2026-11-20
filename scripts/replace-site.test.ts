@@ -1,7 +1,15 @@
 /// <reference types="node" />
 import { beforeEach, describe, expect, it } from '@jest/globals';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
@@ -16,17 +24,18 @@ beforeEach(() => {
   mkdirSync(pages);
 });
 
-function write(dir: string, files: readonly string[]) {
+/** Writes each of `files` into `dir`, with its path and `tag` as its content. */
+function write(dir: string, files: readonly string[], tag = '') {
   for (const file of files) {
     mkdirSync(dirname(join(dir, file)), { recursive: true });
-    writeFileSync(join(dir, file), file);
+    writeFileSync(join(dir, file), file + tag);
   }
 }
 
 /** Publishes a build made of `files` over the site in `pages`. */
 function publish(name: string, files: readonly string[]) {
   const site = join(root, name);
-  write(site, files);
+  write(site, files, name);
   execFileSync(process.execPath, [SCRIPT, site], { cwd: pages });
 }
 
@@ -59,9 +68,10 @@ describe('replace-site', () => {
   });
 
   it('takes its HTML from the new build only', () => {
-    write(pages, ['index.html']);
+    write(pages, ['index.html'], 'old');
     publish('next', ['index.html']);
     expect(siteFiles()).toEqual(['.builds.json', 'index.html']);
+    expect(readFileSync(join(pages, 'index.html'), 'utf8')).toBe('index.htmlnext');
     expect(existsSync(join(pages, '_expo'))).toBe(false);
   });
 
@@ -83,13 +93,19 @@ describe('replace-site', () => {
     );
   });
 
-  it('drops the files of builds older than the last 20, unless a newer one has them too', () => {
-    for (let n = 0; n <= 20; n++) publish(`build-${n}`, build(`h${n}`));
+  it('drops the files of builds older than the last 10, unless a newer one has them too', () => {
+    for (let n = 0; n <= 10; n++) publish(`build-${n}`, build(`h${n}`));
 
     const files = siteFiles();
     expect(files).not.toContain('_expo/static/js/web/maia-h0.js');
     expect(files).toContain('_expo/static/js/web/maia-h1.js');
-    expect(files).toContain('_expo/static/js/web/maia-h20.js');
+    expect(files).toContain('_expo/static/js/web/maia-h10.js');
     expect(files).toContain('assets/assets/maia/maia-1500.b09c.bin');
+  });
+
+  it('keeps one place for a build published twice, as a re-run does', () => {
+    publish('first', build('aaa'));
+    for (let n = 0; n < 10; n++) publish('again', build('bbb'));
+    expect(siteFiles()).toContain('_expo/static/js/web/maia-aaa.js');
   });
 });

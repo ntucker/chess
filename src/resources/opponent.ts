@@ -1,4 +1,5 @@
-import { type Controller, useFetch } from '@data-client/react';
+import { type Controller, useController } from '@data-client/react';
+import { useEffect } from 'react';
 
 import type { GameOpponent } from '@/game/game';
 import type { Opponent } from '@/opponent/opponent';
@@ -45,13 +46,17 @@ export function gameOpponent(ctrl: Controller, opponent: Opponent): GameOpponent
 
 /**
  * Starts `opponent`'s engine while `active`, so it's ready before its first
- * move: Maia's worker and network load, answering the starting position (a
- * page open across a deploy also gets the worker before the deploy removes
- * it). Stockfish starts with its host (`useNeedsStockfish`).
+ * move: Maia loads its worker and network by answering the starting position.
+ * That also fetches the worker while the page's own build is still the one
+ * deployed. Stockfish starts with its host (`useNeedsStockfish`).
  */
 export function useWarmOpponent(opponent: Opponent, active: boolean) {
-  useFetch(
-    getMaiaMove,
-    ...(active && opponent !== 'stockfish' ? ([opponent, []] as const) : ([null] as const)),
-  );
+  const ctrl = useController();
+  // An effect, not useFetch, which fetches during render: the web export
+  // pre-renders screens and must not start an engine.
+  useEffect(() => {
+    if (!active || opponent === 'stockfish') return;
+    // A failure shows when Maia has to play, and that move asks again.
+    ctrl.fetchIfStale(getMaiaMove, opponent, []).catch(() => {});
+  }, [ctrl, opponent, active]);
 }
