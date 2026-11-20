@@ -81,12 +81,13 @@ export function CandidateList({
   onTabOut,
   chips,
 }: Props) {
-  const rows = rareShown ? [...candidates, ...rare] : candidates;
+  const all = [...candidates, ...rare];
+  const rows = rareShown ? all : candidates;
   const shownMarks = new Set(
     rows.map(({ move }) => marks.get(move.uci)).filter((mark) => mark !== undefined),
   );
   // A drag can point at a rare candidate while its row is hidden.
-  const pointedRow = [...candidates, ...rare].find(({ move }) => move.uci === pointed);
+  const pointedRow = all.find(({ move }) => move.uci === pointed);
   const caption = chips && NARROW_CSS_LOADS && pointedRow && leadsTo(pointedRow);
   return (
     <Stack style={labelled}>
