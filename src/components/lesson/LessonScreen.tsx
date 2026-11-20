@@ -276,7 +276,8 @@ function LessonScreen({
   ) : guidance.candidates.length ? (
     <CandidateList
       {...rowProps}
-      heading={view.learnerToMove ? 'Your candidates' : `${colorName(rival)}'s ${rivalMoves}`}
+      heading={view.learnerToMove ? 'Your candidates' : rivalMoves}
+      owner={view.learnerToMove ? undefined : colorName(rival)}
       // At the start each move's opening is the point, so its rows keep it.
       compact={!picking}
       leadsTo={leadsTo}
