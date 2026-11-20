@@ -10,6 +10,9 @@ export type Opponent = MaiaRating | 'stockfish';
 /** Every opponent, easiest first. */
 export const OPPONENTS: readonly Opponent[] = [...MAIA_RATINGS, 'stockfish'];
 
+/** The steps the learner picks from: Beginner, Club and Advanced Maia, then Stockfish. */
+export const OPPONENT_PRESETS: readonly Opponent[] = [1100, 1500, 1900, 'stockfish'];
+
 /** The landmarks on the ladder, named for who plays there. */
 const PRESETS: Partial<Record<Opponent, string>> = {
   1100: 'Beginner',

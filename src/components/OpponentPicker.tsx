@@ -3,7 +3,7 @@ import { a11yState, Pressable, Separator, Surface, Text, useTheme } from '@react
 import { type ComponentRef, useEffect, useId, useRef, useState } from 'react';
 import { type KeyDownEvent, ScrollView, StyleSheet, View } from 'react-native';
 
-import { describeOpponent, type Opponent, OPPONENTS } from '@/opponent/opponent';
+import { describeOpponent, type Opponent, OPPONENT_PRESETS } from '@/opponent/opponent';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
 import { narrowLength } from '@/theme/narrow';
 
@@ -26,7 +26,7 @@ type Opened = 'hover' | 'pressed';
 
 /**
  * The opponent's step on the difficulty ladder ("1500", "Stockfish") as a
- * control in running text, opening a list of every step to pick from. With a
+ * control in running text, opening a list of the steps to pick from. With a
  * mouse the list opens as the pointer comes onto it and closes once it has
  * left both; a press or tap keeps it open until a step is picked or a press
  * lands elsewhere. From the keyboard, Enter, Space or the arrow keys open it
@@ -134,8 +134,8 @@ export function OpponentPicker() {
   );
 }
 
-/** Every step of the ladder, as the list shows it. */
-const STEPS = OPPONENTS.map((opponent) => ({ opponent, ...describeOpponent(opponent) }));
+/** The steps to pick from, as the list shows them. */
+const STEPS = OPPONENT_PRESETS.map((opponent) => ({ opponent, ...describeOpponent(opponent) }));
 
 interface ListProps {
   readonly id: string;
@@ -147,7 +147,7 @@ interface ListProps {
 }
 
 /**
- * Every step of the ladder, easiest first, the landmarks named, with a line
+ * The steps to pick from, easiest first, each named, with a line
  * on how the step pointed at (or else the current one) plays.
  */
 function OpponentList({ id, value, focusOnOpen, onChoose, onClose }: ListProps) {
@@ -163,17 +163,17 @@ function OpponentList({ id, value, focusOnOpen, onChoose, onClose }: ListProps) 
 
   const onKey = (event: KeyDownEvent) => {
     const { key } = event.nativeEvent;
-    const at = OPPONENTS.indexOf(focused.current ?? value);
+    const at = OPPONENT_PRESETS.indexOf(focused.current ?? value);
     const step: Record<string, number> = {
-      ArrowDown: Math.min(at + 1, OPPONENTS.length - 1),
+      ArrowDown: Math.min(at + 1, OPPONENT_PRESETS.length - 1),
       ArrowUp: Math.max(at - 1, 0),
       Home: 0,
-      End: OPPONENTS.length - 1,
+      End: OPPONENT_PRESETS.length - 1,
     };
     if (Object.hasOwn(step, key)) {
       // Kept from the board's arrow keys (useStepKeys) too.
       event.preventDefault();
-      focusRow(OPPONENTS[step[key]]);
+      focusRow(OPPONENT_PRESETS[step[key]]);
     } else if (key === ' ' && focused.current !== undefined) {
       // React Native Web presses on Enter alone, outside buttons.
       event.preventDefault();

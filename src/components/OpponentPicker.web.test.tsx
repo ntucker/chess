@@ -67,13 +67,7 @@ describe('OpponentPicker', () => {
     expect(trigger().getAttribute('aria-expanded')).toBe('true');
     expect(options().map((option) => option.getAttribute('aria-label'))).toEqual([
       '1100, Beginner',
-      '1200',
-      '1300',
-      '1400',
       '1500, Club',
-      '1600',
-      '1700',
-      '1800',
       '1900, Advanced',
       'Stockfish, Best move',
     ]);
@@ -81,7 +75,7 @@ describe('OpponentPicker', () => {
     expect(document.activeElement?.getAttribute('aria-selected')).toBe('true');
     // Taken, so the board's arrow keys (useStepKeys) leave it.
     expect(press('ArrowDown')).toBe(true);
-    expect(focusedLabel()).toBe('1600');
+    expect(focusedLabel()).toBe('1900, Advanced');
     press('End');
     expect(focusedLabel()).toBe('Stockfish, Best move');
     press('Home');
@@ -109,7 +103,7 @@ describe('OpponentPicker', () => {
     press('ArrowUp');
     press(' ');
     expect(list()).toBeNull();
-    expect(trigger().textContent).toBe('1400');
+    expect(trigger().textContent).toBe('1100');
     expect(document.activeElement).toBe(trigger());
   });
 
@@ -169,7 +163,7 @@ describe('OpponentPicker', () => {
 
   it('picks a step pressed in the list', () => {
     act(() => trigger().click());
-    act(() => options()[9].click());
+    act(() => options()[3].click());
     expect(trigger().textContent).toBe('Stockfish');
     expect(list()).toBeNull();
   });
