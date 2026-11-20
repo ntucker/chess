@@ -64,15 +64,14 @@ export interface Position extends Ply {
   readonly result?: GameResult;
 }
 
-export interface GameResult {
-  readonly winner?: Color;
-  readonly reason:
-    | 'checkmate'
-    | 'stalemate'
-    | 'insufficient material'
-    | 'threefold repetition'
-    | 'fifty-move rule';
-}
+/** What drew a game. */
+export type DrawReason =
+  'stalemate' | 'insufficient material' | 'threefold repetition' | 'fifty-move rule';
+
+/** How a game ended: a mate has a winner, and a draw has none. */
+export type GameResult =
+  | { readonly reason: 'checkmate'; readonly winner: Color }
+  | { readonly reason: DrawReason; readonly winner?: undefined };
 
 /**
  * `pos` as a FEN without the move counters (placement, turn, castling, and
