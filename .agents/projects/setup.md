@@ -40,6 +40,6 @@ for example the `post-push-review` workflow. If they don't, ask the person to in
 
 ## 5. Work queue
 
-Confirm the work-queue tool loads; handed-on follow-ups go there (`PROJECTS.md`, "Follow-ups"). Ask the person
+Confirm the work-queue tool loads; handed-on follow-ups go there (never the queue file by hand) (`PROJECTS.md`, "Follow-ups"). Ask the person
 whether to change the worker cap (`PROJECTS.md`, "Roles and models"), and save any other cap to
 project memory.
