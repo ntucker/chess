@@ -11,8 +11,8 @@
  *   Stockfish's best move shows only while nothing is previewed, pointed at
  *   or playing back. Past the guide's moves, Stockfish's top three are
  *   listed in the candidates' place, and preview and play as they do; the
- *   board marks only the first, as the best move, with no arrows for the
- *   other two.
+ *   resting board marks only the first, as the best move, with no arrows
+ *   for the other two.
  * - Practice hides every hint while it is the learner's turn: no candidates,
  *   previews, best move or top moves, and of the notes only those of the move
  *   just played, and a trap's warning while traps are shown. Right after the
@@ -36,7 +36,7 @@
  * - While a note's idea plays back, the board is the playback's: nothing else
  *   is drawn, and the preview it started from stays.
  * - While a piece is dragged, the board draws only its candidates, rare ones
- *   too, wherever it is over, so dragging across the board moves nothing
+ *   and Stockfish's top moves too, wherever it is over, so dragging across the board moves nothing
  *   else on it; the idea card shows the move under it.
  * - Rare candidates (`Candidate.rare`) are left off the list, which shows
  *   them only when asked, and off the board's arrows; Stockfish's best isn't
@@ -187,8 +187,7 @@ export function guidance(input: GuidanceInput): Guidance {
   const top = listsTopMoves(view, mode) ? (engine?.top ?? []) : [];
   const board = boardShown({
     candidates,
-    // A dragged piece lights its top moves as it does its candidates.
-    withRare: [...withRare, ...top],
+    liftable: [...withRare, ...top],
     preview,
     dragged,
     ideas,
@@ -226,14 +225,14 @@ export function guidance(input: GuidanceInput): Guidance {
 
 /**
  * What the board draws: nothing while a note plays back; a pointed note's
- * ideas alone; a sliding preview's ideas; a dragged piece's candidates alone
- * (rare ones and top moves too); or else the listed candidates with only traps beside
- * them (every idea where none are listed); with `showMoves` off, the traps
- * and the ideas of the move just played instead.
+ * ideas alone; a sliding preview's ideas; a dragged piece's moves alone
+ * (`liftable`); or else the listed candidates with only traps beside them
+ * (every idea where none are listed); with `showMoves` off, the traps and
+ * the ideas of the move just played instead.
  */
 function boardShown({
   candidates,
-  withRare,
+  liftable,
   preview,
   dragged,
   ideas,
@@ -243,7 +242,8 @@ function boardShown({
   moveIdeas,
 }: {
   readonly candidates: readonly Candidate[];
-  readonly withRare: readonly Candidate[];
+  /** Every move a dragged piece lights: rare candidates and top moves too. */
+  readonly liftable: readonly Candidate[];
   readonly preview?: Preview;
   readonly dragged?: Candidate['from'];
   readonly ideas: readonly ShownIdea[];
@@ -258,7 +258,7 @@ function boardShown({
     return { candidates: [], drawn: ideas.filter(({ idea }) => pointed.ideas?.includes(idea)) };
   }
   if (preview?.slide) return { candidates: [], drawn: ideas };
-  if (dragged) return { candidates: withRare.filter(({ from }) => from === dragged), drawn: [] };
+  if (dragged) return { candidates: liftable.filter(({ from }) => from === dragged), drawn: [] };
   if (!candidates.length) return { candidates, drawn: ideas };
   if (showMoves) return { candidates, drawn: ideas.filter(({ idea }) => idea.type === 'trap') };
   return {

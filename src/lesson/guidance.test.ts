@@ -44,8 +44,13 @@ function shown(
   switches: Partial<LessonSwitches> = {},
   {
     pointer,
+    dragged,
     engine = ENGINE,
-  }: { pointer?: Pointer; engine?: { best?: string; top?: string[] } } = {},
+  }: {
+    pointer?: Pointer;
+    dragged?: Candidate['from'];
+    engine?: { best?: string; top?: string[] };
+  } = {},
 ): Guidance {
   const view = sampleView(sans);
   const stockfish = engineView(sans, engine);
@@ -54,6 +59,7 @@ function shown(
     mode,
     switches: { ...ALL_ON, ...switches },
     preview: pointer && preview(SAMPLE, view, pointer, stockfish.top),
+    dragged,
     engine: stockfish,
   });
 }
@@ -129,14 +135,7 @@ describe('guidance', () => {
       );
       expect(drag.preview).toMatchObject({ slide: false, candidate: { san: 'Bd3' } });
       // A picked-up piece draws its top moves, as it draws its candidates.
-      const view = sampleView(beyond);
-      const pickedUp = guidance({
-        view,
-        mode: 'explore',
-        switches: ALL_ON,
-        dragged: 'f1',
-        engine: engineView(beyond, engine),
-      });
+      const pickedUp = shown(beyond, 'explore', {}, { engine, dragged: 'f1' });
       expect(pickedUp.drawnCandidates.map(({ san }) => san)).toEqual(['Bd3']);
       expect(pickedUp.best).toBeUndefined();
       // Practice hides them, as every hint.
