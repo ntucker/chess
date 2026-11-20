@@ -1,10 +1,12 @@
-// What the pointer does on the board that chessground doesn't report: where
-// a piece being dragged is over. Moves still belong to chessground, and a
-// pointer that only passes over the board reports nothing.
+// Which pointers hover, and what the pointer does on the board that
+// chessground doesn't report: where a piece being dragged is over. Moves
+// still belong to chessground, and a pointer that only passes over the board
+// reports nothing.
 
 /**
  * Whether a pointer of `pointerType` hovers: a mouse does; a finger or pen
- * only presses. The panels beside the board go by this rule.
+ * only presses. The panels beside the board go by this rule; a control
+ * goes by `hoversControl`, which counts a pen.
  */
 export const hovers = (pointerType: string) => pointerType === 'mouse';
 
