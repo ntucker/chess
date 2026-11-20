@@ -91,7 +91,8 @@ export const isDubious = (move: StudyMove) => move.nags.some((nag) => DUBIOUS_NA
  * chapter set up from a position another chapter's moves reach (studies
  * that go on where the last chapter stopped) starts where that one does,
  * through those moves, which keep no comment: that chapter says it. One
- * whose position only a later chapter reaches waits for it.
+ * whose position only a later chapter reaches waits for it. The lesson
+ * starts where the first chapter not set up from a position does.
  */
 export function parseStudy(pgn: string, include: (title: string) => boolean): Chapter[] {
   const games = parsePgn(pgn).flatMap((game) => {
@@ -99,9 +100,10 @@ export function parseStudy(pgn: string, include: (title: string) => boolean): Ch
     const start = startingPosition(game.headers).unwrap() as Chess;
     return include(title) ? [{ game, title, start }] : [];
   });
-  // The lesson starts where the first chapter not set up from a position does.
   if (games.length === 0) return [];
-  const root = positionKey((games.find(({ game }) => !game.headers.has('FEN')) ?? games[0]).start);
+  const startKey = positionKey(
+    (games.find(({ game }) => !game.headers.has('FEN')) ?? games[0]).start,
+  );
   const chapters: Chapter[] = [];
   const studyIndex = new Map<Chapter, number>();
   const add = (chapter: Chapter, index: number) => {
@@ -122,9 +124,9 @@ export function parseStudy(pgn: string, include: (title: string) => boolean): Ch
     const moves = readMoves(game.moves.children, start, 1);
     add({ title, start, moves, ...(namedFrom && { namedFrom, cut: true }) }, index);
   };
-  /** Whether chapter `index` can be read now: it starts at the root, or a chapter read leads to it. */
+  /** Whether chapter `index` can be read now: it starts at the lesson's start, or a chapter read leads to it. */
   const ready = (index: number) =>
-    positionKey(games[index].start) === root || !!leadTo(chapters, games[index].start);
+    positionKey(games[index].start) === startKey || !!leadTo(chapters, games[index].start);
   let waiting = games.map((_, index) => index);
   // Pass after pass, while one reads a chapter.
   for (let count = Infinity; waiting.length < count;) {

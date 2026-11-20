@@ -460,7 +460,9 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         // White's view of the Albin, reworded for Black; its introduction leads to it.
         ...BOSBURP_QG,
         writtenFor: 'white',
-        chapters: (title: string) => ALBIN_QG_TITLES.includes(title),
+        // The introduction leads to the Albin.
+        chapters: (title: string) =>
+          title === QG_INTRO || QG_CHAPTERS[title] === 'Albin Countergambit',
         chapterName: (title: string) => QG_CHAPTERS[title],
         namedFrom: 3,
       },
@@ -758,8 +760,7 @@ const LENIN_ITALIAN_CHAPTERS: Readonly<Record<string, string | undefined>> = {
   'Evans Gambit': 'Italian: Giuoco Piano: Evans Gambit',
 };
 
-/** Bosburp's Queen's Gambit chapters leading to and covering the Albin (`QG_CHAPTERS` names them). */
-const ALBIN_QG_TITLES: readonly string[] = ['♕ Introduction ♕', 'Albin Countergambit 2...e5'];
+const QG_INTRO = '♕ Introduction ♕';
 
 /**
  * Bosburp's Queen's Gambit chapters, as variation names. A chapter named only by its move takes its
@@ -767,7 +768,7 @@ const ALBIN_QG_TITLES: readonly string[] = ['♕ Introduction ♕', 'Albin Count
  */
 const QG_CHAPTERS: Readonly<Record<string, string | undefined>> = {
   // The lesson's own name.
-  '♕ Introduction ♕': undefined,
+  [QG_INTRO]: undefined,
   "✦ Section 1: Queen's Gambit Accepted ✦": "Queen's Gambit Accepted",
   'QGA: Rosenthal Defense 3...e6': "Queen's Gambit Accepted: Rosenthal Defence",
   'QGA: Classical Defense 3...Nf6-4...e6-5...c5': "Queen's Gambit Accepted: Classical Defence",
