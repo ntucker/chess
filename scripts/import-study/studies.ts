@@ -23,10 +23,33 @@ interface StudySource {
    */
   readonly writtenFor?: Color;
   /**
+   * With `writtenFor`: the study's main line plays the learner's moves the
+   * lesson teaches all the same, so they are booked as a lesson's own study's
+   * are (davidharoldchess's London against ...Bf5 shows the London mirror
+   * Black wants), while its comments are still reworded for the learner.
+   */
+  readonly recommends?: true;
+  /**
+   * The ply of the move into the position its chapters' names start at, as a
+   * Wikibooks page's (`Chapter.namedFrom`): a King's Gambit study names
+   * nothing before 2.f4, so in a lesson teaching other second moves too,
+   * 1.e4 e5 stays the opening's. A study about one line of a wider lesson
+   * needs it, or being first it names the shared moves.
+   */
+  readonly namedFrom?: number;
+  /**
+   * A PGN committed under scripts/import-study/sources/ to read instead of
+   * downloading the lichess study: a line that no study teaches. `study` then
+   * only names it.
+   */
+  readonly file?: string;
+  /**
    * Replies the study names in words where its line stops, read as its own
    * moves (`withReplies`): the line's moves in SAN from the start, then the reply.
    */
   readonly replies?: Readonly<Record<string, string>>;
+  /** Side lines the study plays that the lesson leaves out (`withoutLines`), by their moves in SAN from the start. */
+  readonly leave?: readonly string[];
 }
 
 /**
@@ -305,6 +328,260 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
       side: 'black',
     },
   },
+  'open-game': {
+    from: [
+      {
+        // Fischer's own analysis of 3...d6, his "bust" of the King's Gambit, and a modern line.
+        study: 'UIQySNsb',
+        credit: {
+          title: "King's Gambit Accepted: Fischer Defense",
+          author: 'nohandlebars',
+          url: 'https://lichess.org/study/UIQySNsb',
+        },
+        // The theory chapters, not the example game.
+        chapters: (title: string) => Object.hasOwn(FISCHER_CHAPTERS, title),
+        chapterName: (title: string) => FISCHER_CHAPTERS[title],
+        namedFrom: 3,
+      },
+      {
+        // White's view of the Fischer Defense, reworded for Black; its introductions lead to it.
+        study: 'ACmyH8gC',
+        credit: {
+          title: "King's Gambit | Full Repertoire",
+          author: 'Bosburp',
+          url: 'https://lichess.org/study/ACmyH8gC',
+        },
+        writtenFor: 'white',
+        chapters: (title: string) => Object.hasOwn(BOSBURP_KG_CHAPTERS, title),
+        chapterName: (title: string) => BOSBURP_KG_CHAPTERS[title],
+        namedFrom: 3,
+      },
+      // The rest of the King's Gambit Accepted: 3.Bc4, 3.Nc3 and the rest.
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._f4/2...exf4',
+        topName: "King's Gambit",
+        maxPages: 40,
+      },
+      // 2...Nc6 3.Bc4 g6 4.Qf3 Nf6 and ...Bg7: the fianchetto answer to the early queen.
+      { root: 'Chess_Opening_Theory/1._e4/1...e5/2._Qh5', topName: 'Wayward Queen Attack' },
+      { root: 'Chess_Opening_Theory/1._e4/1...e5/2._Qf3', topName: 'Wayward Queen Attack: 2.Qf3' },
+      // The mirror: ...Bc5 against White's Bc4, and early ...Bc5 elsewhere.
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...Bc5',
+        topName: 'Italian: Giuoco Piano',
+        maxPages: 60,
+      },
+      {
+        // White's Italian, reworded for Black.
+        study: 'vJsZScnC',
+        credit: {
+          title: 'Italian Opening',
+          author: 'LeninPerez',
+          url: 'https://lichess.org/study/vJsZScnC',
+        },
+        writtenFor: 'white',
+        chapters: (title: string) => Object.hasOwn(LENIN_ITALIAN_CHAPTERS, title),
+        chapterName: (title: string) => LENIN_ITALIAN_CHAPTERS[title],
+        namedFrom: 5,
+      },
+      {
+        // The Evans Gambit (4.b4), White's view, reworded for Black.
+        study: 'ZlQ1Gez5',
+        credit: {
+          title: 'Italian Game, Evans Gambit',
+          author: 'Kitsune_Cavalry',
+          url: 'https://lichess.org/study/ZlQ1Gez5',
+        },
+        writtenFor: 'white',
+        // The theory chapters, not the master game.
+        chapters: (title: string) => title !== 'Garry Kasparov vs Viswanathan Anand 1995',
+        chapterName: () => 'Italian: Giuoco Piano: Evans Gambit',
+        namedFrom: 5,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bb5/3...Bc5',
+        topName: 'Ruy Lopez: Classical Defence',
+        maxPages: 40,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._d4/3...exd4/4._Nxd4/4...Bc5',
+        topName: 'Scotch: Classical',
+        maxPages: 40,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Nc3/3...Bc5',
+        topName: 'Three Knights',
+        maxPages: 20,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._c3',
+        topName: 'Ponziani',
+        maxPages: 30,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Bc4/2...Bc5',
+        topName: "Bishop's Opening",
+        maxPages: 40,
+      },
+      { root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nc3/2...Bc5', topName: 'Vienna', maxPages: 30 },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._d4/2...exd4',
+        topName: 'Centre Game',
+        maxPages: 30,
+      },
+    ],
+    engineCheck: true,
+    info: {
+      id: 'open-game',
+      title: 'Open Game: Bowdler Mirror',
+      side: 'black',
+    },
+  },
+  albin: {
+    from: [
+      {
+        root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...e5',
+        topName: 'Albin Countergambit',
+        maxPages: 60,
+      },
+      {
+        // White's view of the Albin, reworded for Black; its introduction leads to it.
+        study: '0uRBskUV',
+        credit: {
+          title: "Queen's Gambit | Full Repertoire",
+          author: 'Bosburp',
+          url: 'https://lichess.org/study/0uRBskUV',
+        },
+        writtenFor: 'white',
+        chapters: (title: string) => Object.hasOwn(BOSBURP_QG_CHAPTERS, title),
+        // The introduction's jokes: "You found the Easter Egg".
+        leave: ['b3', 'e4'],
+        chapterName: (title: string) => BOSBURP_QG_CHAPTERS[title],
+        namedFrom: 3,
+      },
+      {
+        // The London mirror: White's London against ...Bf5, whose main line plays Black's
+        // mirror (2...Bf5 3.e3 e6 4.Bd3 Bxd3): booked, its comments reworded for Black.
+        study: '2EaSmZtz',
+        credit: {
+          title: 'London System Repertoire',
+          author: 'davidharoldchess',
+          url: 'https://lichess.org/study/2EaSmZtz',
+        },
+        writtenFor: 'white',
+        recommends: true,
+        chapters: (title: string) => title === 'London System vs Bf5',
+        chapterName: () => 'London Mirror',
+        namedFrom: 3,
+      },
+      {
+        // More of what White plans against an early ...Bf5, reworded for Black; books none.
+        study: '0jynK1KI',
+        credit: {
+          title: 'The London System',
+          author: 'AverageLondonEnjoyer',
+          url: 'https://lichess.org/study/0jynK1KI',
+        },
+        writtenFor: 'white',
+        chapters: (title: string) => title === 'London vs. Early Bf5',
+        chapterName: () => 'London Mirror',
+        namedFrom: 3,
+      },
+      { root: 'Chess_Opening_Theory/1._d4/1...d5/2._Nf3', topName: '2.Nf3', maxPages: 40 },
+      { root: 'Chess_Opening_Theory/1._d4/1...d5/2._Nc3', topName: '2.Nc3', maxPages: 30 },
+    ],
+    engineCheck: true,
+    info: {
+      id: 'albin',
+      title: 'Albin Countergambit & London Mirror',
+      side: 'black',
+    },
+  },
+  'bc4-system': {
+    from: [
+      {
+        // Nathaniel's setup: a3 and Ba2, d3, Ne2, castle, Nbc3, Ng3, then f4.
+        study: 'bowdler-setup',
+        file: 'bowdler-setup.pgn',
+        credit: {
+          title: 'Bowdler Attack setup',
+          author: 'ntucker',
+          url: 'https://github.com/ntucker/chess/blob/main/scripts/import-study/sources/bowdler-setup.pgn',
+        },
+        chapters: () => true,
+        chapterName: () => 'Bowdler Attack',
+        namedFrom: 3,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Bc4',
+        topName: "Bishop's Opening",
+        rename: { "Bishop's Opening Classical Defence": 'Classical Defence' },
+        maxPages: 60,
+      },
+      {
+        study: 'G14vzkiG',
+        credit: {
+          title: "The Bishop's Opening",
+          author: 'Arco47',
+          url: 'https://lichess.org/study/G14vzkiG',
+        },
+        chapters: () => true,
+        chapterName: (title: string) =>
+          chapterNamed(ARCO_BISHOPS_CHAPTERS, "Bishop's Opening", title),
+        namedFrom: 3,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...c6/2._Bc4',
+        topName: 'Hillbilly Attack',
+        maxPages: 30,
+      },
+      {
+        // Black's view of 2.Bc4 against the Caro-Kann, reworded for White.
+        study: '2wkHsejC',
+        credit: {
+          title: 'Caro-Kann Defense, Hillbilly Attack',
+          author: 'Kitsune_Cavalry',
+          url: 'https://lichess.org/study/2wkHsejC',
+        },
+        writtenFor: 'black',
+        // The theory chapters, not the example games.
+        chapters: (title: string) => !title.includes(' -- '),
+        chapterName: () => 'Hillbilly Attack',
+        namedFrom: 3,
+      },
+      {
+        // Black's view of 2.Bc4 against the Caro-Kann, reworded for White.
+        ...WUB_C6,
+        writtenFor: 'black',
+        chapters: (title: string) =>
+          title === 'e4 – The Caro-Kann' ||
+          title === 'Other Second Moves – 2. Bc4 – The Hillbilly Attack',
+        chapterName: (title: string) =>
+          title === 'e4 – The Caro-Kann' ? undefined : 'Hillbilly Attack',
+      },
+      { root: 'Chess_Opening_Theory/1._e4/1...e6/2._Bc4', topName: 'French: 2.Bc4', maxPages: 20 },
+      {
+        // The Scandinavian's main line, where White's bishop comes to c4: Black's view, reworded for White.
+        study: 'gzj623hW',
+        credit: {
+          title: 'The scandinavian defense',
+          author: 'purple_royal',
+          url: 'https://lichess.org/study/gzj623hW',
+        },
+        writtenFor: 'black',
+        chapters: (title: string) =>
+          title === 'Mainline scandinavian' || title === 'Mainline in depth',
+        chapterName: () => 'Scandinavian',
+        namedFrom: 2,
+      },
+    ],
+    engineCheck: true,
+    info: {
+      id: 'bc4-system',
+      title: "Bishop's System (Bowdler)",
+      side: 'white',
+    },
+  },
   sicilian: {
     from: [
       {
@@ -398,6 +675,44 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
       side: 'white',
     },
   },
+};
+
+/** nohandlebars' Fischer Defense chapters the lesson reads, as variation names. */
+const FISCHER_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  Overview: "King's Gambit: Fischer Defence",
+  "A Bust To The King's Gambit (Mainline)": "King's Gambit: Fischer Defence",
+  'Modern Line': "King's Gambit: Fischer Defence",
+};
+
+/** Bosburp's King's Gambit chapters leading to and covering 3...d6, as variation names. */
+const BOSBURP_KG_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  '♔ Introduction ♔': undefined,
+  "✦ Section 1: King's Gambit Accepted ✦": "King's Gambit",
+  'KGA: Fischer Defense 3...d6': "King's Gambit: Fischer Defence",
+};
+
+/** LeninPerez's Italian chapters with ...Bc5, as variation names. */
+const LENIN_ITALIAN_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  Introduction: undefined,
+  'Giuoco Piano': 'Italian: Giuoco Piano',
+  'Greco Attack': 'Italian: Giuoco Piano',
+  'Evans Gambit': 'Italian: Giuoco Piano: Evans Gambit',
+};
+
+/** Bosburp's Queen's Gambit chapters leading to and covering the Albin, as variation names. */
+const BOSBURP_QG_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  '♕ Introduction ♕': undefined,
+  'Albin Countergambit 2...e5': 'Albin Countergambit',
+};
+
+/** Arco47's Bishop's Opening chapters, as variation names. */
+const ARCO_BISHOPS_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  Introduction: "Bishop's Opening",
+  "Black's Responses": "Bishop's Opening",
+  'The Berlin Defense: Urusov Gambit': "Bishop's Opening: Urusov Gambit",
+  'The Boi Variation: McDonnell Gambit': "Bishop's Opening: McDonnell Gambit",
+  'The Boi Variation: McDonnell Double Gambit!?': "Bishop's Opening: McDonnell Gambit",
+  'The Boi Variation: Four Pawns Gambit': "Bishop's Opening: Four Pawns Gambit",
 };
 
 /**

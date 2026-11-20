@@ -36,6 +36,9 @@ import type {
 /** The engine's evaluation of the position after `line` from the lesson's start, reached at `key`. */
 export type Evaluate = (line: readonly Uci[], key: PositionKey) => Promise<Evaluation>;
 
+/** A line cut where the engine overruled its book move, with the positions it dropped. */
+type CutLine = { line: string; moves: readonly string[]; positions: number };
+
 export interface EngineReport {
   /** Book moves the engine overruled, with the line before each, in SAN. */
   readonly unbooked: readonly { line: string; move: string; quality: string }[];
@@ -45,9 +48,11 @@ export interface EngineReport {
    * Each position where the line now ends, since the engine overruled every
    * move the guide recommended there: its moves, and how many positions went.
    */
-  readonly cut: readonly { line: string; moves: readonly string[]; positions: number }[];
+  readonly cut: readonly CutLine[];
   /** Notes dropped, where they were and why. */
   readonly dropped: readonly { line: string; text: string; reason: string }[];
+  /** What `fillBook` picked, or ended, again where the engine overruled one of several guide moves. */
+  readonly refilled: FillReport;
 }
 
 /** `lesson` with what `evaluate` overrules taken out, and what was taken. */
@@ -60,7 +65,7 @@ export async function engineCheck(
   const report = {
     unbooked: [] as { line: string; move: string; quality: string }[],
     unreachable: [] as { line: string; move: string }[],
-    cut: [] as { line: string; moves: string[]; positions: number }[],
+    cut: [] as CutLine[],
     dropped: [] as { line: string; text: string; reason: string }[],
   };
 
@@ -110,13 +115,16 @@ export async function engineCheck(
   }
 
   cutLines(lesson, positions, overruledAt, lines, report.cut);
-  const checked = { ...lesson, positions };
-  const reached = bookReach(checked);
-  for (const [key, position] of Object.entries(positions)) {
+  // Where it overruled one of several guide moves, pick again among them before
+  // judging what book moves still reach: the line goes on through the guide's own.
+  const refilled = await fillBookWith({ ...lesson, positions }, evaluation);
+  const reached = bookReach(refilled.lesson);
+  const positionsLeft: Record<PositionKey, LessonPosition> = { ...refilled.lesson.positions };
+  for (const [key, position] of Object.entries(positionsLeft)) {
     const at = lines.get(key);
     // A position no line reaches is the checker's to refuse, not this.
     if (reached.has(key) || !at) continue;
-    positions[key] = {
+    positionsLeft[key] = {
       ...position,
       moves: position.moves.map(({ book, ...move }) => {
         if (book)
@@ -125,27 +133,31 @@ export async function engineCheck(
       }),
     };
   }
-  return { lesson: checked, report };
+  return {
+    lesson: { ...refilled.lesson, positions: positionsLeft },
+    report: { ...report, refilled: refilled.report },
+  };
 }
 
 /**
- * Ends the line where the engine overruled the guide's only recommendation:
- * left in, the lesson would still offer the first move there as its main
- * one, the overruled move or a sideline the guide warned against. The
- * position goes with all its moves, like any line's end, and so do the
- * positions only it reached.
+ * Ends the line where the engine overruled the guide's only move there:
+ * left in, the lesson would still offer the overruled move as its main one.
+ * The position goes with its move, like any line's end, and so do the
+ * positions only it reached. Where the guide shows other moves, the
+ * position stays without a book move for `fillBook` to pick one again
+ * (4.d3 in the Giuoco Piano, whose guide books 4...f5 but also shows 4...Nf6).
  */
 function cutLines(
   lesson: Lesson,
   positions: Record<PositionKey, LessonPosition>,
   overruledAt: ReadonlySet<PositionKey>,
   lines: ReadonlyMap<PositionKey, { line: Uci[]; pos: Chess }>,
-  cut: { line: string; moves: string[]; positions: number }[],
+  cut: CutLine[],
 ) {
   for (const key of overruledAt) {
     const position = positions[key];
     // Gone already when an earlier cut was the only way to it.
-    if (!position || position.moves.some(({ book }) => book)) continue;
+    if (!position || position.moves.length > 1 || position.moves.some(({ book }) => book)) continue;
     const at = lines.get(key)!;
     cut.push({
       line: sans(lesson, at.line),
@@ -179,8 +191,8 @@ export const ENGINES_OWN = "Stockfish's best: the engine overruled every guide m
 export interface FillReport {
   /** Book moves picked where the guide recommended none, with the line before each and why. */
   readonly filled: readonly { line: string; move: string; why: string }[];
-  /** Positions where the line now ends, since the engine overruled every move the guide shows. */
-  readonly ended: readonly { line: string; moves: readonly string[]; positions: number }[];
+  /** Positions where the line now ends, since the engine overruled every move the guide shows and named none. */
+  readonly ended: readonly CutLine[];
 }
 
 /**
@@ -201,11 +213,18 @@ const MAIN = /\bthis is the main (?:line|move|reply|continuation)\b/i;
  * as warnings ("Bf5 is a blunder here"); the line ends after it. Only a
  * position the engine names no move for ends the line there.
  */
-export async function fillBook(
+export function fillBook(
   lesson: Lesson,
   evaluate: Evaluate,
 ): Promise<{ lesson: Lesson; report: FillReport }> {
-  const evaluation = cachedEvaluation(evaluate);
+  return fillBookWith(lesson, cachedEvaluation(evaluate));
+}
+
+/** `fillBook`, asking `evaluation`, which may already know positions. */
+async function fillBookWith(
+  lesson: Lesson,
+  evaluation: CachedEvaluation,
+): Promise<{ lesson: Lesson; report: FillReport }> {
   const lines = linesTo(lesson);
   const positions = { ...lesson.positions };
   const report = {
@@ -256,8 +275,10 @@ export async function fillBook(
 }
 
 /**
- * The book move `fillBook` picks at `at`, and why: one of `moves`, or the
- * engine's own when it overrules them all; undefined when it names none.
+ * The book move `fillBook` picks at `at`, and why: one of the guide's moves
+ * there, or the engine's own when it overrules them all; undefined when it
+ * names none. It reads no trap ideas: a move a trap warns against is picked
+ * like any other the engine rates no mistake.
  */
 async function pickBookMove(
   moves: readonly LessonMove[],

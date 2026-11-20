@@ -61,7 +61,7 @@ import { addPopularity, lichessExplorer } from './popularity';
 import { indexedWith, readLessonFile, registered, writeIndex } from './register';
 import { report, sourceReport } from './report';
 import { nodeStockfish } from './stockfish';
-import { parseStudy, withReplies, type Chapter } from './study';
+import { parseStudy, withoutLeadComments, withoutLines, withReplies, type Chapter } from './study';
 import { credit, lessonInfo, STUDIES, type ChapterSource } from './studies';
 import { noteTranspositions } from './transpositions';
 import { wikibooksPgn } from './wikibooks';
@@ -88,10 +88,19 @@ async function main() {
   const chapters: Chapter[] = [];
   for (const [source, from] of study.from.entries()) {
     const read = await sourceChapters(from, info.side);
-    const writtenFor =
-      'study' in from && from.writtenFor !== info.side ? from.writtenFor : undefined;
+    const lichess = 'study' in from ? from : undefined;
+    const writtenFor = lichess?.writtenFor !== info.side ? lichess?.writtenFor : undefined;
+    const recommends = writtenFor && lichess?.recommends;
+    // A study named only from a ply on leaves the moves before to other sources' chapters (`cut`).
+    const namedFrom = lichess?.namedFrom;
     chapters.push(
-      ...read.map((chapter) => ({ ...chapter, source, ...(writtenFor && { writtenFor }) })),
+      ...read.map((chapter) => ({
+        ...chapter,
+        source,
+        ...(writtenFor && { writtenFor }),
+        ...(recommends && { recommends }),
+        ...(namedFrom && { namedFrom, cut: true }),
+      })),
     );
   }
   const chapterName: ChapterName = (title, chapter) => {
@@ -133,9 +142,9 @@ async function main() {
     const checked = await engineCheck(lesson, stockfish.evaluate);
     lesson = checked.lesson;
     engineReport = checked.report;
-    const { unbooked, unreachable, cut, dropped } = checked.report;
+    const { unbooked, unreachable, cut, dropped, refilled } = checked.report;
     console.log(
-      `engine check: ${unbooked.length} book moves overruled (${cut.length} cut, the guide's only move), ${unreachable.length} more left unreachable, ${dropped.length} notes dropped`,
+      `engine check: ${unbooked.length} book moves overruled (${cut.length} cut, the guide's only move; ${refilled.filled.length} picked again among the guide's others, ${refilled.ended.length} ended where it overruled them all and named none), ${unreachable.length} more left unreachable, ${dropped.length} notes dropped`,
     );
   }
   writeFileSync(engineFile, `${JSON.stringify({ ...filled.report, ...engineReport }, null, 2)}\n`);
@@ -199,7 +208,12 @@ function writeLesson(file: string, lesson: Lesson) {
 /** The chapters `from` gives a lesson that teaches `side`. */
 async function sourceChapters(from: ChapterSource, side: Color): Promise<Chapter[]> {
   if ('study' in from) {
-    const chapters = parseStudy(await studyPgn(from.study), from.chapters);
+    const pgn = from.file
+      ? readFileSync(join(ROOT, 'scripts/import-study/sources', from.file), 'utf8')
+      : await studyPgn(from.study);
+    const read = parseStudy(pgn, from.chapters);
+    const kept = from.leave ? withoutLines(read, from.leave) : read;
+    const chapters = from.namedFrom ? withoutLeadComments(kept, from.namedFrom) : kept;
     return from.replies ? withReplies(chapters, from.replies) : chapters;
   }
   const pgn = await wikibooksPgn(wikibooksPage, { ...from, learner: side });
