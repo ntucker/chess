@@ -48,10 +48,10 @@ import { claudeCli } from './convert/claude';
 import { engineCheck } from './engineCheck';
 import { extractChapter } from './extract';
 import { lessonJson } from './lessonJson';
-import { mergeChapters, numberedChapterName, type ChapterName } from './merge';
+import { mergeChapters, numberedChapterName, type ChapterName, type SourceTally } from './merge';
 import { addPopularity, lichessExplorer } from './popularity';
 import { indexLesson, registerLesson } from './register';
-import { report } from './report';
+import { report, sourceReport } from './report';
 import { nodeStockfish } from './stockfish';
 import { parseStudy, type Chapter } from './study';
 import { lessonInfo, STUDIES, type ChapterSource } from './studies';
@@ -100,7 +100,9 @@ async function main() {
   cli.saveUsed();
   const { extracted } = converted;
   console.log(convertReport(converted.report));
-  let lesson: Lesson = mergeChapters(info, chapters, extracted, chapterName);
+  const tally: SourceTally[] = [];
+  let lesson: Lesson = mergeChapters(info, chapters, extracted, chapterName, tally);
+  console.log(sourceReport(info.sources, tally));
   if (study.engineCheck) {
     if (lesson.start !== INITIAL_FEN)
       throw new Error('The engine check plays lines from the standard start');

@@ -43,12 +43,27 @@ interface DraftPosition {
   bookSource?: number;
 }
 
-/** The lesson for `chapters`, with `extracted[i]` read from `chapters[i]`. */
+/** What one source gave the lesson, and what earlier sources kept out. */
+export interface SourceTally {
+  /** Learner's moves it was first to recommend. */
+  booked: number;
+  /** Learner's moves it recommends where an earlier source recommends another, as `fen uci`. */
+  readonly blocked: Set<string>;
+  notes: number;
+  /** Notes left out because an earlier source explained the same move or position. */
+  notesSkipped: number;
+}
+
+/**
+ * The lesson for `chapters`, with `extracted[i]` read from `chapters[i]`;
+ * `tally[source]` counts what each source gave.
+ */
 export function mergeChapters(
   info: LessonInfo,
   chapters: readonly Chapter[],
   extracted: readonly ChapterNotes[],
   chapterName: ChapterName = numberedChapterName,
+  tally: SourceTally[] = [],
 ): Lesson {
   if (chapters.length === 0) throw new Error(`No chapters to merge for lesson ${info.id}`);
   const start = chapters[0].start;
@@ -56,7 +71,11 @@ export function mergeChapters(
     throw new Error('Every chapter of a lesson must start from the same position');
   }
   const tree = new DraftTree(start);
-  chapters.forEach((chapter, i) => addChapter(tree, chapter, extracted[i], info.side));
+  chapters.forEach((chapter, i) => {
+    const source = chapter.source ?? 0;
+    tally[source] ??= { booked: 0, blocked: new Set(), notes: 0, notesSkipped: 0 };
+    addChapter(tree, chapter, extracted[i], info.side, tally[source]);
+  });
   const { variations, chapterVariation } = chapterVariations(info, chapters, chapterName);
   const variationOf = positionVariations(info.id, variations, chapters, chapterVariation);
   for (const { branches } of extracted) addBranches(tree, branches, variationOf, info.id);
@@ -119,6 +138,7 @@ function addChapter(
   chapter: Chapter,
   { moveNotes, positionNotes, choices }: ChapterNotes,
   side: Color,
+  tally: SourceTally,
 ) {
   const source = chapter.source ?? 0;
   // A later source recommends moves only where no earlier one does, or the same move.
@@ -128,19 +148,30 @@ function addChapter(
     if (bookSource === undefined || bookSource === source) return 'own';
     return draft?.moves.get(move.uci)?.book ? 'agreed' : 'closed';
   };
-  const book = bookMoves(chapter, side, new Set(choices.map((choice) => choice.move)), say);
+  const block = (move: StudyMove) => tally.blocked.add(`${positionKey(move.before)} ${move.uci}`);
+  const offered = new Set(choices.map((choice) => choice.move));
+  const book = bookMoves(chapter, side, offered, say, block);
   const recommend = (move: StudyMove) => {
-    tree.move(move.before, move.uci).book = true;
+    const draft = tree.move(move.before, move.uci);
+    if (!draft.book) tally.booked++;
+    draft.book = true;
     tree.entry(positionKey(move.before)).bookSource ??= source;
+  };
+  const note = (spot: { notes: Note[]; noteSource?: number }, note: Note) => {
+    if (addNote(spot, note, source)) tally.notes++;
+    else if (spot.noteSource !== source) tally.notesSkipped++;
   };
   for (const move of chapterMoves(chapter)) {
     tree.move(move.before, move.uci);
     if (book.has(move)) recommend(move);
   }
-  for (const { move, note } of moveNotes) addNote(tree.move(move.before, move.uci), note, source);
-  for (const { pos, note } of positionNotes) addNote(tree.entry(positionKey(pos)), note, source);
+  for (const { move, note: text } of moveNotes) note(tree.move(move.before, move.uci), text);
+  for (const { pos, note: text } of positionNotes) note(tree.entry(positionKey(pos)), text);
   for (const choice of choices) {
-    if (say(choice.move) === 'closed') continue;
+    if (say(choice.move) === 'closed') {
+      block(choice.move);
+      continue;
+    }
     recommend(choice.move);
     tree.move(choice.move.before, choice.move.uci).risk ??= choice.risk;
   }
@@ -233,21 +264,27 @@ type Say = (move: StudyMove) => 'own' | 'agreed' | 'closed';
  * refuted alternative), nothing after it is recommended, while the opponent's
  * alternatives keep the learner's replies. Where an earlier source decides
  * (`say`), only the moves it recommends are followed, whatever this chapter
- * thinks of them.
+ * thinks of them; `block` hears of each move this chapter recommends that an
+ * earlier source decides against.
  */
 function bookMoves(
   chapter: Chapter,
   side: Color,
   offered: ReadonlySet<StudyMove>,
   say: Say,
+  block: (move: StudyMove) => void,
 ): Set<StudyMove> {
   const book = new Set<StudyMove>();
   const visit = (moves: readonly StudyMove[]) => {
     moves.forEach((move, i) => {
       if (move.before.turn !== side) return visit(move.children);
+      const recommended = offered.has(move) || (i === 0 && !isDubious(move));
       const decided = say(move);
-      if (decided === 'closed') return;
-      if (decided === 'own' && !offered.has(move) && (i > 0 || isDubious(move))) return;
+      if (decided === 'closed') {
+        if (recommended) block(move);
+        return;
+      }
+      if (decided === 'own' && !recommended) return;
       book.add(move);
       visit(move.children);
     });
@@ -260,12 +297,19 @@ function bookMoves(
  * Adds `note` from `source` to a move's or position's notes, once. A later
  * source only explains what no earlier one did: guides tend to say the same
  * thing about the same move, and the learner would read it once per guide.
+ * Whether it was added.
  */
-function addNote(spot: { notes: Note[]; noteSource?: number }, note: Note, source: number) {
+function addNote(
+  spot: { notes: Note[]; noteSource?: number },
+  note: Note,
+  source: number,
+): boolean {
   spot.noteSource ??= source;
-  if (spot.noteSource !== source) return;
+  if (spot.noteSource !== source) return false;
   const same = JSON.stringify(note);
-  if (!spot.notes.some((other) => JSON.stringify(other) === same)) spot.notes.push(note);
+  if (spot.notes.some((other) => JSON.stringify(other) === same)) return false;
+  spot.notes.push(note);
+  return true;
 }
 
 function finish(draft: DraftPosition, variation: VariationId): LessonPosition {

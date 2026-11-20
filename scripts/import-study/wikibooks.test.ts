@@ -1,6 +1,14 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from '@jest/globals';
 import { parsePgn } from 'chessops/pgn';
 
+import { SAMPLE } from '@/lesson/lesson.fixture';
+
+import { extractChapter } from './extract';
+import { mergeChapters } from './merge';
+import { parseStudy } from './study';
 import { plainText, readPage, segmentSan, wikibooksPgn } from './wikibooks';
 
 const ROOT = 'Chess_Opening_Theory/1._d4/1...d5';
@@ -149,6 +157,44 @@ describe('wikibooksPgn', () => {
       ['Nc3'],
       ['dxc4'],
       ['a4'],
+    ]);
+  });
+});
+
+/** Real pages (fixtures/wikibooks/), which have what made-up ones missed. */
+describe('real Wikibooks pages', () => {
+  const real = (name: string) =>
+    readFileSync(join(__dirname, 'fixtures/wikibooks', `${name}.wiki`), 'utf8');
+  const NC3 = 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...c6/3._Nf3/3...Nf6/4._Nc3';
+
+  it('never makes a redirect the main move, though the page lists it first', async () => {
+    const pages: Record<string, string> = {
+      [NC3]: real('4._Nc3'),
+      [`${NC3}/4...e6`]: real('4...e6'),
+    };
+    const pgn = await wikibooksPgn(async (title) => pages[title], {
+      root: NC3,
+      learner: 'black',
+      log: () => {},
+    });
+    const chapters = parseStudy(pgn, () => true);
+    const lesson = mergeChapters(
+      { id: 'test', title: 'Test', side: 'black', sources: SAMPLE.sources },
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'black')),
+      () => undefined,
+    );
+    const afterNc3 = Object.values(lesson.positions).find((position) =>
+      position.moves.some(({ uci }) => uci === 'e7e6'),
+    )!;
+    expect(afterNc3.moves.filter(({ book }) => book).map(({ uci }) => uci)).toEqual(['d5c4']);
+  });
+
+  it('reads a theory table\'s "..." as the move above it', () => {
+    expect(readPage(real('table-ditto')).lines).toEqual([
+      ['Qe2', 'Nbd7', 'e4', 'Bg6', 'Bd3', 'Bh5', 'e5', 'Nd5'],
+      ['Qe2', 'Bg6', 'Ne5', 'Nbd7', 'Nxg6', 'hxg6'],
+      ['Nh4', 'Nbd7', 'Nxf5', 'exf5', 'Qc2', 'g6'],
     ]);
   });
 });

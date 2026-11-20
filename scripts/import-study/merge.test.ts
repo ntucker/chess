@@ -4,7 +4,7 @@ import { keyAfter, SAMPLE } from '@/lesson/lesson.fixture';
 
 import { extractChapter } from './extract';
 import { STUDY_PGN } from './fixture';
-import { mergeChapters } from './merge';
+import { mergeChapters, type SourceTally } from './merge';
 import { parseStudy } from './study';
 
 const chapters = parseStudy(STUDY_PGN, () => true);
@@ -129,11 +129,13 @@ describe('mergeChapters with several sources', () => {
     () => true,
   ).map((chapter) => ({ ...chapter, source: 1 }));
   const both = [...main, ...second];
+  const tally: SourceTally[] = [];
   const merged = mergeChapters(
     { id: 'test', title: 'Test', side: 'black', sources: SAMPLE.sources },
     both,
     both.map((chapter) => extractChapter(chapter, 'black')),
     () => undefined,
+    tally,
   );
   const book = (...sans: string[]) =>
     merged.positions[keyAfter(...sans)].moves.filter((move) => move.book).map(({ uci }) => uci);
@@ -166,5 +168,12 @@ describe('mergeChapters with several sources', () => {
   it("takes a later guide's notes only where the main guide says nothing", () => {
     const d5 = merged.positions[keyAfter('d4')].moves.find(({ uci }) => uci === 'd7d5')!;
     expect(d5.notes?.map(({ text }) => text)).toEqual(['Holds the centre with a pawn.']);
+  });
+
+  it('counts what each guide gave, and what the main guide kept out', () => {
+    expect(tally).toEqual([
+      { booked: 2, blocked: new Set(), notes: 2, notesSkipped: 0 },
+      { booked: 1, blocked: new Set([`${keyAfter('c4')} g8f6`]), notes: 0, notesSkipped: 1 },
+    ]);
   });
 });
