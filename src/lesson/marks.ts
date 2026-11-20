@@ -41,7 +41,7 @@ export function rowMarks(
   progress: MarkedPositions,
   view: Pick<LessonView, 'candidates' | 'learnerToMove'>,
 ): ReadonlyMap<Uci, Mark> {
-  const sets = markSets(progress);
+  const sets = markSets(progress, lesson);
   return marksBy(view, ({ move }) => [lesson, sets, move]);
 }
 
@@ -64,7 +64,7 @@ export function openingMarks(
     if (id === undefined) return undefined;
     const lesson = lessons[id];
     const own = lesson?.positions[START_KEY]?.moves.find(({ uci }) => uci === move.uci);
-    return [lesson, markSets(progress[id] ?? UNTOUCHED), own ?? move];
+    return [lesson, markSets(progress[id] ?? UNTOUCHED, lesson), own ?? move];
   });
 }
 
@@ -118,7 +118,7 @@ export function steering(
   mode: ModeState,
 ): ReplyChoice | undefined {
   if (mode.mode !== 'practice' || !mode.clean) return undefined;
-  const { passed } = markSets(progress);
+  const { passed } = markSets(progress, lesson);
   return (replies) =>
     replies.find(({ next }) => cleanEnds(lesson, passed, next) === 'open') ?? replies[0];
 }
@@ -126,34 +126,38 @@ export function steering(
 /** A progress's marks as sets of `positionHash`es. */
 type MarkSets = Readonly<Record<Mark, ReadonlySet<string>>>;
 
-/** Each progress's marks as sets, made once: steering asks on every render. */
+/**
+ * Each progress's marks as sets, made once: steering asks on every render.
+ * The passed set is `lesson`'s (`passedSet`) when the lesson is at hand.
+ */
 const sets = new WeakMap<MarkedPositions, MarkSets>();
-function markSets(progress: MarkedPositions): MarkSets {
+function markSets(progress: MarkedPositions, lesson: Lesson | undefined): MarkSets {
   let found = sets.get(progress);
   if (!found) {
-    found = { seen: new Set(progress.seen), passed: passedSet(progress.passed) };
+    const passed = lesson ? passedSet(lesson, progress.passed) : new Set(progress.passed);
+    found = { seen: new Set(progress.seen), passed };
     sets.set(progress, found);
   }
   return found;
 }
 
 /**
- * The passed marks as a set, the same set as before while they are the
- * same: a seen mark makes a new progress, and `cleanEnds` keeps its answers
- * per set. It keeps the last few, one per lesson the start position's rows
- * read, so reading one lesson's progress keeps another's.
+ * `lesson`'s passed marks as a set, the same set as last time while they are
+ * the same: a seen mark makes a new progress, and `cleanEnds` keeps its
+ * answers per set. One per lesson, so reading one lesson's progress keeps
+ * another's.
  */
-const recentPassed: { readonly list: readonly string[]; readonly set: ReadonlySet<string> }[] = [];
-const RECENT_PASSED = 4;
-function passedSet(list: readonly string[]) {
-  const same = recentPassed.find(
-    (recent) =>
-      recent.list.length === list.length && list.every((hash, i) => recent.list[i] === hash),
-  );
-  if (same) return same.set;
+const lastPassed = new WeakMap<
+  Lesson,
+  { readonly list: readonly string[]; readonly set: ReadonlySet<string> }
+>();
+function passedSet(lesson: Lesson, list: readonly string[]) {
+  const last = lastPassed.get(lesson);
+  if (last?.list.length === list.length && list.every((hash, i) => last.list[i] === hash)) {
+    return last.set;
+  }
   const set = new Set(list);
-  recentPassed.unshift({ list, set });
-  recentPassed.length = Math.min(recentPassed.length, RECENT_PASSED);
+  lastPassed.set(lesson, { list, set });
   return set;
 }
 
