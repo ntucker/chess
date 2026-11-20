@@ -49,8 +49,9 @@ export function useOpeningsGame(address: LessonId | undefined) {
     else if (address === undefined) router.push(lessonHref(picked));
     else router.replace(lessonHref(picked));
   }, [picked, address, router]);
-  // Only a change of lesson waits: within one, the page takes each move at
-  // once rather than rendering twice.
+  // Only a change of lesson waits: within one, the page shows each move in
+  // its first render (the deferred one that follows shows the same game), so
+  // the board never shows a move late or stops taking moves meanwhile.
   const deferred = useDeferredValue(game);
   const lesson = lessonOf(LESSON_INDEX, deferred.moves);
   const pending = lesson !== picked;
