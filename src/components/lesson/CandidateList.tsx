@@ -1,16 +1,17 @@
 import { a11yState, Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { Text as Span, StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { evaluationReading, signedEvaluation } from '@/evaluation/evaluation';
 import { candidateTone } from '@/lesson/drawings';
 import type { Uci } from '@/lesson/lesson';
 import type { Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
-import { Eyebrow, labelled } from '@/components/Eyebrow';
+import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { QualityBadge } from '@/components/QualityBadge';
 import type { Mark } from '@/progress/progress';
-import { NARROW_CSS_LOADS, narrowPart } from '@/theme/narrow';
+import { narrowLength, narrowStyles } from '@/theme/narrow';
+import { NarrowScroll, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
 import { fonts } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
 
@@ -19,7 +20,7 @@ import { MARK_SIZE, MarkLegend, ProgressMark, SPOKEN_MARKS } from './ProgressMar
 interface Props {
   /** The list's heading: what moves these are, and whose unless `owner` says. */
   readonly heading: string;
-  /** Whose moves these are, before `heading`; only spoken in a narrow web page's pane, where it would wrap. */
+  /** Whose moves these are, before `heading`; only spoken in a narrow page's pane, where it would wrap. */
   readonly owner?: string;
   readonly candidates: readonly Candidate[];
   /** Rare candidates, listed after the others while `rareShown`. */
@@ -50,7 +51,7 @@ interface Props {
    */
   readonly onTabOut: () => void;
   /**
-   * On a narrow web page, where the list has a narrow pane, its rows leave
+   * On a narrow page, where the list has a narrow pane, its rows leave
    * out where they lead: a line under the list names that for the move
    * pointed at. Leave it off where the list is about where each move leads.
    */
@@ -91,29 +92,33 @@ export function CandidateList({
   );
   // A drag can point at a rare candidate while its row is hidden.
   const pointedRow = all.find(({ move }) => move.uci === pointed);
-  const caption = compact && NARROW_CSS_LOADS && pointedRow && leadsTo(pointedRow);
+  const caption = compact && pointedRow && leadsTo(pointedRow);
+  const labelled = useLabelled();
+  const styles = useNarrowStyles(STYLES);
+  const part = useNarrowPart();
   return (
-    <Stack {...narrowPart('move-list')} style={labelled}>
+    <Stack {...part('move-list', labelled)}>
       <View style={styles.head}>
-        <Eyebrow>
-          {/* A plain Text takes the eyebrow's style; Silk's would set its own. */}
-          {owner ? <Span {...narrowPart('wide-only-spoken')}>{`${owner}'s `}</Span> : null}
-          {heading}
-        </Eyebrow>
+        {/*
+         * Whose moves is an eyebrow of its own: off the web a nested text can't be hidden.
+         * Its no-break space keeps the gap a space would leave inside one text.
+         */}
+        <View style={styles.heading}>
+          {owner ? (
+            <View {...part('wide-only-spoken')}>
+              <Eyebrow>{`${owner}'s\u00a0`}</Eyebrow>
+            </View>
+          ) : null}
+          <Eyebrow>{heading}</Eyebrow>
+        </View>
         {/* A narrow pane has no room for the key: each mark's row still says it to screen readers. */}
-        <View {...narrowPart('wide-only')}>
+        <View {...part('wide-only')}>
           <MarkLegend marks={shownMarks} />
         </View>
       </View>
-      <Surface
-        {...narrowPart('list-card')}
-        elevation="sunken"
-        border="subtle"
-        radius="md"
-        style={styles.list}
-      >
-        {/* On a narrow web page the rows scroll inside the card, under its heading. */}
-        <View {...narrowPart('list-scroll')}>
+      <Surface elevation="sunken" border="subtle" radius="md" {...part('list-card', styles.list)}>
+        {/* On a narrow page the rows scroll inside the card, under its heading. */}
+        <NarrowScroll part="list-scroll">
           {rows.map((candidate, index) => (
             <Row
               key={candidate.move.uci}
@@ -141,10 +146,10 @@ export function CandidateList({
               onTabOut={onTabOut}
             />
           ) : null}
-        </View>
+        </NarrowScroll>
       </Surface>
       {caption ? (
-        <Text {...narrowPart('narrow-only')} role="caption" tone="secondary">
+        <Text role="caption" tone="secondary" {...part('narrow-only')}>
           {`${pointedRow.san}: ${caption}`}
         </Text>
       ) : null}
@@ -165,6 +170,7 @@ function RareToggle({
   readonly onTabOut: () => void;
 }) {
   const { theme } = useTheme();
+  const styles = useNarrowStyles(STYLES);
   // Never singular: a list hides rare rows only when at least FEWEST_RARE are rare.
   const label = shown ? 'Hide rarer replies' : `Show ${count} rarer replies`;
   return (
@@ -174,7 +180,6 @@ function RareToggle({
       {...a11yState({ expanded: shown })}
       onPress={onToggle}
       onKeyDown={tabOut(onTabOut)}
-      {...narrowPart('candidate-row')}
       style={({ hovered, pressed }) => [
         styles.row,
         styles.toggle,
@@ -205,7 +210,7 @@ interface RowProps {
   /** Some row of the list has a mark, so this one keeps room for one. */
   readonly markSlot: boolean;
   readonly leadsTo?: string;
-  /** As the list's `compact`. */
+  /** As the list's `compact`: a narrow page leaves out where the row leads. */
   readonly compact?: boolean;
   /** The move's share of the games, when worth showing. */
   readonly share?: number;
@@ -232,6 +237,8 @@ function Row({
   onTabOut,
 }: RowProps) {
   const { theme } = useTheme();
+  const styles = useNarrowStyles(STYLES);
+  const part = useNarrowPart();
   const { color } = theme.semantic;
   const { move, san, engine } = candidate;
   const tone = toneColors[candidateTone(candidate, main)];
@@ -265,7 +272,6 @@ function Row({
       }}
       onKeyDown={tabOut(onTabOut)}
       onFocus={point}
-      {...narrowPart('candidate-row')}
       style={({ pressed }) => [
         styles.row,
         (pointed || (pressed && playable)) && {
@@ -293,10 +299,10 @@ function Row({
         </View>
         {leadsTo ? (
           <Text
-            {...narrowPart(compact ? 'wide-only' : 'leads-to')}
             role="caption"
             tone="secondary"
             numberOfLines={1}
+            {...part(compact ? 'wide-only' : 'leads-to')}
           >
             {leadsTo}
           </Text>
@@ -309,9 +315,9 @@ function Row({
       ) : null}
       {share === undefined ? null : (
         <View style={styles.share}>
+          {/* A narrow pane has no room for the bar. */}
           <View
-            {...narrowPart('share-track')}
-            style={[styles.track, { backgroundColor: color.tones.neutral.subtle }]}
+            {...part('wide-only', [styles.track, { backgroundColor: color.tones.neutral.subtle }])}
           >
             <View style={[styles.fillBar, { width: `${share * 100}%`, backgroundColor: tone }]} />
           </View>
@@ -332,11 +338,13 @@ const BOOK_BADGE_SIZE = 16;
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;
 
-const ROW_INSET = 14;
-const ROW_GAP = 12;
+/** A row's spacing, more compact in a narrow pane. */
+const ROW_INSET = narrowLength('candidate-inset', 14);
+const ROW_GAP = narrowLength('candidate-gap', 12);
+const ROW_PADDING = narrowLength('candidate-padding', 8);
 const DOT_SIZE = 10;
 
-const styles = StyleSheet.create({
+const STYLES = narrowStyles((px) => ({
   head: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -345,18 +353,19 @@ const styles = StyleSheet.create({
     columnGap: 16,
     rowGap: 6,
   },
+  heading: { flexDirection: 'row', flexWrap: 'wrap', flexShrink: 1 },
   list: { overflow: 'hidden', paddingVertical: 4 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: ROW_GAP,
-    paddingHorizontal: ROW_INSET,
-    paddingVertical: 8,
+    gap: px(ROW_GAP),
+    paddingHorizontal: px(ROW_INSET),
+    paddingVertical: px(ROW_PADDING),
     outlineOffset: -2,
   },
   dot: { width: DOT_SIZE, height: DOT_SIZE, borderRadius: DOT_SIZE / 2 },
   // Text lines up with the rows' moves, past the dot and its gap.
-  toggle: { paddingLeft: ROW_INSET + DOT_SIZE + ROW_GAP },
+  toggle: { paddingLeft: px(ROW_INSET.plus(DOT_SIZE).plus(ROW_GAP)) },
   move: { flex: 1, gap: 1 },
   title: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   san: { fontFamily: fonts.mono, fontSize: 17 },
@@ -367,4 +376,4 @@ const styles = StyleSheet.create({
   percent: { width: 32, textAlign: 'right', fontFamily: fonts.mono },
   evaluation: { minWidth: 44, textAlign: 'right', fontFamily: fonts.mono },
   mark: { width: MARK_SIZE, height: MARK_SIZE },
-});
+}));

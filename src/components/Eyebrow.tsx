@@ -2,10 +2,11 @@ import { Text } from '@reactive/silk-native';
 import type { ReactNode } from 'react';
 import { type StyleProp, StyleSheet, type TextStyle } from 'react-native';
 
-import { narrowLength } from '@/theme/narrow';
+import { narrowLength, narrowStyles } from '@/theme/narrow';
+import { useNarrowStyles } from '@/theme/Narrow';
 import { themes } from '@/theme/theme';
 
-/** Space between an eyebrow and what it labels: Silk's step 3, less on a narrow web page. */
+/** Space between an eyebrow and what it labels: Silk's step 3, less on a narrow page. */
 const LABEL_GAP = narrowLength('label-gap', themes.dark.semantic.space[3]);
 
 interface Props {
@@ -27,9 +28,10 @@ export function Eyebrow({ children, tone = 'secondary', numberOfLines, style }: 
 }
 
 const styles = StyleSheet.create({
-  labelled: { gap: LABEL_GAP.value },
   eyebrow: { textTransform: 'uppercase', letterSpacing: 1.6 },
 });
 
+const STYLES = narrowStyles((px) => ({ labelled: { gap: px(LABEL_GAP) } }));
+
 /** A Stack's style that spaces an eyebrow from what it labels. */
-export const labelled = styles.labelled;
+export const useLabelled = () => useNarrowStyles(STYLES).labelled;

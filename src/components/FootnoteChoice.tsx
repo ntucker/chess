@@ -2,6 +2,8 @@ import { a11yState, Inline, Pressable, Text, useTheme } from '@reactive/silk-nat
 import { useId } from 'react';
 import { StyleSheet } from 'react-native';
 
+import { visuallyHidden } from '@/theme/narrow';
+
 const WEB = process.env.EXPO_OS === 'web';
 
 /** One option of a FootnoteChoice. */
@@ -82,7 +84,7 @@ export function FootnoteChoice<T extends string | number>({
             {WEB ? (
               // aria-hidden keeps it out of the reading order; the radio's
               // aria-describedby still reads it as the description.
-              <Text nativeID={hintId} aria-hidden style={styles.visuallyHidden}>
+              <Text nativeID={hintId} aria-hidden style={styles.hint}>
                 {option.hint}
               </Text>
             ) : null}
@@ -101,11 +103,5 @@ export function FootnoteChoice<T extends string | number>({
 const styles = StyleSheet.create({
   option: { borderRadius: 4, paddingHorizontal: 4, paddingVertical: 2 },
   // Out of sight and out of layout, but still readable as a description.
-  visuallyHidden: {
-    position: 'absolute',
-    width: 1,
-    height: 1,
-    overflow: 'hidden',
-    opacity: 0,
-  },
+  hint: { ...visuallyHidden, opacity: 0 },
 });

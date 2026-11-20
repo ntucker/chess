@@ -14,7 +14,7 @@ import {
 } from '@/evaluation/evaluation';
 import { getEvaluation } from '@/resources/evaluation';
 import { useSettings } from '@/settings/SettingsProvider';
-import { narrowPart } from '@/theme/narrow';
+import { useNarrowPart } from '@/theme/Narrow';
 import { pieceColors } from '@/theme/pieceColors';
 import { fonts } from '@/theme/theme';
 
@@ -91,6 +91,7 @@ function Bar({
   const { theme } = useTheme();
   const { color, motion } = theme.semantic;
   const reducedMotion = useReducedMotion();
+  const part = useNarrowPart();
   const score = reading.score ?? 0.5;
   // White fills from whichever end is White's.
   const whiteEnd = orientation === 'white' ? 'bottom' : 'top';
@@ -129,16 +130,15 @@ function Bar({
       {reading.label ? (
         // A narrow page's strip is too thin for the number; its fill still shows who leads.
         <Text
-          {...narrowPart('wide-only')}
           role="caption"
           numberOfLines={1}
-          style={[
+          {...part('wide-only', [
             styles.label,
             {
               [labelEnd]: 5,
               color: reading.leader === 'white' ? pieceColors.black : pieceColors.white,
             },
-          ]}
+          ])}
         >
           {reading.label}
         </Text>

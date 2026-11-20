@@ -82,7 +82,7 @@ describe('CandidateList', () => {
   });
 
   it('leaves whose moves out of the heading on a narrow page, but not out loud', () => {
-    expect(partTexts({ owner: 'White' })).toContainEqual(['wide-only-spoken', "White's "]);
+    expect(partTexts({ owner: 'White' })).toContainEqual(['wide-only-spoken', "White's\u00a0"]);
   });
 
   it('leaves where each row leads to the line under a compact list', () => {

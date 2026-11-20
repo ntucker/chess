@@ -6,7 +6,8 @@ import { type KeyDownEvent, ScrollView, StyleSheet, View } from 'react-native';
 import { hoversControl } from '@/board/pointer';
 import { describeOpponent, type Opponent, OPPONENT_PRESETS, OPPONENTS } from '@/opponent/opponent';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
-import { narrowLength } from '@/theme/narrow';
+import { narrowLength, narrowStyles } from '@/theme/narrow';
+import { useNarrowStyles } from '@/theme/Narrow';
 
 import { Eyebrow } from './Eyebrow';
 import { Popup } from './Popup';
@@ -19,7 +20,7 @@ const WEB = process.env.EXPO_OS === 'web';
  */
 const HOVER_GRACE_MS = 200;
 
-/** A row of the list: taller on a narrow web page, to tap. */
+/** A row of the list: taller on a narrow page, to tap. */
 const ROW_HEIGHT = narrowLength('menu-row-height', 34);
 
 /** How the list was opened: by pointing at the trigger, or by pressing it (or a key). */
@@ -159,6 +160,7 @@ interface ListProps {
  */
 function OpponentList({ id, value, focusOnOpen, onChoose, onClose }: ListProps) {
   const { color, radius } = useTheme().theme.semantic;
+  const { row } = useNarrowStyles(ROW);
   const [lit, setLit] = useState<Opponent>();
   const rows = useRef(new Map<Opponent, ComponentRef<typeof View>>());
   const steps = stepsFor(value);
@@ -235,7 +237,7 @@ function OpponentList({ id, value, focusOnOpen, onChoose, onClose }: ListProps) 
                 onFocus={() => setLit(opponent)}
                 onPress={() => onChoose(opponent)}
                 style={[
-                  styles.row,
+                  row,
                   { borderRadius: radius.sm },
                   opponent === lit && { backgroundColor: color.tones.neutral.subtle },
                 ]}
@@ -288,16 +290,19 @@ const styles = StyleSheet.create({
   list: { width: 232, padding: 6, flexShrink: 1 },
   heading: { paddingHorizontal: 10, paddingTop: 6, paddingBottom: 6 },
   rows: { flexShrink: 1 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    minHeight: ROW_HEIGHT.value,
-    paddingHorizontal: 8,
-  },
   check: { width: 14, alignItems: 'center' },
   stepLevel: { flex: 1, fontVariant: ['tabular-nums'] },
   rule: { marginVertical: 4, marginHorizontal: 4 },
   // Two lines tall whatever it says, so the list keeps its size as rows are pointed at.
   about: { minHeight: 32, paddingHorizontal: 10, paddingTop: 4, paddingBottom: 6 },
 });
+
+const ROW = narrowStyles((px) => ({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: px(ROW_HEIGHT),
+    paddingHorizontal: 8,
+  },
+}));

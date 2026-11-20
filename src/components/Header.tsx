@@ -1,17 +1,15 @@
 import { Inline, Separator, Text } from '@reactive/silk-native';
-import { Image, StyleSheet, View } from 'react-native';
+import { Image, View } from 'react-native';
 
 import { BackButton } from '@/components/BackButton';
 import { Eyebrow } from '@/components/Eyebrow';
 import { HeaderButton } from '@/components/HeaderButton';
 import { CHEVRON_WIDTH, type Destination, PlaceLink } from '@/components/PlaceLink';
+import { HEADER_HEIGHT } from '@/theme/sideBySide';
 import { SourceLink } from '@/components/SourceLink';
-import { NARROW_CSS_LOADS, narrowCalc, narrowLength, narrowPart } from '@/theme/narrow';
-import { NarrowOnly } from '@/theme/NarrowOnly';
+import { NARROW_CSS_LOADS, narrowCalc, narrowLength, narrowStyles } from '@/theme/narrow';
+import { NarrowOnly, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
 import { fonts } from '@/theme/theme';
-
-/** The header's height: its logo, the tallest thing in it. Shorter on a narrow web page. */
-export const HEADER_HEIGHT = narrowLength('header-height', 40);
 
 /** Where the page is: a name, such as the lesson's line, and its parent, such as the line it branches from. */
 export interface Place {
@@ -20,7 +18,7 @@ export interface Place {
 }
 
 export interface HeaderProps {
-  /** Where the page is. On a narrow web page it takes the app name's place. */
+  /** Where the page is. On a narrow page it takes the app name's place. */
   readonly place?: Place;
   /** The place links to the screen listing the others (`PlaceLink`). */
   readonly placeLink?: Destination;
@@ -30,7 +28,7 @@ export interface HeaderProps {
    */
   readonly back?: Destination;
   /**
-   * Opens the page's settings, which a narrow web page keeps in a sheet: there
+   * Opens the page's settings, which a narrow page keeps in a sheet: there
    * a settings button takes the source link's place, so the sheet should link
    * to the source (`SourceFootnote`). Elsewhere the page shows its settings
    * itself, and no button shows.
@@ -40,13 +38,13 @@ export interface HeaderProps {
 
 /**
  * The wordmark (the logo, the name in the display serif, and the tagline),
- * with a link to the source at the far end. On a narrow web page it's
+ * with a link to the source at the far end. On a narrow page it's
  * one slim row: a smaller logo, the page's `place` (or the name, when there
  * is none), and no tagline. A page on top of another starts with a back button.
  */
 export function Header({ place, placeLink, back, onSettings }: HeaderProps) {
-  // Only narrow.css shows it, so a native app keeps the name.
-  const shownPlace = NARROW_CSS_LOADS ? place : undefined;
+  const styles = useNarrowStyles(STYLES);
+  const part = useNarrowPart();
   return (
     <Inline gap="2" align="center" justify="between" wrap="nowrap">
       <Inline gap="3" align="center" wrap="nowrap" style={styles.brand}>
@@ -57,23 +55,22 @@ export function Header({ place, placeLink, back, onSettings }: HeaderProps) {
           accessibilityIgnoresInvertColors
         />
         <Text
-          {...(shownPlace ? narrowPart('wide-only') : {})}
           role="heading"
           accessibilityRole="header"
-          style={styles.wordmark}
+          {...part(Boolean(place) && 'wide-only', styles.wordmark)}
         >
           Opening Night
         </Text>
-        {shownPlace ? <PlaceName {...shownPlace} link={placeLink} /> : null}
+        {place ? <PlaceName {...place} link={placeLink} /> : null}
       </Inline>
       <Inline gap="3" align="center" wrap="nowrap">
-        <Inline {...narrowPart('wide-only')} gap="3" align="center" wrap="nowrap">
+        <Inline gap="3" align="center" wrap="nowrap" {...part('wide-only')}>
           <Text role="caption" tone="secondary" style={styles.tagline}>
             Learn your lines
           </Text>
           <Separator orientation="vertical" style={styles.rule} />
         </Inline>
-        <View {...(onSettings ? narrowPart('wide-only') : {})}>
+        <View {...part(Boolean(onSettings) && 'wide-only')}>
           <SourceLink />
         </View>
         {onSettings ? (
@@ -95,14 +92,17 @@ export function Header({ place, placeLink, back, onSettings }: HeaderProps) {
 /**
  * A narrow page's place: its parent as an eyebrow over its name in the
  * display serif, both in the logo's height. A long name shrinks to fit its
- * one line rather than lose its end, as far as `fitted` can tell. With a
+ * one line rather than lose its end, as far as `fitted` can tell (natively,
+ * as far as the text's own fitting can). With a
  * `link`, it opens the screen listing the other places (`PlaceLink`).
  */
 function PlaceName({ name, parent, link }: Place & { readonly link?: Destination }) {
-  const { size, line } = parent ? PLACE_TYPE.underParent : PLACE_TYPE.alone;
+  const styles = useNarrowStyles(STYLES);
+  const part = useNarrowPart();
+  const size = parent ? PLACE_TYPE.underParent : PLACE_TYPE.alone;
   const fontSize = fitted(name, size, link ? CHEVRON_WIDTH : 0);
   return (
-    <View {...narrowPart('place')} style={styles.place}>
+    <View {...part('place', styles.place)}>
       <PlaceLink to={link}>
         {(active) => (
           <View style={styles.placeText}>
@@ -119,8 +119,13 @@ function PlaceName({ name, parent, link }: Place & { readonly link?: Destination
               role="heading"
               accessibilityRole="header"
               numberOfLines={1}
+              {...nativeFit(size)}
               tone={active ? 'primary' : undefined}
-              style={[styles.name, { fontSize, lineHeight: line }]}
+              style={[
+                styles.name,
+                parent ? styles.nameUnderParent : styles.nameAlone,
+                { fontSize },
+              ]}
             >
               {name}
             </Text>
@@ -137,9 +142,9 @@ const PARENT_LINE = 11;
 /** The place's type. */
 export const PLACE_TYPE = {
   /** The name's largest size under a parent, in the header's height less the parent's line. */
-  underParent: { size: 15, line: HEADER_HEIGHT.minus(PARENT_LINE).value },
-  /** Alone, it has the header's height, room for descenders a line as tall as the font clips. */
-  alone: { size: 17, line: HEADER_HEIGHT.value },
+  underParent: 15,
+  /** Alone, in the header's height: room for descenders a line as tall as the font clips. */
+  alone: 17,
   /** The smallest size a name shrinks to; past it, it ends in an ellipsis. */
   smallest: 12,
   /**
@@ -164,13 +169,22 @@ function fitted(text: string, largest: number, reserved: number) {
   );
 }
 
-const styles = StyleSheet.create({
+/**
+ * Off the web, a long name shrinks to fit by the text's own fitting, from its
+ * largest size (where `fitted` leaves it) down to the smallest.
+ */
+const nativeFit = (largest: number) =>
+  NARROW_CSS_LOADS
+    ? {}
+    : { adjustsFontSizeToFit: true, minimumFontScale: PLACE_TYPE.smallest / largest };
+
+const STYLES = narrowStyles((px) => ({
   // Fills the header but gives way to the source link, so the place gets what's left.
   brand: { flexGrow: 1, flexShrink: 1, minWidth: 0 },
-  logo: { width: HEADER_HEIGHT.value, height: HEADER_HEIGHT.value, borderRadius: 10 },
+  logo: { width: px(HEADER_HEIGHT), height: px(HEADER_HEIGHT), borderRadius: 10 },
   wordmark: {
     fontFamily: fonts.display,
-    fontSize: narrowLength('wordmark-size', 26).value,
+    fontSize: px(narrowLength('wordmark-size', 26)),
     letterSpacing: 0.2,
   },
   // Takes the width the brand leaves, since a size container has none of its own.
@@ -178,6 +192,8 @@ const styles = StyleSheet.create({
   placeText: { flexShrink: 1, minWidth: 0 },
   parent: { fontSize: 10, lineHeight: PARENT_LINE, letterSpacing: 1.2 },
   name: { fontFamily: fonts.display },
+  nameUnderParent: { lineHeight: px(HEADER_HEIGHT.minus(PARENT_LINE)) },
+  nameAlone: { lineHeight: px(HEADER_HEIGHT) },
   tagline: { fontFamily: fonts.displayItalic, fontSize: 17 },
   rule: { height: 18, alignSelf: 'center' },
-});
+}));

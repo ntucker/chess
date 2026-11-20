@@ -1,13 +1,13 @@
 import { Button, Inline, Stack, Text } from '@reactive/silk-native';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Eyebrow } from '@/components/Eyebrow';
 import { type Destination, PlaceLink } from '@/components/PlaceLink';
 import { NEW_VERSION, NewVersionError, reload } from '@/files/newVersion';
 import type { Color, Position } from '@/game/replay';
 import { describeOpponent, type Opponent } from '@/opponent/opponent';
-import { narrowLength, narrowPart } from '@/theme/narrow';
-import { NarrowOnly } from '@/theme/NarrowOnly';
+import { narrowLength, narrowStyles } from '@/theme/narrow';
+import { NarrowOnly, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
 import { fonts, typography } from '@/theme/theme';
 
 interface Props {
@@ -40,14 +40,14 @@ export interface HeadlineProps {
   /** The opponent `who` didn't answer with `error`, and `onRetry` asks it again. */
   readonly failure?: Failure;
   /**
-   * The header names the line on a narrow web page (Stage's `place`), so the headline
+   * The header names the line on a narrow page (Stage's `place`), so the headline
    * leaves its eyebrow out there.
    */
   readonly eyebrowInHeader?: boolean;
   /** The eyebrow names where the page is, and links to the screen listing the others (`PlaceLink`). */
   readonly eyebrowLink?: Destination;
   /**
-   * What a narrow web page draws of the headline, as one short line that
+   * What a narrow page draws of the headline, as one short line that
    * leaves its room to the panel below: the title run in before the detail
    * (`all`); the detail alone, when the title only says whose move it is,
    * which the name bars show (`detail`); or nothing, when the detail is how
@@ -70,6 +70,8 @@ export function StatusHeadline({
   eyebrowLink,
   news,
 }: HeadlineProps) {
+  const part = useNarrowPart();
+  const styles = useNarrowStyles(STYLES);
   const label = (
     <PlaceLink to={eyebrowLink}>
       {(active) => <Eyebrow tone={active ? 'primary' : 'secondary'}>{eyebrow}</Eyebrow>}
@@ -79,10 +81,10 @@ export function StatusHeadline({
   const drawn = news === 'none' && failure ? 'detail' : news;
   const short = drawn === 'all' || drawn === 'detail';
   return (
-    <Stack gap="2" {...(drawn === 'none' ? narrowPart('wide-only-spoken') : {})}>
+    <Stack gap="2" {...part(drawn === 'none' && 'wide-only-spoken')}>
       {/* With a short line drawn, a narrow page keeps the full headline for screen readers only. */}
-      <Stack gap="2" {...(short ? narrowPart('wide-only-spoken') : {})}>
-        {eyebrowInHeader ? <View {...narrowPart('wide-only')}>{label}</View> : label}
+      <Stack gap="2" {...part(short && 'wide-only-spoken')}>
+        {eyebrowInHeader ? <View {...part('wide-only')}>{label}</View> : label}
         <Text
           role="headingLg"
           accessibilityRole="header"
@@ -182,15 +184,15 @@ function describeLatest({
   };
 }
 
-/** The headline's size: its role's, smaller on a narrow web page (narrow.css). */
+/** The headline's size: its role's, smaller on a narrow page. */
 const HEADLINE = typography.headingLg;
 const TITLE_SIZE = narrowLength('headline-size', HEADLINE.size);
 
 /** The run-in title's size: bodySm's, plus the serif's smaller x-height. */
 const RUN_IN_SIZE = typography.bodySm.size + 2;
 
-const styles = StyleSheet.create({
-  title: { fontSize: TITLE_SIZE.value, lineHeight: TITLE_SIZE.times(HEADLINE.lineHeight).value },
+const STYLES = narrowStyles((px) => ({
+  title: { fontSize: px(TITLE_SIZE), lineHeight: px(TITLE_SIZE.times(HEADLINE.lineHeight)) },
   // The display serif carries the hierarchy (theme.ts), a step up from the detail's size.
   runIn: { fontFamily: fonts.display, fontSize: RUN_IN_SIZE },
-});
+}));

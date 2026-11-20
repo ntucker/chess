@@ -1,6 +1,7 @@
 /*
  * How a narrow web page differs, behind one media query, since the
- * pre-rendered page can't measure the window. Narrow means too narrow for
+ * pre-rendered page can't measure the window. Native apps apply the same
+ * lengths and parts as styles (narrow.ts, Narrow.tsx). Narrow means too narrow for
  * the panel beside the board, so the board sits above it: a phone, or a
  * narrow window. Everywhere else none of this
  * applies: each length falls back to the wide value written beside it in
@@ -20,55 +21,34 @@
  * this layout is the only stacked one.
  */
 @media (max-width: 707.98px) {
-  /* Lengths, read by `narrowLength` (narrow.ts). */
+  /* Lengths, read by `narrowLength`. What each is for, and its pixels for native, are in NARROW_PX (narrow.ts). */
   :root {
-    /* Page padding and the gap below the header (Page.tsx). */
     --page-space: 10px;
-    /* The logo, as tall as the round buttons beside it (HeaderButton.tsx): the header's height (Header.tsx). */
     --header-height: 28px;
     --header-button-size: 28px;
     --wordmark-size: 18px;
-    /*
-     * The name bars above and below the board (Stage.tsx): the one with
-     * the move stepper as tall as the stepper, the other one line of names.
-     */
     --controls-bar-height: 48px;
     --names-bar-height: 32px;
-    /*
-     * The player's disc becomes a dot, and the evaluation bar beside the
-     * board a thin strip under it, to give the board their width (Stage.tsx).
-     */
     --player-disc: 10px;
     --player-disc-gap: 6px;
     --player-disc-border: 2px;
     --evaluation-width: 6px;
-    /*
-     * A panel's full headline (GameStatus.tsx), down from theme.ts's headingLg
-     * (32px), as free play's; the lesson's draws one short line instead.
-     */
     --headline-size: 20px;
-    /* A row of the opponent's strength list, tall enough to tap (OpponentPicker.tsx). */
     --menu-row-height: 40px;
-    /* Space between the board column and the panel below it (Stage.tsx). */
     --wrapped-gap: 12px;
-    /* Space between the panel's sections (LessonScreen.tsx)... */
     --section-gap: 12px;
-    /* ...and between a section's label and what it labels (Eyebrow.tsx). */
     --label-gap: 6px;
-    /*
-     * In a short window the board shrinks, down to this (Stage.tsx), wide
-     * enough for the player's name bar to fit its status beside the move
-     * buttons...
-     */
     --board-min: 300px;
-    /* ...to leave this much for the panel (a label and a couple of moves) and the gap above it. */
-    --panel-reserve: calc(160px + var(--wrapped-gap));
-    /* Read only here: the fade at the bottom of each part that scrolls (below). */
+    --panel-reserve: 172px;
+    --candidate-gap: 8px;
+    --candidate-inset: 10px;
+    --candidate-padding: 6px;
     --fade: 16px;
   }
 
   /*
-   * Parts, named by `narrowPart` (narrow.ts). The page (Page.tsx, its stage Stage.tsx) fills the
+   * Parts, named by `useNarrowPart` (Narrow.tsx); NATIVE_PARTS in narrow.ts
+   * is each one's native twin. The page (Page.tsx, its stage Stage.tsx) fills the
    * screen and doesn't scroll: the board stays at the top, and the panel below
    * it scrolls in the space that's left, so a previewed move stays in view.
    * Only once the board is at its smallest and the panel at its floor does
@@ -86,7 +66,7 @@
     display: block;
   }
   /*
-   * The CSS twin of FootnoteChoice.tsx's `visuallyHidden`, for a narrow page only.
+   * The CSS twin of narrow.ts's `visuallyHidden`, for a narrow page only.
    * Out of sight but still read by screen readers, such as a headline that
    * only repeats whose move it is (GameStatus.tsx): the name bars show it, but
    * screen readers hear it only from the headline.
@@ -147,11 +127,13 @@
   /* The moves get two parts of the width and the idea three; a pane alone gets all of it. */
   :root [data-narrow='moves-pane'],
   :root [data-narrow='idea-pane'] {
-    flex: 2 1 0;
     min-width: 0;
   }
+  :root [data-narrow='moves-pane'] {
+    flex: 2 1 0;
+  }
   :root [data-narrow='idea-pane'] {
-    flex-grow: 3;
+    flex: 3 1 0;
   }
   /*
    * A candidate list (CandidateList.tsx) keeps its heading in view: the list
@@ -175,23 +157,12 @@
   :root [data-narrow='list-card'] {
     padding-bottom: 0;
   }
-  /* In a narrow pane its rows are compact, without the share bars. */
-  :root [data-narrow='candidate-row'] {
-    gap: 8px;
-    padding: 6px 10px;
-  }
-  :root [data-narrow='share-track'] {
-    display: none;
-  }
-  /* Where a row leads wraps rather than lose its end (a compact list's rows leave it out). */
+  /* Where a candidate row leads wraps rather than lose its end (a compact list's rows leave it out). */
   :root [data-narrow='leads-to'] {
     white-space: normal;
   }
-  /* A note's verdict with no kind beside it goes below its words (IdeaCard.tsx). */
-  :root [data-narrow='lone-verdict'] {
-    order: 1;
-  }
   :root [data-narrow='page'] {
+    flex-grow: 1;
     min-height: 100dvh;
   }
   :root [data-narrow='stage'] {
@@ -200,7 +171,7 @@
     align-items: center;
   }
   :root [data-narrow='board-column'] {
-    flex: none;
+    flex: 0 0 auto;
     width: 100%;
   }
   :root [data-narrow='program'] {

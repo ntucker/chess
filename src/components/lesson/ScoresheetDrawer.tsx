@@ -3,13 +3,13 @@ import { a11yState, Inline, Pressable, Text, useTheme } from '@reactive/silk-nat
 import type { ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Eyebrow, labelled } from '@/components/Eyebrow';
+import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { HeaderButton } from '@/components/HeaderButton';
 import { Scoresheet } from '@/components/Scoresheet';
 import { stepButton } from '@/components/Transport';
 import { useScreenKeys } from '@/components/useScreenKeys';
 import { numberedMove } from '@/game/replay';
-import { narrowPart } from '@/theme/narrow';
+import { useNarrowPart } from '@/theme/Narrow';
 import { fonts } from '@/theme/theme';
 
 interface Props extends Omit<ComponentProps<typeof Scoresheet>, 'fill'> {
@@ -18,26 +18,23 @@ interface Props extends Omit<ComponentProps<typeof Scoresheet>, 'fill'> {
 }
 
 /**
- * The scoresheet of a narrow web page, opened from the move stepper: it takes
+ * The scoresheet of a narrow page, opened from the move stepper: it takes
  * the panel's place under the board, so the board stays in view while the
  * learner taps through the moves, and stays open until closed. Its head holds
  * the jumps to the first and latest move, which the stepper leaves out there.
- * Shown while mounted, on a narrow web page only (narrow.css).
+ * Shown while mounted, on a narrow page only.
  */
 export function ScoresheetDrawer({ onClose, ...scoresheet }: Props) {
   const { plies, ply, onGoto } = scoresheet;
   /** The ply of the latest move: `plies` begins with the start position. */
   const last = plies.length - 1;
+  const part = useNarrowPart();
+  const labelled = useLabelled();
   useScreenKeys((event) => {
     if (event.key === 'Escape') onClose();
   });
   return (
-    <View
-      {...narrowPart('scoresheet-drawer')}
-      role="region"
-      aria-label="Scoresheet"
-      style={labelled}
-    >
+    <View role="region" aria-label="Scoresheet" {...part('scoresheet-drawer', labelled)}>
       <Inline align="center" justify="between" wrap="nowrap">
         <Eyebrow>Scoresheet</Eyebrow>
         <Inline align="center" gap="1" wrap="nowrap">
