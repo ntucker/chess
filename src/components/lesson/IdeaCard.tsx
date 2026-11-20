@@ -14,15 +14,10 @@ import type { Evaluation, Idea, Note } from '@/lesson/lesson';
 import type { Playback, Playing } from '@/lesson/useLesson';
 import type { ShownNote } from '@/lesson/view';
 import { toneColors } from '@/theme/drawingTones';
-import { NARROW_CSS_LOADS, narrowPart } from '@/theme/narrow';
+import { narrowPart } from '@/theme/narrow';
 
 interface Props {
   readonly title: string;
-  /**
-   * Where the move previewed leads, for a narrow web page, whose candidate
-   * chips leave it out (CandidateList's `chips`).
-   */
-  readonly leadsTo?: string;
   readonly notes: readonly ShownNote[];
   /** The learner's side: a note's kind takes its color from the board's drawings. */
   readonly learner: Color;
@@ -49,7 +44,6 @@ interface Props {
  */
 export function IdeaCard({
   title,
-  leadsTo,
   notes,
   learner,
   playback,
@@ -66,20 +60,7 @@ export function IdeaCard({
         if (hovers(nativeEvent.pointerType)) onReach(timeStamp);
       }}
     >
-      <View style={styles.title}>
-        <Eyebrow>{title}</Eyebrow>
-        {leadsTo && NARROW_CSS_LOADS ? (
-          <Text
-            {...narrowPart('narrow-only')}
-            role="caption"
-            tone="secondary"
-            numberOfLines={1}
-            style={styles.leadsTo}
-          >
-            {leadsTo}
-          </Text>
-        ) : null}
-      </View>
+      <Eyebrow>{title}</Eyebrow>
       {notes.length ? (
         <View>
           {notes.map((shown) => (
@@ -307,8 +288,6 @@ const VERDICTS: Readonly<Record<Evaluation, { glyph: string; words: string }>> =
 };
 
 const styles = StyleSheet.create({
-  title: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
-  leadsTo: { flexShrink: 1, minWidth: 0 },
   // Each note carries its piece of the rule, so a pointed one can light its own.
   note: {
     borderLeftWidth: 2,

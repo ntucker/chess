@@ -182,16 +182,6 @@ function LessonScreen({
   // Past the guide, a move of Stockfish's can lead back into it.
   const rejoins = ({ variation }: Candidate) =>
     variation === undefined ? undefined : `Rejoins ${lesson.variations[variation].name}`;
-  // Each list's rows, on a narrow page, as chips, which leave out where a move
-  // leads, for the idea card to name for the move previewed: Stockfish's only
-  // with the card, and the guide's but at the start, where each move's opening
-  // is the point.
-  const lists = {
-    top: { chips: ideaCard, leadsTo: rejoins },
-    guide: { chips: !picking, leadsTo },
-  };
-  const previewList = preview && lists[preview.engine ? 'top' : 'guide'];
-  const previewLeadsTo = preview && previewList?.chips ? previewList.leadsTo(preview) : undefined;
   // Pointing at an opening, or picking up a piece that plays one, starts
   // loading its lesson, so playing it needn't wait. A failure shows once the
   // opening is picked.
@@ -256,7 +246,8 @@ function LessonScreen({
                 <CandidateList
                   {...rowProps}
                   heading="Stockfish's top moves"
-                  {...lists.top}
+                  chips
+                  leadsTo={rejoins}
                   candidates={guidance.top}
                   rare={[]}
                   rareShown={false}
@@ -273,7 +264,9 @@ function LessonScreen({
                       ? 'Your candidates'
                       : `${colorName(rival)}'s ${picking ? 'first move' : 'likely replies'}`
                   }
-                  {...lists.guide}
+                  // At the start each move's opening is the point, so its rows stay.
+                  chips={!picking}
+                  leadsTo={leadsTo}
                   candidates={guidance.candidates}
                   rare={guidance.rare}
                   rareShown={rareShown}
@@ -285,7 +278,6 @@ function LessonScreen({
               {ideaCard ? (
                 <IdeaCard
                   title={preview ? `If ${preview.san}` : 'The idea'}
-                  leadsTo={previewLeadsTo}
                   notes={guidance.notes}
                   learner={learner}
                   playback={playback}
