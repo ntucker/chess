@@ -124,7 +124,7 @@ export function parseStudy(pgn: string, include: (title: string) => boolean): Ch
     const moves = readMoves(game.moves.children, start, 1);
     add({ title, start, moves, ...(namedFrom && { namedFrom, cut: true }) }, index);
   };
-  /** Whether chapter `index` can be read now: it starts at the lesson's start, or a chapter read leads to it. */
+  // Chapter `index` can be read once it starts at the lesson's start, or a read chapter leads there.
   const ready = (index: number) =>
     positionKey(games[index].start) === startKey || !!leadTo(chapters, games[index].start);
   let waiting = games.map((_, index) => index);
@@ -139,8 +139,11 @@ export function parseStudy(pgn: string, include: (title: string) => boolean): Ch
   }
   // No chapter reaches these: each keeps its own start.
   for (const index of waiting) read(index);
-  chapters.sort((a, b) => studyIndex.get(a)! - studyIndex.get(b)!);
-  // Side-line intros look only at earlier chapters in the study, whatever order they were read in.
+  return withStudyIntros(chapters.sort((a, b) => studyIndex.get(a)! - studyIndex.get(b)!));
+}
+
+/** `chapters`, in study order, with side-line intros moved against the chapters before each one. */
+function withStudyIntros(chapters: readonly Chapter[]): Chapter[] {
   const known = new Set<string>();
   return chapters.map((chapter) => {
     const introduced = { ...chapter, moves: withLineIntros(chapter.moves, known) };

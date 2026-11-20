@@ -104,7 +104,9 @@ describe('parseStudy', () => {
 describe('side-line introductions', () => {
   const commentOn = (pgn: string, sans: string[], title?: string) => {
     const chapters = parseStudy(pgn, () => true);
-    const chapter = chapters.find((one) => one.title === title) ?? chapters.at(-1)!;
+    const chapter =
+      title === undefined ? chapters.at(-1) : chapters.find((one) => one.title === title);
+    if (!chapter) throw new Error(`No chapter ${title}`);
     return [...chapterMoves(chapter)]
       .filter((move) => sans.includes(move.san))
       .map(({ san, comment }) => [san, comment]);
@@ -151,6 +153,7 @@ describe('side-line introductions', () => {
       );
     expect(comments).toEqual([[['d5', 'A solid reply.']], [['d5', 'Before Nf6 c5.']]]);
   });
+
   it('reads intros against earlier chapters in the study, even in a chapter that waited', () => {
     const pgn = [
       chapter('London', '1. d4 d5 *'),

@@ -460,7 +460,6 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         // White's view of the Albin, reworded for Black; its introduction leads to it.
         ...BOSBURP_QG,
         writtenFor: 'white',
-        // The introduction leads to the Albin.
         chapters: (title: string) =>
           title === QG_INTRO || QG_CHAPTERS[title] === 'Albin Countergambit',
         chapterName: (title: string) => QG_CHAPTERS[title],
@@ -760,6 +759,7 @@ const LENIN_ITALIAN_CHAPTERS: Readonly<Record<string, string | undefined>> = {
   'Evans Gambit': 'Italian: Giuoco Piano: Evans Gambit',
 };
 
+/** Bosburp's introduction chapter, which the Queen's Gambit lesson's own name covers. */
 const QG_INTRO = '♕ Introduction ♕';
 
 /**
