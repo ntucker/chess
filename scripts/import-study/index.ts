@@ -8,7 +8,8 @@
  * position tree → pick book moves where the guide shows moves but
  * recommends none, and (`engineCheck` in studies.ts) drop what Stockfish
  * contradicts (./engineCheck) → give notes written on another move order to
- * the position the lesson reaches (./transpositions) → add popularity → checkLesson → write
+ * the position the lesson reaches (./transpositions) → write the idea of each
+ * book move nothing explains with AI (./explain) → add popularity → checkLesson → write
  * assets/lessons/<id>.json, register it in src/resources/lesson.ts and list
  * it in assets/lessons/index.json.
  * `caro-kann` names a study listed in studies.ts. With --no-popularity the
@@ -19,8 +20,10 @@
  * scripts/import-study/answers/<name>.jsonl, which is committed: a run asks
  * only about comments that changed (all of them after a prompt.ts edit:
  * about 190 requests and an hour for the Caro-Kann), then rewrites the file
- * with the answers it used. --no-model takes answers from the file only and
- * calls no model; comments missing there keep the importer's notes.
+ * with the answers it used. The explain step keeps its answers the same way in
+ * scripts/import-study/answers/<name>-explain.jsonl. --no-model takes answers
+ * from the files only and calls no model; comments missing there keep the
+ * importer's notes, and book moves missing there stay unexplained.
  *
  *   yarn import-study --popularity assets/lessons/caro-kann.json
  *
@@ -50,6 +53,7 @@ import { lessonIndex } from '@/lesson/openings';
 import { convertChapters, convertReport } from './convert';
 import { claudeCli } from './convert/claude';
 import { engineCheck, ENGINES_OWN, fillBook, type EngineReport } from './engineCheck';
+import { explainBookMoves, explainCli, explainReport } from './explain';
 import { extractChapter } from './extract';
 import { lessonJson } from './lessonJson';
 import { mergeChapters, numberedChapterName, type ChapterName, type SourceTally } from './merge';
@@ -133,13 +137,22 @@ async function main() {
       `engine check: ${unbooked.length} book moves overruled (${cut.length} cut, the guide's only move), ${unreachable.length} more left unreachable, ${dropped.length} notes dropped`,
     );
   }
-  stockfish.stop();
   writeFileSync(engineFile, `${JSON.stringify({ ...filled.report, ...engineReport }, null, 2)}\n`);
   const transposed = noteTranspositions(lesson);
   lesson = transposed.lesson;
   console.log(
     `transpositions: ${transposed.moved} positions took the notes of a move order the lesson doesn't play`,
   );
+  const explainer = explainCli({
+    learner: info.side,
+    cacheFile: join(ROOT, `scripts/import-study/answers/${first}-explain.jsonl`),
+    callModel: !rest.includes('--no-model'),
+  });
+  const explained = await explainBookMoves(lesson, explainer.ask, stockfish.evaluate);
+  explainer.saveUsed();
+  lesson = explained.lesson;
+  console.log(explainReport(explained.report));
+  stockfish.stop();
   if (!rest.includes('--no-popularity')) lesson = await withPopularity(lesson);
   // The checker, the index and the registry each refuse a lesson by throwing, so all come before any
   // write: a lesson file written without its registry entry or index line fails lesson.test.ts.
