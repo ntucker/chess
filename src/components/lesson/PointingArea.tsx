@@ -1,8 +1,8 @@
-import { Stack } from '@reactive/silk-native';
 import type { FocusEvent as ReactFocusEvent, ReactNode } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
+import { type StyleProp, View, type ViewStyle } from 'react-native';
 
 import { hovers } from '@/board/pointer';
+import { narrowPart } from '@/theme/narrow';
 
 interface Props {
   /** The mouse, or the keyboard focus, left the area. */
@@ -17,7 +17,8 @@ interface Props {
  * stays pointed at until the mouse leaves the area, or focus moves to
  * something else on the page. Focus that goes nowhere (a tap on plain text,
  * another window) leaves it up. Touch screens have neither, so on them it is
- * only a stack.
+ * only a stack. On a narrow web page its children are panes side by side
+ * (narrow.css).
  */
 export function PointingArea({ onLeave, children, style }: Props) {
   // The DOM's own focus event, which bubbles from the buttons inside.
@@ -26,7 +27,9 @@ export function PointingArea({ onLeave, children, style }: Props) {
     if (relatedTarget instanceof Node && !currentTarget.contains(relatedTarget)) onLeave();
   };
   return (
-    <Stack
+    // A View, not a Stack: narrow.css lays it out as a row, which a Stack's inline style would override.
+    <View
+      {...narrowPart('panes')}
       style={style}
       onPointerLeave={({ nativeEvent }) => {
         // A finger leaves whenever it lifts, which would end every preview a tap starts.
@@ -36,6 +39,6 @@ export function PointingArea({ onLeave, children, style }: Props) {
       onBlur={process.env.EXPO_OS === 'web' ? blur : undefined}
     >
       {children}
-    </Stack>
+    </View>
   );
 }

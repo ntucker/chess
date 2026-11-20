@@ -1,6 +1,7 @@
 import { AsyncBoundary, useController, useFetch, useSuspense } from '@data-client/react';
 import { Separator, Spinner, Stack } from '@reactive/silk-native';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { useIsFocused } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
@@ -10,6 +11,8 @@ import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { Scoresheet } from '@/components/Scoresheet';
+import { Sheet } from '@/components/Sheet';
+import { SourceFootnote } from '@/components/SourceLink';
 import { resetListener } from '@/components/resetListener';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { useLongWait } from '@/components/useLongWait';
@@ -28,7 +31,7 @@ import { getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
 import { qualityLooks } from '@/theme/moveQuality';
 import { themes } from '@/theme/theme';
-import { narrowLength, narrowPart } from '@/theme/narrow';
+import { NARROW_CSS_LOADS, narrowLength, narrowPart } from '@/theme/narrow';
 
 import { AutoPlay } from './AutoPlay';
 import { CandidateList } from './CandidateList';
@@ -174,6 +177,11 @@ function LessonScreen({
     chooseMode,
   } = useLesson(lesson, store, { pending });
   const { mode } = modeState;
+  // The settings sheet of a narrow web page, hidden while another screen is on top.
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const openSettings = () => setSettingsOpen(true);
+  const closeSettings = () => setSettingsOpen(false);
+  const focused = useIsFocused();
   const { auto } = useSettings();
   const learner = lesson.side;
   const rival = opposite(learner);
@@ -254,6 +262,61 @@ function LessonScreen({
     label: 'Every opening',
   } as const;
 
+  // The moves the learner can point at: past the guide Stockfish's, else the guide's.
+  const moveList = guidance.top.length ? (
+    <CandidateList
+      {...rowProps}
+      heading="Stockfish's top moves"
+      compact
+      leadsTo={rejoins}
+      candidates={guidance.top}
+      rare={[]}
+      rareShown={false}
+      onShowRare={showRare}
+      main={guidance.top[0]}
+      onPoint={pointRow}
+    />
+  ) : guidance.candidates.length ? (
+    <CandidateList
+      {...rowProps}
+      heading={view.learnerToMove ? 'Your candidates' : `${colorName(rival)}'s ${rivalMoves}`}
+      // At the start each move's opening is the point, so its rows keep it.
+      compact={!picking}
+      leadsTo={leadsTo}
+      candidates={guidance.candidates}
+      rare={guidance.rare}
+      rareShown={rareShown}
+      onShowRare={showRare}
+      main={guidance.main}
+      onPoint={pointCandidate}
+    />
+  ) : null;
+
+  /** The game's moves, where pressing one calls `onGoto`. */
+  const scoresheet = (onGoto: (ply: number) => void) => (
+    <Stack style={labelled}>
+      <Eyebrow>Scoresheet</Eyebrow>
+      <Scoresheet
+        plies={game.plies}
+        qualities={game.qualities}
+        ply={game.ply}
+        // A record of the line, so it outlives the trap's card.
+        trapped={view.trap && view.trap.ply + 1}
+        onGoto={onGoto}
+      />
+    </Stack>
+  );
+  const settings = (
+    <>
+      <LessonControls mode={mode} onMode={chooseMode} />
+      <Stack gap="1">
+        <OpponentChoice />
+        <FootnoteLink href="/play">Or play a free game, from the first move</FootnoteLink>
+        <SourceCredits sources={lesson.sources} />
+      </Stack>
+    </>
+  );
+
   return (
     <Stage
       title={`${lesson.title} · Opening Night`}
@@ -263,6 +326,7 @@ function LessonScreen({
           ? { name: OPENINGS_TITLE }
           : { name: names.at(-1) ?? lesson.title, parent: names.at(-2) },
         placeLink: listLink,
+        onSettings: openSettings,
       }}
       board={
         <BoardColumn
@@ -279,7 +343,7 @@ function LessonScreen({
         />
       }
       program={
-        <Stack style={styles.sections}>
+        <Stack {...narrowPart('lesson-panel')} style={styles.sections}>
           <StatusHeadline
             {...status}
             failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
@@ -290,7 +354,6 @@ function LessonScreen({
           <View {...narrowPart('wide-only')}>
             <Separator />
           </View>
-          {/* Leaving a row for the idea card keeps its preview, so its notes can be pointed at. */}
           {trap ? (
             <TrapCard
               trap={trap}
@@ -301,73 +364,55 @@ function LessonScreen({
               onBack={() => game.goto(trap.ply)}
             />
           ) : null}
-          {ideaCard || guidance.top.length ? (
+          {/*
+           * Leaving a row for the idea card keeps its preview, so its notes can be pointed at.
+           * On a narrow web page the moves and the idea are panes side by side.
+           */}
+          {moveList || ideaCard ? (
             <PointingArea onLeave={leave} style={styles.sections}>
-              {guidance.top.length ? (
-                <CandidateList
-                  {...rowProps}
-                  heading="Stockfish's top moves"
-                  chips
-                  leadsTo={rejoins}
-                  candidates={guidance.top}
-                  rare={[]}
-                  rareShown={false}
-                  onShowRare={showRare}
-                  main={guidance.top[0]}
-                  onPoint={pointRow}
-                />
-              ) : null}
-              {guidance.candidates.length ? (
-                <CandidateList
-                  {...rowProps}
-                  heading={
-                    view.learnerToMove ? 'Your candidates' : `${colorName(rival)}'s ${rivalMoves}`
-                  }
-                  // At the start each move's opening is the point, so its rows stay.
-                  chips={!picking}
-                  leadsTo={leadsTo}
-                  candidates={guidance.candidates}
-                  rare={guidance.rare}
-                  rareShown={rareShown}
-                  onShowRare={showRare}
-                  main={guidance.main}
-                  onPoint={pointCandidate}
-                />
+              {moveList ? (
+                <View {...narrowPart('moves-pane')} style={styles.sections}>
+                  {moveList}
+                </View>
               ) : null}
               {ideaCard ? (
-                <IdeaCard
-                  title={preview ? `If ${preview.san}` : 'The idea'}
-                  notes={guidance.notes}
-                  learner={learner}
-                  playback={playback}
-                  pointable={guidance.pointable}
-                  pointed={pointedNote}
-                  onPoint={pointNote}
-                  onLeave={leaveNote}
-                  onReach={reachCard}
-                />
+                <View {...narrowPart('idea-pane')}>
+                  <IdeaCard
+                    title={preview ? `If ${preview.san}` : 'The idea'}
+                    notes={guidance.notes}
+                    learner={learner}
+                    playback={playback}
+                    pointable={guidance.pointable}
+                    pointed={pointedNote}
+                    onPoint={pointNote}
+                    onLeave={leaveNote}
+                    onReach={reachCard}
+                  />
+                </View>
               ) : null}
             </PointingArea>
           ) : null}
-          <Separator />
-          <Stack style={labelled}>
-            <Eyebrow>Scoresheet</Eyebrow>
-            <Scoresheet
-              plies={game.plies}
-              qualities={game.qualities}
-              ply={game.ply}
-              // A record of the line, so it outlives the trap's card.
-              trapped={view.trap && view.trap.ply + 1}
-              onGoto={game.goto}
-            />
+          {/* A narrow web page has no room for the rest under the panes: it opens in a sheet. */}
+          <Stack {...narrowPart('wide-only')} style={styles.sections}>
+            <Separator />
+            {scoresheet(game.goto)}
+            <Separator />
+            {settings}
           </Stack>
-          <Separator />
-          <LessonControls mode={mode} onMode={chooseMode} />
-          <Stack gap="1">
-            <OpponentChoice />
-            <FootnoteLink href="/play">Or play a free game, from the first move</FootnoteLink>
-            <SourceCredits sources={lesson.sources} />
-          </Stack>
+          {NARROW_CSS_LOADS ? (
+            <Sheet title="Settings" visible={settingsOpen && focused} onClose={closeSettings}>
+              <Stack style={styles.sections}>
+                {settings}
+                <SourceFootnote />
+                <Separator />
+                {scoresheet((ply) => {
+                  // Shows the move picked on the board, which the sheet covers.
+                  closeSettings();
+                  game.goto(ply);
+                })}
+              </Stack>
+            </Sheet>
+          ) : null}
         </Stack>
       }
     />

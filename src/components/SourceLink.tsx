@@ -1,28 +1,29 @@
-import type { PressableProps } from '@reactive/silk-native';
-import { Linking } from 'react-native';
+import { Text } from '@reactive/silk-native';
 
 import { HeaderButton } from '@/components/HeaderButton';
+import { ExternalLink, opensUrl } from '@/components/ExternalLink';
 
 /** Where Opening Night's source code lives. */
 const SOURCE_URL = 'https://github.com/ntucker/chess';
-
-// On the web it is a real anchor that opens a new tab; elsewhere pressing it
-// opens the browser. (expo-router's `<Link asChild>` would drop the Pressable's
-// style function, and with it the size and hover state.)
-const opensSource: Pick<PressableProps, 'href' | 'hrefAttrs' | 'onPress'> =
-  process.env.EXPO_OS === 'web'
-    ? { href: SOURCE_URL, hrefAttrs: { target: '_blank', rel: 'noopener noreferrer' } }
-    : { onPress: () => Linking.openURL(SOURCE_URL) };
 
 /** The GitHub mark, linking to the app's source. */
 export function SourceLink() {
   return (
     <HeaderButton
-      {...opensSource}
+      {...opensUrl(SOURCE_URL)}
       icon="logo-github"
       iconSize={20}
       accessibilityRole="link"
       accessibilityLabel="Source code on GitHub"
     />
+  );
+}
+
+/** A footnote linking to the source, where the header has no room for its button. */
+export function SourceFootnote() {
+  return (
+    <Text role="caption" tone="secondary">
+      <ExternalLink url={SOURCE_URL}>Source code on GitHub</ExternalLink>
+    </Text>
   );
 }

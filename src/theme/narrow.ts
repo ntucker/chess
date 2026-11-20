@@ -39,10 +39,14 @@ export const NARROW_PARTS = [
   'program',
   'player-names',
   'lone-verdict',
-  'chips',
-  'chip',
-  'chip-fit',
-  'chip-hidden',
+  'lesson-panel',
+  'panes',
+  'moves-pane',
+  'idea-pane',
+  'compact-list',
+  'candidate-row',
+  'share-track',
+  'leads-to',
 ] as const;
 
 /**

@@ -48,11 +48,11 @@ interface Props {
    */
   readonly onTabOut: () => void;
   /**
-   * On a narrow web page the rows sit side by side, as chips, without their
-   * share bars or where they lead: a line under the chips names that for the
-   * move pointed at. Leave it off where the list is about where each move leads.
+   * On a narrow web page, where the list has a narrow pane, its rows leave
+   * out where they lead: a line under the list names that for the move
+   * pointed at. Leave it off where the list is about where each move leads.
    */
-  readonly chips?: boolean;
+  readonly compact?: boolean;
 }
 
 /**
@@ -79,7 +79,7 @@ export function CandidateList({
   onPlay,
   onPoint,
   onTabOut,
-  chips,
+  compact,
 }: Props) {
   const all = [...candidates, ...rare];
   const rows = rareShown ? all : candidates;
@@ -88,7 +88,7 @@ export function CandidateList({
   );
   // A drag can point at a rare candidate while its row is hidden.
   const pointedRow = all.find(({ move }) => move.uci === pointed);
-  const caption = chips && NARROW_CSS_LOADS && pointedRow && leadsTo(pointedRow);
+  const caption = compact && NARROW_CSS_LOADS && pointedRow && leadsTo(pointedRow);
   return (
     <Stack style={labelled}>
       <View style={styles.head}>
@@ -96,7 +96,7 @@ export function CandidateList({
         <MarkLegend marks={shownMarks} />
       </View>
       <Surface
-        {...(chips ? narrowPart('chips') : {})}
+        {...(compact ? narrowPart('compact-list') : {})}
         elevation="sunken"
         border="subtle"
         radius="md"
@@ -130,7 +130,7 @@ export function CandidateList({
         ) : null}
       </Surface>
       {caption ? (
-        <Text {...narrowPart('narrow-only')} role="caption" tone="secondary" numberOfLines={1}>
+        <Text {...narrowPart('narrow-only')} role="caption" tone="secondary">
           {`${pointedRow.san}: ${caption}`}
         </Text>
       ) : null}
@@ -160,7 +160,7 @@ function RareToggle({
       {...a11yState({ expanded: shown })}
       onPress={onToggle}
       onKeyDown={tabOut(onTabOut)}
-      {...narrowPart('chip')}
+      {...narrowPart('candidate-row')}
       style={({ hovered, pressed }) => [
         styles.row,
         styles.toggle,
@@ -248,7 +248,7 @@ function Row({
       }}
       onKeyDown={tabOut(onTabOut)}
       onFocus={point}
-      {...narrowPart('chip')}
+      {...narrowPart('candidate-row')}
       style={({ pressed }) => [
         styles.row,
         (pointed || (pressed && playable)) && {
@@ -262,7 +262,7 @@ function Row({
           hollow ? { borderWidth: 2, borderColor: tone } : { backgroundColor: tone },
         ]}
       />
-      <View {...narrowPart('chip-fit')} style={styles.move}>
+      <View style={styles.move}>
         <View style={styles.title}>
           <Text role="body" style={styles.san}>
             {san}
@@ -275,7 +275,7 @@ function Row({
           ) : null}
         </View>
         {leadsTo ? (
-          <Text {...narrowPart('chip-hidden')} role="caption" tone="secondary" numberOfLines={1}>
+          <Text {...narrowPart('leads-to')} role="caption" tone="secondary" numberOfLines={1}>
             {leadsTo}
           </Text>
         ) : null}
@@ -288,12 +288,12 @@ function Row({
       {share === undefined ? null : (
         <View style={styles.share}>
           <View
-            {...narrowPart('chip-hidden')}
+            {...narrowPart('share-track')}
             style={[styles.track, { backgroundColor: color.tones.neutral.subtle }]}
           >
             <View style={[styles.fillBar, { width: `${share * 100}%`, backgroundColor: tone }]} />
           </View>
-          <Text {...narrowPart('chip-fit')} role="caption" tone="secondary" style={styles.percent}>
+          <Text role="caption" tone="secondary" style={styles.percent}>
             {percent(share)}
           </Text>
         </View>

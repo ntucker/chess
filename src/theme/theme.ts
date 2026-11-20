@@ -33,6 +33,15 @@ export const spotlight: Readonly<Record<ColorScheme, string>> = {
   light: pool(brand.curtain, 0.09),
 };
 
+/**
+ * The veil over the page behind a sheet (`Sheet`): the stage's darkness in
+ * dark mode, plum ink on the paper in light mode.
+ */
+export const scrim: Readonly<Record<ColorScheme, string>> = {
+  dark: rgba('#0b0815', 0.72),
+  light: rgba('#221a33', 0.42),
+};
+
 /** Font files loaded at startup (see src/app/_layout.tsx), by family name. */
 export const fonts = {
   /** Display serif for headlines and the wordmark. Has one weight. */

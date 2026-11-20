@@ -110,26 +110,52 @@
     gap: 8px;
   }
   /*
-   * A candidate list laid out as chips (CandidateList.tsx): its rows wrap
-   * side by side, each only as wide as its move, its share and its mark.
+   * The lesson's panel (LessonScreen.tsx) fills the space under the board, and
+   * its moves and its idea share that space side by side, each pane scrolling
+   * on its own, so the idea stays in view however long the list. Should the
+   * panel's other parts (a trap's card) crowd them, the panes keep a floor and
+   * the panel scrolls instead.
    */
-  :root [data-narrow='chips'] {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 2px;
-    padding: 4px;
+  :root [data-narrow='lesson-panel'] {
+    flex: 1 0 auto;
+    min-height: 100%;
   }
-  :root [data-narrow='chips'] [data-narrow='chip'] {
+  :root [data-narrow='panes'] {
+    flex: 1 1 0;
+    flex-direction: row;
+    min-height: 140px;
+  }
+  /* The moves get two parts of the width and the idea three; a pane alone gets all of it. */
+  :root [data-narrow='moves-pane'],
+  :root [data-narrow='idea-pane'] {
+    flex: 2 1 0;
+    min-width: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* As the panel's own fade (below), for each pane. */
+    padding-bottom: 16px;
+    mask-image: linear-gradient(to bottom, black calc(100% - 16px), transparent);
+  }
+  :root [data-narrow='idea-pane'] {
+    flex-grow: 3;
+  }
+  /*
+   * A candidate list (CandidateList.tsx), in its narrow pane: compact rows,
+   * without the share bars.
+   */
+  :root [data-narrow='candidate-row'] {
     gap: 8px;
     padding: 6px 10px;
-    border-radius: 6px;
   }
-  /* Sized to its content: a move, a share's number. */
-  :root [data-narrow='chips'] [data-narrow='chip-fit'] {
-    flex: none;
-    width: auto;
+  :root [data-narrow='share-track'] {
+    display: none;
   }
-  :root [data-narrow='chips'] [data-narrow='chip-hidden'] {
+  /* Where a row leads wraps rather than lose its end... */
+  :root [data-narrow='leads-to'] {
+    white-space: normal;
+  }
+  /* ...or in a compact list, a line under the list names it for the move pointed at. */
+  :root [data-narrow='compact-list'] [data-narrow='leads-to'] {
     display: none;
   }
   /* A note's verdict with no kind beside it goes below its words (IdeaCard.tsx). */
