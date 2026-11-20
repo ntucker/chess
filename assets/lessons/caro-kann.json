@@ -15605,7 +15605,7 @@
 "r2q1rk1/1p3ppp/5n2/pP2pb2/P1Bp4/R7/4NPPP/1N1Q1RK1 b - -":{"variation":"panov-botvinnik-attack-standard-defence","moves":[{"uci":"a8c8","notes":[{"text":"You bring your rook to the c-file, the natural open file.","original":"Bringing my rook to the ubiquitous c-file."}]}]},
 "2rq1rk1/1p3ppp/5n2/pP2pb2/P1Bp4/R7/4NPPP/1N1Q1RK1 w - -":{"variation":"panov-botvinnik-attack-standard-defence","moves":[{"uci":"c4a2"}]},
 "2rq1rk1/1p3ppp/5n2/pP2pb2/P2p4/R7/B3NPPP/1N1Q1RK1 b - -":{"variation":"panov-botvinnik-attack-standard-defence","moves":[{"uci":"d8e7","notes":[{"text":"Qd6 was a bit better, but hitting the rook is the right idea.","original":"Qd6 was better here, but attacking the rook is the right idea.","ideas":[{"type":"purpose","from":"e7","relation":"attacks","targets":["a3"]}]}]}]},
-"2r2rk1/1p2qppp/5n2/pP2pb2/P2p4/R7/B3NPPP/1N1Q1RK1 w - -":{"variation":"panov-botvinnik-attack-standard-defence","moves":[{"uci":"a3f3","games":[0,0,0,0,0]},{"uci":"d1d2","games":[0,0,0,0,0]}]},
+"2r2rk1/1p2qppp/5n2/pP2pb2/P2p4/R7/B3NPPP/1N1Q1RK1 w - -":{"variation":"panov-botvinnik-attack-standard-defence","moves":[{"uci":"a3f3"}]},
 "2r2rk1/1p2qppp/5n2/pP2pb2/P2p4/5R2/B3NPPP/1N1Q1RK1 b - -":{"variation":"panov-botvinnik-attack-standard-defence","moves":[{"uci":"f5e4"}]},
 "2r2rk1/1p2qppp/5n2/pP2p3/P2pb3/5R2/B3NPPP/1N1Q1RK1 w - -":{"variation":"panov-botvinnik-attack-standard-defence","moves":[{"uci":"f3g3"}]},
 "2r2rk1/1p2qppp/5n2/pP2p3/P2pb3/6R1/B3NPPP/1N1Q1RK1 b - -":{"variation":"panov-botvinnik-attack-standard-defence","moves":[{"uci":"f6h5","notes":[{"text":"The engine prefers another move, but your position is pleasant and White looks increasingly passive.","original":"Stockfish doesn't like this move, and prefers instead Bc2, attacking the queen. But I was quite happy with my position here. Indeed, white looks increasingly passive."}]}]},
@@ -16485,7 +16485,6 @@
 "rn1qk2r/pp1bbppp/5n2/1B1p4/3P4/2N2N2/PP3PPP/R1BQK2R w KQkq -":{"variation":"panov-botvinnik-attack-standard-defence","moves":[{"uci":"b5d7"}]},
 "rn1qk2r/pp1Bbppp/5n2/3p4/3P4/2N2N2/PP3PPP/R1BQK2R b KQkq -":{"variation":"panov-botvinnik-attack-standard-defence","moves":[{"uci":"d8d7"}]},
 "rn2k2r/pp1qbppp/5n2/3p4/3P4/2N2N2/PP3PPP/R1BQK2R w KQkq -":{"variation":"panov-botvinnik-attack-standard-defence","moves":[{"uci":"f3e5"}]},
-"2r2rk1/1p2qppp/5n2/pP2pb2/P2p4/R7/B2QNPPP/1N3RK1 b - -":{"variation":"panov-botvinnik-attack-standard-defence","moves":[{"uci":"e5e4"}]},
 "r2qkb1r/pp2pppp/2p2n2/7b/3P4/2P2N1P/PP3PP1/R1BQKB1R w KQkq -":{"variation":"two-knights-attack","moves":[{"uci":"g2g4"}]},
 "r2qkb1r/pp2pppp/2p2n2/7b/3P2P1/2P2N1P/PP3P2/R1BQKB1R b KQkq -":{"variation":"two-knights-attack","moves":[{"uci":"h5g6"}]}
 }}

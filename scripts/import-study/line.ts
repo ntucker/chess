@@ -64,6 +64,13 @@ export function nearestMatch(
   return nearest(matches, named.ply ?? ply, (candidate) => candidate.ply);
 }
 
+/**
+ * How far, in plies, a numbered sequence may land from the ply its number gives. Two moves allow
+ * for a miscounted number; farther, the moves are about another line that happens to be playable
+ * here: "10...f6? 11.Qh5+" in a Ruy Lopez note is legal right after 1.e4.
+ */
+const NUMBER_SLACK = 4;
+
 /** Where `moves` can be played in a row on the line through `move`, as a spot and its moves in UCI. */
 export function placeSequence(
   move: StudyMove,
@@ -75,12 +82,15 @@ export function placeSequence(
     { pos: line[0].before },
     ...line.map((at) => ({ move: at, pos: at.after })),
   ];
+  const numbered = moves[0].ply;
+  const firstPly = numbered ?? move.ply + 1;
+  const plyOf = ({ move }: Spot) => (move?.ply ?? 0) + 1;
   const fits = spots.flatMap((spot) => {
+    if (numbered !== undefined && Math.abs(plyOf(spot) - numbered) > NUMBER_SLACK) return [];
     const ucis = playable(spot.pos, moves);
     return ucis ? [{ spot, ucis }] : [];
   });
-  const firstPly = moves[0].ply ?? move.ply + 1;
-  return nearest(fits, firstPly, ({ spot }) => (spot.move?.ply ?? 0) + 1);
+  return nearest(fits, firstPly, ({ spot }) => plyOf(spot));
 }
 
 /** `moves` in UCI if they can be played one after another from `pos`. */

@@ -150,6 +150,13 @@ describe('extractChapter', () => {
     ]);
   });
 
+  it('reads no run that only plays far from where its number says', () => {
+    // 10...f6 11.Qh5+ is legal after 1.e4, eighteen plies early: the note is about some later line.
+    expect(branchesOf('1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 { Never 10...f6? 11.Qh5+ here. } *')).toEqual(
+      [],
+    );
+  });
+
   it('reads castling written with zeros in a sequence', () => {
     expect(
       branchesOf(
