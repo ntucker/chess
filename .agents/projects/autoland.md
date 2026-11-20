@@ -12,7 +12,8 @@ Until then, it says on the PR and in its thread what is left.
   `.github/workflows/`, `.claude/`, `.mcp.json`, `CLAUDE.md`, `AGENTS.md`, `.agents/`,
   `PROJECTS.md`. Those wait for the person, so a PR can't change the rules it lands by.
 - On the head commit: steps 3-7 are done; CI, the web build and Bugbot finished with no failure; it
-  is mergeable; Staff's latest verdict names the head and is not `CHANGE_THIS_PR`; the review below
+  is mergeable; Staff's latest verdict (`**Staff Reviewer:** <VERDICT> <sha>`) names the
+  head and is not `CHANGE_THIS_PR`; the review below
   approves.
 - Nothing waits on the person: an open question, "merge #N first", a tarball dependency
   (`PROJECTS.md`, "Upstream fixes").
