@@ -2,10 +2,10 @@ import { narrowCalc, narrowLength, type Px } from '@/theme/narrow';
 
 // The board page's geometry (Stage.tsx), beside the narrow decision that depends on it (Narrow.tsx).
 
-/** The board column's flex basis: the width it starts from beside the panel. */
-export const BOARD_COLUMN_BASIS = 320;
-/** The panel's flex basis. */
-export const PROGRAM_BASIS = 300;
+/** The width the board column starts from beside the panel, and grows or shrinks from. */
+export const BOARD_COLUMN_WIDTH = 320;
+/** The width the panel starts from beside the board. */
+export const PROGRAM_WIDTH = 300;
 /** Space between the board column and the panel beside it. */
 export const STAGE_GAP = 48;
 /** The page's padding, and the space between the header and the stage. */
@@ -16,7 +16,7 @@ export const PAGE_SPACE = narrowLength('page-space', 20);
  * them and gets the narrow layout in one step (narrow.test.ts checks).
  */
 export const SIDE_BY_SIDE_MIN =
-  BOARD_COLUMN_BASIS + STAGE_GAP + PROGRAM_BASIS + 2 * PAGE_SPACE.wide;
+  BOARD_COLUMN_WIDTH + STAGE_GAP + PROGRAM_WIDTH + 2 * PAGE_SPACE.wide;
 
 /** The header's height: its logo, the tallest thing in it (Header.tsx). Shorter on a narrow page. */
 export const HEADER_HEIGHT = narrowLength('header-height', 40);

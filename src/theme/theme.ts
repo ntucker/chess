@@ -59,6 +59,10 @@ export const typography: SemanticTokens['typography'] = {
   caption: { family: 'sans', size: 12, lineHeight: 1.35, weight: 400 },
 };
 
+/** A text role's line height in pixels, as Silk sets it. */
+export const lineHeightOf = (role: keyof typeof typography) =>
+  typography[role].size * typography[role].lineHeight;
+
 const fontFamily: SemanticTokens['fontFamily'] = {
   sans: `${fonts.text}, system-ui, sans-serif`,
   serif: `${fonts.display}, Georgia, serif`,

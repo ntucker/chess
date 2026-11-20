@@ -54,6 +54,8 @@
    * Only once the board is at its smallest and the panel at its floor does
    * the page grow past the screen and scroll instead.
    * Two selectors' weight, to win over React Native Web's one-class styles.
+   * A part that grows from nothing has a zero width or height and an
+   * automatic basis, never `flex: 1 1 0`, as its native twin must (narrow.ts).
    */
   /*
    * Text in two lengths, such as the header's name for the app and for the
@@ -115,25 +117,28 @@
    */
   :root [data-narrow='scoresheet-drawer'] {
     display: flex;
-    flex: 1 1 0;
+    flex: 1 1 auto;
+    height: 0;
     min-height: 0;
     animation: drawer-rise 220ms cubic-bezier(0.2, 0, 0, 1);
   }
   :root [data-narrow='panes'] {
-    flex: 1 1 0;
+    flex: 1 1 auto;
+    height: 0;
     flex-direction: row;
     min-height: 140px;
   }
   /* The moves get two parts of the width and the idea three; a pane alone gets all of it. */
   :root [data-narrow='moves-pane'],
   :root [data-narrow='idea-pane'] {
+    width: 0;
     min-width: 0;
   }
   :root [data-narrow='moves-pane'] {
-    flex: 2 1 0;
+    flex: 2 1 auto;
   }
   :root [data-narrow='idea-pane'] {
-    flex: 3 1 0;
+    flex: 3 1 auto;
   }
   /*
    * A candidate list (CandidateList.tsx) keeps its heading in view: the list
@@ -175,7 +180,8 @@
     width: 100%;
   }
   :root [data-narrow='program'] {
-    flex: 1 1 0;
+    flex: 1 1 auto;
+    height: 0;
     /* The panel's floor: a few lines of it. */
     min-height: 120px;
     width: 100%;

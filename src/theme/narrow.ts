@@ -182,10 +182,14 @@ export interface NarrowStyles<T> {
  * through `px`. On the web it builds them once, from the lengths' CSS, which
  * narrow.css resolves, so both kinds of page share them. Elsewhere it builds
  * them twice, once with each kind's pixels; `useNarrowStyles` picks one.
+ * Its styles set no `flexBasis` (the compiler checks), as a style here may
+ * differ between the two kinds of page and a basis that changes goes stale
+ * natively (`NATIVE_PARTS` says why): start from a width or height. `flex: 1`
+ * is fine, as its basis is 0 on both.
  */
-export function narrowStyles<T extends Parameters<typeof StyleSheet.create>[0]>(
-  build: (px: Px) => T,
-): NarrowStyles<Readonly<T>> {
+export function narrowStyles<
+  T extends Parameters<typeof StyleSheet.create>[0] & Record<string, { flexBasis?: never }>,
+>(build: (px: Px) => T): NarrowStyles<Readonly<T>> {
   if (NARROW_CSS_LOADS) {
     const styles = StyleSheet.create(build(({ css, wide }) => narrowCalc(css, wide)));
     return { wide: styles, narrow: styles };
@@ -215,6 +219,13 @@ const PANES_FLOOR = 140;
  * narrow.css's rules as native styles. narrow.test.ts checks each declaration
  * is in the part's rule there (`wide` in the rules outside the media query),
  * unless `NATIVE_ONLY` lists it, and each declaration there is here or in `CSS_ONLY`.
+ *
+ * A part that starts from zero length takes `flexBasis: 'auto'` and a zero
+ * width or height, never `flexBasis: 0` (narrow.test.ts checks): React Native
+ * keeps a node's flex basis from the page it was first laid out on when its
+ * style changes, so the window crossing the narrow width left the panel a
+ * strip beside the board, or the panes split unevenly. Yoga works out an
+ * automatic basis afresh each time. Seen on React Native 0.88.1.
  */
 export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
   'wide-only': { narrow: { display: 'none' } },
@@ -232,28 +243,44 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
     },
   },
   'board-column': { narrow: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', width: '100%' } },
-  program: { narrow: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minHeight: 120, width: '100%' } },
+  program: {
+    narrow: {
+      flexGrow: 1,
+      flexShrink: 1,
+      flexBasis: 'auto',
+      height: 0,
+      minHeight: 120,
+      width: '100%',
+    },
+  },
   'player-names': { narrow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 } },
   'lesson-panel': { narrow: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' } },
   'lesson-body': { narrow: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' } },
   'scoresheet-drawer': {
     wide: { display: 'none' },
-    narrow: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minHeight: 0 },
+    narrow: { flexGrow: 1, flexShrink: 1, flexBasis: 'auto', height: 0, minHeight: 0 },
   },
   panes: {
     narrow: {
       flexGrow: 1,
       flexShrink: 1,
-      flexBasis: 0,
+      flexBasis: 'auto',
       flexDirection: 'row',
       minHeight: PANES_FLOOR,
       height: PANES_FLOOR,
     },
   },
   'moves-pane': {
-    narrow: { flexGrow: 2, flexShrink: 1, flexBasis: 0, minWidth: 0, overflow: 'hidden' },
+    narrow: {
+      flexGrow: 2,
+      flexShrink: 1,
+      flexBasis: 'auto',
+      width: 0,
+      minWidth: 0,
+      overflow: 'hidden',
+    },
   },
-  'idea-pane': { narrow: { flexGrow: 3, flexShrink: 1, flexBasis: 0, minWidth: 0 } },
+  'idea-pane': { narrow: { flexGrow: 3, flexShrink: 1, flexBasis: 'auto', width: 0, minWidth: 0 } },
   'move-list': { narrow: { flexShrink: 1, minHeight: 0 } },
   'list-card': { narrow: { flexShrink: 1, minHeight: 0, paddingBottom: 0 } },
   'list-scroll': { narrow: { flexShrink: 1, minHeight: 0 } },
@@ -266,9 +293,9 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
  */
 export const NATIVE_ONLY: Readonly<Partial<Record<NarrowPartName, readonly (keyof ViewStyle)[]>>> =
   {
-    // The panes sit in the program's scroll view, where Yoga ignores a zero flex basis
-    // and would grow them to their content: a height at their floor is the basis
-    // there instead. CSS keeps the zero basis.
+    // The panes sit in the program's scroll view, where Yoga ignores a zero
+    // height and would grow them to their content: a height at their floor is
+    // the basis there instead. CSS keeps the zero height.
     panes: ['height'],
   };
 
@@ -302,6 +329,8 @@ export const CSS_ONLY: Readonly<Partial<Record<NarrowPartName, readonly string[]
   // Natively the panel grows in its scroll view's content, which already fills the
   // program; a percentage there adds the fade's padding again, so the panel scrolled by it.
   'lesson-panel': ['min-height: 100%'],
+  // Natively the panes' floor is their height instead (`NATIVE_ONLY`).
+  panes: ['height: 0'],
   // Native's leads-to takes `narrowProps` instead.
   'leads-to': ['white-space: normal'],
   // `NarrowScroll` scrolls these natively, with a fading edge and the same padding.

@@ -3,6 +3,7 @@ import { useId } from 'react';
 import { StyleSheet } from 'react-native';
 
 import { visuallyHidden } from '@/theme/narrow';
+import { touchPadding, touchTarget } from '@/theme/touch';
 
 const WEB = process.env.EXPO_OS === 'web';
 
@@ -27,7 +28,8 @@ interface Props<T extends string | number> {
 /**
  * A setting written as a footnote: "Evaluation by Stockfish · Maia", with the
  * chosen option in the primary ink. For settings changed rarely, so it stays
- * small and quiet.
+ * small and quiet. On a touch screen each option is at least a finger's
+ * size (`touchTarget`), which spaces the options and the lines apart.
  */
 export function FootnoteChoice<T extends string | number>({
   name,
@@ -64,7 +66,6 @@ export function FootnoteChoice<T extends string | number>({
               // the hint from the hidden text below.
               {...(WEB ? { 'aria-describedby': hintId } : {})}
               {...a11yState({ checked: selected })}
-              hitSlop={8}
               onPress={() => onChange(option.value)}
               style={styles.option}
             >
@@ -100,8 +101,22 @@ export function FootnoteChoice<T extends string | number>({
   );
 }
 
+/**
+ * A four-digit rating's width in caption text (theme.ts's `typography.caption`,
+ * 12 px), about: measure again if that changes. Larger system text only widens it.
+ */
+const RATING_WIDTH = 25;
+
 const styles = StyleSheet.create({
-  option: { borderRadius: 4, paddingHorizontal: 4, paddingVertical: 2 },
+  option: {
+    minHeight: touchTarget,
+    justifyContent: 'center',
+    borderRadius: 4,
+    // The same padding on every option, so the gaps around the dots stay even:
+    // as much as makes the shortest option, a four-digit rating, a finger wide.
+    paddingHorizontal: touchPadding(RATING_WIDTH, 4),
+    paddingVertical: 2,
+  },
   // Out of sight and out of layout, but still readable as a description.
   hint: { ...visuallyHidden, opacity: 0 },
 });

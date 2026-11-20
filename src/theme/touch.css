@@ -1,0 +1,10 @@
+/*
+ * A touch screen's least tap size (touch.ts reads it). Only where the main
+ * pointer is a finger: a mouse-driven page keeps its controls as small as
+ * they look. Native apps always use it.
+ */
+@media (pointer: coarse) {
+  :root {
+    --touch-target: 48px;
+  }
+}
