@@ -20,11 +20,17 @@ export const inCleanRun = (move: LessonMove, learner: boolean) => !learner || mo
  * An opponent's reply counts toward passing when lichess players chose it at
  * least this share of the time, over all rating bands. The most played reply
  * always counts, and so does one without counts, which can't be told rare.
+ * Not `RARE_SHARE` (select.ts), which only decides which rows the list
+ * folds away, by the opponent's band: a reply played 5-10% gets its own row
+ * but needn't be passed, and a trap start gets no exemption here.
  */
-export const COUNTED_SHARE = 0.1;
+const COUNTED_SHARE = 0.1;
 
 /** Of the guide's `moves` at a position, those a clean run plays and counts. */
-function countedMoves(moves: readonly LessonMove[], learner: boolean): readonly LessonMove[] {
+export function countedMoves(
+  moves: readonly LessonMove[],
+  learner: boolean,
+): readonly LessonMove[] {
   if (learner) return moves.filter((move) => inCleanRun(move, learner));
   const played = moves.map(({ games }) => games?.reduce((sum, n) => sum + n, 0));
   const total = played.reduce<number>((sum, n) => sum + (n ?? 0), 0);

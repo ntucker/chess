@@ -176,6 +176,18 @@ describe('steering', () => {
     expect(reply([ENDS.d4, ENDS.d5])).toBe('d4');
   });
 
+  it("never steers to a reply too rare to count, which the row's passed mark leaves out", () => {
+    // d4 played 92%, Nc3 8%: only d4's line counts, so passing it passes 1...c6.
+    const counts: Record<string, number[]> = { d4: [92, 0], Nc3: [8, 0] };
+    const rare = withMoves(LESSON, at('e4', 'c6'), (moves) =>
+      moves.map((move, i) => ({ ...move, games: Object.values(counts)[i] })),
+    );
+    const done = progress([], [ENDS.d4]);
+    expect(marksAfter(done, rare, 'e4')).toEqual({ c6: 'passed', e5: undefined });
+    const { candidates: replies } = lessonView({ lesson: rare, line, ply: 2, opponent: 1500 });
+    expect(steering(rare, done, practice(true))!(replies)?.san).toBe('d4');
+  });
+
   it('steers only a clean Practice run, which alone can pass a line', () => {
     const done = progress([], [ENDS.d4]);
     expect(steering(LESSON, done, { mode: 'explore' })).toBeUndefined();
