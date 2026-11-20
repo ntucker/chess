@@ -8,7 +8,8 @@ Until then, it says once, on the PR and in its thread, what is left. Judge by th
 
 - The person approved the work: they asked for it in their own words (in the thread, or in project
   chat that the coordinator cites), the PR's `Plan piece: <plan>/<piece>` line names a piece of a
-  plan in `docs/plans/`, or it is a follow-up handed on from approved work. A new feature the
+  plan in `docs/plans/`, or it is a follow-up handed on from approved work: a review comment on an approved PR names it, and
+  the new PR links that comment. A new feature the
   coordinator proposed on its own waits for the person.
 - It changes no goal, plan, workflow, agent setting or project process: `GOALS.md`, `docs/plans/`,
   `.github/`, `.claude/`, `.mcp.json`, `CLAUDE.md`, `AGENTS.md`, `.agents/`,
@@ -74,5 +75,5 @@ Brief:
 ## Land
 
 Squash-merge with the reviewed head SHA as the expected head, so a later push can't land unreviewed.
-Leave the commit title to GitHub's default, `<PR title> (#N)`, which keeps the PR number in `main`'s
-log. The push to `main` deploys. To undo, revert on `main`.
+Leave the commit title to GitHub's default, which ends in `(#N)` and so keeps the PR number in
+`main`'s log. The push to `main` deploys. To undo, revert on `main`.
