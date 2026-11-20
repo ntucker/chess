@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { type StyleProp, View, type ViewStyle } from 'react-native';
 
 import type { Material } from '@/game/material';
-import { PLAYER_DISC } from '@/components/sideBySide';
+import { PLAYER_DISC } from '@/theme/sideBySide';
 import { type Color, opposite } from '@/game/replay';
 import { narrowLength, narrowStyles } from '@/theme/narrow';
 import { useNarrowPart, useNarrowStyles } from '@/theme/Narrow';

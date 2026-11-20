@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { ScrollView, type StyleProp, type TextStyle, View, type ViewStyle } from 'react-native';
 import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { SIDE_BY_SIDE_MIN } from '@/components/sideBySide';
+import { SIDE_BY_SIDE_MIN } from '@/theme/sideBySide';
 import {
   NARROW_CSS_LOADS,
   NARROW_PX,

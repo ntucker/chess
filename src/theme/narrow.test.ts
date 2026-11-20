@@ -2,7 +2,7 @@ import { describe, expect, it, jest } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { SIDE_BY_SIDE_MIN } from '../components/sideBySide';
+import { SIDE_BY_SIDE_MIN } from './sideBySide';
 import {
   CSS_ONLY,
   NARROW_PARTS,

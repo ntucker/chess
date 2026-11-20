@@ -5,7 +5,7 @@ import { BackButton } from '@/components/BackButton';
 import { Eyebrow } from '@/components/Eyebrow';
 import { HeaderButton } from '@/components/HeaderButton';
 import { CHEVRON_WIDTH, type Destination, PlaceLink } from '@/components/PlaceLink';
-import { HEADER_HEIGHT } from '@/components/sideBySide';
+import { HEADER_HEIGHT } from '@/theme/sideBySide';
 import { SourceLink } from '@/components/SourceLink';
 import { NARROW_CSS_LOADS, narrowCalc, narrowLength, narrowStyles } from '@/theme/narrow';
 import { NarrowOnly, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';

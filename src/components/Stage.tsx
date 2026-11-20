@@ -18,7 +18,7 @@ import {
   PLAYER_DISC,
   PROGRAM_BASIS,
   STAGE_GAP,
-} from '@/components/sideBySide';
+} from '@/theme/sideBySide';
 import { Transport } from '@/components/Transport';
 import { useStepKeys } from '@/components/useStepKeys';
 import { colorName, opposite } from '@/game/replay';

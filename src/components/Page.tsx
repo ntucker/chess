@@ -5,7 +5,7 @@ import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Header, type HeaderProps } from '@/components/Header';
-import { PAGE_SPACE } from '@/components/sideBySide';
+import { PAGE_SPACE } from '@/theme/sideBySide';
 import { narrowStyles } from '@/theme/narrow';
 import { useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
 import { spotlight } from '@/theme/theme';

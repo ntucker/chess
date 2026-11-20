@@ -1,6 +1,6 @@
 import { narrowCalc, narrowLength, type Px } from '@/theme/narrow';
 
-// The board page's geometry (Stage.tsx), in one module free of components, so tests can reach it.
+// The board page's geometry (Stage.tsx), beside the narrow decision that depends on it (Narrow.tsx).
 
 /** The board column's flex basis: the width it starts from beside the panel. */
 export const BOARD_COLUMN_BASIS = 320;
