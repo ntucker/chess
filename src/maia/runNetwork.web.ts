@@ -43,6 +43,7 @@ function getWorker(): Worker {
  */
 export function runNetwork(rating: MaiaRating, planes: Float32Array): Promise<NetworkOutput> {
   return new Promise<NetworkOutput>((resolve, reject) => {
+    // Inside the promise, so a bad address rejects and gets explained too.
     const url = assetUrl(MODELS[rating]);
     const id = nextId++;
     pending.set(id, { resolve, reject });

@@ -22,15 +22,15 @@ export function NewVersionPage({ detail }: { readonly detail: string }) {
  * A screen that failed, in place of the whole app: NewVersionPage when the
  * site has a newer build than the page (which is why a screen's file goes
  * missing), or else the error with a reload. Shows nothing while it checks
- * the site.
+ * the site, which only an Error needs.
  */
 export function ScreenFailure({ error }: { readonly error: unknown }) {
-  // Anything can be thrown, but AsyncBoundary drops a falsy one and the page
-  // shows an Error's message.
-  const failure = error instanceof Error ? error : new Error(String(error));
+  // A file that failed to load rejects with an Error, so nothing else can mean
+  // a new build. AsyncBoundary would also drop a falsy throw.
+  if (!(error instanceof Error)) return <ScreenErrorPage error={error} />;
   return (
     <AsyncBoundary fallback={null} errorComponent={ScreenErrorPage}>
-      <NewVersionOrThrow error={failure} />
+      <NewVersionOrThrow error={error} />
     </AsyncBoundary>
   );
 }
@@ -40,14 +40,15 @@ function NewVersionOrThrow({ error }: { readonly error: Error }) {
   return <NewVersionPage detail="Reload to get it. Your settings and lesson progress stay." />;
 }
 
-/** Any other failure of a screen. */
-function ScreenErrorPage({ error }: { readonly error: Error }) {
+/** Any other failure of a screen: an Error's message or a thrown string. */
+function ScreenErrorPage({ error }: { readonly error: unknown }) {
+  const said = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
   return (
     <ReloadPage
       tab="Error"
       eyebrow="Opening Night"
       title="Curtain stays down."
-      detail={error.message || 'Something went wrong.'}
+      detail={said || 'Something went wrong.'}
     />
   );
 }
