@@ -42,7 +42,7 @@ describe('fetchOpponentMove', () => {
     // The evaluation bar judges the position,
     const evaluation = controller.fetch(getEvaluation, 'stockfish', ['e2e4']);
     await waitForSearch(sent, 'e2e4');
-    engine.receive('info depth 12 score cp 30');
+    engine.receive('info depth 12 score cp 30 pv c7c6');
     engine.receive('bestmove c7c6 ponder d2d4');
     await evaluation;
 

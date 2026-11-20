@@ -20,7 +20,7 @@ describe('getEvaluation', () => {
     /** Answers the search for `moves` once it starts. */
     const finish = async (moves: string, centipawns: number) => {
       await waitForSearch(sent, moves);
-      engine.receive(`info depth 12 score cp ${centipawns}`);
+      engine.receive(`info depth 12 score cp ${centipawns} pv a7a6`);
       engine.receive('bestmove a7a6');
     };
 

@@ -2,7 +2,7 @@
  * How good a move was, as chess.com labels moves: by how much of the mover's
  * expected score it gave away.
  */
-import type { Evaluation } from '@/evaluation/evaluation';
+import type { Evaluation, TopMove } from '@/evaluation/evaluation';
 import type { Color } from '@/game/replay';
 
 /**
@@ -48,4 +48,22 @@ export function classifyMove({ before, after, uci, mover }: JudgedMove): MoveQua
   const loss = mover === 'white' ? whiteLoss : -whiteLoss;
   if (uci === before.best || loss <= 0) return 'best';
   return LEAST_LOSS.find(([least]) => loss >= least)?.[1] ?? 'good';
+}
+
+/**
+ * `uci` judged against the engine's `top` moves in the position before it,
+ * best first, when it is one of them: the first move's score stands for the
+ * position, and the move's own listed score for the position after it. All
+ * come from one search, so the label agrees with the list: its first move is
+ * the best, and another gives away what its listed score says.
+ */
+export function judgedFromList(
+  top: readonly TopMove[],
+  uci: string,
+  mover: Color,
+): JudgedMove | undefined {
+  const listed = top.find((move) => move.uci === uci);
+  if (!listed) return undefined;
+  const [first] = top;
+  return { before: { ...first.evaluation, best: first.uci }, after: listed.evaluation, uci, mover };
 }

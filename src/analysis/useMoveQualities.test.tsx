@@ -3,9 +3,10 @@ import { Controller, DataProvider, useController } from '@data-client/react';
 import { act } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
-import type { Evaluation } from '@/evaluation/evaluation';
+import type { Evaluation, TopMove } from '@/evaluation/evaluation';
 import { replay } from '@/game/replay';
-import { getEvaluation } from '@/resources/evaluation';
+import { getEvaluation, getTopMoves } from '@/resources/evaluation';
+import { evaluationFromScore } from '@/stockfish/uci';
 
 import type { MoveQuality } from './quality';
 import { useMoveQualities } from './useMoveQualities';
@@ -25,6 +26,9 @@ jest.mock('@/maia/engine', () => ({ maiaEvaluation: jest.fn() }));
 const MOVES = ['e2e4', 'e7e5', 'g1f3'];
 const PLIES = replay(MOVES);
 const scored = (score: number): Evaluation => ({ score, pawns: 0 });
+/** How Stockfish reports `centipawns` for the side to move after `plies` moves. */
+const cp = (centipawns: number, plies: number) =>
+  evaluationFromScore({ kind: 'cp', value: centipawns }, plies);
 
 let root: Root | undefined;
 const controllers: Controller[] = [];
@@ -86,5 +90,45 @@ describe('useMoveQualities', () => {
     await render(2, [false, true, false]);
     expect(mockSearched).toEqual([]);
     expect(renders.at(-1)).toEqual([undefined, 'book', undefined]);
+  });
+
+  // Stockfish's own numbers from a Semi-Slav (after 10.O-O, Noteboom): its
+  // evaluation favoured a5 by 1.29, its top moves listed Bb7 first at 1.12,
+  // and the evaluation after Bb7 gave Black only 0.56: an inaccuracy by the
+  // evaluations, though the list called Bb7 the best.
+  it('labels a move Stockfish listed from the list, even where its evaluations disagree', async () => {
+    await render(3);
+    const [ctrl] = controllers;
+    const top: TopMove[] = [
+      { uci: 'e7e5', evaluation: cp(112, 1) },
+      { uci: 'c7c5', evaluation: cp(101, 1) },
+      { uci: 'e7e6', evaluation: cp(71, 1) },
+    ];
+    await act(async () => {
+      ctrl.setResponse(getEvaluation, 'stockfish', ['e2e4'], { ...cp(129, 1), best: 'c7c5' });
+      ctrl.setResponse(getEvaluation, 'stockfish', ['e2e4', 'e7e5'], cp(-56, 2));
+    });
+    expect(renders.at(-1)?.[1]).toBe('inaccuracy');
+    await act(async () => {
+      ctrl.setResponse(getTopMoves, ['e2e4'], top);
+    });
+    expect(renders.at(-1)?.[1]).toBe('best');
+  });
+
+  it("labels a listed move by how far its listed score falls short of the first's", async () => {
+    await render(3);
+    const [ctrl] = controllers;
+    await act(async () => {
+      ctrl.setResponse(
+        getTopMoves,
+        ['e2e4'],
+        [
+          { uci: 'c7c5', evaluation: cp(40, 1) },
+          { uci: 'e7e5', evaluation: cp(-30, 1) },
+        ],
+      );
+    });
+    // Listed 0.7 pawns behind; no evaluation is needed.
+    expect(renders.at(-1)?.[1]).toBe('inaccuracy');
   });
 });

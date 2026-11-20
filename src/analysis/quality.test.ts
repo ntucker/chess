@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import type { Evaluation } from '@/evaluation/evaluation';
 
-import { classifyMove } from './quality';
+import { classifyMove, judgedFromList } from './quality';
 
 /** An evaluation where White's expected score is `score`. */
 const at = (score: number, best?: string): Evaluation => ({ score, pawns: 0, best });
@@ -56,5 +56,26 @@ describe('classifyMove', () => {
         mover: 'white',
       }),
     ).toBe('blunder');
+  });
+});
+
+describe('judgedFromList', () => {
+  const top = [
+    { uci: 'c7c5', evaluation: { score: 0.4, pawns: -1.1 } },
+    { uci: 'e7e5', evaluation: { score: 0.47, pawns: -0.3 } },
+  ];
+
+  it("judges a listed move against the list's first move", () => {
+    expect(judgedFromList(top, 'e7e5', 'black')).toEqual({
+      before: { score: 0.4, pawns: -1.1, best: 'c7c5' },
+      after: { score: 0.47, pawns: -0.3 },
+      uci: 'e7e5',
+      mover: 'black',
+    });
+    expect(classifyMove(judgedFromList(top, 'c7c5', 'black')!)).toBe('best');
+  });
+
+  it('leaves a move the list skips to the evaluations', () => {
+    expect(judgedFromList(top, 'a7a6', 'black')).toBeUndefined();
   });
 });
