@@ -12,7 +12,8 @@ new project follow `.agents/projects/setup.md`.
 
 ## Roles and models
 
-- Coordinator: the project chat session. Worker: a thread. Tell the coordinator: `message_coordinator`.
+- Coordinator: the project chat session. Worker: a thread, which implements on Opus. Tell the
+  coordinator: `message_coordinator`.
 - Default for advisors and subagents: the strongest model (latest Fable). Exceptions:
   - Haiku: post-push reviews.
   - Sonnet: simple merge conflicts, and the autoland review.
@@ -63,19 +64,28 @@ new project follow `.agents/projects/setup.md`.
 - Visible UI changes include screenshots of the web export, built and served locally as described
   in the "Web deploys" section of README.md. Add light and
   dark versions only when the change looks different between the two (colors, theme tokens, images).
+- PRs touching Android-only code (native modules or config, worklets like `src/maia/runNetwork.ts`,
+  `android` branches of `Platform.OS`) say "untested on Android".
 
 ## Follow-ups
 
 Never leave a follow-up (a review finding, a nearby bug, a cleanup) dangling, and decide yourself.
 Fix it in the PR by default; always fix there anything the PR made worse. Reject it only when it is
 wrong, with a stated reason. Hand it on only when it is blocked (it needs another unmerged PR, or a
-goal-changing choice, secret or access only the person can give) or in a different area than the
-PR's goal:
+goal-changing choice, secret or access only the person can give), in a different area than the
+PR's goal, or a redesign from an edge-case bug (below):
 
 - Project-scope work: tell the coordinator, with a self-contained brief. The coordinator queues it.
 - Work outside the project's scope: draft a GitHub issue on `ntucker/chess` (self-contained) and hand
   it to the coordinator. File it yourself only when the person asked in their own words.
 - The same holds for any other write outside the repo and your PR (GitHub comments elsewhere, Slack).
+
+When you fix a bug caused by an edge case, ask whether the edge case is intrinsic to the problem or
+a sign of a weak abstraction. If it may be the abstraction, have a Fable subagent load
+`user-kit:clean-code` and look for a simpler design with stronger invariants that rules out that
+class of bug. Hand a good idea on as a high-priority follow-up (a redesign needs its own reviewed
+plan). The follow-up's brief says to start with a subagent's adversarial review of the plan, then
+implement.
 
 ## Talking to the person
 
@@ -101,10 +111,7 @@ Link the upstream PR from the chess PR, and say "merge <upstream PR> first" when
 
 ## Person's machine
 
-Work needing the person's PC (local tools) runs on GLADOS, a Windows PC: threads start a Remote
-Control session (`start_remote_control`). Build Android from Windows, not WSL (no Android SDK or Java
-there). PRs touching Android-only code (native modules or config, worklets like
-`src/maia/runNetwork.ts`, `android` branches of `Platform.OS`) say "untested on Android".
+Work needing the person's PC (local tools, Android builds): see `.agents/projects/person-machine.md`.
 
 ## Keeping this file current
 
