@@ -3,6 +3,9 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
 import type { Drawing } from '@/board/drawing';
+import { endingExamples } from '@/board/endingExamples';
+import { gameEnding } from '@/game/ending';
+import { lastPosition } from '@/game/replay';
 
 import Board, { type BoardProps } from './Board';
 
@@ -106,5 +109,38 @@ describe('a board covered while chessground has a redraw queued', () => {
     frame();
     expect(nans()).toEqual([]);
     expect(document.querySelector(drawn)).not.toBeNull();
+  });
+});
+
+describe("a game's ending", () => {
+  const { line, learner } = endingExamples.find(({ title }) => title === 'Loss')!;
+  const mated = lastPosition(line);
+  const ending = gameEnding(mated, learner)!;
+  const spot = () => {
+    const veil = document.querySelector<HTMLElement>('cg-ending .veil')!;
+    return [veil.style.getPropertyValue('--spot-x'), veil.style.getPropertyValue('--spot-y')];
+  };
+
+  // Reduced motion must read as off, or the ending's layer stays empty.
+  const { matchMedia } = window;
+  beforeEach(() => {
+    window.matchMedia = (query) => ({ matches: false, media: query }) as MediaQueryList;
+  });
+  afterEach(() => {
+    window.matchMedia = matchMedia;
+  });
+
+  it("moves its light with the learner's king when the board turns around", () => {
+    const props = { fen: mated.fen, check: true, ending };
+    act(() => root.render(<Board {...board(props)} />));
+    frame();
+    // Fool's mate: the learner, White, is mated on e1, the middle of the bottom rank's fifth square.
+    expect(spot()).toEqual(['56.25%', '93.75%']);
+
+    act(() => root.render(<Board {...board({ ...props, orientation: 'black' })} />));
+    frame();
+    // From Black's side, e1 is the fourth square of the top rank.
+    expect(document.querySelectorAll('cg-ending')).toHaveLength(1);
+    expect(spot()).toEqual(['43.75%', '6.25%']);
   });
 });

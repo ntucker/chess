@@ -3,7 +3,7 @@ import { a11yValue, Text, useReducedMotion, useTheme } from '@reactive/silk-nati
 import { useIsFocused } from 'expo-router';
 import { useMemo } from 'react';
 import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
-import Animated, { type CSSTransitionTimingFunction, cubicBezier } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { type Color, colorName, type GameResult, lastPosition, opposite } from '@/game/replay';
 import { evaluationReading, type Reading, resultEvaluation } from '@/evaluation/evaluation';
@@ -12,6 +12,7 @@ import { useSettings } from '@/settings/SettingsProvider';
 import { useNarrowPart } from '@/theme/Narrow';
 import { pieceColors } from '@/theme/pieceColors';
 import { fonts } from '@/theme/theme';
+import { timingFunction } from '@/theme/timingFunction';
 
 interface Props {
   /** The moves (UCI) that reach the position on the board. */
@@ -125,18 +126,6 @@ function Bar({
       ) : null}
     </View>
   );
-}
-
-/**
- * A theme easing, which is a CSS string, as a Reanimated timing function.
- * Reanimated takes the named curves as strings but a `cubic-bezier(...)` only
- * as its own object.
- */
-function timingFunction(easing: string): CSSTransitionTimingFunction {
-  const bezier = /^cubic-bezier\((.*)\)$/.exec(easing);
-  if (!bezier) return easing as CSSTransitionTimingFunction;
-  const [x1, y1, x2, y2] = bezier[1].split(',').map(Number);
-  return cubicBezier(x1, y1, x2, y2);
 }
 
 const styles = StyleSheet.create({

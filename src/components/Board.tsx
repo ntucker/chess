@@ -18,6 +18,15 @@ import type { DOMProps } from 'expo/dom';
 import { useEffect, useEffectEvent, useMemo, useRef } from 'react';
 
 import { type Drawing, type Square, squareOffset, TONES } from '@/board/drawing';
+import type { Ending, Mood } from '@/game/ending';
+import {
+  ACT_TIMES,
+  type EndingAct,
+  endingAct,
+  KING_PARTS,
+  type KingPart,
+  MOVE_MS,
+} from '@/board/endingAct';
 import { type BoardMarks, boardMarks, toneBrushes } from '@/board/marks';
 import { type Drag, watchDrag } from '@/board/pointer';
 import {
@@ -56,6 +65,11 @@ export interface BoardProps {
    * piece is being dragged.
    */
   readonly drawings?: readonly Drawing[];
+  /**
+   * How the game in `fen` ended for the learner, who plays `orientation`:
+   * the board acts it out on the kings once (EndingCard.tsx names it over the board).
+   */
+  readonly ending?: Ending;
   readonly onMove: (from: string, to: string) => void;
   /**
    * Each square a piece being dragged is over (none over its own square or
@@ -81,6 +95,7 @@ export default function Board({
   check,
   preview,
   drawings = [],
+  ending,
   onMove,
   onDrag,
   onPress,
@@ -124,12 +139,17 @@ export default function Board({
     () => (preview ? previewLayer(read(fen) as Pieces, read(preview) as Pieces) : NO_PREVIEW),
     [fen, preview],
   );
+  const endingKey = ending && JSON.stringify(ending);
+  const act = useMemo(
+    () => (endingKey ? endingAct(JSON.parse(endingKey) as Ending, orientation) : undefined),
+    [endingKey, orientation],
+  );
 
   // Chessground reuses piece elements as pieces move, so the lit, faded and
-  // previewed pieces are marked again whenever the pieces, the drawings or
-  // the preview change: after new props, and after a move made on the board.
-  // Chessground draws on a frame it asked for first, so this frame comes
-  // after the draw.
+  // previewed pieces, and an ending's kings, are marked again whenever the
+  // pieces, the drawings, the preview or the ending change: after new props,
+  // and after a move made on the board. Chessground draws on a frame it asked
+  // for first, so this frame comes after the draw.
   const frame = useRef(0);
   const markAfterDraw = useEffectEvent(() => {
     cancelAnimationFrame(frame.current);
@@ -137,6 +157,7 @@ export default function Board({
       if (!api.current) return;
       const previewElement = drawPreview(api.current, layer, orientation);
       markPieces(api.current, marks, layer, previewElement);
+      stageEnding(api.current, act);
     });
   });
 
@@ -193,6 +214,8 @@ export default function Board({
     const board = Chessground(target, {
       ...position,
       premovable: { enabled: false },
+      // The ending's beats (ACT_TIMES) are timed from this slide.
+      animation: { duration: MOVE_MS },
       events: {
         select: (square) => handlePress(square as Square, picked),
         change: () => markAfterDraw(),
@@ -255,7 +278,7 @@ export default function Board({
 
   useEffect(() => setBoard(marksConfig(marks)), [marks]);
 
-  useEffect(() => markAfterDraw(), [position, marks, layer]);
+  useEffect(() => markAfterDraw(), [position, marks, layer, act]);
 
   return (
     // Square by its width, since the web view's page has no height to fill.
@@ -362,4 +385,127 @@ function markPieces(
   for (const piece of preview.querySelectorAll<HTMLElement>('piece')) {
     mark(piece, piece.dataset.square as Key);
   }
+}
+
+/** An ending's own layer, over the pieces: the dark house, and what a win throws. */
+const ENDING_TAG = 'cg-ending';
+// ACT_TIMES has every mood, so its keys are all of them.
+const MOODS = Object.keys(ACT_TIMES) as Mood[];
+
+/**
+ * Plays `act` on the board once, and takes it off again when there is none
+ * (Board.css draws it). The act starts when it is first staged: called again
+ * with the same act, as after each redraw, it only marks the kings again,
+ * so nothing restarts.
+ */
+function stageEnding(board: Api, act: EndingAct | undefined) {
+  const { container, board: squares } = board.state.dom.elements;
+  const staged = container.querySelector<HTMLElement>(ENDING_TAG);
+  // Most redraws have no ending, and none on the board to take off.
+  if (!act && !staged) return;
+  const pieces = squares.querySelectorAll<PieceNode>('piece');
+  if (staged?.dataset.act !== (act && actKey(act))) {
+    if (staged) clearEnding(board, staged, pieces);
+    if (act) startEnding(board, act);
+  }
+  if (act) markKings(pieces, act);
+}
+
+/** Takes the staged act off the board: its layer, the kings' parts, and its mood. */
+function clearEnding(board: Api, staged: HTMLElement, pieces: Iterable<PieceNode>) {
+  staged.remove();
+  for (const piece of pieces) piece.classList.remove('ending-king', ...KING_PARTS.map(partClass));
+  board.state.dom.elements.wrap.classList.remove(...MOODS.map((mood) => `ending-${mood}`));
+}
+
+/** Puts `act` on the board from its beginning; markKings then casts the kings. */
+function startEnding(board: Api, act: EndingAct) {
+  const { wrap, board: squares } = board.state.dom.elements;
+  // Laid out without the last act's classes, so this one starts from its beginning.
+  wrap.getBoundingClientRect();
+  wrap.classList.add(`ending-${act.mood}`);
+  for (const [beat, ms] of Object.entries(ACT_TIMES[act.mood]))
+    wrap.style.setProperty(`--act-${beat}`, `${ms}ms`);
+  const layer = endingLayer(act);
+  layer.dataset.act = actKey(act);
+  squares.after(layer);
+}
+
+/**
+ * Which act is staged: the same act again, as after a redraw, has the same
+ * key. The spot and the cut are in it because they move when the board turns
+ * around, and the layer is drawn from them.
+ */
+const actKey = ({ mood, kings, spot, cut }: EndingAct) => JSON.stringify([mood, kings, spot, cut]);
+
+/** Marks the kings' elements with their parts, which chessground may have swapped since. */
+function markKings(pieces: Iterable<PieceNode>, act: EndingAct) {
+  const kings = new Map(act.kings.map((king) => [king.square as Key, king]));
+  for (const piece of pieces) {
+    const king = piece.cgFading ? undefined : kings.get(piece.cgKey);
+    piece.classList.toggle('ending-king', !!king);
+    for (const part of KING_PARTS) piece.classList.toggle(partClass(part), king?.part === part);
+  }
+}
+
+const partClass = (part: KingPart) => `ending-${part}`;
+
+/**
+ * The layer's elements for `act`, each carrying its numbers as CSS variables.
+ * Each leaves once its animations are done, so the board doesn't carry them
+ * while the position is studied; only the kings' classes stay. Each is
+ * unseen until Board.css animates it, which it doesn't without motion, so
+ * then the layer stays empty.
+ */
+function endingLayer({ spot, cut, sparks, confetti }: EndingAct): HTMLElement {
+  const layer = document.createElement(ENDING_TAG);
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return layer;
+  layer.addEventListener('animationend', ({ target }) => {
+    const element = target as HTMLElement;
+    // A confetto tumbles in its ::before while it falls, and the veil fades in before it fades out.
+    if (element.getAnimations({ subtree: true }).every(({ playState }) => playState === 'finished'))
+      element.remove();
+  });
+  const add = (className: string, vars: Record<string, string | number> = {}) => {
+    const element = document.createElement('i');
+    element.className = className;
+    for (const [name, value] of Object.entries(vars))
+      element.style.setProperty(`--${name}`, String(value));
+    layer.appendChild(element);
+  };
+  // The sword stroke through the beaten king's crown.
+  if (cut) add('slash', { x: cut[0], y: cut[1] });
+  // A draw lights no king, so its veil dims the board evenly.
+  if (!spot) {
+    add('veil');
+    return layer;
+  }
+  const [x, y] = spot;
+  // The light's center, as a place on the board.
+  add('veil', { 'spot-x': `${(x + 0.5) * 12.5}%`, 'spot-y': `${(y + 0.5) * 12.5}%` });
+  if (sparks.length) {
+    // Two rings: Board.css sends the second out after the first, as its echo.
+    add('ring', { x, y });
+    add('ring', { x, y });
+  }
+  for (const { to, size, delay, duration, tint } of sparks)
+    add(`spark ${tint}`, {
+      x,
+      y,
+      dx: to[0],
+      dy: to[1],
+      size,
+      delay: `${delay}ms`,
+      duration: `${duration}ms`,
+    });
+  for (const { x: column, drift, size, spin, delay, duration, tint } of confetti)
+    add(`confetto ${tint}`, {
+      x: column,
+      drift,
+      size,
+      spin,
+      delay: `${delay}ms`,
+      duration: `${duration}ms`,
+    });
+  return layer;
 }
