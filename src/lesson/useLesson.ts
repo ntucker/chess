@@ -7,7 +7,7 @@
  * Explore, and the board. Where the opponent plays its own moves (`opponentPlays`) the learner
  * moves their own side; elsewhere, either.
  */
-import { useCache, useController, useFetch, useSuspense } from '@data-client/react';
+import { useController, useSuspense } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
 import { use, useEffect, useMemo, useReducer } from 'react';
 
@@ -16,7 +16,7 @@ import type { Drag } from '@/board/pointer';
 import type { BoardProps } from '@/components/Board';
 import { dropMove, parsePositionKey } from '@/game/replay';
 import { type GameStore, useGame } from '@/game/useGame';
-import { getEvaluation, getTopMoves } from '@/resources/evaluation';
+import { useAnalysis } from '@/resources/analysis';
 import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
 import { hasMark, UNTOUCHED } from '@/progress/progress';
 import { LessonIndexContext } from '@/resources/lesson';
@@ -174,19 +174,15 @@ export function useLesson(
   // A playback plays in its candidate's position, wherever the pointer goes.
   const pointer = playing ? playing.from : here?.candidate;
   // Stockfish's best move for the board's position, whatever engine judges
-  // the bar, and past the guide's moves its top three; only Explore shows
-  // them, so Practice asks for nothing. Not useDLE: with nullable args it
-  // types schemaless data as undefined.
+  // the bar, and past the guide's moves its top three, both from the
+  // analysis the move labels read, deepening while it runs. Only Explore
+  // shows them, so Practice asks for nothing here.
   const explore = focused && mode === 'explore';
-  const evaluationArgs = explore ? (['stockfish', shownLine] as const) : ([null] as const);
-  useFetch(getEvaluation, ...evaluationArgs);
-  const evaluation = useCache(getEvaluation, ...evaluationArgs);
-  const topArgs = focused && listsTopMoves(view, mode) ? ([shownLine] as const) : ([null] as const);
-  useFetch(getTopMoves, ...topArgs);
-  const topMoves = useCache(getTopMoves, ...topArgs);
+  const analysis = useAnalysis('stockfish', explore ? shownLine : null);
+  const lines = listsTopMoves(view, mode) ? analysis?.lines : undefined;
   const top = useMemo(
-    () => (topMoves ? engineCandidates(lesson, key, topMoves) : []),
-    [lesson, key, topMoves],
+    () => (lines ? engineCandidates(lesson, key, lines) : []),
+    [lesson, key, lines],
   );
   const previewOf = (at: Pointer) => preview(lesson, view, at, top);
   const shown = guidance({
@@ -199,7 +195,7 @@ export function useLesson(
     lifted: pointer?.at === 'drag' ? pointer.from : here?.selected,
     pointed: here?.note,
     playing: playing?.played,
-    engine: { best: evaluation?.best, top },
+    engine: { best: analysis?.lines[0].uci, top },
   });
   const frames = shown.playing
     ? ideaPlayback(shown.playing.idea, parsePositionKey(shown.playing.at)!)

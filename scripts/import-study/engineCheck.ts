@@ -20,7 +20,7 @@
 import { Chess } from 'chessops/chess';
 
 import type { Evaluation } from '@/evaluation/evaluation';
-import { classifyMove } from '@/analysis/quality';
+import { judgeMove } from '@/analysis/quality';
 import { lineSans, numberedLine, parsePosition, playMove, positionKey } from '@/game/replay';
 import type {
   Evaluation as Verdict,
@@ -33,8 +33,11 @@ import type {
   Uci,
 } from '@/lesson/lesson';
 
+/** How the engine judges a position, and its best move there (UCI) when it names one. */
+export type EngineEvaluation = Evaluation & { readonly best?: Uci };
+
 /** The engine's evaluation of the position after `line` from the lesson's start, reached at `key`. */
-export type Evaluate = (line: readonly Uci[], key: PositionKey) => Promise<Evaluation>;
+export type Evaluate = (line: readonly Uci[], key: PositionKey) => Promise<EngineEvaluation>;
 
 /** A line cut where the engine overruled its book move, with the positions it dropped. */
 type CutLine = { line: string; moves: readonly string[]; positions: number };
@@ -306,11 +309,28 @@ async function pickBookMove(
   return { uci: before.best, why: ENGINES_OWN };
 }
 
-type CachedEvaluation = (line: readonly Uci[], pos: Chess) => Promise<Evaluation>;
+/** The app's label for `uci` (analysis/quality.ts), from the evaluations before and after it. */
+function classifyMove(move: {
+  before: EngineEvaluation;
+  after: EngineEvaluation;
+  uci: Uci;
+  mover: Lesson['side'];
+}) {
+  return judgeMove(asAnalysis(move.before), asAnalysis(move.after), move.uci, move.mover);
+}
+
+/** `evaluation` as an analysis with one line, as the app's labels read it. */
+const asAnalysis = ({ best, ...evaluation }: EngineEvaluation) => ({
+  lines: [{ evaluation, ...(best && { uci: best }) }],
+  depth: 0,
+  final: true,
+});
+
+type CachedEvaluation = (line: readonly Uci[], pos: Chess) => Promise<EngineEvaluation>;
 
 /** `evaluate`, asked once per position. */
 function cachedEvaluation(evaluate: Evaluate): CachedEvaluation {
-  const cache = new Map<PositionKey, Promise<Evaluation>>();
+  const cache = new Map<PositionKey, Promise<EngineEvaluation>>();
   return (line, pos) => {
     const key = positionKey(pos);
     if (!cache.has(key)) cache.set(key, evaluate(line, key));

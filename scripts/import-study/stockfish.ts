@@ -1,14 +1,26 @@
 /**
- * Stockfish as the app runs it (the same build and search), in Node, for the
- * engine check (./engineCheck). Each position's evaluation is cached, so a
- * rerun searches only new positions.
+ * Stockfish as the app runs it (the same build), in Node, for the engine
+ * check (./engineCheck), with a smaller search than the app's (`CHECK_SEARCH`).
+ * Each position's evaluation is cached, so a rerun searches only new positions.
  */
-import type { Evaluation } from '@/evaluation/evaluation';
-import { attachStockfish, type Connection, stockfishEvaluation } from '@/stockfish/engine';
+import {
+  attachStockfish,
+  type Connection,
+  type SearchBudget,
+  stockfishAnalysis,
+} from '@/stockfish/engine';
 import { type NodeEngine, sendTo, startNodeEngine } from '@/stockfish/node';
 
-import type { Evaluate } from './engineCheck';
+import type { EngineEvaluation, Evaluate } from './engineCheck';
 import { appendJsonLine, readJsonLines } from './jsonLines';
+
+/**
+ * The engine check's search: the best move, from 100,000 positions (about
+ * depth 14 to 16). A lesson checks about 15,000 positions, which would take
+ * about 14 hours at the app's search (`APP_SEARCH`); the check only needs to
+ * tell a mistake from a sound move.
+ */
+const CHECK_SEARCH: SearchBudget = { ranks: 1, nodes: 100_000 };
 
 /** How many engines may stop (crash, or never answer) before the import gives up. */
 const MAX_RESTARTS = 5;
@@ -33,17 +45,21 @@ export async function nodeStockfish(
     engine?.terminate?.();
     const started = await startNodeEngine();
     engine = started;
-    connection = attachStockfish(sendTo(started), {
-      ready() {},
-      failed: restart,
-    });
+    connection = attachStockfish(
+      sendTo(started),
+      {
+        ready() {},
+        failed: restart,
+      },
+      CHECK_SEARCH,
+    );
     const attached = connection;
     started.listener = (line) => attached.receive(line);
   };
   await connect();
 
   const cached = new Map(
-    (readJsonLines(cacheFile) as { key: string; evaluation: Evaluation }[]).map(
+    (readJsonLines(cacheFile) as { key: string; evaluation: EngineEvaluation }[]).map(
       ({ key, evaluation }) => [key, evaluation],
     ),
   );
@@ -51,7 +67,10 @@ export async function nodeStockfish(
   const evaluate: Evaluate = async (line, key) => {
     const known = cached.get(key);
     if (known) return known;
-    const evaluation = await stockfishEvaluation(line);
+    const {
+      lines: [first],
+    } = await stockfishAnalysis(line);
+    const evaluation = { ...first.evaluation, ...(first.uci && { best: first.uci }) };
     cached.set(key, evaluation);
     appendJsonLine(cacheFile, { key, evaluation });
     if (++searched % 100 === 0) console.log(`engine check: ${searched} positions searched`);

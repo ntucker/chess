@@ -196,6 +196,22 @@ export function lastPosition(line: readonly string[]): Position {
 }
 
 /**
+ * How many moves are legal in the position after `line`, as an engine counts
+ * them: a pawn's promotion is four moves, one for each piece.
+ */
+export function legalMoveCount(line: readonly string[]): number {
+  let last: Chess | undefined;
+  for (const { pos } of playLine(line)) last = pos;
+  const pos = last!;
+  let count = 0;
+  for (const [from, dests] of pos.allDests()) {
+    const promotes = pos.board.getRole(from) === 'pawn';
+    for (const to of dests) count += promotes && (to >> 3 === 0 || to >> 3 === 7) ? 4 : 1;
+  }
+  return count;
+}
+
+/**
  * `uci` as a line records it, or undefined if it isn't legal in `fen`.
  * Castling is written as the king's two-square move (`e1g1`), whether it
  * comes that way or as the king taking its rook (`e1h1`), as Maia and a king

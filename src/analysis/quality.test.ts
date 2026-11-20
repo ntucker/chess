@@ -1,22 +1,32 @@
 import { describe, expect, it } from '@jest/globals';
 
-import type { Evaluation } from '@/evaluation/evaluation';
+import type { Analysis, AnalysisLine, Evaluation } from '@/evaluation/evaluation';
 
-import { classifyMove, listJudgement } from './quality';
+import { judgeMove } from './quality';
 
 /** An evaluation where White's expected score is `score`. */
-const at = (score: number, best?: string): Evaluation => ({ score, pawns: 0, best });
+const at = (score: number): Evaluation => ({ score, pawns: 0 });
 
-describe('classifyMove', () => {
-  it("calls the engine's own move the best, even if the next search scores it a little lower", () => {
-    expect(
-      classifyMove({ before: at(0.55, 'e2e4'), after: at(0.53), uci: 'e2e4', mover: 'white' }),
-    ).toBe('best');
+/** A final analysis listing `lines` (move, White's expected score after it), best first. */
+const listing = (...lines: [string | undefined, number][]): Analysis => ({
+  lines: lines.map(([uci, score]): AnalysisLine => ({
+    ...(uci && { uci }),
+    evaluation: at(score),
+  })),
+  depth: 18,
+  final: true,
+});
+
+/** A position scored `score`, with no move named (like Maia's). */
+const scored = (score: number) => listing([undefined, score]);
+
+describe('judgeMove', () => {
+  it("calls the first line's move the best, even if the next position scores it lower", () => {
+    expect(judgeMove(listing(['e2e4', 0.55]), scored(0.4), 'e2e4', 'white')).toBe('best');
   });
 
   it('labels other moves by the expected score they give away', () => {
-    const white = (after: number) =>
-      classifyMove({ before: at(0.6, 'e2e4'), after: at(after), uci: 'd2d4', mover: 'white' });
+    const white = (after: number) => judgeMove(scored(0.6), scored(after), 'd2d4', 'white');
     expect(white(0.59)).toBe('good');
     expect(white(0.56)).toBe('good');
     expect(white(0.54)).toBe('inaccuracy');
@@ -28,63 +38,48 @@ describe('classifyMove', () => {
   });
 
   it("measures Black's loss from Black's side", () => {
-    const black = (after: number) =>
-      classifyMove({ before: at(0.4, 'e7e5'), after: at(after), uci: 'g7g5', mover: 'black' });
+    const black = (after: number) => judgeMove(scored(0.4), scored(after), 'g7g5', 'black');
     expect(black(0.43)).toBe('good');
     expect(black(0.47)).toBe('inaccuracy');
     expect(black(0.85)).toBe('blunder');
   });
 
   it('calls a move that gives nothing away the best, whichever move the engine names', () => {
-    const white = (after: number, best?: string) =>
-      classifyMove({ before: at(0.5, best), after: at(after), uci: 'e2e4', mover: 'white' });
-    expect(white(0.51)).toBe('best');
-    expect(white(0.51, 'd2d4')).toBe('best');
-    expect(white(0.49)).toBe('good');
+    expect(judgeMove(scored(0.5), scored(0.51), 'e2e4', 'white')).toBe('best');
+    expect(judgeMove(listing(['d2d4', 0.5]), scored(0.51), 'e2e4', 'white')).toBe('best');
+    expect(judgeMove(scored(0.5), scored(0.49), 'e2e4', 'white')).toBe('good');
     // Mate with another move than the engine's: the game is won either way.
-    expect(classifyMove({ before: at(1, 'h4h7'), after: at(1), uci: 'h4h8', mover: 'white' })).toBe(
-      'best',
-    );
+    expect(judgeMove(listing(['h4h7', 1]), scored(1), 'h4h8', 'white')).toBe('best');
   });
 
   it('calls missing a mate a blunder', () => {
-    expect(
-      classifyMove({
-        before: { score: 1, pawns: 0, mate: 1, best: 'h4h7' },
-        after: at(0.7),
-        uci: 'a2a3',
-        mover: 'white',
-      }),
-    ).toBe('blunder');
+    const mate: Analysis = {
+      lines: [{ uci: 'h4h7', evaluation: { score: 1, pawns: 0, mate: 1 } }],
+      depth: 30,
+      final: true,
+    };
+    expect(judgeMove(mate, scored(0.7), 'a2a3', 'white')).toBe('blunder');
   });
-});
 
-describe('listJudgement', () => {
-  const top = [
-    { uci: 'c7c5', evaluation: { score: 0.4, pawns: -1.1 } },
-    { uci: 'e7e5', evaluation: { score: 0.47, pawns: -0.3 } },
-  ];
+  describe('with a list of moves', () => {
+    // Black to move after 1.e4: c5 is best, e5 gives away 0.07.
+    const list = listing(['c7c5', 0.4], ['e7e5', 0.47], ['e7e6', 0.48]);
 
-  it("judges a listed move by its listed score, against the list's first move", () => {
-    expect(listJudgement(top, 'e7e5')).toEqual({
-      before: { score: 0.4, pawns: -1.1, best: 'c7c5' },
-      after: { score: 0.47, pawns: -0.3 },
+    it('judges a listed move by its own line, needing nothing of the position after', () => {
+      expect(judgeMove(list, undefined, 'e7e5', 'black')).toBe('inaccuracy');
+      // The position after's own search may disagree: the list decides.
+      expect(judgeMove(list, scored(0.41), 'e7e5', 'black')).toBe('inaccuracy');
+      expect(judgeMove(list, undefined, 'c7c5', 'black')).toBe('best');
     });
-    const first = listJudgement(top, 'c7c5');
-    expect(
-      classifyMove({ before: first.before!, after: first.after!, uci: 'c7c5', mover: 'black' }),
-    ).toBe('best');
-  });
 
-  it('leaves the position after a move the list skips to its evaluation', () => {
-    expect(listJudgement(top, 'a7a6')).toEqual({
-      before: { score: 0.4, pawns: -1.1, best: 'c7c5' },
-      after: undefined,
+    it('judges a move the list skips by the position after, once that is known', () => {
+      expect(judgeMove(list, undefined, 'a7a6', 'black')).toBe(undefined);
+      expect(judgeMove(list, scored(0.75), 'a7a6', 'black')).toBe('blunder');
     });
-  });
 
-  it('says nothing without a list', () => {
-    expect(listJudgement(undefined, 'e7e5')).toEqual({});
-    expect(listJudgement([], 'e7e5')).toEqual({});
+    it('never judges a move the list skips as better than its last move', () => {
+      // The next position's search scores a6 as well as c5, but the list ranked it below e6.
+      expect(judgeMove(list, scored(0.4), 'a7a6', 'black')).toBe('inaccuracy');
+    });
   });
 });

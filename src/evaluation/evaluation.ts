@@ -11,14 +11,30 @@ export interface Evaluation {
    * negative when Black does, 0 when the side to move is already mated.
    */
   readonly mate?: number;
-  /** The move the engine would play here (UCI), when it names one; Maia's value head doesn't. */
-  readonly best?: string;
 }
 
-/** One of the engine's top moves in a position (UCI), and how the position stands after it. */
-export interface TopMove {
-  readonly uci: string;
+/** One of the moves an engine ranks in a position (UCI), and how the position stands after it. */
+export interface AnalysisLine {
+  /** The move; absent where the engine names none (Maia's value head, a finished game). */
+  readonly uci?: string;
   readonly evaluation: Evaluation;
+}
+
+/**
+ * How an engine judges a position: its best moves, best first, from one
+ * search. The first line is the position's evaluation, and its move the
+ * engine's best. Stockfish ranks three (fewer when fewer moves are legal),
+ * all from one depth; Maia and a finished game have one line and no move.
+ */
+export interface Analysis {
+  readonly lines: readonly AnalysisLine[];
+  /** How many moves deep the search looked; 0 for Maia and a finished game. */
+  readonly depth: number;
+  /**
+   * The search is done, so this never changes. Until then the lines are the
+   * deepest it has finished so far.
+   */
+  readonly final: boolean;
 }
 
 /**

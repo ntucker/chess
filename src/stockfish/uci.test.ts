@@ -1,15 +1,14 @@
 import { describe, expect, it } from '@jest/globals';
 
 import {
+  addLine,
   evaluationFromScore,
   forwardNeededLines,
+  isWholeDepth,
   multiPvCommand,
-  NO_LINES,
   parseInfo,
   positionCommand,
-  type RankedLines,
-  rankedLines,
-  rankLine,
+  type SearchLine,
 } from './uci';
 
 describe('parseInfo', () => {
@@ -18,15 +17,25 @@ describe('parseInfo', () => {
       parseInfo(
         'info depth 16 seldepth 22 multipv 1 score cp -34 nodes 98123 nps 400000 hashfull 120 tbhits 0 time 245 pv e7e5 g1f3',
       ),
-    ).toEqual({ rank: 1, score: { kind: 'cp', value: -34 }, move: 'e7e5' });
+    ).toEqual({
+      rank: 1,
+      depth: 16,
+      nodes: 98123,
+      score: { kind: 'cp', value: -34 },
+      move: 'e7e5',
+    });
     expect(parseInfo('info depth 3 seldepth 2 multipv 3 score mate -1 nodes 40 pv d8h4')).toEqual({
       rank: 3,
+      depth: 3,
+      nodes: 40,
       score: { kind: 'mate', value: -1 },
       move: 'd8h4',
     });
     // A mated side has no move; a line without multipv is the best.
     expect(parseInfo('info depth 0 score mate 0')).toEqual({
       rank: 1,
+      depth: 0,
+      nodes: 0,
       score: { kind: 'mate', value: 0 },
     });
   });
@@ -34,6 +43,8 @@ describe('parseInfo', () => {
   it('marks a score that is only a bound, and skips other lines', () => {
     expect(parseInfo('info depth 18 seldepth 25 score cp 40 lowerbound nodes 3 pv e2e4')).toEqual({
       rank: 1,
+      depth: 18,
+      nodes: 3,
       score: { kind: 'cp', value: 40 },
       move: 'e2e4',
       bound: true,
@@ -44,52 +55,76 @@ describe('parseInfo', () => {
   });
 });
 
-describe('rankLine', () => {
-  const rank = (lines: string[]) =>
-    rankedLines(
-      lines.reduce<RankedLines<string>>((ranked, line) => {
-        const info = parseInfo(line)!;
-        return rankLine(ranked, info, info.move!);
-      }, NO_LINES),
-    );
+describe('isWholeDepth', () => {
+  /** The sets `lines` print, each checked as a search of three ranks limited to `nodes`. */
+  const sets = (lines: string[], nodes: number) => {
+    const found: { moves: string[]; whole: boolean }[] = [];
+    let printing: readonly SearchLine[] = [];
+    for (const line of lines) {
+      printing = addLine(printing, parseInfo(line)!);
+      if (printing.length === 1) found.push({ moves: [], whole: false });
+      found.at(-1)!.moves = printing.map(({ move }) => move!);
+      found.at(-1)!.whole = isWholeDepth(printing, 3, nodes);
+    }
+    return found;
+  };
 
-  it("keeps one depth's set whole, so no move is listed twice", () => {
+  it('passes the depths a search finished, and fails the set printed where it stopped', () => {
+    // The last three depths Stockfish printed for 1.d4 d5 2.c4 c6 3.Nc3 Nf6
+    // 4.Bf4 Bf5 5.e3 e6 6.Qb3 Qb6 (lesson position L1), each limit's last
+    // print a set that stopped short of its depth.
     expect(
-      rank([
-        'info depth 12 multipv 1 score cp 47 nodes 68832 pv g2g3',
-        'info depth 12 multipv 2 score cp 47 nodes 68832 pv c3e2',
-        'info depth 13 multipv 1 score cp 58 nodes 100003 pv h2h4',
-        'info depth 13 multipv 2 score cp 50 nodes 100003 pv g2g3',
-      ]),
-    ).toEqual(['h2h4', 'g2g3']);
+      sets(
+        [
+          'info depth 13 multipv 1 score cp 39 nodes 181189 pv c4d5',
+          'info depth 13 multipv 2 score cp 32 nodes 181189 pv g1f3',
+          'info depth 13 multipv 3 score cp 25 nodes 181189 pv h2h3',
+          // At 300,000 positions: two lines of depth 14, and the third still depth 13's.
+          'info depth 14 multipv 1 score cp 47 nodes 300044 pv c4d5',
+          'info depth 14 multipv 2 score cp 29 nodes 300044 pv g1f3',
+          'info depth 13 multipv 3 score cp 25 nodes 300044 pv h2h3',
+        ],
+        300_000,
+      ),
+    ).toEqual([
+      { moves: ['c4d5', 'g1f3', 'h2h3'], whole: true },
+      { moves: ['c4d5', 'g1f3', 'h2h3'], whole: false },
+    ]);
+    expect(
+      sets(
+        [
+          'info depth 18 multipv 1 score cp 32 nodes 984649 pv g1f3',
+          'info depth 18 multipv 2 score cp 30 nodes 984649 pv c4d5',
+          'info depth 18 multipv 3 score cp 30 nodes 984649 pv a1c1',
+          // At 1,000,000: depth 18's lines again, under depth 19's number.
+          'info depth 19 multipv 1 score cp 32 nodes 1000072 pv g1f3',
+          'info depth 19 multipv 2 score cp 30 nodes 1000072 pv c4d5',
+          'info depth 19 multipv 3 score cp 30 nodes 1000072 pv a1c1',
+        ],
+        1_000_000,
+      ).map(({ whole }) => whole),
+    ).toEqual([true, false]);
   });
 
-  it("drops a set with a lower rank's bound, keeping the depth before", () => {
-    // Stockfish's output at the node limit, 1.e4 c6 2.d4 d5 3.e5 Bf5 4.Nf3 e6
-    // 5.Bd3 Bxd3 6.Qxd3 Nd7 7.c3 c5 8.O-O cxd4 9.cxd4 Ne7 10.Nc3 Nc6: the
-    // search stopped inside the last depth's third line.
-    const lines = [
-      'info depth 12 multipv 1 score cp 47 nodes 68832 pv g2g3',
-      'info depth 12 multipv 2 score cp 47 nodes 68832 pv c3e2',
-      'info depth 12 multipv 3 score cp 46 nodes 68832 pv h2h4',
-      'info depth 13 multipv 1 score cp 58 nodes 100003 pv h2h4',
-      'info depth 13 multipv 2 score cp 50 nodes 100003 pv g2g3',
-      'info depth 13 multipv 3 score cp 45 upperbound nodes 100003 pv c3e2',
-    ];
-    expect(rank(lines)).toEqual(['g2g3', 'c3e2', 'h2h4']);
-    // A whole set with exact scores counts before the next set starts.
-    expect(rank(lines.slice(0, 3))).toEqual(['g2g3', 'c3e2', 'h2h4']);
+  it('fails a set with a bound, and one still being printed', () => {
+    expect(
+      sets(
+        [
+          'info depth 17 multipv 1 score cp -3 nodes 900512 pv h2h3',
+          'info depth 17 multipv 2 score cp -5 lowerbound nodes 900512 pv f3e5',
+          'info depth 17 multipv 3 score cp -26 nodes 900512 pv c2c3',
+          'info depth 18 multipv 1 score cp -3 nodes 950512 pv h2h3',
+          'info depth 18 multipv 2 score cp -5 nodes 950512 pv f3e5',
+        ],
+        1_000_000,
+      ).map(({ whole }) => whole),
+    ).toEqual([false, false]);
   });
 
-  it('drops a set whose best line is only a bound, keeping the depth before', () => {
-    expect(
-      rank([
-        'info depth 12 multipv 1 score cp 47 nodes 68832 pv g2g3',
-        'info depth 12 multipv 2 score cp 46 nodes 68832 pv h2h4',
-        'info depth 13 multipv 1 score cp 58 lowerbound nodes 100003 pv h2h4',
-        'info depth 13 multipv 2 score cp 47 nodes 100003 pv g2g3',
-      ]),
-    ).toEqual(['g2g3', 'h2h4']);
+  it('takes fewer lines where fewer moves are legal', () => {
+    const line = parseInfo('info depth 245 multipv 1 score mate -1 nodes 30 pv e8d8')!;
+    expect(isWholeDepth([line], 1, 1_000_000)).toBe(true);
+    expect(isWholeDepth([line], 3, 1_000_000)).toBe(false);
   });
 });
 
@@ -100,48 +135,45 @@ describe('multiPvCommand', () => {
 });
 
 describe('forwardNeededLines', () => {
-  it("passes on the handshake, and each search's last score with its best move", () => {
+  it("passes on the handshake, each search's lines from depth 10, and its end", () => {
     const passed: string[] = [];
     const pass = forwardNeededLines((line) => passed.push(line));
     for (const line of [
       'id name Stockfish 19',
       'uciok',
-      'info depth 1 score cp 10 nodes 20 pv e2e4',
-      'info depth 2 currmove e2e4 currmovenumber 1',
-      'info depth 2 score cp 30 lowerbound nodes 40 pv e2e4',
-      'info depth 2 score cp 20 nodes 60 pv e2e4',
+      'info depth 9 multipv 1 score cp 10 nodes 2000 pv e2e4',
+      'info depth 10 currmove e2e4 currmovenumber 1',
+      'info depth 10 multipv 1 score cp 30 nodes 4000 pv e2e4',
+      'info depth 10 multipv 2 score cp 20 nodes 4000 pv d2d4',
+      'info string NNUE evaluation using nn-61e7af4bb97d.nnue',
       'bestmove e2e4 ponder e7e5',
-      'bestmove (none)',
     ])
       pass(line);
     expect(passed).toEqual([
       'uciok',
-      'info depth 2 score cp 20 nodes 60 pv e2e4',
+      'info depth 10 multipv 1 score cp 30 nodes 4000 pv e2e4',
+      'info depth 10 multipv 2 score cp 20 nodes 4000 pv d2d4',
       'bestmove e2e4 ponder e7e5',
-      'bestmove (none)',
     ]);
   });
 
-  it("passes on each rank's last line, best first", () => {
+  it('passes on the last set of a search that ends before depth 10', () => {
     const passed: string[] = [];
     const pass = forwardNeededLines((line) => passed.push(line));
     for (const line of [
-      'info depth 1 multipv 1 score cp 30 nodes 20 pv e2e4',
-      'info depth 1 multipv 2 score cp 20 nodes 20 pv d2d4',
-      'info depth 2 multipv 1 score cp 25 nodes 60 pv d2d4',
-      'info depth 2 multipv 2 score cp 22 nodes 60 pv e2e4',
-      'info depth 2 multipv 3 score cp 10 nodes 60 pv g1f3',
-      'bestmove d2d4 ponder d7d5',
+      'info depth 1 multipv 1 score mate 1 nodes 20 pv d8h4',
+      'info depth 2 multipv 1 score mate 1 nodes 40 pv d8h4',
+      'info depth 2 multipv 2 score cp -30 nodes 40 pv e7e5',
+      'bestmove d8h4',
       'info depth 1 multipv 1 score cp 5 nodes 20 pv e7e5',
       'bestmove e7e5',
     ])
       pass(line);
     expect(passed).toEqual([
-      'info depth 2 multipv 1 score cp 25 nodes 60 pv d2d4',
-      'info depth 2 multipv 2 score cp 22 nodes 60 pv e2e4',
-      'info depth 2 multipv 3 score cp 10 nodes 60 pv g1f3',
-      'bestmove d2d4 ponder d7d5',
-      // The next search starts with no ranks left over.
+      'info depth 2 multipv 1 score mate 1 nodes 40 pv d8h4',
+      'info depth 2 multipv 2 score cp -30 nodes 40 pv e7e5',
+      'bestmove d8h4',
+      // The next search starts with nothing left over.
       'info depth 1 multipv 1 score cp 5 nodes 20 pv e7e5',
       'bestmove e7e5',
     ]);

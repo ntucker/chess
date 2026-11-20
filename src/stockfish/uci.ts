@@ -12,11 +12,16 @@ export interface Score {
 
 /**
  * One of the lines (principal variations) a search reports: with MultiPV
- * set to N, the engine reports its N best moves, ranked from 1.
+ * set to N, the engine reports its N best moves, ranked from 1, each time it
+ * finishes a depth.
  */
 export interface SearchLine {
   /** 1 for the best move, 2 for the next best, and so on. */
   readonly rank: number;
+  /** How many moves deep the search has looked. */
+  readonly depth: number;
+  /** How many positions the search has visited so far. */
+  readonly nodes: number;
   readonly score: Score;
   /** The line's first move (UCI), when the `info` line names one. */
   readonly move?: string;
@@ -30,13 +35,15 @@ export interface SearchLine {
 /** The line an `info` line reports, or undefined for any other line. */
 export function parseInfo(line: string): SearchLine | undefined {
   if (!line.startsWith('info ')) return undefined;
-  const match = / depth \d+\b.* score (cp|mate) (-?\d+)\b/.exec(line);
+  const match = / depth (\d+)\b.* score (cp|mate) (-?\d+)\b/.exec(line);
   if (!match) return undefined;
-  const [, kind, value] = match;
+  const [, depth, kind, value] = match;
   const rank = Number(/ multipv (\d+)\b/.exec(line)?.[1] ?? 1);
   const move = / pv (\S+)/.exec(line)?.[1];
   return {
     rank,
+    depth: Number(depth),
+    nodes: Number(/ nodes (\d+)\b/.exec(line)?.[1] ?? 0),
     score: { kind: kind as Score['kind'], value: Number(value) },
     ...(move && { move }),
     ...(/ (lower|upper)bound\b/.test(line) && { bound: true }),
@@ -44,46 +51,28 @@ export function parseInfo(line: string): SearchLine | undefined {
 }
 
 /**
- * A search's lines so far, best first, each kept as an `L`: one depth's
- * whole set. Stockfish prints every rank together, best first, each time
- * it finishes a depth or stops, so a rank-1 line starts a new set. Mixing
- * ranks from two sets could list a move twice.
+ * The set of lines being printed, after the engine prints `info`. Stockfish
+ * prints every rank together, best first, each time it finishes a depth, so
+ * a rank-1 line starts a new set.
  */
-export interface RankedLines<L> {
-  /** The last whole set whose scores are all exact. */
-  readonly lines: readonly L[];
-  /**
-   * The set being printed, while its scores are all exact; undefined once
-   * one turns out to be a bound (see `rankLine`), until the next set.
-   */
-  readonly printing?: readonly L[];
-}
-
-export const NO_LINES: RankedLines<never> = { lines: [] };
+export const addLine = (printing: readonly SearchLine[], info: SearchLine): SearchLine[] =>
+  info.rank === 1 ? [info] : [...printing, info];
 
 /**
- * `ranked` after the engine prints `info`, kept as `kept`. A set with a line
- * whose score is only a bound is dropped whole, keeping the depth before,
- * since an evaluation and a move's label read each score (`listJudgement`).
+ * Whether `set`, the lines a search printed together, is one whole depth the
+ * search finished: `ranks` lines (the search's MultiPV, or fewer when fewer
+ * moves are legal) all of one depth, every score exact, printed before the
+ * search reached `nodeLimit`. The set printed when a search stops (at the
+ * limit, or told to) fails: it mixes the depth being searched with the one
+ * before (one line at depth 16, the others at 15), or repeats the last
+ * depth's moves under the new depth's number, or holds a bound. Every other
+ * set passes, and a search's passing sets are the same, in the same order,
+ * whatever limit it ran to: a shorter search's are the start of a longer one's.
  */
-export function rankLine<L>(ranked: RankedLines<L>, info: SearchLine, kept: L): RankedLines<L> {
-  const starts = info.rank === 1;
-  const lines = starts ? (ranked.printing ?? ranked.lines) : ranked.lines;
-  const printing = starts ? [] : ranked.printing;
-  if (!printing || info.bound) return { lines };
-  const next = [...printing];
-  next[info.rank - 1] = kept;
-  return { lines, printing: next };
-}
-
-/**
- * The lines a search has settled on: the set being printed once it is
- * whole, as it is when the next set starts or the search ends, else the
- * last whole set before it.
- */
-export function rankedLines<L>({ lines, printing }: RankedLines<L>): readonly L[] {
-  return (printing ?? lines).filter(Boolean);
-}
+export const isWholeDepth = (set: readonly SearchLine[], ranks: number, nodeLimit: number) =>
+  set.length === ranks &&
+  set.every(({ rank, depth, bound }, i) => rank === i + 1 && depth === set[0].depth && !bound) &&
+  set[0].nodes < nodeLimit;
 
 /** The command that has the engine rank its `ranks` best moves in each search. */
 export const multiPvCommand = (ranks: number) => `setoption name MultiPV value ${ranks}`;
@@ -114,23 +103,33 @@ export function evaluationFromScore(score: Score, plies: number): Evaluation {
   return { score: 1 / (1 + Math.exp(-0.368208 * pawns)), pawns };
 }
 
+/** The shallowest depth whose lines `forwardNeededLines` passes on. */
+export const FIRST_FORWARDED_DEPTH = 10;
+
 /**
- * Wraps `onLine` to pass on only the lines the app needs from the engine: the handshake
- * (`uciok`), and for each search its last set of ranked lines (`rankLine`;
- * one unless MultiPV is set higher), best first, just before its `bestmove`. The
- * engine runs in a web view on Android, and every line that crosses into
+ * Wraps `onLine` to pass on only the lines the app needs from the engine: the
+ * handshake (`uciok`), each search's `bestmove`, and its scored lines from
+ * `FIRST_FORWARDED_DEPTH` on, which the app shows as the search deepens.
+ * The engine runs in a web view on Android, and every line that crosses into
  * the app costs a trip across the bridge, so this runs where the engine
- * does: one search prints about 17 lines, and 2 cross (4 with three ranks).
+ * does: a search prints a few hundred lines, and about 30 cross. A search
+ * that ends before that depth (a forced mate, one legal move) passes on its
+ * last set.
  */
 export function forwardNeededLines(onLine: (line: string) => void): (line: string) => void {
-  let ranked: RankedLines<string> = NO_LINES;
+  let shallow: string[] = [];
+  let forwarded = false;
   return (line) => {
     const info = parseInfo(line);
-    if (info) ranked = rankLine(ranked, info, line);
+    if (info && info.depth >= FIRST_FORWARDED_DEPTH) {
+      forwarded = true;
+      onLine(line);
+    } else if (info) shallow = info.rank === 1 ? [line] : [...shallow, line];
     else if (line === 'uciok') onLine(line);
     else if (line.startsWith('bestmove')) {
-      rankedLines(ranked).forEach(onLine);
-      ranked = NO_LINES;
+      if (!forwarded) shallow.forEach(onLine);
+      shallow = [];
+      forwarded = false;
       onLine(line);
     }
   };
