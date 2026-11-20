@@ -53,6 +53,17 @@ const exploreAfter = (...sans: string[]) =>
     root.render(<Lesson start={uciLine(...sans)} />);
   });
 
+/** The same while the game waits on another lesson still loading. */
+const loadingAfter = (...sans: string[]) =>
+  act(async () => {
+    root = createRoot();
+    root.render(<Lesson start={uciLine(...sans)} pending />);
+  });
+
+/** That lesson arrives. */
+const loaded = (...sans: string[]) =>
+  act(async () => root?.render(<Lesson start={uciLine(...sans)} />));
+
 /** The same, in Practice. */
 async function practiceAfter(...sans: string[]) {
   await exploreAfter(...sans);
@@ -133,15 +144,34 @@ describe('useLesson Practice run', () => {
 
 describe('useLesson while a lesson loads', () => {
   it('offers no move while the game waits on another lesson', async () => {
-    await act(async () => {
-      root = createRoot();
-      root.render(<Lesson start={uciLine('e4')} pending />);
-    });
+    await loadingAfter('e4');
     // The store would drop it, and the board would show a move the game hasn't.
     expect(lesson().canPlay).toBe(false);
     expect(lesson().board.movableColor).toBeUndefined();
-    await act(async () => root?.render(<Lesson start={uciLine('e4')} />));
+    await loaded('e4');
     expect(lesson().canPlay).toBe(true);
     expect(lesson().board.movableColor).toBe('black');
+  });
+
+  it('previews no row while the game waits on another lesson', async () => {
+    await loadingAfter('e4');
+    await act(async () => lesson().pointRow(uciLine('e4', 'c6')[1]));
+    expect(lesson().guidance.preview).toBeUndefined();
+    expect(lesson().board.preview).toBeUndefined();
+    // The pointing is kept, so it previews once the lesson is shown.
+    await loaded('e4');
+    expect(lesson().guidance.preview?.candidate.san).toBe('c6');
+    expect(lesson().board.preview).toBeDefined();
+  });
+
+  it('offers no idea to play back while the game waits on another lesson', async () => {
+    const line = ['e4', 'c6', 'd4', 'd5', 'e5', 'Bf5'];
+    await loadingAfter(...line);
+    const [note] = lesson().guidance.notes;
+    expect(lesson().playback.playable(note)).toBeUndefined();
+    await act(async () => lesson().playback.play(note));
+    await loaded(...line);
+    expect(lesson().playback.playing).toBeUndefined();
+    expect(lesson().playback.playable(note)).toBe('plan');
   });
 });
