@@ -3,6 +3,9 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
 import type { Drawing } from '@/board/drawing';
+import { endingExamples } from '@/board/endingExamples';
+import { gameEnding } from '@/game/ending';
+import { lastPosition } from '@/game/replay';
 
 import Board, { type BoardProps } from './Board';
 
@@ -110,30 +113,30 @@ describe('a board covered while chessground has a redraw queued', () => {
 });
 
 describe("a game's ending", () => {
-  // Fool's mate: the learner, White, is mated.
-  const MATED = 'rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3';
-  const ending = {
-    mood: 'lost',
-    reason: 'checkmate',
-    kings: { learner: 'e1', rival: 'e8' },
-  } as const;
+  const { line, learner } = endingExamples.find(({ title }) => title === 'Loss')!;
+  const mated = lastPosition(line);
+  const ending = gameEnding(mated, learner)!;
   const spot = () => {
     const veil = document.querySelector<HTMLElement>('cg-ending .veil')!;
     return [veil.style.getPropertyValue('--spot-x'), veil.style.getPropertyValue('--spot-y')];
   };
 
+  // Reduced motion must read as off, or the ending's layer stays empty.
+  const { matchMedia } = window;
   beforeEach(() => {
     window.matchMedia = (query) => ({ matches: false, media: query }) as MediaQueryList;
   });
+  afterEach(() => {
+    window.matchMedia = matchMedia;
+  });
 
-  it('moves its light with the learner’s king when the board turns around', () => {
-    act(() => root.render(<Board {...board({ fen: MATED, check: true, ending })} />));
+  it("moves its light with the learner's king when the board turns around", () => {
+    const props = { fen: mated.fen, check: true, ending };
+    act(() => root.render(<Board {...board(props)} />));
     frame();
     expect(spot()).toEqual(['56.25%', '93.75%']);
 
-    act(() =>
-      root.render(<Board {...board({ fen: MATED, check: true, ending, orientation: 'black' })} />),
-    );
+    act(() => root.render(<Board {...board({ ...props, orientation: 'black' })} />));
     frame();
     expect(document.querySelectorAll('cg-ending')).toHaveLength(1);
     expect(spot()).toEqual(['43.75%', '6.25%']);
