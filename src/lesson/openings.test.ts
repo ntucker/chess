@@ -267,7 +267,7 @@ describe('lessonIndex', () => {
   });
 
   /** `lesson` with the positions after each of `lines` (in SAN) in `variation`. */
-  const tagged = (lesson: Lesson, variation: string, ...lines: string[][]): Lesson => ({
+  const inVariation = (lesson: Lesson, variation: string, ...lines: string[][]): Lesson => ({
     ...lesson,
     positions: {
       ...lesson.positions,
@@ -288,26 +288,18 @@ describe('lessonIndex', () => {
       ['e4', 'c6', 'd4', 'd5', 'e5', 'c5', 'c3'],
       ['e4', 'c6', 'd4', 'd5', 'exd5', 'cxd5', 'c4'],
     );
-    const afterE5 = keyAfter('e4', 'c6', 'd4', 'd5', 'e5');
-    const lesson = tagged(
-      tagged(
+    const c5 = uciLine('e4', 'c6', 'd4', 'd5', 'e5', 'c5').at(-1);
+    const noBookC5 = withMoves(caro, keyAfter('e4', 'c6', 'd4', 'd5', 'e5'), (moves) =>
+      moves.map((move) => ({ ...move, book: move.uci !== c5 })),
+    );
+    const lesson = inVariation(
+      inVariation(
         {
-          ...caro,
+          ...noBookC5,
           variations: {
             caro: { name: 'Caro' },
             adv: { name: 'Adv', parent: 'caro' },
             v: { name: 'V', parent: 'adv' },
-          },
-          positions: {
-            ...caro.positions,
-            // ...c5 is no book move.
-            [afterE5]: {
-              ...caro.positions[afterE5],
-              moves: caro.positions[afterE5].moves.map(({ uci }) => ({
-                uci,
-                ...(uci !== uciLine('e4', 'c6', 'd4', 'd5', 'e5', 'c5').at(-1) && { book: true }),
-              })),
-            },
           },
         },
         'adv',
@@ -317,13 +309,13 @@ describe('lessonIndex', () => {
       ['e4', 'c6', 'd4', 'd5', 'e5', 'c5'],
       ['e4', 'c6', 'd4', 'd5', 'exd5', 'cxd5'],
     );
-    // Past the parent's line only ...c5 reaches it; book moves from the start do.
+    // Past the parent's line only ...c5, no book move, reaches it; book moves from the start do.
     expect(lessonIndex([lesson]).caro.variations.find(({ id }) => id === 'v')!.moves).toEqual(
       uciLine('e4', 'c6', 'd4', 'd5', 'exd5', 'cxd5'),
     );
   });
 
-  it('ranks a reply without counts below one played in any game', () => {
+  it('ranks a reply without counts below one played in a game at its position', () => {
     const caro = guideLesson(
       'caro',
       'black',
@@ -331,30 +323,21 @@ describe('lessonIndex', () => {
       ['e4', 'c6', 'd4', 'd5', 'e5', 'Bf5', 'Nf3'],
       ['e4', 'c6', 'd4', 'd5', 'Nc3', 'dxe4', 'Nxe4'],
     );
-    const branch = keyAfter('e4', 'c6', 'd4', 'd5');
+    // 3.Nc3's many games leave 3.e5's ten a tiny share, but still above none.
     const games: Record<string, number[]> = {
       [uciLine('e4', 'c6', 'd4', 'd5', 'e5').at(-1)!]: [10],
       [uciLine('e4', 'c6', 'd4', 'd5', 'Nc3').at(-1)!]: [100_000_000],
     };
-    const lesson = tagged(
-      {
-        ...caro,
-        variations: { caro: { name: 'Caro' }, v: { name: 'V', parent: 'caro' } },
-        positions: {
-          ...caro.positions,
-          [branch]: {
-            ...caro.positions[branch],
-            moves: caro.positions[branch].moves.map((move) =>
-              games[move.uci] ? { ...move, games: games[move.uci] } : move,
-            ),
-          },
-        },
-      },
+    const counted = withMoves(caro, keyAfter('e4', 'c6', 'd4', 'd5'), (moves) =>
+      moves.map((move) => (games[move.uci] ? { ...move, games: games[move.uci] } : move)),
+    );
+    const lesson = inVariation(
+      { ...counted, variations: { caro: { name: 'Caro' }, v: { name: 'V', parent: 'caro' } } },
       'v',
       ['e4', 'c6', 'd4', 'd5', 'exd5'],
       ['e4', 'c6', 'd4', 'd5', 'e5'],
     );
-    // 3.exd5, first in the guide but never counted, comes after 3.e5's ten games.
+    // 3.exd5, first in the guide but never counted, comes after 3.e5.
     expect(lessonIndex([lesson]).caro.variations.find(({ id }) => id === 'v')!.moves).toEqual(
       uciLine('e4', 'c6', 'd4', 'd5', 'e5'),
     );
