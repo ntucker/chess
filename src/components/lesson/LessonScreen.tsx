@@ -16,6 +16,7 @@ import { SourceFootnote } from '@/components/SourceLink';
 import { resetListener } from '@/components/resetListener';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { useLongWait } from '@/components/useLongWait';
+import { useNavigating } from '@/components/navigation';
 import type { MoveQuality } from '@/analysis/quality';
 import { NewVersionError } from '@/files/newVersion';
 import { type Color, colorName, opposite } from '@/game/replay';
@@ -94,7 +95,11 @@ function Openings({
   readonly entry?: string;
 }) {
   const { store, lesson, side, playAs, pending } = useOpeningsGame(address, variation, entry);
-  const loading = useLongWait(pending);
+  // A navigation in a transition (the browser's Back or Forward) keeps the page
+  // up while the next one loads its lesson: a long one says so too. It changes
+  // nothing else, so the board, maybe hidden by then, doesn't redraw.
+  const navigating = useNavigating();
+  const loading = useLongWait(pending || navigating);
   // A failed lesson clears once the page shows another (Back to the start).
   // A `key` would remount the page and lose the game, so the boundary resets.
   const resetOnLesson = useMemo(() => resetListener(lesson), [lesson]);
@@ -140,7 +145,7 @@ function LessonScreen({
   readonly store: GameStore;
   /** The game has moved on to a lesson still loading: the learner can't move. */
   readonly pending: boolean;
-  /** The game has moved on to a lesson that has been loading long enough to say so. */
+  /** A lesson, or the next page, has been loading long enough to say so. */
   readonly loading: boolean;
 }) {
   const ctrl = useController();
