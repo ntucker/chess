@@ -51,9 +51,7 @@ export const moveKinds = (
   side: Color,
   book: readonly boolean[],
 ): MoveKind[] =>
-  plies
-    .slice(0, -1)
-    .map(({ turn }, n) => (turn !== side ? 'opponent' : book[n] ? 'book' : 'slip'));
+  plies.slice(0, -1).map(({ turn }, n) => (turn !== side ? 'opponent' : book[n] ? 'book' : 'slip'));
 
 export type ModeAction =
   | {
