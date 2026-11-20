@@ -121,13 +121,6 @@ cg-board piece.taken {
   --z-king: 4;
   --z-over-kings: 5;
 }
-/* The beaten king's cut takes twice as long when it is the learner's own. */
-.ending-won {
-  --cut-ms: 700ms;
-}
-.ending-lost {
-  --cut-ms: 1400ms;
-}
 .cg-wrap cg-ending {
   position: absolute;
   inset: 0;
@@ -222,7 +215,7 @@ cg-ending .slash {
   width: 37.5%;
   height: 4px;
   left: calc((var(--x) - 1) * 12.5%);
-  /* Through the middle of the cut on the king's square: (left + right) / 2 of a square, an eighth of the board. */
+  /* Through the middle of the cut on the king's square: (left + right) / 2 of a square, which is (left + right) / 16 of the board. */
   top: calc(var(--y) * 12.5% + (var(--cut-left) + var(--cut-right)) / 16 - 2px);
   border-radius: 50%;
   background: linear-gradient(90deg, transparent, #fff 25%, #fff 75%, transparent);
@@ -373,8 +366,11 @@ cg-board piece.ending-level::after {
   /*
    * An anime cut: the king stands still, a stroke of light crosses it with a
    * flash, and only after a beat does its crown slide off along the cut.
-   * Their keyframes share one timeline of --cut-ms.
+   * Their keyframes share one timeline, from the strike to the end of the cut.
    */
+  .cg-wrap {
+    --cut-ms: calc(var(--act-cut) - var(--act-strike));
+  }
   cg-board piece.ending-beaten {
     animation: ending-flash var(--cut-ms) linear var(--act-strike) backwards;
   }
@@ -388,7 +384,7 @@ cg-board piece.ending-level::after {
     animation: ending-nod 520ms ease-in-out var(--act-rise);
   }
 }
-/* Nothing moves: the kings are as they end at once, and only their lights fade in. */
+/* Nothing moves: the kings are as they end at once, and only their lights fade in (the beaten king's ::after is its crown, not a light). */
 @media (prefers-reduced-motion: reduce) {
   cg-board piece.ending-winner::after,
   cg-board piece.ending-level::after {
@@ -504,7 +500,7 @@ cg-board piece.ending-level::after {
     transform: scale(1.1);
   }
 }
-/* The whole king, still, flashes white as the stroke crosses it, then its color drains. */
+/* The whole king, still, flashes white as the stroke crosses it; it is grey again once the cut ends. */
 @keyframes ending-flash {
   0%,
   12% {

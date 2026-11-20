@@ -70,8 +70,9 @@ export interface EndingAct {
  * arrives. The mating move is still sliding in for the first MOVE_MS.
  */
 export interface ActTimes {
-  /** The sword stroke reaches the mated king. */
+  /** The sword stroke reaches the mated king, and its crown has slid off. */
   readonly strike: number;
+  readonly cut: number;
   /** The house lights go down. */
   readonly dim: number;
   /** The winner's king takes the light; in a draw, both kings. */
@@ -93,9 +94,9 @@ export const MOVE_MS = 200;
  * slides off. A draw only pauses.
  */
 export const ACT_TIMES: Readonly<Record<Mood, ActTimes>> = {
-  won: { strike: 220, dim: 300, rise: 420, card: 640, cardOut: 3000, up: 3100 },
-  lost: { strike: 380, dim: 240, rise: 1100, card: 1150, cardOut: 3700, up: 3800 },
-  drawn: { strike: 0, dim: 240, rise: 300, card: 380, cardOut: 2500, up: 2600 },
+  won: { strike: 220, cut: 920, dim: 300, rise: 420, card: 640, cardOut: 3000, up: 3100 },
+  lost: { strike: 380, cut: 1780, dim: 240, rise: 1100, card: 1150, cardOut: 3700, up: 3800 },
+  drawn: { strike: 0, cut: 0, dim: 240, rise: 300, card: 380, cardOut: 2500, up: 2600 },
 };
 
 /** The parts of the learner's king and the rival's. */
