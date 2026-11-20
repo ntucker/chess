@@ -8,9 +8,9 @@ Until then, it says once, on the PR and in its thread, what is left. Judge by th
 
 - The person approved the work: they asked for it in their own words (in the thread, or in project
   chat that the coordinator cites), the PR's `Plan piece: <plan>/<piece>` line names a piece of a
-  plan in `docs/plans/`, or it is a follow-up handed on from approved work: a review comment on an approved PR names it, and
-  the new PR links that comment. A new feature the
-  coordinator proposed on its own waits for the person.
+  plan in `docs/plans/`, or it is a follow-up handed on from approved work: a review comment on an
+  approved PR names it, and the new PR links that comment. A new feature the coordinator proposed on
+  its own waits for the person.
 - It changes no goal, plan, workflow, agent setting or project process: `GOALS.md`, `docs/plans/`,
   `.github/`, `.claude/`, `.mcp.json`, `CLAUDE.md`, `AGENTS.md`, `.agents/`,
   `PROJECTS.md`. Those wait for the person, so a PR can't change the rules it lands by.
