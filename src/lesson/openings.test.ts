@@ -149,7 +149,7 @@ describe('indexEntry', () => {
     const start = lessonView({ lesson, line: [], ply: 0, opponent: 1500 });
     const { lineEnds } = indexEntry(lesson);
     for (const [uci, ends] of Object.entries(lineEnds)) {
-      // Every listed end passed passes the row; any one missing doesn't.
+      // Every listed end passed passes the row; with one missing, it doesn't.
       const passedWith = (passed: readonly string[]) =>
         rowMarks(lesson, { seen: [], passed }, start).get(uci);
       expect(passedWith(ends)).toBe(ends.length > 0 ? 'passed' : undefined);
