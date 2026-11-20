@@ -11,9 +11,15 @@ Until then, it says on the PR and in its thread what is left.
 - It changes no goal, plan, workflow, agent setting or project process: `GOALS.md`, `docs/plans/`,
   `.github/workflows/`, `.claude/`, `.mcp.json`, `CLAUDE.md`, `AGENTS.md`, `.agents/`,
   `PROJECTS.md`. Those wait for the person, so a PR can't change the rules it lands by.
-- On the head commit: steps 3-7 are done; CI, the web build and Bugbot finished with no failure; it
-  is mergeable; Staff's latest verdict (`**Staff Reviewer:** <VERDICT> <sha>`) names the head and is
-  not `CHANGE_THIS_PR`; the review below approves.
+- On the head commit, all of these hold:
+  - Steps 3-7 are done, and the PR is mergeable.
+  - Every check has finished, Cursor Bugbot included, with success; skipped counts only where the
+    workflow skips that kind of change. Running, neutral, cancelled or failed doesn't count.
+  - Staff's comment reads `**Staff Reviewer:** LGTM <head>` (or `LGTM+FOLLOW_UP`).
+    `reviewing <head>` is not a verdict: wait.
+  - For a change that can alter behavior, Lead's comment reads
+    `**Lead Engineer (E2E validation):** LGTM <head>`.
+  - The review below approves.
 - Nothing waits on the person: an open question, "merge #N first", a tarball dependency
   (`PROJECTS.md`, "Upstream fixes").
 
