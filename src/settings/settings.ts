@@ -1,6 +1,6 @@
 import { parseStoredObject } from '@/context/storage';
-import { type Color, COLORS } from '@/game/replay';
 import { EVALUATION_ENGINES, type EvaluationEngine } from '@/evaluation/evaluation';
+import { type Color, COLORS } from '@/game/replay';
 import { type Opponent, OPPONENTS } from '@/opponent/opponent';
 
 /** What the learner chose, remembered on the device as one object. */

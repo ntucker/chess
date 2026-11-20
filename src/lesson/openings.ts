@@ -10,8 +10,7 @@
  * (assets/lessons/index.json), like the rest of src/lesson/.
  */
 import { INITIAL_FEN } from 'chessops/fen';
-import type { Color } from 'chessops/types';
-
+import { type Color, parsePositionKey } from '@/game/replay';
 import { positionHash } from '@/progress/progress';
 
 import { cleanLineEnds, inCleanRun } from './cleanRun';
@@ -21,6 +20,7 @@ import {
   type Lesson,
   type LessonMove,
   type LessonSource,
+  type Note,
   type PositionKey,
   type Uci,
 } from './lesson';
@@ -32,6 +32,8 @@ import { lineKeys } from './select';
  */
 export interface OpeningLine {
   readonly moves: readonly Uci[];
+  /** The `positionHash` of the position its last move reaches, where it picks the lesson. */
+  readonly picked: string;
   /**
    * The `positionHash` of every line end a clean Practice run can reach
    * through it (`cleanLineEnds`), so the start's rows can be passed without
@@ -51,24 +53,34 @@ export interface IndexEntry extends Pick<Lesson, 'title' | 'side' | 'sources'> {
 }
 
 /**
- * Every lesson's `IndexEntry`, by lesson id. Each lesson has a line, and no
- * line of one is the start of another's (src/resources/lesson.test.ts holds both).
+ * Every lesson's `IndexEntry`, by lesson id. Each lesson has a line
+ * (`lessonIndex` throws otherwise), and no line of one is the start of
+ * another's (src/resources/lesson.test.ts holds it).
  */
 export type LessonIndex<Id extends string = string> = Readonly<Record<Id, IndexEntry>>;
 
-/** The index of `lessons`, in their order: each one's lines leave the others of its side. */
+/**
+ * The index of `lessons`, in their order: each one's lines leave the others
+ * of its side. Throws when another lesson of its side plays all of one's moves.
+ */
 export function lessonIndex(lessons: readonly Lesson[]): LessonIndex {
   const lines = new Map<Lesson, Uci[][]>(lessons.map((lesson) => [lesson, []]));
   for (const side of ['white', 'black'] as const) {
     const ofSide = lessons.filter((lesson) => lesson.side === side);
     if (ofSide.length) walkShared(ofSide, [], new Set(), lines);
   }
+  const unpicked = lessons.filter((lesson) => lines.get(lesson)!.length === 0);
+  if (unpicked.length) {
+    const ids = unpicked.map(({ id }) => id).join(', ');
+    throw new Error(`No moves pick ${ids}: another lesson of its side plays all of them`);
+  }
   return Object.fromEntries(
     lessons.map((lesson) => {
       const { id, title, side, sources } = lesson;
       const picks = lines.get(lesson)!.map((moves) => ({
         moves,
-        lineEnds: lineEnds(lesson, moves),
+        picked: positionHash(lineKeys(moves).at(-1)!),
+        lineEnds: cleanEndHashes(lesson, moves),
       }));
       return [id, { title, side, sources, lines: picks }];
     }),
@@ -98,19 +110,16 @@ function walkShared(
 }
 
 /** `OpeningLine.lineEnds` for `moves` in `lesson`. */
-function lineEnds(lesson: Lesson, moves: readonly Uci[]): string[] {
+function cleanEndHashes(lesson: Lesson, moves: readonly Uci[]): string[] {
   const keys = lineKeys(moves);
   const clean = moves.every((uci, n) =>
     inCleanRun(
       lesson.positions[keys[n]].moves.find((move) => move.uci === uci)!,
-      learnerMoves(lesson.side, n),
+      parsePositionKey(keys[n])!.turn === lesson.side,
     ),
   );
   return clean ? cleanLineEnds(lesson, keys.at(-1)!).map(positionHash).sort() : [];
 }
-
-/** Whether `side` plays the move after `ply` moves from the start. */
-const learnerMoves = (side: Color, ply: number) => (ply % 2 === 0) === (side === 'white');
 
 /** Whether `line` begins with every move of `start`. */
 const startsWith = (line: readonly Uci[], start: readonly Uci[]) =>
@@ -144,16 +153,23 @@ export const isPicking = (index: LessonIndex, side: Color, line: readonly Uci[])
     ({ line: { moves } }) => moves.length > line.length && startsWith(moves, line),
   );
 
+/**
+ * The lines of `side`'s lessons that `line` still leads to, or the one that
+ * picked its lesson, each with that lesson, in the index's order.
+ */
+export const linesThrough = <Id extends string>(
+  index: LessonIndex<Id>,
+  side: Color,
+  line: readonly Uci[],
+) => linesOf(index, side).filter(({ line: { moves } }) => meets(moves, line));
+
 /** The lessons of `side` that `line` still leads to, or the one it picked, in the index's order. */
 export function lessonsAfter<Id extends string>(
   index: LessonIndex<Id>,
   side: Color,
   line: readonly Uci[],
 ): Id[] {
-  const ids = linesOf(index, side).flatMap(({ id, line: { moves } }) =>
-    meets(moves, line) ? [id] : [],
-  );
-  return [...new Set(ids)];
+  return [...new Set(linesThrough(index, side, line).map(({ id }) => id))];
 }
 
 /** The lessons a piece on `square` leads to from `line`, which the board shows while picking. */
@@ -170,12 +186,15 @@ export function lessonsFrom<Id extends string>(
   );
 }
 
+/** A move listed before a lesson is picked, crediting the lessons it leads to. */
+type OpeningMove = LessonMove & { readonly notes: readonly Note[] };
+
 /**
  * The moves `side`'s lessons share and the moves that pick them, at each
  * position before a line picks one, each crediting the lessons it leads to.
  * A learner's move is a book move where a clean run can go on through it.
  */
-function openingMoves(index: LessonIndex, side: Color): Map<PositionKey, LessonMove[]> {
+function openingMoves(index: LessonIndex, side: Color): Map<PositionKey, OpeningMove[]> {
   const at = new Map<PositionKey, Map<Uci, { readonly ids: string[]; book: boolean }>>();
   for (const { id, line } of linesOf(index, side)) {
     const keys = lineKeys(line.moves);
@@ -186,7 +205,7 @@ function openingMoves(index: LessonIndex, side: Color): Map<PositionKey, LessonM
       const found = moves.get(uci) ?? { ids: [], book: false };
       moves.set(uci, found);
       if (!found.ids.includes(id)) found.ids.push(id);
-      found.book ||= learnerMoves(side, n) && line.lineEnds.length > 0;
+      found.book ||= parsePositionKey(key)!.turn === side && line.lineEnds.length > 0;
     }
   }
   return new Map(
@@ -277,7 +296,7 @@ export function withOpenings(lesson: Lesson, index: LessonIndex): Lesson {
     const own = new Map(here.moves.map((move) => [move.uci, move]));
     const moves = openings.map((move) => {
       const file = own.get(move.uci);
-      return file ? { ...file, notes: [...move.notes!, ...(file.notes ?? [])] } : move;
+      return file ? { ...file, notes: [...move.notes, ...(file.notes ?? [])] } : move;
     });
     const rest = here.moves.filter(({ uci }) => !openings.some((move) => move.uci === uci));
     positions[key] = { ...here, moves: [...moves, ...rest] };

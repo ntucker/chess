@@ -31,33 +31,37 @@ const study = (author: string) => ({
   author,
   url: `https://lichess.org/study/${author}`,
 });
+/** An index line through `sans`, picking its lesson where they end. */
+const line = (sans: string[], lineEnds: string[] = []) => ({
+  moves: uciLine(...sans),
+  picked: positionHash(keyAfter(...sans)),
+  lineEnds,
+});
+
 const INDEX = {
   'caro-kann': {
     title: 'Caro-Kann Defence',
     side: 'black',
     sources: [study('Kampf')],
-    lines: [{ moves: uciLine('e4'), lineEnds: [] }],
+    lines: [line(['e4'])],
   },
   slav: {
     title: 'Slav Defence',
     side: 'black',
     sources: [study('Matkun')],
-    lines: [{ moves: uciLine('d4', 'd5', 'c4'), lineEnds: ['a'] }],
+    lines: [line(['d4', 'd5', 'c4'], ['a'])],
   },
   'anti-london': {
     title: 'Anti-London',
     side: 'black',
     sources: [study('Cold')],
-    lines: [
-      { moves: uciLine('d4', 'd5', 'Bf4'), lineEnds: ['b'] },
-      { moves: uciLine('d4', 'd5', 'Nf3'), lineEnds: [] },
-    ],
+    lines: [line(['d4', 'd5', 'Bf4'], ['b']), line(['d4', 'd5', 'Nf3'])],
   },
   london: {
     title: 'London System',
     side: 'white',
     sources: [study('Enjoyer')],
-    lines: [{ moves: uciLine('d4'), lineEnds: ['c'] }],
+    lines: [line(['d4'], ['c'])],
   },
 } as const;
 
@@ -114,11 +118,20 @@ describe('lessonIndex', () => {
 
   it("lists none for a line through a learner's move a clean run would not play", () => {
     const unbooked = withMoves(slav, keyAfter('d4'), (moves) => moves.map(({ uci }) => ({ uci })));
-    expect(lessonIndex([unbooked]).slav.lines).toEqual([{ moves: uciLine('d4'), lineEnds: [] }]);
+    expect(lessonIndex([unbooked]).slav.lines).toEqual([
+      { moves: uciLine('d4'), picked: positionHash(keyAfter('d4')), lineEnds: [] },
+    ]);
   });
 
-  it('gives two lessons with the same moves no line', () => {
-    expect(lessonIndex([slav, { ...slav, id: 'copy' }]).copy.lines).toEqual([]);
+  it('refuses two lessons of a side with the same moves, since no line picks either', () => {
+    expect(() => lessonIndex([slav, { ...slav, id: 'copy' }])).toThrow('No moves pick slav, copy');
+  });
+
+  it('names the position each line picks its lesson at', () => {
+    expect(index.anti.lines.map(({ picked }) => picked)).toEqual([
+      positionHash(keyAfter('d4', 'd5', 'Bf4')),
+      positionHash(keyAfter('d4', 'd5', 'Nf3')),
+    ]);
   });
 
   it("names the lesson's title, side and sources", () => {

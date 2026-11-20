@@ -1,12 +1,5 @@
 import { useRouter } from 'expo-router';
-import {
-  type Dispatch,
-  useDeferredValue,
-  useEffect,
-  useEffectEvent,
-  useReducer,
-  useState,
-} from 'react';
+import { type Dispatch, useDeferredValue, useEffect, useReducer, useState } from 'react';
 
 import { type GameAction, gameReducer, startGame } from '@/game/game';
 import type { GameStore } from '@/game/useGame';
@@ -31,9 +24,9 @@ const lessonHref = (id: LessonId) => `/lesson/${id}` as const;
  * `/`. Going Back or Forward to an address the game isn't in starts that
  * address's game; the address catching up with a pick keeps the game.
  *
- * The side is the address's lesson's, and at `/` the one the learner plays
- * as (the `side` setting), which follows a lesson opened by its address, so
- * leaving it for the start keeps its side. Choosing the other side starts
+ * The side is the lesson address's, kept when the game leaves it for the
+ * start; until the page shows one, it is the side the learner last chose to
+ * play as (the `side` setting). Choosing the other side saves it and starts
  * again from the start.
  *
  * The store holds the game as the page shows it: when the game moves to
@@ -47,7 +40,10 @@ export function useOpeningsGame(address: LessonId | undefined) {
   const router = useRouter();
   const settings = useSettings();
   const settingsDispatch = useSettingsDispatch();
-  const side = address === undefined ? settings.side : LESSON_INDEX[address].side;
+  // The side this page plays: the last lesson address's, kept without saving
+  // it, until the learner chooses one; otherwise the one they last chose.
+  const [chosen, setChosen] = useState(address && LESSON_INDEX[address].side);
+  const side = chosen ?? settings.side;
   const [game, dispatch] = useReducer(gameReducer, address, (id) => startGame(startOf(id)));
   const { moves } = game;
   /** The lesson the game plays, named by the moves that pick it. */
@@ -57,6 +53,7 @@ export function useOpeningsGame(address: LessonId | undefined) {
   const [synced, setSynced] = useState(address);
   if (address !== synced) {
     setSynced(address);
+    if (address !== undefined) setChosen(LESSON_INDEX[address].side);
     if (address !== picked) dispatch({ type: 'newGame', moves: startOf(address) });
   }
   // The address is outside React, so it follows the game in an effect.
@@ -66,14 +63,6 @@ export function useOpeningsGame(address: LessonId | undefined) {
     else if (address === undefined) router.push(lessonHref(picked));
     else router.replace(lessonHref(picked));
   }, [picked, address, router]);
-  // Only an address of its own changes the setting: choosing a side in a
-  // lesson leaves its address a moment later.
-  const chooseSide = (chosen: Color) =>
-    settingsDispatch({ type: 'chosen', choice: { side: chosen } });
-  const rememberSide = useEffectEvent(() => {
-    if (address !== undefined && side !== settings.side) chooseSide(side);
-  });
-  useEffect(() => rememberSide(), [address]);
   // Only a change of lesson waits: within one, the page shows each move in
   // its first render (the deferred one that follows shows the same game), so
   // the board never shows a move late or stops taking moves meanwhile.
@@ -91,10 +80,12 @@ export function useOpeningsGame(address: LessonId | undefined) {
     lesson,
     /** The side the page's game is played from. */
     side: shownSide,
-    /** The learner plays as `chosen` from now on: its start, unless that is the side already. */
-    playAs: (chosen: Color) => {
-      if (chosen === side) return;
-      chooseSide(chosen);
+    /** The learner plays as `next` from now on: its start, unless that is the side already. */
+    playAs: (next: Color) => {
+      if (next === side) return;
+      // The setting holds it now; `chosen` only keeps a lesson address's side.
+      setChosen(undefined);
+      settingsDispatch({ type: 'chosen', choice: { side: next } });
       dispatch({ type: 'newGame', moves: [] });
     },
     /**

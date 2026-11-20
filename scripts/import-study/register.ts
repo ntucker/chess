@@ -18,18 +18,34 @@ export function registerLesson(file: string, id: string) {
   writeFileSync(file, updated);
 }
 
+/** The lesson in the JSON file `path`, checked as `readLesson` checks it. */
+export const readLessonFile = (path: string) => readLesson(JSON.parse(readFileSync(path, 'utf8')));
+
+/** The ids the lesson index `file` (assets/lessons/index.json) lists, in its order. */
+const indexedIds = (file: string): string[] =>
+  existsSync(file) ? Object.keys(JSON.parse(readFileSync(file, 'utf8'))) : [];
+
+/** Lesson `id`, read from its file beside the lesson index `file`. */
+const readIndexed = (file: string, id: string) => readLessonFile(join(dirname(file), `${id}.json`));
+
+/** The lessons the lesson index `file` lists, in its order, read from the files beside it. */
+export const indexedLessons = (file: string) => indexedIds(file).map((id) => readIndexed(file, id));
+
 /**
- * Writes the lesson index `file` (assets/lessons/index.json) with `lesson`
- * in it, rewriting every entry from the lesson files beside it: one lesson's
- * first moves can change which moves pick another of its side.
+ * Adds `lesson` to the lesson index `file`, rewriting every entry from the
+ * lesson files beside it: one lesson's first moves can change which moves
+ * pick another of its side.
  */
 export function indexLesson(file: string, lesson: Lesson) {
-  const ids: string[] = existsSync(file) ? Object.keys(JSON.parse(readFileSync(file, 'utf8'))) : [];
-  const lessons = [...new Set([...ids, lesson.id])].map((id) =>
-    id === lesson.id
-      ? lesson
-      : readLesson(JSON.parse(readFileSync(join(dirname(file), `${id}.json`), 'utf8'))),
+  const ids = [...new Set([...indexedIds(file), lesson.id])];
+  writeIndex(
+    file,
+    ids.map((id) => (id === lesson.id ? lesson : readIndexed(file, id))),
   );
+}
+
+/** Writes the lesson index `file` for `lessons`. */
+export function writeIndex(file: string, lessons: readonly Lesson[]) {
   const lines = Object.entries(lessonIndex(lessons)).map(
     ([id, entry]) => `  ${JSON.stringify(id)}: ${JSON.stringify(entry)}`,
   );

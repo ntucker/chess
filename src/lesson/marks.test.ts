@@ -265,7 +265,8 @@ describe('openingMarks', () => {
     });
     const d4 = (lessonProgress: Record<string, MarkedPositions>) =>
       openingMarks(shared, 'black', [], lessonProgress, start).get(uciLine('d4')[0]);
-    expect(d4({ c4: progress([at('d4')], []) })).toBe('seen');
+    // Seen where a line picks its lesson: the shared moves before earn no marks.
+    expect(d4({ c4: progress([at('d4', 'd5', 'c4')], []) })).toBe('seen');
     expect(d4({ nf3: progress([], [at('d4', 'd5', 'Nf3')]) })).toBeUndefined();
     expect(
       d4({

@@ -1,8 +1,9 @@
 /** The lessons the app ships, by lesson id, and the sources each is read from. */
+import { numberedLine } from '@/game/replay';
 import type { LessonSource } from '@/lesson/lesson';
 
 import type { ChapterName, LessonInfo } from './merge';
-import type { WikibooksOptions } from './wikibooks';
+import { segmentSan, type WikibooksOptions } from './wikibooks';
 
 /** A lichess study, by its id. */
 interface StudySource {
@@ -46,11 +47,12 @@ export const credit = (from: ChapterSource): LessonSource =>
  * roots credits two pages: "Chess Opening Theory, 1.d4 d5 2.Bf4".
  */
 const wikibooksCredit = (root: string): LessonSource => ({
-  title: `Chess Opening Theory, ${root
-    .split('/')
-    .slice(1)
-    .map((segment, i) => (i > 0 ? segment.replace(/^\d+\.\.\./, '') : segment).replace('._', '.'))
-    .join(' ')}`,
+  title: `Chess Opening Theory, ${numberedLine(
+    root
+      .split('/')
+      .slice(1)
+      .map((segment) => segmentSan(segment)!),
+  )}`,
   author: 'Wikibooks contributors',
   url: `https://en.wikibooks.org/wiki/${root}`,
   license: { name: 'CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },

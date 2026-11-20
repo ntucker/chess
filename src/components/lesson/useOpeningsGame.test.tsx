@@ -155,13 +155,14 @@ describe('useOpeningsGame', () => {
     expect(mockRouter.push).toHaveBeenLastCalledWith('/lesson/slav');
   });
 
-  it("plays a lesson's address from its side, and remembers that side for the start", async () => {
+  it("plays a lesson's address from its side, and keeps that side at the start", async () => {
     await show();
     expect(latest().side).toBe('black');
     await show('london');
     expect(latest().side).toBe('white');
     expect(moves()).toEqual(['d2d4']);
-    expect(latest().setting).toBe('white');
+    // Only a choice of the learner's is saved.
+    expect(latest().setting).toBe('black');
     // A first move that picks no White lesson returns to a White start.
     await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
     await play('e2e4');

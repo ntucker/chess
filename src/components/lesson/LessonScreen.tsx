@@ -10,7 +10,6 @@ import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { Scoresheet } from '@/components/Scoresheet';
-import { SideChooser } from '@/components/SideChooser';
 import { resetListener } from '@/components/resetListener';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { useLongWait } from '@/components/useLongWait';
@@ -180,6 +179,8 @@ function LessonScreen({
       modeState.mode === 'practice' ? { clean: modeState.clean, verdict: game.quality } : undefined,
   });
 
+  // What the list of the rival's moves holds.
+  const rivalMoves = !picking ? 'likely replies' : view.ply ? 'next move' : 'first move';
   /** Where the openings are picked, the lessons a move leads to. */
   const openings = (uci: Uci) =>
     picking ? lessonsAfter(LESSON_INDEX, learner, [...shownLine, uci]) : [];
@@ -235,6 +236,8 @@ function LessonScreen({
             children: <AutoPlay />,
           }}
           board={{ ...board, onDrag }}
+          // The side is the lesson's once one is picked.
+          onSwap={picking ? () => onPlayAs(rival) : undefined}
         />
       }
       program={
@@ -245,7 +248,6 @@ function LessonScreen({
             eyebrowInHeader
           />
           <Separator />
-          {picking ? <SideChooser value={learner} onChange={onPlayAs} /> : null}
           {/* Leaving a row for the idea card keeps its preview, so its notes can be pointed at. */}
           {trap ? (
             <TrapCard
@@ -276,9 +278,7 @@ function LessonScreen({
                 <CandidateList
                   {...rowProps}
                   heading={
-                    view.learnerToMove
-                      ? 'Your candidates'
-                      : `${colorName(rival)}'s ${picking ? (view.ply ? 'next move' : 'first move') : 'likely replies'}`
+                    view.learnerToMove ? 'Your candidates' : `${colorName(rival)}'s ${rivalMoves}`
                   }
                   candidates={guidance.candidates}
                   rare={guidance.rare}
