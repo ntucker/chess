@@ -5,7 +5,9 @@ import { SilkProvider } from '@reactive/silk-native';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { OpponentPicker } from '@/components/OpponentPicker';
 import { replay } from '@/game/replay';
+import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
 
 import { ScoresheetDrawer, ScoresheetOpener, shownMove } from './ScoresheetDrawer';
@@ -48,7 +50,12 @@ function renderDrawer(ply: number) {
   return { button, onClose, onGoto, unmount: () => act(() => root.unmount()) };
 }
 
-const escape = () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+/** Presses Escape on the page; `taken` when another control (an open popup list) took it first. */
+const escape = (taken = false) => {
+  const event = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true });
+  if (taken) event.preventDefault();
+  window.dispatchEvent(event);
+};
 
 describe('ScoresheetDrawer', () => {
   beforeEach(() => {
@@ -59,6 +66,13 @@ describe('ScoresheetDrawer', () => {
     const { onClose, unmount } = renderDrawer(1);
     escape();
     expect(onClose).toHaveBeenCalledTimes(1);
+    unmount();
+  });
+
+  it('leaves an Escape another control took, so one Escape closes one thing', () => {
+    const { onClose, unmount } = renderDrawer(1);
+    escape(true);
+    expect(onClose).not.toHaveBeenCalled();
     unmount();
   });
 
@@ -141,5 +155,46 @@ describe('shownMove', () => {
       '1.e4',
       '1…c6',
     ]);
+  });
+
+  it('stays open as one Escape closes the opponent list over it', () => {
+    const onClose = jest.fn();
+    const host = document.body.appendChild(document.createElement('div'));
+    const root = createRoot(host);
+    act(() =>
+      root.render(
+        <SilkProvider theme={themes.dark}>
+          <SettingsProvider>
+            <OpponentPicker />
+            <ScoresheetDrawer
+              plies={plies}
+              qualities={[]}
+              ply={1}
+              onGoto={() => {}}
+              onClose={onClose}
+            />
+          </SettingsProvider>
+        </SilkProvider>,
+      ),
+    );
+    try {
+      const list = () => document.querySelector('[role="listbox"]');
+      act(() => host.querySelector<HTMLElement>('[aria-expanded]')!.click());
+      expect(list()).not.toBeNull();
+      const press = () =>
+        act(() => {
+          document.body.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+          );
+        });
+      press();
+      expect(list()).toBeNull();
+      expect(onClose).not.toHaveBeenCalled();
+      press();
+      expect(onClose).toHaveBeenCalledTimes(1);
+    } finally {
+      act(() => root.unmount());
+      host.remove();
+    }
   });
 });

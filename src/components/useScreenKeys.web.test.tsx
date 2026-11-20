@@ -26,7 +26,7 @@ function Listener({ onKey, sheet }: { onKey: (key: string) => void; sheet: boole
 }
 
 /** The keys the screen hears when `key` is pressed on `target` (the page, or inside the open sheet). */
-function heard(key: string, target: 'page' | 'sheet') {
+function heard(key: string, target: 'page' | 'sheet', taken = false) {
   const onKey = jest.fn<(key: string) => void>();
   const host = document.body.appendChild(document.createElement('div'));
   const root = createRoot(host);
@@ -40,7 +40,10 @@ function heard(key: string, target: 'page' | 'sheet') {
   // Inside the sheet, which React Native Web's Modal marks as a dialog.
   const on =
     target === 'sheet' ? document.querySelector('[aria-label="Settings"]')! : document.body;
-  on.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+  // Another control took it first.
+  if (taken) event.preventDefault();
+  on.dispatchEvent(event);
   act(() => root.unmount());
   host.remove();
   return onKey.mock.calls.map(([found]) => found);
@@ -49,6 +52,10 @@ function heard(key: string, target: 'page' | 'sheet') {
 describe('useScreenKeys', () => {
   it('hears keys pressed on the page', () => {
     expect(heard('ArrowLeft', 'page')).toEqual(['ArrowLeft']);
+  });
+
+  it('leaves a key another control took (prevented its default) to that control', () => {
+    expect(heard('Escape', 'page', true)).toEqual([]);
   });
 
   it('leaves keys pressed in the settings sheet to the sheet', () => {
