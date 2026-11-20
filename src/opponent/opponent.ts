@@ -10,25 +10,34 @@ export type Opponent = MaiaRating | 'stockfish';
 /** Every opponent, easiest first. */
 export const OPPONENTS: readonly Opponent[] = [...MAIA_RATINGS, 'stockfish'];
 
-/** The opponents the footnote offers: Beginner, Club and Advanced Maia, then Stockfish. */
-export const OPPONENT_PRESETS: readonly Opponent[] = [1100, 1500, 1900, 'stockfish'];
+/** The landmarks on the ladder, named for who plays there. */
+const PRESETS: Partial<Record<Opponent, string>> = {
+  1100: 'Beginner',
+  1500: 'Club',
+  1900: 'Advanced',
+  stockfish: 'Best move',
+};
 
 /**
- * How `opponent` is shown: its name, its step on the difficulty ladder, a few
- * words for its name plate, and one sentence on how it plays.
+ * How `opponent` is shown: its name, its step on the difficulty ladder, the
+ * words that lead up to that step on its name plate ("Plays like a" 1500),
+ * a landmark's name if it is one, and one sentence on how it plays.
  */
 export function describeOpponent(opponent: Opponent) {
+  const preset = PRESETS[opponent];
   return opponent === 'stockfish'
     ? {
         name: 'Stockfish',
         level: 'Stockfish',
-        tagline: 'Plays its best move',
+        lead: 'Plays like',
+        preset,
         style: 'Stockfish plays the move it judges best.',
       }
     : {
         name: 'Maia',
         level: String(opponent),
-        tagline: `Plays like a ${opponent}`,
+        lead: 'Plays like a',
+        preset,
         style: `Maia plays the way people rated about ${opponent} do.`,
       };
 }

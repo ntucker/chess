@@ -47,6 +47,8 @@
      * sits close above the moves.
      */
     --headline-size: 20px;
+    /* A row of the opponent's strength list, tall enough to tap (OpponentPicker.tsx). */
+    --menu-row-height: 40px;
     /* Space between the board column and the panel below it (Stage.tsx). */
     --wrapped-gap: 12px;
     /* Space between the panel's sections (LessonScreen.tsx)... */

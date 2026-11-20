@@ -15,7 +15,8 @@ export function useStepKeys(ply: number, total: number, goto: (ply: number) => v
       Home: 0,
       End: total,
     };
-    if (Object.hasOwn(targets, event.key)) {
+    // A control that took the key for itself (a list's arrows) prevented its default.
+    if (!event.defaultPrevented && Object.hasOwn(targets, event.key)) {
       event.preventDefault();
       goto(targets[event.key]);
     }

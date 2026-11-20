@@ -25,6 +25,7 @@ export const NARROW_LENGTHS = [
   'panel-reserve',
   'section-gap',
   'label-gap',
+  'menu-row-height',
 ] as const;
 
 /** The parts of the page that narrow.css lays out differently. */
