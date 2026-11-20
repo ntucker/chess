@@ -12,7 +12,8 @@ new project follow `.agents/projects/setup.md`.
 
 ## Roles and models
 
-- Coordinator: the project chat session. Worker: a thread. Tell the coordinator: `message_coordinator`.
+- Coordinator: the project chat session. Worker: a thread, which implements on Opus. Tell the
+  coordinator: `message_coordinator`.
 - Default for advisors and subagents: the strongest model (latest Fable). Exceptions:
   - Haiku: post-push reviews.
   - Sonnet: simple merge conflicts, and the autoland review.
@@ -82,7 +83,7 @@ a sign of a weak abstraction. If it may be the abstraction, have a Fable subagen
 `user-kit:clean-code` and look for a simpler design with stronger invariants that rules out that
 class of bug. Hand a good idea on as a high-priority follow-up (a redesign needs its own reviewed
 plan). The follow-up's brief says to start with a subagent's adversarial review of the plan, then
-implement with Opus (not Fable).
+implement.
 
 ## Talking to the person
 
