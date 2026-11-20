@@ -133,7 +133,6 @@ describe('useOpeningsGame', () => {
     await show();
     await play('e2e4');
     await show('caro-kann');
-    expect(latest().behind).toBe(true);
     expect(latest().pending).toBe(true);
     // The page shows the start, but the game is 1.e4's. Applied to it, this
     // step to the start and then d4 would replace e4 and pick the Slav.
@@ -144,9 +143,19 @@ describe('useOpeningsGame', () => {
     expect(latest().lesson).toBeUndefined();
     // Back to the start: the page shows the game again, and takes moves.
     await show(undefined);
-    expect(latest().behind).toBe(false);
+    expect(latest().pending).toBe(false);
     slow.lessons = false;
     await play('d2d4');
     expect(mockRouter.push).toHaveBeenLastCalledWith('/lesson/slav');
+  });
+
+  it('shows a move within a lesson at once', async () => {
+    await show('caro-kann');
+    const before = renders.length;
+    await play('c7c6');
+    // No commit shows the game before the move, as a deferred copy would.
+    const shown = renders.slice(before).map(({ store }) => store[0].moves.length);
+    expect(shown.length).toBeGreaterThan(0);
+    expect(shown).not.toContain(1);
   });
 });

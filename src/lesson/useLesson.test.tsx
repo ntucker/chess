@@ -33,7 +33,7 @@ const lesson = () => renders[renders.length - 1];
 
 function Lesson({
   start,
-  behind,
+  behind = false,
 }: {
   readonly start: readonly string[];
   readonly behind?: boolean;

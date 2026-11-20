@@ -63,7 +63,7 @@ export function LessonPage({ id }: { readonly id?: string }) {
  * reopens it and the browser's Back returns to the start.
  */
 function Openings({ address }: { readonly address?: LessonId }) {
-  const { store, lesson, behind, pending } = useOpeningsGame(address);
+  const { store, lesson, pending } = useOpeningsGame(address);
   const loading = useLongWait(pending);
   // A failed lesson clears once the page shows another (Back to the start).
   // A `key` would remount the page and lose the game, so the boundary resets.
@@ -76,7 +76,7 @@ function Openings({ address }: { readonly address?: LessonId }) {
       errorComponent={LessonFailure}
       listen={resetOnLesson}
     >
-      <LessonScreen id={lesson} store={store} behind={behind} loading={loading} />
+      <LessonScreen id={lesson} store={store} behind={pending} loading={loading} />
     </AsyncBoundary>
   );
 }

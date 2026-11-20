@@ -22,13 +22,12 @@ const lessonHref = (id: LessonId) => `/lesson/${id}` as const;
  * `/`. Going Back or Forward to an address the game isn't in starts that
  * address's game; the address catching up with a pick keeps the game.
  *
- * The store holds the game as the page shows it (`useDeferredValue`): while
- * the page's render of a newer game waits, the page keeps the older one.
- * That lasts until the lesson the newer game plays has loaded, or for one
- * render after any other change. So picking an opening, or going Back or
- * Forward to one, keeps the page on screen rather than a placeholder, while
- * the address moves at once. The store's dispatch acts on the newer game, so
- * while the page is `behind` it drops the learner's moves and steps.
+ * The store holds the game as the page shows it: when the game moves to
+ * another lesson, the page keeps the older game until that lesson has loaded
+ * (`useDeferredValue`). So picking an opening, or going Back or Forward to
+ * one, keeps the page on screen rather than a placeholder, while the address
+ * moves at once. The store's dispatch acts on the newer game, so while the
+ * lesson is `pending` it drops the learner's moves and steps.
  */
 export function useOpeningsGame(address: LessonId | undefined) {
   const router = useRouter();
@@ -50,21 +49,24 @@ export function useOpeningsGame(address: LessonId | undefined) {
     else if (address === undefined) router.push(lessonHref(picked));
     else router.replace(lessonHref(picked));
   }, [picked, address, router]);
-  const shown = useDeferredValue(game);
-  const behind = shown !== game;
+  // Only a change of lesson waits: within one, the page takes each move at
+  // once rather than rendering twice.
+  const deferred = useDeferredValue(game);
+  const lesson = lessonOf(LESSON_INDEX, deferred.moves);
+  const pending = lesson !== picked;
   const held: Dispatch<GameAction> = (action) => {
     if (!isInput(action)) dispatch(action);
   };
-  const store: GameStore = [shown, behind ? held : dispatch];
-  const lesson = lessonOf(LESSON_INDEX, shown.moves);
+  const store: GameStore = pending ? [deferred, held] : [game, dispatch];
   return {
     store,
     /** The lesson the page's game plays. */
     lesson,
-    /** The page shows a game the store has moved on from: offer no moves. */
-    behind,
-    /** The game has moved on to a lesson the page doesn't show yet: it's loading. */
-    pending: lesson !== picked,
+    /**
+     * The game has moved on to a lesson the page doesn't show yet: it's
+     * loading, and the page offers no moves.
+     */
+    pending,
   };
 }
 

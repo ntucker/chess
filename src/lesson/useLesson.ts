@@ -67,7 +67,7 @@ export interface Playback {
 export function useLesson(
   lesson: Lesson,
   store: GameStore,
-  { behind = false }: { readonly behind?: boolean } = {},
+  { behind }: { readonly behind: boolean },
 ) {
   const ctrl = useController();
   const settings = useSettings();
