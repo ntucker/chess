@@ -31,7 +31,7 @@ export function FootnoteLink({ href, back, children }: Props) {
 }
 
 /** A tap, or a left click with no modifier key: other clicks open `href` as the browser does. */
-const plainPress = (event: MouseEvent<HTMLAnchorElement> | GestureResponderEvent) =>
+export const plainPress = (event: MouseEvent<HTMLAnchorElement> | GestureResponderEvent) =>
   !('button' in event) ||
   (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey);
 

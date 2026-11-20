@@ -46,13 +46,23 @@ import { useOpeningsGame } from './useOpeningsGame';
  * start. The exported HTML holds only its frame: lessons load in the
  * browser, since reading one during the export hangs it.
  */
-export function LessonPage({ id }: { readonly id?: string }) {
+export function LessonPage({
+  id,
+  variation,
+  entry,
+}: {
+  readonly id?: string;
+  /** A variation of the lesson to open at (`useOpeningsGame`). */
+  readonly variation?: string;
+  /** The history entry the address is (`useOpeningsGame`). */
+  readonly entry?: string;
+}) {
   if (id !== undefined && !Object.hasOwn(LESSONS, id)) {
     return <LessonPlaceholder message="There is no lesson here." />;
   }
   return (
     <BrowserOnly fallback={<LessonPlaceholder />}>
-      <Openings address={id as LessonId | undefined} />
+      <Openings address={id as LessonId | undefined} variation={variation} entry={entry} />
     </BrowserOnly>
   );
 }
@@ -68,8 +78,16 @@ export function LessonPage({ id }: { readonly id?: string }) {
  * The address follows the lesson picked (`useOpeningsGame`), so a reload
  * reopens it and the browser's Back returns to the start.
  */
-function Openings({ address }: { readonly address?: LessonId }) {
-  const { store, lesson, side, playAs, pending } = useOpeningsGame(address);
+function Openings({
+  address,
+  variation,
+  entry,
+}: {
+  readonly address?: LessonId;
+  readonly variation?: VariationId;
+  readonly entry?: string;
+}) {
+  const { store, lesson, side, playAs, pending } = useOpeningsGame(address, variation, entry);
   const loading = useLongWait(pending);
   // A failed lesson clears once the page shows another (Back to the start).
   // A `key` would remount the page and lose the game, so the boundary resets.
@@ -196,9 +214,7 @@ function LessonScreen({
     const into = openings(candidate.move.uci);
     if (into.length) return into.map((id) => LESSON_INDEX[id].title).join(' or ');
     if (candidate.variation === undefined) return 'Leaves the guide';
-    return lesson.variations[candidate.variation] === line
-      ? undefined
-      : shortName(candidate.variation);
+    return candidate.variation === line?.id ? undefined : shortName(candidate.variation);
   };
   // What the guide's candidate rows and Stockfish's top moves' rows share.
   const rowProps = {
@@ -227,15 +243,27 @@ function LessonScreen({
     board.onDrag?.(drag);
   };
 
+  // The opening's name opens the list of every opening, which marks where the board is.
+  // From the line's id, which the React Compiler sees unchanged from move to move.
+  const lineId = line?.id;
+  const listLink = {
+    href: {
+      pathname: '/openings',
+      params: id === undefined ? {} : { lesson: id, ...(lineId && { variation: lineId }) },
+    },
+    label: 'Every opening',
+  } as const;
+
   return (
     <Stage
       title={`${lesson.title} · Opening Night`}
-      // Only the latest line's name and its parent's, since the path won't fit a narrow page.
-      place={
-        picking
+      header={{
+        // Only the latest line's name and its parent's, since the path won't fit a narrow page.
+        place: picking
           ? { name: OPENINGS_TITLE }
-          : { name: names.at(-1) ?? lesson.title, parent: names.at(-2) }
-      }
+          : { name: names.at(-1) ?? lesson.title, parent: names.at(-2) },
+        placeLink: listLink,
+      }}
       board={
         <BoardColumn
           game={game}
@@ -256,6 +284,7 @@ function LessonScreen({
             {...status}
             failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
             eyebrowInHeader
+            eyebrowLink={listLink}
           />
           {/* On a narrow web page the moves follow the headline closely, with no rule between. */}
           <View {...narrowPart('wide-only')}>

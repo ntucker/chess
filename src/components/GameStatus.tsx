@@ -2,6 +2,7 @@ import { Button, Inline, Stack, Text } from '@reactive/silk-native';
 import { StyleSheet, View } from 'react-native';
 
 import { Eyebrow } from '@/components/Eyebrow';
+import { type Destination, PlaceLink } from '@/components/PlaceLink';
 import { NEW_VERSION, NewVersionError, reload } from '@/files/newVersion';
 import type { Color, Position } from '@/game/replay';
 import { describeOpponent, type Opponent } from '@/opponent/opponent';
@@ -42,6 +43,8 @@ interface HeadlineProps {
    * leaves its eyebrow out there.
    */
   readonly eyebrowInHeader?: boolean;
+  /** The eyebrow names where the page is, and links to the screen listing the others (`PlaceLink`). */
+  readonly eyebrowLink?: Destination;
   /**
    * The headline only says whose move it is, which the name bars show too,
    * and how to use the screen, which the learner has seen. A narrow web page
@@ -58,9 +61,14 @@ export function StatusHeadline({
   detail,
   failure,
   eyebrowInHeader,
+  eyebrowLink,
   routine,
 }: HeadlineProps) {
-  const label = <Eyebrow>{eyebrow}</Eyebrow>;
+  const label = (
+    <PlaceLink to={eyebrowLink}>
+      {(active) => <Eyebrow tone={active ? 'primary' : 'secondary'}>{eyebrow}</Eyebrow>}
+    </PlaceLink>
+  );
   return (
     <Stack gap="2" {...(routine && !failure ? narrowPart('wide-only-spoken') : {})}>
       {eyebrowInHeader ? <View {...narrowPart('wide-only')}>{label}</View> : label}

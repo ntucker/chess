@@ -1,12 +1,11 @@
 import { Surface, useTheme } from '@reactive/silk-native';
-import Head from 'expo-router/head';
 import type { ComponentProps, ReactNode } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View } from 'react-native';
 
 import Board, { type BoardProps } from '@/components/Board';
 import { EvaluationBar } from '@/components/EvaluationBar';
-import { HEADER_HEIGHT, Header, type Place } from '@/components/Header';
+import { HEADER_HEIGHT, type HeaderProps } from '@/components/Header';
+import { Page } from '@/components/Page';
 import { PLAYER_DISC, PlayerBar } from '@/components/PlayerBar';
 import { BOARD_COLUMN_BASIS, PAGE_SPACE, PROGRAM_BASIS, STAGE_GAP } from '@/components/sideBySide';
 import { Transport } from '@/components/Transport';
@@ -14,13 +13,12 @@ import { useStepKeys } from '@/components/useStepKeys';
 import { colorName, opposite } from '@/game/replay';
 import type { Game } from '@/game/useGame';
 import { NARROW_CSS_LOADS, narrowCalc, narrowLength, narrowPart } from '@/theme/narrow';
-import { spotlight } from '@/theme/theme';
 
 interface StageProps {
   /** The browser tab's title; none leaves it as it is. */
   readonly title?: string;
-  /** Where the page is, such as the lesson's line: the header names it on a narrow web page. */
-  readonly place?: Place;
+  /** What the header shows of where the page is (see `Header`). */
+  readonly header?: HeaderProps;
   /** The board column (`BoardColumn`), or a stand-in the same size while it loads. */
   readonly board: ReactNode;
   /** The panel beside the board, or below it on a narrow screen. */
@@ -28,46 +26,23 @@ interface StageProps {
 }
 
 /**
- * A page of the app: the header, then the board column and the panel beside
- * it on the stage background. Every screen that shows a board uses it, so
- * they line up the same way. On a narrow web page the panel goes below
- * the board and scrolls on its own, so the board stays in view (narrow.css).
+ * A page with a board: the board column and the panel beside it, under the
+ * header. Every screen that shows a board uses it, so they line up the same
+ * way. On a narrow web page the panel goes below the board and scrolls on
+ * its own, so the board stays in view (narrow.css).
  */
-export function Stage({ title, place, board, program }: StageProps) {
-  const { theme } = useTheme();
+export function Stage({ title, header, board, program }: StageProps) {
   return (
-    <View
-      style={[
-        styles.fill,
-        {
-          backgroundColor: theme.semantic.color.surface,
-          backgroundImage: spotlight[theme.colorScheme],
-        },
-      ]}
-    >
-      {title === undefined ? null : (
-        <Head>
-          <title>{title}</title>
-        </Head>
-      )}
-      <SafeAreaView style={styles.fill}>
-        <ScrollView>
-          <View {...narrowPart('page')} style={styles.page}>
-            <View style={styles.header}>
-              <Header place={place} />
-            </View>
-            <View {...narrowPart('stage')} style={styles.stage}>
-              <View {...narrowPart('board-column')} style={styles.boardColumn}>
-                {board}
-              </View>
-              <View {...narrowPart('program')} style={styles.program}>
-                {program}
-              </View>
-            </View>
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </View>
+    <Page title={title} header={header} maxWidth={STAGE_MAX}>
+      <View {...narrowPart('stage')} style={styles.stage}>
+        <View {...narrowPart('board-column')} style={styles.boardColumn}>
+          {board}
+        </View>
+        <View {...narrowPart('program')} style={styles.program}>
+          {program}
+        </View>
+      </View>
+    </Page>
   );
 }
 
@@ -183,8 +158,8 @@ const BESIDE_BOARD = PLAYER_DISC.size.plus(PLAYER_DISC.gap);
 const BOARD_COLUMN_MAX = BOARD_MAX + BESIDE_BOARD.wide;
 /** The program's largest width. */
 const PROGRAM_MAX = 400;
-/** Wide enough for the board and the program at their largest. */
-const STAGE_MAX = BOARD_COLUMN_MAX + STAGE_GAP + PROGRAM_MAX;
+/** Wide enough for the board and the program at their largest: the header's width on every page. */
+export const STAGE_MAX = BOARD_COLUMN_MAX + STAGE_GAP + PROGRAM_MAX;
 /**
  * Height around the board: the page's top and bottom padding and the gap
  * below the header (3 × PAGE_SPACE), the header, and both name bars.
@@ -231,8 +206,6 @@ const COLUMN_RAISE = BOARD_OFFSET.minus(WRAPPED_GAP);
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  page: { padding: PAGE_SPACE.value, gap: PAGE_SPACE.value, alignItems: 'center' },
-  header: { width: '100%', maxWidth: STAGE_MAX },
   stage: {
     width: '100%',
     maxWidth: STAGE_MAX,

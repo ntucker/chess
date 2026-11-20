@@ -209,11 +209,16 @@ export function opponentBand(lesson: Lesson, opponent: Opponent): number | undef
   return ratingBandIndex(lesson.popularity, opponent === 'stockfish' ? Infinity : opponent);
 }
 
+/** A variation with its id. */
+export interface VariationOf extends Variation {
+  readonly id: VariationId;
+}
+
 /** The variation `id` and its ancestors, the opening itself first. */
-export function variationPath(lesson: Lesson, id: VariationId): Variation[] {
-  const path: Variation[] = [];
+export function variationPath(lesson: Lesson, id: VariationId): VariationOf[] {
+  const path: VariationOf[] = [];
   for (let at: VariationId | undefined = id; at !== undefined; at = lesson.variations[at]?.parent) {
-    path.unshift(lesson.variations[at]);
+    path.unshift({ id: at, ...lesson.variations[at] });
   }
   return path;
 }
@@ -247,7 +252,7 @@ export function pathNames(path: readonly Variation[]): string[] {
  * The variation a line is in at its last position, as `variationPath`: that
  * position's, or beyond the guide, that of the last guide position it passed.
  */
-export function lineVariation(lesson: Lesson, keys: readonly PositionKey[]): Variation[] {
+export function lineVariation(lesson: Lesson, keys: readonly PositionKey[]): VariationOf[] {
   const last = keys.findLast((key) => lesson.positions[key]);
   return last ? variationPath(lesson, lesson.positions[last].variation) : [];
 }

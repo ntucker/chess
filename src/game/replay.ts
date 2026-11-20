@@ -131,6 +131,12 @@ export function* playLine(line: readonly string[], pos = Chess.default()): Gener
   }
 }
 
+/** `line`'s moves in SAN from `pos`, up to the first illegal one. */
+export const lineSans = (line: readonly string[], pos?: Chess): string[] =>
+  Array.from(playLine(line, pos), ({ move }) => move?.san).filter(
+    (san): san is string => san !== undefined,
+  );
+
 /**
  * Plays `uci` on `pos` and describes it as a ply records it, or returns
  * undefined, playing nothing, if it isn't legal there.

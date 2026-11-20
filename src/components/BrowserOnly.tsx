@@ -13,12 +13,18 @@ interface Props {
  * an effect, which never runs there.
  */
 export function BrowserOnly({ fallback, children }: Props) {
-  const inBrowser = useSyncExternalStore(
+  return useInBrowser() ? children : fallback;
+}
+
+/**
+ * Whether the page runs in the browser (or on native): false in the static
+ * export and in the first render in the browser, which must match it.
+ */
+export const useInBrowser = () =>
+  useSyncExternalStore(
     subscribeNever,
     () => true,
     () => false,
   );
-  return inBrowser ? children : fallback;
-}
 
 const subscribeNever = () => () => {};

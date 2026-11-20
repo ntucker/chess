@@ -21,7 +21,7 @@ import { Chess } from 'chessops/chess';
 
 import type { Evaluation } from '@/evaluation/evaluation';
 import { classifyMove } from '@/analysis/quality';
-import { numberedLine, parsePosition, playLine, playMove, positionKey } from '@/game/replay';
+import { lineSans, numberedLine, parsePosition, playMove, positionKey } from '@/game/replay';
 import type {
   Evaluation as Verdict,
   Idea,
@@ -435,10 +435,7 @@ const san = (pos: Chess, uci: Uci) => playMove(pos.clone(), uci)!.san;
 function sans(lesson: Lesson, line: readonly Uci[]): string {
   const start = startOf(lesson);
   const firstPly = 2 * start.fullmoves - (start.turn === 'white' ? 1 : 0);
-  const moves = Array.from(playLine(line, start), ({ move }) => move?.san).filter(
-    (move) => move !== undefined,
-  );
-  return numberedLine(moves, firstPly);
+  return numberedLine(lineSans(line, start), firstPly);
 }
 
 async function filter<T>(items: readonly T[], keep: (item: T) => Promise<boolean>): Promise<T[]> {

@@ -15,6 +15,7 @@ import {
 } from './lesson.fixture';
 import { rowMarks } from './marks';
 import {
+  type IndexEntry,
   isPicking,
   pickingMoves,
   lessonIndex,
@@ -24,7 +25,7 @@ import {
   openingsLesson,
   withOpenings,
 } from './openings';
-import { candidates } from './select';
+import { candidates, lineKeys } from './select';
 import { lessonView } from './view';
 
 const study = (author: string) => ({
@@ -44,24 +45,28 @@ const INDEX = {
     title: 'Caro-Kann Defence',
     side: 'black',
     sources: [study('Kampf')],
+    variations: [],
     lines: [line(['e4'])],
   },
   slav: {
     title: 'Slav Defence',
     side: 'black',
     sources: [study('Matkun')],
+    variations: [],
     lines: [line(['d4', 'd5', 'c4'], ['a'])],
   },
   'anti-london': {
     title: 'Anti-London',
     side: 'black',
     sources: [study('Cold')],
+    variations: [],
     lines: [line(['d4', 'd5', 'Bf4'], ['b']), line(['d4', 'd5', 'Nf3'])],
   },
   london: {
     title: 'London System',
     side: 'white',
     sources: [study('Enjoyer')],
+    variations: [],
     lines: [line(['d4'], ['c'])],
   },
 } as const;
@@ -89,6 +94,17 @@ function guideLesson(id: string, side: Color, ...lines: string[][]): Lesson {
     variations: { [id]: { name: id } },
     positions,
   };
+}
+
+/** A shipped lesson's index entry on its own, built once: building it searches every variation. */
+const shippedIndexes = new Map<string, IndexEntry>();
+function shippedIndex(id: string): IndexEntry {
+  let entry = shippedIndexes.get(id);
+  if (!entry) {
+    entry = lessonIndex([readShippedLesson(id)])[id];
+    shippedIndexes.set(id, entry);
+  }
+  return entry;
 }
 
 describe('lessonIndex', () => {
@@ -135,6 +151,149 @@ describe('lessonIndex', () => {
     ]);
   });
 
+  it('opens a variation at the line games play most, the learner keeping to book moves', () => {
+    const caroLines = guideLesson(
+      'caro',
+      'black',
+      ['e4', 'c6', 'd4', 'd5', 'Nc3', 'dxe4', 'Nxe4'],
+      ['e4', 'c6', 'd4', 'd5', 'Nc3', 'g6'],
+      ['e4', 'c6', 'd4', 'd5', 'exd5', 'Qxd5'],
+      ['e4', 'c6', 'd4', 'd5', 'exd5', 'cxd5', 'Nf3'],
+    );
+    const at = (...sans: string[]) => caroLines.positions[keyAfter(...sans)];
+    const counted = (sans: string[], games: Record<string, number>) => ({
+      ...at(...sans),
+      moves: at(...sans).moves.map((move) => ({
+        ...move,
+        games: [games[move.uci] ?? 0],
+        book: move.book && move.uci !== 'd8d5', // ...Qxd5
+      })),
+    });
+    const tag = (variation: string, ...sans: string[]) => ({
+      [keyAfter(...sans)]: {
+        ...(caroLines.positions[keyAfter(...sans)] ?? { moves: [] }),
+        variation,
+      },
+    });
+    const lesson: Lesson = {
+      ...caroLines,
+      variations: {
+        caro: { name: 'Caro' },
+        classical: { name: 'Classical', parent: 'caro' },
+        exchange: { name: 'Exchange', parent: 'caro' },
+      },
+      positions: {
+        ...caroLines.positions,
+        // Nc3 is played far more than exd5; after it, dxe4 far more than g6.
+        [keyAfter('e4', 'c6', 'd4')]: counted(['e4', 'c6', 'd4'], {
+          [uciLine('e4', 'c6', 'd4', 'd5').at(-1)!]: 100,
+        }),
+        [keyAfter('e4', 'c6', 'd4', 'd5')]: counted(['e4', 'c6', 'd4', 'd5'], {
+          [uciLine('e4', 'c6', 'd4', 'd5', 'Nc3').at(-1)!]: 90,
+          [uciLine('e4', 'c6', 'd4', 'd5', 'exd5').at(-1)!]: 10,
+        }),
+        [keyAfter('e4', 'c6', 'd4', 'd5', 'Nc3')]: counted(['e4', 'c6', 'd4', 'd5', 'Nc3'], {
+          [uciLine('e4', 'c6', 'd4', 'd5', 'Nc3', 'dxe4').at(-1)!]: 95,
+          [uciLine('e4', 'c6', 'd4', 'd5', 'Nc3', 'g6').at(-1)!]: 5,
+        }),
+        // Qxd5, the shorter way into the Exchange, is no book move.
+        [keyAfter('e4', 'c6', 'd4', 'd5', 'exd5')]: counted(['e4', 'c6', 'd4', 'd5', 'exd5'], {
+          [uciLine('e4', 'c6', 'd4', 'd5', 'exd5', 'Qxd5').at(-1)!]: 50,
+          [uciLine('e4', 'c6', 'd4', 'd5', 'exd5', 'cxd5').at(-1)!]: 50,
+        }),
+        ...tag('classical', 'e4', 'c6', 'd4', 'd5', 'Nc3', 'g6'),
+        ...tag('classical', 'e4', 'c6', 'd4', 'd5', 'Nc3', 'dxe4', 'Nxe4'),
+        ...tag('exchange', 'e4', 'c6', 'd4', 'd5', 'exd5', 'Qxd5'),
+        ...tag('exchange', 'e4', 'c6', 'd4', 'd5', 'exd5', 'cxd5', 'Nf3'),
+      },
+    };
+    const lines = Object.fromEntries(
+      lessonIndex([lesson]).caro.variations.map(({ id, moves }) => [id, moves]),
+    );
+    expect(lines.classical).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'Nc3', 'dxe4', 'Nxe4'));
+    expect(lines.exchange).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'exd5', 'cxd5', 'Nf3'));
+  });
+
+  it('lists each variation reached, through a line that picks the lesson, the shortest where games are not counted', () => {
+    const caroLines = guideLesson(
+      'caro',
+      'black',
+      ['e4', 'c6', 'd4', 'd5', 'e5', 'Bf5'],
+      ['e4', 'c6', 'd4', 'd5', 'exd5', 'cxd5'],
+    );
+    const caroTagged: Lesson = {
+      ...caroLines,
+      variations: {
+        caro: { name: 'Caro' },
+        unused: { name: 'Unused', parent: 'caro' },
+        exchange: { name: 'Exchange', parent: 'caro' },
+        advance: { name: 'Advance', parent: 'unused' },
+      },
+      positions: {
+        ...caroLines.positions,
+        [keyAfter('e4', 'c6', 'd4', 'd5', 'e5')]: {
+          ...caroLines.positions[keyAfter('e4', 'c6', 'd4', 'd5', 'e5')],
+          variation: 'advance',
+        },
+        [keyAfter('e4', 'c6', 'd4', 'd5', 'exd5')]: {
+          ...caroLines.positions[keyAfter('e4', 'c6', 'd4', 'd5', 'exd5')],
+          variation: 'exchange',
+        },
+      },
+    };
+    // In the file's order; a variation no position is in is left out, its
+    // children passed to its parent.
+    expect(lessonIndex([caroTagged]).caro.variations).toEqual([
+      { id: 'caro', name: 'Caro', moves: uciLine('e4') },
+      {
+        id: 'exchange',
+        name: 'Exchange',
+        parent: 'caro',
+        moves: uciLine('e4', 'c6', 'd4', 'd5', 'exd5'),
+      },
+      {
+        id: 'advance',
+        name: 'Advance',
+        parent: 'caro',
+        moves: uciLine('e4', 'c6', 'd4', 'd5', 'e5'),
+      },
+    ]);
+    // The positions before a line picks it are the lesson's too, but open nothing.
+    expect(index.anti.variations).toEqual([
+      { id: 'anti', name: 'anti', moves: uciLine('d4', 'd5', 'Bf4') },
+    ]);
+  });
+
+  it('keeps the opening itself at the line that picks it when no position is its own', () => {
+    const caro = guideLesson('caro', 'black', ['e4', 'c6', 'd4', 'd5', 'e5']);
+    const lesson: Lesson = {
+      ...caro,
+      variations: { caro: { name: 'Caro' }, a: { name: 'A', parent: 'caro' } },
+      positions: Object.fromEntries(
+        Object.entries(caro.positions).map(([key, here]) => [key, { ...here, variation: 'a' }]),
+      ),
+    };
+    expect(
+      lessonIndex([lesson]).caro.variations.map(({ id, parent, moves }) => [id, parent, moves]),
+    ).toEqual([
+      ['caro', undefined, uciLine('e4')],
+      ['a', 'caro', uciLine('e4')],
+    ]);
+  });
+
+  it.each(shippedIds)('lists every variation a position of %s is in, as one tree', (id) => {
+    const lesson = readShippedLesson(id);
+    const used = new Set(Object.values(lesson.positions).map(({ variation }) => variation));
+    const { variations } = shippedIndex(id);
+    const ids = variations.map((variation) => variation.id);
+    expect(ids).toEqual(Object.keys(lesson.variations).filter((variation) => used.has(variation)));
+    for (const { id: variation, moves } of variations)
+      expect(lesson.positions[lineKeys(moves).at(-1)!].variation).toBe(variation);
+    // The opening list roots the lesson at its one variation without a parent.
+    expect(variations.filter(({ parent }) => parent === undefined)).toHaveLength(1);
+    for (const { parent } of variations) if (parent) expect(ids).toContain(parent);
+  });
+
   it("names the lesson's title, side and sources", () => {
     expect(lessonIndex([SAMPLE])[SAMPLE.id]).toMatchObject({
       title: SAMPLE.title,
@@ -146,7 +305,7 @@ describe('lessonIndex', () => {
   it.each(shippedIds)("agrees with walking %s's start for the start row's passed mark", (id) => {
     const lesson = readShippedLesson(id);
     const start = lessonView({ lesson, line: [], ply: 0, opponent: 1500 });
-    for (const { moves, lineEnds } of lessonIndex([lesson])[id].lines) {
+    for (const { moves, lineEnds } of shippedIndex(id).lines) {
       // Every listed end passed passes the row; with one missing, it doesn't.
       const passedWith = (passed: readonly string[]) =>
         rowMarks(lesson, { seen: [], passed }, start).get(moves[0]);
