@@ -154,6 +154,16 @@ export const isPicking = (index: LessonIndex, side: Color, line: readonly Uci[])
   );
 
 /**
+ * How many of `line`'s first moves pick the opening: those played where
+ * `isPicking` holds, which a Practice run judges as no move of the learner's.
+ */
+export function pickingMoves(index: LessonIndex, side: Color, line: readonly Uci[]): number {
+  let picks = 0;
+  while (picks < line.length && isPicking(index, side, line.slice(0, picks))) picks++;
+  return picks;
+}
+
+/**
  * The lines of `side`'s lessons that `line` still leads to, or the one that
  * picked its lesson, each with that lesson, in the index's order.
  */
@@ -286,7 +296,8 @@ export function openingsLesson(index: LessonIndex, side: Color): Lesson {
 /**
  * `lesson` with the openings of its side listed where they are picked, so
  * the learner can step back and pick another; its own moves keep what the
- * file says of them, after the openings' notes.
+ * file says of them, after the openings' notes, but not their counts, so the
+ * openings list in the index's order whichever lesson is loaded.
  */
 export function withOpenings(lesson: Lesson, index: LessonIndex): Lesson {
   const positions = { ...lesson.positions };
@@ -296,7 +307,9 @@ export function withOpenings(lesson: Lesson, index: LessonIndex): Lesson {
     const own = new Map(here.moves.map((move) => [move.uci, move]));
     const moves = openings.map((move) => {
       const file = own.get(move.uci);
-      return file ? { ...file, notes: [...move.notes, ...(file.notes ?? [])] } : move;
+      return file
+        ? { ...file, games: undefined, notes: [...move.notes, ...(file.notes ?? [])] }
+        : move;
     });
     const rest = here.moves.filter(({ uci }) => !openings.some((move) => move.uci === uci));
     positions[key] = { ...here, moves: [...moves, ...rest] };

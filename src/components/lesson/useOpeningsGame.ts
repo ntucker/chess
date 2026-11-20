@@ -33,8 +33,9 @@ const lessonHref = (id: LessonId) => `/lesson/${id}` as const;
  * another lesson, the page keeps the older game until that lesson has loaded
  * (`useDeferredValue`); the start loads nothing, so it shows at once. So
  * picking an opening, or going Back or Forward to one, keeps the page on
- * screen rather than a placeholder, while the address moves at once. The store's dispatch acts on the newer game, so while the
- * lesson is `pending` it drops the learner's moves and steps.
+ * screen rather than a placeholder, while the address moves at once. The
+ * store's dispatch acts on the newer game, so while the lesson is `pending`
+ * it drops the learner's moves and steps.
  */
 export function useOpeningsGame(address: LessonId | undefined) {
   const router = useRouter();

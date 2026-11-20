@@ -15,7 +15,10 @@ export interface Settings {
   readonly showMoves: boolean;
   /** In a lesson, a trap's moves are drawn before the learner can fall in. */
   readonly showTraps: boolean;
-  /** The side whose openings the start position lists: the side of the lesson last played. */
+  /**
+   * The side whose openings the start position lists, as the learner last
+   * swapped to; a lesson's address shows its own side without saving it.
+   */
   readonly side: Color;
 }
 

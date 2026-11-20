@@ -77,7 +77,7 @@ export function parseStudy(pgn: string, include: (title: string) => boolean): Ch
   return chapters;
 }
 
-/** Copies of `lead` without comments, the last followed by the moves `rest` reads after it. */
+/** Copies of `lead` without comments (a dubious move stays dubious), the last followed by the moves `rest` reads after it. */
 function copyLead(
   lead: readonly StudyMove[],
   rest: (last: StudyMove) => StudyMove[],
@@ -85,7 +85,7 @@ function copyLead(
 ): StudyMove {
   const [move, ...after] = lead;
   const children: StudyMove[] = [];
-  const copy: StudyMove = { ...move, parent, children, comment: '', nags: [] };
+  const copy: StudyMove = { ...move, parent, children, comment: '' };
   children.push(...(after.length > 0 ? [copyLead(after, rest, copy)] : rest(copy)));
   return copy;
 }

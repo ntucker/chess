@@ -16,6 +16,7 @@ import {
 import { rowMarks } from './marks';
 import {
   isPicking,
+  pickingMoves,
   lessonIndex,
   lessonOf,
   lessonsAfter,
@@ -177,6 +178,15 @@ describe('isPicking', () => {
   });
 });
 
+describe('pickingMoves', () => {
+  it('counts the moves played where the openings are picked', () => {
+    expect(pickingMoves(INDEX, 'black', uciLine('d4', 'd5', 'c4', 'c6'))).toBe(3);
+    expect(pickingMoves(INDEX, 'black', uciLine('e4', 'c6'))).toBe(1);
+    expect(pickingMoves(INDEX, 'white', uciLine('d4', 'd5'))).toBe(1);
+    expect(pickingMoves(INDEX, 'black', [])).toBe(0);
+  });
+});
+
 describe('lessonsAfter', () => {
   it('lists the lessons a line still leads to, or the one it picked', () => {
     expect(lessonsAfter(INDEX, 'black', uciLine('d4'))).toEqual(['slav', 'anti-london']);
@@ -295,11 +305,15 @@ describe('withOpenings', () => {
       l.positions[keyAfter()].moves.find(({ uci }) => uci === 'e2e4')!;
     expect(own(lesson)).toEqual({
       ...own(SAMPLE),
+      games: undefined,
       notes: [
         { text: "Caro-Kann Defence, from Kampf's lichess study." },
         ...(own(SAMPLE).notes ?? []),
       ],
     });
+    // Without its count, it lists in the index's order, as from any other lesson.
+    expect(own(SAMPLE).games).toBeDefined();
+    expect(own(lesson).games).toBeUndefined();
     expect(lesson.positions[keyAfter('e4')]).toBe(SAMPLE.positions[keyAfter('e4')]);
     expect(checkLesson(lesson)).toEqual([]);
   });

@@ -108,11 +108,22 @@ describe('modeReducer', () => {
 describe('moveKinds', () => {
   it("names each move by who played it, and the learner's by the guide", () => {
     const plies = replay(uciLine('e4', 'c6', 'd4', 'e6'));
-    expect(moveKinds(plies, 'black', [false, true, false, false])).toEqual([
+    expect(moveKinds(plies, 'black', [false, true, false, false], 0)).toEqual([
       'opponent',
       'book',
       'opponent',
       'slip',
+    ]);
+  });
+
+  it("counts the moves that pick the opening as no move of the learner's", () => {
+    const plies = replay(uciLine('d4', 'd5', 'c4', 'c6', 'Nf3'));
+    expect(moveKinds(plies, 'black', [false, true, false, true, false], 3)).toEqual([
+      'opponent',
+      'opponent',
+      'opponent',
+      'book',
+      'opponent',
     ]);
   });
 });
@@ -121,10 +132,15 @@ describe('beforeSideMoves', () => {
   const plies = replay(uciLine('e4', 'c6', 'd4', 'd5'));
 
   it("counts the side's moves among the first moves of the line", () => {
-    expect(beforeSideMoves(plies, 'black', 1)).toBe(true);
-    expect(beforeSideMoves(plies, 'black', 2)).toBe(false);
-    expect(beforeSideMoves(plies, 'white', 0)).toBe(true);
-    expect(beforeSideMoves(plies, 'white', 1)).toBe(false);
+    expect(beforeSideMoves(plies, 'black', 1, 0)).toBe(true);
+    expect(beforeSideMoves(plies, 'black', 2, 0)).toBe(false);
+    expect(beforeSideMoves(plies, 'white', 0, 0)).toBe(true);
+    expect(beforeSideMoves(plies, 'white', 1, 0)).toBe(false);
+  });
+
+  it('skips the moves that pick the opening', () => {
+    expect(beforeSideMoves(plies, 'black', 2, 2)).toBe(true);
+    expect(beforeSideMoves(plies, 'black', 4, 2)).toBe(false);
   });
 });
 

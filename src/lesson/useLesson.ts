@@ -35,7 +35,7 @@ import {
 } from './guidance';
 import type { Lesson, Note, PositionKey, Uci } from './lesson';
 import { earnedMark, openingMarks, rowMarks, steering } from './marks';
-import { isPicking } from './openings';
+import { isPicking, pickingMoves } from './openings';
 import { lessonOpponent } from './opponent';
 import { samePointer } from './peek';
 import { beforeSideMoves, moveKinds, opponentPlays } from './practice';
@@ -121,9 +121,11 @@ export function useLesson(
   // The store drops a move made while a lesson loads, so the board offers
   // none: chessground would show the dropped move until the lesson arrived.
   const canMove = game.canMove && !pending;
-  // A move played before the learner's first starts a Practice run (`modeReducer`).
-  const startsRun = beforeSideMoves(plies, lesson.side, ply);
-  const kinds = moveKinds(plies, lesson.side, book);
+  // A move played before the learner's first starts a Practice run
+  // (`modeReducer`); the moves that pick the opening are no move of theirs.
+  const picks = useMemo(() => pickingMoves(LESSON_INDEX, lesson.side, moves), [lesson.side, moves]);
+  const startsRun = beforeSideMoves(plies, lesson.side, ply, picks);
+  const kinds = moveKinds(plies, lesson.side, book, picks);
   const view = useMemo(
     () => lessonView({ lesson, line: moves, ply, opponent }),
     [lesson, moves, ply, opponent],

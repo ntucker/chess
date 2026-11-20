@@ -26,11 +26,12 @@ export type ModeState =
 export const initialMode: ModeState = { mode: 'explore' };
 
 /**
- * Whether none of the first `count` moves from `plies` is `side`'s. With the
- * moves up to the board's, a move played there starts a run.
+ * Whether none of the first `count` moves from `plies` is `side`'s, past the
+ * first `picks`, which pick the opening (`pickingMoves` in ./openings.ts).
+ * With the moves up to the board's, a move played there starts a run.
  */
-export const beforeSideMoves = (plies: readonly Ply[], side: Color, count: number) =>
-  plies.slice(0, count).every(({ turn }) => turn !== side);
+export const beforeSideMoves = (plies: readonly Ply[], side: Color, count: number, picks: number) =>
+  plies.slice(picks, count).every(({ turn }) => turn !== side);
 
 /**
  * Whether the opponent plays its own move in `game`'s shown position, rather
@@ -47,16 +48,26 @@ export const opponentPlays = (
   picking: boolean,
 ) => auto && !picking && (mode === 'practice' || ply === moves.length);
 
-/** Who played a move of the line and, for the learner's, whether the guide recommends it. */
+/**
+ * Who played a move of the line and, for the learner's, whether the guide
+ * recommends it. A move that picks the opening counts as the opponent's: a
+ * choice, which no run judges.
+ */
 export type MoveKind = 'opponent' | 'book' | 'slip';
 
-/** Each of the moves that led to `plies`' last position, as a run sees it. */
+/**
+ * Each of the moves that led to `plies`' last position, as a run sees it;
+ * the first `picks` pick the opening (`pickingMoves` in ./openings.ts).
+ */
 export const moveKinds = (
   plies: readonly Ply[],
   side: Color,
   book: readonly boolean[],
+  picks: number,
 ): MoveKind[] =>
-  plies.slice(0, -1).map(({ turn }, n) => (turn !== side ? 'opponent' : book[n] ? 'book' : 'slip'));
+  plies
+    .slice(0, -1)
+    .map(({ turn }, n) => (n < picks || turn !== side ? 'opponent' : book[n] ? 'book' : 'slip'));
 
 export type ModeAction =
   | {
