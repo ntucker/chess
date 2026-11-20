@@ -24,6 +24,7 @@ env:
   PREVIEW: ${{ github.event_name == 'pull_request' && format('pr-preview/pr-{0}', github.event.number) || '' }}
 
 jobs:
+  # .agents/projects/autoland.md lists this job's name as a required check; rename both together.
   build:
     name: Build
     if: github.event.action != 'closed'
@@ -81,6 +82,7 @@ jobs:
           path: dist
           retention-days: 1
 
+  # .agents/projects/autoland.md lists this job's name as a required check; rename both together.
   publish:
     name: Publish
     needs: build
