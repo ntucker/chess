@@ -106,7 +106,14 @@ describe('OpeningList', () => {
     expect(rows()).not.toContain(short.name);
     act(() => toggle('Slav Defence').click());
     expect(toggle('Slav Defence').getAttribute('aria-expanded')).toBe('true');
-    expect(rows()).toEqual(expect.arrayContaining(slav.children.map(({ name }) => name)));
+    expect(rows()).toEqual([
+      'London System',
+      'Caro-Kann Defence',
+      ...caro.children.map(({ name }) => name),
+      'Slav Defence',
+      ...slav.children.map(({ name }) => name),
+      'Anti-London',
+    ]);
   });
 
   it('reopens a branch as it was left, without scrolling to the board’s row again', () => {

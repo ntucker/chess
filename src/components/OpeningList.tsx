@@ -155,13 +155,15 @@ function Branch({
   const { children } = variation;
   // Whether the variations under it show; none for a variation without any.
   const open = children.length ? (toggled ?? path.includes(variation.id)) : undefined;
+  // The rows under it keep a chevron's space when one of them has a chevron.
+  const childGutter = children.some((child) => child.children.length > 0);
   return (
     <>
       <View style={styles.branch}>
         {open === undefined ? (
           gutter && <View style={styles.toggle} />
         ) : (
-          <Toggle
+          <BranchToggle
             name={variation.name}
             depth={depth}
             open={open}
@@ -197,7 +199,7 @@ function Branch({
               variation={child}
               depth={depth + 1}
               path={path}
-              gutter={children.some((sibling) => sibling.children.length > 0)}
+              gutter={childGutter}
             />
           ))}
         </View>
@@ -207,7 +209,7 @@ function Branch({
 }
 
 /** The chevron before a variation's row that shows or hides those under it. */
-function Toggle({
+function BranchToggle({
   name,
   depth,
   open,
@@ -226,8 +228,8 @@ function Toggle({
       accessibilityRole="button"
       accessibilityLabel={`Variations of ${name}`}
       {...a11yState({ expanded: open })}
-      // At least 44 points to a finger's press, past the chevron's 28.
-      hitSlop={8}
+      // At least 44 points to a finger's press, past the chevron's 28 and its row's height.
+      hitSlop={HIT_SLOP}
       onPress={onPress}
       // Level with the name's first line, however the row wraps.
       style={[styles.toggle, { height: 2 * ROW_PAD + role.size * role.lineHeight }]}
@@ -357,6 +359,7 @@ function scrollIntoView(row: ComponentRef<typeof View> | null) {
 const CONTENT_MAX = 760;
 const DOT = 8;
 const CHEVRON = 14;
+const HIT_SLOP = { top: 4, bottom: 4, left: 8, right: 8 };
 /** The chevron's column. */
 const TOGGLE = 28;
 const ROW_PAD = 8;
