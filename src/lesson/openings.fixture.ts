@@ -100,7 +100,7 @@ export const FIXTURE_LESSONS = {
     ),
     title: 'London System',
   },
-} satisfies Record<string, Lesson>;
+} satisfies Partial<Record<LessonId, Lesson>>;
 
 /**
  * The index of `FIXTURE_LESSONS`, for `LessonIndexContext` in tests. It has
