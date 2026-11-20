@@ -2,12 +2,11 @@ import { a11yState, Pressable, Stack, Surface, Text, useTheme } from '@reactive/
 import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { signedEvaluation } from '@/evaluation/evaluation';
+import { evaluationReading, signedEvaluation } from '@/evaluation/evaluation';
 import { candidateTone } from '@/lesson/drawings';
 import type { Uci } from '@/lesson/lesson';
 import type { Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
-import { evaluationReading } from '@/components/EvaluationBar';
 import { Eyebrow } from '@/components/Eyebrow';
 import { QualityBadge } from '@/components/QualityBadge';
 import type { Mark } from '@/progress/progress';

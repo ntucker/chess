@@ -1,4 +1,4 @@
-import type { GameResult } from '@/game/replay';
+import { type Color, colorName, type GameResult } from '@/game/replay';
 
 /** How a position stands, from White's side. */
 export interface Evaluation {
@@ -30,12 +30,48 @@ export function pawnsLabel(pawns: number): string {
   return tenths < 10 ? tenths.toFixed(1) : String(Math.min(99, Math.round(tenths)));
 }
 
-/** `evaluation` as an engine line writes it, from White's side: "+0.7", "\u22121.2", "0.0" or "+M3". */
-export function signedEvaluation({ score, pawns, mate }: Evaluation): string {
-  // A side already mated (mate 0) has only the score to say who won.
-  if (mate !== undefined) return `${score < 0.5 ? '\u2212' : '+'}M${Math.abs(mate)}`;
+/**
+ * The side ahead: by the score for a mate, since a side already mated has
+ * `mate` 0; otherwise by the pawns.
+ */
+function evaluationLeader({ score, pawns, mate }: Evaluation): Color {
+  if (mate !== undefined) return score < 0.5 ? 'black' : 'white';
+  return pawns < 0 ? 'black' : 'white';
+}
+
+/** How an evaluation or a result reads on the evaluation bar. */
+export interface Reading {
+  /** White's share of the bar, from 0 to 1. */
+  readonly score: number;
+  readonly label: string;
+  /** The side whose end shows the label. */
+  readonly leader: Color;
+  readonly description: string;
+}
+
+/** How `evaluation` reads on the bar: its label, the side that leads, and in words. */
+export function evaluationReading({ score, pawns, mate }: Evaluation): Reading {
+  const leader = evaluationLeader({ score, pawns, mate });
+  if (mate !== undefined) {
+    const moves = Math.abs(mate);
+    return {
+      score,
+      label: `M${moves}`,
+      leader,
+      description: `${colorName(leader)} mates in ${moves} ${moves === 1 ? 'move' : 'moves'}`,
+    };
+  }
   const label = pawnsLabel(pawns);
-  return Number(label) === 0 ? label : `${pawns < 0 ? '\u2212' : '+'}${label}`;
+  if (Number(label) === 0) return { score, label, leader: 'white', description: 'Even' };
+  return { score, label, leader, description: `${colorName(leader)} is ahead by ${label} pawns` };
+}
+
+/** `evaluation` as an engine line writes it, from White's side: "+0.7", "\u22121.2", "0.0" or "+M3". */
+export function signedEvaluation(evaluation: Evaluation): string {
+  const { pawns, mate } = evaluation;
+  const label = mate === undefined ? pawnsLabel(pawns) : `M${Math.abs(mate)}`;
+  if (label === pawnsLabel(0)) return label;
+  return `${evaluationLeader(evaluation) === 'black' ? '\u2212' : '+'}${label}`;
 }
 
 /** How a finished game stands: the winner scores 1, a draw 0.5 each. */

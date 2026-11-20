@@ -7,9 +7,9 @@ import Animated, { type CSSTransitionTimingFunction, cubicBezier } from 'react-n
 import { resetListener } from '@/components/resetListener';
 import { type Color, colorName, type GameResult, lastPosition, opposite } from '@/game/replay';
 import {
-  type Evaluation,
   type EvaluationEngine,
-  pawnsLabel,
+  evaluationReading,
+  type Reading,
   resultEvaluation,
 } from '@/evaluation/evaluation';
 import { getEvaluation } from '@/resources/evaluation';
@@ -69,33 +69,6 @@ function EvaluatedBar({
   const evaluation = useSuspense(getEvaluation, ...(fetchArgs ?? [null]));
   const reading = result ? resultReading(result) : evaluation && evaluationReading(evaluation);
   return <Bar orientation={orientation} style={style} {...reading} />;
-}
-
-interface Reading {
-  /** White's share of the bar, from 0 to 1. */
-  readonly score: number;
-  readonly label: string;
-  /** The side whose end shows the label. */
-  readonly leader: Color;
-  readonly description: string;
-}
-
-/** How `evaluation` reads on the bar: its label, the side that leads, and in words. */
-export function evaluationReading({ score, pawns, mate }: Evaluation): Reading {
-  if (mate !== undefined) {
-    const leader = score < 0.5 ? 'black' : 'white';
-    const moves = Math.abs(mate);
-    return {
-      score,
-      label: `M${moves}`,
-      leader,
-      description: `${colorName(leader)} mates in ${moves} ${moves === 1 ? 'move' : 'moves'}`,
-    };
-  }
-  const label = pawnsLabel(pawns);
-  if (Number(label) === 0) return { score, label, leader: 'white', description: 'Even' };
-  const leader = pawns < 0 ? 'black' : 'white';
-  return { score, label, leader, description: `${colorName(leader)} is ahead by ${label} pawns` };
 }
 
 function resultReading(result: GameResult): Reading {

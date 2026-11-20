@@ -105,13 +105,19 @@ describe('the engine lifecycle', () => {
     print('info depth 12 multipv 1 score cp 20 pv d7d5');
     print('bestmove d7d5');
     await next;
-    // and the one after leaves it be.
-    void engine.stockfishEvaluation(['c2c4']);
-    expect(sent.slice(-3)).toEqual([
-      'ucinewgame',
-      'position startpos moves c2c4',
-      'go nodes 100000 movetime 1500',
-    ]);
+  });
+
+  it('sends no MultiPV setting while the number of ranks stays the same', async () => {
+    const { print, sent } = scripted();
+    print('uciok');
+    for (const move of ['e2e4', 'd2d4']) {
+      const evaluation = engine.stockfishEvaluation([move]);
+      print('info depth 12 multipv 1 score cp 20 pv d7d5');
+      print('bestmove d7d5');
+      await evaluation;
+    }
+    // The engine starts at one rank, so evaluations never set it.
+    expect(sent.filter((command) => command.startsWith('setoption'))).toEqual([]);
   });
 
   it('restarts an engine that crashes, and runs its search on the next', async () => {

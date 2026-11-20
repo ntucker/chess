@@ -173,7 +173,6 @@ function LessonScreen({
     playable: canPlay,
     onPlay: play,
     onTabOut: leave,
-    onShowRare: showRare,
   };
   // Past the guide, a move of Stockfish's can lead back into it.
   const rejoins = ({ variation }: Candidate) =>
@@ -243,6 +242,7 @@ function LessonScreen({
                   candidates={guidance.top}
                   rare={[]}
                   rareShown={false}
+                  onShowRare={showRare}
                   main={guidance.top[0]}
                   leadsTo={rejoins}
                   onPoint={pointRow}
@@ -259,6 +259,7 @@ function LessonScreen({
                   candidates={guidance.candidates}
                   rare={guidance.rare}
                   rareShown={rareShown}
+                  onShowRare={showRare}
                   main={guidance.main}
                   leadsTo={leadsTo}
                   onPoint={pointCandidate}
