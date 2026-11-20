@@ -96,6 +96,7 @@ export function CandidateList({
     <Stack {...narrowPart('move-list')} style={labelled}>
       <View style={styles.head}>
         <Eyebrow>
+          {/* A plain Text takes the eyebrow's style; Silk's would set its own. */}
           {owner ? <Span {...narrowPart('wide-only-spoken')}>{`${owner}'s `}</Span> : null}
           {heading}
         </Eyebrow>
