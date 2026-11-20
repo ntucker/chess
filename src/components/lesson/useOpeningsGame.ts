@@ -37,13 +37,14 @@ interface Visit {
  * (`/lesson/<id>?variation=<id>`, from the opening list), which starts the
  * game at the line that opens it; a move past that line drops it.
  *
- * Within one history entry (`entry`, its route's key) the address follows
- * the game, and an address the game didn't move to starts the game there
- * (a link opened in place). The addresses the game sent arrive in order,
- * maybe after it has moved on, so one it sent and that hasn't arrived yet
- * leaves the game where it is. Arriving at another entry resumes the game the
- * page had there, if the learner left it from where it still is, else starts
- * the entry's address; an entry the game's own pick added keeps the game.
+ * Each address the game sends arrives as a new history entry (`entry`, its
+ * route's key: the router makes a new one for a push or a replace), in
+ * order, maybe after the game has moved on; one it sent keeps the game where
+ * it is. Arriving at any other entry (Back, Forward, a link) resumes the game
+ * the page had there, if the learner left it from where it still is, else
+ * starts the entry's address. Only a change of variation keeps the entry:
+ * the game dropping one keeps the game, and a link to the page already open
+ * (such as an Android deep link) starts its address.
  *
  * The side is the lesson address's, which the `side` setting saves, so the
  * start, and a reload, show the side last played; at the start it is the
@@ -78,25 +79,32 @@ export function useOpeningsGame(
   /** The lesson the game plays, named by the moves that pick it. */
   const picked = lessonOf(LESSON_INDEX, side, moves);
   // Where the page last caught up with. A change is checked during render,
-  // so the page never shows the old game at the new address. `picks` are the
-  // lessons the game has picked since, in order: each one the page may have
-  // sent the address to, which can arrive after the game has moved on.
+  // so the page never shows the old game at the new address. `picks` starts
+  // with the lesson at that address, followed by each lesson the game has
+  // picked since, in order: the addresses it may have sent, which can arrive
+  // after it has moved on.
   const [synced, setSynced] = useState({ entry, address, variation, picks: [picked] });
   // Each history entry the page left, while the game was still at its address.
   const [left, setLeft] = useState<Partial<Record<string, Visit>>>({});
-  const addressChanged = address !== synced.address || variation !== synced.variation;
-  if (entry !== synced.entry || addressChanged) {
-    let picks = [picked];
+  if (entry !== synced.entry || address !== synced.address || variation !== synced.variation) {
     if (address !== undefined && address !== synced.address) {
       setAddressSide(LESSON_INDEX[address].side);
     }
-    if (entry !== synced.entry && synced.entry !== undefined) {
+    // An address the game sent arriving, in a new history entry (a push or
+    // replace makes one): the ones sent after it are still on their way.
+    // The game never sends a variation.
+    const sentAt =
+      address === synced.address || variation !== undefined ? -1 : synced.picks.indexOf(address, 1);
+    let picks = [address];
+    if (sentAt >= 0) {
+      picks = synced.picks.slice(sentAt);
+    } else if (entry !== synced.entry && synced.entry !== undefined) {
+      // Back, Forward, or a link: resume the game the entry had, else start it.
       // The game is at `id`'s address: it plays that lesson from its side
       // (lessons of both sides share moves), or at `/`, none from the page's.
       const isAt = (id?: LessonId) =>
         lessonOf(LESSON_INDEX, id === undefined ? side : LESSON_INDEX[id].side, moves) === id;
-      const wasAt = isAt(synced.address);
-      if (wasAt) {
+      if (isAt(synced.address)) {
         const leaving = { address: synced.address, variation: synced.variation, game };
         setLeft({ ...left, [synced.entry]: leaving });
       }
@@ -106,30 +114,15 @@ export function useOpeningsGame(
         visit && visit.address === address && visit.variation === variation
           ? visit.game
           : undefined;
-      // The game's own pick moved the address here: it stays.
-      const pickMovedHere = !wasAt && isAt(address);
-      if (!pickMovedHere) {
-        dispatch({ type: 'newGame', moves: resumed?.moves ?? startOf(address, variation) });
-        if (resumed) dispatch({ type: 'goto', ply: resumed.ply });
-      }
-      // Either way the game plays the entry's lesson: the one it left sent nothing here.
-      picks = [address];
+      dispatch({ type: 'newGame', moves: resumed?.moves ?? startOf(address, variation) });
+      if (resumed) dispatch({ type: 'goto', ply: resumed.ply });
+    } else if (linkedInPlace(address, variation, synced, picked, moves)) {
+      // A link to the page already open, such as an Android deep link.
+      dispatch({ type: 'newGame', moves: startOf(address, variation) });
     } else {
-      // Within the entry: the address the game sent, or a link opened in place,
-      // such as an Android deep link to the page already open. A link names
-      // a variation (the game's own moves only ever drop one), or a lesson
-      // the game isn't at (from the page's side, which the game's own picks
-      // are from) and hasn't sent the address to since it last arrived.
-      // (Or the entry's key arrived: then the address didn't change.)
-      const sentAt = synced.picks.indexOf(address);
-      const newVariation = variation !== undefined && addressChanged;
-      if (!newVariation && sentAt >= 0) {
-        // The ones sent after it are still on their way.
-        picks = synced.picks.slice(sentAt);
-      } else if (newVariation || picked !== address) {
-        dispatch({ type: 'newGame', moves: startOf(address, variation) });
-        picks = [address];
-      }
+      // The entry's key arrived, or the game's move past a variation dropped
+      // it: what the game sent is still on its way.
+      if (address === synced.address) picks = synced.picks;
     }
     setSynced({ entry, address, variation, picks });
   } else if (synced.picks.at(-1) !== picked) {
@@ -198,3 +191,26 @@ export function useOpeningsGame(
  * game's opponent again, so neither is held.
  */
 const isInput = (action: GameAction) => action.type === 'move' || action.type === 'goto';
+
+/**
+ * Whether an address that changed within one history entry is a link rather
+ * than the game's own doing: one that names another variation, another lesson
+ * the game doesn't play, or the plain lesson while the game is still exactly
+ * on the variation's line (the game drops the variation only once it moves
+ * off). Only the entry's key arriving is neither.
+ */
+function linkedInPlace(
+  address: LessonId | undefined,
+  variation: VariationId | undefined,
+  synced: { readonly address?: LessonId; readonly variation?: VariationId },
+  picked: LessonId | undefined,
+  moves: readonly string[],
+) {
+  if (variation !== undefined) {
+    return variation !== synced.variation || address !== synced.address;
+  }
+  if (address !== synced.address) return picked !== address;
+  const opens =
+    address === undefined ? undefined : variationLine(LESSON_INDEX[address], synced.variation);
+  return opens !== undefined && sameLine(moves, opens);
+}
