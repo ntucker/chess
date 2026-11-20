@@ -11,6 +11,7 @@ import { Eyebrow, labelled } from '@/components/Eyebrow';
 import { QualityBadge } from '@/components/QualityBadge';
 import type { Mark } from '@/progress/progress';
 import { NARROW_CSS_LOADS, narrowPart } from '@/theme/narrow';
+import { NarrowOnly } from '@/theme/NarrowOnly';
 import { fonts } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
 
@@ -19,6 +20,8 @@ import { MARK_SIZE, MarkLegend, ProgressMark, SPOKEN_MARKS } from './ProgressMar
 interface Props {
   /** The list's heading: whose moves these are. */
   readonly heading: string;
+  /** The heading in a narrow web page's pane, where `heading` would wrap: without whose moves. */
+  readonly shortHeading?: string;
   readonly candidates: readonly Candidate[];
   /** Rare candidates, listed after the others while `rareShown`. */
   readonly rare: readonly Candidate[];
@@ -67,6 +70,7 @@ interface Props {
  */
 export function CandidateList({
   heading,
+  shortHeading,
   candidates,
   rare,
   rareShown,
@@ -90,44 +94,61 @@ export function CandidateList({
   const pointedRow = all.find(({ move }) => move.uci === pointed);
   const caption = compact && NARROW_CSS_LOADS && pointedRow && leadsTo(pointedRow);
   return (
-    <Stack style={labelled}>
+    <Stack {...narrowPart('move-list')} style={labelled}>
       <View style={styles.head}>
-        <Eyebrow>{heading}</Eyebrow>
-        <MarkLegend marks={shownMarks} />
+        {shortHeading ? (
+          <>
+            <View {...narrowPart('wide-only')}>
+              <Eyebrow>{heading}</Eyebrow>
+            </View>
+            <NarrowOnly>
+              <Eyebrow>{shortHeading}</Eyebrow>
+            </NarrowOnly>
+          </>
+        ) : (
+          <Eyebrow>{heading}</Eyebrow>
+        )}
+        {/* A narrow pane has no room for the key: each mark's row still says it to screen readers. */}
+        <View {...narrowPart('wide-only')}>
+          <MarkLegend marks={shownMarks} />
+        </View>
       </View>
       <Surface
-        {...(compact ? narrowPart('compact-list') : {})}
+        {...narrowPart('list-card')}
         elevation="sunken"
         border="subtle"
         radius="md"
         style={styles.list}
       >
-        {rows.map((candidate, index) => (
-          <Row
-            key={candidate.move.uci}
-            candidate={candidate}
-            main={candidate === main}
-            pointed={candidate.move.uci === pointed}
-            mark={marks.get(candidate.move.uci)}
-            // Every row keeps room for a mark once one has one, so their shares line up.
-            markSlot={shownMarks.size > 0}
-            leadsTo={leadsTo(candidate)}
-            // A lone move's share is always all of the games.
-            share={rows.length > 1 ? candidate.share : undefined}
-            playable={playable}
-            onPlay={onPlay}
-            onPoint={onPoint}
-            onTabOut={!rare.length && index === rows.length - 1 ? onTabOut : undefined}
-          />
-        ))}
-        {rare.length ? (
-          <RareToggle
-            count={rare.length}
-            shown={rareShown}
-            onToggle={() => onShowRare(!rareShown)}
-            onTabOut={onTabOut}
-          />
-        ) : null}
+        {/* On a narrow web page the rows scroll inside the card, under its heading. */}
+        <View {...narrowPart(compact ? 'compact-list' : 'list-scroll')}>
+          {rows.map((candidate, index) => (
+            <Row
+              key={candidate.move.uci}
+              candidate={candidate}
+              main={candidate === main}
+              pointed={candidate.move.uci === pointed}
+              mark={marks.get(candidate.move.uci)}
+              // Every row keeps room for a mark once one has one, so their shares line up.
+              markSlot={shownMarks.size > 0}
+              leadsTo={leadsTo(candidate)}
+              // A lone move's share is always all of the games.
+              share={rows.length > 1 ? candidate.share : undefined}
+              playable={playable}
+              onPlay={onPlay}
+              onPoint={onPoint}
+              onTabOut={!rare.length && index === rows.length - 1 ? onTabOut : undefined}
+            />
+          ))}
+          {rare.length ? (
+            <RareToggle
+              count={rare.length}
+              shown={rareShown}
+              onToggle={() => onShowRare(!rareShown)}
+              onTabOut={onTabOut}
+            />
+          ) : null}
+        </View>
       </Surface>
       {caption ? (
         <Text {...narrowPart('narrow-only')} role="caption" tone="secondary">

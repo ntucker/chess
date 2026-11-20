@@ -63,7 +63,7 @@
     --board-min: 300px;
     /* ...to leave this much for the panel (a label and a couple of moves) and the gap above it. */
     --panel-reserve: calc(160px + var(--wrapped-gap));
-    /* Read only here: the fade at the bottom of the panel and of each of its panes. */
+    /* Read only here: the fade at the bottom of each part that scrolls (below). */
     --fade: 16px;
   }
 
@@ -155,9 +155,25 @@
     flex-grow: 3;
   }
   /*
-   * A candidate list (CandidateList.tsx), in its narrow pane: compact rows,
-   * without the share bars.
+   * A candidate list (CandidateList.tsx) keeps its heading in view: the list
+   * and its card shrink to the pane, and its rows scroll inside the card.
    */
+  :root [data-narrow='moves-pane'] {
+    overflow: hidden;
+  }
+  :root [data-narrow='move-list'],
+  :root [data-narrow='list-card'],
+  :root [data-narrow='list-scroll'],
+  :root [data-narrow='compact-list'] {
+    flex-shrink: 1;
+    min-height: 0;
+    overscroll-behavior: contain;
+  }
+  /* The rows' scroll pads the card's bottom itself, to clear its fade. */
+  :root [data-narrow='list-card'] {
+    padding-bottom: 0;
+  }
+  /* In a narrow pane its rows are compact, without the share bars. */
   :root [data-narrow='candidate-row'] {
     gap: 8px;
     padding: 6px 10px;
@@ -196,12 +212,13 @@
     width: 100%;
   }
   /*
-   * The panel, and the lesson's panes in it, scroll on their own. Each fades
+   * The panel, a candidate list's rows and the idea pane scroll on their own. Each fades
    * out its bottom edge to show there's more below; the padding lets the last
    * line clear it.
    */
   :root [data-narrow='program'],
-  :root [data-narrow='moves-pane'],
+  :root [data-narrow='list-scroll'],
+  :root [data-narrow='compact-list'],
   :root [data-narrow='idea-pane'] {
     overflow-y: auto;
     padding-bottom: var(--fade);
