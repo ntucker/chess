@@ -42,6 +42,9 @@ interface NativeElement extends MotionElement {
   readonly offsetWidth: number;
   readonly offsetHeight: number;
   readonly offsetParent: NativeElement | null;
+  readonly parentElement: NativeElement | null;
+  readonly scrollLeft: number;
+  readonly scrollTop: number;
 }
 
 interface Run {
@@ -58,7 +61,6 @@ interface Driver {
   readonly y: SharedValue<number>;
   /** Opacity is 1 + fade, so a fade springs from -1 to 0 */
   readonly fade: SharedValue<number>;
-  readonly z: SharedValue<number>;
   /** Whether its `exiting` animation plays when React removes it */
   readonly leaving: SharedValue<boolean>;
   run?: Run;
@@ -75,21 +77,19 @@ export function MotionHost({ join, arriving, style, ...rest }: HostProps) {
   const x = useSharedValue(0);
   const y = useSharedValue(0);
   const fade = useSharedValue(arriving ? -1 : 0);
-  const z = useSharedValue(0);
   const leaving = useSharedValue(false);
   const animated = useAnimatedStyle((): ViewStyle => ({
     transform: [{ translateX: x.value }, { translateY: y.value }],
     opacity: Math.min(1, 1 + fade.value),
-    zIndex: z.value,
   }));
   const exiting = useMemo(() => leaveAnimation(leaving), [leaving]);
   // The driver outlives the ref: the list fades out an item after React removed it.
   const ref = useCallback(
     (el: MotionElement | null) => {
-      if (el) drivers.set(el, { x, y, fade, z, leaving });
+      if (el) drivers.set(el, { x, y, fade, leaving });
       return join(el);
     },
-    [join, x, y, fade, z, leaving],
+    [join, x, y, fade, leaving],
   );
   return <Animated.View {...rest} ref={ref as never} style={[style, animated]} exiting={exiting} />;
 }
@@ -102,6 +102,12 @@ export function measureOf(el: MotionElement): Omit<Position, 'el' | 'parent'> {
   for (let up: NativeElement | null = node; up; up = up.offsetParent) {
     x += up.offsetLeft;
     y += up.offsetTop;
+  }
+  // Offsets are within scroll content: take off how far each scroll view is
+  // scrolled (a list that shrinks can clamp it), and add the glides in flight.
+  for (let up = node.parentElement as NativeElement | null; up; up = up.parentElement) {
+    x -= up.scrollLeft;
+    y -= up.scrollTop;
   }
   for (let up: MotionElement | null = el; up; up = up.parentElement) {
     const offset = offsetOf(up);
@@ -176,11 +182,12 @@ export function stop(el: MotionElement) {
   driver.run = undefined;
 }
 
-/** Raises `el` over its siblings while it crosses them */
-export function lift(el: MotionElement, lifted: boolean) {
-  const driver = drivers.get(el);
-  if (driver) driver.z.value = lifted ? 1 : 0;
-}
+/**
+ * Not yet on Android: an animated zIndex would send every frame of the view
+ * through React Native's commit, giving up the synchronous transform and
+ * opacity updates that start a glide in the same frame as its layout.
+ */
+export function lift(_el: MotionElement, _lifted: boolean) {}
 
 /** Fades a new item in */
 export function arrive(el: MotionElement, spring: Spring) {
