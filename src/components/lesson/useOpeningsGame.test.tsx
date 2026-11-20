@@ -121,7 +121,7 @@ describe('useOpeningsGame', () => {
 
   it('opens a variation picked from another lesson, or of the same name in another lesson', async () => {
     await show('caro-kann');
-    await play('c7c6');
+    await play('d2d4');
     await push('caro-kann', 'classical-variation');
     expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'Nc3', 'dxe4', 'Nxe4'));
     await push('slav', 'semi-slav');
@@ -138,7 +138,7 @@ describe('useOpeningsGame', () => {
 
   it('starts an address opened in place that the game did not move to', async () => {
     await show('caro-kann');
-    await play('c7c6');
+    await play('d2d4');
     // An Android deep link to the open page keeps its history entry.
     await show('caro-kann', 'advance-variation');
     expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'e5'));
@@ -155,7 +155,7 @@ describe('useOpeningsGame', () => {
 
   it('keeps the game when the address arrives at a lesson the game has already left', async () => {
     await show('caro-kann');
-    await play('c7c6');
+    await play('d2d4');
     // The game picks the Slav, the anti-London and the Slav again, then leaves
     // every lesson, before any replace arrives.
     await start('d4', 'd5', 'c4');
@@ -174,7 +174,7 @@ describe('useOpeningsGame', () => {
 
   it('keeps the game when the address arrives at a lesson it left, then came back from', async () => {
     await show('caro-kann');
-    await play('c7c6');
+    await play('d2d4');
     await start('d4', 'd5', 'c4');
     await start('e4', 'c6');
     await replace('slav');
@@ -193,7 +193,7 @@ describe('useOpeningsGame', () => {
 
   it('sends each address once, and keeps the moves played while they arrive', async () => {
     await show('caro-kann');
-    await play('c7c6');
+    await play('d2d4');
     await start('d4', 'd5', 'c4');
     await start('d4', 'd5', 'Bf4');
     await replace('slav');
@@ -206,32 +206,33 @@ describe('useOpeningsGame', () => {
   it('resumes the start from the side its game was played from, on Back', async () => {
     await show();
     await act(() => latest().playAs('white'));
-    await play('e2e4');
+    // 1.c4: a first move no White lesson plays, so the game stays at the start's address.
+    await play('c2c4');
     await push('slav', 'semi-slav');
     expect(latest().side).toBe('black');
     await back();
-    expect([moves(), latest().side, latest().setting]).toEqual([uciLine('e4'), 'white', 'white']);
+    expect([moves(), latest().side, latest().setting]).toEqual([uciLine('c4'), 'white', 'white']);
     expect(mockRouter.push).not.toHaveBeenCalled();
   });
 
   it('starts an address that arrives with the history entry', async () => {
     await render(undefined, undefined);
     await render('caro-kann', undefined, 'k1');
-    expect(moves()).toEqual(uciLine('e4'));
+    expect(moves()).toEqual(uciLine('e4', 'c6'));
     expect(mockRouter.replace).not.toHaveBeenCalled();
   });
 
   it('starts a link to the lesson the game plays, in a new entry', async () => {
     await show('caro-kann');
-    await play('c7c6');
+    await play('d2d4');
     await replace('caro-kann');
-    expect(moves()).toEqual(uciLine('e4'));
+    expect(moves()).toEqual(uciLine('e4', 'c6'));
   });
 
   it("starts a link to the plain lesson while the game is on its variation's line", async () => {
     await show('caro-kann', 'advance-variation');
     await show('caro-kann');
-    expect(moves()).toEqual(uciLine('e4'));
+    expect(moves()).toEqual(uciLine('e4', 'c6'));
   });
 
   it("starts an address opened in place for a lesson of the other side that shares the game's moves", async () => {
@@ -244,10 +245,10 @@ describe('useOpeningsGame', () => {
 
   it('starts an address opened in place for the lesson the game left in another history entry', async () => {
     await show('caro-kann');
-    await play('c7c6');
+    await play('d2d4');
     await push('slav');
     await show('caro-kann');
-    expect(moves()).toEqual(uciLine('e4'));
+    expect(moves()).toEqual(uciLine('e4', 'c6'));
   });
 
   it("starts a lesson's own start for a variation it doesn't have", async () => {
@@ -281,7 +282,7 @@ describe('useOpeningsGame', () => {
 
   it("replaces a lesson's address when another is picked from it", async () => {
     await show('caro-kann');
-    await play('c7c6');
+    await play('d2d4');
     await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
     await play('d2d4', 'd7d5', 'c2c4');
     expect(mockRouter.replace).toHaveBeenCalledWith('/lesson/slav');
