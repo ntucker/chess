@@ -283,7 +283,7 @@ function awaitAnswer(session: Session) {
 function disconnect() {
   clearTimeout(watchdog);
   connected = undefined;
-  // A dropped search isn't run again.
+  // A top-moves search the screen dropped while it ran is not queued again.
   if (running && !running.cancelled) pending.push(running);
   running = undefined;
 }

@@ -236,7 +236,10 @@ export function useLesson(
     onPress: (square, picked) => {
       if (frame) return;
       const press = boardPress(shown, current, canMove, square, picked);
-      if (press && press !== 'end') return play(press);
+      if (press && press !== 'end') {
+        play(press);
+        return;
+      }
       // Any other press selects a piece the way the board does, and draws its
       // moves as a drag would, or lets the piece go.
       const select = boardSelect(current, canMove, square, picked);
