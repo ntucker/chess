@@ -98,6 +98,14 @@ describe('extractChapter', () => {
     ]);
   });
 
+  it("leaves out a sequence from the start that names another opening's first move", () => {
+    const [chapter] = parseStudy(
+      '1. e4 c6 2. d4 d5 3. c4 { This transposes to the Slav, seen after 1.d4 d5 2.c4 c6 3.e4. } *',
+      () => true,
+    );
+    expect(extractChapter(chapter, 'black').branches).toEqual([]);
+  });
+
   it('refuses a watch-out trap that loses nothing', () => {
     expect(rejected).toEqual([
       expect.objectContaining({ why: 'black does not lose material: balance goes 0 to 0' }),

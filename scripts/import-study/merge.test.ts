@@ -167,6 +167,23 @@ describe('mergeChapters with several sources', () => {
     expect(booked('d4', 'd5', 'c4')).toEqual(['c7c6']);
   });
 
+  it("keeps the main guide's names where a later guide's broader chapter passes", () => {
+    // The main guide names its line "Queen's Gambit: Slav"; the later one's chapter is only "Queen's Gambit".
+    const named = (title: string, source: number) => (chapter: { source?: number }) =>
+      chapter.source === source ? title : undefined;
+    const chapters = [main[0], second[0]];
+    const lesson = mergeChapters(
+      { id: 'test', title: 'Test', side: 'black', sources: SAMPLE.sources },
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'black')),
+      (_, chapter) =>
+        named("Queen's Gambit: Slav", 0)(chapter) ?? named("Queen's Gambit", 1)(chapter),
+    );
+    expect(lesson.positions[keyAfter('d4', 'd5')].variation).toBe('queen-s-gambit-slav');
+    // Past the main guide's end, the later guide names its own positions.
+    expect(lesson.positions[keyAfter('d4', 'd5', 'c4')].variation).toBe('queen-s-gambit');
+  });
+
   it("takes a later guide's notes only where the main guide says nothing", () => {
     const d5 = merged.positions[keyAfter('d4')].moves.find(({ uci }) => uci === 'd7d5')!;
     expect(d5.notes?.map(({ text }) => text)).toEqual(['Holds the centre with a pawn.']);

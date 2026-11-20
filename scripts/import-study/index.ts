@@ -7,7 +7,8 @@
  * with AI (./convert) → merge the chapters into one
  * position tree → pick book moves where the guide shows moves but
  * recommends none, and (`engineCheck` in studies.ts) drop what Stockfish
- * contradicts (./engineCheck) → add popularity → checkLesson → write
+ * contradicts (./engineCheck) → give notes written on another move order to
+ * the position the lesson reaches (./transpositions) → add popularity → checkLesson → write
  * assets/lessons/<id>.json, register it in src/resources/lesson.ts and list
  * it in assets/lessons/index.json.
  * `caro-kann` names a study listed in studies.ts. With --no-popularity the
@@ -57,6 +58,7 @@ import { report, sourceReport } from './report';
 import { nodeStockfish } from './stockfish';
 import { parseStudy, type Chapter } from './study';
 import { lessonInfo, STUDIES, type ChapterSource } from './studies';
+import { noteTranspositions } from './transpositions';
 import { wikibooksPgn } from './wikibooks';
 
 const ROOT = join(__dirname, '../..');
@@ -85,10 +87,10 @@ async function main() {
   }
   const chapterName: ChapterName = (title, chapter) => {
     const from = study.from[chapter.source ?? 0];
-    // A Wikibooks chapter is titled with its variation's name, the opening's own untitled.
+    // A Wikibooks chapter is titled with its variation's name, the root page's own untitled.
     return 'study' in from
       ? (from.chapterName ?? numberedChapterName)(title, chapter)
-      : title || undefined;
+      : title || from.topName;
   };
   const cli = claudeCli({
     learner: info.side,
@@ -127,6 +129,11 @@ async function main() {
   }
   stockfish.stop();
   writeFileSync(engineFile, `${JSON.stringify({ ...filled.report, ...engineReport }, null, 2)}\n`);
+  const transposed = noteTranspositions(lesson);
+  lesson = transposed.lesson;
+  console.log(
+    `transpositions: ${transposed.moved} positions took the notes of a move order the lesson doesn't play`,
+  );
   if (!rest.includes('--no-popularity')) lesson = await withPopularity(lesson);
   writeLesson(join(ROOT, `assets/lessons/${lesson.id}.json`), lesson);
   registerLesson(join(ROOT, 'src/resources/lesson.ts'), lesson.id);

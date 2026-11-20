@@ -150,9 +150,14 @@ function plans(
 
 /** Sequences of two or more moves that `move`'s comment writes out, placed in the tree. */
 function sequences(move: StudyMove) {
+  let first = move;
+  while (first.parent) first = first.parent;
   return (move.comment.match(SEQUENCE) ?? []).flatMap((run) => {
     const placed = placeSequence(move, namedMoves(run));
-    return placed && placed.ucis.length > 1 ? [placed] : [];
+    if (!placed || placed.ucis.length < 2) return [];
+    // From the very start, a sequence leaving the chapter's first move names
+    // another opening ("as in 1.d4 d5 2.e4"), not a line of this one.
+    return placed.spot.move || placed.ucis[0] === first.uci ? [placed] : [];
   });
 }
 
