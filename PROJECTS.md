@@ -4,10 +4,11 @@ Read this only when your instructions tell you to: you are an agent in a long-ru
 Claude project that works on this repo. Plain agent sessions in this repo follow `AGENTS.md` alone;
 nothing here applies to them.
 
-Root `AGENTS.md` and `.agents/skills` still apply. This file adds how project agents run work end to
-end. Your project's own instructions win where they differ. Where this file and `AGENTS.md` differ, the
-repo wins; tell the coordinator so one gets fixed. Re-read this file when the coordinator says it
-changed. Coordinators setting up a new project follow `.agents/projects/setup.md`.
+Root `AGENTS.md` and `.agents/skills` still apply. This file adds how project agents run work in
+`ntucker/chess` end to end; for other repos, see "Upstream fixes". Your project's own instructions
+win where they differ. Where this file and `AGENTS.md` differ, the repo wins; tell the coordinator
+so one gets fixed. Re-read this file when the coordinator says it changed. Coordinators setting up a
+new project follow `.agents/projects/setup.md`.
 
 ## Roles and models
 
@@ -41,9 +42,16 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
    engineering, adversarial, reuse and React data flow. Verify each finding; fix real ones, reject the
    rest with a reason. Do not launch them while the person is actively writing in your thread:
    subagents can pick up the message and reply in your name.
-7. Once the change is verified correct, run skill "simplify", verify its findings, and push the
-   cleanups (a push, so step 6 runs again) before calling the PR done. If the change has
-   architecture implications, then run skill `user-kit:clean-code` the same way.
+7. Once the change is verified correct, run these passes in order. Verify each pass's findings and
+   push the fixes (each push reruns step 6) before calling the PR done.
+   - Skill "simplify", then skill `user-kit:clean-code` if the change has architecture implications.
+   - If the PR changes roughly 1k+ lines of code (judge from its diff stat; scripts and data such as
+     lessons don't count): once per PR, alongside the previous pass's step 6 (or alone if it pushed
+     nothing), have a Fable subagent load `user-kit:clean-code` and look for architectural
+     simplifications, weighing what will likely stay the same and what might change (over time and
+     space).
+   - If agent instructions changed (`AGENTS.md`, `CLAUDE.md`, `PROJECTS.md`, `.agents/`, skills,
+     prompts): audit those changes with skill `user-kit:agent-instructions`.
 8. Land your own PR (squash-merge) as `.agents/projects/autoland.md` says. A worker's PR ends when
    it merges, not when it is handed over.
 
