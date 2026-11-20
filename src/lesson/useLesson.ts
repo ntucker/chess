@@ -9,7 +9,7 @@
  */
 import { useCache, useController, useFetch, useSuspense } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
-import { useEffect, useMemo, useReducer } from 'react';
+import { use, useEffect, useMemo, useReducer } from 'react';
 
 import type { Square } from '@/board/drawing';
 import type { Drag } from '@/board/pointer';
@@ -19,7 +19,7 @@ import { type GameStore, useGame } from '@/game/useGame';
 import { getEvaluation, getTopMoves } from '@/resources/evaluation';
 import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
 import { hasMark, UNTOUCHED } from '@/progress/progress';
-import { LESSON_INDEX } from '@/resources/lesson';
+import { LessonIndexContext } from '@/resources/lesson';
 import { addMark, getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNeedsStockfish } from '@/stockfish/demand';
@@ -101,7 +101,8 @@ export function useLesson(
   const [{ moves, ply: shownPly }] = store;
   const shownLine = useMemo(() => moves.slice(0, shownPly), [moves, shownPly]);
   // Where the openings are picked, nobody replies: the learner plays both sides.
-  const picking = isPicking(LESSON_INDEX, lesson.side, shownLine);
+  const index = use(LessonIndexContext);
+  const picking = isPicking(index, lesson.side, shownLine);
   const rival = opponentPlays(mode, settings.auto, store[0], picking)
     ? lessonOpponent(
         lesson,
@@ -123,7 +124,7 @@ export function useLesson(
   const canMove = game.canMove && !pending;
   // A move played before the learner's first starts a Practice run
   // (`modeReducer`); the moves that pick the opening are no move of theirs.
-  const picks = useMemo(() => pickingMoves(LESSON_INDEX, lesson.side, moves), [lesson.side, moves]);
+  const picks = useMemo(() => pickingMoves(index, lesson.side, moves), [index, lesson.side, moves]);
   const startsRun = beforeSideMoves(plies, lesson.side, ply, picks);
   const kinds = moveKinds(plies, lesson.side, book, picks);
   const view = useMemo(
@@ -162,9 +163,9 @@ export function useLesson(
   const marks = useMemo(
     () =>
       picking
-        ? openingMarks(LESSON_INDEX, lesson.side, shownLine, everyProgress, view)
+        ? openingMarks(index, lesson.side, shownLine, everyProgress, view)
         : rowMarks(lesson, progress, view),
-    [picking, everyProgress, lesson, progress, view, shownLine],
+    [picking, index, everyProgress, lesson, progress, view, shownLine],
   );
 
   // Like canMove: nothing previews while a lesson loads.

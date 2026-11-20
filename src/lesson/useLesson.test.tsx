@@ -1,12 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { act, useReducer } from 'react';
+import { act, type ReactElement, useReducer } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
 import { gameReducer, startGame } from '@/game/game';
+import { LessonIndexContext } from '@/resources/lesson';
 import { DEFAULT_SETTINGS } from '@/settings/settings';
 
 import type { Lesson as LessonFile } from './lesson';
-import { keyAfter, readShippedLesson, SAMPLE, uciLine } from './lesson.fixture';
+import { keyAfter, SAMPLE, uciLine } from './lesson.fixture';
+import { FIXTURE_INDEX, FIXTURE_LESSONS } from './openings.fixture';
 import { HOLD_MS } from './peek';
 import { useLesson } from './useLesson';
 
@@ -54,23 +56,26 @@ function Lesson({
   return null;
 }
 
+/** `element` on the screen, reading the fixture index. */
+const render = (element: ReactElement) =>
+  root!.render(<LessonIndexContext value={FIXTURE_INDEX}>{element}</LessonIndexContext>);
+
 /** The Caro-Kann sample (the learner plays Black) after `sans`, in Explore. */
 const exploreAfter = (...sans: string[]) =>
   act(async () => {
     root = createRoot();
-    root.render(<Lesson start={uciLine(...sans)} />);
+    render(<Lesson start={uciLine(...sans)} />);
   });
 
 /** The same while the game waits on another lesson still loading. */
 const loadingAfter = (...sans: string[]) =>
   act(async () => {
     root = createRoot();
-    root.render(<Lesson start={uciLine(...sans)} pending />);
+    render(<Lesson start={uciLine(...sans)} pending />);
   });
 
 /** That lesson arrives. */
-const loaded = (...sans: string[]) =>
-  act(async () => root?.render(<Lesson start={uciLine(...sans)} />));
+const loaded = (...sans: string[]) => act(async () => render(<Lesson start={uciLine(...sans)} />));
 
 /** The same, in Practice. */
 async function practiceAfter(...sans: string[]) {
@@ -99,20 +104,20 @@ describe('useLesson Practice run', () => {
     ['slav', ['d4', 'd5', 'c4']],
     ['anti-london', ['d4', 'd5', 'Bf4']],
     ['london', ['d4']],
-  ])("starts clean at %s's address, whose moves pick the opening", async (id, sans) => {
+  ] as const)("starts clean at %s's address, whose moves pick the opening", async (id, sans) => {
     await act(async () => {
       root = createRoot();
-      root.render(<Lesson start={uciLine(...sans)} of={readShippedLesson(id)} />);
+      render(<Lesson start={uciLine(...sans)} of={FIXTURE_LESSONS[id]} />);
     });
     await act(async () => lesson().chooseMode('practice'));
     expect(clean()).toBe(true);
   });
 
   it('keeps the run clean when another opening is picked on the shared moves', async () => {
-    const slav = readShippedLesson('slav');
+    const slav = FIXTURE_LESSONS.slav;
     await act(async () => {
       root = createRoot();
-      root.render(<Lesson start={uciLine('d4', 'd5', 'c4')} of={slav} />);
+      render(<Lesson start={uciLine('d4', 'd5', 'c4')} of={slav} />);
     });
     await act(async () => lesson().chooseMode('practice'));
     await act(async () => lesson().board.onMove('c7', 'c6'));

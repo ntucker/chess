@@ -185,7 +185,7 @@ export function NoteView({
           </Text>
         ) : null}
       </Stack>
-      {original || playable ? (
+      {original || playable || note.generated ? (
         <View style={styles.actions}>
           {playing ? (
             <PlayingControls playing={playing} goto={playback.goto} stop={playback.stop} />
@@ -206,6 +206,12 @@ export function NoteView({
                 {more ? 'Less' : 'The study’s words'}
               </Text>
             </Pressable>
+          ) : null}
+          {note.generated ? (
+            // No guide explains this move: the importer's AI wrote its idea.
+            <Text role="caption" tone="secondary" style={styles.more}>
+              Opening Night’s note, not the guide’s
+            </Text>
           ) : null}
         </View>
       ) : null}

@@ -3,7 +3,7 @@ import { Chess } from 'chessops/chess';
 import { parseFen } from 'chessops/fen';
 import { parseSan } from 'chessops/san';
 
-import { checkIdea, checkLesson } from './check';
+import { checkIdea, checkLesson, generatedIdeaProblem } from './check';
 import { parsePositionKey, positionKey } from '@/game/replay';
 
 import { type Idea, type Lesson, LESSON_FORMAT, type Purpose } from './lesson';
@@ -691,6 +691,60 @@ describe('checkLesson', () => {
     );
   const notePath = `positions["${positionKey(afterC6)}"].notes[0].text`;
 
+  it('refuses an original on a generated note, which no guide wrote', () => {
+    const lesson = withPosition(positionKey(afterC6), {
+      variation: 'caro',
+      moves: [],
+      notes: [{ text: 'Your pawn holds d5.', generated: true, original: 'c6 prepares d5' }],
+    });
+    expect(checkLesson(lesson)).toEqual([
+      {
+        path: `positions["${positionKey(afterC6)}"].notes[0].original`,
+        message: 'is on a generated note, which no guide wrote',
+      },
+    ]);
+  });
+
+  it('holds a generated note to the ideas a guide stands behind', () => {
+    const lesson = withPosition(positionKey(afterC6), {
+      variation: 'caro',
+      moves: [],
+      notes: [
+        {
+          text: 'Your pawn heads for d5.',
+          generated: true,
+          ideas: [{ type: 'evaluation', value: 'equal' }],
+        },
+      ],
+    });
+    expect(checkLesson(lesson)).toEqual([
+      {
+        path: `positions["${positionKey(afterC6)}"].notes[0].ideas[0]`,
+        message: 'evaluation: is a type no generated note draws',
+      },
+    ]);
+  });
+
+  it('holds a generated note to threats that win something', () => {
+    const threat = (move: string): Idea => ({ type: 'threat', side: 'black', move });
+    const lesson = withPosition(positionKey(afterC6), {
+      variation: 'caro',
+      moves: [],
+      notes: [{ text: 'Your queen eyes a5.', generated: true, ideas: [threat('d8a5')] }],
+    });
+    expect(checkLesson(lesson)).toEqual([
+      {
+        path: `positions["${positionKey(afterC6)}"].notes[0].ideas[0]`,
+        message: 'threat: takes nothing and does not mate',
+      },
+    ]);
+    // A guide may call it a threat all the same.
+    const notes = [{ text: 'Your queen eyes a5.', ideas: [threat('d8a5')] }];
+    expect(
+      checkLesson(withPosition(positionKey(afterC6), { variation: 'caro', moves: [], notes })),
+    ).toEqual([]);
+  });
+
   it('refuses long notes', () => {
     const text = Array.from({ length: 21 }, () => 'word').join(' ');
     expect(noteProblems(text)).toEqual([{ path: notePath, message: 'has 21 words (most 20)' }]);
@@ -716,4 +770,32 @@ describe('checkLesson', () => {
 
 it('passes the sample lesson the tests use', () => {
   expect(checkLesson(SAMPLE)).toEqual([]);
+});
+
+describe('generatedIdeaProblem', () => {
+  const threat = (side: 'white' | 'black', move: string): Idea => ({ type: 'threat', side, move });
+  const qgd = after(['d4', 'd5', 'c4', 'e6']);
+
+  it('takes a threat to win an undefended pawn as real', () => {
+    expect(generatedIdeaProblem(threat('black', 'd5c4'), qgd)).toBeUndefined();
+  });
+
+  it('refuses a threat that takes nothing and does not mate', () => {
+    expect(generatedIdeaProblem(threat('black', 'f8b4'), qgd)).toBe(
+      'takes nothing and does not mate',
+    );
+  });
+
+  it('weighs an en passant capture as taking a pawn', () => {
+    const pos = fen('rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3');
+    expect(generatedIdeaProblem(threat('white', 'e5d6'), pos)).toBe(
+      'takes a defended piece and wins nothing',
+    );
+  });
+
+  it('refuses an idea type no generated note draws', () => {
+    expect(generatedIdeaProblem({ type: 'evaluation', value: 'equal' }, qgd)).toBe(
+      'is a type no generated note draws',
+    );
+  });
 });

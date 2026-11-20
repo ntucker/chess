@@ -87,7 +87,7 @@ export function noteComment(moveNote: MoveNote, chapter: ChapterNotes): Comment 
   };
 }
 
-const hash = (text: string) => createHash('sha256').update(text).digest('hex').slice(0, 16);
+export const hash = (text: string) => createHash('sha256').update(text).digest('hex').slice(0, 16);
 
 /** The nearest earlier comment on `move`'s line. */
 function previousComment(move: StudyMove): string {
@@ -106,7 +106,7 @@ function lineTo(move: StudyMove): string {
 }
 
 /** Each side's pieces by square, like `Ke1 Qd1 Pe4`. */
-function pieces(pos: Chess): Record<Color, string> {
+export function pieces(pos: Chess): Record<Color, string> {
   const list = (color: Color) =>
     ROLES.toReversed()
       .flatMap((role) =>
@@ -119,7 +119,7 @@ function pieces(pos: Chess): Record<Color, string> {
 }
 
 /** Every legal move in `pos`, in SAN. */
-function legalMoves(pos: Chess): string[] {
+export function legalMoves(pos: Chess): string[] {
   const sans = new Set<string>();
   for (const [from, dests] of pos.allDests()) {
     for (const to of dests) {

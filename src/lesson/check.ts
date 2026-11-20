@@ -15,6 +15,7 @@ import {
   FILE_NAMES,
   type NormalMove,
   type Piece,
+  type Role,
   type Square,
 } from 'chessops/types';
 import { makeSquare, opposite, parseSquare, parseUci } from 'chessops/util';
@@ -289,16 +290,71 @@ export function notationProblem(text: string): string | undefined {
   return undefined;
 }
 
+/** What is wrong with a note's text, or undefined: empty, too long, or written in notation. */
+export function noteTextProblem(text: string): string | undefined {
+  const words = text.split(/\s+/).filter(Boolean).length;
+  if (words === 0) return 'is empty';
+  if (words > MAX_NOTE_WORDS) return `has ${words} words (most ${MAX_NOTE_WORDS})`;
+  return notationProblem(text);
+}
+
+/**
+ * The idea types a generated note (`Note.generated`) may draw: what a move
+ * does now, never a judgment, since no guide stands behind it.
+ */
+export const GENERATED_IDEAS = [
+  'purpose',
+  'pressure',
+  'plan',
+  'threat',
+  'structure',
+  'imbalance',
+] as const;
+
+/**
+ * Why `threat` in `pos` is no real threat, or undefined when it is: its move
+ * mates, takes an undefended piece, or takes a piece worth at least two
+ * points more than the piece taking it. Held only against generated notes;
+ * a guide may call a smaller threat one.
+ */
+function emptyThreat(threat: Threat, pos: Chess): string | undefined {
+  const threatening = withTurn(pos, threat.side);
+  const move = parseUci(threat.move) as NormalMove;
+  const mover = threatening.board.get(move.from)!;
+  const enPassant = mover.role === 'pawn' && move.to === threatening.epSquare;
+  const taken = enPassant ? 'pawn' : threatening.board.get(move.to)?.role;
+  const after = threatening.clone();
+  after.play(move);
+  if (after.isCheckmate()) return undefined;
+  if (!taken) return 'takes nothing and does not mate';
+  if (bearing(after, after.turn, move.to).isEmpty()) return undefined;
+  return pieceWorth(taken) - pieceWorth(mover.role) >= 2
+    ? undefined
+    : 'takes a defended piece and wins nothing';
+}
+
+/** A role's worth for weighing a capture or a pin: a king's is beyond any trade. */
+const pieceWorth = (role: Role) => (role === 'king' ? Infinity : VALUES[role]);
+
+/**
+ * What a generated note (`Note.generated`) may not draw that a guide's may,
+ * or undefined, worded to follow the idea's type ("threat takes nothing...").
+ */
+export function generatedIdeaProblem(idea: Idea, pos: Chess): string | undefined {
+  if (!(GENERATED_IDEAS as readonly string[]).includes(idea.type))
+    return 'is a type no generated note draws';
+  return idea.type === 'threat' ? emptyThreat(idea, pos) : undefined;
+}
+
 function checkNotes(notes: readonly Note[] | undefined, pos: Chess, path: string, report: Report) {
   notes?.forEach((note, i) => {
-    const words = note.text.split(/\s+/).filter(Boolean).length;
-    if (words === 0) report(`${path}[${i}].text`, 'is empty');
-    if (words > MAX_NOTE_WORDS)
-      report(`${path}[${i}].text`, `has ${words} words (most ${MAX_NOTE_WORDS})`);
-    const wording = notationProblem(note.text);
+    const wording = noteTextProblem(note.text);
     if (wording) report(`${path}[${i}].text`, wording);
+    if (note.generated && note.original !== undefined)
+      report(`${path}[${i}].original`, 'is on a generated note, which no guide wrote');
     note.ideas?.forEach((idea, j) => {
-      const problem = checkIdea(idea, pos);
+      const problem =
+        checkIdea(idea, pos) ?? (note.generated ? generatedIdeaProblem(idea, pos) : undefined);
       if (problem) report(`${path}[${i}].ideas[${j}]`, `${idea.type}: ${problem}`);
     });
   });
@@ -427,7 +483,7 @@ function pins(board: Board, from: Square, target: Square): boolean {
     back?.color === pinned.color &&
     // A king on the line is in check, not pinned.
     pinned.role !== 'king' &&
-    (back.role === 'king' || VALUES[back.role] > VALUES[pinned.role])
+    pieceWorth(back.role) > VALUES[pinned.role]
   );
 }
 

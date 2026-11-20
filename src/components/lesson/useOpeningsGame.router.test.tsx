@@ -5,7 +5,8 @@ import { createRoot, type Root } from 'test-renderer';
 
 import { uciLine } from '@/lesson/lesson.fixture';
 import { lessonHref, variationHref } from '@/lesson/openings';
-import type { LessonId } from '@/resources/lesson';
+import { FIXTURE_INDEX } from '@/lesson/openings.fixture';
+import { LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 
 import { useOpeningsAddress } from './useOpeningsAddress';
@@ -33,9 +34,11 @@ async function open(url: string) {
   const context = getMockContext({
     _layout: () => <Stack screenOptions={{ headerShown: false }} />,
     '(openings)/_layout': () => (
-      <SettingsProvider>
-        <Page />
-      </SettingsProvider>
+      <LessonIndexContext value={FIXTURE_INDEX}>
+        <SettingsProvider>
+          <Page />
+        </SettingsProvider>
+      </LessonIndexContext>
     ),
     '(openings)/index': () => null,
     '(openings)/lesson/[id]': () => null,
@@ -83,11 +86,11 @@ describe('useOpeningsGame on the router', () => {
   it('starts links to the page already open, and keeps the game dropping a variation', async () => {
     await open(lessonHref('caro-kann'));
     await play('c7c6');
-    await run(() => router.navigate(variationHref('caro-kann', 'advance-variation')));
+    await run(() => router.navigate(variationHref('caro-kann', 'advance')));
     expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'e5'));
     await run(() => router.navigate(lessonHref('caro-kann')));
     expect(moves()).toEqual(uciLine('e4'));
-    await run(() => router.navigate(variationHref('caro-kann', 'advance-variation')));
+    await run(() => router.navigate(variationHref('caro-kann', 'advance')));
     await play('c8f5');
     expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'e5', 'Bf5'));
     await run(() => router.navigate(lessonHref('london')));

@@ -1,9 +1,10 @@
 import { useLocalSearchParams } from 'expo-router';
+import { use } from 'react';
 
 import { useInBrowser } from '@/components/BrowserOnly';
 import { OpeningList } from '@/components/OpeningList';
 import { listPlace } from '@/lesson/openingList';
-import { LESSON_INDEX } from '@/resources/lesson';
+import { LessonIndexContext } from '@/resources/lesson';
 
 /**
  * Every opening, at /openings: opened from the name of the opening above the
@@ -14,5 +15,6 @@ import { LESSON_INDEX } from '@/resources/lesson';
 export default function OpeningsRoute() {
   const { lesson, variation } = useLocalSearchParams<{ lesson?: string; variation?: string }>();
   const inBrowser = useInBrowser();
-  return <OpeningList here={inBrowser ? listPlace(LESSON_INDEX, lesson, variation) : undefined} />;
+  const index = use(LessonIndexContext);
+  return <OpeningList here={inBrowser ? listPlace(index, lesson, variation) : undefined} />;
 }

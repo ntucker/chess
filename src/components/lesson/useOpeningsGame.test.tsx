@@ -4,7 +4,8 @@ import { createRoot, type Root } from 'test-renderer';
 
 import { uciLine } from '@/lesson/lesson.fixture';
 import { variationLine } from '@/lesson/openings';
-import { LESSON_INDEX, type LessonId } from '@/resources/lesson';
+import { FIXTURE_INDEX } from '@/lesson/openings.fixture';
+import { LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { SettingsProvider, useSettings } from '@/settings/SettingsProvider';
 
 import { useOpeningsGame } from './useOpeningsGame';
@@ -63,9 +64,11 @@ const render = (address: LessonId | undefined, variation: string | undefined, ke
   act(() => {
     root ??= createRoot();
     root.render(
-      <SettingsProvider>
-        <Page address={address} variation={variation} entry={key} />
-      </SettingsProvider>,
+      <LessonIndexContext value={FIXTURE_INDEX}>
+        <SettingsProvider>
+          <Page address={address} variation={variation} entry={key} />
+        </SettingsProvider>
+      </LessonIndexContext>,
     );
   });
 /**
@@ -109,7 +112,7 @@ afterEach(() => {
 
 describe('useOpeningsGame', () => {
   it('starts at the line that opens the variation an address names, and keeps it while the game is that line', async () => {
-    await show('caro-kann', 'advance-variation');
+    await show('caro-kann', 'advance');
     expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'e5'));
     expect(mockRouter.setParams).not.toHaveBeenCalled();
     await play('c8f5');
@@ -122,16 +125,16 @@ describe('useOpeningsGame', () => {
   it('opens a variation picked from another lesson, or of the same name in another lesson', async () => {
     await show('caro-kann');
     await play('c7c6');
-    await push('caro-kann', 'classical-variation');
-    expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'Nc3', 'dxe4', 'Nxe4'));
+    await push('caro-kann', 'classical');
+    expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'Nc3'));
     await push('slav', 'semi-slav');
     expect(moves()).toEqual(
-      LESSON_INDEX.slav.variations.find(({ id }) => id === 'semi-slav')!.moves,
+      FIXTURE_INDEX.slav.variations.find(({ id }) => id === 'semi-slav')!.moves,
     );
     await push('anti-london', 'main-line');
     await push('london', 'main-line');
     expect(moves()).toEqual(
-      LESSON_INDEX.london.variations.find(({ id }) => id === 'main-line')!.moves,
+      FIXTURE_INDEX.london.variations.find(({ id }) => id === 'main-line')!.moves,
     );
     expect(mockRouter.replace).not.toHaveBeenCalled();
   });
@@ -140,7 +143,7 @@ describe('useOpeningsGame', () => {
     await show('caro-kann');
     await play('c7c6');
     // An Android deep link to the open page keeps its history entry.
-    await show('caro-kann', 'advance-variation');
+    await show('caro-kann', 'advance');
     expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'e5'));
     await show('slav');
     expect(moves()).toEqual(uciLine('d4', 'd5', 'c4'));
@@ -149,7 +152,7 @@ describe('useOpeningsGame', () => {
     // The same variation id in another lesson.
     await show('london', 'main-line');
     await show('anti-london', 'main-line');
-    expect(moves()).toEqual(variationLine(LESSON_INDEX['anti-london'], 'main-line'));
+    expect(moves()).toEqual(variationLine(FIXTURE_INDEX['anti-london'], 'main-line'));
     expect(mockRouter.replace).not.toHaveBeenCalled();
   });
 
@@ -229,7 +232,7 @@ describe('useOpeningsGame', () => {
   });
 
   it("starts a link to the plain lesson while the game is on its variation's line", async () => {
-    await show('caro-kann', 'advance-variation');
+    await show('caro-kann', 'advance');
     await show('caro-kann');
     expect(moves()).toEqual(uciLine('e4'));
   });
@@ -314,11 +317,11 @@ describe('useOpeningsGame', () => {
   it('resumes the game left for another line of the same opening, on Back', async () => {
     await show('caro-kann');
     await play('c7c6', 'd2d4', 'd7d5', 'b1c3');
-    await push('caro-kann', 'advance-variation');
+    await push('caro-kann', 'advance');
     expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'e5'));
     await back('caro-kann');
     expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'Nc3'));
-    await push('caro-kann', 'advance-variation');
+    await push('caro-kann', 'advance');
     expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'e5'));
     // A move past the line drops it from the address, in the same entry.
     await play('c8f5');
@@ -326,7 +329,7 @@ describe('useOpeningsGame', () => {
     await back('caro-kann');
     expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'Nc3'));
     // Picking the line again starts it afresh.
-    await push('caro-kann', 'advance-variation');
+    await push('caro-kann', 'advance');
     expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'e5'));
   });
 
