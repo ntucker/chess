@@ -150,7 +150,7 @@ export function plainText(wiki: string): string {
  */
 function tableLines(source: string): string[][] {
   const rows = [...source.matchAll(/^\|\s*line\d+\s*=(.*)$/gm)].map(([, line]) => {
-    const row: (readonly [number, string])[] = [];
+    const row: Cell[] = [];
     let ply: number | undefined;
     for (const token of line
       .replace(/(\d+\.(?:\.\.)?)/g, ' $1 ')
@@ -177,15 +177,13 @@ function htmlTableLines(source: string): string[][] {
   const lines: string[][] = [];
   for (const [table] of source.matchAll(/<table[\s\S]*?<\/table>/gi)) {
     const rows = [...table.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)].map(([, row]) => row);
-    const first = rows
-      .flatMap((row) => [...row.matchAll(/<th[^>]*>\s*(\d+)\s*<\/th>/gi)])
-      .map(([, number]) => Number(number))[0];
+    const first = Number(/<th[^>]*>\s*(\d+)\s*<\/th>/i.exec(table)?.[1]);
     if (!first) continue;
     const cellRows = rows
       .map((row) => [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(([, cell]) => cell))
       .filter((cells) => cells.length > 0);
     const moveRows = cellRows.map((cells) => {
-      const moves: (readonly [number, string])[] = [];
+      const moves: Cell[] = [];
       for (const [i, cell] of cells.entries()) {
         const pair = cell.split(/<br\s*\/?>/i);
         if (pair.length !== 2) break;
@@ -200,11 +198,14 @@ function htmlTableLines(source: string): string[][] {
   return lines;
 }
 
+/** A move in a table row, with the ply it is played at. */
+type Cell = readonly [ply: number, move: string];
+
 /**
  * Each row's moves, given by ply, with a `...` taking the move at its ply in
  * the row above; a row stops at a `...` with nothing above it.
  */
-function repeatsResolved(rows: readonly (readonly (readonly [number, string])[])[]): string[][] {
+function repeatsResolved(rows: readonly (readonly Cell[])[]): string[][] {
   let above = new Map<number, string>();
   return rows.map((row) => {
     const moves = new Map<number, string>();

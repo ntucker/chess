@@ -36,6 +36,9 @@ import type {
 /** The engine's evaluation of the position after `line` from the lesson's start, reached at `key`. */
 export type Evaluate = (line: readonly Uci[], key: PositionKey) => Promise<Evaluation>;
 
+/** A line cut where the engine overruled its book move, with the positions it dropped. */
+type CutLine = { line: string; moves: readonly string[]; positions: number };
+
 export interface EngineReport {
   /** Book moves the engine overruled, with the line before each, in SAN. */
   readonly unbooked: readonly { line: string; move: string; quality: string }[];
@@ -45,7 +48,7 @@ export interface EngineReport {
    * Each position where the line now ends, since the engine overruled every
    * move the guide recommended there: its moves, and how many positions went.
    */
-  readonly cut: readonly { line: string; moves: readonly string[]; positions: number }[];
+  readonly cut: readonly CutLine[];
   /** Notes dropped, where they were and why. */
   readonly dropped: readonly { line: string; text: string; reason: string }[];
   /** Book moves `fillBook` picked again where the engine overruled one of several guide moves. */
@@ -62,7 +65,7 @@ export async function engineCheck(
   const report = {
     unbooked: [] as { line: string; move: string; quality: string }[],
     unreachable: [] as { line: string; move: string }[],
-    cut: [] as { line: string; moves: readonly string[]; positions: number }[],
+    cut: [] as CutLine[],
     dropped: [] as { line: string; text: string; reason: string }[],
   };
 
@@ -148,13 +151,12 @@ function cutLines(
   positions: Record<PositionKey, LessonPosition>,
   overruledAt: ReadonlySet<PositionKey>,
   lines: ReadonlyMap<PositionKey, { line: Uci[]; pos: Chess }>,
-  cut: { line: string; moves: readonly string[]; positions: number }[],
+  cut: CutLine[],
 ) {
   for (const key of overruledAt) {
     const position = positions[key];
     // Gone already when an earlier cut was the only way to it.
-    if (!position || position.moves.some(({ book }) => book)) continue;
-    if (position.moves.length > 1) continue;
+    if (!position || position.moves.length > 1 || position.moves.some(({ book }) => book)) continue;
     const at = lines.get(key)!;
     cut.push({
       line: sans(lesson, at.line),
@@ -189,7 +191,7 @@ export interface FillReport {
   /** Book moves picked where the guide recommended none, with the line before each and why. */
   readonly filled: readonly { line: string; move: string; why: string }[];
   /** Positions where the line now ends, since the engine overruled every move the guide shows. */
-  readonly ended: readonly { line: string; moves: readonly string[]; positions: number }[];
+  readonly ended: readonly CutLine[];
 }
 
 /**
@@ -230,7 +232,7 @@ export async function fillBook(
     if (!position) continue;
     const learner = at.pos.turn === lesson.side;
     if (learner && position.moves.length > 0 && !position.moves.some(({ book }) => book)) {
-      const pick = await pickBookMove(position, at, evaluation, lesson.side);
+      const pick = await pickBookMove(position.moves, at, evaluation, lesson.side);
       if (!pick) {
         const moves = position.moves.map(({ uci }) => san(at.pos, uci));
         const gone = endLine(lesson, positions, key, lines);
@@ -272,14 +274,14 @@ export async function fillBook(
  * drops as no error.
  */
 async function pickBookMove(
-  position: LessonPosition,
+  moves: LessonPosition['moves'],
   at: { line: readonly Uci[]; pos: Chess },
   evaluation: CachedEvaluation,
   side: Lesson['side'],
 ): Promise<{ uci: Uci; why: string } | undefined> {
   const before = await evaluation(at.line, at.pos);
   const judged = await Promise.all(
-    position.moves.map(async ({ uci, notes }) => {
+    moves.map(async ({ uci, notes }) => {
       const after = await evaluation([...at.line, uci], played(at.pos, uci));
       const quality = classifyMove({ before, after, uci, mover: side });
       const sound = quality !== 'mistake' && quality !== 'blunder';
