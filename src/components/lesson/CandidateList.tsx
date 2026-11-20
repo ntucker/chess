@@ -7,9 +7,10 @@ import { candidateTone } from '@/lesson/drawings';
 import type { Uci } from '@/lesson/lesson';
 import type { Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
-import { Eyebrow } from '@/components/Eyebrow';
+import { Eyebrow, labelled } from '@/components/Eyebrow';
 import { QualityBadge } from '@/components/QualityBadge';
 import type { Mark } from '@/progress/progress';
+import { NARROW_CSS_LOADS, narrowPart } from '@/theme/narrow';
 import { fonts } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
 
@@ -46,6 +47,12 @@ interface Props {
    * idea card focus lands in shows the position's own notes.
    */
   readonly onTabOut: () => void;
+  /**
+   * On a narrow web page the rows sit side by side, as chips, without their
+   * share bars or where they lead: a line under the chips names that for the
+   * move pointed at. Leave it off where the list is about where each move leads.
+   */
+  readonly chips?: boolean;
 }
 
 /**
@@ -72,18 +79,29 @@ export function CandidateList({
   onPlay,
   onPoint,
   onTabOut,
+  chips,
 }: Props) {
-  const rows = rareShown ? [...candidates, ...rare] : candidates;
+  const all = [...candidates, ...rare];
+  const rows = rareShown ? all : candidates;
   const shownMarks = new Set(
     rows.map(({ move }) => marks.get(move.uci)).filter((mark) => mark !== undefined),
   );
+  // A drag can point at a rare candidate while its row is hidden.
+  const pointedRow = all.find(({ move }) => move.uci === pointed);
+  const caption = chips && NARROW_CSS_LOADS && pointedRow && leadsTo(pointedRow);
   return (
-    <Stack gap="3">
+    <Stack style={labelled}>
       <View style={styles.head}>
         <Eyebrow>{heading}</Eyebrow>
         <MarkLegend marks={shownMarks} />
       </View>
-      <Surface elevation="sunken" border="subtle" radius="md" style={styles.list}>
+      <Surface
+        {...(chips ? narrowPart('chips') : {})}
+        elevation="sunken"
+        border="subtle"
+        radius="md"
+        style={styles.list}
+      >
         {rows.map((candidate, index) => (
           <Row
             key={candidate.move.uci}
@@ -111,6 +129,11 @@ export function CandidateList({
           />
         ) : null}
       </Surface>
+      {caption ? (
+        <Text {...narrowPart('narrow-only')} role="caption" tone="secondary" numberOfLines={1}>
+          {`${pointedRow.san}: ${caption}`}
+        </Text>
+      ) : null}
     </Stack>
   );
 }
@@ -137,6 +160,7 @@ function RareToggle({
       {...a11yState({ expanded: shown })}
       onPress={onToggle}
       onKeyDown={tabOut(onTabOut)}
+      {...narrowPart('chip')}
       style={({ hovered, pressed }) => [
         styles.row,
         styles.toggle,
@@ -224,6 +248,7 @@ function Row({
       }}
       onKeyDown={tabOut(onTabOut)}
       onFocus={point}
+      {...narrowPart('chip')}
       style={({ pressed }) => [
         styles.row,
         (pointed || (pressed && playable)) && {
@@ -237,7 +262,7 @@ function Row({
           hollow ? { borderWidth: 2, borderColor: tone } : { backgroundColor: tone },
         ]}
       />
-      <View style={styles.move}>
+      <View {...narrowPart('chip-fit')} style={styles.move}>
         <View style={styles.title}>
           <Text role="body" style={styles.san}>
             {san}
@@ -250,7 +275,7 @@ function Row({
           ) : null}
         </View>
         {leadsTo ? (
-          <Text role="caption" tone="secondary" numberOfLines={1}>
+          <Text {...narrowPart('chip-hidden')} role="caption" tone="secondary" numberOfLines={1}>
             {leadsTo}
           </Text>
         ) : null}
@@ -262,10 +287,13 @@ function Row({
       ) : null}
       {share === undefined ? null : (
         <View style={styles.share}>
-          <View style={[styles.track, { backgroundColor: color.tones.neutral.subtle }]}>
+          <View
+            {...narrowPart('chip-hidden')}
+            style={[styles.track, { backgroundColor: color.tones.neutral.subtle }]}
+          >
             <View style={[styles.fillBar, { width: `${share * 100}%`, backgroundColor: tone }]} />
           </View>
-          <Text role="caption" tone="secondary" style={styles.percent}>
+          <Text {...narrowPart('chip-fit')} role="caption" tone="secondary" style={styles.percent}>
             {percent(share)}
           </Text>
         </View>
@@ -311,8 +339,8 @@ const styles = StyleSheet.create({
   title: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   san: { fontFamily: fonts.mono, fontSize: 17 },
   risk: { textTransform: 'capitalize' },
-  share: { width: 92, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  track: { flex: 1, height: 4, borderRadius: 2, overflow: 'hidden' },
+  share: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  track: { width: 52, height: 4, borderRadius: 2, overflow: 'hidden' },
   fillBar: { height: '100%', borderRadius: 2 },
   percent: { width: 32, textAlign: 'right', fontFamily: fonts.mono },
   evaluation: { minWidth: 44, textAlign: 'right', fontFamily: fonts.mono },

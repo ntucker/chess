@@ -82,6 +82,11 @@ interface Search {
   ranked: RankedLines<SearchLine>;
   /** How many engines failed while running it. */
   failures: number;
+  /**
+   * The screen no longer shows this position. A top-moves search only: its
+   * result is dropped, and a running one is told to stop.
+   */
+  cancelled: boolean;
 }
 
 /** An attached engine, and whether it has finished its handshake. */
@@ -102,10 +107,13 @@ let running: Search | undefined;
 /** Fails the connected engine if it doesn't answer in time. */
 let watchdog: ReturnType<typeof setTimeout> | undefined;
 /**
- * Searches waiting for the engine. The last evaluation runs next (the newest
- * request, or a search a stopped engine handed back), and a search for the
- * top moves starts only once no evaluation waits, so the evaluation bar and
- * move labels wait at most for one already running (as long as an evaluation).
+ * Searches waiting for the engine. The newest evaluation runs next when it
+ * is the newest request, so the bar waits at most for the search already
+ * running. A top-moves search then runs ahead of evaluations queued before
+ * it, once its own position's evaluation has: move labels need every
+ * evaluation, but nothing needs the top moves of a position the board has
+ * left, so a newer one drops those, waiting or running (`supersedeTopMoves`).
+ * That holds while one screen at a time asks for top moves (the lesson's).
  */
 const pending: Search[] = [];
 
@@ -151,9 +159,13 @@ export async function stockfishEvaluation(line: readonly string[]): Promise<Eval
 /**
  * Stockfish's three best moves in the position after `line`, best first,
  * each with how the position stands after it; fewer when fewer moves are
- * legal, none once the game is over. It runs after every evaluation waiting
- * (see `pending`), with a search of its own: three lines reach less deep than
- * one, so an evaluation is never read from it.
+ * legal, none once the game is over. It runs once that position's evaluation
+ * has (see `pending`), ahead of evaluations for positions already left, with
+ * a search of its own: three lines reach less deep than one, so an evaluation
+ * is never read from it. A newer request drops this one if it has not
+ * finished: one still waiting never starts, and one already running is
+ * told to stop. Its result is ignored. A search already running when the
+ * screen leaves without asking for another finishes, and is kept.
  */
 export async function stockfishTopMoves(line: readonly string[]): Promise<TopMove[]> {
   const { lines } = await search(line, TOP_MOVES);
@@ -162,9 +174,42 @@ export async function stockfishTopMoves(line: readonly string[]): Promise<TopMov
   );
 }
 
+/** A rejection Data Client ignores, so a dropped search is not cached as a failure. */
+function abortError(): Error {
+  const error = new Error('This position is no longer shown');
+  error.name = 'AbortError';
+  return error;
+}
+
+const sameLine = (a: readonly string[], b: readonly string[]) =>
+  a.length === b.length && a.every((move, i) => move === b[i]);
+
+/**
+ * Drops a top-moves search the screen no longer shows. One still waiting
+ * never starts; one already running is told to stop, and its result is
+ * ignored. Evaluations are kept: move labels need every position.
+ */
+function cancel(search: Search) {
+  search.cancelled = true;
+  const index = pending.indexOf(search);
+  if (index !== -1) pending.splice(index, 1);
+  else if (running === search) connected?.send('stop');
+  search.reject(abortError());
+}
+
+/** Drops every top-moves search the screen has left, including one already running. */
+function supersedeTopMoves() {
+  for (let i = pending.length - 1; i >= 0; i--) {
+    if (pending[i].ranks > 1) cancel(pending[i]);
+  }
+  if (running && !running.cancelled && running.ranks > 1) cancel(running);
+}
+
 function search(line: readonly string[], ranks: number): Promise<Found> {
   return new Promise((resolve, reject) => {
-    pending.push({ line, ranks, resolve, reject, ranked: NO_LINES, failures: 0 });
+    // A new top-moves search is the only one the screen still shows.
+    if (ranks > 1) supersedeTopMoves();
+    pending.push({ line, ranks, resolve, reject, ranked: NO_LINES, failures: 0, cancelled: false });
     startNext();
   });
 }
@@ -192,11 +237,20 @@ function handleLine(session: Session, line: string) {
   }
 }
 
-/** Takes the search to run next out of `pending`: the last evaluation (one rank), or else the last search. */
+/**
+ * Takes the search to run next out of `pending`. The newest request, when
+ * it is an evaluation, so the bar stays current. Otherwise the newest
+ * top-moves search, after the evaluation of its own position when that is
+ * still waiting, ahead of evaluations the board has already left.
+ */
 function takeNext(): Search | undefined {
-  const lastEvaluation = pending.findLastIndex(({ ranks }) => ranks === 1);
-  const index = lastEvaluation === -1 ? pending.length - 1 : lastEvaluation;
-  return pending.splice(index, 1)[0];
+  const newest = pending.at(-1);
+  if (!newest) return undefined;
+  const paired =
+    newest.ranks > 1
+      ? pending.findLastIndex(({ ranks, line }) => ranks === 1 && sameLine(line, newest.line))
+      : -1;
+  return pending.splice(paired === -1 ? pending.length - 1 : paired, 1)[0];
 }
 
 function startNext() {
@@ -229,7 +283,8 @@ function awaitAnswer(session: Session) {
 function disconnect() {
   clearTimeout(watchdog);
   connected = undefined;
-  if (running) pending.push(running);
+  // A top-moves search the screen dropped while it ran is not queued again.
+  if (running && !running.cancelled) pending.push(running);
   running = undefined;
 }
 

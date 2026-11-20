@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 
 import type { Tone } from '@/board/drawing';
 import { hovers } from '@/board/pointer';
-import { Eyebrow } from '@/components/Eyebrow';
+import { Eyebrow, labelled } from '@/components/Eyebrow';
 import { Transport } from '@/components/Transport';
 import type { Color } from '@/game/replay';
 import { ideaTone } from '@/lesson/drawings';
@@ -14,6 +14,7 @@ import type { Evaluation, Idea, Note } from '@/lesson/lesson';
 import type { Playback, Playing } from '@/lesson/useLesson';
 import type { ShownNote } from '@/lesson/view';
 import { toneColors } from '@/theme/drawingTones';
+import { narrowPart } from '@/theme/narrow';
 
 interface Props {
   readonly title: string;
@@ -54,7 +55,7 @@ export function IdeaCard({
 }: Props) {
   return (
     <Stack
-      gap="3"
+      style={labelled}
       onPointerEnter={({ nativeEvent, timeStamp }) => {
         if (hovers(nativeEvent.pointerType)) onReach(timeStamp);
       }}
@@ -165,7 +166,8 @@ export function NoteView({
         }}
       >
         {drawn || verdict ? (
-          <View style={styles.heading}>
+          // On a narrow web page a verdict with no kind beside it goes below the words, which come first.
+          <View {...(drawn ? {} : narrowPart('lone-verdict'))} style={styles.heading}>
             {drawn ? (
               <KindTag label={KINDS[drawn.type]} tone={ideaTone(drawn, learner)} />
             ) : (

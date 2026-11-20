@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
-import { Eyebrow } from '@/components/Eyebrow';
+import { Eyebrow, labelled } from '@/components/Eyebrow';
 import { FootnoteLink } from '@/components/FootnoteLink';
 import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
@@ -27,6 +27,8 @@ import { getLesson, LESSON_INDEX, LESSONS, type LessonId } from '@/resources/les
 import { getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
 import { qualityLooks } from '@/theme/moveQuality';
+import { themes } from '@/theme/theme';
+import { narrowLength, narrowPart } from '@/theme/narrow';
 
 import { AutoPlay } from './AutoPlay';
 import { CandidateList } from './CandidateList';
@@ -217,13 +219,16 @@ function LessonScreen({
         />
       }
       program={
-        <Stack gap="5">
+        <Stack style={styles.sections}>
           <StatusHeadline
             {...status}
             failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
             eyebrowInHeader
           />
-          <Separator />
+          {/* On a narrow web page the moves follow the headline closely, with no rule between. */}
+          <View {...narrowPart('wide-only')}>
+            <Separator />
+          </View>
           {/* Leaving a row for the idea card keeps its preview, so its notes can be pointed at. */}
           {trap ? (
             <TrapCard
@@ -236,17 +241,18 @@ function LessonScreen({
             />
           ) : null}
           {ideaCard || guidance.top.length ? (
-            <PointingArea onLeave={leave}>
+            <PointingArea onLeave={leave} style={styles.sections}>
               {guidance.top.length ? (
                 <CandidateList
                   {...rowProps}
                   heading="Stockfish's top moves"
+                  chips
+                  leadsTo={rejoins}
                   candidates={guidance.top}
                   rare={[]}
                   rareShown={false}
                   onShowRare={showRare}
                   main={guidance.top[0]}
-                  leadsTo={rejoins}
                   onPoint={pointRow}
                 />
               ) : null}
@@ -258,12 +264,14 @@ function LessonScreen({
                       ? 'Your candidates'
                       : `${colorName(rival)}'s ${picking ? 'first move' : 'likely replies'}`
                   }
+                  // At the start each move's opening is the point, so its rows stay.
+                  chips={!picking}
+                  leadsTo={leadsTo}
                   candidates={guidance.candidates}
                   rare={guidance.rare}
                   rareShown={rareShown}
                   onShowRare={showRare}
                   main={guidance.main}
-                  leadsTo={leadsTo}
                   onPoint={pointCandidate}
                 />
               ) : null}
@@ -283,7 +291,7 @@ function LessonScreen({
             </PointingArea>
           ) : null}
           <Separator />
-          <Stack gap="3">
+          <Stack style={labelled}>
             <Eyebrow>Scoresheet</Eyebrow>
             <Scoresheet
               plies={game.plies}
@@ -341,8 +349,8 @@ interface StatusInput {
 /**
  * The panel's headline: where the lesson stands and whose move it is. In
  * Practice, right after the learner's move, it judges that move first.
- * `seenHint` marks a detail that only tells how to use the screen, once the
- * learner has moved and so has seen it.
+ * `routine` marks a headline that only says whose move it is and how to use
+ * the screen, once the learner has moved and so has seen how.
  */
 function describeStatus(
   view: LessonView,
@@ -397,7 +405,7 @@ function describeStatus(
       eyebrow,
       title: 'Your move.',
       // Only Explore's detail at the latest move is how-to; the others say what a move here does.
-      seenHint: !startsRun && !practice && !viewing,
+      routine: !startsRun && !practice && !viewing,
       detail:
         practice && startsRun && viewing
           ? YOUR_MOVE.practice.restart
@@ -417,7 +425,7 @@ function describeStatus(
   return {
     eyebrow,
     title: reply,
-    seenHint: !startsRun,
+    routine: !startsRun,
     detail: canPlay
       ? 'Point at a reply to see what it aims for, then play it.'
       : 'Point at a reply to see what it aims for.',
@@ -483,6 +491,10 @@ function LessonPlaceholder({
   );
 }
 
+/** Space between the panel's sections: Silk's step 5, less on a narrow web page. */
+const SECTION_GAP = narrowLength('section-gap', themes.dark.semantic.space[5]);
+
 const styles = StyleSheet.create({
+  sections: { gap: SECTION_GAP.value },
   placeholder: { minHeight: 200 },
 });

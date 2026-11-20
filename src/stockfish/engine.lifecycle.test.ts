@@ -107,6 +107,96 @@ describe('the engine lifecycle', () => {
     await next;
   });
 
+  it('drops a top-moves search the screen has left, and searches the one it shows once that evaluation has', async () => {
+    const older = engine.stockfishEvaluation(['e2e4']);
+    const left = engine.stockfishTopMoves(['e2e4', 'e7e5']);
+    const leftBehind = expect(left).rejects.toMatchObject({ name: 'AbortError' });
+    const shown = engine.stockfishEvaluation(['d2d4', 'd7d5']);
+    const current = engine.stockfishTopMoves(['d2d4', 'd7d5']);
+    await leftBehind;
+    const { print, sent } = scripted();
+    print('uciok');
+    // The evaluation of the position on screen runs first, so the bar moves
+    // before its top moves are ranked. The search that was left never starts.
+    expect(sent.join('\n')).not.toContain('e7e5');
+    expect(sent).not.toContain('setoption name MultiPV value 3');
+    expect(sent.slice(-3)).toEqual([
+      'ucinewgame',
+      'position startpos moves d2d4 d7d5',
+      'go nodes 100000 movetime 1500',
+    ]);
+    print('info depth 12 score cp 20 pv d2d4');
+    print('bestmove d2d4');
+    await shown;
+    expect(sent.slice(-3, -1)).toEqual([
+      'setoption name MultiPV value 3',
+      'position startpos moves d2d4 d7d5',
+    ]);
+    print('info depth 12 multipv 1 score cp 30 pv d7d5');
+    print('info depth 12 multipv 2 score cp 10 pv e7e6');
+    print('bestmove d7d5');
+    await current;
+    expect(sent.join('\n')).not.toContain('e2e4 e7e5');
+    print('info depth 8 score cp 12 pv e4');
+    print('bestmove e2e4');
+    await older;
+    expect(sent).toContain('setoption name MultiPV value 1');
+  });
+
+  it('drops a top-moves search the screen has left before the engine starts it', async () => {
+    const left = engine.stockfishTopMoves(['e2e4', 'e7e5']);
+    const failed = expect(left).rejects.toMatchObject({ name: 'AbortError' });
+    const evaluation = engine.stockfishEvaluation(['d2d4']);
+    const current = engine.stockfishTopMoves(['d2d4']);
+    await failed;
+    const { print, sent } = scripted();
+    print('uciok');
+    expect(sent.join('\n')).not.toContain('e7e5');
+    expect(sent.at(-2)).toBe('position startpos moves d2d4');
+    print('info depth 8 score cp 12 pv d4');
+    print('bestmove d2d4');
+    await evaluation;
+    expect(sent).toContain('setoption name MultiPV value 3');
+    print('info depth 10 multipv 1 score cp 20 pv d7d5');
+    print('bestmove d7d5');
+    await current;
+  });
+
+  it('stops a top-moves search the screen has left while it runs, and ignores its result', async () => {
+    const { print, sent } = scripted();
+    print('uciok');
+    const left = engine.stockfishTopMoves(['e2e4']);
+    const failed = expect(left).rejects.toMatchObject({ name: 'AbortError' });
+    expect(sent).toContain('setoption name MultiPV value 3');
+    const current = engine.stockfishTopMoves(['d2d4']);
+    await failed;
+    expect(sent.at(-1)).toBe('stop');
+    // The stopped search's bestmove arrives and is discarded; the new one runs.
+    print('bestmove e2e4');
+    expect(sent.at(-2)).toBe('position startpos moves d2d4');
+    print('info depth 10 multipv 1 score cp 20 pv d7d5');
+    print('bestmove d7d5');
+    await current;
+  });
+
+  it('never runs a stopped top-moves search again on the next engine', async () => {
+    const first = scripted();
+    first.print('uciok');
+    const left = engine.stockfishTopMoves(['e2e4']);
+    const failed = expect(left).rejects.toMatchObject({ name: 'AbortError' });
+    const current = engine.stockfishTopMoves(['d2d4']);
+    await failed;
+    // The engine crashes before the stopped search answers.
+    first.connection.fail('out of memory');
+    const second = scripted();
+    second.print('uciok');
+    expect(second.sent).not.toContain('position startpos moves e2e4');
+    expect(second.sent).toContain('position startpos moves d2d4');
+    second.print('info depth 10 multipv 1 score cp 20 pv d7d5');
+    second.print('bestmove d7d5');
+    await current;
+  });
+
   it('sends no MultiPV setting while the number of ranks stays the same', async () => {
     const { print, sent } = scripted();
     print('uciok');

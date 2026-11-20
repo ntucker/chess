@@ -1,8 +1,8 @@
 /**
  * The lesson screen's wiring: a game against the guide-first opponent, the
  * facts about the position on the board, what the learner points at (a
- * candidate, by its list row or a piece dragged onto its square, and a note
- * on the idea card), an idea playing back, the mode (Explore or Practice),
+ * candidate, by its list row or a piece dragged or clicked, and a note on
+ * the idea card), an idea playing back, the mode (Explore or Practice),
  * the learner's progress marks, Stockfish's best move and top three in
  * Explore, and the board. Where the opponent plays its own moves (`opponentPlays`) the learner
  * moves their own side; elsewhere, either.
@@ -24,7 +24,7 @@ import { addMark, getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNeedsStockfish } from '@/stockfish/demand';
 
-import { boardPress, lessonBoard } from './board';
+import { boardPress, boardSelect, lessonBoard } from './board';
 import { ideaPlayback } from './drawings';
 import {
   guidance,
@@ -186,7 +186,8 @@ export function useLesson(
     mode,
     switches: settings,
     preview: pointer && previewOf(pointer),
-    dragged: pointer?.at === 'drag' ? pointer.from : undefined,
+    // A dragged piece, or else one a click selected.
+    lifted: pointer?.at === 'drag' ? pointer.from : here?.selected,
     pointed: here?.note,
     playing: playing?.played,
     engine: { best: evaluation?.best, top },
@@ -212,6 +213,10 @@ export function useLesson(
     const at: Pointer | undefined = drag ? { at: 'drag', ...drag } : undefined;
     const candidate = at && !previewOf(at) ? { ...at, to: undefined } : at;
     dispatch({ type: 'candidate', key, candidate });
+    // A drag that ends without a move lets the piece go. Chessground does too,
+    // except after a drop on another square the piece can't move to, where it
+    // keeps the piece selected and this lets it go (a known gap).
+    if (!drag) dispatch({ type: 'select', key });
   };
   const playMove = (uci: string) => {
     if (canMove) game.play(uci);
@@ -233,10 +238,17 @@ export function useLesson(
       if (uci) playMove(uci);
     },
     onDrag: pointDrag,
-    onPress: (square, selected) => {
-      const press = !frame && boardPress(shown, current, canMove, square, selected);
+    onPress: (square, picked) => {
+      if (frame) return;
+      const press = boardPress(shown, current, canMove, square, picked);
+      if (press && press !== 'end') {
+        play(press);
+        return;
+      }
       if (press === 'end') dispatch({ type: 'candidate', key });
-      else if (press) play(press);
+      // Any press selects a piece the way the board does, and draws its moves
+      // as a drag would, or lets the piece go.
+      dispatch({ type: 'select', key, selected: boardSelect(current, canMove, square, picked) });
     },
   };
   // The opponent's reply would move the board on and end a playback at once,
