@@ -36,9 +36,8 @@ export const NARROW_PX = {
   'player-disc-border': 2,
   'evaluation-width': 6,
   /**
-   * The panel's headline (GameStatus.tsx), down from theme.ts's headingLg: it
-   * shows only when it has news, such as the end of a line, and sits close
-   * above the moves.
+   * A panel's full headline (GameStatus.tsx), down from theme.ts's headingLg,
+   * as free play's; the lesson's draws one short line instead.
    */
   'headline-size': 20,
   /** A row of the opponent's strength list, tall enough to tap (OpponentPicker.tsx). */

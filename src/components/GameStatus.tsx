@@ -47,7 +47,7 @@ export interface HeadlineProps {
   /** The eyebrow names where the page is, and links to the screen listing the others (`PlaceLink`). */
   readonly eyebrowLink?: Destination;
   /**
-   * What a narrow web page draws of the headline, as one short line that
+   * What a narrow page draws of the headline, as one short line that
    * leaves its room to the panel below: the title run in before the detail
    * (`all`); the detail alone, when the title only says whose move it is,
    * which the name bars show (`detail`); or nothing, when the detail is how
