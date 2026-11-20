@@ -34,7 +34,10 @@ review below. Lead's end-to-end comments don't gate autoland; that review replac
 Run it last, once every other gate passes, since any push restarts it. Run a Sonnet subagent at
 high effort that has not seen the work. Give it the brief below, the PR
 number, the contract (the plan piece's section, or the person's ask quoted with its link) and the
-PR preview, `https://ntucker.github.io/chess/pr-preview/pr-<N>/`, once its comment names the head.
+PR preview, `https://ntucker.github.io/chess/pr-preview/pr-<N>/`. Hand it over only once the preview
+comment names the head and the latest Pages build (`GET /repos/ntucker/chess/pages/builds/latest`)
+is `built` and finished after that comment was last updated; Pages serves a new build about a minute
+after the comment, so earlier the reviewer would test the previous commit.
 Fix what it blocks on (a push, so this list starts over). If it is wrong, say why on the PR and tell
 the person, who merges by hand.
 
