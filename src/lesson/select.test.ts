@@ -9,6 +9,7 @@ import { ADVANCE, keyAfter, MAIN, SAMPLE, uciLine, WITH_RARE, withMoves } from '
 import {
   bookMoves,
   candidates,
+  captionName,
   FEWEST_RARE,
   RARE_SHARE,
   ALWAYS_LISTED,
@@ -265,6 +266,24 @@ describe('nameWithin', () => {
     );
     expect(nameWithin('Advance Variations', [advance])).toBe('Advance Variations');
     expect(nameWithin('Advance Variation', [advance])).toBe('Advance Variation');
+  });
+});
+
+describe('captionName', () => {
+  const path = [
+    { name: 'Slav Defence' },
+    { name: 'Pure Slav' },
+    { name: 'Pure Slav: Alapin Variation' },
+    { name: 'Pure Slav: Czech Variation' },
+  ];
+
+  it("drops the line's or its parent's group, which a phone's header shows", () => {
+    expect(captionName('Pure Slav: Czech Variation: Bled Attack', path)).toBe('Bled Attack');
+    expect(captionName('Pure Slav: Alapin Variation: Sharp', path)).toBe('Sharp');
+  });
+
+  it('keeps a group further up, which a phone shows nowhere', () => {
+    expect(captionName('Pure Slav: Geller Gambit', path)).toBe('Pure Slav: Geller Gambit');
   });
 });
 

@@ -19,7 +19,7 @@ import { type Color, COLORS, colorName, opposite } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
 import type { Lesson, Uci, VariationId } from '@/lesson/lesson';
 import { lessonsAfter, lessonsFrom, openingsLesson, withOpenings } from '@/lesson/openings';
-import { type Candidate, nameWithin, pathNames } from '@/lesson/select';
+import { type Candidate, captionName, pathNames } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
 import type { LessonView } from '@/lesson/view';
 import { describeOpponent } from '@/opponent/opponent';
@@ -189,10 +189,9 @@ function LessonScreen({
   const openings = (uci: Uci) =>
     picking ? lessonsAfter(LESSON_INDEX, learner, [...shownLine, uci]) : [];
   const line = view.variation.at(-1);
-  // Without a group only where a narrow page's header shows it too: the board's line or its
-  // parent. A wide page's eyebrow shows more, but a phone hides it.
+  // While picking, the header names no line, so a caption keeps its groups.
   const shortName = (id: VariationId) =>
-    nameWithin(lesson.variations[id].name, view.variation.slice(-2));
+    captionName(lesson.variations[id].name, picking ? [] : view.variation);
   const leadsTo = (candidate: Candidate) => {
     const into = openings(candidate.move.uci);
     if (into.length) return into.map((id) => LESSON_INDEX[id].title).join(' or ');

@@ -229,6 +229,15 @@ export function nameWithin(name: string, within: readonly Variation[]): string {
   return group ? name.slice(group.name.length + 2) : name;
 }
 
+/**
+ * A variation's name in a caption beside the board on `path`, without a group
+ * only where a narrow page's header shows that group too: the line or its
+ * parent (a phone hides the panel's path).
+ */
+export function captionName(name: string, path: readonly Variation[]): string {
+  return nameWithin(name, path.slice(-2));
+}
+
 /** The names along a `variationPath`, each without what the ones before it say (`nameWithin`). */
 export function pathNames(path: readonly Variation[]): string[] {
   return path.map(({ name }, at) => nameWithin(name, path.slice(0, at)));
