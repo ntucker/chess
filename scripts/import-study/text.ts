@@ -53,7 +53,7 @@ export const plyOf = (number: number, black: boolean) => 2 * number - (black ? 0
 export const plainSan = (san: string) => san.replace(/[+#!?]+$/, '');
 
 /** A word that is a move, numbered or not, with any glyph or punctuation after it. */
-const MOVE_WORD = new RegExp(String.raw`^${WRITTEN_MOVE}[.,;:)]*$`);
+const MOVE_WORD = new RegExp(String.raw`^${WRITTEN_MOVE}[!?.,;:)]*$`);
 
 /**
  * Where each sentence of `text` ends (the index after its punctuation). Chess
