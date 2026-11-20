@@ -231,7 +231,7 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
   'board-column': { narrow: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', width: '100%' } },
   program: { narrow: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minHeight: 120, width: '100%' } },
   'player-names': { narrow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 } },
-  'lesson-panel': { narrow: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto', minHeight: '100%' } },
+  'lesson-panel': { narrow: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' } },
   'lesson-body': { narrow: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' } },
   'scoresheet-drawer': {
     wide: { display: 'none' },
@@ -291,6 +291,9 @@ export const CSS_ONLY: Readonly<Partial<Record<NarrowPartName, readonly string[]
     'animation-name: drawer-fade',
     'animation-duration: 120ms',
   ],
+  // Natively the panel grows in its scroll view's content, which already fills the
+  // program; a percentage there adds the fade's padding again, so the panel scrolled by it.
+  'lesson-panel': ['min-height: 100%'],
   // Native's leads-to takes `narrowProps` instead.
   'leads-to': ['white-space: normal'],
   // `NarrowScroll` scrolls these natively, with a fading edge and the same padding.
