@@ -1,6 +1,14 @@
 import { Badge, Pressable, Stack, Text, useTheme } from '@reactive/silk-native';
 import { Link, useRouter } from 'expo-router';
-import { type ComponentRef, Fragment, type ReactNode, useEffect, useRef } from 'react';
+import {
+  type ComponentRef,
+  Fragment,
+  type ReactNode,
+  use,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import { Text as RNText, StyleSheet, View } from 'react-native';
 
 import { Eyebrow } from '@/components/Eyebrow';
@@ -17,11 +25,8 @@ import {
   type ListPlace,
   openingList,
 } from '@/lesson/openingList';
-import { LESSON_INDEX, type LessonId } from '@/resources/lesson';
+import { LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { fonts } from '@/theme/theme';
-
-/** Each side's openings, worked out once: the index ships with the app. */
-const OPENINGS = openingList(LESSON_INDEX);
 
 /**
  * Every opening the app teaches, by the side the learner plays, each with
@@ -31,6 +36,8 @@ const OPENINGS = openingList(LESSON_INDEX);
  * board as it was left, since the page underneath stays mounted.
  */
 export function OpeningList({ here }: { readonly here?: ListPlace<LessonId> }) {
+  const index = use(LessonIndexContext);
+  const openings = useMemo(() => openingList(index), [index]);
   return (
     <Page
       title="Openings · Opening Night"
@@ -54,7 +61,7 @@ export function OpeningList({ here }: { readonly here?: ListPlace<LessonId> }) {
           </Text>
         </Stack>
         {COLORS.map((side) => (
-          <SideSection key={side} side={side} openings={OPENINGS[side]} here={here} />
+          <SideSection key={side} side={side} openings={openings[side]} here={here} />
         ))}
       </View>
     </Page>

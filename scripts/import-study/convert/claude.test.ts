@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { extractChapter } from '../extract';
 import { STUDY_PGN } from '../fixture';
 import { parseStudy } from '../study';
-import { claudeCli, MODELS } from './claude';
+import { claudeCli, MODELS, type ClaudeCli } from './claude';
 import { noteComment, type Comment } from './comments';
 import { REWORD } from './prompt';
 
@@ -79,7 +79,7 @@ describe('claudeCli', () => {
     const cacheFile = await answersFile([comments[0]]);
     // The same comment, asked again with the text the checker refused.
     const reword = { ...comments[0], refusedText: ['Play e6 Nf3 c5 Be2 next.'] };
-    const text = async (cli: ReturnType<typeof claudeCli>, comment: Comment, addendum?: string) =>
+    const text = async (cli: ClaudeCli<Comment>, comment: Comment, addendum?: string) =>
       (await cli.ask(MODELS.retry, [comment], addendum)).get(comment.id)?.notes[0].text;
     const cli = claudeCli({ learner: 'black', cacheFile, log });
     expect(await text(cli, reword, REWORD)).toBe('Reworded.');
@@ -88,6 +88,17 @@ describe('claudeCli', () => {
     const fromFile = claudeCli({ learner: 'black', cacheFile, log, callModel: false });
     expect(await text(fromFile, reword, REWORD)).toBe('Reworded.');
     expect(await text(fromFile, comments[0])).toBe('A note.');
+  });
+
+  it('stores answers by keyOf alone when given one, so other changes keep them', async () => {
+    const cacheFile = await answersFile();
+    const keyOf = (comment: Comment) => comment.id;
+    await claudeCli({ learner: 'black', cacheFile, log, keyOf }).ask(MODELS.convert, [comments[0]]);
+    const changed = { ...comments[0], previousComment: 'Another context.' };
+    const fromFile = claudeCli({ learner: 'black', cacheFile, log, keyOf, callModel: false });
+    expect(ids(await fromFile.ask(MODELS.convert, [changed]))).toEqual([changed.id]);
+    const byWhole = claudeCli({ learner: 'black', cacheFile, log, callModel: false });
+    expect(ids(await byWhole.ask(MODELS.convert, [changed]))).toEqual([]);
   });
 
   it('answers from the file alone without the model, and drops nothing', async () => {

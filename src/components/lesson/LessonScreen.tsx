@@ -1,12 +1,12 @@
 import { AsyncBoundary, useController, useFetch, useSuspense } from '@data-client/react';
 import { Separator, Spinner, Stack } from '@reactive/silk-native';
-import { useMemo, useState } from 'react';
+import { use, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
 import { Eyebrow, labelled } from '@/components/Eyebrow';
 import { FootnoteLink } from '@/components/FootnoteLink';
-import { StatusHeadline } from '@/components/GameStatus';
+import { type HeadlineProps, StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { OpponentPicker } from '@/components/OpponentPicker';
@@ -18,15 +18,15 @@ import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { useLongWait } from '@/components/useLongWait';
 import type { MoveQuality } from '@/analysis/quality';
 import { NewVersionError } from '@/files/newVersion';
-import { type Color, COLORS, colorName, opposite } from '@/game/replay';
+import { type Color, colorName, opposite } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
-import type { Lesson, Uci, VariationId } from '@/lesson/lesson';
+import type { Uci, VariationId } from '@/lesson/lesson';
 import { lessonsAfter, lessonsFrom, openingsLesson, withOpenings } from '@/lesson/openings';
 import { type Candidate, captionName, pathNames } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
 import type { LessonView } from '@/lesson/view';
 import { describeOpponent } from '@/opponent/opponent';
-import { getLesson, LESSON_INDEX, LESSONS, type LessonId } from '@/resources/lesson';
+import { getLesson, LessonIndexContext, LESSONS, type LessonId } from '@/resources/lesson';
 import { getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
 import { qualityLooks } from '@/theme/moveQuality';
@@ -116,10 +116,6 @@ function Openings({
   );
 }
 
-/** Each side's openings before one is picked. */
-const OPENINGS = Object.fromEntries(
-  COLORS.map((side) => [side, openingsLesson(LESSON_INDEX, side)]),
-) as Record<Color, Lesson>;
 const OPENINGS_TITLE = 'Openings';
 
 /**
@@ -149,9 +145,11 @@ function LessonScreen({
   // The progress loads beside the lesson, rather than once it has loaded.
   useFetch(getProgress);
   const picked = useSuspense(getLesson, id ?? null);
+  const index = use(LessonIndexContext);
+  // Before one is picked, the openings of `side` alone.
   const lesson = useMemo(
-    () => (picked ? withOpenings(picked, LESSON_INDEX) : OPENINGS[side]),
-    [picked, side],
+    () => (picked ? withOpenings(picked, index) : openingsLesson(index, side)),
+    [picked, index, side],
   );
   const {
     game,
@@ -211,15 +209,14 @@ function LessonScreen({
   // What the list of the rival's moves holds.
   const rivalMoves = !picking ? 'likely replies' : view.ply ? 'next move' : 'first move';
   /** Where the openings are picked, the lessons a move leads to. */
-  const openings = (uci: Uci) =>
-    picking ? lessonsAfter(LESSON_INDEX, learner, [...shownLine, uci]) : [];
+  const openings = (uci: Uci) => (picking ? lessonsAfter(index, learner, [...shownLine, uci]) : []);
   const line = view.variation.at(-1);
   // While picking, the header names no line, so a caption keeps its groups.
   const shortName = (id: VariationId) =>
     captionName(lesson.variations[id].name, picking ? [] : view.variation);
   const leadsTo = (candidate: Candidate) => {
     const into = openings(candidate.move.uci);
-    if (into.length) return into.map((id) => LESSON_INDEX[id].title).join(' or ');
+    if (into.length) return into.map((id) => index[id].title).join(' or ');
     if (candidate.variation === undefined) return 'Leaves the guide';
     return candidate.variation === line?.id ? undefined : shortName(candidate.variation);
   };
@@ -246,7 +243,7 @@ function LessonScreen({
   };
   const onDrag: typeof board.onDrag = (drag) => {
     // Each report repeats the request, which fetchIfStale makes free.
-    if (picking && drag) lessonsFrom(LESSON_INDEX, learner, shownLine, drag.from).forEach(load);
+    if (picking && drag) lessonsFrom(index, learner, shownLine, drag.from).forEach(load);
     board.onDrag?.(drag);
   };
 
@@ -355,6 +352,7 @@ function LessonScreen({
             failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
             eyebrowInHeader
             eyebrowLink={listLink}
+            news={status.news ?? 'all'}
           />
           {/* The scoresheet drawer takes the place of this part on a narrow web page, under the headline, which tells of a failure. */}
           <View
@@ -477,8 +475,10 @@ interface StatusInput {
 /**
  * The panel's headline: where the lesson stands and whose move it is. In
  * Practice, right after the learner's move, it judges that move first.
- * `routine` marks a headline that only says whose move it is and how to use
- * the screen, once the learner has moved and so has seen how.
+ * `news` says what of it is news, where the title only says whose move it
+ * is (`detail`), or the detail is also how to use the screen, once the
+ * learner has moved and so has seen how (`none`); left out, all of it is
+ * news. See `StatusHeadline`.
  */
 function describeStatus(
   view: LessonView,
@@ -497,7 +497,7 @@ function describeStatus(
     startsRun,
     practice,
   }: StatusInput,
-) {
+): Pick<HeadlineProps, 'eyebrow' | 'title' | 'detail' | 'news'> {
   if (loading) return { eyebrow: picking ? OPENINGS_TITLE : title, ...LOADING };
   if (picking)
     return {
@@ -535,7 +535,7 @@ function describeStatus(
       eyebrow,
       title: 'Your move.',
       // Only Explore's detail at the latest move is how-to; the others say what a move here does.
-      routine: !startsRun && !practice && !viewing,
+      news: !startsRun && !practice && !viewing ? 'none' : 'detail',
       detail:
         practice && startsRun && viewing
           ? YOUR_MOVE.practice.restart
@@ -555,7 +555,7 @@ function describeStatus(
   return {
     eyebrow,
     title: reply,
-    routine: !startsRun,
+    news: startsRun ? 'detail' : 'none',
     detail: canPlay
       ? 'Point at a reply to see what it aims for, then play it.'
       : 'Point at a reply to see what it aims for.',
@@ -614,6 +614,7 @@ function LessonPlaceholder({
             eyebrow="Lesson"
             title={message ? 'Curtain stays down.' : LOADING.title}
             detail={message ?? LOADING.detail}
+            news="all"
           />
         </View>
       }
