@@ -130,11 +130,8 @@
   /*
    * The scoresheet drawer (ScoresheetDrawer.tsx) takes the panel's place,
    * filling it and scrolling its moves within. What it covers stays mounted,
-   * hidden, so the panes keep their scroll.
+   * hidden as wide-only, so the panes keep their scroll.
    */
-  :root [data-narrow='drawn-over'] {
-    display: none;
-  }
   :root [data-narrow='scoresheet-drawer'] {
     display: flex;
     flex: 1 1 0;

@@ -55,11 +55,8 @@ interface BoardColumnProps {
   readonly board: Omit<BoardProps, 'dom'>;
   /** Swaps the sides: given, either name bar's disc is a button that does it. */
   readonly onSwap?: () => void;
-  /**
-   * A scoresheet that opens below the board on a narrow web page: given, the
-   * move stepper shows the move on the board as its opener (`Transport`).
-   */
-  readonly scoresheet?: { readonly open: boolean; readonly onToggle: () => void };
+  /** The move stepper's middle on a narrow web page (`Transport`). */
+  readonly stepperMiddle?: ReactNode;
 }
 
 /**
@@ -67,8 +64,8 @@ interface BoardColumnProps {
  * name bar above it and the player's below, holding the move stepper. The
  * arrow keys step through the moves too.
  */
-export function BoardColumn({ game, rival, board, onSwap, scoresheet }: BoardColumnProps) {
-  const { moves, plies, ply, goto } = game;
+export function BoardColumn({ game, rival, board, onSwap, stepperMiddle }: BoardColumnProps) {
+  const { moves, ply, goto } = game;
   const side = board.orientation;
   const other = opposite(side);
   useStepKeys(ply, moves.length, goto);
@@ -99,12 +96,7 @@ export function BoardColumn({ game, rival, board, onSwap, scoresheet }: BoardCol
         material={game.material[side]}
         swap={swap}
       >
-        <Transport
-          ply={ply}
-          total={moves.length}
-          onGoto={goto}
-          scoresheet={scoresheet && { ...scoresheet, san: plies[ply].move?.san }}
-        />
+        <Transport ply={ply} total={moves.length} onGoto={goto} middle={stepperMiddle} />
       </PlayerBar>
     </>
   );

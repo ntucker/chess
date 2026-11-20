@@ -41,7 +41,6 @@ export const NARROW_PARTS = [
   'lone-verdict',
   'lesson-panel',
   'lesson-body',
-  'drawn-over',
   'scoresheet-drawer',
   'panes',
   'moves-pane',

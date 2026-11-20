@@ -1,20 +1,20 @@
-import { Pressable, Text, useTheme } from '@reactive/silk-native';
-import type { ReactNode } from 'react';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { a11yState, Inline, Pressable, Text, useTheme } from '@reactive/silk-native';
+import type { ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Eyebrow, labelled } from '@/components/Eyebrow';
 import { HeaderButton } from '@/components/HeaderButton';
+import { Scoresheet } from '@/components/Scoresheet';
+import { stepButton } from '@/components/Transport';
 import { useScreenKeys } from '@/components/useScreenKeys';
+import { numberedMove } from '@/game/replay';
 import { narrowPart } from '@/theme/narrow';
+import { fonts } from '@/theme/theme';
 
-interface Props {
-  readonly ply: number;
-  readonly total: number;
-  readonly onGoto: (ply: number) => void;
+interface Props extends Omit<ComponentProps<typeof Scoresheet>, 'fill'> {
   /** Its close button, or Escape. */
   readonly onClose: () => void;
-  /** The scoresheet, filling the drawer's height. */
-  readonly children: ReactNode;
 }
 
 /**
@@ -24,15 +24,17 @@ interface Props {
  * the jumps to the first and latest move, which the stepper leaves out there.
  * Shown while mounted, on a narrow web page only (narrow.css).
  */
-export function ScoresheetDrawer({ ply, total, onGoto, onClose, children }: Props) {
+export function ScoresheetDrawer({ onClose, ...scoresheet }: Props) {
+  const { plies, ply, onGoto } = scoresheet;
+  const total = plies.length - 1;
   useScreenKeys((event) => {
     if (event.key === 'Escape') onClose();
   });
   return (
     <View {...narrowPart('scoresheet-drawer')} aria-label="Scoresheet" style={labelled}>
-      <View style={styles.head}>
+      <Inline align="center" justify="between" wrap="nowrap">
         <Eyebrow>Scoresheet</Eyebrow>
-        <View style={styles.actions}>
+        <Inline align="center" gap="1" wrap="nowrap">
           <Jump label="Start" disabled={ply === 0} onPress={() => onGoto(0)} />
           <Jump label="Latest" disabled={ply === total} onPress={() => onGoto(total)} />
           <HeaderButton
@@ -42,12 +44,68 @@ export function ScoresheetDrawer({ ply, total, onGoto, onClose, children }: Prop
             accessibilityLabel="Close the scoresheet"
             onPress={onClose}
           />
-        </View>
-      </View>
-      {children}
+        </Inline>
+      </Inline>
+      <Scoresheet {...scoresheet} fill />
     </View>
   );
 }
+
+/**
+ * The move stepper's middle on a narrow page (`Transport`): the move on the
+ * board, which opens the scoresheet drawer, or closes it again.
+ */
+export function ScoresheetOpener({
+  san,
+  ply,
+  disabled,
+  open,
+  onToggle,
+}: {
+  /** The move that led to the position shown, in SAN: none at the start. */
+  readonly san?: string;
+  readonly ply: number;
+  readonly disabled: boolean;
+  readonly open: boolean;
+  readonly onToggle: () => void;
+}) {
+  const { theme } = useTheme();
+  const { color } = theme.semantic;
+  const move = shownMove(san, ply);
+  const ink = disabled ? color.tones.neutral.disabledFg : undefined;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Scoresheet, ${move}`}
+      {...a11yState({ expanded: open })}
+      disabled={disabled}
+      onPress={onToggle}
+      style={({ pressed, hovered }) => [
+        stepButton,
+        styles.opener,
+        (open || pressed || hovered) &&
+          !disabled && { backgroundColor: color.tones.neutral.subtle },
+      ]}
+    >
+      <Text
+        role="body"
+        numberOfLines={1}
+        style={[styles.openerText, { color: ink ?? color.textPrimary }]}
+      >
+        {move}
+      </Text>
+      <Ionicons
+        name={open ? 'chevron-down' : 'chevron-up'}
+        size={12}
+        color={ink ?? color.textSecondary}
+      />
+    </Pressable>
+  );
+}
+
+/** The move on the board as the stepper names it, "12…Nc6" (`ply` moves in), or "Start" before any. */
+export const shownMove = (san: string | undefined, ply: number) =>
+  san ? numberedMove(san, ply, '…') : 'Start';
 
 /**
  * A jump to either end of the game, in words: quiet text that lights up on
@@ -86,6 +144,17 @@ function Jump({
 
 const styles = StyleSheet.create({
   jump: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
-  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  /*
+   * Wide enough for "12…Nxd5", so the stepper keeps its width from move to
+   * move, and no wider than the two jumps it replaces, so the name bar keeps its room.
+   */
+  opener: {
+    width: 88,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+  },
+  openerText: { fontFamily: fonts.mono, fontSize: 14 },
 });

@@ -38,7 +38,7 @@ import { IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
 import { SourceCredits } from './SourceCredits';
-import { ScoresheetDrawer } from './ScoresheetDrawer';
+import { ScoresheetDrawer, ScoresheetOpener } from './ScoresheetDrawer';
 import { TrapCard } from './TrapCard';
 import { useOpeningsGame } from './useOpeningsGame';
 
@@ -334,10 +334,15 @@ function LessonScreen({
           board={{ ...board, onDrag }}
           // The side is the lesson's once one is picked.
           onSwap={picking ? () => onPlayAs(rival) : undefined}
-          scoresheet={{
-            open: scoresheetOpen,
-            onToggle: () => setScoresheetOpen(!scoresheetOpen),
-          }}
+          stepperMiddle={
+            <ScoresheetOpener
+              san={game.plies[game.ply].move?.san}
+              ply={game.ply}
+              disabled={game.moves.length === 0}
+              open={scoresheetOpen}
+              onToggle={() => setScoresheetOpen(!scoresheetOpen)}
+            />
+          }
         />
       }
       program={
@@ -350,7 +355,7 @@ function LessonScreen({
           />
           {/* The scoresheet drawer takes the place of this part on a narrow web page, under the headline, which tells of a failure. */}
           <View
-            {...narrowPart(scoresheetOpen ? 'drawn-over' : 'lesson-body')}
+            {...narrowPart(scoresheetOpen ? 'wide-only' : 'lesson-body')}
             style={styles.sections}
           >
             {/* On a narrow web page the moves follow the headline closely, with no rule between. */}
@@ -398,14 +403,7 @@ function LessonScreen({
             ) : null}
           </View>
           {scoresheetOpen ? (
-            <ScoresheetDrawer
-              ply={game.ply}
-              total={game.moves.length}
-              onGoto={game.goto}
-              onClose={() => setScoresheetOpen(false)}
-            >
-              <Scoresheet {...scoresheetProps} fill />
-            </ScoresheetDrawer>
+            <ScoresheetDrawer {...scoresheetProps} onClose={() => setScoresheetOpen(false)} />
           ) : null}
           {/*
            * A narrow web page has no room for the rest under the panes: the
