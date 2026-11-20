@@ -9,7 +9,7 @@ import { SAMPLE } from '@/lesson/lesson.fixture';
 import { extractChapter } from './extract';
 import { mergeChapters } from './merge';
 import { parseStudy } from './study';
-import { plainText, readPage, segmentSan, wikibooksPgn } from './wikibooks';
+import { plainText, readPage, segmentSan, titleCase, wikibooksPgn } from './wikibooks';
 
 const ROOT = 'Chess_Opening_Theory/1._d4/1...d5';
 
@@ -57,6 +57,15 @@ describe('plainText', () => {
     expect(
       plainText("'''Bold''' [[/5. a4/]] and [[/5...Bf5|the bishop]]{{Wikipedia}}<ref>A book</ref>"),
     ).toBe('Bold 5.a4 and the bishop');
+  });
+});
+
+describe('titleCase', () => {
+  it('capitalises words as the lichess guides do, but not minor words or moves', () => {
+    expect(titleCase('Dutch variation')).toBe('Dutch Variation');
+    expect(titleCase("Queen's gambit declined")).toBe("Queen's Gambit Declined");
+    expect(titleCase('4.Nd2 and 4.c4 sidelines')).toBe('4.Nd2 and 4.c4 Sidelines');
+    expect(titleCase('exchange variation, 4.cxd5')).toBe('Exchange Variation, 4.cxd5');
   });
 });
 

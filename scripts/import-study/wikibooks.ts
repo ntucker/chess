@@ -216,6 +216,7 @@ export interface WikibooksOptions {
   /**
    * Names to replace, to match the other sources' ("Slav accepted": "Pure
    * Slav"); an empty one drops the name, so its position starts no chapter.
+   * Keys are the page's own spelling; every name is then title-cased.
    */
   readonly rename?: Readonly<Record<string, string>>;
   /**
@@ -233,6 +234,19 @@ export interface WikibooksOptions {
   /** At most this many pages are read. */
   readonly maxPages?: number;
   readonly log?: (message: string) => void;
+}
+
+const MINOR_WORDS = new Set('a an and at by de der for in of on or the to van von with'.split(' '));
+
+/**
+ * `name` in title case, as the lichess guides write theirs: "Dutch variation"
+ * becomes "Dutch Variation". Minor words after the first stay lower case, and
+ * moves ("4.e3", "exd5") are left as they are.
+ */
+export function titleCase(name: string): string {
+  return name.replace(/(?<![\w'.])[a-z][a-z']*\b/g, (word, at: number) =>
+    at > 0 && MINOR_WORDS.has(word) ? word : word[0].toUpperCase() + word.slice(1),
+  );
 }
 
 /** The book's pages under `root` as PGN, one game per chapter (see the file comment). */
@@ -273,7 +287,8 @@ export async function wikibooksPgn(
   );
   // A missing root page would otherwise import as one bare move.
   if (top.children.length === 0) throw new Error(`${root}: Wikibooks has no moves here`);
-  const name = (node: BookNode) => (node.name && (rename[node.name] ?? node.name)) || undefined;
+  const name = (node: BookNode) =>
+    (node.name && titleCase(rename[node.name] ?? node.name)) || undefined;
   return chapters(top, path.slice(0, -1), learner, name, topName)
     .map((game) => makePgn(game))
     .join('\n');

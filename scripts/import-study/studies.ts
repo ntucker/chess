@@ -83,9 +83,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
       {
         root: 'Chess_Opening_Theory/1._e4/1...c6',
         rename: {
-          'Advance variation': 'Advance Variation',
           'Tal variation': 'Tal Variation (4.h4) & Bayonet Attack (4.g4)',
-          'Classical variation': 'Classical Variation',
           // 3.Nd2, which the main study teaches under the Classical Variation.
           'Modern variation': '',
           'Accelerated Panov attack': 'Accelerated Panov',
@@ -141,8 +139,6 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
           // 3...Nf6, which the main study's own chapters start under.
           'Modern Line': '',
           'Slav accepted': 'Pure Slav',
-          'Alapin variation': 'Alapin Variation',
-          'Exchange variation': 'Exchange Variation',
         },
       },
       {
@@ -167,10 +163,6 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         // The Semi-Slav by 2...e6 3.Nc3 c6 (the Triangle): 4.e3 and the Marshall Gambit 4.e4.
         root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...e6/3._Nc3/3...c6',
         topName: 'Semi-Slav',
-        rename: {
-          'Noteboom variation': 'Noteboom Variation',
-          'Marshall gambit': 'Marshall Gambit',
-        },
       },
       {
         study: 'Z4TK3dUu',
