@@ -41,9 +41,14 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
    engineering, adversarial, reuse and React data flow. Verify each finding; fix real ones, reject the
    rest with a reason. Do not launch them while the person is actively writing in your thread:
    subagents can pick up the message and reply in your name.
-7. Once the change is verified correct, run skill "simplify", verify its findings, and push the
-   cleanups (a push, so step 6 runs again) before calling the PR done. If the change has
-   architecture implications, then run skill `user-kit:clean-code` the same way.
+7. Once the change is verified correct, run skill "simplify", then skill `user-kit:clean-code` if
+   the change has architecture implications. Verify their findings and push the cleanups (a push, so
+   step 6 runs again) before calling the PR done.
+   Over 1k changed lines of code against `main` (not counting `scripts/`, data such as
+   `assets/lessons/`, generated files or fixtures): while that push's step 6 runs, have a Fable
+   subagent load `user-kit:clean-code` and look for architectural simplifications and improvements,
+   weighing what will likely stay the same and what might change (over time and space). Handle its
+   findings the same way, once per PR.
 8. Land your own PR (squash-merge) as `.agents/projects/autoland.md` says. A worker's PR ends when
    it merges, not when it is handed over.
 
