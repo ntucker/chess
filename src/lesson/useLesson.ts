@@ -213,9 +213,10 @@ export function useLesson(
     },
   };
   // The opponent's reply would move the board on and end a playback at once,
-  // so none starts while one is on its way to the position shown.
+  // so none starts while one is on its way to the position shown, nor while
+  // a lesson loads (like canMove).
   const playable = (note: ShownNote) =>
-    game.replying ? undefined : notePlayback(shown.playable, note.note)?.idea.type;
+    game.replying || pending ? undefined : notePlayback(shown.playable, note.note)?.idea.type;
   const playback: Playback = {
     playing: shown.playing &&
       playing &&

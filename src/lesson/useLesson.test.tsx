@@ -155,9 +155,20 @@ describe('useLesson while a lesson loads', () => {
     await act(async () => lesson().pointRow(uciLine('e4', 'c6')[1]));
     expect(lesson().guidance.preview).toBeUndefined();
     expect(lesson().board.preview).toBeUndefined();
-    // The same row, pointed at with the lesson shown, previews.
+    // The pointing is kept, so it previews once the lesson is shown.
     await loaded('e4');
     expect(lesson().guidance.preview?.candidate.san).toBe('c6');
     expect(lesson().board.preview).toBeDefined();
+  });
+
+  it('offers no idea to play back while the game waits on another lesson', async () => {
+    const line = ['e4', 'c6', 'd4', 'd5', 'e5', 'Bf5'];
+    await loadingAfter(...line);
+    const [note] = lesson().guidance.notes;
+    expect(lesson().playback.playable(note)).toBeUndefined();
+    await act(async () => lesson().playback.play(note));
+    await loaded(...line);
+    expect(lesson().playback.playing).toBeUndefined();
+    expect(lesson().playback.playable(note)).toBe('plan');
   });
 });
