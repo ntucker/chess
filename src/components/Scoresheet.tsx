@@ -18,13 +18,15 @@ interface Props {
   /** The ply after a move that fell into a trap, marked as the mistake. */
   readonly trapped?: number;
   readonly onGoto: (ply: number) => void;
+  /** Fills the height it is given and scrolls within it, rather than stopping at its own most. */
+  readonly fill?: boolean;
 }
 
 /**
  * The moves as a two-column scoresheet (1. e4 e5), each with its label, and
  * a move that fell into a trap marked; tap one to see it.
  */
-export function Scoresheet({ plies, qualities, ply, trapped, onGoto }: Props) {
+export function Scoresheet({ plies, qualities, ply, trapped, onGoto, fill }: Props) {
   const scroll = useRef<ScrollViewInstance>(null);
   const san = (n: number) => plies[n]?.move?.san;
 
@@ -32,7 +34,12 @@ export function Scoresheet({ plies, qualities, ply, trapped, onGoto }: Props) {
   for (let n = 1; n < plies.length; n += 2) rows.push(n);
 
   return (
-    <Surface elevation="sunken" border="subtle" radius="md" style={styles.sheet}>
+    <Surface
+      elevation="sunken"
+      border="subtle"
+      radius="md"
+      style={[styles.sheet, fill && styles.fill]}
+    >
       {rows.length === 0 ? (
         <Text role="bodySm" tone="secondary" style={styles.empty}>
           The moves will appear here.
@@ -40,7 +47,7 @@ export function Scoresheet({ plies, qualities, ply, trapped, onGoto }: Props) {
       ) : (
         <ScrollView
           ref={scroll}
-          style={styles.scroll}
+          style={fill ? styles.fill : styles.scroll}
           contentContainerStyle={styles.content}
           onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: true })}
         >
@@ -151,6 +158,7 @@ const inRow = (ply: number | undefined, white: number) =>
 const styles = StyleSheet.create({
   sheet: { overflow: 'hidden' },
   scroll: { maxHeight: 280 },
+  fill: { flex: 1, minHeight: 0 },
   // Room for the first and last cells' focus rings, which the scroll clips.
   content: { paddingVertical: 2 },
   empty: { padding: 16, textAlign: 'center' },

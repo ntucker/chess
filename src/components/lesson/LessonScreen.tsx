@@ -38,6 +38,7 @@ import { IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
 import { SourceCredits } from './SourceCredits';
+import { ScoresheetDrawer } from './ScoresheetDrawer';
 import { TrapCard } from './TrapCard';
 import { useOpeningsGame } from './useOpeningsGame';
 
@@ -176,14 +177,9 @@ function LessonScreen({
     chooseMode,
   } = useLesson(lesson, store, { pending });
   const { mode } = modeState;
-  // The settings sheet of a narrow web page.
+  // A narrow web page's settings sheet, and its scoresheet drawer.
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const closeSettings = () => setSettingsOpen(false);
-  /** A move picked in the sheet's scoresheet: the sheet closes to show it on the board. */
-  const gotoFromSheet = (ply: number) => {
-    closeSettings();
-    game.goto(ply);
-  };
+  const [scoresheetOpen, setScoresheetOpen] = useState(false);
   const { auto } = useSettings();
   const learner = lesson.side;
   const rival = opposite(learner);
@@ -294,19 +290,17 @@ function LessonScreen({
     />
   ) : null;
 
-  /** The game's moves, where pressing one calls `onGoto`. */
-  const scoresheet = (onGoto: (ply: number) => void) => (
-    <Stack style={labelled}>
-      <Eyebrow>Scoresheet</Eyebrow>
-      <Scoresheet
-        plies={game.plies}
-        qualities={game.qualities}
-        ply={game.ply}
-        // A record of the line, so it outlives the trap's card.
-        trapped={view.trap && view.trap.ply + 1}
-        onGoto={onGoto}
-      />
-    </Stack>
+  /** The game's moves; `fill` fills the drawer. */
+  const scoresheet = (fill?: boolean) => (
+    <Scoresheet
+      plies={game.plies}
+      qualities={game.qualities}
+      ply={game.ply}
+      // A record of the line, so it outlives the trap's card.
+      trapped={view.trap && view.trap.ply + 1}
+      onGoto={game.goto}
+      fill={fill}
+    />
   );
   const settings = (
     <>
@@ -343,78 +337,104 @@ function LessonScreen({
           board={{ ...board, onDrag }}
           // The side is the lesson's once one is picked.
           onSwap={picking ? () => onPlayAs(rival) : undefined}
+          scoresheet={{
+            open: scoresheetOpen,
+            onToggle: () => setScoresheetOpen(!scoresheetOpen),
+          }}
         />
       }
       program={
         <Stack {...narrowPart('lesson-panel')} style={styles.sections}>
-          <StatusHeadline
-            {...status}
-            failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
-            eyebrowInHeader
-            eyebrowLink={listLink}
-          />
-          {/* On a narrow web page the moves follow the headline closely, with no rule between. */}
-          <View {...narrowPart('wide-only')}>
-            <Separator />
-          </View>
-          {trap ? (
-            <TrapCard
-              trap={trap}
-              mistake={game.plies[trap.ply + 1].move!.san}
-              fell={game.plies[trap.ply].turn}
-              learner={learner}
-              playback={playback}
-              onBack={() => game.goto(trap.ply)}
+          {/* The scoresheet drawer takes the place of this part on a narrow web page. */}
+          <View
+            {...narrowPart(scoresheetOpen ? 'drawn-over' : 'lesson-body')}
+            style={styles.sections}
+          >
+            <StatusHeadline
+              {...status}
+              failure={
+                game.error && { who: described.name, error: game.error, onRetry: game.retry }
+              }
+              eyebrowInHeader
+              eyebrowLink={listLink}
             />
+            {/* On a narrow web page the moves follow the headline closely, with no rule between. */}
+            <View {...narrowPart('wide-only')}>
+              <Separator />
+            </View>
+            {trap ? (
+              <TrapCard
+                trap={trap}
+                mistake={game.plies[trap.ply + 1].move!.san}
+                fell={game.plies[trap.ply].turn}
+                learner={learner}
+                playback={playback}
+                onBack={() => game.goto(trap.ply)}
+              />
+            ) : null}
+            {/*
+             * Leaving a row for the idea card keeps its preview, so its notes can be pointed at.
+             * On a narrow web page the moves and the idea are panes side by side.
+             */}
+            {moveList || ideaCard ? (
+              // A View, so narrow.css can make it a row, which a Stack's inline style would override.
+              <PointingArea {...narrowPart('panes')} onLeave={leave} style={styles.sections}>
+                {moveList ? (
+                  <View {...narrowPart('moves-pane')} style={styles.sections}>
+                    {moveList}
+                  </View>
+                ) : null}
+                {ideaCard ? (
+                  <View {...narrowPart('idea-pane')}>
+                    <IdeaCard
+                      title={preview ? `If ${preview.san}` : 'The idea'}
+                      notes={guidance.notes}
+                      learner={learner}
+                      playback={playback}
+                      pointable={guidance.pointable}
+                      pointed={pointedNote}
+                      onPoint={pointNote}
+                      onLeave={leaveNote}
+                      onReach={reachCard}
+                    />
+                  </View>
+                ) : null}
+              </PointingArea>
+            ) : null}
+          </View>
+          {scoresheetOpen ? (
+            <ScoresheetDrawer
+              ply={game.ply}
+              total={game.moves.length}
+              onGoto={game.goto}
+              onClose={() => setScoresheetOpen(false)}
+            >
+              {scoresheet(true)}
+            </ScoresheetDrawer>
           ) : null}
           {/*
-           * Leaving a row for the idea card keeps its preview, so its notes can be pointed at.
-           * On a narrow web page the moves and the idea are panes side by side.
+           * A narrow web page has no room for the rest under the panes: the
+           * scoresheet opens in the drawer, the settings in a sheet. Only one
+           * copy of the settings is mounted at a time.
            */}
-          {moveList || ideaCard ? (
-            // A View, so narrow.css can make it a row, which a Stack's inline style would override.
-            <PointingArea {...narrowPart('panes')} onLeave={leave} style={styles.sections}>
-              {moveList ? (
-                <View {...narrowPart('moves-pane')} style={styles.sections}>
-                  {moveList}
-                </View>
-              ) : null}
-              {ideaCard ? (
-                <View {...narrowPart('idea-pane')}>
-                  <IdeaCard
-                    title={preview ? `If ${preview.san}` : 'The idea'}
-                    notes={guidance.notes}
-                    learner={learner}
-                    playback={playback}
-                    pointable={guidance.pointable}
-                    pointed={pointedNote}
-                    onPoint={pointNote}
-                    onLeave={leaveNote}
-                    onReach={reachCard}
-                  />
-                </View>
-              ) : null}
-            </PointingArea>
-          ) : null}
-          {/*
-           * A narrow web page has no room for the rest under the panes: it opens
-           * in a sheet. Only one copy is mounted at a time.
-           */}
-          {settingsOpen ? null : (
-            <Stack {...narrowPart('wide-only')} style={styles.sections}>
-              <Separator />
-              {scoresheet(game.goto)}
-              <Separator />
-              {settings}
+          <Stack {...narrowPart('wide-only')} style={styles.sections}>
+            <Separator />
+            <Stack style={labelled}>
+              <Eyebrow>Scoresheet</Eyebrow>
+              {scoresheet()}
             </Stack>
-          )}
+            {settingsOpen ? null : (
+              <>
+                <Separator />
+                {settings}
+              </>
+            )}
+          </Stack>
           {settingsOpen ? (
-            <Sheet title="Settings" onClose={closeSettings}>
+            <Sheet title="Settings" onClose={() => setSettingsOpen(false)}>
               <Stack style={styles.sections}>
                 {settings}
                 <SourceFootnote />
-                <Separator />
-                {scoresheet(gotoFromSheet)}
               </Stack>
             </Sheet>
           ) : null}

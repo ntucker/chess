@@ -8,7 +8,7 @@ import { HEADER_HEIGHT, type HeaderProps } from '@/components/Header';
 import { Page } from '@/components/Page';
 import { PLAYER_DISC, PlayerBar } from '@/components/PlayerBar';
 import { BOARD_COLUMN_BASIS, PAGE_SPACE, PROGRAM_BASIS, STAGE_GAP } from '@/components/sideBySide';
-import { Transport } from '@/components/Transport';
+import { shownMove, Transport } from '@/components/Transport';
 import { useStepKeys } from '@/components/useStepKeys';
 import { colorName, opposite } from '@/game/replay';
 import type { Game } from '@/game/useGame';
@@ -55,6 +55,11 @@ interface BoardColumnProps {
   readonly board: Omit<BoardProps, 'dom'>;
   /** Swaps the sides: given, either name bar's disc is a button that does it. */
   readonly onSwap?: () => void;
+  /**
+   * A scoresheet that opens below the board on a narrow web page: given, the
+   * move stepper shows the move on the board as its opener (`Transport`).
+   */
+  readonly scoresheet?: { readonly open: boolean; readonly onToggle: () => void };
 }
 
 /**
@@ -62,8 +67,8 @@ interface BoardColumnProps {
  * name bar above it and the player's below, holding the move stepper. The
  * arrow keys step through the moves too.
  */
-export function BoardColumn({ game, rival, board, onSwap }: BoardColumnProps) {
-  const { moves, ply, goto } = game;
+export function BoardColumn({ game, rival, board, onSwap, scoresheet }: BoardColumnProps) {
+  const { moves, plies, ply, goto } = game;
   const side = board.orientation;
   const other = opposite(side);
   useStepKeys(ply, moves.length, goto);
@@ -94,7 +99,12 @@ export function BoardColumn({ game, rival, board, onSwap }: BoardColumnProps) {
         material={game.material[side]}
         swap={swap}
       >
-        <Transport ply={ply} total={moves.length} onGoto={goto} />
+        <Transport
+          ply={ply}
+          total={moves.length}
+          onGoto={goto}
+          scoresheet={scoresheet && { ...scoresheet, label: shownMove(plies[ply], ply) }}
+        />
       </PlayerBar>
     </>
   );
