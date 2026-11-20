@@ -283,10 +283,11 @@ export function useLesson(
      */
     pointRow: (uci: Uci, time?: number) => {
       // Rows report every mouse move, and a dispatch renders the screen even
-      // when the reducer keeps its state, so a row already pointed at sends
-      // none (its preview may be hidden by a playback or a loading lesson).
+      // when the reducer keeps its state, so the mouse moving on a row already
+      // pointed at sends none (its preview may be hidden by a playback or a
+      // loading lesson). A press or focus still goes: it holds the row.
       const candidate: Pointer = { at: 'row', uci };
-      if (peek?.key === key && samePointer(peek.candidate, candidate)) return;
+      if (time !== undefined && peek?.key === key && samePointer(peek.candidate, candidate)) return;
       dispatch({ type: 'candidate', key, candidate, time });
     },
     /** The mouse reaches the idea card at `time`: a row it only crossed on the way gives the card back. */

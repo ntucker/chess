@@ -209,6 +209,15 @@ describe('peekReducer', () => {
       expect(peekReducer(held, { type: 'card', key: THERE, time: HOLD_MS + 20 })).toBe(held);
     });
 
+    it('holds a row the mouse points at once it is pressed or focused', () => {
+      const pressed = reduce(undefined, row(ROW, 0), row(OTHER, HOLD_MS), {
+        type: 'candidate',
+        key: HERE,
+        candidate: OTHER,
+      });
+      expect(peekReducer(pressed, card(HOLD_MS + 10))?.candidate).toEqual(OTHER);
+    });
+
     it('forgets the rows held once the preview ends', () => {
       const cleared = reduce(
         undefined,
