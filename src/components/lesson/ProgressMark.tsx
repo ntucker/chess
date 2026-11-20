@@ -41,7 +41,7 @@ export function ProgressMark({ mark }: { readonly mark: Mark }) {
 
 /** A key to the `marks` a list shows, each beside its name; nothing when it shows none. */
 export function MarkLegend({ marks }: { readonly marks: ReadonlySet<Mark> }) {
-  const kinds = (['seen', 'passed'] as const).filter((mark) => marks.has(mark));
+  const kinds = (Object.keys(MARK_NAMES) as Mark[]).filter((mark) => marks.has(mark));
   if (!kinds.length) return null;
   return (
     <View style={styles.legend}>

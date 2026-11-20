@@ -24,6 +24,22 @@ export function readStorage(key: string) {
   }
 }
 
+/**
+ * Calls `onChange` whenever another tab saves under `key` (the web's
+ * `storage` event; native has one window), and returns how to stop. What that
+ * tab saved replaces anything this visit could not save there.
+ */
+export function subscribeStorage(key: string, onChange: () => void) {
+  if (process.env.EXPO_OS !== 'web') return () => {};
+  const onStorage = (event: StorageEvent) => {
+    if (event.key !== key) return;
+    unsaved.delete(key);
+    onChange();
+  };
+  window.addEventListener('storage', onStorage);
+  return () => window.removeEventListener('storage', onStorage);
+}
+
 /** Saves `text` under `key`, for this visit only when storage is blocked. */
 export function writeStorage(key: string, text: string) {
   try {

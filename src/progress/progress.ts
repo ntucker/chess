@@ -21,6 +21,10 @@ export type SavedProgress = Readonly<Record<string, MarkedPositions>>;
 /** A lesson nothing is remembered for. */
 export const UNTOUCHED: MarkedPositions = { seen: [], passed: [] };
 
+/** Whether `key` has the mark `mark` in `marks`. */
+export const hasMark = (marks: MarkedPositions, mark: Mark, key: PositionKey) =>
+  marks[mark].includes(positionHash(key));
+
 /**
  * `saved` with `key` marked `mark` in the lesson `lesson`, or `saved` itself
  * when it already is. Marks are only ever added.
@@ -32,9 +36,8 @@ export function withMark(
   key: PositionKey,
 ): SavedProgress {
   const marks = saved[lesson] ?? UNTOUCHED;
-  const hash = positionHash(key);
-  if (marks[mark].includes(hash)) return saved;
-  return { ...saved, [lesson]: { ...marks, [mark]: [...marks[mark], hash] } };
+  if (hasMark(marks, mark, key)) return saved;
+  return { ...saved, [lesson]: { ...marks, [mark]: [...marks[mark], positionHash(key)] } };
 }
 
 /**

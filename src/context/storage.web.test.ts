@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
 
-import { readStorage, writeStorage } from './storage';
+import { readStorage, subscribeStorage, writeStorage } from './storage';
 
 afterEach(() => {
   jest.restoreAllMocks();
@@ -20,5 +20,21 @@ describe('storage', () => {
     writeStorage('test', 'second');
     expect(localStorage.getItem('test')).toBe('second');
     expect(readStorage('test')).toBe('second');
+  });
+
+  it("reads another tab's save over what this visit could not save", () => {
+    jest.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => {
+      throw new Error('QuotaExceededError');
+    });
+    writeStorage('test', 'mine');
+    const onChange = jest.fn();
+    const unsubscribe = subscribeStorage('test', onChange);
+    localStorage.setItem('test', 'theirs');
+    window.dispatchEvent(new StorageEvent('storage', { key: 'other' }));
+    expect(onChange).not.toHaveBeenCalled();
+    window.dispatchEvent(new StorageEvent('storage', { key: 'test' }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(readStorage('test')).toBe('theirs');
+    unsubscribe();
   });
 });

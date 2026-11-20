@@ -31,8 +31,7 @@ export function rowMarks(
   progress: MarkedPositions,
   { candidates, learnerToMove }: Pick<LessonView, 'candidates' | 'learnerToMove'>,
 ): ReadonlyMap<Uci, Mark> {
-  const seen = new Set(progress.seen);
-  const passed = new Set(progress.passed);
+  const { seen, passed } = markSets(progress);
   const marks = new Map<Uci, Mark>();
   for (const { move, next } of candidates) {
     if (inCleanRun(move, learnerToMove) && cleanEnds(lesson, passed, next) === 'passed') {
@@ -55,9 +54,20 @@ export function steering(
   mode: ModeState,
 ): ReplyChoice | undefined {
   if (mode.mode !== 'practice' || !mode.clean) return undefined;
-  const passed = new Set(progress.passed);
+  const { passed } = markSets(progress);
   return (replies) =>
     replies.find(({ next }) => cleanEnds(lesson, passed, next) === 'open') ?? replies[0];
+}
+
+/** Each progress's marks as sets, made once: steering asks on every render. */
+const sets = new WeakMap<MarkedPositions, Readonly<Record<Mark, ReadonlySet<string>>>>();
+function markSets(progress: MarkedPositions) {
+  let found = sets.get(progress);
+  if (!found) {
+    found = { seen: new Set(progress.seen), passed: new Set(progress.passed) };
+    sets.set(progress, found);
+  }
+  return found;
 }
 
 /** Any opponent's move can be part of a clean run; of the learner's, only book moves. */
@@ -68,9 +78,7 @@ const inCleanRun = (move: LessonMove, learner: boolean) => !learner || move.book
  * `positionHash`es): no line end reachable (`none`), all of them passed
  * (`passed`), or some still `open`. Walks each position once, so a line that
  * comes back to a position adds nothing, and stops at the first open end.
- * Each row walks on its own: sharing answers between rows went wrong on
- * cycles, and once `cleanNext` has the lesson's moves, walking the whole
- * list took 11 to 13 ms on the Caro-Kann's widest position (measured by hand).
+ * Each row walks on its own: answers shared between rows go wrong on cycles.
  */
 function cleanEnds(
   lesson: Lesson,

@@ -9,7 +9,7 @@ import {
 } from 'react';
 
 import { requireProvider } from '@/context/requireProvider';
-import { readStorage, storageKey, writeStorage } from '@/context/storage';
+import { readStorage, storageKey, subscribeStorage, writeStorage } from '@/context/storage';
 
 import {
   DEFAULT_SETTINGS,
@@ -53,11 +53,7 @@ export function SettingsProvider({ children }: { readonly children: ReactNode })
   useEffect(() => {
     if (NATIVE) return;
     load();
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === KEY) load();
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    return subscribeStorage(KEY, load);
   }, []);
 
   useEffect(() => {

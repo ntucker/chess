@@ -1,7 +1,7 @@
 import type { Controller, Manager, Middleware } from '@data-client/react';
 import { Endpoint, Entity } from '@data-client/rest';
 
-import { readStorage, storageKey, writeStorage } from '@/context/storage';
+import { readStorage, storageKey, subscribeStorage, writeStorage } from '@/context/storage';
 import type { PositionKey } from '@/lesson/lesson';
 import {
   type Mark,
@@ -73,16 +73,16 @@ export const addMark = new Endpoint(
  */
 export class ProgressSync implements Manager {
   private controller?: Controller;
+  private unsubscribe?: () => void;
 
   middleware: Middleware = (controller) => {
     this.controller = controller;
-    return (next) => async (action) => next(action);
+    return (next) => next;
   };
 
-  private onStorage = (event: StorageEvent) => {
-    if (event.key !== KEY) return;
-    // What is saved now, not the event's value: this tab may have saved a
-    // newer mark since the other tab's save queued the event.
+  // What is saved now, not the event's value: this tab may have saved a newer
+  // mark since the other tab's save queued the event.
+  private load = () => {
     const progress = saved();
     this.controller?.set(
       [LessonProgress],
@@ -91,10 +91,10 @@ export class ProgressSync implements Manager {
   };
 
   init() {
-    if (process.env.EXPO_OS === 'web') window.addEventListener('storage', this.onStorage);
+    this.unsubscribe = subscribeStorage(KEY, this.load);
   }
 
   cleanup() {
-    if (process.env.EXPO_OS === 'web') window.removeEventListener('storage', this.onStorage);
+    this.unsubscribe?.();
   }
 }

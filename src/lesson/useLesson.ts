@@ -18,7 +18,7 @@ import { dropMove, parsePositionKey } from '@/game/replay';
 import { type GameStore, useGame } from '@/game/useGame';
 import { getEvaluation } from '@/resources/evaluation';
 import { gameOpponent } from '@/resources/opponent';
-import { positionHash } from '@/progress/progress';
+import { hasMark } from '@/progress/progress';
 import { addMark, getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNeedsStockfish } from '@/stockfish/demand';
@@ -124,7 +124,7 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   const earned = earnedMark(view.place, modeState);
   useEffect(() => {
     // addMark keeps a mark already there; checking first skips the request.
-    if (earned && !progress[earned].includes(positionHash(key))) {
+    if (earned && !hasMark(progress, earned, key)) {
       // Saving can't fail beyond storage being blocked, which addMark already allows for.
       ctrl.fetch(addMark, { lesson: lesson.id, mark: earned, key }).catch(() => {});
     }
