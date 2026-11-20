@@ -1,5 +1,5 @@
 /**
- * The instructions the model converts comments with. Changing this text
+ * The instructions the model converts comments with. Changing `PROMPT`
  * changes every cache key (claude.ts), so the next import converts again.
  * Its examples are real positions from the Caro-Kann study and pass the
  * checker as written.
@@ -103,3 +103,13 @@ CHECKLIST
 - A threat's side is never the side to move.
 - Nothing repeats "extracted"; no evaluation when "extracted" has one.
 - If in doubt: drop the idea and keep it in the text.`;
+
+/**
+ * Added to `PROMPT` when a comment is asked again because the checker refused
+ * its note text as notation (`Comment.refusedText`). Changing it re-asks only
+ * those comments.
+ */
+export const REWORD = `
+
+ASKED AGAIN: NOTES WRITTEN AS MOVES
+Each comment here also has "refusedText": the note texts you wrote for it before. The app refused them because they write moves in notation (four or more moves in a row, like "7.Nxd4 Nc5 8.Bc4 Nbd7", or a note that is nothing but moves). Convert the comment again, following every rule above, and write each note's text in plain words: name the pieces, squares and goals ("bring your knight to d7, then castle") instead of listing moves. When the moves themselves matter, put them in a line or trap idea, which the board plays; the text says what they achieve.`;

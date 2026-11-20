@@ -15,12 +15,17 @@ const comments = chapter.moveNotes
   .flatMap((moveNote) => noteComment(moveNote, chapter) ?? [])
   .slice(0, 2);
 
-/** A stand-in for the `claude` CLI that answers every comment it reads on stdin with one note. */
+/**
+ * A stand-in for the `claude` CLI that answers every comment it reads on stdin
+ * with one note, which says whether the system prompt asked for a rewording.
+ */
 const FAKE_CLAUDE = `#!/usr/bin/env node
+const prompt = process.argv[process.argv.indexOf('--system-prompt') + 1];
+const text = prompt.includes('refusedText') ? 'Reworded.' : 'A note.';
 let input = '';
 process.stdin.on('data', (data) => (input += data));
 process.stdin.on('end', () => {
-  const comments = JSON.parse(input).map(({ id }) => ({ id, notes: [{ about: 'move', text: 'A note.', ideas: [] }] }));
+  const comments = JSON.parse(input).map(({ id }) => ({ id, notes: [{ about: 'move', text, ideas: [] }] }));
   console.log(JSON.stringify({ structured_output: { comments }, total_cost_usd: 0.01 }));
 });
 `;
@@ -67,6 +72,19 @@ describe('claudeCli', () => {
     await cli.ask(MODELS.convert, [comments[0]]);
     cli.saveUsed();
     expect(lines(cacheFile)).toHaveLength(1);
+  });
+
+  it('asks a comment with refused text with the prompt that explains it, and keeps that answer apart', async () => {
+    const cacheFile = await answersFile([comments[0]]);
+    // The same comment, asked again with the text the checker refused.
+    const reword = { ...comments[0], refusedText: ['Play e6 Nf3 c5 Be2 next.'] };
+    const text = async (cli: ReturnType<typeof claudeCli>, comment: Comment) =>
+      (await cli.ask(MODELS.convert, [comment])).get(comment.id)?.notes[0].text;
+    expect(await text(claudeCli({ learner: 'black', cacheFile, log }), reword)).toBe('Reworded.');
+    expect(lines(cacheFile)).toHaveLength(2);
+    const fromFile = claudeCli({ learner: 'black', cacheFile, log, callModel: false });
+    expect(await text(fromFile, reword)).toBe('Reworded.');
+    expect(await text(fromFile, comments[0])).toBe('A note.');
   });
 
   it('answers from the file alone without the model, and drops nothing', async () => {

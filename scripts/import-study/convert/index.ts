@@ -3,13 +3,17 @@
  * and adds what the fixed formats missed as ideas the board draws. The
  * checker drops every idea that is false in its position; a comment whose
  * ideas were all dropped is asked again of Opus, and the answer keeping more
- * ideas wins. A comment with no answer keeps the notes `extractChapter` made.
+ * ideas wins. A comment whose note text the checker refuses as notation is
+ * asked again of Opus with that text, and the answer in words replaces it; if
+ * Opus writes notation too, the lesson checker refuses the import. A comment
+ * with no answer keeps the notes `extractChapter` made.
  *
  * Runs only when someone imports a study on purpose (`yarn import-study`):
  * the lesson file it writes is committed, so the site build and the tests
  * never call a model.
  */
 import { positionKey } from '@/game/replay';
+import { notationProblem } from '@/lesson/check';
 import { noteShows, type Note, type NoteShows } from '@/lesson/lesson';
 
 import type { ChapterNotes, MoveNote, PositionNote } from '../extract';
@@ -21,7 +25,10 @@ import { convertedNotes, type Converted } from './notes';
 export interface ConvertReport {
   readonly comments: number;
   readonly unconverted: number;
+  /** Comments asked again because the checker refused every idea. */
   readonly retried: number;
+  /** Comments asked again because the checker refused note text as notation. */
+  readonly reworded: number;
   /** Ideas the model wrote that the lesson keeps. */
   readonly kept: number;
   /** What each comment ends up showing: something drawn, only an evaluation badge, or text alone. */
@@ -48,45 +55,62 @@ export async function convertChapters(
   );
   const comments = new Map<string, Comment>();
   for (const { comment } of jobs.flat()) if (comment) comments.set(comment.id, comment);
-  const { converted, retried } = await convertComments(jobs.flat(), comments, ask);
+  const { converted, retried, reworded } = await convertComments(jobs.flat(), comments, ask);
   return {
     extracted: extracted.map((chapter, i) => convertedChapter(chapter, jobs[i], converted)),
-    report: convertedReport(comments, converted, retried),
+    report: convertedReport(comments, converted, retried, reworded),
   };
 }
 
 /**
  * Each comment's notes by comment id: Sonnet's answer, or Opus's where Sonnet's
- * ideas were all refused and Opus keeps more. A comment the model left
- * without a note is missing, so it keeps the importer's note.
+ * ideas were all refused and Opus keeps more, or where the text was notation
+ * and Opus words it. A comment the model left without a note is missing, so it
+ * keeps the importer's note.
  */
 async function convertComments(
   jobs: readonly Job[],
   comments: ReadonlyMap<string, Comment>,
   ask: Ask,
-): Promise<{ converted: Map<string, Converted>; retried: number }> {
+): Promise<{ converted: Map<string, Converted>; retried: number; reworded: number }> {
   const converted = new Map<string, Converted>();
-  const keepBetter = (answers: Map<string, Answer>) => {
+  const keep = (
+    answers: Map<string, Answer>,
+    better: (result: Converted, previous: Converted) => boolean,
+  ) => {
     for (const { moveNote, comment } of jobs) {
       const answer = comment && answers.get(comment.id);
       if (!answer) continue;
       const result = convertedNotes(comment, answer, moveNote.move, moveNote.note.ideas ?? []);
       if (result.move.length + result.before.length === 0) continue;
       const previous = converted.get(comment.id);
-      if (!previous || result.kept > previous.kept) converted.set(comment.id, result);
+      if (!previous || better(result, previous)) converted.set(comment.id, result);
     }
   };
-  keepBetter(await ask(MODELS.convert, [...comments.values()]));
+  const keepsMore = (result: Converted, previous: Converted) => result.kept > previous.kept;
+  keep(await ask(MODELS.convert, [...comments.values()]), keepsMore);
   const retry = [...converted]
     .filter(([, result]) => allRefused(result))
     .map(([id]) => comments.get(id)!);
-  if (retry.length > 0) keepBetter(await ask(MODELS.retry, retry));
-  return { converted, retried: retry.length };
+  if (retry.length > 0) keep(await ask(MODELS.retry, retry), keepsMore);
+  const reword = [...converted].flatMap(([id, result]) => {
+    const refusedText = notationTexts(result);
+    return refusedText.length > 0 ? [{ ...comments.get(id)!, refusedText }] : [];
+  });
+  if (reword.length > 0)
+    keep(await ask(MODELS.retry, reword), (result) => notationTexts(result).length === 0);
+  return { converted, retried: retry.length, reworded: reword.length };
 }
 
 /** The model wrote drawable ideas and the checker refused every one. */
 const allRefused = (result: Converted) =>
   result.kept === 0 && result.rejected.some(({ idea }) => idea.type !== 'evaluation');
+
+/** The note texts in `result` that the lesson checker refuses as notation. */
+const notationTexts = (result: Converted) =>
+  [...result.move, ...result.before]
+    .map((note) => note.text)
+    .filter((text) => notationProblem(text) !== undefined);
 
 /**
  * `chapter` with each converted comment's notes in place of the importer's.
@@ -128,6 +152,7 @@ function convertedReport(
   comments: ReadonlyMap<string, Comment>,
   converted: ReadonlyMap<string, Converted>,
   retried: number,
+  reworded: number,
 ): ConvertReport {
   const results = [...converted.values()];
   const shows: Record<NoteShows, number> = { drawn: 0, badge: 0, text: 0 };
@@ -140,6 +165,7 @@ function convertedReport(
     comments: comments.size,
     unconverted: comments.size - converted.size,
     retried,
+    reworded,
     kept: results.reduce((sum, result) => sum + result.kept, 0),
     shows,
     rejected: results.flatMap((result) => result.rejected),
@@ -151,6 +177,7 @@ export function convertReport({
   comments,
   unconverted,
   retried,
+  reworded,
   kept,
   shows,
   rejected,
@@ -164,7 +191,7 @@ export function convertReport({
     .sort(([, a], [, b]) => b - a)
     .slice(0, 15);
   return [
-    `converted comments: ${comments - unconverted} of ${comments} (${retried} asked again of ${MODELS.retry})`,
+    `converted comments: ${comments - unconverted} of ${comments} (asked again of ${MODELS.retry}: ${retried} with every idea refused, ${reworded} with notes in notation)`,
     `comments shown as: ${Object.entries(shows)
       .map(
         ([kind, count]) =>

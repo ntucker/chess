@@ -18,9 +18,9 @@ import { appendJsonLine, readJsonLines, writeJsonLines } from '../jsonLines';
 
 import { asAnswer, SCHEMA, type Answer } from './answer';
 import type { Comment } from './comments';
-import { PROMPT } from './prompt';
+import { PROMPT, REWORD } from './prompt';
 
-/** The models a conversion uses: Sonnet converts, Opus retries what Sonnet got wrong. */
+/** The models a conversion uses: Sonnet converts, Opus retries what the checker refused. */
 export const MODELS = { convert: 'claude-sonnet-5-5', retry: 'claude-opus-5-5' } as const;
 export type Model = (typeof MODELS)[keyof typeof MODELS];
 
@@ -61,10 +61,12 @@ export function claudeCli({
     '{OPPONENT}',
     colorName(opposite(learner)),
   );
+  /** A comment asked again for its refused text comes with the prompt that explains it. */
+  const promptFor = (comment: Comment) => (comment.refusedText ? prompt + REWORD : prompt);
   const cache = readCache(cacheFile);
   const keyOf = (model: Model, comment: Comment) =>
     createHash('sha256')
-      .update(JSON.stringify([model, prompt, comment]))
+      .update(JSON.stringify([model, promptFor(comment), comment]))
       .digest('hex');
 
   const used = new Set<string>();
@@ -87,15 +89,17 @@ export function claudeCli({
       );
       return answers;
     }
-    const batches = chunks(asking, BATCH);
+    const batches = [...Map.groupBy(asking, promptFor)].flatMap(([batchPrompt, group]) =>
+      chunks(group, BATCH).map((batch) => ({ prompt: batchPrompt, comments: batch })),
+    );
     log(
       `convert: ${answers.size} cached, asking ${model} about ${asking.length} in ${batches.length} requests`,
     );
     let done = 0;
     let cost = 0;
-    await pool(batches, PARALLEL, async (group) => {
+    await pool(batches, PARALLEL, async ({ prompt: batchPrompt, comments: group }) => {
       try {
-        const result = await request(model, prompt, group);
+        const result = await request(model, batchPrompt, group);
         cost += result.cost;
         const asked = new Set(group.map((comment) => comment.id));
         for (const answer of result.answers) {
