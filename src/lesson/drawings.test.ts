@@ -31,7 +31,7 @@ const explore = (sans: string[], row?: string, switches = SWITCHES) => {
   const pointed = row === undefined ? undefined : preview(SAMPLE, view, { at: 'row', uci: row });
   return {
     view,
-    shown: guidance({ view, mode: 'explore', switches, preview: pointed }),
+    shown: guidance({ picking: false, view, mode: 'explore', switches, preview: pointed }),
   };
 };
 
@@ -311,13 +311,14 @@ describe('lessonDrawings', () => {
       { uci: 'c2c3', evaluation: { score: 0.55, pawns: 0.4 } },
     ]);
     const engine = { best: 'c2c4', top };
-    const shown = guidance({ view, mode: 'explore', switches: SWITCHES, engine });
+    const shown = guidance({ picking: false, view, mode: 'explore', switches: SWITCHES, engine });
     // Only the first of the top moves, as the best: no arrows for the rest.
     expect(lessonDrawings(shown, view.key, 'black')).toEqual([
       { kind: 'arrow', from: 'g1', to: 'f3', tone: 'engine', step: undefined },
     ]);
     // A top move previewed glows in Stockfish's tone where it lands.
     const previewed = guidance({
+      picking: false,
       view,
       mode: 'explore',
       switches: SWITCHES,
@@ -334,6 +335,7 @@ describe('lessonDrawings', () => {
     const knight = view.candidates.find(({ san }) => san === 'Nc3')!;
     const pointed = preview(SAMPLE, view, { at: 'drag', from: 'b1', to: 'c3' });
     const shown = guidance({
+      picking: false,
       view,
       mode: 'explore',
       switches: SWITCHES,
@@ -353,7 +355,13 @@ describe('lessonDrawings', () => {
   it('draws the ideas guidance draws, and nothing else, while a note is pointed at', () => {
     const view = sampleView(ADVANCE);
     const [note] = view.notes;
-    const shown = guidance({ view, mode: 'explore', switches: SWITCHES, pointed: note.note });
+    const shown = guidance({
+      picking: false,
+      view,
+      mode: 'explore',
+      switches: SWITCHES,
+      pointed: note.note,
+    });
     expect(lessonDrawings(shown, view.key, 'black')).toEqual(
       shown.drawn.flatMap(({ idea }) => drawn(idea, after(...ADVANCE))),
     );

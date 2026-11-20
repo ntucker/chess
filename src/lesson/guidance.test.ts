@@ -233,7 +233,8 @@ describe('guidance', () => {
         playedFrom: [{ note: trap.note, after: trap.after }],
       };
       const practice = (showTraps: boolean) =>
-        guidance({ view, mode: 'practice', switches: { ...ALL_ON, showTraps } }).notes;
+        guidance({ picking: false, view, mode: 'practice', switches: { ...ALL_ON, showTraps } })
+          .notes;
       expect(practice(true).map(({ note }) => note)).toContain(trap.note);
       expect(practice(false).map(({ note }) => note)).not.toContain(trap.note);
     });
@@ -244,6 +245,7 @@ describe('guidance', () => {
       for (const notes of [[{ note: trap.note, after: after.key }], [trap]]) {
         const practice = (showTraps: boolean) =>
           guidance({
+            picking: false,
             view: { ...after, notes },
             mode: 'practice',
             switches: { ...ALL_ON, showTraps },
@@ -262,6 +264,7 @@ describe('guidance', () => {
       const [, position] = view.notes;
       const elsewhere = { ...view, notes: [{ ...position, after: keyAfter('e4') }] };
       const pointing = guidance({
+        picking: false,
         view: elsewhere,
         mode: 'explore',
         switches: ALL_ON,
@@ -277,7 +280,12 @@ describe('guidance', () => {
       const view = sampleView(TRAP);
       const own = { ...view, notes: view.notes.map(({ note, after }) => ({ note, after })) };
       const practice = (showTraps: boolean) =>
-        guidance({ view: own, mode: 'practice', switches: { ...ALL_ON, showTraps } }).notes;
+        guidance({
+          picking: false,
+          view: own,
+          mode: 'practice',
+          switches: { ...ALL_ON, showTraps },
+        }).notes;
       expect(practice(true)).toHaveLength(1);
       expect(practice(false)).toEqual([]);
       expect(summary(shown(ADVANCE, 'practice')).notes).toEqual(['move']);
@@ -314,6 +322,7 @@ describe('guidance', () => {
   describe('what the board draws', () => {
     const explore = (sans: string[], input: Partial<GuidanceInput> = {}) =>
       guidance({
+        picking: false,
         view: sampleView(sans),
         mode: 'explore',
         switches: ALL_ON,
@@ -401,6 +410,7 @@ describe('guidance', () => {
       const view = sampleView(ADVANCE);
       const withNote = { ...view, notes: [...view.notes, { note, after: view.key }] };
       const pointing = guidance({
+        picking: false,
         view: withNote,
         mode: 'explore',
         switches: ALL_ON,
@@ -421,16 +431,23 @@ describe('guidance', () => {
     it('leaves rare moves off the list and the board until one is previewed or dragged', () => {
       const view = sampleView(MAIN, { lesson: WITH_RARE });
       const sans = (candidates: readonly Candidate[]) => candidates.map(({ san }) => san);
-      const resting = guidance({ view, mode: 'explore', switches: ALL_ON });
+      const resting = guidance({ picking: false, view, mode: 'explore', switches: ALL_ON });
       expect(sans(resting.candidates)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2', 'f3']);
       expect(sans(resting.drawnCandidates)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2', 'f3']);
       expect(sans(resting.rare)).toEqual(['h3', 'a3', 'g3', 'b3']);
       // Picked up, the pawn draws its rare move at once, and the same over
       // its landing square, so nothing on the board moves as it is dragged.
-      const pickedUp = guidance({ view, mode: 'explore', switches: ALL_ON, lifted: 'h2' });
+      const pickedUp = guidance({
+        picking: false,
+        view,
+        mode: 'explore',
+        switches: ALL_ON,
+        lifted: 'h2',
+      });
       expect(sans(pickedUp.drawnCandidates)).toEqual(['h3']);
       const onH3 = preview(WITH_RARE, view, { at: 'drag', from: 'h2', to: 'h3' });
       const over = guidance({
+        picking: false,
         view,
         mode: 'explore',
         switches: ALL_ON,
@@ -443,13 +460,25 @@ describe('guidance', () => {
 
     it("hides a dragged piece's candidates in Practice on the learner's turn", () => {
       const view = sampleView(ADVANCE);
-      const shown = guidance({ view, mode: 'practice', switches: ALL_ON, lifted: 'c8' });
+      const shown = guidance({
+        picking: false,
+        view,
+        mode: 'practice',
+        switches: ALL_ON,
+        lifted: 'c8',
+      });
       expect(shown.drawnCandidates).toEqual([]);
     });
 
     it("doesn't tag a rare move as Stockfish's best", () => {
       const view = sampleView(MAIN, { lesson: WITH_RARE });
-      const shown = guidance({ view, mode: 'explore', switches: ALL_ON, engine: { best: 'h2h3' } });
+      const shown = guidance({
+        picking: false,
+        view,
+        mode: 'explore',
+        switches: ALL_ON,
+        engine: { best: 'h2h3' },
+      });
       expect(shown.best).toBeUndefined();
     });
 
@@ -467,7 +496,12 @@ describe('guidance', () => {
       const view = sampleView([...ADVANCE, 'a6']);
       const note = { text: 'Two plans.', ideas: [plan('a7'), plan('b7')] };
       const two = { ...view, notes: [{ note, after: view.key }] };
-      const drawn = guidance({ view: two, mode: 'explore', switches: ALL_ON }).drawn;
+      const drawn = guidance({
+        picking: false,
+        view: two,
+        mode: 'explore',
+        switches: ALL_ON,
+      }).drawn;
       expect(drawn.map(({ idea }) => idea)).toEqual([plan('a7')]);
     });
 
@@ -483,7 +517,12 @@ describe('guidance', () => {
         { note: { text: 'Earlier.', ideas: [plan('b7')] }, after: before },
         { note: { text: 'Here.', ideas: [plan('a7')] }, after: view.key },
       ];
-      const drawn = guidance({ view: { ...view, notes }, mode: 'explore', switches: ALL_ON }).drawn;
+      const drawn = guidance({
+        picking: false,
+        view: { ...view, notes },
+        mode: 'explore',
+        switches: ALL_ON,
+      }).drawn;
       expect(drawn.map(({ at }) => at)).toEqual([before, view.key]);
     });
 
@@ -491,6 +530,7 @@ describe('guidance', () => {
       const view = sampleView(TRAP);
       const [trap] = view.notes;
       const playing = guidance({
+        picking: false,
         view,
         mode: 'explore',
         switches: ALL_ON,
@@ -519,7 +559,8 @@ describe('guidance', () => {
       const view = sampleView(TRAP);
       const [trap] = view.notes;
       const playable = (showTraps: boolean) =>
-        guidance({ view, mode: 'explore', switches: { ...ALL_ON, showTraps } }).playable;
+        guidance({ picking: false, view, mode: 'explore', switches: { ...ALL_ON, showTraps } })
+          .playable;
       expect(notePlayback(playable(true), trap.note)?.idea.type).toBe('trap');
       expect(notePlayback(playable(false), trap.note)).toBeUndefined();
     });
@@ -565,7 +606,7 @@ describe('guidance', () => {
       const trapAt = (sans: string[]) => {
         const line = uciLine(...sans);
         const view = lessonView({ lesson, line, ply: line.length, opponent: 1500 });
-        return guidance({ view, mode: 'explore', switches: ALL_ON }).trap;
+        return guidance({ picking: false, view, mode: 'explore', switches: ALL_ON }).trap;
       };
       expect(trapAt(TRAP_PUNISHED.slice(0, -1))).toBeDefined();
       expect(trapAt(TRAP_PUNISHED)).toBeDefined();
