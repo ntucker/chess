@@ -94,7 +94,7 @@ describe('ACT_TIMES', () => {
 
   it('gives a loss more time than a win', () => {
     expect(ACT_TIMES.lost.card).toBeGreaterThan(ACT_TIMES.won.card);
-    const cutMs = ({ strike, cut }: (typeof ACT_TIMES)['won']) => cut - strike;
+    const cutMs = ({ strike, crownOff }: (typeof ACT_TIMES)['won']) => crownOff - strike;
     expect(cutMs(ACT_TIMES.lost)).toBe(2 * cutMs(ACT_TIMES.won));
   });
 });

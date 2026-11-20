@@ -293,7 +293,8 @@ cg-board piece.ending-winner::after {
  * drained of color.
  */
 cg-board piece.ending-beaten {
-  filter: grayscale(0.8) brightness(0.85);
+  --beaten-grey: grayscale(0.8) brightness(0.85);
+  filter: var(--beaten-grey);
 }
 cg-board piece.ending-beaten::before {
   clip-path: polygon(0 var(--cut-left), 100% var(--cut-right), 100% 100%, 0 100%);
@@ -369,7 +370,7 @@ cg-board piece.ending-level::after {
    * Their keyframes share one timeline, from the strike to the end of the cut.
    */
   .cg-wrap {
-    --cut-ms: calc(var(--act-cut) - var(--act-strike));
+    --cut-ms: calc(var(--act-crownOff) - var(--act-strike));
   }
   cg-board piece.ending-beaten {
     animation: ending-flash var(--cut-ms) linear var(--act-strike) backwards;
@@ -500,7 +501,7 @@ cg-board piece.ending-level::after {
     transform: scale(1.1);
   }
 }
-/* The whole king, still, flashes white as the stroke crosses it; it is grey again once the cut ends. */
+/* The whole king, still, flashes white as the stroke crosses it, then its color drains to the beaten grey. */
 @keyframes ending-flash {
   0%,
   12% {
@@ -512,6 +513,9 @@ cg-board piece.ending-level::after {
   32%,
   50% {
     filter: none;
+  }
+  100% {
+    filter: var(--beaten-grey);
   }
 }
 /* After a beat, the crown slides off down the cut, overshooting a little. */
