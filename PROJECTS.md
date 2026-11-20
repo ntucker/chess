@@ -44,11 +44,11 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
 7. Once the change is verified correct, run skill "simplify", then skill `user-kit:clean-code` if
    the change has architecture implications. Verify their findings and push the cleanups (a push, so
    step 6 runs again) before calling the PR done.
-   Over 1k changed lines of code against `main` (not counting `scripts/`, data such as
-   `assets/lessons/`, generated files or fixtures): while that push's step 6 runs, have a Fable
-   subagent load `user-kit:clean-code` and look for architectural simplifications and improvements,
-   weighing what will likely stay the same and what might change (over time and space). Handle its
-   findings the same way, once per PR.
+   Over 1k added plus removed lines of code against `main` (not `scripts/`, data such as `assets/`
+   and fixtures, or files `.gitattributes` marks generated): after those passes, alongside that push's
+   step 6 (alone if nothing was pushed), have a Fable subagent load `user-kit:clean-code` and look for
+   architectural simplifications and improvements, weighing what will likely stay the same and what
+   might change (over time and space). Handle its findings the same way, once per PR.
 8. Land your own PR (squash-merge) as `.agents/projects/autoland.md` says. A worker's PR ends when
    it merges, not when it is handed over.
 
