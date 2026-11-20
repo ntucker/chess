@@ -205,6 +205,8 @@ describe('useOpeningsGame', () => {
     await show('caro-kann');
     await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
     await act(() => latest().playAs('white'));
+    // In the same history entry, as a new move would, so no Forward returns to the lesson left.
+    expect(mockRouter.replace).toHaveBeenLastCalledWith('/');
     await show();
     expect([latest().side, latest().setting]).toEqual(['white', 'white']);
     // Forward to the Caro-Kann plays it as Black, and Back keeps Black.
