@@ -61,6 +61,8 @@
     --board-min: 300px;
     /* ...to leave this much for the panel (a label and a couple of moves) and the gap above it. */
     --panel-reserve: calc(160px + var(--wrapped-gap));
+    /* Read only here: the fade at the bottom of the panel and of each of its panes. */
+    --fade: 16px;
   }
 
   /*
@@ -130,11 +132,7 @@
   :root [data-narrow='idea-pane'] {
     flex: 2 1 0;
     min-width: 0;
-    overflow-y: auto;
     overscroll-behavior: contain;
-    /* As the panel's own fade (below), for each pane. */
-    padding-bottom: 16px;
-    mask-image: linear-gradient(to bottom, black calc(100% - 16px), transparent);
   }
   :root [data-narrow='idea-pane'] {
     flex-grow: 3;
@@ -179,10 +177,18 @@
     /* The panel's floor: a few lines of it. */
     min-height: 120px;
     width: 100%;
+  }
+  /*
+   * The panel, and the lesson's panes in it, scroll on their own. Each fades
+   * out its bottom edge to show there's more below; the padding lets the last
+   * line clear it.
+   */
+  :root [data-narrow='program'],
+  :root [data-narrow='moves-pane'],
+  :root [data-narrow='idea-pane'] {
     overflow-y: auto;
-    /* Fades out the bottom edge to show there's more below; the padding lets the last line clear it. */
-    padding-bottom: 16px;
+    padding-bottom: var(--fade);
     /* A mask reads only alpha, so black here is opaque, not a theme color. */
-    mask-image: linear-gradient(to bottom, black calc(100% - 16px), transparent);
+    mask-image: linear-gradient(to bottom, black calc(100% - var(--fade)), transparent);
   }
 }

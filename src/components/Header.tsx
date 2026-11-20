@@ -30,8 +30,8 @@ export interface HeaderProps {
   readonly back?: Destination;
   /**
    * Opens the page's settings, which a narrow web page keeps in a sheet: there
-   * a settings button takes the source link's place, and the sheet links to
-   * the source instead.
+   * a settings button takes the source link's place, so the sheet should link
+   * to the source (`SourceFootnote`). Give it only where narrow.css loads.
    */
   readonly onSettings?: () => void;
 }
@@ -43,9 +43,8 @@ export interface HeaderProps {
  * is none), and no tagline. A page on top of another starts with a back button.
  */
 export function Header({ place, placeLink, back, onSettings }: HeaderProps) {
-  // Only narrow.css shows them, so a native app keeps the name and the source link.
+  // Only narrow.css shows it, so a native app keeps the name.
   const shownPlace = NARROW_CSS_LOADS ? place : undefined;
-  const settings = NARROW_CSS_LOADS ? onSettings : undefined;
   return (
     <Inline gap="2" align="center" justify="between" wrap="nowrap">
       <Inline gap="3" align="center" wrap="nowrap" style={styles.brand}>
@@ -72,17 +71,17 @@ export function Header({ place, placeLink, back, onSettings }: HeaderProps) {
           </Text>
           <Separator orientation="vertical" style={styles.rule} />
         </Inline>
-        <View {...(settings ? narrowPart('wide-only') : {})}>
+        <View {...(onSettings ? narrowPart('wide-only') : {})}>
           <SourceLink />
         </View>
-        {settings ? (
+        {onSettings ? (
           <View {...narrowPart('narrow-only')}>
             <HeaderButton
               icon="settings-outline"
               iconSize={19}
               accessibilityRole="button"
               accessibilityLabel="Settings"
-              onPress={settings}
+              onPress={onSettings}
             />
           </View>
         ) : null}

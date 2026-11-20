@@ -1,31 +1,41 @@
-import { Surface, Text, useTheme } from '@reactive/silk-native';
-import type { ReactNode } from 'react';
+import { Inline, Surface, Text, useTheme } from '@reactive/silk-native';
+import { useIsFocused } from 'expo-router';
+import { type ReactNode, useEffect, useEffectEvent } from 'react';
 import { Modal, ScrollView, StyleSheet, View } from 'react-native';
 
-import { HeaderButton } from '@/components/HeaderButton';
-import { fonts, scrim } from '@/theme/theme';
+import { HEADER_BUTTON_SIZE, HeaderButton } from '@/components/HeaderButton';
+import { themes } from '@/theme/theme';
 
 interface Props {
   /** The sheet's name, at its top and for screen readers. */
   readonly title: string;
-  readonly visible: boolean;
-  /** The close button, a tap beside the sheet, Escape or Android's back button. */
+  /**
+   * The close button, a tap beside the sheet, Escape, Android's back button,
+   * or another screen coming on top of this one.
+   */
   readonly onClose: () => void;
   readonly children: ReactNode;
 }
 
 /**
  * A sheet that rises from the bottom of the screen over a veiled page, for
- * what a small screen has no room to keep in view, such as settings. Its
- * content scrolls once taller than the screen allows. React Native's Modal,
- * so it traps focus on the web and works the same on Android.
+ * what a small screen has no room to keep in view, such as settings. Shown
+ * while mounted. Its content scrolls once taller than the screen allows.
+ * React Native's Modal, so it traps focus on the web and works the same on
+ * Android.
  */
-export function Sheet({ title, visible, onClose, children }: Props) {
+export function Sheet({ title, onClose, children }: Props) {
   const { theme } = useTheme();
-  const { radius } = theme.semantic;
+  const { color, radius } = theme.semantic;
+  // A screen left underneath stays mounted, and the Modal would cover the one on top.
+  const focused = useIsFocused();
+  const close = useEffectEvent(onClose);
+  useEffect(() => {
+    if (!focused) close();
+  }, [focused]);
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={[styles.veil, { backgroundColor: scrim[theme.colorScheme] }]}>
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <View style={[styles.veil, { backgroundColor: color.overlay }]}>
         {/* A tap beside the sheet closes it: not a button, since the close button is the one to reach. */}
         <View
           style={StyleSheet.absoluteFill}
@@ -41,18 +51,18 @@ export function Sheet({ title, visible, onClose, children }: Props) {
             { borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg },
           ]}
         >
-          <View style={styles.head}>
-            <Text role="heading" accessibilityRole="header" style={styles.title}>
+          <Inline align="center" justify="between" wrap="nowrap" style={styles.head}>
+            <Text role="heading" accessibilityRole="header">
               {title}
             </Text>
             <HeaderButton
               icon="close"
-              iconSize={22}
+              iconSize={CLOSE_ICON}
               accessibilityRole="button"
               accessibilityLabel="Close"
               onPress={onClose}
             />
-          </View>
+          </Inline>
           <ScrollView contentContainerStyle={styles.content}>{children}</ScrollView>
         </Surface>
       </View>
@@ -60,8 +70,12 @@ export function Sheet({ title, visible, onClose, children }: Props) {
   );
 }
 
-/** Space inside the sheet. */
-const INSET = 20;
+/** Space inside the sheet, and between its head and what it holds: Silk's steps 5 and 3. */
+const { 3: HEAD_GAP, 5: INSET } = themes.dark.semantic.space;
+const CLOSE_ICON = 22;
+/** The close button's padding around its icon, which the head's inset includes. */
+const BUTTON_PADDING = HEADER_BUTTON_SIZE.minus(CLOSE_ICON).times(0.5);
+const BESIDE_BUTTON = BUTTON_PADDING.times(-1).plus(INSET).value;
 
 const styles = StyleSheet.create({
   veil: { flex: 1, justifyContent: 'flex-end', alignItems: 'center' },
@@ -74,14 +88,6 @@ const styles = StyleSheet.create({
     // Over the veil, which is positioned and so would cover it.
     zIndex: 1,
   },
-  head: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: INSET - 6,
-    paddingHorizontal: INSET,
-    paddingRight: INSET - 8,
-  },
-  title: { fontFamily: fonts.display, fontSize: 24 },
-  content: { padding: INSET, paddingTop: 12 },
+  head: { paddingTop: BESIDE_BUTTON, paddingLeft: INSET, paddingRight: BESIDE_BUTTON },
+  content: { padding: INSET, paddingTop: HEAD_GAP },
 });

@@ -41,12 +41,12 @@ export function HeaderButton({ icon, iconSize, ...pressable }: Props) {
 }
 
 /** The button's size, smaller on a narrow web page, where the header is slim. */
-const SIZE = narrowLength('source-link-size', 36);
+export const HEADER_BUTTON_SIZE = narrowLength('source-link-size', 36);
 
 const styles = StyleSheet.create({
   button: {
-    width: SIZE.value,
-    height: SIZE.value,
+    width: HEADER_BUTTON_SIZE.value,
+    height: HEADER_BUTTON_SIZE.value,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',

@@ -1,7 +1,6 @@
 import { AsyncBoundary, useController, useFetch, useSuspense } from '@data-client/react';
 import { Separator, Spinner, Stack } from '@reactive/silk-native';
 import { useMemo, useState } from 'react';
-import { useIsFocused } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
@@ -177,11 +176,14 @@ function LessonScreen({
     chooseMode,
   } = useLesson(lesson, store, { pending });
   const { mode } = modeState;
-  // The settings sheet of a narrow web page, hidden while another screen is on top.
+  // The settings sheet of a narrow web page.
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const openSettings = () => setSettingsOpen(true);
   const closeSettings = () => setSettingsOpen(false);
-  const focused = useIsFocused();
+  /** A move picked in the sheet's scoresheet: the sheet closes to show it on the board. */
+  const gotoFromSheet = (ply: number) => {
+    closeSettings();
+    game.goto(ply);
+  };
   const { auto } = useSettings();
   const learner = lesson.side;
   const rival = opposite(learner);
@@ -326,7 +328,8 @@ function LessonScreen({
           ? { name: OPENINGS_TITLE }
           : { name: names.at(-1) ?? lesson.title, parent: names.at(-2) },
         placeLink: listLink,
-        onSettings: openSettings,
+        // Only narrow.css shows the header's settings button, and only it the sheet.
+        onSettings: NARROW_CSS_LOADS ? () => setSettingsOpen(true) : undefined,
       }}
       board={
         <BoardColumn
@@ -369,7 +372,8 @@ function LessonScreen({
            * On a narrow web page the moves and the idea are panes side by side.
            */}
           {moveList || ideaCard ? (
-            <PointingArea onLeave={leave} style={styles.sections}>
+            // A View, so narrow.css can make it a row, which a Stack's inline style would override.
+            <PointingArea {...narrowPart('panes')} onLeave={leave} style={styles.sections}>
               {moveList ? (
                 <View {...narrowPart('moves-pane')} style={styles.sections}>
                   {moveList}
@@ -399,17 +403,13 @@ function LessonScreen({
             <Separator />
             {settings}
           </Stack>
-          {NARROW_CSS_LOADS ? (
-            <Sheet title="Settings" visible={settingsOpen && focused} onClose={closeSettings}>
+          {settingsOpen ? (
+            <Sheet title="Settings" onClose={closeSettings}>
               <Stack style={styles.sections}>
                 {settings}
                 <SourceFootnote />
                 <Separator />
-                {scoresheet((ply) => {
-                  // Shows the move picked on the board, which the sheet covers.
-                  closeSettings();
-                  game.goto(ply);
-                })}
+                {scoresheet(gotoFromSheet)}
               </Stack>
             </Sheet>
           ) : null}
