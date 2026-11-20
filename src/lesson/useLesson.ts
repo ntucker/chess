@@ -213,8 +213,9 @@ export function useLesson(
     const at: Pointer | undefined = drag ? { at: 'drag', ...drag } : undefined;
     const candidate = at && !previewOf(at) ? { ...at, to: undefined } : at;
     dispatch({ type: 'candidate', key, candidate });
-    // A drag that ends without a move lets the piece go, as the board does,
-    // except after a drop on another square, where the board keeps it.
+    // A drag that ends without a move lets the piece go. Chessground does too,
+    // except after a drop on another square the piece can't move to, where it
+    // keeps the piece selected (a known gap: this copies its selection).
     if (!drag) dispatch({ type: 'select', key });
   };
   const playMove = (uci: string) => {
