@@ -14,7 +14,7 @@ import { getMaiaMove } from './maia';
  * - A rating: the move Maia's network for that rating picks, the way people
  *   rated about that tend to play.
  * - `stockfish`: Stockfish's best move, from the search that evaluates the
- *   position (`getEvaluation`, about depth 16). A position
+ *   position (`getEvaluation`, about depth 14 to 16). A position
  *   the evaluation bar or move labels already searched, or are searching,
  *   costs no new search. It needs StockfishHost mounted.
  *

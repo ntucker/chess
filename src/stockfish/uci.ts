@@ -50,41 +50,39 @@ export function parseInfo(line: string): SearchLine | undefined {
  * ranks from two sets could list a move twice.
  */
 export interface RankedLines<L> {
+  /** The last whole set whose scores are all exact. */
   readonly lines: readonly L[];
   /**
-   * Whether the set being printed goes into `lines`: false once its best
-   * line turns out to be a bound (see `rankLine`), until the next set.
+   * The set being printed, while its scores are all exact; undefined once
+   * one turns out to be a bound (see `rankLine`), until the next set.
    */
-  readonly accepting: boolean;
+  readonly printing?: readonly L[];
 }
 
-export const NO_LINES: RankedLines<never> = { lines: [], accepting: false };
+export const NO_LINES: RankedLines<never> = { lines: [] };
 
 /**
- * `ranked` after the engine prints `info`, kept as `kept`. A set whose best
- * line is only a bound is dropped whole, keeping the depth before, since an
- * evaluation reads its score. A lower rank's bound stays in its set: its
- * move is still ranked against the others, and only its score is rough.
+ * `ranked` after the engine prints `info`, kept as `kept`. A set with a line
+ * whose score is only a bound is dropped whole, keeping the depth before,
+ * since an evaluation and a move's label read each score (`listJudgement`).
  */
 export function rankLine<L>(ranked: RankedLines<L>, info: SearchLine, kept: L): RankedLines<L> {
-  if (info.rank === 1) {
-    return info.bound
-      ? { lines: ranked.lines, accepting: false }
-      : { lines: [kept], accepting: true };
-  }
-  if (!ranked.accepting) return ranked;
-  const lines = [...ranked.lines];
-  lines[info.rank - 1] = kept;
-  return { lines, accepting: true };
+  const starts = info.rank === 1;
+  const lines = starts ? (ranked.printing ?? ranked.lines) : ranked.lines;
+  const printing = starts ? [] : ranked.printing;
+  if (!printing || info.bound) return { lines };
+  const next = [...printing];
+  next[info.rank - 1] = kept;
+  return { lines, printing: next };
 }
 
 /**
- * The move a `bestmove` line names (UCI), or undefined when there is none
- * because the game is over (`bestmove (none)`).
+ * The lines a search has settled on: the set being printed once it is
+ * whole, as it is when the next set starts or the search ends, else the
+ * last whole set before it.
  */
-export function parseBestMove(line: string): string | undefined {
-  const move = line.split(' ')[1];
-  return move && move !== '(none)' ? move : undefined;
+export function rankedLines<L>({ lines, printing }: RankedLines<L>): readonly L[] {
+  return (printing ?? lines).filter(Boolean);
 }
 
 /** The command that has the engine rank its `ranks` best moves in each search. */
@@ -131,7 +129,7 @@ export function forwardNeededLines(onLine: (line: string) => void): (line: strin
     if (info) ranked = rankLine(ranked, info, line);
     else if (line === 'uciok') onLine(line);
     else if (line.startsWith('bestmove')) {
-      ranked.lines.filter(Boolean).forEach(onLine);
+      rankedLines(ranked).forEach(onLine);
       ranked = NO_LINES;
       onLine(line);
     }

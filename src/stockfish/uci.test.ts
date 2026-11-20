@@ -5,10 +5,10 @@ import {
   forwardNeededLines,
   multiPvCommand,
   NO_LINES,
-  parseBestMove,
   parseInfo,
   positionCommand,
   type RankedLines,
+  rankedLines,
   rankLine,
 } from './uci';
 
@@ -46,25 +46,39 @@ describe('parseInfo', () => {
 
 describe('rankLine', () => {
   const rank = (lines: string[]) =>
-    lines.reduce<RankedLines<string>>((ranked, line) => {
-      const info = parseInfo(line)!;
-      return rankLine(ranked, info, info.move!);
-    }, NO_LINES).lines;
+    rankedLines(
+      lines.reduce<RankedLines<string>>((ranked, line) => {
+        const info = parseInfo(line)!;
+        return rankLine(ranked, info, info.move!);
+      }, NO_LINES),
+    );
 
   it("keeps one depth's set whole, so no move is listed twice", () => {
-    // Stockfish's output at the node limit, 1.e4 c6 2.d4 d5 3.e5 Bf5 4.Nf3 e6
-    // 5.Bd3 Bxd3 6.Qxd3 Nd7 7.c3 c5 8.O-O cxd4 9.cxd4 Ne7 10.Nc3 Nc6: the
-    // search stopped inside the last depth's third line.
     expect(
       rank([
         'info depth 12 multipv 1 score cp 47 nodes 68832 pv g2g3',
         'info depth 12 multipv 2 score cp 47 nodes 68832 pv c3e2',
-        'info depth 12 multipv 3 score cp 46 nodes 68832 pv h2h4',
         'info depth 13 multipv 1 score cp 58 nodes 100003 pv h2h4',
         'info depth 13 multipv 2 score cp 50 nodes 100003 pv g2g3',
-        'info depth 13 multipv 3 score cp 45 upperbound nodes 100003 pv c3e2',
       ]),
-    ).toEqual(['h2h4', 'g2g3', 'c3e2']);
+    ).toEqual(['h2h4', 'g2g3']);
+  });
+
+  it("drops a set with a lower rank's bound, keeping the depth before", () => {
+    // Stockfish's output at the node limit, 1.e4 c6 2.d4 d5 3.e5 Bf5 4.Nf3 e6
+    // 5.Bd3 Bxd3 6.Qxd3 Nd7 7.c3 c5 8.O-O cxd4 9.cxd4 Ne7 10.Nc3 Nc6: the
+    // search stopped inside the last depth's third line.
+    const lines = [
+      'info depth 12 multipv 1 score cp 47 nodes 68832 pv g2g3',
+      'info depth 12 multipv 2 score cp 47 nodes 68832 pv c3e2',
+      'info depth 12 multipv 3 score cp 46 nodes 68832 pv h2h4',
+      'info depth 13 multipv 1 score cp 58 nodes 100003 pv h2h4',
+      'info depth 13 multipv 2 score cp 50 nodes 100003 pv g2g3',
+      'info depth 13 multipv 3 score cp 45 upperbound nodes 100003 pv c3e2',
+    ];
+    expect(rank(lines)).toEqual(['g2g3', 'c3e2', 'h2h4']);
+    // A whole set with exact scores counts before the next set starts.
+    expect(rank(lines.slice(0, 3))).toEqual(['g2g3', 'c3e2', 'h2h4']);
   });
 
   it('drops a set whose best line is only a bound, keeping the depth before', () => {
@@ -82,14 +96,6 @@ describe('rankLine', () => {
 describe('multiPvCommand', () => {
   it('sets how many moves a search ranks', () => {
     expect(multiPvCommand(3)).toBe('setoption name MultiPV value 3');
-  });
-});
-
-describe('parseBestMove', () => {
-  it('reads the move, and nothing once the game is over', () => {
-    expect(parseBestMove('bestmove e2e4 ponder e7e5')).toBe('e2e4');
-    expect(parseBestMove('bestmove e1g1')).toBe('e1g1');
-    expect(parseBestMove('bestmove (none)')).toBe(undefined);
   });
 });
 

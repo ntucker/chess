@@ -4,34 +4,43 @@ import {
   evaluationFromScore,
   multiPvCommand,
   NO_LINES,
-  parseBestMove,
   parseInfo,
   positionCommand,
   type RankedLines,
+  rankedLines,
   rankLine,
   type SearchLine,
 } from './uci';
 
 /**
- * How long one evaluation searches: 100,000 positions, which reaches about
- * depth 16 and takes about 0.3 s on a recent phone. A node limit gives the
- * same evaluation on every device that reaches it; a phone too slow to
- * reach it in 1.5 s stops there with a shallower one.
+ * How many positions a search spends on each move it ranks. An evaluation
+ * ranks one: 100,000 positions, which reaches about depth 14 to 16 and takes about
+ * 0.3 s on a recent phone. A search for the top moves splits its positions
+ * among its lines, so it gets as many for each, three times as long, to rank
+ * them as deep as an evaluation judges the move played: a move's label can
+ * read its listed score (`listJudgement`).
  */
-const GO = 'go nodes 100000 movetime 1500';
+const NODES_PER_RANK = 100_000;
+
+/** How long a search may take for each move it ranks, on a device too slow to reach its nodes. */
+const MOVETIME_MS_PER_RANK = 1500;
 
 /**
- * How many moves a search for the top moves ranks. It searches as many
- * positions as an evaluation, so it takes as long, but splits them among
- * three lines, which reach about three plies less deep (depth 12 or 13).
+ * The command that starts a search ranking `ranks` moves. A node limit gives
+ * the same result on every device that reaches it; a phone too slow to
+ * reach it in `MOVETIME_MS_PER_RANK` for each rank stops there with a shallower one.
  */
+const goCommand = (ranks: number) =>
+  `go nodes ${NODES_PER_RANK * ranks} movetime ${MOVETIME_MS_PER_RANK * ranks}`;
+
+/** How many moves a search for the top moves ranks. */
 const TOP_MOVES = 3;
 
 /**
  * How long the engine may take to answer: its handshake (once its host has
- * handed it its files), or a search (which stops itself after 1.5 s). One
- * that takes longer is stuck, as when Android drops the web view a command
- * went to, and is restarted.
+ * handed it its files), or a search (which stops itself after 1.5 s for each
+ * move it ranks, so 4.5 s for the top moves). One that takes longer is stuck,
+ * as when Android drops the web view a command went to, and is restarted.
  */
 const ANSWER_MS = 10_000;
 
@@ -66,17 +75,11 @@ export interface Connection {
   fail(message: string): void;
 }
 
-/** What a search found: its lines, best first, and the move it would play. */
-interface Found {
-  readonly lines: readonly SearchLine[];
-  readonly best?: string;
-}
-
 interface Search {
   readonly line: readonly string[];
   /** How many moves it ranks (MultiPV): 1 for an evaluation. */
   readonly ranks: number;
-  resolve(found: Found): void;
+  resolve(lines: readonly SearchLine[]): void;
   reject(error: Error): void;
   /** Its lines so far: the last whole set Stockfish printed, unless dropped (`rankLine`). */
   ranked: RankedLines<SearchLine>;
@@ -152,8 +155,10 @@ export function attachStockfish(send: Send, supervisor: Supervisor): Connection 
  * (move labels need every position of the game anyway).
  */
 export async function stockfishEvaluation(line: readonly string[]): Promise<Evaluation> {
-  const { lines, best } = await search(line, 1);
-  return { ...evaluationFromScore(lines[0].score, line.length), ...(best && { best }) };
+  // The best move is the scored line's, not `bestmove`'s, which can come
+  // from a depth whose score was dropped (`rankLine`).
+  const [{ score, move }] = await search(line, 1);
+  return { ...evaluationFromScore(score, line.length), ...(move && { best: move }) };
 }
 
 /**
@@ -161,14 +166,15 @@ export async function stockfishEvaluation(line: readonly string[]): Promise<Eval
  * each with how the position stands after it; fewer when fewer moves are
  * legal, none once the game is over. It runs once that position's evaluation
  * has (see `pending`), ahead of evaluations for positions already left, with
- * a search of its own: three lines reach less deep than one, so an evaluation
- * is never read from it. A newer request drops this one if it has not
+ * a search of its own (three times an evaluation's positions, `NODES_PER_RANK`).
+ * An evaluation is never read from it, so a position's evaluation stays the
+ * same whether or not its top moves were asked for. A newer request drops this one if it has not
  * finished: one still waiting never starts, and one already running is
  * told to stop. Its result is ignored. A search already running when the
  * screen leaves without asking for another finishes, and is kept.
  */
 export async function stockfishTopMoves(line: readonly string[]): Promise<TopMove[]> {
-  const { lines } = await search(line, TOP_MOVES);
+  const lines = await search(line, TOP_MOVES);
   return lines.flatMap(({ move, score }) =>
     move ? [{ uci: move, evaluation: evaluationFromScore(score, line.length) }] : [],
   );
@@ -205,7 +211,7 @@ function supersedeTopMoves() {
   if (running && !running.cancelled && running.ranks > 1) cancel(running);
 }
 
-function search(line: readonly string[], ranks: number): Promise<Found> {
+function search(line: readonly string[], ranks: number): Promise<readonly SearchLine[]> {
   return new Promise((resolve, reject) => {
     // A new top-moves search is the only one the screen still shows.
     if (ranks > 1) supersedeTopMoves();
@@ -229,9 +235,8 @@ function handleLine(session: Session, line: string) {
     clearTimeout(watchdog);
     const finished = running;
     running = undefined;
-    const lines = finished.ranked.lines.filter(Boolean);
-    const best = parseBestMove(line);
-    if (lines.length) finished.resolve({ lines, ...(best && { best }) });
+    const lines = rankedLines(finished.ranked);
+    if (lines.length) finished.resolve(lines);
     else finished.reject(new Error('Stockfish finished without a score'));
     startNext();
   }
@@ -266,7 +271,7 @@ function startNext() {
     connected.send(multiPvCommand(running.ranks));
   }
   connected.send(positionCommand(running.line));
-  connected.send(GO);
+  connected.send(goCommand(running.ranks));
   awaitAnswer(connected);
 }
 

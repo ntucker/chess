@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import type { Evaluation } from '@/evaluation/evaluation';
 
-import { classifyMove } from './quality';
+import { classifyMove, listJudgement } from './quality';
 
 /** An evaluation where White's expected score is `score`. */
 const at = (score: number, best?: string): Evaluation => ({ score, pawns: 0, best });
@@ -56,5 +56,35 @@ describe('classifyMove', () => {
         mover: 'white',
       }),
     ).toBe('blunder');
+  });
+});
+
+describe('listJudgement', () => {
+  const top = [
+    { uci: 'c7c5', evaluation: { score: 0.4, pawns: -1.1 } },
+    { uci: 'e7e5', evaluation: { score: 0.47, pawns: -0.3 } },
+  ];
+
+  it("judges a listed move by its listed score, against the list's first move", () => {
+    expect(listJudgement(top, 'e7e5')).toEqual({
+      before: { score: 0.4, pawns: -1.1, best: 'c7c5' },
+      after: { score: 0.47, pawns: -0.3 },
+    });
+    const first = listJudgement(top, 'c7c5');
+    expect(
+      classifyMove({ before: first.before!, after: first.after!, uci: 'c7c5', mover: 'black' }),
+    ).toBe('best');
+  });
+
+  it('leaves the position after a move the list skips to its evaluation', () => {
+    expect(listJudgement(top, 'a7a6')).toEqual({
+      before: { score: 0.4, pawns: -1.1, best: 'c7c5' },
+      after: undefined,
+    });
+  });
+
+  it('says nothing without a list', () => {
+    expect(listJudgement(undefined, 'e7e5')).toEqual({});
+    expect(listJudgement([], 'e7e5')).toEqual({});
   });
 });

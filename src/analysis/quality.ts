@@ -2,7 +2,7 @@
  * How good a move was, as chess.com labels moves: by how much of the mover's
  * expected score it gave away.
  */
-import type { Evaluation } from '@/evaluation/evaluation';
+import type { Evaluation, TopMove } from '@/evaluation/evaluation';
 import type { Color } from '@/game/replay';
 
 /**
@@ -48,4 +48,25 @@ export function classifyMove({ before, after, uci, mover }: JudgedMove): MoveQua
   const loss = mover === 'white' ? whiteLoss : -whiteLoss;
   if (uci === before.best || loss <= 0) return 'best';
   return LEAST_LOSS.find(([least]) => loss >= least)?.[1] ?? 'good';
+}
+
+/**
+ * What the engine's `top` moves in a position (best first) say about playing
+ * `uci` there: the first move's score stands for the position, and a listed
+ * move's own score for the position after it, so the label agrees with the
+ * list: its first move is the best, and another gives away what its listed
+ * score says. Two searches of nearby positions can disagree by more than an
+ * inaccuracy, which could otherwise call the list's first move dubious. A
+ * move the list skips has no `after`: the next position's evaluation judges it.
+ */
+export function listJudgement(
+  top: readonly TopMove[] | undefined,
+  uci: string,
+): Partial<Pick<JudgedMove, 'before' | 'after'>> {
+  if (!top?.length) return {};
+  const [first] = top;
+  return {
+    before: { ...first.evaluation, best: first.uci },
+    after: top.find((move) => move.uci === uci)?.evaluation,
+  };
 }

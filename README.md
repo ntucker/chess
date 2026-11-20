@@ -60,7 +60,7 @@ The models are licensed under the GPL-3.0, which is different from the app's own
 
 The bar beside the board shows how the position stands: White's share of the bar is White's expected score, and the leading side's end shows its advantage in pawns, or `M3` when it mates in 3. A footnote under the scoresheet ("Evaluation by Stockfish · Maia") picks who judges:
 
-- **Stockfish** (the default): Stockfish 19 lite, a 1.8 MB WebAssembly build with a small network, searching 100,000 positions (about depth 16). On a recent phone that takes about 0.3 s. Pawns turn into an expected score with lichess's curve.
+- **Stockfish** (the default): Stockfish 19 lite, a 1.8 MB WebAssembly build with a small network, searching 100,000 positions (about depth 14 to 16). On a recent phone that takes about 0.3 s. Pawns turn into an expected score with lichess's curve.
 - **Maia**: the 1900 network's estimate of how players of that rating score from here, converted to pawns the way Leela Chess Zero does. It uses less memory, since Stockfish isn't started.
 
 On 240 positions from club-level games, judged against full Stockfish 19 at depth 24, Stockfish lite at depth 12 was off by 3.4 percentage points of expected score on average, and Maia 1900 by 10.4. Maia also misses mates: after 1. e4 e5 2. Qh5 d6 3. Nf3 Be6 4. Nc3 Nf6 5. Qh4 Be7 6. Ng5 O-O 7. Bd3 Bd7 8. Nd5 Nxd5, White mates with Qxh7, and Maia gives White 59%.

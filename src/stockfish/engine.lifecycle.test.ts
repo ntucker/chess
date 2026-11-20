@@ -59,7 +59,7 @@ describe('the engine lifecycle', () => {
     const { print, sent } = scripted();
     print('uciok');
     expect(sent.at(-2)).toBe('position startpos moves d2d4');
-    print('info depth 12 score cp -20');
+    print('info depth 12 score cp -20 pv d7d5');
     print('bestmove d7d5');
     expect(await newer).toEqual({ score: expect.any(Number), pawns: 0.2, best: 'd7d5' });
     expect(sent.at(-2)).toBe('position startpos moves e2e4');
@@ -82,9 +82,11 @@ describe('the engine lifecycle', () => {
     print('info depth 12 multipv 1 score cp -20 pv d7d5');
     print('bestmove d7d5');
     await evaluation;
-    expect(sent.slice(-3, -1)).toEqual([
+    // Three times the positions, to rank each as deep as an evaluation.
+    expect(sent.slice(-3)).toEqual([
       'setoption name MultiPV value 3',
       'position startpos moves e2e4',
+      'go nodes 300000 movetime 4500',
     ]);
     print('info depth 10 multipv 1 score cp -30 pv c7c5');
     print('info depth 10 multipv 2 score cp -20 pv e7e5');

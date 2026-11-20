@@ -3,9 +3,9 @@ import { use } from 'react';
 
 import type { EvaluationEngine } from '@/evaluation/evaluation';
 import type { Ply } from '@/game/replay';
-import { getEvaluation } from '@/resources/evaluation';
+import { getEvaluation, getTopMoves } from '@/resources/evaluation';
 
-import { classifyMove, type MoveQuality } from './quality';
+import { classifyMove, listJudgement, type MoveQuality } from './quality';
 
 /**
  * Each move's label, from the evaluations of the positions before and after
@@ -14,6 +14,13 @@ import { classifyMove, type MoveQuality } from './quality';
  *
  * A move `book` marks (`book[n]` for the nth move) is labelled `book` at once,
  * since a lesson's guide recommends it; the engine never judges it.
+ *
+ * Where Stockfish judges and has listed its top moves for the position
+ * before a move (a lesson shows them past the guide, `getTopMoves`), the
+ * list stands for that position, and labels a move it lists at once
+ * (`listJudgement`). The hook never asks for a list (a search three times an
+ * evaluation's), so a label judged from the evaluations can change once a
+ * caller asks for that position's list.
  *
  * Only the move leading to `plies[shown]` (the board's) asks for its
  * evaluations: a search costs up to a second on a phone, and the engine runs
@@ -45,8 +52,11 @@ export function useMoveQualities(
   );
   return moves.map((uci, n) => {
     if (book[n]) return 'book';
-    const before = evaluations[n];
-    const after = evaluations[n + 1];
+    const top =
+      engine === 'stockfish' ? ctrl.getResponse(getTopMoves, lines[n], state).data : undefined;
+    const listed = listJudgement(top, uci);
+    const before = listed.before ?? evaluations[n];
+    const after = listed.after ?? evaluations[n + 1];
     return before && after ? classifyMove({ before, after, uci, mover: plies[n].turn }) : undefined;
   });
 }
