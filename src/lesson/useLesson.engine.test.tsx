@@ -41,7 +41,7 @@ const lesson = () => renders.at(-1)!;
 
 function Lesson({ moves }: { readonly moves: readonly string[] }) {
   controllers.push(useController());
-  renders.push(useLesson(SAMPLE, useReducer(gameReducer, moves, startGame)));
+  renders.push(useLesson(SAMPLE, useReducer(gameReducer, moves, startGame), { pending: false }));
   return null;
 }
 

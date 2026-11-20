@@ -61,8 +61,14 @@ export interface Playback {
  * `lesson` played on the board, the game held in `store`. The start position
  * is where the learner picks the opening (src/lesson/openings.ts): nobody
  * replies there, so the learner plays the first move whoever's turn it is.
+ * While `pending`, the game has moved on to a lesson still loading and the
+ * store holds the one shown, so the learner can't move.
  */
-export function useLesson(lesson: Lesson, store: GameStore) {
+export function useLesson(
+  lesson: Lesson,
+  store: GameStore,
+  { pending }: { readonly pending: boolean },
+) {
   const ctrl = useController();
   const settings = useSettings();
   const { opponent } = settings;
@@ -88,7 +94,10 @@ export function useLesson(lesson: Lesson, store: GameStore) {
     judge: 'stockfish',
     book,
   });
-  const { ply, plies, current, canMove } = game;
+  const { ply, plies, current } = game;
+  // The store drops a move made while a lesson loads, so the board offers
+  // none: chessground would show the dropped move until the lesson arrived.
+  const canMove = game.canMove && !pending;
   // A move played before the learner's first starts a Practice run (`modeReducer`).
   const startsRun = beforeSideMoves(plies, lesson.side, ply);
   const kinds = moveKinds(plies, lesson.side, book);

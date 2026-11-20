@@ -17,8 +17,8 @@ import { NARROW_CSS_LOADS, narrowCalc, narrowLength, narrowPart } from '@/theme/
 import { spotlight } from '@/theme/theme';
 
 interface StageProps {
-  /** The browser tab's title. */
-  readonly title: string;
+  /** The browser tab's title; none leaves it as it is. */
+  readonly title?: string;
   /** Where the page is, such as the lesson's line: the header names it on a narrow web page. */
   readonly place?: string;
   /** The board column (`BoardColumn`), or a stand-in the same size while it loads. */
@@ -45,9 +45,11 @@ export function Stage({ title, place, board, program }: StageProps) {
         },
       ]}
     >
-      <Head>
-        <title>{title}</title>
-      </Head>
+      {title === undefined ? null : (
+        <Head>
+          <title>{title}</title>
+        </Head>
+      )}
       <SafeAreaView style={styles.fill}>
         <ScrollView>
           <View {...narrowPart('page')} style={styles.page}>
