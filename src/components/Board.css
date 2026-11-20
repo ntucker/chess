@@ -123,6 +123,22 @@ coords {
   font-family: 'DMMono_400Regular', ui-monospace, monospace;
   font-weight: 400;
 }
+/*
+ * Each file's letter in its bottom square's bottom-right corner. Chessground's
+ * base CSS puts them half a square to the right, astride the squares' edges,
+ * where they vanish against one color or the other and the last one falls
+ * off the board.
+ */
+.cg-wrap coords.files {
+  left: 0;
+  bottom: 0;
+  height: auto;
+  text-align: right;
+}
+.cg-wrap coords.files coord {
+  flex: 1 1 0;
+  padding: 0 4px 2px 0;
+}
 .orientation-white coord:nth-child(odd),
 .orientation-black coord:nth-child(even) {
   color: var(--light);

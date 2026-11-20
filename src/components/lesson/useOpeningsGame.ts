@@ -38,7 +38,7 @@ interface Visit {
  * game at the line that opens it; a move past that line drops it.
  *
  * Within one history entry (`entry`, its route's key) the address follows
- * the game. Arriving at another entry resumes the game the page had there,
+ * the game, and an address the game didn't move to starts the game there. Arriving at another entry resumes the game the page had there,
  * if the learner left it from where it still is, else starts the entry's
  * address; an entry the game's own pick added keeps the game.
  *
@@ -84,11 +84,11 @@ export function useOpeningsGame(
     if (address !== undefined && address !== synced.address) {
       setAddressSide(LESSON_INDEX[address].side);
     }
+    // The game is at `id`'s address: it plays that lesson from its side
+    // (lessons of both sides share moves), or at `/`, none from the page's.
+    const isAt = (id?: LessonId) =>
+      lessonOf(LESSON_INDEX, id === undefined ? side : LESSON_INDEX[id].side, moves) === id;
     if (entry !== synced.entry && synced.entry !== undefined) {
-      // The game is at `id`'s address: it plays that lesson from its side
-      // (lessons of both sides share moves), or at `/`, none from the page's.
-      const isAt = (id?: LessonId) =>
-        lessonOf(LESSON_INDEX, id === undefined ? side : LESSON_INDEX[id].side, moves) === id;
       const wasAt = isAt(synced.address);
       if (wasAt) {
         const leaving = { address: synced.address, variation: synced.variation, game };
@@ -106,6 +106,10 @@ export function useOpeningsGame(
         dispatch({ type: 'newGame', moves: resumed?.moves ?? startOf(address, variation) });
         if (resumed) dispatch({ type: 'goto', ply: resumed.ply });
       }
+    } else if (variation !== undefined ? variation !== synced.variation : !isAt(address)) {
+      // The address moved within the entry without the game: a link opened
+      // in place, such as an Android deep link to the page already open.
+      dispatch({ type: 'newGame', moves: startOf(address, variation) });
     }
   }
   useEffect(() => {

@@ -118,6 +118,19 @@ describe('useOpeningsGame', () => {
     expect(mockRouter.replace).not.toHaveBeenCalled();
   });
 
+  it('starts an address opened in place that the game did not move to', async () => {
+    await show('caro-kann');
+    await play('c7c6');
+    // An Android deep link to the open page keeps its history entry.
+    await show('caro-kann', 'advance-variation');
+    expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'e5'));
+    await show('slav');
+    expect(moves()).toEqual(uciLine('d4', 'd5', 'c4'));
+    await show();
+    expect(moves()).toEqual([]);
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+  });
+
   it("starts a lesson's own start for a variation it doesn't have", async () => {
     await show('slav', 'no-such-variation');
     expect(moves()).toEqual(uciLine('d4', 'd5', 'c4'));
