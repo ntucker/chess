@@ -105,9 +105,9 @@ CHECKLIST
 - If in doubt: drop the idea and keep it in the text.`;
 
 /**
- * Added to `PROMPT` when a comment is asked again because the checker refused
- * its note text as notation (`Comment.refusedText`). Changing it re-asks only
- * those comments.
+ * Added to `PROMPT` when comments are asked again because the checker refused
+ * their note text as notation (`Comment.refusedText`). Changing it re-asks
+ * only those comments.
  */
 export const REWORD = `
 

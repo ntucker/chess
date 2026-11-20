@@ -31,6 +31,9 @@ export interface Converted {
   readonly rejected: readonly { readonly idea: AnswerIdea; readonly why: string }[];
 }
 
+/** Every note in `result`, on the move and before it. */
+export const notesOf = (result: Converted): readonly Note[] => [...result.move, ...result.before];
+
 /**
  * `answer` for `comment` as notes, checked in `positions`. `own` is the
  * importer's ideas on the move's note: they join the model's first note on the

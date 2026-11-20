@@ -8,6 +8,7 @@ import { parseStudy } from '../study';
 import type { AnswerNote } from './answer';
 import { MODELS, type Ask, type Model } from './claude';
 import { noteComment, type Comment } from './comments';
+import { REWORD } from './prompt';
 import { convertChapters } from '.';
 
 const [advance] = parseStudy(STUDY_PGN, () => true);
@@ -22,17 +23,19 @@ type Answers = Partial<Record<Model, Record<string, AnswerNote[]>>>;
 function fakeAsk(answers: Answers, reworded: Answers = {}) {
   const asked: [Model, string[]][] = [];
   const refused: (readonly string[] | undefined)[] = [];
-  const ask: Ask = async (model, comments) => {
+  const addenda: (string | undefined)[] = [];
+  const ask: Ask = async (model, comments, addendum) => {
     asked.push([model, comments.map((comment) => comment.move)]);
     refused.push(...comments.map((comment) => comment.refusedText));
-    const notes = (comments[0]?.refusedText ? reworded : answers)[model] ?? {};
+    addenda.push(addendum);
     return new Map(
-      comments.flatMap((comment) =>
-        notes[comment.move] ? [[comment.id, { id: comment.id, notes: notes[comment.move] }]] : [],
-      ),
+      comments.flatMap((comment) => {
+        const notes = (comment.refusedText ? reworded : answers)[model]?.[comment.move];
+        return notes ? [[comment.id, { id: comment.id, notes }]] : [];
+      }),
     );
   };
-  return { ask, asked, refused };
+  return { ask, asked, refused, addenda };
 }
 
 const notesOn = (
@@ -144,7 +147,7 @@ describe('convertChapters', () => {
     ];
 
     it('is asked again of Opus with the refused text, and the answer in words replaces it', async () => {
-      const { ask, asked, refused } = fakeAsk(
+      const { ask, asked, refused, addenda } = fakeAsk(
         { [MODELS.convert]: { Be2: notation } },
         { [MODELS.retry]: { Be2: words } },
       );
@@ -154,8 +157,26 @@ describe('convertChapters', () => {
       } = await convertChapters(extracted, ask);
       expect(asked.at(-1)).toEqual([MODELS.retry, ['Be2']]);
       expect(refused.at(-1)).toEqual([notation[0].text]);
+      expect(addenda.at(-1)).toBe(REWORD);
       expect(report.reworded).toBe(1);
       expect(notesOn(chapter, 'Be2')[0].text).toBe(words[0].text);
+    });
+
+    it('is replaced by the answer in words even when it draws less, and the report says so', async () => {
+      const drawn: AnswerNote = {
+        ...notation[0],
+        ideas: [{ type: 'purpose', from: 'f5', relation: 'attacks', targets: ['c2'] }],
+      };
+      const { ask } = fakeAsk(
+        { [MODELS.convert]: { Be2: [drawn] } },
+        { [MODELS.retry]: { Be2: words } },
+      );
+      const {
+        extracted: [chapter],
+        report,
+      } = await convertChapters(extracted, ask);
+      expect(notesOn(chapter, 'Be2')[0].text).toBe(words[0].text);
+      expect(report.rewordedIdeas).toEqual({ before: 1, after: 0 });
     });
 
     it('stays when Opus writes notation too, so the lesson checker refuses the import', async () => {

@@ -8,6 +8,7 @@ import { STUDY_PGN } from '../fixture';
 import { parseStudy } from '../study';
 import { claudeCli, MODELS } from './claude';
 import { noteComment, type Comment } from './comments';
+import { REWORD } from './prompt';
 
 const [advance] = parseStudy(STUDY_PGN, () => true);
 const chapter = extractChapter(advance, 'black');
@@ -74,16 +75,18 @@ describe('claudeCli', () => {
     expect(lines(cacheFile)).toHaveLength(1);
   });
 
-  it('asks a comment with refused text with the prompt that explains it, and keeps that answer apart', async () => {
+  it('sends an addendum after the prompt, and keeps those answers apart', async () => {
     const cacheFile = await answersFile([comments[0]]);
     // The same comment, asked again with the text the checker refused.
     const reword = { ...comments[0], refusedText: ['Play e6 Nf3 c5 Be2 next.'] };
-    const text = async (cli: ReturnType<typeof claudeCli>, comment: Comment) =>
-      (await cli.ask(MODELS.convert, [comment])).get(comment.id)?.notes[0].text;
-    expect(await text(claudeCli({ learner: 'black', cacheFile, log }), reword)).toBe('Reworded.');
-    expect(lines(cacheFile)).toHaveLength(2);
+    const text = async (cli: ReturnType<typeof claudeCli>, comment: Comment, addendum?: string) =>
+      (await cli.ask(MODELS.retry, [comment], addendum)).get(comment.id)?.notes[0].text;
+    const cli = claudeCli({ learner: 'black', cacheFile, log });
+    expect(await text(cli, reword, REWORD)).toBe('Reworded.');
+    expect(await text(cli, comments[0])).toBe('A note.');
+    cli.saveUsed();
     const fromFile = claudeCli({ learner: 'black', cacheFile, log, callModel: false });
-    expect(await text(fromFile, reword)).toBe('Reworded.');
+    expect(await text(fromFile, reword, REWORD)).toBe('Reworded.');
     expect(await text(fromFile, comments[0])).toBe('A note.');
   });
 
