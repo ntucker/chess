@@ -1,11 +1,9 @@
-import { typography } from '@/theme/theme';
-
 import './touch.css';
 
 const WEB = process.env.EXPO_OS === 'web';
 
 /** The least size of something to tap on a touch screen: Android's 48 dp. */
-const TOUCH_TARGET = 48;
+export const TOUCH_TARGET = 48;
 
 /**
  * A control's least width and height, so a finger can hit it: TOUCH_TARGET
@@ -16,9 +14,6 @@ const TOUCH_TARGET = 48;
 export const touchTarget: number = WEB
   ? ('var(--touch-target, 0px)' as unknown as number)
   : TOUCH_TARGET;
-
-/** The height of a line of caption text, as Silk sets it. */
-export const CAPTION_LINE = typography.caption.size * typography.caption.lineHeight;
 
 /**
  * Padding on each side of something `content` long that makes it

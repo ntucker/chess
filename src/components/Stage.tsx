@@ -8,7 +8,7 @@ import type { HeaderProps } from '@/components/Header';
 import { Page } from '@/components/Page';
 import { PlayerBar } from '@/components/PlayerBar';
 import {
-  BOARD_COLUMN_BASIS,
+  BOARD_COLUMN_WIDTH,
   BOARD_COLUMN_GAP,
   BOARD_COLUMN_LIMIT_CSS,
   BOARD_COLUMN_MAX,
@@ -16,7 +16,7 @@ import {
   boardColumnLimit,
   PLAYER_BAR_HEIGHT,
   PLAYER_DISC,
-  PROGRAM_BASIS,
+  PROGRAM_WIDTH,
   STAGE_GAP,
 } from '@/theme/sideBySide';
 import { Transport } from '@/components/Transport';
@@ -172,7 +172,7 @@ const COLUMN_RAISE = BOARD_OFFSET.minus(WRAPPED_GAP);
 // Board and program sit side by side, and a narrow page stacks them, below
 // the width they need side by side (SIDE_BY_SIDE_MIN): narrow.css on the web,
 // the parts' native styles elsewhere. Just above it, a page scrollbar can take
-// some of that width; the two then shrink a little below their flex bases.
+// some of that width; the two then shrink a little below their widths.
 // Side by side, the program should start level with the board, BOARD_OFFSET
 // below the column's top; stacked, it should start WRAPPED_GAP below the
 // column. The program's top margin is WRAPPED_GAP for the stacked case, and
@@ -194,7 +194,7 @@ const STYLES = narrowStyles((px) => ({
   boardColumn: {
     flexGrow: 1,
     flexShrink: 1,
-    width: BOARD_COLUMN_BASIS,
+    width: BOARD_COLUMN_WIDTH,
     maxWidth: BOARD_COLUMN_LIMIT_CSS,
     marginTop: px(COLUMN_RAISE.times(-1)),
     gap: BOARD_COLUMN_GAP,
@@ -213,7 +213,7 @@ const STYLES = narrowStyles((px) => ({
   program: {
     flexGrow: 1,
     flexShrink: 1,
-    width: PROGRAM_BASIS,
+    width: PROGRAM_WIDTH,
     maxWidth: PROGRAM_MAX,
     marginTop: px(WRAPPED_GAP),
   },

@@ -3,7 +3,8 @@ import { type Href, Link, useRouter } from 'expo-router';
 import type { MouseEvent } from 'react';
 import { type GestureResponderEvent, StyleSheet } from 'react-native';
 
-import { CAPTION_LINE, touchPadding } from '@/theme/touch';
+import { typography } from '@/theme/theme';
+import { touchPadding } from '@/theme/touch';
 
 interface Props {
   /** Another screen of the app, without a trailing slash (GitHub Pages 404s on one). */
@@ -37,6 +38,9 @@ export function FootnoteLink({ href, back, children }: Props) {
 export const plainPress = (event: MouseEvent<HTMLAnchorElement> | GestureResponderEvent) =>
   !('button' in event) ||
   (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey);
+
+/** A caption line's height, as Silk sets it. */
+const CAPTION_LINE = typography.caption.size * typography.caption.lineHeight;
 
 const styles = StyleSheet.create({
   // On the link itself: a nested text can't take padding off the web.
