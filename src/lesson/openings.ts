@@ -56,8 +56,8 @@ const LICHESS_STUDY = /^https?:\/\/(?:www\.)?lichess\.org\/study\//i;
 
 /**
  * How a note names `source`: a lichess study by its author, anything else by
- * its title and author, either with its license. A note is plain text, so the
- * license's link stays in the lesson file.
+ * its title and author, and then its license if it has one. A note is plain
+ * text, so the license's link stays in the lesson file.
  */
 function credit({ title, author, url, license }: LessonSource): string {
   const name = LICHESS_STUDY.test(url) ? `${author}'s lichess study` : `${title} by ${author}`;

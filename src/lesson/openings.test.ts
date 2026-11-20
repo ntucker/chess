@@ -64,6 +64,7 @@ describe('openingsLesson', () => {
   });
 
   it.each([
+    ['https://lichess.org/study/abcd1234', "Matkun's lichess study"],
     ['http://lichess.org/study/abcd1234', "Matkun's lichess study"],
     ['https://www.lichess.org/study/abcd1234', "Matkun's lichess study"],
     ['https://lichess.org/@/Matkun', 'A study by Matkun'],
