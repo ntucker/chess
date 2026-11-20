@@ -6,7 +6,7 @@
 import type { Chess } from 'chessops/chess';
 import type { SquareName } from 'chessops/types';
 
-import type { Evaluation, TopMove } from '@/evaluation/evaluation';
+import type { AnalysisLine, Evaluation } from '@/evaluation/evaluation';
 import { parsePositionKey, playLine, playMove, positionKey } from '@/game/replay';
 import type { Opponent } from '@/opponent/opponent';
 
@@ -141,12 +141,12 @@ export function candidates(
 export function engineCandidates(
   lesson: Lesson,
   key: PositionKey,
-  top: readonly TopMove[],
+  top: readonly AnalysisLine[],
 ): Candidate[] {
   const pos = parsePositionKey(key);
   if (!pos) return [];
   return top.flatMap(({ uci, evaluation }) => {
-    const row = candidateRow(lesson, pos, { uci });
+    const row = uci && candidateRow(lesson, pos, { uci });
     return row ? [{ ...row, engine: evaluation }] : [];
   });
 }

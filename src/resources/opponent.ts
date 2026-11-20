@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import type { GameOpponent } from '@/game/game';
 import type { Opponent } from '@/opponent/opponent';
 
-import { getEvaluation } from './evaluation';
+import { getAnalysis } from './analysis';
 import { getMaiaMove } from './maia';
 
 /**
@@ -13,10 +13,10 @@ import { getMaiaMove } from './maia';
  *
  * - A rating: the move Maia's network for that rating picks, the way people
  *   rated about that tend to play.
- * - `stockfish`: Stockfish's best move, from the search that evaluates the
- *   position (`getEvaluation`, about depth 14 to 16). A position
- *   the evaluation bar or move labels already searched, or are searching,
- *   costs no new search. It needs StockfishHost mounted.
+ * - `stockfish`: Stockfish's best move, the first line of the position's
+ *   final analysis (`getAnalysis`), so it plays the move the board's arrow
+ *   shows. A position the bar or move labels already searched, or are
+ *   searching, costs no new search. It needs StockfishHost mounted.
  *
  * Maia writes castling as the king taking its rook (`e1h1`), Stockfish as the
  * king's two-square move (`e1g1`); `lineMove` reads both.
@@ -31,7 +31,7 @@ export async function fetchOpponentMove(
   line: readonly string[],
 ): Promise<string> {
   if (opponent !== 'stockfish') return ctrl.fetchIfStale(getMaiaMove, opponent, line);
-  const { best } = await ctrl.fetchIfStale(getEvaluation, 'stockfish', line);
+  const best = (await ctrl.fetchIfStale(getAnalysis, 'stockfish', line)).lines[0]?.uci;
   if (!best) throw new Error('Stockfish found no move');
   return best;
 }

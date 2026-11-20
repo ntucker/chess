@@ -7,6 +7,7 @@ import {
   analyze,
   dropMove,
   lastPosition,
+  legalMoveCount,
   lineMove,
   NAMED_MOVE,
   numberedLine,
@@ -102,6 +103,23 @@ describe('analyze', () => {
     const start = lastPosition([]);
     expect(start.dests.e2).toEqual(['e3', 'e4']);
     expect(Object.keys(start.dests)).toHaveLength(10);
+  });
+});
+
+describe('legalMoveCount', () => {
+  it('counts each legal move, as many as the start has', () => {
+    expect(legalMoveCount([])).toBe(20);
+  });
+
+  it('counts none once mated', () => {
+    expect(legalMoveCount(['f2f3', 'e7e5', 'g2g4', 'd8h4'])).toBe(0);
+  });
+
+  it('counts a promotion as four moves, one per piece', () => {
+    // 4...Nbd7: b7 promotes on b8, a8 or c8 (12 moves), beside 29 others.
+    expect(legalMoveCount(['e2e4', 'd7d5', 'e4d5', 'c7c6', 'd5c6', 'g8f6', 'c6b7', 'b8d7'])).toBe(
+      41,
+    );
   });
 });
 

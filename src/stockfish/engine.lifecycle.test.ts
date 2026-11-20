@@ -1,10 +1,14 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
+
+import type { Analysis } from '@/evaluation/evaluation';
 
 import type * as Engine from './engine';
 
-// The engine's start, takeover and stopping, against scripted engines whose
-// every command is recorded and whose every line the test writes.
+// The engine's scheduling, takeover and stopping, against scripted engines
+// whose every command is recorded and whose every line the test writes.
 let engine: typeof Engine;
+/** The test's engines, detached after it so no answer timer outlives it. */
+const connections: Engine.Connection[] = [];
 
 beforeEach(() => {
   // A fresh engine module, with no engine attached, for each test.
@@ -13,215 +17,232 @@ beforeEach(() => {
   engine = require('./engine') as typeof Engine;
 });
 
+afterEach(() => {
+  for (const connection of connections.splice(0)) connection.detach();
+});
+
+/** Lets the engine decide what to search (it decides once the current task is done). */
+const decided = () => new Promise((resolve) => setTimeout(resolve));
+
 /** A scripted engine: what it was sent, a way to make it print, and what it told its host. */
 function scripted() {
   const sent: string[] = [];
   const supervisor = { ready: jest.fn(), failed: jest.fn() };
   const connection = engine.attachStockfish((command) => sent.push(command), supervisor);
-  return { sent, print: (line: string) => connection.receive(line), connection, supervisor };
+  connections.push(connection);
+  const print = (line: string) => connection.receive(line);
+  /** Prints a finished depth: one line for each move, best first, centipawns falling by 10. */
+  const depth = (depth: number, nodes: number, moves: string[], centipawns = 30) =>
+    moves.forEach((move, i) =>
+      print(
+        `info depth ${depth} multipv ${i + 1} score cp ${centipawns - 10 * i} nodes ${nodes} pv ${move}`,
+      ),
+    );
+  /** The position being searched, from its `position` command. */
+  const searching = () => sent.findLast((command) => command.startsWith('position'));
+  return { sent, print, depth, searching, connection, supervisor };
 }
 
+/** Watches the position after `line`, recording what the watcher is told. */
+function watch(line: string[]) {
+  const updates: Analysis[] = [];
+  const failures: Error[] = [];
+  const release = engine.watchStockfish(line, {
+    update: (analysis) => updates.push(analysis),
+    fail: (error) => failures.push(error),
+  });
+  /** Each update as its depth, its moves, and whether it's final. */
+  const told = () =>
+    updates.map(({ depth, lines, final }) => [depth, lines.map(({ uci }) => uci), final]);
+  return { updates, failures, release, told };
+}
+
+const REPLIES = ['e7e5', 'c7c5', 'e7e6'];
+
 describe('the engine lifecycle', () => {
+  it('ranks three moves in every search, and limits it by nodes only', async () => {
+    const { print, sent } = scripted();
+    print('uciok');
+    watch(['e2e4']);
+    await decided();
+    expect(sent).toEqual([
+      'uci',
+      'setoption name MultiPV value 3',
+      'ucinewgame',
+      'position startpos moves e2e4',
+      'go nodes 2000000',
+    ]);
+  });
+
+  it('tells each finished depth as it arrives, then the deepest as final', async () => {
+    const { print, depth } = scripted();
+    print('uciok');
+    const watched = watch(['e2e4']);
+    await decided();
+    depth(10, 50_000, REPLIES);
+    depth(11, 90_000, ['c7c5', 'e7e5', 'e7e6']);
+    // Where the node limit stops it, the set it prints mixes two depths: ignored.
+    print('info depth 12 multipv 1 score cp 20 nodes 2000100 pv c7c5');
+    print('info depth 11 multipv 2 score cp 10 nodes 2000100 pv e7e5');
+    print('info depth 11 multipv 3 score cp 0 nodes 2000100 pv e7e6');
+    print('bestmove c7c5 ponder g1f3');
+    expect(watched.told()).toEqual([
+      [10, REPLIES, false],
+      [11, ['c7c5', 'e7e5', 'e7e6'], false],
+      [11, ['c7c5', 'e7e5', 'e7e6'], true],
+    ]);
+    // Scores are White's: Black to move, 30 centipawns for Black.
+    expect(watched.updates[2].lines[0].evaluation.pawns).toBe(-0.3);
+  });
+
+  it('ranks only the legal moves where fewer than three are', async () => {
+    const { print, depth } = scripted();
+    print('uciok');
+    // 1.e4 f6 2.Qh5+: only g6 is legal.
+    const watched = watch(['e2e4', 'f7f6', 'd1h5']);
+    await decided();
+    depth(10, 9_000, ['g7g6']);
+    print('bestmove g7g6');
+    expect(watched.told()).toEqual([
+      [10, ['g7g6'], false],
+      [10, ['g7g6'], true],
+    ]);
+  });
+
+  it('fails a search that ends without a finished depth', async () => {
+    const { print } = scripted();
+    print('uciok');
+    const watched = watch(['e2e4']);
+    await decided();
+    print('info depth 10 multipv 1 score cp 20 lowerbound nodes 2000050 pv e7e5');
+    print('bestmove e7e5');
+    expect(watched.failures.map(({ message }) => message)).toEqual([
+      'Stockfish finished without a score',
+    ]);
+  });
+
+  it('searches the newest position asked for, then the older ones', async () => {
+    const older = watch(['e2e4']);
+    const newer = watch(['d2d4']);
+    const { print, depth, searching } = scripted();
+    print('uciok');
+    expect(searching()).toBe('position startpos moves d2d4');
+    depth(10, 50_000, ['d7d5', 'g8f6', 'e7e6']);
+    print('bestmove d7d5');
+    expect(newer.updates.at(-1)?.final).toBe(true);
+    expect(searching()).toBe('position startpos moves e2e4');
+    depth(10, 50_000, REPLIES);
+    print('bestmove e7e5');
+    expect(older.updates.at(-1)?.final).toBe(true);
+  });
+
+  it('stops for a newer position, and starts the older one again from the beginning', async () => {
+    const { print, depth, sent, searching } = scripted();
+    print('uciok');
+    const older = watch(['e2e4']);
+    await decided();
+    depth(10, 50_000, REPLIES);
+    const newer = watch(['d2d4']);
+    await decided();
+    expect(sent.at(-1)).toBe('stop');
+    // Nothing new starts until the stopped search answers, and what it prints meanwhile is ignored.
+    depth(11, 90_000, REPLIES);
+    expect(searching()).toBe('position startpos moves e2e4');
+    print('bestmove e7e5');
+    expect(searching()).toBe('position startpos moves d2d4');
+    depth(10, 50_000, ['d7d5', 'g8f6', 'e7e6']);
+    print('bestmove d7d5');
+    expect(newer.updates.at(-1)?.final).toBe(true);
+
+    // The older position's search starts over, repeating what it found:
+    // its watcher hears only the depths past those.
+    expect(sent.filter((command) => command === 'position startpos moves e2e4')).toHaveLength(2);
+    depth(10, 50_000, REPLIES);
+    depth(11, 90_000, REPLIES);
+    print('bestmove e7e5');
+    expect(older.told()).toEqual([
+      [10, REPLIES, false],
+      [11, REPLIES, false],
+      [11, REPLIES, true],
+    ]);
+  });
+
+  it('stops a search nobody watches any more, and never starts it again', async () => {
+    const { print, sent } = scripted();
+    print('uciok');
+    const left = watch(['e2e4']);
+    await decided();
+    left.release();
+    await decided();
+    expect(sent.at(-1)).toBe('stop');
+    print('bestmove e7e5');
+    await decided();
+    expect(sent.filter((command) => command.startsWith('position'))).toHaveLength(1);
+    expect(left.updates).toEqual([]);
+  });
+
+  it('keeps searching a position one render stops and starts watching again', async () => {
+    const { print, sent } = scripted();
+    print('uciok');
+    const first = watch(['e2e4']);
+    await decided();
+    first.release();
+    watch(['e2e4']);
+    await decided();
+    expect(sent).not.toContain('stop');
+  });
+
+  it('searches a position once for every watcher', async () => {
+    const { print, depth, sent } = scripted();
+    print('uciok');
+    const bar = watch(['e2e4']);
+    const label = engine.stockfishAnalysis(['e2e4']);
+    await decided();
+    depth(10, 50_000, REPLIES);
+    print('bestmove e7e5');
+    expect((await label).lines.map(({ uci }) => uci)).toEqual(REPLIES);
+    expect(bar.updates.at(-1)).toEqual(await label);
+    expect(sent.filter((command) => command.startsWith('position'))).toHaveLength(1);
+  });
+
   it('runs a search again on an engine that takes over mid-search', async () => {
     const first = scripted();
     first.print('uciok');
-    const evaluation = engine.stockfishEvaluation(['e2e4']);
-    expect(first.sent).toContain('position startpos moves e2e4');
+    const watched = watch(['e2e4']);
+    await decided();
+    expect(first.searching()).toBe('position startpos moves e2e4');
 
     // The web view reloads: a new engine is attached without detaching the old.
     const second = scripted();
-    first.print('info depth 10 score cp 900'); // The old engine is ignored.
+    first.depth(10, 50_000, ['a7a6', 'h7h6', 'g7g5']); // The old engine is ignored.
     second.print('uciok');
-    expect(second.sent).toContain('position startpos moves e2e4');
-    second.print('info depth 12 score cp 30');
+    expect(second.searching()).toBe('position startpos moves e2e4');
+    second.depth(10, 50_000, REPLIES);
     second.print('bestmove e7e5');
-    expect((await evaluation).pawns).toBe(-0.3);
+    expect(watched.told()).toEqual([
+      [10, REPLIES, false],
+      [10, REPLIES, true],
+    ]);
   });
 
-  it('keeps what is waiting for the next engine when one stops', async () => {
+  it('keeps what is watched for the next engine when one is detached', async () => {
     const first = scripted();
     first.print('uciok');
-    const evaluation = engine.stockfishEvaluation(['d2d4']);
-    first.print('info depth 10 score cp 900');
+    const watched = watch(['d2d4']);
+    await decided();
     first.connection.detach(); // Maia was chosen.
-
     const second = scripted();
     second.print('uciok');
-    expect(second.sent).toContain('position startpos moves d2d4');
-    // The old engine's score isn't carried over to the new one.
-    second.print('bestmove d7d5');
-    await expect(evaluation).rejects.toThrow('without a score');
-  });
-
-  it('runs the newest waiting search first, then the older ones', async () => {
-    const older = engine.stockfishEvaluation(['e2e4']);
-    const newer = engine.stockfishEvaluation(['d2d4']);
-    const { print, sent } = scripted();
-    print('uciok');
-    expect(sent.at(-2)).toBe('position startpos moves d2d4');
-    print('info depth 12 score cp -20 pv d7d5');
-    print('bestmove d7d5');
-    expect(await newer).toEqual({ score: expect.any(Number), pawns: 0.2, best: 'd7d5' });
-    expect(sent.at(-2)).toBe('position startpos moves e2e4');
-    print('info depth 12 score cp -30');
-    print('bestmove e7e5');
-    expect((await older).pawns).toBe(0.3);
-  });
-
-  it('searches for the top moves only once no evaluation waits, ranking three', async () => {
-    const top = engine.stockfishTopMoves(['e2e4']);
-    const evaluation = engine.stockfishEvaluation(['d2d4']);
-    const { print, sent } = scripted();
-    print('uciok');
-    // The evaluation asked for later runs first, with the engine's one line.
-    expect(sent.slice(-3)).toEqual([
-      'ucinewgame',
-      'position startpos moves d2d4',
-      'go nodes 100000 movetime 1500',
-    ]);
-    print('info depth 12 multipv 1 score cp -20 pv d7d5');
-    print('bestmove d7d5');
-    await evaluation;
-    // Three times the positions, to rank each as deep as an evaluation.
-    expect(sent.slice(-3)).toEqual([
-      'setoption name MultiPV value 3',
-      'position startpos moves e2e4',
-      'go nodes 300000 movetime 4500',
-    ]);
-    print('info depth 10 multipv 1 score cp -30 pv c7c5');
-    print('info depth 10 multipv 2 score cp -20 pv e7e5');
-    print('info depth 10 multipv 3 score cp -15 pv c7c6');
-    print('bestmove c7c5');
-    expect((await top).map(({ uci, evaluation }) => [uci, evaluation.pawns])).toEqual([
-      ['c7c5', 0.3],
-      ['e7e5', 0.2],
-      ['c7c6', 0.15],
-    ]);
-
-    // The next evaluation sets one line again.
-    const next = engine.stockfishEvaluation(['g1f3']);
-    expect(sent.slice(-3, -1)).toEqual([
-      'setoption name MultiPV value 1',
-      'position startpos moves g1f3',
-    ]);
-    print('info depth 12 multipv 1 score cp 20 pv d7d5');
-    print('bestmove d7d5');
-    await next;
-  });
-
-  it('drops a top-moves search the screen has left, and searches the one it shows once that evaluation has', async () => {
-    const older = engine.stockfishEvaluation(['e2e4']);
-    const left = engine.stockfishTopMoves(['e2e4', 'e7e5']);
-    const leftBehind = expect(left).rejects.toMatchObject({ name: 'AbortError' });
-    const shown = engine.stockfishEvaluation(['d2d4', 'd7d5']);
-    const current = engine.stockfishTopMoves(['d2d4', 'd7d5']);
-    await leftBehind;
-    const { print, sent } = scripted();
-    print('uciok');
-    // The evaluation of the position on screen runs first, so the bar moves
-    // before its top moves are ranked. The search that was left never starts.
-    expect(sent.join('\n')).not.toContain('e7e5');
-    expect(sent).not.toContain('setoption name MultiPV value 3');
-    expect(sent.slice(-3)).toEqual([
-      'ucinewgame',
-      'position startpos moves d2d4 d7d5',
-      'go nodes 100000 movetime 1500',
-    ]);
-    print('info depth 12 score cp 20 pv d2d4');
-    print('bestmove d2d4');
-    await shown;
-    expect(sent.slice(-3, -1)).toEqual([
-      'setoption name MultiPV value 3',
-      'position startpos moves d2d4 d7d5',
-    ]);
-    print('info depth 12 multipv 1 score cp 30 pv d7d5');
-    print('info depth 12 multipv 2 score cp 10 pv e7e6');
-    print('bestmove d7d5');
-    await current;
-    expect(sent.join('\n')).not.toContain('e2e4 e7e5');
-    print('info depth 8 score cp 12 pv e4');
-    print('bestmove e2e4');
-    await older;
-    expect(sent).toContain('setoption name MultiPV value 1');
-  });
-
-  it('drops a top-moves search the screen has left before the engine starts it', async () => {
-    const left = engine.stockfishTopMoves(['e2e4', 'e7e5']);
-    const failed = expect(left).rejects.toMatchObject({ name: 'AbortError' });
-    const evaluation = engine.stockfishEvaluation(['d2d4']);
-    const current = engine.stockfishTopMoves(['d2d4']);
-    await failed;
-    const { print, sent } = scripted();
-    print('uciok');
-    expect(sent.join('\n')).not.toContain('e7e5');
-    expect(sent.at(-2)).toBe('position startpos moves d2d4');
-    print('info depth 8 score cp 12 pv d4');
-    print('bestmove d2d4');
-    await evaluation;
-    expect(sent).toContain('setoption name MultiPV value 3');
-    print('info depth 10 multipv 1 score cp 20 pv d7d5');
-    print('bestmove d7d5');
-    await current;
-  });
-
-  it('stops a top-moves search the screen has left while it runs, and ignores its result', async () => {
-    const { print, sent } = scripted();
-    print('uciok');
-    const left = engine.stockfishTopMoves(['e2e4']);
-    const failed = expect(left).rejects.toMatchObject({ name: 'AbortError' });
-    expect(sent).toContain('setoption name MultiPV value 3');
-    const current = engine.stockfishTopMoves(['d2d4']);
-    await failed;
-    expect(sent.at(-1)).toBe('stop');
-    // The stopped search's bestmove arrives and is discarded; the new one runs.
-    print('bestmove e2e4');
-    expect(sent.at(-2)).toBe('position startpos moves d2d4');
-    print('info depth 10 multipv 1 score cp 20 pv d7d5');
-    print('bestmove d7d5');
-    await current;
-  });
-
-  it('never runs a stopped top-moves search again on the next engine', async () => {
-    const first = scripted();
-    first.print('uciok');
-    const left = engine.stockfishTopMoves(['e2e4']);
-    const failed = expect(left).rejects.toMatchObject({ name: 'AbortError' });
-    const current = engine.stockfishTopMoves(['d2d4']);
-    await failed;
-    // The engine crashes before the stopped search answers.
-    first.connection.fail('out of memory');
-    const second = scripted();
-    second.print('uciok');
-    expect(second.sent).not.toContain('position startpos moves e2e4');
-    expect(second.sent).toContain('position startpos moves d2d4');
-    second.print('info depth 10 multipv 1 score cp 20 pv d7d5');
-    second.print('bestmove d7d5');
-    await current;
-  });
-
-  it('sends no MultiPV setting while the number of ranks stays the same', async () => {
-    const { print, sent } = scripted();
-    print('uciok');
-    for (const move of ['e2e4', 'd2d4']) {
-      const evaluation = engine.stockfishEvaluation([move]);
-      expect(sent.slice(-3)).toEqual([
-        'ucinewgame',
-        `position startpos moves ${move}`,
-        'go nodes 100000 movetime 1500',
-      ]);
-      print('info depth 12 multipv 1 score cp 20 pv d7d5');
-      print('bestmove d7d5');
-      await evaluation;
-    }
-    // The engine starts at one rank, so evaluations never set it.
-    expect(sent.filter((command) => command.startsWith('setoption'))).toEqual([]);
+    expect(second.searching()).toBe('position startpos moves d2d4');
+    expect(watched.failures).toEqual([]);
   });
 
   it('restarts an engine that crashes, and runs its search on the next', async () => {
     const first = scripted();
     first.print('uciok');
     expect(first.supervisor.ready).toHaveBeenCalled();
-    const evaluation = engine.stockfishEvaluation(['e2e4']);
+    const watched = watch(['e2e4']);
+    await decided();
     first.connection.fail('out of memory');
     expect(first.supervisor.failed).toHaveBeenCalledTimes(1);
     first.connection.fail('again'); // A crash reported twice is one failure.
@@ -229,61 +250,107 @@ describe('the engine lifecycle', () => {
 
     const second = scripted();
     second.print('uciok');
-    expect(second.sent).toContain('position startpos moves e2e4');
-    second.print('info depth 12 score cp 30');
+    second.depth(10, 50_000, REPLIES);
     second.print('bestmove e7e5');
-    expect((await evaluation).pawns).toBe(-0.3);
+    expect(watched.updates.at(-1)?.final).toBe(true);
   });
 
-  it('restarts an engine that stops answering', () => {
+  it('restarts an engine that goes quiet and then ignores isready', async () => {
     jest.useFakeTimers();
     try {
-      // An engine that never finishes its handshake gets 10 s.
+      // An engine that never finishes its handshake is asked after 10 s, and gets 3 s more.
       const silent = scripted();
       jest.advanceTimersByTime(9_999);
+      expect(silent.sent).toEqual(['uci']);
+      jest.advanceTimersByTime(1);
+      expect(silent.sent).toEqual(['uci', 'isready']);
+      jest.advanceTimersByTime(2_999);
       expect(silent.supervisor.failed).not.toHaveBeenCalled();
       jest.advanceTimersByTime(1);
       expect(silent.supervisor.failed).toHaveBeenCalledTimes(1);
 
+      // A search is asked 10 s after each line it prints.
       const stuck = scripted();
       stuck.print('uciok');
-      void engine.stockfishEvaluation(['e2e4']);
-      // So does one that thinks but never finishes its search.
-      stuck.print('info depth 10 score cp 20');
+      const watched = watch(['e2e4']);
+      await Promise.resolve();
+      jest.advanceTimersByTime(9_000);
+      stuck.depth(10, 50_000, REPLIES);
       jest.advanceTimersByTime(9_999);
+      expect(stuck.sent.at(-1)).toBe('go nodes 2000000');
+      jest.advanceTimersByTime(1);
+      expect(stuck.sent.at(-1)).toBe('isready');
+      // One that answers keeps searching, however long its depth takes, and
+      // is asked again 10 s later; this one never answers again.
+      stuck.print('readyok');
+      jest.advanceTimersByTime(12_999);
       expect(stuck.supervisor.failed).not.toHaveBeenCalled();
       jest.advanceTimersByTime(1);
       expect(stuck.supervisor.failed).toHaveBeenCalledTimes(1);
 
-      // An engine that answers in time isn't failed, nor one that was detached.
-      const working = scripted();
-      working.print('uciok');
-      working.print('info depth 12 score cp 20');
-      working.print('bestmove e7e5');
-      working.connection.detach();
+      // One that answers every isready but never gets on with its search
+      // most likely lost the `go`: its sixth answer in a row fails it.
+      const lost = scripted();
+      lost.print('uciok');
+      for (let answers = 1; answers < 6; answers++) {
+        jest.advanceTimersByTime(10_000);
+        lost.print('readyok');
+      }
+      expect(lost.supervisor.failed).not.toHaveBeenCalled();
+      jest.advanceTimersByTime(10_000);
+      lost.print('readyok');
+      expect(lost.supervisor.failed).toHaveBeenCalledTimes(1);
+
+      // Any other line starts the count again.
+      const slow = scripted();
+      slow.print('uciok');
+      const slowWatched = watch(['g1f3']);
+      // Fake timers hold the decision's microtask too.
+      jest.advanceTimersByTime(0);
+      expect(slow.searching()).toBe('position startpos moves g1f3');
+      for (let answers = 1; answers < 6; answers++) {
+        jest.advanceTimersByTime(10_000);
+        slow.print('readyok');
+      }
+      slow.depth(11, 60_000, REPLIES);
+      for (let answers = 1; answers < 6; answers++) {
+        jest.advanceTimersByTime(10_000);
+        slow.print('readyok');
+      }
+      expect(slow.supervisor.failed).not.toHaveBeenCalled();
+      slowWatched.release();
+
+      // An idle engine isn't failed, nor one that was detached.
+      watched.release();
+      await Promise.resolve();
+      const idle = scripted();
+      idle.print('uciok');
       jest.advanceTimersByTime(60_000);
-      expect(working.supervisor.failed).not.toHaveBeenCalled();
+      expect(idle.supervisor.failed).not.toHaveBeenCalled();
+      idle.connection.detach();
+      jest.advanceTimersByTime(60_000);
+      expect(idle.supervisor.failed).not.toHaveBeenCalled();
     } finally {
       jest.useRealTimers();
     }
   });
 
-  it('gives up on a search that two engines failed on, and runs the rest', async () => {
-    const other = engine.stockfishEvaluation(['d2d4']);
-    const crashing = engine.stockfishEvaluation(['e2e4']);
+  it('gives up on a position two engines failed on, and runs the rest', async () => {
+    const other = watch(['d2d4']);
+    const crashing = watch(['e2e4']);
     for (let engines = 0; engines < 2; engines++) {
-      const { print, sent, connection } = scripted();
+      const { print, searching, connection } = scripted();
       print('uciok');
-      expect(sent.at(-2)).toBe('position startpos moves e2e4');
+      expect(searching()).toBe('position startpos moves e2e4');
       connection.fail('out of memory');
     }
-    await expect(crashing).rejects.toThrow('Stockfish stopped 2 times on this position');
+    expect(crashing.failures.map(({ message }) => message)).toEqual([
+      'Stockfish stopped 2 times on this position: out of memory',
+    ]);
 
-    const { print, sent } = scripted();
+    const { print, searching } = scripted();
     print('uciok');
-    expect(sent.at(-2)).toBe('position startpos moves d2d4');
-    print('info depth 12 score cp 30');
-    print('bestmove d7d5');
-    expect((await other).pawns).toBe(-0.3);
+    expect(searching()).toBe('position startpos moves d2d4');
+    expect(other.failures).toEqual([]);
   });
 });

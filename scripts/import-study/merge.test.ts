@@ -1,4 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
+import { settledAnalysis } from '@/evaluation/evaluation';
 import { checkLesson } from '@/lesson/check';
 import { keyAfter, SAMPLE } from '@/lesson/lesson.fixture';
 
@@ -30,7 +31,7 @@ describe('mergeChapters', () => {
   });
 
   it('writes a lesson the checker accepts, once fillBook has picked the book moves it leaves open', async () => {
-    const even = async () => ({ score: 0.5, pawns: 0 });
+    const even = async () => settledAnalysis({ score: 0.5, pawns: 0 });
     expect(checkLesson((await fillBook(lesson, even)).lesson)).toEqual([]);
   });
 

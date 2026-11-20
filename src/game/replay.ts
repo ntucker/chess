@@ -2,6 +2,7 @@ import { castlingSide, Chess } from 'chessops/chess';
 import { chessgroundDests, chessgroundMove } from 'chessops/compat';
 import { makeFen, parseFen } from 'chessops/fen';
 import { makeSanAndPlay, parseSan } from 'chessops/san';
+import { SquareSet } from 'chessops/squareSet';
 import type { Color, Piece, SquareName } from 'chessops/types';
 import { kingCastlesTo, makeUci, opposite, parseSquare, parseUci } from 'chessops/util';
 
@@ -193,6 +194,22 @@ function gameResult(pos: Chess, repetitions: number): GameResult | undefined {
 export function lastPosition(line: readonly string[]): Position {
   const plies = replay(line);
   return analyze(plies[plies.length - 1]);
+}
+
+/**
+ * How many moves are legal in the position after `line`, as an engine counts
+ * them: a pawn's promotion is four moves, one for each piece.
+ */
+export function legalMoveCount(line: readonly string[]): number {
+  let last: Chess | undefined;
+  for (const { pos } of playLine(line)) last = pos;
+  const pos = last!;
+  let count = 0;
+  for (const [from, dests] of pos.allDests()) {
+    const pawn = pos.board.pawn.has(from);
+    for (const to of dests) count += pawn && SquareSet.backranks().has(to) ? 4 : 1;
+  }
+  return count;
 }
 
 /**
