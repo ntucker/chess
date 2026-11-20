@@ -5,7 +5,7 @@ import './narrow.css';
 /**
  * Whether narrow.css can apply: only on the web, where it decides a narrow
  * page by a media query. Off the web, `Narrow.tsx` decides it from the
- * window's width and applies the same lengths and parts as styles.
+ * room the page has and applies the same lengths and parts as styles.
  */
 export const NARROW_CSS_LOADS = process.env.EXPO_OS === 'web';
 
@@ -87,13 +87,24 @@ export const NARROW_PARTS = [
   'panes',
   'moves-pane',
   'idea-pane',
-  'share-track',
   'leads-to',
-  'leads-to-compact',
 ] as const;
 
 /** A part of the page, as narrow.css names it. */
 export type NarrowPartName = (typeof NARROW_PARTS)[number];
+
+/**
+ * The parts that scroll on their own on a narrow page. Only `NarrowScroll`
+ * names them, as natively it must be a scroll view (narrow.test.ts checks
+ * that these, and only these, scroll in narrow.css).
+ */
+export const SCROLLING_PARTS = [
+  'program',
+  'moves-pane',
+  'idea-pane',
+] as const satisfies readonly NarrowPartName[];
+
+export type ScrollingPart = (typeof SCROLLING_PARTS)[number];
 
 /**
  * A length that is shorter on a narrow page, or a sum of such lengths. Work
@@ -229,9 +240,7 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
   },
   'moves-pane': { narrow: { flexGrow: 2, flexShrink: 1, flexBasis: 0, minWidth: 0 } },
   'idea-pane': { narrow: { flexGrow: 3, flexShrink: 1, flexBasis: 0, minWidth: 0 } },
-  'share-track': { narrow: { display: 'none' } },
   'leads-to': { narrowProps: { numberOfLines: undefined } },
-  'leads-to-compact': { narrow: { display: 'none' } },
 };
 
 /** What narrow.css does to a part that scrolls on its own: `NarrowScroll` does it natively. */

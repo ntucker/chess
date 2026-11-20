@@ -1,12 +1,5 @@
-import { type ReactNode, useSyncExternalStore } from 'react';
-import {
-  Dimensions,
-  ScrollView,
-  type StyleProp,
-  type TextStyle,
-  View,
-  type ViewStyle,
-} from 'react-native';
+import type { ReactNode } from 'react';
+import { ScrollView, type StyleProp, type TextStyle, View, type ViewStyle } from 'react-native';
 import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SIDE_BY_SIDE_MIN } from '@/components/sideBySide';
@@ -18,26 +11,32 @@ import {
   type NarrowStyles,
   PX,
   type Px,
+  type ScrollingPart,
 } from '@/theme/narrow';
 
 /**
  * Whether the page is narrow, off the web: too narrow for the panel beside
- * the board, as narrow.css's media query decides it on the web. The one place
- * native reads the window's width; a component re-renders only when the
- * answer changes, not on every resize. The web can't tell (its pages are rendered
- * before there's a window), so it lets narrow.css decide.
+ * the board, as narrow.css's media query decides it on the web. Native
+ * decides it from the room the page lays out in (`useNativeArea`). The web
+ * can't tell (its pages are rendered before there's a window), so it lets
+ * narrow.css decide.
  */
-const useIsNarrow = NARROW_CSS_LOADS ? () => false : useIsNarrowWindow;
+const useIsNarrow = NARROW_CSS_LOADS ? () => false : useIsNarrowArea;
 
-function useIsNarrowWindow() {
-  return useSyncExternalStore(onResize, isNarrowWindow);
+function useIsNarrowArea() {
+  return useNativeArea().width < SIDE_BY_SIDE_MIN;
 }
 
-const isNarrowWindow = () => Dimensions.get('window').width < SIDE_BY_SIDE_MIN;
-
-function onResize(change: () => void) {
-  const subscription = Dimensions.addEventListener('change', change);
-  return () => subscription.remove();
+/**
+ * The room the page lays out in natively: the app's frame less its system
+ * bars and cutouts, which the page's safe area keeps it out of (Page.tsx).
+ * The one place native reads the window's size.
+ */
+function useNativeArea() {
+  // The frame the insets are measured in, so no bar is taken off twice.
+  const { width, height } = useSafeAreaFrame();
+  const { top, bottom, left, right } = useSafeAreaInsets();
+  return { width: width - left - right, height: height - top - bottom };
 }
 
 /** The styles of `narrowStyles` for the page as it is. */
@@ -66,14 +65,21 @@ interface PartProps {
  */
 export function useNarrowPart() {
   const narrow = useIsNarrow();
-  return (part: NarrowPartName | false | undefined, style?: AnyStyle): PartProps => {
-    const own = style === undefined ? {} : { style };
-    if (!part) return own;
-    if (NARROW_CSS_LOADS) return { dataSet: { narrow: part }, ...own };
-    const { wide, narrow: narrowStyle, narrowProps } = NATIVE_PARTS[part];
-    const added = narrow ? narrowStyle : wide;
-    return { style: added ? [style, added] : style, ...(narrow ? narrowProps : {}) };
-  };
+  return (part: Exclude<NarrowPartName, ScrollingPart> | false | undefined, style?: AnyStyle) =>
+    partProps(narrow, part, style);
+}
+
+function partProps(
+  narrow: boolean,
+  part: NarrowPartName | false | undefined,
+  style: AnyStyle,
+): PartProps {
+  const own = style === undefined ? {} : { style };
+  if (!part) return own;
+  if (NARROW_CSS_LOADS) return { dataSet: { narrow: part }, ...own };
+  const { wide, narrow: narrowStyle, narrowProps } = NATIVE_PARTS[part];
+  const added = narrow ? narrowStyle : wide;
+  return { style: added ? [style, added] : style, ...(narrow ? narrowProps : {}) };
 }
 
 /**
@@ -84,9 +90,6 @@ export function NarrowOnly({ children }: { readonly children: ReactNode }) {
   const part = useNarrowPart();
   return <View {...part('narrow-only')}>{children}</View>;
 }
-
-/** The parts that scroll on their own on a narrow page. */
-type ScrollingPart = 'program' | 'moves-pane' | 'idea-pane';
 
 /**
  * A part that scrolls on its own on a narrow page, fading out its bottom edge
@@ -107,11 +110,12 @@ export function NarrowScroll({
   readonly children: ReactNode;
 }) {
   const narrow = useIsNarrow();
-  const part = useNarrowPart();
-  if (NARROW_CSS_LOADS) return <View {...part(name, [style, contentStyle])}>{children}</View>;
+  if (NARROW_CSS_LOADS) {
+    return <View {...partProps(narrow, name, [style, contentStyle])}>{children}</View>;
+  }
   return (
     <ScrollView
-      {...part(name, style)}
+      {...partProps(narrow, name, style)}
       contentContainerStyle={[contentStyle, narrow && FADED]}
       scrollEnabled={narrow}
       nestedScrollEnabled
@@ -133,9 +137,6 @@ export const useNarrowViewport: () => { readonly px: Px; readonly height: number
   NARROW_CSS_LOADS ? () => undefined : useNativeViewport;
 
 function useNativeViewport() {
-  const narrow = useIsNarrow();
-  // The frame the insets are measured in, so neither bar is taken off twice.
-  const { height } = useSafeAreaFrame();
-  const { top, bottom } = useSafeAreaInsets();
-  return { px: narrow ? PX.narrow : PX.wide, height: height - top - bottom };
+  const { width, height } = useNativeArea();
+  return { px: width < SIDE_BY_SIDE_MIN ? PX.narrow : PX.wide, height };
 }

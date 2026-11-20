@@ -136,17 +136,9 @@
   :root [data-narrow='idea-pane'] {
     flex: 3 1 0;
   }
-  /* A candidate list (CandidateList.tsx), in its narrow pane: without the share bars. */
-  :root [data-narrow='share-track'] {
-    display: none;
-  }
-  /* Where a row leads wraps rather than lose its end... */
+  /* Where a candidate row leads (CandidateList.tsx) wraps rather than lose its end. */
   :root [data-narrow='leads-to'] {
     white-space: normal;
-  }
-  /* ...or in a compact list, a line under the list names it for the move pointed at. */
-  :root [data-narrow='leads-to-compact'] {
-    display: none;
   }
   :root [data-narrow='page'] {
     flex-grow: 1;

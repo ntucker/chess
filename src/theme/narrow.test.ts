@@ -9,6 +9,7 @@ import {
   NARROW_PX,
   NATIVE_PARTS,
   narrowLength,
+  SCROLLING_PARTS,
   narrowStyles,
 } from './narrow';
 
@@ -70,6 +71,11 @@ describe('narrow.css', () => {
     const native = [...asCss(NATIVE_PARTS[part].narrow), ...(CSS_ONLY[part] ?? [])];
     expect([...(narrowRules.get(part) ?? [])].sort()).toEqual(native.sort());
     expect([...(wideRules.get(part) ?? [])].sort()).toEqual(asCss(NATIVE_PARTS[part].wide).sort());
+  });
+
+  it.each(NARROW_PARTS)('scrolls the %s only if NarrowScroll names it', (part) => {
+    const scrolls = narrowRules.get(part)?.includes('overflow-y: auto') ?? false;
+    expect(scrolls).toBe((SCROLLING_PARTS as readonly string[]).includes(part));
   });
 
   it('names each part alone, with no selector reaching inside another part', () => {

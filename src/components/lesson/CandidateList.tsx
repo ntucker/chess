@@ -282,7 +282,7 @@ function Row({
             role="caption"
             tone="secondary"
             numberOfLines={1}
-            {...part(compact ? 'leads-to-compact' : 'leads-to')}
+            {...part(compact ? 'wide-only' : 'leads-to')}
           >
             {leadsTo}
           </Text>
@@ -295,11 +295,9 @@ function Row({
       ) : null}
       {share === undefined ? null : (
         <View style={styles.share}>
+          {/* A narrow pane has no room for the bar. */}
           <View
-            {...part('share-track', [
-              styles.track,
-              { backgroundColor: color.tones.neutral.subtle },
-            ])}
+            {...part('wide-only', [styles.track, { backgroundColor: color.tones.neutral.subtle }])}
           >
             <View style={[styles.fillBar, { width: `${share * 100}%`, backgroundColor: tone }]} />
           </View>
