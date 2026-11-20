@@ -143,12 +143,11 @@ describe('the engine lifecycle', () => {
     expect(sent).toContain('setoption name MultiPV value 1');
   });
 
-  it('drops a top-moves search aborted before the engine starts it', async () => {
-    const controller = new AbortController();
-    const aborted = engine.stockfishTopMoves(['e2e4', 'e7e5'], controller.signal);
-    const failed = expect(aborted).rejects.toMatchObject({ name: 'AbortError' });
+  it('drops a top-moves search the screen has left before the engine starts it', async () => {
+    const left = engine.stockfishTopMoves(['e2e4', 'e7e5']);
+    const failed = expect(left).rejects.toMatchObject({ name: 'AbortError' });
     const evaluation = engine.stockfishEvaluation(['d2d4']);
-    controller.abort();
+    const current = engine.stockfishTopMoves(['d2d4']);
     await failed;
     const { print, sent } = scripted();
     print('uciok');
@@ -157,25 +156,27 @@ describe('the engine lifecycle', () => {
     print('info depth 8 score cp 12 pv d4');
     print('bestmove d2d4');
     await evaluation;
+    expect(sent).toContain('setoption name MultiPV value 3');
+    print('info depth 10 multipv 1 score cp 20 pv d7d5');
+    print('bestmove d7d5');
+    await current;
   });
 
-  it('stops a top-moves search aborted while it runs, and ignores its result', async () => {
+  it('stops a top-moves search the screen has left while it runs, and ignores its result', async () => {
     const { print, sent } = scripted();
     print('uciok');
-    const controller = new AbortController();
-    const running = engine.stockfishTopMoves(['e2e4'], controller.signal);
-    const failed = expect(running).rejects.toMatchObject({ name: 'AbortError' });
+    const left = engine.stockfishTopMoves(['e2e4']);
+    const failed = expect(left).rejects.toMatchObject({ name: 'AbortError' });
     expect(sent).toContain('setoption name MultiPV value 3');
-    controller.abort();
+    const current = engine.stockfishTopMoves(['d2d4']);
     await failed;
     expect(sent.at(-1)).toBe('stop');
-    const evaluation = engine.stockfishEvaluation(['d2d4']);
-    // The stopped search's bestmove arrives and is discarded; the evaluation runs.
+    // The stopped search's bestmove arrives and is discarded; the new one runs.
     print('bestmove e2e4');
     expect(sent.at(-2)).toBe('position startpos moves d2d4');
-    print('info depth 8 score cp 12 pv d4');
-    print('bestmove d2d4');
-    await evaluation;
+    print('info depth 10 multipv 1 score cp 20 pv d7d5');
+    print('bestmove d7d5');
+    await current;
   });
 
   it('sends no MultiPV setting while the number of ranks stays the same', async () => {

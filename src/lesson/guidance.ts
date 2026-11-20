@@ -48,7 +48,6 @@
  * guidance stays in lesson terms; lessonDrawings (./drawings.ts) turns it
  * into board shapes, and says which ideas draw nothing (`drawsOnBoard`).
  */
-import { lineMove } from '@/game/replay';
 import type { Settings } from '@/settings/settings';
 
 import { drawsOnBoard } from './drawings';
@@ -231,45 +230,6 @@ export function guidance(input: GuidanceInput): Guidance {
     top,
     trap,
     lineEnded: view.lineEnd !== undefined && newsShown(view, view.lineEnd),
-  };
-}
-
-/**
- * `shown` with every move that is illegal in `fen` removed, from the list and
- * from the arrows. A top-moves search that finishes for a position the board
- * has left must not list or draw a move the position on screen cannot play.
- * Returns `shown` itself when every move is legal.
- */
-export function onlyLegal(shown: Guidance, fen: string): Guidance {
-  const keep = (candidate: Candidate) => lineMove(fen, candidate.move.uci) !== undefined;
-  const candidates = shown.candidates.filter(keep);
-  const rare = shown.rare.filter(keep);
-  const top = shown.top.filter(keep);
-  const drawnCandidates = shown.drawnCandidates.filter(keep);
-  const best = shown.best !== undefined && lineMove(fen, shown.best) ? shown.best : undefined;
-  const preview = shown.preview && keep(shown.preview.candidate) ? shown.preview : undefined;
-  if (
-    candidates.length === shown.candidates.length &&
-    rare.length === shown.rare.length &&
-    top.length === shown.top.length &&
-    drawnCandidates.length === shown.drawnCandidates.length &&
-    best === shown.best &&
-    preview === shown.preview
-  ) {
-    return shown;
-  }
-  return {
-    ...shown,
-    candidates,
-    rare,
-    top,
-    drawnCandidates,
-    best,
-    preview,
-    main:
-      shown.main !== undefined && candidates.includes(shown.main)
-        ? shown.main
-        : mainCandidate(candidates),
   };
 }
 

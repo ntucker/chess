@@ -1,7 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { lastPosition } from '@/game/replay';
-
 import {
   guidance,
   type Guidance,
@@ -9,7 +7,6 @@ import {
   type LessonMode,
   type LessonSwitches,
   notePlayback,
-  onlyLegal,
   type ShownIdea,
 } from './guidance';
 import type { Idea } from './lesson';
@@ -579,35 +576,5 @@ describe('guidance', () => {
       expect(trapAt(TRAP_PUNISHED)).toBeDefined();
       expect(trapAt([...TRAP_PUNISHED, 'a6'])).toBeUndefined();
     });
-  });
-
-  it('drops a move the position on the board cannot play, from the list and the arrows', () => {
-    const line = uciLine(...ADVANCE, 'a6');
-    const base = guidance({
-      view: sampleView(line),
-      mode: 'explore',
-      switches: ALL_ON,
-      engine: engineView(line, { top: ['c2c3'] }),
-    });
-    const [legalMove] = base.top;
-    const illegal = {
-      ...legalMove,
-      move: { ...legalMove.move, uci: 'e2e5' },
-      san: 'e5',
-      from: 'e2' as const,
-    };
-    const poisoned = {
-      ...base,
-      top: [illegal, legalMove],
-      drawnCandidates: [illegal, legalMove],
-      best: 'e2e5',
-    };
-    const fen = lastPosition(line).fen;
-    const legal = onlyLegal(poisoned, fen);
-    expect(legal.top.map(({ san }) => san)).toEqual(['c3']);
-    expect(legal.drawnCandidates.map(({ san }) => san)).toEqual(['c3']);
-    expect(legal.best).toBeUndefined();
-    // Every listed move can be played, so the guidance comes back unchanged.
-    expect(onlyLegal(base, fen)).toBe(base);
   });
 });

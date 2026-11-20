@@ -117,7 +117,7 @@ let watchdog: ReturnType<typeof setTimeout> | undefined;
  * running. A top-moves search then runs ahead of evaluations queued before
  * it, once its own position's evaluation has: move labels need every
  * evaluation, but nothing needs the top moves of a position the board has
- * left, so those are dropped (`supersedeTopMoves`).
+ * left, so a newer one drops those, waiting or running (`supersedeTopMoves`).
  */
 const pending: Search[] = [];
 
@@ -166,14 +166,13 @@ export async function stockfishEvaluation(line: readonly string[]): Promise<Eval
  * legal, none once the game is over. It runs once that position's evaluation
  * has (see `pending`), ahead of evaluations for positions already left, with
  * a search of its own: three lines reach less deep than one, so an evaluation
- * is never read from it. A newer request, or `signal` aborting, drops this
- * one if it has not finished: the screen no longer shows the position.
+ * is never read from it. A newer request drops this one if it has not
+ * finished: one still waiting never starts, and one already running is
+ * told to stop. Its result is ignored. A search already running when the
+ * screen leaves without asking for another finishes, and is kept.
  */
-export async function stockfishTopMoves(
-  line: readonly string[],
-  signal?: AbortSignal,
-): Promise<TopMove[]> {
-  const { lines } = await search(line, TOP_MOVES, signal);
+export async function stockfishTopMoves(line: readonly string[]): Promise<TopMove[]> {
+  const { lines } = await search(line, TOP_MOVES);
   return lines.flatMap(({ move, score }) =>
     move ? [{ uci: move, evaluation: evaluationFromScore(score, line.length) }] : [],
   );
@@ -212,24 +211,20 @@ function cancel(search: Search) {
   search.reject(abortError());
 }
 
-/** Drops every queued top-moves search. The one the screen shows now replaces them. */
+/** Drops every top-moves search the screen has left, including one already running. */
 function supersedeTopMoves() {
   for (let i = pending.length - 1; i >= 0; i--) {
     if (pending[i].ranks > 1) cancel(pending[i]);
   }
+  if (running && !running.cancelled && running.ranks > 1) cancel(running);
 }
 
-function search(line: readonly string[], ranks: number, signal?: AbortSignal): Promise<Found> {
+function search(line: readonly string[], ranks: number): Promise<Found> {
   return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(abortError());
-      return;
-    }
     let settled = false;
     const finish = (settle: () => void) => {
       if (settled) return;
       settled = true;
-      signal?.removeEventListener('abort', onAbort);
       settle();
     };
     const entry: Search = {
@@ -241,13 +236,11 @@ function search(line: readonly string[], ranks: number, signal?: AbortSignal): P
       failures: 0,
       cancelled: false,
     };
-    const onAbort = () => cancel(entry);
     // A new top-moves search is the only one the screen still shows.
     if (ranks > 1) {
       supersedeTopMoves();
       entry.after = evaluationOf(line);
     }
-    signal?.addEventListener('abort', onAbort);
     pending.push(entry);
     startNext();
   });

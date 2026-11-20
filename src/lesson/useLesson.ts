@@ -7,7 +7,7 @@
  * Explore, and the board. Where the opponent plays its own moves (`opponentPlays`) the learner
  * moves their own side; elsewhere, either.
  */
-import { useCache, useCancelling, useController, useFetch, useSuspense } from '@data-client/react';
+import { useCache, useController, useFetch, useSuspense } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
 import { useEffect, useMemo, useReducer } from 'react';
 
@@ -16,7 +16,7 @@ import type { Drag } from '@/board/pointer';
 import type { BoardProps } from '@/components/Board';
 import { dropMove, parsePositionKey, pieceAt } from '@/game/replay';
 import { type GameStore, useGame } from '@/game/useGame';
-import { getEvaluation, getTopMoves, topMovesSearch } from '@/resources/evaluation';
+import { getEvaluation, getTopMoves } from '@/resources/evaluation';
 import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
 import { hasMark } from '@/progress/progress';
 import { addMark, getProgress } from '@/resources/progress';
@@ -30,7 +30,6 @@ import {
   type LessonMode,
   listsTopMoves,
   notePlayback,
-  onlyLegal,
   type PlayedBack,
 } from './guidance';
 import type { Lesson, Note, PositionKey, Uci } from './lesson';
@@ -164,33 +163,25 @@ export function useLesson(
   useFetch(getEvaluation, ...evaluationArgs);
   const evaluation = useCache(getEvaluation, ...evaluationArgs);
   const topLine = focused && listsTopMoves(view, mode) ? shownLine : null;
-  // Aborts the previous position's search as the board steps on, before the new one starts.
-  const topMovesEndpoint = useCancelling(getTopMoves, topLine);
-  const topSignal = topLine === null ? undefined : topMovesEndpoint.signal;
-  const topMovesFetch = useMemo(() => topMovesSearch(topSignal), [topSignal]);
-  useFetch(topMovesFetch, topLine);
+  // A newer request drops the one the screen has left, in the engine.
+  useFetch(getTopMoves, topLine);
   const topMoves = useCache(getTopMoves, topLine);
   const top = useMemo(
     () => (topMoves ? engineCandidates(lesson, key, topMoves) : []),
     [lesson, key, topMoves],
   );
   const previewOf = (at: Pointer) => preview(lesson, view, at, top);
-  // Against the position on the board, so a search for one already left
-  // cannot list or draw a move that is illegal here.
-  const shown = onlyLegal(
-    guidance({
-      view,
-      mode,
-      switches: settings,
-      preview: pointer && previewOf(pointer),
-      dragged: pointer?.at === 'drag' ? pointer.from : undefined,
-      selected: pointer?.at === 'select' ? pointer.from : undefined,
-      pointed: here?.note,
-      playing: playing?.played,
-      engine: { best: evaluation?.best, top },
-    }),
-    current.fen,
-  );
+  const shown = guidance({
+    view,
+    mode,
+    switches: settings,
+    preview: pointer && previewOf(pointer),
+    dragged: pointer?.at === 'drag' ? pointer.from : undefined,
+    selected: pointer?.at === 'select' ? pointer.from : undefined,
+    pointed: here?.note,
+    playing: playing?.played,
+    engine: { best: evaluation?.best, top },
+  });
   const frames = shown.playing
     ? ideaPlayback(shown.playing.idea, parsePositionKey(shown.playing.at)!)
     : [];
