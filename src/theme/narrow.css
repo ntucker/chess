@@ -5,11 +5,12 @@
  * narrow window. Everywhere else none of this
  * applies: each length falls back to the wide value written beside it in
  * code, and each part keeps its wide layout. The one exception is the rule
- * just below, which keeps narrow-only parts, and the header's place, hidden
- * outside the media query.
+ * just below, which keeps narrow-only parts, the header's place and the
+ * lesson's scoresheet drawer hidden outside the media query.
  */
 :root [data-narrow='narrow-only'],
-:root [data-narrow='place'] {
+:root [data-narrow='place'],
+:root [data-narrow='scoresheet-drawer'] {
   display: none;
 }
 
@@ -23,9 +24,9 @@
   :root {
     /* Page padding and the gap below the header (Page.tsx). */
     --page-space: 10px;
-    /* The logo, as tall as the source link beside it: the header's height (Header.tsx). */
+    /* The logo, as tall as the round buttons beside it (HeaderButton.tsx): the header's height (Header.tsx). */
     --header-height: 28px;
-    --source-link-size: 28px;
+    --header-button-size: 28px;
     --wordmark-size: 18px;
     /*
      * The name bars above and below the board (Stage.tsx): the one with
@@ -63,6 +64,8 @@
     --board-min: 300px;
     /* ...to leave this much for the panel (a label and a couple of moves) and the gap above it. */
     --panel-reserve: calc(160px + var(--wrapped-gap));
+    /* Read only here: the fade at the bottom of the panel and of each of its panes. */
+    --fade: 16px;
   }
 
   /*
@@ -112,26 +115,63 @@
     gap: 8px;
   }
   /*
-   * A candidate list laid out as chips (CandidateList.tsx): its rows wrap
-   * side by side, each only as wide as its move, its share and its mark.
+   * The lesson's panel (LessonScreen.tsx) fills the space under the board, and
+   * its moves and its idea share that space side by side, each pane scrolling
+   * on its own, so the idea stays in view however long the list. Should the
+   * panel's other parts (a trap's card) crowd them, the panes keep a floor and
+   * the panel scrolls instead.
    */
-  :root [data-narrow='chips'] {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 2px;
-    padding: 4px;
+  :root [data-narrow='lesson-panel'] {
+    flex: 1 0 auto;
+    min-height: 100%;
   }
-  :root [data-narrow='chips'] [data-narrow='chip'] {
+  /* What the scoresheet drawer covers: all but the headline. */
+  :root [data-narrow='lesson-body'] {
+    flex: 1 0 auto;
+  }
+  /*
+   * The scoresheet drawer (ScoresheetDrawer.tsx) takes the panel's place,
+   * filling it and scrolling its moves within. What it covers stays mounted,
+   * hidden as wide-only, so the panes keep their scroll.
+   */
+  :root [data-narrow='scoresheet-drawer'] {
+    display: flex;
+    flex: 1 1 0;
+    min-height: 0;
+    animation: drawer-rise 220ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  :root [data-narrow='panes'] {
+    flex: 1 1 0;
+    flex-direction: row;
+    min-height: 140px;
+  }
+  /* The moves get two parts of the width and the idea three; a pane alone gets all of it. */
+  :root [data-narrow='moves-pane'],
+  :root [data-narrow='idea-pane'] {
+    flex: 2 1 0;
+    min-width: 0;
+    overscroll-behavior: contain;
+  }
+  :root [data-narrow='idea-pane'] {
+    flex-grow: 3;
+  }
+  /*
+   * A candidate list (CandidateList.tsx), in its narrow pane: compact rows,
+   * without the share bars.
+   */
+  :root [data-narrow='candidate-row'] {
     gap: 8px;
     padding: 6px 10px;
-    border-radius: 6px;
   }
-  /* Sized to its content: a move, a share's number. */
-  :root [data-narrow='chips'] [data-narrow='chip-fit'] {
-    flex: none;
-    width: auto;
+  :root [data-narrow='share-track'] {
+    display: none;
   }
-  :root [data-narrow='chips'] [data-narrow='chip-hidden'] {
+  /* Where a row leads wraps rather than lose its end... */
+  :root [data-narrow='leads-to'] {
+    white-space: normal;
+  }
+  /* ...or in a compact list, a line under the list names it for the move pointed at. */
+  :root [data-narrow='compact-list'] [data-narrow='leads-to'] {
     display: none;
   }
   /* A note's verdict with no kind beside it goes below its words (IdeaCard.tsx). */
@@ -155,10 +195,35 @@
     /* The panel's floor: a few lines of it. */
     min-height: 120px;
     width: 100%;
+  }
+  /*
+   * The panel, and the lesson's panes in it, scroll on their own. Each fades
+   * out its bottom edge to show there's more below; the padding lets the last
+   * line clear it.
+   */
+  :root [data-narrow='program'],
+  :root [data-narrow='moves-pane'],
+  :root [data-narrow='idea-pane'] {
     overflow-y: auto;
-    /* Fades out the bottom edge to show there's more below; the padding lets the last line clear it. */
-    padding-bottom: 16px;
+    padding-bottom: var(--fade);
     /* A mask reads only alpha, so black here is opaque, not a theme color. */
-    mask-image: linear-gradient(to bottom, black calc(100% - 16px), transparent);
+    mask-image: linear-gradient(to bottom, black calc(100% - var(--fade)), transparent);
+  }
+  @keyframes drawer-rise {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :root [data-narrow='scoresheet-drawer'] {
+      animation-name: drawer-fade;
+      animation-duration: 120ms;
+    }
+    @keyframes drawer-fade {
+      from {
+        opacity: 0;
+      }
+    }
   }
 }

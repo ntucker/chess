@@ -58,6 +58,8 @@ interface BoardColumnProps {
   readonly board: Omit<BoardProps, 'dom'>;
   /** Swaps the sides: given, either name bar's disc is a button that does it. */
   readonly onSwap?: () => void;
+  /** The move stepper's middle on a narrow web page (`Transport`). */
+  readonly stepperMiddle?: ReactNode;
 }
 
 /**
@@ -65,7 +67,7 @@ interface BoardColumnProps {
  * name bar above it and the player's below, holding the move stepper. The
  * arrow keys step through the moves too.
  */
-export function BoardColumn({ game, rival, board, onSwap }: BoardColumnProps) {
+export function BoardColumn({ game, rival, board, onSwap, stepperMiddle }: BoardColumnProps) {
   const { moves, ply, goto } = game;
   const side = board.orientation;
   const other = opposite(side);
@@ -97,7 +99,7 @@ export function BoardColumn({ game, rival, board, onSwap }: BoardColumnProps) {
         material={game.material[side]}
         swap={swap}
       >
-        <Transport ply={ply} total={moves.length} onGoto={goto} />
+        <Transport ply={ply} total={moves.length} onGoto={goto} middle={stepperMiddle} />
       </PlayerBar>
     </>
   );

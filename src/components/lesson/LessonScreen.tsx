@@ -1,6 +1,6 @@
 import { AsyncBoundary, useController, useFetch, useSuspense } from '@data-client/react';
 import { Separator, Spinner, Stack } from '@reactive/silk-native';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
@@ -11,6 +11,8 @@ import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { OpponentPicker } from '@/components/OpponentPicker';
 import { Scoresheet } from '@/components/Scoresheet';
+import { Sheet } from '@/components/Sheet';
+import { SourceFootnote } from '@/components/SourceLink';
 import { resetListener } from '@/components/resetListener';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { useLongWait } from '@/components/useLongWait';
@@ -37,6 +39,7 @@ import { IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
 import { SourceCredits } from './SourceCredits';
+import { ScoresheetDrawer, ScoresheetOpener } from './ScoresheetDrawer';
 import { TrapCard } from './TrapCard';
 import { useOpeningsGame } from './useOpeningsGame';
 
@@ -175,6 +178,9 @@ function LessonScreen({
     chooseMode,
   } = useLesson(lesson, store, { pending });
   const { mode } = modeState;
+  // A narrow web page's settings sheet, and its scoresheet drawer.
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [scoresheetOpen, setScoresheetOpen] = useState(false);
   const { auto } = useSettings();
   const learner = lesson.side;
   const rival = opposite(learner);
@@ -255,6 +261,56 @@ function LessonScreen({
     label: 'Every opening',
   } as const;
 
+  // The moves the learner can point at: past the guide Stockfish's, else the guide's.
+  const moveList = guidance.top.length ? (
+    <CandidateList
+      {...rowProps}
+      heading="Stockfish's top moves"
+      compact
+      leadsTo={rejoins}
+      candidates={guidance.top}
+      rare={[]}
+      rareShown={false}
+      onShowRare={showRare}
+      main={guidance.top[0]}
+      onPoint={pointRow}
+    />
+  ) : guidance.candidates.length ? (
+    <CandidateList
+      {...rowProps}
+      heading={view.learnerToMove ? 'Your candidates' : `${colorName(rival)}'s ${rivalMoves}`}
+      // At the start each move's opening is the point, so its rows keep it.
+      compact={!picking}
+      leadsTo={leadsTo}
+      candidates={guidance.candidates}
+      rare={guidance.rare}
+      rareShown={rareShown}
+      onShowRare={showRare}
+      main={guidance.main}
+      onPoint={pointCandidate}
+    />
+  ) : null;
+
+  /** The game's moves, for the scoresheet beside the panes or in their place. */
+  const scoresheetProps = {
+    plies: game.plies,
+    qualities: game.qualities,
+    ply: game.ply,
+    // A record of the line, so it outlives the trap's card.
+    trapped: view.trap && view.trap.ply + 1,
+    onGoto: game.goto,
+  };
+  const settings = (
+    <>
+      <LessonControls mode={mode} onMode={chooseMode} />
+      <Stack gap="1">
+        <OpponentChoice />
+        <FootnoteLink href="/play">Or play a free game, from the first move</FootnoteLink>
+        <SourceCredits sources={lesson.sources} />
+      </Stack>
+    </>
+  );
+
   return (
     <Stage
       title={`${lesson.title} · Opening Night`}
@@ -264,6 +320,8 @@ function LessonScreen({
           ? { name: OPENINGS_TITLE }
           : { name: names.at(-1) ?? lesson.title, parent: names.at(-2) },
         placeLink: listLink,
+        // Only a narrow web page shows the button, so only there does the sheet open.
+        onSettings: () => setSettingsOpen(true),
       }}
       board={
         <BoardColumn
@@ -278,98 +336,105 @@ function LessonScreen({
           board={{ ...board, onDrag }}
           // The side is the lesson's once one is picked.
           onSwap={picking ? () => onPlayAs(rival) : undefined}
+          stepperMiddle={
+            <ScoresheetOpener
+              san={game.plies[game.ply].move?.san}
+              ply={game.ply}
+              // Nothing to open before the first move, but an open drawer can always close: a new game empties it.
+              disabled={!scoresheetOpen && game.moves.length === 0}
+              open={scoresheetOpen}
+              onToggle={() => setScoresheetOpen(!scoresheetOpen)}
+            />
+          }
         />
       }
       program={
-        <Stack style={styles.sections}>
+        <Stack {...narrowPart('lesson-panel')} style={styles.sections}>
           <StatusHeadline
             {...status}
             failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
             eyebrowInHeader
             eyebrowLink={listLink}
           />
-          {/* On a narrow web page the moves follow the headline closely, with no rule between. */}
-          <View {...narrowPart('wide-only')}>
-            <Separator />
+          {/* The scoresheet drawer takes the place of this part on a narrow web page, under the headline, which tells of a failure. */}
+          <View
+            {...narrowPart(scoresheetOpen ? 'wide-only' : 'lesson-body')}
+            style={styles.sections}
+          >
+            {/* On a narrow web page the moves follow the headline closely, with no rule between. */}
+            <View {...narrowPart('wide-only')}>
+              <Separator />
+            </View>
+            {trap ? (
+              <TrapCard
+                trap={trap}
+                mistake={game.plies[trap.ply + 1].move!.san}
+                fell={game.plies[trap.ply].turn}
+                learner={learner}
+                playback={playback}
+                onBack={() => game.goto(trap.ply)}
+              />
+            ) : null}
+            {/*
+             * Leaving a row for the idea card keeps its preview, so its notes can be pointed at.
+             * On a narrow web page the moves and the idea are panes side by side.
+             */}
+            {moveList || ideaCard ? (
+              // A View, so narrow.css can make it a row, which a Stack's inline style would override.
+              <PointingArea {...narrowPart('panes')} onLeave={leave} style={styles.sections}>
+                {moveList ? (
+                  <View {...narrowPart('moves-pane')} style={styles.sections}>
+                    {moveList}
+                  </View>
+                ) : null}
+                {ideaCard ? (
+                  <View {...narrowPart('idea-pane')}>
+                    <IdeaCard
+                      title={preview ? `If ${preview.san}` : 'The idea'}
+                      notes={guidance.notes}
+                      learner={learner}
+                      playback={playback}
+                      pointable={guidance.pointable}
+                      pointed={pointedNote}
+                      onPoint={pointNote}
+                      onLeave={leaveNote}
+                      onReach={reachCard}
+                    />
+                  </View>
+                ) : null}
+              </PointingArea>
+            ) : null}
           </View>
-          {/* Leaving a row for the idea card keeps its preview, so its notes can be pointed at. */}
-          {trap ? (
-            <TrapCard
-              trap={trap}
-              mistake={game.plies[trap.ply + 1].move!.san}
-              fell={game.plies[trap.ply].turn}
-              learner={learner}
-              playback={playback}
-              onBack={() => game.goto(trap.ply)}
-            />
+          {scoresheetOpen ? (
+            <ScoresheetDrawer {...scoresheetProps} onClose={() => setScoresheetOpen(false)} />
           ) : null}
-          {ideaCard || guidance.top.length ? (
-            <PointingArea onLeave={leave} style={styles.sections}>
-              {guidance.top.length ? (
-                <CandidateList
-                  {...rowProps}
-                  heading="Stockfish's top moves"
-                  chips
-                  leadsTo={rejoins}
-                  candidates={guidance.top}
-                  rare={[]}
-                  rareShown={false}
-                  onShowRare={showRare}
-                  main={guidance.top[0]}
-                  onPoint={pointRow}
-                />
-              ) : null}
-              {guidance.candidates.length ? (
-                <CandidateList
-                  {...rowProps}
-                  heading={
-                    view.learnerToMove ? 'Your candidates' : `${colorName(rival)}'s ${rivalMoves}`
-                  }
-                  // At the start each move's opening is the point, so its rows stay.
-                  chips={!picking}
-                  leadsTo={leadsTo}
-                  candidates={guidance.candidates}
-                  rare={guidance.rare}
-                  rareShown={rareShown}
-                  onShowRare={showRare}
-                  main={guidance.main}
-                  onPoint={pointCandidate}
-                />
-              ) : null}
-              {ideaCard ? (
-                <IdeaCard
-                  title={preview ? `If ${preview.san}` : 'The idea'}
-                  notes={guidance.notes}
-                  learner={learner}
-                  playback={playback}
-                  pointable={guidance.pointable}
-                  pointed={pointedNote}
-                  onPoint={pointNote}
-                  onLeave={leaveNote}
-                  onReach={reachCard}
-                />
-              ) : null}
-            </PointingArea>
+          {/*
+           * A narrow web page has no room for the rest under the panes: the
+           * scoresheet opens in the drawer, the settings in a sheet. Only one
+           * copy of the settings is mounted at a time. This scoresheet stays
+           * while the drawer is open, so a window widened meanwhile still shows one.
+           */}
+          <Stack {...narrowPart('wide-only')} style={styles.sections}>
+            <Separator />
+            <Stack style={labelled}>
+              <Eyebrow>Scoresheet</Eyebrow>
+              <Scoresheet {...scoresheetProps} />
+            </Stack>
+            {settingsOpen ? null : (
+              <>
+                <Separator />
+                {settings}
+              </>
+            )}
+          </Stack>
+          {settingsOpen ? (
+            <Sheet title="Settings" onClose={() => setSettingsOpen(false)}>
+              <Stack style={styles.sections}>
+                {settings}
+                <SourceFootnote />
+              </Stack>
+            </Sheet>
           ) : null}
-          <Separator />
-          <Stack style={labelled}>
-            <Eyebrow>Scoresheet</Eyebrow>
-            <Scoresheet
-              plies={game.plies}
-              qualities={game.qualities}
-              ply={game.ply}
-              // A record of the line, so it outlives the trap's card.
-              trapped={view.trap && view.trap.ply + 1}
-              onGoto={game.goto}
-            />
-          </Stack>
-          <Separator />
-          <LessonControls mode={mode} onMode={chooseMode} />
-          <Stack gap="1">
-            <OpponentChoice />
-            <FootnoteLink href="/play">Or play a free game, from the first move</FootnoteLink>
-            <SourceCredits sources={lesson.sources} />
-          </Stack>
         </Stack>
       }
     />
