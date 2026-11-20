@@ -104,12 +104,9 @@ export function parseStudy(pgn: string, include: (title: string) => boolean): Ch
   const root = positionKey((games.find(({ game }) => !game.headers.has('FEN')) ?? games[0]).start);
   const chapters: Chapter[] = [];
   const studyIndex = new Map<Chapter, number>();
-  // The positions chapters read so far reach, for `withLineIntros`.
-  const known = new Set<string>();
   const add = (chapter: Chapter, index: number) => {
     chapters.push(chapter);
     studyIndex.set(chapter, index);
-    for (const move of chapterMoves(chapter)) known.add(positionKey(move.after));
   };
   const read = (index: number) => {
     const { game, title, start } = games[index];
@@ -118,11 +115,11 @@ export function parseStudy(pgn: string, include: (title: string) => boolean): Ch
       const first = copyLead(lead, (end) =>
         readMoves(game.moves.children, end.after, end.ply + 1, end),
       );
-      add({ title, start: chapters[0].start, moves: withLineIntros([first], known) }, index);
+      add({ title, start: chapters[0].start, moves: [first] }, index);
       return;
     }
     const namedFrom = Number(game.headers.get('NamedFrom')) || undefined;
-    const moves = withLineIntros(readMoves(game.moves.children, start, 1), known);
+    const moves = readMoves(game.moves.children, start, 1);
     add({ title, start, moves, ...(namedFrom && { namedFrom, cut: true }) }, index);
   };
   /** Whether chapter `index` can be read now: it starts at the root, or a chapter read leads to it. */
@@ -140,12 +137,19 @@ export function parseStudy(pgn: string, include: (title: string) => boolean): Ch
   }
   // No chapter reaches these: each keeps its own start.
   for (const index of waiting) read(index);
-  return chapters.sort((a, b) => studyIndex.get(a)! - studyIndex.get(b)!);
+  chapters.sort((a, b) => studyIndex.get(a)! - studyIndex.get(b)!);
+  // Side-line intros look only at earlier chapters in the study, whatever order they were read in.
+  const known = new Set<string>();
+  return chapters.map((chapter) => {
+    const introduced = { ...chapter, moves: withLineIntros(chapter.moves, known) };
+    for (const move of chapterMoves(introduced)) known.add(positionKey(move.after));
+    return introduced;
+  });
 }
 
 /**
  * `moves` with each side line's introduction on the move it introduces. A
- * comment opening a side line on a move that chapters read before already play
+ * comment opening a side line on a move that earlier chapters already play
  * (`known` holds the positions they reach), which names the move where that
  * line first goes somewhere new, introduces the line: "Before the Nf6 c5
  * line, its little brother" on 1...d5 belongs on 1...d5 2.Bf4 c5's c5.

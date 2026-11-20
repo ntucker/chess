@@ -102,8 +102,9 @@ describe('parseStudy', () => {
 });
 
 describe('side-line introductions', () => {
-  const commentOn = (pgn: string, sans: string[]) => {
-    const chapter = parseStudy(pgn, () => true).at(-1)!;
+  const commentOn = (pgn: string, sans: string[], title?: string) => {
+    const chapters = parseStudy(pgn, () => true);
+    const chapter = chapters.find((one) => one.title === title) ?? chapters.at(-1)!;
     return [...chapterMoves(chapter)]
       .filter((move) => sans.includes(move.san))
       .map(({ san, comment }) => [san, comment]);
@@ -149,6 +150,17 @@ describe('side-line introductions', () => {
           .map(({ san, comment }) => [san, comment]),
       );
     expect(comments).toEqual([[['d5', 'A solid reply.']], [['d5', 'Before Nf6 c5.']]]);
+  });
+  it('reads intros against earlier chapters in the study, even in a chapter that waited', () => {
+    const pgn = [
+      chapter('London', '1. d4 d5 *'),
+      chapter('Main line', '3. e3 e6 (3... c5 { Before e6, c5 and Nc6. } 4. c3 Nc6) *', AFTER_NF6),
+      chapter('Later', '1. d4 d5 2. Bf4 Nf6 3. e3 c5 4. c3 *'),
+    ].join('\n');
+    expect(commentOn(pgn, ['c5', 'Nc6'], 'Main line')).toEqual([
+      ['c5', 'Before e6, c5 and Nc6.'],
+      ['Nc6', ''],
+    ]);
   });
 });
 
