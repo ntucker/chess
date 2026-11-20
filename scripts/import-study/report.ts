@@ -1,8 +1,9 @@
 /** What an import produced, for the person running it to judge. */
 import { positionKey } from '@/game/replay';
-import type { Lesson } from '@/lesson/lesson';
+import type { Lesson, LessonSource } from '@/lesson/lesson';
 
 import type { ChapterNotes } from './extract';
+import type { SourceTally } from './merge';
 import { chapterMoves, type Chapter } from './study';
 
 export function report(
@@ -52,6 +53,24 @@ export function report(
       ([name, value]) =>
         `${name}: ${typeof value === 'object' ? JSON.stringify(value, null, 1) : value}`,
     )
+    .join('\n');
+}
+
+/**
+ * What each source gave, in priority order, and what earlier ones kept out,
+ * with a warning for a source that gave nothing.
+ */
+export function sourceReport(
+  sources: readonly LessonSource[],
+  tallies: readonly (SourceTally | undefined)[],
+): string {
+  return sources
+    .map(({ title }, i) => {
+      const tally = tallies[i];
+      if (!tally || tally.booked + tally.notes === 0)
+        return `WARNING: ${title} gave no book moves and no notes`;
+      return `${title}: ${tally.booked} book moves, ${tally.notes} notes; left out ${tally.blocked.size} moves an earlier source recommends against and ${tally.notesSkipped} notes where an earlier source explained the spot`;
+    })
     .join('\n');
 }
 

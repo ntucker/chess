@@ -2,9 +2,10 @@ import { describe, expect, it } from '@jest/globals';
 import { checkLesson } from '@/lesson/check';
 import { keyAfter, SAMPLE } from '@/lesson/lesson.fixture';
 
+import { fillBook } from './engineCheck';
 import { extractChapter } from './extract';
 import { STUDY_PGN } from './fixture';
-import { mergeChapters } from './merge';
+import { mergeChapters, type SourceTally } from './merge';
 import { parseStudy } from './study';
 
 const chapters = parseStudy(STUDY_PGN, () => true);
@@ -28,8 +29,9 @@ describe('mergeChapters', () => {
     expect(() => mergeChapters(lesson, [], [])).toThrow('No chapters to merge for lesson test');
   });
 
-  it('writes a lesson the checker accepts', () => {
-    expect(checkLesson(lesson)).toEqual([]);
+  it('writes a lesson the checker accepts, once fillBook has picked the book moves it leaves open', async () => {
+    const even = async () => ({ score: 0.5, pawns: 0 });
+    expect(checkLesson((await fillBook(lesson, even)).lesson)).toEqual([]);
   });
 
   it('groups chapter variations by the title before the colon, joining (I) and (II)', () => {
@@ -112,5 +114,68 @@ describe('mergeChapters', () => {
 
   it('leaves out positions where the guide stops', () => {
     expect(at('e4', 'c6', 'd4', 'd5', 'Nc3', 'dxe4', 'Nxe4', 'Bf5')).toBeUndefined();
+  });
+});
+
+describe('mergeChapters with several sources', () => {
+  // The main guide answers 1.d4 with 1...d5 and stops after 2.c4; the second
+  // agrees on 1...d5, goes on to 2...c6, and prefers 1...Nf6 against 1.c4.
+  const main = parseStudy(
+    '[ChapterName "Main"]\n\n1. d4 { Claims the centre at once. } d5 { Holds the centre with a pawn. } 2. c4 *\n\n' +
+      '[ChapterName "English"]\n\n1. c4 e5 *\n',
+    () => true,
+  ).map((chapter) => ({ ...chapter, source: 0 }));
+  const second = parseStudy(
+    '[ChapterName "Second"]\n\n1. d4 d5 { Black takes the centre and keeps it for good. } 2. c4 c6 *\n\n' +
+      '[ChapterName "Second English"]\n\n1. c4 Nf6 *\n',
+    () => true,
+  ).map((chapter) => ({ ...chapter, source: 1 }));
+  const both = [...main, ...second];
+  const tally: SourceTally[] = [];
+  const merged = mergeChapters(
+    { id: 'test', title: 'Test', side: 'black', sources: SAMPLE.sources },
+    both,
+    both.map((chapter) => extractChapter(chapter, 'black')),
+    () => undefined,
+    tally,
+  );
+  const book = (...sans: string[]) =>
+    merged.positions[keyAfter(...sans)].moves.filter((move) => move.book).map(({ uci }) => uci);
+
+  it("keeps the main guide's moves, and takes a later one's where the main stops", () => {
+    expect(book('d4')).toEqual(['d7d5']);
+    expect(book('d4', 'd5', 'c4')).toEqual(['c7c6']);
+    expect(book('c4')).toEqual(['e7e5']);
+  });
+
+  it("follows a later guide's side line under a move the main guide recommends", () => {
+    // The later guide prefers 1...Nf6 but also covers 1...d5, which the main guide recommends.
+    const later = parseStudy(
+      '[ChapterName "Later"]\n\n1. d4 Nf6 (1... d5 2. c4 c6) *\n',
+      () => true,
+    ).map((chapter) => ({ ...chapter, source: 1 }));
+    const chapters = [main[0], ...later];
+    const lesson = mergeChapters(
+      { id: 'test', title: 'Test', side: 'black', sources: SAMPLE.sources },
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'black')),
+      () => undefined,
+    );
+    const booked = (...sans: string[]) =>
+      lesson.positions[keyAfter(...sans)].moves.filter((move) => move.book).map(({ uci }) => uci);
+    expect(booked('d4')).toEqual(['d7d5']);
+    expect(booked('d4', 'd5', 'c4')).toEqual(['c7c6']);
+  });
+
+  it("takes a later guide's notes only where the main guide says nothing", () => {
+    const d5 = merged.positions[keyAfter('d4')].moves.find(({ uci }) => uci === 'd7d5')!;
+    expect(d5.notes?.map(({ text }) => text)).toEqual(['Holds the centre with a pawn.']);
+  });
+
+  it('counts what each guide gave, and what the main guide kept out', () => {
+    expect(tally).toEqual([
+      { booked: 2, blocked: new Set(), notes: 2, notesSkipped: 0 },
+      { booked: 1, blocked: new Set([`${keyAfter('c4')} g8f6`]), notes: 0, notesSkipped: 1 },
+    ]);
   });
 });

@@ -5,16 +5,21 @@ import { act, useReducer } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
 import { gameReducer, startGame } from '@/game/game';
-import { getEvaluation } from '@/resources/evaluation';
+import { getEvaluation, getTopMoves } from '@/resources/evaluation';
 
-import { SAMPLE, uciLine } from './lesson.fixture';
+import { ADVANCE, SAMPLE, uciLine } from './lesson.fixture';
 import { useLesson } from './useLesson';
 
-// Every search started, by the moves before the position; none answers.
+// Every search started, by the moves before the position (top moves marked
+// "top"); none answers.
 const mockSearched: string[] = [];
 jest.mock('@/stockfish/engine', () => ({
   stockfishEvaluation: (line: readonly string[]) => {
     mockSearched.push(line.join(' '));
+    return new Promise(() => {});
+  },
+  stockfishTopMoves: (line: readonly string[]) => {
+    mockSearched.push(`top ${line.join(' ')}`);
     return new Promise(() => {});
   },
 }));
@@ -86,7 +91,7 @@ describe("useLesson's Stockfish best move", () => {
   });
 
   it("hands Stockfish's best move to the guidance", async () => {
-    const line = uciLine('e4', 'c6', 'Qh5');
+    const line = uciLine(...ADVANCE);
     await render(line);
     expect(lesson().guidance.best).toBeUndefined();
     await act(async () => {
@@ -97,5 +102,25 @@ describe("useLesson's Stockfish best move", () => {
       });
     });
     expect(lesson().guidance.best).toBe('g8f6');
+  });
+
+  it('asks for the top three only past the guide, and lists them there', async () => {
+    const line = uciLine(...ADVANCE, 'a6');
+    await render(line);
+    const position = line.join(' ');
+    // Beside the evaluations the board and a6's label ask for.
+    expect(mockSearched.filter((search) => search.startsWith('top'))).toEqual([`top ${position}`]);
+    await act(async () => {
+      controllers[0].setResponse(getTopMoves, line, [
+        { uci: 'c2c3', evaluation: { score: 0.6, pawns: 0.6 } },
+        { uci: 'g1f3', evaluation: { score: 0.58, pawns: 0.5 } },
+      ]);
+    });
+    const { guidance } = lesson();
+    expect(guidance.top.map(({ san }) => san)).toEqual(['c3', 'Nf3']);
+    expect(guidance.best).toBe('c2c3');
+    // Pointing at a row previews it, as a guide candidate's row does.
+    await act(async () => lesson().pointRow('g1f3'));
+    expect(lesson().guidance.preview?.candidate.san).toBe('Nf3');
   });
 });

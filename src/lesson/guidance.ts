@@ -9,7 +9,10 @@
  *   are listed every note's ideas are.
  *   Only a note about the position on the board can be pointed at, and
  *   Stockfish's best move shows only while nothing is previewed, pointed at
- *   or playing back.
+ *   or playing back. Past the guide's moves, Stockfish's top three are
+ *   listed in the candidates' place, and preview and play as they do; the
+ *   resting board marks only the first, as the best move, with no arrows
+ *   for the other two.
  * - Practice hides every hint while it is the learner's turn: no candidates,
  *   previews, best move or top moves, and of the notes only those of the move
  *   just played, and a trap's warning while traps are shown. Right after the
@@ -33,7 +36,7 @@
  * - While a note's idea plays back, the board is the playback's: nothing else
  *   is drawn, and the preview it started from stays.
  * - While a piece is dragged, the board draws only its candidates, rare ones
- *   too, wherever it is over, so dragging across the board moves nothing
+ *   and Stockfish's top moves too, wherever it is over, so dragging across the board moves nothing
  *   else on it; the idea card shows the move under it.
  * - Rare candidates (`Candidate.rare`) are left off the list, which shows
  *   them only when asked, and off the board's arrows; Stockfish's best isn't
@@ -57,9 +60,10 @@ export type LessonSwitches = Pick<Settings, 'auto' | 'showMoves' | 'showTraps'>;
 
 /** Stockfish's view of the shown position, as far as it has arrived. */
 export interface EngineView {
+  /** The move its evaluation names. */
   readonly best?: Uci;
-  /** Its top three moves, best first. */
-  readonly top?: readonly Uci[];
+  /** Its top three moves, best first, as rows (`engineCandidates`). */
+  readonly top?: readonly Candidate[];
 }
 
 export interface GuidanceInput {
@@ -123,15 +127,21 @@ export interface Guidance {
    * Stockfish's best move to mark, with "moves on the board" on, while nothing
    * is previewed, pointed at or playing back. Inside the guide the candidates
    * are what is highlighted, so it is tagged only when it isn't one of them.
+   * Past the guide's moves it is the first of `top`, so the mark and the list
+   * agree (the evaluation's own search goes deeper and can name another).
    */
   readonly best?: Uci;
-  /** Stockfish's top three, listed only beyond the guide. */
-  readonly top: readonly Uci[];
+  /** Stockfish's top three, listed in Explore where the guide has no candidates. */
+  readonly top: readonly Candidate[];
   /** A trap the line fell into, while its card shows (see `trapShown`). */
   readonly trap?: LandedTrap;
   /** The line has reached a guide line's end, and the headline tells it (see `newsShown`). */
   readonly lineEnded: boolean;
 }
+
+/** Whether Stockfish's top moves are listed: in Explore, past the guide's moves. */
+export const listsTopMoves = (view: LessonView, mode: LessonMode) =>
+  mode === 'explore' && view.place !== 'inside';
 
 export function guidance(input: GuidanceInput): Guidance {
   const {
@@ -174,9 +184,10 @@ export function guidance(input: GuidanceInput): Guidance {
     .filter(({ note }) => note.ideas?.some((idea) => drawsOnBoard(idea) && allowed(idea)))
     .map(({ note }) => note);
   const pointedNote = !playing && pointed && pointable.includes(pointed) ? pointed : undefined;
+  const top = listsTopMoves(view, mode) ? (engine?.top ?? []) : [];
   const board = boardShown({
     candidates,
-    withRare,
+    liftable: [...withRare, ...top],
     preview,
     dragged,
     ideas,
@@ -187,7 +198,9 @@ export function guidance(input: GuidanceInput): Guidance {
   });
   const best =
     explore && switches.showMoves && !preview && !dragged && !playing && !pointedNote
-      ? engine?.best
+      ? view.place === 'inside'
+        ? engine?.best
+        : top[0]?.move.uci
       : undefined;
 
   return {
@@ -204,7 +217,7 @@ export function guidance(input: GuidanceInput): Guidance {
     playing,
     pointed: pointedNote,
     best: view.candidates.some(({ move }) => move.uci === best) ? undefined : best,
-    top: explore && view.place !== 'inside' ? (engine?.top ?? []) : [],
+    top,
     trap,
     lineEnded: view.lineEnd !== undefined && newsShown(view, view.lineEnd),
   };
@@ -212,14 +225,14 @@ export function guidance(input: GuidanceInput): Guidance {
 
 /**
  * What the board draws: nothing while a note plays back; a pointed note's
- * ideas alone; a sliding preview's ideas; a dragged piece's candidates alone
- * (rare ones too); or else the listed candidates with only traps beside
- * them (every idea where none are listed); with `showMoves` off, the traps
- * and the ideas of the move just played instead.
+ * ideas alone; a sliding preview's ideas; a dragged piece's moves alone
+ * (`liftable`); or else the listed candidates with only traps beside them
+ * (every idea where none are listed); with `showMoves` off, the traps and
+ * the ideas of the move just played instead.
  */
 function boardShown({
   candidates,
-  withRare,
+  liftable,
   preview,
   dragged,
   ideas,
@@ -229,7 +242,8 @@ function boardShown({
   moveIdeas,
 }: {
   readonly candidates: readonly Candidate[];
-  readonly withRare: readonly Candidate[];
+  /** Every move a dragged piece lights: rare candidates and top moves too. */
+  readonly liftable: readonly Candidate[];
   readonly preview?: Preview;
   readonly dragged?: Candidate['from'];
   readonly ideas: readonly ShownIdea[];
@@ -244,7 +258,7 @@ function boardShown({
     return { candidates: [], drawn: ideas.filter(({ idea }) => pointed.ideas?.includes(idea)) };
   }
   if (preview?.slide) return { candidates: [], drawn: ideas };
-  if (dragged) return { candidates: withRare.filter(({ from }) => from === dragged), drawn: [] };
+  if (dragged) return { candidates: liftable.filter(({ from }) => from === dragged), drawn: [] };
   if (!candidates.length) return { candidates, drawn: ideas };
   if (showMoves) return { candidates, drawn: ideas.filter(({ idea }) => idea.type === 'trap') };
   return {

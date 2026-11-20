@@ -20,12 +20,21 @@ import { asAnswer, SCHEMA, type Answer } from './answer';
 import type { Comment } from './comments';
 import { PROMPT } from './prompt';
 
-/** The models a conversion uses: Sonnet converts, Opus retries what Sonnet got wrong. */
+/** The models a conversion uses: Sonnet converts, Opus retries what the checker refused. */
 export const MODELS = { convert: 'claude-sonnet-5-5', retry: 'claude-opus-5-5' } as const;
 export type Model = (typeof MODELS)[keyof typeof MODELS];
 
-/** Answers for `comments` by comment id; a comment left out could not be converted this time. */
-export type Ask = (model: Model, comments: readonly Comment[]) => Promise<Map<string, Answer>>;
+/**
+ * Answers for `comments` by comment id; a comment left out could not be
+ * converted this time. `addendum` goes after the prompt, for a retry that
+ * needs more instructions (`REWORD`); without one, the cache keys are the same
+ * as before addenda existed, so stored answers still match.
+ */
+export type Ask = (
+  model: Model,
+  comments: readonly Comment[],
+  addendum?: string,
+) => Promise<Map<string, Answer>>;
 
 /** Comments per request: enough to share the prompt, few enough to answer carefully. */
 const BATCH = 20;
@@ -62,16 +71,17 @@ export function claudeCli({
     colorName(opposite(learner)),
   );
   const cache = readCache(cacheFile);
-  const keyOf = (model: Model, comment: Comment) =>
+  const keyOf = (model: Model, system: string, comment: Comment) =>
     createHash('sha256')
-      .update(JSON.stringify([model, prompt, comment]))
+      .update(JSON.stringify([model, system, comment]))
       .digest('hex');
 
   const used = new Set<string>();
 
-  const ask: Ask = async (model, comments) => {
+  const ask: Ask = async (model, comments, addendum = '') => {
+    const system = prompt + addendum;
     const answers = new Map<string, Answer>();
-    const keys = new Map(comments.map((comment) => [comment.id, keyOf(model, comment)]));
+    const keys = new Map(comments.map((comment) => [comment.id, keyOf(model, system, comment)]));
     const asking: Comment[] = [];
     for (const comment of comments) {
       const key = keys.get(comment.id)!;
@@ -95,7 +105,7 @@ export function claudeCli({
     let cost = 0;
     await pool(batches, PARALLEL, async (group) => {
       try {
-        const result = await request(model, prompt, group);
+        const result = await request(model, system, group);
         cost += result.cost;
         const asked = new Set(group.map((comment) => comment.id));
         for (const answer of result.answers) {

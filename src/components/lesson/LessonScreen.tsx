@@ -31,6 +31,7 @@ import { CandidateList } from './CandidateList';
 import { IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
+import { SourceCredits } from './SourceCredits';
 import { TrapCard } from './TrapCard';
 import { useOpeningsGame } from './useOpeningsGame';
 
@@ -136,6 +137,7 @@ function LessonScreen({
   const preview = guidance.preview?.candidate;
   const { trap } = guidance;
   // The card is for notes, or for the notes of a candidate pointed at.
+  // Stockfish's moves have none of their own, so their list stands alone.
   const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
   // The start lists the openings, whichever lesson is loaded.
   const picking = view.ply === 0;
@@ -164,6 +166,17 @@ function LessonScreen({
     const variation = lesson.variations[candidate.variation];
     return variation === line ? undefined : variation.name;
   };
+  // What the guide's candidate rows and Stockfish's top moves' rows share.
+  const rowProps = {
+    pointed: preview?.move.uci,
+    marks,
+    playable: canPlay,
+    onPlay: play,
+    onTabOut: leave,
+  };
+  // Past the guide, a move of Stockfish's can lead back into it.
+  const rejoins = ({ variation }: Candidate) =>
+    variation === undefined ? undefined : `Rejoins ${lesson.variations[variation].name}`;
   // Pointing at an opening, or picking up a piece that plays one, starts
   // loading its lesson, so playing it needn't wait. A failure shows once the
   // opening is picked.
@@ -219,10 +232,24 @@ function LessonScreen({
               onBack={() => game.goto(trap.ply)}
             />
           ) : null}
-          {ideaCard ? (
+          {ideaCard || guidance.top.length ? (
             <PointingArea onLeave={leave}>
+              {guidance.top.length ? (
+                <CandidateList
+                  {...rowProps}
+                  heading="Stockfish's top moves"
+                  candidates={guidance.top}
+                  rare={[]}
+                  rareShown={false}
+                  onShowRare={showRare}
+                  main={guidance.top[0]}
+                  leadsTo={rejoins}
+                  onPoint={pointRow}
+                />
+              ) : null}
               {guidance.candidates.length ? (
                 <CandidateList
+                  {...rowProps}
                   heading={
                     view.learnerToMove
                       ? 'Your candidates'
@@ -233,25 +260,22 @@ function LessonScreen({
                   rareShown={rareShown}
                   onShowRare={showRare}
                   main={guidance.main}
-                  pointed={preview?.move.uci}
-                  marks={marks}
                   leadsTo={leadsTo}
-                  playable={canPlay}
-                  onPlay={play}
                   onPoint={pointCandidate}
-                  onTabOut={leave}
                 />
               ) : null}
-              <IdeaCard
-                title={preview ? `If ${preview.san}` : 'The idea'}
-                notes={guidance.notes}
-                learner={learner}
-                playback={playback}
-                pointable={guidance.pointable}
-                pointed={pointedNote}
-                onPoint={pointNote}
-                onLeave={leaveNote}
-              />
+              {ideaCard ? (
+                <IdeaCard
+                  title={preview ? `If ${preview.san}` : 'The idea'}
+                  notes={guidance.notes}
+                  learner={learner}
+                  playback={playback}
+                  pointable={guidance.pointable}
+                  pointed={pointedNote}
+                  onPoint={pointNote}
+                  onLeave={leaveNote}
+                />
+              ) : null}
             </PointingArea>
           ) : null}
           <Separator />
@@ -271,6 +295,7 @@ function LessonScreen({
           <Stack gap="1">
             <OpponentChoice />
             <FootnoteLink href="/play">Or play a free game, from the first move</FootnoteLink>
+            <SourceCredits sources={lesson.sources} />
           </Stack>
         </Stack>
       }

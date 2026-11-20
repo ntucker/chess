@@ -37,6 +37,8 @@ export interface Comment {
   readonly chapterSummary?: true;
   /** Ideas the importer already read from this comment without AI. */
   readonly extracted: readonly Idea[];
+  /** Only when asked again: the model's earlier note texts the checker refused as notation. */
+  readonly refusedText?: readonly string[];
 }
 
 /** A comment continuing the one before it ("...and the position stays level"), not a move like "...Nd7". */

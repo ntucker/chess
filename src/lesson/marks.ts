@@ -1,11 +1,12 @@
 /**
  * The progress marks on the candidate list's rows (tech plan section 6). A
  * row is seen once Explore has shown the position its move leads to. It is
- * passed once clean Practice runs have reached every guide line end they can
- * reach through it. A clean run plays only the learner's book moves, so the
- * line ends below a learner's non-book move never count, and that move's own
- * row can't be passed. The same walk steers a clean Practice run's opponent
- * to the lines still to pass (`steering`).
+ * passed once clean Practice runs have reached every guide line end that
+ * counts through it (`cleanRun.ts`): a clean run plays only the learner's
+ * book moves, so the line ends below a learner's non-book move never count,
+ * and that move's own row can't be passed; nor do the ends below an
+ * opponent's rare reply. The same walk steers a clean Practice run's
+ * opponent to the lines still to pass (`steering`).
  */
 import {
   type Mark,

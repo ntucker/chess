@@ -1,8 +1,9 @@
 /**
- * The moves a clean Practice run can play (tech plan section 6): any of the
- * opponent's, and only the learner's book moves. Both the candidate rows'
- * passed marks (`marks.ts`) and the lesson index's line ends (`openings.ts`)
- * walk the guide by this one rule, so the two always agree.
+ * The moves a clean Practice run can play: only the learner's book moves,
+ * and of the opponent's, those played often enough to count toward passing
+ * (`COUNTED_SHARE`). Both the candidate rows' passed marks (`marks.ts`) and
+ * the lesson index's line ends (`openings.ts`) walk the guide by this one
+ * rule, so the two always agree.
  */
 import type { Chess } from 'chessops/chess';
 import { parseUci } from 'chessops/util';
@@ -14,6 +15,25 @@ import { guidePosition } from './select';
 
 /** Any opponent's move can be part of a clean run; of the learner's, only book moves. */
 export const inCleanRun = (move: LessonMove, learner: boolean) => !learner || move.book === true;
+
+/**
+ * An opponent's reply counts toward passing when lichess players chose it at
+ * least this share of the time, over all rating bands. The most played reply
+ * always counts, and so does one without counts, which can't be told rare.
+ */
+export const COUNTED_SHARE = 0.1;
+
+/** Of the guide's `moves` at a position, those a clean run plays and counts. */
+function countedMoves(moves: readonly LessonMove[], learner: boolean): readonly LessonMove[] {
+  if (learner) return moves.filter((move) => inCleanRun(move, learner));
+  const played = moves.map(({ games }) => games?.reduce((sum, n) => sum + n, 0));
+  const total = played.reduce<number>((sum, n) => sum + (n ?? 0), 0);
+  const most = Math.max(...played.map((n) => n ?? 0));
+  return moves.filter((_, i) => {
+    const n = played[i];
+    return n === undefined || total === 0 || n === most || n / total >= COUNTED_SHARE;
+  });
+}
 
 /**
  * Every guide line end a clean run from `start` can reach, each once, in
@@ -60,9 +80,10 @@ const nextKeys = new WeakMap<Lesson, Map<PositionKey, readonly PositionKey[]>>()
 
 /**
  * The positions the guide's moves at `key` lead to, leaving out the learner's
- * non-book moves. The position `pos`, when the walk has it, saves reading the
- * key, which costs more than playing the moves. A step carries its position
- * only when its move was just played; one from the cache carries none.
+ * non-book moves and the opponent's rare ones (`countedMoves`). The position
+ * `pos`, when the walk has it, saves reading the key, which costs more than
+ * playing the moves. A step carries its position only when its move was just
+ * played; one from the cache carries none.
  */
 function cleanNext(lesson: Lesson, key: PositionKey, pos: Chess | undefined): readonly WalkStep[] {
   let byKey = nextKeys.get(lesson);
@@ -73,13 +94,11 @@ function cleanNext(lesson: Lesson, key: PositionKey, pos: Chess | undefined): re
   // playMove's checks and move names.
   const from = pos ?? readPositionKey(key)!;
   const learner = from.turn === lesson.side;
-  const steps = lesson.positions[key].moves
-    .filter((move) => inCleanRun(move, learner))
-    .map(({ uci }): WalkStep => {
-      const after = from.clone();
-      after.play(parseUci(uci)!);
-      return [positionKey(after), after];
-    });
+  const steps = countedMoves(lesson.positions[key].moves, learner).map(({ uci }): WalkStep => {
+    const after = from.clone();
+    after.play(parseUci(uci)!);
+    return [positionKey(after), after];
+  });
   byKey.set(
     key,
     steps.map(([next]) => next),

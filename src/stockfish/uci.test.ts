@@ -3,31 +3,44 @@ import { describe, expect, it } from '@jest/globals';
 import {
   evaluationFromScore,
   forwardNeededLines,
+  multiPvCommand,
   parseBestMove,
-  parseScore,
+  parseInfo,
   positionCommand,
 } from './uci';
 
-describe('parseScore', () => {
-  it("reads a finished depth's score", () => {
+describe('parseInfo', () => {
+  it("reads a finished depth's line: its rank, score and first move", () => {
     expect(
-      parseScore(
+      parseInfo(
         'info depth 16 seldepth 22 multipv 1 score cp -34 nodes 98123 nps 400000 hashfull 120 tbhits 0 time 245 pv e7e5 g1f3',
       ),
-    ).toEqual({ kind: 'cp', value: -34 });
-    expect(parseScore('info depth 3 seldepth 2 multipv 1 score mate -1 nodes 40 pv d8h4')).toEqual({
-      kind: 'mate',
-      value: -1,
+    ).toEqual({ rank: 1, score: { kind: 'cp', value: -34 }, move: 'e7e5' });
+    expect(parseInfo('info depth 3 seldepth 2 multipv 3 score mate -1 nodes 40 pv d8h4')).toEqual({
+      rank: 3,
+      score: { kind: 'mate', value: -1 },
+      move: 'd8h4',
+    });
+    // A mated side has no move; a line without multipv is the best.
+    expect(parseInfo('info depth 0 score mate 0')).toEqual({
+      rank: 1,
+      score: { kind: 'mate', value: 0 },
     });
   });
 
   it('skips bounds and other lines', () => {
-    expect(parseScore('info depth 18 seldepth 25 score cp 40 lowerbound nodes 3 pv e2e4')).toBe(
+    expect(parseInfo('info depth 18 seldepth 25 score cp 40 lowerbound nodes 3 pv e2e4')).toBe(
       undefined,
     );
-    expect(parseScore('info depth 18 currmove e2e4 currmovenumber 1')).toBe(undefined);
-    expect(parseScore('info string NNUE evaluation using nn-61e7af4bb97d.nnue')).toBe(undefined);
-    expect(parseScore('bestmove e2e4 ponder e7e5')).toBe(undefined);
+    expect(parseInfo('info depth 18 currmove e2e4 currmovenumber 1')).toBe(undefined);
+    expect(parseInfo('info string NNUE evaluation using nn-61e7af4bb97d.nnue')).toBe(undefined);
+    expect(parseInfo('bestmove e2e4 ponder e7e5')).toBe(undefined);
+  });
+});
+
+describe('multiPvCommand', () => {
+  it('sets how many moves a search ranks', () => {
+    expect(multiPvCommand(3)).toBe('setoption name MultiPV value 3');
   });
 });
 
@@ -59,6 +72,31 @@ describe('forwardNeededLines', () => {
       'info depth 2 score cp 20 nodes 60 pv e2e4',
       'bestmove e2e4 ponder e7e5',
       'bestmove (none)',
+    ]);
+  });
+
+  it("passes on each rank's last line, best first", () => {
+    const passed: string[] = [];
+    const pass = forwardNeededLines((line) => passed.push(line));
+    for (const line of [
+      'info depth 1 multipv 1 score cp 30 nodes 20 pv e2e4',
+      'info depth 1 multipv 2 score cp 20 nodes 20 pv d2d4',
+      'info depth 2 multipv 1 score cp 25 nodes 60 pv d2d4',
+      'info depth 2 multipv 2 score cp 22 nodes 60 pv e2e4',
+      'info depth 2 multipv 3 score cp 10 nodes 60 pv g1f3',
+      'bestmove d2d4 ponder d7d5',
+      'info depth 1 multipv 1 score cp 5 nodes 20 pv e7e5',
+      'bestmove e7e5',
+    ])
+      pass(line);
+    expect(passed).toEqual([
+      'info depth 2 multipv 1 score cp 25 nodes 60 pv d2d4',
+      'info depth 2 multipv 2 score cp 22 nodes 60 pv e2e4',
+      'info depth 2 multipv 3 score cp 10 nodes 60 pv g1f3',
+      'bestmove d2d4 ponder d7d5',
+      // The next search starts with no ranks left over.
+      'info depth 1 multipv 1 score cp 5 nodes 20 pv e7e5',
+      'bestmove e7e5',
     ]);
   });
 });
