@@ -355,6 +355,7 @@ function LessonScreen({
             failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
             eyebrowInHeader
             eyebrowLink={listLink}
+            short
           />
           {/* The scoresheet drawer takes the place of this part on a narrow web page, under the headline, which tells of a failure. */}
           <View
@@ -478,7 +479,8 @@ interface StatusInput {
  * The panel's headline: where the lesson stands and whose move it is. In
  * Practice, right after the learner's move, it judges that move first.
  * `routine` marks a headline that only says whose move it is and how to use
- * the screen, once the learner has moved and so has seen how.
+ * the screen, once the learner has moved and so has seen how. `turn` marks a
+ * title that only says whose move it is.
  */
 function describeStatus(
   view: LessonView,
@@ -534,6 +536,7 @@ function describeStatus(
     return {
       eyebrow,
       title: 'Your move.',
+      turn: true,
       // Only Explore's detail at the latest move is how-to; the others say what a move here does.
       routine: !startsRun && !practice && !viewing,
       detail:
@@ -555,6 +558,7 @@ function describeStatus(
   return {
     eyebrow,
     title: reply,
+    turn: true,
     routine: !startsRun,
     detail: canPlay
       ? 'Point at a reply to see what it aims for, then play it.'

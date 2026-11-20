@@ -7,6 +7,7 @@ import { NEW_VERSION, NewVersionError, reload } from '@/files/newVersion';
 import type { Color, Position } from '@/game/replay';
 import { describeOpponent, type Opponent } from '@/opponent/opponent';
 import { narrowLength, narrowPart } from '@/theme/narrow';
+import { NarrowOnly } from '@/theme/NarrowOnly';
 import { typography } from '@/theme/theme';
 
 interface Props {
@@ -52,6 +53,14 @@ interface HeadlineProps {
    * announce it. A failure always shows.
    */
   readonly routine?: boolean;
+  /**
+   * On a narrow web page, draw the headline as one short paragraph, its title
+   * run in before its detail, to give its room to the panel's panes. Screen
+   * readers hear the full headline either way.
+   */
+  readonly short?: boolean;
+  /** The title only says whose move it is, which the name bars show: the short paragraph leaves it out. */
+  readonly turn?: boolean;
 }
 
 /** A panel's headline, announced as it changes, with a retry when the opponent didn't answer. */
@@ -63,14 +72,16 @@ export function StatusHeadline({
   eyebrowInHeader,
   eyebrowLink,
   routine,
+  short,
+  turn,
 }: HeadlineProps) {
   const label = (
     <PlaceLink to={eyebrowLink}>
       {(active) => <Eyebrow tone={active ? 'primary' : 'secondary'}>{eyebrow}</Eyebrow>}
     </PlaceLink>
   );
-  return (
-    <Stack gap="2" {...(routine && !failure ? narrowPart('wide-only-spoken') : {})}>
+  const full = (
+    <>
       {eyebrowInHeader ? <View {...narrowPart('wide-only')}>{label}</View> : label}
       <Text
         role="headingLg"
@@ -83,6 +94,30 @@ export function StatusHeadline({
       <Text role="bodySm" tone="secondary">
         {detail}
       </Text>
+    </>
+  );
+  return (
+    <Stack gap="2" {...(routine && !failure ? narrowPart('wide-only-spoken') : {})}>
+      {short ? (
+        <Stack gap="2" {...narrowPart('wide-only-spoken')}>
+          {full}
+        </Stack>
+      ) : (
+        full
+      )}
+      {short && !routine ? (
+        <NarrowOnly>
+          {/* What the full headline says, so screen readers skip it. */}
+          <Text role="bodySm" tone="secondary" aria-hidden>
+            {turn ? null : (
+              <Text role="bodySm" tone="primary" style={styles.runIn}>
+                {`${title} `}
+              </Text>
+            )}
+            {detail}
+          </Text>
+        </NarrowOnly>
+      ) : null}
       {failure ? <FailureLine {...failure} /> : null}
     </Stack>
   );
@@ -163,4 +198,5 @@ const TITLE_SIZE = narrowLength('headline-size', HEADLINE.size);
 
 const styles = StyleSheet.create({
   title: { fontSize: TITLE_SIZE.value, lineHeight: TITLE_SIZE.times(HEADLINE.lineHeight).value },
+  runIn: { fontWeight: '600' },
 });
