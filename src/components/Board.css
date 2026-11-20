@@ -98,8 +98,8 @@ cg-board piece.taken {
 /*
  * A game's ending (src/board/endingAct.ts), put on the board by stageEnding
  * in Board.tsx. The house goes dark around the learner's king; the winner's
- * king stands in gold and the mated king goes grey with a crack down its
- * crown, and they stay that way once the lights are back up, so the board
+ * king stands in gold and the mated king, greyed, is cut through the crown,
+ * and they stay that way once the lights are back up, so the board
  * keeps saying who won.
  * Each rule's own style is how it looks in the end; the animations, further
  * down, only say how it gets there, so without them the end is shown at once.
@@ -112,14 +112,14 @@ cg-board piece.taken {
 .cg-wrap cg-ending {
   position: absolute;
   inset: 0;
-  /* Over the pieces and under the two kings, which stay lit in the dark. */
-  z-index: 3;
   overflow: hidden;
   pointer-events: none;
 }
 cg-ending i {
   position: absolute;
   opacity: 0;
+  /* Over the pieces and under the two kings, which stay lit in the dark. */
+  z-index: 3;
 }
 /* The dark house: a win leaves a wide warm pool around the learner's king. */
 cg-ending .veil {
@@ -194,6 +194,32 @@ cg-ending .confetto::before {
   height: calc(var(--size) * 60%);
   border-radius: 1px;
 }
+/*
+ * The sword stroke: a streak of light three squares long, centered on the
+ * beaten king and lying along the cut through its crown (below).
+ */
+cg-ending .slash {
+  opacity: 1;
+  z-index: 5;
+  width: 37.5%;
+  height: 12.5%;
+  left: calc((var(--x) - 1) * 12.5%);
+  top: calc(var(--y) * 12.5%);
+}
+cg-ending .slash::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* The cut's middle, 38% down the square. */
+  top: calc(38% - 2px);
+  height: 4px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, transparent, #fff 25%, #fff 75%, transparent);
+  box-shadow: 0 0 6px 1px rgba(var(--ivory), 0.9);
+  transform: rotate(-10.2deg);
+  opacity: 0;
+}
 cg-ending .gold {
   color: rgb(var(--gold));
 }
@@ -210,7 +236,8 @@ cg-ending .rose {
 /*
  * The kings. Chessground moves a piece with its own transform, so the king is
  * drawn again by ::before, which is free to turn and grow, and the piece's
- * own picture is sized away. ::after is the light behind it.
+ * own picture is sized away. ::after is the light behind it, or the beaten
+ * king's crown cut off.
  */
 cg-board piece.ending-king {
   background-size: 0 0;
@@ -259,45 +286,26 @@ cg-board piece.ending-winner::after {
     );
 }
 /*
- * Beaten: upright, its color drained, with a crack down its crown. Its
- * keyframes list the same transform functions as this, so they blend.
+ * Beaten: cut through the crown. The stroke runs up to the right, from 47%
+ * down its left side to 29% down its right; ::before keeps the king below it
+ * and ::after, drawn again, the crown above, slid down the cut and off its
+ * place. Both are drained of color.
  */
-cg-board piece.ending-beaten::before {
-  transform: translate(0, 0) rotate(0deg);
+cg-board piece.ending-beaten::before,
+cg-board piece.ending-beaten::after {
   filter: grayscale(0.8) brightness(0.85);
 }
-/*
- * The crack, from under the cross down into the crown, with a branch off to
- * each side. Dark on a white king and pale on a black one, so it shows on both.
- */
+cg-board piece.ending-beaten::before {
+  clip-path: polygon(0 47%, 100% 29%, 100% 100%, 0 100%);
+}
 cg-board piece.ending-beaten::after {
   inset: 0;
   z-index: 1;
   border-radius: 0;
-  background: rgb(var(--ink));
-  clip-path: polygon(
-    48.5% 25.5%,
-    44.7% 33%,
-    38.6% 36.8%,
-    39.2% 38%,
-    45.5% 35.2%,
-    51.4% 44.5%,
-    44.5% 57%,
-    51.7% 70%,
-    52.3% 70%,
-    48.5% 57%,
-    56.3% 46.6%,
-    66% 54.5%,
-    65.4% 52.6%,
-    56.6% 42.4%,
-    50.3% 33%,
-    54.5% 25.5%
-  );
-  /* It runs down from its top. */
-  transform-origin: 50% 26%;
-}
-cg-board piece.black.ending-beaten::after {
-  background: rgb(var(--ivory));
+  background-image: inherit;
+  background-size: cover;
+  clip-path: polygon(0 0, 100% 0, 100% 29%, 0 47%);
+  transform: translate(-10%, 0.3%);
 }
 /* A draw: the same quiet ring on both. */
 cg-board piece.ending-level::after {
@@ -354,29 +362,41 @@ cg-board piece.ending-level::after {
   .ending-drawn piece.ending-level::after {
     animation: ending-light 700ms ease-out var(--act-rise) backwards;
   }
-  /* The rival's king is jolted by the mate, and its crown splits as it settles. */
+  /*
+   * An anime cut: the king stands still, a stroke of light crosses it with a
+   * flash, and only after a beat does its crown slide off along the cut. The
+   * learner's own king takes twice as long.
+   */
   .ending-won piece.ending-beaten::before {
-    animation: ending-jolt 360ms var(--act-fall) backwards;
+    animation: ending-cut-below 700ms linear var(--act-strike) backwards;
   }
   .ending-won piece.ending-beaten::after {
-    animation: ending-crack 160ms cubic-bezier(0.5, 0, 0.9, 0.6) calc(var(--act-fall) + 300ms)
-      backwards;
+    animation: ending-cut-above 700ms linear var(--act-strike) backwards;
   }
-  /* The learner's own king trembles, then the crack creeps slowly down. */
+  .ending-won cg-ending .slash::before {
+    animation: ending-slash 700ms linear var(--act-strike);
+  }
   .ending-lost piece.ending-beaten::before {
-    animation: ending-tremble 1150ms var(--act-fall) backwards;
+    animation: ending-cut-below 1400ms linear var(--act-strike) backwards;
   }
   .ending-lost piece.ending-beaten::after {
-    animation: ending-crack 600ms ease-in calc(var(--act-fall) + 700ms) backwards;
+    animation: ending-cut-above 1400ms linear var(--act-strike) backwards;
+  }
+  .ending-lost cg-ending .slash::before {
+    animation: ending-slash 1400ms linear var(--act-strike);
   }
   .ending-drawn piece.ending-level::before {
     animation: ending-nod 520ms ease-in-out var(--act-rise);
   }
 }
-/* Nothing moves: the kings are as they end at once, and only their light fades in. */
+/* Nothing moves: the kings are as they end at once, and only their lights fade in. */
 @media (prefers-reduced-motion: reduce) {
   cg-board piece.ending-king::after {
     animation: ending-fade 200ms ease-out;
+  }
+  /* The beaten king's ::after is its crown, not a light: it shows at once. */
+  cg-board piece.ending-beaten::after {
+    animation: none;
   }
 }
 
@@ -488,57 +508,58 @@ cg-board piece.ending-level::after {
     transform: scale(1.1);
   }
 }
-/* Jolted: knocked aside in a flash, rocking back to stand still and grey. */
-@keyframes ending-jolt {
-  0% {
-    transform: translate(0, 0) rotate(0deg);
+/* The king below the cut: still, a white flash as the stroke crosses, then its color drains. */
+@keyframes ending-cut-below {
+  0%,
+  12% {
     filter: none;
-    animation-timing-function: cubic-bezier(0.2, 0.8, 0.4, 1);
   }
-  22% {
-    transform: translate(5%, 0) rotate(7deg);
-    filter: brightness(1.6);
-    animation-timing-function: ease-in-out;
+  18% {
+    filter: brightness(0) invert(1);
   }
+  32%,
   50% {
-    transform: translate(-3%, 0) rotate(-4deg);
-    filter: grayscale(0.5) brightness(0.95);
-    animation-timing-function: ease-in-out;
-  }
-  76% {
-    transform: translate(1%, 0) rotate(1.5deg);
-    animation-timing-function: ease-in-out;
+    filter: none;
   }
 }
-/* The learner's king shivers while its color drains, then stands still for the crack. */
-@keyframes ending-tremble {
-  0% {
-    transform: translate(0, 0) rotate(0deg);
+/* The crown above it flashes with it, and after a beat slides off down the cut. */
+@keyframes ending-cut-above {
+  0%,
+  12% {
+    transform: translate(0, 0);
     filter: none;
   }
+  18% {
+    filter: brightness(0) invert(1);
+  }
+  32% {
+    filter: none;
+  }
+  50% {
+    transform: translate(0, 0);
+    filter: none;
+    animation-timing-function: cubic-bezier(0.55, 0, 0.85, 0.35);
+  }
+  72% {
+    transform: translate(-11.5%, 0.6%);
+    animation-timing-function: ease-out;
+  }
+}
+/* The stroke: drawn across in a blink, held, then wiped away the way it went. */
+@keyframes ending-slash {
+  0%,
   10% {
-    transform: translate(0, 0) rotate(-2deg);
+    opacity: 1;
+    clip-path: inset(0 100% 0 0);
   }
-  20% {
-    transform: translate(0, 0) rotate(2deg);
+  18%,
+  28% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
   }
-  30% {
-    transform: translate(0, 0) rotate(-1.5deg);
-  }
-  40% {
-    transform: translate(0, 0) rotate(1.5deg);
-  }
-  50% {
-    transform: translate(0, 0) rotate(-0.5deg);
-  }
-  60% {
-    transform: translate(0, 0) rotate(0deg);
-  }
-}
-/* The crack runs down the crown from under the cross. */
-@keyframes ending-crack {
-  from {
-    transform: scaleY(0);
+  44% {
+    opacity: 0;
+    clip-path: inset(0 0 0 100%);
   }
 }
 

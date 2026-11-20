@@ -433,10 +433,10 @@ function startEnding(board: Api, act: EndingAct) {
 
 /**
  * Which act is staged: the same act again, as after a redraw, has the same
- * key. The spot is in it because it moves when the board turns around, and
- * the layer is drawn from it.
+ * key. The spot and the cut are in it because they move when the board turns
+ * around, and the layer is drawn from them.
  */
-const actKey = ({ mood, kings, spot }: EndingAct) => JSON.stringify([mood, kings, spot]);
+const actKey = ({ mood, kings, spot, cut }: EndingAct) => JSON.stringify([mood, kings, spot, cut]);
 
 /** Marks the kings' elements with their parts, which chessground may have swapped since. */
 function markKings(pieces: Iterable<PieceNode>, act: EndingAct) {
@@ -457,7 +457,7 @@ const partClass = (part: KingPart) => `ending-${part}`;
  * unseen until Board.css animates it, which it doesn't without motion, so
  * then the layer stays empty.
  */
-function endingLayer({ spot, sparks, confetti }: EndingAct): HTMLElement {
+function endingLayer({ spot, cut, sparks, confetti }: EndingAct): HTMLElement {
   const layer = document.createElement(ENDING_TAG);
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return layer;
   layer.addEventListener('animationend', ({ target }) => {
@@ -473,6 +473,8 @@ function endingLayer({ spot, sparks, confetti }: EndingAct): HTMLElement {
       element.style.setProperty(`--${name}`, String(value));
     layer.appendChild(element);
   };
+  // The sword stroke through the beaten king's crown.
+  if (cut) add('slash', { x: cut[0], y: cut[1] });
   // A draw lights no king, so its veil dims the board evenly.
   if (!spot) {
     add('veil');

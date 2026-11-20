@@ -21,6 +21,7 @@ describe('endingAct', () => {
       { square: 'e8', part: 'beaten' },
     ]);
     expect(act.spot).toEqual([4, 7]);
+    expect(act.cut).toEqual([4, 0]);
     expect(act.sparks.length).toBeGreaterThan(0);
     expect(act.confetti.length).toBeGreaterThan(0);
   });
@@ -32,6 +33,7 @@ describe('endingAct', () => {
       ['e8', 'winner'],
     ]);
     expect(act.spot).toEqual([4, 7]);
+    expect(act.cut).toEqual([4, 7]);
     expect(act.sparks).toEqual([]);
     expect(act.confetti).toEqual([]);
   });
@@ -43,6 +45,7 @@ describe('endingAct', () => {
       { square: 'e1', part: 'level' },
     ]);
     expect(act.spot).toBeUndefined();
+    expect(act.cut).toBeUndefined();
     expect(act.confetti).toEqual([]);
   });
 

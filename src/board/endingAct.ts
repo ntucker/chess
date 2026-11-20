@@ -10,7 +10,7 @@ import type { Color } from '@/game/replay';
 
 /**
  * A king's part in the ending: the winner stands in gold, the mated king
- * goes grey with a cracked crown, and in a draw both stay level.
+ * is cut through the crown, and in a draw both stay level.
  */
 export const KING_PARTS = ['winner', 'beaten', 'level'] as const;
 export type KingPart = (typeof KING_PARTS)[number];
@@ -57,6 +57,8 @@ export interface EndingAct {
    * A draw dims nothing, so it has none.
    */
   readonly spot?: readonly [number, number];
+  /** The beaten king, which a sword stroke cuts through. A draw beats no one. */
+  readonly cut?: readonly [number, number];
   /** Thrown from the learner's king when they win. */
   readonly sparks: readonly Spark[];
   /** Falls over the whole board when they win. */
@@ -68,8 +70,8 @@ export interface EndingAct {
  * arrives. The mating move is still sliding in for the first MOVE_MS.
  */
 export interface ActTimes {
-  /** The mated king starts to fall. */
-  readonly fall: number;
+  /** The sword stroke reaches the mated king. */
+  readonly strike: number;
   /** The house lights go down. */
   readonly dim: number;
   /** The winner's king takes the light; in a draw, both kings. */
@@ -85,15 +87,15 @@ export interface ActTimes {
 export const MOVE_MS = 200;
 
 /**
- * A win is quick: the rival's king is knocked down as the move lands and the
+ * A win is quick: the rival's king is cut down as the move lands and the
  * learner's king is lit at once. A loss is slow: the lights sink first, the
- * learner's king takes its time to fall, and the card waits for it. A draw
+ * learner's king is cut at half speed, and the card waits for it. A draw
  * only pauses.
  */
 export const ACT_TIMES: Readonly<Record<Mood, ActTimes>> = {
-  won: { fall: 220, dim: 300, rise: 420, card: 640, cardOut: 3000, up: 3100 },
-  lost: { fall: 380, dim: 240, rise: 1100, card: 1150, cardOut: 3700, up: 3800 },
-  drawn: { fall: 0, dim: 240, rise: 300, card: 380, cardOut: 2500, up: 2600 },
+  won: { strike: 220, dim: 300, rise: 420, card: 640, cardOut: 3000, up: 3100 },
+  lost: { strike: 380, dim: 240, rise: 1100, card: 1150, cardOut: 3700, up: 3800 },
+  drawn: { strike: 0, dim: 240, rise: 300, card: 380, cardOut: 2500, up: 2600 },
 };
 
 /** The parts of the learner's king and the rival's. */
@@ -120,7 +122,10 @@ export function endingAct(
       { square: kings.learner, part: learnerPart },
       { square: kings.rival, part: rivalPart },
     ],
-    ...(mood !== 'drawn' && { spot: squareOffset(kings.learner, orientation) }),
+    ...(mood !== 'drawn' && {
+      spot: squareOffset(kings.learner, orientation),
+      cut: squareOffset(mood === 'won' ? kings.rival : kings.learner, orientation),
+    }),
     sparks: won ? sparks() : [],
     confetti: won ? confetti() : [],
   };
