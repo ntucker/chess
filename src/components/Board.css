@@ -98,8 +98,9 @@ cg-board piece.taken {
 /*
  * A game's ending (src/board/endingAct.ts), put on the board by stageEnding
  * in Board.tsx. The house goes dark around the learner's king; the winner's
- * king stands in gold and the mated king lies on its side, and they stay that
- * way once the lights are back up, so the board keeps saying who won.
+ * king stands in gold and the mated king slumps, small and grey, over its own
+ * shadow, and they stay that way once the lights are back up, so the board
+ * keeps saying who won.
  * Each rule's own style is how it looks in the end; the animations, further
  * down, only say how it gets there, so without them the end is shown at once.
  */
@@ -225,7 +226,7 @@ cg-board piece.ending-king::before {
   inset: 0;
   background-image: inherit;
   background-size: cover;
-  /* Its foot, which it stands on, grows from and tips over. */
+  /* Its foot, which it stands on, grows from and slumps over. */
   transform-origin: 50% 82%;
 }
 cg-board piece.ending-king::after {
@@ -257,10 +258,27 @@ cg-board piece.ending-winner::after {
       rgba(var(--gold), 0)
     );
 }
-/* On its side in the middle of its square, its color gone. */
+/*
+ * Beaten: shrunk to four fifths on its foot, drooping, its color drained.
+ * Upright enough to read as its own king on any square; every transform in
+ * its keyframes lists the same functions as this one, so they blend.
+ */
 cg-board piece.ending-fallen::before {
-  transform: translate(calc(var(--lean) * -32%), -32%) rotate(calc(var(--lean) * 90deg));
+  transform: translate(0, 0) rotate(-12deg) scale(0.8, 0.8);
   filter: grayscale(0.9) brightness(0.78);
+}
+/* The shadow it sinks into, a dark pool at its foot (no light, unlike the winner's disc). */
+cg-board piece.ending-fallen::after {
+  left: 6%;
+  right: 6%;
+  top: 68%;
+  height: 28%;
+  background: radial-gradient(
+    closest-side,
+    rgba(var(--ink), 0.6),
+    rgba(var(--ink), 0.38) 55%,
+    rgba(var(--ink), 0)
+  );
 }
 /* A draw: the same quiet ring on both. */
 cg-board piece.ending-level::after {
@@ -318,10 +336,16 @@ cg-board piece.ending-level::after {
     animation: ending-light 700ms ease-out var(--act-rise) backwards;
   }
   .ending-won piece.ending-fallen::before {
-    animation: ending-knocked 560ms var(--act-fall) backwards;
+    animation: ending-struck 560ms var(--act-fall) backwards;
+  }
+  .ending-won piece.ending-fallen::after {
+    animation: ending-thud 560ms var(--act-fall) backwards;
   }
   .ending-lost piece.ending-fallen::before {
-    animation: ending-topple 1150ms var(--act-fall) backwards;
+    animation: ending-slump 1150ms var(--act-fall) backwards;
+  }
+  .ending-lost piece.ending-fallen::after {
+    animation: ending-pool 1150ms var(--act-fall) backwards;
   }
   .ending-drawn piece.ending-level::before {
     animation: ending-nod 520ms ease-in-out var(--act-rise);
@@ -442,51 +466,89 @@ cg-board piece.ending-level::after {
     transform: scale(1.1);
   }
 }
-/* Struck: straight over, with one bounce off the board. */
-@keyframes ending-knocked {
+/*
+ * Struck: it reels back in a flash, is hammered down flat, bounces up small,
+ * and settles drooping.
+ */
+@keyframes ending-struck {
   0% {
-    transform: translate(0, 0) rotate(0deg);
+    transform: translate(0, 0) rotate(0deg) scale(1, 1);
     filter: none;
-    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.5);
-  }
-  58% {
-    transform: translate(calc(var(--lean) * -32%), -32%) rotate(calc(var(--lean) * 90deg));
-    filter: none;
-    animation-timing-function: ease-out;
-  }
-  76% {
-    transform: translate(calc(var(--lean) * -29%), -32%) rotate(calc(var(--lean) * 78deg));
-    animation-timing-function: ease-in;
-  }
-}
-/* The learner's own king: it sways, hangs, and goes down slowly. */
-@keyframes ending-topple {
-  0% {
-    transform: translate(0, 0) rotate(0deg);
-    filter: none;
-    animation-timing-function: ease-in-out;
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.4, 1);
   }
   14% {
-    transform: translate(0, 0) rotate(calc(var(--lean) * -6deg));
+    transform: translate(6%, 0) rotate(10deg) scale(1.04, 1.04);
+    filter: brightness(1.6);
+    animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5);
+  }
+  36% {
+    transform: translate(0, 0) rotate(-4deg) scale(1.14, 0.66);
+    filter: grayscale(0.6) brightness(0.9);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  }
+  60% {
+    transform: translate(0, 0) rotate(-15deg) scale(0.74, 0.9);
     animation-timing-function: ease-in-out;
   }
+  80% {
+    transform: translate(0, 0) rotate(-11deg) scale(0.83, 0.77);
+    animation-timing-function: ease-in-out;
+  }
+}
+/* Its shadow spreads out under it as it is hammered down. */
+@keyframes ending-thud {
+  0%,
   30% {
-    transform: translate(0, 0) rotate(calc(var(--lean) * 5deg));
+    opacity: 0;
+    transform: scale(0.4);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  44% {
+    opacity: 1;
+    transform: scale(1.3);
     animation-timing-function: ease-in-out;
   }
-  42% {
-    transform: translate(0, 0) rotate(calc(var(--lean) * -2deg));
+}
+/*
+ * The learner's own king: it draws a breath, wavers, and slowly sinks into
+ * itself as its color drains away.
+ */
+@keyframes ending-slump {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1, 1);
     filter: none;
-    animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.45);
+    animation-timing-function: ease-in-out;
   }
-  74% {
-    transform: translate(calc(var(--lean) * -32%), -32%) rotate(calc(var(--lean) * 90deg));
-    filter: grayscale(0.4) brightness(0.9);
+  18% {
+    transform: translate(0, -4%) rotate(0deg) scale(1.04, 1.04);
+    animation-timing-function: ease-in-out;
+  }
+  32% {
+    transform: translate(0, -4%) rotate(3deg) scale(1.04, 1.04);
+    animation-timing-function: ease-in-out;
+  }
+  44% {
+    transform: translate(0, 0) rotate(-1deg) scale(1, 1);
+    filter: none;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1);
+  }
+  86% {
+    transform: translate(0, 0) rotate(-13deg) scale(0.79, 0.77);
     animation-timing-function: ease-out;
   }
-  84% {
-    transform: translate(calc(var(--lean) * -31%), -32%) rotate(calc(var(--lean) * 85deg));
-    animation-timing-function: ease-in;
+}
+/* Its shadow pools under it as it sinks. */
+@keyframes ending-pool {
+  0%,
+  40% {
+    opacity: 0;
+    transform: scale(0.6);
+    animation-timing-function: ease-in-out;
+  }
+  86% {
+    opacity: 1;
+    transform: scale(1.06);
+    animation-timing-function: ease-out;
   }
 }
 

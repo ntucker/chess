@@ -14,11 +14,11 @@ function exampleAct(title: string) {
 }
 
 describe('endingAct', () => {
-  it('lights the learner who wins and tips the mated king toward the middle', () => {
+  it('lights the learner who wins and casts the rival as the mated king', () => {
     const act = exampleAct('Win');
     expect(act.kings).toEqual([
-      { square: 'e1', part: 'winner', at: [4, 7], lean: -1 },
-      { square: 'e8', part: 'fallen', at: [4, 0], lean: -1 },
+      { square: 'e1', part: 'winner' },
+      { square: 'e8', part: 'fallen' },
     ]);
     expect(act.spot).toEqual([4, 7]);
     expect(act.sparks.length).toBeGreaterThan(0);
@@ -36,13 +36,20 @@ describe('endingAct', () => {
     expect(act.confetti).toEqual([]);
   });
 
-  it('keeps both kings level in a draw, seen from the side of the learner', () => {
+  it('keeps both kings level in a draw, with no light on either', () => {
     const act = exampleAct('Draw');
-    expect(act.kings.map(({ part }) => part)).toEqual(['level', 'level']);
-    // Black sits at the bottom, so its king on g6 is second from the left, third rank from the bottom.
-    expect(act.kings.find(({ square }) => square === 'g6')?.at).toEqual([1, 5]);
+    expect(act.kings).toEqual([
+      { square: 'g6', part: 'level' },
+      { square: 'e1', part: 'level' },
+    ]);
     expect(act.spot).toBeUndefined();
     expect(act.confetti).toEqual([]);
+  });
+
+  it("lights the learner's king as they see it", () => {
+    // Black sits at the bottom, so its king on g6 is second from the left, third rank from the bottom.
+    const act = endingAct({ mood: 'won', kings: { learner: 'g6', rival: 'e1' } }, 'black');
+    expect(act.spot).toEqual([1, 5]);
   });
 
   it('is the same on every showing', () => {

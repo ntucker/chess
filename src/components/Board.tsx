@@ -441,7 +441,6 @@ function markKings(pieces: Iterable<PieceNode>, act: EndingAct) {
     const king = piece.cgFading ? undefined : kings.get(piece.cgKey);
     piece.classList.toggle('ending-king', !!king);
     for (const part of KING_PARTS) piece.classList.toggle(partClass(part), king?.part === part);
-    if (king) piece.style.setProperty('--lean', String(king.lean));
   }
 }
 

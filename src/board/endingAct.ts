@@ -1,5 +1,5 @@
 // How the board acts out a game's ending: which king takes the light and
-// which falls, when each beat happens, and where the sparks and confetti fly.
+// which is beaten, when each beat happens, and where the sparks and confetti fly.
 // Board.tsx puts it on the board and Board.css draws it; EndingCard.tsx reads
 // the same times, so the card and the board keep step. Pure, so it's tested
 // without a DOM, and it imports nothing it would have to bundle, since the
@@ -10,7 +10,7 @@ import type { Color } from '@/game/replay';
 
 /**
  * A king's part in the ending: the winner stands in gold, the mated king
- * falls over, and in a draw both stay level.
+ * slumps over its shadow, and in a draw both stay level.
  */
 export const KING_PARTS = ['winner', 'fallen', 'level'] as const;
 export type KingPart = (typeof KING_PARTS)[number];
@@ -18,10 +18,6 @@ export type KingPart = (typeof KING_PARTS)[number];
 export interface ActKing {
   readonly square: Square;
   readonly part: KingPart;
-  /** Squares right and down from the board's top left corner, as the learner sees it. */
-  readonly at: readonly [number, number];
-  /** Which way a fallen king tips: 1 to the right, -1 to the left. */
-  readonly lean: 1 | -1;
 }
 
 /** A spark thrown from the winning king. Lengths are in squares. */
@@ -110,22 +106,20 @@ const PARTS: Readonly<Record<Mood, readonly [KingPart, KingPart]>> = {
 /**
  * The ending as the board plays it for the learner, who sits on
  * `orientation`'s side. Example: after Scholar's mate with White at
- * the bottom, the king on e1 is the winner and the one on e8 falls to the left.
+ * the bottom, the king on e1 is the winner and the one on e8 is mated.
  */
 export function endingAct(
   { mood, kings }: Pick<Ending, 'mood' | 'kings'>,
   orientation: Color,
 ): EndingAct {
-  const king = (square: Square, part: KingPart): ActKing => {
-    const at = squareOffset(square, orientation);
-    // It tips toward the middle of the board, where there is room to see it.
-    return { square, part, at, lean: at[0] < 4 ? 1 : -1 };
-  };
   const [learnerPart, rivalPart] = PARTS[mood];
   const won = mood === 'won';
   return {
     mood,
-    kings: [king(kings.learner, learnerPart), king(kings.rival, rivalPart)],
+    kings: [
+      { square: kings.learner, part: learnerPart },
+      { square: kings.rival, part: rivalPart },
+    ],
     ...(mood !== 'drawn' && { spot: squareOffset(kings.learner, orientation) }),
     sparks: won ? sparks() : [],
     confetti: won ? confetti() : [],
