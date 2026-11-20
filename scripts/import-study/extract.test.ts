@@ -9,11 +9,11 @@ const { moveNotes, positionNotes, branches, choices, rejected, contradicted } = 
   advance,
   'black',
 );
+/** What is read for Black from the one chapter in `pgn`. */
+const notesOf = (pgn: string) => extractChapter(parseStudy(pgn, () => true)[0], 'black');
 /** The branches read for Black from the one chapter in `pgn`: each as the move it leaves from and its moves. */
-const branchesOf = (pgn: string) => {
-  const [chapter] = parseStudy(pgn, () => true);
-  return extractChapter(chapter, 'black').branches.map(({ spot, ucis }) => [spot.move?.san, ucis]);
-};
+const branchesOf = (pgn: string) =>
+  notesOf(pgn).branches.map(({ spot, ucis }) => [spot.move?.san, ucis]);
 
 const noteOn = (san: string) =>
   moveNotes.filter(({ move }) => move.san === san).map(({ note }) => note);
@@ -160,17 +160,23 @@ describe('extractChapter', () => {
     expect(after('10...f6? 11.Qh5+')).toEqual([]);
   });
 
-  it('reads no run longer than 32 plies, a game score rather than a line', () => {
+  describe('a run longer than 32 plies, a game score rather than a line', () => {
+    // The Breyer to 17...Bg7 from 2.Nf3: 32 plies.
     const breyer =
       '2.Nf3 Nc6 3.Bb5 a6 4.Ba4 Nf6 5.O-O Be7 6.Re1 b5 7.Bb3 d6 8.c3 O-O 9.h3 Nb8 10.d4 Nbd7 11.Nbd2 Bb7 12.Bc2 Re8 13.Nf1 Bf8 14.Ng3 g6 15.a4 c5 16.d5 c4 17.Bg5 Bg7';
-    const after = (run: string) => branchesOf(`1. e4 e5 { Then ${run}. } *`);
-    const [[from, ucis]] = after(breyer);
-    expect(from).toBe('e5');
-    expect(ucis).toHaveLength(32);
-    const quoted = `1. e4 e5 { Then ${breyer} 18.Qd2. } *`;
-    expect(after(`${breyer} 18.Qd2`)).toEqual([]);
-    // The import report lists it, so a real line this long wouldn't vanish unseen.
-    expect(extractChapter(parseStudy(quoted, () => true)[0], 'black').gameScores).toEqual([33]);
+    const quoting = (run: string) => `1. e4 e5 { Then ${run}. } *`;
+
+    it('is not read as a branch', () => {
+      const [[from, ucis]] = branchesOf(quoting(breyer));
+      expect(from).toBe('e5');
+      expect(ucis).toHaveLength(32);
+      expect(branchesOf(quoting(`${breyer} 18.Qd2`))).toEqual([]);
+    });
+
+    it('is counted for the import report, so a real line this long would not vanish unseen', () => {
+      expect(notesOf(quoting(breyer)).quotedGamePlies).toEqual([]);
+      expect(notesOf(quoting(`${breyer} 18.Qd2`)).quotedGamePlies).toEqual([33]);
+    });
   });
 
   it('counts move numbers from the FEN a chapter starts at', () => {

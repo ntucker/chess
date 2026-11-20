@@ -56,7 +56,7 @@ export interface ChapterNotes {
   /** Evaluation glyphs dropped because the comment's text says otherwise. */
   readonly contradicted: number;
   /** The length in plies of each run of comment moves dropped as a quoted game (`MAX_LINE_PLIES`). */
-  readonly gameScores: readonly number[];
+  readonly quotedGamePlies: readonly number[];
   /** `Chapter.writtenFor`: the comments' "you" is the learner's opponent. */
   readonly writtenFor?: Color;
 }
@@ -136,7 +136,7 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
   const choices: Choice[] = [];
   const rejected: Rejected[] = [];
   let contradicted = 0;
-  const gameScores: number[] = [];
+  const quotedGamePlies: number[] = [];
 
   for (const move of chapterMoves(chapter)) {
     const { comment } = move;
@@ -152,13 +152,8 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
       ...(evaluation && evaluation !== 'contradicted' ? [evaluation] : []),
     ];
     const runs = sequences(move, learner);
-    branches.push(
-      ...traps.map(({ spot, idea }) => ({ spot, ucis: idea.moves })),
-      ...runs.filter(({ ucis }) => ucis.length <= MAX_LINE_PLIES),
-    );
-    gameScores.push(
-      ...runs.filter(({ ucis }) => ucis.length > MAX_LINE_PLIES).map(({ ucis }) => ucis.length),
-    );
+    branches.push(...traps.map(({ spot, idea }) => ({ spot, ucis: idea.moves })), ...runs.lines);
+    quotedGamePlies.push(...runs.quotedGamePlies);
     // A choice guide picks among the moves of the side it was written for.
     if (!writtenFor) choices.push(...choiceGuide(move, learner));
 
@@ -190,7 +185,7 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
     choices,
     rejected,
     contradicted,
-    gameScores,
+    quotedGamePlies,
     ...(writtenFor && { writtenFor }),
   };
 }
@@ -210,17 +205,27 @@ function plans(
   return move.comment ? planLists(move, move.comment, learner) : [];
 }
 
-/** Sequences of two or more moves that `move`'s comment writes out, placed in the tree. */
+/**
+ * The sequences of two or more moves that `move`'s comment writes out, placed in the tree: the
+ * lines to learn, and the length of each run too long to be one (`MAX_LINE_PLIES`).
+ */
 function sequences(move: StudyMove, learner: Color) {
   const place = (run: string) => placeSequence(move, namedMoves(run));
-  return (move.comment.match(SEQUENCE) ?? []).flatMap((run) => {
+  const placed = (move.comment.match(SEQUENCE) ?? []).flatMap((run) => {
     const whole = place(run);
-    const parts = whole ? [whole] : (run.match(SPACED) ?? []).flatMap((part) => place(part) ?? []);
-    return parts.filter(
-      ({ spot, ucis }) =>
-        ucis.length >= 2 && (spot.move || !namesOtherOpening(ucis, move, learner)),
-    );
+    return whole ? [whole] : (run.match(SPACED) ?? []).flatMap((part) => place(part) ?? []);
   });
+  return {
+    lines: placed.filter(
+      ({ spot, ucis }) =>
+        ucis.length >= 2 &&
+        ucis.length <= MAX_LINE_PLIES &&
+        (spot.move || !namesOtherOpening(ucis, move, learner)),
+    ),
+    quotedGamePlies: placed
+      .filter(({ ucis }) => ucis.length > MAX_LINE_PLIES)
+      .map(({ ucis }) => ucis.length),
+  };
 }
 
 /**

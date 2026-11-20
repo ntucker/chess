@@ -49,10 +49,10 @@ function lineThrough(move: StudyMove): StudyMove[] {
 
 /** The move of the line through `move` that `named` names, if there is one. */
 export function findOnLine(move: StudyMove, named: NamedMove): StudyMove | undefined {
-  return nearestMatch(lineThrough(move), named, move.ply);
+  return nearestMatch(lineThrough(move), named, nextPly(move.before));
 }
 
-/** Of `moves`, the one `named` names, nearest the ply its number gives (else `ply`). */
+/** Of `moves`, the one `named` names, nearest the ply its number gives (else `ply`), both as text numbers them. */
 export function nearestMatch(
   moves: Iterable<StudyMove>,
   named: NamedMove,
@@ -62,7 +62,7 @@ export function nearestMatch(
     (candidate) =>
       candidate.san === named.san && (!named.side || candidate.before.turn === named.side),
   );
-  return nearest(matches, named.ply ?? ply, (candidate) => candidate.ply);
+  return nearest(matches, named.ply ?? ply, (candidate) => nextPly(candidate.before));
 }
 
 /**
