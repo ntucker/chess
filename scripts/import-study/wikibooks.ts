@@ -219,6 +219,12 @@ export interface WikibooksOptions {
    */
   readonly rename?: Readonly<Record<string, string>>;
   /**
+   * The variation the root page's own chapter names, and the group of every
+   * chapter below it ("Semi-Slav" for a page reaching it by another move
+   * order); without one, the root page's chapter is untitled.
+   */
+  readonly topName?: string;
+  /**
    * Names of positions that belong to another lesson ("Semi-Slav Defense"):
    * the move into one stays, with what its parent page says of it, but
    * nothing below it, and it is never the main move.
@@ -234,7 +240,15 @@ export async function wikibooksPgn(
   fetchPage: FetchPage,
   options: WikibooksOptions,
 ): Promise<string> {
-  const { root, learner, rename = {}, leave = [], maxPages = 400, log = console.log } = options;
+  const {
+    root,
+    learner,
+    rename = {},
+    topName,
+    leave = [],
+    maxPages = 400,
+    log = console.log,
+  } = options;
   const path: string[] = [];
   let pos = Chess.default();
   for (const segment of root.split('/').slice(1)) {
@@ -260,7 +274,7 @@ export async function wikibooksPgn(
   // A missing root page would otherwise import as one bare move.
   if (top.children.length === 0) throw new Error(`${root}: Wikibooks has no moves here`);
   const name = (node: BookNode) => (node.name && (rename[node.name] ?? node.name)) || undefined;
-  return chapters(top, path.slice(0, -1), learner, name)
+  return chapters(top, path.slice(0, -1), learner, name, topName)
     .map((game) => makePgn(game))
     .join('\n');
 }
@@ -365,13 +379,15 @@ interface ChapterTop {
 
 /**
  * The tree cut into chapters at named positions on the main path; `prefix`
- * is the moves before `top`'s, which the root page's title names.
+ * is the moves before `top`'s, which the root page's title names, and
+ * `topName` titles `top`'s chapter and groups the rest.
  */
 function chapters(
   top: BookNode,
   prefix: readonly string[],
   learner: Color,
   name: (node: BookNode) => string | undefined,
+  topName?: string,
 ): Game<PgnNodeData>[] {
   const tops: ChapterTop[] = [];
   const visit = (
@@ -382,7 +398,7 @@ function chapters(
     onMain: boolean,
   ) => {
     const own = name(node);
-    if (node === top) tops.push({ node, path, title: '' });
+    if (node === top) tops.push({ node, path, title: topName ?? '' });
     else if (onMain && !node.transposed && own && own !== current) {
       tops.push({ node, path, title: group ? `${group}: ${own}` : own });
       group ??= own;
@@ -394,7 +410,7 @@ function chapters(
       visit(child, [...path, child], group, current, onMain && mainMove && !child.left);
     });
   };
-  visit(top, [top], undefined, undefined, true);
+  visit(top, [top], topName, topName, true);
   const isTop = new Set(tops.map(({ node }) => node));
   return tops.map(({ node, path, title }) => {
     const game: Game<PgnNodeData> = {

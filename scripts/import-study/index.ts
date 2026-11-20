@@ -87,10 +87,10 @@ async function main() {
   }
   const chapterName: ChapterName = (title, chapter) => {
     const from = study.from[chapter.source ?? 0];
-    // A Wikibooks chapter is titled with its variation's name, the root page's own untitled.
+    // A Wikibooks chapter is titled with its variation's name, the opening's own untitled.
     return 'study' in from
       ? (from.chapterName ?? numberedChapterName)(title, chapter)
-      : title || from.topName;
+      : title || undefined;
   };
   const cli = claudeCli({
     learner: info.side,

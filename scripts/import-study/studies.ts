@@ -18,10 +18,7 @@ interface StudySource {
  * Pages of Wikibooks' Chess Opening Theory (wikibooks.ts), the learner being
  * the lesson's side. Credited by its root page (`wikibooksCredit`).
  */
-type WikibooksSource = Omit<WikibooksOptions, 'learner' | 'log'> & {
-  /** The variation of the root page's own chapter; the opening itself when absent. */
-  readonly topName?: string;
-};
+type WikibooksSource = Omit<WikibooksOptions, 'learner' | 'log'>;
 
 export type ChapterSource = StudySource | WikibooksSource;
 
@@ -168,8 +165,8 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...e6/3._Nc3/3...c6',
         topName: 'Semi-Slav',
         rename: {
-          'Noteboom variation': 'Semi-Slav: Noteboom Variation',
-          'Marshall gambit': 'Semi-Slav: Marshall Gambit',
+          'Noteboom variation': 'Noteboom Variation',
+          'Marshall gambit': 'Marshall Gambit',
         },
       },
       {

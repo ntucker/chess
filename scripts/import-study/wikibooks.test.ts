@@ -110,6 +110,20 @@ describe('wikibooksPgn', () => {
     expect(parsePgn(pgn).map((game) => game.headers.get('ChapterName'))).toEqual(['', 'Slav']);
   });
 
+  it("names the root page's chapter by `topName`, and groups the others under it", async () => {
+    const pgn = await wikibooksPgn(fetchPage, {
+      root: ROOT,
+      learner: 'black',
+      topName: 'Closed',
+      log: () => {},
+    });
+    expect(parsePgn(pgn).map((game) => game.headers.get('ChapterName'))).toEqual([
+      'Closed',
+      "Closed: Queen's Gambit",
+      'Closed: Slav Defence',
+    ]);
+  });
+
   it('puts a paragraph about one next move on that move, and the rest on the move in', async () => {
     const [top] = await games();
     const d5 = top.moves.children[0].children[0];
