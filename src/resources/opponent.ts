@@ -55,8 +55,8 @@ export function useWarmOpponent(opponent: Opponent, active: boolean) {
   // pre-renders screens and must not start an engine.
   useEffect(() => {
     if (!active || opponent === 'stockfish') return;
-    // Unawaited, a failure is only stored: it shows when Maia has to play,
-    // and that move asks again.
+    // Unawaited, a failure is only stored, and Maia's move asks again
+    // (getMaiaMove never reuses a failure).
     ctrl.fetchIfStale(getMaiaMove, opponent, []);
   }, [ctrl, opponent, active]);
 }

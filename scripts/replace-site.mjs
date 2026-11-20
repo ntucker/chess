@@ -34,7 +34,7 @@ const HASHED = ['_expo/static', 'assets'];
 const [site] = process.argv.slice(2);
 if (!site) throw new Error('Usage: node scripts/replace-site.mjs <site>');
 
-/** The hashed files of the site in `dir`, as paths relative to it. */
+/** The hashed files of the site in `dir`, as sorted paths relative to it, so equal builds compare equal. */
 function hashedFiles(dir) {
   return HASHED.flatMap((folder) =>
     existsSync(join(dir, folder))
@@ -50,17 +50,16 @@ const builds = existsSync(BUILDS_FILE)
   ? JSON.parse(readFileSync(BUILDS_FILE, 'utf8'))
   : [hashedFiles('.')].filter((files) => files.length);
 const files = hashedFiles(site);
-// Publishing a build again (a re-run) moves it to the newest place rather
-// than taking a second one.
-const key = JSON.stringify(files);
-const kept = [...builds.filter((build) => JSON.stringify(build) !== key), files].slice(
-  -KEEP_BUILDS,
-);
+// The earlier builds kept, without this one: publishing a build again (a
+// re-run) moves it to the newest place rather than taking a second one.
+const earlier = builds
+  .filter((build) => JSON.stringify(build) !== JSON.stringify(files))
+  .slice(1 - KEEP_BUILDS);
 
-// Set aside the kept files of earlier builds, clear the site, and put them
-// back under the new build.
+// Set aside the earlier builds' files, clear the site, and put them back
+// under the new build.
 const carried = mkdtempSync(join(tmpdir(), 'site-'));
-for (const file of new Set(kept.slice(0, -1).flat())) {
+for (const file of new Set(earlier.flat())) {
   if (existsSync(file)) cpSync(file, join(carried, file));
 }
 for (const entry of readdirSync('.')) {
@@ -69,4 +68,4 @@ for (const entry of readdirSync('.')) {
 cpSync(carried, '.', { recursive: true });
 cpSync(site, '.', { recursive: true });
 rmSync(carried, { recursive: true });
-writeFileSync(BUILDS_FILE, `${JSON.stringify(kept)}\n`);
+writeFileSync(BUILDS_FILE, `${JSON.stringify([...earlier, files])}\n`);

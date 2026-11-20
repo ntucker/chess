@@ -103,6 +103,15 @@ describe('replace-site', () => {
     expect(files).toContain('assets/assets/maia/maia-1500.b09c.bin');
   });
 
+  it('keeps one place for the newest build published again, as a re-run does', () => {
+    publish('a', build('aaa'));
+    publish('b', build('bbb'));
+    publish('b', build('bbb'));
+    const builds = JSON.parse(readFileSync(join(pages, '.builds.json'), 'utf8'));
+    expect(builds).toHaveLength(2);
+    expect(builds.at(-1)).toContain('_expo/static/js/web/maia-bbb.js');
+  });
+
   it('keeps one place for an older build published again', () => {
     publish('a', build('aaa'));
     publish('b', build('bbb'));

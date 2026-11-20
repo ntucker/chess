@@ -23,6 +23,14 @@ describe('fetchOpponentMove', () => {
     expect(maiaMove).toHaveBeenCalledWith(1300, ['e2e4']);
   });
 
+  it('asks Maia again right after a failure', async () => {
+    const controller = newController();
+    jest.mocked(maiaMove).mockReset().mockRejectedValueOnce(new Error('no worker'));
+    await expect(fetchOpponentMove(controller, 1300, [])).rejects.toThrow('no worker');
+    jest.mocked(maiaMove).mockResolvedValue('e2e4');
+    expect(await fetchOpponentMove(controller, 1300, [])).toBe('e2e4');
+  });
+
   it("plays Stockfish's best move, from the search that evaluated the position", async () => {
     const controller = newController();
     const sent: string[] = [];

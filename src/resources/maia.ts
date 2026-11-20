@@ -15,9 +15,10 @@ import { maiaMove } from '@/maia/engine';
  * const uci = await ctrl.fetch(getMaiaMove, 1500, ['e2e4']);
  * ```
  */
-// Maia plays the move its network rates highest, so a position's answer never
-// changes and stays cached.
 export const getMaiaMove = new Endpoint(maiaMove, {
   name: 'getMaiaMove',
+  // Maia plays the move its network rates highest, so a position's answer
+  // never changes; a failure is never reused, so the next ask tries again.
   dataExpiryLength: Infinity,
+  errorExpiryLength: 0,
 });
