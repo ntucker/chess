@@ -52,7 +52,7 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
   from one measurement of the PR's final head against its base. Never report or pool runs made while
   iterating. Say plainly when a case shows no difference.
 - Visible UI changes include screenshots of the web export, built and served locally as described
-  in the "Web deploys" section of README.md (PRs don't deploy a preview). Add light and
+  in the "Web deploys" section of README.md. Add light and
   dark versions only when the change looks different between the two (colors, theme tokens, images).
 
 ## Follow-ups

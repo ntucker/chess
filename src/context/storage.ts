@@ -3,6 +3,13 @@
 // code that touches it: the settings (SettingsProvider) and lesson progress
 // (src/resources/progress.ts) are kept here.
 
+// Pull request previews share the live site's origin, so their builds set a
+// prefix (.github/workflows/web.yml) to keep their own saves.
+const PREFIX = process.env.EXPO_PUBLIC_STORAGE_PREFIX ?? '';
+
+/** The key `name` is saved under in this build. */
+export const storageKey = (name: string) => `${PREFIX}${name}`;
+
 /** The text saved under `key`, or null (or undefined) when there is none. */
 export function readStorage(key: string) {
   try {

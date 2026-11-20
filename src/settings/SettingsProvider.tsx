@@ -9,7 +9,7 @@ import {
 } from 'react';
 
 import { requireProvider } from '@/context/requireProvider';
-import { readStorage, writeStorage } from '@/context/storage';
+import { readStorage, storageKey, writeStorage } from '@/context/storage';
 
 import {
   DEFAULT_SETTINGS,
@@ -20,10 +20,10 @@ import {
   settingsReducer,
 } from './settings';
 
-const KEY = 'settings';
+const KEY = storageKey('settings');
 // Before the settings were one object, the evaluation bar's engine was saved
 // alone under this key; it is read once, while nothing is saved under KEY.
-const LEGACY_EVALUATION_ENGINE_KEY = 'evaluationEngine';
+const LEGACY_EVALUATION_ENGINE_KEY = storageKey('evaluationEngine');
 
 // Native has no pre-rendered page to match, so its first frame can show the
 // remembered settings; the web loads them after hydration.

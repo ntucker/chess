@@ -1,7 +1,7 @@
 import type { Controller, Manager, Middleware } from '@data-client/react';
 import { Endpoint, Entity } from '@data-client/rest';
 
-import { readStorage, writeStorage } from '@/context/storage';
+import { readStorage, storageKey, writeStorage } from '@/context/storage';
 import type { PositionKey } from '@/lesson/lesson';
 import {
   type Mark,
@@ -12,7 +12,7 @@ import {
 } from '@/progress/progress';
 
 /** Where the progress is saved, as JSON (`SavedProgress`). */
-const KEY = 'progress';
+const KEY = storageKey('progress');
 
 /** One lesson's progress (src/progress/progress.ts): the positions with each mark. */
 export class LessonProgress extends Entity {
