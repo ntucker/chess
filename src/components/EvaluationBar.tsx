@@ -66,7 +66,7 @@ function EvaluatedBar({
   return <Bar orientation={orientation} style={style} {...reading} />;
 }
 
-interface Reading {
+export interface Reading {
   /** White's share of the bar, from 0 to 1. */
   readonly score: number;
   readonly label: string;
@@ -75,7 +75,8 @@ interface Reading {
   readonly description: string;
 }
 
-function evaluationReading({ score, pawns, mate }: Evaluation): Reading {
+/** How `evaluation` reads on the bar: its label, the side that leads, and in words. */
+export function evaluationReading({ score, pawns, mate }: Evaluation): Reading {
   if (mate !== undefined) {
     const leader = score < 0.5 ? 'black' : 'white';
     const moves = Math.abs(mate);

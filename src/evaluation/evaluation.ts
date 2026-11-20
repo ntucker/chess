@@ -15,6 +15,12 @@ export interface Evaluation {
   readonly best?: string;
 }
 
+/** One of the engine's top moves in a position (UCI), and how the position stands after it. */
+export interface TopMove {
+  readonly uci: string;
+  readonly evaluation: Evaluation;
+}
+
 /** How a finished game stands: the winner scores 1, a draw 0.5 each. */
 export function resultEvaluation({ winner }: GameResult): Evaluation {
   return { score: winner === 'white' ? 1 : winner === 'black' ? 0 : 0.5, pawns: 0 };

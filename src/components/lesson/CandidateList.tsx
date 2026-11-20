@@ -2,9 +2,12 @@ import { a11yState, Pressable, Stack, Surface, Text, useTheme } from '@reactive/
 import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import type { Evaluation } from '@/evaluation/evaluation';
+import { candidateTone } from '@/lesson/drawings';
 import type { Uci } from '@/lesson/lesson';
 import type { Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
+import { evaluationReading } from '@/components/EvaluationBar';
 import { Eyebrow } from '@/components/Eyebrow';
 import { QualityBadge } from '@/components/QualityBadge';
 import type { Mark } from '@/progress/progress';
@@ -47,11 +50,13 @@ interface Props {
 
 /**
  * The guide's moves at the position on the board, one row each, most played
- * first. Pointing at a row previews its move on the board; pressing it plays
- * the move when it's the learner's to play. Each row's dot matches its arrow
- * on the board; a rare row's dot is hollow, since the board draws no arrow
- * for it. A row's progress mark ends it, and a key beside the heading names
- * the marks the list shows.
+ * first, or past them Stockfish's top moves, best first, each with the
+ * evaluation after it in place of its share. Pointing at a row previews its
+ * move on the board; pressing it plays the move when it's the learner's to
+ * play. Each row's dot matches its arrow on the board; the dot of a row the
+ * board draws no arrow for is hollow: a rare row's, or one of Stockfish's
+ * but its best. A row's progress mark ends it, and a key beside the heading
+ * names the marks the list shows.
  */
 export function CandidateList({
   heading,
@@ -189,8 +194,10 @@ function Row({
 }: RowProps) {
   const { theme } = useTheme();
   const { color } = theme.semantic;
-  const { move, san } = candidate;
-  const tone = toneColors[main ? 'main' : 'other'];
+  const { move, san, engine } = candidate;
+  const tone = toneColors[candidateTone(candidate, main ? candidate : undefined)];
+  const hollow = candidate.rare || (engine && !main);
+  const reading = engine && evaluationRow(engine);
   const point = () => onPoint(move.uci);
   // The mouse points at a row once it rests there, so one crossed on the way
   // from another row down to the idea card leaves that row's preview be.
@@ -208,6 +215,7 @@ function Row({
         san,
         move.book && 'book move',
         share !== undefined && `${percent(share)} of games`,
+        reading?.description,
         mark && SPOKEN_MARKS[mark],
       ]
         .filter(Boolean)
@@ -242,7 +250,7 @@ function Row({
       <View
         style={[
           styles.dot,
-          candidate.rare ? { borderWidth: 2, borderColor: tone } : { backgroundColor: tone },
+          hollow ? { borderWidth: 2, borderColor: tone } : { backgroundColor: tone },
         ]}
       />
       <View style={styles.move}>
@@ -263,6 +271,11 @@ function Row({
           </Text>
         ) : null}
       </View>
+      {reading ? (
+        <Text role="caption" tone="secondary" style={styles.evaluation}>
+          {reading.label}
+        </Text>
+      ) : null}
       {share === undefined ? null : (
         <View style={styles.share}>
           <View style={[styles.track, { backgroundColor: color.tones.neutral.subtle }]}>
@@ -284,6 +297,16 @@ function Row({
 const BOOK_BADGE_SIZE = 16;
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;
+
+/**
+ * An evaluation as an engine line is written, from White's side: "+0.7",
+ * "−1.2", "0.0" or "+M3", with how the bar says it in words.
+ */
+function evaluationRow(evaluation: Evaluation) {
+  const { label, leader, description } = evaluationReading(evaluation);
+  const even = evaluation.mate === undefined && label === '0.0';
+  return { label: even ? label : `${leader === 'white' ? '+' : '\u2212'}${label}`, description };
+}
 
 const ROW_INSET = 14;
 const ROW_GAP = 12;
@@ -318,5 +341,6 @@ const styles = StyleSheet.create({
   track: { flex: 1, height: 4, borderRadius: 2, overflow: 'hidden' },
   fillBar: { height: '100%', borderRadius: 2 },
   percent: { width: 32, textAlign: 'right', fontFamily: fonts.mono },
+  evaluation: { minWidth: 44, textAlign: 'right', fontFamily: fonts.mono },
   mark: { width: MARK_SIZE, height: MARK_SIZE },
 });

@@ -9,7 +9,10 @@
  *   are listed every note's ideas are.
  *   Only a note about the position on the board can be pointed at, and
  *   Stockfish's best move shows only while nothing is previewed, pointed at
- *   or playing back.
+ *   or playing back. Past the guide's moves, Stockfish's top three are
+ *   listed in the candidates' place, and preview and play as they do; the
+ *   board marks only the first, as the best move, with no arrows for the
+ *   other two.
  * - Practice hides every hint while it is the learner's turn: no candidates,
  *   previews, best move or top moves, and of the notes only those of the move
  *   just played, and a trap's warning while traps are shown. Right after the
@@ -57,9 +60,10 @@ export type LessonSwitches = Pick<Settings, 'auto' | 'showMoves' | 'showTraps'>;
 
 /** Stockfish's view of the shown position, as far as it has arrived. */
 export interface EngineView {
+  /** The move its evaluation names. */
   readonly best?: Uci;
-  /** Its top three moves, best first. */
-  readonly top?: readonly Uci[];
+  /** Its top three moves, best first, as rows (`engineCandidates`). */
+  readonly top?: readonly Candidate[];
 }
 
 export interface GuidanceInput {
@@ -123,10 +127,12 @@ export interface Guidance {
    * Stockfish's best move to mark, with "moves on the board" on, while nothing
    * is previewed, pointed at or playing back. Inside the guide the candidates
    * are what is highlighted, so it is tagged only when it isn't one of them.
+   * Past the guide's moves it is the first of `top`, so the mark and the list
+   * agree (the evaluation's own search goes deeper and can name another).
    */
   readonly best?: Uci;
-  /** Stockfish's top three, listed only beyond the guide. */
-  readonly top: readonly Uci[];
+  /** Stockfish's top three, listed in Explore where the guide has no candidates. */
+  readonly top: readonly Candidate[];
   /** A trap the line fell into, while its card shows (see `trapShown`). */
   readonly trap?: LandedTrap;
   /** The line has reached a guide line's end, and the headline tells it (see `newsShown`). */
@@ -185,9 +191,12 @@ export function guidance(input: GuidanceInput): Guidance {
     showMoves: switches.showMoves,
     moveIdeas,
   });
+  const top = explore && view.place !== 'inside' ? (engine?.top ?? []) : [];
   const best =
     explore && switches.showMoves && !preview && !dragged && !playing && !pointedNote
-      ? engine?.best
+      ? view.place === 'inside'
+        ? engine?.best
+        : top[0]?.move.uci
       : undefined;
 
   return {
@@ -204,7 +213,7 @@ export function guidance(input: GuidanceInput): Guidance {
     playing,
     pointed: pointedNote,
     best: view.candidates.some(({ move }) => move.uci === best) ? undefined : best,
-    top: explore && view.place !== 'inside' ? (engine?.top ?? []) : [],
+    top,
     trap,
     lineEnded: view.lineEnd !== undefined && newsShown(view, view.lineEnd),
   };

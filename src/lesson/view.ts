@@ -142,20 +142,26 @@ export const shownKey = (key: PositionKey, preview?: Preview): PositionKey =>
   preview?.slide ? preview.candidate.next : key;
 
 /**
- * The candidate `pointer` previews in `view`. A row previews its move,
- * sliding, rare or not. A piece dragged over a square previews its
- * candidate landing there, rare ones too, without sliding, since the piece
- * itself is there. Example: after 1.e4, dragging the c7 pawn over c6
- * previews 1...c6; over c4, nothing.
+ * The candidate `pointer` previews in `view`, among the guide's candidates
+ * and the rows of Stockfish's top moves listed beside them (`engine`, see
+ * `engineCandidates`). A row previews its move, sliding, rare or not. A piece
+ * dragged over a square previews its candidate landing there, rare ones too,
+ * without sliding, since the piece itself is there. Example: after 1.e4,
+ * dragging the c7 pawn over c6 previews 1...c6; over c4, nothing.
  */
-export function preview(lesson: Lesson, view: LessonView, pointer: Pointer): Preview | undefined {
-  const found = pointed(view, pointer);
+export function preview(
+  lesson: Lesson,
+  view: LessonView,
+  pointer: Pointer,
+  engine: readonly Candidate[] = [],
+): Preview | undefined {
+  const found = pointed(view.key, [...view.candidates, ...engine], pointer);
   if (!found) return undefined;
   const { move, next } = found.candidate;
   return { ...found, notes: cardNotes(lesson, move, view.key, next) };
 }
 
-function pointed({ key, candidates }: LessonView, pointer: Pointer) {
+function pointed(key: PositionKey, candidates: readonly Candidate[], pointer: Pointer) {
   if (pointer.at === 'row') {
     const candidate = candidates.find(({ move }) => move.uci === pointer.uci);
     return candidate && { candidate, slide: true };

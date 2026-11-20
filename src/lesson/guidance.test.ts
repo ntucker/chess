@@ -10,7 +10,7 @@ import {
   type ShownIdea,
 } from './guidance';
 import type { Idea } from './lesson';
-import type { Candidate } from './select';
+import { type Candidate, engineCandidates } from './select';
 import {
   ADVANCE,
   keyAfter,
@@ -28,7 +28,15 @@ import { lessonView, type Pointer, preview } from './view';
 /** The trap the sample sets, fallen into: the tempting move and the punishing reply. */
 const LANDED = [...TRAP, 'Nxe5', 'Nxe5'];
 const ALL_ON: LessonSwitches = { auto: true, showMoves: true, showTraps: true };
-const ENGINE = { best: 'g8f6', top: ['g8f6', 'c8f5', 'c6c5'] };
+const ENGINE = { best: 'g8f6' };
+const EVEN = { score: 0.5, pawns: 0 };
+
+/** Stockfish's view after `sans`: `best`, and `top` as its top moves' rows there. */
+function engineView(sans: string[], { best, top = [] }: { best?: string; top?: string[] }) {
+  const { key } = sampleView(sans);
+  const moves = top.map((uci) => ({ uci, evaluation: EVEN }));
+  return { best, top: engineCandidates(SAMPLE, key, moves) };
+}
 
 function shown(
   sans: string[],
@@ -37,15 +45,16 @@ function shown(
   {
     pointer,
     engine = ENGINE,
-  }: { pointer?: Pointer; engine?: typeof ENGINE | { best: string } } = {},
+  }: { pointer?: Pointer; engine?: { best?: string; top?: string[] } } = {},
 ): Guidance {
   const view = sampleView(sans);
+  const stockfish = engineView(sans, engine);
   return guidance({
     view,
     mode,
     switches: { ...ALL_ON, ...switches },
-    preview: pointer && preview(SAMPLE, view, pointer),
-    engine,
+    preview: pointer && preview(SAMPLE, view, pointer, stockfish.top),
+    engine: stockfish,
   });
 }
 
@@ -56,7 +65,7 @@ const summary = (shown: Guidance) => ({
   notes: shown.notes.map(({ before }) => (before ? 'move' : 'position')),
   ideas: shown.ideas.map(({ idea }) => idea.type),
   best: shown.best,
-  top: shown.top,
+  top: shown.top.map(({ san }) => san),
 });
 
 describe('guidance', () => {
@@ -87,14 +96,41 @@ describe('guidance', () => {
       });
     });
 
-    it("highlights Stockfish's best and lists its top three beyond the guide, and at a guide end", () => {
-      expect(shown([...ADVANCE, 'a6'], 'explore')).toMatchObject({
+    it("lists Stockfish's top three beyond the guide, and at a guide end, marking the first as best", () => {
+      const beyond = [...ADVANCE, 'a6'];
+      // The evaluation's deeper search named another move: the list's first wins.
+      const engine = { best: 'c2c4', top: ['g1f3', 'c2c3', 'f1d3'] };
+      expect(summary(shown(beyond, 'explore', {}, { engine }))).toMatchObject({
         candidates: [],
-        best: 'g8f6',
-        top: ENGINE.top,
+        best: 'g1f3',
+        top: ['Nf3', 'c3', 'Bd3'],
       });
       const end = [...ADVANCE, 'Bf5', 'Nf3', 'e6', 'Be2', 'c5', 'O-O', 'Nc6'];
-      expect(shown(end, 'explore')).toMatchObject({ best: 'g8f6', top: ENGINE.top });
+      const atEnd = shown(end, 'explore', {}, { engine: { top: ['c2c3', 'c1e3', 'b1d2'] } });
+      expect(summary(atEnd)).toMatchObject({ best: 'c2c3', top: ['c3', 'Be3', 'Nbd2'] });
+      // Before the top three arrive, nothing is marked.
+      expect(shown(beyond, 'explore').best).toBeUndefined();
+    });
+
+    it("previews and plays Stockfish's top moves as the guide's candidates", () => {
+      const beyond = [...ADVANCE, 'a6'];
+      const engine = { top: ['g1f3', 'c2c3', 'f1d3'] };
+      const row = shown(beyond, 'explore', {}, { engine, pointer: { at: 'row', uci: 'c2c3' } });
+      expect(row.preview).toMatchObject({ slide: true, candidate: { san: 'c3' } });
+      expect(row.best).toBeUndefined();
+      const drag = shown(
+        beyond,
+        'explore',
+        {},
+        {
+          engine,
+          pointer: { at: 'drag', from: 'f1', to: 'd3' },
+        },
+      );
+      expect(drag.preview).toMatchObject({ slide: false, candidate: { san: 'Bd3' } });
+      // Practice hides them, as every hint.
+      const practice = shown(beyond, 'practice', {}, { engine });
+      expect(summary(practice)).toMatchObject({ top: [], best: undefined });
     });
 
     it('draws each idea in the position it is checked in', () => {

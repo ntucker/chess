@@ -3,8 +3,10 @@
  * guide's moves there (the candidate moves) in the order the screen lists
  * them. Pure functions over the lesson file, like the rest of src/lesson/.
  */
+import type { Chess } from 'chessops/chess';
 import type { SquareName } from 'chessops/types';
 
+import type { Evaluation, TopMove } from '@/evaluation/evaluation';
 import { parsePositionKey, playLine, playMove, positionKey } from '@/game/replay';
 import type { Opponent } from '@/opponent/opponent';
 
@@ -73,6 +75,11 @@ export interface Candidate {
    * arrows only while its piece is dragged.
    */
   readonly rare?: boolean;
+  /**
+   * How the position stands after the move, on a row of Stockfish's top
+   * moves (`engineCandidates`), which only these rows have.
+   */
+  readonly engine?: Evaluation;
 }
 
 /**
@@ -114,26 +121,48 @@ export function candidates(
   const count = (move: LessonMove) => (band === undefined ? undefined : move.games?.[band]);
   const total = guide.entry.moves.reduce((sum, move) => sum + (count(move) ?? 0), 0);
   const rows = guide.entry.moves.map((move): Candidate => {
-    const after = pos.clone();
-    const played = playMove(after, move.uci);
+    const row = candidateRow(lesson, pos, move);
     // checkLesson proves every guide move legal, so this is a broken file.
-    if (!played) throw new Error(`Guide move ${move.uci} is illegal in ${key}`);
-    const { san, from, to } = played;
-    const next = positionKey(after);
+    if (!row) throw new Error(`Guide move ${move.uci} is illegal in ${key}`);
     const games = count(move);
-    return {
-      move,
-      san,
-      from,
-      to,
-      next,
-      variation: lesson.positions[next]?.variation,
-      share: total > 0 && games !== undefined ? games / total : undefined,
-    };
+    return { ...row, share: total > 0 && games !== undefined ? games / total : undefined };
   });
   // Array.sort is stable, so equal counts keep the file's order.
   rows.sort((a, b) => (count(b.move) ?? -1) - (count(a.move) ?? -1));
   return pos.turn === lesson.side ? rows : rareLast(rows, trapStarts(guide.entry));
+}
+
+/**
+ * Stockfish's top moves at `key` as rows of their own, best first, listed
+ * where the guide has no candidates. A move that leads back into the guide
+ * names its variation, as a guide move does. Example: beyond the guide after
+ * 1.e4 c6 2.Qh5, Stockfish's g8f6 is the row Nf6, with the evaluation after it.
+ */
+export function engineCandidates(
+  lesson: Lesson,
+  key: PositionKey,
+  top: readonly TopMove[],
+): Candidate[] {
+  const pos = parsePositionKey(key);
+  if (!pos) return [];
+  return top.flatMap(({ uci, evaluation }) => {
+    const row = candidateRow(lesson, pos, { uci });
+    return row ? [{ ...row, engine: evaluation }] : [];
+  });
+}
+
+/** `move` played at `pos`: the row's move, squares and where it leads, or undefined if illegal. */
+function candidateRow(
+  lesson: Lesson,
+  pos: Chess,
+  move: LessonMove,
+): Omit<Candidate, 'share'> | undefined {
+  const after = pos.clone();
+  const played = playMove(after, move.uci);
+  if (!played) return undefined;
+  const { san, from, to } = played;
+  const next = positionKey(after);
+  return { move, san, from, to, next, variation: lesson.positions[next]?.variation };
 }
 
 /**

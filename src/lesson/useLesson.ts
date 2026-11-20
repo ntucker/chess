@@ -3,8 +3,8 @@
  * facts about the position on the board, what the learner points at (a
  * candidate, by its list row or a piece dragged onto its square, and a note
  * on the idea card), an idea playing back, the mode (Explore or Practice),
- * the learner's progress marks, Stockfish's best move in Explore, and the
- * board. Where the opponent plays its own moves (`opponentPlays`) the learner
+ * the learner's progress marks, Stockfish's best move and top three in
+ * Explore, and the board. Where the opponent plays its own moves (`opponentPlays`) the learner
  * moves their own side; elsewhere, either.
  */
 import { useCache, useController, useFetch, useSuspense } from '@data-client/react';
@@ -16,7 +16,7 @@ import type { Drag } from '@/board/pointer';
 import type { BoardProps } from '@/components/Board';
 import { dropMove, parsePositionKey } from '@/game/replay';
 import { type GameStore, useGame } from '@/game/useGame';
-import { getEvaluation } from '@/resources/evaluation';
+import { getEvaluation, getTopMoves } from '@/resources/evaluation';
 import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
 import { hasMark } from '@/progress/progress';
 import { addMark, getProgress } from '@/resources/progress';
@@ -31,7 +31,7 @@ import { earnedMark, rowMarks, steering } from './marks';
 import { lessonOpponent } from './opponent';
 import { beforeSideMoves, moveKinds, opponentPlays } from './practice';
 import { initialScreen, screenReducer } from './screen';
-import { bookMoves, type Candidate } from './select';
+import { bookMoves, type Candidate, engineCandidates } from './select';
 import { lessonView, type Pointer, preview, type ShownNote } from './view';
 
 /** How long each board of a playback shows before the next. */
@@ -148,23 +148,31 @@ export function useLesson(
   // A playback plays in its candidate's position, wherever the pointer goes.
   const pointer = playing ? playing.from : here?.candidate;
   // Stockfish's best move for the board's position, whatever engine judges
-  // the bar; only Explore shows it, so Practice asks for nothing. Not useDLE:
-  // with nullable args it types this endpoint's data as undefined.
-  const evaluationArgs =
-    focused && mode === 'explore'
-      ? (['stockfish', moves.slice(0, ply)] as const)
-      : ([null] as const);
+  // the bar, and past the guide's moves its top three; only Explore shows
+  // them, so Practice asks for nothing. Not useDLE: with nullable args it
+  // types schemaless data as undefined.
+  const explore = focused && mode === 'explore';
+  const shownLine = moves.slice(0, ply);
+  const evaluationArgs = explore ? (['stockfish', shownLine] as const) : ([null] as const);
   useFetch(getEvaluation, ...evaluationArgs);
-  const engine = useCache(getEvaluation, ...evaluationArgs);
+  const evaluation = useCache(getEvaluation, ...evaluationArgs);
+  const topArgs = explore && view.place !== 'inside' ? ([shownLine] as const) : ([null] as const);
+  useFetch(getTopMoves, ...topArgs);
+  const topMoves = useCache(getTopMoves, ...topArgs);
+  const top = useMemo(
+    () => (topMoves ? engineCandidates(lesson, key, topMoves) : []),
+    [lesson, key, topMoves],
+  );
+  const previewOf = (at: Pointer) => preview(lesson, view, at, top);
   const shown = guidance({
     view,
     mode,
     switches: settings,
-    preview: pointer && preview(lesson, view, pointer),
+    preview: pointer && previewOf(pointer),
     dragged: pointer?.at === 'drag' ? pointer.from : undefined,
     pointed: here?.note,
     playing: playing?.played,
-    engine,
+    engine: { best: evaluation?.best, top },
   });
   const frames = shown.playing
     ? ideaPlayback(shown.playing.idea, parsePositionKey(shown.playing.at)!)
@@ -185,7 +193,7 @@ export function useLesson(
   // squares re-renders nothing.
   const pointDrag = (drag: Drag<Square> | null) => {
     const at: Pointer | undefined = drag ? { at: 'drag', ...drag } : undefined;
-    const candidate = at && !preview(lesson, view, at) ? { ...at, to: undefined } : at;
+    const candidate = at && !previewOf(at) ? { ...at, to: undefined } : at;
     dispatch({ type: 'candidate', key, candidate });
   };
   const playMove = (uci: string) => {

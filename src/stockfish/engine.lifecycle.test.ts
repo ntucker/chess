@@ -68,6 +68,35 @@ describe('the engine lifecycle', () => {
     expect((await older).pawns).toBe(0.3);
   });
 
+  it('searches for the top moves only once no evaluation waits, ranking three', async () => {
+    const top = engine.stockfishTopMoves(['e2e4']);
+    const evaluation = engine.stockfishEvaluation(['d2d4']);
+    const { print, sent } = scripted();
+    print('uciok');
+    // The evaluation asked for later runs first, with one line.
+    expect(sent.slice(-3)).toEqual([
+      'setoption name MultiPV value 1',
+      'position startpos moves d2d4',
+      'go nodes 100000 movetime 1500',
+    ]);
+    print('info depth 12 multipv 1 score cp -20 pv d7d5');
+    print('bestmove d7d5');
+    await evaluation;
+    expect(sent.slice(-3, -1)).toEqual([
+      'setoption name MultiPV value 3',
+      'position startpos moves e2e4',
+    ]);
+    print('info depth 10 multipv 1 score cp -30 pv c7c5');
+    print('info depth 10 multipv 2 score cp -20 pv e7e5');
+    print('info depth 10 multipv 3 score cp -15 pv c7c6');
+    print('bestmove c7c5');
+    expect((await top).map(({ uci, evaluation }) => [uci, evaluation.pawns])).toEqual([
+      ['c7c5', 0.3],
+      ['e7e5', 0.2],
+      ['c7c6', 0.15],
+    ]);
+  });
+
   it('restarts an engine that crashes, and runs its search on the next', async () => {
     const first = scripted();
     first.print('uciok');

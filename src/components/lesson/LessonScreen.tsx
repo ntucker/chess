@@ -137,6 +137,7 @@ function LessonScreen({
   const preview = guidance.preview?.candidate;
   const { trap } = guidance;
   // The card is for notes, or for the notes of a candidate pointed at.
+  // Stockfish's moves have none of their own, so their list stands alone.
   const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
   // The start lists the openings, whichever lesson is loaded.
   const picking = view.ply === 0;
@@ -165,6 +166,9 @@ function LessonScreen({
     const variation = lesson.variations[candidate.variation];
     return variation === line ? undefined : variation.name;
   };
+  // Past the guide, a move of Stockfish's can lead back into it.
+  const rejoins = ({ variation }: Candidate) =>
+    variation === undefined ? undefined : `Rejoins ${lesson.variations[variation].name}`;
   // Pointing at an opening, or picking up a piece that plays one, starts
   // loading its lesson and progress, so playing it needn't wait. A failure
   // shows once the opening is picked.
@@ -221,8 +225,25 @@ function LessonScreen({
               onBack={() => game.goto(trap.ply)}
             />
           ) : null}
-          {ideaCard ? (
+          {ideaCard || guidance.top.length ? (
             <PointingArea onLeave={leave}>
+              {guidance.top.length ? (
+                <CandidateList
+                  heading="Stockfish's top moves"
+                  candidates={guidance.top}
+                  rare={[]}
+                  rareShown={false}
+                  onShowRare={showRare}
+                  main={guidance.top[0]}
+                  pointed={preview?.move.uci}
+                  marks={marks}
+                  leadsTo={rejoins}
+                  playable={canPlay}
+                  onPlay={play}
+                  onPoint={pointRow}
+                  onTabOut={leave}
+                />
+              ) : null}
               {guidance.candidates.length ? (
                 <CandidateList
                   heading={
@@ -244,16 +265,18 @@ function LessonScreen({
                   onTabOut={leave}
                 />
               ) : null}
-              <IdeaCard
-                title={preview ? `If ${preview.san}` : 'The idea'}
-                notes={guidance.notes}
-                learner={learner}
-                playback={playback}
-                pointable={guidance.pointable}
-                pointed={pointedNote}
-                onPoint={pointNote}
-                onLeave={leaveNote}
-              />
+              {ideaCard ? (
+                <IdeaCard
+                  title={preview ? `If ${preview.san}` : 'The idea'}
+                  notes={guidance.notes}
+                  learner={learner}
+                  playback={playback}
+                  pointable={guidance.pointable}
+                  pointed={pointedNote}
+                  onPoint={pointNote}
+                  onLeave={leaveNote}
+                />
+              ) : null}
             </PointingArea>
           ) : null}
           <Separator />
