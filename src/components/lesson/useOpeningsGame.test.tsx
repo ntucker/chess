@@ -77,6 +77,9 @@ const back = (address?: LessonId, variation?: string) => {
   return show(address, variation);
 };
 const moves = () => latest().store[0].moves;
+/** The game starting over at a line, as the page's own moves do (a side swapped, a lesson's start). */
+const start = (...sans: string[]) =>
+  act(() => latest().store[1]({ type: 'newGame', moves: uciLine(...sans) }));
 const play = (...ucis: string[]) =>
   act(() => {
     for (const uci of ucis) latest().store[1]({ type: 'move', uci });
@@ -139,13 +142,15 @@ describe('useOpeningsGame', () => {
   it('keeps the game when the address arrives at a lesson the game has already left', async () => {
     await show('caro-kann');
     await play('c7c6');
-    // The game picks the Slav, then the anti-London, then leaves every lesson,
-    // before any replace arrives.
-    await act(() => latest().store[1]({ type: 'newGame', moves: uciLine('d4', 'd5', 'c4') }));
-    await act(() => latest().store[1]({ type: 'newGame', moves: uciLine('d4', 'd5', 'Bf4') }));
-    await act(() => latest().store[1]({ type: 'newGame', moves: uciLine('d4') }));
+    // The game picks the Slav, the anti-London and the Slav again, then leaves
+    // every lesson, before any replace arrives.
+    await start('d4', 'd5', 'c4');
+    await start('d4', 'd5', 'Bf4');
+    await start('d4', 'd5', 'c4');
+    await start('d4');
     await show('slav');
     await show('anti-london');
+    await show('slav');
     await show();
     expect(moves()).toEqual(uciLine('d4'));
     // Once they have arrived, a link to one of them starts it.

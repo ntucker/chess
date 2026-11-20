@@ -1,22 +1,26 @@
 diff --git a/build/dom/webview-wrapper.js b/build/dom/webview-wrapper.js
-index 02f713b7592c68e3cb6db2013b2aee0600a602a8..37a050befd8348c4b60d7fb85e735b76ae3f4d99 100644
+index 02f713b7592c68e3cb6db2013b2aee0600a602a8..4636e68785e279965350caa8800d31833be160c7 100644
 --- a/build/dom/webview-wrapper.js
 +++ b/build/dom/webview-wrapper.js
-@@ -49,7 +49,16 @@ const RawWebView = /*#__PURE__*/ React.forwardRef((props, ref)=>{
-     const [containerStyle, setContainerStyle] = React.useState(null);
-     const { debugZeroHeightStyle, debugOnLayout } = useDebugZeroHeight(dom);
-     const emit = React.useCallback((detail)=>{
--        webviewRef.current?.injectJavaScript(getInjectEventScript(detail));
-+        // Opening Night patch (see AGENTS.md, Native builds): for a moment
-+        // after mounting, Android can't find the web view's native view, and
-+        // the call rejects with "... Unable to find the class
-+        // expo.modules.webview.DomWebView view with tag N" (Expo 58, React
-+        // Native 0.88). Nothing is lost: the page hasn't loaded yet, and it
-+        // asks for the props again once it has (DOM_READY). Any other failure
-+        // still rejects.
-+        Promise.resolve(webviewRef.current?.injectJavaScript(getInjectEventScript(detail))).catch((error)=>{
-+            if (!String(error).includes('Unable to find')) throw error;
-+        });
-     }, [
-         webviewRef
-     ]);
+@@ -70,7 +70,13 @@ const RawWebView = /*#__PURE__*/ React.forwardRef((props, ref)=>{
+     // `injectedJavaScriptObject` changes.
+     const initialPropsRef = React.useRef(smartActions);
+     // When the `marshalProps` change, emit them to the webview.
++    // Opening Night patch (see AGENTS.md, Native builds): only once the page
++    // has said it's ready. Before that it has the initial props, and
++    // DOM_READY sends it the latest; on Android a send in the moment after
++    // mounting also rejects, as the native view can't be found yet.
++    const ready = React.useRef(false);
+     React.useEffect(()=>{
++        if (!ready.current) return;
+         emit({
+             type: '$$props',
+             data: smartActions
+@@ -154,6 +160,7 @@ const RawWebView = /*#__PURE__*/ React.forwardRef((props, ref)=>{
+                 return;
+             }
+             if (type === DOM_READY) {
++                ready.current = true;
+                 // Re-send the props the DOM side missed while the WebView was loading.
+                 emit({
+                     type: '$$props',

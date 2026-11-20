@@ -124,11 +124,20 @@ coords {
   font-weight: 400;
 }
 /*
- * Each file's letter in its bottom square's bottom-right corner. Chessground's
- * base CSS puts them half a square to the right, astride the squares' edges,
- * where they vanish against one color or the other and the last one falls
- * off the board.
+ * Each rank's number in its left square's top-left corner, and each file's
+ * letter in its bottom square's bottom-right corner, at any board size.
+ * Chessground's base CSS offsets them by pixels that suit one size of square:
+ * on a phone the letters sit astride the squares' edges, where they vanish
+ * against one color or the other and the last one falls off the board.
  */
+.cg-wrap coords.ranks {
+  top: 0;
+}
+.cg-wrap coords.ranks coord {
+  flex: 1 1 0;
+  padding-top: 2px;
+  transform: none;
+}
 .cg-wrap coords.files {
   left: 0;
   bottom: 0;
