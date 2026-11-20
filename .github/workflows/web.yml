@@ -109,6 +109,14 @@ jobs:
       PR: ${{ github.event.pull_request.number }}
 
     steps:
+      - name: Check out the site's publish script
+        if: env.PREVIEW == ''
+        uses: actions/checkout@v7
+        with:
+          path: repo
+          sparse-checkout: scripts/replace-site.mjs
+          sparse-checkout-cone-mode: false
+
       - name: Download the site
         if: github.event.action != 'closed'
         uses: actions/download-artifact@v8
@@ -146,14 +154,17 @@ jobs:
               grep -qx "${preview#pr-preview/pr-}" <<< "$open" || rm -rf "$preview"
             done
             if [ "$target" = . ]; then
-              find . -mindepth 1 -maxdepth 1 ! -name .git ! -name pr-preview -exec rm -rf {} +
+              # Keeps recent builds' hashed files too, for pages opened before
+              # this deploy that load a file late (Maia's worker, a lesson).
+              node "$GITHUB_WORKSPACE/repo/scripts/replace-site.mjs" "$site"
+              copied=true
             else
               rm -rf "$target"
-            fi
-            if [ -d "$site" ] && { [ "$target" = . ] || grep -qx "$PR" <<< "$open"; }; then
-              mkdir -p "$target"
-              cp -R "$site/." "$target/"
-              copied=true
+              if [ -d "$site" ] && grep -qx "$PR" <<< "$open"; then
+                mkdir -p "$target"
+                cp -R "$site/." "$target/"
+                copied=true
+              fi
             fi
             # Pages would otherwise run Jekyll, which drops _expo/.
             touch .nojekyll

@@ -1,11 +1,15 @@
-import { describe, expect, it, jest } from '@jest/globals';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { DataProvider } from '@data-client/react';
+import { act, createElement } from 'react';
+import { createRoot } from 'test-renderer';
 
 import { maiaMove } from '@/maia/engine';
+import type { Opponent } from '@/opponent/opponent';
 import { attachStockfish } from '@/stockfish/engine';
 import { NO_RESTARTS } from '@/stockfish/testing';
 
 import { getEvaluation } from './evaluation';
-import { fetchOpponentMove } from './opponent';
+import { fetchOpponentMove, useWarmOpponent } from './opponent';
 import { newController, waitForSearch } from './testing';
 
 // Maia runs on a worklet runtime, which Jest doesn't have, so it's scripted.
@@ -36,5 +40,34 @@ describe('fetchOpponentMove', () => {
     expect(await fetchOpponentMove(controller, 'stockfish', ['e2e4'])).toBe('c7c6');
     expect(sent.filter((command) => command.startsWith('position'))).toHaveLength(1);
     engine.detach();
+  });
+});
+
+describe('useWarmOpponent', () => {
+  beforeEach(() => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    jest.mocked(maiaMove).mockReset().mockResolvedValue('e2e4');
+  });
+
+  function Warm({ opponent, active }: { readonly opponent: Opponent; readonly active: boolean }) {
+    useWarmOpponent(opponent, active);
+    return null;
+  }
+  const render = (opponent: Opponent, active: boolean) =>
+    act(async () => {
+      createRoot().render(
+        createElement(DataProvider, null, createElement(Warm, { opponent, active })),
+      );
+    });
+
+  it('starts Maia on the starting position before it has to play', async () => {
+    await render(1300, true);
+    expect(maiaMove).toHaveBeenCalledWith(1300, []);
+  });
+
+  it('starts nothing for Stockfish or behind another screen', async () => {
+    await render('stockfish', true);
+    await render(1300, false);
+    expect(maiaMove).not.toHaveBeenCalled();
   });
 });

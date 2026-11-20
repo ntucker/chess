@@ -18,8 +18,9 @@ jest.mock('@/stockfish/engine', () => ({
     return new Promise(() => {});
   },
 }));
-// Maia's engine needs a native worklet runtime; with auto play off nobody replies.
-jest.mock('@/maia/engine', () => ({}));
+// Maia's engine needs a native worklet runtime; it's only warmed up here, since
+// with auto play off nobody replies.
+jest.mock('@/maia/engine', () => ({ maiaMove: () => new Promise(() => {}) }));
 jest.mock('@/stockfish/demand', () => ({ useNeedsStockfish: () => {} }));
 jest.mock('@/settings/SettingsProvider', () => {
   const { DEFAULT_SETTINGS } =

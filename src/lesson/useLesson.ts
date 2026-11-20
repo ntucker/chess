@@ -17,7 +17,7 @@ import type { BoardProps } from '@/components/Board';
 import { dropMove, parsePositionKey } from '@/game/replay';
 import { type GameStore, useGame } from '@/game/useGame';
 import { getEvaluation } from '@/resources/evaluation';
-import { gameOpponent } from '@/resources/opponent';
+import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNeedsStockfish } from '@/stockfish/demand';
 
@@ -76,6 +76,8 @@ export function useLesson(
   // Moves are labelled by Stockfish whatever judges the bar: Maia's judgement
   // could call a book move a mistake. So Stockfish runs while this is in front.
   useNeedsStockfish(focused);
+  // Ready before the guide runs out, even with auto play off for now.
+  useWarmOpponent(opponent, focused);
   // A row that leaves the list (played, or stepped away from) never reports
   // a hover-out or blur, so a peek ends when the board moves on; otherwise
   // stepping back would preview that row again. Shown rare rows end too, so
