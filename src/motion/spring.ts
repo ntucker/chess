@@ -27,7 +27,7 @@ export const springs = {
   /** Small, light things: arrows, chips, toggles */
   snappy: { duration: 0.25, bounce: 0.15 },
   /** Rows trading places, arriving or leaving in a list */
-  brisk: { duration: 2.5, bounce: 0.1 },
+  brisk: { duration: 0.3, bounce: 0.1 },
   /** Panels, sheets and drawers that carry content: no overshoot past their edge */
   smooth: { duration: 0.4, bounce: 0 },
 } as const satisfies Record<string, Spring>;
