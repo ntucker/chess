@@ -77,13 +77,13 @@ export function useOpeningsGame(
   const picked = lessonOf(LESSON_INDEX, side, moves);
   // Where the page last caught up with. A change is checked during render,
   // so the page never shows the old game at the new address. `picks` are the
-  // lessons the game has picked since, each one the page may have sent the
-  // address to: a replace can arrive after the game has moved on.
+  // lessons the game has picked since, in order: each one the page may have
+  // sent the address to, which can arrive after the game has moved on.
   const [synced, setSynced] = useState({ entry, address, variation, picks: [picked] });
   // Each history entry the page left, while the game was still at its address.
   const [left, setLeft] = useState<Partial<Record<string, Visit>>>({});
   if (entry !== synced.entry || address !== synced.address || variation !== synced.variation) {
-    setSynced({ entry, address, variation, picks: [picked] });
+    let picks = [picked];
     if (address !== undefined && address !== synced.address) {
       setAddressSide(LESSON_INDEX[address].side);
     }
@@ -109,17 +109,24 @@ export function useOpeningsGame(
         dispatch({ type: 'newGame', moves: resumed?.moves ?? startOf(address, variation) });
         if (resumed) dispatch({ type: 'goto', ply: resumed.ply });
       }
-    } else if (
-      // A link opened in place, such as an Android deep link to the page
-      // already open: it names another variation (the game's own moves only
-      // ever drop one; ids are unique only within a lesson), or a lesson the
-      // game isn't at and never sent the address to.
-      variation !== undefined
-        ? variation !== synced.variation || address !== synced.address
-        : !isAt(address) && !synced.picks.includes(address)
-    ) {
-      dispatch({ type: 'newGame', moves: startOf(address, variation) });
+    } else {
+      // Within the entry: the address the game sent, or a link opened in place,
+      // such as an Android deep link to the page already open. A link names
+      // a variation (the game's own moves only ever drop one), or a lesson
+      // the game isn't at and hasn't sent the address to since it last arrived.
+      // (Or the entry's key arrived: then neither changed.)
+      const sent = synced.picks.indexOf(address);
+      const newVariation =
+        variation !== undefined && (variation !== synced.variation || address !== synced.address);
+      if (newVariation || (sent < 0 && !isAt(address))) {
+        dispatch({ type: 'newGame', moves: startOf(address, variation) });
+        picks = [address];
+      } else if (sent >= 0) {
+        // The ones sent after it are still on their way.
+        picks = synced.picks.slice(sent);
+      }
     }
+    setSynced({ entry, address, variation, picks });
   } else if (!synced.picks.includes(picked)) {
     setSynced({ ...synced, picks: [...synced.picks, picked] });
   }

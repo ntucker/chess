@@ -3,6 +3,7 @@ import { act, Suspense, use, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
 import { uciLine } from '@/lesson/lesson.fixture';
+import { variationLine } from '@/lesson/openings';
 import { LESSON_INDEX, type LessonId } from '@/resources/lesson';
 import { SettingsProvider, useSettings } from '@/settings/SettingsProvider';
 
@@ -131,22 +132,25 @@ describe('useOpeningsGame', () => {
     // The same variation id in another lesson.
     await show('london', 'main-line');
     await show('anti-london', 'main-line');
-    expect(moves()).toEqual(
-      LESSON_INDEX['anti-london'].variations.find(({ id }) => id === 'main-line')!.moves,
-    );
+    expect(moves()).toEqual(variationLine(LESSON_INDEX['anti-london'], 'main-line'));
     expect(mockRouter.replace).not.toHaveBeenCalled();
   });
 
   it('keeps the game when the address arrives at a lesson the game has already left', async () => {
     await show('caro-kann');
     await play('c7c6');
-    // The game picks the Slav, then leaves every lesson, before either replace arrives.
+    // The game picks the Slav, then the anti-London, then leaves every lesson,
+    // before any replace arrives.
     await act(() => latest().store[1]({ type: 'newGame', moves: uciLine('d4', 'd5', 'c4') }));
+    await act(() => latest().store[1]({ type: 'newGame', moves: uciLine('d4', 'd5', 'Bf4') }));
     await act(() => latest().store[1]({ type: 'newGame', moves: uciLine('d4') }));
     await show('slav');
-    expect(moves()).toEqual(uciLine('d4'));
+    await show('anti-london');
     await show();
     expect(moves()).toEqual(uciLine('d4'));
+    // Once they have arrived, a link to one of them starts it.
+    await show('slav');
+    expect(moves()).toEqual(uciLine('d4', 'd5', 'c4'));
   });
 
   it("starts a lesson's own start for a variation it doesn't have", async () => {
