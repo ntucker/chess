@@ -50,11 +50,16 @@ interface BoardColumnProps {
   /** The game on the board. */
   readonly game: Game;
   /** The opponent's name bar: who plays the other side and how, and any small control at its end. */
-  readonly rival: Pick<ComponentProps<typeof PlayerBar>, 'name' | 'detail' | 'brief' | 'children'>;
+  readonly rival: Pick<
+    ComponentProps<typeof PlayerBar>,
+    'name' | 'detail' | 'brief' | 'detailControl' | 'children'
+  >;
   /** The board, with the player's side (`orientation`) at the bottom. */
   readonly board: Omit<BoardProps, 'dom'>;
   /** Swaps the sides: given, either name bar's disc is a button that does it. */
   readonly onSwap?: () => void;
+  /** The move stepper's middle on a narrow web page (`Transport`). */
+  readonly stepperMiddle?: ReactNode;
 }
 
 /**
@@ -62,7 +67,7 @@ interface BoardColumnProps {
  * name bar above it and the player's below, holding the move stepper. The
  * arrow keys step through the moves too.
  */
-export function BoardColumn({ game, rival, board, onSwap }: BoardColumnProps) {
+export function BoardColumn({ game, rival, board, onSwap, stepperMiddle }: BoardColumnProps) {
   const { moves, ply, goto } = game;
   const side = board.orientation;
   const other = opposite(side);
@@ -94,7 +99,7 @@ export function BoardColumn({ game, rival, board, onSwap }: BoardColumnProps) {
         material={game.material[side]}
         swap={swap}
       >
-        <Transport ply={ply} total={moves.length} onGoto={goto} />
+        <Transport ply={ply} total={moves.length} onGoto={goto} middle={stepperMiddle} />
       </PlayerBar>
     </>
   );

@@ -1,16 +1,25 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, useTheme } from '@reactive/silk-native';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
+
+import { narrowPart } from '@/theme/narrow';
+import { NarrowOnly } from '@/theme/NarrowOnly';
 
 interface Props {
   readonly ply: number;
   readonly total: number;
   readonly onGoto: (ply: number) => void;
+  /**
+   * On a narrow web page, a control between the step arrows, in place of the
+   * jumps to the first and latest move (such as the lesson's scoresheet
+   * opener). Elsewhere the stepper keeps its four buttons.
+   */
+  readonly middle?: ReactNode;
 }
 
 /** Steps through the game like a player's transport: start, back, forward, end. */
-export function Transport({ ply, total, onGoto }: Props) {
+export function Transport({ ply, total, onGoto, middle }: Props) {
   const { theme } = useTheme();
   const { color } = theme.semantic;
   const buttons: {
@@ -38,6 +47,35 @@ export function Transport({ ply, total, onGoto }: Props) {
       disabled: ply === total,
     },
   ];
+  const button = ({ label, icon, size, target, disabled }: (typeof buttons)[number]) => (
+    <Pressable
+      key={label}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      disabled={disabled}
+      onPress={() => onGoto(target)}
+      style={({ pressed, hovered }) => [
+        styles.button,
+        (pressed || hovered) && !disabled && { backgroundColor: color.tones.neutral.subtle },
+      ]}
+    >
+      <Ionicons
+        name={icon}
+        size={size}
+        color={disabled ? color.tones.neutral.disabledFg : color.textPrimary}
+      />
+    </Pressable>
+  );
+  /** A jump to either end: wide-only beside a middle, in a View since a Pressable can't carry the part. */
+  const jump = (entry: (typeof buttons)[number]) =>
+    middle ? (
+      <View key={entry.label} {...narrowPart('wide-only')}>
+        {button(entry)}
+      </View>
+    ) : (
+      button(entry)
+    );
+  const [first, back, forward, latest] = buttons;
   return (
     <View
       style={[
@@ -45,28 +83,19 @@ export function Transport({ ply, total, onGoto }: Props) {
         { backgroundColor: color.surfaceRaised, borderColor: color.borderSubtle },
       ]}
     >
-      {buttons.map(({ label, icon, size, target, disabled }) => (
-        <Pressable
-          key={label}
-          accessibilityRole="button"
-          accessibilityLabel={label}
-          disabled={disabled}
-          onPress={() => onGoto(target)}
-          style={({ pressed, hovered }) => [
-            styles.button,
-            (pressed || hovered) && !disabled && { backgroundColor: color.tones.neutral.subtle },
-          ]}
-        >
-          <Ionicons
-            name={icon}
-            size={size}
-            color={disabled ? color.tones.neutral.disabledFg : color.textPrimary}
-          />
-        </Pressable>
-      ))}
+      {jump(first)}
+      {button(back)}
+      {middle ? <NarrowOnly>{middle}</NarrowOnly> : null}
+      {button(forward)}
+      {jump(latest)}
     </View>
   );
 }
+
+const STEP_BUTTON_WIDTH = 44;
+
+/** A stepper button's size and shape, for a middle that sits in line with them. */
+export const stepButton = { height: 36, borderRadius: 999 } as const;
 
 const styles = StyleSheet.create({
   bar: {
@@ -77,9 +106,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   button: {
-    width: 44,
-    height: 36,
-    borderRadius: 999,
+    width: STEP_BUTTON_WIDTH,
+    ...stepButton,
     alignItems: 'center',
     justifyContent: 'center',
   },

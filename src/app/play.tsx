@@ -10,6 +10,7 @@ import { Eyebrow, labelled } from '@/components/Eyebrow';
 import { FootnoteLink } from '@/components/FootnoteLink';
 import { GameStatus } from '@/components/GameStatus';
 import { OpponentChoice } from '@/components/OpponentChoice';
+import { OpponentPicker } from '@/components/OpponentPicker';
 import { Scoresheet } from '@/components/Scoresheet';
 import { BoardColumn, Stage } from '@/components/Stage';
 import { gameReducer, initialGame } from '@/game/game';
@@ -47,7 +48,8 @@ export default function PlayScreen() {
           game={game}
           rival={{
             name: described.name,
-            detail: `${described.tagline} · ${colorName(opposite(playerColor))}`,
+            detail: `${colorName(opposite(playerColor))} · ${described.lead.toLowerCase()}`,
+            detailControl: <OpponentPicker />,
           }}
           board={{
             fen: current.fen,

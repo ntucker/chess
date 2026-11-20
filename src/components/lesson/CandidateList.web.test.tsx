@@ -21,7 +21,7 @@ const candidate = (uci: string, san: string, rare?: boolean) =>
 const COMMON = candidate('g1f3', 'Nf3');
 const RARE = candidate('h2h4', 'h4', true);
 
-/** The text of the line under the chips, if any. */
+/** The text of the line under a compact list, if any. */
 function caption(props: Partial<Parameters<typeof CandidateList>[0]>) {
   const host = document.createElement('div');
   const root = createRoot(host);
@@ -40,7 +40,7 @@ function caption(props: Partial<Parameters<typeof CandidateList>[0]>) {
           onPlay={() => {}}
           onPoint={() => {}}
           onTabOut={() => {}}
-          chips
+          compact
           {...props}
         />
       </SilkProvider>,
@@ -52,7 +52,7 @@ function caption(props: Partial<Parameters<typeof CandidateList>[0]>) {
 }
 
 describe('CandidateList', () => {
-  it('names where the pointed chip leads', () => {
+  it('names where the pointed row leads', () => {
     expect(caption({ pointed: 'g1f3' })).toBe('Nf3: the Nf3 line');
   });
 
@@ -60,7 +60,7 @@ describe('CandidateList', () => {
     expect(caption({ pointed: 'h2h4' })).toBe('h4: the h4 line');
   });
 
-  it('keeps each row’s own line when its rows are not chips', () => {
-    expect(caption({ pointed: 'g1f3', chips: false })).toBeUndefined();
+  it('keeps each row’s own line when the list is not compact', () => {
+    expect(caption({ pointed: 'g1f3', compact: false })).toBeUndefined();
   });
 });

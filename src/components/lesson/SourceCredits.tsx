@@ -1,6 +1,7 @@
 import { Text } from '@reactive/silk-native';
-import { Linking, Text as Span, StyleSheet } from 'react-native';
+import { Text as Span } from 'react-native';
 
+import { ExternalLink } from '@/components/ExternalLink';
 import type { LessonSource } from '@/lesson/lesson';
 import { listSeparator, sourceName } from '@/lesson/openings';
 
@@ -33,20 +34,3 @@ export function SourceCredits({ sources }: { readonly sources: readonly LessonSo
     </Text>
   );
 }
-
-/** A link inside text: an anchor opening a new tab on the web, the browser elsewhere. */
-function ExternalLink({ url, children }: { readonly url: string; readonly children: string }) {
-  const opens =
-    process.env.EXPO_OS === 'web'
-      ? { href: url, hrefAttrs: { target: '_blank', rel: 'noopener noreferrer' } }
-      : { onPress: () => Linking.openURL(url) };
-  return (
-    <Span {...opens} role="link" style={styles.link}>
-      {children}
-    </Span>
-  );
-}
-
-const styles = StyleSheet.create({
-  link: { textDecorationLine: 'underline' },
-});
