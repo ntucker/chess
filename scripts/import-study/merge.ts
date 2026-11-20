@@ -24,7 +24,7 @@ import type { ChapterNotes } from './extract';
 import { chapterMoves, isDubious, mainLine, played, type Chapter, type StudyMove } from './study';
 
 /** What the lesson says about itself, beside its positions. */
-export type LessonInfo = Pick<Lesson, 'id' | 'title' | 'side' | 'source'>;
+export type LessonInfo = Pick<Lesson, 'id' | 'title' | 'side' | 'sources'>;
 
 interface DraftMove {
   readonly uci: Uci;
@@ -63,7 +63,7 @@ export function mergeChapters(
     title: info.title,
     side: info.side,
     start: makeFen(start.toSetup()),
-    source: info.source,
+    sources: info.sources,
     variations,
     positions: Object.fromEntries(
       [...tree.positions].map(([key, draft]) => [
