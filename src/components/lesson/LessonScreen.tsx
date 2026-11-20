@@ -1,4 +1,4 @@
-import { AsyncBoundary, useController, useSuspense } from '@data-client/react';
+import { AsyncBoundary, useController, useFetch, useSuspense } from '@data-client/react';
 import { Separator, Spinner, Stack } from '@reactive/silk-native';
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -22,6 +22,7 @@ import { useLesson } from '@/lesson/useLesson';
 import type { LessonView } from '@/lesson/view';
 import { describeOpponent } from '@/opponent/opponent';
 import { getLesson, LESSON_INDEX, LESSONS, type LessonId } from '@/resources/lesson';
+import { getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
 import { qualityLooks } from '@/theme/moveQuality';
 
@@ -102,6 +103,8 @@ function LessonScreen({
   readonly loading: boolean;
 }) {
   const ctrl = useController();
+  // The lesson's progress loads beside it, rather than once it has loaded.
+  useFetch(getProgress, id ?? OPENINGS.id);
   const picked = useSuspense(getLesson, id ?? null);
   const lesson = useMemo(() => (picked ? withOpenings(picked, LESSON_INDEX) : OPENINGS), [picked]);
   const {
@@ -114,6 +117,7 @@ function LessonScreen({
     canPlay,
     play,
     pointedNote,
+    marks,
     rareShown,
     showRare,
     pointRow,
@@ -161,9 +165,12 @@ function LessonScreen({
     return variation === line ? undefined : variation.name;
   };
   // Pointing at an opening, or picking up a piece that plays one, starts
-  // loading its lesson, so playing it needn't wait. A failure shows once the
-  // opening is picked.
-  const load = (id: LessonId) => ctrl.fetchIfStale(getLesson, id).catch(() => {});
+  // loading its lesson and progress, so playing it needn't wait. A failure
+  // shows once the opening is picked.
+  const load = (id: LessonId) => {
+    ctrl.fetchIfStale(getLesson, id).catch(() => {});
+    ctrl.fetchIfStale(getProgress, id).catch(() => {});
+  };
   const pointCandidate = (uci: Uci) => {
     const into = opening(uci);
     if (into) load(into);
@@ -216,26 +223,25 @@ function LessonScreen({
           {ideaCard ? (
             <PointingArea onLeave={leave}>
               {guidance.candidates.length ? (
-                <Stack gap="3">
-                  <Eyebrow>
-                    {view.learnerToMove
+                <CandidateList
+                  heading={
+                    view.learnerToMove
                       ? 'Your candidates'
-                      : `${colorName(rival)}'s ${picking ? 'first move' : 'likely replies'}`}
-                  </Eyebrow>
-                  <CandidateList
-                    candidates={guidance.candidates}
-                    rare={guidance.rare}
-                    rareShown={rareShown}
-                    onShowRare={showRare}
-                    main={guidance.main}
-                    pointed={preview?.move.uci}
-                    leadsTo={leadsTo}
-                    playable={canPlay}
-                    onPlay={play}
-                    onPoint={pointCandidate}
-                    onTabOut={leave}
-                  />
-                </Stack>
+                      : `${colorName(rival)}'s ${picking ? 'first move' : 'likely replies'}`
+                  }
+                  candidates={guidance.candidates}
+                  rare={guidance.rare}
+                  rareShown={rareShown}
+                  onShowRare={showRare}
+                  main={guidance.main}
+                  pointed={preview?.move.uci}
+                  marks={marks}
+                  leadsTo={leadsTo}
+                  playable={canPlay}
+                  onPlay={play}
+                  onPoint={pointCandidate}
+                  onTabOut={leave}
+                />
               ) : null}
               <IdeaCard
                 title={preview ? `If ${preview.san}` : 'The idea'}

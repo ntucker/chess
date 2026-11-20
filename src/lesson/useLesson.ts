@@ -3,11 +3,11 @@
  * facts about the position on the board, what the learner points at (a
  * candidate, by its list row or a piece dragged onto its square, and a note
  * on the idea card), an idea playing back, the mode (Explore or Practice),
- * Stockfish's best move in Explore, and the board. Where the opponent plays
- * its own moves (`opponentPlays`) the learner moves their own side;
- * elsewhere, either.
+ * the learner's progress marks, Stockfish's best move in Explore, and the
+ * board. Where the opponent plays its own moves (`opponentPlays`) the learner
+ * moves their own side; elsewhere, either.
  */
-import { useCache, useController, useFetch } from '@data-client/react';
+import { useCache, useController, useFetch, useSuspense } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
 import { useEffect, useMemo, useReducer } from 'react';
 
@@ -18,6 +18,8 @@ import { dropMove, parsePositionKey } from '@/game/replay';
 import { type GameStore, useGame } from '@/game/useGame';
 import { getEvaluation } from '@/resources/evaluation';
 import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
+import { hasMark } from '@/progress/progress';
+import { addMark, getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNeedsStockfish } from '@/stockfish/demand';
 
@@ -25,6 +27,7 @@ import { boardPress, lessonBoard } from './board';
 import { ideaPlayback } from './drawings';
 import { guidance, type LessonMode, notePlayback, type PlayedBack } from './guidance';
 import type { Lesson, Note, PositionKey, Uci } from './lesson';
+import { earnedMark, rowMarks, steering } from './marks';
 import { lessonOpponent } from './opponent';
 import { beforeSideMoves, moveKinds, opponentPlays } from './practice';
 import { initialScreen, screenReducer } from './screen';
@@ -78,15 +81,19 @@ export function useLesson(
   useNeedsStockfish(focused);
   // Ready before the guide runs out, even with auto play off for now.
   useWarmOpponent(opponent, focused);
-  // A row that leaves the list (played, or stepped away from) never reports
-  // a hover-out or blur, so a peek ends when the board moves on; otherwise
-  // stepping back would preview that row again. Shown rare rows end too, so
-  // each position's list starts with them hidden.
   const [{ mode: modeState, peek, rareKey }, dispatch] = useReducer(screenReducer, initialScreen);
   const { mode } = modeState;
-  // With no opponent, nobody replies: the learner picks the opponent's move.
+  const progress = useSuspense(getProgress, lesson.id);
+  // The opponent replies only where `opponentPlays` says; elsewhere the learner picks its move.
+  // In a clean Practice run the opponent steers to lines not yet passed, so
+  // runs with auto play on can pass every row, not only its most played replies.
   const rival = opponentPlays(mode, settings.auto, store[0])
-    ? lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent))
+    ? lessonOpponent(
+        lesson,
+        opponent,
+        gameOpponent(ctrl, opponent),
+        steering(lesson, progress, modeState),
+      )
     : undefined;
   const [{ moves }] = store;
   const book = useMemo(() => bookMoves(lesson, moves), [lesson, moves]);
@@ -112,10 +119,29 @@ export function useLesson(
   if (modeState.mode === 'practice' && modeState.line !== moves) {
     dispatch({ type: 'moved', from: modeState.line, line: moves, kinds });
   }
+  // A row that leaves the list (played, or stepped away from) never reports
+  // a hover-out or blur, so a peek ends when the board moves on; otherwise
+  // stepping back would preview that row again. Shown rare rows end too, so
+  // each position's list starts with them hidden.
   const { key } = view;
   const stale = (at?: PositionKey) => at !== undefined && at !== key;
   if (stale(peek?.key) || stale(rareKey)) dispatch({ type: 'board', key });
   const rareShown = rareKey === key;
+
+  // Progress: the board's position earns its mark once it shows, and the
+  // candidate rows show what is earned below them. An effect, since a
+  // position shows by many events (a move, a step, the opponent's reply, a
+  // mode change), and showing it is what earns the mark.
+  const earned = earnedMark(view.place, modeState);
+  useEffect(() => {
+    // addMark keeps a mark already there; checking first skips the request.
+    if (earned && !hasMark(progress, earned, key)) {
+      // Saving can't fail beyond storage being blocked, which addMark already allows for.
+      ctrl.fetch(addMark, { lesson: lesson.id, mark: earned, key }).catch(() => {});
+    }
+  }, [ctrl, earned, key, lesson.id, progress]);
+  const marks = useMemo(() => rowMarks(lesson, progress, view), [lesson, progress, view]);
+
   const here = peek?.key === key ? peek : undefined;
   const playing = here?.kind === 'play' ? here : undefined;
   // A playback plays in its candidate's position, wherever the pointer goes.
@@ -225,6 +251,8 @@ export function useLesson(
     startsRun,
     /** The learner chooses Explore or Practice. */
     chooseMode: (mode: LessonMode) => dispatch({ type: 'modeChosen', mode, line: moves, kinds }),
+    /** Each candidate row's progress mark, by its move (`rowMarks`). */
+    marks,
     /** The note pointed at on the idea card. */
     pointedNote: shown.pointed,
     /** The candidate list shows its rare rows (`Guidance.rare`). */
