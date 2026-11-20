@@ -49,7 +49,6 @@ export const NARROW_PARTS = [
   'move-list',
   'list-card',
   'list-scroll',
-  'compact-list',
   'candidate-row',
   'share-track',
   'leads-to',

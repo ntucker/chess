@@ -209,7 +209,7 @@ function LessonScreen({
   });
 
   // What the list of the rival's moves holds.
-  const rivalMoves = !picking ? 'Likely replies' : view.ply ? 'Next move' : 'First move';
+  const rivalMoves = !picking ? 'likely replies' : view.ply ? 'next move' : 'first move';
   /** Where the openings are picked, the lessons a move leads to. */
   const openings = (uci: Uci) =>
     picking ? lessonsAfter(LESSON_INDEX, learner, [...shownLine, uci]) : [];
@@ -278,10 +278,8 @@ function LessonScreen({
   ) : guidance.candidates.length ? (
     <CandidateList
       {...rowProps}
-      heading={
-        view.learnerToMove ? 'Your candidates' : `${colorName(rival)}'s ${rivalMoves.toLowerCase()}`
-      }
-      shortHeading={view.learnerToMove ? undefined : rivalMoves}
+      heading={view.learnerToMove ? 'Your candidates' : rivalMoves}
+      owner={view.learnerToMove ? undefined : colorName(rival)}
       // At the start each move's opening is the point, so its rows keep it.
       compact={!picking}
       leadsTo={leadsTo}

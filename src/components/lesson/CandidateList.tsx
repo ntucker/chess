@@ -11,17 +11,16 @@ import { Eyebrow, labelled } from '@/components/Eyebrow';
 import { QualityBadge } from '@/components/QualityBadge';
 import type { Mark } from '@/progress/progress';
 import { NARROW_CSS_LOADS, narrowPart } from '@/theme/narrow';
-import { NarrowOnly } from '@/theme/NarrowOnly';
 import { fonts } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
 
 import { MARK_SIZE, MarkLegend, ProgressMark, SPOKEN_MARKS } from './ProgressMark';
 
 interface Props {
-  /** The list's heading: whose moves these are. */
+  /** The list's heading: what moves these are, and whose unless `owner` says. */
   readonly heading: string;
-  /** The heading in a narrow web page's pane, where `heading` would wrap: without whose moves. */
-  readonly shortHeading?: string;
+  /** Whose moves these are, before `heading`; left out in a narrow web page's pane, where it would wrap. */
+  readonly owner?: string;
   readonly candidates: readonly Candidate[];
   /** Rare candidates, listed after the others while `rareShown`. */
   readonly rare: readonly Candidate[];
@@ -66,11 +65,11 @@ interface Props {
  * play. Each row's dot matches its arrow on the board; the dot of a row the
  * board draws no arrow for is hollow: a rare row's, or one of Stockfish's
  * but its best. A row's progress mark ends it, and a key beside the heading
- * names the marks the list shows.
+ * names the marks the list shows (not in a narrow web page's pane).
  */
 export function CandidateList({
   heading,
-  shortHeading,
+  owner,
   candidates,
   rare,
   rareShown,
@@ -96,18 +95,10 @@ export function CandidateList({
   return (
     <Stack {...narrowPart('move-list')} style={labelled}>
       <View style={styles.head}>
-        {shortHeading ? (
-          <>
-            <View {...narrowPart('wide-only')}>
-              <Eyebrow>{heading}</Eyebrow>
-            </View>
-            <NarrowOnly>
-              <Eyebrow>{shortHeading}</Eyebrow>
-            </NarrowOnly>
-          </>
-        ) : (
-          <Eyebrow>{heading}</Eyebrow>
-        )}
+        <Eyebrow>
+          {owner ? <Text {...narrowPart('wide-only')}>{`${owner}'s `}</Text> : null}
+          {heading}
+        </Eyebrow>
         {/* A narrow pane has no room for the key: each mark's row still says it to screen readers. */}
         <View {...narrowPart('wide-only')}>
           <MarkLegend marks={shownMarks} />
@@ -121,7 +112,7 @@ export function CandidateList({
         style={styles.list}
       >
         {/* On a narrow web page the rows scroll inside the card, under its heading. */}
-        <View {...narrowPart(compact ? 'compact-list' : 'list-scroll')}>
+        <View {...narrowPart('list-scroll')}>
           {rows.map((candidate, index) => (
             <Row
               key={candidate.move.uci}
@@ -132,6 +123,7 @@ export function CandidateList({
               // Every row keeps room for a mark once one has one, so their shares line up.
               markSlot={shownMarks.size > 0}
               leadsTo={leadsTo(candidate)}
+              compact={compact}
               // A lone move's share is always all of the games.
               share={rows.length > 1 ? candidate.share : undefined}
               playable={playable}
@@ -212,6 +204,8 @@ interface RowProps {
   /** Some row of the list has a mark, so this one keeps room for one. */
   readonly markSlot: boolean;
   readonly leadsTo?: string;
+  /** As the list's `compact`. */
+  readonly compact?: boolean;
   /** The move's share of the games, when worth showing. */
   readonly share?: number;
   readonly playable: boolean;
@@ -229,6 +223,7 @@ function Row({
   mark,
   markSlot,
   leadsTo,
+  compact,
   share,
   playable,
   onPlay,
@@ -296,7 +291,12 @@ function Row({
           ) : null}
         </View>
         {leadsTo ? (
-          <Text {...narrowPart('leads-to')} role="caption" tone="secondary" numberOfLines={1}>
+          <Text
+            {...narrowPart(compact ? 'wide-only' : 'leads-to')}
+            role="caption"
+            tone="secondary"
+            numberOfLines={1}
+          >
             {leadsTo}
           </Text>
         ) : null}

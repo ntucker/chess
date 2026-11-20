@@ -21,8 +21,10 @@ const candidate = (uci: string, san: string, rare?: boolean) =>
 const COMMON = candidate('g1f3', 'Nf3');
 const RARE = candidate('h2h4', 'h4', true);
 
-/** The text of the line under a compact list, if any. */
-function caption(props: Partial<Parameters<typeof CandidateList>[0]>) {
+type Props = Partial<Parameters<typeof CandidateList>[0]>;
+
+/** Renders the list, and reads its host with `read`. */
+function render<T>(props: Props, read: (host: HTMLElement) => T) {
   const host = document.createElement('div');
   const root = createRoot(host);
   act(() =>
@@ -46,9 +48,24 @@ function caption(props: Partial<Parameters<typeof CandidateList>[0]>) {
       </SilkProvider>,
     ),
   );
-  const text = host.querySelector('[data-narrow="narrow-only"]')?.textContent ?? undefined;
+  const result = read(host);
   act(() => root.unmount());
-  return text;
+  return result;
+}
+
+/** The text of the line under a compact list, if any. */
+function caption(props: Props) {
+  return render(props, (host) => host.querySelector('[data-narrow="narrow-only"]')?.textContent);
+}
+
+/** The text a part of the list holds, by part. */
+function partTexts(props: Props) {
+  return render(props, (host) =>
+    [...host.querySelectorAll('[data-narrow]')].map((node) => [
+      node.getAttribute('data-narrow'),
+      node.textContent,
+    ]),
+  );
 }
 
 describe('CandidateList', () => {
@@ -62,5 +79,14 @@ describe('CandidateList', () => {
 
   it('keeps each row’s own line when the list is not compact', () => {
     expect(caption({ pointed: 'g1f3', compact: false })).toBeUndefined();
+  });
+
+  it('leaves whose moves out of the heading on a narrow page', () => {
+    expect(partTexts({ owner: 'White' })).toContainEqual(['wide-only', "White's "]);
+  });
+
+  it('leaves where each row leads to the line under a compact list', () => {
+    expect(partTexts({}).filter(([part]) => part === 'leads-to')).toEqual([]);
+    expect(partTexts({ compact: false })).toContainEqual(['leads-to', 'the Nf3 line']);
   });
 });
