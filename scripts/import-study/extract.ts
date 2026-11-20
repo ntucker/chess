@@ -10,7 +10,7 @@
 import type { Chess } from 'chessops/chess';
 import type { Color } from 'chessops/types';
 
-import { SAN } from '@/game/replay';
+import { MOVE_NUMBER, SAN } from '@/game/replay';
 import { checkIdea } from '@/lesson/check';
 import type { Evaluation, Idea, Note, Uci } from '@/lesson/lesson';
 
@@ -18,7 +18,7 @@ import { choiceGuide, type Choice } from './choices';
 import { lineTo, placeSequence, type Found, type Spot } from './line';
 import { planLists } from './plans';
 import { chapterMoves, type Chapter, type StudyMove } from './study';
-import { direction, namedMoves, shorten, textVerdicts } from './text';
+import { direction, letterCastling, namedMoves, shorten, textVerdicts } from './text';
 import { trapLines, watchOuts } from './traps';
 
 export interface MoveNote {
@@ -91,19 +91,29 @@ const EDGE_WORDS: Readonly<Record<Edge, readonly [string, string]>> = {
   Winning: ['winning', 'losing'],
 };
 
-/** A move number before a move: `9.`, `9...`, `9. `. */
-const MOVE_NUMBER = String.raw`\d+\s?\.(?:\.\.)?\s?`;
+/** Two or more moves in a row, the first numbered, `join` between each two. */
+const sequence = (join: string) =>
+  new RegExp(
+    String.raw`(?<![\w.])${MOVE_NUMBER}${SAN}[!?]*(?:${join}(?:${MOVE_NUMBER})?${SAN}[!?]*(?![\w-]))+`,
+    'g',
+  );
 
 /**
  * Two or more moves in a row, the first numbered: `9...Qa5+ 10.Nc3 e6`, or
  * joined by an ellipsis: `7.Qxd4...Qxd4`. Each is a whole word, so prose
  * between two moves ends the run: "2...Nc6: because 2.Nc3" names no line
- * 2...Nc6 2.Nc3.
+ * 2...Nc6 2.Nc3. The first number follows neither a word nor a dot, so the
+ * tail of `Nxd4...Qxd4` is no run "4...Qxd4"; a run written straight after a
+ * full stop ("good.2.Nc3 d5") is missed with it.
  */
-const SEQUENCE = new RegExp(
-  String.raw`(?<![\w.])${MOVE_NUMBER}${SAN}[!?]*(?:(?:\s+|\s*\.\.\.\s*)(?:${MOVE_NUMBER})?${SAN}[!?]*(?![\w-]))+`,
-  'g',
-);
+const SEQUENCE = sequence(String.raw`(?:\s+|\s*\.\.\.\s*)`);
+
+/**
+ * The runs inside one of SEQUENCE's whose ellipsis can't be played: in
+ * `2.Nf3 Nc6...Bb5` it means "later", and reads Bb5 as Black's, so the run
+ * keeps `2.Nf3 Nc6` alone.
+ */
+const UNJOINED = sequence(String.raw`\s+`);
 
 export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
   const { writtenFor } = chapter;
@@ -185,14 +195,16 @@ function plans(
 
 /** Sequences of two or more moves that `move`'s comment writes out, placed in the tree. */
 function sequences(move: StudyMove, learner: Color) {
-  // Castling written with zeros (`9.0-0-0 Bb7`), as Wikibooks' prose often does.
-  const text = move.comment.replace(/(?<![\w-])0-0(?:-0)?(?![\w-])/g, (zeros) =>
-    zeros.replaceAll('0', 'O'),
-  );
-  return (text.match(SEQUENCE) ?? []).flatMap((run) => {
-    const placed = placeSequence(move, namedMoves(run));
-    if (!placed || placed.ucis.length < 2) return [];
-    return !placed.spot.move && namesOtherOpening(placed.ucis, move, learner) ? [] : [placed];
+  const place = (run: string) => placeSequence(move, namedMoves(run));
+  return (letterCastling(move.comment).match(SEQUENCE) ?? []).flatMap((run) => {
+    const whole = place(run);
+    const parts = whole
+      ? [whole]
+      : (run.match(UNJOINED) ?? []).flatMap((part) => place(part) ?? []);
+    return parts.filter(
+      ({ spot, ucis }) =>
+        ucis.length >= 2 && (spot.move || !namesOtherOpening(ucis, move, learner)),
+    );
   });
 }
 

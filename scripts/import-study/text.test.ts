@@ -13,6 +13,15 @@ describe('namedMoves', () => {
     ]);
   });
 
+  it('reads castling written with zeros', () => {
+    expect(namedMoves('9.0-0-0 Bb7 10.a3 0-0, not the score 10-0')).toEqual([
+      { san: 'O-O-O', ply: 17, side: 'white' },
+      { san: 'Bb7', ply: 18, side: 'black' },
+      { san: 'a3', ply: 19, side: 'white' },
+      { san: 'O-O', ply: 20, side: 'black' },
+    ]);
+  });
+
   it('reads ... as a black move with no number', () => {
     expect(namedMoves('play ...Nd7 and ...O-O')).toEqual([
       { san: 'Nd7', side: 'black' },

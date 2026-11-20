@@ -22,13 +22,17 @@ export interface NamedMove {
 
 const NUMBERED = new RegExp(String.raw`${NAMED_MOVE}([!?]*)`, 'g');
 
+/** `text` with castling written in zeros (`9.0-0-0`), as Wikibooks' prose often has it, in letters. */
+export const letterCastling = (text: string) =>
+  text.replace(/(?<![\w-])0-0(?:-0)?(?![\w-])/g, (zeros) => zeros.replaceAll('0', 'O'));
+
 /**
  * The moves written in `text`, in order. A bare SAN takes the side after the
  * previous move, so `6.Nf3 Bg4 7.h3` is White, Black, White.
  */
 export function namedMoves(text: string): NamedMove[] {
   const moves: NamedMove[] = [];
-  for (const match of text.matchAll(NUMBERED)) {
+  for (const match of letterCastling(text).matchAll(NUMBERED)) {
     const [, number, dots, bareDots, written, glyph] = match;
     const san = plainSan(written);
     const marked = glyph ? { glyph } : {};

@@ -132,14 +132,35 @@ describe('extractChapter', () => {
     ).toEqual([['cxd4', ['d1d4', 'b8c6', 'd4d1']]]);
   });
 
-  it('reads castling written with zeros in a sequence', () => {
+  it('reads no run out of the tail of a move an ellipsis joins', () => {
     const [chapter] = parseStudy(
-      '1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 { Later 5...a6 6.Bc4 e6 7.0-0 Be7 follows. } *',
+      '1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 { Not Qxd4...Nc6 Qd1, which loses time. } *',
+      () => true,
+    );
+    expect(extractChapter(chapter, 'black').branches).toEqual([]);
+  });
+
+  it('keeps the run before an ellipsis that means "later"', () => {
+    const [chapter] = parseStudy(
+      '1. e4 { 1...c5 2.Nf3 Nc6...Bb5 is the Rossolimo. } *',
       () => true,
     );
     expect(
       extractChapter(chapter, 'black').branches.map(({ spot, ucis }) => [spot.move?.san, ucis]),
-    ).toEqual([['Nc3', ['a7a6', 'f1c4', 'e7e6', 'e1g1', 'f8e7']]]);
+    ).toEqual([['e4', ['c7c5', 'g1f3', 'b8c6']]]);
+  });
+
+  it('reads castling written with zeros in a sequence', () => {
+    const [chapter] = parseStudy(
+      '1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 { Later 5...a6 6.Bc4 e6 7.0-0 Be7; or 5...a6 6.Be3 e6 7.f3 b5 8.Qd2 Nbd7 9.0-0-0 follows. } *',
+      () => true,
+    );
+    expect(
+      extractChapter(chapter, 'black').branches.map(({ spot, ucis }) => [spot.move?.san, ucis]),
+    ).toEqual([
+      ['Nc3', ['a7a6', 'f1c4', 'e7e6', 'e1g1', 'f8e7']],
+      ['Nc3', ['a7a6', 'c1e3', 'e7e6', 'f2f3', 'b7b5', 'd1d2', 'b8d7', 'e1c1']],
+    ]);
   });
 
   it('keeps a sequence from the start that leaves the chapter at a later opponent move', () => {
