@@ -18,11 +18,33 @@ const startOf = (id: LessonId | undefined, variation?: VariationId) =>
     ? []
     : (variationLine(LESSON_INDEX[id], variation) ?? LESSON_INDEX[id].lines[0].moves);
 
-/** Where a history entry was, and the game the page had there when it left. */
-interface Visit {
+/** An address: `/` or a lesson, and a variation of it. */
+interface Address {
   readonly address?: LessonId;
   readonly variation?: VariationId;
+}
+const sameAddress = (a: Address, b: Address) =>
+  a.address === b.address && a.variation === b.variation;
+
+/**
+ * An address the page sent to follow the game: the lesson it picked, added
+ * to the history from `/`; in place of another address, that lesson or `/`;
+ * or the address's variation dropped.
+ */
+type Send =
+  | { readonly how: 'push'; readonly address: LessonId; readonly variation?: undefined }
+  | (Address & { readonly how: 'replace' | 'drop' });
+
+/** The address the page last caught up with, and its sends on their way, in order. */
+interface Synced extends Address {
+  readonly entry?: string;
+  readonly sent: readonly Send[];
+}
+
+/** Where a history entry was, and the game the page had there when it left, from its side. */
+interface Visit extends Address {
   readonly game: GameState;
+  readonly side: Color;
 }
 
 /**
@@ -37,13 +59,18 @@ interface Visit {
  * (`/lesson/<id>?variation=<id>`, from the opening list), which starts the
  * game at the line that opens it; a move past that line drops it.
  *
- * Within one history entry (`entry`, its route's key) the address follows
- * the game. Arriving at another entry resumes the game the page had there,
- * if the learner left it from where it still is, else starts the entry's
- * address; an entry the game's own pick added keeps the game.
+ * The page keeps each address it sends until it arrives, in order, maybe
+ * after the game has moved on; its own keeps the game where it is. Any other
+ * address is Back, Forward or a link. In another history entry (`entry`, its
+ * route's key: the router makes a new one for a push or a replace) it
+ * resumes the game the page had there, if the learner left it from where it
+ * still is, else starts the entry's address. In the same entry (only a
+ * change of variation keeps it, as a link to the page already open does,
+ * such as an Android deep link) it starts the address.
  *
- * The side is the lesson address's, which the `side` setting saves, so the
- * start, and a reload, show the side last played; at the start it is the
+ * The side is the lesson address's, or at a start resumed by Back or Forward
+ * the side its game was played from; the `side` setting saves it, so the
+ * start, and a reload, show the side last played. At a fresh start it is the
  * setting. Choosing the other side saves it and starts again from the start.
  *
  * The store holds the game as the page shows it: when the game moves to
@@ -62,8 +89,8 @@ export function useOpeningsGame(
   const router = useRouter();
   const settings = useSettings();
   const settingsDispatch = useSettingsDispatch();
-  // The side this page plays: the last lesson address's at once, which the
-  // setting saves only after this render; otherwise the setting's.
+  // The side this page plays: the last lesson address's, or a resumed game's,
+  // at once, which the setting saves only after this render; otherwise the setting's.
   const [addressSide, setAddressSide] = useState(
     address === undefined ? undefined : LESSON_INDEX[address].side,
   );
@@ -74,59 +101,65 @@ export function useOpeningsGame(
   const { moves } = game;
   /** The lesson the game plays, named by the moves that pick it. */
   const picked = lessonOf(LESSON_INDEX, side, moves);
-  // Where the page last caught up with. A change is checked during render,
-  // so the page never shows the old game at the new address.
-  const [synced, setSynced] = useState({ entry, address, variation });
+  // Checked during render, so the page never shows the old game at the new address.
+  const [synced, setSynced] = useState<Synced>({ entry, address, variation, sent: [] });
   // Each history entry the page left, while the game was still at its address.
   const [left, setLeft] = useState<Partial<Record<string, Visit>>>({});
   if (entry !== synced.entry || address !== synced.address || variation !== synced.variation) {
-    setSynced({ entry, address, variation });
     if (address !== undefined && address !== synced.address) {
       setAddressSide(LESSON_INDEX[address].side);
     }
-    if (entry !== synced.entry && synced.entry !== undefined) {
+    // One of the page's own sends arriving, maybe after the game has moved on.
+    const arrivedAt = synced.sent.findIndex((sent) => sameAddress(sent, { address, variation }));
+    let sent: readonly Send[] = [];
+    if (arrivedAt >= 0) {
+      sent = synced.sent.slice(arrivedAt + 1);
+    } else if (synced.entry === undefined && sameAddress(synced, { address, variation })) {
+      // The entry's key arrived.
+      sent = synced.sent;
+    } else if (entry !== synced.entry && synced.entry !== undefined) {
+      // Back, Forward, or a link: resume the game the entry had, else start it.
       // The game is at `id`'s address: it plays that lesson from its side
       // (lessons of both sides share moves), or at `/`, none from the page's.
       const isAt = (id?: LessonId) =>
-        lessonOf(LESSON_INDEX, id === undefined ? side : LESSON_INDEX[id].side, moves) === id;
-      const wasAt = isAt(synced.address);
-      if (wasAt) {
-        const leaving = { address: synced.address, variation: synced.variation, game };
+        (id === undefined ? picked : lessonOf(LESSON_INDEX, LESSON_INDEX[id].side, moves)) === id;
+      if (isAt(synced.address)) {
+        const leaving = { address: synced.address, variation: synced.variation, game, side };
         setLeft({ ...left, [synced.entry]: leaving });
       }
       const visit = entry === undefined ? undefined : left[entry];
       // A later push can reuse a key that Back left (keys follow the stack).
-      const resumed =
-        visit && visit.address === address && visit.variation === variation
-          ? visit.game
-          : undefined;
-      // The game's own pick moved the address here: it stays.
-      const pickMovedHere = !wasAt && isAt(address);
-      if (!pickMovedHere) {
-        dispatch({ type: 'newGame', moves: resumed?.moves ?? startOf(address, variation) });
-        if (resumed) dispatch({ type: 'goto', ply: resumed.ply });
+      const resumed = visit && sameAddress(visit, { address, variation }) ? visit : undefined;
+      dispatch({ type: 'newGame', moves: resumed?.game.moves ?? startOf(address, variation) });
+      if (resumed) {
+        dispatch({ type: 'goto', ply: resumed.game.ply });
+        // The side the game was played from: at `/`, maybe not the setting's.
+        setAddressSide(resumed.side);
       }
+    } else {
+      // A link to the page already open.
+      dispatch({ type: 'newGame', moves: startOf(address, variation) });
     }
+    setSynced({ entry, address, variation, sent });
+  } else {
+    // Once the sends on their way arrive, the address is the last one's.
+    const next = nextSend(synced.sent.at(-1) ?? synced, picked, moves);
+    if (next) setSynced({ ...synced, sent: [...synced.sent, next] });
   }
+  // Saves the side whenever an address or a resumed game sets it, not on
+  // each address: a lesson of the same side leaves the setting as it is.
   useEffect(() => {
-    if (address !== undefined) {
-      settingsDispatch({ type: 'chosen', choice: { side: LESSON_INDEX[address].side } });
-    }
-  }, [address, settingsDispatch]);
-  // The address is outside React, so it follows the game in an effect.
+    if (addressSide !== undefined)
+      settingsDispatch({ type: 'chosen', choice: { side: addressSide } });
+  }, [addressSide, settingsDispatch]);
+  // The address is outside React, so the page's sends go out in an effect.
+  const sending = synced.sent.at(-1);
   useEffect(() => {
-    if (picked === address) return;
-    if (picked === undefined) router.replace('/');
-    else if (address === undefined) router.push(lessonHref(picked));
-    else router.replace(lessonHref(picked));
-  }, [picked, address, router]);
-  // A move past the variation's line leaves it, so the address stops naming
-  // it, and picking that variation again starts it afresh.
-  const opens = address === undefined ? undefined : variationLine(LESSON_INDEX[address], variation);
-  const leftVariation = opens !== undefined && picked === address && !sameLine(moves, opens);
-  useEffect(() => {
-    if (leftVariation) router.setParams({ variation: undefined });
-  }, [leftVariation, router]);
+    if (sending?.how === 'drop') router.setParams({ variation: undefined });
+    else if (sending?.how === 'push') router.push(lessonHref(sending.address));
+    else if (sending)
+      router.replace(sending.address === undefined ? '/' : lessonHref(sending.address));
+  }, [sending, router]);
   // Only a change of lesson waits: within one, the page shows each move in
   // its first render (the deferred one that follows shows the same game), so
   // the board never shows a move late or stops taking moves meanwhile.
@@ -160,6 +193,28 @@ export function useOpeningsGame(
      */
     pending,
   };
+}
+
+/**
+ * The address to send so it follows the game, from the one it is bound for:
+ * the lesson the game picks, or the variation dropped once a move leaves its
+ * line (so picking that variation again starts it afresh).
+ */
+function nextSend(
+  bound: Address,
+  picked: LessonId | undefined,
+  moves: readonly string[],
+): Send | undefined {
+  if (picked !== bound.address) {
+    return bound.address === undefined && picked !== undefined
+      ? { address: picked, how: 'push' }
+      : { address: picked, how: 'replace' };
+  }
+  if (bound.address === undefined) return undefined;
+  const opens = variationLine(LESSON_INDEX[bound.address], bound.variation);
+  return opens !== undefined && !sameLine(moves, opens)
+    ? { address: picked, how: 'drop' }
+    : undefined;
 }
 
 /**

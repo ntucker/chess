@@ -2,7 +2,7 @@
 
 # Opening Night
 
-Learn your lines. An app for learning chess openings by playing them, on the web now and on Android later. [GOALS.md](GOALS.md) says what it aims to be.
+Learn your lines. An app for learning chess openings by playing them, on the web and on Android. [GOALS.md](GOALS.md) says what it aims to be.
 
 For now it has one screen: a game against [Maia](https://www.maiachess.com), an engine trained to play like people of a rating rather than to find the best move, or, one step harder than Maia's strongest rating, against Stockfish, which plays its best move. You can play either color, step back and forward through the moves, play a different move from any earlier position, and start over.
 
