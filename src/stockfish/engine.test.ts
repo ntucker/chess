@@ -69,6 +69,16 @@ describe('Stockfish', () => {
     expect([...scores].sort((a, b) => a - b)).toEqual(scores);
   }, 30_000);
 
+  it('lists each move once when the search stops inside its last depth', async () => {
+    // 1.e4 c6 2.d4 d5 3.e5 Bf5 4.Nf3 e6 5.Bd3 Bxd3 6.Qxd3 Nd7 7.c3 c5 8.O-O
+    // cxd4 9.cxd4 Ne7 10.Nc3 Nc6: the node limit cuts depth 13's third line
+    // short, and mixing it with depth 12's listed h4 twice.
+    const line =
+      'e2e4 c7c6 d2d4 d7d5 e4e5 c8f5 g1f3 e7e6 f1d3 f5d3 d1d3 b8d7 c2c3 c6c5 e1g1 c5d4 c3d4 g8e7 b1c3 e7c6';
+    const top = await stockfishTopMoves(line.split(' '));
+    expect(top.map(({ uci }) => uci)).toEqual(['h2h4', 'g2g3', 'c3e2']);
+  }, 30_000);
+
   it('ranks only the legal moves there are', async () => {
     // 1.e4 f5 2.Qh5+: only g6 blocks the check.
     const top = await stockfishTopMoves(['e2e4', 'f7f5', 'd1h5']);

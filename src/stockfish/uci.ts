@@ -20,15 +20,16 @@ export interface SearchLine {
   readonly score: Score;
   /** The line's first move (UCI), when the `info` line names one. */
   readonly move?: string;
+  /**
+   * The score is only a bound (`lowerbound`, `upperbound`): the search of
+   * this line was cut short, by the node limit or a failed guess at its score.
+   */
+  readonly bound?: true;
 }
 
-/**
- * The line of a finished depth that an `info` line reports, or undefined
- * for any other line. Lines whose score is only a bound (`lowerbound`,
- * `upperbound`) come before the depth is finished, so they are skipped too.
- */
+/** The line an `info` line reports, or undefined for any other line. */
 export function parseInfo(line: string): SearchLine | undefined {
-  if (!line.startsWith('info ') || / (lower|upper)bound\b/.test(line)) return undefined;
+  if (!line.startsWith('info ')) return undefined;
   const match = / depth \d+\b.* score (cp|mate) (-?\d+)\b/.exec(line);
   if (!match) return undefined;
   const [, kind, value] = match;
@@ -38,7 +39,38 @@ export function parseInfo(line: string): SearchLine | undefined {
     rank,
     score: { kind: kind as Score['kind'], value: Number(value) },
     ...(move && { move }),
+    ...(/ (lower|upper)bound\b/.test(line) && { bound: true }),
   };
+}
+
+/**
+ * A search's lines so far, best first, each kept as an `L`: one depth's
+ * whole set. Stockfish prints every rank together, best first, each time
+ * it finishes a depth or stops, so a rank-1 line starts a new set. Mixing
+ * ranks from two sets could list a move twice.
+ */
+export interface RankedLines<L> {
+  readonly lines: readonly L[];
+  /** Whether the set being printed replaced the one before (see `rankLine`). */
+  readonly keeping: boolean;
+}
+
+export const NO_LINES: RankedLines<never> = { lines: [], keeping: false };
+
+/**
+ * `ranked` after the engine prints `info`, kept as `kept`. A set whose best
+ * line is only a bound is dropped whole, keeping the depth before, since an
+ * evaluation reads its score. A lower rank's bound stays in its set: its
+ * move is still ranked against the others, and only its score is rough.
+ */
+export function rankLine<L>(ranked: RankedLines<L>, info: SearchLine, kept: L): RankedLines<L> {
+  if (info.rank === 1) {
+    return info.bound ? { lines: ranked.lines, keeping: false } : { lines: [kept], keeping: true };
+  }
+  if (!ranked.keeping) return ranked;
+  const lines = [...ranked.lines];
+  lines[info.rank - 1] = kept;
+  return { lines, keeping: true };
 }
 
 /**
@@ -81,21 +113,21 @@ export function evaluationFromScore(score: Score, plies: number): Evaluation {
 
 /**
  * Wraps `onLine` to pass on only the lines the app needs from the engine: the handshake
- * (`uciok`), and for each search the last finished line of each rank (one
- * unless MultiPV is set higher), best first, just before its `bestmove`. The
+ * (`uciok`), and for each search its last set of ranked lines (`rankLine`;
+ * one unless MultiPV is set higher), best first, just before its `bestmove`. The
  * engine runs in a web view on Android, and every line that crosses into
  * the app costs a trip across the bridge, so this runs where the engine
  * does: one search prints about 17 lines, and 2 cross (4 with three ranks).
  */
 export function forwardNeededLines(onLine: (line: string) => void): (line: string) => void {
-  let last: string[] = [];
+  let ranked: RankedLines<string> = NO_LINES;
   return (line) => {
     const info = parseInfo(line);
-    if (info) last[info.rank - 1] = line;
+    if (info) ranked = rankLine(ranked, info, line);
     else if (line === 'uciok') onLine(line);
     else if (line.startsWith('bestmove')) {
-      last.filter(Boolean).forEach(onLine);
-      last = [];
+      ranked.lines.filter(Boolean).forEach(onLine);
+      ranked = NO_LINES;
       onLine(line);
     }
   };

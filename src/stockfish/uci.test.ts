@@ -4,9 +4,12 @@ import {
   evaluationFromScore,
   forwardNeededLines,
   multiPvCommand,
+  NO_LINES,
   parseBestMove,
   parseInfo,
   positionCommand,
+  type RankedLines,
+  rankLine,
 } from './uci';
 
 describe('parseInfo', () => {
@@ -28,13 +31,51 @@ describe('parseInfo', () => {
     });
   });
 
-  it('skips bounds and other lines', () => {
-    expect(parseInfo('info depth 18 seldepth 25 score cp 40 lowerbound nodes 3 pv e2e4')).toBe(
-      undefined,
-    );
+  it('marks a score that is only a bound, and skips other lines', () => {
+    expect(parseInfo('info depth 18 seldepth 25 score cp 40 lowerbound nodes 3 pv e2e4')).toEqual({
+      rank: 1,
+      score: { kind: 'cp', value: 40 },
+      move: 'e2e4',
+      bound: true,
+    });
     expect(parseInfo('info depth 18 currmove e2e4 currmovenumber 1')).toBe(undefined);
     expect(parseInfo('info string NNUE evaluation using nn-61e7af4bb97d.nnue')).toBe(undefined);
     expect(parseInfo('bestmove e2e4 ponder e7e5')).toBe(undefined);
+  });
+});
+
+describe('rankLine', () => {
+  const rank = (lines: string[]) =>
+    lines.reduce<RankedLines<string>>(
+      (ranked, line) => rankLine(ranked, parseInfo(line)!, parseInfo(line)!.move!),
+      NO_LINES,
+    ).lines;
+
+  it("keeps one depth's set whole, so no move is listed twice", () => {
+    // Stockfish's output at the node limit, 1.e4 c6 2.d4 d5 3.e5 Bf5 4.Nf3 e6
+    // 5.Bd3 Bxd3 6.Qxd3 Nd7 7.c3 c5 8.O-O cxd4 9.cxd4 Ne7 10.Nc3 Nc6: the
+    // search stopped inside the last depth's third line.
+    expect(
+      rank([
+        'info depth 12 multipv 1 score cp 47 nodes 68832 pv g2g3',
+        'info depth 12 multipv 2 score cp 47 nodes 68832 pv c3e2',
+        'info depth 12 multipv 3 score cp 46 nodes 68832 pv h2h4',
+        'info depth 13 multipv 1 score cp 58 nodes 100003 pv h2h4',
+        'info depth 13 multipv 2 score cp 50 nodes 100003 pv g2g3',
+        'info depth 13 multipv 3 score cp 45 upperbound nodes 100003 pv c3e2',
+      ]),
+    ).toEqual(['h2h4', 'g2g3', 'c3e2']);
+  });
+
+  it('drops a set whose best line is only a bound, keeping the depth before', () => {
+    expect(
+      rank([
+        'info depth 12 multipv 1 score cp 47 nodes 68832 pv g2g3',
+        'info depth 12 multipv 2 score cp 46 nodes 68832 pv h2h4',
+        'info depth 13 multipv 1 score cp 58 lowerbound nodes 100003 pv h2h4',
+        'info depth 13 multipv 2 score cp 47 nodes 100003 pv g2g3',
+      ]),
+    ).toEqual(['g2g3', 'h2h4']);
   });
 });
 
