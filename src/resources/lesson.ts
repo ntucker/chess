@@ -1,9 +1,10 @@
 import { Endpoint } from '@data-client/rest';
+import { createContext } from 'react';
 
 import INDEX from '@/assets/lessons/index.json';
 import { explainLoadFailure } from '@/files/newVersion';
 import { readLesson } from '@/lesson/lesson';
-import type { IndexEntry } from '@/lesson/openings';
+import type { LessonIndex } from '@/lesson/openings';
 
 /**
  * Every lesson the app ships, by id: one static JSON file each, loaded only
@@ -23,7 +24,19 @@ export type LessonId = keyof typeof LESSONS;
  * it lists them (src/lesson/openings.ts). The importer writes it beside the
  * lesson files, and src/resources/lesson.test.ts holds it to them.
  */
-export const LESSON_INDEX = INDEX as Readonly<Record<LessonId, IndexEntry>>;
+export const LESSON_INDEX = INDEX as LessonIndex<LessonId>;
+
+/**
+ * The lesson index the openings page reads: `LESSON_INDEX`, unless a
+ * provider gives another. Tests give a small fixture index
+ * (src/lesson/openings.fixture.ts), so a new lesson changes none of them.
+ * It stands in for the index alone: `getLesson` still loads shipped files.
+ *
+ * ```ts
+ * const index = use(LessonIndexContext);
+ * ```
+ */
+export const LessonIndexContext = createContext(LESSON_INDEX);
 
 /**
  * The lesson for one opening (see src/lesson/lesson.ts). It ships with the
