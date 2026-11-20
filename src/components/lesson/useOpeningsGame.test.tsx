@@ -188,6 +188,18 @@ describe('useOpeningsGame', () => {
     expect([moves(), latest().side]).toEqual([uciLine('d4'), 'white']);
   });
 
+  it('sends each address once, and keeps the moves played while they arrive', async () => {
+    await show('caro-kann');
+    await play('c7c6');
+    await start('d4', 'd5', 'c4');
+    await start('d4', 'd5', 'Bf4');
+    await replace('slav');
+    await play('e7e6');
+    await replace('anti-london');
+    expect(moves()).toEqual(uciLine('d4', 'd5', 'Bf4', 'e6'));
+    expect(mockRouter.replace.mock.calls).toEqual([['/lesson/slav'], ['/lesson/anti-london']]);
+  });
+
   it('starts a link to the lesson the game plays, in a new entry', async () => {
     await show('caro-kann');
     await play('c7c6');
