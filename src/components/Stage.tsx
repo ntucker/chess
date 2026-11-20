@@ -178,8 +178,7 @@ const COLUMN_RAISE = BOARD_OFFSET.minus(WRAPPED_GAP);
 // column. The program's top margin is WRAPPED_GAP for the stacked case, and
 // the column is raised by the rest of BOARD_OFFSET (a negative margin, offset
 // by the stage's padding) so the side-by-side case lines up too.
-// The two start from their widths, not a flexBasis: natively a flexBasis
-// outlives a switch to the other kind of page (see NATIVE_PARTS in narrow.ts).
+// The two start from their widths, not a flexBasis (narrowStyles says why).
 const STYLES = narrowStyles((px) => ({
   fill: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },

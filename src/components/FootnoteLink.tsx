@@ -3,7 +3,7 @@ import { type Href, Link, useRouter } from 'expo-router';
 import type { MouseEvent } from 'react';
 import { type GestureResponderEvent, StyleSheet } from 'react-native';
 
-import { typography } from '@/theme/theme';
+import { lineHeightOf } from '@/theme/theme';
 import { touchPadding } from '@/theme/touch';
 
 interface Props {
@@ -39,11 +39,8 @@ export const plainPress = (event: MouseEvent<HTMLAnchorElement> | GestureRespond
   !('button' in event) ||
   (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey);
 
-/** A caption line's height, as Silk sets it. */
-const CAPTION_LINE = typography.caption.size * typography.caption.lineHeight;
-
 const styles = StyleSheet.create({
   // On the link itself: a nested text can't take padding off the web.
-  target: { paddingVertical: touchPadding(CAPTION_LINE) },
+  target: { paddingVertical: touchPadding(lineHeightOf('caption')) },
   link: { textDecorationLine: 'underline' },
 });

@@ -182,10 +182,10 @@ export interface NarrowStyles<T> {
  * through `px`. On the web it builds them once, from the lengths' CSS, which
  * narrow.css resolves, so both kinds of page share them. Elsewhere it builds
  * them twice, once with each kind's pixels; `useNarrowStyles` picks one.
- * No style here sets `flexBasis`, even 'auto' (the compiler checks): natively
- * a set basis outlives the switch to the other kind of page (see
- * `NATIVE_PARTS`), so a part starts from its width or height instead. The
- * `flex: 1` shorthand's basis is always 0, so it can't go stale.
+ * Its styles set no `flexBasis` (the compiler checks), as a style here may
+ * differ between the two kinds of page and a basis that changes goes stale
+ * natively (`NATIVE_PARTS` says why): start from a width or height. `flex: 1`
+ * is fine, as its basis is 0 on both.
  */
 export function narrowStyles<
   T extends Parameters<typeof StyleSheet.create>[0] & Record<string, { flexBasis?: never }>,
@@ -222,7 +222,7 @@ const PANES_FLOOR = 140;
  *
  * A part that starts from zero length takes `flexBasis: 'auto'` and a zero
  * width or height, never `flexBasis: 0` (narrow.test.ts checks): React Native
- * keeps a node's flex basis from the page it was first laid out on when its
+ * (0.88.1) keeps a node's flex basis from the page it was first laid out on when its
  * style changes, so the window crossing the narrow width left the panel a
  * strip beside the board, or the panes split unevenly. Yoga works out an
  * automatic basis afresh each time.

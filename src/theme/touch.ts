@@ -2,7 +2,11 @@ import './touch.css';
 
 const WEB = process.env.EXPO_OS === 'web';
 
-/** The least size of something to tap on a touch screen: Android's 48 dp. */
+/**
+ * The least size of something to tap on a touch screen: Android's 48 dp.
+ * Silk's own controls reach 44 (Apple's size) through hitSlop, which can't
+ * reach past a parent's bounds on Android, so the app grows layout instead.
+ */
 export const TOUCH_TARGET = 48;
 
 /**
