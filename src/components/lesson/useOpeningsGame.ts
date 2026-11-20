@@ -27,9 +27,9 @@ const sameAddress = (a: Address, b: Address) =>
   a.address === b.address && a.variation === b.variation;
 
 /**
- * An address the page sent to follow the game: a lesson it picked, added to
- * the history from `/` and in place of another address otherwise, or its
- * variation dropped.
+ * An address the page sent to follow the game: the lesson it picked, added
+ * to the history from `/`; in place of another address, that lesson or `/`;
+ * or the address's variation dropped.
  */
 type Send =
   | { readonly how: 'push'; readonly address: LessonId; readonly variation?: undefined }
@@ -42,9 +42,7 @@ interface Synced extends Address {
 }
 
 /** Where a history entry was, and the game the page had there when it left, from its side. */
-interface Visit {
-  readonly address?: LessonId;
-  readonly variation?: VariationId;
+interface Visit extends Address {
   readonly game: GameState;
   readonly side: Color;
 }
@@ -112,10 +110,10 @@ export function useOpeningsGame(
       setAddressSide(LESSON_INDEX[address].side);
     }
     // One of the page's own sends arriving, maybe after the game has moved on.
-    const arrived = synced.sent.findIndex((sent) => sameAddress(sent, { address, variation }));
+    const arrivedAt = synced.sent.findIndex((sent) => sameAddress(sent, { address, variation }));
     let sent: readonly Send[] = [];
-    if (arrived >= 0) {
-      sent = synced.sent.slice(arrived + 1);
+    if (arrivedAt >= 0) {
+      sent = synced.sent.slice(arrivedAt + 1);
     } else if (synced.entry === undefined && sameAddress(synced, { address, variation })) {
       // The entry's key arrived.
       sent = synced.sent;
