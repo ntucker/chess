@@ -355,7 +355,7 @@ function LessonScreen({
             failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
             eyebrowInHeader
             eyebrowLink={listLink}
-            short
+            news={status.news ?? 'all'}
           />
           {/* The scoresheet drawer takes the place of this part on a narrow web page, under the headline, which tells of a failure. */}
           <View
@@ -478,9 +478,9 @@ interface StatusInput {
 /**
  * The panel's headline: where the lesson stands and whose move it is. In
  * Practice, right after the learner's move, it judges that move first.
- * `routine` marks a headline that only says whose move it is and how to use
- * the screen, once the learner has moved and so has seen how. `turn` marks a
- * title that only says whose move it is.
+ * `news` says what of it is news, where the title only says whose move it
+ * is (`detail`), or the detail is also how to use the screen, once the
+ * learner has moved and so has seen how (`none`); see `StatusHeadline`.
  */
 function describeStatus(
   view: LessonView,
@@ -536,9 +536,8 @@ function describeStatus(
     return {
       eyebrow,
       title: 'Your move.',
-      turn: true,
       // Only Explore's detail at the latest move is how-to; the others say what a move here does.
-      routine: !startsRun && !practice && !viewing,
+      news: !startsRun && !practice && !viewing ? ('none' as const) : ('detail' as const),
       detail:
         practice && startsRun && viewing
           ? YOUR_MOVE.practice.restart
@@ -558,8 +557,7 @@ function describeStatus(
   return {
     eyebrow,
     title: reply,
-    turn: true,
-    routine: !startsRun,
+    news: startsRun ? ('detail' as const) : ('none' as const),
     detail: canPlay
       ? 'Point at a reply to see what it aims for, then play it.'
       : 'Point at a reply to see what it aims for.',
@@ -618,6 +616,7 @@ function LessonPlaceholder({
             eyebrow="Lesson"
             title={message ? 'Curtain stays down.' : LOADING.title}
             detail={message ?? LOADING.detail}
+            news="all"
           />
         </View>
       }

@@ -29,50 +29,50 @@ function render<T>(props: Props, read: (host: HTMLElement) => T) {
   return result;
 }
 
-/** The narrow part the headline renders, if any. */
-function headlinePart(props: Props) {
-  return render(props, (host) => host.firstElementChild?.getAttribute('data-narrow') ?? undefined);
-}
-
-/** What a short headline shows on a narrow page, and where its full form goes. */
-function shortParts(props: Props) {
-  return render({ short: true, ...props }, (host) => ({
+/**
+ * What a narrow page draws: the headline's own part, the full headline's,
+ * and the short line, hidden from screen readers.
+ */
+function narrowParts(props: Props) {
+  return render(props, (host) => ({
+    headline: host.firstElementChild?.getAttribute('data-narrow') ?? undefined,
     full: host
       .querySelector('[role="heading"]')
       ?.closest('[data-narrow]')
       ?.getAttribute('data-narrow'),
-    line: host.querySelector('[data-narrow="narrow-only"]')?.textContent ?? undefined,
+    line: host.querySelector('[data-narrow="narrow-only"] > [aria-hidden="true"]')?.textContent,
   }));
 }
 
 describe('StatusHeadline', () => {
-  it('keeps a routine headline for screen readers only on a narrow page', () => {
-    expect(headlinePart({ routine: true })).toBe('wide-only-spoken');
+  it('draws the full headline on a narrow page without news', () => {
+    expect(narrowParts({})).toEqual({ headline: undefined, full: undefined, line: undefined });
   });
 
-  it('draws a headline with news', () => {
-    expect(headlinePart({})).toBeUndefined();
+  it('runs the title into its detail, and keeps the full headline for screen readers', () => {
+    expect(narrowParts({ title: 'Off the guide.', news: 'all' })).toEqual({
+      headline: undefined,
+      full: 'wide-only-spoken',
+      line: 'Off the guide. Play here.',
+    });
   });
 
-  it('draws a routine headline when the opponent failed, so its retry shows', () => {
+  it('draws the detail alone when only it is news', () => {
+    expect(narrowParts({ news: 'detail' }).line).toBe('Play here.');
+  });
+
+  it('keeps a headline with no news for screen readers only', () => {
+    expect(narrowParts({ news: 'none' })).toMatchObject({
+      headline: 'wide-only-spoken',
+      line: undefined,
+    });
+  });
+
+  it('draws the detail beside a failure, so its retry has a reason', () => {
     const failure = { who: 'Maia', error: new Error('down'), onRetry: () => {} };
-    expect(headlinePart({ routine: true, failure })).toBeUndefined();
-  });
-
-  describe('short', () => {
-    it('runs the title into its detail on a narrow page, and keeps the full headline spoken', () => {
-      expect(shortParts({ title: 'Off the guide.' })).toEqual({
-        full: 'wide-only-spoken',
-        line: 'Off the guide. Play here.',
-      });
-    });
-
-    it('leaves out a title that only says whose move it is', () => {
-      expect(shortParts({ turn: true }).line).toBe('Play here.');
-    });
-
-    it('draws no line for a routine headline', () => {
-      expect(shortParts({ routine: true }).line).toBeUndefined();
+    expect(narrowParts({ news: 'none', failure })).toMatchObject({
+      headline: undefined,
+      line: 'Play here.',
     });
   });
 });

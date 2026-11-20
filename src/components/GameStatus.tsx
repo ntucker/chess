@@ -8,7 +8,7 @@ import type { Color, Position } from '@/game/replay';
 import { describeOpponent, type Opponent } from '@/opponent/opponent';
 import { narrowLength, narrowPart } from '@/theme/narrow';
 import { NarrowOnly } from '@/theme/NarrowOnly';
-import { typography } from '@/theme/theme';
+import { fonts, typography } from '@/theme/theme';
 
 interface Props {
   readonly playerColor: Color;
@@ -47,21 +47,18 @@ interface HeadlineProps {
   /** The eyebrow names where the page is, and links to the screen listing the others (`PlaceLink`). */
   readonly eyebrowLink?: Destination;
   /**
-   * The headline only says whose move it is, which the name bars show too,
-   * and how to use the screen, which the learner has seen. A narrow web page
-   * doesn't draw it, to give its room to the moves, but screen readers still
-   * announce it. A failure always shows.
+   * What a narrow web page draws of the headline, as one short line that
+   * leaves its room to the panel below: the title run in before the detail
+   * (`all`); the detail alone, when the title only says whose move it is,
+   * which the name bars show (`detail`); or nothing, when the detail is how
+   * to use the screen too, which the learner has seen (`none`; a failure
+   * still draws the detail). Without it, the narrow page draws the full
+   * headline. Screen readers hear the full headline either way.
    */
-  readonly routine?: boolean;
-  /**
-   * On a narrow web page, draw the headline as one short paragraph, its title
-   * run in before its detail, to give its room to the panel's panes. Screen
-   * readers hear the full headline either way.
-   */
-  readonly short?: boolean;
-  /** The title only says whose move it is, which the name bars show: the short paragraph leaves it out. */
-  readonly turn?: boolean;
+  readonly news?: News;
 }
+
+type News = 'all' | 'detail' | 'none';
 
 /** A panel's headline, announced as it changes, with a retry when the opponent didn't answer. */
 export function StatusHeadline({
@@ -71,49 +68,42 @@ export function StatusHeadline({
   failure,
   eyebrowInHeader,
   eyebrowLink,
-  routine,
-  short,
-  turn,
+  news,
 }: HeadlineProps) {
   const label = (
     <PlaceLink to={eyebrowLink}>
       {(active) => <Eyebrow tone={active ? 'primary' : 'secondary'}>{eyebrow}</Eyebrow>}
     </PlaceLink>
   );
-  const full = (
-    <>
-      {eyebrowInHeader ? <View {...narrowPart('wide-only')}>{label}</View> : label}
-      <Text
-        role="headingLg"
-        accessibilityRole="header"
-        accessibilityLiveRegion="polite"
-        style={styles.title}
-      >
-        {title}
-      </Text>
-      <Text role="bodySm" tone="secondary">
-        {detail}
-      </Text>
-    </>
-  );
+  // A failure's retry needs the detail beside it.
+  const drawn = news === 'none' && failure ? 'detail' : news;
+  const short = drawn === 'all' || drawn === 'detail';
   return (
-    <Stack gap="2" {...(routine && !failure ? narrowPart('wide-only-spoken') : {})}>
+    <Stack gap="2" {...(drawn === 'none' ? narrowPart('wide-only-spoken') : {})}>
+      {/* With a short line drawn, a narrow page keeps the full headline for screen readers only. */}
+      <Stack gap="2" {...(short ? narrowPart('wide-only-spoken') : {})}>
+        {eyebrowInHeader ? <View {...narrowPart('wide-only')}>{label}</View> : label}
+        <Text
+          role="headingLg"
+          accessibilityRole="header"
+          accessibilityLiveRegion="polite"
+          style={styles.title}
+        >
+          {title}
+        </Text>
+        <Text role="bodySm" tone="secondary">
+          {detail}
+        </Text>
+      </Stack>
       {short ? (
-        <Stack gap="2" {...narrowPart('wide-only-spoken')}>
-          {full}
-        </Stack>
-      ) : (
-        full
-      )}
-      {short && !routine ? (
         <NarrowOnly>
           {/* What the full headline says, so screen readers skip it. */}
           <Text role="bodySm" tone="secondary" aria-hidden>
-            {turn ? null : (
+            {drawn === 'all' ? (
               <Text role="bodySm" tone="primary" style={styles.runIn}>
                 {`${title} `}
               </Text>
-            )}
+            ) : null}
             {detail}
           </Text>
         </NarrowOnly>
@@ -196,7 +186,11 @@ function describeLatest({
 const HEADLINE = typography.headingLg;
 const TITLE_SIZE = narrowLength('headline-size', HEADLINE.size);
 
+/** The run-in title's size: bodySm's, plus the serif's smaller x-height. */
+const RUN_IN_SIZE = typography.bodySm.size + 2;
+
 const styles = StyleSheet.create({
   title: { fontSize: TITLE_SIZE.value, lineHeight: TITLE_SIZE.times(HEADLINE.lineHeight).value },
-  runIn: { fontWeight: '600' },
+  // The display serif carries the hierarchy (theme.ts), a step up from the detail's size.
+  runIn: { fontFamily: fonts.display, fontSize: RUN_IN_SIZE },
 });
