@@ -18,7 +18,7 @@ import { gameReducer, initialGame } from '@/game/game';
 import { type Color, colorName, opposite } from '@/game/replay';
 import { useGame } from '@/game/useGame';
 import { describeOpponent } from '@/opponent/opponent';
-import { gameOpponent } from '@/resources/opponent';
+import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
 import { useSettings } from '@/settings/SettingsProvider';
 
 export default function PlayScreen() {
@@ -28,9 +28,11 @@ export default function PlayScreen() {
   // The side of the game on the board, and the side the next game will take.
   const [playerColor, setPlayerColor] = useState<Color>('white');
   const [nextColor, setNextColor] = useState<Color>(playerColor);
+  const active = useIsFocused();
+  useWarmOpponent(opponent, active);
   const game = useGame(useReducer(gameReducer, initialGame), gameOpponent(ctrl, opponent), {
     side: playerColor,
-    active: useIsFocused(),
+    active,
     judge: evaluationEngine,
   });
   const { moves, ply, current, thinking, goto } = game;

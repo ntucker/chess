@@ -1048,44 +1048,44 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@data-client/core@npm:^0.19.0-beta-20261113052655-f7af45aa6ae4b5ee5e7106b731e1f2b2b152533a":
-  version: 0.19.0-beta-20261115003601-9e33ac1ca5414daa43a80e5119067fc14b3c2576
-  resolution: "@data-client/core@npm:0.19.0-beta-20261115003601-9e33ac1ca5414daa43a80e5119067fc14b3c2576"
+"@data-client/core@npm:^0.19.0":
+  version: 0.19.0
+  resolution: "@data-client/core@npm:0.19.0"
   dependencies:
     "@babel/runtime": "npm:^7.20.0 || ^8.0.0"
-    "@data-client/normalizr": "npm:^0.19.0-beta-20261115003601-9e33ac1ca5414daa43a80e5119067fc14b3c2576"
+    "@data-client/normalizr": "npm:^0.19.0"
     flux-standard-action: "npm:^2.1.1"
-  checksum: 10c0/8811db66e9575b116c0f627eb01170c62c352c27aaf30f12847a2082f31e9793b6cb18a6f0a3eaf66efbcff48f8c0c634441a6b72b983f5bd888d0d76de8196f
+  checksum: 10c0/2639f62c7d9c32234ecf61d9f45fe957359fe3a7ade85134ebb6d34cb46bdd2677021f31db8f1376432d83b5a99e394d10cced3bebad9c324189b7a2f2d12759
   languageName: node
   linkType: hard
 
-"@data-client/endpoint@npm:^0.19.0-beta-20261115003601-9e33ac1ca5414daa43a80e5119067fc14b3c2576":
-  version: 0.19.0-beta-20261115003601-9e33ac1ca5414daa43a80e5119067fc14b3c2576
-  resolution: "@data-client/endpoint@npm:0.19.0-beta-20261115003601-9e33ac1ca5414daa43a80e5119067fc14b3c2576"
+"@data-client/endpoint@npm:^0.19.0":
+  version: 0.19.0
+  resolution: "@data-client/endpoint@npm:0.19.0"
   dependencies:
     "@babel/runtime": "npm:^7.20.0 || ^8.0.0"
   bin:
     data-client-skills: ./bin/data-client-skills.mjs
-  checksum: 10c0/9b33929efa2d93fb6a67df747285acbecd8d200b5b6a804336d2a445a4ec9fb7e6f949016fdb479c8d14195f296c5983fb2ce6506e71adee8c3c1daca6718b9d
+  checksum: 10c0/bbc405ed1a7fd01a2b25b157ee535cd3aa8d3421b9d5a76b8f534e2600ee3172d49b4df44bdaab8e0ee422a98780646652c3daa603bba2de3235e50e9ac3c2a7
   languageName: node
   linkType: hard
 
-"@data-client/normalizr@npm:^0.19.0-beta-20261115003601-9e33ac1ca5414daa43a80e5119067fc14b3c2576":
-  version: 0.19.0-beta-20261115003601-9e33ac1ca5414daa43a80e5119067fc14b3c2576
-  resolution: "@data-client/normalizr@npm:0.19.0-beta-20261115003601-9e33ac1ca5414daa43a80e5119067fc14b3c2576"
+"@data-client/normalizr@npm:^0.19.0":
+  version: 0.19.0
+  resolution: "@data-client/normalizr@npm:0.19.0"
   dependencies:
     "@babel/runtime": "npm:^7.20.0 || ^8.0.0"
-  checksum: 10c0/6f48e581bfbc918025de9e67e049783f68966f80c4d9330ae0593f0970a4bb6ecba5c8e60b24da6bb8c79c5a5546a4b47a0221927e37be19bb22cc77b7fcd446
+  checksum: 10c0/27479520fff7f84fcf8c4e2d83da9f4f231fddd5362bcfebc7151eae18a70dfdebc804de5a9f534763d31afb44ce82370cb6a6dbd79e39a587966cb8ce254938
   languageName: node
   linkType: hard
 
-"@data-client/react@npm:^0.19.0-beta-20261113052655-f7af45aa6ae4b5ee5e7106b731e1f2b2b152533a":
-  version: 0.19.0-beta-20261113052655-f7af45aa6ae4b5ee5e7106b731e1f2b2b152533a
-  resolution: "@data-client/react@npm:0.19.0-beta-20261113052655-f7af45aa6ae4b5ee5e7106b731e1f2b2b152533a"
+"@data-client/react@npm:^0.19.0":
+  version: 0.19.0
+  resolution: "@data-client/react@npm:0.19.0"
   dependencies:
     "@babel/runtime": "npm:^7.20.0 || ^8.0.0"
-    "@data-client/core": "npm:^0.19.0-beta-20261113052655-f7af45aa6ae4b5ee5e7106b731e1f2b2b152533a"
-    "@data-client/use-enhanced-reducer": "npm:^0.2.0-beta-20261113052655-f7af45aa6ae4b5ee5e7106b731e1f2b2b152533a"
+    "@data-client/core": "npm:^0.19.0"
+    "@data-client/use-enhanced-reducer": "npm:^0.2.0"
   peerDependencies:
     "@react-navigation/native": ^6.0.0 || ^7.0.0
     "@types/react": ^16.14.0 || ^17.0.0 || ^18.0.0 || ^19.0.0-0 || ^19.0.0
@@ -1097,26 +1097,26 @@ __metadata:
       optional: true
   bin:
     data-client-skills: ./bin/data-client-skills.mjs
-  checksum: 10c0/36339c1e90cc8d813c1aece94122f20fd291e68ce5e4ad924939d9fc5d837e2457cffd0e03570e778ef3743656f6d96b57f99b5e101678e1c6de3f0b350ce901
+  checksum: 10c0/233c466be9286d4ee77dd3764eff9e4362c50365d53017ea08739eecb8673eb74e43802fc6cab0b03d43cc27a9fe3a9f5c83f1d1350dddae09955f4905bd6bdc
   languageName: node
   linkType: hard
 
-"@data-client/rest@npm:^0.19.0-beta-20261115003601-9e33ac1ca5414daa43a80e5119067fc14b3c2576":
-  version: 0.19.0-beta-20261115003601-9e33ac1ca5414daa43a80e5119067fc14b3c2576
-  resolution: "@data-client/rest@npm:0.19.0-beta-20261115003601-9e33ac1ca5414daa43a80e5119067fc14b3c2576"
+"@data-client/rest@npm:^0.19.0":
+  version: 0.19.0
+  resolution: "@data-client/rest@npm:0.19.0"
   dependencies:
     "@babel/runtime": "npm:^7.20.0 || ^8.0.0"
-    "@data-client/endpoint": "npm:^0.19.0-beta-20261115003601-9e33ac1ca5414daa43a80e5119067fc14b3c2576"
+    "@data-client/endpoint": "npm:^0.19.0"
     path-to-regexp: "npm:^8.1.0"
   bin:
     data-client-skills: ./bin/data-client-skills.mjs
-  checksum: 10c0/b7a134ae056a1a122471f95d8843068a91c972bf63a06bd35d4799f54ccea4f2144894374e05ed83e46ab10a5cd3cd26b1beeab306f1c3d7290db6b0b0d7409a
+  checksum: 10c0/5ba1f1bc66b791fcaf3d540188cb6fc4162d5607de5980f9ea51ada318054fb4d9269ead6c9aef358f3f98ac95899478f5dc473e8d4bd5edaad3450165c3e69c
   languageName: node
   linkType: hard
 
-"@data-client/use-enhanced-reducer@npm:^0.2.0-beta-20261113052655-f7af45aa6ae4b5ee5e7106b731e1f2b2b152533a":
-  version: 0.2.0-beta-20261113052655-f7af45aa6ae4b5ee5e7106b731e1f2b2b152533a
-  resolution: "@data-client/use-enhanced-reducer@npm:0.2.0-beta-20261113052655-f7af45aa6ae4b5ee5e7106b731e1f2b2b152533a"
+"@data-client/use-enhanced-reducer@npm:^0.2.0":
+  version: 0.2.0
+  resolution: "@data-client/use-enhanced-reducer@npm:0.2.0"
   dependencies:
     "@babel/runtime": "npm:^7.20.0 || ^8.0.0"
   peerDependencies:
@@ -1125,7 +1125,7 @@ __metadata:
   peerDependenciesMeta:
     "@types/react":
       optional: true
-  checksum: 10c0/bdefbf5f4dae173a069d77f330eacaf7563f835010568fe7b6255e979cfbea2ecf5b0bbc6df008cd6050930d95acea0fbbe25f7ea8ff7b08f369c8693a7d8e82
+  checksum: 10c0/7e5cd422d0057c7bedc1138990c0a9999bc745c1ab001bfc3ad4f814ba24ac9a75b2f37ac1ef6ff8ed0cfb18d9149565f37fd28d069ed5562c78921b2f603911
   languageName: node
   linkType: hard
 
@@ -9408,8 +9408,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "opening-night@workspace:."
   dependencies:
-    "@data-client/react": "npm:^0.19.0-beta-20261113052655-f7af45aa6ae4b5ee5e7106b731e1f2b2b152533a"
-    "@data-client/rest": "npm:^0.19.0-beta-20261115003601-9e33ac1ca5414daa43a80e5119067fc14b3c2576"
+    "@data-client/react": "npm:^0.19.0"
+    "@data-client/rest": "npm:^0.19.0"
     "@expo-google-fonts/dm-mono": "npm:^0.4.2"
     "@expo-google-fonts/dm-serif-display": "npm:^0.4.2"
     "@expo-google-fonts/instrument-sans": "npm:^0.4.2"
