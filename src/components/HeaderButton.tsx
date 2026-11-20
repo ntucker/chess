@@ -1,9 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, type PressableProps, useTheme } from '@reactive/silk-native';
 import type { ComponentProps } from 'react';
-import { StyleSheet } from 'react-native';
 
-import { narrowLength } from '@/theme/narrow';
+import { narrowLength, narrowStyles } from '@/theme/narrow';
+import { useNarrowStyles } from '@/theme/Narrow';
 
 interface Props extends Pick<
   PressableProps,
@@ -21,6 +21,7 @@ interface Props extends Pick<
 export function HeaderButton({ icon, iconSize, ...pressable }: Props) {
   const { theme } = useTheme();
   const { color } = theme.semantic;
+  const styles = useNarrowStyles(STYLES);
   return (
     <Pressable
       {...pressable}
@@ -40,15 +41,15 @@ export function HeaderButton({ icon, iconSize, ...pressable }: Props) {
   );
 }
 
-/** The button's size, smaller on a narrow web page, where the header is slim. */
+/** The button's size, smaller on a narrow page, where the header is slim. */
 export const HEADER_BUTTON_SIZE = narrowLength('header-button-size', 36);
 
-const styles = StyleSheet.create({
+const STYLES = narrowStyles((px) => ({
   button: {
-    width: HEADER_BUTTON_SIZE.value,
-    height: HEADER_BUTTON_SIZE.value,
+    width: px(HEADER_BUTTON_SIZE),
+    height: px(HEADER_BUTTON_SIZE),
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
   },
-});
+}));

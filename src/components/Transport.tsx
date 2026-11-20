@@ -3,15 +3,14 @@ import { Pressable, useTheme } from '@reactive/silk-native';
 import type { ComponentProps, ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { narrowPart } from '@/theme/narrow';
-import { NarrowOnly } from '@/theme/NarrowOnly';
+import { NarrowOnly, useNarrowPart } from '@/theme/Narrow';
 
 interface Props {
   readonly ply: number;
   readonly total: number;
   readonly onGoto: (ply: number) => void;
   /**
-   * On a narrow web page, a control between the step arrows, in place of the
+   * On a narrow page, a control between the step arrows, in place of the
    * jumps to the first and latest move (such as the lesson's scoresheet
    * opener). Elsewhere the stepper keeps its four buttons.
    */
@@ -22,6 +21,7 @@ interface Props {
 export function Transport({ ply, total, onGoto, middle }: Props) {
   const { theme } = useTheme();
   const { color } = theme.semantic;
+  const part = useNarrowPart();
   const buttons: {
     label: string;
     icon: ComponentProps<typeof Ionicons>['name'];
@@ -69,7 +69,7 @@ export function Transport({ ply, total, onGoto, middle }: Props) {
   /** A jump to either end: wide-only beside a middle, in a View since a Pressable can't carry the part. */
   const jump = (entry: (typeof buttons)[number]) =>
     middle ? (
-      <View key={entry.label} {...narrowPart('wide-only')}>
+      <View key={entry.label} {...part('wide-only')}>
         {button(entry)}
       </View>
     ) : (

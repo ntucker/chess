@@ -33,7 +33,14 @@ describe('registered', () => {
 describe('indexedWith and writeIndex', () => {
   it('adds the lesson to those its index lists, read from their files beside it', () => {
     const file = tempFile('index.json');
-    const other = { ...SAMPLE, id: 'other', title: 'Other', side: 'white' as const };
+    // White's lesson on the same moves, its own moves booked so they pick it.
+    const positions = Object.fromEntries(
+      Object.entries(SAMPLE.positions).map(([key, here]) => [
+        key,
+        { ...here, moves: here.moves.map((move) => ({ ...move, book: true })) },
+      ]),
+    );
+    const other = { ...SAMPLE, id: 'other', title: 'Other', side: 'white' as const, positions };
     writeFileSync(join(dirname(file), 'other.json'), JSON.stringify(other));
     writeFileSync(file, JSON.stringify({ other: {} }));
     writeIndex(file, lessonIndex(indexedWith(file, SAMPLE)));

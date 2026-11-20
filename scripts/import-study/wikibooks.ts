@@ -78,7 +78,7 @@ export function readPage(source: string): Page {
     next: unique([...linked(template), ...linked(prose)]),
     text,
     about,
-    lines: tableLines(source),
+    lines: [...tableLines(source), ...htmlTableLines(source)],
   };
 }
 
@@ -149,22 +149,70 @@ export function plainText(wiki: string): string {
  * nothing above it.
  */
 function tableLines(source: string): string[][] {
-  let above = new Map<number, string>();
-  return [...source.matchAll(/^\|\s*line\d+\s*=(.*)$/gm)].map(([, line]) => {
-    const moves = new Map<number, string>();
+  const rows = [...source.matchAll(/^\|\s*line\d+\s*=(.*)$/gm)].map(([, line]) => {
+    const row: PlyMove[] = [];
     let ply: number | undefined;
     for (const token of line
       .replace(/(\d+\.(?:\.\.)?)/g, ' $1 ')
       .split(/\s+/)
       .filter(Boolean)) {
       const number = /^(\d+)\.(\.\.)?$/.exec(token);
-      if (number) {
-        ply = 2 * Number(number[1]) - (number[2] ? 0 : 1);
-        continue;
+      if (number) ply = 2 * Number(number[1]) - (number[2] ? 0 : 1);
+      else if (ply) row.push([ply++, token]);
+      else break;
+    }
+    return row;
+  });
+  return repeatsResolved(rows);
+}
+
+/**
+ * The rows of the page's theory table when it is written in HTML (the
+ * Albin's) rather than as `|lineN=`: a header row numbers the moves, and
+ * each cell holds that move's pair, White's and Black's split by `<br>`. A
+ * `...` repeats the move above it, as in `tableLines`; a row stops at a cell
+ * that is not a pair (the closing evaluation, "+=").
+ */
+function htmlTableLines(source: string): string[][] {
+  const lines: string[][] = [];
+  for (const [table] of source.matchAll(/<table[\s\S]*?<\/table>/gi)) {
+    const rows = [...table.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)].map(([, row]) => row);
+    const first = Number(/<th[^>]*>\s*(\d+)\s*<\/th>/i.exec(table)?.[1]);
+    if (!first) continue;
+    const cellRows = rows
+      .map((row) => [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(([, cell]) => cell))
+      .filter((cells) => cells.length > 0);
+    const moveRows = cellRows.map((cells) => {
+      const moves: PlyMove[] = [];
+      for (const [i, cell] of cells.entries()) {
+        const pair = cell.split(/<br\s*\/?>/i);
+        if (pair.length !== 2) break;
+        // The table writes a promotion as fxg1(N), SAN as fxg1=N.
+        const [white, black] = pair.map((half) => plainText(half).replace(/\((\w)\)/, '=$1'));
+        moves.push([2 * (first + i) - 1, white], [2 * (first + i), black]);
       }
-      const move = /^\.+$/.test(token) ? ply && above.get(ply) : token;
-      if (!ply || !move) break;
-      moves.set(ply++, move);
+      return moves;
+    });
+    lines.push(...repeatsResolved(moveRows).filter((line) => line.length > 0));
+  }
+  return lines;
+}
+
+/** A move in a table row, with the ply it is played at. */
+type PlyMove = readonly [ply: number, move: string];
+
+/**
+ * Each row's moves, given by ply, with a `...` taking the move at its ply in
+ * the row above; a row stops at a `...` with nothing above it.
+ */
+function repeatsResolved(rows: readonly (readonly PlyMove[])[]): string[][] {
+  let above = new Map<number, string>();
+  return rows.map((row) => {
+    const moves = new Map<number, string>();
+    for (const [ply, token] of row) {
+      const move = /^\.+$/.test(token) ? above.get(ply) : token;
+      if (!move) break;
+      moves.set(ply, move);
     }
     above = moves;
     return [...moves.values()];
@@ -299,8 +347,10 @@ export async function wikibooksPgn(
   log(
     `wikibooks ${root}: ${pages} pages read; ${reader.linesCut} of ${reader.lines} table lines cut short (another page's position, another lesson's, or an illegal move)`,
   );
-  // A missing root page would otherwise import as one bare move.
-  if (top.children.length === 0) throw new Error(`${root}: Wikibooks has no moves here`);
+  // A missing root page would otherwise import as one bare move. One with text
+  // but no next moves (the Fischer Defense's) still explains the move into it.
+  if (top.children.length === 0 && !top.comment)
+    throw new Error(`${root}: Wikibooks has nothing here`);
   const name = (node: BookNode) =>
     (node.name && titleCase(rename[node.name] ?? node.name)) || undefined;
   return chapters(top, path.slice(0, -1), learner, name, topName)
