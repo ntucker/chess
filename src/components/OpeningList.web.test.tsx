@@ -27,7 +27,8 @@ jest.mock('expo-router', () => ({
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 // jsdom has no layout: the list scrolls to where the board was.
-Element.prototype.scrollIntoView = () => {};
+const scrollIntoView = jest.fn();
+Element.prototype.scrollIntoView = scrollIntoView;
 
 const list = openingList(FIXTURE_INDEX);
 const caro = list.black.find(({ id }) => id === 'caro-kann')!.root;
@@ -38,6 +39,8 @@ let host: HTMLElement;
 let root: Root | undefined;
 function render(here?: ListPlace<LessonId>) {
   host = document.createElement('div');
+  // In the document, so React Native Web's style sheet hides closed branches.
+  document.body.append(host);
   root = createRoot(host);
   act(() =>
     root!.render(
@@ -52,13 +55,18 @@ function render(here?: ListPlace<LessonId>) {
 afterEach(() => {
   act(() => root?.unmount());
   root = undefined;
+  host.remove();
+  scrollIntoView.mockClear();
 });
 
+/** Whether `node` or a view around it is hidden. */
+const hidden = (node: Element | null): boolean =>
+  node !== null && (getComputedStyle(node).display === 'none' || hidden(node.parentElement));
 /** The names of the rows on show, in order. */
 const rows = () =>
-  [...host.querySelectorAll('[role=link][aria-label]')].map(
-    (row) => row.getAttribute('aria-label')!.split(',')[0],
-  );
+  [...host.querySelectorAll('[role=link][aria-label]')]
+    .filter((row) => !hidden(row))
+    .map((row) => row.getAttribute('aria-label')!.split(',')[0]);
 /** The chevron that shows or hides the variations under `name`. */
 const toggle = (name: string) =>
   host.querySelector<HTMLElement>(`[aria-label="Variations of ${name}"]`)!;
@@ -99,5 +107,15 @@ describe('OpeningList', () => {
     act(() => toggle('Slav Defence').click());
     expect(toggle('Slav Defence').getAttribute('aria-expanded')).toBe('true');
     expect(rows()).toEqual(expect.arrayContaining(slav.children.map(({ name }) => name)));
+  });
+
+  it('reopens a branch as it was left, without scrolling to the board’s row again', () => {
+    render({ lesson: 'caro-kann', variation: short.id });
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    act(() => toggle('Caro-Kann Defence').click());
+    expect(rows()).not.toContain(advance.name);
+    act(() => toggle('Caro-Kann Defence').click());
+    expect(rows()).toContain(short.name);
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
   });
 });

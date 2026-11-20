@@ -116,6 +116,7 @@ function OpeningEntry({
         variation={root}
         depth={0}
         path={listedPath(root, here)}
+        // The heading keeps the chevron's column too, so its name lines up with its variations'.
         gutter
         tag={here === undefined ? undefined : <NowPlaying />}
       />
@@ -175,7 +176,10 @@ function Branch({
           tag={tag}
         />
       </View>
-      {open ? (
+      {open === undefined ? null : (
+        // A closed branch stays mounted, only hidden: the branches under it
+        // keep the learner's toggles, and the row the board was in scrolls
+        // into view once, not each time its branch reopens.
         <View
           style={[
             styles.rows,
@@ -183,6 +187,7 @@ function Branch({
               ...styles.subRows,
               borderLeftColor: theme.semantic.color.borderSubtle,
             },
+            !open && styles.closed,
           ]}
         >
           {children.map((child) => (
@@ -196,7 +201,7 @@ function Branch({
             />
           ))}
         </View>
-      ) : null}
+      )}
     </>
   );
 }
@@ -221,7 +226,8 @@ function Toggle({
       accessibilityRole="button"
       accessibilityLabel={`Variations of ${name}`}
       {...a11yState({ expanded: open })}
-      hitSlop={4}
+      // At least 44 points to a finger's press, past the chevron's 28.
+      hitSlop={8}
       onPress={onPress}
       // Level with the name's first line, however the row wraps.
       style={[styles.toggle, { height: 2 * ROW_PAD + role.size * role.lineHeight }]}
@@ -367,6 +373,7 @@ const styles = StyleSheet.create({
   openingName: { fontFamily: fonts.display },
   nowText: { textTransform: 'uppercase', letterSpacing: 1.2 },
   rows: { gap: 2 },
+  closed: { display: 'none' },
   // Sub-variations hang from their parent's chevron on a thin rule.
   subRows: { marginLeft: TOGGLE / 2, paddingLeft: 6, borderLeftWidth: 1 },
   branch: { flexDirection: 'row', alignItems: 'flex-start' },
