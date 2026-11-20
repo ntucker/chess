@@ -65,7 +65,7 @@ export interface Playback {
  * is where the learner picks the opening (src/lesson/openings.ts): nobody
  * replies there, so the learner plays the first move whoever's turn it is.
  * While `pending`, the game has moved on to a lesson still loading and the
- * store holds the one shown, so the learner can't move.
+ * store holds the one shown, so the learner can't move or preview a move.
  */
 export function useLesson(
   lesson: Lesson,
@@ -140,7 +140,9 @@ export function useLesson(
   }, [ctrl, earned, key, lesson.id, progress]);
   const marks = useMemo(() => rowMarks(lesson, progress, view), [lesson, progress, view]);
 
-  const here = peek?.key === key ? peek : undefined;
+  // While a lesson loads the board takes no move, so nothing pointed at
+  // previews either: the screen waits as one.
+  const here = !pending && peek?.key === key ? peek : undefined;
   const playing = here?.kind === 'play' ? here : undefined;
   // A playback plays in its candidate's position, wherever the pointer goes.
   const pointer = playing ? playing.from : here?.candidate;

@@ -141,4 +141,18 @@ describe('useLesson while a lesson loads', () => {
     expect(lesson().canPlay).toBe(true);
     expect(lesson().board.movableColor).toBe('black');
   });
+
+  it('previews no row while the game waits on another lesson', async () => {
+    await act(async () => {
+      root = createRoot();
+      root.render(<Lesson start={uciLine('e4')} pending />);
+    });
+    await act(async () => lesson().pointRow(uciLine('e4', 'c6')[1]));
+    expect(lesson().guidance.preview).toBeUndefined();
+    expect(lesson().board.preview).toBeUndefined();
+    // The same row, pointed at with the lesson shown, previews.
+    await act(async () => root?.render(<Lesson start={uciLine('e4')} />));
+    expect(lesson().guidance.preview?.candidate.san).toBe('c6');
+    expect(lesson().board.preview).toBeDefined();
+  });
 });
