@@ -63,19 +63,22 @@ describe('openingsLesson', () => {
     ]);
   });
 
-  it('credits a lichess study by its author whatever form its URL takes', () => {
-    const forms = [
-      'http://lichess.org/study/abcd1234',
-      'https://lichess.org',
-      'https://www.lichess.org/x',
-    ];
-    const index = {
-      slav: { ...INDEX.slav, sources: forms.map((url) => ({ ...study('Matkun'), url })) },
-    };
+  it.each([
+    ['http://lichess.org/study/abcd1234', "Matkun's lichess study"],
+    ['https://www.lichess.org/study/abcd1234', "Matkun's lichess study"],
+    ['https://lichess.org/@/Matkun', 'A study by Matkun'],
+    ['https://lichess.org.example.com/study/abcd1234', 'A study by Matkun'],
+  ])('credits %s as %s', (url, credit) => {
+    const index = { slav: { ...INDEX.slav, sources: [{ ...study('Matkun'), url }] } };
     const [slav] = openingsLesson(index).positions[keyAfter()].moves;
-    expect(slav.notes?.[0].text).toBe(
-      "Slav Defence, from Matkun's lichess study, Matkun's lichess study and Matkun's lichess study.",
-    );
+    expect(slav.notes?.[0].text).toBe(`Slav Defence, from ${credit}.`);
+  });
+
+  it("names a lichess study's license when it has one", () => {
+    const license = { name: 'CC0', url: 'https://creativecommons.org/publicdomain/zero/1.0/' };
+    const index = { slav: { ...INDEX.slav, sources: [{ ...study('Matkun'), license }] } };
+    const [slav] = openingsLesson(index).positions[keyAfter()].moves;
+    expect(slav.notes?.[0].text).toBe("Slav Defence, from Matkun's lichess study (CC0).");
   });
 
   it("credits the lessons' sources, a source two lessons share once", () => {

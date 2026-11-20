@@ -51,18 +51,18 @@ const openingMoves = (index: LessonIndex) =>
     return ucis.map((uci) => ({ uci, notes }));
   });
 
+/** A lichess study's URL; read without `new URL(url).hostname`, which React Native's URL lacks. */
+const LICHESS_STUDY = /^https?:\/\/(?:www\.)?lichess\.org\/study\//i;
+
 /**
  * How a note names `source`: a lichess study by its author, anything else by
- * its title, author and license. A note is plain text, so the license's link
- * stays in the lesson file.
+ * its title and author, either with its license. A note is plain text, so the
+ * license's link stays in the lesson file.
  */
 function credit({ title, author, url, license }: LessonSource): string {
-  if (LICHESS_URL.test(url)) return `${author}'s lichess study`;
-  return `${title} by ${author}${license ? ` (${license.name})` : ''}`;
+  const name = LICHESS_STUDY.test(url) ? `${author}'s lichess study` : `${title} by ${author}`;
+  return license ? `${name} (${license.name})` : name;
 }
-
-/** A lichess.org URL; read without `new URL(url).hostname`, which React Native's URL lacks. */
-const LICHESS_URL = /^https?:\/\/(?:www\.)?lichess\.org(?:\/|$)/i;
 
 /** Every source the index's lessons credit, each once (the same URL is the same source). */
 const sourcesOf = (index: LessonIndex): LessonSource[] => [

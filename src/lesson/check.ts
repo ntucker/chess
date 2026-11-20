@@ -171,6 +171,7 @@ function checkSources({ sources }: Lesson, report: Report) {
   sources.forEach(({ title, author, url, license }, i) => {
     const at = `sources[${i}]`;
     if (!title.trim() || !author.trim()) report(at, 'needs a title and an author');
+    // Not URL.parse, which Node 22.0 lacks.
     const host = URL.canParse(url) ? new URL(url).hostname : undefined;
     if (!host) return report(`${at}.url`, `${url} is not a URL`);
     const shareAlike = SHARE_ALIKE_HOSTS.some(
