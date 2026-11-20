@@ -7,7 +7,7 @@
  * own moves (`opponentPlays`) the learner moves their own side; elsewhere,
  * either.
  */
-import { useController } from '@data-client/react';
+import { useController, useSuspense } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
 import { useEffect, useMemo, useReducer } from 'react';
 
@@ -16,8 +16,9 @@ import type { Drag } from '@/board/pointer';
 import type { BoardProps } from '@/components/Board';
 import { dropMove, parsePositionKey } from '@/game/replay';
 import { type GameStore, useGame } from '@/game/useGame';
-import { useLessonProgress, useProgressDispatch } from '@/progress/ProgressProvider';
 import { gameOpponent } from '@/resources/opponent';
+import { positionHash } from '@/progress/progress';
+import { addMark, getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNeedsStockfish } from '@/stockfish/demand';
 
@@ -73,8 +74,7 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   useNeedsStockfish(focused);
   const [{ mode: modeState, peek, rareKey }, dispatch] = useReducer(screenReducer, initialScreen);
   const { mode } = modeState;
-  const progress = useLessonProgress(lesson.id);
-  const record = useProgressDispatch();
+  const progress = useSuspense(getProgress, lesson.id);
   // The opponent replies only where `opponentPlays` says; elsewhere the learner picks its move.
   // In a clean Practice run the opponent steers to lines not yet passed, so
   // runs with auto play on can pass every row, not only its most played replies.
@@ -114,8 +114,10 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   // mode change), and showing it is what earns the mark.
   const earned = earnedMark(view.place, modeState);
   useEffect(() => {
-    if (earned) record({ type: 'marked', lesson: lesson.id, mark: earned, key });
-  }, [earned, key, lesson.id, record]);
+    if (earned && !progress[earned].includes(positionHash(key))) {
+      ctrl.fetch(addMark, { lesson: lesson.id, mark: earned, key }).catch(() => {});
+    }
+  }, [ctrl, earned, key, lesson.id, progress]);
   const marks = useMemo(() => rowMarks(lesson, progress, view), [lesson, progress, view]);
 
   const here = peek?.key === key ? peek : undefined;

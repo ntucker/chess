@@ -2,7 +2,7 @@
 // (src/context/storage.ts). The web has its own.
 import 'expo-sqlite/localStorage/install';
 
-import { DataProvider } from '@data-client/react';
+import { DataProvider, getDefaultManagers } from '@data-client/react';
 import { DMMono_400Regular } from '@expo-google-fonts/dm-mono';
 import {
   DMSerifDisplay_400Regular,
@@ -14,12 +14,14 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
-import { ProgressProvider } from '@/progress/ProgressProvider';
+import { ProgressSync } from '@/resources/progress';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { StockfishWhileNeeded } from '@/stockfish/demand';
 import { StockfishHost } from '@/stockfish/StockfishHost';
 import { themes } from '@/theme/theme';
 import { useColorScheme } from '@/theme/useColorScheme';
+
+const managers = () => [new ProgressSync(), ...getDefaultManagers()];
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -34,16 +36,14 @@ export default function RootLayout() {
   if (!fontsLoaded && process.env.EXPO_OS !== 'web') return null;
 
   return (
-    <DataProvider>
+    <DataProvider managers={managers}>
       <SettingsProvider>
-        <ProgressProvider>
-          <SilkProvider theme={themes[colorScheme]}>
-            <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-            <StockfishWhileNeeded host={<StockfishHost />}>
-              <Stack screenOptions={{ headerShown: false }} />
-            </StockfishWhileNeeded>
-          </SilkProvider>
-        </ProgressProvider>
+        <SilkProvider theme={themes[colorScheme]}>
+          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+          <StockfishWhileNeeded host={<StockfishHost />}>
+            <Stack screenOptions={{ headerShown: false }} />
+          </StockfishWhileNeeded>
+        </SilkProvider>
       </SettingsProvider>
     </DataProvider>
   );

@@ -1,6 +1,7 @@
 // What the app remembers on the device, in localStorage (on Android,
 // expo-sqlite provides it; see src/app/_layout.tsx). This file is the only
-// code that touches it; useRememberedReducer saves a provider's state here.
+// code that touches it: the settings (SettingsProvider) and lesson progress
+// (src/resources/progress.ts) are kept here.
 
 /** The text saved under `key`, or null (or undefined) when there is none. */
 export function readStorage(key: string) {

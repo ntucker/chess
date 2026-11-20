@@ -1,4 +1,4 @@
-import { AsyncBoundary, useController, useSuspense } from '@data-client/react';
+import { AsyncBoundary, useController, useFetch, useSuspense } from '@data-client/react';
 import { Separator, Spinner, Stack } from '@reactive/silk-native';
 import { useMemo, useReducer } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -21,6 +21,7 @@ import { useLesson } from '@/lesson/useLesson';
 import type { LessonView } from '@/lesson/view';
 import { describeOpponent } from '@/opponent/opponent';
 import { getLesson, LESSON_INDEX, LESSONS, type LessonId } from '@/resources/lesson';
+import { getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
 import { qualityLooks } from '@/theme/moveQuality';
 
@@ -81,6 +82,8 @@ const OPENINGS = openingsLesson(LESSON_INDEX);
  */
 function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: GameStore }) {
   const ctrl = useController();
+  // The lesson's progress loads beside it, rather than once it has loaded.
+  useFetch(getProgress, id ?? OPENINGS.id);
   const picked = useSuspense(getLesson, id ?? null);
   const lesson = useMemo(() => (picked ? withOpenings(picked, LESSON_INDEX) : OPENINGS), [picked]);
   const {
@@ -143,7 +146,10 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
   const pointCandidate = (uci: Uci) => {
     const into = opening(uci);
     // A failure shows once the opening is picked.
-    if (into) ctrl.fetchIfStale(getLesson, into).catch(() => {});
+    if (into) {
+      ctrl.fetchIfStale(getLesson, into).catch(() => {});
+      ctrl.fetchIfStale(getProgress, into).catch(() => {});
+    }
     pointRow(uci);
   };
 

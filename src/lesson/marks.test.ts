@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { type LessonProgress, positionHash } from '@/progress/progress';
+import { type MarkedPositions, positionHash } from '@/progress/progress';
 
 import type { Lesson, LessonMove, PositionKey } from './lesson';
 import { keyAfter, SAMPLE, uciLine, withMoves } from './lesson.fixture';
@@ -44,13 +44,13 @@ const ENDS = {
   nf3: at('e4', 'e5', 'Nf3'),
 };
 
-const progress = (seen: PositionKey[], passed: PositionKey[]): LessonProgress => ({
+const progress = (seen: PositionKey[], passed: PositionKey[]): MarkedPositions => ({
   seen: seen.map(positionHash),
   passed: passed.map(positionHash),
 });
 
 /** The marks of `lesson`'s rows after `sans`, by SAN. */
-function marksAfter(lessonProgress: LessonProgress, lesson: Lesson, ...sans: string[]) {
+function marksAfter(lessonProgress: MarkedPositions, lesson: Lesson, ...sans: string[]) {
   const line = uciLine(...sans);
   const view = lessonView({ lesson, line, ply: line.length, opponent: 1500 });
   const marks = rowMarks(lesson, lessonProgress, view);

@@ -3,46 +3,28 @@ import { describe, expect, it } from '@jest/globals';
 import { readShippedLesson } from '@/lesson/lesson.fixture';
 import { lineKeys } from '@/lesson/select';
 
-import {
-  NO_PROGRESS,
-  parseProgress,
-  positionHash,
-  type Progress,
-  type ProgressAction,
-  progressReducer,
-} from './progress';
+import { parseProgress, positionHash, type SavedProgress, withMark } from './progress';
 
 const START = lineKeys([])[0];
 const AFTER_E4 = lineKeys(['e2e4'])[1];
-const marked = (mark: 'seen' | 'passed', key = START, lesson = 'caro-kann'): ProgressAction => ({
-  type: 'marked',
-  lesson,
-  mark,
-  key,
-});
-const run = (state: Progress, ...actions: ProgressAction[]) =>
-  actions.reduce(progressReducer, state);
 
-describe('progressReducer', () => {
-  it('adds each mark once, per lesson, keeping the state when nothing is new', () => {
-    const once = run(NO_PROGRESS, marked('seen'), marked('passed', AFTER_E4));
+describe('withMark', () => {
+  it('adds each mark once, per lesson, keeping what was saved when nothing is new', () => {
+    const none: SavedProgress = {};
+    const once = withMark(
+      withMark(none, 'caro-kann', 'seen', START),
+      'caro-kann',
+      'passed',
+      AFTER_E4,
+    );
     expect(once).toEqual({
       'caro-kann': { seen: [positionHash(START)], passed: [positionHash(AFTER_E4)] },
     });
-    expect(run(once, marked('seen'))).toBe(once);
-    expect(run(once, marked('seen', START, 'slav'))).toEqual({
+    expect(withMark(once, 'caro-kann', 'seen', START)).toBe(once);
+    expect(withMark(once, 'slav', 'seen', START)).toEqual({
       ...once,
       slav: { seen: [positionHash(START)], passed: [] },
     });
-  });
-
-  it('keeps marks earned before the remembered progress loads', () => {
-    const early = run(NO_PROGRESS, marked('seen'));
-    const remembered = run(NO_PROGRESS, marked('seen'), marked('seen', AFTER_E4));
-    const loaded = run(early, { type: 'loaded', progress: remembered });
-    expect(loaded).toEqual(remembered);
-    // Nothing new keeps the state, so a tab taking in its own save neither renders nor saves again.
-    expect(run(loaded, { type: 'loaded', progress: early })).toBe(loaded);
   });
 });
 
@@ -58,7 +40,12 @@ describe('positionHash', () => {
 
 describe('parseProgress', () => {
   it('reads what was saved, dropping only what is damaged', () => {
-    const saved = run(NO_PROGRESS, marked('seen'), marked('passed', AFTER_E4));
+    const saved = withMark(
+      withMark({}, 'caro-kann', 'seen', START),
+      'caro-kann',
+      'passed',
+      AFTER_E4,
+    );
     expect(parseProgress(JSON.stringify(saved))).toEqual(saved);
     expect(parseProgress(JSON.stringify({ a: { seen: ['x', 3] }, b: 'oops', c: [1] }))).toEqual({
       a: { seen: ['x'], passed: [] },

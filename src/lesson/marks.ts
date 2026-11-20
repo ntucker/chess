@@ -8,7 +8,7 @@
  * to the lines still to pass (`steering`).
  */
 import { parsePositionKey, playMove, positionKey } from '@/game/replay';
-import { type LessonProgress, type Mark, positionHash } from '@/progress/progress';
+import { type Mark, type MarkedPositions, positionHash } from '@/progress/progress';
 
 import type { Lesson, LessonMove, PositionKey, Uci } from './lesson';
 import type { ReplyChoice } from './opponent';
@@ -28,7 +28,7 @@ export function earnedMark(place: LessonView['place'], mode: ModeState): Mark | 
 /** Each candidate row's mark, by its move; a row with neither is absent. Passed outranks seen. */
 export function rowMarks(
   lesson: Lesson,
-  progress: LessonProgress,
+  progress: MarkedPositions,
   { candidates, learnerToMove }: Pick<LessonView, 'candidates' | 'learnerToMove'>,
 ): ReadonlyMap<Uci, Mark> {
   const seen = new Set(progress.seen);
@@ -51,7 +51,7 @@ export function rowMarks(
  */
 export function steering(
   lesson: Lesson,
-  progress: LessonProgress,
+  progress: MarkedPositions,
   mode: ModeState,
 ): ReplyChoice | undefined {
   if (mode.mode !== 'practice' || !mode.clean) return undefined;
