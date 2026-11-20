@@ -200,9 +200,7 @@ function sequences(move: StudyMove, learner: Color) {
   const place = (run: string) => placeSequence(move, namedMoves(run));
   return (move.comment.match(SEQUENCE) ?? []).flatMap((run) => {
     const whole = place(run);
-    const parts = whole
-      ? [whole]
-      : (run.match(SPACED) ?? []).flatMap((part) => place(part) ?? []);
+    const parts = whole ? [whole] : (run.match(SPACED) ?? []).flatMap((part) => place(part) ?? []);
     return parts.filter(
       ({ spot, ucis }) =>
         ucis.length >= 2 && (spot.move || !namesOtherOpening(ucis, move, learner)),
