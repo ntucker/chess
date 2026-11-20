@@ -89,8 +89,8 @@ export const MOVE_MS = 200;
 /**
  * A win is quick: the rival's king is cut down as the move lands and the
  * learner's king is lit at once. A loss is slow: the lights sink first, the
- * learner's king is cut at half speed, and the card waits for it. A draw
- * only pauses.
+ * learner's king is cut twice as slowly, the card coming in as its crown
+ * slides off. A draw only pauses.
  */
 export const ACT_TIMES: Readonly<Record<Mood, ActTimes>> = {
   won: { strike: 220, dim: 300, rise: 420, card: 640, cardOut: 3000, up: 3100 },
@@ -124,7 +124,7 @@ export function endingAct(
     ],
     ...(mood !== 'drawn' && {
       spot: squareOffset(kings.learner, orientation),
-      cut: squareOffset(mood === 'won' ? kings.rival : kings.learner, orientation),
+      cut: squareOffset(learnerPart === 'beaten' ? kings.learner : kings.rival, orientation),
     }),
     sparks: won ? sparks() : [],
     confetti: won ? confetti() : [],

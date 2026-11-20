@@ -108,6 +108,25 @@ cg-board piece.taken {
   --stage: 11, 8, 21;
   --ivory: 244, 238, 226;
   --gold-rim: 150, 100, 14;
+  /*
+   * The cut through a beaten king's crown, traced on this piece set's
+   * (cburnett) king: from --cut-left down its left edge up to --cut-right
+   * down its right. --cut-angle is its slope, atan((right - left) / 100%).
+   */
+  --cut-left: 47%;
+  --cut-right: 29%;
+  --cut-angle: -10.2deg;
+  /* What stacks over what: the dark house and its sparks, the kings lit in it, and the sword stroke across them. */
+  --z-under-kings: 3;
+  --z-king: 4;
+  --z-over-kings: 5;
+}
+/* The beaten king's cut takes twice as long when it is the learner's own. */
+.ending-won {
+  --cut-ms: 700ms;
+}
+.ending-lost {
+  --cut-ms: 1400ms;
 }
 .cg-wrap cg-ending {
   position: absolute;
@@ -118,8 +137,7 @@ cg-board piece.taken {
 cg-ending i {
   position: absolute;
   opacity: 0;
-  /* Over the pieces and under the two kings, which stay lit in the dark. */
-  z-index: 3;
+  z-index: var(--z-under-kings);
 }
 /* The dark house: a win leaves a wide warm pool around the learner's king. */
 cg-ending .veil {
@@ -196,29 +214,20 @@ cg-ending .confetto::before {
 }
 /*
  * The sword stroke: a streak of light three squares long, centered on the
- * beaten king and lying along the cut through its crown (below).
+ * beaten king and lying along the cut through its crown (below). On an edge
+ * file the board's edge clips it, as if the sword came from off the board.
  */
 cg-ending .slash {
-  opacity: 1;
-  z-index: 5;
+  z-index: var(--z-over-kings);
   width: 37.5%;
-  height: 12.5%;
-  left: calc((var(--x) - 1) * 12.5%);
-  top: calc(var(--y) * 12.5%);
-}
-cg-ending .slash::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  /* The cut's middle, 38% down the square. */
-  top: calc(38% - 2px);
   height: 4px;
+  left: calc((var(--x) - 1) * 12.5%);
+  /* Through the middle of the cut on the king's square: (left + right) / 2 of a square, an eighth of the board. */
+  top: calc(var(--y) * 12.5% + (var(--cut-left) + var(--cut-right)) / 16 - 2px);
   border-radius: 50%;
   background: linear-gradient(90deg, transparent, #fff 25%, #fff 75%, transparent);
   box-shadow: 0 0 6px 1px rgba(var(--ivory), 0.9);
-  transform: rotate(-10.2deg);
-  opacity: 0;
+  transform: rotate(var(--cut-angle));
 }
 cg-ending .gold {
   color: rgb(var(--gold));
@@ -241,8 +250,7 @@ cg-ending .rose {
  */
 cg-board piece.ending-king {
   background-size: 0 0;
-  /* Over the dark house. */
-  z-index: 4;
+  z-index: var(--z-king);
 }
 cg-board piece.ending-king::before,
 cg-board piece.ending-king::after {
@@ -286,17 +294,16 @@ cg-board piece.ending-winner::after {
     );
 }
 /*
- * Beaten: cut through the crown. The stroke runs up to the right, from 47%
- * down its left side to 29% down its right; ::before keeps the king below it
- * and ::after, drawn again, the crown above, slid down the cut and off its
- * place. Both are drained of color.
+ * Beaten: cut through the crown (--cut-left to --cut-right). ::before keeps
+ * the king below the cut and ::after, drawn again, the crown above it, slid
+ * down along the cut and lifted a little off it so the cut shows. Both are
+ * drained of color.
  */
-cg-board piece.ending-beaten::before,
-cg-board piece.ending-beaten::after {
+cg-board piece.ending-beaten {
   filter: grayscale(0.8) brightness(0.85);
 }
 cg-board piece.ending-beaten::before {
-  clip-path: polygon(0 47%, 100% 29%, 100% 100%, 0 100%);
+  clip-path: polygon(0 var(--cut-left), 100% var(--cut-right), 100% 100%, 0 100%);
 }
 cg-board piece.ending-beaten::after {
   inset: 0;
@@ -304,7 +311,8 @@ cg-board piece.ending-beaten::after {
   border-radius: 0;
   background-image: inherit;
   background-size: cover;
-  clip-path: polygon(0 0, 100% 0, 100% 29%, 0 47%);
+  clip-path: polygon(0 0, 100% 0, 100% var(--cut-right), 0 var(--cut-left));
+  /* 10% along the cut drops 1.8%; less 1.5% of lift. */
   transform: translate(-10%, 0.3%);
 }
 /* A draw: the same quiet ring on both. */
@@ -364,26 +372,17 @@ cg-board piece.ending-level::after {
   }
   /*
    * An anime cut: the king stands still, a stroke of light crosses it with a
-   * flash, and only after a beat does its crown slide off along the cut. The
-   * learner's own king takes twice as long.
+   * flash, and only after a beat does its crown slide off along the cut.
+   * Their keyframes share one timeline of --cut-ms.
    */
-  .ending-won piece.ending-beaten::before {
-    animation: ending-cut-below 700ms linear var(--act-strike) backwards;
+  cg-board piece.ending-beaten {
+    animation: ending-flash var(--cut-ms) linear var(--act-strike) backwards;
   }
-  .ending-won piece.ending-beaten::after {
-    animation: ending-cut-above 700ms linear var(--act-strike) backwards;
+  cg-board piece.ending-beaten::after {
+    animation: ending-slide var(--cut-ms) linear var(--act-strike) backwards;
   }
-  .ending-won cg-ending .slash::before {
-    animation: ending-slash 700ms linear var(--act-strike);
-  }
-  .ending-lost piece.ending-beaten::before {
-    animation: ending-cut-below 1400ms linear var(--act-strike) backwards;
-  }
-  .ending-lost piece.ending-beaten::after {
-    animation: ending-cut-above 1400ms linear var(--act-strike) backwards;
-  }
-  .ending-lost cg-ending .slash::before {
-    animation: ending-slash 1400ms linear var(--act-strike);
+  cg-ending .slash {
+    animation: ending-slash var(--cut-ms) linear var(--act-strike);
   }
   .ending-drawn piece.ending-level::before {
     animation: ending-nod 520ms ease-in-out var(--act-rise);
@@ -391,12 +390,9 @@ cg-board piece.ending-level::after {
 }
 /* Nothing moves: the kings are as they end at once, and only their lights fade in. */
 @media (prefers-reduced-motion: reduce) {
-  cg-board piece.ending-king::after {
+  cg-board piece.ending-winner::after,
+  cg-board piece.ending-level::after {
     animation: ending-fade 200ms ease-out;
-  }
-  /* The beaten king's ::after is its crown, not a light: it shows at once. */
-  cg-board piece.ending-beaten::after {
-    animation: none;
   }
 }
 
@@ -508,8 +504,8 @@ cg-board piece.ending-level::after {
     transform: scale(1.1);
   }
 }
-/* The king below the cut: still, a white flash as the stroke crosses, then its color drains. */
-@keyframes ending-cut-below {
+/* The whole king, still, flashes white as the stroke crosses it, then its color drains. */
+@keyframes ending-flash {
   0%,
   12% {
     filter: none;
@@ -522,22 +518,11 @@ cg-board piece.ending-level::after {
     filter: none;
   }
 }
-/* The crown above it flashes with it, and after a beat slides off down the cut. */
-@keyframes ending-cut-above {
+/* After a beat, the crown slides off down the cut, overshooting a little. */
+@keyframes ending-slide {
   0%,
-  12% {
-    transform: translate(0, 0);
-    filter: none;
-  }
-  18% {
-    filter: brightness(0) invert(1);
-  }
-  32% {
-    filter: none;
-  }
   50% {
     transform: translate(0, 0);
-    filter: none;
     animation-timing-function: cubic-bezier(0.55, 0, 0.85, 0.35);
   }
   72% {
@@ -545,21 +530,20 @@ cg-board piece.ending-level::after {
     animation-timing-function: ease-out;
   }
 }
-/* The stroke: drawn across in a blink, held, then wiped away the way it went. */
+/* The stroke: a glint that opens out from the cut's middle, holds, and fades. */
 @keyframes ending-slash {
   0%,
   10% {
     opacity: 1;
-    clip-path: inset(0 100% 0 0);
+    transform: rotate(var(--cut-angle)) scaleX(0);
   }
   18%,
   28% {
     opacity: 1;
-    clip-path: inset(0 0 0 0);
+    transform: rotate(var(--cut-angle)) scaleX(1);
   }
   44% {
     opacity: 0;
-    clip-path: inset(0 0 0 100%);
   }
 }
 
