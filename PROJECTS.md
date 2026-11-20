@@ -94,8 +94,9 @@ Link the upstream PR from the chess PR, and say "merge <upstream PR> first" when
 
 Work needing the person's PC (local tools) runs on GLADOS, a Windows PC: threads start a Remote
 Control session (`start_remote_control`). Build Android from Windows, not WSL (no Android SDK or Java
-there). PRs touching Android-only code (native modules or config, worklets like
-`src/maia/runNetwork.ts`, `android` branches of `Platform.OS`) say "untested on Android".
+there). PRs changing layout, touch input or native code (native modules or config, worklets like
+`src/maia/runNetwork.ts`, `android` branches of `Platform.OS`) are checked on GLADOS's Android
+emulator, a development build. It has one emulator: ask the other chess threads before using it.
 
 ## Keeping this file current
 
