@@ -123,4 +123,43 @@ describe("useLesson's Stockfish best move", () => {
     await act(async () => lesson().pointRow('g1f3'));
     expect(lesson().guidance.preview?.candidate.san).toBe('Nf3');
   });
+
+  it("draws a clicked piece's top moves and hides the resting best move", async () => {
+    const line = uciLine(...ADVANCE, 'a6');
+    await render(line);
+    await act(async () => {
+      controllers[0].setResponse(getTopMoves, line, [
+        { uci: 'c2c3', evaluation: { score: 0.6, pawns: 0.6 } },
+        { uci: 'g1f3', evaluation: { score: 0.58, pawns: 0.5 } },
+      ]);
+    });
+    expect(lesson().guidance.best).toBe('c2c3');
+    await act(async () => lesson().board.onPress?.('g1'));
+    expect(lesson().guidance.drawnCandidates.map(({ san }) => san)).toEqual(['Nf3']);
+    expect(lesson().guidance.best).toBeUndefined();
+    // A piece with none of the top moves still hides the resting arrow.
+    await act(async () => lesson().board.onPress?.('b1', 'g1'));
+    expect(lesson().guidance.drawnCandidates).toEqual([]);
+    expect(lesson().guidance.best).toBeUndefined();
+    // Clicking an empty square lets the piece go, and the arrow returns.
+    await act(async () => lesson().board.onPress?.('a3', 'b1'));
+    expect(lesson().guidance.best).toBe('c2c3');
+    expect(lesson().guidance.drawnCandidates).toEqual([]);
+    // Pointing at a row previews it; leaving the panel brings the piece's moves back.
+    await act(async () => lesson().board.onPress?.('g1'));
+    await act(async () => lesson().pointRow('c2c3'));
+    expect(lesson().guidance.preview?.candidate.san).toBe('c3');
+    await act(async () => lesson().leave());
+    expect(lesson().guidance.drawnCandidates.map(({ san }) => san)).toEqual(['Nf3']);
+    expect(lesson().guidance.best).toBeUndefined();
+    // A drag that ends without a move lets it go.
+    await act(async () => lesson().board.onDrag?.(null));
+    expect(lesson().guidance.best).toBe('c2c3');
+    // Clicking the selected piece again lets it go too, as the board does.
+    await act(async () => lesson().board.onPress?.('g1'));
+    expect(lesson().guidance.best).toBeUndefined();
+    await act(async () => lesson().board.onPress?.('g1', 'g1'));
+    expect(lesson().guidance.best).toBe('c2c3');
+    expect(lesson().guidance.drawnCandidates).toEqual([]);
+  });
 });

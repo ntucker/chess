@@ -1,12 +1,15 @@
 /**
  * What the lesson's board shows beyond the game, as a reducer: what the
  * learner points at (a candidate, by its list row or a piece dragged onto
- * its square, and a note on the idea card), or a note's idea playing back.
+ * its square, and a note on the idea card), the piece a click selects, or a
+ * note's idea playing back.
  * While an idea plays, the board is its own: pointing goes on out of sight,
  * and the board shows it once the playback stops. Each peek belongs to the
  * position it started in, and ends once the board moves on (the screen's
  * `board` action).
  */
+import type { SquareName } from 'chessops/types';
+
 import type { Note, PositionKey } from './lesson';
 import type { Pointer } from './view';
 
@@ -25,6 +28,11 @@ interface Pointing {
   readonly note?: Note;
   /** Set while a hovering pointer points at `candidate`. Only this reducer reads it. */
   readonly hover?: Hover;
+  /**
+   * The board's piece selected by a click. The board's own, so pointing in
+   * the panel, or leaving it, keeps it; a drag ending without a move lets it go.
+   */
+  readonly selected?: SquareName;
 }
 
 /** A hovering pointer's way through the rows, for the `card` action. */
@@ -71,6 +79,8 @@ export type PeekAction =
   | { readonly type: 'card'; readonly key: PositionKey; readonly time: number }
   /** The learner points at a note on the idea card, or at none. */
   | { readonly type: 'note'; readonly key: PositionKey; readonly note?: Note }
+  /** A click selects a piece on the board, or lets it go. */
+  | { readonly type: 'select'; readonly key: PositionKey; readonly selected?: SquareName }
   /**
    * The learner lets `note` on the idea card go (the mouse leaves it, or a
    * second tap on a touch screen): it is no longer pointed at, if it was,
@@ -104,6 +114,7 @@ export function peekReducer(peek: Peek | undefined, action: PeekAction): Peek | 
           : action.candidate
             ? {
                 key: action.key,
+                selected: now.selected,
                 candidate: action.candidate,
                 hover:
                   action.time === undefined
@@ -117,6 +128,11 @@ export function peekReducer(peek: Peek | undefined, action: PeekAction): Peek | 
       const holds = now.hover && !next.hover;
       if (samePointing(now, next) && !holds) return peek;
       return repoint(here, next);
+    }
+    case 'select': {
+      const here = peek?.key === action.key ? peek : undefined;
+      if (here?.selected === action.selected) return peek;
+      return repoint(here, { ...(here ?? { key: action.key }), selected: action.selected });
     }
     case 'card': {
       const here = peek?.key === action.key ? peek : undefined;
@@ -132,15 +148,28 @@ export function peekReducer(peek: Peek | undefined, action: PeekAction): Peek | 
         ? { ...peek, note: undefined }
         : peek;
     case 'leave':
-      return peek?.kind === 'play'
-        ? { ...peek, candidate: undefined, note: undefined, hover: undefined }
-        : undefined;
+      if (peek?.kind === 'play')
+        return { ...peek, candidate: undefined, note: undefined, hover: undefined };
+      if (!peek?.selected) return undefined;
+      // The board's selection stays; nothing else to end keeps the same state.
+      if (!peek.candidate && !peek.note && !peek.hover) return peek;
+      return repoint(undefined, { key: peek.key, selected: peek.selected });
     case 'play': {
       const here = peek?.key === action.key ? peek : undefined;
-      const { candidate, note } = here ?? {};
+      const { candidate, note, selected } = here ?? {};
       const from = here?.kind === 'play' ? here.from : candidate;
       const played = action.note;
-      return { kind: 'play', key: action.key, candidate, note, from, played, step: 0, auto: true };
+      return {
+        kind: 'play',
+        key: action.key,
+        candidate,
+        note,
+        selected,
+        from,
+        played,
+        step: 0,
+        auto: true,
+      };
     }
     case 'step':
       return peek?.kind === 'play' ? { ...peek, step: peek.step + 1 } : peek;
@@ -160,10 +189,10 @@ const heldAt = ({ candidate, hover }: Pointing, time: number) =>
 
 /** `here` pointing at `next` instead, a playback going on unseen. */
 const repoint = (here: Peek | undefined, next: Pointing): Peek => {
-  const { candidate, note, hover } = next;
+  const { candidate, note, hover, selected } = next;
   return here?.kind === 'play'
-    ? { ...here, candidate, note, hover }
-    : { kind: 'point', key: next.key, candidate, note, hover };
+    ? { ...here, candidate, note, hover, selected }
+    : { kind: 'point', key: next.key, candidate, note, hover, selected };
 };
 
 /** Whether two pointers point at the same candidate, by its row or its piece's drag. */
@@ -173,4 +202,7 @@ export const samePointer = (a?: Pointer, b?: Pointer) =>
   (a?.at === 'drag' && b?.at === 'drag' && a.from === b.from && a.to === b.to);
 
 const samePointing = (a: Pointing, b: Pointing) =>
-  a.key === b.key && a.note === b.note && samePointer(a.candidate, b.candidate);
+  a.key === b.key &&
+  a.note === b.note &&
+  a.selected === b.selected &&
+  samePointer(a.candidate, b.candidate);

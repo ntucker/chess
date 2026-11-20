@@ -4,13 +4,14 @@
  * drawings.
  * Whether the learner points at a candidate list row or drags a piece over
  * a square, the preview comes from `preview` (./view.ts) through guidance,
- * so both show a candidate the same way.
+ * so both show a candidate the same way. A piece clicked (`boardSelect`)
+ * draws its moves as a dragged one does.
  */
 import type { Square } from '@/board/drawing';
 import { lastMoveBadge } from '@/board/drawing';
 import type { BoardProps } from '@/components/Board';
 import type { MoveQuality } from '@/analysis/quality';
-import type { Color, Position } from '@/game/replay';
+import { type Color, pieceAt, type Position } from '@/game/replay';
 
 import { lessonDrawings, type PlaybackFrame, slidCandidate } from './drawings';
 import type { Guidance } from './guidance';
@@ -91,6 +92,24 @@ export function boardPress(
 ): Candidate | 'end' | undefined {
   const slid = slidCandidate(guidance);
   if (!slid) return undefined;
-  const boardPlays = selected !== undefined && current.dests[selected]?.includes(square);
-  return canMove && !boardPlays && slid.to === square ? slid : 'end';
+  return canMove && !boardPlays(current, square, selected) && slid.to === square ? slid : 'end';
 }
+
+/**
+ * The piece a press on `square` leaves selected, the way the board selects
+ * one: the side to move's piece pressed, unless the press plays a move or
+ * presses the piece already `selected`, which lets it go.
+ */
+export function boardSelect(
+  current: Position,
+  canMove: boolean,
+  square: Square,
+  selected?: Square,
+): Square | undefined {
+  if (!canMove || square === selected || boardPlays(current, square, selected)) return undefined;
+  return pieceAt(current.fen, square)?.color === current.turn ? square : undefined;
+}
+
+/** Whether a press on `square` plays the `selected` piece there: the board does that itself. */
+const boardPlays = (current: Position, square: Square, selected?: Square) =>
+  selected !== undefined && !!current.dests[selected]?.includes(square);

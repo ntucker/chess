@@ -168,6 +168,25 @@ describe('peekReducer', () => {
     expect(peekReducer(undefined, { type: 'candidate', key: HERE })).toBeUndefined();
   });
 
+  it('keeps a piece the board selected while the panel is pointed at and left', () => {
+    const select: PeekAction = { type: 'select', key: HERE, selected: 'g8' };
+    const selected = reduce(undefined, select);
+    expect(selected).toEqual(pointing({ selected: 'g8' }));
+    expect(peekReducer(selected, select)).toBe(selected);
+    // A row's preview points meanwhile, and leaving the panel ends only that.
+    const row = reduce(selected, { type: 'candidate', key: HERE, candidate: ROW });
+    expect(row).toEqual(pointing({ candidate: ROW, selected: 'g8' }));
+    expect(reduce(row, { type: 'note', key: HERE, note: PLAN }, { type: 'leave' })).toEqual(
+      pointing({ selected: 'g8' }),
+    );
+    // A playback keeps it too, and the board lets it go.
+    expect(reduce(row, { type: 'play', key: HERE, note: PLAN }, { type: 'stop' })).toEqual(
+      pointing({ candidate: ROW, selected: 'g8' }),
+    );
+    expect(peekReducer(selected, { type: 'leave' })).toBe(selected);
+    expect(reduce(selected, { type: 'select', key: HERE })).toEqual(pointing());
+  });
+
   describe('rows crossed on the way to the idea card', () => {
     const row = (candidate: Row, time: number): PeekAction => ({
       type: 'candidate',

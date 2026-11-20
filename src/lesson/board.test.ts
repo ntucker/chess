@@ -3,7 +3,7 @@ import { describe, expect, it } from '@jest/globals';
 import type { Square } from '@/board/drawing';
 import { lastPosition } from '@/game/replay';
 
-import { boardPress, lessonBoard } from './board';
+import { boardPress, boardSelect, lessonBoard } from './board';
 import { guidance, type LessonSwitches } from './guidance';
 import { ADVANCE, SAMPLE, sampleView, uciLine } from './lesson.fixture';
 import { type Pointer, preview } from './view';
@@ -19,7 +19,7 @@ function board(sans: string[], pointer?: Pointer) {
     mode: 'explore',
     switches: SWITCHES,
     preview: pointer && preview(SAMPLE, view, pointer),
-    dragged: pointer?.at === 'drag' ? pointer.from : undefined,
+    lifted: pointer?.at === 'drag' ? pointer.from : undefined,
   });
   const input = {
     side: SAMPLE.side,
@@ -114,5 +114,28 @@ describe('boardPress', () => {
 
   it('leaves presses to the board when no preview slides', () => {
     expect(press({ at: 'drag', from: 'c8', to: 'f5' }, 'f5')).toBeUndefined();
+  });
+});
+
+describe('boardSelect', () => {
+  const select = (square: Square, selected?: Square, canMove = true) =>
+    boardSelect(board(ADVANCE).input.current, canMove, square, selected);
+
+  it("selects the side to move's piece, as the board does", () => {
+    expect(select('c8')).toBe('c8');
+    expect(select('g8', 'c8')).toBe('g8');
+  });
+
+  it('lets the piece go on a press that plays it, on it again, or anywhere else', () => {
+    // The board plays Bf5 itself.
+    expect(select('f5', 'c8')).toBeUndefined();
+    expect(select('c8', 'c8')).toBeUndefined();
+    // An empty square, and a piece of the side not to move.
+    expect(select('a5', 'c8')).toBeUndefined();
+    expect(select('e5')).toBeUndefined();
+  });
+
+  it('selects nothing while the learner may not move', () => {
+    expect(select('c8', undefined, false)).toBeUndefined();
   });
 });

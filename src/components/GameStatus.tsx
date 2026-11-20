@@ -42,8 +42,13 @@ interface HeadlineProps {
    * leaves its eyebrow out there.
    */
   readonly eyebrowInHeader?: boolean;
-  /** The detail tells how to use the screen, and the learner has seen it: a narrow web page leaves it out. */
-  readonly seenHint?: boolean;
+  /**
+   * The headline only says whose move it is, which the name bars show too,
+   * and how to use the screen, which the learner has seen. A narrow web page
+   * doesn't draw it, to give its room to the moves, but screen readers still
+   * announce it. A failure always shows.
+   */
+  readonly routine?: boolean;
 }
 
 /** A panel's headline, announced as it changes, with a retry when the opponent didn't answer. */
@@ -53,11 +58,11 @@ export function StatusHeadline({
   detail,
   failure,
   eyebrowInHeader,
-  seenHint,
+  routine,
 }: HeadlineProps) {
   const label = <Eyebrow>{eyebrow}</Eyebrow>;
   return (
-    <Stack gap="2">
+    <Stack gap="2" {...(routine && !failure ? narrowPart('wide-only-spoken') : {})}>
       {eyebrowInHeader ? <View {...narrowPart('wide-only')}>{label}</View> : label}
       <Text
         role="headingLg"
@@ -67,7 +72,7 @@ export function StatusHeadline({
       >
         {title}
       </Text>
-      <Text {...(seenHint ? narrowPart('wide-only') : {})} role="bodySm" tone="secondary">
+      <Text role="bodySm" tone="secondary">
         {detail}
       </Text>
       {failure ? <FailureLine {...failure} /> : null}
@@ -144,7 +149,7 @@ function describeLatest({
   };
 }
 
-/** The headline's size: its role's, a size smaller on a narrow web page. */
+/** The headline's size: its role's, smaller on a narrow web page (narrow.css). */
 const HEADLINE = typography.headingLg;
 const TITLE_SIZE = narrowLength('headline-size', HEADLINE.size);
 
