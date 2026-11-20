@@ -18,6 +18,8 @@ import type { DOMProps } from 'expo/dom';
 import { useEffect, useEffectEvent, useMemo, useRef } from 'react';
 
 import { type Drawing, type Square, squareOffset, TONES } from '@/board/drawing';
+import type { Ending } from '@/board/ending';
+import { ACT_TIMES, type EndingAct, endingAct } from '@/board/endingAct';
 import { type BoardMarks, boardMarks, toneBrushes } from '@/board/marks';
 import { type Drag, watchDrag } from '@/board/pointer';
 import {
@@ -56,6 +58,11 @@ export interface BoardProps {
    * piece is being dragged.
    */
   readonly drawings?: readonly Drawing[];
+  /**
+   * How the game in `fen` ended for the learner, who plays `orientation`:
+   * the board acts it out on the kings once (EndingCard.tsx names it over the board).
+   */
+  readonly ending?: Ending;
   readonly onMove: (from: string, to: string) => void;
   /**
    * Each square a piece being dragged is over (none over its own square or
@@ -81,6 +88,7 @@ export default function Board({
   check,
   preview,
   drawings = [],
+  ending,
   onMove,
   onDrag,
   onPress,
@@ -124,12 +132,18 @@ export default function Board({
     () => (preview ? previewLayer(read(fen) as Pieces, read(preview) as Pieces) : NO_PREVIEW),
     [fen, preview],
   );
+  const mood = ending?.mood;
+  const winner = ending?.winner;
+  const act = useMemo(
+    () => (mood ? endingAct({ mood, winner }, fen, orientation) : undefined),
+    [mood, winner, fen, orientation],
+  );
 
   // Chessground reuses piece elements as pieces move, so the lit, faded and
-  // previewed pieces are marked again whenever the pieces, the drawings or
-  // the preview change: after new props, and after a move made on the board.
-  // Chessground draws on a frame it asked for first, so this frame comes
-  // after the draw.
+  // previewed pieces, and an ending's kings, are marked again whenever the
+  // pieces, the drawings, the preview or the ending change: after new props,
+  // and after a move made on the board. Chessground draws on a frame it asked
+  // for first, so this frame comes after the draw.
   const frame = useRef(0);
   const markAfterDraw = useEffectEvent(() => {
     cancelAnimationFrame(frame.current);
@@ -137,6 +151,7 @@ export default function Board({
       if (!api.current) return;
       const previewElement = drawPreview(api.current, layer, orientation);
       markPieces(api.current, marks, layer, previewElement);
+      stageEnding(api.current, act);
     });
   });
 
@@ -255,7 +270,7 @@ export default function Board({
 
   useEffect(() => setBoard(marksConfig(marks)), [marks]);
 
-  useEffect(() => markAfterDraw(), [position, marks, layer]);
+  useEffect(() => markAfterDraw(), [position, marks, layer, act]);
 
   return (
     // Square by its width, since the web view's page has no height to fill.
@@ -362,4 +377,89 @@ function markPieces(
   for (const piece of preview.querySelectorAll<HTMLElement>('piece')) {
     mark(piece, piece.dataset.square as Key);
   }
+}
+
+/** An ending's own layer, over the pieces: the dark house, and what a win throws. */
+const ENDING_TAG = 'cg-ending';
+const MOODS = ['won', 'lost', 'drawn'] as const;
+const PARTS = ['winner', 'fallen', 'level'] as const;
+/** The beats Board.css times its animations by. */
+const BEATS = ['fall', 'dim', 'rise', 'up'] as const;
+
+/**
+ * Plays `act` on the board once, and takes it off again when there is none
+ * (Board.css draws it). The act starts when it is first staged: called again
+ * with the same act, as after each redraw, it only marks the kings again,
+ * so nothing restarts.
+ */
+function stageEnding(board: Api, act: EndingAct | undefined) {
+  const { wrap, container, board: squares } = board.state.dom.elements;
+  const pieces = squares.querySelectorAll<PieceNode>('piece');
+  let layer = container.querySelector<HTMLElement>(ENDING_TAG);
+  const staged = act ? JSON.stringify([act.mood, act.kings]) : undefined;
+  if (layer?.dataset.act !== staged) {
+    layer?.remove();
+    layer = null;
+    for (const piece of pieces) piece.classList.remove('ending-king', ...PARTS.map(partClass));
+    for (const mood of MOODS) wrap.classList.toggle(`ending-${mood}`, act?.mood === mood);
+    if (act && staged) {
+      // Laid out without the kings' classes, once, so an act that follows
+      // another starts from its beginning.
+      wrap.getBoundingClientRect();
+      for (const beat of BEATS)
+        wrap.style.setProperty(`--act-${beat}`, `${ACT_TIMES[act.mood][beat]}ms`);
+      layer = endingLayer(act);
+      layer.dataset.act = staged;
+      squares.after(layer);
+    }
+  }
+  if (!act) return;
+  const kings = new Map(act.kings.map((king) => [king.square as Key, king]));
+  for (const piece of pieces) {
+    const king = piece.cgFading ? undefined : kings.get(piece.cgKey);
+    piece.classList.toggle('ending-king', !!king);
+    for (const part of PARTS) piece.classList.toggle(partClass(part), king?.part === part);
+    if (king) piece.style.setProperty('--lean', String(king.lean));
+  }
+}
+
+const partClass = (part: (typeof PARTS)[number]) => `ending-${part}`;
+
+/** The layer's elements for `act`, each carrying its numbers as CSS variables. */
+function endingLayer({ spot, sparks, confetti }: EndingAct): HTMLElement {
+  const layer = document.createElement(ENDING_TAG);
+  const add = (className: string, vars: Record<string, string | number>) => {
+    const element = document.createElement('i');
+    element.className = className;
+    for (const [name, value] of Object.entries(vars))
+      element.style.setProperty(`--${name}`, String(value));
+    layer.appendChild(element);
+  };
+  const [x, y] = spot ?? [3.5, 3.5];
+  // The light's center, as a place on the board.
+  add('veil', { 'spot-x': `${(x + 0.5) * 12.5}%`, 'spot-y': `${(y + 0.5) * 12.5}%` });
+  if (sparks.length) {
+    add('ring', { x, y });
+    add('ring', { x, y });
+  }
+  for (const { to, size, delay, duration, tint } of sparks)
+    add(`spark ${tint}`, {
+      x,
+      y,
+      dx: to[0],
+      dy: to[1],
+      size,
+      delay: `${delay}ms`,
+      duration: `${duration}ms`,
+    });
+  for (const { x: column, drift, size, spin, delay, duration, tint } of confetti)
+    add(`confetto ${tint}`, {
+      x: column,
+      drift,
+      size,
+      spin,
+      delay: `${delay}ms`,
+      duration: `${duration}ms`,
+    });
+  return layer;
 }

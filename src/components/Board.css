@@ -96,6 +96,402 @@ cg-board piece.taken {
   opacity: 0;
 }
 /*
+ * A game's ending (src/board/endingAct.ts), put on the board by stageEnding
+ * in Board.tsx. The house goes dark around the learner's king; the winner's
+ * king stands in gold and the mated king lies on its side, and they stay that
+ * way once the lights are back up, so the board keeps saying who won.
+ * Each rule's own style is how it looks in the end; the animations, further
+ * down, only say how it gets there, so without them the end is shown at once.
+ */
+.cg-wrap {
+  --stage: 11, 8, 21;
+  --ivory: 244, 238, 226;
+  --gold-rim: 150, 100, 14;
+}
+.cg-wrap cg-ending {
+  position: absolute;
+  inset: 0;
+  /* Over the pieces and under the two kings, which stay lit in the dark. */
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+}
+cg-ending i {
+  position: absolute;
+  opacity: 0;
+}
+/* The dark house: a win leaves a wide warm pool around the learner's king. */
+cg-ending .veil {
+  inset: 0;
+}
+.ending-won cg-ending .veil {
+  background:
+    radial-gradient(
+      ellipse 24% 24% at var(--spot-x) var(--spot-y),
+      rgba(var(--gold), 0.34),
+      rgba(var(--gold), 0)
+    ),
+    radial-gradient(
+      ellipse 36% 36% at var(--spot-x) var(--spot-y),
+      rgba(var(--stage), 0) 30%,
+      rgba(var(--stage), 0.7)
+    );
+}
+/* A loss is darker, and leaves a small cold spot on the king that fell. */
+.ending-lost cg-ending .veil {
+  background: radial-gradient(
+    ellipse 21% 21% at var(--spot-x) var(--spot-y),
+    rgba(var(--stage), 0.1) 28%,
+    rgba(var(--stage), 0.82)
+  );
+}
+.ending-drawn cg-ending .veil {
+  background: rgba(var(--stage), 0.36);
+}
+/*
+ * What a win throws. Each is a box the size of a square, so its travel is in
+ * squares at any board size (a percentage moves a box by its own size), and
+ * the speck inside is drawn by ::before.
+ */
+cg-ending .ring,
+cg-ending .spark,
+cg-ending .confetto {
+  width: 12.5%;
+  height: 12.5%;
+  left: calc(var(--x) * 12.5%);
+  top: calc(var(--y) * 12.5%);
+}
+cg-ending .spark {
+  filter: drop-shadow(0 0 3px rgba(var(--gold), 0.9));
+}
+cg-ending .ring {
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(var(--gold), 0.95),
+    0 0 8px rgba(var(--gold), 0.7);
+}
+cg-ending .spark::before,
+cg-ending .confetto::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--size) * 100%);
+  margin: calc(var(--size) * -50%) 0 0 calc(var(--size) * -50%);
+  background: currentColor;
+}
+/* A four-pointed star. */
+cg-ending .spark::before {
+  aspect-ratio: 1;
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+}
+cg-ending .confetto {
+  /* Let go from just above the board. */
+  top: -12.5%;
+}
+cg-ending .confetto::before {
+  height: calc(var(--size) * 60%);
+  border-radius: 1px;
+}
+cg-ending .gold {
+  color: rgb(var(--gold));
+}
+cg-ending .pale {
+  color: #f6dc9c;
+}
+cg-ending .ivory {
+  color: rgb(var(--ivory));
+}
+cg-ending .rose {
+  color: #c9395a;
+}
+
+/*
+ * The kings. Chessground moves a piece with its own transform, so the king is
+ * drawn again by ::before, which is free to turn and grow, and the piece's
+ * own picture is sized away. ::after is the light behind it.
+ */
+cg-board piece.ending-king {
+  background-size: 0 0;
+  /* Over the dark house. */
+  z-index: 4;
+}
+cg-board piece.ending-king::before,
+cg-board piece.ending-king::after {
+  content: '';
+  position: absolute;
+}
+cg-board piece.ending-king::before {
+  inset: 0;
+  background-image: inherit;
+  background-size: cover;
+  /* Its foot, which it stands on, grows from and tips over. */
+  transform-origin: 50% 82%;
+}
+cg-board piece.ending-king::after {
+  inset: -42%;
+  z-index: -1;
+  border-radius: 50%;
+}
+cg-board piece.ending-winner::before {
+  transform: scale(1.12);
+}
+/*
+ * A disc of gold light with a darker rim, which the parchment squares need:
+ * gold alone is too close to them to show where the light ends.
+ */
+cg-board piece.ending-winner::after {
+  inset: -34%;
+  background:
+    radial-gradient(
+      closest-side,
+      transparent 57%,
+      rgba(var(--gold-rim), 0.85) 58.5%,
+      rgba(var(--gold-rim), 0.85) 61%,
+      transparent 62.5%
+    ),
+    radial-gradient(
+      closest-side,
+      rgba(255, 238, 184, 0.98),
+      rgba(var(--gold), 0.96) 44%,
+      rgba(var(--gold), 0.9) 60%,
+      rgba(var(--gold), 0)
+    );
+}
+/* On its side in the middle of its square, its color gone. */
+cg-board piece.ending-fallen::before {
+  transform: translate(calc(var(--lean) * -32%), -32%) rotate(calc(var(--lean) * 90deg));
+  filter: grayscale(0.9) brightness(0.78);
+}
+/* A draw: the same quiet ring on both. */
+cg-board piece.ending-level::after {
+  inset: 4%;
+  box-shadow:
+    inset 0 0 0 2px rgba(var(--ivory), 0.95),
+    0 0 0 1px rgba(var(--ink), 0.35),
+    inset 0 0 0 3px rgba(var(--ink), 0.2);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* The beats' times are set on the board by stageEnding, from ACT_TIMES. */
+  cg-ending .veil {
+    animation:
+      ending-appear 320ms ease-out var(--act-dim) forwards,
+      ending-leave 700ms ease-in-out var(--act-up) forwards;
+  }
+  .ending-lost cg-ending .veil {
+    animation-duration: 900ms, 900ms;
+  }
+  /* The burst starts as the king lands from its bow. */
+  cg-ending .ring {
+    animation: ending-ring 760ms cubic-bezier(0.15, 0.7, 0.3, 1) calc(var(--act-rise) + 300ms);
+  }
+  cg-ending .ring + .ring {
+    --reach: 4.4;
+    animation-duration: 980ms;
+    animation-delay: calc(var(--act-rise) + 460ms);
+  }
+  cg-ending .spark {
+    animation: ending-spark var(--duration) cubic-bezier(0.12, 0.72, 0.25, 1)
+      calc(var(--act-rise) + 300ms + var(--delay));
+  }
+  cg-ending .confetto {
+    animation: ending-fall var(--duration) cubic-bezier(0.35, 0.1, 0.7, 0.8)
+      calc(var(--act-rise) + 360ms + var(--delay));
+  }
+  cg-ending .confetto::before {
+    animation: ending-tumble var(--duration) linear calc(var(--act-rise) + 360ms + var(--delay));
+  }
+
+  .ending-won piece.ending-winner::before {
+    animation: ending-bow 800ms var(--act-rise) backwards;
+  }
+  .ending-won piece.ending-winner::after {
+    animation: ending-flare 720ms cubic-bezier(0.2, 0.8, 0.3, 1) calc(var(--act-rise) + 160ms)
+      backwards;
+  }
+  /* The rival only draws itself up: its win isn't the learner's to cheer. */
+  .ending-lost piece.ending-winner::before {
+    animation: ending-stand 700ms ease-out var(--act-rise) backwards;
+  }
+  .ending-lost piece.ending-winner::after,
+  .ending-drawn piece.ending-level::after {
+    animation: ending-light 700ms ease-out var(--act-rise) backwards;
+  }
+  .ending-won piece.ending-fallen::before {
+    animation: ending-knocked 560ms var(--act-fall) backwards;
+  }
+  .ending-lost piece.ending-fallen::before {
+    animation: ending-topple 1150ms var(--act-fall) backwards;
+  }
+  .ending-drawn piece.ending-level::before {
+    animation: ending-nod 520ms ease-in-out var(--act-rise);
+  }
+}
+/* Nothing moves: the kings are as they end at once, and only their light fades in. */
+@media (prefers-reduced-motion: reduce) {
+  cg-board piece.ending-king::after {
+    animation: ending-fade 200ms ease-out;
+  }
+}
+
+@keyframes ending-appear {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ending-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes ending-leave {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes ending-ring {
+  from {
+    opacity: 0.95;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 0;
+    transform: scale(var(--reach, 3));
+  }
+}
+@keyframes ending-spark {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(0.3) rotate(0deg);
+  }
+  65% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(var(--dx) * 100%), calc(var(--dy) * 100%)) scale(1) rotate(160deg);
+  }
+}
+@keyframes ending-fall {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    /* Past the bottom edge, from one square above the top. */
+    transform: translate(calc(var(--drift) * 100%), 950%);
+  }
+}
+@keyframes ending-tumble {
+  to {
+    transform: rotate(calc(var(--spin) * 1turn)) rotateX(calc(var(--spin) * 3turn));
+  }
+}
+/* A hop, a landing that squashes it, and a stretch back up to its new height. */
+@keyframes ending-bow {
+  0% {
+    transform: translateY(0) scale(1, 1);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+  32% {
+    transform: translateY(-26%) scale(1.2, 1.2);
+    animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.4);
+  }
+  54% {
+    transform: translateY(0) scale(1.26, 1);
+    animation-timing-function: ease-out;
+  }
+  76% {
+    transform: translateY(0) scale(1.07, 1.2);
+    animation-timing-function: ease-in-out;
+  }
+  100% {
+    transform: translateY(0) scale(1.12, 1.12);
+  }
+}
+@keyframes ending-flare {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.4);
+  }
+}
+@keyframes ending-stand {
+  from {
+    transform: scale(1);
+  }
+}
+@keyframes ending-light {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+@keyframes ending-nod {
+  50% {
+    transform: scale(1.1);
+  }
+}
+/* Struck: straight over, with one bounce off the board. */
+@keyframes ending-knocked {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    filter: none;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.5);
+  }
+  58% {
+    transform: translate(calc(var(--lean) * -32%), -32%) rotate(calc(var(--lean) * 90deg));
+    filter: none;
+    animation-timing-function: ease-out;
+  }
+  76% {
+    transform: translate(calc(var(--lean) * -29%), -32%) rotate(calc(var(--lean) * 78deg));
+    animation-timing-function: ease-in;
+  }
+}
+/* The learner's own king: it sways, hangs, and goes down slowly. */
+@keyframes ending-topple {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    filter: none;
+    animation-timing-function: ease-in-out;
+  }
+  14% {
+    transform: translate(0, 0) rotate(calc(var(--lean) * -6deg));
+    animation-timing-function: ease-in-out;
+  }
+  30% {
+    transform: translate(0, 0) rotate(calc(var(--lean) * 5deg));
+    animation-timing-function: ease-in-out;
+  }
+  42% {
+    transform: translate(0, 0) rotate(calc(var(--lean) * -2deg));
+    filter: none;
+    animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.45);
+  }
+  74% {
+    transform: translate(calc(var(--lean) * -32%), -32%) rotate(calc(var(--lean) * 90deg));
+    filter: grayscale(0.4) brightness(0.9);
+    animation-timing-function: ease-out;
+  }
+  84% {
+    transform: translate(calc(var(--lean) * -31%), -32%) rotate(calc(var(--lean) * 85deg));
+    animation-timing-function: ease-in;
+  }
+}
+
+/*
  * Chessground can't dash an arrow; its dashed brushes are named *-dashed
  * (marks.ts). This finds them by the arrowhead chessground names after the
  * brush (url(#arrowhead-<brush>)), so check dashed arrows after upgrading it.
