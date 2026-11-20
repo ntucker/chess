@@ -7,7 +7,6 @@
  */
 import { parseSan } from 'chessops/san';
 import type { Color } from 'chessops/types';
-import { opposite } from 'chessops/util';
 
 import { balance } from '@/game/material';
 import { parsePosition } from '@/game/replay';
@@ -40,12 +39,12 @@ const NOT_NOW_BEFORE =
   /\b(?:white|black|white's|black's|can|could|will|would|must|may|later|next|threatens?|aims?|aiming|ready)\b|\b(?:it|to)\s*$/i;
 /**
  * Words after a win that do the same, given the `opponent`'s colour: "wins
- * the pawn later" (not "next to the king"), "wins it back for White" when
+ * the pawn later" (not "next to the king" or "next toward it"), "wins it back for White" when
  * White is the opponent. Not a bare colour, which there often names the
  * opponent's loss: "winning back the piece White just took".
  */
 const notNowAfter = (opponent: Color) =>
-  new RegExp(`\\b(?:later|next(?!\\s+to\\b)|for ${opponent})\\b`, 'i');
+  new RegExp(`\\b(?:later|next(?!\\s+to(?:ward)?\\b)|for ${opponent})\\b`, 'i');
 
 /**
  * Whether `text` says the learner's move wins material now: "Your knight wins
@@ -105,7 +104,7 @@ export function explainedNote(answer: Answer, move: Played): Explained {
   const { gain, lead } = material(move);
   // The reply's SAN stays out of why: the refusal is part of a retry's stored
   // key, and Stockfish's reply can differ between machines.
-  if (claimsWin(text, opposite(parsePosition(move.fenBefore)!.turn)) && gain <= 0)
+  if (claimsWin(text, after.turn) && gain <= 0)
     return refuse(
       'it says you win material, but after the opponent’s best reply you are no more ahead than before',
     );
@@ -115,7 +114,8 @@ export function explainedNote(answer: Answer, move: Played): Explained {
     );
   const ideas: Idea[] = [];
   for (const raw of written.ideas) {
-    // No evaluation stands, extracted or not: generatedIdeaProblem refuses it.
+    // `false` so an evaluation is refused below as a type no generated note
+    // draws, not as one already extracted, which the model can't act on.
     const idea = lessonIdea(raw, after, false);
     if (typeof idea === 'string') return refuse(`its ${raw.type} is false here: ${idea}`);
     const problem = generatedIdeaProblem(idea, after);

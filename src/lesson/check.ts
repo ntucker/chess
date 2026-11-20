@@ -328,13 +328,13 @@ function emptyThreat(threat: Threat, pos: Chess): string | undefined {
   if (after.isCheckmate()) return undefined;
   if (!taken) return 'takes nothing and does not mate';
   if (bearing(after, after.turn, move.to).isEmpty()) return undefined;
-  return value(taken) - value(mover.role) >= 2
+  return pieceWorth(taken) - pieceWorth(mover.role) >= 2
     ? undefined
     : 'takes a defended piece and wins nothing';
 }
 
 /** A role's worth for weighing a capture: a king's is beyond any trade. */
-const value = (role: Role) => (role === 'king' ? Infinity : VALUES[role]);
+const pieceWorth = (role: Role) => (role === 'king' ? Infinity : VALUES[role]);
 
 /**
  * What a generated note (`Note.generated`) may not draw that a guide's may,
@@ -483,7 +483,7 @@ function pins(board: Board, from: Square, target: Square): boolean {
     back?.color === pinned.color &&
     // A king on the line is in check, not pinned.
     pinned.role !== 'king' &&
-    (back.role === 'king' || VALUES[back.role] > VALUES[pinned.role])
+    pieceWorth(back.role) > VALUES[pinned.role]
   );
 }
 
