@@ -38,8 +38,9 @@ const progressOf = (progress: SavedProgress, lesson: string) => ({
 
 /**
  * Every shipped lesson's progress in `progress`, by lesson id, untouched ones
- * too: `addMark` answers with one lesson's progress, which updates a lesson
- * listed here but can't add one, so a lesson's first mark shows only if it is.
+ * too. `addMark` answers with one lesson's progress, and the store can update
+ * it only where `getProgress` already lists that lesson, so without the
+ * untouched ones a lesson's first mark would not show.
  */
 const everyLesson = (progress: SavedProgress) =>
   Object.fromEntries(Object.keys(LESSONS).map((lesson) => [lesson, progressOf(progress, lesson)]));
