@@ -19,9 +19,7 @@ export function report(
   ];
   const ideas = tally(notes.flatMap((note) => note.ideas ?? []).map((idea) => idea.type));
   const rejected = tally(
-    extracted
-      .flatMap((e) => e.rejected)
-      .map(({ idea, why }) => `${idea.type}: ${why.replace(/[a-h][1-8]|\d+/g, '#')}`),
+    extracted.flatMap((e) => e.rejected).map(({ idea, why }) => `${idea.type}: ${maskReason(why)}`),
   );
   const rows: [string, unknown][] = [
     ['chapters', chapters.length],
@@ -72,6 +70,19 @@ export function sourceReport(
       return `${title}: ${tally.booked} book moves, ${tally.notes} notes; left out ${tally.blocked.size} moves an earlier source recommends against and ${tally.notesSkipped} notes where an earlier source explained the spot`;
     })
     .join('\n');
+}
+
+/**
+ * The `limit` most common of `reasons`, with how often each came up, moves,
+ * squares and numbers masked as # so one reason at different spots counts once.
+ */
+export function topReasons(reasons: readonly string[], limit: number): [string, number][] {
+  return Object.entries(tally(reasons.map(maskReason))).slice(0, limit);
+}
+
+/** `reason` with its moves, squares and numbers as #, so one reason at different spots reads the same. */
+function maskReason(reason: string): string {
+  return reason.replace(/[KQRBN]?[a-h]?x?[a-h][1-8][+#]?|\d+/g, '#');
 }
 
 function tally(values: readonly string[]): Record<string, number> {

@@ -396,10 +396,10 @@ const describe = ({ pawns, mate }: Evaluation) =>
       : `${pawns > 0 ? '+' : ''}${pawns.toFixed(2)}`;
 
 /** The lesson's start position, which the checker has read. */
-const startOf = (lesson: Lesson): Chess => parsePosition(lesson.start)!;
+export const startOf = (lesson: Lesson): Chess => parsePosition(lesson.start)!;
 
 /** The first line (UCI) found to each position the lesson reaches, and the position. */
-function linesTo(lesson: Lesson): Map<PositionKey, { line: Uci[]; pos: Chess }> {
+export function linesTo(lesson: Lesson): Map<PositionKey, { line: Uci[]; pos: Chess }> {
   const start = startOf(lesson);
   const found = new Map([[positionKey(start), { line: [] as Uci[], pos: start }]]);
   const queue = [...found.values()];
@@ -441,10 +441,10 @@ function played(pos: Chess, uci: Uci): Chess {
   return after;
 }
 
-const san = (pos: Chess, uci: Uci) => playMove(pos.clone(), uci)!.san;
+export const san = (pos: Chess, uci: Uci) => playMove(pos.clone(), uci)!.san;
 
 /** `line` from the lesson's start in SAN, like "1.d4 d5 2.c4". */
-function sans(lesson: Lesson, line: readonly Uci[]): string {
+export function sans(lesson: Lesson, line: readonly Uci[]): string {
   const start = startOf(lesson);
   const firstPly = 2 * start.fullmoves - (start.turn === 'white' ? 1 : 0);
   return numberedLine(lineSans(line, start), firstPly);

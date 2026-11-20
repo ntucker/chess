@@ -5,7 +5,8 @@ import { createRoot, type Root } from 'test-renderer';
 
 import { uciLine } from '@/lesson/lesson.fixture';
 import { lessonHref, variationHref } from '@/lesson/openings';
-import type { LessonId } from '@/resources/lesson';
+import { FIXTURE_INDEX } from '@/lesson/openings.fixture';
+import { LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 
 import { useOpeningsAddress } from './useOpeningsAddress';
@@ -33,9 +34,11 @@ async function open(url: string) {
   const context = getMockContext({
     _layout: () => <Stack screenOptions={{ headerShown: false }} />,
     '(openings)/_layout': () => (
-      <SettingsProvider>
-        <Page />
-      </SettingsProvider>
+      <LessonIndexContext value={FIXTURE_INDEX}>
+        <SettingsProvider>
+          <Page />
+        </SettingsProvider>
+      </LessonIndexContext>
     ),
     '(openings)/index': () => null,
     '(openings)/lesson/[id]': () => null,
@@ -66,9 +69,9 @@ describe('useOpeningsGame on the router', () => {
     expect(latest.id).toBe('caro-kann');
     expect(moves()).toEqual(uciLine('e4', 'c6'));
     await run(() => latest.store[1]({ type: 'goto', ply: 0 }));
-    await play('d2d4', 'd7d5', 'c2c4', 'c7c6');
+    await play('d2d4', 'd7d5', 'c2c4');
     expect(latest.id).toBe('slav');
-    expect(moves()).toEqual(uciLine('d4', 'd5', 'c4', 'c6'));
+    expect(moves()).toEqual(uciLine('d4', 'd5', 'c4'));
     await run(() => router.back());
     expect(latest.id).toBeUndefined();
     expect(moves()).toEqual([]);
@@ -82,12 +85,12 @@ describe('useOpeningsGame on the router', () => {
 
   it('starts links to the page already open, and keeps the game dropping a variation', async () => {
     await open(lessonHref('caro-kann'));
-    await play('d2d4');
-    await run(() => router.navigate(variationHref('caro-kann', 'advance-variation')));
+    await play('c7c6');
+    await run(() => router.navigate(variationHref('caro-kann', 'advance')));
     expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'e5'));
     await run(() => router.navigate(lessonHref('caro-kann')));
-    expect(moves()).toEqual(uciLine('e4', 'c6'));
-    await run(() => router.navigate(variationHref('caro-kann', 'advance-variation')));
+    expect(moves()).toEqual(uciLine('e4'));
+    await run(() => router.navigate(variationHref('caro-kann', 'advance')));
     await play('c8f5');
     expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'e5', 'Bf5'));
     await run(() => router.navigate(lessonHref('london')));
