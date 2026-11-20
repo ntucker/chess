@@ -183,6 +183,7 @@ describe('peekReducer', () => {
     expect(reduce(row, { type: 'play', key: HERE, note: PLAN }, { type: 'stop' })).toEqual(
       pointing({ candidate: ROW, selected: 'g8' }),
     );
+    expect(peekReducer(selected, { type: 'leave' })).toBe(selected);
     expect(reduce(selected, { type: 'select', key: HERE })).toEqual(pointing());
   });
 

@@ -150,7 +150,10 @@ export function peekReducer(peek: Peek | undefined, action: PeekAction): Peek | 
     case 'leave':
       if (peek?.kind === 'play')
         return { ...peek, candidate: undefined, note: undefined, hover: undefined };
-      return peek?.selected ? { kind: 'point', key: peek.key, selected: peek.selected } : undefined;
+      if (!peek?.selected) return undefined;
+      // The board's selection stays; nothing else to end keeps the same state.
+      if (!peek.candidate && !peek.note && !peek.hover) return peek;
+      return repoint(undefined, { key: peek.key, selected: peek.selected });
     case 'play': {
       const here = peek?.key === action.key ? peek : undefined;
       const { candidate, note, selected } = here ?? {};

@@ -213,7 +213,8 @@ export function useLesson(
     const at: Pointer | undefined = drag ? { at: 'drag', ...drag } : undefined;
     const candidate = at && !previewOf(at) ? { ...at, to: undefined } : at;
     dispatch({ type: 'candidate', key, candidate });
-    // A drag that ends without a move lets the piece go, as the board mostly does.
+    // A drag that ends without a move lets the piece go, as the board does,
+    // except after a drop on another square, where the board keeps it.
     if (!drag) dispatch({ type: 'select', key });
   };
   const playMove = (uci: string) => {
