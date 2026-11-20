@@ -45,12 +45,15 @@ export const getEvaluation = new Endpoint(
 /**
  * Stockfish's three best moves in the position after `line`, best first,
  * each with how the position stands after it (`stockfishTopMoves`); none once
- * the game is over. Its search runs once that position's evaluation has, and
- * a newer request drops one the screen has left, so ask for it beside
- * `getEvaluation` freely. Kept for as long as the app runs.
+ * the game is over. Its search runs once that position's evaluation has.
+ * Only one screen asks at a time: a newer request drops an older one still
+ * searching, which rejects with an `AbortError` Data Client doesn't keep, so
+ * read it with `useFetch` and `useCache`, never `useSuspense`, which would
+ * wait forever. Kept for as long as the app runs.
  *
  * ```ts
- * const top = useSuspense(getTopMoves, ['e2e4']); // [{ uci: 'c7c5', evaluation }, …]
+ * useFetch(getTopMoves, line);
+ * const top = useCache(getTopMoves, line); // [{ uci: 'c7c5', evaluation }, …]
  * ```
  */
 export const getTopMoves = new Endpoint(

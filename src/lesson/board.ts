@@ -4,7 +4,8 @@
  * drawings.
  * Whether the learner points at a candidate list row or drags a piece over
  * a square, the preview comes from `preview` (./view.ts) through guidance,
- * so both show a candidate the same way.
+ * so both show a candidate the same way. A piece clicked (`boardSelect`)
+ * draws its moves as a dragged one does.
  */
 import type { Square } from '@/board/drawing';
 import { lastMoveBadge } from '@/board/drawing';

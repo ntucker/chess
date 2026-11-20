@@ -179,6 +179,24 @@ describe('the engine lifecycle', () => {
     await current;
   });
 
+  it('never runs a stopped top-moves search again on the next engine', async () => {
+    const first = scripted();
+    first.print('uciok');
+    const left = engine.stockfishTopMoves(['e2e4']);
+    const failed = expect(left).rejects.toMatchObject({ name: 'AbortError' });
+    const current = engine.stockfishTopMoves(['d2d4']);
+    await failed;
+    // The engine crashes before the stopped search answers.
+    first.connection.fail('out of memory');
+    const second = scripted();
+    second.print('uciok');
+    expect(second.sent).not.toContain('position startpos moves e2e4');
+    expect(second.sent).toContain('position startpos moves d2d4');
+    second.print('info depth 10 multipv 1 score cp 20 pv d7d5');
+    second.print('bestmove d7d5');
+    await current;
+  });
+
   it('sends no MultiPV setting while the number of ranks stays the same', async () => {
     const { print, sent } = scripted();
     print('uciok');
