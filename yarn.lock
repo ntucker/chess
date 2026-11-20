@@ -6114,7 +6114,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo@npm:~58.0.25":
+"expo@npm:58.0.25":
   version: 58.0.25
   resolution: "expo@npm:58.0.25"
   dependencies:
@@ -6168,6 +6168,63 @@ __metadata:
     expo-modules-autolinking: bin/autolinking
     fingerprint: bin/fingerprint
   checksum: 10c0/648572dc2ae042a8481ce9778680f4b59666abae560cbee6fc4da646fc5887dc74f7c86572eebd3879634c2af9e508b382d1c5ffbe33e7ae8b93e496a9b8d66f
+  languageName: node
+  linkType: hard
+
+"expo@patch:expo@npm%3A58.0.25#~/.yarn/patches/expo-npm-58.0.25-b13ef18401.patch":
+  version: 58.0.25
+  resolution: "expo@patch:expo@npm%3A58.0.25#~/.yarn/patches/expo-npm-58.0.25-b13ef18401.patch::version=58.0.25&hash=40780b"
+  dependencies:
+    "@babel/runtime": "npm:^7.20.0"
+    "@expo/cli": "npm:^58.1.20"
+    "@expo/config": "npm:~58.0.12"
+    "@expo/config-plugins": "npm:~58.0.13"
+    "@expo/devtools": "npm:~58.0.2"
+    "@expo/dom-webview": "npm:~58.0.2"
+    "@expo/fingerprint": "npm:^0.21.10"
+    "@expo/local-build-cache-provider": "npm:^58.0.12"
+    "@expo/log-box": "npm:^58.0.15"
+    "@expo/log-box-utils": "npm:^58.0.2"
+    "@expo/metro": "npm:~58.0.0"
+    "@expo/metro-config": "npm:~58.0.22"
+    "@ungap/structured-clone": "npm:^1.3.0"
+    babel-preset-expo: "npm:~58.0.25"
+    expo-asset: "npm:~58.0.21"
+    expo-constants: "npm:~58.0.16"
+    expo-file-system: "npm:~58.0.13"
+    expo-font: "npm:~58.0.12"
+    expo-keep-awake: "npm:~58.0.4"
+    expo-modules-autolinking: "npm:~58.1.0"
+    expo-modules-cli: "npm:~0.5.0"
+    expo-modules-core: "npm:~58.1.0"
+    pretty-format: "npm:^29.7.0"
+    react-refresh: "npm:^0.14.2"
+    whatwg-url-minimum: "npm:^0.2.0"
+  peerDependencies:
+    "@expo/dom-webview": "*"
+    "@expo/metro-runtime": "*"
+    react: "*"
+    react-dom: "*"
+    react-native: "*"
+    react-native-web: "*"
+    react-native-webview: "*"
+  peerDependenciesMeta:
+    "@expo/dom-webview":
+      optional: true
+    "@expo/metro-runtime":
+      optional: true
+    react-dom:
+      optional: true
+    react-native-web:
+      optional: true
+    react-native-webview:
+      optional: true
+  bin:
+    expo: bin/cli
+    expo-modules: bin/modules
+    expo-modules-autolinking: bin/autolinking
+    fingerprint: bin/fingerprint
+  checksum: 10c0/9394ae0c35678a00bcbf5b5f20970dd4c14db9e441b2b711fbd07973d4f55eb285d041960e9862f69c5c7e1fd0e18da1fbcf463820d663a7bb6fba9d0bcca861
   languageName: node
   linkType: hard
 

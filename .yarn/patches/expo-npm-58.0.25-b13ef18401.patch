@@ -1,0 +1,16 @@
+diff --git a/build/dom/webview-wrapper.js b/build/dom/webview-wrapper.js
+index 02f713b7592c68e3cb6db2013b2aee0600a602a8..72c7f90dd7ce3a95021208cd11c83da9526bafae 100644
+--- a/build/dom/webview-wrapper.js
++++ b/build/dom/webview-wrapper.js
+@@ -49,7 +49,10 @@ const RawWebView = /*#__PURE__*/ React.forwardRef((props, ref)=>{
+     const [containerStyle, setContainerStyle] = React.useState(null);
+     const { debugZeroHeightStyle, debugOnLayout } = useDebugZeroHeight(dom);
+     const emit = React.useCallback((detail)=>{
+-        webviewRef.current?.injectJavaScript(getInjectEventScript(detail));
++        // Opening Night patch: for a moment after mounting, Android can't find
++        // the web view's native view, and the call rejects. Nothing is lost:
++        // the page asks for the props again once it's ready (DOM_READY).
++        Promise.resolve(webviewRef.current?.injectJavaScript(getInjectEventScript(detail))).catch(() => { });
+     }, [
+         webviewRef
+     ]);

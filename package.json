@@ -69,7 +69,8 @@
   "private": true,
   "packageManager": "yarn@4.18.1",
   "resolutions": {
-    "@reactive/silk-core": "file:./vendor/reactive-silk-core.tgz"
+    "@reactive/silk-core": "file:./vendor/reactive-silk-core.tgz",
+    "expo@npm:~58.0.25": "patch:expo@npm%3A58.0.25#~/.yarn/patches/expo-npm-58.0.25-b13ef18401.patch"
   },
   "jest": {
     "projects": [
