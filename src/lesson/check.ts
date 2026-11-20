@@ -172,6 +172,8 @@ function checkSources({ sources }: Lesson, report: Report) {
   sources.forEach(({ title, author, url, license }, i) => {
     const at = `sources[${i}]`;
     if (!title.trim() || !author.trim()) report(at, 'needs a title and an author');
+    if (sources.findIndex((other) => other.url === url) < i)
+      report(`${at}.url`, `${url} is listed twice`);
     // Not URL.parse, which Node 22.0 lacks.
     const parsed = URL.canParse(url) ? new URL(url) : undefined;
     if (!parsed?.hostname) return report(`${at}.url`, `${url} is not a web address`);

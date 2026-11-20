@@ -19,6 +19,8 @@ import { lessonOf, openingsLesson, withOpenings } from '@/lesson/openings';
 import type { Candidate } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
 import type { LessonView } from '@/lesson/view';
+
+import { SourceCredits } from './SourceCredits';
 import { describeOpponent } from '@/opponent/opponent';
 import { getLesson, LESSON_INDEX, LESSONS, type LessonId } from '@/resources/lesson';
 import { useSettings } from '@/settings/SettingsProvider';
@@ -237,6 +239,7 @@ function LessonScreen({ id, store }: { readonly id?: LessonId; readonly store: G
           <Stack gap="1">
             <OpponentChoice />
             <FootnoteLink href="/play">Or play a free game, from the first move</FootnoteLink>
+            <SourceCredits sources={lesson.sources} />
           </Stack>
         </Stack>
       }

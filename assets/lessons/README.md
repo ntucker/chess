@@ -3,3 +3,5 @@ Lesson files (format: `src/lesson/lesson.ts`), registered in `src/resources/less
 - `caro-kann.json` and `slav.json` are written by `yarn import-study <id>` (`scripts/import-study/`), which also writes their entries in `index.json`: what the start position lists before a lesson loads. Rerun the importer rather than editing them.
 
 Tests use a small hand-made lesson instead, `src/lesson/fixtures/caro-kann-sample.json`, which the app doesn't ship.
+
+A lesson's `sources` credit what it was made from, with a `license` where one applies. `slav.json` adapts text from [Wikibooks' Chess Opening Theory](https://en.wikibooks.org/wiki/Chess_Opening_Theory), which is [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), so `slav.json` is shared under CC BY-SA 4.0 too.

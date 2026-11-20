@@ -114,3 +114,38 @@ describe('mergeChapters', () => {
     expect(at('e4', 'c6', 'd4', 'd5', 'Nc3', 'dxe4', 'Nxe4', 'Bf5')).toBeUndefined();
   });
 });
+
+describe('mergeChapters with several sources', () => {
+  // The main guide answers 1.d4 with 1...d5 and stops after 2.c4; the second
+  // agrees on 1...d5, goes on to 2...c6, and prefers 1...Nf6 against 1.c4.
+  const main = parseStudy(
+    '[ChapterName "Main"]\n\n1. d4 { Claims the centre at once. } d5 { Holds the centre with a pawn. } 2. c4 *\n\n' +
+      '[ChapterName "English"]\n\n1. c4 e5 *\n',
+    () => true,
+  ).map((chapter) => ({ ...chapter, source: 0 }));
+  const second = parseStudy(
+    '[ChapterName "Second"]\n\n1. d4 d5 { Black takes the centre and keeps it for good. } 2. c4 c6 *\n\n' +
+      '[ChapterName "Second English"]\n\n1. c4 Nf6 *\n',
+    () => true,
+  ).map((chapter) => ({ ...chapter, source: 1 }));
+  const both = [...main, ...second];
+  const merged = mergeChapters(
+    { id: 'test', title: 'Test', side: 'black', sources: SAMPLE.sources },
+    both,
+    both.map((chapter) => extractChapter(chapter, 'black')),
+    () => undefined,
+  );
+  const book = (...sans: string[]) =>
+    merged.positions[keyAfter(...sans)].moves.filter((move) => move.book).map(({ uci }) => uci);
+
+  it("keeps the main guide's moves, and takes a later one's where the main stops", () => {
+    expect(book('d4')).toEqual(['d7d5']);
+    expect(book('d4', 'd5', 'c4')).toEqual(['c7c6']);
+    expect(book('c4')).toEqual(['e7e5']);
+  });
+
+  it("takes a later guide's notes only where the main guide says nothing", () => {
+    const d5 = merged.positions[keyAfter('d4')].moves.find(({ uci }) => uci === 'd7d5')!;
+    expect(d5.notes?.map(({ text }) => text)).toEqual(['Holds the centre with a pawn.']);
+  });
+});

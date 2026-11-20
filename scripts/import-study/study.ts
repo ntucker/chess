@@ -23,6 +23,11 @@ export interface Chapter {
   readonly start: Chess;
   /** The moves from the start; the first is the study's main line. */
   readonly moves: readonly StudyMove[];
+  /**
+   * The lesson source it comes from, as its index in the lesson's sources (0
+   * when left out): where sources overlap, the earlier one's moves win.
+   */
+  readonly source?: number;
 }
 
 export interface StudyMove {
