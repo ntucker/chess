@@ -135,7 +135,12 @@ export interface LessonPosition {
 
 export interface LessonMove {
   readonly uci: Uci;
-  /** The guide recommends this move. Only the learner's moves are book moves. */
+  /**
+   * The guide recommends this move, or, where it shows the learner moves but
+   * recommends none, the importer picked it (scripts/import-study `fillBook`:
+   * Stockfish's best, its own move when it overrules every one the guide
+   * shows). Only the learner's moves are book moves.
+   */
   readonly book?: boolean;
   /** How the study rates this move among the good ones (a "choice guide"). */
   readonly risk?: Risk;

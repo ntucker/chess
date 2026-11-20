@@ -76,6 +76,17 @@ describe('side-line introductions', () => {
     ]);
   });
 
+  it('reads a named move numbered one or two off, as studies often are, but not further', () => {
+    const intro = (number: string) =>
+      [
+        chapter('Main line', '1. d4 d5 2. Bf4 e6 *'),
+        chapter('c5', `1. d4 Nf6 (1... d5 { Then ${number}...c5 comes. } 2. Bf4 c5) 2. Bf4 *`),
+      ].join('\n');
+    // c5 is 2...c5: "3...c5" is one off, "5...c5" three.
+    expect(commentOn(intro('3'), ['c5'])).toEqual([['c5', 'Then 3...c5 comes.']]);
+    expect(commentOn(intro('5'), ['c5'])).toEqual([['c5', '']]);
+  });
+
   it('leaves a comment that does not name that move, or opens no side line', () => {
     const pgn = [
       chapter('Main line', '1. d4 d5 2. Bf4 e6 *'),

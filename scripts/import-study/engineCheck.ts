@@ -228,12 +228,12 @@ export async function fillBook(
         report.ended.push({ line: sans(lesson, at.line), moves, positions: gone });
         continue;
       }
-      const guides = position.moves.some(({ uci }) => uci === pick.uci);
+      const listed = position.moves.some(({ uci }) => uci === pick.uci);
       const moves = [
         ...position.moves.map((move) =>
           move.uci === pick.uci ? { ...move, book: true as const } : move,
         ),
-        ...(guides ? [] : [{ uci: pick.uci, book: true as const }]),
+        ...(listed ? [] : [{ uci: pick.uci, book: true as const }]),
       ];
       // Book moves first, like every position the importer writes.
       moves.sort((a, b) => Number(!!b.book) - Number(!!a.book));

@@ -142,7 +142,7 @@ async function main() {
   );
   if (!rest.includes('--no-popularity')) lesson = await withPopularity(lesson);
   // The checker, the index and the registry each refuse a lesson by throwing, so all come before any
-  // write: a lesson file written without its registry entry or index line would break the app.
+  // write: a lesson file written without its registry entry or index line fails lesson.test.ts.
   checked(lesson);
   const indexFile = join(ROOT, 'assets/lessons/index.json');
   const index = lessonIndex(indexedWith(indexFile, lesson));

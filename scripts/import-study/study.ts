@@ -139,11 +139,13 @@ function withLineIntros(moves: readonly StudyMove[], known: ReadonlySet<string>)
       ({ san, side, ply }) =>
         san === target.san &&
         (!side || side === target.before.turn) &&
-        (!ply || ply === target.ply),
+        // Study move numbers are often off by one or two.
+        (!ply || Math.abs(ply - target.ply) <= 2),
     );
     if (!named) continue;
     edits.set(move, { comment: '' });
-    // Joined to the move's own comment, the whole note explains the move as before.
+    // Joined to the move's own comment, the whole note explains the move. No two intros share a
+    // target: one on a move inside another's single-move chain would be its parent's only child.
     edits.set(
       target,
       target.comment

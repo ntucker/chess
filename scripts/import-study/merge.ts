@@ -165,7 +165,7 @@ function addChapter(
     // A line's introduction leaves the spot to whichever guide explains the move itself.
     if (!intro) spot.noteSource ??= source;
     if (addNote(spot, note, source)) tally.notes++;
-    else if (spot.noteSource !== source) tally.notesSkipped++;
+    else if (spot.noteSource !== undefined && spot.noteSource !== source) tally.notesSkipped++;
   };
   for (const move of chapterMoves(chapter)) {
     tree.move(move.before, move.uci);
@@ -381,7 +381,8 @@ function bookMoves(
  * Adds `note` from `source` to a move's or position's notes, once. A later
  * source only explains what no earlier one did: guides tend to say the same
  * thing about the same move, and the learner would read it once per guide.
- * Whether it was added: only to a spot this source took (`noteSource`) or nobody has.
+ * It takes no spot itself (the caller does, `noteSource`), and adds only to
+ * one this source took or nobody has. Whether it was added.
  */
 function addNote(
   spot: { notes: Note[]; noteSource?: number },

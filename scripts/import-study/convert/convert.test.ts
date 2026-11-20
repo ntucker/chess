@@ -378,10 +378,9 @@ describe('convertChapters', () => {
     await convertChapters([extracted[0], theirs], ask);
     expect(addenda).toEqual(['', WRITTEN_FOR_OPPONENT]);
     expect(asked[1]).toEqual([MODELS.convert, ['Bf4']]);
-    expect(seen.map((comment) => comment.writtenFor)).toEqual([
-      ...seen.slice(0, -1).map(() => undefined),
-      'white',
-    ]);
+    // Only the London chapter's comment, asked last, carries the side it was written for.
+    expect(seen.at(-1)?.writtenFor).toBe('white');
+    expect(seen.slice(0, -1).filter((comment) => comment.writtenFor)).toEqual([]);
   });
 });
 
