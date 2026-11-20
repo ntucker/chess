@@ -4,14 +4,14 @@ import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
-import { Eyebrow } from '@/components/Eyebrow';
+import { Eyebrow, LABEL_GAP } from '@/components/Eyebrow';
 import { FootnoteLink } from '@/components/FootnoteLink';
 import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { Scoresheet } from '@/components/Scoresheet';
 import { resetListener } from '@/components/resetListener';
-import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
+import { BoardColumn, BoardColumnPlaceholder, SECTION_GAP, Stage } from '@/components/Stage';
 import { useLongWait } from '@/components/useLongWait';
 import type { MoveQuality } from '@/analysis/quality';
 import { NewVersionError } from '@/files/newVersion';
@@ -218,7 +218,7 @@ function LessonScreen({
         />
       }
       program={
-        <Stack gap="5">
+        <Stack style={styles.sections}>
           <StatusHeadline
             {...status}
             failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
@@ -287,7 +287,7 @@ function LessonScreen({
             </PointingArea>
           ) : null}
           <Separator />
-          <Stack gap="3">
+          <Stack style={styles.labelled}>
             <Eyebrow>Scoresheet</Eyebrow>
             <Scoresheet
               plies={game.plies}
@@ -488,5 +488,7 @@ function LessonPlaceholder({
 }
 
 const styles = StyleSheet.create({
+  sections: { gap: SECTION_GAP.value },
+  labelled: { gap: LABEL_GAP.value },
   placeholder: { minHeight: 200 },
 });

@@ -7,7 +7,7 @@ import { candidateTone } from '@/lesson/drawings';
 import type { Uci } from '@/lesson/lesson';
 import type { Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
-import { Eyebrow } from '@/components/Eyebrow';
+import { Eyebrow, LABEL_GAP } from '@/components/Eyebrow';
 import { QualityBadge } from '@/components/QualityBadge';
 import type { Mark } from '@/progress/progress';
 import { fonts } from '@/theme/theme';
@@ -78,7 +78,7 @@ export function CandidateList({
     rows.map(({ move }) => marks.get(move.uci)).filter((mark) => mark !== undefined),
   );
   return (
-    <Stack gap="3">
+    <Stack style={styles.labelled}>
       <View style={styles.head}>
         <Eyebrow>{heading}</Eyebrow>
         <MarkLegend marks={shownMarks} />
@@ -287,6 +287,7 @@ const ROW_GAP = 12;
 const DOT_SIZE = 10;
 
 const styles = StyleSheet.create({
+  labelled: { gap: LABEL_GAP.value },
   head: {
     flexDirection: 'row',
     flexWrap: 'wrap',

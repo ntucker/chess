@@ -1,7 +1,9 @@
 import { Stack } from '@reactive/silk-native';
 import type { FocusEvent as ReactFocusEvent, ReactNode } from 'react';
+import { StyleSheet } from 'react-native';
 
 import { hovers } from '@/board/pointer';
+import { SECTION_GAP } from '@/components/Stage';
 
 interface Props {
   /** The mouse, or the keyboard focus, left the area. */
@@ -24,7 +26,7 @@ export function PointingArea({ onLeave, children }: Props) {
   };
   return (
     <Stack
-      gap="5"
+      style={styles.area}
       onPointerLeave={({ nativeEvent }) => {
         // A finger leaves whenever it lifts, which would end every preview a tap starts.
         if (hovers(nativeEvent.pointerType)) onLeave();
@@ -36,3 +38,5 @@ export function PointingArea({ onLeave, children }: Props) {
     </Stack>
   );
 }
+
+const styles = StyleSheet.create({ area: { gap: SECTION_GAP.value } });

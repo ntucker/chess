@@ -40,13 +40,17 @@
     --player-disc-border: 2px;
     --evaluation-width: 6px;
     /*
-     * The panel's headline (GameStatus.tsx), between theme.ts's headingSm and
-     * heading: it shows only when it has news, such as the end of a line, and
+     * The panel's headline (GameStatus.tsx), down from theme.ts's headingLg
+     * (32px): it shows only when it has news, such as the end of a line, and
      * sits close above the moves.
      */
     --headline-size: 20px;
     /* Space between the board column and the panel below it (Stage.tsx). */
     --wrapped-gap: 12px;
+    /* Space between the panel's sections (Stage.tsx)... */
+    --section-gap: 12px;
+    /* ...and between a section's label and what it labels (Eyebrow.tsx). */
+    --label-gap: 6px;
     /*
      * In a short window the board shrinks, down to this (Stage.tsx), wide
      * enough for the player's name bar to fit its status beside the move
@@ -54,7 +58,7 @@
      */
     --board-min: 300px;
     /* ...to leave this much for the panel and the gap above it. */
-    --panel-reserve: 172px;
+    --panel-reserve: calc(160px + var(--wrapped-gap));
   }
 
   /*
@@ -77,7 +81,8 @@
   }
   /*
    * Out of sight but still read by screen readers, such as a headline that
-   * only repeats whose move it is (GameStatus.tsx), so its news is still announced.
+   * only repeats whose move it is (GameStatus.tsx): the name bars show it, but
+   * screen readers hear it only from the headline.
    */
   :root [data-narrow='wide-only-spoken'] {
     position: absolute;
@@ -92,6 +97,10 @@
     flex-direction: row;
     align-items: baseline;
     gap: 8px;
+  }
+  /* A note's verdict with no kind beside it goes below its words (IdeaCard.tsx). */
+  :root [data-narrow='lone-verdict'] {
+    order: 1;
   }
   :root [data-narrow='page'] {
     min-height: 100dvh;

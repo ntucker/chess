@@ -152,6 +152,9 @@ function BoardFrame({ children }: { readonly children: ReactNode }) {
   );
 }
 
+/** Space between the sections of the panel: less on a narrow web page. */
+export const SECTION_GAP = narrowLength('section-gap', 20);
+
 /**
  * The name bars' heights, fixed so the panel lines up with the board: the
  * player's, with the move stepper, and the opponent's, with only its names

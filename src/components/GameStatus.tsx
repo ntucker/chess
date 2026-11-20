@@ -149,7 +149,7 @@ function describeLatest({
   };
 }
 
-/** The headline's size: its role's, a size smaller on a narrow web page. */
+/** The headline's size: its role's, smaller on a narrow web page (narrow.css). */
 const HEADLINE = typography.headingLg;
 const TITLE_SIZE = narrowLength('headline-size', HEADLINE.size);
 
