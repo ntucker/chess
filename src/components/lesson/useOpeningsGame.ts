@@ -23,13 +23,15 @@ const lessonHref = (id: LessonId) => `/lesson/${id}` as const;
  * address's game; the address catching up with a pick keeps the game.
  *
  * The store holds the game as the page shows it (`useDeferredValue`): while
- * the page's render of a newer game waits, as it does while the lesson that
- * game plays loads, the page keeps the older one. So picking an opening, or
+ * the page's render of a newer game waits, the page keeps the older one. That
+ * lasts until the lesson the newer game plays has loaded, or for one render
+ * after any other move. So picking an opening, or
  * going Back or Forward to one, keeps the page on screen rather than a
  * placeholder, while the address moves at once. The store's dispatch acts on
  * the newer game, so while the page is `behind` it drops the learner's moves
  * and steps, made on a position the game has left. An opponent's reply
- * names the position it answers, so it needs no such check.
+ * names the position it answers, and a retry only asks the newer game's
+ * opponent again, so neither needs such a check.
  */
 export function useOpeningsGame(address: LessonId | undefined) {
   const router = useRouter();
