@@ -540,6 +540,7 @@ describe('checkLesson', () => {
         moves: [
           {
             uci: 'c7c6',
+            book: true,
             games: [1],
             notes: [{ text: 'Hits.', ideas: [purpose('c6', 'attacks', 'd5')] }],
           },
@@ -551,6 +552,15 @@ describe('checkLesson', () => {
       `positions["${key}"].moves[0].games`,
       `positions["${key}"].moves[0].notes[0].ideas[0]`,
       `positions["${key}"].moves[1].uci`,
+    ]);
+  });
+
+  it("refuses a learner's position inside the book without a book move", () => {
+    const key = positionKey(afterE4);
+    const entry = lesson.positions[key];
+    const unbooked = entry.moves.map(({ book: _book, ...move }) => move);
+    expect(checkLesson(withPosition(key, { ...entry, moves: unbooked }))).toEqual([
+      { path: `positions["${key}"]`, message: 'is inside the book but has no book move' },
     ]);
   });
 

@@ -244,8 +244,19 @@ export async function wikibooksPgn(
     path.push(san);
     pos = after;
   }
-  const reader: Reader = { fetchPage, pagesLeft: maxPages, leave: new Set(leave), log };
+  const reader: Reader = {
+    fetchPage,
+    pagesLeft: maxPages,
+    leave: new Set(leave),
+    log,
+    lines: 0,
+    linesCut: 0,
+  };
   const top = await readTree(reader, root, path.at(-1)!, pos, []);
+  const pages = maxPages - Math.max(reader.pagesLeft, 0);
+  log(
+    `wikibooks ${root}: ${pages} pages read; ${reader.linesCut} of ${reader.lines} table lines cut short (another page's position, another lesson's, or an illegal move)`,
+  );
   // A missing root page would otherwise import as one bare move.
   if (top.children.length === 0) throw new Error(`${root}: Wikibooks has no moves here`);
   const name = (node: BookNode) => (node.name && (rename[node.name] ?? node.name)) || undefined;
@@ -259,6 +270,9 @@ interface Reader {
   pagesLeft: number;
   readonly leave: ReadonlySet<string>;
   readonly log: (message: string) => void;
+  /** Theory table lines read, and how many stopped before their end. */
+  lines: number;
+  linesCut: number;
 }
 
 /** A page that only sends the reader to another: `#REDIRECT [[Chess Opening Theory/...]]`. */
@@ -308,7 +322,10 @@ async function readTree(
       await readTree(reader, `${title}/${segment}`, next, after, page.about.get(next) ?? []),
     );
   }
-  for (const line of page.lines) addLine(node, line);
+  for (const line of page.lines) {
+    reader.lines++;
+    if (!addLine(node, line)) reader.linesCut++;
+  }
   return node;
 }
 
@@ -321,21 +338,22 @@ function played(pos: Chess, san: string): Chess | undefined {
   return after;
 }
 
-/** Adds the legal start of `line` below `node`, as moves without comments. */
-function addLine(node: BookNode, line: readonly string[]) {
+/** Adds the legal start of `line` below `node`, as moves without comments; whether all of it was. */
+function addLine(node: BookNode, line: readonly string[]): boolean {
   let at = node;
   for (const move of line) {
-    if (elsewhere(at)) return;
+    if (elsewhere(at)) return false;
     const { san, nags } = glyphed(move);
     let child = at.children.find((c) => c.san === san);
     if (!child) {
       const after = played(at.pos, san);
-      if (!after) return;
+      if (!after) return false;
       child = { san, pos: after, comment: '', children: [], nags };
       at.children.push(child);
     }
     at = child;
   }
+  return true;
 }
 
 /** A chapter's top: the position it starts its own moves from, the moves to it, and its title. */

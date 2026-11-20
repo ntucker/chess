@@ -5,7 +5,7 @@ import type { Evaluation } from '@/evaluation/evaluation';
 import { LESSON_FORMAT, type Lesson, type LessonMove } from '@/lesson/lesson';
 import { keyAfter, SAMPLE, uciLine } from '@/lesson/lesson.fixture';
 
-import { engineCheck } from './engineCheck';
+import { engineCheck, fillBook } from './engineCheck';
 
 const at = (moves: LessonMove[], notes?: Lesson['positions'][string]['notes']) => ({
   variation: 'test',
@@ -158,5 +158,70 @@ describe('engineCheck', () => {
     const { lesson, report } = await engineCheck(agreed, even);
     expect(lesson).toEqual(agreed);
     expect(report).toEqual({ unbooked: [], unreachable: [], cut: [], dropped: [] });
+  });
+});
+
+describe('fillBook', () => {
+  /** `LESSON` with no book moves at all. */
+  const unbooked: Lesson = {
+    ...LESSON,
+    positions: Object.fromEntries(
+      Object.entries(LESSON.positions).map(([key, position]) => [
+        key,
+        { ...position, moves: position.moves.map(({ book: _book, ...move }) => move) },
+      ]),
+    ),
+  };
+  const books = (lesson: Lesson, ...sans: string[]) =>
+    lesson.positions[keyAfter(...sans)].moves.map(({ uci, book }) => [uci, book]);
+
+  it("books Stockfish's best of the guide's moves, then the guide's only move past it", async () => {
+    const { lesson, report } = await fillBook(unbooked, evaluate);
+    expect(books(lesson, 'd4')).toEqual([
+      ['d7d5', true],
+      ['e7e5', undefined],
+    ]);
+    // 1...e5 is no book move, so nothing past it is filled.
+    expect(books(lesson, 'd4', 'e5', 'dxe5')).toEqual([['b8c6', undefined]]);
+    expect(report.filled).toEqual([
+      { line: '1.d4', move: 'd5', why: "Stockfish's best of the guide's moves" },
+    ]);
+  });
+
+  it('books the move whose note calls it the main line, though the guide lists it later', async () => {
+    const lesson = {
+      ...unbooked,
+      positions: {
+        ...unbooked.positions,
+        [keyAfter('d4')]: at([
+          // It starts like a main-line note, but names another move.
+          { uci: uci('d4', 'd5'), notes: [{ text: 'The main line is 2.c4, a gambit.' }] },
+          { uci: uci('d4', 'Nf6'), notes: [{ text: 'This is the main line.' }] },
+        ]),
+      },
+    };
+    const even = async (): Promise<Evaluation> => ({ score: 0.52, pawns: 0.2 });
+    const filled = await fillBook(lesson, even);
+    expect(books(filled.lesson, 'd4')).toEqual([
+      ['g8f6', true],
+      ['d7d5', undefined],
+    ]);
+    expect(filled.report.filled).toEqual([
+      { line: '1.d4', move: 'Nf6', why: 'called the main line' },
+    ]);
+  });
+
+  it('ends the line where the engine overrules every move the guide shows', async () => {
+    const lesson = {
+      ...unbooked,
+      positions: { ...unbooked.positions, [keyAfter('d4')]: at([{ uci: uci('d4', 'e5') }]) },
+    };
+    delete lesson.positions[keyAfter('d4', 'd5')];
+    const filled = await fillBook(lesson, evaluate);
+    expect(Object.keys(filled.lesson.positions)).toEqual([keyAfter()]);
+    expect(filled.report).toEqual({
+      filled: [],
+      ended: [{ line: '1.d4', moves: ['e5'], positions: 3 }],
+    });
   });
 });

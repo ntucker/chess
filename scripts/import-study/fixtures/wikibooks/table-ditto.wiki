@@ -1,0 +1,33 @@
+{{Chess Opening Theory/Position
+|name=Dutch Variation
+|eco=[[Chess/ECOD|D18-D19]]
+|parent=[[../|Dutch Variation]]
+|aka=Euwe Variation
+}}
+
+== 8...O-O ==
+Black quickly castles their king to safety. This gives Black the option of playing 9...Bg6, which prevents 10. e4 and results in positions where White doesn't get as much central control.
+
+White's main option is still '''[[/9. Qe2/]]''', threatening to play 10. e4.
+
+White can also opt for '''[[/9. Nh4/]]''', transposing into the '''Bled attack'''.
+
+== Theory table ==
+{{ChessTable}}
+
+{{Chess/theory table
+|line1=9. Qe2 Nbd7 10. e4 Bg6 11. Bd3 Bh5 12. e5 Nd5
+|eval1={{Chess/not|+}}
+
+|line2=9. ... Bg6 10. Ne5 Nbd7 11. Nxg6 hxg6
+|eval2={{Chess/not|+}}
+
+|line3=9. Nh4 Nbd7 10. Nxf5 exf5 11. Qc2 g6
+}}
+
+{{ChessMid}}
+
+== References ==
+{{reflist}}
+=== See also ===
+{{Chess Opening Theory/Footer}}

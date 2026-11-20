@@ -1,23 +1,30 @@
 /** The lessons the app ships, by lesson id, and the sources each is read from. */
+import type { LessonSource } from '@/lesson/lesson';
+
 import type { ChapterName, LessonInfo } from './merge';
 import type { WikibooksOptions } from './wikibooks';
 
 /** A lichess study, by its id. */
 interface StudySource {
+  /** How the lesson credits it. */
+  readonly credit: LessonSource;
   readonly study: string;
   readonly chapters: (title: string) => boolean;
   /** The variation each chapter names; the importer's default reads titles like the Caro-Kann's. */
   readonly chapterName?: ChapterName;
 }
 
-/** Pages of Wikibooks' Chess Opening Theory (wikibooks.ts), the learner being the lesson's side. */
+/**
+ * Pages of Wikibooks' Chess Opening Theory (wikibooks.ts), the learner being
+ * the lesson's side. Credited by its root page (`wikibooksCredit`).
+ */
 type WikibooksSource = Omit<WikibooksOptions, 'learner' | 'log'>;
 
 export type ChapterSource = StudySource | WikibooksSource;
 
-interface Lesson {
+interface LessonRecipe {
   /**
-   * Where the chapters come from, in the order `info.sources` credits them:
+   * Where the chapters come from, credited in this order (`lessonInfo`):
    * where two overlap, the earlier one's recommended moves win.
    */
   readonly from: readonly ChapterSource[];
@@ -26,14 +33,37 @@ interface Lesson {
    * written: for lessons merged from several guides, which no one author vouches for.
    */
   readonly engineCheck?: boolean;
-  readonly info: LessonInfo;
+  readonly info: Omit<LessonInfo, 'sources'>;
 }
 
-export const STUDIES: Readonly<Record<string, Lesson>> = {
+/** How a lesson credits a source. */
+export const credit = (from: ChapterSource): LessonSource =>
+  'study' in from ? from.credit : wikibooksCredit(from.root);
+
+/** Wikibooks' text is CC BY-SA 4.0, so a lesson that adapts it is shared under that license too. */
+const wikibooksCredit = (root: string): LessonSource => ({
+  title: 'Chess Opening Theory',
+  author: 'Wikibooks contributors',
+  url: `https://en.wikibooks.org/wiki/${root}`,
+  license: { name: 'CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },
+});
+
+/** The lesson's info for merging, crediting each of its sources in order. */
+export const lessonInfo = ({ info, from }: LessonRecipe): LessonInfo => ({
+  ...info,
+  sources: from.map(credit),
+});
+
+export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
   'caro-kann': {
     from: [
       {
         study: '8Uztu7Xx',
+        credit: {
+          title: 'Greatest Caro Kann: Living Repertoire',
+          author: 'Kampfschach_Official',
+          url: 'https://lichess.org/study/8Uztu7Xx',
+        },
         /** The theory chapters: 🔵 core and 🟢 extra. Guides, plans and model games come later. */
         chapters: (title: string) => /^(?:🔵|🟢)/u.test(title),
       },
@@ -42,19 +72,17 @@ export const STUDIES: Readonly<Record<string, Lesson>> = {
       id: 'caro-kann',
       title: 'Caro-Kann Defence',
       side: 'black',
-      sources: [
-        {
-          title: 'Greatest Caro Kann: Living Repertoire',
-          author: 'Kampfschach_Official',
-          url: 'https://lichess.org/study/8Uztu7Xx',
-        },
-      ],
     },
   },
   slav: {
     from: [
       {
         study: 'LGKgEao4',
+        credit: {
+          title: 'Black repertoaire: Slav Defense',
+          author: 'MMatkun',
+          url: 'https://lichess.org/study/LGKgEao4',
+        },
         chapters: () => true,
         chapterName: (title: string) => {
           // A chapter the study gained since must be named here, not land on the opening.
@@ -65,6 +93,11 @@ export const STUDIES: Readonly<Record<string, Lesson>> = {
       },
       {
         study: 'aOkYYHpw',
+        credit: {
+          title: 'Slav Defense, Main Line',
+          author: 'Kitsune_Cavalry',
+          url: 'https://lichess.org/study/aOkYYHpw',
+        },
         // The theory chapters; the master games after them come later.
         chapters: (title: string) => Object.hasOwn(KITSUNE_CHAPTERS, title),
         chapterName: (title: string) => KITSUNE_CHAPTERS[title],
@@ -85,24 +118,6 @@ export const STUDIES: Readonly<Record<string, Lesson>> = {
       id: 'slav',
       title: 'Slav Defence',
       side: 'black',
-      sources: [
-        {
-          title: 'Black repertoaire: Slav Defense',
-          author: 'MMatkun',
-          url: 'https://lichess.org/study/LGKgEao4',
-        },
-        {
-          title: 'Slav Defense, Main Line',
-          author: 'Kitsune_Cavalry',
-          url: 'https://lichess.org/study/aOkYYHpw',
-        },
-        {
-          title: 'Chess Opening Theory',
-          author: 'Wikibooks contributors',
-          url: 'https://en.wikibooks.org/wiki/Chess_Opening_Theory/1._d4/1...d5/2._c4/2...c6',
-          license: { name: 'CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },
-        },
-      ],
     },
   },
 };

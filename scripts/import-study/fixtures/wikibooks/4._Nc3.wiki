@@ -1,0 +1,52 @@
+{{Chess Opening Theory/Position|=
+|name=Slav Defence
+|parent=[[../|Slav defence]]
+|eco=[[Chess/ECOD|D15-D19,D43-49]]
+|responses=<br>
+* [[/4...e6|4...e6 · Semi-Slav]]
+* [[/4...dxc4|4...dxc4 · Slav accepted]]
+* [[/4...a6|4...a6 · Chebanenko Slav]]
+* [[/4...g6|4...g6 · Schlechter variation]]
+}}
+== 4. Nc3 ==
+White develops his other knight onto the c3 square where it increases the pressure on d5 and also exerts control over the e4 square. Although this knight is sometimes developed onto the d2 square by Nbd2, the c3 square is slightly preferable since it does not block in white's bishop on c1.
+
+This is an important branching point. While all of Black's responses belong to the "Slav" family of openings, the arising positions are generally very different from each other.
+
+'''[[/4...e6/]]''' leads to the '''Semi-Slav defence'''. Black keeps their light-squared bishop inside of the pawn chain for the time being, but intends to free it with the pawn breaks c5 or e5.
+
+'''[[/4...dxc4/]]''' is the '''Slav accepted''', or "Pure Slav." Black intends to develop the light-squared bishop while White is busy recapturing the pawn.
+
+'''[[/4...a6/]]''' enters the '''Chebanenko Slav''', a more positional approach. This also enables Black to develop the light-squared bishop outside the pawn chain eventually.
+
+'''[[/4...g6/]]''' is the '''Schlechter variation'''. Black quickly fianchettos the dark-squared bishop and takes on a more positional approach similar to the Chebanenko Slav. However, this move is not nearly as popular as 4...a6 because if White chooses to transpose into an exchange variation, a6 would have been a more useful move than g6.
+
+==Theory table==
+{{Chess/theory table
+|line1=4...e6 5. e3 Nbd7
+|name1=Semi Slav
+|eval1={{Chess/not|=}}
+
+|line2=4...dxc4 5. a4 Bf5
+|name2=Slav accepted
+|eval2={{Chess/not|=}}
+
+|line3=4...a6 5. c5 Nbd7
+|name3=Chebanenko Slav
+|eval3={{Chess/not|=}}
+
+|line4=4...g6 5. e3 Bg7
+|name4=Schlechter variation
+|eval4={{Chess/not|+}}
+
+|name5=Süchting variation
+|line5=4...Qb6
+|eval5={{Chess/not|+}}
+}}
+
+{{ChessMid}}
+
+==References==
+{{reflist}}
+{{BCO2}}
+{{Chess Opening Theory/Footer}}

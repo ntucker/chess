@@ -661,7 +661,7 @@
 "rn1q1rk1/pp3ppp/2p1pn2/8/PbBPP3/2N2b2/1P2QPPP/R1B2RK1 w - -":{"variation":"pure-slav-alapin-variation","moves":[{"uci":"g2f3"}]},
 "rn1q1rk1/pp3ppp/2p1pn2/8/PbBPP3/2N2P2/1P2QP1P/R1B2RK1 b - -":{"variation":"pure-slav-alapin-variation","moves":[{"uci":"d8d4"}]},
 "r2qk2r/pp3ppp/2nbpn2/3p4/3P1B2/2NQPN2/PP3PPP/R3K2R w KQkq -":{"variation":"exchange-variation","moves":[{"uci":"f4d6"}]},
-"r2qk2r/pp3ppp/2nBpn2/3p4/3P4/2NQPN2/PP3PPP/R3K2R b KQkq -":{"variation":"exchange-variation","moves":[{"uci":"d8d6"}]},
+"r2qk2r/pp3ppp/2nBpn2/3p4/3P4/2NQPN2/PP3PPP/R3K2R b KQkq -":{"variation":"exchange-variation","moves":[{"uci":"d8d6","book":true}]},
 "r3k2r/pp3ppp/2nqpn2/3p4/3P4/2NQPN2/PP3PPP/R3K2R w KQkq -":{"variation":"exchange-variation","moves":[{"uci":"e1g1"}]},
-"r3k2r/pp3ppp/2nqpn2/3p4/3P4/2NQPN2/PP3PPP/R4RK1 b kq -":{"variation":"exchange-variation","moves":[{"uci":"e8g8"}]}
+"r3k2r/pp3ppp/2nqpn2/3p4/3P4/2NQPN2/PP3PPP/R4RK1 b kq -":{"variation":"exchange-variation","moves":[{"uci":"e8g8","book":true}]}
 }}
