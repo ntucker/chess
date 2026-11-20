@@ -12,8 +12,11 @@ export { opposite } from 'chessops/util';
 /** One move in SAN, without annotation glyphs, as a regular expression source. */
 export const SAN = String.raw`(?:O-O-O|O-O|[KQRBN][a-h]?[1-8]?x?[a-h][1-8]|[a-h](?:x[a-h])?[1-8](?:=[QRBN])?)[+#]?`;
 
+/** A move's number as text writes it: `9.`, `9...`, `9. `. */
+export const MOVE_NUMBER = String.raw`\d+\s?\.(?:\.\.)?\s?`;
+
 /** A move as text writes it, numbered or not, with any glyph: `6...Nd7`, `...Nd7`, `Nd7?`. */
-export const WRITTEN_MOVE = String.raw`(?:\d+\s?\.(?:\.\.)?\s?|\.\.\.)?${SAN}[!?]*`;
+export const WRITTEN_MOVE = String.raw`(?:${MOVE_NUMBER}|\.\.\.)?${SAN}[!?]*`;
 
 /**
  * A move a variation name writes (`4.g4`, `...Bf5`, `5...Nh5`, `e5`), as a regular expression
