@@ -64,6 +64,8 @@ new project follow `.agents/projects/setup.md`.
 - Visible UI changes include screenshots of the web export, built and served locally as described
   in the "Web deploys" section of README.md. Add light and
   dark versions only when the change looks different between the two (colors, theme tokens, images).
+- PRs touching Android-only code (native modules or config, worklets like `src/maia/runNetwork.ts`,
+  `android` branches of `Platform.OS`) say "untested on Android".
 
 ## Follow-ups
 
@@ -109,8 +111,7 @@ Link the upstream PR from the chess PR, and say "merge <upstream PR> first" when
 
 ## Person's machine
 
-Work needing the person's PC (local tools, Android builds) or touching Android-only code: see
-`.agents/projects/person-machine.md`.
+Work needing the person's PC (local tools, Android builds): see `.agents/projects/person-machine.md`.
 
 ## Keeping this file current
 
