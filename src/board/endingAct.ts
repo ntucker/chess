@@ -99,61 +99,36 @@ export const ACT_TIMES: Readonly<Record<Mood, ActTimes>> = {
   drawn: { fall: 0, dim: 240, rise: 300, card: 380, cardOut: 2500, up: 2600 },
 };
 
-/** The square each side's king stands on in `fen`. */
-export function kingSquares(fen: string): Partial<Record<Color, Square>> {
-  const kings: Partial<Record<Color, Square>> = {};
-  fen
-    .split(' ')[0]
-    .split('/')
-    .forEach((row, fromTop) => {
-      let file = 0;
-      for (const char of row) {
-        if (char >= '1' && char <= '8') {
-          file += Number(char);
-          continue;
-        }
-        const square = `${'abcdefgh'[file]}${8 - fromTop}` as Square;
-        if (char === 'K') kings.white = square;
-        if (char === 'k') kings.black = square;
-        file += 1;
-      }
-    });
-  return kings;
-}
-
 /**
- * The ending of the game in `fen` as the board plays it for the learner, who
- * sits on `orientation`'s side. Example: after Scholar's mate with White at
+ * The ending as the board plays it for the learner, who sits on
+ * `orientation`'s side. Example: after Scholar's mate with White at
  * the bottom, the king on e1 is the winner and the one on e8 falls to the left.
  */
 export function endingAct(
-  { mood, winner }: Pick<Ending, 'mood' | 'winner'>,
-  fen: string,
+  { mood, winner, kings: squares }: Pick<Ending, 'mood' | 'winner' | 'kings'>,
   orientation: Color,
 ): EndingAct {
-  const squares = kingSquares(fen);
-  const king = (color: Color, part: KingPart): ActKing[] => {
+  const king = (color: Color, part: KingPart): ActKing => {
     const square = squares[color];
-    if (!square) return [];
     const at = squareOffset(square, orientation);
     // It tips toward the middle of the board, where there is room to see it.
-    return [{ square, part, at, lean: at[0] < 4 ? 1 : -1 }];
+    return { square, part, at, lean: at[0] < 4 ? 1 : -1 };
   };
   const kings = winner
-    ? [...king(winner, 'winner'), ...king(opposite(winner), 'fallen')]
-    : [...king('white', 'level'), ...king('black', 'level')];
-  const learner = kings.find(({ square }) => square === squares[orientation]);
-  const lit = mood !== 'drawn' && !!learner;
-  const won = mood === 'won' && !!learner;
+    ? [king(winner, 'winner'), king(opposite(winner), 'fallen')]
+    : [king('white', 'level'), king('black', 'level')];
+  const learnerKing = squareOffset(squares[orientation], orientation);
+  const won = mood === 'won';
   return {
     mood,
     kings,
-    ...(lit && { spot: learner.at }),
+    ...(mood !== 'drawn' && { spot: learnerKing }),
     sparks: won ? sparks() : [],
     confetti: won ? confetti() : [],
   };
 }
 
+// Its own, rather than replay.ts's, so the board's web view bundles none of the chess rules.
 const opposite = (color: Color): Color => (color === 'white' ? 'black' : 'white');
 
 /**
@@ -162,10 +137,8 @@ const opposite = (color: Color): Color => (color === 'white' ? 'black' : 'white'
  */
 export type CardBand = 'upper' | 'middle' | 'lower';
 
-export function cardBand(fen: string, orientation: Color): CardBand {
-  const rows = Object.values(kingSquares(fen)).map(
-    (square) => squareOffset(square, orientation)[1],
-  );
+export function cardBand(kings: Ending['kings'], orientation: Color): CardBand {
+  const rows = Object.values(kings).map((square) => squareOffset(square, orientation)[1]);
   const free = (from: number) => !rows.some((row) => row >= from && row < from + 2);
   if (free(3)) return 'middle';
   if (free(1)) return 'upper';

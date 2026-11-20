@@ -38,7 +38,7 @@ function ExampleCard({ example }: { readonly example: EndingExample }) {
   // clear from it, and play again when the last move is made once more.
   const [back, setBack] = useState(false);
   const position = lastPosition(back ? example.line.slice(0, -1) : example.line);
-  const ending = gameEnding(position.result, example.learner);
+  const ending = gameEnding(position, example.learner);
   return (
     <Stack gap="3" style={devStyles.card}>
       <Stack gap="1">
@@ -58,12 +58,7 @@ function ExampleCard({ example }: { readonly example: EndingExample }) {
           dom={{ style: devStyles.fill, scrollEnabled: false }}
         />
         {ending ? (
-          <EndingCard
-            ending={ending}
-            rival="Maia 1500"
-            fen={position.fen}
-            orientation={example.learner}
-          />
+          <EndingCard ending={ending} rival="Maia 1500" orientation={example.learner} />
         ) : null}
       </FramedBoard>
       <View style={styles.buttons}>

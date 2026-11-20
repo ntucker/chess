@@ -90,7 +90,7 @@ export function BoardColumn({ game, rival, board, onSwap, stepperMiddle }: Board
   const swap = onSwap && { label: `Play as ${colorName(other)}`, onPress: onSwap };
   const styles = useNarrowStyles(STYLES);
   // Only the game's last position has a result, so stepping back from it puts the ending away.
-  const ending = gameEnding(game.current.result, side);
+  const ending = gameEnding(game.current, side);
   return (
     <>
       <PlayerBar
@@ -106,9 +106,7 @@ export function BoardColumn({ game, rival, board, onSwap, stepperMiddle }: Board
         <EvaluationBar line={moves.slice(0, ply)} orientation={side} style={styles.evaluation} />
         <BoardFrame>
           <Board {...board} ending={ending} dom={{ style: styles.fill, scrollEnabled: false }} />
-          {ending ? (
-            <EndingCard ending={ending} rival={rival.name} fen={board.fen} orientation={side} />
-          ) : null}
+          {ending ? <EndingCard ending={ending} rival={rival.name} orientation={side} /> : null}
         </BoardFrame>
       </View>
       <PlayerBar

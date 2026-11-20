@@ -134,9 +134,13 @@ export default function Board({
   );
   const mood = ending?.mood;
   const winner = ending?.winner;
+  const kings = ending?.kings;
+  const [whiteKing, blackKing] = [kings?.white, kings?.black];
   const act = useMemo(
-    () => (mood ? endingAct({ mood, winner }, fen, orientation) : undefined),
-    [mood, winner, fen, orientation],
+    () => (mood && kings ? endingAct({ mood, winner, kings }, orientation) : undefined),
+    // The ending arrives as a new object with each render, so it is compared by what it says.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mood, winner, whiteKing, blackKing, orientation],
   );
 
   // Chessground reuses piece elements as pieces move, so the lit, faded and
@@ -396,7 +400,7 @@ function stageEnding(board: Api, act: EndingAct | undefined) {
   const { wrap, container, board: squares } = board.state.dom.elements;
   const pieces = squares.querySelectorAll<PieceNode>('piece');
   let layer = container.querySelector<HTMLElement>(ENDING_TAG);
-  const staged = act ? JSON.stringify([act.mood, act.kings]) : undefined;
+  const staged = act && actKey(act);
   if (layer?.dataset.act !== staged) {
     layer?.remove();
     layer = null;
@@ -413,7 +417,14 @@ function stageEnding(board: Api, act: EndingAct | undefined) {
       squares.after(layer);
     }
   }
-  if (!act) return;
+  if (act) markKings(pieces, act);
+}
+
+/** Which act is staged: the same act again, as after a redraw, has the same key. */
+const actKey = ({ mood, kings }: EndingAct) => JSON.stringify([mood, kings]);
+
+/** Marks the kings' elements with their parts, which chessground may have swapped since. */
+function markKings(pieces: Iterable<PieceNode>, act: EndingAct) {
   const kings = new Map(act.kings.map((king) => [king.square as Key, king]));
   for (const piece of pieces) {
     const king = piece.cgFading ? undefined : kings.get(piece.cgKey);
@@ -422,6 +433,9 @@ function stageEnding(board: Api, act: EndingAct | undefined) {
     if (king) piece.style.setProperty('--lean', String(king.lean));
   }
 }
+
+/** The middle of the board, in squares from its top-left corner. */
+const BOARD_CENTER = [3.5, 3.5] as const;
 
 const partClass = (part: (typeof PARTS)[number]) => `ending-${part}`;
 
@@ -435,10 +449,12 @@ function endingLayer({ spot, sparks, confetti }: EndingAct): HTMLElement {
       element.style.setProperty(`--${name}`, String(value));
     layer.appendChild(element);
   };
-  const [x, y] = spot ?? [3.5, 3.5];
+  // A draw lights no king, so its dimming centers on the board.
+  const [x, y] = spot ?? BOARD_CENTER;
   // The light's center, as a place on the board.
   add('veil', { 'spot-x': `${(x + 0.5) * 12.5}%`, 'spot-y': `${(y + 0.5) * 12.5}%` });
   if (sparks.length) {
+    // Two rings: Board.css sends the second out after the first, as its echo.
     add('ring', { x, y });
     add('ring', { x, y });
   }

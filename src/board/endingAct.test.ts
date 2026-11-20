@@ -1,28 +1,15 @@
 import { describe, expect, it } from '@jest/globals';
 
 import { gameEnding } from '@/board/ending';
-import { ACT_TIMES, cardBand, endingAct, kingSquares, MOVE_MS, TINTS } from '@/board/endingAct';
+import { ACT_TIMES, cardBand, endingAct, MOVE_MS, TINTS } from '@/board/endingAct';
 import { endingExamples } from '@/board/endingExamples';
 import { lastPosition } from '@/game/replay';
 
 /** The act the endings page shows for the example called `title`. */
 function exampleAct(title: string) {
   const example = endingExamples.find((each) => each.title === title)!;
-  const { fen, result } = lastPosition(example.line);
-  return endingAct(gameEnding(result, example.learner)!, fen, example.learner);
+  return endingAct(gameEnding(lastPosition(example.line), example.learner)!, example.learner);
 }
-
-describe('kingSquares', () => {
-  it('finds both kings', () => {
-    expect(
-      kingSquares('r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4'),
-    ).toEqual({
-      white: 'e1',
-      black: 'e8',
-    });
-    expect(kingSquares('8/8/8/8/8/5k2/8/7K w - - 0 1')).toEqual({ white: 'h1', black: 'f3' });
-  });
-});
 
 describe('endingAct', () => {
   it('lights the learner who wins and tips the mated king toward the middle', () => {
@@ -100,15 +87,13 @@ describe('ACT_TIMES', () => {
 
 describe('cardBand', () => {
   it('lies across the middle while the kings are elsewhere', () => {
-    expect(
-      cardBand('r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4', 'white'),
-    ).toBe('middle');
+    expect(cardBand({ white: 'e1', black: 'e8' }, 'white')).toBe('middle');
   });
 
   it('moves off a king in the middle', () => {
     // White's king on e4 is in the middle two ranks; nothing is on the two above.
-    expect(cardBand('7k/8/8/8/4K3/8/8/8 w - - 0 1', 'white')).toBe('upper');
-    // From Black's side h8 is at the bottom, and e5's king is in the middle; a king on c2 takes the upper ranks.
-    expect(cardBand('8/8/8/4K3/8/8/2k5/8 w - - 0 1', 'black')).toBe('lower');
+    expect(cardBand({ white: 'e4', black: 'h8' }, 'white')).toBe('upper');
+    // From Black's side, the king on e5 is in the middle two ranks and the one on c2 in the two above them.
+    expect(cardBand({ white: 'e5', black: 'c2' }, 'black')).toBe('lower');
   });
 });

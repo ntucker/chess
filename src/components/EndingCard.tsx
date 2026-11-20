@@ -1,28 +1,21 @@
 import { Text, useReducedMotion, useTheme } from '@reactive/silk-native';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, {
-  type CSSAnimationKeyframes,
-  type CSSAnimationTimingFunction,
-  cubicBezier,
-  linear,
-} from 'react-native-reanimated';
+import Animated, { type CSSAnimationKeyframes } from 'react-native-reanimated';
 
-import type { Ending, Mood } from '@/board/ending';
+import { type Ending, endingWords, type Mood } from '@/board/ending';
 import { ACT_TIMES, type CardBand, cardBand } from '@/board/endingAct';
 import type { Color } from '@/game/replay';
 import { springMotion } from '@/theme/motion';
+import { timingFunction } from '@/theme/timingFunction';
+import { rgba } from '@/theme/theme';
 
 interface Props {
   readonly ending: Ending;
   /** The other side's name, as its name bar shows it. */
   readonly rival: string;
-  /**
-   * The final position and the side at the bottom of the board, so the card
-   * keeps off the two kings; without them it lies across the middle.
-   */
-  readonly fen?: string;
-  readonly orientation?: Color;
+  /** The side at the bottom of the board, so the card keeps off the two kings. */
+  readonly orientation: Color;
 }
 
 /**
@@ -32,7 +25,7 @@ interface Props {
  * ACT_TIMES, and then leaves, so the final position can be studied. A win
  * springs open in the accent color; a loss comes down slowly and plainly.
  */
-export function EndingCard({ ending, rival, fen, orientation }: Props) {
+export function EndingCard({ ending, rival, orientation }: Props) {
   const { theme } = useTheme();
   const reducedMotion = useReducedMotion();
   // The board's width sets the type's size, so the banner fits a phone's board and fills a desktop's.
@@ -45,7 +38,7 @@ export function EndingCard({ ending, rival, fen, orientation }: Props) {
   const times = ACT_TIMES[mood];
   // Without motion the board shows its ending at once, so the card doesn't wait for it.
   const start = reducedMotion ? 0 : times.card;
-  const band = fen && orientation ? cardBand(fen, orientation) : 'middle';
+  const band = cardBand(ending.kings, orientation);
   const at = (step: Step | undefined) => step && play(step, start);
   const ornament = <Ornament color={look.rule} star={mood === 'won'} />;
   return (
@@ -151,19 +144,6 @@ function Ornament({ color, star }: { readonly color: string; readonly star: bool
   );
 }
 
-const DRAWS: Record<Exclude<Ending['reason'], 'checkmate'>, string> = {
-  stalemate: 'Stalemate',
-  'insufficient material': 'Not enough to mate',
-  'threefold repetition': 'Threefold repetition',
-  'fifty-move rule': 'Fifty-move rule',
-};
-
-/** What the card says. */
-export function endingWords({ mood, reason }: Ending, rival: string) {
-  if (reason !== 'checkmate') return { eyebrow: 'Draw', title: DRAWS[reason] };
-  return { eyebrow: 'Checkmate', title: mood === 'won' ? 'You win' : `${rival} wins` };
-}
-
 type Theme = ReturnType<typeof useTheme>['theme'];
 
 /**
@@ -178,24 +158,18 @@ function cardLook(mood: Mood, theme: Theme) {
   const { offsetY, blur, opacity } = shadow.overlay;
   const won = mood === 'won';
   return {
-    ground: alpha(won ? color.surfaceRaised : color.surfaceSunken, GROUND_ALPHA),
+    ground: rgba(won ? color.surfaceRaised : color.surfaceSunken, GROUND_ALPHA),
     shadow: `0px ${offsetY}px ${blur}px rgba(0, 0, 0, ${opacity})`,
     rule: won ? accent.solid : neutral.border,
     // Small type takes the accent's text color, which is lighter than its solid on velvet.
     eyebrow: won ? (dark ? accent.text : accent.solid) : color.textSecondary,
     title: won ? accent.solid : color.textPrimary,
-    gleam: alpha(dark ? color.textPrimary : accent.solid, dark ? 0.1 : 0.07),
+    gleam: rgba(dark ? color.textPrimary : accent.solid, dark ? 0.1 : 0.07),
   };
 }
 
 /** Lets a little of the board through, so the banner lies on it rather than cutting it in two. */
 const GROUND_ALPHA = 0.94;
-
-/** `hex` (#rrggbb) at `opacity`. */
-function alpha(hex: string, opacity: number) {
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${opacity})`;
-}
 
 /** A win's title is the largest, a loss's smaller and a draw's smaller still. */
 const TITLE_SCALE: Record<Mood, number> = { won: 1, lost: 0.8, drawn: 0.62 };
@@ -234,20 +208,6 @@ function play({ keyframes, delay, durationMs, easing }: Step, start: number) {
     // Held at its first frame until its turn, and at its last after.
     animationFillMode: 'both',
   } as const;
-}
-
-/**
- * A CSS easing as a Reanimated timing function. Reanimated takes the named
- * curves as strings, but `cubic-bezier(...)` and `linear(...)` only as its
- * own objects.
- */
-function timingFunction(easing: string): CSSAnimationTimingFunction {
-  const call = /^(cubic-bezier|linear)\((.*)\)$/.exec(easing);
-  if (!call) return easing as CSSAnimationTimingFunction;
-  const numbers = call[2].split(',').map(Number);
-  if (call[1] === 'linear') return linear(...numbers);
-  const [x1, y1, x2, y2] = numbers;
-  return cubicBezier(x1, y1, x2, y2);
 }
 
 const shown = { opacity: 1, transform: [{ translateY: 0 }] };

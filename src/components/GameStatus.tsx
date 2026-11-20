@@ -1,6 +1,7 @@
 import { Button, Inline, Stack, Text } from '@reactive/silk-native';
 import { View } from 'react-native';
 
+import { gameEnding } from '@/board/ending';
 import { Eyebrow } from '@/components/Eyebrow';
 import { type Destination, PlaceLink } from '@/components/PlaceLink';
 import { NEW_VERSION, NewVersionError, reload } from '@/files/newVersion';
@@ -161,16 +162,16 @@ function describeLatest({
   opponent,
   thinking,
 }: Omit<Game, 'viewing' | 'total'>) {
-  const { result } = latest;
+  const ending = gameEnding(latest, playerColor);
   const { name, style } = describeOpponent(opponent);
-  if (result?.winner === playerColor)
+  if (ending?.mood === 'won')
     return { title: 'Checkmate. Bravo!', detail: 'You won. Take a bow, then start a new game.' };
-  if (result?.winner)
+  if (ending?.mood === 'lost')
     return {
       title: 'Checkmate.',
       detail: `${name} won this one. Step back through it to see where it turned.`,
     };
-  if (result) return { title: 'A draw.', detail: `By ${result.reason}.` };
+  if (ending) return { title: 'A draw.', detail: `By ${ending.reason}.` };
   if (latest.turn === playerColor)
     return {
       title: 'Your move.',
