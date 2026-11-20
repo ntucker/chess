@@ -8,10 +8,10 @@ import type { HeaderProps } from '@/components/Header';
 import { Page } from '@/components/Page';
 import { PlayerBar } from '@/components/PlayerBar';
 import {
-  BOARD_COLUMN_WIDTH,
   BOARD_COLUMN_GAP,
   BOARD_COLUMN_LIMIT_CSS,
   BOARD_COLUMN_MAX,
+  BOARD_COLUMN_WIDTH,
   BOARD_OFFSET,
   boardColumnLimit,
   PLAYER_BAR_HEIGHT,

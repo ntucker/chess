@@ -20,7 +20,7 @@ describe('touch.css', () => {
 
 describe('touch lengths off the web', () => {
   it('are a finger wide', () => {
-    expect(touchTarget).toBe(TOUCH_TARGET);
+    expect(touchTarget).toBe(48);
   });
 
   it('pad what they hold out to a finger, or to the least asked for', () => {
