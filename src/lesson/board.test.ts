@@ -15,6 +15,7 @@ function board(sans: string[], pointer?: Pointer) {
   const view = sampleView(sans);
   const moves = uciLine(...sans);
   const shown = guidance({
+    picking: false,
     view,
     mode: 'explore',
     switches: SWITCHES,

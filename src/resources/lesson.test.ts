@@ -2,9 +2,9 @@ import { describe, expect, it } from '@jest/globals';
 
 import { checkLesson } from '@/lesson/check';
 import { readShippedLesson, shippedIds } from '@/lesson/lesson.fixture';
-import { indexEntry } from '@/lesson/openings';
+import { lessonIndex, meets } from '@/lesson/openings';
 
-import { LESSON_INDEX, LESSONS } from './lesson';
+import { LESSON_INDEX, type LessonId, LESSONS } from './lesson';
 
 describe('shipped lessons', () => {
   it('registers every file in assets/lessons', () => {
@@ -17,18 +17,22 @@ describe('shipped lessons', () => {
     expect(checkLesson(lesson)).toEqual([]);
   });
 
-  it.each(shippedIds)('%s is in the index as its file says', (id) => {
-    expect(LESSON_INDEX[id as keyof typeof LESSON_INDEX]).toEqual(
-      indexEntry(readShippedLesson(id)),
+  it('indexes every lesson as their files say', () => {
+    const ids = Object.keys(LESSON_INDEX);
+    expect(LESSON_INDEX).toEqual(lessonIndex(ids.map(readShippedLesson)));
+  });
+
+  it.each(shippedIds)('%s has a line from the start that picks it', (id) => {
+    expect(LESSON_INDEX[id as LessonId].lines.length).toBeGreaterThan(0);
+  });
+
+  it("starts no line with another lesson's, so a line picks one lesson", () => {
+    const lines = Object.entries(LESSON_INDEX).flatMap(([id, { side, lines }]) =>
+      lines.map(({ moves }) => ({ id, side, moves })),
     );
-  });
-
-  it('teaches one side, since the start position takes its side from the first lesson', () => {
-    expect(new Set(Object.values(LESSON_INDEX).map(({ side }) => side)).size).toBe(1);
-  });
-
-  it('gives each first move to one lesson, so the start position can pick it', () => {
-    const firstMoves = Object.values(LESSON_INDEX).flatMap((entry) => entry.firstMoves);
-    expect(new Set(firstMoves).size).toBe(firstMoves.length);
+    for (const a of lines)
+      for (const b of lines)
+        if (a !== b && a.side === b.side)
+          expect({ a, b, meets: meets(a.moves, b.moves) }).toMatchObject({ meets: false });
   });
 });

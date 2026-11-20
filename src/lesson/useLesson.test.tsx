@@ -5,7 +5,8 @@ import { createRoot, type Root } from 'test-renderer';
 import { gameReducer, startGame } from '@/game/game';
 import { DEFAULT_SETTINGS } from '@/settings/settings';
 
-import { keyAfter, SAMPLE, uciLine } from './lesson.fixture';
+import type { Lesson as LessonFile } from './lesson';
+import { keyAfter, readShippedLesson, SAMPLE, uciLine } from './lesson.fixture';
 import { HOLD_MS } from './peek';
 import { useLesson } from './useLesson';
 
@@ -43,11 +44,13 @@ const lesson = () => renders[renders.length - 1];
 function Lesson({
   start,
   pending = false,
+  of = SAMPLE,
 }: {
   readonly start: readonly string[];
   readonly pending?: boolean;
+  readonly of?: LessonFile;
 }) {
-  renders.push(useLesson(SAMPLE, useReducer(gameReducer, start, startGame), { pending }));
+  renders.push(useLesson(of, useReducer(gameReducer, start, startGame), { pending }));
   return null;
 }
 
@@ -92,6 +95,35 @@ afterEach(async () => {
 });
 
 describe('useLesson Practice run', () => {
+  it.each([
+    ['slav', ['d4', 'd5', 'c4']],
+    ['anti-london', ['d4', 'd5', 'Bf4']],
+    ['london', ['d4']],
+  ])("starts clean at %s's address, whose moves pick the opening", async (id, sans) => {
+    await act(async () => {
+      root = createRoot();
+      root.render(<Lesson start={uciLine(...sans)} of={readShippedLesson(id)} />);
+    });
+    await act(async () => lesson().chooseMode('practice'));
+    expect(clean()).toBe(true);
+  });
+
+  it('keeps the run clean when another opening is picked on the shared moves', async () => {
+    const slav = readShippedLesson('slav');
+    await act(async () => {
+      root = createRoot();
+      root.render(<Lesson start={uciLine('d4', 'd5', 'c4')} of={slav} />);
+    });
+    await act(async () => lesson().chooseMode('practice'));
+    await act(async () => lesson().board.onMove('c7', 'c6'));
+    expect(clean()).toBe(true);
+    // Back on 1.d4 d5, 2.Bf4 picks the Anti-London: a choice, not a take-back.
+    await act(async () => lesson().game.goto(2));
+    await act(async () => lesson().board.onMove('c1', 'f4'));
+    expect(lesson().game.moves).toEqual(uciLine('d4', 'd5', 'Bf4'));
+    expect(clean()).toBe(true);
+  });
+
   it("starts again when the learner's first move is played again", async () => {
     await practiceAfter('e4', 'c6', 'd4');
     expect(clean()).toBe(false);

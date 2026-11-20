@@ -3,15 +3,16 @@ import { act, Suspense, use, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
 import type { LessonId } from '@/resources/lesson';
+import { SettingsProvider, useSettings } from '@/settings/SettingsProvider';
 
 import { useOpeningsGame } from './useOpeningsGame';
 
-const mockRouter = { push: jest.fn(), replace: jest.fn(), dismissTo: jest.fn() };
+const mockRouter = { push: jest.fn(), replace: jest.fn() };
 jest.mock('expo-router', () => ({ useRouter: () => mockRouter }));
 
 let root: Root | undefined;
 /** What the hook answered on each committed render; the latest last. */
-const renders: ReturnType<typeof useOpeningsGame>[] = [];
+const renders: (ReturnType<typeof useOpeningsGame> & { readonly setting: string })[] = [];
 const latest = () => renders[renders.length - 1];
 
 /** A lesson that never finishes loading, like a slow lesson file. */
@@ -27,9 +28,10 @@ function Lesson({ moves }: { readonly moves: readonly string[] }) {
 
 function Page({ address }: { readonly address?: LessonId }) {
   const answer = useOpeningsGame(address);
+  const setting = useSettings().side;
   // On commit: a render that waits for a lesson never shows.
   useLayoutEffect(() => {
-    renders.push(answer);
+    renders.push({ ...answer, setting });
   });
   return (
     <Suspense fallback="placeholder">
@@ -41,7 +43,11 @@ function Page({ address }: { readonly address?: LessonId }) {
 const show = (address?: LessonId) =>
   act(() => {
     root ??= createRoot();
-    root.render(<Page address={address} />);
+    root.render(
+      <SettingsProvider>
+        <Page address={address} />
+      </SettingsProvider>,
+    );
   });
 const moves = () => latest().store[0].moves;
 const play = (...ucis: string[]) =>
@@ -63,7 +69,7 @@ describe('useOpeningsGame', () => {
     act(() => root?.unmount());
     root = undefined;
     await show('slav');
-    expect(moves()).toEqual(['d2d4']);
+    expect(moves()).toEqual(['d2d4', 'd7d5', 'c2c4']);
     expect(mockRouter.push).not.toHaveBeenCalled();
     expect(mockRouter.replace).not.toHaveBeenCalled();
   });
@@ -84,7 +90,7 @@ describe('useOpeningsGame', () => {
     await show('caro-kann');
     await play('c7c6');
     await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
-    await play('d2d4');
+    await play('d2d4', 'd7d5', 'c2c4');
     expect(mockRouter.replace).toHaveBeenCalledWith('/lesson/slav');
     expect(mockRouter.push).not.toHaveBeenCalled();
   });
@@ -98,7 +104,7 @@ describe('useOpeningsGame', () => {
     await show('caro-kann');
     expect(moves()).toEqual(['e2e4']);
     await show('slav');
-    expect(moves()).toEqual(['d2d4']);
+    expect(moves()).toEqual(['d2d4', 'd7d5', 'c2c4']);
     expect(mockRouter.push).toHaveBeenCalledTimes(1);
     expect(mockRouter.replace).not.toHaveBeenCalled();
   });
@@ -107,7 +113,7 @@ describe('useOpeningsGame', () => {
     await show('caro-kann');
     await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
     await play('g1f3');
-    expect(mockRouter.dismissTo).toHaveBeenCalledWith('/');
+    expect(mockRouter.replace).toHaveBeenCalledWith('/');
     // Arriving there keeps the game.
     await show();
     expect(moves()).toEqual(['g1f3']);
@@ -135,18 +141,79 @@ describe('useOpeningsGame', () => {
     await show('caro-kann');
     expect(latest().pending).toBe(true);
     // The page shows the start, but the game is 1.e4's. Applied to it, this
-    // step to the start and then d4 would replace e4 and pick the Slav.
+    // step to the start and then 1.d4 d5 2.c4 would replace e4 and pick the Slav.
     act(() => latest().store[1]({ type: 'goto', ply: 0 }));
-    await play('d2d4');
-    expect(mockRouter.dismissTo).not.toHaveBeenCalled();
+    await play('d2d4', 'd7d5', 'c2c4');
     expect(mockRouter.replace).not.toHaveBeenCalled();
     expect(latest().lesson).toBeUndefined();
     // Back to the start: the page shows the game again, and takes moves.
     await show(undefined);
     expect(latest().pending).toBe(false);
     slow.lessons = false;
-    await play('d2d4');
+    await play('d2d4', 'd7d5', 'c2c4');
     expect(mockRouter.push).toHaveBeenLastCalledWith('/lesson/slav');
+  });
+
+  it("plays a lesson's address from its side, and keeps that side at the start", async () => {
+    await show();
+    expect(latest().side).toBe('black');
+    await show('london');
+    expect(latest().side).toBe('white');
+    expect(moves()).toEqual(['d2d4']);
+    // The address saves its side, so a reload at the start agrees.
+    expect(latest().setting).toBe('white');
+    // A first move that picks no White lesson returns to a White start.
+    await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
+    await play('e2e4');
+    expect(mockRouter.replace).toHaveBeenCalledWith('/');
+    await show();
+    expect(latest().side).toBe('white');
+  });
+
+  it('starts again from the other side when the learner plays as it', async () => {
+    await show();
+    await play('d2d4', 'd7d5');
+    await act(() => latest().playAs('white'));
+    expect(latest().side).toBe('white');
+    expect(latest().setting).toBe('white');
+    expect(moves()).toEqual([]);
+    // Choosing the side already played keeps the game.
+    await play('d2d4');
+    await act(() => latest().playAs('white'));
+    expect(moves()).toEqual(['d2d4']);
+    expect(mockRouter.push).toHaveBeenLastCalledWith('/lesson/london');
+  });
+
+  it("shows the other side's start at once, from shared moves inside a lesson", async () => {
+    slow.lessons = true;
+    await show('slav');
+    await act(() => latest().store[1]({ type: 'goto', ply: 2 }));
+    const before = renders.length;
+    await act(() => latest().playAs('white'));
+    // No commit keeps the Slav's board, as a deferred copy would.
+    const shown = renders.slice(before);
+    expect(shown.length).toBeGreaterThan(0);
+    for (const { store, side, lesson } of shown) {
+      expect([store[0].moves, side, lesson]).toEqual([[], 'white', undefined]);
+    }
+    expect(latest().pending).toBe(false);
+  });
+
+  it('keeps the shown side and the saved one together through Forward and Back after a swap', async () => {
+    await show();
+    await play('e2e4', 'c7c6');
+    await show('caro-kann');
+    await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
+    await act(() => latest().playAs('white'));
+    // In the same history entry, as a new move would, so no Forward returns to the lesson left.
+    expect(mockRouter.replace).toHaveBeenLastCalledWith('/');
+    await show();
+    expect([latest().side, latest().setting]).toEqual(['white', 'white']);
+    // Forward to the Caro-Kann plays it as Black, and Back keeps Black.
+    await show('caro-kann');
+    expect([latest().side, latest().setting]).toEqual(['black', 'black']);
+    await show();
+    expect([latest().side, latest().setting]).toEqual(['black', 'black']);
   });
 
   it('shows a move within a lesson at once', async () => {

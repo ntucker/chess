@@ -21,8 +21,9 @@
  *   the opponent's turn it shows the opponent's candidates, and their
  *   previews, only with auto play off, since the learner has to pick one;
  *   with auto play the opponent just plays. Stockfish's moves stay hidden.
- *   At the start, where the first move picks the opening, nobody replies,
- *   so its candidates and previews show in every mode.
+ *   Where the moves pick the opening (`picking`: the start, and the moves
+ *   lessons share), nobody replies, so their candidates and previews show
+ *   in every mode.
  * - "Moves on the board" off keeps the candidates' arrows and Stockfish's
  *   best off the resting board, in either mode, so the next moves show only
  *   once the learner points at a row or drags a piece; the list still shows
@@ -72,6 +73,11 @@ export interface GuidanceInput {
   readonly view: LessonView;
   readonly mode: LessonMode;
   readonly switches: LessonSwitches;
+  /**
+   * The line is among the moves the lessons share, where its moves pick the
+   * opening (`isPicking` in ./openings.ts): the start, at least.
+   */
+  readonly picking: boolean;
   /** The move the learner's pointer previews (`preview` in ./view.ts). */
   readonly preview?: Preview;
   /**
@@ -153,6 +159,7 @@ export function guidance(input: GuidanceInput): Guidance {
     view,
     mode,
     switches,
+    picking,
     preview: pointerPreview,
     lifted: pointerLifted,
     pointed,
@@ -160,8 +167,8 @@ export function guidance(input: GuidanceInput): Guidance {
     engine,
   } = input;
   const explore = mode === 'explore';
-  // The start is a choice, not a quiz: its first moves pick the opening.
-  const choices = explore || view.ply === 0 || (!view.learnerToMove && !switches.auto);
+  // Where the moves pick the opening they are a choice, not a quiz.
+  const choices = explore || picking || (!view.learnerToMove && !switches.auto);
   const preview = choices ? pointerPreview : undefined;
   const lifted = choices ? pointerLifted : undefined;
   // In Practice a previewed reply leads to the learner's move, so its notes

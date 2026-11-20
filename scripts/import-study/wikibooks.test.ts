@@ -9,7 +9,7 @@ import { SAMPLE } from '@/lesson/lesson.fixture';
 import { extractChapter } from './extract';
 import { mergeChapters } from './merge';
 import { parseStudy } from './study';
-import { plainText, readPage, segmentSan, wikibooksPgn } from './wikibooks';
+import { plainText, readPage, rootSans, segmentSan, wikibooksPgn } from './wikibooks';
 
 const ROOT = 'Chess_Opening_Theory/1._d4/1...d5';
 
@@ -42,6 +42,15 @@ const PAGES: Record<string, string> = {
 };
 
 const fetchPage = async (title: string) => PAGES[title];
+
+describe('rootSans', () => {
+  it("reads a root page's line, and names a segment that isn't a move", () => {
+    expect(rootSans('Chess_Opening_Theory/1._d4/1...Nf6/2._Bf4')).toEqual(['d4', 'Nf6', 'Bf4']);
+    expect(() => rootSans('Chess_Opening_Theory/1._d4/Main')).toThrow(
+      'Chess_Opening_Theory/1._d4/Main: Main is not a move',
+    );
+  });
+});
 
 describe('segmentSan', () => {
   it('reads the move of a title or link segment', () => {
