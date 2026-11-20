@@ -56,6 +56,8 @@ const play = (...ucis: string[]) =>
 beforeAll(() => {
   // Load the routes at once, as the test's context holds them, not lazily.
   process.env.EXPO_ROUTER_IMPORT_MODE = 'sync';
+  // Navigation in transitions, as the root layout sets it.
+  router.setTransitionMode('always');
 });
 afterEach(() => {
   act(() => root?.unmount());

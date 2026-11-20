@@ -4,6 +4,7 @@ import { type Dispatch, use, useDeferredValue, useEffect, useReducer, useState }
 import { type GameAction, gameReducer, type GameState, startGame } from '@/game/game';
 import type { GameStore } from '@/game/useGame';
 import type { VariationId } from '@/lesson/lesson';
+import { AT_ONCE } from '@/components/navigation';
 import { lessonHref, type LessonIndex, lessonOf, sameLine, variationLine } from '@/lesson/openings';
 import { LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
@@ -161,9 +162,9 @@ export function useOpeningsGame(
   const sending = synced.sent.at(-1);
   useEffect(() => {
     if (sending?.how === 'drop') router.setParams({ variation: undefined });
-    else if (sending?.how === 'push') router.push(lessonHref(sending.address));
+    else if (sending?.how === 'push') router.push(lessonHref(sending.address), AT_ONCE);
     else if (sending)
-      router.replace(sending.address === undefined ? '/' : lessonHref(sending.address));
+      router.replace(sending.address === undefined ? '/' : lessonHref(sending.address), AT_ONCE);
   }, [sending, router]);
   // Only a change of lesson waits: within one, the page shows each move in
   // its first render (the deferred one that follows shows the same game), so
