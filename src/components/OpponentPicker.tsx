@@ -3,7 +3,7 @@ import { a11yState, Pressable, Separator, Surface, Text, useTheme } from '@react
 import { type ComponentRef, useEffect, useId, useRef, useState } from 'react';
 import { type KeyDownEvent, ScrollView, StyleSheet, View } from 'react-native';
 
-import { describeOpponent, type Opponent, OPPONENT_PRESETS } from '@/opponent/opponent';
+import { describeOpponent, type Opponent, OPPONENT_PRESETS, OPPONENTS } from '@/opponent/opponent';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
 import { narrowLength } from '@/theme/narrow';
 
@@ -134,8 +134,12 @@ export function OpponentPicker() {
   );
 }
 
-/** The steps to pick from, as the list shows them. */
-const STEPS = OPPONENT_PRESETS.map((opponent) => ({ opponent, ...describeOpponent(opponent) }));
+/**
+ * The steps to pick from, easiest first: the presets, and the current step
+ * if settings saved another, so it still shows as chosen.
+ */
+const stepsWith = (value: Opponent) =>
+  OPPONENTS.filter((opponent) => OPPONENT_PRESETS.includes(opponent) || opponent === value);
 
 interface ListProps {
   readonly id: string;
@@ -155,25 +159,26 @@ function OpponentList({ id, value, focusOnOpen, onChoose, onClose }: ListProps) 
   const [pointed, setPointed] = useState<Opponent>();
   const focused = useRef<Opponent>(undefined);
   const rows = useRef(new Map<Opponent, ComponentRef<typeof View>>());
+  const steps = stepsWith(value);
   const focusRow = (opponent: Opponent) => rows.current.get(opponent)?.focus();
 
   useEffect(() => {
-    if (focusOnOpen) focusRow(value);
+    if (focusOnOpen) rows.current.get(value)?.focus();
   }, [focusOnOpen, value]);
 
   const onKey = (event: KeyDownEvent) => {
     const { key } = event.nativeEvent;
-    const at = OPPONENT_PRESETS.indexOf(focused.current ?? value);
+    const at = steps.indexOf(focused.current ?? value);
     const step: Record<string, number> = {
-      ArrowDown: Math.min(at + 1, OPPONENT_PRESETS.length - 1),
+      ArrowDown: Math.min(at + 1, steps.length - 1),
       ArrowUp: Math.max(at - 1, 0),
       Home: 0,
-      End: OPPONENT_PRESETS.length - 1,
+      End: steps.length - 1,
     };
     if (Object.hasOwn(step, key)) {
       // Kept from the board's arrow keys (useStepKeys) too.
       event.preventDefault();
-      focusRow(OPPONENT_PRESETS[step[key]]);
+      focusRow(steps[step[key]]);
     } else if (key === ' ' && focused.current !== undefined) {
       // React Native Web presses on Enter alone, outside buttons.
       event.preventDefault();
@@ -198,8 +203,9 @@ function OpponentList({ id, value, focusOnOpen, onChoose, onClose }: ListProps) 
         onKeyDown={onKey}
         style={styles.rows}
       >
-        {STEPS.map(({ opponent, level, preset }) => {
+        {steps.map((opponent) => {
           const selected = opponent === value;
+          const { level, preset } = describeOpponent(opponent);
           return (
             <View key={opponent}>
               {opponent === 'stockfish' ? <Separator style={styles.rule} /> : null}

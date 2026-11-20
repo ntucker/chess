@@ -86,15 +86,18 @@ describe('OpponentPicker', () => {
     act(() => trigger().click());
     const elsewhere = document.createElement('div');
     document.body.append(elsewhere);
-    act(() => {
-      elsewhere.dispatchEvent(new Event('scroll'));
-    });
-    expect(list()).not.toBeNull();
-    act(() => {
-      document.dispatchEvent(new Event('scroll'));
-    });
-    expect(list()).toBeNull();
-    elsewhere.remove();
+    try {
+      act(() => {
+        elsewhere.dispatchEvent(new Event('scroll'));
+      });
+      expect(list()).not.toBeNull();
+      act(() => {
+        document.dispatchEvent(new Event('scroll'));
+      });
+      expect(list()).toBeNull();
+    } finally {
+      elsewhere.remove();
+    }
   });
 
   it('picks with Space, closes, and hands focus back', () => {
@@ -149,6 +152,36 @@ describe('OpponentPicker', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  it('shows a saved step outside the presets as chosen, in its place', () => {
+    const newValue = JSON.stringify({ opponent: 1300 });
+    localStorage.setItem('settings', newValue);
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: 'settings', newValue }));
+    });
+    act(() => trigger().focus());
+    press('ArrowDown');
+    expect(options().map((option) => option.getAttribute('aria-label'))).toEqual([
+      '1100, Beginner',
+      '1300',
+      '1500, Club',
+      '1900, Advanced',
+      'Stockfish, Best move',
+    ]);
+    expect(focusedLabel()).toBe('1300');
+    press('ArrowDown');
+    expect(focusedLabel()).toBe('1500, Club');
+  });
+
+  it('leaves an Escape another control took', () => {
+    act(() => trigger().click());
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    event.preventDefault();
+    act(() => {
+      document.body.dispatchEvent(event);
+    });
+    expect(list()).not.toBeNull();
   });
 
   it('opens on a press, and a press elsewhere closes it', () => {

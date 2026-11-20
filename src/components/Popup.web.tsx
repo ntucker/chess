@@ -2,8 +2,6 @@ import { type ComponentRef, useEffect, useLayoutEffect, useRef, useState } from 
 import { createPortal } from 'react-dom';
 import { type PointerEvent as ViewPointerEvent, View, type ViewStyle } from 'react-native';
 
-import { hovers } from '@/board/pointer';
-
 import type { PopupProps } from './Popup';
 import { type PopupPlace, placePopup } from './popupPlace';
 
@@ -46,9 +44,12 @@ export function Popup({ anchor, onDismiss, onHoverIn, onHoverOut, children }: Po
     // Scrolling that moves the anchor, so the popup would be left behind;
     // not a list elsewhere scrolling itself, like the scoresheet as a move lands.
     const onScroll = ({ target }: Event) => {
-      const from = element(anchor.current);
-      if (target === document || (target instanceof Node && target.contains(from))) onDismiss();
+      const anchorNode = element(anchor.current);
+      if (target === document || (target instanceof Node && target.contains(anchorNode))) {
+        onDismiss();
+      }
     };
+    // An Escape another control took (its default prevented) was that control's.
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.key !== 'Escape') return;
       event.preventDefault();
@@ -83,11 +84,16 @@ export function Popup({ anchor, onDismiss, onHoverIn, onHoverOut, children }: Po
   );
 }
 
-/** `handler`, called only for a pointer that hovers: a touch's pointer leaves as it lifts. */
+/**
+ * `handler`, called only for a pointer that hovers: a touch's pointer leaves
+ * as it lifts. React Native Web's rule, not the board's `hovers`, since its
+ * Pressable is the anchor: a pen that opens the popup by hovering the anchor
+ * must hold it open by hovering the popup.
+ */
 const mouseOnly =
   (handler: (() => void) | undefined) =>
   ({ nativeEvent }: ViewPointerEvent) => {
-    if (hovers(nativeEvent.pointerType)) handler?.();
+    if (nativeEvent.pointerType !== 'touch') handler?.();
   };
 
 /** React Native Web's View refs are the DOM elements themselves. */
