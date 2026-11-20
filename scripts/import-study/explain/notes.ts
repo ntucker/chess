@@ -6,6 +6,8 @@
  * whole note rather than leaving a claim in its words.
  */
 import { parseSan } from 'chessops/san';
+import type { Color } from 'chessops/types';
+import { opposite } from 'chessops/util';
 
 import { balance } from '@/game/material';
 import { parsePosition } from '@/game/replay';
@@ -37,11 +39,13 @@ const WIN =
 const NOT_NOW_BEFORE =
   /\b(?:white|black|white's|black's|can|could|will|would|must|may|later|next|threatens?|aims?|aiming|ready)\b|\b(?:it|to)\s*$/i;
 /**
- * Words after a win that do the same ("wins the pawn later", "wins it back
- * for White"). Not a bare colour, which there often names the opponent's
- * loss: "winning back the piece White just took".
+ * Words after a win that do the same, given the `opponent`'s colour: "wins
+ * the pawn later" (not "next to the king"), "wins it back for White" when
+ * White is the opponent. Not a bare colour, which there often names the
+ * opponent's loss: "winning back the piece White just took".
  */
-const NOT_NOW_AFTER = /\b(?:later|next|for (?:white|black))\b/i;
+const notNowAfter = (opponent: Color) =>
+  new RegExp(`\\b(?:later|next(?!\\s+to\\b)|for ${opponent})\\b`, 'i');
 
 /**
  * Whether `text` says the learner's move wins material now: "Your knight wins
@@ -49,11 +53,14 @@ const NOT_NOW_AFTER = /\b(?:later|next|for (?:white|black))\b/i;
  * opponent makes, one still to come, or one under an "if": the clause with
  * the "if" and the clause after it ("if White takes, your queen wins it back").
  */
-function claimsWin(text: string): boolean {
+function claimsWin(text: string, opponent: Color): boolean {
+  const after = notNowAfter(opponent);
   return text.split(/[.!?]/).some((sentence) => {
     const clauses = sentence.split(/[,;:]|\band\b/i);
     const conditional = clauses.map((clause) => /\bif\b/i.test(clause));
-    return clauses.some((clause, i) => !conditional[i] && !conditional[i - 1] && winsNow(clause));
+    return clauses.some(
+      (clause, i) => !conditional[i] && !conditional[i - 1] && winsNow(clause, after),
+    );
   });
 }
 
@@ -62,13 +69,13 @@ function claimsWin(text: string): boolean {
  * it and the clause's wins on either side makes it the opponent's or a later
  * one ("White can win a pawn but your knight wins it back" has one).
  */
-function winsNow(clause: string): boolean {
+function winsNow(clause: string, notNowAfter: RegExp): boolean {
   const wins = [...clause.matchAll(WIN)];
   return wins.some((win, i) => {
     const previous = wins[i - 1];
     const before = clause.slice(previous ? previous.index + previous[0].length : 0, win.index);
     const after = clause.slice(win.index + win[0].length, wins[i + 1]?.index);
-    return !NOT_NOW_BEFORE.test(before) && !NOT_NOW_AFTER.test(after);
+    return !NOT_NOW_BEFORE.test(before) && !notNowAfter.test(after);
   });
 }
 /** A note text saying the learner is ahead on material: "leaving you a pawn up", "your extra pawn". */
@@ -98,7 +105,7 @@ export function explainedNote(answer: Answer, move: Played): Explained {
   const { gain, lead } = material(move);
   // The reply's SAN stays out of why: the refusal is part of a retry's stored
   // key, and Stockfish's reply can differ between machines.
-  if (claimsWin(text) && gain <= 0)
+  if (claimsWin(text, opposite(parsePosition(move.fenBefore)!.turn)) && gain <= 0)
     return refuse(
       'it says you win material, but after the opponent’s best reply you are no more ahead than before',
     );
