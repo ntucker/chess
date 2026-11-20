@@ -16,8 +16,15 @@ const INDEX = {
     side: 'black',
     sources: [study('Kampf')],
     firstMoves: ['e2e4'],
+    lineEnds: {},
   },
-  slav: { title: 'Slav Defence', side: 'black', sources: [study('Matkun')], firstMoves: ['d2d4'] },
+  slav: {
+    title: 'Slav Defence',
+    side: 'black',
+    sources: [study('Matkun')],
+    firstMoves: ['d2d4'],
+    lineEnds: {},
+  },
 } as const;
 
 const startMoves = (lesson: typeof SAMPLE) =>
@@ -124,6 +131,14 @@ describe('indexEntry', () => {
       side: 'black',
       sources: SAMPLE.sources,
       firstMoves: ['e2e4'],
+      lineEnds: { e2e4: expect.any(Array) },
     });
+  });
+
+  it('lists the line ends a clean run reaches through each first move, as hashes', () => {
+    const ends = indexEntry(SAMPLE).lineEnds.e2e4;
+    expect(ends.length).toBeGreaterThan(0);
+    expect(new Set(ends).size).toBe(ends.length);
+    expect(ends).toEqual([...ends].sort());
   });
 });

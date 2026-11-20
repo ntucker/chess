@@ -9,7 +9,7 @@
  */
 import { useCache, useController, useFetch, useSuspense } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
-import { useDeferredValue, useEffect, useMemo, useReducer } from 'react';
+import { useEffect, useMemo, useReducer } from 'react';
 
 import type { Square } from '@/board/drawing';
 import type { Drag } from '@/board/pointer';
@@ -19,7 +19,7 @@ import { type GameStore, useGame } from '@/game/useGame';
 import { getEvaluation } from '@/resources/evaluation';
 import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
 import { hasMark, UNTOUCHED } from '@/progress/progress';
-import { getLessons, LESSON_INDEX, type LessonId } from '@/resources/lesson';
+import { LESSON_INDEX } from '@/resources/lesson';
 import { addMark, getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNeedsStockfish } from '@/stockfish/demand';
@@ -28,7 +28,7 @@ import { boardPress, lessonBoard } from './board';
 import { ideaPlayback } from './drawings';
 import { guidance, type LessonMode, notePlayback, type PlayedBack } from './guidance';
 import type { Lesson, Note, PositionKey, Uci } from './lesson';
-import { earnedMark, lessonsPassing, openingMarks, rowMarks, steering } from './marks';
+import { earnedMark, openingMarks, rowMarks, steering } from './marks';
 import { lessonOpponent } from './opponent';
 import { beforeSideMoves, moveKinds, opponentPlays } from './practice';
 import { initialScreen, screenReducer } from './screen';
@@ -144,30 +144,12 @@ export function useLesson(
       ctrl.fetch(addMark, { lesson: lesson.id, mark: earned, key }).catch(() => {});
     }
   }, [ctrl, earned, key, lesson.id, progress]);
-  // The start lists every opening, each row marked from its own lesson.
-  // Passing a row takes walking its lesson, so the lessons with a passed
-  // line load for it, away from the start too, so stepping back finds them
-  // loaded. Deferred, so the page never waits on them: until they load, the
-  // rows keep the lessons loaded before (none at first, so a row is at most
-  // seen). The lesson on screen walks as itself, whose walks are already
-  // kept. Their ids as one string, which the deferral can compare.
-  const passing = lessonsPassing(LESSON_INDEX, everyProgress).join(' ');
-  const walking = useDeferredValue(passing, '');
-  const openingLessons = useSuspense(
-    getLessons,
-    walking ? (walking.split(' ') as LessonId[]) : null,
-  );
+  // The start lists every opening, each row marked from its own lesson's
+  // progress and the line ends the index lists, so no lesson loads for it.
   const marks = useMemo(
     () =>
-      picking
-        ? openingMarks(
-            LESSON_INDEX,
-            everyProgress,
-            { ...openingLessons, [lesson.id]: lesson },
-            view,
-          )
-        : rowMarks(lesson, progress, view),
-    [picking, everyProgress, openingLessons, lesson, progress, view],
+      picking ? openingMarks(LESSON_INDEX, everyProgress, view) : rowMarks(lesson, progress, view),
+    [picking, everyProgress, lesson, progress, view],
   );
 
   // Like canMove: nothing previews while a lesson loads.

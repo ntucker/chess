@@ -3,8 +3,15 @@ import { describe, expect, it } from '@jest/globals';
 import { type MarkedPositions, positionHash } from '@/progress/progress';
 
 import type { Lesson, LessonMove, PositionKey } from './lesson';
-import { keyAfter, SAMPLE, uciLine, withMoves } from './lesson.fixture';
-import { earnedMark, lessonsPassing, openingMarks, rowMarks, steering } from './marks';
+import {
+  keyAfter,
+  readShippedLesson,
+  SAMPLE,
+  shippedIds,
+  uciLine,
+  withMoves,
+} from './lesson.fixture';
+import { earnedMark, openingMarks, rowMarks, steering } from './marks';
 import { indexEntry, openingsLesson } from './openings';
 import { lessonView } from './view';
 
@@ -175,11 +182,8 @@ describe('openingMarks', () => {
   };
   const index = { e4: indexEntry(LESSON), d4: indexEntry(D4) };
   const view = lessonView({ lesson: openingsLesson(index), line: [], ply: 0, opponent: 1500 });
-  const marksOf = (
-    lessonProgress: Record<string, MarkedPositions>,
-    lessons: Record<string, Lesson> = {},
-  ) => {
-    const marks = openingMarks(index, lessonProgress, lessons, view);
+  const marksOf = (lessonProgress: Record<string, MarkedPositions>) => {
+    const marks = openingMarks(index, lessonProgress, view);
     return Object.fromEntries(
       view.candidates.map(({ san, move: { uci } }) => [san, marks.get(uci)]),
     );
@@ -194,16 +198,14 @@ describe('openingMarks', () => {
     expect(marksOf({ d4: progress([at('d4')], []) })).toEqual({ e4: undefined, d4: 'seen' });
   });
 
-  it('passes a row by walking its lesson, so only while that lesson is at hand', () => {
-    const passed = {
-      e4: progress([at('e4')], [ENDS.d4, ENDS.d5]),
-      d4: progress([], [at('d4', 'd5')]),
-    };
-    expect(marksOf(passed)).toEqual({ e4: 'seen', d4: undefined });
-    expect(marksOf(passed, { e4: LESSON, d4: D4 })).toEqual({ e4: 'passed', d4: 'passed' });
+  it('passes a row once every line end the index lists for it is passed', () => {
+    expect(marksOf({ e4: progress([at('e4')], [ENDS.d4]) })).toEqual({ e4: 'seen', d4: undefined });
+    expect(
+      marksOf({ e4: progress([at('e4')], [ENDS.d4, ENDS.d5]), d4: progress([], [at('d4', 'd5')]) }),
+    ).toEqual({ e4: 'passed', d4: 'passed' });
   });
 
-  it("takes a row's book flag from its own lesson, for a lesson whose learner moves first", () => {
+  it('never passes a learner first move a clean run would not play', () => {
     const white: Lesson = {
       ...LESSON,
       id: 'white',
@@ -226,21 +228,35 @@ describe('openingMarks', () => {
     const marks = openingMarks(
       whiteIndex,
       { white: progress([], [at('e4', 'e5'), at('d4')]) },
-      { white },
       start,
     );
     // 1.d4 isn't a book move, so a clean run never plays it.
     expect([...marks]).toEqual([[uciLine('e4')[0], 'passed']]);
   });
 
-  it('loads only the lessons with a passed line end, the only rows that can pass', () => {
-    expect(
-      lessonsPassing(index, { e4: progress([at('e4')], []), d4: progress([], [at('d4', 'd5')]) }),
-    ).toEqual(['d4']);
+  it('marks nothing for a lesson never played', () => {
+    expect(marksOf({})).toEqual({ e4: undefined, d4: undefined });
   });
 
-  it('marks nothing for a lesson never played', () => {
-    expect(marksOf({}, { e4: LESSON, d4: D4 })).toEqual({ e4: undefined, d4: undefined });
+  it.each(shippedIds)("agrees with walking %s's own start, however much is passed", (id) => {
+    const lesson = readShippedLesson(id);
+    const start = lessonView({ lesson, line: [], ply: 0, opponent: 1500 });
+    const own = { [id]: indexEntry(lesson) };
+    const ends = Object.values(own[id].lineEnds).flat();
+    // Every other end, all but one, all, and all plus one that isn't an end.
+    const passedLists = [
+      [],
+      ends.filter((_, i) => i % 2 === 0),
+      ends.slice(1),
+      ends,
+      [...ends, positionHash(START)],
+    ];
+    for (const passed of passedLists) {
+      const lessonProgress = { seen: [], passed };
+      expect(openingMarks(own, { [id]: lessonProgress }, start)).toEqual(
+        rowMarks(lesson, lessonProgress, start),
+      );
+    }
   });
 });
 

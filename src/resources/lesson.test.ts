@@ -1,15 +1,12 @@
 import { describe, expect, it } from '@jest/globals';
-import { readdirSync } from 'node:fs';
 
 import { checkLesson } from '@/lesson/check';
-import { LESSON_FOLDER, readShippedLesson, SAMPLE } from '@/lesson/lesson.fixture';
+import { readShippedLesson, shippedIds } from '@/lesson/lesson.fixture';
 import { indexEntry } from '@/lesson/openings';
 
-import { getLessons, LESSON_INDEX, LESSONS } from './lesson';
+import { LESSON_INDEX, LESSONS } from './lesson';
 
-const ids = readdirSync(LESSON_FOLDER)
-  .filter((file) => file.endsWith('.json') && file !== 'index.json')
-  .map((file) => file.replace(/\.json$/, ''));
+const ids = shippedIds;
 
 describe('shipped lessons', () => {
   it('registers every file in assets/lessons', () => {
@@ -35,21 +32,5 @@ describe('shipped lessons', () => {
   it('gives each first move to one lesson, so the start position can pick it', () => {
     const firstMoves = Object.values(LESSON_INDEX).flatMap((entry) => entry.firstMoves);
     expect(new Set(firstMoves).size).toBe(firstMoves.length);
-  });
-});
-
-describe('getLessons', () => {
-  it('leaves out a lesson that fails to load, so the rest still mark their rows', async () => {
-    // Jest can't run the real dynamic imports, so both loaders are stand-ins.
-    const original = { ...LESSONS };
-    Object.assign(LESSONS, {
-      'caro-kann': async () => ({ default: SAMPLE }),
-      slav: () => Promise.reject(new Error('chunk gone')),
-    });
-    try {
-      expect(await getLessons(['caro-kann', 'slav'])).toEqual({ 'caro-kann': SAMPLE });
-    } finally {
-      Object.assign(LESSONS, original);
-    }
   });
 });

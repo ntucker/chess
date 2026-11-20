@@ -7,10 +7,6 @@
  * row can't be passed. The same walk steers a clean Practice run's opponent
  * to the lines still to pass (`steering`).
  */
-import type { Chess } from 'chessops/chess';
-import { parseUci } from 'chessops/util';
-
-import { positionKey, readPositionKey } from '@/game/replay';
 import {
   type Mark,
   type MarkedPositions,
@@ -19,11 +15,12 @@ import {
   UNTOUCHED,
 } from '@/progress/progress';
 
-import type { Lesson, LessonMove, PositionKey, Uci } from './lesson';
-import { type LessonIndex, lessonOf, START_KEY } from './openings';
+import { inCleanRun, walkClean } from './cleanRun';
+import type { Lesson, PositionKey, Uci } from './lesson';
+import { type LessonIndex, lessonOf } from './openings';
 import type { ReplyChoice } from './opponent';
 import type { ModeState } from './practice';
-import { type Candidate, guideMove, guidePosition } from './select';
+import type { Candidate } from './select';
 import type { LessonView } from './view';
 
 /**
@@ -41,73 +38,52 @@ export function rowMarks(
   progress: MarkedPositions,
   view: Pick<LessonView, 'candidates' | 'learnerToMove'>,
 ): ReadonlyMap<Uci, Mark> {
-  const sets = markSets(progress, lesson);
-  return marksBy(view, ({ move }) => ({ lesson, sets, move }));
+  const { seen, passed } = markSets(progress, lesson);
+  return marksBy(view, ({ move, next }) =>
+    inCleanRun(move, view.learnerToMove) && cleanEnds(lesson, passed, next) === 'passed'
+      ? 'passed'
+      : seenMark(seen, next),
+  );
 }
 
 /**
  * The start position's rows' marks (src/lesson/openings.ts), by move: each
- * row's from its own opening's lesson and `progress`, whichever lesson is
- * loaded. A row's lesson missing from `lessons` can't be walked, so the row
- * is at most seen; only a lesson with a passed line end can pass its row
- * (`lessonsPassing`). Whether a row is a book move is its lesson's to say:
- * the start's own list carries no book flags.
+ * row's from its own opening's progress and the line ends the index lists
+ * for its move, whichever lesson is loaded. Passed outranks seen, as in
+ * `rowMarks`, and the two agree (src/lesson/marks.test.ts holds them to it).
  */
 export function openingMarks(
   index: LessonIndex,
   progress: SavedProgress,
-  lessons: Readonly<Partial<Record<string, Lesson>>>,
-  view: Pick<LessonView, 'candidates' | 'learnerToMove'>,
+  view: Pick<LessonView, 'candidates'>,
 ): ReadonlyMap<Uci, Mark> {
-  return marksBy(view, ({ move }) => {
-    const id = lessonOf(index, [move.uci]);
+  return marksBy(view, ({ move: { uci }, next }) => {
+    const id = lessonOf(index, [uci]);
     if (id === undefined) return undefined;
-    const lesson = lessons[id];
-    const own = lesson && guideMove(lesson, START_KEY, move.uci);
-    return { lesson, sets: markSets(progress[id] ?? UNTOUCHED, lesson), move: own ?? move };
+    const own = progress[id] ?? UNTOUCHED;
+    const ends = index[id].lineEnds[uci] ?? [];
+    const passed = hashSet(own.passed);
+    return ends.length > 0 && ends.every((hash) => passed.has(hash))
+      ? 'passed'
+      : seenMark(hashSet(own.seen), next);
   });
 }
 
-/** The lessons with a passed line end in `progress`: the only ones whose start row can pass. */
-export const lessonsPassing = <Id extends string>(
-  index: LessonIndex<Id>,
-  progress: SavedProgress,
-) => (Object.keys(index) as Id[]).filter((id) => progress[id]?.passed.length);
-
-/** Each row's mark, from what `source` gives for it (`RowSource`); a row it skips has none. */
+/** Each row's mark, as `mark` works it out; a row it gives none is absent. */
 function marksBy(
-  { candidates, learnerToMove }: Pick<LessonView, 'candidates' | 'learnerToMove'>,
-  source: (candidate: Candidate) => RowSource | undefined,
+  { candidates }: Pick<LessonView, 'candidates'>,
+  mark: (candidate: Candidate) => Mark | undefined,
 ): ReadonlyMap<Uci, Mark> {
   const marks = new Map<Uci, Mark>();
   for (const candidate of candidates) {
-    const found = source(candidate);
-    const mark = found && rowMark(found, candidate.next, learnerToMove);
-    if (mark) marks.set(candidate.move.uci, mark);
+    const found = mark(candidate);
+    if (found) marks.set(candidate.move.uci, found);
   }
   return marks;
 }
 
-/** What a row's mark is worked out from. */
-interface RowSource {
-  /** The row's lesson, to walk for passed; absent while it isn't loaded. */
-  readonly lesson: Lesson | undefined;
-  readonly sets: MarkSets;
-  /** The row's move as its lesson has it, book flag and all. */
-  readonly move: LessonMove;
-}
-
-/** One row's mark, walking its lesson for passed only when it is at hand. */
-function rowMark(
-  { lesson, sets: { seen, passed }, move }: RowSource,
-  next: PositionKey,
-  learnerToMove: boolean,
-): Mark | undefined {
-  if (lesson && inCleanRun(move, learnerToMove) && cleanEnds(lesson, passed, next) === 'passed') {
-    return 'passed';
-  }
-  return seen.has(positionHash(next)) ? 'seen' : undefined;
-}
+const seenMark = (seen: ReadonlySet<string>, next: PositionKey) =>
+  seen.has(positionHash(next)) ? 'seen' : undefined;
 
 /**
  * How the opponent picks its reply during a clean Practice run (undefined
@@ -132,18 +108,21 @@ type MarkSets = Readonly<Record<Mark, ReadonlySet<string>>>;
 
 /**
  * `progress`'s marks as sets, since steering asks on every render: seen is
- * built once per progress, and passed comes from `passedSet`, which reuses
- * the lesson's set while its passed list is unchanged. Without the lesson
- * nothing walks, so its passed set is never read.
+ * built once per list, and passed comes from `passedSet`, which reuses the
+ * lesson's set while its passed list is unchanged.
  */
-function markSets(progress: MarkedPositions, lesson: Lesson | undefined): MarkSets {
-  let seen = seenSets.get(progress);
-  if (!seen) seenSets.set(progress, (seen = new Set(progress.seen)));
-  return { seen, passed: lesson ? passedSet(lesson, progress.passed) : NONE_PASSED };
-}
+const markSets = (progress: MarkedPositions, lesson: Lesson): MarkSets => ({
+  seen: hashSet(progress.seen),
+  passed: passedSet(lesson, progress.passed),
+});
 
-const seenSets = new WeakMap<MarkedPositions, ReadonlySet<string>>();
-const NONE_PASSED: ReadonlySet<string> = new Set();
+/** A saved list of hashes as a set, built once per list: saved lists never change. */
+function hashSet(list: readonly string[]): ReadonlySet<string> {
+  let set = hashSets.get(list);
+  if (!set) hashSets.set(list, (set = new Set(list)));
+  return set;
+}
+const hashSets = new WeakMap<readonly string[], ReadonlySet<string>>();
 
 /**
  * `lesson`'s passed marks as a set, the same set as last time while they are
@@ -167,9 +146,6 @@ function passedSet(lesson: Lesson, list: readonly string[]) {
 const sameHashes = (a: readonly string[], b: readonly string[]) =>
   a.length === b.length && a.every((hash, i) => b[i] === hash);
 
-/** Any opponent's move can be part of a clean run; of the learner's, only book moves. */
-const inCleanRun = (move: LessonMove, learner: boolean) => !learner || move.book === true;
-
 /**
  * Where the clean runs from `start` stand, given the line ends `passed` (as
  * `positionHash`es): no line end reachable (`none`), all of them passed
@@ -192,54 +168,13 @@ type Ends = 'none' | 'open' | 'passed';
 /** `cleanEnds` answers, by lesson and by the passed marks they were worked out with. */
 const endsFound = new WeakMap<Lesson, WeakMap<ReadonlySet<string>, Map<PositionKey, Ends>>>();
 
-/** `cleanEnds`, worked out. */
+/** `cleanEnds`, worked out: the walk stops at the first open end. */
 function walkCleanEnds(lesson: Lesson, passed: ReadonlySet<string>, start: PositionKey): Ends {
-  const visited = new Set<PositionKey>();
-  const toVisit: WalkStep[] = [[start, undefined]];
-  let status: 'none' | 'passed' = 'none';
-  for (let step = toVisit.pop(); step !== undefined; step = toVisit.pop()) {
-    const [key, pos] = step;
-    if (visited.has(key)) continue;
-    visited.add(key);
-    // Reached by a guide move, a position the guide has no moves at ends a line.
-    if (guidePosition(lesson, key).place === 'inside') toVisit.push(...cleanNext(lesson, key, pos));
-    else if (passed.has(positionHash(key))) status = 'passed';
-    else return 'open';
-  }
-  return status;
-}
-
-/** A position's key, with the position itself while a walk has it at hand. */
-type WalkStep = readonly [PositionKey, Chess | undefined];
-
-/** Each lesson's `cleanNext` answers: a lesson never changes, and replaying moves is slow. */
-const nextKeys = new WeakMap<Lesson, Map<PositionKey, readonly PositionKey[]>>();
-
-/**
- * The positions the guide's moves at `key` lead to, leaving out the learner's
- * non-book moves. The position `pos`, when the walk has it, saves reading the
- * key, which costs more than playing the moves. A step carries its position
- * only when its move was just played; one from the cache carries none.
- */
-function cleanNext(lesson: Lesson, key: PositionKey, pos: Chess | undefined): readonly WalkStep[] {
-  let byKey = nextKeys.get(lesson);
-  if (!byKey) nextKeys.set(lesson, (byKey = new Map()));
-  const known = byKey.get(key);
-  if (known) return known.map((next) => [next, undefined]);
-  // A shipped lesson's keys and moves are checked (check.ts), so this skips
-  // playMove's checks and move names.
-  const from = pos ?? readPositionKey(key)!;
-  const learner = from.turn === lesson.side;
-  const steps = lesson.positions[key].moves
-    .filter((move) => inCleanRun(move, learner))
-    .map(({ uci }): WalkStep => {
-      const after = from.clone();
-      after.play(parseUci(uci)!);
-      return [positionKey(after), after];
-    });
-  byKey.set(
-    key,
-    steps.map(([next]) => next),
-  );
-  return steps;
+  let any = false;
+  const allPassed = walkClean(lesson, start, (key) => {
+    any = true;
+    return passed.has(positionHash(key));
+  });
+  if (!allPassed) return 'open';
+  return any ? 'passed' : 'none';
 }
