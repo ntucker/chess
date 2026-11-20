@@ -215,7 +215,7 @@ export function useLesson(
     dispatch({ type: 'candidate', key, candidate });
     // A drag that ends without a move lets the piece go. Chessground does too,
     // except after a drop on another square the piece can't move to, where it
-    // keeps the piece selected (a known gap: this copies its selection).
+    // keeps the piece selected and this lets it go (a known gap).
     if (!drag) dispatch({ type: 'select', key });
   };
   const playMove = (uci: string) => {
