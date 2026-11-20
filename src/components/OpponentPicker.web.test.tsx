@@ -124,6 +124,11 @@ describe('OpponentPicker', () => {
     act(() => {
       trigger().dispatchEvent(new MouseEvent(type));
     });
+  /** A mouse moving over a row of the list (rows light on a move, not an enter). */
+  const pointAt = (row: HTMLElement) =>
+    act(() => {
+      row.dispatchEvent(new MouseEvent('pointermove', { bubbles: true }));
+    });
 
   it('opens while pointed at, and closes a moment after the pointer leaves', () => {
     jest.useFakeTimers();
@@ -145,25 +150,24 @@ describe('OpponentPicker', () => {
     act(() => trigger().focus());
     press('ArrowDown');
     expect(focusedLabel()).toBe('1500, Club');
-    // Pointing at a row lights it, and the keys carry on from there.
+    // A row scrolling under a still mouse (an enter, no move) leaves focus be.
     act(() => {
       options()[2].dispatchEvent(new MouseEvent('mouseenter'));
     });
+    expect(focusedLabel()).toBe('1500, Club');
+    // Pointing at a row lights it, and the keys carry on from there.
+    pointAt(options()[2]);
     expect(focusedLabel()).toBe('1900, Advanced');
     press('ArrowUp');
     expect(focusedLabel()).toBe('1500, Club');
-    act(() => {
-      options()[0].dispatchEvent(new MouseEvent('mouseenter'));
-    });
+    pointAt(options()[0]);
     press(' ');
     expect(trigger().textContent).toBe('1100');
   });
 
   it('leaves focus alone when pointing at a row of a list opened by pointing', () => {
     point('mouseenter');
-    act(() => {
-      options()[2].dispatchEvent(new MouseEvent('mouseenter'));
-    });
+    pointAt(options()[2]);
     expect(document.activeElement).toBe(document.body);
   });
 
