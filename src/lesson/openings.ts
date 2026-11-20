@@ -44,6 +44,7 @@ export type LessonIndex<Id extends string = string> = Readonly<Record<Id, IndexE
 export function indexEntry(lesson: Lesson): IndexEntry {
   const { title, side, sources, positions } = lesson;
   const moves = positions[START_KEY]?.moves ?? [];
+  // White moves first, so only a White lesson's first moves are the learner's.
   const learner = side === 'white';
   const lineEnds = Object.fromEntries(
     moves.map((move) => [
