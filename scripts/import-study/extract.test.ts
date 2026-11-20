@@ -98,6 +98,32 @@ describe('extractChapter', () => {
     ]);
   });
 
+  it("leaves out a sequence from the start that names another opening's first move", () => {
+    const [chapter] = parseStudy(
+      '1. e4 c6 2. d4 d5 3. c4 { This transposes to the Slav, seen after 1.d4 d5 2.c4 c6 3.e4. } *',
+      () => true,
+    );
+    expect(extractChapter(chapter, 'black').branches).toEqual([]);
+  });
+
+  it("leaves out a sequence from the start that leaves the chapter at the learner's move", () => {
+    const [chapter] = parseStudy(
+      '1. e4 c6 2. d4 d5 3. e5 { Unlike the Open Game, 1.e4 e5 2.Nf3 Nc6, Black keeps a solid centre. } *',
+      () => true,
+    );
+    expect(extractChapter(chapter, 'black').branches).toEqual([]);
+  });
+
+  it('keeps a sequence from the start that leaves the chapter at a later opponent move', () => {
+    const [chapter] = parseStudy(
+      '1. e4 c6 2. d4 d5 3. Nc3 { The same as 1.e4 c6 2.Nc3 d5 3.d4. } *',
+      () => true,
+    );
+    expect(
+      extractChapter(chapter, 'black').branches.map(({ spot, ucis }) => [spot.move?.san, ucis]),
+    ).toEqual([[undefined, ['e2e4', 'c7c6', 'b1c3', 'd7d5', 'd2d4']]]);
+  });
+
   it('refuses a watch-out trap that loses nothing', () => {
     expect(rejected).toEqual([
       expect.objectContaining({ why: 'black does not lose material: balance goes 0 to 0' }),

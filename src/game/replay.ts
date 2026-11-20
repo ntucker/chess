@@ -14,6 +14,12 @@ export const SAN = String.raw`(?:O-O-O|O-O|[KQRBN][a-h]?[1-8]?x?[a-h][1-8]|[a-h]
 /** A move as text writes it, numbered or not, with any glyph: `6...Nd7`, `...Nd7`, `Nd7?`. */
 export const WRITTEN_MOVE = String.raw`(?:\d+\s?\.(?:\.\.)?\s?|\.\.\.)?${SAN}[!?]*`;
 
+/**
+ * A move a variation name writes (`4.g4`, `...Bf5`, `5...Nh5`, `e5`), as a regular expression
+ * source. Its groups: the number, `..` for a numbered Black move, `...` for an unnumbered one, and the SAN.
+ */
+export const NAMED_MOVE = String.raw`(?<![\w.])(?:(\d+)\s?\.(\.\.)?\s?|(\.\.\.))?(${SAN})`;
+
 export const colorName = (color: Color) => (color === 'white' ? 'White' : 'Black');
 
 /** `sans` numbered, the first played at `firstPly` (1 is White's first move): `1.e4 c6 2.d4`, or `2...d5 3.e5`. */

@@ -2,11 +2,11 @@ import { describe, expect, it } from '@jest/globals';
 
 import { cleanLineEnds } from './cleanRun';
 import type { Lesson, LessonMove, PositionKey } from './lesson';
-import { keyAfter, SAMPLE, uciLine } from './lesson.fixture';
+import { keyAfter, SAMPLE, uci } from './lesson.fixture';
 
 /** A move after `sans`, with its lichess game counts in two rating bands. */
 const move = (sans: string[], san: string, games?: number[], book = false): LessonMove => ({
-  uci: uciLine(...sans, san).at(-1)!,
+  uci: uci(...sans, san),
   ...(book && { book: true }),
   ...(games && { games }),
 });

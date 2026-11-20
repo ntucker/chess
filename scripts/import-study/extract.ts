@@ -14,7 +14,7 @@ import { checkIdea } from '@/lesson/check';
 import type { Evaluation, Idea, Note, Uci } from '@/lesson/lesson';
 
 import { choiceGuide, type Choice } from './choices';
-import { placeSequence, type Found, type Spot } from './line';
+import { lineTo, placeSequence, type Found, type Spot } from './line';
 import { planLists } from './plans';
 import { chapterMoves, type Chapter, type StudyMove } from './study';
 import { direction, namedMoves, shorten, textVerdicts } from './text';
@@ -105,7 +105,7 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
     ];
     branches.push(
       ...traps.map(({ spot, idea }) => ({ spot, ucis: idea.moves })),
-      ...sequences(move),
+      ...sequences(move, learner),
     );
     choices.push(...choiceGuide(move, learner));
 
@@ -149,11 +149,25 @@ function plans(
 }
 
 /** Sequences of two or more moves that `move`'s comment writes out, placed in the tree. */
-function sequences(move: StudyMove) {
+function sequences(move: StudyMove, learner: Color) {
   return (move.comment.match(SEQUENCE) ?? []).flatMap((run) => {
     const placed = placeSequence(move, namedMoves(run));
-    return placed && placed.ucis.length > 1 ? [placed] : [];
+    if (!placed || placed.ucis.length < 2) return [];
+    return !placed.spot.move && namesOtherOpening(placed.ucis, move, learner) ? [] : [placed];
   });
+}
+
+/**
+ * Whether `ucis`, from the chapter's start, leaves the line to `move` at its
+ * first move or at a move of the learner's: then it names another opening
+ * ("the Open Game, 1.e4 e5" in a Caro-Kann chapter), not a line of this one,
+ * while leaving at an opponent's later move is another move order ("1.e4 c6
+ * 2.Nc3 d5 3.d4").
+ */
+function namesOtherOpening(ucis: readonly Uci[], move: StudyMove, learner: Color): boolean {
+  const line = lineTo(move);
+  const left = ucis.findIndex((uci, ply) => ply < line.length && uci !== line[ply].uci);
+  return left === 0 || (left > 0 && line[left].before.turn === learner);
 }
 
 /** The note of an idea that lands away from its comment, with the study's words in `original`. */

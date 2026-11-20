@@ -65,6 +65,32 @@ describe('mergeChapters', () => {
     expect(named.positions[keyAfter('e4', 'c6', 'Nc3', 'd5', 'd4')].variation).toBe('test');
   });
 
+  it('nests a chapter name with more colons inside each group before it', () => {
+    const named = mergeChapters(
+      lesson,
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'black')),
+      (title) => (title.includes('Advance') ? 'Advance: Short: Main Line' : 'Advance: Short'),
+    );
+    expect(named.variations).toEqual({
+      test: { name: 'Caro-Kann' },
+      advance: { name: 'Advance', parent: 'test' },
+      'advance-short': { name: 'Advance: Short', parent: 'advance' },
+      'advance-short-main-line': { name: 'Advance: Main Line', parent: 'advance-short' },
+    });
+  });
+
+  it("names a nested chapter's side line from the opening's position after its top group", () => {
+    const named = mergeChapters(
+      lesson,
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'black')),
+      (title) =>
+        title.includes('Advance') ? 'Advance: Short: Main Line' : 'Classical: Capablanca',
+    );
+    expect(named.positions[keyAfter('e4', 'c6', 'Nc3')].variation).toBe('advance');
+  });
+
   it("names a shared position after the opening, and one chapter's after that chapter", () => {
     expect(at('e4', 'c6', 'd4', 'd5').variation).toBe('test');
     expect(at('e4', 'c6', 'd4', 'd5', 'e5').variation).toBe('advance-variation-short-variation');
@@ -165,6 +191,169 @@ describe('mergeChapters with several sources', () => {
       lesson.positions[keyAfter(...sans)].moves.filter((move) => move.book).map(({ uci }) => uci);
     expect(booked('d4')).toEqual(['d7d5']);
     expect(booked('d4', 'd5', 'c4')).toEqual(['c7c6']);
+  });
+
+  it("keeps the main guide's names where a later guide's broader chapter passes", () => {
+    // The main guide names its line "Queen's Gambit: Slav"; the later one's chapter is only "Queen's Gambit".
+    const named = (title: string, source: number) => (chapter: { source?: number }) =>
+      chapter.source === source ? title : undefined;
+    const chapters = [main[0], second[0]];
+    const lesson = mergeChapters(
+      { id: 'test', title: 'Test', side: 'black', sources: SAMPLE.sources },
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'black')),
+      (_, chapter) =>
+        named("Queen's Gambit: Slav", 0)(chapter) ?? named("Queen's Gambit", 1)(chapter),
+    );
+    expect(lesson.positions[keyAfter('d4', 'd5')].variation).toBe('queen-s-gambit-slav');
+    // Past the main guide's end, the later guide names its own positions.
+    expect(lesson.positions[keyAfter('d4', 'd5', 'c4')].variation).toBe('queen-s-gambit');
+  });
+
+  it("lets a later guide narrow the name of the main guide's side line", () => {
+    // The main guide's chapter is about the opening and shows 1...Nf6 only as a side line.
+    const opening = parseStudy(
+      '[ChapterName "Main"]\n\n1. d4 d5 (1... Nf6 2. c4 e6) *\n',
+      () => true,
+    );
+    const later = parseStudy('[ChapterName "Later"]\n\n1. d4 Nf6 2. c4 e6 *\n', () => true);
+    const chapters = [...opening, ...later.map((chapter) => ({ ...chapter, source: 1 }))];
+    const lesson = mergeChapters(
+      { id: 'test', title: 'Test', side: 'black', sources: SAMPLE.sources },
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'black')),
+      (_, chapter) => (chapter.source === 1 ? 'Indian Defence: Test' : undefined),
+    );
+    expect(lesson.positions[keyAfter('d4', 'Nf6')].variation).toBe('indian-defence-test');
+  });
+
+  it("names a later guide's side line after the main guide's line it leaves", () => {
+    // Past the main guide's 2.c4, only the later guide's side line goes on; its chapter is a sibling.
+    const opening = parseStudy('[ChapterName "Main"]\n\n1. d4 d5 2. c4 *\n', () => true);
+    const later = parseStudy(
+      '[ChapterName "Later"]\n\n1. d4 Nf6 (1... d5 2. c4 c6 3. Nc3) *\n',
+      () => true,
+    );
+    const chapters = [...opening, ...later.map((chapter) => ({ ...chapter, source: 1 }))];
+    const lesson = mergeChapters(
+      { id: 'test', title: 'Test', side: 'black', sources: SAMPLE.sources },
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'black')),
+      (_, chapter) => (chapter.source === 1 ? 'Gambit: Classical' : 'Gambit: Sidelines'),
+    );
+    expect(lesson.positions[keyAfter('d4', 'd5', 'c4')].variation).toBe('gambit-sidelines');
+  });
+
+  it('names moves by a chapter cut out at a named position, and keeps the name past its end', () => {
+    // The Alapin chapter plays on to 4.Nc3; the Dutch one is cut out at 2...c6 and stops at 3...Nf6.
+    const alapin = parseStudy(
+      '[ChapterName "Alapin"]\n\n1. d4 d5 2. c4 c6 3. Nf3 Nf6 4. Nc3 dxc4 *\n',
+      () => true,
+    );
+    const dutch = parseStudy(
+      '[ChapterName "Dutch"]\n[NamedFrom "4"]\n\n1. d4 d5 2. c4 c6 3. Nf3 Nf6 *\n',
+      () => true,
+    );
+    const chapters = [...alapin, ...dutch.map((chapter) => ({ ...chapter, source: 1 }))];
+    const lesson = mergeChapters(
+      { id: 'test', title: 'Test', side: 'black', sources: SAMPLE.sources },
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'black')),
+      (title) => (title === 'Dutch' ? 'Pure: Alapin: Dutch' : 'Pure: Alapin'),
+    );
+    const variation = (...sans: string[]) => lesson.positions[keyAfter(...sans)].variation;
+    expect(variation('d4', 'd5', 'c4')).toBe('pure-alapin');
+    expect(variation('d4', 'd5', 'c4', 'c6')).toBe('pure-alapin-dutch');
+    expect(variation('d4', 'd5', 'c4', 'c6', 'Nf3', 'Nf6')).toBe('pure-alapin-dutch');
+    expect(variation('d4', 'd5', 'c4', 'c6', 'Nf3', 'Nf6', 'Nc3')).toBe('pure-alapin-dutch');
+  });
+
+  /** A lesson merged from `pgns`, the second and later from later guides, each chapter named by `names`. */
+  const mergeSources = (pgns: readonly string[], names: Record<string, string> = {}) => {
+    const chapters = pgns.flatMap((pgn, source) =>
+      parseStudy(pgn, () => true).map((chapter) => ({ ...chapter, source })),
+    );
+    const lesson = mergeChapters(
+      { id: 'test', title: 'Test', side: 'white', sources: SAMPLE.sources },
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'white')),
+      (title) => names[title],
+    );
+    return (...sans: string[]) => lesson.positions[keyAfter(...sans)].variation;
+  };
+
+  it("never lets a later guide's main line rename the main guide's side line", () => {
+    // The main guide's Early chapter shows 3...c5 4.c3 Qb6 only as a side line; a later guide's Anti chapter plays it.
+    const variation = mergeSources(
+      [
+        '[ChapterName "Early"]\n\n1. d4 d5 2. Bf4 Nf6 3. e3 Bf5 (3... c5 4. c3 Qb6 5. Qb3) 4. Nf3 *\n',
+        '[ChapterName "Anti"]\n\n1. d4 d5 2. Bf4 Nf6 3. e3 c5 4. c3 Qb6 5. Qb3 Nc6 *\n',
+      ],
+      { Early: 'Early', Anti: 'Anti' },
+    );
+    expect(variation('d4', 'd5', 'Bf4', 'Nf6', 'e3', 'c5')).toBe('early');
+    expect(variation('d4', 'd5', 'Bf4', 'Nf6', 'e3', 'c5', 'c3', 'Qb6')).toBe('early');
+  });
+
+  it("names the main guide's side line after the line it came through, once a later guide names that", () => {
+    // 3...c5 is a side line of two main-guide chapters, so it is the first one's group; the later guide narrows it.
+    const variation = mergeSources(
+      [
+        [
+          '[ChapterName "Systems"]\n\n1. d4 d5 2. Bf4 Nf6 3. e3 e6 (3... c5 4. Nf3) 4. Nf3 *\n',
+          '[ChapterName "Early"]\n\n1. d4 d5 2. Bf4 Nf6 3. e3 Bf5 (3... c5 4. c3 Qb6 5. Qb3) 4. Nf3 *\n',
+        ].join('\n'),
+        '[ChapterName "Anti"]\n\n1. d4 d5 2. Bf4 Nf6 3. e3 c5 4. Nf3 Nc6 *\n',
+      ],
+      { Systems: 'Systems', Early: 'Early', Anti: 'Systems: Anti' },
+    );
+    expect(variation('d4', 'd5', 'Bf4', 'Nf6', 'e3', 'c5')).toBe('systems-anti');
+    expect(variation('d4', 'd5', 'Bf4', 'Nf6', 'e3', 'c5', 'c3')).toBe('systems-anti');
+    expect(variation('d4', 'd5', 'Bf4', 'Nf6', 'e3', 'c5', 'c3', 'Qb6')).toBe('systems-anti');
+  });
+
+  it("names positions before a chapter's named move after its parent, and lines its name claims after it", () => {
+    const variation = mergeSources(
+      [
+        [
+          '[ChapterName "Early"]\n\n1. d4 d5 2. Bf4 Nf6 3. e3 Bf5 (3... c6 4. Nf3 Bf5 5. c4) 4. Nf3 e6 *\n',
+          '[ChapterName "Tal"]\n\n1. d4 d5 2. Bf4 Nf6 3. h4 (3. g4 Bxg4 4. f3) 3... c5 4. c3 *\n',
+        ].join('\n'),
+      ],
+      { Early: 'London: Early ...Bf5', Tal: 'London: Tal (3.h4) & Bayonet (3.g4)' },
+    );
+    // Before ...Bf5, the Early chapter's moves are the London's.
+    expect(variation('d4', 'd5', 'Bf4', 'Nf6', 'e3')).toBe('london');
+    expect(variation('d4', 'd5', 'Bf4', 'Nf6', 'e3', 'Bf5')).toBe('london-early-bf5');
+    // ...Bf5 on a side line leaving before it starts a line the chapter claims; the moves before it don't.
+    expect(variation('d4', 'd5', 'Bf4', 'Nf6', 'e3', 'c6', 'Nf3')).toBe('london');
+    expect(variation('d4', 'd5', 'Bf4', 'Nf6', 'e3', 'c6', 'Nf3', 'Bf5')).toBe('london-early-bf5');
+    // The Tal chapter claims 3.g4, which it plays only as a side line.
+    expect(variation('d4', 'd5', 'Bf4', 'Nf6', 'g4', 'Bxg4')).toBe('london-tal-3-h4-bayonet-3-g4');
+  });
+
+  it("lets a later guide's main line through a line the main guide's name claims", () => {
+    const variation = mergeSources(
+      [
+        '[ChapterName "Early"]\n\n1. d4 d5 2. Bf4 Nf6 3. e3 Bf5 (3... c6 4. Nf3 Bf5 5. c4 e6) 4. Nf3 e6 *\n',
+        '[ChapterName "Slow"]\n\n1. d4 d5 2. Bf4 Nf6 3. e3 c6 4. Nf3 Bf5 5. c4 e6 6. Nc3 *\n',
+      ],
+      { Early: 'London: Early ...Bf5', Slow: 'London: Slow Slav' },
+    );
+    expect(variation('d4', 'd5', 'Bf4', 'Nf6', 'e3', 'c6', 'Nf3', 'Bf5')).toBe('london-slow-slav');
+  });
+
+  it("names a side line two chapters' groups share after the first chapter", () => {
+    const variation = mergeSources(
+      [
+        [
+          '[ChapterName "Early"]\n\n1. d4 d5 2. Bf4 Bf5 (2... c5 3. e3 Nc6 4. c3) 3. e3 *\n',
+          '[ChapterName "Anti"]\n\n1. d4 d5 2. Bf4 c6 (2... c5 3. e3 Nc6 4. Nf3) 3. e3 *\n',
+        ].join('\n'),
+      ],
+      { Early: 'Early', Anti: 'Anti' },
+    );
+    expect(variation('d4', 'd5', 'Bf4', 'c5', 'e3', 'Nc6')).toBe('early');
   });
 
   it("takes a later guide's notes only where the main guide says nothing", () => {

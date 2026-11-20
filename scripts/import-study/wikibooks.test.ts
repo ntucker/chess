@@ -9,7 +9,7 @@ import { SAMPLE } from '@/lesson/lesson.fixture';
 import { extractChapter } from './extract';
 import { mergeChapters } from './merge';
 import { parseStudy } from './study';
-import { plainText, readPage, rootSans, segmentSan, wikibooksPgn } from './wikibooks';
+import { plainText, readPage, rootSans, segmentSan, titleCase, wikibooksPgn } from './wikibooks';
 
 const ROOT = 'Chess_Opening_Theory/1._d4/1...d5';
 
@@ -69,6 +69,16 @@ describe('plainText', () => {
   });
 });
 
+describe('titleCase', () => {
+  it('capitalises words as the lichess guides do, but not minor words or moves', () => {
+    expect(titleCase('Dutch variation')).toBe('Dutch Variation');
+    expect(titleCase('Grünfeld defence')).toBe('Grünfeld Defence');
+    expect(titleCase("Queen's gambit declined")).toBe("Queen's Gambit Declined");
+    expect(titleCase('4.Nd2 and 4.c4 sidelines')).toBe('4.Nd2 and 4.c4 Sidelines');
+    expect(titleCase('exchange variation, 4.cxd5')).toBe('Exchange Variation, 4.cxd5');
+  });
+});
+
 describe('readPage', () => {
   it('reads the name, next moves, paragraphs about one move and table lines', () => {
     const read = readPage(PAGES[`${ROOT}/2._c4`]);
@@ -117,6 +127,20 @@ describe('wikibooksPgn', () => {
       log: () => {},
     });
     expect(parsePgn(pgn).map((game) => game.headers.get('ChapterName'))).toEqual(['', 'Slav']);
+  });
+
+  it("names the root page's chapter by `topName`, and nests the others under it", async () => {
+    const pgn = await wikibooksPgn(fetchPage, {
+      root: ROOT,
+      learner: 'black',
+      topName: 'Closed',
+      log: () => {},
+    });
+    expect(parsePgn(pgn).map((game) => game.headers.get('ChapterName'))).toEqual([
+      'Closed',
+      "Closed: Queen's Gambit",
+      "Closed: Queen's Gambit: Slav Defence",
+    ]);
   });
 
   it('puts a paragraph about one next move on that move, and the rest on the move in', async () => {

@@ -15,9 +15,9 @@
  * moves only; they are often wrong, so each stops at its first illegal move.
  *
  * Pages are cut into chapters at named positions ("5. a4 · Alapin variation")
- * on the book's main path. A chapter is titled by its name, under the first
- * named position below the root as its group ("Slav accepted: Alapin
- * variation"), the one level of grouping lessons have. On the main path every learner move is the book's main
+ * on the book's main path. A chapter is titled by its name under the named
+ * positions above it on that path ("Slav accepted: Alapin variation: Dutch
+ * variation"), each colon a narrower group. On the main path every learner move is the book's main
  * move, so a chapter never makes the importer recommend a move the book does
  * not lead with; a named position off it stays in its parent's chapter.
  */
@@ -216,8 +216,15 @@ export interface WikibooksOptions {
   /**
    * Names to replace, to match the other sources' ("Slav accepted": "Pure
    * Slav"); an empty one drops the name, so its position starts no chapter.
+   * Keys are the page's own spelling; every name is then title-cased.
    */
   readonly rename?: Readonly<Record<string, string>>;
+  /**
+   * The variation the root page's own chapter names, and the group of every
+   * chapter below it ("Semi-Slav" for a page reaching it by another move
+   * order); without one, the root page's chapter is untitled.
+   */
+  readonly topName?: string;
   /**
    * Names of positions that belong to another lesson ("Semi-Slav Defense"):
    * the move into one stays, with what its parent page says of it, but
@@ -227,6 +234,21 @@ export interface WikibooksOptions {
   /** At most this many pages are read. */
   readonly maxPages?: number;
   readonly log?: (message: string) => void;
+}
+
+const MINOR_WORDS = new Set('a an and at by de der for in of on or the to van von with'.split(' '));
+
+/**
+ * `name` in title case, as the lichess guides write theirs: "Dutch variation"
+ * becomes "Dutch Variation". Minor words after the first stay lower case, and
+ * moves ("4.e3", "exd5") are left as they are.
+ */
+export function titleCase(name: string): string {
+  return name.replace(
+    /(?<![\p{L}\p{N}_'.])\p{Ll}[\p{L}']*(?![\p{L}\p{N}])/gu,
+    (word, at: number) =>
+      at > 0 && MINOR_WORDS.has(word) ? word : word[0].toUpperCase() + word.slice(1),
+  );
 }
 
 /** The moves of the line a root page stands for, in SAN; throws on a segment that names none. */
@@ -246,7 +268,15 @@ export async function wikibooksPgn(
   fetchPage: FetchPage,
   options: WikibooksOptions,
 ): Promise<string> {
-  const { root, learner, rename = {}, leave = [], maxPages = 400, log = console.log } = options;
+  const {
+    root,
+    learner,
+    rename = {},
+    topName,
+    leave = [],
+    maxPages = 400,
+    log = console.log,
+  } = options;
   const path: string[] = [];
   let pos = Chess.default();
   for (const san of rootSans(root)) {
@@ -270,8 +300,9 @@ export async function wikibooksPgn(
   );
   // A missing root page would otherwise import as one bare move.
   if (top.children.length === 0) throw new Error(`${root}: Wikibooks has no moves here`);
-  const name = (node: BookNode) => (node.name && (rename[node.name] ?? node.name)) || undefined;
-  return chapters(top, path.slice(0, -1), learner, name)
+  const name = (node: BookNode) =>
+    (node.name && titleCase(rename[node.name] ?? node.name)) || undefined;
+  return chapters(top, path.slice(0, -1), learner, name, topName)
     .map((game) => makePgn(game))
     .join('\n');
 }
@@ -376,42 +407,45 @@ interface ChapterTop {
 
 /**
  * The tree cut into chapters at named positions on the main path; `prefix`
- * is the moves before `top`'s, which the root page's title names.
+ * is the moves before `top`'s, which the root page's title names, and
+ * `topName` titles `top`'s chapter and groups the rest.
  */
 function chapters(
   top: BookNode,
   prefix: readonly string[],
   learner: Color,
   name: (node: BookNode) => string | undefined,
+  topName?: string,
 ): Game<PgnNodeData>[] {
   const tops: ChapterTop[] = [];
+  /** `groups`: the names of the chapters above, the nearest last. */
   const visit = (
     node: BookNode,
     path: readonly BookNode[],
-    group: string | undefined,
-    current: string | undefined,
+    groups: readonly string[],
     onMain: boolean,
   ) => {
     const own = name(node);
-    if (node === top) tops.push({ node, path, title: '' });
-    else if (onMain && !node.transposed && own && own !== current) {
-      tops.push({ node, path, title: group ? `${group}: ${own}` : own });
-      group ??= own;
-      current = own;
+    if (node === top) tops.push({ node, path, title: topName ?? '' });
+    else if (onMain && !node.transposed && own && own !== groups.at(-1)) {
+      groups = [...groups, own];
+      tops.push({ node, path, title: groups.join(': ') });
     }
     const main = node.children.find((child) => !elsewhere(child));
     node.children.forEach((child) => {
       const mainMove = child === main || node.pos.turn !== learner;
-      visit(child, [...path, child], group, current, onMain && mainMove && !child.left);
+      visit(child, [...path, child], groups, onMain && mainMove && !child.left);
     });
   };
-  visit(top, [top], undefined, undefined, true);
+  visit(top, [top], topName ? [topName] : [], true);
   const isTop = new Set(tops.map(({ node }) => node));
   return tops.map(({ node, path, title }) => {
     const game: Game<PgnNodeData> = {
       headers: new Map([
         ['Event', title || 'Wikibooks'],
         ['ChapterName', title],
+        // Its own moves start at its named position (`Chapter.namedFrom`).
+        ['NamedFrom', String(prefix.length + path.length)],
         ['Result', '*'],
       ]),
       moves: new Node(),

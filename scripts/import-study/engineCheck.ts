@@ -391,7 +391,7 @@ function linesTo(lesson: Lesson): Map<PositionKey, { line: Uci[]; pos: Chess }> 
 }
 
 /** The positions a learner reaches playing only book moves, against any opponent move. */
-function bookReach(lesson: Lesson): Set<PositionKey> {
+export function bookReach(lesson: Lesson): Set<PositionKey> {
   const start = startOf(lesson);
   const reached = new Set([positionKey(start)]);
   const queue = [start];
