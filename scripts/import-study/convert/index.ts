@@ -13,12 +13,10 @@
  * the lesson file it writes is committed, so the site build and the tests
  * never call a model.
  */
-import { Chess } from 'chessops/chess';
-import { parseFen } from 'chessops/fen';
 import { makeSan } from 'chessops/san';
 import { parseUci } from 'chessops/util';
 
-import { positionKey, SAN, sanToUci } from '@/game/replay';
+import { parsePosition, positionKey, SAN, sanToUci } from '@/game/replay';
 import { notationProblem } from '@/lesson/check';
 import { noteShows, type Note, type NoteShows } from '@/lesson/lesson';
 
@@ -139,13 +137,16 @@ async function convertComments(
         drawnMistakes(comment, result) > drawnMistakes(comment, previous),
     );
   const shorten = [...converted].flatMap(([id, result]) => {
-    const cutText = cutTexts(result);
+    const cutText = result.cut;
     return cutText.length > 0 ? [{ ...comments.get(id)!, cutText }] : [];
   });
   if (shorten.length > 0)
     keep(
       await ask(MODELS.retry, shorten, SHORTEN),
-      (result) => cutTexts(result).length === 0 && notationTexts(result).length === 0,
+      (result, previous, comment) =>
+        result.cut.length === 0 &&
+        notationTexts(result).length === 0 &&
+        drawnMistakes(comment, result) >= drawnMistakes(comment, previous),
     );
   return {
     converted,
@@ -164,19 +165,22 @@ const MISTAKE = new RegExp(String.raw`\b(\d+)\s?\.(\.\.)?\s?(${SAN})\?(?!!)`, 'g
 
 /**
  * The moves `comment` marks as mistakes (`3.e3?`) that the side to move can
- * play after its move: what a note warning against one should show is how it
- * is punished. A mistake's number and side must be the next move's, since a
- * comment also warns about moves deeper in its lines (`5.Bd2?` after 3...e6).
+ * play after its move, in UCI and in SAN as the model reads moves: what a
+ * note warning against one should show is how it is punished. A mistake's
+ * number and side must be the next move's, since a comment also warns about
+ * moves deeper in its lines (`5.Bd2?` after 3...e6).
  */
-function commentMistakes(comment: Comment): string[] {
-  const pos = Chess.fromSetup(parseFen(comment.fenAfter).unwrap()).unwrap();
-  const ucis = [...comment.comment.matchAll(MISTAKE)].flatMap(([, number, dots, san]) => {
-    const turn = dots ? 'black' : 'white';
-    if (Number(number) !== pos.fullmoves || turn !== pos.turn) return [];
-    const uci = sanToUci(pos, san);
-    return uci ? [uci] : [];
-  });
-  return [...new Set(ucis)];
+function commentMistakes(comment: Comment): { uci: string; san: string }[] {
+  const marked = [...comment.comment.matchAll(MISTAKE)];
+  if (marked.length === 0) return [];
+  const pos = parsePosition(comment.fenAfter)!;
+  const found = new Map<string, string>();
+  for (const [, number, dots, written] of marked) {
+    if (Number(number) !== pos.fullmoves || (dots ? 'black' : 'white') !== pos.turn) continue;
+    const uci = sanToUci(pos, written);
+    if (uci && !found.has(uci)) found.set(uci, makeSan(pos, parseUci(uci)!));
+  }
+  return [...found].map(([uci, san]) => ({ uci, san }));
 }
 
 /** The trap and line ideas in `result`, by their first move. */
@@ -192,16 +196,15 @@ const drawnFirstMoves = (result: Converted) =>
 /** How many of `comment`'s mistakes `result` draws a trap or line from. */
 const drawnMistakes = (comment: Comment, result: Converted) => {
   const drawn = drawnFirstMoves(result);
-  return commentMistakes(comment).filter((uci) => drawn.has(uci)).length;
+  return commentMistakes(comment).filter(({ uci }) => drawn.has(uci)).length;
 };
 
-/** `comment`'s mistakes that `result` draws no trap or line from, in SAN as the model reads moves. */
+/** `comment`'s mistakes that `result` draws no trap or line from, in SAN. */
 function undrawnMistakes(comment: Comment, result: Converted): string[] {
-  const pos = Chess.fromSetup(parseFen(comment.fenAfter).unwrap()).unwrap();
   const drawn = drawnFirstMoves(result);
   return commentMistakes(comment)
-    .filter((uci) => !drawn.has(uci))
-    .map((uci) => makeSan(pos, parseUci(uci)!));
+    .filter(({ uci }) => !drawn.has(uci))
+    .map(({ san }) => san);
 }
 
 /**
@@ -224,12 +227,6 @@ const withWrittenFor =
 /** The model wrote drawable ideas and the checker refused every one. */
 const allRefused = (result: Converted) =>
   result.kept === 0 && result.rejected.some(({ idea }) => idea.type !== 'evaluation');
-
-/** The note texts in `result` cut at the word limit (`shorten`). */
-const cutTexts = (result: Converted) =>
-  notesOf(result)
-    .map((note) => note.text)
-    .filter((text) => text.endsWith('…'));
 
 /** The note texts in `result` that the lesson checker refuses as notation. */
 const notationTexts = (result: Converted) =>

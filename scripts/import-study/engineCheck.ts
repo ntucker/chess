@@ -225,11 +225,13 @@ export async function fillBook(
         report.ended.push({ line: sans(lesson, at.line), moves, positions: gone });
         continue;
       }
-      const moves = position.moves.some(({ uci }) => uci === pick.uci)
-        ? position.moves.map((move) =>
-            move.uci === pick.uci ? { ...move, book: true as const } : move,
-          )
-        : [{ uci: pick.uci, book: true as const }, ...position.moves];
+      const guides = position.moves.some(({ uci }) => uci === pick.uci);
+      const moves = [
+        ...position.moves.map((move) =>
+          move.uci === pick.uci ? { ...move, book: true as const } : move,
+        ),
+        ...(guides ? [] : [{ uci: pick.uci, book: true as const }]),
+      ];
       // Book moves first, like every position the importer writes.
       moves.sort((a, b) => Number(!!b.book) - Number(!!a.book));
       positions[key] = position = { ...position, moves };
@@ -276,9 +278,8 @@ async function pickBookMove(
     return { uci: preferred.uci, why: judged.length === 1 ? 'only move' : 'called the main line' };
   const best = judged.filter(({ sound }) => sound).sort((a, b) => b.score - a.score)[0];
   if (best) return { uci: best.uci, why: "Stockfish's best of the guide's moves" };
-  return before.best === undefined
-    ? undefined
-    : { uci: before.best, why: "Stockfish's best: the engine overruled every guide move" };
+  if (before.best === undefined) return undefined;
+  return { uci: before.best, why: "Stockfish's best: the engine overruled every guide move" };
 }
 
 type CachedEvaluation = (line: readonly Uci[], pos: Chess) => Promise<Evaluation>;

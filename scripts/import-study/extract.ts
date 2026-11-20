@@ -77,13 +77,18 @@ const NAG_EVALUATIONS: Readonly<Record<number, Evaluation>> = {
 export function evaluationText(value: Evaluation, learner: Color): string {
   const favors = direction(value);
   if (favors === 'equal') return 'The position is equal.';
-  const yours = favors === learner;
-  if (value.endsWith('Slightly'))
-    return yours ? 'You are slightly better.' : 'You are slightly worse.';
-  if (value.endsWith('Clearly'))
-    return yours ? 'You are clearly better.' : 'You are clearly worse.';
-  return yours ? 'You are winning.' : 'You are losing.';
+  const [better, worse] = EDGE_WORDS[value.replace(/^(?:white|black)/, '') as Edge];
+  return `You are ${favors === learner ? better : worse}.`;
 }
+
+type Edge = 'Slightly' | 'Clearly' | 'Winning';
+
+/** How an edge of each size reads for the side that has it, and for the other. */
+const EDGE_WORDS: Readonly<Record<Edge, readonly [string, string]>> = {
+  Slightly: ['slightly better', 'slightly worse'],
+  Clearly: ['clearly better', 'clearly worse'],
+  Winning: ['winning', 'losing'],
+};
 
 /** Two or more moves in a row, the first numbered: `9...Qa5+ 10.Nc3 e6`. */
 const SEQUENCE =

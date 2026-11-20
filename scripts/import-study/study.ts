@@ -72,7 +72,7 @@ export interface StudyMove {
   /** The study's annotation glyphs as PGN NAG numbers ($14 is 14; ? is 2). */
   readonly nags: readonly number[];
   /**
-   * Its comment starts with the introduction of the line it begins
+   * Its comment is only the introduction of the line it begins, moved there
    * (`withLineIntros`): about the line, not the move, so another guide's note
    * on the move still has room beside it.
    */
@@ -92,32 +92,29 @@ export const isDubious = (move: StudyMove) => move.nags.some((nag) => DUBIOUS_NA
  */
 export function parseStudy(pgn: string, include: (title: string) => boolean): Chapter[] {
   const chapters: Chapter[] = [];
+  // The positions earlier chapters reach, for `withLineIntros`.
+  const known = new Set<string>();
+  const add = (chapter: Chapter) => {
+    chapters.push(chapter);
+    for (const move of chapterMoves(chapter)) known.add(positionKey(move.after));
+  };
   for (const game of parsePgn(pgn)) {
     const title = game.headers.get('ChapterName') ?? game.headers.get('Event') ?? '';
     if (!include(title)) continue;
     const start = startingPosition(game.headers).unwrap() as Chess;
     const namedFrom = Number(game.headers.get('NamedFrom')) || undefined;
     const lead = leadTo(chapters, start);
-    const known = playedIn(chapters);
     if (!lead) {
       const moves = withLineIntros(readMoves(game.moves.children, start, 1), known);
-      chapters.push({ title, start, moves, ...(namedFrom && { namedFrom, cut: true }) });
+      add({ title, start, moves, ...(namedFrom && { namedFrom, cut: true }) });
       continue;
     }
     const first = copyLead(lead, (last) =>
       readMoves(game.moves.children, last.after, last.ply + 1, last),
     );
-    chapters.push({ title, start: chapters[0].start, moves: withLineIntros([first], known) });
+    add({ title, start: chapters[0].start, moves: withLineIntros([first], known) });
   }
   return chapters;
-}
-
-/** The positions the moves of `chapters` reach. */
-function playedIn(chapters: readonly Chapter[]): Set<string> {
-  const keys = new Set<string>();
-  for (const chapter of chapters)
-    for (const move of chapterMoves(chapter)) keys.add(positionKey(move.after));
-  return keys;
 }
 
 /**
@@ -128,8 +125,7 @@ function playedIn(chapters: readonly Chapter[]): Set<string> {
  * line, its little brother" on 1...d5 belongs on 1...d5 2.Bf4 c5's c5.
  */
 function withLineIntros(moves: readonly StudyMove[], known: ReadonlySet<string>): StudyMove[] {
-  const comments = new Map<StudyMove, string>();
-  const intros = new Set<StudyMove>();
+  const edits = new Map<StudyMove, Edit>();
   const stack = [...moves];
   for (let move = stack.pop(); move; move = stack.pop()) {
     stack.push(...move.children);
@@ -146,16 +142,16 @@ function withLineIntros(moves: readonly StudyMove[], known: ReadonlySet<string>)
         (!ply || ply === target.ply),
     );
     if (!named) continue;
-    comments.set(move, '');
-    comments.set(target, [move.comment, target.comment].filter(Boolean).join('\n'));
-    intros.add(target);
+    edits.set(move, { comment: '' });
+    // Joined to the move's own comment, the whole note explains the move as before.
+    edits.set(
+      target,
+      target.comment
+        ? { comment: `${move.comment}\n${target.comment}` }
+        : { comment: move.comment, intro: true },
+    );
   }
-  return comments.size > 0
-    ? rebuilt(moves, (move) => ({
-        comment: comments.get(move),
-        ...(intros.has(move) && { intro: true as const }),
-      }))
-    : [...moves];
+  return edits.size > 0 ? rebuilt(moves, edits) : [...moves];
 }
 
 /**
@@ -187,48 +183,46 @@ export function withReplies(
   }
   return chapters.map((chapter) => ({
     ...chapter,
-    moves: rebuilt(chapter.moves, (move) => ({ reply: added.get(move) })),
+    moves: rebuilt(chapter.moves, new Map(), added),
   }));
 }
 
+/** What `rebuilt` changes on a move. */
+type Edit = Pick<StudyMove, 'comment'> & Partial<Pick<StudyMove, 'intro'>>;
+
 /**
- * Copies of `moves` and the moves after them, each with the comment `edit`
- * gives in place of its own and the reply it names added after it.
+ * Copies of `moves` and the moves after them, each with its `edits` applied,
+ * and after it the reply (SAN) `replies` names for it.
  */
 function rebuilt(
   moves: readonly StudyMove[],
-  edit: (move: StudyMove) => {
-    readonly comment?: string;
-    readonly intro?: true;
-    readonly reply?: string;
-  },
+  edits: ReadonlyMap<StudyMove, Edit>,
+  replies: ReadonlyMap<StudyMove, string> = new Map(),
   parent?: StudyMove,
 ): StudyMove[] {
   return moves.map((move) => {
-    const { comment = move.comment, intro = move.intro, reply } = edit(move);
     const children: StudyMove[] = [];
-    const copy: StudyMove = { ...move, parent, children, comment, ...(intro && { intro }) };
-    children.push(...rebuilt(move.children, edit, copy));
+    const copy: StudyMove = { ...move, ...edits.get(move), parent, children };
+    children.push(...rebuilt(move.children, edits, replies, copy));
+    const reply = replies.get(move);
     const uci = reply && sanToUci(move.after, reply);
-    if (uci && !children.some((child) => child.uci === uci)) children.push(...readReply(copy, uci));
+    if (uci && !children.some((child) => child.uci === uci)) children.push(readReply(copy, uci));
     return copy;
   });
 }
 
 /** `uci` after `move`, a move without comment or glyphs. */
-const readReply = (move: StudyMove, uci: Uci): StudyMove[] => [
-  {
-    uci,
-    san: plainSan(makeSan(move.after, parseUci(uci)!)),
-    ply: move.ply + 1,
-    before: move.after,
-    after: played(move.after, uci),
-    parent: move,
-    children: [],
-    comment: '',
-    nags: [],
-  },
-];
+const readReply = (move: StudyMove, uci: Uci): StudyMove => ({
+  uci,
+  san: plainSan(makeSan(move.after, parseUci(uci)!)),
+  ply: move.ply + 1,
+  before: move.after,
+  after: played(move.after, uci),
+  parent: move,
+  children: [],
+  comment: '',
+  nags: [],
+});
 
 /** Copies of `lead` without comments (a dubious move stays dubious), the last followed by the moves `rest` reads after it. */
 function copyLead(
