@@ -69,7 +69,7 @@ describe('Stockfish', () => {
     expect([...scores].sort((a, b) => a - b)).toEqual(scores);
   }, 30_000);
 
-  it('lists each move once when the search stops inside its last depth', async () => {
+  it('lists each move once, best first, where the search once stopped inside its last depth', async () => {
     // 1.e4 c6 2.d4 d5 3.e5 Bf5 4.Nf3 e6 5.Bd3 Bxd3 6.Qxd3 Nd7 7.c3 c5 8.O-O
     // cxd4 9.cxd4 Ne7 10.Nc3 Nc6: at 100,000 positions the node limit cut
     // depth 13's third line short, and mixing depths listed h4 twice

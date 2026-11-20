@@ -19,8 +19,8 @@ import { classifyMove, listJudgement, type MoveQuality } from './quality';
  * before a move (a lesson shows them past the guide, `getTopMoves`), the
  * list stands for that position, and labels a move it lists at once
  * (`listJudgement`). The hook never asks for a list (a search three times an
- * evaluation's), so a label can change once one arrives: say a move judged
- * from the evaluations in Practice, whose position Explore then lists.
+ * evaluation's), so a label judged from the evaluations can change once a
+ * caller asks for that position's list.
  *
  * Only the move leading to `plies[shown]` (the board's) asks for its
  * evaluations: a search costs up to a second on a phone, and the engine runs

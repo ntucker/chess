@@ -38,9 +38,9 @@ const TOP_MOVES = 3;
 
 /**
  * How long the engine may take to answer: its handshake (once its host has
- * handed it its files), or a search (which stops itself after `MOVETIME_MS_PER_RANK` for each rank). One
- * that takes longer is stuck, as when Android drops the web view a command
- * went to, and is restarted.
+ * handed it its files), or a search (which stops itself after 1.5 s for each
+ * move it ranks, so 4.5 s for the top moves). One that takes longer is stuck,
+ * as when Android drops the web view a command went to, and is restarted.
  */
 const ANSWER_MS = 10_000;
 
