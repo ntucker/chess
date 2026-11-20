@@ -129,9 +129,10 @@ async function main() {
   stockfish.stop();
   writeFileSync(engineFile, `${JSON.stringify({ ...filled.report, ...engineReport }, null, 2)}\n`);
   if (!rest.includes('--no-popularity')) lesson = await withPopularity(lesson);
-  // Both refuse a lesson by throwing, so they come before any write.
+  // The checker and the index each refuse a lesson by throwing, so both come before any write.
+  checked(lesson);
   const indexFile = join(ROOT, 'assets/lessons/index.json');
-  const index = lessonIndex(indexedWith(indexFile, checked(lesson)));
+  const index = lessonIndex(indexedWith(indexFile, lesson));
   writeLesson(join(ROOT, `assets/lessons/${lesson.id}.json`), lesson);
   registerLesson(join(ROOT, 'src/resources/lesson.ts'), lesson.id);
   writeIndex(indexFile, index);
@@ -149,7 +150,6 @@ function withPopularity(lesson: Lesson): Promise<Lesson> {
   });
 }
 
-/** Writes `lesson` to `file`, refusing one the checker finds fault with. */
 /** `lesson`, once the checker passes it; throws with its first problems otherwise. */
 function checked(lesson: Lesson): Lesson {
   const problems = checkLesson(lesson);
@@ -160,6 +160,7 @@ function checked(lesson: Lesson): Lesson {
   return lesson;
 }
 
+/** Writes `lesson`, which `checked` has passed, to `file`. */
 function writeLesson(file: string, lesson: Lesson) {
   const json = lessonJson(lesson);
   writeFileSync(file, json);

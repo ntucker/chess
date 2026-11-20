@@ -91,6 +91,7 @@ function marksBy(
   return marks;
 }
 
+/** Seen once a lesson has shown the position `next` (its `positionHash` is in `seen`). */
 const seenMark = (seen: ReadonlySet<string>, next: PositionKey) =>
   seen.has(positionHash(next)) ? 'seen' : undefined;
 
