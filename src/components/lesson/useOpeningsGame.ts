@@ -83,7 +83,7 @@ export function useOpeningsGame(
   // with the lesson at that address, followed by each lesson the game has
   // picked since, in order: the addresses it may have sent, which can arrive
   // after it has moved on.
-  const [synced, setSynced] = useState({ entry, address, variation, picks: [picked] });
+  const [synced, setSynced] = useState({ entry, address, variation, picks: [address] });
   // Each history entry the page left, while the game was still at its address.
   const [left, setLeft] = useState<Partial<Record<string, Visit>>>({});
   if (entry !== synced.entry || address !== synced.address || variation !== synced.variation) {

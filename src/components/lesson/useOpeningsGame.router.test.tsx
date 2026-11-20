@@ -4,6 +4,7 @@ import { act, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
 import { uciLine } from '@/lesson/lesson.fixture';
+import { lessonHref, variationHref } from '@/lesson/openings';
 import type { LessonId } from '@/resources/lesson';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 
@@ -50,6 +51,7 @@ const play = (...ucis: string[]) =>
   });
 
 beforeAll(() => {
+  // Load the routes at once, as the test's context holds them, not lazily.
   process.env.EXPO_ROUTER_IMPORT_MODE = 'sync';
 });
 afterEach(() => {
@@ -73,24 +75,24 @@ describe('useOpeningsGame on the router', () => {
   });
 
   it('starts the other side at `/`, not the lesson the page opened at', async () => {
-    await open('/lesson/caro-kann');
+    await open(lessonHref('caro-kann'));
     await run(() => latest.playAs('white'));
     expect([latest.id, moves(), latest.side]).toEqual([undefined, [], 'white']);
   });
 
   it('starts links to the page already open, and keeps the game dropping a variation', async () => {
-    await open('/lesson/caro-kann');
+    await open(lessonHref('caro-kann'));
     await play('c7c6');
-    await run(() => router.navigate('/lesson/caro-kann?variation=advance-variation'));
+    await run(() => router.navigate(variationHref('caro-kann', 'advance-variation')));
     expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'e5'));
-    await run(() => router.navigate('/lesson/caro-kann'));
+    await run(() => router.navigate(lessonHref('caro-kann')));
     expect(moves()).toEqual(uciLine('e4'));
-    await run(() => router.navigate('/lesson/caro-kann?variation=advance-variation'));
+    await run(() => router.navigate(variationHref('caro-kann', 'advance-variation')));
     await play('c8f5');
     expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'e5', 'Bf5'));
-    await run(() => router.navigate('/lesson/london'));
+    await run(() => router.navigate(lessonHref('london')));
     expect([moves(), latest.side]).toEqual([uciLine('d4'), 'white']);
-    await run(() => router.navigate('/lesson/slav?variation=semi-slav'));
+    await run(() => router.navigate(variationHref('slav', 'semi-slav')));
     expect(latest.id).toBe('slav');
     expect(latest.side).toBe('black');
   });

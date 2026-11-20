@@ -1,10 +1,16 @@
 import { useLocalSearchParams, useRoute } from 'expo-router';
 import { useNavigationState } from 'expo-router/react-navigation';
 
+/** An address's params, as the URL has them: a lesson's id, and a variation to open. */
+interface Params {
+  readonly id?: string;
+  readonly variation?: string;
+}
+
 /** A route as far as the address needs it. */
 interface Route {
   readonly key?: string;
-  readonly params?: object;
+  readonly params?: Params;
   readonly state?: Routes;
 }
 
@@ -18,12 +24,6 @@ interface Routes {
 export function focusedRoute(root: Routes, key: string): Route | undefined {
   const own = root.routes.find((route) => route.key === key)?.state;
   return own?.routes[own.index ?? own.routes.length - 1];
-}
-
-/** An address's params, as the URL has them: a lesson's id, and a variation to open. */
-interface Params {
-  readonly id?: string;
-  readonly variation?: string;
 }
 
 /**
