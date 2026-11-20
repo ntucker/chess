@@ -2,6 +2,8 @@ import { type ComponentRef, useEffect, useLayoutEffect, useRef, useState } from 
 import { createPortal } from 'react-dom';
 import { type PointerEvent as ViewPointerEvent, View, type ViewStyle } from 'react-native';
 
+import { hoversControl } from '@/board/pointer';
+
 import type { PopupProps } from './Popup';
 import { type PopupPlace, placePopup } from './popupPlace';
 
@@ -70,8 +72,8 @@ export function Popup({ anchor, onDismiss, onHoverIn, onHoverOut, children }: Po
   return createPortal(
     <View
       ref={popup}
-      onPointerEnter={mouseOnly(onHoverIn)}
-      onPointerLeave={mouseOnly(onHoverOut)}
+      onPointerEnter={whenHovering(onHoverIn)}
+      onPointerLeave={whenHovering(onHoverOut)}
       style={[
         styles.popup,
         // Measured where it can grow to its full height, unseen but focusable, then placed.
@@ -84,16 +86,11 @@ export function Popup({ anchor, onDismiss, onHoverIn, onHoverOut, children }: Po
   );
 }
 
-/**
- * `handler`, called only for a pointer that hovers: a touch's pointer leaves
- * as it lifts. React Native Web's rule, not the board's `hovers`, since its
- * Pressable is the anchor: a pen that opens the popup by hovering the anchor
- * must hold it open by hovering the popup.
- */
-const mouseOnly =
+/** `handler`, called only for a pointer that hovers a control. */
+const whenHovering =
   (handler: (() => void) | undefined) =>
   ({ nativeEvent }: ViewPointerEvent) => {
-    if (nativeEvent.pointerType !== 'touch') handler?.();
+    if (hoversControl(nativeEvent.pointerType)) handler?.();
   };
 
 /** React Native Web's View refs are the DOM elements themselves. */

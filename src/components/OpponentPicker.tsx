@@ -138,7 +138,7 @@ export function OpponentPicker() {
  * The steps to pick from, easiest first: the presets, and the current step
  * if settings saved another, so it still shows as chosen.
  */
-const stepsWith = (value: Opponent) =>
+const stepsFor = (value: Opponent) =>
   OPPONENTS.filter((opponent) => OPPONENT_PRESETS.includes(opponent) || opponent === value);
 
 interface ListProps {
@@ -151,15 +151,15 @@ interface ListProps {
 }
 
 /**
- * The steps to pick from, easiest first, each named, with a line
- * on how the step pointed at (or else the current one) plays.
+ * The steps to pick from, easiest first, the landmarks named, with a
+ * line on how the step pointed at (or else the current one) plays.
  */
 function OpponentList({ id, value, focusOnOpen, onChoose, onClose }: ListProps) {
   const { color, radius } = useTheme().theme.semantic;
   const [pointed, setPointed] = useState<Opponent>();
   const focused = useRef<Opponent>(undefined);
   const rows = useRef(new Map<Opponent, ComponentRef<typeof View>>());
-  const steps = stepsWith(value);
+  const steps = stepsFor(value);
   const focusRow = (opponent: Opponent) => rows.current.get(opponent)?.focus();
 
   useEffect(() => {

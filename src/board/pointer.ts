@@ -8,6 +8,14 @@
  */
 export const hovers = (pointerType: string) => pointerType === 'mouse';
 
+/**
+ * Whether a pointer of `pointerType` hovers a control: anything but a finger,
+ * whose pointer leaves as it lifts. React Native Web's Pressable goes by this
+ * rule, so a popup that a Pressable opens on hover goes by it too: a pen that
+ * opens it by hovering the Pressable then holds it open by hovering the popup.
+ */
+export const hoversControl = (pointerType: string) => pointerType !== 'touch';
+
 /** A piece being dragged from `from`, over `to`: absent over its own square or off the board. */
 export interface Drag<S extends string> {
   readonly from: S;
