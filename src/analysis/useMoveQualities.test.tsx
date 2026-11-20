@@ -92,10 +92,11 @@ describe('useMoveQualities', () => {
     expect(renders.at(-1)).toEqual([undefined, 'book', undefined]);
   });
 
-  // Stockfish's own numbers from a Semi-Slav (after 10.O-O, Noteboom): its
-  // evaluation favoured a5 by 1.29, its top moves listed Bb7 first at 1.12,
-  // and the evaluation after Bb7 gave Black only 0.56: an inaccuracy by the
-  // evaluations, though the list called Bb7 the best.
+  // Stockfish's own numbers from a Semi-Slav (after 10.O-O, Noteboom), put on
+  // 1.e4 here with e5 for Bb7 and c5 for a5: its evaluation favoured a5 by
+  // 1.29, its top moves listed Bb7 first at 1.12, and the evaluation after
+  // Bb7 gave Black only 0.56: an inaccuracy by the evaluations, though the
+  // list called Bb7 the best.
   it('labels a move Stockfish listed from the list, even where its evaluations disagree', async () => {
     await render(3);
     const [ctrl] = controllers;

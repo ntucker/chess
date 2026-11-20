@@ -63,10 +63,10 @@ export function listJudgement(
   top: readonly TopMove[] | undefined,
   uci: string,
 ): Partial<Pick<JudgedMove, 'before' | 'after'>> {
-  const [first] = top ?? [];
-  if (!first) return {};
+  if (!top?.length) return {};
+  const [first] = top;
   return {
     before: { ...first.evaluation, best: first.uci },
-    after: top!.find((move) => move.uci === uci)?.evaluation,
+    after: top.find((move) => move.uci === uci)?.evaluation,
   };
 }

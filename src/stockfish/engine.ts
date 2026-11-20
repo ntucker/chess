@@ -14,7 +14,7 @@ import {
 
 /**
  * How many positions a search spends on each move it ranks. An evaluation
- * ranks one: 100,000 positions, which reaches about depth 14 and takes about
+ * ranks one: 100,000 positions, which reaches about depth 14 to 16 and takes about
  * 0.3 s on a recent phone. A search for the top moves splits its positions
  * among its lines, so it gets as many for each, three times as long, to rank
  * them as deep as an evaluation judges the move played: a move's label can
@@ -22,19 +22,23 @@ import {
  */
 const NODES_PER_RANK = 100_000;
 
+/** How long a search may take for each move it ranks, on a device too slow to reach its nodes. */
+const MOVETIME_MS_PER_RANK = 1500;
+
 /**
  * The command that starts a search ranking `ranks` moves. A node limit gives
  * the same result on every device that reaches it; a phone too slow to
- * reach it in 1.5 s for each rank stops there with a shallower one.
+ * reach it in `MOVETIME_MS_PER_RANK` for each rank stops there with a shallower one.
  */
-const goCommand = (ranks: number) => `go nodes ${NODES_PER_RANK * ranks} movetime ${1500 * ranks}`;
+const goCommand = (ranks: number) =>
+  `go nodes ${NODES_PER_RANK * ranks} movetime ${MOVETIME_MS_PER_RANK * ranks}`;
 
 /** How many moves a search for the top moves ranks. */
 const TOP_MOVES = 3;
 
 /**
  * How long the engine may take to answer: its handshake (once its host has
- * handed it its files), or a search (which stops itself after 4.5 s at most). One
+ * handed it its files), or a search (which stops itself after `MOVETIME_MS_PER_RANK` for each rank). One
  * that takes longer is stuck, as when Android drops the web view a command
  * went to, and is restarted.
  */
