@@ -39,10 +39,14 @@
     --player-disc-gap: 6px;
     --player-disc-border: 2px;
     --evaluation-width: 6px;
-    /* The panel's headline, a size smaller: theme.ts's heading (GameStatus.tsx). */
-    --headline-size: 24px;
+    /*
+     * The panel's headline (GameStatus.tsx), between theme.ts's headingSm and
+     * heading: it shows only when it has news, such as the end of a line, and
+     * sits close above the moves.
+     */
+    --headline-size: 20px;
     /* Space between the board column and the panel below it (Stage.tsx). */
-    --wrapped-gap: 20px;
+    --wrapped-gap: 12px;
     /*
      * In a short window the board shrinks, down to this (Stage.tsx), wide
      * enough for the player's name bar to fit its status beside the move
@@ -50,7 +54,7 @@
      */
     --board-min: 300px;
     /* ...to leave this much for the panel and the gap above it. */
-    --panel-reserve: 180px;
+    --panel-reserve: 172px;
   }
 
   /*
@@ -70,6 +74,18 @@
   }
   :root [data-narrow='narrow-only'] {
     display: block;
+  }
+  /*
+   * Out of sight but still read by screen readers, such as a headline that
+   * only repeats whose move it is (GameStatus.tsx), so its news is still announced.
+   */
+  :root [data-narrow='wide-only-spoken'] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   /* A name bar's name and detail share one line (PlayerBar.tsx says how they give way). */
   :root [data-narrow='player-names'] {

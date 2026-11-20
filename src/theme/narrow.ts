@@ -28,6 +28,7 @@ export const NARROW_LENGTHS = [
 /** The parts of the page that narrow.css lays out differently. */
 export const NARROW_PARTS = [
   'wide-only',
+  'wide-only-spoken',
   'narrow-only',
   'page',
   'stage',
