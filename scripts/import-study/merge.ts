@@ -202,15 +202,14 @@ function addBranches(
 
 /**
  * The variation of each position the chapters reach (`positionVariations`),
- * adding one source at a time: where a position already had a name from the
- * sources before, a new one must lie within it, else the earlier name stands.
+ * adding one source at a time: where the earlier sources' main lines reach a
+ * position, a new name must lie within theirs, else the earlier name stands.
  * A later guide may narrow a name ("Pure Slav" to "Pure Slav: Geller
  * Gambit"), but its "Classical Variation" chapter never renames the main
- * guide's "Capablanca Variation". Only a name the earlier sources gave off
- * their main lines gives way to a later main line naming a variation as
- * narrow on another line: the main London guide shows 3...c5 as a side line
- * of its Early ...Bf5 chapter, and a later guide's Anti-London ...c5 chapter
- * plays it.
+ * guide's "Capablanca Variation". Off the earlier main lines, a name gives way
+ * to one as narrow on another line: the main London guide reaches 3.e3 c5
+ * 4.c3 Qb6 only by a side line of its Early ...Bf5 chapter, so the later
+ * guides' Anti-London ...c5 names it.
  */
 function sourceVariations(
   root: VariationId,
@@ -231,22 +230,18 @@ function sourceVariations(
       upTo.map((i) => chapters[i]),
       upTo.map((i) => chapterVariation[i]),
     );
-    const passes = new Set(
-      chapters.flatMap((chapter) =>
-        (chapter.source ?? 0) === source
-          ? [...namedMainLine(chapter)].map((move) => positionKey(move.before))
-          : [],
-      ),
-    );
     for (const [key, id] of named) {
       const earlier = before.get(key);
       if (!earlier || ancestry(variations, id).includes(earlier)) continue;
-      // An earlier side line's name gives way to this source's main line, if that names one as narrow on another line.
-      const sideLine = !earlierMain.has(key) && passes.has(key);
       const [was, now] = [ancestry(variations, earlier), ancestry(variations, id)];
-      if (!sideLine || now.length < was.length || was.includes(id)) named.set(key, earlier);
+      // An earlier side line's name gives way to one as narrow on another line.
+      const apart = !within(now, was) && !within(was, now);
+      if (earlierMain.has(key) || !apart || now.length < was.length) named.set(key, earlier);
     }
-    for (const key of passes) earlierMain.add(key);
+    chapters.forEach((chapter) => {
+      if ((chapter.source ?? 0) !== source) return;
+      for (const move of namedMainLine(chapter)) earlierMain.add(positionKey(move.before));
+    });
   }
   return named;
 }

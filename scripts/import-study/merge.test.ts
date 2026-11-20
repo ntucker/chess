@@ -268,14 +268,14 @@ describe('mergeChapters with several sources', () => {
     expect(variation('d4', 'd5', 'c4', 'c6', 'Nf3', 'Nf6', 'Nc3')).toBe('pure-alapin-dutch');
   });
 
-  it("renames the main guide's side line where a later guide's main line on another line passes", () => {
+  it("renames the main guide's side line after a later guide's line as narrow", () => {
     // The main guide's Early ...Bf5 chapter shows 3...c5 only as a side line; the later guide's Anti-London chapter plays it.
     const early = parseStudy(
-      '[ChapterName "Early"]\n\n1. d4 d5 2. Bf4 Nf6 3. e3 Bf5 (3... c5 4. c3) 4. Nf3 *\n',
+      '[ChapterName "Early"]\n\n1. d4 d5 2. Bf4 Nf6 3. e3 Bf5 (3... c5 4. c3 Qb6 5. Qb3) 4. Nf3 *\n',
       () => true,
     );
     const anti = parseStudy(
-      '[ChapterName "Anti"]\n\n1. d4 d5 2. Bf4 Nf6 3. e3 c5 4. c3 *\n',
+      '[ChapterName "Anti"]\n\n1. d4 d5 2. Bf4 Nf6 3. e3 c5 4. c3 Nc6 (4... Qb6 5. Qb3) 5. Nf3 *\n',
       () => true,
     );
     const chapters = [...early, ...anti.map((chapter) => ({ ...chapter, source: 1 }))];
@@ -287,6 +287,8 @@ describe('mergeChapters with several sources', () => {
     const variation = (...sans: string[]) => lesson.positions[keyAfter(...sans)].variation;
     expect(variation('d4', 'd5', 'Bf4', 'Nf6', 'e3')).toBe('early');
     expect(variation('d4', 'd5', 'Bf4', 'Nf6', 'e3', 'c5')).toBe('anti');
+    // Off both guides' main lines, as narrow a name on another line wins too.
+    expect(variation('d4', 'd5', 'Bf4', 'Nf6', 'e3', 'c5', 'c3', 'Qb6')).toBe('anti');
   });
 
   it("takes a later guide's notes only where the main guide says nothing", () => {
