@@ -11,9 +11,17 @@ import { useLesson } from './useLesson';
 // Labels read the evaluation engines through Data Client, the opponent runs
 // an engine, and the screen's focus and Stockfish's demand come from the
 // app's providers; these tests are about the Practice run. With auto play
-// off nobody replies.
+// off nobody replies. useLesson also reads Stockfish's best move through
+// getEvaluation, which imports Maia's engine. That engine starts a worklet
+// runtime Jest doesn't have, so it's stubbed the same way the engine tests
+// stub it, and the fetch is never made.
 jest.mock('@/analysis/useMoveQualities', () => ({ useMoveQualities: () => [] }));
-jest.mock('@data-client/react', () => ({ useController: () => ({}) }));
+jest.mock('@/maia/engine', () => ({ maiaEvaluation: jest.fn() }));
+jest.mock('@data-client/react', () => ({
+  useController: () => ({}),
+  useFetch: () => {},
+  useCache: () => undefined,
+}));
 jest.mock('@/resources/opponent', () => ({ gameOpponent: () => undefined }));
 jest.mock('expo-router', () => ({ useIsFocused: () => true }));
 jest.mock('@/stockfish/demand', () => ({ useNeedsStockfish: () => {} }));
