@@ -58,7 +58,7 @@ Run format, lint, typecheck and tests before declaring any task done. Tests sit 
 - Platforms: see `GOALS.md`. No iOS-only code or config, and no library without Android support.
 - `android/` (and `ios/`) are generated (Continuous Native Generation) and ignored by git. Configure native behavior in `app.json`, `app.config.ts` and config plugins rather than creating or editing those directories.
 - Expo Go only includes its bundled native modules. Once a library with native code is added, running the app on Android needs a development build: `npx expo run:android` locally, or an EAS build.
-- `.yarn/patches/expo-*.patch` (applied through `resolutions` in `package.json`) keeps Expo's DOM components from rejecting a message sent in the moment after a web view mounts, which a development build shows as an error on launch. Upgrading Expo drops it: run `yarn patch expo` on the new version and make the same change, until Expo fixes it.
+- `.yarn/patches/expo-*.patch` (applied through `resolutions` in `package.json`) keeps Expo's DOM components from rejecting a message sent in the moment after a web view mounts on Android, which a development build shows as an error on every launch. Upgrading Expo drops it, and `src/components/expoPatch.test.ts` then fails: run `yarn patch expo` on the new version and make the same change, or delete the patch and the test once Expo fixes it.
 - EAS isn't set up yet (there is no `eas.json`). When it is needed, run its CLI as `npx eas-cli@latest <command>` rather than a bare `eas`.
 - Prefer Expo's own modules over third-party libraries, and check your available skills before adding a dependency.
 

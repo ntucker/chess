@@ -39,9 +39,9 @@ interface Visit {
  *
  * Within one history entry (`entry`, its route's key) the address follows
  * the game, and an address the game didn't move to starts the game there
- * (a link opened in place). Arriving at another entry resumes the game the page had there,
- * if the learner left it from where it still is, else starts the entry's
- * address; an entry the game's own pick added keeps the game.
+ * (a link opened in place). Arriving at another entry resumes the game the
+ * page had there, if the learner left it from where it still is, else starts
+ * the entry's address; an entry the game's own pick added keeps the game.
  *
  * The side is the lesson address's, which the `side` setting saves, so the
  * start, and a reload, show the side last played; at the start it is the

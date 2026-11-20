@@ -1,16 +1,20 @@
 diff --git a/build/dom/webview-wrapper.js b/build/dom/webview-wrapper.js
-index 02f713b7592c68e3cb6db2013b2aee0600a602a8..72c7f90dd7ce3a95021208cd11c83da9526bafae 100644
+index 02f713b7592c68e3cb6db2013b2aee0600a602a8..c4c186b01022a2b905347241cc2f5fc86bad550f 100644
 --- a/build/dom/webview-wrapper.js
 +++ b/build/dom/webview-wrapper.js
-@@ -49,7 +49,10 @@ const RawWebView = /*#__PURE__*/ React.forwardRef((props, ref)=>{
+@@ -49,7 +49,14 @@ const RawWebView = /*#__PURE__*/ React.forwardRef((props, ref)=>{
      const [containerStyle, setContainerStyle] = React.useState(null);
      const { debugZeroHeightStyle, debugOnLayout } = useDebugZeroHeight(dom);
      const emit = React.useCallback((detail)=>{
 -        webviewRef.current?.injectJavaScript(getInjectEventScript(detail));
-+        // Opening Night patch: for a moment after mounting, Android can't find
-+        // the web view's native view, and the call rejects. Nothing is lost:
-+        // the page asks for the props again once it's ready (DOM_READY).
-+        Promise.resolve(webviewRef.current?.injectJavaScript(getInjectEventScript(detail))).catch(() => { });
++        // Opening Night patch (see AGENTS.md, Native builds): for a moment
++        // after mounting, Android can't find the web view's native view, and
++        // the call rejects. Nothing is lost: the page hasn't loaded yet, and
++        // it asks for the props again once it has (DOM_READY). Any other
++        // failure still rejects.
++        Promise.resolve(webviewRef.current?.injectJavaScript(getInjectEventScript(detail))).catch((error)=>{
++            if (!String(error).includes('Unable to find')) throw error;
++        });
      }, [
          webviewRef
      ]);
