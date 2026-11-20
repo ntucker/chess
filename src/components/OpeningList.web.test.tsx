@@ -93,11 +93,11 @@ describe('OpeningList', () => {
 
   it('shows and hides a branch at the learner’s press', () => {
     render({ lesson: 'caro-kann', variation: short.id });
-    const before = rows().length;
     act(() => toggle(advance.name).click());
     expect(toggle(advance.name).getAttribute('aria-expanded')).toBe('false');
+    expect(rows()).not.toContain(short.name);
     act(() => toggle('Slav Defence').click());
     expect(toggle('Slav Defence').getAttribute('aria-expanded')).toBe('true');
-    expect(rows().length).toBe(before - advance.children.length + slav.children.length);
+    expect(rows()).toEqual(expect.arrayContaining(slav.children.map(({ name }) => name)));
   });
 });
