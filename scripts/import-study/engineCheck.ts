@@ -387,7 +387,7 @@ const describe = ({ pawns, mate }: Evaluation) =>
 const startOf = (lesson: Lesson): Chess => parsePosition(lesson.start)!;
 
 /** The first line (UCI) found to each position the lesson reaches, and the position. */
-function linesTo(lesson: Lesson): Map<PositionKey, { line: Uci[]; pos: Chess }> {
+export function linesTo(lesson: Lesson): Map<PositionKey, { line: Uci[]; pos: Chess }> {
   const start = startOf(lesson);
   const found = new Map([[positionKey(start), { line: [] as Uci[], pos: start }]]);
   const queue = [...found.values()];

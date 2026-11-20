@@ -20,29 +20,50 @@ import { asAnswer, SCHEMA, type Answer } from './answer';
 import type { Comment } from './comments';
 import { PROMPT } from './prompt';
 
-/** The models a conversion uses: Sonnet converts, Opus retries what the checker refused. */
-export const MODELS = { convert: 'claude-sonnet-5-5', retry: 'claude-opus-5-5' } as const;
+/**
+ * The models the AI steps use: Sonnet converts, Opus retries what the checker
+ * refused, and Fable writes the idea of a book move no guide explains (../explain).
+ */
+export const MODELS = {
+  convert: 'claude-sonnet-5-5',
+  retry: 'claude-opus-5-5',
+  explain: 'claude-fable-5-2',
+} as const;
 export type Model = (typeof MODELS)[keyof typeof MODELS];
 
 /**
- * Answers for `comments` by comment id; a comment left out could not be
- * converted this time. `addendum` goes after the prompt, for a retry that
- * needs more instructions (`REWORD`); without one, the cache keys are the same
- * as before addenda existed, so stored answers still match.
+ * Answers for `items` (comments, unless the CLI was made for others) by id; an
+ * item left out could not be answered this time. `addendum` goes after the
+ * prompt, for a retry that needs more instructions (`REWORD`); without one,
+ * the cache keys are the same as before addenda existed, so stored answers
+ * still match.
  */
-export type Ask = (
+export type Ask<T = Comment> = (
   model: Model,
-  comments: readonly Comment[],
+  items: readonly T[],
   addendum?: string,
 ) => Promise<Map<string, Answer>>;
 
-/** Comments per request: enough to share the prompt, few enough to answer carefully. */
+/** Comments per request by default: enough to share the prompt, few enough to answer carefully. */
 const BATCH = 20;
 /** Requests at once. */
 const PARALLEL = 4;
 
-interface Options {
+interface Options<T> {
   readonly learner: Color;
+  /** The system prompt, with {LEARNER} and {OPPONENT} for the sides; the comment converter's by default. */
+  readonly prompt?: string;
+  /**
+   * What an answer is stored by, besides the model and the prompt: the whole
+   * item by default, so an answer is asked again when anything in it changes.
+   */
+  readonly keyOf?: (item: T) => unknown;
+  /** How hard the model thinks (`claude --effort`); the CLI's default when absent. */
+  readonly effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+  /** Items per request. */
+  readonly batch?: number;
+  /** The step's name in log lines. */
+  readonly step?: string;
   /** The study's answers file (JSON lines), committed beside the importer. */
   readonly cacheFile: string;
   /** False answers only from the file and calls no model: other comments stay unconverted. */
@@ -50,8 +71,8 @@ interface Options {
   readonly log?: (message: string) => void;
 }
 
-export interface ClaudeCli {
-  readonly ask: Ask;
+export interface ClaudeCli<T> {
+  readonly ask: Ask<T>;
   /**
    * Rewrites the answers file with only the answers this run used, so stale
    * ones don't pile up. Does nothing without the model: a run that could not
@@ -60,29 +81,33 @@ export interface ClaudeCli {
   readonly saveUsed: () => void;
 }
 
-export function claudeCli({
+export function claudeCli<T extends { readonly id: string } = Comment>({
   learner,
+  prompt: template = PROMPT,
+  keyOf: itemKey = (item) => item,
+  effort,
+  batch = BATCH,
+  step = 'convert',
   cacheFile,
   callModel = true,
   log = console.log,
-}: Options): ClaudeCli {
-  const prompt = PROMPT.replaceAll('{LEARNER}', colorName(learner)).replaceAll(
-    '{OPPONENT}',
-    colorName(opposite(learner)),
-  );
+}: Options<T>): ClaudeCli<T> {
+  const prompt = template
+    .replaceAll('{LEARNER}', colorName(learner))
+    .replaceAll('{OPPONENT}', colorName(opposite(learner)));
   const cache = readCache(cacheFile);
-  const keyOf = (model: Model, system: string, comment: Comment) =>
+  const keyOf = (model: Model, system: string, item: T) =>
     createHash('sha256')
-      .update(JSON.stringify([model, system, comment]))
+      .update(JSON.stringify([model, system, itemKey(item)]))
       .digest('hex');
 
   const used = new Set<string>();
 
-  const ask: Ask = async (model, comments, addendum = '') => {
+  const ask: Ask<T> = async (model, comments, addendum = '') => {
     const system = prompt + addendum;
     const answers = new Map<string, Answer>();
     const keys = new Map(comments.map((comment) => [comment.id, keyOf(model, system, comment)]));
-    const asking: Comment[] = [];
+    const asking: T[] = [];
     for (const comment of comments) {
       const key = keys.get(comment.id)!;
       const cached = cache.get(key);
@@ -93,19 +118,19 @@ export function claudeCli({
     }
     if (!callModel) {
       log(
-        `convert: ${answers.size} answered from ${cacheFile}; ${asking.length} missing there, which keep the importer's notes`,
+        `${step}: ${answers.size} answered from ${cacheFile}; ${asking.length} missing there, which stay as the importer left them`,
       );
       return answers;
     }
-    const batches = chunks(asking, BATCH);
+    const batches = chunks(asking, batch);
     log(
-      `convert: ${answers.size} cached, asking ${model} about ${asking.length} in ${batches.length} requests`,
+      `${step}: ${answers.size} cached, asking ${model} about ${asking.length} in ${batches.length} requests`,
     );
     let done = 0;
     let cost = 0;
     await pool(batches, PARALLEL, async (group) => {
       try {
-        const result = await request(model, system, group);
+        const result = await request(model, system, group, effort);
         cost += result.cost;
         const asked = new Set(group.map((comment) => comment.id));
         for (const answer of result.answers) {
@@ -118,10 +143,10 @@ export function claudeCli({
         }
       } catch (error) {
         log(
-          `convert: a request failed, its ${group.length} comments stay unconverted: ${String(error)}`,
+          `${step}: a request failed, its ${group.length} comments stay unconverted: ${String(error)}`,
         );
       }
-      log(`convert: ${++done}/${batches.length} requests, ${cost.toFixed(2)} USD at list price`);
+      log(`${step}: ${++done}/${batches.length} requests, ${cost.toFixed(2)} USD at list price`);
     });
     return answers;
   };
@@ -147,16 +172,18 @@ function readCache(file: string): Map<string, Answer> {
   return cache;
 }
 
-/** One `claude -p` run: the prompt as the system prompt, the comments as the message, no tools. */
+/** One `claude -p` run: the prompt as the system prompt, the items as the message, no tools. */
 function request(
   model: Model,
   prompt: string,
-  comments: readonly Comment[],
+  comments: readonly unknown[],
+  effort: Options<unknown>['effort'],
 ): Promise<{ answers: Answer[]; cost: number }> {
   const args = [
     '-p',
     '--model',
     model,
+    ...(effort ? ['--effort', effort] : []),
     '--system-prompt',
     prompt,
     '--json-schema',

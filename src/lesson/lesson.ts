@@ -160,12 +160,18 @@ export interface LessonMove {
 export const RISKS = ['safe', 'balanced', 'sharp'] as const;
 export type Risk = (typeof RISKS)[number];
 
-/** One study comment, rewritten: a short sentence and what can be drawn. */
+/** One study comment, rewritten (or a book move's idea, `generated`): a short sentence and what can be drawn. */
 export interface Note {
   /** The sentence shown, at most `MAX_NOTE_WORDS` words, in plain language. */
   readonly text: string;
   /** The study's own words, shown behind "more". */
   readonly original?: string;
+  /**
+   * Written by the importer's AI where no guide explains a book move
+   * (scripts/import-study/explain), so no study author stands behind it.
+   * The app says so; such a note has no `original`.
+   */
+  readonly generated?: true;
   /** What the board draws; none means the note is text only. */
   readonly ideas?: readonly Idea[];
 }

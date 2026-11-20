@@ -111,7 +111,11 @@ function lessonNote(text: string, original: string, ideas: readonly Idea[]): Not
  * legal, a rule from the spike (a threat by the side to move, an evaluation
  * where the importer already read one), or the checker's verdict.
  */
-function lessonIdea(raw: AnswerIdea, pos: Chess, extractedEvaluation: boolean): Idea | string {
+export function lessonIdea(
+  raw: AnswerIdea,
+  pos: Chess,
+  extractedEvaluation: boolean,
+): Idea | string {
   try {
     const idea = withUci(raw, pos);
     if (idea.type === 'threat' && idea.side === pos.turn)
