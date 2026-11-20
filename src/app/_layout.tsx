@@ -14,6 +14,7 @@ import { useFonts } from 'expo-font';
 import { type ErrorBoundaryProps, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
+import { useNavigationTransitions } from '@/components/navigation';
 import { ScreenFailure } from '@/components/NewVersion';
 import { ProgressSync } from '@/resources/progress';
 import { SettingsProvider } from '@/settings/SettingsProvider';
@@ -27,6 +28,7 @@ const managers = () => [new ProgressSync(), ...getDefaultManagers()];
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  useNavigationTransitions();
   const [fontsLoaded] = useFonts({
     DMSerifDisplay_400Regular,
     DMSerifDisplay_400Regular_Italic,

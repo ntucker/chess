@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import { act, Suspense, use, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
+import { AT_ONCE } from '@/components/navigation';
 import { uciLine } from '@/lesson/lesson.fixture';
 import { variationLine } from '@/lesson/openings';
 import { FIXTURE_INDEX } from '@/lesson/openings.fixture';
@@ -203,7 +204,10 @@ describe('useOpeningsGame', () => {
     await play('e7e6');
     await replace('anti-london');
     expect(moves()).toEqual(uciLine('d4', 'd5', 'Bf4', 'e6'));
-    expect(mockRouter.replace.mock.calls).toEqual([['/lesson/slav'], ['/lesson/anti-london']]);
+    expect(mockRouter.replace.mock.calls).toEqual([
+      ['/lesson/slav', AT_ONCE],
+      ['/lesson/anti-london', AT_ONCE],
+    ]);
   });
 
   it('resumes the start from the side its game was played from, on Back', async () => {
@@ -272,7 +276,7 @@ describe('useOpeningsGame', () => {
   it("adds a lesson's address to the history when it is picked at the start", async () => {
     await show();
     await play('e2e4');
-    expect(mockRouter.push).toHaveBeenCalledWith('/lesson/caro-kann');
+    expect(mockRouter.push).toHaveBeenCalledWith('/lesson/caro-kann', AT_ONCE);
     // The address catching up keeps the game, moves played since included.
     await play('c7c6');
     await push('caro-kann');
@@ -286,7 +290,7 @@ describe('useOpeningsGame', () => {
     await play('c7c6');
     await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
     await play('d2d4', 'd7d5', 'c2c4');
-    expect(mockRouter.replace).toHaveBeenCalledWith('/lesson/slav');
+    expect(mockRouter.replace).toHaveBeenCalledWith('/lesson/slav', AT_ONCE);
     expect(mockRouter.push).not.toHaveBeenCalled();
   });
 
@@ -338,7 +342,7 @@ describe('useOpeningsGame', () => {
     await push('caro-kann');
     await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
     await play('g1f3');
-    expect(mockRouter.replace).toHaveBeenCalledWith('/');
+    expect(mockRouter.replace).toHaveBeenCalledWith('/', AT_ONCE);
     // Arriving there keeps the game.
     await replace();
     expect(moves()).toEqual(['g1f3']);
@@ -350,7 +354,7 @@ describe('useOpeningsGame', () => {
     await push('caro-kann');
     await play('c7c6');
     await act(() => latest().playAs('white'));
-    expect(mockRouter.replace).toHaveBeenCalledWith('/');
+    expect(mockRouter.replace).toHaveBeenCalledWith('/', AT_ONCE);
     await replace();
     expect(moves()).toEqual([]);
     // Back to the entry before: its game, not the one the side's start replaced.
@@ -362,7 +366,7 @@ describe('useOpeningsGame', () => {
     slow.lessons = true;
     await show();
     await play('e2e4');
-    expect(mockRouter.push).toHaveBeenCalledWith('/lesson/caro-kann');
+    expect(mockRouter.push).toHaveBeenCalledWith('/lesson/caro-kann', AT_ONCE);
     expect(moves()).toEqual([]);
     expect(latest().pending).toBe(true);
     expect(JSON.stringify(root?.container.toJSON())).not.toContain('placeholder');
@@ -390,7 +394,7 @@ describe('useOpeningsGame', () => {
     expect(latest().pending).toBe(false);
     slow.lessons = false;
     await play('d2d4', 'd7d5', 'c2c4');
-    expect(mockRouter.push).toHaveBeenLastCalledWith('/lesson/slav');
+    expect(mockRouter.push).toHaveBeenLastCalledWith('/lesson/slav', AT_ONCE);
   });
 
   it("plays a lesson's address from its side, and keeps that side at the start", async () => {
@@ -404,7 +408,7 @@ describe('useOpeningsGame', () => {
     // A first move that picks no White lesson returns to a White start.
     await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
     await play('e2e4');
-    expect(mockRouter.replace).toHaveBeenCalledWith('/');
+    expect(mockRouter.replace).toHaveBeenCalledWith('/', AT_ONCE);
     await replace();
     expect(latest().side).toBe('white');
   });
@@ -420,7 +424,7 @@ describe('useOpeningsGame', () => {
     await play('d2d4');
     await act(() => latest().playAs('white'));
     expect(moves()).toEqual(['d2d4']);
-    expect(mockRouter.push).toHaveBeenLastCalledWith('/lesson/london');
+    expect(mockRouter.push).toHaveBeenLastCalledWith('/lesson/london', AT_ONCE);
   });
 
   it("shows the other side's start at once, from shared moves inside a lesson", async () => {
@@ -445,7 +449,7 @@ describe('useOpeningsGame', () => {
     await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
     await act(() => latest().playAs('white'));
     // In the same history entry, as a new move would, so no Forward returns to the lesson left.
-    expect(mockRouter.replace).toHaveBeenLastCalledWith('/');
+    expect(mockRouter.replace).toHaveBeenLastCalledWith('/', AT_ONCE);
     await replace();
     expect([latest().side, latest().setting]).toEqual(['white', 'white']);
     // Forward to the Caro-Kann plays it as Black, and Back keeps Black.

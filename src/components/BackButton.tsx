@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 
 import { HeaderButton } from '@/components/HeaderButton';
+import { goBack } from '@/components/navigation';
 import type { Destination } from '@/components/PlaceLink';
 
 /**
@@ -17,7 +18,7 @@ export function BackButton({ href, label }: Destination) {
       iconSize={22}
       accessibilityRole="button"
       accessibilityLabel={label}
-      onPress={() => (router.canGoBack() ? router.back() : router.replace(href))}
+      onPress={() => goBack(router, href)}
     />
   );
 }
