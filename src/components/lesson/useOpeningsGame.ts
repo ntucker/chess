@@ -39,7 +39,9 @@ interface Visit {
  *
  * Within one history entry (`entry`, its route's key) the address follows
  * the game, and an address the game didn't move to starts the game there
- * (a link opened in place). Arriving at another entry resumes the game the
+ * (a link opened in place). The addresses the game sent arrive in order,
+ * maybe after it has moved on, so one it sent and that hasn't arrived yet
+ * leaves the game where it is. Arriving at another entry resumes the game the
  * page had there, if the learner left it from where it still is, else starts
  * the entry's address; an entry the game's own pick added keeps the game.
  *
@@ -115,11 +117,11 @@ export function useOpeningsGame(
       // such as an Android deep link to the page already open. A link names
       // a variation (the game's own moves only ever drop one), or a lesson
       // the game isn't at and hasn't sent the address to since it last arrived.
-      const sent = synced.picks.indexOf(address);
+      const sentAt = synced.picks.indexOf(address);
       const newVariation = variation !== undefined && moved;
-      if (!newVariation && sent >= 0) {
+      if (!newVariation && sentAt >= 0) {
         // The ones sent after it are still on their way.
-        picks = synced.picks.slice(sent);
+        picks = synced.picks.slice(sentAt);
       } else if (newVariation || !isAt(address)) {
         dispatch({ type: 'newGame', moves: startOf(address, variation) });
         picks = [address];
