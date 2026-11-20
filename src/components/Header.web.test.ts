@@ -1,4 +1,4 @@
-import { describe, expect, it, jest } from '@jest/globals';
+import { describe, expect, it } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -6,9 +6,6 @@ import { readShippedLesson, shippedIds } from '@/lesson/lesson.fixture';
 import { pathNames, variationPath } from '@/lesson/select';
 
 import { PLACE_TYPE } from './Header';
-
-// Jest can't load a stylesheet; this test reads it as text instead.
-jest.mock('@/theme/narrow.css', () => ({}));
 
 /** A length the narrow page's media query in narrow.css sets, in pixels. */
 function narrowPixels(name: string) {
