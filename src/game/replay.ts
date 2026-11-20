@@ -80,9 +80,15 @@ export function parsePosition(fen: string): Chess | undefined {
 
 /** The position `key` (see `positionKey`) stands for, or undefined if it is not a position key. */
 export function parsePositionKey(key: string): Chess | undefined {
-  const pos = parsePosition(`${key} 0 1`);
+  const pos = readPositionKey(key);
   return pos && positionKey(pos) === key ? pos : undefined;
 }
+
+/**
+ * The position a key stands for, without checking that `positionKey` writes
+ * it back the same: for keys already checked, such as a shipped lesson's.
+ */
+export const readPositionKey = (key: string) => parsePosition(`${key} 0 1`);
 
 /** A position reached while playing a line (see `playLine`). */
 export interface Step {

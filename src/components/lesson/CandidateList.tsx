@@ -1,15 +1,21 @@
-import { a11yState, Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
+import { a11yState, Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
 import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { Uci } from '@/lesson/lesson';
 import type { Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
+import { Eyebrow } from '@/components/Eyebrow';
 import { QualityBadge } from '@/components/QualityBadge';
+import type { Mark } from '@/progress/progress';
 import { fonts } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
 
+import { MARK_SIZE, MarkLegend, ProgressMark, SPOKEN_MARKS } from './ProgressMark';
+
 interface Props {
+  /** The list's heading: whose moves these are. */
+  readonly heading: string;
   readonly candidates: readonly Candidate[];
   /** Rare candidates, listed after the others while `rareShown`. */
   readonly rare: readonly Candidate[];
@@ -20,6 +26,8 @@ interface Props {
   readonly main?: Candidate;
   /** The row previewed, whether its row is pointed at or its piece dragged onto its square. */
   readonly pointed?: Uci;
+  /** Each row's progress mark, by its move (`rowMarks`). */
+  readonly marks: ReadonlyMap<Uci, Mark>;
   /** Where each move leads, when it enters another variation. */
   readonly leadsTo: (candidate: Candidate) => string | undefined;
   /** The rows are the learner's to play now; otherwise they only preview. */
@@ -42,15 +50,18 @@ interface Props {
  * first. Pointing at a row previews its move on the board; pressing it plays
  * the move when it's the learner's to play. Each row's dot matches its arrow
  * on the board; a rare row's dot is hollow, since the board draws no arrow
- * for it.
+ * for it. A row's progress mark ends it, and a key beside the heading names
+ * the marks the list shows.
  */
 export function CandidateList({
+  heading,
   candidates,
   rare,
   rareShown,
   onShowRare,
   main,
   pointed,
+  marks,
   leadsTo,
   playable,
   onPlay,
@@ -58,32 +69,44 @@ export function CandidateList({
   onTabOut,
 }: Props) {
   const rows = rareShown ? [...candidates, ...rare] : candidates;
+  const shownMarks = new Set(
+    rows.map(({ move }) => marks.get(move.uci)).filter((mark) => mark !== undefined),
+  );
   return (
-    <Surface elevation="sunken" border="subtle" radius="md" style={styles.list}>
-      {rows.map((candidate, index) => (
-        <Row
-          key={candidate.move.uci}
-          candidate={candidate}
-          main={candidate === main}
-          pointed={candidate.move.uci === pointed}
-          leadsTo={leadsTo(candidate)}
-          // A lone move's share is always all of the games.
-          share={rows.length > 1 ? candidate.share : undefined}
-          playable={playable}
-          onPlay={onPlay}
-          onPoint={onPoint}
-          onTabOut={!rare.length && index === rows.length - 1 ? onTabOut : undefined}
-        />
-      ))}
-      {rare.length ? (
-        <RareToggle
-          count={rare.length}
-          shown={rareShown}
-          onToggle={() => onShowRare(!rareShown)}
-          onTabOut={onTabOut}
-        />
-      ) : null}
-    </Surface>
+    <Stack gap="3">
+      <View style={styles.head}>
+        <Eyebrow>{heading}</Eyebrow>
+        <MarkLegend marks={shownMarks} />
+      </View>
+      <Surface elevation="sunken" border="subtle" radius="md" style={styles.list}>
+        {rows.map((candidate, index) => (
+          <Row
+            key={candidate.move.uci}
+            candidate={candidate}
+            main={candidate === main}
+            pointed={candidate.move.uci === pointed}
+            mark={marks.get(candidate.move.uci)}
+            // Every row keeps room for a mark once one has one, so their shares line up.
+            markSlot={shownMarks.size > 0}
+            leadsTo={leadsTo(candidate)}
+            // A lone move's share is always all of the games.
+            share={rows.length > 1 ? candidate.share : undefined}
+            playable={playable}
+            onPlay={onPlay}
+            onPoint={onPoint}
+            onTabOut={!rare.length && index === rows.length - 1 ? onTabOut : undefined}
+          />
+        ))}
+        {rare.length ? (
+          <RareToggle
+            count={rare.length}
+            shown={rareShown}
+            onToggle={() => onShowRare(!rareShown)}
+            onTabOut={onTabOut}
+          />
+        ) : null}
+      </Surface>
+    </Stack>
   );
 }
 
@@ -138,6 +161,9 @@ interface RowProps {
   readonly candidate: Candidate;
   readonly main: boolean;
   readonly pointed: boolean;
+  readonly mark?: Mark;
+  /** Some row of the list has a mark, so this one keeps room for one. */
+  readonly markSlot: boolean;
   readonly leadsTo?: string;
   /** The move's share of the games, when worth showing. */
   readonly share?: number;
@@ -152,6 +178,8 @@ function Row({
   candidate,
   main,
   pointed,
+  mark,
+  markSlot,
   leadsTo,
   share,
   playable,
@@ -176,7 +204,14 @@ function Row({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${san}${move.book ? ', book move' : ''}${share === undefined ? '' : `, ${percent(share)} of games`}`}
+      accessibilityLabel={[
+        san,
+        move.book && 'book move',
+        share !== undefined && `${percent(share)} of games`,
+        mark && SPOKEN_MARKS[mark],
+      ]
+        .filter(Boolean)
+        .join(', ')}
       accessibilityHint={playable ? 'Plays this move' : undefined}
       // Not disabled: the opponent's rows still preview while not playable.
       accessibilityState={{ disabled: !playable }}
@@ -238,6 +273,9 @@ function Row({
           </Text>
         </View>
       )}
+      {markSlot ? (
+        <View style={styles.mark}>{mark ? <ProgressMark mark={mark} /> : null}</View>
+      ) : null}
     </Pressable>
   );
 }
@@ -252,6 +290,14 @@ const ROW_GAP = 12;
 const DOT_SIZE = 10;
 
 const styles = StyleSheet.create({
+  head: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    columnGap: 16,
+    rowGap: 6,
+  },
   list: { overflow: 'hidden', paddingVertical: 4 },
   row: {
     flexDirection: 'row',
@@ -272,4 +318,5 @@ const styles = StyleSheet.create({
   track: { flex: 1, height: 4, borderRadius: 2, overflow: 'hidden' },
   fillBar: { height: '100%', borderRadius: 2 },
   percent: { width: 32, textAlign: 'right', fontFamily: fonts.mono },
+  mark: { width: MARK_SIZE, height: MARK_SIZE },
 });

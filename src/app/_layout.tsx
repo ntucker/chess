@@ -1,8 +1,8 @@
-// localStorage on Android, where the app remembers its settings
-// (src/settings/SettingsProvider.tsx). The web has its own.
+// localStorage on Android, where the app remembers its settings and progress
+// (src/context/storage.ts). The web has its own.
 import 'expo-sqlite/localStorage/install';
 
-import { DataProvider } from '@data-client/react';
+import { DataProvider, getDefaultManagers } from '@data-client/react';
 import { DMMono_400Regular } from '@expo-google-fonts/dm-mono';
 import {
   DMSerifDisplay_400Regular,
@@ -14,11 +14,14 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
+import { ProgressSync } from '@/resources/progress';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { StockfishWhileNeeded } from '@/stockfish/demand';
 import { StockfishHost } from '@/stockfish/StockfishHost';
 import { themes } from '@/theme/theme';
 import { useColorScheme } from '@/theme/useColorScheme';
+
+const managers = () => [new ProgressSync(), ...getDefaultManagers()];
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -33,7 +36,7 @@ export default function RootLayout() {
   if (!fontsLoaded && process.env.EXPO_OS !== 'web') return null;
 
   return (
-    <DataProvider>
+    <DataProvider managers={managers}>
       <SettingsProvider>
         <SilkProvider theme={themes[colorScheme]}>
           <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
