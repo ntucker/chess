@@ -18,12 +18,12 @@ describe('gameEnding', () => {
     expect(example('Win')).toEqual({
       mood: 'won',
       reason: 'checkmate',
-      kings: { white: 'e1', black: 'e8' },
+      kings: { learner: 'e1', rival: 'e8' },
     });
     expect(example('Loss')).toEqual({
       mood: 'lost',
       reason: 'checkmate',
-      kings: { white: 'e1', black: 'e8' },
+      kings: { learner: 'e1', rival: 'e8' },
     });
   });
 
@@ -31,7 +31,7 @@ describe('gameEnding', () => {
     expect(example('Draw')).toEqual({
       mood: 'drawn',
       reason: 'stalemate',
-      kings: { white: 'e1', black: 'g6' },
+      kings: { learner: 'g6', rival: 'e1' },
     });
   });
 });

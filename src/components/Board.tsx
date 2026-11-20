@@ -389,11 +389,8 @@ function markPieces(
 
 /** An ending's own layer, over the pieces: the dark house, and what a win throws. */
 const ENDING_TAG = 'cg-ending';
+// ACT_TIMES has every mood, so its keys are all of them.
 const MOODS = Object.keys(ACT_TIMES) as Mood[];
-/** Past the lights' return (Board.css, 700-900 ms) and the last confetto's landing. */
-const AFTER_LIGHTS_UP_MS = 1500;
-/** The beats Board.css times its animations by. */
-const BEATS = ['fall', 'dim', 'rise', 'up'] as const;
 
 /**
  * Plays `act` on the board once, and takes it off again when there is none
@@ -402,31 +399,36 @@ const BEATS = ['fall', 'dim', 'rise', 'up'] as const;
  * so nothing restarts.
  */
 function stageEnding(board: Api, act: EndingAct | undefined) {
-  const { wrap, container, board: squares } = board.state.dom.elements;
+  const { container, board: squares } = board.state.dom.elements;
   const staged = container.querySelector<HTMLElement>(ENDING_TAG);
   // Most redraws have no ending, and none on the board to take off.
   if (!act && !staged) return;
   const pieces = squares.querySelectorAll<PieceNode>('piece');
   if (staged?.dataset.act !== (act && actKey(act))) {
-    staged?.remove();
-    for (const piece of pieces) piece.classList.remove('ending-king', ...KING_PARTS.map(partClass));
-    for (const mood of MOODS) wrap.classList.toggle(`ending-${mood}`, act?.mood === mood);
-    if (act) {
-      // Laid out without the kings' classes, once, so an act that follows
-      // another starts from its beginning.
-      wrap.getBoundingClientRect();
-      for (const beat of BEATS)
-        wrap.style.setProperty(`--act-${beat}`, `${ACT_TIMES[act.mood][beat]}ms`);
-      const layer = endingLayer(act);
-      layer.dataset.act = actKey(act);
-      squares.after(layer);
-      // Once the lights are up and the last confetti has landed, only the
-      // kings' classes still show: the veil and the particles go, so the
-      // board doesn't carry them while the position is studied.
-      setTimeout(() => layer.replaceChildren(), ACT_TIMES[act.mood].up + AFTER_LIGHTS_UP_MS);
-    }
+    if (staged) clearEnding(board, staged, pieces);
+    if (act) startEnding(board, act);
   }
   if (act) markKings(pieces, act);
+}
+
+/** Takes the staged act off the board: its layer, the kings' parts, and its mood. */
+function clearEnding(board: Api, staged: HTMLElement, pieces: Iterable<PieceNode>) {
+  staged.remove();
+  for (const piece of pieces) piece.classList.remove('ending-king', ...KING_PARTS.map(partClass));
+  board.state.dom.elements.wrap.classList.remove(...MOODS.map((mood) => `ending-${mood}`));
+}
+
+/** Puts `act` on the board from its beginning; markKings then casts the kings. */
+function startEnding(board: Api, act: EndingAct) {
+  const { wrap, board: squares } = board.state.dom.elements;
+  // Laid out without the last act's classes, so this one starts from its beginning.
+  wrap.getBoundingClientRect();
+  wrap.classList.add(`ending-${act.mood}`);
+  for (const [beat, ms] of Object.entries(ACT_TIMES[act.mood]))
+    wrap.style.setProperty(`--act-${beat}`, `${ms}ms`);
+  const layer = endingLayer(act);
+  layer.dataset.act = actKey(act);
+  squares.after(layer);
 }
 
 /** Which act is staged: the same act again, as after a redraw, has the same key. */
@@ -443,23 +445,36 @@ function markKings(pieces: Iterable<PieceNode>, act: EndingAct) {
   }
 }
 
-/** The middle of the board, in squares from its top-left corner. */
-const BOARD_CENTER = [3.5, 3.5] as const;
-
 const partClass = (part: KingPart) => `ending-${part}`;
 
-/** The layer's elements for `act`, each carrying its numbers as CSS variables. */
+/**
+ * The layer's elements for `act`, each carrying its numbers as CSS variables.
+ * Each leaves once its animations are done, so the board doesn't carry them
+ * while the position is studied; only the kings' classes stay. Without
+ * motion Board.css animates none of them, so the layer stays empty.
+ */
 function endingLayer({ spot, sparks, confetti }: EndingAct): HTMLElement {
   const layer = document.createElement(ENDING_TAG);
-  const add = (className: string, vars: Record<string, string | number>) => {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return layer;
+  layer.addEventListener('animationend', ({ target }) => {
+    const element = target as HTMLElement;
+    // A confetto tumbles in its ::before while it falls, and the veil fades in before it fades out.
+    if (element.getAnimations({ subtree: true }).every(({ playState }) => playState === 'finished'))
+      element.remove();
+  });
+  const add = (className: string, vars: Record<string, string | number> = {}) => {
     const element = document.createElement('i');
     element.className = className;
     for (const [name, value] of Object.entries(vars))
       element.style.setProperty(`--${name}`, String(value));
     layer.appendChild(element);
   };
-  // A draw lights no king, so its dimming centers on the board.
-  const [x, y] = spot ?? BOARD_CENTER;
+  // A draw lights no king, so its veil dims the board evenly.
+  if (!spot) {
+    add('veil');
+    return layer;
+  }
+  const [x, y] = spot;
   // The light's center, as a place on the board.
   add('veil', { 'spot-x': `${(x + 0.5) * 12.5}%`, 'spot-y': `${(y + 0.5) * 12.5}%` });
   if (sparks.length) {

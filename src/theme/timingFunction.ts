@@ -1,5 +1,8 @@
 import { type CSSAnimationTimingFunction, cubicBezier, linear } from 'react-native-reanimated';
 
+/** A spring's linear() easing is dozens of samples long and read on every render. */
+const PARSED = new Map<string, CSSAnimationTimingFunction>();
+
 /**
  * A CSS easing (a theme's motion token, or `springMotion`'s) as a Reanimated
  * timing function. Reanimated takes the named curves as strings, but
@@ -7,13 +10,12 @@ import { type CSSAnimationTimingFunction, cubicBezier, linear } from 'react-nati
  * transitions take the same type (`CSSTransitionTimingFunction`).
  */
 export function timingFunction(easing: string): CSSAnimationTimingFunction {
-  // A spring's linear() easing is dozens of samples long and read on every render.
-  let parsed = PARSED.get(easing);
-  if (!parsed) PARSED.set(easing, (parsed = parse(easing)));
+  const cached = PARSED.get(easing);
+  if (cached) return cached;
+  const parsed = parse(easing);
+  PARSED.set(easing, parsed);
   return parsed;
 }
-
-const PARSED = new Map<string, CSSAnimationTimingFunction>();
 
 function parse(easing: string): CSSAnimationTimingFunction {
   const call = /^(cubic-bezier|linear)\((.*)\)$/.exec(easing);

@@ -1,7 +1,9 @@
 import { describe, expect, it } from '@jest/globals';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { gameEnding } from '@/game/ending';
-import { ACT_TIMES, cardBand, endingAct, MOVE_MS, TINTS } from '@/board/endingAct';
+import { ACT_TIMES, cardBand, endingAct, KING_PARTS, MOVE_MS, TINTS } from '@/board/endingAct';
 import { endingExamples } from '@/board/endingExamples';
 import { lastPosition } from '@/game/replay';
 
@@ -26,8 +28,8 @@ describe('endingAct', () => {
   it('leaves one light on the learner who is mated, and throws nothing', () => {
     const act = exampleAct('Loss');
     expect(act.kings.map(({ square, part }) => [square, part])).toEqual([
-      ['e8', 'winner'],
       ['e1', 'fallen'],
+      ['e8', 'winner'],
     ]);
     expect(act.spot).toEqual([4, 7]);
     expect(act.sparks).toEqual([]);
@@ -87,13 +89,29 @@ describe('ACT_TIMES', () => {
 
 describe('cardBand', () => {
   it('lies across the middle while the kings are elsewhere', () => {
-    expect(cardBand({ white: 'e1', black: 'e8' }, 'white')).toBe('middle');
+    expect(cardBand({ learner: 'e1', rival: 'e8' }, 'white')).toBe('middle');
   });
 
   it('moves off a king in the middle', () => {
-    // White's king on e4 is in the middle two ranks; nothing is on the two above.
-    expect(cardBand({ white: 'e4', black: 'h8' }, 'white')).toBe('upper');
-    // From Black's side, the king on e5 is in the middle two ranks and the one on c2 in the two above them.
-    expect(cardBand({ white: 'e5', black: 'c2' }, 'black')).toBe('lower');
+    // The learner's king on e4 is in the middle two ranks; nothing is on the two above.
+    expect(cardBand({ learner: 'e4', rival: 'h8' }, 'white')).toBe('upper');
+    // From Black's side, the rival's king on e5 is in the middle two ranks and the learner's on c2 in the two above them.
+    expect(cardBand({ learner: 'c2', rival: 'e5' }, 'black')).toBe('lower');
+  });
+});
+
+describe('Board.css', () => {
+  const css = readFileSync(join(__dirname, '../components/Board.css'), 'utf8');
+
+  it('draws every mood, king part and tint the act names', () => {
+    for (const mood of Object.keys(ACT_TIMES)) expect(css).toContain(`.ending-${mood} `);
+    for (const part of KING_PARTS) expect(css).toContain(`.ending-${part}`);
+    for (const tint of TINTS) expect(css).toContain(`cg-ending .${tint} `);
+  });
+
+  it('times its animations only by beats that ACT_TIMES sets', () => {
+    const beats = new Set([...css.matchAll(/var\(--act-(\w+)\)/g)].map(([, beat]) => beat));
+    expect(beats.size).toBeGreaterThan(0);
+    for (const beat of beats) expect(Object.keys(ACT_TIMES.won)).toContain(beat);
   });
 });

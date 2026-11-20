@@ -100,39 +100,37 @@ export const ACT_TIMES: Readonly<Record<Mood, ActTimes>> = {
   drawn: { fall: 0, dim: 240, rise: 300, card: 380, cardOut: 2500, up: 2600 },
 };
 
+/** The parts of the learner's king and the rival's. */
+const PARTS: Readonly<Record<Mood, readonly [KingPart, KingPart]>> = {
+  won: ['winner', 'fallen'],
+  lost: ['fallen', 'winner'],
+  drawn: ['level', 'level'],
+};
+
 /**
  * The ending as the board plays it for the learner, who sits on
  * `orientation`'s side. Example: after Scholar's mate with White at
  * the bottom, the king on e1 is the winner and the one on e8 falls to the left.
  */
 export function endingAct(
-  { mood, kings: squares }: Pick<Ending, 'mood' | 'kings'>,
+  { mood, kings }: Pick<Ending, 'mood' | 'kings'>,
   orientation: Color,
 ): EndingAct {
-  const king = (color: Color, part: KingPart): ActKing => {
-    const square = squares[color];
+  const king = (square: Square, part: KingPart): ActKing => {
     const at = squareOffset(square, orientation);
     // It tips toward the middle of the board, where there is room to see it.
     return { square, part, at, lean: at[0] < 4 ? 1 : -1 };
   };
+  const [learner, rival] = PARTS[mood];
   const won = mood === 'won';
-  const winner = won ? orientation : opposite(orientation);
-  const kings =
-    mood === 'drawn'
-      ? [king('white', 'level'), king('black', 'level')]
-      : [king(winner, 'winner'), king(opposite(winner), 'fallen')];
-  const learnerSpot = kings.find(({ square }) => square === squares[orientation])!.at;
   return {
     mood,
-    kings,
-    ...(mood !== 'drawn' && { spot: learnerSpot }),
+    kings: [king(kings.learner, learner), king(kings.rival, rival)],
+    ...(mood !== 'drawn' && { spot: squareOffset(kings.learner, orientation) }),
     sparks: won ? sparks() : [],
     confetti: won ? confetti() : [],
   };
 }
-
-// Its own, rather than replay.ts's, so the board's web view bundles none of the chess rules.
-const opposite = (color: Color): Color => (color === 'white' ? 'black' : 'white');
 
 /**
  * Where the card sits so it covers neither king: across the middle two ranks
