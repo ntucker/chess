@@ -85,8 +85,9 @@ export function CandidateList({
   const shownMarks = new Set(
     rows.map(({ move }) => marks.get(move.uci)).filter((mark) => mark !== undefined),
   );
-  const pointedRow = rows.find(({ move }) => move.uci === pointed);
-  const pointedLeadsTo = chips && NARROW_CSS_LOADS && pointedRow && leadsTo(pointedRow);
+  // A drag can point at a rare candidate while its row is hidden.
+  const pointedRow = [...candidates, ...rare].find(({ move }) => move.uci === pointed);
+  const caption = chips && NARROW_CSS_LOADS && pointedRow && leadsTo(pointedRow);
   return (
     <Stack style={labelled}>
       <View style={styles.head}>
@@ -127,9 +128,9 @@ export function CandidateList({
           />
         ) : null}
       </Surface>
-      {pointedLeadsTo ? (
+      {caption ? (
         <Text {...narrowPart('narrow-only')} role="caption" tone="secondary" numberOfLines={1}>
-          {`${pointedRow.san}: ${pointedLeadsTo}`}
+          {`${pointedRow.san}: ${caption}`}
         </Text>
       ) : null}
     </Stack>
