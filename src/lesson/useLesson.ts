@@ -244,10 +244,14 @@ export function useLesson(
       }
       // A click that plays a move is the board's. Any other click on the side
       // to move's piece selects it, and draws its moves the way a drag does;
-      // a click elsewhere lets the piece go.
+      // a click elsewhere, or on the selected piece again, lets the piece go,
+      // as the board does.
       const piece = pieceAt(current.fen, square);
       const boardPlays = picked !== undefined && current.dests[picked]?.includes(square);
-      const select = canMove && !boardPlays && piece?.color === current.turn ? square : undefined;
+      const select =
+        canMove && !boardPlays && square !== picked && piece?.color === current.turn
+          ? square
+          : undefined;
       dispatch({
         type: 'candidate',
         key,

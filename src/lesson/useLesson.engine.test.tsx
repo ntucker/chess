@@ -145,5 +145,11 @@ describe("useLesson's Stockfish best move", () => {
     await act(async () => lesson().board.onPress?.('a3', 'b1'));
     expect(lesson().guidance.best).toBe('c2c3');
     expect(lesson().guidance.drawnCandidates).toEqual([]);
+    // Clicking the selected piece again lets it go too, as the board does.
+    await act(async () => lesson().board.onPress?.('g1'));
+    expect(lesson().guidance.best).toBeUndefined();
+    await act(async () => lesson().board.onPress?.('g1', 'g1'));
+    expect(lesson().guidance.best).toBe('c2c3');
+    expect(lesson().guidance.drawnCandidates).toEqual([]);
   });
 });

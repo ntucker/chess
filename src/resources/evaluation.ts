@@ -54,9 +54,7 @@ export const getEvaluation = new Endpoint(
  * ```
  */
 export const getTopMoves = new Endpoint(
-  async (line: readonly string[]) => {
-    const { result } = lastPosition(line);
-    return result ? [] : stockfishTopMoves(line);
-  },
+  async (line: readonly string[]): Promise<readonly TopMove[]> =>
+    lastPosition(line).result ? [] : stockfishTopMoves(line),
   { name: 'getTopMoves', dataExpiryLength: Infinity },
 );
