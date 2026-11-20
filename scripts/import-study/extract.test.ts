@@ -160,7 +160,7 @@ describe('extractChapter', () => {
     expect(after('10...f6? 11.Qh5+')).toEqual([]);
   });
 
-  describe('a run longer than 32 plies, a game score rather than a line', () => {
+  describe('a run longer than 32 plies is a quoted game, not a line', () => {
     // The Breyer to 17...Bg7 from 2.Nf3: 32 plies.
     const breyer =
       '2.Nf3 Nc6 3.Bb5 a6 4.Ba4 Nf6 5.O-O Be7 6.Re1 b5 7.Bb3 d6 8.c3 O-O 9.h3 Nb8 10.d4 Nbd7 11.Nbd2 Bb7 12.Bc2 Re8 13.Nf1 Bf8 14.Ng3 g6 15.a4 c5 16.d5 c4 17.Bg5 Bg7';

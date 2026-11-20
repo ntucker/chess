@@ -52,7 +52,11 @@ export function findOnLine(move: StudyMove, named: NamedMove): StudyMove | undef
   return nearestMatch(lineThrough(move), named, nextPly(move.before));
 }
 
-/** Of `moves`, the one `named` names, nearest the ply its number gives (else `ply`), both as text numbers them. */
+/**
+ * Of `moves`, the one `named` names, nearest its written number (else `ply`). A candidate's ply is
+ * its position's own move number (`nextPly`), not its place in the chapter, so a chapter that
+ * starts from a FEN compares right.
+ */
 export function nearestMatch(
   moves: Iterable<StudyMove>,
   named: NamedMove,
