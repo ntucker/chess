@@ -8,6 +8,9 @@ import { kingCastlesTo, makeUci, opposite, parseSquare, parseUci } from 'chessop
 export { COLORS, type Color } from 'chessops/types';
 export { opposite } from 'chessops/util';
 
+/** One move in SAN, without annotation glyphs, as a regular expression source. */
+export const SAN = String.raw`(?:O-O-O|O-O|[KQRBN][a-h]?[1-8]?x?[a-h][1-8]|[a-h](?:x[a-h])?[1-8](?:=[QRBN])?)[+#]?`;
+
 export const colorName = (color: Color) => (color === 'white' ? 'White' : 'Black');
 
 /** `sans` numbered, the first played at `firstPly` (1 is White's first move): `1.e4 c6 2.d4`, or `2...d5 3.e5`. */

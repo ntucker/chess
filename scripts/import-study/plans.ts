@@ -5,13 +5,13 @@
  */
 import type { Color, SquareName } from 'chessops/types';
 
-import { colorName, sanToUci } from '@/game/replay';
+import { colorName, SAN, sanToUci } from '@/game/replay';
 import { withTurn } from '@/lesson/check';
 import type { Route } from '@/lesson/lesson';
 
 import { findOnLine, playedBy, type Found, type Spot } from './line';
 import { played, type StudyMove } from './study';
-import { namedMoves, plainSan, SAN, sentenceEnds } from './text';
+import { namedMoves, plainSan, sentenceEnds } from './text';
 
 const LISTED = new RegExp(String.raw`(?<![\w.\d])\.\.\.(${SAN})(?![\w-])`, 'g');
 /** What may stand between two moves of one list. */

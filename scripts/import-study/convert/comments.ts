@@ -11,12 +11,11 @@ import { SquareSet } from 'chessops/squareSet';
 import { COLORS, ROLES, type Color } from 'chessops/types';
 import { makeSquare, roleToChar } from 'chessops/util';
 
-import { numberedLine } from '@/game/replay';
+import { numberedLine, SAN } from '@/game/replay';
 import type { Idea } from '@/lesson/lesson';
 
 import type { ChapterNotes, MoveNote } from '../extract';
 import type { StudyMove } from '../study';
-import { SAN } from '../text';
 
 /** One comment as the model reads it. */
 export interface Comment {

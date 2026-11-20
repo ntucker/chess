@@ -636,6 +636,29 @@ describe('checkLesson', () => {
       checkLesson(withPosition(key, { variation: 'caro', moves: [], notes: [{ text }] })),
     ).toEqual([{ path: `positions["${key}"].notes[0].text`, message: 'has 21 words (most 20)' }]);
   });
+
+  it.each([
+    ['6...Nxe4? 7.Nxd4 Nc5 8.Bc4 Nbd7', 'writes a line of moves in notation'],
+    ['Trap: 5.Nf3 Bg4 6.h3 Bxf3 and White is better.', 'writes a line of moves in notation'],
+    ['...Bf5, ...e6 and ...c5', 'is only a list of moves'],
+    ['...Bxf3, then play ...e6, ...dxe4 and ...Nf6', 'is only a list of moves'],
+  ])('refuses a note written in notation: %s', (text, message) => {
+    const key = positionKey(afterC6);
+    expect(
+      checkLesson(withPosition(key, { variation: 'caro', moves: [], notes: [{ text }] })),
+    ).toEqual([{ path: `positions["${key}"].notes[0].text`, message }]);
+  });
+
+  it.each([
+    'Avoid.',
+    'This is a blunder: after 7.Nxe5 Bxd1 8.Bb5+ White comes out ahead.',
+    'Against Ng3, develop with e6 and Be7, castle, then play b6, Bb7 and break with c5.',
+  ])('passes moves named in a sentence: %s', (text) => {
+    const key = positionKey(afterC6);
+    expect(
+      checkLesson(withPosition(key, { variation: 'caro', moves: [], notes: [{ text }] })),
+    ).toEqual([]);
+  });
 });
 
 it('passes the sample lesson the tests use', () => {

@@ -6,11 +6,8 @@ import { castlingSide, type Chess } from 'chessops/chess';
 import type { Color, NormalMove } from 'chessops/types';
 import { makeSquare, opposite, parseUci, squareFile } from 'chessops/util';
 
-import { colorName } from '@/game/replay';
+import { colorName, SAN } from '@/game/replay';
 import { MAX_NOTE_WORDS, type Evaluation, type Uci } from '@/lesson/lesson';
-
-/** One move in SAN, without annotation glyphs. */
-export const SAN = String.raw`(?:O-O-O|O-O|[KQRBN][a-h]?[1-8]?x?[a-h][1-8]|[a-h](?:x[a-h])?[1-8](?:=[QRBN])?)[+#]?`;
 
 /** A move written in a comment, like `6...Nd7` or `...Nd7`. */
 export interface NamedMove {
