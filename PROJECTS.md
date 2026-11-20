@@ -49,8 +49,9 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
    step 6 (alone if nothing was pushed), have a Fable subagent load `user-kit:clean-code` and look for
    architectural simplifications and improvements, weighing what will likely stay the same and what
    might change (over time and space). Handle its findings the same way, once per PR.
-8. Land your own PR (squash-merge) as `.agents/projects/autoland.md` says. A worker's PR ends when
-   it merges, not when it is handed over.
+8. Land your own PR (squash-merge) as `.agents/projects/autoland.md` says; only `ntucker/chess` PRs.
+   The person merges `reactive/silk` and `reactive/data-client` PRs. A worker's PR ends when it
+   merges, not when it is handed over.
 
 ## PR descriptions
 
