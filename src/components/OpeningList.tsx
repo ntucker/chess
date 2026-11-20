@@ -91,8 +91,9 @@ function SideSection({
         <Eyebrow>Playing {colorName(side)}</Eyebrow>
       </View>
       <View style={spacing.openings}>
-        {openings.map((opening) => (
+        {openings.map((opening, index) => (
           <OpeningEntry
+            last={index === openings.length - 1}
             key={opening.id}
             opening={opening}
             here={here?.lesson === opening.id ? (here.variation ?? opening.root.id) : undefined}
@@ -106,14 +107,17 @@ function SideSection({
 /**
  * One opening: its name, then its variations as a tree, each branch closed
  * but those on the way to `here`, the variation the board was in. Its
- * sources' credits show under its variations, while they show.
+ * sources' credits show under its variations, while they show. The `last`
+ * of its side leaves the space below it to the side's own gap.
  */
 function OpeningEntry({
   opening,
   here,
+  last,
 }: {
   readonly opening: ListedOpening<LessonId>;
   readonly here?: VariationId;
+  readonly last: boolean;
 }) {
   const { root } = opening;
   const spacing = useNarrowStyles(STYLES);
@@ -128,7 +132,7 @@ function OpeningEntry({
         gutter
         tag={here === undefined ? undefined : <NowPlaying />}
         footer={
-          <View style={spacing.credits}>
+          <View style={[spacing.credits, last && styles.lastCredits]}>
             <SourceCredits sources={opening.sources} />
           </View>
         }
@@ -400,6 +404,7 @@ const styles = StyleSheet.create({
   nowText: { textTransform: 'uppercase', letterSpacing: 1.2 },
   rows: { gap: 2 },
   closed: { display: 'none' },
+  lastCredits: { paddingBottom: 0 },
   // Sub-variations hang from their parent's chevron on a thin rule.
   subRows: { marginLeft: TOGGLE / 2, paddingLeft: 6, borderLeftWidth: 1 },
   branch: { flexDirection: 'row', alignItems: 'flex-start' },
