@@ -39,12 +39,13 @@ export function useMoveQualities(
   const moves = plies.slice(1).map(({ move }) => move!.uci);
   // The moves before each position: `lines[n]` leads to `plies[n]`.
   const lines = plies.map((_, n) => moves.slice(0, n));
-  const judged = shown !== null && shown > 0 && !book[shown - 1];
-  const args = (line: readonly string[]) =>
-    judged ? ([engine, line] as const) : ([null] as const);
+  // The positions before and after the board's move, unless nothing is to be judged.
+  const asked = shown !== null && shown > 0 && !book[shown - 1] ? shown : undefined;
+  const args = (ply: number | undefined) =>
+    ply === undefined ? ([null] as const) : ([engine, lines[ply]] as const);
   // The position before first: the engine searches the newest asked for, the board's.
-  useSubscription(getAnalysis, ...args(lines[shown! - 1]));
-  useSubscription(getAnalysis, ...args(lines[shown!]));
+  useSubscription(getAnalysis, ...args(asked && asked - 1));
+  useSubscription(getAnalysis, ...args(asked));
   const analyses = lines.map((line): Analysis | undefined => {
     const analysis = ctrl.get(PositionAnalysis, analysisKey(engine, line), state);
     return analysis?.final ? analysis : undefined;

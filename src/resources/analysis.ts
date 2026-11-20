@@ -18,7 +18,7 @@ import {
 import { lastPosition } from '@/game/replay';
 import { maiaEvaluation } from '@/maia/engine';
 import { JUDGE_RATING } from '@/maia/maia';
-import { watchStockfish, type Watcher } from '@/stockfish/engine';
+import { finalAnalysis, watchStockfish, type Watcher } from '@/stockfish/engine';
 
 /**
  * How `engine` judges the position after `moves` (UCI, space-separated): one
@@ -70,8 +70,12 @@ function watchAnalysis(
   if (engine === 'stockfish' && !result) return watchStockfish(line, watcher);
   let watching = true;
   (result ? Promise.resolve(resultEvaluation(result)) : maiaEvaluation(JUDGE_RATING, line)).then(
-    (evaluation) => watching && watcher.update(settledAnalysis(evaluation)),
-    (error: Error) => watching && watcher.fail(error),
+    (evaluation) => {
+      if (watching) watcher.update(settledAnalysis(evaluation));
+    },
+    (error: Error) => {
+      if (watching) watcher.fail(error);
+    },
   );
   return () => {
     watching = false;
@@ -99,15 +103,10 @@ function watchAnalysis(
  * ```
  */
 export const getAnalysis = new Endpoint(
-  (engine: EvaluationEngine, line: readonly string[]) =>
-    new Promise<Analysis & ReturnType<typeof analysisKey>>((resolve, reject) => {
-      // Nothing comes after the final analysis, so the watch ends with it.
-      watchAnalysis(engine, line, {
-        update: (analysis) =>
-          analysis.final && resolve({ ...analysisKey(engine, line), ...analysis }),
-        fail: reject,
-      });
-    }),
+  async (engine: EvaluationEngine, line: readonly string[]) => ({
+    ...analysisKey(engine, line),
+    ...(await finalAnalysis((watcher) => watchAnalysis(engine, line, watcher))),
+  }),
   { schema: PositionAnalysis, name: 'getAnalysis', dataExpiryLength: Infinity },
 );
 

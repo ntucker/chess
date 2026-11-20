@@ -155,7 +155,8 @@ export function attachStockfish(
 /**
  * Has Stockfish analyse the position after `line` (UCI moves from the
  * starting position) and tell `watcher` each deeper depth it finishes, then
- * the final one, once it has visited its budget's positions (`APP_SEARCH`). Stockfish works on
+ * the final one, once it has visited the connected engine's budget of
+ * positions (`attachStockfish`; the app's is `APP_SEARCH`). Stockfish works on
  * one position at a time: the newest one asked for. When a newer one is
  * asked for, or nobody watches the running one any more, the running
  * search stops; a position still watched starts again later from the
@@ -181,10 +182,20 @@ export function watchStockfish(line: readonly string[], watcher: Watcher): () =>
 }
 
 /** The final analysis of the position after `line` (`watchStockfish`). */
-export function stockfishAnalysis(line: readonly string[]): Promise<Analysis> {
+export const stockfishAnalysis = (line: readonly string[]) =>
+  finalAnalysis((watcher) => watchStockfish(line, watcher));
+
+/**
+ * The final analysis a watch (`watch`, which tells its watcher as
+ * `watchStockfish` does) ends with. Nothing comes after it, so the watch
+ * needs no stopping.
+ */
+export function finalAnalysis(watch: (watcher: Watcher) => unknown): Promise<Analysis> {
   return new Promise((resolve, reject) => {
-    watchStockfish(line, {
-      update: (analysis) => analysis.final && resolve(analysis),
+    watch({
+      update(analysis) {
+        if (analysis.final) resolve(analysis);
+      },
       fail: reject,
     });
   });

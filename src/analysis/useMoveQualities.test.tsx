@@ -40,13 +40,13 @@ const controllers: Controller[] = [];
 const renders: (readonly (MoveQuality | undefined)[])[] = [];
 const managers = () => [new AnalysisManager(), ...getDefaultManagers()];
 
-function Labels({ shown, book }: { readonly shown: number; readonly book?: boolean[] }) {
+function Labels({ shown, book }: { readonly shown: number | null; readonly book?: boolean[] }) {
   controllers.push(useController());
   renders.push(useMoveQualities(PLIES, shown, 'stockfish', book));
   return null;
 }
 
-const render = (shown: number, book?: boolean[]) =>
+const render = (shown: number | null, book?: boolean[]) =>
   act(async () => {
     root ??= createRoot();
     root.render(
@@ -85,6 +85,13 @@ describe('useMoveQualities', () => {
     await render(0);
     expect(mockSearched).toEqual([]);
     expect(renders.at(-1)).toEqual([undefined, undefined, undefined]);
+  });
+
+  it('asks for nothing behind another screen, then asks once in front', async () => {
+    await render(null);
+    expect(mockSearched).toEqual([]);
+    await render(3);
+    expect(mockSearched).toEqual(['e2e4 e7e5', 'e2e4 e7e5 g1f3']);
   });
 
   it('labels each move once its analyses are final, not only the shown one', async () => {
