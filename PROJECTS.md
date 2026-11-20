@@ -57,20 +57,12 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
 
 ## Follow-ups
 
-A follow-up is extra work found while doing a PR: a review finding, a nearby bug, a cleanup. Fix it
-in the PR by default, and always fix there anything the PR made worse. Decide yourself; don't ask the
-person. Hand it on only when it is:
+Never leave one dangling, and decide yourself. Fix it in the PR by default; always fix there anything
+the PR made worse. Reject it only when it is wrong, with a stated reason. Hand it on only when it is
+blocked (it needs another unmerged PR, or something only the person can give) or in a different area
+than the PR's goal:
 
-- blocked: it needs another unmerged PR, or something only the person can give (a choice that
-  changes their goal, a secret, access); or
-- in a different area than the PR's goal (for example, a lesson-screen layout change found during an
-  importer PR).
-
-Reject it instead when it is wrong, with a stated reason. Never leave one dangling. To hand one on, go
-by the project's scope:
-
-- Project-scope work: tell the coordinator, with a self-contained brief. The coordinator adds it to
-  the work queue (the work-queue tool, never the queue file by hand).
+- Project-scope work: tell the coordinator, with a self-contained brief. The coordinator queues it.
 - Work outside the project's scope: draft a GitHub issue on `ntucker/chess` (self-contained) and hand
   it to the coordinator. File it yourself only when the person asked in their own words.
 - The same holds for any other write outside the repo and your PR (GitHub comments elsewhere, Slack).
