@@ -1,11 +1,11 @@
 import { useRouter } from 'expo-router';
-import { type Dispatch, useDeferredValue, useEffect, useReducer, useState } from 'react';
+import { type Dispatch, use, useDeferredValue, useEffect, useReducer, useState } from 'react';
 
 import { type GameAction, gameReducer, type GameState, startGame } from '@/game/game';
 import type { GameStore } from '@/game/useGame';
 import type { VariationId } from '@/lesson/lesson';
-import { lessonHref, lessonOf, sameLine, variationLine } from '@/lesson/openings';
-import { LESSON_INDEX, type LessonId } from '@/resources/lesson';
+import { lessonHref, type LessonIndex, lessonOf, sameLine, variationLine } from '@/lesson/openings';
+import { LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
 import type { Color } from '@/game/replay';
 
@@ -13,10 +13,11 @@ import type { Color } from '@/game/replay';
  * Where an address starts: at the start, no moves; in a lesson, the line that
  * opens the variation it names, else the first line that picks the lesson.
  */
-const startOf = (id: LessonId | undefined, variation?: VariationId) =>
-  id === undefined
-    ? []
-    : (variationLine(LESSON_INDEX[id], variation) ?? LESSON_INDEX[id].lines[0].moves);
+const startOf = (
+  index: LessonIndex<LessonId>,
+  id: LessonId | undefined,
+  variation?: VariationId,
+) => (id === undefined ? [] : (variationLine(index[id], variation) ?? index[id].lines[0].moves));
 
 /** An address: `/` or a lesson, and a variation of it. */
 interface Address {
@@ -87,27 +88,28 @@ export function useOpeningsGame(
   entry: string | undefined,
 ) {
   const router = useRouter();
+  const index = use(LessonIndexContext);
   const settings = useSettings();
   const settingsDispatch = useSettingsDispatch();
   // The side this page plays: the last lesson address's, or a resumed game's,
   // at once, which the setting saves only after this render; otherwise the setting's.
   const [addressSide, setAddressSide] = useState(
-    address === undefined ? undefined : LESSON_INDEX[address].side,
+    address === undefined ? undefined : index[address].side,
   );
   const side = addressSide ?? settings.side;
   const [game, dispatch] = useReducer(gameReducer, undefined, () =>
-    startGame(startOf(address, variation)),
+    startGame(startOf(index, address, variation)),
   );
   const { moves } = game;
   /** The lesson the game plays, named by the moves that pick it. */
-  const picked = lessonOf(LESSON_INDEX, side, moves);
+  const picked = lessonOf(index, side, moves);
   // Checked during render, so the page never shows the old game at the new address.
   const [synced, setSynced] = useState<Synced>({ entry, address, variation, sent: [] });
   // Each history entry the page left, while the game was still at its address.
   const [left, setLeft] = useState<Partial<Record<string, Visit>>>({});
   if (entry !== synced.entry || address !== synced.address || variation !== synced.variation) {
     if (address !== undefined && address !== synced.address) {
-      setAddressSide(LESSON_INDEX[address].side);
+      setAddressSide(index[address].side);
     }
     // One of the page's own sends arriving, maybe after the game has moved on.
     const arrivedAt = synced.sent.findIndex((sent) => sameAddress(sent, { address, variation }));
@@ -122,7 +124,7 @@ export function useOpeningsGame(
       // The game is at `id`'s address: it plays that lesson from its side
       // (lessons of both sides share moves), or at `/`, none from the page's.
       const isAt = (id?: LessonId) =>
-        (id === undefined ? picked : lessonOf(LESSON_INDEX, LESSON_INDEX[id].side, moves)) === id;
+        (id === undefined ? picked : lessonOf(index, index[id].side, moves)) === id;
       if (isAt(synced.address)) {
         const leaving = { address: synced.address, variation: synced.variation, game, side };
         setLeft({ ...left, [synced.entry]: leaving });
@@ -130,7 +132,10 @@ export function useOpeningsGame(
       const visit = entry === undefined ? undefined : left[entry];
       // A later push can reuse a key that Back left (keys follow the stack).
       const resumed = visit && sameAddress(visit, { address, variation }) ? visit : undefined;
-      dispatch({ type: 'newGame', moves: resumed?.game.moves ?? startOf(address, variation) });
+      dispatch({
+        type: 'newGame',
+        moves: resumed?.game.moves ?? startOf(index, address, variation),
+      });
       if (resumed) {
         dispatch({ type: 'goto', ply: resumed.game.ply });
         // The side the game was played from: at `/`, maybe not the setting's.
@@ -138,12 +143,12 @@ export function useOpeningsGame(
       }
     } else {
       // A link to the page already open.
-      dispatch({ type: 'newGame', moves: startOf(address, variation) });
+      dispatch({ type: 'newGame', moves: startOf(index, address, variation) });
     }
     setSynced({ entry, address, variation, sent });
   } else {
     // Once the sends on their way arrive, the address is the last one's.
-    const next = nextSend(synced.sent.at(-1) ?? synced, picked, moves);
+    const next = nextSend(index, synced.sent.at(-1) ?? synced, picked, moves);
     if (next) setSynced({ ...synced, sent: [...synced.sent, next] });
   }
   // Saves the side whenever an address or a resumed game sets it, not on
@@ -167,7 +172,7 @@ export function useOpeningsGame(
   // swapped, or Back to `/`) shows at once.
   const deferred = useDeferredValue(game);
   const shownSide = useDeferredValue(side);
-  const shownLesson = lessonOf(LESSON_INDEX, shownSide, deferred.moves);
+  const shownLesson = lessonOf(index, shownSide, deferred.moves);
   const pending = picked !== undefined && shownLesson !== picked;
   const held: Dispatch<GameAction> = (action) => {
     if (!isInput(action)) dispatch(action);
@@ -201,6 +206,7 @@ export function useOpeningsGame(
  * line (so picking that variation again starts it afresh).
  */
 function nextSend(
+  index: LessonIndex<LessonId>,
   bound: Address,
   picked: LessonId | undefined,
   moves: readonly string[],
@@ -211,7 +217,7 @@ function nextSend(
       : { address: picked, how: 'replace' };
   }
   if (bound.address === undefined) return undefined;
-  const opens = variationLine(LESSON_INDEX[bound.address], bound.variation);
+  const opens = variationLine(index[bound.address], bound.variation);
   return opens !== undefined && !sameLine(moves, opens)
     ? { address: picked, how: 'drop' }
     : undefined;

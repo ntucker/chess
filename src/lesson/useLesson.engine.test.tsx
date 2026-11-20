@@ -6,8 +6,10 @@ import { createRoot, type Root } from 'test-renderer';
 
 import { gameReducer, startGame } from '@/game/game';
 import { getEvaluation, getTopMoves } from '@/resources/evaluation';
+import { LessonIndexContext } from '@/resources/lesson';
 
 import { ADVANCE, SAMPLE, uciLine } from './lesson.fixture';
+import { FIXTURE_INDEX } from './openings.fixture';
 import { useLesson } from './useLesson';
 
 // Every search started, by the moves before the position (top moves marked
@@ -56,7 +58,9 @@ const render = (moves: readonly string[]) =>
     root ??= createRoot();
     root.render(
       <DataProvider>
-        <Lesson moves={moves} />
+        <LessonIndexContext value={FIXTURE_INDEX}>
+          <Lesson moves={moves} />
+        </LessonIndexContext>
       </DataProvider>,
     );
   });

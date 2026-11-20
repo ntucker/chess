@@ -1,11 +1,9 @@
 import { describe, expect, it } from '@jest/globals';
 
 import { checkLesson } from './check';
-import type { Color } from '@/game/replay';
 import { positionHash } from '@/progress/progress';
-import { LESSON_INDEX } from '@/resources/lesson';
 
-import type { Lesson, LessonMove } from './lesson';
+import type { Lesson } from './lesson';
 import {
   keyAfter,
   readShippedLesson,
@@ -15,6 +13,7 @@ import {
   withMoves,
 } from './lesson.fixture';
 import { rowMarks } from './marks';
+import { FIXTURE_INDEX, guideLesson } from './openings.fixture';
 import {
   type IndexEntry,
   isPicking,
@@ -76,28 +75,6 @@ const INDEX = {
 
 const startMoves = (lesson: Lesson) =>
   candidates(lesson, keyAfter(), undefined).map(({ move }) => move.uci);
-
-/** A lesson of `side` whose guide plays each of `lines` (in SAN) and nothing else, its learner's moves all book. */
-function guideLesson(id: string, side: Color, ...lines: string[][]): Lesson {
-  const positions: Record<string, { variation: string; moves: LessonMove[] }> = {};
-  for (const sans of lines) {
-    sans.forEach((san, n) => {
-      const key = keyAfter(...sans.slice(0, n));
-      const uci = uciLine(...sans.slice(0, n + 1)).at(-1)!;
-      const here = (positions[key] ??= { variation: id, moves: [] });
-      const learner = (n % 2 === 0) === (side === 'white');
-      if (!here.moves.some((move) => move.uci === uci))
-        here.moves.push({ uci, ...(learner && { book: true }) });
-    });
-  }
-  return {
-    ...SAMPLE,
-    id,
-    side,
-    variations: { [id]: { name: id } },
-    positions,
-  };
-}
 
 /** A shipped lesson's index entry on its own, built once: building it searches every variation. */
 const shippedIndexes = new Map<string, IndexEntry>();
@@ -562,7 +539,7 @@ describe('withOpenings', () => {
 
 describe('variationLine', () => {
   it('opens a variation at its line, and none for an unknown one', () => {
-    const slav = LESSON_INDEX.slav;
+    const slav = FIXTURE_INDEX.slav;
     expect(variationLine(slav, 'semi-slav')).toBe(
       slav.variations.find(({ id }) => id === 'semi-slav')!.moves,
     );
