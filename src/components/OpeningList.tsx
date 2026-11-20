@@ -197,10 +197,11 @@ function LineLink({
         event.preventDefault();
         // The board's page is underneath as the learner left it. Another line
         // leaves the list for it, as if picked on the board: Back then
-        // returns to the game the learner left there, not to the list.
+        // returns to the game the learner left there, not to the list. The
+        // back and the push go as one batch, which AT_ONCE keeps out of a transition.
         if (!router.canGoBack()) router.replace(href, AT_ONCE);
         else {
-          router.back(AT_ONCE);
+          router.back();
           if (!here) router.push(href, AT_ONCE);
         }
       }}

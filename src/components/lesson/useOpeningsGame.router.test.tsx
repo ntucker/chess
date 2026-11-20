@@ -3,6 +3,7 @@ import { router, Slot, Stack } from 'expo-router';
 import { act, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
+import { useNavigationTransitions } from '@/components/navigation';
 import { uciLine } from '@/lesson/lesson.fixture';
 import { lessonHref, variationHref } from '@/lesson/openings';
 import { FIXTURE_INDEX } from '@/lesson/openings.fixture';
@@ -17,6 +18,7 @@ import { useOpeningsGame } from './useOpeningsGame';
 import 'expo-router/build/testing-library/mocks';
 import { ExpoRoot } from 'expo-router/build/ExpoRoot';
 import { getMockContext } from 'expo-router/build/testing-library/mock-config';
+import { getDefaultTransitionMode } from 'expo-router/build/global-state/router';
 
 let latest: ReturnType<typeof useOpeningsGame> & { readonly id?: string };
 /** The openings layout, as `src/app/(openings)/_layout.tsx` reads its address. */
@@ -29,10 +31,16 @@ function Page() {
   return <Slot />;
 }
 
+/** The root layout's navigator, with navigation in transitions as the app has it. */
+function RootLayout() {
+  useNavigationTransitions();
+  return <Stack screenOptions={{ headerShown: false }} />;
+}
+
 let root: Root | undefined;
 async function open(url: string) {
   const context = getMockContext({
-    _layout: () => <Stack screenOptions={{ headerShown: false }} />,
+    _layout: RootLayout,
     '(openings)/_layout': () => (
       <LessonIndexContext value={FIXTURE_INDEX}>
         <SettingsProvider>
@@ -56,8 +64,6 @@ const play = (...ucis: string[]) =>
 beforeAll(() => {
   // Load the routes at once, as the test's context holds them, not lazily.
   process.env.EXPO_ROUTER_IMPORT_MODE = 'sync';
-  // Navigation in transitions, as the root layout sets it.
-  router.setTransitionMode('always');
 });
 afterEach(() => {
   act(() => root?.unmount());
@@ -65,6 +71,11 @@ afterEach(() => {
 });
 
 describe('useOpeningsGame on the router', () => {
+  it('runs navigation in transitions once the root layout is up', async () => {
+    await open('/');
+    expect(getDefaultTransitionMode()).toBe('always');
+  });
+
   it('keeps the game as its own picks move the address, and resumes it on Back', async () => {
     await open('/');
     await play('e2e4', 'c7c6');

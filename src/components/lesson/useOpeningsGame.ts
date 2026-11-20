@@ -1,10 +1,10 @@
 import { useRouter } from 'expo-router';
 import { type Dispatch, use, useDeferredValue, useEffect, useReducer, useState } from 'react';
 
+import { AT_ONCE } from '@/components/navigation';
 import { type GameAction, gameReducer, type GameState, startGame } from '@/game/game';
 import type { GameStore } from '@/game/useGame';
 import type { VariationId } from '@/lesson/lesson';
-import { AT_ONCE } from '@/components/navigation';
 import { lessonHref, type LessonIndex, lessonOf, sameLine, variationLine } from '@/lesson/openings';
 import { LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';

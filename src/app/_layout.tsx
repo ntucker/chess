@@ -11,10 +11,10 @@ import {
 import { InstrumentSans_400Regular } from '@expo-google-fonts/instrument-sans';
 import { SilkProvider } from '@reactive/silk-native';
 import { useFonts } from 'expo-font';
-import { type ErrorBoundaryProps, Stack, ThemeProvider, useRouter } from 'expo-router';
+import { type ErrorBoundaryProps, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
 
+import { useNavigationTransitions } from '@/components/navigation';
 import { ScreenFailure } from '@/components/NewVersion';
 import { ProgressSync } from '@/resources/progress';
 import { SettingsProvider } from '@/settings/SettingsProvider';
@@ -28,12 +28,7 @@ const managers = () => [new ProgressSync(), ...getDefaultManagers()];
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  // Navigation renders in a transition, so it never blocks input and the page
-  // being left keeps what it already shows until the next page is ready. A
-  // move to a page that loads first opts out (AT_ONCE, src/components/navigation.ts).
-  // Set once the router is up: before that, the setting misses its first read.
-  const router = useRouter();
-  useEffect(() => router.setTransitionMode('always'), [router]);
+  useNavigationTransitions();
   const [fontsLoaded] = useFonts({
     DMSerifDisplay_400Regular,
     DMSerifDisplay_400Regular_Italic,
