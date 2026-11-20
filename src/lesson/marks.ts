@@ -11,12 +11,13 @@ import type { Chess } from 'chessops/chess';
 import { parseUci } from 'chessops/util';
 
 import { positionKey, readPositionKey } from '@/game/replay';
-import { type Mark, type MarkedPositions, positionHash } from '@/progress/progress';
+import { type Mark, type MarkedPositions, positionHash, UNTOUCHED } from '@/progress/progress';
 
 import type { Lesson, LessonMove, PositionKey, Uci } from './lesson';
+import { type LessonIndex, lessonOf } from './openings';
 import type { ReplyChoice } from './opponent';
 import type { ModeState } from './practice';
-import { guidePosition } from './select';
+import { type Candidate, guidePosition } from './select';
 import type { LessonView } from './view';
 
 /**
@@ -34,14 +35,48 @@ export function rowMarks(
   progress: MarkedPositions,
   { candidates, learnerToMove }: Pick<LessonView, 'candidates' | 'learnerToMove'>,
 ): ReadonlyMap<Uci, Mark> {
-  const { seen, passed } = markSets(progress);
   const marks = new Map<Uci, Mark>();
-  for (const { move, next } of candidates) {
-    if (inCleanRun(move, learnerToMove) && cleanEnds(lesson, passed, next) === 'passed') {
-      marks.set(move.uci, 'passed');
-    } else if (seen.has(positionHash(next))) marks.set(move.uci, 'seen');
+  for (const candidate of candidates) {
+    const mark = rowMark(lesson, markSets(progress), candidate, learnerToMove);
+    if (mark) marks.set(candidate.move.uci, mark);
   }
   return marks;
+}
+
+/**
+ * The start position's rows' marks (src/lesson/openings.ts), by move: each
+ * row's from its own opening's lesson and `progress`, whichever lesson is
+ * loaded. A row's lesson missing from `lessons` can't be walked, so the row
+ * is at most seen; only a lesson with a passed line end can pass its row.
+ */
+export function openingMarks(
+  index: LessonIndex,
+  progress: Readonly<Record<string, MarkedPositions>>,
+  lessons: Readonly<Partial<Record<string, Lesson>>>,
+  { candidates, learnerToMove }: Pick<LessonView, 'candidates' | 'learnerToMove'>,
+): ReadonlyMap<Uci, Mark> {
+  const marks = new Map<Uci, Mark>();
+  for (const candidate of candidates) {
+    const id = lessonOf(index, [candidate.move.uci]);
+    if (id === undefined) continue;
+    const sets = markSets(progress[id] ?? UNTOUCHED);
+    const mark = rowMark(lessons[id], sets, candidate, learnerToMove);
+    if (mark) marks.set(candidate.move.uci, mark);
+  }
+  return marks;
+}
+
+/** One row's mark, walking `lesson` for passed only when it is at hand. */
+function rowMark(
+  lesson: Lesson | undefined,
+  { seen, passed }: MarkSets,
+  { move, next }: Candidate,
+  learnerToMove: boolean,
+): Mark | undefined {
+  if (lesson && inCleanRun(move, learnerToMove) && cleanEnds(lesson, passed, next) === 'passed') {
+    return 'passed';
+  }
+  return seen.has(positionHash(next)) ? 'seen' : undefined;
 }
 
 /**
@@ -62,9 +97,12 @@ export function steering(
     replies.find(({ next }) => cleanEnds(lesson, passed, next) === 'open') ?? replies[0];
 }
 
+/** A progress's marks as sets of `positionHash`es. */
+type MarkSets = Readonly<Record<Mark, ReadonlySet<string>>>;
+
 /** Each progress's marks as sets, made once: steering asks on every render. */
-const sets = new WeakMap<MarkedPositions, Readonly<Record<Mark, ReadonlySet<string>>>>();
-function markSets(progress: MarkedPositions) {
+const sets = new WeakMap<MarkedPositions, MarkSets>();
+function markSets(progress: MarkedPositions): MarkSets {
   let found = sets.get(progress);
   if (!found) {
     found = { seen: new Set(progress.seen), passed: passedSet(progress.passed) };

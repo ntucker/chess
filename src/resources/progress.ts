@@ -1,5 +1,5 @@
 import type { Controller, Manager, Middleware } from '@data-client/react';
-import { Endpoint, Entity } from '@data-client/rest';
+import { Endpoint, Entity, Values } from '@data-client/rest';
 
 import { readStorage, storageKey, subscribeStorage, writeStorage } from '@/context/storage';
 import type { PositionKey } from '@/lesson/lesson';
@@ -10,6 +10,8 @@ import {
   UNTOUCHED,
   withMark,
 } from '@/progress/progress';
+
+import { LESSONS } from './lesson';
 
 /** Where the progress is saved, as JSON (`SavedProgress`). */
 const KEY = storageKey('progress');
@@ -34,16 +36,22 @@ const lessonOf = (progress: SavedProgress, lesson: string) => ({
   ...(progress[lesson] ?? UNTOUCHED),
 });
 
+/** Every shipped lesson's progress in `progress`, by lesson id, untouched ones too. */
+const everyLesson = (progress: SavedProgress) =>
+  Object.fromEntries(Object.keys(LESSONS).map((lesson) => [lesson, lessonOf(progress, lesson)]));
+
 /**
- * The learner's progress in the lesson `lesson`, read from the device. It
- * changes only by `addMark`, or by another tab saving (`ProgressSync`).
+ * The learner's progress in every lesson, by lesson id, read from the
+ * device: one read serves the lesson played and the start position, whose
+ * rows each show their own opening's. It changes only by `addMark`, or by
+ * another tab saving (`ProgressSync`).
  *
  * ```ts
- * const { seen, passed } = useSuspense(getProgress, 'caro-kann');
+ * const { seen, passed } = useSuspense(getProgress)['caro-kann'];
  * ```
  */
-export const getProgress = new Endpoint(async (lesson: string) => lessonOf(saved(), lesson), {
-  schema: LessonProgress,
+export const getProgress = new Endpoint(async () => everyLesson(saved()), {
+  schema: new Values(LessonProgress),
   name: 'getProgress',
   dataExpiryLength: Infinity,
 });
@@ -83,11 +91,7 @@ export class ProgressSync implements Manager {
   // What is saved now, not the event's value: this tab may have saved a newer
   // mark since the other tab's save queued the event.
   private load = () => {
-    const progress = saved();
-    this.controller?.set(
-      [LessonProgress],
-      Object.keys(progress).map((lesson) => lessonOf(progress, lesson)),
-    );
+    this.controller?.setResponse(getProgress, everyLesson(saved()));
   };
 
   init() {

@@ -1,7 +1,7 @@
 import { Endpoint } from '@data-client/rest';
 
 import INDEX from '@/assets/lessons/index.json';
-import { readLesson } from '@/lesson/lesson';
+import { type Lesson, readLesson } from '@/lesson/lesson';
 import type { IndexEntry } from '@/lesson/openings';
 
 /**
@@ -33,4 +33,20 @@ export const LESSON_INDEX = INDEX as Readonly<Record<LessonId, IndexEntry>>;
 export const getLesson = new Endpoint(
   async (id: LessonId) => readLesson((await LESSONS[id]()).default),
   { name: 'getLesson', dataExpiryLength: Infinity },
+);
+
+/**
+ * The lessons `ids`, by id (see `getLesson`), for a screen that needs
+ * several at once. Each is the same object `getLesson` gives.
+ *
+ * ```ts
+ * const lessons = useSuspense(getLessons, ['caro-kann', 'slav']);
+ * ```
+ */
+export const getLessons = new Endpoint(
+  async (ids: readonly LessonId[]) =>
+    Object.fromEntries(
+      await Promise.all(ids.map(async (id) => [id, await getLesson(id)] as const)),
+    ) as Partial<Record<LessonId, Lesson>>,
+  { name: 'getLessons', dataExpiryLength: Infinity },
 );

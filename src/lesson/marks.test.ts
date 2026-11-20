@@ -4,7 +4,8 @@ import { type MarkedPositions, positionHash } from '@/progress/progress';
 
 import type { Lesson, LessonMove, PositionKey } from './lesson';
 import { keyAfter, SAMPLE, uciLine, withMoves } from './lesson.fixture';
-import { earnedMark, rowMarks, steering } from './marks';
+import { earnedMark, openingMarks, rowMarks, steering } from './marks';
+import { indexEntry, openingsLesson } from './openings';
 import { lessonView } from './view';
 
 /** A move after `sans`, written in SAN, as the guide stores it. */
@@ -156,6 +157,54 @@ describe('rowMarks', () => {
 
   it('marks nothing with no progress', () => {
     expect(marksAfter(progress([], []), LESSON, 'e4')).toEqual({ c6: undefined, e5: undefined });
+  });
+});
+
+describe('openingMarks', () => {
+  // Two openings: LESSON after 1.e4, and one after 1.d4 whose book ...d5 ends its only line.
+  const D4: Lesson = {
+    ...LESSON,
+    id: 'd4',
+    positions: {
+      [START]: { variation: LESSON.positions[START].variation, moves: [move([], 'd4')] },
+      [at('d4')]: {
+        variation: LESSON.positions[START].variation,
+        moves: [move(['d4'], 'd5', true)],
+      },
+    },
+  };
+  const index = { e4: indexEntry(LESSON), d4: indexEntry(D4) };
+  const view = lessonView({ lesson: openingsLesson(index), line: [], ply: 0, opponent: 1500 });
+  const marksOf = (
+    lessonProgress: Record<string, MarkedPositions>,
+    lessons: Record<string, Lesson> = {},
+  ) => {
+    const marks = openingMarks(index, lessonProgress, lessons, view);
+    return Object.fromEntries(
+      view.candidates.map(({ san, move: { uci } }) => [san, marks.get(uci)]),
+    );
+  };
+
+  it("marks each opening's row from its own lesson's progress", () => {
+    // LESSON's progress names the position after 1.d4 too, but that row is D4's.
+    expect(marksOf({ e4: progress([at('e4'), at('d4')], []) })).toEqual({
+      e4: 'seen',
+      d4: undefined,
+    });
+    expect(marksOf({ d4: progress([at('d4')], []) })).toEqual({ e4: undefined, d4: 'seen' });
+  });
+
+  it('passes a row by walking its lesson, so only while that lesson is at hand', () => {
+    const passed = {
+      e4: progress([at('e4')], [ENDS.d4, ENDS.d5]),
+      d4: progress([], [at('d4', 'd5')]),
+    };
+    expect(marksOf(passed)).toEqual({ e4: 'seen', d4: undefined });
+    expect(marksOf(passed, { e4: LESSON, d4: D4 })).toEqual({ e4: 'passed', d4: 'passed' });
+  });
+
+  it('marks nothing for a lesson never played', () => {
+    expect(marksOf({}, { e4: LESSON, d4: D4 })).toEqual({ e4: undefined, d4: undefined });
   });
 });
 
