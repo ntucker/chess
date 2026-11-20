@@ -1,22 +1,19 @@
 /**
  * The progress marks on the candidate list's rows (tech plan section 6). A
  * row is seen once Explore has shown the position its move leads to. It is
- * passed once clean Practice runs have reached every guide line end they can
- * reach through it. A clean run plays only the learner's book moves, so the
- * line ends below a learner's non-book move never count, and that move's own
- * row can't be passed. The same walk steers a clean Practice run's opponent
- * to the lines still to pass (`steering`).
+ * passed once clean Practice runs have reached every guide line end that
+ * counts through it (`cleanRun.ts`): a clean run plays only the learner's
+ * book moves, so the line ends below a learner's non-book move never count,
+ * and that move's own row can't be passed; nor do the ends below an
+ * opponent's rare reply. The same walk steers a clean Practice run's
+ * opponent to the lines still to pass (`steering`).
  */
-import type { Chess } from 'chessops/chess';
-import { parseUci } from 'chessops/util';
-
-import { positionKey, readPositionKey } from '@/game/replay';
 import { type Mark, type MarkedPositions, positionHash } from '@/progress/progress';
 
-import type { Lesson, LessonMove, PositionKey, Uci } from './lesson';
+import { inCleanRun, walkClean } from './cleanRun';
+import type { Lesson, PositionKey, Uci } from './lesson';
 import type { ReplyChoice } from './opponent';
 import type { ModeState } from './practice';
-import { guidePosition } from './select';
 import type { LessonView } from './view';
 
 /**
@@ -89,9 +86,6 @@ function passedSet(list: readonly string[]) {
   return set;
 }
 
-/** Any opponent's move can be part of a clean run; of the learner's, only book moves. */
-const inCleanRun = (move: LessonMove, learner: boolean) => !learner || move.book === true;
-
 /**
  * Where the clean runs from `start` stand, given the line ends `passed` (as
  * `positionHash`es): no line end reachable (`none`), all of them passed
@@ -114,54 +108,13 @@ type Ends = 'none' | 'open' | 'passed';
 /** `cleanEnds` answers, by lesson and by the passed marks they were worked out with. */
 const endsFound = new WeakMap<Lesson, WeakMap<ReadonlySet<string>, Map<PositionKey, Ends>>>();
 
-/** `cleanEnds`, worked out. */
+/** `cleanEnds`, worked out: the walk stops at the first open end. */
 function walkCleanEnds(lesson: Lesson, passed: ReadonlySet<string>, start: PositionKey): Ends {
-  const visited = new Set<PositionKey>();
-  const toVisit: WalkStep[] = [[start, undefined]];
-  let status: 'none' | 'passed' = 'none';
-  for (let step = toVisit.pop(); step !== undefined; step = toVisit.pop()) {
-    const [key, pos] = step;
-    if (visited.has(key)) continue;
-    visited.add(key);
-    // Reached by a guide move, a position the guide has no moves at ends a line.
-    if (guidePosition(lesson, key).place === 'inside') toVisit.push(...cleanNext(lesson, key, pos));
-    else if (passed.has(positionHash(key))) status = 'passed';
-    else return 'open';
-  }
-  return status;
-}
-
-/** A position's key, with the position itself while a walk has it at hand. */
-type WalkStep = readonly [PositionKey, Chess | undefined];
-
-/** Each lesson's `cleanNext` answers: a lesson never changes, and replaying moves is slow. */
-const nextKeys = new WeakMap<Lesson, Map<PositionKey, readonly PositionKey[]>>();
-
-/**
- * The positions the guide's moves at `key` lead to, leaving out the learner's
- * non-book moves. The position `pos`, when the walk has it, saves reading the
- * key, which costs more than playing the moves. A step carries its position
- * only when its move was just played; one from the cache carries none.
- */
-function cleanNext(lesson: Lesson, key: PositionKey, pos: Chess | undefined): readonly WalkStep[] {
-  let byKey = nextKeys.get(lesson);
-  if (!byKey) nextKeys.set(lesson, (byKey = new Map()));
-  const known = byKey.get(key);
-  if (known) return known.map((next) => [next, undefined]);
-  // A shipped lesson's keys and moves are checked (check.ts), so this skips
-  // playMove's checks and move names.
-  const from = pos ?? readPositionKey(key)!;
-  const learner = from.turn === lesson.side;
-  const steps = lesson.positions[key].moves
-    .filter((move) => inCleanRun(move, learner))
-    .map(({ uci }): WalkStep => {
-      const after = from.clone();
-      after.play(parseUci(uci)!);
-      return [positionKey(after), after];
-    });
-  byKey.set(
-    key,
-    steps.map(([next]) => next),
-  );
-  return steps;
+  let any = false;
+  const allPassed = walkClean(lesson, start, (key) => {
+    any = true;
+    return passed.has(positionHash(key));
+  });
+  if (!allPassed) return 'open';
+  return any ? 'passed' : 'none';
 }
