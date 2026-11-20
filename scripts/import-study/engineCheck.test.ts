@@ -2,10 +2,10 @@ import { describe, expect, it } from '@jest/globals';
 import { INITIAL_FEN } from 'chessops/fen';
 
 import type { Evaluation } from '@/evaluation/evaluation';
-import { LESSON_FORMAT, type Lesson, type LessonMove } from '@/lesson/lesson';
-import { keyAfter, SAMPLE, uciLine } from '@/lesson/lesson.fixture';
+import { LESSON_FORMAT, type Lesson } from '@/lesson/lesson';
+import { keyAfter, SAMPLE, uci, uciLine } from '@/lesson/lesson.fixture';
 
-import { at, uci } from './fixture';
+import { at } from './fixture';
 import { engineCheck, fillBook } from './engineCheck';
 
 /** Black's lesson: 1.d4 d5 (book) or 1...e5 (book, but loses a pawn), then 2.dxe5 Nc6 (book). */

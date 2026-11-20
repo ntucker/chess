@@ -1,10 +1,10 @@
 import { describe, expect, it } from '@jest/globals';
 import { INITIAL_FEN } from 'chessops/fen';
 
-import { LESSON_FORMAT, type Lesson, type LessonMove, type Note } from '@/lesson/lesson';
-import { keyAfter, SAMPLE } from '@/lesson/lesson.fixture';
+import { LESSON_FORMAT, type Lesson, type Note } from '@/lesson/lesson';
+import { keyAfter, SAMPLE, uci } from '@/lesson/lesson.fixture';
 
-import { at, uci } from './fixture';
+import { at } from './fixture';
 import { noteTranspositions } from './transpositions';
 
 const SEMI_SLAV: Note = { text: 'You strengthen d5.' };

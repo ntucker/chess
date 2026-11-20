@@ -262,6 +262,7 @@ function positionVariations(
   const path = (id: VariationId) => ancestry(variations, id);
   const named = new Map([...mainLines].map(([key, ids]) => [key, narrowest([...ids].map(path))]));
 
+  // A chapter about the opening itself is its own group: the opening has no parent.
   const group = (chapter: VariationId) =>
     chapter === root || variations[chapter].parent === root ? chapter : variations[chapter].parent!;
   const sideLines = new Map<PositionKey, Set<VariationId>>();

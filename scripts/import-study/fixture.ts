@@ -1,5 +1,4 @@
 import type { LessonMove, LessonPosition } from '@/lesson/lesson';
-import { uciLine } from '@/lesson/lesson.fixture';
 
 /** A lesson position in the variation 'test'. */
 export const at = (moves: LessonMove[], notes?: LessonPosition['notes']): LessonPosition => ({
@@ -7,9 +6,6 @@ export const at = (moves: LessonMove[], notes?: LessonPosition['notes']): Lesson
   moves,
   ...(notes && { notes }),
 });
-
-/** The last move of the line `sans`, in UCI. */
-export const uci = (...sans: string[]) => uciLine(...sans).at(-1)!;
 
 /** A two-chapter study in the Caro-Kann study's formats (a core chapter, then an extra one), for the importer's tests. */
 export const STUDY_PGN = `[Event "🔵 01 Advance Variation: Short Variation (I)"]

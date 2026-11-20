@@ -8,6 +8,7 @@ import {
   readShippedLesson,
   SAMPLE,
   shippedIds,
+  uci,
   uciLine,
   withMoves,
 } from './lesson.fixture';
@@ -17,7 +18,7 @@ import { lessonView } from './view';
 
 /** A move after `sans`, written in SAN, as the guide stores it. */
 const move = (sans: string[], san: string, book = false): LessonMove => ({
-  uci: uciLine(...sans, san).at(-1)!,
+  uci: uci(...sans, san),
   ...(book && { book: true }),
 });
 
