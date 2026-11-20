@@ -15,7 +15,11 @@ export interface GameOpponent {
 }
 
 export interface GameState {
-  /** Every move played so far, in UCI. A new array whenever they change, so it names the request for them. */
+  /**
+   * Every move played so far, in UCI. A new array whenever they change, so it
+   * names the request for them: only a new game (no moves) or a move played
+   * (the last, even when it is the move that was there before) makes one.
+   */
   readonly moves: readonly string[];
   /** How many of `moves` the board shows: `moves.length` is the latest. */
   readonly ply: number;
@@ -36,8 +40,8 @@ interface Answer {
 }
 
 export type GameAction =
-  /** A new game from the starting position. */
-  | { readonly type: 'newGame' }
+  /** A new game from the starting position, or having played `moves`. */
+  | { readonly type: 'newGame'; readonly moves?: readonly string[] }
   /** A move from the shown position; moves after it are dropped. */
   | { readonly type: 'move'; readonly uci: string }
   | ({ readonly type: 'reply'; readonly uci: string } & Answer)
@@ -54,7 +58,7 @@ export const initialGame = startGame([]);
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'newGame':
-      return { moves: [], ply: 0 };
+      return startGame(action.moves ?? []);
     case 'move': {
       const before = state.moves.slice(0, state.ply);
       const uci = lineMove(lastPosition(before).fen, action.uci);

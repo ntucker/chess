@@ -15,8 +15,9 @@ import type { Color, FileName, SquareName } from 'chessops/types';
 /**
  * The format this code reads. A file with another number is refused.
  * 2: ideas lost `at: 'before'`; each holds in its note's position, or after its move.
+ * 3: `source` became `sources`, since one lesson can draw on several, each with its license.
  */
-export const LESSON_FORMAT = 2;
+export const LESSON_FORMAT = 3;
 
 /**
  * A move in UCI, like `g1f3`, with castling written as the king's two-square
@@ -34,8 +35,8 @@ export interface Lesson {
   readonly side: Color;
   /** Where the lesson starts, as a full FEN (usually the initial position). */
   readonly start: string;
-  /** Where the content comes from, for credit. */
-  readonly source: LessonSource;
+  /** Where the content comes from, for credit: at least one, the main source first. */
+  readonly sources: readonly LessonSource[];
   /** What `LessonMove.games` counts; absent when no move has counts. */
   readonly popularity?: Popularity;
   /** Exactly one variation has no parent: the opening itself. */
@@ -46,6 +47,26 @@ export interface Lesson {
 export interface LessonSource {
   readonly title: string;
   readonly author: string;
+  readonly url: string;
+  /**
+   * The license the source's text comes under, when it has one. Text adapted
+   * from a share-alike source (Wikibooks: CC BY-SA 4.0) stays under it, so its
+   * credit must name it.
+   */
+  readonly license?: License;
+}
+
+/**
+ * Whether `url` is on `domain` or one of its subdomains: `en.wikibooks.org` is
+ * on `wikibooks.org`. The app runs it too: Expo installs a WHATWG `URL` on
+ * native (expo/src/winter/runtime.native.ts), so `hostname` is there.
+ */
+export const onDomain = ({ hostname }: URL, domain: string) =>
+  hostname === domain || hostname.endsWith(`.${domain}`);
+
+export interface License {
+  /** Its short name, like `CC BY-SA 4.0`. */
+  readonly name: string;
   readonly url: string;
 }
 

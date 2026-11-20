@@ -3,10 +3,10 @@
  * learner's switches: the only place that decides what is hidden.
  *
  * - Explore shows every note on the idea card. The board draws the
- *   candidates, and a note's ideas only when the learner points at it, since
- *   both would share the board's colors; a previewed move draws its own
- *   ideas, and where no candidates are drawn every note's ideas are. "Show
- *   ideas on board" turns idea drawings off; the card still shows its notes.
+ *   candidates, and a note's ideas only when the learner points at it (but
+ *   see "Moves on the board" below), since both would share the board's
+ *   colors; a previewed move draws its own ideas, and where no candidates
+ *   are listed every note's ideas are.
  *   Only a note about the position on the board can be pointed at, and
  *   Stockfish's best move shows only while nothing is previewed, pointed at
  *   or playing back.
@@ -20,6 +20,10 @@
  *   with auto play the opponent just plays. Stockfish's moves stay hidden.
  *   At the start, where the first move picks the opening, nobody replies,
  *   so its candidates and previews show in every mode.
+ * - "Moves on the board" off keeps the candidates' arrows and Stockfish's
+ *   best off the resting board, in either mode, so the next moves show only
+ *   once the learner points at a row or drags a piece; the list still shows
+ *   them. The board draws the ideas of the move just played in their place.
  * - Traps: with "show traps" on, a trap's sequence is drawn before the
  *   learner commits, beside the candidates; off, it isn't. A trap fallen
  *   into is shown either way, and plays back, through the trap's moves and
@@ -49,7 +53,7 @@ import { type LandedTrap, type LessonView, type Preview, type ShownNote, shownKe
 export type LessonMode = 'explore' | 'practice';
 
 /** The learner's switches on the lesson screen. */
-export type LessonSwitches = Pick<Settings, 'auto' | 'showIdeas' | 'showTraps'>;
+export type LessonSwitches = Pick<Settings, 'auto' | 'showMoves' | 'showTraps'>;
 
 /** Stockfish's view of the shown position, as far as it has arrived. */
 export interface EngineView {
@@ -116,9 +120,9 @@ export interface Guidance {
    */
   readonly pointed?: Note;
   /**
-   * Stockfish's best move to mark, while nothing is previewed, pointed at or
-   * playing back. Inside the guide the candidates are what is highlighted, so
-   * it is tagged only when it isn't one of them.
+   * Stockfish's best move to mark, with "moves on the board" on, while nothing
+   * is previewed, pointed at or playing back. Inside the guide the candidates
+   * are what is highlighted, so it is tagged only when it isn't one of them.
    */
   readonly best?: Uci;
   /** Stockfish's top three, listed only beyond the guide. */
@@ -150,9 +154,11 @@ export function guidance(input: GuidanceInput): Guidance {
   const notes = preview
     ? preview.notes.filter((shown) => explore || beforeMove(shown, switches.showTraps))
     : restingNotes(view, explore, switches.showTraps);
-  const allowed = (idea: Idea) =>
-    idea.type === 'trap' ? switches.showTraps : !explore || switches.showIdeas;
+  const allowed = (idea: Idea) => idea.type !== 'trap' || switches.showTraps;
   const ideas = notes.flatMap((shown) => noteIdeas(shown, allowed));
+  const moveIdeas = new Set(
+    notes.flatMap(({ note, before }) => (before === undefined ? [] : (note.ideas ?? []))),
+  );
   const withRare = choices ? view.candidates : [];
   const candidates = withRare.filter(({ rare }) => !rare);
   const trap = view.trap && trapShown(view, view.trap) ? view.trap : undefined;
@@ -176,9 +182,13 @@ export function guidance(input: GuidanceInput): Guidance {
     ideas,
     playing,
     pointed: pointedNote,
+    showMoves: switches.showMoves,
+    moveIdeas,
   });
   const best =
-    explore && !preview && !dragged && !playing && !pointedNote ? engine?.best : undefined;
+    explore && switches.showMoves && !preview && !dragged && !playing && !pointedNote
+      ? engine?.best
+      : undefined;
 
   return {
     candidates,
@@ -203,8 +213,9 @@ export function guidance(input: GuidanceInput): Guidance {
 /**
  * What the board draws: nothing while a note plays back; a pointed note's
  * ideas alone; a sliding preview's ideas; a dragged piece's candidates alone
- * (rare ones too); or else the listed candidates, with only traps beside
- * them (every idea where there are none).
+ * (rare ones too); or else the listed candidates with only traps beside
+ * them (every idea where none are listed); with `showMoves` off, the traps
+ * and the ideas of the move just played instead.
  */
 function boardShown({
   candidates,
@@ -214,6 +225,8 @@ function boardShown({
   ideas,
   playing,
   pointed,
+  showMoves,
+  moveIdeas,
 }: {
   readonly candidates: readonly Candidate[];
   readonly withRare: readonly Candidate[];
@@ -222,6 +235,9 @@ function boardShown({
   readonly ideas: readonly ShownIdea[];
   readonly playing?: ShownPlayback;
   readonly pointed?: Note;
+  readonly showMoves: boolean;
+  /** The ideas of the notes on the move just played. */
+  readonly moveIdeas: ReadonlySet<Idea>;
 }): { readonly candidates: readonly Candidate[]; readonly drawn: readonly ShownIdea[] } {
   if (playing) return { candidates: [], drawn: [] };
   if (pointed) {
@@ -230,7 +246,11 @@ function boardShown({
   if (preview?.slide) return { candidates: [], drawn: ideas };
   if (dragged) return { candidates: withRare.filter(({ from }) => from === dragged), drawn: [] };
   if (!candidates.length) return { candidates, drawn: ideas };
-  return { candidates, drawn: ideas.filter(({ idea }) => idea.type === 'trap') };
+  if (showMoves) return { candidates, drawn: ideas.filter(({ idea }) => idea.type === 'trap') };
+  return {
+    candidates: [],
+    drawn: ideas.filter(({ idea }) => idea.type === 'trap' || moveIdeas.has(idea)),
+  };
 }
 
 /** The idea card's notes when no move is previewed. */

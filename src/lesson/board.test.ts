@@ -8,7 +8,7 @@ import { guidance, type LessonSwitches } from './guidance';
 import { ADVANCE, SAMPLE, sampleView, uciLine } from './lesson.fixture';
 import { type Pointer, preview } from './view';
 
-const SWITCHES: LessonSwitches = { auto: true, showIdeas: true, showTraps: false };
+const SWITCHES: LessonSwitches = { auto: true, showMoves: true, showTraps: false };
 
 /** The lesson's board after `sans`, with the learner pointing at `pointer`. */
 function board(sans: string[], pointer?: Pointer) {

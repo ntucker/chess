@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 import { checkLesson } from '@/lesson/check';
-import { keyAfter } from '@/lesson/lesson.fixture';
+import { keyAfter, SAMPLE } from '@/lesson/lesson.fixture';
 
 import { extractChapter } from './extract';
 import { STUDY_PGN } from './fixture';
@@ -13,7 +13,7 @@ const lesson = mergeChapters(
     id: 'test',
     title: 'Caro-Kann',
     side: 'black',
-    source: { title: 'Test', author: 'Test', url: '' },
+    sources: SAMPLE.sources,
   },
   chapters,
   chapters.map((chapter) => extractChapter(chapter, 'black')),
