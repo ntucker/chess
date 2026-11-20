@@ -83,7 +83,7 @@ PAGES_BASE_PATH=/chess yarn expo export --platform web
 
 To work on this repo through a Claude project on claude.ai:
 
-1. Create a project and attach `ntucker/chess` or your fork.
+1. Create a project and attach `ntucker/chess` (or your fork) and `reactive/silk`.
 2. Install [user-kit](https://github.com/ntucker/user-kit#install-in-claude-code).
 3. Send this in the project chat, then paste the text the coordinator replies with into the project's instructions:
 
