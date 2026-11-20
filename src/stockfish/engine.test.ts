@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 
 import { attachStockfish, type Connection, stockfishEvaluation } from './engine';
-import { NO_RESTARTS, type NodeEngine, sendTo, startNodeEngine } from './testing';
+import { type NodeEngine, sendTo, startNodeEngine } from './node';
+import { NO_RESTARTS } from './testing';
 
 // The real engine the app ships, driven through the app's protocol.
 let engine: NodeEngine;

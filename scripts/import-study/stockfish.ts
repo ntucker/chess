@@ -5,27 +5,37 @@
  */
 import type { Evaluation } from '@/evaluation/evaluation';
 import { attachStockfish, type Connection, stockfishEvaluation } from '@/stockfish/engine';
-import { type NodeEngine, sendTo, startNodeEngine } from '@/stockfish/testing';
+import { type NodeEngine, sendTo, startNodeEngine } from '@/stockfish/node';
 
 import type { Evaluate } from './engineCheck';
 import { appendJsonLine, readJsonLines } from './jsonLines';
 
+/** How many engines may stop (crash, or never answer) before the import gives up. */
+const MAX_RESTARTS = 5;
+
 /**
  * Starts the engine. One that crashes or stops answering is replaced; a
- * position that stops three engines rejects its search, which stops the import.
+ * position that stops three engines rejects its search, and an engine that
+ * can't be started, or stops more than `MAX_RESTARTS` times, ends the import.
  */
 export async function nodeStockfish(
   cacheFile: string,
 ): Promise<{ evaluate: Evaluate; stop: () => void }> {
   let engine: NodeEngine | undefined;
   let connection: Connection | undefined;
+  let restarts = 0;
+  // Searches wait for the next engine, so a restart that can't happen would hang the import.
+  const restart = () => {
+    if (++restarts > MAX_RESTARTS) giveUp(`Stockfish stopped ${restarts} times`);
+    else connect().catch(giveUp);
+  };
   const connect = async () => {
     engine?.terminate?.();
     const started = await startNodeEngine();
     engine = started;
     connection = attachStockfish(sendTo(started), {
       ready() {},
-      failed: () => void connect(),
+      failed: restart,
     });
     const attached = connection;
     started.listener = (line) => attached.receive(line);
@@ -54,4 +64,9 @@ export async function nodeStockfish(
       engine?.terminate?.();
     },
   };
+}
+
+function giveUp(error: unknown): never {
+  console.error(error);
+  process.exit(1);
 }
