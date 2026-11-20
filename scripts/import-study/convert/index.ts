@@ -5,8 +5,9 @@
  * ideas were all dropped is asked again of Opus, and the answer keeping more
  * ideas wins. A comment whose note text the checker refuses as notation is
  * asked again of Opus with that text, and the answer in words replaces it; if
- * Opus writes notation too, the lesson checker refuses the import. A comment
- * with no answer keeps the notes `extractChapter` made.
+ * Opus writes notation too, or gives no answer (a failed request, or a
+ * `--no-model` run without one stored), the lesson checker refuses the import.
+ * A comment with no answer at all keeps the notes `extractChapter` made.
  *
  * Runs only when someone imports a study on purpose (`yarn import-study`):
  * the lesson file it writes is committed, so the site build and the tests
@@ -23,7 +24,7 @@ import { noteComment, type Comment } from './comments';
 import { convertedNotes, notesOf, type Converted } from './notes';
 import { REWORD } from './prompt';
 
-/** The comments asked again of Opus, by why. */
+/** How many comments were asked again of Opus, by why, and what the rewording changed. */
 interface Retries {
   /** The checker refused every idea. */
   readonly retried: number;
@@ -110,6 +111,7 @@ async function convertComments(
   });
   const keptByReworded = () =>
     reword.reduce((sum, { id }) => sum + (converted.get(id)?.kept ?? 0), 0);
+  // Read before the rewording answers replace any of them.
   const before = keptByReworded();
   if (reword.length > 0)
     keep(await ask(MODELS.retry, reword, REWORD), (result) => notationTexts(result).length === 0);

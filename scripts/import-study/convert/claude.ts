@@ -27,7 +27,8 @@ export type Model = (typeof MODELS)[keyof typeof MODELS];
 /**
  * Answers for `comments` by comment id; a comment left out could not be
  * converted this time. `addendum` goes after the prompt, for a retry that
- * needs more instructions (`REWORD`); without one, answers keep their keys.
+ * needs more instructions (`REWORD`); without one, the cache keys are the same
+ * as before addenda existed, so stored answers still match.
  */
 export type Ask = (
   model: Model,
