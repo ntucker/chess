@@ -10,6 +10,7 @@
 import type { Chess } from 'chessops/chess';
 import type { Color } from 'chessops/types';
 
+import { MOVE_NUMBER, SAN } from '@/game/replay';
 import { checkIdea } from '@/lesson/check';
 import type { Evaluation, Idea, Note, Uci } from '@/lesson/lesson';
 
@@ -54,6 +55,8 @@ export interface ChapterNotes {
   readonly rejected: readonly Rejected[];
   /** Evaluation glyphs dropped because the comment's text says otherwise. */
   readonly contradicted: number;
+  /** The length in plies of each run of comment moves dropped as a quoted game (`MAX_LINE_PLIES`). */
+  readonly quotedGamePlies: readonly number[];
   /** `Chapter.writtenFor`: the comments' "you" is the learner's opponent. */
   readonly writtenFor?: Color;
 }
@@ -90,9 +93,38 @@ const EDGE_WORDS: Readonly<Record<Edge, readonly [string, string]>> = {
   Winning: ['winning', 'losing'],
 };
 
-/** Two or more moves in a row, the first numbered: `9...Qa5+ 10.Nc3 e6`. */
-const SEQUENCE =
-  /\d+\s?\.(?:\.\.)?\s?[^\s,;()]+(?:\s+(?:\d+\s?\.(?:\.\.)?\s?)?[KQRBNOa-h][^\s,;()]*)+/g;
+/** Two or more moves in a row, the first numbered, `join` between each two. */
+const sequence = (join: string) => {
+  const move = String.raw`${SAN}[!?]*`;
+  return new RegExp(
+    String.raw`(?<![\w.])${MOVE_NUMBER}${move}(?:${join}(?:${MOVE_NUMBER})?${move}(?![\w-]))+`,
+    'g',
+  );
+};
+
+/**
+ * Two or more moves in a row, the first numbered: `9...Qa5+ 10.Nc3 e6`, or
+ * joined by an ellipsis: `7.Qxd4...Qxd4`. Each is a whole word, so prose
+ * between two moves ends the run: "2...Nc6: because 2.Nc3" names no line
+ * 2...Nc6 2.Nc3. The first number follows neither a word nor a dot, so the
+ * tail of `Nxd4...Qxd4` is no run "4...Qxd4"; a run written straight after a
+ * full stop ("good.2.Nc3 d5") is missed with it.
+ */
+const SEQUENCE = sequence(String.raw`(?:\s+|\s*\.\.\.\s*)`);
+
+/**
+ * Runs joined by spaces alone: the pieces of a SEQUENCE run whose ellipsis
+ * can't be played. In `2.Nf3 Nc6...Bb5` it means "later" (reading Bb5 as
+ * Black's fails), so the run keeps `2.Nf3 Nc6`.
+ */
+const SPACED = sequence(String.raw`\s+`);
+
+/**
+ * The most plies a comment's run of moves can have and still be a line to learn. Longer, it is a
+ * game score quoted in full: one Wikibooks note plays a Bishop's Opening game out to a king and
+ * pawn ending. The longest lines in today's studies run 22 plies; quoted games, 82 and more.
+ */
+const MAX_LINE_PLIES = 32;
 
 export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
   const { writtenFor } = chapter;
@@ -104,6 +136,7 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
   const choices: Choice[] = [];
   const rejected: Rejected[] = [];
   let contradicted = 0;
+  const quotedGamePlies: number[] = [];
 
   for (const move of chapterMoves(chapter)) {
     const { comment } = move;
@@ -118,10 +151,9 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
       ...traps,
       ...(evaluation && evaluation !== 'contradicted' ? [evaluation] : []),
     ];
-    branches.push(
-      ...traps.map(({ spot, idea }) => ({ spot, ucis: idea.moves })),
-      ...sequences(move, learner),
-    );
+    const runs = sequences(move, learner);
+    branches.push(...traps.map(({ spot, idea }) => ({ spot, ucis: idea.moves })), ...runs.lines);
+    quotedGamePlies.push(...runs.quotedGamePlies);
     // A choice guide picks among the moves of the side it was written for.
     if (!writtenFor) choices.push(...choiceGuide(move, learner));
 
@@ -153,6 +185,7 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
     choices,
     rejected,
     contradicted,
+    quotedGamePlies,
     ...(writtenFor && { writtenFor }),
   };
 }
@@ -172,13 +205,27 @@ function plans(
   return move.comment ? planLists(move, move.comment, learner) : [];
 }
 
-/** Sequences of two or more moves that `move`'s comment writes out, placed in the tree. */
+/**
+ * The sequences of two or more moves that `move`'s comment writes out, placed in the tree: the
+ * lines to learn, and the length of each run too long to be one (`MAX_LINE_PLIES`).
+ */
 function sequences(move: StudyMove, learner: Color) {
-  return (move.comment.match(SEQUENCE) ?? []).flatMap((run) => {
-    const placed = placeSequence(move, namedMoves(run));
-    if (!placed || placed.ucis.length < 2) return [];
-    return !placed.spot.move && namesOtherOpening(placed.ucis, move, learner) ? [] : [placed];
+  const place = (run: string) => placeSequence(move, namedMoves(run));
+  const placed = (move.comment.match(SEQUENCE) ?? []).flatMap((run) => {
+    const whole = place(run);
+    return whole ? [whole] : (run.match(SPACED) ?? []).flatMap((part) => place(part) ?? []);
   });
+  return {
+    lines: placed.filter(
+      ({ spot, ucis }) =>
+        ucis.length >= 2 &&
+        ucis.length <= MAX_LINE_PLIES &&
+        (spot.move || !namesOtherOpening(ucis, move, learner)),
+    ),
+    quotedGamePlies: placed
+      .filter(({ ucis }) => ucis.length > MAX_LINE_PLIES)
+      .map(({ ucis }) => ucis.length),
+  };
 }
 
 /**

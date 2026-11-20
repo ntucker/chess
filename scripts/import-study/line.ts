@@ -1,7 +1,8 @@
 /**
  * Finding where a move or a sequence named in a comment belongs. The study's
  * move numbers are often off by one or two, so a named move is matched by its
- * SAN, and the number only picks between matches, nearest first.
+ * SAN, and the number only picks between matches, nearest first. A numbered
+ * sequence also lands no farther from its number than `NUMBER_SLACK`.
  */
 import type { Chess } from 'chessops/chess';
 import type { Color } from 'chessops/types';
@@ -10,7 +11,7 @@ import { sanToUci } from '@/game/replay';
 import type { Idea, Uci } from '@/lesson/lesson';
 
 import { mainLine, played, type StudyMove } from './study';
-import type { NamedMove } from './text';
+import { nextPly, NUMBER_SLACK, type NamedMove } from './text';
 
 /**
  * A position in a chapter: after `move`, or the chapter's starting position
@@ -48,10 +49,14 @@ function lineThrough(move: StudyMove): StudyMove[] {
 
 /** The move of the line through `move` that `named` names, if there is one. */
 export function findOnLine(move: StudyMove, named: NamedMove): StudyMove | undefined {
-  return nearestMatch(lineThrough(move), named, move.ply);
+  return nearestMatch(lineThrough(move), named, nextPly(move.before));
 }
 
-/** Of `moves`, the one `named` names, nearest the ply its number gives (else `ply`). */
+/**
+ * Of `moves`, the one `named` names, nearest its written number (else `ply`). A candidate's ply is
+ * its position's own move number (`nextPly`), not its place in the chapter, so a chapter that
+ * starts from a FEN compares right.
+ */
 export function nearestMatch(
   moves: Iterable<StudyMove>,
   named: NamedMove,
@@ -61,10 +66,14 @@ export function nearestMatch(
     (candidate) =>
       candidate.san === named.san && (!named.side || candidate.before.turn === named.side),
   );
-  return nearest(matches, named.ply ?? ply, (candidate) => candidate.ply);
+  return nearest(matches, named.ply ?? ply, (candidate) => nextPly(candidate.before));
 }
 
-/** Where `moves` can be played in a row on the line through `move`, as a spot and its moves in UCI. */
+/**
+ * Where `moves` can be played in a row on the line through `move`, as a spot and its moves in UCI.
+ * A numbered sequence lands within `NUMBER_SLACK` of its number or nowhere: "10...f6? 11.Qh5+" in a
+ * Ruy Lopez note is legal right after 1.e4, but it is about a later position.
+ */
 export function placeSequence(
   move: StudyMove,
   moves: readonly NamedMove[],
@@ -75,12 +84,16 @@ export function placeSequence(
     { pos: line[0].before },
     ...line.map((at) => ({ move: at, pos: at.after })),
   ];
-  const fits = spots.flatMap((spot) => {
+  const numberedPly = moves[0].ply;
+  const near =
+    numberedPly === undefined
+      ? spots
+      : spots.filter(({ pos }) => Math.abs(nextPly(pos) - numberedPly) <= NUMBER_SLACK);
+  const fits = near.flatMap((spot) => {
     const ucis = playable(spot.pos, moves);
     return ucis ? [{ spot, ucis }] : [];
   });
-  const firstPly = moves[0].ply ?? move.ply + 1;
-  return nearest(fits, firstPly, ({ spot }) => (spot.move?.ply ?? 0) + 1);
+  return nearest(fits, numberedPly ?? nextPly(move.after), ({ spot }) => nextPly(spot.pos));
 }
 
 /** `moves` in UCI if they can be played one after another from `pos`. */

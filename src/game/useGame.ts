@@ -54,7 +54,7 @@ export function useGame(
   const latest = analyze(plies[plies.length - 1]);
   const atLatest = ply === moves.length;
   const current = atLatest ? latest : analyze(plies[ply]);
-  const qualities = useMoveQualities(plies, ply, judge, book);
+  const qualities = useMoveQualities(plies, active ? ply : null, judge, book);
   const error = failure(state, opponent?.id);
   const thinking = !!opponent && !latest.result && latest.turn !== side && !error;
   const replying = atLatest && thinking;

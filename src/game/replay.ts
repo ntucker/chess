@@ -2,6 +2,7 @@ import { castlingSide, Chess } from 'chessops/chess';
 import { chessgroundDests, chessgroundMove } from 'chessops/compat';
 import { makeFen, parseFen } from 'chessops/fen';
 import { makeSanAndPlay, parseSan } from 'chessops/san';
+import { SquareSet } from 'chessops/squareSet';
 import type { Color, Piece, SquareName } from 'chessops/types';
 import { kingCastlesTo, makeUci, opposite, parseSquare, parseUci } from 'chessops/util';
 
@@ -11,8 +12,11 @@ export { opposite } from 'chessops/util';
 /** One move in SAN, without annotation glyphs, as a regular expression source. */
 export const SAN = String.raw`(?:O-O-O|O-O|[KQRBN][a-h]?[1-8]?x?[a-h][1-8]|[a-h](?:x[a-h])?[1-8](?:=[QRBN])?)[+#]?`;
 
+/** A move's number as text writes it: `9.`, `9...`, `9. `. */
+export const MOVE_NUMBER = String.raw`\d+\s?\.(?:\.\.)?\s?`;
+
 /** A move as text writes it, numbered or not, with any glyph: `6...Nd7`, `...Nd7`, `Nd7?`. */
-export const WRITTEN_MOVE = String.raw`(?:\d+\s?\.(?:\.\.)?\s?|\.\.\.)?${SAN}[!?]*`;
+export const WRITTEN_MOVE = String.raw`(?:${MOVE_NUMBER}|\.\.\.)?${SAN}[!?]*`;
 
 /**
  * A move a variation name writes (`4.g4`, `...Bf5`, `5...Nh5`, `e5`), as a regular expression
@@ -193,6 +197,22 @@ function gameResult(pos: Chess, repetitions: number): GameResult | undefined {
 export function lastPosition(line: readonly string[]): Position {
   const plies = replay(line);
   return analyze(plies[plies.length - 1]);
+}
+
+/**
+ * How many moves are legal in the position after `line`, as an engine counts
+ * them: a pawn's promotion is four moves, one for each piece.
+ */
+export function legalMoveCount(line: readonly string[]): number {
+  let last: Chess | undefined;
+  for (const { pos } of playLine(line)) last = pos;
+  const pos = last!;
+  let count = 0;
+  for (const [from, dests] of pos.allDests()) {
+    const pawn = pos.board.pawn.has(from);
+    for (const to of dests) count += pawn && SquareSet.backranks().has(to) ? 4 : 1;
+  }
+  return count;
 }
 
 /**

@@ -62,7 +62,7 @@ import { indexedWith, readLessonFile, registered, writeIndex } from './register'
 import { report, sourceReport } from './report';
 import { nodeStockfish } from './stockfish';
 import { parseStudy, withoutLeadComments, withoutLines, withReplies, type Chapter } from './study';
-import { lessonInfo, STUDIES, type ChapterSource } from './studies';
+import { credit, lessonInfo, STUDIES, type ChapterSource } from './studies';
 import { noteTranspositions } from './transpositions';
 import { wikibooksPgn } from './wikibooks';
 
@@ -124,7 +124,8 @@ async function main() {
   console.log(convertReport(converted.report));
   const tally: SourceTally[] = [];
   let lesson: Lesson = mergeChapters(info, chapters, extracted, chapterName, tally);
-  console.log(sourceReport(info.sources, tally));
+  // Tallies go by each source's place in the recipe, which can list a study twice; the lesson credits it once.
+  console.log(sourceReport(study.from.map(credit), tally));
   if (lesson.start !== INITIAL_FEN)
     throw new Error('The engine plays lines from the standard start');
   const stockfish = await nodeStockfish(join(CACHE, 'stockfish.jsonl'));

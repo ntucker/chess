@@ -21,14 +21,9 @@ jest.mock('@/analysis/useMoveQualities', () => ({ useMoveQualities: () => [] }))
 const mockFetch = jest.fn(async (..._args: unknown[]) => {});
 jest.mock('@data-client/react', () => ({
   useController: () => ({ fetch: mockFetch }),
-  useFetch: () => {},
-  useCache: () => undefined,
   useSuspense: () => ({}),
 }));
-jest.mock('@/resources/evaluation', () => ({
-  getEvaluation: {},
-  getTopMoves: {},
-}));
+jest.mock('@/resources/analysis', () => ({ useAnalysis: () => undefined }));
 jest.mock('@/resources/opponent', () => ({
   gameOpponent: () => undefined,
   useWarmOpponent: () => {},

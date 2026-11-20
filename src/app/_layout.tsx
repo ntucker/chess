@@ -16,6 +16,7 @@ import { StatusBar } from 'expo-status-bar';
 
 import { useNavigationTransitions } from '@/components/navigation';
 import { ScreenFailure } from '@/components/NewVersion';
+import { AnalysisManager } from '@/resources/analysis';
 import { ProgressSync } from '@/resources/progress';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { StockfishWhileNeeded } from '@/stockfish/demand';
@@ -24,7 +25,7 @@ import { navigationThemes } from '@/theme/navigationTheme';
 import { themes } from '@/theme/theme';
 import { useColorScheme } from '@/theme/useColorScheme';
 
-const managers = () => [new ProgressSync(), ...getDefaultManagers()];
+const managers = () => [new ProgressSync(), new AnalysisManager(), ...getDefaultManagers()];
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import type { Evaluation } from '@/evaluation/evaluation';
+import { type FinalAnalysis, settledAnalysis as scored } from '@/evaluation/evaluation';
 import type { Lesson } from '@/lesson/lesson';
 import { keyAfter, uci, uciLine } from '@/lesson/lesson.fixture';
 
@@ -52,10 +52,10 @@ const WITH_C5 = testLesson({
 });
 
 /** About even everywhere but after 1...e5, where White is a pawn and a half up. */
-const evaluate = async (_line: readonly string[], key: string): Promise<Evaluation> =>
+const evaluate = async (_line: readonly string[], key: string): Promise<FinalAnalysis> =>
   key === keyAfter('d4', 'e5') || key === keyAfter('d4', 'e5', 'dxe5')
-    ? { score: 0.64, pawns: 1.5 }
-    : { score: 0.52, pawns: 0.2 };
+    ? scored({ score: 0.64, pawns: 1.5 })
+    : scored({ score: 0.52, pawns: 0.2 });
 
 describe('engineCheck', () => {
   it('unbooks a move the engine calls a mistake, and the book moves only it reached', async () => {
@@ -87,7 +87,7 @@ describe('engineCheck', () => {
     // 1...c5 loses too, and the engine names no move of its own.
     const losing = (line: readonly string[], key: string) =>
       key === keyAfter('d4', 'c5')
-        ? Promise.resolve({ score: 0.64, pawns: 1.5 })
+        ? Promise.resolve(scored({ score: 0.64, pawns: 1.5 }))
         : evaluate(line, key);
     const { report } = await engineCheck(WITH_C5, losing);
     expect(report.cut).toEqual([]);
@@ -108,10 +108,10 @@ describe('engineCheck', () => {
         [keyAfter('d4', 'e5', 'dxe5')]: at([{ uci: uci('d4', 'e5', 'dxe5', 'Nc6'), book: true }]),
       },
     };
-    const losing = async (_line: readonly string[], key: string): Promise<Evaluation> =>
+    const losing = async (_line: readonly string[], key: string): Promise<FinalAnalysis> =>
       key === keyAfter() || key === keyAfter('d4') || key === keyAfter('d4', 'e5', 'dxe5')
-        ? { score: 0.52, pawns: 0.2 }
-        : { score: 0.8, pawns: 4 };
+        ? scored({ score: 0.52, pawns: 0.2 })
+        : scored({ score: 0.8, pawns: 4 });
     const { lesson, report } = await engineCheck(nested, losing);
     expect(Object.keys(lesson.positions)).toEqual([keyAfter()]);
     expect(report.unbooked.map(({ move }) => move)).toEqual(['e5', 'Nc6']);
@@ -140,7 +140,7 @@ describe('engineCheck', () => {
 
   it('reads a checkmate as won by the side that mated', async () => {
     // Checkmated, the engine answers mate 0: Black has won the position after 1...d5 here.
-    const mated = async (): Promise<Evaluation> => ({ score: 0, pawns: 0, mate: 0 });
+    const mated = async (): Promise<FinalAnalysis> => scored({ score: 0, pawns: 0, mate: 0 });
     const { lesson } = await engineCheck(LESSON, mated);
     expect(lesson.positions[keyAfter('d4')].moves[0].notes?.[0].text).toBe(
       'Black is winning here.',
@@ -148,7 +148,7 @@ describe('engineCheck', () => {
   });
 
   it('keeps a lesson the engine agrees with as it is', async () => {
-    const even = async (): Promise<Evaluation> => ({ score: 0.52, pawns: 0.2 });
+    const even = async (): Promise<FinalAnalysis> => scored({ score: 0.52, pawns: 0.2 });
     const agreed = {
       ...LESSON,
       positions: {
@@ -208,7 +208,7 @@ describe('fillBook', () => {
         ]),
       },
     };
-    const even = async (): Promise<Evaluation> => ({ score: 0.52, pawns: 0.2 });
+    const even = async (): Promise<FinalAnalysis> => scored({ score: 0.52, pawns: 0.2 });
     const filled = await fillBook(lesson, even);
     expect(books(filled.lesson, 'd4')).toEqual([
       ['g8f6', true],
@@ -226,10 +226,8 @@ describe('fillBook', () => {
       positions: { ...unbooked.positions, [keyAfter('d4')]: at([warned]) },
     };
     delete lesson.positions[keyAfter('d4', 'd5')];
-    const naming = async (line: readonly string[], key: string) => ({
-      ...(await evaluate(line, key)),
-      best: uci('d4', 'd5'),
-    });
+    const naming = async (line: readonly string[], key: string) =>
+      scored((await evaluate(line, key)).lines[0].evaluation, uci('d4', 'd5'));
     const filled = await fillBook(lesson, naming);
     expect(filled.lesson.positions[keyAfter('d4')].moves).toEqual([
       { uci: uci('d4', 'd5'), book: true },
