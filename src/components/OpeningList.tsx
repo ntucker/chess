@@ -93,7 +93,7 @@ function SideSection({
       <View style={spacing.openings}>
         {openings.map((opening, index) => (
           <OpeningEntry
-            last={index === openings.length - 1}
+            lastOfSide={index === openings.length - 1}
             key={opening.id}
             opening={opening}
             here={here?.lesson === opening.id ? (here.variation ?? opening.root.id) : undefined}
@@ -107,17 +107,16 @@ function SideSection({
 /**
  * One opening: its name, then its variations as a tree, each branch closed
  * but those on the way to `here`, the variation the board was in. Its
- * sources' credits show under its variations, while they show. The `last`
- * of its side leaves the space below it to the side's own gap.
+ * sources' credits show under its variations, while they show.
  */
 function OpeningEntry({
   opening,
   here,
-  last,
+  lastOfSide,
 }: {
   readonly opening: ListedOpening<LessonId>;
   readonly here?: VariationId;
-  readonly last: boolean;
+  readonly lastOfSide: boolean;
 }) {
   const { root } = opening;
   const spacing = useNarrowStyles(STYLES);
@@ -132,7 +131,7 @@ function OpeningEntry({
         gutter
         tag={here === undefined ? undefined : <NowPlaying />}
         footer={
-          <View style={[spacing.credits, last && styles.lastCredits]}>
+          <View style={[spacing.credits, lastOfSide && styles.lastCredits]}>
             <SourceCredits sources={opening.sources} />
           </View>
         }
@@ -386,7 +385,8 @@ const OPENING_GAP = narrowLength('opening-gap', 28);
 const AFTER_OPEN = 28;
 const STYLES = narrowStyles((px) => ({
   openings: { gap: px(OPENING_GAP) },
-  // The credits make up what a narrow page's gap leaves out, so an open opening stands apart.
+  // The credits make up what a narrow page's gap leaves out, so an open opening stands apart
+  // (but for a side's last, which the gap between sides already sets apart: `lastCredits`).
   credits: {
     paddingHorizontal: 10,
     paddingTop: 8,
