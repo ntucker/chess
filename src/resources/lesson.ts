@@ -36,18 +36,24 @@ export const getLesson = new Endpoint(
 );
 
 /**
- * The lessons `ids`, by id (see `getLesson`), for a screen that needs
- * several at once. Each is the imported file itself, the same object
- * `getLesson` gives (`readLesson` returns what it reads).
+ * The lessons `ids` that load, by id (see `getLesson`), for a screen that
+ * needs several at once and can do without any of them: one that fails to
+ * load (a chunk gone after a redeploy, or no network) is left out. Each is
+ * the imported file itself, the same object `getLesson` gives (`readLesson`
+ * returns what it reads).
  *
  * ```ts
  * const lessons = useSuspense(getLessons, ['caro-kann', 'slav']);
  * ```
  */
 export const getLessons = new Endpoint(
-  async (ids: readonly LessonId[]) =>
-    Object.fromEntries(
-      await Promise.all(ids.map(async (id) => [id, await getLesson(id)] as const)),
-    ) as Partial<Record<LessonId, Lesson>>,
+  async (ids: readonly LessonId[]): Promise<Partial<Record<LessonId, Lesson>>> => {
+    const loaded = await Promise.allSettled(ids.map((id) => getLesson(id)));
+    return Object.fromEntries(
+      loaded.flatMap((result, i) =>
+        result.status === 'fulfilled' ? [[ids[i], result.value]] : [],
+      ),
+    );
+  },
   { name: 'getLessons', dataExpiryLength: Infinity },
 );
