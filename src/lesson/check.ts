@@ -20,7 +20,13 @@ import {
 import { makeSquare, opposite, parseSquare, parseUci } from 'chessops/util';
 
 import { balance, points, VALUES } from '@/game/material';
-import { parsePosition, parsePositionKey, positionKey, recordedMove } from '@/game/replay';
+import {
+  parsePosition,
+  parsePositionKey,
+  positionKey,
+  recordedMove,
+  WRITTEN_MOVE,
+} from '@/game/replay';
 
 import {
   EVALUATIONS,
@@ -243,12 +249,34 @@ function checkMove(
 
 const isCount = (n: number) => Number.isInteger(n) && n >= 0;
 
+const MOVE = new RegExp(String.raw`(?<![\w.])${WRITTEN_MOVE}(?![\w-])`, 'g');
+/** Four moves with only whitespace between them: a line in notation, like `7.Nxd4 Nc5 8.Bc4 Nbd7`. */
+const NOTATION_LINE = new RegExp(
+  String.raw`(?<![\w.])${WRITTEN_MOVE}(?:\s+${WRITTEN_MOVE}){3}(?![\w-])`,
+);
+/** Words that only join moves in a list, like `...Bf5, then play ...e6 and ...c5`. */
+const LIST_WORDS = /\b(?:and|then|or|play)\b/gi;
+
+/**
+ * What is wrong with note `text` written as moves instead of words, if
+ * anything. A note puts a line in words; its idea draws the moves.
+ */
+function notationProblem(text: string): string | undefined {
+  if (NOTATION_LINE.test(text)) return 'writes a line of moves in notation';
+  const hasMove = text.search(MOVE) >= 0;
+  if (hasMove && !/[a-z]{2}/i.test(text.replace(MOVE, ' ').replace(LIST_WORDS, ' ')))
+    return 'is only a list of moves';
+  return undefined;
+}
+
 function checkNotes(notes: readonly Note[] | undefined, pos: Chess, path: string, report: Report) {
   notes?.forEach((note, i) => {
     const words = note.text.split(/\s+/).filter(Boolean).length;
     if (words === 0) report(`${path}[${i}].text`, 'is empty');
     if (words > MAX_NOTE_WORDS)
       report(`${path}[${i}].text`, `has ${words} words (most ${MAX_NOTE_WORDS})`);
+    const wording = notationProblem(note.text);
+    if (wording) report(`${path}[${i}].text`, wording);
     note.ideas?.forEach((idea, j) => {
       const problem = checkIdea(idea, pos);
       if (problem) report(`${path}[${i}].ideas[${j}]`, `${idea.type}: ${problem}`);

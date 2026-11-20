@@ -2,13 +2,12 @@
  * Reading moves and verdicts out of the study's comment text. Move numbers in
  * the text are often off by one or two, so they only break ties (see line.ts).
  */
-import type { Color } from 'chessops/types';
-import { opposite } from 'chessops/util';
+import { castlingSide, type Chess } from 'chessops/chess';
+import type { Color, NormalMove } from 'chessops/types';
+import { makeSquare, opposite, parseUci, squareFile } from 'chessops/util';
 
-import { MAX_NOTE_WORDS, type Evaluation } from '@/lesson/lesson';
-
-/** One move in SAN, without annotation glyphs. */
-export const SAN = String.raw`(?:O-O-O|O-O|[KQRBN][a-h]?[1-8]?x?[a-h][1-8]|[a-h](?:x[a-h])?[1-8](?:=[QRBN])?)[+#]?`;
+import { colorName, SAN, WRITTEN_MOVE } from '@/game/replay';
+import { MAX_NOTE_WORDS, type Evaluation, type Uci } from '@/lesson/lesson';
 
 /** A move written in a comment, like `6...Nd7` or `...Nd7`. */
 export interface NamedMove {
@@ -54,7 +53,7 @@ export const plyOf = (number: number, black: boolean) => 2 * number - (black ? 0
 export const plainSan = (san: string) => san.replace(/[+#!?]+$/, '');
 
 /** A word that is a move, numbered or not, with any glyph or punctuation after it. */
-const MOVE_WORD = new RegExp(String.raw`^(?:\d+\s?(?:\.\.\.|\.)|\.\.\.)?${SAN}[!?.,;:)]*$`);
+const MOVE_WORD = new RegExp(String.raw`^${WRITTEN_MOVE}[!?.,;:)]*$`);
 
 /**
  * Where each sentence of `text` ends (the index after its punctuation). Chess
@@ -96,6 +95,50 @@ export function shorten(text: string): string {
   return words.length <= MAX_NOTE_WORDS
     ? words.join(' ')
     : `${words.slice(0, MAX_NOTE_WORDS).join(' ')}…`;
+}
+
+/**
+ * `side` doing `phrase` (written for one side: "is losing", "drops a piece"),
+ * spoken to the learner as "you": "Black is losing", or "you are losing".
+ * Its conjugation only knows the verbs of the trap formats (is, gets, drops,
+ * loses), not free text: "has" would become "ha".
+ */
+export function sideDoes(side: Color, learner: Color, phrase: string): string {
+  if (side !== learner) return `${colorName(side)} ${phrase}`;
+  return `you ${phrase.replace(/^is\b/, 'are').replace(/^(\w+)s\b/, '$1')}`;
+}
+
+/**
+ * `uci`, played in `pos`, in words to open a sentence without notation:
+ * "Taking on d4 with the knight", "Checking with the queen on a5", "Pushing
+ * the pawn to c4", "Taking on d8 with the pawn and promoting to a queen,
+ * giving check".
+ */
+export function moveInWords(pos: Chess, uci: Uci): string {
+  const move = parseUci(uci) as NormalMove;
+  const piece = pos.board.getRole(move.from)!;
+  const square = makeSquare(move.to);
+  const castles = castlingSide(pos, move);
+  const capture =
+    !castles &&
+    (pos.board.occupied.has(move.to) ||
+      (piece === 'pawn' && squareFile(move.to) !== squareFile(move.from)));
+  const after = pos.clone();
+  after.play(move);
+  const mate = after.isCheckmate();
+  const check = after.isCheck();
+  if (check && !castles && !move.promotion && !capture) {
+    return `${mate ? 'Mating' : 'Checking'} with the ${piece} on ${square}`;
+  }
+  const moved = castles
+    ? `Castling ${castles === 'h' ? 'short' : 'long'}`
+    : capture
+      ? `Taking on ${square} with the ${piece}`
+      : piece === 'pawn'
+        ? `Pushing the pawn to ${square}`
+        : `Moving the ${piece} to ${square}`;
+  const promoted = move.promotion ? ` and promoting to a ${move.promotion}` : '';
+  return `${moved}${promoted}${check ? `, giving ${mate ? 'mate' : 'check'}` : ''}`;
 }
 
 /** Who a verdict favors: the evaluation's direction. */

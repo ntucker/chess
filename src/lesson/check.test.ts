@@ -674,12 +674,33 @@ describe('checkLesson', () => {
     ]);
   });
 
+  /** The problems the checker finds in a lesson whose one position has a note reading `text`. */
+  const noteProblems = (text: string) =>
+    checkLesson(
+      withPosition(positionKey(afterC6), { variation: 'caro', moves: [], notes: [{ text }] }),
+    );
+  const notePath = `positions["${positionKey(afterC6)}"].notes[0].text`;
+
   it('refuses long notes', () => {
-    const key = positionKey(afterC6);
     const text = Array.from({ length: 21 }, () => 'word').join(' ');
-    expect(
-      checkLesson(withPosition(key, { variation: 'caro', moves: [], notes: [{ text }] })),
-    ).toEqual([{ path: `positions["${key}"].notes[0].text`, message: 'has 21 words (most 20)' }]);
+    expect(noteProblems(text)).toEqual([{ path: notePath, message: 'has 21 words (most 20)' }]);
+  });
+
+  it.each([
+    ['6...Nxe4? 7.Nxd4 Nc5 8.Bc4 Nbd7', 'writes a line of moves in notation'],
+    ['Trap: 5.Nf3 Bg4 6.h3 Bxf3 and White is better.', 'writes a line of moves in notation'],
+    ['...Bf5, ...e6 and ...c5', 'is only a list of moves'],
+    ['...Bxf3, then play ...e6, ...dxe4 and ...Nf6', 'is only a list of moves'],
+  ])('refuses a note written in notation: %s', (text, message) => {
+    expect(noteProblems(text)).toEqual([{ path: notePath, message }]);
+  });
+
+  it.each([
+    'This is a blunder: after 7.Nxe5 Bxd1 8.Bb5+ White comes out ahead.',
+    'Against Ng3, develop with e6 and Be7, castle, then play b6, Bb7 and break with c5.',
+    'Avoid.',
+  ])('passes a sentence, with or without moves in it: %s', (text) => {
+    expect(noteProblems(text)).toEqual([]);
   });
 });
 

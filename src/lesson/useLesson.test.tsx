@@ -8,16 +8,17 @@ import { DEFAULT_SETTINGS } from '@/settings/settings';
 import { SAMPLE, uciLine } from './lesson.fixture';
 import { useLesson } from './useLesson';
 
-// Labels and Stockfish's best move read the evaluation engines through Data
-// Client (useLesson.engine.test.tsx covers the best move), the opponent runs
+// Labels, Stockfish's best move and progress read through Data Client
+// (useLesson.engine.test.tsx covers the best move), the opponent runs
 // an engine, and the screen's focus and Stockfish's demand come from the
 // app's providers; these tests are about the Practice run. With auto play
 // off nobody replies.
 jest.mock('@/analysis/useMoveQualities', () => ({ useMoveQualities: () => [] }));
 jest.mock('@data-client/react', () => ({
-  useController: () => ({}),
+  useController: () => ({ fetch: async () => {} }),
   useFetch: () => {},
   useCache: () => undefined,
+  useSuspense: () => ({ seen: [], passed: [] }),
 }));
 jest.mock('@/resources/evaluation', () => ({ getEvaluation: {} }));
 jest.mock('@/resources/opponent', () => ({ gameOpponent: () => undefined }));

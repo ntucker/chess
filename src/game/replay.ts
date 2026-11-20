@@ -8,6 +8,12 @@ import { kingCastlesTo, makeUci, opposite, parseSquare, parseUci } from 'chessop
 export { COLORS, type Color } from 'chessops/types';
 export { opposite } from 'chessops/util';
 
+/** One move in SAN, without annotation glyphs, as a regular expression source. */
+export const SAN = String.raw`(?:O-O-O|O-O|[KQRBN][a-h]?[1-8]?x?[a-h][1-8]|[a-h](?:x[a-h])?[1-8](?:=[QRBN])?)[+#]?`;
+
+/** A move as text writes it, numbered or not, with any glyph: `6...Nd7`, `...Nd7`, `Nd7?`. */
+export const WRITTEN_MOVE = String.raw`(?:\d+\s?\.(?:\.\.)?\s?|\.\.\.)?${SAN}[!?]*`;
+
 export const colorName = (color: Color) => (color === 'white' ? 'White' : 'Black');
 
 /** `sans` numbered, the first played at `firstPly` (1 is White's first move): `1.e4 c6 2.d4`, or `2...d5 3.e5`. */
@@ -74,9 +80,15 @@ export function parsePosition(fen: string): Chess | undefined {
 
 /** The position `key` (see `positionKey`) stands for, or undefined if it is not a position key. */
 export function parsePositionKey(key: string): Chess | undefined {
-  const pos = parsePosition(`${key} 0 1`);
+  const pos = readPositionKey(key);
   return pos && positionKey(pos) === key ? pos : undefined;
 }
+
+/**
+ * The position a key stands for, without checking that `positionKey` writes
+ * it back the same: for keys already checked, such as a shipped lesson's.
+ */
+export const readPositionKey = (key: string) => parsePosition(`${key} 0 1`);
 
 /** A position reached while playing a line (see `playLine`). */
 export interface Step {
