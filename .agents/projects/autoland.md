@@ -34,7 +34,8 @@ review below. Lead's end-to-end comments don't gate autoland; that review replac
 
 Run it last, once every other gate passes, since any push restarts it. Run a Sonnet subagent at
 high effort that has not seen the work. Give it the brief below, the PR
-number, the contract (the plan piece's section, or the person's ask quoted with its link) and the
+number, the contract (the plan piece's section, the person's ask, or the follow-up's review comment, quoted
+with its link) and the
 PR preview, `https://ntucker.github.io/chess/pr-preview/pr-<N>/`. Hand it over only once the preview
 comment names the head and the latest Pages build (`GET /repos/ntucker/chess/pages/builds/latest`)
 is `built` and finished after that comment was last updated; Pages serves a new build about a minute
@@ -51,12 +52,12 @@ Brief:
 > judge it from the contract, the code and the running app, not from what the PR says about itself.
 > Don't edit, commit, push or post; report.
 >
-> 1. Read the contract (a plan piece, or the person's ask) and note every interface it names: exports, props, file and data formats,
+> 1. Read the contract (a plan piece, the person's ask, or a follow-up's review comment) and note every interface it names: exports, props, file and data formats,
 >    routes, settings, and which module owns what.
 > 2. Read the diff, then the changed files where an interface lives. For a plan piece, each
 >    difference from the plan, and each public interface the plan doesn't name, needs a reason in
->    the PR's `Plan deviations:` line; without one it blocks. For an ask, check that the change does
->    what was asked and nothing the ask rules out.
+>    the PR's `Plan deviations:` line; without one it blocks. For an ask or a follow-up, check that
+>    the change does what it asks and nothing it rules out.
 > 3. Open the preview with Playwright and do what a learner would do with this change: every flow it
 >    touches, start to finish, including wrong moves, going back, and switching away and back. Repeat
 >    the main flow at 390x844. Read the console after each flow and screenshot each state you judge.
