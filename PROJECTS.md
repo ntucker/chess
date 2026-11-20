@@ -42,16 +42,15 @@ new project follow `.agents/projects/setup.md`.
    engineering, adversarial, reuse and React data flow. Verify each finding; fix real ones, reject the
    rest with a reason. Do not launch them while the person is actively writing in your thread:
    subagents can pick up the message and reply in your name.
-7. Once the change is verified correct, run skill "simplify", then skill `user-kit:clean-code` if
-   the change has architecture implications. Verify their findings and push the cleanups (a push, so
-   step 6 runs again) before calling the PR done.
-   If roughly 1k+ lines of code changed (judge from the diff stat; scripts and data such as lessons
-   don't count): after those passes, alongside that push's step 6 (alone if nothing was pushed), have
-   a Fable subagent load `user-kit:clean-code` and look for architectural simplifications and
-   improvements, weighing what will likely stay the same and what might change (over time and
-   space). Handle its findings the same way, once per PR.
-   Last, if the PR changes agent instructions (`AGENTS.md`, `CLAUDE.md`, `PROJECTS.md`, `.agents/`,
-   skills, prompts), audit those changes with skill `user-kit:agent-instructions` the same way.
+7. Once the change is verified correct, run these passes in order. Verify each pass's findings and
+   push the fixes (each push reruns step 6) before calling the PR done.
+   - Skill "simplify", then skill `user-kit:clean-code` if the change has architecture implications.
+   - If the PR changes roughly 1k+ lines of code (judge from its diff stat; scripts and data such as
+     lessons don't count): once per PR, alongside the previous pass's step 6 (or alone if it pushed nothing),
+     have a Fable subagent load `user-kit:clean-code` and look for architectural simplifications,
+     weighing what will likely stay the same and what might change (over time and space).
+   - If agent instructions changed (`AGENTS.md`, `CLAUDE.md`, `PROJECTS.md`, `.agents/`, skills,
+     prompts): audit those changes with skill `user-kit:agent-instructions`.
 8. Land your own PR (squash-merge) as `.agents/projects/autoland.md` says. A worker's PR ends when
    it merges, not when it is handed over.
 
