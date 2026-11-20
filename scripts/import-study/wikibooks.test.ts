@@ -9,7 +9,7 @@ import { SAMPLE } from '@/lesson/lesson.fixture';
 import { extractChapter } from './extract';
 import { mergeChapters } from './merge';
 import { parseStudy } from './study';
-import { plainText, readPage, segmentSan, titleCase, wikibooksPgn } from './wikibooks';
+import { plainText, readPage, rootSans, segmentSan, titleCase, wikibooksPgn } from './wikibooks';
 
 const ROOT = 'Chess_Opening_Theory/1._d4/1...d5';
 
@@ -43,6 +43,15 @@ const PAGES: Record<string, string> = {
 
 const fetchPage = async (title: string) => PAGES[title];
 
+describe('rootSans', () => {
+  it("reads a root page's line, and names a segment that isn't a move", () => {
+    expect(rootSans('Chess_Opening_Theory/1._d4/1...Nf6/2._Bf4')).toEqual(['d4', 'Nf6', 'Bf4']);
+    expect(() => rootSans('Chess_Opening_Theory/1._d4/Main')).toThrow(
+      'Chess_Opening_Theory/1._d4/Main: Main is not a move',
+    );
+  });
+});
+
 describe('segmentSan', () => {
   it('reads the move of a title or link segment', () => {
     expect(segmentSan('5._a4')).toBe('a4');
@@ -63,6 +72,7 @@ describe('plainText', () => {
 describe('titleCase', () => {
   it('capitalises words as the lichess guides do, but not minor words or moves', () => {
     expect(titleCase('Dutch variation')).toBe('Dutch Variation');
+    expect(titleCase('Grünfeld defence')).toBe('Grünfeld Defence');
     expect(titleCase("Queen's gambit declined")).toBe("Queen's Gambit Declined");
     expect(titleCase('4.Nd2 and 4.c4 sidelines')).toBe('4.Nd2 and 4.c4 Sidelines');
     expect(titleCase('exchange variation, 4.cxd5')).toBe('Exchange Variation, 4.cxd5');

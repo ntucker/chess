@@ -44,7 +44,8 @@ import { INITIAL_FEN } from 'chessops/fen';
 import type { Color } from 'chessops/types';
 
 import { checkLesson } from '@/lesson/check';
-import { readLesson, type Lesson } from '@/lesson/lesson';
+import type { Lesson } from '@/lesson/lesson';
+import { lessonIndex } from '@/lesson/openings';
 
 import { convertChapters, convertReport } from './convert';
 import { claudeCli } from './convert/claude';
@@ -53,7 +54,7 @@ import { extractChapter } from './extract';
 import { lessonJson } from './lessonJson';
 import { mergeChapters, numberedChapterName, type ChapterName, type SourceTally } from './merge';
 import { addPopularity, lichessExplorer } from './popularity';
-import { indexLesson, registerLesson } from './register';
+import { indexedWith, readLessonFile, registerLesson, writeIndex } from './register';
 import { report, sourceReport } from './report';
 import { nodeStockfish } from './stockfish';
 import { parseStudy, type Chapter } from './study';
@@ -73,7 +74,7 @@ async function main() {
   if (first === '--popularity') {
     if (rest.length !== 1) throw new Error(USAGE);
     const file = rest[0];
-    writeLesson(file, await withPopularity(readLesson(JSON.parse(readFileSync(file, 'utf8')))));
+    writeLesson(file, checked(await withPopularity(readLessonFile(file))));
     return;
   }
   const study = Object.hasOwn(STUDIES, first) ? STUDIES[first] : undefined;
@@ -135,9 +136,13 @@ async function main() {
     `transpositions: ${transposed.moved} positions took the notes of a move order the lesson doesn't play`,
   );
   if (!rest.includes('--no-popularity')) lesson = await withPopularity(lesson);
+  // The checker and the index each refuse a lesson by throwing, so both come before any write.
+  checked(lesson);
+  const indexFile = join(ROOT, 'assets/lessons/index.json');
+  const index = lessonIndex(indexedWith(indexFile, lesson));
   writeLesson(join(ROOT, `assets/lessons/${lesson.id}.json`), lesson);
   registerLesson(join(ROOT, 'src/resources/lesson.ts'), lesson.id);
-  indexLesson(join(ROOT, 'assets/lessons/index.json'), lesson);
+  writeIndex(indexFile, index);
   console.log(report(lesson, chapters, extracted));
 }
 
@@ -152,13 +157,18 @@ function withPopularity(lesson: Lesson): Promise<Lesson> {
   });
 }
 
-/** Writes `lesson` to `file`, refusing one the checker finds fault with. */
-function writeLesson(file: string, lesson: Lesson) {
+/** `lesson`, once the checker passes it; throws with its first problems otherwise. */
+function checked(lesson: Lesson): Lesson {
   const problems = checkLesson(lesson);
   if (problems.length > 0) {
     console.error(problems.slice(0, 20));
     throw new Error(`${problems.length} problems: the importer made a lesson the checker refuses`);
   }
+  return lesson;
+}
+
+/** Writes `lesson`, which `checked` has passed, to `file`. */
+function writeLesson(file: string, lesson: Lesson) {
   const json = lessonJson(lesson);
   writeFileSync(file, json);
   console.log(`wrote ${file}: ${Buffer.byteLength(json)} bytes`);

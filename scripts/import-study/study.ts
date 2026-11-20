@@ -12,7 +12,7 @@ import {
 } from 'chessops/pgn';
 import { parseUci } from 'chessops/util';
 
-import { sanToUci } from '@/game/replay';
+import { positionKey, sanToUci } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 
 import { plainSan } from './text';
@@ -59,22 +59,61 @@ const DUBIOUS_NAGS = new Set([2, 4, 6]);
 
 export const isDubious = (move: StudyMove) => move.nags.some((nag) => DUBIOUS_NAGS.has(nag));
 
-/** The chapters of `pgn` whose title `include` accepts, in study order. */
+/**
+ * The chapters of `pgn` whose title `include` accepts, in study order. A
+ * chapter set up from a position an earlier chapter's moves reach (studies
+ * that go on where the last chapter stopped) starts where that one does,
+ * through those moves, which keep no comment: the earlier chapter says it.
+ */
 export function parseStudy(pgn: string, include: (title: string) => boolean): Chapter[] {
-  return parsePgn(pgn).flatMap((game) => {
+  const chapters: Chapter[] = [];
+  for (const game of parsePgn(pgn)) {
     const title = game.headers.get('ChapterName') ?? game.headers.get('Event') ?? '';
-    if (!include(title)) return [];
+    if (!include(title)) continue;
     const start = startingPosition(game.headers).unwrap() as Chess;
     const namedFrom = Number(game.headers.get('NamedFrom')) || undefined;
-    return [
-      {
-        title,
-        start,
-        moves: readMoves(game.moves.children, start, 1),
-        ...(namedFrom && { namedFrom }),
-      },
-    ];
-  });
+    const lead = leadTo(chapters, start);
+    if (!lead) {
+      const moves = readMoves(game.moves.children, start, 1);
+      chapters.push({ title, start, moves, ...(namedFrom && { namedFrom }) });
+      continue;
+    }
+    const first = copyLead(lead, (last) =>
+      readMoves(game.moves.children, last.after, last.ply + 1, last),
+    );
+    chapters.push({ title, start: chapters[0].start, moves: [first] });
+  }
+  return chapters;
+}
+
+/** Copies of `lead` without comments (a dubious move stays dubious), the last followed by the moves `rest` reads after it. */
+function copyLead(
+  lead: readonly StudyMove[],
+  rest: (last: StudyMove) => StudyMove[],
+  parent?: StudyMove,
+): StudyMove {
+  const [move, ...after] = lead;
+  const children: StudyMove[] = [];
+  const copy: StudyMove = { ...move, parent, children, comment: '' };
+  children.push(...(after.length > 0 ? [copyLead(after, rest, copy)] : rest(copy)));
+  return copy;
+}
+
+/** The moves from the first chapter's start to `pos` in an earlier chapter; none for that start itself or a position none reaches. */
+function leadTo(chapters: readonly Chapter[], pos: Chess): StudyMove[] | undefined {
+  const key = positionKey(pos);
+  if (chapters.length === 0 || positionKey(chapters[0].start) === key) return undefined;
+  const start = positionKey(chapters[0].start);
+  for (const chapter of chapters) {
+    if (positionKey(chapter.start) !== start) continue;
+    for (const move of chapterMoves(chapter)) {
+      if (positionKey(move.after) !== key) continue;
+      const lead: StudyMove[] = [];
+      for (let at: StudyMove | undefined = move; at; at = at.parent) lead.unshift(at);
+      return lead;
+    }
+  }
+  return undefined;
 }
 
 function readMoves(

@@ -244,9 +244,23 @@ const MINOR_WORDS = new Set('a an and at by de der for in of on or the to van vo
  * moves ("4.e3", "exd5") are left as they are.
  */
 export function titleCase(name: string): string {
-  return name.replace(/(?<![\w'.])[a-z][a-z']*\b/g, (word, at: number) =>
-    at > 0 && MINOR_WORDS.has(word) ? word : word[0].toUpperCase() + word.slice(1),
+  return name.replace(
+    /(?<![\p{L}\p{N}_'.])\p{Ll}[\p{L}']*(?![\p{L}\p{N}])/gu,
+    (word, at: number) =>
+      at > 0 && MINOR_WORDS.has(word) ? word : word[0].toUpperCase() + word.slice(1),
   );
+}
+
+/** The moves of the line a root page stands for, in SAN; throws on a segment that names none. */
+export function rootSans(root: string): string[] {
+  return root
+    .split('/')
+    .slice(1)
+    .map((segment) => {
+      const san = segmentSan(segment);
+      if (!san) throw new Error(`${root}: ${segment} is not a move`);
+      return san;
+    });
 }
 
 /** The book's pages under `root` as PGN, one game per chapter (see the file comment). */
@@ -265,10 +279,9 @@ export async function wikibooksPgn(
   } = options;
   const path: string[] = [];
   let pos = Chess.default();
-  for (const segment of root.split('/').slice(1)) {
-    const san = segmentSan(segment);
-    const after = san && played(pos, san);
-    if (!after) throw new Error(`${root}: ${segment} is not a legal move`);
+  for (const san of rootSans(root)) {
+    const after = played(pos, san);
+    if (!after) throw new Error(`${root}: ${san} is not a legal move`);
     path.push(san);
     pos = after;
   }

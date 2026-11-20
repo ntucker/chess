@@ -108,11 +108,22 @@ describe('modeReducer', () => {
 describe('moveKinds', () => {
   it("names each move by who played it, and the learner's by the guide", () => {
     const plies = replay(uciLine('e4', 'c6', 'd4', 'e6'));
-    expect(moveKinds(plies, 'black', [false, true, false, false])).toEqual([
+    expect(moveKinds(plies, 'black', [false, true, false, false], 0)).toEqual([
       'opponent',
       'book',
       'opponent',
       'slip',
+    ]);
+  });
+
+  it("counts the moves that pick the opening as no move of the learner's", () => {
+    const plies = replay(uciLine('d4', 'd5', 'c4', 'c6', 'Nf3'));
+    expect(moveKinds(plies, 'black', [false, true, false, true, false], 3)).toEqual([
+      'opponent',
+      'opponent',
+      'opponent',
+      'book',
+      'opponent',
     ]);
   });
 });
@@ -121,10 +132,15 @@ describe('beforeSideMoves', () => {
   const plies = replay(uciLine('e4', 'c6', 'd4', 'd5'));
 
   it("counts the side's moves among the first moves of the line", () => {
-    expect(beforeSideMoves(plies, 'black', 1)).toBe(true);
-    expect(beforeSideMoves(plies, 'black', 2)).toBe(false);
-    expect(beforeSideMoves(plies, 'white', 0)).toBe(true);
-    expect(beforeSideMoves(plies, 'white', 1)).toBe(false);
+    expect(beforeSideMoves(plies, 'black', 1, 0)).toBe(true);
+    expect(beforeSideMoves(plies, 'black', 2, 0)).toBe(false);
+    expect(beforeSideMoves(plies, 'white', 0, 0)).toBe(true);
+    expect(beforeSideMoves(plies, 'white', 1, 0)).toBe(false);
+  });
+
+  it('skips the moves that pick the opening', () => {
+    expect(beforeSideMoves(plies, 'black', 2, 2)).toBe(true);
+    expect(beforeSideMoves(plies, 'black', 4, 2)).toBe(false);
   });
 });
 
@@ -132,22 +148,23 @@ describe('opponentPlays', () => {
   const at = (ply: number) => ({ moves: uciLine('e4', 'c6', 'd4'), ply });
 
   it('leaves every opponent move to the learner with auto play off', () => {
-    expect(opponentPlays('explore', false, at(3))).toBe(false);
-    expect(opponentPlays('practice', false, at(3))).toBe(false);
+    expect(opponentPlays('explore', false, at(3), false)).toBe(false);
+    expect(opponentPlays('practice', false, at(3), false)).toBe(false);
   });
 
-  it('leaves the first move, which picks the opening, to the learner', () => {
-    expect(opponentPlays('practice', true, at(0))).toBe(false);
+  it('leaves the moves that pick the opening to the learner', () => {
+    expect(opponentPlays('practice', true, at(0), true)).toBe(false);
+    expect(opponentPlays('explore', true, at(3), true)).toBe(false);
   });
 
   it('leaves one opponent move to the learner stepped back in Explore', () => {
-    expect(opponentPlays('explore', true, at(2))).toBe(false);
+    expect(opponentPlays('explore', true, at(2), false)).toBe(false);
     // At the latest move auto play answers, as it does once the picked move is played.
-    expect(opponentPlays('explore', true, at(3))).toBe(true);
+    expect(opponentPlays('explore', true, at(3), false)).toBe(true);
   });
 
   it('keeps Practice with auto play on to the opponent, stepped back or not', () => {
-    expect(opponentPlays('practice', true, at(2))).toBe(true);
-    expect(opponentPlays('practice', true, at(3))).toBe(true);
+    expect(opponentPlays('practice', true, at(2), false)).toBe(true);
+    expect(opponentPlays('practice', true, at(3), false)).toBe(true);
   });
 });

@@ -206,7 +206,11 @@ function addBranches(
  * sources before, a new one must lie within it, else the earlier name stands.
  * A later guide may narrow a name ("Pure Slav" to "Pure Slav: Geller
  * Gambit"), but its "Classical Variation" chapter never renames the main
- * guide's "Capablanca Variation".
+ * guide's "Capablanca Variation". Only a name the earlier sources gave off
+ * their main lines gives way to a later main line naming a variation as
+ * narrow on another line: the main London guide shows 3...c5 as a side line
+ * of its Early ...Bf5 chapter, and a later guide's Anti-London ...c5 chapter
+ * plays it.
  */
 function sourceVariations(
   root: VariationId,
@@ -216,6 +220,8 @@ function sourceVariations(
 ): Map<PositionKey, VariationId> {
   const sources = [...new Set(chapters.map(({ source = 0 }) => source))].sort((a, b) => a - b);
   let named = new Map<PositionKey, VariationId>();
+  /** The positions on the main lines of the sources so far. */
+  const earlierMain = new Set<PositionKey>();
   for (const source of sources) {
     const upTo = chapters.flatMap((chapter, i) => ((chapter.source ?? 0) <= source ? [i] : []));
     const before = named;
@@ -225,12 +231,29 @@ function sourceVariations(
       upTo.map((i) => chapters[i]),
       upTo.map((i) => chapterVariation[i]),
     );
+    const passes = new Set(
+      chapters.flatMap((chapter) =>
+        (chapter.source ?? 0) === source
+          ? [...namedMainLine(chapter)].map((move) => positionKey(move.before))
+          : [],
+      ),
+    );
     for (const [key, id] of named) {
       const earlier = before.get(key);
-      if (earlier && !ancestry(variations, id).includes(earlier)) named.set(key, earlier);
+      if (!earlier || ancestry(variations, id).includes(earlier)) continue;
+      // An earlier side line's name gives way to this source's main line, if that names one as narrow on another line.
+      const sideLine = !earlierMain.has(key) && passes.has(key);
+      const [was, now] = [ancestry(variations, earlier), ancestry(variations, id)];
+      if (!sideLine || now.length < was.length || was.includes(id)) named.set(key, earlier);
     }
+    for (const key of passes) earlierMain.add(key);
   }
   return named;
+}
+
+/** A chapter's main line from its named position on (`Chapter.namedFrom`): the named position is the one after its move. */
+function* namedMainLine({ moves, namedFrom = 0 }: Chapter): Generator<StudyMove> {
+  for (const move of mainLine(moves[0])) if (move.ply > namedFrom) yield move;
 }
 
 /**
@@ -439,16 +462,14 @@ function mainLineVariations(
     readonly from: PositionKey[];
   }
   const reached = new Map<PositionKey, Reached>();
-  chapters.forEach(({ moves, namedFrom = 0 }, i) => {
+  chapters.forEach((chapter, i) => {
     let from: PositionKey | undefined;
-    for (const move of mainLine(moves[0])) {
-      // The named position is the one after its move.
-      if (move.ply <= namedFrom) continue;
+    for (const move of namedMainLine(chapter)) {
       const key = positionKey(move.before);
       const at = reached.get(key) ?? { ply: move.ply, paths: [], cut: [], from: [] };
       reached.set(key, at);
       at.paths.push(path(chapterVariation[i]));
-      if (namedFrom > 0) at.cut.push(path(chapterVariation[i]));
+      if (chapter.namedFrom) at.cut.push(path(chapterVariation[i]));
       if (from) at.from.push(from);
       from = key;
     }

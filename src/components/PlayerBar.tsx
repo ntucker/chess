@@ -1,4 +1,5 @@
-import { Spinner, Text, useTheme } from '@reactive/silk-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Pressable, type PressableState, Spinner, Text, useTheme } from '@reactive/silk-native';
 import type { ReactNode } from 'react';
 import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 
@@ -20,10 +21,19 @@ interface Props {
   readonly thinking?: boolean;
   /** What this player is up on the board shown. */
   readonly material: Material;
+  /** Pressing the disc swaps the sides; it shows a swap graphic while pointed at. */
+  readonly swap?: Swap;
   /** Controls at the end of the bar, such as the move stepper. */
   readonly children?: ReactNode;
   /** The bar's size; the screen fixes its height to line it up with the board. */
   readonly style?: StyleProp<ViewStyle>;
+}
+
+/** What pressing a player's disc does. */
+interface Swap {
+  /** Names it for screen readers, such as "Play as Black". */
+  readonly label: string;
+  readonly onPress: () => void;
 }
 
 /**
@@ -35,6 +45,8 @@ export const PLAYER_DISC = {
   gap: narrowLength('player-disc-gap', 12),
 } as const;
 const DISC_BORDER = narrowLength('player-disc-border', 2.5);
+/** The swap graphic inside a wide page's disc, within its border. */
+const SWAP_ICON = 16;
 
 /** A name plate above or below the board, lit while that side is to move. */
 export function PlayerBar({
@@ -45,11 +57,10 @@ export function PlayerBar({
   toMove,
   thinking,
   material,
+  swap,
   children,
   style,
 }: Props) {
-  const { theme } = useTheme();
-  const { color: c } = theme.semantic;
   const turn = (text: string) => (toMove ? `${text} · to move` : text);
   const caption = {
     role: 'caption',
@@ -59,15 +70,7 @@ export function PlayerBar({
   } as const;
   return (
     <View style={[styles.bar, style]}>
-      <View
-        style={[
-          styles.piece,
-          {
-            backgroundColor: pieceColors[color],
-            borderColor: toMove ? c.tones.accent.solid : c.tones.neutral.border,
-          },
-        ]}
-      />
+      <Disc color={color} toMove={toMove} swap={swap} />
       <View {...narrowPart('player-names')} style={styles.names}>
         <View style={styles.nameLine}>
           <Text role="headingSm" numberOfLines={1} style={styles.name}>
@@ -90,6 +93,47 @@ export function PlayerBar({
   );
 }
 
+/** The side's disc, lit while it is to move; with `swap`, a button that swaps the sides. */
+function Disc({ color, toMove, swap }: Pick<Props, 'color' | 'toMove' | 'swap'>) {
+  const { theme } = useTheme();
+  const { tones } = theme.semantic.color;
+  // The ring stays the turn's alone: pointed at, the disc shows the swap graphic instead.
+  const look = [
+    styles.piece,
+    {
+      backgroundColor: pieceColors[color],
+      borderColor: toMove ? tones.accent.solid : tones.neutral.border,
+    },
+  ];
+  if (!swap) return <View style={look} />;
+  const pointed = ({ hovered, focusVisible }: PressableState) => hovered || focusVisible;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={swap.label}
+      onPress={swap.onPress}
+      // A narrow page's disc is a small dot: the press reaches past it.
+      hitSlop={8}
+      focusRing={false}
+      style={(state) => [
+        look,
+        styles.swap,
+        pointed(state) && styles.swapPointed,
+        state.pressed && styles.swapPressed,
+      ]}
+    >
+      {(state) =>
+        pointed(state) ? (
+          // A narrow page's dot has no room for it, and no pointer to hover.
+          <View {...narrowPart('wide-only')}>
+            <Ionicons name="swap-vertical" size={SWAP_ICON} color={pieceColors[opposite(color)]} />
+          </View>
+        ) : null
+      }
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
@@ -102,6 +146,10 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: DISC_BORDER.value,
   },
+  swap: { alignItems: 'center', justifyContent: 'center' },
+  // Raised a little toward the pointer, and pressed back in.
+  swapPointed: { transform: [{ scale: 1.1 }] },
+  swapPressed: { transform: [{ scale: 0.95 }] },
   names: { flex: 1, minWidth: 0 },
   // Where the name's line and the detail share a row (a narrow web page),
   // the detail gives way first when short of room, then the name's line;

@@ -78,6 +78,8 @@ interface BoardColumnProps {
   readonly rival: Pick<ComponentProps<typeof PlayerBar>, 'name' | 'detail' | 'brief' | 'children'>;
   /** The board, with the player's side (`orientation`) at the bottom. */
   readonly board: Omit<BoardProps, 'dom'>;
+  /** Swaps the sides: given, either name bar's disc is a button that does it. */
+  readonly onSwap?: () => void;
 }
 
 /**
@@ -85,11 +87,12 @@ interface BoardColumnProps {
  * name bar above it and the player's below, holding the move stepper. The
  * arrow keys step through the moves too.
  */
-export function BoardColumn({ game, rival, board }: BoardColumnProps) {
+export function BoardColumn({ game, rival, board, onSwap }: BoardColumnProps) {
   const { moves, ply, goto } = game;
   const side = board.orientation;
   const other = opposite(side);
   useStepKeys(ply, moves.length, goto);
+  const swap = onSwap && { label: `Play as ${colorName(other)}`, onPress: onSwap };
   return (
     <>
       <PlayerBar
@@ -99,6 +102,7 @@ export function BoardColumn({ game, rival, board }: BoardColumnProps) {
         toMove={game.toMove === other}
         thinking={game.thinking}
         material={game.material[other]}
+        swap={swap}
       />
       <View style={styles.boardRow}>
         <EvaluationBar line={moves.slice(0, ply)} orientation={side} style={styles.evaluation} />
@@ -113,6 +117,7 @@ export function BoardColumn({ game, rival, board }: BoardColumnProps) {
         color={side}
         toMove={game.toMove === side}
         material={game.material[side]}
+        swap={swap}
       >
         <Transport ply={ply} total={moves.length} onGoto={goto} />
       </PlayerBar>

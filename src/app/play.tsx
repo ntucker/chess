@@ -3,7 +3,6 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Button, Inline, Separator, Stack } from '@reactive/silk-native';
 import { useIsFocused } from 'expo-router';
 import { useReducer, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
 
 import { lastMoveBadge } from '@/board/drawing';
 import { EvaluationEngineChoice } from '@/components/EvaluationEngineChoice';
@@ -12,7 +11,6 @@ import { FootnoteLink } from '@/components/FootnoteLink';
 import { GameStatus } from '@/components/GameStatus';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { Scoresheet } from '@/components/Scoresheet';
-import { SideChooser } from '@/components/SideChooser';
 import { BoardColumn, Stage } from '@/components/Stage';
 import { gameReducer, initialGame } from '@/game/game';
 import { type Color, colorName, opposite } from '@/game/replay';
@@ -25,9 +23,8 @@ export default function PlayScreen() {
   const ctrl = useController();
   const { opponent, evaluationEngine } = useSettings();
   const described = describeOpponent(opponent);
-  // The side of the game on the board, and the side the next game will take.
+  // The side of the game on the board, which the next game keeps.
   const [playerColor, setPlayerColor] = useState<Color>('white');
-  const [nextColor, setNextColor] = useState<Color>(playerColor);
   const active = useIsFocused();
   useWarmOpponent(opponent, active);
   const game = useGame(useReducer(gameReducer, initialGame), gameOpponent(ctrl, opponent), {
@@ -40,11 +37,6 @@ export default function PlayScreen() {
   const newGame = (side: Color) => {
     setPlayerColor(side);
     game.newGame();
-  };
-  const chooseSide = (side: Color) => {
-    setNextColor(side);
-    // Nothing to lose yet, so switch sides right away.
-    if (!game.started && side !== playerColor) newGame(side);
   };
 
   return (
@@ -68,6 +60,9 @@ export default function PlayScreen() {
             check: current.check,
             onMove: game.move,
           }}
+          // Until the player's first move there is nothing to lose, so the
+          // discs swap sides; afterwards, a new game keeps the side.
+          onSwap={game.started ? undefined : () => newGame(opposite(playerColor))}
         />
       }
       program={
@@ -83,17 +78,11 @@ export default function PlayScreen() {
             onRetry={game.retry}
           />
           <Separator />
-          <Stack style={labelled}>
-            <Eyebrow>Play as</Eyebrow>
-            <Inline gap="3" align="center" wrap="nowrap">
-              <View style={styles.fill}>
-                <SideChooser value={nextColor} onChange={chooseSide} />
-              </View>
-              <Button onPress={() => newGame(nextColor)}>
-                <Ionicons name="refresh" size={15} /> New game
-              </Button>
-            </Inline>
-          </Stack>
+          <Inline>
+            <Button onPress={() => newGame(playerColor)}>
+              <Ionicons name="refresh" size={15} /> New game
+            </Button>
+          </Inline>
           <Separator />
           <Stack style={labelled}>
             <Eyebrow>Scoresheet</Eyebrow>
@@ -111,5 +100,3 @@ export default function PlayScreen() {
     />
   );
 }
-
-const styles = StyleSheet.create({ fill: { flex: 1 } });

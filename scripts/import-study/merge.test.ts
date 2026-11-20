@@ -268,6 +268,27 @@ describe('mergeChapters with several sources', () => {
     expect(variation('d4', 'd5', 'c4', 'c6', 'Nf3', 'Nf6', 'Nc3')).toBe('pure-alapin-dutch');
   });
 
+  it("renames the main guide's side line where a later guide's main line on another line passes", () => {
+    // The main guide's Early ...Bf5 chapter shows 3...c5 only as a side line; the later guide's Anti-London chapter plays it.
+    const early = parseStudy(
+      '[ChapterName "Early"]\n\n1. d4 d5 2. Bf4 Nf6 3. e3 Bf5 (3... c5 4. c3) 4. Nf3 *\n',
+      () => true,
+    );
+    const anti = parseStudy(
+      '[ChapterName "Anti"]\n\n1. d4 d5 2. Bf4 Nf6 3. e3 c5 4. c3 *\n',
+      () => true,
+    );
+    const chapters = [...early, ...anti.map((chapter) => ({ ...chapter, source: 1 }))];
+    const lesson = mergeChapters(
+      { id: 'test', title: 'Test', side: 'white', sources: SAMPLE.sources },
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'white')),
+    );
+    const variation = (...sans: string[]) => lesson.positions[keyAfter(...sans)].variation;
+    expect(variation('d4', 'd5', 'Bf4', 'Nf6', 'e3')).toBe('early');
+    expect(variation('d4', 'd5', 'Bf4', 'Nf6', 'e3', 'c5')).toBe('anti');
+  });
+
   it("takes a later guide's notes only where the main guide says nothing", () => {
     const d5 = merged.positions[keyAfter('d4')].moves.find(({ uci }) => uci === 'd7d5')!;
     expect(d5.notes?.map(({ text }) => text)).toEqual(['Holds the centre with a pawn.']);

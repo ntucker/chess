@@ -35,6 +35,7 @@ import {
 } from './guidance';
 import type { Lesson, Note, PositionKey, Uci } from './lesson';
 import { earnedMark, openingMarks, rowMarks, steering } from './marks';
+import { isPicking, pickingMoves } from './openings';
 import { lessonOpponent } from './opponent';
 import { samePointer } from './peek';
 import { beforeSideMoves, moveKinds, opponentPlays } from './practice';
@@ -69,9 +70,10 @@ export interface Playback {
 }
 
 /**
- * `lesson` played on the board, the game held in `store`. The start position
- * is where the learner picks the opening (src/lesson/openings.ts): nobody
- * replies there, so the learner plays the first move whoever's turn it is.
+ * `lesson` played on the board, the game held in `store`. The start position,
+ * and the moves the openings share after it, are where the learner picks the
+ * opening (src/lesson/openings.ts): nobody replies there, so the learner
+ * plays each move whoever's turn it is.
  * While `pending`, the game has moved on to a lesson still loading and the
  * store holds the one shown, so the learner can't move or preview a move.
  */
@@ -96,7 +98,11 @@ export function useLesson(
   // The opponent replies only where `opponentPlays` says; elsewhere the learner picks its move.
   // In a clean Practice run the opponent steers to lines not yet passed, so
   // runs with auto play on can pass every row, not only its most played replies.
-  const rival = opponentPlays(mode, settings.auto, store[0])
+  const [{ moves, ply: shownPly }] = store;
+  const shownLine = useMemo(() => moves.slice(0, shownPly), [moves, shownPly]);
+  // Where the openings are picked, nobody replies: the learner plays both sides.
+  const picking = isPicking(LESSON_INDEX, lesson.side, shownLine);
+  const rival = opponentPlays(mode, settings.auto, store[0], picking)
     ? lessonOpponent(
         lesson,
         opponent,
@@ -104,7 +110,6 @@ export function useLesson(
         steering(lesson, progress, modeState),
       )
     : undefined;
-  const [{ moves }] = store;
   const book = useMemo(() => bookMoves(lesson, moves), [lesson, moves]);
   const game = useGame(store, rival, {
     side: lesson.side,
@@ -116,9 +121,11 @@ export function useLesson(
   // The store drops a move made while a lesson loads, so the board offers
   // none: chessground would show the dropped move until the lesson arrived.
   const canMove = game.canMove && !pending;
-  // A move played before the learner's first starts a Practice run (`modeReducer`).
-  const startsRun = beforeSideMoves(plies, lesson.side, ply);
-  const kinds = moveKinds(plies, lesson.side, book);
+  // A move played before the learner's first starts a Practice run
+  // (`modeReducer`); the moves that pick the opening are no move of theirs.
+  const picks = useMemo(() => pickingMoves(LESSON_INDEX, lesson.side, moves), [lesson.side, moves]);
+  const startsRun = beforeSideMoves(plies, lesson.side, ply, picks);
+  const kinds = moveKinds(plies, lesson.side, book, picks);
   const view = useMemo(
     () => lessonView({ lesson, line: moves, ply, opponent }),
     [lesson, moves, ply, opponent],
@@ -140,9 +147,8 @@ export function useLesson(
   // Progress: the board's position earns its mark once it shows, and the
   // candidate rows show what is earned below them. An effect, since a
   // position shows by many events (a move, a step, the opponent's reply, a
-  // mode change), and showing it is what earns the mark. The start earns
-  // none: no row leads there, and its rows are other lessons' (below).
-  const picking = view.ply === 0;
+  // mode change), and showing it is what earns the mark. Where the openings
+  // are picked earns none: its rows are other lessons' (below).
   const earned = picking ? undefined : earnedMark(view.place, modeState);
   useEffect(() => {
     // addMark keeps a mark already there; checking first skips the request.
@@ -151,12 +157,14 @@ export function useLesson(
       ctrl.fetch(addMark, { lesson: lesson.id, mark: earned, key }).catch(() => {});
     }
   }, [ctrl, earned, key, lesson.id, progress]);
-  // The start lists every opening, each row marked from its own lesson's
+  // Where the openings are picked, each row is marked from its lessons'
   // progress and the line ends the index lists, so no lesson loads for it.
   const marks = useMemo(
     () =>
-      picking ? openingMarks(LESSON_INDEX, everyProgress, view) : rowMarks(lesson, progress, view),
-    [picking, everyProgress, lesson, progress, view],
+      picking
+        ? openingMarks(LESSON_INDEX, lesson.side, shownLine, everyProgress, view)
+        : rowMarks(lesson, progress, view),
+    [picking, everyProgress, lesson, progress, view, shownLine],
   );
 
   // Like canMove: nothing previews while a lesson loads.
@@ -169,7 +177,6 @@ export function useLesson(
   // them, so Practice asks for nothing. Not useDLE: with nullable args it
   // types schemaless data as undefined.
   const explore = focused && mode === 'explore';
-  const shownLine = moves.slice(0, ply);
   const evaluationArgs = explore ? (['stockfish', shownLine] as const) : ([null] as const);
   useFetch(getEvaluation, ...evaluationArgs);
   const evaluation = useCache(getEvaluation, ...evaluationArgs);
@@ -185,6 +192,7 @@ export function useLesson(
     view,
     mode,
     switches: settings,
+    picking,
     preview: pointer && previewOf(pointer),
     // A dragged piece, or else one a click selected.
     lifted: pointer?.at === 'drag' ? pointer.from : here?.selected,
@@ -277,6 +285,10 @@ export function useLesson(
   return {
     game,
     opponent,
+    /** The board's position is where the openings are picked. */
+    picking,
+    /** The moves up to the board's position. */
+    shownLine,
     view,
     guidance: shown,
     board,
