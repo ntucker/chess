@@ -171,7 +171,7 @@ export function withReplies(
 ): Chapter[] {
   const added = new Map<StudyMove, string>();
   for (const [line, reply] of Object.entries(replies)) {
-    const last = lineEnd(chapters, line);
+    const [last] = lineEnds(chapters, line);
     if (!last) throw new Error(`No chapter plays ${line}, where a reply was named`);
     if (!sanToUci(last.after, reply)) throw new Error(`${reply} is not legal after ${line}`);
     added.set(last, reply);
@@ -185,15 +185,16 @@ export function withReplies(
 /**
  * `chapters` without the side lines `lines` names, each by its moves in SAN
  * from the start, the last one leaving the line the lesson keeps (a Queen's
- * Gambit introduction's joke `b3`, "You found the Easter Egg"). Throws for a
- * line no chapter plays, as `withReplies` does.
+ * Gambit introduction's joke `b3`, "You found the Easter Egg"), in every
+ * chapter that plays it. Throws for a line no chapter plays, as `withReplies`
+ * does.
  */
 export function withoutLines(chapters: readonly Chapter[], lines: readonly string[]): Chapter[] {
   const left = new Set(
-    lines.map((line) => {
-      const last = lineEnd(chapters, line);
-      if (!last) throw new Error(`No chapter plays ${line}, which was left out`);
-      return last;
+    lines.flatMap((line) => {
+      const ends = lineEnds(chapters, line);
+      if (ends.length === 0) throw new Error(`No chapter plays ${line}, which was left out`);
+      return ends;
     }),
   );
   return chapters.map((chapter) => ({
@@ -202,17 +203,30 @@ export function withoutLines(chapters: readonly Chapter[], lines: readonly strin
   }));
 }
 
-/** The last move of `line` (moves in SAN from the start) in the first chapter playing all of it. */
-function lineEnd(chapters: readonly Chapter[], line: string): StudyMove | undefined {
+/**
+ * `chapters` without the comments on moves before the ply its names start at
+ * (`Chapter.namedFrom`): a King's Gambit study's note on 1...e5 says White is
+ * about to play f4, wrong in a lesson where 1.e4 e5 leads to other openings too.
+ */
+export function withoutLeadComments(chapters: readonly Chapter[], namedFrom: number): Chapter[] {
+  return chapters.map((chapter) => {
+    const edits = new Map<StudyMove, Edit>();
+    for (const move of chapterMoves(chapter))
+      if (move.ply < namedFrom && move.comment) edits.set(move, { comment: '' });
+    return edits.size > 0 ? { ...chapter, moves: rebuilt(chapter.moves, edits) } : chapter;
+  });
+}
+
+/** The last move of `line` (moves in SAN from the start) in each chapter playing all of it. */
+function lineEnds(chapters: readonly Chapter[], line: string): StudyMove[] {
   const sans = line.split(' ');
-  return chapters
-    .map((chapter) =>
-      sans.reduce<StudyMove | undefined>(
-        (at, san, i) => (i === 0 ? chapter.moves : at?.children)?.find((move) => move.san === san),
-        undefined,
-      ),
-    )
-    .find(Boolean);
+  return chapters.flatMap((chapter) => {
+    const end = sans.reduce<StudyMove | undefined>(
+      (at, san, i) => (i === 0 ? chapter.moves : at?.children)?.find((move) => move.san === san),
+      undefined,
+    );
+    return end ? [end] : [];
+  });
 }
 
 /** What `rebuilt` changes on a move. */

@@ -131,7 +131,8 @@ function walkShared(
 ) {
   const key = lineKeys(line).at(-1)!;
   if (passed.has(key)) return;
-  const learnerMoves = line.length % 2 === (sharing[0].side === 'white' ? 0 : 1);
+  // `lessonIndex` walks each side's lessons apart, so they all share one side.
+  const learnerMoves = parsePositionKey(key)!.turn === sharing[0].side;
   const movesOf = (lesson: Lesson) =>
     (lesson.positions[key]?.moves ?? []).filter((move) => !learnerMoves || move.book);
   const ucis = new Set(sharing.flatMap((lesson) => movesOf(lesson).map(({ uci }) => uci)));

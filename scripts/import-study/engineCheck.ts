@@ -49,7 +49,7 @@ export interface EngineReport {
   /** Notes dropped, where they were and why. */
   readonly dropped: readonly { line: string; text: string; reason: string }[];
   /** Book moves `fillBook` picked again where the engine overruled one of several guide moves. */
-  readonly refilled?: FillReport['filled'];
+  readonly refilled: FillReport['filled'];
 }
 
 /** `lesson` with what `evaluate` overrules taken out, and what was taken. */
@@ -62,7 +62,7 @@ export async function engineCheck(
   const report = {
     unbooked: [] as { line: string; move: string; quality: string }[],
     unreachable: [] as { line: string; move: string }[],
-    cut: [] as { line: string; moves: string[]; positions: number }[],
+    cut: [] as { line: string; moves: readonly string[]; positions: number }[],
     dropped: [] as { line: string; text: string; reason: string }[],
   };
 
@@ -112,13 +112,17 @@ export async function engineCheck(
   }
 
   cutLines(lesson, positions, overruledAt, lines, report.cut);
-  const checked = { ...lesson, positions };
+  // Where it overruled one of several guide moves, pick again among them before
+  // judging what book moves still reach: the line goes on through the guide's own.
+  const refilled = await fillBook({ ...lesson, positions }, evaluate);
+  const filled = { ...refilled.lesson.positions };
+  const checked = { ...lesson, positions: filled };
   const reached = bookReach(checked);
-  for (const [key, position] of Object.entries(positions)) {
+  for (const [key, position] of Object.entries(filled)) {
     const at = lines.get(key);
     // A position no line reaches is the checker's to refuse, not this.
     if (reached.has(key) || !at) continue;
-    positions[key] = {
+    filled[key] = {
       ...position,
       moves: position.moves.map(({ book, ...move }) => {
         if (book)
@@ -127,7 +131,8 @@ export async function engineCheck(
       }),
     };
   }
-  return { lesson: checked, report };
+  report.cut.push(...refilled.report.ended);
+  return { lesson: checked, report: { ...report, refilled: refilled.report.filled } };
 }
 
 /**
@@ -143,7 +148,7 @@ function cutLines(
   positions: Record<PositionKey, LessonPosition>,
   overruledAt: ReadonlySet<PositionKey>,
   lines: ReadonlyMap<PositionKey, { line: Uci[]; pos: Chess }>,
-  cut: { line: string; moves: string[]; positions: number }[],
+  cut: { line: string; moves: readonly string[]; positions: number }[],
 ) {
   for (const key of overruledAt) {
     const position = positions[key];
@@ -225,7 +230,7 @@ export async function fillBook(
     if (!position) continue;
     const learner = at.pos.turn === lesson.side;
     if (learner && position.moves.length > 0 && !position.moves.some(({ book }) => book)) {
-      const pick = await pickBookMove(position.moves, at, evaluation, lesson.side);
+      const pick = await pickBookMove(position, at, evaluation, lesson.side);
       if (!pick) {
         const moves = position.moves.map(({ uci }) => san(at.pos, uci));
         const gone = endLine(lesson, positions, key, lines);
@@ -260,18 +265,21 @@ export async function fillBook(
 }
 
 /**
- * The book move `fillBook` picks at `at`, and why: one of `moves`, or the
- * engine's own when it overrules them all; undefined when it names none.
+ * The book move `fillBook` picks at `at`, and why: one of the guide's moves
+ * there, or the engine's own when it overrules them all; undefined when it
+ * names none. A move the guide warns against with a trap is either one the
+ * engine rates a mistake, so never picked, or one whose trap `engineCheck`
+ * drops as no error.
  */
 async function pickBookMove(
-  moves: readonly LessonMove[],
+  position: LessonPosition,
   at: { line: readonly Uci[]; pos: Chess },
   evaluation: CachedEvaluation,
   side: Lesson['side'],
 ): Promise<{ uci: Uci; why: string } | undefined> {
   const before = await evaluation(at.line, at.pos);
   const judged = await Promise.all(
-    moves.map(async ({ uci, notes }) => {
+    position.moves.map(async ({ uci, notes }) => {
       const after = await evaluation([...at.line, uci], played(at.pos, uci));
       const quality = classifyMove({ before, after, uci, mover: side });
       const sound = quality !== 'mistake' && quality !== 'blunder';

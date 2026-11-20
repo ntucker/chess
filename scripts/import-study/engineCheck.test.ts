@@ -62,7 +62,7 @@ describe('engineCheck', () => {
     expect(report.unreachable).toEqual([{ line: '1.d4 e5 2.dxe5', move: 'Nc6' }]);
   });
 
-  it("leaves an overruled move's position to fillBook when the guide shows others there", async () => {
+  it("picks again among the guide's other moves where it overruled one, instead of ending the line", async () => {
     const others = {
       ...LESSON,
       positions: {
@@ -74,11 +74,12 @@ describe('engineCheck', () => {
     delete others.positions[keyAfter('d4', 'd5')];
     const { lesson, report } = await engineCheck(others, evaluate);
     expect(report.cut).toEqual([]);
-    expect(lesson.positions[keyAfter('d4')].moves.some(({ book }) => book)).toBe(false);
-    const refilled = await fillBook(lesson, evaluate);
-    expect(refilled.report.filled).toEqual([
+    expect(report.refilled).toEqual([
       { line: '1.d4', move: 'c5', why: "Stockfish's best of the guide's moves" },
     ]);
+    expect(lesson.positions[keyAfter('d4')].moves.find(({ book }) => book)?.uci).toBe(
+      uci('d4', 'c5'),
+    );
   });
 
   it('cuts a lone overruled move below another one', async () => {
@@ -143,7 +144,7 @@ describe('engineCheck', () => {
     };
     const { lesson, report } = await engineCheck(agreed, even);
     expect(lesson).toEqual(agreed);
-    expect(report).toEqual({ unbooked: [], unreachable: [], cut: [], dropped: [] });
+    expect(report).toEqual({ unbooked: [], unreachable: [], cut: [], dropped: [], refilled: [] });
   });
 });
 

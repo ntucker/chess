@@ -149,26 +149,21 @@ export function plainText(wiki: string): string {
  * nothing above it.
  */
 function tableLines(source: string): string[][] {
-  let above = new Map<number, string>();
-  return [...source.matchAll(/^\|\s*line\d+\s*=(.*)$/gm)].map(([, line]) => {
-    const moves = new Map<number, string>();
+  const rows = [...source.matchAll(/^\|\s*line\d+\s*=(.*)$/gm)].map(([, line]) => {
+    const row: (readonly [number, string])[] = [];
     let ply: number | undefined;
     for (const token of line
       .replace(/(\d+\.(?:\.\.)?)/g, ' $1 ')
       .split(/\s+/)
       .filter(Boolean)) {
       const number = /^(\d+)\.(\.\.)?$/.exec(token);
-      if (number) {
-        ply = 2 * Number(number[1]) - (number[2] ? 0 : 1);
-        continue;
-      }
-      const move = /^\.+$/.test(token) ? ply && above.get(ply) : token;
-      if (!ply || !move) break;
-      moves.set(ply++, move);
+      if (number) ply = 2 * Number(number[1]) - (number[2] ? 0 : 1);
+      else if (ply) row.push([ply++, token]);
+      else break;
     }
-    above = moves;
-    return [...moves.values()];
+    return row;
   });
+  return repeatsResolved(rows);
 }
 
 /**
@@ -186,28 +181,41 @@ function htmlTableLines(source: string): string[][] {
       .flatMap((row) => [...row.matchAll(/<th[^>]*>\s*(\d+)\s*<\/th>/gi)])
       .map(([, number]) => Number(number))[0];
     if (!first) continue;
-    let above = new Map<number, string>();
-    for (const row of rows) {
-      const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(([, cell]) => cell);
-      if (!cells.length) continue;
-      const moves = new Map<number, string>();
-      cells.every((cell, i) => {
+    const cellRows = rows
+      .map((row) => [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(([, cell]) => cell))
+      .filter((cells) => cells.length > 0);
+    const moveRows = cellRows.map((cells) => {
+      const moves: (readonly [number, string])[] = [];
+      for (const [i, cell] of cells.entries()) {
         const pair = cell.split(/<br\s*\/?>/i);
-        if (pair.length !== 2) return false;
-        return pair.every((half, side) => {
-          const ply = 2 * (first + i) - 1 + side;
-          const text = plainText(half).replace(/\((\w)\)/, '=$1');
-          const move = /^\.+$/.test(text) ? above.get(ply) : text;
-          if (!move) return false;
-          moves.set(ply, move);
-          return true;
-        });
-      });
-      above = moves;
-      if (moves.size) lines.push([...moves.values()]);
-    }
+        if (pair.length !== 2) break;
+        // The table writes a promotion as fxg1(N), SAN as fxg1=N.
+        const [white, black] = pair.map((half) => plainText(half).replace(/\((\w)\)/, '=$1'));
+        moves.push([2 * (first + i) - 1, white], [2 * (first + i), black]);
+      }
+      return moves;
+    });
+    lines.push(...repeatsResolved(moveRows).filter((line) => line.length > 0));
   }
   return lines;
+}
+
+/**
+ * Each row's moves, given by ply, with a `...` taking the move at its ply in
+ * the row above; a row stops at a `...` with nothing above it.
+ */
+function repeatsResolved(rows: readonly (readonly (readonly [number, string])[])[]): string[][] {
+  let above = new Map<number, string>();
+  return rows.map((row) => {
+    const moves = new Map<number, string>();
+    for (const [ply, token] of row) {
+      const move = /^\.+$/.test(token) ? above.get(ply) : token;
+      if (!move) break;
+      moves.set(ply, move);
+    }
+    above = moves;
+    return [...moves.values()];
+  });
 }
 
 /** PGN's numbers for move glyphs (NAGs): `?` is 2, `?!` is 6. */

@@ -3,7 +3,15 @@ import { describe, expect, it } from '@jest/globals';
 import { positionKey } from '@/game/replay';
 import { uciLine } from '@/lesson/lesson.fixture';
 
-import { chapterMoves, isDubious, mainLine, parseStudy, withoutLines, withReplies } from './study';
+import {
+  chapterMoves,
+  isDubious,
+  mainLine,
+  parseStudy,
+  withoutLeadComments,
+  withoutLines,
+  withReplies,
+} from './study';
 
 const AFTER_NF6 = 'rnbqkb1r/ppp1pppp/5n2/3p4/3P1B2/8/PPP1PPPP/RN1QKBNR w KQkq - 2 3';
 
@@ -147,6 +155,16 @@ describe('withoutLines', () => {
     expect(kept.moves[0].children[0].parent).toBe(kept.moves[0]);
   });
 
+  it('drops it from every chapter that plays it', () => {
+    const two = [pgn, chapter('Again', '1. d4 (1. b3 { Again. }) d5 *')].join('\n');
+    const chapters = withoutLines(
+      parseStudy(two, () => true),
+      ['b3'],
+    );
+    for (const kept of chapters)
+      expect([...chapterMoves(kept)].map(({ san }) => san)).not.toContain('b3');
+  });
+
   it('refuses a line no chapter plays', () => {
     expect(() =>
       withoutLines(
@@ -154,5 +172,24 @@ describe('withoutLines', () => {
         ['e4'],
       ),
     ).toThrow('No chapter plays e4');
+  });
+});
+
+describe('withoutLeadComments', () => {
+  it("drops the comments on moves before a chapter's named position, keeping the rest", () => {
+    const pgn = chapter(
+      'KG',
+      "1. e4 { Center. } e5 { White pushes f4 next. } 2. f4 { The King's Gambit. } exf4 *",
+    );
+    const [kg] = withoutLeadComments(
+      parseStudy(pgn, () => true),
+      3,
+    );
+    expect([...chapterMoves(kg)].map(({ san, comment }) => [san, comment])).toEqual([
+      ['e4', ''],
+      ['e5', ''],
+      ['f4', "The King's Gambit."],
+      ['exf4', ''],
+    ]);
   });
 });

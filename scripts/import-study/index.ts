@@ -57,7 +57,7 @@ import { addPopularity, lichessExplorer } from './popularity';
 import { indexedWith, readLessonFile, registered, writeIndex } from './register';
 import { report, sourceReport } from './report';
 import { nodeStockfish } from './stockfish';
-import { parseStudy, withoutLines, withReplies, type Chapter } from './study';
+import { parseStudy, withoutLeadComments, withoutLines, withReplies, type Chapter } from './study';
 import { lessonInfo, STUDIES, type ChapterSource } from './studies';
 import { noteTranspositions } from './transpositions';
 import { wikibooksPgn } from './wikibooks';
@@ -84,16 +84,18 @@ async function main() {
   const chapters: Chapter[] = [];
   for (const [source, from] of study.from.entries()) {
     const read = await sourceChapters(from, info.side);
-    const writtenFor =
-      'study' in from && from.writtenFor !== info.side ? from.writtenFor : undefined;
-    const recommends = writtenFor && 'study' in from && from.recommends;
+    const lichess = 'study' in from ? from : undefined;
+    const writtenFor = lichess?.writtenFor !== info.side ? lichess?.writtenFor : undefined;
+    const recommends = writtenFor && lichess?.recommends;
+    // A study named only from a ply on leaves the moves before to other sources' chapters (`cut`).
+    const namedFrom = lichess?.namedFrom;
     chapters.push(
       ...read.map((chapter) => ({
         ...chapter,
         source,
         ...(writtenFor && { writtenFor }),
         ...(recommends && { recommends }),
-        ...('study' in from && from.namedFrom && { namedFrom: from.namedFrom, cut: true }),
+        ...(namedFrom && { namedFrom, cut: true }),
       })),
     );
   }
@@ -135,13 +137,9 @@ async function main() {
     const checked = await engineCheck(lesson, stockfish.evaluate);
     lesson = checked.lesson;
     engineReport = checked.report;
-    const { unbooked, unreachable, cut, dropped } = checked.report;
-    // Where it overruled a book move but the guide shows others, pick again among them.
-    const refilled = await fillBook(lesson, stockfish.evaluate);
-    lesson = refilled.lesson;
-    engineReport = { ...engineReport, refilled: refilled.report.filled };
+    const { unbooked, unreachable, cut, dropped, refilled } = checked.report;
     console.log(
-      `engine check: ${unbooked.length} book moves overruled (${cut.length} cut, the guide's only move; ${refilled.report.filled.length} picked again among the guide's others), ${unreachable.length} more left unreachable, ${dropped.length} notes dropped`,
+      `engine check: ${unbooked.length} book moves overruled (${cut.length} cut, the guide's only move; ${refilled.length} picked again among the guide's others), ${unreachable.length} more left unreachable, ${dropped.length} notes dropped`,
     );
   }
   stockfish.stop();
@@ -200,7 +198,8 @@ async function sourceChapters(from: ChapterSource, side: Color): Promise<Chapter
       ? readFileSync(join(ROOT, 'scripts/import-study/sources', from.file), 'utf8')
       : await studyPgn(from.study);
     const read = parseStudy(pgn, from.chapters);
-    const chapters = from.leave ? withoutLines(read, from.leave) : read;
+    const kept = from.leave ? withoutLines(read, from.leave) : read;
+    const chapters = from.namedFrom ? withoutLeadComments(kept, from.namedFrom) : kept;
     return from.replies ? withReplies(chapters, from.replies) : chapters;
   }
   const pgn = await wikibooksPgn(wikibooksPage, { ...from, learner: side });
