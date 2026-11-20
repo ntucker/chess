@@ -2,7 +2,7 @@ import { Button, Inline, Stack, Text } from '@reactive/silk-native';
 import { StyleSheet, View } from 'react-native';
 
 import { Eyebrow } from '@/components/Eyebrow';
-import { NewVersionError, reload } from '@/files/newVersion';
+import { NEW_VERSION, NewVersionError, reload } from '@/files/newVersion';
 import type { Color, Position } from '@/game/replay';
 import { describeOpponent, type Opponent } from '@/opponent/opponent';
 import { narrowLength, narrowPart } from '@/theme/narrow';
@@ -86,14 +86,17 @@ interface Failure {
  * the engine's file so asking again can't help, a reload.
  */
 function FailureLine({ who, error, onRetry }: Failure) {
-  const newVersion = error instanceof NewVersionError;
+  const [message, action, onPress] =
+    error instanceof NewVersionError
+      ? [NEW_VERSION, 'Reload', reload]
+      : [`${who} didn't answer.`, 'Try again', onRetry];
   return (
     <Inline gap="3" align="center">
       <Text role="bodySm" tone="danger">
-        {newVersion ? error.message : `${who} didn't answer.`}
+        {message}
       </Text>
-      <Button size="sm" variant="soft" tone="danger" onPress={newVersion ? reload : onRetry}>
-        {newVersion ? 'Reload' : 'Try again'}
+      <Button size="sm" variant="soft" tone="danger" onPress={onPress}>
+        {action}
       </Button>
     </Inline>
   );

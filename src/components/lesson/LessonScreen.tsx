@@ -5,9 +5,9 @@ import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
 import { Eyebrow } from '@/components/Eyebrow';
-import { NewVersionPage } from '@/components/NewVersion';
 import { FootnoteLink } from '@/components/FootnoteLink';
 import { StatusHeadline } from '@/components/GameStatus';
+import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { Scoresheet } from '@/components/Scoresheet';
 import { resetListener } from '@/components/resetListener';

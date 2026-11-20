@@ -1,3 +1,6 @@
+/** What the app says when a newer build has replaced the page's. */
+export const NEW_VERSION = 'A new version is out.';
+
 /**
  * A newer build of the web app has replaced the one this page loaded. A file
  * the page loads late (a screen, a lesson, Maia's worker) may then be gone
@@ -5,7 +8,7 @@
  */
 export class NewVersionError extends Error {
   constructor(options?: ErrorOptions) {
-    super('A new version is out.', options);
+    super(NEW_VERSION, options);
     this.name = 'NewVersionError';
   }
 }
@@ -25,18 +28,39 @@ export async function explainLoadFailure<E>(error: E): Promise<E | NewVersionErr
 }
 
 /**
- * Whether the site now serves a newer build than this page's: the HTML at the
- * address the page first loaded names a script the page didn't load. A file
- * any screen loads late is named in a script that HTML loads, so a new build
- * of any of them shows there. Offline, or outside a web page, it's false.
+ * Whether the site serves a newer build than this page's. Failures that come
+ * together share one check, and once replaced, the page stays replaced; any
+ * other answer is asked again at the next failure.
  */
-async function isReplaced(): Promise<boolean> {
+function isReplaced(): Promise<boolean> {
+  checking ??= checkReplaced().then((replaced) => {
+    if (!replaced) checking = undefined;
+    return replaced;
+  });
+  return checking;
+}
+let checking: Promise<boolean> | undefined;
+
+/** How long the check waits for the site before it takes the page's build as current. */
+const CHECK_MS = 3000;
+
+/**
+ * Asks the site whether it has a newer build: the HTML at the address the page
+ * first loaded names a script the page didn't load. A file any screen loads
+ * late is named in a script that HTML loads, so a new build of any of them
+ * shows there. Offline, slow, or outside a web page, it's false.
+ */
+async function checkReplaced(): Promise<boolean> {
   if (typeof document === 'undefined') return false;
   const [first] = performance.getEntriesByType('navigation');
   const address = first?.name ?? location.href;
   let html: string;
   try {
-    html = await (await fetch(address, { cache: 'no-store' })).text();
+    const response = await fetch(address, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(CHECK_MS),
+    });
+    html = await response.text();
   } catch {
     return false;
   }
