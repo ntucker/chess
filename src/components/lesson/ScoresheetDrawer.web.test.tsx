@@ -177,21 +177,24 @@ describe('shownMove', () => {
         </SilkProvider>,
       ),
     );
-    const list = () => document.querySelector('[role="listbox"]');
-    act(() => host.querySelector<HTMLElement>('[aria-expanded]')!.click());
-    expect(list()).not.toBeNull();
-    const press = () =>
-      act(() => {
-        document.body.dispatchEvent(
-          new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
-        );
-      });
-    press();
-    expect(list()).toBeNull();
-    expect(onClose).not.toHaveBeenCalled();
-    press();
-    expect(onClose).toHaveBeenCalledTimes(1);
-    act(() => root.unmount());
-    host.remove();
+    try {
+      const list = () => document.querySelector('[role="listbox"]');
+      act(() => host.querySelector<HTMLElement>('[aria-expanded]')!.click());
+      expect(list()).not.toBeNull();
+      const press = () =>
+        act(() => {
+          document.body.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+          );
+        });
+      press();
+      expect(list()).toBeNull();
+      expect(onClose).not.toHaveBeenCalled();
+      press();
+      expect(onClose).toHaveBeenCalledTimes(1);
+    } finally {
+      act(() => root.unmount());
+      host.remove();
+    }
   });
 });

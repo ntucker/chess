@@ -3,9 +3,9 @@ import { a11yState, Pressable, Separator, Surface, Text, useTheme } from '@react
 import { type ComponentRef, useEffect, useId, useRef, useState } from 'react';
 import { type KeyDownEvent, ScrollView, StyleSheet, View } from 'react-native';
 
+import { hoversControl } from '@/board/pointer';
 import { describeOpponent, type Opponent, OPPONENT_PRESETS, OPPONENTS } from '@/opponent/opponent';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
-import { hoversControl } from '@/board/pointer';
 import { narrowLength } from '@/theme/narrow';
 
 import { Eyebrow } from './Eyebrow';

@@ -124,10 +124,12 @@ describe('OpponentPicker', () => {
     act(() => {
       trigger().dispatchEvent(new MouseEvent(type));
     });
-  /** A mouse moving over a row of the list (rows light on a move, not an enter). */
-  const pointAt = (row: HTMLElement) =>
+  /** A pointer moving over a row of the list (rows light on a move, not an enter). */
+  const pointAt = (row: HTMLElement, pointerType = 'mouse') =>
     act(() => {
-      row.dispatchEvent(new MouseEvent('pointermove', { bubbles: true }));
+      // jsdom has no PointerEvent: a mouse event that carries the pointer's type.
+      const event = new MouseEvent('pointermove', { bubbles: true });
+      row.dispatchEvent(Object.assign(event, { pointerType }));
     });
 
   it('opens while pointed at, and closes a moment after the pointer leaves', () => {
@@ -163,6 +165,15 @@ describe('OpponentPicker', () => {
     pointAt(options()[0]);
     press(' ');
     expect(trigger().textContent).toBe('1100');
+  });
+
+  it('leaves the light where it is as a finger slides over a row', () => {
+    act(() => trigger().focus());
+    press('ArrowDown');
+    pointAt(options()[2], 'touch');
+    expect(focusedLabel()).toBe('1500, Club');
+    press(' ');
+    expect(trigger().textContent).toBe('1500');
   });
 
   it('leaves focus alone when pointing at a row of a list opened by pointing', () => {
