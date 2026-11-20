@@ -261,7 +261,7 @@ const LIST_WORDS = /\b(?:and|then|or|play)\b/gi;
  * What is wrong with note `text` written as moves instead of words, if
  * anything. A note puts a line in words; its idea draws the moves.
  */
-function notationProblem(text: string): string | undefined {
+export function notationProblem(text: string): string | undefined {
   if (NOTATION_LINE.test(text)) return 'writes a line of moves in notation';
   const hasMove = text.search(MOVE) >= 0;
   if (hasMove && !/[a-z]{2}/i.test(text.replace(MOVE, ' ').replace(LIST_WORDS, ' ')))
