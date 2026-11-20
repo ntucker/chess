@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import { makeFen } from 'chessops/fen';
 
-import { type Analysis, settledAnalysis } from '@/evaluation/evaluation';
+import { type FinalAnalysis, settledAnalysis } from '@/evaluation/evaluation';
 import { parsePositionKey } from '@/game/replay';
 import { keyAfter, uci } from '@/lesson/lesson.fixture';
 
@@ -35,7 +35,7 @@ const LESSON = testLesson({
   ]),
 });
 
-const evaluate = async (): Promise<Analysis> => settledAnalysis({ score: 0.52, pawns: 0.2 });
+const evaluate = async (): Promise<FinalAnalysis> => settledAnalysis({ score: 0.52, pawns: 0.2 });
 
 const after = (...sans: string[]) => parsePositionKey(keyAfter(...sans))!;
 const fen = (...sans: string[]) => makeFen(after(...sans).toSetup());

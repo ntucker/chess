@@ -38,14 +38,47 @@ export interface Analysis {
 }
 
 /**
+ * An analysis whose search is done, so it never changes: the only kind move
+ * labels and the opponent read, so every screen and visit order agrees.
+ */
+export type FinalAnalysis = Analysis & { readonly final: true };
+
+export const isFinal = (analysis: Analysis | undefined): analysis is FinalAnalysis =>
+  !!analysis?.final;
+
+/**
  * A final analysis of one line: how the position stands (`evaluation`), and
  * the move it names, if any. Maia and a finished game name none.
  */
-export const settledAnalysis = (evaluation: Evaluation, uci?: string): Analysis => ({
+export const settledAnalysis = (evaluation: Evaluation, uci?: string): FinalAnalysis => ({
   lines: [{ evaluation, ...(uci && { uci }) }],
   depth: 0,
   final: true,
 });
+
+/** Who wants a position's analysis: told each deeper depth, then the final one. */
+export interface Watcher {
+  /** The deepest lines so far, or the final ones (`final`), after which nothing more comes. */
+  update(analysis: Analysis): void;
+  /** The analysis can't finish, as when engines crashed on it. */
+  fail(error: Error): void;
+}
+
+/**
+ * The final analysis a watch (`watch`, which tells its watcher as
+ * `watchStockfish` does) ends with. Nothing comes after it, so the watch
+ * isn't stopped: one nobody waits for any more still runs to the end.
+ */
+export function finalAnalysis(watch: (watcher: Watcher) => unknown): Promise<FinalAnalysis> {
+  return new Promise((resolve, reject) => {
+    watch({
+      update(analysis) {
+        if (isFinal(analysis)) resolve(analysis);
+      },
+      fail: reject,
+    });
+  });
+}
 
 /**
  * The size of an advantage of `pawns`, as the evaluation bar and engine lines

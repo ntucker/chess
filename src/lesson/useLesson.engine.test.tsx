@@ -107,8 +107,10 @@ describe("useLesson's Stockfish best move", () => {
     const line = uciLine(...ADVANCE);
     await render(line);
     expect(lesson().guidance.best).toBeUndefined();
-    // Its first line's move, from the first depth on.
+    // Its first line's move, outside the guide, once the search is final.
     await store(line, [['g8f6', 0.5]], false);
+    expect(lesson().guidance.best).toBeUndefined();
+    await store(line, [['g8f6', 0.5]]);
     expect(lesson().guidance.best).toBe('g8f6');
   });
 

@@ -142,6 +142,7 @@ describe('forwardNeededLines', () => {
     for (const line of [
       'id name Stockfish 19',
       'uciok',
+      'readyok',
       'info depth 9 multipv 1 score cp 10 nodes 2000 pv e2e4',
       'info depth 10 currmove e2e4 currmovenumber 1',
       'info depth 10 multipv 1 score cp 30 nodes 4000 pv e2e4',
@@ -152,6 +153,7 @@ describe('forwardNeededLines', () => {
       pass(line);
     expect(passed).toEqual([
       'uciok',
+      'readyok',
       'info depth 10 multipv 1 score cp 30 nodes 4000 pv e2e4',
       'info depth 10 multipv 2 score cp 20 nodes 4000 pv d2d4',
       'bestmove e2e4 ponder e7e5',

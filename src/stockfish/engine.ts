@@ -1,4 +1,10 @@
-import type { Analysis, AnalysisLine } from '@/evaluation/evaluation';
+import {
+  type Analysis,
+  type AnalysisLine,
+  finalAnalysis,
+  type FinalAnalysis,
+  type Watcher,
+} from '@/evaluation/evaluation';
 import { legalMoveCount } from '@/game/replay';
 
 import {
@@ -31,13 +37,20 @@ export interface SearchBudget {
 export const APP_SEARCH: SearchBudget = { ranks: 3, nodes: 2_000_000 };
 
 /**
- * How long the engine may go without printing a line it forwards: its
- * handshake (once its host has handed it its files), or the next depth of a
- * search (each takes about 1.5 times the one before, so up to about 3 s on a
- * phone near the app's budget). One that's silent longer is stuck, as when Android
- * drops the web view a command went to, and is restarted.
+ * How long the engine may go without printing a line it forwards before
+ * it's asked whether it's alive (`isready`): its handshake (once its host
+ * has handed it its files), or the next depth of a search (each takes about
+ * 1.5 times the one before, so up to about 2 s on a recent phone near the
+ * app's budget, and longer on a slow one).
  */
 const ANSWER_MS = 10_000;
+
+/**
+ * How long it then has to answer `readyok`, which Stockfish does at once,
+ * even mid-search. One that doesn't is stuck, as when Android drops the web
+ * view a command went to, and is restarted; a slow search is never failed.
+ */
+const READY_MS = 3_000;
 
 /** How many engines a search is tried on before it's given up on. */
 const TRIES = 2;
@@ -68,14 +81,6 @@ export interface Connection {
    * engine, unless it has now been tried on `TRIES` engines.
    */
   fail(message: string): void;
-}
-
-/** Who wants a position's analysis: told each deeper depth, then the final one. */
-export interface Watcher {
-  /** The deepest lines so far, or the final ones (`final`), after which nothing more comes. */
-  update(analysis: Analysis): void;
-  /** The search can't finish: engines crashed on it `TRIES` times, or it ended without a score. */
-  fail(error: Error): void;
 }
 
 /** A position someone is watching. */
@@ -182,23 +187,8 @@ export function watchStockfish(line: readonly string[], watcher: Watcher): () =>
 }
 
 /** The final analysis of the position after `line` (`watchStockfish`). */
-export const stockfishAnalysis = (line: readonly string[]) =>
-  finalAnalysis((watcher) => watchStockfish(line, watcher));
-
-/**
- * The final analysis a watch (`watch`, which tells its watcher as
- * `watchStockfish` does) ends with. Nothing comes after it, so the watch
- * needs no stopping.
- */
-export function finalAnalysis(watch: (watcher: Watcher) => unknown): Promise<Analysis> {
-  return new Promise((resolve, reject) => {
-    watch({
-      update(analysis) {
-        if (analysis.final) resolve(analysis);
-      },
-      fail: reject,
-    });
-  });
+export function stockfishAnalysis(line: readonly string[]): Promise<FinalAnalysis> {
+  return finalAnalysis((watcher) => watchStockfish(line, watcher));
 }
 
 /**
@@ -233,7 +223,8 @@ function decide() {
   if (!next || !connected?.ready) return;
   running = {
     wanted: next,
-    ranks: Math.min(connected.budget.ranks, legalMoveCount(next.line)),
+    // A finished game still gets one line: its score, with no move.
+    ranks: Math.max(1, Math.min(connected.budget.ranks, legalMoveCount(next.line))),
     printing: [],
     stopping: false,
   };
@@ -313,10 +304,16 @@ function remove(position: Wanted) {
   if (wanted.get(key) === position) wanted.delete(key);
 }
 
-/** Fails `session` unless it prints within `ANSWER_MS`. */
+/**
+ * Asks `session` whether it's alive unless it prints within `ANSWER_MS`, and
+ * fails it unless it then answers within `READY_MS`.
+ */
 function awaitAnswer(session: Session) {
   clearTimeout(watchdog);
-  watchdog = setTimeout(() => fail(session, 'it stopped answering'), ANSWER_MS);
+  watchdog = setTimeout(() => {
+    session.send('isready');
+    watchdog = setTimeout(() => fail(session, 'it stopped answering'), READY_MS);
+  }, ANSWER_MS);
 }
 
 /**

@@ -87,7 +87,7 @@ describe('useMoveQualities', () => {
     expect(renders.at(-1)).toEqual([undefined, undefined, undefined]);
   });
 
-  it('asks for nothing behind another screen, then asks once in front', async () => {
+  it('asks for nothing behind another screen, then for the positions around the shown move', async () => {
     await render(null);
     expect(mockSearched).toEqual([]);
     await render(3);

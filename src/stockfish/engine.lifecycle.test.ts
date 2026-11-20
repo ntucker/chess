@@ -255,17 +255,21 @@ describe('the engine lifecycle', () => {
     expect(watched.updates.at(-1)?.final).toBe(true);
   });
 
-  it('restarts an engine that goes quiet', async () => {
+  it('restarts an engine that goes quiet and then ignores isready', async () => {
     jest.useFakeTimers();
     try {
-      // An engine that never finishes its handshake gets 10 s.
+      // An engine that never finishes its handshake is asked after 10 s, and gets 3 s more.
       const silent = scripted();
       jest.advanceTimersByTime(9_999);
+      expect(silent.sent).toEqual(['uci']);
+      jest.advanceTimersByTime(1);
+      expect(silent.sent).toEqual(['uci', 'isready']);
+      jest.advanceTimersByTime(2_999);
       expect(silent.supervisor.failed).not.toHaveBeenCalled();
       jest.advanceTimersByTime(1);
       expect(silent.supervisor.failed).toHaveBeenCalledTimes(1);
 
-      // A search gets 10 s from each line it prints.
+      // A search is asked 10 s after each line it prints.
       const stuck = scripted();
       stuck.print('uciok');
       const watched = watch(['e2e4']);
@@ -273,6 +277,13 @@ describe('the engine lifecycle', () => {
       jest.advanceTimersByTime(9_000);
       stuck.depth(10, 50_000, REPLIES);
       jest.advanceTimersByTime(9_999);
+      expect(stuck.sent.at(-1)).toBe('go nodes 2000000');
+      jest.advanceTimersByTime(1);
+      expect(stuck.sent.at(-1)).toBe('isready');
+      // One that answers keeps searching, however long its depth takes, and
+      // is asked again 10 s later; this one never answers again.
+      stuck.print('readyok');
+      jest.advanceTimersByTime(12_999);
       expect(stuck.supervisor.failed).not.toHaveBeenCalled();
       jest.advanceTimersByTime(1);
       expect(stuck.supervisor.failed).toHaveBeenCalledTimes(1);

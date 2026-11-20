@@ -56,6 +56,22 @@ const NOTEBOOM =
   );
 
 describe('Stockfish', () => {
+  it('scores a finished game, with no move', async () => {
+    // Fool's mate: White is mated.
+    const mated = await stockfishAnalysis(['f2f3', 'e7e5', 'g2g4', 'd8h4']);
+    expect(mated.lines).toEqual([{ evaluation: { score: 0, pawns: 0, mate: 0 } }]);
+    expect(mated.final).toBe(true);
+    // Stalemate (Sam Loyd's ten-move line): even.
+    const stalemate = await stockfishAnalysis(
+      'e2e3 a7a5 d1h5 a8a6 h5a5 h7h5 h2h4 a6h6 a5c7 f7f6 c7d7 e8f7 d7b7 d8d3 b7b8 d3h7 b8c8 f7g6 c8e6'.split(
+        ' ',
+      ),
+    );
+    expect(stalemate.lines).toHaveLength(1);
+    expect(stalemate.lines[0].uci).toBeUndefined();
+    expect(stalemate.lines[0].evaluation.score).toBe(0.5);
+  });
+
   it('calls the starting position about even', async () => {
     const [{ evaluation }] = (await stockfishAnalysis([])).lines;
     expect(evaluation.mate).toBe(undefined);

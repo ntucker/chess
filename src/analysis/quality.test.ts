@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import type { Analysis, AnalysisLine, Evaluation } from '@/evaluation/evaluation';
+import type { AnalysisLine, Evaluation, FinalAnalysis } from '@/evaluation/evaluation';
 
 import { judgeMove } from './quality';
 
@@ -8,7 +8,7 @@ import { judgeMove } from './quality';
 const at = (score: number): Evaluation => ({ score, pawns: 0 });
 
 /** A final analysis listing `lines` (move, White's expected score after it), best first. */
-const listing = (...lines: [string | undefined, number][]): Analysis => ({
+const listing = (...lines: [string | undefined, number][]): FinalAnalysis => ({
   lines: lines.map(([uci, score]): AnalysisLine => ({
     ...(uci && { uci }),
     evaluation: at(score),
@@ -52,8 +52,14 @@ describe('judgeMove', () => {
     expect(judgeMove(listing(['h4h7', 1]), scored(1), 'h4h8', 'white')).toBe('best');
   });
 
+  it('takes only a finished search, so every screen labels a move the same', () => {
+    const deepening = { ...listing(['e2e4', 0.55]), final: false };
+    // @ts-expect-error A search still deepening can't label a move.
+    expect(judgeMove(deepening, scored(0.55), 'e2e4', 'white')).toBe('best');
+  });
+
   it('calls missing a mate a blunder', () => {
-    const mate: Analysis = {
+    const mate: FinalAnalysis = {
       lines: [{ uci: 'h4h7', evaluation: { score: 1, pawns: 0, mate: 1 } }],
       depth: 30,
       final: true,

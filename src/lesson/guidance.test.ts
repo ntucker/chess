@@ -28,14 +28,17 @@ import { lessonView, type Pointer, preview } from './view';
 /** The trap the sample sets, fallen into: the tempting move and the punishing reply. */
 const LANDED = [...TRAP, 'Nxe5', 'Nxe5'];
 const ALL_ON: LessonSwitches = { auto: true, showMoves: true, showTraps: true };
-const ENGINE = { best: 'g8f6' };
+const ENGINE = { best: 'g8f6', final: true };
 const EVEN = { score: 0.5, pawns: 0 };
 
 /** Stockfish's view after `sans`: `best`, and `top` as its top moves' rows there. */
-function engineView(sans: string[], { best, top = [] }: { best?: string; top?: string[] }) {
+function engineView(
+  sans: string[],
+  { best, top = [], final }: { best?: string; top?: string[]; final?: boolean },
+) {
   const { key } = sampleView(sans);
   const moves = top.map((uci) => ({ uci, evaluation: EVEN }));
-  return { best, top: engineCandidates(SAMPLE, key, moves) };
+  return { best, top: engineCandidates(SAMPLE, key, moves), final };
 }
 
 function shown(
@@ -50,7 +53,7 @@ function shown(
   }: {
     pointer?: Pointer;
     lifted?: Candidate['from'];
-    engine?: { best?: string; top?: string[] };
+    engine?: { best?: string; top?: string[]; final?: boolean };
     picking?: boolean;
   } = {},
 ): Guidance {
@@ -88,7 +91,11 @@ describe('guidance', () => {
         best: 'g8f6',
         top: [],
       });
-      expect(shown(ADVANCE, 'explore', {}, { engine: { best: 'c8f5' } }).best).toBeUndefined();
+      expect(
+        shown(ADVANCE, 'explore', {}, { engine: { best: 'c8f5', final: true } }).best,
+      ).toBeUndefined();
+      // Inside the guide, a move outside it waits for the search to finish.
+      expect(shown(ADVANCE, 'explore', {}, { engine: { best: 'g8f6' } }).best).toBeUndefined();
     });
 
     it("shows the opponent's candidates with auto play on and off", () => {

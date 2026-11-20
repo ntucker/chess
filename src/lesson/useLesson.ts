@@ -195,7 +195,7 @@ export function useLesson(
     lifted: pointer?.at === 'drag' ? pointer.from : here?.selected,
     pointed: here?.note,
     playing: playing?.played,
-    engine: { best: analysis?.lines[0].uci, top },
+    engine: { best: analysis?.lines[0].uci, top, final: analysis?.final },
   });
   const frames = shown.playing
     ? ideaPlayback(shown.playing.idea, parsePositionKey(shown.playing.at)!)

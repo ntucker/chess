@@ -108,7 +108,7 @@ const FIRST_FORWARDED_DEPTH = 10;
 
 /**
  * Wraps `onLine` to pass on only the lines the app needs from the engine: the
- * handshake (`uciok`), each search's `bestmove`, and its scored lines from
+ * handshake (`uciok`), the answer to `isready`, each search's `bestmove`, and its scored lines from
  * `FIRST_FORWARDED_DEPTH` on, which the app shows as the search deepens.
  * The engine runs in a web view on Android, and every line that crosses into
  * the app costs a trip across the bridge, so this runs where the engine
@@ -125,7 +125,7 @@ export function forwardNeededLines(onLine: (line: string) => void): (line: strin
       forwarded = true;
       onLine(line);
     } else if (info) shallow = addLine(shallow, line, info.rank);
-    else if (line === 'uciok') onLine(line);
+    else if (line === 'uciok' || line === 'readyok') onLine(line);
     else if (line.startsWith('bestmove')) {
       if (!forwarded) shallow.forEach(onLine);
       shallow = [];

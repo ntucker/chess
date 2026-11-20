@@ -1,7 +1,7 @@
 import { StateContext, useController, useSubscription } from '@data-client/react';
 import { use } from 'react';
 
-import type { Analysis, EvaluationEngine } from '@/evaluation/evaluation';
+import { type EvaluationEngine, isFinal } from '@/evaluation/evaluation';
 import type { Ply } from '@/game/replay';
 import { analysisKey, getAnalysis, PositionAnalysis } from '@/resources/analysis';
 
@@ -40,15 +40,14 @@ export function useMoveQualities(
   // The moves before each position: `lines[n]` leads to `plies[n]`.
   const lines = plies.map((_, n) => moves.slice(0, n));
   // The positions before and after the board's move, unless nothing is to be judged.
-  const asked = shown !== null && shown > 0 && !book[shown - 1] ? shown : undefined;
-  const args = (ply: number | undefined) =>
-    ply === undefined ? ([null] as const) : ([engine, lines[ply]] as const);
+  const judged = shown !== null && shown > 0 && !book[shown - 1];
+  const args = (ply: number) => (judged ? ([engine, lines[ply]] as const) : ([null] as const));
   // The position before first: the engine searches the newest asked for, the board's.
-  useSubscription(getAnalysis, ...args(asked && asked - 1));
-  useSubscription(getAnalysis, ...args(asked));
-  const analyses = lines.map((line): Analysis | undefined => {
+  useSubscription(getAnalysis, ...args((shown ?? 0) - 1));
+  useSubscription(getAnalysis, ...args(shown ?? 0));
+  const analyses = lines.map((line) => {
     const analysis = ctrl.get(PositionAnalysis, analysisKey(engine, line), state);
-    return analysis?.final ? analysis : undefined;
+    return isFinal(analysis) ? analysis : undefined;
   });
   return moves.map((uci, n) => {
     if (book[n]) return 'book';

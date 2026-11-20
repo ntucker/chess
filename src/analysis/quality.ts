@@ -2,7 +2,7 @@
  * How good a move was, as chess.com labels moves: by how much of the mover's
  * expected score it gave away.
  */
-import type { Analysis, Evaluation } from '@/evaluation/evaluation';
+import type { Evaluation, FinalAnalysis } from '@/evaluation/evaluation';
 import type { Color } from '@/game/replay';
 
 /**
@@ -41,8 +41,8 @@ const LEAST_LOSS: readonly (readonly [number, MoveQuality])[] = [
  * can disagree with it by more than an inaccuracy.
  */
 export function judgeMove(
-  before: Analysis,
-  after: Analysis | undefined,
+  before: FinalAnalysis,
+  after: FinalAnalysis | undefined,
   uci: string,
   mover: Color,
 ): MoveQuality | undefined {

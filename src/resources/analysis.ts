@@ -12,13 +12,15 @@ import {
   type Analysis,
   type AnalysisLine,
   type EvaluationEngine,
+  finalAnalysis,
   resultEvaluation,
   settledAnalysis,
+  type Watcher,
 } from '@/evaluation/evaluation';
 import { lastPosition } from '@/game/replay';
 import { maiaEvaluation } from '@/maia/engine';
 import { JUDGE_RATING } from '@/maia/maia';
-import { finalAnalysis, watchStockfish, type Watcher } from '@/stockfish/engine';
+import { watchStockfish } from '@/stockfish/engine';
 
 /**
  * How `engine` judges the position after `moves` (UCI, space-separated): one

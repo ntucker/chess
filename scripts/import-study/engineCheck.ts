@@ -19,7 +19,7 @@
  */
 import { Chess } from 'chessops/chess';
 
-import type { Analysis, Evaluation } from '@/evaluation/evaluation';
+import type { Evaluation, FinalAnalysis } from '@/evaluation/evaluation';
 import { judgeMove } from '@/analysis/quality';
 import { lineSans, numberedLine, parsePosition, playMove, positionKey } from '@/game/replay';
 import type {
@@ -38,7 +38,7 @@ import type {
  * start, reached at `key`: its best move, when it names one, and how the
  * position stands after it.
  */
-export type Evaluate = (line: readonly Uci[], key: PositionKey) => Promise<Analysis>;
+export type Evaluate = (line: readonly Uci[], key: PositionKey) => Promise<FinalAnalysis>;
 
 /** A line cut where the engine overruled its book move, with the positions it dropped. */
 type CutLine = { line: string; moves: readonly string[]; positions: number };
@@ -311,11 +311,11 @@ async function pickBookMove(
   return own === undefined ? undefined : { uci: own, why: ENGINES_OWN };
 }
 
-type CachedEvaluation = (line: readonly Uci[], pos: Chess) => Promise<Analysis>;
+type CachedEvaluation = (line: readonly Uci[], pos: Chess) => Promise<FinalAnalysis>;
 
 /** `evaluate`, asked once per position. */
 function cachedEvaluation(evaluate: Evaluate): CachedEvaluation {
-  const cache = new Map<PositionKey, Promise<Analysis>>();
+  const cache = new Map<PositionKey, Promise<FinalAnalysis>>();
   return (line, pos) => {
     const key = positionKey(pos);
     if (!cache.has(key)) cache.set(key, evaluate(line, key));

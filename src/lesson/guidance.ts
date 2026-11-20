@@ -67,6 +67,8 @@ export interface EngineView {
   readonly best?: Uci;
   /** Its top three moves, best first, as rows (`engineCandidates`). */
   readonly top?: readonly Candidate[];
+  /** Its search has finished, so `best` won't change. */
+  readonly final?: boolean;
 }
 
 export interface GuidanceInput {
@@ -137,7 +139,10 @@ export interface Guidance {
   /**
    * Stockfish's best move to mark, with "moves on the board" on, while nothing
    * is previewed, pointed at or playing back. Inside the guide the candidates
-   * are what is highlighted, so it is tagged only when it isn't one of them.
+   * are what is highlighted, so it is tagged only when it isn't one of them,
+   * and only once its search is final: in about a quarter of lesson positions
+   * an earlier depth names a move outside the guide that the final one
+   * doesn't, for about half a second (more on a phone).
    * Past the guide's moves it is the first of `top`: both come from one analysis.
    */
   readonly best?: Uci;
@@ -225,7 +230,7 @@ export function guidance(input: GuidanceInput): Guidance {
     playable,
     playing,
     pointed: pointedNote,
-    best: view.candidates.some(({ move }) => move.uci === best) ? undefined : best,
+    best: view.candidates.length && (!engine?.final || isCandidate(view, best)) ? undefined : best,
     top,
     trap,
     lineEnded: view.lineEnd !== undefined && newsShown(view, view.lineEnd),
@@ -351,3 +356,6 @@ export function notePlayback(
 ): ShownPlayback | undefined {
   return playable.find(({ idea }) => note.ideas?.includes(idea));
 }
+
+const isCandidate = (view: LessonView, uci: Uci | undefined) =>
+  view.candidates.some(({ move }) => move.uci === uci);

@@ -3,7 +3,7 @@
  * check (./engineCheck), with a smaller search than the app's (`CHECK_SEARCH`).
  * Each position's analysis is cached, so a rerun searches only new positions.
  */
-import { type Analysis, type Evaluation, settledAnalysis } from '@/evaluation/evaluation';
+import { type Evaluation, type FinalAnalysis, settledAnalysis } from '@/evaluation/evaluation';
 import {
   attachStockfish,
   type Connection,
@@ -19,7 +19,8 @@ import { appendJsonLine, readJsonLines } from './jsonLines';
  * The engine check's search: the best move, from 100,000 positions (about
  * depth 14 to 16). A lesson checks about 15,000 positions, which would take
  * about 14 hours at the app's search (`APP_SEARCH`); the check only needs to
- * tell a mistake from a sound move.
+ * tell a mistake from a sound move. The cache file doesn't say which
+ * search filled it: after changing this, start a new one.
  */
 const CHECK_SEARCH: SearchBudget = { ranks: 1, nodes: 100_000 };
 
@@ -59,7 +60,7 @@ export async function nodeStockfish(
   };
   await connect();
 
-  const cached = new Map<string, Analysis>(
+  const cached = new Map<string, FinalAnalysis>(
     (readJsonLines(cacheFile) as CacheRow[]).map(({ key, evaluation: { best, ...evaluation } }) => [
       key,
       settledAnalysis(evaluation, best),
