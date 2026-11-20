@@ -70,12 +70,16 @@ export function Sheet({ title, onClose, children }: Props) {
   );
 }
 
-/** Space inside the sheet, and between its head and what it holds: Silk's steps 5 and 3. */
-const { 3: HEAD_GAP, 5: INSET } = themes.dark.semantic.space;
+/** Space inside the sheet: Silk's step 5. */
+const INSET = themes.dark.semantic.space[5];
+/** Space between the sheet's head and what it holds: Silk's step 3. */
+const HEAD_GAP = themes.dark.semantic.space[3];
 const CLOSE_ICON = 22;
-/** The close button's padding around its icon, which the head's inset includes. */
-const BUTTON_PADDING = HEADER_BUTTON_SIZE.minus(CLOSE_ICON).times(0.5);
-const BESIDE_BUTTON = BUTTON_PADDING.times(-1).plus(INSET).value;
+/**
+ * The head's inset above and beside the close button: INSET less the
+ * button's own padding around its icon, so the icon lines up with the content.
+ */
+const AROUND_BUTTON = HEADER_BUTTON_SIZE.minus(CLOSE_ICON).times(-0.5).plus(INSET).value;
 
 const styles = StyleSheet.create({
   veil: { flex: 1, justifyContent: 'flex-end', alignItems: 'center' },
@@ -88,6 +92,6 @@ const styles = StyleSheet.create({
     // Over the veil, which is positioned and so would cover it.
     zIndex: 1,
   },
-  head: { paddingTop: BESIDE_BUTTON, paddingLeft: INSET, paddingRight: BESIDE_BUTTON },
+  head: { paddingTop: AROUND_BUTTON, paddingLeft: INSET, paddingRight: AROUND_BUTTON },
   content: { padding: INSET, paddingTop: HEAD_GAP },
 });

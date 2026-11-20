@@ -30,7 +30,7 @@ import { getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
 import { qualityLooks } from '@/theme/moveQuality';
 import { themes } from '@/theme/theme';
-import { NARROW_CSS_LOADS, narrowLength, narrowPart } from '@/theme/narrow';
+import { narrowLength, narrowPart } from '@/theme/narrow';
 
 import { AutoPlay } from './AutoPlay';
 import { CandidateList } from './CandidateList';
@@ -328,8 +328,8 @@ function LessonScreen({
           ? { name: OPENINGS_TITLE }
           : { name: names.at(-1) ?? lesson.title, parent: names.at(-2) },
         placeLink: listLink,
-        // Only narrow.css shows the header's settings button, and only it the sheet.
-        onSettings: NARROW_CSS_LOADS ? () => setSettingsOpen(true) : undefined,
+        // Only a narrow web page shows the button, so only there does the sheet open.
+        onSettings: () => setSettingsOpen(true),
       }}
       board={
         <BoardColumn
@@ -396,13 +396,18 @@ function LessonScreen({
               ) : null}
             </PointingArea>
           ) : null}
-          {/* A narrow web page has no room for the rest under the panes: it opens in a sheet. */}
-          <Stack {...narrowPart('wide-only')} style={styles.sections}>
-            <Separator />
-            {scoresheet(game.goto)}
-            <Separator />
-            {settings}
-          </Stack>
+          {/*
+           * A narrow web page has no room for the rest under the panes: it opens
+           * in a sheet. Only one copy is mounted at a time.
+           */}
+          {settingsOpen ? null : (
+            <Stack {...narrowPart('wide-only')} style={styles.sections}>
+              <Separator />
+              {scoresheet(game.goto)}
+              <Separator />
+              {settings}
+            </Stack>
+          )}
           {settingsOpen ? (
             <Sheet title="Settings" onClose={closeSettings}>
               <Stack style={styles.sections}>
