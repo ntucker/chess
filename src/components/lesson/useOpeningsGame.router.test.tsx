@@ -66,9 +66,9 @@ describe('useOpeningsGame on the router', () => {
     expect(latest.id).toBe('caro-kann');
     expect(moves()).toEqual(uciLine('e4', 'c6'));
     await run(() => latest.store[1]({ type: 'goto', ply: 0 }));
-    await play('d2d4', 'd7d5', 'c2c4');
+    await play('d2d4', 'd7d5', 'c2c4', 'c7c6');
     expect(latest.id).toBe('slav');
-    expect(moves()).toEqual(uciLine('d4', 'd5', 'c4'));
+    expect(moves()).toEqual(uciLine('d4', 'd5', 'c4', 'c6'));
     await run(() => router.back());
     expect(latest.id).toBeUndefined();
     expect(moves()).toEqual([]);
@@ -82,11 +82,11 @@ describe('useOpeningsGame on the router', () => {
 
   it('starts links to the page already open, and keeps the game dropping a variation', async () => {
     await open(lessonHref('caro-kann'));
-    await play('c7c6');
+    await play('d2d4');
     await run(() => router.navigate(variationHref('caro-kann', 'advance-variation')));
     expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'e5'));
     await run(() => router.navigate(lessonHref('caro-kann')));
-    expect(moves()).toEqual(uciLine('e4'));
+    expect(moves()).toEqual(uciLine('e4', 'c6'));
     await run(() => router.navigate(variationHref('caro-kann', 'advance-variation')));
     await play('c8f5');
     expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'e5', 'Bf5'));
