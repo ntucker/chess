@@ -79,21 +79,21 @@ To try the Pages build locally, export it the way the workflow does and serve `d
 PAGES_BASE_PATH=/chess yarn expo export --platform web
 ```
 
-## Building it with Claude
+## Contributing with Claude
 
-This app is built in a Claude project on claude.ai. You write in the project chat, and a coordinator (a Claude session) starts a thread for each task. Each thread is a Claude Code session in the cloud with the project's repositories cloned. It opens a pull request, takes it through review and, when the rules allow, merges it. Threads share a project files folder for screenshots, spikes and importer caches.
+You can work on Opening Night through a Claude project on claude.ai, as its maintainer does. You write in the project chat, and a coordinator (a Claude session) starts a thread for each task. Each thread is a Claude Code session in the cloud with the repository cloned, and it takes its task to a pull request.
 
-To set up a project like it:
+To set one up:
 
-1. Connect GitHub to claude.ai, and install the Claude GitHub app on the repositories.
-2. Create a project and attach `ntucker/chess`. Also attach any dependency you maintain and want fixed at its source rather than worked around. This project attaches `reactive/data-client` and `reactive/silk` (`PROJECTS.md`, "Upstream fixes").
-3. Install the user-kit plugin. Threads use its skills (`clean-code`, `agent-instructions`, `writer`) and its `post-push-review` workflow.
-4. Turn on project memory. Threads save decisions and other lasting facts there, so later threads don't ask again.
-5. Ask the coordinator to set up the project. It follows `.agents/projects/setup.md`, which gives you the text to paste into the project's instructions. That text points every agent at `PROJECTS.md` on `main`.
+1. Connect GitHub at https://claude.ai/connect-github, and install the Claude GitHub app on the repository threads will push to: `ntucker/chess` if you can push there, otherwise your fork of it.
+2. Create a project and attach that repository. To fix a bug in Data Client or Silk at its source (`PROJECTS.md`, "Upstream fixes"), also attach `reactive/data-client` or `reactive/silk`.
+3. Turn on project memory, so threads keep your decisions for later threads.
+4. Install the user-kit plugin. Threads use its `clean-code` and `agent-instructions` skills and its `post-push-review` workflow (`PROJECTS.md`, "Roles and models").
+5. In the project chat, ask the coordinator to set up the project. It follows `.agents/projects/setup.md` and gives you the text to paste in the project's instructions, which points every agent at `PROJECTS.md` on `main`.
 
-The rest lives in the repository, so every thread reads the current version:
+Then give the coordinator a task. Threads follow these files, read from `main`:
 
-- `PROJECTS.md`: how a thread takes a pull request from branch to merge, including the review passes in step 7.
-- `.agents/projects/autoland.md`: when a thread may merge its own pull request. Besides the checks in `.github/workflows/`, it needs two reviewers you set up outside the repository: the Cursor Bugbot GitHub app and the Staff reviewer. Pull requests that change only Markdown files, or change agent instructions, wait for you to merge them.
-- `.agents/projects/person-machine.md`: work that needs your own computer, such as checks on the Android emulator. Link your computer to the project; a thread then starts a Remote Control session on it, which you approve.
-- `AGENTS.md`: how any agent works in the code, in a project or not.
+- `PROJECTS.md`: how a thread takes a pull request from branch to merge, including its reviews.
+- `.agents/projects/autoland.md`: when a thread may merge its own pull request. Merging needs push access to `ntucker/chess`; without it, the maintainer merges.
+- `.agents/projects/person-machine.md`: work that needs a computer of your own, such as checks on the Android emulator. It describes the maintainer's computer, so tell your coordinator how yours differs. Link your computer to the project, and threads start a Remote Control session on it, which you approve.
+- `AGENTS.md`: how any agent works in the code.
