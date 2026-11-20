@@ -106,8 +106,8 @@ function LessonScreen({
   readonly loading: boolean;
 }) {
   const ctrl = useController();
-  // The lesson's progress loads beside it, rather than once it has loaded.
-  useFetch(getProgress, id ?? OPENINGS.id);
+  // The progress loads beside the lesson, rather than once it has loaded.
+  useFetch(getProgress);
   const picked = useSuspense(getLesson, id ?? null);
   const lesson = useMemo(() => (picked ? withOpenings(picked, LESSON_INDEX) : OPENINGS), [picked]);
   const {
@@ -180,11 +180,10 @@ function LessonScreen({
   const rejoins = ({ variation }: Candidate) =>
     variation === undefined ? undefined : `Rejoins ${lesson.variations[variation].name}`;
   // Pointing at an opening, or picking up a piece that plays one, starts
-  // loading its lesson and progress, so playing it needn't wait. A failure
-  // shows once the opening is picked.
+  // loading its lesson, so playing it needn't wait. A failure shows once the
+  // opening is picked.
   const load = (id: LessonId) => {
     ctrl.fetchIfStale(getLesson, id);
-    ctrl.fetchIfStale(getProgress, id);
   };
   const pointCandidate = (uci: Uci) => {
     const into = opening(uci);

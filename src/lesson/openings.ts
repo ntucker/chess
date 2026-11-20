@@ -7,9 +7,12 @@
  */
 import { Chess } from 'chessops/chess';
 import { INITIAL_FEN } from 'chessops/fen';
+import { parseUci } from 'chessops/util';
 
 import { positionKey } from '@/game/replay';
+import { positionHash } from '@/progress/progress';
 
+import { cleanLineEnds, inCleanRun } from './cleanRun';
 import { LESSON_FORMAT, onDomain, type Lesson, type LessonSource, type Uci } from './lesson';
 
 const START_KEY = positionKey(Chess.default());
@@ -21,6 +24,13 @@ const START_KEY = positionKey(Chess.default());
 export interface IndexEntry extends Pick<Lesson, 'title' | 'side' | 'sources'> {
   /** The guide's moves at the lesson's start: the moves that pick it. */
   readonly firstMoves: readonly Uci[];
+  /**
+   * By first move, the `positionHash` of every line end a clean Practice run
+   * can reach through it (`cleanLineEnds`), so the start position's row can
+   * be passed without loading the lesson. None for a learner's first move a
+   * clean run would not play.
+   */
+  readonly lineEnds: Readonly<Record<Uci, readonly string[]>>;
 }
 
 /**
@@ -30,9 +40,27 @@ export interface IndexEntry extends Pick<Lesson, 'title' | 'side' | 'sources'> {
 export type LessonIndex<Id extends string = string> = Readonly<Record<Id, IndexEntry>>;
 
 /** What the lesson index says of `lesson`. */
-export function indexEntry({ title, side, sources, positions }: Lesson): IndexEntry {
-  const firstMoves = positions[START_KEY]?.moves.map(({ uci }) => uci) ?? [];
-  return { title, side, sources, firstMoves };
+export function indexEntry(lesson: Lesson): IndexEntry {
+  const { title, side, sources, positions } = lesson;
+  const moves = positions[START_KEY]?.moves ?? [];
+  // White moves first, so only a White lesson's first moves are the learner's.
+  const learner = side === 'white';
+  const lineEnds = Object.fromEntries(
+    moves.map((move) => [
+      move.uci,
+      inCleanRun(move, learner)
+        ? cleanLineEnds(lesson, startAfter(move.uci)).map(positionHash).sort()
+        : [],
+    ]),
+  );
+  return { title, side, sources, firstMoves: moves.map(({ uci }) => uci), lineEnds };
+}
+
+/** The start position's key after `uci`. */
+function startAfter(uci: Uci) {
+  const pos = Chess.default();
+  pos.play(parseUci(uci)!);
+  return positionKey(pos);
 }
 
 /** The lesson `line` plays: the one its first move picks; none before a move. */
