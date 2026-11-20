@@ -36,7 +36,10 @@ export function OpeningList({ here }: { readonly here?: ListPlace<LessonId> }) {
       title="Openings · Opening Night"
       header={{
         place: { name: 'Openings' },
-        back: { href: here ? lessonHref(here.lesson) : '/', label: 'Back to the board' },
+        back: {
+          href: here ? lineHref(here.lesson, here.variation) : '/',
+          label: 'Back to the board',
+        },
       }}
       maxWidth={STAGE_MAX}
     >
@@ -147,6 +150,10 @@ function NowPlaying() {
   );
 }
 
+/** The address that opens `lesson` at `variation`, or at its start without one. */
+const lineHref = (lesson: LessonId, variation?: VariationId) =>
+  ({ pathname: lessonHref(lesson), params: variation === undefined ? {} : { variation } }) as const;
+
 /**
  * A variation as a row of the program: its name, a dotted leader, its moves.
  * On a narrow page the moves drop below, right-aligned. The variation the
@@ -171,7 +178,7 @@ function LineLink({
   const { theme } = useTheme();
   const { color } = theme.semantic;
   const { accent, neutral } = color.tones;
-  const href = { pathname: lessonHref(lesson), params: { variation: variation.id } } as const;
+  const href = lineHref(lesson, variation.id);
   // The list opens on where the board was, however far down it is.
   const row = useRef<ComponentRef<typeof View>>(null);
   useEffect(() => {
