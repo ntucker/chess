@@ -7,6 +7,7 @@ import {
   type Ref,
   useCallback,
   useContext,
+  useRef,
 } from 'react';
 import { View } from 'react-native';
 import { MotionHost, useMotionDriver } from './engine';
@@ -77,14 +78,25 @@ type ViewProps = Omit<ComponentProps<typeof View>, 'ref'>;
 export function MotionView({ id, style, ...rest }: ViewProps & { readonly id: unknown }) {
   const join = useContext(ListContext);
   const { attach, props } = useMotionDriver();
+  // React Native Web's View calls a ref with null rather than running the
+  // cleanup it returned, so the cleanup is kept here and run either way.
+  const joined = useRef<() => void>(undefined);
   const ref = useCallback(
     (el: MotionElement | null) => {
+      joined.current?.();
+      joined.current = undefined;
       if (!el) return;
       const detach = attach(el);
       const leave = join?.(id, el);
-      return () => {
+      const cleanup = () => {
         leave?.();
-        detach?.();
+        detach();
+      };
+      joined.current = cleanup;
+      return () => {
+        if (joined.current !== cleanup) return;
+        joined.current = undefined;
+        cleanup();
       };
     },
     [attach, join, id],

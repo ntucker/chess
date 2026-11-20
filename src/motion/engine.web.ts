@@ -29,10 +29,11 @@ const dom = (el: MotionElement) => el as unknown as HTMLElement;
 
 /** Nothing to add to the view: the engine animates the DOM element itself */
 export function useMotionDriver() {
-  return { attach: noop, props: NO_PROPS };
+  return { attach: detached, props: NO_PROPS };
 }
 const NO_PROPS = {};
 const noop = () => undefined;
+const detached = () => noop;
 
 /** The view a `MotionView` renders: a plain one, since this animates its DOM element */
 export const MotionHost = View;
