@@ -111,10 +111,12 @@ export function useOpeningsGame(
     }
     // One of the page's own sends arriving, maybe after the game has moved on.
     const arrivedAt = synced.sent.findIndex((sent) => sameAddress(sent, { address, variation }));
-    // Or the entry's key arriving at the same address.
-    const keyArrived = synced.entry === undefined && sameAddress(synced, { address, variation });
-    if (arrivedAt >= 0 || keyArrived) {
-      // The game stays where it is.
+    let sent: readonly Send[] = [];
+    if (arrivedAt >= 0) {
+      sent = synced.sent.slice(arrivedAt + 1);
+    } else if (synced.entry === undefined && sameAddress(synced, { address, variation })) {
+      // The entry's key arrived.
+      sent = synced.sent;
     } else if (entry !== synced.entry && synced.entry !== undefined) {
       // Back, Forward, or a link: resume the game the entry had, else start it.
       // The game is at `id`'s address: it plays that lesson from its side
@@ -131,14 +133,13 @@ export function useOpeningsGame(
       dispatch({ type: 'newGame', moves: resumed?.game.moves ?? startOf(address, variation) });
       if (resumed) {
         dispatch({ type: 'goto', ply: resumed.game.ply });
-        // At `/` the side is the one the game was played from.
+        // The side the game was played from: at `/`, maybe not the setting's.
         setAddressSide(resumed.side);
       }
     } else {
       // A link to the page already open.
       dispatch({ type: 'newGame', moves: startOf(address, variation) });
     }
-    const sent = arrivedAt >= 0 ? synced.sent.slice(arrivedAt + 1) : keyArrived ? synced.sent : [];
     setSynced({ entry, address, variation, sent });
   } else {
     // Once the sends on their way arrive, the address is the last one's.

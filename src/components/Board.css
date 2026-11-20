@@ -134,6 +134,7 @@ coords {
   top: 0;
 }
 .cg-wrap coords.ranks coord {
+  /* One rank per eighth of the board, its number just inside the top edge. */
   flex: 1 1 0;
   padding-top: 2px;
   transform: none;

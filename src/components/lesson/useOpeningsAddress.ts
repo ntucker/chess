@@ -1,7 +1,10 @@
 import { useLocalSearchParams, useRoute } from 'expo-router';
 import { useNavigationState } from 'expo-router/react-navigation';
 
-/** An address's params, as the URL has them: a lesson's id, and a variation to open. */
+/**
+ * An address's params, as the URL has them: a lesson's id, and a variation to
+ * open. A type, as `useLocalSearchParams` takes no interface.
+ */
 type Params = {
   readonly id?: string;
   readonly variation?: string;
