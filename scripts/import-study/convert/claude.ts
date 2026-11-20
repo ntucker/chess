@@ -49,6 +49,8 @@ const BATCH = 20;
 /** Requests at once. */
 const PARALLEL = 4;
 
+type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+
 interface Options<T> {
   readonly learner: Color;
   /** The system prompt, with {LEARNER} and {OPPONENT} for the sides; the comment converter's by default. */
@@ -59,14 +61,14 @@ interface Options<T> {
    */
   readonly keyOf?: (item: T) => unknown;
   /** How hard the model thinks (`claude --effort`); the CLI's default when absent. */
-  readonly effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+  readonly effort?: Effort;
   /** Items per request. */
   readonly batch?: number;
   /** The step's name in log lines. */
   readonly step?: string;
   /** The study's answers file (JSON lines), committed beside the importer. */
   readonly cacheFile: string;
-  /** False answers only from the file and calls no model: other comments stay unconverted. */
+  /** False answers only from the file and calls no model: other items stay unanswered. */
   readonly callModel?: boolean;
   readonly log?: (message: string) => void;
 }
@@ -103,18 +105,18 @@ export function claudeCli<T extends { readonly id: string } = Comment>({
 
   const used = new Set<string>();
 
-  const ask: Ask<T> = async (model, comments, addendum = '') => {
+  const ask: Ask<T> = async (model, items, addendum = '') => {
     const system = prompt + addendum;
     const answers = new Map<string, Answer>();
-    const keys = new Map(comments.map((comment) => [comment.id, keyOf(model, system, comment)]));
+    const keys = new Map(items.map((item) => [item.id, keyOf(model, system, item)]));
     const asking: T[] = [];
-    for (const comment of comments) {
-      const key = keys.get(comment.id)!;
+    for (const item of items) {
+      const key = keys.get(item.id)!;
       const cached = cache.get(key);
       if (cached) {
         used.add(key);
-        answers.set(comment.id, { ...cached, id: comment.id });
-      } else asking.push(comment);
+        answers.set(item.id, { ...cached, id: item.id });
+      } else asking.push(item);
     }
     if (!callModel) {
       log(
@@ -132,7 +134,7 @@ export function claudeCli<T extends { readonly id: string } = Comment>({
       try {
         const result = await request(model, system, group, effort);
         cost += result.cost;
-        const asked = new Set(group.map((comment) => comment.id));
+        const asked = new Set(group.map((item) => item.id));
         for (const answer of result.answers) {
           if (!asked.has(answer.id)) continue;
           const key = keys.get(answer.id)!;
@@ -143,7 +145,7 @@ export function claudeCli<T extends { readonly id: string } = Comment>({
         }
       } catch (error) {
         log(
-          `${step}: a request failed, its ${group.length} comments stay unconverted: ${String(error)}`,
+          `${step}: a request failed, its ${group.length} items stay unanswered: ${String(error)}`,
         );
       }
       log(`${step}: ${++done}/${batches.length} requests, ${cost.toFixed(2)} USD at list price`);
@@ -176,8 +178,8 @@ function readCache(file: string): Map<string, Answer> {
 function request(
   model: Model,
   prompt: string,
-  comments: readonly unknown[],
-  effort: Options<unknown>['effort'],
+  items: readonly unknown[],
+  effort: Effort | undefined,
 ): Promise<{ answers: Answer[]; cost: number }> {
   const args = [
     '-p',
@@ -229,7 +231,7 @@ function request(
         );
       }
     });
-    child.stdin.end(JSON.stringify(comments));
+    child.stdin.end(JSON.stringify(items));
   });
 }
 

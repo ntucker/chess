@@ -12,15 +12,35 @@
  * in scripts/import-study/answers/<name>-explain.jsonl, committed like the
  * converter's: `--no-model` rebuilds the notes from it.
  */
-import { parsePosition } from '@/game/replay';
-import type { Lesson, LessonMove, Note } from '@/lesson/lesson';
+import type { Color } from 'chessops/types';
 
-import { MODELS, type Ask } from '../convert/claude';
+import type { Lesson, LessonMove, Note, PositionKey, Uci } from '@/lesson/lesson';
+
+import { claudeCli, MODELS, type Ask } from '../convert/claude';
 import { linesTo, type Evaluate } from '../engineCheck';
-import { bookMoveItems, type BookMove } from './items';
+import { bookMoveItems, itemKey, type BookMove } from './items';
 import { explainedNote, type Explained } from './notes';
-import { REFUSED } from './prompt';
+import { EXPLAIN, REFUSED } from './prompt';
 import { explainedCounts, unexplainedMoves } from './unexplained';
+
+/** Book moves per request: fewer than comments, since each needs a fresh look at its board. */
+const BATCH = 10;
+
+/** The model runner for this step, keeping its answers in `cacheFile`. */
+export function explainCli(options: {
+  readonly learner: Color;
+  readonly cacheFile: string;
+  readonly callModel: boolean;
+}) {
+  return claudeCli<BookMove>({
+    ...options,
+    prompt: EXPLAIN,
+    keyOf: itemKey,
+    effort: 'medium',
+    batch: BATCH,
+    step: 'explain',
+  });
+}
 
 export interface ExplainReport {
   readonly before: ReturnType<typeof explainedCounts>;
@@ -32,9 +52,9 @@ export interface ExplainReport {
   readonly unsure: number;
   /** Notes refused on the first answer, and asked again. */
   readonly retried: number;
-  /** Notes refused on both answers, with why the last was. */
+  /** Notes refused on both answers, with why the second was. */
   readonly refused: readonly { readonly text: string; readonly why: string }[];
-  /** Moves with no answer at all (a failed request, or none stored for `--no-model`). */
+  /** Moves left with no usable answer (a failed request, or none stored for `--no-model`). */
   readonly unanswered: number;
 }
 
@@ -44,30 +64,31 @@ export async function explainBookMoves(
   ask: Ask<BookMove>,
   evaluate: Evaluate,
 ): Promise<{ lesson: Lesson; report: ExplainReport }> {
-  const before = explainedCounts(lesson);
-  const jobs = await bookMoveItems(lesson, unexplainedMoves(lesson), linesTo(lesson), evaluate);
+  const moves = unexplainedMoves(lesson);
+  const before = explainedCounts(lesson, moves);
+  const jobs = await bookMoveItems(lesson, moves, linesTo(lesson), evaluate);
   const results = new Map<string, Explained>();
   const judge = async (items: readonly BookMove[], addendum?: string) => {
     const answers = await ask(MODELS.explain, items, addendum);
     for (const item of items) {
       const answer = answers.get(item.id);
-      if (!answer) continue;
-      const result = explainedNote(answer, parsePosition(item.fenAfter)!);
-      // A retry's answer replaces a refused note; without one the refusal stays.
-      results.set(item.id, result);
+      if (answer) results.set(item.id, explainedNote(answer, item));
     }
   };
   await judge(jobs.map(({ item }) => item));
   const retry = jobs.flatMap(({ item }) => {
     const result = results.get(item.id);
-    return result && 'refused' in result ? [{ ...item, refused: result.refused }] : [];
+    if (!result || !('refused' in result)) return [];
+    // Only the retry's own answer counts: with none, the move is unanswered.
+    results.delete(item.id);
+    return [{ ...item, refused: [result.refused] }];
   });
   if (retry.length > 0) await judge(retry, REFUSED);
 
   const notes = new Map<string, Note>();
   for (const { move, item } of jobs) {
     const result = results.get(item.id);
-    if (result && 'note' in result) notes.set(`${move.key} ${move.uci}`, result.note);
+    if (result && 'note' in result) notes.set(moveKey(move.key, move.uci), result.note);
   }
   const explained = withNotes(lesson, notes);
   const values = [...results.values()];
@@ -80,13 +101,15 @@ export async function explainBookMoves(
       written: notes.size,
       unsure: values.filter((result) => 'none' in result).length,
       retried: retry.length,
-      refused: values.flatMap((result) => ('refused' in result ? result.refused : [])),
+      refused: values.flatMap((result) => ('refused' in result ? [result.refused] : [])),
       unanswered: jobs.length - results.size,
     },
   };
 }
 
-/** `lesson` with each note in `notes` first on its move, keyed by position and move. */
+const moveKey = (key: PositionKey, uci: Uci) => `${key} ${uci}`;
+
+/** `lesson` with each note in `notes` first on its move, keyed by `moveKey`. */
 function withNotes(lesson: Lesson, notes: ReadonlyMap<string, Note>): Lesson {
   const positions = Object.fromEntries(
     Object.entries(lesson.positions).map(([key, pos]) => [
@@ -94,7 +117,7 @@ function withNotes(lesson: Lesson, notes: ReadonlyMap<string, Note>): Lesson {
       {
         ...pos,
         moves: pos.moves.map((move): LessonMove => {
-          const note = notes.get(`${key} ${move.uci}`);
+          const note = notes.get(moveKey(key, move.uci));
           return note ? { ...move, notes: [note, ...(move.notes ?? [])] } : move;
         }),
       },

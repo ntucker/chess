@@ -691,6 +691,20 @@ describe('checkLesson', () => {
     );
   const notePath = `positions["${positionKey(afterC6)}"].notes[0].text`;
 
+  it('refuses an original on a generated note, which no guide wrote', () => {
+    const lesson = withPosition(positionKey(afterC6), {
+      variation: 'caro',
+      moves: [],
+      notes: [{ text: 'Your pawn holds d5.', generated: true, original: 'c6 prepares d5' }],
+    });
+    expect(checkLesson(lesson)).toEqual([
+      {
+        path: `positions["${positionKey(afterC6)}"].notes[0].original`,
+        message: 'is on a generated note, which no guide wrote',
+      },
+    ]);
+  });
+
   it('refuses long notes', () => {
     const text = Array.from({ length: 21 }, () => 'word').join(' ');
     expect(noteProblems(text)).toEqual([{ path: notePath, message: 'has 21 words (most 20)' }]);

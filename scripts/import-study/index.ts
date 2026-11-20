@@ -53,9 +53,7 @@ import { lessonIndex } from '@/lesson/openings';
 import { convertChapters, convertReport } from './convert';
 import { claudeCli } from './convert/claude';
 import { engineCheck, ENGINES_OWN, fillBook, type EngineReport } from './engineCheck';
-import { explainBookMoves, explainReport } from './explain';
-import { itemKey, type BookMove } from './explain/items';
-import { EXPLAIN } from './explain/prompt';
+import { explainBookMoves, explainCli, explainReport } from './explain';
 import { extractChapter } from './extract';
 import { lessonJson } from './lessonJson';
 import { mergeChapters, numberedChapterName, type ChapterName, type SourceTally } from './merge';
@@ -69,9 +67,6 @@ import { noteTranspositions } from './transpositions';
 import { wikibooksPgn } from './wikibooks';
 
 const ROOT = join(__dirname, '../..');
-
-/** Book moves per request to the explain step: fewer than comments, since each needs a fresh look at its board. */
-const EXPLAIN_BATCH = 10;
 
 const CACHE = process.env.IMPORT_STUDY_CACHE ?? join(ROOT, '.cache/import-study');
 const STUDY_FLAGS = ['--no-model', '--no-popularity'];
@@ -148,18 +143,13 @@ async function main() {
   console.log(
     `transpositions: ${transposed.moved} positions took the notes of a move order the lesson doesn't play`,
   );
-  const explainCli = claudeCli<BookMove>({
+  const explainer = explainCli({
     learner: info.side,
-    prompt: EXPLAIN,
-    keyOf: itemKey,
-    effort: 'medium',
-    batch: EXPLAIN_BATCH,
-    step: 'explain',
     cacheFile: join(ROOT, `scripts/import-study/answers/${first}-explain.jsonl`),
     callModel: !rest.includes('--no-model'),
   });
-  const explained = await explainBookMoves(lesson, explainCli.ask, stockfish.evaluate);
-  explainCli.saveUsed();
+  const explained = await explainBookMoves(lesson, explainer.ask, stockfish.evaluate);
+  explainer.saveUsed();
   lesson = explained.lesson;
   console.log(explainReport(explained.report));
   stockfish.stop();

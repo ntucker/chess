@@ -289,14 +289,20 @@ export function notationProblem(text: string): string | undefined {
   return undefined;
 }
 
+/** What is wrong with a note's text, or undefined: empty, too long, or written in notation. */
+export function noteTextProblem(text: string): string | undefined {
+  const words = text.split(/\s+/).filter(Boolean).length;
+  if (words === 0) return 'is empty';
+  if (words > MAX_NOTE_WORDS) return `has ${words} words (most ${MAX_NOTE_WORDS})`;
+  return notationProblem(text);
+}
+
 function checkNotes(notes: readonly Note[] | undefined, pos: Chess, path: string, report: Report) {
   notes?.forEach((note, i) => {
-    const words = note.text.split(/\s+/).filter(Boolean).length;
-    if (words === 0) report(`${path}[${i}].text`, 'is empty');
-    if (words > MAX_NOTE_WORDS)
-      report(`${path}[${i}].text`, `has ${words} words (most ${MAX_NOTE_WORDS})`);
-    const wording = notationProblem(note.text);
+    const wording = noteTextProblem(note.text);
     if (wording) report(`${path}[${i}].text`, wording);
+    if (note.generated && note.original !== undefined)
+      report(`${path}[${i}].original`, 'is on a generated note, which no guide wrote');
     note.ideas?.forEach((idea, j) => {
       const problem = checkIdea(idea, pos);
       if (problem) report(`${path}[${i}].ideas[${j}]`, `${idea.type}: ${problem}`);

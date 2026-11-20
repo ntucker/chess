@@ -24,7 +24,10 @@ export interface UnexplainedMove {
 
 /**
  * A short note that only says who stands better: "The position is equal.",
- * "White keeps a small edge here.", "You are comfortable here."
+ * "White keeps a small edge here.", "You are comfortable here." Wider than
+ * text.ts's verdicts, which the importer reads as evaluations: here a vague
+ * "fine" or "comfortable" also leaves a move unexplained. ./notes.ts's VERDICT
+ * refuses any such word in a generated note.
  */
 const VERDICT =
   /^(?:the position is|everything is|it is|you are|you're|you stand|you keep|you get|you have|your position is|white is|black is|white keeps|black keeps|white has|black has|white stands|black stands)\b.*\b(?:equal|balanced|level|better|worse|winning|losing|fine|okay|ok|comfortable|edge|advantage|good|pleasant|dominant)\b/i;
@@ -71,15 +74,16 @@ export function unexplainedMoves(lesson: Lesson): UnexplainedMove[] {
   return found;
 }
 
-/** Book moves the learner meets, and how many of them are unexplained, by why. */
+/** Book moves the learner meets, and how many of them are unexplained (`moves`), by why. */
 export function explainedCounts(
   lesson: Lesson,
+  moves: readonly UnexplainedMove[] = unexplainedMoves(lesson),
 ): { readonly book: number } & Readonly<Record<Unexplained, number>> {
   const reached = bookReach(lesson);
   let book = 0;
   for (const key of reached)
     book += lesson.positions[key]?.moves.filter((move) => move.book).length ?? 0;
   const counts = { book, none: 0, verdict: 0, fragment: 0 };
-  for (const { why } of unexplainedMoves(lesson)) counts[why]++;
+  for (const { why } of moves) counts[why]++;
   return counts;
 }

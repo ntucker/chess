@@ -8,11 +8,11 @@ import { makeFen } from 'chessops/fen';
 import type { Color } from 'chessops/types';
 
 import type { Evaluation } from '@/evaluation/evaluation';
-import { numberedLine, parsePosition, playMove, positionKey } from '@/game/replay';
+import { positionKey } from '@/game/replay';
 import type { Lesson, Note, PositionKey, Uci } from '@/lesson/lesson';
 
 import { hash, legalMoves, pieces } from '../convert/comments';
-import type { Evaluate } from '../engineCheck';
+import { san, sans, startOf, type Evaluate } from '../engineCheck';
 import { played } from '../study';
 import type { UnexplainedMove } from './unexplained';
 
@@ -50,8 +50,22 @@ export interface BookMove {
   readonly refused?: readonly { readonly text: string; readonly why: string }[];
 }
 
-/** What an answer for `item` is stored by: the move, and on a retry what was refused. */
-export const itemKey = ({ fenBefore, move, refused }: BookMove) => [fenBefore, move, refused];
+/**
+ * What an answer for `item` is stored by: the move, what the guide says around
+ * it (so the model is asked again when that changes, and its note keeps
+ * agreeing with the guide), and on a retry what was refused. Not Stockfish's
+ * numbers, which differ between machines: `--no-model` rebuilds the same
+ * notes anywhere.
+ */
+export const itemKey = ({
+  fenBefore,
+  move,
+  refused,
+  alternatives,
+  previousNote,
+  replies,
+  notesHere,
+}: BookMove) => [fenBefore, move, refused, { alternatives, previousNote, replies, notesHere }];
 
 /** `moves` as the model reads them, with Stockfish's view of each, one after another. */
 export async function bookMoveItems(
@@ -89,7 +103,7 @@ async function bookMoveItem(
   const previousNote = earlierNote(lesson, line);
   return {
     id: hash(`${fenBefore} ${uci}`),
-    line: lineText(lesson, [...line, uci]),
+    line: sans(lesson, [...line, uci]),
     move: san(before, uci),
     fenBefore,
     fenAfter: makeFen(after.toSetup()),
@@ -113,20 +127,6 @@ async function bookMoveItem(
   };
 }
 
-const san = (pos: Chess, uci: Uci) => playMove(pos.clone(), uci)!.san;
-
-/** `line` from the lesson's start, numbered. */
-function lineText(lesson: Lesson, line: readonly Uci[]): string {
-  let pos = startOf(lesson);
-  const firstPly = 2 * pos.fullmoves - (pos.turn === 'white' ? 1 : 0);
-  const sans = line.map((uci) => {
-    const written = san(pos, uci);
-    pos = played(pos, uci);
-    return written;
-  });
-  return numberedLine(sans, firstPly);
-}
-
 /** The guide's nearest note on `line`, from its end back: on a move, or on the position it reached. */
 function earlierNote(lesson: Lesson, line: readonly Uci[]): string | undefined {
   const positions: Chess[] = [startOf(lesson)];
@@ -142,14 +142,12 @@ function earlierNote(lesson: Lesson, line: readonly Uci[]): string | undefined {
   return undefined;
 }
 
-/** How `evaluation` stands for `side`: "+0.4", "-1.2", "you mate in 3", "they mate in 2". */
+/** How `evaluation` stands for `side`: "+0.4", "-1.2", "you mate in 3", "they mate in 2", "you mate". */
 function standing({ pawns, mate }: Evaluation, side: Color): string {
   const sign = side === 'white' ? 1 : -1;
-  if (mate === 0) return 'checkmate';
+  // After the learner's move only the opponent can be mated.
+  if (mate === 0) return 'you mate';
   if (mate !== undefined) return `${mate * sign > 0 ? 'you' : 'they'} mate in ${Math.abs(mate)}`;
   const forYou = Math.round(pawns * sign * 10) / 10;
   return `${forYou > 0 ? '+' : ''}${forYou.toFixed(1)}`;
 }
-
-/** The lesson's start position, which the checker has read. */
-const startOf = (lesson: Lesson): Chess => parsePosition(lesson.start)!;

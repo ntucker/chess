@@ -1,4 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
+import { makeFen } from 'chessops/fen';
 
 import type { Evaluation } from '@/evaluation/evaluation';
 import { parsePositionKey } from '@/game/replay';
@@ -37,6 +38,13 @@ const LESSON = testLesson({
 const evaluate = async (): Promise<Evaluation> => ({ score: 0.52, pawns: 0.2 });
 
 const after = (...sans: string[]) => parsePositionKey(keyAfter(...sans))!;
+const fen = (...sans: string[]) => makeFen(after(...sans).toSetup());
+/** The last of `sans` as the book move the model explains, with Stockfish's `reply`. */
+const bookMove = (sans: string[], reply?: string) => ({
+  fenBefore: fen(...sans.slice(0, -1)),
+  fenAfter: fen(...sans),
+  engine: { forYou: '0.0', ...(reply && { reply }) },
+});
 
 const answer = (text: string, ideas: AnswerIdea[] = []): Answer => ({
   id: 'x',
@@ -73,7 +81,7 @@ describe('unexplainedMoves', () => {
 describe('explainedNote', () => {
   it('keeps a true note, marked generated', () => {
     expect(
-      explainedNote(answer('Your pawn takes the centre.', [CONTROLS]), after('d4', 'd5')),
+      explainedNote(answer('Your pawn takes the centre.', [CONTROLS]), bookMove(['d4', 'd5'])),
     ).toEqual({
       note: {
         text: 'Your pawn takes the centre.',
@@ -97,12 +105,30 @@ describe('explainedNote', () => {
       'false here',
     ],
   ])('refuses %s', (_, written, why) => {
-    const result = explainedNote(written, after('d4', 'd5'));
-    expect('refused' in result && result.refused[0].why).toContain(why);
+    const result = explainedNote(written, bookMove(['d4', 'd5']));
+    expect('refused' in result && result.refused.why).toContain(why);
   });
 
   it('answers none when the model gives no note', () => {
-    expect(explainedNote({ id: 'x', notes: [] }, after('d4', 'd5'))).toEqual({ none: true });
+    expect(explainedNote({ id: 'x', notes: [] }, bookMove(['d4', 'd5']))).toEqual({ none: true });
+  });
+
+  it('refuses a win of material that Stockfish’s reply takes back', () => {
+    const grab = answer('You win the e4 pawn for nothing.');
+    const result = explainedNote(grab, bookMove(['e4', 'Nf6', 'Nc3', 'Nxe4'], 'Nxe4'));
+    expect('refused' in result && result.refused.why).toContain('you win material');
+    expect(explainedNote(grab, bookMove(['e4', 'Nf6', 'Nc3', 'Nxe4'], 'd3'))).toHaveProperty(
+      'note',
+    );
+  });
+
+  it('refuses a material lead the position after Stockfish’s reply does not have', () => {
+    const ahead = answer('Your knight takes, leaving you a pawn up.');
+    const result = explainedNote(ahead, bookMove(['e4', 'Nf6', 'Nc3', 'Nxe4'], 'Nxe4'));
+    expect('refused' in result && result.refused.why).toContain('ahead on material');
+    expect(explainedNote(ahead, bookMove(['e4', 'Nf6', 'Nc3', 'Nxe4'], 'd3'))).toHaveProperty(
+      'note',
+    );
   });
 });
 
