@@ -301,6 +301,25 @@ describe('the engine lifecycle', () => {
       lost.print('readyok');
       expect(lost.supervisor.failed).toHaveBeenCalledTimes(1);
 
+      // Any other line starts the count again.
+      const slow = scripted();
+      slow.print('uciok');
+      const slowWatched = watch(['g1f3']);
+      // Fake timers hold the decision's microtask too.
+      jest.advanceTimersByTime(0);
+      expect(slow.searching()).toBe('position startpos moves g1f3');
+      for (let answers = 1; answers < 6; answers++) {
+        jest.advanceTimersByTime(10_000);
+        slow.print('readyok');
+      }
+      slow.depth(11, 60_000, REPLIES);
+      for (let answers = 1; answers < 6; answers++) {
+        jest.advanceTimersByTime(10_000);
+        slow.print('readyok');
+      }
+      expect(slow.supervisor.failed).not.toHaveBeenCalled();
+      slowWatched.release();
+
       // An idle engine isn't failed, nor one that was detached.
       watched.release();
       await Promise.resolve();

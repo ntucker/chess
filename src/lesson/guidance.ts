@@ -216,7 +216,9 @@ export function guidance(input: GuidanceInput): Guidance {
     explore && switches.showMoves && !preview && !lifted && !playing && !pointedNote
       ? engine?.best
       : undefined;
-  // Past the guide, the best is the first of the top moves, live as the search deepens.
+  // Inside the guide the learner's candidates are highlighted, so Stockfish's
+  // best is tagged only when it's another move, and only once its search is
+  // final; past the guide it shows live.
   const insideGuide = view.candidates.length > 0;
 
   return {

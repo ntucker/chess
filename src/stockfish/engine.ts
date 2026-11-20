@@ -120,7 +120,7 @@ interface Session {
   readonly supervisor: Supervisor;
   readonly budget: SearchBudget;
   ready: boolean;
-  /** How many `readyok`s it has printed since its last other line. */
+  /** How many `readyok`s in a row it has printed while it owes an answer. */
   quietAnswers: number;
 }
 
@@ -248,9 +248,9 @@ function decide() {
 function handleLine(session: Session, line: string) {
   const owesAnswer = !session.ready || running;
   if (line === 'readyok') {
-    // Alive, but not getting on with what it owes.
+    // Alive, but not getting on with what it owes: keep the count going.
     if (!owesAnswer) return;
-    if (++session.quietAnswers < QUIET_ANSWERS) askLater(session);
+    if (++session.quietAnswers < QUIET_ANSWERS) armWatchdog(session);
     else fail(session, 'it answers isready but nothing else');
     return;
   }
@@ -321,17 +321,17 @@ function remove(position: Wanted) {
   if (wanted.get(key) === position) wanted.delete(key);
 }
 
-/** Watches `session` from a line that shows it's getting on (`askLater`). */
+/** Watches `session` afresh (`armWatchdog`), from a line that shows it's getting on. */
 function awaitAnswer(session: Session) {
   session.quietAnswers = 0;
-  askLater(session);
+  armWatchdog(session);
 }
 
 /**
  * Asks `session` whether it's alive unless it prints within `ANSWER_MS`, and
  * fails it unless it then answers within `READY_MS`.
  */
-function askLater(session: Session) {
+function armWatchdog(session: Session) {
   clearTimeout(watchdog);
   watchdog = setTimeout(() => {
     session.send('isready');

@@ -60,23 +60,21 @@ describe('Stockfish', () => {
     // The watchdog asks a quiet engine this, so a slow depth isn't taken for a stuck engine.
     const heard: string[] = [];
     const listener = engine.listener;
-    engine.listener = (line) => {
-      heard.push(line);
-      listener?.(line);
-    };
     const send = sendTo(engine);
-    const finished = new Promise<void>((resolve) => {
-      const own = engine.listener!;
-      engine.listener = (line) => {
-        own(line);
-        if (line.startsWith('info depth 12 ')) send('isready');
-        if (line.startsWith('bestmove')) resolve();
-      };
-    });
-    send('position startpos');
-    send('go nodes 2000000');
-    await finished;
-    engine.listener = listener;
+    try {
+      await new Promise<void>((resolve) => {
+        engine.listener = (line) => {
+          heard.push(line);
+          listener?.(line);
+          if (line.startsWith('info depth 12 ')) send('isready');
+          if (line.startsWith('bestmove')) resolve();
+        };
+        send('position startpos');
+        send('go nodes 2000000');
+      });
+    } finally {
+      engine.listener = listener;
+    }
     const answer = heard.indexOf('readyok');
     expect(answer).toBeGreaterThan(-1);
     // Answered while the search still had depths to go (about 19 at this budget).
