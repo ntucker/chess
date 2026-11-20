@@ -56,7 +56,8 @@ export function IdeaCard({
         <View>
           {notes.map((shown) => (
             <NoteView
-              key={shown.note.text + (shown.before ?? '')}
+              // A position's notes differ as a whole (merge.ts drops exact repeats), not always in text.
+              key={JSON.stringify(shown.note) + (shown.before ?? '')}
               shown={shown}
               learner={learner}
               playback={playback}

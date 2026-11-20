@@ -3,15 +3,15 @@
  * ...e6": one route per move, played in order on one board while the other
  * side passes.
  */
-import type { SquareName } from 'chessops/types';
+import type { Color, SquareName } from 'chessops/types';
 
-import { sanToUci } from '@/game/replay';
+import { colorName, SAN, sanToUci } from '@/game/replay';
 import { withTurn } from '@/lesson/check';
 import type { Route } from '@/lesson/lesson';
 
 import { findOnLine, playedBy, type Found, type Spot } from './line';
 import { played, type StudyMove } from './study';
-import { namedMoves, plainSan, SAN, sentenceEnds } from './text';
+import { namedMoves, plainSan, sentenceEnds } from './text';
 
 const LISTED = new RegExp(String.raw`(?<![\w.\d])\.\.\.(${SAN})(?![\w-])`, 'g');
 /** What may stand between two moves of one list. */
@@ -22,20 +22,25 @@ const SEPARATOR =
  * The plans listed in `text`, a comment on `move`. A list belongs after the
  * move the text names just before it ("After 9.Nf3 ...", or in a chapter
  * header any numbered move), else after `move`. A list naming a move Black
- * already played is a recap, not a plan, and is dropped.
+ * already played is a recap, not a plan, and is dropped. `learner` is the
+ * "you" of a plan's own note.
  */
-export function planLists(move: StudyMove, text: string, header = false): Found[] {
+export function planLists(move: StudyMove, text: string, learner: Color, header = false): Found[] {
   return moveLists(text).flatMap(({ index, end, sans }) => {
     const spot = planSpot(move, text.slice(sentenceStart(text, index), index), header);
     if (!spot) return [];
     const blackMoves = playedBy(spot, 'black');
     if (sans.some((san) => blackMoves.has(san))) return [];
     const routes = planRoutes(spot, sans);
-    return routes
-      ? [{ spot, idea: { type: 'plan', side: 'black', routes }, label: text.slice(index, end) }]
-      : [];
+    if (!routes) return [];
+    const idea = { type: 'plan', side: 'black', routes } as const;
+    return [{ spot, idea, text: planText(idea.side, learner), original: text.slice(index, end) }];
   });
 }
+
+/** A plan's note in words, since its arrows and play-through show the moves. */
+const planText = (side: Color, learner: Color) =>
+  `${side === learner ? 'Your' : `${colorName(side)}'s`} plan from here, one move at a time.`;
 
 interface MoveList {
   readonly index: number;
