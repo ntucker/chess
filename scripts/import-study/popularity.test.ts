@@ -69,7 +69,7 @@ describe('addPopularity', () => {
     ]);
     // A position without a choice is not measured.
     expect(result.positions[key('e4')].moves[0].games).toBeUndefined();
-    expect(checkLesson(result)).toEqual([]);
+    expect(checkLesson(result)).toEqual(checkLesson(lesson));
   });
 
   it('asks about a position one move order reaches, though another counted 0 games', async () => {

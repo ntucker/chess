@@ -109,28 +109,48 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
   if (!(startKey in lesson.positions)) report('start', `has no entry in positions (${startKey})`);
 
   const children = new Map<string, string[]>();
+  /** Where the learner goes playing only book moves, against any opponent move. */
+  const bookChildren = new Map<string, string[]>();
+  /** The learner's positions without a book move. */
+  const unbooked = new Set<string>();
   for (const [key, entry] of Object.entries(lesson.positions)) {
-    const next = checkPosition(lesson, key, entry, report);
-    if (next) children.set(key, next);
+    const checked = checkPosition(lesson, key, entry, report);
+    if (!checked) continue;
+    const { learner, next } = checked;
+    children.set(
+      key,
+      next.map(({ key }) => key),
+    );
+    bookChildren.set(
+      key,
+      next.filter(({ book }) => book || !learner).map(({ key }) => key),
+    );
+    if (learner && next.length > 0 && !next.some(({ book }) => book)) unbooked.add(key);
   }
   const reached = reachable(startKey, children);
   for (const key of children.keys()) {
     if (!reached.has(key))
       report(`positions[${JSON.stringify(key)}]`, 'is not reachable from start');
   }
+  // A learner who has played only book moves must have one to play next.
+  for (const key of reachable(startKey, bookChildren)) {
+    if (unbooked.has(key))
+      report(`positions[${JSON.stringify(key)}]`, 'is inside the book but has no book move');
+  }
   return problems;
 }
 
 /**
- * Checks one entry of `lesson.positions`, and returns the keys its moves
- * lead to, or undefined when `key` is not a position key.
+ * Checks one entry of `lesson.positions`, and returns whether it is the
+ * learner's turn and the keys its moves lead to, or undefined when `key` is
+ * not a position key.
  */
 function checkPosition(
   lesson: Lesson,
   key: string,
   entry: LessonPosition,
   report: Report,
-): string[] | undefined {
+): { learner: boolean; next: { key: string; book: boolean }[] } | undefined {
   const at = `positions[${JSON.stringify(key)}]`;
   const pos = parsePositionKey(key);
   if (!pos) {
@@ -141,7 +161,7 @@ function checkPosition(
     report(`${at}.variation`, `${entry.variation} is not in variations`);
   }
   checkNotes(entry.notes, pos, `${at}.notes`, report);
-  const next: string[] = [];
+  const next: { key: string; book: boolean }[] = [];
   const seen = new Set<string>();
   entry.moves.forEach((move, i) => {
     const path = `${at}.moves[${i}]`;
@@ -149,10 +169,10 @@ function checkPosition(
     seen.add(move.uci);
     const after = checkMove(lesson, pos, move, path, report);
     if (!after) return;
-    next.push(positionKey(after));
+    next.push({ key: positionKey(after), book: !!move.book });
     checkNotes(move.notes, after, `${path}.notes`, report);
   });
-  return next;
+  return { learner: pos.turn === lesson.side, next };
 }
 
 /** Every position key reachable from `start` along `children`. */

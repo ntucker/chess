@@ -2,6 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 import { checkLesson } from '@/lesson/check';
 import { keyAfter, SAMPLE } from '@/lesson/lesson.fixture';
 
+import { fillBook } from './engineCheck';
 import { extractChapter } from './extract';
 import { STUDY_PGN } from './fixture';
 import { mergeChapters, type SourceTally } from './merge';
@@ -28,8 +29,9 @@ describe('mergeChapters', () => {
     expect(() => mergeChapters(lesson, [], [])).toThrow('No chapters to merge for lesson test');
   });
 
-  it('writes a lesson the checker accepts', () => {
-    expect(checkLesson(lesson)).toEqual([]);
+  it('writes a lesson the checker accepts, once fillBook has picked the book moves it leaves open', async () => {
+    const even = async () => ({ score: 0.5, pawns: 0 });
+    expect(checkLesson((await fillBook(lesson, even)).lesson)).toEqual([]);
   });
 
   it('groups chapter variations by the title before the colon, joining (I) and (II)', () => {

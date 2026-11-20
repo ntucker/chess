@@ -5,7 +5,9 @@
  *
  * parse the study → read each chapter's fixed formats → rewrite the comments
  * with AI (./convert) → merge the chapters into one
- * position tree → add popularity → checkLesson → write
+ * position tree → pick book moves where the guide shows moves but
+ * recommends none, and (`engineCheck` in studies.ts) drop what Stockfish
+ * contradicts (./engineCheck) → add popularity → checkLesson → write
  * assets/lessons/<id>.json, register it in src/resources/lesson.ts and list
  * it in assets/lessons/index.json.
  * `caro-kann` names a study listed in studies.ts. With --no-popularity the
@@ -45,7 +47,7 @@ import { readLesson, type Lesson } from '@/lesson/lesson';
 
 import { convertChapters, convertReport } from './convert';
 import { claudeCli } from './convert/claude';
-import { engineCheck } from './engineCheck';
+import { engineCheck, fillBook, type EngineReport } from './engineCheck';
 import { extractChapter } from './extract';
 import { lessonJson } from './lessonJson';
 import { mergeChapters, numberedChapterName, type ChapterName, type SourceTally } from './merge';
@@ -103,20 +105,28 @@ async function main() {
   const tally: SourceTally[] = [];
   let lesson: Lesson = mergeChapters(info, chapters, extracted, chapterName, tally);
   console.log(sourceReport(info.sources, tally));
+  if (lesson.start !== INITIAL_FEN)
+    throw new Error('The engine plays lines from the standard start');
+  const stockfish = await nodeStockfish(join(CACHE, 'stockfish.jsonl'));
+  const filled = await fillBook(lesson, stockfish.evaluate);
+  lesson = filled.lesson;
+  const engineFile = join(CACHE, `${lesson.id}-engine.json`);
+  const { filled: picked, ended } = filled.report;
+  console.log(
+    `book filled: ${picked.length} moves picked where the guide recommended none, ${ended.length} lines ended where the engine overruled every move (${engineFile})`,
+  );
+  let engineReport: EngineReport | undefined;
   if (study.engineCheck) {
-    if (lesson.start !== INITIAL_FEN)
-      throw new Error('The engine check plays lines from the standard start');
-    const stockfish = await nodeStockfish(join(CACHE, 'stockfish.jsonl'));
     const checked = await engineCheck(lesson, stockfish.evaluate);
-    stockfish.stop();
     lesson = checked.lesson;
-    const file = join(CACHE, `${lesson.id}-engine.json`);
-    writeFileSync(file, `${JSON.stringify(checked.report, null, 2)}\n`);
+    engineReport = checked.report;
     const { unbooked, unreachable, cut, dropped } = checked.report;
     console.log(
-      `engine check: ${unbooked.length} book moves overruled (${cut.length} cut, the guide's only move), ${unreachable.length} more left unreachable, ${dropped.length} notes dropped (${file})`,
+      `engine check: ${unbooked.length} book moves overruled (${cut.length} cut, the guide's only move), ${unreachable.length} more left unreachable, ${dropped.length} notes dropped`,
     );
   }
+  stockfish.stop();
+  writeFileSync(engineFile, `${JSON.stringify({ ...filled.report, ...engineReport }, null, 2)}\n`);
   if (!rest.includes('--no-popularity')) lesson = await withPopularity(lesson);
   writeLesson(join(ROOT, `assets/lessons/${lesson.id}.json`), lesson);
   registerLesson(join(ROOT, 'src/resources/lesson.ts'), lesson.id);

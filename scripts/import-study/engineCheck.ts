@@ -13,6 +13,9 @@
  *   move is not an error at all.
  *
  * Each change is reported, so a person can read what the engine overruled.
+ *
+ * `fillBook`, run before it on every lesson, picks a book move wherever the
+ * guide shows the learner moves but recommends none.
  */
 import { Chess } from 'chessops/chess';
 
@@ -53,12 +56,7 @@ export async function engineCheck(
   evaluate: Evaluate,
 ): Promise<{ lesson: Lesson; report: EngineReport }> {
   const lines = linesTo(lesson);
-  const cache = new Map<PositionKey, Promise<Evaluation>>();
-  const evaluation = (line: readonly Uci[], pos: Chess) => {
-    const key = positionKey(pos);
-    if (!cache.has(key)) cache.set(key, evaluate(line, key));
-    return cache.get(key)!;
-  };
+  const evaluation = cachedEvaluation(evaluate);
   const report = {
     unbooked: [] as { line: string; move: string; quality: string }[],
     unreachable: [] as { line: string; move: string }[],
@@ -149,17 +147,140 @@ function cutLines(
     // Gone already when an earlier cut was the only way to it.
     if (!position || position.moves.some(({ book }) => book)) continue;
     const at = lines.get(key)!;
-    const before = Object.keys(positions).length;
-    delete positions[key];
-    const still = linesTo({ ...lesson, positions });
-    for (const other of Object.keys(positions))
-      if (lines.has(other) && !still.has(other)) delete positions[other];
     cut.push({
       line: sans(lesson, at.line),
       moves: position.moves.map(({ uci }) => san(at.pos, uci)),
-      positions: before - Object.keys(positions).length,
+      positions: endLine(lesson, positions, key, lines),
     });
   }
+}
+
+/**
+ * Deletes the position `key` and the positions only it reached, so the line
+ * ends at the move into it; how many positions went.
+ */
+function endLine(
+  lesson: Lesson,
+  positions: Record<PositionKey, LessonPosition>,
+  key: PositionKey,
+  lines: ReadonlyMap<PositionKey, unknown>,
+): number {
+  const before = Object.keys(positions).length;
+  delete positions[key];
+  const still = linesTo({ ...lesson, positions });
+  for (const other of Object.keys(positions))
+    if (lines.has(other) && !still.has(other)) delete positions[other];
+  return before - Object.keys(positions).length;
+}
+
+export interface FillReport {
+  /** Book moves picked where the guide recommended none, with the line before each and why. */
+  readonly filled: readonly { line: string; move: string; why: string }[];
+  /** Positions where the line now ends, since the engine overruled every move the guide shows. */
+  readonly ended: readonly { line: string; moves: readonly string[]; positions: number }[];
+}
+
+/**
+ * A note that names its own move the main line, like "This is the main line"
+ * or "The main reply"; a note mentioning some other main line doesn't count.
+ */
+const MAIN =
+  /^(?:this is )?the main (?:line|move|reply|continuation)\b|\bthis is the main (?:line|move|reply|continuation)\b/i;
+
+/**
+ * `lesson` with a book move wherever a learner playing only book moves meets
+ * the guide's moves but no recommended one: a guide's alternative it
+ * analyses where another chapter transposes, or a trap's punishing reply only
+ * comment text gives. The pick is the guide's only move there, or the one its
+ * note calls the main line, else Stockfish's best of the guide's moves; never
+ * one the engine calls a mistake or a blunder. Where every move is one, the
+ * line ends there.
+ */
+export async function fillBook(
+  lesson: Lesson,
+  evaluate: Evaluate,
+): Promise<{ lesson: Lesson; report: FillReport }> {
+  const evaluation = cachedEvaluation(evaluate);
+  const lines = linesTo(lesson);
+  const positions = { ...lesson.positions };
+  const report = {
+    filled: [] as { line: string; move: string; why: string }[],
+    ended: [] as { line: string; moves: string[]; positions: number }[],
+  };
+  const start = startOf(lesson);
+  const reached = new Set([positionKey(start)]);
+  const queue = [{ line: [] as Uci[], pos: start }];
+  for (let at = queue.shift(); at; at = queue.shift()) {
+    const key = positionKey(at.pos);
+    let position = positions[key];
+    if (!position) continue;
+    const learner = at.pos.turn === lesson.side;
+    if (learner && position.moves.length > 0 && !position.moves.some(({ book }) => book)) {
+      const pick = await pickBookMove(position.moves, at, evaluation, lesson.side);
+      if (!pick) {
+        const moves = position.moves.map(({ uci }) => san(at.pos, uci));
+        const gone = endLine(lesson, positions, key, lines);
+        report.ended.push({ line: sans(lesson, at.line), moves, positions: gone });
+        continue;
+      }
+      const moves = position.moves.map((move) =>
+        move.uci === pick.uci ? { ...move, book: true as const } : move,
+      );
+      // Book moves first, like every position the importer writes.
+      moves.sort((a, b) => Number(!!b.book) - Number(!!a.book));
+      positions[key] = position = { ...position, moves };
+      report.filled.push({
+        line: sans(lesson, at.line),
+        move: san(at.pos, pick.uci),
+        why: pick.why,
+      });
+    }
+    for (const { uci, book } of position.moves) {
+      if (learner && !book) continue;
+      const pos = played(at.pos, uci);
+      if (reached.has(positionKey(pos))) continue;
+      reached.add(positionKey(pos));
+      queue.push({ line: [...at.line, uci], pos });
+    }
+  }
+  return { lesson: { ...lesson, positions }, report };
+}
+
+/** The book move `fillBook` picks from `moves` at `at`, and why, or undefined when the engine overrules them all. */
+async function pickBookMove(
+  moves: readonly LessonMove[],
+  at: { line: readonly Uci[]; pos: Chess },
+  evaluation: CachedEvaluation,
+  side: Lesson['side'],
+): Promise<{ uci: Uci; why: string } | undefined> {
+  const before = await evaluation(at.line, at.pos);
+  const judged = await Promise.all(
+    moves.map(async ({ uci, notes }) => {
+      const after = await evaluation([...at.line, uci], played(at.pos, uci));
+      const quality = classifyMove({ before, after, uci, mover: side });
+      const sound = quality !== 'mistake' && quality !== 'blunder';
+      const main = !!notes?.some(({ text }) => MAIN.test(text));
+      return { uci, sound, main, score: side === 'white' ? after.score : 1 - after.score };
+    }),
+  );
+  const main = judged.filter((move) => move.main);
+  const preferred = judged.length === 1 ? judged[0] : main.length === 1 ? main[0] : undefined;
+  if (preferred?.sound)
+    return { uci: preferred.uci, why: judged.length === 1 ? 'only move' : 'called the main line' };
+  const best = judged.filter(({ sound }) => sound).sort((a, b) => b.score - a.score)[0];
+  return best && { uci: best.uci, why: "Stockfish's best of the guide's moves" };
+}
+
+type CachedEvaluation = (line: readonly Uci[], pos: Chess) => Promise<Evaluation>;
+
+/** `evaluate`, asked once per position. */
+function cachedEvaluation(evaluate: Evaluate): CachedEvaluation {
+  const cache = new Map<PositionKey, Promise<Evaluation>>();
+  return (line, pos) => {
+    const key = positionKey(pos);
+    if (!cache.has(key)) cache.set(key, evaluate(line, key));
+    return cache.get(key)!;
+  };
 }
 
 /** Why the engine overrules `note`, checked in `pos` after `line`, or undefined when it doesn't. */
@@ -167,7 +288,7 @@ async function overruled(
   note: Note,
   pos: Chess,
   line: readonly Uci[],
-  evaluation: (line: readonly Uci[], pos: Chess) => Promise<Evaluation>,
+  evaluation: CachedEvaluation,
 ): Promise<string | undefined> {
   for (const idea of note.ideas ?? []) {
     const verdict = verdictOf(idea);
