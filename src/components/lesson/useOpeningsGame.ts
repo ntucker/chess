@@ -42,8 +42,10 @@ export function useOpeningsGame(address: LessonId | undefined) {
   const settingsDispatch = useSettingsDispatch();
   // The side this page plays: the last lesson address's, kept without saving
   // it, until the learner chooses one; otherwise the one they last chose.
-  const [chosen, setChosen] = useState(address && LESSON_INDEX[address].side);
-  const side = chosen ?? settings.side;
+  const [addressSide, setAddressSide] = useState(
+    address === undefined ? undefined : LESSON_INDEX[address].side,
+  );
+  const side = addressSide ?? settings.side;
   const [game, dispatch] = useReducer(gameReducer, address, (id) => startGame(startOf(id)));
   const { moves } = game;
   /** The lesson the game plays, named by the moves that pick it. */
@@ -53,7 +55,7 @@ export function useOpeningsGame(address: LessonId | undefined) {
   const [synced, setSynced] = useState(address);
   if (address !== synced) {
     setSynced(address);
-    if (address !== undefined) setChosen(LESSON_INDEX[address].side);
+    if (address !== undefined) setAddressSide(LESSON_INDEX[address].side);
     if (address !== picked) dispatch({ type: 'newGame', moves: startOf(address) });
   }
   // The address is outside React, so it follows the game in an effect.
@@ -83,8 +85,8 @@ export function useOpeningsGame(address: LessonId | undefined) {
     /** The learner plays as `next` from now on: its start, unless that is the side already. */
     playAs: (next: Color) => {
       if (next === side) return;
-      // The setting holds it now; `chosen` only keeps a lesson address's side.
-      setChosen(undefined);
+      // The setting holds it now; `addressSide` only keeps a lesson address's side.
+      setAddressSide(undefined);
       settingsDispatch({ type: 'chosen', choice: { side: next } });
       dispatch({ type: 'newGame', moves: [] });
     },

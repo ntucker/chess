@@ -43,7 +43,7 @@ import { INITIAL_FEN } from 'chessops/fen';
 import type { Color } from 'chessops/types';
 
 import { checkLesson } from '@/lesson/check';
-import { readLesson, type Lesson } from '@/lesson/lesson';
+import type { Lesson } from '@/lesson/lesson';
 
 import { convertChapters, convertReport } from './convert';
 import { claudeCli } from './convert/claude';
@@ -128,9 +128,10 @@ async function main() {
   stockfish.stop();
   writeFileSync(engineFile, `${JSON.stringify({ ...filled.report, ...engineReport }, null, 2)}\n`);
   if (!rest.includes('--no-popularity')) lesson = await withPopularity(lesson);
+  // Indexed first: the index refuses a lesson no line picks, and then nothing is written.
+  indexLesson(join(ROOT, 'assets/lessons/index.json'), lesson);
   writeLesson(join(ROOT, `assets/lessons/${lesson.id}.json`), lesson);
   registerLesson(join(ROOT, 'src/resources/lesson.ts'), lesson.id);
-  indexLesson(join(ROOT, 'assets/lessons/index.json'), lesson);
   console.log(report(lesson, chapters, extracted));
 }
 

@@ -51,7 +51,11 @@ const wikibooksCredit = (root: string): LessonSource => ({
     root
       .split('/')
       .slice(1)
-      .map((segment) => segmentSan(segment)!),
+      .map((segment) => {
+        const san = segmentSan(segment);
+        if (!san) throw new Error(`${root}: ${segment} is not a move`);
+        return san;
+      }),
   )}`,
   author: 'Wikibooks contributors',
   url: `https://en.wikibooks.org/wiki/${root}`,

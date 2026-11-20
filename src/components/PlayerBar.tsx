@@ -97,14 +97,15 @@ export function PlayerBar({
 function Disc({ color, toMove, swap }: Pick<Props, 'color' | 'toMove' | 'swap'>) {
   const { theme } = useTheme();
   const { tones } = theme.semantic.color;
-  const look = (lit: boolean) => [
+  // The ring stays the turn's alone: pointed at, the disc shows the swap graphic instead.
+  const look = [
     styles.piece,
     {
       backgroundColor: pieceColors[color],
-      borderColor: lit ? tones.accent.solid : tones.neutral.border,
+      borderColor: toMove ? tones.accent.solid : tones.neutral.border,
     },
   ];
-  if (!swap) return <View style={look(toMove)} />;
+  if (!swap) return <View style={look} />;
   const pointed = ({ hovered, focusVisible }: PressableState) => hovered || focusVisible;
   return (
     <Pressable
@@ -115,7 +116,7 @@ function Disc({ color, toMove, swap }: Pick<Props, 'color' | 'toMove' | 'swap'>)
       hitSlop={8}
       focusRing={false}
       style={(state) => [
-        look(toMove || pointed(state)),
+        look,
         styles.swap,
         pointed(state) && styles.swapPointed,
         state.pressed && styles.swapPressed,
