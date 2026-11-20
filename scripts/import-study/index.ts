@@ -111,6 +111,7 @@ async function main() {
   console.log(convertReport(converted.report));
   const tally: SourceTally[] = [];
   let lesson: Lesson = mergeChapters(info, chapters, extracted, chapterName, tally);
+  // Tallies go by each source's place in the recipe, which can list a study twice; the lesson credits it once.
   console.log(sourceReport(study.from.map(credit), tally));
   if (lesson.start !== INITIAL_FEN)
     throw new Error('The engine plays lines from the standard start');

@@ -125,7 +125,7 @@ describe('useLesson Practice run', () => {
   });
 
   // 1...c6 picks the Caro-Kann among the 1.e4 lessons, so 2...d5 is the first move judged.
-  it("starts again when the learner's first move is played again", async () => {
+  it("starts again when the learner's first judged move is played again", async () => {
     await practiceAfter('e4', 'c6', 'd4', 'd5', 'e5');
     expect(clean()).toBe(false);
     await act(async () => lesson().game.goto(3));
@@ -134,7 +134,7 @@ describe('useLesson Practice run', () => {
     expect(clean()).toBe(true);
   });
 
-  it("starts again when the learner's first move, the line's last, is played again", async () => {
+  it("starts again when the learner's first judged move, the line's last, is played again", async () => {
     await practiceAfter('e4', 'c6', 'd4', 'd5');
     expect(clean()).toBe(false);
     await act(async () => lesson().game.goto(3));

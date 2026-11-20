@@ -4,4 +4,4 @@ Lesson files (format: `src/lesson/lesson.ts`), registered in `src/resources/less
 
 Tests use a small hand-made lesson instead, `src/lesson/fixtures/caro-kann-sample.json`, which the app doesn't ship.
 
-A lesson's `sources` credit what it was made from, with a `license` where one applies. `caro-kann.json`, `slav.json`, `london.json` and `anti-london.json` adapt text from [Wikibooks' Chess Opening Theory](https://en.wikibooks.org/wiki/Chess_Opening_Theory), which is [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), so they are shared under CC BY-SA 4.0 too.
+A lesson's `sources` credit what it was made from, with a `license` where one applies. A lesson whose sources include [Wikibooks' Chess Opening Theory](https://en.wikibooks.org/wiki/Chess_Opening_Theory) (today, every one) adapts text that is [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), so it is shared under CC BY-SA 4.0 too.

@@ -122,6 +122,16 @@ describe('extractChapter', () => {
     expect(extractChapter(chapter, 'black').branches).toEqual([]);
   });
 
+  it('keeps a sequence whose moves an ellipsis joins', () => {
+    const [chapter] = parseStudy(
+      '1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 { Not 4.Qxd4...Nc6 5.Qd1, which loses time. } *',
+      () => true,
+    );
+    expect(
+      extractChapter(chapter, 'black').branches.map(({ spot, ucis }) => [spot.move?.san, ucis]),
+    ).toEqual([['cxd4', ['d1d4', 'b8c6', 'd4d1']]]);
+  });
+
   it('keeps a sequence from the start that leaves the chapter at a later opponent move', () => {
     const [chapter] = parseStudy(
       '1. e4 c6 2. d4 d5 3. Nc3 { The same as 1.e4 c6 2.Nc3 d5 3.d4. } *',

@@ -91,13 +91,17 @@ const EDGE_WORDS: Readonly<Record<Edge, readonly [string, string]>> = {
   Winning: ['winning', 'losing'],
 };
 
+/** A move number before a move: `9.`, `9...`, `9. `. */
+const MOVE_NUMBER = String.raw`\d+\s?\.(?:\.\.)?\s?`;
+
 /**
- * Two or more moves in a row, the first numbered: `9...Qa5+ 10.Nc3 e6`. Each
- * is a whole word, so prose between two moves ends the run: "2...Nc6:
- * because 2.Nc3" names no line 2...Nc6 2.Nc3.
+ * Two or more moves in a row, the first numbered: `9...Qa5+ 10.Nc3 e6`, or
+ * joined by an ellipsis: `7.Qxd4...Qxd4`. Each is a whole word, so prose
+ * between two moves ends the run: "2...Nc6: because 2.Nc3" names no line
+ * 2...Nc6 2.Nc3.
  */
 const SEQUENCE = new RegExp(
-  String.raw`\d+\s?\.(?:\.\.)?\s?${SAN}[!?]*(?:\s+(?:\d+\s?\.(?:\.\.)?\s?)?${SAN}[!?]*(?![\w-]))+`,
+  String.raw`(?<![\w.])${MOVE_NUMBER}${SAN}[!?]*(?:(?:\s+|\s*\.\.\.\s*)(?:${MOVE_NUMBER})?${SAN}[!?]*(?![\w-]))+`,
   'g',
 );
 
