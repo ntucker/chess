@@ -84,6 +84,15 @@ describe('ScoresheetDrawer', () => {
     expect(onGoto).toHaveBeenCalledWith(2);
     unmount();
   });
+
+  it('lists the moves it is given, each a step to its ply', () => {
+    const { button, onGoto, unmount } = renderDrawer(2);
+    act(() => button('e4').click());
+    expect(onGoto).toHaveBeenCalledWith(1);
+    act(() => button('c6').click());
+    expect(onGoto).toHaveBeenLastCalledWith(2);
+    unmount();
+  });
 });
 
 describe('ScoresheetOpener', () => {

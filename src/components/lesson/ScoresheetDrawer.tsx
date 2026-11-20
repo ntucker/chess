@@ -26,7 +26,8 @@ interface Props extends Omit<ComponentProps<typeof Scoresheet>, 'fill'> {
  */
 export function ScoresheetDrawer({ onClose, ...scoresheet }: Props) {
   const { plies, ply, onGoto } = scoresheet;
-  const total = plies.length - 1;
+  /** The ply of the latest move: `plies` begins with the start position. */
+  const last = plies.length - 1;
   useScreenKeys((event) => {
     if (event.key === 'Escape') onClose();
   });
@@ -36,7 +37,7 @@ export function ScoresheetDrawer({ onClose, ...scoresheet }: Props) {
         <Eyebrow>Scoresheet</Eyebrow>
         <Inline align="center" gap="1" wrap="nowrap">
           <Jump label="Start" disabled={ply === 0} onPress={() => onGoto(0)} />
-          <Jump label="Latest" disabled={ply === total} onPress={() => onGoto(total)} />
+          <Jump label="Latest" disabled={ply === last} onPress={() => onGoto(last)} />
           <HeaderButton
             icon="chevron-down"
             iconSize={20}
@@ -83,8 +84,7 @@ export function ScoresheetOpener({
       style={({ pressed, hovered }) => [
         stepButton,
         styles.opener,
-        (open || pressed || hovered) &&
-          !disabled && { backgroundColor: color.tones.neutral.subtle },
+        { backgroundColor: open || pressed || hovered ? color.tones.neutral.subtle : undefined },
       ]}
     >
       <Text
