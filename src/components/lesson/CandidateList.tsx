@@ -4,7 +4,7 @@ import { View } from 'react-native';
 
 import { evaluationReading, signedEvaluation } from '@/evaluation/evaluation';
 import { candidateTone } from '@/lesson/drawings';
-import type { Uci } from '@/lesson/lesson';
+import type { PositionKey, Uci } from '@/lesson/lesson';
 import type { Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
@@ -23,6 +23,8 @@ interface Props {
   readonly heading: string;
   /** Whose moves these are, before `heading`; only spoken in a narrow page's pane, where it would wrap. */
   readonly owner?: string;
+  /** The position whose moves these are: another position's moves are another list */
+  readonly position: PositionKey;
   readonly candidates: readonly Candidate[];
   /** Rare candidates, listed after the others while `rareShown`. */
   readonly rare: readonly Candidate[];
@@ -72,6 +74,7 @@ interface Props {
 export function CandidateList({
   heading,
   owner,
+  position,
   candidates,
   rare,
   rareShown,
@@ -123,12 +126,10 @@ export function CandidateList({
           {/*
            * Showing or hiding the rare rows slides the rows below and fades them in or out.
            * Another position's moves are another list, so leaving one with its rare rows shown
-           * swaps the rows at once instead of fading them.
+           * swaps the rows at once instead of fading them, while rows reordered in one position
+           * (a deeper search re-ranking Stockfish's) still glide.
            */}
-          <MotionList
-            key={candidates.map(({ move }) => move.uci).join(' ')}
-            layoutDependency={rareShown}
-          >
+          <MotionList key={position} layoutDependency={rareShown}>
             {rows.map((candidate, index) => (
               <MotionView key={candidate.move.uci} id={candidate.move.uci}>
                 <Row

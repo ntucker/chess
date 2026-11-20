@@ -12,6 +12,14 @@ import { CandidateList } from './CandidateList';
 
 // Its react-native-svg needs Expo's asset registry, which the web preset doesn't resolve.
 jest.mock('@/components/QualityBadge', () => ({ QualityBadge: () => null }));
+// Records whether each change the rows' motion animates fades rows in and out.
+const mockFades: boolean[] = [];
+jest.mock('@/motion/reorder', () => ({
+  measure: () => new Map(),
+  reorder: (_before: unknown, _items: unknown, _spring: unknown, { fades }: { fades: boolean }) => {
+    mockFades.push(fades);
+  },
+}));
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -32,6 +40,7 @@ function render<T>(props: Props, read: (host: HTMLElement) => T) {
       <SilkProvider theme={themes.dark}>
         <CandidateList
           heading="Likely replies"
+          position="start"
           candidates={[COMMON]}
           rare={[RARE]}
           rareShown={false}
@@ -88,5 +97,38 @@ describe('CandidateList', () => {
   it('leaves where each row leads to the line under a compact list', () => {
     expect(partTexts({}).filter(([part]) => part === 'leads-to')).toEqual([]);
     expect(partTexts({ compact: false })).toContainEqual(['leads-to', 'the Nf3 line']);
+  });
+
+  it('fades rows for showing rare ones, not for leaving a position that showed them', () => {
+    const root = createRoot(document.createElement('div'));
+    const show = (position: string, rareShown: boolean) =>
+      act(() =>
+        root.render(
+          <SilkProvider theme={themes.dark}>
+            <CandidateList
+              heading="Likely replies"
+              position={position}
+              candidates={[COMMON]}
+              rare={[RARE]}
+              rareShown={rareShown}
+              onShowRare={() => {}}
+              marks={new Map()}
+              leadsTo={() => undefined}
+              playable={false}
+              onPlay={() => {}}
+              onPoint={() => {}}
+              onTabOut={() => {}}
+            />
+          </SilkProvider>,
+        ),
+      );
+    mockFades.length = 0;
+    show('a', false);
+    show('a', true);
+    expect(mockFades).toEqual([true]);
+    // the next position mounts its own list: nothing animates the swap
+    show('b', false);
+    expect(mockFades).toEqual([true]);
+    act(() => root.unmount());
   });
 });

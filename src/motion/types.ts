@@ -14,8 +14,9 @@ export interface MotionListProps {
   /**
    * The change whose new items fade in (and, on the web, whose removed items
    * fade out): the list, or what decides it. Items mounting or unmounting on
-   * any other change appear and go at once, so a list rebuilt for a new
-   * subject doesn't flicker.
+   * any other change appear and go at once. Key the list by its subject
+   * (`key={…}`), so a list rebuilt for a new one mounts afresh instead of
+   * taking the change of subject for this change.
    */
   readonly layoutDependency: unknown;
   readonly children: ReactNode;
