@@ -18,5 +18,5 @@ lesson, not just a giant book to read.
 ## Platforms
 
 - Web first: build, test and polish every feature there.
-- Android later: keep it possible, but don't test features on it. A basic proof of concept is enough.
+- Android: supported. Every feature works there too; check changes to layout, touch input or native code on Android.
 - No iOS.
