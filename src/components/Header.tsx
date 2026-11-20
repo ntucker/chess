@@ -117,7 +117,7 @@ function fitted(text: string, largest: number) {
 }
 
 const styles = StyleSheet.create({
-  // Gives way to the source link, so a long place ends in an ellipsis.
+  // Fills the header but gives way to the source link, so the place gets what's left.
   brand: { flexGrow: 1, flexShrink: 1, minWidth: 0 },
   logo: { width: HEADER_HEIGHT.value, height: HEADER_HEIGHT.value, borderRadius: 10 },
   wordmark: {
