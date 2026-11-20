@@ -56,7 +56,11 @@ export interface LessonSource {
   readonly license?: License;
 }
 
-/** Whether `url` is on `domain` or one of its subdomains: `en.wikibooks.org` is on `wikibooks.org`. */
+/**
+ * Whether `url` is on `domain` or one of its subdomains: `en.wikibooks.org` is
+ * on `wikibooks.org`. The app runs it too: Expo installs a WHATWG `URL` on
+ * native (expo/src/winter/runtime.native.ts), so `hostname` is there.
+ */
 export const onDomain = ({ hostname }: URL, domain: string) =>
   hostname === domain || hostname.endsWith(`.${domain}`);
 

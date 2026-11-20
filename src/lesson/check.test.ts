@@ -573,12 +573,14 @@ describe('checkLesson', () => {
           { ...study, author: ' ' },
           { ...study, url: 'lichess.org/study/test' },
           { ...study, license: { name: 'CC BY 4.0', url: 'creativecommons' } },
+          { ...study, url: 'mailto:someone@example.com' },
         ],
       }),
     ).toEqual([
       { path: 'sources[0]', message: 'needs a title and an author' },
-      { path: 'sources[1].url', message: 'lichess.org/study/test is not a URL' },
+      { path: 'sources[1].url', message: 'lichess.org/study/test is not a web address' },
       { path: 'sources[2].license', message: 'needs a name and a URL' },
+      { path: 'sources[3].url', message: 'mailto:someone@example.com is not a web address' },
     ]);
     expect(checkLesson({ ...lesson, sources: [...lesson.sources, wikibooks] })).toEqual([
       {

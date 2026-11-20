@@ -54,7 +54,8 @@ const openingMoves = (index: LessonIndex) =>
 /**
  * How a note names `source`: a lichess study by its author, anything else by
  * its title and author, and then its license if it has one. A note is plain
- * text, so the license's link stays in the lesson file.
+ * text, so the license's link stays in the lesson file. Its URL parses: the
+ * checker has read every shipped lesson's sources.
  */
 function credit({ title, author, url, license }: LessonSource): string {
   const parsed = new URL(url);

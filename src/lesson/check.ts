@@ -173,8 +173,8 @@ function checkSources({ sources }: Lesson, report: Report) {
     const at = `sources[${i}]`;
     if (!title.trim() || !author.trim()) report(at, 'needs a title and an author');
     // Not URL.parse, which Node 22.0 lacks.
-    if (!URL.canParse(url)) return report(`${at}.url`, `${url} is not a URL`);
-    const parsed = new URL(url);
+    const parsed = URL.canParse(url) ? new URL(url) : undefined;
+    if (!parsed?.hostname) return report(`${at}.url`, `${url} is not a web address`);
     if (!license && SHARE_ALIKE_HOSTS.some((domain) => onDomain(parsed, domain))) {
       report(`${at}.license`, `is required for ${parsed.hostname}, whose text is share-alike`);
     }
