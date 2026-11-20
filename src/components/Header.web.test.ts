@@ -6,8 +6,10 @@ import { pathNames, variationPath } from '@/lesson/select';
 import { PLACE_TYPE } from './Header';
 
 /**
- * The width a 360px page's header leaves its place: the page less its 10px
- * padding each side, the 28px logo and source link, and gaps of 8 and 12.
+ * The width a 360px page's header leaves its place, measured: the page less
+ * narrow.css's --page-space on each side (10px), --header-height (the 28px
+ * logo) and --source-link-size (28px), and Header.tsx's gaps of 8 and 12.
+ * Change it with any of them.
  */
 const PLACE_AT_360 = 264;
 

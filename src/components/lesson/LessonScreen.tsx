@@ -189,8 +189,10 @@ function LessonScreen({
   const openings = (uci: Uci) =>
     picking ? lessonsAfter(LESSON_INDEX, learner, [...shownLine, uci]) : [];
   const line = view.variation.at(-1);
-  // Without the groups the board's line is in, as the panel's eyebrow says them.
-  const shortName = (id: VariationId) => nameWithin(lesson.variations[id].name, view.variation);
+  // Without a group only where a narrow page's header shows it too: the board's line or its
+  // parent. A wide page's eyebrow shows more, but a phone hides it.
+  const shortName = (id: VariationId) =>
+    nameWithin(lesson.variations[id].name, view.variation.slice(-2));
   const leadsTo = (candidate: Candidate) => {
     const into = openings(candidate.move.uci);
     if (into.length) return into.map((id) => LESSON_INDEX[id].title).join(' or ');
