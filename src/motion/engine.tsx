@@ -7,10 +7,12 @@
  * thread, with the web's spring and with the speed it had (Reanimated's own
  * springs drop velocity that points away from the target, so a reversal
  * would stall instead of turning around). A list only animates the change
- * its `layoutDependency` names: it arms its views before React commits and
- * disarms them a frame later, so other layout changes land at once.
+ * its `layoutDependency` names: its views carry their layout animation in
+ * that render alone (Reanimated takes the config with the commit; a shared
+ * value written from JavaScript can arrive after the mount), so other layout
+ * changes land at once.
  */
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import Animated, {
   type AnimationObject,
@@ -28,8 +30,6 @@ import type { HostProps, ListMotion } from './types';
 const PRECISION = 0.25;
 
 interface NativeListMotion extends ListMotion {
-  /** Its views animate the layout change React is committing */
-  readonly armed: SharedValue<boolean>;
   readonly spring: Spring;
 }
 
@@ -40,27 +40,9 @@ interface Run {
 }
 type Runs = { x?: Run; y?: Run };
 
+/** Nothing to do around a commit: each view's layout animation does the work */
 export function useListMotion(spring: Spring): NativeListMotion {
-  const armed = useSharedValue(false);
-  const changes = useRef(0);
-  return useMemo(
-    () => ({
-      armed,
-      spring,
-      before() {
-        changes.current += 1;
-        armed.set(true);
-        return changes.current;
-      },
-      after(change) {
-        // After the UI thread has mounted this commit; a later change keeps it armed.
-        requestAnimationFrame(() => {
-          if (changes.current === change) armed.set(false);
-        });
-      },
-    }),
-    [armed, spring],
-  );
+  return useMemo(() => ({ spring, before: () => undefined, after: () => {} }), [spring]);
 }
 
 /**
@@ -70,17 +52,13 @@ export function useListMotion(spring: Spring): NativeListMotion {
  * nothing, which drew old rows over new ones whenever a list's rows changed
  * outside an animated change.
  */
-export function MotionHost({ join, list, arriving, ...rest }: HostProps) {
+export function MotionHost({ join, list, animating, ...rest }: HostProps) {
   const runs = useSharedValue<Runs>({});
   const motion = list as NativeListMotion | null;
-  const armed = motion?.armed;
   const spring = motion?.spring;
-  const layout = useMemo(
-    () => armed && spring && layoutTransition(armed, spring, runs),
-    [armed, spring, runs],
-  );
+  const layout = useMemo(() => spring && layoutTransition(spring, runs), [spring, runs]);
   // Read once, at mount: only an arrival fades in.
-  const [entering] = useState(() => (arriving && spring ? enterAnimation(spring) : undefined));
+  const [entering] = useState(() => (animating && spring ? enterAnimation(spring) : undefined));
   if (!motion) return <View {...rest} ref={join as never} />;
   return (
     <Animated.View {...rest} ref={join as never} layout={layout || undefined} entering={entering} />
@@ -88,19 +66,10 @@ export function MotionHost({ join, list, arriving, ...rest }: HostProps) {
 }
 
 /** Springs a view from where it is on screen to its new place, keeping its speed */
-function layoutTransition(
-  armed: SharedValue<boolean>,
-  spring: Spring,
-  runs: SharedValue<Runs>,
-): LayoutAnimationFunction {
+function layoutTransition(spring: Spring, runs: SharedValue<Runs>): LayoutAnimationFunction {
   return (values) => {
     'worklet';
     const size = { width: values.targetWidth, height: values.targetHeight };
-    if (!armed.value)
-      return {
-        initialValues: { originX: values.targetOriginX, originY: values.targetOriginY, ...size },
-        animations: {},
-      };
     return {
       initialValues: { originX: values.currentOriginX, originY: values.currentOriginY, ...size },
       animations: {

@@ -11,7 +11,7 @@ import type { Spring } from './spring';
 import type { HostProps, ListMotion } from './types';
 
 /** A plain view: the engine animates its DOM element */
-export function MotionHost({ join, list: _list, arriving: _arriving, ...rest }: HostProps) {
+export function MotionHost({ join, list: _list, animating: _arriving, ...rest }: HostProps) {
   return <View {...rest} ref={join as never} />;
 }
 

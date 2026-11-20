@@ -51,8 +51,8 @@ export interface HostProps extends ViewProps {
   readonly join: (el: MotionElement | null) => (() => void) | undefined;
   /** The list it is in, if any */
   readonly list: ListMotion | null;
-  /** It mounts with a change its list animates: it fades in */
-  readonly arriving: boolean;
+  /** It renders with a change its list animates: mounting now, it fades in; moving, it glides */
+  readonly animating: boolean;
 }
 
 /**

@@ -53,21 +53,21 @@ class Measured extends Component<MeasuredProps, State> {
 
   state: State = {
     dependency: this.props.layoutDependency,
-    list: { join: this.join, motion: this.props.motion, arriving: false },
+    list: { join: this.join, motion: this.props.motion, animating: false },
   };
 
   static getDerivedStateFromProps(
     { layoutDependency, motion, still }: MeasuredProps,
     { dependency, list }: State,
   ): Partial<State> | null {
-    const arriving = !still && !Object.is(dependency, layoutDependency);
+    const animating = !still && !Object.is(dependency, layoutDependency);
     if (
-      arriving === list.arriving &&
+      animating === list.animating &&
       motion === list.motion &&
       Object.is(dependency, layoutDependency)
     )
       return null;
-    return { dependency: layoutDependency, list: { join: list.join, motion, arriving } };
+    return { dependency: layoutDependency, list: { join: list.join, motion, animating } };
   }
 
   getSnapshotBeforeUpdate(prev: Props): { readonly before: unknown } | null {
@@ -77,6 +77,13 @@ class Measured extends Component<MeasuredProps, State> {
 
   componentDidUpdate(prev: Props, _state: unknown, snapshot: { readonly before: unknown } | null) {
     if (snapshot && this.changed(prev)) this.props.motion.after(snapshot.before, this.items);
+    // Once the change is on screen, later renders are no longer part of it.
+    if (this.state.list.animating)
+      requestAnimationFrame(() =>
+        this.setState(({ list }) =>
+          list.animating ? { list: { ...list, animating: false } } : null,
+        ),
+      );
   }
 
   render() {
@@ -91,7 +98,7 @@ class Measured extends Component<MeasuredProps, State> {
 interface ListContextValue {
   readonly join: (id: Key, el: MotionElement) => () => void;
   readonly motion: ListMotion;
-  readonly arriving: boolean;
+  readonly animating: boolean;
 }
 const ListContext = createContext<ListContextValue | null>(null);
 
@@ -123,6 +130,6 @@ export function MotionView({ id, ...rest }: Omit<ViewProps, 'id'> & { readonly i
     [join, id],
   );
   return (
-    <MotionHost {...rest} join={ref} list={list?.motion ?? null} arriving={!!list?.arriving} />
+    <MotionHost {...rest} join={ref} list={list?.motion ?? null} animating={!!list?.animating} />
   );
 }
