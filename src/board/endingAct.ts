@@ -121,11 +121,11 @@ export function endingAct(
     // It tips toward the middle of the board, where there is room to see it.
     return { square, part, at, lean: at[0] < 4 ? 1 : -1 };
   };
-  const [learner, rival] = PARTS[mood];
+  const [learnerPart, rivalPart] = PARTS[mood];
   const won = mood === 'won';
   return {
     mood,
-    kings: [king(kings.learner, learner), king(kings.rival, rival)],
+    kings: [king(kings.learner, learnerPart), king(kings.rival, rivalPart)],
     ...(mood !== 'drawn' && { spot: squareOffset(kings.learner, orientation) }),
     sparks: won ? sparks() : [],
     confetti: won ? confetti() : [],

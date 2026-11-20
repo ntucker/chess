@@ -450,8 +450,9 @@ const partClass = (part: KingPart) => `ending-${part}`;
 /**
  * The layer's elements for `act`, each carrying its numbers as CSS variables.
  * Each leaves once its animations are done, so the board doesn't carry them
- * while the position is studied; only the kings' classes stay. Without
- * motion Board.css animates none of them, so the layer stays empty.
+ * while the position is studied; only the kings' classes stay. Each is
+ * unseen until Board.css animates it, which it doesn't without motion, so
+ * then the layer stays empty.
  */
 function endingLayer({ spot, sparks, confetti }: EndingAct): HTMLElement {
   const layer = document.createElement(ENDING_TAG);

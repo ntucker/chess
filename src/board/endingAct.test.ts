@@ -103,13 +103,13 @@ describe('cardBand', () => {
 describe('Board.css', () => {
   const css = readFileSync(join(__dirname, '../components/Board.css'), 'utf8');
 
-  it('draws every mood, king part and tint the act names', () => {
+  it('names every mood, king part and tint the act names', () => {
     for (const mood of Object.keys(ACT_TIMES)) expect(css).toContain(`.ending-${mood} `);
     for (const part of KING_PARTS) expect(css).toContain(`.ending-${part}`);
     for (const tint of TINTS) expect(css).toContain(`cg-ending .${tint} `);
   });
 
-  it('times its animations only by beats that ACT_TIMES sets', () => {
+  it('times its animations only by beats that ACT_TIMES sets (the card times itself by the rest)', () => {
     const beats = new Set([...css.matchAll(/var\(--act-(\w+)\)/g)].map(([, beat]) => beat));
     expect(beats.size).toBeGreaterThan(0);
     for (const beat of beats) expect(Object.keys(ACT_TIMES.won)).toContain(beat);
