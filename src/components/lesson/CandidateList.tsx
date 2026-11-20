@@ -38,8 +38,8 @@ interface Props {
   /**
    * The learner points at a row: the mouse moves over it, keyboard focus
    * lands on it, or a finger holds it (or taps it, when it isn't playable).
+   * `time` is when, for the mouse (see `PeekAction`).
    */
-  /** The learner points at a row: `time` is when, if by hovering (see `PeekAction`). */
   readonly onPoint: (uci: Uci, time?: number) => void;
   /**
    * Keyboard focus moves on past the list. The preview ends first, so the
@@ -214,10 +214,11 @@ function Row({
       accessibilityState={{ disabled: !playable }}
       onPress={playable ? () => onPlay(candidate) : point}
       onLongPress={point}
-      // At once, interrupting the slide before. A move, not an enter: a list
-      // that changes under a still mouse previews nothing until the mouse
-      // moves. Leaving keeps the preview (the screen ends it), so the learner
-      // can go on to its notes; rows crossed on the way there let it be (`HOLD_MS`).
+      // On the first move, replacing the preview before mid-slide. A move, not
+      // an enter: a list that changes under a still mouse previews nothing
+      // until the mouse moves. Leaving keeps the preview (the screen ends it),
+      // so the learner can go on to its notes; a row crossed on the way there,
+      // for less than `HOLD_MS`, gives the card back to the row held before.
       onPointerMove={({ nativeEvent, timeStamp }) => {
         if (!pointed && hovers(nativeEvent.pointerType)) onPoint(move.uci, timeStamp);
       }}

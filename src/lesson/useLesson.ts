@@ -36,6 +36,7 @@ import type { Lesson, Note, PositionKey, Uci } from './lesson';
 import { earnedMark, rowMarks, steering } from './marks';
 import { lessonOpponent } from './opponent';
 import { beforeSideMoves, moveKinds, opponentPlays } from './practice';
+import { samePointer } from './peek';
 import { initialScreen, screenReducer } from './screen';
 import { bookMoves, type Candidate, engineCandidates } from './select';
 import { lessonView, type Pointer, preview, type ShownNote } from './view';
@@ -284,9 +285,9 @@ export function useLesson(
       // Rows report every mouse move, and a dispatch renders the screen even
       // when the reducer keeps its state, so a row already pointed at sends
       // none (its preview may be hidden by a playback or a loading lesson).
-      const { candidate } = peek?.key === key ? peek : {};
-      if (candidate?.at === 'row' && candidate.uci === uci) return;
-      dispatch({ type: 'candidate', key, candidate: { at: 'row', uci }, time });
+      const candidate: Pointer = { at: 'row', uci };
+      if (peek?.key === key && samePointer(peek.candidate, candidate)) return;
+      dispatch({ type: 'candidate', key, candidate, time });
     },
     /** The mouse reaches the idea card at `time`: a row it only crossed on the way gives the card back. */
     reachCard: (time: number) => dispatch({ type: 'card', key, time }),

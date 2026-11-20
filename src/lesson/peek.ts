@@ -108,9 +108,9 @@ export function peekReducer(peek: Peek | undefined, action: PeekAction): Peek | 
                 hover:
                   action.time === undefined
                     ? undefined
-                    : { since: action.time, held: holding(now, action.time) },
+                    : { since: action.time, held: heldAt(now, action.time) },
               }
-            : { ...now, candidate: undefined };
+            : { ...now, candidate: undefined, hover: undefined };
       // Pointing that changes nothing keeps the same state, so nothing re-renders.
       if (samePointing(now, next)) return peek;
       return repoint(here, next);
@@ -120,7 +120,7 @@ export function peekReducer(peek: Peek | undefined, action: PeekAction): Peek | 
       if (!here?.candidate) return peek;
       // The candidate held then: the one pointed at now, or if it was only
       // crossed on the way, the one held before it.
-      const back = holding(here, action.time);
+      const back = heldAt(here, action.time);
       if (!back || samePointer(back, here.candidate)) return peek;
       return { ...here, candidate: back, hover: undefined };
     }
@@ -129,7 +129,9 @@ export function peekReducer(peek: Peek | undefined, action: PeekAction): Peek | 
         ? { ...peek, note: undefined }
         : peek;
     case 'leave':
-      return peek?.kind === 'play' ? { ...peek, candidate: undefined, note: undefined } : undefined;
+      return peek?.kind === 'play'
+        ? { ...peek, candidate: undefined, note: undefined, hover: undefined }
+        : undefined;
     case 'play': {
       const here = peek?.key === action.key ? peek : undefined;
       const { candidate, note } = here ?? {};
@@ -150,7 +152,7 @@ export function peekReducer(peek: Peek | undefined, action: PeekAction): Peek | 
  * The candidate held once `pointing`'s is left at `time`: its own, if pointed
  * at for `HOLD_MS` or more (or not by hovering), else the one held before it.
  */
-const holding = ({ candidate, hover }: Pointing, time: number) =>
+const heldAt = ({ candidate, hover }: Pointing, time: number) =>
   candidate && (!hover || time - hover.since >= HOLD_MS) ? candidate : hover?.held;
 
 /** `here` pointing at `next` instead, a playback going on unseen. */
@@ -161,7 +163,8 @@ const repoint = (here: Peek | undefined, next: Pointing): Peek => {
     : { kind: 'point', key: next.key, candidate, note, hover };
 };
 
-const samePointer = (a?: Pointer, b?: Pointer) =>
+/** Whether two pointers point at the same candidate, by its row or its piece's drag. */
+export const samePointer = (a?: Pointer, b?: Pointer) =>
   a === b ||
   (a?.at === 'row' && b?.at === 'row' && a.uci === b.uci) ||
   (a?.at === 'drag' && b?.at === 'drag' && a.from === b.from && a.to === b.to);

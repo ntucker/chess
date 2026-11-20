@@ -209,6 +209,17 @@ describe('peekReducer', () => {
       expect(peekReducer(held, { type: 'card', key: THERE, time: HOLD_MS + 20 })).toBe(held);
     });
 
+    it('forgets the rows held once the preview ends', () => {
+      const cleared = reduce(
+        undefined,
+        row(ROW, 0),
+        row(OTHER, HOLD_MS),
+        { type: 'candidate', key: HERE },
+        row(THIRD, 2 * HOLD_MS),
+      );
+      expect(peekReducer(cleared, card(2 * HOLD_MS + 10))).toBe(cleared);
+    });
+
     it('returns to the held row behind a playback, which goes on', () => {
       const peek = reduce(
         playing(),
