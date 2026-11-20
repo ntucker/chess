@@ -14,6 +14,11 @@ export const AT_ONCE = { inTransition: false } as const;
  * ready. The root layout calls it. It sets the router once the router is up:
  * set before, the router has already read its default.
  */
+export function useNavigationTransitions() {
+  const router = useRouter();
+  useEffect(() => router.setTransitionMode('always'), [router]);
+}
+
 /**
  * Back to the page underneath, which a stack keeps as the learner left it,
  * then on to `then` there when given, such as another line picked from the
@@ -29,11 +34,6 @@ export function goBack(router: ImperativeRouter, fallback: Href, then?: Href) {
     router.back(AT_ONCE);
     router.push(then, AT_ONCE);
   }
-}
-
-export function useNavigationTransitions() {
-  const router = useRouter();
-  useEffect(() => router.setTransitionMode('always'), [router]);
 }
 
 /**
