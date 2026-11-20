@@ -90,8 +90,9 @@ const seenMark = (seen: ReadonlySet<string>, next: PositionKey) =>
  * How the opponent picks its reply during a clean Practice run (undefined
  * otherwise, so it plays its most played): the first of the replies that
  * count (most played first, `countedReplies`) below which the run can still
- * reach a line end not passed, or the first when every one is passed. The
- * opponent's own replies never spoil a run, so each is open to steer to.
+ * reach a line end not passed, or the first that counts when every one is
+ * passed. The opponent's own replies never spoil a run, so each is open to
+ * steer to.
  */
 export function steering(
   lesson: Lesson,
@@ -106,7 +107,9 @@ export function steering(
     return (
       replies.find(
         ({ move, next }) => counted.has(move) && cleanEnds(lesson, passed, next) === 'open',
-      ) ?? replies[0]
+      ) ??
+      replies.find(({ move }) => counted.has(move)) ??
+      replies[0]
     );
   };
 }

@@ -292,6 +292,20 @@ describe('steering', () => {
     expect(steering(rare, done, practice(true))!(replies)?.san).toBe('d4');
   });
 
+  it('plays the first reply that counts once every counted line is passed', () => {
+    // Nc3 leads the 1400 band's list, but over all bands it is under a tenth.
+    const games = {
+      [uciLine('e4', 'c6', 'd4')[2]]: [0, 0, 0, 0, 100],
+      [uciLine('e4', 'c6', 'Nc3')[2]]: [0, 0, 5, 0, 0],
+    };
+    const lesson = withMoves(LESSON, at('e4', 'c6'), (moves) =>
+      moves.map((move) => ({ ...move, games: games[move.uci] })),
+    );
+    const { candidates: replies } = lessonView({ lesson, line, ply: 2, opponent: 1500 });
+    expect(replies.map(({ san }) => san)).toEqual(['Nc3', 'd4']);
+    expect(steering(lesson, progress([], [ENDS.d4]), practice(true))!(replies)?.san).toBe('d4');
+  });
+
   it('steers only a clean Practice run, which alone can pass a line', () => {
     const done = progress([], [ENDS.d4]);
     expect(steering(LESSON, done, { mode: 'explore' })).toBeUndefined();
