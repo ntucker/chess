@@ -11,7 +11,13 @@
  */
 import { Chess } from 'chessops/chess';
 import { INITIAL_FEN } from 'chessops/fen';
-import { type Color, parsePositionKey, playMove, positionKey } from '@/game/replay';
+import {
+  type Color,
+  parsePositionKey,
+  playMove,
+  positionKey,
+  readPositionKey,
+} from '@/game/replay';
 import { positionHash } from '@/progress/progress';
 
 import { cleanLineEnds, gamesPlayed, inCleanRun } from './cleanRun';
@@ -118,9 +124,10 @@ export function lessonIndex(lessons: readonly Lesson[]): LessonIndex {
 }
 
 /**
- * Follows the guide moves `sharing` all play after `line`: a move only one of
- * them plays ends a line of its; one several play goes on. A position the
- * line passed twice ends nothing.
+ * Follows the guide moves `sharing` all play after `line`, at the learner's
+ * turns only their book moves (a move a guide warns against picks nothing): a
+ * move only one of them plays ends a line of its; one several play goes on. A
+ * position the line passed twice ends nothing.
  */
 function walkShared(
   sharing: readonly Lesson[],
@@ -130,7 +137,10 @@ function walkShared(
 ) {
   const key = lineKeys(line).at(-1)!;
   if (passed.has(key)) return;
-  const movesOf = (lesson: Lesson) => lesson.positions[key]?.moves ?? [];
+  // `lessonIndex` walks each side's lessons apart, so they all share one side.
+  const learnerMoves = readPositionKey(key)!.turn === sharing[0].side;
+  const movesOf = (lesson: Lesson) =>
+    (lesson.positions[key]?.moves ?? []).filter((move) => !learnerMoves || move.book);
   const ucis = new Set(sharing.flatMap((lesson) => movesOf(lesson).map(({ uci }) => uci)));
   for (const uci of ucis) {
     const playing = sharing.filter((lesson) => movesOf(lesson).some((move) => move.uci === uci));
