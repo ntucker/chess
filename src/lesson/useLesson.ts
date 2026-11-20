@@ -140,8 +140,7 @@ export function useLesson(
   }, [ctrl, earned, key, lesson.id, progress]);
   const marks = useMemo(() => rowMarks(lesson, progress, view), [lesson, progress, view]);
 
-  // While a lesson loads the board takes no move, so nothing pointed at
-  // previews either: the screen waits as one.
+  // Like canMove: nothing previews while a lesson loads.
   const here = !pending && peek?.key === key ? peek : undefined;
   const playing = here?.kind === 'play' ? here : undefined;
   // A playback plays in its candidate's position, wherever the pointer goes.

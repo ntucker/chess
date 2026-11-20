@@ -50,6 +50,17 @@ const exploreAfter = (...sans: string[]) =>
     root.render(<Lesson start={uciLine(...sans)} />);
   });
 
+/** The same while the game waits on another lesson still loading. */
+const loadingAfter = (...sans: string[]) =>
+  act(async () => {
+    root = createRoot();
+    root.render(<Lesson start={uciLine(...sans)} pending />);
+  });
+
+/** That lesson arrives. */
+const loaded = (...sans: string[]) =>
+  act(async () => root?.render(<Lesson start={uciLine(...sans)} />));
+
 /** The same, in Practice. */
 async function practiceAfter(...sans: string[]) {
   await exploreAfter(...sans);
@@ -130,28 +141,22 @@ describe('useLesson Practice run', () => {
 
 describe('useLesson while a lesson loads', () => {
   it('offers no move while the game waits on another lesson', async () => {
-    await act(async () => {
-      root = createRoot();
-      root.render(<Lesson start={uciLine('e4')} pending />);
-    });
+    await loadingAfter('e4');
     // The store would drop it, and the board would show a move the game hasn't.
     expect(lesson().canPlay).toBe(false);
     expect(lesson().board.movableColor).toBeUndefined();
-    await act(async () => root?.render(<Lesson start={uciLine('e4')} />));
+    await loaded('e4');
     expect(lesson().canPlay).toBe(true);
     expect(lesson().board.movableColor).toBe('black');
   });
 
   it('previews no row while the game waits on another lesson', async () => {
-    await act(async () => {
-      root = createRoot();
-      root.render(<Lesson start={uciLine('e4')} pending />);
-    });
+    await loadingAfter('e4');
     await act(async () => lesson().pointRow(uciLine('e4', 'c6')[1]));
     expect(lesson().guidance.preview).toBeUndefined();
     expect(lesson().board.preview).toBeUndefined();
     // The same row, pointed at with the lesson shown, previews.
-    await act(async () => root?.render(<Lesson start={uciLine('e4')} />));
+    await loaded('e4');
     expect(lesson().guidance.preview?.candidate.san).toBe('c6');
     expect(lesson().board.preview).toBeDefined();
   });
