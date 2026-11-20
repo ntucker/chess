@@ -59,7 +59,8 @@ Brief:
 > 2. Read the diff, then the changed files where an interface lives. For a plan piece, each
 >    difference from the plan, and each public interface the plan doesn't name, needs a reason in
 >    the PR's `Plan deviations:` line; without one it blocks. For an ask or a follow-up, check that
->    the change does what it asks and nothing it rules out.
+>    the change does what it asks and nothing it rules out. A follow-up must also only fix a bug in,
+>    or finish, the approved work; new behavior or scope blocks unless the person confirmed it.
 > 3. Open the preview with Playwright and do what a learner would do with this change: every flow it
 >    touches, start to finish, including wrong moves, going back, and switching away and back. Repeat
 >    the main flow at 390x844. Read the console after each flow and screenshot each state you judge.
