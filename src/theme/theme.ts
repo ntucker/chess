@@ -17,7 +17,8 @@ const brand = {
   curtain: '#8f1b35',
 } as const;
 
-const rgba = (hex: string, alpha: number) => {
+/** `hex` (#rrggbb) at `alpha` opacity, as a CSS color. */
+export const rgba = (hex: string, alpha: number) => {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
 };

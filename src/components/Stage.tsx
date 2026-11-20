@@ -2,7 +2,9 @@ import { Surface, useTheme } from '@reactive/silk-native';
 import type { ComponentProps, ReactNode } from 'react';
 import { View } from 'react-native';
 
+import { gameEnding } from '@/game/ending';
 import Board, { type BoardProps } from '@/components/Board';
+import { EndingCard } from '@/components/EndingCard';
 import { EvaluationBar } from '@/components/EvaluationBar';
 import type { HeaderProps } from '@/components/Header';
 import { Page } from '@/components/Page';
@@ -68,7 +70,7 @@ interface BoardColumnProps {
     'name' | 'detail' | 'brief' | 'detailControl' | 'children'
   >;
   /** The board, with the player's side (`orientation`) at the bottom. */
-  readonly board: Omit<BoardProps, 'dom'>;
+  readonly board: Omit<BoardProps, 'dom' | 'ending'>;
   /** Swaps the sides: given, either name bar's disc is a button that does it. */
   readonly onSwap?: () => void;
   /** The move stepper's middle on a narrow page (`Transport`). */
@@ -87,6 +89,9 @@ export function BoardColumn({ game, rival, board, onSwap, stepperMiddle }: Board
   useStepKeys(ply, moves.length, goto);
   const swap = onSwap && { label: `Play as ${colorName(other)}`, onPress: onSwap };
   const styles = useNarrowStyles(STYLES);
+  // Only the game's last position has a result, so stepping back from it puts
+  // the ending away; so does a lesson's idea playing back over it on the board.
+  const ending = board.fen === game.current.fen ? gameEnding(game.current, side) : undefined;
   return (
     <>
       <PlayerBar
@@ -101,7 +106,8 @@ export function BoardColumn({ game, rival, board, onSwap, stepperMiddle }: Board
       <View style={styles.boardRow}>
         <EvaluationBar line={moves.slice(0, ply)} orientation={side} style={styles.evaluation} />
         <BoardFrame>
-          <Board {...board} dom={{ style: styles.fill, scrollEnabled: false }} />
+          <Board {...board} ending={ending} dom={{ style: styles.fill, scrollEnabled: false }} />
+          {ending ? <EndingCard ending={ending} rival={rival.name} orientation={side} /> : null}
         </BoardFrame>
       </View>
       <PlayerBar

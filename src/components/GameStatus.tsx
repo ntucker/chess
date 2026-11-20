@@ -4,6 +4,7 @@ import { View } from 'react-native';
 import { Eyebrow } from '@/components/Eyebrow';
 import { type Destination, PlaceLink } from '@/components/PlaceLink';
 import { NEW_VERSION, NewVersionError, reload } from '@/files/newVersion';
+import { resultVerdict } from '@/game/ending';
 import type { Color, Position } from '@/game/replay';
 import { describeOpponent, type Opponent } from '@/opponent/opponent';
 import { narrowLength, narrowStyles } from '@/theme/narrow';
@@ -162,10 +163,11 @@ function describeLatest({
   thinking,
 }: Omit<Game, 'viewing' | 'total'>) {
   const { result } = latest;
+  const mood = result && resultVerdict(result, playerColor).mood;
   const { name, style } = describeOpponent(opponent);
-  if (result?.winner === playerColor)
+  if (mood === 'won')
     return { title: 'Checkmate. Bravo!', detail: 'You won. Take a bow, then start a new game.' };
-  if (result?.winner)
+  if (mood === 'lost')
     return {
       title: 'Checkmate.',
       detail: `${name} won this one. Step back through it to see where it turned.`,
