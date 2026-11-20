@@ -39,8 +39,8 @@ export interface EngineReport {
   /** Book moves left that no book path reaches any more. */
   readonly unreachable: readonly { line: string; move: string }[];
   /**
-   * Each position whose overruled moves were taken out, since the guide had
-   * nothing else there, with how many positions went with them.
+   * Each position where the line now ends, since the engine overruled every
+   * move the guide recommended there: its moves, and how many positions went.
    */
   readonly cut: readonly { line: string; moves: readonly string[]; positions: number }[];
   /** Notes dropped, where they were and why. */
@@ -130,10 +130,11 @@ export async function engineCheck(
 }
 
 /**
- * Takes out each overruled move that was the guide's only recommendation:
- * left in, the lesson would still offer it as the main move there (the
- * first candidate). The line ends before it instead, and the positions only
- * it reached go too. A position left with no moves goes, like any line's end.
+ * Ends the line where the engine overruled the guide's only recommendation:
+ * left in, the lesson would still offer the first move there as its main
+ * one, the overruled move or a sideline the guide warned against. The
+ * position goes with all its moves, like any line's end, and so do the
+ * positions only it reached.
  */
 function cutLines(
   lesson: Lesson,
@@ -148,15 +149,13 @@ function cutLines(
     if (!position || position.moves.some(({ book }) => book)) continue;
     const at = lines.get(key)!;
     const before = Object.keys(positions).length;
-    const moves = position.moves.filter(({ uci }) => !ucis.includes(uci));
-    if (moves.length > 0) positions[key] = { ...position, moves };
-    else delete positions[key];
+    delete positions[key];
     const still = linesTo({ ...lesson, positions });
     for (const other of Object.keys(positions))
       if (lines.has(other) && !still.has(other)) delete positions[other];
     cut.push({
       line: sans(lesson, at.line),
-      moves: ucis.map((uci) => san(at.pos, uci)),
+      moves: position.moves.map(({ uci }) => san(at.pos, uci)),
       positions: before - Object.keys(positions).length,
     });
   }

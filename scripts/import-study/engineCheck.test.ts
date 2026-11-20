@@ -83,14 +83,15 @@ describe('engineCheck', () => {
       ...LESSON,
       positions: {
         ...LESSON.positions,
-        [keyAfter('d4')]: at([{ uci: uci('d4', 'e5'), book: true }]),
+        // 1...c5 is listed but not recommended: it must not become the main move.
+        [keyAfter('d4')]: at([{ uci: uci('d4', 'e5'), book: true }, { uci: uci('d4', 'c5') }]),
       },
     };
     delete only.positions[keyAfter('d4', 'd5')];
     const { lesson, report } = await engineCheck(only, evaluate);
     // 1.d4 is a line's end now: the lesson never offers 1...e5 as its main move.
     expect(Object.keys(lesson.positions)).toEqual([keyAfter()]);
-    expect(report.cut).toEqual([{ line: '1.d4', moves: ['e5'], positions: 3 }]);
+    expect(report.cut).toEqual([{ line: '1.d4', moves: ['e5', 'c5'], positions: 3 }]);
     expect(report.unreachable).toEqual([]);
   });
 
