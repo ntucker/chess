@@ -47,6 +47,30 @@ describe('mergeChapters', () => {
     expect(merged.positions[keyAfter('e4', 'c6', 'd4', 'd5', 'e5')].moves.length).toBe(2);
   });
 
+  it("books the learner's moves from a chapter written for the other side that recommends them", () => {
+    const theirs = chapters.map((chapter) => ({
+      ...chapter,
+      writtenFor: 'white' as const,
+      recommends: true as const,
+    }));
+    const own = mergeChapters(
+      lesson,
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'black')),
+    );
+    const merged = mergeChapters(
+      lesson,
+      theirs,
+      theirs.map((chapter) => extractChapter(chapter, 'black')),
+    );
+    const book = (of: typeof merged) =>
+      Object.values(of.positions).flatMap((pos) =>
+        pos.moves.filter((m) => m.book).map((m) => m.uci),
+      );
+    expect(book(merged).length).toBeGreaterThan(0);
+    expect(book(merged)).toEqual(book(own));
+  });
+
   it('groups chapter variations by the title before the colon, joining (I) and (II)', () => {
     expect(lesson.variations).toEqual({
       test: { name: 'Caro-Kann' },

@@ -48,6 +48,8 @@ export interface EngineReport {
   readonly cut: readonly { line: string; moves: readonly string[]; positions: number }[];
   /** Notes dropped, where they were and why. */
   readonly dropped: readonly { line: string; text: string; reason: string }[];
+  /** Book moves `fillBook` picked again where the engine overruled one of several guide moves. */
+  readonly refilled?: FillReport['filled'];
 }
 
 /** `lesson` with what `evaluate` overrules taken out, and what was taken. */
@@ -129,11 +131,12 @@ export async function engineCheck(
 }
 
 /**
- * Ends the line where the engine overruled the guide's only recommendation:
- * left in, the lesson would still offer the first move there as its main
- * one, the overruled move or a sideline the guide warned against. The
- * position goes with all its moves, like any line's end, and so do the
- * positions only it reached.
+ * Ends the line where the engine overruled the guide's only move there:
+ * left in, the lesson would still offer the overruled move as its main one.
+ * The position goes with its move, like any line's end, and so do the
+ * positions only it reached. Where the guide shows other moves, the
+ * position stays without a book move for `fillBook` to pick one again
+ * (4.d3 in the Giuoco Piano, whose guide books 4...f5 but also shows 4...Nf6).
  */
 function cutLines(
   lesson: Lesson,
@@ -146,6 +149,7 @@ function cutLines(
     const position = positions[key];
     // Gone already when an earlier cut was the only way to it.
     if (!position || position.moves.some(({ book }) => book)) continue;
+    if (position.moves.length > 1) continue;
     const at = lines.get(key)!;
     cut.push({
       line: sans(lesson, at.line),

@@ -112,6 +112,25 @@ describe('readPage', () => {
       ['Qe2', 'Bg6?', 'Ne5'],
     ]);
   });
+
+  it("reads an HTML theory table, numbered by its header, up to each row's evaluation", () => {
+    // The Albin's table (1.d4 d5 2.c4 e5), cut down.
+    const table = [
+      '==Theory table==',
+      '<table><tr><th></th><th>3</th><th>4</th><th>5</th></tr>',
+      '<tr><th>Main line</th><td>[[/3. dxe5|dxe5]]<br>d4</td><td>Nf3<br>Nc6</td><td>+=</td></tr>',
+      '<tr><th>Lasker Trap</th><td>...<br>...</td><td>e3?!<br>Bb4+</td><td>Bd2<br>dxe3!!</td></tr>',
+      '<tr><th></th><td>...<br>dxc4</td><td>Qa4+<br>Nc6</td><td>Nf3\n\n</td><td>+=</td></tr>',
+      '<tr><th></th><td>...<br>...</td><td>...<br>...</td><td>Bxb4??<br>fxg1(N)+!!</td></tr>',
+      '</table>',
+    ].join('\n');
+    expect(readPage(page('2...e5', table)).lines).toEqual([
+      ['dxe5', 'd4', 'Nf3', 'Nc6'],
+      ['dxe5', 'd4', 'e3?!', 'Bb4+', 'Bd2', 'dxe3!!'],
+      ['dxe5', 'dxc4', 'Qa4+', 'Nc6'],
+      ['dxe5', 'dxc4', 'Qa4+', 'Nc6', 'Bxb4??', 'fxg1=N+!!'],
+    ]);
+  });
 });
 
 describe('wikibooksPgn', () => {

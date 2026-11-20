@@ -78,7 +78,7 @@ export function readPage(source: string): Page {
     next: unique([...linked(template), ...linked(prose)]),
     text,
     about,
-    lines: tableLines(source),
+    lines: [...tableLines(source), ...htmlTableLines(source)],
   };
 }
 
@@ -169,6 +169,45 @@ function tableLines(source: string): string[][] {
     above = moves;
     return [...moves.values()];
   });
+}
+
+/**
+ * The rows of the page's theory table when it is written in HTML (the
+ * Albin's) rather than as `|lineN=`: a header row numbers the moves, and
+ * each cell holds that move's pair, White's and Black's split by `<br>`. A
+ * `...` repeats the move above it, as in `tableLines`; a row stops at a cell
+ * that is not a pair (the closing evaluation, "+=").
+ */
+function htmlTableLines(source: string): string[][] {
+  const lines: string[][] = [];
+  for (const [table] of source.matchAll(/<table[\s\S]*?<\/table>/gi)) {
+    const rows = [...table.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)].map(([, row]) => row);
+    const first = rows
+      .flatMap((row) => [...row.matchAll(/<th[^>]*>\s*(\d+)\s*<\/th>/gi)])
+      .map(([, number]) => Number(number))[0];
+    if (!first) continue;
+    let above = new Map<number, string>();
+    for (const row of rows) {
+      const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(([, cell]) => cell);
+      if (!cells.length) continue;
+      const moves = new Map<number, string>();
+      cells.every((cell, i) => {
+        const pair = cell.split(/<br\s*\/?>/i);
+        if (pair.length !== 2) return false;
+        return pair.every((half, side) => {
+          const ply = 2 * (first + i) - 1 + side;
+          const text = plainText(half).replace(/\((\w)\)/, '=$1');
+          const move = /^\.+$/.test(text) ? above.get(ply) : text;
+          if (!move) return false;
+          moves.set(ply, move);
+          return true;
+        });
+      });
+      above = moves;
+      if (moves.size) lines.push([...moves.values()]);
+    }
+  }
+  return lines;
 }
 
 /** PGN's numbers for move glyphs (NAGs): `?` is 2, `?!` is 6. */
@@ -299,8 +338,10 @@ export async function wikibooksPgn(
   log(
     `wikibooks ${root}: ${pages} pages read; ${reader.linesCut} of ${reader.lines} table lines cut short (another page's position, another lesson's, or an illegal move)`,
   );
-  // A missing root page would otherwise import as one bare move.
-  if (top.children.length === 0) throw new Error(`${root}: Wikibooks has no moves here`);
+  // A missing root page would otherwise import as one bare move. One with text
+  // but no next moves (the Fischer Defense's) still explains the move into it.
+  if (top.children.length === 0 && !top.comment)
+    throw new Error(`${root}: Wikibooks has nothing here`);
   const name = (node: BookNode) =>
     (node.name && titleCase(rename[node.name] ?? node.name)) || undefined;
   return chapters(top, path.slice(0, -1), learner, name, topName)

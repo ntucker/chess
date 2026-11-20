@@ -54,6 +54,8 @@ export interface Chapter {
    * opponent, and it recommends none of the learner's moves.
    */
   readonly writtenFor?: Color;
+  /** With `writtenFor`, it books the learner's moves all the same (`StudySource.recommends`). */
+  readonly recommends?: true;
 }
 
 export interface StudyMove {
@@ -169,16 +171,7 @@ export function withReplies(
 ): Chapter[] {
   const added = new Map<StudyMove, string>();
   for (const [line, reply] of Object.entries(replies)) {
-    const sans = line.split(' ');
-    const last = chapters
-      .map((chapter) =>
-        sans.reduce<StudyMove | undefined>(
-          (at, san, i) =>
-            (i === 0 ? chapter.moves : at?.children)?.find((move) => move.san === san),
-          undefined,
-        ),
-      )
-      .find(Boolean);
+    const last = lineEnd(chapters, line);
     if (!last) throw new Error(`No chapter plays ${line}, where a reply was named`);
     if (!sanToUci(last.after, reply)) throw new Error(`${reply} is not legal after ${line}`);
     added.set(last, reply);
@@ -189,23 +182,59 @@ export function withReplies(
   }));
 }
 
+/**
+ * `chapters` without the side lines `lines` names, each by its moves in SAN
+ * from the start, the last one leaving the line the lesson keeps (a Queen's
+ * Gambit introduction's joke `b3`, "You found the Easter Egg"). Throws for a
+ * line no chapter plays, as `withReplies` does.
+ */
+export function withoutLines(chapters: readonly Chapter[], lines: readonly string[]): Chapter[] {
+  const left = new Set(
+    lines.map((line) => {
+      const last = lineEnd(chapters, line);
+      if (!last) throw new Error(`No chapter plays ${line}, which was left out`);
+      return last;
+    }),
+  );
+  return chapters.map((chapter) => ({
+    ...chapter,
+    moves: rebuilt(chapter.moves, new Map(), new Map(), undefined, left),
+  }));
+}
+
+/** The last move of `line` (moves in SAN from the start) in the first chapter playing all of it. */
+function lineEnd(chapters: readonly Chapter[], line: string): StudyMove | undefined {
+  const sans = line.split(' ');
+  return chapters
+    .map((chapter) =>
+      sans.reduce<StudyMove | undefined>(
+        (at, san, i) => (i === 0 ? chapter.moves : at?.children)?.find((move) => move.san === san),
+        undefined,
+      ),
+    )
+    .find(Boolean);
+}
+
 /** What `rebuilt` changes on a move. */
 type Edit = Pick<StudyMove, 'comment'> & Partial<Pick<StudyMove, 'intro'>>;
 
 /**
  * Copies of `moves` and the moves after them, each with its `edits` applied,
- * and after it the reply (SAN) `replies` names for it.
+ * and after it the reply (SAN) `replies` names for it, without the moves in
+ * `left` and those after them.
  */
 function rebuilt(
   moves: readonly StudyMove[],
   edits: ReadonlyMap<StudyMove, Edit>,
   replies: ReadonlyMap<StudyMove, string> = new Map(),
   parent?: StudyMove,
+  left: ReadonlySet<StudyMove> = new Set(),
 ): StudyMove[] {
-  return moves.map((move) => {
+  return moves.flatMap((move) => {
+    if (left.has(move)) return [];
     const children: StudyMove[] = [];
     const copy: StudyMove = { ...move, ...edits.get(move), parent, children };
-    children.push(...rebuilt(move.children, edits, replies, copy));
+    children.push(...rebuilt(move.children, edits, replies, copy, left));
     const reply = replies.get(move);
     const uci = reply && sanToUci(move.after, reply);
     if (uci && !children.some((child) => child.uci === uci)) children.push(readReply(copy, uci));

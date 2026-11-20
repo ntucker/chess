@@ -357,8 +357,8 @@ function bookMoves(
   block: (move: StudyMove) => void,
 ): Set<StudyMove> {
   const book = new Set<StudyMove>();
-  // A chapter written for the other side recommends its own moves, not the learner's.
-  const recommends = chapter.writtenFor === undefined;
+  // A chapter written for the other side recommends its own moves, not the learner's, unless told.
+  const recommends = chapter.writtenFor === undefined || chapter.recommends === true;
   const visit = (moves: readonly StudyMove[]) => {
     moves.forEach((move, i) => {
       if (move.before.turn !== side) return visit(move.children);

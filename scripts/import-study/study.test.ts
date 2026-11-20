@@ -3,7 +3,7 @@ import { describe, expect, it } from '@jest/globals';
 import { positionKey } from '@/game/replay';
 import { uciLine } from '@/lesson/lesson.fixture';
 
-import { chapterMoves, isDubious, mainLine, parseStudy, withReplies } from './study';
+import { chapterMoves, isDubious, mainLine, parseStudy, withoutLines, withReplies } from './study';
 
 const AFTER_NF6 = 'rnbqkb1r/ppp1pppp/5n2/3p4/3P1B2/8/PPP1PPPP/RN1QKBNR w KQkq - 2 3';
 
@@ -129,5 +129,30 @@ describe('withReplies', () => {
     expect(() => withReplies(chapters, { 'd4 d5 Bf4 Nf6 Nf3 c5 dxc5': 'Qxc5' })).toThrow(
       'Qxc5 is not legal',
     );
+  });
+});
+
+describe('withoutLines', () => {
+  const pgn = chapter(
+    'Intro',
+    '1. d4 (1. b3 { You found the Easter Egg }) d5 2. c4 (2. Nf3 Nf6) *',
+  );
+
+  it('drops a side line and the moves after it, keeping the rest', () => {
+    const [kept] = withoutLines(
+      parseStudy(pgn, () => true),
+      ['b3', 'd4 d5 Nf3'],
+    );
+    expect([...chapterMoves(kept)].map(({ san }) => san)).toEqual(['d4', 'd5', 'c4']);
+    expect(kept.moves[0].children[0].parent).toBe(kept.moves[0]);
+  });
+
+  it('refuses a line no chapter plays', () => {
+    expect(() =>
+      withoutLines(
+        parseStudy(pgn, () => true),
+        ['e4'],
+      ),
+    ).toThrow('No chapter plays e4');
   });
 });

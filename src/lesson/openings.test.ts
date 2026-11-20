@@ -143,6 +143,14 @@ describe('lessonIndex', () => {
     ]);
   });
 
+  it("picks no lesson by a learner's move its guide warns against", () => {
+    // The Slav's guide shows 1...Nf6 too, as no book move.
+    const warned = withMoves(slav, keyAfter('d4'), (moves) => [...moves, { uci: 'g8f6' }]);
+    expect(lessonIndex([warned, antiLondon]).slav.lines.map(({ moves }) => moves)).toEqual([
+      uciLine('d4', 'd5', 'c4'),
+    ]);
+  });
+
   it('refuses two lessons of a side with the same moves, since no line picks either', () => {
     expect(() => lessonIndex([slav, { ...slav, id: 'copy' }])).toThrow('No moves pick slav, copy');
   });
