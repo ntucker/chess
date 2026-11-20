@@ -8,7 +8,7 @@ import { candidates } from './select';
 const study = (author: string) => ({
   title: 'A study',
   author,
-  url: 'https://lichess.org/study/abcd1234',
+  url: `https://lichess.org/study/${author}`,
 });
 const INDEX = {
   'caro-kann': {
@@ -61,6 +61,29 @@ describe('openingsLesson', () => {
         text: "Slav Defence, from Matkun's lichess study, Kitsune's lichess study and Wikibooks Chess Opening Theory by Wikibooks contributors (CC BY-SA 4.0).",
       },
     ]);
+  });
+
+  it('credits a lichess study by its author whatever form its URL takes', () => {
+    const forms = [
+      'http://lichess.org/study/abcd1234',
+      'https://lichess.org',
+      'https://www.lichess.org/x',
+    ];
+    const index = {
+      slav: { ...INDEX.slav, sources: forms.map((url) => ({ ...study('Matkun'), url })) },
+    };
+    const [slav] = openingsLesson(index).positions[keyAfter()].moves;
+    expect(slav.notes?.[0].text).toBe(
+      "Slav Defence, from Matkun's lichess study, Matkun's lichess study and Matkun's lichess study.",
+    );
+  });
+
+  it("credits the lessons' sources, a source two lessons share once", () => {
+    const index = {
+      ...INDEX,
+      other: { ...INDEX.slav, sources: [study('Kampf'), study('Matkun')] },
+    };
+    expect(openingsLesson(index).sources).toEqual([study('Kampf'), study('Matkun')]);
   });
 });
 

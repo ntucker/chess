@@ -57,10 +57,21 @@ const openingMoves = (index: LessonIndex) =>
  * stays in the lesson file.
  */
 function credit({ title, author, url, license }: LessonSource): string {
-  // Not `new URL(url).hostname`: React Native's URL does not implement it.
-  if (url.startsWith('https://lichess.org/')) return `${author}'s lichess study`;
+  if (LICHESS_URL.test(url)) return `${author}'s lichess study`;
   return `${title} by ${author}${license ? ` (${license.name})` : ''}`;
 }
+
+/** A lichess.org URL; read without `new URL(url).hostname`, which React Native's URL lacks. */
+const LICHESS_URL = /^https?:\/\/(?:www\.)?lichess\.org(?:\/|$)/i;
+
+/** Every source the index's lessons credit, each once (the same URL is the same source). */
+const sourcesOf = (index: LessonIndex): LessonSource[] => [
+  ...new Map(
+    Object.values(index).flatMap(({ sources }) =>
+      sources.map((source) => [source.url, source] as const),
+    ),
+  ).values(),
+];
 
 /** `items` as an English list: "a", "a and b", "a, b and c". */
 const listed = (items: readonly string[]) =>
@@ -81,12 +92,8 @@ export function openingsLesson(index: LessonIndex): Lesson {
     title: 'Openings',
     side,
     start: INITIAL_FEN,
-    // Its notes come from the lessons', so it credits their sources, each once.
-    sources: [
-      ...new Map(
-        Object.values(index).flatMap(({ sources }) => sources.map((s) => [s.url, s] as const)),
-      ).values(),
-    ],
+    // Its notes come from the lessons', so it credits their sources.
+    sources: sourcesOf(index),
     variations: { [OPENINGS_VARIATION]: { name: 'Openings' } },
     positions: {
       [START_KEY]: { variation: OPENINGS_VARIATION, moves: openingMoves(index) },
