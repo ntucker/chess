@@ -222,10 +222,10 @@ const PANES_FLOOR = 140;
  *
  * A part that starts from zero length takes `flexBasis: 'auto'` and a zero
  * width or height, never `flexBasis: 0` (narrow.test.ts checks): React Native
- * (0.88.1) keeps a node's flex basis from the page it was first laid out on when its
+ * keeps a node's flex basis from the page it was first laid out on when its
  * style changes, so the window crossing the narrow width left the panel a
  * strip beside the board, or the panes split unevenly. Yoga works out an
- * automatic basis afresh each time.
+ * automatic basis afresh each time. Seen on React Native 0.88.1.
  */
 export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
   'wide-only': { narrow: { display: 'none' } },
