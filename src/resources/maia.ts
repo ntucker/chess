@@ -15,4 +15,9 @@ import { maiaMove } from '@/maia/engine';
  * const uci = await ctrl.fetch(getMaiaMove, 1500, ['e2e4']);
  * ```
  */
-export const getMaiaMove = new Endpoint(maiaMove, { name: 'getMaiaMove' });
+// Maia plays the move its network rates highest, so a position's answer never
+// changes and stays cached.
+export const getMaiaMove = new Endpoint(maiaMove, {
+  name: 'getMaiaMove',
+  dataExpiryLength: Infinity,
+});

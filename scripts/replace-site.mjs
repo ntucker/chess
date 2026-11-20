@@ -42,7 +42,7 @@ function hashedFiles(dir) {
           .map((path) => `${folder}/${path.replaceAll('\\', '/')}`)
           .filter((file) => statSync(join(dir, file)).isFile())
       : [],
-  );
+  ).sort();
 }
 
 // A site published before BUILDS_FILE existed counts as one build.
@@ -50,14 +50,17 @@ const builds = existsSync(BUILDS_FILE)
   ? JSON.parse(readFileSync(BUILDS_FILE, 'utf8'))
   : [hashedFiles('.')].filter((files) => files.length);
 const files = hashedFiles(site);
-// Publishing the same build again (a re-run) takes no second place.
-const same = JSON.stringify(builds.at(-1)) === JSON.stringify(files);
-const kept = (same ? builds : [...builds, files]).slice(-KEEP_BUILDS);
+// Publishing a build again (a re-run) moves it to the newest place rather
+// than taking a second one.
+const key = JSON.stringify(files);
+const kept = [...builds.filter((build) => JSON.stringify(build) !== key), files].slice(
+  -KEEP_BUILDS,
+);
 
 // Set aside the kept files of earlier builds, clear the site, and put them
 // back under the new build.
 const carried = mkdtempSync(join(tmpdir(), 'site-'));
-for (const file of new Set(kept.flat())) {
+for (const file of new Set(kept.slice(0, -1).flat())) {
   if (existsSync(file)) cpSync(file, join(carried, file));
 }
 for (const entry of readdirSync('.')) {

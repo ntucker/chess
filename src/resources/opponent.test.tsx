@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { DataProvider } from '@data-client/react';
-import { act, createElement } from 'react';
+import { act } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
 import { maiaMove } from '@/maia/engine';
@@ -63,7 +63,11 @@ describe('useWarmOpponent', () => {
   const render = (opponent: Opponent, active: boolean) =>
     act(async () => {
       root ??= createRoot();
-      root.render(createElement(DataProvider, null, createElement(Warm, { opponent, active })));
+      root.render(
+        <DataProvider>
+          <Warm opponent={opponent} active={active} />
+        </DataProvider>,
+      );
     });
 
   it('starts Maia on the starting position before it has to play', async () => {

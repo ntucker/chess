@@ -154,8 +154,6 @@ jobs:
               grep -qx "${preview#pr-preview/pr-}" <<< "$open" || rm -rf "$preview"
             done
             if [ "$target" = . ]; then
-              # Keeps recent builds' hashed files too, for pages opened before
-              # this deploy that load a file late (Maia's worker, a lesson).
               node "$GITHUB_WORKSPACE/repo/scripts/replace-site.mjs" "$site"
               copied=true
             else
