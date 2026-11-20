@@ -131,9 +131,10 @@ export function steering(
 type MarkSets = Readonly<Record<Mark, ReadonlySet<string>>>;
 
 /**
- * `progress`'s marks as sets: seen once per progress, passed once per
- * `lesson` (`passedSet`), since steering asks on every render. Without the
- * lesson nothing walks, so its passed set is never read.
+ * `progress`'s marks as sets, since steering asks on every render: seen is
+ * built once per progress, and passed comes from `passedSet`, which reuses
+ * the lesson's set while its passed list is unchanged. Without the lesson
+ * nothing walks, so its passed set is never read.
  */
 function markSets(progress: MarkedPositions, lesson: Lesson | undefined): MarkSets {
   let seen = seenSets.get(progress);
@@ -156,14 +157,15 @@ const lastPassed = new WeakMap<
 >();
 function passedSet(lesson: Lesson, list: readonly string[]) {
   const last = lastPassed.get(lesson);
-  const same =
-    last?.list === list ||
-    (last?.list.length === list.length && list.every((hash, i) => last.list[i] === hash));
-  if (last && same) return last.set;
+  // The same array is the common case (the same progress, asked again).
+  if (last && (last.list === list || sameHashes(last.list, list))) return last.set;
   const set = new Set(list);
   lastPassed.set(lesson, { list, set });
   return set;
 }
+
+const sameHashes = (a: readonly string[], b: readonly string[]) =>
+  a.length === b.length && a.every((hash, i) => b[i] === hash);
 
 /** Any opponent's move can be part of a clean run; of the learner's, only book moves. */
 const inCleanRun = (move: LessonMove, learner: boolean) => !learner || move.book === true;
