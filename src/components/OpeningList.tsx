@@ -29,6 +29,8 @@ import {
   openingList,
 } from '@/lesson/openingList';
 import { LessonIndexContext, type LessonId } from '@/resources/lesson';
+import { narrowLength, narrowStyles } from '@/theme/narrow';
+import { useNarrowStyles } from '@/theme/Narrow';
 import { fonts, typography } from '@/theme/theme';
 
 /**
@@ -81,35 +83,43 @@ function SideSection({
   readonly here?: ListPlace<LessonId>;
 }) {
   const { theme } = useTheme();
+  const spacing = useNarrowStyles(STYLES);
   if (!openings.length) return null;
   return (
     <View style={styles.side}>
       <View style={[styles.sideHead, { borderBottomColor: theme.semantic.color.borderSubtle }]}>
         <Eyebrow>Playing {colorName(side)}</Eyebrow>
       </View>
-      {openings.map((opening) => (
-        <OpeningEntry
-          key={opening.id}
-          opening={opening}
-          here={here?.lesson === opening.id ? (here.variation ?? opening.root.id) : undefined}
-        />
-      ))}
+      <View style={spacing.openings}>
+        {openings.map((opening, index) => (
+          <OpeningEntry
+            lastOfSide={index === openings.length - 1}
+            key={opening.id}
+            opening={opening}
+            here={here?.lesson === opening.id ? (here.variation ?? opening.root.id) : undefined}
+          />
+        ))}
+      </View>
     </View>
   );
 }
 
 /**
  * One opening: its name, then its variations as a tree, each branch closed
- * but those on the way to `here`, the variation the board was in.
+ * but those on the way to `here`, the variation the board was in. Its
+ * sources' credits show under its variations, while they show.
  */
 function OpeningEntry({
   opening,
   here,
+  lastOfSide,
 }: {
   readonly opening: ListedOpening<LessonId>;
   readonly here?: VariationId;
+  readonly lastOfSide: boolean;
 }) {
   const { root } = opening;
+  const spacing = useNarrowStyles(STYLES);
   return (
     <View style={styles.opening}>
       <Branch
@@ -120,10 +130,12 @@ function OpeningEntry({
         // The heading keeps the chevron's column too, so its name lines up with its variations'.
         gutter
         tag={here === undefined ? undefined : <NowPlaying />}
+        footer={
+          <View style={[spacing.credits, lastOfSide && styles.lastOfSideCredits]}>
+            <SourceCredits sources={opening.sources} />
+          </View>
+        }
       />
-      <View style={styles.credits}>
-        <SourceCredits sources={opening.sources} />
-      </View>
     </View>
   );
 }
@@ -134,7 +146,8 @@ function OpeningEntry({
  * `path` is the way to the variation the board was in, which ends there: a
  * branch on it starts open, and the learner's own toggle wins from then on.
  * `gutter` keeps the chevron's space before a row without one, when a row
- * beside it has one, so the names in a column line up.
+ * beside it has one, so the names in a column line up. `footer` follows the
+ * branches under it, and shows and hides with them.
  */
 function Branch({
   lesson,
@@ -143,6 +156,7 @@ function Branch({
   path,
   gutter,
   tag,
+  footer,
 }: {
   readonly lesson: LessonId;
   readonly variation: ListedVariation;
@@ -150,6 +164,7 @@ function Branch({
   readonly path: readonly VariationId[];
   readonly gutter: boolean;
   readonly tag?: ReactNode;
+  readonly footer?: ReactNode;
 }) {
   const { theme } = useTheme();
   const [toggled, setToggled] = useState<boolean>();
@@ -179,7 +194,9 @@ function Branch({
           tag={tag}
         />
       </View>
-      {open === undefined ? null : (
+      {open === undefined ? (
+        footer
+      ) : (
         // A closed branch stays mounted, only hidden: the branches under it
         // keep the learner's toggles, and the row the board was in scrolls
         // into view once, not each time its branch reopens.
@@ -203,6 +220,7 @@ function Branch({
               gutter={childGutter}
             />
           ))}
+          {footer}
         </View>
       )}
     </>
@@ -362,6 +380,19 @@ const ROW_PAD = 8;
 const NAME_ROLE = ['headingLg', 'body', 'bodySm'] as const;
 const nameRole = (depth: number) => NAME_ROLE[Math.min(depth, 2)];
 
+const OPENING_GAP = narrowLength('opening-gap', 28);
+/** Space below an open opening, its credits' last line, on every page. */
+const AFTER_OPEN = 28;
+const STYLES = narrowStyles((px) => ({
+  openings: { gap: px(OPENING_GAP) },
+  // The credits make up what a narrow page's gap leaves out, so an open opening stands apart.
+  credits: {
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: px(OPENING_GAP.times(-1).plus(AFTER_OPEN)),
+  },
+}));
+
 const styles = StyleSheet.create({
   content: { width: '100%', maxWidth: CONTENT_MAX, gap: 40, paddingTop: 12, paddingBottom: 48 },
   title: { fontFamily: fonts.display },
@@ -372,6 +403,8 @@ const styles = StyleSheet.create({
   nowText: { textTransform: 'uppercase', letterSpacing: 1.2 },
   rows: { gap: 2 },
   closed: { display: 'none' },
+  // Below a side's last opening, the space between sides, or the page's end, follows instead.
+  lastOfSideCredits: { paddingBottom: 0 },
   // Sub-variations hang from their parent's chevron on a thin rule.
   subRows: { marginLeft: TOGGLE / 2, paddingLeft: 6, borderLeftWidth: 1 },
   branch: { flexDirection: 'row', alignItems: 'flex-start' },
@@ -408,5 +441,4 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   line: { fontFamily: fonts.mono, fontSize: 13, marginLeft: 'auto', textAlign: 'right' },
-  credits: { paddingHorizontal: 10, paddingTop: 4 },
 });
