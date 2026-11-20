@@ -1,5 +1,5 @@
 import { a11yState, Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
-import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { evaluationReading, signedEvaluation } from '@/evaluation/evaluation';
@@ -7,9 +7,10 @@ import { candidateTone } from '@/lesson/drawings';
 import type { Uci } from '@/lesson/lesson';
 import type { Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
-import { Eyebrow } from '@/components/Eyebrow';
+import { Eyebrow, labelled } from '@/components/Eyebrow';
 import { QualityBadge } from '@/components/QualityBadge';
 import type { Mark } from '@/progress/progress';
+import { narrowPart } from '@/theme/narrow';
 import { fonts } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
 
@@ -38,13 +39,20 @@ interface Props {
   /**
    * The learner points at a row: the mouse moves over it, keyboard focus
    * lands on it, or a finger holds it (or taps it, when it isn't playable).
+   * `time` is when, for the mouse (see `PeekAction`).
    */
-  readonly onPoint: (uci: Uci) => void;
+  readonly onPoint: (uci: Uci, time?: number) => void;
   /**
    * Keyboard focus moves on past the list. The preview ends first, so the
    * idea card focus lands in shows the position's own notes.
    */
   readonly onTabOut: () => void;
+  /**
+   * On a narrow web page the rows sit side by side, as chips, without their
+   * share bars or where they lead: the idea card names that for the move
+   * pointed at. Leave it off where the list is about where each move leads.
+   */
+  readonly chips?: boolean;
 }
 
 /**
@@ -71,18 +79,25 @@ export function CandidateList({
   onPlay,
   onPoint,
   onTabOut,
+  chips,
 }: Props) {
   const rows = rareShown ? [...candidates, ...rare] : candidates;
   const shownMarks = new Set(
     rows.map(({ move }) => marks.get(move.uci)).filter((mark) => mark !== undefined),
   );
   return (
-    <Stack gap="3">
+    <Stack style={labelled}>
       <View style={styles.head}>
         <Eyebrow>{heading}</Eyebrow>
         <MarkLegend marks={shownMarks} />
       </View>
-      <Surface elevation="sunken" border="subtle" radius="md" style={styles.list}>
+      <Surface
+        {...(chips ? narrowPart('chips') : {})}
+        elevation="sunken"
+        border="subtle"
+        radius="md"
+        style={styles.list}
+      >
         {rows.map((candidate, index) => (
           <Row
             key={candidate.move.uci}
@@ -136,6 +151,7 @@ function RareToggle({
       {...a11yState({ expanded: shown })}
       onPress={onToggle}
       onKeyDown={tabOut(onTabOut)}
+      {...narrowPart('chip')}
       style={({ hovered, pressed }) => [
         styles.row,
         styles.toggle,
@@ -158,9 +174,6 @@ const tabOut = (onTabOut?: () => void) => (event: unknown) => {
   if (key === 'Tab' && !shiftKey) onTabOut?.();
 };
 
-/** How long the mouse rests on a row before it points at it. */
-const ROW_REST_MS = 150;
-
 interface RowProps {
   readonly candidate: Candidate;
   readonly main: boolean;
@@ -173,7 +186,8 @@ interface RowProps {
   readonly share?: number;
   readonly playable: boolean;
   readonly onPlay: (candidate: Candidate) => void;
-  readonly onPoint: (uci: Uci) => void;
+  /** As the list's `onPoint`. */
+  readonly onPoint: (uci: Uci, time?: number) => void;
   /** Tab (forward) leaves this row for whatever follows the list. */
   readonly onTabOut?: () => void;
 }
@@ -197,14 +211,6 @@ function Row({
   const tone = toneColors[candidateTone(candidate, main)];
   const hollow = candidate.rare || (engine && !main);
   const point = () => onPoint(move.uci);
-  // The mouse points at a row once it rests there, so one crossed on the way
-  // from another row down to the idea card leaves that row's preview be.
-  const resting = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const stopResting = () => {
-    clearTimeout(resting.current);
-    resting.current = undefined;
-  };
-  useEffect(() => stopResting, []);
 
   return (
     <Pressable
@@ -223,21 +229,17 @@ function Row({
       accessibilityState={{ disabled: !playable }}
       onPress={playable ? () => onPlay(candidate) : point}
       onLongPress={point}
-      // A move, not an enter: a list that changes under a still mouse
-      // previews nothing until the mouse moves. Leaving keeps the preview
-      // (the screen ends it), so the learner can go on to its notes.
-      onPointerMove={({ nativeEvent }) => {
-        if (pointed || !hovers(nativeEvent.pointerType)) return;
-        // Each move starts the wait again: a mouse still crossing the row isn't resting.
-        stopResting();
-        resting.current = setTimeout(() => {
-          resting.current = undefined;
-          point();
-        }, ROW_REST_MS);
+      // On the first move, replacing the preview before mid-slide. A move, not
+      // an enter: a list that changes under a still mouse previews nothing
+      // until the mouse moves. Leaving keeps the preview (the screen ends it),
+      // so the learner can go on to its notes; a row crossed on the way there,
+      // for less than `HOLD_MS`, gives the card back to the row held before.
+      onPointerMove={({ nativeEvent, timeStamp }) => {
+        if (!pointed && hovers(nativeEvent.pointerType)) onPoint(move.uci, timeStamp);
       }}
-      onPointerLeave={stopResting}
       onKeyDown={tabOut(onTabOut)}
       onFocus={point}
+      {...narrowPart('chip')}
       style={({ pressed }) => [
         styles.row,
         (pointed || (pressed && playable)) && {
@@ -251,7 +253,7 @@ function Row({
           hollow ? { borderWidth: 2, borderColor: tone } : { backgroundColor: tone },
         ]}
       />
-      <View style={styles.move}>
+      <View {...narrowPart('chip-fit')} style={styles.move}>
         <View style={styles.title}>
           <Text role="body" style={styles.san}>
             {san}
@@ -264,7 +266,7 @@ function Row({
           ) : null}
         </View>
         {leadsTo ? (
-          <Text role="caption" tone="secondary" numberOfLines={1}>
+          <Text {...narrowPart('chip-hidden')} role="caption" tone="secondary" numberOfLines={1}>
             {leadsTo}
           </Text>
         ) : null}
@@ -276,10 +278,13 @@ function Row({
       ) : null}
       {share === undefined ? null : (
         <View style={styles.share}>
-          <View style={[styles.track, { backgroundColor: color.tones.neutral.subtle }]}>
+          <View
+            {...narrowPart('chip-hidden')}
+            style={[styles.track, { backgroundColor: color.tones.neutral.subtle }]}
+          >
             <View style={[styles.fillBar, { width: `${share * 100}%`, backgroundColor: tone }]} />
           </View>
-          <Text role="caption" tone="secondary" style={styles.percent}>
+          <Text {...narrowPart('chip-fit')} role="caption" tone="secondary" style={styles.percent}>
             {percent(share)}
           </Text>
         </View>
@@ -325,8 +330,8 @@ const styles = StyleSheet.create({
   title: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   san: { fontFamily: fonts.mono, fontSize: 17 },
   risk: { textTransform: 'capitalize' },
-  share: { width: 92, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  track: { flex: 1, height: 4, borderRadius: 2, overflow: 'hidden' },
+  share: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  track: { width: 52, height: 4, borderRadius: 2, overflow: 'hidden' },
   fillBar: { height: '100%', borderRadius: 2 },
   percent: { width: 32, textAlign: 'right', fontFamily: fonts.mono },
   evaluation: { minWidth: 44, textAlign: 'right', fontFamily: fonts.mono },

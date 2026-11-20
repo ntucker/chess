@@ -18,7 +18,8 @@ import { dropMove, parsePositionKey, pieceAt } from '@/game/replay';
 import { type GameStore, useGame } from '@/game/useGame';
 import { getEvaluation, getTopMoves } from '@/resources/evaluation';
 import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
-import { hasMark } from '@/progress/progress';
+import { hasMark, UNTOUCHED } from '@/progress/progress';
+import { LESSON_INDEX } from '@/resources/lesson';
 import { addMark, getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNeedsStockfish } from '@/stockfish/demand';
@@ -33,8 +34,9 @@ import {
   type PlayedBack,
 } from './guidance';
 import type { Lesson, Note, PositionKey, Uci } from './lesson';
-import { earnedMark, rowMarks, steering } from './marks';
+import { earnedMark, openingMarks, rowMarks, steering } from './marks';
 import { lessonOpponent } from './opponent';
+import { samePointer } from './peek';
 import { beforeSideMoves, moveKinds, opponentPlays } from './practice';
 import { initialScreen, screenReducer } from './screen';
 import { bookMoves, type Candidate, engineCandidates } from './select';
@@ -89,7 +91,8 @@ export function useLesson(
   useWarmOpponent(opponent, focused);
   const [{ mode: modeState, peek, rareKey }, dispatch] = useReducer(screenReducer, initialScreen);
   const { mode } = modeState;
-  const progress = useSuspense(getProgress, lesson.id);
+  const everyProgress = useSuspense(getProgress);
+  const progress = everyProgress[lesson.id] ?? UNTOUCHED;
   // The opponent replies only where `opponentPlays` says; elsewhere the learner picks its move.
   // In a clean Practice run the opponent steers to lines not yet passed, so
   // runs with auto play on can pass every row, not only its most played replies.
@@ -137,8 +140,10 @@ export function useLesson(
   // Progress: the board's position earns its mark once it shows, and the
   // candidate rows show what is earned below them. An effect, since a
   // position shows by many events (a move, a step, the opponent's reply, a
-  // mode change), and showing it is what earns the mark.
-  const earned = earnedMark(view.place, modeState);
+  // mode change), and showing it is what earns the mark. The start earns
+  // none: no row leads there, and its rows are other lessons' (below).
+  const picking = view.ply === 0;
+  const earned = picking ? undefined : earnedMark(view.place, modeState);
   useEffect(() => {
     // addMark keeps a mark already there; checking first skips the request.
     if (earned && !hasMark(progress, earned, key)) {
@@ -146,7 +151,13 @@ export function useLesson(
       ctrl.fetch(addMark, { lesson: lesson.id, mark: earned, key }).catch(() => {});
     }
   }, [ctrl, earned, key, lesson.id, progress]);
-  const marks = useMemo(() => rowMarks(lesson, progress, view), [lesson, progress, view]);
+  // The start lists every opening, each row marked from its own lesson's
+  // progress and the line ends the index lists, so no lesson loads for it.
+  const marks = useMemo(
+    () =>
+      picking ? openingMarks(LESSON_INDEX, everyProgress, view) : rowMarks(lesson, progress, view),
+    [picking, everyProgress, lesson, progress, view],
+  );
 
   // Like canMove: nothing previews while a lesson loads.
   const here = !pending && peek?.key === key ? peek : undefined;
@@ -296,7 +307,17 @@ export function useLesson(
      * The learner points at a candidate list row. Leaving a row keeps its
      * preview, so the learner can move on to its notes; `leave` ends it.
      */
-    pointRow: (uci: Uci) => dispatch({ type: 'candidate', key, candidate: { at: 'row', uci } }),
+    pointRow: (uci: Uci, time?: number) => {
+      // Rows report every mouse move, and a dispatch renders the screen even
+      // when the reducer keeps its state, so the mouse moving on a row already
+      // pointed at sends none (its preview may be hidden by a playback or a
+      // loading lesson). A press or focus always goes: it may hold the row.
+      const candidate: Pointer = { at: 'row', uci };
+      if (time !== undefined && peek?.key === key && samePointer(peek.candidate, candidate)) return;
+      dispatch({ type: 'candidate', key, candidate, time });
+    },
+    /** The mouse reaches the idea card at `time`: a row it only crossed on the way gives the card back. */
+    reachCard: (time: number) => dispatch({ type: 'card', key, time }),
     /** The learner points at a note on the idea card, or at none. */
     pointNote: (note: Note | undefined) => dispatch({ type: 'note', key, note }),
     /** The learner lets a note on the idea card go: the mouse leaves it, or a second tap. */

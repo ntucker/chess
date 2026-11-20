@@ -5,7 +5,8 @@ import { createRoot, type Root } from 'test-renderer';
 import { gameReducer, startGame } from '@/game/game';
 import { DEFAULT_SETTINGS } from '@/settings/settings';
 
-import { SAMPLE, uciLine } from './lesson.fixture';
+import { keyAfter, SAMPLE, uciLine } from './lesson.fixture';
+import { HOLD_MS } from './peek';
 import { useLesson } from './useLesson';
 
 // Labels, Stockfish's best move and progress read through Data Client
@@ -14,11 +15,12 @@ import { useLesson } from './useLesson';
 // app's providers; these tests are about the Practice run. With auto play
 // off nobody replies.
 jest.mock('@/analysis/useMoveQualities', () => ({ useMoveQualities: () => [] }));
+const mockFetch = jest.fn(async (..._args: unknown[]) => {});
 jest.mock('@data-client/react', () => ({
-  useController: () => ({ fetch: async () => {} }),
+  useController: () => ({ fetch: mockFetch }),
   useFetch: () => {},
   useCache: () => undefined,
-  useSuspense: () => ({ seen: [], passed: [] }),
+  useSuspense: () => ({}),
 }));
 jest.mock('@/resources/evaluation', () => ({
   getEvaluation: {},
@@ -86,6 +88,7 @@ afterEach(async () => {
   await act(async () => root?.unmount());
   root = undefined;
   renders.length = 0;
+  mockFetch.mockClear();
 });
 
 describe('useLesson Practice run', () => {
@@ -156,6 +159,16 @@ describe('useLesson while a lesson loads', () => {
     expect(lesson().board.movableColor).toBe('black');
   });
 
+  it('keeps a row pressed after the mouse came onto it when the mouse reaches the idea card', async () => {
+    await exploreAfter('e4', 'c6', 'd4', 'd5');
+    const [first, second] = lesson().guidance.candidates.map(({ move }) => move.uci);
+    await act(async () => lesson().pointRow(first, 0));
+    await act(async () => lesson().pointRow(second, HOLD_MS));
+    await act(async () => lesson().pointRow(second));
+    await act(async () => lesson().reachCard(HOLD_MS + 10));
+    expect(lesson().guidance.preview?.candidate.move.uci).toBe(second);
+  });
+
   it('previews no row while the game waits on another lesson', async () => {
     await loadingAfter('e4');
     await act(async () => lesson().pointRow(uciLine('e4', 'c6')[1]));
@@ -176,5 +189,24 @@ describe('useLesson while a lesson loads', () => {
     await loaded(...line);
     expect(lesson().playback.playing).toBeUndefined();
     expect(lesson().playback.playable(note)).toBe('plan');
+  });
+});
+
+describe('useLesson progress', () => {
+  /** The marks Explore saved, as `[mark, position key]`. */
+  const saved = () =>
+    mockFetch.mock.calls.map(([, args]) => {
+      const { mark, key } = args as { mark: string; key: string };
+      return [mark, key];
+    });
+
+  it('marks a position Explore shows', async () => {
+    await exploreAfter('e4');
+    expect(saved()).toEqual([['seen', keyAfter('e4')]]);
+  });
+
+  it('marks nothing at the start, whose rows are every lesson', async () => {
+    await exploreAfter();
+    expect(saved()).toEqual([]);
   });
 });
