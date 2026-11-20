@@ -417,7 +417,6 @@ function ancestry(
   return path;
 }
 
-/** The narrowest variation on every one of `paths`: at least one, each from `ancestry`, so all start at the opening. */
 /**
  * The variation of each position on a chapter's main line: the narrowest
  * holding every chapter whose main line reaches it. A chapter cut out of a
@@ -477,6 +476,7 @@ function deepest(paths: readonly (readonly VariationId[])[]): VariationId {
 const within = (outer: readonly VariationId[], inner: readonly VariationId[]) =>
   outer.every((id, i) => inner[i] === id);
 
+/** The narrowest variation on every one of `paths`: at least one, each from `ancestry`, so all start at the opening. */
 function narrowest(paths: readonly (readonly VariationId[])[]): VariationId {
   const [first] = paths;
   let level = 0;
