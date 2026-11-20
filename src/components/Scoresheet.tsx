@@ -18,7 +18,7 @@ interface Props {
   /** The ply after a move that fell into a trap, marked as the mistake. */
   readonly trapped?: number;
   readonly onGoto: (ply: number) => void;
-  /** Fills the height it is given and scrolls within it, rather than stopping at its own most. */
+  /** Fills the height it is given and scrolls within it, instead of growing to at most 280px. */
   readonly fill?: boolean;
 }
 

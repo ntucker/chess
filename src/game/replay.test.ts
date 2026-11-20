@@ -10,6 +10,7 @@ import {
   lineMove,
   NAMED_MOVE,
   numberedLine,
+  numberedMove,
   pieceAt,
   playMove,
   positionKey,
@@ -34,6 +35,14 @@ describe('NAMED_MOVE', () => {
       ['12', '..', '', 'Nf6'],
       ['', '', '', 'Qxd4'],
     ]);
+  });
+});
+
+describe('numberedMove', () => {
+  it('numbers White’s move with a dot and Black’s with the mark given', () => {
+    expect(numberedMove('e4', 1)).toBe('1.e4');
+    expect(numberedMove('c6', 2)).toBe('1...c6');
+    expect(numberedMove('Nc6', 24, '…')).toBe('12…Nc6');
   });
 });
 

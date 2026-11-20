@@ -3,8 +3,7 @@ import { a11yState, Pressable, Text, useTheme } from '@reactive/silk-native';
 import type { ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import type { Ply } from '@/game/replay';
-import { narrowPart } from '@/theme/narrow';
+import { NARROW_CSS_LOADS, narrowPart } from '@/theme/narrow';
 import { fonts } from '@/theme/theme';
 
 interface Props {
@@ -14,7 +13,7 @@ interface Props {
   /**
    * On a narrow web page, the move shown between the step arrows, as a
    * button that opens the scoresheet; the jumps to the first and latest move
-   * go there too.
+   * go there too. Elsewhere the stepper keeps its four buttons.
    */
   readonly scoresheet?: {
     /** The move shown, in notation: "12…Nc6", or "Start". */
@@ -25,8 +24,10 @@ interface Props {
 }
 
 /** Steps through the game like a player's transport: start, back, forward, end. */
-export function Transport({ ply, total, onGoto, scoresheet }: Props) {
+export function Transport({ ply, total, onGoto, scoresheet: wanted }: Props) {
   const { theme } = useTheme();
+  // Only narrow.css can swap the jumps for the opener.
+  const scoresheet = NARROW_CSS_LOADS ? wanted : undefined;
   const { color } = theme.semantic;
   const buttons: {
     label: string;
@@ -72,10 +73,10 @@ export function Transport({ ply, total, onGoto, scoresheet }: Props) {
     },
   ];
   const hover = color.tones.neutral.subtle;
-  const button = ({ label, icon, size, target, disabled, jump }: (typeof buttons)[number]) => (
-    // A View, so a jump can be wide-only, which a Pressable's own props can't carry.
-    <View key={label} {...(jump && scoresheet ? narrowPart('wide-only') : {})}>
+  const button = ({ label, icon, size, target, disabled, jump }: (typeof buttons)[number]) => {
+    const pressable = (
       <Pressable
+        key={label}
         accessibilityRole="button"
         accessibilityLabel={label}
         disabled={disabled}
@@ -91,8 +92,17 @@ export function Transport({ ply, total, onGoto, scoresheet }: Props) {
           color={disabled ? color.tones.neutral.disabledFg : color.textPrimary}
         />
       </Pressable>
-    </View>
-  );
+    );
+    // In a View, so a jump can be wide-only, which a Pressable's own props can't carry.
+    return jump && scoresheet ? (
+      <View key={label} {...narrowPart('wide-only')}>
+        {pressable}
+      </View>
+    ) : (
+      pressable
+    );
+  };
+  const [first, back, forward, latest] = buttons;
   return (
     <View
       style={[
@@ -100,7 +110,8 @@ export function Transport({ ply, total, onGoto, scoresheet }: Props) {
         { backgroundColor: color.surfaceRaised, borderColor: color.borderSubtle },
       ]}
     >
-      {buttons.slice(0, 2).map(button)}
+      {button(first)}
+      {button(back)}
       {scoresheet ? (
         <View {...narrowPart('narrow-only')}>
           <Pressable
@@ -133,19 +144,10 @@ export function Transport({ ply, total, onGoto, scoresheet }: Props) {
           </Pressable>
         </View>
       ) : null}
-      {buttons.slice(2).map(button)}
+      {button(forward)}
+      {button(latest)}
     </View>
   );
-}
-
-/**
- * The move that led to `shown`, the position after `ply` moves, as the
- * stepper names it: "12.Nf3", "12…Nc6", or "Start" before any.
- */
-export function shownMove(shown: Ply, ply: number) {
-  const san = shown.move?.san;
-  if (!san) return 'Start';
-  return `${Math.ceil(ply / 2)}${ply % 2 ? '.' : '…'}${san}`;
 }
 
 const styles = StyleSheet.create({

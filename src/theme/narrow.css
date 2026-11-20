@@ -119,10 +119,13 @@
    * panel's other parts (a trap's card) crowd them, the panes keep a floor and
    * the panel scrolls instead.
    */
-  :root [data-narrow='lesson-panel'],
-  :root [data-narrow='lesson-body'] {
+  :root [data-narrow='lesson-panel'] {
     flex: 1 0 auto;
     min-height: 100%;
+  }
+  /* What the scoresheet drawer covers: all but the headline. */
+  :root [data-narrow='lesson-body'] {
+    flex: 1 0 auto;
   }
   /*
    * The scoresheet drawer (ScoresheetDrawer.tsx) takes the panel's place,

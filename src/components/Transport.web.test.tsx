@@ -5,10 +5,9 @@ import { SilkProvider } from '@reactive/silk-native';
 import { act, type ComponentProps } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { replay } from '@/game/replay';
 import { themes } from '@/theme/theme';
 
-import { shownMove, Transport } from './Transport';
+import { Transport } from './Transport';
 
 // Its font needs Expo's asset registry, which the web preset doesn't resolve.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
@@ -75,18 +74,5 @@ describe('Transport', () => {
       scoresheet: { label: 'Start', open: false, onToggle: () => {} },
     });
     expect(opener).toMatchObject({ label: 'Scoresheet, Start', disabled: true, expanded: 'false' });
-  });
-});
-
-describe('shownMove', () => {
-  const plies = replay(['e2e4', 'c7c6', 'd2d4']);
-
-  it('numbers White’s moves with a dot and Black’s with an ellipsis', () => {
-    expect([0, 1, 2, 3].map((ply) => shownMove(plies[ply], ply))).toEqual([
-      'Start',
-      '1.e4',
-      '1…c6',
-      '2.d4',
-    ]);
   });
 });

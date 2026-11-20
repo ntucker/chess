@@ -290,18 +290,15 @@ function LessonScreen({
     />
   ) : null;
 
-  /** The game's moves; `fill` fills the drawer. */
-  const scoresheet = (fill?: boolean) => (
-    <Scoresheet
-      plies={game.plies}
-      qualities={game.qualities}
-      ply={game.ply}
-      // A record of the line, so it outlives the trap's card.
-      trapped={view.trap && view.trap.ply + 1}
-      onGoto={game.goto}
-      fill={fill}
-    />
-  );
+  /** The game's moves, for the scoresheet beside the panes or in their place. */
+  const moves = {
+    plies: game.plies,
+    qualities: game.qualities,
+    ply: game.ply,
+    // A record of the line, so it outlives the trap's card.
+    trapped: view.trap && view.trap.ply + 1,
+    onGoto: game.goto,
+  };
   const settings = (
     <>
       <LessonControls mode={mode} onMode={chooseMode} />
@@ -345,19 +342,17 @@ function LessonScreen({
       }
       program={
         <Stack {...narrowPart('lesson-panel')} style={styles.sections}>
-          {/* The scoresheet drawer takes the place of this part on a narrow web page. */}
+          <StatusHeadline
+            {...status}
+            failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
+            eyebrowInHeader
+            eyebrowLink={listLink}
+          />
+          {/* The scoresheet drawer takes the place of this part on a narrow web page, under the headline, which tells of a failure. */}
           <View
             {...narrowPart(scoresheetOpen ? 'drawn-over' : 'lesson-body')}
             style={styles.sections}
           >
-            <StatusHeadline
-              {...status}
-              failure={
-                game.error && { who: described.name, error: game.error, onRetry: game.retry }
-              }
-              eyebrowInHeader
-              eyebrowLink={listLink}
-            />
             {/* On a narrow web page the moves follow the headline closely, with no rule between. */}
             <View {...narrowPart('wide-only')}>
               <Separator />
@@ -409,19 +404,20 @@ function LessonScreen({
               onGoto={game.goto}
               onClose={() => setScoresheetOpen(false)}
             >
-              {scoresheet(true)}
+              <Scoresheet {...moves} fill />
             </ScoresheetDrawer>
           ) : null}
           {/*
            * A narrow web page has no room for the rest under the panes: the
            * scoresheet opens in the drawer, the settings in a sheet. Only one
-           * copy of the settings is mounted at a time.
+           * copy of the settings is mounted at a time. This scoresheet stays
+           * while the drawer is open, so a window widened meanwhile still shows one.
            */}
           <Stack {...narrowPart('wide-only')} style={styles.sections}>
             <Separator />
             <Stack style={labelled}>
               <Eyebrow>Scoresheet</Eyebrow>
-              {scoresheet()}
+              <Scoresheet {...moves} />
             </Stack>
             {settingsOpen ? null : (
               <>

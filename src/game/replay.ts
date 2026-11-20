@@ -23,14 +23,20 @@ export const NAMED_MOVE = String.raw`(?:(?<![\w.])(\d+)\s?\.(\.\.)?\s?|(\.\.\.)|
 
 export const colorName = (color: Color) => (color === 'white' ? 'White' : 'Black');
 
+/**
+ * `san` numbered as the move played at `ply` (1 is White's first move):
+ * `2.e5`, or for Black `1...c6`, with `blackMark` in place of the dots if given.
+ */
+export function numberedMove(san: string, ply: number, blackMark = '...'): string {
+  return `${Math.ceil(ply / 2)}${ply % 2 === 1 ? '.' : blackMark}${san}`;
+}
+
 /** `sans` numbered, the first played at `firstPly` (1 is White's first move): `1.e4 c6 2.d4`, or `2...d5 3.e5`. */
 export function numberedLine(sans: readonly string[], firstPly = 1): string {
   return sans
     .map((san, i) => {
       const ply = firstPly + i;
-      const number = Math.ceil(ply / 2);
-      if (ply % 2 === 1) return `${number}.${san}`;
-      return i === 0 ? `${number}...${san}` : san;
+      return ply % 2 === 1 || i === 0 ? numberedMove(san, ply) : san;
     })
     .join(' ');
 }

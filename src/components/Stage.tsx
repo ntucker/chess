@@ -8,9 +8,9 @@ import { HEADER_HEIGHT, type HeaderProps } from '@/components/Header';
 import { Page } from '@/components/Page';
 import { PLAYER_DISC, PlayerBar } from '@/components/PlayerBar';
 import { BOARD_COLUMN_BASIS, PAGE_SPACE, PROGRAM_BASIS, STAGE_GAP } from '@/components/sideBySide';
-import { shownMove, Transport } from '@/components/Transport';
+import { Transport } from '@/components/Transport';
 import { useStepKeys } from '@/components/useStepKeys';
-import { colorName, opposite } from '@/game/replay';
+import { colorName, numberedMove, opposite } from '@/game/replay';
 import type { Game } from '@/game/useGame';
 import { NARROW_CSS_LOADS, narrowCalc, narrowLength, narrowPart } from '@/theme/narrow';
 
@@ -103,12 +103,16 @@ export function BoardColumn({ game, rival, board, onSwap, scoresheet }: BoardCol
           ply={ply}
           total={moves.length}
           onGoto={goto}
-          scoresheet={scoresheet && { ...scoresheet, label: shownMove(plies[ply], ply) }}
+          scoresheet={scoresheet && { ...scoresheet, label: shownMove(plies[ply].move?.san, ply) }}
         />
       </PlayerBar>
     </>
   );
 }
+
+/** The move on the board as the stepper names it, "12…Nc6" (`ply` moves in), or "Start" before any. */
+const shownMove = (san: string | undefined, ply: number) =>
+  san ? numberedMove(san, ply, '…') : 'Start';
 
 /**
  * Where the board column stands while what it shows loads: the frame and the

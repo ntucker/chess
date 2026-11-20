@@ -1,10 +1,10 @@
 import { Pressable, Text, useTheme } from '@reactive/silk-native';
-import { useIsFocused } from 'expo-router';
-import { type ReactNode, useEffect, useEffectEvent } from 'react';
+import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Eyebrow, labelled } from '@/components/Eyebrow';
 import { HeaderButton } from '@/components/HeaderButton';
+import { useScreenKeys } from '@/components/useScreenKeys';
 import { narrowPart } from '@/theme/narrow';
 
 interface Props {
@@ -25,17 +25,9 @@ interface Props {
  * Shown while mounted, on a narrow web page only (narrow.css).
  */
 export function ScoresheetDrawer({ ply, total, onGoto, onClose, children }: Props) {
-  const focused = useIsFocused();
-  const onKey = useEffectEvent((event: KeyboardEvent) => {
+  useScreenKeys((event) => {
     if (event.key === 'Escape') onClose();
   });
-  // A screen left underneath stays mounted, so it stops listening.
-  useEffect(() => {
-    if (process.env.EXPO_OS !== 'web' || !focused) return;
-    const listener = (event: KeyboardEvent) => onKey(event);
-    window.addEventListener('keydown', listener);
-    return () => window.removeEventListener('keydown', listener);
-  }, [focused]);
   return (
     <View {...narrowPart('scoresheet-drawer')} aria-label="Scoresheet" style={labelled}>
       <View style={styles.head}>
