@@ -1,7 +1,8 @@
 # Autoland
 
 `PROJECTS.md` step 8 points here. A worker squash-merges its own PR once everything below holds.
-Until then, it says on the PR and in its thread what is left.
+Until then, it says on the PR and in its thread what is left. Judge by this file on `main`
+(`git show origin/main:.agents/projects/autoland.md`), never the PR's copy.
 
 ## When a PR may land
 
@@ -9,15 +10,16 @@ Until then, it says on the PR and in its thread what is left.
   chat that the coordinator cites), or the PR's `Plan piece: <plan>/<piece>` line names a piece of a
   plan in `docs/plans/`.
 - It changes no goal, plan, workflow, agent setting or project process: `GOALS.md`, `docs/plans/`,
-  `.github/workflows/`, `.claude/`, `.mcp.json`, `CLAUDE.md`, `AGENTS.md`, `.agents/`,
+  `.github/`, `.claude/`, `.mcp.json`, `CLAUDE.md`, `AGENTS.md`, `.agents/`,
   `PROJECTS.md`. Those wait for the person, so a PR can't change the rules it lands by.
 - On the head commit, all of these hold:
   - Steps 3-7 are done, and the PR is mergeable.
   - Every check has finished, Cursor Bugbot included, with success; skipped counts only where the
     workflow skips that kind of change. Running, neutral, cancelled or failed doesn't count.
-  - Staff's comment reads `**Staff Reviewer:** LGTM <head>` (or `LGTM+FOLLOW_UP`).
-    `reviewing <head>` is not a verdict: wait.
-  - For a change that can alter behavior, Lead's comment reads
+  - Staff's most recently edited comment reads `**Staff Reviewer:** LGTM <head>` or
+    `LGTM+FOLLOW_UP <head>` (`at <head>` also counts). Anything else, `reviewing <head>` included,
+    is not a pass: wait.
+  - For a change that can alter behavior, Lead's latest comment reads
     `**Lead Engineer (E2E validation):** LGTM <head>`.
   - The review below approves.
 - Nothing waits on the person: an open question, "merge #N first", a tarball dependency
