@@ -184,9 +184,11 @@ export function guidance(input: GuidanceInput): Guidance {
     .filter(({ note }) => note.ideas?.some((idea) => drawsOnBoard(idea) && allowed(idea)))
     .map(({ note }) => note);
   const pointedNote = !playing && pointed && pointable.includes(pointed) ? pointed : undefined;
+  const top = listsTopMoves(view, mode) ? (engine?.top ?? []) : [];
   const board = boardShown({
     candidates,
-    withRare,
+    // A dragged piece lights its top moves as it does its candidates.
+    withRare: [...withRare, ...top],
     preview,
     dragged,
     ideas,
@@ -195,7 +197,6 @@ export function guidance(input: GuidanceInput): Guidance {
     showMoves: switches.showMoves,
     moveIdeas,
   });
-  const top = listsTopMoves(view, mode) ? (engine?.top ?? []) : [];
   const best =
     explore && switches.showMoves && !preview && !dragged && !playing && !pointedNote
       ? view.place === 'inside'
@@ -226,7 +227,7 @@ export function guidance(input: GuidanceInput): Guidance {
 /**
  * What the board draws: nothing while a note plays back; a pointed note's
  * ideas alone; a sliding preview's ideas; a dragged piece's candidates alone
- * (rare ones too); or else the listed candidates with only traps beside
+ * (rare ones and top moves too); or else the listed candidates with only traps beside
  * them (every idea where none are listed); with `showMoves` off, the traps
  * and the ideas of the move just played instead.
  */
