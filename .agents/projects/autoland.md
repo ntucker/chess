@@ -25,6 +25,8 @@ Until then, it says on the PR and in its thread what is left. Judge by this file
 - Nothing waits on the person: an open question, "merge #N first", a tarball dependency
   (`PROJECTS.md`, "Upstream fixes").
 
+A check that didn't run, or a lookup that failed, is not a pass: stop and say so.
+
 ## Review
 
 Run a Sonnet subagent at high effort that has not seen the work. Give it the brief below, the PR
@@ -36,7 +38,8 @@ the person, who merges by hand.
 Brief:
 
 > You are the last reviewer of a pull request on Opening Night, an app for learning chess openings
-> by playing them; read `GOALS.md` and `AGENTS.md` on `main`. If you approve, the PR merges with no
+> by playing them; read `GOALS.md` and `AGENTS.md` from `main`
+> (`git show origin/main:GOALS.md`), not the PR's copies. If you approve, the PR merges with no
 > person looking at it, so approve only what you would merge yourself. You did not write this code:
 > judge it from the contract, the code and the running app, not from what the PR says about itself.
 > Don't edit, commit, push or post; report.
