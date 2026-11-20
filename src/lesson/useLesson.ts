@@ -18,8 +18,8 @@ import { dropMove, parsePositionKey } from '@/game/replay';
 import { type GameStore, useGame } from '@/game/useGame';
 import { getEvaluation } from '@/resources/evaluation';
 import { gameOpponent } from '@/resources/opponent';
-import { hasMark, type MarkedPositions, UNTOUCHED } from '@/progress/progress';
-import { getLessons, LESSON_INDEX, type LessonId } from '@/resources/lesson';
+import { hasMark, UNTOUCHED } from '@/progress/progress';
+import { getLessons, LESSON_INDEX } from '@/resources/lesson';
 import { addMark, getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNeedsStockfish } from '@/stockfish/demand';
@@ -28,7 +28,7 @@ import { boardPress, lessonBoard } from './board';
 import { ideaPlayback } from './drawings';
 import { guidance, type LessonMode, notePlayback, type PlayedBack } from './guidance';
 import type { Lesson, Note, PositionKey, Uci } from './lesson';
-import { earnedMark, openingMarks, rowMarks, steering } from './marks';
+import { earnedMark, lessonsPassing, openingMarks, rowMarks, steering } from './marks';
 import { lessonOpponent } from './opponent';
 import { beforeSideMoves, moveKinds, opponentPlays } from './practice';
 import { initialScreen, screenReducer } from './screen';
@@ -145,15 +145,21 @@ export function useLesson(
   // The start lists every opening, each row marked from its own lesson.
   // Passing a row takes walking its lesson, so the lessons with a passed
   // line load for it, without holding up the page; until one has, its row
-  // is at most seen.
-  const passing = picking ? lessonsPassing(everyProgress) : [];
-  const walkable = passing.length ? ([passing] as const) : ([null] as const);
-  useFetch(getLessons, ...walkable);
-  const openingLessons = useCache(getLessons, ...walkable);
+  // is at most seen. The lesson on screen walks as itself, whose walks are
+  // already kept.
+  const passing = picking ? lessonsPassing(LESSON_INDEX, everyProgress) : [];
+  const walkable = passing.length ? passing : null;
+  useFetch(getLessons, walkable);
+  const openingLessons = useCache(getLessons, walkable);
   const marks = useMemo(
     () =>
       picking
-        ? openingMarks(LESSON_INDEX, everyProgress, openingLessons ?? {}, view)
+        ? openingMarks(
+            LESSON_INDEX,
+            everyProgress,
+            { ...openingLessons, [lesson.id]: lesson },
+            view,
+          )
         : rowMarks(lesson, progress, view),
     [picking, everyProgress, openingLessons, lesson, progress, view],
   );
@@ -289,7 +295,3 @@ export function useLesson(
     leave: () => dispatch({ type: 'leave' }),
   };
 }
-
-/** The lessons with a passed line end, the only ones whose start row can be passed. */
-const lessonsPassing = (progress: Readonly<Record<string, MarkedPositions>>) =>
-  (Object.keys(LESSON_INDEX) as LessonId[]).filter((id) => progress[id]?.passed.length);

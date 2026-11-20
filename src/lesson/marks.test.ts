@@ -4,7 +4,7 @@ import { type MarkedPositions, positionHash } from '@/progress/progress';
 
 import type { Lesson, LessonMove, PositionKey } from './lesson';
 import { keyAfter, SAMPLE, uciLine, withMoves } from './lesson.fixture';
-import { earnedMark, openingMarks, rowMarks, steering } from './marks';
+import { earnedMark, lessonsPassing, openingMarks, rowMarks, steering } from './marks';
 import { indexEntry, openingsLesson } from './openings';
 import { lessonView } from './view';
 
@@ -201,6 +201,12 @@ describe('openingMarks', () => {
     };
     expect(marksOf(passed)).toEqual({ e4: 'seen', d4: undefined });
     expect(marksOf(passed, { e4: LESSON, d4: D4 })).toEqual({ e4: 'passed', d4: 'passed' });
+  });
+
+  it('loads only the lessons with a passed line end, the only rows that can pass', () => {
+    expect(
+      lessonsPassing(index, { e4: progress([at('e4')], []), d4: progress([], [at('d4', 'd5')]) }),
+    ).toEqual(['d4']);
   });
 
   it('marks nothing for a lesson never played', () => {

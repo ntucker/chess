@@ -11,7 +11,13 @@ import type { Chess } from 'chessops/chess';
 import { parseUci } from 'chessops/util';
 
 import { positionKey, readPositionKey } from '@/game/replay';
-import { type Mark, type MarkedPositions, positionHash, UNTOUCHED } from '@/progress/progress';
+import {
+  type Mark,
+  type MarkedPositions,
+  positionHash,
+  type SavedProgress,
+  UNTOUCHED,
+} from '@/progress/progress';
 
 import type { Lesson, LessonMove, PositionKey, Uci } from './lesson';
 import { type LessonIndex, lessonOf } from './openings';
@@ -33,34 +39,46 @@ export function earnedMark(place: LessonView['place'], mode: ModeState): Mark | 
 export function rowMarks(
   lesson: Lesson,
   progress: MarkedPositions,
-  { candidates, learnerToMove }: Pick<LessonView, 'candidates' | 'learnerToMove'>,
+  view: Pick<LessonView, 'candidates' | 'learnerToMove'>,
 ): ReadonlyMap<Uci, Mark> {
-  const marks = new Map<Uci, Mark>();
-  for (const candidate of candidates) {
-    const mark = rowMark(lesson, markSets(progress), candidate, learnerToMove);
-    if (mark) marks.set(candidate.move.uci, mark);
-  }
-  return marks;
+  const sets = markSets(progress);
+  return marksBy(view, () => [lesson, sets]);
 }
 
 /**
  * The start position's rows' marks (src/lesson/openings.ts), by move: each
  * row's from its own opening's lesson and `progress`, whichever lesson is
  * loaded. A row's lesson missing from `lessons` can't be walked, so the row
- * is at most seen; only a lesson with a passed line end can pass its row.
+ * is at most seen; only a lesson with a passed line end can pass its row
+ * (`lessonsPassing`).
  */
 export function openingMarks(
   index: LessonIndex,
-  progress: Readonly<Record<string, MarkedPositions>>,
+  progress: SavedProgress,
   lessons: Readonly<Partial<Record<string, Lesson>>>,
+  view: Pick<LessonView, 'candidates' | 'learnerToMove'>,
+): ReadonlyMap<Uci, Mark> {
+  return marksBy(view, ({ move }) => {
+    const id = lessonOf(index, [move.uci]);
+    return id === undefined ? undefined : [lessons[id], markSets(progress[id] ?? UNTOUCHED)];
+  });
+}
+
+/** The lessons with a passed line end in `progress`: the only ones whose start row can pass. */
+export const lessonsPassing = <Id extends string>(
+  index: LessonIndex<Id>,
+  progress: SavedProgress,
+) => (Object.keys(index) as Id[]).filter((id) => progress[id]?.passed.length);
+
+/** Each row's mark, from the lesson (when at hand) and marks `source` gives for it. */
+function marksBy(
   { candidates, learnerToMove }: Pick<LessonView, 'candidates' | 'learnerToMove'>,
+  source: (candidate: Candidate) => readonly [Lesson | undefined, MarkSets] | undefined,
 ): ReadonlyMap<Uci, Mark> {
   const marks = new Map<Uci, Mark>();
   for (const candidate of candidates) {
-    const id = lessonOf(index, [candidate.move.uci]);
-    if (id === undefined) continue;
-    const sets = markSets(progress[id] ?? UNTOUCHED);
-    const mark = rowMark(lessons[id], sets, candidate, learnerToMove);
+    const found = source(candidate);
+    const mark = found && rowMark(...found, candidate, learnerToMove);
     if (mark) marks.set(candidate.move.uci, mark);
   }
   return marks;
@@ -112,18 +130,22 @@ function markSets(progress: MarkedPositions): MarkSets {
 }
 
 /**
- * The passed marks as a set, the same set as last time while they are the
+ * The passed marks as a set, the same set as before while they are the
  * same: a seen mark makes a new progress, and `cleanEnds` keeps its answers
- * per set.
+ * per set. It keeps the last few, one per lesson the start position's rows
+ * read, so reading one lesson's progress keeps another's.
  */
-let lastPassed: { readonly list: readonly string[]; readonly set: ReadonlySet<string> } | undefined;
+const recentPassed: { readonly list: readonly string[]; readonly set: ReadonlySet<string> }[] = [];
+const RECENT_PASSED = 4;
 function passedSet(list: readonly string[]) {
-  const last = lastPassed;
-  if (last?.list.length === list.length && list.every((hash, i) => last.list[i] === hash)) {
-    return last.set;
-  }
+  const same = recentPassed.find(
+    (recent) =>
+      recent.list.length === list.length && list.every((hash, i) => recent.list[i] === hash),
+  );
+  if (same) return same.set;
   const set = new Set(list);
-  lastPassed = { list, set };
+  recentPassed.unshift({ list, set });
+  recentPassed.length = Math.min(recentPassed.length, RECENT_PASSED);
   return set;
 }
 
