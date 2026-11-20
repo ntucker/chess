@@ -57,10 +57,17 @@ describe('progress on the device', () => {
   it('shows what another tab saves', async () => {
     const { controller, shown } = newStore();
     await controller.fetch(getProgress, 'caro-kann');
-    const newValue = JSON.stringify({
-      'caro-kann': { seen: [positionHash(AFTER_E4)], passed: [] },
-    });
-    window.dispatchEvent(new StorageEvent('storage', { key: 'progress', newValue }));
+    save([positionHash(AFTER_E4)]);
+    window.dispatchEvent(new StorageEvent('storage', { key: 'progress' }));
     expect(shown()).toMatchObject({ seen: [positionHash(AFTER_E4)] });
+  });
+
+  it("keeps this tab's newer marks when another tab's older save arrives", async () => {
+    const { controller, shown } = newStore();
+    save([positionHash(START)]);
+    const older = localStorage.getItem('progress');
+    await controller.fetch(addMark, { lesson: 'caro-kann', mark: 'seen', key: AFTER_E4 });
+    window.dispatchEvent(new StorageEvent('storage', { key: 'progress', newValue: older }));
+    expect(shown()).toMatchObject({ seen: [positionHash(START), positionHash(AFTER_E4)] });
   });
 });

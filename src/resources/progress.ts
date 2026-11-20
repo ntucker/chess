@@ -80,8 +80,10 @@ export class ProgressSync implements Manager {
   };
 
   private onStorage = (event: StorageEvent) => {
-    if (event.key !== KEY || event.newValue === null) return;
-    const progress = parseProgress(event.newValue);
+    if (event.key !== KEY) return;
+    // What is saved now, not the event's value: this tab may have saved a
+    // newer mark since the other tab's save queued the event.
+    const progress = saved();
     this.controller?.set(
       [LessonProgress],
       Object.keys(progress).map((lesson) => lessonOf(progress, lesson)),
