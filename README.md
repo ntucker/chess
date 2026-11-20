@@ -83,13 +83,12 @@ PAGES_BASE_PATH=/chess yarn expo export --platform web
 
 To work on this repo through a Claude project on claude.ai:
 
-1. [Connect GitHub](https://claude.ai/connect-github) and install the Claude GitHub app on `ntucker/chess` or your fork.
-2. Create a project and attach that repository.
-3. Install [user-kit](https://github.com/ntucker/user-kit#install-in-claude-code).
-4. Send this in the project chat, then paste the text the coordinator replies with into the project's instructions:
+1. Create a project and attach `ntucker/chess` or your fork.
+2. Install [user-kit](https://github.com/ntucker/user-kit#install-in-claude-code).
+3. Send this in the project chat, then paste the text the coordinator replies with into the project's instructions:
 
    ```text
    Set up this project: read .agents/projects/setup.md from main in ntucker/chess and follow it.
    ```
 
-5. For Android checks, link your computer to the project.
+4. For Android checks, link your computer to the project.
