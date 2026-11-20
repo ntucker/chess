@@ -124,34 +124,35 @@ describe('useLesson Practice run', () => {
     expect(clean()).toBe(true);
   });
 
+  // 1...c6 picks the Caro-Kann among the 1.e4 lessons, so 2...d5 is the first move judged.
   it("starts again when the learner's first move is played again", async () => {
-    await practiceAfter('e4', 'c6', 'd4');
+    await practiceAfter('e4', 'c6', 'd4', 'd5', 'e5');
     expect(clean()).toBe(false);
-    await act(async () => lesson().game.goto(1));
-    await act(async () => lesson().board.onMove('c7', 'c6'));
-    expect(lesson().game.moves).toEqual(uciLine('e4', 'c6'));
+    await act(async () => lesson().game.goto(3));
+    await act(async () => lesson().board.onMove('d7', 'd5'));
+    expect(lesson().game.moves).toEqual(uciLine('e4', 'c6', 'd4', 'd5'));
     expect(clean()).toBe(true);
   });
 
   it("starts again when the learner's first move, the line's last, is played again", async () => {
-    await practiceAfter('e4', 'c6');
+    await practiceAfter('e4', 'c6', 'd4', 'd5');
     expect(clean()).toBe(false);
-    await act(async () => lesson().game.goto(1));
-    await act(async () => lesson().board.onMove('c7', 'c6'));
-    expect(lesson().game.moves).toEqual(uciLine('e4', 'c6'));
+    await act(async () => lesson().game.goto(3));
+    await act(async () => lesson().board.onMove('d7', 'd5'));
+    expect(lesson().game.moves).toEqual(uciLine('e4', 'c6', 'd4', 'd5'));
     expect(clean()).toBe(true);
   });
 
   it('counts a move the game refused as no move, even from a board stepped away from', async () => {
-    await practiceAfter('e4', 'c6', 'd4');
-    await act(async () => lesson().game.goto(1));
-    // Both from the same render: the drop was made on the board at move 1.
+    await practiceAfter('e4', 'c6', 'd4', 'd5', 'e5');
+    await act(async () => lesson().game.goto(3));
+    // Both from the same render: the drop was made on the board at move 3.
     const { game, board } = lesson();
     await act(async () => {
-      game.goto(3);
-      board.onMove('c7', 'c6');
+      game.goto(5);
+      board.onMove('d7', 'd5');
     });
-    expect(lesson().game).toMatchObject({ moves: uciLine('e4', 'c6', 'd4'), ply: 3 });
+    expect(lesson().game).toMatchObject({ moves: uciLine('e4', 'c6', 'd4', 'd5', 'e5'), ply: 5 });
     expect(clean()).toBe(false);
   });
 
@@ -233,8 +234,8 @@ describe('useLesson progress', () => {
     });
 
   it('marks a position Explore shows', async () => {
-    await exploreAfter('e4');
-    expect(saved()).toEqual([['seen', keyAfter('e4')]]);
+    await exploreAfter('e4', 'c6');
+    expect(saved()).toEqual([['seen', keyAfter('e4', 'c6')]]);
   });
 
   it('marks nothing at the start, whose rows are every lesson', async () => {

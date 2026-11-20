@@ -11,17 +11,26 @@ const named = (variations: readonly ListedVariation[], name: string) =>
 
 describe('openingList', () => {
   it("lists each side's openings in the index's order", () => {
-    expect(list.white.map(({ id }) => id)).toEqual(['london']);
-    expect(list.black.map(({ id }) => id)).toEqual(['caro-kann', 'slav', 'anti-london']);
+    expect(list.white.map(({ id }) => id)).toEqual(['london', 'ruy-lopez']);
+    expect(list.black.map(({ id }) => id)).toEqual([
+      'caro-kann',
+      'slav',
+      'anti-london',
+      'sicilian',
+    ]);
   });
 
   it('roots each opening at its own variation, with the moves that pick it', () => {
-    expect(caro.root).toMatchObject({ id: 'caro-kann', name: 'Caro-Kann Defence', line: '1.e4' });
+    expect(caro.root).toMatchObject({
+      id: 'caro-kann',
+      name: 'Caro-Kann Defence',
+      line: '1.e4 c6',
+    });
   });
 
   it("nests variations under their parents, named without the parent's name, moves past the parent's", () => {
     const advance = named(caro.root.children, 'Advance Variation');
-    expect(advance.line).toBe('1...c6 2.d4 d5 3.e5');
+    expect(advance.line).toBe('2.d4 d5 3.e5');
     expect(named(advance.children, 'Short Variation, Main Line').line).toMatch(/^3\.\.\./);
   });
 

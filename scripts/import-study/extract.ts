@@ -10,6 +10,7 @@
 import type { Chess } from 'chessops/chess';
 import type { Color } from 'chessops/types';
 
+import { SAN } from '@/game/replay';
 import { checkIdea } from '@/lesson/check';
 import type { Evaluation, Idea, Note, Uci } from '@/lesson/lesson';
 
@@ -90,9 +91,15 @@ const EDGE_WORDS: Readonly<Record<Edge, readonly [string, string]>> = {
   Winning: ['winning', 'losing'],
 };
 
-/** Two or more moves in a row, the first numbered: `9...Qa5+ 10.Nc3 e6`. */
-const SEQUENCE =
-  /\d+\s?\.(?:\.\.)?\s?[^\s,;()]+(?:\s+(?:\d+\s?\.(?:\.\.)?\s?)?[KQRBNOa-h][^\s,;()]*)+/g;
+/**
+ * Two or more moves in a row, the first numbered: `9...Qa5+ 10.Nc3 e6`. Each
+ * is a whole word, so prose between two moves ends the run: "2...Nc6:
+ * because 2.Nc3" names no line 2...Nc6 2.Nc3.
+ */
+const SEQUENCE = new RegExp(
+  String.raw`\d+\s?\.(?:\.\.)?\s?${SAN}[!?]*(?:\s+(?:\d+\s?\.(?:\.\.)?\s?)?${SAN}[!?]*(?![\w-]))+`,
+  'g',
+);
 
 export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
   const { writtenFor } = chapter;

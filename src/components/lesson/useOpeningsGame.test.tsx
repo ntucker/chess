@@ -136,12 +136,13 @@ describe('useOpeningsGame', () => {
 
   it("adds a lesson's address to the history when it is picked at the start", async () => {
     await show();
-    await play('e2e4');
+    // 1.e4 is shared by the Caro-Kann and the Sicilian: 1...c6 picks.
+    await play('e2e4', 'c7c6');
     expect(mockRouter.push).toHaveBeenCalledWith('/lesson/caro-kann');
     // The address catching up keeps the game, moves played since included.
-    await play('c7c6');
+    await play('d2d4');
     await push('caro-kann');
-    expect(moves()).toEqual(['e2e4', 'c7c6']);
+    expect(moves()).toEqual(['e2e4', 'c7c6', 'd2d4']);
     expect(mockRouter.push).toHaveBeenCalledTimes(1);
     expect(mockRouter.replace).not.toHaveBeenCalled();
   });
@@ -226,7 +227,7 @@ describe('useOpeningsGame', () => {
   it('moves the address at the pick, while the page shows the start until the lesson loads', async () => {
     slow.lessons = true;
     await show();
-    await play('e2e4');
+    await play('e2e4', 'c7c6');
     expect(mockRouter.push).toHaveBeenCalledWith('/lesson/caro-kann');
     expect(moves()).toEqual([]);
     expect(latest().pending).toBe(true);
@@ -241,10 +242,10 @@ describe('useOpeningsGame', () => {
   it("drops the learner's moves and steps while the page shows an older game", async () => {
     slow.lessons = true;
     await show();
-    await play('e2e4');
+    await play('e2e4', 'c7c6');
     await push('caro-kann');
     expect(latest().pending).toBe(true);
-    // The page shows the start, but the game is 1.e4's. Applied to it, this
+    // The page shows the start, but the game is 1.e4 c6's. Applied to it, this
     // step to the start and then 1.d4 d5 2.c4 would replace e4 and pick the Slav.
     act(() => latest().store[1]({ type: 'goto', ply: 0 }));
     await play('d2d4', 'd7d5', 'c2c4');
@@ -268,7 +269,7 @@ describe('useOpeningsGame', () => {
     expect(latest().setting).toBe('white');
     // A first move that picks no White lesson returns to a White start.
     await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
-    await play('e2e4');
+    await play('c2c4');
     expect(mockRouter.replace).toHaveBeenCalledWith('/');
     await show();
     expect(latest().side).toBe('white');
@@ -323,10 +324,10 @@ describe('useOpeningsGame', () => {
   it('shows a move within a lesson at once', async () => {
     await show('caro-kann');
     const before = renders.length;
-    await play('c7c6');
+    await play('d2d4');
     // No commit shows the game before the move, as a deferred copy would.
     const shown = renders.slice(before).map(({ store }) => store[0].moves);
     expect(shown.length).toBeGreaterThan(0);
-    for (const moves of shown) expect(moves).toEqual(['e2e4', 'c7c6']);
+    for (const moves of shown) expect(moves).toEqual(['e2e4', 'c7c6', 'd2d4']);
   });
 });

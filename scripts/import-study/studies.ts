@@ -100,7 +100,7 @@ const LOLORIV_SICILIAN = {
 const LOLORIV_RUY = {
   study: 'Trmr5pwd',
   credit: {
-    title: 'Ruy Lopez',
+    title: 'Ruy Lopez Complete Study Guide',
     author: 'loloriv',
     url: 'https://lichess.org/study/Trmr5pwd',
   },
@@ -320,6 +320,32 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         chapters: (title: string) => Object.hasOwn(SICILIAN_WHITE_CHAPTERS, title),
         chapterName: (title: string) => SICILIAN_WHITE_CHAPTERS[title],
       },
+      {
+        study: 'tbNutvBV',
+        credit: {
+          title: 'Sicilian Defense: All you need to know',
+          author: 'andrew_tsiri',
+          url: 'https://lichess.org/study/tbNutvBV',
+        },
+        // Short chapters on nearly every line, chained by FEN: the Moscow, Kan and 2...g6 lines.
+        chapters: (title: string) => Object.hasOwn(TSIRI_CHAPTERS, title),
+        chapterName: (title: string) => TSIRI_CHAPTERS[title],
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...c5',
+        rename: {
+          // Pages grouping White's 3.d4 by Black's second move, which the main study names by system.
+          'Open Sicilian with ...d6': '',
+          'Open Sicilian with ...Nc6': '',
+          'Open Sicilian with 2...e6': '',
+          'French Sicilian': '',
+          'Smith-Morra gambit accepted': '',
+          '3...d6': '',
+          'Classical Sicilian': 'Classical Variation',
+          'Hyperaccelerated Dragon': 'Hyper-Accelerated Dragon',
+          'Kan Sicilian': 'Kan Variation',
+        },
+      },
     ],
     engineCheck: true,
     info: {
@@ -342,6 +368,27 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         writtenFor: 'black',
         chapters: (title: string) => title === 'Berlin Defense Theory',
         chapterName: () => 'Berlin Defence',
+      },
+      {
+        study: 'ZkCxh0nB',
+        credit: {
+          title: 'Ruy Lopez',
+          author: 'LeninPerez',
+          url: 'https://lichess.org/study/ZkCxh0nB',
+        },
+        // Black's third moves the main study skips: the Steinitz, Classical, Schliemann and Cozio.
+        chapters: (title: string) => Object.hasOwn(LENIN_RUY_CHAPTERS, title),
+        chapterName: (title: string) => LENIN_RUY_CHAPTERS[title],
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bb5',
+        rename: {
+          // 3...a6, under which the main study names its own variations.
+          'Morphy defence': '',
+          'Closed Spanish': 'Closed Ruy Lopez',
+          'Open Spanish': 'Open Ruy Lopez',
+          'Jaenisch gambit': 'Schliemann Defence',
+        },
       },
     ],
     engineCheck: true,
@@ -482,7 +529,7 @@ const SICILIAN_CHAPTERS: Readonly<Record<string, string | undefined>> = {
   'Open Sicilian Introduction': 'Open Sicilian',
   'Najdorf Sicilian English Attack Theory': 'Najdorf Variation: English Attack',
   'Najdorf Sicilian Main Line Theory': 'Najdorf Variation: 6.Bg5',
-  'Najdorf Sicilian Opočenský Theory': 'Najdorf Variation: Opočenský Variation',
+  'Najdorf Sicilian Opočenský Theory': 'Najdorf Variation: 6.Be2',
   'Najdorf Sicilian Fischer-Sozin Attack Theory': 'Najdorf Variation: Fischer-Sozin Attack',
   'Sveshnikov Sicilian Theory': 'Sveshnikov Variation',
   'Classical Sicilian Theory': 'Classical Variation',
@@ -519,4 +566,53 @@ const RUY_CHAPTERS: Readonly<Record<string, string | undefined>> = {
   'Flohr-Zaitsev System Theory': 'Closed Ruy Lopez: Zaitsev Variation',
   'Open Ruy Lopez Theory': 'Open Ruy Lopez',
   'Exchange Variation Theory': 'Exchange Variation',
+};
+
+/** andrew_tsiri's theory chapters, as variation names; the group chapters name none of their own. */
+const TSIRI_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  Introduction: undefined,
+  'Open Sicilian': undefined,
+  '--- Modern Variations': undefined,
+  '------ Najdorf Variation': 'Najdorf Variation',
+  '------ Dragon Variation': 'Dragon Variation',
+  '------ Classical Variation': 'Classical Variation',
+  '------ Scheveningen Variation': 'Scheveningen Variation',
+  '--- Old Sicilian': undefined,
+  '------ Sveshnikov Variation': 'Sveshnikov Variation',
+  '------ Accelerated Dragon': 'Accelerated Dragon',
+  '------ Kalashnikov Variation': 'Kalashnikov Variation',
+  '--- French Variation': undefined,
+  '------ Taimanov Variation': 'Taimanov Variation',
+  '------ Kan Variation': 'Kan Variation',
+  '------ Four Knights Variation': 'Four Knights Variation',
+  '------ Pin Variation': 'Pin Variation',
+  "White's third move alternatives": undefined,
+  '--- Moscow Variation': 'Moscow Variation',
+  '--- Rossolimo Variation': 'Rossolimo Attack',
+  "Black's second move alternatives": undefined,
+  '--- Hyper-Accelerated Dragon': 'Hyper-Accelerated Dragon',
+  "--- O'Kelly Variation": "O'Kelly Variation",
+  '--- Nimzowitsch-Rubinstein Variation': 'Nimzowitsch Variation',
+  'Closed Sicilian': 'Closed Sicilian',
+  "White's second move alternatives": undefined,
+  '--- Alapin Variation': 'Alapin Variation',
+  // 2.f4, which the main study calls the McDonnell Attack.
+  '--- Grand Prix Attack': 'McDonnell Attack',
+  '--- Smith-Morra Gambit': 'Smith-Morra Gambit',
+};
+
+/**
+ * LeninPerez's theory chapters, as variation names. Not the Berlin: it is set
+ * up after 3...Nf6, which none of its earlier chapters reach, so it can't join their line.
+ */
+const LENIN_RUY_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  Introduction: undefined,
+  'Morphy Defense Closed': 'Closed Ruy Lopez',
+  'Morphy Defense Open': 'Open Ruy Lopez',
+  'Marshall Attack': 'Closed Ruy Lopez: Marshall Attack',
+  'Steinitz Defense': 'Steinitz Defence',
+  'Classical Variation': 'Classical Defence',
+  'Schliemann Defense': 'Schliemann Defence',
+  'Cozio Defense': 'Cozio Defence',
+  'Fianchetto Defense': 'Fianchetto Defence',
 };

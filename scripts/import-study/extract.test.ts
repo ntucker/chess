@@ -114,6 +114,14 @@ describe('extractChapter', () => {
     expect(extractChapter(chapter, 'black').branches).toEqual([]);
   });
 
+  it('ends a sequence at a word between two moves', () => {
+    const [chapter] = parseStudy(
+      '1. e4 c5 2. Nc3 d6 { This avoids playing 2...Nc6: because 2.Nc3 only suggests a closed game. } *',
+      () => true,
+    );
+    expect(extractChapter(chapter, 'black').branches).toEqual([]);
+  });
+
   it('keeps a sequence from the start that leaves the chapter at a later opponent move', () => {
     const [chapter] = parseStudy(
       '1. e4 c6 2. d4 d5 3. Nc3 { The same as 1.e4 c6 2.Nc3 d5 3.d4. } *',
