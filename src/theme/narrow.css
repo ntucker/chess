@@ -117,9 +117,8 @@
    * The lesson's panel (LessonScreen.tsx) fills the space under the board, and
    * its moves and its idea share that space side by side, the list's rows and
    * the idea each scrolling on their own, so neither pushes the other out of
-   * view. Should the
-   * panel's other parts (a trap's card) crowd them, the panes keep a floor and
-   * the panel scrolls instead.
+   * view. Should the panel's other parts (a trap's card) crowd them, the panes
+   * keep a floor and the panel scrolls instead.
    */
   :root [data-narrow='lesson-panel'] {
     flex: 1 0 auto;

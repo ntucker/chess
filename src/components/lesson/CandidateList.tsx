@@ -1,6 +1,6 @@
 import { a11yState, Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Text as Span, StyleSheet, View } from 'react-native';
 
 import { evaluationReading, signedEvaluation } from '@/evaluation/evaluation';
 import { candidateTone } from '@/lesson/drawings';
@@ -96,7 +96,7 @@ export function CandidateList({
     <Stack {...narrowPart('move-list')} style={labelled}>
       <View style={styles.head}>
         <Eyebrow>
-          {owner ? <Text {...narrowPart('wide-only-spoken')}>{`${owner}'s `}</Text> : null}
+          {owner ? <Span {...narrowPart('wide-only-spoken')}>{`${owner}'s `}</Span> : null}
           {heading}
         </Eyebrow>
         {/* A narrow pane has no room for the key: each mark's row still says it to screen readers. */}
