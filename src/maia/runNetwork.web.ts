@@ -1,4 +1,5 @@
 import { assetUrl } from '@/files/assetUrl';
+import { explainLoadFailure } from '@/files/newVersion';
 
 import type { MaiaRequest, MaiaResponse } from './maia.worker';
 import { MODELS } from './models';
@@ -9,7 +10,7 @@ let worker: Worker | undefined;
 let nextId = 0;
 interface Pending {
   resolve(output: NetworkOutput): void;
-  reject(error: Error): void;
+  reject(error: unknown): void;
 }
 const pending = new Map<number, Pending>();
 
@@ -25,11 +26,16 @@ function getWorker(): Worker {
   };
   started.onerror = (event) => {
     // A worker that fails to start or crashes answers nothing: fail every
-    // request and start a new worker next time.
-    for (const request of pending.values()) request.reject(new Error(event.message));
+    // request and start a new worker next time. It fails to start when a
+    // newer deploy has removed its file, which the error then says.
+    const failed = [...pending.values()];
     pending.clear();
     started.terminate();
     worker = undefined;
+    const error = new Error(event.message || "Maia's worker stopped");
+    void explainLoadFailure(error).then((explained) => {
+      for (const request of failed) request.reject(explained);
+    });
   };
   return (worker = started);
 }
