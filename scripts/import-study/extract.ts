@@ -92,11 +92,13 @@ const EDGE_WORDS: Readonly<Record<Edge, readonly [string, string]>> = {
 };
 
 /** Two or more moves in a row, the first numbered, `join` between each two. */
-const sequence = (join: string) =>
-  new RegExp(
-    String.raw`(?<![\w.])${MOVE_NUMBER}${SAN}[!?]*(?:${join}(?:${MOVE_NUMBER})?${SAN}[!?]*(?![\w-]))+`,
+const sequence = (join: string) => {
+  const move = String.raw`${SAN}[!?]*`;
+  return new RegExp(
+    String.raw`(?<![\w.])${MOVE_NUMBER}${move}(?:${join}(?:${MOVE_NUMBER})?${move}(?![\w-]))+`,
     'g',
   );
+};
 
 /**
  * Two or more moves in a row, the first numbered: `9...Qa5+ 10.Nc3 e6`, or

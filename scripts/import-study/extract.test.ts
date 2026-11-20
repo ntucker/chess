@@ -9,6 +9,12 @@ const { moveNotes, positionNotes, branches, choices, rejected, contradicted } = 
   advance,
   'black',
 );
+/** The branches the comments of `pgn`'s one chapter name: the move each leaves from, and its moves. */
+const branchesOf = (pgn: string) => {
+  const [chapter] = parseStudy(pgn, () => true);
+  return extractChapter(chapter, 'black').branches.map(({ spot, ucis }) => [spot.move?.san, ucis]);
+};
+
 const noteOn = (san: string) =>
   moveNotes.filter(({ move }) => move.san === san).map(({ note }) => note);
 
@@ -99,64 +105,56 @@ describe('extractChapter', () => {
   });
 
   it("leaves out a sequence from the start that names another opening's first move", () => {
-    const [chapter] = parseStudy(
-      '1. e4 c6 2. d4 d5 3. c4 { This transposes to the Slav, seen after 1.d4 d5 2.c4 c6 3.e4. } *',
-      () => true,
-    );
-    expect(extractChapter(chapter, 'black').branches).toEqual([]);
+    expect(
+      branchesOf(
+        '1. e4 c6 2. d4 d5 3. c4 { This transposes to the Slav, seen after 1.d4 d5 2.c4 c6 3.e4. } *',
+      ),
+    ).toEqual([]);
   });
 
   it("leaves out a sequence from the start that leaves the chapter at the learner's move", () => {
-    const [chapter] = parseStudy(
-      '1. e4 c6 2. d4 d5 3. e5 { Unlike the Open Game, 1.e4 e5 2.Nf3 Nc6, Black keeps a solid centre. } *',
-      () => true,
-    );
-    expect(extractChapter(chapter, 'black').branches).toEqual([]);
+    expect(
+      branchesOf(
+        '1. e4 c6 2. d4 d5 3. e5 { Unlike the Open Game, 1.e4 e5 2.Nf3 Nc6, Black keeps a solid centre. } *',
+      ),
+    ).toEqual([]);
   });
 
   it('ends a sequence at a word between two moves', () => {
-    const [chapter] = parseStudy(
-      '1. e4 c5 2. Nc3 d6 { This avoids playing 2...Nc6: because 2.Nc3 only suggests a closed game. } *',
-      () => true,
-    );
-    expect(extractChapter(chapter, 'black').branches).toEqual([]);
+    expect(
+      branchesOf(
+        '1. e4 c5 2. Nc3 d6 { This avoids playing 2...Nc6: because 2.Nc3 only suggests a closed game. } *',
+      ),
+    ).toEqual([]);
   });
 
   it('keeps a sequence whose moves an ellipsis joins', () => {
-    const [chapter] = parseStudy(
-      '1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 { Not 4.Qxd4...Nc6 5.Qd1, which loses time. } *',
-      () => true,
-    );
     expect(
-      extractChapter(chapter, 'black').branches.map(({ spot, ucis }) => [spot.move?.san, ucis]),
+      branchesOf(
+        '1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 { Not 4.Qxd4...Nc6 5.Qd1, which loses time. } *',
+      ),
     ).toEqual([['cxd4', ['d1d4', 'b8c6', 'd4d1']]]);
   });
 
   it('reads no run out of the tail of a move an ellipsis joins', () => {
-    const [chapter] = parseStudy(
-      '1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 { Not Qxd4...Nc6 Qd1, which loses time. } *',
-      () => true,
-    );
-    expect(extractChapter(chapter, 'black').branches).toEqual([]);
+    expect(
+      branchesOf(
+        '1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 { Not Qxd4...Nc6 Qd1, which loses time. } *',
+      ),
+    ).toEqual([]);
   });
 
   it('keeps the run before an ellipsis that means "later"', () => {
-    const [chapter] = parseStudy(
-      '1. e4 { 1...c5 2.Nf3 Nc6...Bb5 is the Rossolimo. } *',
-      () => true,
-    );
-    expect(
-      extractChapter(chapter, 'black').branches.map(({ spot, ucis }) => [spot.move?.san, ucis]),
-    ).toEqual([['e4', ['c7c5', 'g1f3', 'b8c6']]]);
+    expect(branchesOf('1. e4 { 1...c5 2.Nf3 Nc6...Bb5 is the Rossolimo. } *')).toEqual([
+      ['e4', ['c7c5', 'g1f3', 'b8c6']],
+    ]);
   });
 
   it('reads castling written with zeros in a sequence', () => {
-    const [chapter] = parseStudy(
-      '1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 { Later 5...a6 6.Bc4 e6 7.0-0 Be7; or 5...a6 6.Be3 e6 7.f3 b5 8.Qd2 Nbd7 9.0-0-0 follows. } *',
-      () => true,
-    );
     expect(
-      extractChapter(chapter, 'black').branches.map(({ spot, ucis }) => [spot.move?.san, ucis]),
+      branchesOf(
+        '1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 { Later 5...a6 6.Bc4 e6 7.0-0 Be7; or 5...a6 6.Be3 e6 7.f3 b5 8.Qd2 Nbd7 9.0-0-0 follows. } *',
+      ),
     ).toEqual([
       ['Nc3', ['a7a6', 'f1c4', 'e7e6', 'e1g1', 'f8e7']],
       ['Nc3', ['a7a6', 'c1e3', 'e7e6', 'f2f3', 'b7b5', 'd1d2', 'b8d7', 'e1c1']],
@@ -164,13 +162,9 @@ describe('extractChapter', () => {
   });
 
   it('keeps a sequence from the start that leaves the chapter at a later opponent move', () => {
-    const [chapter] = parseStudy(
-      '1. e4 c6 2. d4 d5 3. Nc3 { The same as 1.e4 c6 2.Nc3 d5 3.d4. } *',
-      () => true,
+    expect(branchesOf('1. e4 c6 2. d4 d5 3. Nc3 { The same as 1.e4 c6 2.Nc3 d5 3.d4. } *')).toEqual(
+      [[undefined, ['e2e4', 'c7c6', 'b1c3', 'd7d5', 'd2d4']]],
     );
-    expect(
-      extractChapter(chapter, 'black').branches.map(({ spot, ucis }) => [spot.move?.san, ucis]),
-    ).toEqual([[undefined, ['e2e4', 'c7c6', 'b1c3', 'd7d5', 'd2d4']]]);
   });
 
   it('refuses a watch-out trap that loses nothing', () => {
