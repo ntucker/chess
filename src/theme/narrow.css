@@ -24,9 +24,9 @@
   :root {
     /* Page padding and the gap below the header (Page.tsx). */
     --page-space: 10px;
-    /* The logo, as tall as the source link beside it: the header's height (Header.tsx). */
+    /* The logo, as tall as the round buttons beside it (HeaderButton.tsx): the header's height (Header.tsx). */
     --header-height: 28px;
-    --source-link-size: 28px;
+    --header-button-size: 28px;
     --wordmark-size: 18px;
     /*
      * The name bars above and below the board (Stage.tsx): the one with

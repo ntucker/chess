@@ -338,7 +338,8 @@ function LessonScreen({
             <ScoresheetOpener
               san={game.plies[game.ply].move?.san}
               ply={game.ply}
-              disabled={game.moves.length === 0}
+              // Nothing to open before the first move, but an open drawer can always close: a new game empties it.
+              disabled={!scoresheetOpen && game.moves.length === 0}
               open={scoresheetOpen}
               onToggle={() => setScoresheetOpen(!scoresheetOpen)}
             />

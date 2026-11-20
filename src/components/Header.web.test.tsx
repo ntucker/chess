@@ -70,7 +70,7 @@ const PLACE_AT_360 =
   360 -
   2 * narrowPixels('page-space') -
   narrowPixels('header-height') -
-  narrowPixels('source-link-size') -
+  narrowPixels('header-button-size') -
   8 -
   12;
 

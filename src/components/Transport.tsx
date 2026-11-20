@@ -3,7 +3,8 @@ import { Pressable, useTheme } from '@reactive/silk-native';
 import type { ComponentProps, ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { NARROW_CSS_LOADS, narrowPart } from '@/theme/narrow';
+import { narrowPart } from '@/theme/narrow';
+import { NarrowOnly } from '@/theme/NarrowOnly';
 
 interface Props {
   readonly ply: number;
@@ -18,10 +19,8 @@ interface Props {
 }
 
 /** Steps through the game like a player's transport: start, back, forward, end. */
-export function Transport({ ply, total, onGoto, middle: requested }: Props) {
+export function Transport({ ply, total, onGoto, middle }: Props) {
   const { theme } = useTheme();
-  // Only narrow.css can swap the jumps for the middle.
-  const middle = NARROW_CSS_LOADS ? requested : undefined;
   const { color } = theme.semantic;
   const buttons: {
     label: string;
@@ -86,7 +85,7 @@ export function Transport({ ply, total, onGoto, middle: requested }: Props) {
     >
       {jump(first)}
       {button(back)}
-      {middle ? <View {...narrowPart('narrow-only')}>{middle}</View> : null}
+      {middle ? <NarrowOnly>{middle}</NarrowOnly> : null}
       {button(forward)}
       {jump(latest)}
     </View>

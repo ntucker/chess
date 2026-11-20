@@ -14,9 +14,9 @@ interface Props extends Pick<
 }
 
 /**
- * A round icon button in the header (the source link, a back button). It
- * stays quiet in the secondary ink and lights up on hover, like the
- * transport's buttons.
+ * A round icon button in the header (the source link, settings, a back
+ * button), or the close of a sheet or drawer. It stays quiet in the
+ * secondary ink and lights up on hover, like the transport's buttons.
  */
 export function HeaderButton({ icon, iconSize, ...pressable }: Props) {
   const { theme } = useTheme();
@@ -41,7 +41,7 @@ export function HeaderButton({ icon, iconSize, ...pressable }: Props) {
 }
 
 /** The button's size, smaller on a narrow web page, where the header is slim. */
-export const HEADER_BUTTON_SIZE = narrowLength('source-link-size', 36);
+export const HEADER_BUTTON_SIZE = narrowLength('header-button-size', 36);
 
 const styles = StyleSheet.create({
   button: {

@@ -32,7 +32,12 @@ export function ScoresheetDrawer({ onClose, ...scoresheet }: Props) {
     if (event.key === 'Escape') onClose();
   });
   return (
-    <View {...narrowPart('scoresheet-drawer')} aria-label="Scoresheet" style={labelled}>
+    <View
+      {...narrowPart('scoresheet-drawer')}
+      role="region"
+      aria-label="Scoresheet"
+      style={labelled}
+    >
       <Inline align="center" justify="between" wrap="nowrap">
         <Eyebrow>Scoresheet</Eyebrow>
         <Inline align="center" gap="1" wrap="nowrap">
@@ -84,7 +89,11 @@ export function ScoresheetOpener({
       style={({ pressed, hovered }) => [
         stepButton,
         styles.opener,
-        { backgroundColor: open || pressed || hovered ? color.tones.neutral.subtle : undefined },
+        // Lit while the drawer is open, even with nothing to step to, and on a hover that could press it.
+        {
+          backgroundColor:
+            open || (!disabled && (pressed || hovered)) ? color.tones.neutral.subtle : undefined,
+        },
       ]}
     >
       <Text

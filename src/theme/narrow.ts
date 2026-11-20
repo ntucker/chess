@@ -21,7 +21,7 @@ export const NARROW_LENGTHS = [
   'headline-size',
   'wrapped-gap',
   'board-min',
-  'source-link-size',
+  'header-button-size',
   'panel-reserve',
   'section-gap',
   'label-gap',
