@@ -5,14 +5,8 @@ import type { Evaluation } from '@/evaluation/evaluation';
 import { LESSON_FORMAT, type Lesson, type LessonMove } from '@/lesson/lesson';
 import { keyAfter, SAMPLE, uciLine } from '@/lesson/lesson.fixture';
 
+import { at, uci } from './fixture';
 import { engineCheck, fillBook } from './engineCheck';
-
-const at = (moves: LessonMove[], notes?: Lesson['positions'][string]['notes']) => ({
-  variation: 'test',
-  moves,
-  ...(notes && { notes }),
-});
-const uci = (...sans: string[]) => uciLine(...sans).at(-1)!;
 
 /** Black's lesson: 1.d4 d5 (book) or 1...e5 (book, but loses a pawn), then 2.dxe5 Nc6 (book). */
 const LESSON: Lesson = {

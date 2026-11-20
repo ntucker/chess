@@ -2,16 +2,11 @@ import { describe, expect, it } from '@jest/globals';
 import { INITIAL_FEN } from 'chessops/fen';
 
 import { LESSON_FORMAT, type Lesson, type LessonMove, type Note } from '@/lesson/lesson';
-import { keyAfter, SAMPLE, uciLine } from '@/lesson/lesson.fixture';
+import { keyAfter, SAMPLE } from '@/lesson/lesson.fixture';
 
+import { at, uci } from './fixture';
 import { noteTranspositions } from './transpositions';
 
-const at = (moves: LessonMove[], notes?: Note[]) => ({
-  variation: 'test',
-  moves,
-  ...(notes && { notes }),
-});
-const uci = (...sans: string[]) => uciLine(...sans).at(-1)!;
 const SEMI_SLAV: Note = { text: 'You strengthen d5.' };
 const semiSlav = keyAfter('d4', 'd5', 'c4', 'c6', 'Nc3', 'e6');
 const otherOrder = keyAfter('d4', 'd5', 'c4', 'e6', 'Nc3');
@@ -76,6 +71,24 @@ describe('noteTranspositions', () => {
   it('leaves them where the position has notes of its own', () => {
     const input = lesson({ positionNote: { text: 'The Semi-Slav.' } });
     expect(noteTranspositions(input)).toEqual({ lesson: input, moved: 0 });
+  });
+
+  it('leaves them on a move the learner could play but the book rejects', () => {
+    const input = lesson();
+    // The learner reaches 2...e6 3.Nc3 too, where the book prefers 3...Nf6 to 3...c6.
+    const positions = {
+      ...input.positions,
+      [keyAfter('d4', 'd5', 'c4')]: at([
+        { uci: uci('d4', 'd5', 'c4', 'c6'), book: true },
+        { uci: uci('d4', 'd5', 'c4', 'e6'), book: true },
+      ]),
+      [otherOrder]: at([
+        { uci: uci('d4', 'd5', 'c4', 'e6', 'Nc3', 'Nf6'), book: true },
+        { uci: uci('d4', 'd5', 'c4', 'e6', 'Nc3', 'c6'), notes: [SEMI_SLAV] },
+      ]),
+    };
+    const rejected = { ...input, positions };
+    expect(noteTranspositions(rejected)).toEqual({ lesson: rejected, moved: 0 });
   });
 
   it('leaves them where the learner never reaches the position', () => {

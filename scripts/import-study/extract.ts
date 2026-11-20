@@ -14,7 +14,7 @@ import { checkIdea } from '@/lesson/check';
 import type { Evaluation, Idea, Note, Uci } from '@/lesson/lesson';
 
 import { choiceGuide, type Choice } from './choices';
-import { placeSequence, type Found, type Spot } from './line';
+import { firstMove, placeSequence, type Found, type Spot } from './line';
 import { planLists } from './plans';
 import { chapterMoves, type Chapter, type StudyMove } from './study';
 import { direction, namedMoves, shorten, textVerdicts } from './text';
@@ -150,14 +150,13 @@ function plans(
 
 /** Sequences of two or more moves that `move`'s comment writes out, placed in the tree. */
 function sequences(move: StudyMove) {
-  let first = move;
-  while (first.parent) first = first.parent;
   return (move.comment.match(SEQUENCE) ?? []).flatMap((run) => {
     const placed = placeSequence(move, namedMoves(run));
     if (!placed || placed.ucis.length < 2) return [];
-    // From the very start, a sequence leaving the chapter's first move names
-    // another opening ("as in 1.d4 d5 2.e4"), not a line of this one.
-    return placed.spot.move || placed.ucis[0] === first.uci ? [placed] : [];
+    // A sequence from the very start that leaves the chapter's first move
+    // names another opening ("as in 1.d4 d5 2.e4"), not a line of this one.
+    const atStart = !placed.spot.move;
+    return atStart && placed.ucis[0] !== firstMove(move).uci ? [] : [placed];
   });
 }
 

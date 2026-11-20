@@ -41,6 +41,13 @@ function lineThrough(move: StudyMove): StudyMove[] {
   return [...before.reverse(), ...mainLine(move)];
 }
 
+/** The chapter's first move on the line to `move`. */
+export function firstMove(move: StudyMove): StudyMove {
+  let first = move;
+  while (first.parent) first = first.parent;
+  return first;
+}
+
 /** The move of the line through `move` that `named` names, if there is one. */
 export function findOnLine(move: StudyMove, named: NamedMove): StudyMove | undefined {
   return nearestMatch(lineThrough(move), named, move.ply);

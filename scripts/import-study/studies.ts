@@ -158,7 +158,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         chapterName: () => 'Semi-Slav',
       },
       {
-        // 3.e3 and the Exchange Variation's 4.Nf3, by 1.d4 c6 2.c4 d5.
+        // Its chapters reaching the Slav by 1.d4 c6 2.c4 d5, for 3.e3 and the Exchange Variation's 4.Nf3.
         ...WUB_C6,
         chapters: (title: string) => Object.hasOwn(WUB_SLAV, title),
         chapterName: (title: string) => WUB_SLAV[title],

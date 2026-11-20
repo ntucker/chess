@@ -201,11 +201,11 @@ function addBranches(
 }
 
 /**
- * The variation of each position the chapters reach (`positionVariations`),
- * unless that is broader than what the earliest source reaching it names it
- * on its own: a later guide's broad "Classical Variation" chapter never
- * renames the main guide's "Capablanca Variation", while a later guide may
- * narrow a name ("Pure Slav" to "Pure Slav: Geller Gambit").
+ * The variation of each position the chapters reach (`positionVariations`)
+ * where that lies within what the earliest source reaching it names it on its
+ * own, else the earliest source's name: a later guide may narrow a name
+ * ("Pure Slav" to "Pure Slav: Geller Gambit"), but its "Classical Variation"
+ * chapter never renames the main guide's "Capablanca Variation".
  */
 function sourceVariations(
   root: VariationId,
@@ -263,7 +263,7 @@ function positionVariations(
   const named = new Map([...mainLines].map(([key, ids]) => [key, narrowest([...ids].map(path))]));
 
   const group = (chapter: VariationId) =>
-    variations[chapter].parent === root ? chapter : variations[chapter].parent!;
+    chapter === root || variations[chapter].parent === root ? chapter : variations[chapter].parent!;
   const sideLines = new Map<PositionKey, Set<VariationId>>();
   chapters.forEach((chapter, i) => {
     /** The variation of the last main-line position up to each move. */

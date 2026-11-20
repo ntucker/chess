@@ -2,9 +2,11 @@
  * Notes a guide wrote on a move order the lesson doesn't play. A study that
  * reaches the Semi-Slav by 2...e6 3.Nc3 c6 explains it on 3...c6, but the
  * lesson's learner gets there by 2...c6 3.Nc3 e6 and never sees that move's
- * notes. Where a move off the book path leads to a position the learner does
- * reach and nothing explains it there, its notes become that position's own,
- * which the app shows however the position was reached.
+ * notes. Where a move from a position the learner never reaches leads to one
+ * they do, and nothing explains it there, its notes become that position's
+ * own, which the app shows however the position was reached. A move the
+ * learner could play but the book rejects keeps its notes: they judge the
+ * move ("playable, but gives up half a pawn"), not where it leads.
  */
 import { parsePositionKey, positionKey } from '@/game/replay';
 import type { Lesson, LessonMove, Note, PositionKey } from '@/lesson/lesson';
@@ -16,16 +18,17 @@ import { played } from './study';
 export function noteTranspositions(lesson: Lesson): { lesson: Lesson; moved: number } {
   const reach = bookReach(lesson);
   const moves = [...allMoves(lesson)];
-  const onBook = ({ key, move, learner }: (typeof moves)[number]) =>
-    reach.has(key) && (!learner || !!move.book);
   /** Positions the learner reaches where a move on the book path already explains how. */
   const explained = new Set(
-    moves.filter((at) => onBook(at) && at.move.notes?.length).map(({ after }) => after),
+    moves
+      .filter(({ key, move, learner }) => reach.has(key) && (!learner || move.book))
+      .filter(({ move }) => move.notes?.length)
+      .map(({ after }) => after),
   );
   const found = new Map<PositionKey, { key: PositionKey; uci: string; notes: readonly Note[] }>();
-  for (const at of moves) {
-    const { key, move, after } = at;
-    if (onBook(at) || !move.notes?.length || !reach.has(after) || explained.has(after)) continue;
+  for (const { key, move, after } of moves) {
+    if (reach.has(key) || !move.notes?.length || !reach.has(after) || explained.has(after))
+      continue;
     const there = lesson.positions[after];
     if (!there || there.notes?.length || found.has(after)) continue;
     found.set(after, { key, uci: move.uci, notes: move.notes });

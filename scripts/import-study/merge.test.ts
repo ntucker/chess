@@ -184,6 +184,23 @@ describe('mergeChapters with several sources', () => {
     expect(lesson.positions[keyAfter('d4', 'd5', 'c4')].variation).toBe('queen-s-gambit');
   });
 
+  it("lets a later guide narrow the name of the main guide's side line", () => {
+    // The main guide's chapter is about the opening and shows 1...Nf6 only as a side line.
+    const opening = parseStudy(
+      '[ChapterName "Main"]\n\n1. d4 d5 (1... Nf6 2. c4 e6) *\n',
+      () => true,
+    );
+    const later = parseStudy('[ChapterName "Later"]\n\n1. d4 Nf6 2. c4 e6 *\n', () => true);
+    const chapters = [...opening, ...later.map((chapter) => ({ ...chapter, source: 1 }))];
+    const lesson = mergeChapters(
+      { id: 'test', title: 'Test', side: 'black', sources: SAMPLE.sources },
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'black')),
+      (_, chapter) => (chapter.source === 1 ? 'Indian Defence: Test' : undefined),
+    );
+    expect(lesson.positions[keyAfter('d4', 'Nf6')].variation).toBe('indian-defence-test');
+  });
+
   it("takes a later guide's notes only where the main guide says nothing", () => {
     const d5 = merged.positions[keyAfter('d4')].moves.find(({ uci }) => uci === 'd7d5')!;
     expect(d5.notes?.map(({ text }) => text)).toEqual(['Holds the centre with a pawn.']);

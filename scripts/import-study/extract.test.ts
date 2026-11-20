@@ -106,6 +106,16 @@ describe('extractChapter', () => {
     expect(extractChapter(chapter, 'black').branches).toEqual([]);
   });
 
+  it("keeps a sequence from the start that keeps the chapter's first move", () => {
+    const [chapter] = parseStudy(
+      '1. e4 c6 2. d4 d5 3. Nc3 { The same as 1.e4 c6 2.Nc3 d5 3.d4. } *',
+      () => true,
+    );
+    expect(
+      extractChapter(chapter, 'black').branches.map(({ spot, ucis }) => [spot.move?.san, ucis]),
+    ).toEqual([[undefined, ['e2e4', 'c7c6', 'b1c3', 'd7d5', 'd2d4']]]);
+  });
+
   it('refuses a watch-out trap that loses nothing', () => {
     expect(rejected).toEqual([
       expect.objectContaining({ why: 'black does not lose material: balance goes 0 to 0' }),
