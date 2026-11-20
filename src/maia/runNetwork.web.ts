@@ -41,15 +41,13 @@ function getWorker(): Worker {
  * has removed the worker's file or the network's, it fails with a
  * NewVersionError.
  */
-export async function runNetwork(rating: MaiaRating, planes: Float32Array): Promise<NetworkOutput> {
+export function runNetwork(rating: MaiaRating, planes: Float32Array): Promise<NetworkOutput> {
   const url = assetUrl(MODELS[rating]);
   const id = nextId++;
-  try {
-    return await new Promise<NetworkOutput>((resolve, reject) => {
-      pending.set(id, { resolve, reject });
-      getWorker().postMessage({ id, url, planes } satisfies MaiaRequest, [planes.buffer]);
-    });
-  } catch (error) {
+  return new Promise<NetworkOutput>((resolve, reject) => {
+    pending.set(id, { resolve, reject });
+    getWorker().postMessage({ id, url, planes } satisfies MaiaRequest, [planes.buffer]);
+  }).catch(async (error: unknown) => {
     throw await explainLoadFailure(error);
-  }
+  });
 }

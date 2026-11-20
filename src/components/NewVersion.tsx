@@ -1,3 +1,4 @@
+import { AsyncBoundary } from '@data-client/react';
 import { Button, Stack } from '@reactive/silk-native';
 import { use } from 'react';
 import { StyleSheet } from 'react-native';
@@ -13,12 +14,58 @@ import { explainLoadFailure, NEW_VERSION, NewVersionError, reload } from '@/file
  */
 export function NewVersionPage({ detail }: { readonly detail: string }) {
   return (
+    <ReloadPage tab="New version" eyebrow="Site updated" title={NEW_VERSION} detail={detail} />
+  );
+}
+
+/**
+ * A screen that failed, in place of the whole app: NewVersionPage when the
+ * site has a newer build than the page (which is why a screen's file goes
+ * missing), or else the error with a reload. Shows nothing while it checks
+ * the site.
+ */
+export function ScreenFailure({ error }: { readonly error: Error }) {
+  return (
+    <AsyncBoundary fallback={null} errorComponent={CurtainDown}>
+      <NewVersionOrThrow error={error} />
+    </AsyncBoundary>
+  );
+}
+
+function NewVersionOrThrow({ error }: { readonly error: Error }) {
+  // A WeakMap keys on objects only, and only errors come from a missing file.
+  if (typeof error !== 'object' || error === null) throw error;
+  if (!(use(explainOnce(error)) instanceof NewVersionError)) throw error;
+  return <NewVersionPage detail="Reload to get it. Your settings and lesson progress stay." />;
+}
+
+/** Any other failure of a screen. */
+function CurtainDown({ error }: { readonly error: Error }) {
+  const detail = error instanceof Error ? error.message : String(error);
+  return (
+    <ReloadPage tab="Error" eyebrow="Opening Night" title="Curtain stays down." detail={detail} />
+  );
+}
+
+/** The stage with an empty board, a headline and a reload; `tab` names the browser tab. */
+function ReloadPage({
+  tab,
+  eyebrow,
+  title,
+  detail,
+}: {
+  readonly tab: string;
+  readonly eyebrow: string;
+  readonly title: string;
+  readonly detail: string;
+}) {
+  return (
     <Stage
-      title="New version · Opening Night"
+      title={`${tab} · Opening Night`}
       board={<BoardColumnPlaceholder />}
       program={
         <Stack gap="4" align="start" style={styles.program}>
-          <StatusHeadline eyebrow="Site updated" title={NEW_VERSION} detail={detail} />
+          <StatusHeadline eyebrow={eyebrow} title={title} detail={detail} />
           <Button onPress={reload}>Reload</Button>
         </Stack>
       }
@@ -26,21 +73,9 @@ export function NewVersionPage({ detail }: { readonly detail: string }) {
   );
 }
 
-/**
- * Rethrows a screen's `error`, as if this weren't there, unless the site has
- * a newer build than the page (which is why a screen's file goes missing):
- * then NewVersionPage. Suspends while it checks the site.
- */
-export function ScreenFailure({ error }: { readonly error: unknown }) {
-  // A WeakMap keys on objects only, and only errors come from a missing file.
-  if (typeof error !== 'object' || error === null) throw error;
-  if (!(use(explainOnce(error)) instanceof NewVersionError)) throw error;
-  return <NewVersionPage detail="Reload to get it. Your settings and lesson progress stay." />;
-}
-
 /** `use` needs the same promise on every render that asks. */
-const explained = new WeakMap<object, Promise<unknown>>();
-function explainOnce(error: object) {
+const explained = new WeakMap<Error, Promise<unknown>>();
+function explainOnce(error: Error) {
   let explaining = explained.get(error);
   if (!explaining) explained.set(error, (explaining = explainLoadFailure(error)));
   return explaining;
