@@ -310,7 +310,7 @@ describe('lessonDrawings', () => {
       { uci: 'g1f3', evaluation: { score: 0.6, pawns: 0.7 } },
       { uci: 'c2c3', evaluation: { score: 0.55, pawns: 0.4 } },
     ]);
-    const engine = { best: 'c2c4', top };
+    const engine = { best: 'g1f3', top };
     const shown = guidance({ picking: false, view, mode: 'explore', switches: SWITCHES, engine });
     // Only the first of the top moves, as the best: no arrows for the rest.
     expect(lessonDrawings(shown, view.key, 'black')).toEqual([

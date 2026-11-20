@@ -63,7 +63,7 @@ export type LessonSwitches = Pick<Settings, 'auto' | 'showMoves' | 'showTraps'>;
 
 /** Stockfish's view of the shown position, as far as it has arrived. */
 export interface EngineView {
-  /** The move its evaluation names. */
+  /** Its first line's move: the best. */
   readonly best?: Uci;
   /** Its top three moves, best first, as rows (`engineCandidates`). */
   readonly top?: readonly Candidate[];
@@ -138,8 +138,7 @@ export interface Guidance {
    * Stockfish's best move to mark, with "moves on the board" on, while nothing
    * is previewed, pointed at or playing back. Inside the guide the candidates
    * are what is highlighted, so it is tagged only when it isn't one of them.
-   * Past the guide's moves it is the first of `top`, so the mark and the list
-   * agree (the evaluation's own search goes deeper and can name another).
+   * Past the guide's moves it is the first of `top`: both come from one analysis.
    */
   readonly best?: Uci;
   /** Stockfish's top three, listed in Explore where the guide has no candidates. */
@@ -210,9 +209,7 @@ export function guidance(input: GuidanceInput): Guidance {
   });
   const best =
     explore && switches.showMoves && !preview && !lifted && !playing && !pointedNote
-      ? view.place === 'inside'
-        ? engine?.best
-        : top[0]?.move.uci
+      ? engine?.best
       : undefined;
 
   return {

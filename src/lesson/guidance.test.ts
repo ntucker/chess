@@ -107,18 +107,23 @@ describe('guidance', () => {
 
     it("lists Stockfish's top three beyond the guide, and at a guide end, marking the first as best", () => {
       const beyond = [...ADVANCE, 'a6'];
-      // The evaluation's deeper search named another move: the list's first wins.
-      const engine = { best: 'c2c4', top: ['g1f3', 'c2c3', 'f1d3'] };
+      // One analysis names the best move and lists the top three.
+      const engine = { best: 'g1f3', top: ['g1f3', 'c2c3', 'f1d3'] };
       expect(summary(shown(beyond, 'explore', {}, { engine }))).toMatchObject({
         candidates: [],
         best: 'g1f3',
         top: ['Nf3', 'c3', 'Bd3'],
       });
       const end = [...ADVANCE, 'Bf5', 'Nf3', 'e6', 'Be2', 'c5', 'O-O', 'Nc6'];
-      const atEnd = shown(end, 'explore', {}, { engine: { top: ['c2c3', 'c1e3', 'b1d2'] } });
+      const atEnd = shown(
+        end,
+        'explore',
+        {},
+        { engine: { best: 'c2c3', top: ['c2c3', 'c1e3', 'b1d2'] } },
+      );
       expect(summary(atEnd)).toMatchObject({ best: 'c2c3', top: ['c3', 'Be3', 'Nbd2'] });
-      // Before the top three arrive, nothing is marked.
-      expect(shown(beyond, 'explore').best).toBeUndefined();
+      // Before the analysis arrives, nothing is marked.
+      expect(shown(beyond, 'explore', {}, { engine: {} }).best).toBeUndefined();
     });
 
     it("previews and plays Stockfish's top moves as the guide's candidates", () => {
