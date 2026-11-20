@@ -1,29 +1,19 @@
 /**
  * Lists that rearrange: measure items by key before a change, then glide
  * each from where it was to where it is (FLIP, translate only), on either
- * platform's engine (from data-client's website/src/components/motion/reorder.ts).
+ * the web (from data-client's website/src/components/motion/reorder.ts).
  */
-import { appear, arrive, expectLeave, glide, leave, lift, measureOf, stop } from './engine';
+import { arrive, glide, leave, lift, measureOf, stop } from './dom';
 import type { Spring } from './spring';
-import type { MotionElement, Point, Position } from './types';
+import type { Items, Key, MotionElement, Point, Position } from './types';
 
-/** An item's id: the same from one render to the next, even when its element isn't */
-export type Key = string | number;
-
-/** Elements under keys that stay the same from one render to the next (an item's id) */
-export type Items = ReadonlyMap<Key, MotionElement>;
 export type Positions = ReadonlyMap<Key, Position>;
 
-/**
- * Reads where `items` are, before a change moves them. Each would fade out
- * if the change removes it (`reorder` takes that back from those it keeps).
- */
+/** Reads where `items` are, before a change moves them */
 export function measure(items: Items): Positions {
   const positions = new Map<Key, Position>();
-  for (const [key, el] of items) {
+  for (const [key, el] of items)
     positions.set(key, { ...measureOf(el), el, parent: el.parentElement });
-    expectLeave(el, true);
-  }
   return positions;
 }
 
@@ -38,7 +28,6 @@ export function measure(items: Items): Positions {
 export function reorder(before: Positions, items: Items, spring: Spring) {
   // the final layout, without glides in flight, before measuring it
   for (const el of items.values()) {
-    expectLeave(el, false);
     stop(el);
     lift(el, false);
   }
@@ -49,8 +38,7 @@ export function reorder(before: Positions, items: Items, spring: Spring) {
     const was = before.get(key);
     const { at } = measureOf(el);
     if (!was) {
-      if (takeSpot(left, at)) appear(el);
-      else arrivals.push(el);
+      if (!takeSpot(left, at)) arrivals.push(el);
       continue;
     }
     moves.set(el, {
@@ -80,10 +68,8 @@ export function reorder(before: Positions, items: Items, spring: Spring) {
   }
   for (const position of left) leave(position);
   // an arrival holding an item that moves in shows at once, or its fade would hide that glide
-  for (const el of arrivals) {
-    if (glides.some(({ el: item }) => el.contains(item))) appear(el);
-    else arrive(el, spring);
-  }
+  for (const el of arrivals)
+    if (!glides.some(({ el: item }) => el.contains(item))) arrive(el, spring);
 }
 
 /** The latest crossing glide of each lifted item: an older one landing leaves it lifted */

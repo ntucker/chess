@@ -1,250 +1,141 @@
 /**
- * Android's motion engine: Reanimated shared values that a worklet moves
- * every frame on the UI thread, following the same spring as the web's
- * keyframes. Positions come from React Native's DOM-like node API
- * (`offsetLeft`, `offsetTop`, `offsetParent`), which reads layout without
- * transforms, plus the offsets this engine itself is animating, which it
- * knows exactly. Reanimated's own withSpring isn't used: it drops velocity
- * that points away from the target, so a reversal would stall instead of
- * turning around with its momentum.
+ * Android's motion engine: Reanimated layout animations, which start in the
+ * same frame React Native mounts the new layout. Animating from JavaScript
+ * after a commit can't: Reanimated holds its updates back while React
+ * commits, so the new layout shows for a frame before the animation's start.
+ * Each view springs from where it is on screen to its new place on the UI
+ * thread, with the web's spring and with the speed it had (Reanimated's own
+ * springs drop velocity that points away from the target, so a reversal
+ * would stall instead of turning around). A list only animates the change
+ * its `layoutDependency` names: it arms its views before React commits and
+ * disarms them a frame later, so other layout changes land at once.
  */
-import { useCallback, useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { View } from 'react-native';
 import Animated, {
-  cancelAnimation,
-  defineAnimation,
   type AnimationObject,
+  defineAnimation,
+  Easing,
   type EntryExitAnimationFunction,
+  type LayoutAnimationFunction,
   type SharedValue,
-  useAnimatedStyle,
   useSharedValue,
   withTiming,
-  Easing,
 } from 'react-native-reanimated';
-import type { ViewStyle } from 'react-native';
 
-import {
-  atRest,
-  sampleSpring,
-  SAMPLE_RATE,
-  springAt,
-  type Spring,
-  type SpringState,
-} from './spring';
-import { type HostProps, ORIGIN, type MotionElement, type Point, type Position } from './types';
+import { atRest, springAt, type Spring, type SpringState } from './spring';
+import type { HostProps, ListMotion } from './types';
 
 /** Sub-pixel: settles once the remaining motion is invisible */
 const PRECISION = 0.25;
 
-/** React Native's element, with the layout reads this needs */
-interface NativeElement extends MotionElement {
-  readonly offsetLeft: number;
-  readonly offsetTop: number;
-  readonly offsetWidth: number;
-  readonly offsetHeight: number;
-  readonly offsetParent: NativeElement | null;
-  readonly parentElement: NativeElement | null;
-  readonly scrollLeft: number;
-  readonly scrollTop: number;
-}
-
-interface Run {
+interface NativeListMotion extends ListMotion {
+  /** Its views animate the layout change React is committing */
+  readonly armed: SharedValue<boolean>;
   readonly spring: Spring;
-  readonly start: readonly [x: SpringState, y: SpringState];
-  /** ms (performance.now) the glide started, and how long until it rests */
+}
+
+/** Where a view's spring on one axis started, to read its speed if interrupted */
+interface Run {
+  readonly start: SpringState;
   readonly startedAt: number;
-  readonly length: number;
-  readonly finished: Promise<void>;
-  readonly end: () => void;
 }
-interface Driver {
-  readonly x: SharedValue<number>;
-  readonly y: SharedValue<number>;
-  /** Opacity is 1 + fade, so a fade springs from -1 to 0 */
-  readonly fade: SharedValue<number>;
-  /** Whether its `exiting` animation plays when React removes it */
-  readonly leaving: SharedValue<boolean>;
-  run?: Run;
-}
-const drivers = new WeakMap<MotionElement, Driver>();
+type Runs = { x?: Run; y?: Run };
 
-/**
- * The view a `MotionView` renders: an Animated.View owning the shared values
- * the engine moves it with. Reanimated keeps a removed view on screen for its
- * `exiting` animation, which React can't, so that is how an item leaves; it
- * plays only when its list expects the item to leave.
- */
-export function MotionHost({ join, arriving, style, ...rest }: HostProps) {
-  const x = useSharedValue(0);
-  const y = useSharedValue(0);
-  const fade = useSharedValue(arriving ? -1 : 0);
-  const leaving = useSharedValue(false);
-  const animated = useAnimatedStyle((): ViewStyle => ({
-    transform: [{ translateX: x.value }, { translateY: y.value }],
-    opacity: Math.min(1, 1 + fade.value),
-  }));
-  const exiting = useMemo(() => leaveAnimation(leaving), [leaving]);
-  // The driver outlives the ref: the list fades out an item after React removed it.
-  const ref = useCallback(
-    (el: MotionElement | null) => {
-      if (el) drivers.set(el, { x, y, fade, leaving });
-      return join(el);
-    },
-    [join, x, y, fade, leaving],
+export function useListMotion(spring: Spring): NativeListMotion {
+  const armed = useSharedValue(false);
+  const changes = useRef(0);
+  return useMemo(
+    () => ({
+      armed,
+      spring,
+      before() {
+        changes.current += 1;
+        armed.set(true);
+        return changes.current;
+      },
+      after(change) {
+        // After the UI thread has mounted this commit; a later change keeps it armed.
+        requestAnimationFrame(() => {
+          if (changes.current === change) armed.set(false);
+        });
+      },
+    }),
+    [armed, spring],
   );
-  return <Animated.View {...rest} ref={ref as never} style={[style, animated]} exiting={exiting} />;
 }
 
-/** Where `el` is on screen now, a glide in flight (its own or a moving parent's) included */
-export function measureOf(el: MotionElement): Omit<Position, 'el' | 'parent'> {
-  const node = el as NativeElement;
-  let x = 0;
-  let y = 0;
-  for (let up: NativeElement | null = node; up; up = up.offsetParent) {
-    x += up.offsetLeft;
-    y += up.offsetTop;
-  }
-  // Offsets are within scroll content: take off how far each scroll view is
-  // scrolled (a list that shrinks can clamp it), and add the glides in flight.
-  for (let up = node.parentElement as NativeElement | null; up; up = up.parentElement) {
-    x -= up.scrollLeft;
-    y -= up.scrollTop;
-  }
-  for (let up: MotionElement | null = el; up; up = up.parentElement) {
-    const offset = offsetOf(up);
-    x += offset.x;
-    y += offset.y;
-  }
-  return {
-    at: { x, y },
-    velocity: velocityOf(el),
-    width: node.offsetWidth,
-    height: node.offsetHeight,
+/** An Animated.View whose layout changes, arrival and leaving its list animates */
+export function MotionHost({ join, list, arriving, ...rest }: HostProps) {
+  const runs = useSharedValue<Runs>({});
+  const motion = list as NativeListMotion | null;
+  const armed = motion?.armed;
+  const spring = motion?.spring;
+  const layout = useMemo(
+    () => armed && spring && layoutTransition(armed, spring, runs),
+    [armed, spring, runs],
+  );
+  const exiting = useMemo(() => armed && leaveAnimation(armed), [armed]);
+  // Read once, at mount: only an arrival fades in.
+  const [entering] = useState(() => (arriving && spring ? enterAnimation(spring) : undefined));
+  if (!motion) return <View {...rest} ref={join as never} />;
+  return (
+    <Animated.View
+      {...rest}
+      ref={join as never}
+      layout={layout || undefined}
+      entering={entering}
+      exiting={exiting || undefined}
+    />
+  );
+}
+
+/** Springs a view from where it is on screen to its new place, keeping its speed */
+function layoutTransition(
+  armed: SharedValue<boolean>,
+  spring: Spring,
+  runs: SharedValue<Runs>,
+): LayoutAnimationFunction {
+  return (values) => {
+    'worklet';
+    const size = { width: values.targetWidth, height: values.targetHeight };
+    if (!armed.value)
+      return {
+        initialValues: { originX: values.targetOriginX, originY: values.targetOriginY, ...size },
+        animations: {},
+      };
+    return {
+      initialValues: { originX: values.currentOriginX, originY: values.currentOriginY, ...size },
+      animations: {
+        originX: springTo(values.targetOriginX, spring, runs, 'x'),
+        originY: springTo(values.targetOriginY, spring, runs, 'y'),
+      },
+    };
+  };
+}
+
+/** Fades an item in that arrived with the change */
+function enterAnimation(spring: Spring): EntryExitAnimationFunction {
+  return () => {
+    'worklet';
+    return { initialValues: { opacity: 0 }, animations: { opacity: springTo(1, spring) } };
   };
 }
 
 /**
- * Springs `el` from `from` to where layout puts it, keeping `velocity`
- * (px/s). Resolves once it lands or another glide replaces it.
+ * How a removed item leaves: with the change its list animates, it fades out
+ * quicker than the glide into its place, so it's mostly gone before another
+ * item gets there; otherwise (the list didn't change, or went with it) it
+ * goes at once, invisible for the frame Reanimated keeps it.
  */
-export function glide(el: MotionElement, spring: Spring, from: Point, velocity: Point = ORIGIN) {
-  stop(el);
-  const driver = drivers.get(el);
-  if (!driver) return;
-  if (!from.x && !from.y && !velocity.x && !velocity.y) return;
-  const start = [
-    { offset: from.x, velocity: velocity.x },
-    { offset: from.y, velocity: velocity.y },
-  ] as const;
-  const length =
-    (Math.max(...start.map((axis) => sampleSpring(spring, axis, PRECISION).length)) - 1) /
-    SAMPLE_RATE;
-  let end = () => {};
-  const finished = new Promise<void>((resolve) => {
-    const timer = setTimeout(resolve, length * 1000);
-    end = () => {
-      clearTimeout(timer);
-      resolve();
-    };
-  });
-  driver.run = { spring, start, startedAt: performance.now(), length, finished, end };
-  driver.x.value = springFrom(spring, start[0]);
-  driver.y.value = springFrom(spring, start[1]);
-  return finished;
-}
-
-/** How fast `el`'s glide is moving it right now (px/s) */
-export function velocityOf(el: MotionElement): Point {
-  return stateOf(el, ({ velocity }) => velocity);
-}
-
-function offsetOf(el: MotionElement): Point {
-  return stateOf(el, ({ offset }) => offset);
-}
-
-function stateOf(el: MotionElement, read: (state: SpringState) => number): Point {
-  const run = drivers.get(el)?.run;
-  if (!run) return ORIGIN;
-  const t = (performance.now() - run.startedAt) / 1000;
-  if (t >= run.length) return ORIGIN;
-  const [x, y] = run.start.map((axis) => springAt(run.spring, axis, t));
-  return { x: read(x), y: read(y) };
-}
-
-/** Ends `el`'s glide, snapping it back to its layout position */
-export function stop(el: MotionElement) {
-  const driver = drivers.get(el);
-  if (!driver) return;
-  cancelAnimation(driver.x);
-  cancelAnimation(driver.y);
-  driver.x.value = 0;
-  driver.y.value = 0;
-  driver.run?.end();
-  driver.run = undefined;
-}
-
-/**
- * Not yet on Android: an animated zIndex would send every frame of the view
- * through React Native's commit, giving up the synchronous transform and
- * opacity updates that start a glide in the same frame as its layout.
- */
-export function lift(_el: MotionElement, _lifted: boolean) {}
-
-/** Fades a new item in */
-export function arrive(el: MotionElement, spring: Spring) {
-  const driver = drivers.get(el);
-  if (driver) driver.fade.value = springFrom(spring, { offset: -1, velocity: 0 });
-}
-
-/** Shows a new item at once */
-export function appear(el: MotionElement) {
-  const driver = drivers.get(el);
-  if (driver) driver.fade.value = 0;
-}
-
-/**
- * Arms (or disarms) `el`'s `exiting` animation. Armed before React commits,
- * since the UI thread decides on it when the commit removes the view.
- */
-export function expectLeave(el: MotionElement, leaving: boolean) {
-  const driver = drivers.get(el);
-  if (driver) driver.leaving.value = leaving;
-}
-
-/** Nothing to do: the view's armed `exiting` animation fades it out */
-export function leave(_position: Position) {}
-
-/** A shared value's animation from `start` to rest at 0, on the UI thread */
-function springFrom(spring: Spring, start: SpringState): number {
-  'worklet';
-  return defineAnimation<AnimationObject<number>>(0, () => {
-    'worklet';
-    return {
-      onStart(animation: AnimationObject<number>, _value: number, now: number) {
-        animation.startTime = now;
-        animation.current = start.offset;
-      },
-      onFrame(animation: AnimationObject<number>, now: number) {
-        const state = springAt(spring, start, (now - animation.startTime) / 1000);
-        const done = atRest(state, PRECISION);
-        animation.current = done ? 0 : state.offset;
-        return done;
-      },
-      current: start.offset,
-      toValue: 0,
-      startTime: 0,
-    };
-  }) as unknown as number;
-}
-
-/**
- * How a removed item leaves: armed, it fades out quicker than the glide into
- * its place, so it's mostly gone before another item gets there; unarmed (its
- * whole list went, or the list didn't change), it goes at once.
- */
-function leaveAnimation(leaving: SharedValue<boolean>): EntryExitAnimationFunction {
+function leaveAnimation(armed: SharedValue<boolean>): EntryExitAnimationFunction {
   return () => {
     'worklet';
-    if (!leaving.value) return { initialValues: {}, animations: {} };
+    if (!armed.value)
+      return {
+        initialValues: { opacity: 0 },
+        animations: { opacity: withTiming(0, { duration: 0 }) },
+      };
     const timing = { duration: 160, easing: Easing.out(Easing.ease) };
     return {
       initialValues: { opacity: 1, transform: [{ translateX: 0 }] },
@@ -254,4 +145,37 @@ function leaveAnimation(leaving: SharedValue<boolean>): EntryExitAnimationFuncti
       },
     };
   };
+}
+
+/**
+ * An animation from wherever the value is to `target` on `spring`. With
+ * `runs`, it starts at the speed the axis's last spring had at that moment,
+ * and records its own start for the next.
+ */
+function springTo(target: number, spring: Spring, runs?: SharedValue<Runs>, axis?: 'x' | 'y') {
+  'worklet';
+  return defineAnimation<AnimationObject<number>>(target, () => {
+    'worklet';
+    return {
+      onStart(animation: AnimationObject<number>, value: number, now: number) {
+        const last = runs && axis ? runs.value[axis] : undefined;
+        const velocity = last
+          ? springAt(spring, last.start, (now - last.startedAt) / 1000).velocity
+          : 0;
+        const start = { offset: value - target, velocity };
+        animation.start = start;
+        animation.startTime = now;
+        animation.current = value;
+        if (runs && axis) runs.value = { ...runs.value, [axis]: { start, startedAt: now } };
+      },
+      onFrame(animation: AnimationObject<number>, now: number) {
+        const state = springAt(spring, animation.start, (now - animation.startTime) / 1000);
+        const done = atRest(state, PRECISION);
+        animation.current = target + (done ? 0 : state.offset);
+        return done;
+      },
+      current: target,
+      toValue: target,
+    };
+  }) as unknown as number;
 }

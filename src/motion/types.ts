@@ -31,40 +31,36 @@ export interface Position {
   readonly height: number;
 }
 
-/** What a `MotionView` renders: a view the engine can move, joined to its list through `join` */
+/** Elements under keys that stay the same from one render to the next (an item's id) */
+export type Key = string | number;
+export type Items = ReadonlyMap<Key, MotionElement>;
+
+/**
+ * How one `MotionList` animates a change, made once per list by the engine's
+ * `useListMotion`: `before` runs as React is about to change the screen and
+ * `after` once it has, with what `before` returned.
+ */
+export interface ListMotion {
+  before(items: Items): unknown;
+  after(before: unknown, items: Items): void;
+}
+
+/** What a `MotionView` renders: a view its engine can move */
 export interface HostProps extends ViewProps {
   /** Called with the host element when it mounts and null when it goes; may return a cleanup */
   readonly join: (el: MotionElement | null) => (() => void) | undefined;
-  /** It mounts as an arrival its list will fade in: it starts hidden */
+  /** The list it is in, if any */
+  readonly list: ListMotion | null;
+  /** It mounts with a change its list animates: it fades in */
   readonly arriving: boolean;
 }
 
 /**
- * A platform's motion engine (`engine.ts` for Android, `engine.web.ts`).
+ * A platform's motion engine (`engine.tsx` for Android, `engine.web.tsx`).
  * TypeScript resolves `./engine` to the Android file alone, so
  * `engine.contract.ts` holds both to this.
  */
 export interface Engine {
   readonly MotionHost: ComponentType<HostProps>;
-  /** Where `el` is on screen now, glides in flight included, and its size */
-  measureOf(el: MotionElement): Omit<Position, 'el' | 'parent'>;
-  /** Springs `el` from `from` to its layout position; resolves when it lands or is replaced */
-  glide(
-    el: MotionElement,
-    spring: Spring,
-    from: Point,
-    velocity?: Point,
-  ): Promise<void> | undefined;
-  /** Ends `el`'s glide at its layout position */
-  stop(el: MotionElement): void;
-  /** Raises `el` over its siblings while it crosses them */
-  lift(el: MotionElement, lifted: boolean): void;
-  /** Fades in an item that arrived */
-  arrive(el: MotionElement, spring: Spring): void;
-  /** Shows at once an item that arrived (it took the spot of one that left) */
-  appear(el: MotionElement): void;
-  /** Whether `el` fades out if React removes it in the coming commit */
-  expectLeave(el: MotionElement, leaving: boolean): void;
-  /** Fades out, where it was, an item React removed */
-  leave(position: Position): void;
+  useListMotion(spring: Spring): ListMotion;
 }

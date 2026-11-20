@@ -9,7 +9,7 @@ function mockCall(name: string, args: unknown[], result?: unknown) {
   mockCalls.push([name, ...args]);
   return result;
 }
-jest.mock('./engine', () => ({
+jest.mock('./dom', () => ({
   measureOf: (el: MotionElement) => ({
     at: mockLayout.get(el),
     velocity: { x: 0, y: 0 },
@@ -20,8 +20,6 @@ jest.mock('./engine', () => ({
   stop: (...args: unknown[]) => mockCall('stop', args),
   lift: (...args: unknown[]) => mockCall('lift', args),
   arrive: (...args: unknown[]) => mockCall('arrive', args),
-  appear: (...args: unknown[]) => mockCall('appear', args),
-  expectLeave: (...args: unknown[]) => mockCall('expectLeave', args),
   leave: (...args: unknown[]) => mockCall('leave', args),
 }));
 
@@ -77,7 +75,7 @@ describe('reorder', () => {
     expect(from.get(row)).toEqual({ x: 0, y: -20 });
   });
 
-  it('fades in a new item, and shows at once one taking the spot of one that left', () => {
+  it('fades in a new item, but not one taking the spot of one that left', () => {
     const kept = element({ x: 0, y: 0 });
     const gone = element({ x: 0, y: 20 });
     const before = measure(
@@ -98,7 +96,6 @@ describe('reorder', () => {
       springs.brisk,
     );
     expect(named('arrive')).toEqual([[added, springs.brisk]]);
-    expect(named('appear')).toEqual([[renamed]]);
     expect(named('leave')).toEqual([]);
   });
 
@@ -111,13 +108,7 @@ describe('reorder', () => {
         ['gone', gone],
       ]),
     );
-    // both may leave in the coming commit, then the kept one is taken back
-    expect(named('expectLeave')).toEqual([
-      [kept, true],
-      [gone, true],
-    ]);
     reorder(before, new Map([['kept', kept]]), springs.brisk);
-    expect(named('expectLeave').slice(2)).toEqual([[kept, false]]);
     expect(named('leave')).toEqual([[expect.objectContaining({ el: gone, at: { x: 0, y: 20 } })]]);
   });
 

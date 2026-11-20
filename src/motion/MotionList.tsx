@@ -2,10 +2,9 @@ import { useReducedMotion } from '@reactive/silk-native';
 import { Component, createContext, type ReactNode, useCallback, useContext, useRef } from 'react';
 import type { ViewProps } from 'react-native';
 
-import { MotionHost } from './engine';
-import { type Key, measure, reorder, type Positions } from './reorder';
+import { MotionHost, useListMotion } from './engine';
 import { springs, type Spring } from './spring';
-import type { MotionElement } from './types';
+import type { Key, ListMotion, MotionElement } from './types';
 
 interface Props {
   /** Items only move when this changes (the list they're rendered from) */
@@ -26,7 +25,13 @@ interface Props {
  * land at once.
  */
 export function MotionList(props: Props) {
-  return <Measured {...props} still={useReducedMotion()} />;
+  const motion = useListMotion(props.spring ?? springs.brisk);
+  return <Measured {...props} motion={motion} still={useReducedMotion()} />;
+}
+
+interface MeasuredProps extends Props {
+  readonly motion: ListMotion;
+  readonly still: boolean;
 }
 
 interface State {
@@ -35,7 +40,7 @@ interface State {
   readonly list: ListContextValue;
 }
 
-class Measured extends Component<Props & { readonly still: boolean }, State> {
+class Measured extends Component<MeasuredProps, State> {
   private readonly items = new Map<Key, MotionElement>();
 
   /** Joins `el` under `id`; returns the cleanup */
@@ -48,26 +53,30 @@ class Measured extends Component<Props & { readonly still: boolean }, State> {
 
   state: State = {
     dependency: this.props.layoutDependency,
-    list: { join: this.join, arriving: false },
+    list: { join: this.join, motion: this.props.motion, arriving: false },
   };
 
   static getDerivedStateFromProps(
-    { layoutDependency, still }: Props & { readonly still: boolean },
+    { layoutDependency, motion, still }: MeasuredProps,
     { dependency, list }: State,
   ): Partial<State> | null {
     const arriving = !still && !Object.is(dependency, layoutDependency);
-    if (arriving === list.arriving && Object.is(dependency, layoutDependency)) return null;
-    return { dependency: layoutDependency, list: { join: list.join, arriving } };
+    if (
+      arriving === list.arriving &&
+      motion === list.motion &&
+      Object.is(dependency, layoutDependency)
+    )
+      return null;
+    return { dependency: layoutDependency, list: { join: list.join, motion, arriving } };
   }
 
-  getSnapshotBeforeUpdate(prev: Props): Positions | null {
+  getSnapshotBeforeUpdate(prev: Props): { readonly before: unknown } | null {
     if (!this.changed(prev) || this.props.still) return null;
-    return measure(this.items);
+    return { before: this.props.motion.before(this.items) };
   }
 
-  componentDidUpdate(prev: Props, _state: unknown, before: Positions | null) {
-    if (before && this.changed(prev))
-      reorder(before, this.items, this.props.spring ?? springs.brisk);
+  componentDidUpdate(prev: Props, _state: unknown, snapshot: { readonly before: unknown } | null) {
+    if (snapshot && this.changed(prev)) this.props.motion.after(snapshot.before, this.items);
   }
 
   render() {
@@ -81,6 +90,7 @@ class Measured extends Component<Props & { readonly still: boolean }, State> {
 
 interface ListContextValue {
   readonly join: (id: Key, el: MotionElement) => () => void;
+  readonly motion: ListMotion;
   readonly arriving: boolean;
 }
 const ListContext = createContext<ListContextValue | null>(null);
@@ -112,5 +122,7 @@ export function MotionView({ id, ...rest }: Omit<ViewProps, 'id'> & { readonly i
     },
     [join, id],
   );
-  return <MotionHost {...rest} join={ref} arriving={!!list?.arriving} />;
+  return (
+    <MotionHost {...rest} join={ref} list={list?.motion ?? null} arriving={!!list?.arriving} />
+  );
 }
