@@ -74,6 +74,22 @@ describe('parseStudy', () => {
     );
   });
 
+  it('joins a chapter that waits on another waiting chapter, or comes first in the study', () => {
+    const AFTER_E3 = 'rnbqkb1r/ppp1pppp/5n2/3p4/3P1B2/4P3/PPP2PPP/RN1QKBNR b KQkq - 0 3';
+    const pgn = [
+      chapter('After e3', '3... c5 *', AFTER_E3),
+      chapter('Main line', '3. e3 { Solid. } e6 *', AFTER_NF6),
+      chapter('London', '1. d4 d5 *'),
+      chapter('Bf4', '1. d4 d5 2. Bf4 Nf6 *'),
+    ].join('\n');
+    const chapters = parseStudy(pgn, () => true);
+    expect(chapters.map(({ title }) => title)).toEqual(['After e3', 'Main line', 'London', 'Bf4']);
+    for (const one of chapters) expect(one.start.fullmoves).toBe(1);
+    expect([...mainLine(chapters[0].moves[0])].map(({ uci }) => uci)).toEqual(
+      uciLine('d4', 'd5', 'Bf4', 'Nf6', 'e3', 'c5'),
+    );
+  });
+
   it('keeps a chapter set up where no earlier chapter goes', () => {
     const pgn = [
       chapter('London', '1. d4 d5 *'),

@@ -137,6 +137,8 @@ const BOSBURP_QG = {
     author: 'Bosburp',
     url: 'https://lichess.org/study/0uRBskUV',
   },
+  // The introduction's jokes: "You found the Easter Egg".
+  leave: ['b3', 'e4'],
 } as const;
 
 export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
@@ -458,10 +460,8 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         // White's view of the Albin, reworded for Black; its introduction leads to it.
         ...BOSBURP_QG,
         writtenFor: 'white',
-        chapters: (title: string) => Object.hasOwn(BOSBURP_QG_CHAPTERS, title),
-        // The introduction's jokes: "You found the Easter Egg".
-        leave: ['b3', 'e4'],
-        chapterName: (title: string) => BOSBURP_QG_CHAPTERS[title],
+        chapters: (title: string) => ALBIN_QG_TITLES.includes(title),
+        chapterName: (title: string) => QG_CHAPTERS[title],
         namedFrom: 3,
       },
       {
@@ -686,8 +686,6 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         ...BOSBURP_QG,
         // White's repertoire; the outro only says goodbye.
         chapters: (title: string) => Object.hasOwn(QG_CHAPTERS, title),
-        // The introduction's jokes: "You found the Easter Egg".
-        leave: ['b3', 'e4'],
         chapterName: (title: string) => QG_CHAPTERS[title],
       },
       // Wikibooks fills the replies the study leaves open, one root per reply so the page budget
@@ -760,11 +758,8 @@ const LENIN_ITALIAN_CHAPTERS: Readonly<Record<string, string | undefined>> = {
   'Evans Gambit': 'Italian: Giuoco Piano: Evans Gambit',
 };
 
-/** Bosburp's Queen's Gambit chapters leading to and covering the Albin, as variation names. */
-const BOSBURP_QG_CHAPTERS: Readonly<Record<string, string | undefined>> = {
-  '♕ Introduction ♕': undefined,
-  'Albin Countergambit 2...e5': 'Albin Countergambit',
-};
+/** Bosburp's Queen's Gambit chapters leading to and covering the Albin (`QG_CHAPTERS` names them). */
+const ALBIN_QG_TITLES: readonly string[] = ['♕ Introduction ♕', 'Albin Countergambit 2...e5'];
 
 /**
  * Bosburp's Queen's Gambit chapters, as variation names. A chapter named only by its move takes its

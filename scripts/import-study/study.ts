@@ -94,51 +94,58 @@ export const isDubious = (move: StudyMove) => move.nags.some((nag) => DUBIOUS_NA
  * whose position only a later chapter reaches waits for it.
  */
 export function parseStudy(pgn: string, include: (title: string) => boolean): Chapter[] {
+  const games = parsePgn(pgn).flatMap((game) => {
+    const title = game.headers.get('ChapterName') ?? game.headers.get('Event') ?? '';
+    const start = startingPosition(game.headers).unwrap() as Chess;
+    return include(title) ? [{ game, title, start }] : [];
+  });
+  // The lesson starts where the first chapter not set up from a position does.
+  if (games.length === 0) return [];
+  const root = positionKey((games.find(({ game }) => !game.headers.has('FEN')) ?? games[0]).start);
   const chapters: Chapter[] = [];
-  const order = new Map<Chapter, number>();
+  const studyIndex = new Map<Chapter, number>();
   // The positions chapters read so far reach, for `withLineIntros`.
   const known = new Set<string>();
   const add = (chapter: Chapter, index: number) => {
     chapters.push(chapter);
-    order.set(chapter, index);
+    studyIndex.set(chapter, index);
     for (const move of chapterMoves(chapter)) known.add(positionKey(move.after));
   };
-  const games = parsePgn(pgn).flatMap((game) => {
-    const title = game.headers.get('ChapterName') ?? game.headers.get('Event') ?? '';
-    return include(title) ? [{ game, title }] : [];
-  });
-  /** Reads chapter `index` unless only a chapter not read yet may lead to it; false then. */
-  const read = (index: number, mayWait: boolean) => {
-    const { game, title } = games[index];
-    const start = startingPosition(game.headers).unwrap() as Chess;
+  const read = (index: number) => {
+    const { game, title, start } = games[index];
     const lead = leadTo(chapters, start);
     if (lead) {
       const first = copyLead(lead, (end) =>
         readMoves(game.moves.children, end.after, end.ply + 1, end),
       );
       add({ title, start: chapters[0].start, moves: withLineIntros([first], known) }, index);
-      return true;
+      return;
     }
-    if (mayWait && chapters.length > 0 && positionKey(start) !== positionKey(chapters[0].start))
-      return false;
     const namedFrom = Number(game.headers.get('NamedFrom')) || undefined;
     const moves = withLineIntros(readMoves(game.moves.children, start, 1), known);
     add({ title, start, moves, ...(namedFrom && { namedFrom, cut: true }) }, index);
-    return true;
   };
-  // Pass after pass until one reads nothing new; the chapters still waiting keep their own start.
+  /** Whether chapter `index` can be read now: it starts at the root, or a chapter read leads to it. */
+  const ready = (index: number) =>
+    positionKey(games[index].start) === root || !!leadTo(chapters, games[index].start);
   let waiting = games.map((_, index) => index);
-  for (let before = Infinity; waiting.length < before;) {
-    before = waiting.length;
-    waiting = waiting.filter((index) => !read(index, true));
+  // Pass after pass, while one reads a chapter.
+  for (let count = Infinity; waiting.length < count;) {
+    count = waiting.length;
+    waiting = waiting.filter((index) => {
+      if (!ready(index)) return true;
+      read(index);
+      return false;
+    });
   }
-  for (const index of waiting) read(index, false);
-  return chapters.sort((a, b) => order.get(a)! - order.get(b)!);
+  // No chapter reaches these: each keeps its own start.
+  for (const index of waiting) read(index);
+  return chapters.sort((a, b) => studyIndex.get(a)! - studyIndex.get(b)!);
 }
 
 /**
  * `moves` with each side line's introduction on the move it introduces. A
- * comment opening a side line on a move that earlier chapters already play
+ * comment opening a side line on a move that chapters read before already play
  * (`known` holds the positions they reach), which names the move where that
  * line first goes somewhere new, introduces the line: "Before the Nf6 c5
  * line, its little brother" on 1...d5 belongs on 1...d5 2.Bf4 c5's c5.
@@ -298,7 +305,7 @@ function copyLead(
   return copy;
 }
 
-/** The moves from the first chapter's start to `pos` in an earlier chapter; none for that start itself or a position none reaches. */
+/** The moves from the first chapter's start to `pos` in a chapter read before; none for that start itself or a position none reaches. */
 function leadTo(chapters: readonly Chapter[], pos: Chess): StudyMove[] | undefined {
   const key = positionKey(pos);
   if (chapters.length === 0 || positionKey(chapters[0].start) === key) return undefined;
