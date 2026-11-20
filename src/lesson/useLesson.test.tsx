@@ -108,7 +108,7 @@ describe('useLesson Practice run', () => {
     expect(clean()).toBe(true);
   });
 
-  it('starts a new run when another opening is picked on the shared moves', async () => {
+  it('keeps the run clean when another opening is picked on the shared moves', async () => {
     const slav = readShippedLesson('slav');
     await act(async () => {
       root = createRoot();

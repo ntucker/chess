@@ -155,11 +155,17 @@ export const isPicking = (index: LessonIndex, side: Color, line: readonly Uci[])
 
 /**
  * How many of `line`'s first moves pick the opening: those played where
- * `isPicking` holds, which a Practice run judges as no move of the learner's.
+ * `isPicking` holds that go on along a lesson's line, which a Practice run
+ * judges as no move of the learner's. A move that leaves every lesson isn't one.
  */
 export function pickingMoves(index: LessonIndex, side: Color, line: readonly Uci[]): number {
   let picks = 0;
-  while (picks < line.length && isPicking(index, side, line.slice(0, picks))) picks++;
+  while (
+    picks < line.length &&
+    isPicking(index, side, line.slice(0, picks)) &&
+    linesThrough(index, side, line.slice(0, picks + 1)).length > 0
+  )
+    picks++;
   return picks;
 }
 
@@ -296,8 +302,9 @@ export function openingsLesson(index: LessonIndex, side: Color): Lesson {
 /**
  * `lesson` with the openings of its side listed where they are picked, so
  * the learner can step back and pick another; its own moves keep what the
- * file says of them, after the openings' notes, but not their counts, so the
- * openings list in the index's order whichever lesson is loaded.
+ * file says of them, after the openings' notes, but not their counts (nor do
+ * its other moves there), so the openings list in the index's order whichever
+ * lesson is loaded.
  */
 export function withOpenings(lesson: Lesson, index: LessonIndex): Lesson {
   const positions = { ...lesson.positions };
@@ -311,7 +318,9 @@ export function withOpenings(lesson: Lesson, index: LessonIndex): Lesson {
         ? { ...file, games: undefined, notes: [...move.notes, ...(file.notes ?? [])] }
         : move;
     });
-    const rest = here.moves.filter(({ uci }) => !openings.some((move) => move.uci === uci));
+    const rest = here.moves
+      .filter(({ uci }) => !openings.some((move) => move.uci === uci))
+      .map((move) => ({ ...move, games: undefined }));
     positions[key] = { ...here, moves: [...moves, ...rest] };
   }
   return { ...lesson, positions };

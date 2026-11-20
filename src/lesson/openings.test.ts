@@ -184,6 +184,8 @@ describe('pickingMoves', () => {
     expect(pickingMoves(INDEX, 'black', uciLine('e4', 'c6'))).toBe(1);
     expect(pickingMoves(INDEX, 'white', uciLine('d4', 'd5'))).toBe(1);
     expect(pickingMoves(INDEX, 'black', [])).toBe(0);
+    // 1...Nf6 leaves every Black lesson: a move of the learner's to judge.
+    expect(pickingMoves(INDEX, 'black', uciLine('d4', 'Nf6'))).toBe(1);
   });
 });
 
