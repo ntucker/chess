@@ -29,12 +29,23 @@ export interface Chapter {
    */
   readonly source?: number;
   /**
-   * For a chapter cut out of a longer line at a named position (a Wikibooks
-   * page's), the ply of the move into that position: its name covers only
-   * the positions from there on, the ones before belonging to the chapters
-   * it was cut from.
+   * The ply of the move into the position the chapter's name starts at: its
+   * name covers only the positions from there on. Before it, the chapter's
+   * main line is its parent variation's (`withTitleMoves`: "Early ...Bf5" is
+   * the London System until ...Bf5), or other chapters' when `cut`.
    */
   readonly namedFrom?: number;
+  /**
+   * Whether the chapter was cut out of a longer line at `namedFrom` (a
+   * Wikibooks page's): the moves before belong to the chapters it was cut from.
+   */
+  readonly cut?: boolean;
+  /**
+   * Moves the chapter's name gives that it plays only on a side line ("Bayonet
+   * Attack (4.g4)"): the lines from them are the chapter's own, like its main
+   * line, where no main line goes (`withTitleMoves`).
+   */
+  readonly claims?: readonly StudyMove[];
 }
 
 export interface StudyMove {
@@ -75,7 +86,7 @@ export function parseStudy(pgn: string, include: (title: string) => boolean): Ch
     const lead = leadTo(chapters, start);
     if (!lead) {
       const moves = readMoves(game.moves.children, start, 1);
-      chapters.push({ title, start, moves, ...(namedFrom && { namedFrom }) });
+      chapters.push({ title, start, moves, ...(namedFrom && { namedFrom, cut: true }) });
       continue;
     }
     const first = copyLead(lead, (last) =>

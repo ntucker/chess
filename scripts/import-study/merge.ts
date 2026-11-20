@@ -22,6 +22,7 @@ import {
 
 import type { ChapterNotes } from './extract';
 import { chapterMoves, isDubious, mainLine, played, type Chapter, type StudyMove } from './study';
+import { withTitleMoves } from './titleMoves';
 
 /** What the lesson says about itself, beside its positions. */
 export type LessonInfo = Pick<Lesson, 'id' | 'title' | 'side' | 'sources'>;
@@ -77,7 +78,10 @@ export function mergeChapters(
     addChapter(tree, chapter, extracted[i], info.side, tally[source]);
   });
   const { variations, chapterVariation } = chapterVariations(info, chapters, chapterName);
-  const variationOf = sourceVariations(info.id, variations, chapters, chapterVariation);
+  const titled = chapters.map((chapter, i) =>
+    withTitleMoves(chapter, variations[chapterVariation[i]].name),
+  );
+  const variationOf = sourceVariations(info.id, variations, titled, chapterVariation);
   for (const { branches } of extracted) addBranches(tree, branches, variationOf, info.id);
   tree.dropEmpty();
 
@@ -202,14 +206,7 @@ function addBranches(
 
 /**
  * The variation of each position the chapters reach (`positionVariations`),
- * adding one source at a time: where the earlier sources' main lines reach a
- * position, a new name must lie within theirs, else the earlier name stands.
- * A later guide may narrow a name ("Pure Slav" to "Pure Slav: Geller
- * Gambit"), but its "Classical Variation" chapter never renames the main
- * guide's "Capablanca Variation". Off the earlier main lines, a name gives way
- * to one as narrow on another line: the main London guide reaches 3.e3 c5
- * 4.c3 Qb6 only by a side line of its Early ...Bf5 chapter, so the later
- * guides' Anti-London ...c5 names it.
+ * adding one source at a time.
  */
 function sourceVariations(
   root: VariationId,
@@ -218,37 +215,25 @@ function sourceVariations(
   chapterVariation: readonly VariationId[],
 ): Map<PositionKey, VariationId> {
   const sources = [...new Set(chapters.map(({ source = 0 }) => source))].sort((a, b) => a - b);
-  let named = new Map<PositionKey, VariationId>();
-  /** The positions on the main lines of the sources so far. */
-  const earlierMain = new Set<PositionKey>();
+  let names: Names = { named: new Map(), onMain: new Set(), claimed: new Set() };
   for (const source of sources) {
     const upTo = chapters.flatMap((chapter, i) => ((chapter.source ?? 0) <= source ? [i] : []));
-    const before = named;
-    named = positionVariations(
+    names = positionVariations(
       root,
       variations,
       upTo.map((i) => chapters[i]),
       upTo.map((i) => chapterVariation[i]),
+      names,
     );
-    for (const [key, id] of named) {
-      const earlier = before.get(key);
-      if (!earlier || ancestry(variations, id).includes(earlier)) continue;
-      const [was, now] = [ancestry(variations, earlier), ancestry(variations, id)];
-      // An earlier side line's name gives way to one as narrow on another line.
-      const apart = !within(now, was) && !within(was, now);
-      if (earlierMain.has(key) || !apart || now.length < was.length) named.set(key, earlier);
-    }
-    chapters.forEach((chapter) => {
-      if ((chapter.source ?? 0) !== source) return;
-      for (const move of namedMainLine(chapter)) earlierMain.add(positionKey(move.before));
-    });
   }
-  return named;
+  return names.named;
 }
 
-/** A chapter's main line from its named position on (`Chapter.namedFrom`): the named position is the one after its move. */
-function* namedMainLine({ moves, namedFrom = 0 }: Chapter): Generator<StudyMove> {
-  for (const move of mainLine(moves[0])) if (move.ply > namedFrom) yield move;
+/** The variation of each position, the positions a main line reaches, and those a chapter's name claims. */
+interface Names {
+  readonly named: Map<PositionKey, VariationId>;
+  readonly onMain: Set<PositionKey>;
+  readonly claimed: Set<PositionKey>;
 }
 
 /**
@@ -260,18 +245,61 @@ function* namedMainLine({ moves, namedFrom = 0 }: Chapter): Generator<StudyMove>
  * the variation of the last main-line position on the way there, or the
  * chapter's group if that is wider: a Van der Wiel chapter's 4.h4 h5 5.Bg5
  * side line passes 4.h4 h5 on the Tal chapter's main line, so it is the Tal
- * Variation. Where side lines disagree, the most specific name wins.
+ * Variation. Where side lines disagree, the most specific name wins, and
+ * between as specific ones the first chapter's.
+ *
+ * Names from earlier sources (`earlier`) stand unless a new one lies within
+ * them: a later guide may narrow "Pure Slav" to "Pure Slav: Geller Gambit",
+ * but its "Classical Variation" chapter never renames the main guide's
+ * "Capablanca Variation", nor does its main line rename a position the main
+ * guide reaches by a side line (the Panov chapter's 6.Nf3 a6 7.cxd5 Nxd5
+ * stays Panov, though a later guide's Accelerated Panov line reaches it).
+ * Only an earlier side line's name follows the line it came through, when
+ * that now has a name as narrow on another line: the main Caro-Kann guide
+ * reaches 2.Nf3 d5 3.d3 Qc7 by a side line of its Two Knights chapter,
+ * through 3.d3, which the Wikibooks 2.d3 Breyer page names.
  */
 function positionVariations(
   root: VariationId,
   variations: Readonly<Record<VariationId, Variation>>,
   chapters: readonly Chapter[],
   chapterVariation: readonly VariationId[],
-): Map<PositionKey, VariationId> {
+  earlier: Names,
+): Names {
   const add = (map: Map<PositionKey, Set<VariationId>>, key: PositionKey, id: VariationId) =>
     map.set(key, (map.get(key) ?? new Set()).add(id));
   const path = (id: VariationId) => ancestry(variations, id);
-  const named = mainLineVariations(variations, chapters, chapterVariation);
+  const settle = (key: PositionKey, id: VariationId, sideLine: boolean) => {
+    const was = earlier.named.get(key);
+    // A claim holds only where no main line goes, so it is weighed again with each source.
+    if (!was || earlier.claimed.has(key) || path(id).includes(was)) return id;
+    const [before, now] = [path(was), path(id)];
+    const apart = !within(now, before) && !within(before, now);
+    return sideLine && !earlier.onMain.has(key) && apart && now.length >= before.length ? id : was;
+  };
+  const mainNames = mainLineVariations(variations, chapters, chapterVariation);
+  const named = new Map([...mainNames].map(([key, id]) => [key, settle(key, id, false)]));
+  // A line a chapter's name claims is its own where no main line goes, if the last named position
+  // on the way there lies inside the chapter; the first chapter to claim it wins.
+  const namedOnTheWay = (move: StudyMove) => {
+    for (let at: StudyMove | undefined = move; at; at = at.parent) {
+      const id = named.get(positionKey(at.before));
+      if (id) return id;
+    }
+  };
+  const claimed = new Set<PositionKey>();
+  chapters.forEach(({ claims = [] }, i) => {
+    for (const claim of claims) {
+      const from = namedOnTheWay(claim);
+      if (from && !path(chapterVariation[i]).includes(from)) continue;
+      for (const move of mainLine(claim)) {
+        const key = positionKey(move.after);
+        if (named.has(key)) continue;
+        named.set(key, settle(key, chapterVariation[i], true));
+        claimed.add(key);
+      }
+    }
+  });
 
   // A chapter's group is its widest variation below the opening; a chapter about the opening is its own.
   const group = (chapter: VariationId) => path(chapter)[1] ?? chapter;
@@ -279,21 +307,26 @@ function positionVariations(
   chapters.forEach((chapter, i) => {
     /** The variation of the last main-line position up to each move. */
     const lastNamed = new Map<StudyMove, VariationId>();
+    /** The move into the chapter's named position (`Chapter.namedFrom`), and the moves after it. */
+    const main = new Set(mainLine(chapter.moves[0]));
+    const past = new Set<StudyMove>();
     for (const move of chapterMoves(chapter)) {
       const key = positionKey(move.before);
       const own = named.get(key);
-      // Only the start has no parent, and every main line passes it.
-      const last = own ?? lastNamed.get(move.parent!)!;
+      const last = own ?? (move.parent ? lastNamed.get(move.parent)! : root);
       lastNamed.set(move, last);
-      if (!own) add(sideLines, key, last === root ? group(chapterVariation[i]) : last);
+      const after = !!move.parent && past.has(move.parent);
+      if (after || (main.has(move) && move.ply === chapter.namedFrom)) past.add(move);
+      // Before its named position, a chapter's side lines are not its group's.
+      const ours = !chapter.namedFrom || after;
+      if (!own) add(sideLines, key, last === root && ours ? group(chapterVariation[i]) : last);
     }
   });
   for (const [key, ids] of sideLines) {
-    const paths = [...ids].map(path);
-    const deepest = Math.max(...paths.map(({ length }) => length));
-    named.set(key, narrowest(paths.filter(({ length }) => length === deepest)));
+    const deepest = [...ids].reduce((a, b) => (path(b).length > path(a).length ? b : a));
+    named.set(key, settle(key, deepest, true));
   }
-  return named;
+  return { named, onMain: new Set([...earlier.onMain, ...mainNames.keys()]), claimed };
 }
 
 /**
@@ -459,12 +492,16 @@ function mainLineVariations(
   const reached = new Map<PositionKey, Reached>();
   chapters.forEach((chapter, i) => {
     let from: PositionKey | undefined;
-    for (const move of namedMainLine(chapter)) {
+    const own = path(chapterVariation[i]);
+    for (const move of mainLine(chapter.moves[0])) {
+      // Before its named position, a chapter's main line is its parent variation's, or other chapters'.
+      const named = move.ply > (chapter.namedFrom ?? 0);
+      if (!named && chapter.cut) continue;
       const key = positionKey(move.before);
       const at = reached.get(key) ?? { ply: move.ply, paths: [], cut: [], from: [] };
       reached.set(key, at);
-      at.paths.push(path(chapterVariation[i]));
-      if (chapter.namedFrom) at.cut.push(path(chapterVariation[i]));
+      at.paths.push(named || own.length === 1 ? own : own.slice(0, -1));
+      if (chapter.namedFrom && named) at.cut.push(own);
       if (from) at.from.push(from);
       from = key;
     }
