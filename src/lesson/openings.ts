@@ -9,12 +9,9 @@
  * another. Pure functions over the lesson index
  * (assets/lessons/index.json), like the rest of src/lesson/.
  */
-import { Chess } from 'chessops/chess';
 import { INITIAL_FEN } from 'chessops/fen';
 import type { Color } from 'chessops/types';
-import { parseUci } from 'chessops/util';
 
-import { positionKey } from '@/game/replay';
 import { positionHash } from '@/progress/progress';
 
 import { cleanLineEnds, inCleanRun } from './cleanRun';
@@ -27,6 +24,7 @@ import {
   type PositionKey,
   type Uci,
 } from './lesson';
+import { lineKeys } from './select';
 
 /**
  * Moves from the start that pick a lesson: they follow its guide, and the
@@ -63,7 +61,7 @@ export function lessonIndex(lessons: readonly Lesson[]): LessonIndex {
   const lines = new Map<Lesson, Uci[][]>(lessons.map((lesson) => [lesson, []]));
   for (const side of ['white', 'black'] as const) {
     const ofSide = lessons.filter((lesson) => lesson.side === side);
-    if (ofSide.length) walkShared(ofSide, [], Chess.default(), new Set(), lines);
+    if (ofSide.length) walkShared(ofSide, [], new Set(), lines);
   }
   return Object.fromEntries(
     lessons.map((lesson) => {
@@ -78,45 +76,41 @@ export function lessonIndex(lessons: readonly Lesson[]): LessonIndex {
 }
 
 /**
- * Follows the guide moves `sharing` all play from `pos`, reached by `line`:
- * a move only one of them plays ends a line of its; one several play goes on.
- * A position the line passed twice ends nothing.
+ * Follows the guide moves `sharing` all play after `line`: a move only one of
+ * them plays ends a line of its; one several play goes on. A position the
+ * line passed twice ends nothing.
  */
 function walkShared(
   sharing: readonly Lesson[],
   line: readonly Uci[],
-  pos: Chess,
   passed: ReadonlySet<PositionKey>,
   lines: Map<Lesson, Uci[][]>,
 ) {
-  const key = positionKey(pos);
+  const key = lineKeys(line).at(-1)!;
   if (passed.has(key)) return;
   const movesOf = (lesson: Lesson) => lesson.positions[key]?.moves ?? [];
   const ucis = new Set(sharing.flatMap((lesson) => movesOf(lesson).map(({ uci }) => uci)));
   for (const uci of ucis) {
     const playing = sharing.filter((lesson) => movesOf(lesson).some((move) => move.uci === uci));
     if (playing.length === 1) lines.get(playing[0])!.push([...line, uci]);
-    else walkShared(playing, [...line, uci], played(pos, uci), new Set(passed).add(key), lines);
+    else walkShared(playing, [...line, uci], new Set(passed).add(key), lines);
   }
 }
 
 /** `OpeningLine.lineEnds` for `moves` in `lesson`. */
 function lineEnds(lesson: Lesson, moves: readonly Uci[]): string[] {
-  let pos = Chess.default();
-  for (const uci of moves) {
-    const move = lesson.positions[positionKey(pos)].moves.find((m) => m.uci === uci)!;
-    if (!inCleanRun(move, pos.turn === lesson.side)) return [];
-    pos = played(pos, uci);
-  }
-  return cleanLineEnds(lesson, positionKey(pos)).map(positionHash).sort();
+  const keys = lineKeys(moves);
+  const clean = moves.every((uci, n) =>
+    inCleanRun(
+      lesson.positions[keys[n]].moves.find((move) => move.uci === uci)!,
+      learnerMoves(lesson.side, n),
+    ),
+  );
+  return clean ? cleanLineEnds(lesson, keys.at(-1)!).map(positionHash).sort() : [];
 }
 
-/** A copy of `pos` after the legal move `uci`. */
-function played(pos: Chess, uci: Uci) {
-  const after = pos.clone();
-  after.play(parseUci(uci)!);
-  return after;
-}
+/** Whether `side` plays the move after `ply` moves from the start. */
+const learnerMoves = (side: Color, ply: number) => (ply % 2 === 0) === (side === 'white');
 
 /** Whether `line` begins with every move of `start`. */
 const startsWith = (line: readonly Uci[], start: readonly Uci[]) =>
@@ -184,16 +178,15 @@ export function lessonsFrom<Id extends string>(
 function openingMoves(index: LessonIndex, side: Color): Map<PositionKey, LessonMove[]> {
   const at = new Map<PositionKey, Map<Uci, { readonly ids: string[]; book: boolean }>>();
   for (const { id, line } of linesOf(index, side)) {
-    let pos = Chess.default();
-    for (const uci of line.moves) {
-      const key = positionKey(pos);
+    const keys = lineKeys(line.moves);
+    for (const [n, uci] of line.moves.entries()) {
+      const key = keys[n];
       const moves = at.get(key) ?? new Map();
       at.set(key, moves);
       const found = moves.get(uci) ?? { ids: [], book: false };
       moves.set(uci, found);
       if (!found.ids.includes(id)) found.ids.push(id);
-      found.book ||= pos.turn === side && line.lineEnds.length > 0;
-      pos = played(pos, uci);
+      found.book ||= learnerMoves(side, n) && line.lineEnds.length > 0;
     }
   }
   return new Map(
