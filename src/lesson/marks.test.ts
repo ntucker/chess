@@ -178,9 +178,12 @@ describe('steering', () => {
 
   it("never steers to a reply too rare to count, which the row's passed mark leaves out", () => {
     // d4 played 92%, Nc3 8%: only d4's line counts, so passing it passes 1...c6.
-    const counts: Record<string, number[]> = { d4: [92, 0], Nc3: [8, 0] };
+    const games = {
+      [uciLine('e4', 'c6', 'd4')[2]]: [92, 0],
+      [uciLine('e4', 'c6', 'Nc3')[2]]: [8, 0],
+    };
     const rare = withMoves(LESSON, at('e4', 'c6'), (moves) =>
-      moves.map((move, i) => ({ ...move, games: Object.values(counts)[i] })),
+      moves.map((move) => ({ ...move, games: games[move.uci] })),
     );
     const done = progress([], [ENDS.d4]);
     expect(marksAfter(done, rare, 'e4')).toEqual({ c6: 'passed', e5: undefined });

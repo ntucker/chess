@@ -1,6 +1,7 @@
-// Rewrites every shipped lesson's entry in assets/lessons/index.json from its
-// lesson file, as the importer would: run it after changing what an entry
-// derives (indexEntry, or the clean-run rule in src/lesson/cleanRun.ts).
+// Rewrites each entry of assets/lessons/index.json from its lesson file, as
+// the importer would; a lesson not yet in the index needs the importer. Run
+// it after changing what an entry derives (indexEntry, or the clean-run rule
+// in src/lesson/cleanRun.ts).
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 

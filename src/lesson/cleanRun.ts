@@ -27,11 +27,11 @@ export const inCleanRun = (move: LessonMove, learner: boolean) => !learner || mo
 const COUNTED_SHARE = 0.1;
 
 /** Of the guide's `moves` at a position, those a clean run plays and counts. */
-export function countedMoves(
-  moves: readonly LessonMove[],
-  learner: boolean,
-): readonly LessonMove[] {
-  if (learner) return moves.filter((move) => inCleanRun(move, learner));
+const countedMoves = (moves: readonly LessonMove[], learner: boolean) =>
+  learner ? moves.filter((move) => inCleanRun(move, learner)) : countedReplies(moves);
+
+/** Of the opponent's replies at a position, those that count toward passing (`COUNTED_SHARE`). */
+export function countedReplies(moves: readonly LessonMove[]): readonly LessonMove[] {
   const played = moves.map(({ games }) => games?.reduce((sum, n) => sum + n, 0));
   const total = played.reduce<number>((sum, n) => sum + (n ?? 0), 0);
   const most = Math.max(...played.map((n) => n ?? 0));
@@ -86,7 +86,7 @@ const nextKeys = new WeakMap<Lesson, Map<PositionKey, readonly PositionKey[]>>()
 
 /**
  * The positions the guide's moves at `key` lead to, leaving out the learner's
- * non-book moves and the opponent's rare ones (`countedMoves`). The position
+ * non-book moves and the opponent's rare ones (`countedReplies`). The position
  * `pos`, when the walk has it, saves reading the key, which costs more than
  * playing the moves. A step carries its position only when its move was just
  * played; one from the cache carries none.

@@ -10,7 +10,7 @@
  */
 import { type Mark, type MarkedPositions, positionHash } from '@/progress/progress';
 
-import { countedMoves, inCleanRun, walkClean } from './cleanRun';
+import { countedReplies, inCleanRun, walkClean } from './cleanRun';
 import type { Lesson, PositionKey, Uci } from './lesson';
 import type { ReplyChoice } from './opponent';
 import type { ModeState } from './practice';
@@ -44,9 +44,9 @@ export function rowMarks(
 /**
  * How the opponent picks its reply during a clean Practice run (undefined
  * otherwise, so it plays its most played): the first of the replies that
- * count (most played first, `countedMoves`) below which the run can still
- * reach a line end not passed, or the first when every one is passed. The opponent's own replies never
- * spoil a run, so each is open to steer to.
+ * count (most played first, `countedReplies`) below which the run can still
+ * reach a line end not passed, or the first when every one is passed. The
+ * opponent's own replies never spoil a run, so each is open to steer to.
  */
 export function steering(
   lesson: Lesson,
@@ -57,12 +57,7 @@ export function steering(
   const { passed } = markSets(progress);
   return (replies) => {
     // A rare reply's lines don't count toward passing, so nothing steers there.
-    const counted = new Set(
-      countedMoves(
-        replies.map(({ move }) => move),
-        false,
-      ),
-    );
+    const counted = new Set(countedReplies(replies.map(({ move }) => move)));
     return (
       replies.find(
         ({ move, next }) => counted.has(move) && cleanEnds(lesson, passed, next) === 'open',
