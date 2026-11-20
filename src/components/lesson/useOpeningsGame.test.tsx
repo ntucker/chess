@@ -135,8 +135,8 @@ describe('useOpeningsGame', () => {
     await show('caro-kann');
     expect(latest().behind).toBe(true);
     expect(latest().pending).toBe(true);
-    // The page shows the start, but the game is 1.e4's. Reaching it, a step
-    // to the start would leave the lesson and d4 would be played after e4.
+    // The page shows the start, but the game is 1.e4's. Reaching it, the step
+    // to the start and then d4 would replace e4 and pick the Slav.
     act(() => latest().store[1]({ type: 'goto', ply: 0 }));
     await play('d2d4');
     expect(mockRouter.dismissTo).not.toHaveBeenCalled();
