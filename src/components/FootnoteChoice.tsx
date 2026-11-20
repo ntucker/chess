@@ -101,7 +101,10 @@ export function FootnoteChoice<T extends string | number>({
   );
 }
 
-/** A four-digit rating's width in caption text, about. */
+/**
+ * A four-digit rating's width in caption text (theme.ts's `typography.caption`,
+ * 12 px), about: measure again if that changes. Larger system text only widens it.
+ */
 const RATING_WIDTH = 25;
 
 const styles = StyleSheet.create({

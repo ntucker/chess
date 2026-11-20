@@ -130,4 +130,9 @@ describe('narrowStyles', () => {
     expect(styles.wide.logo.width).toBe(40);
     expect(styles.narrow.logo.width).toBe(NARROW_PX['header-height']);
   });
+
+  it('takes no flex basis, which natively outlives a switch of page', () => {
+    // @ts-expect-error A part starts from its width or height instead.
+    narrowStyles(() => ({ column: { flexBasis: 320 } }));
+  });
 });
