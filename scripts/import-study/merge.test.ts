@@ -374,6 +374,31 @@ describe('mergeChapters with several sources', () => {
     expect(d5.notes?.map(({ text }) => text)).toEqual(['Holds the centre with a pawn.']);
   });
 
+  it("keeps a later guide's note beside a line introduction moved onto the move", () => {
+    // The side line's intro on 1.d4 names 2.Bf4, where the line first goes somewhere new.
+    const intro = parseStudy(
+      '[ChapterName "Main"]\n\n1. d4 d5 2. c4 *\n\n' +
+        '[ChapterName "Side"]\n\n1. e4 (1. d4 { Its quieter brother is the 2.Bf4 line. } d5 2. Bf4) e5 *\n',
+      () => true,
+    ).map((chapter) => ({ ...chapter, source: 0 }));
+    const london = parseStudy(
+      '[ChapterName "London"]\n\n1. d4 d5 2. Bf4 { The bishop comes out before e3. } *\n',
+      () => true,
+    ).map((chapter) => ({ ...chapter, source: 1 }));
+    const chapters = [...intro, ...london];
+    const lesson = mergeChapters(
+      { id: 'test', title: 'Test', side: 'black', sources: SAMPLE.sources },
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'black')),
+      () => undefined,
+    );
+    const bf4 = lesson.positions[keyAfter('d4', 'd5')].moves.find(({ uci }) => uci === 'c1f4')!;
+    expect(bf4.notes?.map(({ text }) => text)).toEqual([
+      'Its quieter brother is the 2.Bf4 line.',
+      'The bishop comes out before e3.',
+    ]);
+  });
+
   it('counts what each guide gave, and what the main guide kept out', () => {
     expect(tally).toEqual([
       { booked: 2, blocked: new Set(), notes: 2, notesSkipped: 0 },

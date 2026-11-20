@@ -161,15 +161,16 @@ function addChapter(
     draft.book = true;
     tree.entry(positionKey(move.before)).bookSource ??= source;
   };
-  const note = (spot: { notes: Note[]; noteSource?: number }, note: Note) => {
-    if (addNote(spot, note, source)) tally.notes++;
+  const note = (spot: { notes: Note[]; noteSource?: number }, note: Note, intro = false) => {
+    if (addNote(spot, note, source, intro)) tally.notes++;
     else if (spot.noteSource !== source) tally.notesSkipped++;
   };
   for (const move of chapterMoves(chapter)) {
     tree.move(move.before, move.uci);
     if (book.has(move)) recommend(move);
   }
-  for (const { move, note: text } of moveNotes) note(tree.move(move.before, move.uci), text);
+  for (const { move, note: text, source: from } of moveNotes)
+    note(tree.move(move.before, move.uci), text, !!from.intro);
   for (const { pos, note: text } of positionNotes) note(tree.entry(positionKey(pos)), text);
   for (const choice of choices) {
     if (say(choice.move) === 'closed') {
@@ -378,15 +379,17 @@ function bookMoves(
  * Adds `note` from `source` to a move's or position's notes, once. A later
  * source only explains what no earlier one did: guides tend to say the same
  * thing about the same move, and the learner would read it once per guide.
- * Whether it was added.
+ * A line's introduction (`StudyMove.intro`) is added without taking the
+ * spot, since it explains the line rather than the move. Whether it was added.
  */
 function addNote(
   spot: { notes: Note[]; noteSource?: number },
   note: Note,
   source: number,
+  intro: boolean,
 ): boolean {
-  spot.noteSource ??= source;
-  if (spot.noteSource !== source) return false;
+  if (!intro) spot.noteSource ??= source;
+  if (spot.noteSource !== undefined && spot.noteSource !== source) return false;
   const same = JSON.stringify(note);
   if (spot.notes.some((other) => JSON.stringify(other) === same)) return false;
   spot.notes.push(note);

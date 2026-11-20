@@ -193,8 +193,10 @@ const MAIN = /\bthis is the main (?:line|move|reply|continuation)\b/i;
  * analyses where another chapter transposes, or a trap's punishing reply only
  * comment text gives. The pick is the guide's only move there, or the one its
  * note calls the main line, else Stockfish's best of the guide's moves; never
- * one the engine calls a mistake or a blunder. Where every move is one, the
- * line ends there.
+ * one the engine calls a mistake or a blunder. Where every move is one,
+ * Stockfish's own best move becomes the book move, so the guide's moves stay
+ * as warnings ("Bf5 is a blunder here"); the line ends after it. Only a
+ * position the engine names no move for ends the line there.
  */
 export async function fillBook(
   lesson: Lesson,
@@ -223,9 +225,11 @@ export async function fillBook(
         report.ended.push({ line: sans(lesson, at.line), moves, positions: gone });
         continue;
       }
-      const moves = position.moves.map((move) =>
-        move.uci === pick.uci ? { ...move, book: true as const } : move,
-      );
+      const moves = position.moves.some(({ uci }) => uci === pick.uci)
+        ? position.moves.map((move) =>
+            move.uci === pick.uci ? { ...move, book: true as const } : move,
+          )
+        : [{ uci: pick.uci, book: true as const }, ...position.moves];
       // Book moves first, like every position the importer writes.
       moves.sort((a, b) => Number(!!b.book) - Number(!!a.book));
       positions[key] = position = { ...position, moves };
@@ -246,7 +250,10 @@ export async function fillBook(
   return { lesson: { ...lesson, positions }, report };
 }
 
-/** The book move `fillBook` picks from `moves` at `at`, and why, or undefined when the engine overrules them all. */
+/**
+ * The book move `fillBook` picks at `at`, and why: one of `moves`, or the
+ * engine's own when it overrules them all; undefined when it names none.
+ */
 async function pickBookMove(
   moves: readonly LessonMove[],
   at: { line: readonly Uci[]; pos: Chess },
@@ -268,7 +275,10 @@ async function pickBookMove(
   if (preferred?.sound)
     return { uci: preferred.uci, why: judged.length === 1 ? 'only move' : 'called the main line' };
   const best = judged.filter(({ sound }) => sound).sort((a, b) => b.score - a.score)[0];
-  return best && { uci: best.uci, why: "Stockfish's best of the guide's moves" };
+  if (best) return { uci: best.uci, why: "Stockfish's best of the guide's moves" };
+  return before.best === undefined
+    ? undefined
+    : { uci: before.best, why: "Stockfish's best: the engine overruled every guide move" };
 }
 
 type CachedEvaluation = (line: readonly Uci[], pos: Chess) => Promise<Evaluation>;

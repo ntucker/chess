@@ -27,7 +27,7 @@ import type { Answer, AnswerIdea } from './answer';
 import { MODELS, type Ask } from './claude';
 import { noteComment, type Comment } from './comments';
 import { convertedNotes, notesOf, type Converted } from './notes';
-import { DRAW_MISTAKES, REWORD, WRITTEN_FOR_OPPONENT } from './prompt';
+import { DRAW_MISTAKES, REWORD, SHORTEN, WRITTEN_FOR_OPPONENT } from './prompt';
 
 /** How many comments were asked again of Opus, by why, and what the rewording changed. */
 interface Retries {
@@ -37,6 +37,8 @@ interface Retries {
   readonly reworded: number;
   /** The comment marks a move as a mistake (`3.e3?`) and no note draws how it is punished. */
   readonly punished: number;
+  /** A note text ran over the word limit and was cut. */
+  readonly shortened: number;
   /**
    * Ideas the reworded comments kept before and after: an answer in words
    * replaces the old one whatever it draws, so the report shows what changed.
@@ -136,6 +138,15 @@ async function convertComments(
         notationTexts(result).length === 0 &&
         drawnMistakes(comment, result) > drawnMistakes(comment, previous),
     );
+  const shorten = [...converted].flatMap(([id, result]) => {
+    const cutText = cutTexts(result);
+    return cutText.length > 0 ? [{ ...comments.get(id)!, cutText }] : [];
+  });
+  if (shorten.length > 0)
+    keep(
+      await ask(MODELS.retry, shorten, SHORTEN),
+      (result) => cutTexts(result).length === 0 && notationTexts(result).length === 0,
+    );
   return {
     converted,
     retries: {
@@ -143,21 +154,25 @@ async function convertComments(
       reworded: reword.length,
       rewordedIdeas: { before, after: keptByReworded() },
       punished: punish.length,
+      shortened: shorten.length,
     },
   };
 }
 
-/** A move a comment marks as a mistake with `?` or `??` (not `?!`), numbered: `3.e3?`. */
-const MISTAKE = new RegExp(String.raw`\b\d+\s?\.(?:\.\.)?\s?(${SAN})\?(?!!)`, 'g');
+/** A move a comment marks as a mistake with `?` or `??` (not `?!`), numbered: `3.e3?`, `5...Bf5?`. */
+const MISTAKE = new RegExp(String.raw`\b(\d+)\s?\.(\.\.)?\s?(${SAN})\?(?!!)`, 'g');
 
 /**
  * The moves `comment` marks as mistakes (`3.e3?`) that the side to move can
  * play after its move: what a note warning against one should show is how it
- * is punished.
+ * is punished. A mistake's number and side must be the next move's, since a
+ * comment also warns about moves deeper in its lines (`5.Bd2?` after 3...e6).
  */
 function commentMistakes(comment: Comment): string[] {
   const pos = Chess.fromSetup(parseFen(comment.fenAfter).unwrap()).unwrap();
-  const ucis = [...comment.comment.matchAll(MISTAKE)].flatMap(([, san]) => {
+  const ucis = [...comment.comment.matchAll(MISTAKE)].flatMap(([, number, dots, san]) => {
+    const turn = dots ? 'black' : 'white';
+    if (Number(number) !== pos.fullmoves || turn !== pos.turn) return [];
     const uci = sanToUci(pos, san);
     return uci ? [uci] : [];
   });
@@ -209,6 +224,12 @@ const withWrittenFor =
 /** The model wrote drawable ideas and the checker refused every one. */
 const allRefused = (result: Converted) =>
   result.kept === 0 && result.rejected.some(({ idea }) => idea.type !== 'evaluation');
+
+/** The note texts in `result` cut at the word limit (`shorten`). */
+const cutTexts = (result: Converted) =>
+  notesOf(result)
+    .map((note) => note.text)
+    .filter((text) => text.endsWith('…'));
 
 /** The note texts in `result` that the lesson checker refuses as notation. */
 const notationTexts = (result: Converted) =>
@@ -281,6 +302,7 @@ export function convertReport({
   retried,
   reworded,
   punished,
+  shortened,
   rewordedIdeas,
   kept,
   shows,
@@ -295,7 +317,7 @@ export function convertReport({
     .sort(([, a], [, b]) => b - a)
     .slice(0, 15);
   return [
-    `converted comments: ${comments - unconverted} of ${comments} (asked again of ${MODELS.retry}: ${retried} with every idea refused, ${reworded} with notes in notation, ${punished} with a mistake's punishment undrawn)`,
+    `converted comments: ${comments - unconverted} of ${comments} (asked again of ${MODELS.retry}: ${retried} with every idea refused, ${reworded} with notes in notation, ${punished} with a mistake's punishment undrawn, ${shortened} with notes cut at the word limit)`,
     ...(reworded > 0
       ? [
           `  ideas the comments with notes in notation keep: ${rewordedIdeas.before} before, ${rewordedIdeas.after} after`,

@@ -132,4 +132,14 @@ Each comment here also has "mistakes": moves the comment marks with "?" that toM
 export const WRITTEN_FOR_OPPONENT = `
 
 COMMENTS WRITTEN FOR THE OTHER SIDE
-Each comment here also has "writtenFor": the side its author wrote the study for, which is the learner's opponent. In these comments "you", "we" and "our" mean the writtenFor side, never the learner, and "the opponent" means the learner. Convert each comment for the learner, following every rule above: "you" in your note text always means the learner. Say what the author says, from the learner's side: "you win a pawn" (the author's side) becomes "White wins a pawn" or "you lose a pawn", and advice to the author's side becomes what that side plans against you. Never recommend a move to the learner that the comment only shows the author's side punishing.`;
+Each comment here also has "writtenFor": the side its author wrote the study for, which is the learner's opponent. In these comments "you", "we" and "our" usually mean the writtenFor side, and "the opponent" the learner. A chapter that shows how to play against the author's side may speak for the learner instead ("Now we can take the pawn on b2" after the learner's move offers it): read each sentence's side from the moves it names. Convert each comment for the learner, following every rule above: "you" in your note text always means the learner. Say what the author says, from the learner's side: "you win a pawn" (the author's side) becomes "White wins a pawn" or "you lose a pawn", and advice to the author's side becomes what that side plans against you. Never recommend a move to the learner that the comment only shows the author's side punishing. The learner never sees the rest of the author's study, so leave out what points to it ("as earlier chapters showed", "as we saw"): say the point itself, or leave it out.`;
+
+/**
+ * Added to `PROMPT` when comments are asked again because a note text ran
+ * over the word limit and was cut (`Comment.cutText`). Changing it re-asks
+ * only those comments.
+ */
+export const SHORTEN = `
+
+ASKED AGAIN: NOTES OVER THE WORD LIMIT
+Each comment here also has "cutText": note texts you wrote for it before, which ran over 20 words, so the app cut them where you see "…" and the learner would read a sentence that stops halfway. Convert the comment again, following every rule above, and write each note's text in 20 words or fewer as a whole sentence: keep the comment's conclusion and drop detail instead.`;

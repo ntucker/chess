@@ -8,7 +8,7 @@ import { parseStudy } from '../study';
 import type { AnswerNote } from './answer';
 import { MODELS, type Ask, type Model } from './claude';
 import { noteComment, type Comment } from './comments';
-import { DRAW_MISTAKES, REWORD, WRITTEN_FOR_OPPONENT } from './prompt';
+import { DRAW_MISTAKES, REWORD, SHORTEN, WRITTEN_FOR_OPPONENT } from './prompt';
 import { convertChapters } from '.';
 
 const [advance] = parseStudy(STUDY_PGN, () => true);
@@ -32,7 +32,7 @@ function fakeAsk(answers: Answers, reworded: Answers = {}) {
     seen.push(...comments);
     return new Map(
       comments.flatMap((comment) => {
-        const again = comment.refusedText ?? comment.mistakes;
+        const again = comment.refusedText ?? comment.mistakes ?? comment.cutText;
         const notes = (again ? reworded : answers)[model]?.[comment.move];
         return notes ? [[comment.id, { id: comment.id, notes }]] : [];
       }),
@@ -257,6 +257,25 @@ describe('convertChapters', () => {
     } = await convertChapters(extracted, ask);
     expect(notesOn(chapter, 'Be2')[0].text.split(' ')).toHaveLength(20);
   });
+
+  it('asks again of Opus for a note cut at the word limit, keeping a whole sentence', async () => {
+    const long =
+      'With the knight check on g5, retreating the king to g8 or h8 loses at once, and taking on g5 is bad.';
+    const whole = 'With the knight check on g5, every king move loses at once.';
+    const { ask, asked, addenda, seen } = fakeAsk(
+      { [MODELS.convert]: { Be2: [{ about: 'move', text: long, ideas: [] }] } },
+      { [MODELS.retry]: { Be2: [{ about: 'move', text: whole, ideas: [] }] } },
+    );
+    const {
+      extracted: [chapter],
+      report,
+    } = await convertChapters(extracted, ask);
+    expect(asked.at(-1)).toEqual([MODELS.retry, ['Be2']]);
+    expect(addenda.at(-1)).toBe(SHORTEN);
+    expect(seen.at(-1)?.cutText?.[0]).toMatch(/taking on g5…$/);
+    expect(report.shortened).toBe(1);
+    expect(notesOn(chapter, 'Be2')[0].text).toBe(whole);
+  });
   describe('a comment marking a move as a mistake', () => {
     // After 2...h5 White is to move: the comment says 3.e3? walks into ...e5.
     const [h5] = parseStudy(
@@ -303,6 +322,18 @@ describe('convertChapters', () => {
           { text: claim[0].text, original: expect.any(String) },
         ]);
       }
+    });
+
+    it('reads only mistakes numbered as the next move, by the side to move', async () => {
+      // White is to move at move 3: 4.e3 lies deeper in a line, and 3...Nc3 is Black's.
+      const [later] = parseStudy(
+        '[Event "later"]\n\n1. d4 d5 2. Bf4 h5 { 3.Nf3 e6 4.e3? Bd6, or 3.c4 and 3...Nc3?, are other stories. } *\n',
+        () => true,
+      );
+      const { ask, asked } = fakeAsk({ [MODELS.convert]: { h5: claim } });
+      const { report } = await convertChapters([extractChapter(later, 'white')], ask);
+      expect(asked).toEqual([[MODELS.convert, ['h5']]]);
+      expect(report.punished).toBe(0);
     });
 
     it('is not asked again when a note already draws it', async () => {

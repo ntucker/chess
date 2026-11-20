@@ -94,6 +94,15 @@ describe('readPage', () => {
     ]);
   });
 
+  it('leaves out headings of every level, as a page without the position template keeps them', () => {
+    const source =
+      '= London System Main Line with ...d5 =\n\n{{Chess Position|=\n|rd|nd|=\n}}\n\n' +
+      'The London System is a solid and flexible opening system for White.\n';
+    expect(readPage(source).text).toEqual([
+      'The London System is a solid and flexible opening system for White.',
+    ]);
+  });
+
   it('reads a table line\'s "..." as the move above it, and keeps glyphs', () => {
     const table =
       '|line1=9. Qe2 Nbd7 10. e4\n|line2=9. ... Bg6? 10. Ne5\n|line3=9. ... ... 10. ... ...';

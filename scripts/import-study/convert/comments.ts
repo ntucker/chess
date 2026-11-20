@@ -43,6 +43,8 @@ export interface Comment {
   readonly refusedText?: readonly string[];
   /** Only when asked again: moves the comment marks as mistakes (`3.e3?`), in SAN, whose punishment no note draws. */
   readonly mistakes?: readonly string[];
+  /** Only when asked again: the model's earlier note texts, cut with "…" at the word limit. */
+  readonly cutText?: readonly string[];
 }
 
 /** A comment continuing the one before it ("...and the position stays level"), not a move like "...Nd7". */
