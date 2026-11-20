@@ -150,11 +150,31 @@ describe('extractChapter', () => {
     ]);
   });
 
-  it('reads no run that only plays far from where its number says', () => {
-    // 10...f6 11.Qh5+ is legal after 1.e4, eighteen plies early: the note is about some later line.
-    expect(branchesOf('1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 { Never 10...f6? 11.Qh5+ here. } *')).toEqual(
-      [],
-    );
+  it('reads a run no more than two moves from where its number says', () => {
+    // f6 then Qh5+ plays only after 1.e4, so each number below asks for that one place.
+    const after = (run: string) =>
+      branchesOf(`1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 { Never ${run} here. } *`);
+    expect(after('3...f6? 4.Qh5+')).toEqual([['e4', ['f7f6', 'd1h5']]]);
+    expect(after('4...f6? 5.Qh5+')).toEqual([]);
+    // Eighteen plies early: the note is about some later line.
+    expect(after('10...f6? 11.Qh5+')).toEqual([]);
+  });
+
+  it('reads no run longer than 32 plies, a game score rather than a line', () => {
+    const breyer =
+      '2.Nf3 Nc6 3.Bb5 a6 4.Ba4 Nf6 5.O-O Be7 6.Re1 b5 7.Bb3 d6 8.c3 O-O 9.h3 Nb8 10.d4 Nbd7 11.Nbd2 Bb7 12.Bc2 Re8 13.Nf1 Bf8 14.Ng3 g6 15.a4 c5 16.d5 c4 17.Bg5 Bg7';
+    const after = (run: string) => branchesOf(`1. e4 e5 { Then ${run}. } *`);
+    const [[from, ucis]] = after(breyer);
+    expect(from).toBe('e5');
+    expect(ucis).toHaveLength(32);
+    expect(after(`${breyer} 18.Qd2`)).toEqual([]);
+  });
+
+  it('counts move numbers from the FEN a chapter starts at', () => {
+    const fen = 'rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 12';
+    expect(
+      branchesOf(`[FEN "${fen}"]\n[SetUp "1"]\n\n12... Nc6 13. Bb5 { Or 13.Bc4 Nf6 14.d3. } *`),
+    ).toEqual([['Nc6', ['f1c4', 'g8f6', 'd2d3']]]);
   });
 
   it('reads castling written with zeros in a sequence', () => {

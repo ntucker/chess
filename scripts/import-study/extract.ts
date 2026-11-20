@@ -117,6 +117,13 @@ const SEQUENCE = sequence(String.raw`(?:\s+|\s*\.\.\.\s*)`);
  */
 const SPACED = sequence(String.raw`\s+`);
 
+/**
+ * The most plies a comment's run of moves can have and still be a line to learn. Longer, it is a
+ * game score quoted in full: one Wikibooks note plays a Bishop's Opening game out to a king and
+ * pawn ending. The longest lines in today's studies run 22 plies; quoted games, 82 and more.
+ */
+const MAX_LINE_PLIES = 32;
+
 export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
   const { writtenFor } = chapter;
   // Whom the comments call "you".
@@ -195,7 +202,7 @@ function plans(
   return move.comment ? planLists(move, move.comment, learner) : [];
 }
 
-/** Sequences of two or more moves that `move`'s comment writes out, placed in the tree. */
+/** Sequences of two or more moves, short of a game score, that `move`'s comment writes out, placed in the tree. */
 function sequences(move: StudyMove, learner: Color) {
   const place = (run: string) => placeSequence(move, namedMoves(run));
   return (move.comment.match(SEQUENCE) ?? []).flatMap((run) => {
@@ -203,7 +210,9 @@ function sequences(move: StudyMove, learner: Color) {
     const parts = whole ? [whole] : (run.match(SPACED) ?? []).flatMap((part) => place(part) ?? []);
     return parts.filter(
       ({ spot, ucis }) =>
-        ucis.length >= 2 && (spot.move || !namesOtherOpening(ucis, move, learner)),
+        ucis.length >= 2 &&
+        ucis.length <= MAX_LINE_PLIES &&
+        (spot.move || !namesOtherOpening(ucis, move, learner)),
     );
   });
 }

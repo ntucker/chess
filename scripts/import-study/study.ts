@@ -17,7 +17,7 @@ import { parseUci } from 'chessops/util';
 import { positionKey, sanToUci } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 
-import { letterCastling, namedMoves, plainSan } from './text';
+import { letterCastling, namedMoves, nextPly, NUMBER_SLACK, plainSan } from './text';
 
 export interface Chapter {
   /** The chapter's name, as the study shows it. */
@@ -141,8 +141,7 @@ function withLineIntros(moves: readonly StudyMove[], known: ReadonlySet<string>)
       ({ san, side, ply }) =>
         san === target.san &&
         (!side || side === target.before.turn) &&
-        // Study move numbers are often off by one or two: two numbers are four plies.
-        (!ply || Math.abs(ply - target.ply) <= 4),
+        (!ply || Math.abs(ply - nextPly(target.before)) <= NUMBER_SLACK),
     );
     if (!named) continue;
     edits.set(move, { comment: '' });

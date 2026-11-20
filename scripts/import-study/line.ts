@@ -1,7 +1,8 @@
 /**
  * Finding where a move or a sequence named in a comment belongs. The study's
  * move numbers are often off by one or two, so a named move is matched by its
- * SAN, and the number only picks between matches, nearest first.
+ * SAN, and the number only picks between matches, nearest first. A numbered
+ * sequence also lands no farther from its number than `NUMBER_SLACK`.
  */
 import type { Chess } from 'chessops/chess';
 import type { Color } from 'chessops/types';
@@ -10,7 +11,7 @@ import { sanToUci } from '@/game/replay';
 import type { Idea, Uci } from '@/lesson/lesson';
 
 import { mainLine, played, type StudyMove } from './study';
-import type { NamedMove } from './text';
+import { nextPly, NUMBER_SLACK, type NamedMove } from './text';
 
 /**
  * A position in a chapter: after `move`, or the chapter's starting position
@@ -65,13 +66,10 @@ export function nearestMatch(
 }
 
 /**
- * How far, in plies, a numbered sequence may land from the ply its number gives. Two moves allow
- * for a miscounted number; farther, the moves are about another line that happens to be playable
- * here: "10...f6? 11.Qh5+" in a Ruy Lopez note is legal right after 1.e4.
+ * Where `moves` can be played in a row on the line through `move`, as a spot and its moves in UCI.
+ * A numbered sequence lands within `NUMBER_SLACK` of its number or nowhere: "10...f6? 11.Qh5+" in a
+ * Ruy Lopez note is legal right after 1.e4, but it is about a later position.
  */
-const NUMBER_SLACK = 4;
-
-/** Where `moves` can be played in a row on the line through `move`, as a spot and its moves in UCI. */
 export function placeSequence(
   move: StudyMove,
   moves: readonly NamedMove[],
@@ -82,15 +80,16 @@ export function placeSequence(
     { pos: line[0].before },
     ...line.map((at) => ({ move: at, pos: at.after })),
   ];
-  const numbered = moves[0].ply;
-  const firstPly = numbered ?? move.ply + 1;
-  const plyOf = ({ move }: Spot) => (move?.ply ?? 0) + 1;
-  const fits = spots.flatMap((spot) => {
-    if (numbered !== undefined && Math.abs(plyOf(spot) - numbered) > NUMBER_SLACK) return [];
+  const numberedPly = moves[0].ply;
+  const near =
+    numberedPly === undefined
+      ? spots
+      : spots.filter(({ pos }) => Math.abs(nextPly(pos) - numberedPly) <= NUMBER_SLACK);
+  const fits = near.flatMap((spot) => {
     const ucis = playable(spot.pos, moves);
     return ucis ? [{ spot, ucis }] : [];
   });
-  return nearest(fits, firstPly, ({ spot }) => plyOf(spot));
+  return nearest(fits, numberedPly ?? nextPly(move.after), ({ spot }) => nextPly(spot.pos));
 }
 
 /** `moves` in UCI if they can be played one after another from `pos`. */
