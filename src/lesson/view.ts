@@ -21,7 +21,6 @@ import {
   type PositionKey,
   type Trap,
   type Uci,
-  type Variation,
 } from './lesson';
 import {
   type Candidate,
@@ -32,6 +31,7 @@ import {
   linePlace,
   lineVariation,
   opponentBand,
+  type VariationOf,
 } from './select';
 
 /**
@@ -82,7 +82,7 @@ export interface LessonView {
   /** The latest ply, up to the board, whose position ends a guide line. */
   readonly lineEnd?: number;
   /** The variation the board is in, the opening itself first (see `lineVariation`). */
-  readonly variation: readonly Variation[];
+  readonly variation: readonly VariationOf[];
   /** The guide's moves, rare ones last (`Candidate.rare`); the list is `Guidance.candidates`. */
   readonly candidates: readonly Candidate[];
   /** The idea card's notes: the move that led here, then the position. */

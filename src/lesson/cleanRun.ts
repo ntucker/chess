@@ -30,9 +30,12 @@ const COUNTED_SHARE = 0.1;
 const countedMoves = (moves: readonly LessonMove[], learner: boolean) =>
   learner ? moves.filter((move) => inCleanRun(move, learner)) : countedReplies(moves);
 
+/** The games a move was played in, over every rating band, if the guide counts them. */
+export const gamesPlayed = ({ games }: LessonMove) => games?.reduce((sum, n) => sum + n, 0);
+
 /** Of the opponent's replies at a position, those that count toward passing (`COUNTED_SHARE`). */
 export function countedReplies(moves: readonly LessonMove[]): readonly LessonMove[] {
-  const played = moves.map(({ games }) => games?.reduce((sum, n) => sum + n, 0));
+  const played = moves.map(gamesPlayed);
   const total = played.reduce<number>((sum, n) => sum + (n ?? 0), 0);
   const most = Math.max(...played.map((n) => n ?? 0));
   return moves.filter((_, i) => {

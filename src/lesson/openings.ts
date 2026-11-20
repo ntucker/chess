@@ -9,11 +9,12 @@
  * another. Pure functions over the lesson index
  * (assets/lessons/index.json), like the rest of src/lesson/.
  */
+import { Chess } from 'chessops/chess';
 import { INITIAL_FEN } from 'chessops/fen';
-import { type Color, parsePositionKey } from '@/game/replay';
+import { type Color, parsePositionKey, playMove, positionKey } from '@/game/replay';
 import { positionHash } from '@/progress/progress';
 
-import { cleanLineEnds, inCleanRun } from './cleanRun';
+import { cleanLineEnds, gamesPlayed, inCleanRun } from './cleanRun';
 import {
   LESSON_FORMAT,
   onDomain,
@@ -23,8 +24,10 @@ import {
   type Note,
   type PositionKey,
   type Uci,
+  type VariationId,
 } from './lesson';
-import { lineKeys } from './select';
+import { LikeliestFirst } from './likeliestFirst';
+import { lineKeys, type VariationOf } from './select';
 
 /**
  * Moves from the start that pick a lesson: they follow its guide, and the
@@ -50,6 +53,29 @@ export interface OpeningLine {
 export interface IndexEntry extends Pick<Lesson, 'title' | 'side' | 'sources'> {
   /** The lines that pick it, in the guide's order. */
   readonly lines: readonly OpeningLine[];
+  /** Its named variations, in the file's order, each with the line that opens it. */
+  readonly variations: readonly IndexVariation[];
+}
+
+/** A lesson's address (`/lesson/<id>`), without a trailing slash (GitHub Pages 404s on one). */
+export const lessonHref = <Id extends string>(id: Id) => `/lesson/${id}` as const;
+
+/** The address that opens lesson `id` at `variation` (`?variation=`), or at its start without one. */
+export const variationHref = <Id extends string>(id: Id, variation?: VariationId) =>
+  ({ pathname: lessonHref(id), params: variation === undefined ? {} : { variation } }) as const;
+
+/** The line variation `id` of lesson `entry` opens at; none when it names none of its variations. */
+export const variationLine = (entry: Pick<IndexEntry, 'variations'>, id?: VariationId) =>
+  entry.variations.find((variation) => variation.id === id)?.moves;
+
+/** A lesson's variation as the opening list shows it, before the lesson loads. */
+export interface IndexVariation extends VariationOf {
+  /**
+   * The line into it from the start that games play most often, after a
+   * line that picks the lesson (`variationLines`): where the list opens it.
+   * The opening itself, where no position is its own, has the first line that picks it.
+   */
+  readonly moves: readonly Uci[];
 }
 
 /**
@@ -77,12 +103,16 @@ export function lessonIndex(lessons: readonly Lesson[]): LessonIndex {
   return Object.fromEntries(
     lessons.map((lesson) => {
       const { id, title, side, sources } = lesson;
-      const picks = lines.get(lesson)!.map((moves) => ({
-        moves,
-        picked: positionHash(lineKeys(moves).at(-1)!),
-        lineEnds: cleanEndHashes(lesson, moves),
+      const picking = lines.get(lesson)!;
+      const picks = picking.map((line) => ({
+        moves: line,
+        picked: positionHash(lineKeys(line).at(-1)!),
+        lineEnds: cleanEndHashes(lesson, line),
       }));
-      return [id, { title, side, sources, lines: picks }];
+      return [
+        id,
+        { title, side, sources, lines: picks, variations: variationLines(lesson, picking) },
+      ];
     }),
   );
 }
@@ -109,6 +139,110 @@ function walkShared(
   }
 }
 
+/**
+ * Each variation of `lesson` its guide reaches through one of the lines that
+ * pick it (`picks`), in the file's order, with the line into it that games
+ * play most often (`likeliestInto`). A variation is looked for past its
+ * parent's line first, so the list can show it carrying on from its parent,
+ * then past `picks`; the learner plays a move that isn't a book move only
+ * where no line of book moves from either reaches it. The opening itself is
+ * always kept, so the variations form one tree.
+ */
+function variationLines(lesson: Lesson, picks: readonly Uci[][]): IndexVariation[] {
+  const found = new Map<VariationId, Uci[] | undefined>();
+  const lineOf = (id: VariationId): Uci[] | undefined => {
+    if (found.has(id)) return found.get(id);
+    found.set(id, undefined); // A parent loop finds nothing.
+    const { parent } = lesson.variations[id];
+    const after = parent === undefined ? undefined : lineOf(parent);
+    const reach = (starts: readonly (readonly Uci[])[], bookOnly: boolean) =>
+      likeliestInto(lesson, id, starts, bookOnly);
+    // In order: book moves past the parent's line, then past `picks`; any move,
+    // the same; the opening itself at the first line that picks it.
+    const line =
+      (after && reach([after], true)) ??
+      reach(picks, true) ??
+      (after && reach([after], false)) ??
+      reach(picks, false) ??
+      (parent === undefined ? [...picks[0]] : undefined);
+    found.set(id, line);
+    return line;
+  };
+  // A variation left out passes its children to its nearest ancestor kept.
+  const keptAncestor = (id?: VariationId): VariationId | undefined =>
+    id === undefined || lineOf(id) ? id : keptAncestor(lesson.variations[id].parent);
+  return Object.entries(lesson.variations).flatMap(([id, variation]) => {
+    const moves = lineOf(id);
+    if (!moves) return [];
+    const parent = keptAncestor(variation.parent);
+    return [{ id, name: variation.name, ...(parent && { parent }), moves }];
+  });
+}
+
+/**
+ * The line of the guide's moves from one of `starts` into a position of
+ * `variation` that games play most often: the product of each move's share
+ * of its position's games (`moveShares`). Best first, so the first position
+ * of `variation` reached is the likeliest; every move past it only lowers
+ * the share. With `bookOnly` the learner plays only book moves.
+ */
+function likeliestInto(
+  lesson: Lesson,
+  variation: VariationId,
+  starts: readonly (readonly Uci[])[],
+  bookOnly: boolean,
+): Uci[] | undefined {
+  const reached = new Set<PositionKey>();
+  const queue = new LikeliestFirst();
+  for (const line of starts) {
+    const pos = Chess.default();
+    if (line.every((uci) => playMove(pos, uci))) queue.push({ line: [...line], pos, share: 1 });
+  }
+  for (let next = queue.pop(); next; next = queue.pop()) {
+    const { line, pos, share } = next;
+    const key = positionKey(pos);
+    const here = lesson.positions[key];
+    if (!here || reached.has(key)) continue;
+    if (here.variation === variation) return line;
+    reached.add(key);
+    // The learner plays the book, however rarely games do: only its book
+    // moves share the games, where it has any.
+    const learner = pos.turn === lesson.side;
+    const moves =
+      learner && here.moves.some(({ book }) => book) && bookOnly
+        ? here.moves.filter(({ book }) => book)
+        : here.moves;
+    const shares = moveShares(moves);
+    moves.forEach(({ uci }, i) => {
+      const played = pos.clone();
+      if (playMove(played, uci))
+        queue.push({ line: [...line, uci], pos: played, share: share * shares[i] });
+    });
+  }
+  return undefined;
+}
+
+/**
+ * Each move's share of the games played from its position, over every rating
+ * band: a move without counts beside moves with them has almost none. Where
+ * no move has counts, none is likelier, so the shorter line wins, and of two
+ * as short, the one through the guide's earlier moves.
+ */
+function moveShares(moves: readonly LessonMove[]): number[] {
+  const games = moves.map((move) => gamesPlayed(move) ?? 0);
+  const total = games.reduce((sum, count) => sum + count, 0);
+  return total > 0
+    ? games.map((count) => Math.max(count, UNCOUNTED_GAMES) / total)
+    : moves.map(() => 1);
+}
+
+/**
+ * The games a move without counts beside moves with them is reckoned at: less
+ * than one, so it comes after every move played in a game at its position,
+ * but reachable.
+ */
+const UNCOUNTED_GAMES = 1e-3;
+
 /** `OpeningLine.lineEnds` for `moves` in `lesson`. */
 function cleanEndHashes(lesson: Lesson, moves: readonly Uci[]): string[] {
   const keys = lineKeys(moves);
@@ -122,8 +256,12 @@ function cleanEndHashes(lesson: Lesson, moves: readonly Uci[]): string[] {
 }
 
 /** Whether `line` begins with every move of `start`. */
-const startsWith = (line: readonly Uci[], start: readonly Uci[]) =>
+export const startsWith = (line: readonly Uci[], start: readonly Uci[]) =>
   start.length <= line.length && start.every((uci, i) => line[i] === uci);
+
+/** Whether `a` and `b` are the same line. */
+export const sameLine = (a: readonly Uci[], b: readonly Uci[]) =>
+  a.length === b.length && startsWith(a, b);
 
 /** Whether the opening line `moves` and `line` agree as far as both go: `line` leads to it, or it picked `line`'s lesson. */
 export const meets = (moves: readonly Uci[], line: readonly Uci[]) =>

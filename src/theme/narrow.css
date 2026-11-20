@@ -21,7 +21,7 @@
 @media (max-width: 707.98px) {
   /* Lengths, read by `narrowLength` (narrow.ts). */
   :root {
-    /* Page padding and the gap below the header (Stage.tsx). */
+    /* Page padding and the gap below the header (Page.tsx). */
     --page-space: 10px;
     /* The logo, as tall as the source link beside it: the header's height (Header.tsx). */
     --header-height: 28px;
@@ -64,7 +64,7 @@
   }
 
   /*
-   * Parts, named by `narrowPart` (narrow.ts). The page (Stage.tsx) fills the
+   * Parts, named by `narrowPart` (narrow.ts). The page (Page.tsx, its stage Stage.tsx) fills the
    * screen and doesn't scroll: the board stays at the top, and the panel below
    * it scrolls in the space that's left, so a previewed move stays in view.
    * Only once the board is at its smallest and the panel at its floor does
