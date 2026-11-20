@@ -9,61 +9,111 @@ import {
   type ModeAction,
   modeReducer,
   type ModeState,
+  type MoveKind,
+  moveKinds,
   opponentPlays,
-  type PlayedMove,
 } from './practice';
 
-const practice = (clean: boolean): ModeState => ({ mode: 'practice', clean });
-const chosen = (mode: 'explore' | 'practice', untouched: boolean): ModeAction => ({
-  type: 'modeChosen',
-  mode,
-  untouched,
-});
-const BOOK: PlayedMove = { learner: true, book: true, first: false, replaces: false };
-const played = (move: Partial<PlayedMove> = {}): ModeAction => ({
-  type: 'played',
-  ...BOOK,
-  ...move,
-});
-const run = (state: ModeState, ...actions: ModeAction[]) => actions.reduce(modeReducer, state);
+/** The learner plays Black; `slips` are the indexes of their moves the guide doesn't recommend. */
+const kindsOf = (line: readonly string[], slips: number[] = []): MoveKind[] =>
+  line.map((_, n) => (n % 2 === 0 ? 'opponent' : slips.includes(n) ? 'slip' : 'book'));
+const chosen = (mode: 'explore' | 'practice', line: readonly string[]) =>
+  ({ type: 'modeChosen', mode, line, kinds: kindsOf(line) }) satisfies ModeAction;
+/** The game's moves become `sans`, with the learner's moves at `slips` non-book. */
+const moved =
+  (sans: string[], slips: number[] = []) =>
+  (state: ModeState): ModeState => {
+    const line = uciLine(...sans);
+    const from = state.mode === 'practice' ? state.line : [];
+    return modeReducer(state, { type: 'moved', from, line, kinds: kindsOf(line, slips) });
+  };
+const clean = (state: ModeState) => state.mode === 'practice' && state.clean;
+const run = (state: ModeState, ...steps: ((state: ModeState) => ModeState)[]) =>
+  steps.reduce((at, step) => step(at), state);
+/** Practice entered on `sans`: a clean run only before the learner's first move. */
+const practiceOn = (sans: string[]) =>
+  modeReducer(initialMode, chosen('practice', uciLine(...sans)));
 
 describe('modeReducer', () => {
   it('starts in Explore, which keeps no run', () => {
     expect(initialMode).toEqual({ mode: 'explore' });
-    expect(run(initialMode, played({ book: false }))).toEqual(initialMode);
+    expect(run(initialMode, moved(['e4', 'e6'], [1]))).toBe(initialMode);
   });
 
   it('starts a clean run only when Practice is entered before the first move', () => {
-    expect(run(initialMode, chosen('practice', true))).toEqual(practice(true));
+    expect(clean(run(practiceOn(['e4']), moved(['e4', 'c6'])))).toBe(true);
     // Exploring to the last move, then switching to Practice and finishing, is not a pass.
-    expect(run(initialMode, chosen('practice', false), played())).toEqual(practice(false));
+    expect(clean(run(practiceOn(['e4', 'c6', 'd4']), moved(['e4', 'c6', 'd4', 'd5'])))).toBe(false);
   });
 
-  it('keeps the run through book moves and the opponent moves the learner picks', () => {
-    expect(run(practice(true), played(), played({ learner: false, book: false }))).toEqual(
-      practice(true),
+  it("keeps the run through book moves and the opponent's moves", () => {
+    const state = run(
+      practiceOn(['e4']),
+      moved(['e4', 'c6']),
+      moved(['e4', 'c6', 'd4']),
+      moved(['e4', 'c6', 'd4', 'd5']),
     );
+    expect(clean(state)).toBe(true);
   });
 
-  it('spoils the run on a non-book move, or a move played from an earlier position', () => {
-    expect(run(practice(true), played({ book: false }))).toEqual(practice(false));
+  it('counts every move that lands at once', () => {
+    expect(clean(run(practiceOn(['e4']), moved(['e4', 'c6', 'd4', 'd5'])))).toBe(true);
+    expect(clean(run(practiceOn(['e4']), moved(['e4', 'c6', 'd4', 'e6'], [3])))).toBe(false);
+  });
+
+  it('spoils the run on a non-book move, or on any move taken back', () => {
+    const slipped = run(
+      practiceOn(['e4']),
+      moved(['e4', 'c6']),
+      moved(['e4', 'c6', 'd4', 'e6'], [3]),
+    );
+    expect(clean(slipped)).toBe(false);
     // A slip taken back and replaced with the book move still spoils it.
-    expect(run(practice(true), played({ book: false }), played({ replaces: true }))).toEqual(
-      practice(false),
-    );
-    expect(run(practice(true), played({ learner: false, replaces: true }))).toEqual(
-      practice(false),
-    );
+    expect(clean(run(slipped, moved(['e4', 'c6', 'd4', 'd5'])))).toBe(false);
+    const played = run(practiceOn(['e4']), moved(['e4', 'c6', 'd4', 'd5']));
+    // The opponent's move replaced (auto play off), or the same move played again.
+    expect(clean(run(played, moved(['e4', 'c6', 'c4'])))).toBe(false);
+    expect(clean(run(played, moved(['e4', 'c6', 'd4'])))).toBe(false);
+    // The last move played again takes nothing back.
+    expect(clean(run(played, moved(['e4', 'c6', 'd4', 'd5'])))).toBe(true);
   });
 
   it("starts again at the learner's first move", () => {
-    expect(run(practice(false), played({ first: true, replaces: true }))).toEqual(practice(true));
-    expect(run(practice(false), played({ first: true, book: false }))).toEqual(practice(false));
+    const explored = practiceOn(['e4', 'c6', 'd4']);
+    // Played again just as it was, or another first move.
+    expect(clean(run(explored, moved(['e4', 'c6'])))).toBe(true);
+    // Also as the last move of the line, which takes nothing back.
+    expect(clean(run(practiceOn(['e4', 'c6']), moved(['e4', 'c6'])))).toBe(true);
+    expect(clean(run(explored, moved(['e4', 'e6'], [1])))).toBe(false);
+    // So does a move before it, and a new game.
+    expect(clean(run(explored, moved(['d4'])))).toBe(true);
+    expect(clean(run(explored, moved([])))).toBe(true);
+  });
+
+  it('ignores a change from moves other than the ones it counted', () => {
+    const state = practiceOn(['e4', 'c6', 'd4']);
+    const line = uciLine('e4', 'c6');
+    expect(modeReducer(state, { type: 'moved', from: [...line], line, kinds: kindsOf(line) })).toBe(
+      state,
+    );
   });
 
   it('discards the run on leaving Practice, and keeps it when Practice is chosen again', () => {
-    expect(run(practice(true), chosen('explore', false))).toEqual(initialMode);
-    expect(run(practice(true), chosen('practice', false))).toEqual(practice(true));
+    const state = run(practiceOn(['e4']), moved(['e4', 'c6']));
+    expect(modeReducer(state, chosen('explore', []))).toBe(initialMode);
+    expect(modeReducer(state, chosen('practice', []))).toBe(state);
+  });
+});
+
+describe('moveKinds', () => {
+  it("names each move by who played it, and the learner's by the guide", () => {
+    const plies = replay(uciLine('e4', 'c6', 'd4', 'e6'));
+    expect(moveKinds(plies, 'black', [false, true, false, false])).toEqual([
+      'opponent',
+      'book',
+      'opponent',
+      'slip',
+    ]);
   });
 });
 
@@ -75,19 +125,6 @@ describe('beforeSideMoves', () => {
     expect(beforeSideMoves(plies, 'black', 2)).toBe(false);
     expect(beforeSideMoves(plies, 'white', 0)).toBe(true);
     expect(beforeSideMoves(plies, 'white', 1)).toBe(false);
-  });
-
-  it('keeps a line explored to its end from passing by stepping back, choosing Practice and stepping on', () => {
-    // Back at the start the board is before Black's first move, but the line isn't untouched.
-    expect(beforeSideMoves(plies, 'black', 0)).toBe(true);
-    const afterStepBack = run(initialMode, chosen('practice', false));
-    expect(afterStepBack).toEqual(practice(false));
-    // Playing the first move again, from the start, begins a clean run.
-    expect(run(afterStepBack, played({ first: true, replaces: true }))).toEqual(practice(true));
-  });
-
-  it('starts a clean run when Practice is chosen on a line with no move of the learner yet', () => {
-    expect(run(initialMode, chosen('practice', true))).toEqual(practice(true));
   });
 });
 

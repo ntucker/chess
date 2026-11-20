@@ -57,7 +57,7 @@ function marksAfter(lessonProgress: MarkedPositions, lesson: Lesson, ...sans: st
   return Object.fromEntries(view.candidates.map(({ san, move: { uci } }) => [san, marks.get(uci)]));
 }
 
-const practice = (clean: boolean) => ({ mode: 'practice', clean }) as const;
+const practice = (clean: boolean) => ({ mode: 'practice', clean, line: [] }) as const;
 
 describe('earnedMark', () => {
   it('marks any guide position Explore shows as seen', () => {

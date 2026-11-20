@@ -21,20 +21,17 @@ interface Props {
  * Who moves the opponent is the opponent's bar's (`AutoPlay`).
  */
 export function LessonControls({ mode, onMode }: Props) {
-  const { showIdeas, showTraps } = useSettings();
+  const { showMoves, showTraps } = useSettings();
   const dispatch = useSettingsDispatch();
   return (
     <View style={styles.controls}>
       <PillChoice label="Mode" options={MODES} value={mode} onChange={onMode} />
       <View style={styles.toggles}>
-        {/* Guidance ignores this switch in Practice, so it's Explore's. */}
-        {mode === 'explore' ? (
-          <Toggle
-            label="Ideas on the board"
-            checked={showIdeas}
-            onChange={(on) => dispatch({ type: 'chosen', choice: { showIdeas: on } })}
-          />
-        ) : null}
+        <Toggle
+          label="Moves on the board"
+          checked={showMoves}
+          onChange={(on) => dispatch({ type: 'chosen', choice: { showMoves: on } })}
+        />
         <Toggle
           label="Warn me of traps"
           checked={showTraps}

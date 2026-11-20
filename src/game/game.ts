@@ -15,7 +15,11 @@ export interface GameOpponent {
 }
 
 export interface GameState {
-  /** Every move played so far, in UCI. A new array whenever they change, so it names the request for them. */
+  /**
+   * Every move played so far, in UCI. A new array whenever they change, so it
+   * names the request for them: only a new game (no moves) or a move played
+   * (the last, even when it is the move that was there before) makes one.
+   */
   readonly moves: readonly string[];
   /** How many of `moves` the board shows: `moves.length` is the latest. */
   readonly ply: number;

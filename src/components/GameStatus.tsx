@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { Eyebrow } from '@/components/Eyebrow';
 import type { Color, Position } from '@/game/replay';
 import { describeOpponent, type Opponent } from '@/opponent/opponent';
-import { phoneLength, phonePart } from '@/theme/phone';
+import { narrowLength, narrowPart } from '@/theme/narrow';
 import { typography } from '@/theme/theme';
 
 interface Props {
@@ -57,7 +57,7 @@ export function StatusHeadline({
   const label = <Eyebrow>{eyebrow}</Eyebrow>;
   return (
     <Stack gap="2">
-      {eyebrowInHeader ? <View {...phonePart('wide-only')}>{label}</View> : label}
+      {eyebrowInHeader ? <View {...narrowPart('wide-only')}>{label}</View> : label}
       <Text
         role="headingLg"
         accessibilityRole="header"
@@ -66,7 +66,7 @@ export function StatusHeadline({
       >
         {title}
       </Text>
-      <Text {...(seenHint ? phonePart('wide-only') : {})} role="bodySm" tone="secondary">
+      <Text {...(seenHint ? narrowPart('wide-only') : {})} role="bodySm" tone="secondary">
         {detail}
       </Text>
       {failure ? (
@@ -127,7 +127,7 @@ function describeLatest({
 
 /** The headline's size: its role's, a size smaller on a narrow web page. */
 const HEADLINE = typography.headingLg;
-const TITLE_SIZE = phoneLength('headline-size', HEADLINE.size);
+const TITLE_SIZE = narrowLength('headline-size', HEADLINE.size);
 
 const styles = StyleSheet.create({
   title: { fontSize: TITLE_SIZE.value, lineHeight: TITLE_SIZE.times(HEADLINE.lineHeight).value },
