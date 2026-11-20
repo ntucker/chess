@@ -1,10 +1,15 @@
 import { Endpoint } from '@data-client/rest';
 
-import { type Evaluation, type EvaluationEngine, resultEvaluation } from '@/evaluation/evaluation';
+import {
+  type Evaluation,
+  type EvaluationEngine,
+  resultEvaluation,
+  type TopMove,
+} from '@/evaluation/evaluation';
 import { lastPosition } from '@/game/replay';
 import { maiaEvaluation } from '@/maia/engine';
 import { JUDGE_RATING } from '@/maia/maia';
-import { stockfishEvaluation } from '@/stockfish/engine';
+import { stockfishEvaluation, stockfishTopMoves } from '@/stockfish/engine';
 
 /** How each engine evaluates the position after `line`. */
 const JUDGES: Record<EvaluationEngine, (line: readonly string[]) => Promise<Evaluation>> = {
@@ -35,4 +40,24 @@ export const getEvaluation = new Endpoint(
     return result ? resultEvaluation(result) : JUDGES[engine](line);
   },
   { name: 'getEvaluation', dataExpiryLength: Infinity },
+);
+
+/**
+ * Stockfish's three best moves in the position after `line`, best first,
+ * each with how the position stands after it (`stockfishTopMoves`); none once
+ * the game is over. Its search runs once that position's evaluation has.
+ * Only one screen asks at a time: a newer request drops an older one still
+ * searching, which rejects with an `AbortError` Data Client doesn't keep, so
+ * read it with `useFetch` and `useCache`, never `useSuspense`, which would
+ * wait forever. Kept for as long as the app runs.
+ *
+ * ```ts
+ * useFetch(getTopMoves, line);
+ * const top = useCache(getTopMoves, line); // [{ uci: 'c7c5', evaluation }, …]
+ * ```
+ */
+export const getTopMoves = new Endpoint(
+  async (line: readonly string[]): Promise<readonly TopMove[]> =>
+    lastPosition(line).result ? [] : stockfishTopMoves(line),
+  { name: 'getTopMoves', dataExpiryLength: Infinity },
 );

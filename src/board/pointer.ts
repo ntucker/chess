@@ -1,127 +1,74 @@
-// Hover and press-and-hold on the board, which chessground doesn't report.
-// A mouse reports the square under it; a finger or pen reports the square it
-// rests on once it has stayed still for HOLD_MS. Moves still belong to
-// chessground: a click, a tap or a drag plays as before.
+// What the pointer does on the board that chessground doesn't report: where
+// a piece being dragged is over. Moves still belong to chessground, and a
+// pointer that only passes over the board reports nothing.
 
-/** How long a finger must rest to hold, as Android's long press. */
-export const HOLD_MS = 400;
-/** How far a finger may wander, in CSS pixels, and still hold. */
-export const HOLD_SLOP = 10;
+/**
+ * Whether a pointer of `pointerType` hovers: a mouse does; a finger or pen
+ * only presses. The panels beside the board go by this rule.
+ */
+export const hovers = (pointerType: string) => pointerType === 'mouse';
 
-export interface PointerReports<S extends string> {
-  /** The square under the mouse, or null once it leaves the board. */
-  readonly hover: (square: S | null) => void;
-  /** The square a finger holds, or null once it lifts. */
-  readonly hold: (square: S | null) => void;
+/** A piece being dragged from `from`, over `to`: absent over its own square or off the board. */
+export interface Drag<S extends string> {
+  readonly from: S;
+  readonly to?: S;
 }
 
-/** A finger (or pen) on the board: where it went down, and whether it has held. */
-interface Finger {
-  readonly id: number;
-  readonly x: number;
-  readonly y: number;
-  timer?: ReturnType<typeof setTimeout>;
-  held: boolean;
-}
-
-/** Where pointer events come from: the board, or the page around it. */
+/** Where pointer events come from: the page the board is on. */
 type PointerSource = Pick<GlobalEventHandlers, 'addEventListener' | 'removeEventListener'>;
 
 /**
- * Reports hovers and holds on `board`, whose squares `squareAt` finds by
- * screen position. Returns a function that stops.
- *
- * While a mouse button is down the hover doesn't change, so a drag never
- * starts or ends a preview halfway; the square under the mouse is reported
- * just after the button comes up, wherever that is.
+ * Reports each square a dragged piece is over, as `{ from, to }`, and null
+ * once the drag ends. `dragged` is the square of the piece being dragged, if
+ * one is; `squareAt` finds a square by screen position. A drop that `plays`
+ * a move reports nothing, since the move's new position takes over from the
+ * drag. Returns a function that stops. Example: dragging the c7 pawn over
+ * c6, then off the board, then dropping it on c5 reports c7-c6, c7, then
+ * nothing more if c7-c5 is a move, or null if it isn't.
  */
-export function watchPointer<S extends string>(
-  board: PointerSource,
+export function watchDrag<S extends string>(
   page: PointerSource,
+  dragged: () => S | undefined,
   squareAt: (x: number, y: number) => S | undefined,
-  report: PointerReports<S>,
+  plays: (from: S, to: S) => boolean,
+  report: (drag: Drag<S> | null) => void,
 ): () => void {
-  let hovered: S | null = null;
-  let pressing = false;
-  let touch: Finger | undefined;
-  // Reports on release wait a turn, until chessground has handled the same
-  // release (its mouseup and touchend come after pointerup): a preview that
-  // starts or ends at once would change the position under a piece being
-  // dropped, and chessground would refuse the move. A newer hover or release
-  // replaces a mouse release's waiting report.
-  let mouseRelease: ReturnType<typeof setTimeout> | undefined;
-  let fingerRelease: ReturnType<typeof setTimeout> | undefined;
-
-  const hover = (square: S | null) => {
-    clearTimeout(mouseRelease);
-    if (square === hovered) return;
-    hovered = square;
-    report.hover(square);
+  let over: Drag<S> | null = null;
+  const show = (next: Drag<S> | null) => {
+    if (next?.from === over?.from && next?.to === over?.to) return;
+    over = next;
+    report(next);
   };
-  const endTouch = () => {
-    if (!touch) return;
-    clearTimeout(touch.timer);
-    if (touch.held) fingerRelease = setTimeout(() => report.hold(null), 0);
-    touch = undefined;
+  // The square a piece from `from` is over: none over its own square.
+  const target = (from: S, { clientX, clientY }: PointerEvent) => {
+    const to = squareAt(clientX, clientY);
+    return to === from ? undefined : to;
   };
-
   const onMove = (event: PointerEvent) => {
-    if (event.pointerType === 'mouse') {
-      if (event.buttons === 0 && !pressing) hover(squareAt(event.clientX, event.clientY) ?? null);
-    } else if (touch?.id === event.pointerId && Math.hypot(event.clientX - touch.x, event.clientY - touch.y) > HOLD_SLOP) {
-      // A finger that wanders is dragging; once it has held, this changes nothing.
-      clearTimeout(touch.timer);
-    }
-  };
-  const onDown = (event: PointerEvent) => {
-    if (event.pointerType === 'mouse') {
-      pressing = true;
-      return;
-    }
+    // Chessground drags with one finger; a second one moves nothing.
     if (!event.isPrimary) return;
-    endTouch();
-    const square = squareAt(event.clientX, event.clientY);
-    if (!square) return;
-    const resting: Finger = { id: event.pointerId, x: event.clientX, y: event.clientY, held: false };
-    resting.timer = setTimeout(() => {
-      resting.held = true;
-      report.hold(square);
-    }, HOLD_MS);
-    touch = resting;
+    const from = dragged();
+    show(from ? { from, to: target(from, event) } : null);
   };
-  // Listened for on the page, so a button released off the board counts.
+  // The drop is where the pointer lifts, which a last move may not have reached.
   const onUp = (event: PointerEvent) => {
-    if (event.pointerType === 'mouse') {
-      if (!pressing) return;
-      pressing = false;
-      const square = squareAt(event.clientX, event.clientY) ?? null;
-      clearTimeout(mouseRelease);
-      mouseRelease = setTimeout(() => hover(square), 0);
-    } else if (touch && event.pointerId === touch.id) {
-      endTouch();
-    }
+    if (!event.isPrimary) return;
+    const to = over && target(over.from, event);
+    if (over && to && plays(over.from, to)) over = null;
+    else show(null);
   };
-  const onLeave = (event: PointerEvent) => {
-    if (event.pointerType === 'mouse' && !pressing) hover(null);
+  const onCancel = ({ isPrimary }: PointerEvent) => {
+    if (isPrimary) show(null);
   };
 
-  board.addEventListener('pointermove', onMove);
-  board.addEventListener('pointerdown', onDown);
-  board.addEventListener('pointerleave', onLeave);
+  page.addEventListener('pointermove', onMove);
   page.addEventListener('pointerup', onUp);
-  page.addEventListener('pointercancel', onUp);
+  page.addEventListener('pointercancel', onCancel);
   return () => {
-    board.removeEventListener('pointermove', onMove);
-    board.removeEventListener('pointerdown', onDown);
-    board.removeEventListener('pointerleave', onLeave);
+    page.removeEventListener('pointermove', onMove);
     page.removeEventListener('pointerup', onUp);
-    page.removeEventListener('pointercancel', onUp);
-    // Whoever listens is being torn down: waiting release reports are dropped,
-    // and a held finger's release goes out now rather than after a turn.
-    clearTimeout(mouseRelease);
-    clearTimeout(fingerRelease);
-    if (touch?.held) report.hold(null);
-    clearTimeout(touch?.timer);
-    touch = undefined;
+    page.removeEventListener('pointercancel', onCancel);
+    // A drag in progress ends, so whoever listens isn't left showing it.
+    show(null);
   };
 }

@@ -1,8 +1,8 @@
 /**
  * The lesson file: everything Opening Night teaches about one opening, as one
  * static JSON file per opening in assets/lessons, read through `getLesson`.
- * `checkLesson` (./check.ts) tests every file; the importer (planned:
- * scripts/import-study) will run it too, so a lesson that imports can't fail
+ * `checkLesson` (./check.ts) tests every file; the importer
+ * (scripts/import-study) runs it too, so a lesson that imports can't fail
  * in the app.
  *
  * The opening is one move tree keyed by position, never a list of fixed
@@ -12,8 +12,12 @@
  */
 import type { Color, FileName, SquareName } from 'chessops/types';
 
-/** The format this code reads. A file with another number is refused. */
-export const LESSON_FORMAT = 1;
+/**
+ * The format this code reads. A file with another number is refused.
+ * 2: ideas lost `at: 'before'`; each holds in its note's position, or after its move.
+ * 3: `source` became `sources`, since one lesson can draw on several, each with its license.
+ */
+export const LESSON_FORMAT = 3;
 
 /**
  * A move in UCI, like `g1f3`, with castling written as the king's two-square
@@ -31,8 +35,8 @@ export interface Lesson {
   readonly side: Color;
   /** Where the lesson starts, as a full FEN (usually the initial position). */
   readonly start: string;
-  /** Where the content comes from, for credit. */
-  readonly source: LessonSource;
+  /** Where the content comes from, for credit: at least one, the main source first. */
+  readonly sources: readonly LessonSource[];
   /** What `LessonMove.games` counts; absent when no move has counts. */
   readonly popularity?: Popularity;
   /** Exactly one variation has no parent: the opening itself. */
@@ -43,6 +47,26 @@ export interface Lesson {
 export interface LessonSource {
   readonly title: string;
   readonly author: string;
+  readonly url: string;
+  /**
+   * The license the source's text comes under, when it has one. Text adapted
+   * from a share-alike source (Wikibooks: CC BY-SA 4.0) stays under it, so its
+   * credit must name it.
+   */
+  readonly license?: License;
+}
+
+/**
+ * Whether `url` is on `domain` or one of its subdomains: `en.wikibooks.org` is
+ * on `wikibooks.org`. The app runs it too: Expo installs a WHATWG `URL` on
+ * native (expo/src/winter/runtime.native.ts), so `hostname` is there.
+ */
+export const onDomain = ({ hostname }: URL, domain: string) =>
+  hostname === domain || hostname.endsWith(`.${domain}`);
+
+export interface License {
+  /** Its short name, like `CC BY-SA 4.0`. */
+  readonly name: string;
   readonly url: string;
 }
 
@@ -84,6 +108,11 @@ export type VariationId = string;
 
 /** A named subtree of the opening, like "Advance Variation". */
 export interface Variation {
+  /**
+   * A name that stands alone: a sub-line's starts with its group's, as in
+   * "Advance Variation: Tal Variation". Where the group shows too, the app
+   * drops it (`nameWithin` in select.ts).
+   */
   readonly name: string;
   /** The variation this one branches from; absent for the opening itself. */
   readonly parent?: VariationId;
@@ -111,7 +140,10 @@ export interface LessonPosition {
 
 export interface LessonMove {
   readonly uci: Uci;
-  /** The guide recommends this move. Only the learner's moves are book moves. */
+  /**
+   * The guide recommends this move, or the importer picked it where the guide recommends none.
+   * Only the learner's moves are book moves.
+   */
   readonly book?: boolean;
   /** How the study rates this move among the good ones (a "choice guide"). */
   readonly risk?: Risk;
@@ -140,33 +172,21 @@ export interface Note {
 
 export const MAX_NOTE_WORDS = 20;
 
+/** What a note shows: something drawn on the board, only an evaluation badge, or text alone. */
+export type NoteShows = 'drawn' | 'badge' | 'text';
+
+export const noteShows = (ideas: readonly Idea[] = []): NoteShows =>
+  ideas.some((idea) => idea.type !== 'evaluation') ? 'drawn' : ideas.length > 0 ? 'badge' : 'text';
+
 /**
  * Something the board can draw. An idea in a position's notes is checked in
- * that position. An idea in a move's notes is checked in the position after
- * the move, or before it when `at` is `'before'`.
+ * that position, and one in a move's notes in the position after the move.
  */
 export type Idea =
-  | Purpose
-  | Pressure
-  | Plan
-  | Threat
-  | Trap
-  | Line
-  | Structure
-  | Imbalance
-  | EvaluationIdea;
-
-interface IdeaBase {
-  /**
-   * Which position a move's idea is about: after the move (the default) or
-   * before it, to show what the move used or changed. Not allowed in a
-   * position's notes.
-   */
-  readonly at?: 'before';
-}
+  Purpose | Pressure | Plan | Threat | Trap | Line | Structure | Imbalance | EvaluationIdea;
 
 /** What one piece does to its targets. The piece is the one on `from`. */
-export interface Purpose extends IdeaBase {
+export interface Purpose {
   readonly type: 'purpose';
   readonly from: SquareName;
   readonly relation: Relation;
@@ -185,14 +205,22 @@ export interface Purpose extends IdeaBase {
  * - `aims`: the piece is a line piece whose line reaches the target once the
  *   pieces between are gone, and at least one piece is between ("x-ray").
  */
-export const RELATIONS = ['attacks', 'defends', 'controls', 'checks', 'pins', 'blocks', 'aims'] as const;
+export const RELATIONS = [
+  'attacks',
+  'defends',
+  'controls',
+  'checks',
+  'pins',
+  'blocks',
+  'aims',
+] as const;
 export type Relation = (typeof RELATIONS)[number];
 
 /**
  * Several pieces of `side` bearing on one target, against its defenders.
  * Pieces lined up behind each other on one line (a battery) all count.
  */
-export interface Pressure extends IdeaBase {
+export interface Pressure {
   readonly type: 'pressure';
   readonly side: Color;
   readonly target: SquareName;
@@ -206,7 +234,7 @@ export interface Pressure extends IdeaBase {
  * Moves one side wants, in order, ignoring the other side's replies. Routes
  * are applied one after another on one board; the other side's pieces stay.
  */
-export interface Plan extends IdeaBase {
+export interface Plan {
   readonly type: 'plan';
   readonly side: Color;
   readonly routes: readonly Route[];
@@ -229,7 +257,7 @@ export interface Route {
  * What `side` does next if it is ignored. When `side` is not to move, the
  * threat is read as if the other side passed.
  */
-export interface Threat extends IdeaBase {
+export interface Threat {
   readonly type: 'threat';
   readonly side: Color;
   readonly move: Uci;
@@ -246,21 +274,21 @@ export interface Threat extends IdeaBase {
  * and falls in. `verdict` judges the final position; `losesMaterial` means
  * that side ends at least two points worse off, or mated.
  */
-export interface Trap extends IdeaBase {
+export interface Trap {
   readonly type: 'trap';
   readonly moves: readonly Uci[];
   readonly verdict: Evaluation | 'losesMaterial';
 }
 
 /** A short line with both sides' moves that is not a trap, and its verdict. */
-export interface Line extends IdeaBase {
+export interface Line {
   readonly type: 'line';
   readonly moves: readonly Uci[];
   readonly verdict: Evaluation;
 }
 
 /** Pawn-structure features of `side`'s pawns (or files half-open for it). */
-export interface Structure extends IdeaBase {
+export interface Structure {
   readonly type: 'structure';
   readonly side: Color;
   readonly features: readonly StructureFeature[];
@@ -270,12 +298,7 @@ export interface Structure extends IdeaBase {
 export type StructureFeature =
   | {
       readonly kind:
-        | 'isolatedPawn'
-        | 'backwardPawn'
-        | 'passedPawn'
-        | 'pawnChain'
-        | 'weakSquare'
-        | 'outpost';
+        'isolatedPawn' | 'backwardPawn' | 'passedPawn' | 'pawnChain' | 'weakSquare' | 'outpost';
       readonly squares: readonly SquareName[];
     }
   | {
@@ -287,9 +310,10 @@ export type StructureFeature =
 
 /**
  * An imbalance in `side`'s favor: both bishops against fewer, more material,
- * or more space (pawns further up the board, see `space` in ./pawns.ts).
+ * or more space (more squares in the opponent's half its pawns attack, see
+ * `spaceSquares` in ./pawns.ts).
  */
-export interface Imbalance extends IdeaBase {
+export interface Imbalance {
   readonly type: 'imbalance';
   readonly side: Color;
   readonly kind: ImbalanceKind;
@@ -299,7 +323,7 @@ export const IMBALANCE_KINDS = ['bishopPair', 'material', 'space'] as const;
 export type ImbalanceKind = (typeof IMBALANCE_KINDS)[number];
 
 /** Who is better, as the study judges it. */
-export interface EvaluationIdea extends IdeaBase {
+export interface EvaluationIdea {
   readonly type: 'evaluation';
   readonly value: Evaluation;
 }
@@ -315,4 +339,3 @@ export const EVALUATIONS = [
   'blackWinning',
 ] as const;
 export type Evaluation = (typeof EVALUATIONS)[number];
-

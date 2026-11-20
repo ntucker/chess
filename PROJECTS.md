@@ -55,16 +55,18 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
   from one measurement of the PR's final head against its base. Never report or pool runs made while
   iterating. Say plainly when a case shows no difference.
 - Visible UI changes include screenshots of the web export, built and served locally as described
-  in the "Web deploys" section of README.md (PRs don't deploy a preview). Add light and
+  in the "Web deploys" section of README.md. Add light and
   dark versions only when the change looks different between the two (colors, theme tokens, images).
 
 ## Follow-ups
 
-Never leave one dangling. Fold it into the PR if it improves it, reject it with a stated reason, or
-hand it on:
+Never leave a follow-up (a review finding, a nearby bug, a cleanup) dangling, and decide yourself.
+Fix it in the PR by default; always fix there anything the PR made worse. Reject it only when it is
+wrong, with a stated reason. Hand it on only when it is blocked (it needs another unmerged PR, or a
+goal-changing choice, secret or access only the person can give) or in a different area than the
+PR's goal:
 
-- Project-scope work: tell the coordinator, with a self-contained brief. The coordinator adds it to
-  the work queue (the work-queue tool, never the queue file by hand).
+- Project-scope work: tell the coordinator, with a self-contained brief. The coordinator queues it.
 - Work outside the project's scope: draft a GitHub issue on `ntucker/chess` (self-contained) and hand
   it to the coordinator. File it yourself only when the person asked in their own words.
 - The same holds for any other write outside the repo and your PR (GitHub comments elsewhere, Slack).

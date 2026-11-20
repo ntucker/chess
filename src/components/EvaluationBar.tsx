@@ -4,10 +4,17 @@ import { useDeferredValue, useMemo } from 'react';
 import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 import Animated, { type CSSTransitionTimingFunction, cubicBezier } from 'react-native-reanimated';
 
+import { resetListener } from '@/components/resetListener';
 import { type Color, colorName, type GameResult, lastPosition, opposite } from '@/game/replay';
-import { type Evaluation, type EvaluationEngine, resultEvaluation } from '@/evaluation/evaluation';
+import {
+  type EvaluationEngine,
+  evaluationReading,
+  type Reading,
+  resultEvaluation,
+} from '@/evaluation/evaluation';
 import { getEvaluation } from '@/resources/evaluation';
 import { useSettings } from '@/settings/SettingsProvider';
+import { narrowPart } from '@/theme/narrow';
 import { pieceColors } from '@/theme/pieceColors';
 import { fonts } from '@/theme/theme';
 
@@ -31,9 +38,7 @@ export function EvaluationBar({ line, orientation, style }: Props) {
   const engine = useSettings().evaluationEngine;
   const position = line.join(' ');
   // A failed evaluation leaves the bar empty only until the board shows
-  // another position or the setting picks another engine. AsyncBoundary
-  // attaches its `listen` again whenever the function changes, so a new
-  // listener for each that resets at once clears the last one's error.
+  // another position or the setting picks another engine.
   const resetOnChange = useMemo(() => resetListener(engine, position), [engine, position]);
   const empty = <Bar orientation={orientation} style={style} />;
   return (
@@ -42,16 +47,6 @@ export function EvaluationBar({ line, orientation, style }: Props) {
     </AsyncBoundary>
   );
 }
-
-/**
- * A boundary listener that resets the boundary as soon as it's attached. It
- * ignores its arguments: taking them only makes each engine and position's
- * listener a distinct function.
- */
-const resetListener = (_engine: EvaluationEngine, _position: string) => (reset: () => void) => {
-  reset();
-  return () => {};
-};
 
 function EvaluatedBar({
   engine,
@@ -74,34 +69,6 @@ function EvaluatedBar({
   const evaluation = useSuspense(getEvaluation, ...(fetchArgs ?? [null]));
   const reading = result ? resultReading(result) : evaluation && evaluationReading(evaluation);
   return <Bar orientation={orientation} style={style} {...reading} />;
-}
-
-interface Reading {
-  /** White's share of the bar, from 0 to 1. */
-  readonly score: number;
-  readonly label: string;
-  /** The side whose end shows the label. */
-  readonly leader: Color;
-  readonly description: string;
-}
-
-function evaluationReading({ score, pawns, mate }: Evaluation): Reading {
-  if (mate !== undefined) {
-    const leader = score < 0.5 ? 'black' : 'white';
-    const moves = Math.abs(mate);
-    return {
-      score,
-      label: `M${moves}`,
-      leader,
-      description: `${colorName(leader)} mates in ${moves} ${moves === 1 ? 'move' : 'moves'}`,
-    };
-  }
-  // Tenths of a pawn below 10, whole pawns from there up to 99.
-  const tenths = Math.round(Math.abs(pawns) * 10) / 10;
-  const label = tenths < 10 ? tenths.toFixed(1) : String(Math.min(99, Math.round(tenths)));
-  if (tenths === 0) return { score, label, leader: 'white', description: 'Even' };
-  const leader = pawns < 0 ? 'black' : 'white';
-  return { score, label, leader, description: `${colorName(leader)} is ahead by ${label} pawns` };
 }
 
 function resultReading(result: GameResult): Reading {
@@ -160,7 +127,9 @@ function Bar({
       />
       <View style={[styles.midline, { backgroundColor: color.tones.accent.solid }]} />
       {reading.label ? (
+        // A narrow page's strip is too thin for the number; its fill still shows who leads.
         <Text
+          {...narrowPart('wide-only')}
           role="caption"
           numberOfLines={1}
           style={[

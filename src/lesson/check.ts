@@ -2,23 +2,37 @@
  * The rules checker for lesson files: tests every fact a lesson states
  * against the board, so nothing false is drawn. Judgments come from the study
  * and are only checked to be legal or well formed: verdicts, evaluations,
- * risk tags, and a threat's answer. The importer (planned) will run it and
- * drop ideas that fail; a test runs it on every lesson the app ships.
+ * risk tags, and a threat's answer. The importer (scripts/import-study)
+ * drops ideas that fail it; a test runs it on every lesson the app ships.
  */
 import { attacks, between, pawnAttacks, ray } from 'chessops/attacks';
 import type { Board } from 'chessops/board';
 import { Chess } from 'chessops/chess';
 import { SquareSet } from 'chessops/squareSet';
-import { COLORS, type Color, FILE_NAMES, type NormalMove, type Piece, type Square } from 'chessops/types';
-import { kingCastlesTo, makeSquare, opposite, parseSquare, parseUci, rookCastlesTo } from 'chessops/util';
+import {
+  COLORS,
+  type Color,
+  FILE_NAMES,
+  type NormalMove,
+  type Piece,
+  type Square,
+} from 'chessops/types';
+import { makeSquare, opposite, parseSquare, parseUci } from 'chessops/util';
 
 import { balance, points, VALUES } from '@/game/material';
-import { parsePosition, parsePositionKey, positionKey, recordedMove } from '@/game/replay';
+import {
+  parsePosition,
+  parsePositionKey,
+  positionKey,
+  recordedMove,
+  WRITTEN_MOVE,
+} from '@/game/replay';
 
 import {
   EVALUATIONS,
   IMBALANCE_KINDS,
   MAX_NOTE_WORDS,
+  onDomain,
   RELATIONS,
   RISKS,
   type Idea,
@@ -45,9 +59,10 @@ import {
   isPawnChain,
   isWeakSquare,
   pawnSteps,
-  space,
+  spaceSquares,
   stopSquare,
 } from './pawns';
+import { PlanBoard } from './plan';
 
 /** One thing wrong with a lesson, and where: a path into the file. */
 export interface LessonProblem {
@@ -55,19 +70,12 @@ export interface LessonProblem {
   readonly message: string;
 }
 
-/** The positions an idea may refer to (see `Idea`). */
-export interface IdeaPositions {
-  /** The note's position, or the position after the note's move. */
-  readonly after: Chess;
-  /** The position before the note's move; absent for a position's notes. */
-  readonly before?: Chess;
-}
-
-/** Why `idea` is false in its position, or undefined if it holds. */
-export function checkIdea(idea: Idea, positions: IdeaPositions): string | undefined {
+/**
+ * Why `idea` is false in `pos`, or undefined if it holds. `pos` is the note's
+ * position, or the position after the note's move (see `Idea`).
+ */
+export function checkIdea(idea: Idea, pos: Chess): string | undefined {
   try {
-    const pos = idea.at === 'before' ? positions.before : positions.after;
-    if (!pos) fail(`at 'before' only applies to a move's ideas`);
     CHECKS[idea.type](pos, idea as never);
     return undefined;
   } catch (error) {
@@ -89,6 +97,7 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
   if (!bands.every((band, i) => isCount(band) && (i === 0 || band > bands[i - 1]))) {
     report('popularity.ratingBands', 'must be whole numbers in ascending order');
   }
+  checkSources(lesson, report);
   checkVariations(lesson, report);
 
   const start = parsePosition(lesson.start);
@@ -100,22 +109,48 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
   if (!(startKey in lesson.positions)) report('start', `has no entry in positions (${startKey})`);
 
   const children = new Map<string, string[]>();
+  /** Where the learner goes playing only book moves, against any opponent move. */
+  const bookChildren = new Map<string, string[]>();
+  /** The learner's positions without a book move. */
+  const unbooked = new Set<string>();
   for (const [key, entry] of Object.entries(lesson.positions)) {
-    const next = checkPosition(lesson, key, entry, report);
-    if (next) children.set(key, next);
+    const checked = checkPosition(lesson, key, entry, report);
+    if (!checked) continue;
+    const { learner, next } = checked;
+    children.set(
+      key,
+      next.map(({ key: to }) => to),
+    );
+    bookChildren.set(
+      key,
+      next.filter(({ book }) => book || !learner).map(({ key: to }) => to),
+    );
+    if (learner && next.length > 0 && !next.some(({ book }) => book)) unbooked.add(key);
   }
   const reached = reachable(startKey, children);
   for (const key of children.keys()) {
-    if (!reached.has(key)) report(`positions[${JSON.stringify(key)}]`, 'is not reachable from start');
+    if (!reached.has(key))
+      report(`positions[${JSON.stringify(key)}]`, 'is not reachable from start');
+  }
+  // A learner who has played only book moves must have one to play next.
+  for (const key of reachable(startKey, bookChildren)) {
+    if (unbooked.has(key))
+      report(`positions[${JSON.stringify(key)}]`, 'is inside the book but has no book move');
   }
   return problems;
 }
 
 /**
- * Checks one entry of `lesson.positions`, and returns the keys its moves
- * lead to, or undefined when `key` is not a position key.
+ * Checks one entry of `lesson.positions`, and returns whether it is the
+ * learner's turn and the keys its moves lead to, or undefined when `key` is
+ * not a position key.
  */
-function checkPosition(lesson: Lesson, key: string, entry: LessonPosition, report: Report): string[] | undefined {
+function checkPosition(
+  lesson: Lesson,
+  key: string,
+  entry: LessonPosition,
+  report: Report,
+): { learner: boolean; next: { key: string; book: boolean }[] } | undefined {
   const at = `positions[${JSON.stringify(key)}]`;
   const pos = parsePositionKey(key);
   if (!pos) {
@@ -125,8 +160,8 @@ function checkPosition(lesson: Lesson, key: string, entry: LessonPosition, repor
   if (!(entry.variation in lesson.variations)) {
     report(`${at}.variation`, `${entry.variation} is not in variations`);
   }
-  checkNotes(entry.notes, { after: pos }, `${at}.notes`, report);
-  const next: string[] = [];
+  checkNotes(entry.notes, pos, `${at}.notes`, report);
+  const next: { key: string; book: boolean }[] = [];
   const seen = new Set<string>();
   entry.moves.forEach((move, i) => {
     const path = `${at}.moves[${i}]`;
@@ -134,10 +169,10 @@ function checkPosition(lesson: Lesson, key: string, entry: LessonPosition, repor
     seen.add(move.uci);
     const after = checkMove(lesson, pos, move, path, report);
     if (!after) return;
-    next.push(positionKey(after));
-    checkNotes(move.notes, { before: pos, after }, `${path}.notes`, report);
+    next.push({ key: positionKey(after), book: !!move.book });
+    checkNotes(move.notes, after, `${path}.notes`, report);
   });
-  return next;
+  return { learner: pos.turn === lesson.side, next };
 }
 
 /** Every position key reachable from `start` along `children`. */
@@ -155,14 +190,43 @@ function reachable(start: string, children: ReadonlyMap<string, readonly string[
   return reached;
 }
 
+/** Hosts whose text is CC BY-SA 4.0 (Wikimedia projects): a lesson adapting it must say so. */
+const SHARE_ALIKE_HOSTS = ['wikibooks.org', 'wikipedia.org'];
+
+function checkSources({ sources }: Lesson, report: Report) {
+  if (sources.length === 0) report('sources', 'needs at least one source');
+  sources.forEach(({ title, author, url, license }, i) => {
+    const at = `sources[${i}]`;
+    if (!title.trim() || !author.trim()) report(at, 'needs a title and an author');
+    if (sources.findIndex((other) => other.url === url) < i)
+      report(`${at}.url`, `${url} is listed twice`);
+    // Not URL.parse, which Node 22.0 lacks.
+    const parsed = URL.canParse(url) ? new URL(url) : undefined;
+    if (!parsed?.hostname) return report(`${at}.url`, `${url} is not a web address`);
+    if (!license && SHARE_ALIKE_HOSTS.some((domain) => onDomain(parsed, domain))) {
+      report(`${at}.license`, `is required for ${parsed.hostname}, whose text is share-alike`);
+    }
+    if (license && (!license.name.trim() || !URL.canParse(license.url))) {
+      report(`${at}.license`, 'needs a name and a URL');
+    }
+  });
+}
+
 function checkVariations(lesson: Lesson, report: Report) {
-  const roots = Object.keys(lesson.variations).filter((id) => lesson.variations[id].parent === undefined);
-  if (roots.length !== 1) report('variations', `need exactly one without a parent, found ${roots.length}`);
+  const roots = Object.keys(lesson.variations).filter(
+    (id) => lesson.variations[id].parent === undefined,
+  );
+  if (roots.length !== 1)
+    report('variations', `need exactly one without a parent, found ${roots.length}`);
   for (const [id, variation] of Object.entries(lesson.variations)) {
     const at = `variations[${JSON.stringify(id)}]`;
     if (!variation.name.trim()) report(`${at}.name`, 'is empty');
     const ancestors = new Set([id]);
-    for (let parent = variation.parent; parent !== undefined; parent = lesson.variations[parent]?.parent) {
+    for (
+      let parent = variation.parent;
+      parent !== undefined;
+      parent = lesson.variations[parent]?.parent
+    ) {
       if (!(parent in lesson.variations)) {
         report(`${at}.parent`, `${parent} is not in variations`);
         break;
@@ -185,13 +249,15 @@ function checkMove(
   report: Report,
 ): Chess | undefined {
   const { games, risk } = move;
-  if (move.book && pos.turn !== lesson.side) report(`${path}.book`, `only ${lesson.side}'s moves are book moves`);
+  if (move.book && pos.turn !== lesson.side)
+    report(`${path}.book`, `only ${lesson.side}'s moves are book moves`);
   const bands = lesson.popularity?.ratingBands;
   if (games && !bands) report(`${path}.games`, 'needs popularity in the lesson');
   if (games && bands && (games.length !== bands.length || !games.every(isCount))) {
     report(`${path}.games`, 'needs one whole count per rating band');
   }
-  if (risk !== undefined && !RISKS.includes(risk)) report(`${path}.risk`, `${risk} is not one of ${RISKS.join(', ')}`);
+  if (risk !== undefined && !RISKS.includes(risk))
+    report(`${path}.risk`, `${risk} is not one of ${RISKS.join(', ')}`);
   try {
     return played(pos, [move.uci]);
   } catch (error) {
@@ -203,18 +269,36 @@ function checkMove(
 
 const isCount = (n: number) => Number.isInteger(n) && n >= 0;
 
-function checkNotes(
-  notes: readonly Note[] | undefined,
-  positions: IdeaPositions,
-  path: string,
-  report: Report,
-) {
+const MOVE = new RegExp(String.raw`(?<![\w.])${WRITTEN_MOVE}(?![\w-])`, 'g');
+/** Four moves with only whitespace between them: a line in notation, like `7.Nxd4 Nc5 8.Bc4 Nbd7`. */
+const NOTATION_LINE = new RegExp(
+  String.raw`(?<![\w.])${WRITTEN_MOVE}(?:\s+${WRITTEN_MOVE}){3}(?![\w-])`,
+);
+/** Words that only join moves in a list, like `...Bf5, then play ...e6 and ...c5`. */
+const LIST_WORDS = /\b(?:and|then|or|play)\b/gi;
+
+/**
+ * What is wrong with note `text` written as moves instead of words, if
+ * anything. A note puts a line in words; its idea draws the moves.
+ */
+export function notationProblem(text: string): string | undefined {
+  if (NOTATION_LINE.test(text)) return 'writes a line of moves in notation';
+  const hasMove = text.search(MOVE) >= 0;
+  if (hasMove && !/[a-z]{2}/i.test(text.replace(MOVE, ' ').replace(LIST_WORDS, ' ')))
+    return 'is only a list of moves';
+  return undefined;
+}
+
+function checkNotes(notes: readonly Note[] | undefined, pos: Chess, path: string, report: Report) {
   notes?.forEach((note, i) => {
     const words = note.text.split(/\s+/).filter(Boolean).length;
     if (words === 0) report(`${path}[${i}].text`, 'is empty');
-    if (words > MAX_NOTE_WORDS) report(`${path}[${i}].text`, `has ${words} words (most ${MAX_NOTE_WORDS})`);
+    if (words > MAX_NOTE_WORDS)
+      report(`${path}[${i}].text`, `has ${words} words (most ${MAX_NOTE_WORDS})`);
+    const wording = notationProblem(note.text);
+    if (wording) report(`${path}[${i}].text`, wording);
     note.ideas?.forEach((idea, j) => {
-      const problem = checkIdea(idea, positions);
+      const problem = checkIdea(idea, pos);
       if (problem) report(`${path}[${i}].ideas[${j}]`, `${idea.type}: ${problem}`);
     });
   });
@@ -252,7 +336,7 @@ function played(pos: Chess, ucis: readonly string[]): Chess {
 }
 
 /** A copy of `pos` with `color` to move, as if the other side passed. */
-function withTurn(pos: Chess, color: Color): Chess {
+export function withTurn(pos: Chess, color: Color): Chess {
   const copy = pos.clone();
   if (copy.turn !== color) {
     copy.turn = color;
@@ -309,10 +393,12 @@ function checkPurpose(pos: Chess, idea: Purpose) {
         if (!hits) fail(`${name} does not control ${at}`);
         break;
       case 'checks':
-        if (!(hits && enemy && there.role === 'king')) fail(`${name} does not check a king on ${at}`);
+        if (!(hits && enemy && there.role === 'king'))
+          fail(`${name} does not check a king on ${at}`);
         break;
       case 'pins':
-        if (!(hits && enemy && pins(board, from, target))) fail(`${name} does not pin the piece on ${at}`);
+        if (!(hits && enemy && pins(board, from, target)))
+          fail(`${name} does not pin the piece on ${at}`);
         break;
       case 'blocks':
         if (!blocks(board, from, target)) {
@@ -331,7 +417,9 @@ function pins(board: Board, from: Square, target: Square): boolean {
   const pinner = board.get(from)!;
   const pinned = board.get(target)!;
   // The next piece past the target on the pinner's line.
-  const next = attacks(pinner, target, board.occupied).intersect(ray(from, target)).intersect(board.occupied);
+  const next = attacks(pinner, target, board.occupied)
+    .intersect(ray(from, target))
+    .intersect(board.occupied);
   const beyond = next.without(from).singleSquare();
   const back = beyond === undefined ? undefined : board.get(beyond);
   return (
@@ -346,12 +434,17 @@ function pins(board: Board, from: Square, target: Square): boolean {
 function blocks(board: Board, from: Square, target: Square): boolean {
   const blocker = board.get(from)!;
   const there = board.get(target);
-  if (there?.role === 'pawn' && there.color !== blocker.color && stopSquare(there.color, target) === from) {
+  if (
+    there?.role === 'pawn' &&
+    there.color !== blocker.color &&
+    stopSquare(there.color, target) === from
+  ) {
     return true;
   }
   const without = board.occupied.without(from);
   for (const sq of board[opposite(blocker.color)].intersect(board.sliders())) {
-    if (between(sq, target).has(from) && attacks(board.get(sq)!, sq, without).has(target)) return true;
+    if (between(sq, target).has(from) && attacks(board.get(sq)!, sq, without).has(target))
+      return true;
   }
   return false;
 }
@@ -408,51 +501,38 @@ function reaches(board: Board, from: Square, to: Square, moves: number): boolean
   return false;
 }
 
-/**
- * The rook's move when the king route `from`-`to` is castling `color` may
- * still play on `board`, where earlier routes left the squares in
- * `vacated` empty; or undefined.
- */
-function castlingRook(pos: Chess, board: Board, vacated: SquareSet, color: Color, from: Square, to: Square) {
-  const side = to > from ? 'h' : 'a';
-  const rook = pos.castles.rook[color][side];
-  // Only the king that has not moved yet, from its square in `pos`, castles.
-  const king = pos.board.kingOf(color);
-  if (rook === undefined || from !== king || vacated.has(king) || vacated.has(rook)) return undefined;
-  if (kingCastlesTo(color, side) !== to) return undefined;
-  if (pos.castles.path[color][side].intersects(board.occupied)) return undefined;
-  return { from: rook, to: rookCastlesTo(color, side) };
-}
-
 function checkPlan(pos: Chess, idea: Plan) {
   oneOf(COLORS, idea.side, 'side');
   if (idea.routes.length === 0) fail('needs a route');
-  const board = pos.board.clone();
+  const plan = new PlanBoard(pos);
+  const { board } = plan;
   // Where each route's piece stands now: a piece that moves again leaves its earlier end.
   const ends = new Set<Square>();
-  let vacated = SquareSet.empty();
   idea.routes.forEach((route, i) => {
     const what = `route ${i + 1}`;
     const piece = pieceAt(board, route.from, `${what} from`);
-    if (piece.color !== idea.side) fail(`${what}: the piece on ${route.from} is not ${idea.side}'s`);
+    if (piece.color !== idea.side)
+      fail(`${what}: the piece on ${route.from} is not ${idea.side}'s`);
     const moves = route.moves ?? 1;
     if (!Number.isInteger(moves) || moves < 1 || moves > 4) fail(`${what}: moves must be 1 to 4`);
     const from = square(route.from);
     const to = square(route.to);
-    if (board.get(to)?.color === idea.side) fail(`${what}: ${route.to} holds ${idea.side}'s own piece`);
-    const rook = piece.role === 'king' ? castlingRook(pos, board, vacated, idea.side, from, to) : undefined;
-    if (rook) board.set(rook.to, board.take(rook.from)!);
-    else if (!reaches(board, from, to, moves)) {
-      fail(`${what}: the ${piece.role} on ${route.from} cannot reach ${route.to} in ${moves} move(s)`);
+    if (board.get(to)?.color === idea.side)
+      fail(`${what}: ${route.to} holds ${idea.side}'s own piece`);
+    if (!plan.castles(from, to) && !reaches(board, from, to, moves)) {
+      fail(
+        `${what}: the ${piece.role} on ${route.from} cannot reach ${route.to} in ${moves} move(s)`,
+      );
     }
-    board.set(to, board.take(from)!);
-    vacated = vacated.with(from);
+    plan.play(from, to);
     ends.delete(from);
     ends.add(to);
   });
   for (const goal of idea.goals ?? []) {
     const sq = square(goal);
-    const covered = [...ends].some((end) => end === sq || attacks(board.get(end)!, end, board.occupied).has(sq));
+    const covered = [...ends].some(
+      (end) => end === sq || attacks(board.get(end)!, end, board.occupied).has(sq),
+    );
     if (!covered) fail(`goal ${goal} is neither a route's end nor attacked from one`);
   }
 }
@@ -506,7 +586,7 @@ function checkFeature(pos: Chess, color: Color, feature: StructureFeature) {
     return FILE_NAMES.indexOf(name as (typeof FILE_NAMES)[number]);
   };
   const count = (c: Color, name: string) => filePawnCount(board, c, file(name));
-  const nonEmpty = <T,>(list: readonly T[]) => {
+  const nonEmpty = <T>(list: readonly T[]) => {
     if (list.length === 0) fail(`${feature.kind} needs at least one entry`);
     return list;
   };
@@ -514,9 +594,12 @@ function checkFeature(pos: Chess, color: Color, feature: StructureFeature) {
     case 'isolatedPawn':
     case 'backwardPawn':
     case 'passedPawn': {
-      const test = { isolatedPawn: isIsolated, backwardPawn: isBackward, passedPawn: isPassed }[feature.kind];
+      const test = { isolatedPawn: isIsolated, backwardPawn: isBackward, passedPawn: isPassed }[
+        feature.kind
+      ];
       for (const name of nonEmpty(feature.squares)) {
-        if (!test(board, color, ownPawn(name))) fail(`the pawn on ${name} is not ${feature.kind.replace('Pawn', '')}`);
+        if (!test(board, color, ownPawn(name)))
+          fail(`the pawn on ${name} is not ${feature.kind.replace('Pawn', '')}`);
       }
       return;
     }
@@ -527,7 +610,8 @@ function checkFeature(pos: Chess, color: Color, feature: StructureFeature) {
       return;
     case 'weakSquare':
       for (const name of nonEmpty(feature.squares)) {
-        if (!isWeakSquare(board, color, square(name))) fail(`${name} is not a hole in ${color}'s camp`);
+        if (!isWeakSquare(board, color, square(name)))
+          fail(`${name} is not a hole in ${color}'s camp`);
       }
       return;
     case 'outpost':
@@ -545,8 +629,10 @@ function checkFeature(pos: Chess, color: Color, feature: StructureFeature) {
       return;
     }
     case 'pawnMajority': {
-      const total = (c: Color) => nonEmpty(feature.files).reduce((n, name) => n + count(c, name), 0);
-      if (total(color) <= total(opposite(color))) fail(`${color} has no pawn majority on ${feature.files.join('')}`);
+      const total = (c: Color) =>
+        nonEmpty(feature.files).reduce((n, name) => n + count(c, name), 0);
+      if (total(color) <= total(opposite(color)))
+        fail(`${color} has no pawn majority on ${feature.files.join('')}`);
       return;
     }
     case 'pawnBreak': {
@@ -575,8 +661,14 @@ const FILE_FEATURES: Record<
     readonly says: (file: string, color: Color) => string;
   }
 > = {
-  doubledPawns: { holds: (own) => own >= 2, says: (file, color) => `${color} has no doubled pawns on the ${file}-file` },
-  openFile: { holds: (own, other) => own === 0 && other === 0, says: (file) => `the ${file}-file is not open` },
+  doubledPawns: {
+    holds: (own) => own >= 2,
+    says: (file, color) => `${color} has no doubled pawns on the ${file}-file`,
+  },
+  openFile: {
+    holds: (own, other) => own === 0 && other === 0,
+    says: (file) => `the ${file}-file is not open`,
+  },
   halfOpenFile: {
     holds: (own, other) => own === 0 && other > 0,
     says: (file, color) => `the ${file}-file is not half-open for ${color}`,
@@ -591,14 +683,16 @@ function checkImbalance(pos: Chess, idea: Imbalance) {
   const holds = {
     bishopPair: () => hasBishopPair(board, idea.side) && !hasBishopPair(board, other),
     material: () => points(board, idea.side) > points(board, other),
-    space: () => space(board, idea.side) > space(board, other),
+    space: () => spaceSquares(board, idea.side).size() > spaceSquares(board, other).size(),
   }[idea.kind]();
   if (!holds) fail(`${idea.side} does not have the ${idea.kind} advantage`);
 }
 
 function hasBishopPair(board: Board, color: Color): boolean {
   const bishops = board.pieces(color, 'bishop');
-  return bishops.intersects(SquareSet.lightSquares()) && bishops.intersects(SquareSet.darkSquares());
+  return (
+    bishops.intersects(SquareSet.lightSquares()) && bishops.intersects(SquareSet.darkSquares())
+  );
 }
 
 const CHECKS: { [T in Idea['type']]: (pos: Chess, idea: Extract<Idea, { type: T }>) => void } = {

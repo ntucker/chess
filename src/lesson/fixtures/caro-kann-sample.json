@@ -1,14 +1,16 @@
 {
- "format": 1,
+ "format": 3,
  "id": "caro-kann-sample",
  "title": "Caro-Kann (sample)",
  "side": "black",
  "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
- "source": {
-  "title": "Greatest Caro Kann: Living Repertoire",
-  "author": "Kampfschach_Official",
-  "url": "https://lichess.org/study/8Uztu7Xx"
- },
+ "sources": [
+  {
+   "title": "Greatest Caro Kann: Living Repertoire",
+   "author": "Kampfschach_Official",
+   "url": "https://lichess.org/study/8Uztu7Xx"
+  }
+ ],
  "popularity": {
   "ratingBands": [
    1000,
@@ -41,7 +43,7 @@
    "parent": "advance"
   },
   "botvinnik-carls": {
-   "name": "Botvinnik–Carls",
+   "name": "Botvinnik\u2013Carls",
    "parent": "advance"
   },
   "exchange": {
@@ -624,6 +626,21 @@
   },
   "rnbqkbnr/pp2pppp/8/2ppP3/3P4/8/PPP2PPP/RNBQKBNR w KQkq -": {
    "variation": "botvinnik-carls",
+   "notes": [
+    {
+     "text": "White's d4 pawn attacks your c5 pawn.",
+     "ideas": [
+      {
+       "type": "purpose",
+       "from": "d4",
+       "relation": "attacks",
+       "targets": [
+        "c5"
+       ]
+      }
+     ]
+    }
+   ],
    "moves": [
     {
      "uci": "d4c5",
@@ -636,18 +653,7 @@
      ],
      "notes": [
       {
-       "text": "White takes the pawn. You will win it back with quick development.",
-       "ideas": [
-        {
-         "type": "purpose",
-         "at": "before",
-         "from": "d4",
-         "relation": "attacks",
-         "targets": [
-          "c5"
-         ]
-        }
-       ]
+       "text": "White takes the pawn. You will win it back with quick development."
       }
      ]
     },

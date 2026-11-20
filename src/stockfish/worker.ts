@@ -10,8 +10,8 @@ export interface StockfishWorker {
 
 /**
  * Starts Stockfish in a Web Worker. `loader` is the source of the engine's
- * JavaScript loader, and `wasm` its WebAssembly, as an address or as the
- * bytes; the loader reads the address from its own address's hash. Running
+ * JavaScript loader, and `wasm` its WebAssembly; the loader reads the
+ * WebAssembly's Blob address from its own address's hash. Running
  * the loader from a Blob means it works whatever MIME type the loader file
  * was served with. `onLine` gets only the lines the app needs from the
  * engine (see `forwardNeededLines`), and `onError` gets the message if the
@@ -22,20 +22,19 @@ export interface StockfishWorker {
  */
 export function startStockfishWorker(
   loader: string,
-  wasm: string | Blob,
+  wasm: Blob,
   onLine: (line: string) => void,
   onError: (message: string) => void,
 ): StockfishWorker {
   const script = URL.createObjectURL(new Blob([loader], { type: 'text/javascript' }));
-  const ownsWasm = typeof wasm !== 'string';
-  const wasmUrl = ownsWasm ? URL.createObjectURL(wasm) : wasm;
+  const wasmUrl = URL.createObjectURL(wasm);
   const worker = new Worker(`${script}#${encodeURIComponent(wasmUrl)}`);
   // Blob addresses keep their bytes alive until they're revoked. The engine
   // has read both files by the time it prints anything, so its first line
   // frees them.
   const freeFiles = () => {
     URL.revokeObjectURL(script);
-    if (ownsWasm) URL.revokeObjectURL(wasmUrl);
+    URL.revokeObjectURL(wasmUrl);
   };
   const forward = forwardNeededLines(onLine);
   worker.onmessage = ({ data }: MessageEvent<unknown>) => {

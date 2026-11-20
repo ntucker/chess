@@ -1,11 +1,10 @@
 /**
  * The state of a game against an engine (the opponent), as a reducer: the
- * moves, how good each was, the move on the board, and the one request to
- * the opponent that may be out.
+ * moves, the move on the board, and the opponent's failure to answer them.
+ * Everything else (the positions, whose turn it is, whether the opponent is
+ * thinking, each move's label) is worked out from these.
  */
-import type { MoveQuality } from '@/analysis/quality';
-
-import { type Color, lastPosition, lineMove } from './replay';
+import { lastPosition, lineMove } from './replay';
 
 /** Who a game is against. */
 export interface GameOpponent {
@@ -15,126 +14,83 @@ export interface GameOpponent {
   reply(line: readonly string[]): Promise<string>;
 }
 
-/** What the opponent is doing about the latest position. */
-type OpponentStatus =
-  | { readonly status: 'idle' }
-  /** Answering the moves in `line`. */
-  | { readonly status: 'thinking' }
-  /** Didn't answer the moves in `line`. */
-  | { readonly status: 'failed'; readonly error: Error };
-
 export interface GameState {
-  /** Counts games, so answers to an earlier game's request are dropped. */
-  readonly game: number;
-  readonly playerColor: Color;
-  /** Every move played so far, in UCI. */
-  readonly line: readonly string[];
-  /** Each move's label once it's judged: `qualities[n]` labels `line[n]`. */
-  readonly qualities: readonly (MoveQuality | undefined)[];
-  /** How many moves of `line` the board shows: `line.length` is the latest. */
+  /**
+   * Every move played so far, in UCI. A new array whenever they change, so it
+   * names the request for them: only a new game (no moves) or a move played
+   * (the last, even when it is the move that was there before) makes one.
+   */
+  readonly moves: readonly string[];
+  /** How many of `moves` the board shows: `moves.length` is the latest. */
   readonly ply: number;
-  readonly opponent: OpponentStatus;
+  /** The opponent (by id) didn't answer `moves`. Any change to `moves` clears it. */
+  readonly failed?: { readonly opponent: string; readonly error: Error };
+}
+
+/**
+ * An answer from the opponent to the moves it was asked about. It counts only
+ * while those are still the game's moves: the same array, so a later move or
+ * a new game, even one from the same position, makes it count for nothing.
+ * `useGame` drops an answer no longer wanted before it gets here; this check
+ * covers one that lands after a move but before React has re-rendered.
+ */
+interface Answer {
+  readonly after: readonly string[];
+  readonly opponent: string;
 }
 
 export type GameAction =
-  | { readonly type: 'newGame'; readonly playerColor: Color }
-  /** The player's move from the shown position; moves after it are dropped. */
+  /** A new game from the starting position, or having played `moves`. */
+  | { readonly type: 'newGame'; readonly moves?: readonly string[] }
+  /** A move from the shown position; moves after it are dropped. */
   | { readonly type: 'move'; readonly uci: string }
-  /** The opponent's answer, applied only if it answers the request still out. */
-  | {
-      readonly type: 'reply';
-      readonly game: number;
-      readonly after: readonly string[];
-      readonly uci: string;
-    }
-  | {
-      readonly type: 'failed';
-      readonly game: number;
-      readonly after: readonly string[];
-      readonly error: Error;
-    }
-  /** The label for the last of `line`'s moves, applied only if that move is still played. */
-  | {
-      readonly type: 'judged';
-      readonly game: number;
-      readonly line: readonly string[];
-      readonly quality: MoveQuality;
-    }
+  | ({ readonly type: 'reply'; readonly uci: string } & Answer)
+  | ({ readonly type: 'failed'; readonly error: Error } & Answer)
+  /** Asks the opponent that failed again. */
   | { readonly type: 'retry' }
   | { readonly type: 'goto'; readonly ply: number };
 
-const IDLE: OpponentStatus = { status: 'idle' };
-const THINKING: OpponentStatus = { status: 'thinking' };
+/** A game that has played `moves`, showing the latest: `useReducer(gameReducer, moves, startGame)`. */
+export const startGame = (moves: readonly string[]): GameState => ({ moves, ply: moves.length });
 
-/** Before the first game: the player is White and nothing is played. */
-export const initialGame: GameState = {
-  game: 0,
-  playerColor: 'white',
-  line: [],
-  qualities: [],
-  ply: 0,
-  opponent: IDLE,
-};
+export const initialGame = startGame([]);
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'newGame':
-      return start(
-        { ...state, game: state.game + 1, playerColor: action.playerColor, qualities: [] },
-        [],
-      );
+      return startGame(action.moves ?? []);
     case 'move': {
-      const before = state.line.slice(0, state.ply);
+      const before = state.moves.slice(0, state.ply);
       const uci = lineMove(lastPosition(before).fen, action.uci);
       if (!uci) return state;
-      return start({ ...state, qualities: state.qualities.slice(0, before.length) }, [
-        ...before,
-        uci,
-      ]);
+      const moves = [...before, uci];
+      return { moves, ply: moves.length };
     }
     case 'reply': {
-      if (!answers(state, action)) return state;
-      const uci = lineMove(lastPosition(state.line).fen, action.uci);
+      if (action.after !== state.moves) return state;
+      const uci = lineMove(lastPosition(state.moves).fen, action.uci);
       if (!uci) {
         const error = new Error(`The opponent answered with an illegal move: ${action.uci}`);
-        return { ...state, opponent: { status: 'failed', error } };
+        return { ...state, failed: { opponent: action.opponent, error } };
       }
-      const line = [...state.line, uci];
+      const moves = [...state.moves, uci];
       // Follow the reply only if the player was looking at the latest move.
-      const ply = state.ply === state.line.length ? line.length : state.ply;
-      return { ...state, line, ply, opponent: IDLE };
+      return { moves, ply: state.ply === state.moves.length ? moves.length : state.ply };
     }
     case 'failed':
-      if (!answers(state, action)) return state;
-      return { ...state, opponent: { status: 'failed', error: action.error } };
-    case 'judged': {
-      if (action.game !== state.game || !startsWith(state.line, action.line)) return state;
-      const labelled = action.line.length - 1;
-      const qualities = state.line.map((_, n) => (n === labelled ? action.quality : state.qualities[n]));
-      return { ...state, qualities };
-    }
+      if (action.after !== state.moves) return state;
+      return { ...state, failed: { opponent: action.opponent, error: action.error } };
     case 'retry':
-      if (state.opponent.status !== 'failed') return state;
-      return { ...state, opponent: THINKING };
+      return state.failed ? { moves: state.moves, ply: state.ply } : state;
     case 'goto':
-      return { ...state, ply: Math.max(0, Math.min(action.ply, state.line.length)) };
+      return { ...state, ply: Math.max(0, Math.min(action.ply, state.moves.length)) };
   }
 }
 
-/** Shows the latest move of `line`, with the opponent thinking if it's its turn. */
-function start(state: GameState, line: readonly string[]): GameState {
-  const position = lastPosition(line);
-  const opponentToMove = !position.result && position.turn !== state.playerColor;
-  return { ...state, line, ply: line.length, opponent: opponentToMove ? THINKING : IDLE };
+/**
+ * The failure `opponent` (by id) left on the latest moves, if any. A failure
+ * by an opponent since replaced doesn't count, so the new one is asked.
+ */
+export function failure({ failed }: GameState, opponent: string | undefined) {
+  return failed && failed.opponent === opponent ? failed.error : undefined;
 }
-
-/** Whether a response is for the request this game is waiting on. */
-const answers = (state: GameState, response: { game: number; after: readonly string[] }) =>
-  response.game === state.game &&
-  state.opponent.status === 'thinking' &&
-  state.line.length === response.after.length &&
-  startsWith(state.line, response.after);
-
-/** Whether `line` begins with the moves of `prefix`. */
-const startsWith = (line: readonly string[], prefix: readonly string[]) =>
-  prefix.length <= line.length && prefix.every((uci, i) => uci === line[i]);

@@ -1,8 +1,9 @@
 import { describe, expect, it, jest } from '@jest/globals';
 
 import { attachStockfish } from '@/stockfish/engine';
+import { NO_RESTARTS } from '@/stockfish/testing';
 
-import { getEvaluation } from './evaluation';
+import { getEvaluation, getTopMoves } from './evaluation';
 import { newController, waitForSearch } from './testing';
 
 // Maia runs on a worklet runtime, which Jest doesn't have; only Stockfish is used here.
@@ -14,7 +15,7 @@ describe('getEvaluation', () => {
   it('finishes a position the board stepped past, and keeps it', async () => {
     const controller = newController();
     const sent: string[] = [];
-    const engine = attachStockfish((command) => sent.push(command));
+    const engine = attachStockfish((command) => sent.push(command), NO_RESTARTS);
     engine.receive('uciok');
     /** Answers the search for `moves` once it starts. */
     const finish = async (moves: string, centipawns: number) => {
@@ -37,10 +38,47 @@ describe('getEvaluation', () => {
     engine.detach();
   });
 
-  it("scores a finished game by its result, without asking the engine", async () => {
+  it('scores a finished game by its result, without asking the engine', async () => {
     const controller = newController();
     // Fool's mate: Black wins.
     const mated = ['f2f3', 'e7e5', 'g2g4', 'd8h4'];
-    expect(await controller.fetch(getEvaluation, 'stockfish', mated)).toEqual({ score: 0, pawns: 0 });
+    expect(await controller.fetch(getEvaluation, 'stockfish', mated)).toEqual({
+      score: 0,
+      pawns: 0,
+    });
+  });
+});
+
+describe('getTopMoves', () => {
+  it('lists no moves once the game is over, without asking the engine', async () => {
+    const controller = newController();
+    const mated = ['f2f3', 'e7e5', 'g2g4', 'd8h4'];
+    expect(await controller.fetch(getTopMoves, mated)).toEqual([]);
+  });
+
+  it('does not keep a top-moves search the screen has left as a failure', async () => {
+    const controller = newController();
+    const sent: string[] = [];
+    const engine = attachStockfish((command) => sent.push(command), NO_RESTARTS);
+    engine.receive('uciok');
+    const dropped = controller.fetch(getTopMoves, ['e2e4']);
+    const failed = expect(dropped).rejects.toMatchObject({ name: 'AbortError' });
+    await waitForSearch(sent, 'e2e4');
+    // A newer position replaces it.
+    const next = controller.fetch(getTopMoves, ['d2d4']);
+    await failed;
+    expect(sent.at(-1)).toBe('stop');
+    // Asking again before the stopped search answers. That drop is not a cached failure.
+    const replaced = expect(next).rejects.toMatchObject({ name: 'AbortError' });
+    const again = controller.fetch(getTopMoves, ['e2e4']);
+    await replaced;
+    engine.receive('bestmove e2e4');
+    expect(sent.filter((command) => command === 'position startpos moves e2e4')).toHaveLength(2);
+    engine.receive('info depth 10 multipv 1 score cp 20 pv e7e5');
+    engine.receive('bestmove e7e5');
+    expect(await again).toEqual([
+      { uci: 'e7e5', evaluation: { score: expect.any(Number), pawns: expect.any(Number) } },
+    ]);
+    engine.detach();
   });
 });

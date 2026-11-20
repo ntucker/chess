@@ -1,14 +1,39 @@
 import { castlingSide, Chess } from 'chessops/chess';
 import { chessgroundDests, chessgroundMove } from 'chessops/compat';
 import { makeFen, parseFen } from 'chessops/fen';
-import { makeSanAndPlay } from 'chessops/san';
-import type { Color, Piece } from 'chessops/types';
+import { makeSanAndPlay, parseSan } from 'chessops/san';
+import type { Color, Piece, SquareName } from 'chessops/types';
 import { kingCastlesTo, makeUci, opposite, parseSquare, parseUci } from 'chessops/util';
 
 export { COLORS, type Color } from 'chessops/types';
 export { opposite } from 'chessops/util';
 
+/** One move in SAN, without annotation glyphs, as a regular expression source. */
+export const SAN = String.raw`(?:O-O-O|O-O|[KQRBN][a-h]?[1-8]?x?[a-h][1-8]|[a-h](?:x[a-h])?[1-8](?:=[QRBN])?)[+#]?`;
+
+/** A move as text writes it, numbered or not, with any glyph: `6...Nd7`, `...Nd7`, `Nd7?`. */
+export const WRITTEN_MOVE = String.raw`(?:\d+\s?\.(?:\.\.)?\s?|\.\.\.)?${SAN}[!?]*`;
+
+/**
+ * A move a variation name writes (`4.g4`, `...Bf5`, `5...Nh5`, `e5`), as a regular expression
+ * source. Its groups: the number, `..` for a numbered Black move, `...` for an unnumbered one, and the SAN.
+ * `...` may follow a word (`Qxd4...Qxd4`); a number or bare SAN may not.
+ */
+export const NAMED_MOVE = String.raw`(?:(?<![\w.])(\d+)\s?\.(\.\.)?\s?|(\.\.\.)|(?<![\w.]))(${SAN})`;
+
 export const colorName = (color: Color) => (color === 'white' ? 'White' : 'Black');
+
+/** `sans` numbered, the first played at `firstPly` (1 is White's first move): `1.e4 c6 2.d4`, or `2...d5 3.e5`. */
+export function numberedLine(sans: readonly string[], firstPly = 1): string {
+  return sans
+    .map((san, i) => {
+      const ply = firstPly + i;
+      const number = Math.ceil(ply / 2);
+      if (ply % 2 === 1) return `${number}.${san}`;
+      return i === 0 ? `${number}...${san}` : san;
+    })
+    .join(' ');
+}
 
 /** One position in a game, as the move list shows it. */
 export interface Ply {
@@ -18,8 +43,8 @@ export interface Ply {
   readonly move?: {
     readonly uci: string;
     readonly san: string;
-    readonly from: string;
-    readonly to: string;
+    readonly from: SquareName;
+    readonly to: SquareName;
   };
   /** How many times this position has occurred so far, counting this time. */
   readonly repetitions: number;
@@ -62,14 +87,22 @@ export function parsePosition(fen: string): Chess | undefined {
 
 /** The position `key` (see `positionKey`) stands for, or undefined if it is not a position key. */
 export function parsePositionKey(key: string): Chess | undefined {
-  const pos = parsePosition(`${key} 0 1`);
+  const pos = readPositionKey(key);
   return pos && positionKey(pos) === key ? pos : undefined;
 }
+
+/**
+ * The position a key stands for, without checking that `positionKey` writes
+ * it back the same: for keys already checked, such as a shipped lesson's.
+ */
+export const readPositionKey = (key: string) => parsePosition(`${key} 0 1`);
 
 /** A position reached while playing a line (see `playLine`). */
 export interface Step {
   /** The position. Every step shares one object, so read it before the next. */
   readonly pos: Chess;
+  /** The position's key (see `positionKey`). */
+  readonly key: string;
   /** How many times this position has occurred so far, counting this time. */
   readonly repetitions: number;
   /** The move that led here: absent for the starting position. */
@@ -77,28 +110,43 @@ export interface Step {
 }
 
 /**
- * Plays `line` (UCI moves) from the starting position, yielding the start and
- * then the position after each move. Stops early at the first move that isn't
- * legal.
+ * Plays `line` (UCI moves) from `pos` (the starting position unless given,
+ * and played on in place), yielding it and then the position after each move.
+ * Stops early at the first move that isn't legal.
  */
-export function* playLine(line: readonly string[]): Generator<Step> {
-  const pos = Chess.default();
+export function* playLine(line: readonly string[], pos = Chess.default()): Generator<Step> {
   const seen = new Map<string, number>();
   const step = (move?: Ply['move']): Step => {
     const key = positionKey(pos);
     const repetitions = (seen.get(key) ?? 0) + 1;
     seen.set(key, repetitions);
-    return { pos, repetitions, move };
+    return { pos, key, repetitions, move };
   };
 
   yield step();
   for (const uci of line) {
-    const move = parseUci(uci);
-    if (!move || !pos.isLegal(move)) return;
-    const [from, to] = chessgroundMove(move);
-    const san = makeSanAndPlay(pos, move);
-    yield step({ uci, san, from, to });
+    const move = playMove(pos, uci);
+    if (!move) return;
+    yield step(move);
   }
+}
+
+/** `line`'s moves in SAN from `pos`, up to the first illegal one. */
+export const lineSans = (line: readonly string[], pos?: Chess): string[] =>
+  Array.from(playLine(line, pos), ({ move }) => move?.san).filter(
+    (san): san is string => san !== undefined,
+  );
+
+/**
+ * Plays `uci` on `pos` and describes it as a ply records it, or returns
+ * undefined, playing nothing, if it isn't legal there.
+ */
+export function playMove(pos: Chess, uci: string): Ply['move'] {
+  const move = parseUci(uci);
+  if (!move || !pos.isLegal(move)) return undefined;
+  const [from, to] = chessgroundMove(move);
+  const san = makeSanAndPlay(pos, move);
+  return { uci, san, from, to };
 }
 
 /**
@@ -151,6 +199,12 @@ export function lineMove(fen: string, uci: string): string | undefined {
   return recordedMove(Chess.fromSetup(parseFen(fen).unwrap()).unwrap(), uci);
 }
 
+/** `san` in `pos` as UCI, castling as the game records it (`recordedMove`), if legal. */
+export function sanToUci(pos: Chess, san: string): string | undefined {
+  const move = parseSan(pos, san);
+  return move && recordedMove(pos, makeUci(move));
+}
+
 /** `lineMove` for a position already parsed. */
 export function recordedMove(pos: Chess, uci: string): string | undefined {
   const move = parseUci(uci);
@@ -168,7 +222,20 @@ export function pieceAt(fen: string, square: string): Piece | undefined {
 
 /** The UCI for a move between two squares, promoting pawns to queens. */
 export function toUci(ply: Ply, from: string, to: string): string {
-  const piece = pieceAt(ply.fen, from);
+  return promotingUci(ply.fen, from, to);
+}
+
+/**
+ * The move a piece dropped from `from` onto `to` plays in `fen`, as a line
+ * records it (`lineMove`), or undefined if it isn't legal. A pawn promotes
+ * to a queen, and a king dropped on its rook castles: `e1h1` is `e1g1`.
+ */
+export function dropMove(fen: string, from: string, to: string): string | undefined {
+  return lineMove(fen, promotingUci(fen, from, to));
+}
+
+function promotingUci(fen: string, from: string, to: string): string {
+  const piece = pieceAt(fen, from);
   const promotes = piece?.role === 'pawn' && (to[1] === '8' || to[1] === '1');
   return `${from}${to}${promotes ? 'q' : ''}`;
 }

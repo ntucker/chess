@@ -24,11 +24,13 @@ yarn web        # or: yarn android
 | `yarn web` / `yarn android` | Start it and open that platform |
 | `yarn typecheck` | Type-check with TypeScript |
 | `yarn lint` | Lint with ESLint |
+| `yarn format` | Format with Prettier |
 | `yarn test` | Run the unit tests (Jest) |
 | `yarn vendor:silk [path]` | Rebuild the vendored Silk packages from a Silk checkout (default `../silk`) |
 | `yarn brand` | Redraw the logo and every icon made from it (`scripts/make-brand.mjs`) |
 | `yarn maia` | Download Maia's models and convert them for the app (see [Maia](#maia)) |
 | `yarn stockfish` | Copy Stockfish from the pinned `stockfish` package into `assets/stockfish/` (see [Evaluation bar](#evaluation-bar)) |
+| `yarn import-study <name>` | Turn the lichess studies and Wikibooks pages listed in `scripts/import-study/studies.ts` into a lesson file in `assets/lessons/`, with popularity from the lichess explorer, which needs a lichess token in `LICHESS_TOKEN` or a proxy that adds one, and notes rewritten by Claude through a signed-in `claude` CLI (answers committed in `scripts/import-study/answers/`, which `--no-model` reuses without calling it; usage in `scripts/import-study/index.ts`) |
 
 ## How it fits together
 
@@ -67,7 +69,9 @@ Stockfish runs in a Web Worker. On the web that's in the page; on Android, whose
 
 ## Web deploys
 
-Every push to `main` publishes the web app to GitHub Pages, at https://ntucker.github.io/chess/ (`.github/workflows/web.yml`). The one-time setup is to set **Source** to **GitHub Actions** in the repository's **Settings → Pages**. After that, push to `main` or run the **Web** workflow from the Actions tab.
+Every push to `main` publishes the web app to GitHub Pages, at https://ntucker.github.io/chess/ (`.github/workflows/web.yml`). Every pull request from this repository also gets a preview at `https://ntucker.github.io/chess/pr-preview/pr-<number>/`, linked in a comment on the pull request. Previews skip minifying to build faster, keep their own settings and lesson progress, and are removed when the pull request closes. Fork and Dependabot pull requests only build.
+
+The workflow writes both into the `gh-pages` branch, which holds a single commit. A publish from `main` also keeps the hashed files of the site's last 10 builds (`scripts/replace-site.mjs`), so a page opened before a deploy still finds the files it loads late, such as Maia's worker or a lesson. A page older than that says a new version is out and offers a reload. The one-time setup is to set **Source** to **Deploy from a branch**, branch `gh-pages`, folder `/ (root)`, in the repository's **Settings → Pages**. Do it after the workflow has published `main` once, or the site is empty until it does.
 
 To try the Pages build locally, export it the way the workflow does and serve `dist/` at `/chess/`:
 

@@ -48,7 +48,9 @@ const guardedByPawn = (board: Board, color: Color, square: Square) =>
 
 /** A pawn of `color` could still attack `square` some day by moving up. */
 const pawnCanReach = (board: Board, color: Color, square: Square) =>
-  adjacentFilePawns(board, color, square).some((pawn) => relativeRank(color, pawn) < relativeRank(color, square));
+  adjacentFilePawns(board, color, square).some(
+    (pawn) => relativeRank(color, pawn) < relativeRank(color, square),
+  );
 
 /** No pawn of the same color on a neighboring file. */
 export const isIsolated = (board: Board, color: Color, square: Square) =>
@@ -69,7 +71,8 @@ export function isPassed(board: Board, color: Color, square: Square): boolean {
  */
 export function isBackward(board: Board, color: Color, square: Square): boolean {
   const rank = relativeRank(color, square);
-  if (adjacentFilePawns(board, color, square).some((pawn) => relativeRank(color, pawn) <= rank)) return false;
+  if (adjacentFilePawns(board, color, square).some((pawn) => relativeRank(color, pawn) <= rank))
+    return false;
   const stop = stopSquare(color, square);
   return stop !== undefined && guardedByPawn(board, opposite(color), stop);
 }
@@ -102,15 +105,18 @@ export function isPawnChain(board: Board, color: Color, squares: readonly Square
   );
 }
 
+/** The opponent's half of the board for `color`: ranks 5 to 8 for White, 1 to 4 for Black. */
+const opponentHalf = (color: Color) =>
+  [4, 5, 6, 7].reduce(
+    (set, rank) => set.union(SquareSet.fromRank(color === 'white' ? rank : 7 - rank)),
+    SquareSet.empty(),
+  );
+
 /**
- * How far `color`'s pawns have advanced: for each file, how many ranks its
- * most advanced pawn there has moved from the starting rank.
+ * `color`'s space: the squares in the opponent's half of the board that its
+ * pawns attack. A side with more of them has the space advantage.
  */
-export function space(board: Board, color: Color): number {
-  const furthest = new Map<number, number>();
-  for (const pawn of pawns(board, color)) {
-    const file = squareFile(pawn);
-    furthest.set(file, Math.max(furthest.get(file) ?? 0, relativeRank(color, pawn) - 1));
-  }
-  return [...furthest.values()].reduce((sum, ranks) => sum + ranks, 0);
-}
+export const spaceSquares = (board: Board, color: Color): SquareSet =>
+  [...pawns(board, color)]
+    .reduce((set, pawn) => set.union(pawnAttacks(color, pawn)), SquareSet.empty())
+    .intersect(opponentHalf(color));

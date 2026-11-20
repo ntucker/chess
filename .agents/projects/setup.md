@@ -29,7 +29,7 @@ Do not copy `PROJECTS.md` into instructions or memory: read from `main`, it stay
 
 One file per subject, only what `PROJECTS.md` and the repo don't say:
 
-- `project-scope`: the goal, what's in and out of scope, and where follow-ups go.
+- `project-scope`: the goal, what's in and out of scope, and where handed-on follow-ups go.
 - Add a fact to project memory in the turn you learn it. Shared process rules go to `PROJECTS.md` per
   its "Keeping this file current" section; history and "why" stay in memory.
 
@@ -40,6 +40,6 @@ for example the `post-push-review` workflow. If they don't, ask the person to in
 
 ## 5. Work queue
 
-Confirm the work-queue tool loads; follow-ups go there (`PROJECTS.md`, "Follow-ups"). Ask the person
+Confirm the work-queue tool loads; handed-on follow-ups go there through it, never the queue file by hand (`PROJECTS.md`, "Follow-ups"). Ask the person
 whether to change the worker cap (`PROJECTS.md`, "Roles and models"), and save any other cap to
 project memory.

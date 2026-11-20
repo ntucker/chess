@@ -48,7 +48,7 @@ export const fonts = {
 // loaded file is its own family on Android, so a weight the file
 // doesn't have would be ignored there and faked on the web. Every role uses
 // its file's own weight instead; the display serif carries the hierarchy.
-const typography: SemanticTokens['typography'] = {
+export const typography: SemanticTokens['typography'] = {
   body: { family: 'sans', size: 16, lineHeight: 1.5, weight: 400 },
   bodySm: { family: 'sans', size: 14, lineHeight: 1.45, weight: 400 },
   headingSm: { family: 'serif', size: 18, lineHeight: 1.3, weight: 400 },

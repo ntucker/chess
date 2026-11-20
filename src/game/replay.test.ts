@@ -1,8 +1,64 @@
 import { describe, expect, it } from '@jest/globals';
 
+import { Chess } from 'chessops/chess';
 import { INITIAL_FEN } from 'chessops/fen';
 
-import { analyze, lastPosition, lineMove, pieceAt, replay, toUci } from './replay';
+import {
+  analyze,
+  dropMove,
+  lastPosition,
+  lineMove,
+  NAMED_MOVE,
+  numberedLine,
+  pieceAt,
+  playMove,
+  positionKey,
+  replay,
+  toUci,
+} from './replay';
+
+describe('NAMED_MOVE', () => {
+  // Each match as [number, `..` after it, `...` with no number, SAN].
+  const read = (text: string) =>
+    [...text.matchAll(new RegExp(NAMED_MOVE, 'g'))].map(([, number, dots, bare, san]) => [
+      number ?? '',
+      dots ?? '',
+      bare ?? '',
+      san,
+    ]);
+
+  it('reads ... right after a move, but no bare move glued to a word or a dot', () => {
+    expect(read('Qxd4...Qxd4 and 12...Nf6, not Qxd4Nf6 or x5.e4')).toEqual([
+      ['', '', '', 'Qxd4'],
+      ['', '', '...', 'Qxd4'],
+      ['12', '..', '', 'Nf6'],
+      ['', '', '', 'Qxd4'],
+    ]);
+  });
+});
+
+describe('numberedLine', () => {
+  it('numbers a line from the first move, or from a Black move', () => {
+    expect(numberedLine(['e4', 'c6', 'd4'])).toBe('1.e4 c6 2.d4');
+    expect(numberedLine(['d5', 'e5'], 4)).toBe('2...d5 3.e5');
+  });
+});
+
+describe('playMove', () => {
+  it('plays a legal move and describes it', () => {
+    const pos = Chess.default();
+    expect(playMove(pos, 'g1f3')).toEqual({ uci: 'g1f3', san: 'Nf3', from: 'g1', to: 'f3' });
+    expect(pos.turn).toBe('black');
+  });
+
+  it('plays nothing for an illegal or unreadable move', () => {
+    const pos = Chess.default();
+    const before = positionKey(pos);
+    expect(playMove(pos, 'e2e5')).toBeUndefined();
+    expect(playMove(pos, 'nonsense')).toBeUndefined();
+    expect(positionKey(pos)).toBe(before);
+  });
+});
 
 describe('replay', () => {
   it('returns a position per move, with SAN', () => {
@@ -72,5 +128,15 @@ describe('toUci', () => {
     const ply = { fen, turn: 'white', repetitions: 1 } as const;
     expect(toUci(ply, 'b7', 'a8')).toBe('b7a8q');
     expect(toUci(ply, 'g1', 'f3')).toBe('g1f3');
+  });
+});
+
+describe('dropMove', () => {
+  it('records a drop as the line does: promoting, castling onto the rook, and nothing illegal', () => {
+    expect(dropMove('r3k3/1P6/8/8/8/8/8/4K1N1 w - - 0 1', 'b7', 'a8')).toBe('b7a8q');
+    const castles = 'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1';
+    expect(dropMove(castles, 'e1', 'h1')).toBe('e1g1');
+    expect(dropMove(castles, 'e1', 'g1')).toBe('e1g1');
+    expect(dropMove(castles, 'e1', 'e3')).toBeUndefined();
   });
 });

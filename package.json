@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "main": "expo-router/entry",
   "dependencies": {
-    "@data-client/react": "^0.19.0-beta-20261113052655-f7af45aa6ae4b5ee5e7106b731e1f2b2b152533a",
-    "@data-client/rest": "^0.19.0-beta-20261115003601-9e33ac1ca5414daa43a80e5119067fc14b3c2576",
+    "@data-client/react": "^0.19.0",
+    "@data-client/rest": "^0.19.0",
     "@expo-google-fonts/dm-mono": "^0.4.2",
     "@expo-google-fonts/dm-serif-display": "^0.4.2",
     "@expo-google-fonts/instrument-sans": "^0.4.2",
@@ -40,11 +40,14 @@
     "@react-native/jest-preset": "~0.88.1",
     "@types/node": "^26.6.6",
     "@types/react": "~19.3.0",
+    "@types/react-dom": "~19.3.0",
     "eslint": "^9",
     "eslint-config-expo": "~58.0.4",
     "jest": "^30.5.2",
     "jest-expo": "~58.0.14",
+    "prettier": "^3.10.1",
     "stockfish": "19.0.1",
+    "tsx": "^4.23.15",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -52,12 +55,16 @@
     "android": "expo start --android",
     "web": "expo start --web",
     "lint": "expo lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "vendor:silk": "node ./scripts/vendor-silk.mjs",
     "brand": "node ./scripts/make-brand.mjs",
     "maia": "node ./scripts/convert-maia.mjs",
-    "stockfish": "node ./scripts/copy-stockfish.mjs"
+    "stockfish": "node ./scripts/copy-stockfish.mjs",
+    "import-study": "NODE_USE_ENV_PROXY=1 tsx scripts/import-study/index.ts",
+    "index-lessons": "tsx scripts/import-study/reindex.ts"
   },
   "private": true,
   "packageManager": "yarn@4.18.1",
@@ -65,6 +72,36 @@
     "@reactive/silk-core": "file:./vendor/reactive-silk-core.tgz"
   },
   "jest": {
-    "preset": "jest-expo"
+    "projects": [
+      {
+        "displayName": "native",
+        "preset": "jest-expo",
+        "moduleNameMapper": {
+          "^@/assets/(.*)$": "<rootDir>/assets/$1"
+        },
+        "testPathIgnorePatterns": [
+          "/node_modules/",
+          "\\.web\\.test\\.tsx?$"
+        ]
+      },
+      {
+        "displayName": "web",
+        "preset": "jest-expo/web",
+        "moduleNameMapper": {
+          "^@/assets/(.*)$": "<rootDir>/assets/$1"
+        },
+        "testMatch": [
+          "<rootDir>/src/**/*.web.test.ts?(x)"
+        ],
+        "transformIgnorePatterns": [
+          "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|standard-navigation|@lichess-org|@reactive))",
+          "/node_modules/react-native-reanimated/plugin/",
+          "/node_modules/@react-native/babel-preset/"
+        ],
+        "transform": {
+          "\\.css$": "jest-expo/src/preset/assetFileTransformer.js"
+        }
+      }
+    ]
   }
 }

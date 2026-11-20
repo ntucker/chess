@@ -31,6 +31,7 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
 
 # typescript
@@ -50,3 +51,10 @@ yarn-error.*
 # scripts/maia-reference.py
 .venv-maia/
 __pycache__/
+
+# Session bookkeeping from the work-queue mod
+work-queue.json
+work-queue.archive.jsonl
+
+# importer downloads and explorer answers (scripts/import-study)
+.cache/
