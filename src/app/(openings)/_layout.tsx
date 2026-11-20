@@ -1,7 +1,7 @@
-import { Slot, useLocalSearchParams } from 'expo-router';
+import { Slot } from 'expo-router';
 
 import { LessonPage } from '@/components/lesson/LessonScreen';
-import { useHistoryEntry } from '@/components/lesson/useHistoryEntry';
+import { useOpeningsAddress } from '@/components/lesson/useOpeningsAddress';
 
 /**
  * The openings page, held here so it stays the same page at both of its
@@ -13,10 +13,7 @@ import { useHistoryEntry } from '@/components/lesson/useHistoryEntry';
  * The routes themselves draw nothing.
  */
 export default function OpeningsLayout() {
-  // The focused route's, read from this layout's own navigator, so a screen
-  // pushed in front (free play) doesn't change it.
-  const { id, variation } = useLocalSearchParams<{ id?: string; variation?: string }>();
-  const entry = useHistoryEntry();
+  const { id, variation, entry } = useOpeningsAddress();
   return (
     <>
       <LessonPage id={id} variation={variation} entry={entry} />

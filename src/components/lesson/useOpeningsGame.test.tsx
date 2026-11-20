@@ -3,6 +3,7 @@ import { act, Suspense, use, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
 import { uciLine } from '@/lesson/lesson.fixture';
+import { variationLine } from '@/lesson/openings';
 import { LESSON_INDEX, type LessonId } from '@/resources/lesson';
 import { SettingsProvider, useSettings } from '@/settings/SettingsProvider';
 
@@ -38,7 +39,7 @@ function Page({
 }: {
   readonly address?: LessonId;
   readonly variation?: string;
-  readonly entry: string;
+  readonly entry?: string;
 }) {
   const answer = useOpeningsGame(address, variation, entry);
   const setting = useSettings().side;
@@ -55,19 +56,32 @@ function Page({
 
 /** The history entry the page is at: its depth, as the router's keys follow the stack. */
 let entry = 0;
-/** The page at an address, in the same history entry: the address following the game. */
-const show = (address?: LessonId, variation?: string) =>
+/** How many times each depth's entry was replaced, as each replace makes a new key. */
+let replaced: number[] = [];
+/** The page at an address, in the history entry `key` names. */
+const render = (address: LessonId | undefined, variation: string | undefined, key?: string) =>
   act(() => {
     root ??= createRoot();
     root.render(
       <SettingsProvider>
-        <Page address={address} variation={variation} entry={String(entry)} />
+        <Page address={address} variation={variation} entry={key} />
       </SettingsProvider>,
     );
   });
+/**
+ * The page at an address, in the same history entry, as the router keeps it
+ * when only the variation changes: the game dropping it, or a link to it.
+ */
+const show = (address?: LessonId, variation?: string) =>
+  render(address, variation, `${entry}.${replaced[entry] ?? 0}`);
 /** A new history entry, or Forward to the next one: a pick from the list, or the game's own push. */
 const push = (address?: LessonId, variation?: string) => {
   entry += 1;
+  return show(address, variation);
+};
+/** A new entry in place of this one: the game's own replace arriving, or a link to another lesson. */
+const replace = (address?: LessonId, variation?: string) => {
+  replaced[entry] = (replaced[entry] ?? 0) + 1;
   return show(address, variation);
 };
 /** Back to the history entry before. */
@@ -76,6 +90,9 @@ const back = (address?: LessonId, variation?: string) => {
   return show(address, variation);
 };
 const moves = () => latest().store[0].moves;
+/** The game starting over at a line, as the page's own moves do (a side swapped, a lesson's start). */
+const start = (...sans: string[]) =>
+  act(() => latest().store[1]({ type: 'newGame', moves: uciLine(...sans) }));
 const play = (...ucis: string[]) =>
   act(() => {
     for (const uci of ucis) latest().store[1]({ type: 'move', uci });
@@ -85,6 +102,7 @@ afterEach(() => {
   act(() => root?.unmount());
   root = undefined;
   entry = 0;
+  replaced = [];
   jest.clearAllMocks();
   slow.lessons = false;
 });
@@ -116,6 +134,120 @@ describe('useOpeningsGame', () => {
       LESSON_INDEX.london.variations.find(({ id }) => id === 'main-line')!.moves,
     );
     expect(mockRouter.replace).not.toHaveBeenCalled();
+  });
+
+  it('starts an address opened in place that the game did not move to', async () => {
+    await show('caro-kann');
+    await play('c7c6');
+    // An Android deep link to the open page keeps its history entry.
+    await show('caro-kann', 'advance-variation');
+    expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'e5'));
+    await show('slav');
+    expect(moves()).toEqual(uciLine('d4', 'd5', 'c4'));
+    await show();
+    expect(moves()).toEqual([]);
+    // The same variation id in another lesson.
+    await show('london', 'main-line');
+    await show('anti-london', 'main-line');
+    expect(moves()).toEqual(variationLine(LESSON_INDEX['anti-london'], 'main-line'));
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+  });
+
+  it('keeps the game when the address arrives at a lesson the game has already left', async () => {
+    await show('caro-kann');
+    await play('c7c6');
+    // The game picks the Slav, the anti-London and the Slav again, then leaves
+    // every lesson, before any replace arrives.
+    await start('d4', 'd5', 'c4');
+    await start('d4', 'd5', 'Bf4');
+    await start('d4', 'd5', 'c4');
+    await start('d4');
+    await replace('slav');
+    await replace('anti-london');
+    await replace('slav');
+    await replace();
+    expect(moves()).toEqual(uciLine('d4'));
+    // Once they have arrived, a link to one of them starts it.
+    await replace('slav');
+    expect(moves()).toEqual(uciLine('d4', 'd5', 'c4'));
+  });
+
+  it('keeps the game when the address arrives at a lesson it left, then came back from', async () => {
+    await show('caro-kann');
+    await play('c7c6');
+    await start('d4', 'd5', 'c4');
+    await start('e4', 'c6');
+    await replace('slav');
+    expect(moves()).toEqual(uciLine('e4', 'c6'));
+    await replace('caro-kann');
+    expect(moves()).toEqual(uciLine('e4', 'c6'));
+  });
+
+  it("keeps the other side's moves when the start's address arrives after them", async () => {
+    await show('slav');
+    await act(() => latest().playAs('white'));
+    await play('d2d4');
+    await replace();
+    expect([moves(), latest().side]).toEqual([uciLine('d4'), 'white']);
+  });
+
+  it('sends each address once, and keeps the moves played while they arrive', async () => {
+    await show('caro-kann');
+    await play('c7c6');
+    await start('d4', 'd5', 'c4');
+    await start('d4', 'd5', 'Bf4');
+    await replace('slav');
+    await play('e7e6');
+    await replace('anti-london');
+    expect(moves()).toEqual(uciLine('d4', 'd5', 'Bf4', 'e6'));
+    expect(mockRouter.replace.mock.calls).toEqual([['/lesson/slav'], ['/lesson/anti-london']]);
+  });
+
+  it('resumes the start from the side its game was played from, on Back', async () => {
+    await show();
+    await act(() => latest().playAs('white'));
+    await play('e2e4');
+    await push('slav', 'semi-slav');
+    expect(latest().side).toBe('black');
+    await back();
+    expect([moves(), latest().side, latest().setting]).toEqual([uciLine('e4'), 'white', 'white']);
+    expect(mockRouter.push).not.toHaveBeenCalled();
+  });
+
+  it('starts an address that arrives with the history entry', async () => {
+    await render(undefined, undefined);
+    await render('caro-kann', undefined, 'k1');
+    expect(moves()).toEqual(uciLine('e4'));
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+  });
+
+  it('starts a link to the lesson the game plays, in a new entry', async () => {
+    await show('caro-kann');
+    await play('c7c6');
+    await replace('caro-kann');
+    expect(moves()).toEqual(uciLine('e4'));
+  });
+
+  it("starts a link to the plain lesson while the game is on its variation's line", async () => {
+    await show('caro-kann', 'advance-variation');
+    await show('caro-kann');
+    expect(moves()).toEqual(uciLine('e4'));
+  });
+
+  it("starts an address opened in place for a lesson of the other side that shares the game's moves", async () => {
+    await show('slav');
+    // From White's side the Slav's moves pick the London, but the game plays the Slav.
+    await show('london');
+    expect(moves()).toEqual(uciLine('d4'));
+    expect(latest().side).toBe('white');
+  });
+
+  it('starts an address opened in place for the lesson the game left in another history entry', async () => {
+    await show('caro-kann');
+    await play('c7c6');
+    await push('slav');
+    await show('caro-kann');
+    expect(moves()).toEqual(uciLine('e4'));
   });
 
   it("starts a lesson's own start for a variation it doesn't have", async () => {
@@ -206,7 +338,7 @@ describe('useOpeningsGame', () => {
     await play('g1f3');
     expect(mockRouter.replace).toHaveBeenCalledWith('/');
     // Arriving there keeps the game.
-    await show();
+    await replace();
     expect(moves()).toEqual(['g1f3']);
   });
 
@@ -217,7 +349,7 @@ describe('useOpeningsGame', () => {
     await play('c7c6');
     await act(() => latest().playAs('white'));
     expect(mockRouter.replace).toHaveBeenCalledWith('/');
-    await show();
+    await replace();
     expect(moves()).toEqual([]);
     // Back to the entry before: its game, not the one the side's start replaced.
     await back();
@@ -271,7 +403,7 @@ describe('useOpeningsGame', () => {
     await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
     await play('c2c4');
     expect(mockRouter.replace).toHaveBeenCalledWith('/');
-    await show();
+    await replace();
     expect(latest().side).toBe('white');
   });
 
@@ -312,7 +444,7 @@ describe('useOpeningsGame', () => {
     await act(() => latest().playAs('white'));
     // In the same history entry, as a new move would, so no Forward returns to the lesson left.
     expect(mockRouter.replace).toHaveBeenLastCalledWith('/');
-    await show();
+    await replace();
     expect([latest().side, latest().setting]).toEqual(['white', 'white']);
     // Forward to the Caro-Kann plays it as Black, and Back keeps Black.
     await show('caro-kann');

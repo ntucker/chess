@@ -8,6 +8,7 @@
     "scheme": "openingnight",
     "userInterfaceStyle": "automatic",
     "android": {
+      "package": "io.github.ntucker.openingnight",
       "adaptiveIcon": {
         "backgroundColor": "#1b1430",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

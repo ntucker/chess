@@ -3,6 +3,7 @@ import { a11yState, Pressable, Separator, Surface, Text, useTheme } from '@react
 import { type ComponentRef, useEffect, useId, useRef, useState } from 'react';
 import { type KeyDownEvent, ScrollView, StyleSheet, View } from 'react-native';
 
+import { hoversControl } from '@/board/pointer';
 import { describeOpponent, type Opponent, OPPONENT_PRESETS, OPPONENTS } from '@/opponent/opponent';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
 import { narrowLength } from '@/theme/narrow';
@@ -153,14 +154,18 @@ interface ListProps {
 /**
  * The steps to pick from, easiest first, the landmarks named, with a
  * line on how the step pointed at (or else the current one) plays.
+ * One row is lit at a time, the one pointed at or focused last, and the keys
+ * act on it: while the list holds focus, pointing at a row moves focus there.
  */
 function OpponentList({ id, value, focusOnOpen, onChoose, onClose }: ListProps) {
   const { color, radius } = useTheme().theme.semantic;
-  const [pointed, setPointed] = useState<Opponent>();
-  const focused = useRef<Opponent>(undefined);
+  const [lit, setLit] = useState<Opponent>();
   const rows = useRef(new Map<Opponent, ComponentRef<typeof View>>());
   const steps = stepsFor(value);
   const focusRow = (opponent: Opponent) => rows.current.get(opponent)?.focus();
+  // Whether a row holds focus, so the keys reach the list (React Native Web's rows are DOM elements).
+  const holdsFocus = () =>
+    WEB && [...rows.current.values()].some((row) => (row as unknown) === document.activeElement);
 
   useEffect(() => {
     if (focusOnOpen) rows.current.get(value)?.focus();
@@ -168,7 +173,7 @@ function OpponentList({ id, value, focusOnOpen, onChoose, onClose }: ListProps) 
 
   const onKey = (event: KeyDownEvent) => {
     const { key } = event.nativeEvent;
-    const at = steps.indexOf(focused.current ?? value);
+    const at = steps.indexOf(lit ?? value);
     const step: Record<string, number> = {
       ArrowDown: Math.min(at + 1, steps.length - 1),
       ArrowUp: Math.max(at - 1, 0),
@@ -179,10 +184,10 @@ function OpponentList({ id, value, focusOnOpen, onChoose, onClose }: ListProps) 
       // Kept from the board's arrow keys (useStepKeys) too.
       event.preventDefault();
       focusRow(steps[step[key]]);
-    } else if (key === ' ' && focused.current !== undefined) {
+    } else if (key === ' ' && lit !== undefined) {
       // React Native Web presses on Enter alone, outside buttons.
       event.preventDefault();
-      onChoose(focused.current);
+      onChoose(lit);
     } else if (key === 'Tab') {
       // Focus goes back to the trigger as the list closes.
       event.preventDefault();
@@ -190,7 +195,7 @@ function OpponentList({ id, value, focusOnOpen, onChoose, onClose }: ListProps) 
     }
   };
 
-  const shown = describeOpponent(pointed ?? value);
+  const shown = describeOpponent(lit ?? value);
   return (
     <Surface elevation="overlay" radius="md" border="subtle" style={styles.list}>
       <Eyebrow style={styles.heading}>Opponent strength</Eyebrow>
@@ -219,16 +224,20 @@ function OpponentList({ id, value, focusOnOpen, onChoose, onClose }: ListProps) 
                 {...(WEB ? { 'aria-selected': selected } : a11yState({ checked: selected }))}
                 // One stop in the tab order: the arrows move between the rows.
                 tabIndex={-1}
-                onHoverIn={() => setPointed(opponent)}
-                onFocus={() => {
-                  focused.current = opponent;
-                  setPointed(opponent);
+                // A move, not an enter: rows scrolling under a still pointer as the
+                // arrows move focus don't take it back. Enter presses the focused
+                // row, so while the list holds focus, focus follows the light.
+                onPointerMove={({ nativeEvent }) => {
+                  if (opponent === lit || !hoversControl(nativeEvent.pointerType)) return;
+                  if (holdsFocus()) focusRow(opponent);
+                  else setLit(opponent);
                 }}
+                onFocus={() => setLit(opponent)}
                 onPress={() => onChoose(opponent)}
                 style={[
                   styles.row,
                   { borderRadius: radius.sm },
-                  opponent === pointed && { backgroundColor: color.tones.neutral.subtle },
+                  opponent === lit && { backgroundColor: color.tones.neutral.subtle },
                 ]}
               >
                 <View style={styles.check}>

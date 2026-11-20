@@ -1,0 +1,26 @@
+diff --git a/build/dom/webview-wrapper.js b/build/dom/webview-wrapper.js
+index 02f713b7592c68e3cb6db2013b2aee0600a602a8..4636e68785e279965350caa8800d31833be160c7 100644
+--- a/build/dom/webview-wrapper.js
++++ b/build/dom/webview-wrapper.js
+@@ -70,7 +70,13 @@ const RawWebView = /*#__PURE__*/ React.forwardRef((props, ref)=>{
+     // `injectedJavaScriptObject` changes.
+     const initialPropsRef = React.useRef(smartActions);
+     // When the `marshalProps` change, emit them to the webview.
++    // Opening Night patch (see AGENTS.md, Native builds): only once the page
++    // has said it's ready. Before that it has the initial props, and
++    // DOM_READY sends it the latest; on Android a send in the moment after
++    // mounting also rejects, as the native view can't be found yet.
++    const ready = React.useRef(false);
+     React.useEffect(()=>{
++        if (!ready.current) return;
+         emit({
+             type: '$$props',
+             data: smartActions
+@@ -154,6 +160,7 @@ const RawWebView = /*#__PURE__*/ React.forwardRef((props, ref)=>{
+                 return;
+             }
+             if (type === DOM_READY) {
++                ready.current = true;
+                 // Re-send the props the DOM side missed while the WebView was loading.
+                 emit({
+                     type: '$$props',
