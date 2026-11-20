@@ -161,7 +161,7 @@ export const guideMove = (lesson: Lesson, key: PositionKey, uci: Uci): LessonMov
   lesson.positions[key]?.moves.find((move) => move.uci === uci);
 
 /** Whether the guide recommends `uci` at `key`: a book move. */
-export const isBook = (lesson: Lesson, key: PositionKey, uci: Uci): boolean =>
+const isBook = (lesson: Lesson, key: PositionKey, uci: Uci): boolean =>
   guideMove(lesson, key, uci)?.book === true;
 
 /** Whether each move of `line` is a book move where it was played. */

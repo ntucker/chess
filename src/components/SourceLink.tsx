@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, type PressableProps, useTheme } from '@reactive/silk-native';
 import { Linking, StyleSheet } from 'react-native';
 
-import { phoneLength } from '@/theme/phone';
+import { narrowLength } from '@/theme/narrow';
 
 /** Where Opening Night's source code lives. */
 const SOURCE_URL = 'https://github.com/ntucker/chess';
@@ -44,7 +44,7 @@ export function SourceLink() {
 }
 
 /** The button's size, smaller on a narrow web page, where the header is slim. */
-const SIZE = phoneLength('source-link-size', 36);
+const SIZE = narrowLength('source-link-size', 36);
 
 const styles = StyleSheet.create({
   button: {

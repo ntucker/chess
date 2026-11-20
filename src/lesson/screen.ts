@@ -43,7 +43,7 @@ export const initialScreen: ScreenState = { mode: initialMode };
 
 /** Each action goes to the part it is about; a part it leaves alone keeps the state. */
 export function screenReducer(state: ScreenState, action: ScreenAction): ScreenState {
-  if (action.type === 'modeChosen' || action.type === 'played') {
+  if (action.type === 'modeChosen' || action.type === 'moved') {
     const mode = modeReducer(state.mode, action);
     return mode === state.mode ? state : { ...state, mode };
   }
