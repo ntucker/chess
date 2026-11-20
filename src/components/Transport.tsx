@@ -29,7 +29,6 @@ export function Transport({ ply, total, onGoto, scoresheet: requested }: Props) 
   const { theme } = useTheme();
   // Only narrow.css can swap the jumps for the opener.
   const scoresheet = NARROW_CSS_LOADS ? requested : undefined;
-  const shown = scoresheet && shownMove(scoresheet.san, ply);
   const { color } = theme.semantic;
   const buttons: {
     label: string;
@@ -116,39 +115,56 @@ export function Transport({ ply, total, onGoto, scoresheet: requested }: Props) 
       {button(back)}
       {scoresheet ? (
         <View {...narrowPart('narrow-only')}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Scoresheet, ${shown}`}
-            {...a11yState({ expanded: scoresheet.open })}
-            disabled={total === 0}
-            onPress={scoresheet.onToggle}
-            style={({ pressed, hovered }) => [
-              styles.button,
-              styles.readout,
-              { backgroundColor: scoresheet.open || pressed || hovered ? hover : undefined },
-            ]}
-          >
-            <Text
-              role="body"
-              numberOfLines={1}
-              style={[
-                styles.readoutText,
-                { color: total === 0 ? color.tones.neutral.disabledFg : color.textPrimary },
-              ]}
-            >
-              {shown}
-            </Text>
-            <Ionicons
-              name={scoresheet.open ? 'chevron-down' : 'chevron-up'}
-              size={12}
-              color={total === 0 ? color.tones.neutral.disabledFg : color.textSecondary}
-            />
-          </Pressable>
+          <ScoresheetOpener {...scoresheet} ply={ply} disabled={total === 0} />
         </View>
       ) : null}
       {button(forward)}
       {button(latest)}
     </View>
+  );
+}
+
+/**
+ * The stepper's middle button on a narrow page: the move on the board, which
+ * opens the scoresheet below, or closes it again.
+ */
+function ScoresheetOpener({
+  san,
+  ply,
+  open,
+  onToggle,
+  disabled,
+}: NonNullable<Props['scoresheet']> & { readonly ply: number; readonly disabled: boolean }) {
+  const { theme } = useTheme();
+  const { color } = theme.semantic;
+  const move = shownMove(san, ply);
+  const ink = disabled ? color.tones.neutral.disabledFg : undefined;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Scoresheet, ${move}`}
+      {...a11yState({ expanded: open })}
+      disabled={disabled}
+      onPress={onToggle}
+      style={({ pressed, hovered }) => [
+        styles.button,
+        styles.readout,
+        { backgroundColor: open || pressed || hovered ? color.tones.neutral.subtle : undefined },
+      ]}
+    >
+      <Text
+        role="body"
+        numberOfLines={1}
+        style={[styles.readoutText, { color: ink ?? color.textPrimary }]}
+      >
+        {move}
+      </Text>
+      <Ionicons
+        name={open ? 'chevron-down' : 'chevron-up'}
+        size={12}
+        color={ink ?? color.textSecondary}
+      />
+    </Pressable>
   );
 }
 
