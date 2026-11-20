@@ -24,6 +24,7 @@ import {
   lessonsAfter,
   lessonsFrom,
   openingsLesson,
+  variationHref,
   variationLine,
   withOpenings,
 } from './openings';
@@ -567,5 +568,15 @@ describe('variationLine', () => {
     );
     expect(variationLine(slav, 'nope')).toBeUndefined();
     expect(variationLine(slav)).toBeUndefined();
+  });
+});
+
+describe('variationHref', () => {
+  it('opens a lesson at a variation, or at its start without one', () => {
+    expect(variationHref('caro-kann', 'advance-variation')).toEqual({
+      pathname: '/lesson/caro-kann',
+      params: { variation: 'advance-variation' },
+    });
+    expect(variationHref('caro-kann')).toEqual({ pathname: '/lesson/caro-kann', params: {} });
   });
 });

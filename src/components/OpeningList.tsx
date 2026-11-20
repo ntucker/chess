@@ -10,7 +10,7 @@ import { SourceCredits } from '@/components/lesson/SourceCredits';
 import { STAGE_MAX } from '@/components/Stage';
 import { type Color, COLORS, colorName } from '@/game/replay';
 import type { VariationId } from '@/lesson/lesson';
-import { lessonHref } from '@/lesson/openings';
+import { variationHref } from '@/lesson/openings';
 import {
   type ListedOpening,
   type ListedVariation,
@@ -37,7 +37,7 @@ export function OpeningList({ here }: { readonly here?: ListPlace<LessonId> }) {
       header={{
         place: { name: 'Openings' },
         back: {
-          href: here ? lineHref(here.lesson, here.variation) : '/',
+          href: here ? variationHref(here.lesson, here.variation) : '/',
           label: 'Back to the board',
         },
       }}
@@ -150,10 +150,6 @@ function NowPlaying() {
   );
 }
 
-/** The address that opens `lesson` at `variation`, or at its start without one. */
-const lineHref = (lesson: LessonId, variation?: VariationId) =>
-  ({ pathname: lessonHref(lesson), params: variation === undefined ? {} : { variation } }) as const;
-
 /**
  * A variation as a row of the program: its name, a dotted leader, its moves.
  * On a narrow page the moves drop below, right-aligned. The variation the
@@ -178,7 +174,7 @@ function LineLink({
   const { theme } = useTheme();
   const { color } = theme.semantic;
   const { accent, neutral } = color.tones;
-  const href = lineHref(lesson, variation.id);
+  const href = variationHref(lesson, variation.id);
   // The list opens on where the board was, however far down it is.
   const row = useRef<ComponentRef<typeof View>>(null);
   useEffect(() => {

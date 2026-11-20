@@ -60,6 +60,10 @@ export interface IndexEntry extends Pick<Lesson, 'title' | 'side' | 'sources'> {
 /** A lesson's address (`/lesson/<id>`), without a trailing slash (GitHub Pages 404s on one). */
 export const lessonHref = <Id extends string>(id: Id) => `/lesson/${id}` as const;
 
+/** The address that opens lesson `id` at `variation` (`?variation=`), or at its start without one. */
+export const variationHref = <Id extends string>(id: Id, variation?: VariationId) =>
+  ({ pathname: lessonHref(id), params: variation === undefined ? {} : { variation } }) as const;
+
 /** The line variation `id` of lesson `entry` opens at; none when it names none of its variations. */
 export const variationLine = (entry: Pick<IndexEntry, 'variations'>, id?: VariationId) =>
   entry.variations.find((variation) => variation.id === id)?.moves;
