@@ -10,7 +10,7 @@ Ask the person for anything you cannot find in the project's settings:
 - Goal, in one line (it becomes the post-push review `goals`).
 - Scope: what is in the goal. Other chess work becomes a drafted GitHub issue (`PROJECTS.md`,
   "Follow-ups"). Fixes in `reactive/data-client` or `reactive/silk` are in scope when chess needs
-  them (`PROJECTS.md`, "Upstream fixes").
+  them (`PROJECTS.md`, "Upstream fixes"); ask the person to attach any of those repos the goal needs.
 
 ## 2. Point every agent at `PROJECTS.md`
 

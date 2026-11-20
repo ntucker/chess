@@ -87,5 +87,5 @@ To work on this repo through a Claude project on claude.ai:
 2. Create a project and attach that repository.
 3. Turn on project memory.
 4. Install [user-kit](https://github.com/ntucker/user-kit#install-in-claude-code).
-5. Ask the coordinator to set up the project, and paste the instructions it gives you into the project's settings.
+5. Paste the quoted text from step 2 of [`.agents/projects/setup.md`](.agents/projects/setup.md) into the project's instructions. It tells every agent to follow `PROJECTS.md`.
 6. For Android checks, link your computer to the project.
