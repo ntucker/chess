@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'test-renderer';
 import { gameReducer, startGame } from '@/game/game';
 import { DEFAULT_SETTINGS } from '@/settings/settings';
 
-import { SAMPLE, uciLine } from './lesson.fixture';
+import { keyAfter, SAMPLE, uciLine } from './lesson.fixture';
 import { HOLD_MS } from './peek';
 import { useLesson } from './useLesson';
 
@@ -15,11 +15,12 @@ import { useLesson } from './useLesson';
 // app's providers; these tests are about the Practice run. With auto play
 // off nobody replies.
 jest.mock('@/analysis/useMoveQualities', () => ({ useMoveQualities: () => [] }));
+const mockFetch = jest.fn(async (..._args: unknown[]) => {});
 jest.mock('@data-client/react', () => ({
-  useController: () => ({ fetch: async () => {} }),
+  useController: () => ({ fetch: mockFetch }),
   useFetch: () => {},
   useCache: () => undefined,
-  useSuspense: () => ({ seen: [], passed: [] }),
+  useSuspense: () => ({}),
 }));
 jest.mock('@/resources/evaluation', () => ({ getEvaluation: {} }));
 jest.mock('@/resources/opponent', () => ({
@@ -84,6 +85,7 @@ afterEach(async () => {
   await act(async () => root?.unmount());
   root = undefined;
   renders.length = 0;
+  mockFetch.mockClear();
 });
 
 describe('useLesson Practice run', () => {
@@ -184,5 +186,24 @@ describe('useLesson while a lesson loads', () => {
     await loaded(...line);
     expect(lesson().playback.playing).toBeUndefined();
     expect(lesson().playback.playable(note)).toBe('plan');
+  });
+});
+
+describe('useLesson progress', () => {
+  /** The marks Explore saved, as `[mark, position key]`. */
+  const saved = () =>
+    mockFetch.mock.calls.map(([, args]) => {
+      const { mark, key } = args as { mark: string; key: string };
+      return [mark, key];
+    });
+
+  it('marks a position Explore shows', async () => {
+    await exploreAfter('e4');
+    expect(saved()).toEqual([['seen', keyAfter('e4')]]);
+  });
+
+  it('marks nothing at the start, whose rows are every lesson', async () => {
+    await exploreAfter();
+    expect(saved()).toEqual([]);
   });
 });

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { SAMPLE } from '@/lesson/lesson.fixture';
+import { indexEntry } from '@/lesson/openings';
 import { LESSONS } from '@/resources/lesson';
 
 import { indexLesson, registerLesson } from './register';
@@ -40,18 +41,14 @@ describe('indexLesson', () => {
       side: 'black',
       sources: SAMPLE.sources,
       firstMoves: ['d2d4'],
+      lineEnds: { d2d4: [] },
     };
     writeFileSync(file, JSON.stringify({ slav: other }));
     indexLesson(file, SAMPLE);
     indexLesson(file, SAMPLE);
     expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({
       slav: other,
-      [SAMPLE.id]: {
-        title: SAMPLE.title,
-        side: 'black',
-        sources: SAMPLE.sources,
-        firstMoves: ['e2e4'],
-      },
+      [SAMPLE.id]: indexEntry(SAMPLE),
     });
   });
 });

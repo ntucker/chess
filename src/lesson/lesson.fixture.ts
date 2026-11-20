@@ -3,7 +3,7 @@
 // written in SAN for readability.
 import { Chess } from 'chessops/chess';
 import { parseUci } from 'chessops/util';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { sanToUci } from '@/game/replay';
@@ -15,6 +15,11 @@ import { lessonView, type LessonViewInput } from './view';
 export const LESSON_FOLDER = join(__dirname, '../../assets/lessons');
 
 const readLessonFile = (file: string): Lesson => readLesson(JSON.parse(readFileSync(file, 'utf8')));
+
+/** The id of every lesson shipped in `assets/lessons`. */
+export const shippedIds = readdirSync(LESSON_FOLDER)
+  .filter((file) => file.endsWith('.json') && file !== 'index.json')
+  .map((file) => file.replace(/\.json$/, ''));
 
 /** The lesson shipped as `assets/lessons/<id>.json`. */
 export const readShippedLesson = (id: string): Lesson =>

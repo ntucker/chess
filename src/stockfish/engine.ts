@@ -3,9 +3,12 @@ import type { Evaluation, TopMove } from '@/evaluation/evaluation';
 import {
   evaluationFromScore,
   multiPvCommand,
+  NO_LINES,
   parseBestMove,
   parseInfo,
   positionCommand,
+  type RankedLines,
+  rankLine,
   type SearchLine,
 } from './uci';
 
@@ -75,8 +78,8 @@ interface Search {
   readonly ranks: number;
   resolve(found: Found): void;
   reject(error: Error): void;
-  /** Each rank's line at the deepest depth finished so far, by rank. */
-  lines: SearchLine[];
+  /** Its lines so far: the last whole set Stockfish printed, unless dropped (`rankLine`). */
+  ranked: RankedLines<SearchLine>;
   /** How many engines failed while running it. */
   failures: number;
 }
@@ -161,7 +164,7 @@ export async function stockfishTopMoves(line: readonly string[]): Promise<TopMov
 
 function search(line: readonly string[], ranks: number): Promise<Found> {
   return new Promise((resolve, reject) => {
-    pending.push({ line, ranks, resolve, reject, lines: [], failures: 0 });
+    pending.push({ line, ranks, resolve, reject, ranked: NO_LINES, failures: 0 });
     startNext();
   });
 }
@@ -176,12 +179,12 @@ function handleLine(session: Session, line: string) {
   }
   if (!running) return;
   const info = parseInfo(line);
-  if (info) running.lines[info.rank - 1] = info;
+  if (info) running.ranked = rankLine(running.ranked, info, info);
   else if (line.startsWith('bestmove')) {
     clearTimeout(watchdog);
     const finished = running;
     running = undefined;
-    const lines = finished.lines.filter(Boolean);
+    const lines = finished.ranked.lines.filter(Boolean);
     const best = parseBestMove(line);
     if (lines.length) finished.resolve({ lines, ...(best && { best }) });
     else finished.reject(new Error('Stockfish finished without a score'));
@@ -200,7 +203,7 @@ function startNext() {
   if (!connected?.ready || running) return;
   running = takeNext();
   if (!running) return;
-  running.lines = [];
+  running.ranked = NO_LINES;
   // A fresh start for every position, so a position always gets the same
   // evaluation whatever came before it.
   connected.send('ucinewgame');

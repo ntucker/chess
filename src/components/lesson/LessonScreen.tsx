@@ -7,12 +7,14 @@ import { BrowserOnly } from '@/components/BrowserOnly';
 import { Eyebrow } from '@/components/Eyebrow';
 import { FootnoteLink } from '@/components/FootnoteLink';
 import { StatusHeadline } from '@/components/GameStatus';
+import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { Scoresheet } from '@/components/Scoresheet';
 import { resetListener } from '@/components/resetListener';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { useLongWait } from '@/components/useLongWait';
 import type { MoveQuality } from '@/analysis/quality';
+import { NewVersionError } from '@/files/newVersion';
 import { colorName, opposite } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
 import type { Uci } from '@/lesson/lesson';
@@ -104,8 +106,8 @@ function LessonScreen({
   readonly loading: boolean;
 }) {
   const ctrl = useController();
-  // The lesson's progress loads beside it, rather than once it has loaded.
-  useFetch(getProgress, id ?? OPENINGS.id);
+  // The progress loads beside the lesson, rather than once it has loaded.
+  useFetch(getProgress);
   const picked = useSuspense(getLesson, id ?? null);
   const lesson = useMemo(() => (picked ? withOpenings(picked, LESSON_INDEX) : OPENINGS), [picked]);
   const {
@@ -179,11 +181,10 @@ function LessonScreen({
   const rejoins = ({ variation }: Candidate) =>
     variation === undefined ? undefined : `Rejoins ${lesson.variations[variation].name}`;
   // Pointing at an opening, or picking up a piece that plays one, starts
-  // loading its lesson and progress, so playing it needn't wait. A failure
-  // shows once the opening is picked.
+  // loading its lesson, so playing it needn't wait. A failure shows once the
+  // opening is picked.
   const load = (id: LessonId) => {
     ctrl.fetchIfStale(getLesson, id);
-    ctrl.fetchIfStale(getProgress, id);
   };
   const pointCandidate = (uci: Uci, time?: number) => {
     const into = opening(uci);
@@ -219,7 +220,7 @@ function LessonScreen({
         <Stack gap="5">
           <StatusHeadline
             {...status}
-            failure={game.error && { who: described.name, onRetry: game.retry }}
+            failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
             eyebrowInHeader
           />
           <Separator />
@@ -441,6 +442,9 @@ const YOUR_MOVE = {
 
 /** The lesson page when its lesson failed to load. */
 function LessonFailure({ error }: { readonly error: Error }) {
+  if (error instanceof NewVersionError) {
+    return <NewVersionPage detail="Reload to open the lesson. Your progress in it stays." />;
+  }
   return <LessonPlaceholder message={error.message} />;
 }
 

@@ -11,9 +11,10 @@ import {
 import { InstrumentSans_400Regular } from '@expo-google-fonts/instrument-sans';
 import { SilkProvider } from '@reactive/silk-native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { type ErrorBoundaryProps, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
+import { ScreenFailure } from '@/components/NewVersion';
 import { ProgressSync } from '@/resources/progress';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { StockfishWhileNeeded } from '@/stockfish/demand';
@@ -46,5 +47,21 @@ export default function RootLayout() {
         </SilkProvider>
       </SettingsProvider>
     </DataProvider>
+  );
+}
+
+/**
+ * Any screen that fails, in place of the whole app (Expo Router's boundary).
+ * A screen's file goes missing when the site deploys a newer build than an
+ * open page's, and the page then offers a reload. It replaces RootLayout,
+ * providers and all, so it themes itself. (The Stack's screen boundary would
+ * keep the providers but skips layouts, whose files go missing too.)
+ */
+export function ErrorBoundary({ error }: ErrorBoundaryProps) {
+  const colorScheme = useColorScheme();
+  return (
+    <SilkProvider theme={themes[colorScheme]}>
+      <ScreenFailure error={error} />
+    </SilkProvider>
   );
 }

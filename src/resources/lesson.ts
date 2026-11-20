@@ -1,6 +1,7 @@
 import { Endpoint } from '@data-client/rest';
 
 import INDEX from '@/assets/lessons/index.json';
+import { explainLoadFailure } from '@/files/newVersion';
 import { readLesson } from '@/lesson/lesson';
 import type { IndexEntry } from '@/lesson/openings';
 
@@ -24,13 +25,20 @@ export const LESSON_INDEX = INDEX as Readonly<Record<LessonId, IndexEntry>>;
 
 /**
  * The lesson for one opening (see src/lesson/lesson.ts). It ships with the
- * app and never changes, so it is kept for as long as the app runs.
+ * app and never changes, so it is kept for as long as the app runs. On the
+ * web its file loads when asked for, and fails with a NewVersionError once
+ * a newer deploy has removed it.
  *
  * ```ts
  * const lesson = useSuspense(getLesson, 'caro-kann');
  * ```
  */
 export const getLesson = new Endpoint(
-  async (id: LessonId) => readLesson((await LESSONS[id]()).default),
+  async (id: LessonId) => {
+    const file = await LESSONS[id]().catch(async (error: unknown) => {
+      throw await explainLoadFailure(error);
+    });
+    return readLesson(file.default);
+  },
   { name: 'getLesson', dataExpiryLength: Infinity },
 );
