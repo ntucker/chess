@@ -38,6 +38,7 @@ import { CandidateList } from './CandidateList';
 import { IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
+import { SideChoice } from './SideChoice';
 import { SourceCredits } from './SourceCredits';
 import { ScoresheetDrawer, ScoresheetOpener } from './ScoresheetDrawer';
 import { TrapCard } from './TrapCard';
@@ -430,6 +431,8 @@ function LessonScreen({
           {settingsOpen ? (
             <Sheet title="Settings" onClose={() => setSettingsOpen(false)}>
               <Stack style={styles.sections}>
+                {/* The discs' swap, which a phone's small dots hide; here in a lesson too, since choosing it in a sheet is deliberate. */}
+                <SideChoice side={learner} onChange={onPlayAs} />
                 {settings}
                 <SourceFootnote />
               </Stack>
