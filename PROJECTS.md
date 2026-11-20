@@ -4,10 +4,11 @@ Read this only when your instructions tell you to: you are an agent in a long-ru
 Claude project that works on this repo. Plain agent sessions in this repo follow `AGENTS.md` alone;
 nothing here applies to them.
 
-Root `AGENTS.md` and `.agents/skills` still apply. This file adds how project agents run work end to
-end. Your project's own instructions win where they differ. Where this file and `AGENTS.md` differ, the
-repo wins; tell the coordinator so one gets fixed. Re-read this file when the coordinator says it
-changed. Coordinators setting up a new project follow `.agents/projects/setup.md`.
+Root `AGENTS.md` and `.agents/skills` still apply. This file adds how project agents run
+`ntucker/chess` PRs end to end; for other repos, see "Upstream fixes". Your project's own
+instructions win where they differ. Where this file and `AGENTS.md` differ, the repo wins; tell the
+coordinator so one gets fixed. Re-read this file when the coordinator says it changed. Coordinators
+setting up a new project follow `.agents/projects/setup.md`.
 
 ## Roles and models
 
@@ -49,9 +50,8 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
    step 6 (alone if nothing was pushed), have a Fable subagent load `user-kit:clean-code` and look for
    architectural simplifications and improvements, weighing what will likely stay the same and what
    might change (over time and space). Handle its findings the same way, once per PR.
-8. Land your own PR (squash-merge) as `.agents/projects/autoland.md` says; only `ntucker/chess` PRs.
-   The person merges `reactive/silk` and `reactive/data-client` PRs. A worker's PR ends when it
-   merges, not when it is handed over.
+8. Land your own PR (squash-merge) as `.agents/projects/autoland.md` says. A worker's PR ends when
+   it merges, not when it is handed over.
 
 ## PR descriptions
 
