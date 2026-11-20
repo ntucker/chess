@@ -88,6 +88,9 @@
       {
         "displayName": "web",
         "preset": "jest-expo/web",
+        "setupFiles": [
+          "<rootDir>/jest.web.setup.ts"
+        ],
         "moduleNameMapper": {
           "^@/assets/(.*)$": "<rootDir>/assets/$1"
         },

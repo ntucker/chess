@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
-import type { MotionElement, Point } from './types';
+import type { MotionElement, Point } from './dom';
 
 // A fake engine: where each element is comes from `mockLayout`, and every call is recorded.
 const mockLayout = new Map<MotionElement, Point>();
@@ -31,7 +31,6 @@ import { springs } from './spring';
 function element(at: Point, parent: MotionElement | null = null): MotionElement {
   const el: MotionElement = {
     parentElement: parent,
-    isConnected: true,
     contains: (other) => {
       for (let up: MotionElement | null = other; up; up = up.parentElement)
         if (up === el) return true;
@@ -96,7 +95,7 @@ describe('reorder', () => {
       springs.brisk,
     );
     expect(named('arrive')).toEqual([[added, springs.brisk]]);
-    expect(named('leave')).toEqual([]);
+    expect(named('leave')).toEqual([[[]]]);
   });
 
   it('fades out an item that left where it was, and only that one', () => {
@@ -109,7 +108,9 @@ describe('reorder', () => {
       ]),
     );
     reorder(before, new Map([['kept', kept]]), springs.brisk);
-    expect(named('leave')).toEqual([[expect.objectContaining({ el: gone, at: { x: 0, y: 20 } })]]);
+    expect(named('leave')).toEqual([
+      [[expect.objectContaining({ el: gone, at: { x: 0, y: 20 } })]],
+    ]);
   });
 
   it('lifts an item crossing another, not the one it nudges', () => {

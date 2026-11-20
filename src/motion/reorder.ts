@@ -1,12 +1,23 @@
 /**
  * Lists that rearrange: measure items by key before a change, then glide
- * each from where it was to where it is (FLIP, translate only), on either
- * the web (from data-client's website/src/components/motion/reorder.ts).
+ * each from where it was to where it is (FLIP, translate only), on the web
+ * (from data-client's website/src/components/motion/reorder.ts).
  */
-import { arrive, glide, leave, lift, measureOf, stop } from './dom';
+import {
+  arrive,
+  glide,
+  leave,
+  lift,
+  measureOf,
+  type MotionElement,
+  type Point,
+  type Position,
+  stop,
+} from './dom';
 import type { Spring } from './spring';
-import type { Items, Key, MotionElement, Point, Position } from './types';
+import type { Key } from './types';
 
+type Items = ReadonlyMap<Key, MotionElement>;
 export type Positions = ReadonlyMap<Key, Position>;
 
 /** Reads where `items` are, before a change moves them */
@@ -31,7 +42,7 @@ export function reorder(before: Positions, items: Items, spring: Spring) {
     stop(el);
     lift(el, false);
   }
-  const moves = new Map<MotionElement, { offset: Point; velocity: Point; was: Point; at: Point }>();
+  const moves = new Map<MotionElement, { velocity: Point; was: Point; at: Point }>();
   const arrivals: MotionElement[] = [];
   const left = [...before].filter(([key]) => !items.has(key)).map(([, position]) => position);
   for (const [key, el] of items) {
@@ -41,19 +52,15 @@ export function reorder(before: Positions, items: Items, spring: Spring) {
       if (!takeSpot(left, at)) arrivals.push(el);
       continue;
     }
-    moves.set(el, {
-      offset: { x: was.at.x - at.x, y: was.at.y - at.y },
-      velocity: was.velocity,
-      was: was.at,
-      at,
-    });
+    moves.set(el, { velocity: was.velocity, was: was.at, at });
   }
   // every read is done: start the animations
-  const glides = [...moves].map(([el, { offset, velocity }]) => {
+  const glides = [...moves].map(([el, move]) => {
+    const offset = offsetOf(move);
     const carrier = carrierOf(el, moves);
-    const carried = carrier && moves.get(carrier)?.offset;
+    const carried = carrier && offsetOf(moves.get(carrier)!);
     const from = carried ? { x: offset.x - carried.x, y: offset.y - carried.y } : offset;
-    return { el, from, velocity, length: Math.hypot(from.x, from.y) };
+    return { el, from, velocity: move.velocity, length: Math.hypot(from.x, from.y) };
   });
   const farthest = Math.max(0, ...glides.map(({ length }) => length));
   for (const { el, from, velocity, length } of glides) {
@@ -61,16 +68,21 @@ export function reorder(before: Positions, items: Items, spring: Spring) {
     if (finished && length >= farthest / 2 && length > NUDGE && passesAnother(el, moves)) {
       lift(el, true);
       finished.then(() => {
-        if (!crossing.has(el) || crossing.get(el) === finished) lift(el, false);
+        if (crossing.get(el) === finished) lift(el, false);
       });
       crossing.set(el, finished);
     }
   }
-  for (const position of left) leave(position);
+  leave(left);
   // an arrival holding an item that moves in shows at once, or its fade would hide that glide
   for (const el of arrivals)
     if (!glides.some(({ el: item }) => el.contains(item))) arrive(el, spring);
 }
+
+const offsetOf = ({ was, at }: { was: Point; at: Point }): Point => ({
+  x: was.x - at.x,
+  y: was.y - at.y,
+});
 
 /** The latest crossing glide of each lifted item: an older one landing leaves it lifted */
 const crossing = new WeakMap<MotionElement, Promise<void>>();

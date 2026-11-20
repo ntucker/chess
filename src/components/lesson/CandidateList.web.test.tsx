@@ -14,13 +14,6 @@ import { CandidateList } from './CandidateList';
 jest.mock('@/components/QualityBadge', () => ({ QualityBadge: () => null }));
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-// The rows' motion asks whether to reduce motion, through a matchMedia jsdom lacks.
-window.matchMedia = ((media: string) => ({
-  matches: false,
-  media,
-  addEventListener() {},
-  removeEventListener() {},
-})) as unknown as typeof window.matchMedia;
 
 const candidate = (uci: string, san: string, rare?: boolean) =>
   ({ move: { uci }, san, from: uci.slice(0, 2), to: uci.slice(2), next: san, rare }) as Candidate;

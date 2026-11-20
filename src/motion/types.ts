@@ -1,66 +1,40 @@
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import type { ViewProps } from 'react-native';
 
 import type { Spring } from './spring';
 
-/** A point or offset in px, on screen */
-export interface Point {
-  readonly x: number;
-  readonly y: number;
-}
-export const ORIGIN: Point = { x: 0, y: 0 };
-
 /**
- * The host element behind a `MotionView`: a DOM element on the web, React
- * Native's element (its DOM-like node API) on Android. The shared code only
- * walks the tree; each engine reads positions and animates in its own way.
+ * A list whose items glide to wherever a change moves them, fading in the
+ * ones that arrive (and out the ones that leave, on the web). It renders no
+ * element of its own and knows nothing of the layout, so it fits any list.
+ *
+ * Put it where the list is read and pass the list (or what decides it) as
+ * `layoutDependency`: it must re-render with the change it animates.
  */
-export interface MotionElement {
-  readonly parentElement: MotionElement | null;
-  readonly isConnected: boolean;
-  contains(other: MotionElement): boolean;
+export interface MotionListProps {
+  /** The change to animate: items arrive (and, on the web, move) only when this changes */
+  readonly layoutDependency: unknown;
+  readonly spring?: Spring;
+  readonly children: ReactNode;
 }
 
-/** Where an item was, kept so a change that takes it away can fade it out there */
-export interface Position {
-  readonly at: Point;
-  readonly velocity: Point;
-  readonly el: MotionElement;
-  readonly parent: MotionElement | null;
-  readonly width: number;
-  readonly height: number;
-}
-
-/** Elements under keys that stay the same from one render to the next (an item's id) */
+/** Names an item across renders (its row's id), so it is followed even when React remounts it */
 export type Key = string | number;
-export type Items = ReadonlyMap<Key, MotionElement>;
 
 /**
- * How one `MotionList` animates a change, made once per list by the engine's
- * `useListMotion`: `before` runs as React is about to change the screen and
- * `after` once it has, with what `before` returned.
+ * A view that moves instead of jumping: inside a `MotionList`, the item
+ * named `id`. Use it like a `View`; the motion owns its translate and opacity.
  */
-export interface ListMotion {
-  before(items: Items): unknown;
-  after(before: unknown, items: Items): void;
-}
-
-/** What a `MotionView` renders: a view its engine can move */
-export interface HostProps extends ViewProps {
-  /** Called with the host element when it mounts and null when it goes; may return a cleanup */
-  readonly join: (el: MotionElement | null) => (() => void) | undefined;
-  /** The list it is in, if any */
-  readonly list: ListMotion | null;
-  /** It renders with a change its list animates: mounting now, it fades in; moving, it glides */
-  readonly animating: boolean;
+export interface MotionViewProps extends Omit<ViewProps, 'id'> {
+  readonly id: Key;
 }
 
 /**
- * A platform's motion engine (`engine.tsx` for Android, `engine.web.tsx`).
- * TypeScript resolves `./engine` to the Android file alone, so
- * `engine.contract.ts` holds both to this.
+ * A platform's motion engine (`MotionList.tsx` for Android,
+ * `MotionList.web.tsx`). TypeScript resolves `./MotionList` to the Android
+ * file alone, so `engine.contract.ts` holds both to this.
  */
 export interface Engine {
-  readonly MotionHost: ComponentType<HostProps>;
-  useListMotion(spring: Spring): ListMotion;
+  readonly MotionList: ComponentType<MotionListProps>;
+  readonly MotionView: ComponentType<MotionViewProps>;
 }

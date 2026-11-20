@@ -10,16 +10,38 @@ import {
   SAMPLE_RATE,
   springAt,
   springMotion,
+  SUBPIXEL,
   type Spring,
   type SpringState,
 } from './spring';
-import { ORIGIN, type MotionElement, type Point, type Position } from './types';
+
+/** A point or offset in px, on screen */
+export interface Point {
+  readonly x: number;
+  readonly y: number;
+}
+const ORIGIN: Point = { x: 0, y: 0 };
+
+/** The DOM element behind a `MotionView`, as far as the list's bookkeeping needs it */
+export interface MotionElement {
+  readonly parentElement: MotionElement | null;
+  contains(other: MotionElement): boolean;
+}
+
+/** Where an item was, kept so a change that takes it away can fade it out there */
+export interface Position {
+  readonly at: Point;
+  readonly velocity: Point;
+  readonly el: MotionElement;
+  readonly parent: MotionElement | null;
+  readonly width: number;
+  readonly height: number;
+}
 
 interface Glide {
   animation: Animation;
   spring: Spring;
   start: readonly [x: SpringState, y: SpringState];
-  finished: Promise<void>;
 }
 const glides = new WeakMap<Element, Glide>();
 
@@ -28,7 +50,7 @@ const dom = (el: MotionElement) => el as unknown as HTMLElement;
 const noop = () => undefined;
 
 /** Whether `el` can move at all (jsdom has no Web Animations) */
-export const canAnimate = (el: MotionElement) => typeof dom(el).animate === 'function';
+const canAnimate = (el: MotionElement) => typeof dom(el).animate === 'function';
 
 /** Where `el` is on screen now, a glide in flight included, and its size */
 export function measureOf(el: MotionElement): Omit<Position, 'el' | 'parent'> {
@@ -49,25 +71,25 @@ export function glide(el: MotionElement, spring: Spring, from: Point, velocity: 
     { offset: from.x, velocity: velocity.x },
     { offset: from.y, velocity: velocity.y },
   ] as const;
-  const [xs, ys] = start.map((axis) => sampleSpring(spring, axis, PRECISION));
+  const [xs, ys] = start.map((axis) => sampleSpring(spring, axis, SUBPIXEL));
   const frames = Math.max(xs.length, ys.length);
   const keyframes = Array.from({ length: frames }, (_, i) => ({
     translate: `${xs[i] ?? 0}px ${ys[i] ?? 0}px`,
   }));
   const animation = node.animate(keyframes, { duration: ((frames - 1) / SAMPLE_RATE) * 1000 });
   const finished = animation.finished.then(noop, noop);
-  glides.set(node, { animation, spring, start, finished });
+  glides.set(node, { animation, spring, start });
   return finished;
 }
 
 /** How fast `el`'s glide is moving it right now (px/s) */
-export function velocityOf(el: MotionElement): Point {
+function velocityOf(el: MotionElement): Point {
   const current = glides.get(dom(el));
   if (!current || current.animation.playState === 'finished') return ORIGIN;
   const { animation, spring, start } = current;
   const t = Number(animation.currentTime ?? 0) / 1000;
   const [x, y] = start.map((axis) => springAt(spring, axis, t));
-  return atRest(x, PRECISION) && atRest(y, PRECISION) ? ORIGIN : { x: x.velocity, y: y.velocity };
+  return atRest(x, SUBPIXEL) && atRest(y, SUBPIXEL) ? ORIGIN : { x: x.velocity, y: y.velocity };
 }
 
 /** Ends `el`'s glide, snapping it back to its layout position */
@@ -101,36 +123,41 @@ const LEAVE_TIMING: KeyframeAnimationOptions = {
 };
 
 /**
- * Puts an item React removed back where it was, out of the flow and out of
- * reach, while it fades out.
+ * Puts the items React removed back where they were, out of the flow and out
+ * of reach, while they fade out. Writes all, then reads all, then writes
+ * again, so the browser lays the page out once however many leave.
  */
-export function leave({ el, parent, at, width, height }: Position) {
-  const node = dom(el);
-  const list = parent && dom(parent);
-  // React kept it (it moved under another key), or its list left too
-  if (node.isConnected || !list?.isConnected || !canAnimate(el)) return;
-  stop(el);
-  lift(el, false);
-  node.inert = true;
-  node.setAttribute('aria-hidden', 'true');
-  Object.assign(node.style, {
-    position: 'absolute',
-    boxSizing: 'border-box',
-    margin: '0',
-    left: '0',
-    top: '0',
-    width: `${width}px`,
-    height: `${height}px`,
-    pointerEvents: 'none',
-    zIndex: '2',
+export function leave(positions: readonly Position[]) {
+  const leaving = positions.filter(({ el, parent }) => {
+    const list = parent && dom(parent);
+    // React kept it (it moved under another key), or its list left too
+    return !dom(el).isConnected && list?.isConnected && canAnimate(el);
   });
-  list.append(node);
-  const origin = node.getBoundingClientRect();
-  node.style.left = `${at.x - origin.left}px`;
-  node.style.top = `${at.y - origin.top}px`;
-  const gone = () => node.remove();
-  node.animate(LEAVE, LEAVE_TIMING).finished.then(gone, gone);
+  for (const { el, parent, width, height } of leaving) {
+    const node = dom(el);
+    stop(el);
+    lift(el, false);
+    node.inert = true;
+    node.setAttribute('aria-hidden', 'true');
+    Object.assign(node.style, {
+      position: 'absolute',
+      boxSizing: 'border-box',
+      margin: '0',
+      left: '0',
+      top: '0',
+      width: `${width}px`,
+      height: `${height}px`,
+      pointerEvents: 'none',
+      zIndex: '2',
+    });
+    dom(parent!).append(node);
+  }
+  const origins = leaving.map(({ el }) => dom(el).getBoundingClientRect());
+  leaving.forEach(({ el, at }, i) => {
+    const node = dom(el);
+    node.style.left = `${at.x - origins[i]!.left}px`;
+    node.style.top = `${at.y - origins[i]!.top}px`;
+    const gone = () => node.remove();
+    node.animate(LEAVE, LEAVE_TIMING).finished.then(gone, gone);
+  });
 }
-
-/** Sub-pixel: settles once the remaining motion is invisible */
-const PRECISION = 0.25;

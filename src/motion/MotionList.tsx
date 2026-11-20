@@ -1,135 +1,145 @@
-import { useReducedMotion } from '@reactive/silk-native';
-import { Component, createContext, type ReactNode, useCallback, useContext, useRef } from 'react';
-import type { ViewProps } from 'react-native';
-
-import { MotionHost, useListMotion } from './engine';
-import { springs, type Spring } from './spring';
-import type { Key, ListMotion, MotionElement } from './types';
-
-interface Props {
-  /** Items only move when this changes (the list they're rendered from) */
-  readonly layoutDependency: unknown;
-  readonly spring?: Spring;
-  readonly children: ReactNode;
-}
-
 /**
- * Glides its items (`MotionView`s with an `id`) to wherever a change moves
- * them, fading in the ones that arrive and out the ones that leave, on the
- * web and on Android alike. It renders no element of its own and knows
- * nothing of the layout, so it fits any list.
+ * Android's motion engine: Reanimated layout animations, which start in the
+ * same frame React Native mounts the new layout. Animating from JavaScript
+ * after a commit can't: Reanimated holds its updates back while React
+ * commits, so the new layout shows for a frame before the animation's start.
+ * Each item springs from where it is on screen to its new place on the UI
+ * thread, with the web's spring and with the speed it had (Reanimated's own
+ * springs drop velocity that points away from the target, so a reversal
+ * would stall instead of turning around).
  *
- * It measures before React changes the screen, so it must re-render with
- * the change it animates: put it where the list is read, and pass the list
- * (or what decides it) as `layoutDependency`. Changes that leave it alone
- * land at once.
+ * Unlike the web, an item glides whenever its place changes, not only with
+ * `layoutDependency`: that names the change whose new items fade in. A
+ * removed item goes at once: Reanimated keeps a view with an `exiting`
+ * animation on screen for a frame or two even when that animation does
+ * nothing, which drew old rows over new ones.
  */
-export function MotionList(props: Props) {
-  const motion = useListMotion(props.spring ?? springs.brisk);
-  return <Measured {...props} motion={motion} still={useReducedMotion()} />;
+import { useReducedMotion } from '@reactive/silk-native';
+import { Component, createContext, useContext, useMemo, useState } from 'react';
+import { View } from 'react-native';
+import Animated, {
+  type AnimationObject,
+  defineAnimation,
+  type EntryExitAnimationFunction,
+  type LayoutAnimationFunction,
+  type SharedValue,
+  useSharedValue,
+} from 'react-native-reanimated';
+
+import { atRest, springAt, springs, SUBPIXEL, type Spring, type SpringState } from './spring';
+import type { MotionListProps, MotionViewProps } from './types';
+
+export function MotionList(props: MotionListProps) {
+  return <Arrivals {...props} still={useReducedMotion()} />;
 }
 
-interface MeasuredProps extends Props {
-  readonly motion: ListMotion;
+interface ArrivalsProps extends MotionListProps {
   readonly still: boolean;
+}
+
+interface ListContextValue {
+  readonly spring: Spring;
+  /** This render carries the change the list animates: items mounting in it fade in */
+  readonly arriving: boolean;
 }
 
 interface State {
   readonly dependency: unknown;
-  /** This render animates a change: items mounting in it arrive */
-  readonly list: ListContextValue;
+  /** Null while motion is reduced */
+  readonly list: ListContextValue | null;
 }
 
-class Measured extends Component<MeasuredProps, State> {
-  private readonly items = new Map<Key, MotionElement>();
-
-  /** Joins `el` under `id`; returns the cleanup */
-  private readonly join = (id: Key, el: MotionElement) => {
-    this.items.set(id, el);
-    return () => {
-      if (this.items.get(id) === el) this.items.delete(id);
-    };
-  };
-
-  state: State = {
-    dependency: this.props.layoutDependency,
-    list: { join: this.join, motion: this.props.motion, animating: false },
-  };
+/** Works out, render by render, whether this render carries the change to animate */
+class Arrivals extends Component<ArrivalsProps, State> {
+  state: State = { dependency: this.props.layoutDependency, list: null };
 
   static getDerivedStateFromProps(
-    { layoutDependency, motion, still }: MeasuredProps,
+    { layoutDependency, spring = springs.brisk, still }: ArrivalsProps,
     { dependency, list }: State,
-  ): Partial<State> | null {
-    const animating = !still && !Object.is(dependency, layoutDependency);
-    if (
-      animating === list.animating &&
-      motion === list.motion &&
-      Object.is(dependency, layoutDependency)
-    )
-      return null;
-    return { dependency: layoutDependency, list: { join: list.join, motion, animating } };
-  }
-
-  getSnapshotBeforeUpdate(prev: Props): { readonly before: unknown } | null {
-    if (!this.changed(prev) || this.props.still) return null;
-    return { before: this.props.motion.before(this.items) };
-  }
-
-  componentDidUpdate(prev: Props, _state: unknown, snapshot: { readonly before: unknown } | null) {
-    if (snapshot && this.changed(prev)) this.props.motion.after(snapshot.before, this.items);
-    // Once the change is on screen, later renders are no longer part of it.
-    if (this.state.list.animating)
-      requestAnimationFrame(() =>
-        this.setState(({ list }) =>
-          list.animating ? { list: { ...list, animating: false } } : null,
-        ),
-      );
+  ): State | null {
+    const arriving = !Object.is(dependency, layoutDependency);
+    if (still) return list || arriving ? { dependency: layoutDependency, list: null } : null;
+    if (!arriving && list?.spring === spring && !list.arriving) return null;
+    return { dependency: layoutDependency, list: { spring, arriving } };
   }
 
   render() {
     return <ListContext value={this.state.list}>{this.props.children}</ListContext>;
   }
-
-  private changed(prev: Props) {
-    return !Object.is(prev.layoutDependency, this.props.layoutDependency);
-  }
 }
 
-interface ListContextValue {
-  readonly join: (id: Key, el: MotionElement) => () => void;
-  readonly motion: ListMotion;
-  readonly animating: boolean;
-}
 const ListContext = createContext<ListContextValue | null>(null);
 
-/**
- * A view that moves instead of jumping: inside a `MotionList`, the item
- * named `id` (stable across renders, so it is followed even when React
- * remounts it elsewhere). Use it like a `View`; the motion owns its
- * transform and opacity.
- */
-export function MotionView({ id, ...rest }: Omit<ViewProps, 'id'> & { readonly id: Key }) {
+/** Where a view's spring on one axis started, to read its speed if interrupted */
+interface Run {
+  readonly start: SpringState;
+  readonly startedAt: number;
+}
+type Runs = { x?: Run; y?: Run };
+
+export function MotionView({ id: _id, ...rest }: MotionViewProps) {
   const list = useContext(ListContext);
-  const join = list?.join;
-  // React Native Web's View calls a ref with null rather than running the
-  // cleanup it returned, so the cleanup is kept here and run either way.
-  const joined = useRef<() => void>(undefined);
-  const ref = useCallback(
-    (el: MotionElement | null) => {
-      joined.current?.();
-      joined.current = undefined;
-      if (!el || !join) return;
-      const cleanup = join(id, el);
-      joined.current = cleanup;
-      return () => {
-        if (joined.current !== cleanup) return;
-        joined.current = undefined;
-        cleanup();
-      };
-    },
-    [join, id],
-  );
-  return (
-    <MotionHost {...rest} join={ref} list={list?.motion ?? null} animating={!!list?.animating} />
-  );
+  const spring = list?.spring;
+  const runs = useSharedValue<Runs>({});
+  const layout = useMemo(() => spring && layoutTransition(spring, runs), [spring, runs]);
+  // Read once, at mount: only an arrival fades in.
+  const [entering] = useState(() => (list?.arriving ? enterAnimation(list.spring) : undefined));
+  if (!layout) return <View {...rest} />;
+  return <Animated.View {...rest} layout={layout} entering={entering} />;
+}
+
+/** Springs a view from where it is on screen to its new place, keeping its speed */
+function layoutTransition(spring: Spring, runs: SharedValue<Runs>): LayoutAnimationFunction {
+  return (values) => {
+    'worklet';
+    const size = { width: values.targetWidth, height: values.targetHeight };
+    return {
+      initialValues: { originX: values.currentOriginX, originY: values.currentOriginY, ...size },
+      animations: {
+        originX: springTo(values.targetOriginX, spring, runs, 'x'),
+        originY: springTo(values.targetOriginY, spring, runs, 'y'),
+      },
+    };
+  };
+}
+
+/** Fades an item in that arrived with the change */
+function enterAnimation(spring: Spring): EntryExitAnimationFunction {
+  return () => {
+    'worklet';
+    return { initialValues: { opacity: 0 }, animations: { opacity: springTo(1, spring) } };
+  };
+}
+
+/**
+ * An animation from wherever the value is to `target` on `spring`. With
+ * `runs`, it starts at the speed the axis's last spring had at that moment,
+ * and records its own start for the next.
+ */
+function springTo(target: number, spring: Spring, runs?: SharedValue<Runs>, axis?: 'x' | 'y') {
+  'worklet';
+  return defineAnimation<AnimationObject<number>>(target, () => {
+    'worklet';
+    return {
+      onStart(animation: AnimationObject<number>, value: number, now: number) {
+        const last = runs && axis ? runs.value[axis] : undefined;
+        const velocity = last
+          ? springAt(spring, last.start, (now - last.startedAt) / 1000).velocity
+          : 0;
+        const start = { offset: value - target, velocity };
+        animation.start = start;
+        animation.startTime = now;
+        animation.current = value;
+        if (runs && axis) runs.value = { ...runs.value, [axis]: { start, startedAt: now } };
+      },
+      onFrame(animation: AnimationObject<number>, now: number) {
+        const state = springAt(spring, animation.start, (now - animation.startTime) / 1000);
+        const done = atRest(state, SUBPIXEL);
+        animation.current = target + (done ? 0 : state.offset);
+        return done;
+      },
+      current: target,
+      toValue: target,
+    };
+  }) as unknown as number;
 }

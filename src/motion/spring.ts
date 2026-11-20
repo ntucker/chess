@@ -22,6 +22,9 @@ export interface SpringState {
 /** Frame rate keyframes and `linear()` easings are sampled at */
 export const SAMPLE_RATE = 60;
 
+/** px: a spring moving things on screen settles once what's left is invisible */
+export const SUBPIXEL = 0.25;
+
 /** The app's motion vocabulary: pick by what moves, never by milliseconds. */
 export const springs = {
   /** Small, light things: arrows, chips, toggles */
@@ -85,13 +88,18 @@ export function sampleSpring(spring: Spring, start: SpringState, precision: numb
 
 /**
  * The spring played from rest as a CSS `linear()` easing and its length, the
- * shape of a Silk motion token (`{ durationMs, easing }`), for CSS and
- * Reanimated CSS transitions on either platform.
+ * shape of a Silk motion token (`{ durationMs, easing }`).
  */
 export function springMotion(spring: Spring): { durationMs: number; easing: string } {
-  const samples = sampleSpring(spring, { offset: 1, velocity: 0 }, 0.001);
-  return {
-    durationMs: Math.round(((samples.length - 1) / SAMPLE_RATE) * 1000),
-    easing: `linear(${samples.map((offset) => Math.round((1 - offset) * 1e4) / 1e4).join(', ')})`,
-  };
+  let motion = motions.get(spring);
+  if (!motion) {
+    const samples = sampleSpring(spring, { offset: 1, velocity: 0 }, 0.001);
+    motion = {
+      durationMs: Math.round(((samples.length - 1) / SAMPLE_RATE) * 1000),
+      easing: `linear(${samples.map((offset) => Math.round((1 - offset) * 1e4) / 1e4).join(', ')})`,
+    };
+    motions.set(spring, motion);
+  }
+  return motion;
 }
+const motions = new WeakMap<Spring, { durationMs: number; easing: string }>();
