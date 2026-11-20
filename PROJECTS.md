@@ -14,7 +14,7 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
 - Coordinator: the project chat session. Worker: a thread. Tell the coordinator: `message_coordinator`.
 - Default for advisors and subagents: the strongest model (latest Fable). Exceptions:
   - Haiku: post-push reviews.
-  - Sonnet: simple merge conflicts.
+  - Sonnet: simple merge conflicts, and the pre-merge app review (step 8).
 - The coordinator runs at most 3 workers at once, unless the person set another cap in project memory.
 - Workers rely on user-kit's skills (Skill tool) and workflows (Workflow tool), both named
   `user-kit:<name>`. If one you need is missing, use the fallback the step gives; with none, pause
@@ -44,7 +44,11 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
 7. Once the change is verified correct, run skill "simplify", verify its findings, and push the
    cleanups (a push, so step 6 runs again) before calling the PR done. If the change has
    architecture implications, then run skill `user-kit:clean-code` the same way.
-8. The person squash-merges. A worker's PR ends when it merges, not when it is handed over.
+8. Squash-merge your own PR once, on its head commit: steps 3-7 are done; CI is green and it is
+   mergeable; Staff's latest verdict names the head and is not `CHANGE_THIS_PR`; for a visible
+   change, a Sonnet subagent at high effort that hasn't seen the work used it in the web export at
+   desktop and phone width and approved; and nothing waits on the person (an open question, "merge
+   #N first", a tarball dependency). A worker's PR ends when it merges, not when it is handed over.
 
 ## PR descriptions
 
