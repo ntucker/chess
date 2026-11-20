@@ -74,9 +74,10 @@ describe('engineCheck', () => {
     delete others.positions[keyAfter('d4', 'd5')];
     const { lesson, report } = await engineCheck(others, evaluate);
     expect(report.cut).toEqual([]);
-    expect(report.refilled).toEqual([
-      { line: '1.d4', move: 'c5', why: "Stockfish's best of the guide's moves" },
-    ]);
+    expect(report.refilled).toEqual({
+      filled: [{ line: '1.d4', move: 'c5', why: "Stockfish's best of the guide's moves" }],
+      ended: [],
+    });
     expect(lesson.positions[keyAfter('d4')].moves.find(({ book }) => book)?.uci).toBe(
       uci('d4', 'c5'),
     );
@@ -144,7 +145,13 @@ describe('engineCheck', () => {
     };
     const { lesson, report } = await engineCheck(agreed, even);
     expect(lesson).toEqual(agreed);
-    expect(report).toEqual({ unbooked: [], unreachable: [], cut: [], dropped: [], refilled: [] });
+    expect(report).toEqual({
+      unbooked: [],
+      unreachable: [],
+      cut: [],
+      dropped: [],
+      refilled: { filled: [], ended: [] },
+    });
   });
 });
 

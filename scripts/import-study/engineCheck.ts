@@ -51,8 +51,8 @@ export interface EngineReport {
   readonly cut: readonly CutLine[];
   /** Notes dropped, where they were and why. */
   readonly dropped: readonly { line: string; text: string; reason: string }[];
-  /** Book moves `fillBook` picked again where the engine overruled one of several guide moves. */
-  readonly refilled: FillReport['filled'];
+  /** What `fillBook` did again where the engine overruled one of several guide moves. */
+  readonly refilled: FillReport;
 }
 
 /** `lesson` with what `evaluate` overrules taken out, and what was taken. */
@@ -117,25 +117,23 @@ export async function engineCheck(
   cutLines(lesson, positions, overruledAt, lines, report.cut);
   // Where it overruled one of several guide moves, pick again among them before
   // judging what book moves still reach: the line goes on through the guide's own.
-  const refilled = await fillBook({ ...lesson, positions }, evaluate);
-  const filled = { ...refilled.lesson.positions };
-  const checked = { ...lesson, positions: filled };
-  const reached = bookReach(checked);
-  for (const [key, position] of Object.entries(filled)) {
+  const refilled = await fillBookWith({ ...lesson, positions }, evaluation);
+  const reached = bookReach(refilled.lesson);
+  const reachable = Object.entries(refilled.lesson.positions).map(([key, position]) => {
     const at = lines.get(key);
     // A position no line reaches is the checker's to refuse, not this.
-    if (reached.has(key) || !at) continue;
-    filled[key] = {
-      ...position,
-      moves: position.moves.map(({ book, ...move }) => {
-        if (book)
-          report.unreachable.push({ line: sans(lesson, at.line), move: san(at.pos, move.uci) });
-        return move;
-      }),
-    };
-  }
-  report.cut.push(...refilled.report.ended);
-  return { lesson: checked, report: { ...report, refilled: refilled.report.filled } };
+    if (reached.has(key) || !at) return [key, position] as const;
+    const moves = position.moves.map(({ book, ...move }) => {
+      if (book)
+        report.unreachable.push({ line: sans(lesson, at.line), move: san(at.pos, move.uci) });
+      return move;
+    });
+    return [key, { ...position, moves }] as const;
+  });
+  return {
+    lesson: { ...refilled.lesson, positions: Object.fromEntries(reachable) },
+    report: { ...report, refilled: refilled.report },
+  };
 }
 
 /**
@@ -212,11 +210,18 @@ const MAIN = /\bthis is the main (?:line|move|reply|continuation)\b/i;
  * as warnings ("Bf5 is a blunder here"); the line ends after it. Only a
  * position the engine names no move for ends the line there.
  */
-export async function fillBook(
+export function fillBook(
   lesson: Lesson,
   evaluate: Evaluate,
 ): Promise<{ lesson: Lesson; report: FillReport }> {
-  const evaluation = cachedEvaluation(evaluate);
+  return fillBookWith(lesson, cachedEvaluation(evaluate));
+}
+
+/** `fillBook`, asking `evaluation`, which may already know positions. */
+async function fillBookWith(
+  lesson: Lesson,
+  evaluation: CachedEvaluation,
+): Promise<{ lesson: Lesson; report: FillReport }> {
   const lines = linesTo(lesson);
   const positions = { ...lesson.positions };
   const report = {
@@ -269,12 +274,12 @@ export async function fillBook(
 /**
  * The book move `fillBook` picks at `at`, and why: one of the guide's moves
  * there, or the engine's own when it overrules them all; undefined when it
- * names none. A move the guide warns against with a trap is either one the
- * engine rates a mistake, so never picked, or one whose trap `engineCheck`
- * drops as no error.
+ * names none. A move the guide warns against with a trap can be picked only
+ * when the engine rates it no mistake and best of the guide's moves, so the
+ * trap costs little.
  */
 async function pickBookMove(
-  moves: LessonPosition['moves'],
+  moves: readonly LessonMove[],
   at: { line: readonly Uci[]; pos: Chess },
   evaluation: CachedEvaluation,
   side: Lesson['side'],
