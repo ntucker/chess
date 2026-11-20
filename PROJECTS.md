@@ -46,9 +46,10 @@ new project follow `.agents/projects/setup.md`.
    push the fixes (each push reruns step 6) before calling the PR done.
    - Skill "simplify", then skill `user-kit:clean-code` if the change has architecture implications.
    - If the PR changes roughly 1k+ lines of code (judge from its diff stat; scripts and data such as
-     lessons don't count): once per PR, alongside the previous pass's step 6 (or alone if it pushed nothing),
-     have a Fable subagent load `user-kit:clean-code` and look for architectural simplifications,
-     weighing what will likely stay the same and what might change (over time and space).
+     lessons don't count): once per PR, alongside the previous pass's step 6 (or alone if it pushed
+     nothing), have a Fable subagent load `user-kit:clean-code` and look for architectural
+     simplifications, weighing what will likely stay the same and what might change (over time and
+     space).
    - If agent instructions changed (`AGENTS.md`, `CLAUDE.md`, `PROJECTS.md`, `.agents/`, skills,
      prompts): audit those changes with skill `user-kit:agent-instructions`.
 8. Land your own PR (squash-merge) as `.agents/projects/autoland.md` says. A worker's PR ends when
