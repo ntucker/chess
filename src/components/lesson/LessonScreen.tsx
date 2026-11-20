@@ -17,7 +17,7 @@ import type { MoveQuality } from '@/analysis/quality';
 import { NewVersionError } from '@/files/newVersion';
 import { type Color, COLORS, colorName, opposite } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
-import type { Lesson, Uci } from '@/lesson/lesson';
+import type { Lesson, Uci, VariationId } from '@/lesson/lesson';
 import { lessonsAfter, lessonsFrom, openingsLesson, withOpenings } from '@/lesson/openings';
 import { type Candidate, nameWithin, pathNames } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
@@ -165,10 +165,12 @@ function LessonScreen({
   // The card is for notes, or for the notes of a candidate pointed at.
   // Stockfish's moves have none of their own, so their list stands alone.
   const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
+  const names = pathNames(view.variation);
   const status = describeStatus(view, {
     picking,
     loading,
     title: lesson.title,
+    names,
     rival: colorName(rival),
     engine: described.name,
     replying: game.replying,
@@ -187,15 +189,15 @@ function LessonScreen({
   const openings = (uci: Uci) =>
     picking ? lessonsAfter(LESSON_INDEX, learner, [...shownLine, uci]) : [];
   const line = view.variation.at(-1);
-  const names = pathNames(view.variation);
-  // A caption drops a group only where a narrow page's header shows it too: the line and its parent.
-  const shownGroups = view.variation.slice(-2);
+  // Without the groups the board's line is in, as the panel's eyebrow says them.
+  const shortName = (id: VariationId) => nameWithin(lesson.variations[id].name, view.variation);
   const leadsTo = (candidate: Candidate) => {
     const into = openings(candidate.move.uci);
     if (into.length) return into.map((id) => LESSON_INDEX[id].title).join(' or ');
     if (candidate.variation === undefined) return 'Leaves the guide';
-    const variation = lesson.variations[candidate.variation];
-    return variation === line ? undefined : nameWithin(variation.name, shownGroups);
+    return lesson.variations[candidate.variation] === line
+      ? undefined
+      : shortName(candidate.variation);
   };
   // What the guide's candidate rows and Stockfish's top moves' rows share.
   const rowProps = {
@@ -207,9 +209,7 @@ function LessonScreen({
   };
   // Past the guide, a move of Stockfish's can lead back into it.
   const rejoins = ({ variation }: Candidate) =>
-    variation === undefined
-      ? undefined
-      : `Rejoins ${nameWithin(lesson.variations[variation].name, shownGroups)}`;
+    variation === undefined ? undefined : `Rejoins ${shortName(variation)}`;
   // Pointing at an opening, or picking up a piece that plays one, starts
   // loading its lesson, so playing it needn't wait. A failure shows once the
   // opening is picked.
@@ -351,6 +351,8 @@ interface StatusInput {
   readonly loading: boolean;
   /** The lesson's title, for a position before any variation. */
   readonly title: string;
+  /** The names along the board's variation (`pathNames`). */
+  readonly names: readonly string[];
   /** The opponent's side, as shown: "White". */
   readonly rival: string;
   /** Who plays past the guide: "Maia". */
@@ -387,6 +389,7 @@ function describeStatus(
     picking,
     loading,
     title,
+    names,
     rival,
     engine,
     replying,
@@ -406,7 +409,7 @@ function describeStatus(
       detail:
         'Each move here leads to the lesson named beside it. Play one on the board or in the list.',
     };
-  const eyebrow = pathNames(view.variation).join(' · ') || title;
+  const eyebrow = names.join(' · ') || title;
   // Beyond the guide with auto play off, nobody replies: the learner moves both sides.
   const playOn = auto ? `play on against ${engine}` : 'play on, moving both sides';
   if (lineEnded && practice?.clean)

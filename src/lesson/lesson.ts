@@ -108,6 +108,11 @@ export type VariationId = string;
 
 /** A named subtree of the opening, like "Advance Variation". */
 export interface Variation {
+  /**
+   * A name that stands alone: a sub-line's starts with its group's, as in
+   * "Advance Variation: Tal Variation". Where the group shows too, the app
+   * drops it (`nameWithin` in select.ts).
+   */
   readonly name: string;
   /** The variation this one branches from; absent for the opening itself. */
   readonly parent?: VariationId;

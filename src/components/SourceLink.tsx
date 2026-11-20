@@ -44,12 +44,12 @@ export function SourceLink() {
 }
 
 /** The button's size, smaller on a narrow web page, where the header is slim. */
-export const SOURCE_LINK_SIZE = narrowLength('source-link-size', 36);
+const SIZE = narrowLength('source-link-size', 36);
 
 const styles = StyleSheet.create({
   button: {
-    width: SOURCE_LINK_SIZE.value,
-    height: SOURCE_LINK_SIZE.value,
+    width: SIZE.value,
+    height: SIZE.value,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',

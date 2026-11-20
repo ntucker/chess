@@ -5,9 +5,11 @@
  * narrow window. Everywhere else none of this
  * applies: each length falls back to the wide value written beside it in
  * code, and each part keeps its wide layout. The one exception is the rule
- * just below, which keeps narrow-only parts hidden outside the media query.
+ * just below, which keeps narrow-only parts, and the header's place, hidden
+ * outside the media query.
  */
-:root [data-narrow='narrow-only'] {
+:root [data-narrow='narrow-only'],
+:root [data-narrow='place'] {
   display: none;
 }
 
@@ -92,6 +94,14 @@
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+  /*
+   * The header's place (Header.tsx): a size container, so its name's font
+   * fits the width the header leaves it.
+   */
+  :root [data-narrow='place'] {
+    display: flex;
+    container-type: inline-size;
   }
   /* A name bar's name and detail share one line (PlayerBar.tsx says how they give way). */
   :root [data-narrow='player-names'] {
