@@ -6,7 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { BrowserOnly } from '@/components/BrowserOnly';
 import { Eyebrow, labelled } from '@/components/Eyebrow';
 import { FootnoteLink } from '@/components/FootnoteLink';
-import { type News, StatusHeadline } from '@/components/GameStatus';
+import { type HeadlineProps, StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { OpponentPicker } from '@/components/OpponentPicker';
@@ -500,7 +500,7 @@ function describeStatus(
     startsRun,
     practice,
   }: StatusInput,
-): { eyebrow: string; title: string; detail: string; news?: News } {
+): Pick<HeadlineProps, 'eyebrow' | 'title' | 'detail' | 'news'> {
   if (loading) return { eyebrow: picking ? OPENINGS_TITLE : title, ...LOADING };
   if (picking)
     return {

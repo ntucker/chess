@@ -33,7 +33,7 @@ export function GameStatus({ error, onRetry, ...game }: Props) {
   );
 }
 
-interface HeadlineProps {
+export interface HeadlineProps {
   readonly eyebrow: string;
   readonly title: string;
   readonly detail: string;
@@ -58,7 +58,7 @@ interface HeadlineProps {
   readonly news?: News;
 }
 
-export type News = 'all' | 'detail' | 'none';
+type News = 'all' | 'detail' | 'none';
 
 /** A panel's headline, announced as it changes, with a retry when the opponent didn't answer. */
 export function StatusHeadline({
