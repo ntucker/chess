@@ -10,11 +10,29 @@
 import type { Note, PositionKey } from './lesson';
 import type { Pointer } from './view';
 
+/**
+ * How long a row stays pointed at before the idea card holds on to it. Rows
+ * point at once, so a pointer going down to the card crosses others on the
+ * way; reaching the card within this time of the last one returns to the row
+ * held before (the `card` action).
+ */
+export const HOLD_MS = 150;
+
 /** What the learner points at, in the position it was pointed at in. */
 interface Pointing {
   readonly key: PositionKey;
   readonly candidate?: Pointer;
   readonly note?: Note;
+  /** Set while a hovering pointer points at `candidate`. Only this reducer reads it. */
+  readonly hover?: Hover;
+}
+
+/** A hovering pointer's way through the rows, for the `card` action. */
+interface Hover {
+  /** When it pointed at the candidate. */
+  readonly since: number;
+  /** The last candidate it pointed at for `HOLD_MS` or more before another took its place. */
+  readonly held?: Pointer;
 }
 
 export type Peek =
@@ -36,9 +54,21 @@ export type PeekAction =
   /**
    * The learner points at a candidate, by its row or by dragging its piece
    * there, which leaves the card's note; or drags onto no candidate, which
-   * keeps it.
+   * keeps it. `time` is when a hovering pointer pointed (milliseconds, the
+   * `card` action's clock), so the card can tell a row crossed on the way
+   * from one held; focus, taps and drags carry none.
    */
-  | { readonly type: 'candidate'; readonly key: PositionKey; readonly candidate?: Pointer }
+  | {
+      readonly type: 'candidate';
+      readonly key: PositionKey;
+      readonly candidate?: Pointer;
+      readonly time?: number;
+    }
+  /**
+   * The pointer reaches the idea card at `time`. A candidate pointed at less
+   * than `HOLD_MS` before was crossed on the way, so the held one returns.
+   */
+  | { readonly type: 'card'; readonly key: PositionKey; readonly time: number }
   /** The learner points at a note on the idea card, or at none. */
   | { readonly type: 'note'; readonly key: PositionKey; readonly note?: Note }
   /**
@@ -72,20 +102,39 @@ export function peekReducer(peek: Peek | undefined, action: PeekAction): Peek | 
         action.type === 'note'
           ? { ...now, note: action.note }
           : action.candidate
-            ? { key: action.key, candidate: action.candidate }
-            : { ...now, candidate: undefined };
-      // Pointing that changes nothing keeps the same state, so nothing re-renders.
-      if (samePointing(now, next)) return peek;
-      return here?.kind === 'play'
-        ? { ...here, candidate: next.candidate, note: next.note }
-        : { ...next, kind: 'point' };
+            ? {
+                key: action.key,
+                candidate: action.candidate,
+                hover:
+                  action.time === undefined
+                    ? undefined
+                    : { since: action.time, held: heldAt(now, action.time) },
+              }
+            : { ...now, candidate: undefined, hover: undefined };
+      // A press or focus on the candidate the mouse points at holds it: it
+      // clears the hover record. Any other pointing that changes nothing
+      // keeps the same state, so nothing re-renders.
+      const holds = now.hover && !next.hover;
+      if (samePointing(now, next) && !holds) return peek;
+      return repoint(here, next);
+    }
+    case 'card': {
+      const here = peek?.key === action.key ? peek : undefined;
+      if (!here?.candidate) return peek;
+      // The candidate held then: the one pointed at now, or if it was only
+      // crossed on the way, the one held before it.
+      const back = heldAt(here, action.time);
+      if (!back || samePointer(back, here.candidate)) return peek;
+      return { ...here, candidate: back, hover: undefined };
     }
     case 'leaveNote':
       return peek?.key === action.key && peek.note === action.note
         ? { ...peek, note: undefined }
         : peek;
     case 'leave':
-      return peek?.kind === 'play' ? { ...peek, candidate: undefined, note: undefined } : undefined;
+      return peek?.kind === 'play'
+        ? { ...peek, candidate: undefined, note: undefined, hover: undefined }
+        : undefined;
     case 'play': {
       const here = peek?.key === action.key ? peek : undefined;
       const { candidate, note } = here ?? {};
@@ -98,13 +147,27 @@ export function peekReducer(peek: Peek | undefined, action: PeekAction): Peek | 
     case 'goto':
       return peek?.kind === 'play' ? { ...peek, step: action.step, auto: false } : peek;
     case 'stop':
-      return peek?.kind === 'play'
-        ? { kind: 'point', key: peek.key, candidate: peek.candidate, note: peek.note }
-        : peek;
+      return peek?.kind === 'play' ? repoint(undefined, peek) : peek;
   }
 }
 
-const samePointer = (a?: Pointer, b?: Pointer) =>
+/**
+ * The candidate held once `pointing`'s is left at `time`: its own, if pointed
+ * at for `HOLD_MS` or more (or not by hovering), else the one held before it.
+ */
+const heldAt = ({ candidate, hover }: Pointing, time: number) =>
+  candidate && (!hover || time - hover.since >= HOLD_MS) ? candidate : hover?.held;
+
+/** `here` pointing at `next` instead, a playback going on unseen. */
+const repoint = (here: Peek | undefined, next: Pointing): Peek => {
+  const { candidate, note, hover } = next;
+  return here?.kind === 'play'
+    ? { ...here, candidate, note, hover }
+    : { kind: 'point', key: next.key, candidate, note, hover };
+};
+
+/** Whether two pointers point at the same candidate, by its row or its piece's drag. */
+export const samePointer = (a?: Pointer, b?: Pointer) =>
   a === b ||
   (a?.at === 'row' && b?.at === 'row' && a.uci === b.uci) ||
   (a?.at === 'drag' && b?.at === 'drag' && a.from === b.from && a.to === b.to);

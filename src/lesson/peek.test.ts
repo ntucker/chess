@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
 import type { Note, PositionKey } from './lesson';
-import { type Peek, type PeekAction, peekReducer } from './peek';
+import { HOLD_MS, type Peek, type PeekAction, peekReducer } from './peek';
 
 const HERE = 'here' as PositionKey;
 const THERE = 'there' as PositionKey;
@@ -9,6 +9,9 @@ const PLAN: Note = { text: 'A plan.' };
 const STRUCTURE: Note = { text: 'A structure.' };
 const ROW = { at: 'row', uci: 'c7c6' } as const;
 const DRAG = { at: 'drag', from: 'c7', to: 'c6' } as const;
+const OTHER = { at: 'row', uci: 'e7e6' } as const;
+const THIRD = { at: 'row', uci: 'd7d5' } as const;
+type Row = typeof ROW | typeof OTHER | typeof THIRD;
 
 type Pointing = Extract<Peek, { kind: 'point' }>;
 type Playing = Extract<Peek, { kind: 'play' }>;
@@ -163,5 +166,78 @@ describe('peekReducer', () => {
     const peek = pointing({ candidate: ROW });
     expect(peekReducer(peek, { type: 'candidate', key: HERE, candidate: { ...ROW } })).toBe(peek);
     expect(peekReducer(undefined, { type: 'candidate', key: HERE })).toBeUndefined();
+  });
+
+  describe('rows crossed on the way to the idea card', () => {
+    const row = (candidate: Row, time: number): PeekAction => ({
+      type: 'candidate',
+      key: HERE,
+      candidate,
+      time,
+    });
+    const card = (time: number): PeekAction => ({ type: 'card', key: HERE, time });
+    const pointed = (...actions: PeekAction[]) => reduce(undefined, ...actions)?.candidate;
+
+    it.each<[string, PeekAction[], Row]>([
+      [
+        'a row held, then others crossed quickly: the card returns to the held row',
+        [row(ROW, 0), row(OTHER, HOLD_MS), row(THIRD, HOLD_MS + 40), card(HOLD_MS + 80)],
+        ROW,
+      ],
+      [
+        'the row pointed at last, if held: the card keeps it',
+        [row(ROW, 0), row(OTHER, HOLD_MS), card(2 * HOLD_MS)],
+        OTHER,
+      ],
+      [
+        'a row crossed before the one held is not held',
+        [row(ROW, 0), row(OTHER, 40), row(THIRD, 40 + HOLD_MS), card(40 + HOLD_MS + 10)],
+        OTHER,
+      ],
+    ])('%s', (_, actions, expected) => {
+      expect(pointed(...actions)).toEqual(expected);
+    });
+
+    it('points at each row at once, however quickly the pointer crosses them', () => {
+      expect(pointed(row(ROW, 0), row(OTHER, 10))).toEqual(OTHER);
+    });
+
+    it('changes nothing when no row was held, or the card is reached in another position', () => {
+      const crossed = reduce(undefined, row(ROW, 0), row(OTHER, 10));
+      expect(peekReducer(crossed, card(20))).toBe(crossed);
+      const held = reduce(undefined, row(ROW, 0), row(OTHER, HOLD_MS), row(THIRD, HOLD_MS + 10));
+      expect(peekReducer(held, { type: 'card', key: THERE, time: HOLD_MS + 20 })).toBe(held);
+    });
+
+    it('holds a row the mouse points at once it is pressed or focused', () => {
+      const pressed = reduce(undefined, row(ROW, 0), row(OTHER, HOLD_MS), {
+        type: 'candidate',
+        key: HERE,
+        candidate: OTHER,
+      });
+      expect(peekReducer(pressed, card(HOLD_MS + 10))?.candidate).toEqual(OTHER);
+    });
+
+    it('forgets the rows held once the preview ends', () => {
+      const cleared = reduce(
+        undefined,
+        row(ROW, 0),
+        row(OTHER, HOLD_MS),
+        { type: 'candidate', key: HERE },
+        row(THIRD, 2 * HOLD_MS),
+      );
+      expect(peekReducer(cleared, card(2 * HOLD_MS + 10))).toBe(cleared);
+    });
+
+    it('returns to the held row behind a playback, which goes on', () => {
+      const peek = reduce(
+        playing(),
+        row(OTHER, 0),
+        row(THIRD, HOLD_MS),
+        row(ROW, HOLD_MS + 10),
+        card(HOLD_MS + 20),
+      );
+      expect(peek).toMatchObject({ kind: 'play', candidate: OTHER, step: 1 });
+    });
   });
 });

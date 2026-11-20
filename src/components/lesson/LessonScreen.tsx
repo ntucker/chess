@@ -124,6 +124,7 @@ function LessonScreen({
     rareShown,
     showRare,
     pointRow,
+    reachCard,
     pointNote,
     leaveNote,
     leave,
@@ -185,10 +186,10 @@ function LessonScreen({
   const load = (id: LessonId) => {
     ctrl.fetchIfStale(getLesson, id);
   };
-  const pointCandidate = (uci: Uci) => {
+  const pointCandidate = (uci: Uci, time?: number) => {
     const into = opening(uci);
     if (into) load(into);
-    pointRow(uci);
+    pointRow(uci, time);
   };
   const onDrag: typeof board.onDrag = (drag) => {
     // Each report repeats the request, which fetchIfStale makes free.
@@ -276,6 +277,7 @@ function LessonScreen({
                   pointed={pointedNote}
                   onPoint={pointNote}
                   onLeave={leaveNote}
+                  onReach={reachCard}
                 />
               ) : null}
             </PointingArea>

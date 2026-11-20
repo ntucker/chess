@@ -6,6 +6,7 @@ import { gameReducer, startGame } from '@/game/game';
 import { DEFAULT_SETTINGS } from '@/settings/settings';
 
 import { keyAfter, SAMPLE, uciLine } from './lesson.fixture';
+import { HOLD_MS } from './peek';
 import { useLesson } from './useLesson';
 
 // Labels, Stockfish's best move and progress read through Data Client
@@ -153,6 +154,16 @@ describe('useLesson while a lesson loads', () => {
     await loaded('e4');
     expect(lesson().canPlay).toBe(true);
     expect(lesson().board.movableColor).toBe('black');
+  });
+
+  it('keeps a row pressed after the mouse came onto it when the mouse reaches the idea card', async () => {
+    await exploreAfter('e4', 'c6', 'd4', 'd5');
+    const [first, second] = lesson().guidance.candidates.map(({ move }) => move.uci);
+    await act(async () => lesson().pointRow(first, 0));
+    await act(async () => lesson().pointRow(second, HOLD_MS));
+    await act(async () => lesson().pointRow(second));
+    await act(async () => lesson().reachCard(HOLD_MS + 10));
+    expect(lesson().guidance.preview?.candidate.move.uci).toBe(second);
   });
 
   it('previews no row while the game waits on another lesson', async () => {
