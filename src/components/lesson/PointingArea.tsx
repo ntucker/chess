@@ -1,14 +1,15 @@
 import { Stack } from '@reactive/silk-native';
 import type { FocusEvent as ReactFocusEvent, ReactNode } from 'react';
-import { StyleSheet } from 'react-native';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 import { hovers } from '@/board/pointer';
-import { SECTION_GAP } from '@/components/Stage';
 
 interface Props {
   /** The mouse, or the keyboard focus, left the area. */
   readonly onLeave: () => void;
   readonly children: ReactNode;
+  /** Its spacing, as the panel's sections. */
+  readonly style?: StyleProp<ViewStyle>;
 }
 
 /**
@@ -18,7 +19,7 @@ interface Props {
  * another window) leaves it up. Touch screens have neither, so on them it is
  * only a stack.
  */
-export function PointingArea({ onLeave, children }: Props) {
+export function PointingArea({ onLeave, children, style }: Props) {
   // The DOM's own focus event, which bubbles from the buttons inside.
   const blur = (event: unknown) => {
     const { currentTarget, relatedTarget } = event as ReactFocusEvent<HTMLElement>;
@@ -26,7 +27,7 @@ export function PointingArea({ onLeave, children }: Props) {
   };
   return (
     <Stack
-      style={styles.area}
+      style={style}
       onPointerLeave={({ nativeEvent }) => {
         // A finger leaves whenever it lifts, which would end every preview a tap starts.
         if (hovers(nativeEvent.pointerType)) onLeave();
@@ -38,5 +39,3 @@ export function PointingArea({ onLeave, children }: Props) {
     </Stack>
   );
 }
-
-const styles = StyleSheet.create({ area: { gap: SECTION_GAP.value } });

@@ -1,4 +1,4 @@
-import { describe, expect, it, jest } from '@jest/globals';
+import { describe, expect, it } from '@jest/globals';
 import { SilkProvider } from '@reactive/silk-native';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -7,8 +7,8 @@ import { themes } from '@/theme/theme';
 
 import { StatusHeadline } from './GameStatus';
 
-// Jest can't load a stylesheet.
-jest.mock('@/theme/narrow.css', () => ({}));
+// Silk ships ES modules, so the web project's transformIgnorePatterns lets
+// @reactive through Babel (package.json).
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 /** The narrow part the headline renders, if any. */

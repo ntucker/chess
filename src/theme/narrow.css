@@ -47,7 +47,7 @@
     --headline-size: 20px;
     /* Space between the board column and the panel below it (Stage.tsx). */
     --wrapped-gap: 12px;
-    /* Space between the panel's sections (Stage.tsx)... */
+    /* Space between the panel's sections (LessonScreen.tsx)... */
     --section-gap: 12px;
     /* ...and between a section's label and what it labels (Eyebrow.tsx). */
     --label-gap: 6px;
@@ -57,7 +57,7 @@
      * buttons...
      */
     --board-min: 300px;
-    /* ...to leave this much for the panel and the gap above it. */
+    /* ...to leave this much for the panel (a label and a couple of moves) and the gap above it. */
     --panel-reserve: calc(160px + var(--wrapped-gap));
   }
 
@@ -97,6 +97,32 @@
     flex-direction: row;
     align-items: baseline;
     gap: 8px;
+  }
+  /*
+   * A candidate list laid out as chips (CandidateList.tsx): its rows wrap
+   * side by side, each only as wide as its move, its share and its mark.
+   */
+  :root [data-narrow='chips'] {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 4px;
+  }
+  :root [data-narrow='chips'] > * {
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 6px;
+  }
+  :root [data-narrow='chips'] > * > * {
+    flex: none;
+  }
+  /* A share is only its number, sized to fit. */
+  :root [data-narrow='chips'] [data-narrow='chip-share'],
+  :root [data-narrow='chips'] [data-narrow='chip-share'] > * {
+    width: auto;
+  }
+  :root [data-narrow='chips'] [data-narrow='chip-hidden'] {
+    display: none;
   }
   /* A note's verdict with no kind beside it goes below its words (IdeaCard.tsx). */
   :root [data-narrow='lone-verdict'] {

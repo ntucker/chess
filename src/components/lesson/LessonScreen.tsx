@@ -4,14 +4,14 @@ import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
-import { Eyebrow, LABEL_GAP } from '@/components/Eyebrow';
+import { Eyebrow, labelled } from '@/components/Eyebrow';
 import { FootnoteLink } from '@/components/FootnoteLink';
 import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { Scoresheet } from '@/components/Scoresheet';
 import { resetListener } from '@/components/resetListener';
-import { BoardColumn, BoardColumnPlaceholder, SECTION_GAP, Stage } from '@/components/Stage';
+import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { useLongWait } from '@/components/useLongWait';
 import type { MoveQuality } from '@/analysis/quality';
 import { NewVersionError } from '@/files/newVersion';
@@ -27,7 +27,7 @@ import { getLesson, LESSON_INDEX, LESSONS, type LessonId } from '@/resources/les
 import { getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
 import { qualityLooks } from '@/theme/moveQuality';
-import { narrowPart } from '@/theme/narrow';
+import { narrowLength, narrowPart } from '@/theme/narrow';
 
 import { AutoPlay } from './AutoPlay';
 import { CandidateList } from './CandidateList';
@@ -240,11 +240,12 @@ function LessonScreen({
             />
           ) : null}
           {ideaCard || guidance.top.length ? (
-            <PointingArea onLeave={leave}>
+            <PointingArea onLeave={leave} style={styles.sections}>
               {guidance.top.length ? (
                 <CandidateList
                   {...rowProps}
                   heading="Stockfish's top moves"
+                  chips
                   candidates={guidance.top}
                   rare={[]}
                   rareShown={false}
@@ -262,6 +263,8 @@ function LessonScreen({
                       ? 'Your candidates'
                       : `${colorName(rival)}'s ${picking ? 'first move' : 'likely replies'}`
                   }
+                  // At the start each move's opening is the point.
+                  chips={!picking}
                   candidates={guidance.candidates}
                   rare={guidance.rare}
                   rareShown={rareShown}
@@ -274,6 +277,7 @@ function LessonScreen({
               {ideaCard ? (
                 <IdeaCard
                   title={preview ? `If ${preview.san}` : 'The idea'}
+                  leadsTo={preview && (preview.engine ? rejoins(preview) : leadsTo(preview))}
                   notes={guidance.notes}
                   learner={learner}
                   playback={playback}
@@ -287,7 +291,7 @@ function LessonScreen({
             </PointingArea>
           ) : null}
           <Separator />
-          <Stack style={styles.labelled}>
+          <Stack style={labelled}>
             <Eyebrow>Scoresheet</Eyebrow>
             <Scoresheet
               plies={game.plies}
@@ -487,8 +491,10 @@ function LessonPlaceholder({
   );
 }
 
+/** Space between the panel's sections: less on a narrow web page. */
+const SECTION_GAP = narrowLength('section-gap', 20);
+
 const styles = StyleSheet.create({
   sections: { gap: SECTION_GAP.value },
-  labelled: { gap: LABEL_GAP.value },
   placeholder: { minHeight: 200 },
 });
