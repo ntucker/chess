@@ -8,24 +8,34 @@ import { parseStudy } from '../study';
 import type { AnswerNote } from './answer';
 import { MODELS, type Ask, type Model } from './claude';
 import { noteComment, type Comment } from './comments';
+import { REWORD } from './prompt';
 import { convertChapters } from '.';
 
 const [advance] = parseStudy(STUDY_PGN, () => true);
 const extracted = [extractChapter(advance, 'black')];
 
-/** An `Ask` answering each comment by its move, per model, and recording what was asked. */
-function fakeAsk(answers: Partial<Record<Model, Record<string, AnswerNote[]>>>) {
+type Answers = Partial<Record<Model, Record<string, AnswerNote[]>>>;
+
+/**
+ * An `Ask` answering each comment by its move, per model, and recording what
+ * was asked. A comment asked again for refused text is answered from `reworded`.
+ */
+function fakeAsk(answers: Answers, reworded: Answers = {}) {
   const asked: [Model, string[]][] = [];
-  const ask: Ask = async (model, comments) => {
+  const refused: (readonly string[] | undefined)[] = [];
+  const addenda: (string | undefined)[] = [];
+  const ask: Ask = async (model, comments, addendum) => {
     asked.push([model, comments.map((comment) => comment.move)]);
-    const notes = answers[model] ?? {};
+    refused.push(...comments.map((comment) => comment.refusedText));
+    addenda.push(addendum);
     return new Map(
-      comments.flatMap((comment) =>
-        notes[comment.move] ? [[comment.id, { id: comment.id, notes: notes[comment.move] }]] : [],
-      ),
+      comments.flatMap((comment) => {
+        const notes = (comment.refusedText ? reworded : answers)[model]?.[comment.move];
+        return notes ? [[comment.id, { id: comment.id, notes }]] : [];
+      }),
     );
   };
-  return { ask, asked };
+  return { ask, asked, refused, addenda };
 }
 
 const notesOn = (
@@ -126,6 +136,66 @@ describe('convertChapters', () => {
     expect(asked.at(-1)).toEqual([MODELS.retry, ['Be2']]);
     expect(report.retried).toBe(1);
     expect(notesOn(chapter, 'Be2')[0].text).toBe('Your bishop eyes the c2 pawn.');
+  });
+
+  describe('a note written in notation', () => {
+    const notation: AnswerNote[] = [
+      { about: 'move', text: 'You follow up with e6 Nf3 c5 Be2 next.', ideas: [] },
+    ];
+    const words: AnswerNote[] = [
+      { about: 'move', text: 'Your bishop is out, so build the chain and hit d4.', ideas: [] },
+    ];
+
+    it('is asked again of Opus with the refused text, and the answer in words replaces it', async () => {
+      const { ask, asked, refused, addenda } = fakeAsk(
+        { [MODELS.convert]: { Be2: notation } },
+        { [MODELS.retry]: { Be2: words } },
+      );
+      const {
+        extracted: [chapter],
+        report,
+      } = await convertChapters(extracted, ask);
+      expect(asked.at(-1)).toEqual([MODELS.retry, ['Be2']]);
+      expect(refused.at(-1)).toEqual([notation[0].text]);
+      expect(addenda.at(-1)).toBe(REWORD);
+      expect(report.reworded).toBe(1);
+      expect(notesOn(chapter, 'Be2')[0].text).toBe(words[0].text);
+    });
+
+    it('is replaced by the answer in words even when it draws less, and the report says so', async () => {
+      const drawn: AnswerNote = {
+        ...notation[0],
+        ideas: [{ type: 'purpose', from: 'f5', relation: 'attacks', targets: ['c2'] }],
+      };
+      const { ask } = fakeAsk(
+        { [MODELS.convert]: { Be2: [drawn] } },
+        { [MODELS.retry]: { Be2: words } },
+      );
+      const {
+        extracted: [chapter],
+        report,
+      } = await convertChapters(extracted, ask);
+      expect(notesOn(chapter, 'Be2')[0].text).toBe(words[0].text);
+      expect(report.rewordedIdeas).toEqual({ before: 1, after: 0 });
+    });
+
+    it('stays when Opus writes notation too, so the lesson checker refuses the import', async () => {
+      const { ask } = fakeAsk(
+        { [MODELS.convert]: { Be2: notation } },
+        { [MODELS.retry]: { Be2: [{ ...notation[0], text: 'Then e6 c5 Nc6 Qb6.' }] } },
+      );
+      const {
+        extracted: [chapter],
+      } = await convertChapters(extracted, ask);
+      expect(notesOn(chapter, 'Be2')[0].text).toBe(notation[0].text);
+    });
+
+    it('is not asked again when the text is in words', async () => {
+      const { ask, refused } = fakeAsk({ [MODELS.convert]: { Be2: words } });
+      const { report } = await convertChapters(extracted, ask);
+      expect(refused.every((text) => text === undefined)).toBe(true);
+      expect(report.reworded).toBe(0);
+    });
   });
 
   it('keeps the importer’s note where the model gave no answer', async () => {
