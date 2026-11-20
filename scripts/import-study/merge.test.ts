@@ -80,6 +80,17 @@ describe('mergeChapters', () => {
     });
   });
 
+  it("names a nested chapter's side line from the opening's position after its top group", () => {
+    const named = mergeChapters(
+      lesson,
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'black')),
+      (title) =>
+        title.includes('Advance') ? 'Advance: Short: Main Line' : 'Classical: Capablanca',
+    );
+    expect(named.positions[keyAfter('e4', 'c6', 'Nc3')].variation).toBe('advance');
+  });
+
   it("names a shared position after the opening, and one chapter's after that chapter", () => {
     expect(at('e4', 'c6', 'd4', 'd5').variation).toBe('test');
     expect(at('e4', 'c6', 'd4', 'd5', 'e5').variation).toBe('advance-variation-short-variation');

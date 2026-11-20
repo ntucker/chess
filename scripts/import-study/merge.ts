@@ -255,9 +255,8 @@ function positionVariations(
   const path = (id: VariationId) => ancestry(variations, id);
   const named = mainLineVariations(variations, chapters, chapterVariation);
 
-  // A chapter about the opening itself is its own group: the opening has no parent.
-  const group = (chapter: VariationId) =>
-    chapter === root || variations[chapter].parent === root ? chapter : variations[chapter].parent!;
+  // A chapter's group is its widest variation below the opening; a chapter about the opening is its own.
+  const group = (chapter: VariationId) => path(chapter)[1] ?? chapter;
   const sideLines = new Map<PositionKey, Set<VariationId>>();
   chapters.forEach((chapter, i) => {
     /** The variation of the last main-line position up to each move. */
