@@ -324,6 +324,30 @@ describe('convertChapters', () => {
       }
     });
 
+    it('asks a cut note to keep drawing its mistakes, and refuses a shorter one that drops them', async () => {
+      const long =
+        'Careful: e3 now lets Black push e5, and after taking it your bishop is trapped by f6 and lost for a pawn or two.';
+      const wordy: AnswerNote[] = [{ ...drawn[0], text: long }];
+      const short: AnswerNote[] = [
+        { about: 'move', text: 'Careful: e3 now traps your bishop.', ideas: [] },
+      ];
+      for (const [retry, kept] of [
+        [drawn, drawn[0].text],
+        [short, `${long.split(' ').slice(0, 20).join(' ')}…`],
+      ] as const) {
+        const { ask, addenda, seen } = fakeAsk(
+          { [MODELS.convert]: { h5: wordy } },
+          { [MODELS.retry]: { h5: [...retry] } },
+        );
+        const {
+          extracted: [chapter],
+        } = await convertChapters(mistake, ask);
+        expect(addenda.at(-1)).toBe(DRAW_MISTAKES + SHORTEN);
+        expect(seen.at(-1)?.mistakes).toEqual(['e3']);
+        expect(notesOn(chapter, 'h5')[0].text).toBe(kept);
+      }
+    });
+
     it('reads only mistakes numbered as the next move, by the side to move', async () => {
       // White is to move at move 3: 4.e3 lies deeper in a line, and 3...Nc3 is Black's.
       const [later] = parseStudy(

@@ -29,7 +29,7 @@ export interface Converted {
   /** Ideas the model wrote that the lesson keeps. */
   readonly kept: number;
   readonly rejected: readonly { readonly idea: AnswerIdea; readonly why: string }[];
-  /** The model's note texts cut mid-sentence at the word limit, as cut. */
+  /** Note texts cut mid-sentence at the word limit, as cut: the model's, or the comment's where it wrote no note on the move. */
   readonly cut: readonly string[];
 }
 
@@ -52,6 +52,12 @@ export function convertedNotes(
   const extractedEvaluation = comment.extracted.some((idea) => idea.type === 'evaluation');
   let kept = 0;
   const cut: string[] = [];
+  /** `noteText`, remembering a text it cuts mid-sentence (not just to its first sentence). */
+  const shown = (written: string) => {
+    const text = noteText(written);
+    if (text !== labelless(written) && text.endsWith('…')) cut.push(text);
+    return text;
+  };
   const notesAbout = (about: 'move' | 'before') =>
     answer.notes
       .filter((note) => note.about === about)
@@ -67,10 +73,7 @@ export function convertedNotes(
           kept++;
           return [result];
         });
-        const text = noteText(note.text);
-        // Cut mid-sentence, not just to its first sentence (`shorten`).
-        if (text !== labelless(note.text) && text.endsWith('…')) cut.push(text);
-        return lessonNote(text, comment.comment, ideas);
+        return lessonNote(shown(note.text), comment.comment, ideas);
       })
       .filter((note) => note.text);
   const before = notesAbout('before');
@@ -80,7 +83,7 @@ export function convertedNotes(
     own.length === 0
       ? moves
       : [
-          lessonNote(first?.text ?? noteText(comment.comment), comment.comment, [
+          lessonNote(first?.text ?? shown(comment.comment), comment.comment, [
             ...own,
             ...(first?.ideas ?? []),
           ]),

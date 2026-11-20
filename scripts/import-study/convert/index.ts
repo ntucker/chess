@@ -136,18 +136,23 @@ async function convertComments(
         notationTexts(result).length === 0 &&
         drawnMistakes(comment, result) > drawnMistakes(comment, previous),
     );
+  // A comment marking mistakes is asked to draw them again too, so a shorter answer can keep them.
   const shorten = [...converted].flatMap(([id, result]) => {
-    const cutText = result.cut;
-    return cutText.length > 0 ? [{ ...comments.get(id)!, cutText }] : [];
+    const comment = comments.get(id)!;
+    const mistakes = commentMistakes(comment).map(({ san }) => san);
+    return result.cut.length > 0
+      ? [{ ...comment, cutText: result.cut, ...(mistakes.length > 0 && { mistakes }) }]
+      : [];
   });
-  if (shorten.length > 0)
-    keep(
-      await ask(MODELS.retry, shorten, SHORTEN),
-      (result, previous, comment) =>
-        result.cut.length === 0 &&
-        notationTexts(result).length === 0 &&
-        drawnMistakes(comment, result) >= drawnMistakes(comment, previous),
-    );
+  const plain = shorten.filter((comment) => !comment.mistakes);
+  const drawing = shorten.filter((comment) => comment.mistakes);
+  const shortened = (result: Converted, previous: Converted, comment: Comment) =>
+    result.cut.length === 0 &&
+    notationTexts(result).length === 0 &&
+    drawnMistakes(comment, result) >= drawnMistakes(comment, previous);
+  if (plain.length > 0) keep(await ask(MODELS.retry, plain, SHORTEN), shortened);
+  if (drawing.length > 0)
+    keep(await ask(MODELS.retry, drawing, DRAW_MISTAKES + SHORTEN), shortened);
   return {
     converted,
     retries: {

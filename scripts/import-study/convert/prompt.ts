@@ -142,4 +142,4 @@ Each comment here also has "writtenFor": the side its author wrote the study for
 export const SHORTEN = `
 
 ASKED AGAIN: NOTES OVER THE WORD LIMIT
-Each comment here also has "cutText": note texts you wrote for it before, which ran over 20 words, so the app cut them where you see "…" and the learner would read a sentence that stops halfway. Convert the comment again, following every rule above, and write each note's text in 20 words or fewer as a whole sentence: keep the comment's conclusion and drop detail instead.`;
+Each comment here also has "cutText": note texts you wrote for it before, which ran over 20 words, so the app cut them where you see "…" and the learner would read a sentence that stops halfway. Convert the comment again, following every rule above, and write each note's text in 20 words or fewer as a whole sentence: keep the comment's conclusion and drop detail instead. A cutText that is the comment's own words means you wrote no note about "move" before: write one now, in 20 words or fewer.`;
