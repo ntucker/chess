@@ -7,7 +7,7 @@
 import { type Color, COLORS, lineSans, numberedLine } from '@/game/replay';
 
 import type { LessonSource, Uci, VariationId } from './lesson';
-import { type IndexEntry, type IndexVariation, type LessonIndex, startsWith } from './openings';
+import { type IndexVariation, type LessonIndex, startsWith, variationLine } from './openings';
 
 /** A variation as the list shows it, with the variations that branch from it. */
 export interface ListedVariation {
@@ -73,13 +73,6 @@ function listed(
 function lineText(moves: readonly Uci[], from: number): string {
   return numberedLine(lineSans(moves).slice(from), from + 1);
 }
-
-/** A lesson's address, without a trailing slash (GitHub Pages 404s on one). */
-export const lessonHref = <Id extends string>(id: Id) => `/lesson/${id}` as const;
-
-/** The line variation `id` of lesson `entry` opens at; none when it names none of its variations. */
-export const variationLine = (entry: Pick<IndexEntry, 'variations'>, id?: VariationId) =>
-  entry.variations.find((variation) => variation.id === id)?.moves;
 
 /** Where the board was when the list opened: a lesson, and a variation of it. */
 export interface ListPlace<Id extends string = string> {

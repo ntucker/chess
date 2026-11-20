@@ -2,7 +2,8 @@ import { describe, expect, it } from '@jest/globals';
 
 import { LESSON_INDEX } from '@/resources/lesson';
 
-import { listPlace, openingList, type ListedVariation, variationLine } from './openingList';
+import { listPlace, openingList, type ListedVariation } from './openingList';
+import { variationLine } from './openings';
 
 const list = openingList(LESSON_INDEX);
 const caro = list.black.find(({ id }) => id === 'caro-kann')!;

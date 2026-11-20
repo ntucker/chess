@@ -4,8 +4,8 @@ import { type Dispatch, useDeferredValue, useEffect, useReducer, useState } from
 import { type GameAction, gameReducer, type GameState, startGame } from '@/game/game';
 import type { GameStore } from '@/game/useGame';
 import type { VariationId } from '@/lesson/lesson';
-import { lessonHref, variationLine } from '@/lesson/openingList';
-import { lessonOf, sameLine } from '@/lesson/openings';
+
+import { lessonHref, lessonOf, sameLine, variationLine } from '@/lesson/openings';
 import { LESSON_INDEX, type LessonId } from '@/resources/lesson';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
 import type { Color } from '@/game/replay';

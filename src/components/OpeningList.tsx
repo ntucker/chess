@@ -10,8 +10,8 @@ import { SourceCredits } from '@/components/lesson/SourceCredits';
 import { STAGE_MAX } from '@/components/Stage';
 import { type Color, COLORS, colorName } from '@/game/replay';
 import type { VariationId } from '@/lesson/lesson';
+import { lessonHref } from '@/lesson/openings';
 import {
-  lessonHref,
   type ListedOpening,
   type ListedVariation,
   type ListPlace,
@@ -171,10 +171,7 @@ function LineLink({
   const { theme } = useTheme();
   const { color } = theme.semantic;
   const { accent, neutral } = color.tones;
-  const href = {
-    pathname: '/lesson/[id]',
-    params: { id: lesson, variation: variation.id },
-  } as const;
+  const href = { pathname: lessonHref(lesson), params: { variation: variation.id } } as const;
   // The list opens on where the board was, however far down it is.
   const row = useRef<ComponentRef<typeof View>>(null);
   useEffect(() => {

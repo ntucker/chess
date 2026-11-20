@@ -57,6 +57,13 @@ export interface IndexEntry extends Pick<Lesson, 'title' | 'side' | 'sources'> {
   readonly variations: readonly IndexVariation[];
 }
 
+/** A lesson's address (`/lesson/<id>`), without a trailing slash (GitHub Pages 404s on one). */
+export const lessonHref = <Id extends string>(id: Id) => `/lesson/${id}` as const;
+
+/** The line variation `id` of lesson `entry` opens at; none when it names none of its variations. */
+export const variationLine = (entry: Pick<IndexEntry, 'variations'>, id?: VariationId) =>
+  entry.variations.find((variation) => variation.id === id)?.moves;
+
 /** A lesson's variation as the opening list shows it, before the lesson loads. */
 export interface IndexVariation extends VariationOf {
   /**
@@ -92,15 +99,15 @@ export function lessonIndex(lessons: readonly Lesson[]): LessonIndex {
   return Object.fromEntries(
     lessons.map((lesson) => {
       const { id, title, side, sources } = lesson;
-      const moves = lines.get(lesson)!;
-      const picks = moves.map((line) => ({
+      const picking = lines.get(lesson)!;
+      const picks = picking.map((line) => ({
         moves: line,
         picked: positionHash(lineKeys(line).at(-1)!),
         lineEnds: cleanEndHashes(lesson, line),
       }));
       return [
         id,
-        { title, side, sources, lines: picks, variations: variationLines(lesson, moves) },
+        { title, side, sources, lines: picks, variations: variationLines(lesson, picking) },
       ];
     }),
   );
@@ -144,12 +151,18 @@ function variationLines(lesson: Lesson, picks: readonly Uci[][]): IndexVariation
     found.set(id, undefined); // A parent loop finds nothing.
     const { parent } = lesson.variations[id];
     const after = parent === undefined ? undefined : lineOf(parent);
-    let line: Uci[] | undefined;
-    for (const from of after ? [[after], picks] : [picks])
-      for (const bookOnly of [true, false]) line ??= likeliestInto(lesson, id, from, bookOnly);
-    // The opening itself is always kept, at the line that picks it where no
-    // position is its own, so the variations form one tree under it.
-    if (parent === undefined) line ??= [...picks[0]];
+    const into = (starts: readonly (readonly Uci[])[], bookOnly: boolean) =>
+      likeliestInto(lesson, id, starts, bookOnly);
+    const line =
+      // Book moves only, past the parent's line first, then past any line that picks it;
+      (after && into([after], true)) ??
+      into(picks, true) ??
+      // then any move, in the same order;
+      (after && into([after], false)) ??
+      into(picks, false) ??
+      // and the opening itself, where no position is its own, at the first line
+      // that picks it, so the variations form one tree under it.
+      (parent === undefined ? [...picks[0]] : undefined);
     found.set(id, line);
     return line;
   };
@@ -217,12 +230,15 @@ function moveShares(moves: readonly LessonMove[]): number[] {
   const games = moves.map((move) => gamesPlayed(move) ?? 0);
   const total = games.reduce((sum, count) => sum + count, 0);
   return total > 0
-    ? games.map((count) => Math.max(count / total, UNCOUNTED_SHARE))
+    ? games.map((count) => Math.max(count, UNCOUNTED_GAMES) / total)
     : moves.map(() => 1);
 }
 
-/** The share of a move without counts beside moves with them: reachable, but last. */
-const UNCOUNTED_SHARE = 1e-6;
+/**
+ * The games a move without counts beside moves with them is reckoned at: less
+ * than one, so it comes after every move played in a game, but reachable.
+ */
+const UNCOUNTED_GAMES = 1e-3;
 
 /** `OpeningLine.lineEnds` for `moves` in `lesson`. */
 function cleanEndHashes(lesson: Lesson, moves: readonly Uci[]): string[] {

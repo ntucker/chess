@@ -3,7 +3,7 @@ import { Image, StyleSheet, View } from 'react-native';
 
 import { BackButton } from '@/components/BackButton';
 import { Eyebrow } from '@/components/Eyebrow';
-import { type Destination, PlaceLink } from '@/components/PlaceLink';
+import { CHEVRON_WIDTH, type Destination, PlaceLink } from '@/components/PlaceLink';
 import { SourceLink } from '@/components/SourceLink';
 import { NARROW_CSS_LOADS, narrowCalc, narrowLength, narrowPart } from '@/theme/narrow';
 import { fonts } from '@/theme/theme';
@@ -78,7 +78,7 @@ export function Header({ place, placeLink, back }: HeaderProps) {
  */
 function PlaceName({ name, parent, link }: Place & { readonly link?: Destination }) {
   const { size, line } = parent ? PLACE_TYPE.underParent : PLACE_TYPE.alone;
-  const fontSize = fitted(name, size, link ? PLACE_TYPE.chevron : 0);
+  const fontSize = fitted(name, size, link ? CHEVRON_WIDTH : 0);
   return (
     <View {...narrowPart('place')} style={styles.place}>
       <PlaceLink to={link}>
@@ -120,8 +120,6 @@ export const PLACE_TYPE = {
   alone: { size: 17, line: HEADER_HEIGHT.value },
   /** The smallest size a name shrinks to; past it, it ends in an ellipsis. */
   smallest: 12,
-  /** The width a link's chevron and its gap take beside the name (`PlaceLink`). */
-  chevron: 18,
   /**
    * An estimate of a name's width per character, in ems: the widest that
    * names of 30 or more characters run (about 0.46 in the shipped lessons),

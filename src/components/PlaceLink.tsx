@@ -12,6 +12,11 @@ export interface Destination {
   readonly label: string;
 }
 
+const CHEVRON_SIZE = 14;
+const CHEVRON_GAP = 4;
+/** The width the chevron and its gap take beside the name. */
+export const CHEVRON_WIDTH = CHEVRON_SIZE + CHEVRON_GAP;
+
 interface Props {
   /** Where it opens; without one, only the name shows. */
   readonly to?: Destination;
@@ -38,7 +43,7 @@ export function PlaceLink({ to, children }: Props) {
               {children(active)}
               <Ionicons
                 name="chevron-forward"
-                size={14}
+                size={CHEVRON_SIZE}
                 color={active ? color.textPrimary : color.textSecondary}
                 style={styles.chevron}
               />
@@ -55,7 +60,7 @@ const styles = StyleSheet.create({
   link: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: CHEVRON_GAP,
     alignSelf: 'flex-start',
     flexShrink: 1,
     minWidth: 0,
