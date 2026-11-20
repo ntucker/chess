@@ -2,7 +2,15 @@ import { describe, expect, it } from '@jest/globals';
 
 import { parsePosition, sanToUci } from '@/game/replay';
 
-import { moveInWords, namedMoves, shorten, sideDoes, textVerdicts } from './text';
+import { letterCastling, moveInWords, namedMoves, shorten, sideDoes, textVerdicts } from './text';
+
+describe('letterCastling', () => {
+  it('writes castling in zeros with letters, leaving scores alone', () => {
+    expect(letterCastling('9.0-0-0 Bb7 10.a3 0-0, not the score 10-0 or 1-0')).toBe(
+      '9.O-O-O Bb7 10.a3 O-O, not the score 10-0 or 1-0',
+    );
+  });
+});
 
 describe('namedMoves', () => {
   it('reads numbered and bare moves, continuing the count', () => {
@@ -10,15 +18,6 @@ describe('namedMoves', () => {
       { san: 'Qa5', ply: 18, side: 'black', glyph: '?' },
       { san: 'Nc3', ply: 19, side: 'white' },
       { san: 'e6', ply: 20, side: 'black' },
-    ]);
-  });
-
-  it('reads castling written with zeros', () => {
-    expect(namedMoves('9.0-0-0 Bb7 10.a3 0-0, not the score 10-0')).toEqual([
-      { san: 'O-O-O', ply: 17, side: 'white' },
-      { san: 'Bb7', ply: 18, side: 'black' },
-      { san: 'a3', ply: 19, side: 'white' },
-      { san: 'O-O', ply: 20, side: 'black' },
     ]);
   });
 

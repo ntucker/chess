@@ -22,7 +22,7 @@ export interface NamedMove {
 
 const NUMBERED = new RegExp(String.raw`${NAMED_MOVE}([!?]*)`, 'g');
 
-/** `text` with castling written in zeros (`9.0-0-0`), as Wikibooks' prose often has it, in letters. */
+/** `text` with castling written in zeros (`9.0-0-0`), as Wikibooks' prose often has it, in letters (`9.O-O-O`). */
 export const letterCastling = (text: string) =>
   text.replace(/(?<![\w-])0-0(?:-0)?(?![\w-])/g, (zeros) => zeros.replaceAll('0', 'O'));
 
@@ -32,7 +32,7 @@ export const letterCastling = (text: string) =>
  */
 export function namedMoves(text: string): NamedMove[] {
   const moves: NamedMove[] = [];
-  for (const match of letterCastling(text).matchAll(NUMBERED)) {
+  for (const match of text.matchAll(NUMBERED)) {
     const [, number, dots, bareDots, written, glyph] = match;
     const san = plainSan(written);
     const marked = glyph ? { glyph } : {};

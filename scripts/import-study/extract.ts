@@ -18,7 +18,7 @@ import { choiceGuide, type Choice } from './choices';
 import { lineTo, placeSequence, type Found, type Spot } from './line';
 import { planLists } from './plans';
 import { chapterMoves, type Chapter, type StudyMove } from './study';
-import { direction, letterCastling, namedMoves, shorten, textVerdicts } from './text';
+import { direction, namedMoves, shorten, textVerdicts } from './text';
 import { trapLines, watchOuts } from './traps';
 
 export interface MoveNote {
@@ -111,11 +111,11 @@ const sequence = (join: string) => {
 const SEQUENCE = sequence(String.raw`(?:\s+|\s*\.\.\.\s*)`);
 
 /**
- * The runs inside one of SEQUENCE's whose ellipsis can't be played: in
- * `2.Nf3 Nc6...Bb5` it means "later", and reads Bb5 as Black's, so the run
- * keeps `2.Nf3 Nc6` alone.
+ * Runs joined by spaces alone: the pieces of a SEQUENCE run whose ellipsis
+ * can't be played. In `2.Nf3 Nc6...Bb5` it means "later" (reading Bb5 as
+ * Black's fails), so the run keeps `2.Nf3 Nc6`.
  */
-const UNJOINED = sequence(String.raw`\s+`);
+const SPACED = sequence(String.raw`\s+`);
 
 export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
   const { writtenFor } = chapter;
@@ -198,11 +198,11 @@ function plans(
 /** Sequences of two or more moves that `move`'s comment writes out, placed in the tree. */
 function sequences(move: StudyMove, learner: Color) {
   const place = (run: string) => placeSequence(move, namedMoves(run));
-  return (letterCastling(move.comment).match(SEQUENCE) ?? []).flatMap((run) => {
+  return (move.comment.match(SEQUENCE) ?? []).flatMap((run) => {
     const whole = place(run);
     const parts = whole
       ? [whole]
-      : (run.match(UNJOINED) ?? []).flatMap((part) => place(part) ?? []);
+      : (run.match(SPACED) ?? []).flatMap((part) => place(part) ?? []);
     return parts.filter(
       ({ spot, ucis }) =>
         ucis.length >= 2 && (spot.move || !namesOtherOpening(ucis, move, learner)),

@@ -18,6 +18,14 @@ const chapter = (title: string, moves: string, fen?: string) =>
   ].join('\n');
 
 describe('parseStudy', () => {
+  it('writes castling in a comment with letters', () => {
+    const [{ moves }] = parseStudy(
+      '1. e4 { Later 5.0-0 and 6.0-0-0 are both fine. } *',
+      () => true,
+    );
+    expect(moves[0].comment).toBe('Later 5.O-O and 6.O-O-O are both fine.');
+  });
+
   it("joins a chapter set up where an earlier one's moves reach to those moves, without their comments", () => {
     const pgn = [
       chapter('London', '1. d4 d5 2. Bf4 { The London. } Nf6 *'),

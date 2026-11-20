@@ -17,7 +17,7 @@ import { parseUci } from 'chessops/util';
 import { positionKey, sanToUci } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 
-import { namedMoves, plainSan } from './text';
+import { letterCastling, namedMoves, plainSan } from './text';
 
 export interface Chapter {
   /** The chapter's name, as the study shows it. */
@@ -276,8 +276,9 @@ function readMoves(
       after,
       parent,
       children,
+      // Castling in letters, however the source spelled it, for every reader of the comment's moves.
       comment: comments
-        .map((raw) => parseComment(raw).text.trim())
+        .map((raw) => letterCastling(parseComment(raw).text.trim()))
         .filter(Boolean)
         .join('\n'),
       nags: node.data.nags ?? [],
