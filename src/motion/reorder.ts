@@ -34,9 +34,10 @@ export function measure(items: Items): Positions {
  * another that moves rides along and travels only the rest of the way. A key
  * `before` lacks fades in (unless it takes the exact spot of a key that just
  * left: the same item under a new id); a key that left fades out where it
- * was. Items crossing the others are lifted over them until they land.
+ * was; without `fades`, both just appear and go. Items crossing the others
+ * are lifted over them until they land.
  */
-export function reorder(before: Positions, items: Items, spring: Spring) {
+export function reorder(before: Positions, items: Items, spring: Spring, fades: boolean) {
   // the final layout, without glides in flight, before measuring it
   for (const el of items.values()) {
     stop(el);
@@ -73,6 +74,7 @@ export function reorder(before: Positions, items: Items, spring: Spring) {
       crossing.set(el, finished);
     }
   }
+  if (!fades) return;
   leave(left);
   // an arrival holding an item that moves in shows at once, or its fade would hide that glide
   for (const el of arrivals)

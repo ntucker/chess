@@ -1,6 +1,6 @@
 /**
- * The web's motion engine: a list measures its items before React changes
- * the screen and glides each from where it was (`reorder.ts`), animating the
+ * The web's motion engine: a list measures its items before each commit
+ * and glides each from where it was (`reorder.ts`), animating the
  * DOM elements React Native Web renders (`dom.ts`). Not React's
  * `<ViewTransition>`: an interrupted view transition skips to its end rather
  * than turning around at the speed it had, and the page can't be used while
@@ -34,14 +34,14 @@ class Measured extends Component<MeasuredProps> {
     };
   };
 
-  getSnapshotBeforeUpdate(prev: MotionListProps): Positions | null {
-    if (this.props.still || Object.is(prev.layoutDependency, this.props.layoutDependency))
-      return null;
-    return measure(this.items);
+  getSnapshotBeforeUpdate(): Positions | null {
+    return this.props.still ? null : measure(this.items);
   }
 
-  componentDidUpdate(_prev: MotionListProps, _state: unknown, before: Positions | null) {
-    if (before) reorder(before, this.items, this.props.spring ?? springs.brisk);
+  componentDidUpdate(prev: MotionListProps, _state: unknown, before: Positions | null) {
+    if (!before) return;
+    const fades = !Object.is(prev.layoutDependency, this.props.layoutDependency);
+    reorder(before, this.items, springs.brisk, fades);
   }
 
   render() {
@@ -56,6 +56,7 @@ export function MotionView({ id, ...rest }: MotionViewProps) {
   // No cleanup returned, so React calls this with null when the view goes
   // (React Native Web's View ignores a returned cleanup anyway).
   const joined = useRef<() => void>(undefined);
+  // React Native Web hands a ref its DOM element, which React Native's types don't say.
   const ref = useCallback(
     (el: MotionElement | null) => {
       joined.current?.();

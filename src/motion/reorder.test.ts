@@ -54,7 +54,7 @@ describe('reorder', () => {
     const row = element({ x: 0, y: 0 });
     const before = measure(new Map([['a', row]]));
     mockLayout.set(row, { x: 0, y: 40 });
-    reorder(before, new Map([['a', row]]), springs.brisk);
+    reorder(before, new Map([['a', row]]), springs.brisk, true);
     expect(named('glide')).toEqual([[row, springs.brisk, { x: 0, y: -40 }, { x: 0, y: 0 }]]);
   });
 
@@ -68,7 +68,7 @@ describe('reorder', () => {
     const before = measure(items);
     mockLayout.set(group, { x: 0, y: 100 });
     mockLayout.set(row, { x: 0, y: 130 });
-    reorder(before, items, springs.brisk);
+    reorder(before, items, springs.brisk, true);
     const from = new Map(named('glide').map(([el, , offset]) => [el, offset]));
     expect(from.get(group)).toEqual({ x: 0, y: -100 });
     expect(from.get(row)).toEqual({ x: 0, y: -20 });
@@ -93,6 +93,7 @@ describe('reorder', () => {
         ['added', added],
       ]),
       springs.brisk,
+      true,
     );
     expect(named('arrive')).toEqual([[added, springs.brisk]]);
     expect(named('leave')).toEqual([[[]]]);
@@ -107,7 +108,7 @@ describe('reorder', () => {
         ['gone', gone],
       ]),
     );
-    reorder(before, new Map([['kept', kept]]), springs.brisk);
+    reorder(before, new Map([['kept', kept]]), springs.brisk, true);
     expect(named('leave')).toEqual([
       [[expect.objectContaining({ el: gone, at: { x: 0, y: 20 } })]],
     ]);
@@ -123,10 +124,35 @@ describe('reorder', () => {
     const before = measure(items);
     mockLayout.set(first, { x: 0, y: 20 });
     mockLayout.set(second, { x: 0, y: 0 });
-    reorder(before, items, springs.brisk);
+    reorder(before, items, springs.brisk, true);
     expect(named('lift').filter(([, lifted]) => lifted)).toEqual([
       [first, true],
       [second, true],
     ]);
+  });
+
+  it('without fades, still glides a moved item but lets arrivals and leavers come and go', () => {
+    const moved = element({ x: 0, y: 0 });
+    const gone = element({ x: 0, y: 20 });
+    const before = measure(
+      new Map([
+        ['moved', moved],
+        ['gone', gone],
+      ]),
+    );
+    mockLayout.set(moved, { x: 0, y: 40 });
+    const added = element({ x: 0, y: 80 });
+    reorder(
+      before,
+      new Map([
+        ['moved', moved],
+        ['added', added],
+      ]),
+      springs.brisk,
+      false,
+    );
+    expect(named('glide')).toEqual([[moved, springs.brisk, { x: 0, y: -40 }, { x: 0, y: 0 }]]);
+    expect(named('arrive')).toEqual([]);
+    expect(named('leave')).toEqual([]);
   });
 });

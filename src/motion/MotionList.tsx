@@ -1,5 +1,5 @@
 /**
- * Android's motion engine: Reanimated layout animations, which start in the
+ * Android's motion engine (the native one: the app has no iOS build): Reanimated layout animations, which start in the
  * same frame React Native mounts the new layout. Animating from JavaScript
  * after a commit can't: Reanimated holds its updates back while React
  * commits, so the new layout shows for a frame before the animation's start.
@@ -8,15 +8,12 @@
  * springs drop velocity that points away from the target, so a reversal
  * would stall instead of turning around).
  *
- * Unlike the web, an item glides whenever its place changes, not only with
- * `layoutDependency`: that names the change whose new items fade in. A
- * removed item goes at once: Reanimated keeps a view with an `exiting`
+ * A removed item goes at once: Reanimated keeps a view with an `exiting`
  * animation on screen for a frame or two even when that animation does
  * nothing, which drew old rows over new ones.
  */
 import { useReducedMotion } from '@reactive/silk-native';
 import { Component, createContext, useContext, useMemo, useState } from 'react';
-import { View } from 'react-native';
 import Animated, {
   type AnimationObject,
   defineAnimation,
@@ -54,13 +51,13 @@ class Arrivals extends Component<ArrivalsProps, State> {
   state: State = { dependency: this.props.layoutDependency, list: null };
 
   static getDerivedStateFromProps(
-    { layoutDependency, spring = springs.brisk, still }: ArrivalsProps,
+    { layoutDependency, still }: ArrivalsProps,
     { dependency, list }: State,
   ): State | null {
     const arriving = !Object.is(dependency, layoutDependency);
     if (still) return list || arriving ? { dependency: layoutDependency, list: null } : null;
-    if (!arriving && list?.spring === spring && !list.arriving) return null;
-    return { dependency: layoutDependency, list: { spring, arriving } };
+    if (!arriving && list && !list.arriving) return null;
+    return { dependency: layoutDependency, list: arriving ? ARRIVING : STEADY };
   }
 
   render() {
@@ -68,6 +65,8 @@ class Arrivals extends Component<ArrivalsProps, State> {
   }
 }
 
+const ARRIVING: ListContextValue = { spring: springs.brisk, arriving: true };
+const STEADY: ListContextValue = { spring: springs.brisk, arriving: false };
 const ListContext = createContext<ListContextValue | null>(null);
 
 /** Where a view's spring on one axis started, to read its speed if interrupted */
@@ -84,7 +83,7 @@ export function MotionView({ id: _id, ...rest }: MotionViewProps) {
   const layout = useMemo(() => spring && layoutTransition(spring, runs), [spring, runs]);
   // Read once, at mount: only an arrival fades in.
   const [entering] = useState(() => (list?.arriving ? enterAnimation(list.spring) : undefined));
-  if (!layout) return <View {...rest} />;
+  // Always an Animated.View, so turning reduced motion on or off keeps each item mounted.
   return <Animated.View {...rest} layout={layout} entering={entering} />;
 }
 
