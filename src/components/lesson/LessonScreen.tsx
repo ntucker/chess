@@ -6,7 +6,7 @@ import { View } from 'react-native';
 import { BrowserOnly } from '@/components/BrowserOnly';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { FootnoteLink } from '@/components/FootnoteLink';
-import { StatusHeadline } from '@/components/GameStatus';
+import { type HeadlineProps, StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { OpponentPicker } from '@/components/OpponentPicker';
@@ -359,6 +359,7 @@ function LessonScreen({
             failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
             eyebrowInHeader
             eyebrowLink={listLink}
+            news={status.news ?? 'all'}
           />
           {/* The scoresheet drawer takes the place of this part on a narrow page, under the headline, which tells of a failure. */}
           <View {...part(scoresheetOpen ? 'wide-only' : 'lesson-body', styles.sections)}>
@@ -478,8 +479,10 @@ interface StatusInput {
 /**
  * The panel's headline: where the lesson stands and whose move it is. In
  * Practice, right after the learner's move, it judges that move first.
- * `routine` marks a headline that only says whose move it is and how to use
- * the screen, once the learner has moved and so has seen how.
+ * `news` says what of it is news, where the title only says whose move it
+ * is (`detail`), or the detail is also how to use the screen, once the
+ * learner has moved and so has seen how (`none`); left out, all of it is
+ * news. See `StatusHeadline`.
  */
 function describeStatus(
   view: LessonView,
@@ -498,7 +501,7 @@ function describeStatus(
     startsRun,
     practice,
   }: StatusInput,
-) {
+): Pick<HeadlineProps, 'eyebrow' | 'title' | 'detail' | 'news'> {
   if (loading) return { eyebrow: picking ? OPENINGS_TITLE : title, ...LOADING };
   if (picking)
     return {
@@ -536,7 +539,7 @@ function describeStatus(
       eyebrow,
       title: 'Your move.',
       // Only Explore's detail at the latest move is how-to; the others say what a move here does.
-      routine: !startsRun && !practice && !viewing,
+      news: !startsRun && !practice && !viewing ? 'none' : 'detail',
       detail:
         practice && startsRun && viewing
           ? YOUR_MOVE.practice.restart
@@ -556,7 +559,7 @@ function describeStatus(
   return {
     eyebrow,
     title: reply,
-    routine: !startsRun,
+    news: startsRun ? 'detail' : 'none',
     detail: canPlay
       ? 'Point at a reply to see what it aims for, then play it.'
       : 'Point at a reply to see what it aims for.',
@@ -616,6 +619,7 @@ function LessonPlaceholder({
             eyebrow="Lesson"
             title={message ? 'Curtain stays down.' : LOADING.title}
             detail={message ?? LOADING.detail}
+            news="all"
           />
         </View>
       }
