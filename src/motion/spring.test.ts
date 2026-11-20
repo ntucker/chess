@@ -38,5 +38,15 @@ describe('springMotion', () => {
     expect(stops[0]).toBe(0);
     expect(stops.at(-1)).toBe(1);
     expect(durationMs).toBe(Math.round(((stops.length - 1) / 60) * 1000));
+    expect(Math.max(...stops)).toBe(1);
+  });
+
+  it('passes the target and comes back when it bounces', () => {
+    const { durationMs, easing } = springMotion({ duration: 0.4, bounce: 0.35 });
+    const stops = /^linear\((.*)\)$/.exec(easing)![1].split(', ').map(Number);
+    expect(Math.max(...stops)).toBeGreaterThan(1.05);
+    expect(stops.at(-1)).toBe(1);
+    // Longer than the time to reach the target, since the bounces follow it.
+    expect(durationMs).toBeGreaterThan(400);
   });
 });

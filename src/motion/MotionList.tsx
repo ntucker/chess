@@ -1,6 +1,6 @@
 /**
- * Android's motion engine (the native one: the app has no iOS build): Reanimated layout animations, which start in the
- * same frame React Native mounts the new layout. Animating from JavaScript
+ * Android's motion engine (the native one: the app has no iOS build):
+ * Reanimated layout animations, which start in the same frame React Native mounts the new layout. Animating from JavaScript
  * after a commit can't: Reanimated holds its updates back while React
  * commits, so the new layout shows for a frame before the animation's start.
  * Each item springs from where it is on screen to its new place on the UI
@@ -34,40 +34,38 @@ interface ArrivalsProps extends MotionListProps {
   readonly still: boolean;
 }
 
-interface ListContextValue {
-  readonly spring: Spring;
-  /** This render carries the change the list animates: items mounting in it fade in */
-  readonly arriving: boolean;
-}
+/**
+ * Whether this render carries the list's `layoutDependency` change, so items
+ * mounting in it fade in; null outside a list or while motion is reduced.
+ */
+type Arriving = boolean | null;
 
 interface State {
   readonly dependency: unknown;
-  /** Null while motion is reduced */
-  readonly list: ListContextValue | null;
+  readonly arriving: Arriving;
 }
 
 /** Works out, render by render, whether this render carries the change to animate */
 class Arrivals extends Component<ArrivalsProps, State> {
-  state: State = { dependency: this.props.layoutDependency, list: null };
+  state: State = { dependency: this.props.layoutDependency, arriving: null };
 
   static getDerivedStateFromProps(
     { layoutDependency, still }: ArrivalsProps,
-    { dependency, list }: State,
+    state: State,
   ): State | null {
-    const arriving = !Object.is(dependency, layoutDependency);
-    if (still) return list || arriving ? { dependency: layoutDependency, list: null } : null;
-    if (!arriving && list && !list.arriving) return null;
-    return { dependency: layoutDependency, list: arriving ? ARRIVING : STEADY };
+    const arriving = still ? null : !Object.is(state.dependency, layoutDependency);
+    if (arriving === state.arriving && Object.is(state.dependency, layoutDependency)) return null;
+    return { dependency: layoutDependency, arriving };
   }
 
   render() {
-    return <ListContext value={this.state.list}>{this.props.children}</ListContext>;
+    return <ListContext value={this.state.arriving}>{this.props.children}</ListContext>;
   }
 }
 
-const ARRIVING: ListContextValue = { spring: springs.brisk, arriving: true };
-const STEADY: ListContextValue = { spring: springs.brisk, arriving: false };
-const ListContext = createContext<ListContextValue | null>(null);
+const ListContext = createContext<Arriving>(null);
+
+const SPRING = springs.brisk;
 
 /** Where a view's spring on one axis started, to read its speed if interrupted */
 interface Run {
@@ -77,12 +75,15 @@ interface Run {
 type Runs = { x?: Run; y?: Run };
 
 export function MotionView({ id: _id, ...rest }: MotionViewProps) {
-  const list = useContext(ListContext);
-  const spring = list?.spring;
+  const arriving = useContext(ListContext);
+  const moving = arriving !== null;
   const runs = useSharedValue<Runs>({});
-  const layout = useMemo(() => spring && layoutTransition(spring, runs), [spring, runs]);
+  const layout = useMemo(
+    () => (moving ? layoutTransition(SPRING, runs) : undefined),
+    [moving, runs],
+  );
   // Read once, at mount: only an arrival fades in.
-  const [entering] = useState(() => (list?.arriving ? enterAnimation(list.spring) : undefined));
+  const [entering] = useState(() => (arriving ? enterAnimation(SPRING) : undefined));
   // Always an Animated.View, so turning reduced motion on or off keeps each item mounted.
   return <Animated.View {...rest} layout={layout} entering={entering} />;
 }

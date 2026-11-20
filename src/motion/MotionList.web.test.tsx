@@ -9,7 +9,12 @@ jest.mock('./reorder', () => ({
     mockCalls.push(['measure', [...items.keys()]]);
     return new Map();
   },
-  reorder: (_before: unknown, items: Map<string, unknown>, _spring: unknown, fades: boolean) => {
+  reorder: (
+    _before: unknown,
+    items: Map<string, unknown>,
+    _spring: unknown,
+    { fades }: { fades: boolean },
+  ) => {
     mockCalls.push(['reorder', [...items.keys()], fades]);
   },
 }));

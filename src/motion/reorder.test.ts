@@ -54,7 +54,7 @@ describe('reorder', () => {
     const row = element({ x: 0, y: 0 });
     const before = measure(new Map([['a', row]]));
     mockLayout.set(row, { x: 0, y: 40 });
-    reorder(before, new Map([['a', row]]), springs.brisk, true);
+    reorder(before, new Map([['a', row]]), springs.brisk, { fades: true });
     expect(named('glide')).toEqual([[row, springs.brisk, { x: 0, y: -40 }, { x: 0, y: 0 }]]);
   });
 
@@ -68,7 +68,7 @@ describe('reorder', () => {
     const before = measure(items);
     mockLayout.set(group, { x: 0, y: 100 });
     mockLayout.set(row, { x: 0, y: 130 });
-    reorder(before, items, springs.brisk, true);
+    reorder(before, items, springs.brisk, { fades: true });
     const from = new Map(named('glide').map(([el, , offset]) => [el, offset]));
     expect(from.get(group)).toEqual({ x: 0, y: -100 });
     expect(from.get(row)).toEqual({ x: 0, y: -20 });
@@ -93,7 +93,7 @@ describe('reorder', () => {
         ['added', added],
       ]),
       springs.brisk,
-      true,
+      { fades: true },
     );
     expect(named('arrive')).toEqual([[added, springs.brisk]]);
     expect(named('leave')).toEqual([[[]]]);
@@ -108,7 +108,7 @@ describe('reorder', () => {
         ['gone', gone],
       ]),
     );
-    reorder(before, new Map([['kept', kept]]), springs.brisk, true);
+    reorder(before, new Map([['kept', kept]]), springs.brisk, { fades: true });
     expect(named('leave')).toEqual([
       [[expect.objectContaining({ el: gone, at: { x: 0, y: 20 } })]],
     ]);
@@ -124,7 +124,7 @@ describe('reorder', () => {
     const before = measure(items);
     mockLayout.set(first, { x: 0, y: 20 });
     mockLayout.set(second, { x: 0, y: 0 });
-    reorder(before, items, springs.brisk, true);
+    reorder(before, items, springs.brisk, { fades: true });
     expect(named('lift').filter(([, lifted]) => lifted)).toEqual([
       [first, true],
       [second, true],
@@ -149,10 +149,35 @@ describe('reorder', () => {
         ['added', added],
       ]),
       springs.brisk,
-      false,
+      { fades: false },
     );
     expect(named('glide')).toEqual([[moved, springs.brisk, { x: 0, y: -40 }, { x: 0, y: 0 }]]);
     expect(named('arrive')).toEqual([]);
     expect(named('leave')).toEqual([]);
+  });
+
+  it('keeps a crossing item lifted when another commit interrupts its glide', () => {
+    const first = element({ x: 0, y: 0 });
+    const second = element({ x: 0, y: 20 });
+    const items = new Map([
+      ['first', first],
+      ['second', second],
+    ]);
+    const swapped = measure(items);
+    mockLayout.set(first, { x: 0, y: 20 });
+    mockLayout.set(second, { x: 0, y: 0 });
+    reorder(swapped, items, springs.brisk, { fades: true });
+    // mid-glide, each has already passed the other: by position alone neither crosses now
+    mockLayout.set(first, { x: 0, y: 15 });
+    mockLayout.set(second, { x: 0, y: 5 });
+    const midway = measure(items);
+    mockLayout.set(first, { x: 0, y: 20 });
+    mockLayout.set(second, { x: 0, y: 0 });
+    mockCalls.length = 0;
+    reorder(midway, items, springs.brisk, { fades: false });
+    expect(named('lift').filter(([, lifted]) => lifted)).toEqual([
+      [first, true],
+      [second, true],
+    ]);
   });
 });

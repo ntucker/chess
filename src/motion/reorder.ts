@@ -34,12 +34,19 @@ export function measure(items: Items): Positions {
  * another that moves rides along and travels only the rest of the way. A key
  * `before` lacks fades in (unless it takes the exact spot of a key that just
  * left: the same item under a new id); a key that left fades out where it
- * was; without `fades`, both just appear and go. Items crossing the others
- * are lifted over them until they land.
+ * was; unless `fades` is off, when both just appear and go. Items crossing
+ * the others are lifted over them until they land.
  */
-export function reorder(before: Positions, items: Items, spring: Spring, fades: boolean) {
+export function reorder(
+  before: Positions,
+  items: Items,
+  spring: Spring,
+  { fades }: { readonly fades: boolean },
+) {
   // the final layout, without glides in flight, before measuring it
+  const wereCrossing = new Set<MotionElement>();
   for (const el of items.values()) {
+    if (crossing.delete(el)) wereCrossing.add(el);
     stop(el);
     lift(el, false);
   }
@@ -66,10 +73,14 @@ export function reorder(before: Positions, items: Items, spring: Spring, fades: 
   const farthest = Math.max(0, ...glides.map(({ length }) => length));
   for (const { el, from, velocity, length } of glides) {
     const finished = glide(el, spring, from, velocity);
-    if (finished && length >= farthest / 2 && length > NUDGE && passesAnother(el, moves)) {
+    if (!finished || length <= NUDGE) continue;
+    // a crossing interrupted by another commit carries on lifted
+    if (wereCrossing.has(el) || (length >= farthest / 2 && passesAnother(el, moves))) {
       lift(el, true);
       finished.then(() => {
-        if (crossing.get(el) === finished) lift(el, false);
+        if (crossing.get(el) !== finished) return;
+        crossing.delete(el);
+        lift(el, false);
       });
       crossing.set(el, finished);
     }
@@ -86,7 +97,7 @@ const offsetOf = ({ was, at }: { was: Point; at: Point }): Point => ({
   y: was.y - at.y,
 });
 
-/** The latest crossing glide of each lifted item: an older one landing leaves it lifted */
+/** The crossing glide of each lifted item: an older one landing leaves it lifted */
 const crossing = new WeakMap<MotionElement, Promise<void>>();
 
 /** px: a move this short crosses nothing */

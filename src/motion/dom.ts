@@ -114,8 +114,8 @@ export function arrive(el: MotionElement, spring: Spring) {
 }
 
 // Quicker than the glide into its place, so its text is mostly gone before
-// the item taking its place gets there. A plain curve, not a spring: it goes
-// nowhere, and an opacity overshoot would flash.
+// the item taking its place gets there. A plain curve, not a spring: it has
+// no place to land, and an opacity overshoot would flash.
 const LEAVE: Keyframe[] = [{ opacity: 1 }, { opacity: 0, translate: '-12px 0' }];
 const LEAVE_TIMING: KeyframeAnimationOptions = {
   duration: 160,

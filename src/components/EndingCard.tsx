@@ -6,7 +6,7 @@ import Animated, { type CSSAnimationKeyframes } from 'react-native-reanimated';
 import { type Ending, endingWords, type Mood } from '@/game/ending';
 import { ACT_TIMES, type CardBand, cardBand } from '@/board/endingAct';
 import type { Color } from '@/game/replay';
-import { springMotion } from '@/theme/motion';
+import { springMotion } from '@/motion/spring';
 import { timingFunction } from '@/theme/timingFunction';
 import { rgba } from '@/theme/theme';
 

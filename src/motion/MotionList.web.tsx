@@ -41,7 +41,7 @@ class Measured extends Component<MeasuredProps> {
   componentDidUpdate(prev: MotionListProps, _state: unknown, before: Positions | null) {
     if (!before) return;
     const fades = !Object.is(prev.layoutDependency, this.props.layoutDependency);
-    reorder(before, this.items, springs.brisk, fades);
+    reorder(before, this.items, springs.brisk, { fades });
   }
 
   render() {
