@@ -21,6 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # .agents/projects/autoland.md lists this job's name as a required check; rename both together.
   check:
     name: Format, lint, typecheck and test
     runs-on: ubuntu-latest
