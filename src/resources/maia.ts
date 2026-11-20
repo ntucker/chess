@@ -18,7 +18,8 @@ import { maiaMove } from '@/maia/engine';
 export const getMaiaMove = new Endpoint(maiaMove, {
   name: 'getMaiaMove',
   // Maia plays the move its network rates highest, so a position's answer
-  // never changes; a failure is never reused, so the next ask tries again.
+  // never changes. A failure goes stale at once (after the millisecond it
+  // came in), so the next ask tries again.
   dataExpiryLength: Infinity,
   errorExpiryLength: 0,
 });

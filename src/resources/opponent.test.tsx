@@ -27,6 +27,8 @@ describe('fetchOpponentMove', () => {
     const controller = newController();
     jest.mocked(maiaMove).mockReset().mockRejectedValueOnce(new Error('no worker'));
     await expect(fetchOpponentMove(controller, 1300, [])).rejects.toThrow('no worker');
+    // A failure is stale once its millisecond has passed.
+    await new Promise((resolve) => setTimeout(resolve, 2));
     jest.mocked(maiaMove).mockResolvedValue('e2e4');
     expect(await fetchOpponentMove(controller, 1300, [])).toBe('e2e4');
   });

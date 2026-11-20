@@ -50,11 +50,13 @@ const builds = existsSync(BUILDS_FILE)
   ? JSON.parse(readFileSync(BUILDS_FILE, 'utf8'))
   : [hashedFiles('.')].filter((files) => files.length);
 const files = hashedFiles(site);
-// The earlier builds kept, without this one: publishing a build again (a
-// re-run) moves it to the newest place rather than taking a second one.
-const earlier = builds
-  .filter((build) => JSON.stringify(build) !== JSON.stringify(files))
-  .slice(1 - KEEP_BUILDS);
+// Publishing a build again (a re-run) moves it to the newest place rather
+// than taking a second one.
+const kept = [
+  ...builds.filter((build) => JSON.stringify(build) !== JSON.stringify(files)),
+  files,
+].slice(-KEEP_BUILDS);
+const earlier = kept.slice(0, -1);
 
 // Set aside the earlier builds' files, clear the site, and put them back
 // under the new build.
@@ -68,4 +70,4 @@ for (const entry of readdirSync('.')) {
 cpSync(carried, '.', { recursive: true });
 cpSync(site, '.', { recursive: true });
 rmSync(carried, { recursive: true });
-writeFileSync(BUILDS_FILE, `${JSON.stringify([...earlier, files])}\n`);
+writeFileSync(BUILDS_FILE, `${JSON.stringify(kept)}\n`);

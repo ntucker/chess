@@ -103,21 +103,15 @@ describe('replace-site', () => {
     expect(files).toContain('assets/assets/maia/maia-1500.b09c.bin');
   });
 
-  it('keeps one place for the newest build published again, as a re-run does', () => {
-    publish('a', build('aaa'));
-    publish('b', build('bbb'));
-    publish('b', build('bbb'));
+  it.each([
+    ['the newest build, as a re-run does', 'b'],
+    ['an older build', 'a'],
+  ])('keeps one place for %s published again', (_, again) => {
+    publish('a', build('a'));
+    publish('b', build('b'));
+    publish(again, build(again));
     const builds = JSON.parse(readFileSync(join(pages, '.builds.json'), 'utf8'));
     expect(builds).toHaveLength(2);
-    expect(builds.at(-1)).toContain('_expo/static/js/web/maia-bbb.js');
-  });
-
-  it('keeps one place for an older build published again', () => {
-    publish('a', build('aaa'));
-    publish('b', build('bbb'));
-    publish('a', build('aaa'));
-    const builds = JSON.parse(readFileSync(join(pages, '.builds.json'), 'utf8'));
-    expect(builds).toHaveLength(2);
-    expect(builds.at(-1)).toContain('_expo/static/js/web/maia-aaa.js');
+    expect(builds.at(-1)).toContain(`_expo/static/js/web/maia-${again}.js`);
   });
 });

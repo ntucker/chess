@@ -56,7 +56,7 @@ export function useWarmOpponent(opponent: Opponent, active: boolean) {
   useEffect(() => {
     if (!active || opponent === 'stockfish') return;
     // Unawaited, a failure is only stored, and Maia's move asks again
-    // (getMaiaMove never reuses a failure).
+    // (getMaiaMove's failures go stale at once).
     ctrl.fetchIfStale(getMaiaMove, opponent, []);
   }, [ctrl, opponent, active]);
 }
