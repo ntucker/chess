@@ -188,12 +188,14 @@ function LessonScreen({
     picking ? lessonsAfter(LESSON_INDEX, learner, [...shownLine, uci]) : [];
   const line = view.variation.at(-1);
   const names = pathNames(view.variation);
+  // A caption drops a group only where a narrow page's header shows it too: the line and its parent.
+  const shownGroups = view.variation.slice(-2);
   const leadsTo = (candidate: Candidate) => {
     const into = openings(candidate.move.uci);
     if (into.length) return into.map((id) => LESSON_INDEX[id].title).join(' or ');
     if (candidate.variation === undefined) return 'Leaves the guide';
     const variation = lesson.variations[candidate.variation];
-    return variation === line ? undefined : nameWithin(variation.name, view.variation);
+    return variation === line ? undefined : nameWithin(variation.name, shownGroups);
   };
   // What the guide's candidate rows and Stockfish's top moves' rows share.
   const rowProps = {
@@ -207,7 +209,7 @@ function LessonScreen({
   const rejoins = ({ variation }: Candidate) =>
     variation === undefined
       ? undefined
-      : `Rejoins ${nameWithin(lesson.variations[variation].name, view.variation)}`;
+      : `Rejoins ${nameWithin(lesson.variations[variation].name, shownGroups)}`;
   // Pointing at an opening, or picking up a piece that plays one, starts
   // loading its lesson, so playing it needn't wait. A failure shows once the
   // opening is picked.
@@ -231,7 +233,7 @@ function LessonScreen({
       place={
         picking
           ? { name: OPENINGS_TITLE }
-          : { name: names.at(-1) ?? lesson.title, within: names.at(-2) }
+          : { name: names.at(-1) ?? lesson.title, parent: names.at(-2) }
       }
       board={
         <BoardColumn
