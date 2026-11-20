@@ -41,7 +41,7 @@ describe('shipped lessons', () => {
 describe('getLessons', () => {
   it('leaves out a lesson that fails to load, so the rest still mark their rows', async () => {
     // Jest can't run the real dynamic imports, so both loaders are stand-ins.
-    const loaders = { ...LESSONS };
+    const original = { ...LESSONS };
     Object.assign(LESSONS, {
       'caro-kann': async () => ({ default: SAMPLE }),
       slav: () => Promise.reject(new Error('chunk gone')),
@@ -49,7 +49,7 @@ describe('getLessons', () => {
     try {
       expect(await getLessons(['caro-kann', 'slav'])).toEqual({ 'caro-kann': SAMPLE });
     } finally {
-      Object.assign(LESSONS, loaders);
+      Object.assign(LESSONS, original);
     }
   });
 });

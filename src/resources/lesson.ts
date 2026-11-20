@@ -38,7 +38,8 @@ export const getLesson = new Endpoint(
 /**
  * The lessons `ids` that load, by id (see `getLesson`), for a screen that
  * needs several at once and can do without any of them: one that fails to
- * load (a chunk gone after a redeploy, or no network) is left out. Each is
+ * load (a chunk gone after a redeploy, or no network) is left out, and stays
+ * out until `ids` changes, since the answer is kept like any other. Each is
  * the imported file itself, the same object `getLesson` gives (`readLesson`
  * returns what it reads).
  *
@@ -48,11 +49,11 @@ export const getLesson = new Endpoint(
  */
 export const getLessons = new Endpoint(
   async (ids: readonly LessonId[]): Promise<Partial<Record<LessonId, Lesson>>> => {
-    const loaded = await Promise.allSettled(ids.map((id) => getLesson(id)));
+    const loaded = await Promise.allSettled(
+      ids.map(async (id) => [id, await getLesson(id)] as const),
+    );
     return Object.fromEntries(
-      loaded.flatMap((result, i) =>
-        result.status === 'fulfilled' ? [[ids[i], result.value]] : [],
-      ),
+      loaded.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : [])),
     );
   },
   { name: 'getLessons', dataExpiryLength: Infinity },
