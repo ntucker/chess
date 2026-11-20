@@ -145,6 +145,16 @@ describe("useLesson's Stockfish best move", () => {
     await act(async () => lesson().board.onPress?.('a3', 'b1'));
     expect(lesson().guidance.best).toBe('c2c3');
     expect(lesson().guidance.drawnCandidates).toEqual([]);
+    // Pointing at a row previews it; leaving the panel brings the piece's moves back.
+    await act(async () => lesson().board.onPress?.('g1'));
+    await act(async () => lesson().pointRow('c2c3'));
+    expect(lesson().guidance.preview?.candidate.san).toBe('c3');
+    await act(async () => lesson().leave());
+    expect(lesson().guidance.drawnCandidates.map(({ san }) => san)).toEqual(['Nf3']);
+    expect(lesson().guidance.best).toBeUndefined();
+    // A drag that ends without a move lets it go.
+    await act(async () => lesson().board.onDrag?.(null));
+    expect(lesson().guidance.best).toBe('c2c3');
     // Clicking the selected piece again lets it go too, as the board does.
     await act(async () => lesson().board.onPress?.('g1'));
     expect(lesson().guidance.best).toBeUndefined();

@@ -186,7 +186,8 @@ export function useLesson(
     mode,
     switches: settings,
     preview: pointer && previewOf(pointer),
-    lifted: pointer?.at === 'drag' || pointer?.at === 'select' ? pointer.from : undefined,
+    // A dragged piece, or else one a click selected.
+    lifted: pointer?.at === 'drag' ? pointer.from : here?.selected,
     pointed: here?.note,
     playing: playing?.played,
     engine: { best: evaluation?.best, top },
@@ -212,6 +213,8 @@ export function useLesson(
     const at: Pointer | undefined = drag ? { at: 'drag', ...drag } : undefined;
     const candidate = at && !previewOf(at) ? { ...at, to: undefined } : at;
     dispatch({ type: 'candidate', key, candidate });
+    // A drag that ends without a move lets the piece go, as the board mostly does.
+    if (!drag) dispatch({ type: 'select', key });
   };
   const playMove = (uci: string) => {
     if (canMove) game.play(uci);
@@ -240,14 +243,10 @@ export function useLesson(
         play(press);
         return;
       }
-      // Any other press selects a piece the way the board does, and draws its
-      // moves as a drag would, or lets the piece go.
-      const select = boardSelect(current, canMove, square, picked);
-      dispatch({
-        type: 'candidate',
-        key,
-        ...(select && { candidate: { at: 'select', from: select } }),
-      });
+      if (press === 'end') dispatch({ type: 'candidate', key });
+      // Any press selects a piece the way the board does, and draws its moves
+      // as a drag would, or lets the piece go.
+      dispatch({ type: 'select', key, selected: boardSelect(current, canMove, square, picked) });
     },
   };
   // The opponent's reply would move the board on and end a playback at once,
