@@ -39,12 +39,13 @@ const NOT_NOW_BEFORE =
   /\b(?:white|black|white's|black's|can|could|will|would|must|may|later|next|threatens?|aims?|aiming|ready)\b|\b(?:it|to)\s*$/i;
 /**
  * Words after a win that do the same, given the `opponent`'s colour: "wins
- * the pawn later" (not "next to the king" or "next toward it"), "wins it back for White" when
- * White is the opponent. Not a bare colour, which there often names the
- * opponent's loss: "winning back the piece White just took".
+ * the pawn later" or "next" (but not "next to" or "next towards" a square),
+ * and "wins it back for White" when White is the opponent. Not a bare colour,
+ * which there often names the opponent's loss: "winning back the piece White
+ * just took".
  */
-const notNowAfter = (opponent: Color) =>
-  new RegExp(`\\b(?:later|next(?!\\s+to(?:ward)?\\b)|for ${opponent})\\b`, 'i');
+const notNowAfterFor = (opponent: Color) =>
+  new RegExp(`\\b(?:later|next(?!\\s+to(?:wards?)?\\b)|for ${opponent})\\b`, 'i');
 
 /**
  * Whether `text` says the learner's move wins material now: "Your knight wins
@@ -53,12 +54,12 @@ const notNowAfter = (opponent: Color) =>
  * the "if" and the clause after it ("if White takes, your queen wins it back").
  */
 function claimsWin(text: string, opponent: Color): boolean {
-  const after = notNowAfter(opponent);
+  const notNowAfter = notNowAfterFor(opponent);
   return text.split(/[.!?]/).some((sentence) => {
     const clauses = sentence.split(/[,;:]|\band\b/i);
     const conditional = clauses.map((clause) => /\bif\b/i.test(clause));
     return clauses.some(
-      (clause, i) => !conditional[i] && !conditional[i - 1] && winsNow(clause, after),
+      (clause, i) => !conditional[i] && !conditional[i - 1] && winsNow(clause, notNowAfter),
     );
   });
 }

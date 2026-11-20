@@ -144,6 +144,7 @@ describe('the material guard', () => {
     'Your queen takes, winning back the piece White just took.',
     'Your knight wins the pawn back next to the king.',
     'Your knight wins the pawn back next toward the king.',
+    'Your knight wins the pawn back next towards the king.',
     'Your knight wins the pawn back for Black.',
   ])('refuses "%s" when the reply takes it back', (text) => {
     const result = explainedNote(answer(text), recaptured);

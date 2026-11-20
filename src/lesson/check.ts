@@ -333,7 +333,7 @@ function emptyThreat(threat: Threat, pos: Chess): string | undefined {
     : 'takes a defended piece and wins nothing';
 }
 
-/** A role's worth for weighing a capture: a king's is beyond any trade. */
+/** A role's worth for weighing a capture or a pin: a king's is beyond any trade. */
 const pieceWorth = (role: Role) => (role === 'king' ? Infinity : VALUES[role]);
 
 /**
