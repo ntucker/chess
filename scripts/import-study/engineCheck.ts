@@ -38,8 +38,11 @@ export interface EngineReport {
   readonly unbooked: readonly { line: string; move: string; quality: string }[];
   /** Book moves left that no book path reaches any more. */
   readonly unreachable: readonly { line: string; move: string }[];
-  /** Overruled moves taken out, since the guide had nothing else there, with the positions only they reached. */
-  readonly cut: readonly { line: string; move: string; positions: number }[];
+  /**
+   * Each position whose overruled moves were taken out, since the guide had
+   * nothing else there, with how many positions went with them.
+   */
+  readonly cut: readonly { line: string; moves: readonly string[]; positions: number }[];
   /** Notes dropped, where they were and why. */
   readonly dropped: readonly { line: string; text: string; reason: string }[];
 }
@@ -59,7 +62,7 @@ export async function engineCheck(
   const report = {
     unbooked: [] as { line: string; move: string; quality: string }[],
     unreachable: [] as { line: string; move: string }[],
-    cut: [] as { line: string; move: string; positions: number }[],
+    cut: [] as { line: string; moves: string[]; positions: number }[],
     dropped: [] as { line: string; text: string; reason: string }[],
   };
 
@@ -137,11 +140,12 @@ function cutLines(
   positions: Record<PositionKey, LessonPosition>,
   unbooked: ReadonlyMap<PositionKey, readonly Uci[]>,
   lines: ReadonlyMap<PositionKey, { line: Uci[]; pos: Chess }>,
-  cut: { line: string; move: string; positions: number }[],
+  cut: { line: string; moves: string[]; positions: number }[],
 ) {
   for (const [key, ucis] of unbooked) {
     const position = positions[key];
-    if (position.moves.some(({ book }) => book)) continue;
+    // Gone already when an earlier cut was the only way to it.
+    if (!position || position.moves.some(({ book }) => book)) continue;
     const at = lines.get(key)!;
     const before = Object.keys(positions).length;
     const moves = position.moves.filter(({ uci }) => !ucis.includes(uci));
@@ -150,13 +154,11 @@ function cutLines(
     const still = linesTo({ ...lesson, positions });
     for (const other of Object.keys(positions))
       if (lines.has(other) && !still.has(other)) delete positions[other];
-    for (const uci of ucis) {
-      cut.push({
-        line: sans(lesson, at.line),
-        move: san(at.pos, uci),
-        positions: before - Object.keys(positions).length,
-      });
-    }
+    cut.push({
+      line: sans(lesson, at.line),
+      moves: ucis.map((uci) => san(at.pos, uci)),
+      positions: before - Object.keys(positions).length,
+    });
   }
 }
 

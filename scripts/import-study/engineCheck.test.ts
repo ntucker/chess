@@ -90,8 +90,29 @@ describe('engineCheck', () => {
     const { lesson, report } = await engineCheck(only, evaluate);
     // 1.d4 is a line's end now: the lesson never offers 1...e5 as its main move.
     expect(Object.keys(lesson.positions)).toEqual([keyAfter()]);
-    expect(report.cut).toEqual([{ line: '1.d4', move: 'e5', positions: 3 }]);
+    expect(report.cut).toEqual([{ line: '1.d4', moves: ['e5'], positions: 3 }]);
     expect(report.unreachable).toEqual([]);
+  });
+
+  it('cuts a lone overruled move below another one', async () => {
+    // 1...e5 and then 2...Nc6 are each the guide's only move, and both lose.
+    const nested = {
+      ...LESSON,
+      positions: {
+        [keyAfter()]: LESSON.positions[keyAfter()],
+        [keyAfter('d4')]: at([{ uci: uci('d4', 'e5'), book: true }]),
+        [keyAfter('d4', 'e5')]: LESSON.positions[keyAfter('d4', 'e5')],
+        [keyAfter('d4', 'e5', 'dxe5')]: at([{ uci: uci('d4', 'e5', 'dxe5', 'Nc6'), book: true }]),
+      },
+    };
+    const losing = async (_line: readonly string[], key: string): Promise<Evaluation> =>
+      key === keyAfter() || key === keyAfter('d4') || key === keyAfter('d4', 'e5', 'dxe5')
+        ? { score: 0.52, pawns: 0.2 }
+        : { score: 0.8, pawns: 4 };
+    const { lesson, report } = await engineCheck(nested, losing);
+    expect(Object.keys(lesson.positions)).toEqual([keyAfter()]);
+    expect(report.unbooked.map(({ move }) => move)).toEqual(['e5', 'Nc6']);
+    expect(report.cut).toEqual([{ line: '1.d4', moves: ['e5'], positions: 3 }]);
   });
 
   it('drops a note whose verdict the engine contradicts, and a trap whose bait is no error', async () => {
