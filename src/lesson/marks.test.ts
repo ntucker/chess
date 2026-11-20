@@ -141,6 +141,19 @@ describe('rowMarks', () => {
     });
   });
 
+  it('answers from the passed marks each time, as they grow, stay or shrink', () => {
+    const open = progress([], [ENDS.d5]);
+    const passed = progress([], [ENDS.d5, ENDS.d4]);
+    expect(marksAfter(open, LESSON, 'e4').c6).toBeUndefined();
+    expect(marksAfter(passed, LESSON, 'e4').c6).toBe('passed');
+    // A seen mark makes a new progress with the same passed marks.
+    expect(marksAfter(progress([at('e4', 'c6')], [ENDS.d5, ENDS.d4]), LESSON, 'e4').c6).toBe(
+      'passed',
+    );
+    // Another tab's save can hold fewer.
+    expect(marksAfter(open, LESSON, 'e4').c6).toBeUndefined();
+  });
+
   it('marks nothing with no progress', () => {
     expect(marksAfter(progress([], []), LESSON, 'e4')).toEqual({ c6: undefined, e5: undefined });
   });

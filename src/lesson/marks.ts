@@ -10,7 +10,7 @@
 import type { Chess } from 'chessops/chess';
 import { parseUci } from 'chessops/util';
 
-import { parsePosition, positionKey } from '@/game/replay';
+import { positionKey, readPositionKey } from '@/game/replay';
 import { type Mark, type MarkedPositions, positionHash } from '@/progress/progress';
 
 import type { Lesson, LessonMove, PositionKey, Uci } from './lesson';
@@ -80,11 +80,13 @@ function markSets(progress: MarkedPositions) {
  */
 let lastPassed: { readonly list: readonly string[]; readonly set: ReadonlySet<string> } | undefined;
 function passedSet(list: readonly string[]) {
-  const same =
-    lastPassed?.list.length === list.length &&
-    list.every((hash, i) => lastPassed!.list[i] === hash);
-  if (!same) lastPassed = { list, set: new Set(list) };
-  return lastPassed!.set;
+  const last = lastPassed;
+  if (last?.list.length === list.length && list.every((hash, i) => last.list[i] === hash)) {
+    return last.set;
+  }
+  const set = new Set(list);
+  lastPassed = { list, set };
+  return set;
 }
 
 /** Any opponent's move can be part of a clean run; of the learner's, only book moves. */
@@ -115,7 +117,7 @@ const endsFound = new WeakMap<Lesson, WeakMap<ReadonlySet<string>, Map<PositionK
 /** `cleanEnds`, worked out. */
 function walkCleanEnds(lesson: Lesson, passed: ReadonlySet<string>, start: PositionKey): Ends {
   const visited = new Set<PositionKey>();
-  const toVisit: Step[] = [[start, undefined]];
+  const toVisit: WalkStep[] = [[start, undefined]];
   let status: 'none' | 'passed' = 'none';
   for (let step = toVisit.pop(); step !== undefined; step = toVisit.pop()) {
     const [key, pos] = step;
@@ -130,7 +132,7 @@ function walkCleanEnds(lesson: Lesson, passed: ReadonlySet<string>, start: Posit
 }
 
 /** A position's key, with the position itself while a walk has it at hand. */
-type Step = readonly [PositionKey, Chess | undefined];
+type WalkStep = readonly [PositionKey, Chess | undefined];
 
 /** Each lesson's `cleanNext` answers: a lesson never changes, and replaying moves is slow. */
 const nextKeys = new WeakMap<Lesson, Map<PositionKey, readonly PositionKey[]>>();
@@ -138,20 +140,21 @@ const nextKeys = new WeakMap<Lesson, Map<PositionKey, readonly PositionKey[]>>()
 /**
  * The positions the guide's moves at `key` lead to, leaving out the learner's
  * non-book moves. The position `pos`, when the walk has it, saves reading the
- * key, which costs more than playing the moves.
+ * key, which costs more than playing the moves. A step carries its position
+ * only when its move was just played; one from the cache carries none.
  */
-function cleanNext(lesson: Lesson, key: PositionKey, pos: Chess | undefined): readonly Step[] {
+function cleanNext(lesson: Lesson, key: PositionKey, pos: Chess | undefined): readonly WalkStep[] {
   let byKey = nextKeys.get(lesson);
   if (!byKey) nextKeys.set(lesson, (byKey = new Map()));
   const known = byKey.get(key);
   if (known) return known.map((next) => [next, undefined]);
   // A shipped lesson's keys and moves are checked (check.ts), so this skips
   // playMove's checks and move names.
-  const from = pos ?? parsePosition(`${key} 0 1`)!;
+  const from = pos ?? readPositionKey(key)!;
   const learner = from.turn === lesson.side;
   const steps = lesson.positions[key].moves
     .filter((move) => inCleanRun(move, learner))
-    .map(({ uci }): Step => {
+    .map(({ uci }): WalkStep => {
       const after = from.clone();
       after.play(parseUci(uci)!);
       return [positionKey(after), after];
