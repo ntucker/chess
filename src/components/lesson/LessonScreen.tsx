@@ -431,7 +431,7 @@ function LessonScreen({
           {settingsOpen ? (
             <Sheet title="Settings" onClose={() => setSettingsOpen(false)}>
               <Stack style={styles.sections}>
-                {/* The discs' swap, which a phone's small dots hide; here in a lesson too, since choosing it in a sheet is deliberate. */}
+                {/* A phone's name-bar discs are dots too small to find; this swaps sides from the sheet, in a lesson too. */}
                 <SideChoice side={learner} onChange={onPlayAs} />
                 {settings}
                 <SourceFootnote />
