@@ -17,11 +17,12 @@ import type { Color } from 'chessops/types';
 import type { Lesson, LessonMove, Note, PositionKey, Uci } from '@/lesson/lesson';
 
 import { claudeCli, MODELS, type Ask } from '../convert/claude';
-import { linesTo, type Evaluate } from '../engineCheck';
+import type { Evaluate } from '../engineCheck';
+import { topReasons } from '../report';
 import { bookMoveItems, itemKey, type BookMove } from './items';
 import { explainedNote, type Explained } from './notes';
 import { EXPLAIN, REFUSED } from './prompt';
-import { explainedCounts, unexplainedMoves } from './unexplained';
+import { explainedCounts, unexplainedMoves, type Counts } from './unexplained';
 
 /** Book moves per request: fewer than comments, since each needs a fresh look at its board. */
 const BATCH = 10;
@@ -43,8 +44,8 @@ export function explainCli(options: {
 }
 
 export interface ExplainReport {
-  readonly before: ReturnType<typeof explainedCounts>;
-  readonly after: ReturnType<typeof explainedCounts>;
+  readonly before: Counts;
+  readonly after: Counts;
   /** Moves the model was asked about (or answered from the file). */
   readonly asked: number;
   readonly written: number;
@@ -66,7 +67,7 @@ export async function explainBookMoves(
 ): Promise<{ lesson: Lesson; report: ExplainReport }> {
   const moves = unexplainedMoves(lesson);
   const before = explainedCounts(lesson, moves);
-  const jobs = await bookMoveItems(lesson, moves, linesTo(lesson), evaluate);
+  const jobs = await bookMoveItems(lesson, moves, evaluate);
   const results = new Map<string, Explained>();
   const judge = async (items: readonly BookMove[], addendum?: string) => {
     const answers = await ask(MODELS.explain, items, addendum);
@@ -136,20 +137,15 @@ export function explainReport({
   refused,
   unanswered,
 }: ExplainReport): string {
-  const counts = ({ book, none, verdict, fragment }: ExplainReport['before']) =>
+  const counts = ({ book, none, verdict, fragment }: Counts) =>
     `${none + verdict + fragment} of ${book} book moves unexplained (${none} with no note, ${verdict} with only a verdict, ${fragment} with only a fragment)`;
-  const why: Record<string, number> = {};
-  for (const { why: reason } of refused) {
-    const key = reason.replace(/[a-h][1-8]|\d+|[KQRBN]?[a-h]?x?[a-h][1-8][+#]?/g, '#');
-    why[key] = (why[key] ?? 0) + 1;
-  }
   return [
     `explain: before, ${counts(before)}`,
     `explain: asked ${MODELS.explain} about ${asked}: ${written} notes written, ${unsure} with no idea it was sure of, ${retried} asked again after a refusal, ${refused.length} refused twice, ${unanswered} unanswered`,
-    ...Object.entries(why)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 10)
-      .map(([reason, count]) => `  ${count} ${reason}`),
+    ...topReasons(
+      refused.map(({ why }) => why),
+      10,
+    ).map(([reason, count]) => `  ${count} ${reason}`),
     `explain: after, ${counts(after)}`,
   ].join('\n');
 }

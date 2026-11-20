@@ -5,20 +5,16 @@
  * that wins nothing, a verdict, notation or an over-long text refuses the
  * whole note rather than leaving a claim in its words.
  */
-import type { Chess } from 'chessops/chess';
 import { parseSan } from 'chessops/san';
-import { parseUci } from 'chessops/util';
-import type { NormalMove } from 'chessops/types';
 
-import { balance, VALUES } from '@/game/material';
+import { balance } from '@/game/material';
 import { parsePosition } from '@/game/replay';
-import { noteTextProblem, withTurn } from '@/lesson/check';
-import type { Idea, Note, Threat } from '@/lesson/lesson';
+import { emptyThreat, GENERATED_IDEAS, noteTextProblem } from '@/lesson/check';
+import type { Idea, Note } from '@/lesson/lesson';
 
 import type { Answer } from '../convert/answer';
 import { lessonIdea } from '../convert/notes';
 import type { BookMove } from './items';
-import { EXPLAIN_IDEAS } from './prompt';
 
 /**
  * A note text saying who is better, which a generated note never does: any
@@ -27,21 +23,35 @@ import { EXPLAIN_IDEAS } from './prompt';
  */
 const VERDICT =
   /\b(?:equal(?:ity)?|better|worse|advantage|edge)\b|\b(?:is|are|stands?) (?:winning|losing)\b/i;
-/** Winning material in a clause: "wins the pawn back", "winning a rook for a bishop". */
+/**
+ * Winning material: "wins the pawn back", "winning a rook for a bishop",
+ * "win it back". Not "win a tempo back", which names no material.
+ */
 const WIN =
-  /\b(?:win|wins|won|winning|regain|regains|regaining)\b(?:\s+\S+){0,3}?\s+(?:pawn|piece|knight|bishop|rook|queen|exchange|material|back)\b/i;
-/** Words that make a win the opponent's, or one still to come ("ready to win it back"). */
+  /\b(?:win|wins|won|winning|regain|regains|regaining)\b(?:(?:\s+\S+){0,3}?\s+(?:pawn|piece|knight|bishop|rook|queen|exchange|material)\b|\s+(?:it|one|them)\s+back\b)/i;
+/**
+ * Words before a win in its clause that make it the opponent's, or one still
+ * to come ("White wins it back", "ready to win the pawn later").
+ */
 const NOT_NOW =
-  /\b(?:white|black|white's|black's|it|to|can|could|will|would|must|may|later|next|threatens?|aims?|aiming|ready)\b/i;
+  /\b(?:white|black|white's|black's|can|could|will|would|must|may|later|next|threatens?|aims?|aiming|ready)\b|\b(?:it|to)\s*$/i;
 
 /**
  * Whether `text` says the learner's move wins material now: "Your knight wins
  * the pawn back", "Taking with the knight wins the pawn back". Not a win the
- * opponent makes, one still to come, or one that depends on an "if".
+ * opponent makes, one still to come, or one under an "if" (the clause with
+ * it and the clause after: "if White takes, your queen wins it back").
  */
 function claimsWin(text: string): boolean {
-  if (/\bif\b/i.test(text)) return false;
-  return text.split(/[,;:]|\band\b/i).some((clause) => WIN.test(clause) && !NOT_NOW.test(clause));
+  return text.split(/[.!?]/).some((sentence) => {
+    let conditional = false;
+    return sentence.split(/[,;:]|\band\b/i).some((clause) => {
+      const under = conditional;
+      conditional = /\bif\b/i.test(clause);
+      const win = WIN.exec(clause);
+      return !under && !conditional && win !== null && !NOT_NOW.test(clause.slice(0, win.index));
+    });
+  });
 }
 /** A note text saying the learner is ahead on material: "leaving you a pawn up", "your extra pawn". */
 const AHEAD =
@@ -80,7 +90,7 @@ export function explainedNote(answer: Answer, move: Played): Explained {
     );
   const ideas: Idea[] = [];
   for (const raw of written.ideas) {
-    if (!(EXPLAIN_IDEAS as readonly string[]).includes(raw.type))
+    if (!(GENERATED_IDEAS as readonly string[]).includes(raw.type))
       return refuse(`it draws a ${raw.type}, which a generated note never does`);
     // Evaluations are refused above, so whether one was extracted doesn't matter.
     const idea = lessonIdea(raw, after, true);
@@ -106,26 +116,4 @@ function material({ fenBefore, fenAfter, engine }: Played) {
   if (reply) settled.play(reply);
   const lead = balance(settled.board, before.turn);
   return { lead, gain: lead - balance(before.board, before.turn) };
-}
-
-/**
- * Why `threat` in `pos` is no real threat, or undefined when it is: its move
- * mates, takes an undefended piece, or takes a piece worth at least two
- * points more than the piece taking it.
- */
-export function emptyThreat(threat: Threat, pos: Chess): string | undefined {
-  const threatening = withTurn(pos, threat.side);
-  const move = parseUci(threat.move) as NormalMove;
-  const mover = threatening.board.get(move.from)!;
-  const taken = threatening.board.get(move.to);
-  const after = threatening.clone();
-  after.play(move);
-  if (after.isCheckmate()) return undefined;
-  if (!taken) return 'takes nothing and does not mate';
-  const defended = after.kingAttackers(move.to, after.turn, after.board.occupied).nonEmpty();
-  if (!defended) return undefined;
-  const value = (role: string) => VALUES[role as keyof typeof VALUES] ?? Infinity;
-  return value(taken.role) - value(mover.role) >= 2
-    ? undefined
-    : 'takes a defended piece and wins nothing';
 }

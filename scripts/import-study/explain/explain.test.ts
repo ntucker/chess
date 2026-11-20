@@ -3,15 +3,15 @@ import { makeFen } from 'chessops/fen';
 
 import type { Evaluation } from '@/evaluation/evaluation';
 import { parsePositionKey } from '@/game/replay';
+import { emptyThreat } from '@/lesson/check';
 import { keyAfter, uci } from '@/lesson/lesson.fixture';
 
 import type { Answer, AnswerIdea } from '../convert/answer';
 import type { Ask } from '../convert/claude';
-import { linesTo } from '../engineCheck';
 import { at, testLesson } from '../fixture';
 import { explainBookMoves } from '.';
 import { bookMoveItems, itemKey, type BookMove } from './items';
-import { emptyThreat, explainedNote } from './notes';
+import { explainedNote } from './notes';
 import { REFUSED } from './prompt';
 import { bareNote, unexplainedMoves } from './unexplained';
 
@@ -139,8 +139,13 @@ describe('the material guard', () => {
     'Taking wins the e4 pawn.',
     'Your knight takes, winning a pawn.',
     'Your knight jumps in and wins the pawn.',
+    'Moving to e4 wins the pawn back.',
+    'Your knight wins the pawn back, and if White trades, your queen recaptures.',
   ])('refuses "%s" when the reply takes it back', (text) => {
-    expect(explainedNote(answer(text), recaptured)).toHaveProperty('refused');
+    const result = explainedNote(answer(text), recaptured);
+    // The refusal is part of a retry's stored key, so it never names the reply.
+    expect('refused' in result && result.refused.why).not.toContain('Nxe4');
+    expect(result).toHaveProperty('refused');
   });
 
   it.each([
@@ -148,6 +153,8 @@ describe('the material guard', () => {
     'Your knight is ready to win the pawn later.',
     'If White ignores it, your knight wins the pawn.',
     'Your knight hits e4, so White must win it back.',
+    'You win a tempo back.',
+    'You threaten the e4 pawn: if White ignores it, your knight wins it.',
   ])('keeps "%s", which claims no win now', (text) => {
     expect(explainedNote(answer(text), recaptured)).toHaveProperty('note');
   });
@@ -155,12 +162,7 @@ describe('the material guard', () => {
 
 describe('itemKey', () => {
   it('changes with the guide’s notes around the move, not with Stockfish', async () => {
-    const [{ item }] = await bookMoveItems(
-      LESSON,
-      unexplainedMoves(LESSON).slice(0, 1),
-      linesTo(LESSON),
-      evaluate,
-    );
+    const [{ item }] = await bookMoveItems(LESSON, unexplainedMoves(LESSON).slice(0, 1), evaluate);
     const engine = { ...item.engine, forYou: '+9.0' };
     expect(itemKey({ ...item, engine })).toEqual(itemKey(item));
     expect(itemKey({ ...item, previousNote: 'A new note.' })).not.toEqual(itemKey(item));

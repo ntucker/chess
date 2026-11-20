@@ -21,6 +21,7 @@ import { notationProblem } from '@/lesson/check';
 import { noteShows, type Note, type NoteShows } from '@/lesson/lesson';
 
 import type { ChapterNotes, MoveNote, PositionNote } from '../extract';
+import { topReasons } from '../report';
 import { namedMoves, plyOf } from '../text';
 import type { Answer, AnswerIdea } from './answer';
 import { MODELS, type Ask } from './claude';
@@ -310,14 +311,10 @@ export function convertReport({
   shows,
   rejected,
 }: ConvertReport): string {
-  const why: Record<string, number> = {};
-  for (const { idea, why: reason } of rejected) {
-    const key = `${idea.type}: ${reason.replace(/[a-h][1-8]|\d+|[KQRBN]?[a-h]?x?[a-h][1-8][+#]?/g, '#')}`;
-    why[key] = (why[key] ?? 0) + 1;
-  }
-  const top = Object.entries(why)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 15);
+  const top = topReasons(
+    rejected.map(({ idea, why }) => `${idea.type}: ${why}`),
+    15,
+  );
   return [
     `converted comments: ${comments - unconverted} of ${comments} (asked again of ${MODELS.retry}: ${retried} with every idea refused, ${reworded} with notes in notation, ${punished} with a mistake's punishment undrawn, ${shortened} with notes cut at the word limit)`,
     ...(reworded > 0

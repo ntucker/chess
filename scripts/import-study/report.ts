@@ -74,6 +74,17 @@ export function sourceReport(
     .join('\n');
 }
 
+/**
+ * The `limit` most common of `reasons`, with how often each came up, moves,
+ * squares and numbers masked as # so one reason at different spots counts once.
+ */
+export function topReasons(reasons: readonly string[], limit: number): [string, number][] {
+  const masked = reasons.map((reason) =>
+    reason.replace(/[KQRBN]?[a-h]?x?[a-h][1-8][+#]?|\d+/g, '#'),
+  );
+  return Object.entries(tally(masked)).slice(0, limit);
+}
+
 function tally(values: readonly string[]): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const value of values) counts[value] = (counts[value] ?? 0) + 1;

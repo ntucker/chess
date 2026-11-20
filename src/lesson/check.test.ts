@@ -705,6 +705,26 @@ describe('checkLesson', () => {
     ]);
   });
 
+  it('holds a generated note to the ideas a guide stands behind', () => {
+    const lesson = withPosition(positionKey(afterC6), {
+      variation: 'caro',
+      moves: [],
+      notes: [
+        {
+          text: 'Your pawn heads for d5.',
+          generated: true,
+          ideas: [{ type: 'evaluation', value: 'equal' }],
+        },
+      ],
+    });
+    expect(checkLesson(lesson)).toEqual([
+      {
+        path: `positions["${positionKey(afterC6)}"].notes[0].ideas[0]`,
+        message: 'evaluation: a generated note never draws one',
+      },
+    ]);
+  });
+
   it('refuses long notes', () => {
     const text = Array.from({ length: 21 }, () => 'word').join(' ');
     expect(noteProblems(text)).toEqual([{ path: notePath, message: 'has 21 words (most 20)' }]);

@@ -2,11 +2,10 @@
  * Which book moves the lesson never explains: the learner is told to play
  * them, and nothing says why.
  */
-import { parsePositionKey, positionKey } from '@/game/replay';
 import { noteShows, type Lesson, type Note, type PositionKey, type Uci } from '@/lesson/lesson';
 
 import { bookReach } from '../engineCheck';
-import { played } from '../study';
+import { allMoves } from '../transpositions';
 
 /**
  * Why a book move counts as unexplained:
@@ -47,7 +46,7 @@ export function bareNote(note: Note): Exclude<Unexplained, 'none'> | undefined {
 }
 
 /** Why the book move whose notes and whose position's notes are `notes` is unexplained, if it is. */
-export function unexplainedBy(notes: readonly Note[]): Unexplained | undefined {
+function unexplainedBy(notes: readonly Note[]): Unexplained | undefined {
   if (notes.length === 0) return 'none';
   const bare = notes.map(bareNote);
   if (bare.some((why) => why === undefined)) return undefined;
@@ -61,24 +60,22 @@ export function unexplainedBy(notes: readonly Note[]): Unexplained | undefined {
 export function unexplainedMoves(lesson: Lesson): UnexplainedMove[] {
   const reached = bookReach(lesson);
   const found: UnexplainedMove[] = [];
-  for (const [key, pos] of Object.entries(lesson.positions)) {
-    if (!reached.has(key)) continue;
-    const chess = parsePositionKey(key)!;
-    for (const move of pos.moves) {
-      if (!move.book) continue;
-      const after = lesson.positions[positionKey(played(chess, move.uci))];
-      const why = unexplainedBy([...(move.notes ?? []), ...(after?.notes ?? [])]);
-      if (why) found.push({ key, uci: move.uci, why });
-    }
+  for (const { key, move, after } of allMoves(lesson)) {
+    if (!move.book || !reached.has(key)) continue;
+    const why = unexplainedBy([...(move.notes ?? []), ...(lesson.positions[after]?.notes ?? [])]);
+    if (why) found.push({ key, uci: move.uci, why });
   }
   return found;
 }
 
-/** Book moves the learner meets, and how many of them are unexplained (`moves`), by why. */
+/** How many book moves the learner meets, and how many of them are unexplained, by why. */
+export type Counts = { readonly book: number } & Readonly<Record<Unexplained, number>>;
+
+/** `lesson`'s counts, with `moves` its unexplained moves. */
 export function explainedCounts(
   lesson: Lesson,
   moves: readonly UnexplainedMove[] = unexplainedMoves(lesson),
-): { readonly book: number } & Readonly<Record<Unexplained, number>> {
+): Counts {
   const reached = bookReach(lesson);
   let book = 0;
   for (const key of reached)

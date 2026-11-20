@@ -48,7 +48,8 @@ function withoutNotes({ notes: _, ...move }: LessonMove): LessonMove {
   return move;
 }
 
-function* allMoves(lesson: Lesson): Generator<{
+/** Every move in `lesson`, with its position, whether the learner plays it, and the position it reaches. */
+export function* allMoves(lesson: Lesson): Generator<{
   key: PositionKey;
   move: LessonMove;
   learner: boolean;

@@ -8,11 +8,11 @@ import { makeFen } from 'chessops/fen';
 import type { Color } from 'chessops/types';
 
 import type { Evaluation } from '@/evaluation/evaluation';
-import { positionKey } from '@/game/replay';
+import { playLine, positionKey } from '@/game/replay';
 import type { Lesson, Note, PositionKey, Uci } from '@/lesson/lesson';
 
 import { hash, legalMoves, pieces } from '../convert/comments';
-import { san, sans, startOf, type Evaluate } from '../engineCheck';
+import { linesTo, san, sans, startOf, type Evaluate } from '../engineCheck';
 import { played } from '../study';
 import type { UnexplainedMove } from './unexplained';
 
@@ -72,9 +72,9 @@ export const itemKey = ({
 export async function bookMoveItems(
   lesson: Lesson,
   moves: readonly UnexplainedMove[],
-  lines: ReadonlyMap<PositionKey, { readonly line: Uci[]; readonly pos: Chess }>,
   evaluate: Evaluate,
 ): Promise<{ readonly move: UnexplainedMove; readonly item: BookMove }[]> {
+  const lines = linesTo(lesson);
   const items = [];
   for (const move of moves) {
     const at = lines.get(move.key);
@@ -130,11 +130,10 @@ async function bookMoveItem(
 
 /** The guide's nearest note on `line`, from its end back: on a move, or on the position it reached. */
 function earlierNote(lesson: Lesson, line: readonly Uci[]): string | undefined {
-  const positions: Chess[] = [startOf(lesson)];
-  for (const uci of line) positions.push(played(positions.at(-1)!, uci));
+  const keys = Array.from(playLine(line, startOf(lesson)), ({ key }) => key);
   for (let i = line.length - 1; i >= 0; i--) {
-    const reached = lesson.positions[positionKey(positions[i + 1])]?.notes;
-    const move = lesson.positions[positionKey(positions[i])]?.moves.find(
+    const reached = lesson.positions[keys[i + 1]]?.notes;
+    const move = lesson.positions[keys[i]]?.moves.find(
       (candidate) => candidate.uci === line[i],
     )?.notes;
     const note: Note | undefined = reached?.[0] ?? move?.[0];
