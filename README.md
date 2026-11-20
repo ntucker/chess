@@ -78,3 +78,17 @@ To try the Pages build locally, export it the way the workflow does and serve `d
 ```bash
 PAGES_BASE_PATH=/chess yarn expo export --platform web
 ```
+
+## Contributing with Claude
+
+To work on this repo through a Claude project on claude.ai:
+
+1. Create a project and attach `ntucker/chess` (or your fork) and `reactive/silk`.
+2. Install [user-kit](https://github.com/ntucker/user-kit#install-in-claude-code).
+3. Send this in the project chat, then paste the text the coordinator replies with into the project's instructions:
+
+   ```text
+   Set up this project: read .agents/projects/setup.md from main in ntucker/chess and follow it.
+   ```
+
+4. For Android checks, link your computer to the project.
