@@ -3,8 +3,16 @@ import { describe, expect, it } from '@jest/globals';
 import { type MarkedPositions, positionHash } from '@/progress/progress';
 
 import type { Lesson, LessonMove, PositionKey } from './lesson';
-import { keyAfter, SAMPLE, uciLine, withMoves } from './lesson.fixture';
-import { earnedMark, rowMarks, steering } from './marks';
+import {
+  keyAfter,
+  readShippedLesson,
+  SAMPLE,
+  shippedIds,
+  uciLine,
+  withMoves,
+} from './lesson.fixture';
+import { earnedMark, openingMarks, rowMarks, steering } from './marks';
+import { indexEntry, openingsLesson } from './openings';
 import { lessonView } from './view';
 
 /** A move after `sans`, written in SAN, as the guide stores it. */
@@ -156,6 +164,99 @@ describe('rowMarks', () => {
 
   it('marks nothing with no progress', () => {
     expect(marksAfter(progress([], []), LESSON, 'e4')).toEqual({ c6: undefined, e5: undefined });
+  });
+});
+
+describe('openingMarks', () => {
+  // Two openings: LESSON after 1.e4, and one after 1.d4 whose book ...d5 ends its only line.
+  const D4: Lesson = {
+    ...LESSON,
+    id: 'd4',
+    positions: {
+      [START]: { variation: LESSON.positions[START].variation, moves: [move([], 'd4')] },
+      [at('d4')]: {
+        variation: LESSON.positions[START].variation,
+        moves: [move(['d4'], 'd5', true)],
+      },
+    },
+  };
+  const index = { e4: indexEntry(LESSON), d4: indexEntry(D4) };
+  const view = lessonView({ lesson: openingsLesson(index), line: [], ply: 0, opponent: 1500 });
+  const marksOf = (lessonProgress: Record<string, MarkedPositions>) => {
+    const marks = openingMarks(index, lessonProgress, view);
+    return Object.fromEntries(
+      view.candidates.map(({ san, move: { uci } }) => [san, marks.get(uci)]),
+    );
+  };
+
+  it("marks each opening's row from its own lesson's progress", () => {
+    // LESSON's progress names the position after 1.d4 too, but that row is D4's.
+    expect(marksOf({ e4: progress([at('e4'), at('d4')], []) })).toEqual({
+      e4: 'seen',
+      d4: undefined,
+    });
+    expect(marksOf({ d4: progress([at('d4')], []) })).toEqual({ e4: undefined, d4: 'seen' });
+  });
+
+  it('passes a row once every line end the index lists for it is passed', () => {
+    expect(marksOf({ e4: progress([at('e4')], [ENDS.d4]) })).toEqual({ e4: 'seen', d4: undefined });
+    expect(
+      marksOf({ e4: progress([at('e4')], [ENDS.d4, ENDS.d5]), d4: progress([], [at('d4', 'd5')]) }),
+    ).toEqual({ e4: 'passed', d4: 'passed' });
+  });
+
+  it('never passes a learner first move a clean run would not play', () => {
+    const white: Lesson = {
+      ...LESSON,
+      id: 'white',
+      side: 'white',
+      positions: {
+        [START]: {
+          variation: LESSON.positions[START].variation,
+          moves: [move([], 'e4', true), move([], 'd4')],
+        },
+        [at('e4')]: { variation: LESSON.positions[START].variation, moves: [move(['e4'], 'e5')] },
+      },
+    };
+    const whiteIndex = { white: indexEntry(white) };
+    const start = lessonView({
+      lesson: openingsLesson(whiteIndex),
+      line: [],
+      ply: 0,
+      opponent: 1500,
+    });
+    const marks = openingMarks(
+      whiteIndex,
+      { white: progress([], [at('e4', 'e5'), at('d4')]) },
+      start,
+    );
+    // 1.d4 isn't a book move, so a clean run never plays it.
+    expect([...marks]).toEqual([[uciLine('e4')[0], 'passed']]);
+  });
+
+  it('marks nothing for a lesson never played', () => {
+    expect(marksOf({})).toEqual({ e4: undefined, d4: undefined });
+  });
+
+  it.each(shippedIds)("agrees with walking %s's own start, however much is passed", (id) => {
+    const lesson = readShippedLesson(id);
+    const start = lessonView({ lesson, line: [], ply: 0, opponent: 1500 });
+    const own = { [id]: indexEntry(lesson) };
+    const ends = Object.values(own[id].lineEnds).flat();
+    // Every other end, all but one, all, and all plus one that isn't an end.
+    const passedLists = [
+      [],
+      ends.filter((_, i) => i % 2 === 0),
+      ends.slice(1),
+      ends,
+      [...ends, positionHash(START)],
+    ];
+    for (const passed of passedLists) {
+      const lessonProgress = { seen: [], passed };
+      expect(openingMarks(own, { [id]: lessonProgress }, start)).toEqual(
+        rowMarks(lesson, lessonProgress, start),
+      );
+    }
   });
 });
 
