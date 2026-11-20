@@ -21,18 +21,18 @@ export function useNavigationTransitions() {
 
 /**
  * Back to the page underneath, which a stack keeps as the learner left it,
- * then on to `then` there when given, such as another line picked from the
+ * then on to `next` there when given, such as another line picked from the
  * list: Back then returns to the game left there, not to this page. With
- * nothing underneath, as after a reload, `then ?? fallback` replaces this
+ * nothing underneath, as after a reload, `next ?? fallback` replaces this
  * page. A move on goes at once, the back with it, so neither waits for the
  * other in a transition.
  */
-export function goBack(router: ImperativeRouter, fallback: Href, then?: Href) {
-  if (!router.canGoBack()) router.replace(then ?? fallback, AT_ONCE);
-  else if (then === undefined) router.back();
+export function goBack(router: ImperativeRouter, fallback: Href, next?: Href) {
+  if (!router.canGoBack()) router.replace(next ?? fallback, AT_ONCE);
+  else if (next === undefined) router.back();
   else {
     router.back(AT_ONCE);
-    router.push(then, AT_ONCE);
+    router.push(next, AT_ONCE);
   }
 }
 
