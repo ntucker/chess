@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { pawnsLabel, signedEvaluation } from './evaluation';
+import { evaluationReading, pawnsLabel, signedEvaluation } from './evaluation';
 
 describe('pawnsLabel', () => {
   it('writes tenths below 10 pawns, whole pawns up to 99', () => {
@@ -20,5 +20,25 @@ describe('signedEvaluation', () => {
     expect(signedEvaluation({ score: 0, pawns: 0, mate: -2 })).toBe('−M2');
     // White to move and already mated: Black won.
     expect(signedEvaluation({ score: 0, pawns: 0, mate: 0 })).toBe('−M0');
+  });
+});
+
+describe('evaluationReading', () => {
+  it('reads a lead, an even position and a mate as the bar shows them', () => {
+    expect(evaluationReading({ score: 0.6, pawns: 1.24 })).toMatchObject({
+      label: '1.2',
+      leader: 'white',
+      description: 'White is ahead by 1.2 pawns',
+    });
+    expect(evaluationReading({ score: 0.4, pawns: -0.8 })).toMatchObject({ leader: 'black' });
+    expect(evaluationReading({ score: 0.5, pawns: -0.02 })).toMatchObject({
+      label: '0.0',
+      description: 'Even',
+    });
+    expect(evaluationReading({ score: 0, pawns: 0, mate: -1 })).toMatchObject({
+      label: 'M1',
+      leader: 'black',
+      description: 'Black mates in 1 move',
+    });
   });
 });

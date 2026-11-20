@@ -70,7 +70,7 @@ export function evaluationReading({ score, pawns, mate }: Evaluation): Reading {
 export function signedEvaluation(evaluation: Evaluation): string {
   const { pawns, mate } = evaluation;
   const label = mate === undefined ? pawnsLabel(pawns) : `M${Math.abs(mate)}`;
-  if (label === pawnsLabel(0)) return label;
+  if (Number(label) === 0) return label;
   return `${evaluationLeader(evaluation) === 'black' ? '\u2212' : '+'}${label}`;
 }
 

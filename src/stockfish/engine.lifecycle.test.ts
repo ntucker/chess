@@ -112,6 +112,11 @@ describe('the engine lifecycle', () => {
     print('uciok');
     for (const move of ['e2e4', 'd2d4']) {
       const evaluation = engine.stockfishEvaluation([move]);
+      expect(sent.slice(-3)).toEqual([
+        'ucinewgame',
+        `position startpos moves ${move}`,
+        'go nodes 100000 movetime 1500',
+      ]);
       print('info depth 12 multipv 1 score cp 20 pv d7d5');
       print('bestmove d7d5');
       await evaluation;

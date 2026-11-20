@@ -192,8 +192,8 @@ function handleLine(session: Session, line: string) {
 /** Takes the search to run next out of `pending`: the last evaluation (one rank), or else the last search. */
 function takeNext(): Search | undefined {
   const lastEvaluation = pending.findLastIndex(({ ranks }) => ranks === 1);
-  const next = lastEvaluation === -1 ? pending.length - 1 : lastEvaluation;
-  return pending.splice(next, 1)[0];
+  const index = lastEvaluation === -1 ? pending.length - 1 : lastEvaluation;
+  return pending.splice(index, 1)[0];
 }
 
 function startNext() {
