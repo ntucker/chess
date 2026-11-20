@@ -106,7 +106,15 @@ describe('extractChapter', () => {
     expect(extractChapter(chapter, 'black').branches).toEqual([]);
   });
 
-  it("keeps a sequence from the start that keeps the chapter's first move", () => {
+  it("leaves out a sequence from the start that leaves the chapter at the learner's move", () => {
+    const [chapter] = parseStudy(
+      '1. e4 c6 2. d4 d5 3. e5 { Unlike the Open Game, 1.e4 e5 2.Nf3 Nc6, Black keeps a solid centre. } *',
+      () => true,
+    );
+    expect(extractChapter(chapter, 'black').branches).toEqual([]);
+  });
+
+  it('keeps a sequence from the start that leaves the chapter at a later opponent move', () => {
     const [chapter] = parseStudy(
       '1. e4 c6 2. d4 d5 3. Nc3 { The same as 1.e4 c6 2.Nc3 d5 3.d4. } *',
       () => true,

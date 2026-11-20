@@ -201,11 +201,12 @@ function addBranches(
 }
 
 /**
- * The variation of each position the chapters reach (`positionVariations`)
- * where that lies within what the earliest source reaching it names it on its
- * own, else the earliest source's name: a later guide may narrow a name
- * ("Pure Slav" to "Pure Slav: Geller Gambit"), but its "Classical Variation"
- * chapter never renames the main guide's "Capablanca Variation".
+ * The variation of each position the chapters reach (`positionVariations`),
+ * adding one source at a time: where a position already had a name from the
+ * sources before, a new one must lie within it, else the earlier name stands.
+ * A later guide may narrow a name ("Pure Slav" to "Pure Slav: Geller
+ * Gambit"), but its "Classical Variation" chapter never renames the main
+ * guide's "Capablanca Variation".
  */
 function sourceVariations(
   root: VariationId,
@@ -213,24 +214,21 @@ function sourceVariations(
   chapters: readonly Chapter[],
   chapterVariation: readonly VariationId[],
 ): Map<PositionKey, VariationId> {
-  const named = positionVariations(root, variations, chapters, chapterVariation);
-  const first = new Map<PositionKey, VariationId>();
   const sources = [...new Set(chapters.map(({ source = 0 }) => source))].sort((a, b) => a - b);
-  // One source names every position the same either way.
-  if (sources.length < 2) return named;
+  let named = new Map<PositionKey, VariationId>();
   for (const source of sources) {
-    const own = chapters.flatMap((chapter, i) => ((chapter.source ?? 0) === source ? [i] : []));
-    const names = positionVariations(
+    const upTo = chapters.flatMap((chapter, i) => ((chapter.source ?? 0) <= source ? [i] : []));
+    const before = named;
+    named = positionVariations(
       root,
       variations,
-      own.map((i) => chapters[i]),
-      own.map((i) => chapterVariation[i]),
+      upTo.map((i) => chapters[i]),
+      upTo.map((i) => chapterVariation[i]),
     );
-    for (const [key, id] of names) if (!first.has(key)) first.set(key, id);
-  }
-  for (const [key, id] of named) {
-    const earliest = first.get(key)!;
-    if (!ancestry(variations, id).includes(earliest)) named.set(key, earliest);
+    for (const [key, id] of named) {
+      const earlier = before.get(key);
+      if (earlier && !ancestry(variations, id).includes(earlier)) named.set(key, earlier);
+    }
   }
   return named;
 }

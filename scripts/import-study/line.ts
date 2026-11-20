@@ -34,18 +34,16 @@ export interface Found {
   readonly original?: string;
 }
 
-/** The moves from the chapter's start to `move`, then on along its main continuation. */
-function lineThrough(move: StudyMove): StudyMove[] {
-  const before: StudyMove[] = [];
-  for (let at = move.parent; at; at = at.parent) before.push(at);
-  return [...before.reverse(), ...mainLine(move)];
+/** The moves from the chapter's start to `move`, `move` last. */
+export function lineTo(move: StudyMove): StudyMove[] {
+  const line = [move];
+  for (let at = move.parent; at; at = at.parent) line.unshift(at);
+  return line;
 }
 
-/** The chapter's first move on the line to `move`. */
-export function firstMove(move: StudyMove): StudyMove {
-  let first = move;
-  while (first.parent) first = first.parent;
-  return first;
+/** The moves from the chapter's start to `move`, then on along its main continuation. */
+function lineThrough(move: StudyMove): StudyMove[] {
+  return [...lineTo(move).slice(0, -1), ...mainLine(move)];
 }
 
 /** The move of the line through `move` that `named` names, if there is one. */
