@@ -54,7 +54,7 @@ import { indexLesson, registerLesson } from './register';
 import { report } from './report';
 import { nodeStockfish } from './stockfish';
 import { parseStudy, type Chapter } from './study';
-import { STUDIES, type ChapterSource } from './studies';
+import { lessonInfo, STUDIES, type ChapterSource } from './studies';
 import { wikibooksPgn } from './wikibooks';
 
 const ROOT = join(__dirname, '../..');
@@ -75,12 +75,10 @@ async function main() {
   const study = Object.hasOwn(STUDIES, first) ? STUDIES[first] : undefined;
   // An unknown flag must fail rather than be ignored: a mistyped --no-model would call the model for an hour.
   if (!study || rest.some((flag) => !STUDY_FLAGS.includes(flag))) throw new Error(USAGE);
-  if (study.from.length !== study.info.sources.length) {
-    throw new Error(`${first}: credit each of its ${study.from.length} sources, in order`);
-  }
+  const info = lessonInfo(study);
   const chapters: Chapter[] = [];
   for (const [source, from] of study.from.entries()) {
-    const read = await sourceChapters(from, study.info.side);
+    const read = await sourceChapters(from, info.side);
     chapters.push(...read.map((chapter) => ({ ...chapter, source })));
   }
   const chapterName: ChapterName = (title, chapter) => {
@@ -91,18 +89,18 @@ async function main() {
       : title || undefined;
   };
   const cli = claudeCli({
-    learner: study.info.side,
+    learner: info.side,
     cacheFile: join(ROOT, `scripts/import-study/answers/${first}.jsonl`),
     callModel: !rest.includes('--no-model'),
   });
   const converted = await convertChapters(
-    chapters.map((chapter) => extractChapter(chapter, study.info.side)),
+    chapters.map((chapter) => extractChapter(chapter, info.side)),
     cli.ask,
   );
   cli.saveUsed();
   const { extracted } = converted;
   console.log(convertReport(converted.report));
-  let lesson: Lesson = mergeChapters(study.info, chapters, extracted, chapterName);
+  let lesson: Lesson = mergeChapters(info, chapters, extracted, chapterName);
   if (study.engineCheck) {
     if (lesson.start !== INITIAL_FEN)
       throw new Error('The engine check plays lines from the standard start');

@@ -67,7 +67,8 @@ export async function engineCheck(
   };
 
   const positions: Record<PositionKey, LessonPosition> = {};
-  const unbooked = new Map<PositionKey, Uci[]>();
+  /** Where the engine overruled a book move. */
+  const overruledAt = new Set<PositionKey>();
   for (const [key, position] of Object.entries(lesson.positions)) {
     const at = lines.get(key);
     if (!at) {
@@ -93,7 +94,7 @@ export async function engineCheck(
         });
         if (quality === 'mistake' || quality === 'blunder') {
           book = undefined;
-          unbooked.set(key, [...(unbooked.get(key) ?? []), move.uci]);
+          overruledAt.add(key);
           report.unbooked.push({
             line: sans(lesson, at.line),
             move: san(at.pos, move.uci),
@@ -110,7 +111,7 @@ export async function engineCheck(
     positions[key] = { ...rest, moves, ...(notes.length > 0 && { notes }) };
   }
 
-  cutLines(lesson, positions, unbooked, lines, report.cut);
+  cutLines(lesson, positions, overruledAt, lines, report.cut);
   const checked = { ...lesson, positions };
   const reached = bookReach(checked);
   for (const [key, position] of Object.entries(positions)) {
@@ -139,11 +140,11 @@ export async function engineCheck(
 function cutLines(
   lesson: Lesson,
   positions: Record<PositionKey, LessonPosition>,
-  unbooked: ReadonlyMap<PositionKey, readonly Uci[]>,
+  overruledAt: ReadonlySet<PositionKey>,
   lines: ReadonlyMap<PositionKey, { line: Uci[]; pos: Chess }>,
   cut: { line: string; moves: string[]; positions: number }[],
 ) {
-  for (const [key, ucis] of unbooked) {
+  for (const key of overruledAt) {
     const position = positions[key];
     // Gone already when an earlier cut was the only way to it.
     if (!position || position.moves.some(({ book }) => book)) continue;
