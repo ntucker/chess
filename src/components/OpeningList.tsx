@@ -29,6 +29,8 @@ import {
   openingList,
 } from '@/lesson/openingList';
 import { LessonIndexContext, type LessonId } from '@/resources/lesson';
+import { narrowLength, narrowStyles } from '@/theme/narrow';
+import { useNarrowStyles } from '@/theme/Narrow';
 import { fonts, typography } from '@/theme/theme';
 
 /**
@@ -81,19 +83,22 @@ function SideSection({
   readonly here?: ListPlace<LessonId>;
 }) {
   const { theme } = useTheme();
+  const narrow = useNarrowStyles(NARROW_STYLES);
   if (!openings.length) return null;
   return (
     <View style={styles.side}>
       <View style={[styles.sideHead, { borderBottomColor: theme.semantic.color.borderSubtle }]}>
         <Eyebrow>Playing {colorName(side)}</Eyebrow>
       </View>
-      {openings.map((opening) => (
-        <OpeningEntry
-          key={opening.id}
-          opening={opening}
-          here={here?.lesson === opening.id ? (here.variation ?? opening.root.id) : undefined}
-        />
-      ))}
+      <View style={narrow.openings}>
+        {openings.map((opening) => (
+          <OpeningEntry
+            key={opening.id}
+            opening={opening}
+            here={here?.lesson === opening.id ? (here.variation ?? opening.root.id) : undefined}
+          />
+        ))}
+      </View>
     </View>
   );
 }
@@ -370,6 +375,10 @@ const ROW_PAD = 8;
 /** A row's name, by depth: the opening's heading, a variation, a sub-variation. */
 const NAME_ROLE = ['headingLg', 'body', 'bodySm'] as const;
 const nameRole = (depth: number) => NAME_ROLE[Math.min(depth, 2)];
+
+/** Space between a side's openings: a closed one is a single row, so a phone packs them close. */
+const OPENING_GAP = narrowLength('opening-gap', 28);
+const NARROW_STYLES = narrowStyles((px) => ({ openings: { gap: px(OPENING_GAP) } }));
 
 const styles = StyleSheet.create({
   content: { width: '100%', maxWidth: CONTENT_MAX, gap: 40, paddingTop: 12, paddingBottom: 48 },

@@ -59,6 +59,8 @@ export const NARROW_PX = {
   'candidate-gap': 8,
   'candidate-inset': 10,
   'candidate-padding': 6,
+  /** Space between the openings of a side in the opening list (OpeningList.tsx). */
+  'opening-gap': 4,
   /** The fade at the bottom of the panel and of each of its panes (`NarrowScroll`). */
   fade: 16,
 } as const;
