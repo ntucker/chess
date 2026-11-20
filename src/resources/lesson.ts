@@ -14,6 +14,8 @@ export const LESSONS = {
   slav: () => import('@/assets/lessons/slav.json'),
   'anti-london': () => import('@/assets/lessons/anti-london.json'),
   london: () => import('@/assets/lessons/london.json'),
+  'ruy-lopez': () => import('@/assets/lessons/ruy-lopez.json'),
+  sicilian: () => import('@/assets/lessons/sicilian.json'),
 };
 
 export type LessonId = keyof typeof LESSONS;

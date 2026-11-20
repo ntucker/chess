@@ -67,10 +67,13 @@ const wikibooksCredit = (root: string): LessonSource => ({
   license: { name: 'CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },
 });
 
-/** The lesson's info for merging, crediting each of its sources in order. */
+/**
+ * The lesson's info for merging, crediting each of its sources in order,
+ * once each: a study read twice (its chapters for each side) is one source.
+ */
 export const lessonInfo = ({ info, from }: LessonRecipe): LessonInfo => ({
   ...info,
-  sources: from.map(credit),
+  sources: [...new Map(from.map(credit).map((source) => [source.url, source])).values()],
 });
 
 /** wub1234's repertoire of 1...c6 against everything: its Caro-Kann and Slav chapters feed those lessons. */
@@ -80,6 +83,26 @@ const WUB_C6 = {
     title: 'Complete Black c6 Repertoire',
     author: 'wub1234',
     url: 'https://lichess.org/study/iFA7tZcn',
+  },
+} as const;
+
+/** loloriv's Sicilian course, Black's side except where White picks the line. */
+const LOLORIV_SICILIAN = {
+  study: 'lUPzQLo3',
+  credit: {
+    title: 'Sicilian Defense',
+    author: 'loloriv',
+    url: 'https://lichess.org/study/lUPzQLo3',
+  },
+} as const;
+
+/** loloriv's Ruy Lopez course, White's side except for the Berlin. */
+const LOLORIV_RUY = {
+  study: 'Trmr5pwd',
+  credit: {
+    title: 'Ruy Lopez',
+    author: 'loloriv',
+    url: 'https://lichess.org/study/Trmr5pwd',
   },
 } as const;
 
@@ -282,6 +305,52 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
       side: 'black',
     },
   },
+  sicilian: {
+    from: [
+      {
+        ...LOLORIV_SICILIAN,
+        // Black's theory chapters; the reviews replay them as quizzes or master games.
+        chapters: (title: string) => Object.hasOwn(SICILIAN_CHAPTERS, title),
+        chapterName: (title: string) => SICILIAN_CHAPTERS[title],
+      },
+      {
+        // The chapters showing White's setups, reworded for Black: they book none of Black's moves.
+        ...LOLORIV_SICILIAN,
+        writtenFor: 'white',
+        chapters: (title: string) => Object.hasOwn(SICILIAN_WHITE_CHAPTERS, title),
+        chapterName: (title: string) => SICILIAN_WHITE_CHAPTERS[title],
+      },
+    ],
+    engineCheck: true,
+    info: {
+      id: 'sicilian',
+      title: 'Sicilian Defence',
+      side: 'black',
+    },
+  },
+  'ruy-lopez': {
+    from: [
+      {
+        ...LOLORIV_RUY,
+        // White's theory chapters; the reviews replay them as quizzes or master games.
+        chapters: (title: string) => Object.hasOwn(RUY_CHAPTERS, title),
+        chapterName: (title: string) => RUY_CHAPTERS[title],
+      },
+      {
+        // The Berlin, shown from Black's side, reworded for White: it books none of White's moves.
+        ...LOLORIV_RUY,
+        writtenFor: 'black',
+        chapters: (title: string) => title === 'Berlin Defense Theory',
+        chapterName: () => 'Berlin Defence',
+      },
+    ],
+    engineCheck: true,
+    info: {
+      id: 'ruy-lopez',
+      title: 'Ruy Lopez',
+      side: 'white',
+    },
+  },
 };
 
 /**
@@ -405,4 +474,49 @@ const KITSUNE_CHAPTERS: Readonly<Record<string, string | undefined>> = {
   '5. e3 Alekhine Variation': 'Pure Slav: Alekhine Variation',
   '5. g3': 'Pure Slav: 5.g3',
   '5. Ne5': 'Pure Slav: 5.Ne5',
+};
+
+/** loloriv's Black theory chapters, as variation names. */
+const SICILIAN_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  Introduction: undefined,
+  'Open Sicilian Introduction': 'Open Sicilian',
+  'Najdorf Sicilian English Attack Theory': 'Najdorf Variation: English Attack',
+  'Najdorf Sicilian Main Line Theory': 'Najdorf Variation: 6.Bg5',
+  'Najdorf Sicilian Opočenský Theory': 'Najdorf Variation: Opočenský Variation',
+  'Najdorf Sicilian Fischer-Sozin Attack Theory': 'Najdorf Variation: Fischer-Sozin Attack',
+  'Sveshnikov Sicilian Theory': 'Sveshnikov Variation',
+  'Classical Sicilian Theory': 'Classical Variation',
+  'Dragon Sicilian Theory': 'Dragon Variation',
+  'Accelerated Dragon Theory': 'Accelerated Dragon',
+  'Hyper-Accelerated Dragon Theory': 'Hyper-Accelerated Dragon',
+  'Taimanov Sicilian': 'Taimanov Variation',
+  'Kalashnikov Sicilian Theory': 'Kalashnikov Variation',
+  'Scheveningen Sicilian': 'Scheveningen Variation',
+  'Closed Sicilian': 'Closed Sicilian',
+  'Fianchetto Variation': 'Closed Sicilian: Fianchetto Variation',
+  'Grand Prix Attack': 'Grand Prix Attack',
+  'Alapin Siclian': 'Alapin Variation',
+  'Smith-Morra Gambit': 'Smith-Morra Gambit',
+  'McDonnell Attack': 'McDonnell Attack',
+  'Prins Sicilian': 'Prins Variation',
+  'Bowdler Attack "Theory"': 'Bowdler Attack',
+};
+
+/** loloriv's chapters written from White's side, as variation names. */
+const SICILIAN_WHITE_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  'Nyezhmetdinov-Rossolimo Attack': 'Rossolimo Attack',
+  'Kramnik Sicilian': 'Kramnik Variation',
+};
+
+/** loloriv's White theory chapters, as variation names. */
+const RUY_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  'Ruy Lopez Basic Ideas and Principles': undefined,
+  'Closed Ruy Lopez Theory': 'Closed Ruy Lopez',
+  'Chigorin Variation Theory': 'Closed Ruy Lopez: Chigorin Variation',
+  'Breyer Variation Theory': 'Closed Ruy Lopez: Breyer Variation',
+  'Marshall Attack Theory': 'Closed Ruy Lopez: Marshall Attack',
+  'Arkhangelsk Variation Theory': 'Arkhangelsk Variation',
+  'Flohr-Zaitsev System Theory': 'Closed Ruy Lopez: Zaitsev Variation',
+  'Open Ruy Lopez Theory': 'Open Ruy Lopez',
+  'Exchange Variation Theory': 'Exchange Variation',
 };
