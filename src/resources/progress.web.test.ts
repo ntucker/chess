@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { Controller, NetworkManager } from '@data-client/react';
 import { initialState, prepareStore } from '@data-client/react/redux';
 
@@ -13,15 +13,18 @@ const save = (seen: string[]) =>
   localStorage.setItem('progress', JSON.stringify({ 'caro-kann': { seen, passed: [] } }));
 
 /** A store as the app's DataProvider makes it, with progress kept in sync across tabs. */
+const syncs: ProgressSync[] = [];
 function newStore() {
   const sync = new ProgressSync();
+  syncs.push(sync);
   const { controller } = prepareStore(initialState, () => [sync, new NetworkManager()], Controller);
   sync.init();
   const shown = () => controller.getResponse(getProgress, 'caro-kann', controller.getState()).data;
-  return { controller, sync, shown };
+  return { controller, shown };
 }
 
 beforeEach(() => localStorage.clear());
+afterEach(() => syncs.splice(0).forEach((sync) => sync.cleanup()));
 
 describe('progress on the device', () => {
   it('reads the saved progress, and nothing for a lesson never played', async () => {
@@ -52,13 +55,12 @@ describe('progress on the device', () => {
   });
 
   it('shows what another tab saves', async () => {
-    const { controller, sync, shown } = newStore();
+    const { controller, shown } = newStore();
     await controller.fetch(getProgress, 'caro-kann');
     const newValue = JSON.stringify({
       'caro-kann': { seen: [positionHash(AFTER_E4)], passed: [] },
     });
     window.dispatchEvent(new StorageEvent('storage', { key: 'progress', newValue }));
     expect(shown()).toMatchObject({ seen: [positionHash(AFTER_E4)] });
-    sync.cleanup();
   });
 });

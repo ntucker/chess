@@ -10,12 +10,16 @@ const PREFIX = process.env.EXPO_PUBLIC_STORAGE_PREFIX ?? '';
 /** The key `name` is saved under in this build. */
 export const storageKey = (name: string) => `${PREFIX}${name}`;
 
+// What could not be saved (storage blocked, for example in a private window,
+// or full), kept for this visit so later reads still see it.
+const unsaved = new Map<string, string>();
+
 /** The text saved under `key`, or null (or undefined) when there is none. */
 export function readStorage(key: string) {
+  if (unsaved.has(key)) return unsaved.get(key);
   try {
     return globalThis.localStorage?.getItem(key);
   } catch {
-    // Storage can be blocked, for example in a private window.
     return null;
   }
 }
@@ -24,8 +28,9 @@ export function readStorage(key: string) {
 export function writeStorage(key: string, text: string) {
   try {
     globalThis.localStorage?.setItem(key, text);
+    unsaved.delete(key);
   } catch {
-    // Kept for this visit only.
+    unsaved.set(key, text);
   }
 }
 
