@@ -86,7 +86,7 @@ describe('the engine lifecycle', () => {
     expect(sent.slice(-3)).toEqual([
       'setoption name MultiPV value 3',
       'position startpos moves e2e4',
-      'go nodes 300000 movetime 1500',
+      'go nodes 300000 movetime 4500',
     ]);
     print('info depth 10 multipv 1 score cp -30 pv c7c5');
     print('info depth 10 multipv 2 score cp -20 pv e7e5');

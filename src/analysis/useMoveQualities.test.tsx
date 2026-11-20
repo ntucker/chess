@@ -131,4 +131,16 @@ describe('useMoveQualities', () => {
     // Listed 0.7 pawns behind; no evaluation is needed.
     expect(renders.at(-1)?.[1]).toBe('inaccuracy');
   });
+
+  it("judges a move the list skips against the list's first move", async () => {
+    await render(3);
+    const [ctrl] = controllers;
+    await act(async () => {
+      ctrl.setResponse(getEvaluation, 'stockfish', ['e2e4'], { ...cp(0, 1), best: 'c7c5' });
+      ctrl.setResponse(getTopMoves, ['e2e4'], [{ uci: 'c7c5', evaluation: cp(150, 1) }]);
+      ctrl.setResponse(getEvaluation, 'stockfish', ['e2e4', 'e7e5'], cp(-80, 2));
+    });
+    // 0.7 pawns behind the list's first move, though ahead of the evaluation.
+    expect(renders.at(-1)?.[1]).toBe('inaccuracy');
+  });
 });

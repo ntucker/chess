@@ -51,19 +51,22 @@ export function classifyMove({ before, after, uci, mover }: JudgedMove): MoveQua
 }
 
 /**
- * `uci` judged against the engine's `top` moves in the position before it,
- * best first, when it is one of them: the first move's score stands for the
- * position, and the move's own listed score for the position after it. All
- * come from one search, so the label agrees with the list: its first move is
- * the best, and another gives away what its listed score says.
+ * What the engine's `top` moves in a position (best first) say about playing
+ * `uci` there: the first move's score stands for the position, and a listed
+ * move's own score for the position after it, so the label agrees with the
+ * list: its first move is the best, and another gives away what its listed
+ * score says. Two searches of nearby positions can disagree by more than an
+ * inaccuracy, which could otherwise call the list's first move dubious. A
+ * move the list skips has no `after`: the next position's evaluation judges it.
  */
-export function judgedFromList(
-  top: readonly TopMove[],
+export function listJudgement(
+  top: readonly TopMove[] | undefined,
   uci: string,
-  mover: Color,
-): JudgedMove | undefined {
-  const listed = top.find((move) => move.uci === uci);
-  if (!listed) return undefined;
-  const [first] = top;
-  return { before: { ...first.evaluation, best: first.uci }, after: listed.evaluation, uci, mover };
+): Partial<Pick<JudgedMove, 'before' | 'after'>> {
+  const [first] = top ?? [];
+  if (!first) return {};
+  return {
+    before: { ...first.evaluation, best: first.uci },
+    after: top!.find((move) => move.uci === uci)?.evaluation,
+  };
 }

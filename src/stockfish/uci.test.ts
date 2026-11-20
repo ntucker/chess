@@ -45,12 +45,13 @@ describe('parseInfo', () => {
 });
 
 describe('rankLine', () => {
-  const ranked = (lines: string[]) =>
-    lines.reduce<RankedLines<string>>((ranked, line) => {
-      const info = parseInfo(line)!;
-      return rankLine(ranked, info, info.move!);
-    }, NO_LINES);
-  const rank = (lines: string[]) => rankedLines(ranked(lines));
+  const rank = (lines: string[]) =>
+    rankedLines(
+      lines.reduce<RankedLines<string>>((ranked, line) => {
+        const info = parseInfo(line)!;
+        return rankLine(ranked, info, info.move!);
+      }, NO_LINES),
+    );
 
   it("keeps one depth's set whole, so no move is listed twice", () => {
     expect(

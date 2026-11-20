@@ -63,13 +63,12 @@ export const NO_LINES: RankedLines<never> = { lines: [] };
 
 /**
  * `ranked` after the engine prints `info`, kept as `kept`. A set with a line
- * whose score is only a bound is dropped whole, keeping the depth before:
- * an evaluation reads the best line's score, and a move's label reads the
- * others' (`judgedFromList`), so each score must be exact.
+ * whose score is only a bound is dropped whole, keeping the depth before,
+ * since an evaluation and a move's label read each score (`listJudgement`).
  */
 export function rankLine<L>(ranked: RankedLines<L>, info: SearchLine, kept: L): RankedLines<L> {
   const starts = info.rank === 1;
-  const lines = starts ? rankedLines(ranked) : ranked.lines;
+  const lines = starts ? (ranked.printing ?? ranked.lines) : ranked.lines;
   const printing = starts ? [] : ranked.printing;
   if (!printing || info.bound) return { lines };
   const next = [...printing];
