@@ -45,15 +45,35 @@ export const getEvaluation = new Endpoint(
 /**
  * Stockfish's three best moves in the position after `line`, best first,
  * each with how the position stands after it (`stockfishTopMoves`); none once
- * the game is over. Its search starts only once no evaluation waits, so ask
- * for it beside `getEvaluation` freely. Kept for as long as the app runs.
+ * the game is over. Its search runs once that position's evaluation has, and
+ * a position the screen has left is dropped, so ask for it beside
+ * `getEvaluation` freely. Kept for as long as the app runs.
  *
  * ```ts
  * const top = useSuspense(getTopMoves, ['e2e4']); // [{ uci: 'c7c5', evaluation }, …]
  * ```
  */
-export const getTopMoves = new Endpoint(
-  async (line: readonly string[]): Promise<readonly TopMove[]> =>
-    lastPosition(line).result ? [] : stockfishTopMoves(line),
-  { name: 'getTopMoves', dataExpiryLength: Infinity },
-);
+function fetchTopMoves(line: readonly string[], signal?: AbortSignal): Promise<readonly TopMove[]> {
+  return lastPosition(line).result ? Promise.resolve([]) : stockfishTopMoves(line, signal);
+}
+
+export const getTopMoves = new Endpoint((line: readonly string[]) => fetchTopMoves(line), {
+  name: 'getTopMoves',
+  dataExpiryLength: Infinity,
+});
+
+/**
+ * `getTopMoves`, aborted when `signal` aborts. The same key, so the cache is
+ * shared. The signal is closed over: a browser calls the endpoint with no `this`.
+ */
+export function topMovesSearch(signal?: AbortSignal) {
+  // `name` has to be set again: extending copies own fields, and an
+  // endpoint's name is a getter, so without it the copy's cache key changes
+  // and the screen never sees the result.
+  return signal
+    ? getTopMoves.extend({
+        name: getTopMoves.name,
+        fetch: (line: readonly string[]) => fetchTopMoves(line, signal),
+      })
+    : getTopMoves;
+}

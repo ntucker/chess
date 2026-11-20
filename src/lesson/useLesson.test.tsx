@@ -19,8 +19,13 @@ jest.mock('@data-client/react', () => ({
   useFetch: () => {},
   useCache: () => undefined,
   useSuspense: () => ({ seen: [], passed: [] }),
+  useCancelling: (endpoint: unknown) => endpoint,
 }));
-jest.mock('@/resources/evaluation', () => ({ getEvaluation: {} }));
+jest.mock('@/resources/evaluation', () => ({
+  getEvaluation: {},
+  getTopMoves: {},
+  topMovesSearch: () => ({}),
+}));
 jest.mock('@/resources/opponent', () => ({
   gameOpponent: () => undefined,
   useWarmOpponent: () => {},

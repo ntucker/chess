@@ -1,22 +1,22 @@
 /**
  * The lesson screen's wiring: a game against the guide-first opponent, the
  * facts about the position on the board, what the learner points at (a
- * candidate, by its list row or a piece dragged onto its square, and a note
- * on the idea card), an idea playing back, the mode (Explore or Practice),
+ * candidate, by its list row or a piece dragged or clicked, and a note on
+ * the idea card), an idea playing back, the mode (Explore or Practice),
  * the learner's progress marks, Stockfish's best move and top three in
  * Explore, and the board. Where the opponent plays its own moves (`opponentPlays`) the learner
  * moves their own side; elsewhere, either.
  */
-import { useCache, useController, useFetch, useSuspense } from '@data-client/react';
+import { useCache, useCancelling, useController, useFetch, useSuspense } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
 import { useEffect, useMemo, useReducer } from 'react';
 
 import type { Square } from '@/board/drawing';
 import type { Drag } from '@/board/pointer';
 import type { BoardProps } from '@/components/Board';
-import { dropMove, parsePositionKey } from '@/game/replay';
+import { dropMove, parsePositionKey, pieceAt } from '@/game/replay';
 import { type GameStore, useGame } from '@/game/useGame';
-import { getEvaluation, getTopMoves } from '@/resources/evaluation';
+import { getEvaluation, getTopMoves, topMovesSearch } from '@/resources/evaluation';
 import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
 import { hasMark } from '@/progress/progress';
 import { addMark, getProgress } from '@/resources/progress';
@@ -30,6 +30,7 @@ import {
   type LessonMode,
   listsTopMoves,
   notePlayback,
+  onlyLegal,
   type PlayedBack,
 } from './guidance';
 import type { Lesson, Note, PositionKey, Uci } from './lesson';
@@ -162,24 +163,34 @@ export function useLesson(
   const evaluationArgs = explore ? (['stockfish', shownLine] as const) : ([null] as const);
   useFetch(getEvaluation, ...evaluationArgs);
   const evaluation = useCache(getEvaluation, ...evaluationArgs);
-  const topArgs = focused && listsTopMoves(view, mode) ? ([shownLine] as const) : ([null] as const);
-  useFetch(getTopMoves, ...topArgs);
-  const topMoves = useCache(getTopMoves, ...topArgs);
+  const topLine = focused && listsTopMoves(view, mode) ? shownLine : null;
+  // Aborts the previous position's search as the board steps on, before the new one starts.
+  const topMovesEndpoint = useCancelling(getTopMoves, topLine);
+  const topSignal = topLine === null ? undefined : topMovesEndpoint.signal;
+  const topMovesFetch = useMemo(() => topMovesSearch(topSignal), [topSignal]);
+  useFetch(topMovesFetch, topLine);
+  const topMoves = useCache(getTopMoves, topLine);
   const top = useMemo(
     () => (topMoves ? engineCandidates(lesson, key, topMoves) : []),
     [lesson, key, topMoves],
   );
   const previewOf = (at: Pointer) => preview(lesson, view, at, top);
-  const shown = guidance({
-    view,
-    mode,
-    switches: settings,
-    preview: pointer && previewOf(pointer),
-    dragged: pointer?.at === 'drag' ? pointer.from : undefined,
-    pointed: here?.note,
-    playing: playing?.played,
-    engine: { best: evaluation?.best, top },
-  });
+  // Against the position on the board, so a search for one already left
+  // cannot list or draw a move that is illegal here.
+  const shown = onlyLegal(
+    guidance({
+      view,
+      mode,
+      switches: settings,
+      preview: pointer && previewOf(pointer),
+      dragged: pointer?.at === 'drag' ? pointer.from : undefined,
+      selected: pointer?.at === 'select' ? pointer.from : undefined,
+      pointed: here?.note,
+      playing: playing?.played,
+      engine: { best: evaluation?.best, top },
+    }),
+    current.fen,
+  );
   const frames = shown.playing
     ? ideaPlayback(shown.playing.idea, parsePositionKey(shown.playing.at)!)
     : [];
@@ -222,10 +233,24 @@ export function useLesson(
       if (uci) playMove(uci);
     },
     onDrag: pointDrag,
-    onPress: (square, selected) => {
-      const press = !frame && boardPress(shown, current, canMove, square, selected);
-      if (press === 'end') dispatch({ type: 'candidate', key });
-      else if (press) play(press);
+    onPress: (square, picked) => {
+      if (frame) return;
+      const press = boardPress(shown, current, canMove, square, picked);
+      if (press && press !== 'end') {
+        play(press);
+        return;
+      }
+      // A click that plays a move is the board's. Any other click on the side
+      // to move's piece selects it, and draws its moves the way a drag does;
+      // a click elsewhere lets the piece go.
+      const piece = pieceAt(current.fen, square);
+      const boardPlays = picked !== undefined && current.dests[picked]?.includes(square);
+      const select = canMove && !boardPlays && piece?.color === current.turn ? square : undefined;
+      dispatch({
+        type: 'candidate',
+        key,
+        ...(select && { candidate: { at: 'select', from: select } }),
+      });
     },
   };
   // The opponent's reply would move the board on and end a playback at once,

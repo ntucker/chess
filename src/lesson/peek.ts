@@ -107,7 +107,8 @@ export function peekReducer(peek: Peek | undefined, action: PeekAction): Peek | 
 const samePointer = (a?: Pointer, b?: Pointer) =>
   a === b ||
   (a?.at === 'row' && b?.at === 'row' && a.uci === b.uci) ||
-  (a?.at === 'drag' && b?.at === 'drag' && a.from === b.from && a.to === b.to);
+  (a?.at === 'drag' && b?.at === 'drag' && a.from === b.from && a.to === b.to) ||
+  (a?.at === 'select' && b?.at === 'select' && a.from === b.from);
 
 const samePointing = (a: Pointing, b: Pointing) =>
   a.key === b.key && a.note === b.note && samePointer(a.candidate, b.candidate);

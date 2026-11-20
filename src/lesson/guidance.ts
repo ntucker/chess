@@ -35,9 +35,11 @@
  *   Practice, on any turn.
  * - While a note's idea plays back, the board is the playback's: nothing else
  *   is drawn, and the preview it started from stays.
- * - While a piece is dragged, the board draws only its candidates, rare ones
- *   and Stockfish's top moves too, wherever it is over, so dragging across the board moves nothing
- *   else on it; the idea card shows the move under it.
+ * - While a piece is dragged, or selected by a click, the board draws only
+ *   its candidates, rare ones and Stockfish's top moves too. A drag draws
+ *   them wherever the piece is over, so dragging across the board moves
+ *   nothing else on it; the idea card shows the move under it. A click hides
+ *   the resting best-move mark the same way, until the piece is unselected.
  * - Rare candidates (`Candidate.rare`) are left off the list, which shows
  *   them only when asked, and off the board's arrows; Stockfish's best isn't
  *   tagged on one either. Only a preview of one, or dragging its piece,
@@ -46,6 +48,7 @@
  * guidance stays in lesson terms; lessonDrawings (./drawings.ts) turns it
  * into board shapes, and says which ideas draw nothing (`drawsOnBoard`).
  */
+import { lineMove } from '@/game/replay';
 import type { Settings } from '@/settings/settings';
 
 import { drawsOnBoard } from './drawings';
@@ -74,6 +77,11 @@ export interface GuidanceInput {
   readonly preview?: Preview;
   /** The square of the piece the learner drags, while they do. */
   readonly dragged?: Candidate['from'];
+  /**
+   * The square of a piece the learner clicked, while it stays selected.
+   * Drawn as a drag is: that piece's own moves, and no resting best-move mark.
+   */
+  readonly selected?: Candidate['from'];
   /** The note the learner points at on the idea card. */
   readonly pointed?: Note;
   /** The note whose idea plays back on the board. */
@@ -150,6 +158,7 @@ export function guidance(input: GuidanceInput): Guidance {
     switches,
     preview: pointerPreview,
     dragged: pointerDragged,
+    selected: pointerSelected,
     pointed,
     playing: playingNote,
     engine,
@@ -159,6 +168,8 @@ export function guidance(input: GuidanceInput): Guidance {
   const choices = explore || view.ply === 0 || (!view.learnerToMove && !switches.auto);
   const preview = choices ? pointerPreview : undefined;
   const dragged = choices ? pointerDragged : undefined;
+  // A drag is already the piece in hand, so a click's selection yields to it.
+  const lifted = dragged ?? (choices ? pointerSelected : undefined);
   // In Practice a previewed reply leads to the learner's move, so its notes
   // are kept as on the learner's turn. Explore shows every note.
   const notes = preview
@@ -189,7 +200,7 @@ export function guidance(input: GuidanceInput): Guidance {
     candidates,
     liftable: [...withRare, ...top],
     preview,
-    dragged,
+    lifted,
     ideas,
     playing,
     pointed: pointedNote,
@@ -197,7 +208,7 @@ export function guidance(input: GuidanceInput): Guidance {
     moveIdeas,
   });
   const best =
-    explore && switches.showMoves && !preview && !dragged && !playing && !pointedNote
+    explore && switches.showMoves && !preview && !lifted && !playing && !pointedNote
       ? view.place === 'inside'
         ? engine?.best
         : top[0]?.move.uci
@@ -224,17 +235,56 @@ export function guidance(input: GuidanceInput): Guidance {
 }
 
 /**
+ * `shown` with every move that is illegal in `fen` removed, from the list and
+ * from the arrows. A top-moves search that finishes for a position the board
+ * has left must not list or draw a move the position on screen cannot play.
+ * Returns `shown` itself when every move is legal.
+ */
+export function onlyLegal(shown: Guidance, fen: string): Guidance {
+  const keep = (candidate: Candidate) => lineMove(fen, candidate.move.uci) !== undefined;
+  const candidates = shown.candidates.filter(keep);
+  const rare = shown.rare.filter(keep);
+  const top = shown.top.filter(keep);
+  const drawnCandidates = shown.drawnCandidates.filter(keep);
+  const best = shown.best !== undefined && lineMove(fen, shown.best) ? shown.best : undefined;
+  const preview = shown.preview && keep(shown.preview.candidate) ? shown.preview : undefined;
+  if (
+    candidates.length === shown.candidates.length &&
+    rare.length === shown.rare.length &&
+    top.length === shown.top.length &&
+    drawnCandidates.length === shown.drawnCandidates.length &&
+    best === shown.best &&
+    preview === shown.preview
+  ) {
+    return shown;
+  }
+  return {
+    ...shown,
+    candidates,
+    rare,
+    top,
+    drawnCandidates,
+    best,
+    preview,
+    main:
+      shown.main !== undefined && candidates.includes(shown.main)
+        ? shown.main
+        : mainCandidate(candidates),
+  };
+}
+
+/**
  * What the board draws: nothing while a note plays back; a pointed note's
- * ideas alone; a sliding preview's ideas; a dragged piece's moves alone
- * (`liftable`); or else the listed candidates with only traps beside them
- * (every idea where none are listed); with `showMoves` off, the traps and
- * the ideas of the move just played instead.
+ * ideas alone; a sliding preview's ideas; a picked-up piece's moves alone
+ * (`liftable`: dragged or selected); or else the listed candidates with only
+ * traps beside them (every idea where none are listed); with `showMoves`
+ * off, the traps and the ideas of the move just played instead.
  */
 function boardShown({
   candidates,
   liftable,
   preview,
-  dragged,
+  lifted,
   ideas,
   playing,
   pointed,
@@ -242,10 +292,11 @@ function boardShown({
   moveIdeas,
 }: {
   readonly candidates: readonly Candidate[];
-  /** Every move a dragged piece lights: rare candidates and top moves too. */
+  /** Every move a dragged or selected piece lights: rare candidates and top moves too. */
   readonly liftable: readonly Candidate[];
   readonly preview?: Preview;
-  readonly dragged?: Candidate['from'];
+  /** The square of the piece in hand: a drag, or a piece selected by a click. */
+  readonly lifted?: Candidate['from'];
   readonly ideas: readonly ShownIdea[];
   readonly playing?: ShownPlayback;
   readonly pointed?: Note;
@@ -258,7 +309,7 @@ function boardShown({
     return { candidates: [], drawn: ideas.filter(({ idea }) => pointed.ideas?.includes(idea)) };
   }
   if (preview?.slide) return { candidates: [], drawn: ideas };
-  if (dragged) return { candidates: liftable.filter(({ from }) => from === dragged), drawn: [] };
+  if (lifted) return { candidates: liftable.filter(({ from }) => from === lifted), drawn: [] };
   if (!candidates.length) return { candidates, drawn: ideas };
   if (showMoves) return { candidates, drawn: ideas.filter(({ idea }) => idea.type === 'trap') };
   return {

@@ -121,9 +121,14 @@ export function lessonView({ lesson, line, ply, opponent }: LessonViewInput): Le
   };
 }
 
-/** What the learner points at: a row of the candidate list, or a piece dragged over a square. */
+/**
+ * What the learner points at: a row of the candidate list, a piece dragged
+ * over a square, or a piece selected by a click.
+ */
 export type Pointer =
-  { readonly at: 'row'; readonly uci: Uci } | ({ readonly at: 'drag' } & Drag<SquareName>);
+  | { readonly at: 'row'; readonly uci: Uci }
+  | ({ readonly at: 'drag' } & Drag<SquareName>)
+  | { readonly at: 'select'; readonly from: SquareName };
 
 /**
  * A candidate move shown before it is played. `slide`: the board shows the
@@ -166,7 +171,9 @@ function pointed(key: PositionKey, candidates: readonly Candidate[], pointer: Po
     const candidate = candidates.find(({ move }) => move.uci === pointer.uci);
     return candidate && { candidate, slide: true };
   }
-  if (!pointer.to) return undefined;
+  // A click selects the piece without a square to preview; only a drag over
+  // another square names a move.
+  if (pointer.at !== 'drag' || !pointer.to) return undefined;
   const uci = dropMove(key, pointer.from, pointer.to);
   const candidate = uci && candidates.find(({ move }) => move.uci === uci);
   return candidate && { candidate, slide: false };
