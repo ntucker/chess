@@ -65,6 +65,21 @@ describe('mergeChapters', () => {
     expect(named.positions[keyAfter('e4', 'c6', 'Nc3', 'd5', 'd4')].variation).toBe('test');
   });
 
+  it('nests a chapter name with more colons inside each group before it', () => {
+    const named = mergeChapters(
+      lesson,
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'black')),
+      (title) => (title.includes('Advance') ? 'Advance: Short: Main Line' : 'Advance: Short'),
+    );
+    expect(named.variations).toEqual({
+      test: { name: 'Caro-Kann' },
+      advance: { name: 'Advance', parent: 'test' },
+      'advance-short': { name: 'Advance: Short', parent: 'advance' },
+      'advance-short-main-line': { name: 'Advance: Main Line', parent: 'advance-short' },
+    });
+  });
+
   it("names a shared position after the opening, and one chapter's after that chapter", () => {
     expect(at('e4', 'c6', 'd4', 'd5').variation).toBe('test');
     expect(at('e4', 'c6', 'd4', 'd5', 'e5').variation).toBe('advance-variation-short-variation');

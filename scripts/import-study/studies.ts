@@ -1,7 +1,7 @@
 /** The lessons the app ships, by lesson id, and the sources each is read from. */
 import type { LessonSource } from '@/lesson/lesson';
 
-import type { ChapterName, LessonInfo } from './merge';
+import { numberedChapterName, type ChapterName, type LessonInfo } from './merge';
 import type { WikibooksOptions } from './wikibooks';
 
 /** A lichess study, by its id. */
@@ -76,6 +76,9 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         },
         /** The theory chapters: 🔵 core and 🟢 extra. Guides, plans and model games come later. */
         chapters: (title: string) => /^(?:🔵|🟢)/u.test(title),
+        // "Sidelines Index" names the chapter's contents page, not a variation.
+        chapterName: (title, chapter) =>
+          numberedChapterName(title, chapter)?.replace(/: Sidelines Index$/, ''),
       },
       {
         root: 'Chess_Opening_Theory/1._e4/1...c6',
@@ -139,6 +142,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
           'Modern Line': '',
           'Slav accepted': 'Pure Slav',
           'Alapin variation': 'Alapin Variation',
+          'Dutch variation': 'Alapin Variation: Dutch Variation',
           'Exchange variation': 'Exchange Variation',
         },
       },

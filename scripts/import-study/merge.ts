@@ -388,15 +388,19 @@ function chapterVariations(
   const chapterVariation = chapters.map((chapter) => {
     const name = chapterName(chapter.title, chapter);
     if (name === undefined) return info.id;
-    const [group] = name.includes(':') ? name.split(/:\s*/, 2) : [undefined];
+    // Each colon opens a narrower group: "Pure Slav: Alapin Variation: Dutch
+    // Variation" is a line of the Alapin, itself a line of the Pure Slav. Below
+    // the top group a name keeps the top group's, since many chapter names
+    // ("Other Fourth Moves") need it.
+    const [top, ...narrower] = name.split(/:\s*/);
     let parent = info.id;
-    if (group) {
-      parent = slug(group);
-      variations[parent] ??= { name: group, parent: info.id };
-    }
-    // The full name, since many chapter names ("Other Fourth Moves") need their group.
-    const id = slug(name);
-    variations[id] ??= { name, parent };
+    let id = slug(top);
+    variations[id] ??= { name: top, parent };
+    narrower.forEach((part, i) => {
+      parent = id;
+      id = slug([top, ...narrower.slice(0, i + 1)].join(': '));
+      variations[id] ??= { name: `${top}: ${part}`, parent };
+    });
     return id;
   });
   return { variations, chapterVariation };
