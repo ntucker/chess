@@ -203,6 +203,36 @@ describe('openingMarks', () => {
     expect(marksOf(passed, { e4: LESSON, d4: D4 })).toEqual({ e4: 'passed', d4: 'passed' });
   });
 
+  it("takes a row's book flag from its own lesson, for a lesson whose learner moves first", () => {
+    const white: Lesson = {
+      ...LESSON,
+      id: 'white',
+      side: 'white',
+      positions: {
+        [START]: {
+          variation: LESSON.positions[START].variation,
+          moves: [move([], 'e4', true), move([], 'd4')],
+        },
+        [at('e4')]: { variation: LESSON.positions[START].variation, moves: [move(['e4'], 'e5')] },
+      },
+    };
+    const whiteIndex = { white: indexEntry(white) };
+    const start = lessonView({
+      lesson: openingsLesson(whiteIndex),
+      line: [],
+      ply: 0,
+      opponent: 1500,
+    });
+    const marks = openingMarks(
+      whiteIndex,
+      { white: progress([], [at('e4', 'e5'), at('d4')]) },
+      { white },
+      start,
+    );
+    // 1.d4 isn't a book move, so a clean run never plays it.
+    expect([...marks]).toEqual([[uciLine('e4')[0], 'passed']]);
+  });
+
   it('loads only the lessons with a passed line end, the only rows that can pass', () => {
     expect(
       lessonsPassing(index, { e4: progress([at('e4')], []), d4: progress([], [at('d4', 'd5')]) }),

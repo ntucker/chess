@@ -12,7 +12,8 @@ import { positionKey } from '@/game/replay';
 
 import { LESSON_FORMAT, onDomain, type Lesson, type LessonSource, type Uci } from './lesson';
 
-const START_KEY = positionKey(Chess.default());
+/** The start position's key, where the openings are listed. */
+export const START_KEY = positionKey(Chess.default());
 
 /**
  * What the start position needs to know of a lesson before it loads. Its

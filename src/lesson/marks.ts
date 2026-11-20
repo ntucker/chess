@@ -20,7 +20,7 @@ import {
 } from '@/progress/progress';
 
 import type { Lesson, LessonMove, PositionKey, Uci } from './lesson';
-import { type LessonIndex, lessonOf } from './openings';
+import { type LessonIndex, lessonOf, START_KEY } from './openings';
 import type { ReplyChoice } from './opponent';
 import type { ModeState } from './practice';
 import { type Candidate, guidePosition } from './select';
@@ -42,7 +42,7 @@ export function rowMarks(
   view: Pick<LessonView, 'candidates' | 'learnerToMove'>,
 ): ReadonlyMap<Uci, Mark> {
   const sets = markSets(progress);
-  return marksBy(view, () => [lesson, sets]);
+  return marksBy(view, ({ move }) => [lesson, sets, move]);
 }
 
 /**
@@ -50,7 +50,8 @@ export function rowMarks(
  * row's from its own opening's lesson and `progress`, whichever lesson is
  * loaded. A row's lesson missing from `lessons` can't be walked, so the row
  * is at most seen; only a lesson with a passed line end can pass its row
- * (`lessonsPassing`).
+ * (`lessonsPassing`). Whether a row is a book move is its lesson's to say:
+ * the start's own list carries no book flags.
  */
 export function openingMarks(
   index: LessonIndex,
@@ -60,7 +61,10 @@ export function openingMarks(
 ): ReadonlyMap<Uci, Mark> {
   return marksBy(view, ({ move }) => {
     const id = lessonOf(index, [move.uci]);
-    return id === undefined ? undefined : [lessons[id], markSets(progress[id] ?? UNTOUCHED)];
+    if (id === undefined) return undefined;
+    const lesson = lessons[id];
+    const own = lesson?.positions[START_KEY]?.moves.find(({ uci }) => uci === move.uci);
+    return [lesson, markSets(progress[id] ?? UNTOUCHED), own ?? move];
   });
 }
 
@@ -70,15 +74,18 @@ export const lessonsPassing = <Id extends string>(
   progress: SavedProgress,
 ) => (Object.keys(index) as Id[]).filter((id) => progress[id]?.passed.length);
 
-/** Each row's mark, from the lesson (when at hand) and marks `source` gives for it. */
+/**
+ * Each row's mark, from what `source` gives for it: the lesson (when at
+ * hand) to walk, the marks, and the move as that lesson has it.
+ */
 function marksBy(
   { candidates, learnerToMove }: Pick<LessonView, 'candidates' | 'learnerToMove'>,
-  source: (candidate: Candidate) => readonly [Lesson | undefined, MarkSets] | undefined,
+  source: (candidate: Candidate) => readonly [Lesson | undefined, MarkSets, LessonMove] | undefined,
 ): ReadonlyMap<Uci, Mark> {
   const marks = new Map<Uci, Mark>();
   for (const candidate of candidates) {
     const found = source(candidate);
-    const mark = found && rowMark(...found, candidate, learnerToMove);
+    const mark = found && rowMark(...found, candidate.next, learnerToMove);
     if (mark) marks.set(candidate.move.uci, mark);
   }
   return marks;
@@ -88,7 +95,8 @@ function marksBy(
 function rowMark(
   lesson: Lesson | undefined,
   { seen, passed }: MarkSets,
-  { move, next }: Candidate,
+  move: LessonMove,
+  next: PositionKey,
   learnerToMove: boolean,
 ): Mark | undefined {
   if (lesson && inCleanRun(move, learnerToMove) && cleanEnds(lesson, passed, next) === 'passed') {

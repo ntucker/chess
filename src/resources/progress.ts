@@ -31,7 +31,7 @@ export class LessonProgress extends Entity {
 
 const saved = (): SavedProgress => parseProgress(readStorage(KEY) ?? '{}');
 
-const lessonOf = (progress: SavedProgress, lesson: string) => ({
+const progressOf = (progress: SavedProgress, lesson: string) => ({
   lesson,
   ...(progress[lesson] ?? UNTOUCHED),
 });
@@ -42,7 +42,7 @@ const lessonOf = (progress: SavedProgress, lesson: string) => ({
  * listed here but can't add one, so a lesson's first mark shows only if it is.
  */
 const everyLesson = (progress: SavedProgress) =>
-  Object.fromEntries(Object.keys(LESSONS).map((lesson) => [lesson, lessonOf(progress, lesson)]));
+  Object.fromEntries(Object.keys(LESSONS).map((lesson) => [lesson, progressOf(progress, lesson)]));
 
 /**
  * The learner's progress in every lesson, by lesson id, read from the
@@ -74,7 +74,7 @@ export const addMark = new Endpoint(
     const before = saved();
     const after = withMark(before, lesson, mark, key);
     if (after !== before) writeStorage(KEY, JSON.stringify(after));
-    return lessonOf(after, lesson);
+    return progressOf(after, lesson);
   },
   { schema: LessonProgress, sideEffect: true, name: 'addMark' },
 );
@@ -95,6 +95,8 @@ export class ProgressSync implements Manager {
   // What is saved now, not the event's value: this tab may have saved a newer
   // mark since the other tab's save queued the event.
   private load = () => {
+    // As getProgress's answer, not only its entities: a tab that hasn't read
+    // the progress yet then has it, rather than reading it again.
     this.controller?.setResponse(getProgress, everyLesson(saved()));
   };
 

@@ -37,7 +37,8 @@ export const getLesson = new Endpoint(
 
 /**
  * The lessons `ids`, by id (see `getLesson`), for a screen that needs
- * several at once. Each is the same object `getLesson` gives.
+ * several at once. Each is the imported file itself, the same object
+ * `getLesson` gives (`readLesson` returns what it reads).
  *
  * ```ts
  * const lessons = useSuspense(getLessons, ['caro-kann', 'slav']);
