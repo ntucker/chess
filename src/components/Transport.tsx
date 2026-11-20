@@ -3,6 +3,7 @@ import { a11yState, Pressable, Text, useTheme } from '@reactive/silk-native';
 import type { ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { numberedMove } from '@/game/replay';
 import { NARROW_CSS_LOADS, narrowPart } from '@/theme/narrow';
 import { fonts } from '@/theme/theme';
 
@@ -16,18 +17,19 @@ interface Props {
    * go there too. Elsewhere the stepper keeps its four buttons.
    */
   readonly scoresheet?: {
-    /** The move shown, in notation: "12…Nc6", or "Start". */
-    readonly label: string;
+    /** The move that led to the position shown, in SAN: none at the start. */
+    readonly san?: string;
     readonly open: boolean;
     readonly onToggle: () => void;
   };
 }
 
 /** Steps through the game like a player's transport: start, back, forward, end. */
-export function Transport({ ply, total, onGoto, scoresheet: wanted }: Props) {
+export function Transport({ ply, total, onGoto, scoresheet: requested }: Props) {
   const { theme } = useTheme();
   // Only narrow.css can swap the jumps for the opener.
-  const scoresheet = NARROW_CSS_LOADS ? wanted : undefined;
+  const scoresheet = NARROW_CSS_LOADS ? requested : undefined;
+  const shown = scoresheet && shownMove(scoresheet.san, ply);
   const { color } = theme.semantic;
   const buttons: {
     label: string;
@@ -116,7 +118,7 @@ export function Transport({ ply, total, onGoto, scoresheet: wanted }: Props) {
         <View {...narrowPart('narrow-only')}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Scoresheet, ${scoresheet.label}`}
+            accessibilityLabel={`Scoresheet, ${shown}`}
             {...a11yState({ expanded: scoresheet.open })}
             disabled={total === 0}
             onPress={scoresheet.onToggle}
@@ -134,7 +136,7 @@ export function Transport({ ply, total, onGoto, scoresheet: wanted }: Props) {
                 { color: total === 0 ? color.tones.neutral.disabledFg : color.textPrimary },
               ]}
             >
-              {scoresheet.label}
+              {shown}
             </Text>
             <Ionicons
               name={scoresheet.open ? 'chevron-down' : 'chevron-up'}
@@ -149,6 +151,10 @@ export function Transport({ ply, total, onGoto, scoresheet: wanted }: Props) {
     </View>
   );
 }
+
+/** The move on the board as the stepper names it, "12…Nc6" (`ply` moves in), or "Start" before any. */
+export const shownMove = (san: string | undefined, ply: number) =>
+  san ? numberedMove(san, ply, '…') : 'Start';
 
 const styles = StyleSheet.create({
   bar: {

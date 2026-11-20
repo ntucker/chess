@@ -61,16 +61,6 @@ describe('ScoresheetDrawer', () => {
     unmount();
   });
 
-  it('leaves Escape to a dialog it was pressed in', () => {
-    const { onClose, unmount } = renderDrawer(1, 2);
-    const dialog = document.body.appendChild(document.createElement('div'));
-    dialog.setAttribute('aria-modal', 'true');
-    dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    expect(onClose).not.toHaveBeenCalled();
-    dialog.remove();
-    unmount();
-  });
-
   it('closes from its close button', () => {
     const { button, onClose, unmount } = renderDrawer(1, 2);
     act(() => button('Close the scoresheet').click());

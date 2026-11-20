@@ -291,7 +291,7 @@ function LessonScreen({
   ) : null;
 
   /** The game's moves, for the scoresheet beside the panes or in their place. */
-  const moves = {
+  const scoresheetProps = {
     plies: game.plies,
     qualities: game.qualities,
     ply: game.ply,
@@ -404,7 +404,7 @@ function LessonScreen({
               onGoto={game.goto}
               onClose={() => setScoresheetOpen(false)}
             >
-              <Scoresheet {...moves} fill />
+              <Scoresheet {...scoresheetProps} fill />
             </ScoresheetDrawer>
           ) : null}
           {/*
@@ -417,7 +417,7 @@ function LessonScreen({
             <Separator />
             <Stack style={labelled}>
               <Eyebrow>Scoresheet</Eyebrow>
-              <Scoresheet {...moves} />
+              <Scoresheet {...scoresheetProps} />
             </Stack>
             {settingsOpen ? null : (
               <>

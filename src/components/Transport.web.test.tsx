@@ -7,7 +7,7 @@ import { createRoot } from 'react-dom/client';
 
 import { themes } from '@/theme/theme';
 
-import { Transport } from './Transport';
+import { shownMove, Transport } from './Transport';
 
 // Its font needs Expo's asset registry, which the web preset doesn't resolve.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
@@ -54,7 +54,7 @@ describe('Transport', () => {
       ply: 1,
       total: 2,
       onGoto: goto,
-      scoresheet: { label: '1.e4', open: true, onToggle: () => {} },
+      scoresheet: { san: 'e4', open: true, onToggle: () => {} },
     });
     expect(found.map(({ label, part }) => [label, part])).toEqual([
       ['First move', 'wide-only'],
@@ -71,8 +71,18 @@ describe('Transport', () => {
       ply: 0,
       total: 0,
       onGoto: goto,
-      scoresheet: { label: 'Start', open: false, onToggle: () => {} },
+      scoresheet: { open: false, onToggle: () => {} },
     });
     expect(opener).toMatchObject({ label: 'Scoresheet, Start', disabled: true, expanded: 'false' });
+  });
+});
+
+describe('shownMove', () => {
+  it('names the start, then White’s moves with a dot and Black’s with an ellipsis', () => {
+    expect([shownMove(undefined, 0), shownMove('e4', 1), shownMove('c6', 2)]).toEqual([
+      'Start',
+      '1.e4',
+      '1…c6',
+    ]);
   });
 });
