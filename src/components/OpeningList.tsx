@@ -83,14 +83,14 @@ function SideSection({
   readonly here?: ListPlace<LessonId>;
 }) {
   const { theme } = useTheme();
-  const narrow = useNarrowStyles(NARROW_STYLES);
+  const spacing = useNarrowStyles(STYLES);
   if (!openings.length) return null;
   return (
     <View style={styles.side}>
       <View style={[styles.sideHead, { borderBottomColor: theme.semantic.color.borderSubtle }]}>
         <Eyebrow>Playing {colorName(side)}</Eyebrow>
       </View>
-      <View style={narrow.openings}>
+      <View style={spacing.openings}>
         {openings.map((opening) => (
           <OpeningEntry
             key={opening.id}
@@ -116,6 +116,7 @@ function OpeningEntry({
   readonly here?: VariationId;
 }) {
   const { root } = opening;
+  const spacing = useNarrowStyles(STYLES);
   return (
     <View style={styles.opening}>
       <Branch
@@ -127,7 +128,7 @@ function OpeningEntry({
         gutter
         tag={here === undefined ? undefined : <NowPlaying />}
         footer={
-          <View style={styles.credits}>
+          <View style={spacing.credits}>
             <SourceCredits sources={opening.sources} />
           </View>
         }
@@ -376,9 +377,18 @@ const ROW_PAD = 8;
 const NAME_ROLE = ['headingLg', 'body', 'bodySm'] as const;
 const nameRole = (depth: number) => NAME_ROLE[Math.min(depth, 2)];
 
-/** Space between a side's openings: a closed one is a single row, so a phone packs them close. */
 const OPENING_GAP = narrowLength('opening-gap', 28);
-const NARROW_STYLES = narrowStyles((px) => ({ openings: { gap: px(OPENING_GAP) } }));
+/** Space below an open opening, its credits' last line, on every page. */
+const AFTER_OPEN = 28;
+const STYLES = narrowStyles((px) => ({
+  openings: { gap: px(OPENING_GAP) },
+  // The credits make up what a narrow page's gap leaves out, so an open opening stands apart.
+  credits: {
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: px(OPENING_GAP.times(-1).plus(AFTER_OPEN)),
+  },
+}));
 
 const styles = StyleSheet.create({
   content: { width: '100%', maxWidth: CONTENT_MAX, gap: 40, paddingTop: 12, paddingBottom: 48 },
@@ -426,5 +436,4 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   line: { fontFamily: fonts.mono, fontSize: 13, marginLeft: 'auto', textAlign: 'right' },
-  credits: { paddingHorizontal: 10, paddingTop: 8 },
 });
