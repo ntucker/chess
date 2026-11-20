@@ -1,14 +1,14 @@
-import './phone.css';
+import './narrow.css';
 
 /**
- * Whether phone.css can apply: only on the web. Off it every length is its
+ * Whether narrow.css can apply: only on the web. Off it every length is its
  * wide value, no part is tagged, and text that only a narrow page shows isn't
  * rendered at all.
  */
-export const PHONE_LAYOUT = process.env.EXPO_OS === 'web';
+export const NARROW_CSS_LOADS = process.env.EXPO_OS === 'web';
 
-/** The lengths phone.css shortens on a narrow web page. */
-export const PHONE_LENGTHS = [
+/** The lengths narrow.css shortens. */
+export const NARROW_LENGTHS = [
   'page-space',
   'header-height',
   'wordmark-size',
@@ -25,10 +25,10 @@ export const PHONE_LENGTHS = [
   'panel-reserve',
 ] as const;
 
-/** The parts of the page that phone.css lays out differently on a narrow web page. */
-export const PHONE_PARTS = [
+/** The parts of the page that narrow.css lays out differently. */
+export const NARROW_PARTS = [
   'wide-only',
-  'phone-only',
+  'narrow-only',
   'page',
   'stage',
   'board-column',
@@ -41,28 +41,28 @@ export const PHONE_PARTS = [
  * lengths. Work them out with `plus`, `minus` and `times`, never with the
  * style value, so the web's CSS and the native number stay one expression.
  */
-export interface PhoneLength {
+export interface NarrowLength {
   /** Its pixels on a wide screen, and everywhere off the web. */
   readonly wide: number;
-  /** As CSS on the web: the phone's length, or `wide`. */
+  /** As CSS on the web: the narrow page's length, or `wide`. */
   readonly css: string;
-  /** As a style value (see `phoneCalc` for its type). */
+  /** As a style value (see `narrowCalc` for its type). */
   readonly value: number;
-  plus(other: PhoneLength | number): PhoneLength;
-  minus(other: PhoneLength | number): PhoneLength;
-  times(factor: number): PhoneLength;
+  plus(other: NarrowLength | number): NarrowLength;
+  minus(other: NarrowLength | number): NarrowLength;
+  times(factor: number): NarrowLength;
 }
 
-/** The length `--<name>` in phone.css on a narrow web page, `wide` pixels elsewhere. */
-export function phoneLength(name: (typeof PHONE_LENGTHS)[number], wide: number) {
+/** The length `--<name>` from narrow.css, or `wide` pixels where it isn't set. */
+export function narrowLength(name: (typeof NARROW_LENGTHS)[number], wide: number) {
   return makeLength(wide, `var(--${name}, ${wide}px)`);
 }
 
-function makeLength(wide: number, css: string): PhoneLength {
+function makeLength(wide: number, css: string): NarrowLength {
   return {
     wide,
     css,
-    value: phoneCalc(css, wide),
+    value: narrowCalc(css, wide),
     plus: (other) => {
       const operand = asLength(other);
       return makeLength(wide + operand.wide, `(${css} + ${operand.css})`);
@@ -75,8 +75,8 @@ function makeLength(wide: number, css: string): PhoneLength {
   };
 }
 
-/** A fixed number of pixels, as a PhoneLength. */
-function asLength(other: PhoneLength | number) {
+/** A fixed number of pixels, as a NarrowLength. */
+function asLength(other: NarrowLength | number) {
   return typeof other === 'number' ? makeLength(other, `${other}px`) : other;
 }
 
@@ -85,14 +85,14 @@ function asLength(other: PhoneLength | number) {
  * number because React Native's types don't know CSS functions; React Native
  * Web passes the string through to CSS. Never do arithmetic on it.
  */
-export function phoneCalc(css: string, wide: number): number {
-  return PHONE_LAYOUT ? (`calc(${css})` as unknown as number) : wide;
+export function narrowCalc(css: string, wide: number): number {
+  return NARROW_CSS_LOADS ? (`calc(${css})` as unknown as number) : wide;
 }
 
 /**
- * Props that name a part of the page for phone.css, which lays it out
- * differently on a narrow web page. Nothing elsewhere.
+ * Props that name a part of the page for narrow.css to lay out. Nothing off
+ * the web.
  */
-export function phonePart(part: (typeof PHONE_PARTS)[number]) {
-  return PHONE_LAYOUT ? { dataSet: { phone: part } } : {};
+export function narrowPart(part: (typeof NARROW_PARTS)[number]) {
+  return NARROW_CSS_LOADS ? { dataSet: { narrow: part } } : {};
 }

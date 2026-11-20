@@ -5,9 +5,9 @@
  * narrow window. Everywhere else none of this
  * applies: each length falls back to the wide value written beside it in
  * code, and each part keeps its wide layout. The one exception is the rule
- * just below, which keeps phone-only parts hidden until a narrow page shows them.
+ * just below, which keeps narrow-only parts hidden outside the media query.
  */
-:root [data-phone='phone-only'] {
+:root [data-narrow='narrow-only'] {
   display: none;
 }
 
@@ -17,7 +17,7 @@
  * this layout is the only stacked one.
  */
 @media (max-width: 707.98px) {
-  /* Lengths, read by `phoneLength` (phone.ts). */
+  /* Lengths, read by `narrowLength` (narrow.ts). */
   :root {
     /* Page padding and the gap below the header (Stage.tsx). */
     --page-space: 10px;
@@ -54,7 +54,7 @@
   }
 
   /*
-   * Parts, named by `phonePart` (phone.ts). The page (Stage.tsx) fills the
+   * Parts, named by `narrowPart` (narrow.ts). The page (Stage.tsx) fills the
    * screen and doesn't scroll: the board stays at the top, and the panel below
    * it scrolls in the space that's left, so a previewed move stays in view.
    * Only once the board is at its smallest and the panel at its floor does
@@ -63,33 +63,33 @@
    */
   /*
    * Text in two lengths, such as the header's name for the app and for the
-   * page (Header.tsx): each site says why it has a wide-only or phone-only part.
+   * page (Header.tsx): each site says why it has a wide-only or narrow-only part.
    */
-  :root [data-phone='wide-only'] {
+  :root [data-narrow='wide-only'] {
     display: none;
   }
-  :root [data-phone='phone-only'] {
+  :root [data-narrow='narrow-only'] {
     display: block;
   }
   /* A name bar's name and detail share one line (PlayerBar.tsx says how they give way). */
-  :root [data-phone='player-names'] {
+  :root [data-narrow='player-names'] {
     flex-direction: row;
     align-items: baseline;
     gap: 8px;
   }
-  :root [data-phone='page'] {
+  :root [data-narrow='page'] {
     min-height: 100dvh;
   }
-  :root [data-phone='stage'] {
+  :root [data-narrow='stage'] {
     flex: 1 1 auto;
     flex-direction: column;
     align-items: center;
   }
-  :root [data-phone='board-column'] {
+  :root [data-narrow='board-column'] {
     flex: none;
     width: 100%;
   }
-  :root [data-phone='program'] {
+  :root [data-narrow='program'] {
     flex: 1 1 0;
     /* The panel's floor: a few lines of it. */
     min-height: 120px;
