@@ -76,7 +76,7 @@ function Openings({ address }: { readonly address?: LessonId }) {
       errorComponent={LessonFailure}
       listen={resetOnLesson}
     >
-      <LessonScreen id={lesson} store={store} behind={pending} loading={loading} />
+      <LessonScreen id={lesson} store={store} pending={pending} loading={loading} />
     </AsyncBoundary>
   );
 }
@@ -91,13 +91,13 @@ const OPENINGS = openingsLesson(LESSON_INDEX);
 function LessonScreen({
   id,
   store,
-  behind,
+  pending,
   loading,
 }: {
   readonly id?: LessonId;
   readonly store: GameStore;
-  /** The board shows a game the store has moved on from: the learner can't move on it. */
-  readonly behind: boolean;
+  /** The game has moved on to a lesson still loading: the learner can't move. */
+  readonly pending: boolean;
   /** The game has moved on to a lesson that has been loading long enough to say so. */
   readonly loading: boolean;
 }) {
@@ -123,7 +123,7 @@ function LessonScreen({
     modeState,
     startsRun,
     chooseMode,
-  } = useLesson(lesson, store, { behind });
+  } = useLesson(lesson, store, { pending });
   const { mode } = modeState;
   const { auto } = useSettings();
   const learner = lesson.side;

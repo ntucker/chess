@@ -154,8 +154,8 @@ describe('useOpeningsGame', () => {
     const before = renders.length;
     await play('c7c6');
     // No commit shows the game before the move, as a deferred copy would.
-    const shown = renders.slice(before).map(({ store }) => store[0].moves.length);
+    const shown = renders.slice(before).map(({ store }) => store[0].moves);
     expect(shown.length).toBeGreaterThan(0);
-    expect(shown).not.toContain(1);
+    for (const moves of shown) expect(moves).toEqual(['e2e4', 'c7c6']);
   });
 });

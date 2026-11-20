@@ -33,12 +33,12 @@ const lesson = () => renders[renders.length - 1];
 
 function Lesson({
   start,
-  behind = false,
+  pending = false,
 }: {
   readonly start: readonly string[];
-  readonly behind?: boolean;
+  readonly pending?: boolean;
 }) {
-  renders.push(useLesson(SAMPLE, useReducer(gameReducer, start, startGame), { behind }));
+  renders.push(useLesson(SAMPLE, useReducer(gameReducer, start, startGame), { pending }));
   return null;
 }
 
@@ -127,11 +127,11 @@ describe('useLesson Practice run', () => {
   });
 });
 
-describe('useLesson behind the store', () => {
-  it('offers no move while the page shows a game the store has moved on from', async () => {
+describe('useLesson while a lesson loads', () => {
+  it('offers no move while the game waits on another lesson', async () => {
     await act(async () => {
       root = createRoot();
-      root.render(<Lesson start={uciLine('e4')} behind />);
+      root.render(<Lesson start={uciLine('e4')} pending />);
     });
     // The store would drop it, and the board would show a move the game hasn't.
     expect(lesson().canPlay).toBe(false);
