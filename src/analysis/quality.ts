@@ -53,11 +53,11 @@ export function judgeMove(
   const listed = before.lines.find((line) => line.uci === uci);
   const last = before.lines.at(-1)!;
   // A list without moves (Maia's) ranks nothing.
-  const least = last.uci ? lossTo(last.evaluation) : -Infinity;
+  const lastListedLoss = last.uci ? lossTo(last.evaluation) : -Infinity;
+  if (!listed && !after) return undefined;
   const loss = listed
     ? lossTo(listed.evaluation)
-    : after && Math.max(lossTo(after.lines[0].evaluation), least);
-  if (loss === undefined) return undefined;
+    : Math.max(lossTo(after!.lines[0].evaluation), lastListedLoss);
   if (uci === first.uci || loss <= 0) return 'best';
-  return LEAST_LOSS.find(([least]) => loss >= least)?.[1] ?? 'good';
+  return LEAST_LOSS.find(([threshold]) => loss >= threshold)?.[1] ?? 'good';
 }

@@ -1,8 +1,9 @@
 /**
  * Stockfish as the app runs it (the same build), in Node, for the engine
  * check (./engineCheck), with a smaller search than the app's (`CHECK_SEARCH`).
- * Each position's evaluation is cached, so a rerun searches only new positions.
+ * Each position's analysis is cached, so a rerun searches only new positions.
  */
+import { type Analysis, type Evaluation, settledAnalysis } from '@/evaluation/evaluation';
 import {
   attachStockfish,
   type Connection,
@@ -11,7 +12,7 @@ import {
 } from '@/stockfish/engine';
 import { type NodeEngine, sendTo, startNodeEngine } from '@/stockfish/node';
 
-import type { EngineEvaluation, Evaluate } from './engineCheck';
+import type { Evaluate } from './engineCheck';
 import { appendJsonLine, readJsonLines } from './jsonLines';
 
 /**
@@ -58,23 +59,22 @@ export async function nodeStockfish(
   };
   await connect();
 
-  const cached = new Map(
-    (readJsonLines(cacheFile) as { key: string; evaluation: EngineEvaluation }[]).map(
-      ({ key, evaluation }) => [key, evaluation],
-    ),
+  const cached = new Map<string, Analysis>(
+    (readJsonLines(cacheFile) as CacheRow[]).map(({ key, evaluation: { best, ...evaluation } }) => [
+      key,
+      settledAnalysis(evaluation, best),
+    ]),
   );
   let searched = 0;
   const evaluate: Evaluate = async (line, key) => {
     const known = cached.get(key);
     if (known) return known;
-    const {
-      lines: [first],
-    } = await stockfishAnalysis(line);
-    const evaluation = { ...first.evaluation, ...(first.uci && { best: first.uci }) };
-    cached.set(key, evaluation);
-    appendJsonLine(cacheFile, { key, evaluation });
+    const analysis = await stockfishAnalysis(line);
+    cached.set(key, analysis);
+    const [{ uci, evaluation }] = analysis.lines;
+    appendJsonLine(cacheFile, { key, evaluation: { ...evaluation, ...(uci && { best: uci }) } });
     if (++searched % 100 === 0) console.log(`engine check: ${searched} positions searched`);
-    return evaluation;
+    return analysis;
   };
   return {
     evaluate,
@@ -83,6 +83,12 @@ export async function nodeStockfish(
       engine?.terminate?.();
     },
   };
+}
+
+/** A cached analysis, as the cache file holds it: its first line. */
+interface CacheRow {
+  readonly key: string;
+  readonly evaluation: Evaluation & { readonly best?: string };
 }
 
 function giveUp(error: unknown): never {

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 import type { Analysis } from '@/evaluation/evaluation';
 
@@ -7,12 +7,18 @@ import type * as Engine from './engine';
 // The engine's scheduling, takeover and stopping, against scripted engines
 // whose every command is recorded and whose every line the test writes.
 let engine: typeof Engine;
+/** The test's engines, detached after it so no answer timer outlives it. */
+const connections: Engine.Connection[] = [];
 
 beforeEach(() => {
   // A fresh engine module, with no engine attached, for each test.
   jest.resetModules();
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- reloaded after resetModules
   engine = require('./engine') as typeof Engine;
+});
+
+afterEach(() => {
+  for (const connection of connections.splice(0)) connection.detach();
 });
 
 /** Lets the engine decide what to search (it decides once the current task is done). */
@@ -23,6 +29,7 @@ function scripted() {
   const sent: string[] = [];
   const supervisor = { ready: jest.fn(), failed: jest.fn() };
   const connection = engine.attachStockfish((command) => sent.push(command), supervisor);
+  connections.push(connection);
   const print = (line: string) => connection.receive(line);
   /** Prints a finished depth: one line for each move, best first, centipawns falling by 10. */
   const depth = (depth: number, nodes: number, moves: string[], centipawns = 30) =>

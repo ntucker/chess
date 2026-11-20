@@ -51,12 +51,12 @@ export function parseInfo(line: string): SearchLine | undefined {
 }
 
 /**
- * The set of lines being printed, after the engine prints `info`. Stockfish
- * prints every rank together, best first, each time it finishes a depth, so
- * a rank-1 line starts a new set.
+ * The set of lines being printed, after the engine prints `line`, of rank
+ * `rank`. Stockfish prints every rank together, best first, each time it
+ * finishes a depth, so a rank-1 line starts a new set.
  */
-export const addLine = (printing: readonly SearchLine[], info: SearchLine): SearchLine[] =>
-  info.rank === 1 ? [info] : [...printing, info];
+export const addLine = <T>(printing: readonly T[], line: T, rank: number): T[] =>
+  rank === 1 ? [line] : [...printing, line];
 
 /**
  * Whether `set`, the lines a search printed together, is one whole depth the
@@ -104,7 +104,7 @@ export function evaluationFromScore(score: Score, plies: number): Evaluation {
 }
 
 /** The shallowest depth whose lines `forwardNeededLines` passes on. */
-export const FIRST_FORWARDED_DEPTH = 10;
+const FIRST_FORWARDED_DEPTH = 10;
 
 /**
  * Wraps `onLine` to pass on only the lines the app needs from the engine: the
@@ -124,7 +124,7 @@ export function forwardNeededLines(onLine: (line: string) => void): (line: strin
     if (info && info.depth >= FIRST_FORWARDED_DEPTH) {
       forwarded = true;
       onLine(line);
-    } else if (info) shallow = info.rank === 1 ? [line] : [...shallow, line];
+    } else if (info) shallow = addLine(shallow, line, info.rank);
     else if (line === 'uciok') onLine(line);
     else if (line.startsWith('bestmove')) {
       if (!forwarded) shallow.forEach(onLine);

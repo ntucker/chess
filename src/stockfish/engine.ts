@@ -82,8 +82,6 @@ export interface Watcher {
 interface Wanted {
   readonly line: readonly string[];
   readonly watchers: Set<Watcher>;
-  /** When it was last asked for: the newest runs first. */
-  asked: number;
   /** The deepest whole depth any search of it has finished. */
   deepest?: Analysis;
   /** How many engines failed while searching it. */
@@ -95,8 +93,6 @@ interface Search {
   readonly wanted: Wanted;
   /** How many lines each of its depths prints: the budget's ranks, or fewer when fewer moves are legal. */
   readonly ranks: number;
-  /** How many positions it visits. */
-  readonly nodes: number;
   /** The set of lines being printed (`addLine`). */
   printing: readonly SearchLine[];
   /**
@@ -118,10 +114,8 @@ let connected: Session | undefined;
 let running: Search | undefined;
 /** Fails the connected engine if it goes quiet for too long. */
 let watchdog: ReturnType<typeof setTimeout> | undefined;
-/** The positions being watched, by their moves. */
+/** The positions being watched, by their moves, the one asked for last at the end: it runs first. */
 const wanted = new Map<string, Wanted>();
-/** Counts requests, so the newest wanted position is known. */
-let asks = 0;
 /** A decision on what to search is queued (`decideSoon`). */
 let deciding = false;
 
@@ -173,10 +167,11 @@ export function attachStockfish(
  */
 export function watchStockfish(line: readonly string[], watcher: Watcher): () => void {
   const key = line.join(' ');
-  const position = wanted.get(key) ?? { line, watchers: new Set(), asked: 0, failures: 0 };
+  const position = wanted.get(key) ?? { line, watchers: new Set(), failures: 0 };
+  // To the end, as the newest.
+  wanted.delete(key);
   wanted.set(key, position);
   position.watchers.add(watcher);
-  position.asked = ++asks;
   decideSoon();
   return () => {
     // Dropped at the next decision unless watched again by then, as when a
@@ -209,15 +204,6 @@ function decideSoon() {
   });
 }
 
-/** The newest position asked for. */
-function newest(): Wanted | undefined {
-  let found: Wanted | undefined;
-  for (const position of wanted.values()) {
-    if (!found || position.asked > found.asked) found = position;
-  }
-  return found;
-}
-
 /**
  * Drops the positions nobody watches any more, then starts the newest
  * position's search, or stops the running one if it isn't that (its
@@ -225,7 +211,7 @@ function newest(): Wanted | undefined {
  */
 function decide() {
   for (const position of wanted.values()) if (!position.watchers.size) remove(position);
-  const next = newest();
+  const next = [...wanted.values()].at(-1);
   if (running) {
     if (!running.stopping && running.wanted !== next) {
       running.stopping = true;
@@ -237,7 +223,6 @@ function decide() {
   running = {
     wanted: next,
     ranks: Math.min(connected.budget.ranks, legalMoveCount(next.line)),
-    nodes: connected.budget.nodes,
     printing: [],
     stopping: false,
   };
@@ -264,15 +249,15 @@ function handleLine(session: Session, line: string) {
   if (!running) return;
   const info = parseInfo(line);
   if (info) {
-    if (!running.stopping) finishDepth(running, info);
+    if (!running.stopping) finishDepth(running, info, session.budget.nodes);
   } else if (line.startsWith('bestmove')) finishSearch();
 }
 
 /** Takes in a line `search` printed, and tells its watchers when it finishes a deeper depth. */
-function finishDepth(search: Search, info: SearchLine) {
-  search.printing = addLine(search.printing, info);
+function finishDepth(search: Search, info: SearchLine, nodes: number) {
+  search.printing = addLine(search.printing, info, info.rank);
   const { printing, wanted: position } = search;
-  if (!isWholeDepth(printing, search.ranks, search.nodes)) return;
+  if (!isWholeDepth(printing, search.ranks, nodes)) return;
   if (position.deepest && printing[0].depth <= position.deepest.depth) return;
   position.deepest = {
     lines: printing.map(analysisLine(position.line)),

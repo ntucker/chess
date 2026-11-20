@@ -61,7 +61,8 @@ describe('isWholeDepth', () => {
     const found: { moves: string[]; whole: boolean }[] = [];
     let printing: readonly SearchLine[] = [];
     for (const line of lines) {
-      printing = addLine(printing, parseInfo(line)!);
+      const info = parseInfo(line)!;
+      printing = addLine(printing, info, info.rank);
       if (printing.length === 1) found.push({ moves: [], whole: false });
       found.at(-1)!.moves = printing.map(({ move }) => move!);
       found.at(-1)!.whole = isWholeDepth(printing, 3, nodes);

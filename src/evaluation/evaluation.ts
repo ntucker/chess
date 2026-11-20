@@ -38,6 +38,16 @@ export interface Analysis {
 }
 
 /**
+ * A final analysis of one line: how the position stands (`evaluation`), and
+ * the move it names, if any. Maia and a finished game name none.
+ */
+export const settledAnalysis = (evaluation: Evaluation, uci?: string): Analysis => ({
+  lines: [{ evaluation, ...(uci && { uci }) }],
+  depth: 0,
+  final: true,
+});
+
+/**
  * The size of an advantage of `pawns`, as the evaluation bar and engine lines
  * write it: tenths of a pawn below 10, whole pawns from there up to 99.
  */

@@ -7,7 +7,7 @@ import Animated, { type CSSTransitionTimingFunction, cubicBezier } from 'react-n
 
 import { type Color, colorName, type GameResult, lastPosition, opposite } from '@/game/replay';
 import { evaluationReading, type Reading, resultEvaluation } from '@/evaluation/evaluation';
-import { PositionAnalysis, useAnalysis } from '@/resources/analysis';
+import { analysisKey, PositionAnalysis, useAnalysis } from '@/resources/analysis';
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNarrowPart } from '@/theme/Narrow';
 import { pieceColors } from '@/theme/pieceColors';
@@ -28,8 +28,9 @@ interface Props {
  * leading side's advantage in pawns (or moves to mate) at its end, as the
  * engine chosen in the settings judges it. It follows the analysis as it
  * deepens (`useAnalysis`). Until the board's position has its first depth,
- * the position before stands in: how it scored the move played, when it
- * lists that move, else how it scored itself.
+ * the position before stands in when the store has it (the move's label
+ * asks for it): how it scored the move played, when it lists that move,
+ * else how it scored itself.
  */
 export function EvaluationBar({ line, orientation, style }: Props) {
   const engine = useSettings().evaluationEngine;
@@ -42,10 +43,10 @@ export function EvaluationBar({ line, orientation, style }: Props) {
   const analysis = useAnalysis(engine, focused && !result ? moves : null);
   const before = useQuery(
     PositionAnalysis,
-    ...(moves.length ? [{ engine, moves: moves.slice(0, -1).join(' ') }] : [null]),
+    ...(moves.length && !analysis ? [analysisKey(engine, moves.slice(0, -1))] : [null]),
   );
-  const played = before?.lines.find(({ uci }) => uci === moves.at(-1)) ?? before?.lines[0];
-  const evaluation = analysis?.lines[0].evaluation ?? played?.evaluation;
+  const standIn = before?.lines.find(({ uci }) => uci === moves.at(-1)) ?? before?.lines[0];
+  const evaluation = analysis?.lines[0].evaluation ?? standIn?.evaluation;
   const reading = result ? resultReading(result) : evaluation && evaluationReading(evaluation);
   return <Bar orientation={orientation} style={style} {...reading} />;
 }

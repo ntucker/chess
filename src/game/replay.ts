@@ -2,6 +2,7 @@ import { castlingSide, Chess } from 'chessops/chess';
 import { chessgroundDests, chessgroundMove } from 'chessops/compat';
 import { makeFen, parseFen } from 'chessops/fen';
 import { makeSanAndPlay, parseSan } from 'chessops/san';
+import { SquareSet } from 'chessops/squareSet';
 import type { Color, Piece, SquareName } from 'chessops/types';
 import { kingCastlesTo, makeUci, opposite, parseSquare, parseUci } from 'chessops/util';
 
@@ -205,8 +206,8 @@ export function legalMoveCount(line: readonly string[]): number {
   const pos = last!;
   let count = 0;
   for (const [from, dests] of pos.allDests()) {
-    const promotes = pos.board.getRole(from) === 'pawn';
-    for (const to of dests) count += promotes && (to >> 3 === 0 || to >> 3 === 7) ? 4 : 1;
+    const pawn = pos.board.pawn.has(from);
+    for (const to of dests) count += pawn && SquareSet.backranks().has(to) ? 4 : 1;
   }
   return count;
 }

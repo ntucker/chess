@@ -11,14 +11,14 @@ import { Endpoint, Entity } from '@data-client/rest';
 import {
   type Analysis,
   type AnalysisLine,
-  type Evaluation,
   type EvaluationEngine,
   resultEvaluation,
+  settledAnalysis,
 } from '@/evaluation/evaluation';
 import { lastPosition } from '@/game/replay';
 import { maiaEvaluation } from '@/maia/engine';
 import { JUDGE_RATING } from '@/maia/maia';
-import { stockfishAnalysis, watchStockfish } from '@/stockfish/engine';
+import { watchStockfish, type Watcher } from '@/stockfish/engine';
 
 /**
  * How `engine` judges the position after `moves` (UCI, space-separated): one
@@ -49,19 +49,34 @@ export class PositionAnalysis extends Entity implements Analysis {
   }
 }
 
-/** A final analysis of one line with no move: Maia's, or a finished game's. */
-const settled = (evaluation: Evaluation): Analysis => ({
-  lines: [{ evaluation }],
-  depth: 0,
-  final: true,
-});
-
-/** `analysis` as the record of `engine`'s analysis of the position after `line`. */
-const record = (engine: EvaluationEngine, line: readonly string[], analysis: Analysis) => ({
+/** Which `PositionAnalysis` holds `engine`'s analysis of the position after `line`. */
+export const analysisKey = (engine: EvaluationEngine, line: readonly string[]) => ({
   engine,
   moves: line.join(' '),
-  ...analysis,
 });
+
+/**
+ * Tells `watcher` how `engine` judges the position after `line`: each deeper
+ * depth of Stockfish's search, then its final one (`watchStockfish`). Maia
+ * and a finished game (scored by its result: 1, 0.5 or 0) answer final at
+ * once. Returns a function that stops watching.
+ */
+function watchAnalysis(
+  engine: EvaluationEngine,
+  line: readonly string[],
+  watcher: Watcher,
+): () => void {
+  const { result } = lastPosition(line);
+  if (engine === 'stockfish' && !result) return watchStockfish(line, watcher);
+  let watching = true;
+  (result ? Promise.resolve(resultEvaluation(result)) : maiaEvaluation(JUDGE_RATING, line)).then(
+    (evaluation) => watching && watcher.update(settledAnalysis(evaluation)),
+    (error: Error) => watching && watcher.fail(error),
+  );
+  return () => {
+    watching = false;
+  };
+}
 
 /**
  * How `engine` judges the position after `line` (UCI moves from the starting
@@ -71,7 +86,8 @@ const record = (engine: EvaluationEngine, line: readonly string[], analysis: Ana
  * instead (1, 0.5 or 0). Kept for as long as the app runs.
  *
  * - `stockfish`: Stockfish 19 lite (src/stockfish), its three best moves
- *   from one search of `NODES` positions. It needs StockfishHost mounted.
+ *   from one search of the app's budget (`APP_SEARCH`). It needs
+ *   StockfishHost mounted.
  * - `maia`: Maia 1900's value head, how players of that rating tend to score
  *   from here (src/maia). One line, with no move.
  *
@@ -83,15 +99,15 @@ const record = (engine: EvaluationEngine, line: readonly string[], analysis: Ana
  * ```
  */
 export const getAnalysis = new Endpoint(
-  async (engine: EvaluationEngine, line: readonly string[]) => {
-    const { result } = lastPosition(line);
-    const analysis = result
-      ? settled(resultEvaluation(result))
-      : engine === 'stockfish'
-        ? await stockfishAnalysis(line)
-        : settled(await maiaEvaluation(JUDGE_RATING, line));
-    return record(engine, line, analysis);
-  },
+  (engine: EvaluationEngine, line: readonly string[]) =>
+    new Promise<Analysis & ReturnType<typeof analysisKey>>((resolve, reject) => {
+      // Nothing comes after the final analysis, so the watch ends with it.
+      watchAnalysis(engine, line, {
+        update: (analysis) =>
+          analysis.final && resolve({ ...analysisKey(engine, line), ...analysis }),
+        fail: reject,
+      });
+    }),
   { schema: PositionAnalysis, name: 'getAnalysis', dataExpiryLength: Infinity },
 );
 
@@ -112,9 +128,8 @@ export function useAnalysis(
   engine: EvaluationEngine,
   line: readonly string[] | null,
 ): Analysis | undefined {
-  const moves = line?.join(' ');
   useSubscription(getAnalysis, ...(line ? ([engine, line] as const) : ([null] as const)));
-  return useQuery(PositionAnalysis, ...(moves === undefined ? [null] : [{ engine, moves }]));
+  return useQuery(PositionAnalysis, ...(line ? [analysisKey(engine, line)] : [null]));
 }
 
 /** A position some screen shows (`useAnalysis`), and its search's watch, while it runs. */
@@ -129,12 +144,11 @@ interface Shown {
 
 /**
  * Runs the analysis of each position a screen shows (`useAnalysis`, through
- * `useSubscription`): Stockfish's search is watched while any screen shows
- * the position, and each deeper depth goes into the store as it arrives, so
- * every screen showing that position updates. The final analysis settles
- * `getAnalysis` too, for anything waiting on it. Maia and a finished game
- * are fetched once. A position no screen shows any more stops being
- * searched (`watchStockfish`).
+ * `useSubscription`): it's watched while any screen shows the position, and
+ * each deeper depth goes into the store as it arrives, so every screen
+ * showing that position updates. The final analysis settles `getAnalysis`
+ * too, for anything waiting on it. A position no screen shows any more
+ * stops being searched (`watchStockfish`).
  */
 export class AnalysisManager implements Manager {
   protected controller!: Controller;
@@ -187,25 +201,15 @@ export class AnalysisManager implements Manager {
   protected run(shown: Shown) {
     const { controller: ctrl } = this;
     const { engine, line } = shown;
-    const known = ctrl.get(PositionAnalysis, { engine, moves: line.join(' ') }, ctrl.getState());
-    if (known?.final) return;
-    if (engine !== 'stockfish' || lastPosition(line).result) {
-      // A failure is stored; asking again after it expires tries again.
-      ctrl.fetchIfStale(getAnalysis, engine, line).catch(() => {});
-      return;
-    }
-    shown.release = watchStockfish(line, {
+    const key = analysisKey(engine, line);
+    if (ctrl.get(PositionAnalysis, key, ctrl.getState())?.final) return;
+    shown.release = watchAnalysis(engine, line, {
       update(analysis) {
-        if (analysis.final)
-          ctrl.setResponse(getAnalysis, engine, line, record(engine, line, analysis));
-        else
-          ctrl.set(
-            PositionAnalysis,
-            { engine, moves: line.join(' ') },
-            record(engine, line, analysis),
-          );
+        const record = { ...key, ...analysis };
+        if (analysis.final) ctrl.setResponse(getAnalysis, engine, line, record);
+        else ctrl.set(PositionAnalysis, key, record);
       },
-      // The screen keeps the last depth it showed; a later visit searches again.
+      // The screen keeps the last depth it showed; a later visit asks again.
       fail(error) {
         console.error(error);
       },
