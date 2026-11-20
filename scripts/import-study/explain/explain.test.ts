@@ -7,9 +7,10 @@ import { keyAfter, uci } from '@/lesson/lesson.fixture';
 
 import type { Answer, AnswerIdea } from '../convert/answer';
 import type { Ask } from '../convert/claude';
+import { linesTo } from '../engineCheck';
 import { at, testLesson } from '../fixture';
 import { explainBookMoves } from '.';
-import type { BookMove } from './items';
+import { bookMoveItems, itemKey, type BookMove } from './items';
 import { emptyThreat, explainedNote } from './notes';
 import { REFUSED } from './prompt';
 import { bareNote, unexplainedMoves } from './unexplained';
@@ -132,6 +133,40 @@ describe('explainedNote', () => {
   });
 });
 
+describe('the material guard', () => {
+  const recaptured = bookMove(['e4', 'Nf6', 'Nc3', 'Nxe4'], 'Nxe4');
+  it.each([
+    'Taking wins the e4 pawn.',
+    'Your knight takes, winning a pawn.',
+    'Your knight jumps in and wins the pawn.',
+  ])('refuses "%s" when the reply takes it back', (text) => {
+    expect(explainedNote(answer(text), recaptured)).toHaveProperty('refused');
+  });
+
+  it.each([
+    'You win space in the centre.',
+    'Your knight is ready to win the pawn later.',
+    'If White ignores it, your knight wins the pawn.',
+    'Your knight hits e4, so White must win it back.',
+  ])('keeps "%s", which claims no win now', (text) => {
+    expect(explainedNote(answer(text), recaptured)).toHaveProperty('note');
+  });
+});
+
+describe('itemKey', () => {
+  it('changes with the guide’s notes around the move, not with Stockfish', async () => {
+    const [{ item }] = await bookMoveItems(
+      LESSON,
+      unexplainedMoves(LESSON).slice(0, 1),
+      linesTo(LESSON),
+      evaluate,
+    );
+    const engine = { ...item.engine, forYou: '+9.0' };
+    expect(itemKey({ ...item, engine })).toEqual(itemKey(item));
+    expect(itemKey({ ...item, previousNote: 'A new note.' })).not.toEqual(itemKey(item));
+  });
+});
+
 describe('emptyThreat', () => {
   const pos = after('d4', 'd5', 'c4', 'e6');
   it('takes a threat to win an undefended pawn as real', () => {
@@ -184,6 +219,17 @@ describe('explainBookMoves', () => {
       retried: 1,
       refused: [],
     });
+  });
+
+  it('counts a refused move as unanswered when its retry gets no answer', async () => {
+    const ask: Ask<BookMove> = async (_model, items, addendum) =>
+      addendum
+        ? new Map()
+        : new Map(
+            items.map((item) => [item.id, { ...answer('Black is better here.'), id: item.id }]),
+          );
+    const { report } = await explainBookMoves(LESSON, ask, evaluate);
+    expect(report).toMatchObject({ retried: 2, refused: [], unanswered: 2 });
   });
 
   it('leaves a move unexplained when the model has no answer', async () => {

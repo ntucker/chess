@@ -27,12 +27,28 @@ import { EXPLAIN_IDEAS } from './prompt';
  */
 const VERDICT =
   /\b(?:equal(?:ity)?|better|worse|advantage|edge)\b|\b(?:is|are|stands?) (?:winning|losing)\b/i;
-/** A note text saying the learner wins material with the move: "You win the pawn back". */
-const WINS =
-  /\b(?:you|your \w+) (?:(?:now|also|then|still|simply|immediately) )?(?:win|wins|won)\b/i;
+/** Winning material in a clause: "wins the pawn back", "winning a rook for a bishop". */
+const WIN =
+  /\b(?:win|wins|won|winning|regain|regains|regaining)\b(?:\s+\S+){0,3}?\s+(?:pawn|piece|knight|bishop|rook|queen|exchange|material|back)\b/i;
+/** Words that make a win the opponent's, or one still to come ("ready to win it back"). */
+const NOT_NOW =
+  /\b(?:white|black|white's|black's|it|to|can|could|will|would|must|may|later|next|threatens?|aims?|aiming|ready)\b/i;
+
+/**
+ * Whether `text` says the learner's move wins material now: "Your knight wins
+ * the pawn back", "Taking with the knight wins the pawn back". Not a win the
+ * opponent makes, one still to come, or one that depends on an "if".
+ */
+function claimsWin(text: string): boolean {
+  if (/\bif\b/i.test(text)) return false;
+  return text.split(/[,;:]|\band\b/i).some((clause) => WIN.test(clause) && !NOT_NOW.test(clause));
+}
 /** A note text saying the learner is ahead on material: "leaving you a pawn up", "your extra pawn". */
 const AHEAD =
   /\b(?:you|you're|leaving you|keeps you)\b[^.,;]*?\b(?:(?:pawn|piece|exchange) (?:up|ahead)|extra (?:pawn|piece))\b|\byour extra (?:pawn|piece)\b/i;
+
+/** A book move as the guards read it: the boards around it and Stockfish's reply. */
+type Played = Pick<BookMove, 'fenBefore' | 'fenAfter' | 'engine'>;
 
 export type Explained =
   | { readonly note: Note }
@@ -41,10 +57,7 @@ export type Explained =
   | { readonly none: true };
 
 /** `answer` as the note on the book move `move`. */
-export function explainedNote(
-  answer: Answer,
-  move: Pick<BookMove, 'fenBefore' | 'fenAfter' | 'engine'>,
-): Explained {
+export function explainedNote(answer: Answer, move: Played): Explained {
   const after = parsePosition(move.fenAfter)!;
   const [written] = answer.notes.filter((note) => note.about === 'move');
   if (!written) return { none: true };
@@ -55,11 +68,16 @@ export function explainedNote(
   if (wording) return refuse(`it ${wording}`);
   if (VERDICT.test(text)) return refuse('it says who is better');
   const { gain, lead } = material(move);
-  const reply = move.engine.reply ?? 'the move';
-  if (WINS.test(text) && gain <= 0)
-    return refuse(`it says you win material, but after ${reply} you are no more ahead than before`);
+  // The reply's SAN stays out of why: the refusal is part of a retry's stored
+  // key, and Stockfish's reply can differ between machines.
+  if (claimsWin(text) && gain <= 0)
+    return refuse(
+      'it says you win material, but after the opponent’s best reply you are no more ahead than before',
+    );
   if (AHEAD.test(text) && lead <= 0)
-    return refuse(`it says you are ahead on material, but after ${reply} you are not`);
+    return refuse(
+      'it says you are ahead on material, but after the opponent’s best reply you are not',
+    );
   const ideas: Idea[] = [];
   for (const raw of written.ideas) {
     if (!(EXPLAIN_IDEAS as readonly string[]).includes(raw.type))
@@ -81,7 +99,7 @@ export function explainedNote(
  * `move`: its `lead` in points, and its `gain` over the position before the
  * move (a recapture after a trade gains nothing back).
  */
-function material({ fenBefore, fenAfter, engine }: Parameters<typeof explainedNote>[1]) {
+function material({ fenBefore, fenAfter, engine }: Played) {
   const before = parsePosition(fenBefore)!;
   const settled = parsePosition(fenAfter)!;
   const reply = engine.reply && parseSan(settled, engine.reply);

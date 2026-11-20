@@ -54,8 +54,9 @@ export interface BookMove {
  * What an answer for `item` is stored by: the move, what the guide says around
  * it (so the model is asked again when that changes, and its note keeps
  * agreeing with the guide), and on a retry what was refused. Not Stockfish's
- * numbers, which differ between machines: `--no-model` rebuilds the same
- * notes anywhere.
+ * numbers, which differ between machines, so `--no-model` finds the same
+ * answers anywhere. The guards still read this machine's Stockfish reply
+ * (./notes.ts), as the book filling before them does.
  */
 export const itemKey = ({
   fenBefore,

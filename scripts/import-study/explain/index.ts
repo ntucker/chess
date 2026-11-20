@@ -78,11 +78,10 @@ export async function explainBookMoves(
   await judge(jobs.map(({ item }) => item));
   const retry = jobs.flatMap(({ item }) => {
     const result = results.get(item.id);
-    if (!result || !('refused' in result)) return [];
-    // Only the retry's own answer counts: with none, the move is unanswered.
-    results.delete(item.id);
-    return [{ ...item, refused: [result.refused] }];
+    return result && 'refused' in result ? [{ ...item, refused: [result.refused] }] : [];
   });
+  // Only a retry's own answer counts: with none, the move is unanswered.
+  for (const { id } of retry) results.delete(id);
   if (retry.length > 0) await judge(retry, REFUSED);
 
   const notes = new Map<string, Note>();
