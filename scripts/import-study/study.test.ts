@@ -3,7 +3,7 @@ import { describe, expect, it } from '@jest/globals';
 import { positionKey } from '@/game/replay';
 import { uciLine } from '@/lesson/lesson.fixture';
 
-import { mainLine, parseStudy } from './study';
+import { isDubious, mainLine, parseStudy } from './study';
 
 const AFTER_NF6 = 'rnbqkb1r/ppp1pppp/5n2/3p4/3P1B2/8/PPP1PPPP/RN1QKBNR w KQkq - 2 3';
 
@@ -32,6 +32,15 @@ describe('parseStudy', () => {
     expect(line[4].parent).toBe(line[3]);
     // The earlier chapter keeps its own moves and comments.
     expect([...mainLine(first.moves[0])][2].comment).toBe('The London.');
+  });
+
+  it('keeps a dubious move dubious in the moves it joins through', () => {
+    const pgn = [
+      chapter('London', '1. d4 d5 2. Bf4?! Nf6 *'),
+      chapter('Main line', '3. e3 c5 *', AFTER_NF6),
+    ].join('\n');
+    const [, joined] = parseStudy(pgn, () => true);
+    expect(isDubious([...mainLine(joined.moves[0])][2])).toBe(true);
   });
 
   it('keeps a chapter set up where no earlier chapter goes', () => {
