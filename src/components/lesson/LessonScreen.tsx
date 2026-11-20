@@ -31,6 +31,7 @@ import { CandidateList } from './CandidateList';
 import { IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
+import { SourceCredits } from './SourceCredits';
 import { TrapCard } from './TrapCard';
 import { useOpeningsGame } from './useOpeningsGame';
 
@@ -272,6 +273,7 @@ function LessonScreen({
           <Stack gap="1">
             <OpponentChoice />
             <FootnoteLink href="/play">Or play a free game, from the first move</FootnoteLink>
+            <SourceCredits sources={lesson.sources} />
           </Stack>
         </Stack>
       }
