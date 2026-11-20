@@ -6,7 +6,7 @@ import { castlingSide, type Chess } from 'chessops/chess';
 import type { Color, NormalMove } from 'chessops/types';
 import { makeSquare, opposite, parseUci, squareFile } from 'chessops/util';
 
-import { colorName, SAN } from '@/game/replay';
+import { colorName, SAN, WRITTEN_MOVE } from '@/game/replay';
 import { MAX_NOTE_WORDS, type Evaluation, type Uci } from '@/lesson/lesson';
 
 /** A move written in a comment, like `6...Nd7` or `...Nd7`. */
@@ -53,7 +53,7 @@ export const plyOf = (number: number, black: boolean) => 2 * number - (black ? 0
 export const plainSan = (san: string) => san.replace(/[+#!?]+$/, '');
 
 /** A word that is a move, numbered or not, with any glyph or punctuation after it. */
-const MOVE_WORD = new RegExp(String.raw`^(?:\d+\s?(?:\.\.\.|\.)|\.\.\.)?${SAN}[!?.,;:)]*$`);
+const MOVE_WORD = new RegExp(String.raw`^${WRITTEN_MOVE}[.,;:)]*$`);
 
 /**
  * Where each sentence of `text` ends (the index after its punctuation). Chess

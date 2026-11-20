@@ -650,10 +650,10 @@ describe('checkLesson', () => {
   });
 
   it.each([
-    'Avoid.',
     'This is a blunder: after 7.Nxe5 Bxd1 8.Bb5+ White comes out ahead.',
     'Against Ng3, develop with e6 and Be7, castle, then play b6, Bb7 and break with c5.',
-  ])('passes moves named in a sentence: %s', (text) => {
+    'Avoid.',
+  ])('passes a sentence, with or without moves in it: %s', (text) => {
     const key = positionKey(afterC6);
     expect(
       checkLesson(withPosition(key, { variation: 'caro', moves: [], notes: [{ text }] })),
