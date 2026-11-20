@@ -135,5 +135,12 @@ describe('OpeningList', () => {
     expect(credits()).toBe(0);
     act(() => toggle('Caro-Kann Defence').click());
     expect(credits()).toBe(1);
+    act(() => toggle('Caro-Kann Defence').click());
+    expect(credits()).toBe(0);
+    // The opening the board is in starts open, with its credits.
+    act(() => root?.unmount());
+    host.remove();
+    render({ lesson: 'slav' });
+    expect(credits()).toBe(1);
   });
 });
