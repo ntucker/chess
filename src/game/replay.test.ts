@@ -18,18 +18,21 @@ import {
 } from './replay';
 
 describe('NAMED_MOVE', () => {
+  // Each match as [number, `..` after it, `...` with no number, SAN].
   const read = (text: string) =>
     [...text.matchAll(new RegExp(NAMED_MOVE, 'g'))].map(([, number, dots, bare, san]) => [
-      number ?? (bare ? '...' : ''),
+      number ?? '',
       dots ?? '',
+      bare ?? '',
       san,
     ]);
 
-  it('reads ... right after a word, but no bare move right after one', () => {
-    expect(read('Qxd4...Qxd4 and 12...Nf6, not x5.e4')).toEqual([
-      ['', '', 'Qxd4'],
-      ['...', '', 'Qxd4'],
-      ['12', '..', 'Nf6'],
+  it('reads ... right after a move, but no bare move glued to a word or a dot', () => {
+    expect(read('Qxd4...Qxd4 and 12...Nf6, not Qxd4Nf6 or x5.e4')).toEqual([
+      ['', '', '', 'Qxd4'],
+      ['', '', '...', 'Qxd4'],
+      ['12', '..', '', 'Nf6'],
+      ['', '', '', 'Qxd4'],
     ]);
   });
 });
