@@ -9,7 +9,7 @@ const { moveNotes, positionNotes, branches, choices, rejected, contradicted } = 
   advance,
   'black',
 );
-/** The branches the comments of `pgn`'s one chapter name: the move each leaves from, and its moves. */
+/** The branches read for Black from the one chapter in `pgn`: each as the move it leaves from and its moves. */
 const branchesOf = (pgn: string) => {
   const [chapter] = parseStudy(pgn, () => true);
   return extractChapter(chapter, 'black').branches.map(({ spot, ucis }) => [spot.move?.san, ucis]);

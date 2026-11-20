@@ -276,7 +276,7 @@ function readMoves(
       after,
       parent,
       children,
-      // Castling in letters, however the source spelled it, for every reader of the comment's moves.
+      // Castling is lettered here, once, so every later reader of the comment sees one spelling.
       comment: comments
         .map((raw) => letterCastling(parseComment(raw).text.trim()))
         .filter(Boolean)

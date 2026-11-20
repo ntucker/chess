@@ -28,7 +28,8 @@ export const letterCastling = (text: string) =>
 
 /**
  * The moves written in `text`, in order. A bare SAN takes the side after the
- * previous move, so `6.Nf3 Bg4 7.h3` is White, Black, White.
+ * previous move, so `6.Nf3 Bg4 7.h3` is White, Black, White. Castling must be
+ * in letters, as a `StudyMove`'s comment already is (`letterCastling`).
  */
 export function namedMoves(text: string): NamedMove[] {
   const moves: NamedMove[] = [];
