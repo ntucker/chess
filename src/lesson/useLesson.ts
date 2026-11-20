@@ -17,7 +17,7 @@ import type { BoardProps } from '@/components/Board';
 import { dropMove, parsePositionKey } from '@/game/replay';
 import { type GameStore, useGame } from '@/game/useGame';
 import { getEvaluation } from '@/resources/evaluation';
-import { gameOpponent } from '@/resources/opponent';
+import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
 import { hasMark } from '@/progress/progress';
 import { addMark, getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
@@ -79,6 +79,8 @@ export function useLesson(
   // Moves are labelled by Stockfish whatever judges the bar: Maia's judgement
   // could call a book move a mistake. So Stockfish runs while this is in front.
   useNeedsStockfish(focused);
+  // Ready before the guide runs out, even with auto play off for now.
+  useWarmOpponent(opponent, focused);
   const [{ mode: modeState, peek, rareKey }, dispatch] = useReducer(screenReducer, initialScreen);
   const { mode } = modeState;
   const progress = useSuspense(getProgress, lesson.id);

@@ -21,7 +21,10 @@ jest.mock('@data-client/react', () => ({
   useSuspense: () => ({ seen: [], passed: [] }),
 }));
 jest.mock('@/resources/evaluation', () => ({ getEvaluation: {} }));
-jest.mock('@/resources/opponent', () => ({ gameOpponent: () => undefined }));
+jest.mock('@/resources/opponent', () => ({
+  gameOpponent: () => undefined,
+  useWarmOpponent: () => {},
+}));
 jest.mock('expo-router', () => ({ useIsFocused: () => true }));
 jest.mock('@/stockfish/demand', () => ({ useNeedsStockfish: () => {} }));
 const mockSettings = { ...DEFAULT_SETTINGS, auto: false };

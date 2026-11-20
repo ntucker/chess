@@ -1,4 +1,5 @@
-import type { Controller } from '@data-client/react';
+import { type Controller, useController } from '@data-client/react';
+import { useEffect } from 'react';
 
 import type { GameOpponent } from '@/game/game';
 import type { Opponent } from '@/opponent/opponent';
@@ -29,7 +30,7 @@ export async function fetchOpponentMove(
   opponent: Opponent,
   line: readonly string[],
 ): Promise<string> {
-  if (opponent !== 'stockfish') return ctrl.fetch(getMaiaMove, opponent, line);
+  if (opponent !== 'stockfish') return ctrl.fetchIfStale(getMaiaMove, opponent, line);
   const { best } = await ctrl.fetchIfStale(getEvaluation, 'stockfish', line);
   if (!best) throw new Error('Stockfish found no move');
   return best;
@@ -41,4 +42,21 @@ export function gameOpponent(ctrl: Controller, opponent: Opponent): GameOpponent
     id: String(opponent),
     reply: (line) => fetchOpponentMove(ctrl, opponent, line),
   };
+}
+
+/**
+ * Starts `opponent`'s engine while `active`, so it's ready before its first
+ * move: Maia loads its worker and network by answering the starting position.
+ * Stockfish starts with its host (`useNeedsStockfish`).
+ */
+export function useWarmOpponent(opponent: Opponent, active: boolean) {
+  const ctrl = useController();
+  // An effect, not useFetch, which fetches during render: the web export
+  // pre-renders screens and must not start an engine.
+  useEffect(() => {
+    if (!active || opponent === 'stockfish') return;
+    // Unawaited, a failure is only stored, and Maia's move asks again
+    // (getMaiaMove's failures go stale at once).
+    ctrl.fetchIfStale(getMaiaMove, opponent, []);
+  }, [ctrl, opponent, active]);
 }

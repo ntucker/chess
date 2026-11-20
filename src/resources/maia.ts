@@ -15,4 +15,11 @@ import { maiaMove } from '@/maia/engine';
  * const uci = await ctrl.fetch(getMaiaMove, 1500, ['e2e4']);
  * ```
  */
-export const getMaiaMove = new Endpoint(maiaMove, { name: 'getMaiaMove' });
+export const getMaiaMove = new Endpoint(maiaMove, {
+  name: 'getMaiaMove',
+  // Maia plays the move its network rates highest, so a position's answer
+  // never changes. A failure goes stale at once (after the millisecond it
+  // came in), so the next ask tries again.
+  dataExpiryLength: Infinity,
+  errorExpiryLength: 0,
+});
