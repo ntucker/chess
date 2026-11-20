@@ -10,15 +10,15 @@ import { INITIAL_FEN } from 'chessops/fen';
 
 import { positionKey } from '@/game/replay';
 
-import { LESSON_FORMAT, type Lesson, type Uci } from './lesson';
+import { LESSON_FORMAT, onDomain, type Lesson, type LessonSource, type Uci } from './lesson';
 
 const START_KEY = positionKey(Chess.default());
 
 /**
  * What the start position needs to know of a lesson before it loads. Its
- * source is credited where the start position previews the lesson's move.
+ * sources are credited where the start position previews the lesson's move.
  */
-export interface IndexEntry extends Pick<Lesson, 'title' | 'side' | 'source'> {
+export interface IndexEntry extends Pick<Lesson, 'title' | 'side' | 'sources'> {
   /** The guide's moves at the lesson's start: the moves that pick it. */
   readonly firstMoves: readonly Uci[];
 }
@@ -30,9 +30,9 @@ export interface IndexEntry extends Pick<Lesson, 'title' | 'side' | 'source'> {
 export type LessonIndex<Id extends string = string> = Readonly<Record<Id, IndexEntry>>;
 
 /** What the lesson index says of `lesson`. */
-export function indexEntry({ title, side, source, positions }: Lesson): IndexEntry {
+export function indexEntry({ title, side, sources, positions }: Lesson): IndexEntry {
   const firstMoves = positions[START_KEY]?.moves.map(({ uci }) => uci) ?? [];
-  return { title, side, source, firstMoves };
+  return { title, side, sources, firstMoves };
 }
 
 /** The lesson `line` plays: the one its first move picks; none before a move. */
@@ -44,14 +44,38 @@ export function lessonOf<Id extends string>(
   return (Object.keys(index) as Id[]).find((id) => index[id].firstMoves.includes(first));
 }
 
-/** Every lesson's first moves, in the index's order, each crediting its study. */
+/** Every lesson's first moves, in the index's order, each crediting its sources. */
 const openingMoves = (index: LessonIndex) =>
-  Object.values(index).flatMap(({ title, source, firstMoves: ucis }) =>
-    ucis.map((uci) => ({
-      uci,
-      notes: [{ text: `${title}, from ${source.author}'s lichess study.` }],
-    })),
-  );
+  Object.values(index).flatMap(({ title, sources, firstMoves: ucis }) => {
+    const notes = [{ text: `${title}, from ${listed(sources.map(credit))}.` }];
+    return ucis.map((uci) => ({ uci, notes }));
+  });
+
+/**
+ * How a note names `source`: a lichess study by its author, anything else by
+ * its title and author, and then its license if it has one. A note is plain
+ * text, so the license's link stays in the lesson file. Its URL parses: the
+ * checker has read every shipped lesson's sources.
+ */
+function credit({ title, author, url, license }: LessonSource): string {
+  const parsed = new URL(url);
+  const study = onDomain(parsed, 'lichess.org') && parsed.pathname.startsWith('/study/');
+  const name = study ? `${author}'s lichess study` : `${title} by ${author}`;
+  return license ? `${name} (${license.name})` : name;
+}
+
+/** Every source the index's lessons credit, each once (the same URL is the same source). */
+const sourcesOf = (index: LessonIndex): LessonSource[] => [
+  ...new Map(
+    Object.values(index).flatMap(({ sources }) =>
+      sources.map((source) => [source.url, source] as const),
+    ),
+  ).values(),
+];
+
+/** `items` as an English list: "a", "a and b", "a, b and c". */
+const listed = (items: readonly string[]) =>
+  items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
 
 /** The variation of the start position while no lesson is picked. */
 const OPENINGS_VARIATION = 'openings';
@@ -68,7 +92,8 @@ export function openingsLesson(index: LessonIndex): Lesson {
     title: 'Openings',
     side,
     start: INITIAL_FEN,
-    source: { title: 'Opening Night', author: 'Opening Night', url: '' },
+    // Its notes come from the lessons', so it credits their sources.
+    sources: sourcesOf(index),
     variations: { [OPENINGS_VARIATION]: { name: 'Openings' } },
     positions: {
       [START_KEY]: { variation: OPENINGS_VARIATION, moves: openingMoves(index) },

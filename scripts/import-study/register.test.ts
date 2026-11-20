@@ -38,7 +38,7 @@ describe('indexLesson', () => {
     const other = {
       title: 'Slav Defence',
       side: 'black',
-      source: SAMPLE.source,
+      sources: SAMPLE.sources,
       firstMoves: ['d2d4'],
     };
     writeFileSync(file, JSON.stringify({ slav: other }));
@@ -49,7 +49,7 @@ describe('indexLesson', () => {
       [SAMPLE.id]: {
         title: SAMPLE.title,
         side: 'black',
-        source: SAMPLE.source,
+        sources: SAMPLE.sources,
         firstMoves: ['e2e4'],
       },
     });
