@@ -6,7 +6,7 @@ import { useReducer, useState } from 'react';
 
 import { lastMoveBadge } from '@/board/drawing';
 import { EvaluationEngineChoice } from '@/components/EvaluationEngineChoice';
-import { Eyebrow, labelled } from '@/components/Eyebrow';
+import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { FootnoteLink } from '@/components/FootnoteLink';
 import { GameStatus } from '@/components/GameStatus';
 import { OpponentChoice } from '@/components/OpponentChoice';
@@ -24,6 +24,7 @@ export default function PlayScreen() {
   const ctrl = useController();
   const { opponent, evaluationEngine } = useSettings();
   const described = describeOpponent(opponent);
+  const labelled = useLabelled();
   // The side of the game on the board, which the next game keeps.
   const [playerColor, setPlayerColor] = useState<Color>('white');
   const active = useIsFocused();

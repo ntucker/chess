@@ -1,11 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, type PressableState, Spinner, Text, useTheme } from '@reactive/silk-native';
 import type { ReactNode } from 'react';
-import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
+import { type StyleProp, View, type ViewStyle } from 'react-native';
 
 import type { Material } from '@/game/material';
+import { PLAYER_DISC } from '@/components/sideBySide';
 import { type Color, opposite } from '@/game/replay';
-import { NARROW_CSS_LOADS, narrowLength, narrowPart } from '@/theme/narrow';
+import { narrowLength, narrowStyles } from '@/theme/narrow';
+import { useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
 import { pieceColors } from '@/theme/pieceColors';
 
 import { Captures } from './Captures';
@@ -13,7 +15,7 @@ import { Captures } from './Captures';
 interface Props {
   readonly name: string;
   readonly detail: string;
-  /** A shorter `detail` for a narrow web page, where it shares the name's line. */
+  /** A shorter `detail` for a narrow page, where it shares the name's line. */
   readonly brief?: string;
   /** A control that ends the detail's line, such as the opponent's strength. */
   readonly detailControl?: ReactNode;
@@ -38,14 +40,6 @@ interface Swap {
   readonly onPress: () => void;
 }
 
-/**
- * The disc's size and the space after it, so the screen can line things up
- * with them. A small dot on a narrow web page, to give the board room.
- */
-export const PLAYER_DISC = {
-  size: narrowLength('player-disc', 28),
-  gap: narrowLength('player-disc-gap', 12),
-} as const;
 const DISC_BORDER = narrowLength('player-disc-border', 2.5);
 /** The swap graphic inside a wide page's disc, within its border. */
 const SWAP_ICON = 16;
@@ -64,6 +58,8 @@ export function PlayerBar({
   children,
   style,
 }: Props) {
+  const styles = useNarrowStyles(STYLES);
+  const part = useNarrowPart();
   const caption = {
     role: 'caption',
     tone: toMove ? 'accent' : 'secondary',
@@ -72,7 +68,7 @@ export function PlayerBar({
   return (
     <View style={[styles.bar, style]}>
       <Disc color={color} toMove={toMove} swap={swap} />
-      <View {...narrowPart('player-names')} style={styles.names}>
+      <View {...part('player-names', styles.names)}>
         <View style={styles.nameLine}>
           <Text role="headingSm" numberOfLines={1} style={styles.name}>
             {name}
@@ -80,11 +76,14 @@ export function PlayerBar({
           <Captures {...material} pieceColor={opposite(color)} />
         </View>
         <View style={styles.detail}>
-          <Text {...caption} {...(brief ? narrowPart('wide-only') : {})} style={styles.detailText}>
+          <Text
+            {...caption}
+            {...(brief ? part('wide-only', styles.detailText) : { style: styles.detailText })}
+          >
             {detail}
           </Text>
-          {brief && NARROW_CSS_LOADS ? (
-            <Text {...caption} {...narrowPart('narrow-only')} style={styles.detailText}>
+          {brief ? (
+            <Text {...caption} {...part('narrow-only', styles.detailText)}>
               {brief}
             </Text>
           ) : null}
@@ -106,6 +105,8 @@ export function PlayerBar({
 function Disc({ color, toMove, swap }: Pick<Props, 'color' | 'toMove' | 'swap'>) {
   const { theme } = useTheme();
   const { tones } = theme.semantic.color;
+  const styles = useNarrowStyles(STYLES);
+  const part = useNarrowPart();
   // The ring stays the turn's alone: pointed at, the disc shows the swap graphic instead.
   const look = [
     styles.piece,
@@ -134,7 +135,7 @@ function Disc({ color, toMove, swap }: Pick<Props, 'color' | 'toMove' | 'swap'>)
       {(state) =>
         pointed(state) ? (
           // A narrow page's dot has no room for it, and no pointer to hover.
-          <View {...narrowPart('wide-only')}>
+          <View {...part('wide-only')}>
             <Ionicons name="swap-vertical" size={SWAP_ICON} color={pieceColors[opposite(color)]} />
           </View>
         ) : null
@@ -143,24 +144,24 @@ function Disc({ color, toMove, swap }: Pick<Props, 'color' | 'toMove' | 'swap'>)
   );
 }
 
-const styles = StyleSheet.create({
+const STYLES = narrowStyles((px) => ({
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: PLAYER_DISC.gap.value,
+    gap: px(PLAYER_DISC.gap),
   },
   piece: {
-    width: PLAYER_DISC.size.value,
-    height: PLAYER_DISC.size.value,
+    width: px(PLAYER_DISC.size),
+    height: px(PLAYER_DISC.size),
     borderRadius: 999,
-    borderWidth: DISC_BORDER.value,
+    borderWidth: px(DISC_BORDER),
   },
   swap: { alignItems: 'center', justifyContent: 'center' },
   // Raised a little toward the pointer, and pressed back in.
   swapPointed: { transform: [{ scale: 1.1 }] },
   swapPressed: { transform: [{ scale: 0.95 }] },
   names: { flex: 1, minWidth: 0 },
-  // Where the name's line and the detail share a row (a narrow web page),
+  // Where the name's line and the detail share a row (a narrow page),
   // the detail gives way first when short of room, then the name's line;
   // elsewhere they stack, and these shrink rules have nothing to do.
   nameLine: {
@@ -182,4 +183,4 @@ const styles = StyleSheet.create({
   // The captured pieces give way first (see Captures), then the name ends in
   // an ellipsis; the line is clipped rather than run under the controls.
   name: { flexShrink: 1, minWidth: 0 },
-});
+}));

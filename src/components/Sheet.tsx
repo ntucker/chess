@@ -4,6 +4,8 @@ import { type ReactNode, useEffect, useEffectEvent } from 'react';
 import { Modal, ScrollView, StyleSheet, View } from 'react-native';
 
 import { HEADER_BUTTON_SIZE, HeaderButton } from '@/components/HeaderButton';
+import { narrowStyles } from '@/theme/narrow';
+import { useNarrowStyles } from '@/theme/Narrow';
 import { themes } from '@/theme/theme';
 
 interface Props {
@@ -30,6 +32,7 @@ export function Sheet({ title, onClose, children }: Props) {
   // A screen left underneath stays mounted, and the Modal would cover the one on top.
   const focused = useIsFocused();
   const close = useEffectEvent(onClose);
+  const { head } = useNarrowStyles(HEAD);
   useEffect(() => {
     if (!focused) close();
   }, [focused]);
@@ -51,7 +54,7 @@ export function Sheet({ title, onClose, children }: Props) {
             { borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg },
           ]}
         >
-          <Inline align="center" justify="between" wrap="nowrap" style={styles.head}>
+          <Inline align="center" justify="between" wrap="nowrap" style={head}>
             <Text role="heading" accessibilityRole="header">
               {title}
             </Text>
@@ -79,7 +82,11 @@ const CLOSE_ICON = 22;
  * The head's inset above and beside the close button: INSET less the
  * button's own padding around its icon, so the icon lines up with the content.
  */
-const AROUND_BUTTON = HEADER_BUTTON_SIZE.minus(CLOSE_ICON).times(-0.5).plus(INSET).value;
+const AROUND_BUTTON = HEADER_BUTTON_SIZE.minus(CLOSE_ICON).times(-0.5).plus(INSET);
+
+const HEAD = narrowStyles((px) => ({
+  head: { paddingTop: px(AROUND_BUTTON), paddingLeft: INSET, paddingRight: px(AROUND_BUTTON) },
+}));
 
 const styles = StyleSheet.create({
   veil: { flex: 1, justifyContent: 'flex-end', alignItems: 'center' },
@@ -92,6 +99,5 @@ const styles = StyleSheet.create({
     // Over the veil, which is positioned and so would cover it.
     zIndex: 1,
   },
-  head: { paddingTop: AROUND_BUTTON, paddingLeft: INSET, paddingRight: AROUND_BUTTON },
   content: { padding: INSET, paddingTop: HEAD_GAP },
 });

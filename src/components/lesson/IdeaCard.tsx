@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 
 import type { Tone } from '@/board/drawing';
 import { hovers } from '@/board/pointer';
-import { Eyebrow, labelled } from '@/components/Eyebrow';
+import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { Transport } from '@/components/Transport';
 import type { Color } from '@/game/replay';
 import { ideaTone } from '@/lesson/drawings';
@@ -14,7 +14,7 @@ import type { Evaluation, Idea, Note } from '@/lesson/lesson';
 import type { Playback, Playing } from '@/lesson/useLesson';
 import type { ShownNote } from '@/lesson/view';
 import { toneColors } from '@/theme/drawingTones';
-import { narrowPart } from '@/theme/narrow';
+import { NarrowOnly, useNarrowPart } from '@/theme/Narrow';
 
 interface Props {
   readonly title: string;
@@ -53,6 +53,7 @@ export function IdeaCard({
   onLeave,
   onReach,
 }: Props) {
+  const labelled = useLabelled();
   return (
     <Stack
       style={labelled}
@@ -126,6 +127,16 @@ export function NoteView({
     const { target } = event as ReactFocusEvent<Element>;
     if (target.matches(':focus-visible')) point();
   };
+  const part = useNarrowPart();
+  const heading =
+    drawn || verdict ? (
+      <View style={styles.heading}>
+        {drawn ? <KindTag label={KINDS[drawn.type]} tone={ideaTone(drawn, learner)} /> : <View />}
+        {verdict ? <Verdict value={verdict} /> : null}
+      </View>
+    ) : null;
+  // On a narrow page a verdict with no kind beside it goes below the words, which come first.
+  const lone = !drawn && heading;
 
   return (
     <Stack
@@ -165,18 +176,9 @@ export function NoteView({
           else point();
         }}
       >
-        {drawn || verdict ? (
-          // On a narrow web page a verdict with no kind beside it goes below the words, which come first.
-          <View {...(drawn ? {} : narrowPart('lone-verdict'))} style={styles.heading}>
-            {drawn ? (
-              <KindTag label={KINDS[drawn.type]} tone={ideaTone(drawn, learner)} />
-            ) : (
-              <View />
-            )}
-            {verdict ? <Verdict value={verdict} /> : null}
-          </View>
-        ) : null}
+        {lone ? <View {...part('wide-only')}>{heading}</View> : heading}
         <Text role="body">{note.text}</Text>
+        {lone ? <NarrowOnly>{heading}</NarrowOnly> : null}
         {more && original ? (
           <Text role="bodySm" tone="secondary">
             {original}

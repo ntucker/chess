@@ -1,12 +1,13 @@
 import { Button, Inline, Stack, Text } from '@reactive/silk-native';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Eyebrow } from '@/components/Eyebrow';
 import { type Destination, PlaceLink } from '@/components/PlaceLink';
 import { NEW_VERSION, NewVersionError, reload } from '@/files/newVersion';
 import type { Color, Position } from '@/game/replay';
 import { describeOpponent, type Opponent } from '@/opponent/opponent';
-import { narrowLength, narrowPart } from '@/theme/narrow';
+import { narrowLength, narrowStyles } from '@/theme/narrow';
+import { useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
 import { typography } from '@/theme/theme';
 
 interface Props {
@@ -39,7 +40,7 @@ interface HeadlineProps {
   /** The opponent `who` didn't answer with `error`, and `onRetry` asks it again. */
   readonly failure?: Failure;
   /**
-   * The header names the line on a narrow web page (Stage's `place`), so the headline
+   * The header names the line on a narrow page (Stage's `place`), so the headline
    * leaves its eyebrow out there.
    */
   readonly eyebrowInHeader?: boolean;
@@ -47,7 +48,7 @@ interface HeadlineProps {
   readonly eyebrowLink?: Destination;
   /**
    * The headline only says whose move it is, which the name bars show too,
-   * and how to use the screen, which the learner has seen. A narrow web page
+   * and how to use the screen, which the learner has seen. A narrow page
    * doesn't draw it, to give its room to the moves, but screen readers still
    * announce it. A failure always shows.
    */
@@ -64,14 +65,16 @@ export function StatusHeadline({
   eyebrowLink,
   routine,
 }: HeadlineProps) {
+  const part = useNarrowPart();
+  const styles = useNarrowStyles(narrow);
   const label = (
     <PlaceLink to={eyebrowLink}>
       {(active) => <Eyebrow tone={active ? 'primary' : 'secondary'}>{eyebrow}</Eyebrow>}
     </PlaceLink>
   );
   return (
-    <Stack gap="2" {...(routine && !failure ? narrowPart('wide-only-spoken') : {})}>
-      {eyebrowInHeader ? <View {...narrowPart('wide-only')}>{label}</View> : label}
+    <Stack gap="2" {...(routine && !failure ? part('wide-only-spoken') : {})}>
+      {eyebrowInHeader ? <View {...part('wide-only')}>{label}</View> : label}
       <Text
         role="headingLg"
         accessibilityRole="header"
@@ -157,10 +160,10 @@ function describeLatest({
   };
 }
 
-/** The headline's size: its role's, smaller on a narrow web page (narrow.css). */
+/** The headline's size: its role's, smaller on a narrow page. */
 const HEADLINE = typography.headingLg;
 const TITLE_SIZE = narrowLength('headline-size', HEADLINE.size);
 
-const styles = StyleSheet.create({
-  title: { fontSize: TITLE_SIZE.value, lineHeight: TITLE_SIZE.times(HEADLINE.lineHeight).value },
-});
+const narrow = narrowStyles((px) => ({
+  title: { fontSize: px(TITLE_SIZE), lineHeight: px(TITLE_SIZE.times(HEADLINE.lineHeight)) },
+}));

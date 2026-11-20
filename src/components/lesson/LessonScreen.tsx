@@ -1,10 +1,10 @@
 import { AsyncBoundary, useController, useFetch, useSuspense } from '@data-client/react';
 import { Separator, Spinner, Stack } from '@reactive/silk-native';
 import { useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
-import { Eyebrow, labelled } from '@/components/Eyebrow';
+import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { FootnoteLink } from '@/components/FootnoteLink';
 import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
@@ -31,7 +31,8 @@ import { getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
 import { qualityLooks } from '@/theme/moveQuality';
 import { themes } from '@/theme/theme';
-import { narrowLength, narrowPart } from '@/theme/narrow';
+import { narrowLength, narrowStyles } from '@/theme/narrow';
+import { NarrowScroll, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
 
 import { AutoPlay } from './AutoPlay';
 import { CandidateList } from './CandidateList';
@@ -146,6 +147,9 @@ function LessonScreen({
   readonly loading: boolean;
 }) {
   const ctrl = useController();
+  const styles = useNarrowStyles(STYLES);
+  const part = useNarrowPart();
+  const labelled = useLabelled();
   // The progress loads beside the lesson, rather than once it has loaded.
   useFetch(getProgress);
   const picked = useSuspense(getLesson, id ?? null);
@@ -178,7 +182,7 @@ function LessonScreen({
     chooseMode,
   } = useLesson(lesson, store, { pending });
   const { mode } = modeState;
-  // A narrow web page's settings sheet, and its scoresheet drawer.
+  // A narrow page's settings sheet, and its scoresheet drawer.
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [scoresheetOpen, setScoresheetOpen] = useState(false);
   const { auto } = useSettings();
@@ -320,7 +324,7 @@ function LessonScreen({
           ? { name: OPENINGS_TITLE }
           : { name: names.at(-1) ?? lesson.title, parent: names.at(-2) },
         placeLink: listLink,
-        // Only a narrow web page shows the button, so only there does the sheet open.
+        // Only a narrow page shows the button, so only there does the sheet open.
         onSettings: () => setSettingsOpen(true),
       }}
       board={
@@ -349,20 +353,17 @@ function LessonScreen({
         />
       }
       program={
-        <Stack {...narrowPart('lesson-panel')} style={styles.sections}>
+        <Stack {...part('lesson-panel', styles.sections)}>
           <StatusHeadline
             {...status}
             failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
             eyebrowInHeader
             eyebrowLink={listLink}
           />
-          {/* The scoresheet drawer takes the place of this part on a narrow web page, under the headline, which tells of a failure. */}
-          <View
-            {...narrowPart(scoresheetOpen ? 'wide-only' : 'lesson-body')}
-            style={styles.sections}
-          >
-            {/* On a narrow web page the moves follow the headline closely, with no rule between. */}
-            <View {...narrowPart('wide-only')}>
+          {/* The scoresheet drawer takes the place of this part on a narrow page, under the headline, which tells of a failure. */}
+          <View {...part(scoresheetOpen ? 'wide-only' : 'lesson-body', styles.sections)}>
+            {/* On a narrow page the moves follow the headline closely, with no rule between. */}
+            <View {...part('wide-only')}>
               <Separator />
             </View>
             {trap ? (
@@ -377,18 +378,18 @@ function LessonScreen({
             ) : null}
             {/*
              * Leaving a row for the idea card keeps its preview, so its notes can be pointed at.
-             * On a narrow web page the moves and the idea are panes side by side.
+             * On a narrow page the moves and the idea are panes side by side.
              */}
             {moveList || ideaCard ? (
               // A View, so narrow.css can make it a row, which a Stack's inline style would override.
-              <PointingArea {...narrowPart('panes')} onLeave={leave} style={styles.sections}>
+              <PointingArea onLeave={leave} {...part('panes', styles.sections)}>
                 {moveList ? (
-                  <View {...narrowPart('moves-pane')} style={styles.sections}>
+                  <NarrowScroll part="moves-pane" contentStyle={styles.sections}>
                     {moveList}
-                  </View>
+                  </NarrowScroll>
                 ) : null}
                 {ideaCard ? (
-                  <View {...narrowPart('idea-pane')}>
+                  <NarrowScroll part="idea-pane">
                     <IdeaCard
                       title={preview ? `If ${preview.san}` : 'The idea'}
                       notes={guidance.notes}
@@ -400,7 +401,7 @@ function LessonScreen({
                       onLeave={leaveNote}
                       onReach={reachCard}
                     />
-                  </View>
+                  </NarrowScroll>
                 ) : null}
               </PointingArea>
             ) : null}
@@ -409,12 +410,12 @@ function LessonScreen({
             <ScoresheetDrawer {...scoresheetProps} onClose={() => setScoresheetOpen(false)} />
           ) : null}
           {/*
-           * A narrow web page has no room for the rest under the panes: the
+           * A narrow page has no room for the rest under the panes: the
            * scoresheet opens in the drawer, the settings in a sheet. Only one
            * copy of the settings is mounted at a time. This scoresheet stays
            * while the drawer is open, so a window widened meanwhile still shows one.
            */}
-          <Stack {...narrowPart('wide-only')} style={styles.sections}>
+          <Stack {...part('wide-only', styles.sections)}>
             <Separator />
             <Stack style={labelled}>
               <Eyebrow>Scoresheet</Eyebrow>
@@ -600,6 +601,7 @@ function LessonPlaceholder({
   readonly message?: string;
   readonly untitled?: boolean;
 }) {
+  const styles = useNarrowStyles(STYLES);
   return (
     <Stage
       title={untitled ? undefined : 'Lesson · Opening Night'}
@@ -621,10 +623,10 @@ function LessonPlaceholder({
   );
 }
 
-/** Space between the panel's sections: Silk's step 5, less on a narrow web page. */
+/** Space between the panel's sections: Silk's step 5, less on a narrow page. */
 const SECTION_GAP = narrowLength('section-gap', themes.dark.semantic.space[5]);
 
-const styles = StyleSheet.create({
-  sections: { gap: SECTION_GAP.value },
+const STYLES = narrowStyles((px) => ({
+  sections: { gap: px(SECTION_GAP) },
   placeholder: { minHeight: 200 },
-});
+}));

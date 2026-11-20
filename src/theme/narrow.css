@@ -1,6 +1,7 @@
 /*
  * How a narrow web page differs, behind one media query, since the
- * pre-rendered page can't measure the window. Narrow means too narrow for
+ * pre-rendered page can't measure the window. Native apps apply the same
+ * lengths and parts as styles (narrow.ts, Narrow.tsx). Narrow means too narrow for
  * the panel beside the board, so the board sits above it: a phone, or a
  * narrow window. Everywhere else none of this
  * applies: each length falls back to the wide value written beside it in
@@ -20,7 +21,7 @@
  * this layout is the only stacked one.
  */
 @media (max-width: 707.98px) {
-  /* Lengths, read by `narrowLength` (narrow.ts). */
+  /* Lengths, read by `narrowLength`: each is NARROW_PX's in narrow.ts, where native reads it. */
   :root {
     /* Page padding and the gap below the header (Page.tsx). */
     --page-space: 10px;
@@ -62,14 +63,19 @@
      * buttons...
      */
     --board-min: 300px;
-    /* ...to leave this much for the panel (a label and a couple of moves) and the gap above it. */
-    --panel-reserve: calc(160px + var(--wrapped-gap));
-    /* Read only here: the fade at the bottom of the panel and of each of its panes. */
+    /* ...to leave this much for the panel (a label and a couple of moves, 160px) and the gap above it. */
+    --panel-reserve: 172px;
+    /* A candidate row's compact spacing (CandidateList.tsx). */
+    --candidate-gap: 8px;
+    --candidate-inset: 10px;
+    --candidate-padding: 6px;
+    /* The fade at the bottom of the panel and of each of its panes. */
     --fade: 16px;
   }
 
   /*
-   * Parts, named by `narrowPart` (narrow.ts). The page (Page.tsx, its stage Stage.tsx) fills the
+   * Parts, named by `useNarrowPart` (Narrow.tsx); NATIVE_PARTS in narrow.ts
+   * is each one's native twin. The page (Page.tsx, its stage Stage.tsx) fills the
    * screen and doesn't scroll: the board stays at the top, and the panel below
    * it scrolls in the space that's left, so a previewed move stays in view.
    * Only once the board is at its smallest and the panel at its floor does
@@ -148,21 +154,16 @@
   /* The moves get two parts of the width and the idea three; a pane alone gets all of it. */
   :root [data-narrow='moves-pane'],
   :root [data-narrow='idea-pane'] {
-    flex: 2 1 0;
     min-width: 0;
     overscroll-behavior: contain;
   }
+  :root [data-narrow='moves-pane'] {
+    flex: 2 1 0;
+  }
   :root [data-narrow='idea-pane'] {
-    flex-grow: 3;
+    flex: 3 1 0;
   }
-  /*
-   * A candidate list (CandidateList.tsx), in its narrow pane: compact rows,
-   * without the share bars.
-   */
-  :root [data-narrow='candidate-row'] {
-    gap: 8px;
-    padding: 6px 10px;
-  }
+  /* A candidate list (CandidateList.tsx), in its narrow pane: without the share bars. */
   :root [data-narrow='share-track'] {
     display: none;
   }
@@ -171,14 +172,11 @@
     white-space: normal;
   }
   /* ...or in a compact list, a line under the list names it for the move pointed at. */
-  :root [data-narrow='compact-list'] [data-narrow='leads-to'] {
+  :root [data-narrow='leads-to-compact'] {
     display: none;
   }
-  /* A note's verdict with no kind beside it goes below its words (IdeaCard.tsx). */
-  :root [data-narrow='lone-verdict'] {
-    order: 1;
-  }
   :root [data-narrow='page'] {
+    flex-grow: 1;
     min-height: 100dvh;
   }
   :root [data-narrow='stage'] {
@@ -187,7 +185,7 @@
     align-items: center;
   }
   :root [data-narrow='board-column'] {
-    flex: none;
+    flex: 0 0 auto;
     width: 100%;
   }
   :root [data-narrow='program'] {
