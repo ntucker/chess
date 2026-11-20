@@ -10,7 +10,7 @@ import { useRestarts } from './restarts';
 
 /**
  * Runs Stockfish for as long as it's mounted, in a hidden web view
- * (EngineView), and connects it to stockfishEvaluation. An engine that
+ * (EngineView), and connects it to watchStockfish. An engine that
  * crashes, stops answering or can't start gets a new web view. Unmounting it
  * frees the engine and its web view.
  */

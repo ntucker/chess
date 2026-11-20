@@ -8,7 +8,7 @@ import type { Opponent } from '@/opponent/opponent';
 import { attachStockfish } from '@/stockfish/engine';
 import { NO_RESTARTS } from '@/stockfish/testing';
 
-import { getEvaluation } from './evaluation';
+import { getAnalysis } from './analysis';
 import { fetchOpponentMove, useWarmOpponent } from './opponent';
 import { newController, waitForSearch } from './testing';
 
@@ -33,20 +33,22 @@ describe('fetchOpponentMove', () => {
     expect(await fetchOpponentMove(controller, 1300, [])).toBe('e2e4');
   });
 
-  it("plays Stockfish's best move, from the search that evaluated the position", async () => {
+  it("plays the first line of Stockfish's final analysis, the move the board's arrow shows", async () => {
     const controller = newController();
     const sent: string[] = [];
     const engine = attachStockfish((command) => sent.push(command), NO_RESTARTS);
     engine.receive('uciok');
 
-    // The evaluation bar judges the position,
-    const evaluation = controller.fetch(getEvaluation, 'stockfish', ['e2e4']);
+    // The move labels wait for the position's analysis,
+    const analysis = controller.fetch(getAnalysis, 'stockfish', ['e2e4']);
     await waitForSearch(sent, 'e2e4');
-    engine.receive('info depth 12 score cp 30 pv c7c6');
+    engine.receive('info depth 12 multipv 1 score cp 30 nodes 900 pv c7c6');
+    engine.receive('info depth 12 multipv 2 score cp 20 nodes 900 pv e7e5');
+    engine.receive('info depth 12 multipv 3 score cp 10 nodes 900 pv c7c5');
     engine.receive('bestmove c7c6 ponder d2d4');
-    await evaluation;
+    await analysis;
 
-    // and the opponent plays the move that search found, without searching again.
+    // and the opponent plays its first move, without searching again.
     expect(await fetchOpponentMove(controller, 'stockfish', ['e2e4'])).toBe('c7c6');
     expect(sent.filter((command) => command.startsWith('position'))).toHaveLength(1);
     engine.detach();

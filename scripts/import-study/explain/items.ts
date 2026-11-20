@@ -97,8 +97,8 @@ async function bookMoveItem(
   const afterKey = positionKey(after);
   const next = lesson.positions[afterKey];
   const fenBefore = makeFen(before.toSetup());
-  const now = await evaluate(line, key);
-  const then = await evaluate([...line, uci], afterKey);
+  const [now] = (await evaluate(line, key)).lines;
+  const [then] = (await evaluate([...line, uci], afterKey)).lines;
   const own = position.moves.find((move) => move.uci === uci);
   const notesHere = [...(own?.notes ?? []), ...(next?.notes ?? [])].map(({ text }) => text);
   const previousNote = earlierNote(lesson, line);
@@ -115,9 +115,9 @@ async function bookMoveItem(
       .filter((move) => move.uci !== uci)
       .map((move) => ({ move: san(before, move.uci), book: move.book === true })),
     engine: {
-      ...(now.best && { best: san(before, now.best) }),
-      forYou: standing(then, lesson.side),
-      ...(then.best && { reply: san(after, then.best) }),
+      ...(now.uci && { best: san(before, now.uci) }),
+      forYou: standing(then.evaluation, lesson.side),
+      ...(then.uci && { reply: san(after, then.uci) }),
     },
     ...(previousNote && { previousNote }),
     replies: (next?.moves ?? []).map((move) => ({

@@ -1,6 +1,7 @@
 /**
  * Reading moves and verdicts out of the study's comment text. Move numbers in
- * the text are often off by one or two, so they only break ties (see line.ts).
+ * the text are often off by one or two, so they only break ties and rule out
+ * places far off (see line.ts).
  */
 import { castlingSide, type Chess } from 'chessops/chess';
 import type { Color, NormalMove } from 'chessops/types';
@@ -22,9 +23,14 @@ export interface NamedMove {
 
 const NUMBERED = new RegExp(String.raw`${NAMED_MOVE}([!?]*)`, 'g');
 
+/** `text` with castling written in zeros (`9.0-0-0`), as Wikibooks' prose often has it, in letters (`9.O-O-O`). */
+export const letterCastling = (text: string) =>
+  text.replace(/(?<![\w-])0-0(?:-0)?(?![\w-])/g, (zeros) => zeros.replaceAll('0', 'O'));
+
 /**
  * The moves written in `text`, in order. A bare SAN takes the side after the
- * previous move, so `6.Nf3 Bg4 7.h3` is White, Black, White.
+ * previous move, so `6.Nf3 Bg4 7.h3` is White, Black, White. Castling must be
+ * in letters, as a `StudyMove`'s comment already is (`letterCastling`).
  */
 export function namedMoves(text: string): NamedMove[] {
   const moves: NamedMove[] = [];
@@ -57,6 +63,18 @@ export function namedMoves(text: string): NamedMove[] {
 
 /** The ply of move `number` by White, or by Black when `black`: 1.e4 is ply 1, 1...c6 ply 2. */
 export const plyOf = (number: number, black: boolean) => 2 * number - (black ? 0 : 1);
+
+/**
+ * The ply, as text numbers it, of the move played from `pos`. It reads the position's own move
+ * number, so it holds in a chapter that starts from a FEN, where a move's `ply` counts from 1.
+ */
+export const nextPly = (pos: Chess) => plyOf(pos.fullmoves, pos.turn === 'black');
+
+/**
+ * How many plies a written move number may be off: two moves. Farther, the text is about some
+ * other place where the same moves happen to be legal.
+ */
+export const NUMBER_SLACK = 4;
 
 /** `san` without check marks, so it compares with the study's own moves. */
 export const plainSan = (san: string) => san.replace(/[+#!?]+$/, '');

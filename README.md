@@ -60,7 +60,7 @@ The models are licensed under the GPL-3.0, which is different from the app's own
 
 The bar beside the board shows how the position stands: White's share of the bar is White's expected score, and the leading side's end shows its advantage in pawns, or `M3` when it mates in 3. A footnote under the scoresheet ("Evaluation by Stockfish · Maia") picks who judges:
 
-- **Stockfish** (the default): Stockfish 19 lite, a 1.8 MB WebAssembly build with a small network, searching 100,000 positions (about depth 14 to 16). On a recent phone that takes about 0.3 s. Pawns turn into an expected score with lichess's curve.
+- **Stockfish** (the default): Stockfish 19 lite, a 1.8 MB WebAssembly build with a small network. It searches each position once, ranking its three best moves, for 2,000,000 positions (about depth 19): about 3 s in Node and 5 to 6 s on a recent phone. The bar and the engine's lines update as each depth finishes, and for half the positions the score stops moving after about 0.5 s; move labels and the Stockfish opponent wait for the finished search. Pawns turn into an expected score with lichess's curve.
 - **Maia**: the 1900 network's estimate of how players of that rating score from here, converted to pawns the way Leela Chess Zero does. It uses less memory, since Stockfish isn't started.
 
 On 240 positions from club-level games, judged against full Stockfish 19 at depth 24, Stockfish lite at depth 12 was off by 3.4 percentage points of expected score on average, and Maia 1900 by 10.4. Maia also misses mates: after 1. e4 e5 2. Qh5 d6 3. Nf3 Be6 4. Nc3 Nf6 5. Qh4 Be7 6. Ng5 O-O 7. Bd3 Bd7 8. Nd5 Nxd5, White mates with Qxh7, and Maia gives White 59%.
@@ -78,3 +78,17 @@ To try the Pages build locally, export it the way the workflow does and serve `d
 ```bash
 PAGES_BASE_PATH=/chess yarn expo export --platform web
 ```
+
+## Contributing with Claude
+
+To work on this repo through a Claude project on claude.ai:
+
+1. Create a project and attach `ntucker/chess` (or your fork) and `reactive/silk`.
+2. Install [user-kit](https://github.com/ntucker/user-kit#install-in-claude-code).
+3. Send this in the project chat, then paste the text the coordinator replies with into the project's instructions:
+
+   ```text
+   Set up this project: read .agents/projects/setup.md from main in ntucker/chess and follow it.
+   ```
+
+4. For Android checks, link your computer to the project.

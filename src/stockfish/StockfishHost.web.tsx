@@ -9,7 +9,7 @@ import { startStockfishWorker, type StockfishWorker } from './worker';
 
 /**
  * Runs Stockfish in a Web Worker for as long as it's mounted and connects it
- * to stockfishEvaluation, starting a new worker when one crashes, stops
+ * to watchStockfish, starting a new worker when one crashes, stops
  * answering or can't start. Unmounting it stops the worker.
  */
 export function StockfishHost() {

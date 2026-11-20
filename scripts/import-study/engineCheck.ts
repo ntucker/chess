@@ -19,8 +19,8 @@
  */
 import { Chess } from 'chessops/chess';
 
-import type { Evaluation } from '@/evaluation/evaluation';
-import { classifyMove } from '@/analysis/quality';
+import type { Evaluation, FinalAnalysis } from '@/evaluation/evaluation';
+import { judgeMove } from '@/analysis/quality';
 import { lineSans, numberedLine, parsePosition, playMove, positionKey } from '@/game/replay';
 import type {
   Evaluation as Verdict,
@@ -33,8 +33,12 @@ import type {
   Uci,
 } from '@/lesson/lesson';
 
-/** The engine's evaluation of the position after `line` from the lesson's start, reached at `key`. */
-export type Evaluate = (line: readonly Uci[], key: PositionKey) => Promise<Evaluation>;
+/**
+ * The engine's final analysis of the position after `line` from the lesson's
+ * start, reached at `key`: its best move, when it names one, and how the
+ * position stands after it.
+ */
+export type Evaluate = (line: readonly Uci[], key: PositionKey) => Promise<FinalAnalysis>;
 
 /** A line cut where the engine overruled its book move, with the positions it dropped. */
 type CutLine = { line: string; moves: readonly string[]; positions: number };
@@ -89,12 +93,12 @@ export async function engineCheck(
       const line = [...at.line, move.uci];
       let book = move.book;
       if (book && at.pos.turn === lesson.side) {
-        const quality = classifyMove({
-          before: await evaluation(at.line, at.pos),
-          after: await evaluation(line, after),
-          uci: move.uci,
-          mover: lesson.side,
-        });
+        const quality = judgeMove(
+          await evaluation(at.line, at.pos),
+          await evaluation(line, after),
+          move.uci,
+          lesson.side,
+        );
         if (quality === 'mistake' || quality === 'blunder') {
           book = undefined;
           overruledAt.add(key);
@@ -290,10 +294,11 @@ async function pickBookMove(
   const judged = await Promise.all(
     moves.map(async ({ uci, notes }) => {
       const after = await evaluation([...at.line, uci], played(at.pos, uci));
-      const quality = classifyMove({ before, after, uci, mover: side });
+      const quality = judgeMove(before, after, uci, side);
       const sound = quality !== 'mistake' && quality !== 'blunder';
       const main = !!notes?.some(({ text }) => MAIN.test(text));
-      return { uci, sound, main, score: side === 'white' ? after.score : 1 - after.score };
+      const { score } = after.lines[0].evaluation;
+      return { uci, sound, main, score: side === 'white' ? score : 1 - score };
     }),
   );
   const main = judged.filter((move) => move.main);
@@ -302,15 +307,15 @@ async function pickBookMove(
     return { uci: preferred.uci, why: judged.length === 1 ? 'only move' : 'called the main line' };
   const best = judged.filter(({ sound }) => sound).sort((a, b) => b.score - a.score)[0];
   if (best) return { uci: best.uci, why: "Stockfish's best of the guide's moves" };
-  if (before.best === undefined) return undefined;
-  return { uci: before.best, why: ENGINES_OWN };
+  const own = before.lines[0].uci;
+  return own === undefined ? undefined : { uci: own, why: ENGINES_OWN };
 }
 
-type CachedEvaluation = (line: readonly Uci[], pos: Chess) => Promise<Evaluation>;
+type CachedEvaluation = (line: readonly Uci[], pos: Chess) => Promise<FinalAnalysis>;
 
 /** `evaluate`, asked once per position. */
 function cachedEvaluation(evaluate: Evaluate): CachedEvaluation {
-  const cache = new Map<PositionKey, Promise<Evaluation>>();
+  const cache = new Map<PositionKey, Promise<FinalAnalysis>>();
   return (line, pos) => {
     const key = positionKey(pos);
     if (!cache.has(key)) cache.set(key, evaluate(line, key));
@@ -328,7 +333,7 @@ async function overruled(
   for (const idea of note.ideas ?? []) {
     const verdict = verdictOf(idea);
     if (idea.type === 'evaluation') {
-      const engine = await evaluation(line, pos);
+      const engine = (await evaluation(line, pos)).lines[0].evaluation;
       if (apart(idea.value, engine)) return `says ${idea.value}, engine ${describe(engine)}`;
     }
     if ((idea.type === 'trap' || idea.type === 'line') && verdict) {
@@ -338,17 +343,17 @@ async function overruled(
         end = played(end, uci);
         moves.push(uci);
       }
-      const engine = await evaluation([...line, ...moves], end);
+      const engine = (await evaluation([...line, ...moves], end)).lines[0].evaluation;
       if (apart(verdict, engine)) return `${idea.type} ends ${verdict}, engine ${describe(engine)}`;
     }
     if (idea.type === 'trap' && idea.moves.length > 0) {
       const [tempting] = idea.moves;
-      const quality = classifyMove({
-        before: await evaluation(line, pos),
-        after: await evaluation([...line, tempting], played(pos, tempting)),
-        uci: tempting,
-        mover: pos.turn,
-      });
+      const quality = judgeMove(
+        await evaluation(line, pos),
+        await evaluation([...line, tempting], played(pos, tempting)),
+        tempting,
+        pos.turn,
+      );
       if (quality === 'best' || quality === 'good')
         return `trap's ${san(pos, tempting)} is ${quality}`;
     }

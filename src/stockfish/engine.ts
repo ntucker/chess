@@ -1,48 +1,63 @@
-import type { Evaluation, TopMove } from '@/evaluation/evaluation';
+import {
+  type Analysis,
+  type AnalysisLine,
+  finalAnalysis,
+  type FinalAnalysis,
+  type Watcher,
+} from '@/evaluation/evaluation';
+import { legalMoveCount } from '@/game/replay';
 
 import {
+  addLine,
   evaluationFromScore,
+  isWholeDepth,
   multiPvCommand,
-  NO_LINES,
   parseInfo,
   positionCommand,
-  type RankedLines,
-  rankedLines,
-  rankLine,
   type SearchLine,
 } from './uci';
 
+/** How much each search does: how many moves it ranks (MultiPV), and how many positions it visits. */
+export interface SearchBudget {
+  readonly ranks: number;
+  readonly nodes: number;
+}
+
 /**
- * How many positions a search spends on each move it ranks. An evaluation
- * ranks one: 100,000 positions, which reaches about depth 14 to 16 and takes about
- * 0.3 s on a recent phone. A search for the top moves splits its positions
- * among its lines, so it gets as many for each, three times as long, to rank
- * them as deep as an evaluation judges the move played: a move's label can
- * read its listed score (`listJudgement`).
+ * The app's search: three moves (its lines past the guide, and every move's
+ * label), and 2,000,000 positions before it settles, about depth 19 (17 to
+ * 22): 3.3 s in Node, 5 to 6 s on a recent phone. A node limit, never a time
+ * limit, so every device settles on the same lines. Measured on 50 lesson
+ * positions against a 5,000,000-node search: the first line's score is off
+ * by 0.08 pawns on average (0.12 at 1,000,000; 0.20 for the 100,000-node
+ * single-line search this replaced). The bar and lines show each depth as
+ * it finishes, so they read well long before this: the first line's score
+ * stops moving after about 0.5 s for half the positions.
  */
-const NODES_PER_RANK = 100_000;
-
-/** How long a search may take for each move it ranks, on a device too slow to reach its nodes. */
-const MOVETIME_MS_PER_RANK = 1500;
+export const APP_SEARCH: SearchBudget = { ranks: 3, nodes: 2_000_000 };
 
 /**
- * The command that starts a search ranking `ranks` moves. A node limit gives
- * the same result on every device that reaches it; a phone too slow to
- * reach it in `MOVETIME_MS_PER_RANK` for each rank stops there with a shallower one.
- */
-const goCommand = (ranks: number) =>
-  `go nodes ${NODES_PER_RANK * ranks} movetime ${MOVETIME_MS_PER_RANK * ranks}`;
-
-/** How many moves a search for the top moves ranks. */
-const TOP_MOVES = 3;
-
-/**
- * How long the engine may take to answer: its handshake (once its host has
- * handed it its files), or a search (which stops itself after 1.5 s for each
- * move it ranks, so 4.5 s for the top moves). One that takes longer is stuck,
- * as when Android drops the web view a command went to, and is restarted.
+ * How long the engine may go without printing a line it forwards before
+ * it's asked whether it's alive (`isready`): its handshake (once its host
+ * has handed it its files), or the next depth of a search (each takes about
+ * 1.5 times the one before, so up to about 2 s on a recent phone near the
+ * app's budget, and longer on a slow one).
  */
 const ANSWER_MS = 10_000;
+
+/**
+ * How long it then has to answer `readyok`, which Stockfish does at once,
+ * even mid-search. One that doesn't is stuck, as when Android drops the web
+ * view, and is restarted.
+ */
+const READY_MS = 3_000;
+
+/**
+ * How many times in a row it may answer `isready` with nothing else: a
+ * minute of a depth that takes that long on a slow phone, after which it
+ * most likely lost a command (`uci` or `go`) and is restarted.
+ */
+const QUIET_ANSWERS = 6;
 
 /** How many engines a search is tried on before it's given up on. */
 const TRIES = 2;
@@ -75,62 +90,66 @@ export interface Connection {
   fail(message: string): void;
 }
 
-interface Search {
+/** A position someone is watching. */
+interface Wanted {
   readonly line: readonly string[];
-  /** How many moves it ranks (MultiPV): 1 for an evaluation. */
-  readonly ranks: number;
-  resolve(lines: readonly SearchLine[]): void;
-  reject(error: Error): void;
-  /** Its lines so far: the last whole set Stockfish printed, unless dropped (`rankLine`). */
-  ranked: RankedLines<SearchLine>;
-  /** How many engines failed while running it. */
+  readonly watchers: Set<Watcher>;
+  /** The deepest whole depth any search of it has finished. */
+  deepest?: Analysis;
+  /** How many engines failed while searching it. */
   failures: number;
+}
+
+/** The search the engine is running. */
+interface Search {
+  readonly wanted: Wanted;
+  /** How many lines each of its depths prints: the budget's ranks, or fewer when fewer moves are legal. */
+  readonly ranks: number;
+  /** The set of lines being printed (`addLine`). */
+  printing: readonly SearchLine[];
   /**
-   * The screen no longer shows this position. A top-moves search only: its
-   * result is dropped, and a running one is told to stop.
+   * It was told to stop, because a newer position is wanted or nobody wants
+   * this one any more. What it prints until `bestmove` is ignored.
    */
-  cancelled: boolean;
+  stopping: boolean;
 }
 
 /** An attached engine, and whether it has finished its handshake. */
 interface Session {
   readonly send: Send;
   readonly supervisor: Supervisor;
+  readonly budget: SearchBudget;
   ready: boolean;
-  /**
-   * How many moves its searches rank (MultiPV), which stays set across new
-   * games: set only when it changes, since on Android each command crosses
-   * into a web view.
-   */
-  ranks: number;
+  /** How many `readyok`s in a row it has printed while it owes an answer. */
+  quietAnswers: number;
 }
 
 let connected: Session | undefined;
 let running: Search | undefined;
-/** Fails the connected engine if it doesn't answer in time. */
+/** Fails the connected engine if it goes quiet for too long. */
 let watchdog: ReturnType<typeof setTimeout> | undefined;
-/**
- * Searches waiting for the engine. The newest evaluation runs next when it
- * is the newest request, so the bar waits at most for the search already
- * running. A top-moves search then runs ahead of evaluations queued before
- * it, once its own position's evaluation has: move labels need every
- * evaluation, but nothing needs the top moves of a position the board has
- * left, so a newer one drops those, waiting or running (`supersedeTopMoves`).
- * That holds while one screen at a time asks for top moves (the lesson's).
- */
-const pending: Search[] = [];
+/** The positions being watched, by their moves, the one asked for last at the end: it runs first. */
+const wanted = new Map<string, Wanted>();
+/** A decision on what to search is queued (`decideSoon`). */
+let deciding = false;
 
 /**
  * Connects the engine that `send` talks to. The host that runs the engine
  * (StockfishHost) calls this once the engine has started, hands every line
  * it prints to the returned connection, detaches it when the engine is
  * stopped, and fails it when the engine crashes. An engine that doesn't
- * answer in time fails too. Requests made while no engine is connected wait
- * for one.
+ * answer in time fails too. Positions watched while no engine is connected
+ * wait for one. Every search on it does `budget`: the app's own
+ * (`APP_SEARCH`), unless a tool that searches many positions, like the
+ * lesson importer's engine check, needs less.
  */
-export function attachStockfish(send: Send, supervisor: Supervisor): Connection {
+export function attachStockfish(
+  send: Send,
+  supervisor: Supervisor,
+  budget: SearchBudget = APP_SEARCH,
+): Connection {
   disconnect();
-  const session: Session = { send, supervisor, ready: false, ranks: 1 };
+  const session: Session = { send, supervisor, budget, ready: false, quietAnswers: 0 };
   connected = session;
   send('uci');
   awaitAnswer(session);
@@ -148,148 +167,185 @@ export function attachStockfish(send: Send, supervisor: Supervisor): Connection 
 }
 
 /**
- * How the position after `line` (UCI moves from the starting position)
- * stands, as Stockfish judges it. Stockfish works on one position at a time:
- * the search under way finishes, then the newest request waiting runs. No
- * request is dropped, so a position the board steps past is still searched
- * (move labels need every position of the game anyway).
+ * Has Stockfish analyse the position after `line` (UCI moves from the
+ * starting position) and tell `watcher` each deeper depth it finishes, then
+ * the final one, once it has visited the connected engine's budget of
+ * positions (`attachStockfish`; the app's is `APP_SEARCH`). Stockfish works on
+ * one position at a time: the newest one asked for. When a newer one is
+ * asked for, or nobody watches the running one any more, the running
+ * search stops; a position still watched starts again later from the
+ * beginning. Each search starts fresh (`ucinewgame`) and is limited only by
+ * nodes, so it finishes the same depths with the same lines every time:
+ * one that started again repeats what it found before, and `watcher` hears
+ * only about depths deeper than any it was told. Returns a function that
+ * stops watching.
  */
-export async function stockfishEvaluation(line: readonly string[]): Promise<Evaluation> {
-  // The best move is the scored line's, not `bestmove`'s, which can come
-  // from a depth whose score was dropped (`rankLine`).
-  const [{ score, move }] = await search(line, 1);
-  return { ...evaluationFromScore(score, line.length), ...(move && { best: move }) };
+export function watchStockfish(line: readonly string[], watcher: Watcher): () => void {
+  const key = line.join(' ');
+  const position = wanted.get(key) ?? { line, watchers: new Set(), failures: 0 };
+  // To the end, as the newest.
+  wanted.delete(key);
+  wanted.set(key, position);
+  position.watchers.add(watcher);
+  decideSoon();
+  return () => {
+    // Dropped at the next decision unless watched again by then, as when a
+    // screen's render swaps one request for another of the same position.
+    if (position.watchers.delete(watcher)) decideSoon();
+  };
+}
+
+/** The final analysis of the position after `line` (`watchStockfish`). */
+export function stockfishAnalysis(line: readonly string[]): Promise<FinalAnalysis> {
+  return finalAnalysis((watcher) => watchStockfish(line, watcher));
 }
 
 /**
- * Stockfish's three best moves in the position after `line`, best first,
- * each with how the position stands after it; fewer when fewer moves are
- * legal, none once the game is over. It runs once that position's evaluation
- * has (see `pending`), ahead of evaluations for positions already left, with
- * a search of its own (three times an evaluation's positions, `NODES_PER_RANK`).
- * An evaluation is never read from it, so a position's evaluation stays the
- * same whether or not its top moves were asked for. A newer request drops this one if it has not
- * finished: one still waiting never starts, and one already running is
- * told to stop. Its result is ignored. A search already running when the
- * screen leaves without asking for another finishes, and is kept.
+ * Decides what to search once the current task is done, so that the
+ * requests of one render (a new position, and the one before it for a move's
+ * label) lead to one decision.
  */
-export async function stockfishTopMoves(line: readonly string[]): Promise<TopMove[]> {
-  const lines = await search(line, TOP_MOVES);
-  return lines.flatMap(({ move, score }) =>
-    move ? [{ uci: move, evaluation: evaluationFromScore(score, line.length) }] : [],
-  );
-}
-
-/** A rejection Data Client ignores, so a dropped search is not cached as a failure. */
-function abortError(): Error {
-  const error = new Error('This position is no longer shown');
-  error.name = 'AbortError';
-  return error;
-}
-
-const sameLine = (a: readonly string[], b: readonly string[]) =>
-  a.length === b.length && a.every((move, i) => move === b[i]);
-
-/**
- * Drops a top-moves search the screen no longer shows. One still waiting
- * never starts; one already running is told to stop, and its result is
- * ignored. Evaluations are kept: move labels need every position.
- */
-function cancel(search: Search) {
-  search.cancelled = true;
-  const index = pending.indexOf(search);
-  if (index !== -1) pending.splice(index, 1);
-  else if (running === search) connected?.send('stop');
-  search.reject(abortError());
-}
-
-/** Drops every top-moves search the screen has left, including one already running. */
-function supersedeTopMoves() {
-  for (let i = pending.length - 1; i >= 0; i--) {
-    if (pending[i].ranks > 1) cancel(pending[i]);
-  }
-  if (running && !running.cancelled && running.ranks > 1) cancel(running);
-}
-
-function search(line: readonly string[], ranks: number): Promise<readonly SearchLine[]> {
-  return new Promise((resolve, reject) => {
-    // A new top-moves search is the only one the screen still shows.
-    if (ranks > 1) supersedeTopMoves();
-    pending.push({ line, ranks, resolve, reject, ranked: NO_LINES, failures: 0, cancelled: false });
-    startNext();
+function decideSoon() {
+  if (deciding) return;
+  deciding = true;
+  queueMicrotask(() => {
+    deciding = false;
+    decide();
   });
 }
 
+/**
+ * Drops the positions nobody watches any more, then starts the newest
+ * position's search, or stops the running one if it isn't that (its
+ * `bestmove` then starts the next).
+ */
+function decide() {
+  for (const position of wanted.values()) if (!position.watchers.size) remove(position);
+  const next = [...wanted.values()].at(-1);
+  if (running) {
+    if (!running.stopping && running.wanted !== next) {
+      running.stopping = true;
+      connected?.send('stop');
+    }
+    return;
+  }
+  if (!next || !connected?.ready) return;
+  running = {
+    wanted: next,
+    // A finished game still gets one line: its score, with no move.
+    ranks: Math.max(1, Math.min(connected.budget.ranks, legalMoveCount(next.line))),
+    printing: [],
+    stopping: false,
+  };
+  // A fresh start for every search, so a position always gets the same
+  // lines whatever came before it.
+  connected.send('ucinewgame');
+  connected.send(positionCommand(next.line));
+  connected.send(`go nodes ${connected.budget.nodes}`);
+  awaitAnswer(connected);
+}
+
 function handleLine(session: Session, line: string) {
+  const owesAnswer = !session.ready || running;
+  if (line === 'readyok') {
+    // Alive, but not getting on with what it owes: keep the count going.
+    if (!owesAnswer) return;
+    if (++session.quietAnswers < QUIET_ANSWERS) armWatchdog(session);
+    else fail(session, 'it answers isready but nothing else');
+    return;
+  }
+  // Any other line shows the engine is getting on while it owes an answer.
+  if (owesAnswer) awaitAnswer(session);
   if (line === 'uciok') {
     clearTimeout(watchdog);
     session.ready = true;
     session.supervisor.ready();
-    startNext();
+    // Set once: every search ranks the same number of moves.
+    session.send(multiPvCommand(session.budget.ranks));
+    decide();
     return;
   }
   if (!running) return;
   const info = parseInfo(line);
-  if (info) running.ranked = rankLine(running.ranked, info, info);
-  else if (line.startsWith('bestmove')) {
-    clearTimeout(watchdog);
-    const finished = running;
-    running = undefined;
-    const lines = rankedLines(finished.ranked);
-    if (lines.length) finished.resolve(lines);
-    else finished.reject(new Error('Stockfish finished without a score'));
-    startNext();
+  if (info) {
+    if (!running.stopping) finishDepth(running, info, session.budget.nodes);
+  } else if (line.startsWith('bestmove')) finishSearch();
+}
+
+/** Takes in a line `search` printed, and tells its watchers when it finishes a deeper depth. */
+function finishDepth(search: Search, info: SearchLine, nodes: number) {
+  search.printing = addLine(search.printing, info, info.rank);
+  const { printing, wanted: position } = search;
+  if (!isWholeDepth(printing, search.ranks, nodes)) return;
+  if (position.deepest && printing[0].depth <= position.deepest.depth) return;
+  position.deepest = {
+    lines: printing.map(analysisLine(position.line)),
+    depth: printing[0].depth,
+    final: false,
+  };
+  for (const watcher of position.watchers) watcher.update(position.deepest);
+}
+
+const analysisLine =
+  (line: readonly string[]) =>
+  ({ move, score }: SearchLine): AnalysisLine => ({
+    ...(move && { uci: move }),
+    evaluation: evaluationFromScore(score, line.length),
+  });
+
+/**
+ * The running search ended. One that wasn't stopped reached its budget: its
+ * deepest whole depth is final.
+ */
+function finishSearch() {
+  const search = running!;
+  running = undefined;
+  clearTimeout(watchdog);
+  const { wanted: position } = search;
+  if (!search.stopping) {
+    remove(position);
+    if (position.deepest) {
+      const final = { ...position.deepest, final: true };
+      for (const watcher of position.watchers) watcher.update(final);
+    } else {
+      const error = new Error('Stockfish finished without a score');
+      for (const watcher of position.watchers) watcher.fail(error);
+    }
   }
+  decide();
+}
+
+/** Stops watching `position`: it's final, or failed. */
+function remove(position: Wanted) {
+  const key = position.line.join(' ');
+  if (wanted.get(key) === position) wanted.delete(key);
+}
+
+/** Watches `session` afresh (`armWatchdog`), from a line that shows it's getting on. */
+function awaitAnswer(session: Session) {
+  session.quietAnswers = 0;
+  armWatchdog(session);
 }
 
 /**
- * Takes the search to run next out of `pending`. The newest request, when
- * it is an evaluation, so the bar stays current. Otherwise the newest
- * top-moves search, after the evaluation of its own position when that is
- * still waiting, ahead of evaluations the board has already left.
+ * Asks `session` whether it's alive unless it prints within `ANSWER_MS`, and
+ * fails it unless it then answers within `READY_MS`.
  */
-function takeNext(): Search | undefined {
-  const newest = pending.at(-1);
-  if (!newest) return undefined;
-  const paired =
-    newest.ranks > 1
-      ? pending.findLastIndex(({ ranks, line }) => ranks === 1 && sameLine(line, newest.line))
-      : -1;
-  return pending.splice(paired === -1 ? pending.length - 1 : paired, 1)[0];
-}
-
-function startNext() {
-  if (!connected?.ready || running) return;
-  running = takeNext();
-  if (!running) return;
-  running.ranked = NO_LINES;
-  // A fresh start for every position, so a position always gets the same
-  // evaluation whatever came before it.
-  connected.send('ucinewgame');
-  if (connected.ranks !== running.ranks) {
-    connected.ranks = running.ranks;
-    connected.send(multiPvCommand(running.ranks));
-  }
-  connected.send(positionCommand(running.line));
-  connected.send(goCommand(running.ranks));
-  awaitAnswer(connected);
-}
-
-/** Fails `session` unless it answers within `ANSWER_MS`. */
-function awaitAnswer(session: Session) {
+function armWatchdog(session: Session) {
   clearTimeout(watchdog);
-  watchdog = setTimeout(() => fail(session, 'it stopped answering'), ANSWER_MS);
+  watchdog = setTimeout(() => {
+    session.send('isready');
+    watchdog = setTimeout(() => fail(session, 'it stopped answering'), READY_MS);
+  }, ANSWER_MS);
 }
 
 /**
  * Disconnects the connected engine, if any. The search it was running will
- * never finish there: the next engine runs it first.
+ * never finish there: the next engine starts it again, if it's still wanted.
  */
 function disconnect() {
   clearTimeout(watchdog);
   connected = undefined;
-  // A top-moves search the screen dropped while it ran is not queued again.
-  if (running && !running.cancelled) pending.push(running);
   running = undefined;
 }
 
@@ -301,11 +357,13 @@ function disconnect() {
 function fail(session: Session, message: string) {
   if (connected !== session) return;
   console.error(`Stockfish stopped: ${message}`);
-  if (running && ++running.failures >= TRIES) {
+  const position = running && !running.stopping ? running.wanted : undefined;
+  if (position && ++position.failures >= TRIES) {
     // Most likely this position crashes Stockfish: give up on it rather
-    // than restart engines forever, and let the searches behind it run.
-    running.reject(new Error(`Stockfish stopped ${TRIES} times on this position: ${message}`));
-    running = undefined;
+    // than restart engines forever, and let the positions behind it run.
+    remove(position);
+    const error = new Error(`Stockfish stopped ${TRIES} times on this position: ${message}`);
+    for (const watcher of position.watchers) watcher.fail(error);
   }
   disconnect();
   session.supervisor.failed();

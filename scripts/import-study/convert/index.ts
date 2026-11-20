@@ -22,7 +22,7 @@ import { noteShows, type Note, type NoteShows } from '@/lesson/lesson';
 
 import type { ChapterNotes, MoveNote, PositionNote } from '../extract';
 import { topReasons } from '../report';
-import { namedMoves, plyOf } from '../text';
+import { namedMoves, nextPly } from '../text';
 import type { Answer, AnswerIdea } from './answer';
 import { MODELS, type Ask } from './claude';
 import { noteComment, type Comment } from './comments';
@@ -179,7 +179,7 @@ function commentMistakes(comment: Comment): { uci: string; san: string }[] {
   const marked = namedMoves(comment.comment).filter(({ glyph }) => glyph === '?' || glyph === '??');
   if (marked.length === 0) return [];
   const pos = parsePosition(comment.fenAfter)!;
-  const next = plyOf(pos.fullmoves, pos.turn === 'black');
+  const next = nextPly(pos);
   const found = new Map<string, string>();
   for (const { san, ply, side } of marked) {
     if (ply !== next || side !== pos.turn) continue;

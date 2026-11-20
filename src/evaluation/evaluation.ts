@@ -11,14 +11,73 @@ export interface Evaluation {
    * negative when Black does, 0 when the side to move is already mated.
    */
   readonly mate?: number;
-  /** The move the engine would play here (UCI), when it names one; Maia's value head doesn't. */
-  readonly best?: string;
 }
 
-/** One of the engine's top moves in a position (UCI), and how the position stands after it. */
-export interface TopMove {
-  readonly uci: string;
+/** One of the moves an engine ranks in a position (UCI), and how the position stands after it. */
+export interface AnalysisLine {
+  /** The move; absent where the engine names none (Maia's value head, a finished game). */
+  readonly uci?: string;
   readonly evaluation: Evaluation;
+}
+
+/**
+ * How an engine judges a position: its best moves, best first, from one
+ * search. The first line is the position's evaluation, and its move the
+ * engine's best. Stockfish ranks three (fewer when fewer moves are legal),
+ * all from one depth; Maia and a finished game have one line and no move.
+ */
+export interface Analysis {
+  readonly lines: readonly AnalysisLine[];
+  /** How many moves deep the search looked; 0 for Maia and a finished game. */
+  readonly depth: number;
+  /**
+   * The search is done, so this never changes. Until then the lines are the
+   * deepest it has finished so far.
+   */
+  readonly final: boolean;
+}
+
+/**
+ * An analysis whose search is done, so it never changes: the only kind move
+ * labels and the opponent read, so every screen and visit order agrees.
+ */
+export type FinalAnalysis = Analysis & { readonly final: true };
+
+export const isFinal = (analysis: Analysis | undefined): analysis is FinalAnalysis =>
+  !!analysis?.final;
+
+/**
+ * A final analysis of one line: how the position stands (`evaluation`), and
+ * the move it names, if any. Maia and a finished game name none.
+ */
+export const settledAnalysis = (evaluation: Evaluation, uci?: string): FinalAnalysis => ({
+  lines: [{ evaluation, ...(uci && { uci }) }],
+  depth: 0,
+  final: true,
+});
+
+/** Who wants a position's analysis: told each deeper depth, then the final one. */
+export interface Watcher {
+  /** The deepest lines so far, or the final ones (`final`), after which nothing more comes. */
+  update(analysis: Analysis): void;
+  /** The analysis can't finish: engines crashed on it, or a search ended without a score. */
+  fail(error: Error): void;
+}
+
+/**
+ * The final analysis a watch (`watch`, which tells its watcher as
+ * `watchStockfish` does) ends with. Nothing comes after it, so the watch
+ * isn't stopped: one nobody waits for any more still runs to the end.
+ */
+export function finalAnalysis(watch: (watcher: Watcher) => unknown): Promise<FinalAnalysis> {
+  return new Promise((resolve, reject) => {
+    watch({
+      update(analysis) {
+        if (isFinal(analysis)) resolve(analysis);
+      },
+      fail: reject,
+    });
+  });
 }
 
 /**
