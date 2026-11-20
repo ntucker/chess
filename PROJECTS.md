@@ -69,20 +69,20 @@ new project follow `.agents/projects/setup.md`.
 Never leave a follow-up (a review finding, a nearby bug, a cleanup) dangling, and decide yourself.
 Fix it in the PR by default; always fix there anything the PR made worse. Reject it only when it is
 wrong, with a stated reason. Hand it on only when it is blocked (it needs another unmerged PR, or a
-goal-changing choice, secret or access only the person can give) or in a different area than the
-PR's goal:
+goal-changing choice, secret or access only the person can give), in a different area than the
+PR's goal, or a redesign from an edge-case bug (below):
 
 - Project-scope work: tell the coordinator, with a self-contained brief. The coordinator queues it.
 - Work outside the project's scope: draft a GitHub issue on `ntucker/chess` (self-contained) and hand
   it to the coordinator. File it yourself only when the person asked in their own words.
 - The same holds for any other write outside the repo and your PR (GitHub comments elsewhere, Slack).
 
-When you fix a bug caused by an edge case, ask whether the edge case is intrinsic to the problem or a
-sign of a weak abstraction. If it may be the abstraction, have a Fable subagent load
+When you fix a bug caused by an edge case, ask whether the edge case is intrinsic to the problem or
+a sign of a weak abstraction. If it may be the abstraction, have a Fable subagent load
 `user-kit:clean-code` and look for a simpler design with stronger invariants that rules out that
-class of bug. Hand a good idea on as a high-priority follow-up even in the PR's area (a redesign needs
-its own reviewed plan). Its brief says to start with a subagent's adversarial review of the plan,
-then implement on the thread's usual model (not Fable).
+class of bug. Hand a good idea on as a high-priority follow-up (a redesign needs its own reviewed
+plan). The follow-up's brief says to start with a subagent's adversarial review of the plan, then
+implement with Opus (not Fable).
 
 ## Talking to the person
 
