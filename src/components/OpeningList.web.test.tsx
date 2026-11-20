@@ -67,6 +67,11 @@ const rows = () =>
   [...host.querySelectorAll('[role=link][aria-label]')]
     .filter((row) => !hidden(row))
     .map((row) => row.getAttribute('aria-label')!.split(',')[0]);
+/** How many openings' source credits show. */
+const credits = () =>
+  [...host.querySelectorAll('div[dir=auto]')].filter(
+    (text) => text.textContent?.startsWith('Lesson from') && !hidden(text),
+  ).length;
 /** The chevron that shows or hides the variations under `name`. */
 const toggle = (name: string) =>
   host.querySelector<HTMLElement>(`[aria-label="Variations of ${name}"]`)!;
@@ -127,19 +132,15 @@ describe('OpeningList', () => {
   });
 
   it('credits an opening’s sources only while its variations show', () => {
-    const credits = () =>
-      [...host.querySelectorAll('div[dir=auto]')].filter(
-        (text) => text.textContent?.startsWith('Lesson from') && !hidden(text),
-      ).length;
     render();
     expect(credits()).toBe(0);
     act(() => toggle('Caro-Kann Defence').click());
     expect(credits()).toBe(1);
     act(() => toggle('Caro-Kann Defence').click());
     expect(credits()).toBe(0);
-    // The opening the board is in starts open, with its credits.
-    act(() => root?.unmount());
-    host.remove();
+  });
+
+  it('credits the opening the board is in, which starts open', () => {
     render({ lesson: 'slav' });
     expect(credits()).toBe(1);
   });
