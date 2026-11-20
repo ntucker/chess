@@ -7,7 +7,7 @@ import { moveInWords, namedMoves, shorten, sideDoes, textVerdicts } from './text
 describe('namedMoves', () => {
   it('reads numbered and bare moves, continuing the count', () => {
     expect(namedMoves('Trap: 9...Qa5+? 10.Nc3 e6 and Black is losing.')).toEqual([
-      { san: 'Qa5', ply: 18, side: 'black' },
+      { san: 'Qa5', ply: 18, side: 'black', glyph: '?' },
       { san: 'Nc3', ply: 19, side: 'white' },
       { san: 'e6', ply: 20, side: 'black' },
     ]);

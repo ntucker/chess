@@ -173,6 +173,9 @@ function endLine(
   return before - Object.keys(positions).length;
 }
 
+/** Why `fillBook` booked a move no guide shows. */
+export const ENGINES_OWN = "Stockfish's best: the engine overruled every guide move";
+
 export interface FillReport {
   /** Book moves picked where the guide recommended none, with the line before each and why. */
   readonly filled: readonly { line: string; move: string; why: string }[];
@@ -279,7 +282,7 @@ async function pickBookMove(
   const best = judged.filter(({ sound }) => sound).sort((a, b) => b.score - a.score)[0];
   if (best) return { uci: best.uci, why: "Stockfish's best of the guide's moves" };
   if (before.best === undefined) return undefined;
-  return { uci: before.best, why: "Stockfish's best: the engine overruled every guide move" };
+  return { uci: before.best, why: ENGINES_OWN };
 }
 
 type CachedEvaluation = (line: readonly Uci[], pos: Chess) => Promise<Evaluation>;

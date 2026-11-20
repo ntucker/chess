@@ -16,11 +16,12 @@
 import { makeSan } from 'chessops/san';
 import { parseUci } from 'chessops/util';
 
-import { parsePosition, positionKey, SAN, sanToUci } from '@/game/replay';
+import { parsePosition, positionKey, sanToUci } from '@/game/replay';
 import { notationProblem } from '@/lesson/check';
 import { noteShows, type Note, type NoteShows } from '@/lesson/lesson';
 
 import type { ChapterNotes, MoveNote, PositionNote } from '../extract';
+import { namedMoves, plyOf } from '../text';
 import type { Answer, AnswerIdea } from './answer';
 import { MODELS, type Ask } from './claude';
 import { noteComment, type Comment } from './comments';
@@ -165,24 +166,22 @@ async function convertComments(
   };
 }
 
-/** A move a comment marks as a mistake with `?` or `??` (not `?!`), numbered: `3.e3?`, `5...Bf5?`. */
-const MISTAKE = new RegExp(String.raw`\b(\d+)\s?\.(\.\.)?\s?(${SAN})\?(?!!)`, 'g');
-
 /**
- * The moves `comment` marks as mistakes (`3.e3?`) that the side to move can
- * play after its move, in UCI and in SAN as the model reads moves: what a
- * note warning against one should show is how it is punished. A mistake's
- * number and side must be the next move's, since a comment also warns about
- * moves deeper in its lines (`5.Bd2?` after 3...e6).
+ * The moves `comment` marks as mistakes (`3.e3?`, not `?!`) that the side to
+ * move can play after its move, in UCI and in SAN as the model reads moves:
+ * what a note warning against one should show is how it is punished. A
+ * mistake must be the next move by its number, since a comment also warns
+ * about moves deeper in its lines (`5.Bd2?` after 3...e6).
  */
 function commentMistakes(comment: Comment): { uci: string; san: string }[] {
-  const marked = [...comment.comment.matchAll(MISTAKE)];
+  const marked = namedMoves(comment.comment).filter(({ glyph }) => glyph === '?' || glyph === '??');
   if (marked.length === 0) return [];
   const pos = parsePosition(comment.fenAfter)!;
+  const next = plyOf(pos.fullmoves, pos.turn === 'black');
   const found = new Map<string, string>();
-  for (const [, number, dots, written] of marked) {
-    if (Number(number) !== pos.fullmoves || (dots ? 'black' : 'white') !== pos.turn) continue;
-    const uci = sanToUci(pos, written);
+  for (const { san, ply, side } of marked) {
+    if (ply !== next || side !== pos.turn) continue;
+    const uci = sanToUci(pos, san);
     if (uci && !found.has(uci)) found.set(uci, makeSan(pos, parseUci(uci)!));
   }
   return [...found].map(([uci, san]) => ({ uci, san }));

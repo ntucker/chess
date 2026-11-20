@@ -49,7 +49,7 @@ import { lessonIndex } from '@/lesson/openings';
 
 import { convertChapters, convertReport } from './convert';
 import { claudeCli } from './convert/claude';
-import { engineCheck, fillBook, type EngineReport } from './engineCheck';
+import { engineCheck, ENGINES_OWN, fillBook, type EngineReport } from './engineCheck';
 import { extractChapter } from './extract';
 import { lessonJson } from './lessonJson';
 import { mergeChapters, numberedChapterName, type ChapterName, type SourceTally } from './merge';
@@ -119,8 +119,9 @@ async function main() {
   lesson = filled.lesson;
   const engineFile = join(CACHE, `${lesson.id}-engine.json`);
   const { filled: booked, ended } = filled.report;
+  const enginesOwn = booked.filter(({ why }) => why === ENGINES_OWN).length;
   console.log(
-    `book filled: ${booked.length} moves picked where the guide recommended none, ${ended.length} lines ended where the engine overruled every move (${engineFile})`,
+    `book filled: ${booked.length} moves picked where the guide recommended none (${enginesOwn} the engine's own, no guide's), ${ended.length} lines ended where the engine overruled every move and named none (${engineFile})`,
   );
   let engineReport: EngineReport | undefined;
   if (study.engineCheck) {

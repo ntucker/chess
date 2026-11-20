@@ -6,7 +6,7 @@ import { castlingSide, type Chess } from 'chessops/chess';
 import type { Color, NormalMove } from 'chessops/types';
 import { makeSquare, opposite, parseUci, squareFile } from 'chessops/util';
 
-import { colorName, SAN, WRITTEN_MOVE } from '@/game/replay';
+import { colorName, NAMED_MOVE, WRITTEN_MOVE } from '@/game/replay';
 import { MAX_NOTE_WORDS, type Evaluation, type Uci } from '@/lesson/lesson';
 
 /** A move written in a comment, like `6...Nd7` or `...Nd7`. */
@@ -16,9 +16,11 @@ export interface NamedMove {
   readonly ply?: number;
   /** Black for `...`, White for a number with one dot; unknown for bare SAN. */
   readonly side?: Color;
+  /** The glyph written after it (`?`, `!?`), when it has one. */
+  readonly glyph?: string;
 }
 
-const NUMBERED = new RegExp(String.raw`(?:(\d+)\s?(\.\.\.|\.)\s?|(\.\.\.))?(${SAN})[!?]*`, 'g');
+const NUMBERED = new RegExp(String.raw`${NAMED_MOVE}([!?]*)`, 'g');
 
 /**
  * The moves written in `text`, in order. A bare SAN takes the side after the
@@ -27,19 +29,26 @@ const NUMBERED = new RegExp(String.raw`(?:(\d+)\s?(\.\.\.|\.)\s?|(\.\.\.))?(${SA
 export function namedMoves(text: string): NamedMove[] {
   const moves: NamedMove[] = [];
   for (const match of text.matchAll(NUMBERED)) {
-    const [, number, dots, bareDots, written] = match;
+    const [, number, dots, bareDots, written, glyph] = match;
     const san = plainSan(written);
+    const marked = glyph ? { glyph } : {};
     const previous = moves.at(-1);
     if (number) {
-      const black = dots === '...';
-      moves.push({ san, ply: plyOf(Number(number), black), side: black ? 'black' : 'white' });
+      const black = !!dots;
+      moves.push({
+        san,
+        ply: plyOf(Number(number), black),
+        side: black ? 'black' : 'white',
+        ...marked,
+      });
     } else if (bareDots) {
-      moves.push({ san, side: 'black' });
+      moves.push({ san, side: 'black', ...marked });
     } else {
       moves.push({
         san,
         ply: previous?.ply && previous.ply + 1,
         side: previous?.side && opposite(previous.side),
+        ...marked,
       });
     }
   }
