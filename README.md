@@ -88,7 +88,7 @@ To set one up:
 1. Connect GitHub at https://claude.ai/connect-github, and install the Claude GitHub app on the repository threads will push to: `ntucker/chess` if you can push there, otherwise your fork of it.
 2. Create a project and attach that repository. To fix a bug in Data Client or Silk at its source (`PROJECTS.md`, "Upstream fixes"), also attach `reactive/data-client` or `reactive/silk`.
 3. Turn on project memory, so threads keep your decisions for later threads.
-4. Install the user-kit plugin. Threads use its `clean-code` and `agent-instructions` skills and its `post-push-review` workflow (`PROJECTS.md`, "Roles and models").
+4. Install the [user-kit](https://github.com/ntucker/user-kit#install-in-claude-code) plugin. Threads use its `clean-code` and `agent-instructions` skills and its `post-push-review` workflow (`PROJECTS.md`, "Roles and models").
 5. In the project chat, ask the coordinator to set up the project. It follows `.agents/projects/setup.md` and gives you the text to paste in the project's instructions, which points every agent at `PROJECTS.md` on `main`.
 
 Then give the coordinator a task. Threads follow these files, read from `main`:
