@@ -34,6 +34,19 @@ describe('mergeChapters', () => {
     expect(checkLesson((await fillBook(lesson, even)).lesson)).toEqual([]);
   });
 
+  it("books none of the learner's moves from a chapter written for the other side", () => {
+    const theirs = chapters.map((chapter) => ({ ...chapter, writtenFor: 'white' as const }));
+    const merged = mergeChapters(
+      lesson,
+      theirs,
+      theirs.map((chapter) => extractChapter(chapter, 'black')),
+    );
+    const book = Object.values(merged.positions).flatMap((pos) => pos.moves.filter((m) => m.book));
+    expect(book).toEqual([]);
+    // Its moves stay in the guide, for fillBook to choose among.
+    expect(merged.positions[keyAfter('e4', 'c6', 'd4', 'd5', 'e5')].moves.length).toBe(2);
+  });
+
   it('groups chapter variations by the title before the colon, joining (I) and (II)', () => {
     expect(lesson.variations).toEqual({
       test: { name: 'Caro-Kann' },

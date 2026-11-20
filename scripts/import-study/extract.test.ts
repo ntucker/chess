@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { extractChapter } from './extract';
+import { evaluationText, extractChapter } from './extract';
 import { STUDY_PGN } from './fixture';
 import { parseStudy } from './study';
 
@@ -210,5 +210,14 @@ describe('extractChapter', () => {
 
   it('keeps a plain comment as text', () => {
     expect(noteOn('c5')).toEqual([{ text: 'The sharper reply.' }]);
+  });
+});
+
+describe('evaluationText', () => {
+  it('speaks to the learner, whichever side the glyph favors', () => {
+    expect(evaluationText('whiteWinning', 'white')).toBe('You are winning.');
+    expect(evaluationText('whiteClearly', 'black')).toBe('You are clearly worse.');
+    expect(evaluationText('blackSlightly', 'black')).toBe('You are slightly better.');
+    expect(evaluationText('equal', 'white')).toBe('The position is equal.');
   });
 });

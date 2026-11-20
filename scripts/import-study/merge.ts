@@ -354,10 +354,12 @@ function bookMoves(
   block: (move: StudyMove) => void,
 ): Set<StudyMove> {
   const book = new Set<StudyMove>();
+  // A chapter written for the other side recommends its own moves, not the learner's.
+  const recommends = chapter.writtenFor === undefined;
   const visit = (moves: readonly StudyMove[]) => {
     moves.forEach((move, i) => {
       if (move.before.turn !== side) return visit(move.children);
-      const recommended = offered.has(move) || (i === 0 && !isDubious(move));
+      const recommended = recommends && (offered.has(move) || (i === 0 && !isDubious(move)));
       const decided = say(move);
       if (decided === 'closed') {
         if (recommended) block(move);

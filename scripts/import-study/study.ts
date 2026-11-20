@@ -10,12 +10,14 @@ import {
   type ChildNode,
   type PgnNodeData,
 } from 'chessops/pgn';
+import type { Color } from 'chessops/types';
+import { makeSan } from 'chessops/san';
 import { parseUci } from 'chessops/util';
 
 import { positionKey, sanToUci } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 
-import { plainSan } from './text';
+import { namedMoves, plainSan } from './text';
 
 export interface Chapter {
   /** The chapter's name, as the study shows it. */
@@ -46,6 +48,12 @@ export interface Chapter {
    * line, where no main line goes (`withTitleMoves`).
    */
   readonly claims?: readonly StudyMove[];
+  /**
+   * The side the chapter was written for, when it is not the lesson's (a
+   * London study read for the anti-London): its "you" is the learner's
+   * opponent, and it recommends none of the learner's moves.
+   */
+  readonly writtenFor?: Color;
 }
 
 export interface StudyMove {
@@ -63,6 +71,12 @@ export interface StudyMove {
   readonly comment: string;
   /** The study's annotation glyphs as PGN NAG numbers ($14 is 14; ? is 2). */
   readonly nags: readonly number[];
+  /**
+   * Its comment starts with the introduction of the line it begins
+   * (`withLineIntros`): about the line, not the move, so another guide's note
+   * on the move still has room beside it.
+   */
+  readonly intro?: true;
 }
 
 /** NAGs that mark a move as a mistake: ?, ??, ?!. */
@@ -84,18 +98,137 @@ export function parseStudy(pgn: string, include: (title: string) => boolean): Ch
     const start = startingPosition(game.headers).unwrap() as Chess;
     const namedFrom = Number(game.headers.get('NamedFrom')) || undefined;
     const lead = leadTo(chapters, start);
+    const known = playedIn(chapters);
     if (!lead) {
-      const moves = readMoves(game.moves.children, start, 1);
+      const moves = withLineIntros(readMoves(game.moves.children, start, 1), known);
       chapters.push({ title, start, moves, ...(namedFrom && { namedFrom, cut: true }) });
       continue;
     }
     const first = copyLead(lead, (last) =>
       readMoves(game.moves.children, last.after, last.ply + 1, last),
     );
-    chapters.push({ title, start: chapters[0].start, moves: [first] });
+    chapters.push({ title, start: chapters[0].start, moves: withLineIntros([first], known) });
   }
   return chapters;
 }
+
+/** The positions the moves of `chapters` reach. */
+function playedIn(chapters: readonly Chapter[]): Set<string> {
+  const keys = new Set<string>();
+  for (const chapter of chapters)
+    for (const move of chapterMoves(chapter)) keys.add(positionKey(move.after));
+  return keys;
+}
+
+/**
+ * `moves` with each side line's introduction on the move it introduces. A
+ * comment opening a side line on a move that earlier chapters already play
+ * (`known` holds the positions they reach), which names the move where that
+ * line first goes somewhere new, introduces the line: "Before the Nf6 c5
+ * line, its little brother" on 1...d5 belongs on 1...d5 2.Bf4 c5's c5.
+ */
+function withLineIntros(moves: readonly StudyMove[], known: ReadonlySet<string>): StudyMove[] {
+  const comments = new Map<StudyMove, string>();
+  const intros = new Set<StudyMove>();
+  const stack = [...moves];
+  for (let move = stack.pop(); move; move = stack.pop()) {
+    stack.push(...move.children);
+    const siblings = move.parent?.children ?? moves;
+    if (!move.comment || siblings[0] === move || !known.has(positionKey(move.after))) continue;
+    let target = move;
+    while (target.children.length === 1 && known.has(positionKey(target.after)))
+      target = target.children[0];
+    if (target === move || known.has(positionKey(target.after))) continue;
+    const named = namedMoves(move.comment).some(
+      ({ san, side, ply }) =>
+        san === target.san &&
+        (!side || side === target.before.turn) &&
+        (!ply || ply === target.ply),
+    );
+    if (!named) continue;
+    comments.set(move, '');
+    comments.set(target, [move.comment, target.comment].filter(Boolean).join('\n'));
+    intros.add(target);
+  }
+  return comments.size > 0
+    ? rebuilt(moves, (move) => ({
+        comment: comments.get(move),
+        ...(intros.has(move) && { intro: true as const }),
+      }))
+    : [...moves];
+}
+
+/**
+ * `chapters` with the moves `replies` names after each line, by the line's
+ * moves in SAN from the start (`d4 d5 Bf4 Nf6 Nf3 c5 dxc5`): replies a study
+ * names only in words where its line stops ("you play e6 and win the pawn
+ * back"), read as its own moves. Throws for a line no chapter plays to its
+ * end, so a changed study can't drop a reply unseen.
+ */
+export function withReplies(
+  chapters: readonly Chapter[],
+  replies: Readonly<Record<string, string>>,
+): Chapter[] {
+  const added = new Map<StudyMove, string>();
+  for (const [line, reply] of Object.entries(replies)) {
+    const sans = line.split(' ');
+    const last = chapters
+      .map((chapter) =>
+        sans.reduce<StudyMove | undefined>(
+          (at, san, i) =>
+            (i === 0 ? chapter.moves : at?.children)?.find((move) => move.san === san),
+          undefined,
+        ),
+      )
+      .find(Boolean);
+    if (!last) throw new Error(`No chapter plays ${line}, where a reply was named`);
+    if (!sanToUci(last.after, reply)) throw new Error(`${reply} is not legal after ${line}`);
+    added.set(last, reply);
+  }
+  return chapters.map((chapter) => ({
+    ...chapter,
+    moves: rebuilt(chapter.moves, (move) => ({ reply: added.get(move) })),
+  }));
+}
+
+/**
+ * Copies of `moves` and the moves after them, each with the comment `edit`
+ * gives in place of its own and the reply it names added after it.
+ */
+function rebuilt(
+  moves: readonly StudyMove[],
+  edit: (move: StudyMove) => {
+    readonly comment?: string;
+    readonly intro?: true;
+    readonly reply?: string;
+  },
+  parent?: StudyMove,
+): StudyMove[] {
+  return moves.map((move) => {
+    const { comment = move.comment, intro = move.intro, reply } = edit(move);
+    const children: StudyMove[] = [];
+    const copy: StudyMove = { ...move, parent, children, comment, ...(intro && { intro }) };
+    children.push(...rebuilt(move.children, edit, copy));
+    const uci = reply && sanToUci(move.after, reply);
+    if (uci && !children.some((child) => child.uci === uci)) children.push(...readReply(copy, uci));
+    return copy;
+  });
+}
+
+/** `uci` after `move`, a move without comment or glyphs. */
+const readReply = (move: StudyMove, uci: Uci): StudyMove[] => [
+  {
+    uci,
+    san: plainSan(makeSan(move.after, parseUci(uci)!)),
+    ply: move.ply + 1,
+    before: move.after,
+    after: played(move.after, uci),
+    parent: move,
+    children: [],
+    comment: '',
+    nags: [],
+  },
+];
 
 /** Copies of `lead` without comments (a dubious move stays dubious), the last followed by the moves `rest` reads after it. */
 function copyLead(

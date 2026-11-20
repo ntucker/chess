@@ -54,10 +54,10 @@ import { extractChapter } from './extract';
 import { lessonJson } from './lessonJson';
 import { mergeChapters, numberedChapterName, type ChapterName, type SourceTally } from './merge';
 import { addPopularity, lichessExplorer } from './popularity';
-import { indexedWith, readLessonFile, registerLesson, writeIndex } from './register';
+import { indexedWith, readLessonFile, registered, writeIndex } from './register';
 import { report, sourceReport } from './report';
 import { nodeStockfish } from './stockfish';
-import { parseStudy, type Chapter } from './study';
+import { parseStudy, withReplies, type Chapter } from './study';
 import { lessonInfo, STUDIES, type ChapterSource } from './studies';
 import { noteTranspositions } from './transpositions';
 import { wikibooksPgn } from './wikibooks';
@@ -84,7 +84,11 @@ async function main() {
   const chapters: Chapter[] = [];
   for (const [source, from] of study.from.entries()) {
     const read = await sourceChapters(from, info.side);
-    chapters.push(...read.map((chapter) => ({ ...chapter, source })));
+    const writtenFor =
+      'study' in from && from.writtenFor !== info.side ? from.writtenFor : undefined;
+    chapters.push(
+      ...read.map((chapter) => ({ ...chapter, source, ...(writtenFor && { writtenFor }) })),
+    );
   }
   const chapterName: ChapterName = (title, chapter) => {
     const from = study.from[chapter.source ?? 0];
@@ -136,12 +140,15 @@ async function main() {
     `transpositions: ${transposed.moved} positions took the notes of a move order the lesson doesn't play`,
   );
   if (!rest.includes('--no-popularity')) lesson = await withPopularity(lesson);
-  // The checker and the index each refuse a lesson by throwing, so both come before any write.
+  // The checker, the index and the registry each refuse a lesson by throwing, so all come before any
+  // write: a lesson file written without its registry entry or index line would break the app.
   checked(lesson);
   const indexFile = join(ROOT, 'assets/lessons/index.json');
   const index = lessonIndex(indexedWith(indexFile, lesson));
+  const registryFile = join(ROOT, 'src/resources/lesson.ts');
+  const registry = registered(readFileSync(registryFile, 'utf8'), lesson.id);
   writeLesson(join(ROOT, `assets/lessons/${lesson.id}.json`), lesson);
-  registerLesson(join(ROOT, 'src/resources/lesson.ts'), lesson.id);
+  writeFileSync(registryFile, registry);
   writeIndex(indexFile, index);
   console.log(report(lesson, chapters, extracted));
 }
@@ -176,7 +183,10 @@ function writeLesson(file: string, lesson: Lesson) {
 
 /** The chapters `from` gives a lesson that teaches `side`. */
 async function sourceChapters(from: ChapterSource, side: Color): Promise<Chapter[]> {
-  if ('study' in from) return parseStudy(await studyPgn(from.study), from.chapters);
+  if ('study' in from) {
+    const chapters = parseStudy(await studyPgn(from.study), from.chapters);
+    return from.replies ? withReplies(chapters, from.replies) : chapters;
+  }
   const pgn = await wikibooksPgn(wikibooksPage, { ...from, learner: side });
   return parseStudy(pgn, () => true);
 }
@@ -194,7 +204,10 @@ async function studyPgn(studyId: string): Promise<string> {
 
 /** Wikimedia's API answers 429 to shared cloud addresses; index.php's raw pages do not at this pace. */
 const WIKIBOOKS_PACE_MS = 1500;
+const WIKIBOOKS_TRIES = 6;
 let lastWikibooksFetch = 0;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * A Wikibooks page's wiki source, downloaded once into the cache; undefined
@@ -204,11 +217,18 @@ async function wikibooksPage(title: string): Promise<string | undefined> {
   // Named by a hash: a title names every move, too long for a file name deep in a line.
   const file = join(CACHE, 'wikibooks', `${createHash('sha1').update(title).digest('hex')}.wiki`);
   if (!existsSync(file)) {
-    const wait = lastWikibooksFetch + WIKIBOOKS_PACE_MS - Date.now();
-    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-    lastWikibooksFetch = Date.now();
     const url = `https://en.wikibooks.org/w/index.php?title=${encodeURIComponent(title)}&action=raw`;
-    const response = await fetch(url);
+    let response: Response;
+    // Wikibooks still answers 429 after about 50 pages from a shared cloud address: wait and try again.
+    for (let attempt = 1; ; attempt++) {
+      const wait = lastWikibooksFetch + WIKIBOOKS_PACE_MS - Date.now();
+      if (wait > 0) await sleep(wait);
+      lastWikibooksFetch = Date.now();
+      response = await fetch(url);
+      if (response.status !== 429 || attempt === WIKIBOOKS_TRIES) break;
+      console.log(`Wikibooks answered 429 for ${title}: trying again in ${attempt * 30} s`);
+      await sleep(attempt * 30_000);
+    }
     if (!response.ok && response.status !== 404) {
       throw new Error(`Wikibooks answered ${response.status} for ${title}`);
     }

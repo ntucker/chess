@@ -7,29 +7,26 @@ import { SAMPLE } from '@/lesson/lesson.fixture';
 import { lessonIndex } from '@/lesson/openings';
 import { LESSONS } from '@/resources/lesson';
 
-import { indexedWith, registerLesson, writeIndex } from './register';
+import { indexedWith, registered, writeIndex } from './register';
 
 const tempFile = (name: string) => join(mkdtempSync(join(tmpdir(), 'register-')), name);
 
-describe('registerLesson', () => {
+describe('registered', () => {
   it('adds a lesson to LESSONS once, quoting its key only when Prettier would', () => {
-    const file = tempFile('lesson.ts');
-    writeFileSync(
-      file,
-      "export const LESSONS = {\n  a: () => import('@/assets/lessons/a.json'),\n};\n",
-    );
-    for (const id of ['b', 'c-d', 'b', 'c-d']) registerLesson(file, id);
-    expect(readFileSync(file, 'utf8')).toBe(
+    let source = "export const LESSONS = {\n  a: () => import('@/assets/lessons/a.json'),\n};\n";
+    for (const id of ['b', 'c-d', 'b', 'c-d']) source = registered(source, id);
+    expect(source).toBe(
       "export const LESSONS = {\n  a: () => import('@/assets/lessons/a.json'),\n  b: () => import('@/assets/lessons/b.json'),\n  'c-d': () => import('@/assets/lessons/c-d.json'),\n};\n",
     );
   });
 
   it('finds every lesson already in the formatted registry', () => {
-    const file = tempFile('lesson.ts');
     const source = readFileSync(join(__dirname, '../../src/resources/lesson.ts'), 'utf8');
-    writeFileSync(file, source);
-    for (const id of Object.keys(LESSONS)) registerLesson(file, id);
-    expect(readFileSync(file, 'utf8')).toBe(source);
+    expect(Object.keys(LESSONS).reduce(registered, source)).toBe(source);
+  });
+
+  it('refuses a file without the registry', () => {
+    expect(() => registered('export const OTHER = {};\n', 'b')).toThrow('Could not find LESSONS');
   });
 });
 

@@ -113,3 +113,23 @@ export const REWORD = `
 
 ASKED AGAIN: NOTES WRITTEN AS MOVES
 Each comment here also has "refusedText": the note texts you wrote for it before. The app refused them because they write moves in notation (four or more moves in a row, like "7.Nxd4 Nc5 8.Bc4 Nbd7", or a note that is nothing but moves). Convert the comment again, following every rule above, and write each note's text in plain words: name the pieces, squares and goals ("bring your knight to d7, then castle") instead of listing moves. When the moves themselves matter, put them in a line or trap idea, which the board plays; the text says what they achieve.`;
+
+/**
+ * Added to `PROMPT` when comments are asked again because they mark a move the
+ * side to move can play as a mistake (`3.e3?`) and no note draws how it is
+ * punished (`Comment.mistakes`). Changing it re-asks only those comments.
+ */
+export const DRAW_MISTAKES = `
+
+ASKED AGAIN: A MISTAKE WITHOUT ITS PUNISHMENT
+Each comment here also has "mistakes": moves the comment marks with "?" that toMove can play now, written in SAN. A note that warns against such a move must show how it is punished, or the learner only hears a claim. Convert the comment again, following every rule above, and for each mistake whose punishing moves the comment gives, add a trap idea in a note about "move" that starts with that mistake and follows the comment's own moves, with the verdict the comment gives for the final position ("losesMaterial" when the side that erred ends at least two points of material down). Take the moves only from the comment; when it gives no punishing moves, draw nothing new for that mistake.`;
+
+/**
+ * Added to `PROMPT` for comments from a study written for the learner's
+ * opponent (`Comment.writtenFor`), such as a London study read for the
+ * anti-London. Changing it re-asks only those comments.
+ */
+export const WRITTEN_FOR_OPPONENT = `
+
+COMMENTS WRITTEN FOR THE OTHER SIDE
+Each comment here also has "writtenFor": the side its author wrote the study for, which is the learner's opponent. In these comments "you", "we" and "our" mean the writtenFor side, never the learner, and "the opponent" means the learner. Convert each comment for the learner, following every rule above: "you" in your note text always means the learner. Say what the author says, from the learner's side: "you win a pawn" (the author's side) becomes "White wins a pawn" or "you lose a pawn", and advice to the author's side becomes what that side plans against you. Never recommend a move to the learner that the comment only shows the author's side punishing.`;

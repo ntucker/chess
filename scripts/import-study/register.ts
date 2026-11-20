@@ -5,17 +5,18 @@ import { readLesson, type Lesson } from '@/lesson/lesson';
 import type { LessonIndex } from '@/lesson/openings';
 
 /**
- * Adds lesson `id` to the `LESSONS` registry in `file` (src/resources/lesson.ts) unless it is there.
- * Writes and finds the key as Prettier formats it: quoted only when it isn't an identifier.
+ * `source` (src/resources/lesson.ts) with lesson `id` in its `LESSONS`
+ * registry, added unless it is there; throws when it has no registry, before
+ * the importer writes anything. Writes and finds the key as Prettier formats
+ * it: quoted only when it isn't an identifier.
  */
-export function registerLesson(file: string, id: string) {
-  const source = readFileSync(file, 'utf8');
+export function registered(source: string, id: string): string {
   const key = /^[A-Za-z_$][\w$]*$/.test(id) ? id : `'${id}'`;
-  if (source.includes(`\n  ${key}:`)) return;
+  if (source.includes(`\n  ${key}:`)) return source;
   const entry = `  ${key}: () => import('@/assets/lessons/${id}.json'),\n`;
   const updated = source.replace(/(export const LESSONS = \{\n(?:.*\n)*?)(\};)/, `$1${entry}$2`);
-  if (updated === source) throw new Error(`Could not find LESSONS in ${file}`);
-  writeFileSync(file, updated);
+  if (updated === source) throw new Error('Could not find LESSONS in the lesson registry');
+  return updated;
 }
 
 /** The lesson in the JSON file `path`, checked as `readLesson` checks it. */

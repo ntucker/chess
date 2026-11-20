@@ -1,5 +1,7 @@
 /** The lessons the app ships, by lesson id, and the sources each is read from. */
 import { numberedLine } from '@/game/replay';
+import type { Color } from 'chessops/types';
+
 import type { LessonSource } from '@/lesson/lesson';
 
 import { numberedChapterName, type ChapterName, type LessonInfo } from './merge';
@@ -13,6 +15,18 @@ interface StudySource {
   readonly chapters: (title: string) => boolean;
   /** The variation each chapter names; the importer's default reads titles like the Caro-Kann's. */
   readonly chapterName?: ChapterName;
+  /**
+   * The side the study was written for, when it is not the lesson's: a London
+   * study read for the anti-London. It books none of the learner's moves, so
+   * where it alone shows them `fillBook` picks one with Stockfish, and the
+   * model rewrites its comments for the learner (`Chapter.writtenFor`).
+   */
+  readonly writtenFor?: Color;
+  /**
+   * Replies the study names in words where its line stops, read as its own
+   * moves (`withReplies`): the line's moves in SAN from the start, then the reply.
+   */
+  readonly replies?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -227,6 +241,8 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         },
         chapters: () => true,
         chapterName: (title: string) => chapterNamed(COLDFIELD_CHAPTERS, 'anti-London', title),
+        // "Black can easily recapture the pawn with Bxc5 after ... defending d5 with e6."
+        replies: { 'd4 d5 Bf4 Nf6 Nf3 c5 dxc5': 'e6' },
       },
       {
         study: 'Pg7swJlZ',
@@ -240,6 +256,24 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         chapterName: () => undefined,
       },
       { root: 'Chess_Opening_Theory/1._d4/1...d5/2._Bf4' },
+      // 2...Nf6 by the other move order: 3.e3, and the 3.Nc3 that leads into the next root.
+      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._Bf4/2...d5' },
+      // The Jobava London (3.Nc3), which Wikibooks reaches by 1.d4 Nf6 2.Nc3 d5 3.Bf4.
+      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._Nc3/2...d5/3._Bf4' },
+      {
+        // White's view of ...c5: what White plans against it, reworded for Black. It books
+        // none of Black's moves; where only it shows them, Stockfish picks one.
+        study: '2EaSmZtz',
+        credit: {
+          title: 'London System Repertoire',
+          author: 'davidharoldchess',
+          url: 'https://lichess.org/study/2EaSmZtz',
+        },
+        writtenFor: 'white',
+        // Its ...c5 chapters reached by 1...d5; "vs Ne4" starts 1...Nf6 and "Part 5" is empty.
+        chapters: (title: string) => Object.hasOwn(DAVID_ANTI_LONDON_CHAPTERS, title),
+        chapterName: (title: string) => DAVID_ANTI_LONDON_CHAPTERS[title],
+      },
     ],
     engineCheck: true,
     info: {
@@ -296,6 +330,12 @@ const DAVID_LONDON_CHAPTERS: Readonly<Record<string, string | undefined>> = {
   'Anti-Londons Part 3': 'Offbeat Lines',
   'Anti-Londons Part 4': 'Offbeat Lines',
   'Anti-Londons Part 5': 'Anti-London ...c5',
+};
+
+/** The davidharoldchess chapters the anti-London reads, as variation names: none of their own. */
+const DAVID_ANTI_LONDON_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  'London vs d5 c5 Part 1': undefined,
+  'Anti-Londons Part 1': undefined,
 };
 
 /** Coldfield1994's chapters, each going on from the last, as variation names. */

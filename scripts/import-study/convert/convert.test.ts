@@ -8,7 +8,7 @@ import { parseStudy } from '../study';
 import type { AnswerNote } from './answer';
 import { MODELS, type Ask, type Model } from './claude';
 import { noteComment, type Comment } from './comments';
-import { REWORD } from './prompt';
+import { DRAW_MISTAKES, REWORD, WRITTEN_FOR_OPPONENT } from './prompt';
 import { convertChapters } from '.';
 
 const [advance] = parseStudy(STUDY_PGN, () => true);
@@ -24,18 +24,21 @@ function fakeAsk(answers: Answers, reworded: Answers = {}) {
   const asked: [Model, string[]][] = [];
   const refused: (readonly string[] | undefined)[] = [];
   const addenda: (string | undefined)[] = [];
+  const seen: Comment[] = [];
   const ask: Ask = async (model, comments, addendum) => {
     asked.push([model, comments.map((comment) => comment.move)]);
     refused.push(...comments.map((comment) => comment.refusedText));
     addenda.push(addendum);
+    seen.push(...comments);
     return new Map(
       comments.flatMap((comment) => {
-        const notes = (comment.refusedText ? reworded : answers)[model]?.[comment.move];
+        const again = comment.refusedText ?? comment.mistakes;
+        const notes = (again ? reworded : answers)[model]?.[comment.move];
         return notes ? [[comment.id, { id: comment.id, notes }]] : [];
       }),
     );
   };
-  return { ask, asked, refused, addenda };
+  return { ask, asked, refused, addenda, seen };
 }
 
 const notesOn = (
@@ -253,6 +256,77 @@ describe('convertChapters', () => {
       extracted: [chapter],
     } = await convertChapters(extracted, ask);
     expect(notesOn(chapter, 'Be2')[0].text.split(' ')).toHaveLength(20);
+  });
+  describe('a comment marking a move as a mistake', () => {
+    // After 2...h5 White is to move: the comment says 3.e3? walks into ...e5.
+    const [h5] = parseStudy(
+      '[Event "h5"]\n\n1. d4 d5 2. Bf4 h5 { 3.e3? e5 4.Bxe5 f6 traps the bishop. } *\n',
+      () => true,
+    );
+    const mistake = [extractChapter(h5, 'white')];
+    const claim: AnswerNote[] = [
+      { about: 'move', text: 'Careful: e3 now lets Black trap your bishop.', ideas: [] },
+    ];
+    const drawn: AnswerNote[] = [
+      {
+        about: 'move',
+        text: 'Careful: e3 now lets Black trap your bishop.',
+        ideas: [{ type: 'trap', moves: ['e3', 'e5', 'Bxe5', 'f6'], verdict: 'blackSlightly' }],
+      },
+    ];
+
+    it('is asked again of Opus until a note draws how the mistake is punished', async () => {
+      const { ask, asked, addenda, seen } = fakeAsk(
+        { [MODELS.convert]: { h5: claim } },
+        { [MODELS.retry]: { h5: drawn } },
+      );
+      const {
+        extracted: [chapter],
+        report,
+      } = await convertChapters(mistake, ask);
+      expect(asked.at(-1)).toEqual([MODELS.retry, ['h5']]);
+      expect(addenda.at(-1)).toBe(DRAW_MISTAKES);
+      expect(seen.at(-1)?.mistakes).toEqual(['e3']);
+      expect(report.punished).toBe(1);
+      expect(notesOn(chapter, 'h5')[0].ideas).toEqual([
+        { type: 'trap', moves: ['e2e3', 'e7e5', 'f4e5', 'f7f6'], verdict: 'blackSlightly' },
+      ]);
+    });
+
+    it('keeps the first notes when the retry draws nothing more, or has no answer', async () => {
+      for (const retry of [{ h5: claim }, {}] as Record<string, AnswerNote[]>[]) {
+        const { ask } = fakeAsk({ [MODELS.convert]: { h5: claim } }, { [MODELS.retry]: retry });
+        const {
+          extracted: [chapter],
+        } = await convertChapters(mistake, ask);
+        expect(notesOn(chapter, 'h5')).toEqual([
+          { text: claim[0].text, original: expect.any(String) },
+        ]);
+      }
+    });
+
+    it('is not asked again when a note already draws it', async () => {
+      const { ask, asked } = fakeAsk({ [MODELS.convert]: { h5: drawn } });
+      const { report } = await convertChapters(mistake, ask);
+      expect(asked).toEqual([[MODELS.convert, ['h5']]]);
+      expect(report.punished).toBe(0);
+    });
+  });
+
+  it('tells the model when a comment was written for the other side, asking the rest as before', async () => {
+    const [london] = parseStudy(
+      '[Event "London"]\n\n1. d4 d5 2. Bf4 { You develop your bishop first. } *\n',
+      () => true,
+    );
+    const theirs = extractChapter({ ...london, writtenFor: 'white' }, 'black');
+    const { ask, asked, addenda, seen } = fakeAsk({});
+    await convertChapters([extracted[0], theirs], ask);
+    expect(addenda).toEqual(['', WRITTEN_FOR_OPPONENT]);
+    expect(asked[1]).toEqual([MODELS.convert, ['Bf4']]);
+    expect(seen.map((comment) => comment.writtenFor)).toEqual([
+      ...seen.slice(0, -1).map(() => undefined),
+      'white',
+    ]);
   });
 });
 
