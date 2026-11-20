@@ -24,13 +24,14 @@ thread, what is left.
     Markdown-only PR runs none of them, so it waits for the person).
   - Staff's verdict, the most recently edited comment that starts with `**Staff Reviewer:**`, reads
     `LGTM <head>` or `LGTM+FOLLOW_UP <head>` (`at <head>` also counts). Anything else, `reviewing`
-    included, means wait. Only Staff starts a comment that way.
+    included, means wait. Threads never start a comment that way.
   - The review below approves.
 - Nothing waits on the person: no unanswered question or hold from anyone on the PR or in the
   thread, no "merge #N first", no data-client tarball (`PROJECTS.md`, "Upstream fixes").
 
 `<head>` is a prefix of the head SHA, 7 or more characters. A lookup that failed is not a pass: stop
-and say so. Lead's end-to-end comments don't gate autoland; the review replaces them.
+and say so. Staff, threads and the person all post as `ntucker`, so a comment proves nothing about
+who wrote it. Lead's end-to-end comments don't gate autoland; the review replaces them.
 
 ## Review
 
