@@ -78,3 +78,22 @@ To try the Pages build locally, export it the way the workflow does and serve `d
 ```bash
 PAGES_BASE_PATH=/chess yarn expo export --platform web
 ```
+
+## Building it with Claude
+
+This app is built in a Claude project on claude.ai. You write in the project chat, and a coordinator (a Claude session) starts a thread for each task. Each thread is a Claude Code session in the cloud with the project's repositories cloned. It opens a pull request, takes it through review and, when the rules allow, merges it. For example, this section came from one message in the project chat. Threads share a project files folder for screenshots, spikes and importer caches.
+
+To set up a project like it:
+
+1. Connect GitHub to claude.ai, and install the Claude GitHub app on the repositories.
+2. Create a project and attach `ntucker/chess`. Also attach any dependency you maintain and want fixed at its source rather than worked around. This project attaches `reactive/data-client` and `reactive/silk` (`PROJECTS.md`, "Upstream fixes").
+3. Install the user-kit plugin. Threads use its skills (`clean-code`, `agent-instructions`, `writer`) and its `post-push-review` workflow.
+4. Turn on project memory. Threads save decisions and other lasting facts there, so later threads don't ask again.
+5. Ask the coordinator to set up the project. It follows `.agents/projects/setup.md`, which gives you the text to paste into the project's instructions. That text points every agent at `PROJECTS.md` on `main`.
+
+The rest lives in the repository, so every thread reads the current version:
+
+- `PROJECTS.md`: how a thread takes a pull request from branch to merge, including the review passes in step 7.
+- `.agents/projects/autoland.md`: when a thread may merge its own pull request. It needs Cursor Bugbot on the repository and an LGTM from the Staff reviewer, which runs outside this repository. Pull requests that change only Markdown files, or change agent instructions, wait for you to merge them.
+- `.agents/projects/person-machine.md`: work that needs your own computer, such as checks on the Android emulator. Link your computer to the project; a thread then starts a Remote Control session on it, which you approve.
+- `AGENTS.md`: how any agent works in the code, in a project or not.
