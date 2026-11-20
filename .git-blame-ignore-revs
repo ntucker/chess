@@ -1,0 +1,5 @@
+# Commits git blame skips: whole-repo reformats. GitHub reads this file itself;
+# locally, run `git config blame.ignoreRevsFile .git-blame-ignore-revs` once.
+
+# chore: Add a Prettier config and check formatting in CI (#53)
+b6eb3c583fc507114511d8dcb7cf1aa8c82c57bc
