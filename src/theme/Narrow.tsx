@@ -97,7 +97,6 @@ export function NarrowOnly({ children }: { readonly children: ReactNode }) {
  * On the web narrow.css does it to a plain view, which `contentStyle` styles
  * too. Elsewhere it is always a scroll view, scrolling only on a narrow page,
  * so crossing the width keeps what it holds.
-
  */
 export function NarrowScroll({
   part: name,

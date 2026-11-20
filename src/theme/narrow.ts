@@ -205,10 +205,13 @@ interface NativePart {
   readonly narrowProps?: { readonly numberOfLines?: number };
 }
 
+/** The lesson panes' least height on a narrow page: a couple of moves. */
+const PANES_FLOOR = 140;
+
 /**
  * narrow.css's rules as native styles. narrow.test.ts checks each declaration
  * is in the part's rule there (`wide` in the rules outside the media query),
- * and each declaration there is here or in `CSS_ONLY`.
+ * unless `NATIVE_ONLY` lists it, and each declaration there is here or in `CSS_ONLY`.
  */
 export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
   'wide-only': { narrow: { display: 'none' } },
@@ -240,8 +243,8 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
       flexShrink: 1,
       flexBasis: 0,
       flexDirection: 'row',
-      minHeight: 140,
-      height: 140,
+      minHeight: PANES_FLOOR,
+      height: PANES_FLOOR,
     },
   },
   'moves-pane': { narrow: { flexGrow: 2, flexShrink: 1, flexBasis: 0, minWidth: 0 } },
