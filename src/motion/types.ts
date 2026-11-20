@@ -4,9 +4,11 @@ import type { ViewProps } from 'react-native';
 /**
  * A list whose items glide (on `springs.brisk`) to wherever a change moves
  * them. It renders no element of its own and knows nothing of the layout,
- * so it fits any list. On the web it measures items on screen, so a commit
- * that scrolls the list itself (scrolling a row into view in a layout
- * effect, say) would glide every item by the scroll.
+ * so it fits any list. On the web it measures items where they are on
+ * screen, so an item glides from where it was seen even when the commit
+ * scrolls the list (as hiding rows at its end does); a commit that scrolls
+ * on purpose (a row scrolled into view in a layout effect) glides every
+ * item by the scroll there too.
  */
 export interface MotionListProps {
   /**

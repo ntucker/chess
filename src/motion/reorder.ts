@@ -33,9 +33,9 @@ export function measure(items: Items): Positions {
  * item React put under another parent travels there too. An item inside
  * another that moves rides along and travels only the rest of the way. A key
  * `before` lacks fades in (unless it takes the exact spot of a key that just
- * left: the same item under a new id); a key that left fades out where it
- * was; unless `fades` is off, when both just appear and go. Items crossing
- * the others are lifted over them until they land.
+ * left: the same item under a new id), and a key that left fades out where
+ * it was. With `fades` off, both just appear and go. Items crossing the
+ * others are lifted over them until they land.
  */
 export function reorder(
   before: Positions,

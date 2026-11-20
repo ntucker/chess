@@ -1,8 +1,9 @@
 /**
  * Android's motion engine (the native one: the app has no iOS build):
- * Reanimated layout animations, which start in the same frame React Native mounts the new layout. Animating from JavaScript
- * after a commit can't: Reanimated holds its updates back while React
- * commits, so the new layout shows for a frame before the animation's start.
+ * Reanimated layout animations, which start in the same frame React Native
+ * mounts the new layout. Animating from JavaScript after a commit can't:
+ * Reanimated holds its updates back while React commits, so the new layout
+ * shows for a frame before the animation's start.
  * Each item springs from where it is on screen to its new place on the UI
  * thread, with the web's spring and with the speed it had (Reanimated's own
  * springs drop velocity that points away from the target, so a reversal
@@ -53,9 +54,9 @@ class Arrivals extends Component<ArrivalsProps, State> {
     { layoutDependency, still }: ArrivalsProps,
     state: State,
   ): State | null {
-    const arriving = still ? null : !Object.is(state.dependency, layoutDependency);
-    if (arriving === state.arriving && Object.is(state.dependency, layoutDependency)) return null;
-    return { dependency: layoutDependency, arriving };
+    const next: Arriving = still ? null : !Object.is(state.dependency, layoutDependency);
+    if (next === state.arriving && Object.is(state.dependency, layoutDependency)) return null;
+    return { dependency: layoutDependency, arriving: next };
   }
 
   render() {

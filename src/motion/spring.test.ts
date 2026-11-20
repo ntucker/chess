@@ -48,5 +48,6 @@ describe('springMotion', () => {
     expect(stops.at(-1)).toBe(1);
     // Longer than the time to reach the target, since the bounces follow it.
     expect(durationMs).toBeGreaterThan(400);
+    expect(durationMs).toBeLessThan(1500);
   });
 });
