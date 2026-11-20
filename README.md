@@ -85,12 +85,11 @@ To work on this repo through a Claude project on claude.ai:
 
 1. [Connect GitHub](https://claude.ai/connect-github) and install the Claude GitHub app on `ntucker/chess` or your fork.
 2. Create a project and attach that repository.
-3. Turn on project memory.
-4. Install [user-kit](https://github.com/ntucker/user-kit#install-in-claude-code).
-5. Send this in the project chat, then paste the text the coordinator replies with into the project's instructions:
+3. Install [user-kit](https://github.com/ntucker/user-kit#install-in-claude-code).
+4. Send this in the project chat, then paste the text the coordinator replies with into the project's instructions:
 
    ```text
    Set up this project: read .agents/projects/setup.md from main in ntucker/chess and follow it.
    ```
 
-6. For Android checks, link your computer to the project.
+5. For Android checks, link your computer to the project.
