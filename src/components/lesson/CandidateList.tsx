@@ -3,6 +3,7 @@ import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef } from 'rea
 import { StyleSheet, View } from 'react-native';
 
 import { signedEvaluation } from '@/evaluation/evaluation';
+import { candidateTone } from '@/lesson/drawings';
 import type { Uci } from '@/lesson/lesson';
 import type { Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
@@ -20,10 +21,10 @@ interface Props {
   readonly heading: string;
   readonly candidates: readonly Candidate[];
   /** Rare candidates, listed after the others while `rareShown`. */
-  readonly rare?: readonly Candidate[];
-  readonly rareShown?: boolean;
-  /** The learner shows or hides the rare rows; needed with `rare` ones. */
-  readonly onShowRare?: (shown: boolean) => void;
+  readonly rare: readonly Candidate[];
+  readonly rareShown: boolean;
+  /** The learner shows or hides the rare rows. */
+  readonly onShowRare: (shown: boolean) => void;
   /** The candidate the board draws as the main one (see `candidateDrawings`). */
   readonly main?: Candidate;
   /** The row previewed, whether its row is pointed at or its piece dragged onto its square. */
@@ -60,8 +61,8 @@ interface Props {
 export function CandidateList({
   heading,
   candidates,
-  rare = [],
-  rareShown = false,
+  rare,
+  rareShown,
   onShowRare,
   main,
   pointed,
@@ -105,7 +106,7 @@ export function CandidateList({
           <RareToggle
             count={rare.length}
             shown={rareShown}
-            onToggle={() => onShowRare?.(!rareShown)}
+            onToggle={() => onShowRare(!rareShown)}
             onTabOut={onTabOut}
           />
         ) : null}
@@ -194,7 +195,7 @@ function Row({
   const { theme } = useTheme();
   const { color } = theme.semantic;
   const { move, san, engine } = candidate;
-  const tone = toneColors[engine ? 'engine' : main ? 'main' : 'other'];
+  const tone = toneColors[candidateTone(candidate, main)];
   const hollow = candidate.rare || (engine && !main);
   const point = () => onPoint(move.uci);
   // The mouse points at a row once it rests there, so one crossed on the way

@@ -18,5 +18,7 @@ describe('signedEvaluation', () => {
     expect(signedEvaluation({ score: 0.5, pawns: -0.02 })).toBe('0.0');
     expect(signedEvaluation({ score: 1, pawns: 0, mate: 3 })).toBe('+M3');
     expect(signedEvaluation({ score: 0, pawns: 0, mate: -2 })).toBe('−M2');
+    // White to move and already mated: Black won.
+    expect(signedEvaluation({ score: 0, pawns: 0, mate: 0 })).toBe('−M0');
   });
 });

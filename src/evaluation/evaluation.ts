@@ -31,8 +31,9 @@ export function pawnsLabel(pawns: number): string {
 }
 
 /** `evaluation` as an engine line writes it, from White's side: "+0.7", "\u22121.2", "0.0" or "+M3". */
-export function signedEvaluation({ pawns, mate }: Evaluation): string {
-  if (mate !== undefined) return `${mate < 0 ? '\u2212' : '+'}M${Math.abs(mate)}`;
+export function signedEvaluation({ score, pawns, mate }: Evaluation): string {
+  // A side already mated (mate 0) has only the score to say who won.
+  if (mate !== undefined) return `${score < 0.5 ? '\u2212' : '+'}M${Math.abs(mate)}`;
   const label = pawnsLabel(pawns);
   return Number(label) === 0 ? label : `${pawns < 0 ? '\u2212' : '+'}${label}`;
 }

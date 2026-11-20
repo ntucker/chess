@@ -105,6 +105,13 @@ describe('the engine lifecycle', () => {
     print('info depth 12 multipv 1 score cp 20 pv d7d5');
     print('bestmove d7d5');
     await next;
+    // and the one after leaves it be.
+    void engine.stockfishEvaluation(['c2c4']);
+    expect(sent.slice(-3)).toEqual([
+      'ucinewgame',
+      'position startpos moves c2c4',
+      'go nodes 100000 movetime 1500',
+    ]);
   });
 
   it('restarts an engine that crashes, and runs its search on the next', async () => {

@@ -189,15 +189,10 @@ function handleLine(session: Session, line: string) {
   }
 }
 
-/**
- * Takes the search to run next out of `pending`: the last evaluation (one
- * rank), or else the last search (index -1).
- */
+/** Takes the search to run next out of `pending`: the last evaluation (one rank), or else the last search. */
 function takeNext(): Search | undefined {
-  return pending.splice(
-    pending.findLastIndex(({ ranks }) => ranks === 1),
-    1,
-  )[0];
+  const evaluation = pending.findLastIndex(({ ranks }) => ranks === 1);
+  return pending.splice(evaluation === -1 ? pending.length - 1 : evaluation, 1)[0];
 }
 
 function startNext() {
