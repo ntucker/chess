@@ -1,6 +1,6 @@
 import { a11yState, Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { View } from 'react-native';
+import { Text as Span, View } from 'react-native';
 
 import { evaluationReading, signedEvaluation } from '@/evaluation/evaluation';
 import { candidateTone } from '@/lesson/drawings';
@@ -11,15 +11,17 @@ import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { QualityBadge } from '@/components/QualityBadge';
 import type { Mark } from '@/progress/progress';
 import { narrowLength, narrowStyles } from '@/theme/narrow';
-import { useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
+import { NarrowScroll, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
 import { fonts } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
 
 import { MARK_SIZE, MarkLegend, ProgressMark, SPOKEN_MARKS } from './ProgressMark';
 
 interface Props {
-  /** The list's heading: whose moves these are. */
+  /** The list's heading: what moves these are, and whose unless `owner` says. */
   readonly heading: string;
+  /** Whose moves these are, before `heading`; only spoken in a narrow web page's pane, where it would wrap. */
+  readonly owner?: string;
   readonly candidates: readonly Candidate[];
   /** Rare candidates, listed after the others while `rareShown`. */
   readonly rare: readonly Candidate[];
@@ -64,10 +66,11 @@ interface Props {
  * play. Each row's dot matches its arrow on the board; the dot of a row the
  * board draws no arrow for is hollow: a rare row's, or one of Stockfish's
  * but its best. A row's progress mark ends it, and a key beside the heading
- * names the marks the list shows.
+ * names the marks the list shows (not in a narrow web page's pane).
  */
 export function CandidateList({
   heading,
+  owner,
   candidates,
   rare,
   rareShown,
@@ -94,39 +97,49 @@ export function CandidateList({
   const styles = useNarrowStyles(STYLES);
   const part = useNarrowPart();
   return (
-    <Stack style={labelled}>
+    <Stack {...part('move-list', labelled)}>
       <View style={styles.head}>
-        <Eyebrow>{heading}</Eyebrow>
-        <MarkLegend marks={shownMarks} />
+        <Eyebrow>
+          {/* A plain Text takes the eyebrow's style; Silk's would set its own. */}
+          {owner ? <Span {...part('wide-only-spoken')}>{`${owner}'s `}</Span> : null}
+          {heading}
+        </Eyebrow>
+        {/* A narrow pane has no room for the key: each mark's row still says it to screen readers. */}
+        <View {...part('wide-only')}>
+          <MarkLegend marks={shownMarks} />
+        </View>
       </View>
-      <Surface elevation="sunken" border="subtle" radius="md" style={styles.list}>
-        {rows.map((candidate, index) => (
-          <Row
-            key={candidate.move.uci}
-            candidate={candidate}
-            main={candidate === main}
-            pointed={candidate.move.uci === pointed}
-            mark={marks.get(candidate.move.uci)}
-            // Every row keeps room for a mark once one has one, so their shares line up.
-            markSlot={shownMarks.size > 0}
-            leadsTo={leadsTo(candidate)}
-            compact={compact}
-            // A lone move's share is always all of the games.
-            share={rows.length > 1 ? candidate.share : undefined}
-            playable={playable}
-            onPlay={onPlay}
-            onPoint={onPoint}
-            onTabOut={!rare.length && index === rows.length - 1 ? onTabOut : undefined}
-          />
-        ))}
-        {rare.length ? (
-          <RareToggle
-            count={rare.length}
-            shown={rareShown}
-            onToggle={() => onShowRare(!rareShown)}
-            onTabOut={onTabOut}
-          />
-        ) : null}
+      <Surface elevation="sunken" border="subtle" radius="md" {...part('list-card', styles.list)}>
+        {/* On a narrow page the rows scroll inside the card, under its heading. */}
+        <NarrowScroll part="list-scroll">
+          {rows.map((candidate, index) => (
+            <Row
+              key={candidate.move.uci}
+              candidate={candidate}
+              main={candidate === main}
+              pointed={candidate.move.uci === pointed}
+              mark={marks.get(candidate.move.uci)}
+              // Every row keeps room for a mark once one has one, so their shares line up.
+              markSlot={shownMarks.size > 0}
+              leadsTo={leadsTo(candidate)}
+              compact={compact}
+              // A lone move's share is always all of the games.
+              share={rows.length > 1 ? candidate.share : undefined}
+              playable={playable}
+              onPlay={onPlay}
+              onPoint={onPoint}
+              onTabOut={!rare.length && index === rows.length - 1 ? onTabOut : undefined}
+            />
+          ))}
+          {rare.length ? (
+            <RareToggle
+              count={rare.length}
+              shown={rareShown}
+              onToggle={() => onShowRare(!rareShown)}
+              onTabOut={onTabOut}
+            />
+          ) : null}
+        </NarrowScroll>
       </Surface>
       {caption ? (
         <Text role="caption" tone="secondary" {...part('narrow-only')}>

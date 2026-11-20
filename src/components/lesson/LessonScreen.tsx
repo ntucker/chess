@@ -280,7 +280,8 @@ function LessonScreen({
   ) : guidance.candidates.length ? (
     <CandidateList
       {...rowProps}
-      heading={view.learnerToMove ? 'Your candidates' : `${colorName(rival)}'s ${rivalMoves}`}
+      heading={view.learnerToMove ? 'Your candidates' : rivalMoves}
+      owner={view.learnerToMove ? undefined : colorName(rival)}
       // At the start each move's opening is the point, so its rows keep it.
       compact={!picking}
       leadsTo={leadsTo}
@@ -382,11 +383,7 @@ function LessonScreen({
             {moveList || ideaCard ? (
               // A View, so narrow.css can make it a row, which a Stack's inline style would override.
               <PointingArea onLeave={leave} {...part('panes', styles.sections)}>
-                {moveList ? (
-                  <NarrowScroll part="moves-pane" contentStyle={styles.sections}>
-                    {moveList}
-                  </NarrowScroll>
-                ) : null}
+                {moveList ? <View {...part('moves-pane', styles.sections)}>{moveList}</View> : null}
                 {ideaCard ? (
                   <NarrowScroll part="idea-pane">
                     <IdeaCard

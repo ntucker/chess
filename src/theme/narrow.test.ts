@@ -47,7 +47,10 @@ function asCss(style: object = {}) {
     ([key, v]) => `${key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}: ${value(v)}`,
   );
   if (flexBasis !== undefined) lines.push(`flex: ${flexGrow} ${flexShrink} ${value(flexBasis)}`);
-  else if (flexGrow !== undefined) lines.push(`flex-grow: ${flexGrow}`);
+  else {
+    if (flexGrow !== undefined) lines.push(`flex-grow: ${flexGrow}`);
+    if (flexShrink !== undefined) lines.push(`flex-shrink: ${flexShrink}`);
+  }
   return lines;
 }
 

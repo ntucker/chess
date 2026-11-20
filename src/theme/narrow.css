@@ -95,10 +95,10 @@
   }
   /*
    * The lesson's panel (LessonScreen.tsx) fills the space under the board, and
-   * its moves and its idea share that space side by side, each pane scrolling
-   * on its own, so the idea stays in view however long the list. Should the
-   * panel's other parts (a trap's card) crowd them, the panes keep a floor and
-   * the panel scrolls instead.
+   * its moves and its idea share that space side by side, the list's rows and
+   * the idea each scrolling on their own, so neither pushes the other out of
+   * view. Should the panel's other parts (a trap's card) crowd them, the panes
+   * keep a floor and the panel scrolls instead.
    */
   :root [data-narrow='lesson-panel'] {
     flex: 1 0 auto;
@@ -111,7 +111,7 @@
   /*
    * The scoresheet drawer (ScoresheetDrawer.tsx) takes the panel's place,
    * filling it and scrolling its moves within. What it covers stays mounted,
-   * hidden as wide-only, so the panes keep their scroll.
+   * hidden as wide-only, so the rows and the idea keep their scroll.
    */
   :root [data-narrow='scoresheet-drawer'] {
     display: flex;
@@ -128,7 +128,6 @@
   :root [data-narrow='moves-pane'],
   :root [data-narrow='idea-pane'] {
     min-width: 0;
-    overscroll-behavior: contain;
   }
   :root [data-narrow='moves-pane'] {
     flex: 2 1 0;
@@ -136,7 +135,29 @@
   :root [data-narrow='idea-pane'] {
     flex: 3 1 0;
   }
-  /* Where a candidate row leads (CandidateList.tsx) wraps rather than lose its end. */
+  /*
+   * A candidate list (CandidateList.tsx) keeps its heading in view: the list
+   * and its card shrink to the pane, and its rows scroll inside the card.
+   */
+  :root [data-narrow='moves-pane'] {
+    overflow: hidden;
+  }
+  :root [data-narrow='move-list'],
+  :root [data-narrow='list-card'],
+  :root [data-narrow='list-scroll'] {
+    flex-shrink: 1;
+    min-height: 0;
+  }
+  /* A scroll inside the panel stops at its ends rather than scroll the panel on. */
+  :root [data-narrow='list-scroll'],
+  :root [data-narrow='idea-pane'] {
+    overscroll-behavior: contain;
+  }
+  /* The rows' scroll pads the card's bottom itself, to clear its fade. */
+  :root [data-narrow='list-card'] {
+    padding-bottom: 0;
+  }
+  /* Where a candidate row leads wraps rather than lose its end (a compact list's rows leave it out). */
   :root [data-narrow='leads-to'] {
     white-space: normal;
   }
@@ -160,12 +181,12 @@
     width: 100%;
   }
   /*
-   * The panel, and the lesson's panes in it, scroll on their own. Each fades
+   * The panel, a candidate list's rows and the idea pane scroll on their own. Each fades
    * out its bottom edge to show there's more below; the padding lets the last
    * line clear it.
    */
   :root [data-narrow='program'],
-  :root [data-narrow='moves-pane'],
+  :root [data-narrow='list-scroll'],
   :root [data-narrow='idea-pane'] {
     overflow-y: auto;
     padding-bottom: var(--fade);

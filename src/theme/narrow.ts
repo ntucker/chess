@@ -86,6 +86,9 @@ export const NARROW_PARTS = [
   'panes',
   'moves-pane',
   'idea-pane',
+  'move-list',
+  'list-card',
+  'list-scroll',
   'leads-to',
 ] as const;
 
@@ -99,7 +102,7 @@ export type NarrowPartName = (typeof NARROW_PARTS)[number];
  */
 export const SCROLLING_PARTS = [
   'program',
-  'moves-pane',
+  'list-scroll',
   'idea-pane',
 ] as const satisfies readonly NarrowPartName[];
 
@@ -247,8 +250,13 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
       height: PANES_FLOOR,
     },
   },
-  'moves-pane': { narrow: { flexGrow: 2, flexShrink: 1, flexBasis: 0, minWidth: 0 } },
+  'moves-pane': {
+    narrow: { flexGrow: 2, flexShrink: 1, flexBasis: 0, minWidth: 0, overflow: 'hidden' },
+  },
   'idea-pane': { narrow: { flexGrow: 3, flexShrink: 1, flexBasis: 0, minWidth: 0 } },
+  'move-list': { narrow: { flexShrink: 1, minHeight: 0 } },
+  'list-card': { narrow: { flexShrink: 1, minHeight: 0, paddingBottom: 0 } },
+  'list-scroll': { narrow: { flexShrink: 1, minHeight: 0 } },
   'leads-to': { narrowProps: { numberOfLines: undefined } },
 };
 
@@ -298,6 +306,6 @@ export const CSS_ONLY: Readonly<Partial<Record<NarrowPartName, readonly string[]
   'leads-to': ['white-space: normal'],
   // `NarrowScroll` scrolls these natively, with a fading edge and the same padding.
   program: SCROLLS,
-  'moves-pane': ['overscroll-behavior: contain', ...SCROLLS],
+  'list-scroll': ['overscroll-behavior: contain', ...SCROLLS],
   'idea-pane': ['overscroll-behavior: contain', ...SCROLLS],
 };
