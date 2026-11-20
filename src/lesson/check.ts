@@ -15,11 +15,12 @@ import {
   FILE_NAMES,
   type NormalMove,
   type Piece,
+  type Role,
   type Square,
 } from 'chessops/types';
 import { makeSquare, opposite, parseSquare, parseUci } from 'chessops/util';
 
-import { balance, points, VALUES, type MaterialRole } from '@/game/material';
+import { balance, points, VALUES } from '@/game/material';
 import {
   parsePosition,
   parsePositionKey,
@@ -316,25 +317,32 @@ export const GENERATED_IDEAS = [
  * points more than the piece taking it. Held only against generated notes;
  * a guide may call a smaller threat one.
  */
-export function emptyThreat(threat: Threat, pos: Chess): string | undefined {
+function emptyThreat(threat: Threat, pos: Chess): string | undefined {
   const threatening = withTurn(pos, threat.side);
   const move = parseUci(threat.move) as NormalMove;
   const mover = threatening.board.get(move.from)!;
-  const taken = threatening.board.get(move.to);
+  const enPassant = mover.role === 'pawn' && move.to === threatening.epSquare;
+  const taken = enPassant ? 'pawn' : threatening.board.get(move.to)?.role;
   const after = threatening.clone();
   after.play(move);
   if (after.isCheckmate()) return undefined;
   if (!taken) return 'takes nothing and does not mate';
   if (bearing(after, after.turn, move.to).isEmpty()) return undefined;
-  return VALUES[taken.role as MaterialRole] - VALUES[mover.role as MaterialRole] >= 2
+  return value(taken) - value(mover.role) >= 2
     ? undefined
     : 'takes a defended piece and wins nothing';
 }
 
-/** What a generated note may not draw that a guide's may, or undefined. */
-function generatedIdeaProblem(idea: Idea, pos: Chess): string | undefined {
+/** A role's worth for weighing a capture: a king's is beyond any trade. */
+const value = (role: Role) => (role === 'king' ? Infinity : VALUES[role]);
+
+/**
+ * What a generated note (`Note.generated`) may not draw that a guide's may,
+ * or undefined, worded to follow the idea's type ("threat takes nothing...").
+ */
+export function generatedIdeaProblem(idea: Idea, pos: Chess): string | undefined {
   if (!(GENERATED_IDEAS as readonly string[]).includes(idea.type))
-    return 'a generated note never draws one';
+    return 'is a type no generated note draws';
   return idea.type === 'threat' ? emptyThreat(idea, pos) : undefined;
 }
 
@@ -345,7 +353,8 @@ function checkNotes(notes: readonly Note[] | undefined, pos: Chess, path: string
     if (note.generated && note.original !== undefined)
       report(`${path}[${i}].original`, 'is on a generated note, which no guide wrote');
     note.ideas?.forEach((idea, j) => {
-      const problem = checkIdea(idea, pos) ?? (note.generated && generatedIdeaProblem(idea, pos));
+      const problem =
+        checkIdea(idea, pos) ?? (note.generated ? generatedIdeaProblem(idea, pos) : undefined);
       if (problem) report(`${path}[${i}].ideas[${j}]`, `${idea.type}: ${problem}`);
     });
   });

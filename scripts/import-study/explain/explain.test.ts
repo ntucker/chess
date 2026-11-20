@@ -3,7 +3,6 @@ import { makeFen } from 'chessops/fen';
 
 import type { Evaluation } from '@/evaluation/evaluation';
 import { parsePositionKey } from '@/game/replay';
-import { emptyThreat } from '@/lesson/check';
 import { keyAfter, uci } from '@/lesson/lesson.fixture';
 
 import type { Answer, AnswerIdea } from '../convert/answer';
@@ -98,7 +97,7 @@ describe('explainedNote', () => {
     [
       'an evaluation',
       answer('Your pawn takes the centre.', [{ type: 'evaluation', value: 'equal' }]),
-      'never does',
+      'its evaluation is a type no generated note draws',
     ],
     [
       'a false drawing',
@@ -141,16 +140,21 @@ describe('the material guard', () => {
     'Your knight jumps in and wins the pawn.',
     'Moving to e4 wins the pawn back.',
     'Your knight wins the pawn back, and if White trades, your queen recaptures.',
+    'White can win a pawn but your knight wins it back.',
+    'Your queen takes, winning back the piece White just took.',
   ])('refuses "%s" when the reply takes it back', (text) => {
     const result = explainedNote(answer(text), recaptured);
-    // The refusal is part of a retry's stored key, so it never names the reply.
-    expect('refused' in result && result.refused.why).not.toContain('Nxe4');
     expect(result).toHaveProperty('refused');
+    // The refusal is part of a retry's stored key, so it never names the reply.
+    const why = 'refused' in result ? result.refused.why : '';
+    expect(why).not.toContain('Nxe4');
   });
 
   it.each([
     'You win space in the centre.',
     'Your knight is ready to win the pawn later.',
+    'Your knight wins the pawn later.',
+    'Taking wins the pawn back for White.',
     'If White ignores it, your knight wins the pawn.',
     'Your knight hits e4, so White must win it back.',
     'You win a tempo back.',
@@ -166,19 +170,6 @@ describe('itemKey', () => {
     const engine = { ...item.engine, forYou: '+9.0' };
     expect(itemKey({ ...item, engine })).toEqual(itemKey(item));
     expect(itemKey({ ...item, previousNote: 'A new note.' })).not.toEqual(itemKey(item));
-  });
-});
-
-describe('emptyThreat', () => {
-  const pos = after('d4', 'd5', 'c4', 'e6');
-  it('takes a threat to win an undefended pawn as real', () => {
-    expect(emptyThreat({ type: 'threat', side: 'black', move: 'd5c4' }, pos)).toBeUndefined();
-  });
-
-  it('refuses a threat that takes nothing and does not mate', () => {
-    expect(emptyThreat({ type: 'threat', side: 'black', move: 'f8b4' }, pos)).toBe(
-      'takes nothing and does not mate',
-    );
   });
 });
 

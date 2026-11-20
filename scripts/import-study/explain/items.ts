@@ -9,7 +9,7 @@ import type { Color } from 'chessops/types';
 
 import type { Evaluation } from '@/evaluation/evaluation';
 import { playLine, positionKey } from '@/game/replay';
-import type { Lesson, Note, PositionKey, Uci } from '@/lesson/lesson';
+import type { Lesson, Note, Uci } from '@/lesson/lesson';
 
 import { hash, legalMoves, pieces } from '../convert/comments';
 import { linesTo, san, sans, startOf, type Evaluate } from '../engineCheck';

@@ -9,7 +9,7 @@ import { parseSan } from 'chessops/san';
 
 import { balance } from '@/game/material';
 import { parsePosition } from '@/game/replay';
-import { emptyThreat, GENERATED_IDEAS, noteTextProblem } from '@/lesson/check';
+import { generatedIdeaProblem, noteTextProblem } from '@/lesson/check';
 import type { Idea, Note } from '@/lesson/lesson';
 
 import type { Answer } from '../convert/answer';
@@ -28,29 +28,47 @@ const VERDICT =
  * "win it back". Not "win a tempo back", which names no material.
  */
 const WIN =
-  /\b(?:win|wins|won|winning|regain|regains|regaining)\b(?:(?:\s+\S+){0,3}?\s+(?:pawn|piece|knight|bishop|rook|queen|exchange|material)\b|\s+(?:it|one|them)\s+back\b)/i;
+  /\b(?:win|wins|won|winning|regain|regains|regaining)\b(?:(?:\s+\S+){0,3}?\s+(?:pawn|piece|knight|bishop|rook|queen|exchange|material)\b|\s+(?:it|one|them)\s+back\b)/gi;
 /**
- * Words before a win in its clause that make it the opponent's, or one still
- * to come ("White wins it back", "ready to win the pawn later").
+ * Words before a win that make it the opponent's or one still to come
+ * ("White wins it back", "can win the pawn", "ready to win it", "it wins the
+ * pawn": the opponent's piece).
  */
-const NOT_NOW =
+const NOT_NOW_BEFORE =
   /\b(?:white|black|white's|black's|can|could|will|would|must|may|later|next|threatens?|aims?|aiming|ready)\b|\b(?:it|to)\s*$/i;
+/**
+ * Words after a win that do the same ("wins the pawn later", "wins it back
+ * for White"). Not a bare colour, which there often names the opponent's
+ * loss: "winning back the piece White just took".
+ */
+const NOT_NOW_AFTER = /\b(?:later|next|for (?:white|black))\b/i;
 
 /**
  * Whether `text` says the learner's move wins material now: "Your knight wins
  * the pawn back", "Taking with the knight wins the pawn back". Not a win the
- * opponent makes, one still to come, or one under an "if" (the clause with
- * it and the clause after: "if White takes, your queen wins it back").
+ * opponent makes, one still to come, or one under an "if": the clause with
+ * the "if" and the clause after it ("if White takes, your queen wins it back").
  */
 function claimsWin(text: string): boolean {
   return text.split(/[.!?]/).some((sentence) => {
-    let conditional = false;
-    return sentence.split(/[,;:]|\band\b/i).some((clause) => {
-      const under = conditional;
-      conditional = /\bif\b/i.test(clause);
-      const win = WIN.exec(clause);
-      return !under && !conditional && win !== null && !NOT_NOW.test(clause.slice(0, win.index));
-    });
+    const clauses = sentence.split(/[,;:]|\band\b/i);
+    const conditional = clauses.map((clause) => /\bif\b/i.test(clause));
+    return clauses.some((clause, i) => !conditional[i] && !conditional[i - 1] && winsNow(clause));
+  });
+}
+
+/**
+ * Whether one of the wins in `clause` is the learner's, now: no word between
+ * it and the clause's wins on either side makes it the opponent's or a later
+ * one ("White can win a pawn but your knight wins it back" has one).
+ */
+function winsNow(clause: string): boolean {
+  const wins = [...clause.matchAll(WIN)];
+  return wins.some((win, i) => {
+    const previous = wins[i - 1];
+    const before = clause.slice(previous ? previous.index + previous[0].length : 0, win.index);
+    const after = clause.slice(win.index + win[0].length, wins[i + 1]?.index);
+    return !NOT_NOW_BEFORE.test(before) && !NOT_NOW_AFTER.test(after);
   });
 }
 /** A note text saying the learner is ahead on material: "leaving you a pawn up", "your extra pawn". */
@@ -90,15 +108,11 @@ export function explainedNote(answer: Answer, move: Played): Explained {
     );
   const ideas: Idea[] = [];
   for (const raw of written.ideas) {
-    if (!(GENERATED_IDEAS as readonly string[]).includes(raw.type))
-      return refuse(`it draws a ${raw.type}, which a generated note never does`);
-    // Evaluations are refused above, so whether one was extracted doesn't matter.
-    const idea = lessonIdea(raw, after, true);
+    // No evaluation stands, extracted or not: generatedIdeaProblem refuses it.
+    const idea = lessonIdea(raw, after, false);
     if (typeof idea === 'string') return refuse(`its ${raw.type} is false here: ${idea}`);
-    if (idea.type === 'threat') {
-      const empty = emptyThreat(idea, after);
-      if (empty) return refuse(`its threat ${empty}`);
-    }
+    const problem = generatedIdeaProblem(idea, after);
+    if (problem) return refuse(`its ${idea.type} ${problem}`);
     ideas.push(idea);
   }
   return { note: { text, generated: true, ...(ideas.length > 0 && { ideas }) } };
