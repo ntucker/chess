@@ -84,8 +84,8 @@ export function useOpeningsGame(
   const [synced, setSynced] = useState({ entry, address, variation, picks: [picked] });
   // Each history entry the page left, while the game was still at its address.
   const [left, setLeft] = useState<Partial<Record<string, Visit>>>({});
-  const moved = address !== synced.address || variation !== synced.variation;
-  if (entry !== synced.entry || moved) {
+  const addressChanged = address !== synced.address || variation !== synced.variation;
+  if (entry !== synced.entry || addressChanged) {
     let picks = [picked];
     if (address !== undefined && address !== synced.address) {
       setAddressSide(LESSON_INDEX[address].side);
@@ -117,8 +117,9 @@ export function useOpeningsGame(
       // such as an Android deep link to the page already open. A link names
       // a variation (the game's own moves only ever drop one), or a lesson
       // the game isn't at and hasn't sent the address to since it last arrived.
+      // (Or the entry's key arrived: then the address didn't change.)
       const sentAt = synced.picks.indexOf(address);
-      const newVariation = variation !== undefined && moved;
+      const newVariation = variation !== undefined && addressChanged;
       if (!newVariation && sentAt >= 0) {
         // The ones sent after it are still on their way.
         picks = synced.picks.slice(sentAt);
@@ -129,6 +130,8 @@ export function useOpeningsGame(
     }
     setSynced({ entry, address, variation, picks });
   } else if (synced.picks.at(-1) !== picked) {
+    // A lesson picked again is kept: the game may come back to it while the
+    // address it sent there earlier is still on its way.
     setSynced({ ...synced, picks: [...synced.picks, picked] });
   }
   useEffect(() => {
