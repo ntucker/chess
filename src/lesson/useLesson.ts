@@ -146,11 +146,12 @@ export function useLesson(
   }, [ctrl, earned, key, lesson.id, progress]);
   // The start lists every opening, each row marked from its own lesson.
   // Passing a row takes walking its lesson, so the lessons with a passed
-  // line load for it. Deferred, so the page never waits on them: until they
-  // load, the rows keep the lessons loaded before (none at first, so a row
-  // is at most seen). The lesson on screen walks as itself, whose walks are
-  // already kept. Their ids as one string, which the deferral can compare.
-  const passing = picking ? lessonsPassing(LESSON_INDEX, everyProgress).join(' ') : '';
+  // line load for it, away from the start too, so stepping back finds them
+  // loaded. Deferred, so the page never waits on them: until they load, the
+  // rows keep the lessons loaded before (none at first, so a row is at most
+  // seen). The lesson on screen walks as itself, whose walks are already
+  // kept. Their ids as one string, which the deferral can compare.
+  const passing = lessonsPassing(LESSON_INDEX, everyProgress).join(' ');
   const walking = useDeferredValue(passing, '');
   const openingLessons = useSuspense(
     getLessons,
