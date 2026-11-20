@@ -24,26 +24,31 @@ export function NewVersionPage({ detail }: { readonly detail: string }) {
  * missing), or else the error with a reload. Shows nothing while it checks
  * the site.
  */
-export function ScreenFailure({ error }: { readonly error: Error }) {
+export function ScreenFailure({ error }: { readonly error: unknown }) {
+  // Anything can be thrown, but AsyncBoundary drops a falsy one and the page
+  // shows an Error's message.
+  const failure = error instanceof Error ? error : new Error(String(error));
   return (
-    <AsyncBoundary fallback={null} errorComponent={CurtainDown}>
-      <NewVersionOrThrow error={error} />
+    <AsyncBoundary fallback={null} errorComponent={ScreenErrorPage}>
+      <NewVersionOrThrow error={failure} />
     </AsyncBoundary>
   );
 }
 
 function NewVersionOrThrow({ error }: { readonly error: Error }) {
-  // A WeakMap keys on objects only, and only errors come from a missing file.
-  if (typeof error !== 'object' || error === null) throw error;
   if (!(use(explainOnce(error)) instanceof NewVersionError)) throw error;
   return <NewVersionPage detail="Reload to get it. Your settings and lesson progress stay." />;
 }
 
 /** Any other failure of a screen. */
-function CurtainDown({ error }: { readonly error: Error }) {
-  const detail = error instanceof Error ? error.message : String(error);
+function ScreenErrorPage({ error }: { readonly error: Error }) {
   return (
-    <ReloadPage tab="Error" eyebrow="Opening Night" title="Curtain stays down." detail={detail} />
+    <ReloadPage
+      tab="Error"
+      eyebrow="Opening Night"
+      title="Curtain stays down."
+      detail={error.message || 'Something went wrong.'}
+    />
   );
 }
 

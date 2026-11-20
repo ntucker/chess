@@ -42,9 +42,9 @@ function getWorker(): Worker {
  * NewVersionError.
  */
 export function runNetwork(rating: MaiaRating, planes: Float32Array): Promise<NetworkOutput> {
-  const url = assetUrl(MODELS[rating]);
-  const id = nextId++;
   return new Promise<NetworkOutput>((resolve, reject) => {
+    const url = assetUrl(MODELS[rating]);
+    const id = nextId++;
     pending.set(id, { resolve, reject });
     getWorker().postMessage({ id, url, planes } satisfies MaiaRequest, [planes.buffer]);
   }).catch(async (error: unknown) => {

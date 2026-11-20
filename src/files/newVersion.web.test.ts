@@ -63,7 +63,7 @@ describe('explainLoadFailure', () => {
     expect(await explainLoadFailure(failure)).toBe(failure);
   });
 
-  it('asks with a time limit, so a slow site counts as not replaced', async () => {
+  it('asks with an abort signal, so a slow site can’t hold the answer', async () => {
     served = async () => page(...OLD);
     await explainLoadFailure(failure);
     expect(fetched.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
