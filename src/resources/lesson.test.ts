@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 import { makeSan } from 'chessops/san';
 import { parseUci } from 'chessops/util';
 
-import { parsePosition, positionKey, SAN } from '@/game/replay';
+import { NAMED_MOVE, parsePosition, positionKey } from '@/game/replay';
 import { checkLesson } from '@/lesson/check';
 import type { Lesson } from '@/lesson/lesson';
 import { readShippedLesson, shippedIds } from '@/lesson/lesson.fixture';
@@ -33,9 +33,6 @@ function playedBefore(lesson: Lesson): Map<string, Set<string>> {
   return played;
 }
 
-/** A move a variation name writes, numbered or not ("4.g4", "...Bf5", "e5"), with its SAN as the group. */
-const NAMED_MOVE = new RegExp(String.raw`(?<![\w.])(?:\d+\s?\.(?:\.\.)?\s?|\.\.\.)?(${SAN})`, 'g');
-
 describe('shipped lessons', () => {
   it('registers every file in assets/lessons', () => {
     expect(Object.keys(LESSONS).sort()).toEqual([...shippedIds].sort());
@@ -56,7 +53,9 @@ describe('shipped lessons', () => {
     // "Early ...Bf5" waits for ...Bf5; a name giving several moves ("4.h4 & 4.g4") needs one of them.
     const lesson = readShippedLesson(id);
     const moves = (name: string) =>
-      [...name.matchAll(NAMED_MOVE)].map(([, san]) => san.replace(/[+#]$/, ''));
+      [...name.matchAll(new RegExp(NAMED_MOVE, 'g'))].map(([, , , , san]) =>
+        san.replace(/[+#]$/, ''),
+      );
     const early = [...playedBefore(lesson)].flatMap(([key, played]) => {
       const names: string[] = [];
       for (

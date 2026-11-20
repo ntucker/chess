@@ -1,12 +1,6 @@
-import { SAN } from '@/game/replay';
+import { NAMED_MOVE } from '@/game/replay';
 
 import { chapterMoves, type Chapter, type StudyMove } from './study';
-
-/** A move a name writes ("4.g4", "...Bf5", "5...Nh5"): its number, whether it is Black's, and its SAN. */
-const NAMED_MOVE = new RegExp(
-  String.raw`(?<![\w.])(?:(\d+)\s?\.(\.\.)?\s?|(\.\.\.))?(${SAN})`,
-  'g',
-);
 
 /**
  * `chapter` with what its variation's `name` says about where it starts: a
@@ -26,7 +20,7 @@ export function withTitleMoves(chapter: Chapter, name: string): Chapter {
   const moves = [...chapterMoves(chapter)];
   /** The last named move, where the next can be its reply. */
   let last: { at: number; ply: number; moves: StudyMove[] } | undefined;
-  const found = [...name.matchAll(NAMED_MOVE)].flatMap((match) => {
+  const found = [...name.matchAll(new RegExp(NAMED_MOVE, 'g'))].flatMap((match) => {
     const [text, number, numberedBlack, black, san] = match;
     // A bare move right after a numbered one is its reply ("3.Nc3 d4" is 3...d4).
     const reply =
