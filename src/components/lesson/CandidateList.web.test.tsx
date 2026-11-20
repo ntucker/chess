@@ -31,34 +31,46 @@ const RARE = candidate('h2h4', 'h4', true);
 
 type Props = Partial<Parameters<typeof CandidateList>[0]>;
 
-/** Renders the list, and reads its host with `read`. */
-function render<T>(props: Props, read: (host: HTMLElement) => T) {
+const DEFAULTS: Parameters<typeof CandidateList>[0] = {
+  heading: 'Likely replies',
+  position: 'start',
+  candidates: [COMMON],
+  rare: [RARE],
+  rareShown: false,
+  onShowRare: () => {},
+  marks: new Map(),
+  leadsTo: ({ san }) => `the ${san} line`,
+  playable: false,
+  onPlay: () => {},
+  onPoint: () => {},
+  onTabOut: () => {},
+  compact: true,
+};
+
+/** A root that renders the list with `props` over the defaults, again on each call. */
+function mount() {
   const host = document.createElement('div');
   const root = createRoot(host);
-  act(() =>
-    root.render(
-      <SilkProvider theme={themes.dark}>
-        <CandidateList
-          heading="Likely replies"
-          position="start"
-          candidates={[COMMON]}
-          rare={[RARE]}
-          rareShown={false}
-          onShowRare={() => {}}
-          marks={new Map()}
-          leadsTo={({ san }) => `the ${san} line`}
-          playable={false}
-          onPlay={() => {}}
-          onPoint={() => {}}
-          onTabOut={() => {}}
-          compact
-          {...props}
-        />
-      </SilkProvider>,
-    ),
-  );
-  const result = read(host);
-  act(() => root.unmount());
+  return {
+    host,
+    show: (props: Props) =>
+      act(() =>
+        root.render(
+          <SilkProvider theme={themes.dark}>
+            <CandidateList {...DEFAULTS} {...props} />
+          </SilkProvider>,
+        ),
+      ),
+    unmount: () => act(() => root.unmount()),
+  };
+}
+
+/** Renders the list, and reads its host with `read`. */
+function render<T>(props: Props, read: (host: HTMLElement) => T) {
+  const list = mount();
+  list.show(props);
+  const result = read(list.host);
+  list.unmount();
   return result;
 }
 
@@ -100,35 +112,24 @@ describe('CandidateList', () => {
   });
 
   it('fades rows for showing rare ones, not for leaving a position that showed them', () => {
-    const root = createRoot(document.createElement('div'));
-    const show = (position: string, rareShown: boolean) =>
-      act(() =>
-        root.render(
-          <SilkProvider theme={themes.dark}>
-            <CandidateList
-              heading="Likely replies"
-              position={position}
-              candidates={[COMMON]}
-              rare={[RARE]}
-              rareShown={rareShown}
-              onShowRare={() => {}}
-              marks={new Map()}
-              leadsTo={() => undefined}
-              playable={false}
-              onPlay={() => {}}
-              onPoint={() => {}}
-              onTabOut={() => {}}
-            />
-          </SilkProvider>,
-        ),
-      );
+    const list = mount();
     mockFades.length = 0;
-    show('a', false);
-    show('a', true);
+    list.show({ position: 'a' });
+    list.show({ position: 'a', rareShown: true });
     expect(mockFades).toEqual([true]);
     // the next position mounts its own list: nothing animates the swap
-    show('b', false);
+    list.show({ position: 'b' });
     expect(mockFades).toEqual([true]);
-    act(() => root.unmount());
+    list.unmount();
+  });
+
+  it('glides rows a deeper search re-ranks in one position, without fading', () => {
+    const other = candidate('d2d4', 'd4');
+    const list = mount();
+    mockFades.length = 0;
+    list.show({ candidates: [COMMON, other] });
+    list.show({ candidates: [other, COMMON] });
+    expect(mockFades).toEqual([false]);
+    list.unmount();
   });
 });
