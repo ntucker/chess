@@ -1,38 +1,21 @@
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 
 import { attachStockfish, type Connection, stockfishEvaluation } from './engine';
+import { type NodeEngine, sendTo, startNodeEngine } from './node';
 import { NO_RESTARTS } from './testing';
 
-// The real engine the app ships (the `stockfish` package's Node build of the
-// same lite single-threaded WebAssembly), driven through the app's protocol.
-interface NodeEngine {
-  listener?: (line: string) => void;
-  processCommand(command: string): void;
-  terminate?(): void;
-}
-
+// The real engine the app ships, driven through the app's protocol.
 let engine: NodeEngine;
 let connection: Connection;
 
 beforeAll(async () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports -- a CommonJS build with no types
-  const start = require('stockfish/bin/stockfish-19-lite-single.js') as () => NodeEngine;
-  engine = await start();
+  engine = await startNodeEngine();
   connection = attachNodeEngine();
   engine.listener = (line) => connection.receive(line);
 }, 30_000);
 
-/**
- * Attaches the Node engine. The engine can't take a command from inside its
- * own output callback, so each one waits a tick, as messages to a Web Worker
- * do. Nothing restarts it.
- */
-function attachNodeEngine() {
-  return attachStockfish(
-    (command) => setTimeout(() => engine.processCommand(command)),
-    NO_RESTARTS,
-  );
-}
+/** Attaches the Node engine. Nothing restarts it. */
+const attachNodeEngine = () => attachStockfish(sendTo(engine), NO_RESTARTS);
 
 afterAll(() => {
   connection.detach();

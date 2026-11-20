@@ -31,6 +31,7 @@ import { CandidateList } from './CandidateList';
 import { IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
+import { SourceCredits } from './SourceCredits';
 import { TrapCard } from './TrapCard';
 import { useOpeningsGame } from './useOpeningsGame';
 
@@ -168,8 +169,8 @@ function LessonScreen({
   // loading its lesson and progress, so playing it needn't wait. A failure
   // shows once the opening is picked.
   const load = (id: LessonId) => {
-    ctrl.fetchIfStale(getLesson, id).catch(() => {});
-    ctrl.fetchIfStale(getProgress, id).catch(() => {});
+    ctrl.fetchIfStale(getLesson, id);
+    ctrl.fetchIfStale(getProgress, id);
   };
   const pointCandidate = (uci: Uci) => {
     const into = opening(uci);
@@ -272,6 +273,7 @@ function LessonScreen({
           <Stack gap="1">
             <OpponentChoice />
             <FootnoteLink href="/play">Or play a free game, from the first move</FootnoteLink>
+            <SourceCredits sources={lesson.sources} />
           </Stack>
         </Stack>
       }

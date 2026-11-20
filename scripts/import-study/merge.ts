@@ -31,11 +31,16 @@ interface DraftMove {
   book: boolean;
   risk?: Risk;
   readonly notes: Note[];
+  /** The source of its notes (see `Chapter.source`). */
+  noteSource?: number;
 }
 
 interface DraftPosition {
   readonly moves: Map<Uci, DraftMove>;
   readonly notes: Note[];
+  noteSource?: number;
+  /** The source of the first chapter to recommend a move here (see `Chapter.source`). */
+  bookSource?: number;
 }
 
 /** The lesson for `chapters`, with `extracted[i]` read from `chapters[i]`. */
@@ -115,15 +120,29 @@ function addChapter(
   { moveNotes, positionNotes, choices }: ChapterNotes,
   side: Color,
 ) {
-  const book = bookMoves(chapter, side, new Set(choices.map((choice) => choice.move)));
-  for (const move of chapterMoves(chapter))
-    tree.move(move.before, move.uci).book ||= book.has(move);
-  for (const { move, note } of moveNotes) addNote(tree.move(move.before, move.uci).notes, note);
-  for (const { pos, note } of positionNotes) addNote(tree.entry(positionKey(pos)).notes, note);
+  const source = chapter.source ?? 0;
+  // A later source recommends moves only where no earlier one does, or the same move.
+  const say: Say = (move) => {
+    const draft = tree.positions.get(positionKey(move.before));
+    const bookSource = draft?.bookSource;
+    if (bookSource === undefined || bookSource === source) return 'own';
+    return draft?.moves.get(move.uci)?.book ? 'agreed' : 'closed';
+  };
+  const book = bookMoves(chapter, side, new Set(choices.map((choice) => choice.move)), say);
+  const recommend = (move: StudyMove) => {
+    tree.move(move.before, move.uci).book = true;
+    tree.entry(positionKey(move.before)).bookSource ??= source;
+  };
+  for (const move of chapterMoves(chapter)) {
+    tree.move(move.before, move.uci);
+    if (book.has(move)) recommend(move);
+  }
+  for (const { move, note } of moveNotes) addNote(tree.move(move.before, move.uci), note, source);
+  for (const { pos, note } of positionNotes) addNote(tree.entry(positionKey(pos)), note, source);
   for (const choice of choices) {
-    const move = tree.move(choice.move.before, choice.move.uci);
-    move.book = true;
-    move.risk ??= choice.risk;
+    if (say(choice.move) === 'closed') continue;
+    recommend(choice.move);
+    tree.move(choice.move.before, choice.move.uci).risk ??= choice.risk;
   }
 }
 
@@ -201,18 +220,34 @@ function positionVariations(
 }
 
 /**
+ * Who decides whether a learner's move is recommended: this source (`own`),
+ * an earlier source that recommends it (`agreed`), or an earlier source that
+ * recommends something else there (`closed`).
+ */
+type Say = (move: StudyMove) => 'own' | 'agreed' | 'closed';
+
+/**
  * The learner's moves the study recommends in `chapter`: at each of the
  * learner's turns, the study's first move unless marked dubious, and any move
  * a choice guide offers. Once the line leaves the recommended moves (a
  * refuted alternative), nothing after it is recommended, while the opponent's
- * alternatives keep the learner's replies.
+ * alternatives keep the learner's replies. Where an earlier source decides
+ * (`say`), only the moves it recommends are followed, whatever this chapter
+ * thinks of them.
  */
-function bookMoves(chapter: Chapter, side: Color, offered: ReadonlySet<StudyMove>): Set<StudyMove> {
+function bookMoves(
+  chapter: Chapter,
+  side: Color,
+  offered: ReadonlySet<StudyMove>,
+  say: Say,
+): Set<StudyMove> {
   const book = new Set<StudyMove>();
   const visit = (moves: readonly StudyMove[]) => {
     moves.forEach((move, i) => {
       if (move.before.turn !== side) return visit(move.children);
-      if (!offered.has(move) && (i > 0 || isDubious(move))) return;
+      const decided = say(move);
+      if (decided === 'closed') return;
+      if (decided === 'own' && !offered.has(move) && (i > 0 || isDubious(move))) return;
       book.add(move);
       visit(move.children);
     });
@@ -221,9 +256,16 @@ function bookMoves(chapter: Chapter, side: Color, offered: ReadonlySet<StudyMove
   return book;
 }
 
-function addNote(notes: Note[], note: Note) {
+/**
+ * Adds `note` from `source` to a move's or position's notes, once. A later
+ * source only explains what no earlier one did: guides tend to say the same
+ * thing about the same move, and the learner would read it once per guide.
+ */
+function addNote(spot: { notes: Note[]; noteSource?: number }, note: Note, source: number) {
+  spot.noteSource ??= source;
+  if (spot.noteSource !== source) return;
   const same = JSON.stringify(note);
-  if (!notes.some((other) => JSON.stringify(other) === same)) notes.push(note);
+  if (!spot.notes.some((other) => JSON.stringify(other) === same)) spot.notes.push(note);
 }
 
 function finish(draft: DraftPosition, variation: VariationId): LessonPosition {
@@ -248,13 +290,13 @@ function finish(draft: DraftPosition, variation: VariationId): LessonPosition {
  * the colon groups chapters), or undefined for a chapter about the opening
  * itself. Each study titles its chapters its own way (studies.ts).
  */
-export type ChapterName = (title: string) => string | undefined;
+export type ChapterName = (title: string, chapter: Chapter) => string | undefined;
 
 /**
  * Chapter titles like "🔵 01 Exchange Variation: Rubinstein Variation (I)":
  * the colour and number go, and numbered parts (I), (II) are one.
  */
-const numberedChapterName: ChapterName = (title) =>
+export const numberedChapterName: ChapterName = (title) =>
   title.replace(/^\P{L}*\d+\s+/u, '').replace(/\s+\((?:I|II|III|IV|V)\)$/, '');
 
 function chapterVariations(
@@ -265,8 +307,8 @@ function chapterVariations(
   const variations: Record<VariationId, Variation> = {
     [info.id]: { name: info.title },
   };
-  const chapterVariation = chapters.map(({ title }) => {
-    const name = chapterName(title);
+  const chapterVariation = chapters.map((chapter) => {
+    const name = chapterName(chapter.title, chapter);
     if (name === undefined) return info.id;
     const [group] = name.includes(':') ? name.split(/:\s*/, 2) : [undefined];
     let parent = info.id;

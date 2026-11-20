@@ -572,8 +572,13 @@ describe('checkLesson', () => {
         sources: [
           { ...study, author: ' ' },
           { ...study, url: 'lichess.org/study/test' },
-          { ...study, license: { name: 'CC BY 4.0', url: 'creativecommons' } },
+          {
+            ...study,
+            url: 'https://lichess.org/study/other',
+            license: { name: 'CC BY 4.0', url: 'creativecommons' },
+          },
           { ...study, url: 'mailto:someone@example.com' },
+          study,
         ],
       }),
     ).toEqual([
@@ -581,6 +586,7 @@ describe('checkLesson', () => {
       { path: 'sources[1].url', message: 'lichess.org/study/test is not a web address' },
       { path: 'sources[2].license', message: 'needs a name and a URL' },
       { path: 'sources[3].url', message: 'mailto:someone@example.com is not a web address' },
+      { path: 'sources[4].url', message: `${study.url} is listed twice` },
     ]);
     expect(checkLesson({ ...lesson, sources: [...lesson.sources, wikibooks] })).toEqual([
       {

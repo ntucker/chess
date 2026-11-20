@@ -59,17 +59,19 @@ const openingMoves = (index: LessonIndex) =>
   });
 
 /**
- * How a note names `source`: a lichess study by its author, anything else by
- * its title and author, and then its license if it has one. A note is plain
- * text, so the license's link stays in the lesson file. Its URL parses: the
- * checker has read every shipped lesson's sources.
+ * How the app names `source`: a lichess study by its author, anything else by
+ * its title and author. Its URL parses: the checker has read every shipped
+ * lesson's sources.
  */
-function credit({ title, author, url, license }: LessonSource): string {
+export function sourceName({ title, author, url }: LessonSource): string {
   const parsed = new URL(url);
   const study = onDomain(parsed, 'lichess.org') && parsed.pathname.startsWith('/study/');
-  const name = study ? `${author}'s lichess study` : `${title} by ${author}`;
-  return license ? `${name} (${license.name})` : name;
+  return study ? `${author}'s lichess study` : `${title} by ${author}`;
 }
+
+/** How a note credits `source`: its name, then its license's. A note is plain text; the lesson screen's credits link both. */
+const credit = (source: LessonSource) =>
+  source.license ? `${sourceName(source)} (${source.license.name})` : sourceName(source);
 
 /** Every source the index's lessons credit, each once (the same URL is the same source). */
 const sourcesOf = (index: LessonIndex): LessonSource[] => [
@@ -80,9 +82,12 @@ const sourcesOf = (index: LessonIndex): LessonSource[] => [
   ).values(),
 ];
 
-/** `items` as an English list: "a", "a and b", "a, b and c". */
+/** What comes before item `i` of `count` in an English list: "a", "a and b", "a, b and c". */
+export const listSeparator = (i: number, count: number) =>
+  i === 0 ? '' : i === count - 1 ? ' and ' : ', ';
+
 const listed = (items: readonly string[]) =>
-  items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
+  items.map((item, i) => listSeparator(i, items.length) + item).join('');
 
 /** The variation of the start position while no lesson is picked. */
 const OPENINGS_VARIATION = 'openings';

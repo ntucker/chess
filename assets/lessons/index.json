@@ -1,4 +1,4 @@
 {
   "caro-kann": {"title":"Caro-Kann Defence","side":"black","sources":[{"title":"Greatest Caro Kann: Living Repertoire","author":"Kampfschach_Official","url":"https://lichess.org/study/8Uztu7Xx"}],"firstMoves":["e2e4"]},
-  "slav": {"title":"Slav Defence","side":"black","sources":[{"title":"Black repertoaire: Slav Defense","author":"MMatkun","url":"https://lichess.org/study/LGKgEao4"}],"firstMoves":["d2d4"]}
+  "slav": {"title":"Slav Defence","side":"black","sources":[{"title":"Black repertoaire: Slav Defense","author":"MMatkun","url":"https://lichess.org/study/LGKgEao4"},{"title":"Slav Defense, Main Line","author":"Kitsune_Cavalry","url":"https://lichess.org/study/aOkYYHpw"},{"title":"Chess Opening Theory","author":"Wikibooks contributors","url":"https://en.wikibooks.org/wiki/Chess_Opening_Theory/1._d4/1...d5/2._c4/2...c6","license":{"name":"CC BY-SA 4.0","url":"https://creativecommons.org/licenses/by-sa/4.0/"}}],"firstMoves":["d2d4"]}
 }

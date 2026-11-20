@@ -27,27 +27,35 @@
  * token (a personal token with no scopes is enough): set LICHESS_TOKEN, or
  * run where a proxy adds it (Node's fetch uses HTTPS_PROXY only with
  * NODE_USE_ENV_PROXY=1, which the yarn script sets).
- * The study and the explorer's answers are cached in IMPORT_STUDY_CACHE
- * (default .cache/import-study), so a stopped crawl resumes. Lichess allows about 24 requests a minute, so the
- * first crawl of the Caro-Kann takes about four hours; later runs read the
- * cache.
+ * The study, the Wikibooks pages, the explorer's answers and Stockfish's
+ * evaluations are cached in IMPORT_STUDY_CACHE (default .cache/import-study),
+ * so a stopped crawl resumes. Lichess allows about 24 requests a minute, so
+ * the first crawl of the Caro-Kann takes about four hours; later runs read
+ * the cache.
  */
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+
+import { INITIAL_FEN } from 'chessops/fen';
+import type { Color } from 'chessops/types';
 
 import { checkLesson } from '@/lesson/check';
 import { readLesson, type Lesson } from '@/lesson/lesson';
 
 import { convertChapters, convertReport } from './convert';
 import { claudeCli } from './convert/claude';
+import { engineCheck } from './engineCheck';
 import { extractChapter } from './extract';
 import { lessonJson } from './lessonJson';
-import { mergeChapters } from './merge';
+import { mergeChapters, numberedChapterName, type ChapterName } from './merge';
 import { addPopularity, lichessExplorer } from './popularity';
 import { indexLesson, registerLesson } from './register';
 import { report } from './report';
-import { parseStudy } from './study';
-import { STUDIES } from './studies';
+import { nodeStockfish } from './stockfish';
+import { parseStudy, type Chapter } from './study';
+import { STUDIES, type ChapterSource } from './studies';
+import { wikibooksPgn } from './wikibooks';
 
 const ROOT = join(__dirname, '../..');
 
@@ -67,7 +75,21 @@ async function main() {
   const study = Object.hasOwn(STUDIES, first) ? STUDIES[first] : undefined;
   // An unknown flag must fail rather than be ignored: a mistyped --no-model would call the model for an hour.
   if (!study || rest.some((flag) => !STUDY_FLAGS.includes(flag))) throw new Error(USAGE);
-  const chapters = parseStudy(await studyPgn(study.study), study.chapters);
+  if (study.from.length !== study.info.sources.length) {
+    throw new Error(`${first}: credit each of its ${study.from.length} sources, in order`);
+  }
+  const chapters: Chapter[] = [];
+  for (const [source, from] of study.from.entries()) {
+    const read = await sourceChapters(from, study.info.side);
+    chapters.push(...read.map((chapter) => ({ ...chapter, source })));
+  }
+  const chapterName: ChapterName = (title, chapter) => {
+    const from = study.from[chapter.source ?? 0];
+    // A Wikibooks chapter is titled with its variation's name, the opening's own untitled.
+    return 'study' in from
+      ? (from.chapterName ?? numberedChapterName)(title, chapter)
+      : title || undefined;
+  };
   const cli = claudeCli({
     learner: study.info.side,
     cacheFile: join(ROOT, `scripts/import-study/answers/${first}.jsonl`),
@@ -80,7 +102,21 @@ async function main() {
   cli.saveUsed();
   const { extracted } = converted;
   console.log(convertReport(converted.report));
-  let lesson: Lesson = mergeChapters(study.info, chapters, extracted, study.chapterName);
+  let lesson: Lesson = mergeChapters(study.info, chapters, extracted, chapterName);
+  if (study.engineCheck) {
+    if (lesson.start !== INITIAL_FEN)
+      throw new Error('The engine check plays lines from the standard start');
+    const stockfish = await nodeStockfish(join(CACHE, 'stockfish.jsonl'));
+    const checked = await engineCheck(lesson, stockfish.evaluate);
+    stockfish.stop();
+    lesson = checked.lesson;
+    const file = join(CACHE, `${lesson.id}-engine.json`);
+    writeFileSync(file, `${JSON.stringify(checked.report, null, 2)}\n`);
+    const { unbooked, unreachable, cut, dropped } = checked.report;
+    console.log(
+      `engine check: ${unbooked.length} book moves overruled (${cut.length} cut, the guide's only move), ${unreachable.length} more left unreachable, ${dropped.length} notes dropped (${file})`,
+    );
+  }
   if (!rest.includes('--no-popularity')) lesson = await withPopularity(lesson);
   writeLesson(join(ROOT, `assets/lessons/${lesson.id}.json`), lesson);
   registerLesson(join(ROOT, 'src/resources/lesson.ts'), lesson.id);
@@ -111,6 +147,13 @@ function writeLesson(file: string, lesson: Lesson) {
   console.log(`wrote ${file}: ${Buffer.byteLength(json)} bytes`);
 }
 
+/** The chapters `from` gives a lesson that teaches `side`. */
+async function sourceChapters(from: ChapterSource, side: Color): Promise<Chapter[]> {
+  if ('study' in from) return parseStudy(await studyPgn(from.study), from.chapters);
+  const pgn = await wikibooksPgn(wikibooksPage, { ...from, learner: side });
+  return parseStudy(pgn, () => true);
+}
+
 /** The study's PGN, downloaded once into the cache. */
 async function studyPgn(studyId: string): Promise<string> {
   const file = join(CACHE, `${studyId}.pgn`);
@@ -120,6 +163,32 @@ async function studyPgn(studyId: string): Promise<string> {
     writeFileSync(file, await response.text());
   }
   return readFileSync(file, 'utf8');
+}
+
+/** Wikimedia's API answers 429 to shared cloud addresses; index.php's raw pages do not at this pace. */
+const WIKIBOOKS_PACE_MS = 1500;
+let lastWikibooksFetch = 0;
+
+/**
+ * A Wikibooks page's wiki source, downloaded once into the cache; undefined
+ * when the page does not exist (cached as an empty file).
+ */
+async function wikibooksPage(title: string): Promise<string | undefined> {
+  // Named by a hash: a title names every move, too long for a file name deep in a line.
+  const file = join(CACHE, 'wikibooks', `${createHash('sha1').update(title).digest('hex')}.wiki`);
+  if (!existsSync(file)) {
+    const wait = lastWikibooksFetch + WIKIBOOKS_PACE_MS - Date.now();
+    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+    lastWikibooksFetch = Date.now();
+    const url = `https://en.wikibooks.org/w/index.php?title=${encodeURIComponent(title)}&action=raw`;
+    const response = await fetch(url);
+    if (!response.ok && response.status !== 404) {
+      throw new Error(`Wikibooks answered ${response.status} for ${title}`);
+    }
+    mkdirSync(join(CACHE, 'wikibooks'), { recursive: true });
+    writeFileSync(file, response.ok ? await response.text() : '');
+  }
+  return readFileSync(file, 'utf8') || undefined;
 }
 
 main().catch((error: unknown) => {
