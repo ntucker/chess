@@ -31,8 +31,14 @@ let root: Root | undefined;
 const renders: ReturnType<typeof useLesson>[] = [];
 const lesson = () => renders[renders.length - 1];
 
-function Lesson({ start }: { readonly start: readonly string[] }) {
-  renders.push(useLesson(SAMPLE, useReducer(gameReducer, start, startGame)));
+function Lesson({
+  start,
+  behind,
+}: {
+  readonly start: readonly string[];
+  readonly behind?: boolean;
+}) {
+  renders.push(useLesson(SAMPLE, useReducer(gameReducer, start, startGame), { behind }));
   return null;
 }
 
@@ -118,5 +124,20 @@ describe('useLesson Practice run', () => {
     });
     expect(lesson().game.moves).toEqual(uciLine('e4', 'e6'));
     expect(clean()).toBe(false);
+  });
+});
+
+describe('useLesson behind the store', () => {
+  it('offers no move while the page shows a game the store has moved on from', async () => {
+    await act(async () => {
+      root = createRoot();
+      root.render(<Lesson start={uciLine('e4')} behind />);
+    });
+    // The store would drop it, and the board would show a move the game hasn't.
+    expect(lesson().canPlay).toBe(false);
+    expect(lesson().board.movableColor).toBeUndefined();
+    await act(async () => root?.render(<Lesson start={uciLine('e4')} />));
+    expect(lesson().canPlay).toBe(true);
+    expect(lesson().board.movableColor).toBe('black');
   });
 });
