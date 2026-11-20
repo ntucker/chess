@@ -11,7 +11,7 @@ import {
 import { InstrumentSans_400Regular } from '@expo-google-fonts/instrument-sans';
 import { SilkProvider } from '@reactive/silk-native';
 import { useFonts } from 'expo-font';
-import { type ErrorBoundaryProps, Stack } from 'expo-router';
+import { type ErrorBoundaryProps, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
 import { ScreenFailure } from '@/components/NewVersion';
@@ -19,6 +19,7 @@ import { ProgressSync } from '@/resources/progress';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { StockfishWhileNeeded } from '@/stockfish/demand';
 import { StockfishHost } from '@/stockfish/StockfishHost';
+import { navigationThemes } from '@/theme/navigationTheme';
 import { themes } from '@/theme/theme';
 import { useColorScheme } from '@/theme/useColorScheme';
 
@@ -42,7 +43,13 @@ export default function RootLayout() {
         <SilkProvider theme={themes[colorScheme]}>
           <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
           <StockfishWhileNeeded host={<StockfishHost />}>
-            <Stack screenOptions={{ headerShown: false }} />
+            {/* Every screen ships in the app's first file (app.json turns off
+                Expo Router's asyncRoutes): a screen whose file loads on its
+                first visit opens empty for a moment, even in a transition,
+                since its Suspense boundary is new. */}
+            <ThemeProvider value={navigationThemes[colorScheme]}>
+              <Stack screenOptions={{ headerShown: false }} />
+            </ThemeProvider>
           </StockfishWhileNeeded>
         </SilkProvider>
       </SettingsProvider>
@@ -51,11 +58,11 @@ export default function RootLayout() {
 }
 
 /**
- * Any screen that fails, in place of the whole app (Expo Router's boundary).
- * A screen's file goes missing when the site deploys a newer build than an
- * open page's, and the page then offers a reload. It replaces RootLayout,
- * providers and all, so it themes itself. (The Stack's screen boundary would
- * keep the providers but skips layouts, whose files go missing too.)
+ * Any screen that fails, in place of the whole app (Expo Router's boundary),
+ * with a reload when a file the screen loads late is gone because the site
+ * deployed a newer build. It replaces RootLayout, providers and all, so it
+ * themes itself. (The Stack's screen boundary would keep the providers but
+ * skips layouts.)
  */
 export function ErrorBoundary({ error }: ErrorBoundaryProps) {
   const colorScheme = useColorScheme();

@@ -3,7 +3,7 @@ export const NEW_VERSION = 'A new version is out.';
 
 /**
  * A newer build of the web app has replaced the one this page loaded. A file
- * the page loads late (a screen, a lesson, Maia's worker) may then be gone
+ * the page loads late (a lesson, Maia's worker) may then be gone
  * from the site: asking again can't help, but reloading the page can.
  */
 export class NewVersionError extends Error {
