@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { a11yState, Pressable, Text, useTheme } from '@reactive/silk-native';
+import { a11yState, Pressable, Separator, Surface, Text, useTheme } from '@reactive/silk-native';
 import { type ComponentRef, useEffect, useId, useRef, useState } from 'react';
 import { type KeyDownEvent, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -134,6 +134,9 @@ export function OpponentPicker() {
   );
 }
 
+/** Every step of the ladder, as the list shows it. */
+const STEPS = OPPONENTS.map((opponent) => ({ opponent, ...describeOpponent(opponent) }));
+
 interface ListProps {
   readonly id: string;
   readonly value: Opponent;
@@ -148,15 +151,14 @@ interface ListProps {
  * on how the step pointed at (or else the current one) plays.
  */
 function OpponentList({ id, value, focus, onChoose, onClose }: ListProps) {
-  const { theme } = useTheme();
-  const { color, radius, shadow } = theme.semantic;
+  const { color, radius } = useTheme().theme.semantic;
   const [pointed, setPointed] = useState<Opponent>();
   const focused = useRef<Opponent>(undefined);
   const rows = useRef(new Map<Opponent, ComponentRef<typeof View>>());
   const focusRow = (opponent: Opponent) => rows.current.get(opponent)?.focus();
 
   useEffect(() => {
-    if (focus) rows.current.get(value)?.focus();
+    if (focus) focusRow(value);
   }, [focus, value]);
 
   const onKey = (event: KeyDownEvent) => {
@@ -185,17 +187,7 @@ function OpponentList({ id, value, focus, onChoose, onClose }: ListProps) {
 
   const shown = describeOpponent(pointed ?? value);
   return (
-    <View
-      style={[
-        styles.list,
-        {
-          backgroundColor: color.surfaceRaised,
-          borderColor: color.borderSubtle,
-          borderRadius: radius.md,
-          boxShadow: `0 ${shadow.raised.offsetY}px ${shadow.raised.blur}px rgba(0, 0, 0, ${shadow.raised.opacity})`,
-        },
-      ]}
-    >
+    <Surface elevation="overlay" radius="md" border="subtle" style={styles.list}>
       <Eyebrow style={styles.heading}>Opponent strength</Eyebrow>
       <ScrollView
         nativeID={id}
@@ -204,14 +196,11 @@ function OpponentList({ id, value, focus, onChoose, onClose }: ListProps) {
         onKeyDown={onKey}
         style={styles.rows}
       >
-        {OPPONENTS.map((opponent) => {
+        {STEPS.map(({ opponent, level, preset }) => {
           const selected = opponent === value;
-          const { level, preset } = describeOpponent(opponent);
           return (
             <View key={opponent}>
-              {opponent === 'stockfish' ? (
-                <View style={[styles.rule, { backgroundColor: color.borderSubtle }]} />
-              ) : null}
+              {opponent === 'stockfish' ? <Separator style={styles.rule} /> : null}
               <Pressable
                 ref={(row) => {
                   if (row) rows.current.set(opponent, row);
@@ -255,11 +244,11 @@ function OpponentList({ id, value, focus, onChoose, onClose }: ListProps) {
           );
         })}
       </ScrollView>
-      <View style={[styles.rule, { backgroundColor: color.borderSubtle }]} />
+      <Separator style={styles.rule} />
       <Text role="caption" tone="secondary" numberOfLines={2} style={styles.style}>
         {shown.style}
       </Text>
-    </View>
+    </Surface>
   );
 }
 
@@ -279,7 +268,7 @@ const styles = StyleSheet.create({
     textDecorationStyle: 'dotted',
   },
   chevronOpen: { transform: [{ rotate: '180deg' }] },
-  list: { width: 232, borderWidth: 1, padding: 6, flexShrink: 1 },
+  list: { width: 232, padding: 6, flexShrink: 1 },
   heading: { paddingHorizontal: 10, paddingTop: 6, paddingBottom: 6 },
   rows: { flexShrink: 1 },
   row: {
@@ -291,7 +280,7 @@ const styles = StyleSheet.create({
   },
   check: { width: 14, alignItems: 'center' },
   stepLevel: { flex: 1, fontVariant: ['tabular-nums'] },
-  rule: { height: 1, marginVertical: 4, marginHorizontal: 4 },
+  rule: { marginVertical: 4, marginHorizontal: 4 },
   // Two lines tall whatever it says, so the list keeps its size as rows are pointed at.
   style: { minHeight: 32, paddingHorizontal: 10, paddingTop: 4, paddingBottom: 6 },
 });

@@ -2,6 +2,8 @@ import { type ComponentRef, useEffect, useLayoutEffect, useRef, useState } from 
 import { createPortal } from 'react-dom';
 import { type PointerEvent as ViewPointerEvent, View, type ViewStyle } from 'react-native';
 
+import { hovers } from '@/board/pointer';
+
 import type { PopupProps } from './Popup';
 import { type PopupPlace, placePopup } from './popupPlace';
 
@@ -37,25 +39,23 @@ export function Popup({ anchor, onDismiss, onHoverIn, onHoverOut, children }: Po
     const inside = (target: EventTarget | null) =>
       target instanceof Node &&
       [anchor.current, popup.current].some((node) => element(node)?.contains(target));
-    const onPointerDown = (event: PointerEvent) => {
+    // A press, or the page scrolling, anywhere else.
+    const onOutside = (event: Event) => {
       if (!inside(event.target)) onDismiss();
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
+      if (event.defaultPrevented || event.key !== 'Escape') return;
       event.preventDefault();
       onDismiss();
     };
-    const onScroll = (event: Event) => {
-      if (!inside(event.target)) onDismiss();
-    };
-    document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('pointerdown', onOutside, true);
     document.addEventListener('keydown', onKeyDown);
-    document.addEventListener('scroll', onScroll, true);
+    document.addEventListener('scroll', onOutside, true);
     window.addEventListener('resize', onDismiss);
     return () => {
-      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('pointerdown', onOutside, true);
       document.removeEventListener('keydown', onKeyDown);
-      document.removeEventListener('scroll', onScroll, true);
+      document.removeEventListener('scroll', onOutside, true);
       window.removeEventListener('resize', onDismiss);
     };
   }, [anchor, onDismiss]);
@@ -77,11 +77,11 @@ export function Popup({ anchor, onDismiss, onHoverIn, onHoverOut, children }: Po
   );
 }
 
-/** `handler`, called only for a pointer that can hover: a touch's pointer leaves as it lifts. */
+/** `handler`, called only for a pointer that hovers: a touch's pointer leaves as it lifts. */
 const mouseOnly =
   (handler: (() => void) | undefined) =>
   ({ nativeEvent }: ViewPointerEvent) => {
-    if (nativeEvent.pointerType !== 'touch') handler?.();
+    if (hovers(nativeEvent.pointerType)) handler?.();
   };
 
 /** React Native Web's View refs are the DOM elements themselves. */

@@ -3,7 +3,7 @@ export const POPUP_GAP = 6;
 /** The least space a popup keeps from the window's edges. */
 export const POPUP_MARGIN = 8;
 
-interface Size {
+export interface Size {
   readonly width: number;
   readonly height: number;
 }

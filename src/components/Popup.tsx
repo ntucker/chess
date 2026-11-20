@@ -8,7 +8,7 @@ import {
 } from 'react';
 import { Modal, StyleSheet, useWindowDimensions, View } from 'react-native';
 
-import { type Box, placePopup } from './popupPlace';
+import { type Box, placePopup, type Size } from './popupPlace';
 
 export interface PopupProps {
   /** What it opens from: it sits just below it, or above it if there's more room there. */
@@ -57,8 +57,6 @@ export function Popup({ anchor, onDismiss, children }: PopupProps) {
     </Modal>
   );
 }
-
-type Size = Pick<Box, 'width' | 'height'>;
 
 const styles = StyleSheet.create({
   popup: { position: 'absolute' },
