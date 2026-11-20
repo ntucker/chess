@@ -144,6 +144,25 @@ describe('mergeChapters with several sources', () => {
     expect(book('c4')).toEqual(['e7e5']);
   });
 
+  it("follows a later guide's side line under a move the main guide recommends", () => {
+    // The later guide prefers 1...Nf6 but also covers 1...d5, which the main guide recommends.
+    const later = parseStudy(
+      '[ChapterName "Later"]\n\n1. d4 Nf6 (1... d5 2. c4 c6) *\n',
+      () => true,
+    ).map((chapter) => ({ ...chapter, source: 1 }));
+    const chapters = [main[0], ...later];
+    const lesson = mergeChapters(
+      { id: 'test', title: 'Test', side: 'black', sources: SAMPLE.sources },
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'black')),
+      () => undefined,
+    );
+    const booked = (...sans: string[]) =>
+      lesson.positions[keyAfter(...sans)].moves.filter((move) => move.book).map(({ uci }) => uci);
+    expect(booked('d4')).toEqual(['d7d5']);
+    expect(booked('d4', 'd5', 'c4')).toEqual(['c7c6']);
+  });
+
   it("takes a later guide's notes only where the main guide says nothing", () => {
     const d5 = merged.positions[keyAfter('d4')].moves.find(({ uci }) => uci === 'd7d5')!;
     expect(d5.notes?.map(({ text }) => text)).toEqual(['Holds the centre with a pawn.']);

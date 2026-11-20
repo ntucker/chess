@@ -78,6 +78,22 @@ describe('engineCheck', () => {
     expect(report.unreachable).toEqual([{ line: '1.d4 e5 2.dxe5', move: 'Nc6' }]);
   });
 
+  it("cuts an overruled move that was the guide's only one, with what only it reached", async () => {
+    const only = {
+      ...LESSON,
+      positions: {
+        ...LESSON.positions,
+        [keyAfter('d4')]: at([{ uci: uci('d4', 'e5'), book: true }]),
+      },
+    };
+    delete only.positions[keyAfter('d4', 'd5')];
+    const { lesson, report } = await engineCheck(only, evaluate);
+    // 1.d4 is a line's end now: the lesson never offers 1...e5 as its main move.
+    expect(Object.keys(lesson.positions)).toEqual([keyAfter()]);
+    expect(report.cut).toEqual([{ line: '1.d4', move: 'e5', positions: 3 }]);
+    expect(report.unreachable).toEqual([]);
+  });
+
   it('drops a note whose verdict the engine contradicts, and a trap whose bait is no error', async () => {
     const { lesson, report } = await engineCheck(LESSON, evaluate);
     expect(lesson.positions[keyAfter('d4')].moves[0].notes).toEqual([
@@ -119,6 +135,6 @@ describe('engineCheck', () => {
     };
     const { lesson, report } = await engineCheck(agreed, even);
     expect(lesson).toEqual(agreed);
-    expect(report).toEqual({ unbooked: [], unreachable: [], dropped: [] });
+    expect(report).toEqual({ unbooked: [], unreachable: [], cut: [], dropped: [] });
   });
 });

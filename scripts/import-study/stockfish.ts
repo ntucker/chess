@@ -15,7 +15,7 @@ const MAX_RESTARTS = 5;
 
 /**
  * Starts the engine. One that crashes or stops answering is replaced; a
- * position that stops three engines rejects its search, and an engine that
+ * position that stops `TRIES` engines (src/stockfish/engine.ts) rejects its search, and an engine that
  * can't be started, or stops more than `MAX_RESTARTS` times, ends the import.
  */
 export async function nodeStockfish(

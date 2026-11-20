@@ -8,8 +8,9 @@
  *   every book move only reachable through it. An inaccuracy stays: opening
  *   theory is full of them, and the app labels it for the learner anyway.
  * - A note goes when its verdict is two or more steps from the engine's on
- *   the scale = ⩲ ± +- (an evaluation badge, or where a line or trap ends), or
- *   when its trap's first move is not an error at all.
+ *   the scale = ⩲ ± +- (an evaluation badge, or where a line or trap ends),
+ *   unless it only understates the same side's edge, or when its trap's first
+ *   move is not an error at all.
  *
  * Each change is reported, so a person can read what the engine overruled.
  */
@@ -37,6 +38,8 @@ export interface EngineReport {
   readonly unbooked: readonly { line: string; move: string; quality: string }[];
   /** Book moves left that no book path reaches any more. */
   readonly unreachable: readonly { line: string; move: string }[];
+  /** Overruled moves taken out, since the guide had nothing else there, with the positions only they reached. */
+  readonly cut: readonly { line: string; move: string; positions: number }[];
   /** Notes dropped, where they were and why. */
   readonly dropped: readonly { line: string; text: string; reason: string }[];
 }
@@ -56,10 +59,12 @@ export async function engineCheck(
   const report = {
     unbooked: [] as { line: string; move: string; quality: string }[],
     unreachable: [] as { line: string; move: string }[],
+    cut: [] as { line: string; move: string; positions: number }[],
     dropped: [] as { line: string; text: string; reason: string }[],
   };
 
   const positions: Record<PositionKey, LessonPosition> = {};
+  const unbooked = new Map<PositionKey, Uci[]>();
   for (const [key, position] of Object.entries(lesson.positions)) {
     const at = lines.get(key);
     if (!at) {
@@ -85,6 +90,7 @@ export async function engineCheck(
         });
         if (quality === 'mistake' || quality === 'blunder') {
           book = undefined;
+          unbooked.set(key, [...(unbooked.get(key) ?? []), move.uci]);
           report.unbooked.push({
             line: sans(lesson, at.line),
             move: san(at.pos, move.uci),
@@ -101,6 +107,7 @@ export async function engineCheck(
     positions[key] = { ...rest, moves, ...(notes.length > 0 && { notes }) };
   }
 
+  cutLines(lesson, positions, unbooked, lines, report.cut);
   const checked = { ...lesson, positions };
   const reached = bookReach(checked);
   for (const [key, position] of Object.entries(positions)) {
@@ -117,6 +124,40 @@ export async function engineCheck(
     };
   }
   return { lesson: checked, report };
+}
+
+/**
+ * Takes out each overruled move that was the guide's only recommendation:
+ * left in, the lesson would still offer it as the main move there (the
+ * first candidate). The line ends before it instead, and the positions only
+ * it reached go too. A position left with no moves goes, like any line's end.
+ */
+function cutLines(
+  lesson: Lesson,
+  positions: Record<PositionKey, LessonPosition>,
+  unbooked: ReadonlyMap<PositionKey, readonly Uci[]>,
+  lines: ReadonlyMap<PositionKey, { line: Uci[]; pos: Chess }>,
+  cut: { line: string; move: string; positions: number }[],
+) {
+  for (const [key, ucis] of unbooked) {
+    const position = positions[key];
+    if (position.moves.some(({ book }) => book)) continue;
+    const at = lines.get(key)!;
+    const before = Object.keys(positions).length;
+    const moves = position.moves.filter(({ uci }) => !ucis.includes(uci));
+    if (moves.length > 0) positions[key] = { ...position, moves };
+    else delete positions[key];
+    const still = linesTo({ ...lesson, positions });
+    for (const other of Object.keys(positions))
+      if (lines.has(other) && !still.has(other)) delete positions[other];
+    for (const uci of ucis) {
+      cut.push({
+        line: sans(lesson, at.line),
+        move: san(at.pos, uci),
+        positions: before - Object.keys(positions).length,
+      });
+    }
+  }
 }
 
 /** Why the engine overrules `note`, checked in `pos` after `line`, or undefined when it doesn't. */
@@ -185,8 +226,18 @@ function engineStep({ score, pawns, mate }: Evaluation): number {
   return Math.sign(pawns) * size;
 }
 
-const apart = (verdict: Verdict, engine: Evaluation) =>
-  Math.abs(STEPS[verdict] - engineStep(engine)) >= 2;
+/**
+ * Whether `verdict` is two or more steps from the engine's, other than by
+ * understating the same side's edge: "slightly worse" where the engine sees
+ * a lost position still warns the learner rightly.
+ */
+function apart(verdict: Verdict, engine: Evaluation): boolean {
+  const said = STEPS[verdict];
+  const seen = engineStep(engine);
+  const understated =
+    said !== 0 && Math.sign(said) === Math.sign(seen) && Math.abs(said) < Math.abs(seen);
+  return Math.abs(said - seen) >= 2 && !understated;
+}
 
 const describe = ({ pawns, mate }: Evaluation) =>
   mate === 0

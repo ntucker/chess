@@ -141,19 +141,49 @@ export function plainText(wiki: string): string {
     .trim();
 }
 
-/** The SAN moves of each `|lineN=` in the page's theory table, up to a placeholder like `...`. */
+/**
+ * The moves of each `|lineN=` in the page's theory table, in SAN with any
+ * glyph (`dxc4?`). A `...` repeats the move above it in the same column
+ * ("9. ... Bg6" under "9. Qe2 Nbd7" is 9.Qe2 Bg6); a line stops at one with
+ * nothing above it.
+ */
 function tableLines(source: string): string[][] {
+  let above = new Map<number, string>();
   return [...source.matchAll(/^\|\s*line\d+\s*=(.*)$/gm)].map(([, line]) => {
-    const moves: string[] = [];
+    const moves = new Map<number, string>();
+    let ply: number | undefined;
     for (const token of line
-      .replace(/\d+\.(?:\.\.)?/g, ' ')
+      .replace(/(\d+\.(?:\.\.)?)/g, ' $1 ')
       .split(/\s+/)
       .filter(Boolean)) {
-      if (/^\.+$/.test(token)) break;
-      moves.push(token.replace(/[!?]+$/, ''));
+      const number = /^(\d+)\.(\.\.)?$/.exec(token);
+      if (number) {
+        ply = 2 * Number(number[1]) - (number[2] ? 0 : 1);
+        continue;
+      }
+      const move = /^\.+$/.test(token) ? ply && above.get(ply) : token;
+      if (!ply || !move) break;
+      moves.set(ply++, move);
     }
-    return moves;
+    above = moves;
+    return [...moves.values()];
   });
+}
+
+/** PGN's numbers for move glyphs (NAGs): `?` is 2, `?!` is 6. */
+const GLYPHS: Readonly<Record<string, number>> = {
+  '!': 1,
+  '?': 2,
+  '!!': 3,
+  '??': 4,
+  '!?': 5,
+  '?!': 6,
+};
+
+/** A table move as its SAN and the glyph's NAG, if it has one. */
+function glyphed(move: string): { san: string; nags: number[] } {
+  const [, san, glyph] = /^(.*?)([!?]*)$/.exec(move)!;
+  return { san, nags: glyph in GLYPHS ? [GLYPHS[glyph]] : [] };
 }
 
 const unique = <T>(items: readonly T[]) => [...new Set(items)];
@@ -171,7 +201,12 @@ interface BookNode {
   readonly left?: boolean;
   /** The page redirects to the position's page by another move order, read there. */
   readonly transposed?: boolean;
+  /** The glyph a theory table gives the move into this position (`?` is 2). */
+  readonly nags?: readonly number[];
 }
+
+/** Whether `node` is read elsewhere: on another page, or in another lesson. */
+const elsewhere = (node: BookNode) => !!(node.left || node.transposed);
 
 export interface WikibooksOptions {
   /** The page to start from; its title names the moves from the start position. */
@@ -289,13 +324,14 @@ function played(pos: Chess, san: string): Chess | undefined {
 /** Adds the legal start of `line` below `node`, as moves without comments. */
 function addLine(node: BookNode, line: readonly string[]) {
   let at = node;
-  for (const san of line) {
-    if (at.left) return;
+  for (const move of line) {
+    if (elsewhere(at)) return;
+    const { san, nags } = glyphed(move);
     let child = at.children.find((c) => c.san === san);
     if (!child) {
       const after = played(at.pos, san);
       if (!after) return;
-      child = { san, pos: after, comment: '', children: [] };
+      child = { san, pos: after, comment: '', children: [], nags };
       at.children.push(child);
     }
     at = child;
@@ -334,7 +370,7 @@ function chapters(
       group ??= own;
       current = own;
     }
-    const main = node.children.find((child) => !child.left && !child.transposed);
+    const main = node.children.find((child) => !elsewhere(child));
     node.children.forEach((child) => {
       const mainMove = child === main || node.pos.turn !== learner;
       visit(child, [...path, child], group, current, onMain && mainMove && !child.left);
@@ -353,22 +389,36 @@ function chapters(
     };
     let at: Node<PgnNodeData> = game.moves;
     for (const san of prefix) at = append(at, san);
-    path.slice(0, -1).forEach((above) => (at = append(at, above.san)));
-    addSubtree(append(at, node.san, node.comment), node, (child) => isTop.has(child));
+    path.slice(0, -1).forEach((above) => (at = append(at, above.san, '', above.nags)));
+    addSubtree(append(at, node.san, node.comment, node.nags), node, (child) => isTop.has(child));
     return game;
   });
 }
 
-/** Adds `node`'s moves below `at`; a move into another chapter's top keeps its place but stops there. */
+/**
+ * Adds `node`'s moves below `at`, a move read elsewhere last so that it is
+ * never the main move; a move into another chapter's top keeps its place but
+ * stops there.
+ */
 function addSubtree(at: Node<PgnNodeData>, node: BookNode, isTop: (node: BookNode) => boolean) {
-  for (const child of node.children) {
-    if (isTop(child)) append(at, child.san);
-    else addSubtree(append(at, child.san, child.comment), child, isTop);
+  const children = [...node.children].sort((a, b) => Number(elsewhere(a)) - Number(elsewhere(b)));
+  for (const child of children) {
+    if (isTop(child)) append(at, child.san, '', child.nags);
+    else addSubtree(append(at, child.san, child.comment, child.nags), child, isTop);
   }
 }
 
-function append(at: Node<PgnNodeData>, san: string, comment = ''): ChildNode<PgnNodeData> {
-  const child = new ChildNode<PgnNodeData>({ san, ...(comment && { comments: [comment] }) });
+function append(
+  at: Node<PgnNodeData>,
+  san: string,
+  comment = '',
+  nags: readonly number[] = [],
+): ChildNode<PgnNodeData> {
+  const child = new ChildNode<PgnNodeData>({
+    san,
+    ...(comment && { comments: [comment] }),
+    ...(nags.length > 0 && { nags: [...nags] }),
+  });
   at.children.push(child);
   return child;
 }

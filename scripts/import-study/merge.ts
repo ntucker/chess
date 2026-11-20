@@ -122,12 +122,13 @@ function addChapter(
 ) {
   const source = chapter.source ?? 0;
   // A later source recommends moves only where no earlier one does, or the same move.
-  const open = (move: StudyMove) => {
+  const say: Say = (move) => {
     const draft = tree.positions.get(positionKey(move.before));
     const bookSource = draft?.bookSource;
-    return bookSource === undefined || bookSource === source || !!draft?.moves.get(move.uci)?.book;
+    if (bookSource === undefined || bookSource === source) return 'own';
+    return draft?.moves.get(move.uci)?.book ? 'agreed' : 'closed';
   };
-  const book = bookMoves(chapter, side, new Set(choices.map((choice) => choice.move)), open);
+  const book = bookMoves(chapter, side, new Set(choices.map((choice) => choice.move)), say);
   const recommend = (move: StudyMove) => {
     tree.move(move.before, move.uci).book = true;
     tree.entry(positionKey(move.before)).bookSource ??= source;
@@ -139,7 +140,7 @@ function addChapter(
   for (const { move, note } of moveNotes) addNote(tree.move(move.before, move.uci), note, source);
   for (const { pos, note } of positionNotes) addNote(tree.entry(positionKey(pos)), note, source);
   for (const choice of choices) {
-    if (!open(choice.move)) continue;
+    if (say(choice.move) === 'closed') continue;
     recommend(choice.move);
     tree.move(choice.move.before, choice.move.uci).risk ??= choice.risk;
   }
@@ -219,24 +220,34 @@ function positionVariations(
 }
 
 /**
+ * Who decides whether a learner's move is recommended: this source (`own`),
+ * an earlier source that recommends it (`agreed`), or an earlier source that
+ * recommends something else there (`closed`).
+ */
+type Say = (move: StudyMove) => 'own' | 'agreed' | 'closed';
+
+/**
  * The learner's moves the study recommends in `chapter`: at each of the
  * learner's turns, the study's first move unless marked dubious, and any move
  * a choice guide offers. Once the line leaves the recommended moves (a
  * refuted alternative), nothing after it is recommended, while the opponent's
- * alternatives keep the learner's replies. Nor is anything at or after a
- * position that `open` says another source decides.
+ * alternatives keep the learner's replies. Where an earlier source decides
+ * (`say`), only the moves it recommends are followed, whatever this chapter
+ * thinks of them.
  */
 function bookMoves(
   chapter: Chapter,
   side: Color,
   offered: ReadonlySet<StudyMove>,
-  open: (move: StudyMove) => boolean,
+  say: Say,
 ): Set<StudyMove> {
   const book = new Set<StudyMove>();
   const visit = (moves: readonly StudyMove[]) => {
     moves.forEach((move, i) => {
       if (move.before.turn !== side) return visit(move.children);
-      if (!open(move) || (!offered.has(move) && (i > 0 || isDubious(move)))) return;
+      const decided = say(move);
+      if (decided === 'closed') return;
+      if (decided === 'own' && !offered.has(move) && (i > 0 || isDubious(move))) return;
       book.add(move);
       visit(move.children);
     });

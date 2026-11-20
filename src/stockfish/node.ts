@@ -11,8 +11,11 @@ export interface NodeEngine {
 
 /** Starts the Node build, the same lite single-threaded WebAssembly the app runs. */
 export async function startNodeEngine(): Promise<NodeEngine> {
+  const path = require.resolve('stockfish/bin/stockfish-19-lite-single.js');
+  // The build starts once per load: a second start from the cached module fails.
+  delete require.cache[path];
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- a CommonJS build with no types
-  const start = require('stockfish/bin/stockfish-19-lite-single.js') as () => NodeEngine;
+  const start = require(path) as () => NodeEngine;
   // Starting the engine sets the global fetch to null; callers still need it.
   const { fetch } = globalThis;
   const engine = await start();

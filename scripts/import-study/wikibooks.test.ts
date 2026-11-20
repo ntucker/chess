@@ -29,7 +29,7 @@ const PAGES: Record<string, string> = {
   ),
   [`${ROOT}/2._c4/2...c6`]: page(
     '2...c6 · Slav Defence',
-    'Black keeps the light-squared bishop free to develop outside the pawn chain.\n\n==Theory table==\n|line1=3. Nf3 Nf6 4. Nc3 dxc4 5. a4 ...\n|line2=3. Nf3 Qxh7 4. e4',
+    'Black keeps the light-squared bishop free to develop outside the pawn chain.\n\n==Theory table==\n|line1=3. Nf3 Nf6 4. Nc3 dxc4?! 5. a4 ...\n|line2=3. Nf3 Qxh7 4. e4',
   ),
 };
 
@@ -62,8 +62,18 @@ describe('readPage', () => {
     ]);
     expect(read.about.get('c6')).toEqual(['2...c6 supports the d5 pawn with another pawn.']);
     expect(readPage(PAGES[`${ROOT}/2._c4/2...c6`]).lines).toEqual([
-      ['Nf3', 'Nf6', 'Nc3', 'dxc4', 'a4'],
+      ['Nf3', 'Nf6', 'Nc3', 'dxc4?!', 'a4'],
       ['Nf3', 'Qxh7', 'e4'],
+    ]);
+  });
+
+  it('reads a table line\'s "..." as the move above it, and keeps glyphs', () => {
+    const table =
+      '|line1=9. Qe2 Nbd7 10. e4\n|line2=9. ... Bg6? 10. Ne5\n|line3=9. ... ... 10. ... ...';
+    expect(readPage(page('9.Qe2', table)).lines).toEqual([
+      ['Qe2', 'Nbd7', 'e4'],
+      ['Qe2', 'Bg6?', 'Ne5'],
+      ['Qe2', 'Bg6?', 'Ne5'],
     ]);
   });
 });
@@ -104,7 +114,8 @@ describe('wikibooksPgn', () => {
   it('keeps a redirect as a leaf, and leaves a position another lesson covers', async () => {
     const [, gambit] = await games(["Queen's Gambit Declined"]);
     const c4 = gambit.moves.children[0].children[0].children[0];
-    const [e6, c6] = c4.children;
+    // The redirect goes last, so that it is never the main move.
+    const [c6, e6] = c4.children;
     expect(e6.data.san).toBe('e6');
     expect(e6.children).toEqual([]);
     expect(e6.data.comments?.[0]).toMatch(/keeps the centre firm/);
@@ -119,10 +130,15 @@ describe('wikibooksPgn', () => {
     )!;
     let at = slav.moves;
     const sans: string[][] = [];
+    const nags: number[] = [];
     while (at.children.length > 0) {
       sans.push(at.children.map((child) => child.data.san));
-      at = at.children[0];
+      const [main] = at.children;
+      nags.push(...(main.data.nags ?? []));
+      at = main;
     }
+    // The table's ?! on 4...dxc4 marks it dubious.
+    expect(nags).toEqual([6]);
     expect(sans).toEqual([
       ['d4'],
       ['d5'],

@@ -112,9 +112,9 @@ async function main() {
     lesson = checked.lesson;
     const file = join(CACHE, `${lesson.id}-engine.json`);
     writeFileSync(file, `${JSON.stringify(checked.report, null, 2)}\n`);
-    const { unbooked, unreachable, dropped } = checked.report;
+    const { unbooked, unreachable, cut, dropped } = checked.report;
     console.log(
-      `engine check: ${unbooked.length} book moves overruled, ${unreachable.length} more left unreachable, ${dropped.length} notes dropped (${file})`,
+      `engine check: ${unbooked.length} book moves overruled (${cut.length} cut, the guide's only move), ${unreachable.length} more left unreachable, ${dropped.length} notes dropped (${file})`,
     );
   }
   if (!rest.includes('--no-popularity')) lesson = await withPopularity(lesson);
