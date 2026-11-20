@@ -6,7 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { BrowserOnly } from '@/components/BrowserOnly';
 import { Eyebrow, labelled } from '@/components/Eyebrow';
 import { FootnoteLink } from '@/components/FootnoteLink';
-import { StatusHeadline } from '@/components/GameStatus';
+import { type News, StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { OpponentPicker } from '@/components/OpponentPicker';
@@ -480,7 +480,8 @@ interface StatusInput {
  * Practice, right after the learner's move, it judges that move first.
  * `news` says what of it is news, where the title only says whose move it
  * is (`detail`), or the detail is also how to use the screen, once the
- * learner has moved and so has seen how (`none`); see `StatusHeadline`.
+ * learner has moved and so has seen how (`none`); left out, all of it is
+ * news. See `StatusHeadline`.
  */
 function describeStatus(
   view: LessonView,
@@ -499,7 +500,7 @@ function describeStatus(
     startsRun,
     practice,
   }: StatusInput,
-) {
+): { eyebrow: string; title: string; detail: string; news?: News } {
   if (loading) return { eyebrow: picking ? OPENINGS_TITLE : title, ...LOADING };
   if (picking)
     return {
@@ -537,7 +538,7 @@ function describeStatus(
       eyebrow,
       title: 'Your move.',
       // Only Explore's detail at the latest move is how-to; the others say what a move here does.
-      news: !startsRun && !practice && !viewing ? ('none' as const) : ('detail' as const),
+      news: !startsRun && !practice && !viewing ? 'none' : 'detail',
       detail:
         practice && startsRun && viewing
           ? YOUR_MOVE.practice.restart
@@ -557,7 +558,7 @@ function describeStatus(
   return {
     eyebrow,
     title: reply,
-    news: startsRun ? ('detail' as const) : ('none' as const),
+    news: startsRun ? 'detail' : 'none',
     detail: canPlay
       ? 'Point at a reply to see what it aims for, then play it.'
       : 'Point at a reply to see what it aims for.',

@@ -58,7 +58,7 @@ interface HeadlineProps {
   readonly news?: News;
 }
 
-type News = 'all' | 'detail' | 'none';
+export type News = 'all' | 'detail' | 'none';
 
 /** A panel's headline, announced as it changes, with a retry when the opponent didn't answer. */
 export function StatusHeadline({

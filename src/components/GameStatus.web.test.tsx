@@ -61,7 +61,7 @@ describe('StatusHeadline', () => {
     expect(narrowParts({ news: 'detail' }).line).toBe('Play here.');
   });
 
-  it('keeps a headline with no news for screen readers only', () => {
+  it('keeps the headline for screen readers only when none of it is news', () => {
     expect(narrowParts({ news: 'none' })).toMatchObject({
       headline: 'wide-only-spoken',
       line: undefined,
