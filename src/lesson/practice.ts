@@ -34,13 +34,18 @@ export const beforeSideMoves = (plies: readonly Ply[], side: Color, count: numbe
 
 /**
  * Whether the opponent plays its own move in `game`'s shown position, rather
- * than the learner picking it. Never with auto play off, nor at the start,
- * where the first move picks the opening. Nor in Explore on an earlier move
- * than the latest: stepped back, the learner can try one reply and see where
- * it leads, and auto play answers their moves after it.
+ * than the learner picking it. Never with auto play off, nor while `picking`
+ * an opening (src/lesson/openings.ts), where the learner plays both sides.
+ * Nor in Explore on an earlier move than the latest: stepped back, the
+ * learner can try one reply and see where it leads, and auto play answers
+ * their moves after it.
  */
-export const opponentPlays = (mode: LessonMode, auto: boolean, { moves, ply }: GameState) =>
-  auto && ply > 0 && (mode === 'practice' || ply === moves.length);
+export const opponentPlays = (
+  mode: LessonMode,
+  auto: boolean,
+  { moves, ply }: GameState,
+  picking: boolean,
+) => auto && !picking && (mode === 'practice' || ply === moves.length);
 
 /** Who played a move of the line and, for the learner's, whether the guide recommends it. */
 export type MoveKind = 'opponent' | 'book' | 'slip';

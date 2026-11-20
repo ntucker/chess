@@ -8,6 +8,7 @@
  * opponent's rare reply. The same walk steers a clean Practice run's
  * opponent to the lines still to pass (`steering`).
  */
+import type { Color } from '@/game/replay';
 import {
   type Mark,
   type MarkedPositions,
@@ -18,7 +19,7 @@ import {
 
 import { countedReplies, inCleanRun, walkClean } from './cleanRun';
 import type { Lesson, PositionKey, Uci } from './lesson';
-import { type LessonIndex, lessonOf } from './openings';
+import { type LessonIndex, lessonsAfter, meets } from './openings';
 import type { ReplyChoice } from './opponent';
 import type { ModeState } from './practice';
 import type { Candidate } from './select';
@@ -48,25 +49,34 @@ export function rowMarks(
 }
 
 /**
- * The start position's rows' marks (src/lesson/openings.ts), by move: each
- * row's from its own opening's progress and the line ends the index lists
- * for its move, whichever lesson is loaded. Passed outranks seen, as in
- * `rowMarks`, and the two agree (src/lesson/marks.test.ts holds them to it).
+ * The marks of the rows listed before a lesson is picked (src/lesson/openings.ts),
+ * by move, at `line`: each row's from the progress of the lessons it leads
+ * to and the line ends the index lists for their lines, whichever lesson is
+ * loaded. A row is passed once every one of those lines is, and seen once
+ * one of those lessons has shown the position it leads to. Passed outranks
+ * seen, as in `rowMarks`, and the two agree (src/lesson/marks.test.ts holds them to it).
  */
 export function openingMarks(
   index: LessonIndex,
+  side: Color,
+  line: readonly Uci[],
   progress: SavedProgress,
   view: Pick<LessonView, 'candidates'>,
 ): ReadonlyMap<Uci, Mark> {
   return marksBy(view, ({ move: { uci }, next }) => {
-    const id = lessonOf(index, [uci]);
-    if (id === undefined) return undefined;
-    const own = progress[id] ?? UNTOUCHED;
-    const ends = index[id].lineEnds[uci] ?? [];
-    const passed = hashSet(own.passed);
-    return ends.length > 0 && ends.every((hash) => passed.has(hash))
-      ? 'passed'
-      : seenMark(hashSet(own.seen), next);
+    const through = [...line, uci];
+    const ids = lessonsAfter(index, side, through);
+    const own = (id: string) => progress[id] ?? UNTOUCHED;
+    const passed = ids.every((id) =>
+      index[id].lines
+        .filter(({ moves }) => meets(moves, through))
+        .every(({ lineEnds }) => {
+          const done = hashSet(own(id).passed);
+          return lineEnds.length > 0 && lineEnds.every((hash) => done.has(hash));
+        }),
+    );
+    if (ids.length > 0 && passed) return 'passed';
+    return ids.some((id) => seenMark(hashSet(own(id).seen), next)) ? 'seen' : undefined;
   });
 }
 

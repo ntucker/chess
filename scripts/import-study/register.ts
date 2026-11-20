@@ -1,7 +1,8 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
-import type { Lesson } from '@/lesson/lesson';
-import { indexEntry, type IndexEntry } from '@/lesson/openings';
+import { readLesson, type Lesson } from '@/lesson/lesson';
+import { lessonIndex } from '@/lesson/openings';
 
 /**
  * Adds lesson `id` to the `LESSONS` registry in `file` (src/resources/lesson.ts) unless it is there.
@@ -17,13 +18,19 @@ export function registerLesson(file: string, id: string) {
   writeFileSync(file, updated);
 }
 
-/** Writes `lesson`'s entry in the lesson index `file` (assets/lessons/index.json), keeping the others. */
+/**
+ * Writes the lesson index `file` (assets/lessons/index.json) with `lesson`
+ * in it, rewriting every entry from the lesson files beside it: one lesson's
+ * first moves can change which moves pick another of its side.
+ */
 export function indexLesson(file: string, lesson: Lesson) {
-  const index: Record<string, IndexEntry> = existsSync(file)
-    ? JSON.parse(readFileSync(file, 'utf8'))
-    : {};
-  index[lesson.id] = indexEntry(lesson);
-  const lines = Object.entries(index).map(
+  const ids: string[] = existsSync(file) ? Object.keys(JSON.parse(readFileSync(file, 'utf8'))) : [];
+  const lessons = [...new Set([...ids, lesson.id])].map((id) =>
+    id === lesson.id
+      ? lesson
+      : readLesson(JSON.parse(readFileSync(join(dirname(file), `${id}.json`), 'utf8'))),
+  );
+  const lines = Object.entries(lessonIndex(lessons)).map(
     ([id, entry]) => `  ${JSON.stringify(id)}: ${JSON.stringify(entry)}`,
   );
   writeFileSync(file, `{\n${lines.join(',\n')}\n}\n`);

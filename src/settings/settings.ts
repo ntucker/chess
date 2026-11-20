@@ -1,4 +1,5 @@
 import { parseStoredObject } from '@/context/storage';
+import { type Color, COLORS } from '@/game/replay';
 import { EVALUATION_ENGINES, type EvaluationEngine } from '@/evaluation/evaluation';
 import { type Opponent, OPPONENTS } from '@/opponent/opponent';
 
@@ -14,6 +15,8 @@ export interface Settings {
   readonly showMoves: boolean;
   /** In a lesson, a trap's moves are drawn before the learner can fall in. */
   readonly showTraps: boolean;
+  /** The side whose openings the start position lists: the side of the lesson last played. */
+  readonly side: Color;
 }
 
 /** The settings before the learner chooses, which the pre-rendered page shows. */
@@ -25,6 +28,8 @@ export const DEFAULT_SETTINGS: Settings = {
   showMoves: true,
   // Off, the learner can fall into a trap and see it explained.
   showTraps: false,
+  // Most lessons are defences.
+  side: 'black',
 };
 
 export type SettingsAction =
@@ -63,6 +68,7 @@ export function settingsFrom(stored: StoredSettings): Settings {
     auto: oneOf(BOOLEANS, stored.auto) ?? DEFAULT_SETTINGS.auto,
     showMoves: oneOf(BOOLEANS, stored.showMoves) ?? DEFAULT_SETTINGS.showMoves,
     showTraps: oneOf(BOOLEANS, stored.showTraps) ?? DEFAULT_SETTINGS.showTraps,
+    side: oneOf(COLORS, stored.side) ?? DEFAULT_SETTINGS.side,
   };
 }
 

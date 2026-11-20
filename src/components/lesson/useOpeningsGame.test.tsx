@@ -3,6 +3,7 @@ import { act, Suspense, use, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
 import type { LessonId } from '@/resources/lesson';
+import { SettingsProvider, useSettings } from '@/settings/SettingsProvider';
 
 import { useOpeningsGame } from './useOpeningsGame';
 
@@ -11,7 +12,7 @@ jest.mock('expo-router', () => ({ useRouter: () => mockRouter }));
 
 let root: Root | undefined;
 /** What the hook answered on each committed render; the latest last. */
-const renders: ReturnType<typeof useOpeningsGame>[] = [];
+const renders: (ReturnType<typeof useOpeningsGame> & { readonly setting: string })[] = [];
 const latest = () => renders[renders.length - 1];
 
 /** A lesson that never finishes loading, like a slow lesson file. */
@@ -27,9 +28,10 @@ function Lesson({ moves }: { readonly moves: readonly string[] }) {
 
 function Page({ address }: { readonly address?: LessonId }) {
   const answer = useOpeningsGame(address);
+  const setting = useSettings().side;
   // On commit: a render that waits for a lesson never shows.
   useLayoutEffect(() => {
-    renders.push(answer);
+    renders.push({ ...answer, setting });
   });
   return (
     <Suspense fallback="placeholder">
@@ -41,7 +43,11 @@ function Page({ address }: { readonly address?: LessonId }) {
 const show = (address?: LessonId) =>
   act(() => {
     root ??= createRoot();
-    root.render(<Page address={address} />);
+    root.render(
+      <SettingsProvider>
+        <Page address={address} />
+      </SettingsProvider>,
+    );
   });
 const moves = () => latest().store[0].moves;
 const play = (...ucis: string[]) =>
@@ -63,7 +69,7 @@ describe('useOpeningsGame', () => {
     act(() => root?.unmount());
     root = undefined;
     await show('slav');
-    expect(moves()).toEqual(['d2d4']);
+    expect(moves()).toEqual(['d2d4', 'd7d5', 'c2c4']);
     expect(mockRouter.push).not.toHaveBeenCalled();
     expect(mockRouter.replace).not.toHaveBeenCalled();
   });
@@ -84,7 +90,7 @@ describe('useOpeningsGame', () => {
     await show('caro-kann');
     await play('c7c6');
     await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
-    await play('d2d4');
+    await play('d2d4', 'd7d5', 'c2c4');
     expect(mockRouter.replace).toHaveBeenCalledWith('/lesson/slav');
     expect(mockRouter.push).not.toHaveBeenCalled();
   });
@@ -98,7 +104,7 @@ describe('useOpeningsGame', () => {
     await show('caro-kann');
     expect(moves()).toEqual(['e2e4']);
     await show('slav');
-    expect(moves()).toEqual(['d2d4']);
+    expect(moves()).toEqual(['d2d4', 'd7d5', 'c2c4']);
     expect(mockRouter.push).toHaveBeenCalledTimes(1);
     expect(mockRouter.replace).not.toHaveBeenCalled();
   });
@@ -135,9 +141,9 @@ describe('useOpeningsGame', () => {
     await show('caro-kann');
     expect(latest().pending).toBe(true);
     // The page shows the start, but the game is 1.e4's. Applied to it, this
-    // step to the start and then d4 would replace e4 and pick the Slav.
+    // step to the start and then 1.d4 d5 2.c4 would replace e4 and pick the Slav.
     act(() => latest().store[1]({ type: 'goto', ply: 0 }));
-    await play('d2d4');
+    await play('d2d4', 'd7d5', 'c2c4');
     expect(mockRouter.dismissTo).not.toHaveBeenCalled();
     expect(mockRouter.replace).not.toHaveBeenCalled();
     expect(latest().lesson).toBeUndefined();
@@ -145,8 +151,37 @@ describe('useOpeningsGame', () => {
     await show(undefined);
     expect(latest().pending).toBe(false);
     slow.lessons = false;
-    await play('d2d4');
+    await play('d2d4', 'd7d5', 'c2c4');
     expect(mockRouter.push).toHaveBeenLastCalledWith('/lesson/slav');
+  });
+
+  it("plays a lesson's address from its side, and remembers that side for the start", async () => {
+    await show();
+    expect(latest().side).toBe('black');
+    await show('london');
+    expect(latest().side).toBe('white');
+    expect(moves()).toEqual(['d2d4']);
+    expect(latest().setting).toBe('white');
+    // A first move that picks no White lesson returns to a White start.
+    await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
+    await play('e2e4');
+    expect(mockRouter.dismissTo).toHaveBeenCalledWith('/');
+    await show();
+    expect(latest().side).toBe('white');
+  });
+
+  it('starts again from the other side when the learner plays as it', async () => {
+    await show();
+    await play('d2d4', 'd7d5');
+    await act(() => latest().playAs('white'));
+    expect(latest().side).toBe('white');
+    expect(latest().setting).toBe('white');
+    expect(moves()).toEqual([]);
+    // Choosing the side already played keeps the game.
+    await play('d2d4');
+    await act(() => latest().playAs('white'));
+    expect(moves()).toEqual(['d2d4']);
+    expect(mockRouter.push).toHaveBeenLastCalledWith('/lesson/london');
   });
 
   it('shows a move within a lesson at once', async () => {

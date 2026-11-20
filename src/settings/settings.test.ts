@@ -21,6 +21,7 @@ describe('settings', () => {
       auto: false,
       showMoves: false,
       showTraps: true,
+      side: 'white',
     } as const;
     expect(parseSettings(JSON.stringify(rated))).toEqual(rated);
   });

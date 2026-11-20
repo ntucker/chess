@@ -1,10 +1,10 @@
 import { describe, expect, it } from '@jest/globals';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 import { SAMPLE } from '@/lesson/lesson.fixture';
-import { indexEntry } from '@/lesson/openings';
+import { lessonIndex } from '@/lesson/openings';
 import { LESSONS } from '@/resources/lesson';
 
 import { indexLesson, registerLesson } from './register';
@@ -34,21 +34,13 @@ describe('registerLesson', () => {
 });
 
 describe('indexLesson', () => {
-  it("writes the lesson's entry, keeping the other lessons'", () => {
+  it('adds the lesson, rewriting the others from their files beside the index', () => {
     const file = tempFile('index.json');
-    const other = {
-      title: 'Slav Defence',
-      side: 'black',
-      sources: SAMPLE.sources,
-      firstMoves: ['d2d4'],
-      lineEnds: { d2d4: [] },
-    };
-    writeFileSync(file, JSON.stringify({ slav: other }));
+    const other = { ...SAMPLE, id: 'other', title: 'Other', side: 'white' as const };
+    writeFileSync(join(dirname(file), 'other.json'), JSON.stringify(other));
+    writeFileSync(file, JSON.stringify({ other: {} }));
     indexLesson(file, SAMPLE);
     indexLesson(file, SAMPLE);
-    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({
-      slav: other,
-      [SAMPLE.id]: indexEntry(SAMPLE),
-    });
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual(lessonIndex([other, SAMPLE]));
   });
 });

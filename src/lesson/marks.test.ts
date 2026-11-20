@@ -12,7 +12,7 @@ import {
   withMoves,
 } from './lesson.fixture';
 import { earnedMark, openingMarks, rowMarks, steering } from './marks';
-import { indexEntry, openingsLesson } from './openings';
+import { lessonIndex, openingsLesson } from './openings';
 import { lessonView } from './view';
 
 /** A move after `sans`, written in SAN, as the guide stores it. */
@@ -180,10 +180,15 @@ describe('openingMarks', () => {
       },
     },
   };
-  const index = { e4: indexEntry(LESSON), d4: indexEntry(D4) };
-  const view = lessonView({ lesson: openingsLesson(index), line: [], ply: 0, opponent: 1500 });
+  const index = lessonIndex([{ ...LESSON, id: 'e4' }, D4]);
+  const view = lessonView({
+    lesson: openingsLesson(index, 'black'),
+    line: [],
+    ply: 0,
+    opponent: 1500,
+  });
   const marksOf = (lessonProgress: Record<string, MarkedPositions>) => {
-    const marks = openingMarks(index, lessonProgress, view);
+    const marks = openingMarks(index, 'black', [], lessonProgress, view);
     return Object.fromEntries(
       view.candidates.map(({ san, move: { uci } }) => [san, marks.get(uci)]),
     );
@@ -218,20 +223,56 @@ describe('openingMarks', () => {
         [at('e4')]: { variation: LESSON.positions[START].variation, moves: [move(['e4'], 'e5')] },
       },
     };
-    const whiteIndex = { white: indexEntry(white) };
+    const whiteIndex = lessonIndex([white]);
     const start = lessonView({
-      lesson: openingsLesson(whiteIndex),
+      lesson: openingsLesson(whiteIndex, 'white'),
       line: [],
       ply: 0,
       opponent: 1500,
     });
     const marks = openingMarks(
       whiteIndex,
+      'white',
+      [],
       { white: progress([], [at('e4', 'e5'), at('d4')]) },
       start,
     );
     // 1.d4 isn't a book move, so a clean run never plays it.
     expect([...marks]).toEqual([[uciLine('e4')[0], 'passed']]);
+  });
+
+  it('marks a row two lessons share from both: passed once both are, seen once either is', () => {
+    // Two lessons after 1.d4 d5: one picked by 2.Nf3, the other by 2.c4, each ending there.
+    const after = (id: string, san: string): Lesson => ({
+      ...D4,
+      id,
+      positions: {
+        ...D4.positions,
+        [at('d4', 'd5')]: {
+          variation: LESSON.positions[START].variation,
+          moves: [move(['d4', 'd5'], san)],
+        },
+      },
+    });
+    const NF3 = after('nf3', 'Nf3');
+    const C4 = after('c4', 'c4');
+    const shared = lessonIndex([NF3, C4]);
+    const start = lessonView({
+      lesson: openingsLesson(shared, 'black'),
+      line: [],
+      ply: 0,
+      opponent: 1500,
+    });
+    const d4 = (lessonProgress: Record<string, MarkedPositions>) =>
+      openingMarks(shared, 'black', [], lessonProgress, start).get(uciLine('d4')[0]);
+    expect(d4({ c4: progress([at('d4')], []) })).toBe('seen');
+    expect(d4({ nf3: progress([], [at('d4', 'd5', 'Nf3')]) })).toBeUndefined();
+    expect(
+      d4({
+        nf3: progress([], [at('d4', 'd5', 'Nf3')]),
+        c4: progress([], [at('d4', 'd5', 'c4')]),
+      }),
+    ).toBe('passed');
   });
 
   it('marks nothing for a lesson never played', () => {
@@ -241,8 +282,8 @@ describe('openingMarks', () => {
   it.each(shippedIds)("agrees with walking %s's own start, however much is passed", (id) => {
     const lesson = readShippedLesson(id);
     const start = lessonView({ lesson, line: [], ply: 0, opponent: 1500 });
-    const own = { [id]: indexEntry(lesson) };
-    const ends = Object.values(own[id].lineEnds).flat();
+    const own = lessonIndex([lesson]);
+    const ends = own[id].lines.flatMap(({ lineEnds }) => lineEnds);
     // Every other end, all but one, all, and all plus one that isn't an end.
     const passedLists = [
       [],
@@ -253,7 +294,7 @@ describe('openingMarks', () => {
     ];
     for (const passed of passedLists) {
       const lessonProgress = { seen: [], passed };
-      expect(openingMarks(own, { [id]: lessonProgress }, start)).toEqual(
+      expect(openingMarks(own, lesson.side, [], { [id]: lessonProgress }, start)).toEqual(
         rowMarks(lesson, lessonProgress, start),
       );
     }
