@@ -86,10 +86,10 @@ interface Failure {
  * the engine's file so asking again can't help, a reload.
  */
 function FailureLine({ who, error, onRetry }: Failure) {
-  const [message, action, onPress] =
+  const { message, action, onPress } =
     error instanceof NewVersionError
-      ? [NEW_VERSION, 'Reload', reload]
-      : [`${who} didn't answer.`, 'Try again', onRetry];
+      ? { message: NEW_VERSION, action: 'Reload', onPress: reload }
+      : { message: `${who} didn't answer.`, action: 'Try again', onPress: onRetry };
   return (
     <Inline gap="3" align="center">
       <Text role="bodySm" tone="danger">

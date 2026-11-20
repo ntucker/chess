@@ -10,7 +10,7 @@ const NEW = ['/chess/_expo/static/js/web/play-new.js', OLD[1]];
 
 /** The HTML the site serves now at PAGE. */
 let served: () => Promise<string>;
-let fetched: jest.Mock<(url: string, init: RequestInit) => Promise<Pick<Response, 'text'>>>;
+let fetched: jest.Mock<(url: string, init: RequestInit) => Promise<Pick<Response, 'ok' | 'text'>>>;
 /** A fresh copy of the module each test, since it remembers a replaced build. */
 let explainLoadFailure: typeof NewVersion.explainLoadFailure;
 let NewVersionError: typeof NewVersion.NewVersionError;
@@ -27,7 +27,7 @@ beforeEach(() => {
   performance.getEntriesByType = () => [{ name: PAGE } as PerformanceEntry];
   // jsdom has no Response either. Tests check the address after the call,
   // since a throw in here would read as offline.
-  fetched = jest.fn(() => served().then((html) => ({ text: async () => html })));
+  fetched = jest.fn(() => served().then((html) => ({ ok: true, text: async () => html })));
   globalThis.fetch = fetched as unknown as typeof fetch;
   jest.isolateModules(() => {
     ({ explainLoadFailure, NewVersionError } =
@@ -56,6 +56,17 @@ describe('explainLoadFailure', () => {
     served = async () => page(...NEW);
     expect(await explainLoadFailure(failure)).toBeInstanceOf(NewVersionError);
     expect(fetched).toHaveBeenCalledWith(PAGE, expect.anything());
+  });
+
+  it('keeps the error when the site answers with an error page', async () => {
+    fetched.mockResolvedValueOnce({ ok: false, text: async () => page(...NEW) });
+    expect(await explainLoadFailure(failure)).toBe(failure);
+  });
+
+  it('asks with a time limit, so a slow site counts as not replaced', async () => {
+    served = async () => page(...OLD);
+    await explainLoadFailure(failure);
+    expect(fetched.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
   });
 
   it('keeps the error offline', async () => {
