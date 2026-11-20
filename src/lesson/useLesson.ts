@@ -280,10 +280,16 @@ export function useLesson(
      * The learner points at a candidate list row. Leaving a row keeps its
      * preview, so the learner can move on to its notes; `leave` ends it.
      */
-    pointRow: (uci: Uci) =>
-      dispatch({ type: 'candidate', key, candidate: { at: 'row', uci }, time: performance.now() }),
-    /** The pointer reaches the idea card: a row it only crossed on the way gives the card back. */
-    reachCard: () => dispatch({ type: 'card', key, time: performance.now() }),
+    pointRow: (uci: Uci, time?: number) => {
+      // Rows report every mouse move, and a dispatch renders the screen even
+      // when the reducer keeps its state, so a row already pointed at sends
+      // none (its preview may be hidden by a playback or a loading lesson).
+      const { candidate } = peek?.key === key ? peek : {};
+      if (candidate?.at === 'row' && candidate.uci === uci) return;
+      dispatch({ type: 'candidate', key, candidate: { at: 'row', uci }, time });
+    },
+    /** The mouse reaches the idea card at `time`: a row it only crossed on the way gives the card back. */
+    reachCard: (time: number) => dispatch({ type: 'card', key, time }),
     /** The learner points at a note on the idea card, or at none. */
     pointNote: (note: Note | undefined) => dispatch({ type: 'note', key, note }),
     /** The learner lets a note on the idea card go: the mouse leaves it, or a second tap. */

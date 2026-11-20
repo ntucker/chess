@@ -30,8 +30,8 @@ interface Props {
   readonly onPoint: (note: Note) => void;
   /** The learner lets a note go: the mouse leaves it, or a second tap. */
   readonly onLeave: (note: Note) => void;
-  /** The mouse comes onto the card. */
-  readonly onReach?: () => void;
+  /** The mouse comes onto the card at `time` (its event's time stamp). */
+  readonly onReach: (time: number) => void;
 }
 
 /**
@@ -55,8 +55,8 @@ export function IdeaCard({
   return (
     <Stack
       gap="3"
-      onPointerEnter={({ nativeEvent }) => {
-        if (hovers(nativeEvent.pointerType)) onReach?.();
+      onPointerEnter={({ nativeEvent, timeStamp }) => {
+        if (hovers(nativeEvent.pointerType)) onReach(timeStamp);
       }}
     >
       <Eyebrow>{title}</Eyebrow>

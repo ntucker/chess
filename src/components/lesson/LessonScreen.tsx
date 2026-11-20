@@ -185,10 +185,10 @@ function LessonScreen({
     ctrl.fetchIfStale(getLesson, id);
     ctrl.fetchIfStale(getProgress, id);
   };
-  const pointCandidate = (uci: Uci) => {
+  const pointCandidate = (uci: Uci, time?: number) => {
     const into = opening(uci);
     if (into) load(into);
-    pointRow(uci);
+    pointRow(uci, time);
   };
   const onDrag: typeof board.onDrag = (drag) => {
     // Each report repeats the request, which fetchIfStale makes free.

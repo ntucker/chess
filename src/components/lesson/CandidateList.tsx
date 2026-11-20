@@ -39,7 +39,8 @@ interface Props {
    * The learner points at a row: the mouse moves over it, keyboard focus
    * lands on it, or a finger holds it (or taps it, when it isn't playable).
    */
-  readonly onPoint: (uci: Uci) => void;
+  /** The learner points at a row: `time` is when, if by hovering (see `PeekAction`). */
+  readonly onPoint: (uci: Uci, time?: number) => void;
   /**
    * Keyboard focus moves on past the list. The preview ends first, so the
    * idea card focus lands in shows the position's own notes.
@@ -170,7 +171,8 @@ interface RowProps {
   readonly share?: number;
   readonly playable: boolean;
   readonly onPlay: (candidate: Candidate) => void;
-  readonly onPoint: (uci: Uci) => void;
+  /** The learner points at a row: `time` is when, if by hovering (see `PeekAction`). */
+  readonly onPoint: (uci: Uci, time?: number) => void;
   /** Tab (forward) leaves this row for whatever follows the list. */
   readonly onTabOut?: () => void;
 }
@@ -216,8 +218,8 @@ function Row({
       // that changes under a still mouse previews nothing until the mouse
       // moves. Leaving keeps the preview (the screen ends it), so the learner
       // can go on to its notes; rows crossed on the way there let it be (`HOLD_MS`).
-      onPointerMove={({ nativeEvent }) => {
-        if (!pointed && hovers(nativeEvent.pointerType)) point();
+      onPointerMove={({ nativeEvent, timeStamp }) => {
+        if (!pointed && hovers(nativeEvent.pointerType)) onPoint(move.uci, timeStamp);
       }}
       onKeyDown={tabOut(onTabOut)}
       onFocus={point}

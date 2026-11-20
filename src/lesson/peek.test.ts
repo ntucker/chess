@@ -11,6 +11,7 @@ const ROW = { at: 'row', uci: 'c7c6' } as const;
 const DRAG = { at: 'drag', from: 'c7', to: 'c6' } as const;
 const OTHER = { at: 'row', uci: 'e7e6' } as const;
 const THIRD = { at: 'row', uci: 'd7d5' } as const;
+type Row = typeof ROW | typeof OTHER | typeof THIRD;
 
 type Pointing = Extract<Peek, { kind: 'point' }>;
 type Playing = Extract<Peek, { kind: 'play' }>;
@@ -168,10 +169,7 @@ describe('peekReducer', () => {
   });
 
   describe('rows crossed on the way to the idea card', () => {
-    const row = (
-      candidate: typeof ROW | typeof OTHER | typeof THIRD,
-      time: number,
-    ): PeekAction => ({
+    const row = (candidate: Row, time: number): PeekAction => ({
       type: 'candidate',
       key: HERE,
       candidate,
@@ -180,7 +178,7 @@ describe('peekReducer', () => {
     const card = (time: number): PeekAction => ({ type: 'card', key: HERE, time });
     const pointed = (...actions: PeekAction[]) => reduce(undefined, ...actions)?.candidate;
 
-    it.each<[string, PeekAction[], typeof ROW | typeof OTHER | typeof THIRD]>([
+    it.each<[string, PeekAction[], Row]>([
       [
         'a row held, then others crossed quickly: the card returns to the held row',
         [row(ROW, 0), row(OTHER, HOLD_MS), row(THIRD, HOLD_MS + 40), card(HOLD_MS + 80)],
