@@ -136,7 +136,7 @@ export function NoteView({
       </View>
     ) : null;
   // On a narrow page a verdict with no kind beside it goes below the words, which come first.
-  const lone = !drawn && heading;
+  const verdictBelow = !drawn && Boolean(verdict);
 
   return (
     <Stack
@@ -176,9 +176,9 @@ export function NoteView({
           else point();
         }}
       >
-        {lone ? <View {...part('wide-only')}>{heading}</View> : heading}
+        {verdictBelow ? <View {...part('wide-only')}>{heading}</View> : heading}
         <Text role="body">{note.text}</Text>
-        {lone ? <NarrowOnly>{heading}</NarrowOnly> : null}
+        {verdictBelow ? <NarrowOnly>{heading}</NarrowOnly> : null}
         {more && original ? (
           <Text role="bodySm" tone="secondary">
             {original}

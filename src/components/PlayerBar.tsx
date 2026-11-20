@@ -76,10 +76,7 @@ export function PlayerBar({
           <Captures {...material} pieceColor={opposite(color)} />
         </View>
         <View style={styles.detail}>
-          <Text
-            {...caption}
-            {...(brief ? part('wide-only', styles.detailText) : { style: styles.detailText })}
-          >
+          <Text {...caption} {...part(Boolean(brief) && 'wide-only', styles.detailText)}>
             {detail}
           </Text>
           {brief ? (

@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
   eyebrow: { textTransform: 'uppercase', letterSpacing: 1.6 },
 });
 
-const labelledStyles = narrowStyles((px) => ({ labelled: { gap: px(LABEL_GAP) } }));
+const STYLES = narrowStyles((px) => ({ labelled: { gap: px(LABEL_GAP) } }));
 
 /** A Stack's style that spaces an eyebrow from what it labels. */
-export const useLabelled = () => useNarrowStyles(labelledStyles).labelled;
+export const useLabelled = () => useNarrowStyles(STYLES).labelled;

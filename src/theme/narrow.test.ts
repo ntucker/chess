@@ -8,7 +8,6 @@ import {
   NARROW_PARTS,
   NARROW_PX,
   NATIVE_PARTS,
-  type NarrowName,
   narrowLength,
   narrowStyles,
 } from './narrow';
@@ -59,6 +58,11 @@ describe('narrow.css', () => {
     expect(narrowCss).toContain(`--${name}: ${px}px;`);
   });
 
+  it('declares no length that native lacks', () => {
+    const names = [...narrowCss.matchAll(/--([\w-]+): /g)].map(([, name]) => name);
+    expect(names.sort()).toEqual(Object.keys(NARROW_PX).sort());
+  });
+
   const narrowRules = declarations(narrowCss);
   const wideRules = declarations(wideCss);
 
@@ -94,20 +98,15 @@ describe('narrowLength', () => {
     expect(sum.narrow).toBe(NARROW_PX['page-space'] * 3 - (NARROW_PX['names-bar-height'] + 4));
     expect(sum.css).toBe('((var(--page-space, 20px) * 3) - (var(--names-bar-height, 60px) + 4px))');
   });
-
-  it('has no style value of its own: styles read it through narrowStyles', () => {
-    const length = narrowLength('page-space', 20);
-    // @ts-expect-error A length's style value depends on the page, so it has none.
-    expect(length.value).toBeUndefined();
-  });
 });
 
 describe('narrowStyles', () => {
   // Jest builds the native code (EXPO_OS is inlined at build time).
   it('builds a wide and a narrow sheet off the web, from one builder', () => {
-    const name: NarrowName = 'header-height';
-    const styles = narrowStyles((px) => ({ logo: { width: px(narrowLength(name, 40)) } }));
+    const styles = narrowStyles((px) => ({
+      logo: { width: px(narrowLength('header-height', 40)) },
+    }));
     expect(styles.wide.logo.width).toBe(40);
-    expect(styles.narrow.logo.width).toBe(NARROW_PX[name]);
+    expect(styles.narrow.logo.width).toBe(NARROW_PX['header-height']);
   });
 });

@@ -35,9 +35,9 @@ function Held() {
   return null;
 }
 
-const resize = (width: number, height = 800) =>
+const resize = (width: number) =>
   act(() => {
-    Dimensions.set({ window: { width, height, scale: 1, fontScale: 1 } });
+    Dimensions.set({ window: { width, height: 800, scale: 1, fontScale: 1 } });
   });
 
 let root: Root | undefined;
@@ -54,7 +54,7 @@ const render = () =>
     root.render(
       <SafeAreaProvider
         initialMetrics={{
-          frame: { x: 0, y: 0, width: 0, height: 0 },
+          frame: { x: 0, y: 0, width: 360, height: 640 },
           insets: { top: 24, bottom: 16, left: 0, right: 0 },
         }}
       >
@@ -79,14 +79,14 @@ describe('a native page', () => {
     await render();
     await resize(800);
     expect(seen?.height).toBe(60);
-    expect(seen?.part).toEqual([undefined, undefined]);
+    expect(seen?.part).toBeUndefined();
     await resize(360);
     expect(seen?.height).toBe(NARROW_PX['names-bar-height']);
     expect(mounts).toBe(1);
   });
 
-  it('measures the window less its system bars', async () => {
-    await resize(360, 640);
+  it("measures the app's frame less its system bars", async () => {
+    await resize(360);
     await render();
     expect(seen?.viewport).toBe(640 - 24 - 16);
   });

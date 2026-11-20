@@ -66,14 +66,14 @@ export function StatusHeadline({
   routine,
 }: HeadlineProps) {
   const part = useNarrowPart();
-  const styles = useNarrowStyles(narrow);
+  const styles = useNarrowStyles(STYLES);
   const label = (
     <PlaceLink to={eyebrowLink}>
       {(active) => <Eyebrow tone={active ? 'primary' : 'secondary'}>{eyebrow}</Eyebrow>}
     </PlaceLink>
   );
   return (
-    <Stack gap="2" {...(routine && !failure ? part('wide-only-spoken') : {})}>
+    <Stack gap="2" {...part(routine && !failure && 'wide-only-spoken')}>
       {eyebrowInHeader ? <View {...part('wide-only')}>{label}</View> : label}
       <Text
         role="headingLg"
@@ -164,6 +164,6 @@ function describeLatest({
 const HEADLINE = typography.headingLg;
 const TITLE_SIZE = narrowLength('headline-size', HEADLINE.size);
 
-const narrow = narrowStyles((px) => ({
+const STYLES = narrowStyles((px) => ({
   title: { fontSize: px(TITLE_SIZE), lineHeight: px(TITLE_SIZE.times(HEADLINE.lineHeight)) },
 }));

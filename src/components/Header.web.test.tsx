@@ -2,13 +2,12 @@
 // (package.json) lets @reactive through Babel for it.
 import { describe, expect, it, jest } from '@jest/globals';
 import { SilkProvider } from '@reactive/silk-native';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { readShippedLesson, shippedIds } from '@/lesson/lesson.fixture';
 import { pathNames, variationPath } from '@/lesson/select';
+import { NARROW_PX } from '@/theme/narrow';
 import { themes } from '@/theme/theme';
 
 import { Header, PLACE_TYPE } from './Header';
@@ -53,13 +52,6 @@ describe('Header', () => {
   });
 });
 
-/** A length the narrow page's media query in narrow.css sets, in pixels. */
-function narrowPixels(name: string) {
-  const css = readFileSync(join(__dirname, '../theme/narrow.css'), 'utf8');
-  const narrow = css.slice(css.indexOf('@media (max-width:'));
-  return Number(narrow.match(new RegExp(`--${name}: (\\d+)px;`))![1]);
-}
-
 /**
  * The width a 360px page's header leaves its place: the page less its
  * padding each side, the logo (as tall as the header), the source link or
@@ -68,9 +60,9 @@ function narrowPixels(name: string) {
  */
 const PLACE_AT_360 =
   360 -
-  2 * narrowPixels('page-space') -
-  narrowPixels('header-height') -
-  narrowPixels('header-button-size') -
+  2 * NARROW_PX['page-space'] -
+  NARROW_PX['header-height'] -
+  NARROW_PX['header-button-size'] -
   8 -
   12;
 

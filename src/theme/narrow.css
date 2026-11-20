@@ -21,55 +21,28 @@
  * this layout is the only stacked one.
  */
 @media (max-width: 707.98px) {
-  /* Lengths, read by `narrowLength`: each is NARROW_PX's in narrow.ts, where native reads it. */
+  /* Lengths, read by `narrowLength`. What each is for, and its pixels for native, are in NARROW_PX (narrow.ts). */
   :root {
-    /* Page padding and the gap below the header (Page.tsx). */
     --page-space: 10px;
-    /* The logo, as tall as the round buttons beside it (HeaderButton.tsx): the header's height (Header.tsx). */
     --header-height: 28px;
     --header-button-size: 28px;
     --wordmark-size: 18px;
-    /*
-     * The name bars above and below the board (Stage.tsx): the one with
-     * the move stepper as tall as the stepper, the other one line of names.
-     */
     --controls-bar-height: 48px;
     --names-bar-height: 32px;
-    /*
-     * The player's disc becomes a dot, and the evaluation bar beside the
-     * board a thin strip under it, to give the board their width (Stage.tsx).
-     */
     --player-disc: 10px;
     --player-disc-gap: 6px;
     --player-disc-border: 2px;
     --evaluation-width: 6px;
-    /*
-     * The panel's headline (GameStatus.tsx), down from theme.ts's headingLg
-     * (32px): it shows only when it has news, such as the end of a line, and
-     * sits close above the moves.
-     */
     --headline-size: 20px;
-    /* A row of the opponent's strength list, tall enough to tap (OpponentPicker.tsx). */
     --menu-row-height: 40px;
-    /* Space between the board column and the panel below it (Stage.tsx). */
     --wrapped-gap: 12px;
-    /* Space between the panel's sections (LessonScreen.tsx)... */
     --section-gap: 12px;
-    /* ...and between a section's label and what it labels (Eyebrow.tsx). */
     --label-gap: 6px;
-    /*
-     * In a short window the board shrinks, down to this (Stage.tsx), wide
-     * enough for the player's name bar to fit its status beside the move
-     * buttons...
-     */
     --board-min: 300px;
-    /* ...to leave this much for the panel (a label and a couple of moves, 160px) and the gap above it. */
     --panel-reserve: 172px;
-    /* A candidate row's compact spacing (CandidateList.tsx). */
     --candidate-gap: 8px;
     --candidate-inset: 10px;
     --candidate-padding: 6px;
-    /* The fade at the bottom of the panel and of each of its panes. */
     --fade: 16px;
   }
 
@@ -93,7 +66,7 @@
     display: block;
   }
   /*
-   * The CSS twin of FootnoteChoice.tsx's `visuallyHidden`, for a narrow page only.
+   * The CSS twin of narrow.ts's `visuallyHidden`, for a narrow page only.
    * Out of sight but still read by screen readers, such as a headline that
    * only repeats whose move it is (GameStatus.tsx): the name bars show it, but
    * screen readers hear it only from the headline.

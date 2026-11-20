@@ -57,7 +57,7 @@ export function Header({ place, placeLink, back, onSettings }: HeaderProps) {
         <Text
           role="heading"
           accessibilityRole="header"
-          {...(place ? part('wide-only', styles.wordmark) : { style: styles.wordmark })}
+          {...part(Boolean(place) && 'wide-only', styles.wordmark)}
         >
           Opening Night
         </Text>
@@ -70,7 +70,7 @@ export function Header({ place, placeLink, back, onSettings }: HeaderProps) {
           </Text>
           <Separator orientation="vertical" style={styles.rule} />
         </Inline>
-        <View {...(onSettings ? part('wide-only') : {})}>
+        <View {...part(Boolean(onSettings) && 'wide-only')}>
           <SourceLink />
         </View>
         {onSettings ? (
@@ -119,7 +119,7 @@ function PlaceName({ name, parent, link }: Place & { readonly link?: Destination
               role="heading"
               accessibilityRole="header"
               numberOfLines={1}
-              {...NATIVE_FIT[size]}
+              {...nativeFit(size)}
               tone={active ? 'primary' : undefined}
               style={[
                 styles.name,
@@ -171,16 +171,12 @@ function fitted(text: string, largest: number, reserved: number) {
 
 /**
  * Off the web, a long name shrinks to fit by the text's own fitting, from its
- * largest size down to the smallest.
+ * largest size (where `fitted` leaves it) down to the smallest.
  */
-const NATIVE_FIT = Object.fromEntries(
-  [PLACE_TYPE.underParent, PLACE_TYPE.alone].map((largest) => [
-    largest,
-    NARROW_CSS_LOADS
-      ? {}
-      : { adjustsFontSizeToFit: true, minimumFontScale: PLACE_TYPE.smallest / largest },
-  ]),
-);
+const nativeFit = (largest: number) =>
+  NARROW_CSS_LOADS
+    ? {}
+    : { adjustsFontSizeToFit: true, minimumFontScale: PLACE_TYPE.smallest / largest };
 
 const STYLES = narrowStyles((px) => ({
   // Fills the header but gives way to the source link, so the place gets what's left.

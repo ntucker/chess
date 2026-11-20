@@ -32,7 +32,7 @@ export function Sheet({ title, onClose, children }: Props) {
   // A screen left underneath stays mounted, and the Modal would cover the one on top.
   const focused = useIsFocused();
   const close = useEffectEvent(onClose);
-  const { head } = useNarrowStyles(HEAD);
+  const styles = useNarrowStyles(STYLES);
   useEffect(() => {
     if (!focused) close();
   }, [focused]);
@@ -54,7 +54,7 @@ export function Sheet({ title, onClose, children }: Props) {
             { borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg },
           ]}
         >
-          <Inline align="center" justify="between" wrap="nowrap" style={head}>
+          <Inline align="center" justify="between" wrap="nowrap" style={styles.head}>
             <Text role="heading" accessibilityRole="header">
               {title}
             </Text>
@@ -84,11 +84,8 @@ const CLOSE_ICON = 22;
  */
 const AROUND_BUTTON = HEADER_BUTTON_SIZE.minus(CLOSE_ICON).times(-0.5).plus(INSET);
 
-const HEAD = narrowStyles((px) => ({
+const STYLES = narrowStyles((px) => ({
   head: { paddingTop: px(AROUND_BUTTON), paddingLeft: INSET, paddingRight: px(AROUND_BUTTON) },
-}));
-
-const styles = StyleSheet.create({
   veil: { flex: 1, justifyContent: 'flex-end', alignItems: 'center' },
   sheet: {
     width: '100%',
@@ -100,4 +97,4 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   content: { padding: INSET, paddingTop: HEAD_GAP },
-});
+}));

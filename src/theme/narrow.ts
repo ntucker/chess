@@ -65,7 +65,7 @@ export const NARROW_PX = {
 } as const;
 
 /** A length's name in narrow.css. */
-export type NarrowName = keyof typeof NARROW_PX;
+type NarrowName = keyof typeof NARROW_PX;
 
 /**
  * The parts of the page a narrow page lays out differently. Each is a rule in
@@ -152,6 +152,12 @@ export function narrowCalc(css: string, native: number): number {
 /** A length as a style value, on one kind of page. */
 export type Px = (length: NarrowLength) => number;
 
+/** A length's pixels on each kind of page, off the web. */
+export const PX: Readonly<Record<'wide' | 'narrow', Px>> = {
+  wide: ({ wide }) => wide,
+  narrow: ({ narrow }) => narrow,
+};
+
 /** Styles a component builds from narrow lengths, for a wide and a narrow page. */
 export interface NarrowStyles<T> {
   readonly wide: T;
@@ -171,10 +177,7 @@ export function narrowStyles<T extends Parameters<typeof StyleSheet.create>[0]>(
     const styles = StyleSheet.create(build(({ css, wide }) => narrowCalc(css, wide)));
     return { wide: styles, narrow: styles };
   }
-  return {
-    wide: StyleSheet.create(build(({ wide }) => wide)),
-    narrow: StyleSheet.create(build(({ narrow }) => narrow)),
-  };
+  return { wide: StyleSheet.create(build(PX.wide)), narrow: StyleSheet.create(build(PX.narrow)) };
 }
 
 /** Out of sight, but still read by screen readers. */
@@ -186,7 +189,7 @@ export const visuallyHidden = {
 } as const satisfies ViewStyle;
 
 /** How a part looks off the web: on each kind of page, and the props it takes on a narrow one. */
-export interface NativePart {
+interface NativePart {
   readonly wide?: ViewStyle & TextStyle;
   readonly narrow?: ViewStyle & TextStyle;
   readonly narrowProps?: { readonly numberOfLines?: number };
@@ -201,7 +204,7 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
   'wide-only': { narrow: { display: 'none' } },
   'wide-only-spoken': { narrow: visuallyHidden },
   'narrow-only': { wide: { display: 'none' } },
-  place: { wide: { display: 'none' }, narrow: { display: 'flex' } },
+  place: { wide: { display: 'none' } },
   page: { narrow: { flexGrow: 1 } },
   stage: {
     narrow: {
@@ -219,7 +222,7 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
   'lesson-body': { narrow: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' } },
   'scoresheet-drawer': {
     wide: { display: 'none' },
-    narrow: { display: 'flex', flexGrow: 1, flexShrink: 1, flexBasis: 0, minHeight: 0 },
+    narrow: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minHeight: 0 },
   },
   panes: {
     narrow: { flexGrow: 1, flexShrink: 1, flexBasis: 0, flexDirection: 'row', minHeight: 140 },
@@ -231,6 +234,13 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
   'leads-to-compact': { narrow: { display: 'none' } },
 };
 
+/** What narrow.css does to a part that scrolls on its own: `NarrowScroll` does it natively. */
+const SCROLLS = [
+  'overflow-y: auto',
+  'padding-bottom: var(--fade)',
+  'mask-image: linear-gradient(to bottom, black calc(100% - var(--fade)), transparent)',
+];
+
 /**
  * narrow.css's declarations with no native style, and why, so a new rule
  * there fails narrow.test.ts until it has a native decision.
@@ -238,14 +248,15 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
 export const CSS_ONLY: Readonly<Partial<Record<NarrowPartName, readonly string[]>>> = {
   // A native element doesn't need unhiding: its narrow style replaces its wide one.
   'narrow-only': ['display: block'],
+  // Unhidden as above; native fits the place's name with adjustsFontSizeToFit (Header.tsx).
+  place: ['display: flex', 'container-type: inline-size'],
   // Clips a hidden text's last pixel on the web; a native 1 by 1 view clips it already.
   'wide-only-spoken': ['clip-path: inset(50%)', 'white-space: nowrap'],
-  // Native fits the place's name with adjustsFontSizeToFit (Header.tsx).
-  place: ['container-type: inline-size'],
   // The page fills the window natively by growing in its scroll view (Page.tsx).
   page: ['min-height: 100dvh'],
-  // Native shows the drawer without its rise, or its fade for reduced motion.
+  // Unhidden as above; and native shows the drawer without its rise, or its fade for reduced motion.
   'scoresheet-drawer': [
+    'display: flex',
     'animation: drawer-rise 220ms cubic-bezier(0.2, 0, 0, 1)',
     'animation-name: drawer-fade',
     'animation-duration: 120ms',
@@ -253,21 +264,7 @@ export const CSS_ONLY: Readonly<Partial<Record<NarrowPartName, readonly string[]
   // Native's leads-to takes `narrowProps` instead.
   'leads-to': ['white-space: normal'],
   // `NarrowScroll` scrolls these natively, with a fading edge and the same padding.
-  program: [
-    'overflow-y: auto',
-    'padding-bottom: var(--fade)',
-    'mask-image: linear-gradient(to bottom, black calc(100% - var(--fade)), transparent)',
-  ],
-  'moves-pane': [
-    'overscroll-behavior: contain',
-    'overflow-y: auto',
-    'padding-bottom: var(--fade)',
-    'mask-image: linear-gradient(to bottom, black calc(100% - var(--fade)), transparent)',
-  ],
-  'idea-pane': [
-    'overscroll-behavior: contain',
-    'overflow-y: auto',
-    'padding-bottom: var(--fade)',
-    'mask-image: linear-gradient(to bottom, black calc(100% - var(--fade)), transparent)',
-  ],
+  program: SCROLLS,
+  'moves-pane': ['overscroll-behavior: contain', ...SCROLLS],
+  'idea-pane': ['overscroll-behavior: contain', ...SCROLLS],
 };
