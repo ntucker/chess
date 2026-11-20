@@ -43,6 +43,14 @@ const LESSON = testLesson({
   [keyAfter('d4', 'e5', 'dxe5')]: at([{ uci: uci('d4', 'e5', 'dxe5', 'Nc6'), book: true }]),
 });
 
+/** `LESSON` with 1...c5 beside 1...e5, and no 1...d5. */
+const WITH_C5 = testLesson({
+  ...Object.fromEntries(
+    Object.entries(LESSON.positions).filter(([key]) => key !== keyAfter('d4', 'd5')),
+  ),
+  [keyAfter('d4')]: at([{ uci: uci('d4', 'e5'), book: true }, { uci: uci('d4', 'c5') }]),
+});
+
 /** About even everywhere but after 1...e5, where White is a pawn and a half up. */
 const evaluate = async (_line: readonly string[], key: string): Promise<Evaluation> =>
   key === keyAfter('d4', 'e5') || key === keyAfter('d4', 'e5', 'dxe5')
@@ -63,16 +71,8 @@ describe('engineCheck', () => {
   });
 
   it("picks again among the guide's other moves where it overruled one, instead of ending the line", async () => {
-    const others = {
-      ...LESSON,
-      positions: {
-        ...LESSON.positions,
-        // 1...c5 is listed beside the overruled 1...e5: it is picked instead of the line ending.
-        [keyAfter('d4')]: at([{ uci: uci('d4', 'e5'), book: true }, { uci: uci('d4', 'c5') }]),
-      },
-    };
-    delete others.positions[keyAfter('d4', 'd5')];
-    const { lesson, report } = await engineCheck(others, evaluate);
+    // 1...c5 is listed beside the overruled 1...e5: it is picked instead of the line ending.
+    const { lesson, report } = await engineCheck(WITH_C5, evaluate);
     expect(report.cut).toEqual([]);
     expect(report.refilled).toEqual({
       filled: [{ line: '1.d4', move: 'c5', why: "Stockfish's best of the guide's moves" }],
@@ -84,20 +84,12 @@ describe('engineCheck', () => {
   });
 
   it("reports a line it ends after overruling all the guide's moves apart from cut lines", async () => {
-    const others = {
-      ...LESSON,
-      positions: {
-        ...LESSON.positions,
-        [keyAfter('d4')]: at([{ uci: uci('d4', 'e5'), book: true }, { uci: uci('d4', 'c5') }]),
-      },
-    };
-    delete others.positions[keyAfter('d4', 'd5')];
     // 1...c5 loses too, and the engine names no move of its own.
     const losing = (line: readonly string[], key: string) =>
       key === keyAfter('d4', 'c5')
         ? Promise.resolve({ score: 0.64, pawns: 1.5 })
         : evaluate(line, key);
-    const { report } = await engineCheck(others, losing);
+    const { report } = await engineCheck(WITH_C5, losing);
     expect(report.cut).toEqual([]);
     expect(report.refilled.filled).toEqual([]);
     expect(report.refilled.ended.map(({ line, moves }) => [line, moves])).toEqual([

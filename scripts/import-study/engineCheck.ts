@@ -119,12 +119,12 @@ export async function engineCheck(
   // judging what book moves still reach: the line goes on through the guide's own.
   const refilled = await fillBookWith({ ...lesson, positions }, evaluation);
   const reached = bookReach(refilled.lesson);
-  const unbookedUnreached: Record<PositionKey, LessonPosition> = { ...refilled.lesson.positions };
-  for (const [key, position] of Object.entries(unbookedUnreached)) {
+  const positionsLeft: Record<PositionKey, LessonPosition> = { ...refilled.lesson.positions };
+  for (const [key, position] of Object.entries(positionsLeft)) {
     const at = lines.get(key);
     // A position no line reaches is the checker's to refuse, not this.
     if (reached.has(key) || !at) continue;
-    unbookedUnreached[key] = {
+    positionsLeft[key] = {
       ...position,
       moves: position.moves.map(({ book, ...move }) => {
         if (book)
@@ -134,7 +134,7 @@ export async function engineCheck(
     };
   }
   return {
-    lesson: { ...refilled.lesson, positions: unbookedUnreached },
+    lesson: { ...refilled.lesson, positions: positionsLeft },
     report: { ...report, refilled: refilled.report },
   };
 }
@@ -277,7 +277,7 @@ async function fillBookWith(
 /**
  * The book move `fillBook` picks at `at`, and why: one of the guide's moves
  * there, or the engine's own when it overrules them all; undefined when it
- * names none. It reads no trap notes: a move a trap warns against is picked
+ * names none. It reads no trap ideas: a move a trap warns against is picked
  * like any other the engine rates no mistake.
  */
 async function pickBookMove(
