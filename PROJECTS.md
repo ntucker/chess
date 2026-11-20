@@ -4,17 +4,19 @@ Read this only when your instructions tell you to: you are an agent in a long-ru
 Claude project that works on this repo. Plain agent sessions in this repo follow `AGENTS.md` alone;
 nothing here applies to them.
 
-Root `AGENTS.md` and `.agents/skills` still apply. This file adds how project agents run work end to
-end. Your project's own instructions win where they differ. Where this file and `AGENTS.md` differ, the
-repo wins; tell the coordinator so one gets fixed. Re-read this file when the coordinator says it
-changed. Coordinators setting up a new project follow `.agents/projects/setup.md`.
+Root `AGENTS.md` and `.agents/skills` still apply. This file adds how project agents run work in
+`ntucker/chess` end to end; for other repos, see "Upstream fixes". Your project's own instructions
+win where they differ. Where this file and `AGENTS.md` differ, the repo wins; tell the coordinator
+so one gets fixed. Re-read this file when the coordinator says it changed. Coordinators setting up a
+new project follow `.agents/projects/setup.md`.
 
 ## Roles and models
 
-- Coordinator: the project chat session. Worker: a thread. Tell the coordinator: `message_coordinator`.
+- Coordinator: the project chat session. Worker: a thread, which implements on Opus. Tell the
+  coordinator: `message_coordinator`.
 - Default for advisors and subagents: the strongest model (latest Fable). Exceptions:
   - Haiku: post-push reviews.
-  - Sonnet: simple merge conflicts.
+  - Sonnet: simple merge conflicts, and the autoland review.
 - The coordinator runs at most 3 workers at once, unless the person set another cap in project memory.
 - Workers rely on user-kit's skills (Skill tool) and workflows (Workflow tool), both named
   `user-kit:<name>`. If one you need is missing, use the fallback the step gives; with none, pause
@@ -41,10 +43,18 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
    engineering, adversarial, reuse and React data flow. Verify each finding; fix real ones, reject the
    rest with a reason. Do not launch them while the person is actively writing in your thread:
    subagents can pick up the message and reply in your name.
-7. Once the change is verified correct, run skill "simplify", verify its findings, and push the
-   cleanups (a push, so step 6 runs again) before calling the PR done. If the change has
-   architecture implications, then run skill `user-kit:clean-code` the same way.
-8. The person squash-merges. A worker's PR ends when it merges, not when it is handed over.
+7. Once the change is verified correct, run these passes in order. Verify each pass's findings and
+   push the fixes (each push reruns step 6) before calling the PR done.
+   - Skill "simplify", then skill `user-kit:clean-code` if the change has architecture implications.
+   - If the PR changes roughly 1k+ lines of code (judge from its diff stat; scripts and data such as
+     lessons don't count): once per PR, alongside the previous pass's step 6 (or alone if it pushed
+     nothing), have a Fable subagent load `user-kit:clean-code` and look for architectural
+     simplifications, weighing what will likely stay the same and what might change (over time and
+     space).
+   - If agent instructions changed (`AGENTS.md`, `CLAUDE.md`, `PROJECTS.md`, `.agents/`, skills,
+     prompts): audit those changes with skill `user-kit:agent-instructions`.
+8. Land your own PR (squash-merge) as `.agents/projects/autoland.md` says. A worker's PR ends when
+   it merges, not when it is handed over.
 
 ## PR descriptions
 
@@ -54,19 +64,28 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
 - Visible UI changes include screenshots of the web export, built and served locally as described
   in the "Web deploys" section of README.md. Add light and
   dark versions only when the change looks different between the two (colors, theme tokens, images).
+- PRs touching Android-only code (native modules or config, worklets like `src/maia/runNetwork.ts`,
+  `android` branches of `Platform.OS`) say "untested on Android".
 
 ## Follow-ups
 
 Never leave a follow-up (a review finding, a nearby bug, a cleanup) dangling, and decide yourself.
 Fix it in the PR by default; always fix there anything the PR made worse. Reject it only when it is
 wrong, with a stated reason. Hand it on only when it is blocked (it needs another unmerged PR, or a
-goal-changing choice, secret or access only the person can give) or in a different area than the
-PR's goal:
+goal-changing choice, secret or access only the person can give), in a different area than the
+PR's goal, or a redesign from an edge-case bug (below):
 
 - Project-scope work: tell the coordinator, with a self-contained brief. The coordinator queues it.
 - Work outside the project's scope: draft a GitHub issue on `ntucker/chess` (self-contained) and hand
   it to the coordinator. File it yourself only when the person asked in their own words.
 - The same holds for any other write outside the repo and your PR (GitHub comments elsewhere, Slack).
+
+When you fix a bug caused by an edge case, ask whether the edge case is intrinsic to the problem or
+a sign of a weak abstraction. If it may be the abstraction, have a Fable subagent load
+`user-kit:clean-code` and look for a simpler design with stronger invariants that rules out that
+class of bug. Hand a good idea on as a high-priority follow-up (a redesign needs its own reviewed
+plan). The follow-up's brief says to start with a subagent's adversarial review of the plan, then
+implement.
 
 ## Talking to the person
 
@@ -92,10 +111,7 @@ Link the upstream PR from the chess PR, and say "merge <upstream PR> first" when
 
 ## Person's machine
 
-Work needing the person's PC (local tools) runs on GLADOS, a Windows PC: threads start a Remote
-Control session (`start_remote_control`). Build Android from Windows, not WSL (no Android SDK or Java
-there). PRs touching Android-only code (native modules or config, worklets like
-`src/maia/runNetwork.ts`, `android` branches of `Platform.OS`) say "untested on Android".
+Work needing the person's PC (local tools, Android builds): see `.agents/projects/person-machine.md`.
 
 ## Keeping this file current
 

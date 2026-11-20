@@ -1,12 +1,22 @@
-// What the pointer does on the board that chessground doesn't report: where
-// a piece being dragged is over. Moves still belong to chessground, and a
-// pointer that only passes over the board reports nothing.
+// Which pointers hover, and what the pointer does on the board that
+// chessground doesn't report: where a piece being dragged is over. Moves
+// still belong to chessground, and a pointer that only passes over the board
+// reports nothing.
 
 /**
  * Whether a pointer of `pointerType` hovers: a mouse does; a finger or pen
- * only presses. The panels beside the board go by this rule.
+ * only presses. The panels beside the board go by this rule; a control
+ * goes by `hoversControl`, which counts a pen.
  */
 export const hovers = (pointerType: string) => pointerType === 'mouse';
+
+/**
+ * Whether a pointer of `pointerType` hovers a control: anything but a finger,
+ * whose pointer leaves as it lifts. React Native Web's Pressable goes by this
+ * rule, so a popup that a Pressable opens on hover goes by it too: a pen that
+ * opens it by hovering the Pressable then holds it open by hovering the popup.
+ */
+export const hoversControl = (pointerType: string) => pointerType !== 'touch';
 
 /** A piece being dragged from `from`, over `to`: absent over its own square or off the board. */
 export interface Drag<S extends string> {

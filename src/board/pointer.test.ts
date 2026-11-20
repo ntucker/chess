@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from '@jest/globals';
 
-import { type Drag, hovers, watchDrag } from './pointer';
+import { type Drag, hovers, hoversControl, watchDrag } from './pointer';
 
 /** Squares 10 pixels wide along one rank: x 0-9 is a1, 10-19 is b1, and so on; nothing past h1. */
 const squareAt = (x: number) =>
@@ -110,5 +110,13 @@ describe('hovers', () => {
     expect(hovers('mouse')).toBe(true);
     expect(hovers('touch')).toBe(false);
     expect(hovers('pen')).toBe(false);
+  });
+});
+
+describe('hoversControl', () => {
+  it('counts a mouse and a pen, not a finger', () => {
+    expect(hoversControl('mouse')).toBe(true);
+    expect(hoversControl('pen')).toBe(true);
+    expect(hoversControl('touch')).toBe(false);
   });
 });

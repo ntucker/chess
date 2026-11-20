@@ -73,6 +73,8 @@ const surfaces = {
     textPrimary: '#221a33',
     textSecondary: '#675d76',
     borderSubtle: '#e3d9c6',
+    // The veil behind a sheet: plum ink on the paper.
+    overlay: rgba('#221a33', 0.42),
   },
   dark: {
     surface: '#120d1f',
@@ -81,6 +83,8 @@ const surfaces = {
     textPrimary: '#f4eee2',
     textSecondary: '#a99fbb',
     borderSubtle: '#2e2645',
+    // The veil behind a sheet: the stage's darkness.
+    overlay: rgba('#0b0815', 0.72),
   },
 } as const;
 

@@ -3,9 +3,11 @@ import { Image, StyleSheet, View } from 'react-native';
 
 import { BackButton } from '@/components/BackButton';
 import { Eyebrow } from '@/components/Eyebrow';
+import { HeaderButton } from '@/components/HeaderButton';
 import { CHEVRON_WIDTH, type Destination, PlaceLink } from '@/components/PlaceLink';
 import { SourceLink } from '@/components/SourceLink';
 import { NARROW_CSS_LOADS, narrowCalc, narrowLength, narrowPart } from '@/theme/narrow';
+import { NarrowOnly } from '@/theme/NarrowOnly';
 import { fonts } from '@/theme/theme';
 
 /** The header's height: its logo, the tallest thing in it. Shorter on a narrow web page. */
@@ -27,6 +29,13 @@ export interface HeaderProps {
    * page underneath, or to this address when nothing is (`BackButton`).
    */
   readonly back?: Destination;
+  /**
+   * Opens the page's settings, which a narrow web page keeps in a sheet: there
+   * a settings button takes the source link's place, so the sheet should link
+   * to the source (`SourceFootnote`). Elsewhere the page shows its settings
+   * itself, and no button shows.
+   */
+  readonly onSettings?: () => void;
 }
 
 /**
@@ -35,7 +44,7 @@ export interface HeaderProps {
  * one slim row: a smaller logo, the page's `place` (or the name, when there
  * is none), and no tagline. A page on top of another starts with a back button.
  */
-export function Header({ place, placeLink, back }: HeaderProps) {
+export function Header({ place, placeLink, back, onSettings }: HeaderProps) {
   // Only narrow.css shows it, so a native app keeps the name.
   const shownPlace = NARROW_CSS_LOADS ? place : undefined;
   return (
@@ -64,7 +73,20 @@ export function Header({ place, placeLink, back }: HeaderProps) {
           </Text>
           <Separator orientation="vertical" style={styles.rule} />
         </Inline>
-        <SourceLink />
+        <View {...(onSettings ? narrowPart('wide-only') : {})}>
+          <SourceLink />
+        </View>
+        {onSettings ? (
+          <NarrowOnly>
+            <HeaderButton
+              icon="settings-outline"
+              iconSize={19}
+              accessibilityRole="button"
+              accessibilityLabel="Settings"
+              onPress={onSettings}
+            />
+          </NarrowOnly>
+        ) : null}
       </Inline>
     </Inline>
   );

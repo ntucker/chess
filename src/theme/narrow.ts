@@ -21,10 +21,11 @@ export const NARROW_LENGTHS = [
   'headline-size',
   'wrapped-gap',
   'board-min',
-  'source-link-size',
+  'header-button-size',
   'panel-reserve',
   'section-gap',
   'label-gap',
+  'menu-row-height',
 ] as const;
 
 /** The parts of the page that narrow.css lays out differently. */
@@ -39,10 +40,16 @@ export const NARROW_PARTS = [
   'program',
   'player-names',
   'lone-verdict',
-  'chips',
-  'chip',
-  'chip-fit',
-  'chip-hidden',
+  'lesson-panel',
+  'lesson-body',
+  'scoresheet-drawer',
+  'panes',
+  'moves-pane',
+  'idea-pane',
+  'compact-list',
+  'candidate-row',
+  'share-track',
+  'leads-to',
 ] as const;
 
 /**
