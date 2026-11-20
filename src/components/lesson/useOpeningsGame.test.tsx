@@ -7,7 +7,7 @@ import { SettingsProvider, useSettings } from '@/settings/SettingsProvider';
 
 import { useOpeningsGame } from './useOpeningsGame';
 
-const mockRouter = { push: jest.fn(), replace: jest.fn(), dismissTo: jest.fn() };
+const mockRouter = { push: jest.fn(), replace: jest.fn() };
 jest.mock('expo-router', () => ({ useRouter: () => mockRouter }));
 
 let root: Root | undefined;
@@ -113,7 +113,7 @@ describe('useOpeningsGame', () => {
     await show('caro-kann');
     await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
     await play('g1f3');
-    expect(mockRouter.dismissTo).toHaveBeenCalledWith('/');
+    expect(mockRouter.replace).toHaveBeenCalledWith('/');
     // Arriving there keeps the game.
     await show();
     expect(moves()).toEqual(['g1f3']);
@@ -144,7 +144,6 @@ describe('useOpeningsGame', () => {
     // step to the start and then 1.d4 d5 2.c4 would replace e4 and pick the Slav.
     act(() => latest().store[1]({ type: 'goto', ply: 0 }));
     await play('d2d4', 'd7d5', 'c2c4');
-    expect(mockRouter.dismissTo).not.toHaveBeenCalled();
     expect(mockRouter.replace).not.toHaveBeenCalled();
     expect(latest().lesson).toBeUndefined();
     // Back to the start: the page shows the game again, and takes moves.
@@ -161,12 +160,12 @@ describe('useOpeningsGame', () => {
     await show('london');
     expect(latest().side).toBe('white');
     expect(moves()).toEqual(['d2d4']);
-    // Only a choice of the learner's is saved.
-    expect(latest().setting).toBe('black');
+    // The address saves its side, so a reload at the start agrees.
+    expect(latest().setting).toBe('white');
     // A first move that picks no White lesson returns to a White start.
     await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
     await play('e2e4');
-    expect(mockRouter.dismissTo).toHaveBeenCalledWith('/');
+    expect(mockRouter.replace).toHaveBeenCalledWith('/');
     await show();
     expect(latest().side).toBe('white');
   });
@@ -198,6 +197,21 @@ describe('useOpeningsGame', () => {
       expect([store[0].moves, side, lesson]).toEqual([[], 'white', undefined]);
     }
     expect(latest().pending).toBe(false);
+  });
+
+  it('keeps the shown side and the saved one together through Forward and Back after a swap', async () => {
+    await show();
+    await play('e2e4', 'c7c6');
+    await show('caro-kann');
+    await act(() => latest().store[1]({ type: 'goto', ply: 0 }));
+    await act(() => latest().playAs('white'));
+    await show();
+    expect([latest().side, latest().setting]).toEqual(['white', 'white']);
+    // Forward to the Caro-Kann plays it as Black, and Back keeps Black.
+    await show('caro-kann');
+    expect([latest().side, latest().setting]).toEqual(['black', 'black']);
+    await show();
+    expect([latest().side, latest().setting]).toEqual(['black', 'black']);
   });
 
   it('shows a move within a lesson at once', async () => {
