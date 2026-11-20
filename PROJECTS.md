@@ -57,8 +57,16 @@ changed. Coordinators setting up a new project follow `.agents/projects/setup.md
 
 ## Follow-ups
 
-Never leave one dangling. Fold it into the PR if it improves it, reject it with a stated reason, or
-hand it on:
+A follow-up is extra work found while doing a PR: a review finding, a nearby bug, a cleanup. Fix it
+in the PR by default, and always fix there anything the PR made worse. Decide yourself; don't ask the
+person. Hand it on only when it is:
+
+- blocked: it needs another unmerged PR, or something only the person can give (a choice that
+  changes their goal, a secret, access); or
+- in a different area than the PR's goal (for example, a lesson-screen layout change found during an
+  importer PR).
+
+Reject it instead when it is wrong, with a stated reason. Never leave one dangling. To hand one on:
 
 - Project-scope work: tell the coordinator, with a self-contained brief. The coordinator adds it to
   the work queue (the work-queue tool, never the queue file by hand).
