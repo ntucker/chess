@@ -168,8 +168,8 @@ function LessonScreen({
   // loading its lesson and progress, so playing it needn't wait. A failure
   // shows once the opening is picked.
   const load = (id: LessonId) => {
-    ctrl.fetchIfStale(getLesson, id).catch(() => {});
-    ctrl.fetchIfStale(getProgress, id).catch(() => {});
+    ctrl.fetchIfStale(getLesson, id);
+    ctrl.fetchIfStale(getProgress, id);
   };
   const pointCandidate = (uci: Uci) => {
     const into = opening(uci);
