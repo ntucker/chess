@@ -69,6 +69,19 @@ function listed(
   };
 }
 
+/**
+ * The ids from `variation` down to the one with `id`, both included: the
+ * branches to open to show it. Empty when `id` isn't under `variation`.
+ */
+export function listedPath(variation: ListedVariation, id: VariationId): VariationId[] {
+  if (variation.id === id) return [id];
+  for (const child of variation.children) {
+    const path = listedPath(child, id);
+    if (path.length) return [variation.id, ...path];
+  }
+  return [];
+}
+
 /** `moves` from the one after `from` on, numbered: `1.e4 c6`, or `3...dxe4 4.Nxe4`. */
 function lineText(moves: readonly Uci[], from: number): string {
   return numberedLine(lineSans(moves).slice(from), from + 1);

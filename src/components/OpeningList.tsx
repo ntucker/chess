@@ -1,13 +1,14 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Badge, Pressable, Stack, Text, useTheme } from '@reactive/silk-native';
 import { Link, useRouter } from 'expo-router';
 import {
   type ComponentRef,
-  Fragment,
   type ReactNode,
   use,
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react';
 import { Text as RNText, StyleSheet, View } from 'react-native';
 
@@ -20,13 +21,14 @@ import { type Color, COLORS, colorName } from '@/game/replay';
 import type { VariationId } from '@/lesson/lesson';
 import { variationHref } from '@/lesson/openings';
 import {
+  listedPath,
   type ListedOpening,
   type ListedVariation,
   type ListPlace,
   openingList,
 } from '@/lesson/openingList';
 import { LessonIndexContext, type LessonId } from '@/resources/lesson';
-import { fonts } from '@/theme/theme';
+import { fonts, typography } from '@/theme/theme';
 
 /**
  * Every opening the app teaches, by the side the learner plays, each with
@@ -95,7 +97,10 @@ function SideSection({
   );
 }
 
-/** One opening: its name, which opens it, then its variations; `here` is the one the board was in. */
+/**
+ * One opening: its name, then its variations as a tree, each branch closed
+ * but those on the way to `here`, the variation the board was in.
+ */
 function OpeningEntry({
   opening,
   here,
@@ -106,16 +111,15 @@ function OpeningEntry({
   const { root } = opening;
   return (
     <View style={styles.opening}>
-      <LineLink
+      <Branch
         lesson={opening.id}
         variation={root}
-        here={here === root.id}
         depth={0}
+        here={here}
+        path={here === undefined ? [] : listedPath(root, here)}
+        gutter
         tag={here === undefined ? undefined : <NowPlaying />}
       />
-      <View style={styles.rows}>
-        <VariationRows lesson={opening.id} variations={root.children} depth={1} here={here} />
-      </View>
       <View style={styles.credits}>
         <SourceCredits sources={opening.sources} />
       </View>
@@ -123,29 +127,73 @@ function OpeningEntry({
   );
 }
 
-/** `variations` at `depth` of the tree (1 under the opening), each followed by those under it. */
-function VariationRows({
+/**
+ * `variation`'s row at `depth` of the tree (0 for the opening), then, while
+ * it is open, the branches under it, hung from its chevron on a thin rule.
+ * A branch starts open when it is on `path`, the way to the variation the
+ * board was in; the learner's own toggle wins from then on. `gutter` keeps
+ * the chevron's space before a row without one, when a row beside it has one.
+ */
+function Branch({
   lesson,
-  variations,
+  variation,
   depth,
   here,
+  path,
+  gutter,
+  tag,
 }: {
   readonly lesson: LessonId;
-  readonly variations: readonly ListedVariation[];
+  readonly variation: ListedVariation;
   readonly depth: number;
   readonly here?: VariationId;
+  readonly path: readonly VariationId[];
+  readonly gutter: boolean;
+  readonly tag?: ReactNode;
 }) {
-  return variations.map((variation) => (
-    <Fragment key={variation.id}>
-      <LineLink lesson={lesson} variation={variation} here={here === variation.id} depth={depth} />
-      <VariationRows
+  const { theme } = useTheme();
+  const [toggled, setToggled] = useState<boolean>();
+  const { children } = variation;
+  const branches = children.length > 0;
+  const open = branches && (toggled ?? path.includes(variation.id));
+  const childGutter = children.some((child) => child.children.length > 0);
+  return (
+    <>
+      <LineLink
         lesson={lesson}
-        variations={variation.children}
-        depth={depth + 1}
-        here={here}
+        variation={variation}
+        here={here === variation.id}
+        depth={depth}
+        tag={tag}
+        open={branches ? open : undefined}
+        gutter={gutter}
+        onToggle={() => setToggled(!open)}
       />
-    </Fragment>
-  ));
+      {open ? (
+        <View
+          style={[
+            styles.rows,
+            depth > 0 && {
+              ...styles.subRows,
+              borderLeftColor: theme.semantic.color.borderSubtle,
+            },
+          ]}
+        >
+          {children.map((child) => (
+            <Branch
+              key={child.id}
+              lesson={lesson}
+              variation={child}
+              depth={depth + 1}
+              here={here}
+              path={path}
+              gutter={childGutter}
+            />
+          ))}
+        </View>
+      ) : null}
+    </>
+  );
 }
 
 function NowPlaying() {
@@ -162,7 +210,9 @@ function NowPlaying() {
  * On a narrow page the moves drop below, right-aligned. The variation the
  * board was in (`here`) is marked, and goes back to the board as it was;
  * any other opens the board's page at its line. `depth` 0 is the opening's
- * own heading, with `tag` beside its name; each depth past 1 hangs further in.
+ * own heading, with `tag` beside its name. A variation with others under it
+ * has a chevron before it that shows or hides them (`open`); without one,
+ * `gutter` keeps its space so the names in a column line up.
  */
 function LineLink({
   lesson,
@@ -170,82 +220,113 @@ function LineLink({
   here,
   depth,
   tag,
+  open,
+  gutter,
+  onToggle,
 }: {
   readonly lesson: LessonId;
   readonly variation: ListedVariation;
   readonly here: boolean;
   readonly depth: number;
   readonly tag?: ReactNode;
+  readonly open?: boolean;
+  readonly gutter: boolean;
+  readonly onToggle: () => void;
 }) {
   const router = useRouter();
   const { theme } = useTheme();
   const { color } = theme.semantic;
   const { accent, neutral } = color.tones;
   const href = variationHref(lesson, variation.id);
+  const nameRole = NAME_ROLE[Math.min(depth, 2)];
+  // The chevron sits level with the name's first line, however the row wraps.
+  const firstLine = 2 * ROW_PAD + typography[nameRole].size * typography[nameRole].lineHeight;
   // The list opens on where the board was, however far down it is.
   const row = useRef<ComponentRef<typeof View>>(null);
   useEffect(() => {
     if (here) scrollIntoView(row.current);
   }, [here]);
   return (
-    <Link
-      href={href}
-      asChild
-      onPress={(event) => {
-        if (!plainPress(event)) return;
-        event.preventDefault();
-        // The board's page is underneath as the learner left it. Another line
-        // leaves the list for it, as if picked on the board: Back then
-        // returns to the game the learner left there, not to the list.
-        if (!router.canGoBack()) router.replace(href);
-        else {
-          router.back();
-          if (!here) router.push(href);
-        }
-      }}
-    >
-      <Pressable
-        accessibilityRole="link"
-        accessibilityLabel={`${variation.name}, ${variation.line}${here ? ', where you are: back to your game' : ''}`}
-        style={styles.link}
-      >
-        {({ hovered, pressed }) => {
-          const ink = here ? accent.text : color.textPrimary;
-          return (
+    <View style={styles.branch}>
+      {open === undefined ? (
+        gutter && <View style={styles.toggle} />
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Variations of ${variation.name}`}
+          aria-expanded={open}
+          hitSlop={4}
+          onPress={onToggle}
+          style={[styles.toggle, { height: firstLine }]}
+        >
+          {({ hovered, pressed }) => (
             <View
-              ref={row}
               style={[
-                styles.row,
-                depth > 1 && {
-                  ...styles.subRow,
-                  marginLeft: SUB_INDENT * (depth - 1),
-                  borderLeftColor: color.borderSubtle,
-                },
-                here && { backgroundColor: accent.subtle },
-                (hovered || pressed) && {
-                  backgroundColor: here ? accent.subtleHover : neutral.subtle,
-                },
+                styles.toggleFace,
+                (hovered || pressed) && { backgroundColor: neutral.subtle },
               ]}
             >
-              {here ? <View style={[styles.dot, { backgroundColor: accent.solid }]} /> : null}
-              <View style={styles.name}>
-                <Text
-                  role={NAME_ROLE[Math.min(depth, 2)]}
-                  style={[depth === 0 && styles.openingName, { color: ink }]}
-                >
-                  {variation.name}
-                </Text>
-                {tag}
-              </View>
-              <View style={[styles.leader, { borderBottomColor: neutral.border }]} />
-              <Text role="caption" tone="secondary" style={styles.line}>
-                {variation.line}
-              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={CHEVRON}
+                color={hovered || pressed ? color.textPrimary : color.textSecondary}
+                style={open && styles.chevronOpen}
+              />
             </View>
-          );
+          )}
+        </Pressable>
+      )}
+      <Link
+        href={href}
+        asChild
+        onPress={(event) => {
+          if (!plainPress(event)) return;
+          event.preventDefault();
+          // The board's page is underneath as the learner left it. Another line
+          // leaves the list for it, as if picked on the board: Back then
+          // returns to the game the learner left there, not to the list.
+          if (!router.canGoBack()) router.replace(href);
+          else {
+            router.back();
+            if (!here) router.push(href);
+          }
         }}
-      </Pressable>
-    </Link>
+      >
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={`${variation.name}, ${variation.line}${here ? ', where you are: back to your game' : ''}`}
+          style={styles.link}
+        >
+          {({ hovered, pressed }) => {
+            const ink = here ? accent.text : color.textPrimary;
+            return (
+              <View
+                ref={row}
+                style={[
+                  styles.row,
+                  here && { backgroundColor: accent.subtle },
+                  (hovered || pressed) && {
+                    backgroundColor: here ? accent.subtleHover : neutral.subtle,
+                  },
+                ]}
+              >
+                {here ? <View style={[styles.dot, { backgroundColor: accent.solid }]} /> : null}
+                <View style={styles.name}>
+                  <Text role={nameRole} style={[depth === 0 && styles.openingName, { color: ink }]}>
+                    {variation.name}
+                  </Text>
+                  {tag}
+                </View>
+                <View style={[styles.leader, { borderBottomColor: neutral.border }]} />
+                <Text role="caption" tone="secondary" style={styles.line}>
+                  {variation.line}
+                </Text>
+              </View>
+            );
+          }}
+        </Pressable>
+      </Link>
+    </View>
   );
 }
 
@@ -258,8 +339,10 @@ function scrollIntoView(row: ComponentRef<typeof View> | null) {
 /** The list's width: one column, a program's page, wide enough for a long line beside its name. */
 const CONTENT_MAX = 760;
 const DOT = 8;
-/** How far each level of sub-variation hangs in from the one above. */
-const SUB_INDENT = 22;
+const CHEVRON = 14;
+/** The chevron's column: a row without one keeps it when a row beside it has one. */
+const TOGGLE = 28;
+const ROW_PAD = 8;
 /** A row's name, by depth: the opening's heading, a variation, a sub-variation. */
 const NAME_ROLE = ['headingLg', 'body', 'bodySm'] as const;
 
@@ -272,7 +355,19 @@ const styles = StyleSheet.create({
   openingName: { fontFamily: fonts.display },
   nowText: { textTransform: 'uppercase', letterSpacing: 1.2 },
   rows: { gap: 2 },
-  link: { borderRadius: 8, outlineOffset: -2 },
+  // Sub-variations hang from their parent's chevron on a thin rule.
+  subRows: { marginLeft: TOGGLE / 2, paddingLeft: 6, borderLeftWidth: 1 },
+  branch: { flexDirection: 'row', alignItems: 'flex-start' },
+  toggle: { width: TOGGLE, alignItems: 'center', justifyContent: 'center', borderRadius: 6 },
+  toggleFace: {
+    width: TOGGLE,
+    height: TOGGLE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+  },
+  chevronOpen: { transform: [{ rotate: '90deg' }] },
+  link: { flex: 1, borderRadius: 8, outlineOffset: -2 },
   row: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -280,11 +375,9 @@ const styles = StyleSheet.create({
     columnGap: 10,
     rowGap: 2,
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingVertical: ROW_PAD,
     borderRadius: 8,
   },
-  // A sub-variation hangs off its parent's row on a thin rule.
-  subRow: { borderLeftWidth: 1, borderTopLeftRadius: 0, borderBottomLeftRadius: 0 },
   dot: { width: DOT, height: DOT, borderRadius: DOT / 2, alignSelf: 'center' },
   name: { flexShrink: 1, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 },
   // Dots from the name to the moves, as a printed program sets its pages.
