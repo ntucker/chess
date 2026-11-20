@@ -8,6 +8,7 @@ import {
   dropMove,
   lastPosition,
   lineMove,
+  NAMED_MOVE,
   numberedLine,
   pieceAt,
   playMove,
@@ -15,6 +16,23 @@ import {
   replay,
   toUci,
 } from './replay';
+
+describe('NAMED_MOVE', () => {
+  const read = (text: string) =>
+    [...text.matchAll(new RegExp(NAMED_MOVE, 'g'))].map(([, number, dots, bare, san]) => [
+      number ?? (bare ? '...' : ''),
+      dots ?? '',
+      san,
+    ]);
+
+  it('reads ... right after a word, but no bare move right after one', () => {
+    expect(read('Qxd4...Qxd4 and 12...Nf6, not x5.e4')).toEqual([
+      ['', '', 'Qxd4'],
+      ['...', '', 'Qxd4'],
+      ['12', '..', 'Nf6'],
+    ]);
+  });
+});
 
 describe('numberedLine', () => {
   it('numbers a line from the first move, or from a Black move', () => {

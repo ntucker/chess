@@ -362,6 +362,7 @@ describe('convertChapters', () => {
 
     it('reads ? and ?? as mistakes, but not ?! or a move with no number to place it', async () => {
       for (const [text, mistakes] of [
+        ['3.e3? e5 traps the bishop.', ['e3']],
         ['3.e3?? e5 traps the bishop.', ['e3']],
         ['3.e3?! e5 traps the bishop.', undefined],
         ['e3? e5 traps the bishop.', undefined],
