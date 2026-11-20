@@ -58,19 +58,22 @@ function Page({
 let entry = 0;
 /** How many times each depth's entry was replaced, as each replace makes a new key. */
 let replaced: number[] = [];
+/** The page at an address, in the history entry `key` names. */
+const render = (address: LessonId | undefined, variation: string | undefined, key?: string) =>
+  act(() => {
+    root ??= createRoot();
+    root.render(
+      <SettingsProvider>
+        <Page address={address} variation={variation} entry={key} />
+      </SettingsProvider>,
+    );
+  });
 /**
  * The page at an address, in the same history entry, as the router keeps it
  * when only the variation changes: the game dropping it, or a link to it.
  */
 const show = (address?: LessonId, variation?: string) =>
-  act(() => {
-    root ??= createRoot();
-    root.render(
-      <SettingsProvider>
-        <Page address={address} variation={variation} entry={`${entry}.${replaced[entry] ?? 0}`} />
-      </SettingsProvider>,
-    );
-  });
+  render(address, variation, `${entry}.${replaced[entry] ?? 0}`);
 /** A new history entry, or Forward to the next one: a pick from the list, or the game's own push. */
 const push = (address?: LessonId, variation?: string) => {
   entry += 1;
@@ -212,17 +215,8 @@ describe('useOpeningsGame', () => {
   });
 
   it('starts an address that arrives with the history entry', async () => {
-    const at = (address: LessonId | undefined, key: string | undefined) =>
-      act(() => {
-        root ??= createRoot();
-        root.render(
-          <SettingsProvider>
-            <Page address={address} entry={key} />
-          </SettingsProvider>,
-        );
-      });
-    await at(undefined, undefined);
-    await at('caro-kann', 'k1');
+    await render(undefined, undefined);
+    await render('caro-kann', undefined, 'k1');
     expect(moves()).toEqual(uciLine('e4'));
     expect(mockRouter.replace).not.toHaveBeenCalled();
   });

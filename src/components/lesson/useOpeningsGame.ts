@@ -68,8 +68,9 @@ interface Visit extends Address {
  * change of variation keeps it, as a link to the page already open does,
  * such as an Android deep link) it starts the address.
  *
- * The side is the lesson address's, which the `side` setting saves, so the
- * start, and a reload, show the side last played; at the start it is the
+ * The side is the lesson address's, or at a start resumed by Back or Forward
+ * the side its game was played from; the `side` setting saves it, so the
+ * start, and a reload, show the side last played. At a fresh start it is the
  * setting. Choosing the other side saves it and starts again from the start.
  *
  * The store holds the game as the page shows it: when the game moves to
@@ -88,8 +89,8 @@ export function useOpeningsGame(
   const router = useRouter();
   const settings = useSettings();
   const settingsDispatch = useSettingsDispatch();
-  // The side this page plays: the last lesson address's at once, which the
-  // setting saves only after this render; otherwise the setting's.
+  // The side this page plays: the last lesson address's, or a resumed game's,
+  // at once, which the setting saves only after this render; otherwise the setting's.
   const [addressSide, setAddressSide] = useState(
     address === undefined ? undefined : LESSON_INDEX[address].side,
   );
@@ -100,8 +101,7 @@ export function useOpeningsGame(
   const { moves } = game;
   /** The lesson the game plays, named by the moves that pick it. */
   const picked = lessonOf(LESSON_INDEX, side, moves);
-  // Where the page last caught up with. A change is checked during render,
-  // so the page never shows the old game at the new address.
+  // Checked during render, so the page never shows the old game at the new address.
   const [synced, setSynced] = useState<Synced>({ entry, address, variation, sent: [] });
   // Each history entry the page left, while the game was still at its address.
   const [left, setLeft] = useState<Partial<Record<string, Visit>>>({});
@@ -111,18 +111,16 @@ export function useOpeningsGame(
     }
     // One of the page's own sends arriving, maybe after the game has moved on.
     const arrivedAt = synced.sent.findIndex((sent) => sameAddress(sent, { address, variation }));
-    let sent: readonly Send[] = [];
-    if (arrivedAt >= 0) {
-      sent = synced.sent.slice(arrivedAt + 1);
-    } else if (synced.entry === undefined && sameAddress(synced, { address, variation })) {
-      // The entry's key arrived.
-      sent = synced.sent;
+    // Or the entry's key arriving at the same address.
+    const keyArrived = synced.entry === undefined && sameAddress(synced, { address, variation });
+    if (arrivedAt >= 0 || keyArrived) {
+      // The game stays where it is.
     } else if (entry !== synced.entry && synced.entry !== undefined) {
       // Back, Forward, or a link: resume the game the entry had, else start it.
       // The game is at `id`'s address: it plays that lesson from its side
       // (lessons of both sides share moves), or at `/`, none from the page's.
       const isAt = (id?: LessonId) =>
-        lessonOf(LESSON_INDEX, id === undefined ? side : LESSON_INDEX[id].side, moves) === id;
+        (id === undefined ? picked : lessonOf(LESSON_INDEX, LESSON_INDEX[id].side, moves)) === id;
       if (isAt(synced.address)) {
         const leaving = { address: synced.address, variation: synced.variation, game, side };
         setLeft({ ...left, [synced.entry]: leaving });
@@ -137,30 +135,18 @@ export function useOpeningsGame(
         setAddressSide(resumed.side);
       }
     } else {
-      // A link to the page already open, such as an Android deep link.
+      // A link to the page already open.
       dispatch({ type: 'newGame', moves: startOf(address, variation) });
     }
+    const sent = arrivedAt >= 0 ? synced.sent.slice(arrivedAt + 1) : keyArrived ? synced.sent : [];
     setSynced({ entry, address, variation, sent });
   } else {
-    // The address follows the game: once the sends on their way arrive, it
-    // is the last one's. A move past its variation's line leaves it, so the
-    // address stops naming it, and picking that variation again starts it afresh.
-    const bound = synced.sent.at(-1) ?? synced;
-    const opens =
-      bound.address === undefined
-        ? undefined
-        : variationLine(LESSON_INDEX[bound.address], bound.variation);
-    let next: Send | undefined;
-    if (picked !== bound.address) {
-      next =
-        bound.address === undefined && picked !== undefined
-          ? { address: picked, how: 'push' }
-          : { address: picked, how: 'replace' };
-    } else if (opens !== undefined && !sameLine(moves, opens)) {
-      next = { address: picked, how: 'drop' };
-    }
+    // Once the sends on their way arrive, the address is the last one's.
+    const next = nextSend(synced.sent.at(-1) ?? synced, picked, moves);
     if (next) setSynced({ ...synced, sent: [...synced.sent, next] });
   }
+  // Saves the side whenever an address or a resumed game sets it, not on
+  // each address: a lesson of the same side leaves the setting as it is.
   useEffect(() => {
     if (addressSide !== undefined)
       settingsDispatch({ type: 'chosen', choice: { side: addressSide } });
@@ -206,6 +192,28 @@ export function useOpeningsGame(
      */
     pending,
   };
+}
+
+/**
+ * The address to send so it follows the game, from the one it is bound for:
+ * the lesson the game picks, or the variation dropped once a move leaves its
+ * line (so picking that variation again starts it afresh).
+ */
+function nextSend(
+  bound: Address,
+  picked: LessonId | undefined,
+  moves: readonly string[],
+): Send | undefined {
+  if (picked !== bound.address) {
+    return bound.address === undefined && picked !== undefined
+      ? { address: picked, how: 'push' }
+      : { address: picked, how: 'replace' };
+  }
+  if (bound.address === undefined) return undefined;
+  const opens = variationLine(LESSON_INDEX[bound.address], bound.variation);
+  return opens !== undefined && !sameLine(moves, opens)
+    ? { address: picked, how: 'drop' }
+    : undefined;
 }
 
 /**

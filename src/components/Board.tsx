@@ -5,6 +5,7 @@
 // Props cross that boundary as JSON, and function props become async messages.
 import '@lichess-org/chessground/assets/chessground.base.css';
 import '@lichess-org/chessground/assets/chessground.cburnett.css';
+// Last: its rules match chessground's own selectors and win by coming after them.
 import './Board.css';
 
 import { Chessground } from '@lichess-org/chessground';
