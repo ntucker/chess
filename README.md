@@ -87,5 +87,10 @@ To work on this repo through a Claude project on claude.ai:
 2. Create a project and attach that repository.
 3. Turn on project memory.
 4. Install [user-kit](https://github.com/ntucker/user-kit#install-in-claude-code).
-5. Paste the quoted text from step 2 of [`.agents/projects/setup.md`](.agents/projects/setup.md) into the project's instructions. It tells every agent to follow `PROJECTS.md`.
+5. Send this in the project chat, then paste the text the coordinator replies with into the project's instructions:
+
+   ```text
+   Set up this project: read .agents/projects/setup.md from main in ntucker/chess and follow it.
+   ```
+
 6. For Android checks, link your computer to the project.
