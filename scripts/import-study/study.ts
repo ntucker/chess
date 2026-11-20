@@ -28,6 +28,13 @@ export interface Chapter {
    * when left out): where sources overlap, the earlier one's moves win.
    */
   readonly source?: number;
+  /**
+   * For a chapter cut out of a longer line at a named position (a Wikibooks
+   * page's), the ply of the move into that position: its name covers only
+   * the positions from there on, the ones before belonging to the chapters
+   * it was cut from.
+   */
+  readonly namedFrom?: number;
 }
 
 export interface StudyMove {
@@ -58,7 +65,15 @@ export function parseStudy(pgn: string, include: (title: string) => boolean): Ch
     const title = game.headers.get('ChapterName') ?? game.headers.get('Event') ?? '';
     if (!include(title)) return [];
     const start = startingPosition(game.headers).unwrap() as Chess;
-    return [{ title, start, moves: readMoves(game.moves.children, start, 1) }];
+    const namedFrom = Number(game.headers.get('NamedFrom')) || undefined;
+    return [
+      {
+        title,
+        start,
+        moves: readMoves(game.moves.children, start, 1),
+        ...(namedFrom && { namedFrom }),
+      },
+    ];
   });
 }
 

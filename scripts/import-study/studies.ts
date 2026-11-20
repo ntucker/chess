@@ -142,7 +142,6 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
           'Modern Line': '',
           'Slav accepted': 'Pure Slav',
           'Alapin variation': 'Alapin Variation',
-          'Dutch variation': 'Alapin Variation: Dutch Variation',
           'Exchange variation': 'Exchange Variation',
         },
       },

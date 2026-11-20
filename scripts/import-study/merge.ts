@@ -252,13 +252,8 @@ function positionVariations(
 ): Map<PositionKey, VariationId> {
   const add = (map: Map<PositionKey, Set<VariationId>>, key: PositionKey, id: VariationId) =>
     map.set(key, (map.get(key) ?? new Set()).add(id));
-  const mainLines = new Map<PositionKey, Set<VariationId>>();
-  chapters.forEach((chapter, i) => {
-    for (const move of mainLine(chapter.moves[0]))
-      add(mainLines, positionKey(move.before), chapterVariation[i]);
-  });
   const path = (id: VariationId) => ancestry(variations, id);
-  const named = new Map([...mainLines].map(([key, ids]) => [key, narrowest([...ids].map(path))]));
+  const named = mainLineVariations(variations, chapters, chapterVariation);
 
   // A chapter about the opening itself is its own group: the opening has no parent.
   const group = (chapter: VariationId) =>
@@ -423,6 +418,65 @@ function ancestry(
 }
 
 /** The narrowest variation on every one of `paths`: at least one, each from `ancestry`, so all start at the opening. */
+/**
+ * The variation of each position on a chapter's main line: the narrowest
+ * holding every chapter whose main line reaches it. A chapter cut out of a
+ * longer line at a named position (`Chapter.namedFrom`) names its own moves
+ * where it lies inside all those chapters: the Wikibooks Dutch Variation
+ * from 6.e3, over the Alapin chapter whose main line goes the same way. And
+ * a line that passed a narrower name keeps it while the chapters there all
+ * hold it: past the Dutch chapter's end, the Alapin chapter's main line is
+ * still the Dutch Variation.
+ */
+function mainLineVariations(
+  variations: Readonly<Record<VariationId, Variation>>,
+  chapters: readonly Chapter[],
+  chapterVariation: readonly VariationId[],
+): Map<PositionKey, VariationId> {
+  const path = (id: VariationId) => ancestry(variations, id);
+  interface Reached {
+    readonly ply: number;
+    readonly paths: VariationId[][];
+    readonly cut: VariationId[][];
+    readonly from: PositionKey[];
+  }
+  const reached = new Map<PositionKey, Reached>();
+  chapters.forEach(({ moves, namedFrom = 0 }, i) => {
+    let from: PositionKey | undefined;
+    for (const move of mainLine(moves[0])) {
+      // The named position is the one after its move.
+      if (move.ply <= namedFrom) continue;
+      const key = positionKey(move.before);
+      const at = reached.get(key) ?? { ply: move.ply, paths: [], cut: [], from: [] };
+      reached.set(key, at);
+      at.paths.push(path(chapterVariation[i]));
+      if (namedFrom > 0) at.cut.push(path(chapterVariation[i]));
+      if (from) at.from.push(from);
+      from = key;
+    }
+  });
+  const named = new Map<PositionKey, VariationId>();
+  for (const [key, { paths, cut, from }] of [...reached].sort(([, a], [, b]) => a.ply - b.ply)) {
+    const holds = (name: readonly VariationId[]) => paths.every((chapter) => within(chapter, name));
+    const passed = from.flatMap((before) => (named.has(before) ? [path(named.get(before)!)] : []));
+    named.set(
+      key,
+      deepest([path(narrowest(paths)), ...cut.filter(holds), ...passed.filter(holds)]),
+    );
+  }
+  return named;
+}
+
+/** Of `paths`, `ancestry`s inside the first, the deepest where they all lie on one line, else the first. */
+function deepest(paths: readonly (readonly VariationId[])[]): VariationId {
+  const longest = paths.reduce((a, b) => (b.length > a.length ? b : a));
+  return (paths.every((path) => within(path, longest)) ? longest : paths[0]).at(-1)!;
+}
+
+/** Whether `inner` (an `ancestry`) lies within `outer`. */
+const within = (outer: readonly VariationId[], inner: readonly VariationId[]) =>
+  outer.every((id, i) => inner[i] === id);
+
 function narrowest(paths: readonly (readonly VariationId[])[]): VariationId {
   const [first] = paths;
   let level = 0;

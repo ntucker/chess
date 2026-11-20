@@ -233,6 +233,30 @@ describe('mergeChapters with several sources', () => {
     expect(lesson.positions[keyAfter('d4', 'd5', 'c4')].variation).toBe('gambit-sidelines');
   });
 
+  it('names moves by a chapter cut out at a named position, and keeps the name past its end', () => {
+    // The Alapin chapter plays on to 4.Nc3; the Dutch one is cut out at 2...c6 and stops at 3...Nf6.
+    const alapin = parseStudy(
+      '[ChapterName "Alapin"]\n\n1. d4 d5 2. c4 c6 3. Nf3 Nf6 4. Nc3 dxc4 *\n',
+      () => true,
+    );
+    const dutch = parseStudy(
+      '[ChapterName "Dutch"]\n[NamedFrom "4"]\n\n1. d4 d5 2. c4 c6 3. Nf3 Nf6 *\n',
+      () => true,
+    );
+    const chapters = [...alapin, ...dutch.map((chapter) => ({ ...chapter, source: 1 }))];
+    const lesson = mergeChapters(
+      { id: 'test', title: 'Test', side: 'black', sources: SAMPLE.sources },
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'black')),
+      (title) => (title === 'Dutch' ? 'Pure: Alapin: Dutch' : 'Pure: Alapin'),
+    );
+    const variation = (...sans: string[]) => lesson.positions[keyAfter(...sans)].variation;
+    expect(variation('d4', 'd5', 'c4')).toBe('pure-alapin');
+    expect(variation('d4', 'd5', 'c4', 'c6')).toBe('pure-alapin-dutch');
+    expect(variation('d4', 'd5', 'c4', 'c6', 'Nf3', 'Nf6')).toBe('pure-alapin-dutch');
+    expect(variation('d4', 'd5', 'c4', 'c6', 'Nf3', 'Nf6', 'Nc3')).toBe('pure-alapin-dutch');
+  });
+
   it("takes a later guide's notes only where the main guide says nothing", () => {
     const d5 = merged.positions[keyAfter('d4')].moves.find(({ uci }) => uci === 'd7d5')!;
     expect(d5.notes?.map(({ text }) => text)).toEqual(['Holds the centre with a pawn.']);

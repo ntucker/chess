@@ -17,6 +17,11 @@ describe('shipped lessons', () => {
     expect(checkLesson(lesson)).toEqual([]);
   });
 
+  it.each(shippedIds)("%s names no variation after a guide's contents page", (id) => {
+    const names = Object.values(readShippedLesson(id).variations).map(({ name }) => name);
+    expect(names.filter((name) => /\b(?:index|contents)\b/i.test(name))).toEqual([]);
+  });
+
   it.each(shippedIds)('%s is in the index as its file says', (id) => {
     expect(LESSON_INDEX[id as keyof typeof LESSON_INDEX]).toEqual(
       indexEntry(readShippedLesson(id)),

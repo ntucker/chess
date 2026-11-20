@@ -15,9 +15,9 @@
  * moves only; they are often wrong, so each stops at its first illegal move.
  *
  * Pages are cut into chapters at named positions ("5. a4 · Alapin variation")
- * on the book's main path. A chapter is titled by its name, under the first
- * named position below the root as its group ("Slav accepted: Alapin
- * variation"), the one level of grouping lessons have. On the main path every learner move is the book's main
+ * on the book's main path. A chapter is titled by its name under the named
+ * positions above it on that path ("Slav accepted: Alapin variation: Dutch
+ * variation"), each colon a narrower group. On the main path every learner move is the book's main
  * move, so a chapter never makes the importer recommend a move the book does
  * not lead with; a named position off it stays in its parent's chapter.
  */
@@ -390,33 +390,34 @@ function chapters(
   topName?: string,
 ): Game<PgnNodeData>[] {
   const tops: ChapterTop[] = [];
+  /** `groups`: the names of the chapters above, the nearest last. */
   const visit = (
     node: BookNode,
     path: readonly BookNode[],
-    group: string | undefined,
-    current: string | undefined,
+    groups: readonly string[],
     onMain: boolean,
   ) => {
     const own = name(node);
     if (node === top) tops.push({ node, path, title: topName ?? '' });
-    else if (onMain && !node.transposed && own && own !== current) {
-      tops.push({ node, path, title: group ? `${group}: ${own}` : own });
-      group ??= own;
-      current = own;
+    else if (onMain && !node.transposed && own && own !== groups.at(-1)) {
+      groups = [...groups, own];
+      tops.push({ node, path, title: groups.join(': ') });
     }
     const main = node.children.find((child) => !elsewhere(child));
     node.children.forEach((child) => {
       const mainMove = child === main || node.pos.turn !== learner;
-      visit(child, [...path, child], group, current, onMain && mainMove && !child.left);
+      visit(child, [...path, child], groups, onMain && mainMove && !child.left);
     });
   };
-  visit(top, [top], topName, topName, true);
+  visit(top, [top], topName ? [topName] : [], true);
   const isTop = new Set(tops.map(({ node }) => node));
   return tops.map(({ node, path, title }) => {
     const game: Game<PgnNodeData> = {
       headers: new Map([
         ['Event', title || 'Wikibooks'],
         ['ChapterName', title],
+        // Its own moves start at its named position (`Chapter.namedFrom`).
+        ['NamedFrom', String(prefix.length + path.length)],
         ['Result', '*'],
       ]),
       moves: new Node(),
