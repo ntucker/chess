@@ -122,6 +122,7 @@ function LessonScreen({
     rareShown,
     showRare,
     pointRow,
+    reachCard,
     pointNote,
     leaveNote,
     leave,
@@ -275,6 +276,7 @@ function LessonScreen({
                   pointed={pointedNote}
                   onPoint={pointNote}
                   onLeave={leaveNote}
+                  onReach={reachCard}
                 />
               ) : null}
             </PointingArea>

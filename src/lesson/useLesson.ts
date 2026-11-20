@@ -280,7 +280,10 @@ export function useLesson(
      * The learner points at a candidate list row. Leaving a row keeps its
      * preview, so the learner can move on to its notes; `leave` ends it.
      */
-    pointRow: (uci: Uci) => dispatch({ type: 'candidate', key, candidate: { at: 'row', uci } }),
+    pointRow: (uci: Uci) =>
+      dispatch({ type: 'candidate', key, candidate: { at: 'row', uci }, time: performance.now() }),
+    /** The pointer reaches the idea card: a row it only crossed on the way gives the card back. */
+    reachCard: () => dispatch({ type: 'card', key, time: performance.now() }),
     /** The learner points at a note on the idea card, or at none. */
     pointNote: (note: Note | undefined) => dispatch({ type: 'note', key, note }),
     /** The learner lets a note on the idea card go: the mouse leaves it, or a second tap. */

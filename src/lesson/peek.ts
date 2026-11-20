@@ -10,11 +10,23 @@
 import type { Note, PositionKey } from './lesson';
 import type { Pointer } from './view';
 
+/**
+ * How long a row stays pointed at before the idea card holds on to it. Rows
+ * point at once, so a pointer going down to the card crosses others on the
+ * way; reaching the card within this time of the last one returns to the row
+ * held before (the `card` action).
+ */
+export const HOLD_MS = 150;
+
 /** What the learner points at, in the position it was pointed at in. */
 interface Pointing {
   readonly key: PositionKey;
   readonly candidate?: Pointer;
   readonly note?: Note;
+  /** When `candidate` was pointed at, in milliseconds, if the action said. */
+  readonly since?: number;
+  /** The last candidate pointed at for `HOLD_MS` or more before another took its place. */
+  readonly held?: Pointer;
 }
 
 export type Peek =
@@ -36,9 +48,20 @@ export type PeekAction =
   /**
    * The learner points at a candidate, by its row or by dragging its piece
    * there, which leaves the card's note; or drags onto no candidate, which
-   * keeps it.
+   * keeps it. `time` (milliseconds, any clock the `card` action shares) lets
+   * the card tell a row crossed on the way from one held.
    */
-  | { readonly type: 'candidate'; readonly key: PositionKey; readonly candidate?: Pointer }
+  | {
+      readonly type: 'candidate';
+      readonly key: PositionKey;
+      readonly candidate?: Pointer;
+      readonly time?: number;
+    }
+  /**
+   * The pointer reaches the idea card at `time`. A candidate pointed at less
+   * than `HOLD_MS` before was crossed on the way, so the held one returns.
+   */
+  | { readonly type: 'card'; readonly key: PositionKey; readonly time: number }
   /** The learner points at a note on the idea card, or at none. */
   | { readonly type: 'note'; readonly key: PositionKey; readonly note?: Note }
   /**
@@ -72,13 +95,25 @@ export function peekReducer(peek: Peek | undefined, action: PeekAction): Peek | 
         action.type === 'note'
           ? { ...now, note: action.note }
           : action.candidate
-            ? { key: action.key, candidate: action.candidate }
+            ? {
+                key: action.key,
+                candidate: action.candidate,
+                since: action.time,
+                // Only timed pointing (rows) holds a candidate for the card.
+                held: action.time === undefined ? undefined : held(now, action.time),
+              }
             : { ...now, candidate: undefined };
       // Pointing that changes nothing keeps the same state, so nothing re-renders.
       if (samePointing(now, next)) return peek;
-      return here?.kind === 'play'
-        ? { ...here, candidate: next.candidate, note: next.note }
-        : { ...next, kind: 'point' };
+      return repoint(here, next);
+    }
+    case 'card': {
+      const here = peek?.key === action.key ? peek : undefined;
+      // The candidate held then: the one pointed at now, or if it was only
+      // crossed on the way, the one held before it.
+      const back = here?.candidate && held(here, action.time);
+      if (!here || !back || samePointer(back, here.candidate)) return peek;
+      return repoint(here, { ...here, candidate: back, since: undefined });
     }
     case 'leaveNote':
       return peek?.key === action.key && peek.note === action.note
@@ -103,6 +138,23 @@ export function peekReducer(peek: Peek | undefined, action: PeekAction): Peek | 
         : peek;
   }
 }
+
+/**
+ * The candidate held once `pointing`'s is left at `time`: its own, if pointed
+ * at for `HOLD_MS` or more (or with no time to tell), else the one held before it.
+ */
+const held = ({ candidate, since, held }: Pointing, time?: number) =>
+  candidate && (since === undefined || time === undefined || time - since >= HOLD_MS)
+    ? candidate
+    : held;
+
+/** `here` pointing at `next` instead, a playback going on unseen. */
+const repoint = (here: Peek | undefined, next: Pointing): Peek => {
+  const { candidate, note, since, held } = next;
+  return here?.kind === 'play'
+    ? { ...here, candidate, note, since, held }
+    : { kind: 'point', key: next.key, candidate, note, since, held };
+};
 
 const samePointer = (a?: Pointer, b?: Pointer) =>
   a === b ||

@@ -1,5 +1,5 @@
 import { a11yState, Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
-import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { evaluationReading, signedEvaluation } from '@/evaluation/evaluation';
@@ -158,9 +158,6 @@ const tabOut = (onTabOut?: () => void) => (event: unknown) => {
   if (key === 'Tab' && !shiftKey) onTabOut?.();
 };
 
-/** How long the mouse rests on a row before it points at it. */
-const ROW_REST_MS = 150;
-
 interface RowProps {
   readonly candidate: Candidate;
   readonly main: boolean;
@@ -197,14 +194,6 @@ function Row({
   const tone = toneColors[candidateTone(candidate, main)];
   const hollow = candidate.rare || (engine && !main);
   const point = () => onPoint(move.uci);
-  // The mouse points at a row once it rests there, so one crossed on the way
-  // from another row down to the idea card leaves that row's preview be.
-  const resting = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const stopResting = () => {
-    clearTimeout(resting.current);
-    resting.current = undefined;
-  };
-  useEffect(() => stopResting, []);
 
   return (
     <Pressable
@@ -223,19 +212,13 @@ function Row({
       accessibilityState={{ disabled: !playable }}
       onPress={playable ? () => onPlay(candidate) : point}
       onLongPress={point}
-      // A move, not an enter: a list that changes under a still mouse
-      // previews nothing until the mouse moves. Leaving keeps the preview
-      // (the screen ends it), so the learner can go on to its notes.
+      // At once, interrupting the slide before. A move, not an enter: a list
+      // that changes under a still mouse previews nothing until the mouse
+      // moves. Leaving keeps the preview (the screen ends it), so the learner
+      // can go on to its notes; rows crossed on the way there let it be (`HOLD_MS`).
       onPointerMove={({ nativeEvent }) => {
-        if (pointed || !hovers(nativeEvent.pointerType)) return;
-        // Each move starts the wait again: a mouse still crossing the row isn't resting.
-        stopResting();
-        resting.current = setTimeout(() => {
-          resting.current = undefined;
-          point();
-        }, ROW_REST_MS);
+        if (!pointed && hovers(nativeEvent.pointerType)) point();
       }}
-      onPointerLeave={stopResting}
       onKeyDown={tabOut(onTabOut)}
       onFocus={point}
       style={({ pressed }) => [
