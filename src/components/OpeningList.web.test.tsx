@@ -125,4 +125,15 @@ describe('OpeningList', () => {
     expect(rows()).toContain(short.name);
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
   });
+
+  it('credits an opening’s sources only while its variations show', () => {
+    const credits = () =>
+      [...host.querySelectorAll('div[dir=auto]')].filter(
+        (text) => text.textContent?.startsWith('Lesson from') && !hidden(text),
+      ).length;
+    render();
+    expect(credits()).toBe(0);
+    act(() => toggle('Caro-Kann Defence').click());
+    expect(credits()).toBe(1);
+  });
 });

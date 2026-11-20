@@ -100,7 +100,8 @@ function SideSection({
 
 /**
  * One opening: its name, then its variations as a tree, each branch closed
- * but those on the way to `here`, the variation the board was in.
+ * but those on the way to `here`, the variation the board was in. Its
+ * sources' credits show under its variations, while they show.
  */
 function OpeningEntry({
   opening,
@@ -120,10 +121,12 @@ function OpeningEntry({
         // The heading keeps the chevron's column too, so its name lines up with its variations'.
         gutter
         tag={here === undefined ? undefined : <NowPlaying />}
+        footer={
+          <View style={styles.credits}>
+            <SourceCredits sources={opening.sources} />
+          </View>
+        }
       />
-      <View style={styles.credits}>
-        <SourceCredits sources={opening.sources} />
-      </View>
     </View>
   );
 }
@@ -134,7 +137,8 @@ function OpeningEntry({
  * `path` is the way to the variation the board was in, which ends there: a
  * branch on it starts open, and the learner's own toggle wins from then on.
  * `gutter` keeps the chevron's space before a row without one, when a row
- * beside it has one, so the names in a column line up.
+ * beside it has one, so the names in a column line up. `footer` follows the
+ * branches under it, and shows and hides with them.
  */
 function Branch({
   lesson,
@@ -143,6 +147,7 @@ function Branch({
   path,
   gutter,
   tag,
+  footer,
 }: {
   readonly lesson: LessonId;
   readonly variation: ListedVariation;
@@ -150,6 +155,7 @@ function Branch({
   readonly path: readonly VariationId[];
   readonly gutter: boolean;
   readonly tag?: ReactNode;
+  readonly footer?: ReactNode;
 }) {
   const { theme } = useTheme();
   const [toggled, setToggled] = useState<boolean>();
@@ -179,7 +185,9 @@ function Branch({
           tag={tag}
         />
       </View>
-      {open === undefined ? null : (
+      {open === undefined ? (
+        footer
+      ) : (
         // A closed branch stays mounted, only hidden: the branches under it
         // keep the learner's toggles, and the row the board was in scrolls
         // into view once, not each time its branch reopens.
@@ -203,6 +211,7 @@ function Branch({
               gutter={childGutter}
             />
           ))}
+          {footer}
         </View>
       )}
     </>
@@ -408,5 +417,5 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   line: { fontFamily: fonts.mono, fontSize: 13, marginLeft: 'auto', textAlign: 'right' },
-  credits: { paddingHorizontal: 10, paddingTop: 4 },
+  credits: { paddingHorizontal: 10, paddingTop: 8 },
 });
