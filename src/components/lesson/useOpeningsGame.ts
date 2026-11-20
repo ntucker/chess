@@ -28,7 +28,7 @@ const lessonHref = (id: LessonId) => `/lesson/${id}` as const;
  * render after any other change. So picking an opening, or going Back or
  * Forward to one, keeps the page on screen rather than a placeholder, while
  * the address moves at once. The store's dispatch acts on the newer game, so
- * while the page lags it drops the learner's moves and steps.
+ * while the page is `behind` it drops the learner's moves and steps.
  */
 export function useOpeningsGame(address: LessonId | undefined) {
   const router = useRouter();
@@ -61,6 +61,8 @@ export function useOpeningsGame(address: LessonId | undefined) {
     store,
     /** The lesson the page's game plays. */
     lesson,
+    /** The page shows a game the store has moved on from: offer no moves. */
+    behind,
     /** The game has moved on to a lesson the page doesn't show yet: it's loading. */
     pending: lesson !== picked,
   };
