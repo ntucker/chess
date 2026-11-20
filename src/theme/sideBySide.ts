@@ -2,9 +2,9 @@ import { narrowCalc, narrowLength, type Px } from '@/theme/narrow';
 
 // The board page's geometry (Stage.tsx), beside the narrow decision that depends on it (Narrow.tsx).
 
-/** The board column's flex basis: the width it starts from beside the panel. */
+/** The width the board column starts from beside the panel, and grows or shrinks from. */
 export const BOARD_COLUMN_BASIS = 320;
-/** The panel's flex basis. */
+/** The width the panel starts from beside the board. */
 export const PROGRAM_BASIS = 300;
 /** Space between the board column and the panel beside it. */
 export const STAGE_GAP = 48;

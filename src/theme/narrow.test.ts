@@ -97,6 +97,13 @@ describe('narrow.css', () => {
     }
   });
 
+  // React Native keeps a node's computed flex basis across a style change,
+  // so a set basis would outlive the window crossing the narrow width.
+  it.each(NARROW_PARTS)('gives the %s no set flex basis natively', (part) => {
+    const { wide, narrow } = NATIVE_PARTS[part];
+    for (const style of [wide, narrow]) expect(style?.flexBasis ?? 'auto').toBe('auto');
+  });
+
   it('gives the panel a floor, so the page scrolls rather than squeeze it to nothing', () => {
     expect(narrowRules.get('program')).toContainEqual(
       expect.stringMatching(/^min-height: [1-9]\d*px$/),
