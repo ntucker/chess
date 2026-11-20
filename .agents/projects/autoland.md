@@ -7,8 +7,8 @@ Until then, it says once, on the PR and in its thread, what is left. Judge by th
 ## When a PR may land
 
 - The person approved the work: they asked for it in their own words (in the thread, or in project
-  chat that the coordinator cites), the PR's `Plan piece: <plan>/<piece>` line names a piece of a
-  plan in `docs/plans/`. A follow-up handed on from approved work (a review comment on an approved PR
+  chat that the coordinator cites), or the PR's `Plan piece: <plan>/<piece>` line names a piece of
+  a plan in `docs/plans/`. A follow-up handed on from approved work (a review comment on an approved PR
   names it, and the new PR links that comment) may be built without asking, but before landing, ask
   the person once to confirm and wait for their yes. A new feature the coordinator proposed on its
   own waits for the person.
