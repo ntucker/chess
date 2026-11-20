@@ -7,7 +7,10 @@
  * row can't be passed. The same walk steers a clean Practice run's opponent
  * to the lines still to pass (`steering`).
  */
-import { parsePositionKey, playMove, positionKey } from '@/game/replay';
+import type { Chess } from 'chessops/chess';
+import { parseUci } from 'chessops/util';
+
+import { parsePosition, positionKey } from '@/game/replay';
 import { type Mark, type MarkedPositions, positionHash } from '@/progress/progress';
 
 import type { Lesson, LessonMove, PositionKey, Uci } from './lesson';
@@ -64,10 +67,24 @@ const sets = new WeakMap<MarkedPositions, Readonly<Record<Mark, ReadonlySet<stri
 function markSets(progress: MarkedPositions) {
   let found = sets.get(progress);
   if (!found) {
-    found = { seen: new Set(progress.seen), passed: new Set(progress.passed) };
+    found = { seen: new Set(progress.seen), passed: passedSet(progress.passed) };
     sets.set(progress, found);
   }
   return found;
+}
+
+/**
+ * The passed marks as a set, the same set as last time while they are the
+ * same: a seen mark makes a new progress, and `cleanEnds` keeps its answers
+ * per set.
+ */
+let lastPassed: { readonly list: readonly string[]; readonly set: ReadonlySet<string> } | undefined;
+function passedSet(list: readonly string[]) {
+  const same =
+    lastPassed?.list.length === list.length &&
+    list.every((hash, i) => lastPassed!.list[i] === hash);
+  if (!same) lastPassed = { list, set: new Set(list) };
+  return lastPassed!.set;
 }
 
 /** Any opponent's move can be part of a clean run; of the learner's, only book moves. */
@@ -80,44 +97,68 @@ const inCleanRun = (move: LessonMove, learner: boolean) => !learner || move.book
  * comes back to a position adds nothing, and stops at the first open end.
  * Each row walks on its own: answers shared between rows go wrong on cycles.
  */
-function cleanEnds(
-  lesson: Lesson,
-  passed: ReadonlySet<string>,
-  start: PositionKey,
-): 'none' | 'open' | 'passed' {
+function cleanEnds(lesson: Lesson, passed: ReadonlySet<string>, start: PositionKey): Ends {
+  let byPassed = endsFound.get(lesson);
+  if (!byPassed) endsFound.set(lesson, (byPassed = new WeakMap()));
+  let byStart = byPassed.get(passed);
+  if (!byStart) byPassed.set(passed, (byStart = new Map()));
+  let ends = byStart.get(start);
+  if (!ends) byStart.set(start, (ends = walkCleanEnds(lesson, passed, start)));
+  return ends;
+}
+
+type Ends = 'none' | 'open' | 'passed';
+
+/** `cleanEnds` answers, by lesson and by the passed marks they were worked out with. */
+const endsFound = new WeakMap<Lesson, WeakMap<ReadonlySet<string>, Map<PositionKey, Ends>>>();
+
+/** `cleanEnds`, worked out. */
+function walkCleanEnds(lesson: Lesson, passed: ReadonlySet<string>, start: PositionKey): Ends {
   const visited = new Set<PositionKey>();
-  const toVisit = [start];
+  const toVisit: Step[] = [[start, undefined]];
   let status: 'none' | 'passed' = 'none';
-  for (let key = toVisit.pop(); key !== undefined; key = toVisit.pop()) {
+  for (let step = toVisit.pop(); step !== undefined; step = toVisit.pop()) {
+    const [key, pos] = step;
     if (visited.has(key)) continue;
     visited.add(key);
     // Reached by a guide move, a position the guide has no moves at ends a line.
-    if (guidePosition(lesson, key).place === 'inside') toVisit.push(...cleanNext(lesson, key));
+    if (guidePosition(lesson, key).place === 'inside') toVisit.push(...cleanNext(lesson, key, pos));
     else if (passed.has(positionHash(key))) status = 'passed';
     else return 'open';
   }
   return status;
 }
 
+/** A position's key, with the position itself while a walk has it at hand. */
+type Step = readonly [PositionKey, Chess | undefined];
+
 /** Each lesson's `cleanNext` answers: a lesson never changes, and replaying moves is slow. */
 const nextKeys = new WeakMap<Lesson, Map<PositionKey, readonly PositionKey[]>>();
 
-/** The positions the guide's moves at `key` lead to, leaving out the learner's non-book moves. */
-function cleanNext(lesson: Lesson, key: PositionKey): readonly PositionKey[] {
+/**
+ * The positions the guide's moves at `key` lead to, leaving out the learner's
+ * non-book moves. The position `pos`, when the walk has it, saves reading the
+ * key, which costs more than playing the moves.
+ */
+function cleanNext(lesson: Lesson, key: PositionKey, pos: Chess | undefined): readonly Step[] {
   let byKey = nextKeys.get(lesson);
   if (!byKey) nextKeys.set(lesson, (byKey = new Map()));
-  let next = byKey.get(key);
-  if (!next) {
-    const pos = parsePositionKey(key)!;
-    const learner = pos.turn === lesson.side;
-    next = lesson.positions[key].moves
-      .filter((move) => inCleanRun(move, learner))
-      .map(({ uci }) => {
-        const after = pos.clone();
-        playMove(after, uci);
-        return positionKey(after);
-      });
-    byKey.set(key, next);
-  }
-  return next;
+  const known = byKey.get(key);
+  if (known) return known.map((next) => [next, undefined]);
+  // A shipped lesson's keys and moves are checked (check.ts), so this skips
+  // playMove's checks and move names.
+  const from = pos ?? parsePosition(`${key} 0 1`)!;
+  const learner = from.turn === lesson.side;
+  const steps = lesson.positions[key].moves
+    .filter((move) => inCleanRun(move, learner))
+    .map(({ uci }): Step => {
+      const after = from.clone();
+      after.play(parseUci(uci)!);
+      return [positionKey(after), after];
+    });
+  byKey.set(
+    key,
+    steps.map(([next]) => next),
+  );
+  return steps;
 }
