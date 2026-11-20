@@ -3,7 +3,7 @@ import { numberedLine } from '@/game/replay';
 import type { LessonSource } from '@/lesson/lesson';
 
 import type { ChapterName, LessonInfo } from './merge';
-import { segmentSan, type WikibooksOptions } from './wikibooks';
+import { rootSans, type WikibooksOptions } from './wikibooks';
 
 /** A lichess study, by its id. */
 interface StudySource {
@@ -47,16 +47,7 @@ export const credit = (from: ChapterSource): LessonSource =>
  * roots credits two pages: "Chess Opening Theory, 1.d4 d5 2.Bf4".
  */
 const wikibooksCredit = (root: string): LessonSource => ({
-  title: `Chess Opening Theory, ${numberedLine(
-    root
-      .split('/')
-      .slice(1)
-      .map((segment) => {
-        const san = segmentSan(segment);
-        if (!san) throw new Error(`${root}: ${segment} is not a move`);
-        return san;
-      }),
-  )}`,
+  title: `Chess Opening Theory, ${numberedLine(rootSans(root))}`,
   author: 'Wikibooks contributors',
   url: `https://en.wikibooks.org/wiki/${root}`,
   license: { name: 'CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },

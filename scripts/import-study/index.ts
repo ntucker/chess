@@ -44,6 +44,7 @@ import type { Color } from 'chessops/types';
 
 import { checkLesson } from '@/lesson/check';
 import type { Lesson } from '@/lesson/lesson';
+import { lessonIndex } from '@/lesson/openings';
 
 import { convertChapters, convertReport } from './convert';
 import { claudeCli } from './convert/claude';
@@ -52,7 +53,7 @@ import { extractChapter } from './extract';
 import { lessonJson } from './lessonJson';
 import { mergeChapters, numberedChapterName, type ChapterName, type SourceTally } from './merge';
 import { addPopularity, lichessExplorer } from './popularity';
-import { indexLesson, readLessonFile, registerLesson } from './register';
+import { indexedWith, readLessonFile, registerLesson, writeIndex } from './register';
 import { report, sourceReport } from './report';
 import { nodeStockfish } from './stockfish';
 import { parseStudy, type Chapter } from './study';
@@ -128,10 +129,13 @@ async function main() {
   stockfish.stop();
   writeFileSync(engineFile, `${JSON.stringify({ ...filled.report, ...engineReport }, null, 2)}\n`);
   if (!rest.includes('--no-popularity')) lesson = await withPopularity(lesson);
-  // Indexed first: the index refuses a lesson no line picks, and then nothing is written.
-  indexLesson(join(ROOT, 'assets/lessons/index.json'), lesson);
+  // Indexed before any lesson file is written, since the index refuses a
+  // lesson no line picks; written last, once the checker passes the lesson.
+  const indexFile = join(ROOT, 'assets/lessons/index.json');
+  const index = lessonIndex(indexedWith(indexFile, lesson));
   writeLesson(join(ROOT, `assets/lessons/${lesson.id}.json`), lesson);
   registerLesson(join(ROOT, 'src/resources/lesson.ts'), lesson.id);
+  writeIndex(indexFile, index);
   console.log(report(lesson, chapters, extracted));
 }
 

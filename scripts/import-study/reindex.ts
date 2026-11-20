@@ -4,8 +4,10 @@
 // in src/lesson/cleanRun.ts).
 import { join } from 'node:path';
 
+import { lessonIndex } from '@/lesson/openings';
+
 import { indexedLessons, writeIndex } from './register';
 
 const INDEX = join(__dirname, '../../assets/lessons/index.json');
 
-writeIndex(INDEX, indexedLessons(INDEX));
+writeIndex(INDEX, lessonIndex(indexedLessons(INDEX)));

@@ -72,9 +72,9 @@ export function openingMarks(
       return lineEnds.length > 0 && lineEnds.every((hash) => done.has(hash));
     };
     if (lines.length > 0 && lines.every(passed)) return 'passed';
-    return lines
-      .map(({ id, line: { picked } }) => seenMark(hashSet(own(id).seen), picked))
-      .find(Boolean);
+    const seen = ({ id, line: { picked } }: (typeof lines)[number]) =>
+      seenMark(hashSet(own(id).seen), picked) === 'seen';
+    return lines.some(seen) ? 'seen' : undefined;
   });
 }
 

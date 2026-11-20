@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 import { readLesson, type Lesson } from '@/lesson/lesson';
-import { lessonIndex } from '@/lesson/openings';
+import type { LessonIndex } from '@/lesson/openings';
 
 /**
  * Adds lesson `id` to the `LESSONS` registry in `file` (src/resources/lesson.ts) unless it is there.
@@ -32,21 +32,18 @@ const readIndexed = (file: string, id: string) => readLessonFile(join(dirname(fi
 export const indexedLessons = (file: string) => indexedIds(file).map((id) => readIndexed(file, id));
 
 /**
- * Adds `lesson` to the lesson index `file`, rewriting every entry from the
- * lesson files beside it: one lesson's first moves can change which moves
- * pick another of its side.
+ * The lessons the lesson index `file` lists, with `lesson` in place of its
+ * file or added at the end: indexing them rewrites every entry, since one
+ * lesson's first moves can change which moves pick another of its side.
  */
-export function indexLesson(file: string, lesson: Lesson) {
+export function indexedWith(file: string, lesson: Lesson): Lesson[] {
   const ids = [...new Set([...indexedIds(file), lesson.id])];
-  writeIndex(
-    file,
-    ids.map((id) => (id === lesson.id ? lesson : readIndexed(file, id))),
-  );
+  return ids.map((id) => (id === lesson.id ? lesson : readIndexed(file, id)));
 }
 
-/** Writes the lesson index `file` for `lessons`. */
-export function writeIndex(file: string, lessons: readonly Lesson[]) {
-  const lines = Object.entries(lessonIndex(lessons)).map(
+/** Writes `index` as the lesson index `file`, one entry a line. */
+export function writeIndex(file: string, index: LessonIndex) {
+  const lines = Object.entries(index).map(
     ([id, entry]) => `  ${JSON.stringify(id)}: ${JSON.stringify(entry)}`,
   );
   writeFileSync(file, `{\n${lines.join(',\n')}\n}\n`);

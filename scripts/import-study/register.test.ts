@@ -7,7 +7,7 @@ import { SAMPLE } from '@/lesson/lesson.fixture';
 import { lessonIndex } from '@/lesson/openings';
 import { LESSONS } from '@/resources/lesson';
 
-import { indexLesson, registerLesson } from './register';
+import { indexedWith, registerLesson, writeIndex } from './register';
 
 const tempFile = (name: string) => join(mkdtempSync(join(tmpdir(), 'register-')), name);
 
@@ -33,14 +33,15 @@ describe('registerLesson', () => {
   });
 });
 
-describe('indexLesson', () => {
-  it('adds the lesson, rewriting the others from their files beside the index', () => {
+describe('indexedWith and writeIndex', () => {
+  it('adds the lesson to those its index lists, read from their files beside it', () => {
     const file = tempFile('index.json');
     const other = { ...SAMPLE, id: 'other', title: 'Other', side: 'white' as const };
     writeFileSync(join(dirname(file), 'other.json'), JSON.stringify(other));
     writeFileSync(file, JSON.stringify({ other: {} }));
-    indexLesson(file, SAMPLE);
-    indexLesson(file, SAMPLE);
+    writeIndex(file, lessonIndex(indexedWith(file, SAMPLE)));
+    // Indexed again, it takes the lesson's place rather than adding it twice.
+    expect(indexedWith(file, SAMPLE)).toEqual([other, SAMPLE]);
     expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual(lessonIndex([other, SAMPLE]));
   });
 });
