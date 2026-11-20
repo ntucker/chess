@@ -131,6 +131,7 @@ describe('narrowStyles', () => {
     expect(styles.narrow.logo.width).toBe(NARROW_PX['header-height']);
   });
 
+  // The typecheck fails this test, not Jest, if narrowStyles takes a flexBasis again.
   it('takes no flex basis, which natively outlives a switch of page', () => {
     // @ts-expect-error A part starts from its width or height instead.
     narrowStyles(() => ({ column: { flexBasis: 320 } }));

@@ -182,9 +182,10 @@ export interface NarrowStyles<T> {
  * through `px`. On the web it builds them once, from the lengths' CSS, which
  * narrow.css resolves, so both kinds of page share them. Elsewhere it builds
  * them twice, once with each kind's pixels; `useNarrowStyles` picks one.
- * No style sets `flexBasis` (the compiler checks): natively a set basis
- * outlives the switch to the other kind of page (see `NATIVE_PARTS`), so a
- * part starts from its width or height instead.
+ * No style here sets `flexBasis`, even 'auto' (the compiler checks): natively
+ * a set basis outlives the switch to the other kind of page (see
+ * `NATIVE_PARTS`), so a part starts from its width or height instead. The
+ * `flex: 1` shorthand's basis is always 0, so it can't go stale.
  */
 export function narrowStyles<
   T extends Parameters<typeof StyleSheet.create>[0] & Record<string, { flexBasis?: never }>,
