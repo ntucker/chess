@@ -1,57 +1,47 @@
 import { describe, expect, it } from '@jest/globals';
-import { INITIAL_FEN } from 'chessops/fen';
 
 import type { Evaluation } from '@/evaluation/evaluation';
-import { LESSON_FORMAT, type Lesson } from '@/lesson/lesson';
-import { keyAfter, SAMPLE, uci, uciLine } from '@/lesson/lesson.fixture';
+import type { Lesson } from '@/lesson/lesson';
+import { keyAfter, uci, uciLine } from '@/lesson/lesson.fixture';
 
-import { at } from './fixture';
+import { at, testLesson } from './fixture';
 import { engineCheck, fillBook } from './engineCheck';
 
 /** Black's lesson: 1.d4 d5 (book) or 1...e5 (book, but loses a pawn), then 2.dxe5 Nc6 (book). */
-const LESSON: Lesson = {
-  format: LESSON_FORMAT,
-  id: 'test',
-  title: 'Test',
-  side: 'black',
-  start: INITIAL_FEN,
-  sources: SAMPLE.sources,
-  variations: { test: { name: 'Test' } },
-  positions: {
-    [keyAfter()]: at([{ uci: uci('d4') }]),
-    [keyAfter('d4')]: at([
+const LESSON = testLesson({
+  [keyAfter()]: at([{ uci: uci('d4') }]),
+  [keyAfter('d4')]: at([
+    {
+      uci: uci('d4', 'd5'),
+      book: true,
+      notes: [
+        {
+          text: 'Black is winning here.',
+          ideas: [{ type: 'evaluation', value: 'blackWinning' }],
+        },
+        { text: 'Black claims the centre.' },
+      ],
+    },
+    { uci: uci('d4', 'e5'), book: true },
+  ]),
+  [keyAfter('d4', 'd5')]: at(
+    [{ uci: uci('d4', 'd5', 'c4') }],
+    [
       {
-        uci: uci('d4', 'd5'),
-        book: true,
-        notes: [
+        text: 'Taking on c4 falls for a trap.',
+        ideas: [
           {
-            text: 'Black is winning here.',
-            ideas: [{ type: 'evaluation', value: 'blackWinning' }],
+            type: 'trap',
+            moves: uciLine('d4', 'd5', 'c4', 'dxc4').slice(3),
+            verdict: 'whiteClearly',
           },
-          { text: 'Black claims the centre.' },
         ],
       },
-      { uci: uci('d4', 'e5'), book: true },
-    ]),
-    [keyAfter('d4', 'd5')]: at(
-      [{ uci: uci('d4', 'd5', 'c4') }],
-      [
-        {
-          text: 'Taking on c4 falls for a trap.',
-          ideas: [
-            {
-              type: 'trap',
-              moves: uciLine('d4', 'd5', 'c4', 'dxc4').slice(3),
-              verdict: 'whiteClearly',
-            },
-          ],
-        },
-      ],
-    ),
-    [keyAfter('d4', 'e5')]: at([{ uci: uci('d4', 'e5', 'dxe5') }]),
-    [keyAfter('d4', 'e5', 'dxe5')]: at([{ uci: uci('d4', 'e5', 'dxe5', 'Nc6'), book: true }]),
-  },
-};
+    ],
+  ),
+  [keyAfter('d4', 'e5')]: at([{ uci: uci('d4', 'e5', 'dxe5') }]),
+  [keyAfter('d4', 'e5', 'dxe5')]: at([{ uci: uci('d4', 'e5', 'dxe5', 'Nc6'), book: true }]),
+});
 
 /** About even everywhere but after 1...e5, where White is a pawn and a half up. */
 const evaluate = async (_line: readonly string[], key: string): Promise<Evaluation> =>

@@ -70,10 +70,10 @@ export function withTrapMoves(
   );
 }
 
-/** The key of the position after `sans`. */
 /** The last move of the line `sans`, in UCI. */
 export const uci = (...sans: string[]) => uciLine(...sans).at(-1)!;
 
+/** The key of the position after `sans`. */
 export const keyAfter = (...sans: string[]) => lineKeys(uciLine(...sans)).at(-1)!;
 
 /** The sample's view after `sans`, against Maia 1500 unless `input` says otherwise. */

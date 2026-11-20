@@ -1,10 +1,9 @@
 import { describe, expect, it } from '@jest/globals';
-import { INITIAL_FEN } from 'chessops/fen';
 
-import { LESSON_FORMAT, type Lesson, type Note } from '@/lesson/lesson';
-import { keyAfter, SAMPLE, uci } from '@/lesson/lesson.fixture';
+import type { Lesson, Note } from '@/lesson/lesson';
+import { keyAfter, uci } from '@/lesson/lesson.fixture';
 
-import { at } from './fixture';
+import { at, testLesson } from './fixture';
 import { noteTranspositions } from './transpositions';
 
 const SEMI_SLAV: Note = { text: 'You strengthen d5.' };
@@ -16,40 +15,31 @@ const otherOrder = keyAfter('d4', 'd5', 'c4', 'e6', 'Nc3');
  * but not played: the same position by the other move order, explained there.
  */
 function lesson({ bookNote, positionNote }: { bookNote?: Note; positionNote?: Note } = {}): Lesson {
-  return {
-    format: LESSON_FORMAT,
-    id: 'test',
-    title: 'Test',
-    side: 'black',
-    start: INITIAL_FEN,
-    sources: SAMPLE.sources,
-    variations: { test: { name: 'Test' } },
-    positions: {
-      [keyAfter()]: at([{ uci: uci('d4') }]),
-      [keyAfter('d4')]: at([{ uci: uci('d4', 'd5'), book: true }]),
-      [keyAfter('d4', 'd5')]: at([{ uci: uci('d4', 'd5', 'c4') }]),
-      [keyAfter('d4', 'd5', 'c4')]: at([
-        { uci: uci('d4', 'd5', 'c4', 'c6'), book: true },
-        { uci: uci('d4', 'd5', 'c4', 'e6') },
-      ]),
-      [keyAfter('d4', 'd5', 'c4', 'c6')]: at([{ uci: uci('d4', 'd5', 'c4', 'c6', 'Nc3') }]),
-      [keyAfter('d4', 'd5', 'c4', 'c6', 'Nc3')]: at([
-        {
-          uci: uci('d4', 'd5', 'c4', 'c6', 'Nc3', 'e6'),
-          book: true,
-          ...(bookNote && { notes: [bookNote] }),
-        },
-      ]),
-      [keyAfter('d4', 'd5', 'c4', 'e6')]: at([{ uci: uci('d4', 'd5', 'c4', 'e6', 'Nc3') }]),
-      [keyAfter('d4', 'd5', 'c4', 'e6', 'Nc3')]: at([
-        { uci: uci('d4', 'd5', 'c4', 'e6', 'Nc3', 'c6'), book: true, notes: [SEMI_SLAV] },
-      ]),
-      [semiSlav]: at(
-        [{ uci: uci('d4', 'd5', 'c4', 'c6', 'Nc3', 'e6', 'Nf3') }],
-        positionNote && [positionNote],
-      ),
-    },
-  };
+  return testLesson({
+    [keyAfter()]: at([{ uci: uci('d4') }]),
+    [keyAfter('d4')]: at([{ uci: uci('d4', 'd5'), book: true }]),
+    [keyAfter('d4', 'd5')]: at([{ uci: uci('d4', 'd5', 'c4') }]),
+    [keyAfter('d4', 'd5', 'c4')]: at([
+      { uci: uci('d4', 'd5', 'c4', 'c6'), book: true },
+      { uci: uci('d4', 'd5', 'c4', 'e6') },
+    ]),
+    [keyAfter('d4', 'd5', 'c4', 'c6')]: at([{ uci: uci('d4', 'd5', 'c4', 'c6', 'Nc3') }]),
+    [keyAfter('d4', 'd5', 'c4', 'c6', 'Nc3')]: at([
+      {
+        uci: uci('d4', 'd5', 'c4', 'c6', 'Nc3', 'e6'),
+        book: true,
+        ...(bookNote && { notes: [bookNote] }),
+      },
+    ]),
+    [keyAfter('d4', 'd5', 'c4', 'e6')]: at([{ uci: uci('d4', 'd5', 'c4', 'e6', 'Nc3') }]),
+    [keyAfter('d4', 'd5', 'c4', 'e6', 'Nc3')]: at([
+      { uci: uci('d4', 'd5', 'c4', 'e6', 'Nc3', 'c6'), book: true, notes: [SEMI_SLAV] },
+    ]),
+    [semiSlav]: at(
+      [{ uci: uci('d4', 'd5', 'c4', 'c6', 'Nc3', 'e6', 'Nf3') }],
+      positionNote && [positionNote],
+    ),
+  });
 }
 
 describe('noteTranspositions', () => {

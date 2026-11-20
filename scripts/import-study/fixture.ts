@@ -1,4 +1,19 @@
-import type { LessonMove, LessonPosition } from '@/lesson/lesson';
+import { INITIAL_FEN } from 'chessops/fen';
+
+import { LESSON_FORMAT, type Lesson, type LessonMove, type LessonPosition } from '@/lesson/lesson';
+import { SAMPLE } from '@/lesson/lesson.fixture';
+
+/** Black's lesson from the start position, all in the variation 'test', with `positions`. */
+export const testLesson = (positions: Lesson['positions']): Lesson => ({
+  format: LESSON_FORMAT,
+  id: 'test',
+  title: 'Test',
+  side: 'black',
+  start: INITIAL_FEN,
+  sources: SAMPLE.sources,
+  variations: { test: { name: 'Test' } },
+  positions,
+});
 
 /** A lesson position in the variation 'test'. */
 export const at = (moves: LessonMove[], notes?: LessonPosition['notes']): LessonPosition => ({

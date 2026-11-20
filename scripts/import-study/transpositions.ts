@@ -9,7 +9,8 @@
  * move ("playable, but gives up half a pawn"), not where it leads.
  */
 import { parsePositionKey, positionKey } from '@/game/replay';
-import type { Lesson, LessonMove, Note, PositionKey } from '@/lesson/lesson';
+import { inCleanRun } from '@/lesson/cleanRun';
+import type { Lesson, LessonMove, PositionKey } from '@/lesson/lesson';
 
 import { bookReach } from './engineCheck';
 import { played } from './study';
@@ -21,27 +22,24 @@ export function noteTranspositions(lesson: Lesson): { lesson: Lesson; moved: num
   /** Positions the learner reaches where a move on the book path already explains how. */
   const explained = new Set(
     moves
-      .filter(({ key, move, learner }) => reach.has(key) && (!learner || move.book))
+      .filter(({ key, move, learner }) => reach.has(key) && inCleanRun(move, learner))
       .filter(({ move }) => move.notes?.length)
       .map(({ after }) => after),
   );
-  const found = new Map<PositionKey, { key: PositionKey; uci: string; notes: readonly Note[] }>();
+  const found = new Map<PositionKey, { key: PositionKey; move: LessonMove }>();
   for (const { key, move, after } of moves) {
     if (reach.has(key) || !move.notes?.length || !reach.has(after) || explained.has(after))
       continue;
     const there = lesson.positions[after];
     if (!there || there.notes?.length || found.has(after)) continue;
-    found.set(after, { key, uci: move.uci, notes: move.notes });
+    found.set(after, { key, move });
   }
   if (found.size === 0) return { lesson, moved: 0 };
   const positions = { ...lesson.positions };
-  for (const [after, { key, uci, notes }] of found) {
+  for (const [after, { key, move }] of found) {
     const from = positions[key];
-    positions[key] = {
-      ...from,
-      moves: from.moves.map((move) => (move.uci === uci ? withoutNotes(move) : move)),
-    };
-    positions[after] = { ...positions[after], notes };
+    positions[key] = { ...from, moves: from.moves.map((m) => (m === move ? withoutNotes(m) : m)) };
+    positions[after] = { ...positions[after], notes: move.notes };
   }
   return { lesson: { ...lesson, positions }, moved: found.size };
 }
