@@ -123,7 +123,9 @@ export function useLesson(lesson: Lesson, store: GameStore) {
   // mode change), and showing it is what earns the mark.
   const earned = earnedMark(view.place, modeState);
   useEffect(() => {
+    // addMark keeps a mark already there; checking first skips the request.
     if (earned && !progress[earned].includes(positionHash(key))) {
+      // Saving can't fail beyond storage being blocked, which addMark already allows for.
       ctrl.fetch(addMark, { lesson: lesson.id, mark: earned, key }).catch(() => {});
     }
   }, [ctrl, earned, key, lesson.id, progress]);
