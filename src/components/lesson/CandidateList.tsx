@@ -120,8 +120,15 @@ export function CandidateList({
       <Surface elevation="sunken" border="subtle" radius="md" {...part('list-card', styles.list)}>
         {/* On a narrow page the rows scroll inside the card, under its heading. */}
         <NarrowScroll part="list-scroll">
-          {/* Showing or hiding the rare rows slides the rows below and fades them in or out. */}
-          <MotionList layoutDependency={rareShown}>
+          {/*
+           * Showing or hiding the rare rows slides the rows below and fades them in or out.
+           * Another position's moves are another list, so leaving one with its rare rows shown
+           * swaps the rows at once instead of fading them.
+           */}
+          <MotionList
+            key={candidates.map(({ move }) => move.uci).join(' ')}
+            layoutDependency={rareShown}
+          >
             {rows.map((candidate, index) => (
               <MotionView key={candidate.move.uci} id={candidate.move.uci}>
                 <Row
