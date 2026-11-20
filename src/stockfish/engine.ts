@@ -78,7 +78,7 @@ interface Search {
   readonly ranks: number;
   resolve(found: Found): void;
   reject(error: Error): void;
-  /** Its lines so far: the last set Stockfish printed (`rankLine`). */
+  /** Its lines so far: the last whole set Stockfish printed, unless dropped (`rankLine`). */
   ranked: RankedLines<SearchLine>;
   /** How many engines failed while running it. */
   failures: number;

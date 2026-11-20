@@ -46,10 +46,10 @@ describe('parseInfo', () => {
 
 describe('rankLine', () => {
   const rank = (lines: string[]) =>
-    lines.reduce<RankedLines<string>>(
-      (ranked, line) => rankLine(ranked, parseInfo(line)!, parseInfo(line)!.move!),
-      NO_LINES,
-    ).lines;
+    lines.reduce<RankedLines<string>>((ranked, line) => {
+      const info = parseInfo(line)!;
+      return rankLine(ranked, info, info.move!);
+    }, NO_LINES).lines;
 
   it("keeps one depth's set whole, so no move is listed twice", () => {
     // Stockfish's output at the node limit, 1.e4 c6 2.d4 d5 3.e5 Bf5 4.Nf3 e6

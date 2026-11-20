@@ -51,11 +51,14 @@ export function parseInfo(line: string): SearchLine | undefined {
  */
 export interface RankedLines<L> {
   readonly lines: readonly L[];
-  /** Whether the set being printed replaced the one before (see `rankLine`). */
-  readonly keeping: boolean;
+  /**
+   * Whether the set being printed goes into `lines`: false once its best
+   * line turns out to be a bound (see `rankLine`), until the next set.
+   */
+  readonly accepting: boolean;
 }
 
-export const NO_LINES: RankedLines<never> = { lines: [], keeping: false };
+export const NO_LINES: RankedLines<never> = { lines: [], accepting: false };
 
 /**
  * `ranked` after the engine prints `info`, kept as `kept`. A set whose best
@@ -65,12 +68,14 @@ export const NO_LINES: RankedLines<never> = { lines: [], keeping: false };
  */
 export function rankLine<L>(ranked: RankedLines<L>, info: SearchLine, kept: L): RankedLines<L> {
   if (info.rank === 1) {
-    return info.bound ? { lines: ranked.lines, keeping: false } : { lines: [kept], keeping: true };
+    return info.bound
+      ? { lines: ranked.lines, accepting: false }
+      : { lines: [kept], accepting: true };
   }
-  if (!ranked.keeping) return ranked;
+  if (!ranked.accepting) return ranked;
   const lines = [...ranked.lines];
   lines[info.rank - 1] = kept;
-  return { lines, keeping: true };
+  return { lines, accepting: true };
 }
 
 /**
