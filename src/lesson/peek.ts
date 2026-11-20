@@ -111,9 +111,11 @@ export function peekReducer(peek: Peek | undefined, action: PeekAction): Peek | 
                     : { since: action.time, held: heldAt(now, action.time) },
               }
             : { ...now, candidate: undefined, hover: undefined };
-      // Pointing that changes nothing keeps the same state, so nothing
-      // re-renders. A press or focus on the row the mouse points at holds it.
-      if (samePointing(now, next) && (next.hover || !now.hover)) return peek;
+      // A press or focus on the candidate the mouse points at holds it: it
+      // clears the hover record. Any other pointing that changes nothing
+      // keeps the same state, so nothing re-renders.
+      const holds = now.hover && !next.hover;
+      if (samePointing(now, next) && !holds) return peek;
       return repoint(here, next);
     }
     case 'card': {

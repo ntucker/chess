@@ -35,8 +35,8 @@ import {
 import type { Lesson, Note, PositionKey, Uci } from './lesson';
 import { earnedMark, rowMarks, steering } from './marks';
 import { lessonOpponent } from './opponent';
-import { beforeSideMoves, moveKinds, opponentPlays } from './practice';
 import { samePointer } from './peek';
+import { beforeSideMoves, moveKinds, opponentPlays } from './practice';
 import { initialScreen, screenReducer } from './screen';
 import { bookMoves, type Candidate, engineCandidates } from './select';
 import { lessonView, type Pointer, preview, type ShownNote } from './view';
@@ -285,7 +285,7 @@ export function useLesson(
       // Rows report every mouse move, and a dispatch renders the screen even
       // when the reducer keeps its state, so the mouse moving on a row already
       // pointed at sends none (its preview may be hidden by a playback or a
-      // loading lesson). A press or focus still goes: it holds the row.
+      // loading lesson). A press or focus always goes: it may hold the row.
       const candidate: Pointer = { at: 'row', uci };
       if (time !== undefined && peek?.key === key && samePointer(peek.candidate, candidate)) return;
       dispatch({ type: 'candidate', key, candidate, time });

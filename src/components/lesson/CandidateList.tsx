@@ -171,7 +171,7 @@ interface RowProps {
   readonly share?: number;
   readonly playable: boolean;
   readonly onPlay: (candidate: Candidate) => void;
-  /** The learner points at a row: `time` is when, if by hovering (see `PeekAction`). */
+  /** As the list's `onPoint`. */
   readonly onPoint: (uci: Uci, time?: number) => void;
   /** Tab (forward) leaves this row for whatever follows the list. */
   readonly onTabOut?: () => void;
