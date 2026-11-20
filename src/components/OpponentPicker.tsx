@@ -153,11 +153,14 @@ interface ListProps {
 /**
  * The steps to pick from, easiest first, the landmarks named, with a
  * line on how the step pointed at (or else the current one) plays.
+ * One row is lit at a time, the one pointed at or focused last, and the keys
+ * act on it: while the list holds focus, pointing at a row moves focus there.
  */
 function OpponentList({ id, value, focusOnOpen, onChoose, onClose }: ListProps) {
   const { color, radius } = useTheme().theme.semantic;
   const [pointed, setPointed] = useState<Opponent>();
-  const focused = useRef<Opponent>(undefined);
+  // Whether a row holds focus, so the keys reach the list.
+  const holdsFocus = useRef(false);
   const rows = useRef(new Map<Opponent, ComponentRef<typeof View>>());
   const steps = stepsFor(value);
   const focusRow = (opponent: Opponent) => rows.current.get(opponent)?.focus();
@@ -168,7 +171,7 @@ function OpponentList({ id, value, focusOnOpen, onChoose, onClose }: ListProps) 
 
   const onKey = (event: KeyDownEvent) => {
     const { key } = event.nativeEvent;
-    const at = steps.indexOf(focused.current ?? value);
+    const at = steps.indexOf(pointed ?? value);
     const step: Record<string, number> = {
       ArrowDown: Math.min(at + 1, steps.length - 1),
       ArrowUp: Math.max(at - 1, 0),
@@ -179,10 +182,10 @@ function OpponentList({ id, value, focusOnOpen, onChoose, onClose }: ListProps) 
       // Kept from the board's arrow keys (useStepKeys) too.
       event.preventDefault();
       focusRow(steps[step[key]]);
-    } else if (key === ' ' && focused.current !== undefined) {
+    } else if (key === ' ' && pointed !== undefined) {
       // React Native Web presses on Enter alone, outside buttons.
       event.preventDefault();
-      onChoose(focused.current);
+      onChoose(pointed);
     } else if (key === 'Tab') {
       // Focus goes back to the trigger as the list closes.
       event.preventDefault();
@@ -219,10 +222,17 @@ function OpponentList({ id, value, focusOnOpen, onChoose, onClose }: ListProps) 
                 {...(WEB ? { 'aria-selected': selected } : a11yState({ checked: selected }))}
                 // One stop in the tab order: the arrows move between the rows.
                 tabIndex={-1}
-                onHoverIn={() => setPointed(opponent)}
+                onHoverIn={() => {
+                  // Enter presses the focused row, so focus follows the light.
+                  if (holdsFocus.current) focusRow(opponent);
+                  else setPointed(opponent);
+                }}
                 onFocus={() => {
-                  focused.current = opponent;
+                  holdsFocus.current = true;
                   setPointed(opponent);
+                }}
+                onBlur={() => {
+                  holdsFocus.current = false;
                 }}
                 onPress={() => onChoose(opponent)}
                 style={[

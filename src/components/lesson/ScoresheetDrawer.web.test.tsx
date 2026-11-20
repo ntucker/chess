@@ -48,7 +48,12 @@ function renderDrawer(ply: number) {
   return { button, onClose, onGoto, unmount: () => act(() => root.unmount()) };
 }
 
-const escape = () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+/** Presses Escape on the page; `taken` when another control (an open popup list) took it first. */
+const escape = (taken = false) => {
+  const event = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true });
+  if (taken) event.preventDefault();
+  window.dispatchEvent(event);
+};
 
 describe('ScoresheetDrawer', () => {
   beforeEach(() => {
@@ -59,6 +64,13 @@ describe('ScoresheetDrawer', () => {
     const { onClose, unmount } = renderDrawer(1);
     escape();
     expect(onClose).toHaveBeenCalledTimes(1);
+    unmount();
+  });
+
+  it('leaves an Escape another control took, so one Escape closes one thing', () => {
+    const { onClose, unmount } = renderDrawer(1);
+    escape(true);
+    expect(onClose).not.toHaveBeenCalled();
     unmount();
   });
 

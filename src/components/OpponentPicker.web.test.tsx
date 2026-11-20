@@ -141,6 +141,32 @@ describe('OpponentPicker', () => {
     }
   });
 
+  it('takes the keys from the row pointed at, after the keyboard opened it', () => {
+    act(() => trigger().focus());
+    press('ArrowDown');
+    expect(focusedLabel()).toBe('1500, Club');
+    // Pointing at a row lights it, and the keys carry on from there.
+    act(() => {
+      options()[2].dispatchEvent(new MouseEvent('mouseenter'));
+    });
+    expect(focusedLabel()).toBe('1900, Advanced');
+    press('ArrowUp');
+    expect(focusedLabel()).toBe('1500, Club');
+    act(() => {
+      options()[0].dispatchEvent(new MouseEvent('mouseenter'));
+    });
+    press(' ');
+    expect(trigger().textContent).toBe('1100');
+  });
+
+  it('leaves focus alone when pointing at a row of a list opened by pointing', () => {
+    point('mouseenter');
+    act(() => {
+      options()[2].dispatchEvent(new MouseEvent('mouseenter'));
+    });
+    expect(document.activeElement).toBe(document.body);
+  });
+
   it('stays open after a press, when the pointer leaves', () => {
     jest.useFakeTimers();
     try {
