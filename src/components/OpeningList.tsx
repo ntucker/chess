@@ -13,7 +13,7 @@ import { Text as RNText, StyleSheet, View } from 'react-native';
 
 import { Eyebrow } from '@/components/Eyebrow';
 import { plainPress } from '@/components/FootnoteLink';
-import { AT_ONCE } from '@/components/navigation';
+import { goBack } from '@/components/navigation';
 import { Page } from '@/components/Page';
 import { SourceCredits } from '@/components/lesson/SourceCredits';
 import { STAGE_MAX } from '@/components/Stage';
@@ -195,15 +195,8 @@ function LineLink({
       onPress={(event) => {
         if (!plainPress(event)) return;
         event.preventDefault();
-        // The board's page is underneath as the learner left it. Another line
-        // leaves the list for it, as if picked on the board: Back then
-        // returns to the game the learner left there, not to the list. The
-        // back and the push go as one batch, which AT_ONCE keeps out of a transition.
-        if (!router.canGoBack()) router.replace(href, AT_ONCE);
-        else {
-          router.back();
-          if (!here) router.push(href, AT_ONCE);
-        }
+        // Another line leaves the list for the board as if picked there.
+        goBack(router, href, here ? undefined : href);
       }}
     >
       <Pressable

@@ -1,9 +1,9 @@
-import { afterEach, beforeAll, describe, expect, it } from '@jest/globals';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from '@jest/globals';
 import { router, Slot, Stack } from 'expo-router';
 import { act, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
-import { useNavigationTransitions } from '@/components/navigation';
+import { goBack, useNavigationTransitions } from '@/components/navigation';
 import { uciLine } from '@/lesson/lesson.fixture';
 import { lessonHref, variationHref } from '@/lesson/openings';
 import { FIXTURE_INDEX } from '@/lesson/openings.fixture';
@@ -50,6 +50,7 @@ async function open(url: string) {
     ),
     '(openings)/index': () => null,
     '(openings)/lesson/[id]': () => null,
+    openings: () => null,
   });
   root = createRoot();
   await act(async () => root!.render(<ExpoRoot context={context} location={url} />));
@@ -64,6 +65,10 @@ const play = (...ucis: string[]) =>
 beforeAll(() => {
   // Load the routes at once, as the test's context holds them, not lazily.
   process.env.EXPO_ROUTER_IMPORT_MODE = 'sync';
+});
+beforeEach(() => {
+  // Each test starts from Expo Router's default, so only its layout sets the mode.
+  router.setTransitionMode('preload-only');
 });
 afterEach(() => {
   act(() => root?.unmount());
@@ -88,6 +93,18 @@ describe('useOpeningsGame on the router', () => {
     await run(() => router.back());
     expect(latest.id).toBeUndefined();
     expect(moves()).toEqual([]);
+  });
+
+  it('opens a line picked from the list on the board underneath, and resumes the game on Back', async () => {
+    await open(lessonHref('caro-kann'));
+    await play('c7c6', 'd2d4');
+    await run(() => router.push('/openings'));
+    await run(() => goBack(router, '/', variationHref('caro-kann', 'advance')));
+    expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'e5'));
+    await run(() => router.back());
+    expect(moves()).toEqual(uciLine('e4', 'c6', 'd4'));
+    // Back left the list for good: the lesson the test opened is the first page.
+    expect(router.canGoBack()).toBe(false);
   });
 
   it('starts the other side at `/`, not the lesson the page opened at', async () => {
