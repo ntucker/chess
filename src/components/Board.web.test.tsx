@@ -108,3 +108,34 @@ describe('a board covered while chessground has a redraw queued', () => {
     expect(document.querySelector(drawn)).not.toBeNull();
   });
 });
+
+describe("a game's ending", () => {
+  // Fool's mate: the learner, White, is mated.
+  const MATED = 'rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3';
+  const ending = {
+    mood: 'lost',
+    reason: 'checkmate',
+    kings: { learner: 'e1', rival: 'e8' },
+  } as const;
+  const spot = () => {
+    const veil = document.querySelector<HTMLElement>('cg-ending .veil')!;
+    return [veil.style.getPropertyValue('--spot-x'), veil.style.getPropertyValue('--spot-y')];
+  };
+
+  beforeEach(() => {
+    window.matchMedia = (query) => ({ matches: false, media: query }) as MediaQueryList;
+  });
+
+  it('moves its light with the learner’s king when the board turns around', () => {
+    act(() => root.render(<Board {...board({ fen: MATED, check: true, ending })} />));
+    frame();
+    expect(spot()).toEqual(['56.25%', '93.75%']);
+
+    act(() =>
+      root.render(<Board {...board({ fen: MATED, check: true, ending, orientation: 'black' })} />),
+    );
+    frame();
+    expect(document.querySelectorAll('cg-ending')).toHaveLength(1);
+    expect(spot()).toEqual(['43.75%', '6.25%']);
+  });
+});
