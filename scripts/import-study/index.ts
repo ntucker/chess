@@ -72,7 +72,7 @@ async function main() {
   if (first === '--popularity') {
     if (rest.length !== 1) throw new Error(USAGE);
     const file = rest[0];
-    writeLesson(file, await withPopularity(readLessonFile(file)));
+    writeLesson(file, checked(await withPopularity(readLessonFile(file))));
     return;
   }
   const study = Object.hasOwn(STUDIES, first) ? STUDIES[first] : undefined;
@@ -129,10 +129,9 @@ async function main() {
   stockfish.stop();
   writeFileSync(engineFile, `${JSON.stringify({ ...filled.report, ...engineReport }, null, 2)}\n`);
   if (!rest.includes('--no-popularity')) lesson = await withPopularity(lesson);
-  // Indexed before any lesson file is written, since the index refuses a
-  // lesson no line picks; written last, once the checker passes the lesson.
+  // Both refuse a lesson by throwing, so they come before any write.
   const indexFile = join(ROOT, 'assets/lessons/index.json');
-  const index = lessonIndex(indexedWith(indexFile, lesson));
+  const index = lessonIndex(indexedWith(indexFile, checked(lesson)));
   writeLesson(join(ROOT, `assets/lessons/${lesson.id}.json`), lesson);
   registerLesson(join(ROOT, 'src/resources/lesson.ts'), lesson.id);
   writeIndex(indexFile, index);
@@ -151,12 +150,17 @@ function withPopularity(lesson: Lesson): Promise<Lesson> {
 }
 
 /** Writes `lesson` to `file`, refusing one the checker finds fault with. */
-function writeLesson(file: string, lesson: Lesson) {
+/** `lesson`, once the checker passes it; throws with its first problems otherwise. */
+function checked(lesson: Lesson): Lesson {
   const problems = checkLesson(lesson);
   if (problems.length > 0) {
     console.error(problems.slice(0, 20));
     throw new Error(`${problems.length} problems: the importer made a lesson the checker refuses`);
   }
+  return lesson;
+}
+
+function writeLesson(file: string, lesson: Lesson) {
   const json = lessonJson(lesson);
   writeFileSync(file, json);
   console.log(`wrote ${file}: ${Buffer.byteLength(json)} bytes`);

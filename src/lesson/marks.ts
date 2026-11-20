@@ -44,7 +44,7 @@ export function rowMarks(
   return marksBy(view, ({ move, next }) =>
     inCleanRun(move, view.learnerToMove) && cleanEnds(lesson, passed, next) === 'passed'
       ? 'passed'
-      : seenMark(seen, positionHash(next)),
+      : seenMark(seen, next),
   );
 }
 
@@ -73,7 +73,7 @@ export function openingMarks(
     };
     if (lines.length > 0 && lines.every(passed)) return 'passed';
     const seen = ({ id, line: { picked } }: (typeof lines)[number]) =>
-      seenMark(hashSet(own(id).seen), picked) === 'seen';
+      hashSet(own(id).seen).has(picked);
     return lines.some(seen) ? 'seen' : undefined;
   });
 }
@@ -91,8 +91,8 @@ function marksBy(
   return marks;
 }
 
-/** Seen once a lesson has shown the position whose `positionHash` is `hash`. */
-const seenMark = (seen: ReadonlySet<string>, hash: string) => (seen.has(hash) ? 'seen' : undefined);
+const seenMark = (seen: ReadonlySet<string>, next: PositionKey) =>
+  seen.has(positionHash(next)) ? 'seen' : undefined;
 
 /**
  * How the opponent picks its reply during a clean Practice run (undefined
