@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Board, { type BoardProps } from '@/components/Board';
 import { EvaluationBar } from '@/components/EvaluationBar';
-import { HEADER_HEIGHT, Header } from '@/components/Header';
+import { HEADER_HEIGHT, Header, type Place } from '@/components/Header';
 import { PLAYER_DISC, PlayerBar } from '@/components/PlayerBar';
 import { BOARD_COLUMN_BASIS, PAGE_SPACE, PROGRAM_BASIS, STAGE_GAP } from '@/components/sideBySide';
 import { Transport } from '@/components/Transport';
@@ -20,7 +20,7 @@ interface StageProps {
   /** The browser tab's title; none leaves it as it is. */
   readonly title?: string;
   /** Where the page is, such as the lesson's line: the header names it on a narrow web page. */
-  readonly place?: string;
+  readonly place?: Place;
   /** The board column (`BoardColumn`), or a stand-in the same size while it loads. */
   readonly board: ReactNode;
   /** The panel beside the board, or below it on a narrow screen. */

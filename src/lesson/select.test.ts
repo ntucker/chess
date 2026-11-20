@@ -16,7 +16,9 @@ import {
   guidePosition,
   lineKeys,
   lineVariation,
+  nameWithin,
   opponentBand,
+  pathNames,
   variationPath,
 } from './select';
 
@@ -238,6 +240,44 @@ describe('variationPath', () => {
     const names = (id: string) => variationPath(SAMPLE, id).map(({ name }) => name);
     expect(names('short')).toEqual(['Caro-Kann Defence', 'Advance Variation', 'Short Variation']);
     expect(names('caro-kann')).toEqual(['Caro-Kann Defence']);
+  });
+});
+
+describe('nameWithin', () => {
+  const advance = { name: 'Advance Variation' };
+  const slav = [
+    { name: 'Slav Defence' },
+    { name: 'Pure Slav' },
+    { name: 'Pure Slav: Alapin Variation' },
+  ];
+
+  it('drops a leading group the name is read within', () => {
+    expect(nameWithin('Advance Variation: Tal Variation (4.h4)', [advance])).toBe(
+      'Tal Variation (4.h4)',
+    );
+    // The study names each sub-line by its top group, not by its parent.
+    expect(nameWithin('Pure Slav: Czech Variation', slav)).toBe('Czech Variation');
+  });
+
+  it('keeps a name whose group is elsewhere, or that only starts like one', () => {
+    expect(nameWithin('Classical Variation: Karpov Variation', [advance])).toBe(
+      'Classical Variation: Karpov Variation',
+    );
+    expect(nameWithin('Advance Variations', [advance])).toBe('Advance Variations');
+    expect(nameWithin('Advance Variation', [advance])).toBe('Advance Variation');
+  });
+});
+
+describe('pathNames', () => {
+  it('says each group once', () => {
+    expect(
+      pathNames([
+        { name: 'Slav Defence' },
+        { name: 'Pure Slav' },
+        { name: 'Pure Slav: Alapin Variation' },
+        { name: 'Pure Slav: Czech Variation' },
+      ]),
+    ).toEqual(['Slav Defence', 'Pure Slav', 'Alapin Variation', 'Czech Variation']);
   });
 });
 

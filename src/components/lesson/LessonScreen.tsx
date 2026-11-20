@@ -19,7 +19,7 @@ import { type Color, COLORS, colorName, opposite } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { lessonsAfter, lessonsFrom, openingsLesson, withOpenings } from '@/lesson/openings';
-import type { Candidate } from '@/lesson/select';
+import { type Candidate, nameWithin, pathNames } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
 import type { LessonView } from '@/lesson/view';
 import { describeOpponent } from '@/opponent/opponent';
@@ -187,12 +187,13 @@ function LessonScreen({
   const openings = (uci: Uci) =>
     picking ? lessonsAfter(LESSON_INDEX, learner, [...shownLine, uci]) : [];
   const line = view.variation.at(-1);
+  const names = pathNames(view.variation);
   const leadsTo = (candidate: Candidate) => {
     const into = openings(candidate.move.uci);
     if (into.length) return into.map((id) => LESSON_INDEX[id].title).join(' or ');
     if (candidate.variation === undefined) return 'Leaves the guide';
     const variation = lesson.variations[candidate.variation];
-    return variation === line ? undefined : variation.name;
+    return variation === line ? undefined : nameWithin(variation.name, view.variation);
   };
   // What the guide's candidate rows and Stockfish's top moves' rows share.
   const rowProps = {
@@ -204,7 +205,9 @@ function LessonScreen({
   };
   // Past the guide, a move of Stockfish's can lead back into it.
   const rejoins = ({ variation }: Candidate) =>
-    variation === undefined ? undefined : `Rejoins ${lesson.variations[variation].name}`;
+    variation === undefined
+      ? undefined
+      : `Rejoins ${nameWithin(lesson.variations[variation].name, view.variation)}`;
   // Pointing at an opening, or picking up a piece that plays one, starts
   // loading its lesson, so playing it needn't wait. A failure shows once the
   // opening is picked.
@@ -224,10 +227,12 @@ function LessonScreen({
   return (
     <Stage
       title={`${lesson.title} · Opening Night`}
-      // Only the latest line's name, since the path won't fit a narrow page. A
-      // sub-line's name starts with its parent's ("Advance Variation: Tal…");
-      // the opening's own name is what goes unsaid.
-      place={picking ? OPENINGS_TITLE : (line?.name ?? lesson.title)}
+      // Only the latest line's name and its parent's, since the path won't fit a narrow page.
+      place={
+        picking
+          ? { name: OPENINGS_TITLE }
+          : { name: names.at(-1) ?? lesson.title, within: names.at(-2) }
+      }
       board={
         <BoardColumn
           game={game}
@@ -399,7 +404,7 @@ function describeStatus(
       detail:
         'Each move here leads to the lesson named beside it. Play one on the board or in the list.',
     };
-  const eyebrow = view.variation.map(({ name }) => name).join(' · ') || title;
+  const eyebrow = pathNames(view.variation).join(' · ') || title;
   // Beyond the guide with auto play off, nobody replies: the learner moves both sides.
   const playOn = auto ? `play on against ${engine}` : 'play on, moving both sides';
   if (lineEnded && practice?.clean)
