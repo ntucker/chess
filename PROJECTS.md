@@ -66,7 +66,8 @@ person. Hand it on only when it is:
 - in a different area than the PR's goal (for example, a lesson-screen layout change found during an
   importer PR).
 
-Reject it instead when it is wrong, with a stated reason. Never leave one dangling. To hand one on:
+Reject it instead when it is wrong, with a stated reason. Never leave one dangling. Where a handed-on
+item goes depends on the project's scope, not the PR's goal:
 
 - Project-scope work: tell the coordinator, with a self-contained brief. The coordinator adds it to
   the work queue (the work-queue tool, never the queue file by hand).
