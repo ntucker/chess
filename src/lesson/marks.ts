@@ -131,19 +131,18 @@ export function steering(
 type MarkSets = Readonly<Record<Mark, ReadonlySet<string>>>;
 
 /**
- * Each progress's marks as sets, made once: steering asks on every render.
- * The passed set is `lesson`'s (`passedSet`) when the lesson is at hand.
+ * `progress`'s marks as sets: seen once per progress, passed once per
+ * `lesson` (`passedSet`), since steering asks on every render. Without the
+ * lesson nothing walks, so its passed set is never read.
  */
-const sets = new WeakMap<MarkedPositions, MarkSets>();
 function markSets(progress: MarkedPositions, lesson: Lesson | undefined): MarkSets {
-  let found = sets.get(progress);
-  if (!found) {
-    const passed = lesson ? passedSet(lesson, progress.passed) : new Set(progress.passed);
-    found = { seen: new Set(progress.seen), passed };
-    sets.set(progress, found);
-  }
-  return found;
+  let seen = seenSets.get(progress);
+  if (!seen) seenSets.set(progress, (seen = new Set(progress.seen)));
+  return { seen, passed: lesson ? passedSet(lesson, progress.passed) : NONE_PASSED };
 }
+
+const seenSets = new WeakMap<MarkedPositions, ReadonlySet<string>>();
+const NONE_PASSED: ReadonlySet<string> = new Set();
 
 /**
  * `lesson`'s passed marks as a set, the same set as last time while they are
@@ -157,9 +156,10 @@ const lastPassed = new WeakMap<
 >();
 function passedSet(lesson: Lesson, list: readonly string[]) {
   const last = lastPassed.get(lesson);
-  if (last?.list.length === list.length && list.every((hash, i) => last.list[i] === hash)) {
-    return last.set;
-  }
+  const same =
+    last?.list === list ||
+    (last?.list.length === list.length && list.every((hash, i) => last.list[i] === hash));
+  if (last && same) return last.set;
   const set = new Set(list);
   lastPassed.set(lesson, { list, set });
   return set;
