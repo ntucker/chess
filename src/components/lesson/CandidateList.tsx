@@ -1,6 +1,6 @@
 import { a11yState, Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { Text as Span, View } from 'react-native';
+import { View } from 'react-native';
 
 import { evaluationReading, signedEvaluation } from '@/evaluation/evaluation';
 import { candidateTone } from '@/lesson/drawings';
@@ -20,7 +20,7 @@ import { MARK_SIZE, MarkLegend, ProgressMark, SPOKEN_MARKS } from './ProgressMar
 interface Props {
   /** The list's heading: what moves these are, and whose unless `owner` says. */
   readonly heading: string;
-  /** Whose moves these are, before `heading`; only spoken in a narrow web page's pane, where it would wrap. */
+  /** Whose moves these are, before `heading`; only spoken in a narrow page's pane, where it would wrap. */
   readonly owner?: string;
   readonly candidates: readonly Candidate[];
   /** Rare candidates, listed after the others while `rareShown`. */
@@ -99,11 +99,18 @@ export function CandidateList({
   return (
     <Stack {...part('move-list', labelled)}>
       <View style={styles.head}>
-        <Eyebrow>
-          {/* A plain Text takes the eyebrow's style; Silk's would set its own. */}
-          {owner ? <Span {...part('wide-only-spoken')}>{`${owner}'s `}</Span> : null}
-          {heading}
-        </Eyebrow>
+        {/*
+         * Whose moves is an eyebrow of its own: off the web a nested text can't be hidden.
+         * Its no-break space keeps the gap a space would leave inside one text.
+         */}
+        <View style={styles.heading}>
+          {owner ? (
+            <View {...part('wide-only-spoken')}>
+              <Eyebrow>{`${owner}'s\u00a0`}</Eyebrow>
+            </View>
+          ) : null}
+          <Eyebrow>{heading}</Eyebrow>
+        </View>
         {/* A narrow pane has no room for the key: each mark's row still says it to screen readers. */}
         <View {...part('wide-only')}>
           <MarkLegend marks={shownMarks} />
@@ -346,6 +353,7 @@ const STYLES = narrowStyles((px) => ({
     columnGap: 16,
     rowGap: 6,
   },
+  heading: { flexDirection: 'row', flexWrap: 'wrap', flexShrink: 1 },
   list: { overflow: 'hidden', paddingVertical: 4 },
   row: {
     flexDirection: 'row',
