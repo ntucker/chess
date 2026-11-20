@@ -48,7 +48,7 @@ export function Stage({ title, header, board, program }: StageProps) {
   const part = useNarrowPart();
   const fit = useBoardFit();
   return (
-    <Page title={title} header={header} maxWidth={STAGE_MAX}>
+    <Page title={title} header={header} maxWidth={STAGE_MAX} fillsWindow>
       <View {...part('stage', styles.stage)}>
         <View {...part('board-column', [styles.boardColumn, fit])}>{board}</View>
         <NarrowScroll part="program" style={styles.program}>

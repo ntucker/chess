@@ -17,20 +17,25 @@ interface Props {
   readonly header?: HeaderProps;
   /** The width the header and the page's content stop growing at. */
   readonly maxWidth: number;
+  /**
+   * On a narrow phone, the page is the window's height, so a panel inside can
+   * scroll on its own (the board page). Otherwise it grows with its content.
+   */
+  readonly fillsWindow?: boolean;
   readonly children: ReactNode;
 }
 
 /**
  * A screen of the app: the stage background with its spotlight, the header,
- * and the content below it, scrolling as one. On a narrow page it fills the
- * window, so a panel can scroll on its own in what the board leaves, and the
- * page scrolls only once that panel is at its floor.
+ * and the content below it, scrolling as one. A page that `fillsWindow` scrolls
+ * only once the panel inside is at its floor.
  */
-export function Page({ title, header, maxWidth, children }: Props) {
+export function Page({ title, header, maxWidth, fillsWindow = false, children }: Props) {
   const { theme } = useTheme();
   const styles = useNarrowStyles(STYLES);
   const part = useNarrowPart();
-  const height = useNarrowPageHeight();
+  const windowHeight = useNarrowPageHeight();
+  const height = fillsWindow ? windowHeight : undefined;
   return (
     <View
       style={[

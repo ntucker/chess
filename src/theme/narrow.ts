@@ -290,7 +290,7 @@ export const CSS_ONLY: Readonly<Partial<Record<NarrowPartName, readonly string[]
   place: ['display: flex', 'container-type: inline-size'],
   // Clips a hidden text's last pixel on the web; a native 1 by 1 view clips it already.
   'wide-only-spoken': ['clip-path: inset(50%)', 'white-space: nowrap'],
-  // Natively Page.tsx gives a narrow page its height (`useNarrowPageHeight`).
+  // Natively Page.tsx gives a narrow board page its height (`useNarrowPageHeight`).
   page: ['min-height: 100dvh'],
   // Unhidden as above; and native shows the drawer without its rise, or its fade for reduced motion.
   'scoresheet-drawer': [
