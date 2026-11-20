@@ -39,7 +39,7 @@ function Page({
 }: {
   readonly address?: LessonId;
   readonly variation?: string;
-  readonly entry: string;
+  readonly entry?: string;
 }) {
   const answer = useOpeningsGame(address, variation, entry);
   const setting = useSettings().side;
@@ -198,6 +198,33 @@ describe('useOpeningsGame', () => {
     await replace('anti-london');
     expect(moves()).toEqual(uciLine('d4', 'd5', 'Bf4', 'e6'));
     expect(mockRouter.replace.mock.calls).toEqual([['/lesson/slav'], ['/lesson/anti-london']]);
+  });
+
+  it('resumes the start from the side its game was played from, on Back', async () => {
+    await show();
+    await act(() => latest().playAs('white'));
+    await play('e2e4');
+    await push('slav', 'semi-slav');
+    expect(latest().side).toBe('black');
+    await back();
+    expect([moves(), latest().side, latest().setting]).toEqual([uciLine('e4'), 'white', 'white']);
+    expect(mockRouter.push).not.toHaveBeenCalled();
+  });
+
+  it('starts an address that arrives with the history entry', async () => {
+    const at = (address: LessonId | undefined, key: string | undefined) =>
+      act(() => {
+        root ??= createRoot();
+        root.render(
+          <SettingsProvider>
+            <Page address={address} entry={key} />
+          </SettingsProvider>,
+        );
+      });
+    await at(undefined, undefined);
+    await at('caro-kann', 'k1');
+    expect(moves()).toEqual(uciLine('e4'));
+    expect(mockRouter.replace).not.toHaveBeenCalled();
   });
 
   it('starts a link to the lesson the game plays, in a new entry', async () => {

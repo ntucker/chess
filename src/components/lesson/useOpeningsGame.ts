@@ -31,9 +31,9 @@ const sameAddress = (a: Address, b: Address) =>
  * the history from `/` and in place of another address otherwise, or its
  * variation dropped.
  */
-interface Send extends Address {
-  readonly how: 'push' | 'replace' | 'drop';
-}
+type Send =
+  | { readonly how: 'push'; readonly address: LessonId; readonly variation?: undefined }
+  | (Address & { readonly how: 'replace' | 'drop' });
 
 /** The address the page last caught up with, and its sends on their way, in order. */
 interface Synced extends Address {
@@ -41,11 +41,12 @@ interface Synced extends Address {
   readonly sent: readonly Send[];
 }
 
-/** Where a history entry was, and the game the page had there when it left. */
+/** Where a history entry was, and the game the page had there when it left, from its side. */
 interface Visit {
   readonly address?: LessonId;
   readonly variation?: VariationId;
   readonly game: GameState;
+  readonly side: Color;
 }
 
 /**
@@ -115,27 +116,28 @@ export function useOpeningsGame(
     let sent: readonly Send[] = [];
     if (arrived >= 0) {
       sent = synced.sent.slice(arrived + 1);
-    } else if (synced.entry === undefined) {
+    } else if (synced.entry === undefined && sameAddress(synced, { address, variation })) {
       // The entry's key arrived.
       sent = synced.sent;
-    } else if (entry !== synced.entry) {
+    } else if (entry !== synced.entry && synced.entry !== undefined) {
       // Back, Forward, or a link: resume the game the entry had, else start it.
       // The game is at `id`'s address: it plays that lesson from its side
       // (lessons of both sides share moves), or at `/`, none from the page's.
       const isAt = (id?: LessonId) =>
         lessonOf(LESSON_INDEX, id === undefined ? side : LESSON_INDEX[id].side, moves) === id;
       if (isAt(synced.address)) {
-        const leaving = { address: synced.address, variation: synced.variation, game };
+        const leaving = { address: synced.address, variation: synced.variation, game, side };
         setLeft({ ...left, [synced.entry]: leaving });
       }
       const visit = entry === undefined ? undefined : left[entry];
       // A later push can reuse a key that Back left (keys follow the stack).
-      const resumed =
-        visit && visit.address === address && visit.variation === variation
-          ? visit.game
-          : undefined;
-      dispatch({ type: 'newGame', moves: resumed?.moves ?? startOf(address, variation) });
-      if (resumed) dispatch({ type: 'goto', ply: resumed.ply });
+      const resumed = visit && sameAddress(visit, { address, variation }) ? visit : undefined;
+      dispatch({ type: 'newGame', moves: resumed?.game.moves ?? startOf(address, variation) });
+      if (resumed) {
+        dispatch({ type: 'goto', ply: resumed.game.ply });
+        // At `/` the side is the one the game was played from.
+        setAddressSide(resumed.side);
+      }
     } else {
       // A link to the page already open, such as an Android deep link.
       dispatch({ type: 'newGame', moves: startOf(address, variation) });
@@ -150,24 +152,26 @@ export function useOpeningsGame(
       bound.address === undefined
         ? undefined
         : variationLine(LESSON_INDEX[bound.address], bound.variation);
-    const next: Send | undefined =
-      picked !== bound.address
-        ? { address: picked, how: bound.address === undefined ? 'push' : 'replace' }
-        : opens !== undefined && !sameLine(moves, opens)
-          ? { address: picked, how: 'drop' }
-          : undefined;
+    let next: Send | undefined;
+    if (picked !== bound.address) {
+      next =
+        bound.address === undefined && picked !== undefined
+          ? { address: picked, how: 'push' }
+          : { address: picked, how: 'replace' };
+    } else if (opens !== undefined && !sameLine(moves, opens)) {
+      next = { address: picked, how: 'drop' };
+    }
     if (next) setSynced({ ...synced, sent: [...synced.sent, next] });
   }
   useEffect(() => {
-    if (address !== undefined) {
-      settingsDispatch({ type: 'chosen', choice: { side: LESSON_INDEX[address].side } });
-    }
-  }, [address, settingsDispatch]);
+    if (addressSide !== undefined)
+      settingsDispatch({ type: 'chosen', choice: { side: addressSide } });
+  }, [addressSide, settingsDispatch]);
   // The address is outside React, so the page's sends go out in an effect.
   const sending = synced.sent.at(-1);
   useEffect(() => {
     if (sending?.how === 'drop') router.setParams({ variation: undefined });
-    else if (sending?.how === 'push') router.push(lessonHref(sending.address!));
+    else if (sending?.how === 'push') router.push(lessonHref(sending.address));
     else if (sending)
       router.replace(sending.address === undefined ? '/' : lessonHref(sending.address));
   }, [sending, router]);
