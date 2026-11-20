@@ -9,7 +9,7 @@
  */
 import { useCache, useController, useFetch, useSuspense } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
-import { useEffect, useMemo, useReducer } from 'react';
+import { useDeferredValue, useEffect, useMemo, useReducer } from 'react';
 
 import type { Square } from '@/board/drawing';
 import type { Drag } from '@/board/pointer';
@@ -19,7 +19,7 @@ import { type GameStore, useGame } from '@/game/useGame';
 import { getEvaluation } from '@/resources/evaluation';
 import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
 import { hasMark, UNTOUCHED } from '@/progress/progress';
-import { getLessons, LESSON_INDEX } from '@/resources/lesson';
+import { getLessons, LESSON_INDEX, type LessonId } from '@/resources/lesson';
 import { addMark, getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNeedsStockfish } from '@/stockfish/demand';
@@ -146,13 +146,16 @@ export function useLesson(
   }, [ctrl, earned, key, lesson.id, progress]);
   // The start lists every opening, each row marked from its own lesson.
   // Passing a row takes walking its lesson, so the lessons with a passed
-  // line load for it, without holding up the page; until one has, its row
-  // is at most seen. The lesson on screen walks as itself, whose walks are
-  // already kept.
-  const passing = picking ? lessonsPassing(LESSON_INDEX, everyProgress) : [];
-  const walkable = passing.length ? passing : null;
-  useFetch(getLessons, walkable);
-  const openingLessons = useCache(getLessons, walkable);
+  // line load for it. Deferred, so the page never waits on them: until they
+  // load, the rows keep the lessons loaded before (none at first, so a row
+  // is at most seen). The lesson on screen walks as itself, whose walks are
+  // already kept. Their ids as one string, which the deferral can compare.
+  const passing = picking ? lessonsPassing(LESSON_INDEX, everyProgress).join(' ') : '';
+  const walking = useDeferredValue(passing, '');
+  const openingLessons = useSuspense(
+    getLessons,
+    walking ? (walking.split(' ') as LessonId[]) : null,
+  );
   const marks = useMemo(
     () =>
       picking
