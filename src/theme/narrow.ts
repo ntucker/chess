@@ -23,17 +23,25 @@ export const NARROW_LENGTHS = [
   'board-min',
   'source-link-size',
   'panel-reserve',
+  'section-gap',
+  'label-gap',
 ] as const;
 
 /** The parts of the page that narrow.css lays out differently. */
 export const NARROW_PARTS = [
   'wide-only',
+  'wide-only-spoken',
   'narrow-only',
   'page',
   'stage',
   'board-column',
   'program',
   'player-names',
+  'lone-verdict',
+  'chips',
+  'chip',
+  'chip-fit',
+  'chip-hidden',
 ] as const;
 
 /**

@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 
 import type { Tone } from '@/board/drawing';
 import { hovers } from '@/board/pointer';
-import { Eyebrow } from '@/components/Eyebrow';
+import { Eyebrow, labelled } from '@/components/Eyebrow';
 import { Transport } from '@/components/Transport';
 import type { Color } from '@/game/replay';
 import { ideaTone } from '@/lesson/drawings';
@@ -14,9 +14,15 @@ import type { Evaluation, Idea, Note } from '@/lesson/lesson';
 import type { Playback, Playing } from '@/lesson/useLesson';
 import type { ShownNote } from '@/lesson/view';
 import { toneColors } from '@/theme/drawingTones';
+import { NARROW_CSS_LOADS, narrowPart } from '@/theme/narrow';
 
 interface Props {
   readonly title: string;
+  /**
+   * Where the move previewed leads, for a narrow web page, whose candidate
+   * chips leave it out (CandidateList's `chips`).
+   */
+  readonly leadsTo?: string;
   readonly notes: readonly ShownNote[];
   /** The learner's side: a note's kind takes its color from the board's drawings. */
   readonly learner: Color;
@@ -43,6 +49,7 @@ interface Props {
  */
 export function IdeaCard({
   title,
+  leadsTo,
   notes,
   learner,
   playback,
@@ -54,12 +61,25 @@ export function IdeaCard({
 }: Props) {
   return (
     <Stack
-      gap="3"
+      style={labelled}
       onPointerEnter={({ nativeEvent, timeStamp }) => {
         if (hovers(nativeEvent.pointerType)) onReach(timeStamp);
       }}
     >
-      <Eyebrow>{title}</Eyebrow>
+      <View style={styles.title}>
+        <Eyebrow>{title}</Eyebrow>
+        {leadsTo && NARROW_CSS_LOADS ? (
+          <Text
+            {...narrowPart('narrow-only')}
+            role="caption"
+            tone="secondary"
+            numberOfLines={1}
+            style={styles.leadsTo}
+          >
+            {leadsTo}
+          </Text>
+        ) : null}
+      </View>
       {notes.length ? (
         <View>
           {notes.map((shown) => (
@@ -165,7 +185,8 @@ export function NoteView({
         }}
       >
         {drawn || verdict ? (
-          <View style={styles.heading}>
+          // On a narrow web page a verdict with no kind beside it goes below the words, which come first.
+          <View {...(drawn ? {} : narrowPart('lone-verdict'))} style={styles.heading}>
             {drawn ? (
               <KindTag label={KINDS[drawn.type]} tone={ideaTone(drawn, learner)} />
             ) : (
@@ -286,6 +307,8 @@ const VERDICTS: Readonly<Record<Evaluation, { glyph: string; words: string }>> =
 };
 
 const styles = StyleSheet.create({
+  title: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+  leadsTo: { flexShrink: 1, minWidth: 0 },
   // Each note carries its piece of the rule, so a pointed one can light its own.
   note: {
     borderLeftWidth: 2,

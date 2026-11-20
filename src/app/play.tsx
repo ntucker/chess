@@ -7,7 +7,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { lastMoveBadge } from '@/board/drawing';
 import { EvaluationEngineChoice } from '@/components/EvaluationEngineChoice';
-import { Eyebrow } from '@/components/Eyebrow';
+import { Eyebrow, labelled } from '@/components/Eyebrow';
 import { FootnoteLink } from '@/components/FootnoteLink';
 import { GameStatus } from '@/components/GameStatus';
 import { OpponentChoice } from '@/components/OpponentChoice';
@@ -83,7 +83,7 @@ export default function PlayScreen() {
             onRetry={game.retry}
           />
           <Separator />
-          <Stack gap="3">
+          <Stack style={labelled}>
             <Eyebrow>Play as</Eyebrow>
             <Inline gap="3" align="center" wrap="nowrap">
               <View style={styles.fill}>
@@ -95,7 +95,7 @@ export default function PlayScreen() {
             </Inline>
           </Stack>
           <Separator />
-          <Stack gap="3">
+          <Stack style={labelled}>
             <Eyebrow>Scoresheet</Eyebrow>
             <Scoresheet plies={game.plies} qualities={game.qualities} ply={ply} onGoto={goto} />
           </Stack>
