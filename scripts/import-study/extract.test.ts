@@ -132,6 +132,16 @@ describe('extractChapter', () => {
     ).toEqual([['cxd4', ['d1d4', 'b8c6', 'd4d1']]]);
   });
 
+  it('reads castling written with zeros in a sequence', () => {
+    const [chapter] = parseStudy(
+      '1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 { Later 5...a6 6.Bc4 e6 7.0-0 Be7 follows. } *',
+      () => true,
+    );
+    expect(
+      extractChapter(chapter, 'black').branches.map(({ spot, ucis }) => [spot.move?.san, ucis]),
+    ).toEqual([['Nc3', ['a7a6', 'f1c4', 'e7e6', 'e1g1', 'f8e7']]]);
+  });
+
   it('keeps a sequence from the start that leaves the chapter at a later opponent move', () => {
     const [chapter] = parseStudy(
       '1. e4 c6 2. d4 d5 3. Nc3 { The same as 1.e4 c6 2.Nc3 d5 3.d4. } *',

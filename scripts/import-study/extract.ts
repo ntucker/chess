@@ -185,7 +185,11 @@ function plans(
 
 /** Sequences of two or more moves that `move`'s comment writes out, placed in the tree. */
 function sequences(move: StudyMove, learner: Color) {
-  return (move.comment.match(SEQUENCE) ?? []).flatMap((run) => {
+  // Castling written with zeros (`9.0-0-0 Bb7`), as Wikibooks' prose often does.
+  const text = move.comment.replace(/(?<![\w-])0-0(?:-0)?(?![\w-])/g, (zeros) =>
+    zeros.replaceAll('0', 'O'),
+  );
+  return (text.match(SEQUENCE) ?? []).flatMap((run) => {
     const placed = placeSequence(move, namedMoves(run));
     if (!placed || placed.ucis.length < 2) return [];
     return !placed.spot.move && namesOtherOpening(placed.ucis, move, learner) ? [] : [placed];
