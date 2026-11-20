@@ -158,6 +158,22 @@ describe('useOpeningsGame', () => {
     expect(moves()).toEqual(uciLine('d4', 'd5', 'c4'));
   });
 
+  it("starts an address opened in place for a lesson of the other side that shares the game's moves", async () => {
+    await show('slav');
+    // From White's side the Slav's moves pick the London, but the game plays the Slav.
+    await show('london');
+    expect(moves()).toEqual(uciLine('d4'));
+    expect(latest().side).toBe('white');
+  });
+
+  it('starts an address opened in place for the lesson the game left in another history entry', async () => {
+    await show('caro-kann');
+    await play('c7c6');
+    await push('slav');
+    await show('caro-kann');
+    expect(moves()).toEqual(uciLine('e4'));
+  });
+
   it("starts a lesson's own start for a variation it doesn't have", async () => {
     await show('slav', 'no-such-variation');
     expect(moves()).toEqual(uciLine('d4', 'd5', 'c4'));

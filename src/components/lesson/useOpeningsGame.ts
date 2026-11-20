@@ -90,11 +90,11 @@ export function useOpeningsGame(
     if (address !== undefined && address !== synced.address) {
       setAddressSide(LESSON_INDEX[address].side);
     }
-    // The game is at `id`'s address: it plays that lesson from its side
-    // (lessons of both sides share moves), or at `/`, none from the page's.
-    const isAt = (id?: LessonId) =>
-      lessonOf(LESSON_INDEX, id === undefined ? side : LESSON_INDEX[id].side, moves) === id;
     if (entry !== synced.entry && synced.entry !== undefined) {
+      // The game is at `id`'s address: it plays that lesson from its side
+      // (lessons of both sides share moves), or at `/`, none from the page's.
+      const isAt = (id?: LessonId) =>
+        lessonOf(LESSON_INDEX, id === undefined ? side : LESSON_INDEX[id].side, moves) === id;
       const wasAt = isAt(synced.address);
       if (wasAt) {
         const leaving = { address: synced.address, variation: synced.variation, game };
@@ -112,18 +112,21 @@ export function useOpeningsGame(
         dispatch({ type: 'newGame', moves: resumed?.moves ?? startOf(address, variation) });
         if (resumed) dispatch({ type: 'goto', ply: resumed.ply });
       }
+      // Either way the game plays the entry's lesson: the one it left sent nothing here.
+      picks = [address];
     } else {
       // Within the entry: the address the game sent, or a link opened in place,
       // such as an Android deep link to the page already open. A link names
       // a variation (the game's own moves only ever drop one), or a lesson
-      // the game isn't at and hasn't sent the address to since it last arrived.
+      // the game isn't at (from the page's side, which the game's own picks
+      // are from) and hasn't sent the address to since it last arrived.
       // (Or the entry's key arrived: then the address didn't change.)
       const sentAt = synced.picks.indexOf(address);
       const newVariation = variation !== undefined && addressChanged;
       if (!newVariation && sentAt >= 0) {
         // The ones sent after it are still on their way.
         picks = synced.picks.slice(sentAt);
-      } else if (newVariation || !isAt(address)) {
+      } else if (newVariation || picked !== address) {
         dispatch({ type: 'newGame', moves: startOf(address, variation) });
         picks = [address];
       }
