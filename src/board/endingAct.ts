@@ -12,7 +12,7 @@ import type { Color } from '@/game/replay';
  * A king's part in the ending: the winner stands in gold, the mated king
  * slumps over its shadow, and in a draw both stay level.
  */
-export const KING_PARTS = ['winner', 'fallen', 'level'] as const;
+export const KING_PARTS = ['winner', 'beaten', 'level'] as const;
 export type KingPart = (typeof KING_PARTS)[number];
 
 export interface ActKing {
@@ -53,7 +53,7 @@ export interface EndingAct {
   readonly kings: readonly ActKing[];
   /**
    * The learner's king, where the one light left on falls when the house
-   * goes dark: their win's spotlight, or the lone spot on their fallen king.
+   * goes dark: their win's spotlight, or the lone spot on their beaten king.
    * A draw dims nothing, so it has none.
    */
   readonly spot?: readonly [number, number];
@@ -98,8 +98,8 @@ export const ACT_TIMES: Readonly<Record<Mood, ActTimes>> = {
 
 /** The parts of the learner's king and the rival's. */
 const PARTS: Readonly<Record<Mood, readonly [KingPart, KingPart]>> = {
-  won: ['winner', 'fallen'],
-  lost: ['fallen', 'winner'],
+  won: ['winner', 'beaten'],
+  lost: ['beaten', 'winner'],
   drawn: ['level', 'level'],
 };
 

@@ -431,8 +431,12 @@ function startEnding(board: Api, act: EndingAct) {
   squares.after(layer);
 }
 
-/** Which act is staged: the same act again, as after a redraw, has the same key. */
-const actKey = ({ mood, kings }: EndingAct) => JSON.stringify([mood, kings]);
+/**
+ * Which act is staged: the same act again, as after a redraw, has the same
+ * key. The spot is in it because it moves when the board turns around, and
+ * the layer is drawn from it.
+ */
+const actKey = ({ mood, kings, spot }: EndingAct) => JSON.stringify([mood, kings, spot]);
 
 /** Marks the kings' elements with their parts, which chessground may have swapped since. */
 function markKings(pieces: Iterable<PieceNode>, act: EndingAct) {

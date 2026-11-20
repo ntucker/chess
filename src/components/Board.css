@@ -263,12 +263,12 @@ cg-board piece.ending-winner::after {
  * Upright enough to read as its own king on any square; every transform in
  * its keyframes lists the same functions as this one, so they blend.
  */
-cg-board piece.ending-fallen::before {
+cg-board piece.ending-beaten::before {
   transform: translate(0, 0) rotate(-12deg) scale(0.8, 0.8);
   filter: grayscale(0.9) brightness(0.78);
 }
 /* The shadow it sinks into, a dark pool at its foot (no light, unlike the winner's disc). */
-cg-board piece.ending-fallen::after {
+cg-board piece.ending-beaten::after {
   left: 6%;
   right: 6%;
   top: 68%;
@@ -335,16 +335,16 @@ cg-board piece.ending-level::after {
   .ending-drawn piece.ending-level::after {
     animation: ending-light 700ms ease-out var(--act-rise) backwards;
   }
-  .ending-won piece.ending-fallen::before {
+  .ending-won piece.ending-beaten::before {
     animation: ending-struck 560ms var(--act-fall) backwards;
   }
-  .ending-won piece.ending-fallen::after {
+  .ending-won piece.ending-beaten::after {
     animation: ending-thud 560ms var(--act-fall) backwards;
   }
-  .ending-lost piece.ending-fallen::before {
+  .ending-lost piece.ending-beaten::before {
     animation: ending-slump 1150ms var(--act-fall) backwards;
   }
-  .ending-lost piece.ending-fallen::after {
+  .ending-lost piece.ending-beaten::after {
     animation: ending-pool 1150ms var(--act-fall) backwards;
   }
   .ending-drawn piece.ending-level::before {

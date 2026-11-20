@@ -18,7 +18,7 @@ describe('endingAct', () => {
     const act = exampleAct('Win');
     expect(act.kings).toEqual([
       { square: 'e1', part: 'winner' },
-      { square: 'e8', part: 'fallen' },
+      { square: 'e8', part: 'beaten' },
     ]);
     expect(act.spot).toEqual([4, 7]);
     expect(act.sparks.length).toBeGreaterThan(0);
@@ -28,7 +28,7 @@ describe('endingAct', () => {
   it('leaves one light on the learner who is mated, and throws nothing', () => {
     const act = exampleAct('Loss');
     expect(act.kings.map(({ square, part }) => [square, part])).toEqual([
-      ['e1', 'fallen'],
+      ['e1', 'beaten'],
       ['e8', 'winner'],
     ]);
     expect(act.spot).toEqual([4, 7]);
