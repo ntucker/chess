@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header, type HeaderProps } from '@/components/Header';
 import { PAGE_SPACE } from '@/theme/sideBySide';
 import { narrowStyles } from '@/theme/narrow';
-import { useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
+import { useNarrowPageHeight, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
 import { spotlight } from '@/theme/theme';
 
 interface Props {
@@ -30,6 +30,7 @@ export function Page({ title, header, maxWidth, children }: Props) {
   const { theme } = useTheme();
   const styles = useNarrowStyles(STYLES);
   const part = useNarrowPart();
+  const height = useNarrowPageHeight();
   return (
     <View
       style={[
@@ -46,7 +47,7 @@ export function Page({ title, header, maxWidth, children }: Props) {
         </Head>
       )}
       <SafeAreaView style={styles.fill}>
-        <ScrollView contentContainerStyle={styles.fillGrow}>
+        <ScrollView contentContainerStyle={height === undefined ? styles.fillGrow : { height }}>
           <View {...part('page', styles.page)}>
             <View style={[styles.header, { maxWidth }]}>
               <Header {...header} />
@@ -61,7 +62,7 @@ export function Page({ title, header, maxWidth, children }: Props) {
 
 const STYLES = narrowStyles((px) => ({
   fill: { flex: 1 },
-  // Lets a narrow page grow to the window's height (narrow.css does it with min-height on the web).
+  // Fills the window with the page's background; a narrow page natively takes its own height.
   fillGrow: { flexGrow: 1 },
   page: { padding: px(PAGE_SPACE), gap: px(PAGE_SPACE), alignItems: 'center' },
   header: { width: '100%' },

@@ -7,6 +7,7 @@ import {
   CSS_ONLY,
   NARROW_PARTS,
   NARROW_PX,
+  NATIVE_ONLY,
   NATIVE_PARTS,
   narrowLength,
   SCROLLING_PARTS,
@@ -68,7 +69,11 @@ describe('narrow.css', () => {
   const wideRules = declarations(wideCss);
 
   it.each(NARROW_PARTS)('lays out the %s as natively', (part) => {
-    const native = [...asCss(NATIVE_PARTS[part].narrow), ...(CSS_ONLY[part] ?? [])];
+    const nativeOnly = new Set<string>(NATIVE_ONLY[part] ?? []);
+    const narrow = Object.fromEntries(
+      Object.entries(NATIVE_PARTS[part].narrow ?? {}).filter(([key]) => !nativeOnly.has(key)),
+    );
+    const native = [...asCss(narrow), ...(CSS_ONLY[part] ?? [])];
     expect([...(narrowRules.get(part) ?? [])].sort()).toEqual(native.sort());
     expect([...(wideRules.get(part) ?? [])].sort()).toEqual(asCss(NATIVE_PARTS[part].wide).sort());
   });

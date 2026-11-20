@@ -64,6 +64,8 @@ const BOARD_MIN = narrowLength('board-min', 320);
 const PANEL_RESERVE = narrowLength('panel-reserve', 0);
 /** Height around the board, and the panel's reserve below it. */
 const BESIDE_HEIGHT = AROUND_BOARD.plus(PANEL_RESERVE);
+/** A narrow page's least height natively: the board at its smallest, and the panel's reserve below it. */
+export const NARROW_PAGE_MIN = BESIDE_HEIGHT.plus(BOARD_MIN).narrow;
 /**
  * The board column's width limit on the web. The board also shrinks to fit
  * the window's height, so the player's name bar and the move buttons stay in

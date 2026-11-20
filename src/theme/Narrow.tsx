@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { ScrollView, type StyleProp, type TextStyle, View, type ViewStyle } from 'react-native';
 import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { SIDE_BY_SIDE_MIN } from '@/theme/sideBySide';
+import { NARROW_PAGE_MIN, SIDE_BY_SIDE_MIN } from '@/theme/sideBySide';
 import {
   NARROW_CSS_LOADS,
   NARROW_PX,
@@ -97,6 +97,7 @@ export function NarrowOnly({ children }: { readonly children: ReactNode }) {
  * On the web narrow.css does it to a plain view, which `contentStyle` styles
  * too. Elsewhere it is always a scroll view, scrolling only on a narrow page,
  * so crossing the width keeps what it holds.
+
  */
 export function NarrowScroll({
   part: name,
@@ -135,6 +136,23 @@ const FADING_EDGE = { start: 0, end: NARROW_PX.fade };
  */
 export const useNarrowViewport: () => { readonly px: Px; readonly height: number } | undefined =
   NARROW_CSS_LOADS ? () => undefined : useNativeViewport;
+
+/**
+ * Off the web, a narrow page's height: the app's, less its system bars, or
+ * what the board at its smallest and the panel at its reserve need, if more
+ * (the page then scrolls). A definite height, so the panel below the board
+ * gets what the board leaves: Yoga ignores a zero flex basis in a scroll
+ * view's content otherwise. None on a wide page, which grows to its
+ * content, or on the web, where narrow.css's `min-height: 100dvh` does it.
+ */
+export const useNarrowPageHeight: () => number | undefined = NARROW_CSS_LOADS
+  ? () => undefined
+  : useNativePageHeight;
+
+function useNativePageHeight() {
+  const { width, height } = useNativeArea();
+  return width < SIDE_BY_SIDE_MIN ? Math.max(height, NARROW_PAGE_MIN) : undefined;
+}
 
 function useNativeViewport() {
   const { width, height } = useNativeArea();

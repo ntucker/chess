@@ -235,12 +235,31 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
     narrow: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minHeight: 0 },
   },
   panes: {
-    narrow: { flexGrow: 1, flexShrink: 1, flexBasis: 0, flexDirection: 'row', minHeight: 140 },
+    narrow: {
+      flexGrow: 1,
+      flexShrink: 1,
+      flexBasis: 0,
+      flexDirection: 'row',
+      minHeight: 140,
+      height: 140,
+    },
   },
   'moves-pane': { narrow: { flexGrow: 2, flexShrink: 1, flexBasis: 0, minWidth: 0 } },
   'idea-pane': { narrow: { flexGrow: 3, flexShrink: 1, flexBasis: 0, minWidth: 0 } },
   'leads-to': { narrowProps: { numberOfLines: undefined } },
 };
+
+/**
+ * Native styles with no rule in narrow.css, and why, so narrow.test.ts can
+ * tell them from a declaration missing there.
+ */
+export const NATIVE_ONLY: Readonly<Partial<Record<NarrowPartName, readonly (keyof ViewStyle)[]>>> =
+  {
+    // The panes sit in the program's scroll view, where Yoga ignores a zero flex basis
+    // and would grow them to their content: a height at their floor is the basis
+    // there instead. CSS keeps the zero basis.
+    panes: ['height'],
+  };
 
 /** What narrow.css does to a part that scrolls on its own: `NarrowScroll` does it natively. */
 const SCROLLS = [
@@ -260,7 +279,7 @@ export const CSS_ONLY: Readonly<Partial<Record<NarrowPartName, readonly string[]
   place: ['display: flex', 'container-type: inline-size'],
   // Clips a hidden text's last pixel on the web; a native 1 by 1 view clips it already.
   'wide-only-spoken': ['clip-path: inset(50%)', 'white-space: nowrap'],
-  // The page fills the window natively by growing in its scroll view (Page.tsx).
+  // Natively Page.tsx gives a narrow page its height (`useNarrowPageHeight`).
   page: ['min-height: 100dvh'],
   // Unhidden as above; and native shows the drawer without its rise, or its fade for reduced motion.
   'scoresheet-drawer': [
