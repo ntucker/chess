@@ -9,6 +9,7 @@ import { EvaluationEngineChoice } from '@/components/EvaluationEngineChoice';
 import { Eyebrow, labelled } from '@/components/Eyebrow';
 import { FootnoteLink } from '@/components/FootnoteLink';
 import { GameStatus } from '@/components/GameStatus';
+import { OpponentChoice } from '@/components/OpponentChoice';
 import { OpponentPicker } from '@/components/OpponentPicker';
 import { Scoresheet } from '@/components/Scoresheet';
 import { BoardColumn, Stage } from '@/components/Stage';
@@ -90,6 +91,7 @@ export default function PlayScreen() {
             <Scoresheet plies={game.plies} qualities={game.qualities} ply={ply} onGoto={goto} />
           </Stack>
           <Stack gap="1">
+            <OpponentChoice />
             <EvaluationEngineChoice />
             <FootnoteLink href="/" back>
               Back to the lesson
