@@ -195,7 +195,35 @@ describe('fillBook', () => {
     ]);
   });
 
-  it('ends the line where the engine overrules every move the guide shows', async () => {
+  it("books Stockfish's own move where it overrules every move the guide shows, keeping them", async () => {
+    const warned = { uci: uci('d4', 'e5'), notes: [{ text: 'e5 just loses a pawn.' }] };
+    const lesson = {
+      ...unbooked,
+      positions: { ...unbooked.positions, [keyAfter('d4')]: at([warned]) },
+    };
+    delete lesson.positions[keyAfter('d4', 'd5')];
+    const naming = async (line: readonly string[], key: string) => ({
+      ...(await evaluate(line, key)),
+      best: uci('d4', 'd5'),
+    });
+    const filled = await fillBook(lesson, naming);
+    expect(filled.lesson.positions[keyAfter('d4')].moves).toEqual([
+      { uci: uci('d4', 'd5'), book: true },
+      warned,
+    ]);
+    expect(filled.report).toEqual({
+      filled: [
+        {
+          line: '1.d4',
+          move: 'd5',
+          why: "Stockfish's best: the engine overruled every guide move",
+        },
+      ],
+      ended: [],
+    });
+  });
+
+  it('ends the line where the engine overrules every move the guide shows and names none', async () => {
     const lesson = {
       ...unbooked,
       positions: { ...unbooked.positions, [keyAfter('d4')]: at([{ uci: uci('d4', 'e5') }]) },

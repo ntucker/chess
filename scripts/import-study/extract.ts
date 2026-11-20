@@ -54,6 +54,8 @@ export interface ChapterNotes {
   readonly rejected: readonly Rejected[];
   /** Evaluation glyphs dropped because the comment's text says otherwise. */
   readonly contradicted: number;
+  /** `Chapter.writtenFor`: the comments' "you" is the learner's opponent. */
+  readonly writtenFor?: Color;
 }
 
 const NAG_EVALUATIONS: Readonly<Record<number, Evaluation>> = {
@@ -68,14 +70,24 @@ const NAG_EVALUATIONS: Readonly<Record<number, Evaluation>> = {
   19: 'blackWinning',
 };
 
-const EVALUATION_TEXT: Readonly<Record<Evaluation, string>> = {
-  equal: 'The position is equal.',
-  whiteSlightly: 'White is slightly better.',
-  whiteClearly: 'White is clearly better.',
-  whiteWinning: 'White is winning.',
-  blackSlightly: 'Black is slightly better.',
-  blackClearly: 'Black is clearly better.',
-  blackWinning: 'Black is winning.',
+/**
+ * An evaluation glyph's words to the learner, who plays `learner`: "You are
+ * winning.", never "White is winning.", since notes speak to the learner.
+ */
+export function evaluationText(value: Evaluation, learner: Color): string {
+  const favors = direction(value);
+  if (favors === 'equal') return 'The position is equal.';
+  const [better, worse] = EDGE_WORDS[value.replace(/^(?:white|black)/, '') as Edge];
+  return `You are ${favors === learner ? better : worse}.`;
+}
+
+type Edge = 'Slightly' | 'Clearly' | 'Winning';
+
+/** How an edge of each size reads for the side that has it, and for the other. */
+const EDGE_WORDS: Readonly<Record<Edge, readonly [string, string]>> = {
+  Slightly: ['slightly better', 'slightly worse'],
+  Clearly: ['clearly better', 'clearly worse'],
+  Winning: ['winning', 'losing'],
 };
 
 /** Two or more moves in a row, the first numbered: `9...Qa5+ 10.Nc3 e6`. */
@@ -83,6 +95,9 @@ const SEQUENCE =
   /\d+\s?\.(?:\.\.)?\s?[^\s,;()]+(?:\s+(?:\d+\s?\.(?:\.\.)?\s?)?[KQRBNOa-h][^\s,;()]*)+/g;
 
 export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
+  const { writtenFor } = chapter;
+  // Whom the comments call "you".
+  const reader = writtenFor ?? learner;
   const moveNotes: MoveNote[] = [];
   const positionNotes: PositionNote[] = [];
   const branches: Branch[] = [];
@@ -96,7 +111,7 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
     // A header is about the whole chapter: it goes where the chapter's main line ends, not on move 1.
     const target = header?.mainLineEnd ?? move;
     const traps = trapLines(move, learner);
-    const evaluation = glyphEvaluation(move, learner);
+    const evaluation = glyphEvaluation(move, learner, reader);
     if (evaluation === 'contradicted') contradicted++;
     const found: Found[] = [
       ...plans(chapter, move, header, learner),
@@ -107,7 +122,8 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
       ...traps.map(({ spot, idea }) => ({ spot, ucis: idea.moves })),
       ...sequences(move, learner),
     );
-    choices.push(...choiceGuide(move, learner));
+    // A choice guide picks among the moves of the side it was written for.
+    if (!writtenFor) choices.push(...choiceGuide(move, learner));
 
     const own: Found[] = [];
     for (const item of found) {
@@ -130,7 +146,15 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
         source: move,
       });
   }
-  return { moveNotes, positionNotes, branches, choices, rejected, contradicted };
+  return {
+    moveNotes,
+    positionNotes,
+    branches,
+    choices,
+    rejected,
+    contradicted,
+    ...(writtenFor && { writtenFor }),
+  };
 }
 
 /** The plans `move`'s comment states; a chapter header's watch-outs count as plans of the chapter. */
@@ -213,17 +237,22 @@ function readHeader(chapter: Chapter, comment: string): Header | undefined {
 }
 
 /**
- * The move's evaluation glyph, unless its comment states verdicts and none
- * agrees with the glyph: then the text wins and the glyph is dropped.
+ * The move's evaluation glyph, worded for `learner`, unless its comment
+ * (whose "you" is `reader`) states verdicts and none agrees with the glyph:
+ * then the text wins and the glyph is dropped.
  */
-function glyphEvaluation(move: StudyMove, learner: Color): Found | 'contradicted' | undefined {
+function glyphEvaluation(
+  move: StudyMove,
+  learner: Color,
+  reader: Color,
+): Found | 'contradicted' | undefined {
   const value = move.nags.map((nag) => NAG_EVALUATIONS[nag]).find(Boolean);
   if (!value) return undefined;
-  const verdicts = textVerdicts(move.comment, learner);
+  const verdicts = textVerdicts(move.comment, reader);
   if (verdicts.size > 0 && !verdicts.has(direction(value))) return 'contradicted';
   return {
     spot: { move, pos: move.after },
     idea: { type: 'evaluation', value },
-    text: EVALUATION_TEXT[value],
+    text: evaluationText(value, learner),
   };
 }

@@ -104,8 +104,9 @@ function paragraphs(prose: string): { wiki: string; text: string }[] {
   const result: { wiki: string; text: string }[] = [];
   for (const block of prose.split(/\n\s*\n|\n(?=[*#])/)) {
     const lines = block.split('\n').filter((line) => {
-      const subheading = /^===+\s*(.*?)\s*===+$/.exec(line.trim());
-      if (subheading) section = plainText(subheading[1]);
+      // Any level: a page without the position template keeps its own "= Title =" in the prose.
+      const subheading = /^(=+)\s*(.*?)\s*\1$/.exec(line.trim());
+      if (subheading) section = plainText(subheading[2]);
       return !subheading;
     });
     const wiki = lines.join(' ');

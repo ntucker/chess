@@ -29,6 +29,8 @@ export interface Converted {
   /** Ideas the model wrote that the lesson keeps. */
   readonly kept: number;
   readonly rejected: readonly { readonly idea: AnswerIdea; readonly why: string }[];
+  /** Note texts cut mid-sentence at the word limit, as cut: the model's, or the comment's where it wrote no note on the move. */
+  readonly cut: readonly string[];
 }
 
 /** Every note in `result`, on the move and before it. */
@@ -49,6 +51,13 @@ export function convertedNotes(
   const rejected: { idea: AnswerIdea; why: string }[] = [];
   const extractedEvaluation = comment.extracted.some((idea) => idea.type === 'evaluation');
   let kept = 0;
+  const cut: string[] = [];
+  /** `noteText`, remembering a text it cuts mid-sentence (not just to its first sentence). */
+  const shown = (written: string) => {
+    const text = noteText(written);
+    if (text !== labelless(written) && text.endsWith('…')) cut.push(text);
+    return text;
+  };
   const notesAbout = (about: 'move' | 'before') =>
     answer.notes
       .filter((note) => note.about === about)
@@ -64,7 +73,7 @@ export function convertedNotes(
           kept++;
           return [result];
         });
-        return lessonNote(noteText(note.text), comment.comment, ideas);
+        return lessonNote(shown(note.text), comment.comment, ideas);
       })
       .filter((note) => note.text);
   const before = notesAbout('before');
@@ -74,20 +83,24 @@ export function convertedNotes(
     own.length === 0
       ? moves
       : [
-          lessonNote(first?.text ?? noteText(comment.comment), comment.comment, [
+          lessonNote(first?.text ?? shown(comment.comment), comment.comment, [
             ...own,
             ...(first?.ideas ?? []),
           ]),
           ...rest,
         ];
-  return { move, before, kept, rejected };
+  return { move, before, kept, rejected, cut };
 }
 
 /** The note's text without a label the card already shows, cut to the word limit. */
 function noteText(text: string): string {
-  const plain = text.trim().replace(/^(?:Plan|Trap|Threat|Idea|Line)\s*:\s*/i, '');
+  const plain = labelless(text);
   return plain.split(/\s+/).filter(Boolean).length > MAX_NOTE_WORDS ? shorten(plain) : plain;
 }
+
+/** `text` without a label the card already shows ("Plan:"). */
+const labelless = (text: string) =>
+  text.trim().replace(/^(?:Plan|Trap|Threat|Idea|Line)\s*:\s*/i, '');
 
 function lessonNote(text: string, original: string, ideas: readonly Idea[]): Note {
   return { text, ...(text !== original && { original }), ...(ideas.length > 0 && { ideas }) };

@@ -161,15 +161,18 @@ function addChapter(
     draft.book = true;
     tree.entry(positionKey(move.before)).bookSource ??= source;
   };
-  const note = (spot: { notes: Note[]; noteSource?: number }, note: Note) => {
+  const note = (spot: { notes: Note[]; noteSource?: number }, note: Note, intro?: true) => {
+    // A line's introduction leaves the spot to whichever guide explains the move itself.
+    if (!intro) spot.noteSource ??= source;
     if (addNote(spot, note, source)) tally.notes++;
-    else if (spot.noteSource !== source) tally.notesSkipped++;
+    else if (spot.noteSource !== undefined && spot.noteSource !== source) tally.notesSkipped++;
   };
   for (const move of chapterMoves(chapter)) {
     tree.move(move.before, move.uci);
     if (book.has(move)) recommend(move);
   }
-  for (const { move, note: text } of moveNotes) note(tree.move(move.before, move.uci), text);
+  for (const { move, note: text, source: from } of moveNotes)
+    note(tree.move(move.before, move.uci), text, from.intro);
   for (const { pos, note: text } of positionNotes) note(tree.entry(positionKey(pos)), text);
   for (const choice of choices) {
     if (say(choice.move) === 'closed') {
@@ -354,10 +357,12 @@ function bookMoves(
   block: (move: StudyMove) => void,
 ): Set<StudyMove> {
   const book = new Set<StudyMove>();
+  // A chapter written for the other side recommends its own moves, not the learner's.
+  const recommends = chapter.writtenFor === undefined;
   const visit = (moves: readonly StudyMove[]) => {
     moves.forEach((move, i) => {
       if (move.before.turn !== side) return visit(move.children);
-      const recommended = offered.has(move) || (i === 0 && !isDubious(move));
+      const recommended = recommends && (offered.has(move) || (i === 0 && !isDubious(move)));
       const decided = say(move);
       if (decided === 'closed') {
         if (recommended) block(move);
@@ -373,18 +378,18 @@ function bookMoves(
 }
 
 /**
- * Adds `note` from `source` to a move's or position's notes, once. A later
- * source only explains what no earlier one did: guides tend to say the same
- * thing about the same move, and the learner would read it once per guide.
- * Whether it was added.
+ * Adds `note` from `source` to a move's or position's notes, once, and says
+ * whether it did. Guides tend to say the same thing about the same move, so
+ * only the source that first explained a spot (its `noteSource`) adds to it;
+ * a spot nobody has explained yet takes anyone's note. Setting `noteSource`
+ * is the caller's job: a line's introduction leaves the spot open.
  */
 function addNote(
   spot: { notes: Note[]; noteSource?: number },
   note: Note,
   source: number,
 ): boolean {
-  spot.noteSource ??= source;
-  if (spot.noteSource !== source) return false;
+  if (spot.noteSource !== undefined && spot.noteSource !== source) return false;
   const same = JSON.stringify(note);
   if (spot.notes.some((other) => JSON.stringify(other) === same)) return false;
   spot.notes.push(note);

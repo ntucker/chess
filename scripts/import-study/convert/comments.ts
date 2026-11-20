@@ -35,10 +35,16 @@ export interface Comment {
   readonly comment: string;
   readonly previousComment: string;
   readonly chapterSummary?: true;
+  /** The side the study was written for, when it is not the learner's: its "you" is the opponent. */
+  readonly writtenFor?: Color;
   /** Ideas the importer already read from this comment without AI. */
   readonly extracted: readonly Idea[];
   /** Only when asked again: the model's earlier note texts the checker refused as notation. */
   readonly refusedText?: readonly string[];
+  /** Only when asked again: moves the comment marks as mistakes (`3.e3?`), in SAN, whose punishment no note draws. */
+  readonly mistakes?: readonly string[];
+  /** Only when asked again: the model's earlier note texts, cut with "…" at the word limit. */
+  readonly cutText?: readonly string[];
 }
 
 /** A comment continuing the one before it ("...and the position stays level"), not a move like "...Nd7". */
@@ -76,6 +82,7 @@ export function noteComment(moveNote: MoveNote, chapter: ChapterNotes): Comment 
     comment,
     previousComment: fragment ? '' : previous,
     ...(summary && { chapterSummary: true as const }),
+    ...(chapter.writtenFor && { writtenFor: chapter.writtenFor }),
     extracted,
   };
 }

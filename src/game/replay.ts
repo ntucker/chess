@@ -17,8 +17,9 @@ export const WRITTEN_MOVE = String.raw`(?:\d+\s?\.(?:\.\.)?\s?|\.\.\.)?${SAN}[!?
 /**
  * A move a variation name writes (`4.g4`, `...Bf5`, `5...Nh5`, `e5`), as a regular expression
  * source. Its groups: the number, `..` for a numbered Black move, `...` for an unnumbered one, and the SAN.
+ * `...` may follow a word (`Qxd4...Qxd4`); a number or bare SAN may not.
  */
-export const NAMED_MOVE = String.raw`(?<![\w.])(?:(\d+)\s?\.(\.\.)?\s?|(\.\.\.))?(${SAN})`;
+export const NAMED_MOVE = String.raw`(?:(?<![\w.])(\d+)\s?\.(\.\.)?\s?|(\.\.\.)|(?<![\w.]))(${SAN})`;
 
 export const colorName = (color: Color) => (color === 'white' ? 'White' : 'Black');
 

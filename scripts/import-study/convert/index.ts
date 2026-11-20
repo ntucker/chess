@@ -13,16 +13,20 @@
  * the lesson file it writes is committed, so the site build and the tests
  * never call a model.
  */
-import { positionKey } from '@/game/replay';
+import { makeSan } from 'chessops/san';
+import { parseUci } from 'chessops/util';
+
+import { parsePosition, positionKey, sanToUci } from '@/game/replay';
 import { notationProblem } from '@/lesson/check';
 import { noteShows, type Note, type NoteShows } from '@/lesson/lesson';
 
 import type { ChapterNotes, MoveNote, PositionNote } from '../extract';
+import { namedMoves, plyOf } from '../text';
 import type { Answer, AnswerIdea } from './answer';
 import { MODELS, type Ask } from './claude';
 import { noteComment, type Comment } from './comments';
 import { convertedNotes, notesOf, type Converted } from './notes';
-import { REWORD } from './prompt';
+import { DRAW_MISTAKES, REWORD, SHORTEN, WRITTEN_FOR_OPPONENT } from './prompt';
 
 /** How many comments were asked again of Opus, by why, and what the rewording changed. */
 interface Retries {
@@ -30,6 +34,10 @@ interface Retries {
   readonly retried: number;
   /** The checker refused note text as notation. */
   readonly reworded: number;
+  /** The comment marks a move as a mistake (`3.e3?`) and no note draws how it is punished. */
+  readonly punished: number;
+  /** A note text ran over the word limit and was cut. */
+  readonly shortened: number;
   /**
    * Ideas the reworded comments kept before and after: an answer in words
    * replaces the old one whatever it draws, so the report shows what changed.
@@ -82,13 +90,14 @@ export async function convertChapters(
 async function convertComments(
   jobs: readonly Job[],
   comments: ReadonlyMap<string, Comment>,
-  ask: Ask,
+  askModel: Ask,
 ): Promise<{ converted: Map<string, Converted>; retries: Retries }> {
+  const ask = withWrittenFor(askModel);
   const converted = new Map<string, Converted>();
   /** Puts each answer's notes in `converted` where there are none yet or they `replace` what is there. */
   const keep = (
     answers: Map<string, Answer>,
-    replaces: (result: Converted, previous: Converted) => boolean,
+    replaces: (result: Converted, previous: Converted, comment: Comment) => boolean,
   ) => {
     for (const { moveNote, comment } of jobs) {
       const answer = comment && answers.get(comment.id);
@@ -96,7 +105,7 @@ async function convertComments(
       const result = convertedNotes(comment, answer, moveNote.move, moveNote.note.ideas ?? []);
       if (notesOf(result).length === 0) continue;
       const previous = converted.get(comment.id);
-      if (!previous || replaces(result, previous)) converted.set(comment.id, result);
+      if (!previous || replaces(result, previous, comment)) converted.set(comment.id, result);
     }
   };
   const keepsMore = (result: Converted, previous: Converted) => result.kept > previous.kept;
@@ -115,15 +124,110 @@ async function convertComments(
   const before = keptByReworded();
   if (reword.length > 0)
     keep(await ask(MODELS.retry, reword, REWORD), (result) => notationTexts(result).length === 0);
+  const punish = [...converted].flatMap(([id, result]) => {
+    const comment = comments.get(id)!;
+    const mistakes = undrawnMistakes(comment, result);
+    return mistakes.length > 0 ? [{ ...comment, mistakes }] : [];
+  });
+  // Without an answer (a --no-model run, a failed request) the earlier notes stay.
+  if (punish.length > 0)
+    keep(
+      await ask(MODELS.retry, punish, DRAW_MISTAKES),
+      (result, previous, comment) =>
+        notationTexts(result).length === 0 &&
+        drawnMistakes(comment, result) > drawnMistakes(comment, previous),
+    );
+  // A comment marking mistakes is asked to draw them again too, so a shorter answer can keep them.
+  const shorten = [...converted].flatMap(([id, result]) => {
+    const comment = comments.get(id)!;
+    const mistakes = commentMistakes(comment).map(({ san }) => san);
+    return result.cut.length > 0
+      ? [{ ...comment, cutText: result.cut, ...(mistakes.length > 0 && { mistakes }) }]
+      : [];
+  });
+  const plain = shorten.filter((comment) => !comment.mistakes);
+  const drawing = shorten.filter((comment) => comment.mistakes);
+  const shortened = (result: Converted, previous: Converted, comment: Comment) =>
+    result.cut.length === 0 &&
+    notationTexts(result).length === 0 &&
+    drawnMistakes(comment, result) >= drawnMistakes(comment, previous);
+  if (plain.length > 0) keep(await ask(MODELS.retry, plain, SHORTEN), shortened);
+  if (drawing.length > 0)
+    keep(await ask(MODELS.retry, drawing, DRAW_MISTAKES + SHORTEN), shortened);
   return {
     converted,
     retries: {
       retried: retry.length,
       reworded: reword.length,
       rewordedIdeas: { before, after: keptByReworded() },
+      punished: punish.length,
+      shortened: shorten.length,
     },
   };
 }
+
+/**
+ * The moves `comment` marks as mistakes (`3.e3?`, not `?!`) that the side to
+ * move can play after its move, in UCI and in SAN as the model reads moves:
+ * what a note warning against one should show is how it is punished. A
+ * mistake must be the next move by its number, since a comment also warns
+ * about moves deeper in its lines (`5.Bd2?` after 3...e6). A bare move counts
+ * only when a numbered move before it places it (`3.Nf3 e6?`).
+ */
+function commentMistakes(comment: Comment): { uci: string; san: string }[] {
+  const marked = namedMoves(comment.comment).filter(({ glyph }) => glyph === '?' || glyph === '??');
+  if (marked.length === 0) return [];
+  const pos = parsePosition(comment.fenAfter)!;
+  const next = plyOf(pos.fullmoves, pos.turn === 'black');
+  const found = new Map<string, string>();
+  for (const { san, ply, side } of marked) {
+    if (ply !== next || side !== pos.turn) continue;
+    const uci = sanToUci(pos, san);
+    if (uci && !found.has(uci)) found.set(uci, makeSan(pos, parseUci(uci)!));
+  }
+  return [...found].map(([uci, san]) => ({ uci, san }));
+}
+
+/** The trap and line ideas in `result`, by their first move. */
+const drawnFirstMoves = (result: Converted) =>
+  new Set(
+    notesOf(result).flatMap((note) =>
+      (note.ideas ?? []).flatMap((idea) =>
+        idea.type === 'trap' || idea.type === 'line' ? [idea.moves[0]] : [],
+      ),
+    ),
+  );
+
+/** How many of `comment`'s mistakes `result` draws a trap or line from. */
+const drawnMistakes = (comment: Comment, result: Converted) => {
+  const drawn = drawnFirstMoves(result);
+  return commentMistakes(comment).filter(({ uci }) => drawn.has(uci)).length;
+};
+
+/** `comment`'s mistakes that `result` draws no trap or line from, in SAN. */
+function undrawnMistakes(comment: Comment, result: Converted): string[] {
+  const drawn = drawnFirstMoves(result);
+  return commentMistakes(comment)
+    .filter(({ uci }) => !drawn.has(uci))
+    .map(({ san }) => san);
+}
+
+/**
+ * `ask`, telling the model about comments written for the learner's opponent
+ * (`Comment.writtenFor`). The others are asked as before, so their stored
+ * answers still match.
+ */
+const withWrittenFor =
+  (ask: Ask): Ask =>
+  async (model, comments, addendum = '') => {
+    const own = comments.filter((comment) => !comment.writtenFor);
+    const theirs = comments.filter((comment) => comment.writtenFor);
+    const answers = own.length > 0 ? await ask(model, own, addendum) : new Map<string, Answer>();
+    if (theirs.length > 0)
+      for (const entry of await ask(model, theirs, WRITTEN_FOR_OPPONENT + addendum))
+        answers.set(...entry);
+    return answers;
+  };
 
 /** The model wrote drawable ideas and the checker refused every one. */
 const allRefused = (result: Converted) =>
@@ -199,6 +303,8 @@ export function convertReport({
   unconverted,
   retried,
   reworded,
+  punished,
+  shortened,
   rewordedIdeas,
   kept,
   shows,
@@ -213,7 +319,7 @@ export function convertReport({
     .sort(([, a], [, b]) => b - a)
     .slice(0, 15);
   return [
-    `converted comments: ${comments - unconverted} of ${comments} (asked again of ${MODELS.retry}: ${retried} with every idea refused, ${reworded} with notes in notation)`,
+    `converted comments: ${comments - unconverted} of ${comments} (asked again of ${MODELS.retry}: ${retried} with every idea refused, ${reworded} with notes in notation, ${punished} with a mistake's punishment undrawn, ${shortened} with notes cut at the word limit)`,
     ...(reworded > 0
       ? [
           `  ideas the comments with notes in notation keep: ${rewordedIdeas.before} before, ${rewordedIdeas.after} after`,

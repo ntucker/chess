@@ -135,7 +135,10 @@ export interface LessonPosition {
 
 export interface LessonMove {
   readonly uci: Uci;
-  /** The guide recommends this move. Only the learner's moves are book moves. */
+  /**
+   * The guide recommends this move, or the importer picked it where the guide recommends none.
+   * Only the learner's moves are book moves.
+   */
   readonly book?: boolean;
   /** How the study rates this move among the good ones (a "choice guide"). */
   readonly risk?: Risk;

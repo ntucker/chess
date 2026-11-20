@@ -34,6 +34,19 @@ describe('mergeChapters', () => {
     expect(checkLesson((await fillBook(lesson, even)).lesson)).toEqual([]);
   });
 
+  it("books none of the learner's moves from a chapter written for the other side", () => {
+    const theirs = chapters.map((chapter) => ({ ...chapter, writtenFor: 'white' as const }));
+    const merged = mergeChapters(
+      lesson,
+      theirs,
+      theirs.map((chapter) => extractChapter(chapter, 'black')),
+    );
+    const book = Object.values(merged.positions).flatMap((pos) => pos.moves.filter((m) => m.book));
+    expect(book).toEqual([]);
+    // Its moves stay in the guide, for fillBook to choose among.
+    expect(merged.positions[keyAfter('e4', 'c6', 'd4', 'd5', 'e5')].moves.length).toBe(2);
+  });
+
   it('groups chapter variations by the title before the colon, joining (I) and (II)', () => {
     expect(lesson.variations).toEqual({
       test: { name: 'Caro-Kann' },
@@ -359,6 +372,31 @@ describe('mergeChapters with several sources', () => {
   it("takes a later guide's notes only where the main guide says nothing", () => {
     const d5 = merged.positions[keyAfter('d4')].moves.find(({ uci }) => uci === 'd7d5')!;
     expect(d5.notes?.map(({ text }) => text)).toEqual(['Holds the centre with a pawn.']);
+  });
+
+  it("keeps a later guide's note beside a line introduction moved onto the move", () => {
+    // The side line's intro on 1.d4 names 2.Bf4, where the line first goes somewhere new.
+    const intro = parseStudy(
+      '[ChapterName "Main"]\n\n1. d4 d5 2. c4 *\n\n' +
+        '[ChapterName "Side"]\n\n1. e4 (1. d4 { Its quieter brother is the 2.Bf4 line. } d5 2. Bf4) e5 *\n',
+      () => true,
+    ).map((chapter) => ({ ...chapter, source: 0 }));
+    const london = parseStudy(
+      '[ChapterName "London"]\n\n1. d4 d5 2. Bf4 { The bishop comes out before e3. } *\n',
+      () => true,
+    ).map((chapter) => ({ ...chapter, source: 1 }));
+    const chapters = [...intro, ...london];
+    const lesson = mergeChapters(
+      { id: 'test', title: 'Test', side: 'black', sources: SAMPLE.sources },
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'black')),
+      () => undefined,
+    );
+    const bf4 = lesson.positions[keyAfter('d4', 'd5')].moves.find(({ uci }) => uci === 'c1f4')!;
+    expect(bf4.notes?.map(({ text }) => text)).toEqual([
+      'Its quieter brother is the 2.Bf4 line.',
+      'The bishop comes out before e3.',
+    ]);
   });
 
   it('counts what each guide gave, and what the main guide kept out', () => {
