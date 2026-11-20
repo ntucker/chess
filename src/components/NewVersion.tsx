@@ -20,8 +20,8 @@ export function NewVersionPage({ detail }: { readonly detail: string }) {
 
 /**
  * A screen that failed, in place of the whole app: NewVersionPage when the
- * site has a newer build than the page (which is why a screen's file goes
- * missing), or else the error with a reload. Shows nothing while it checks
+ * site has a newer build than the page (which is why a file the screen loads
+ * late, such as a lesson, goes missing), or else the error with a reload. Shows nothing while it checks
  * the site, which only an Error needs.
  */
 export function ScreenFailure({ error }: { readonly error: unknown }) {
