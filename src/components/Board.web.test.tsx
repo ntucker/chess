@@ -134,10 +134,12 @@ describe("a game's ending", () => {
     const props = { fen: mated.fen, check: true, ending };
     act(() => root.render(<Board {...board(props)} />));
     frame();
+    // Fool's mate: the learner, White, is mated on e1, the middle of the bottom rank's fifth square.
     expect(spot()).toEqual(['56.25%', '93.75%']);
 
     act(() => root.render(<Board {...board({ ...props, orientation: 'black' })} />));
     frame();
+    // From Black's side, e1 is the fourth square of the top rank.
     expect(document.querySelectorAll('cg-ending')).toHaveLength(1);
     expect(spot()).toEqual(['43.75%', '6.25%']);
   });
