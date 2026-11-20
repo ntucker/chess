@@ -88,35 +88,52 @@ export const isDubious = (move: StudyMove) => move.nags.some((nag) => DUBIOUS_NA
 
 /**
  * The chapters of `pgn` whose title `include` accepts, in study order. A
- * chapter set up from a position an earlier chapter's moves reach (studies
+ * chapter set up from a position another chapter's moves reach (studies
  * that go on where the last chapter stopped) starts where that one does,
- * through those moves, which keep no comment: the earlier chapter says it.
+ * through those moves, which keep no comment: that chapter says it. One
+ * whose position only a later chapter reaches waits for it.
  */
 export function parseStudy(pgn: string, include: (title: string) => boolean): Chapter[] {
   const chapters: Chapter[] = [];
-  // The positions earlier chapters reach, for `withLineIntros`.
+  const order = new Map<Chapter, number>();
+  // The positions chapters read so far reach, for `withLineIntros`.
   const known = new Set<string>();
-  const add = (chapter: Chapter) => {
+  const add = (chapter: Chapter, index: number) => {
     chapters.push(chapter);
+    order.set(chapter, index);
     for (const move of chapterMoves(chapter)) known.add(positionKey(move.after));
   };
-  for (const game of parsePgn(pgn)) {
+  const games = parsePgn(pgn).flatMap((game) => {
     const title = game.headers.get('ChapterName') ?? game.headers.get('Event') ?? '';
-    if (!include(title)) continue;
+    return include(title) ? [{ game, title }] : [];
+  });
+  /** Reads chapter `index` unless only a chapter not read yet may lead to it; false then. */
+  const read = (index: number, mayWait: boolean) => {
+    const { game, title } = games[index];
     const start = startingPosition(game.headers).unwrap() as Chess;
-    const namedFrom = Number(game.headers.get('NamedFrom')) || undefined;
     const lead = leadTo(chapters, start);
-    if (!lead) {
-      const moves = withLineIntros(readMoves(game.moves.children, start, 1), known);
-      add({ title, start, moves, ...(namedFrom && { namedFrom, cut: true }) });
-      continue;
+    if (lead) {
+      const first = copyLead(lead, (end) =>
+        readMoves(game.moves.children, end.after, end.ply + 1, end),
+      );
+      add({ title, start: chapters[0].start, moves: withLineIntros([first], known) }, index);
+      return true;
     }
-    const first = copyLead(lead, (last) =>
-      readMoves(game.moves.children, last.after, last.ply + 1, last),
-    );
-    add({ title, start: chapters[0].start, moves: withLineIntros([first], known) });
+    if (mayWait && chapters.length > 0 && positionKey(start) !== positionKey(chapters[0].start))
+      return false;
+    const namedFrom = Number(game.headers.get('NamedFrom')) || undefined;
+    const moves = withLineIntros(readMoves(game.moves.children, start, 1), known);
+    add({ title, start, moves, ...(namedFrom && { namedFrom, cut: true }) }, index);
+    return true;
+  };
+  // Pass after pass until one reads nothing new; the chapters still waiting keep their own start.
+  let waiting = games.map((_, index) => index);
+  for (let before = Infinity; waiting.length < before;) {
+    before = waiting.length;
+    waiting = waiting.filter((index) => !read(index, true));
   }
-  return chapters;
+  for (const index of waiting) read(index, false);
+  return chapters.sort((a, b) => order.get(a)! - order.get(b)!);
 }
 
 /**

@@ -59,6 +59,21 @@ describe('parseStudy', () => {
     expect(isDubious([...mainLine(joined.moves[0])][2])).toBe(true);
   });
 
+  it('joins a chapter set up where only a later chapter goes, keeping study order', () => {
+    const pgn = [
+      chapter('London', '1. d4 d5 *'),
+      chapter('Main line', '3. e3 { Solid. } c5 *', AFTER_NF6),
+      chapter('Bf4', '1. d4 d5 2. Bf4 Nf6 *'),
+    ].join('\n');
+    const chapters = parseStudy(pgn, () => true);
+    expect(chapters.map(({ title }) => title)).toEqual(['London', 'Main line', 'Bf4']);
+    const joined = chapters[1];
+    expect(positionKey(joined.start)).toBe(positionKey(chapters[0].start));
+    expect([...mainLine(joined.moves[0])].map(({ uci }) => uci)).toEqual(
+      uciLine('d4', 'd5', 'Bf4', 'Nf6', 'e3', 'c5'),
+    );
+  });
+
   it('keeps a chapter set up where no earlier chapter goes', () => {
     const pgn = [
       chapter('London', '1. d4 d5 *'),
