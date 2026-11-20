@@ -1,13 +1,14 @@
-import { Badge, Pressable, Stack, Text, useTheme } from '@reactive/silk-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { a11yState, Badge, Pressable, Stack, Text, useTheme } from '@reactive/silk-native';
 import { Link, useRouter } from 'expo-router';
 import {
   type ComponentRef,
-  Fragment,
   type ReactNode,
   use,
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react';
 import { Text as RNText, StyleSheet, View } from 'react-native';
 
@@ -20,13 +21,14 @@ import { type Color, COLORS, colorName } from '@/game/replay';
 import type { VariationId } from '@/lesson/lesson';
 import { variationHref } from '@/lesson/openings';
 import {
+  listedPath,
   type ListedOpening,
   type ListedVariation,
   type ListPlace,
   openingList,
 } from '@/lesson/openingList';
 import { LessonIndexContext, type LessonId } from '@/resources/lesson';
-import { fonts } from '@/theme/theme';
+import { fonts, typography } from '@/theme/theme';
 
 /**
  * Every opening the app teaches, by the side the learner plays, each with
@@ -95,7 +97,10 @@ function SideSection({
   );
 }
 
-/** One opening: its name, which opens it, then its variations; `here` is the one the board was in. */
+/**
+ * One opening: its name, then its variations as a tree, each branch closed
+ * but those on the way to `here`, the variation the board was in.
+ */
 function OpeningEntry({
   opening,
   here,
@@ -106,16 +111,15 @@ function OpeningEntry({
   const { root } = opening;
   return (
     <View style={styles.opening}>
-      <LineLink
+      <Branch
         lesson={opening.id}
         variation={root}
-        here={here === root.id}
         depth={0}
+        path={listedPath(root, here)}
+        // The heading keeps the chevron's column too, so its name lines up with its variations'.
+        gutter
         tag={here === undefined ? undefined : <NowPlaying />}
       />
-      <View style={styles.rows}>
-        <VariationRows lesson={opening.id} variations={root.children} depth={1} here={here} />
-      </View>
       <View style={styles.credits}>
         <SourceCredits sources={opening.sources} />
       </View>
@@ -123,29 +127,130 @@ function OpeningEntry({
   );
 }
 
-/** `variations` at `depth` of the tree (1 under the opening), each followed by those under it. */
-function VariationRows({
+/**
+ * `variation`'s row at `depth` of the tree (0 for the opening), then, while
+ * it is open, the branches under it, hung from its chevron on a thin rule.
+ * `path` is the way to the variation the board was in, which ends there: a
+ * branch on it starts open, and the learner's own toggle wins from then on.
+ * `gutter` keeps the chevron's space before a row without one, when a row
+ * beside it has one, so the names in a column line up.
+ */
+function Branch({
   lesson,
-  variations,
+  variation,
   depth,
-  here,
+  path,
+  gutter,
+  tag,
 }: {
   readonly lesson: LessonId;
-  readonly variations: readonly ListedVariation[];
+  readonly variation: ListedVariation;
   readonly depth: number;
-  readonly here?: VariationId;
+  readonly path: readonly VariationId[];
+  readonly gutter: boolean;
+  readonly tag?: ReactNode;
 }) {
-  return variations.map((variation) => (
-    <Fragment key={variation.id}>
-      <LineLink lesson={lesson} variation={variation} here={here === variation.id} depth={depth} />
-      <VariationRows
-        lesson={lesson}
-        variations={variation.children}
-        depth={depth + 1}
-        here={here}
-      />
-    </Fragment>
-  ));
+  const { theme } = useTheme();
+  const [toggled, setToggled] = useState<boolean>();
+  const { children } = variation;
+  // Whether the variations under it show; none for a variation without any.
+  const open = children.length ? (toggled ?? path.includes(variation.id)) : undefined;
+  // The rows under it keep a chevron's space when one of them has a chevron.
+  const childGutter = children.some((child) => child.children.length > 0);
+  return (
+    <>
+      <View style={styles.branch}>
+        {open === undefined ? (
+          gutter && <View style={styles.toggle} />
+        ) : (
+          <BranchToggle
+            name={variation.name}
+            depth={depth}
+            open={open}
+            onPress={() => setToggled(!open)}
+          />
+        )}
+        <LineLink
+          lesson={lesson}
+          variation={variation}
+          here={variation.id === path.at(-1)}
+          depth={depth}
+          tag={tag}
+        />
+      </View>
+      {open === undefined ? null : (
+        // A closed branch stays mounted, only hidden: the branches under it
+        // keep the learner's toggles, and the row the board was in scrolls
+        // into view once, not each time its branch reopens.
+        <View
+          style={[
+            styles.rows,
+            depth > 0 && {
+              ...styles.subRows,
+              borderLeftColor: theme.semantic.color.borderSubtle,
+            },
+            !open && styles.closed,
+          ]}
+        >
+          {children.map((child) => (
+            <Branch
+              key={child.id}
+              lesson={lesson}
+              variation={child}
+              depth={depth + 1}
+              path={path}
+              gutter={childGutter}
+            />
+          ))}
+        </View>
+      )}
+    </>
+  );
+}
+
+/** The chevron before a variation's row that shows or hides those under it. */
+function BranchToggle({
+  name,
+  depth,
+  open,
+  onPress,
+}: {
+  readonly name: string;
+  readonly depth: number;
+  readonly open: boolean;
+  readonly onPress: () => void;
+}) {
+  const { theme } = useTheme();
+  const { color } = theme.semantic;
+  const role = typography[nameRole(depth)];
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Variations of ${name}`}
+      {...a11yState({ expanded: open })}
+      // At least 44 points to a finger's press, past the chevron's 28 and its row's height.
+      hitSlop={HIT_SLOP}
+      onPress={onPress}
+      // Level with the name's first line, however the row wraps.
+      style={[styles.toggle, { height: 2 * ROW_PAD + role.size * role.lineHeight }]}
+    >
+      {({ hovered, pressed }) => (
+        <View
+          style={[
+            styles.toggleFace,
+            (hovered || pressed) && { backgroundColor: color.tones.neutral.subtle },
+          ]}
+        >
+          <Ionicons
+            name="chevron-forward"
+            size={CHEVRON}
+            color={hovered || pressed ? color.textPrimary : color.textSecondary}
+            style={open && styles.chevronOpen}
+          />
+        </View>
+      )}
+    </Pressable>
+  );
 }
 
 function NowPlaying() {
@@ -162,7 +267,7 @@ function NowPlaying() {
  * On a narrow page the moves drop below, right-aligned. The variation the
  * board was in (`here`) is marked, and goes back to the board as it was;
  * any other opens the board's page at its line. `depth` 0 is the opening's
- * own heading, with `tag` beside its name; each depth past 1 hangs further in.
+ * own heading, with `tag` beside its name.
  */
 function LineLink({
   lesson,
@@ -216,11 +321,6 @@ function LineLink({
               ref={row}
               style={[
                 styles.row,
-                depth > 1 && {
-                  ...styles.subRow,
-                  marginLeft: SUB_INDENT * (depth - 1),
-                  borderLeftColor: color.borderSubtle,
-                },
                 here && { backgroundColor: accent.subtle },
                 (hovered || pressed) && {
                   backgroundColor: here ? accent.subtleHover : neutral.subtle,
@@ -230,7 +330,7 @@ function LineLink({
               {here ? <View style={[styles.dot, { backgroundColor: accent.solid }]} /> : null}
               <View style={styles.name}>
                 <Text
-                  role={NAME_ROLE[Math.min(depth, 2)]}
+                  role={nameRole(depth)}
                   style={[depth === 0 && styles.openingName, { color: ink }]}
                 >
                   {variation.name}
@@ -258,10 +358,14 @@ function scrollIntoView(row: ComponentRef<typeof View> | null) {
 /** The list's width: one column, a program's page, wide enough for a long line beside its name. */
 const CONTENT_MAX = 760;
 const DOT = 8;
-/** How far each level of sub-variation hangs in from the one above. */
-const SUB_INDENT = 22;
+const CHEVRON = 14;
+const HIT_SLOP = { top: 4, bottom: 4, left: 8, right: 8 };
+/** The chevron's column. */
+const TOGGLE = 28;
+const ROW_PAD = 8;
 /** A row's name, by depth: the opening's heading, a variation, a sub-variation. */
 const NAME_ROLE = ['headingLg', 'body', 'bodySm'] as const;
+const nameRole = (depth: number) => NAME_ROLE[Math.min(depth, 2)];
 
 const styles = StyleSheet.create({
   content: { width: '100%', maxWidth: CONTENT_MAX, gap: 40, paddingTop: 12, paddingBottom: 48 },
@@ -272,7 +376,21 @@ const styles = StyleSheet.create({
   openingName: { fontFamily: fonts.display },
   nowText: { textTransform: 'uppercase', letterSpacing: 1.2 },
   rows: { gap: 2 },
-  link: { borderRadius: 8, outlineOffset: -2 },
+  closed: { display: 'none' },
+  // Sub-variations hang from their parent's chevron on a thin rule.
+  subRows: { marginLeft: TOGGLE / 2, paddingLeft: 6, borderLeftWidth: 1 },
+  branch: { flexDirection: 'row', alignItems: 'flex-start' },
+  // Rounded for its focus ring.
+  toggle: { width: TOGGLE, alignItems: 'center', justifyContent: 'center', borderRadius: 6 },
+  toggleFace: {
+    width: TOGGLE,
+    height: TOGGLE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+  },
+  chevronOpen: { transform: [{ rotate: '90deg' }] },
+  link: { flex: 1, borderRadius: 8, outlineOffset: -2 },
   row: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -280,11 +398,9 @@ const styles = StyleSheet.create({
     columnGap: 10,
     rowGap: 2,
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingVertical: ROW_PAD,
     borderRadius: 8,
   },
-  // A sub-variation hangs off its parent's row on a thin rule.
-  subRow: { borderLeftWidth: 1, borderTopLeftRadius: 0, borderBottomLeftRadius: 0 },
   dot: { width: DOT, height: DOT, borderRadius: DOT / 2, alignSelf: 'center' },
   name: { flexShrink: 1, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 },
   // Dots from the name to the moves, as a printed program sets its pages.

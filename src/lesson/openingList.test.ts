@@ -3,7 +3,7 @@ import { describe, expect, it } from '@jest/globals';
 import { LESSON_INDEX } from '@/resources/lesson';
 
 import { FIXTURE_INDEX } from './openings.fixture';
-import { listPlace, openingList, type ListedVariation } from './openingList';
+import { listedPath, listPlace, openingList, type ListedVariation } from './openingList';
 
 const list = openingList(FIXTURE_INDEX);
 const caro = list.black.find(({ id }) => id === 'caro-kann')!;
@@ -44,6 +44,16 @@ describe('openingList', () => {
       expect(ids(opening.root).sort()).toEqual(
         LESSON_INDEX[opening.id].variations.map(({ id }) => id).sort(),
       );
+  });
+});
+
+describe('listedPath', () => {
+  it('names each branch from the opening down to a variation, or none for one not in it', () => {
+    const advance = named(caro.root.children, 'Advance Variation');
+    const short = named(advance.children, 'Short Variation');
+    expect(listedPath(caro.root, short.id)).toEqual([caro.root.id, advance.id, short.id]);
+    expect(listedPath(caro.root, caro.root.id)).toEqual([caro.root.id]);
+    expect(listedPath(caro.root, 'semi-slav')).toEqual([]);
   });
 });
 
