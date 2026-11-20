@@ -2,7 +2,7 @@ import { Field, Switch, useTheme } from '@reactive/silk-native';
 import { type StyleProp, StyleSheet, type ViewStyle } from 'react-native';
 
 import { lineHeightOf } from '@/theme/theme';
-import { touchPadding } from '@/theme/touch';
+import { touchPadding, touchTarget } from '@/theme/touch';
 
 interface Props {
   readonly label: string;
@@ -21,7 +21,7 @@ interface Props {
 export function Toggle({ label, checked, onChange, quiet, style }: Props) {
   const { theme } = useTheme();
   return (
-    <Field.Root orientation="horizontal" style={style}>
+    <Field.Root orientation="horizontal" style={[styles.field, style]}>
       <Switch size="sm" tone="accent" checked={checked} onCheckedChange={onChange} />
       <Field.Label
         numberOfLines={quiet ? 1 : undefined}
@@ -34,5 +34,9 @@ export function Toggle({ label, checked, onChange, quiet, style }: Props) {
 }
 
 const styles = StyleSheet.create({
+  // The label's padding alone would do in a browser, but natively a shorter
+  // parent (a phone's 32 dp name bar) fits the row inside it and squeezes the
+  // label's text out; the least height lets the row stand out past it instead.
+  field: { minHeight: touchTarget },
   label: { userSelect: 'none', paddingVertical: touchPadding(lineHeightOf('label')) },
 });
