@@ -360,6 +360,22 @@ describe('convertChapters', () => {
       expect(report.punished).toBe(0);
     });
 
+    it('reads ? and ?? as mistakes, but not ?! or a move with no number to place it', async () => {
+      for (const [text, mistakes] of [
+        ['3.e3?? e5 traps the bishop.', ['e3']],
+        ['3.e3?! e5 traps the bishop.', undefined],
+        ['e3? e5 traps the bishop.', undefined],
+      ] as const) {
+        const [chapter] = parseStudy(
+          `[Event "h5"]\n\n1. d4 d5 2. Bf4 h5 { ${text} } *\n`,
+          () => true,
+        );
+        const { ask, seen } = fakeAsk({ [MODELS.convert]: { h5: claim } });
+        await convertChapters([extractChapter(chapter, 'white')], ask);
+        expect(seen.at(-1)?.mistakes).toEqual(mistakes);
+      }
+    });
+
     it('is not asked again when a note already draws it', async () => {
       const { ask, asked } = fakeAsk({ [MODELS.convert]: { h5: drawn } });
       const { report } = await convertChapters(mistake, ask);

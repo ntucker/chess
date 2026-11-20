@@ -19,6 +19,14 @@ describe('namedMoves', () => {
       { san: 'O-O', side: 'black' },
     ]);
   });
+
+  it('reads ... written right after a move', () => {
+    expect(namedMoves('Qxd4...Qxd4 Nc3')).toEqual([
+      { san: 'Qxd4' },
+      { san: 'Qxd4', side: 'black' },
+      { san: 'Nc3', side: 'white' },
+    ]);
+  });
 });
 
 describe('shorten', () => {

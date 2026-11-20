@@ -171,7 +171,8 @@ async function convertComments(
  * move can play after its move, in UCI and in SAN as the model reads moves:
  * what a note warning against one should show is how it is punished. A
  * mistake must be the next move by its number, since a comment also warns
- * about moves deeper in its lines (`5.Bd2?` after 3...e6).
+ * about moves deeper in its lines (`5.Bd2?` after 3...e6). A bare move counts
+ * only when a numbered move before it places it (`3.Nf3 e6?`).
  */
 function commentMistakes(comment: Comment): { uci: string; san: string }[] {
   const marked = namedMoves(comment.comment).filter(({ glyph }) => glyph === '?' || glyph === '??');

@@ -139,8 +139,8 @@ function withLineIntros(moves: readonly StudyMove[], known: ReadonlySet<string>)
       ({ san, side, ply }) =>
         san === target.san &&
         (!side || side === target.before.turn) &&
-        // Study move numbers are often off by one or two.
-        (!ply || Math.abs(ply - target.ply) <= 2),
+        // Study move numbers are often off by one or two: two numbers are four plies.
+        (!ply || Math.abs(ply - target.ply) <= 4),
     );
     if (!named) continue;
     edits.set(move, { comment: '' });

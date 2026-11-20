@@ -378,11 +378,11 @@ function bookMoves(
 }
 
 /**
- * Adds `note` from `source` to a move's or position's notes, once. A later
- * source only explains what no earlier one did: guides tend to say the same
- * thing about the same move, and the learner would read it once per guide.
- * It takes no spot itself (the caller does, `noteSource`), and adds only to
- * one this source took or nobody has. Whether it was added.
+ * Adds `note` from `source` to a move's or position's notes, once, and says
+ * whether it did. Guides tend to say the same thing about the same move, so
+ * only the source that first explained a spot (its `noteSource`) adds to it;
+ * a spot nobody has explained yet takes anyone's note. Setting `noteSource`
+ * is the caller's job: a line's introduction leaves the spot open.
  */
 function addNote(
   spot: { notes: Note[]; noteSource?: number },
