@@ -51,7 +51,7 @@ export interface EngineReport {
   readonly cut: readonly CutLine[];
   /** Notes dropped, where they were and why. */
   readonly dropped: readonly { line: string; text: string; reason: string }[];
-  /** What `fillBook` did again where the engine overruled one of several guide moves. */
+  /** What `fillBook` picked, or ended, again where the engine overruled one of several guide moves. */
   readonly refilled: FillReport;
 }
 
@@ -119,19 +119,22 @@ export async function engineCheck(
   // judging what book moves still reach: the line goes on through the guide's own.
   const refilled = await fillBookWith({ ...lesson, positions }, evaluation);
   const reached = bookReach(refilled.lesson);
-  const reachable = Object.entries(refilled.lesson.positions).map(([key, position]) => {
+  const unbookedUnreached: Record<PositionKey, LessonPosition> = { ...refilled.lesson.positions };
+  for (const [key, position] of Object.entries(unbookedUnreached)) {
     const at = lines.get(key);
     // A position no line reaches is the checker's to refuse, not this.
-    if (reached.has(key) || !at) return [key, position] as const;
-    const moves = position.moves.map(({ book, ...move }) => {
-      if (book)
-        report.unreachable.push({ line: sans(lesson, at.line), move: san(at.pos, move.uci) });
-      return move;
-    });
-    return [key, { ...position, moves }] as const;
-  });
+    if (reached.has(key) || !at) continue;
+    unbookedUnreached[key] = {
+      ...position,
+      moves: position.moves.map(({ book, ...move }) => {
+        if (book)
+          report.unreachable.push({ line: sans(lesson, at.line), move: san(at.pos, move.uci) });
+        return move;
+      }),
+    };
+  }
   return {
-    lesson: { ...refilled.lesson, positions: Object.fromEntries(reachable) },
+    lesson: { ...refilled.lesson, positions: unbookedUnreached },
     report: { ...report, refilled: refilled.report },
   };
 }
@@ -188,7 +191,7 @@ export const ENGINES_OWN = "Stockfish's best: the engine overruled every guide m
 export interface FillReport {
   /** Book moves picked where the guide recommended none, with the line before each and why. */
   readonly filled: readonly { line: string; move: string; why: string }[];
-  /** Positions where the line now ends, since the engine overruled every move the guide shows. */
+  /** Positions where the line now ends, since the engine overruled every move the guide shows and named none. */
   readonly ended: readonly CutLine[];
 }
 
@@ -274,9 +277,8 @@ async function fillBookWith(
 /**
  * The book move `fillBook` picks at `at`, and why: one of the guide's moves
  * there, or the engine's own when it overrules them all; undefined when it
- * names none. A move the guide warns against with a trap can be picked only
- * when the engine rates it no mistake and best of the guide's moves, so the
- * trap costs little.
+ * names none. It reads no trap notes: a move a trap warns against is picked
+ * like any other the engine rates no mistake.
  */
 async function pickBookMove(
   moves: readonly LessonMove[],

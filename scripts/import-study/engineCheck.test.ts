@@ -83,6 +83,28 @@ describe('engineCheck', () => {
     );
   });
 
+  it("reports a line it ends after overruling all the guide's moves apart from cut lines", async () => {
+    const others = {
+      ...LESSON,
+      positions: {
+        ...LESSON.positions,
+        [keyAfter('d4')]: at([{ uci: uci('d4', 'e5'), book: true }, { uci: uci('d4', 'c5') }]),
+      },
+    };
+    delete others.positions[keyAfter('d4', 'd5')];
+    // 1...c5 loses too, and the engine names no move of its own.
+    const losing = (line: readonly string[], key: string) =>
+      key === keyAfter('d4', 'c5')
+        ? Promise.resolve({ score: 0.64, pawns: 1.5 })
+        : evaluate(line, key);
+    const { report } = await engineCheck(others, losing);
+    expect(report.cut).toEqual([]);
+    expect(report.refilled.filled).toEqual([]);
+    expect(report.refilled.ended.map(({ line, moves }) => [line, moves])).toEqual([
+      ['1.d4', ['e5', 'c5']],
+    ]);
+  });
+
   it('cuts a lone overruled move below another one', async () => {
     // 1...e5 and then 2...Nc6 are each the guide's only move, and both lose.
     const nested = {
