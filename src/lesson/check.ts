@@ -26,6 +26,7 @@ import {
   EVALUATIONS,
   IMBALANCE_KINDS,
   MAX_NOTE_WORDS,
+  onDomain,
   RELATIONS,
   RISKS,
   type Idea,
@@ -90,6 +91,7 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
   if (!bands.every((band, i) => isCount(band) && (i === 0 || band > bands[i - 1]))) {
     report('popularity.ratingBands', 'must be whole numbers in ascending order');
   }
+  checkSources(lesson, report);
   checkVariations(lesson, report);
 
   const start = parsePosition(lesson.start);
@@ -160,6 +162,26 @@ function reachable(start: string, children: ReadonlyMap<string, readonly string[
     }
   }
   return reached;
+}
+
+/** Hosts whose text is CC BY-SA 4.0 (Wikimedia projects): a lesson adapting it must say so. */
+const SHARE_ALIKE_HOSTS = ['wikibooks.org', 'wikipedia.org'];
+
+function checkSources({ sources }: Lesson, report: Report) {
+  if (sources.length === 0) report('sources', 'needs at least one source');
+  sources.forEach(({ title, author, url, license }, i) => {
+    const at = `sources[${i}]`;
+    if (!title.trim() || !author.trim()) report(at, 'needs a title and an author');
+    // Not URL.parse, which Node 22.0 lacks.
+    const parsed = URL.canParse(url) ? new URL(url) : undefined;
+    if (!parsed?.hostname) return report(`${at}.url`, `${url} is not a web address`);
+    if (!license && SHARE_ALIKE_HOSTS.some((domain) => onDomain(parsed, domain))) {
+      report(`${at}.license`, `is required for ${parsed.hostname}, whose text is share-alike`);
+    }
+    if (license && (!license.name.trim() || !URL.canParse(license.url))) {
+      report(`${at}.license`, 'needs a name and a URL');
+    }
+  });
 }
 
 function checkVariations(lesson: Lesson, report: Report) {

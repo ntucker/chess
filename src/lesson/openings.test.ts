@@ -2,18 +2,22 @@ import { describe, expect, it } from '@jest/globals';
 
 import { checkLesson } from './check';
 import { keyAfter, SAMPLE, uciLine } from './lesson.fixture';
-import { indexEntry, lessonOf, openingsLesson, withOpenings } from './openings';
+import { indexEntry, lessonOf, lessonsFrom, openingsLesson, withOpenings } from './openings';
 import { candidates } from './select';
 
-const source = (author: string) => ({ title: 'A study', author, url: '' });
+const study = (author: string) => ({
+  title: 'A study',
+  author,
+  url: `https://lichess.org/study/${author}`,
+});
 const INDEX = {
   'caro-kann': {
     title: 'Caro-Kann Defence',
     side: 'black',
-    source: source('Kampf'),
+    sources: [study('Kampf')],
     firstMoves: ['e2e4'],
   },
-  slav: { title: 'Slav Defence', side: 'black', source: source('Matkun'), firstMoves: ['d2d4'] },
+  slav: { title: 'Slav Defence', side: 'black', sources: [study('Matkun')], firstMoves: ['d2d4'] },
 } as const;
 
 const startMoves = (lesson: typeof SAMPLE) =>
@@ -28,6 +32,14 @@ describe('lessonOf', () => {
   });
 });
 
+describe('lessonsFrom', () => {
+  it('lists the lessons whose first move leaves the square', () => {
+    expect(lessonsFrom(INDEX, 'e2')).toEqual(['caro-kann']);
+    expect(lessonsFrom(INDEX, 'd2')).toEqual(['slav']);
+    expect(lessonsFrom(INDEX, 'g1')).toEqual([]);
+  });
+});
+
 describe('openingsLesson', () => {
   it("lists every lesson's first moves in the index's order, and passes the checker", () => {
     const openings = openingsLesson(INDEX);
@@ -39,6 +51,51 @@ describe('openingsLesson', () => {
   it("credits each opening's source in its move's note", () => {
     const [, slav] = openingsLesson(INDEX).positions[keyAfter()].moves;
     expect(slav.notes).toEqual([{ text: "Slav Defence, from Matkun's lichess study." }]);
+  });
+
+  it('credits every source, with the license of one that has it', () => {
+    const wikibooks = {
+      title: 'Wikibooks Chess Opening Theory',
+      author: 'Wikibooks contributors',
+      url: 'https://en.wikibooks.org/wiki/Chess_Opening_Theory',
+      license: { name: 'CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },
+    };
+    const index = {
+      slav: { ...INDEX.slav, sources: [study('Matkun'), study('Kitsune'), wikibooks] },
+    };
+    const [slav] = openingsLesson(index).positions[keyAfter()].moves;
+    expect(slav.notes).toEqual([
+      {
+        text: "Slav Defence, from Matkun's lichess study, Kitsune's lichess study and Wikibooks Chess Opening Theory by Wikibooks contributors (CC BY-SA 4.0).",
+      },
+    ]);
+  });
+
+  it.each([
+    ['https://lichess.org/study/abcd1234', "Matkun's lichess study"],
+    ['http://lichess.org/study/abcd1234', "Matkun's lichess study"],
+    ['https://www.lichess.org/study/abcd1234', "Matkun's lichess study"],
+    ['https://lichess.org/@/Matkun', 'A study by Matkun'],
+    ['https://lichess.org.example.com/study/abcd1234', 'A study by Matkun'],
+  ])('credits %s as %s', (url, credit) => {
+    const index = { slav: { ...INDEX.slav, sources: [{ ...study('Matkun'), url }] } };
+    const [slav] = openingsLesson(index).positions[keyAfter()].moves;
+    expect(slav.notes?.[0].text).toBe(`Slav Defence, from ${credit}.`);
+  });
+
+  it("names a lichess study's license when it has one", () => {
+    const license = { name: 'CC0', url: 'https://creativecommons.org/publicdomain/zero/1.0/' };
+    const index = { slav: { ...INDEX.slav, sources: [{ ...study('Matkun'), license }] } };
+    const [slav] = openingsLesson(index).positions[keyAfter()].moves;
+    expect(slav.notes?.[0].text).toBe("Slav Defence, from Matkun's lichess study (CC0).");
+  });
+
+  it("credits the lessons' sources, a source two lessons share once", () => {
+    const index = {
+      ...INDEX,
+      other: { ...INDEX.slav, sources: [study('Kampf'), study('Matkun')] },
+    };
+    expect(openingsLesson(index).sources).toEqual([study('Kampf'), study('Matkun')]);
   });
 });
 
@@ -61,11 +118,11 @@ describe('withOpenings', () => {
 });
 
 describe('indexEntry', () => {
-  it("names the lesson's title, side, source and first moves", () => {
+  it("names the lesson's title, side, sources and first moves", () => {
     expect(indexEntry(SAMPLE)).toEqual({
       title: SAMPLE.title,
       side: 'black',
-      source: SAMPLE.source,
+      sources: SAMPLE.sources,
       firstMoves: ['e2e4'],
     });
   });

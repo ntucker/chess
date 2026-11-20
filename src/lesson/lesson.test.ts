@@ -37,7 +37,7 @@ describe('ratingBandIndex', () => {
 
 describe('readLesson', () => {
   it('refuses a file in another format', () => {
-    expect(() => readLesson({ format: 1 })).toThrow('Lesson format 1 is not 2');
-    expect(() => readLesson(null)).toThrow('Lesson format undefined is not 2');
+    expect(() => readLesson({ format: 2 })).toThrow('Lesson format 2 is not 3');
+    expect(() => readLesson(null)).toThrow('Lesson format undefined is not 3');
   });
 });

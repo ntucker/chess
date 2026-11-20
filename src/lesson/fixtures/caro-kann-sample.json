@@ -1,14 +1,16 @@
 {
- "format": 2,
+ "format": 3,
  "id": "caro-kann-sample",
  "title": "Caro-Kann (sample)",
  "side": "black",
  "start": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
- "source": {
-  "title": "Greatest Caro Kann: Living Repertoire",
-  "author": "Kampfschach_Official",
-  "url": "https://lichess.org/study/8Uztu7Xx"
- },
+ "sources": [
+  {
+   "title": "Greatest Caro Kann: Living Repertoire",
+   "author": "Kampfschach_Official",
+   "url": "https://lichess.org/study/8Uztu7Xx"
+  }
+ ],
  "popularity": {
   "ratingBands": [
    1000,
