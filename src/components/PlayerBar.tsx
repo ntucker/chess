@@ -15,6 +15,8 @@ interface Props {
   readonly detail: string;
   /** A shorter `detail` for a narrow web page, where it shares the name's line. */
   readonly brief?: string;
+  /** A control that ends the detail's line, such as the opponent's strength. */
+  readonly detailControl?: ReactNode;
   readonly color: Color;
   /** It's this player's turn in the latest position. */
   readonly toMove: boolean;
@@ -53,6 +55,7 @@ export function PlayerBar({
   name,
   detail,
   brief,
+  detailControl,
   color,
   toMove,
   thinking,
@@ -61,12 +64,10 @@ export function PlayerBar({
   children,
   style,
 }: Props) {
-  const turn = (text: string) => (toMove ? `${text} · to move` : text);
   const caption = {
     role: 'caption',
     tone: toMove ? 'accent' : 'secondary',
     numberOfLines: 1,
-    style: styles.detailText,
   } as const;
   return (
     <View style={[styles.bar, style]}>
@@ -78,14 +79,22 @@ export function PlayerBar({
           </Text>
           <Captures {...material} pieceColor={opposite(color)} />
         </View>
-        <Text {...caption} {...(brief ? narrowPart('wide-only') : {})}>
-          {turn(detail)}
-        </Text>
-        {brief && NARROW_CSS_LOADS ? (
-          <Text {...caption} {...narrowPart('narrow-only')}>
-            {turn(brief)}
+        <View style={styles.detail}>
+          <Text {...caption} {...(brief ? narrowPart('wide-only') : {})} style={styles.detailText}>
+            {detail}
           </Text>
-        ) : null}
+          {brief && NARROW_CSS_LOADS ? (
+            <Text {...caption} {...narrowPart('narrow-only')} style={styles.detailText}>
+              {brief}
+            </Text>
+          ) : null}
+          {detailControl}
+          {toMove ? (
+            <Text {...caption} style={styles.turn}>
+              · to move
+            </Text>
+          ) : null}
+        </View>
       </View>
       {thinking ? <Spinner size="sm" tone="accent" label={`${name} is thinking`} /> : null}
       {children}
@@ -162,10 +171,14 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     minWidth: 0,
   },
-  // The detail ends in an ellipsis as it gives way. Its flexShrink is a
-  // weight against the name's line's 1, kept far above it, so a short name
-  // ("White") stays whole beside a switch at the bar's end.
-  detailText: { flexShrink: 1000, minWidth: 0 },
+  // The detail gives way as a whole. Its flexShrink is a weight against the
+  // name's line's 1, kept far above it, so a short name ("White") stays whole
+  // beside a switch at the bar's end.
+  detail: { flexDirection: 'row', alignItems: 'baseline', gap: 4, flexShrink: 1000, minWidth: 0 },
+  // Within it, its words end in an ellipsis first, then "· to move"; a
+  // control stays whole.
+  detailText: { flexShrink: 100, minWidth: 0 },
+  turn: { flexShrink: 1, minWidth: 0 },
   // The captured pieces give way first (see Captures), then the name ends in
   // an ellipsis; the line is clipped rather than run under the controls.
   name: { flexShrink: 1, minWidth: 0 },

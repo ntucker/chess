@@ -9,6 +9,7 @@ import { FootnoteLink } from '@/components/FootnoteLink';
 import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
+import { OpponentPicker } from '@/components/OpponentPicker';
 import { Scoresheet } from '@/components/Scoresheet';
 import { resetListener } from '@/components/resetListener';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
@@ -269,8 +270,9 @@ function LessonScreen({
           game={game}
           rival={{
             name: colorName(rival),
-            detail: `The guide's moves, then ${described.tagline.toLowerCase()}`,
-            brief: described.tagline,
+            detail: `The guide's moves, then ${described.lead.toLowerCase()}`,
+            brief: described.lead,
+            detailControl: <OpponentPicker />,
             children: <AutoPlay />,
           }}
           board={{ ...board, onDrag }}
