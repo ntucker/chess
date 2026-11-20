@@ -131,7 +131,7 @@ function OpeningEntry({
         gutter
         tag={here === undefined ? undefined : <NowPlaying />}
         footer={
-          <View style={[spacing.credits, lastOfSide && styles.lastCredits]}>
+          <View style={[spacing.credits, lastOfSide && styles.lastOfSideCredits]}>
             <SourceCredits sources={opening.sources} />
           </View>
         }
@@ -385,8 +385,7 @@ const OPENING_GAP = narrowLength('opening-gap', 28);
 const AFTER_OPEN = 28;
 const STYLES = narrowStyles((px) => ({
   openings: { gap: px(OPENING_GAP) },
-  // The credits make up what a narrow page's gap leaves out, so an open opening stands apart
-  // (but for a side's last, which the gap between sides already sets apart: `lastCredits`).
+  // The credits make up what a narrow page's gap leaves out, so an open opening stands apart.
   credits: {
     paddingHorizontal: 10,
     paddingTop: 8,
@@ -404,7 +403,8 @@ const styles = StyleSheet.create({
   nowText: { textTransform: 'uppercase', letterSpacing: 1.2 },
   rows: { gap: 2 },
   closed: { display: 'none' },
-  lastCredits: { paddingBottom: 0 },
+  // Below a side's last opening, the space between sides, or the page's end, follows instead.
+  lastOfSideCredits: { paddingBottom: 0 },
   // Sub-variations hang from their parent's chevron on a thin rule.
   subRows: { marginLeft: TOGGLE / 2, paddingLeft: 6, borderLeftWidth: 1 },
   branch: { flexDirection: 'row', alignItems: 'flex-start' },
