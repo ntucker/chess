@@ -46,10 +46,12 @@ function shown(
     pointer,
     lifted,
     engine = ENGINE,
+    picking = sans.length === 0,
   }: {
     pointer?: Pointer;
     lifted?: Candidate['from'];
     engine?: { best?: string; top?: string[] };
+    picking?: boolean;
   } = {},
 ): Guidance {
   const view = sampleView(sans);
@@ -58,6 +60,7 @@ function shown(
     view,
     mode,
     switches: { ...ALL_ON, ...switches },
+    picking,
     preview: pointer && preview(SAMPLE, view, pointer, stockfish.top),
     lifted,
     engine: stockfish,
@@ -206,6 +209,12 @@ describe('guidance', () => {
     it('shows the first moves at the start, where they pick the opening, with auto play on', () => {
       const start = shown([], 'practice', { auto: true }, { pointer: { at: 'row', uci: 'e2e4' } });
       expect(summary(start)).toMatchObject({ candidates: ['e4'], preview: 'e4', best: undefined });
+    });
+
+    it('shows the moves at a later turn where they still pick the opening, a quiz once picked', () => {
+      const picking = shown(['e4'], 'practice', { auto: true }, { picking: true });
+      expect(summary(picking).candidates).toEqual(['c6']);
+      expect(summary(shown(['e4'], 'practice', { auto: true })).candidates).toEqual([]);
     });
 
     it("shows, right after the learner's move, its notes and then those of the position it was played in", () => {

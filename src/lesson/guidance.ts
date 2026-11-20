@@ -72,6 +72,11 @@ export interface GuidanceInput {
   readonly view: LessonView;
   readonly mode: LessonMode;
   readonly switches: LessonSwitches;
+  /**
+   * The line is among the moves the lessons share, where its moves pick the
+   * opening (`isPicking` in ./openings.ts): the start, at least.
+   */
+  readonly picking?: boolean;
   /** The move the learner's pointer previews (`preview` in ./view.ts). */
   readonly preview?: Preview;
   /**
@@ -153,6 +158,7 @@ export function guidance(input: GuidanceInput): Guidance {
     view,
     mode,
     switches,
+    picking,
     preview: pointerPreview,
     lifted: pointerLifted,
     pointed,
@@ -160,8 +166,8 @@ export function guidance(input: GuidanceInput): Guidance {
     engine,
   } = input;
   const explore = mode === 'explore';
-  // The start is a choice, not a quiz: its first moves pick the opening.
-  const choices = explore || view.ply === 0 || (!view.learnerToMove && !switches.auto);
+  // Where the moves pick the opening they are a choice, not a quiz.
+  const choices = explore || picking || (!view.learnerToMove && !switches.auto);
   const preview = choices ? pointerPreview : undefined;
   const lifted = choices ? pointerLifted : undefined;
   // In Practice a previewed reply leads to the learner's move, so its notes

@@ -30,7 +30,7 @@ const lessonHref = (id: LessonId) => `/lesson/${id}` as const;
  * again from the start.
  *
  * The store holds the game as the page shows it: when the game moves to
- * another lesson, the page keeps the older game until that lesson has loaded
+ * another lesson (not to the start, which loads nothing), the page keeps the older game until that lesson has loaded
  * (`useDeferredValue`). So picking an opening, or going Back or Forward to
  * one, keeps the page on screen rather than a placeholder, while the address
  * moves at once. The store's dispatch acts on the newer game, so while the
@@ -68,10 +68,12 @@ export function useOpeningsGame(address: LessonId | undefined) {
   // Only a change of lesson waits: within one, the page shows each move in
   // its first render (the deferred one that follows shows the same game), so
   // the board never shows a move late or stops taking moves meanwhile.
+  // The start loads nothing, so a game that leaves its lesson for it (a side
+  // swapped, or Back to `/`) shows at once.
   const deferred = useDeferredValue(game);
   const shownSide = useDeferredValue(side);
-  const lesson = lessonOf(LESSON_INDEX, shownSide, deferred.moves);
-  const pending = lesson !== picked;
+  const shownLesson = lessonOf(LESSON_INDEX, shownSide, deferred.moves);
+  const pending = picked !== undefined && shownLesson !== picked;
   const held: Dispatch<GameAction> = (action) => {
     if (!isInput(action)) dispatch(action);
   };
@@ -79,9 +81,9 @@ export function useOpeningsGame(address: LessonId | undefined) {
   return {
     store,
     /** The lesson the page's game plays. */
-    lesson,
+    lesson: pending ? shownLesson : picked,
     /** The side the page's game is played from. */
-    side: shownSide,
+    side: pending ? shownSide : side,
     /** The learner plays as `next` from now on: its start, unless that is the side already. */
     playAs: (next: Color) => {
       if (next === side) return;

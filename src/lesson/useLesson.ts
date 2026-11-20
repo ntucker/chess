@@ -190,6 +190,7 @@ export function useLesson(
     view,
     mode,
     switches: settings,
+    picking,
     preview: pointer && previewOf(pointer),
     // A dragged piece, or else one a click selected.
     lifted: pointer?.at === 'drag' ? pointer.from : here?.selected,

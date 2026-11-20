@@ -185,6 +185,21 @@ describe('useOpeningsGame', () => {
     expect(mockRouter.push).toHaveBeenLastCalledWith('/lesson/london');
   });
 
+  it("shows the other side's start at once, from shared moves inside a lesson", async () => {
+    slow.lessons = true;
+    await show('slav');
+    await act(() => latest().store[1]({ type: 'goto', ply: 2 }));
+    const before = renders.length;
+    await act(() => latest().playAs('white'));
+    // No commit keeps the Slav's board, as a deferred copy would.
+    const shown = renders.slice(before);
+    expect(shown.length).toBeGreaterThan(0);
+    for (const { store, side, lesson } of shown) {
+      expect([store[0].moves, side, lesson]).toEqual([[], 'white', undefined]);
+    }
+    expect(latest().pending).toBe(false);
+  });
+
   it('shows a move within a lesson at once', async () => {
     await show('caro-kann');
     const before = renders.length;
