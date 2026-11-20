@@ -81,8 +81,8 @@ describe('CandidateList', () => {
     expect(caption({ pointed: 'g1f3', compact: false })).toBeUndefined();
   });
 
-  it('leaves whose moves out of the heading on a narrow page', () => {
-    expect(partTexts({ owner: 'White' })).toContainEqual(['wide-only', "White's "]);
+  it('leaves whose moves out of the heading on a narrow page, but not out loud', () => {
+    expect(partTexts({ owner: 'White' })).toContainEqual(['wide-only-spoken', "White's "]);
   });
 
   it('leaves where each row leads to the line under a compact list', () => {

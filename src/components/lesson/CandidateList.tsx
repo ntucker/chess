@@ -19,7 +19,7 @@ import { MARK_SIZE, MarkLegend, ProgressMark, SPOKEN_MARKS } from './ProgressMar
 interface Props {
   /** The list's heading: what moves these are, and whose unless `owner` says. */
   readonly heading: string;
-  /** Whose moves these are, before `heading`; left out in a narrow web page's pane, where it would wrap. */
+  /** Whose moves these are, before `heading`; only spoken in a narrow web page's pane, where it would wrap. */
   readonly owner?: string;
   readonly candidates: readonly Candidate[];
   /** Rare candidates, listed after the others while `rareShown`. */
@@ -96,7 +96,7 @@ export function CandidateList({
     <Stack {...narrowPart('move-list')} style={labelled}>
       <View style={styles.head}>
         <Eyebrow>
-          {owner ? <Text {...narrowPart('wide-only')}>{`${owner}'s `}</Text> : null}
+          {owner ? <Text {...narrowPart('wide-only-spoken')}>{`${owner}'s `}</Text> : null}
           {heading}
         </Eyebrow>
         {/* A narrow pane has no room for the key: each mark's row still says it to screen readers. */}
