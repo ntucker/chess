@@ -2,7 +2,7 @@ import { Surface, useTheme } from '@reactive/silk-native';
 import type { ComponentProps, ReactNode } from 'react';
 import { View } from 'react-native';
 
-import { gameEnding } from '@/board/ending';
+import { gameEnding } from '@/game/ending';
 import Board, { type BoardProps } from '@/components/Board';
 import { EndingCard } from '@/components/EndingCard';
 import { EvaluationBar } from '@/components/EvaluationBar';
@@ -89,8 +89,9 @@ export function BoardColumn({ game, rival, board, onSwap, stepperMiddle }: Board
   useStepKeys(ply, moves.length, goto);
   const swap = onSwap && { label: `Play as ${colorName(other)}`, onPress: onSwap };
   const styles = useNarrowStyles(STYLES);
-  // Only the game's last position has a result, so stepping back from it puts the ending away.
-  const ending = gameEnding(game.current, side);
+  // Only the game's last position has a result, so stepping back from it puts
+  // the ending away; so does a lesson's idea playing back over it on the board.
+  const ending = board.fen === game.current.fen ? gameEnding(game.current, side) : undefined;
   return (
     <>
       <PlayerBar

@@ -229,7 +229,6 @@ cg-board piece.ending-king::before {
   transform-origin: 50% 82%;
 }
 cg-board piece.ending-king::after {
-  inset: -42%;
   z-index: -1;
   border-radius: 50%;
 }

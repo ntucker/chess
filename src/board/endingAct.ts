@@ -5,14 +5,15 @@
 // without a DOM, and it imports nothing it would have to bundle, since the
 // board runs in a web view on Android.
 import { type Square, squareOffset } from '@/board/drawing';
-import type { Ending, Mood } from '@/board/ending';
+import type { Ending, Mood } from '@/game/ending';
 import type { Color } from '@/game/replay';
 
 /**
  * A king's part in the ending: the winner stands in gold, the mated king
  * falls over, and in a draw both stay level.
  */
-export type KingPart = 'winner' | 'fallen' | 'level';
+export const KING_PARTS = ['winner', 'fallen', 'level'] as const;
+export type KingPart = (typeof KING_PARTS)[number];
 
 export interface ActKing {
   readonly square: Square;
@@ -105,7 +106,7 @@ export const ACT_TIMES: Readonly<Record<Mood, ActTimes>> = {
  * the bottom, the king on e1 is the winner and the one on e8 falls to the left.
  */
 export function endingAct(
-  { mood, winner, kings: squares }: Pick<Ending, 'mood' | 'winner' | 'kings'>,
+  { mood, kings: squares }: Pick<Ending, 'mood' | 'kings'>,
   orientation: Color,
 ): EndingAct {
   const king = (color: Color, part: KingPart): ActKing => {
@@ -114,15 +115,17 @@ export function endingAct(
     // It tips toward the middle of the board, where there is room to see it.
     return { square, part, at, lean: at[0] < 4 ? 1 : -1 };
   };
-  const kings = winner
-    ? [king(winner, 'winner'), king(opposite(winner), 'fallen')]
-    : [king('white', 'level'), king('black', 'level')];
-  const learnerKing = squareOffset(squares[orientation], orientation);
   const won = mood === 'won';
+  const winner = won ? orientation : opposite(orientation);
+  const kings =
+    mood === 'drawn'
+      ? [king('white', 'level'), king('black', 'level')]
+      : [king(winner, 'winner'), king(opposite(winner), 'fallen')];
+  const learnerSpot = kings.find(({ square }) => square === squares[orientation])!.at;
   return {
     mood,
     kings,
-    ...(mood !== 'drawn' && { spot: learnerKing }),
+    ...(mood !== 'drawn' && { spot: learnerSpot }),
     sparks: won ? sparks() : [],
     confetti: won ? confetti() : [],
   };
@@ -140,10 +143,8 @@ export type CardBand = 'upper' | 'middle' | 'lower';
 export function cardBand(kings: Ending['kings'], orientation: Color): CardBand {
   const rows = Object.values(kings).map((square) => squareOffset(square, orientation)[1]);
   const free = (from: number) => !rows.some((row) => row >= from && row < from + 2);
-  if (free(3)) return 'middle';
-  if (free(1)) return 'upper';
-  if (free(5)) return 'lower';
-  return 'middle';
+  // Two kings block at most two of the three bands.
+  return free(3) ? 'middle' : free(1) ? 'upper' : 'lower';
 }
 
 /**

@@ -2,7 +2,7 @@ import { Button, Stack, Text } from '@reactive/silk-native';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { gameEnding } from '@/board/ending';
+import { gameEnding } from '@/game/ending';
 import { type EndingExample, endingExamples } from '@/board/endingExamples';
 import Board from '@/components/Board';
 import { EndingCard } from '@/components/EndingCard';

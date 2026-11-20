@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { type CSSAnimationKeyframes } from 'react-native-reanimated';
 
-import { type Ending, endingWords, type Mood } from '@/board/ending';
+import { type Ending, endingWords, type Mood } from '@/game/ending';
 import { ACT_TIMES, type CardBand, cardBand } from '@/board/endingAct';
 import type { Color } from '@/game/replay';
 import { springMotion } from '@/theme/motion';
@@ -301,7 +301,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     width: '22%',
-    transform: [{ translateX: '-160%' }, { skewX: '-20deg' }],
   },
   // No taller than the banner's edge: its rules are placed from that edge.
   rules: { position: 'absolute', left: 0, right: 0, height: 0 },

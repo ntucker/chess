@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { gameEnding } from '@/board/ending';
+import { gameEnding } from '@/game/ending';
 import { ACT_TIMES, cardBand, endingAct, MOVE_MS, TINTS } from '@/board/endingAct';
 import { endingExamples } from '@/board/endingExamples';
 import { lastPosition } from '@/game/replay';

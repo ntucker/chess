@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { endingWords, gameEnding } from '@/board/ending';
+import { endingWords, gameEnding, resultMood } from '@/game/ending';
 import { endingExamples } from '@/board/endingExamples';
 import { lastPosition } from '@/game/replay';
 
@@ -17,13 +17,11 @@ describe('gameEnding', () => {
   it('is a win when the learner mates, and a loss when they are mated', () => {
     expect(example('Win')).toEqual({
       mood: 'won',
-      winner: 'white',
       reason: 'checkmate',
       kings: { white: 'e1', black: 'e8' },
     });
     expect(example('Loss')).toEqual({
       mood: 'lost',
-      winner: 'black',
       reason: 'checkmate',
       kings: { white: 'e1', black: 'e8' },
     });
@@ -35,6 +33,18 @@ describe('gameEnding', () => {
       reason: 'stalemate',
       kings: { white: 'e1', black: 'g6' },
     });
+  });
+});
+
+describe('resultMood', () => {
+  it('is a win for the side that mated, from either side', () => {
+    expect(resultMood({ winner: 'black', reason: 'checkmate' }, 'black')).toBe('won');
+    expect(resultMood({ winner: 'black', reason: 'checkmate' }, 'white')).toBe('lost');
+    expect(resultMood({ winner: 'white', reason: 'checkmate' }, 'black')).toBe('lost');
+  });
+
+  it('is a draw with no winner', () => {
+    expect(resultMood({ reason: 'stalemate' }, 'black')).toBe('drawn');
   });
 });
 

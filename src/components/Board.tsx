@@ -18,8 +18,15 @@ import type { DOMProps } from 'expo/dom';
 import { useEffect, useEffectEvent, useMemo, useRef } from 'react';
 
 import { type Drawing, type Square, squareOffset, TONES } from '@/board/drawing';
-import type { Ending } from '@/board/ending';
-import { ACT_TIMES, type EndingAct, endingAct } from '@/board/endingAct';
+import type { Ending, Mood } from '@/game/ending';
+import {
+  ACT_TIMES,
+  type EndingAct,
+  endingAct,
+  KING_PARTS,
+  type KingPart,
+  MOVE_MS,
+} from '@/board/endingAct';
 import { type BoardMarks, boardMarks, toneBrushes } from '@/board/marks';
 import { type Drag, watchDrag } from '@/board/pointer';
 import {
@@ -132,15 +139,10 @@ export default function Board({
     () => (preview ? previewLayer(read(fen) as Pieces, read(preview) as Pieces) : NO_PREVIEW),
     [fen, preview],
   );
-  const mood = ending?.mood;
-  const winner = ending?.winner;
-  const kings = ending?.kings;
-  const [whiteKing, blackKing] = [kings?.white, kings?.black];
+  const endingKey = ending && JSON.stringify(ending);
   const act = useMemo(
-    () => (mood && kings ? endingAct({ mood, winner, kings }, orientation) : undefined),
-    // The ending arrives as a new object with each render, so it is compared by what it says.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mood, winner, whiteKing, blackKing, orientation],
+    () => (endingKey ? endingAct(JSON.parse(endingKey) as Ending, orientation) : undefined),
+    [endingKey, orientation],
   );
 
   // Chessground reuses piece elements as pieces move, so the lit, faded and
@@ -212,6 +214,8 @@ export default function Board({
     const board = Chessground(target, {
       ...position,
       premovable: { enabled: false },
+      // The ending's beats (ACT_TIMES) are timed from this slide.
+      animation: { duration: MOVE_MS },
       events: {
         select: (square) => handlePress(square as Square, picked),
         change: () => markAfterDraw(),
@@ -385,8 +389,9 @@ function markPieces(
 
 /** An ending's own layer, over the pieces: the dark house, and what a win throws. */
 const ENDING_TAG = 'cg-ending';
-const MOODS = ['won', 'lost', 'drawn'] as const;
-const PARTS = ['winner', 'fallen', 'level'] as const;
+const MOODS = Object.keys(ACT_TIMES) as Mood[];
+/** Past the lights' return (Board.css, 700-900 ms) and the last confetto's landing. */
+const AFTER_LIGHTS_UP_MS = 1500;
 /** The beats Board.css times its animations by. */
 const BEATS = ['fall', 'dim', 'rise', 'up'] as const;
 
@@ -398,23 +403,27 @@ const BEATS = ['fall', 'dim', 'rise', 'up'] as const;
  */
 function stageEnding(board: Api, act: EndingAct | undefined) {
   const { wrap, container, board: squares } = board.state.dom.elements;
+  const staged = container.querySelector<HTMLElement>(ENDING_TAG);
+  // Most redraws have no ending, and none on the board to take off.
+  if (!act && !staged) return;
   const pieces = squares.querySelectorAll<PieceNode>('piece');
-  let layer = container.querySelector<HTMLElement>(ENDING_TAG);
-  const staged = act && actKey(act);
-  if (layer?.dataset.act !== staged) {
-    layer?.remove();
-    layer = null;
-    for (const piece of pieces) piece.classList.remove('ending-king', ...PARTS.map(partClass));
+  if (staged?.dataset.act !== (act && actKey(act))) {
+    staged?.remove();
+    for (const piece of pieces) piece.classList.remove('ending-king', ...KING_PARTS.map(partClass));
     for (const mood of MOODS) wrap.classList.toggle(`ending-${mood}`, act?.mood === mood);
-    if (act && staged) {
+    if (act) {
       // Laid out without the kings' classes, once, so an act that follows
       // another starts from its beginning.
       wrap.getBoundingClientRect();
       for (const beat of BEATS)
         wrap.style.setProperty(`--act-${beat}`, `${ACT_TIMES[act.mood][beat]}ms`);
-      layer = endingLayer(act);
-      layer.dataset.act = staged;
+      const layer = endingLayer(act);
+      layer.dataset.act = actKey(act);
       squares.after(layer);
+      // Once the lights are up and the last confetti has landed, only the
+      // kings' classes still show: the veil and the particles go, so the
+      // board doesn't carry them while the position is studied.
+      setTimeout(() => layer.replaceChildren(), ACT_TIMES[act.mood].up + AFTER_LIGHTS_UP_MS);
     }
   }
   if (act) markKings(pieces, act);
@@ -429,7 +438,7 @@ function markKings(pieces: Iterable<PieceNode>, act: EndingAct) {
   for (const piece of pieces) {
     const king = piece.cgFading ? undefined : kings.get(piece.cgKey);
     piece.classList.toggle('ending-king', !!king);
-    for (const part of PARTS) piece.classList.toggle(partClass(part), king?.part === part);
+    for (const part of KING_PARTS) piece.classList.toggle(partClass(part), king?.part === part);
     if (king) piece.style.setProperty('--lean', String(king.lean));
   }
 }
@@ -437,7 +446,7 @@ function markKings(pieces: Iterable<PieceNode>, act: EndingAct) {
 /** The middle of the board, in squares from its top-left corner. */
 const BOARD_CENTER = [3.5, 3.5] as const;
 
-const partClass = (part: (typeof PARTS)[number]) => `ending-${part}`;
+const partClass = (part: KingPart) => `ending-${part}`;
 
 /** The layer's elements for `act`, each carrying its numbers as CSS variables. */
 function endingLayer({ spot, sparks, confetti }: EndingAct): HTMLElement {
