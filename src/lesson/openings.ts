@@ -140,9 +140,9 @@ function walkShared(
  * pick it (`picks`), in the file's order, with the line into it that games
  * play most often (`likeliestInto`). A variation is looked for past its
  * parent's line first, so the list can show it carrying on from its parent,
- * and the opening's own past `picks`; then past `picks`. The learner plays
- * a move that isn't a book move only where no line of book moves reaches it.
- * The opening itself is always kept, so the variations form one tree.
+ * then past `picks`; the learner plays a move that isn't a book move only
+ * where no line of book moves from either reaches it. The opening itself is
+ * always kept, so the variations form one tree.
  */
 function variationLines(lesson: Lesson, picks: readonly Uci[][]): IndexVariation[] {
   const found = new Map<VariationId, Uci[] | undefined>();
@@ -151,17 +151,15 @@ function variationLines(lesson: Lesson, picks: readonly Uci[][]): IndexVariation
     found.set(id, undefined); // A parent loop finds nothing.
     const { parent } = lesson.variations[id];
     const after = parent === undefined ? undefined : lineOf(parent);
-    const into = (starts: readonly (readonly Uci[])[], bookOnly: boolean) =>
+    const reach = (starts: readonly (readonly Uci[])[], bookOnly: boolean) =>
       likeliestInto(lesson, id, starts, bookOnly);
+    // In order: book moves past the parent's line, then past `picks`; any move,
+    // the same; the opening itself at the first line that picks it.
     const line =
-      // Book moves only, past the parent's line first, then past any line that picks it;
-      (after && into([after], true)) ??
-      into(picks, true) ??
-      // then any move, in the same order;
-      (after && into([after], false)) ??
-      into(picks, false) ??
-      // and the opening itself, where no position is its own, at the first line
-      // that picks it, so the variations form one tree under it.
+      (after && reach([after], true)) ??
+      reach(picks, true) ??
+      (after && reach([after], false)) ??
+      reach(picks, false) ??
       (parent === undefined ? [...picks[0]] : undefined);
     found.set(id, line);
     return line;
@@ -236,7 +234,8 @@ function moveShares(moves: readonly LessonMove[]): number[] {
 
 /**
  * The games a move without counts beside moves with them is reckoned at: less
- * than one, so it comes after every move played in a game, but reachable.
+ * than one, so it comes after every move played in a game at its position,
+ * but reachable.
  */
 const UNCOUNTED_GAMES = 1e-3;
 

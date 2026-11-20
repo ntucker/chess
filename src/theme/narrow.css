@@ -64,7 +64,7 @@
   }
 
   /*
-   * Parts, named by `narrowPart` (narrow.ts). The page (Page.tsx) fills the
+   * Parts, named by `narrowPart` (narrow.ts). The page (Page.tsx, its stage Stage.tsx) fills the
    * screen and doesn't scroll: the board stays at the top, and the panel below
    * it scrolls in the space that's left, so a previewed move stays in view.
    * Only once the board is at its smallest and the panel at its floor does

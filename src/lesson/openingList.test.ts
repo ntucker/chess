@@ -3,7 +3,6 @@ import { describe, expect, it } from '@jest/globals';
 import { LESSON_INDEX } from '@/resources/lesson';
 
 import { listPlace, openingList, type ListedVariation } from './openingList';
-import { variationLine } from './openings';
 
 const list = openingList(LESSON_INDEX);
 const caro = list.black.find(({ id }) => id === 'caro-kann')!;
@@ -35,17 +34,6 @@ describe('openingList', () => {
       expect(ids(opening.root).sort()).toEqual(
         LESSON_INDEX[opening.id].variations.map(({ id }) => id).sort(),
       );
-  });
-});
-
-describe('variationLine', () => {
-  it('opens a variation at its line, and none for an unknown one', () => {
-    const slav = LESSON_INDEX.slav;
-    expect(variationLine(slav, 'semi-slav')).toBe(
-      slav.variations.find(({ id }) => id === 'semi-slav')!.moves,
-    );
-    expect(variationLine(slav, 'nope')).toBeUndefined();
-    expect(variationLine(slav)).toBeUndefined();
   });
 });
 
