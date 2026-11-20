@@ -15,12 +15,10 @@ import { View } from 'react-native';
 import Animated, {
   type AnimationObject,
   defineAnimation,
-  Easing,
   type EntryExitAnimationFunction,
   type LayoutAnimationFunction,
   type SharedValue,
   useSharedValue,
-  withTiming,
 } from 'react-native-reanimated';
 
 import { atRest, springAt, type Spring, type SpringState } from './spring';
@@ -65,7 +63,13 @@ export function useListMotion(spring: Spring): NativeListMotion {
   );
 }
 
-/** An Animated.View whose layout changes, arrival and leaving its list animates */
+/**
+ * An Animated.View whose layout changes and arrival its list animates. A
+ * removed item goes at once: Reanimated keeps a view with an `exiting`
+ * animation on screen for a frame or two even when that animation does
+ * nothing, which drew old rows over new ones whenever a list's rows changed
+ * outside an animated change.
+ */
 export function MotionHost({ join, list, arriving, ...rest }: HostProps) {
   const runs = useSharedValue<Runs>({});
   const motion = list as NativeListMotion | null;
@@ -75,18 +79,11 @@ export function MotionHost({ join, list, arriving, ...rest }: HostProps) {
     () => armed && spring && layoutTransition(armed, spring, runs),
     [armed, spring, runs],
   );
-  const exiting = useMemo(() => armed && leaveAnimation(armed), [armed]);
   // Read once, at mount: only an arrival fades in.
   const [entering] = useState(() => (arriving && spring ? enterAnimation(spring) : undefined));
   if (!motion) return <View {...rest} ref={join as never} />;
   return (
-    <Animated.View
-      {...rest}
-      ref={join as never}
-      layout={layout || undefined}
-      entering={entering}
-      exiting={exiting || undefined}
-    />
+    <Animated.View {...rest} ref={join as never} layout={layout || undefined} entering={entering} />
   );
 }
 
@@ -119,31 +116,6 @@ function enterAnimation(spring: Spring): EntryExitAnimationFunction {
   return () => {
     'worklet';
     return { initialValues: { opacity: 0 }, animations: { opacity: springTo(1, spring) } };
-  };
-}
-
-/**
- * How a removed item leaves: with the change its list animates, it fades out
- * quicker than the glide into its place, so it's mostly gone before another
- * item gets there; otherwise (the list didn't change, or went with it) it
- * goes at once, invisible for the frame Reanimated keeps it.
- */
-function leaveAnimation(armed: SharedValue<boolean>): EntryExitAnimationFunction {
-  return () => {
-    'worklet';
-    if (!armed.value)
-      return {
-        initialValues: { opacity: 0 },
-        animations: { opacity: withTiming(0, { duration: 0 }) },
-      };
-    const timing = { duration: 160, easing: Easing.out(Easing.ease) };
-    return {
-      initialValues: { opacity: 1, transform: [{ translateX: 0 }] },
-      animations: {
-        opacity: withTiming(0, timing),
-        transform: [{ translateX: withTiming(-12, timing) }],
-      },
-    };
   };
 }
 
