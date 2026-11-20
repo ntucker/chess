@@ -338,7 +338,7 @@ describe('lessonDrawings', () => {
       mode: 'explore',
       switches: SWITCHES,
       preview: pointed,
-      dragged: 'b1',
+      lifted: 'b1',
     });
     // Both knight moves, alternatives to the main e5.
     expect(shown.drawnCandidates.map(({ san }) => san)).toEqual(['Nc3', 'Nd2']);

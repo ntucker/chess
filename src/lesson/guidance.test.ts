@@ -44,11 +44,11 @@ function shown(
   switches: Partial<LessonSwitches> = {},
   {
     pointer,
-    dragged,
+    lifted,
     engine = ENGINE,
   }: {
     pointer?: Pointer;
-    dragged?: Candidate['from'];
+    lifted?: Candidate['from'];
     engine?: { best?: string; top?: string[] };
   } = {},
 ): Guidance {
@@ -59,7 +59,7 @@ function shown(
     mode,
     switches: { ...ALL_ON, ...switches },
     preview: pointer && preview(SAMPLE, view, pointer, stockfish.top),
-    dragged,
+    lifted,
     engine: stockfish,
   });
 }
@@ -135,19 +135,9 @@ describe('guidance', () => {
       );
       expect(drag.preview).toMatchObject({ slide: false, candidate: { san: 'Bd3' } });
       // A picked-up piece draws its top moves, as it draws its candidates.
-      const pickedUp = shown(beyond, 'explore', {}, { engine, dragged: 'f1' });
+      const pickedUp = shown(beyond, 'explore', {}, { engine, lifted: 'f1' });
       expect(pickedUp.drawnCandidates.map(({ san }) => san)).toEqual(['Bd3']);
       expect(pickedUp.best).toBeUndefined();
-      // Clicking the piece selects it, and draws the same moves.
-      const clicked = guidance({
-        view: sampleView(beyond),
-        mode: 'explore',
-        switches: ALL_ON,
-        engine: engineView(beyond, engine),
-        selected: 'f1',
-      });
-      expect(clicked.drawnCandidates.map(({ san }) => san)).toEqual(['Bd3']);
-      expect(clicked.best).toBeUndefined();
       // Practice hides them, as every hint.
       const practice = shown(beyond, 'practice', {}, { engine });
       expect(summary(practice)).toMatchObject({ top: [], best: undefined });
@@ -345,12 +335,8 @@ describe('guidance', () => {
       expect(types(explore(ADVANCE, { switches: off, preview: previewing }).drawn)).toEqual([
         'plan',
       ]);
-      const dragging = explore(ADVANCE, { switches: off, dragged: 'c8' });
+      const dragging = explore(ADVANCE, { switches: off, lifted: 'c8' });
       expect(dragging.drawnCandidates.map(({ move }) => move.uci)).toEqual(['c8f5']);
-      // A click selects the piece, and draws its moves the same way.
-      const selected = explore(ADVANCE, { switches: off, selected: 'c8' });
-      expect(selected.drawnCandidates.map(({ move }) => move.uci)).toEqual(['c8f5']);
-      expect(selected.best).toBeUndefined();
       const [, position] = resting.notes;
       const pointing = explore(ADVANCE, { switches: off, pointed: position.note });
       expect(pointing.pointed).toBe(position.note);
@@ -432,7 +418,7 @@ describe('guidance', () => {
       expect(sans(resting.rare)).toEqual(['h3', 'a3', 'g3', 'b3']);
       // Picked up, the pawn draws its rare move at once, and the same over
       // its landing square, so nothing on the board moves as it is dragged.
-      const pickedUp = guidance({ view, mode: 'explore', switches: ALL_ON, dragged: 'h2' });
+      const pickedUp = guidance({ view, mode: 'explore', switches: ALL_ON, lifted: 'h2' });
       expect(sans(pickedUp.drawnCandidates)).toEqual(['h3']);
       const onH3 = preview(WITH_RARE, view, { at: 'drag', from: 'h2', to: 'h3' });
       const over = guidance({
@@ -440,7 +426,7 @@ describe('guidance', () => {
         mode: 'explore',
         switches: ALL_ON,
         preview: onH3,
-        dragged: 'h2',
+        lifted: 'h2',
       });
       expect(over.drawnCandidates).toEqual(pickedUp.drawnCandidates);
       expect(over.drawn).toEqual(pickedUp.drawn);
@@ -448,7 +434,7 @@ describe('guidance', () => {
 
     it("hides a dragged piece's candidates in Practice on the learner's turn", () => {
       const view = sampleView(ADVANCE);
-      const shown = guidance({ view, mode: 'practice', switches: ALL_ON, dragged: 'c8' });
+      const shown = guidance({ view, mode: 'practice', switches: ALL_ON, lifted: 'c8' });
       expect(shown.drawnCandidates).toEqual([]);
     });
 

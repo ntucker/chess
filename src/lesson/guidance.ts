@@ -74,13 +74,11 @@ export interface GuidanceInput {
   readonly switches: LessonSwitches;
   /** The move the learner's pointer previews (`preview` in ./view.ts). */
   readonly preview?: Preview;
-  /** The square of the piece the learner drags, while they do. */
-  readonly dragged?: Candidate['from'];
   /**
-   * The square of a piece the learner clicked, while it stays selected.
-   * Drawn as a drag is: that piece's own moves, and no resting best-move mark.
+   * The square of the piece the learner holds: dragged, or selected by a
+   * click. The board draws that piece's own moves, and no resting best-move mark.
    */
-  readonly selected?: Candidate['from'];
+  readonly lifted?: Candidate['from'];
   /** The note the learner points at on the idea card. */
   readonly pointed?: Note;
   /** The note whose idea plays back on the board. */
@@ -156,8 +154,7 @@ export function guidance(input: GuidanceInput): Guidance {
     mode,
     switches,
     preview: pointerPreview,
-    dragged: pointerDragged,
-    selected: pointerSelected,
+    lifted: pointerLifted,
     pointed,
     playing: playingNote,
     engine,
@@ -166,9 +163,7 @@ export function guidance(input: GuidanceInput): Guidance {
   // The start is a choice, not a quiz: its first moves pick the opening.
   const choices = explore || view.ply === 0 || (!view.learnerToMove && !switches.auto);
   const preview = choices ? pointerPreview : undefined;
-  const dragged = choices ? pointerDragged : undefined;
-  // A drag is already the piece in hand, so a click's selection yields to it.
-  const lifted = dragged ?? (choices ? pointerSelected : undefined);
+  const lifted = choices ? pointerLifted : undefined;
   // In Practice a previewed reply leads to the learner's move, so its notes
   // are kept as on the learner's turn. Explore shows every note.
   const notes = preview

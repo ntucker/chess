@@ -14,7 +14,7 @@ import { useEffect, useMemo, useReducer } from 'react';
 import type { Square } from '@/board/drawing';
 import type { Drag } from '@/board/pointer';
 import type { BoardProps } from '@/components/Board';
-import { dropMove, parsePositionKey, pieceAt } from '@/game/replay';
+import { dropMove, parsePositionKey } from '@/game/replay';
 import { type GameStore, useGame } from '@/game/useGame';
 import { getEvaluation, getTopMoves } from '@/resources/evaluation';
 import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
@@ -24,7 +24,7 @@ import { addMark, getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNeedsStockfish } from '@/stockfish/demand';
 
-import { boardPress, lessonBoard } from './board';
+import { boardPress, boardSelect, lessonBoard } from './board';
 import { ideaPlayback } from './drawings';
 import {
   guidance,
@@ -173,10 +173,9 @@ export function useLesson(
   const evaluationArgs = explore ? (['stockfish', shownLine] as const) : ([null] as const);
   useFetch(getEvaluation, ...evaluationArgs);
   const evaluation = useCache(getEvaluation, ...evaluationArgs);
-  const topLine = focused && listsTopMoves(view, mode) ? shownLine : null;
-  // A newer request drops the one the screen has left, in the engine.
-  useFetch(getTopMoves, topLine);
-  const topMoves = useCache(getTopMoves, topLine);
+  const topArgs = focused && listsTopMoves(view, mode) ? ([shownLine] as const) : ([null] as const);
+  useFetch(getTopMoves, ...topArgs);
+  const topMoves = useCache(getTopMoves, ...topArgs);
   const top = useMemo(
     () => (topMoves ? engineCandidates(lesson, key, topMoves) : []),
     [lesson, key, topMoves],
@@ -187,8 +186,7 @@ export function useLesson(
     mode,
     switches: settings,
     preview: pointer && previewOf(pointer),
-    dragged: pointer?.at === 'drag' ? pointer.from : undefined,
-    selected: pointer?.at === 'select' ? pointer.from : undefined,
+    lifted: pointer?.at === 'drag' || pointer?.at === 'select' ? pointer.from : undefined,
     pointed: here?.note,
     playing: playing?.played,
     engine: { best: evaluation?.best, top },
@@ -238,20 +236,10 @@ export function useLesson(
     onPress: (square, picked) => {
       if (frame) return;
       const press = boardPress(shown, current, canMove, square, picked);
-      if (press && press !== 'end') {
-        play(press);
-        return;
-      }
-      // A click that plays a move is the board's. Any other click on the side
-      // to move's piece selects it, and draws its moves the way a drag does;
-      // a click elsewhere, or on the selected piece again, lets the piece go,
-      // as the board does.
-      const piece = pieceAt(current.fen, square);
-      const boardPlays = picked !== undefined && current.dests[picked]?.includes(square);
-      const select =
-        canMove && !boardPlays && square !== picked && piece?.color === current.turn
-          ? square
-          : undefined;
+      if (press && press !== 'end') return play(press);
+      // Any other press selects a piece the way the board does, and draws its
+      // moves as a drag would, or lets the piece go.
+      const select = boardSelect(current, canMove, square, picked);
       dispatch({
         type: 'candidate',
         key,

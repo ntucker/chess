@@ -87,11 +87,6 @@ interface Search {
    * result is dropped, and a running one is told to stop.
    */
   cancelled: boolean;
-  /**
-   * For a top-moves search, the evaluation of the same position, so the bar
-   * for it runs first when that evaluation is still waiting.
-   */
-  after?: Search;
 }
 
 /** An attached engine, and whether it has finished its handshake. */
@@ -118,6 +113,7 @@ let watchdog: ReturnType<typeof setTimeout> | undefined;
  * it, once its own position's evaluation has: move labels need every
  * evaluation, but nothing needs the top moves of a position the board has
  * left, so a newer one drops those, waiting or running (`supersedeTopMoves`).
+ * That holds while one screen at a time asks for top moves (the lesson's).
  */
 const pending: Search[] = [];
 
@@ -188,16 +184,6 @@ function abortError(): Error {
 const sameLine = (a: readonly string[], b: readonly string[]) =>
   a.length === b.length && a.every((move, i) => move === b[i]);
 
-/** The evaluation of `line` that is running or still waiting, if there is one. */
-function evaluationOf(line: readonly string[]): Search | undefined {
-  if (running?.ranks === 1 && sameLine(running.line, line)) return running;
-  for (let i = pending.length - 1; i >= 0; i--) {
-    const search = pending[i];
-    if (search.ranks === 1 && sameLine(search.line, line)) return search;
-  }
-  return undefined;
-}
-
 /**
  * Drops a top-moves search the screen no longer shows. One still waiting
  * never starts; one already running is told to stop, and its result is
@@ -221,27 +207,9 @@ function supersedeTopMoves() {
 
 function search(line: readonly string[], ranks: number): Promise<Found> {
   return new Promise((resolve, reject) => {
-    let settled = false;
-    const finish = (settle: () => void) => {
-      if (settled) return;
-      settled = true;
-      settle();
-    };
-    const entry: Search = {
-      line,
-      ranks,
-      resolve: (found) => finish(() => resolve(found)),
-      reject: (error) => finish(() => reject(error)),
-      ranked: NO_LINES,
-      failures: 0,
-      cancelled: false,
-    };
     // A new top-moves search is the only one the screen still shows.
-    if (ranks > 1) {
-      supersedeTopMoves();
-      entry.after = evaluationOf(line);
-    }
-    pending.push(entry);
+    if (ranks > 1) supersedeTopMoves();
+    pending.push({ line, ranks, resolve, reject, ranked: NO_LINES, failures: 0, cancelled: false });
     startNext();
   });
 }
@@ -276,15 +244,13 @@ function handleLine(session: Session, line: string) {
  * still waiting, ahead of evaluations the board has already left.
  */
 function takeNext(): Search | undefined {
-  for (let i = pending.length - 1; i >= 0; i--) {
-    if (pending[i].cancelled) pending.splice(i, 1);
-  }
   const newest = pending.at(-1);
   if (!newest) return undefined;
-  const paired = newest.ranks > 1 ? newest.after : undefined;
-  const index =
-    paired !== undefined && pending.includes(paired) ? pending.indexOf(paired) : pending.length - 1;
-  return pending.splice(index, 1)[0];
+  const paired =
+    newest.ranks > 1
+      ? pending.findLastIndex(({ ranks, line }) => ranks === 1 && sameLine(line, newest.line))
+      : -1;
+  return pending.splice(paired === -1 ? pending.length - 1 : paired, 1)[0];
 }
 
 function startNext() {
@@ -317,7 +283,8 @@ function awaitAnswer(session: Session) {
 function disconnect() {
   clearTimeout(watchdog);
   connected = undefined;
-  if (running) pending.push(running);
+  // A dropped search isn't run again.
+  if (running && !running.cancelled) pending.push(running);
   running = undefined;
 }
 
