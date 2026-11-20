@@ -59,6 +59,8 @@ describe('OpponentPicker', () => {
     expect(list()).toBeNull();
   });
 
+  // Enter and Space reach the trigger, a <button>, as the browser's click,
+  // which jsdom doesn't make from a key: the click tests below cover them.
   it('opens from the keyboard on the current step, and the arrows move', () => {
     act(() => trigger().focus());
     press('ArrowDown');
@@ -77,13 +79,28 @@ describe('OpponentPicker', () => {
     ]);
     expect(focusedLabel()).toBe('1500, Club');
     expect(document.activeElement?.getAttribute('aria-selected')).toBe('true');
-    // The board's arrow keys (useStepKeys) skip a key the list took.
+    // Taken, so the board's arrow keys (useStepKeys) leave it.
     expect(press('ArrowDown')).toBe(true);
     expect(focusedLabel()).toBe('1600');
     press('End');
     expect(focusedLabel()).toBe('Stockfish, Best move');
     press('Home');
     expect(focusedLabel()).toBe('1100, Beginner');
+  });
+
+  it('closes when the page scrolls, not when a list elsewhere does', () => {
+    act(() => trigger().click());
+    const elsewhere = document.createElement('div');
+    document.body.append(elsewhere);
+    act(() => {
+      elsewhere.dispatchEvent(new Event('scroll'));
+    });
+    expect(list()).not.toBeNull();
+    act(() => {
+      document.dispatchEvent(new Event('scroll'));
+    });
+    expect(list()).toBeNull();
+    elsewhere.remove();
   });
 
   it('picks with Space, closes, and hands focus back', () => {
@@ -102,6 +119,42 @@ describe('OpponentPicker', () => {
     press('Escape');
     expect(list()).toBeNull();
     expect(document.activeElement).toBe(trigger());
+  });
+
+  // jsdom has no PointerEvent, so React Native Web hovers by mouse events.
+  // (Crossing from the rating into the list was checked in Chromium.)
+  const point = (type: 'mouseenter' | 'mouseleave') =>
+    act(() => {
+      trigger().dispatchEvent(new MouseEvent(type));
+    });
+
+  it('opens while pointed at, and closes a moment after the pointer leaves', () => {
+    jest.useFakeTimers();
+    try {
+      point('mouseenter');
+      expect(list()).not.toBeNull();
+      // Focus stays where it was: pointing isn't the keyboard.
+      expect(document.activeElement).toBe(document.body);
+      point('mouseleave');
+      expect(list()).not.toBeNull();
+      act(() => jest.advanceTimersByTime(250));
+      expect(list()).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('stays open after a press, when the pointer leaves', () => {
+    jest.useFakeTimers();
+    try {
+      point('mouseenter');
+      act(() => trigger().click());
+      point('mouseleave');
+      act(() => jest.advanceTimersByTime(250));
+      expect(list()).not.toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('opens on a press, and a press elsewhere closes it', () => {

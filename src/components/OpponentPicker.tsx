@@ -124,7 +124,7 @@ export function OpponentPicker() {
           <OpponentList
             id={listId}
             value={opponent}
-            focus={opened === 'pressed'}
+            focusOnOpen={opened === 'pressed'}
             onChoose={choose}
             onClose={close}
           />
@@ -141,7 +141,7 @@ interface ListProps {
   readonly id: string;
   readonly value: Opponent;
   /** Moves focus to the current step, as when opened from the keyboard. */
-  readonly focus: boolean;
+  readonly focusOnOpen: boolean;
   readonly onChoose: (opponent: Opponent) => void;
   readonly onClose: () => void;
 }
@@ -150,7 +150,7 @@ interface ListProps {
  * Every step of the ladder, easiest first, the landmarks named, with a line
  * on how the step pointed at (or else the current one) plays.
  */
-function OpponentList({ id, value, focus, onChoose, onClose }: ListProps) {
+function OpponentList({ id, value, focusOnOpen, onChoose, onClose }: ListProps) {
   const { color, radius } = useTheme().theme.semantic;
   const [pointed, setPointed] = useState<Opponent>();
   const focused = useRef<Opponent>(undefined);
@@ -158,8 +158,8 @@ function OpponentList({ id, value, focus, onChoose, onClose }: ListProps) {
   const focusRow = (opponent: Opponent) => rows.current.get(opponent)?.focus();
 
   useEffect(() => {
-    if (focus) focusRow(value);
-  }, [focus, value]);
+    if (focusOnOpen) focusRow(value);
+  }, [focusOnOpen, value]);
 
   const onKey = (event: KeyDownEvent) => {
     const { key } = event.nativeEvent;
@@ -191,6 +191,8 @@ function OpponentList({ id, value, focus, onChoose, onClose }: ListProps) {
       <Eyebrow style={styles.heading}>Opponent strength</Eyebrow>
       <ScrollView
         nativeID={id}
+        // A listbox on the web, which React Native's role type lacks; Android has no
+        // listbox, so a radio group there.
         role={(WEB ? 'listbox' : 'radiogroup') as 'radiogroup'}
         accessibilityLabel="Opponent strength"
         onKeyDown={onKey}
@@ -245,7 +247,7 @@ function OpponentList({ id, value, focus, onChoose, onClose }: ListProps) {
         })}
       </ScrollView>
       <Separator style={styles.rule} />
-      <Text role="caption" tone="secondary" numberOfLines={2} style={styles.style}>
+      <Text role="caption" tone="secondary" numberOfLines={2} style={styles.about}>
         {shown.style}
       </Text>
     </Surface>
@@ -282,5 +284,5 @@ const styles = StyleSheet.create({
   stepLevel: { flex: 1, fontVariant: ['tabular-nums'] },
   rule: { marginVertical: 4, marginHorizontal: 4 },
   // Two lines tall whatever it says, so the list keeps its size as rows are pointed at.
-  style: { minHeight: 32, paddingHorizontal: 10, paddingTop: 4, paddingBottom: 6 },
+  about: { minHeight: 32, paddingHorizontal: 10, paddingTop: 4, paddingBottom: 6 },
 });

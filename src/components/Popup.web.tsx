@@ -10,8 +10,8 @@ import { type PopupPlace, placePopup } from './popupPlace';
 /**
  * The web's Popup (see `Popup.tsx`): drawn in a portal at the end of the page,
  * so no box around the anchor clips it or paints over it. A press outside it
- * and its anchor closes it, as do Escape, scrolling the page and resizing the
- * window. Closing it while it holds focus hands focus back to the anchor.
+ * and its anchor closes it, as do Escape, scrolling that moves the anchor and
+ * resizing the window. Closing it while it holds focus hands focus back to the anchor.
  */
 export function Popup({ anchor, onDismiss, onHoverIn, onHoverOut, children }: PopupProps) {
   const popup = useRef<ComponentRef<typeof View>>(null);
@@ -39,23 +39,29 @@ export function Popup({ anchor, onDismiss, onHoverIn, onHoverOut, children }: Po
     const inside = (target: EventTarget | null) =>
       target instanceof Node &&
       [anchor.current, popup.current].some((node) => element(node)?.contains(target));
-    // A press, or the page scrolling, anywhere else.
-    const onOutside = (event: Event) => {
+    // A press anywhere else.
+    const onPointerDown = (event: Event) => {
       if (!inside(event.target)) onDismiss();
+    };
+    // Scrolling that moves the anchor, so the popup would be left behind;
+    // not a list elsewhere scrolling itself, like the scoresheet as a move lands.
+    const onScroll = ({ target }: Event) => {
+      const from = element(anchor.current);
+      if (target === document || (target instanceof Node && target.contains(from))) onDismiss();
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.key !== 'Escape') return;
       event.preventDefault();
       onDismiss();
     };
-    document.addEventListener('pointerdown', onOutside, true);
+    document.addEventListener('pointerdown', onPointerDown, true);
     document.addEventListener('keydown', onKeyDown);
-    document.addEventListener('scroll', onOutside, true);
+    document.addEventListener('scroll', onScroll, true);
     window.addEventListener('resize', onDismiss);
     return () => {
-      document.removeEventListener('pointerdown', onOutside, true);
+      document.removeEventListener('pointerdown', onPointerDown, true);
       document.removeEventListener('keydown', onKeyDown);
-      document.removeEventListener('scroll', onOutside, true);
+      document.removeEventListener('scroll', onScroll, true);
       window.removeEventListener('resize', onDismiss);
     };
   }, [anchor, onDismiss]);

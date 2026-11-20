@@ -28,13 +28,13 @@ export interface PopupProps {
  * it, as does the back button. (`Popup.web.tsx` is the web's.)
  */
 export function Popup({ anchor, onDismiss, children }: PopupProps) {
-  const window = useWindowDimensions();
+  const screen = useWindowDimensions();
   const [anchorBox, setAnchorBox] = useState<Box>();
   const [size, setSize] = useState<Size>();
   useLayoutEffect(() => {
     anchor.current?.measureInWindow((x, y, width, height) => setAnchorBox({ x, y, width, height }));
   }, [anchor]);
-  const place = anchorBox && size && placePopup(anchorBox, size, window);
+  const place = anchorBox && size && placePopup(anchorBox, size, screen);
   return (
     <Modal transparent statusBarTranslucent visible onRequestClose={onDismiss}>
       <Pressable
