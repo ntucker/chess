@@ -7,12 +7,14 @@ import { BrowserOnly } from '@/components/BrowserOnly';
 import { Eyebrow } from '@/components/Eyebrow';
 import { FootnoteLink } from '@/components/FootnoteLink';
 import { StatusHeadline } from '@/components/GameStatus';
+import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { Scoresheet } from '@/components/Scoresheet';
 import { resetListener } from '@/components/resetListener';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { useLongWait } from '@/components/useLongWait';
 import type { MoveQuality } from '@/analysis/quality';
+import { NewVersionError } from '@/files/newVersion';
 import { colorName, opposite } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
 import type { Uci } from '@/lesson/lesson';
@@ -217,7 +219,7 @@ function LessonScreen({
         <Stack gap="5">
           <StatusHeadline
             {...status}
-            failure={game.error && { who: described.name, onRetry: game.retry }}
+            failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
             eyebrowInHeader
           />
           <Separator />
@@ -438,6 +440,9 @@ const YOUR_MOVE = {
 
 /** The lesson page when its lesson failed to load. */
 function LessonFailure({ error }: { readonly error: Error }) {
+  if (error instanceof NewVersionError) {
+    return <NewVersionPage detail="Reload to open the lesson. Your progress in it stays." />;
+  }
   return <LessonPlaceholder message={error.message} />;
 }
 

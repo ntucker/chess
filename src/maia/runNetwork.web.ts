@@ -1,4 +1,5 @@
 import { assetUrl } from '@/files/assetUrl';
+import { explainLoadFailure } from '@/files/newVersion';
 
 import type { MaiaRequest, MaiaResponse } from './maia.worker';
 import { MODELS } from './models';
@@ -26,7 +27,8 @@ function getWorker(): Worker {
   started.onerror = (event) => {
     // A worker that fails to start or crashes answers nothing: fail every
     // request and start a new worker next time.
-    for (const request of pending.values()) request.reject(new Error(event.message));
+    const error = new Error(event.message || "Maia's worker stopped");
+    for (const request of pending.values()) request.reject(error);
     pending.clear();
     started.terminate();
     worker = undefined;
@@ -34,12 +36,19 @@ function getWorker(): Worker {
   return (worker = started);
 }
 
-/** `forward` for `rating`'s network, run in a Web Worker. */
+/**
+ * `forward` for `rating`'s network, run in a Web Worker. Once a newer deploy
+ * has removed the worker's file or the network's, it fails with a
+ * NewVersionError.
+ */
 export function runNetwork(rating: MaiaRating, planes: Float32Array): Promise<NetworkOutput> {
-  const url = assetUrl(MODELS[rating]);
-  const id = nextId++;
-  return new Promise((resolve, reject) => {
+  return new Promise<NetworkOutput>((resolve, reject) => {
+    // Inside the promise, so a bad address rejects and gets explained too.
+    const url = assetUrl(MODELS[rating]);
+    const id = nextId++;
     pending.set(id, { resolve, reject });
     getWorker().postMessage({ id, url, planes } satisfies MaiaRequest, [planes.buffer]);
+  }).catch(async (error: unknown) => {
+    throw await explainLoadFailure(error);
   });
 }

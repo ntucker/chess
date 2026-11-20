@@ -2,6 +2,7 @@ import { Button, Inline, Stack, Text } from '@reactive/silk-native';
 import { StyleSheet, View } from 'react-native';
 
 import { Eyebrow } from '@/components/Eyebrow';
+import { NEW_VERSION, NewVersionError, reload } from '@/files/newVersion';
 import type { Color, Position } from '@/game/replay';
 import { describeOpponent, type Opponent } from '@/opponent/opponent';
 import { narrowLength, narrowPart } from '@/theme/narrow';
@@ -25,7 +26,7 @@ export function GameStatus({ error, onRetry, ...game }: Props) {
   return (
     <StatusHeadline
       {...describe(game)}
-      failure={error && { who: describeOpponent(game.opponent).name, onRetry }}
+      failure={error && { who: describeOpponent(game.opponent).name, error, onRetry }}
     />
   );
 }
@@ -34,8 +35,8 @@ interface HeadlineProps {
   readonly eyebrow: string;
   readonly title: string;
   readonly detail: string;
-  /** The opponent `who` didn't answer, and `onRetry` asks it again. */
-  readonly failure?: { readonly who: string; readonly onRetry: () => void };
+  /** The opponent `who` didn't answer with `error`, and `onRetry` asks it again. */
+  readonly failure?: Failure;
   /**
    * The header names the line on a narrow web page (Stage's `place`), so the headline
    * leaves its eyebrow out there.
@@ -69,17 +70,35 @@ export function StatusHeadline({
       <Text {...(seenHint ? narrowPart('wide-only') : {})} role="bodySm" tone="secondary">
         {detail}
       </Text>
-      {failure ? (
-        <Inline gap="3" align="center">
-          <Text role="bodySm" tone="danger">
-            {failure.who} didn&apos;t answer.
-          </Text>
-          <Button size="sm" variant="soft" tone="danger" onPress={failure.onRetry}>
-            Try again
-          </Button>
-        </Inline>
-      ) : null}
+      {failure ? <FailureLine {...failure} /> : null}
     </Stack>
+  );
+}
+
+interface Failure {
+  readonly who: string;
+  readonly error: Error;
+  readonly onRetry: () => void;
+}
+
+/**
+ * The opponent didn't answer, with a retry; or, when a newer deploy removed
+ * the engine's file so asking again can't help, a reload.
+ */
+function FailureLine({ who, error, onRetry }: Failure) {
+  const { message, action, onPress } =
+    error instanceof NewVersionError
+      ? { message: NEW_VERSION, action: 'Reload', onPress: reload }
+      : { message: `${who} didn't answer.`, action: 'Try again', onPress: onRetry };
+  return (
+    <Inline gap="3" align="center">
+      <Text role="bodySm" tone="danger">
+        {message}
+      </Text>
+      <Button size="sm" variant="soft" tone="danger" onPress={onPress}>
+        {action}
+      </Button>
+    </Inline>
   );
 }
 
