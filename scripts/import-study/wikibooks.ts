@@ -211,6 +211,8 @@ export async function wikibooksPgn(
   }
   const reader: Reader = { fetchPage, pagesLeft: maxPages, leave: new Set(leave), log };
   const top = await readTree(reader, root, path.at(-1)!, pos, []);
+  // A missing root page would otherwise import as one bare move.
+  if (top.children.length === 0) throw new Error(`${root}: Wikibooks has no moves here`);
   const name = (node: BookNode) => (node.name && (rename[node.name] ?? node.name)) || undefined;
   return chapters(top, path.slice(0, -1), learner, name)
     .map((game) => makePgn(game))

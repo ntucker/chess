@@ -5,7 +5,8 @@
  *
  * - A learner's book move the engine calls a mistake or a blunder (the app's
  *   own move labels, analysis/quality.ts) stops being a book move, and so does
- *   every book move only reachable through it.
+ *   every book move only reachable through it. An inaccuracy stays: opening
+ *   theory is full of them, and the app labels it for the learner anyway.
  * - A note goes when its verdict is two or more steps from the engine's on
  *   the scale = ⩲ ± +- (an evaluation badge, or where a line or trap ends), or
  *   when its trap's first move is not an error at all.
@@ -13,12 +14,10 @@
  * Each change is reported, so a person can read what the engine overruled.
  */
 import { Chess } from 'chessops/chess';
-import { makeSan } from 'chessops/san';
-import { parseUci } from 'chessops/util';
 
 import type { Evaluation } from '@/evaluation/evaluation';
 import { classifyMove } from '@/analysis/quality';
-import { parsePosition, positionKey } from '@/game/replay';
+import { numberedLine, parsePosition, playLine, playMove, positionKey } from '@/game/replay';
 import type {
   Evaluation as Verdict,
   Idea,
@@ -179,8 +178,9 @@ const STEPS: Readonly<Record<Verdict, number>> = {
  * equal, under one slightly better, under two clearly, then winning.
  * Openings are judged loosely, since engines see more than a guide's glyph means.
  */
-function engineStep({ pawns, mate }: Evaluation): number {
-  if (mate !== undefined) return mate > 0 ? 3 : mate < 0 ? -3 : 0;
+function engineStep({ score, pawns, mate }: Evaluation): number {
+  // A checkmated position has mate 0, so the score says who won.
+  if (mate !== undefined) return score > 0.5 ? 3 : -3;
   const size = [0.5, 1, 2].filter((limit) => Math.abs(pawns) >= limit).length;
   return Math.sign(pawns) * size;
 }
@@ -189,7 +189,11 @@ const apart = (verdict: Verdict, engine: Evaluation) =>
   Math.abs(STEPS[verdict] - engineStep(engine)) >= 2;
 
 const describe = ({ pawns, mate }: Evaluation) =>
-  mate !== undefined ? `mate in ${mate}` : `${pawns > 0 ? '+' : ''}${pawns.toFixed(2)}`;
+  mate === 0
+    ? 'checkmate'
+    : mate !== undefined
+      ? `mate in ${mate}`
+      : `${pawns > 0 ? '+' : ''}${pawns.toFixed(2)}`;
 
 /** The lesson's start position, which the checker has read. */
 const startOf = (lesson: Lesson): Chess => parsePosition(lesson.start)!;
@@ -230,25 +234,23 @@ function bookReach(lesson: Lesson): Set<PositionKey> {
   return reached;
 }
 
+/** The position after `uci`, which the checker has found legal. */
 function played(pos: Chess, uci: Uci): Chess {
   const after = pos.clone();
-  after.play(parseUci(uci)!);
+  playMove(after, uci);
   return after;
 }
 
-const san = (pos: Chess, uci: Uci) => makeSan(pos, parseUci(uci)!);
+const san = (pos: Chess, uci: Uci) => playMove(pos.clone(), uci)!.san;
 
 /** `line` from the lesson's start in SAN, like "1.d4 d5 2.c4". */
 function sans(lesson: Lesson, line: readonly Uci[]): string {
-  let pos = startOf(lesson);
-  return line
-    .map((uci) => {
-      const number = pos.turn === 'white' ? `${pos.fullmoves}.` : '';
-      const move = `${number}${san(pos, uci)}`;
-      pos = played(pos, uci);
-      return move;
-    })
-    .join(' ');
+  const start = startOf(lesson);
+  const firstPly = 2 * start.fullmoves - (start.turn === 'white' ? 1 : 0);
+  const moves = Array.from(playLine(line, start), ({ move }) => move?.san).filter(
+    (move) => move !== undefined,
+  );
+  return numberedLine(moves, firstPly);
 }
 
 async function filter<T>(items: readonly T[], keep: (item: T) => Promise<boolean>): Promise<T[]> {

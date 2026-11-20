@@ -98,6 +98,15 @@ describe('engineCheck', () => {
     ]);
   });
 
+  it('reads a checkmate as won by the side that mated', async () => {
+    // Checkmated, the engine answers mate 0: Black has won the position after 1...d5 here.
+    const mated = async (): Promise<Evaluation> => ({ score: 0, pawns: 0, mate: 0 });
+    const { lesson } = await engineCheck(LESSON, mated);
+    expect(lesson.positions[keyAfter('d4')].moves[0].notes?.[0].text).toBe(
+      'Black is winning here.',
+    );
+  });
+
   it('keeps a lesson the engine agrees with as it is', async () => {
     const even = async (): Promise<Evaluation> => ({ score: 0.52, pawns: 0.2 });
     const agreed = {

@@ -20,8 +20,6 @@ import { lessonOf, lessonsFrom, openingsLesson, withOpenings } from '@/lesson/op
 import type { Candidate } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
 import type { LessonView } from '@/lesson/view';
-
-import { SourceCredits } from './SourceCredits';
 import { describeOpponent } from '@/opponent/opponent';
 import { getLesson, LESSON_INDEX, LESSONS, type LessonId } from '@/resources/lesson';
 import { useSettings } from '@/settings/SettingsProvider';
@@ -32,6 +30,7 @@ import { CandidateList } from './CandidateList';
 import { IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
+import { SourceCredits } from './SourceCredits';
 import { TrapCard } from './TrapCard';
 import { useOpeningsGame } from './useOpeningsGame';
 

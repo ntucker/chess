@@ -27,32 +27,32 @@
  * token (a personal token with no scopes is enough): set LICHESS_TOKEN, or
  * run where a proxy adds it (Node's fetch uses HTTPS_PROXY only with
  * NODE_USE_ENV_PROXY=1, which the yarn script sets).
- * The study, the Wikibooks pages and the explorer's answers are cached in IMPORT_STUDY_CACHE
- * (default .cache/import-study), so a stopped crawl resumes. Lichess allows about 24 requests a minute, so the
- * first crawl of the Caro-Kann takes about four hours; later runs read the
- * cache.
+ * The study, the Wikibooks pages, the explorer's answers and Stockfish's
+ * evaluations are cached in IMPORT_STUDY_CACHE (default .cache/import-study),
+ * so a stopped crawl resumes. Lichess allows about 24 requests a minute, so
+ * the first crawl of the Caro-Kann takes about four hours; later runs read
+ * the cache.
  */
 import { createHash } from 'node:crypto';
-import { appendFileSync, existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { INITIAL_FEN } from 'chessops/fen';
 import type { Color } from 'chessops/types';
 
 import { checkLesson } from '@/lesson/check';
-import type { Evaluation } from '@/evaluation/evaluation';
 import { readLesson, type Lesson } from '@/lesson/lesson';
-import { attachStockfish, stockfishEvaluation } from '@/stockfish/engine';
 
 import { convertChapters, convertReport } from './convert';
 import { claudeCli } from './convert/claude';
-import { engineCheck, type Evaluate } from './engineCheck';
+import { engineCheck } from './engineCheck';
 import { extractChapter } from './extract';
 import { lessonJson } from './lessonJson';
 import { mergeChapters, numberedChapterName, type ChapterName } from './merge';
 import { addPopularity, lichessExplorer } from './popularity';
 import { indexLesson, registerLesson } from './register';
 import { report } from './report';
+import { nodeStockfish } from './stockfish';
 import { parseStudy, type Chapter } from './study';
 import { STUDIES, type ChapterSource } from './studies';
 import { wikibooksPgn } from './wikibooks';
@@ -106,7 +106,7 @@ async function main() {
   if (study.engineCheck) {
     if (lesson.start !== INITIAL_FEN)
       throw new Error('The engine check plays lines from the standard start');
-    const stockfish = await nodeStockfish();
+    const stockfish = await nodeStockfish(join(CACHE, 'stockfish.jsonl'));
     const checked = await engineCheck(lesson, stockfish.evaluate);
     stockfish.stop();
     lesson = checked.lesson;
@@ -163,62 +163,6 @@ async function studyPgn(studyId: string): Promise<string> {
     writeFileSync(file, await response.text());
   }
   return readFileSync(file, 'utf8');
-}
-
-/**
- * Stockfish as the app runs it (the same build and search), in Node, with
- * each position's evaluation cached so a rerun searches only new positions.
- */
-async function nodeStockfish(): Promise<{ evaluate: Evaluate; stop: () => void }> {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports -- a CommonJS build with no types
-  const start = require('stockfish/bin/stockfish-19-lite-single.js') as () => Promise<NodeEngine>;
-  // Starting the engine sets the global fetch to null, which the explorer and Wikibooks need.
-  const { fetch } = globalThis;
-  const engine = await start();
-  globalThis.fetch = fetch;
-  // The engine can't take a command from inside its own output callback.
-  const connection = attachStockfish(
-    (command) => setTimeout(() => engine.processCommand(command)),
-    // A search that fails is retried, then its promise rejects and stops the import.
-    { ready() {}, failed() {} },
-  );
-  engine.listener = (line) => connection.receive(line);
-  const cacheFile = join(CACHE, 'stockfish.jsonl');
-  const cached = new Map<string, Evaluation>(
-    existsSync(cacheFile)
-      ? readFileSync(cacheFile, 'utf8')
-          .split('\n')
-          .filter(Boolean)
-          .map((line) => {
-            const { key, evaluation } = JSON.parse(line) as { key: string; evaluation: Evaluation };
-            return [key, evaluation];
-          })
-      : [],
-  );
-  let searched = 0;
-  const evaluate: Evaluate = async (line, key) => {
-    const known = cached.get(key);
-    if (known) return known;
-    const evaluation = await stockfishEvaluation(line);
-    cached.set(key, evaluation);
-    appendFileSync(cacheFile, `${JSON.stringify({ key, evaluation })}\n`);
-    if (++searched % 100 === 0) console.log(`engine check: ${searched} positions searched`);
-    return evaluation;
-  };
-  return {
-    evaluate,
-    stop() {
-      connection.detach();
-      engine.terminate?.();
-    },
-  };
-}
-
-/** The `stockfish` package's Node build. */
-interface NodeEngine {
-  listener?: (line: string) => void;
-  processCommand(command: string): void;
-  terminate?(): void;
 }
 
 /** Wikimedia's API answers 429 to shared cloud addresses; index.php's raw pages do not at this pace. */
