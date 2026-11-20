@@ -80,6 +80,7 @@
     display: block;
   }
   /*
+   * The CSS twin of FootnoteChoice.tsx's `visuallyHidden`, for a narrow page only.
    * Out of sight but still read by screen readers, such as a headline that
    * only repeats whose move it is (GameStatus.tsx): the name bars show it, but
    * screen readers hear it only from the headline.
@@ -108,17 +109,14 @@
     gap: 2px;
     padding: 4px;
   }
-  :root [data-narrow='chips'] > * {
+  :root [data-narrow='chips'] [data-narrow='chip'] {
     gap: 8px;
     padding: 6px 10px;
     border-radius: 6px;
   }
-  :root [data-narrow='chips'] > * > * {
+  /* Sized to its content: a move, a share's number. */
+  :root [data-narrow='chips'] [data-narrow='chip-fit'] {
     flex: none;
-  }
-  /* A share is only its number, sized to fit. */
-  :root [data-narrow='chips'] [data-narrow='chip-share'],
-  :root [data-narrow='chips'] [data-narrow='chip-share'] > * {
     width: auto;
   }
   :root [data-narrow='chips'] [data-narrow='chip-hidden'] {

@@ -151,6 +151,7 @@ function RareToggle({
       {...a11yState({ expanded: shown })}
       onPress={onToggle}
       onKeyDown={tabOut(onTabOut)}
+      {...narrowPart('chip')}
       style={({ hovered, pressed }) => [
         styles.row,
         styles.toggle,
@@ -238,6 +239,7 @@ function Row({
       }}
       onKeyDown={tabOut(onTabOut)}
       onFocus={point}
+      {...narrowPart('chip')}
       style={({ pressed }) => [
         styles.row,
         (pointed || (pressed && playable)) && {
@@ -251,7 +253,7 @@ function Row({
           hollow ? { borderWidth: 2, borderColor: tone } : { backgroundColor: tone },
         ]}
       />
-      <View style={styles.move}>
+      <View {...narrowPart('chip-fit')} style={styles.move}>
         <View style={styles.title}>
           <Text role="body" style={styles.san}>
             {san}
@@ -275,14 +277,14 @@ function Row({
         </Text>
       ) : null}
       {share === undefined ? null : (
-        <View {...narrowPart('chip-share')} style={styles.share}>
+        <View style={styles.share}>
           <View
             {...narrowPart('chip-hidden')}
             style={[styles.track, { backgroundColor: color.tones.neutral.subtle }]}
           >
             <View style={[styles.fillBar, { width: `${share * 100}%`, backgroundColor: tone }]} />
           </View>
-          <Text role="caption" tone="secondary" style={styles.percent}>
+          <Text {...narrowPart('chip-fit')} role="caption" tone="secondary" style={styles.percent}>
             {percent(share)}
           </Text>
         </View>
@@ -328,8 +330,8 @@ const styles = StyleSheet.create({
   title: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   san: { fontFamily: fonts.mono, fontSize: 17 },
   risk: { textTransform: 'capitalize' },
-  share: { width: 92, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  track: { flex: 1, height: 4, borderRadius: 2, overflow: 'hidden' },
+  share: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  track: { width: 52, height: 4, borderRadius: 2, overflow: 'hidden' },
   fillBar: { height: '100%', borderRadius: 2 },
   percent: { width: 32, textAlign: 'right', fontFamily: fonts.mono },
   evaluation: { minWidth: 44, textAlign: 'right', fontFamily: fonts.mono },

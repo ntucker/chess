@@ -27,6 +27,7 @@ import { getLesson, LESSON_INDEX, LESSONS, type LessonId } from '@/resources/les
 import { getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
 import { qualityLooks } from '@/theme/moveQuality';
+import { themes } from '@/theme/theme';
 import { narrowLength, narrowPart } from '@/theme/narrow';
 
 import { AutoPlay } from './AutoPlay';
@@ -181,10 +182,16 @@ function LessonScreen({
   // Past the guide, a move of Stockfish's can lead back into it.
   const rejoins = ({ variation }: Candidate) =>
     variation === undefined ? undefined : `Rejoins ${lesson.variations[variation].name}`;
-  // Where the move previewed leads, for the idea card to name on a narrow
-  // page, whose chips leave it out. The start's rows show it themselves.
-  const previewLeadsTo =
-    preview && !picking ? (preview.engine ? rejoins(preview) : leadsTo(preview)) : undefined;
+  // Each list's rows, on a narrow page, as chips, which leave out where a move
+  // leads, for the idea card to name for the move previewed: Stockfish's only
+  // with the card, and the guide's but at the start, where each move's opening
+  // is the point.
+  const lists = {
+    top: { chips: ideaCard, leadsTo: rejoins },
+    guide: { chips: !picking, leadsTo },
+  };
+  const previewList = preview && lists[preview.engine ? 'top' : 'guide'];
+  const previewLeadsTo = preview && previewList?.chips ? previewList.leadsTo(preview) : undefined;
   // Pointing at an opening, or picking up a piece that plays one, starts
   // loading its lesson, so playing it needn't wait. A failure shows once the
   // opening is picked.
@@ -249,14 +256,12 @@ function LessonScreen({
                 <CandidateList
                   {...rowProps}
                   heading="Stockfish's top moves"
-                  // Only with the idea card, which names where the move pointed at rejoins.
-                  chips={ideaCard}
+                  {...lists.top}
                   candidates={guidance.top}
                   rare={[]}
                   rareShown={false}
                   onShowRare={showRare}
                   main={guidance.top[0]}
-                  leadsTo={rejoins}
                   onPoint={pointRow}
                 />
               ) : null}
@@ -268,14 +273,12 @@ function LessonScreen({
                       ? 'Your candidates'
                       : `${colorName(rival)}'s ${picking ? 'first move' : 'likely replies'}`
                   }
-                  // At the start each move's opening is the point.
-                  chips={!picking}
+                  {...lists.guide}
                   candidates={guidance.candidates}
                   rare={guidance.rare}
                   rareShown={rareShown}
                   onShowRare={showRare}
                   main={guidance.main}
-                  leadsTo={leadsTo}
                   onPoint={pointCandidate}
                 />
               ) : null}
@@ -496,8 +499,8 @@ function LessonPlaceholder({
   );
 }
 
-/** Space between the panel's sections: less on a narrow web page. */
-const SECTION_GAP = narrowLength('section-gap', 20);
+/** Space between the panel's sections: Silk's step 5, less on a narrow web page. */
+const SECTION_GAP = narrowLength('section-gap', themes.dark.semantic.space[5]);
 
 const styles = StyleSheet.create({
   sections: { gap: SECTION_GAP.value },

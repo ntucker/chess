@@ -3,9 +3,10 @@ import type { ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
 
 import { narrowLength } from '@/theme/narrow';
+import { themes } from '@/theme/theme';
 
-/** Space between an eyebrow and what it labels: less on a narrow web page. */
-const LABEL_GAP = narrowLength('label-gap', 12);
+/** Space between an eyebrow and what it labels: Silk's step 3, less on a narrow web page. */
+const LABEL_GAP = narrowLength('label-gap', themes.dark.semantic.space[3]);
 
 /** The small spaced capitals that label a section of the panel. */
 export function Eyebrow({ children }: { readonly children: ReactNode }) {
