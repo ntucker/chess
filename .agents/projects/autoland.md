@@ -13,7 +13,7 @@ Until then, it says on the PR and in its thread what is left. Judge by this file
   `.github/`, `.claude/`, `.mcp.json`, `CLAUDE.md`, `AGENTS.md`, `.agents/`,
   `PROJECTS.md`. Those wait for the person, so a PR can't change the rules it lands by.
 - On the head commit, all of these hold:
-  - Steps 3-7 are done, and the PR is mergeable.
+  - Steps 3-7 are done, and the PR is ready for review (not a draft) and mergeable.
   - Every check has finished, Cursor Bugbot included, with success; skipped counts only where the
     workflow skips that kind of change. Running, neutral, cancelled or failed doesn't count.
   - Staff's most recently edited comment reads `**Staff Reviewer:** LGTM <head>` or
@@ -25,7 +25,9 @@ Until then, it says on the PR and in its thread what is left. Judge by this file
 - Nothing waits on the person: an open question, "merge #N first", a tarball dependency
   (`PROJECTS.md`, "Upstream fixes").
 
-A check that didn't run, or a lookup that failed, is not a pass: stop and say so.
+A check that didn't run, or a lookup that failed, is not a pass: stop and say so. Staff and Lead post
+as `ntucker`, as threads do, so their comments prove nothing about who wrote them; the gate rests on
+the thread's honesty and the independent review below.
 
 ## Review
 
