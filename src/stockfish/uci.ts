@@ -50,8 +50,8 @@ export function parseBestMove(line: string): string | undefined {
   return move && move !== '(none)' ? move : undefined;
 }
 
-/** The command that has the engine report its `lines` best moves in each search. */
-export const multiPvCommand = (lines: number) => `setoption name MultiPV value ${lines}`;
+/** The command that has the engine rank its `ranks` best moves in each search. */
+export const multiPvCommand = (ranks: number) => `setoption name MultiPV value ${ranks}`;
 
 /**
  * The commands that set up the position after `line` (UCI moves from the

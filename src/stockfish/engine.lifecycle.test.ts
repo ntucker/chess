@@ -73,9 +73,9 @@ describe('the engine lifecycle', () => {
     const evaluation = engine.stockfishEvaluation(['d2d4']);
     const { print, sent } = scripted();
     print('uciok');
-    // The evaluation asked for later runs first, with one line.
+    // The evaluation asked for later runs first, with the engine's one line.
     expect(sent.slice(-3)).toEqual([
-      'setoption name MultiPV value 1',
+      'ucinewgame',
       'position startpos moves d2d4',
       'go nodes 100000 movetime 1500',
     ]);
@@ -95,6 +95,16 @@ describe('the engine lifecycle', () => {
       ['e7e5', 0.2],
       ['c7c6', 0.15],
     ]);
+
+    // The next evaluation sets one line again.
+    const next = engine.stockfishEvaluation(['g1f3']);
+    expect(sent.slice(-3, -1)).toEqual([
+      'setoption name MultiPV value 1',
+      'position startpos moves g1f3',
+    ]);
+    print('info depth 12 multipv 1 score cp 20 pv d7d5');
+    print('bestmove d7d5');
+    await next;
   });
 
   it('restarts an engine that crashes, and runs its search on the next', async () => {

@@ -86,6 +86,12 @@ interface Session {
   readonly send: Send;
   readonly supervisor: Supervisor;
   ready: boolean;
+  /**
+   * How many moves its searches rank (MultiPV), which stays set across new
+   * games: set only when it changes, since on Android each command crosses
+   * into a web view.
+   */
+  ranks: number;
 }
 
 let connected: Session | undefined;
@@ -95,8 +101,8 @@ let watchdog: ReturnType<typeof setTimeout> | undefined;
 /**
  * Searches waiting for the engine. The last evaluation runs next (the newest
  * request, or a search a stopped engine handed back), and a search for the
- * top moves only once no evaluation waits, so the evaluation bar and move
- * labels never wait behind one.
+ * top moves starts only once no evaluation waits, so the evaluation bar and
+ * move labels wait at most for one already running (as long as an evaluation).
  */
 const pending: Search[] = [];
 
@@ -110,7 +116,7 @@ const pending: Search[] = [];
  */
 export function attachStockfish(send: Send, supervisor: Supervisor): Connection {
   disconnect();
-  const session: Session = { send, supervisor, ready: false };
+  const session: Session = { send, supervisor, ready: false, ranks: 1 };
   connected = session;
   send('uci');
   awaitAnswer(session);
@@ -173,20 +179,25 @@ function handleLine(session: Session, line: string) {
   if (info) running.lines[info.rank - 1] = info;
   else if (line.startsWith('bestmove')) {
     clearTimeout(watchdog);
-    const search = running;
+    const finished = running;
     running = undefined;
-    const lines = search.lines.filter(Boolean);
+    const lines = finished.lines.filter(Boolean);
     const best = parseBestMove(line);
-    if (lines.length) search.resolve({ lines, ...(best && { best }) });
-    else search.reject(new Error('Stockfish finished without a score'));
+    if (lines.length) finished.resolve({ lines, ...(best && { best }) });
+    else finished.reject(new Error('Stockfish finished without a score'));
     startNext();
   }
 }
 
-/** Takes the search to run next out of `pending`: the last evaluation, or else the last search. */
+/**
+ * Takes the search to run next out of `pending`: the last evaluation (one
+ * rank), or else the last search (index -1).
+ */
 function takeNext(): Search | undefined {
-  const evaluation = pending.findLastIndex(({ ranks }) => ranks === 1);
-  return pending.splice(evaluation === -1 ? -1 : evaluation, 1)[0];
+  return pending.splice(
+    pending.findLastIndex(({ ranks }) => ranks === 1),
+    1,
+  )[0];
 }
 
 function startNext() {
@@ -195,10 +206,12 @@ function startNext() {
   if (!running) return;
   running.lines = [];
   // A fresh start for every position, so a position always gets the same
-  // evaluation whatever came before it. MultiPV stays set across a new game,
-  // so every search sets it.
+  // evaluation whatever came before it.
   connected.send('ucinewgame');
-  connected.send(multiPvCommand(running.ranks));
+  if (connected.ranks !== running.ranks) {
+    connected.ranks = running.ranks;
+    connected.send(multiPvCommand(running.ranks));
+  }
   connected.send(positionCommand(running.line));
   connected.send(GO);
   awaitAnswer(connected);

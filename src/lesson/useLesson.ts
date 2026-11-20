@@ -25,7 +25,13 @@ import { useNeedsStockfish } from '@/stockfish/demand';
 
 import { boardPress, lessonBoard } from './board';
 import { ideaPlayback } from './drawings';
-import { guidance, type LessonMode, notePlayback, type PlayedBack } from './guidance';
+import {
+  guidance,
+  type LessonMode,
+  listsTopMoves,
+  notePlayback,
+  type PlayedBack,
+} from './guidance';
 import type { Lesson, Note, PositionKey, Uci } from './lesson';
 import { earnedMark, rowMarks, steering } from './marks';
 import { lessonOpponent } from './opponent';
@@ -156,7 +162,7 @@ export function useLesson(
   const evaluationArgs = explore ? (['stockfish', shownLine] as const) : ([null] as const);
   useFetch(getEvaluation, ...evaluationArgs);
   const evaluation = useCache(getEvaluation, ...evaluationArgs);
-  const topArgs = explore && view.place !== 'inside' ? ([shownLine] as const) : ([null] as const);
+  const topArgs = focused && listsTopMoves(view, mode) ? ([shownLine] as const) : ([null] as const);
   useFetch(getTopMoves, ...topArgs);
   const topMoves = useCache(getTopMoves, ...topArgs);
   const top = useMemo(

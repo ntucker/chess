@@ -6,7 +6,12 @@ import Animated, { type CSSTransitionTimingFunction, cubicBezier } from 'react-n
 
 import { resetListener } from '@/components/resetListener';
 import { type Color, colorName, type GameResult, lastPosition, opposite } from '@/game/replay';
-import { type Evaluation, type EvaluationEngine, resultEvaluation } from '@/evaluation/evaluation';
+import {
+  type Evaluation,
+  type EvaluationEngine,
+  pawnsLabel,
+  resultEvaluation,
+} from '@/evaluation/evaluation';
 import { getEvaluation } from '@/resources/evaluation';
 import { useSettings } from '@/settings/SettingsProvider';
 import { narrowPart } from '@/theme/narrow';
@@ -66,7 +71,7 @@ function EvaluatedBar({
   return <Bar orientation={orientation} style={style} {...reading} />;
 }
 
-export interface Reading {
+interface Reading {
   /** White's share of the bar, from 0 to 1. */
   readonly score: number;
   readonly label: string;
@@ -87,10 +92,8 @@ export function evaluationReading({ score, pawns, mate }: Evaluation): Reading {
       description: `${colorName(leader)} mates in ${moves} ${moves === 1 ? 'move' : 'moves'}`,
     };
   }
-  // Tenths of a pawn below 10, whole pawns from there up to 99.
-  const tenths = Math.round(Math.abs(pawns) * 10) / 10;
-  const label = tenths < 10 ? tenths.toFixed(1) : String(Math.min(99, Math.round(tenths)));
-  if (tenths === 0) return { score, label, leader: 'white', description: 'Even' };
+  const label = pawnsLabel(pawns);
+  if (Number(label) === 0) return { score, label, leader: 'white', description: 'Even' };
   const leader = pawns < 0 ? 'black' : 'white';
   return { score, label, leader, description: `${colorName(leader)} is ahead by ${label} pawns` };
 }

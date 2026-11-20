@@ -45,8 +45,8 @@ export const getEvaluation = new Endpoint(
 /**
  * Stockfish's three best moves in the position after `line`, best first,
  * each with how the position stands after it (`stockfishTopMoves`); none once
- * the game is over. It searches only once no evaluation waits, so ask for it
- * beside `getEvaluation` freely. Kept for as long as the app runs.
+ * the game is over. Its search starts only once no evaluation waits, so ask
+ * for it beside `getEvaluation` freely. Kept for as long as the app runs.
  *
  * ```ts
  * const top = useSuspense(getTopMoves, ['e2e4']); // [{ uci: 'c7c5', evaluation }, …]

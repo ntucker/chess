@@ -139,6 +139,10 @@ export interface Guidance {
   readonly lineEnded: boolean;
 }
 
+/** Whether Stockfish's top moves are listed: in Explore, past the guide's moves. */
+export const listsTopMoves = (view: LessonView, mode: LessonMode) =>
+  mode === 'explore' && view.place !== 'inside';
+
 export function guidance(input: GuidanceInput): Guidance {
   const {
     view,
@@ -191,7 +195,7 @@ export function guidance(input: GuidanceInput): Guidance {
     showMoves: switches.showMoves,
     moveIdeas,
   });
-  const top = explore && view.place !== 'inside' ? (engine?.top ?? []) : [];
+  const top = listsTopMoves(view, mode) ? (engine?.top ?? []) : [];
   const best =
     explore && switches.showMoves && !preview && !dragged && !playing && !pointedNote
       ? view.place === 'inside'

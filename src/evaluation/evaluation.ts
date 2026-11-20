@@ -21,6 +21,22 @@ export interface TopMove {
   readonly evaluation: Evaluation;
 }
 
+/**
+ * The size of an advantage of `pawns`, as the evaluation bar and engine lines
+ * write it: tenths of a pawn below 10, whole pawns from there up to 99.
+ */
+export function pawnsLabel(pawns: number): string {
+  const tenths = Math.round(Math.abs(pawns) * 10) / 10;
+  return tenths < 10 ? tenths.toFixed(1) : String(Math.min(99, Math.round(tenths)));
+}
+
+/** `evaluation` as an engine line writes it, from White's side: "+0.7", "\u22121.2", "0.0" or "+M3". */
+export function signedEvaluation({ pawns, mate }: Evaluation): string {
+  if (mate !== undefined) return `${mate < 0 ? '\u2212' : '+'}M${Math.abs(mate)}`;
+  const label = pawnsLabel(pawns);
+  return Number(label) === 0 ? label : `${pawns < 0 ? '\u2212' : '+'}${label}`;
+}
+
 /** How a finished game stands: the winner scores 1, a draw 0.5 each. */
 export function resultEvaluation({ winner }: GameResult): Evaluation {
   return { score: winner === 'white' ? 1 : winner === 'black' ? 0 : 0.5, pawns: 0 };

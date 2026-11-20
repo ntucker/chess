@@ -166,6 +166,14 @@ function LessonScreen({
     const variation = lesson.variations[candidate.variation];
     return variation === line ? undefined : variation.name;
   };
+  // What the guide's candidate rows and Stockfish's top moves' rows share.
+  const rowProps = {
+    pointed: preview?.move.uci,
+    marks,
+    playable: canPlay,
+    onPlay: play,
+    onTabOut: leave,
+  };
   // Past the guide, a move of Stockfish's can lead back into it.
   const rejoins = ({ variation }: Candidate) =>
     variation === undefined ? undefined : `Rejoins ${lesson.variations[variation].name}`;
@@ -229,23 +237,17 @@ function LessonScreen({
             <PointingArea onLeave={leave}>
               {guidance.top.length ? (
                 <CandidateList
+                  {...rowProps}
                   heading="Stockfish's top moves"
                   candidates={guidance.top}
-                  rare={[]}
-                  rareShown={false}
-                  onShowRare={showRare}
                   main={guidance.top[0]}
-                  pointed={preview?.move.uci}
-                  marks={marks}
                   leadsTo={rejoins}
-                  playable={canPlay}
-                  onPlay={play}
                   onPoint={pointRow}
-                  onTabOut={leave}
                 />
               ) : null}
               {guidance.candidates.length ? (
                 <CandidateList
+                  {...rowProps}
                   heading={
                     view.learnerToMove
                       ? 'Your candidates'
@@ -256,13 +258,8 @@ function LessonScreen({
                   rareShown={rareShown}
                   onShowRare={showRare}
                   main={guidance.main}
-                  pointed={preview?.move.uci}
-                  marks={marks}
                   leadsTo={leadsTo}
-                  playable={canPlay}
-                  onPlay={play}
                   onPoint={pointCandidate}
-                  onTabOut={leave}
                 />
               ) : null}
               {ideaCard ? (

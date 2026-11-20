@@ -2,8 +2,7 @@ import { a11yState, Pressable, Stack, Surface, Text, useTheme } from '@reactive/
 import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import type { Evaluation } from '@/evaluation/evaluation';
-import { candidateTone } from '@/lesson/drawings';
+import { signedEvaluation } from '@/evaluation/evaluation';
 import type { Uci } from '@/lesson/lesson';
 import type { Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
@@ -21,10 +20,10 @@ interface Props {
   readonly heading: string;
   readonly candidates: readonly Candidate[];
   /** Rare candidates, listed after the others while `rareShown`. */
-  readonly rare: readonly Candidate[];
-  readonly rareShown: boolean;
-  /** The learner shows or hides the rare rows. */
-  readonly onShowRare: (shown: boolean) => void;
+  readonly rare?: readonly Candidate[];
+  readonly rareShown?: boolean;
+  /** The learner shows or hides the rare rows; needed with `rare` ones. */
+  readonly onShowRare?: (shown: boolean) => void;
   /** The candidate the board draws as the main one (see `candidateDrawings`). */
   readonly main?: Candidate;
   /** The row previewed, whether its row is pointed at or its piece dragged onto its square. */
@@ -61,8 +60,8 @@ interface Props {
 export function CandidateList({
   heading,
   candidates,
-  rare,
-  rareShown,
+  rare = [],
+  rareShown = false,
   onShowRare,
   main,
   pointed,
@@ -106,7 +105,7 @@ export function CandidateList({
           <RareToggle
             count={rare.length}
             shown={rareShown}
-            onToggle={() => onShowRare(!rareShown)}
+            onToggle={() => onShowRare?.(!rareShown)}
             onTabOut={onTabOut}
           />
         ) : null}
@@ -195,9 +194,8 @@ function Row({
   const { theme } = useTheme();
   const { color } = theme.semantic;
   const { move, san, engine } = candidate;
-  const tone = toneColors[candidateTone(candidate, main ? candidate : undefined)];
+  const tone = toneColors[engine ? 'engine' : main ? 'main' : 'other'];
   const hollow = candidate.rare || (engine && !main);
-  const reading = engine && evaluationRow(engine);
   const point = () => onPoint(move.uci);
   // The mouse points at a row once it rests there, so one crossed on the way
   // from another row down to the idea card leaves that row's preview be.
@@ -215,7 +213,7 @@ function Row({
         san,
         move.book && 'book move',
         share !== undefined && `${percent(share)} of games`,
-        reading?.description,
+        engine && evaluationReading(engine).description,
         mark && SPOKEN_MARKS[mark],
       ]
         .filter(Boolean)
@@ -271,9 +269,9 @@ function Row({
           </Text>
         ) : null}
       </View>
-      {reading ? (
+      {engine ? (
         <Text role="caption" tone="secondary" style={styles.evaluation}>
-          {reading.label}
+          {signedEvaluation(engine)}
         </Text>
       ) : null}
       {share === undefined ? null : (
@@ -297,16 +295,6 @@ function Row({
 const BOOK_BADGE_SIZE = 16;
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;
-
-/**
- * An evaluation as an engine line is written, from White's side: "+0.7",
- * "−1.2", "0.0" or "+M3", with how the bar says it in words.
- */
-function evaluationRow(evaluation: Evaluation) {
-  const { label, leader, description } = evaluationReading(evaluation);
-  const even = evaluation.mate === undefined && label === '0.0';
-  return { label: even ? label : `${leader === 'white' ? '+' : '\u2212'}${label}`, description };
-}
 
 const ROW_INSET = 14;
 const ROW_GAP = 12;
