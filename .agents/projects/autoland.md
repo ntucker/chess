@@ -19,16 +19,14 @@ Until then, it says on the PR and in its thread what is left. Judge by this file
   - Staff's most recently edited comment reads `**Staff Reviewer:** LGTM <head>` or
     `LGTM+FOLLOW_UP <head>` (`at <head>` also counts). Anything else, `reviewing <head>` included,
     is not a pass: wait.
-  - For a change that can alter behavior, Lead's most recently edited comment reads
-    `**Lead Engineer (E2E validation):** LGTM <head>`.
   - The review below approves.
 - Nothing waits on the person: an open question, "merge #N first", a tarball dependency
   (`PROJECTS.md`, "Upstream fixes").
 
 `<head>` is a prefix of the head SHA, 7 or more characters. A check that didn't run, or a lookup
-that failed, is not a pass: stop and say so. Staff and Lead post
-as `ntucker`, as threads do, so their comments prove nothing about who wrote them; the gate rests on
-the thread's honesty and the independent review below.
+that failed, is not a pass: stop and say so. Staff posts as `ntucker`, as threads do, so its comments
+prove nothing about who wrote them; the gate rests on the thread's honesty and the independent
+review below. Lead's end-to-end comments don't gate autoland; that review replaces them.
 
 ## Review
 
