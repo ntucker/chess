@@ -10,7 +10,7 @@ import type { Color } from '@/game/replay';
 
 /**
  * A king's part in the ending: the winner stands in gold, the mated king
- * slumps over its shadow, and in a draw both stay level.
+ * goes grey with a cracked crown, and in a draw both stay level.
  */
 export const KING_PARTS = ['winner', 'beaten', 'level'] as const;
 export type KingPart = (typeof KING_PARTS)[number];

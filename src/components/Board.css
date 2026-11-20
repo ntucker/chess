@@ -98,8 +98,8 @@ cg-board piece.taken {
 /*
  * A game's ending (src/board/endingAct.ts), put on the board by stageEnding
  * in Board.tsx. The house goes dark around the learner's king; the winner's
- * king stands in gold and the mated king slumps, small and grey, over its own
- * shadow, and they stay that way once the lights are back up, so the board
+ * king stands in gold and the mated king goes grey with a crack down its
+ * crown, and they stay that way once the lights are back up, so the board
  * keeps saying who won.
  * Each rule's own style is how it looks in the end; the animations, further
  * down, only say how it gets there, so without them the end is shown at once.
@@ -226,7 +226,7 @@ cg-board piece.ending-king::before {
   inset: 0;
   background-image: inherit;
   background-size: cover;
-  /* Its foot, which it stands on, grows from and slumps over. */
+  /* Its foot, which it stands on and grows from. */
   transform-origin: 50% 82%;
 }
 cg-board piece.ending-king::after {
@@ -259,26 +259,45 @@ cg-board piece.ending-winner::after {
     );
 }
 /*
- * Beaten: shrunk to four fifths on its foot, drooping, its color drained.
- * Upright enough to read as its own king on any square; every transform in
- * its keyframes lists the same functions as this one, so they blend.
+ * Beaten: upright, its color drained, with a crack down its crown. Its
+ * keyframes list the same transform functions as this, so they blend.
  */
 cg-board piece.ending-beaten::before {
-  transform: translate(0, 0) rotate(-12deg) scale(0.8, 0.8);
-  filter: grayscale(0.9) brightness(0.78);
+  transform: translate(0, 0) rotate(0deg);
+  filter: grayscale(0.8) brightness(0.85);
 }
-/* The shadow it sinks into, a dark pool at its foot (no light, unlike the winner's disc). */
+/*
+ * The crack, from under the cross down into the crown, with a branch off to
+ * each side. Dark on a white king and pale on a black one, so it shows on both.
+ */
 cg-board piece.ending-beaten::after {
-  left: 6%;
-  right: 6%;
-  top: 68%;
-  height: 28%;
-  background: radial-gradient(
-    closest-side,
-    rgba(var(--ink), 0.6),
-    rgba(var(--ink), 0.38) 55%,
-    rgba(var(--ink), 0)
+  inset: 0;
+  z-index: 1;
+  border-radius: 0;
+  background: rgb(var(--ink));
+  clip-path: polygon(
+    48.5% 25.5%,
+    44.7% 33%,
+    38.6% 36.8%,
+    39.2% 38%,
+    45.5% 35.2%,
+    51.4% 44.5%,
+    44.5% 57%,
+    51.7% 70%,
+    52.3% 70%,
+    48.5% 57%,
+    56.3% 46.6%,
+    66% 54.5%,
+    65.4% 52.6%,
+    56.6% 42.4%,
+    50.3% 33%,
+    54.5% 25.5%
   );
+  /* It runs down from its top. */
+  transform-origin: 50% 26%;
+}
+cg-board piece.black.ending-beaten::after {
+  background: rgb(var(--ivory));
 }
 /* A draw: the same quiet ring on both. */
 cg-board piece.ending-level::after {
@@ -335,17 +354,20 @@ cg-board piece.ending-level::after {
   .ending-drawn piece.ending-level::after {
     animation: ending-light 700ms ease-out var(--act-rise) backwards;
   }
+  /* The rival's king is jolted by the mate, and its crown splits as it settles. */
   .ending-won piece.ending-beaten::before {
-    animation: ending-struck 560ms var(--act-fall) backwards;
+    animation: ending-jolt 360ms var(--act-fall) backwards;
   }
   .ending-won piece.ending-beaten::after {
-    animation: ending-thud 560ms var(--act-fall) backwards;
+    animation: ending-crack 160ms cubic-bezier(0.5, 0, 0.9, 0.6) calc(var(--act-fall) + 300ms)
+      backwards;
   }
+  /* The learner's own king trembles, then the crack creeps slowly down. */
   .ending-lost piece.ending-beaten::before {
-    animation: ending-slump 1150ms var(--act-fall) backwards;
+    animation: ending-tremble 1150ms var(--act-fall) backwards;
   }
   .ending-lost piece.ending-beaten::after {
-    animation: ending-pool 1150ms var(--act-fall) backwards;
+    animation: ending-crack 600ms ease-in calc(var(--act-fall) + 700ms) backwards;
   }
   .ending-drawn piece.ending-level::before {
     animation: ending-nod 520ms ease-in-out var(--act-rise);
@@ -466,89 +488,57 @@ cg-board piece.ending-level::after {
     transform: scale(1.1);
   }
 }
-/*
- * Struck: it reels back in a flash, is hammered down flat, bounces up small,
- * and settles drooping.
- */
-@keyframes ending-struck {
+/* Jolted: knocked aside in a flash, rocking back to stand still and grey. */
+@keyframes ending-jolt {
   0% {
-    transform: translate(0, 0) rotate(0deg) scale(1, 1);
+    transform: translate(0, 0) rotate(0deg);
     filter: none;
     animation-timing-function: cubic-bezier(0.2, 0.8, 0.4, 1);
   }
-  14% {
-    transform: translate(6%, 0) rotate(10deg) scale(1.04, 1.04);
+  22% {
+    transform: translate(5%, 0) rotate(7deg);
     filter: brightness(1.6);
-    animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5);
+    animation-timing-function: ease-in-out;
   }
-  36% {
-    transform: translate(0, 0) rotate(-4deg) scale(1.14, 0.66);
-    filter: grayscale(0.6) brightness(0.9);
-    animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  50% {
+    transform: translate(-3%, 0) rotate(-4deg);
+    filter: grayscale(0.5) brightness(0.95);
+    animation-timing-function: ease-in-out;
+  }
+  76% {
+    transform: translate(1%, 0) rotate(1.5deg);
+    animation-timing-function: ease-in-out;
+  }
+}
+/* The learner's king shivers while its color drains, then stands still for the crack. */
+@keyframes ending-tremble {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    filter: none;
+  }
+  10% {
+    transform: translate(0, 0) rotate(-2deg);
+  }
+  20% {
+    transform: translate(0, 0) rotate(2deg);
+  }
+  30% {
+    transform: translate(0, 0) rotate(-1.5deg);
+  }
+  40% {
+    transform: translate(0, 0) rotate(1.5deg);
+  }
+  50% {
+    transform: translate(0, 0) rotate(-0.5deg);
   }
   60% {
-    transform: translate(0, 0) rotate(-15deg) scale(0.74, 0.9);
-    animation-timing-function: ease-in-out;
-  }
-  80% {
-    transform: translate(0, 0) rotate(-11deg) scale(0.83, 0.77);
-    animation-timing-function: ease-in-out;
+    transform: translate(0, 0) rotate(0deg);
   }
 }
-/* Its shadow spreads out under it as it is hammered down. */
-@keyframes ending-thud {
-  0%,
-  30% {
-    opacity: 0;
-    transform: scale(0.4);
-    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
-  }
-  44% {
-    opacity: 1;
-    transform: scale(1.3);
-    animation-timing-function: ease-in-out;
-  }
-}
-/*
- * The learner's own king: it draws a breath, wavers, and slowly sinks into
- * itself as its color drains away.
- */
-@keyframes ending-slump {
-  0% {
-    transform: translate(0, 0) rotate(0deg) scale(1, 1);
-    filter: none;
-    animation-timing-function: ease-in-out;
-  }
-  18% {
-    transform: translate(0, -4%) rotate(0deg) scale(1.04, 1.04);
-    animation-timing-function: ease-in-out;
-  }
-  32% {
-    transform: translate(0, -4%) rotate(3deg) scale(1.04, 1.04);
-    animation-timing-function: ease-in-out;
-  }
-  44% {
-    transform: translate(0, 0) rotate(-1deg) scale(1, 1);
-    filter: none;
-    animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1);
-  }
-  86% {
-    transform: translate(0, 0) rotate(-13deg) scale(0.79, 0.77);
-    animation-timing-function: ease-out;
-  }
-}
-/* Its shadow pools under it as it sinks. */
-@keyframes ending-pool {
-  0%,
-  40% {
-    opacity: 0;
-    transform: scale(0.6);
-    animation-timing-function: ease-in-out;
-  }
-  86% {
-    opacity: 1;
-    transform: scale(1.06);
-    animation-timing-function: ease-out;
+/* The crack runs down the crown from under the cross. */
+@keyframes ending-crack {
+  from {
+    transform: scaleY(0);
   }
 }
 
