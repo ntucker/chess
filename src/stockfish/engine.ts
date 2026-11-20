@@ -1,6 +1,13 @@
-import type { Evaluation } from '@/evaluation/evaluation';
+import type { Evaluation, TopMove } from '@/evaluation/evaluation';
 
-import { evaluationFromScore, parseBestMove, parseScore, positionCommand, type Score } from './uci';
+import {
+  evaluationFromScore,
+  multiPvCommand,
+  parseBestMove,
+  parseInfo,
+  positionCommand,
+  type SearchLine,
+} from './uci';
 
 /**
  * How long one evaluation searches: 100,000 positions, which reaches about
@@ -9,6 +16,13 @@ import { evaluationFromScore, parseBestMove, parseScore, positionCommand, type S
  * reach it in 1.5 s stops there with a shallower one.
  */
 const GO = 'go nodes 100000 movetime 1500';
+
+/**
+ * How many moves a search for the top moves ranks. It searches as many
+ * positions as an evaluation, so it takes as long, but splits them among
+ * three lines, which reach about three plies less deep (depth 12 or 13).
+ */
+const TOP_MOVES = 3;
 
 /**
  * How long the engine may take to answer: its handshake (once its host has
@@ -49,12 +63,20 @@ export interface Connection {
   fail(message: string): void;
 }
 
+/** What a search found: its lines, best first, and the move it would play. */
+interface Found {
+  readonly lines: readonly SearchLine[];
+  readonly best?: string;
+}
+
 interface Search {
   readonly line: readonly string[];
-  resolve(evaluation: Evaluation): void;
+  /** How many moves it ranks (MultiPV): 1 for an evaluation. */
+  readonly ranks: number;
+  resolve(found: Found): void;
   reject(error: Error): void;
-  /** The score of the deepest depth finished so far. */
-  last?: Score;
+  /** Each rank's line at the deepest depth finished so far, by rank. */
+  lines: SearchLine[];
   /** How many engines failed while running it. */
   failures: number;
 }
@@ -64,6 +86,12 @@ interface Session {
   readonly send: Send;
   readonly supervisor: Supervisor;
   ready: boolean;
+  /**
+   * How many moves its searches rank (MultiPV), which stays set across new
+   * games: set only when it changes, since on Android each command crosses
+   * into a web view.
+   */
+  ranks: number;
 }
 
 let connected: Session | undefined;
@@ -71,8 +99,10 @@ let running: Search | undefined;
 /** Fails the connected engine if it doesn't answer in time. */
 let watchdog: ReturnType<typeof setTimeout> | undefined;
 /**
- * Searches waiting for the engine. The last runs next: the newest request, or
- * a search a stopped engine handed back.
+ * Searches waiting for the engine. The last evaluation runs next (the newest
+ * request, or a search a stopped engine handed back), and a search for the
+ * top moves starts only once no evaluation waits, so the evaluation bar and
+ * move labels wait at most for one already running (as long as an evaluation).
  */
 const pending: Search[] = [];
 
@@ -86,7 +116,7 @@ const pending: Search[] = [];
  */
 export function attachStockfish(send: Send, supervisor: Supervisor): Connection {
   disconnect();
-  const session: Session = { send, supervisor, ready: false };
+  const session: Session = { send, supervisor, ready: false, ranks: 1 };
   connected = session;
   send('uci');
   awaitAnswer(session);
@@ -110,9 +140,28 @@ export function attachStockfish(send: Send, supervisor: Supervisor): Connection 
  * request is dropped, so a position the board steps past is still searched
  * (move labels need every position of the game anyway).
  */
-export function stockfishEvaluation(line: readonly string[]): Promise<Evaluation> {
+export async function stockfishEvaluation(line: readonly string[]): Promise<Evaluation> {
+  const { lines, best } = await search(line, 1);
+  return { ...evaluationFromScore(lines[0].score, line.length), ...(best && { best }) };
+}
+
+/**
+ * Stockfish's three best moves in the position after `line`, best first,
+ * each with how the position stands after it; fewer when fewer moves are
+ * legal, none once the game is over. It runs after every evaluation waiting
+ * (see `pending`), with a search of its own: three lines reach less deep than
+ * one, so an evaluation is never read from it.
+ */
+export async function stockfishTopMoves(line: readonly string[]): Promise<TopMove[]> {
+  const { lines } = await search(line, TOP_MOVES);
+  return lines.flatMap(({ move, score }) =>
+    move ? [{ uci: move, evaluation: evaluationFromScore(score, line.length) }] : [],
+  );
+}
+
+function search(line: readonly string[], ranks: number): Promise<Found> {
   return new Promise((resolve, reject) => {
-    pending.push({ line, resolve, reject, failures: 0 });
+    pending.push({ line, ranks, resolve, reject, lines: [], failures: 0 });
     startNext();
   });
 }
@@ -126,32 +175,39 @@ function handleLine(session: Session, line: string) {
     return;
   }
   if (!running) return;
-  const score = parseScore(line);
-  if (score) running.last = score;
+  const info = parseInfo(line);
+  if (info) running.lines[info.rank - 1] = info;
   else if (line.startsWith('bestmove')) {
     clearTimeout(watchdog);
-    const search = running;
+    const finished = running;
     running = undefined;
-    if (search.last) search.resolve(evaluation(search.last, search.line, line));
-    else search.reject(new Error('Stockfish finished without a score'));
+    const lines = finished.lines.filter(Boolean);
+    const best = parseBestMove(line);
+    if (lines.length) finished.resolve({ lines, ...(best && { best }) });
+    else finished.reject(new Error('Stockfish finished without a score'));
     startNext();
   }
 }
 
-/** A finished search's evaluation, with the move its `bestmove` line names. */
-function evaluation(score: Score, moves: readonly string[], bestmoveLine: string): Evaluation {
-  const best = parseBestMove(bestmoveLine);
-  return { ...evaluationFromScore(score, moves.length), ...(best && { best }) };
+/** Takes the search to run next out of `pending`: the last evaluation (one rank), or else the last search. */
+function takeNext(): Search | undefined {
+  const lastEvaluation = pending.findLastIndex(({ ranks }) => ranks === 1);
+  const index = lastEvaluation === -1 ? pending.length - 1 : lastEvaluation;
+  return pending.splice(index, 1)[0];
 }
 
 function startNext() {
   if (!connected?.ready || running) return;
-  running = pending.pop();
+  running = takeNext();
   if (!running) return;
-  running.last = undefined;
+  running.lines = [];
   // A fresh start for every position, so a position always gets the same
   // evaluation whatever came before it.
   connected.send('ucinewgame');
+  if (connected.ranks !== running.ranks) {
+    connected.ranks = running.ranks;
+    connected.send(multiPvCommand(running.ranks));
+  }
   connected.send(positionCommand(running.line));
   connected.send(GO);
   awaitAnswer(connected);

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 
-import { attachStockfish, type Connection, stockfishEvaluation } from './engine';
+import { attachStockfish, type Connection, stockfishEvaluation, stockfishTopMoves } from './engine';
 import { type NodeEngine, sendTo, startNodeEngine } from './node';
 import { NO_RESTARTS } from './testing';
 
@@ -22,7 +22,7 @@ afterAll(() => {
   engine.terminate?.();
 });
 
-describe('stockfishEvaluation', () => {
+describe('Stockfish', () => {
   it('calls the starting position about even', async () => {
     const { score, pawns, mate } = await stockfishEvaluation([]);
     expect(mate).toBe(undefined);
@@ -55,6 +55,24 @@ describe('stockfishEvaluation', () => {
     ]);
     expect(pawns).toBeLessThan(-5);
     expect(score).toBeLessThan(0.15);
+  }, 30_000);
+
+  it("ranks three different moves, the evaluation after each from White's side", async () => {
+    // 1.e4 e5 2.Qh5 Nc6 3.Bc4: Black must stop Qxf7#.
+    const top = await stockfishTopMoves(['e2e4', 'e7e5', 'd1h5', 'b8c6', 'f1c4']);
+    expect(top).toHaveLength(3);
+    expect(new Set(top.map(({ uci }) => uci)).size).toBe(3);
+    // g6 and Qe7 hold; the rest lose at least the f7 pawn.
+    expect(['g7g6', 'd8e7', 'd8f6']).toContain(top[0].uci);
+    // Best first: Black's moves, so White's score rises down the list.
+    const scores = top.map(({ evaluation }) => evaluation.score);
+    expect([...scores].sort((a, b) => a - b)).toEqual(scores);
+  }, 30_000);
+
+  it('ranks only the legal moves there are', async () => {
+    // 1.e4 f5 2.Qh5+: only g6 blocks the check.
+    const top = await stockfishTopMoves(['e2e4', 'f7f5', 'd1h5']);
+    expect(top.map(({ uci }) => uci)).toEqual(['g7g6']);
   }, 30_000);
 
   it('waits for an engine that starts later', async () => {

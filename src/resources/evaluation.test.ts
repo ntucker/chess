@@ -3,7 +3,7 @@ import { describe, expect, it, jest } from '@jest/globals';
 import { attachStockfish } from '@/stockfish/engine';
 import { NO_RESTARTS } from '@/stockfish/testing';
 
-import { getEvaluation } from './evaluation';
+import { getEvaluation, getTopMoves } from './evaluation';
 import { newController, waitForSearch } from './testing';
 
 // Maia runs on a worklet runtime, which Jest doesn't have; only Stockfish is used here.
@@ -46,5 +46,13 @@ describe('getEvaluation', () => {
       score: 0,
       pawns: 0,
     });
+  });
+});
+
+describe('getTopMoves', () => {
+  it('lists no moves once the game is over, without asking the engine', async () => {
+    const controller = newController();
+    const mated = ['f2f3', 'e7e5', 'g2g4', 'd8h4'];
+    expect(await controller.fetch(getTopMoves, mated)).toEqual([]);
   });
 });

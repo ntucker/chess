@@ -17,7 +17,7 @@ import {
   TRAP_PUNISHED,
   uciLine,
 } from './lesson.fixture';
-import { mainCandidate } from './select';
+import { engineCandidates, mainCandidate } from './select';
 import { preview } from './view';
 
 const SWITCHES: LessonSwitches = {
@@ -306,9 +306,26 @@ describe('lessonDrawings', () => {
 
   it("marks Stockfish's best move where guidance does", () => {
     const view = sampleView([...ADVANCE, 'a6']);
-    const shown = guidance({ view, mode: 'explore', switches: SWITCHES, engine: { best: 'g1f3' } });
+    const top = engineCandidates(SAMPLE, view.key, [
+      { uci: 'g1f3', evaluation: { score: 0.6, pawns: 0.7 } },
+      { uci: 'c2c3', evaluation: { score: 0.55, pawns: 0.4 } },
+    ]);
+    const engine = { best: 'c2c4', top };
+    const shown = guidance({ view, mode: 'explore', switches: SWITCHES, engine });
+    // Only the first of the top moves, as the best: no arrows for the rest.
     expect(lessonDrawings(shown, view.key, 'black')).toEqual([
       { kind: 'arrow', from: 'g1', to: 'f3', tone: 'engine', step: undefined },
+    ]);
+    // A top move previewed glows in Stockfish's tone where it lands.
+    const previewed = guidance({
+      view,
+      mode: 'explore',
+      switches: SWITCHES,
+      engine,
+      preview: preview(SAMPLE, view, { at: 'row', uci: 'c2c3' }, top),
+    });
+    expect(lessonDrawings(previewed, keyAfter(...ADVANCE, 'a6', 'c3'), 'black')).toEqual([
+      { kind: 'glow', square: 'c3', tone: 'engine' },
     ]);
   });
 
