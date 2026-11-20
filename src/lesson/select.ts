@@ -219,6 +219,31 @@ export function variationPath(lesson: Lesson, id: VariationId): Variation[] {
 }
 
 /**
+ * A variation's name without a leading "<group>: " that names one of the
+ * variations it is read within: within the Advance Variation, "Advance
+ * Variation: Tal Variation" is "Tal Variation". A study names a sub-line
+ * with its group so the name stands alone; beside the group, that repeats it.
+ */
+export function nameWithin(name: string, within: readonly Variation[]): string {
+  const group = within.findLast((variation) => name.startsWith(`${variation.name}: `));
+  return group ? name.slice(group.name.length + 2) : name;
+}
+
+/**
+ * A variation's name in a caption beside the board on `path`, without a group
+ * only where a narrow page's header shows that group too: the line or its
+ * parent (a phone hides the panel's path).
+ */
+export function captionName(name: string, path: readonly Variation[]): string {
+  return nameWithin(name, path.slice(-2));
+}
+
+/** The names along a `variationPath`, each without what the ones before it say (`nameWithin`). */
+export function pathNames(path: readonly Variation[]): string[] {
+  return path.map(({ name }, at) => nameWithin(name, path.slice(0, at)));
+}
+
+/**
  * The variation a line is in at its last position, as `variationPath`: that
  * position's, or beyond the guide, that of the last guide position it passed.
  */

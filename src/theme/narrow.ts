@@ -32,6 +32,7 @@ export const NARROW_PARTS = [
   'wide-only',
   'wide-only-spoken',
   'narrow-only',
+  'place',
   'page',
   'stage',
   'board-column',
