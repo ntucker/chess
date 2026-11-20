@@ -52,7 +52,7 @@ describe('judgeMove', () => {
     expect(judgeMove(listing(['h4h7', 1]), scored(1), 'h4h8', 'white')).toBe('best');
   });
 
-  it('takes only a finished search, so every screen labels a move the same', () => {
+  it('is typed to take only a finished search, so every screen labels a move the same', () => {
     const deepening = { ...listing(['e2e4', 0.55]), final: false };
     // @ts-expect-error A search still deepening can't label a move.
     expect(judgeMove(deepening, scored(0.55), 'e2e4', 'white')).toBe('best');

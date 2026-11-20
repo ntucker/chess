@@ -216,6 +216,8 @@ export function guidance(input: GuidanceInput): Guidance {
     explore && switches.showMoves && !preview && !lifted && !playing && !pointedNote
       ? engine?.best
       : undefined;
+  // Past the guide, the best is the first of the top moves, live as the search deepens.
+  const insideGuide = view.candidates.length > 0;
 
   return {
     candidates,
@@ -230,12 +232,15 @@ export function guidance(input: GuidanceInput): Guidance {
     playable,
     playing,
     pointed: pointedNote,
-    best: view.candidates.length && (!engine?.final || isCandidate(view, best)) ? undefined : best,
+    best: insideGuide && (!engine?.final || isCandidate(view, best)) ? undefined : best,
     top,
     trap,
     lineEnded: view.lineEnd !== undefined && newsShown(view, view.lineEnd),
   };
 }
+
+const isCandidate = (view: LessonView, uci: Uci | undefined) =>
+  view.candidates.some(({ move }) => move.uci === uci);
 
 /**
  * What the board draws: nothing while a note plays back; a pointed note's
@@ -356,6 +361,3 @@ export function notePlayback(
 ): ShownPlayback | undefined {
   return playable.find(({ idea }) => note.ideas?.includes(idea));
 }
-
-const isCandidate = (view: LessonView, uci: Uci | undefined) =>
-  view.candidates.some(({ move }) => move.uci === uci);

@@ -288,6 +288,19 @@ describe('the engine lifecycle', () => {
       jest.advanceTimersByTime(1);
       expect(stuck.supervisor.failed).toHaveBeenCalledTimes(1);
 
+      // One that answers every isready but never gets on with its search
+      // most likely lost the `go`: its sixth answer in a row fails it.
+      const lost = scripted();
+      lost.print('uciok');
+      for (let answers = 1; answers < 6; answers++) {
+        jest.advanceTimersByTime(10_000);
+        lost.print('readyok');
+      }
+      expect(lost.supervisor.failed).not.toHaveBeenCalled();
+      jest.advanceTimersByTime(10_000);
+      lost.print('readyok');
+      expect(lost.supervisor.failed).toHaveBeenCalledTimes(1);
+
       // An idle engine isn't failed, nor one that was detached.
       watched.release();
       await Promise.resolve();

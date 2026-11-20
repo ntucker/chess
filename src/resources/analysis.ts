@@ -13,6 +13,7 @@ import {
   type AnalysisLine,
   type EvaluationEngine,
   finalAnalysis,
+  isFinal,
   resultEvaluation,
   settledAnalysis,
   type Watcher,
@@ -203,7 +204,7 @@ export class AnalysisManager implements Manager {
     const { controller: ctrl } = this;
     const { engine, line } = shown;
     const key = analysisKey(engine, line);
-    if (ctrl.get(PositionAnalysis, key, ctrl.getState())?.final) return;
+    if (isFinal(ctrl.get(PositionAnalysis, key, ctrl.getState()))) return;
     shown.release = watchAnalysis(engine, line, {
       update(analysis) {
         const record = { ...key, ...analysis };

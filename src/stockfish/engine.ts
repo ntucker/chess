@@ -48,9 +48,16 @@ const ANSWER_MS = 10_000;
 /**
  * How long it then has to answer `readyok`, which Stockfish does at once,
  * even mid-search. One that doesn't is stuck, as when Android drops the web
- * view a command went to, and is restarted; a slow search is never failed.
+ * view, and is restarted.
  */
 const READY_MS = 3_000;
+
+/**
+ * How many times in a row it may answer `isready` with nothing else: a
+ * minute of a depth that takes that long on a slow phone, after which it
+ * most likely lost a command (`uci` or `go`) and is restarted.
+ */
+const QUIET_ANSWERS = 6;
 
 /** How many engines a search is tried on before it's given up on. */
 const TRIES = 2;
@@ -113,6 +120,8 @@ interface Session {
   readonly supervisor: Supervisor;
   readonly budget: SearchBudget;
   ready: boolean;
+  /** How many `readyok`s it has printed since its last other line. */
+  quietAnswers: number;
 }
 
 let connected: Session | undefined;
@@ -140,7 +149,7 @@ export function attachStockfish(
   budget: SearchBudget = APP_SEARCH,
 ): Connection {
   disconnect();
-  const session: Session = { send, supervisor, budget, ready: false };
+  const session: Session = { send, supervisor, budget, ready: false, quietAnswers: 0 };
   connected = session;
   send('uci');
   awaitAnswer(session);
@@ -237,8 +246,16 @@ function decide() {
 }
 
 function handleLine(session: Session, line: string) {
-  // Any line shows the engine is alive while it owes an answer.
-  if (!session.ready || running) awaitAnswer(session);
+  const owesAnswer = !session.ready || running;
+  if (line === 'readyok') {
+    // Alive, but not getting on with what it owes.
+    if (!owesAnswer) return;
+    if (++session.quietAnswers < QUIET_ANSWERS) askLater(session);
+    else fail(session, 'it answers isready but nothing else');
+    return;
+  }
+  // Any other line shows the engine is getting on while it owes an answer.
+  if (owesAnswer) awaitAnswer(session);
   if (line === 'uciok') {
     clearTimeout(watchdog);
     session.ready = true;
@@ -304,11 +321,17 @@ function remove(position: Wanted) {
   if (wanted.get(key) === position) wanted.delete(key);
 }
 
+/** Watches `session` from a line that shows it's getting on (`askLater`). */
+function awaitAnswer(session: Session) {
+  session.quietAnswers = 0;
+  askLater(session);
+}
+
 /**
  * Asks `session` whether it's alive unless it prints within `ANSWER_MS`, and
  * fails it unless it then answers within `READY_MS`.
  */
-function awaitAnswer(session: Session) {
+function askLater(session: Session) {
   clearTimeout(watchdog);
   watchdog = setTimeout(() => {
     session.send('isready');

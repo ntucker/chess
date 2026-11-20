@@ -60,7 +60,7 @@ export const settledAnalysis = (evaluation: Evaluation, uci?: string): FinalAnal
 export interface Watcher {
   /** The deepest lines so far, or the final ones (`final`), after which nothing more comes. */
   update(analysis: Analysis): void;
-  /** The analysis can't finish, as when engines crashed on it. */
+  /** The analysis can't finish: engines crashed on it, or a search ended without a score. */
   fail(error: Error): void;
 }
 
