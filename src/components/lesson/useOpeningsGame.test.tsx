@@ -128,7 +128,25 @@ describe('useOpeningsGame', () => {
     expect(moves()).toEqual(uciLine('d4', 'd5', 'c4'));
     await show();
     expect(moves()).toEqual([]);
+    // The same variation id in another lesson.
+    await show('london', 'main-line');
+    await show('anti-london', 'main-line');
+    expect(moves()).toEqual(
+      LESSON_INDEX['anti-london'].variations.find(({ id }) => id === 'main-line')!.moves,
+    );
     expect(mockRouter.replace).not.toHaveBeenCalled();
+  });
+
+  it('keeps the game when the address arrives at a lesson the game has already left', async () => {
+    await show('caro-kann');
+    await play('c7c6');
+    // The game picks the Slav, then leaves every lesson, before either replace arrives.
+    await act(() => latest().store[1]({ type: 'newGame', moves: uciLine('d4', 'd5', 'c4') }));
+    await act(() => latest().store[1]({ type: 'newGame', moves: uciLine('d4') }));
+    await show('slav');
+    expect(moves()).toEqual(uciLine('d4'));
+    await show();
+    expect(moves()).toEqual(uciLine('d4'));
   });
 
   it("starts a lesson's own start for a variation it doesn't have", async () => {
