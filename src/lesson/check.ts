@@ -26,6 +26,7 @@ import {
   EVALUATIONS,
   IMBALANCE_KINDS,
   MAX_NOTE_WORDS,
+  onDomain,
   RELATIONS,
   RISKS,
   type Idea,
@@ -172,13 +173,11 @@ function checkSources({ sources }: Lesson, report: Report) {
     const at = `sources[${i}]`;
     if (!title.trim() || !author.trim()) report(at, 'needs a title and an author');
     // Not URL.parse, which Node 22.0 lacks.
-    const host = URL.canParse(url) ? new URL(url).hostname : undefined;
-    if (!host) return report(`${at}.url`, `${url} is not a URL`);
-    const shareAlike = SHARE_ALIKE_HOSTS.some(
-      (domain) => host === domain || host.endsWith(`.${domain}`),
-    );
-    if (shareAlike && !license)
-      report(`${at}.license`, `is required for ${host}, whose text is share-alike`);
+    if (!URL.canParse(url)) return report(`${at}.url`, `${url} is not a URL`);
+    const parsed = new URL(url);
+    if (!license && SHARE_ALIKE_HOSTS.some((domain) => onDomain(parsed, domain))) {
+      report(`${at}.license`, `is required for ${parsed.hostname}, whose text is share-alike`);
+    }
     if (license && (!license.name.trim() || !URL.canParse(license.url))) {
       report(`${at}.license`, 'needs a name and a URL');
     }

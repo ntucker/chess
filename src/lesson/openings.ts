@@ -10,7 +10,7 @@ import { INITIAL_FEN } from 'chessops/fen';
 
 import { positionKey } from '@/game/replay';
 
-import { LESSON_FORMAT, type Lesson, type LessonSource, type Uci } from './lesson';
+import { LESSON_FORMAT, onDomain, type Lesson, type LessonSource, type Uci } from './lesson';
 
 const START_KEY = positionKey(Chess.default());
 
@@ -51,16 +51,15 @@ const openingMoves = (index: LessonIndex) =>
     return ucis.map((uci) => ({ uci, notes }));
   });
 
-/** A lichess study's URL; read without `new URL(url).hostname`, which React Native's URL lacks. */
-const LICHESS_STUDY = /^https?:\/\/(?:www\.)?lichess\.org\/study\//i;
-
 /**
  * How a note names `source`: a lichess study by its author, anything else by
  * its title and author, and then its license if it has one. A note is plain
  * text, so the license's link stays in the lesson file.
  */
 function credit({ title, author, url, license }: LessonSource): string {
-  const name = LICHESS_STUDY.test(url) ? `${author}'s lichess study` : `${title} by ${author}`;
+  const parsed = new URL(url);
+  const study = onDomain(parsed, 'lichess.org') && parsed.pathname.startsWith('/study/');
+  const name = study ? `${author}'s lichess study` : `${title} by ${author}`;
   return license ? `${name} (${license.name})` : name;
 }
 

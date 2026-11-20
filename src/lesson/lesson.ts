@@ -56,6 +56,10 @@ export interface LessonSource {
   readonly license?: License;
 }
 
+/** Whether `url` is on `domain` or one of its subdomains: `en.wikibooks.org` is on `wikibooks.org`. */
+export const onDomain = ({ hostname }: URL, domain: string) =>
+  hostname === domain || hostname.endsWith(`.${domain}`);
+
 export interface License {
   /** Its short name, like `CC BY-SA 4.0`. */
   readonly name: string;
