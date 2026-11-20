@@ -1,10 +1,40 @@
 import { describe, expect, it } from '@jest/globals';
+import { makeSan } from 'chessops/san';
+import { parseUci } from 'chessops/util';
 
+import { parsePosition, positionKey, SAN } from '@/game/replay';
 import { checkLesson } from '@/lesson/check';
+import type { Lesson } from '@/lesson/lesson';
 import { readShippedLesson, shippedIds } from '@/lesson/lesson.fixture';
 import { lessonIndex, meets } from '@/lesson/openings';
 
 import { LESSON_INDEX, type LessonId, LESSONS } from './lesson';
+
+/** The moves played on some line from the lesson's start to each position, in SAN without check marks. */
+function playedBefore(lesson: Lesson): Map<string, Set<string>> {
+  const start = parsePosition(lesson.start)!;
+  const played = new Map([[positionKey(start), new Set<string>()]]);
+  const queue = [start];
+  for (let pos = queue.shift(); pos; pos = queue.shift()) {
+    const before = played.get(positionKey(pos))!;
+    for (const { uci } of lesson.positions[positionKey(pos)]?.moves ?? []) {
+      const next = pos.clone();
+      const move = parseUci(uci)!;
+      const san = makeSan(next, move).replace(/[+#]$/, '');
+      next.play(move);
+      const key = positionKey(next);
+      const known = played.get(key) ?? new Set<string>();
+      const size = played.has(key) ? known.size : -1;
+      for (const at of [...before, san]) known.add(at);
+      played.set(key, known);
+      if (known.size !== size) queue.push(next);
+    }
+  }
+  return played;
+}
+
+/** A move a variation name writes, numbered or not ("4.g4", "...Bf5", "e5"), with its SAN as the group. */
+const NAMED_MOVE = new RegExp(String.raw`(?<![\w.])(?:\d+\s?\.(?:\.\.)?\s?|\.\.\.)?(${SAN})`, 'g');
 
 describe('shipped lessons', () => {
   it('registers every file in assets/lessons', () => {
@@ -20,6 +50,29 @@ describe('shipped lessons', () => {
   it.each(shippedIds)("%s names no variation after a guide's contents page", (id) => {
     const names = Object.values(readShippedLesson(id).variations).map(({ name }) => name);
     expect(names.filter((name) => /\b(?:index|contents)\b/i.test(name))).toEqual([]);
+  });
+
+  it.each(shippedIds)('%s names no position after a move not yet played on the way there', (id) => {
+    // "Early ...Bf5" waits for ...Bf5; a name giving several moves ("4.h4 & 4.g4") needs one of them.
+    const lesson = readShippedLesson(id);
+    const moves = (name: string) =>
+      [...name.matchAll(NAMED_MOVE)].map(([, san]) => san.replace(/[+#]$/, ''));
+    const early = [...playedBefore(lesson)].flatMap(([key, played]) => {
+      const names: string[] = [];
+      for (
+        let at: string | undefined = lesson.positions[key]?.variation;
+        at;
+        at = lesson.variations[at].parent
+      )
+        names.push(lesson.variations[at].name);
+      return names
+        .filter((name) => {
+          const named = moves(name);
+          return named.length > 0 && !named.some((san) => played.has(san));
+        })
+        .map((name) => `${key}: ${name}`);
+    });
+    expect(early).toEqual([]);
   });
 
   it('indexes every lesson as their files say', () => {
