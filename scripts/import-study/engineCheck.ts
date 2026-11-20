@@ -181,11 +181,11 @@ export interface FillReport {
 }
 
 /**
- * A note that names its own move the main line, like "This is the main line"
- * or "The main reply"; a note mentioning some other main line doesn't count.
+ * A note that names its own move the main line: "This is the main line".
+ * One that only starts with "The main line" may go on to name another move
+ * ("The main line is 3.Nc3"), so it doesn't count.
  */
-const MAIN =
-  /^(?:this is )?the main (?:line|move|reply|continuation)\b|\bthis is the main (?:line|move|reply|continuation)\b/i;
+const MAIN = /\bthis is the main (?:line|move|reply|continuation)\b/i;
 
 /**
  * `lesson` with a book move wherever a learner playing only book moves meets

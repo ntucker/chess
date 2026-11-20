@@ -194,7 +194,8 @@ describe('fillBook', () => {
       positions: {
         ...unbooked.positions,
         [keyAfter('d4')]: at([
-          { uci: uci('d4', 'd5') },
+          // It starts like a main-line note, but names another move.
+          { uci: uci('d4', 'd5'), notes: [{ text: 'The main line is 2.c4, a gambit.' }] },
           { uci: uci('d4', 'Nf6'), notes: [{ text: 'This is the main line.' }] },
         ]),
       },

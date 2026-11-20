@@ -111,9 +111,9 @@ async function main() {
   const filled = await fillBook(lesson, stockfish.evaluate);
   lesson = filled.lesson;
   const engineFile = join(CACHE, `${lesson.id}-engine.json`);
-  const { filled: picked, ended } = filled.report;
+  const { filled: booked, ended } = filled.report;
   console.log(
-    `book filled: ${picked.length} moves picked where the guide recommended none, ${ended.length} lines ended where the engine overruled every move (${engineFile})`,
+    `book filled: ${booked.length} moves picked where the guide recommended none, ${ended.length} lines ended where the engine overruled every move (${engineFile})`,
   );
   let engineReport: EngineReport | undefined;
   if (study.engineCheck) {

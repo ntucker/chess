@@ -119,11 +119,11 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
     const { learner, next } = checked;
     children.set(
       key,
-      next.map(({ key }) => key),
+      next.map(({ key: to }) => to),
     );
     bookChildren.set(
       key,
-      next.filter(({ book }) => book || !learner).map(({ key }) => key),
+      next.filter(({ book }) => book || !learner).map(({ key: to }) => to),
     );
     if (learner && next.length > 0 && !next.some(({ book }) => book)) unbooked.add(key);
   }
