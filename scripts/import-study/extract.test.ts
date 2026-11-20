@@ -167,7 +167,10 @@ describe('extractChapter', () => {
     const [[from, ucis]] = after(breyer);
     expect(from).toBe('e5');
     expect(ucis).toHaveLength(32);
+    const quoted = `1. e4 e5 { Then ${breyer} 18.Qd2. } *`;
     expect(after(`${breyer} 18.Qd2`)).toEqual([]);
+    // The import report lists it, so a real line this long wouldn't vanish unseen.
+    expect(extractChapter(parseStudy(quoted, () => true)[0], 'black').gameScores).toEqual([33]);
   });
 
   it('counts move numbers from the FEN a chapter starts at', () => {

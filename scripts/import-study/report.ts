@@ -36,6 +36,8 @@ export function report(
       'evaluation glyphs dropped for contradicting the text',
       extracted.reduce((sum, e) => sum + e.contradicted, 0),
     ],
+    // A real line this long would vanish with no other sign: check these are games.
+    ['comment runs dropped as quoted games (plies)', extracted.flatMap((e) => e.gameScores)],
     [
       'moves only in comment text (traps and sequences)',
       moves.length -
