@@ -87,6 +87,19 @@ export function IdeaCard({
   );
 }
 
+/** What stands in the idea card's place where it has nothing to show: a heading, as the card's, over `detail`. */
+export function IdeaAside({ title, detail }: { readonly title: string; readonly detail: string }) {
+  const labelled = useLabelled();
+  return (
+    <Stack style={labelled}>
+      <Eyebrow>{title}</Eyebrow>
+      <Text role="body" tone="secondary">
+        {detail}
+      </Text>
+    </Stack>
+  );
+}
+
 export function NoteView({
   shown,
   learner,
