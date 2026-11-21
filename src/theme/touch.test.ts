@@ -2,7 +2,7 @@ import { describe, expect, it, jest } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { TOUCH_TARGET, touchPadding, touchTarget } from './touch';
+import { negated, TOUCH_TARGET, touchPadding, touchTarget } from './touch';
 
 // Jest can't load a stylesheet; this test reads it as text instead.
 jest.mock('./touch.css', () => ({}));
@@ -27,5 +27,9 @@ describe('touch lengths off the web', () => {
     expect(touchPadding(16)).toBe(16);
     expect(touchPadding(25, 4)).toBe(11.5);
     expect(touchPadding(60, 4)).toBe(4);
+  });
+
+  it('negate a padding, for a margin that undoes it', () => {
+    expect(negated(touchPadding(25, 4))).toBe(-11.5);
   });
 });

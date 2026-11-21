@@ -40,8 +40,6 @@ export const NARROW_PX = {
    * as free play's; the lesson's draws one short line instead.
    */
   'headline-size': 20,
-  /** A row of the opponent's strength list, tall enough to tap (OpponentPicker.tsx). */
-  'menu-row-height': 40,
   /** Space between the board column and the panel below it (Stage.tsx). */
   'wrapped-gap': 12,
   /** Space between the panel's sections (LessonScreen.tsx)... */

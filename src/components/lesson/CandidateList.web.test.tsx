@@ -12,6 +12,8 @@ import { CandidateList } from './CandidateList';
 
 // Its react-native-svg needs Expo's asset registry, which the web preset doesn't resolve.
 jest.mock('@/components/QualityBadge', () => ({ QualityBadge: () => null }));
+// Its font needs Expo's asset registry too.
+jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 // Records whether each change the rows' motion animates fades rows in and out.
 const mockFades: boolean[] = [];
 jest.mock('@/motion/reorder', () => ({
@@ -117,6 +119,39 @@ describe('CandidateList', () => {
         .map((node) => node.getAttribute('data-narrow')),
     );
     expect(parts).toEqual([null]);
+  });
+
+  it('says whose games the shares count on the heading, only while shares show', () => {
+    const tip = 'Percentages: how often Lichess players rated 1400–1599 play each move.';
+    const shared = [
+      { ...COMMON, share: 0.6 },
+      { ...candidate('e2e4', 'e4'), share: 0.4 },
+    ];
+    const hint = (props: Props) =>
+      render({ shareTip: tip, rare: [], ...props }, (host) => host.innerHTML.includes(tip));
+    expect(hint({ candidates: shared })).toBe(true);
+    // A lone move's share isn't shown, so there's nothing to explain.
+    expect(hint({ candidates: [shared[0]!] })).toBe(false);
+    // Nor beside Stockfish's row, which has no share.
+    const best = {
+      ...candidate('f8b4', 'Bb4+'),
+      engine: { label: '0.0', description: 'No change' },
+    };
+    expect(hint({ candidates: [shared[0]!], engineBest: best })).toBe(false);
+    expect(hint({ candidates: [COMMON, candidate('e2e4', 'e4')] })).toBe(false);
+  });
+
+  it('leaves the info mark out of a narrow pane, keeping the tip on the heading', () => {
+    const shared = [
+      { ...COMMON, share: 0.6 },
+      { ...candidate('e2e4', 'e4'), share: 0.4 },
+    ];
+    const wideOnly = (shareTip?: string) =>
+      render(
+        { candidates: shared, rare: [], ...(shareTip ? { shareTip } : {}) },
+        (host) => host.querySelectorAll('[data-narrow="wide-only"]').length,
+      );
+    expect(wideOnly('Percentages: who plays each move.')).toBe(wideOnly() + 1);
   });
 
   it("shows a Stockfish row's change label, and says its description", () => {
