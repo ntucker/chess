@@ -104,7 +104,7 @@ async function convertComments(
    * Asks `model` about `items` and puts each answer's notes in `converted`
    * where there are none yet or they `replace` what is there.
    */
-  const keep = async (
+  const askAndKeep = async (
     model: AiModel,
     items: readonly Comment[],
     replaces: (result: Converted, previous: Converted, comment: Comment) => boolean,
@@ -127,11 +127,11 @@ async function convertComments(
     }
   };
   const keepsMore = (result: Converted, previous: Converted) => result.kept > previous.kept;
-  await keep(MODELS.convert, [...comments.values()], keepsMore);
+  await askAndKeep(MODELS.convert, [...comments.values()], keepsMore);
   const retry = [...converted]
     .filter(([, result]) => allRefused(result))
     .map(([id]) => comments.get(id)!);
-  if (retry.length > 0) await keep(MODELS.retry, retry, keepsMore);
+  if (retry.length > 0) await askAndKeep(MODELS.retry, retry, keepsMore);
   /** The comments whose answer has note texts `textsOf` picks out as refused, each with those texts. */
   const refusedBy = (textsOf: (result: Converted) => string[]) =>
     [...converted].flatMap(([id, result]) => {
@@ -144,9 +144,9 @@ async function convertComments(
   // Read before the rewording answers replace any of them.
   const before = keptByReworded();
   if (reword.length > 0)
-    await keep(MODELS.retry, reword, (result) => notationTexts(result).length === 0, REWORD);
+    await askAndKeep(MODELS.retry, reword, (result) => notationTexts(result).length === 0, REWORD);
   const unmoored = refusedBy(studyTexts);
-  if (unmoored.length > 0) await keep(MODELS.retry, unmoored, acceptedText, STANDALONE);
+  if (unmoored.length > 0) await askAndKeep(MODELS.retry, unmoored, acceptedText, STANDALONE);
   const punish = [...converted].flatMap(([id, result]) => {
     const comment = comments.get(id)!;
     const mistakes = undrawnMistakes(comment, result);
@@ -154,7 +154,7 @@ async function convertComments(
   });
   // Without an answer (a --no-model run, a failed request) the earlier notes stay.
   if (punish.length > 0)
-    await keep(
+    await askAndKeep(
       MODELS.retry,
       punish,
       (result, previous, comment) =>
@@ -175,8 +175,9 @@ async function convertComments(
     result.cut.length === 0 &&
     acceptedText(result) &&
     drawnMistakes(comment, result) >= drawnMistakes(comment, previous);
-  if (plain.length > 0) await keep(MODELS.retry, plain, shortened, SHORTEN);
-  if (drawing.length > 0) await keep(MODELS.retry, drawing, shortened, DRAW_MISTAKES + SHORTEN);
+  if (plain.length > 0) await askAndKeep(MODELS.retry, plain, shortened, SHORTEN);
+  if (drawing.length > 0)
+    await askAndKeep(MODELS.retry, drawing, shortened, DRAW_MISTAKES + SHORTEN);
   return {
     converted,
     retries: {

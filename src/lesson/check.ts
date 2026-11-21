@@ -393,9 +393,10 @@ function checkNotes(notes: readonly Note[] | undefined, pos: Chess, path: string
     if (wording) report(`${path}[${i}].text`, wording);
     if (note.generated && note.original !== undefined)
       report(`${path}[${i}].original`, 'is on a generated note, which no guide wrote');
-    const modelProblem = note.model && notOneOf(Object.keys(AI_MODELS), note.model);
+    const modelProblem =
+      note.model !== undefined ? notOneOf(Object.keys(AI_MODELS), note.model) : undefined;
     if (modelProblem) report(`${path}[${i}].model`, modelProblem);
-    if (note.generated && note.model === undefined)
+    if (note.generated && !note.model)
       report(
         `${path}[${i}].model`,
         'is missing on a generated note, so the app could not credit it',

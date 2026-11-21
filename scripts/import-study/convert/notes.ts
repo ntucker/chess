@@ -91,7 +91,7 @@ export function convertedNotes(
             first?.text ?? shown(comment.comment),
             comment.comment,
             [...own, ...(first?.ideas ?? [])],
-            first?.model,
+            first && model,
           ),
           ...rest,
         ];

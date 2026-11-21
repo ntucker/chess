@@ -173,9 +173,10 @@ export interface Note {
    */
   readonly generated?: true;
   /**
-   * The AI model that wrote the text and chose what the board draws, on every
-   * note an AI step of the importer wrote (a rewritten comment, or a
-   * `generated` note); the app credits it. Absent on notes no model wrote.
+   * The AI model that wrote the text and chose its ideas (the importer's own
+   * ideas on the same move may join them), on every note an AI step of the
+   * importer wrote: a rewritten comment, or a `generated` note. The app
+   * credits it. Absent on notes no model wrote.
    */
   readonly model?: AiModel;
   /** What the board draws; none means the note is text only. */
