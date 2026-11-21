@@ -25,9 +25,11 @@
  *   lessons share), nobody replies, so their candidates and previews show
  *   in every mode.
  * - "Moves on the board" off keeps the candidates' arrows and Stockfish's
- *   best off the resting board, in either mode, so the next moves show only
- *   once the learner points at a row or drags a piece; the list still shows
- *   them. The board draws the ideas of the move just played in their place.
+ *   best off the resting board in Explore, so the next moves show only once
+ *   the learner points at a row or drags a piece; the list still shows them.
+ *   The board draws the ideas of the move just played in their place.
+ *   Practice ignores it (`movesSwitchApplies`) and draws the arrows of the
+ *   choices it lists.
  * - Traps: with "show traps" on, a trap's sequence is drawn before the
  *   learner commits, beside the candidates; off, it isn't. A trap fallen
  *   into is shown either way, and plays back, through the trap's moves and
@@ -154,6 +156,14 @@ export interface Guidance {
   readonly lineEnded: boolean;
 }
 
+/**
+ * Whether "Moves on the board" changes anything in `mode`: only in Explore.
+ * Practice hides the learner's moves itself, and draws the arrows of the
+ * few choices it lists (the opening's pick, the opponent's reply with auto
+ * play off) as it would with the switch on.
+ */
+export const movesSwitchApplies = (mode: LessonMode) => mode === 'explore';
+
 /** Whether Stockfish's top moves are listed: in Explore, past the guide's moves. */
 export const listsTopMoves = (view: LessonView, mode: LessonMode) =>
   mode === 'explore' && view.place !== 'inside';
@@ -171,6 +181,7 @@ export function guidance(input: GuidanceInput): Guidance {
     engine,
   } = input;
   const explore = mode === 'explore';
+  const showMoves = switches.showMoves || !movesSwitchApplies(mode);
   // Where the moves pick the opening they are a choice, not a quiz.
   const choices = explore || picking || (!view.learnerToMove && !switches.auto);
   const preview = choices ? pointerPreview : undefined;
@@ -209,11 +220,11 @@ export function guidance(input: GuidanceInput): Guidance {
     ideas,
     playing,
     pointed: pointedNote,
-    showMoves: switches.showMoves,
+    showMoves,
     moveIdeas,
   });
   const best =
-    explore && switches.showMoves && !preview && !lifted && !playing && !pointedNote
+    explore && showMoves && !preview && !lifted && !playing && !pointedNote
       ? engine?.best
       : undefined;
   // Inside the guide the learner's candidates are highlighted, so Stockfish's

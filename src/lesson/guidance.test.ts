@@ -374,10 +374,17 @@ describe('guidance', () => {
     });
 
     it("draws the learner's move's ideas on the opponent's turn with 'moves on the board' off", () => {
-      const played = shown([...ADVANCE, 'Bf5'], 'practice', { auto: false, showMoves: false });
+      const played = shown([...ADVANCE, 'Bf5'], 'explore', { auto: false, showMoves: false });
       const move = played.notes.find(({ before }) => before !== undefined);
       expect(played.drawnCandidates).toEqual([]);
       expect(played.drawn.map(({ idea }) => idea)).toEqual(move?.note.ideas);
+    });
+
+    it("draws Practice's choices whatever 'moves on the board' says", () => {
+      const line = [...ADVANCE, 'Bf5'];
+      const off = shown(line, 'practice', { auto: false, showMoves: false });
+      expect(off.drawnCandidates.length).toBeGreaterThan(0);
+      expect(off).toEqual(shown(line, 'practice', { auto: false, showMoves: true }));
     });
 
     it("keeps Stockfish's best off the resting board with 'moves on the board' off", () => {

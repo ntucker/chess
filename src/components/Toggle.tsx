@@ -10,6 +10,8 @@ interface Props {
   readonly onChange: (checked: boolean) => void;
   /** A quieter, one-line label, for a switch beside more important text. */
   readonly quiet?: boolean;
+  /** Shown but not changeable, keeping its value: it does nothing where it is now. */
+  readonly disabled?: boolean;
   readonly style?: StyleProp<ViewStyle>;
 }
 
@@ -18,10 +20,10 @@ interface Props {
  * On a touch screen the label's padding makes the row a finger tall
  * (`touchPadding`), so the small switch is easy to hit.
  */
-export function Toggle({ label, checked, onChange, quiet, style }: Props) {
+export function Toggle({ label, checked, onChange, quiet, disabled, style }: Props) {
   const { theme } = useTheme();
   return (
-    <Field.Root orientation="horizontal" style={[styles.field, style]}>
+    <Field.Root orientation="horizontal" disabled={disabled} style={[styles.field, style]}>
       <Switch size="sm" tone="accent" checked={checked} onCheckedChange={onChange} />
       <Field.Label
         numberOfLines={quiet ? 1 : undefined}

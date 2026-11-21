@@ -2,7 +2,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { PillChoice } from '@/components/PillChoice';
 import { Toggle } from '@/components/Toggle';
-import type { LessonMode } from '@/lesson/guidance';
+import { type LessonMode, movesSwitchApplies } from '@/lesson/guidance';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
 
 const MODES = [
@@ -18,7 +18,8 @@ interface Props {
 /**
  * The lesson's switches: Explore or Practice, and what the board draws. The
  * mode belongs to the screen; the rest are settings, so they are remembered.
- * Who moves the opponent is the opponent's bar's (`AutoPlay`).
+ * Who moves the opponent is the opponent's bar's (`AutoPlay`). A switch
+ * that changes nothing in the mode shows disabled, keeping its value.
  */
 export function LessonControls({ mode, onMode }: Props) {
   const { showMoves, showTraps } = useSettings();
@@ -30,6 +31,7 @@ export function LessonControls({ mode, onMode }: Props) {
         <Toggle
           label="Moves on the board"
           checked={showMoves}
+          disabled={!movesSwitchApplies(mode)}
           onChange={(on) => dispatch({ type: 'chosen', choice: { showMoves: on } })}
         />
         <Toggle
