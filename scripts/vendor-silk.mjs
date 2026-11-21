@@ -9,7 +9,7 @@
  * Once @reactive/silk-native is on npm, depend on it there and delete vendor/.
  */
 import { execFileSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, rmSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -19,6 +19,8 @@ const run = (args, cwd = silk) => execFileSync('yarn', args, { cwd, stdio: 'inhe
 
 run(['workspaces', 'focus', '@reactive/silk-core', '@reactive/silk-native']);
 for (const name of ['silk-core', 'silk-native']) {
+  // tsc leaves files whose source was renamed or deleted; they would ship in the tarball.
+  rmSync(resolve(silk, 'packages', name, 'dist'), { recursive: true, force: true });
   run(['workspace', `@reactive/${name}`, 'build']);
 }
 mkdirSync(resolve(app, 'vendor'), { recursive: true });
