@@ -71,10 +71,7 @@ export type LessonSwitches = Pick<Settings, 'auto' | 'showMoves' | 'showTraps'>;
 export interface EngineView {
   /** Its first line's move: the best. */
   readonly best?: Uci;
-  /**
-   * The rows of its moves the list shows (`listedEngineMoves`), from its top
-   * three, best first (`engineCandidates`).
-   */
+  /** Its top three moves, best first, as rows (`engineCandidates`). */
   readonly top?: readonly Candidate[];
   /** Its search has finished, so `best` won't change. */
   readonly final?: boolean;
@@ -173,15 +170,16 @@ export const listsTopMoves = (view: LessonView, mode: LessonMode) =>
  * once its search is final: in about a quarter of lesson positions an earlier
  * depth names a move outside the guide that the final one doesn't.
  */
-const tagsBest = (view: LessonView, engine: EngineView | undefined, uci: Uci) =>
-  !view.candidates.length || (engine?.final === true && !isCandidate(view, uci));
+const tagsBest = (view: LessonView, final: boolean | undefined, uci: Uci) =>
+  view.place !== 'inside' || (final === true && !isCandidate(view, uci));
 
 /**
- * Stockfish's rows the list shows (`EngineView.top`), from its top three
- * (`engineCandidates`), in Explore: past the guide's moves all three, in the
+ * Stockfish's rows the list shows, from its top three (`EngineView.top`), in
+ * Explore: past the guide's moves all three, in the
  * candidates' place (`listsTopMoves`); inside, on the opponent's turn, its
- * best after the candidates, when the board tags it (`tagsBest`). The guide's reply often teaches a trick, so the learner can
- * practice both it and the strongest reply. Example: in the Urusov Gambit,
+ * best after the candidates, when the board tags it (`tagsBest`). The
+ * guide's reply often teaches a trick, so the learner can practice both it
+ * and the strongest reply. Example: in the Urusov Gambit,
  * after 1.e4 e5 2.Bc4 Nf6 3.d4 exd4 4.Nf3, the guide lists only 4...Nxe4 and
  * Stockfish's 4...Bb4+ is listed after it. Where the moves pick the opening
  * the rows are openings, so none is added.
@@ -200,7 +198,7 @@ export function listedEngineMoves(
     !picking &&
     !view.learnerToMove &&
     best !== undefined &&
-    tagsBest(view, { final }, best.move.uci);
+    tagsBest(view, final, best.move.uci);
   return listsBest ? [best] : [];
 }
 
@@ -247,7 +245,7 @@ export function guidance(input: GuidanceInput): Guidance {
     .filter(({ note }) => note.ideas?.some((idea) => drawsOnBoard(idea) && allowed(idea)))
     .map(({ note }) => note);
   const pointedNote = !playing && pointed && pointable.includes(pointed) ? pointed : undefined;
-  const top = engine?.top ?? [];
+  const top = listedEngineMoves(view, mode, picking, engine?.top ?? [], engine?.final);
   const board = boardShown({
     candidates,
     liftable: [...withRare, ...top],
@@ -277,7 +275,7 @@ export function guidance(input: GuidanceInput): Guidance {
     playable,
     playing,
     pointed: pointedNote,
-    best: best && tagsBest(view, engine, best) ? best : undefined,
+    best: best && tagsBest(view, engine?.final, best) ? best : undefined,
     top,
     trap,
     lineEnded: view.lineEnd !== undefined && newsShown(view, view.lineEnd),

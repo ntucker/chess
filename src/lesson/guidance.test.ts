@@ -60,15 +60,16 @@ function shown(
 ): Guidance {
   const view = sampleView(sans);
   const stockfish = engineView(sans, engine);
-  const top = listedEngineMoves(view, mode, picking, stockfish.top, stockfish.final);
+  // As useLesson does: a pointer previews only the rows the list shows.
+  const listed = listedEngineMoves(view, mode, picking, stockfish.top, stockfish.final);
   return guidance({
     view,
     mode,
     switches: { ...ALL_ON, ...switches },
     picking,
-    preview: pointer && preview(SAMPLE, view, pointer, top),
+    preview: pointer && preview(SAMPLE, view, pointer, listed),
     lifted,
-    engine: { ...stockfish, top },
+    engine: stockfish,
   });
 }
 

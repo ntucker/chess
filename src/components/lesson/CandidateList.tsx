@@ -67,16 +67,21 @@ interface Props {
 }
 
 /**
- * The guide's moves at the position on the board, one row each, most played
- * first, then any of Stockfish's (`engineBest`), whose mark's tooltip says
- * they're the engine's, not the guide's; or past the guide's moves
- * Stockfish's top moves, best first, each with how it changes the position
- * for the learner in place of its share. Pointing at a
- * row previews its move on the board; pressing it plays the move when it's
- * the learner's to play. Each row's dot matches its arrow on the board; the
- * dot of a row the board draws no arrow for is hollow: a rare row's, or one
- * of Stockfish's but its best. A row's progress mark ends it, and a key beside the heading
- * names the marks the list shows (not in a narrow web page's pane).
+ * A list of moves at the position on the board, one row each, in one of two
+ * kinds:
+ * - The guide's moves, most played first, each with its share of the games.
+ *   Stockfish's best follows them when the guide lacks it (`engineBest`),
+ *   with a star whose tooltip says it is the top engine move. Rare rows come
+ *   after it, when the learner asks for them.
+ * - Past the guide's moves, Stockfish's top moves, best first, each with how
+ *   it changes the position for the learner in place of a share.
+ *
+ * Pointing at a row previews its move on the board; pressing it plays the
+ * move when it's the learner's to play. Each row's dot matches its arrow on
+ * the board; the dot of a row the board draws no arrow for is hollow: a rare
+ * row's, or one of Stockfish's top moves but its best. A row's progress mark
+ * ends it, and a key beside the heading names the marks the list shows (not
+ * in a narrow web page's pane).
  */
 export function CandidateList({
   heading,
@@ -100,8 +105,8 @@ export function CandidateList({
   const all = [...candidates, ...rare];
   const engineRows = engineBest ? [engineBest] : [];
   const rows = [...candidates, ...engineRows, ...(rareShown ? rare : [])];
-  // Stockfish's row isn't the guide's, so it has no share to count.
-  const guideRows = rows.length - engineRows.length;
+  // The guide's rows shown, whose shares are of each other's games.
+  const guideCount = candidates.length + (rareShown ? rare.length : 0);
   const shownMarks = new Set(
     rows.map(({ move }) => marks.get(move.uci)).filter((mark) => mark !== undefined),
   );
@@ -154,7 +159,7 @@ export function CandidateList({
                   leadsTo={leadsTo(candidate)}
                   compact={compact}
                   // A lone move's share is always all of the games.
-                  share={guideRows > 1 ? candidate.share : undefined}
+                  share={guideCount > 1 ? candidate.share : undefined}
                   playable={playable}
                   onPlay={onPlay}
                   onPoint={onPoint}

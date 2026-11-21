@@ -11,8 +11,9 @@ interface Props {
 
 /**
  * A small mark that explains itself in a tooltip, in place of words beside
- * it: shown while a mouse or pen points at the mark, and opened by a tap,
- * which a finger needs, until a press elsewhere. The tooltip takes no
+ * it: shown while a mouse or pen points at the mark (a click keeps it open
+ * until the pointer leaves), and opened by a finger's tap until a press
+ * elsewhere. The tooltip takes no
  * focus, and the mark isn't a Tab stop: a mark inside a control is spoken
  * through the control's label, which should say what the tooltip says.
  */
