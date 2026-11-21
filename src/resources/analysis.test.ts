@@ -157,19 +157,32 @@ describe('AnalysisManager', () => {
     engine.detach();
   });
 
-  it('forgets a search that gave up once a later visit searches it again', async () => {
-    const { controller, sent, engine } = setUp();
+  it('forgets a search that gave up once a later visit gets a depth from it', async () => {
+    const { controller, sent, engine, depth } = setUp();
     const failed = () => analysisFailed(controller, 'stockfish', ['e2e4'], controller.getState());
+    const giveUp = async () => {
+      await waitForSearch(sent, 'e2e4');
+      engine.receive('bestmove c7c5');
+      await new Promise((resolve) => setTimeout(resolve));
+    };
+    const visit = async () => {
+      controller.unsubscribe(getAnalysis, 'stockfish', ['e2e4']);
+      await new Promise((resolve) => setTimeout(resolve));
+      sent.length = 0;
+      controller.subscribe(getAnalysis, 'stockfish', ['e2e4']);
+    };
     controller.subscribe(getAnalysis, 'stockfish', ['e2e4']);
-    await waitForSearch(sent, 'e2e4');
-    engine.receive('bestmove c7c5');
-    await new Promise((resolve) => setTimeout(resolve));
-    controller.unsubscribe(getAnalysis, 'stockfish', ['e2e4']);
-    await new Promise((resolve) => setTimeout(resolve));
+    await giveUp();
+    // A visit whose search gives up again at once stays failed, and asks once.
+    await visit();
+    await giveUp();
     expect(failed()).toBe(true);
-    sent.length = 0;
-    controller.subscribe(getAnalysis, 'stockfish', ['e2e4']);
+    expect(sent.filter((command) => command.startsWith('position'))).toHaveLength(1);
+    await visit();
     await waitForSearch(sent, 'e2e4');
+    expect(failed()).toBe(true);
+    depth(10);
+    await new Promise((resolve) => setTimeout(resolve));
     expect(failed()).toBe(false);
     engine.detach();
   });

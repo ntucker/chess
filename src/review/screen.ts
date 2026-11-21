@@ -7,6 +7,8 @@
 import type { Uci } from '@/lesson/lesson';
 
 export interface ReviewScreen {
+  /** The game reviewed: the learner's side and the moves, as `reviewedGame` writes them. */
+  readonly game: string;
   /** The position shown, `plies[ply]`; 0, before any move, is the summary. */
   readonly ply: number;
   /** The move of the Stockfish row pointed at, previewed on the board. */
@@ -22,6 +24,8 @@ export interface ReviewScreen {
 }
 
 export type ReviewAction =
+  /** Starts the review of `game` afresh: another game on the same page. */
+  | { readonly type: 'review'; readonly game: string }
   /** Shows `plies[ply]`. */
   | { readonly type: 'goto'; readonly ply: number }
   /** Points at the row of `uci`, or at none. */
@@ -32,15 +36,22 @@ export type ReviewAction =
 /** How long the board rests on a move before its positions go next. */
 export const DWELL_MS = 1000;
 
-/** The summary, before any move; nothing visited yet. */
-export const initialReview: ReviewScreen = { ply: 0, visited: new Set() };
+/** Names the game the learner playing `learner` played as `moves`, for `ReviewScreen.game`. */
+export const reviewedGame = (learner: string, moves: readonly Uci[]) =>
+  `${learner} ${moves.join(' ')}`;
+
+/** `game`'s review at its start: the summary, before any move, with nothing visited. */
+export const startReview = (game: string): ReviewScreen => ({ game, ply: 0, visited: new Set() });
 
 export function reviewReducer(state: ReviewScreen, action: ReviewAction): ReviewScreen {
   switch (action.type) {
+    case 'review':
+      return action.game === state.game ? state : startReview(action.game);
     case 'goto': {
       if (action.ply === state.ply) return state;
       const { visited } = state;
       return {
+        game: state.game,
         ply: action.ply,
         visited: visited.has(action.ply) ? visited : new Set(visited).add(action.ply),
       };

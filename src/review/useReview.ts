@@ -19,7 +19,7 @@ import {
   reviewMoves,
   tally,
 } from './review';
-import { DWELL_MS, initialReview, reviewReducer } from './screen';
+import { DWELL_MS, reviewedGame, reviewReducer, startReview } from './screen';
 
 /** The review judges with Stockfish lite whatever the settings say, as lessons do. */
 const ENGINE = 'stockfish';
@@ -55,7 +55,11 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
   const ctrl = useController();
   const state = use(StateContext);
   useNeedsStockfish(active);
-  const [screen, dispatch] = useReducer(reviewReducer, initialReview);
+  const game = reviewedGame(learner, moves);
+  const [stored, dispatch] = useReducer(reviewReducer, game, startReview);
+  // Another game on the same page starts its review afresh, from this render on.
+  if (stored.game !== game) dispatch({ type: 'review', game });
+  const screen = stored.game === game ? stored : startReview(game);
   const { ply, dwelt } = screen;
   useEffect(() => {
     const timer = setTimeout(() => dispatch({ type: 'dwell', ply }), DWELL_MS);
@@ -89,7 +93,10 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
     plies,
     /** The position shown, with what the board needs (`analyze`). */
     current: analyze(plies[ply]),
-    ...screen,
+    ply,
+    pointed: screen.pointed,
+    visited: screen.visited,
+    dwelt,
     /** Each move as judged so far: `moves[n]` leads to `plies[n + 1]`. */
     moves: judged,
     /** How far Stockfish's analysis of each position has got: `analyses[n]` is of `plies[n]`. */

@@ -1,6 +1,8 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { initialReview, reviewReducer } from './screen';
+import { reviewReducer, startReview } from './screen';
+
+const initialReview = startReview('black e2e4');
 
 describe('reviewReducer', () => {
   it('shows a ply, visits it, and forgets the row pointed at and the rest', () => {
@@ -9,6 +11,7 @@ describe('reviewReducer', () => {
       { type: 'point', uci: 'e2e4' },
     );
     expect(reviewReducer(pointed, { type: 'goto', ply: 5 })).toEqual({
+      game: 'black e2e4',
       ply: 5,
       visited: new Set([5]),
     });
@@ -28,5 +31,13 @@ describe('reviewReducer', () => {
     const back = reviewReducer(seen, { type: 'goto', ply: 3 });
     expect(back.ply).toBe(3);
     expect(back.visited).toBe(seen.visited);
+  });
+
+  it('starts afresh for another game, and keeps the review of the same one', () => {
+    const shown = reviewReducer(initialReview, { type: 'goto', ply: 1 });
+    expect(reviewReducer(shown, { type: 'review', game: 'black e2e4' })).toBe(shown);
+    expect(reviewReducer(shown, { type: 'review', game: 'white d2d4' })).toEqual(
+      startReview('white d2d4'),
+    );
   });
 });

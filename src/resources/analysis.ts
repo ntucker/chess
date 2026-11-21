@@ -234,29 +234,30 @@ export class AnalysisManager implements Manager {
     const key = analysisKey(engine, line);
     const state = ctrl.getState();
     if (isFinal(ctrl.get(PositionAnalysis, key, state))) return;
-    const gaveUp = analysisFailed(ctrl, engine, line, state);
+    // A search started again, by a later visit, stops counting as one that
+    // gave up once it reports a depth: invalidating clears the error, and
+    // the middleware starts nothing more, as it's running. Until then it may
+    // fail again at once, and asks for nothing more.
+    let gaveUp = analysisFailed(ctrl, engine, line, state);
     // False once it fails, which can happen before `watchAnalysis` returns.
     let running = true;
     const release = watchAnalysis(engine, line, {
       update(analysis) {
+        if (gaveUp && !analysis.final) void ctrl.invalidate(getAnalysis, engine, line);
+        gaveUp = false;
         const record = { ...key, ...analysis };
         if (analysis.final) ctrl.setResponse(getAnalysis, engine, line, record);
         else ctrl.set(PositionAnalysis, key, record);
       },
       // The screen keeps the last depth it showed. The error goes into the
       // store, so a screen can tell the search gave up (`analysisFailed`)
-      // until it's invalidated or a later visit asks again.
+      // until it's invalidated or searched again.
       fail(error) {
         running = false;
         shown.release = undefined;
         ctrl.setError(getAnalysis, engine, line, error);
       },
     });
-    if (!running) return;
-    shown.release = release;
-    // A search started again, by a later visit, is no longer one that gave up.
-    // Invalidating clears the error; the middleware starts nothing more, since
-    // `shown.release` is already set.
-    if (gaveUp) void ctrl.invalidate(getAnalysis, engine, line);
+    if (running) shown.release = release;
   }
 }

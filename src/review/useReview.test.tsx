@@ -28,18 +28,18 @@ const controllers: Controller[] = [];
 const reviews: Review[] = [];
 const managers = () => [new AnalysisManager(), ...getDefaultManagers()];
 
-function Reviewed({ active }: { readonly active: boolean }) {
+function Reviewed({ active, moves }: { readonly active: boolean; readonly moves: string[] }) {
   controllers.push(useController());
-  reviews.push(useReview({ moves: MOVES, learner: 'black', active }));
+  reviews.push(useReview({ moves, learner: 'black', active }));
   return null;
 }
 
-const render = (active = true) =>
+const render = (active = true, moves = MOVES) =>
   act(async () => {
     root ??= createRoot();
     root.render(
       <DataProvider managers={managers}>
-        <Reviewed active={active} />
+        <Reviewed active={active} moves={moves} />
       </DataProvider>,
     );
   });
@@ -108,5 +108,12 @@ describe('useReview', () => {
     // The position before 2.Nf3 first: its label needs it, then the one after.
     expect(mockSearched).toEqual(['', 'e2e4 e7e5']);
     expect(reviews.at(-1)!.visited).toEqual(new Set([3]));
+  });
+
+  it('starts afresh when the page is given another game', async () => {
+    await render();
+    await act(async () => reviews.at(-1)!.goto(3));
+    await render(true, ['d2d4']);
+    expect(reviews.at(-1)).toMatchObject({ ply: 0, visited: new Set() });
   });
 });
