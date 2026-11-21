@@ -113,19 +113,19 @@ export async function engineCheck(
         const before = await evaluation(at.line, at.pos);
         const afterAnalysis = await evaluation(line, after);
         const quality = judgeMove(before, afterAnalysis, move.uci, lesson.side);
-        const engine =
+        const keptGambit =
           gambit && quality === 'mistake'
             ? playableGambit(
                 judgedEvaluation(before, afterAnalysis, move.uci, lesson.side)!,
                 lesson.side,
               )
             : undefined;
-        if (engine) {
-          gambitNote = gambitNoteFor(engine, lesson.side);
+        if (keptGambit) {
+          gambitNote = gambitNoteFor(keptGambit, lesson.side);
           report.gambits.push({
             line: sans(lesson, at.line),
             move: san(at.pos, move.uci),
-            evaluation: describe(engine),
+            evaluation: describe(keptGambit),
           });
         } else if (quality === 'mistake' || quality === 'blunder') {
           book = undefined;
