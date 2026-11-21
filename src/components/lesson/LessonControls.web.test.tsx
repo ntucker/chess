@@ -52,6 +52,14 @@ describe('LessonControls', () => {
     expect(toggle('Warn me of traps').getAttribute('aria-disabled')).not.toBe('true');
   });
 
+  it('says why "Moves on the board" is disabled, to screen readers too', async () => {
+    await render('practice');
+    const described = moves().getAttribute('aria-describedby');
+    expect(described && document.getElementById(described)?.textContent).toBe('Only in Explore');
+    await render('explore');
+    expect(moves().getAttribute('aria-describedby')).toBeNull();
+  });
+
   it('lets "Moves on the board" change in Explore', async () => {
     await render('explore');
     expect(moves().getAttribute('aria-disabled')).not.toBe('true');
