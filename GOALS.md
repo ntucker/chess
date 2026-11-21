@@ -18,5 +18,5 @@ lesson, not just a giant book to read.
 ## Platforms
 
 - Web first: build, test and polish every feature there.
-- Android: supported. Every feature works there too. Check on Android anything likely to behave differently there: native code (modules, config, worklets, Android-only branches), touch handling you write, platform-specific layout, files with a `.web` twin, the board's web view. Text changes and UI built from existing Silk components or narrow parts need only the web check.
+- Android: supported. Every feature works there too. Check on Android anything likely to behave differently there: native code (modules, config, worklets, Android-only branches), touch handling you write, platform-specific layout, files with a `.web` twin, the board's web view. Anything else, such as text changes or UI built from existing Silk components or `useNarrowPart` parts, needs only the web check.
 - No iOS.
