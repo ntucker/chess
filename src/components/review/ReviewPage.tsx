@@ -36,9 +36,20 @@ const HEADER = { place: { name: 'Review' }, back: { href: '/', label: 'Back to t
  * The review of the game the address names, on the board's page: the board
  * column shows the move the review is at, and the panel beside it says how
  * the move did. The address is all it needs, so a reload reopens it. A
- * move that isn't legal ends the game there.
+ * move that isn't legal ends the game there. The export can't know the
+ * address, so the page pre-renders only its frame and reads the address in
+ * the browser.
  */
-export function ReviewPage({ moves = '', side, lesson }: ReviewAddress) {
+export function ReviewPage(address: ReviewAddress) {
+  return (
+    <BrowserOnly fallback={<ReviewPlaceholder />}>
+      <AddressedReview {...address} />
+    </BrowserOnly>
+  );
+}
+
+/** The review the address names, or why there is none. */
+function AddressedReview({ moves = '', side, lesson }: ReviewAddress) {
   if (side !== 'white' && side !== 'black') return <ReviewPlaceholder message={NO_GAME} />;
   if (lesson !== undefined && !isLessonId(lesson)) {
     return <ReviewPlaceholder message="There is no lesson here." />;
@@ -47,11 +58,9 @@ export function ReviewPage({ moves = '', side, lesson }: ReviewAddress) {
   const played = line.slice(0, replay(line).length - 1);
   if (!played.length) return <ReviewPlaceholder message={NO_GAME} />;
   return (
-    <BrowserOnly fallback={<ReviewPlaceholder />}>
-      <AsyncBoundary fallback={<ReviewPlaceholder />} errorComponent={ReviewFailure}>
-        <ReviewScreen moves={played} learner={side} lesson={lesson} />
-      </AsyncBoundary>
-    </BrowserOnly>
+    <AsyncBoundary fallback={<ReviewPlaceholder />} errorComponent={ReviewFailure}>
+      <ReviewScreen moves={played} learner={side} lesson={lesson} />
+    </AsyncBoundary>
   );
 }
 
