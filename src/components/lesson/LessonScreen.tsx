@@ -350,7 +350,10 @@ function LessonScreen({
             name: colorName(rival),
             detail: `The guide's moves, then ${described.lead.toLowerCase()}`,
             brief: described.lead,
-            detailControl: <OpponentPicker />,
+            // With auto play off the learner moves both sides, so strength does nothing.
+            detailControl: (
+              <OpponentPicker disabledReason={auto ? undefined : 'Auto play is off'} />
+            ),
             children: <AutoPlay />,
           }}
           board={{ ...board, onDrag }}
