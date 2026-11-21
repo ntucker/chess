@@ -3,8 +3,8 @@
  * refused. A generated note has no study author behind it, so it is held to
  * more than a converted comment: any drawing the checker refuses, a threat
  * that wins nothing, a verdict, notation, a pointer to the study or an
- * over-long text refuses the
- * whole note rather than leaving a claim in its words.
+ * over-long text refuses the whole note rather than leaving a claim in its
+ * words.
  */
 import { parseSan } from 'chessops/san';
 import type { Color } from 'chessops/types';
