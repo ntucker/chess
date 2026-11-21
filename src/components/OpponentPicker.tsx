@@ -47,6 +47,8 @@ export function OpponentPicker() {
   const dispatch = useSettingsDispatch();
   const { color } = useTheme().theme.semantic;
   const [opened, setOpened] = useState<Opened>();
+  // A press (or key) moves focus into the list; pointing leaves it on the trigger.
+  const focusesList = opened === 'pressed';
   const trigger = useRef<ComponentRef<typeof View>>(null);
   const closing = useRef<ReturnType<typeof setTimeout>>(undefined);
   // Whether the pointer is over the trigger, and over the list.
@@ -138,20 +140,15 @@ export function OpponentPicker() {
           side="bottom"
           align="start"
           sideOffset={6}
-          // Opened by hover, focus stays on the trigger; a press then focuses the list.
+          // Silk's Popover focuses its content as it opens; opened by pointing, it mustn't.
           onOpenAutoFocus={(event) => {
-            if (opened !== 'pressed') event.preventDefault();
+            if (!focusesList) event.preventDefault();
           }}
           onPointerEnter={(event) => hoverList(event, true)}
           onPointerLeave={(event) => hoverList(event, false)}
           style={styles.list}
         >
-          <OpponentList
-            id={listId}
-            value={opponent}
-            focusOnOpen={opened === 'pressed'}
-            onChoose={choose}
-          />
+          <OpponentList id={listId} value={opponent} focusOnOpen={focusesList} onChoose={choose} />
         </Popover.Content>
       </Popover.Root>
     </>
