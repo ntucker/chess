@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
-import { act } from 'react';
+import { act, type ComponentProps } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { SafeAreaFrameContext, SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { createRoot, type Root } from 'test-renderer';
@@ -22,21 +22,28 @@ afterEach(() => {
   root = undefined;
 });
 
-/** The height the page's scrolling content takes on a 360 by 800 phone. */
-function contentHeight(fillsWindow: boolean) {
+/** Renders a page in a native window `width` by 800, less a status bar and a navigation bar. */
+function renderPage(width: number, props: Partial<ComponentProps<typeof Page>>) {
   act(() => {
     root ??= createRoot();
     root.render(
-      <SafeAreaFrameContext.Provider value={{ x: 0, y: 0, width: 360, height: 800 }}>
+      <SafeAreaFrameContext.Provider value={{ x: 0, y: 0, width, height: 800 }}>
         <SafeAreaInsetsContext.Provider value={{ top: 24, bottom: 16, left: 0, right: 0 }}>
-          <Page maxWidth={600} fillsWindow={fillsWindow}>
+          <Page maxWidth={600} {...props}>
             {null}
           </Page>
         </SafeAreaInsetsContext.Provider>
       </SafeAreaFrameContext.Provider>,
     );
   });
-  const [scroll] = root!.container.queryAll((node) => 'contentContainerStyle' in node.props);
+  return root!.container;
+}
+
+/** The height the page's scrolling content takes on a 360 by 800 phone. */
+function contentHeight(fillsWindow: boolean) {
+  const [scroll] = renderPage(360, { fillsWindow }).queryAll(
+    (node) => 'contentContainerStyle' in node.props,
+  );
   return StyleSheet.flatten(scroll.props.contentContainerStyle).height;
 }
 
@@ -52,19 +59,8 @@ describe('a narrow native page', () => {
 
 /** The styles of the footer and the page around it, on a native page `width` wide. */
 function footerStyles(width: number) {
-  act(() => {
-    root ??= createRoot();
-    root.render(
-      <SafeAreaFrameContext.Provider value={{ x: 0, y: 0, width, height: 800 }}>
-        <SafeAreaInsetsContext.Provider value={{ top: 0, bottom: 0, left: 0, right: 0 }}>
-          <Page maxWidth={600} fillsWindow footer={<Text>Credits</Text>}>
-            {null}
-          </Page>
-        </SafeAreaInsetsContext.Provider>
-      </SafeAreaFrameContext.Provider>,
-    );
-  });
-  const [text] = root!.container.queryAll((node) => node.props.children === 'Credits');
+  const container = renderPage(width, { fillsWindow: true, footer: <Text>Credits</Text> });
+  const [text] = container.queryAll((node) => node.props.children === 'Credits');
   const footer = text.parent!;
   return {
     footer: StyleSheet.flatten(footer.props.style),

@@ -245,7 +245,7 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
   'wide-only-spoken': { narrow: visuallyHidden },
   'narrow-only': { wide: { display: 'none' } },
   place: { wide: { display: 'none' } },
-  // Every page grows already (Page.tsx); only the web needs its height (CSS_ONLY).
+  // Page.tsx grows every page to the window, for its footer; only the web needs the height (CSS_ONLY).
   page: {},
   stage: {
     narrow: {
