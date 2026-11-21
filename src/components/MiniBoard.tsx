@@ -57,8 +57,11 @@ export function MiniBoard({ position, orientation, lit, highlight, squareSize }:
                   style={[StyleSheet.absoluteFill, { backgroundColor: boardColors[highlight] }]}
                 />
               ) : null}
+              {/* Positioned like the tint and after it, so the piece paints above it on the web too. */}
               {piece ? (
-                <PieceGlyph role={piece.role} color={piece.color} size={squareSize} />
+                <View style={StyleSheet.absoluteFill}>
+                  <PieceGlyph role={piece.role} color={piece.color} size={squareSize} />
+                </View>
               ) : null}
             </View>
           );
