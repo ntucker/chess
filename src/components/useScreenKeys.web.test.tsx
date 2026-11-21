@@ -19,7 +19,7 @@ jest.mock('expo-router', () => ({ useIsFocused: () => true }));
 function Listener({ onKey, sheet }: { onKey: (key: string) => void; sheet: boolean }) {
   useScreenKeys((event) => onKey(event.key));
   return sheet ? (
-    <Sheet title="Settings" onClose={() => {}}>
+    <Sheet open title="Settings" onClose={() => {}}>
       {null}
     </Sheet>
   ) : null;

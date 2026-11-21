@@ -1,7 +1,7 @@
-import { Dialog, Inline } from '@reactive/silk-native';
+import { Inline } from '@reactive/silk-native';
+import { Dialog } from '@reactive/silk-native/gesture';
 import { useIsFocused } from 'expo-router';
 import { type ReactNode, useEffect, useEffectEvent } from 'react';
-import { ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HEADER_BUTTON_SIZE, HeaderButton } from '@/components/HeaderButton';
@@ -10,11 +10,13 @@ import { useNarrowStyles } from '@/theme/Narrow';
 import { themes } from '@/theme/theme';
 
 interface Props {
+  /** Whether it shows: it slides up as this turns on and down as it turns off. */
+  readonly open: boolean;
   /** The sheet's name, at its top and for screen readers. */
   readonly title: string;
   /**
    * The close button, a tap beside the sheet, Escape, Android's back button,
-   * or another screen coming on top of this one.
+   * dragging the sheet down, or another screen coming on top of this one.
    */
   readonly onClose: () => void;
   readonly children: ReactNode;
@@ -22,22 +24,23 @@ interface Props {
 
 /**
  * A sheet that rises from the bottom of the screen over a veiled page, for
- * what a small screen has no room to keep in view, such as settings. Shown
- * while mounted. Its content scrolls once taller than the screen allows.
- * Silk's bottom Dialog, so it traps focus on the web and works the same on
- * Android.
+ * what a small screen has no room to keep in view, such as settings. Its
+ * content scrolls once taller than the screen allows. Silk's bottom Dialog
+ * from its `/gesture` entry, so it traps focus on the web, works the same on
+ * Android, and drags down to close, with a pull-down at the content's top
+ * handed to the sheet.
  */
-export function Sheet({ title, onClose, children }: Props) {
+export function Sheet({ open, title, onClose, children }: Props) {
   // A screen left underneath stays mounted, and the dialog would cover the one on top.
   const focused = useIsFocused();
   const close = useEffectEvent(onClose);
   const styles = useNarrowStyles(STYLES);
   const bottom = useBottomInset();
   useEffect(() => {
-    if (!focused) close();
-  }, [focused]);
+    if (open && !focused) close();
+  }, [open, focused]);
   return (
-    <Dialog.Root open onOpenChange={onClose}>
+    <Dialog.Root open={open} onOpenChange={onClose}>
       <Dialog.Content
         placement="bottom"
         testID="sheet"
@@ -53,7 +56,7 @@ export function Sheet({ title, onClose, children }: Props) {
             onPress={onClose}
           />
         </Inline>
-        <ScrollView contentContainerStyle={styles.content}>{children}</ScrollView>
+        <Dialog.ScrollView contentContainerStyle={styles.content}>{children}</Dialog.ScrollView>
       </Dialog.Content>
     </Dialog.Root>
   );

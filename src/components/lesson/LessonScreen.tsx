@@ -438,8 +438,8 @@ function LessonScreen({
           ) : null}
           {/*
            * A narrow page has no room for the rest under the panes: the
-           * scoresheet opens in the drawer, the settings in a sheet. Only one
-           * copy of the settings is mounted at a time. This scoresheet stays
+           * scoresheet opens in the drawer, the settings in a sheet. The page's
+           * copy of the settings unmounts while the sheet is open. This scoresheet stays
            * while the drawer is open, so a window widened meanwhile still shows one.
            */}
           <Stack {...part('wide-only', styles.sections)}>
@@ -455,16 +455,14 @@ function LessonScreen({
               </>
             )}
           </Stack>
-          {settingsOpen ? (
-            <Sheet title="Settings" onClose={() => setSettingsOpen(false)}>
-              <Stack style={styles.sections}>
-                {/* A phone's name-bar discs are dots too small to find; this swaps sides from the sheet, in a lesson too. */}
-                <SideChoice side={learner} onChange={onPlayAs} />
-                {settings(lessonCredits)}
-                <SourceFootnote />
-              </Stack>
-            </Sheet>
-          ) : null}
+          <Sheet open={settingsOpen} title="Settings" onClose={() => setSettingsOpen(false)}>
+            <Stack style={styles.sections}>
+              {/* A phone's name-bar discs are dots too small to find; this swaps sides from the sheet, in a lesson too. */}
+              <SideChoice side={learner} onChange={onPlayAs} />
+              {settings(lessonCredits)}
+              <SourceFootnote />
+            </Stack>
+          </Sheet>
         </Stack>
       }
     />

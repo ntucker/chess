@@ -35,7 +35,7 @@ function renderSheet(onClose: () => void) {
   act(() =>
     root.render(
       <SilkProvider theme={themes.dark}>
-        <Sheet title="Settings" onClose={onClose}>
+        <Sheet open title="Settings" onClose={onClose}>
           {null}
         </Sheet>
       </SilkProvider>,
@@ -69,8 +69,11 @@ describe('Sheet', () => {
     const title = document.getElementById(
       document.querySelector('[aria-modal="true"]')!.getAttribute('aria-labelledby')!,
     )!;
-    // Silk's Dialog catches presses on the veil in a layer just before its panel.
-    const veil = document.querySelector('[data-testid="sheet"]')!.previousElementSibling!;
+    // Silk's Dialog catches presses on the veil in a layer just before its
+    // panel (which its gesture detector may wrap).
+    let panel = document.querySelector('[data-testid="sheet"]')!;
+    while (!panel.previousElementSibling) panel = panel.parentElement!;
+    const veil = panel.previousElementSibling!;
     const tap = (on: Element) =>
       act(() => {
         on.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
@@ -89,7 +92,7 @@ describe('Sheet', () => {
       act(() =>
         root.render(
           <SilkProvider theme={themes.dark}>
-            <Sheet title="Settings" onClose={onClose}>
+            <Sheet open title="Settings" onClose={onClose}>
               {null}
             </Sheet>
           </SilkProvider>,

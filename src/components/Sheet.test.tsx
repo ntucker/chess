@@ -9,12 +9,13 @@ import { Sheet } from './Sheet';
 // Jest can't load a stylesheet, and the native project doesn't transform Silk's ES modules.
 jest.mock('@/theme/narrow.css', () => ({}));
 jest.mock('@reactive/silk-native', () => {
+  const Pass = ({ children }: { children?: ReactNode }) => children;
+  return { Inline: Pass };
+});
+jest.mock('@reactive/silk-native/gesture', () => {
   const { View: MockView } = jest.requireActual<typeof import('react-native')>('react-native');
   const Pass = ({ children }: { children?: ReactNode }) => children;
-  return {
-    Dialog: { Root: Pass, Content: MockView, Title: Pass },
-    Inline: Pass,
-  };
+  return { Dialog: { Root: Pass, Content: MockView, Title: Pass, ScrollView: MockView } };
 });
 jest.mock('@/components/HeaderButton', () => {
   const { narrowLength } = jest.requireActual<typeof import('@/theme/narrow')>('@/theme/narrow');
@@ -37,7 +38,7 @@ it('keeps its content above the navigation bar the app draws under', () => {
     root.render(
       <SafeAreaFrameContext.Provider value={{ x: 0, y: 0, width: 360, height: 800 }}>
         <SafeAreaInsetsContext.Provider value={{ top: 24, bottom: 48, left: 0, right: 0 }}>
-          <Sheet title="Settings" onClose={() => {}}>
+          <Sheet open title="Settings" onClose={() => {}}>
             <View />
           </Sheet>
         </SafeAreaInsetsContext.Provider>
