@@ -232,6 +232,7 @@ function LessonScreen({
   };
   // What the guide's candidate rows and Stockfish's top moves' rows share.
   const rowProps = {
+    position: view.key,
     pointed: preview?.move.uci,
     marks,
     playable: canPlay,

@@ -12,6 +12,14 @@ import { CandidateList } from './CandidateList';
 
 // Its react-native-svg needs Expo's asset registry, which the web preset doesn't resolve.
 jest.mock('@/components/QualityBadge', () => ({ QualityBadge: () => null }));
+// Records whether each change the rows' motion animates fades rows in and out.
+const mockFades: boolean[] = [];
+jest.mock('@/motion/reorder', () => ({
+  measure: () => new Map(),
+  reorder: (_before: unknown, _items: unknown, _spring: unknown, { fades }: { fades: boolean }) => {
+    mockFades.push(fades);
+  },
+}));
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -23,33 +31,46 @@ const RARE = candidate('h2h4', 'h4', true);
 
 type Props = Partial<Parameters<typeof CandidateList>[0]>;
 
-/** Renders the list, and reads its host with `read`. */
-function render<T>(props: Props, read: (host: HTMLElement) => T) {
+const DEFAULTS: Parameters<typeof CandidateList>[0] = {
+  heading: 'Likely replies',
+  position: 'start',
+  candidates: [COMMON],
+  rare: [RARE],
+  rareShown: false,
+  onShowRare: () => {},
+  marks: new Map(),
+  leadsTo: ({ san }) => `the ${san} line`,
+  playable: false,
+  onPlay: () => {},
+  onPoint: () => {},
+  onTabOut: () => {},
+  compact: true,
+};
+
+/** A root that renders the list with `props` over the defaults, again on each call. */
+function mount() {
   const host = document.createElement('div');
   const root = createRoot(host);
-  act(() =>
-    root.render(
-      <SilkProvider theme={themes.dark}>
-        <CandidateList
-          heading="Likely replies"
-          candidates={[COMMON]}
-          rare={[RARE]}
-          rareShown={false}
-          onShowRare={() => {}}
-          marks={new Map()}
-          leadsTo={({ san }) => `the ${san} line`}
-          playable={false}
-          onPlay={() => {}}
-          onPoint={() => {}}
-          onTabOut={() => {}}
-          compact
-          {...props}
-        />
-      </SilkProvider>,
-    ),
-  );
-  const result = read(host);
-  act(() => root.unmount());
+  return {
+    host,
+    show: (props: Props) =>
+      act(() =>
+        root.render(
+          <SilkProvider theme={themes.dark}>
+            <CandidateList {...DEFAULTS} {...props} />
+          </SilkProvider>,
+        ),
+      ),
+    unmount: () => act(() => root.unmount()),
+  };
+}
+
+/** Renders the list, and reads its host with `read`. */
+function render<T>(props: Props, read: (host: HTMLElement) => T) {
+  const list = mount();
+  list.show(props);
+  const result = read(list.host);
+  list.unmount();
   return result;
 }
 
@@ -88,5 +109,27 @@ describe('CandidateList', () => {
   it('leaves where each row leads to the line under a compact list', () => {
     expect(partTexts({}).filter(([part]) => part === 'leads-to')).toEqual([]);
     expect(partTexts({ compact: false })).toContainEqual(['leads-to', 'the Nf3 line']);
+  });
+
+  it('fades rows for showing rare ones, not for leaving a position that showed them', () => {
+    const list = mount();
+    mockFades.length = 0;
+    list.show({ position: 'a' });
+    list.show({ position: 'a', rareShown: true });
+    expect(mockFades).toEqual([true]);
+    // the next position mounts its own list: nothing animates the swap
+    list.show({ position: 'b' });
+    expect(mockFades).toEqual([true]);
+    list.unmount();
+  });
+
+  it('glides rows a deeper search re-ranks in one position, without fading', () => {
+    const other = candidate('d2d4', 'd4');
+    const list = mount();
+    mockFades.length = 0;
+    list.show({ candidates: [COMMON, other] });
+    list.show({ candidates: [other, COMMON] });
+    expect(mockFades).toEqual([false]);
+    list.unmount();
   });
 });

@@ -4,7 +4,7 @@ import { View } from 'react-native';
 
 import { evaluationReading, signedEvaluation } from '@/evaluation/evaluation';
 import { candidateTone } from '@/lesson/drawings';
-import type { Uci } from '@/lesson/lesson';
+import type { PositionKey, Uci } from '@/lesson/lesson';
 import type { Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
@@ -14,6 +14,7 @@ import { narrowLength, narrowStyles } from '@/theme/narrow';
 import { NarrowScroll, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
 import { fonts } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
+import { MotionList, MotionView } from '@/motion/MotionList';
 
 import { MARK_SIZE, MarkLegend, ProgressMark, SPOKEN_MARKS } from './ProgressMark';
 
@@ -22,6 +23,8 @@ interface Props {
   readonly heading: string;
   /** Whose moves these are, before `heading`; only spoken in a narrow page's pane, where it would wrap. */
   readonly owner?: string;
+  /** The position whose moves these are: another position's moves are another list */
+  readonly position: PositionKey;
   readonly candidates: readonly Candidate[];
   /** Rare candidates, listed after the others while `rareShown`. */
   readonly rare: readonly Candidate[];
@@ -71,6 +74,7 @@ interface Props {
 export function CandidateList({
   heading,
   owner,
+  position,
   candidates,
   rare,
   rareShown,
@@ -119,33 +123,44 @@ export function CandidateList({
       <Surface elevation="sunken" border="subtle" radius="md" {...part('list-card', styles.list)}>
         {/* On a narrow page the rows scroll inside the card, under its heading. */}
         <NarrowScroll part="list-scroll">
-          {rows.map((candidate, index) => (
-            <Row
-              key={candidate.move.uci}
-              candidate={candidate}
-              main={candidate === main}
-              pointed={candidate.move.uci === pointed}
-              mark={marks.get(candidate.move.uci)}
-              // Every row keeps room for a mark once one has one, so their shares line up.
-              markSlot={shownMarks.size > 0}
-              leadsTo={leadsTo(candidate)}
-              compact={compact}
-              // A lone move's share is always all of the games.
-              share={rows.length > 1 ? candidate.share : undefined}
-              playable={playable}
-              onPlay={onPlay}
-              onPoint={onPoint}
-              onTabOut={!rare.length && index === rows.length - 1 ? onTabOut : undefined}
-            />
-          ))}
-          {rare.length ? (
-            <RareToggle
-              count={rare.length}
-              shown={rareShown}
-              onToggle={() => onShowRare(!rareShown)}
-              onTabOut={onTabOut}
-            />
-          ) : null}
+          {/*
+           * Showing or hiding the rare rows slides the rows below and fades them in or out.
+           * Another position's moves are another list, so leaving one with its rare rows shown
+           * swaps the rows at once instead of fading them, while rows reordered in one position
+           * (a deeper search re-ranking Stockfish's) still glide.
+           */}
+          <MotionList key={position} layoutDependency={rareShown}>
+            {rows.map((candidate, index) => (
+              <MotionView key={candidate.move.uci} id={candidate.move.uci}>
+                <Row
+                  candidate={candidate}
+                  main={candidate === main}
+                  pointed={candidate.move.uci === pointed}
+                  mark={marks.get(candidate.move.uci)}
+                  // Every row keeps room for a mark once one has one, so their shares line up.
+                  markSlot={shownMarks.size > 0}
+                  leadsTo={leadsTo(candidate)}
+                  compact={compact}
+                  // A lone move's share is always all of the games.
+                  share={rows.length > 1 ? candidate.share : undefined}
+                  playable={playable}
+                  onPlay={onPlay}
+                  onPoint={onPoint}
+                  onTabOut={!rare.length && index === rows.length - 1 ? onTabOut : undefined}
+                />
+              </MotionView>
+            ))}
+            {rare.length ? (
+              <MotionView id={RARE_TOGGLE}>
+                <RareToggle
+                  count={rare.length}
+                  shown={rareShown}
+                  onToggle={() => onShowRare(!rareShown)}
+                  onTabOut={onTabOut}
+                />
+              </MotionView>
+            ) : null}
+          </MotionList>
         </NarrowScroll>
       </Surface>
       {caption ? (
@@ -156,6 +171,9 @@ export function CandidateList({
     </Stack>
   );
 }
+
+/** The rare toggle's key among the rows' moves. */
+const RARE_TOGGLE = 'rare-toggle';
 
 /** The last row of a list with rare candidates: shows or hides them. */
 function RareToggle({
