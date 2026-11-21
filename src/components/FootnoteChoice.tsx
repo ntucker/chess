@@ -43,7 +43,6 @@ export function FootnoteChoice<T extends string | number>({
   value,
   onChange,
 }: Props<T>) {
-  const { color } = useTheme().theme.semantic;
   const id = useId();
   return (
     <Inline
@@ -57,53 +56,77 @@ export function FootnoteChoice<T extends string | number>({
         {lead}
       </Text>
       <Inline gap="0" align="center" wrap="wrap" style={styles.options}>
-        {options.map((option, index) => {
-          const selected = option.value === value;
-          const hintId = `${id}-${option.value}`;
-          return (
-            // Each dot follows its option in one group, so a wrapped line
-            // starts with an option, never a dot.
-            <Inline key={option.value} gap="0" align="center" wrap="nowrap">
-              <Pressable
-                accessibilityRole="radio"
-                accessibilityLabel={option.label}
-                accessibilityHint={option.hint}
-                // React Native Web ignores accessibilityHint, so the web reads
-                // the hint from the hidden text below.
-                {...(WEB ? { 'aria-describedby': hintId } : {})}
-                {...a11yState({ checked: selected })}
-                onPress={() => onChange(option.value)}
-                style={styles.option}
-              >
-                {({ hovered }) => (
-                  <Text
-                    role="caption"
-                    style={{
-                      color: selected || hovered ? color.textPrimary : color.textSecondary,
-                      fontWeight: selected ? '600' : '400',
-                      textDecorationLine: hovered && !selected ? 'underline' : 'none',
-                    }}
-                  >
-                    {option.label}
-                  </Text>
-                )}
-              </Pressable>
-              {WEB ? (
-                // aria-hidden keeps it out of the reading order; the radio's
-                // aria-describedby still reads it as the description.
-                <Text nativeID={hintId} aria-hidden style={styles.hint}>
-                  {option.hint}
-                </Text>
-              ) : null}
-              {index < options.length - 1 ? (
-                <Text role="caption" tone="secondary" aria-hidden>
-                  ·
-                </Text>
-              ) : null}
-            </Inline>
-          );
-        })}
+        {options.map((option, index) => (
+          <Option
+            key={option.value}
+            option={option}
+            selected={option.value === value}
+            hintId={`${id}-${option.value}`}
+            dotted={index < options.length - 1}
+            onPress={() => onChange(option.value)}
+          />
+        ))}
       </Inline>
+    </Inline>
+  );
+}
+
+/** One option, with the dot after it unless it is the last (`dotted`). */
+function Option<T extends string | number>({
+  option,
+  selected,
+  hintId,
+  dotted,
+  onPress,
+}: {
+  readonly option: FootnoteOption<T>;
+  readonly selected: boolean;
+  /** The id of its hint's hidden text on the web. */
+  readonly hintId: string;
+  readonly dotted: boolean;
+  readonly onPress: () => void;
+}) {
+  const { color } = useTheme().theme.semantic;
+  return (
+    // The dot follows its option in one group, so a wrapped line starts with
+    // an option, never a dot.
+    <Inline gap="0" align="center" wrap="nowrap">
+      <Pressable
+        accessibilityRole="radio"
+        accessibilityLabel={option.label}
+        accessibilityHint={option.hint}
+        // React Native Web ignores accessibilityHint, so the web reads
+        // the hint from the hidden text below.
+        {...(WEB ? { 'aria-describedby': hintId } : {})}
+        {...a11yState({ checked: selected })}
+        onPress={onPress}
+        style={styles.option}
+      >
+        {({ hovered }) => (
+          <Text
+            role="caption"
+            style={{
+              color: selected || hovered ? color.textPrimary : color.textSecondary,
+              fontWeight: selected ? '600' : '400',
+              textDecorationLine: hovered && !selected ? 'underline' : 'none',
+            }}
+          >
+            {option.label}
+          </Text>
+        )}
+      </Pressable>
+      {WEB ? (
+        // aria-hidden keeps it out of the reading order; the radio's
+        // aria-describedby still reads it as the description.
+        <Text nativeID={hintId} aria-hidden style={styles.hint}>
+          {option.hint}
+        </Text>
+      ) : null}
+      {dotted ? (
+        <Text role="caption" tone="secondary" aria-hidden>
+          ·
+        </Text>
+      ) : null}
     </Inline>
   );
 }
