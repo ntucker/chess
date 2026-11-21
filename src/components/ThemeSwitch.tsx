@@ -4,7 +4,7 @@ import { type ComponentProps, type ComponentRef, useRef, useState } from 'react'
 import { type GestureResponderEvent, type PointerEvent, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import { hovers } from '@/board/pointer';
+import { hoversControl } from '@/board/pointer';
 import { springMotion, springs } from '@/motion/spring';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
 import { type Theme, THEMES } from '@/settings/settings';
@@ -71,13 +71,13 @@ export function ThemeSwitch() {
     <View
       style={styles.root}
       onPointerEnter={({ nativeEvent }: PointerEvent) => {
-        if (hovers(nativeEvent.pointerType)) open('hover');
+        if (hoversControl(nativeEvent.pointerType)) open('hover');
       }}
       onPointerMove={({ nativeEvent }: PointerEvent) => {
-        if (opened === 'hover' && hovers(nativeEvent.pointerType)) point(nativeEvent.pageX);
+        if (opened === 'hover' && hoversControl(nativeEvent.pointerType)) point(nativeEvent.pageX);
       }}
       onPointerLeave={({ nativeEvent }: PointerEvent) => {
-        if (opened === 'hover' && hovers(nativeEvent.pointerType)) close();
+        if (opened === 'hover' && hoversControl(nativeEvent.pointerType)) close();
       }}
       // A held finger keeps the button's touch as it slides over the choices.
       onTouchMove={({ nativeEvent }: GestureResponderEvent) => {
