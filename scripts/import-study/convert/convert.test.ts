@@ -8,7 +8,7 @@ import { parseStudy } from '../study';
 import type { AnswerNote } from './answer';
 import { MODELS, type Ask, type Model } from './claude';
 import { noteComment, type Comment } from './comments';
-import { DRAW_MISTAKES, REWORD, SHORTEN, WRITTEN_FOR_OPPONENT } from './prompt';
+import { DRAW_MISTAKES, REWORD, SHORTEN, STANDALONE, WRITTEN_FOR_OPPONENT } from './prompt';
 import { convertChapters } from '.';
 
 const [advance] = parseStudy(STUDY_PGN, () => true);
@@ -198,6 +198,53 @@ describe('convertChapters', () => {
       const { report } = await convertChapters(extracted, ask);
       expect(refused.every((text) => text === undefined)).toBe(true);
       expect(report.reworded).toBe(0);
+    });
+  });
+
+  describe('a note that points to the study', () => {
+    const pointing: AnswerNote[] = [
+      { about: 'move', text: 'Your bishop is out; later chapters cover the rest.', ideas: [] },
+    ];
+    const plain: AnswerNote[] = [
+      { about: 'move', text: 'Your bishop is out, so build the chain and hit d4.', ideas: [] },
+    ];
+
+    it('is asked again of Opus with the refused text, and the plain answer replaces it', async () => {
+      const { ask, asked, refused, addenda } = fakeAsk(
+        { [MODELS.convert]: { Be2: pointing } },
+        { [MODELS.retry]: { Be2: plain } },
+      );
+      const {
+        extracted: [chapter],
+        report,
+      } = await convertChapters(extracted, ask);
+      expect(asked.at(-1)).toEqual([MODELS.retry, ['Be2']]);
+      expect(refused.at(-1)).toEqual([pointing[0].text]);
+      expect(addenda.at(-1)).toBe(STANDALONE);
+      expect(report.unmoored).toBe(1);
+      expect(notesOn(chapter, 'Be2')[0].text).toBe(plain[0].text);
+    });
+
+    it('stays when Opus points to the study too', async () => {
+      const again = { ...pointing[0], text: 'As the study shows, your bishop is out.' };
+      const { ask } = fakeAsk(
+        { [MODELS.convert]: { Be2: pointing } },
+        { [MODELS.retry]: { Be2: [again] } },
+      );
+      const {
+        extracted: [chapter],
+      } = await convertChapters(extracted, ask);
+      expect(notesOn(chapter, 'Be2')[0].text).toBe(pointing[0].text);
+    });
+
+    it('is not asked again for "study" as a verb', async () => {
+      const verb: AnswerNote = {
+        ...plain[0],
+        text: 'Study this position: the next moves are forced.',
+      };
+      const { ask } = fakeAsk({ [MODELS.convert]: { Be2: [verb] } });
+      const { report } = await convertChapters(extracted, ask);
+      expect(report.unmoored).toBe(0);
     });
   });
 

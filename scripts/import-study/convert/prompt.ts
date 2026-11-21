@@ -115,6 +115,16 @@ ASKED AGAIN: NOTES WRITTEN AS MOVES
 Each comment here also has "refusedText": the note texts you wrote for it before. The app refused them because they write moves in notation (four or more moves in a row, like "7.Nxd4 Nc5 8.Bc4 Nbd7", or a note that is nothing but moves). Convert the comment again, following every rule above, and write each note's text in plain words: name the pieces, squares and goals ("bring your knight to d7, then castle") instead of listing moves. When the moves themselves matter, put them in a line or trap idea, which the board plays; the text says what they achieve.`;
 
 /**
+ * Added to `PROMPT` when comments are asked again because their note text
+ * points to the study itself (`Comment.refusedText`), which the learner never
+ * sees. Changing it re-asks only those comments.
+ */
+export const STANDALONE = `
+
+ASKED AGAIN: NOTES THAT POINT TO THE STUDY
+Each comment here also has "refusedText": the note texts you wrote for it before. The app refused them because they point to the study the comment comes from: its chapters or sections, where it stops or what it covers, or its buttons ("save it with the heart button"). The learner never sees the study, only the board and these notes. Convert the comment again, following every rule above, and say the chess point itself instead ("this transposes to the 4...d5 line" becomes "this reaches a position you already know"; "later chapters cover it" becomes "Black's second most popular reply"), or leave the sentence out when it has no chess point.`;
+
+/**
  * Added to `PROMPT` when comments are asked again because they mark a move the
  * side to move can play as a mistake (`3.e3?`) and no note draws how it is
  * punished (`Comment.mistakes`). Changing it re-asks only those comments.

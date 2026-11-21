@@ -733,9 +733,10 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
           author: 'Bosburp',
           url: 'https://lichess.org/study/55CPbtmd',
         },
-        // The theory chapters; the thanks, community and outro chapters teach nothing.
-        chapters: (title: string) => Object.hasOwn(PORTSMOUTH_CHAPTERS, title),
-        chapterName: (title: string) => PORTSMOUTH_CHAPTERS[title],
+        // The theory chapters; the sidelines heading, thanks, community and outro teach nothing.
+        chapters: (title: string) =>
+          !/Section 4: Sidelines|Special Thanks|Community|Outro/.test(title),
+        chapterName: (title: string) => chapterNamed(PORTSMOUTH_CHAPTERS, 'Portsmouth', title),
       },
       {
         study: 'Vpb6r3Wq',
@@ -744,8 +745,8 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
           author: 'Bosburp',
           url: 'https://lichess.org/study/Vpb6r3Wq',
         },
-        chapters: (title: string) => Object.hasOwn(SICILIAN_BC4_CHAPTERS, title),
-        chapterName: (title: string) => SICILIAN_BC4_CHAPTERS[title],
+        chapters: (title: string) => !/Community|Outro/.test(title),
+        chapterName: (title: string) => chapterNamed(SICILIAN_BC4_CHAPTERS, '3.Bc4', title),
       },
     ],
     engineCheck: true,
