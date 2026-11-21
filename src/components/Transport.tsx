@@ -28,7 +28,7 @@ export function Transport({ ply, total, onGoto, middle }: Props) {
   const holdHandlersFor = useHeldStep(ply, total, onGoto);
   const arrow = (step: Step) => {
     const target = ply + step;
-    return { step, target, disabled: target < 0 || target > total };
+    return { step, target, disabled: !inGame(target, total) };
   };
   const buttons: {
     label: string;
@@ -114,6 +114,9 @@ const HOLD_MS = 400;
 /** How often a held step arrow steps. */
 const REPEAT_MS = 120;
 
+/** Whether `ply` is a position of a game of `total` moves. */
+const inGame = (ply: number, total: number) => ply >= 0 && ply <= total;
+
 /**
  * The press handlers for a step arrow that steps by `step`: held, it steps
  * once as the hold starts, then again every REPEAT_MS until let go or at
@@ -124,7 +127,7 @@ function useHeldStep(ply: number, total: number, onGoto: (ply: number) => void) 
   const next = held === undefined ? undefined : ply + held;
   // The hold ends at either end of the game, even with the finger still
   // down (the arrow turns disabled), so it doesn't resume if the game grows.
-  if (next !== undefined && (next < 0 || next > total)) setHeld(undefined);
+  if (next !== undefined && !inGame(next, total)) setHeld(undefined);
   const goto = useEffectEvent(onGoto);
   useEffect(() => {
     if (next === undefined) return;
