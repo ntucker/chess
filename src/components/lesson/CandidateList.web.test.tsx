@@ -108,8 +108,15 @@ describe('CandidateList', () => {
 
   it('leaves where each row leads to the line under a compact list on a narrow page', () => {
     expect(partTexts({})).toContainEqual(['wide-only', 'the Nf3 line']);
-    // Elsewhere each row keeps it, on one line on every page.
-    expect(partTexts({ compact: false }).filter(([, text]) => text === 'the Nf3 line')).toEqual([]);
+  });
+
+  it('keeps where each row leads on every page when the list is not compact', () => {
+    const parts = render({ compact: false }, (host) =>
+      [...host.querySelectorAll('*')]
+        .filter((node) => node.children.length === 0 && node.textContent === 'the Nf3 line')
+        .map((node) => node.getAttribute('data-narrow')),
+    );
+    expect(parts).toEqual([null]);
   });
 
   it('fades rows for showing rare ones, not for leaving a position that showed them', () => {
