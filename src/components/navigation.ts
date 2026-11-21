@@ -1,5 +1,4 @@
-import { type Href, type ImperativeRouter, unstable_useIsNavigating, useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { type Href, type ImperativeRouter, router, unstable_useIsNavigating } from 'expo-router';
 
 /**
  * Navigation to a page that loads first, such as another lesson: outside a
@@ -11,12 +10,13 @@ export const AT_ONCE = { inTransition: false } as const;
 /**
  * Puts every navigation in a transition (`AT_ONCE` opts one out), so it never
  * blocks input and the page being left keeps what it shows until the next is
- * ready. The root layout calls it. It sets the router once the router is up:
- * set before, the router has already read its default.
+ * ready. The app's entry (`index.ts`) calls it before Expo Router first
+ * renders, which is when the router reads it. Set any later, as from a
+ * layout's effect, the change re-renders the router while the page is still
+ * hydrating, and on the web the home page can then stay loading forever.
  */
-export function useNavigationTransitions() {
-  const router = useRouter();
-  useEffect(() => router.setTransitionMode('always'), [router]);
+export function navigateInTransitions() {
+  router.setTransitionMode('always');
 }
 
 /**
