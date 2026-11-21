@@ -24,7 +24,7 @@ import type { Playback, Playing } from '@/lesson/useLesson';
 import type { ShownNote } from '@/lesson/view';
 import { toneColors } from '@/theme/drawingTones';
 import { NarrowOnly, useNarrowPart } from '@/theme/Narrow';
-import { visuallyHidden } from '@/theme/narrow';
+import { spokenOnly } from '@/theme/narrow';
 
 interface Props {
   readonly title: string;
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
   // The model's mark keeps to the row's far end, after any buttons.
   model: { marginLeft: 'auto', padding: 4 },
   // Out of sight and out of layout, but read.
-  spoken: { ...visuallyHidden, opacity: 0 },
+  spoken: spokenOnly,
   playing: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   count: { minWidth: 48 },
 });
