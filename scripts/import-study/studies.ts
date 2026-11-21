@@ -93,6 +93,16 @@ const wikibooksCredit = (root: string): LessonSource => ({
   license: { name: 'CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },
 });
 
+/** A PGN committed under scripts/import-study/sources/ (`StudySource.file`), credited by its link on GitHub. */
+const committedPgn = (file: string, credit: Omit<LessonSource, 'url'>) => ({
+  study: file.replace(/\.pgn$/, ''),
+  file,
+  credit: {
+    ...credit,
+    url: `https://github.com/ntucker/chess/blob/main/scripts/import-study/sources/${file}`,
+  },
+});
+
 /**
  * The lesson's info for merging, crediting each of its sources in order,
  * once each: a study read twice (its chapters for each side) is one source.
@@ -785,6 +795,13 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         // The theory chapters, not "Conversions into Slav" (from 1.c4) or the example games.
         ...onlyChapters(WURZELKRAFT_CHAPTERS),
       },
+      {
+        // 3.c5, which no guide covers: 3...e5 against each of White's common replies.
+        ...committedPgn('slav-3-c5.pgn', { title: 'Punishing 3.c5', author: 'Opening Night' }),
+        chapters: () => true,
+        chapterName: () => '3.c5',
+        namedFrom: 5,
+      },
     ],
     engineCheck: true,
     info: {
@@ -1031,13 +1048,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
     from: [
       {
         // Nathaniel's setup: a3 and Ba2, d3, Ne2, castle, Nbc3, Ng3, then f4.
-        study: 'bowdler-setup',
-        file: 'bowdler-setup.pgn',
-        credit: {
-          title: 'Bowdler Attack setup',
-          author: 'ntucker',
-          url: 'https://github.com/ntucker/chess/blob/main/scripts/import-study/sources/bowdler-setup.pgn',
-        },
+        ...committedPgn('bowdler-setup.pgn', { title: 'Bowdler Attack setup', author: 'ntucker' }),
         chapters: () => true,
         chapterName: () => 'Bowdler Attack',
         namedFrom: 3,

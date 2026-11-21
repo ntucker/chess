@@ -36,6 +36,11 @@ interface Props {
   /** The position whose moves these are: another position's moves are another list */
   readonly position: PositionKey;
   readonly candidates: readonly Candidate[];
+  /**
+   * Stockfish's best move, listed after the guide's candidates and marked as
+   * the top engine move, for when the guide doesn't list it.
+   */
+  readonly engineBest?: Candidate;
   /** Rare candidates, listed after the others while `rareShown`. */
   readonly rare: readonly Candidate[];
   readonly rareShown: boolean;
@@ -72,14 +77,21 @@ interface Props {
 }
 
 /**
- * The guide's moves at the position on the board, one row each, most played
- * first, or past them Stockfish's top moves, best first, each with how it
- * changes the position for the learner in place of its share. Pointing at a
- * row previews its move on the board; pressing it plays the move when it's
- * the learner's to play. Each row's dot matches its arrow on the board; the
- * dot of a row the board draws no arrow for is hollow: a rare row's, or one
- * of Stockfish's but its best. A row's progress mark ends it, and a key beside the heading
- * names the marks the list shows (not in a narrow web page's pane).
+ * A list of moves at the position on the board, one row each, in one of two
+ * kinds:
+ * - The guide's moves, most played first, each with its share of the games.
+ *   Stockfish's best follows them when the guide lacks it (`engineBest`),
+ *   with a star whose tooltip says it is the top engine move. Rare rows come
+ *   after it, when the learner asks for them.
+ * - Past the guide's moves, Stockfish's top moves, best first, each with how
+ *   it changes the position for the learner in place of a share.
+ *
+ * Pointing at a row previews its move on the board; pressing it plays the
+ * move when it's the learner's to play. Each row's dot matches its arrow on
+ * the board; the dot of a row the board draws no arrow for is hollow: a rare
+ * row's, or one of Stockfish's top moves but its best. A row's progress mark
+ * ends it, and a key beside the heading names the marks the list shows (not
+ * in a narrow web page's pane).
  */
 export function CandidateList({
   heading,
@@ -87,6 +99,7 @@ export function CandidateList({
   owner,
   position,
   candidates,
+  engineBest,
   rare,
   rareShown,
   onShowRare,
@@ -101,12 +114,15 @@ export function CandidateList({
   compact,
 }: Props) {
   const all = [...candidates, ...rare];
-  const rows = rareShown ? all : candidates;
+  const engineRows = engineBest ? [engineBest] : [];
+  const rows = [...candidates, ...engineRows, ...(rareShown ? rare : [])];
+  // The guide's rows shown, whose shares are of each other's games.
+  const guideCount = candidates.length + (rareShown ? rare.length : 0);
   const shownMarks = new Set(
     rows.map(({ move }) => marks.get(move.uci)).filter((mark) => mark !== undefined),
   );
   // A drag can point at a rare candidate while its row is hidden.
-  const pointedRow = all.find(({ move }) => move.uci === pointed);
+  const pointedRow = [...all, ...engineRows].find(({ move }) => move.uci === pointed);
   const caption = compact && pointedRow && leadsTo(pointedRow);
   const labelled = useLabelled();
   const styles = useNarrowStyles(STYLES);
@@ -152,6 +168,7 @@ export function CandidateList({
                 <Row
                   candidate={candidate}
                   main={candidate === main}
+                  topEngine={candidate === engineBest}
                   pointed={candidate.move.uci === pointed}
                   mark={marks.get(candidate.move.uci)}
                   // Every row keeps room for a mark once one has one, so their shares line up.
@@ -159,7 +176,7 @@ export function CandidateList({
                   leadsTo={leadsTo(candidate)}
                   compact={compact}
                   // A lone move's share is always all of the games.
-                  share={rows.length > 1 ? candidate.share : undefined}
+                  share={guideCount > 1 ? candidate.share : undefined}
                   playable={playable}
                   onPlay={onPlay}
                   onPoint={onPoint}
@@ -240,6 +257,8 @@ const tabOut = (onTabOut?: () => void) => (event: unknown) => {
 interface RowProps {
   readonly candidate: Candidate;
   readonly main: boolean;
+  /** One of Stockfish's moves listed after the guide's: marked as its top move. */
+  readonly topEngine: boolean;
   readonly pointed: boolean;
   readonly mark?: Mark;
   /** Some row of the list has a mark, so this one keeps room for one. */
@@ -260,6 +279,7 @@ interface RowProps {
 function Row({
   candidate,
   main,
+  topEngine,
   pointed,
   mark,
   markSlot,
@@ -277,7 +297,8 @@ function Row({
   const { color } = theme.semantic;
   const { move, san, engine } = candidate;
   const tone = toneColors[candidateTone(candidate, main)];
-  const hollow = candidate.rare || (engine && !main);
+  // The board marks Stockfish's best, the top move listed beside the guide's.
+  const hollow = candidate.rare || (engine && !main && !topEngine);
   const point = () => onPoint(move.uci);
 
   return (
@@ -287,7 +308,7 @@ function Row({
         san,
         move.book && 'book move',
         share !== undefined && `${percent(share)} of games`,
-        engine?.description,
+        topEngine ? TOP_ENGINE_MOVE : engine?.description,
         mark && SPOKEN_MARKS[mark],
       ]
         .filter(Boolean)
@@ -326,6 +347,15 @@ function Row({
             {san}
           </Text>
           {move.book ? <QualityBadge quality="book" size={BOOK_BADGE_SIZE} /> : null}
+          {topEngine ? (
+            // The badge says what it means on a resting mouse or a tap; the row's label says it aloud.
+            <Tooltip.Root>
+              <Tooltip.Trigger>
+                <QualityBadge quality="best" size={BOOK_BADGE_SIZE} />
+              </Tooltip.Trigger>
+              <Tooltip.Content>{TOP_ENGINE_TIP}</Tooltip.Content>
+            </Tooltip.Root>
+          ) : null}
           {move.risk ? (
             <Text role="caption" tone="secondary" style={styles.risk}>
               {move.risk}
@@ -338,7 +368,7 @@ function Row({
           </Text>
         ) : null}
       </View>
-      {engine ? (
+      {engine && !topEngine ? (
         <Text role="caption" tone="secondary" style={styles.evaluation}>
           {engine.label}
         </Text>
@@ -362,6 +392,10 @@ function Row({
     </Pressable>
   );
 }
+
+/** What a row of Stockfish's among the guide's says it is. */
+const TOP_ENGINE_MOVE = 'top engine move';
+const TOP_ENGINE_TIP = "Top engine move: Stockfish's best reply here, not one the guide teaches.";
 
 /** The book badge, as in the scoresheet, about the height of the notation's capitals. */
 const BOOK_BADGE_SIZE = 16;

@@ -7,13 +7,13 @@ import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { HeaderButton } from '@/components/HeaderButton';
 import { Scoresheet } from '@/components/Scoresheet';
 import { stepButton } from '@/components/Transport';
-import { useScreenKeys } from '@/components/useScreenKeys';
+import { useCloseKeys } from '@/components/useCloseKeys';
 import { numberedMove } from '@/game/replay';
 import { useNarrowPart } from '@/theme/Narrow';
 import { fonts } from '@/theme/theme';
 
 interface Props extends Omit<ComponentProps<typeof Scoresheet>, 'fill'> {
-  /** Its close button, or Escape. */
+  /** Its close button, Escape, or Android's back. */
   readonly onClose: () => void;
 }
 
@@ -30,9 +30,7 @@ export function ScoresheetDrawer({ onClose, ...scoresheet }: Props) {
   const last = plies.length - 1;
   const part = useNarrowPart();
   const labelled = useLabelled();
-  useScreenKeys((event) => {
-    if (event.key === 'Escape') onClose();
-  });
+  useCloseKeys(onClose);
   return (
     <View role="region" aria-label="Scoresheet" {...part('scoresheet-drawer', labelled)}>
       <Inline align="center" justify="between" wrap="nowrap">
