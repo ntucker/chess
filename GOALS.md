@@ -18,5 +18,5 @@ lesson, not just a giant book to read.
 ## Platforms
 
 - Web first: build, test and polish every feature there.
-- Android: supported. Every feature works there too; PROJECTS.md says which changes get an Android check.
+- Android: supported. Every feature works there too. Check on Android anything likely to behave differently there: native code, touch handling you write, platform-specific layout, files with a `.web` twin, the board's web view. UI built from Silk components needs only the web check.
 - No iOS.
