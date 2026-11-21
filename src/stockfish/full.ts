@@ -84,28 +84,28 @@ async function downloadBoth(
   onProgress: (percent: number) => void,
 ): Promise<[string, Blob]> {
   const stop = new AbortController();
-  const abort = () => stop.abort();
-  signal.addEventListener('abort', abort);
-  if (signal.aborted) abort();
-  const stopBoth = (error: unknown): never => {
-    abort();
+  const stopBoth = () => stop.abort();
+  signal.addEventListener('abort', stopBoth);
+  if (signal.aborted) stopBoth();
+  const failBoth = (error: unknown): never => {
+    stopBoth();
     throw error;
   };
   try {
     return await Promise.all([
       download(folder, FULL_LOADER, stop.signal)
         .then((response) => response.text())
-        .catch(stopBoth),
+        .catch(failBoth),
       download(folder, FULL_WASM, stop.signal)
         .then((response) =>
           readWasm(response, (percent) => {
             if (!stop.signal.aborted) onProgress(percent);
           }),
         )
-        .catch(stopBoth),
+        .catch(failBoth),
     ]);
   } finally {
-    signal.removeEventListener('abort', abort);
+    signal.removeEventListener('abort', stopBoth);
   }
 }
 

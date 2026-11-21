@@ -88,9 +88,14 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-/** Waits, a macrotask at a time, until `done` holds. */
+const tick = () => new Promise((resolve) => setTimeout(resolve));
+
+/** Waits, a macrotask at a time, until `done` holds; fails after 100. */
 async function until(done: () => boolean) {
-  while (!done()) await new Promise((resolve) => setTimeout(resolve, 0));
+  for (let ticks = 0; !done(); ticks++) {
+    if (ticks > 100) throw new Error(`Never happened: ${done}`);
+    await tick();
+  }
 }
 
 describe('loadFullStockfish', () => {
@@ -165,12 +170,13 @@ describe('loadFullStockfish', () => {
       );
     }) as typeof fetch);
     const loading = load();
+    // The WebAssembly's first half arrives before the loader's 404.
     await until(() => reports.length > 0);
     loaderAnswer.resolve(new Response('', { status: 404 }));
     await expect(loading).rejects.toBeInstanceOf(NewVersionError);
     expect(wasmSignal?.aborted).toBe(true);
     secondHalf.resolve();
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await tick();
     expect(reports).toEqual(['50', '0 newVersion']);
   });
 
@@ -183,6 +189,22 @@ describe('loadFullStockfish', () => {
     }) as typeof fetch);
     await expect(load()).rejects.toBeInstanceOf(NewVersionError);
     expect(loaderSignal?.aborted).toBe(true);
+  });
+
+  it('aborts both downloads when the caller aborts', async () => {
+    const signals: AbortSignal[] = [];
+    jest.spyOn(globalThis, 'fetch').mockImplementation((async (
+      _url: string,
+      init?: RequestInit,
+    ) => {
+      signals.push(init!.signal!);
+      return new Promise<Response>(() => {});
+    }) as typeof fetch);
+    const stop = new AbortController();
+    void loadFullStockfish(`${ORIGIN}/chess/stockfish/`, stop.signal, report).catch(() => {});
+    await until(() => signals.length === 2);
+    stop.abort();
+    expect(signals.map((signal) => signal.aborted)).toEqual([true, true]);
   });
 
   it('says it tries again, and fails, when the site answers with another error', async () => {
