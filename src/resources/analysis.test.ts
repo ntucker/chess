@@ -156,4 +156,21 @@ describe('AnalysisManager', () => {
     expect(failed()).toBe(false);
     engine.detach();
   });
+
+  it('forgets a search that gave up once a later visit searches it again', async () => {
+    const { controller, sent, engine } = setUp();
+    const failed = () => analysisFailed(controller, 'stockfish', ['e2e4'], controller.getState());
+    controller.subscribe(getAnalysis, 'stockfish', ['e2e4']);
+    await waitForSearch(sent, 'e2e4');
+    engine.receive('bestmove c7c5');
+    await new Promise((resolve) => setTimeout(resolve));
+    controller.unsubscribe(getAnalysis, 'stockfish', ['e2e4']);
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(failed()).toBe(true);
+    sent.length = 0;
+    controller.subscribe(getAnalysis, 'stockfish', ['e2e4']);
+    await waitForSearch(sent, 'e2e4');
+    expect(failed()).toBe(false);
+    engine.detach();
+  });
 });

@@ -223,20 +223,30 @@ export class AnalysisManager implements Manager {
     const { controller: ctrl } = this;
     const { engine, line } = shown;
     const key = analysisKey(engine, line);
-    if (isFinal(ctrl.get(PositionAnalysis, key, ctrl.getState()))) return;
-    shown.release = watchAnalysis(engine, line, {
+    const state = ctrl.getState();
+    if (isFinal(ctrl.get(PositionAnalysis, key, state))) return;
+    const gaveUp = analysisFailed(ctrl, engine, line, state);
+    // False once it fails, which can happen before `watchAnalysis` returns.
+    let running = true;
+    const release = watchAnalysis(engine, line, {
       update(analysis) {
         const record = { ...key, ...analysis };
         if (analysis.final) ctrl.setResponse(getAnalysis, engine, line, record);
         else ctrl.set(PositionAnalysis, key, record);
       },
       // The screen keeps the last depth it showed. The error goes into the
-      // store, so a screen can tell the search gave up (`analysisFailed`);
-      // invalidating it, or a later visit, asks again.
+      // store, so a screen can tell the search gave up (`analysisFailed`)
+      // until it's invalidated or a later visit asks again.
       fail(error) {
+        running = false;
         shown.release = undefined;
         ctrl.setError(getAnalysis, engine, line, error);
       },
     });
+    if (!running) return;
+    shown.release = release;
+    // A search started again, by a later visit, is no longer one that gave up.
+    // Invalidating clears the error; the middleware sees it running.
+    if (gaveUp) void ctrl.invalidate(getAnalysis, engine, line);
   }
 }
