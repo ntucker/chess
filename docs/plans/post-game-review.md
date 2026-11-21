@@ -49,7 +49,8 @@ search next. Tests; no screen.
   (each move floored at 1 there, as lichess does). A move's weight is the standard deviation of the
   win percent over a window of positions ending after it, as many as a tenth of the game's moves
   (2 to 8), within 0.5 to 12. Book, forced and failed moves are left out; under 8 counted moves
-  there is no number ("A brief appearance."). It shows once every searched position is final or failed.
+  there is no number ("A brief appearance."). It shows once every searched position is final or
+  failed.
 - Search order: the move the board has rested on about a second, if unjudged; a full search already
   running; a sketch (first whole depth of at least 12) of every position in game order; full
   searches for the learner's biggest sketch drops, largest first, each needing the positions before
@@ -93,9 +94,9 @@ The lesson page and the free-game page start from a given line; the link in the 
 ### Piece 8: New labels
 
 Brilliant, Great and Miss: rules (a static exchange count for Brilliant; Great tuned to about one a
-game on the measured games; Miss built on `refutation`, which PR #156 adds to
-`src/analysis/quality.ts` for the board's red arrow, so the two agree), badges in `src/theme/moveQuality.ts`, tooltips, contrast checks; they
-join the moments.
+game on the measured games; Miss built on `refutation` in `src/analysis/quality.ts`, which draws
+the board's red arrow, so the two agree), badges in `src/theme/moveQuality.ts`, tooltips, contrast
+checks; they join the moments.
 
 ### Piece 9: Summary
 

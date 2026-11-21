@@ -34,11 +34,12 @@ export const LEAST_COUNTED = 8;
  *
  * Only judged moves count: book and forced moves, and moves whose search
  * failed, are left out. With fewer than `LEAST_COUNTED` of them the answer
- * is `'brief'`. Otherwise it's undefined until every position
- * the review searches (`judgedPosition`) is final or failed, since a move's
- * weight reads positions on both sides: once shown, the number changes only
- * if a failed search is tried again and finishes. The swings are read only from those positions, so a search the
- * game happened to run elsewhere can't change it.
+ * is `'brief'`. Otherwise it's undefined until every position the review
+ * searches (`judgedPosition`) is final or failed, since a move's weight
+ * reads positions on both sides. So once shown, the number changes only
+ * when a failed position is searched again: it's hidden while that runs.
+ * The swings are read only from those positions, so a search the game
+ * happened to run elsewhere can't change it.
  */
 export function gameAccuracy(
   moves: readonly ReviewMove[],
@@ -59,7 +60,7 @@ export function gameAccuracy(
   if (known.some((score, ply) => score === undefined && isSearched(ply))) return undefined;
   const weights = swingWeights(whiteWinPercents(known));
   const scored = counted.flatMap((move) =>
-    // Every counted move is judged once its positions are final; testing it narrows the type.
+    // Never empty: a counted move still waiting has a searched position unfinished, caught above.
     move.status === 'judged'
       ? [{ accuracy: moveAccuracy(move.before * 100, move.after * 100), weight: weights[move.ply] }]
       : [],

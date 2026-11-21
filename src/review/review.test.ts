@@ -103,12 +103,17 @@ describe('reviewMoves against the game', () => {
     expect(
       reviewMoves({ plies, book: [], legal, analyses: [], failed: new Set([6]) })[5].status,
     ).toBe('waiting');
-    // A failed position that finished anyway counts.
-    const finishedAnyway = [...needsAfter, listing(['f3d4', 0.75])];
-    expect(
-      reviewMoves({ plies, book: [], legal, analyses: finishedAnyway, failed: new Set([6]) })[5]
-        .quality,
-    ).toBe('blunder');
+  });
+
+  it('counts a failed position that finished anyway', () => {
+    const analyses = [
+      ...Array(5).fill(undefined),
+      listing(['g8f6', 0.52]),
+      listing(['f3d4', 0.75]),
+    ];
+    expect(reviewMoves({ plies, book: [], legal, analyses, failed: new Set([6]) })[5].quality).toBe(
+      'blunder',
+    );
   });
 });
 

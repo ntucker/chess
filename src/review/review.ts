@@ -99,7 +99,7 @@ export const lostPosition = (
 /**
  * The positions the label of the move from position `ply` needs, in order:
  * the one before it, the one after it, and the one before the opponent's
- * previous move, which Miss reads.
+ * previous move, which the Miss label (piece 8) reads.
  */
 export const labelPositions = (ply: number) => (ply > 0 ? [ply, ply + 1, ply - 1] : [ply, ply + 1]);
 
