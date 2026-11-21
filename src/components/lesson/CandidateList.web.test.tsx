@@ -141,6 +141,19 @@ describe('CandidateList', () => {
     expect(hint({ candidates: [COMMON, candidate('e2e4', 'e4')] })).toBe(false);
   });
 
+  it('leaves the info mark out of a narrow pane, keeping the tip on the heading', () => {
+    const shared = [
+      { ...COMMON, share: 0.6 },
+      { ...candidate('e2e4', 'e4'), share: 0.4 },
+    ];
+    const wideOnly = (shareTip?: string) =>
+      render(
+        { candidates: shared, rare: [], ...(shareTip ? { shareTip } : {}) },
+        (host) => host.querySelectorAll('[data-narrow="wide-only"]').length,
+      );
+    expect(wideOnly('Percentages: who plays each move.')).toBe(wideOnly() + 1);
+  });
+
   it("shows a Stockfish row's change label, and says its description", () => {
     const engine = {
       ...COMMON,
