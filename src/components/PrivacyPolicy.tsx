@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { ExternalLink } from '@/components/ExternalLink';
 import { Page } from '@/components/Page';
-import { PageIntro } from '@/components/PageIntro';
+import { PageIntro, textColumn } from '@/components/PageIntro';
 import { SOURCE_URL } from '@/components/SourceLink';
 import { STAGE_MAX } from '@/components/Stage';
 
@@ -79,5 +79,5 @@ function Section({
 }
 
 const styles = StyleSheet.create({
-  content: { width: '100%', maxWidth: 680, gap: 32, paddingTop: 12, paddingBottom: 48 },
+  content: { ...textColumn, gap: 32 },
 });

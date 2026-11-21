@@ -31,3 +31,11 @@ export function PageIntro({
 const styles = StyleSheet.create({
   title: { fontFamily: fonts.display },
 });
+
+/** The column a page of text sits in, under the header; each page sets its own `gap`. */
+export const textColumn = {
+  width: '100%',
+  maxWidth: 760,
+  paddingTop: 12,
+  paddingBottom: 48,
+} as const;
