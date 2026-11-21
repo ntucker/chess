@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import type { AnalysisLine, Evaluation, FinalAnalysis } from '@/evaluation/evaluation';
 
-import { judgeMove, judgement, refutation } from './quality';
+import { judgeMove, judgement, labelMove, refutation } from './quality';
 
 /** An evaluation where White's expected score is `score`. */
 const at = (score: number): Evaluation => ({ score, pawns: 0 });
@@ -132,5 +132,23 @@ describe('refutation', () => {
     expect(refutation('blunder', listing(['f8c5', 0.3]), 'white')).toBeUndefined();
     expect(refutation('blunder', scored(0.3), 'white')).toBeUndefined();
     expect(refutation('blunder', undefined, 'white')).toBeUndefined();
+  });
+});
+
+describe('labelMove', () => {
+  const move = { uci: 'e2e4', mover: 'white' } as const;
+
+  it("labels the guide's move book and the only legal move best, without analyses", () => {
+    expect(labelMove({ ...move, book: true })).toEqual({ status: 'book', quality: 'book' });
+    expect(labelMove({ ...move, legal: 1 })).toEqual({ status: 'forced', quality: 'best' });
+  });
+
+  it("is judgement's label otherwise, waiting while an analysis it needs is missing", () => {
+    expect(labelMove(move)).toBeUndefined();
+    expect(labelMove({ ...move, legal: 20, before: listing(['e2e4', 0.55]) })).toEqual({
+      status: 'judged',
+      quality: 'best',
+      evaluation: at(0.55),
+    });
   });
 });

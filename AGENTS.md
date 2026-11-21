@@ -62,7 +62,7 @@ Run format, lint, typecheck and tests before declaring any task done. Tests sit 
 - `android/` (and `ios/`) are generated (Continuous Native Generation) and ignored by git. Configure native behavior in `app.json`, `app.config.ts` and config plugins rather than creating or editing those directories.
 - Expo Go only includes its bundled native modules. Once a library with native code is added, running the app on Android needs a development build: `npx expo run:android` locally, or an EAS build.
 - `.yarn/patches/expo-*.patch` (applied through `resolutions` in `package.json`) holds a DOM component's props until its page is ready, since on Android an earlier send rejects and a development build shows the error on every launch. `src/components/expoPatch.test.ts` fails when an Expo upgrade drops it, and says what to do.
-- EAS isn't set up yet (there is no `eas.json`). When it is needed, run its CLI as `npx eas-cli@latest <command>` rather than a bare `eas`.
+- Google Play releases build and upload with EAS (`eas.json`: `production` builds a signed app bundle, its version code counted by EAS; `submit` uploads a draft to the internal track). Run its CLI as `npx eas-cli@latest <command>` rather than a bare `eas`. What goes into Play Console is in `store/listing.md`; its icon and feature graphic come from `yarn brand`. Keep `/privacy` (`src/components/PrivacyPolicy.tsx`) and the listing's Data safety answers true when the app gains a network request or stored value.
 - Prefer Expo's own modules over third-party libraries, and check your available skills before adding a dependency.
 
 ## Keeping this file useful

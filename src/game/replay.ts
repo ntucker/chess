@@ -205,7 +205,13 @@ export function lastPosition(line: readonly string[]): Position {
 export function legalMoveCount(line: readonly string[]): number {
   let last: Chess | undefined;
   for (const { pos } of playLine(line)) last = pos;
-  const pos = last!;
+  return countLegalMoves(last!);
+}
+
+/** `legalMoveCount` of the position `fen`, without replaying the moves to it. */
+export const legalMoveCountAt = (fen: string) => countLegalMoves(parsePosition(fen)!);
+
+function countLegalMoves(pos: Chess): number {
   let count = 0;
   for (const [from, dests] of pos.allDests()) {
     const pawn = pos.board.pawn.has(from);
