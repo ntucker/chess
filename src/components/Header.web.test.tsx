@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client';
 
 import { readShippedLesson, shippedIds } from '@/lesson/lesson.fixture';
 import { pathNames, variationPath } from '@/lesson/select';
+import { SettingsProvider } from '@/settings/SettingsProvider';
 import { NARROW_PX } from '@/theme/narrow';
 import { themes } from '@/theme/theme';
 
@@ -25,7 +26,9 @@ function buttonParts(props: Parameters<typeof Header>[0]) {
   act(() =>
     root.render(
       <SilkProvider theme={themes.dark}>
-        <Header {...props} />
+        <SettingsProvider>
+          <Header {...props} />
+        </SettingsProvider>
       </SilkProvider>,
     ),
   );
@@ -58,7 +61,9 @@ describe('Header', () => {
     act(() =>
       root.render(
         <SilkProvider theme={themes.dark}>
-          <Header onRestart={onRestart} />
+          <SettingsProvider>
+            <Header onRestart={onRestart} />
+          </SettingsProvider>
         </SilkProvider>,
       ),
     );
