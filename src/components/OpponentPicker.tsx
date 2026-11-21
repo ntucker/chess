@@ -2,12 +2,12 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   elevationBackground,
   mapSliderStyle,
-  sliderMarkStyle,
   Popover,
   Pressable,
   Slider,
   Text,
   Tooltip,
+  useSliderMarkStyle,
   useTheme,
 } from '@reactive/silk-native';
 import { type ComponentRef, useEffect, useId, useRef, useState } from 'react';
@@ -395,9 +395,8 @@ function Scale({ steps, shownAt }: ScaleProps) {
   const { theme, density } = useTheme();
   const { color } = theme.semantic;
   const { thumbSize } = mapSliderStyle(theme, { size: SLIDER_SIZE }, density);
-  const last = steps.length - 1;
   /** Places something `offset` right of the thumb's center at stop `index` (a half is midway). */
-  const at = (index: number, offset: number) => sliderMarkStyle(index / last, thumbSize, offset);
+  const at = useSliderMarkStyle();
   const engineBreak = steps.findIndex(isStockfish) - 0.5;
   const onStockfish = isStockfish(steps[shownAt]!);
   // The track's own fill, so a passed stop reads as a bead on it.
@@ -487,7 +486,16 @@ const styles = StyleSheet.create({
   rating: { fontFamily: fonts.mono, fontVariant: ['tabular-nums'] },
   // At the heading's far end, where it stays as the names change length.
   info: { marginLeft: 'auto', alignSelf: 'center' },
-  slider: { height: SLIDER_HEIGHT, marginTop: 8, marginBottom: 6, marginLeft: 15, marginRight: 19 },
+  // Silk's slider is 100% wide; between these margins it stretches instead, so it doesn't overflow.
+  slider: {
+    width: 'auto',
+    alignSelf: 'stretch',
+    height: SLIDER_HEIGHT,
+    marginTop: 8,
+    marginBottom: 6,
+    marginLeft: 15,
+    marginRight: 19,
+  },
   // Out of sight and out of layout, but still readable as a description.
   tip: { ...visuallyHidden, opacity: 0 },
   engine: { position: 'absolute', top: 0, fontSize: 10, lineHeight: 13 },
