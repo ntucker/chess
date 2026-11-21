@@ -18,5 +18,5 @@ lesson, not just a giant book to read.
 ## Platforms
 
 - Web first: build, test and polish every feature there.
-- Android: supported. Every feature works there too; check changes to layout, touch input or native code on Android.
+- Android: supported. Every feature works there too; check changes likely to behave differently there (native code, touch input, platform-specific layout) on Android. Changes built from the design primitives need only the web check.
 - No iOS.
