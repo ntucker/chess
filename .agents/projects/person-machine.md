@@ -13,6 +13,8 @@ using it. `expo prebuild --clean` drops `cmake.dir` from `android/local.properti
 A release build (`gradlew assembleRelease` or `bundleRelease`) runs out of memory on GLADOS with the
 defaults. Cap Metro's workers in `android/app/build.gradle` (`extraPackagerArgs = ["--max-workers",
 "2"]` in the `react` block) and run Gradle with `--max-workers=1 -Dorg.gradle.parallel=false`.
+`android/` is generated, so `expo prebuild --clean` drops the cap too: put it back, and never commit
+`android/`.
 
 Git on Windows has no GitHub sign-in there; WSL's `gh` does. To push from GLADOS, run
 `git -c credential.helper='!gh auth git-credential' push` in WSL.
