@@ -824,6 +824,68 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
     engineCheck: true,
     info: { id: 'italian', title: 'Italian Game', side: 'white' },
   },
+  'kings-indian': {
+    from: [
+      {
+        study: '6KDwzqUU',
+        credit: {
+          title: "King's Indian Complete Study Guide",
+          author: 'loloriv',
+          url: 'https://lichess.org/study/6KDwzqUU',
+        },
+        // The theory chapters; the two Bayonet reviews replay the main line as whole games.
+        chapters: (title: string) => Object.hasOwn(LOLORIV_KID_CHAPTERS, title),
+        chapterName: (title: string) => LOLORIV_KID_CHAPTERS[title],
+      },
+      {
+        study: 'Ks4C5dXu',
+        credit: {
+          title: "King's Indian Defense",
+          author: 'LeninPerez',
+          url: 'https://lichess.org/study/Ks4C5dXu',
+        },
+        chapters: (title: string) => Object.hasOwn(LENIN_KID_CHAPTERS, title),
+        chapterName: (title: string) => LENIN_KID_CHAPTERS[title],
+      },
+      {
+        study: '4HN6lhFd',
+        credit: {
+          title: "The King's Indian Defense",
+          author: 'heyucatchthis',
+          url: 'https://lichess.org/study/4HN6lhFd',
+        },
+        chapters: (title: string) => Object.hasOwn(HEYU_KID_CHAPTERS, title),
+        chapterName: (title: string) => HEYU_KID_CHAPTERS[title],
+      },
+      {
+        study: '179Uvn8y',
+        credit: {
+          title: "10 TRAPS in the King's Indian Defense (KID)",
+          author: 'Bosburp',
+          url: 'https://lichess.org/study/179Uvn8y',
+        },
+        chapters: (title: string) => Object.hasOwn(KID_TRAP_CHAPTERS, title),
+        chapterName: (title: string) => KID_TRAP_CHAPTERS[title],
+      },
+      // Wikibooks fills White's moves the studies skip. Its King's Indian pages are short, so each
+      // root is one move.
+      {
+        root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._c4/2...g6/3._Nc3/3...Bg7/4._e4/4...d6/5._f4',
+        topName: 'Four Pawns Attack',
+      },
+      {
+        root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._c4/2...g6/3._Nc3/3...Bg7/4._e4/4...d6/5._f3',
+        topName: 'Sämisch Variation',
+      },
+      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._c4/2...g6/3._Nc3/3...Bg7/4._Nf3' },
+      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._c4/2...g6/3._Nf3' },
+      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._Nf3/2...g6' },
+      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._Bg5' },
+      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._Bf4', topName: 'London System' },
+    ],
+    engineCheck: true,
+    info: { id: 'kings-indian', title: "King's Indian Defence", side: 'black' },
+  },
   'queens-gambit': {
     from: [
       {
@@ -1305,4 +1367,54 @@ const LENIN_RUY_CHAPTERS: Readonly<Record<string, string | undefined>> = {
   'Schliemann Defense': 'Schliemann Defence',
   'Cozio Defense': 'Cozio Defence',
   'Fianchetto Defense': 'Fianchetto Defence',
+};
+
+/** loloriv's King's Indian chapters, as variation names. */
+const LOLORIV_KID_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  "King's Indian Defense Introduction": undefined,
+  'Classical (Orthodox) Theory': 'Orthodox Variation',
+  'Bayonet Attack Theory': 'Orthodox Variation: Bayonet Attack',
+  'Sämisch Variation Theory': 'Sämisch Variation',
+  "King's Indian Defense vs. London System Theory": 'London System',
+};
+
+/** LeninPerez's King's Indian chapters, as variation names. */
+const LENIN_KID_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  Introduction: undefined,
+  'Classic Variation 1 (O-O)': 'Orthodox Variation',
+  // 7.d5, which the explorer names the Petrosian Variation.
+  'Classic Variation 2 (Advance d5)': 'Orthodox Variation: Petrosian Variation',
+  // 6.Be3, the Larsen Variation.
+  'Classic Variation 3 (Larsen of the advance)': 'Larsen Variation',
+  'Variation Classic 4 (Larsen dxe5)': 'Larsen Variation',
+  'Variante Sämisch 1 (Ce2)': 'Sämisch Variation',
+  'Sämisch Variation 2 (Advance d5)': 'Sämisch Variation',
+  'Sämisch Variation 3 (dxc5)': 'Sämisch Variation',
+  'Sämisch Variation 4 (Bg5)': 'Sämisch Variation',
+  "King's Indian vs London System 1": 'London System',
+  "King's Indian vs London System 2": 'London System',
+};
+
+/** heyucatchthis's King's Indian chapters, as variation names; its review repeats the others. */
+const HEYU_KID_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  'The KID🔥': undefined,
+  'KID: Orthodox variation🛡️': 'Orthodox Variation',
+  'KID: Samisch Variation⚡': 'Sämisch Variation',
+  'KID: 4 pawns attack!': 'Four Pawns Attack',
+  'KID: Fianchetto System': 'Fianchetto Variation',
+  'KID: Averbakh Variation🏹': 'Averbakh Variation',
+};
+
+/** Bosburp's King's Indian traps, by the variation each is set in; unnamed ones are 5.Nf3 sidelines. */
+const KID_TRAP_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  'Trap 1: Beautiful knight "sac"': undefined,
+  'Trap 2: get a nice position!': 'Four Pawns Attack',
+  'Trap 3: Trap in the Averbakh variation': 'Averbakh Variation',
+  'Trap 4: trap in the Samisch variation': 'Sämisch Variation',
+  'Trap 5: win the queen!': 'London System',
+  'Trap 6: win the knight!': 'Orthodox Variation',
+  'Trap 7: win the knight (again)': undefined,
+  'Trap 8: win the knight or get a good position': undefined,
+  'Trap 9: win the rook!': undefined,
+  'Trap 10: win the rook (again)': 'Sämisch Variation',
 };

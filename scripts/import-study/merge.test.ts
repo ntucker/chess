@@ -26,6 +26,16 @@ const moves = (...sans: string[]) =>
   at(...sans).moves.map(({ uci, book, risk }) => [uci, book ?? false, risk]);
 
 describe('mergeChapters', () => {
+  it('drops accents from variation ids, keeping them in names', () => {
+    const named = mergeChapters(
+      lesson,
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'black')),
+      () => 'Sämisch Variation',
+    );
+    expect(named.variations['samisch-variation']?.name).toBe('Sämisch Variation');
+  });
+
   it('refuses a lesson without chapters', () => {
     expect(() => mergeChapters(lesson, [], [])).toThrow('No chapters to merge for lesson test');
   });
