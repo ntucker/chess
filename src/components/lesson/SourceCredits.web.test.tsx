@@ -22,7 +22,7 @@ const study = (title: string, id: string): LessonSource => ({
 
 const CC_BY_SA = { name: 'CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' };
 
-/** The credits' text and link names, after pressing their show-all toggle `presses` times. */
+/** The credits' text, link names and show-all toggle's state, after pressing their show-all toggle `presses` times. */
 function credits(sources: readonly LessonSource[], indexed: readonly LessonSource[], presses = 0) {
   const index = { ...FIXTURE_INDEX, slav: { ...FIXTURE_INDEX.slav, sources: indexed } };
   const host = document.createElement('div');
@@ -44,8 +44,9 @@ function credits(sources: readonly LessonSource[], indexed: readonly LessonSourc
   const labels = [...host.querySelectorAll('[aria-label]')].map((link) =>
     link.getAttribute('aria-label'),
   );
+  const expanded = host.querySelector('button')?.getAttribute('aria-expanded');
   act(() => root.unmount());
-  return { text, labels };
+  return { text, labels, expanded };
 }
 
 describe('SourceCredits', () => {
@@ -124,18 +125,24 @@ describe('SourceCredits', () => {
     ];
 
     it('starts as a count of each site, its license still linked', () => {
-      expect(credits(sources, sources).text).toBe(
+      const { text, expanded } = credits(sources, sources);
+      expect(text).toBe(
         'Lesson from 5 lichess studies and 4 pages of Chess Opening Theory by Wikibooks' +
           ' contributors (CC\u00a0BY-SA\u00a04.0) · Show all sources',
       );
+      expect(expanded).toBe('false');
     });
 
     it('shows every source on a press, and the counts again on another', () => {
-      expect(credits(sources, sources, 1).text).toBe(
+      const open = credits(sources, sources, 1);
+      expect(open.expanded).toBe('true');
+      expect(open.text).toBe(
         'Lesson from lichess studies by Matkun (1, 2, 3, 4) and wub1234; Chess Opening Theory by' +
           ' Wikibooks contributors (CC\u00a0BY-SA\u00a04.0): 1.e4, 1.d4, 1.c4 and 1.Nf3 · Show fewer',
       );
-      expect(credits(sources, sources, 2).text).toMatch(/^Lesson from 5 lichess studies/);
+      const closed = credits(sources, sources, 2);
+      expect(closed.expanded).toBe('false');
+      expect(closed.text).toMatch(/^Lesson from 5 lichess studies/);
     });
   });
 

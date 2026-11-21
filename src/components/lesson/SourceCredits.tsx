@@ -20,8 +20,8 @@ import { LessonIndexContext } from '@/resources/lesson';
  * credited together (`creditGroups`): "lichess studies by A and B (1, 2)",
  * "Chess Opening Theory by Wikibooks contributors (CC BY-SA 4.0): 1.e4 c6,
  * 1.e4 e5". A share-alike license asks for its link wherever its text is
- * shown. A long list starts as a count of each site's sources, its licenses
- * still linked, until the learner shows them all.
+ * shown. A long list where a site credits several sources starts as a count
+ * of each site's, its licenses still linked, until the learner shows them all.
  */
 export function SourceCredits({ sources }: { readonly sources: readonly LessonSource[] }) {
   const name = sourceNamer(sourcesOf(use(LessonIndexContext), sources));
