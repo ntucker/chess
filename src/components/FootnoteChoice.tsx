@@ -2,7 +2,7 @@ import { a11yState, Inline, Pressable, Text, useTheme } from '@reactive/silk-nat
 import { useId } from 'react';
 import { StyleSheet } from 'react-native';
 
-import { visuallyHidden } from '@/theme/narrow';
+import { spokenOnly } from '@/theme/narrow';
 import { negated, touchPadding, touchTarget } from '@/theme/touch';
 
 const WEB = process.env.EXPO_OS === 'web';
@@ -157,5 +157,5 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   // Out of sight and out of layout, but still readable as a description.
-  hint: { ...visuallyHidden, opacity: 0 },
+  hint: spokenOnly,
 });

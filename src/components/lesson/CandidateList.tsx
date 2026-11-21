@@ -18,7 +18,7 @@ import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { QualityBadge } from '@/components/QualityBadge';
 import type { Mark } from '@/progress/progress';
-import { narrowLength, narrowStyles, visuallyHidden } from '@/theme/narrow';
+import { narrowLength, narrowStyles, spokenOnly } from '@/theme/narrow';
 import { NarrowScroll, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
 import { fonts } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
@@ -433,7 +433,7 @@ const STATIC = StyleSheet.create({
   // The mark beside the heading's last word, as wide as it needs.
   tipped: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
   // Out of sight and out of layout, but read.
-  spoken: { ...visuallyHidden, opacity: 0 },
+  spoken: spokenOnly,
 });
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;

@@ -30,7 +30,7 @@ export function LessonControls({ mode, onMode }: Props) {
         <Toggle
           label="Moves on the board"
           checked={showMoves}
-          disabled={!movesSwitchApplies(mode)}
+          disabled={movesSwitchApplies(mode) ? undefined : 'Only in Explore'}
           onChange={(on) => dispatch({ type: 'chosen', choice: { showMoves: on } })}
         />
         <Toggle

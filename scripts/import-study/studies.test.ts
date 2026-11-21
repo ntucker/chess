@@ -2,7 +2,9 @@ import { describe, expect, it } from '@jest/globals';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { lessonInfo, STUDIES } from './studies';
+import type { Chapter } from './study';
+import { lessonInfo, STUDIES, type StudySource, type WikibooksSource } from './studies';
+import { titleCase } from './wikibooks';
 
 describe('lessonInfo', () => {
   it('credits a study the recipe reads twice once, where it first comes', () => {
@@ -34,5 +36,16 @@ describe('STUDIES', () => {
         .filter((file) => !existsSync(join(__dirname, file))),
     );
     expect(missing).toEqual([]);
+  });
+
+  it('names the Caro-Kann Tal chapter alike from the study and from Wikibooks', () => {
+    const { from } = STUDIES['caro-kann'];
+    const study = from.find((source): source is StudySource => 'study' in source);
+    const wikibooks = from.find((source): source is WikibooksSource => 'root' in source);
+    // A copy of the study's chapter title; if lichess retitles it, the rebuild's diff shows that.
+    const title = '🔵 14 Advance Variation: Tal Variation (4.h4) & Bayonet Attack (4.g4)';
+    expect(study?.chapterName?.(title, {} as Chapter)).toBe(
+      `Advance Variation: ${titleCase(wikibooks?.rename?.['Tal variation'] ?? '')}`,
+    );
   });
 });
