@@ -132,6 +132,13 @@ export function endingAct(
   };
 }
 
+/** Which two ranks the card lies across, off the middle or on it. */
+export type CardBand = 'upper' | 'middle' | 'lower';
+
+/** The bands in the order they're tried, and each one's top row from the top of the board. */
+const BANDS: readonly CardBand[] = ['middle', 'upper', 'lower'];
+const BAND_TOP: Readonly<Record<CardBand, number>> = { upper: 1, middle: 3, lower: 5 };
+
 /**
  * Where the card sits, which it stays for as long as the final position is
  * shown: across the middle two ranks, else the two above or below them. It
@@ -140,27 +147,16 @@ export function endingAct(
  * from White's side, the queen on h4 is in the middle two ranks, so the
  * card goes above them.
  */
-export type CardBand = 'upper' | 'middle' | 'lower';
-
-/** Each band and its top row, from the top of the board, in the order they're tried. */
-const BANDS: readonly (readonly [CardBand, number])[] = [
-  ['middle', 3],
-  ['upper', 1],
-  ['lower', 5],
-];
-
 export function cardBand(
   { kings, landed }: Pick<Ending, 'kings' | 'landed'>,
   orientation: Color,
 ): CardBand {
   const row = (square: Square) => squareOffset(square, orientation)[1];
-  const clearOf =
-    (rows: readonly number[]) =>
-    ([, top]: (typeof BANDS)[number]) =>
-      !rows.some((each) => each >= top && each < top + 2);
+  const clearOf = (squares: readonly Square[]) => (band: CardBand) =>
+    squares.every((square) => row(square) < BAND_TOP[band] || row(square) >= BAND_TOP[band] + 2);
   // Two kings block at most two of the three bands.
-  const open = BANDS.filter(clearOf(Object.values(kings).map(row)));
-  return (open.find(clearOf([row(landed)])) ?? open[0])[0];
+  const open = BANDS.filter(clearOf(Object.values(kings)));
+  return open.find(clearOf([landed])) ?? open[0];
 }
 
 /**
