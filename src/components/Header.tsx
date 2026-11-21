@@ -1,5 +1,5 @@
 import type Ionicons from '@expo/vector-icons/Ionicons';
-import { a11yState, Inline, Pressable, Separator, Text } from '@reactive/silk-native';
+import { Inline, Pressable, Separator, Text } from '@reactive/silk-native';
 import type { ComponentProps } from 'react';
 import { Image, View } from 'react-native';
 
@@ -113,8 +113,7 @@ export function Header({ place, placeLink, back, narrowButton, onRestart }: Head
               iconSize={19}
               accessibilityRole="button"
               accessibilityLabel={narrowButton.label}
-              {...(narrowButton.expanded !== undefined &&
-                a11yState({ expanded: narrowButton.expanded }))}
+              expanded={narrowButton.expanded}
               onPress={narrowButton.onPress}
             />
           </NarrowOnly>

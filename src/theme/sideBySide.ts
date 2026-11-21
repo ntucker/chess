@@ -70,7 +70,7 @@ const PANEL_RESERVE = narrowLength('panel-reserve', 0);
 export const PROGRAM_FOOT = narrowLength('program-foot', 0);
 /** Height around the board, and what is kept below it: the panel's reserve, and any controls under the panel. */
 const besideHeight = (foot: boolean) =>
-  AROUND_BOARD.plus(foot ? PANEL_RESERVE.plus(PROGRAM_FOOT) : PANEL_RESERVE);
+  AROUND_BOARD.plus(PANEL_RESERVE).plus(foot ? PROGRAM_FOOT : 0);
 /** Space above the panel when it sits below the board (Stage.tsx). */
 export const WRAPPED_GAP = narrowLength('wrapped-gap', 32);
 /**
@@ -79,8 +79,10 @@ export const WRAPPED_GAP = narrowLength('wrapped-gap', 32);
  * Shorter, the page scrolls, as narrow.css lets a web page grow.
  */
 export function narrowPageMin(foot = false) {
-  const least = AROUND_BOARD.plus(BOARD_MIN).plus(WRAPPED_GAP).plus(PROGRAM_FLOOR);
-  return (foot ? least.plus(PROGRAM_FOOT) : least).narrow;
+  return AROUND_BOARD.plus(BOARD_MIN)
+    .plus(WRAPPED_GAP)
+    .plus(PROGRAM_FLOOR)
+    .plus(foot ? PROGRAM_FOOT : 0).narrow;
 }
 /**
  * The board column's width limit on the web, on a page with controls under

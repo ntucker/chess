@@ -34,7 +34,6 @@ export interface ReviewAddress {
 
 const TITLE = 'Review · Opening Night';
 const BACK = { href: '/', label: 'Back to the game' } as const;
-const HEADER = { place: { name: 'Review' }, back: BACK };
 
 /**
  * The review of the game the address names, on the board's page: the board
@@ -93,7 +92,7 @@ function ReviewScreen({
     <Stage
       title={TITLE}
       header={{
-        place: picked ? { name: picked.title, parent: 'Review' } : HEADER.place,
+        place: picked ? { name: picked.title, parent: 'Review' } : { name: 'Review' },
         back: BACK,
         narrowButton: {
           icon: 'list',
@@ -165,7 +164,7 @@ function ReviewPlaceholder({ message }: { readonly message?: string }) {
   return (
     <Stage
       title={TITLE}
-      header={HEADER}
+      header={{ place: { name: 'Review' }, back: BACK }}
       board={
         <BoardColumnPlaceholder>
           {message ? null : <Spinner label="Setting up the review" />}

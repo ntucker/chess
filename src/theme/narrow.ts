@@ -229,6 +229,9 @@ const IDEA_PANE = {
 /** The lesson panes' least height on a narrow page: a couple of moves. */
 const PANES_FLOOR = 140;
 
+/** The panel's least height under the board on a narrow page: a few lines of it (narrow.css's `program` writes it too). */
+export const PROGRAM_FLOOR = 120;
+
 /**
  * narrow.css's rules as native styles. narrow.test.ts checks each declaration
  * is in the part's rule there (`wide` in the rules outside the media query),
@@ -241,9 +244,6 @@ const PANES_FLOOR = 140;
  * strip beside the board, or the panes split unevenly. Yoga works out an
  * automatic basis afresh each time. Seen on React Native 0.88.1.
  */
-/** The panel's least height under the board on a narrow page: a few lines of it (narrow.css's `program` writes it too). */
-export const PROGRAM_FLOOR = 120;
-
 export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
   'wide-only': { narrow: { display: 'none' } },
   'wide-only-spoken': { narrow: visuallyHidden },
