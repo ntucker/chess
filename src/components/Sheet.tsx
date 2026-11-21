@@ -1,7 +1,7 @@
 import { Dialog, Inline } from '@reactive/silk-native';
 import { useIsFocused } from 'expo-router';
 import { type ReactNode, useEffect, useEffectEvent } from 'react';
-import { Platform, ScrollView } from 'react-native';
+import { ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HEADER_BUTTON_SIZE, HeaderButton } from '@/components/HeaderButton';
@@ -60,10 +60,12 @@ export function Sheet({ title, onClose, children }: Props) {
 }
 
 /**
- * The navigation bar's height on Android, where the sheet runs to the screen's
- * bottom edge under it (edge-to-edge). The web's sheet ends above it.
+ * The bottom safe-area inset on native (Android's navigation bar), where the
+ * app is edge-to-edge and the sheet runs to the screen's bottom edge under it,
+ * so the sheet's padding (0 in STYLES) takes the inset instead. The web's sheet
+ * ends above the browser's bars.
  */
-const useBottomInset = Platform.OS === 'web' ? () => 0 : () => useSafeAreaInsets().bottom;
+const useBottomInset = process.env.EXPO_OS === 'web' ? () => 0 : () => useSafeAreaInsets().bottom;
 
 /** Space inside the sheet: Silk's step 5. */
 const INSET = themes.dark.semantic.space[5];
