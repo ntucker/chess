@@ -2,10 +2,10 @@ import { StateContext, useController, useSubscription } from '@data-client/react
 import { use, useEffect, useReducer } from 'react';
 
 import { isFinal } from '@/evaluation/evaluation';
-import { analyze, type Color, legalMoveCount, replay } from '@/game/replay';
+import { analyze, type Color, legalMovesAt, replay } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { bookMoves } from '@/lesson/select';
-import { analysisFailed, analysisKey, getAnalysis, PositionAnalysis } from '@/resources/analysis';
+import { analysisFailed, getAnalysis, storedAnalyses } from '@/resources/analysis';
 import { useNeedsStockfish } from '@/stockfish/demand';
 
 import { gameAccuracy } from './accuracy';
@@ -20,6 +20,9 @@ import {
   tally,
 } from './review';
 import { DWELL_MS, initialReview, reviewReducer } from './screen';
+
+/** The review judges with Stockfish lite whatever the settings say, as lessons do. */
+const ENGINE = 'stockfish';
 
 /** What the review is of. */
 interface ReviewOf {
@@ -59,13 +62,11 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
   // The moves before each position: `lines[n]` leads to `plies[n]`.
   const lines = plies.map((_, n) => moves.slice(0, n));
   const book = lesson ? bookMoves(lesson, moves) : [];
-  const legal = lines.map(legalMoveCount);
-  const analyses = lines.map((line) =>
-    ctrl.get(PositionAnalysis, analysisKey('stockfish', line), state),
-  );
+  const legal = plies.map(({ fen }) => legalMovesAt(fen));
+  const analyses = storedAnalyses(ctrl, ENGINE, lines, state);
   const final = analyses.map((analysis) => (isFinal(analysis) ? analysis : undefined));
   const failed = new Set(
-    lines.flatMap((line, n) => (analysisFailed(ctrl, 'stockfish', line, state) ? [n] : [])),
+    lines.flatMap((line, n) => (analysisFailed(ctrl, ENGINE, line, state) ? [n] : [])),
   );
   const judged = reviewMoves({ plies, book, legal, analyses: final, failed });
   const leftAt = lesson && leftGuide(lesson, moves, learner, book);
@@ -76,7 +77,7 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
   useSubscription(
     getAnalysis,
     ...(active && searched !== undefined
-      ? (['stockfish', lines[searched]] as const)
+      ? ([ENGINE, lines[searched]] as const)
       : ([null] as const)),
   );
   useEffect(() => {
@@ -114,7 +115,7 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
      */
     tryAgain(target: number) {
       for (const n of labelPositions(target - 1)) {
-        if (lostPosition(failed, analyses, n)) ctrl.invalidate(getAnalysis, 'stockfish', lines[n]);
+        if (lostPosition(failed, analyses, n)) void ctrl.invalidate(getAnalysis, ENGINE, lines[n]);
       }
     },
   };

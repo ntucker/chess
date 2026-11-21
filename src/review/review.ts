@@ -52,7 +52,7 @@ export interface ReviewInput {
   readonly plies: readonly Ply[];
   /** Whether the guide recommends each move (`bookMoves`); empty for a game with no lesson. */
   readonly book: readonly boolean[];
-  /** How many moves are legal in each position, `legal[n]` in `plies[n]` (`legalMoveCount`). */
+  /** How many moves are legal in each position, `legal[n]` in `plies[n]` (`legalMovesAt`). */
   readonly legal: readonly number[];
   /** Stockfish's final analysis of each position, where the store has one. */
   readonly analyses: readonly (FinalAnalysis | undefined)[];

@@ -3,7 +3,7 @@ import { use } from 'react';
 
 import { type EvaluationEngine, isFinal } from '@/evaluation/evaluation';
 import type { Ply } from '@/game/replay';
-import { analysisKey, getAnalysis, PositionAnalysis } from '@/resources/analysis';
+import { getAnalysis, storedAnalyses } from '@/resources/analysis';
 
 import { labelMove, type MoveQuality, refutation } from './quality';
 
@@ -56,10 +56,9 @@ export function useMoveQualities(
   // The position before first: the engine searches the newest asked for, the board's.
   useSubscription(getAnalysis, ...args(-1));
   useSubscription(getAnalysis, ...args(0));
-  const analyses = lines.map((line) => {
-    const analysis = ctrl.get(PositionAnalysis, analysisKey(engine, line), state);
-    return isFinal(analysis) ? analysis : undefined;
-  });
+  const analyses = storedAnalyses(ctrl, engine, lines, state).map((analysis) =>
+    isFinal(analysis) ? analysis : undefined,
+  );
   const qualities = moves.map(
     (uci, n) =>
       labelMove({

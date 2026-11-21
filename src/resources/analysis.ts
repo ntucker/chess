@@ -135,11 +135,20 @@ export function useAnalysis(
   return useQuery(PositionAnalysis, ...(line ? [analysisKey(engine, line)] : [null]));
 }
 
+/** `engine`'s analysis of the position after each of `lines`, as far as the store has it. */
+export const storedAnalyses = (
+  ctrl: Controller,
+  engine: EvaluationEngine,
+  lines: readonly (readonly string[])[],
+  state: State<unknown>,
+) => lines.map((line) => ctrl.get(PositionAnalysis, analysisKey(engine, line), state));
+
 /**
  * Whether `engine`'s search of the position after `line` gave up (the engine
- * stopped on it too often) and nothing has asked again since: the error
- * `AnalysisManager` stores for it. `ctrl.invalidate(getAnalysis, engine,
- * line)` clears it and searches again.
+ * stopped on it too often): the error `AnalysisManager` stores for it, until
+ * the search starts again. `ctrl.invalidate(getAnalysis, engine, line)`
+ * starts it again for a screen still showing the position; a screen that
+ * shows it later starts it too.
  */
 export const analysisFailed = (
   ctrl: Controller,
