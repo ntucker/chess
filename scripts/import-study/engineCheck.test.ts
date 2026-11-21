@@ -89,12 +89,14 @@ describe('engineCheck', () => {
     it('says the position is level, or that the learner is still ahead, when the engine does', async () => {
       // Black stands better after 1.d4, and 1...e5 gives away 0.12 of it.
       const noteAfter = async (before: number, after: { score: number; pawns: number }) => {
-        const check = async (line: readonly string[], key: string): Promise<FinalAnalysis> =>
-          key === keyAfter('d4') || key === keyAfter('d4', 'd5')
-            ? scored({ score: before, pawns: -2 })
-            : key === keyAfter('d4', 'e5') || key === keyAfter('d4', 'e5', 'dxe5')
-              ? scored(after)
-              : evaluate(line, key);
+        const scores: Record<string, FinalAnalysis> = {
+          [keyAfter('d4')]: scored({ score: before, pawns: -2 }),
+          [keyAfter('d4', 'd5')]: scored({ score: before, pawns: -2 }),
+          [keyAfter('d4', 'e5')]: scored(after),
+          [keyAfter('d4', 'e5', 'dxe5')]: scored(after),
+        };
+        const check = async (line: readonly string[], key: string) =>
+          scores[key] ?? evaluate(line, key);
         const { lesson } = await engineCheck(LESSON, check, { gambit: true });
         return lesson.positions[keyAfter('d4')].moves[1].notes?.[0];
       };

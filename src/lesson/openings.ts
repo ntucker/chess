@@ -206,13 +206,22 @@ function likeliestInto(
   const queue = new LikeliestFirst();
   // Each start counts as often as games play it, so a rare line that picks
   // the lesson (1.e4 e5 2.Qf3) doesn't open a variation the main lines reach.
+  // The learner plays the book here too, but a start may hold a move outside
+  // it (one found by the search for any move), which games share with all.
+  // Every move of a start is the lesson's, so none is missing from both.
+  const shareOf = (pos: Chess, uci: Uci) =>
+    [bookOnly, false]
+      .map((only) => sharesAt(lesson, pos, only).find((move) => move.uci === uci)?.share)
+      .find((share) => share !== undefined) ?? 0;
   for (const line of starts) {
     const pos = Chess.default();
     let share = 1;
-    const legal = line.every((uci) => {
-      share *= sharesAt(lesson, pos, bookOnly).find((move) => move.uci === uci)?.share ?? 0;
-      return playMove(pos, uci);
-    });
+    let legal = true;
+    for (const uci of line) {
+      share *= shareOf(pos, uci); // Its share where it's played, so before playing it.
+      legal = !!playMove(pos, uci);
+      if (!legal) break;
+    }
     if (legal) queue.push({ line: [...line], pos, share });
   }
   for (let next = queue.pop(); next; next = queue.pop()) {

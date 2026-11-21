@@ -118,7 +118,6 @@ export async function engineCheck(
         const before = await evaluation(at.line, at.pos);
         const afterAnalysis = await evaluation(line, after);
         const judged = judgement(before, afterAnalysis, move.uci, lesson.side);
-        const quality = judged?.quality;
         if (gambit && judged?.quality === 'mistake' && playable(judged.evaluation, lesson.side)) {
           gambitNote = gambitNoteFor(judged.evaluation, lesson.side);
           report.gambits.push({
@@ -126,13 +125,13 @@ export async function engineCheck(
             move: san(at.pos, move.uci),
             evaluation: describe(judged.evaluation),
           });
-        } else if (quality === 'mistake' || quality === 'blunder') {
+        } else if (judged?.quality === 'mistake' || judged?.quality === 'blunder') {
           book = undefined;
           overruledAt.add(key);
           report.unbooked.push({
             line: sans(lesson, at.line),
             move: san(at.pos, move.uci),
-            quality,
+            quality: judged.quality,
           });
         }
       }
