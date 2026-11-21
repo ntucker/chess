@@ -5,6 +5,7 @@ import {
   use,
   useEffect,
   useEffectEvent,
+  useLayoutEffect,
   useReducer,
 } from 'react';
 
@@ -22,12 +23,18 @@ import {
 
 const KEY = storageKey('settings');
 // Before the settings were one object, the evaluation bar's engine was saved
-// alone under this key; it is read once, while nothing is saved under KEY.
+// alone under this key; it is read while nothing is saved under KEY.
 const LEGACY_EVALUATION_ENGINE_KEY = storageKey('evaluationEngine');
 
 // Native has no pre-rendered page to match, so its first frame can show the
 // remembered settings; the web loads them after hydration.
 const NATIVE = process.env.EXPO_OS !== 'web';
+
+/**
+ * Settings nobody chose, which are never saved: the defaults, and each one
+ * read from storage (loadSettings adds it).
+ */
+const UNCHOSEN = new WeakSet<Settings>([DEFAULT_SETTINGS]);
 
 // No defaults: a component outside SettingsProvider fails loudly rather than
 // reading defaults and dropping changes.
@@ -50,17 +57,22 @@ export function SettingsProvider({ children }: { readonly children: ReactNode })
     const remembered = loadSettings();
     if (remembered) dispatch({ type: 'loaded', settings: remembered });
   });
-  useEffect(() => {
+  // A layout effect, so the remembered settings apply in the hydrated page's
+  // first frame rather than the next: the theme would flash the device's first.
+  useLayoutEffect(() => {
     if (NATIVE) return;
     load();
     return subscribeStorage(KEY, load);
   }, []);
 
   useEffect(() => {
-    // DEFAULT_SETTINGS itself means nothing was chosen or remembered yet. On
-    // the web, saving it would overwrite the remembered settings before they
-    // load; any choice, even of the default values, is a new object.
-    if (settings !== DEFAULT_SETTINGS) writeStorage(KEY, JSON.stringify(settings));
+    // Saves only what the learner chose. Settings read from storage are there
+    // already, and writing them back could undo what was saved meanwhile;
+    // between two tabs on builds with different fields, each tab's write would
+    // fire the other's load and write forever. DEFAULT_SETTINGS means nothing
+    // was chosen or remembered yet. Any choice, even of the same values, is a
+    // new object.
+    if (!UNCHOSEN.has(settings)) writeStorage(KEY, JSON.stringify(settings));
   }, [settings]);
 
   return (
@@ -79,8 +91,14 @@ export const useSettings = () => requireProvider(use(SettingsContext), 'Settings
  */
 export const useSettingsDispatch = () => requireProvider(use(DispatchContext), 'SettingsProvider');
 
-/** The remembered settings, or undefined when nothing is remembered. */
+/** The remembered settings, marked unchosen, or undefined when nothing is remembered. */
 function loadSettings(): Settings | undefined {
+  const settings = readSettings();
+  if (settings) UNCHOSEN.add(settings);
+  return settings;
+}
+
+function readSettings(): Settings | undefined {
   const stored = readStorage(KEY);
   if (stored != null) return parseSettings(stored);
   const evaluationEngine = readStorage(LEGACY_EVALUATION_ENGINE_KEY);

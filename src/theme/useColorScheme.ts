@@ -13,7 +13,9 @@ const getScheme = (): ColorScheme => (Appearance.getColorScheme() === 'dark' ? '
  * server, which can't know it, so the first render there is always light and
  * the setting applies once the page hydrates. (React Native's useColorScheme
  * reads it during hydration, so the server's light styles stay where it said
- * dark.)
+ * dark.) Only AppTheme reads it, to follow the device while the learner's
+ * theme is System; anything else reads the scheme shown from Silk's
+ * `useTheme().theme.colorScheme`.
  */
 export function useColorScheme(): ColorScheme {
   return useSyncExternalStore(subscribe, getScheme, () => 'light');

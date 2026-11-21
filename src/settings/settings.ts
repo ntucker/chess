@@ -3,6 +3,9 @@ import { EVALUATION_ENGINES, type EvaluationEngine } from '@/evaluation/evaluati
 import { type Color, COLORS } from '@/game/replay';
 import { type Opponent, OPPONENTS } from '@/opponent/opponent';
 
+export const THEMES = ['system', 'light', 'dark'] as const;
+export type Theme = (typeof THEMES)[number];
+
 /** What the learner chose, remembered on the device as one object. */
 export interface Settings {
   /** Who plays the other side: a Maia rating, or Stockfish above them all. */
@@ -17,6 +20,8 @@ export interface Settings {
   readonly showTraps: boolean;
   /** The side whose openings the start position lists: the side of the lesson last played. */
   readonly side: Color;
+  /** Light or dark colors, or the device's light or dark setting. */
+  readonly theme: Theme;
 }
 
 /** The settings before the learner chooses, which the pre-rendered page shows. */
@@ -30,6 +35,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showTraps: false,
   // Most lessons are defences.
   side: 'black',
+  theme: 'system',
 };
 
 export type SettingsAction =
@@ -69,6 +75,7 @@ export function settingsFrom(stored: StoredSettings): Settings {
     showMoves: oneOf(BOOLEANS, stored.showMoves) ?? DEFAULT_SETTINGS.showMoves,
     showTraps: oneOf(BOOLEANS, stored.showTraps) ?? DEFAULT_SETTINGS.showTraps,
     side: oneOf(COLORS, stored.side) ?? DEFAULT_SETTINGS.side,
+    theme: oneOf(THEMES, stored.theme) ?? DEFAULT_SETTINGS.theme,
   };
 }
 
