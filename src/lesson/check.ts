@@ -30,6 +30,7 @@ import {
 } from '@/game/replay';
 
 import {
+  AI_MODELS,
   EVALUATIONS,
   IMBALANCE_KINDS,
   MAX_NOTE_WORDS,
@@ -280,8 +281,8 @@ function checkMove(
   if (games && bands && (games.length !== bands.length || !games.every(isCount))) {
     report(`${path}.games`, 'needs one whole count per rating band');
   }
-  if (risk !== undefined && !RISKS.includes(risk))
-    report(`${path}.risk`, `${risk} is not one of ${RISKS.join(', ')}`);
+  const riskProblem = risk === undefined ? undefined : notOneOf(RISKS, risk);
+  if (riskProblem) report(`${path}.risk`, riskProblem);
   try {
     return played(pos, [move.uci]);
   } catch (error) {
@@ -392,6 +393,11 @@ function checkNotes(notes: readonly Note[] | undefined, pos: Chess, path: string
     if (wording) report(`${path}[${i}].text`, wording);
     if (note.generated && note.original !== undefined)
       report(`${path}[${i}].original`, 'is on a generated note, which no guide wrote');
+    // An empty model (or null in the JSON) credits nobody, like none at all.
+    const modelProblem = note.model
+      ? notOneOf(Object.keys(AI_MODELS), note.model)
+      : note.generated && 'is missing on a generated note, so the app could not credit it';
+    if (modelProblem) report(`${path}[${i}].model`, modelProblem);
     note.ideas?.forEach((idea, j) => {
       const problem =
         checkIdea(idea, pos) ?? (note.generated ? generatedIdeaProblem(idea, pos) : undefined);
@@ -413,7 +419,13 @@ function square(name: string): Square {
 }
 
 function oneOf(values: readonly string[], value: string, what: string): void {
-  if (!values.includes(value)) fail(`${what} ${value} is not one of ${values.join(', ')}`);
+  const problem = notOneOf(values, value);
+  if (problem) fail(`${what} ${problem}`);
+}
+
+/** Why `value` is none of `values`, or undefined when it is one. */
+function notOneOf(values: readonly string[], value: string): string | undefined {
+  return values.includes(value) ? undefined : `${value} is not one of ${values.join(', ')}`;
 }
 
 /** `uci` as a legal move in `pos`, written as lesson files write it. */

@@ -1,6 +1,9 @@
 import { a11yState, Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
+import { oklch } from '@reactive/silk-core/color';
 import type { ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
+
+const SHADOW_INK = oklch(0, 0, 0);
 
 interface PillOption<T extends string> {
   readonly value: T;
@@ -41,7 +44,7 @@ export function PillChoice<T extends string>({ label, options, value, onChange }
               styles.option,
               selected && {
                 backgroundColor: color.surfaceRaised,
-                shadowColor: '#000',
+                shadowColor: SHADOW_INK,
                 shadowOpacity: shadow.raised.opacity,
                 shadowRadius: 6,
                 shadowOffset: { width: 0, height: 2 },

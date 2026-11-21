@@ -40,8 +40,6 @@ export const NARROW_PX = {
    * as free play's; the lesson's draws one short line instead.
    */
   'headline-size': 20,
-  /** A row of the opponent's strength list, tall enough to tap (OpponentPicker.tsx). */
-  'menu-row-height': 40,
   /** Space between the board column and the panel below it (Stage.tsx). */
   'wrapped-gap': 12,
   /** Space between the panel's sections (LessonScreen.tsx)... */
@@ -207,6 +205,9 @@ export const visuallyHidden = {
   height: 1,
   overflow: 'hidden',
 } as const satisfies ViewStyle;
+
+/** Out of sight and out of layout, but read by screen readers. */
+export const spokenOnly = { ...visuallyHidden, opacity: 0 } as const satisfies ViewStyle;
 
 /** How a part looks off the web, on each kind of page. */
 interface NativePart {

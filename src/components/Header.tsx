@@ -7,6 +7,7 @@ import { HeaderButton } from '@/components/HeaderButton';
 import { CHEVRON_WIDTH, type Destination, PlaceLink } from '@/components/PlaceLink';
 import { HEADER_HEIGHT } from '@/theme/sideBySide';
 import { SourceLink } from '@/components/SourceLink';
+import { ThemeSwitch } from '@/components/ThemeSwitch';
 import { NARROW_CSS_LOADS, narrowCalc, narrowLength, narrowStyles } from '@/theme/narrow';
 import { NarrowOnly, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
 import { fonts } from '@/theme/theme';
@@ -40,7 +41,7 @@ export interface HeaderProps {
 
 /**
  * The wordmark (the logo, the name in the display serif, and the tagline),
- * with a link to the source at the far end. On a narrow page it's
+ * with the theme button and a link to the source at the far end. On a narrow page it's
  * one slim row: a smaller logo, the page's `place` (or the name, when there
  * is none), and no tagline. A page on top of another starts with a back button.
  */
@@ -89,6 +90,7 @@ export function Header({ place, placeLink, back, onSettings, onRestart }: Header
           </Text>
           <Separator orientation="vertical" style={styles.rule} />
         </Inline>
+        <ThemeSwitch />
         <View {...part(Boolean(onSettings) && 'wide-only')}>
           <SourceLink />
         </View>

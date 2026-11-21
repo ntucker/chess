@@ -2,6 +2,7 @@ import {
   type ColorScheme,
   createTheme,
   generateScale,
+  oklch,
   type SemanticTokens,
   type Theme,
 } from '@reactive/silk-core';
@@ -12,13 +13,13 @@ import {
  * (ivory paper, plum ink, curtain-red accents).
  */
 const brand = {
-  velvet: '#3b2d55',
-  spotlight: '#d9a441',
-  curtain: '#8f1b35',
+  velvet: oklch(0.332, 0.07, 299),
+  spotlight: oklch(0.751, 0.1295, 79.8),
+  curtain: oklch(0.429, 0.15, 14.3),
 } as const;
 
 /** `hex` (#rrggbb) at `alpha` opacity, as a CSS color. */
-export const rgba = (hex: string, alpha: number) => {
+const rgba = (hex: string, alpha: number) => {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
 };
@@ -29,7 +30,7 @@ const pool = (hex: string, alpha: number) =>
  * A soft pool of light from above the stage, as a CSS background image (drawn
  * on the web; native ignores it).
  */
-export const spotlight: Readonly<Record<ColorScheme, string>> = {
+const spotlight: Readonly<Record<ColorScheme, string>> = {
   dark: pool(brand.spotlight, 0.22),
   light: pool(brand.curtain, 0.09),
 };
@@ -72,24 +73,24 @@ const fontFamily: SemanticTokens['fontFamily'] = {
 
 const surfaces = {
   light: {
-    surface: '#fbf7ef',
-    surfaceRaised: '#fffdf8',
-    surfaceSunken: '#f2eadb',
-    textPrimary: '#221a33',
-    textSecondary: '#675d76',
-    borderSubtle: '#e3d9c6',
+    surface: oklch(0.977, 0.011, 85),
+    surfaceRaised: oklch(0.994, 0.007, 89),
+    surfaceSunken: oklch(0.939, 0.022, 83),
+    textPrimary: oklch(0.24, 0.048, 297),
+    textSecondary: oklch(0.497, 0.041, 303),
+    borderSubtle: oklch(0.888, 0.028, 84),
     // The veil behind a sheet: plum ink on the paper.
-    overlay: rgba('#221a33', 0.42),
+    overlay: oklch(0.24, 0.048, 297, 0.42),
   },
   dark: {
-    surface: '#120d1f',
-    surfaceRaised: '#1c1530',
-    surfaceSunken: '#0b0815',
-    textPrimary: '#f4eee2',
-    textSecondary: '#a99fbb',
-    borderSubtle: '#2e2645',
+    surface: oklch(0.176, 0.037, 295),
+    surfaceRaised: oklch(0.22, 0.052, 294),
+    surfaceSunken: oklch(0.146, 0.028, 294),
+    textPrimary: oklch(0.951, 0.017, 85),
+    textSecondary: oklch(0.72, 0.042, 302),
+    borderSubtle: oklch(0.293, 0.056, 295),
     // The veil behind a sheet: the stage's darkness.
-    overlay: rgba('#0b0815', 0.72),
+    overlay: oklch(0.146, 0.028, 294, 0.72),
   },
 } as const;
 
@@ -99,22 +100,22 @@ const darkTones = { accent: { onSolid: surfaces.dark.surface } };
 // The generated grays are cool; the program's paper is warm, so its neutral
 // fills are parchment, with plum ink for solid controls and ivory on red.
 const lightTones = {
-  accent: { onSolid: '#fffdf8' },
+  accent: { onSolid: surfaces.light.surfaceRaised },
   neutral: {
     solid: surfaces.light.textPrimary,
-    onSolid: '#fffdf8',
+    onSolid: surfaces.light.surfaceRaised,
     text: surfaces.light.textPrimary,
-    subtle: '#f1e8d7',
-    subtleHover: '#eadfca',
-    subtleActive: '#e2d4bb',
-    border: '#cdbfa6',
-    hover: '#3a2d52',
-    active: '#4b3c68',
-    disabledFg: '#9a90a6',
-    disabledBg: '#eee6d6',
+    subtle: oklch(0.934, 0.025, 83),
+    subtleHover: oklch(0.907, 0.03, 84),
+    subtleActive: oklch(0.875, 0.037, 82),
+    border: oklch(0.81, 0.038, 82),
+    hover: oklch(0.33, 0.065, 299),
+    active: oklch(0.392, 0.074, 299),
+    disabledFg: oklch(0.669, 0.034, 306),
+    disabledBg: oklch(0.927, 0.023, 85),
   },
   // Silk's green ring sits just under 3:1 on the warmer sunken paper.
-  success: { focusRing: '#2b7a4b' },
+  success: { focusRing: oklch(0.518, 0.107, 154) },
 };
 
 function buildTheme(colorScheme: ColorScheme): Theme {
@@ -146,4 +147,39 @@ function buildTheme(colorScheme: ColorScheme): Theme {
 export const themes: Readonly<Record<ColorScheme, Theme>> = {
   light: buildTheme('light'),
   dark: buildTheme('dark'),
+};
+
+/** Lets a little of the board through the ending banner, so it lies on the board rather than cutting it in two. */
+const ENDING_GROUND_ALPHA = 0.94;
+
+/**
+ * Colors the app picks or works out from a scheme's theme, which differ
+ * between light and dark in ways Silk's tokens don't say. Read them with
+ * `useSchemeColors` (shownTheme.ts).
+ */
+function buildSchemeColors(colorScheme: ColorScheme) {
+  const { color } = themes[colorScheme].semantic;
+  const { accent, neutral } = color.tones;
+  const dark = colorScheme === 'dark';
+  return {
+    /** The page's pool of light from above the stage (Page.tsx). */
+    spotlight: spotlight[colorScheme],
+    /** The evaluation bar's edge: on the light page its white end needs a firmer one. */
+    evaluationEdge: dark ? color.borderSubtle : neutral.border,
+    /** The ending banner's ground for a win (EndingCard.tsx)... */
+    endingGroundWon: rgba(color.surfaceRaised, ENDING_GROUND_ALPHA),
+    /** ...duller for a loss or a draw. */
+    endingGroundPlain: rgba(color.surfaceSunken, ENDING_GROUND_ALPHA),
+    /** A win's small type: the accent's text color, lighter than its solid on velvet. */
+    endingEyebrowWon: dark ? accent.text : accent.solid,
+    /** The sheen that sweeps across a win's banner. */
+    endingGleam: rgba(dark ? color.textPrimary : accent.solid, dark ? 0.1 : 0.07),
+  };
+}
+
+export type SchemeColors = Readonly<ReturnType<typeof buildSchemeColors>>;
+
+export const schemeColors: Readonly<Record<ColorScheme, SchemeColors>> = {
+  light: buildSchemeColors('light'),
+  dark: buildSchemeColors('dark'),
 };

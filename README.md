@@ -41,7 +41,7 @@ yarn web        # or: yarn android
 | Design system | [Silk](https://github.com/reactive/silk) (`@reactive/silk-native`) | `src/components/` |
 | Board | [chessground](https://github.com/lichess-org/chessground) in an [Expo DOM component](https://docs.expo.dev/guides/dom-components/) | `src/components/Board.tsx` |
 | Chess rules | [chessops](https://github.com/niklasf/chessops) | `src/game/` |
-| Opponent | [Maia](https://github.com/CSSLab/maia-chess) at a rating from 1100 to 1900 (1500 by default), or Stockfish above them: lite, then full Stockfish as the hardest step; the rating in the opponent's name bar ("plays like a 1500") opens a list to pick it from, as does a footnote under the scoresheet ("Play against 1100 · 1500 · 1900 · Stockfish · Full Stockfish") | `src/opponent/` |
+| Opponent | [Maia](https://github.com/CSSLab/maia-chess) at a rating from 1100 to 1900 (1500 by default), or Stockfish above them: lite, then full Stockfish as the hardest step; the rating in the opponent's name bar ("plays like a 1500") opens a rating slider to pick it on (Stockfish's ratings are estimates), as does a footnote under the scoresheet ("Play against 1100 · 1500 · 1900 · Stockfish · Full Stockfish") | `src/opponent/` |
 | Evaluation bar, and the opponent when chosen | [Stockfish](https://stockfishchess.org) 19 lite in WebAssembly, run on the device; full Stockfish 19, downloaded when first chosen as the opponent | `src/stockfish/` |
 
 Silk isn't on npm yet, so the app installs it from the tarballs in `vendor/`.

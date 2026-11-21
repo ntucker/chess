@@ -31,6 +31,10 @@ describe('boardMarks', () => {
     expect(toneBrushes.plan.color).toBe(toneColors.plan);
   });
 
+  it('gives each tone a #rrggbb color, so the board tint can append an alpha', () => {
+    for (const color of Object.values(toneColors)) expect(color).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
   it('rings a square with a circle, and ghosts a piece with a see-through one', () => {
     const { shapes } = boardMarks(
       [

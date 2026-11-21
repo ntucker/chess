@@ -157,7 +157,7 @@ describe('shownMove', () => {
     ]);
   });
 
-  it('stays open as one Escape closes the opponent list over it', () => {
+  it('stays open as one Escape closes the opponent slider over it', () => {
     const onClose = jest.fn();
     const host = document.body.appendChild(document.createElement('div'));
     const root = createRoot(host);
@@ -178,9 +178,15 @@ describe('shownMove', () => {
       ),
     );
     try {
-      const list = () => document.querySelector('[role="listbox"]');
-      act(() => host.querySelector<HTMLElement>('[aria-expanded]')!.click());
-      expect(list()).not.toBeNull();
+      const slider = () => document.querySelector('[role="slider"]');
+      // By pointing, which moves no focus: the keyboard's focus would open the slider's tooltip,
+      // and that takes an Escape of its own.
+      act(() => {
+        host
+          .querySelector<HTMLElement>('[aria-expanded]')!
+          .dispatchEvent(new MouseEvent('mouseenter'));
+      });
+      expect(slider()).not.toBeNull();
       const press = () =>
         act(() => {
           document.body.dispatchEvent(
@@ -188,7 +194,7 @@ describe('shownMove', () => {
           );
         });
       press();
-      expect(list()).toBeNull();
+      expect(slider()).toBeNull();
       expect(onClose).not.toHaveBeenCalled();
       press();
       expect(onClose).toHaveBeenCalledTimes(1);

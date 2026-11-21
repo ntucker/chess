@@ -42,6 +42,15 @@ const toggle = (label: string) =>
   host.querySelector<HTMLElement>(`[role="switch"][aria-label="${label}"]`)!;
 const moves = () => toggle('Moves on the board');
 
+/** A press through react-native-web's responder system, which listens for mouse events. */
+function tap(element: HTMLElement) {
+  const mouse = (type: string, buttons: number) =>
+    element.dispatchEvent(new MouseEvent(type, { bubbles: true, button: 0, buttons }));
+  mouse('mousedown', 1);
+  mouse('mouseup', 0);
+  element.click();
+}
+
 describe('LessonControls', () => {
   it('disables "Moves on the board" in Practice, keeping its value', async () => {
     await render('practice');
@@ -50,6 +59,24 @@ describe('LessonControls', () => {
     await act(async () => moves().click());
     expect(moves().getAttribute('aria-checked')).toBe('true');
     expect(toggle('Warn me of traps').getAttribute('aria-disabled')).not.toBe('true');
+  });
+
+  it('says why "Moves on the board" is disabled, to screen readers too', async () => {
+    await render('practice');
+    const described = moves().getAttribute('aria-describedby');
+    expect(described && document.getElementById(described)?.textContent).toBe('Only in Explore');
+    await render('explore');
+    expect(moves().getAttribute('aria-describedby')).toBeNull();
+  });
+
+  it('shows why in a tooltip when the disabled switch is tapped', async () => {
+    const tip = () => document.querySelector('[role="tooltip"]')?.textContent;
+    await render('explore');
+    await act(async () => tap(moves()));
+    expect(tip()).toBeUndefined();
+    await render('practice');
+    await act(async () => tap(moves()));
+    expect(tip()).toBe('Only in Explore');
   });
 
   it('lets "Moves on the board" change in Explore', async () => {
