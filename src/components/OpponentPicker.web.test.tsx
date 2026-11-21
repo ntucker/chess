@@ -245,9 +245,11 @@ describe('OpponentPicker', () => {
     expect(list()).not.toBeNull();
   });
 
-  it('opens on a press, and a press elsewhere closes it', () => {
+  it('opens on a press, and a press elsewhere closes it', async () => {
     act(() => trigger().click());
     expect(list()).not.toBeNull();
+    // The list starts listening for presses outside it a moment after it opens.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
     act(() => {
       // jsdom has no PointerEvent; the listener reads only its target.
       document.body.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));

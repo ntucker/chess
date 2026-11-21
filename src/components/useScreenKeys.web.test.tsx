@@ -37,9 +37,11 @@ function heard(key: string, target: 'page' | 'sheet', taken = false) {
       </SilkProvider>,
     ),
   );
-  // Inside the sheet, which React Native Web's Modal marks as a dialog.
+  // Inside the sheet, which React Native Web's Modal marks as an aria-modal dialog.
   const on =
-    target === 'sheet' ? document.querySelector('[aria-label="Settings"]')! : document.body;
+    target === 'sheet'
+      ? document.querySelector('[aria-modal="true"]')!.firstElementChild!
+      : document.body;
   const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
   // Another control took it first.
   if (taken) event.preventDefault();

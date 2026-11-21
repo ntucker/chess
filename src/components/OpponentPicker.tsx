@@ -1,7 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { a11yState, Pressable, Separator, Surface, Text, useTheme } from '@reactive/silk-native';
+import { Listbox, Popover, Pressable, Separator, Text, useTheme } from '@reactive/silk-native';
 import { type ComponentRef, useEffect, useId, useRef, useState } from 'react';
-import { type KeyDownEvent, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  type KeyDownEvent,
+  type PointerEvent as ViewPointerEvent,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 
 import { hoversControl } from '@/board/pointer';
 import { describeOpponent, type Opponent, OPPONENT_PRESETS, OPPONENTS } from '@/opponent/opponent';
@@ -13,7 +19,6 @@ import { narrowLength, narrowStyles } from '@/theme/narrow';
 import { useNarrowStyles } from '@/theme/Narrow';
 
 import { Eyebrow } from './Eyebrow';
-import { Popup } from './Popup';
 
 const WEB = process.env.EXPO_OS === 'web';
 
@@ -70,10 +75,12 @@ export function OpponentPicker() {
       HOVER_GRACE_MS,
     );
   };
-  const choose = (choice: Opponent) => {
-    dispatch({ type: 'chosen', choice: { opponent: choice } });
-    close();
+  // A finger's pointer leaves as it lifts, so only a hovering pointer counts on the list.
+  const hoverList = ({ nativeEvent }: ViewPointerEvent, on: boolean) => {
+    if (hoversControl(nativeEvent.pointerType)) hover('list', on);
   };
+  // The popover closes itself on a pick.
+  const choose = (choice: Opponent) => dispatch({ type: 'chosen', choice: { opponent: choice } });
   const onTriggerKey = (event: KeyDownEvent) => {
     const { key } = event.nativeEvent;
     if (key !== 'ArrowDown' && key !== 'ArrowUp') return;
@@ -120,22 +127,29 @@ export function OpponentPicker() {
         }}
       </Pressable>
       {opponent === 'stockfish-full' ? <FullStockfishProgress /> : null}
-      {opened ? (
-        <Popup
-          anchor={trigger}
-          onDismiss={close}
-          onHoverIn={() => hover('list', true)}
-          onHoverOut={() => hover('list', false)}
+      <Popover.Root
+        open={opened !== undefined}
+        onOpenChange={(open) => {
+          if (!open) close();
+        }}
+        anchor={trigger}
+      >
+        <Popover.Content
+          side="bottom"
+          align="start"
+          sideOffset={6}
+          onPointerEnter={(event) => hoverList(event, true)}
+          onPointerLeave={(event) => hoverList(event, false)}
+          style={styles.list}
         >
           <OpponentList
             id={listId}
             value={opponent}
             focusOnOpen={opened === 'pressed'}
             onChoose={choose}
-            onClose={close}
           />
-        </Popup>
-      ) : null}
+        </Popover.Content>
+      </Popover.Root>
     </>
   );
 }
@@ -190,125 +204,71 @@ interface ListProps {
   /** Moves focus to the current step, as when opened from the keyboard. */
   readonly focusOnOpen: boolean;
   readonly onChoose: (opponent: Opponent) => void;
-  readonly onClose: () => void;
 }
 
 /**
- * The steps to pick from, easiest first, the landmarks named, with a
- * line on how the step pointed at (or else the current one) plays.
- * One row is lit at a time, the one pointed at or focused last, and the keys
- * act on it: while the list holds focus, pointing at a row moves focus there.
+ * The steps to pick from, easiest first, the landmarks named, with a line
+ * on how the step pointed at (or else the current one) plays. Silk's
+ * Listbox owns the keys and the light: one row is lit at a time, the one
+ * pointed at or focused last.
  */
-function OpponentList({ id, value, focusOnOpen, onChoose, onClose }: ListProps) {
-  const { color, radius } = useTheme().theme.semantic;
+function OpponentList({ id, value, focusOnOpen, onChoose }: ListProps) {
+  const { color } = useTheme().theme.semantic;
   const { row } = useNarrowStyles(ROW);
   const [lit, setLit] = useState<Opponent>();
-  const rows = useRef(new Map<Opponent, ComponentRef<typeof View>>());
   const steps = stepsFor(value);
-  const focusRow = (opponent: Opponent) => rows.current.get(opponent)?.focus();
-  // Whether a row holds focus, so the keys reach the list (React Native Web's rows are DOM elements).
-  const holdsFocus = () =>
-    WEB && [...rows.current.values()].some((row) => (row as unknown) === document.activeElement);
-
-  useEffect(() => {
-    if (focusOnOpen) rows.current.get(value)?.focus();
-  }, [focusOnOpen, value]);
-
-  const onKey = (event: KeyDownEvent) => {
-    const { key } = event.nativeEvent;
-    const at = steps.indexOf(lit ?? value);
-    const step: Record<string, number> = {
-      ArrowDown: Math.min(at + 1, steps.length - 1),
-      ArrowUp: Math.max(at - 1, 0),
-      Home: 0,
-      End: steps.length - 1,
-    };
-    if (Object.hasOwn(step, key)) {
-      // Kept from the board's arrow keys (useStepKeys) too.
-      event.preventDefault();
-      focusRow(steps[step[key]]);
-    } else if (key === ' ' && lit !== undefined) {
-      // React Native Web presses on Enter alone, outside buttons.
-      event.preventDefault();
-      onChoose(lit);
-    } else if (key === 'Tab') {
-      // Focus goes back to the trigger as the list closes.
-      event.preventDefault();
-      onClose();
-    }
-  };
-
+  /** The step a Listbox value (a string, like every Listbox value) names. */
+  const step = (key: string) => steps.find((opponent) => String(opponent) === key)!;
   const shown = describeOpponent(lit ?? value);
   return (
-    <Surface elevation="overlay" radius="md" border="subtle" style={styles.list}>
+    <>
       <Eyebrow style={styles.heading}>Opponent strength</Eyebrow>
-      <ScrollView
-        nativeID={id}
-        // A listbox on the web, which React Native's role type lacks; Android has no
-        // listbox, so a radio group there.
-        role={(WEB ? 'listbox' : 'radiogroup') as 'radiogroup'}
-        accessibilityLabel="Opponent strength"
-        onKeyDown={onKey}
-        style={styles.rows}
-      >
-        {steps.map((opponent) => {
-          const selected = opponent === value;
-          const { level, preset } = describeOpponent(opponent);
-          return (
-            <View key={opponent}>
-              {opponent === 'stockfish' ? <Separator style={styles.rule} /> : null}
-              <Pressable
-                ref={(row) => {
-                  if (row) rows.current.set(opponent, row);
-                  else rows.current.delete(opponent);
-                }}
-                role={WEB ? 'option' : 'radio'}
-                accessibilityLabel={preset ? `${level}, ${preset}` : level}
-                {...(WEB ? { 'aria-selected': selected } : a11yState({ checked: selected }))}
-                // One stop in the tab order: the arrows move between the rows.
-                tabIndex={-1}
-                // A move, not an enter: rows scrolling under a still pointer as the
-                // arrows move focus don't take it back. Enter presses the focused
-                // row, so while the list holds focus, focus follows the light.
-                onPointerMove={({ nativeEvent }) => {
-                  if (opponent === lit || !hoversControl(nativeEvent.pointerType)) return;
-                  if (holdsFocus()) focusRow(opponent);
-                  else setLit(opponent);
-                }}
-                onFocus={() => setLit(opponent)}
-                onPress={() => onChoose(opponent)}
-                style={[
-                  row,
-                  { borderRadius: radius.sm },
-                  opponent === lit && { backgroundColor: color.tones.neutral.subtle },
-                ]}
-              >
-                <View style={styles.check}>
-                  {selected ? (
-                    <Ionicons name="checkmark" size={14} color={color.tones.accent.text} />
-                  ) : null}
-                </View>
-                <Text
-                  role="bodySm"
-                  style={[styles.stepLevel, selected && { color: color.tones.accent.text }]}
+      <ScrollView style={styles.rows}>
+        <Listbox.Root
+          nativeID={id}
+          accessibilityLabel="Opponent strength"
+          value={String(value)}
+          autoFocus={focusOnOpen}
+          onValueChange={(key) => onChoose(step(key))}
+          onHighlightChange={(key) => setLit(key === undefined ? undefined : step(key))}
+        >
+          {steps.map((opponent) => {
+            const { level, preset } = describeOpponent(opponent);
+            return (
+              <View key={opponent}>
+                {opponent === 'stockfish' ? <Separator style={styles.rule} /> : null}
+                <Listbox.Item
+                  value={String(opponent)}
+                  accessibilityLabel={preset ? `${level}, ${preset}` : level}
+                  style={row}
                 >
-                  {level}
-                </Text>
-                {preset ? (
-                  <Text role="caption" tone="secondary">
-                    {preset}
+                  <Text
+                    role="bodySm"
+                    style={[
+                      styles.stepLevel,
+                      (opponent === value || opponent === lit) && {
+                        color: color.tones.accent.text,
+                      },
+                    ]}
+                  >
+                    {level}
                   </Text>
-                ) : null}
-              </Pressable>
-            </View>
-          );
-        })}
+                  {preset ? (
+                    <Text role="caption" tone="secondary">
+                      {preset}
+                    </Text>
+                  ) : null}
+                </Listbox.Item>
+              </View>
+            );
+          })}
+        </Listbox.Root>
       </ScrollView>
       <Separator style={styles.rule} />
       <Text role="caption" tone="secondary" numberOfLines={2} style={styles.about}>
         {shown.style}
       </Text>
-    </Surface>
+    </>
   );
 }
 
@@ -332,10 +292,9 @@ const styles = StyleSheet.create({
   progress: { flexShrink: 1, minWidth: 0, fontVariant: ['tabular-nums'] },
   reload: { flexShrink: 0 },
   underlined: { textDecorationLine: 'underline' },
-  list: { width: 232, padding: 6, flexShrink: 1 },
+  list: { width: 232, padding: 6 },
   heading: { paddingHorizontal: 10, paddingTop: 6, paddingBottom: 6 },
   rows: { flexShrink: 1 },
-  check: { width: 14, alignItems: 'center' },
   stepLevel: { flex: 1, fontVariant: ['tabular-nums'] },
   rule: { marginVertical: 4, marginHorizontal: 4 },
   // Two lines tall whatever it says, so the list keeps its size as rows are pointed at.
