@@ -707,7 +707,11 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
       },
       // Wikibooks fills White's second moves the studies skip, one root per move so the page budget
       // isn't spent deep in the first one.
-      { root: 'Chess_Opening_Theory/1._e4/1...e6/2._Nf3', maxPages: 12 },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e6/2._Nf3',
+        rename: { 'Wing gambit': 'Knight Variation: Wing Gambit' },
+        maxPages: 12,
+      },
       { root: 'Chess_Opening_Theory/1._e4/1...e6/2._Bc4' },
       { root: 'Chess_Opening_Theory/1._e4/1...e6/2._e5' },
       { root: 'Chess_Opening_Theory/1._e4/1...e6/2._Nc3', maxPages: 10 },
@@ -890,7 +894,8 @@ const MMATKUN_FRENCH_CHAPTERS: Readonly<Record<string, string | undefined>> = {
   'French defense: 2.d3': "King's Indian Attack",
   'French defense : 2. Nf3': undefined,
   'French defense : 3.Bd3': undefined,
-  'French defense : Wing gambit': 'Wing Gambit',
+  // 2.Nf3 d5 3.e5, the Knight Variation. Wikibooks names the Wing Gambit from 4.b4.
+  'French defense : Wing gambit': 'Knight Variation',
 };
 
 /** Arco47's Bishop's Opening chapters, as variation names. */
