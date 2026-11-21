@@ -1,7 +1,7 @@
 import type { ColorScheme, Theme } from '@reactive/silk-core';
 import { DarkTheme, DefaultTheme, type Theme as NavigationTheme } from 'expo-router';
 
-import { shownThemes } from '@/theme/schemeCss';
+import { shownThemes } from '@/theme/shownTheme';
 
 const navigationTheme = (base: NavigationTheme, { semantic: { color } }: Theme) => ({
   ...base,

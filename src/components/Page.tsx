@@ -8,7 +8,7 @@ import { Header, type HeaderProps } from '@/components/Header';
 import { PAGE_SPACE } from '@/theme/sideBySide';
 import { narrowStyles } from '@/theme/narrow';
 import { useNarrowPageHeight, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
-import { useSchemeColors } from '@/theme/schemeColors';
+import { useSchemeColors } from '@/theme/shownTheme';
 
 interface Props {
   /** The browser tab's title; none leaves it as it is. */

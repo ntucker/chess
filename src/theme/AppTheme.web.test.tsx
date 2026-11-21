@@ -7,7 +7,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { SettingsProvider, useSettingsDispatch } from '@/settings/SettingsProvider';
 
 import { AppTheme } from './AppTheme';
-import { cssThemes } from './schemeCss';
+import { shownThemes } from './shownTheme';
 
 // The web path: the page's head pinned <html data-theme> to the saved theme
 // (schemeCss.ts's PRE_PAINT_SCRIPT), and the colors are CSS variables.
@@ -59,8 +59,8 @@ async function renderSavedDark() {
 describe('AppTheme on the web', () => {
   it('shows the CSS-variable themes, leaving the saved theme pinned while it loads', async () => {
     const { changes, seen } = await renderSavedDark();
-    expect(seen[0]).toBe(cssThemes.light);
-    expect(seen.at(-1)).toBe(cssThemes.dark);
+    expect(seen[0]).toBe(shownThemes.light);
+    expect(seen.at(-1)).toBe(shownThemes.dark);
     await act(async () => {});
     expect(changes).not.toContain(null);
     expect(html.dataset.theme).toBe('dark');

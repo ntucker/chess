@@ -11,7 +11,7 @@ import { analysisKey, PositionAnalysis, useAnalysis } from '@/resources/analysis
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNarrowPart } from '@/theme/Narrow';
 import { pieceColors } from '@/theme/pieceColors';
-import { useSchemeColors } from '@/theme/schemeColors';
+import { useSchemeColors } from '@/theme/shownTheme';
 import { fonts } from '@/theme/theme';
 import { timingFunction } from '@/theme/timingFunction';
 

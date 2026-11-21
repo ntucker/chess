@@ -11,8 +11,8 @@ import { AppTheme } from './AppTheme';
 // Jest builds for native (see SettingsProvider.test.tsx), so the first render
 // has the remembered theme. The native project can't load Silk's ES modules,
 // so the themes are stand-ins and Silk's provider notes each one's scheme.
-jest.mock('./schemeCss', () => ({
-  shownThemes: { light: { colorScheme: 'light' }, dark: { colorScheme: 'dark' } },
+jest.mock('./theme', () => ({
+  themes: { light: { colorScheme: 'light' }, dark: { colorScheme: 'dark' } },
 }));
 jest.mock('./navigationTheme', () => ({
   navigationThemes: { light: { dark: false }, dark: { dark: true } },

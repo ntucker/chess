@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Eyebrow } from '@/components/Eyebrow';
-import { useSchemeColors } from '@/theme/schemeColors';
+import { useSchemeColors } from '@/theme/shownTheme';
 import { fonts } from '@/theme/theme';
 
 /** The frame of a developer page: the app's background, a heading and a short intro above `children`. */

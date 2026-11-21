@@ -7,7 +7,8 @@ import { type Ending, endingWords, type Mood } from '@/game/ending';
 import { ACT_TIMES, type CardBand, cardBand } from '@/board/endingAct';
 import type { Color } from '@/game/replay';
 import { springMotion, springs } from '@/motion/spring';
-import { type SchemeColors, useSchemeColors } from '@/theme/schemeColors';
+import { useSchemeColors } from '@/theme/shownTheme';
+import type { SchemeColors } from '@/theme/theme';
 import { timingFunction } from '@/theme/timingFunction';
 
 interface Props {

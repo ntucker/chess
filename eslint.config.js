@@ -23,12 +23,6 @@ module.exports = defineConfig([
               message:
                 "Use Pressable from '@reactive/silk-native', which shows the keyboard focus ring.",
             },
-            {
-              name: '@/theme/theme',
-              importNames: ['rgba', 'spotlight'],
-              message:
-                'On the web theme colors are CSS variables: add a color to src/theme/schemeColors.ts and read it with useSchemeColors.',
-            },
           ],
         },
       ],
@@ -36,8 +30,8 @@ module.exports = defineConfig([
   },
   {
     // On the web theme colors are CSS variables and the scheme lives in the
-    // page (src/theme/schemeCss.ts); a branch on it would show the wrong colors
-    // in the pre-rendered page.
+    // page (src/theme/cssVariables.ts); a branch on it would show the wrong
+    // colors in the pre-rendered page.
     files: ['src/**/*.{ts,tsx}'],
     ignores: ['src/theme/**', 'src/**/*.test.{ts,tsx}'],
     rules: {
@@ -46,7 +40,7 @@ module.exports = defineConfig([
         {
           selector: "MemberExpression[property.name='colorScheme']",
           message:
-            'Add a color that differs by scheme to src/theme/schemeColors.ts and read it with useSchemeColors.',
+            "Add a color that differs by scheme to theme.ts's schemeColors and read it with useSchemeColors.",
         },
       ],
     },

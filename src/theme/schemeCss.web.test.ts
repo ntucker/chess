@@ -2,9 +2,10 @@ import { describe, expect, it } from '@jest/globals';
 
 import { parseSettings } from '@/settings/settings';
 
-import { SCHEME_VALUES, schemeVariable } from './schemeColors';
-import { cssThemes, PRE_PAINT_SCRIPT, SCHEME_CSS } from './schemeCss';
-import { themes } from './theme';
+import { PRE_PAINT_SCRIPT, SCHEME_CSS } from './schemeCss';
+// On the web the hook reads no context, so it can run outside a component.
+import { shownThemes, useSchemeColors as webSchemeColors } from './shownTheme';
+import { schemeColors, themes } from './theme';
 
 /** Every string in `tree`, by its path. */
 function leaves(tree: object, path = ''): [string, string][] {
@@ -28,18 +29,25 @@ function rules() {
   return found;
 }
 
-describe('cssThemes', () => {
-  it('writes the same color strings, all CSS variables, in both schemes', () => {
-    const light = leaves(cssThemes.light.semantic.color);
+/** Every color the web shows (the theme's and the scheme colors), and its value in each scheme. */
+const colors = () => ({
+  shown: [...leaves(shownThemes.light.semantic.color), ...leaves(webSchemeColors())],
+  light: [...leaves(themes.light.semantic.color), ...leaves(schemeColors.light)],
+  dark: [...leaves(themes.dark.semantic.color), ...leaves(schemeColors.dark)],
+});
+
+describe('the web\'s themes', () => {
+  it('write the same color strings, all CSS variables, in both schemes', () => {
+    const light = leaves(shownThemes.light.semantic.color);
     expect(light.length).toBeGreaterThan(50);
-    expect(light.every(([, value]) => /^var\(--silk-color-[a-z-]+\)$/.test(value))).toBe(true);
-    expect(leaves(cssThemes.dark.semantic.color)).toEqual(light);
+    expect(colors().shown.every(([, value]) => /^var\(--[a-z-]+\)$/.test(value))).toBe(true);
+    expect(leaves(shownThemes.dark.semantic.color)).toEqual(light);
   });
 
-  it("keeps each scheme's other tokens", () => {
+  it("keep each scheme's other tokens", () => {
     for (const scheme of ['light', 'dark'] as const) {
-      expect(cssThemes[scheme].colorScheme).toBe(scheme);
-      expect(cssThemes[scheme].semantic.shadow).toBe(themes[scheme].semantic.shadow);
+      expect(shownThemes[scheme].colorScheme).toBe(scheme);
+      expect(shownThemes[scheme].semantic.shadow).toBe(themes[scheme].semantic.shadow);
     }
   });
 });
@@ -50,32 +58,17 @@ describe('SCHEME_CSS', () => {
   const dark = found.get(':root[data-theme=dark]')!;
   const darkDevice = found.get(':root:not([data-theme=light])')!;
 
-  it("gives each theme color its scheme's value", () => {
-    const values = {
-      light: leaves(themes.light.semantic.color),
-      dark: leaves(themes.dark.semantic.color),
-    };
-    leaves(cssThemes.light.semantic.color).forEach(([path, variable], i) => {
+  it("gives each color its scheme's value", () => {
+    const { shown, light: lightValues, dark: darkValues } = colors();
+    shown.forEach(([path, variable], i) => {
       const name = variable.slice('var('.length, -1);
-      expect([path, light.get(name)]).toEqual([path, values.light[i][1]]);
-      expect([path, dark.get(name)]).toEqual([path, values.dark[i][1]]);
+      expect([path, light.get(name)]).toEqual([path, lightValues[i][1]]);
+      expect([path, dark.get(name)]).toEqual([path, darkValues[i][1]]);
     });
   });
 
-  it("gives each scheme color its scheme's value", () => {
-    for (const [name, value] of Object.entries(SCHEME_VALUES.dark)) {
-      const variable = schemeVariable(name as keyof typeof SCHEME_VALUES.dark);
-      expect(dark.get(variable)).toBe(value);
-      expect(light.get(variable)).toBe(
-        SCHEME_VALUES.light[name as keyof typeof SCHEME_VALUES.light],
-      );
-    }
-  });
-
   it('shows dark when the learner chose Dark, or System on a dark device', () => {
-    expect(SCHEME_CSS).toContain(
-      '@media (prefers-color-scheme:dark){:root:not([data-theme=light]){',
-    );
+    expect(SCHEME_CSS).toContain('@media (prefers-color-scheme:dark){:root:not([data-theme=light]){');
     expect(darkDevice).toEqual(dark);
     expect(dark.get('color-scheme')).toBe('dark');
     expect(light.get('color-scheme')).toBe('light');

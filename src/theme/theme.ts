@@ -18,7 +18,7 @@ const brand = {
 } as const;
 
 /** `hex` (#rrggbb) at `alpha` opacity, as a CSS color. */
-export const rgba = (hex: string, alpha: number) => {
+const rgba = (hex: string, alpha: number) => {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
 };
@@ -29,7 +29,7 @@ const pool = (hex: string, alpha: number) =>
  * A soft pool of light from above the stage, as a CSS background image (drawn
  * on the web; native ignores it).
  */
-export const spotlight: Readonly<Record<ColorScheme, string>> = {
+const spotlight: Readonly<Record<ColorScheme, string>> = {
   dark: pool(brand.spotlight, 0.22),
   light: pool(brand.curtain, 0.09),
 };
@@ -146,4 +146,38 @@ function buildTheme(colorScheme: ColorScheme): Theme {
 export const themes: Readonly<Record<ColorScheme, Theme>> = {
   light: buildTheme('light'),
   dark: buildTheme('dark'),
+};
+
+/**
+ * Colors the app picks or works out from a scheme's theme, which differ
+ * between light and dark in ways Silk's tokens don't say. Read them with
+ * `useSchemeColors` (shownTheme.ts).
+ */
+function buildSchemeColors(colorScheme: ColorScheme) {
+  const { color } = themes[colorScheme].semantic;
+  const { accent, neutral } = color.tones;
+  const dark = colorScheme === 'dark';
+  return {
+    /** The page's pool of light from above the stage (Page.tsx). */
+    spotlight: spotlight[colorScheme],
+    /** The evaluation bar's edge: on the light page its white end needs a firmer one. */
+    'evaluation-edge': dark ? color.borderSubtle : neutral.border,
+    /** The ending banner's ground (EndingCard.tsx), letting a little of the board through... */
+    'ending-ground-won': rgba(color.surfaceRaised, ENDING_GROUND_ALPHA),
+    /** ...duller for a loss or a draw. */
+    'ending-ground-plain': rgba(color.surfaceSunken, ENDING_GROUND_ALPHA),
+    /** A win's small type: the accent's text color, lighter than its solid on velvet. */
+    'ending-eyebrow-won': dark ? accent.text : accent.solid,
+    /** The sheen that sweeps across a win's banner. */
+    'ending-gleam': rgba(dark ? color.textPrimary : accent.solid, dark ? 0.1 : 0.07),
+  };
+}
+
+const ENDING_GROUND_ALPHA = 0.94;
+
+export type SchemeColors = Readonly<ReturnType<typeof buildSchemeColors>>;
+
+export const schemeColors: Readonly<Record<ColorScheme, SchemeColors>> = {
+  light: buildSchemeColors('light'),
+  dark: buildSchemeColors('dark'),
 };
