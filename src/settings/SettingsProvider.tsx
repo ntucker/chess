@@ -15,13 +15,14 @@ import { readStorage, storageKey, subscribeStorage, writeStorage } from '@/conte
 import {
   DEFAULT_SETTINGS,
   parseSettings,
+  SETTINGS_KEY,
   settingsFrom,
   type Settings,
   type SettingsAction,
   settingsReducer,
 } from './settings';
 
-const KEY = storageKey('settings');
+const KEY = SETTINGS_KEY;
 // Before the settings were one object, the evaluation bar's engine was saved
 // alone under this key; it is read while nothing is saved under KEY.
 const LEGACY_EVALUATION_ENGINE_KEY = storageKey('evaluationEngine');

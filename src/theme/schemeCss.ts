@@ -1,14 +1,15 @@
 import type { ColorScheme } from '@reactive/silk-core';
 
-import { readStorageScript, storageKey } from '@/context/storage';
-import { THEMES } from '@/settings/settings';
+import { readStorageScript } from '@/context/storage';
+import { SETTINGS_KEY, THEMES } from '@/settings/settings';
 
 import { cssVariables } from './cssVariables';
 
 // What each web page's head needs to show the learner's colors before its
 // first paint (src/app/+html.tsx). Only the export loads this file.
 
-const block = (colorScheme: ColorScheme) =>
+/** One scheme's declarations: its `color-scheme` and each color variable's value. */
+const declarationsFor = (colorScheme: ColorScheme) =>
   `color-scheme:${colorScheme};` +
   [...cssVariables(colorScheme).declarations].map(([name, value]) => `${name}:${value};`).join('');
 
@@ -18,10 +19,10 @@ const block = (colorScheme: ColorScheme) =>
  * stage's color.
  */
 export const SCHEME_CSS = [
-  `:root{${block('light')}}`,
-  `:root[data-theme=dark]{${block('dark')}}`,
-  `@media (prefers-color-scheme:dark){:root:not([data-theme=light]){${block('dark')}}}`,
-  'html,body{background-color:var(--silk-color-surface)}',
+  `:root{${declarationsFor('light')}}`,
+  `:root[data-theme=dark]{${declarationsFor('dark')}}`,
+  `@media (prefers-color-scheme:dark){:root:not([data-theme=light]){${declarationsFor('dark')}}}`,
+  'html,body{background-color:var(--chess-color-surface)}',
 ].join('\n');
 
 /** The themes a learner can choose, which pin the scheme whatever the device says. */
@@ -33,5 +34,5 @@ const CHOSEN = THEMES.filter((theme) => theme !== 'system');
  * page in its colors. System needs nothing. Later, AppTheme keeps it pinned.
  */
 export const PRE_PAINT_SCRIPT =
-  `try{var t=JSON.parse(${readStorageScript(storageKey('settings'))}).theme;` +
+  `try{var t=JSON.parse(${readStorageScript(SETTINGS_KEY)}).theme;` +
   `if(${JSON.stringify(CHOSEN)}.indexOf(t)>=0)document.documentElement.dataset.theme=t}catch(e){}`;

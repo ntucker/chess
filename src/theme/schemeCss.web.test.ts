@@ -67,6 +67,12 @@ describe('SCHEME_CSS', () => {
     });
   });
 
+  it('declares every variable it reads', () => {
+    for (const [, name] of SCHEME_CSS.matchAll(/var\((--[a-z-]+)\)/g)) {
+      expect([name, light.has(name), dark.has(name)]).toEqual([name, true, true]);
+    }
+  });
+
   it('shows dark when the learner chose Dark, or System on a dark device', () => {
     expect(SCHEME_CSS).toContain(
       '@media (prefers-color-scheme:dark){:root:not([data-theme=light]){',

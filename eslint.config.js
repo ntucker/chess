@@ -38,7 +38,8 @@ module.exports = defineConfig([
       'no-restricted-syntax': [
         'error',
         {
-          selector: "MemberExpression[property.name='colorScheme']",
+          selector:
+            "MemberExpression[property.name='colorScheme'], ObjectPattern > Property[key.name='colorScheme']",
           message:
             "Add a color that differs by scheme to theme.ts's schemeColors and read it with useSchemeColors.",
         },

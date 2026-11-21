@@ -19,14 +19,14 @@ export function AppTheme({ children }: { readonly children: ReactNode }) {
   const { theme } = useSettings();
   const device = useColorScheme();
   const colorScheme = theme === 'system' ? device : theme;
-  // Natively, from the first frame. On the web the page's head pinned the
-  // saved theme before the first paint, so this follows later choices: its
-  // first run sees the defaults, before SettingsProvider loads, and would
-  // undo that for a moment.
-  const started = useRef(false);
+  // On the web the page's head already pinned the saved theme before the
+  // first paint, and the first run here sees the defaults (SettingsProvider
+  // loads after it), so the web pins only later choices. Natively it pins from
+  // the first frame.
+  const firstRunDone = useRef(false);
   useLayoutEffect(() => {
-    if (NATIVE || started.current) pinTheme(theme);
-    started.current = true;
+    if (NATIVE || firstRunDone.current) pinTheme(theme);
+    firstRunDone.current = true;
   }, [theme]);
   return (
     <SilkProvider theme={shownThemes[colorScheme]}>

@@ -148,6 +148,9 @@ export const themes: Readonly<Record<ColorScheme, Theme>> = {
   dark: buildTheme('dark'),
 };
 
+/** Lets a little of the board through the ending banner, so it lies on the board rather than cutting it in two. */
+const ENDING_GROUND_ALPHA = 0.94;
+
 /**
  * Colors the app picks or works out from a scheme's theme, which differ
  * between light and dark in ways Silk's tokens don't say. Read them with
@@ -162,7 +165,7 @@ function buildSchemeColors(colorScheme: ColorScheme) {
     spotlight: spotlight[colorScheme],
     /** The evaluation bar's edge: on the light page its white end needs a firmer one. */
     evaluationEdge: dark ? color.borderSubtle : neutral.border,
-    /** The ending banner's ground (EndingCard.tsx), letting a little of the board through... */
+    /** The ending banner's ground for a win (EndingCard.tsx)... */
     endingGroundWon: rgba(color.surfaceRaised, ENDING_GROUND_ALPHA),
     /** ...duller for a loss or a draw. */
     endingGroundPlain: rgba(color.surfaceSunken, ENDING_GROUND_ALPHA),
@@ -172,8 +175,6 @@ function buildSchemeColors(colorScheme: ColorScheme) {
     endingGleam: rgba(dark ? color.textPrimary : accent.solid, dark ? 0.1 : 0.07),
   };
 }
-
-const ENDING_GROUND_ALPHA = 0.94;
 
 export type SchemeColors = Readonly<ReturnType<typeof buildSchemeColors>>;
 

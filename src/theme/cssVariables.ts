@@ -29,17 +29,22 @@ function toVariables<T extends object>(
 }
 
 /**
- * A scheme's theme and scheme colors with every color a CSS variable, which
+ * A scheme's theme and scheme colors (named `--chess-…`, so they can't clash
+ * with variables Silk may write one day) with every color a CSS variable, which
  * read the same in both schemes, and each variable's value in this one. The
  * theme keeps its scheme's other tokens (its `colorScheme`, its shadows).
  */
 export function cssVariables(colorScheme: ColorScheme) {
   const declarations = new Map<string, string>();
   const theme = themes[colorScheme];
-  const color = toVariables(theme.semantic.color, '--silk-color', declarations);
+  const color = toVariables(theme.semantic.color, '--chess-color', declarations);
   return {
     theme: { ...theme, semantic: { ...theme.semantic, color } } satisfies Theme,
-    schemeColors: toVariables<SchemeColors>(schemeColors[colorScheme], '--scheme', declarations),
+    schemeColors: toVariables<SchemeColors>(
+      schemeColors[colorScheme],
+      '--chess-scheme',
+      declarations,
+    ),
     declarations,
   };
 }
