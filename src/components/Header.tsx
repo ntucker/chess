@@ -65,7 +65,7 @@ export function Header({ place, placeLink, back, onSettings, onRestart }: Header
             onPress={onRestart}
             style={({ pressed, hovered }) => [
               styles.logoButton,
-              (pressed || hovered) && styles.lit,
+              (pressed || hovered) && styles.dimmed,
             ]}
           >
             {logo}
@@ -206,7 +206,7 @@ const STYLES = narrowStyles((px) => ({
   // Rounded like the logo, so the focus ring follows its corners.
   logoButton: { borderRadius: LOGO_RADIUS },
   // An image has no ink to light up, as the header's icon buttons do, so it dims.
-  lit: { opacity: 0.85 },
+  dimmed: { opacity: 0.85 },
   wordmark: {
     fontFamily: fonts.display,
     fontSize: px(narrowLength('wordmark-size', 26)),

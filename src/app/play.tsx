@@ -35,6 +35,7 @@ export default function PlayScreen() {
     judge: evaluationEngine,
   });
   const { moves, ply, current, thinking, goto } = game;
+  // Not `game`, which changes every move, so `newGame` and the header's restart don't either.
   const restart = game.newGame;
 
   const newGame = (side: Color) => {

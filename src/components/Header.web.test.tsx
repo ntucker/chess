@@ -51,6 +51,22 @@ describe('Header', () => {
     });
   });
 
+  it('starts over when the logo is pressed', () => {
+    const onRestart = jest.fn();
+    const host = document.createElement('div');
+    const root = createRoot(host);
+    act(() =>
+      root.render(
+        <SilkProvider theme={themes.dark}>
+          <Header onRestart={onRestart} />
+        </SilkProvider>,
+      ),
+    );
+    act(() => (host.querySelector('[aria-label="Start over"]') as HTMLElement).click());
+    expect(onRestart).toHaveBeenCalledTimes(1);
+    act(() => root.unmount());
+  });
+
   it('puts the settings button in the source link’s place on a narrow page', () => {
     expect(buttonParts({ onSettings: () => {} })).toEqual({
       'Source code on GitHub': 'wide-only',

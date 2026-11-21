@@ -87,7 +87,11 @@ export function useGame(
     };
   }, [active, thinking, moves, opponent?.id]);
 
-  /** Starts again from the starting position; the caller picks the side. Its own, so it stays the same function from move to move. */
+  /**
+   * Starts again from the starting position; the caller picks the side.
+   * Outside the object below, the React Compiler keeps it the same function
+   * from move to move, so a header given it doesn't redraw on each move.
+   */
   const newGame = () => dispatch({ type: 'newGame' });
 
   return {
