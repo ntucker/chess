@@ -6,6 +6,7 @@ import { INITIAL_FEN } from 'chessops/fen';
 import {
   analyze,
   dropMove,
+  fenAfter,
   lastPosition,
   legalMoveCount,
   legalMoveCountAt,
@@ -115,6 +116,17 @@ describe('legalMoveCountAt', () => {
     expect(plies.map(({ fen }) => legalMoveCountAt(fen))).toEqual(
       plies.map((_, n) => legalMoveCount(line.slice(0, n))),
     );
+  });
+});
+
+describe('fenAfter', () => {
+  it('plays a legal move from a position, as the game would', () => {
+    const [start, afterE4] = replay(['e2e4']);
+    expect(fenAfter(start.fen, 'e2e4')).toBe(afterE4.fen);
+  });
+
+  it('plays nothing for a move that is not legal there', () => {
+    expect(fenAfter(replay([])[0].fen, 'e2e5')).toBeUndefined();
   });
 });
 

@@ -192,6 +192,12 @@ function gameResult(pos: Chess, repetitions: number): GameResult | undefined {
   return undefined;
 }
 
+/** The position (FEN) after playing `uci` from `fen`, if it's legal there. */
+export function fenAfter(fen: string, uci: string): string | undefined {
+  const pos = parsePosition(fen);
+  return pos && playMove(pos, uci) ? makeFen(pos.toSetup()) : undefined;
+}
+
 /** The position after `line`, ready for the board. */
 export function lastPosition(line: readonly string[]): Position {
   const plies = replay(line);

@@ -5,7 +5,7 @@ import { finalOnly } from '@/evaluation/evaluation';
 import { analyze, type Color, legalMoveCountAt, replay } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { bookMoves } from '@/lesson/select';
-import { analysisFailed, getAnalysis, storedAnalyses } from '@/resources/analysis';
+import { getAnalysis, storedAnalyses } from '@/resources/analysis';
 import { useNeedsStockfish } from '@/stockfish/demand';
 
 import { gameAccuracy } from './accuracy';
@@ -75,9 +75,9 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
   const legal = plies.map(({ fen }) => legalMoveCountAt(fen));
   const analyses = storedAnalyses(ctrl, ENGINE, lines, state);
   const final = analyses.map(finalOnly);
-  const failed = new Set(
-    lines.flatMap((line, n) => (analysisFailed(ctrl, ENGINE, line, state) ? [n] : [])),
-  );
+  // Why each position's search gave up, where one did (`analysisFailed`).
+  const errors = lines.map((line) => ctrl.getError(getAnalysis, ENGINE, line, state));
+  const failed = new Set(errors.flatMap((error, n) => (error ? [n] : [])));
   const judged = reviewMoves({ plies, book, legal, analyses: final, failed });
   const leftAt = lesson && leftGuide(lesson, moves, learner, book);
   // The board's ply after each moment's move.
@@ -109,6 +109,14 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
     moments: shownMoments,
     /** The ply Next moment shows: after the earliest moment not visited yet. */
     nextMoment: nextMoment(shownMoments, screen.visited),
+    /**
+     * Why a search the label of the move leading to `plies[target]` needs
+     * gave up, when one did: that move shows Try again (`tryAgain`).
+     */
+    failure(target: number) {
+      const lost = labelPositions(target - 1).find((n) => lostPosition(failed, analyses, n));
+      return lost === undefined ? undefined : errors[lost];
+    },
     /** How many moves still wait for an analysis; none once the game is checked. */
     waiting: judged.filter(({ status }) => status === 'waiting').length,
     tally: { white: tally(judged, 'white'), black: tally(judged, 'black') },
