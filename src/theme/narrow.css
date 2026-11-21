@@ -178,7 +178,6 @@
     white-space: normal;
   }
   :root [data-narrow='page'] {
-    flex-grow: 1;
     min-height: 100dvh;
   }
   :root [data-narrow='stage'] {

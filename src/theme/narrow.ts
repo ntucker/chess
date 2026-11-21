@@ -245,7 +245,8 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
   'wide-only-spoken': { narrow: visuallyHidden },
   'narrow-only': { wide: { display: 'none' } },
   place: { wide: { display: 'none' } },
-  page: { narrow: { flexGrow: 1 } },
+  // Every page grows already (Page.tsx); only the web needs its height (CSS_ONLY).
+  page: {},
   stage: {
     narrow: {
       flexGrow: 1,

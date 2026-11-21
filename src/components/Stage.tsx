@@ -1,4 +1,4 @@
-import { Separator, Stack, Surface, useTheme } from '@reactive/silk-native';
+import { Surface, useTheme } from '@reactive/silk-native';
 import type { ComponentProps, ReactNode } from 'react';
 import { View } from 'react-native';
 
@@ -37,10 +37,7 @@ interface StageProps {
   readonly board: ReactNode;
   /** The panel beside the board, or below it on a narrow screen. */
   readonly program: ReactNode;
-  /**
-   * Small print across the foot of a wide page, under the board and the
-   * panel. A narrow page has no room for it, so the screen shows it elsewhere.
-   */
+  /** Small print across the foot of a wide page, under the board and the panel (`Page`). */
   readonly footer?: ReactNode;
 }
 
@@ -55,19 +52,13 @@ export function Stage({ title, header, board, program, footer }: StageProps) {
   const part = useNarrowPart();
   const fit = useBoardFit();
   return (
-    <Page title={title} header={header} maxWidth={STAGE_MAX} fillsWindow>
+    <Page title={title} header={header} maxWidth={STAGE_MAX} fillsWindow footer={footer}>
       <View {...part('stage', styles.stage)}>
         <View {...part('board-column', [styles.boardColumn, fit])}>{board}</View>
         <NarrowScroll part="program" style={styles.program}>
           {program}
         </NarrowScroll>
       </View>
-      {footer ? (
-        <Stack gap="3" {...part('wide-only', styles.footer)}>
-          <Separator />
-          {footer}
-        </Stack>
-      ) : null}
     </Page>
   );
 }
@@ -233,6 +224,4 @@ const STYLES = narrowStyles((px) => ({
     maxWidth: PROGRAM_MAX,
     marginTop: px(WRAPPED_GAP),
   },
-  // At the window's foot when the page is shorter than it (Page.tsx), else after the stage.
-  footer: { width: '100%', maxWidth: STAGE_MAX, marginTop: 'auto' },
 }));
