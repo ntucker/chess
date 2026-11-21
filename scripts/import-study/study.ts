@@ -97,8 +97,9 @@ export const isDubious = (move: StudyMove) => move.nags.some((nag) => DUBIOUS_NA
 export function parseStudy(pgn: string, include: (title: string) => boolean): Chapter[] {
   const games = parsePgn(pgn).flatMap((game) => {
     const title = game.headers.get('ChapterName') ?? game.headers.get('Event') ?? '';
-    const start = startingPosition(game.headers).unwrap() as Chess;
-    return include(title) ? [{ game, title, start }] : [];
+    // A chapter left out may be set up from a position that isn't legal (a joke with no kings).
+    if (!include(title)) return [];
+    return [{ game, title, start: startingPosition(game.headers).unwrap() as Chess }];
   });
   if (games.length === 0) return [];
   const startKey = positionKey(

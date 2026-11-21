@@ -90,6 +90,16 @@ describe('parseStudy', () => {
     );
   });
 
+  it('never reads the position of a chapter it leaves out', () => {
+    const pgn = [
+      chapter('London', '1. d4 d5 *'),
+      chapter('Thanks', '*', '8/8/8/8/8/8/8/8 w - - 0 1'),
+    ].join('\n');
+    expect(parseStudy(pgn, (title) => title !== 'Thanks').map(({ title }) => title)).toEqual([
+      'London',
+    ]);
+  });
+
   it('keeps a chapter set up where no earlier chapter goes', () => {
     const pgn = [
       chapter('London', '1. d4 d5 *'),
