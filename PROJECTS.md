@@ -64,9 +64,9 @@ new project follow `.agents/projects/setup.md`.
 - Visible UI changes include screenshots of the web export, built and served locally as described
   in the "Web deploys" section of README.md. Add light and
   dark versions only when the change looks different between the two (colors, theme tokens, images).
-- PRs changing layout, touch input or native code (native modules or config, worklets like
-  `src/maia/runNetwork.ts`, `android` branches of `Platform.OS`) are checked on the Android
-  emulator (`.agents/projects/person-machine.md`), and say what was checked.
+- PRs that `GOALS.md` says to check on Android are checked on the emulator
+  (`.agents/projects/person-machine.md`) and say what was checked. Other PRs say they need only
+  the web check.
 
 ## Follow-ups
 
