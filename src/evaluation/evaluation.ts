@@ -88,6 +88,9 @@ export function finalAnalysis(watch: (watcher: Watcher) => unknown): Promise<Fin
 export const scoreFor = ({ score }: Evaluation, side: Color) =>
   side === 'white' ? score : 1 - score;
 
+/** An amount on White's side (a score's or pawns' difference) for `side`: higher is better for it. */
+export const forSide = (amount: number, side: Color) => (side === 'white' ? amount : -amount);
+
 /**
  * The size of an advantage of `pawns`, as the evaluation bar and engine lines
  * write it: tenths of a pawn below 10, whole pawns from there up to 99.
@@ -141,13 +144,31 @@ export interface MoveChange {
 
 /**
  * How a move from a position scored `before` to one scored `after` changes
- * it for `side`: the pawns it gains or loses. Pawns can't count a change
- * into or out of a forced mate, so then the label is the mate: the one the
- * move leads to, plus when `side` mates; else the one it ends, plus when
- * `side` was the one getting mated. Example: for Black, a move from +0.3 to
- * \u22120.1 reads "+0.4", and one that lets White mate in 2 reads "\u2212M2".
+ * it for `side`: the pawns it gains or loses, so a move keeping the position
+ * as it stands (an engine's best) reads "0.0". Example: for Black, a move
+ * from +0.3 to \u22120.1 reads "+0.4". A move that changes a forced mate
+ * reads as `mateChange` says.
  */
 export function moveChange(before: Evaluation, after: Evaluation, side: Color): MoveChange {
+  if (after.mate !== before.mate) return mateChange(before, after, side);
+  const gain = forSide(after.pawns - before.pawns, side);
+  const label = pawnsLabel(gain);
+  if (Number(label) === 0) return { label, description: 'No change' };
+  const better = gain > 0;
+  return {
+    label: signed(label, better),
+    description: `${label} pawns ${better ? 'better' : 'worse'} for you`,
+  };
+}
+
+/**
+ * A move into, out of or between forced mates, which pawns can't count: the
+ * label is the mate the move leads to, plus when `side` mates, even when it
+ * only mates later than before; else the mate it ends, plus when `side` was
+ * the one getting mated. Example: for Black, a move that lets White mate in
+ * 2 reads "\u2212M2".
+ */
+function mateChange(before: Evaluation, after: Evaluation, side: Color): MoveChange {
   if (after.mate !== undefined) {
     const better = evaluationLeader(after) === side;
     return {
@@ -155,20 +176,10 @@ export function moveChange(before: Evaluation, after: Evaluation, side: Color): 
       description: `${better ? 'You mate' : 'Your opponent mates'} in ${moveCount(after.mate)}`,
     };
   }
-  if (before.mate !== undefined) {
-    const better = evaluationLeader(before) !== side;
-    return {
-      label: signed(mateLabel(before.mate), better),
-      description: `Ends ${better ? "your opponent's" : 'your'} mate in ${moveCount(before.mate)}`,
-    };
-  }
-  const gain = side === 'white' ? after.pawns - before.pawns : before.pawns - after.pawns;
-  const label = pawnsLabel(gain);
-  if (Number(label) === 0) return { label, description: 'No change' };
-  const better = gain > 0;
+  const better = evaluationLeader(before) !== side;
   return {
-    label: signed(label, better),
-    description: `${label} pawns ${better ? 'better' : 'worse'} for you`,
+    label: signed(mateLabel(before.mate!), better),
+    description: `Ends ${better ? "your opponent's" : 'your'} mate in ${moveCount(before.mate!)}`,
   };
 }
 

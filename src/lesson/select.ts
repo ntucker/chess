@@ -137,9 +137,9 @@ export function candidates(
  * where the guide has no candidates. A move that leads back into the guide
  * names its variation, as a guide move does. Each row says how its move
  * changes the position (the first line's evaluation) for the learner, on
- * either side's turn, so the best move reads "0.0". Example: beyond the
- * guide after 1.e4 c6 2.Qh5, Stockfish's g8f6 is the row Nf6, and for a
- * Black learner a move a pawn worse than the best reads "\u22121.0".
+ * either side's turn (`moveChange`), so the best move reads "0.0". Example:
+ * beyond the guide after 1.e4 c6 2.Qh5, Stockfish's g8f6 is the row Nf6, and
+ * for a Black learner a move a pawn worse than the best reads "\u22121.0".
  */
 export function engineCandidates(
   lesson: Lesson,

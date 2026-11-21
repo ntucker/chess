@@ -111,6 +111,18 @@ describe('CandidateList', () => {
     expect(partTexts({ compact: false })).toContainEqual(['leads-to', 'the Nf3 line']);
   });
 
+  it("shows a Stockfish row's change for the learner, and says it", () => {
+    const engine = {
+      ...COMMON,
+      engine: { label: '\u22120.4', description: '0.4 pawns worse for you' },
+    };
+    const row = render({ candidates: [engine], rare: [] }, (host) => {
+      const button = host.querySelector('[role="button"]');
+      return [button?.textContent, button?.getAttribute('aria-label')];
+    });
+    expect(row).toEqual(['Nf3the Nf3 line\u22120.4', 'Nf3, 0.4 pawns worse for you']);
+  });
+
   it('fades rows for showing rare ones, not for leaving a position that showed them', () => {
     const list = mount();
     mockFades.length = 0;
