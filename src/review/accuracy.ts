@@ -64,7 +64,6 @@ export function gameAccuracy(
       ? [{ accuracy: moveAccuracy(move.before * 100, move.after * 100), weight: weights[move.ply] }]
       : [],
   );
-  if (!scored.length) return undefined;
   return (weightedMean(scored) + harmonicMean(scored.map(({ accuracy }) => accuracy))) / 2;
 }
 

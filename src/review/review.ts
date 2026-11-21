@@ -87,7 +87,7 @@ export function reviewMoves({ plies, book, legal, analyses, failed }: ReviewInpu
 }
 
 /**
- * Whether the search of the position after `ply` failed for good: the
+ * Whether the search of position `ply` (`plies[ply]`) failed for good: the
  * engine gave up on it (`failed`) and the store has no final analysis of it.
  */
 export const lostPosition = (
@@ -99,7 +99,7 @@ export const lostPosition = (
 /**
  * The positions the label of the move from position `ply` needs, in order:
  * the one before it, the one after it, and the one before the opponent's
- * previous move, which Miss (planned) reads.
+ * previous move, which Miss reads.
  */
 export const labelPositions = (ply: number) => (ply > 0 ? [ply, ply + 1, ply - 1] : [ply, ply + 1]);
 
