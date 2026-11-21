@@ -1,4 +1,5 @@
 import { Text, useReducedMotion, useTheme } from '@reactive/silk-native';
+import { oklch } from '@reactive/silk-core/color';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { type CSSAnimationKeyframes } from 'react-native-reanimated';
@@ -171,7 +172,7 @@ function cardLook(mood: Mood, theme: Theme) {
   const won = mood === 'won';
   return {
     ground: rgba(won ? color.surfaceRaised : color.surfaceSunken, GROUND_ALPHA),
-    shadow: `0px ${offsetY}px ${blur}px rgba(0, 0, 0, ${opacity})`,
+    shadow: `0px ${offsetY}px ${blur}px ${oklch(0, 0, 0, opacity)}`,
     rule: won ? accent.solid : neutral.border,
     // Small type takes the accent's text color, which is lighter than its solid on velvet.
     eyebrow: won ? (dark ? accent.text : accent.solid) : color.textSecondary,
