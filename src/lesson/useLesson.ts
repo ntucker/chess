@@ -180,12 +180,12 @@ export function useLesson(
   const explore = focused && mode === 'explore';
   const analysis = useAnalysis('stockfish', explore ? shownLine : null);
   const lines = analysis?.lines;
-  const rows = useMemo(
+  const engineRows = useMemo(
     () => (lines ? engineCandidates(lesson, key, lines) : []),
     [lesson, key, lines],
   );
-  const engine = { best: lines?.[0].uci, top: rows, final: analysis?.final };
-  const top = listedEngineMoves(view, mode, picking, engine);
+  const final = analysis?.final;
+  const top = listedEngineMoves(view, mode, picking, engineRows, final);
   const previewOf = (at: Pointer) => preview(lesson, view, at, top);
   const shown = guidance({
     view,
@@ -197,7 +197,7 @@ export function useLesson(
     lifted: pointer?.at === 'drag' ? pointer.from : here?.selected,
     pointed: here?.note,
     playing: playing?.played,
-    engine,
+    engine: { best: lines?.[0].uci, top, final },
   });
   const frames = shown.playing
     ? ideaPlayback(shown.playing.idea, parsePositionKey(shown.playing.at)!)

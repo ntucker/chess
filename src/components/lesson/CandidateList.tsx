@@ -27,10 +27,10 @@ interface Props {
   readonly position: PositionKey;
   readonly candidates: readonly Candidate[];
   /**
-   * Stockfish's moves listed after the guide's candidates, each marked as a
-   * top engine move: its best reply when the guide doesn't list it.
+   * Stockfish's best move, listed after the guide's candidates and marked as
+   * the top engine move, for when the guide doesn't list it.
    */
-  readonly engineMoves?: readonly Candidate[];
+  readonly engineBest?: Candidate;
   /** Rare candidates, listed after the others while `rareShown`. */
   readonly rare: readonly Candidate[];
   readonly rareShown: boolean;
@@ -68,7 +68,7 @@ interface Props {
 
 /**
  * The guide's moves at the position on the board, one row each, most played
- * first, then any of Stockfish's (`engineMoves`), whose mark's tooltip says
+ * first, then any of Stockfish's (`engineBest`), whose mark's tooltip says
  * they're the engine's, not the guide's; or past the guide's moves
  * Stockfish's top moves, best first, each with how it changes the position
  * for the learner in place of its share. Pointing at a
@@ -83,7 +83,7 @@ export function CandidateList({
   owner,
   position,
   candidates,
-  engineMoves = [],
+  engineBest,
   rare,
   rareShown,
   onShowRare,
@@ -98,13 +98,15 @@ export function CandidateList({
   compact,
 }: Props) {
   const all = [...candidates, ...rare];
-  const guideRows = rareShown ? all : candidates;
-  const rows = [...candidates, ...engineMoves, ...(rareShown ? rare : [])];
+  const engineRows = engineBest ? [engineBest] : [];
+  const rows = [...candidates, ...engineRows, ...(rareShown ? rare : [])];
+  // Stockfish's row isn't the guide's, so it has no share to count.
+  const guideRows = rows.length - engineRows.length;
   const shownMarks = new Set(
     rows.map(({ move }) => marks.get(move.uci)).filter((mark) => mark !== undefined),
   );
   // A drag can point at a rare candidate while its row is hidden.
-  const pointedRow = [...all, ...engineMoves].find(({ move }) => move.uci === pointed);
+  const pointedRow = [...all, ...engineRows].find(({ move }) => move.uci === pointed);
   const caption = compact && pointedRow && leadsTo(pointedRow);
   const labelled = useLabelled();
   const styles = useNarrowStyles(STYLES);
@@ -144,7 +146,7 @@ export function CandidateList({
                 <Row
                   candidate={candidate}
                   main={candidate === main}
-                  topEngine={engineMoves.includes(candidate)}
+                  topEngine={candidate === engineBest}
                   pointed={candidate.move.uci === pointed}
                   mark={marks.get(candidate.move.uci)}
                   // Every row keeps room for a mark once one has one, so their shares line up.
@@ -152,7 +154,7 @@ export function CandidateList({
                   leadsTo={leadsTo(candidate)}
                   compact={compact}
                   // A lone move's share is always all of the games.
-                  share={guideRows.length > 1 ? candidate.share : undefined}
+                  share={guideRows > 1 ? candidate.share : undefined}
                   playable={playable}
                   onPlay={onPlay}
                   onPoint={onPoint}

@@ -71,7 +71,10 @@ export type LessonSwitches = Pick<Settings, 'auto' | 'showMoves' | 'showTraps'>;
 export interface EngineView {
   /** Its first line's move: the best. */
   readonly best?: Uci;
-  /** Its top three moves, best first, as rows (`engineCandidates`). */
+  /**
+   * The rows of its moves the list shows (`listedEngineMoves`), from its top
+   * three, best first (`engineCandidates`).
+   */
   readonly top?: readonly Candidate[];
   /** Its search has finished, so `best` won't change. */
   readonly final?: boolean;
@@ -144,11 +147,7 @@ export interface Guidance {
   readonly pointed?: Note;
   /**
    * Stockfish's best move to mark, with "moves on the board" on, while nothing
-   * is previewed, pointed at or playing back. Inside the guide the candidates
-   * are what is highlighted, so it is tagged only when it isn't one of them,
-   * and only once its search is final: in about a quarter of lesson positions
-   * an earlier depth names a move outside the guide that the final one
-   * doesn't, for about half a second (more on a phone).
+   * is previewed, pointed at or playing back, when `tagsBest` says so.
    * Past the guide's moves it is the first of `top`: both come from one analysis.
    */
   readonly best?: Uci;
@@ -168,11 +167,20 @@ export const listsTopMoves = (view: LessonView, mode: LessonMode) =>
   mode === 'explore' && view.place !== 'inside';
 
 /**
- * Stockfish's rows the list shows, in Explore: past the guide's moves its top
- * three, in the candidates' place (`listsTopMoves`); inside, on the opponent's
- * turn, its best after the candidates, once its search is final and only
- * when it isn't a candidate, rare ones included: the move the board tags as
- * the best. The guide's reply often teaches a trick, so the learner can
+ * Whether Stockfish's best move `uci` is tagged as the best: past the guide's
+ * moves as soon as it arrives; inside them, where the candidates are what is
+ * highlighted, only when it isn't one of them (rare ones included), and only
+ * once its search is final: in about a quarter of lesson positions an earlier
+ * depth names a move outside the guide that the final one doesn't.
+ */
+const tagsBest = (view: LessonView, engine: EngineView | undefined, uci: Uci) =>
+  !view.candidates.length || (engine?.final === true && !isCandidate(view, uci));
+
+/**
+ * Stockfish's rows the list shows (`EngineView.top`), from its top three
+ * (`engineCandidates`), in Explore: past the guide's moves all three, in the
+ * candidates' place (`listsTopMoves`); inside, on the opponent's turn, its
+ * best after the candidates, when the board tags it (`tagsBest`). The guide's reply often teaches a trick, so the learner can
  * practice both it and the strongest reply. Example: in the Urusov Gambit,
  * after 1.e4 e5 2.Bc4 Nf6 3.d4 exd4 4.Nf3, the guide lists only 4...Nxe4 and
  * Stockfish's 4...Bb4+ is listed after it. Where the moves pick the opening
@@ -182,18 +190,17 @@ export function listedEngineMoves(
   view: LessonView,
   mode: LessonMode,
   picking: boolean,
-  engine: EngineView | undefined,
+  top: readonly Candidate[],
+  final: boolean | undefined,
 ): readonly Candidate[] {
-  const top = engine?.top ?? [];
   if (listsTopMoves(view, mode)) return top;
   const best = top.at(0);
   const listsBest =
     mode === 'explore' &&
     !picking &&
     !view.learnerToMove &&
-    engine?.final &&
     best !== undefined &&
-    !isCandidate(view, best.move.uci);
+    tagsBest(view, { final }, best.move.uci);
   return listsBest ? [best] : [];
 }
 
@@ -240,7 +247,7 @@ export function guidance(input: GuidanceInput): Guidance {
     .filter(({ note }) => note.ideas?.some((idea) => drawsOnBoard(idea) && allowed(idea)))
     .map(({ note }) => note);
   const pointedNote = !playing && pointed && pointable.includes(pointed) ? pointed : undefined;
-  const top = listedEngineMoves(view, mode, picking, engine);
+  const top = engine?.top ?? [];
   const board = boardShown({
     candidates,
     liftable: [...withRare, ...top],
@@ -256,10 +263,6 @@ export function guidance(input: GuidanceInput): Guidance {
     explore && movesShown && !preview && !lifted && !playing && !pointedNote
       ? engine?.best
       : undefined;
-  // Inside the guide the learner's candidates are highlighted, so Stockfish's
-  // best is tagged only when it's another move, and only once its search is
-  // final; past the guide it shows live.
-  const insideGuide = view.candidates.length > 0;
 
   return {
     candidates,
@@ -274,7 +277,7 @@ export function guidance(input: GuidanceInput): Guidance {
     playable,
     playing,
     pointed: pointedNote,
-    best: insideGuide && (!engine?.final || isCandidate(view, best)) ? undefined : best,
+    best: best && tagsBest(view, engine, best) ? best : undefined,
     top,
     trap,
     lineEnded: view.lineEnd !== undefined && newsShown(view, view.lineEnd),

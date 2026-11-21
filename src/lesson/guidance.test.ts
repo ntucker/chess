@@ -60,15 +60,15 @@ function shown(
 ): Guidance {
   const view = sampleView(sans);
   const stockfish = engineView(sans, engine);
+  const top = listedEngineMoves(view, mode, picking, stockfish.top, stockfish.final);
   return guidance({
     view,
     mode,
     switches: { ...ALL_ON, ...switches },
     picking,
-    preview:
-      pointer && preview(SAMPLE, view, pointer, listedEngineMoves(view, mode, picking, stockfish)),
+    preview: pointer && preview(SAMPLE, view, pointer, top),
     lifted,
-    engine: stockfish,
+    engine: { ...stockfish, top },
   });
 }
 

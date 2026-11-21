@@ -136,7 +136,7 @@ describe('CandidateList', () => {
       ...candidate('f8b4', 'Bb4+'),
       engine: { label: '0.0', description: 'No change' },
     };
-    const rows = render({ rare: [], engineMoves: [best] }, (host) =>
+    const rows = render({ rare: [], engineBest: best }, (host) =>
       [...host.querySelectorAll('[role="button"]')].map((button) => [
         button.textContent,
         button.getAttribute('aria-label'),

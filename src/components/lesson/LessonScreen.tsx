@@ -286,7 +286,8 @@ function LessonScreen({
       compact={!picking}
       leadsTo={leadsTo}
       candidates={guidance.candidates}
-      engineMoves={guidance.top}
+      // Inside the guide, Stockfish's rows are at most its best (`listedEngineMoves`).
+      engineBest={guidance.top.at(0)}
       rare={guidance.rare}
       rareShown={rareShown}
       onShowRare={showRare}

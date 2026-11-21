@@ -11,8 +11,8 @@ interface Props {
 
 /**
  * A small mark that explains itself in a tooltip, in place of words beside
- * it: shown while a mouse or pen points at the mark, and toggled by a tap,
- * which a finger needs. A press elsewhere closes it. The tooltip takes no
+ * it: shown while a mouse or pen points at the mark, and opened by a tap,
+ * which a finger needs, until a press elsewhere. The tooltip takes no
  * focus, and the mark isn't a Tab stop: a mark inside a control is spoken
  * through the control's label, which should say what the tooltip says.
  */
@@ -29,7 +29,8 @@ export function Tip({ tip, children }: Props) {
         // A finger doesn't hover: React Native Web reports only a mouse's or pen's.
         onHoverIn={() => setOpen(true)}
         onHoverOut={() => setOpen(false)}
-        onPress={() => setOpen((was) => !was)}
+        // A tap opens it for a finger; a click leaves open what pointing opened.
+        onPress={() => setOpen(true)}
       >
         {children}
       </Pressable>
