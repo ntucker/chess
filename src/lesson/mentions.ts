@@ -3,7 +3,7 @@
  * for, so the idea card can show a small board for it. A square ("the e5
  * pawn", "takes on d4") is shown lit in the note's position. A move ("Bf5",
  * "...e5", "O-O", "a4-a5") is shown played from the nearest position where
- * it is legal, looking a tier at a time: the note's own position (with a
+ * it is played or legal, looking a tier at a time: the note's own position (with a
  * threat's side to move there), where its own line or trap plays it, the
  * position its move was played in, then each ply onward along its line or
  * trap and the guide. Where one tier's positions read it as different
@@ -187,13 +187,13 @@ function* tiers(
     ? { positions: [start, passed], witnesses: [] }
     : { positions: [start], witnesses: [passed] };
   const lines = ideaLines(ideas, start);
-  const steps = lines.flatMap(({ positions, moves }) =>
+  const linePlays = lines.flatMap(({ positions, moves }) =>
     moves.map((uci, n) => ({ pos: positions[n], uci })),
   );
-  if (steps.length) {
+  if (linePlays.length) {
     yield {
-      positions: steps.map(({ pos }) => pos),
-      plays: steps.map(({ uci }) => uci),
+      positions: linePlays.map(({ pos }) => pos),
+      plays: linePlays.map(({ uci }) => uci),
       witnesses: [],
     };
   }
@@ -212,7 +212,7 @@ function* tiers(
 
 /**
  * Each line or trap the note's ideas play from `start`: its positions, index n
- * after n moves, and the moves played from them.
+ * after n moves, and its legal moves, index n played from position n.
  */
 function ideaLines(
   ideas: readonly Idea[],

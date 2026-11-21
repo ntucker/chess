@@ -90,6 +90,18 @@ describe('noteParts', () => {
     });
   });
 
+  it('reads a line’s position only as the move the line plays there', () => {
+    // ...Nc6 is legal after 1.e4 too, but the line plays it after 2.Nc3.
+    const line = note('Then ...Nc6.', {
+      ideas: [{ type: 'line', moves: ['e2e4', 'g8f6', 'b1c3', 'b8c6'], verdict: 'equal' }],
+    });
+    const [, mention] = noteParts({ positions: {} } as unknown as Lesson, {
+      note: line,
+      after: keyAfter(),
+    });
+    expect(mention).toMatchObject({ key: keyAfter('e4', 'Nf6', 'Nc3', 'Nc6'), lit: ['b8', 'c6'] });
+  });
+
   it('shows a route written square to square as its move', () => {
     const after = keyAfter('e4', 'c6', 'd4', 'd5', 'e5');
     const [, mention] = noteParts(SAMPLE, { note: note('Then c6-c5 hits d4.'), after });
