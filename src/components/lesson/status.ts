@@ -1,5 +1,5 @@
 import type { MoveQuality } from '@/analysis/quality';
-import type { HeadlineProps } from '@/components/GameStatus';
+import type { HeadlineProps, News } from '@/components/GameStatus';
 import type { LessonView } from '@/lesson/view';
 import { qualityLooks } from '@/theme/moveQuality';
 
@@ -166,7 +166,7 @@ interface Surroundings {
 export function headlineNews(
   { news, pastGuide }: Pick<Status, 'news' | 'pastGuide'>,
   { aside, scoresheetOpen, failed }: Surroundings,
-): NonNullable<Status['news']> {
+): News {
   const untold = scoresheetOpen ? pastGuide === OFF_GUIDE && !failed : aside;
   return untold ? 'none' : (news ?? 'all');
 }

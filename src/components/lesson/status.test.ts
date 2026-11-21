@@ -52,6 +52,9 @@ describe('headlineNews', () => {
     const open = { ...closed, aside: true, scoresheetOpen: true };
     expect(headlineNews(offGuide, open)).toBe('none');
     expect(headlineNews(offGuide, { ...open, failed: true })).toBe('all');
+    // Where no aside would tell it (Stockfish's moves aren't listed), the drawer's rule holds all the same.
+    expect(headlineNews(offGuide, { ...open, aside: false })).toBe('none');
+    expect(headlineNews(offGuide, { ...open, aside: false, failed: true })).toBe('all');
     expect(headlineNews(lineEnd, open)).toBe('all');
     expect(headlineNews(describeStatus(view('inside'), { ...INPUT, viewing: true }), open)).toBe(
       'detail',

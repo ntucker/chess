@@ -373,7 +373,7 @@ function LessonScreen({
             eyebrowInHeader
             eyebrowLink={listLink}
             news={headlineNews(
-              { ...status, pastGuide },
+              { news: status.news, pastGuide },
               { aside: !!aside, scoresheetOpen, failed: !!game.error },
             )}
           />
