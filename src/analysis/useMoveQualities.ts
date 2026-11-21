@@ -4,8 +4,9 @@ import { use } from 'react';
 import { type EvaluationEngine, isFinal } from '@/evaluation/evaluation';
 import type { Ply } from '@/game/replay';
 import { analysisKey, getAnalysis, PositionAnalysis } from '@/resources/analysis';
+import { reviewMoves } from '@/review/review';
 
-import { judgeMove, type MoveQuality, refutation } from './quality';
+import { type MoveQuality, refutation } from './quality';
 
 /** Each move's label, and the reply that punishes it, if one clearly does. */
 export interface MoveJudgements {
@@ -17,8 +18,9 @@ export interface MoveJudgements {
 
 /**
  * Each move's label, from `engine`'s final analyses of the positions before
- * and after it (`judgeMove`): `qualities[n]` labels the move that leads to
- * `plies[n + 1]`, once those are final. Only final analyses count, so a
+ * and after it (`judgeMove`, by the review's rule, `reviewMoves`):
+ * `qualities[n]` labels the move that leads to `plies[n + 1]`, once those
+ * are final. Only final analyses count, so a
  * move gets the same label whichever screen shows it, in whatever order:
  * the bar and lines show a search as it deepens, but a label waits for it
  * to finish. The reply that punishes a mistake or blunder comes from the same
@@ -60,13 +62,16 @@ export function useMoveQualities(
     const analysis = ctrl.get(PositionAnalysis, analysisKey(engine, line), state);
     return isFinal(analysis) ? analysis : undefined;
   });
-  const qualities = moves.map((uci, n): MoveQuality | undefined => {
-    if (book[n]) return 'book';
-    const before = analyses[n];
-    return before && judgeMove(before, analyses[n + 1], uci, plies[n].turn);
-  });
+  // The review's rule, so a move gets the same label there. The game doesn't
+  // count legal moves: Stockfish lists a forced move first, so it's labelled
+  // best once searched, as the review labels it at once.
+  const qualities = reviewMoves({ plies, book, legal: [], analyses, failed: NONE }).map(
+    ({ quality }) => quality,
+  );
   const refutations = qualities.map((quality, n) =>
     refutation(quality, analyses[n + 1], plies[n].turn),
   );
   return { qualities, refutations };
 }
+
+const NONE: ReadonlySet<number> = new Set();

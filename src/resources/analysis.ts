@@ -3,6 +3,7 @@ import {
   type Controller,
   type Manager,
   type Middleware,
+  type State,
   useQuery,
   useSubscription,
 } from '@data-client/react';
@@ -134,6 +135,19 @@ export function useAnalysis(
   return useQuery(PositionAnalysis, ...(line ? [analysisKey(engine, line)] : [null]));
 }
 
+/**
+ * Whether `engine`'s search of the position after `line` gave up (the engine
+ * stopped on it too often) and nothing has asked again since: the error
+ * `AnalysisManager` stores for it. `ctrl.invalidate(getAnalysis, engine,
+ * line)` clears it and searches again.
+ */
+export const analysisFailed = (
+  ctrl: Controller,
+  engine: EvaluationEngine,
+  line: readonly string[],
+  state: State<unknown>,
+) => ctrl.getError(getAnalysis, engine, line, state) !== undefined;
+
 /** A position some screen shows (`useAnalysis`), and its search's watch, while it runs. */
 interface Shown {
   readonly engine: EvaluationEngine;
@@ -169,7 +183,12 @@ export class AnalysisManager implements Manager {
         else this.hide(action.key);
         return;
       }
-      return next(action);
+      if (action.type !== actionTypes.INVALIDATE) return next(action);
+      // Once its error is cleared, a search that gave up starts again for
+      // the screens still showing it.
+      await next(action);
+      const shown = this.shown.get(action.key);
+      if (shown && !shown.release && !this.paused) this.run(shown);
     };
   };
 
@@ -211,9 +230,12 @@ export class AnalysisManager implements Manager {
         if (analysis.final) ctrl.setResponse(getAnalysis, engine, line, record);
         else ctrl.set(PositionAnalysis, key, record);
       },
-      // The screen keeps the last depth it showed; a later visit asks again.
+      // The screen keeps the last depth it showed. The error goes into the
+      // store, so a screen can tell the search gave up (`analysisFailed`);
+      // invalidating it, or a later visit, asks again.
       fail(error) {
-        console.error(error);
+        shown.release = undefined;
+        ctrl.setError(getAnalysis, engine, line, error);
       },
     });
   }
