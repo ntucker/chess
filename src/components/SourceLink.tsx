@@ -4,7 +4,7 @@ import { HeaderButton } from '@/components/HeaderButton';
 import { ExternalLink, opensUrl } from '@/components/ExternalLink';
 
 /** Where Opening Night's source code lives. */
-const SOURCE_URL = 'https://github.com/ntucker/chess';
+export const SOURCE_URL = 'https://github.com/ntucker/chess';
 
 /** The GitHub mark, linking to the app's source. */
 export function SourceLink() {

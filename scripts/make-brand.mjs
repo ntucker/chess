@@ -7,10 +7,11 @@
 // 1024 grid: the knight from the points in `KNIGHT`, the stage and curtains
 // from the shapes in `stage()` and `curtain()`.
 //
-// The SVGs in assets/brand need nothing but Node. The PNGs in assets/images
-// are rendered with Playwright's Chromium, which this app doesn't depend on:
-// run the script somewhere `playwright` resolves, or it stops after the SVGs.
-import { writeFileSync } from 'node:fs';
+// The SVGs in assets/brand need only Node and the app's own packages. The PNGs
+// in assets/images, and the Google Play listing's icon and feature graphic in
+// store/, are rendered with Playwright's Chromium, which this app doesn't depend on: run
+// the script somewhere `playwright` resolves, or it stops after the SVGs.
+import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
@@ -41,6 +42,9 @@ const color = {
   lightCore: oklch(0.973, 0.035, 91),
   lightMid: oklch(0.87, 0.119, 86),
   eye: oklch(0.25, 0.062, 309),
+  // The app's dark surface and text (src/theme/theme.ts), behind and in the feature graphic.
+  surface: oklch(0.176, 0.037, 295),
+  text: oklch(0.951, 0.017, 85),
 };
 
 // The knight, facing left. Each point is [x, y]; a third element marks a
@@ -284,28 +288,58 @@ const svgs = {
 };
 
 const pngs = [
-  { file: 'icon.png', size: 1024, svg: logo(), opaque: true },
+  { file: 'assets/images/icon.png', size: 1024, svg: logo(), opaque: true },
   {
-    file: 'android-icon-background.png',
+    file: 'assets/images/android-icon-background.png',
     size: 1024,
     svg: logo({ scale: ANDROID, layers: ['stage'] }),
     opaque: true,
   },
   {
-    file: 'android-icon-foreground.png',
+    file: 'assets/images/android-icon-foreground.png',
     size: 1024,
     svg: logo({ scale: ANDROID, layers: ['knight'] }),
   },
   {
-    file: 'android-icon-monochrome.png',
+    file: 'assets/images/android-icon-monochrome.png',
     size: 1024,
     svg: logo({ scale: ANDROID, flat: oklch(1, 0, 0) }),
   },
   // Android 12 and later crop the splash image to a circle two thirds as wide.
-  { file: 'splash-icon.png', size: 512, svg: logo({ scale: 0.76, layers: ['knight'] }) },
-  { file: 'logo-mark.png', size: 160, svg: logo() },
-  { file: 'favicon.png', size: 48, svg: logo({ scale: 1.12, corner: 230 }) },
+  {
+    file: 'assets/images/splash-icon.png',
+    size: 512,
+    svg: logo({ scale: 0.76, layers: ['knight'] }),
+  },
+  { file: 'assets/images/logo-mark.png', size: 160, svg: logo() },
+  { file: 'assets/images/favicon.png', size: 48, svg: logo({ scale: 1.12, corner: 230 }) },
+  // Google Play's listing: a square icon it rounds itself, and the banner atop the page.
+  // Play asks for a 32-bit PNG, so the icon keeps an alpha channel though it has no transparent pixel.
+  { file: 'store/icon-512.png', size: 512, svg: logo(), opaque: true, alpha: true },
+  { file: 'store/feature-graphic.png', size: [1024, 500], html: featureGraphic, opaque: true },
 ];
+
+/**
+ * Google Play's feature graphic (1024 by 500): the logo's tile beside the
+ * wordmark and tagline, on the app's dark stage under its spotlight (as in
+ * src/theme/theme.ts).
+ */
+function featureGraphic() {
+  const font = (family, file) =>
+    `@font-face{font-family:${family};src:url(data:font/ttf;base64,${readFileSync(
+      root + `node_modules/@expo-google-fonts/${file}`,
+    ).toString('base64')})}`;
+  const tile = logo({ corner: 230 }).replace('<svg ', '<svg width="300" height="300" ');
+  return `<style>
+${font('Display', 'dm-serif-display/400Regular/DMSerifDisplay_400Regular.ttf')}
+${font('Sans', 'instrument-sans/400Regular/InstrumentSans_400Regular.ttf')}
+body{margin:0;width:1024px;height:500px;display:flex;align-items:center;gap:56px;padding:0 0 0 100px;box-sizing:border-box;
+background:radial-gradient(ellipse 70% 80% at 30% -10%,color-mix(in srgb,${brand.spotlight} 30%,transparent),transparent 70%),${color.surface}}
+svg{display:block;flex:none;filter:drop-shadow(0 18px 40px oklch(0 0 0 / 0.55))}
+h1{margin:0;font:400 92px/1 Display;color:${color.text};letter-spacing:-.5px}
+p{margin:22px 0 0;font:400 32px/1.2 Sans;color:${brand.spotlight};letter-spacing:.5px}
+</style>${tile}<div><h1>Opening<br>Night</h1><p>Learn your lines</p></div>`;
+}
 
 for (const [file, svg] of Object.entries(svgs)) writeFileSync(root + file, svg);
 console.log(`Wrote ${Object.keys(svgs).join(', ')}`);
@@ -314,17 +348,34 @@ let chromium;
 try {
   ({ chromium } = createRequire(import.meta.url)('playwright'));
 } catch {
-  console.error('Playwright not found, so the PNGs in assets/images were left as they were.');
+  console.error('Playwright not found, so the PNGs were left as they were.');
   process.exit(1);
 }
 const browser = await chromium.launch();
-for (const { file, size, svg, opaque } of pngs) {
-  const page = await browser.newPage({ viewport: { width: size, height: size } });
+for (const { file, size, svg, html, opaque, alpha } of pngs) {
+  const [width, height] = Array.isArray(size) ? size : [size, size];
+  const page = await browser.newPage({ viewport: { width, height } });
   await page.setContent(
-    `<body style="margin:0">${svg.replace('<svg ', `<svg width="${size}" height="${size}" style="display:block" `)}`,
+    html?.() ??
+      `<body style="margin:0">${svg.replace('<svg ', `<svg width="${width}" height="${height}" style="display:block" `)}`,
   );
-  await page.screenshot({ path: `${root}assets/images/${file}`, omitBackground: !opaque });
+  const png = await page.screenshot({ omitBackground: !opaque });
+  // Chromium saves an image with no transparent pixel without its alpha channel; a canvas keeps it.
+  const kept = alpha
+    ? await page.evaluate(async (data) => {
+        const image = new Image();
+        image.src = `data:image/png;base64,${data}`;
+        await image.decode();
+        const canvas = Object.assign(document.createElement('canvas'), {
+          width: image.width,
+          height: image.height,
+        });
+        canvas.getContext('2d').drawImage(image, 0, 0);
+        return canvas.toDataURL('image/png').split(',')[1];
+      }, png.toString('base64'))
+    : undefined;
+  writeFileSync(root + file, kept ? Buffer.from(kept, 'base64') : png);
   await page.close();
 }
 await browser.close();
-console.log(`Wrote ${pngs.map((p) => p.file).join(', ')} to assets/images`);
+console.log(`Wrote ${pngs.map((p) => p.file).join(', ')}`);

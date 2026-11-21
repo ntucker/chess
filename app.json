@@ -9,6 +9,11 @@
     "userInterfaceStyle": "automatic",
     "android": {
       "package": "io.github.ntucker.openingnight",
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
       "predictiveBackGestureEnabled": false
     },
     "web": {
