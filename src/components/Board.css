@@ -17,12 +17,16 @@ cg-container {
   transform: translate(-50%, -50%);
 }
 
-/* On the wrapper, so the coordinates (beside cg-board, not in it) see them. */
+/*
+ * On the wrapper, so the coordinates (beside cg-board, not in it) see them.
+ * Colors are OKLCH; a variable holding bare channels (L C H) takes an alpha
+ * where it's used: oklch(var(--gold) / 0.5).
+ */
 .cg-wrap {
-  --light: #ecdfc6;
-  --dark: #8a6c93;
-  --gold: 217, 164, 65;
-  --ink: 34, 26, 51;
+  --light: oklch(0.907 0.036 84);
+  --dark: oklch(0.575 0.068 318);
+  --gold: 0.751 0.1295 79.8;
+  --ink: 0.24 0.048 297;
 }
 
 cg-board {
@@ -38,20 +42,20 @@ cg-board {
 }
 
 cg-board square.last-move {
-  background-color: rgba(var(--gold), 0.5);
+  background-color: oklch(var(--gold) / 0.5);
 }
 cg-board square.selected {
-  background-color: rgba(var(--gold), 0.75);
+  background-color: oklch(var(--gold) / 0.75);
 }
 cg-board square.move-dest {
-  background: radial-gradient(rgba(var(--ink), 0.38) 19%, rgba(var(--ink), 0) 20%);
+  background: radial-gradient(oklch(var(--ink) / 0.38) 19%, oklch(var(--ink) / 0) 20%);
 }
 cg-board square.oc.move-dest {
-  background: radial-gradient(transparent 0%, transparent 78%, rgba(var(--ink), 0.38) 79%);
+  background: radial-gradient(transparent 0%, transparent 78%, oklch(var(--ink) / 0.38) 79%);
 }
 cg-board square.move-dest:hover,
 cg-board square.move-dest.hover {
-  background: rgba(var(--gold), 0.45);
+  background: oklch(var(--gold) / 0.45);
 }
 
 /*
@@ -105,9 +109,9 @@ cg-board piece.taken {
  * down, only say how it gets there, so without them the end is shown at once.
  */
 .cg-wrap {
-  --stage: 11, 8, 21;
-  --ivory: 244, 238, 226;
-  --gold-rim: 150, 100, 14;
+  --stage: 0.146 0.028 294;
+  --ivory: 0.951 0.017 85;
+  --gold-rim: 0.544 0.111 73.4;
   /*
    * The cut through a beaten king's crown, traced on this piece set's
    * (cburnett) king: from --cut-left down its left edge up to --cut-right
@@ -140,25 +144,25 @@ cg-ending .veil {
   background:
     radial-gradient(
       ellipse 24% 24% at var(--spot-x) var(--spot-y),
-      rgba(var(--gold), 0.34),
-      rgba(var(--gold), 0)
+      oklch(var(--gold) / 0.34),
+      oklch(var(--gold) / 0)
     ),
     radial-gradient(
       ellipse 36% 36% at var(--spot-x) var(--spot-y),
-      rgba(var(--stage), 0) 30%,
-      rgba(var(--stage), 0.7)
+      oklch(var(--stage) / 0) 30%,
+      oklch(var(--stage) / 0.7)
     );
 }
 /* A loss is darker, and leaves a small cold spot on the king that fell. */
 .ending-lost cg-ending .veil {
   background: radial-gradient(
     ellipse 21% 21% at var(--spot-x) var(--spot-y),
-    rgba(var(--stage), 0.1) 28%,
-    rgba(var(--stage), 0.82)
+    oklch(var(--stage) / 0.1) 28%,
+    oklch(var(--stage) / 0.82)
   );
 }
 .ending-drawn cg-ending .veil {
-  background: rgba(var(--stage), 0.36);
+  background: oklch(var(--stage) / 0.36);
 }
 /*
  * What a win throws. Each is a box the size of a square, so its travel is in
@@ -174,13 +178,13 @@ cg-ending .confetto {
   top: calc(var(--y) * 12.5%);
 }
 cg-ending .spark {
-  filter: drop-shadow(0 0 3px rgba(var(--gold), 0.9));
+  filter: drop-shadow(0 0 3px oklch(var(--gold) / 0.9));
 }
 cg-ending .ring {
   border-radius: 50%;
   box-shadow:
-    inset 0 0 0 1.5px rgba(var(--gold), 0.95),
-    0 0 8px rgba(var(--gold), 0.7);
+    inset 0 0 0 1.5px oklch(var(--gold) / 0.95),
+    0 0 8px oklch(var(--gold) / 0.7);
 }
 cg-ending .spark::before,
 cg-ending .confetto::before {
@@ -218,21 +222,21 @@ cg-ending .slash {
   /* Through the middle of the cut on the king's square: (left + right) / 2 of a square, which is (left + right) / 16 of the board. */
   top: calc(var(--y) * 12.5% + (var(--cut-left) + var(--cut-right)) / 16 - 2px);
   border-radius: 50%;
-  background: linear-gradient(90deg, transparent, #fff 25%, #fff 75%, transparent);
-  box-shadow: 0 0 6px 1px rgba(var(--ivory), 0.9);
+  background: linear-gradient(90deg, transparent, oklch(1 0 0) 25%, oklch(1 0 0) 75%, transparent);
+  box-shadow: 0 0 6px 1px oklch(var(--ivory) / 0.9);
   transform: rotate(var(--cut-angle));
 }
 cg-ending .gold {
-  color: rgb(var(--gold));
+  color: oklch(var(--gold));
 }
 cg-ending .pale {
-  color: #f6dc9c;
+  color: oklch(0.901 0.086 88);
 }
 cg-ending .ivory {
-  color: rgb(var(--ivory));
+  color: oklch(var(--ivory));
 }
 cg-ending .rose {
-  color: #c9395a;
+  color: oklch(0.567 0.18 12);
 }
 
 /*
@@ -274,16 +278,16 @@ cg-board piece.ending-winner::after {
     radial-gradient(
       closest-side,
       transparent 57%,
-      rgba(var(--gold-rim), 0.85) 58.5%,
-      rgba(var(--gold-rim), 0.85) 61%,
+      oklch(var(--gold-rim) / 0.85) 58.5%,
+      oklch(var(--gold-rim) / 0.85) 61%,
       transparent 62.5%
     ),
     radial-gradient(
       closest-side,
-      rgba(255, 238, 184, 0.98),
-      rgba(var(--gold), 0.96) 44%,
-      rgba(var(--gold), 0.9) 60%,
-      rgba(var(--gold), 0)
+      oklch(0.95 0.072 93 / 0.98),
+      oklch(var(--gold) / 0.96) 44%,
+      oklch(var(--gold) / 0.9) 60%,
+      oklch(var(--gold) / 0)
     );
 }
 /*
@@ -313,9 +317,9 @@ cg-board piece.ending-beaten::after {
 cg-board piece.ending-level::after {
   inset: 4%;
   box-shadow:
-    inset 0 0 0 2px rgba(var(--ivory), 0.95),
-    0 0 0 1px rgba(var(--ink), 0.35),
-    inset 0 0 0 3px rgba(var(--ink), 0.2);
+    inset 0 0 0 2px oklch(var(--ivory) / 0.95),
+    0 0 0 1px oklch(var(--ink) / 0.35),
+    inset 0 0 0 3px oklch(var(--ink) / 0.2);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -564,9 +568,9 @@ cg-board piece.ending-level::after {
 cg-board square.check {
   background: radial-gradient(
     ellipse at center,
-    rgba(214, 40, 57, 1) 0%,
-    rgba(214, 40, 57, 0.85) 30%,
-    rgba(214, 40, 57, 0) 80%
+    oklch(0.57 0.207 22.6) 0%,
+    oklch(0.57 0.207 22.6 / 0.85) 30%,
+    oklch(0.57 0.207 22.6 / 0) 80%
   );
 }
 

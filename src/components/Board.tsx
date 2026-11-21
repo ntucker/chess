@@ -322,7 +322,7 @@ const marksConfig = (marks: BoardMarks): Config => ({
  */
 const TINT_CSS = TONES.map(
   (tone) =>
-    `cg-board square.tint-${tone} { background-color: color-mix(in srgb, ${toneColors[tone]} 40%, transparent); }`,
+    `cg-board square.tint-${tone} { background-color: color-mix(in oklch, ${toneColors[tone]} 40%, transparent); }`,
 ).join('\n');
 
 /** The preview's own layer, over chessground's pieces and under its arrows. */

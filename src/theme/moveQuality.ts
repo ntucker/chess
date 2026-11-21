@@ -1,8 +1,11 @@
+import { oklch } from '@reactive/silk-core/color';
+
 import type { MoveQuality } from '@/analysis/quality';
 
 // How each move label looks: a colored disc with a white glyph, drawn in the
 // scoresheet (QualityBadge) and on the board (Board.tsx, in a web view on
-// Android, which is why this file imports nothing it would have to bundle).
+// Android, which is why this file imports only Silk's color helper, which imports
+// nothing).
 // Greens for good moves, then gold, orange and red as the loss grows, as
 // chess.com and lichess color them; each disc holds its white glyph at 3:1 or
 // more.
@@ -10,7 +13,7 @@ import type { MoveQuality } from '@/analysis/quality';
 /** The badge's box: a 24 by 24 square, holding a disc of radius 12. */
 export const BADGE_BOX = 24;
 /** Every glyph's color. */
-const GLYPH_INK = '#fff';
+const GLYPH_INK = oklch(1, 0, 0);
 
 /** A glyph's path, and whether it's filled (the star) or stroked. */
 interface QualityGlyph {
@@ -41,7 +44,7 @@ const exclamation = (x: number) => `M${x} 6.6 v6.4 M${x} 17.4 v0.01`;
 export const qualityLooks: Readonly<Record<MoveQuality, QualityLook>> = {
   book: {
     name: 'Book move',
-    color: '#9a7550',
+    color: oklch(0.59, 0.07, 66),
     glyph: {
       d:
         'M5.5 8.2c2.2-1 4.4-.9 6.5.7 2.1-1.6 4.3-1.7 6.5-.7v8.6c-2.2-1-4.4-.9-6.5.7' +
@@ -50,22 +53,26 @@ export const qualityLooks: Readonly<Record<MoveQuality, QualityLook>> = {
   },
   best: {
     name: 'Best move',
-    color: '#16935f',
+    color: oklch(0.587, 0.1299, 158.8),
     glyph: {
       d: 'M12 5.6L13.7 10.25L18.66 10.44L14.76 13.5L16.11 18.26L12 15.5L7.89 18.26L9.24 13.5L5.34 10.44L10.3 10.25Z',
       filled: true,
     },
   },
-  good: { name: 'Good move', color: '#6e8471', glyph: { d: 'M7.2 12.4l3.3 3.4 6.3-7.2' } },
+  good: {
+    name: 'Good move',
+    color: oklch(0.59, 0.038, 149),
+    glyph: { d: 'M7.2 12.4l3.3 3.4 6.3-7.2' },
+  },
   inaccuracy: {
     name: 'Inaccuracy',
-    color: '#b8841a',
+    color: oklch(0.649, 0.1276, 79),
     glyph: { d: `${question(9.6, 0.85)} ${exclamation(16.4)}` },
   },
-  mistake: { name: 'Mistake', color: '#c8601f', glyph: { d: question(12) } },
+  mistake: { name: 'Mistake', color: oklch(0.606, 0.151, 47.7), glyph: { d: question(12) } },
   blunder: {
     name: 'Blunder',
-    color: '#c9303c',
+    color: oklch(0.553, 0.189, 22),
     glyph: { d: `${question(8.4, 0.85)} ${question(15.6, 0.85)}` },
   },
 };
