@@ -51,11 +51,13 @@ function shown(
     lifted,
     engine = ENGINE,
     picking = sans.length === 0,
+    refutation,
   }: {
     pointer?: Pointer;
     lifted?: Candidate['from'];
     engine?: { best?: string; top?: string[]; final?: boolean };
     picking?: boolean;
+    refutation?: string;
   } = {},
 ): Guidance {
   const view = sampleView(sans);
@@ -70,6 +72,7 @@ function shown(
     preview: pointer && preview(SAMPLE, view, pointer, listed),
     lifted,
     engine: stockfish,
+    refutation,
   });
 }
 
@@ -193,6 +196,43 @@ describe('guidance', () => {
       expect(attack).toMatchObject({ idea: { from: 'd4' }, at: keyAfter(...ADVANCE, 'c5') });
       const ideas = shown(ADVANCE, 'explore').ideas;
       expect(ideas.map(({ at }) => at)).toEqual(ideas.map(() => keyAfter(...ADVANCE)));
+    });
+  });
+
+  describe("the reply that punishes the learner's mistake", () => {
+    // ...a6 leaves the guide; say it was a mistake that Nf3 punishes.
+    const beyond = [...ADVANCE, 'a6'];
+    const engine = { best: 'g1f3', top: ['g1f3', 'c2c3', 'f1d3'], final: true };
+    const refutation = 'g1f3';
+
+    it('marks it in every mode, with moves on the board on or off, in place of the best', () => {
+      for (const mode of ['explore', 'practice'] as const) {
+        for (const showMoves of [true, false]) {
+          const marked = shown(beyond, mode, { showMoves }, { engine, refutation });
+          expect(marked.refutation).toBe('g1f3');
+          expect(marked.best).toBeUndefined();
+        }
+      }
+      // Its row stays listed beside the other top moves.
+      expect(shown(beyond, 'explore', {}, { engine, refutation }).top).toHaveLength(3);
+    });
+
+    it('hides it while a move is previewed or a piece picked up', () => {
+      const row = { at: 'row', uci: 'c2c3' } as const;
+      expect(shown(beyond, 'explore', {}, { engine, refutation, pointer: row })).toMatchObject({
+        refutation: undefined,
+        best: undefined,
+      });
+      expect(
+        shown(beyond, 'explore', {}, { engine, refutation, lifted: 'f1' }).refutation,
+      ).toBeUndefined();
+    });
+
+    it("draws it in place of the guide's arrow for the same move, which stays listed", () => {
+      // After MAIN the guide gives White e5, exd5, Nc3 and Nd2.
+      const marked = shown(MAIN, 'explore', {}, { refutation: 'e4e5' });
+      expect(marked.candidates.map(({ san }) => san)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2']);
+      expect(marked.drawnCandidates.map(({ san }) => san)).toEqual(['exd5', 'Nc3', 'Nd2']);
     });
   });
 

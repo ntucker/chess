@@ -47,6 +47,12 @@
  *   them wherever the piece is over, so dragging across the board moves
  *   nothing else on it; the idea card shows the move under it. A click hides
  *   the resting best-move mark the same way, until the piece is unselected.
+ * - After the learner's mistake or blunder, the reply that punishes it
+ *   (`refutation` in src/analysis/quality.ts) is marked in every mode, with
+ *   "moves on the board" on or off, since it judges the move just played
+ *   rather than hinting at the next one; like the best move, only while
+ *   nothing is previewed, pointed at, picked up or playing back. It takes the
+ *   place of the best-move mark and of a candidate's arrow for the same move.
  * - Rare candidates (`Candidate.rare`) are left off the list, which shows
  *   them only when asked, and off the board's arrows; Stockfish's best isn't
  *   tagged on one either. Only a preview of one, or dragging its piece,
@@ -98,6 +104,8 @@ export interface GuidanceInput {
   /** The note whose idea plays back on the board. */
   readonly playing?: Note;
   readonly engine?: EngineView;
+  /** The reply that punishes the learner's move into the shown position, if one clearly does. */
+  readonly refutation?: Uci;
 }
 
 /** An idea to draw, and the position it is checked in. */
@@ -150,6 +158,11 @@ export interface Guidance {
   readonly best?: Uci;
   /** Stockfish's rows the list shows (`listedEngineMoves`). */
   readonly top: readonly Candidate[];
+  /**
+   * The reply that punishes the learner's move just played, to mark while
+   * nothing is previewed, pointed at, picked up or playing back.
+   */
+  readonly refutation?: Uci;
   /** A trap the line fell into, while its card shows (see `trapShown`). */
   readonly trap?: LandedTrap;
   /** The line has reached a guide line's end, and the headline tells it (see `newsShown`). */
@@ -213,6 +226,7 @@ export function guidance(input: GuidanceInput): Guidance {
     pointed,
     playing: playingNote,
     engine,
+    refutation: punishing,
   } = input;
   const explore = mode === 'explore';
   const movesShown = switches.showMoves || !movesSwitchApplies(mode);
@@ -257,10 +271,10 @@ export function guidance(input: GuidanceInput): Guidance {
     showMoves: movesShown,
     moveIdeas,
   });
-  const best =
-    explore && movesShown && !preview && !lifted && !playing && !pointedNote
-      ? engine?.best
-      : undefined;
+  // The board at rest: nothing previewed, picked up, pointed at or playing back.
+  const resting = !preview && !lifted && !playing && !pointedNote;
+  const refutation = resting ? punishing : undefined;
+  const best = explore && movesShown && resting ? engine?.best : undefined;
 
   return {
     candidates,
@@ -271,12 +285,13 @@ export function guidance(input: GuidanceInput): Guidance {
     pointable,
     ideas,
     drawn: firstPlanOnly(board.drawn),
-    drawnCandidates: board.candidates,
+    drawnCandidates: board.candidates.filter(({ move }) => move.uci !== refutation),
     playable,
     playing,
     pointed: pointedNote,
-    best: best && tagsBest(view, engine?.final, best) ? best : undefined,
+    best: best !== refutation && best && tagsBest(view, engine?.final, best) ? best : undefined,
     top,
+    refutation,
     trap,
     lineEnded: view.lineEnd !== undefined && newsShown(view, view.lineEnd),
   };

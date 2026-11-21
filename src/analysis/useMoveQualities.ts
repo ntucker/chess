@@ -5,7 +5,15 @@ import { type EvaluationEngine, isFinal } from '@/evaluation/evaluation';
 import type { Ply } from '@/game/replay';
 import { analysisKey, getAnalysis, PositionAnalysis } from '@/resources/analysis';
 
-import { judgeMove, type MoveQuality } from './quality';
+import { judgeMove, type MoveQuality, refutation } from './quality';
+
+/** Each move's label, and the reply that punishes it, if one clearly does. */
+export interface MoveJudgements {
+  /** `qualities[n]` labels the move that leads to `plies[n + 1]`. */
+  readonly qualities: readonly (MoveQuality | undefined)[];
+  /** `refutations[n]` punishes that move (`refutation`), from the same analyses. */
+  readonly refutations: readonly (string | undefined)[];
+}
 
 /**
  * Each move's label, from `engine`'s final analyses of the positions before
@@ -13,7 +21,8 @@ import { judgeMove, type MoveQuality } from './quality';
  * `plies[n + 1]`, once those are final. Only final analyses count, so a
  * move gets the same label whichever screen shows it, in whatever order:
  * the bar and lines show a search as it deepens, but a label waits for it
- * to finish.
+ * to finish. The reply that punishes a mistake or blunder comes from the same
+ * analysis of the position after it, so it shows with the label.
  *
  * A move `book` marks (`book[n]` for the nth move) is labelled `book` at once,
  * since a lesson's guide recommends it; the engine never judges it.
@@ -25,7 +34,7 @@ import { judgeMove, type MoveQuality } from './quality';
  * whose positions would otherwise keep the engine busy.
  *
  * ```ts
- * const qualities = useMoveQualities(plies, ply, 'stockfish', bookMoves(lesson, moves));
+ * const { qualities } = useMoveQualities(plies, ply, 'stockfish', bookMoves(lesson, moves));
  * ```
  */
 export function useMoveQualities(
@@ -33,7 +42,7 @@ export function useMoveQualities(
   shown: number | null,
   engine: EvaluationEngine,
   book: readonly boolean[] = [],
-): readonly (MoveQuality | undefined)[] {
+): MoveJudgements {
   const state = use(StateContext);
   const ctrl = useController();
   const moves = plies.slice(1).map(({ move }) => move!.uci);
@@ -51,9 +60,13 @@ export function useMoveQualities(
     const analysis = ctrl.get(PositionAnalysis, analysisKey(engine, line), state);
     return isFinal(analysis) ? analysis : undefined;
   });
-  return moves.map((uci, n) => {
+  const qualities = moves.map((uci, n): MoveQuality | undefined => {
     if (book[n]) return 'book';
     const before = analyses[n];
     return before && judgeMove(before, analyses[n + 1], uci, plies[n].turn);
   });
+  const refutations = qualities.map((quality, n) =>
+    refutation(quality, analyses[n + 1], plies[n].turn),
+  );
+  return { qualities, refutations };
 }

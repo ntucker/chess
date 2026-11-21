@@ -8,8 +8,7 @@ import { replay } from '@/game/replay';
 import { AnalysisManager, PositionAnalysis } from '@/resources/analysis';
 import { evaluationFromScore } from '@/stockfish/uci';
 
-import type { MoveQuality } from './quality';
-import { useMoveQualities } from './useMoveQualities';
+import { type MoveJudgements, useMoveQualities } from './useMoveQualities';
 
 // Every position the hook has Stockfish search, by the moves before it; none answers.
 const mockSearched: string[] = [];
@@ -39,12 +38,14 @@ const analysis = (plies: number, lines: [string, number][], final = true): Analy
 
 let root: Root | undefined;
 const controllers: Controller[] = [];
-const renders: (readonly (MoveQuality | undefined)[])[] = [];
+const judged: MoveJudgements[] = [];
+/** Each render's labels. */
+const renders = { at: (n: number) => judged.at(n)?.qualities };
 const managers = () => [new AnalysisManager(), ...getDefaultManagers()];
 
 function Labels({ shown, book }: { readonly shown: number | null; readonly book?: boolean[] }) {
   controllers.push(useController());
-  renders.push(useMoveQualities(PLIES, shown, 'stockfish', book));
+  judged.push(useMoveQualities(PLIES, shown, 'stockfish', book));
   return null;
 }
 
@@ -72,7 +73,7 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root?.unmount());
   root = undefined;
-  renders.length = 0;
+  judged.length = 0;
   controllers.length = 0;
   mockSearched.length = 0;
 });
@@ -145,5 +146,22 @@ describe('useMoveQualities', () => {
     expect(renders.at(-1)?.[1]).toBe('good');
     await store(['e2e4', 'e7e5'], analysis(2, [['g1f3', -38]]));
     expect(renders.at(-1)?.[1]).toBe('good');
+  });
+
+  it('names the reply that punishes a mistake, from the analysis that labels it', async () => {
+    await render(2);
+    await store(['e2e4'], analysis(1, [['c7c5', 40]]));
+    // After e5, White's Nf3 is far ahead of its second line.
+    await store(
+      ['e2e4', 'e7e5'],
+      analysis(2, [
+        ['g1f3', 250],
+        ['d2d4', 60],
+      ]),
+    );
+    expect(judged.at(-1)).toMatchObject({
+      qualities: [undefined, 'blunder', 'best'],
+      refutations: [undefined, 'g1f3', undefined],
+    });
   });
 });
