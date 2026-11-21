@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { evaluationReading, pawnsLabel, signedEvaluation } from './evaluation';
+import { evaluationReading, moveChange, pawnsLabel } from './evaluation';
 
 describe('pawnsLabel', () => {
   it('writes tenths below 10 pawns, whole pawns up to 99', () => {
@@ -11,15 +11,45 @@ describe('pawnsLabel', () => {
   });
 });
 
-describe('signedEvaluation', () => {
-  it("writes White's side with a sign, as engine lines do", () => {
-    expect(signedEvaluation({ score: 0.56, pawns: 0.7 })).toBe('+0.7');
-    expect(signedEvaluation({ score: 0.4, pawns: -1.2 })).toBe('−1.2');
-    expect(signedEvaluation({ score: 0.5, pawns: -0.02 })).toBe('0.0');
-    expect(signedEvaluation({ score: 1, pawns: 0, mate: 3 })).toBe('+M3');
-    expect(signedEvaluation({ score: 0, pawns: 0, mate: -2 })).toBe('−M2');
-    // White to move and already mated: Black won.
-    expect(signedEvaluation({ score: 0, pawns: 0, mate: 0 })).toBe('−M0');
+describe('moveChange', () => {
+  const even = { score: 0.5, pawns: 0.3 };
+  it('signs the pawns a move gains or loses for the side, whoever plays it', () => {
+    expect(moveChange(even, { score: 0.6, pawns: 1.1 }, 'white')).toEqual({
+      label: '+0.8',
+      description: '0.8 pawns better for you',
+    });
+    // The same move, for Black: worse by as much.
+    expect(moveChange(even, { score: 0.6, pawns: 1.1 }, 'black')).toEqual({
+      label: '\u22120.8',
+      description: '0.8 pawns worse for you',
+    });
+    expect(moveChange(even, { score: 0.5, pawns: 0.27 }, 'black')).toEqual({
+      label: '0.0',
+      description: 'No change',
+    });
+  });
+
+  it('names the mate a move leads to, plus when the side mates', () => {
+    expect(moveChange(even, { score: 0, pawns: 0, mate: -2 }, 'black')).toEqual({
+      label: '+M2',
+      description: 'You mate in 2 moves',
+    });
+    expect(moveChange(even, { score: 1, pawns: 0, mate: 1 }, 'black')).toEqual({
+      label: '\u2212M1',
+      description: 'Your opponent mates in 1 move',
+    });
+  });
+
+  it('names the mate a move ends, plus when the side was getting mated', () => {
+    const whiteMates = { score: 1, pawns: 0, mate: 3 };
+    expect(moveChange(whiteMates, { score: 0.9, pawns: 5.2 }, 'white')).toEqual({
+      label: '\u2212M3',
+      description: 'Ends your mate in 3 moves',
+    });
+    expect(moveChange(whiteMates, { score: 0.9, pawns: 5.2 }, 'black')).toEqual({
+      label: '+M3',
+      description: "Ends your opponent's mate in 3 moves",
+    });
   });
 });
 
