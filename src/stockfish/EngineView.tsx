@@ -23,7 +23,8 @@ export interface EngineViewRef {
   /**
    * Starts full Stockfish, whose files are too big to send: the web view
    * downloads them from `folder` itself, or takes them from its cache
-   * (`loadFullStockfish`), telling `onDownload`, then `onStarted`.
+   * (`loadFullStockfish`), telling `onDownload`, then `onStarted` once it
+   * starts, which it doesn't when the folder serves another build.
    */
   startFull(folder: string): void;
   /** Sends the engine one UCI command. */

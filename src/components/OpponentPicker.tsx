@@ -166,7 +166,7 @@ function FullStockfishProgress() {
       </Text>
       {/* Beside the message rather than in it, so a narrow bar cuts the message, not the reload. */}
       {FROM_OWN_SITE && download.failure === 'newVersion' ? (
-        <Pressable role="button" onPress={reload} style={styles.reload}>
+        <Pressable accessibilityRole="button" onPress={reload} style={styles.reload}>
           <Text role="caption" tone="accent" style={styles.underlined}>
             Reload
           </Text>
