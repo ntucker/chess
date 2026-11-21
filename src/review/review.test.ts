@@ -4,7 +4,9 @@ import { replay } from '@/game/replay';
 import { ADVANCE, SAMPLE, uciLine } from '@/lesson/lesson.fixture';
 import { bookMoves } from '@/lesson/select';
 
-import { judgedPosition, leftGuide, moments, reviewMoves, tally } from './review';
+import { judgeMove } from '@/analysis/quality';
+
+import { judgedPosition, leftGuide, moments, nextMoment, reviewMoves, tally } from './review';
 import { bookMove, judgedMove, listing, waitingMove } from './review.fixture';
 
 const line = uciLine('e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Nd4');
@@ -48,7 +50,7 @@ describe('reviewMoves', () => {
     });
   });
 
-  it('labels book moves without analyses, and leaves forced moves unlabelled', () => {
+  it('labels book moves without analyses, and forced moves best, as the game does', () => {
     const moves = reviewMoves({
       plies,
       book: [true, false, true],
@@ -57,9 +59,36 @@ describe('reviewMoves', () => {
     });
     expect(moves.slice(0, 3)).toEqual([
       { ply: 0, mover: 'white', status: 'book', quality: 'book' },
-      { ply: 1, mover: 'black', status: 'forced' },
+      { ply: 1, mover: 'black', status: 'forced', quality: 'best' },
       { ply: 2, mover: 'white', status: 'book', quality: 'book' },
     ]);
+  });
+});
+
+describe('reviewMoves against the game', () => {
+  it("labels each move as the live game's judgeMove does", () => {
+    const analyses = [
+      listing(['e2e4', 0.53]),
+      listing(['e7e5', 0.53], ['c7c6', 0.5]),
+      listing(['b1c3', 0.55], ['g1f3', 0.53]),
+      listing(['b8c6', 0.53]),
+      listing(['f1c4', 0.52]),
+      listing(['g8f6', 0.52]),
+      listing(['f3d4', 0.75]),
+    ];
+    const live = plies
+      .slice(0, -1)
+      .map(({ turn }, n) => judgeMove(analyses[n], analyses[n + 1], plies[n + 1].move!.uci, turn));
+    const review = reviewMoves({ plies, book: [], legal, analyses }).map(({ quality }) => quality);
+    expect(review).toEqual(live);
+    expect(review).toContain('good');
+  });
+
+  it('marks a move failed when a position its label needs failed to search', () => {
+    const analyses = [listing(['e2e4', 0.53]), undefined];
+    const moves = reviewMoves({ plies, book: [], legal, analyses, failed: new Set([1]) });
+    // 1.e4 is Stockfish's listed move, so it needs no position after it.
+    expect(moves.slice(0, 3).map(({ status }) => status)).toEqual(['judged', 'failed', 'waiting']);
   });
 });
 
@@ -110,6 +139,14 @@ describe('moments', () => {
     expect(moments(moves, 'white', 2)).toEqual([2, 4]);
     expect(moments(moves, 'black')).toEqual([1, 3]);
     expect(moments(moves, 'black', 5)).toEqual([1, 3, 5]);
+  });
+});
+
+describe('nextMoment', () => {
+  it('goes to the earliest moment not visited, even one behind the board', () => {
+    expect(nextMoment([7, 12, 20], new Set())).toBe(7);
+    expect(nextMoment([7, 12, 20], new Set([7, 20]))).toBe(12);
+    expect(nextMoment([7], new Set([7]))).toBeUndefined();
   });
 });
 

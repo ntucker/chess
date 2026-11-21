@@ -36,47 +36,62 @@ export interface OrderInput {
   /** Whatever Stockfish's analysis of each position has reached in the store, final or not. */
   readonly analyses: readonly (Analysis | undefined)[];
   readonly learner: Color;
-  /** The ply the board shows. */
-  readonly shown: number;
+  /**
+   * The ply the board has rested on for about a second, if any: stepping
+   * through the moves doesn't restart the work, but staying on one does.
+   */
+  readonly dwelt?: number;
+  /** Positions whose search the engine gave up on: skipped, so the rest go on. */
+  readonly failed?: ReadonlySet<number>;
 }
 
 /**
  * The ply of the position to search next, or undefined once nothing is
  * left. In order:
  *
- * 1. The positions the board's move is judged from, so the move shown gets
- *    its label first.
+ * 1. The positions the label of the move the board rests on needs
+ *    (`dwelt`), if it isn't judged yet.
  * 2. A search already running in full (`RUNNING_DEPTH`).
  * 3. A sketch of every position, in game order, so the graph draws left to
  *    right.
- * 4. In full, the positions around the learner's biggest drops in the
- *    sketch, largest first: their worst moves are confirmed first.
+ * 4. In full, the positions the labels of the learner's biggest drops in
+ *    the sketch need, largest first: their worst moves are confirmed first.
  * 5. In full, the rest, in game order.
  *
  * Only the positions a move the guide doesn't recommend touches are searched
- * in full (`judgedPosition`); a position the store has final is skipped.
+ * in full (`judgedPosition`); a position the store has final, or whose
+ * search failed, is skipped.
  */
 export function nextSearch({
   moves,
   book,
   analyses,
   learner,
-  shown,
+  dwelt,
+  failed,
 }: OrderInput): number | undefined {
   const count = moves.length;
-  const unfinished = (ply: number) => judgedPosition(book, ply, count) && !isFinal(analyses[ply]);
-  const board = moves[shown - 1]?.status === 'waiting' ? [shown - 1, shown] : [];
+  const searchable = (ply: number) => !failed?.has(ply);
+  const unfinished = (ply: number) =>
+    searchable(ply) && judgedPosition(book, ply, count) && !isFinal(analyses[ply]);
+  const board =
+    dwelt !== undefined && moves[dwelt - 1]?.status === 'waiting' ? labelPositions(dwelt - 1) : [];
   const positions = Array.from({ length: count + 1 }, (_, ply) => ply);
   return (
     board.find(unfinished) ??
     positions.find((ply) => unfinished(ply) && (analyses[ply]?.depth ?? 0) >= RUNNING_DEPTH) ??
-    positions.find((ply) => !sketched(analyses[ply])) ??
-    worstFirst(moves, analyses, learner)
-      .flatMap((ply) => [ply, ply + 1])
-      .find(unfinished) ??
+    positions.find((ply) => searchable(ply) && !sketched(analyses[ply])) ??
+    worstFirst(moves, analyses, learner).flatMap(labelPositions).find(unfinished) ??
     positions.find(unfinished)
   );
 }
+
+/**
+ * The positions the label of the move from position `ply` needs, in order:
+ * the one before it, the one after it, and the one before the opponent's
+ * previous move, which Miss reads.
+ */
+const labelPositions = (ply: number) => (ply > 0 ? [ply, ply + 1, ply - 1] : [ply, ply + 1]);
 
 /** Whether `analysis` is at least a sketch. */
 const sketched = (analysis: Analysis | undefined) =>

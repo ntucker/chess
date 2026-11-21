@@ -22,39 +22,47 @@ export function moveAccuracy(before: number, after: number): number {
   return Math.min(Math.max(raw + 1, 0), 100);
 }
 
+/** The fewest counted moves a side needs for an accuracy: fewer would mislead. */
+export const LEAST_COUNTED = 8;
+
 /**
  * `side`'s accuracy for the game: the average of two means of its moves'
  * accuracies, one weighting each move by how much the game swung where it
- * was played, the other harmonic, which a single bad move pulls down. A move's
- * accuracy comes from the expected scores its label measured, so the number
- * agrees with the badges; a book move counts as 100 and a forced one not at
- * all.
+ * was played, the other harmonic, which a single bad move pulls down. A
+ * move's accuracy comes from the expected scores its label measured, so the
+ * number agrees with the badges.
  *
- * The swings are read only from the positions the review searches
- * (`judgedPosition`), so a search the game happened to run elsewhere can't
- * change the number, and it waits until every one of them is final: once
- * shown, it never changes.
+ * Only judged moves count: book and forced moves, and moves whose search
+ * failed, are left out. With fewer than `LEAST_COUNTED` of them the answer
+ * is `'brief'`, known at once. Otherwise it's undefined until every position
+ * the review searches (`judgedPosition`) is final or failed, since a move's
+ * weight reads positions on both sides: once shown, the number never
+ * changes. The swings are read only from those positions, so a search the
+ * game happened to run elsewhere can't change it.
  */
 export function gameAccuracy(
   moves: readonly ReviewMove[],
   analyses: readonly (FinalAnalysis | undefined)[],
   book: readonly boolean[],
   side: Color,
-): number | undefined {
-  const isSearched = (ply: number) => judgedPosition(book, ply, moves.length);
+  failed?: ReadonlySet<number>,
+): number | 'brief' | undefined {
+  const counted = moves.filter(
+    ({ mover, status }) => mover === side && (status === 'judged' || status === 'waiting'),
+  );
+  if (counted.length < LEAST_COUNTED) return 'brief';
+  const isSearched = (ply: number) => judgedPosition(book, ply, moves.length) && !failed?.has(ply);
   const known = Array.from({ length: moves.length + 1 }, (_, ply) =>
     isSearched(ply) ? analyses[ply]?.lines[0].evaluation.score : undefined,
   );
   if (known.some((score, ply) => score === undefined && isSearched(ply))) return undefined;
   const weights = swingWeights(whiteWinPercents(known));
-  const scored = moves.flatMap((move) => {
-    // No move is waiting once every searched position is final; testing it narrows the type.
-    if (move.mover !== side || move.status === 'forced' || move.status === 'waiting') return [];
-    const accuracy =
-      move.status === 'book' ? 100 : moveAccuracy(move.before * 100, move.after * 100);
-    return [{ accuracy, weight: weights[move.ply] }];
-  });
-  if (!scored.length) return undefined;
+  const scored = counted.flatMap((move) =>
+    // Every counted move is judged once its positions are final; testing it narrows the type.
+    move.status === 'judged'
+      ? [{ accuracy: moveAccuracy(move.before * 100, move.after * 100), weight: weights[move.ply] }]
+      : [],
+  );
   return (weightedMean(scored) + harmonicMean(scored.map(({ accuracy }) => accuracy))) / 2;
 }
 

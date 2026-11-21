@@ -47,6 +47,14 @@ export const forcedMove = (ply: number): ReviewMove => ({
   ply,
   mover: mover(ply),
   status: 'forced',
+  quality: 'best',
+});
+
+/** A move at `ply` whose label needs a position that failed to search. */
+export const failedMove = (ply: number): ReviewMove => ({
+  ply,
+  mover: mover(ply),
+  status: 'failed',
 });
 
 /**

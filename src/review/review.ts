@@ -22,8 +22,13 @@ export type ReviewMove = { readonly ply: number; readonly mover: Color } & (
       readonly quality: 'book';
     }
   | {
-      /** The only legal move: no label, and it doesn't count toward accuracy. */
+      /** The only legal move: labelled `best`, as the game labels it, and left out of accuracy. */
       readonly status: 'forced';
+      readonly quality: 'best';
+    }
+  | {
+      /** A position its label needs failed to search: no label, and left out of accuracy. */
+      readonly status: 'failed';
       readonly quality?: undefined;
     }
   | {
@@ -51,17 +56,22 @@ export interface ReviewInput {
   readonly legal: readonly number[];
   /** Stockfish's final analysis of each position, where the store has one. */
   readonly analyses: readonly (FinalAnalysis | undefined)[];
+  /** Positions whose search the engine gave up on. */
+  readonly failed?: ReadonlySet<number>;
 }
 
 /** Each move of the game, judged as far as the final analyses allow. */
-export function reviewMoves({ plies, book, legal, analyses }: ReviewInput): ReviewMove[] {
+export function reviewMoves({ plies, book, legal, analyses, failed }: ReviewInput): ReviewMove[] {
   return plies.slice(0, -1).map(({ turn: mover }, ply): ReviewMove => {
     const uci = plies[ply + 1].move!.uci;
     if (book[ply]) return { ply, mover, status: 'book', quality: 'book' };
-    if (legal[ply] === 1) return { ply, mover, status: 'forced' };
+    if (legal[ply] === 1) return { ply, mover, status: 'forced', quality: 'best' };
     const before = analyses[ply];
     const judged = before && judgement(before, analyses[ply + 1], uci, mover);
-    if (!judged) return { ply, mover, status: 'waiting' };
+    if (!judged) {
+      const lost = (failed?.has(ply) && !before) || (failed?.has(ply + 1) && !analyses[ply + 1]);
+      return { ply, mover, status: lost ? 'failed' : 'waiting' };
+    }
     return {
       ply,
       mover,
@@ -122,6 +132,13 @@ export function moments(
     )
     .map(({ ply }) => ply);
 }
+
+/**
+ * The moment "Next moment" goes to: the earliest of `moments` not yet
+ * `visited`, so one confirmed late, behind the board, isn't skipped.
+ */
+export const nextMoment = (moments: readonly number[], visited: ReadonlySet<number>) =>
+  moments.find((ply) => !visited.has(ply));
 
 /** How many moves got each label. */
 export type Tally = Readonly<Partial<Record<MoveQuality, number>>>;
