@@ -32,7 +32,10 @@ const styles = StyleSheet.create({
   title: { fontFamily: fonts.display },
 });
 
-/** The column a page of text sits in, under the header; each page sets its own `gap`. */
+/**
+ * The column a page of text sits in, under the header: one program page, wide enough for a long line
+ * beside a name (the Openings list). Each page sets its own `gap`.
+ */
 export const textColumn = {
   width: '100%',
   maxWidth: 760,

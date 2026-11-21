@@ -2,8 +2,8 @@
 
 What to paste into Play Console for Opening Night. The images beside this file are drawn by
 `yarn brand` (`icon-512.png`, `feature-graphic.png`); the phone screenshots in `screenshots/` come
-from a release build on the Android emulator. Keep the text true to the app: change it here when a
-feature it names changes, and paste it again.
+from a release build on the Android emulator. Keep both true to the app: change the text here when
+a feature it names changes, retake a screenshot when its screen changes, and upload them again.
 
 ## Main store listing
 
@@ -42,7 +42,8 @@ feature it names changes, and paste it again.
 >
 > NO ACCOUNT, NO ADS
 > Opening Night is free and open source. It collects no data, needs no sign-up, and works offline:
-> the engines run on your phone.
+> the engines run on your phone. Only Full Stockfish, the strongest opponent, downloads once when
+> you first pick it.
 
 **App icon**: `icon-512.png`. **Feature graphic**: `feature-graphic.png`. **Phone screenshots**:
 every image in `screenshots/`, in name order.

@@ -79,5 +79,6 @@ function Section({
 }
 
 const styles = StyleSheet.create({
-  content: { ...textColumn, gap: 32 },
+  // Narrower than the column: paragraphs of prose read best in shorter lines.
+  content: { ...textColumn, maxWidth: 680, gap: 32 },
 });
