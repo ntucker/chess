@@ -17,7 +17,9 @@ import { useLesson } from './useLesson';
 // an engine, and the screen's focus and Stockfish's demand come from the
 // app's providers; these tests are about the Practice run. With auto play
 // off nobody replies.
-jest.mock('@/analysis/useMoveQualities', () => ({ useMoveQualities: () => [] }));
+jest.mock('@/analysis/useMoveQualities', () => ({
+  useMoveQualities: () => ({ qualities: [], refutations: [] }),
+}));
 const mockFetch = jest.fn(async (..._args: unknown[]) => {});
 jest.mock('@data-client/react', () => ({
   useController: () => ({ fetch: mockFetch }),

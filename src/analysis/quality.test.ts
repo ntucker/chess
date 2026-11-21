@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import type { AnalysisLine, Evaluation, FinalAnalysis } from '@/evaluation/evaluation';
 
-import { judgeMove, judgement } from './quality';
+import { judgeMove, judgement, refutation } from './quality';
 
 /** An evaluation where White's expected score is `score`. */
 const at = (score: number): Evaluation => ({ score, pawns: 0 });
@@ -103,5 +103,34 @@ describe('judgeMove', () => {
       expect(judgement(list, scored(0.75), 'a7a6', 'black')?.evaluation).toEqual(at(0.75));
       expect(judgement(list, scored(0.4), 'a7a6', 'black')?.evaluation).toEqual(at(0.48));
     });
+  });
+});
+
+describe('refutation', () => {
+  // After White's mistake, Black's best reply scores 0.3 for White.
+  const after = (second: number) => listing(['f8c5', 0.3], ['d8d6', second], ['a7a6', 0.55]);
+
+  it("names the replier's best move when its second line would be a mistake beside it", () => {
+    expect(refutation('mistake', after(0.45), 'white')).toBe('f8c5');
+    expect(refutation('blunder', after(0.45), 'white')).toBe('f8c5');
+    // For White replying to Black, from White's side.
+    const forWhite = listing(['c1c5', 0.7], ['e2e4', 0.55]);
+    expect(refutation('mistake', forWhite, 'black')).toBe('c1c5');
+  });
+
+  it('names none when another reply is nearly as good', () => {
+    expect(refutation('mistake', after(0.38), 'white')).toBeUndefined();
+  });
+
+  it('names none for a move that is no mistake', () => {
+    for (const quality of ['book', 'best', 'good', 'inaccuracy', undefined] as const) {
+      expect(refutation(quality, after(0.45), 'white')).toBeUndefined();
+    }
+  });
+
+  it('names none for a forced reply, an analysis without moves, or none yet', () => {
+    expect(refutation('blunder', listing(['f8c5', 0.3]), 'white')).toBeUndefined();
+    expect(refutation('blunder', scored(0.3), 'white')).toBeUndefined();
+    expect(refutation('blunder', undefined, 'white')).toBeUndefined();
   });
 });

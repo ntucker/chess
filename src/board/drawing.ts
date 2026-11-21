@@ -73,6 +73,27 @@ export const lastMoveBadge = (
 ): Drawing[] => (square && quality ? [{ kind: 'badge', square, quality }] : []);
 
 /**
+ * The reply that punishes the move just played (`refutation` in
+ * src/analysis/quality.ts), written in UCI: an arrow in the danger tone, the
+ * way chess.com's game review marks it.
+ */
+export const refutationArrow = (uci: string | undefined): Drawing[] =>
+  uci ? [moveArrow(uci, 'danger')] : [];
+
+/** An arrow for a move written in UCI, numbered `step` in a sequence. */
+export const moveArrow = (
+  uci: string,
+  tone: Tone,
+  step?: number,
+): Extract<Drawing, { kind: 'arrow' }> => ({
+  kind: 'arrow',
+  from: uci.slice(0, 2) as Square,
+  to: uci.slice(2, 4) as Square,
+  tone,
+  step,
+});
+
+/**
  * How many squares right and down `square` is from the board's top left
  * corner, as seen from `orientation`'s side. (Chessground's key2pos does
  * this, but chessground ships only ES modules, which Jest can't load.)
