@@ -88,6 +88,7 @@ export const NARROW_PARTS = [
   'panes',
   'moves-pane',
   'idea-pane',
+  'narrow-idea-pane',
   'move-list',
   'list-card',
   'list-scroll',
@@ -106,6 +107,7 @@ export const SCROLLING_PARTS = [
   'program',
   'list-scroll',
   'idea-pane',
+  'narrow-idea-pane',
 ] as const satisfies readonly NarrowPartName[];
 
 export type ScrollingPart = (typeof SCROLLING_PARTS)[number];
@@ -214,6 +216,15 @@ interface NativePart {
   readonly narrowProps?: { readonly numberOfLines?: number };
 }
 
+/** The idea pane on a narrow page, beside the moves (`NATIVE_PARTS`). */
+const IDEA_PANE = {
+  flexGrow: 3,
+  flexShrink: 1,
+  flexBasis: 'auto',
+  width: 0,
+  minWidth: 0,
+} as const satisfies ViewStyle;
+
 /** The lesson panes' least height on a narrow page: a couple of moves. */
 const PANES_FLOOR = 140;
 
@@ -282,7 +293,9 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
       overflow: 'hidden',
     },
   },
-  'idea-pane': { narrow: { flexGrow: 3, flexShrink: 1, flexBasis: 'auto', width: 0, minWidth: 0 } },
+  'idea-pane': { narrow: IDEA_PANE },
+  // The idea pane, on a narrow page only.
+  'narrow-idea-pane': { wide: { display: 'none' }, narrow: IDEA_PANE },
   'move-list': { narrow: { flexShrink: 1, minHeight: 0 } },
   'list-card': { narrow: { flexShrink: 1, minHeight: 0, paddingBottom: 0 } },
   'list-scroll': { narrow: { flexShrink: 1, minHeight: 0 } },
@@ -339,4 +352,6 @@ export const CSS_ONLY: Readonly<Partial<Record<NarrowPartName, readonly string[]
   program: SCROLLS,
   'list-scroll': ['overscroll-behavior: contain', ...SCROLLS],
   'idea-pane': ['overscroll-behavior: contain', ...SCROLLS],
+  // Unhidden as `narrow-only` is, and scrolled as the idea pane is.
+  'narrow-idea-pane': ['display: flex', 'overscroll-behavior: contain', ...SCROLLS],
 };

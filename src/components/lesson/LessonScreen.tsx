@@ -37,7 +37,7 @@ import { NarrowScroll, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
 
 import { AutoPlay } from './AutoPlay';
 import { CandidateList } from './CandidateList';
-import { IdeaCard } from './IdeaCard';
+import { IdeaAside, IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
 import { SideChoice } from './SideChoice';
@@ -199,7 +199,7 @@ function LessonScreen({
   // Stockfish's moves have none of their own, so their list stands alone.
   const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
   const names = pathNames(view.variation);
-  const status = describeStatus(view, {
+  const { offGuide, ...status } = describeStatus(view, {
     picking,
     loading,
     title: lesson.title,
@@ -273,7 +273,8 @@ function LessonScreen({
   const moveList = guidance.top.length ? (
     <CandidateList
       {...rowProps}
-      heading="Stockfish's top moves"
+      heading="top moves"
+      owner="Stockfish"
       compact
       leadsTo={rejoins}
       candidates={guidance.top}
@@ -386,7 +387,7 @@ function LessonScreen({
              * Leaving a row for the idea card keeps its preview, so its notes can be pointed at.
              * On a narrow page the moves and the idea are panes side by side.
              */}
-            {moveList || ideaCard ? (
+            {moveList || ideaCard || offGuide ? (
               // A View, so narrow.css can make it a row, which a Stack's inline style would override.
               <PointingArea onLeave={leave} {...part('panes', styles.sections)}>
                 {moveList ? <View {...part('moves-pane', styles.sections)}>{moveList}</View> : null}
@@ -403,6 +404,13 @@ function LessonScreen({
                       onLeave={leaveNote}
                       onReach={reachCard}
                     />
+                  </NarrowScroll>
+                ) : offGuide ? (
+                  // The headline tells it on a wide page, and to screen readers.
+                  <NarrowScroll part="narrow-idea-pane">
+                    <View aria-hidden>
+                      <IdeaAside title="Off the guide" text={status.detail} />
+                    </View>
                   </NarrowScroll>
                 ) : null}
               </PointingArea>
@@ -479,6 +487,15 @@ interface StatusInput {
   readonly practice?: { readonly clean: boolean; readonly verdict?: MoveQuality };
 }
 
+/** The panel's headline, as `describeStatus` gives it. */
+type Status = Pick<HeadlineProps, 'eyebrow' | 'title' | 'detail' | 'news'> & {
+  /**
+   * Past the guide: a narrow page tells the detail in the idea pane, beside
+   * Stockfish's moves as the idea is beside the guide's, rather than under the title.
+   */
+  readonly offGuide?: true;
+};
+
 /**
  * The panel's headline: where the lesson stands and whose move it is. In
  * Practice, right after the learner's move, it judges that move first.
@@ -504,7 +521,7 @@ function describeStatus(
     startsRun,
     practice,
   }: StatusInput,
-): Pick<HeadlineProps, 'eyebrow' | 'title' | 'detail' | 'news'> {
+): Status {
   if (loading) return { eyebrow: picking ? OPENINGS_TITLE : title, ...LOADING };
   if (picking)
     return {
@@ -536,6 +553,8 @@ function describeStatus(
       eyebrow,
       title: 'Off the guide.',
       detail: `This position isn't in the lesson. Step back to return to the guide, or ${playOn}.`,
+      news: 'none',
+      offGuide: true,
     };
   if (view.learnerToMove)
     return {

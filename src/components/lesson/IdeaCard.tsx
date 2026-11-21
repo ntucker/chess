@@ -87,6 +87,19 @@ export function IdeaCard({
   );
 }
 
+/** A word in the idea card's place where there are no ideas, under a heading as the card's. */
+export function IdeaAside({ title, text }: { readonly title: string; readonly text: string }) {
+  const labelled = useLabelled();
+  return (
+    <Stack style={labelled}>
+      <Eyebrow>{title}</Eyebrow>
+      <Text role="body" tone="secondary">
+        {text}
+      </Text>
+    </Stack>
+  );
+}
+
 export function NoteView({
   shown,
   learner,
