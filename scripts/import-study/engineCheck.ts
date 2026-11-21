@@ -412,17 +412,19 @@ const describe = ({ pawns, mate }: Evaluation) =>
 /** The lesson's start position, which the checker has read. */
 export const startOf = (lesson: Lesson): Chess => parsePosition(lesson.start)!;
 
+interface LineTo {
+  readonly line: Uci[];
+  readonly pos: Chess;
+  readonly from?: PositionKey;
+}
+
 /**
  * The first line (UCI) found to each position the lesson reaches, the
  * position, and the one that line comes from (none for the start), shortest lines first.
  */
-export function linesTo(
-  lesson: Lesson,
-): Map<PositionKey, { line: Uci[]; pos: Chess; from?: PositionKey }> {
+export function linesTo(lesson: Lesson): Map<PositionKey, LineTo> {
   const start = startOf(lesson);
-  const found = new Map<PositionKey, { line: Uci[]; pos: Chess; from?: PositionKey }>([
-    [positionKey(start), { line: [], pos: start }],
-  ]);
+  const found = new Map<PositionKey, LineTo>([[positionKey(start), { line: [], pos: start }]]);
   const queue = [...found.values()];
   for (let next = queue.shift(); next; next = queue.shift()) {
     const from = positionKey(next.pos);

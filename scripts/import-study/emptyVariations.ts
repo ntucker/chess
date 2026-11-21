@@ -34,20 +34,23 @@ export function withoutEmptyVariations(lesson: Lesson): {
 
 /**
  * `lesson.positions` with each one in a variation not `kept` moved to the
- * variation of the position the lesson first reaches it from, the start
- * staying in the opening's own (`merge` gives it the lesson's id).
+ * variation of the position the lesson first reaches it from. The start, and
+ * a position it doesn't reach (which the checker refuses), take the opening's own.
  */
 function renamed(lesson: Lesson, kept: ReadonlySet<VariationId>): Lesson['positions'] {
+  const opening = Object.keys(lesson.variations).find((id) => !lesson.variations[id].parent)!;
   const named = new Map<PositionKey, VariationId>();
   // In the order `linesTo` reaches them, so each one's `from` is named first.
   for (const [key, { from }] of linesTo(lesson)) {
     const own = lesson.positions[key]?.variation;
     if (own === undefined) continue;
-    named.set(key, kept.has(own) ? own : from === undefined ? lesson.id : named.get(from)!);
+    if (kept.has(own)) named.set(key, own);
+    else named.set(key, from === undefined ? opening : named.get(from)!);
   }
   return Object.fromEntries(
     Object.entries(lesson.positions).map(([key, position]): [PositionKey, LessonPosition] => {
-      const variation = named.get(key) ?? position.variation;
+      const variation =
+        named.get(key) ?? (kept.has(position.variation) ? position.variation : opening);
       return [key, variation === position.variation ? position : { ...position, variation }];
     }),
   );

@@ -46,6 +46,16 @@ describe('withoutEmptyVariations', () => {
     expect(taught.positions[keyAfter('e4', 'c6', 'Nc3')].variation).toBe('two-knights');
   });
 
+  it('names a position the start never reaches by the opening, never a dropped variation', () => {
+    const island = keyAfter('a3');
+    const base = lesson();
+    const input = {
+      ...base,
+      positions: { ...base.positions, [island]: { ...at([]), variation: 'empty' } },
+    };
+    expect(withoutEmptyVariations(input).lesson.positions[island].variation).toBe('test');
+  });
+
   it('returns a lesson whose variations all teach as it is', () => {
     const input = testLesson({
       [keyAfter()]: at([{ uci: uci('e4') }]),
