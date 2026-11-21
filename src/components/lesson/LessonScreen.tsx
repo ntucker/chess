@@ -5,7 +5,6 @@ import { View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
-import { FootnoteLink } from '@/components/FootnoteLink';
 import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
@@ -322,7 +321,6 @@ function LessonScreen({
       <LessonControls mode={mode} onMode={chooseMode} />
       <Stack gap="1">
         <OpponentChoice />
-        <FootnoteLink href="/play">Or play a free game, from the first move</FootnoteLink>
         <SourceCredits sources={lesson.sources} />
       </Stack>
     </>
