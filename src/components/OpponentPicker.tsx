@@ -129,8 +129,8 @@ export function OpponentPicker() {
       {opponent === 'stockfish-full' ? <FullStockfishProgress /> : null}
       <Popover.Root
         open={opened !== undefined}
-        onOpenChange={(open) => {
-          if (!open) close();
+        onOpenChange={(isOpen) => {
+          if (!isOpen) close();
         }}
         anchor={trigger}
       >
@@ -213,12 +213,11 @@ interface ListProps {
  * pointed at or focused last.
  */
 function OpponentList({ id, value, focusOnOpen, onChoose }: ListProps) {
-  const { color } = useTheme().theme.semantic;
   const { row } = useNarrowStyles(ROW);
   const [lit, setLit] = useState<Opponent>();
   const steps = stepsFor(value);
-  /** The step a Listbox value (a string, like every Listbox value) names. */
-  const step = (key: string) => steps.find((opponent) => String(opponent) === key)!;
+  /** The step a Listbox value (a string, like every Listbox value) names; values come only from `steps`. */
+  const opponentFor = (key: string) => steps.find((opponent) => String(opponent) === key)!;
   const shown = describeOpponent(lit ?? value);
   return (
     <>
@@ -229,8 +228,8 @@ function OpponentList({ id, value, focusOnOpen, onChoose }: ListProps) {
           accessibilityLabel="Opponent strength"
           value={String(value)}
           autoFocus={focusOnOpen}
-          onValueChange={(key) => onChoose(step(key))}
-          onHighlightChange={(key) => setLit(key === undefined ? undefined : step(key))}
+          onValueChange={(key) => onChoose(opponentFor(key))}
+          onHighlightChange={(key) => setLit(key === undefined ? undefined : opponentFor(key))}
         >
           {steps.map((opponent) => {
             const { level, preset } = describeOpponent(opponent);
@@ -242,17 +241,7 @@ function OpponentList({ id, value, focusOnOpen, onChoose }: ListProps) {
                   accessibilityLabel={preset ? `${level}, ${preset}` : level}
                   style={row}
                 >
-                  <Text
-                    role="bodySm"
-                    style={[
-                      styles.stepLevel,
-                      (opponent === value || opponent === lit) && {
-                        color: color.tones.accent.text,
-                      },
-                    ]}
-                  >
-                    {level}
-                  </Text>
+                  <Listbox.ItemText style={styles.stepLevel}>{level}</Listbox.ItemText>
                   {preset ? (
                     <Text role="caption" tone="secondary">
                       {preset}

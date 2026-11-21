@@ -25,6 +25,12 @@ function Listener({ onKey, sheet }: { onKey: (key: string) => void; sheet: boole
   ) : null;
 }
 
+/** The open sheet's title, found by the name that labels its dialog. */
+function sheetTitle() {
+  const dialog = document.querySelector('[aria-modal="true"]')!;
+  return document.getElementById(dialog.getAttribute('aria-labelledby')!)!;
+}
+
 /** The keys the screen hears when `key` is pressed on `target` (the page, or inside the open sheet). */
 function heard(key: string, target: 'page' | 'sheet', taken = false) {
   const onKey = jest.fn<(key: string) => void>();
@@ -37,11 +43,8 @@ function heard(key: string, target: 'page' | 'sheet', taken = false) {
       </SilkProvider>,
     ),
   );
-  // Inside the sheet, which React Native Web's Modal marks as an aria-modal dialog.
-  const on =
-    target === 'sheet'
-      ? document.querySelector('[aria-modal="true"]')!.firstElementChild!
-      : document.body;
+  // Inside the sheet: its title, in the panel of the aria-modal dialog.
+  const on = target === 'sheet' ? sheetTitle() : document.body;
   const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
   // Another control took it first.
   if (taken) event.preventDefault();

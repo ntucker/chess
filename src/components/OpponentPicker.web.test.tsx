@@ -101,7 +101,7 @@ describe('OpponentPicker', () => {
     expect(focusedLabel()).toBe('1100, Beginner');
   });
 
-  it('closes when the page scrolls, not when a list elsewhere does', () => {
+  it('closes when scrolling moves the rating, not when a list elsewhere scrolls', () => {
     act(() => trigger().click());
     const elsewhere = document.createElement('div');
     document.body.append(elsewhere);
@@ -110,6 +110,8 @@ describe('OpponentPicker', () => {
         elsewhere.dispatchEvent(new Event('scroll'));
       });
       expect(list()).not.toBeNull();
+      // The page scrolled the rating up (jsdom lays nothing out, so say where it went).
+      trigger().getBoundingClientRect = () => new DOMRect(0, -40, 60, 20);
       act(() => {
         document.dispatchEvent(new Event('scroll'));
       });
@@ -199,6 +201,13 @@ describe('OpponentPicker', () => {
     point('mouseenter');
     pointAt(options()[2]);
     expect(document.activeElement).toBe(document.body);
+  });
+
+  it('moves focus into a list opened by pointing once the rating is pressed', () => {
+    point('mouseenter');
+    expect(document.activeElement).toBe(document.body);
+    act(() => trigger().click());
+    expect(focusedLabel()).toBe('1500, Club');
   });
 
   it('stays open after a press, when the pointer leaves', () => {

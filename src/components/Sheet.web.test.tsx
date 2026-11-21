@@ -17,7 +17,69 @@ jest.mock('expo-router', () => ({ useIsFocused: () => mockFocused }));
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+/**
+ * Renders the sheet open, with reduced motion: React Native Web's Modal
+ * takes Escape once its entrance animation ends, which jsdom never runs.
+ */
+function renderSheet(onClose: () => void) {
+  const matchMedia = window.matchMedia;
+  window.matchMedia = ((media: string) => ({
+    ...matchMedia(media),
+    matches: media.includes('prefers-reduced-motion: reduce'),
+  })) as typeof window.matchMedia;
+  const host = document.body.appendChild(document.createElement('div'));
+  const root = createRoot(host);
+  act(() =>
+    root.render(
+      <SilkProvider theme={themes.dark}>
+        <Sheet title="Settings" onClose={onClose}>
+          {null}
+        </Sheet>
+      </SilkProvider>,
+    ),
+  );
+  return () => {
+    act(() => root.unmount());
+    host.remove();
+    window.matchMedia = matchMedia;
+  };
+}
+
 describe('Sheet', () => {
+  it('closes on Escape', () => {
+    mockFocused = true;
+    const onClose = jest.fn();
+    const cleanup = renderSheet(onClose);
+    act(() => {
+      document.activeElement!.dispatchEvent(
+        new KeyboardEvent('keyup', { key: 'Escape', bubbles: true, cancelable: true }),
+      );
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    cleanup();
+  });
+
+  it('closes on a press beside it, not on one inside it', () => {
+    mockFocused = true;
+    const onClose = jest.fn();
+    const cleanup = renderSheet(onClose);
+    const title = document.getElementById(
+      document.querySelector('[aria-modal="true"]')!.getAttribute('aria-labelledby')!,
+    )!;
+    // Silk's Dialog catches presses on the veil in a layer just before its panel.
+    const veil = document.querySelector('[data-testid="sheet"]')!.previousElementSibling!;
+    const tap = (on: Element) =>
+      act(() => {
+        on.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        on.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      });
+    tap(title);
+    expect(onClose).not.toHaveBeenCalled();
+    tap(veil);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    cleanup();
+  });
+
   it('closes once another screen comes on top of its own', () => {
     const onClose = jest.fn();
     const root = createRoot(document.createElement('div'));

@@ -36,7 +36,7 @@ export function Sheet({ title, onClose, children }: Props) {
   }, [focused]);
   return (
     <Dialog.Root open onOpenChange={onClose}>
-      <Dialog.Content placement="bottom" style={styles.sheet}>
+      <Dialog.Content placement="bottom" testID="sheet" style={styles.sheet}>
         <Inline align="center" justify="between" wrap="nowrap" style={styles.head}>
           <Dialog.Title>{title}</Dialog.Title>
           <HeaderButton
