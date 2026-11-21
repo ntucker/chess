@@ -9,8 +9,7 @@ replay each mistake before it shows the answer. Full design (rules, layouts, tim
 ## Decisions (Nathaniel, 2026-11-21)
 
 - One Stockfish lite engine at the app's search (`APP_SEARCH`), so a review label is the label the
-  game showed, except that the review leaves a forced move unlabelled. Several engines at once stays
-  a later option.
+  game showed. Several engines at once stays a later option.
 - Review is offered when the game ends, in every mode; before the end only in a lesson's Practice
   mode, once the game has a move off the guide. Elsewhere the scoresheet's Review button is disabled.
 - The review adds Brilliant, Great and Miss, which only refine today's labels; `judgeMove` and live
@@ -36,9 +35,16 @@ replay each mistake before it shows the answer. Full design (rules, layouts, tim
 
 ### Piece 1: Review rules
 
-`src/review/`: each move's label (book never searched, forced moves unlabelled), moments, tally,
-lichess's accuracy formula, and which position to search next (board's move, a running full search,
-sketches in game order, full searches worst drop first, then the rest). Tests; no screen.
+`src/review/`: each move's label (book never searched; forced moves unlabelled, unlike the live
+game, which labels them), moments, tally, lichess's accuracy formula, and which position to search
+next (board's move, a running full search, sketches in game order, full searches worst drop first,
+then the rest). Tests; no screen.
+
+Accuracy rules: a move scores 103.1668 e^(-0.04354 × win points lost) - 3.1669, plus 1, within 0 to
+100; a side's number is the average of its moves' swing-weighted mean and their harmonic mean (each
+move floored at 1 there). A move's weight is the standard deviation of the win percent over a
+window of a tenth of the game's positions (2 to 8) ending after it, within 0.5 to 12. A sketch is
+the first whole depth of at least 12.
 
 ### Piece 2: Review page
 

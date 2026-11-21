@@ -47,8 +47,8 @@ export function gameAccuracy(
   );
   if (known.some((score, ply) => score === undefined && isSearched(ply))) return undefined;
   const weights = swingWeights(whiteWinPercents(known));
-  // Once every searched position is final no move is waiting; the check narrows the type.
   const scored = moves.flatMap((move) => {
+    // No move is waiting once every searched position is final; testing it narrows the type.
     if (move.mover !== side || move.status === 'forced' || move.status === 'waiting') return [];
     const accuracy =
       move.status === 'book' ? 100 : moveAccuracy(move.before * 100, move.after * 100);
