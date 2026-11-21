@@ -1,11 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { a11yState, Pressable, useReducedMotion, useTheme } from '@reactive/silk-native';
 import { type ComponentProps, type ComponentRef, useRef, useState } from 'react';
-import { Dimensions, type GestureResponderEvent, type PointerEvent, View } from 'react-native';
+import { Dimensions, type PointerEvent, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { hoversControl } from '@/board/pointer';
 import { HEADER_BUTTON_SIZE, HeaderButton } from '@/components/HeaderButton';
+import { usePressingFinger } from '@/components/usePressingFinger';
 import type { Point } from '@/motion/dom';
 import { springMotion, springs } from '@/motion/spring';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
@@ -66,36 +67,15 @@ const slotAt = (menu: Menu, pageX: number) =>
   stepped(menu, Math.floor((pageX - menu.left) / menu.size) - menu.anchor);
 
 /**
- * The choice a held finger picks by moving `dx` and `dy` from where it was
+ * The choice a held finger picks by moving `x` and `y` from where it was
  * held: a slot's width per choice, after half a slot that keeps the anchor
  * (so a wobble changes nothing), past either end the end one. Moved more
  * than AWAY_SLOTS up or down, it picks nothing: the finger is leaving to
  * close the choices unchanged.
  */
-function swiped(menu: Menu, dx: number, dy: number) {
-  if (Math.abs(dy) > AWAY_SLOTS * menu.size) return undefined;
-  return stepped(menu, Math.sign(dx) * Math.floor((Math.abs(dx) + menu.size / 2) / menu.size));
-}
-
-/** A finger: which one, and where it is. */
-interface Finger extends Point {
-  readonly id: number;
-}
-
-type Touches = GestureResponderEvent['nativeEvent']['touches'];
-
-/** Finger `id`'s touch in `touches`, if it's there. */
-const touchOf = (touches: Touches, id: number) =>
-  [...touches].find((touch) => touch.identifier === id);
-
-/**
- * The finger a touch event is about (it went down, moved or lifted): with
- * `id`, that finger, or undefined if the event isn't about it; without, the first.
- */
-function fingerOf({ nativeEvent }: GestureResponderEvent, id?: number): Finger | undefined {
-  const { changedTouches } = nativeEvent;
-  const touch = id === undefined ? changedTouches[0] : touchOf(changedTouches, id);
-  return touch && { id: touch.identifier, x: touch.pageX, y: touch.pageY };
+function swiped(menu: Menu, { x, y }: Point) {
+  if (Math.abs(y) > AWAY_SLOTS * menu.size) return undefined;
+  return stepped(menu, Math.sign(x) * Math.floor((Math.abs(x) + menu.size / 2) / menu.size));
 }
 
 /**
@@ -123,9 +103,8 @@ export function ThemeSwitch() {
   // first stops them opening. What points at them reads `menu`, which
   // exists once they're measured.
   const opening = useRef<Opened>(undefined);
-  // The finger pressing the button, from where it went down: a held finger's
-  // swipe is measured from there, and other fingers are ignored.
-  const start = useRef<Finger>(undefined);
+  // A held finger's swipe is measured from where it pressed the button.
+  const finger = usePressingFinger();
 
   const choose = (choice: Theme) => dispatch({ type: 'chosen', choice: { theme: choice } });
   // Opens once measured, already inside the window, so nothing moves after it shows.
@@ -178,41 +157,22 @@ export function ThemeSwitch() {
       onPointerLeave={({ nativeEvent }: PointerEvent) => {
         if (opening.current === 'hover' && hoversControl(nativeEvent.pointerType)) close();
       }}
-      onTouchStart={(event: GestureResponderEvent) => {
-        // The first finger down, which is the press: React Native gives the
-        // button's touch to it. Once that finger is gone from the screen, or its
-        // identifier comes back on a new finger, the next finger down starts
-        // over, so a lost lift can't stick.
-        const { touches, changedTouches } = event.nativeEvent;
-        const from = start.current;
-        const startOver = !from || touchOf(changedTouches, from.id) || !touchOf(touches, from.id);
-        if (startOver) start.current = fingerOf(event);
-      }}
+      onTouchStart={finger.down}
       // A held finger keeps the button's touch as it swipes over the choices.
-      onTouchMove={(event: GestureResponderEvent) => {
-        const from = start.current;
-        const at = from && fingerOf(event, from.id);
-        if (menu?.how !== 'hold' || !from || !at) return;
-        point((shown) => swiped(shown, at.x - from.x, at.y - from.y));
+      onTouchMove={(event) => {
+        const moved = finger.moved(event);
+        if (menu?.how === 'hold' && moved) point((shown) => swiped(shown, moved));
       }}
-      onTouchEnd={(event: GestureResponderEvent) => {
-        const from = start.current;
-        // Where the finger lifts, which a move's render may not have reached yet.
-        const at = from && fingerOf(event, from.id);
-        if (!from || !at) return;
-        start.current = undefined;
-        if (opening.current !== 'hold') return;
-        const lifted = menu && swiped(menu, at.x - from.x, at.y - from.y);
-        if (lifted && lifted !== theme) choose(lifted);
+      onTouchEnd={(event) => {
+        // How far the finger went before lifting, which a move's render may not have reached yet.
+        const lifted = finger.lifted(event);
+        if (!lifted || opening.current !== 'hold') return;
+        const choice = menu && swiped(menu, lifted);
+        if (choice && choice !== theme) choose(choice);
         close();
       }}
-      onTouchCancel={(event: GestureResponderEvent) => {
-        // A cancel that doesn't list the pressing finger is another finger's and
-        // leaves them open; a whole gesture's cancel lists every finger, so it closes them.
-        const from = start.current;
-        if (from && !fingerOf(event, from.id)) return;
-        start.current = undefined;
-        if (opening.current === 'hold') close();
+      onTouchCancel={(event) => {
+        if (finger.cancelled(event) && opening.current === 'hold') close();
       }}
     >
       <HeaderButton
