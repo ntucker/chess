@@ -14,7 +14,7 @@ interface Props {
   readonly ending: Ending;
   /** The other side's name, as its name bar shows it. */
   readonly rival: string;
-  /** The side at the bottom of the board, so the card keeps off the two kings. */
+  /** The side at the bottom of the board, so the card keeps off the two kings and the last move. */
   readonly orientation: Color;
 }
 
@@ -22,7 +22,8 @@ interface Props {
  * Names the result over the board as the game ends: who won, or that nobody
  * did. It is a playbill's banner across the board, which comes on once the
  * board has acted the ending out (Board.tsx), in step with it through
- * ACT_TIMES, and then leaves, so the final position can be studied. A win
+ * ACT_TIMES. It stays for as long as the board shows the final position,
+ * keeping off both kings so the position can still be studied. A win
  * springs open in the accent color; a loss comes down slowly and plainly.
  */
 export function EndingCard({ ending, rival, orientation }: Props) {
@@ -35,10 +36,9 @@ export function EndingCard({ ending, rival, orientation }: Props) {
   const look = cardLook(mood, theme);
   const size = cardSizes(width, title, mood);
   const cue = reducedMotion ? STILL : CUES[mood];
-  const times = ACT_TIMES[mood];
   // Without motion the board shows its ending at once, so the card doesn't wait for it.
-  const start = reducedMotion ? 0 : times.card;
-  const band = cardBand(ending.kings, orientation);
+  const start = reducedMotion ? 0 : ACT_TIMES[mood].card;
+  const band = cardBand(ending, orientation);
   const at = (step: Step | undefined) => step && play(step, start);
   const ornament = <Ornament color={look.rule} star={mood === 'won'} />;
   return (
@@ -47,61 +47,59 @@ export function EndingCard({ ending, rival, orientation }: Props) {
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
     >
       {width ? (
-        <Animated.View style={play(cue.leave, start + times.cardOut - times.card)}>
-          <Animated.View style={[styles.band, { paddingVertical: size.pad }, at(cue.band)]}>
-            <Animated.View
+        <Animated.View style={[styles.band, { paddingVertical: size.pad }, at(cue.band)]}>
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFill,
+              styles.ground,
+              { backgroundColor: look.ground, boxShadow: look.shadow },
+              at(cue.ground),
+            ]}
+          >
+            {cue.gleam ? (
+              <Animated.View
+                style={[styles.gleam, { backgroundColor: look.gleam }, at(cue.gleam)]}
+              />
+            ) : null}
+          </Animated.View>
+          <Rules color={look.rule} double={mood === 'won'} style={at(cue.rules)} />
+          <Animated.View style={[styles.eyebrowRow, at(cue.eyebrow)]}>
+            {ornament}
+            <Text
+              role="label"
+              numberOfLines={1}
               style={[
-                StyleSheet.absoluteFill,
-                styles.ground,
-                { backgroundColor: look.ground, boxShadow: look.shadow },
-                at(cue.ground),
+                styles.eyebrow,
+                {
+                  color: look.eyebrow,
+                  fontSize: size.eyebrow,
+                  lineHeight: Math.round(size.eyebrow * 1.3),
+                  letterSpacing: size.eyebrow * 0.26,
+                },
               ]}
             >
-              {cue.gleam ? (
-                <Animated.View
-                  style={[styles.gleam, { backgroundColor: look.gleam }, at(cue.gleam)]}
-                />
-              ) : null}
-            </Animated.View>
-            <Rules color={look.rule} double={mood === 'won'} style={at(cue.rules)} />
-            <Animated.View style={[styles.eyebrowRow, at(cue.eyebrow)]}>
-              {ornament}
-              <Text
-                role="label"
-                numberOfLines={1}
-                style={[
-                  styles.eyebrow,
-                  {
-                    color: look.eyebrow,
-                    fontSize: size.eyebrow,
-                    lineHeight: Math.round(size.eyebrow * 1.3),
-                    letterSpacing: size.eyebrow * 0.26,
-                  },
-                ]}
-              >
-                {eyebrow}
-              </Text>
-              {ornament}
-            </Animated.View>
-            {/* A view animates in the title's place: on Android, nested text can't. */}
-            <Animated.View style={at(cue.title)}>
-              <Text
-                role="headingXl"
-                accessibilityRole="header"
-                accessibilityLiveRegion="polite"
-                numberOfLines={1}
-                style={[
-                  styles.title,
-                  {
-                    color: look.title,
-                    fontSize: size.title,
-                    lineHeight: Math.round(size.title * 1.12),
-                  },
-                ]}
-              >
-                {title}
-              </Text>
-            </Animated.View>
+              {eyebrow}
+            </Text>
+            {ornament}
+          </Animated.View>
+          {/* A view animates in the title's place: on Android, nested text can't. */}
+          <Animated.View style={at(cue.title)}>
+            <Text
+              role="headingXl"
+              accessibilityRole="header"
+              accessibilityLiveRegion="polite"
+              numberOfLines={1}
+              style={[
+                styles.title,
+                {
+                  color: look.title,
+                  fontSize: size.title,
+                  lineHeight: Math.round(size.title * 1.12),
+                },
+              ]}
+            >
+              {title}
+            </Text>
           </Animated.View>
         </Animated.View>
       ) : null}
@@ -190,7 +188,7 @@ function cardSizes(width: number, title: string, mood: Mood) {
   };
 }
 
-/** One part's entrance or exit: its keyframes, how long after the card's start, and its motion. */
+/** One part's entrance: its keyframes, how long after the card's start, and its motion. */
 interface Step {
   readonly keyframes: CSSAnimationKeyframes;
   readonly delay: number;
@@ -212,7 +210,6 @@ function play({ keyframes, delay, durationMs, easing }: Step, start: number) {
 
 const shown = { opacity: 1, transform: [{ translateY: 0 }] };
 const FADE_IN = { from: { opacity: 0 }, to: { opacity: 1 } };
-const FADE_OUT = { from: { opacity: 1 }, to: { opacity: 0 } };
 /** The ground opens from a line across the board. */
 const UNFURL = {
   from: { opacity: 0, transform: [{ scaleY: 0.05 }] },
@@ -231,14 +228,11 @@ const GLEAM = {
   from: { transform: [{ translateX: '-160%' }, { skewX: '-20deg' }] },
   to: { transform: [{ translateX: '560%' }, { skewX: '-20deg' }] },
 };
-const LIFT_AWAY = { from: shown, to: { opacity: 0, transform: [{ translateY: -10 }] } };
-const SINK_AWAY = { from: shown, to: { opacity: 0, transform: [{ translateY: 12 }] } };
 
 /** Springs for a win: the ground snaps open, and the title lands with more bounce. */
 const SNAP = springMotion({ duration: 0.4, bounce: 0.3 });
 const LAND = springMotion({ duration: 0.5, bounce: 0.4 });
 const EASE_OUT = 'cubic-bezier(0.2, 0, 0, 1)';
-const EASE_IN = 'cubic-bezier(0.4, 0, 1, 1)';
 
 /** Each mood's steps, by the part that plays them; a part without one is simply there. */
 interface Cues {
@@ -248,7 +242,6 @@ interface Cues {
   readonly rules?: Step;
   readonly eyebrow?: Step;
   readonly title?: Step;
-  readonly leave: Step;
 }
 
 const CUES: Readonly<Record<Mood, Cues>> = {
@@ -259,24 +252,20 @@ const CUES: Readonly<Record<Mood, Cues>> = {
     eyebrow: { keyframes: RISE, delay: 170, durationMs: 280, easing: EASE_OUT },
     title: { keyframes: SWELL, delay: 220, ...LAND },
     gleam: { keyframes: GLEAM, delay: 620, durationMs: 700, easing: 'ease-in-out' },
-    leave: { keyframes: LIFT_AWAY, delay: 0, durationMs: 300, easing: EASE_IN },
   },
-  // No spring and nothing drawn: it comes down, and later sinks away.
+  // No spring and nothing drawn: it comes down.
   lost: {
     band: { keyframes: DESCEND, delay: 0, durationMs: 620, easing: EASE_OUT },
     title: { keyframes: FADE_IN, delay: 260, durationMs: 520, easing: 'ease-out' },
-    leave: { keyframes: SINK_AWAY, delay: 0, durationMs: 460, easing: EASE_IN },
   },
   drawn: {
     band: { keyframes: FADE_IN, delay: 0, durationMs: 320, easing: 'ease-out' },
-    leave: { keyframes: FADE_OUT, delay: 0, durationMs: 320, easing: 'ease-in' },
   },
 };
 
-/** With reduced motion every mood only fades, in and out. */
+/** With reduced motion every mood only fades in. */
 const STILL: Cues = {
   band: { keyframes: FADE_IN, delay: 0, durationMs: 150, easing: 'ease-out' },
-  leave: { keyframes: FADE_OUT, delay: 0, durationMs: 150, easing: 'ease-in' },
 };
 
 /** A rank of the board, which a banner off the middle starts one of from the edge. */

@@ -19,11 +19,13 @@ describe('gameEnding', () => {
       mood: 'won',
       reason: 'checkmate',
       kings: { learner: 'e1', rival: 'e8' },
+      landed: 'f7',
     });
     expect(example('Loss')).toEqual({
       mood: 'lost',
       reason: 'checkmate',
       kings: { learner: 'e1', rival: 'e8' },
+      landed: 'h4',
     });
   });
 
@@ -32,6 +34,7 @@ describe('gameEnding', () => {
       mood: 'drawn',
       reason: 'stalemate',
       kings: { learner: 'g6', rival: 'e1' },
+      landed: 'e6',
     });
   });
 });

@@ -5,7 +5,8 @@ import { join } from 'node:path';
 import { gameEnding } from '@/game/ending';
 import { ACT_TIMES, cardBand, endingAct, KING_PARTS, MOVE_MS, TINTS } from '@/board/endingAct';
 import { endingExamples } from '@/board/endingExamples';
-import { lastPosition } from '@/game/replay';
+import type { Square } from '@/board/drawing';
+import { type Color, lastPosition } from '@/game/replay';
 
 /** The act the endings page shows for the example called `title`. */
 function exampleAct(title: string) {
@@ -83,12 +84,11 @@ describe('endingAct', () => {
 });
 
 describe('ACT_TIMES', () => {
-  it('waits for the last move to land, and puts the card away before the lights come up', () => {
+  it('waits for the last move to land, and lets the card read in the dark before the lights come up', () => {
     for (const times of Object.values(ACT_TIMES)) {
       expect(times.dim).toBeGreaterThanOrEqual(MOVE_MS);
       expect(times.card).toBeGreaterThan(times.dim);
-      expect(times.cardOut).toBeGreaterThan(times.card + 1500);
-      expect(times.up).toBeGreaterThanOrEqual(times.cardOut);
+      expect(times.up).toBeGreaterThan(times.card + 1500);
     }
   });
 
@@ -100,15 +100,25 @@ describe('ACT_TIMES', () => {
 });
 
 describe('cardBand', () => {
-  it('lies across the middle while the kings are elsewhere', () => {
-    expect(cardBand({ learner: 'e1', rival: 'e8' }, 'white')).toBe('middle');
+  const band = (learner: Square, rival: Square, landed: Square, orientation: Color = 'white') =>
+    cardBand({ kings: { learner, rival }, landed }, orientation);
+
+  it('lies across the middle while the kings and the last move are elsewhere', () => {
+    expect(band('e1', 'e8', 'f7')).toBe('middle');
   });
 
   it('moves off a king in the middle', () => {
     // The learner's king on e4 is in the middle two ranks; nothing is on the two above.
-    expect(cardBand({ learner: 'e4', rival: 'h8' }, 'white')).toBe('upper');
+    expect(band('e4', 'h8', 'h1')).toBe('upper');
     // From Black's side, the rival's king on e5 is in the middle two ranks and the learner's on c2 in the two above them.
-    expect(cardBand({ learner: 'c2', rival: 'e5' }, 'black')).toBe('lower');
+    expect(band('c2', 'e5', 'a8', 'black')).toBe('lower');
+  });
+
+  it('moves off the piece that mated, where the kings leave room', () => {
+    // 1.f3 e5 2.g4 Qh4#: the queen on h4 is in the middle two ranks.
+    expect(band('e1', 'e8', 'h4')).toBe('upper');
+    // Kings on e5 and e2 leave only the upper band, so the card covers the rook on a7.
+    expect(band('e5', 'e2', 'a7')).toBe('upper');
   });
 });
 
