@@ -185,7 +185,7 @@ describe('watchBoardPointer', () => {
     expect(report).not.toHaveBeenCalled();
   });
 
-  it('reports nothing while not listening, and no tap from a press made before it listened', () => {
+  it('reports only while listening, and a tap only when it listened at both press and lift', () => {
     const { report, fire, tap, listen } = setupBoard();
     listen(false);
     fire('pointerenter', 'mouse');
@@ -196,6 +196,7 @@ describe('watchBoardPointer', () => {
     fire('pointerup', 'touch');
     expect(report).not.toHaveBeenCalled();
     tap('touch');
+    // A mouse is heard again once the board listens.
     fire('pointerenter', 'mouse');
     // The board stops listening, as on a step back, before the finger lifts.
     fire('pointerdown', 'touch');
