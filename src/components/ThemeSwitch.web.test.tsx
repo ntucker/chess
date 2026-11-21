@@ -249,6 +249,16 @@ describe('ThemeSwitch', () => {
       expect(saved()).toBe('light');
     });
 
+    it.each([1, 3])('follows a lone new finger %i after a lost lift', (identifier) => {
+      touch('touchstart', 100);
+      const next = finger(115, 15, identifier);
+      send('touchstart', next, [next]);
+      act(() => jest.advanceTimersByTime(600));
+      send('touchmove', finger(145, 15, identifier), [finger(145, 15, identifier)]);
+      send('touchend', finger(145, 15, identifier), []);
+      expect(saved()).toBe('light');
+    });
+
     it('follows a new finger after a lost lift, even with another one down', () => {
       // Finger 1's lift never arrives.
       touch('touchstart', 115);

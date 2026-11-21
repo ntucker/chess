@@ -174,11 +174,12 @@ export function ThemeSwitch() {
         // button's touch to it. Once that finger is gone from the screen, or its
         // identifier comes back on a new finger, the next finger down starts
         // over, so a lost lift can't stick.
-        const { touches, changedTouches } = event.nativeEvent;
         const from = start.current;
-        const has = (list: typeof touches) =>
-          [...list].some((touch) => touch.identifier === from?.id);
-        if (!from || has(changedTouches) || !has(touches)) start.current = fingerOf(event);
+        const startOver =
+          !from ||
+          fingerOf(event, from.id) ||
+          ![...event.nativeEvent.touches].some((touch) => touch.identifier === from.id);
+        if (startOver) start.current = fingerOf(event);
       }}
       // A held finger keeps the button's touch as it swipes over the choices.
       onTouchMove={(event: GestureResponderEvent) => {
@@ -199,7 +200,8 @@ export function ThemeSwitch() {
         close();
       }}
       onTouchCancel={(event: GestureResponderEvent) => {
-        // Only the pressing finger's cancel closes them (a whole gesture's cancel lists every finger).
+        // A cancel that doesn't list the pressing finger is another finger's and
+        // leaves them open; a whole gesture's cancel lists every finger, so it closes them.
         const from = start.current;
         if (from && !fingerOf(event, from.id)) return;
         start.current = undefined;
