@@ -315,12 +315,17 @@ export function notationProblem(text: string): string | undefined {
 }
 
 /**
- * Words that point to the study a note came from, which the learner never
- * sees: "see chapter 12", "the most important section", "the heart button".
- * The checker refuses a false hit (a "queenside section") like any other, so
- * the importer asks for a new wording first.
+ * Words that point outside the lesson, to the study a note came from or
+ * another one, which the learner never sees: "see chapter 12", "the most
+ * important section", "the heart button", "the video" a study links, "covered
+ * in a different study". "Study" counts after a word that singles out a study
+ * ("the", "another", "a different"), with at most one word between, so "study
+ * it carefully" and "your study of the centre" pass.
+ * The checker refuses a false hit (a "queenside section", "the players study
+ * the line") like any other, so the importer asks for a new wording first.
  */
-const STUDY_MENTION = /\b(?:chapters?|sections?|buttons?|(?:the|this|that|our|my) study)\b/i;
+const STUDY_MENTION =
+  /\b(?:chapters?|sections?|buttons?|videos?)\b|\b(?:a|an|the|this|that|these|those|our|my|another|other|separate|different|next|previous)\s+(?:\w+\s+)?stud(?:y|ies)\b/i;
 
 /** Whether note `text` points to the study it came from. */
 export const pointsToStudy = (text: string) => STUDY_MENTION.test(text);

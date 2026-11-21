@@ -28,6 +28,7 @@ export const LESSONS = {
   'boden-kieseritzky': () => import('@/assets/lessons/boden-kieseritzky.json'),
   stafford: () => import('@/assets/lessons/stafford.json'),
   lucchini: () => import('@/assets/lessons/lucchini.json'),
+  berlin: () => import('@/assets/lessons/berlin.json'),
 };
 
 export type LessonId = keyof typeof LESSONS;

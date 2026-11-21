@@ -142,6 +142,12 @@ const LOLORIV_RUY = {
   },
 } as const;
 
+/** loloriv's Berlin chapter, written for Black: in the Ruy Lopez lesson reworded for White, and the Berlin lesson's own. */
+const LOLORIV_BERLIN = {
+  ...LOLORIV_RUY,
+  chapters: (title: string) => title === 'Berlin Defense Theory',
+} as const;
+
 /** Bosburp's Queen's Gambit repertoire for White. */
 const BOSBURP_QG = {
   study: '0uRBskUV',
@@ -409,6 +415,65 @@ function chapterNamed(
   if (!Object.hasOwn(names, title)) throw new Error(`Name the ${study} chapter "${title}"`);
   return names[title];
 }
+
+/** LBB86's Berlin repertoire for Black: the theory chapters, as variation names, not the practice drills. */
+const LBB86_BERLIN_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  // The chapter titles say Nxd5 for 4...Nxe4.
+  '4.O-O Nxd5 5.d4': '4.O-O: 5.d4',
+  '4.O-O Nxd5 5.Re1': '4.O-O: 5.Re1',
+  '4.O-O Nxd5 Qe2': '4.O-O: 5.Qe2',
+  '4.d3': 'Anti-Berlin Variation',
+  '4.Qe2': '4.Qe2',
+  '4.d4': '4.d4',
+};
+
+/** Regaele's Berlin endgame for Black, as variation names. */
+const REGAELE_BERLIN_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  'Introduction - Berlin Defence': '4.O-O: 5.d4',
+  '9. Rd1': '4.O-O: 5.d4',
+  '9. h3': '4.O-O: 5.d4',
+  '9. Nf3': '4.O-O: 5.d4',
+  // 9.Nc3 Bd7 and 9.Ng5, from the endgame's starting position.
+  'Capitolo 6': '4.O-O: 5.d4',
+  Ng5: '4.O-O: 5.d4',
+  'Capitolo 9': '4.O-O: 5.d4',
+  'An alternative to the Berlin Endgame 4. d3': 'Anti-Berlin Variation',
+};
+
+/** hb2007's Berlin for Black, by White's fourth move. */
+const HB2007_BERLIN_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  'THE BERLIN DEFENSE': undefined,
+  '4. O-O (Rio Gambit)': '4.O-O',
+  '4. d3': 'Anti-Berlin Variation',
+  '4. Qe2': '4.Qe2',
+  '4. Nc3 (Transpose to Four Knights)': 'Four Knights',
+  '4. d4': '4.d4',
+  '4. Bxc6 and 5. O-O': '4.Bxc6',
+};
+
+/**
+ * NapalmA's Berlin chapters for Black, as variation names. Left out: Black's other fourth moves
+ * (the Beverwijk, the Rosenthal, the Fishing Pole), which the lesson doesn't play.
+ */
+const NAPALMA_BERLIN_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  'BD - Rio Gambit Accepted': '4.O-O: 5.Re1',
+  'BD - Rio Gambit Accepted - Line2': '4.O-O: 5.Re1',
+  "BD - l'Hermet Variation - Berlin Wall Defense": '4.O-O: 5.d4',
+  'BD - Scotch Invitation': '4.d4',
+  'BD - 4...Bxc6!?': '4.Bxc6',
+  'BD - Knight Sacrifice Line': 'Anti-Berlin Variation',
+  'Four Knight Game - Spanish Variation': 'Four Knights',
+};
+
+/** Coldfield1994's Berlin for White, one position a chapter, as variation names. */
+const COLDFIELD_BERLIN_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  'Opening Position : Berlin Defense': undefined,
+  'Berlin Defense + 4.0-0': undefined,
+  'Berlin Defense + 4.0-0 Nxe4 : Rio Gambit Accepted': '4.O-O',
+  'Rio Gambit Accepted + 5.d4': '4.O-O: 5.d4',
+  "Rio Gambit Accepted + 5.d4 Nd6 : I'Hermet Variation": '4.O-O: 5.d4',
+  "I'Hermet Variation + 6.Bxc6 dxc6": '4.O-O: 5.d4',
+};
 
 /** Eric Rosen's Stafford Gambit traps, named by White's fifth and sixth moves. */
 const STAFFORD_CHAPTERS: Readonly<Record<string, string | undefined>> = {
@@ -1187,9 +1252,8 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
       },
       {
         // The Berlin, shown from Black's side, reworded for White: it books none of White's moves.
-        ...LOLORIV_RUY,
+        ...LOLORIV_BERLIN,
         writtenFor: 'black',
-        chapters: (title: string) => title === 'Berlin Defense Theory',
         chapterName: () => 'Berlin Defence',
       },
       {
@@ -1513,5 +1577,99 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
     ],
     engineCheck: 'gambit',
     info: { id: 'boden-kieseritzky', title: 'Boden-Kieseritzky Gambit', side: 'white' },
+  },
+  berlin: {
+    from: [
+      {
+        study: 'dV73Jv0R',
+        credit: {
+          title: 'Black Repertoire - Ruy Lopez: Berlin Defense',
+          author: 'LBB86',
+          url: 'https://lichess.org/study/dV73Jv0R',
+        },
+        ...onlyChapters(LBB86_BERLIN_CHAPTERS),
+        // From 3...Nf6: its note on 1.e4 links a video of the study.
+        namedFrom: 6,
+      },
+      {
+        // loloriv's Berlin chapter, written for Black; the rest of the study is White's Ruy Lopez.
+        // After LBB86's, whose chapters each name one of White's fourth moves: a chapter of all of
+        // them first would name every shared position for its main line.
+        ...LOLORIV_BERLIN,
+        chapterName: () => undefined,
+      },
+      {
+        study: 'fpOrtRTd',
+        credit: {
+          title: 'Berlin Endgame',
+          author: 'Regaele',
+          url: 'https://lichess.org/study/fpOrtRTd',
+        },
+        ...onlyChapters(REGAELE_BERLIN_CHAPTERS),
+      },
+      {
+        study: 'VtuJiz4I',
+        credit: {
+          title: 'The Berlin Defense',
+          author: 'hb2007',
+          url: 'https://lichess.org/study/VtuJiz4I',
+        },
+        ...onlyChapters(HB2007_BERLIN_CHAPTERS),
+      },
+      {
+        // Deep lines for Black with few words: what the annotated studies stop short of.
+        study: 'Re4v85P5',
+        credit: {
+          title: 'Ruy Lopez',
+          author: 'NapalmA',
+          url: 'https://lichess.org/study/Re4v85P5',
+        },
+        ...onlyChapters(NAPALMA_BERLIN_CHAPTERS),
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bb5/3...Nf6',
+        rename: { 'Open Berlin': '4.O-O', 'Anti-Berlin': 'Anti-Berlin Variation' },
+        maxPages: 40,
+      },
+      {
+        // White's view, reworded for Black: what each move of the main line is for.
+        study: 'NkkkhPkh',
+        credit: {
+          title: 'Ruy Lopez, Berlin Defense (White)',
+          author: 'Coldfield1994',
+          url: 'https://lichess.org/study/NkkkhPkh',
+        },
+        writtenFor: 'white',
+        ...onlyChapters(COLDFIELD_BERLIN_CHAPTERS),
+      },
+      {
+        // The Anti-Berlin from White's side, reworded for Black.
+        study: 'hjMiyfDf',
+        credit: {
+          title: 'Pursuing The Anti-Berlin',
+          author: 'KusozakoChessMaster',
+          url: 'https://lichess.org/study/hjMiyfDf',
+        },
+        writtenFor: 'white',
+        // Its d3 chapter, not "links to other studies" or "Example Game 1".
+        ...onlyChapters({ 'Anti-Berlin with d3': 'Anti-Berlin Variation' }),
+      },
+      {
+        // A GM's analysis of 5.Re1 for White, reworded for Black.
+        study: 'b9PURAHh',
+        credit: {
+          title: 'Attack the Berlin Defense - Full analysis by a GM',
+          author: 'JThybo',
+          url: 'https://lichess.org/study/b9PURAHh',
+        },
+        writtenFor: 'white',
+        // Its only chapter, named for the line it analyses.
+        ...onlyChapters({
+          'Attack the Berlin Defense - 5. Re1 - Full analysis by a GM': '4.O-O: 5.Re1',
+        }),
+      },
+    ],
+    engineCheck: true,
+    info: { id: 'berlin', title: 'Berlin Defence', side: 'black' },
   },
 };
