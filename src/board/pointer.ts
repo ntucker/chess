@@ -95,10 +95,10 @@ const TAP_SLOP = 10;
 /**
  * Reports a mouse coming onto `target` and leaving it, and a finger or pen
  * tapping it: pressing it and lifting without ever moving more than
- * `TAP_SLOP`. Only while `listening`, which a tap must be from its press on:
- * a press that plays a move making the board listen lifts as no tap. A swipe
- * across it, or a press that started elsewhere, is no tap either. Returns a
- * function that stops.
+ * `TAP_SLOP`. Reports only while `listening()` is true, and a tap only when it
+ * was true at both press and lift: the press that plays the mating move starts
+ * before the board listens, so its lift is no tap. A swipe across it, or a
+ * press that started elsewhere, is no tap either. Returns a function that stops.
  */
 export function watchBoardPointer(
   target: PointerSource,

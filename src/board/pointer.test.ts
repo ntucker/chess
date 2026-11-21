@@ -196,7 +196,12 @@ describe('watchBoardPointer', () => {
     fire('pointerup', 'touch');
     expect(report).not.toHaveBeenCalled();
     tap('touch');
-    expect(report.mock.calls).toEqual([['tap']]);
+    fire('pointerenter', 'mouse');
+    // The board stops listening, as on a step back, before the finger lifts.
+    fire('pointerdown', 'touch');
+    listen(false);
+    fire('pointerup', 'touch');
+    expect(report.mock.calls).toEqual([['tap'], ['enter']]);
   });
 
   it('reports nothing once stopped', () => {
