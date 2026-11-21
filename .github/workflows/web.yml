@@ -100,28 +100,29 @@ jobs:
           setsid yarn expo export --platform web ${{ env.PREVIEW && '--no-minify' || '' }} &
           expo=$!
           superseded="$RUNNER_TEMP/superseded"
-          if [ "$GITHUB_REF" = refs/heads/main ] && [ -z "$PREVIEW" ]; then
+          watcher=
+          if [ "$GITHUB_REF" = refs/heads/main ]; then
             # Its output goes nowhere: a sleep holding the step's output open
-            # would keep the step from finishing.
-            while sleep 10; do
-              # A failed lookup keeps building.
-              main=$(git ls-remote origin refs/heads/main) && [ -n "$main" ] || continue
-              if [ "${main%%$'\t'*}" != "$GITHUB_SHA" ]; then
+            # would keep the step from finishing. A failed lookup keeps building.
+            while :; do
+              if main=$(git ls-remote --exit-code origin refs/heads/main) \
+                && [ "${main%%$'\t'*}" != "$GITHUB_SHA" ]; then
                 # Marked before the kill, so the step can't take the stop for a
                 # failure, and unmarked if nothing was left to stop. An export
                 # failing on its own at that same moment may pass; the newer
-                # build checks the same code.
+                # build checks its changes again, with the newer ones.
                 touch "$superseded"
                 kill -- "-$expo" || rm "$superseded"
                 break
               fi
+              sleep 10
             done > /dev/null 2>&1 &
             watcher=$!
           fi
           status=0
           wait "$expo" || status=$?
           # The watcher may have stopped already.
-          [ -z "${watcher-}" ] || kill "$watcher" 2> /dev/null || true
+          [ -z "$watcher" ] || kill "$watcher" 2> /dev/null || true
           if [ -e "$superseded" ]; then
             echo "::notice::Stopped: a newer push to main builds and publishes instead."
             echo "superseded=true" >> "$GITHUB_OUTPUT"
@@ -236,7 +237,6 @@ jobs:
               main=$(git ls-remote --exit-code origin refs/heads/main) || { sleep $((attempt * 5)); continue; }
               if [ "${main%%$'\t'*}" != "$GITHUB_SHA" ]; then
                 echo "::notice::Not published: a newer push to main publishes instead."
-                echo "copied=false" >> "$GITHUB_OUTPUT"
                 exit 0
               fi
             fi
