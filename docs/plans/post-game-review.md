@@ -43,8 +43,8 @@ then the rest). Tests; no screen.
 Accuracy rules: a move scores 103.1668 e^(-0.04354 × win points lost) - 3.1669, plus 1, within 0 to
 100; a side's number is the average of its moves' swing-weighted mean and their harmonic mean (each
 move floored at 1 there). A move's weight is the standard deviation of the win percent over a
-window of positions ending after it, as many as a tenth of the game's moves (2 to 8), within 0.5 to 12. A sketch is
-the first whole depth of at least 12.
+window of positions ending after it, as many as a tenth of the game's moves (2 to 8), within 0.5
+to 12. A sketch is the first whole depth of at least 12.
 
 ### Piece 2: Review page
 
