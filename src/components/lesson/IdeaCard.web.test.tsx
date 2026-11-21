@@ -2,7 +2,7 @@
 // (package.json) lets @reactive through Babel for it.
 import { describe, expect, it, jest } from '@jest/globals';
 import { SilkProvider } from '@reactive/silk-native';
-import { act } from 'react';
+import { act, type ComponentProps } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import type { Note, PositionKey } from '@/lesson/lesson';
@@ -14,11 +14,6 @@ import { themes } from '@/theme/theme';
 import { NoteView } from './IdeaCard';
 
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
-// Its react-native-svg needs Expo's asset registry, which the web preset doesn't resolve.
-jest.mock('@/components/PieceGlyph', () => ({
-  PieceGlyph: ({ role }: { role: string }) =>
-    jest.requireActual<typeof import('react')>('react').createElement('i', { title: role }),
-}));
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -29,28 +24,43 @@ const PLAYBACK: Playback = {
   stop: () => {},
 };
 
-/** The text a note's view shows and reads aloud. */
-function noteText(note: Note): string {
+/** Renders a note's view, in the page so its tooltips' layer is too; `unmount` removes it. */
+function renderNote(
+  props: Partial<ComponentProps<typeof NoteView>> & Pick<ComponentProps<typeof NoteView>, 'shown'>,
+) {
   const host = document.createElement('div');
+  document.body.append(host);
   const root = createRoot(host);
   act(() =>
     root.render(
       <SilkProvider theme={themes.dark}>
         <NoteView
           lesson={SAMPLE}
-          shown={{ note, after: 'after' as PositionKey }}
           learner="black"
           playback={PLAYBACK}
           pointable={false}
           pointed={false}
           onPoint={() => {}}
           onLeave={() => {}}
+          {...props}
         />
       </SilkProvider>,
     ),
   );
+  return {
+    host,
+    unmount: () => {
+      act(() => root.unmount());
+      host.remove();
+    },
+  };
+}
+
+/** The text a note's view shows and reads aloud. */
+function noteText(note: Note): string {
+  const { host, unmount } = renderNote({ shown: { note, after: 'after' as PositionKey } });
   const text = host.textContent ?? '';
-  act(() => root.unmount());
+  unmount();
   return text;
 }
 
@@ -80,25 +90,11 @@ describe('NoteView', () => {
   it('shows a move the note names on a small board when tapped, without pointing at the note', () => {
     const keys = lineKeys(uciLine('e4', 'c6', 'd4', 'd5', 'Nd2'));
     const onPoint = jest.fn();
-    const host = document.createElement('div');
-    document.body.append(host);
-    const root = createRoot(host);
-    act(() =>
-      root.render(
-        <SilkProvider theme={themes.dark}>
-          <NoteView
-            lesson={SAMPLE}
-            shown={{ note: { text: 'Same idea as Nc3.' }, after: keys[5], before: keys[4] }}
-            learner="black"
-            playback={PLAYBACK}
-            pointable
-            pointed={false}
-            onPoint={onPoint}
-            onLeave={() => {}}
-          />
-        </SilkProvider>,
-      ),
-    );
+    const { host, unmount } = renderNote({
+      shown: { note: { text: 'Same idea as Nc3.' }, after: keys[5], before: keys[4] },
+      pointable: true,
+      onPoint,
+    });
     const words = [...host.querySelectorAll('div')].find((div) => div.textContent === 'Nc3')!;
     const touch = new Event('pointerup', { bubbles: true });
     Object.assign(touch, { pointerType: 'touch' });
@@ -110,10 +106,14 @@ describe('NoteView', () => {
       mouse('mouseup', 0);
       words.click();
     });
-    expect(onPoint).not.toHaveBeenCalled();
     // Every piece of the position after 3.Nc3 stands on the board.
-    expect(document.querySelectorAll('[role="tooltip"] i')).toHaveLength(32);
-    act(() => root.unmount());
-    host.remove();
+    const tip = document.querySelector('[role="tooltip"]')!;
+    expect(tip.querySelectorAll('svg')).toHaveLength(32);
+    // A tap on the board, which React bubbles from the tooltip's layer to the note, doesn't point at it either.
+    const onBoard = new Event('pointerup', { bubbles: true });
+    Object.assign(onBoard, { pointerType: 'touch' });
+    act(() => tip.querySelector('svg')!.dispatchEvent(onBoard));
+    expect(onPoint).not.toHaveBeenCalled();
+    unmount();
   });
 });

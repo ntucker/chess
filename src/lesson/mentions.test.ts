@@ -82,22 +82,30 @@ describe('noteParts', () => {
   });
 
   describe('leaves a move it can’t place as words', () => {
-    // White's rook can reach d1, and so can Black's when it threatens.
-    const after = '3r2k1/5ppp/8/8/8/8/5PPP/R5K1 w - -' as PositionKey;
     const bare = { positions: {} } as unknown as Lesson;
 
     it('when no position within reach has it', () => {
+      const after = '4r1k1/5ppp/8/8/8/8/5PPP/R5K1 w - -' as PositionKey;
       expect(noteParts(bare, { note: note('Not Qh5 here.'), after })).toEqual(['Not Qh5 here.']);
-    });
-
-    it('when the nearest positions read it as different moves', () => {
+      // Only White's rook reaches d1, so the note means it.
       expect(noteParts(bare, { note: note('Watch Rd1.'), after })[1]).toMatchObject({
         lit: ['a1', 'd1'],
       });
+    });
+
+    it('when the nearest positions read it as different moves', () => {
+      // White's rook can reach d1, and so can Black's when it threatens to.
+      const after = '3r2k1/5ppp/8/8/8/8/5PPP/R5K1 w - -' as PositionKey;
       const threat = note('Watch Rd1.', {
         ideas: [{ type: 'threat', side: 'black', move: 'd8d1' }],
       });
       expect(noteParts(bare, { note: threat, after })).toEqual(['Watch Rd1.']);
+    });
+
+    it('when the side not to move could make it too, as notes name either side’s moves', () => {
+      // Black's knight on d5 can go to c3, but the note may mean White's Nc3.
+      const after = 'rnbqkb1r/pppppppp/8/3n4/8/8/PPPPPPPP/RNBQKBNR b KQkq -' as PositionKey;
+      expect(noteParts(bare, { note: note('Nc3 controls d5.'), after })[0]).toBe('Nc3 controls ');
     });
   });
 

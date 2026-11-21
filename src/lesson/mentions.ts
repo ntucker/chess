@@ -2,20 +2,32 @@
  * The moves and squares a note's text names, each with the board it stands
  * for, so the idea card can show a small board for it. A square ("the e5
  * pawn", "takes on d4") is shown lit in the note's position. A move ("Bf5",
- * "...e5", "O-O", "a4-a5") is shown played, from the nearest position where
- * it is legal: the note's own position (with a threat's side to move there),
- * the position its move was played in, then the positions its line or trap
- * and the guide lead to, a ply at a time. Where the nearest positions disagree on which move it is, or none
- * within reach has it, the text stays plain: a guess shown as fact misleads.
+ * "...e5", "O-O", "a4-a5") is shown played from the nearest position where
+ * it is legal, looking a tier at a time: the note's own position (with a
+ * threat's side to move there), the position its move was played in, then
+ * each ply onward along its line or trap and the guide. Where one tier's
+ * positions read it as different moves, or none within reach has it, the
+ * text stays plain: a guess shown as fact misleads. So does a move read for
+ * the side to move in the note's position that the other side could make
+ * there too: a note often names either side's moves without dots.
  */
-import { Chess } from 'chessops/chess';
-import { parseSan } from 'chessops/san';
+import type { Chess } from 'chessops/chess';
 import type { Color, SquareName } from 'chessops/types';
-import { makeSquare, makeUci, parseUci } from 'chessops/util';
+import { opposite, parseSquare } from 'chessops/util';
 
-import { positionKey, readPositionKey, recordedMove, SAN } from '@/game/replay';
+import {
+  MOVE_NUMBER,
+  playLine,
+  playMove,
+  positionKey,
+  readPositionKey,
+  recordedMove,
+  SAN,
+  sanToUci,
+  withTurn,
+} from '@/game/replay';
 
-import type { Lesson, PositionKey, Uci } from './lesson';
+import type { Idea, Lesson, PositionKey, Uci } from './lesson';
 import type { ShownNote } from './view';
 
 /** A move or square a note names, and the board that shows it. */
@@ -37,15 +49,14 @@ export type NotePart = string | Mention;
 const REACH = 4;
 
 /**
- * A mention as text writes it. Groups: a move number's dots (`.` for White,
- * `...` for Black) or bare `...`; the SAN; a route's squares (`a4-a5`).
- * Never inside a word, a file's name (`c-file`) or a longer route.
+ * A mention as text writes it. Groups: a move number (whose dots say whose
+ * move) or bare `...`; a route's squares (`a4-a5`); or the SAN. Never inside
+ * a word, a file's name (`c-file`) or a longer route.
  */
 const MENTION = new RegExp(
-  String.raw`(?<![\w.-])(?:\d+\s?(\.(?:\.\.)?)\s?|(\.\.\.))?(?:([a-h][1-8])-([a-h][1-8])|(${SAN}))[!?]*(?![\w-])`,
+  String.raw`(?<![\w.-])(${MOVE_NUMBER}|\.\.\.)?(?:([a-h][1-8])-([a-h][1-8])|(${SAN}))[!?]*(?![\w-])`,
   'g',
 );
-const SQUARE = /^[a-h][1-8]$/;
 
 /**
  * `shown`'s text split into words and mentions, each mention with its
@@ -53,115 +64,87 @@ const SQUARE = /^[a-h][1-8]$/;
  */
 export function noteParts(lesson: Lesson, shown: ShownNote): NotePart[] {
   const { text } = shown.note;
-  const places = lazyPlaces(lesson, shown);
+  const places = notePlaces(lesson, shown);
   const parts: NotePart[] = [];
-  let plain = '';
   let end = 0;
   for (const match of text.matchAll(MENTION)) {
-    const [written, dots, bareDots, from, to, san] = match;
-    const mention =
-      route(written, from, to, places) ?? named(written, dots ?? bareDots, san, places);
+    const [written, number, from, to, san] = match;
+    const mention = from
+      ? placed(written, places, (pos) => recordedMove(pos, `${from}${to}`))
+      : named(written, number, san, places);
     if (!mention) continue;
-    plain += text.slice(end, match.index);
-    if (plain) parts.push(plain);
-    plain = '';
+    if (match.index > end) parts.push(text.slice(end, match.index));
     parts.push(mention);
     end = match.index + written.length;
   }
-  plain += text.slice(end);
-  if (plain) parts.push(plain);
+  if (end < text.length) parts.push(text.slice(end));
   return parts;
 }
 
 /** A SAN or a square, numbered or dotted or not. */
 function named(
   text: string,
-  dots: string | undefined,
-  san: string | undefined,
+  number: string | undefined,
+  san: string,
   places: Places,
 ): Mention | undefined {
-  if (!san) return undefined;
   // A bare square is a place on the board, even where a pawn could move to it.
-  if (!dots && SQUARE.test(san)) {
+  if (!number && parseSquare(san) !== undefined) {
     return { text, key: places.note, lit: [san as SquareName], kind: 'square' };
   }
-  // A move number's single dot is White's move; three dots, numbered or not, Black's.
+  // Three dots, numbered or not, are Black's move; a number's single dot, White's.
   const mover: Color | undefined =
-    dots === undefined ? undefined : dots === '.' ? 'white' : 'black';
+    number === undefined ? undefined : number.includes('...') ? 'black' : 'white';
   return placed(text, places, (pos) =>
-    mover && pos.turn !== mover ? undefined : sanMove(pos, san),
+    mover && pos.turn !== mover ? undefined : sanToUci(pos, san),
   );
 }
 
-/** A route written square to square, as a move. */
-function route(
-  text: string,
-  from: string | undefined,
-  to: string | undefined,
-  places: Places,
-): Mention | undefined {
-  if (!from || !to) return undefined;
-  return placed(text, places, (pos) => recordedMove(pos, `${from}${to}`));
-}
-
 /**
- * `text` as the move `find` reads in the nearest places where it reads one,
- * if they all read the same move.
+ * `text` as the move `find` reads in the nearest tier of `places` where it
+ * reads one, if every position there, and every witness, reads the same move.
  */
 function placed(
   text: string,
   places: Places,
   find: (pos: Chess) => Uci | undefined,
 ): Mention | undefined {
-  for (const tier of places.tiers()) {
-    const found = tier.flatMap((pos) => {
-      const uci = find(pos);
-      return uci ? [{ pos, uci }] : [];
-    });
-    if (!found.length) continue;
-    const [{ pos, uci }] = found;
-    if (found.some((other) => other.uci !== uci)) return undefined;
-    return played(text, pos, uci);
+  for (const { positions, witnesses } of places.tiers()) {
+    const readings = positions.map(find);
+    const uci = readings.find(Boolean);
+    if (!uci) continue;
+    if ([...readings, ...witnesses.map(find)].some((other) => other && other !== uci)) {
+      return undefined;
+    }
+    return played(text, positions[readings.indexOf(uci)], uci);
   }
   return undefined;
 }
 
 function played(text: string, before: Chess, uci: Uci): Mention {
-  const move = parseUci(uci)!;
   const after = before.clone();
-  after.play(move);
-  const from = 'from' in move ? makeSquare(move.from) : undefined;
-  return {
-    text,
-    key: positionKey(after),
-    lit: from ? [from, makeSquare(move.to)] : [makeSquare(move.to)],
-    kind: 'move',
-  };
+  const { from, to } = playMove(after, uci)!;
+  return { text, key: positionKey(after), lit: [from, to] as SquareName[], kind: 'move' };
 }
 
-/** `san`'s move in `pos`, as the game records it, if legal and unambiguous. */
-function sanMove(pos: Chess, san: string): Uci | undefined {
-  const move = parseSan(pos, san);
-  return move && recordedMove(pos, makeUci(move));
+/** One step outward of where a mentioned move is looked for. */
+interface Tier {
+  /** Positions a move may be read in, the likeliest first. */
+  readonly positions: readonly Chess[];
+  /** Positions where a different reading only makes the mention unplaceable. */
+  readonly witnesses: readonly Chess[];
 }
 
 interface Places {
   /** The note's position. */
   readonly note: PositionKey;
-  /** The positions a mentioned move is looked for in, nearest first, a tier at a time. */
-  readonly tiers: () => Iterable<readonly Chess[]>;
+  /** The tiers, nearest first; built only as far as a mention asks, once for all of a note's. */
+  readonly tiers: () => Iterable<Tier>;
 }
 
-/**
- * Where `shown`'s mentioned moves are looked for, nearest first: its
- * position (and its threats, with the threatening side to move); the
- * position its move was played in; then each ply onward along its ideas'
- * moves and the guide's, ideas first. Built only as far as a mention asks,
- * and once for all of a note's mentions.
- */
-function lazyPlaces(lesson: Lesson, { note, after, before }: ShownNote): Places {
-  const built: Chess[][] = [];
-  const generator = tierGenerator(lesson, note.ideas ?? [], after, before);
+function notePlaces(lesson: Lesson, { note, after, before }: ShownNote): Places {
+  const built: Tier[] = [];
+  const generator = tiers(lesson, note.ideas ?? [], after, before);
   return {
     note: after,
     *tiers() {
@@ -177,60 +160,64 @@ function lazyPlaces(lesson: Lesson, { note, after, before }: ShownNote): Places 
   };
 }
 
-function* tierGenerator(
+/**
+ * Where a note's mentioned moves are looked for, nearest first: its
+ * position; the position its move was played in; then each ply onward.
+ */
+function* tiers(
   lesson: Lesson,
-  ideas: NonNullable<ShownNote['note']['ideas']>,
+  ideas: readonly Idea[],
   after: PositionKey,
   before: PositionKey | undefined,
-): Generator<Chess[]> {
+): Generator<Tier> {
   const start = readPositionKey(after);
   if (!start) return;
-  // The lines the note's ideas play from its position.
-  const lines = ideas.flatMap((idea) =>
-    idea.type === 'line' || idea.type === 'trap' ? [idea.moves] : [],
-  );
-  const threats = ideas.flatMap((idea) =>
-    idea.type === 'threat' && idea.side !== start.turn ? [passed(start)] : [],
-  );
-  yield [start, ...threats];
+  // The other side to move: where a note's threat is read, else a witness.
+  const passed = withTurn(start, opposite(start.turn));
+  const threatened = ideas.some((idea) => idea.type === 'threat' && idea.side === passed.turn);
+  yield threatened
+    ? { positions: [start, passed], witnesses: [] }
+    : { positions: [start], witnesses: [passed] };
   const playedIn = before && readPositionKey(before);
-  if (playedIn) yield [playedIn];
-  // Each ply on: the ideas' lines, then the guide's moves from every position reached.
-  let frontier: { pos: Chess; key: PositionKey }[] = [{ pos: start, key: after }];
+  if (playedIn) yield { positions: [playedIn], witnesses: [] };
+  const lines = ideaLines(ideas, start);
+  const guide = guidePlies(lesson, start, after);
   for (let ply = 1; ply <= REACH; ply++) {
-    const tier: Chess[] = [];
-    for (const line of lines) {
-      if (line.length < ply) continue;
-      const pos = start.clone();
-      if (line.slice(0, ply).every((uci) => playUci(pos, uci))) tier.push(pos);
-    }
-    const next: typeof frontier = [];
-    for (const { pos, key } of frontier) {
-      for (const { uci } of lesson.positions[key]?.moves ?? []) {
-        const child = pos.clone();
-        if (!playUci(child, uci)) continue;
-        next.push({ pos: child, key: positionKey(child) });
-      }
-    }
-    frontier = next;
-    tier.push(...next.map(({ pos }) => pos));
-    if (!tier.length) return;
-    yield tier;
+    const positions = [
+      ...lines.flatMap((line) => (line[ply] ? [line[ply]] : [])),
+      ...(guide.next().value ?? []),
+    ];
+    if (!positions.length) return;
+    yield { positions, witnesses: [] };
   }
 }
 
-/** Plays `uci` on `pos` in place; false, playing nothing, if it isn't legal. */
-function playUci(pos: Chess, uci: Uci): boolean {
-  const move = parseUci(uci);
-  if (!move || !pos.isLegal(move)) return false;
-  pos.play(move);
-  return true;
+/** Each line or trap the note's ideas play from `start`, as its positions: index n after n moves. */
+function ideaLines(ideas: readonly Idea[], start: Chess): Chess[][] {
+  return ideas.flatMap((idea) =>
+    idea.type === 'line' || idea.type === 'trap'
+      ? [Array.from(playLine(idea.moves.slice(0, REACH), start.clone()), ({ pos }) => pos.clone())]
+      : [],
+  );
 }
 
-/** `pos` with the other side to move, as a threat is read when its side isn't. */
-function passed(pos: Chess): Chess {
-  const other = pos.clone();
-  other.turn = pos.turn === 'white' ? 'black' : 'white';
-  other.epSquare = undefined;
-  return other;
+/** The positions the guide's moves reach from `start`, a ply at a time, each once. */
+function* guidePlies(lesson: Lesson, start: Chess, key: PositionKey): Generator<Chess[]> {
+  const seen = new Set([key]);
+  let frontier = [{ pos: start, key }];
+  while (frontier.length) {
+    const next: typeof frontier = [];
+    for (const { pos, key: at } of frontier) {
+      for (const { uci } of lesson.positions[at]?.moves ?? []) {
+        const child = pos.clone();
+        if (!playMove(child, uci)) continue;
+        const childKey = positionKey(child);
+        if (seen.has(childKey)) continue;
+        seen.add(childKey);
+        next.push({ pos: child, key: childKey });
+      }
+    }
+    frontier = next;
+    yield next.map(({ pos }) => pos);
+  }
 }
