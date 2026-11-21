@@ -47,12 +47,14 @@
  *   them wherever the piece is over, so dragging across the board moves
  *   nothing else on it; the idea card shows the move under it. A click hides
  *   the resting best-move mark the same way, until the piece is unselected.
- * - After the learner's mistake or blunder, the reply that punishes it
- *   (`refutation` in src/analysis/quality.ts) is marked in every mode, with
- *   "moves on the board" on or off, since it judges the move just played
- *   rather than hinting at the next one; like the best move, only while
- *   nothing is previewed, pointed at, picked up or playing back. It takes the
- *   place of the best-move mark and of a candidate's arrow for the same move.
+ * - After a mistake or blunder, the reply that punishes it (`refutation` in
+ *   src/analysis/quality.ts) is marked while nothing is previewed, pointed
+ *   at, picked up or playing back. After the learner's move it is marked in
+ *   every mode, with "moves on the board" on or off, since it judges the
+ *   move just played. On the learner's turn it is their next move, a hint,
+ *   so it follows the best move's rule: Explore, with "moves on the board"
+ *   on. It takes the place of the best-move mark and of a candidate's arrow
+ *   for the same move.
  * - Rare candidates (`Candidate.rare`) are left off the list, which shows
  *   them only when asked, and off the board's arrows; Stockfish's best isn't
  *   tagged on one either. Only a preview of one, or dragging its piece,
@@ -104,7 +106,7 @@ export interface GuidanceInput {
   /** The note whose idea plays back on the board. */
   readonly playing?: Note;
   readonly engine?: EngineView;
-  /** The reply that punishes the learner's move into the shown position, if one clearly does. */
+  /** The reply that punishes the move into the shown position, if one clearly does. */
   readonly refutation?: Uci;
 }
 
@@ -158,10 +160,7 @@ export interface Guidance {
   readonly best?: Uci;
   /** Stockfish's rows the list shows (`listedEngineMoves`). */
   readonly top: readonly Candidate[];
-  /**
-   * The reply that punishes the learner's move just played, to mark while
-   * nothing is previewed, pointed at, picked up or playing back.
-   */
+  /** The reply that punishes the move just played, where guidance marks it. */
   readonly refutation?: Uci;
   /** A trap the line fell into, while its card shows (see `trapShown`). */
   readonly trap?: LandedTrap;
@@ -226,7 +225,7 @@ export function guidance(input: GuidanceInput): Guidance {
     pointed,
     playing: playingNote,
     engine,
-    refutation: punishing,
+    refutation: punishes,
   } = input;
   const explore = mode === 'explore';
   const movesShown = switches.showMoves || !movesSwitchApplies(mode);
@@ -273,8 +272,9 @@ export function guidance(input: GuidanceInput): Guidance {
   });
   // The board at rest: nothing previewed, picked up, pointed at or playing back.
   const resting = !preview && !lifted && !playing && !pointedNote;
-  const refutation = resting ? punishing : undefined;
-  const best = explore && movesShown && resting ? engine?.best : undefined;
+  const hints = explore && movesShown && resting;
+  const refutation = (view.learnerToMove ? hints : resting) ? punishes : undefined;
+  const best = hints && engine?.best !== refutation ? engine?.best : undefined;
 
   return {
     candidates,
@@ -289,7 +289,7 @@ export function guidance(input: GuidanceInput): Guidance {
     playable,
     playing,
     pointed: pointedNote,
-    best: best !== refutation && best && tagsBest(view, engine?.final, best) ? best : undefined,
+    best: best && tagsBest(view, engine?.final, best) ? best : undefined,
     top,
     refutation,
     trap,

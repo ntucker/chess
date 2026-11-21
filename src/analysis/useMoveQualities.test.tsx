@@ -38,14 +38,14 @@ const analysis = (plies: number, lines: [string, number][], final = true): Analy
 
 let root: Root | undefined;
 const controllers: Controller[] = [];
-const judged: MoveJudgements[] = [];
-/** Each render's labels. */
-const renders = { at: (n: number) => judged.at(n)?.qualities };
+const renders: MoveJudgements[] = [];
+/** The last render's labels. */
+const labels = () => renders.at(-1)?.qualities;
 const managers = () => [new AnalysisManager(), ...getDefaultManagers()];
 
 function Labels({ shown, book }: { readonly shown: number | null; readonly book?: boolean[] }) {
   controllers.push(useController());
-  judged.push(useMoveQualities(PLIES, shown, 'stockfish', book));
+  renders.push(useMoveQualities(PLIES, shown, 'stockfish', book));
   return null;
 }
 
@@ -73,7 +73,7 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root?.unmount());
   root = undefined;
-  judged.length = 0;
+  renders.length = 0;
   controllers.length = 0;
   mockSearched.length = 0;
 });
@@ -87,7 +87,7 @@ describe('useMoveQualities', () => {
   it('asks for nothing at the starting position', async () => {
     await render(0);
     expect(mockSearched).toEqual([]);
-    expect(renders.at(-1)).toEqual([undefined, undefined, undefined]);
+    expect(labels()).toEqual([undefined, undefined, undefined]);
   });
 
   it('asks for nothing behind another screen, then for the positions around the shown move', async () => {
@@ -118,16 +118,16 @@ describe('useMoveQualities', () => {
     );
     await store(['e2e4', 'e7e5'], analysis(2, [['g1f3', 250]], false));
     // e5's position is still being searched: no label yet.
-    expect(renders.at(-1)).toEqual(['best', undefined, undefined]);
+    expect(labels()).toEqual(['best', undefined, undefined]);
     // Once it's final, it judges e5, and lists Nf3 first: the best.
     await store(['e2e4', 'e7e5'], analysis(2, [['g1f3', 250]]));
-    expect(renders.at(-1)).toEqual(['best', 'blunder', 'best']);
+    expect(labels()).toEqual(['best', 'blunder', 'best']);
   });
 
   it('labels book moves without asking the engine', async () => {
     await render(2, [false, true, false]);
     expect(mockSearched).toEqual([]);
-    expect(renders.at(-1)).toEqual([undefined, 'book', undefined]);
+    expect(labels()).toEqual([undefined, 'book', undefined]);
   });
 
   // Stockfish's own numbers from a Semi-Slav (after 10.O-O, Noteboom), put on
@@ -143,9 +143,9 @@ describe('useMoveQualities', () => {
         ['e7e6', 103],
       ]),
     );
-    expect(renders.at(-1)?.[1]).toBe('good');
+    expect(labels()?.[1]).toBe('good');
     await store(['e2e4', 'e7e5'], analysis(2, [['g1f3', -38]]));
-    expect(renders.at(-1)?.[1]).toBe('good');
+    expect(labels()?.[1]).toBe('good');
   });
 
   it('names the reply that punishes a mistake, from the analysis that labels it', async () => {
@@ -159,7 +159,7 @@ describe('useMoveQualities', () => {
         ['d2d4', 60],
       ]),
     );
-    expect(judged.at(-1)).toMatchObject({
+    expect(renders.at(-1)).toMatchObject({
       qualities: [undefined, 'blunder', 'best'],
       refutations: [undefined, 'g1f3', undefined],
     });

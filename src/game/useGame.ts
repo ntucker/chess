@@ -104,11 +104,11 @@ export function useGame(
     /** The label of the move that led to `current`, once it's judged. */
     quality: qualities[ply - 1],
     /**
-     * The reply that punishes the player's mistake or blunder that led to
-     * `current`, when one clearly does (`refutation`); never for the
-     * opponent's moves, where it would give the player's next move away.
+     * The reply that punishes the mistake or blunder that led to `current`,
+     * when one clearly does (`refutation`), whoever played it: after the
+     * opponent's, it is the player's next move, so the screen decides.
      */
-    refutation: plies[ply - 1]?.turn === side ? refutations[ply - 1] : undefined,
+    refutation: refutations[ply - 1],
     /** What each side is up on the board shown, so it follows the moves stepped through. */
     material: material(current.fen),
     latest,

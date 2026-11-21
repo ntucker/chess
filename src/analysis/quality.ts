@@ -11,9 +11,6 @@ import { type Color, opposite } from '@/game/replay';
  */
 export type MoveQuality = 'book' | 'best' | 'good' | 'inaccuracy' | 'mistake' | 'blunder';
 
-/** The least expected score a mistake gives away (see `LEAST_LOSS`). */
-const MISTAKE_LOSS = 0.1;
-
 /**
  * The least expected score (0 to 1, the mover's) a move must give away for
  * each label. These are chess.com's "expected points lost" limits
@@ -25,7 +22,7 @@ const MISTAKE_LOSS = 0.1;
  */
 const LEAST_LOSS: readonly (readonly [number, MoveQuality])[] = [
   [0.2, 'blunder'],
-  [MISTAKE_LOSS, 'mistake'],
+  [0.1, 'mistake'],
   [0.05, 'inaccuracy'],
 ];
 
@@ -88,13 +85,14 @@ export function refutation(
   after: FinalAnalysis | undefined,
   mover: Color,
 ): string | undefined {
-  if ((quality !== 'mistake' && quality !== 'blunder') || !after) return undefined;
+  if (!isMistake(quality) || !after) return undefined;
   const [best, second] = after.lines;
-  if (!best?.uci || !second) return undefined;
-  const replier = opposite(mover);
-  const lead = signed(best.evaluation, replier) - signed(second.evaluation, replier);
-  return lead >= MISTAKE_LOSS ? best.uci : undefined;
+  if (!best?.uci || !second?.uci) return undefined;
+  return isMistake(judgeMove(after, undefined, second.uci, opposite(mover))) ? best.uci : undefined;
 }
+
+const isMistake = (quality: MoveQuality | undefined) =>
+  quality === 'mistake' || quality === 'blunder';
 
 /** The evaluation `judgement` judges `uci` by; undefined while `after` is needed and missing. */
 function judgedEvaluation(

@@ -64,7 +64,8 @@ export default function PlayScreen() {
             lastMove: current.move ? [current.move.from, current.move.to] : undefined,
             drawings: [
               ...lastMoveBadge(current.move?.to, game.quality),
-              ...refutationArrow(game.refutation),
+              // Only the player's mistakes: after the opponent's it would give the move away.
+              ...refutationArrow(current.turn === playerColor ? undefined : game.refutation),
             ],
             check: current.check,
             onMove: game.move,
