@@ -49,8 +49,10 @@ describe('withoutEmptyVariations', () => {
   it('names a position the start never reaches by the opening, never a dropped variation', () => {
     const island = keyAfter('a3');
     const base = lesson();
+    // A lesson id other than the opening's variation, which has no parent.
     const input = {
       ...base,
+      id: 'other',
       positions: { ...base.positions, [island]: { ...at([]), variation: 'empty' } },
     };
     expect(withoutEmptyVariations(input).lesson.positions[island].variation).toBe('test');

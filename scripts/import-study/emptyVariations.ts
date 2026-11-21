@@ -34,8 +34,9 @@ export function withoutEmptyVariations(lesson: Lesson): {
 
 /**
  * `lesson.positions` with each one in a variation not `kept` moved to the
- * variation of the position the lesson first reaches it from. The start, and
- * a position it doesn't reach (which the checker refuses), take the opening's own.
+ * variation of the position the lesson first reaches it from, or to the
+ * opening's own (its one variation without a parent) when it is the start or
+ * no line reaches it (which the checker refuses).
  */
 function renamed(lesson: Lesson, kept: ReadonlySet<VariationId>): Lesson['positions'] {
   const opening = Object.keys(lesson.variations).find((id) => !lesson.variations[id].parent)!;
