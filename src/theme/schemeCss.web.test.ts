@@ -36,7 +36,7 @@ const colors = () => ({
   dark: [...leaves(themes.dark.semantic.color), ...leaves(schemeColors.dark)],
 });
 
-describe('the web\'s themes', () => {
+describe("the web's themes", () => {
   it('write the same color strings, all CSS variables, in both schemes', () => {
     const light = leaves(shownThemes.light.semantic.color);
     expect(light.length).toBeGreaterThan(50);
@@ -68,7 +68,9 @@ describe('SCHEME_CSS', () => {
   });
 
   it('shows dark when the learner chose Dark, or System on a dark device', () => {
-    expect(SCHEME_CSS).toContain('@media (prefers-color-scheme:dark){:root:not([data-theme=light]){');
+    expect(SCHEME_CSS).toContain(
+      '@media (prefers-color-scheme:dark){:root:not([data-theme=light]){',
+    );
     expect(darkDevice).toEqual(dark);
     expect(dark.get('color-scheme')).toBe('dark');
     expect(light.get('color-scheme')).toBe('light');
