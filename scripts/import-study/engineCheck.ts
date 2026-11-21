@@ -7,6 +7,11 @@
  *   own move labels, analysis/quality.ts) stops being a book move, and so does
  *   every book move only reachable through it. An inaccuracy stays: opening
  *   theory is full of them, and the app labels it for the learner anyway.
+ *   In a gambit lesson (`gambit`) a mistake stays too while the learner's
+ *   expected score after it is still `GAMBIT_FLOOR` or more, and gets a note
+ *   saying what Stockfish thinks of it: the Stafford's 4...Nc6 gives away
+ *   0.12 for its traps. The floor is the board's, not the move's, so a line
+ *   of such mistakes can't slide toward a lost position.
  * - A note goes when its verdict is two or more steps from the engine's on
  *   the scale = ⩲ ± +- (an evaluation badge, or where a line or trap ends),
  *   unless it only understates the same side's edge, or when its trap's first
@@ -18,6 +23,7 @@
  * guide shows the learner moves but recommends none.
  */
 import { Chess } from 'chessops/chess';
+import type { Color } from 'chessops/types';
 
 import type { Evaluation, FinalAnalysis } from '@/evaluation/evaluation';
 import { judgeMove } from '@/analysis/quality';
@@ -44,6 +50,8 @@ export type Evaluate = (line: readonly Uci[], key: PositionKey) => Promise<Final
 type CutLine = { line: string; moves: readonly string[]; positions: number };
 
 export interface EngineReport {
+  /** A gambit lesson's mistakes kept as book moves, with how the engine scores the position after. */
+  readonly gambits: readonly { line: string; move: string; evaluation: string }[];
   /** Book moves the engine overruled, with the line before each, in SAN. */
   readonly unbooked: readonly { line: string; move: string; quality: string }[];
   /** Book moves left that no book path reaches any more. */
@@ -59,15 +67,23 @@ export interface EngineReport {
   readonly refilled: FillReport;
 }
 
+/**
+ * The least expected score (0 to 1) a gambit lesson's mistake may leave the
+ * learner: about two pawns down. The Stafford's 5...Ne4 leaves 0.31.
+ */
+export const GAMBIT_FLOOR = 0.3;
+
 /** `lesson` with what `evaluate` overrules taken out, and what was taken. */
 export async function engineCheck(
   lesson: Lesson,
   evaluate: Evaluate,
+  { gambit = false }: { readonly gambit?: boolean } = {},
 ): Promise<{ lesson: Lesson; report: EngineReport }> {
   const lines = linesTo(lesson);
   const evaluation = cachedEvaluation(evaluate);
   const report = {
     unbooked: [] as { line: string; move: string; quality: string }[],
+    gambits: [] as { line: string; move: string; evaluation: string }[],
     unreachable: [] as { line: string; move: string }[],
     cut: [] as CutLine[],
     dropped: [] as { line: string; text: string; reason: string }[],
@@ -92,14 +108,26 @@ export async function engineCheck(
       const after = played(at.pos, move.uci);
       const line = [...at.line, move.uci];
       let book = move.book;
+      let gambitNote: Note | undefined;
       if (book && at.pos.turn === lesson.side) {
+        const afterAnalysis = await evaluation(line, after);
         const quality = judgeMove(
           await evaluation(at.line, at.pos),
-          await evaluation(line, after),
+          afterAnalysis,
           move.uci,
           lesson.side,
         );
-        if (quality === 'mistake' || quality === 'blunder') {
+        const engine = afterAnalysis.lines[0].evaluation;
+        const playable =
+          engine.mate === undefined && learnerScore(engine, lesson.side) >= GAMBIT_FLOOR;
+        if (gambit && quality === 'mistake' && playable) {
+          gambitNote = gambitNoteFor(engine, lesson.side);
+          report.gambits.push({
+            line: sans(lesson, at.line),
+            move: san(at.pos, move.uci),
+            evaluation: describe(engine),
+          });
+        } else if (quality === 'mistake' || quality === 'blunder') {
           book = undefined;
           overruledAt.add(key);
           report.unbooked.push({
@@ -109,7 +137,8 @@ export async function engineCheck(
           });
         }
       }
-      const notes = await filter(move.notes ?? [], keepNote(after, line));
+      const kept = await filter(move.notes ?? [], keepNote(after, line));
+      const notes = gambitNote ? [...kept, gambitNote] : kept;
       const { book: _book, notes: _notes, ...rest } = move;
       moves.push({ ...rest, ...(book && { book }), ...(notes.length > 0 && { notes }) });
     }
@@ -400,6 +429,34 @@ function apart(verdict: Verdict, engine: Evaluation): boolean {
   const understated =
     said !== 0 && Math.sign(said) === Math.sign(seen) && Math.abs(said) < Math.abs(seen);
   return Math.abs(said - seen) >= 2 && !understated;
+}
+
+/** The expected score (0 to 1) of `side` in a position the engine scores `engine`. */
+const learnerScore = ({ score }: Evaluation, side: Color) => (side === 'white' ? score : 1 - score);
+
+/** The verdicts by step on the scale, from -3 (Black winning) to 3. */
+const VERDICTS = Object.fromEntries(
+  Object.entries(STEPS).map(([verdict, step]) => [step, verdict as Verdict]),
+);
+
+/**
+ * The note a gambit lesson's mistake gets: what Stockfish thinks of the
+ * position it leaves, said to the learner, with that verdict as its badge.
+ */
+function gambitNoteFor(engine: Evaluation, side: Color): Note {
+  const value = VERDICTS[engineStep(engine)];
+  const pawns = side === 'white' ? engine.pawns : -engine.pawns;
+  const size = Math.abs(pawns).toFixed(1);
+  const standing =
+    value === 'equal'
+      ? 'the position is about level'
+      : pawns < 0
+        ? `you are about ${size} pawns down`
+        : `you are still about ${size} pawns up`;
+  return {
+    text: `Stockfish calls this a mistake: ${standing}. You play it for attack and traps.`,
+    ideas: [{ type: 'evaluation', value }],
+  };
 }
 
 const describe = ({ pawns, mate }: Evaluation) =>

@@ -70,6 +70,46 @@ describe('engineCheck', () => {
     expect(report.unreachable).toEqual([{ line: '1.d4 e5 2.dxe5', move: 'Nc6' }]);
   });
 
+  describe('in a gambit lesson', () => {
+    it('keeps a mistake that leaves a playable position, saying what the engine thinks', async () => {
+      const { lesson, report } = await engineCheck(LESSON, evaluate, { gambit: true });
+      const e5 = lesson.positions[keyAfter('d4')].moves[1];
+      expect(e5.book).toBe(true);
+      expect(e5.notes).toEqual([
+        {
+          text: 'Stockfish calls this a mistake: you are about 1.5 pawns down. You play it for attack and traps.',
+          ideas: [{ type: 'evaluation', value: 'whiteClearly' }],
+        },
+      ]);
+      expect(lesson.positions[keyAfter('d4', 'e5', 'dxe5')].moves[0].book).toBe(true);
+      expect(report.gambits).toEqual([{ line: '1.d4', move: 'e5', evaluation: '+1.50' }]);
+      expect(report.unbooked).toEqual([]);
+    });
+
+    it('unbooks a mistake that leaves the learner under the floor', async () => {
+      // White already stands better after 1.d4, and 1...e5 gives away another 0.12.
+      const worse = async (line: readonly string[], key: string): Promise<FinalAnalysis> =>
+        key === keyAfter('d4')
+          ? scored({ score: 0.6, pawns: 0.9 })
+          : key === keyAfter('d4', 'e5') || key === keyAfter('d4', 'e5', 'dxe5')
+            ? scored({ score: 0.72, pawns: 2.2 })
+            : evaluate(line, key);
+      const { report } = await engineCheck(LESSON, worse, { gambit: true });
+      expect(report.gambits).toEqual([]);
+      expect(report.unbooked).toEqual([{ line: '1.d4', move: 'e5', quality: 'mistake' }]);
+    });
+
+    it('unbooks a blunder', async () => {
+      const blunder = async (line: readonly string[], key: string): Promise<FinalAnalysis> =>
+        key === keyAfter('d4', 'e5') || key === keyAfter('d4', 'e5', 'dxe5')
+          ? scored({ score: 0.75, pawns: 2.6 })
+          : evaluate(line, key);
+      const { report } = await engineCheck(LESSON, blunder, { gambit: true });
+      expect(report.gambits).toEqual([]);
+      expect(report.unbooked).toEqual([{ line: '1.d4', move: 'e5', quality: 'blunder' }]);
+    });
+  });
+
   it("picks again among the guide's other moves where it overruled one, instead of ending the line", async () => {
     // 1...c5 is listed beside the overruled 1...e5: it is picked instead of the line ending.
     const { lesson, report } = await engineCheck(WITH_C5, evaluate);
@@ -160,6 +200,7 @@ describe('engineCheck', () => {
     const { lesson, report } = await engineCheck(agreed, even);
     expect(lesson).toEqual(agreed);
     expect(report).toEqual({
+      gambits: [],
       unbooked: [],
       unreachable: [],
       cut: [],

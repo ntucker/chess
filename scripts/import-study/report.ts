@@ -12,6 +12,13 @@ export function report(
   extracted: readonly ChapterNotes[],
 ): string {
   const entries = Object.values(lesson.positions);
+  const studied = new Set(
+    chapters.flatMap((c) => [...chapterMoves(c)].map((m) => `${positionKey(m.before)} ${m.uci}`)),
+  );
+  // Counted move by move, not as a difference: an engine cut leaves fewer moves than the study has.
+  const fromText = Object.entries(lesson.positions).flatMap(([key, entry]) =>
+    entry.moves.filter(({ uci }) => !studied.has(`${key} ${uci}`)),
+  );
   const moves = entries.flatMap((entry) => entry.moves);
   const notes = [
     ...entries.flatMap((entry) => entry.notes ?? []),
@@ -38,15 +45,7 @@ export function report(
     ],
     // A real line this long would vanish with no other sign: check these are games.
     ['comment runs dropped as quoted games (plies)', extracted.flatMap((e) => e.quotedGamePlies)],
-    [
-      'moves only in comment text (traps and sequences)',
-      moves.length -
-        new Set(
-          chapters.flatMap((c) =>
-            [...chapterMoves(c)].map((m) => `${positionKey(m.before)} ${m.uci}`),
-          ),
-        ).size,
-    ],
+    ['moves only in comment text (traps and sequences)', fromText.length],
   ];
   return rows
     .map(

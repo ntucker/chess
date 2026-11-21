@@ -70,8 +70,10 @@ interface LessonRecipe {
   /**
    * Check the merged lesson with Stockfish (engineCheck.ts) before it is
    * written: for lessons merged from several guides, which no one author vouches for.
+   * 'gambit' checks a gambit's lesson more gently: it keeps the learner's
+   * mistakes that leave a playable position, as the gambit's point.
    */
-  readonly engineCheck?: boolean;
+  readonly engineCheck?: boolean | 'gambit';
   readonly info: Omit<LessonInfo, 'sources'>;
 }
 
@@ -397,6 +399,36 @@ function chapterNamed(
   if (!Object.hasOwn(names, title)) throw new Error(`Name the ${study} chapter "${title}"`);
   return names[title];
 }
+
+/** Eric Rosen's Stafford Gambit traps, named by White's fifth and sixth moves. */
+const STAFFORD_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  Introduction: undefined,
+  'Oh no my queen!': '5.d3: 6.Bg5',
+  'Oh no my knight!': '5.e5: 6.d3',
+  "Take my knight, but I'll take your rook...": '5.e5: 6.d4',
+  'Most common trap': '5.Nc3: 6.d3',
+  'Punishing Natural Development': '5.Nc3: 6.Bc4',
+  'My Favorite Trap (Sometimes works against GMs!)': '5.Nc3: 6.Be2',
+  "Drag white's king to e4 (before move 10!)": '5.d3: 6.h3',
+  'Everyone falls for this trap 😁': '5.d3: 6.Be2',
+  'Miscellaneous Lines': '5.d3: 6.Be3',
+};
+
+/** Eric Rosen's Lucchini Gambit, by White's fifth move. */
+const LUCCHINI_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  'Lucchini Gambit - 5.Ng5 Trap': '5.Ng5',
+  'Lucchini Gambit - 5.exf5?!': '5.exf5',
+  'Lucchini Gambit - 5.0-0': '5.O-O',
+  '5.Bxg8': '5.Bxg8',
+};
+
+/** Eric Rosen's Boden-Kieseritzky Gambit, by Black's fourth and fifth moves. */
+const BODEN_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  'Introduction to the Boden-Kieseritzky Gambit': undefined,
+  'How to get a crushing position in less than 10 moves': '5...Nc6',
+  'The best try for black: 5...f6!?': '5...f6',
+  'Other move 4 responses for black': '4...Nf6',
+};
 
 /** AverageLondonEnjoyer's chapters, each Black's reply to the London, as variation names. */
 const LONDON_CHAPTERS: Readonly<Record<string, string | undefined>> = {
@@ -1409,5 +1441,59 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
       title: "Queen's Gambit",
       side: 'white',
     },
+  },
+  stafford: {
+    from: [
+      {
+        study: 'whCVdUeM',
+        credit: {
+          title: 'Stafford Gambit Traps',
+          author: 'EricRosen',
+          url: 'https://lichess.org/study/whCVdUeM',
+        },
+        chapters: () => true,
+        chapterName: (title: string) => chapterNamed(STAFFORD_CHAPTERS, 'Stafford Gambit', title),
+      },
+    ],
+    // A gambit: Stockfish keeps the learner's mistakes that leave a playable position.
+    engineCheck: 'gambit',
+    info: { id: 'stafford', title: 'Stafford Gambit', side: 'black' },
+  },
+  lucchini: {
+    from: [
+      {
+        study: 'WsJcW3Z5',
+        credit: {
+          title: 'Lucchini gambit',
+          author: 'EricRosen',
+          url: 'https://lichess.org/study/WsJcW3Z5',
+        },
+        chapters: () => true,
+        chapterName: (title: string) => chapterNamed(LUCCHINI_CHAPTERS, 'Lucchini Gambit', title),
+        // A stray 1.h3 with no moves after it.
+        leave: ['h3'],
+      },
+    ],
+    // A gambit: Stockfish keeps the learner's mistakes that leave a playable position.
+    engineCheck: 'gambit',
+    info: { id: 'lucchini', title: 'Lucchini Gambit', side: 'black' },
+  },
+  'boden-kieseritzky': {
+    from: [
+      {
+        study: 'XaGhm8Vt',
+        credit: {
+          title: 'Boden - Kieseritzky Gambit',
+          author: 'EricRosen',
+          url: 'https://lichess.org/study/XaGhm8Vt',
+        },
+        chapters: () => true,
+        chapterName: (title: string) =>
+          chapterNamed(BODEN_CHAPTERS, 'Boden-Kieseritzky Gambit', title),
+      },
+    ],
+    // A gambit: Stockfish keeps the learner's mistakes that leave a playable position.
+    engineCheck: 'gambit',
+    info: { id: 'boden-kieseritzky', title: 'Boden-Kieseritzky Gambit', side: 'white' },
   },
 };
