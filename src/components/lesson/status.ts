@@ -7,7 +7,7 @@ import { qualityLooks } from '@/theme/moveQuality';
 export const OPENINGS_TITLE = 'Openings';
 
 /** The titles of the headlines telling that the guide has no moves here, also the heading of what they tell (`pastGuide`). */
-const OFF_GUIDE = 'Off the guide';
+export const OFF_GUIDE = 'Off the guide';
 const LINE_END = 'End of this line';
 
 /** The headline while a lesson loads. */
