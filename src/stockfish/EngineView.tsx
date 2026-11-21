@@ -8,6 +8,7 @@ import type { DOMImperativeFactory, DOMProps } from 'expo/dom';
 import { useDOMImperativeHandle } from 'expo/dom';
 import { type Ref, useEffect, useRef } from 'react';
 
+import { loadFullStockfish } from './full';
 import { startStockfishWorker, type StockfishWorker } from './worker';
 
 export interface EngineViewRef {
@@ -17,6 +18,12 @@ export interface EngineViewRef {
    * sends them.
    */
   start(loader: string, wasmBase64: string): void;
+  /**
+   * Starts full Stockfish, whose files are too big to send: the web view
+   * downloads them from `folder` itself, or takes them from its cache
+   * (`loadFullStockfish`), telling `onProgress`, then `onStarted`.
+   */
+  startFull(folder: string): void;
   /** Sends the engine one UCI command. */
   send(command: string): void;
 }
@@ -27,41 +34,64 @@ interface Props {
   readonly onLoad: () => void;
   /** A line the engine printed that the app needs (`forwardNeededLines`). */
   readonly onLine: (line: string) => void;
-  /** The engine failed to start or crashed; it answers nothing more. */
+  /** The engine failed to start or crashed (or its files to download); it answers nothing more. */
   readonly onError: (message: string) => void;
+  /** How many bytes of full Stockfish have arrived (`startFull`), at each whole percent. */
+  readonly onProgress?: (received: number) => void;
+  /** Full Stockfish has its files and is starting (`startFull`). */
+  readonly onStarted?: () => void;
   readonly dom?: DOMProps;
 }
 
-export default function EngineView({ ref, onLoad, onLine, onError }: Props) {
+export default function EngineView({ ref, onLoad, onLine, onError, onProgress, onStarted }: Props) {
   const worker = useRef<StockfishWorker>(null);
+  // Aborts full Stockfish's download when the page goes.
+  const download = useRef<AbortController>(null);
   useDOMImperativeHandle(
     // Calls cross from the app as JSON; EngineViewRef says which.
     ref as Ref<DOMImperativeFactory>,
-    () => ({
-      start(...[loader, wasmBase64]: Parameters<DOMImperativeFactory[string]>) {
-        if (typeof loader !== 'string' || typeof wasmBase64 !== 'string') return;
+    () => {
+      const run = (loader: string, wasm: Blob) => {
         worker.current?.terminate();
-        worker.current = null;
-        try {
-          worker.current = startStockfishWorker(
-            loader,
-            new Blob([decodeBase64(wasmBase64)], { type: 'application/wasm' }),
-            onLine,
-            onError,
-          );
-        } catch (error) {
-          onError(String(error));
-        }
-      },
-      send(...[command]: Parameters<DOMImperativeFactory[string]>) {
-        if (typeof command === 'string') worker.current?.send(command);
-      },
-    }),
-    [onLine, onError],
+        worker.current = startStockfishWorker(loader, wasm, onLine, onError);
+      };
+      return {
+        start(...[loader, wasmBase64]: Parameters<DOMImperativeFactory[string]>) {
+          if (typeof loader !== 'string' || typeof wasmBase64 !== 'string') return;
+          try {
+            run(loader, new Blob([decodeBase64(wasmBase64)], { type: 'application/wasm' }));
+          } catch (error) {
+            onError(String(error));
+          }
+        },
+        startFull(...[folder]: Parameters<DOMImperativeFactory[string]>) {
+          if (typeof folder !== 'string') return;
+          download.current?.abort();
+          const stop = new AbortController();
+          download.current = stop;
+          loadFullStockfish(folder, stop.signal, (received) => onProgress?.(received))
+            .then(({ loader, wasm }) => {
+              if (stop.signal.aborted) return;
+              run(loader, wasm);
+              onStarted?.();
+            })
+            .catch((error: unknown) => {
+              if (!stop.signal.aborted) onError(String(error));
+            });
+        },
+        send(...[command]: Parameters<DOMImperativeFactory[string]>) {
+          if (typeof command === 'string') worker.current?.send(command);
+        },
+      };
+    },
+    [onLine, onError, onProgress, onStarted],
   );
   useEffect(() => {
     onLoad();
-    return () => worker.current?.terminate();
+    return () => {
+      download.current?.abort();
+      worker.current?.terminate();
+    };
     // Once per page load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

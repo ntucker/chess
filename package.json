@@ -63,6 +63,7 @@
     "brand": "node ./scripts/make-brand.mjs",
     "maia": "node ./scripts/convert-maia.mjs",
     "stockfish": "node ./scripts/copy-stockfish.mjs",
+    "postinstall": "node ./scripts/copy-stockfish.mjs",
     "import-study": "NODE_USE_ENV_PROXY=1 tsx scripts/import-study/index.ts",
     "index-lessons": "tsx scripts/import-study/reindex.ts"
   },

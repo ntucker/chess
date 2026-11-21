@@ -22,23 +22,38 @@ export const KEEP_MS = 60_000;
 const DemandContext = createContext<Dispatch<SetStateAction<number>> | null>(null);
 
 /**
- * Runs Stockfish while the evaluation bar or the opponent uses it, or a
+ * Runs Stockfish lite while the evaluation bar or the opponent uses it, or a
  * screen calls `useNeedsStockfish(true)` (a lesson, which always labels moves
- * with it). Once nothing needs it, it stops after `KEEP_MS`, which frees its
- * memory. The root layout renders it once around every screen, with
- * `<StockfishHost />` as `host`; it takes the host as a prop so screens
- * calling the hook don't import the engine.
+ * with it), and full Stockfish while it's the opponent. Once nothing needs
+ * one, it stops after `KEEP_MS`, which frees its memory. The root layout
+ * renders it once around every screen, with `<StockfishHost />` as `host`
+ * and `<FullStockfishHost />` as `fullHost`; it takes the hosts as props so
+ * screens calling the hook don't import the engines.
  */
 export function StockfishWhileNeeded({
   host,
+  fullHost,
   children,
 }: {
   readonly host: ReactElement;
+  readonly fullHost: ReactElement;
   readonly children: ReactNode;
 }) {
   const { evaluationEngine, opponent } = useSettings();
   const [screens, setScreens] = useState(0);
-  const needed = evaluationEngine === 'stockfish' || opponent === 'stockfish' || screens > 0;
+  const lite = useKept(evaluationEngine === 'stockfish' || opponent === 'stockfish' || screens > 0);
+  const full = useKept(opponent === 'stockfish-full');
+  return (
+    <DemandContext value={setScreens}>
+      {children}
+      {lite ? host : null}
+      {full ? fullHost : null}
+    </DemandContext>
+  );
+}
+
+/** Whether to run an engine: from when it's `needed` until `KEEP_MS` after it no longer is. */
+function useKept(needed: boolean): boolean {
   const [running, setRunning] = useState(needed);
   if (needed && !running) setRunning(true);
   useEffect(() => {
@@ -46,12 +61,7 @@ export function StockfishWhileNeeded({
     const timer = setTimeout(() => setRunning(false), KEEP_MS);
     return () => clearTimeout(timer);
   }, [needed, running]);
-  return (
-    <DemandContext value={setScreens}>
-      {children}
-      {running ? host : null}
-    </DemandContext>
-  );
+  return running;
 }
 
 /**

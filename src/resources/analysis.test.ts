@@ -3,7 +3,7 @@ import { Controller, NetworkManager } from '@data-client/react';
 import { initialState, prepareStore } from '@data-client/react/redux';
 
 import { maiaEvaluation } from '@/maia/engine';
-import { attachStockfish } from '@/stockfish/engine';
+import { liteStockfish } from '@/stockfish/engine';
 import { NO_RESTARTS } from '@/stockfish/testing';
 
 import { AnalysisManager, getAnalysis, PositionAnalysis } from './analysis';
@@ -20,7 +20,7 @@ function setUp() {
     Controller,
   ).controller;
   const sent: string[] = [];
-  const engine = attachStockfish((command) => sent.push(command), NO_RESTARTS);
+  const engine = liteStockfish.attach((command) => sent.push(command), NO_RESTARTS);
   engine.receive('uciok');
   /** Prints a finished depth of Black's three replies to 1.e4, best first. */
   const depth = (depth: number, centipawns = 30) =>

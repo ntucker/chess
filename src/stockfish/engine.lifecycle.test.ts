@@ -28,7 +28,7 @@ const decided = () => new Promise((resolve) => setTimeout(resolve));
 function scripted() {
   const sent: string[] = [];
   const supervisor = { ready: jest.fn(), failed: jest.fn() };
-  const connection = engine.attachStockfish((command) => sent.push(command), supervisor);
+  const connection = engine.liteStockfish.attach((command) => sent.push(command), supervisor);
   connections.push(connection);
   const print = (line: string) => connection.receive(line);
   /** Prints a finished depth: one line for each move, best first, centipawns falling by 10. */
@@ -47,7 +47,7 @@ function scripted() {
 function watch(line: string[]) {
   const updates: Analysis[] = [];
   const failures: Error[] = [];
-  const release = engine.watchStockfish(line, {
+  const release = engine.liteStockfish.watch(line, {
     update: (analysis) => updates.push(analysis),
     fail: (error) => failures.push(error),
   });
@@ -196,7 +196,7 @@ describe('the engine lifecycle', () => {
     const { print, depth, sent } = scripted();
     print('uciok');
     const bar = watch(['e2e4']);
-    const label = engine.stockfishAnalysis(['e2e4']);
+    const label = engine.liteStockfish.analysis(['e2e4']);
     await decided();
     depth(10, 50_000, REPLIES);
     print('bestmove e7e5');

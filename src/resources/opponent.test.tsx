@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'test-renderer';
 
 import { maiaMove } from '@/maia/engine';
 import type { Opponent } from '@/opponent/opponent';
-import { attachStockfish } from '@/stockfish/engine';
+import { fullStockfish, liteStockfish } from '@/stockfish/engine';
 import { NO_RESTARTS } from '@/stockfish/testing';
 
 import { getAnalysis } from './analysis';
@@ -36,7 +36,7 @@ describe('fetchOpponentMove', () => {
   it("plays the first line of Stockfish's final analysis, the move the board's arrow shows", async () => {
     const controller = newController();
     const sent: string[] = [];
-    const engine = attachStockfish((command) => sent.push(command), NO_RESTARTS);
+    const engine = liteStockfish.attach((command) => sent.push(command), NO_RESTARTS);
     engine.receive('uciok');
 
     // The move labels wait for the position's analysis,
@@ -52,6 +52,26 @@ describe('fetchOpponentMove', () => {
     expect(await fetchOpponentMove(controller, 'stockfish', ['e2e4'])).toBe('c7c6');
     expect(sent.filter((command) => command.startsWith('position'))).toHaveLength(1);
     engine.detach();
+  });
+
+  it("plays full Stockfish's move from its own engine, apart from the bar's", async () => {
+    const lite: string[] = [];
+    const liteEngine = liteStockfish.attach((command) => lite.push(command), NO_RESTARTS);
+    liteEngine.receive('uciok');
+    const sent: string[] = [];
+    const engine = fullStockfish.attach((command) => sent.push(command), NO_RESTARTS);
+    engine.receive('uciok');
+    // One move ranked (FULL_SEARCH).
+    expect(sent).toContain('setoption name MultiPV value 1');
+
+    const move = fetchOpponentMove(newController(), 'stockfish-full', ['e2e4']);
+    await waitForSearch(sent, 'e2e4');
+    engine.receive('info depth 12 multipv 1 score cp 30 nodes 900 pv e7e5');
+    engine.receive('bestmove e7e5');
+    expect(await move).toBe('e7e5');
+    expect(lite.some((command) => command.startsWith('position'))).toBe(false);
+    engine.detach();
+    liteEngine.detach();
   });
 });
 
@@ -89,6 +109,7 @@ describe('useWarmOpponent', () => {
 
   it('starts nothing for Stockfish', async () => {
     await render('stockfish', true);
+    await render('stockfish-full', true);
     expect(maiaMove).not.toHaveBeenCalled();
   });
 

@@ -5,8 +5,20 @@ import { OPPONENTS } from '@/opponent/opponent';
 import { DEFAULT_SETTINGS, parseSettings, settingsReducer } from './settings';
 
 describe('settings', () => {
-  it('ranks the opponents from Maia 1100 up to Stockfish', () => {
-    expect(OPPONENTS).toEqual([1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 'stockfish']);
+  it('ranks the opponents from Maia 1100 up to full Stockfish', () => {
+    expect(OPPONENTS).toEqual([
+      1100,
+      1200,
+      1300,
+      1400,
+      1500,
+      1600,
+      1700,
+      1800,
+      1900,
+      'stockfish',
+      'stockfish-full',
+    ]);
   });
 
   it('reads back what it saved', () => {

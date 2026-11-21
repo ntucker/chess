@@ -9,9 +9,14 @@ export interface NodeEngine {
   terminate?(): void;
 }
 
-/** Starts the Node build, the same lite single-threaded WebAssembly the app runs. */
-export async function startNodeEngine(): Promise<NodeEngine> {
-  const path = require.resolve('stockfish/bin/stockfish-19-lite-single.js');
+/**
+ * Starts the Node build of the same single-threaded WebAssembly the app runs:
+ * lite, or with `full`, full Stockfish (the `stockfish-full` opponent).
+ */
+export async function startNodeEngine({ full = false } = {}): Promise<NodeEngine> {
+  const path = require.resolve(
+    full ? 'stockfish/bin/stockfish-19-single.js' : 'stockfish/bin/stockfish-19-lite-single.js',
+  );
   // The build starts once per load: a second start from the cached module fails.
   delete require.cache[path];
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- a CommonJS build with no types
@@ -24,7 +29,7 @@ export async function startNodeEngine(): Promise<NodeEngine> {
 }
 
 /**
- * Connects `engine` with `attachStockfish`'s `send`. The engine can't take a
+ * Connects `engine` with `Stockfish.attach`'s `send`. The engine can't take a
  * command from inside its own output callback, so each one waits a tick, as
  * messages to a Web Worker do.
  */

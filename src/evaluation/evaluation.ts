@@ -66,7 +66,7 @@ export interface Watcher {
 
 /**
  * The final analysis a watch (`watch`, which tells its watcher as
- * `watchStockfish` does) ends with. Nothing comes after it, so the watch
+ * `Stockfish.watch` does) ends with. Nothing comes after it, so the watch
  * isn't stopped: one nobody waits for any more still runs to the end.
  */
 export function finalAnalysis(watch: (watcher: Watcher) => unknown): Promise<FinalAnalysis> {

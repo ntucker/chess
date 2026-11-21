@@ -4,12 +4,7 @@
  * Each position's analysis is cached, so a rerun searches only new positions.
  */
 import { type Evaluation, type FinalAnalysis, settledAnalysis } from '@/evaluation/evaluation';
-import {
-  attachStockfish,
-  type Connection,
-  type SearchBudget,
-  stockfishAnalysis,
-} from '@/stockfish/engine';
+import { type Connection, liteStockfish, type SearchBudget } from '@/stockfish/engine';
 import { type NodeEngine, sendTo, startNodeEngine } from '@/stockfish/node';
 
 import type { Evaluate } from './engineCheck';
@@ -71,7 +66,7 @@ export async function nodeStockfish(
     engine?.terminate?.();
     const started = await startNodeEngine();
     engine = started;
-    connection = attachStockfish(
+    connection = liteStockfish.attach(
       sendTo(started),
       {
         ready() {},
@@ -90,7 +85,7 @@ export async function nodeStockfish(
   const evaluate: Evaluate = async (line, key) => {
     const known = cached.get(key);
     if (known) return known;
-    const analysis = await stockfishAnalysis(line);
+    const analysis = await liteStockfish.analysis(line);
     cached.set(key, analysis);
     const [{ uci, evaluation }] = analysis.lines;
     const row: CacheRow = {

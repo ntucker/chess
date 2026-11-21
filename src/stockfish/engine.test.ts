@@ -2,13 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 
 import type { Analysis } from '@/evaluation/evaluation';
 
-import {
-  attachStockfish,
-  type Connection,
-  type SearchBudget,
-  stockfishAnalysis,
-  watchStockfish,
-} from './engine';
+import { type Connection, fullStockfish, liteStockfish, type SearchBudget } from './engine';
 import { type NodeEngine, sendTo, startNodeEngine } from './node';
 import { NO_RESTARTS } from './testing';
 
@@ -26,7 +20,7 @@ beforeAll(async () => {
 }, 30_000);
 
 /** Attaches the Node engine. Nothing restarts it. */
-const attachNodeEngine = () => attachStockfish(sendTo(engine), NO_RESTARTS, BUDGET);
+const attachNodeEngine = () => liteStockfish.attach(sendTo(engine), NO_RESTARTS, BUDGET);
 
 afterAll(() => {
   connection.detach();
@@ -38,7 +32,7 @@ function watchToEnd(line: readonly string[]) {
   const updates: Analysis[] = [];
   let release = () => {};
   const final = new Promise<Analysis>((resolve, reject) => {
-    release = watchStockfish(line, {
+    release = liteStockfish.watch(line, {
       update(analysis) {
         updates.push(analysis);
         if (analysis.final) resolve(analysis);
@@ -85,11 +79,11 @@ describe('Stockfish', () => {
 
   it('scores a finished game, with no move', async () => {
     // Fool's mate: White is mated.
-    const mated = await stockfishAnalysis(['f2f3', 'e7e5', 'g2g4', 'd8h4']);
+    const mated = await liteStockfish.analysis(['f2f3', 'e7e5', 'g2g4', 'd8h4']);
     expect(mated.lines).toEqual([{ evaluation: { score: 0, pawns: 0, mate: 0 } }]);
     expect(mated.final).toBe(true);
     // Stalemate (Sam Loyd's ten-move line): even.
-    const stalemate = await stockfishAnalysis(
+    const stalemate = await liteStockfish.analysis(
       'e2e3 a7a5 d1h5 a8a6 h5a5 h7h5 h2h4 a6h6 a5c7 f7f6 c7d7 e8f7 d7b7 d8d3 b7b8 d3h7 b8c8 f7g6 c8e6'.split(
         ' ',
       ),
@@ -100,7 +94,7 @@ describe('Stockfish', () => {
   });
 
   it('calls the starting position about even', async () => {
-    const [{ evaluation }] = (await stockfishAnalysis([])).lines;
+    const [{ evaluation }] = (await liteStockfish.analysis([])).lines;
     expect(evaluation.mate).toBe(undefined);
     expect(Math.abs(evaluation.pawns)).toBeLessThan(0.6);
     expect(evaluation.score).toBeGreaterThan(0.45);
@@ -111,20 +105,20 @@ describe('Stockfish', () => {
     // 1.e4 e5 2.Qh5 d6 3.Nf3 Be6 4.Nc3 Nf6 5.Qh4 Be7 6.Ng5 O-O 7.Bd3 Bd7
     // 8.Nd5 Nxd5: White mates with Qxh7. Maia 1900 gives White 59%.
     const line = 'e2e4 e7e5 d1h5 d7d6 g1f3 c8e6 b1c3 g8f6 h5h4 f8e7 f3g5 e8g8 f1d3 e6d7 c3d5 f6d5';
-    const [first] = (await stockfishAnalysis(line.split(' '))).lines;
+    const [first] = (await liteStockfish.analysis(line.split(' '))).lines;
     expect(first).toEqual({ uci: 'h4h7', evaluation: { score: 1, pawns: 0, mate: 1 } });
   }, 30_000);
 
   it('gives Black the advantage when Black is a queen up', async () => {
     // 1.e4 e5 2.Qh5 Nc6 3.Qxf7+?? Kxf7: Black is a queen for a pawn up.
-    const analysis = await stockfishAnalysis(['e2e4', 'e7e5', 'd1h5', 'b8c6', 'h5f7', 'e8f7']);
+    const analysis = await liteStockfish.analysis(['e2e4', 'e7e5', 'd1h5', 'b8c6', 'h5f7', 'e8f7']);
     expect(analysis.lines[0].evaluation.pawns).toBeLessThan(-5);
     expect(analysis.lines[0].evaluation.score).toBeLessThan(0.15);
   }, 30_000);
 
   it("ranks three different moves of one depth, the evaluation after each from White's side", async () => {
     // 1.e4 e5 2.Qh5 Nc6 3.Bc4: Black must stop Qxf7#.
-    const { lines, depth, final } = await stockfishAnalysis([
+    const { lines, depth, final } = await liteStockfish.analysis([
       'e2e4',
       'e7e5',
       'd1h5',
@@ -144,7 +138,7 @@ describe('Stockfish', () => {
 
   it('ranks only the legal moves there are', async () => {
     // 1.e4 f5 2.Qh5+: only g6 blocks the check.
-    const { lines } = await stockfishAnalysis(['e2e4', 'f7f5', 'd1h5']);
+    const { lines } = await liteStockfish.analysis(['e2e4', 'f7f5', 'd1h5']);
     expect(lines.map(({ uci }) => uci)).toEqual(['g7g6']);
   }, 30_000);
 
@@ -157,7 +151,7 @@ describe('Stockfish', () => {
     expect(final).toEqual({ ...alone.updates.at(-2), final: true });
 
     // After other positions, and stopped for a newer one partway then started again.
-    const before = stockfishAnalysis(['d2d4']);
+    const before = liteStockfish.analysis(['d2d4']);
     await before;
     const resumed = watchToEnd(NOTEBOOM);
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -174,8 +168,24 @@ describe('Stockfish', () => {
 
   it('waits for an engine that starts later', async () => {
     connection.detach();
-    const analysis = stockfishAnalysis(['e2e4', 'e7e5']);
+    const analysis = liteStockfish.analysis(['e2e4', 'e7e5']);
     connection = attachNodeEngine();
     expect(Math.abs((await analysis).lines[0].evaluation.pawns)).toBeLessThan(1);
+  }, 30_000);
+});
+
+describe('full Stockfish', () => {
+  it('runs the full build through the same protocol, on its own engine', async () => {
+    const full = await startNodeEngine({ full: true });
+    const attached = fullStockfish.attach(sendTo(full), NO_RESTARTS, { ranks: 1, nodes: 50_000 });
+    full.listener = (line) => attached.receive(line);
+    try {
+      // 1.e4 e5 2.Qh5 Nc6 3.Bc4 Nf6: mate in one.
+      const analysis = await fullStockfish.analysis('e2e4 e7e5 d1h5 b8c6 f1c4 g8f6'.split(' '));
+      expect(analysis.lines.map(({ uci }) => uci)).toEqual(['h5f7']);
+    } finally {
+      attached.detach();
+      full.terminate?.();
+    }
   }, 30_000);
 });

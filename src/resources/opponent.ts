@@ -1,8 +1,10 @@
 import { type Controller, useController } from '@data-client/react';
+import { Endpoint } from '@data-client/rest';
 import { useEffect } from 'react';
 
 import type { GameOpponent } from '@/game/game';
-import type { Opponent } from '@/opponent/opponent';
+import { isStockfish, type Opponent } from '@/opponent/opponent';
+import { fullStockfish } from '@/stockfish/engine';
 
 import { getAnalysis } from './analysis';
 import { getMaiaMove } from './maia';
@@ -17,6 +19,9 @@ import { getMaiaMove } from './maia';
  *   final analysis (`getAnalysis`), so it plays the move the board's arrow
  *   shows. A position the bar or move labels already searched, or are
  *   searching, costs no new search. It needs StockfishHost mounted.
+ * - `stockfish-full`: full Stockfish's best move (`getFullStockfishMove`),
+ *   its own search, which the bar and labels don't share. It needs
+ *   FullStockfishHost mounted, which downloads it the first time.
  *
  * Maia writes castling as the king taking its rook (`e1h1`), Stockfish as the
  * king's two-square move (`e1g1`); `lineMove` reads both.
@@ -30,11 +35,26 @@ export async function fetchOpponentMove(
   opponent: Opponent,
   line: readonly string[],
 ): Promise<string> {
+  if (opponent === 'stockfish-full') return ctrl.fetchIfStale(getFullStockfishMove, line);
   if (opponent !== 'stockfish') return ctrl.fetchIfStale(getMaiaMove, opponent, line);
   const best = (await ctrl.fetchIfStale(getAnalysis, 'stockfish', line)).lines[0]?.uci;
   if (!best) throw new Error('Stockfish found no move');
   return best;
 }
+
+/**
+ * Full Stockfish's move (UCI) after `line`, the first line of its search
+ * (`FULL_SEARCH`). Like Maia's, a position's answer never changes, and a
+ * failure goes stale at once so the next ask tries again.
+ */
+export const getFullStockfishMove = new Endpoint(
+  async (line: readonly string[]) => {
+    const best = (await fullStockfish.analysis(line)).lines[0]?.uci;
+    if (!best) throw new Error('Stockfish found no move');
+    return best;
+  },
+  { name: 'getFullStockfishMove', dataExpiryLength: Infinity, errorExpiryLength: 0 },
+);
 
 /** `opponent` as the opponent of a game (useGame). */
 export function gameOpponent(ctrl: Controller, opponent: Opponent): GameOpponent {
@@ -47,14 +67,14 @@ export function gameOpponent(ctrl: Controller, opponent: Opponent): GameOpponent
 /**
  * Starts `opponent`'s engine while `active`, so it's ready before its first
  * move: Maia loads its worker and network by answering the starting position.
- * Stockfish starts with its host (`useNeedsStockfish`).
+ * Stockfish starts with its host (`StockfishWhileNeeded`).
  */
 export function useWarmOpponent(opponent: Opponent, active: boolean) {
   const ctrl = useController();
   // An effect, not useFetch, which fetches during render: the web export
   // pre-renders screens and must not start an engine.
   useEffect(() => {
-    if (!active || opponent === 'stockfish') return;
+    if (!active || isStockfish(opponent)) return;
     // Unawaited, a failure is only stored, and Maia's move asks again
     // (getMaiaMove's failures go stale at once).
     ctrl.fetchIfStale(getMaiaMove, opponent, []);

@@ -16,9 +16,11 @@ import { useLesson } from './useLesson';
 // Every position Stockfish is asked to search, by the moves before it; none answers.
 const mockSearched: string[] = [];
 jest.mock('@/stockfish/engine', () => ({
-  watchStockfish: (line: readonly string[]) => {
-    mockSearched.push(line.join(' '));
-    return () => {};
+  liteStockfish: {
+    watch: (line: readonly string[]) => {
+      mockSearched.push(line.join(' '));
+      return () => {};
+    },
   },
 }));
 // Maia's engine needs a native worklet runtime; it's only warmed up here, since
