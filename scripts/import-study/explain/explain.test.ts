@@ -95,6 +95,11 @@ describe('explainedNote', () => {
     ['a verdict', answer('You are slightly better after this.'), 'it says who is better'],
     ['notation', answer('Play e6 Nf6 Be7 O-O next.'), 'notation'],
     [
+      'a study reference',
+      answer('As the next chapter shows, this pawn takes the centre.'),
+      'study',
+    ],
+    [
       'an evaluation',
       answer('Your pawn takes the centre.', [{ type: 'evaluation', value: 'equal' }]),
       'its evaluation is a type no generated note draws',
