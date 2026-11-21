@@ -21,15 +21,15 @@ interface Props {
   readonly learner: Color;
 }
 
-// Web only for now: on Android a trigger inside a line of text rides above
-// the words, and its open tooltip swallows every later tap. There the
-// notation is plain mono text.
-const TIPS = Platform.OS === 'web';
+// Whether mentions open boards: web only until #171. On Android a trigger
+// inside a line of text rides above the words, and its open tooltip swallows
+// every later tap, so there the notation is plain mono text.
+const SHOW_BOARDS = Platform.OS === 'web';
 
 /**
  * A note's sentence, with each move or square it names (`noteParts`) set as
- * notation that shows it on a small board: under a resting mouse, or on a
- * tap. A tap there, or on the board, doesn't point at the note.
+ * notation that, on the web, shows it on a small board: under a resting
+ * mouse, or on a tap. A tap there, or on the board, doesn't point at the note.
  */
 export function NoteText({ lesson, shown, learner }: Props) {
   const { note, after, before } = shown;
@@ -43,7 +43,7 @@ export function NoteText({ lesson, shown, learner }: Props) {
       {parts.map((part, n) =>
         typeof part === 'string' ? (
           part
-        ) : TIPS ? (
+        ) : SHOW_BOARDS ? (
           <MentionTip key={n} mention={part} learner={learner} />
         ) : (
           <Text key={n} role="body" style={styles.notation}>
