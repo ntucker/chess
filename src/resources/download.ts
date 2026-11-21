@@ -10,14 +10,12 @@ import { FULL_WASM_BYTES } from '@/stockfish/fullFiles';
  */
 export class Download extends Entity {
   readonly id: string = '';
-  /** How many bytes have arrived. */
+  /** How many bytes have arrived, of `FULL_WASM_BYTES`. */
   readonly received: number = 0;
-  /** How many there are in all. */
-  readonly total: number = 0;
   /**
-   * Why the last try failed, if it did: the host tries again, but files a
-   * newer build of the site replaced won't come back until the page reloads
-   * (`NewVersionError`).
+   * Why the last try failed, if it did: the host tries again, except when the
+   * site serves a newer build (`NewVersionError`), which only a reload (or on
+   * Android, an app update) can start.
    */
   readonly failure?: DownloadFailure;
 
@@ -28,7 +26,7 @@ export class Download extends Entity {
   static key = 'Download';
 }
 
-/** Why a download failed: `retrying` it, or a `newVersion` of the site replaced its files. */
+/** Why a download failed: `retrying` it, or a `newVersion` of the site serves other files. */
 export type DownloadFailure = 'retrying' | 'newVersion';
 
 /** The download of full Stockfish's files (src/stockfish/full.ts). */
@@ -40,7 +38,7 @@ export const FULL_STOCKFISH_DOWNLOAD = { id: 'stockfish-full' };
  */
 export function useFullStockfishDownload(): Download | undefined {
   const download = useQuery(Download, FULL_STOCKFISH_DOWNLOAD);
-  return download && (download.failure || download.received < download.total)
+  return download && (download.failure || download.received < FULL_WASM_BYTES)
     ? download
     : undefined;
 }
@@ -56,7 +54,6 @@ export function useReportFullStockfishDownload() {
     ctrl.set(Download, FULL_STOCKFISH_DOWNLOAD, {
       ...FULL_STOCKFISH_DOWNLOAD,
       received,
-      total: FULL_WASM_BYTES,
       failure,
     });
 }

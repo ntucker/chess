@@ -8,6 +8,7 @@ import { createRoot, type Root } from 'react-dom/client';
 
 import { Download, type DownloadFailure, FULL_STOCKFISH_DOWNLOAD } from '@/resources/download';
 import { SettingsProvider } from '@/settings/SettingsProvider';
+import { FULL_WASM_BYTES } from '@/stockfish/fullFiles';
 import { themes } from '@/theme/theme';
 
 import { OpponentPicker } from './OpponentPicker';
@@ -271,11 +272,10 @@ describe('OpponentPicker', () => {
         void ctrl.set(Download, FULL_STOCKFISH_DOWNLOAD, {
           ...FULL_STOCKFISH_DOWNLOAD,
           received,
-          total: 200,
           failure,
         });
       });
-    await report(85);
+    await report(Math.floor(FULL_WASM_BYTES * 0.425));
     expect(progress()).toBe('· downloading 42%');
     await report(0, 'retrying');
     expect(progress()).toBe('· download failed, trying again');
@@ -284,7 +284,7 @@ describe('OpponentPicker', () => {
     const reload = trigger().nextElementSibling?.nextElementSibling;
     expect(reload?.getAttribute('role')).toBe('button');
     expect(reload?.textContent).toBe('Reload');
-    await report(200);
+    await report(FULL_WASM_BYTES);
     expect(progress()).toBeUndefined();
   });
 });

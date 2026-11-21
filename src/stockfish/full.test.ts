@@ -1,8 +1,11 @@
 // Runs in the native project, for Node's Response and streams, which the web
 // project's jsdom lacks; the page's address and Cache Storage are faked below.
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { TransformStream } from 'node:stream/web';
 
-import { loadFullStockfish, OtherBuildError } from './full';
+import type { DownloadFailure } from '@/resources/download';
+
+import { loadFullStockfish } from './full';
 
 // Small files, so a download is a few chunks.
 jest.mock('./fullFiles', () => ({
@@ -58,7 +61,10 @@ beforeEach(() => {
   stored.clear();
   fetched.length = 0;
   wasmChunks = WHOLE;
-  Object.assign(globalThis, { caches: fakeCaches, location: { origin: ORIGIN } });
+  reports = [];
+  // Node's own, which its Response's body pipes through; React Native's
+  // preset replaces the global with another kind.
+  Object.assign(globalThis, { caches: fakeCaches, location: { origin: ORIGIN }, TransformStream });
   jest.spyOn(globalThis, 'fetch').mockImplementation(fakeFetch as typeof fetch);
 });
 afterEach(() => {
@@ -67,61 +73,75 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-const load = (onProgress: (received: number) => void = () => {}) =>
-  loadFullStockfish(`${ORIGIN}/chess/stockfish/`, new AbortController().signal, onProgress);
+/** What `report` heard, as `received` or `received failure`. */
+let reports: string[] = [];
+const report = (received: number, failure?: DownloadFailure) =>
+  reports.push(failure ? `${received} ${failure}` : `${received}`);
+const load = (folder = `${ORIGIN}/chess/stockfish/`) =>
+  loadFullStockfish(folder, new AbortController().signal, report);
 
 describe('loadFullStockfish', () => {
   it('downloads the files once, telling how much has arrived by the percent, then reads them from the cache', async () => {
-    const progress: number[] = [];
-    const files = await load((received) => progress.push(received));
+    const files = (await load())!;
     expect(files.loader).toBe('loader');
     expect(await files.wasm.text()).toBe(WHOLE.join(''));
     expect(files.wasm.type).toBe('application/wasm');
-    expect(progress).toEqual([100, 200]);
+    // Each percent as it arrives, then all of it once the files are in hand.
+    expect(reports).toEqual(['100', '200', '200']);
     expect(fetched).toEqual([
       `${ORIGIN}/chess/stockfish/engine.js`,
       `${ORIGIN}/chess/stockfish/engine.wasm`,
     ]);
 
     fetched.length = 0;
-    const again = await load();
+    reports = [];
+    const again = (await load())!;
     expect(fetched).toEqual([]);
     expect(again.loader).toBe('loader');
     expect(await again.wasm.text()).toBe(WHOLE.join(''));
+    expect(reports).toEqual(['200']);
   });
 
   it('tells only the chunks that reach another whole percent', async () => {
     wasmChunks = ['a', 'b', 'c', 'z'.repeat(197)];
-    const progress: number[] = [];
-    await load((received) => progress.push(received));
-    // 0%, 1%, (still 1%), 100%.
-    expect(progress).toEqual([1, 2, 200]);
+    await load();
+    // 0%, 1%, (still 1%), 100%, then done.
+    expect(reports).toEqual(['1', '2', '200', '200']);
   });
 
-  it("takes a WebAssembly of another size for another build's, and keeps nothing", async () => {
+  it("takes a WebAssembly of another size for a newer build's, and keeps nothing", async () => {
     wasmChunks = WHOLE.slice(0, 1);
-    await expect(load()).rejects.toBeInstanceOf(OtherBuildError);
+    expect(await load()).toBeUndefined();
     wasmChunks = [...WHOLE, 'z'];
-    await expect(load()).rejects.toBeInstanceOf(OtherBuildError);
+    expect(await load()).toBeUndefined();
+    expect(reports.filter((said) => said.includes(' '))).toEqual(['0 newVersion', '0 newVersion']);
     fetched.length = 0;
     wasmChunks = WHOLE;
     await load();
     expect(fetched).toHaveLength(2);
   });
 
-  it("takes a folder without the build's files for another build's", async () => {
-    await expect(
-      loadFullStockfish(`${ORIGIN}/elsewhere/`, new AbortController().signal, () => {}),
-    ).rejects.toBeInstanceOf(OtherBuildError);
+  it("takes a folder without the build's files for a newer build's", async () => {
+    expect(await load(`${ORIGIN}/elsewhere/`)).toBeUndefined();
+    expect(reports).toEqual(['0 newVersion']);
   });
 
-  it('fails, without blaming the build, when the site answers with another error', async () => {
+  it('says it tries again, and fails, when the site answers with another error', async () => {
     jest
       .spyOn(globalThis, 'fetch')
       .mockImplementation((async () => new Response('', { status: 503 })) as typeof fetch);
-    const failure = load();
-    await expect(failure).rejects.toThrow('HTTP 503');
-    await expect(failure).rejects.not.toBeInstanceOf(OtherBuildError);
+    await expect(load()).rejects.toThrow('HTTP 503');
+    expect(reports).toEqual(['0 retrying']);
+  });
+
+  it('reports nothing once aborted', async () => {
+    const stop = new AbortController();
+    stop.abort();
+    jest.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('aborted'));
+    await expect(
+      loadFullStockfish(`${ORIGIN}/chess/stockfish/`, stop.signal, report),
+    ).rejects.toThrow('aborted');
+    expect(reports).toEqual([]);
   });
 
   it('keeps each build apart, by its name and size, and drops the others once the new one is kept', async () => {
@@ -143,7 +163,7 @@ describe('loadFullStockfish', () => {
       },
     };
     Object.assign(globalThis, { caches: { ...fakeCaches, open: async () => broken } });
-    expect((await load()).loader).toBe('loader');
+    expect((await load())?.loader).toBe('loader');
 
     Object.assign(globalThis, {
       caches: {
@@ -153,7 +173,7 @@ describe('loadFullStockfish', () => {
         },
       },
     });
-    expect((await load()).loader).toBe('loader');
+    expect((await load())?.loader).toBe('loader');
     expect(console.error).toHaveBeenCalledTimes(3);
   });
 

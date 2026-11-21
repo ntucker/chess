@@ -8,6 +8,7 @@ import { describeOpponent, type Opponent, OPPONENT_PRESETS, OPPONENTS } from '@/
 import { reload } from '@/files/newVersion';
 import { type DownloadFailure, useFullStockfishDownload } from '@/resources/download';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
+import { FULL_WASM_BYTES, PREVIEW_FOLDER } from '@/stockfish/fullFiles';
 import { narrowLength, narrowStyles } from '@/theme/narrow';
 import { useNarrowStyles } from '@/theme/Narrow';
 
@@ -139,38 +140,40 @@ export function OpponentPicker() {
   );
 }
 
+/**
+ * A reload brings the site's newer build, except to Android, whose app an
+ * update catches up with, and to a preview that downloads from the live site,
+ * which needs a new build of its own.
+ */
+const RELOADS = WEB && !PREVIEW_FOLDER;
+
 const FAILURES: Record<DownloadFailure, string> = {
   retrying: '· download failed, trying again',
-  // Short, to fit beside the name. Android downloads from the live site,
-  // which an app update catches up with.
-  newVersion: WEB ? '· site updated' : '· needs an app update',
+  // Short, to fit beside the name.
+  newVersion: RELOADS ? '· site updated' : WEB ? '· preview out of date' : '· needs an app update',
 };
 
 /**
  * How full Stockfish's one download is going, beside its name while it runs
  * ("· downloading 42%"), or that it failed and is tried again, or that the
- * site has moved to a newer build, with a reload on the web.
+ * site has moved to a newer build, with a reload where that helps.
  */
 function FullStockfishProgress() {
-  const { color } = useTheme().theme.semantic;
   const download = useFullStockfishDownload();
   if (!download) return null;
-  const percent = Math.floor((download.received / download.total) * 100);
+  const percent = Math.floor((download.received / FULL_WASM_BYTES) * 100);
   return (
     <>
       <Text role="caption" tone="secondary" numberOfLines={1} style={styles.progress}>
         {download.failure ? FAILURES[download.failure] : `· downloading ${percent}%`}
       </Text>
       {/* Beside the message rather than in it, so a narrow bar cuts the message, not the reload. */}
-      {WEB && download.failure === 'newVersion' ? (
-        <Text
-          role="caption"
-          accessibilityRole="button"
-          onPress={reload}
-          style={[styles.reload, { color: color.tones.accent.text }]}
-        >
-          Reload
-        </Text>
+      {RELOADS && download.failure === 'newVersion' ? (
+        <Pressable role="button" onPress={reload} style={styles.reload}>
+          <Text role="caption" tone="accent" style={styles.underlined}>
+            Reload
+          </Text>
+        </Pressable>
       ) : null}
     </>
   );
@@ -329,7 +332,8 @@ const styles = StyleSheet.create({
   chevronOpen: { transform: [{ rotate: '180deg' }] },
   // Gives way like "· to move" beside it (PlayerBar).
   progress: { flexShrink: 1, minWidth: 0, fontVariant: ['tabular-nums'] },
-  reload: { flexShrink: 0, textDecorationLine: 'underline' },
+  reload: { flexShrink: 0 },
+  underlined: { textDecorationLine: 'underline' },
   list: { width: 232, padding: 6, flexShrink: 1 },
   heading: { paddingHorizontal: 10, paddingTop: 6, paddingBottom: 6 },
   rows: { flexShrink: 1 },

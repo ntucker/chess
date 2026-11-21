@@ -10,14 +10,14 @@ import { type Ref, useEffect, useRef } from 'react';
 
 import type { DownloadFailure } from '@/resources/download';
 
-import { loadFullStockfish, OtherBuildError } from './full';
+import { loadFullStockfish } from './full';
 import { startStockfishWorker, type StockfishWorker } from './worker';
 
 export interface EngineViewRef {
   /**
    * Starts the engine from its loader's source and its WebAssembly as
-   * base64. The web view's own page can't read the app's files, so the app
-   * sends them.
+   * base64, then calls `onStarted`. The web view's own page can't read the
+   * app's files, so the app sends them.
    */
   start(loader: string, wasmBase64: string): void;
   /**
@@ -38,14 +38,10 @@ interface Props {
   readonly onLine: (line: string) => void;
   /** The engine failed to start or crashed (or its files to download); it answers nothing more. */
   readonly onError: (message: string) => void;
-  /**
-   * How many bytes of full Stockfish have arrived (`startFull`), at each
-   * whole percent; or `newVersion` when the folder serves another build, which
-   * only a newer app can start (no `onError` follows, so no restart).
-   */
-  readonly onDownload?: (received: number, failure?: DownloadFailure) => void;
-  /** Full Stockfish has its files and is starting (`startFull`). */
-  readonly onStarted?: () => void;
+  /** How full Stockfish's download goes (`startFull`, `loadFullStockfish`'s `report`). */
+  readonly onDownload: (received: number, failure?: DownloadFailure) => void;
+  /** The engine has its files and is starting, ready for commands. */
+  readonly onStarted: () => void;
   readonly dom?: DOMProps;
 }
 
@@ -60,6 +56,7 @@ export default function EngineView({ ref, onLoad, onLine, onError, onDownload, o
       const run = (loader: string, wasm: Blob) => {
         worker.current?.terminate();
         worker.current = startStockfishWorker(loader, wasm, onLine, onError);
+        onStarted();
       };
       return {
         start(...[loader, wasmBase64]: Parameters<DOMImperativeFactory[string]>) {
@@ -75,16 +72,14 @@ export default function EngineView({ ref, onLoad, onLine, onError, onDownload, o
           download.current?.abort();
           const stop = new AbortController();
           download.current = stop;
-          loadFullStockfish(folder, stop.signal, (received) => onDownload?.(received))
-            .then(({ loader, wasm }) => {
-              if (stop.signal.aborted) return;
-              run(loader, wasm);
-              onStarted?.();
+          // Resolves no files for another build, which only a newer app can
+          // start: then no `onError`, so no restart.
+          loadFullStockfish(folder, stop.signal, onDownload)
+            .then((files) => {
+              if (files && !stop.signal.aborted) run(files.loader, files.wasm);
             })
             .catch((error: unknown) => {
-              if (stop.signal.aborted) return;
-              if (error instanceof OtherBuildError) onDownload?.(0, 'newVersion');
-              else onError(String(error));
+              if (!stop.signal.aborted) onError(String(error));
             });
         },
         send(...[command]: Parameters<DOMImperativeFactory[string]>) {

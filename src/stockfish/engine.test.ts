@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 import type { Analysis } from '@/evaluation/evaluation';
 
 import { type Connection, fullStockfish, liteStockfish, type SearchBudget } from './engine';
+import { FULL_LOADER } from './fullFiles';
 import { type NodeEngine, sendTo, startNodeEngine } from './node';
 import { NO_RESTARTS } from './testing';
 
@@ -176,7 +177,7 @@ describe('Stockfish', () => {
 
 describe('full Stockfish', () => {
   it('runs the full build through the same protocol, on its own engine', async () => {
-    const full = await startNodeEngine({ full: true });
+    const full = await startNodeEngine(FULL_LOADER);
     const attached = fullStockfish.attach(sendTo(full), NO_RESTARTS, { ranks: 1, nodes: 50_000 });
     full.listener = (line) => attached.receive(line);
     try {

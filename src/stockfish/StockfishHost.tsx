@@ -2,12 +2,12 @@ import { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { readAsset } from '@/files/readAsset';
-import type { DownloadFailure } from '@/resources/download';
+import { useReportFullStockfishDownload } from '@/resources/download';
 
-import { type Connection, liteStockfish, type Stockfish, type Supervisor } from './engine';
+import { type Connection, fullStockfish, liteStockfish, type Supervisor } from './engine';
 import EngineView, { type EngineViewRef } from './EngineView';
 import { LOADER, WASM } from './files';
-import { FULL_WASM_BYTES } from './fullFiles';
+import { LIVE_FOLDER } from './fullFiles';
 import { useRestarts } from './restarts';
 
 /**
@@ -17,33 +17,21 @@ import { useRestarts } from './restarts';
  * frees the engine and its web view.
  */
 export function StockfishHost() {
-  return <HiddenHost engine={liteStockfish} />;
-}
-
-interface HostProps {
-  readonly engine: Stockfish;
-  /**
-   * Full Stockfish, which the web view downloads itself from `folder`
-   * (EngineView's `startFull`), telling `report` how many bytes have arrived
-   * (all of them once the files are in hand), or that it failed: `retrying`,
-   * or `newVersion` when the folder serves another build, after which the
-   * engine stays off. Without it, Stockfish lite, whose files the app sends.
-   */
-  readonly full?: {
-    readonly folder: string;
-    readonly report: (received: number, failure?: DownloadFailure) => void;
-  };
+  return <HiddenHost />;
 }
 
 /**
- * Runs a Stockfish build in a hidden web view while mounted, connected to
- * `engine`, replacing a web view whose engine fails (`useRestarts`).
+ * Runs a Stockfish build in a hidden web view while mounted, connected to its
+ * engine, replacing a web view whose engine fails (`useRestarts`): Stockfish
+ * lite, whose files the app sends, or with `full`, full Stockfish, which the
+ * web view downloads itself from the live site (EngineView's `startFull`),
+ * reporting the download to the store (`Download`).
  */
-export function HiddenHost(props: HostProps) {
+export function HiddenHost({ full = false }: { readonly full?: boolean }) {
   const [running, supervisor] = useRestarts();
   return (
     <View pointerEvents="none" style={styles.hidden}>
-      {running ? <Engine {...props} supervisor={supervisor} /> : null}
+      {running ? <Engine full={full} supervisor={supervisor} /> : null}
     </View>
   );
 }
@@ -52,19 +40,12 @@ export function HiddenHost(props: HostProps) {
  * One engine in its own web view. Each restart mounts a new one, with its own
  * ref: Expo's DOM component binds a ref to the first web view it's given.
  */
-function Engine({ engine, full, supervisor }: HostProps & { readonly supervisor: Supervisor }) {
+function Engine({ full, supervisor }: { readonly full: boolean; readonly supervisor: Supervisor }) {
+  const engine = full ? fullStockfish : liteStockfish;
+  const report = useReportFullStockfishDownload();
   const view = useRef<EngineViewRef>(null);
   const connection = useRef<Connection>(null);
   const stopped = useRef(false);
-
-  // Attached only once the engine has its files, so its time to answer
-  // (engine.ts) doesn't run during a download.
-  const attach = () => {
-    const started = view.current;
-    if (!started || stopped.current) return;
-    // Expo's ref hands out standalone functions, which need no `this`.
-    connection.current = engine.attach(started.send, supervisor);
-  };
 
   // Also runs after the web view's page reloads, which Expo does when the
   // system ends the web view's process. The new engine then takes over the
@@ -73,7 +54,7 @@ function Engine({ engine, full, supervisor }: HostProps & { readonly supervisor:
   // the web view's cache.
   const onLoad = async () => {
     if (full) {
-      view.current?.startFull(full.folder);
+      view.current?.startFull(LIVE_FOLDER);
       return;
     }
     try {
@@ -83,26 +64,27 @@ function Engine({ engine, full, supervisor }: HostProps & { readonly supervisor:
       ]);
       if (stopped.current) return;
       view.current?.start(loader, wasm);
-      attach();
     } catch (error) {
       if (stopped.current) return;
       console.error(error);
       supervisor.failed();
     }
   };
+  // Attached only once the engine has its files, so its time to answer
+  // (engine.ts) doesn't run during a download.
+  const onStarted = () => {
+    const started = view.current;
+    if (!started || stopped.current) return;
+    // Expo's ref hands out standalone functions, which need no `this`.
+    connection.current = engine.attach(started.send, supervisor);
+  };
   const onLine = (line: string) => connection.current?.receive(line);
   const onError = (message: string) => {
     if (connection.current) return connection.current.fail(message);
-    // Not attached yet, which only full Stockfish can be (it attaches once
-    // its files arrive): they didn't download, or its worker didn't start.
+    // Not attached yet: its files didn't load, or its worker didn't start.
     if (stopped.current) return;
     console.error(message);
-    full?.report(0, 'retrying');
     supervisor.failed();
-  };
-  const onStarted = () => {
-    full?.report(FULL_WASM_BYTES);
-    attach();
   };
 
   useEffect(() => {
@@ -119,7 +101,7 @@ function Engine({ engine, full, supervisor }: HostProps & { readonly supervisor:
       onLoad={onLoad}
       onLine={onLine}
       onError={onError}
-      onDownload={full?.report}
+      onDownload={report}
       onStarted={onStarted}
       dom={{ style: styles.hidden }}
     />

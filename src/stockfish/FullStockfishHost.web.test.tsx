@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 
 import { Download, FULL_STOCKFISH_DOWNLOAD } from '@/resources/download';
 
-import { loadFullStockfish, OtherBuildError } from './full';
+import { loadFullStockfish } from './full';
 import { FullStockfishHost } from './FullStockfishHost.web';
 
 jest.mock('./full', () => ({
@@ -53,15 +53,21 @@ const mount = () =>
 
 describe('FullStockfishHost', () => {
   it('says a download that failed is tried again, and tries it again', async () => {
-    load.mockRejectedValue(new Error('offline'));
+    load.mockImplementation(async (_folder, _signal, report) => {
+      report(0, 'retrying');
+      throw new Error('offline');
+    });
     await mount();
     expect(failure).toBe('retrying');
     await act(async () => jest.advanceTimersByTime(1000));
     expect(load).toHaveBeenCalledTimes(2);
   });
 
-  it('says the site has a new version when it serves another build, and stops trying', async () => {
-    load.mockRejectedValue(new OtherBuildError());
+  it('stops trying once the site serves a newer build', async () => {
+    load.mockImplementation(async (_folder, _signal, report) => {
+      report(0, 'newVersion');
+      return undefined;
+    });
     await mount();
     expect(failure).toBe('newVersion');
     await act(async () => jest.advanceTimersByTime(60_000));

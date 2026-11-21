@@ -7,6 +7,8 @@
 // the live site and keeps them in its own cache. Uses only the DOM, for that
 // web view.
 import { fetchOk, HttpError } from '@/files/fetchOk';
+import { NewVersionError } from '@/files/newVersion';
+import type { DownloadFailure } from '@/resources/download';
 
 import { FULL_LOADER, FULL_WASM, FULL_WASM_BYTES } from './fullFiles';
 
@@ -24,27 +26,39 @@ const CACHE_PREFIX = 'opening-night-engine:';
 const CACHE = `${CACHE_PREFIX}${FULL_WASM}:${FULL_WASM_BYTES}`;
 
 /**
- * The folder serves another Stockfish build than the app's: it has no file by
- * this build's name, or the WebAssembly isn't this build's size. Trying again
- * can't help; a newer app can (on the web, reloading the page).
+ * Full Stockfish's loader and WebAssembly: from the browser's cache when an
+ * earlier visit downloaded them, else downloaded from `folder` (an absolute
+ * address ending in `/`) and then cached. `report` hears how many of the
+ * WebAssembly's `FULL_WASM_BYTES` have arrived, each time another whole
+ * percent has, and all of them once the files are in hand. When the folder
+ * serves another build (a NewVersionError: no file by this build's name, or a
+ * WebAssembly of another size), trying again can't help, only a newer app (on
+ * the web, a reload): it reports `newVersion` and resolves undefined. Any
+ * other failure reports `retrying` and rejects; an abort of `signal` rejects
+ * without a report.
  */
-export class OtherBuildError extends Error {
-  constructor(options?: ErrorOptions) {
-    super(`Full Stockfish: the site serves another build than ${FULL_WASM}`, options);
-    this.name = 'OtherBuildError';
+export async function loadFullStockfish(
+  folder: string,
+  signal: AbortSignal,
+  report: (received: number, failure?: DownloadFailure) => void,
+): Promise<EngineFiles | undefined> {
+  try {
+    const files = await getFiles(folder, signal, report);
+    report(FULL_WASM_BYTES);
+    return files;
+  } catch (error) {
+    if (signal.aborted) throw error;
+    if (error instanceof NewVersionError) {
+      report(0, 'newVersion');
+      return undefined;
+    }
+    report(0, 'retrying');
+    throw error;
   }
 }
 
-/**
- * Full Stockfish's loader and WebAssembly: from the browser's cache when an
- * earlier visit downloaded them, else downloaded from `folder` (an absolute
- * address ending in `/`) and then cached. While the WebAssembly downloads,
- * `onProgress` hears how many of its `FULL_WASM_BYTES` have arrived, each
- * time another whole percent has. Rejects with OtherBuildError when the
- * folder serves another build, otherwise when it can't serve them, and when
- * `signal` aborts.
- */
-export async function loadFullStockfish(
+/** The files, from the cache or else downloaded and then cached (`loadFullStockfish`). */
+async function getFiles(
   folder: string,
   signal: AbortSignal,
   onProgress: (received: number) => void,
@@ -107,7 +121,7 @@ const cacheKey = (file: string) => new URL(`/${CACHE}/${file}`, location.origin)
 const download = (folder: string, file: string, signal: AbortSignal) =>
   fetchOk(new URL(file, folder).href, { signal }).catch((error: unknown) => {
     throw error instanceof HttpError && error.status === 404
-      ? new OtherBuildError({ cause: error })
+      ? new NewVersionError({ cause: error })
       : error;
   });
 
@@ -116,27 +130,39 @@ const download = (folder: string, file: string, signal: AbortSignal) =>
  * percent arrives (a call for every chunk would be about 1,500, each a
  * message from Android's web view and a render). Counted in the bytes the
  * body decodes to, since the site may compress it. A body that ends at
- * another size is another build's: one cut off fails the read instead.
+ * another size is another build's: one cut off fails the read instead. The
+ * browser gathers the body into the Blob, so the page never holds a second
+ * copy of its 99 MB.
  */
 async function readWasm(response: Response, onProgress: (received: number) => void): Promise<Blob> {
-  const chunks: Uint8Array<ArrayBuffer>[] = [];
   let received = 0;
   let percent = -1;
-  const reader = response.body!.getReader();
-  for (let read = await reader.read(); !read.done; read = await reader.read()) {
-    chunks.push(read.value);
-    received += read.value.length;
-    if (received > FULL_WASM_BYTES) {
-      await reader.cancel();
-      throw new OtherBuildError();
-    }
-    const now = Math.floor((received / FULL_WASM_BYTES) * 100);
-    if (now === percent) continue;
-    percent = now;
-    onProgress(received);
+  let otherSize = false;
+  const counted = response.body!.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        received += chunk.length;
+        if (received > FULL_WASM_BYTES) failSize();
+        controller.enqueue(chunk);
+        const now = Math.floor((received / FULL_WASM_BYTES) * 100);
+        if (now === percent) return;
+        percent = now;
+        onProgress(received);
+      },
+      flush() {
+        if (received !== FULL_WASM_BYTES) failSize();
+      },
+    }),
+  );
+  function failSize(): never {
+    otherSize = true;
+    throw new Error(`Full Stockfish: got ${received} bytes, not ${FULL_WASM_BYTES}`);
   }
-  if (received !== FULL_WASM_BYTES) throw new OtherBuildError();
-  return new Blob(chunks, { type: 'application/wasm' });
+  try {
+    return await new Response(counted, { headers: { 'content-type': 'application/wasm' } }).blob();
+  } catch (error) {
+    throw otherSize ? new NewVersionError({ cause: error }) : error;
+  }
 }
 
 /** Frees the space an older Stockfish build's files took. */

@@ -10,13 +10,11 @@ export interface NodeEngine {
 }
 
 /**
- * Starts the Node build of the same single-threaded WebAssembly the app runs:
- * lite, or with `full`, full Stockfish (the `stockfish-full` opponent).
+ * Starts the Node build of the same single-threaded WebAssembly the app runs,
+ * from the package's `loader`: lite's, or full Stockfish's (`FULL_LOADER`).
  */
-export async function startNodeEngine({ full = false } = {}): Promise<NodeEngine> {
-  const path = require.resolve(
-    full ? 'stockfish/bin/stockfish-19-single.js' : 'stockfish/bin/stockfish-19-lite-single.js',
-  );
+export async function startNodeEngine(loader = 'stockfish-19-lite-single.js'): Promise<NodeEngine> {
+  const path = require.resolve(`stockfish/bin/${loader}`);
   // The build starts once per load: a second start from the cached module fails.
   delete require.cache[path];
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- a CommonJS build with no types

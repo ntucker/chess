@@ -26,3 +26,10 @@ export const FULL_STOCKFISH_MB = Math.round(FULL_WASM_BYTES / 1_000_000);
  * build, an app built before can't download full Stockfish.
  */
 export const LIVE_FOLDER = 'https://ntucker.github.io/chess/stockfish/';
+
+/**
+ * Where a preview of a pull request downloads the files: the live site's
+ * folder when it serves the same build, which `web.yml` checks; empty
+ * otherwise, and outside previews.
+ */
+export const PREVIEW_FOLDER = process.env.EXPO_PUBLIC_STOCKFISH_FOLDER ?? '';
