@@ -332,8 +332,8 @@ function featureGraphic() {
 ${font('Display', 'dm-serif-display/400Regular/DMSerifDisplay_400Regular.ttf')}
 ${font('Sans', 'instrument-sans/400Regular/InstrumentSans_400Regular.ttf')}
 body{margin:0;width:1024px;height:500px;display:flex;align-items:center;gap:56px;padding:0 0 0 100px;box-sizing:border-box;
-background:radial-gradient(ellipse 70% 80% at 30% -10%,${brand.spotlight}4d,${brand.spotlight}00 70%),${color.surface}}
-svg{display:block;flex:none;filter:drop-shadow(0 18px 40px rgba(0,0,0,.55))}
+background:radial-gradient(ellipse 70% 80% at 30% -10%,color-mix(in srgb,${brand.spotlight} 30%,transparent),transparent 70%),${color.surface}}
+svg{display:block;flex:none;filter:drop-shadow(0 18px 40px oklch(0 0 0 / 0.55))}
 h1{margin:0;font:400 92px/1 Display;color:${color.text};letter-spacing:-.5px}
 p{margin:22px 0 0;font:400 32px/1.2 Sans;color:${brand.spotlight};letter-spacing:.5px}
 </style>${tile}<div><h1>Opening<br>Night</h1><p>Learn your lines</p></div>`;

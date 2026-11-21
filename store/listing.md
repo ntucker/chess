@@ -34,7 +34,7 @@ feature it names changes, and paste it again.
 > It answers with the moves players at that level actually choose, so you prepare for the games you
 > will really play. Want more? Stockfish takes over at the top.
 >
-> 17 OPENINGS FOR WHITE AND BLACK
+> OPENINGS FOR WHITE AND BLACK
 > Caro-Kann, Slav, French, Sicilian and King's Indian Defences; Ruy Lopez, Italian Game, Queen's
 > Gambit and London System; the Anti-London and Anti-Sicilian; and gambits like the Stafford,
 > Lucchini and Boden-Kieseritzky. Every line is built from respected opening guides and checked by
