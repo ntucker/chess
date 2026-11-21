@@ -1,5 +1,5 @@
 // Runs in the native project, for Node's Response and streams, which the web
-// project's jsdom lacks; the page's address and Cache Storage are faked below.
+// project's jsdom lacks; Cache Storage is faked below.
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { TransformStream } from 'node:stream/web';
 
@@ -12,6 +12,7 @@ jest.mock('./fullFiles', () => ({
   FULL_LOADER: 'engine.js',
   FULL_WASM: 'engine.wasm',
   FULL_WASM_BYTES: 200,
+  LIVE_FOLDER: 'https://live.test/chess/stockfish/',
 }));
 
 const ORIGIN = 'https://example.test';
@@ -64,12 +65,11 @@ beforeEach(() => {
   reports = [];
   // Node's own, which its Response's body pipes through; React Native's
   // preset replaces the global with another kind.
-  Object.assign(globalThis, { caches: fakeCaches, location: { origin: ORIGIN }, TransformStream });
+  Object.assign(globalThis, { caches: fakeCaches, TransformStream });
   jest.spyOn(globalThis, 'fetch').mockImplementation(fakeFetch as typeof fetch);
 });
 afterEach(() => {
   delete (globalThis as { caches?: unknown }).caches;
-  delete (globalThis as { location?: unknown }).location;
   jest.restoreAllMocks();
 });
 
@@ -91,6 +91,13 @@ describe('loadFullStockfish', () => {
     expect(fetched).toEqual([
       `${ORIGIN}/chess/stockfish/engine.js`,
       `${ORIGIN}/chess/stockfish/engine.wasm`,
+    ]);
+
+    // Kept under the live site's address, wherever they came from: an Android
+    // web view's own address is file://, which Cache Storage can't key.
+    expect([...stored.get('opening-night-engine:engine.wasm:200')!.keys()].sort()).toEqual([
+      'https://live.test/chess/stockfish/engine.js',
+      'https://live.test/chess/stockfish/engine.wasm',
     ]);
 
     fetched.length = 0;

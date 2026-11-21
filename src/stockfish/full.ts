@@ -10,7 +10,7 @@ import { fetchOk, HttpError } from '@/files/fetchOk';
 import { NewVersionError } from '@/files/newVersion';
 import type { ReportDownload } from '@/resources/download';
 
-import { FULL_LOADER, FULL_WASM, FULL_WASM_BYTES } from './fullFiles';
+import { FULL_LOADER, FULL_WASM, FULL_WASM_BYTES, LIVE_FOLDER } from './fullFiles';
 import type { EngineFiles } from './worker';
 
 /**
@@ -108,8 +108,12 @@ async function readCache(cache: Cache): Promise<EngineFiles | undefined> {
   return undefined;
 }
 
-/** Where a file is kept in the cache: at the origin's root, whichever page or preview downloaded it. */
-const cacheKey = (file: string) => new URL(`/${CACHE}/${file}`, location.origin).href;
+/**
+ * Where a file is kept in the cache: under the live site's address, whichever
+ * page, preview or web view downloaded it. A release Android web view's page
+ * is a file:// address, which Cache Storage refuses as a key.
+ */
+const cacheKey = (file: string) => new URL(file, LIVE_FOLDER).href;
 
 /** `file` from `folder`; a folder without it serves another build. */
 const download = (folder: string, file: string, signal: AbortSignal) =>

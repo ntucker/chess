@@ -52,14 +52,19 @@ const mount = () =>
   );
 
 describe('FullStockfishHost', () => {
+  it("downloads from the page's own site, outside a preview that shares the live site's", async () => {
+    // Jest sets no base path (EXPO_BASE_URL) or preview folder (PREVIEW_FOLDER).
+    load.mockResolvedValue(undefined);
+    await mount();
+    expect(load.mock.calls[0][0]).toBe(`${location.origin}/stockfish/`);
+  });
+
   it('says a download that failed is tried again, and tries it again', async () => {
     load.mockImplementation(async (_folder, _signal, report) => {
       report(0, 'retrying');
       throw new Error('offline');
     });
     await mount();
-    // The page's own site, outside a preview that shares the live site's.
-    expect(load.mock.calls[0][0]).toBe(`${location.origin}/stockfish/`);
     expect(failure).toBe('retrying');
     await act(async () => jest.advanceTimersByTime(1000));
     expect(load).toHaveBeenCalledTimes(2);
