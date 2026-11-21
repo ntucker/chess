@@ -25,7 +25,7 @@ export function Transport({ ply, total, onGoto, middle }: Props) {
   const { theme } = useTheme();
   const { color } = theme.semantic;
   const part = useNarrowPart();
-  const holdHandlers = useHeldStep(ply, total, onGoto);
+  const holdHandlersFor = useHeldStep(ply, total, onGoto);
   const buttons: {
     label: string;
     icon: ComponentProps<typeof Ionicons>['name'];
@@ -68,7 +68,7 @@ export function Transport({ ply, total, onGoto, middle }: Props) {
       accessibilityLabel={label}
       disabled={disabled}
       onPress={() => onGoto(target)}
-      {...(step && holdHandlers(step, target))}
+      {...(step && holdHandlersFor(step))}
       style={({ pressed, hovered }) => [
         styles.button,
         (pressed || hovered) && !disabled && { backgroundColor: color.tones.neutral.subtle },
@@ -115,9 +115,9 @@ const HOLD_MS = 400;
 const REPEAT_MS = 120;
 
 /**
- * A held step arrow: it steps once as the hold starts, then again every
- * REPEAT_MS until let go or at either end of the game. A tap steps once
- * (its `onPress`).
+ * The press handlers for a step arrow that steps by `step`: held, it steps
+ * once as the hold starts, then again every REPEAT_MS until let go or at
+ * either end of the game. A tap steps once (its `onPress`).
  */
 function useHeldStep(ply: number, total: number, onGoto: (ply: number) => void) {
   const [held, setHeld] = useState<Step>();
@@ -131,11 +131,10 @@ function useHeldStep(ply: number, total: number, onGoto: (ply: number) => void) 
     const timer = setTimeout(() => goto(next), REPEAT_MS);
     return () => clearTimeout(timer);
   }, [next]);
-  /** A step arrow's press handlers: `target` is where its first step goes. */
-  return (step: Step, target: number) => ({
+  return (step: Step) => ({
     delayLongPress: HOLD_MS,
     onLongPress: () => {
-      onGoto(target);
+      onGoto(ply + step);
       setHeld(step);
     },
     onPressOut: () => setHeld(undefined),
