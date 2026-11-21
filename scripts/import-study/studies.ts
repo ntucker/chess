@@ -162,786 +162,6 @@ const KITSUNE_EVANS = {
   },
 } as const;
 
-export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
-  'caro-kann': {
-    from: [
-      {
-        study: '8Uztu7Xx',
-        credit: {
-          title: 'Greatest Caro Kann: Living Repertoire',
-          author: 'Kampfschach_Official',
-          url: 'https://lichess.org/study/8Uztu7Xx',
-        },
-        /** The theory chapters: 🔵 core and 🟢 extra. Guides, plans and model games come later. */
-        chapters: (title: string) => /^(?:🔵|🟢)/u.test(title),
-        // "Sidelines Index" names the chapter's contents page, not a variation.
-        chapterName: (title, chapter) =>
-          numberedChapterName(title, chapter)?.replace(/: Sidelines Index$/, ''),
-      },
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...c6',
-        rename: {
-          'Tal variation': 'Tal Variation (4.h4) & Bayonet Attack (4.g4)',
-          // 3.Nd2, which the main study teaches under the Classical Variation.
-          'Modern variation': '',
-          'Accelerated Panov attack': 'Accelerated Panov',
-          'Breyer variation': '2.d3 Systems: Breyer Variation',
-          'Endgame offer': '',
-          'Dinic gambit': '',
-        },
-      },
-      {
-        ...WUB_C6,
-        chapters: (title: string) => Object.hasOwn(WUB_CARO_KANN, title),
-        chapterName: (title: string) => WUB_CARO_KANN[title],
-      },
-    ],
-    engineCheck: true,
-    info: {
-      id: 'caro-kann',
-      title: 'Caro-Kann Defence',
-      side: 'black',
-    },
-  },
-  slav: {
-    from: [
-      {
-        study: 'LGKgEao4',
-        credit: {
-          title: 'Black repertoaire: Slav Defense',
-          author: 'MMatkun',
-          url: 'https://lichess.org/study/LGKgEao4',
-        },
-        chapters: () => true,
-        chapterName: (title: string) => chapterNamed(SLAV_CHAPTERS, 'Slav', title),
-      },
-      {
-        study: 'aOkYYHpw',
-        credit: {
-          title: 'Slav Defense, Main Line',
-          author: 'Kitsune_Cavalry',
-          url: 'https://lichess.org/study/aOkYYHpw',
-        },
-        // The theory chapters; the master games after them come later.
-        chapters: (title: string) => Object.hasOwn(KITSUNE_CHAPTERS, title),
-        chapterName: (title: string) => KITSUNE_CHAPTERS[title],
-      },
-      {
-        root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...c6',
-        rename: {
-          // 3...Nf6, which the main study's own chapters start under.
-          'Modern Line': '',
-          'Slav accepted': 'Pure Slav',
-        },
-      },
-      {
-        // 3.Nc3 e6, the Semi-Slav by its other move order (2...e6 3.Nc3 c6), which the main study only names.
-        study: 'mKEnJPUG',
-        credit: {
-          title: 'How to play the SEMI-SLAV DEFENSE',
-          author: 'ChessWillNotHurt1',
-          url: 'https://lichess.org/study/mKEnJPUG',
-        },
-        // The two lessons; the first chapter has no moves and the practice quiz repeats them.
-        chapters: (title: string) => title === 'Semi-Slav as Black' || title === 'Chapter 4',
-        chapterName: () => 'Semi-Slav',
-      },
-      {
-        // Its chapters reaching the Slav by 1.d4 c6 2.c4 d5, for 3.e3 and the Exchange Variation's 4.Nf3.
-        ...WUB_C6,
-        chapters: (title: string) => Object.hasOwn(WUB_SLAV, title),
-        chapterName: (title: string) => WUB_SLAV[title],
-      },
-      {
-        // The Semi-Slav by 2...e6 3.Nc3 c6 (the Triangle): 4.e3 and the Marshall Gambit 4.e4.
-        root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...e6/3._Nc3/3...c6',
-        topName: 'Semi-Slav',
-      },
-      {
-        study: 'Z4TK3dUu',
-        credit: {
-          title: 'Slav Defense overview for Black',
-          author: 'Wurzelkraft',
-          url: 'https://lichess.org/study/Z4TK3dUu',
-        },
-        // The theory chapters, not "Conversions into Slav" (from 1.c4) or the example games.
-        chapters: (title: string) => Object.hasOwn(WURZELKRAFT_CHAPTERS, title),
-        chapterName: (title: string) => WURZELKRAFT_CHAPTERS[title],
-      },
-    ],
-    engineCheck: true,
-    info: {
-      id: 'slav',
-      title: 'Slav Defence',
-      side: 'black',
-    },
-  },
-  london: {
-    from: [
-      {
-        study: '0jynK1KI',
-        credit: {
-          title: 'The London System',
-          author: 'AverageLondonEnjoyer',
-          url: 'https://lichess.org/study/0jynK1KI',
-        },
-        chapters: () => true,
-        chapterName: (title: string) => chapterNamed(LONDON_CHAPTERS, 'London', title),
-      },
-      {
-        study: '2EaSmZtz',
-        credit: {
-          title: 'London System Repertoire',
-          author: 'davidharoldchess',
-          url: 'https://lichess.org/study/2EaSmZtz',
-        },
-        // The introduction is a picture of the setup and the Stonewall chapter is empty.
-        chapters: (title: string) => Object.hasOwn(DAVID_LONDON_CHAPTERS, title),
-        chapterName: (title: string) => DAVID_LONDON_CHAPTERS[title],
-      },
-      { root: 'Chess_Opening_Theory/1._d4/1...d5/2._Bf4' },
-      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._Bf4' },
-    ],
-    engineCheck: true,
-    info: {
-      id: 'london',
-      title: 'London System',
-      side: 'white',
-    },
-  },
-  'anti-london': {
-    from: [
-      {
-        study: '8vdDkGEV',
-        credit: {
-          title: 'London System (Black)',
-          author: 'Coldfield1994',
-          url: 'https://lichess.org/study/8vdDkGEV',
-        },
-        chapters: () => true,
-        chapterName: (title: string) => chapterNamed(COLDFIELD_CHAPTERS, 'anti-London', title),
-        // "Black can easily recapture the pawn with Bxc5 after ... defending d5 with e6."
-        replies: { 'd4 d5 Bf4 Nf6 Nf3 c5 dxc5': 'e6' },
-      },
-      {
-        study: 'Pg7swJlZ',
-        credit: {
-          title: 'Anti-London System Lines',
-          author: 'idontcareman88',
-          url: 'https://lichess.org/study/Pg7swJlZ',
-        },
-        // The 1...d5 chapter; the others answer 1.d4 with 1...Nf6, and the example games come later.
-        chapters: (title: string) => title === '1...d5 Set-up',
-        chapterName: () => undefined,
-      },
-      { root: 'Chess_Opening_Theory/1._d4/1...d5/2._Bf4' },
-      // 2...Nf6 by the other move order: 3.e3, and the 3.Nc3 that leads into the next root.
-      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._Bf4/2...d5' },
-      // The Jobava London (3.Nc3), which Wikibooks reaches by 1.d4 Nf6 2.Nc3 d5 3.Bf4.
-      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._Nc3/2...d5/3._Bf4' },
-      {
-        // White's view of ...c5: what White plans against it, reworded for Black. It books
-        // none of Black's moves; where only it shows them, Stockfish picks one.
-        study: '2EaSmZtz',
-        credit: {
-          title: 'London System Repertoire',
-          author: 'davidharoldchess',
-          url: 'https://lichess.org/study/2EaSmZtz',
-        },
-        writtenFor: 'white',
-        // Its ...c5 chapters reached by 1...d5; "vs Ne4" starts 1...Nf6 and "Part 5" is empty.
-        chapters: (title: string) => Object.hasOwn(DAVID_ANTI_LONDON_CHAPTERS, title),
-        chapterName: (title: string) => DAVID_ANTI_LONDON_CHAPTERS[title],
-      },
-    ],
-    engineCheck: true,
-    info: {
-      id: 'anti-london',
-      title: 'Anti-London',
-      side: 'black',
-    },
-  },
-  'open-game': {
-    from: [
-      {
-        // Fischer's own analysis of 3...d6, his "bust" of the King's Gambit, and a modern line.
-        study: 'UIQySNsb',
-        credit: {
-          title: "King's Gambit Accepted: Fischer Defense",
-          author: 'nohandlebars',
-          url: 'https://lichess.org/study/UIQySNsb',
-        },
-        // The theory chapters, not the example game.
-        chapters: (title: string) => Object.hasOwn(FISCHER_CHAPTERS, title),
-        chapterName: (title: string) => FISCHER_CHAPTERS[title],
-        namedFrom: 3,
-      },
-      {
-        // White's view of the Fischer Defense, reworded for Black; its introductions lead to it.
-        study: 'ACmyH8gC',
-        credit: {
-          title: "King's Gambit | Full Repertoire",
-          author: 'Bosburp',
-          url: 'https://lichess.org/study/ACmyH8gC',
-        },
-        writtenFor: 'white',
-        chapters: (title: string) => Object.hasOwn(BOSBURP_KG_CHAPTERS, title),
-        chapterName: (title: string) => BOSBURP_KG_CHAPTERS[title],
-        namedFrom: 3,
-      },
-      // The rest of the King's Gambit Accepted: 3.Bc4, 3.Nc3 and the rest.
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...e5/2._f4/2...exf4',
-        topName: "King's Gambit",
-        maxPages: 40,
-      },
-      // 2...Nc6 3.Bc4 g6 4.Qf3 Nf6 and ...Bg7: the fianchetto answer to the early queen.
-      { root: 'Chess_Opening_Theory/1._e4/1...e5/2._Qh5', topName: 'Wayward Queen Attack' },
-      { root: 'Chess_Opening_Theory/1._e4/1...e5/2._Qf3', topName: 'Wayward Queen Attack: 2.Qf3' },
-      // The mirror: ...Bc5 against White's Bc4, and early ...Bc5 elsewhere.
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...Bc5',
-        topName: 'Italian: Giuoco Piano',
-        maxPages: 60,
-      },
-      {
-        // White's Italian, reworded for Black.
-        ...LENIN_ITALIAN,
-        writtenFor: 'white',
-        chapters: (title: string) => Object.hasOwn(LENIN_ITALIAN_CHAPTERS, title),
-        chapterName: (title: string) => LENIN_ITALIAN_CHAPTERS[title],
-        namedFrom: 5,
-      },
-      {
-        // The Evans Gambit (4.b4), White's view, reworded for Black.
-        ...KITSUNE_EVANS,
-        writtenFor: 'white',
-        // The theory chapters, not the master game.
-        chapters: (title: string) => title !== 'Garry Kasparov vs Viswanathan Anand 1995',
-        chapterName: () => 'Italian: Giuoco Piano: Evans Gambit',
-        namedFrom: 5,
-      },
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bb5/3...Bc5',
-        topName: 'Ruy Lopez: Classical Defence',
-        maxPages: 40,
-      },
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._d4/3...exd4/4._Nxd4/4...Bc5',
-        topName: 'Scotch: Classical',
-        maxPages: 40,
-      },
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Nc3/3...Bc5',
-        topName: 'Three Knights',
-        maxPages: 20,
-      },
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._c3',
-        topName: 'Ponziani',
-        maxPages: 30,
-      },
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Bc4/2...Bc5',
-        topName: "Bishop's Opening",
-        maxPages: 40,
-      },
-      { root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nc3/2...Bc5', topName: 'Vienna', maxPages: 30 },
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...e5/2._d4/2...exd4',
-        topName: 'Centre Game',
-        maxPages: 30,
-      },
-    ],
-    engineCheck: true,
-    info: {
-      id: 'open-game',
-      title: 'Open Game: Bowdler Mirror',
-      side: 'black',
-    },
-  },
-  albin: {
-    from: [
-      {
-        root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...e5',
-        topName: 'Albin Countergambit',
-        maxPages: 60,
-      },
-      {
-        // White's view of the Albin, reworded for Black; its introduction leads to it.
-        ...BOSBURP_QG,
-        writtenFor: 'white',
-        chapters: (title: string) =>
-          title === QG_INTRO || QG_CHAPTERS[title] === 'Albin Countergambit',
-        chapterName: (title: string) => QG_CHAPTERS[title],
-        namedFrom: 3,
-      },
-      {
-        // The London mirror: White's London against ...Bf5, whose main line plays Black's
-        // mirror (2...Bf5 3.e3 e6 4.Bd3 Bxd3): booked, its comments reworded for Black.
-        study: '2EaSmZtz',
-        credit: {
-          title: 'London System Repertoire',
-          author: 'davidharoldchess',
-          url: 'https://lichess.org/study/2EaSmZtz',
-        },
-        writtenFor: 'white',
-        recommends: true,
-        chapters: (title: string) => title === 'London System vs Bf5',
-        chapterName: () => 'London Mirror',
-        namedFrom: 3,
-      },
-      {
-        // More of what White plans against an early ...Bf5, reworded for Black; books none.
-        study: '0jynK1KI',
-        credit: {
-          title: 'The London System',
-          author: 'AverageLondonEnjoyer',
-          url: 'https://lichess.org/study/0jynK1KI',
-        },
-        writtenFor: 'white',
-        chapters: (title: string) => title === 'London vs. Early Bf5',
-        chapterName: () => 'London Mirror',
-        namedFrom: 3,
-      },
-      { root: 'Chess_Opening_Theory/1._d4/1...d5/2._Nf3', topName: '2.Nf3', maxPages: 40 },
-      { root: 'Chess_Opening_Theory/1._d4/1...d5/2._Nc3', topName: '2.Nc3', maxPages: 30 },
-    ],
-    engineCheck: true,
-    info: {
-      id: 'albin',
-      title: 'Albin Countergambit & London Mirror',
-      side: 'black',
-    },
-  },
-  'bc4-system': {
-    from: [
-      {
-        // Nathaniel's setup: a3 and Ba2, d3, Ne2, castle, Nbc3, Ng3, then f4.
-        study: 'bowdler-setup',
-        file: 'bowdler-setup.pgn',
-        credit: {
-          title: 'Bowdler Attack setup',
-          author: 'ntucker',
-          url: 'https://github.com/ntucker/chess/blob/main/scripts/import-study/sources/bowdler-setup.pgn',
-        },
-        chapters: () => true,
-        chapterName: () => 'Bowdler Attack',
-        namedFrom: 3,
-      },
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Bc4',
-        topName: "Bishop's Opening",
-        rename: { "Bishop's Opening Classical Defence": 'Classical Defence' },
-        maxPages: 60,
-      },
-      {
-        study: 'G14vzkiG',
-        credit: {
-          title: "The Bishop's Opening",
-          author: 'Arco47',
-          url: 'https://lichess.org/study/G14vzkiG',
-        },
-        chapters: () => true,
-        chapterName: (title: string) =>
-          chapterNamed(ARCO_BISHOPS_CHAPTERS, "Bishop's Opening", title),
-        namedFrom: 3,
-      },
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...c6/2._Bc4',
-        topName: 'Hillbilly Attack',
-        maxPages: 30,
-      },
-      {
-        // Black's view of 2.Bc4 against the Caro-Kann, reworded for White.
-        study: '2wkHsejC',
-        credit: {
-          title: 'Caro-Kann Defense, Hillbilly Attack',
-          author: 'Kitsune_Cavalry',
-          url: 'https://lichess.org/study/2wkHsejC',
-        },
-        writtenFor: 'black',
-        // The theory chapters, not the example games.
-        chapters: (title: string) => !title.includes(' -- '),
-        chapterName: () => 'Hillbilly Attack',
-        namedFrom: 3,
-      },
-      {
-        // Black's view of 2.Bc4 against the Caro-Kann, reworded for White.
-        ...WUB_C6,
-        writtenFor: 'black',
-        chapters: (title: string) =>
-          title === 'e4 – The Caro-Kann' ||
-          title === 'Other Second Moves – 2. Bc4 – The Hillbilly Attack',
-        chapterName: (title: string) =>
-          title === 'e4 – The Caro-Kann' ? undefined : 'Hillbilly Attack',
-      },
-      { root: 'Chess_Opening_Theory/1._e4/1...e6/2._Bc4', topName: 'French: 2.Bc4', maxPages: 20 },
-      {
-        // The Scandinavian's main line, where White's bishop comes to c4: Black's view, reworded for White.
-        study: 'gzj623hW',
-        credit: {
-          title: 'The scandinavian defense',
-          author: 'purple_royal',
-          url: 'https://lichess.org/study/gzj623hW',
-        },
-        writtenFor: 'black',
-        chapters: (title: string) =>
-          title === 'Mainline scandinavian' || title === 'Mainline in depth',
-        chapterName: () => 'Scandinavian',
-        namedFrom: 2,
-      },
-    ],
-    engineCheck: true,
-    info: {
-      id: 'bc4-system',
-      title: "Bishop's System (Bowdler)",
-      side: 'white',
-    },
-  },
-  sicilian: {
-    from: [
-      {
-        ...LOLORIV_SICILIAN,
-        // Black's theory chapters; the reviews replay them as quizzes or master games.
-        chapters: (title: string) => Object.hasOwn(SICILIAN_CHAPTERS, title),
-        chapterName: (title: string) => SICILIAN_CHAPTERS[title],
-      },
-      {
-        // The chapters showing White's setups, reworded for Black: they book none of Black's moves.
-        ...LOLORIV_SICILIAN,
-        writtenFor: 'white',
-        chapters: (title: string) => Object.hasOwn(SICILIAN_WHITE_CHAPTERS, title),
-        chapterName: (title: string) => SICILIAN_WHITE_CHAPTERS[title],
-      },
-      {
-        study: 'tbNutvBV',
-        credit: {
-          title: 'Sicilian Defense: All you need to know',
-          author: 'andrew_tsiri',
-          url: 'https://lichess.org/study/tbNutvBV',
-        },
-        // Short chapters on nearly every line, chained by FEN: the Moscow, Kan and 2...g6 lines.
-        chapters: (title: string) => Object.hasOwn(TSIRI_CHAPTERS, title),
-        chapterName: (title: string) => TSIRI_CHAPTERS[title],
-      },
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...c5',
-        rename: {
-          // Pages grouping White's 3.d4 by Black's second move, which the main study names by system.
-          'Open Sicilian with ...d6': '',
-          'Open Sicilian with ...Nc6': '',
-          'Open Sicilian with 2...e6': '',
-          'French Sicilian': '',
-          'Smith-Morra gambit accepted': '',
-          '3...d6': '',
-          'Classical Sicilian': 'Classical Variation',
-          'Hyperaccelerated Dragon': 'Hyper-Accelerated Dragon',
-          'Kan Sicilian': 'Kan Variation',
-        },
-      },
-    ],
-    engineCheck: true,
-    info: {
-      id: 'sicilian',
-      title: 'Sicilian Defence',
-      side: 'black',
-    },
-  },
-  'ruy-lopez': {
-    from: [
-      {
-        ...LOLORIV_RUY,
-        // White's theory chapters; the reviews replay them as quizzes or master games.
-        chapters: (title: string) => Object.hasOwn(RUY_CHAPTERS, title),
-        chapterName: (title: string) => RUY_CHAPTERS[title],
-      },
-      {
-        // The Berlin, shown from Black's side, reworded for White: it books none of White's moves.
-        ...LOLORIV_RUY,
-        writtenFor: 'black',
-        chapters: (title: string) => title === 'Berlin Defense Theory',
-        chapterName: () => 'Berlin Defence',
-      },
-      {
-        study: 'ZkCxh0nB',
-        credit: {
-          title: 'Ruy Lopez',
-          author: 'LeninPerez',
-          url: 'https://lichess.org/study/ZkCxh0nB',
-        },
-        // Black's third moves the main study skips: the Steinitz, Classical, Schliemann and Cozio.
-        chapters: (title: string) => Object.hasOwn(LENIN_RUY_CHAPTERS, title),
-        chapterName: (title: string) => LENIN_RUY_CHAPTERS[title],
-      },
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bb5',
-        rename: {
-          // 3...a6, under which the main study names its own variations.
-          'Morphy defence': '',
-          'Closed Spanish': 'Closed Ruy Lopez',
-          'Open Spanish': 'Open Ruy Lopez',
-          'Jaenisch gambit': 'Schliemann Defence',
-        },
-      },
-    ],
-    engineCheck: true,
-    info: {
-      id: 'ruy-lopez',
-      title: 'Ruy Lopez',
-      side: 'white',
-    },
-  },
-  french: {
-    from: [
-      {
-        study: 'cpULfWpl',
-        credit: {
-          title: 'French Defence - Complete Repertoire',
-          author: 'RadiantSmrf',
-          url: 'https://lichess.org/study/cpULfWpl',
-        },
-        chapters: () => true,
-        chapterName: (title: string) =>
-          chapterNamed(RADIANT_FRENCH_CHAPTERS, 'RadiantSmrf French', title),
-      },
-      {
-        study: 'bgAmUOck',
-        credit: {
-          title: 'Black repertoaire: French defense',
-          author: 'MMatkun',
-          url: 'https://lichess.org/study/bgAmUOck',
-        },
-        chapters: () => true,
-        chapterName: (title: string) =>
-          chapterNamed(MMATKUN_FRENCH_CHAPTERS, 'MMatkun French', title),
-      },
-      // Wikibooks fills White's second moves the studies skip, one root per move so the page budget
-      // isn't spent deep in the first one.
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...e6/2._Nf3',
-        rename: { 'Wing gambit': 'Knight Variation: Wing Gambit' },
-        maxPages: 12,
-      },
-      { root: 'Chess_Opening_Theory/1._e4/1...e6/2._Bc4' },
-      { root: 'Chess_Opening_Theory/1._e4/1...e6/2._e5' },
-      { root: 'Chess_Opening_Theory/1._e4/1...e6/2._Nc3', maxPages: 10 },
-      { root: 'Chess_Opening_Theory/1._e4/1...e6/2._d3', topName: "King's Indian Attack" },
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...e6/2._d4/2...d5/3._exd5',
-        topName: 'Exchange Variation',
-      },
-    ],
-    engineCheck: true,
-    info: { id: 'french', title: 'French Defence', side: 'black' },
-  },
-  'anti-sicilian': {
-    from: [
-      {
-        study: '55CPbtmd',
-        credit: {
-          title: 'CRUSH the Sicilian! 2...Nc6',
-          author: 'Bosburp',
-          url: 'https://lichess.org/study/55CPbtmd',
-        },
-        // The theory chapters; the sidelines heading, thanks, community and outro teach nothing.
-        chapters: (title: string) =>
-          !/Section 4: Sidelines|Special Thanks|Community|Outro/.test(title),
-        chapterName: (title: string) => chapterNamed(PORTSMOUTH_CHAPTERS, 'Portsmouth', title),
-      },
-      {
-        study: 'Vpb6r3Wq',
-        credit: {
-          title: 'CRUSH the Sicilian! 2...d6',
-          author: 'Bosburp',
-          url: 'https://lichess.org/study/Vpb6r3Wq',
-        },
-        chapters: (title: string) => !/Community|Outro/.test(title),
-        chapterName: (title: string) => chapterNamed(SICILIAN_BC4_CHAPTERS, '3.Bc4', title),
-      },
-    ],
-    engineCheck: true,
-    info: { id: 'anti-sicilian', title: 'Anti-Sicilian', side: 'white' },
-  },
-  italian: {
-    from: [
-      {
-        ...LENIN_ITALIAN,
-        chapters: (title: string) => Object.hasOwn(ITALIAN_CHAPTERS, title),
-        chapterName: (title: string) => ITALIAN_CHAPTERS[title],
-      },
-      {
-        ...KITSUNE_EVANS,
-        chapters: (title: string) => Object.hasOwn(EVANS_CHAPTERS, title),
-        chapterName: (title: string) => EVANS_CHAPTERS[title],
-      },
-      {
-        study: 'UmI4upXD',
-        credit: {
-          title: 'Italian Game; Two Knights Defense, Knight Attack',
-          author: 'Kitsune_Cavalry',
-          url: 'https://lichess.org/study/UmI4upXD',
-        },
-        chapters: () => true,
-        chapterName: (title: string) =>
-          chapterNamed(KNIGHT_ATTACK_CHAPTERS, 'Knight Attack', title),
-      },
-      // Wikibooks fills Black's third moves, one root per move so the page budget isn't spent deep
-      // in the first one.
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...Bc5',
-        topName: 'Giuoco Piano',
-        maxPages: 15,
-      },
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...Nf6',
-        topName: 'Two Knights Defence',
-        maxPages: 15,
-      },
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...Be7',
-        topName: 'Hungarian Defence',
-      },
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...d6',
-        topName: 'Paris Defence',
-      },
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...Nd4',
-        topName: 'Blackburne Shilling Gambit',
-      },
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...h6',
-        topName: 'Anti-Fried Liver Defence',
-        // The page says White strikes with 4.d4 but plays no move.
-        replies: { 'e4 e5 Nf3 Nc6 Bc4 h6': 'd4' },
-      },
-      {
-        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...f5',
-        topName: 'Rousseau Gambit',
-      },
-    ],
-    engineCheck: true,
-    info: { id: 'italian', title: 'Italian Game', side: 'white' },
-  },
-  'kings-indian': {
-    from: [
-      {
-        study: '6KDwzqUU',
-        credit: {
-          title: "King's Indian Complete Study Guide",
-          author: 'loloriv',
-          url: 'https://lichess.org/study/6KDwzqUU',
-        },
-        // The theory chapters; the two Bayonet reviews replay the main line as whole games.
-        chapters: (title: string) => Object.hasOwn(LOLORIV_KID_CHAPTERS, title),
-        chapterName: (title: string) => LOLORIV_KID_CHAPTERS[title],
-      },
-      {
-        study: 'Ks4C5dXu',
-        credit: {
-          title: "King's Indian Defense",
-          author: 'LeninPerez',
-          url: 'https://lichess.org/study/Ks4C5dXu',
-        },
-        chapters: (title: string) => Object.hasOwn(LENIN_KID_CHAPTERS, title),
-        chapterName: (title: string) => LENIN_KID_CHAPTERS[title],
-      },
-      {
-        study: '4HN6lhFd',
-        credit: {
-          title: "The King's Indian Defense",
-          author: 'heyucatchthis',
-          url: 'https://lichess.org/study/4HN6lhFd',
-        },
-        chapters: (title: string) => Object.hasOwn(HEYU_KID_CHAPTERS, title),
-        chapterName: (title: string) => HEYU_KID_CHAPTERS[title],
-      },
-      {
-        study: '179Uvn8y',
-        credit: {
-          title: "10 TRAPS in the King's Indian Defense (KID)",
-          author: 'Bosburp',
-          url: 'https://lichess.org/study/179Uvn8y',
-        },
-        chapters: (title: string) => Object.hasOwn(KID_TRAP_CHAPTERS, title),
-        chapterName: (title: string) => KID_TRAP_CHAPTERS[title],
-      },
-      // Wikibooks fills White's moves the studies skip. Its King's Indian pages are short, so each
-      // root is one move.
-      {
-        root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._c4/2...g6/3._Nc3/3...Bg7/4._e4/4...d6/5._f4',
-        topName: 'Four Pawns Attack',
-      },
-      {
-        root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._c4/2...g6/3._Nc3/3...Bg7/4._e4/4...d6/5._f3',
-        topName: 'Sämisch Variation',
-      },
-      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._c4/2...g6/3._Nc3/3...Bg7/4._Nf3' },
-      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._c4/2...g6/3._Nf3' },
-      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._Nf3/2...g6' },
-      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._Bg5' },
-      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._Bf4', topName: 'London System' },
-    ],
-    engineCheck: true,
-    info: { id: 'kings-indian', title: "King's Indian Defence", side: 'black' },
-  },
-  'queens-gambit': {
-    from: [
-      {
-        ...BOSBURP_QG,
-        // White's repertoire; the outro only says goodbye.
-        chapters: (title: string) => Object.hasOwn(QG_CHAPTERS, title),
-        chapterName: (title: string) => QG_CHAPTERS[title],
-      },
-      // Wikibooks fills the replies the study leaves open, one root per reply so the page budget
-      // isn't spent deep in the first one.
-      {
-        root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...dxc4',
-        topName: "Queen's Gambit Accepted",
-        rename: {
-          'Classical variation': 'Classical Defence',
-          'Classical Variation': 'Classical Defence',
-        },
-        maxPages: 20,
-      },
-      {
-        root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...e6',
-        topName: "Queen's Gambit Declined",
-        maxPages: 20,
-      },
-      {
-        root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...c6',
-        topName: 'Slav Defence',
-        // Steps on the way to the Czech Variation, which the study names already.
-        rename: {
-          'Modern Line': '',
-          'Slav accepted': '',
-          'Alapin variation': '',
-          'Alapin Variation': '',
-          'Central variation': '',
-          'Central Variation': '',
-        },
-        maxPages: 6,
-      },
-      { root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...Nf6', topName: 'Marshall Defence' },
-      { root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...Bf5', topName: 'Baltic Defence' },
-      {
-        root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...Nc6',
-        topName: 'Chigorin Defence',
-        maxPages: 15,
-      },
-      { root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...c5', topName: 'Austrian Defence' },
-    ],
-    engineCheck: true,
-    info: {
-      id: 'queens-gambit',
-      title: "Queen's Gambit",
-      side: 'white',
-    },
-  },
-};
-
 /** nohandlebars' Fischer Defense chapters the lesson reads, as variation names. */
 const FISCHER_CHAPTERS: Readonly<Record<string, string | undefined>> = {
   Overview: "King's Gambit: Fischer Defence",
@@ -1151,6 +371,18 @@ const ARCO_BISHOPS_CHAPTERS: Readonly<Record<string, string | undefined>> = {
   'The Boi Variation: McDonnell Double Gambit!?': "Bishop's Opening: McDonnell Gambit",
   'The Boi Variation: Four Pawns Gambit': "Bishop's Opening: Four Pawns Gambit",
 };
+
+/**
+ * A study's `chapters` and `chapterName` from one map of its chapters: the
+ * chapters it lists, named as it says. Unlike `chapterNamed`, a chapter the
+ * study gained since is left out, for a study read only for some chapters.
+ */
+function onlyChapters(names: Readonly<Record<string, string | undefined>>) {
+  return {
+    chapters: (title: string) => Object.hasOwn(names, title),
+    chapterName: (title: string) => names[title],
+  };
+}
 
 /**
  * The variation `names` gives the chapter `title` of a study whose titles
@@ -1417,4 +649,765 @@ const KID_TRAP_CHAPTERS: Readonly<Record<string, string | undefined>> = {
   'Trap 8: win the knight or get a good position': undefined,
   'Trap 9: win the rook!': undefined,
   'Trap 10: win the rook (again)': 'Sämisch Variation',
+};
+
+export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
+  'caro-kann': {
+    from: [
+      {
+        study: '8Uztu7Xx',
+        credit: {
+          title: 'Greatest Caro Kann: Living Repertoire',
+          author: 'Kampfschach_Official',
+          url: 'https://lichess.org/study/8Uztu7Xx',
+        },
+        /** The theory chapters: 🔵 core and 🟢 extra. Guides, plans and model games come later. */
+        chapters: (title: string) => /^(?:🔵|🟢)/u.test(title),
+        // "Sidelines Index" names the chapter's contents page, not a variation.
+        chapterName: (title, chapter) =>
+          numberedChapterName(title, chapter)?.replace(/: Sidelines Index$/, ''),
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...c6',
+        rename: {
+          'Tal variation': 'Tal Variation (4.h4) & Bayonet Attack (4.g4)',
+          // 3.Nd2, which the main study teaches under the Classical Variation.
+          'Modern variation': '',
+          'Accelerated Panov attack': 'Accelerated Panov',
+          'Breyer variation': '2.d3 Systems: Breyer Variation',
+          'Endgame offer': '',
+          'Dinic gambit': '',
+        },
+      },
+      {
+        ...WUB_C6,
+        ...onlyChapters(WUB_CARO_KANN),
+      },
+    ],
+    engineCheck: true,
+    info: {
+      id: 'caro-kann',
+      title: 'Caro-Kann Defence',
+      side: 'black',
+    },
+  },
+  slav: {
+    from: [
+      {
+        study: 'LGKgEao4',
+        credit: {
+          title: 'Black repertoaire: Slav Defense',
+          author: 'MMatkun',
+          url: 'https://lichess.org/study/LGKgEao4',
+        },
+        chapters: () => true,
+        chapterName: (title: string) => chapterNamed(SLAV_CHAPTERS, 'Slav', title),
+      },
+      {
+        study: 'aOkYYHpw',
+        credit: {
+          title: 'Slav Defense, Main Line',
+          author: 'Kitsune_Cavalry',
+          url: 'https://lichess.org/study/aOkYYHpw',
+        },
+        // The theory chapters; the master games after them come later.
+        ...onlyChapters(KITSUNE_CHAPTERS),
+      },
+      {
+        root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...c6',
+        rename: {
+          // 3...Nf6, which the main study's own chapters start under.
+          'Modern Line': '',
+          'Slav accepted': 'Pure Slav',
+        },
+      },
+      {
+        // 3.Nc3 e6, the Semi-Slav by its other move order (2...e6 3.Nc3 c6), which the main study only names.
+        study: 'mKEnJPUG',
+        credit: {
+          title: 'How to play the SEMI-SLAV DEFENSE',
+          author: 'ChessWillNotHurt1',
+          url: 'https://lichess.org/study/mKEnJPUG',
+        },
+        // The two lessons; the first chapter has no moves and the practice quiz repeats them.
+        chapters: (title: string) => title === 'Semi-Slav as Black' || title === 'Chapter 4',
+        chapterName: () => 'Semi-Slav',
+      },
+      {
+        // Its chapters reaching the Slav by 1.d4 c6 2.c4 d5, for 3.e3 and the Exchange Variation's 4.Nf3.
+        ...WUB_C6,
+        ...onlyChapters(WUB_SLAV),
+      },
+      {
+        // The Semi-Slav by 2...e6 3.Nc3 c6 (the Triangle): 4.e3 and the Marshall Gambit 4.e4.
+        root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...e6/3._Nc3/3...c6',
+        topName: 'Semi-Slav',
+      },
+      {
+        study: 'Z4TK3dUu',
+        credit: {
+          title: 'Slav Defense overview for Black',
+          author: 'Wurzelkraft',
+          url: 'https://lichess.org/study/Z4TK3dUu',
+        },
+        // The theory chapters, not "Conversions into Slav" (from 1.c4) or the example games.
+        ...onlyChapters(WURZELKRAFT_CHAPTERS),
+      },
+    ],
+    engineCheck: true,
+    info: {
+      id: 'slav',
+      title: 'Slav Defence',
+      side: 'black',
+    },
+  },
+  london: {
+    from: [
+      {
+        study: '0jynK1KI',
+        credit: {
+          title: 'The London System',
+          author: 'AverageLondonEnjoyer',
+          url: 'https://lichess.org/study/0jynK1KI',
+        },
+        chapters: () => true,
+        chapterName: (title: string) => chapterNamed(LONDON_CHAPTERS, 'London', title),
+      },
+      {
+        study: '2EaSmZtz',
+        credit: {
+          title: 'London System Repertoire',
+          author: 'davidharoldchess',
+          url: 'https://lichess.org/study/2EaSmZtz',
+        },
+        // The introduction is a picture of the setup and the Stonewall chapter is empty.
+        ...onlyChapters(DAVID_LONDON_CHAPTERS),
+      },
+      { root: 'Chess_Opening_Theory/1._d4/1...d5/2._Bf4' },
+      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._Bf4' },
+    ],
+    engineCheck: true,
+    info: {
+      id: 'london',
+      title: 'London System',
+      side: 'white',
+    },
+  },
+  'anti-london': {
+    from: [
+      {
+        study: '8vdDkGEV',
+        credit: {
+          title: 'London System (Black)',
+          author: 'Coldfield1994',
+          url: 'https://lichess.org/study/8vdDkGEV',
+        },
+        chapters: () => true,
+        chapterName: (title: string) => chapterNamed(COLDFIELD_CHAPTERS, 'anti-London', title),
+        // "Black can easily recapture the pawn with Bxc5 after ... defending d5 with e6."
+        replies: { 'd4 d5 Bf4 Nf6 Nf3 c5 dxc5': 'e6' },
+      },
+      {
+        study: 'Pg7swJlZ',
+        credit: {
+          title: 'Anti-London System Lines',
+          author: 'idontcareman88',
+          url: 'https://lichess.org/study/Pg7swJlZ',
+        },
+        // The 1...d5 chapter; the others answer 1.d4 with 1...Nf6, and the example games come later.
+        chapters: (title: string) => title === '1...d5 Set-up',
+        chapterName: () => undefined,
+      },
+      { root: 'Chess_Opening_Theory/1._d4/1...d5/2._Bf4' },
+      // 2...Nf6 by the other move order: 3.e3, and the 3.Nc3 that leads into the next root.
+      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._Bf4/2...d5' },
+      // The Jobava London (3.Nc3), which Wikibooks reaches by 1.d4 Nf6 2.Nc3 d5 3.Bf4.
+      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._Nc3/2...d5/3._Bf4' },
+      {
+        // White's view of ...c5: what White plans against it, reworded for Black. It books
+        // none of Black's moves; where only it shows them, Stockfish picks one.
+        study: '2EaSmZtz',
+        credit: {
+          title: 'London System Repertoire',
+          author: 'davidharoldchess',
+          url: 'https://lichess.org/study/2EaSmZtz',
+        },
+        writtenFor: 'white',
+        // Its ...c5 chapters reached by 1...d5; "vs Ne4" starts 1...Nf6 and "Part 5" is empty.
+        ...onlyChapters(DAVID_ANTI_LONDON_CHAPTERS),
+      },
+    ],
+    engineCheck: true,
+    info: {
+      id: 'anti-london',
+      title: 'Anti-London',
+      side: 'black',
+    },
+  },
+  'open-game': {
+    from: [
+      {
+        // Fischer's own analysis of 3...d6, his "bust" of the King's Gambit, and a modern line.
+        study: 'UIQySNsb',
+        credit: {
+          title: "King's Gambit Accepted: Fischer Defense",
+          author: 'nohandlebars',
+          url: 'https://lichess.org/study/UIQySNsb',
+        },
+        // The theory chapters, not the example game.
+        ...onlyChapters(FISCHER_CHAPTERS),
+        namedFrom: 3,
+      },
+      {
+        // White's view of the Fischer Defense, reworded for Black; its introductions lead to it.
+        study: 'ACmyH8gC',
+        credit: {
+          title: "King's Gambit | Full Repertoire",
+          author: 'Bosburp',
+          url: 'https://lichess.org/study/ACmyH8gC',
+        },
+        writtenFor: 'white',
+        ...onlyChapters(BOSBURP_KG_CHAPTERS),
+        namedFrom: 3,
+      },
+      // The rest of the King's Gambit Accepted: 3.Bc4, 3.Nc3 and the rest.
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._f4/2...exf4',
+        topName: "King's Gambit",
+        maxPages: 40,
+      },
+      // 2...Nc6 3.Bc4 g6 4.Qf3 Nf6 and ...Bg7: the fianchetto answer to the early queen.
+      { root: 'Chess_Opening_Theory/1._e4/1...e5/2._Qh5', topName: 'Wayward Queen Attack' },
+      { root: 'Chess_Opening_Theory/1._e4/1...e5/2._Qf3', topName: 'Wayward Queen Attack: 2.Qf3' },
+      // The mirror: ...Bc5 against White's Bc4, and early ...Bc5 elsewhere.
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...Bc5',
+        topName: 'Italian: Giuoco Piano',
+        maxPages: 60,
+      },
+      {
+        // White's Italian, reworded for Black.
+        ...LENIN_ITALIAN,
+        writtenFor: 'white',
+        ...onlyChapters(LENIN_ITALIAN_CHAPTERS),
+        namedFrom: 5,
+      },
+      {
+        // The Evans Gambit (4.b4), White's view, reworded for Black.
+        ...KITSUNE_EVANS,
+        writtenFor: 'white',
+        // The theory chapters, not the master game.
+        chapters: (title: string) => title !== 'Garry Kasparov vs Viswanathan Anand 1995',
+        chapterName: () => 'Italian: Giuoco Piano: Evans Gambit',
+        namedFrom: 5,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bb5/3...Bc5',
+        topName: 'Ruy Lopez: Classical Defence',
+        maxPages: 40,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._d4/3...exd4/4._Nxd4/4...Bc5',
+        topName: 'Scotch: Classical',
+        maxPages: 40,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Nc3/3...Bc5',
+        topName: 'Three Knights',
+        maxPages: 20,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._c3',
+        topName: 'Ponziani',
+        maxPages: 30,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Bc4/2...Bc5',
+        topName: "Bishop's Opening",
+        maxPages: 40,
+      },
+      { root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nc3/2...Bc5', topName: 'Vienna', maxPages: 30 },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._d4/2...exd4',
+        topName: 'Centre Game',
+        maxPages: 30,
+      },
+    ],
+    engineCheck: true,
+    info: {
+      id: 'open-game',
+      title: 'Open Game: Bowdler Mirror',
+      side: 'black',
+    },
+  },
+  albin: {
+    from: [
+      {
+        root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...e5',
+        topName: 'Albin Countergambit',
+        maxPages: 60,
+      },
+      {
+        // White's view of the Albin, reworded for Black; its introduction leads to it.
+        ...BOSBURP_QG,
+        writtenFor: 'white',
+        chapters: (title: string) =>
+          title === QG_INTRO || QG_CHAPTERS[title] === 'Albin Countergambit',
+        chapterName: (title: string) => QG_CHAPTERS[title],
+        namedFrom: 3,
+      },
+      {
+        // The London mirror: White's London against ...Bf5, whose main line plays Black's
+        // mirror (2...Bf5 3.e3 e6 4.Bd3 Bxd3): booked, its comments reworded for Black.
+        study: '2EaSmZtz',
+        credit: {
+          title: 'London System Repertoire',
+          author: 'davidharoldchess',
+          url: 'https://lichess.org/study/2EaSmZtz',
+        },
+        writtenFor: 'white',
+        recommends: true,
+        chapters: (title: string) => title === 'London System vs Bf5',
+        chapterName: () => 'London Mirror',
+        namedFrom: 3,
+      },
+      {
+        // More of what White plans against an early ...Bf5, reworded for Black; books none.
+        study: '0jynK1KI',
+        credit: {
+          title: 'The London System',
+          author: 'AverageLondonEnjoyer',
+          url: 'https://lichess.org/study/0jynK1KI',
+        },
+        writtenFor: 'white',
+        chapters: (title: string) => title === 'London vs. Early Bf5',
+        chapterName: () => 'London Mirror',
+        namedFrom: 3,
+      },
+      { root: 'Chess_Opening_Theory/1._d4/1...d5/2._Nf3', topName: '2.Nf3', maxPages: 40 },
+      { root: 'Chess_Opening_Theory/1._d4/1...d5/2._Nc3', topName: '2.Nc3', maxPages: 30 },
+    ],
+    engineCheck: true,
+    info: {
+      id: 'albin',
+      title: 'Albin Countergambit & London Mirror',
+      side: 'black',
+    },
+  },
+  'bc4-system': {
+    from: [
+      {
+        // Nathaniel's setup: a3 and Ba2, d3, Ne2, castle, Nbc3, Ng3, then f4.
+        study: 'bowdler-setup',
+        file: 'bowdler-setup.pgn',
+        credit: {
+          title: 'Bowdler Attack setup',
+          author: 'ntucker',
+          url: 'https://github.com/ntucker/chess/blob/main/scripts/import-study/sources/bowdler-setup.pgn',
+        },
+        chapters: () => true,
+        chapterName: () => 'Bowdler Attack',
+        namedFrom: 3,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Bc4',
+        topName: "Bishop's Opening",
+        rename: { "Bishop's Opening Classical Defence": 'Classical Defence' },
+        maxPages: 60,
+      },
+      {
+        study: 'G14vzkiG',
+        credit: {
+          title: "The Bishop's Opening",
+          author: 'Arco47',
+          url: 'https://lichess.org/study/G14vzkiG',
+        },
+        chapters: () => true,
+        chapterName: (title: string) =>
+          chapterNamed(ARCO_BISHOPS_CHAPTERS, "Bishop's Opening", title),
+        namedFrom: 3,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...c6/2._Bc4',
+        topName: 'Hillbilly Attack',
+        maxPages: 30,
+      },
+      {
+        // Black's view of 2.Bc4 against the Caro-Kann, reworded for White.
+        study: '2wkHsejC',
+        credit: {
+          title: 'Caro-Kann Defense, Hillbilly Attack',
+          author: 'Kitsune_Cavalry',
+          url: 'https://lichess.org/study/2wkHsejC',
+        },
+        writtenFor: 'black',
+        // The theory chapters, not the example games.
+        chapters: (title: string) => !title.includes(' -- '),
+        chapterName: () => 'Hillbilly Attack',
+        namedFrom: 3,
+      },
+      {
+        // Black's view of 2.Bc4 against the Caro-Kann, reworded for White.
+        ...WUB_C6,
+        writtenFor: 'black',
+        chapters: (title: string) =>
+          title === 'e4 – The Caro-Kann' ||
+          title === 'Other Second Moves – 2. Bc4 – The Hillbilly Attack',
+        chapterName: (title: string) =>
+          title === 'e4 – The Caro-Kann' ? undefined : 'Hillbilly Attack',
+      },
+      { root: 'Chess_Opening_Theory/1._e4/1...e6/2._Bc4', topName: 'French: 2.Bc4', maxPages: 20 },
+      {
+        // The Scandinavian's main line, where White's bishop comes to c4: Black's view, reworded for White.
+        study: 'gzj623hW',
+        credit: {
+          title: 'The scandinavian defense',
+          author: 'purple_royal',
+          url: 'https://lichess.org/study/gzj623hW',
+        },
+        writtenFor: 'black',
+        chapters: (title: string) =>
+          title === 'Mainline scandinavian' || title === 'Mainline in depth',
+        chapterName: () => 'Scandinavian',
+        namedFrom: 2,
+      },
+    ],
+    engineCheck: true,
+    info: {
+      id: 'bc4-system',
+      title: "Bishop's System (Bowdler)",
+      side: 'white',
+    },
+  },
+  sicilian: {
+    from: [
+      {
+        ...LOLORIV_SICILIAN,
+        // Black's theory chapters; the reviews replay them as quizzes or master games.
+        ...onlyChapters(SICILIAN_CHAPTERS),
+      },
+      {
+        // The chapters showing White's setups, reworded for Black: they book none of Black's moves.
+        ...LOLORIV_SICILIAN,
+        writtenFor: 'white',
+        ...onlyChapters(SICILIAN_WHITE_CHAPTERS),
+      },
+      {
+        study: 'tbNutvBV',
+        credit: {
+          title: 'Sicilian Defense: All you need to know',
+          author: 'andrew_tsiri',
+          url: 'https://lichess.org/study/tbNutvBV',
+        },
+        // Short chapters on nearly every line, chained by FEN: the Moscow, Kan and 2...g6 lines.
+        ...onlyChapters(TSIRI_CHAPTERS),
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...c5',
+        rename: {
+          // Pages grouping White's 3.d4 by Black's second move, which the main study names by system.
+          'Open Sicilian with ...d6': '',
+          'Open Sicilian with ...Nc6': '',
+          'Open Sicilian with 2...e6': '',
+          'French Sicilian': '',
+          'Smith-Morra gambit accepted': '',
+          '3...d6': '',
+          'Classical Sicilian': 'Classical Variation',
+          'Hyperaccelerated Dragon': 'Hyper-Accelerated Dragon',
+          'Kan Sicilian': 'Kan Variation',
+        },
+      },
+    ],
+    engineCheck: true,
+    info: {
+      id: 'sicilian',
+      title: 'Sicilian Defence',
+      side: 'black',
+    },
+  },
+  'ruy-lopez': {
+    from: [
+      {
+        ...LOLORIV_RUY,
+        // White's theory chapters; the reviews replay them as quizzes or master games.
+        ...onlyChapters(RUY_CHAPTERS),
+      },
+      {
+        // The Berlin, shown from Black's side, reworded for White: it books none of White's moves.
+        ...LOLORIV_RUY,
+        writtenFor: 'black',
+        chapters: (title: string) => title === 'Berlin Defense Theory',
+        chapterName: () => 'Berlin Defence',
+      },
+      {
+        study: 'ZkCxh0nB',
+        credit: {
+          title: 'Ruy Lopez',
+          author: 'LeninPerez',
+          url: 'https://lichess.org/study/ZkCxh0nB',
+        },
+        // Black's third moves the main study skips: the Steinitz, Classical, Schliemann and Cozio.
+        ...onlyChapters(LENIN_RUY_CHAPTERS),
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bb5',
+        rename: {
+          // 3...a6, under which the main study names its own variations.
+          'Morphy defence': '',
+          'Closed Spanish': 'Closed Ruy Lopez',
+          'Open Spanish': 'Open Ruy Lopez',
+          'Jaenisch gambit': 'Schliemann Defence',
+        },
+      },
+    ],
+    engineCheck: true,
+    info: {
+      id: 'ruy-lopez',
+      title: 'Ruy Lopez',
+      side: 'white',
+    },
+  },
+  french: {
+    from: [
+      {
+        study: 'cpULfWpl',
+        credit: {
+          title: 'French Defence - Complete Repertoire',
+          author: 'RadiantSmrf',
+          url: 'https://lichess.org/study/cpULfWpl',
+        },
+        chapters: () => true,
+        chapterName: (title: string) =>
+          chapterNamed(RADIANT_FRENCH_CHAPTERS, 'RadiantSmrf French', title),
+      },
+      {
+        study: 'bgAmUOck',
+        credit: {
+          title: 'Black repertoaire: French defense',
+          author: 'MMatkun',
+          url: 'https://lichess.org/study/bgAmUOck',
+        },
+        chapters: () => true,
+        chapterName: (title: string) =>
+          chapterNamed(MMATKUN_FRENCH_CHAPTERS, 'MMatkun French', title),
+      },
+      // Wikibooks fills White's second moves the studies skip, one root per move so the page budget
+      // isn't spent deep in the first one.
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e6/2._Nf3',
+        rename: { 'Wing gambit': 'Knight Variation: Wing Gambit' },
+        maxPages: 12,
+      },
+      { root: 'Chess_Opening_Theory/1._e4/1...e6/2._Bc4' },
+      { root: 'Chess_Opening_Theory/1._e4/1...e6/2._e5' },
+      { root: 'Chess_Opening_Theory/1._e4/1...e6/2._Nc3', maxPages: 10 },
+      { root: 'Chess_Opening_Theory/1._e4/1...e6/2._d3', topName: "King's Indian Attack" },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e6/2._d4/2...d5/3._exd5',
+        topName: 'Exchange Variation',
+      },
+    ],
+    engineCheck: true,
+    info: { id: 'french', title: 'French Defence', side: 'black' },
+  },
+  'anti-sicilian': {
+    from: [
+      {
+        study: '55CPbtmd',
+        credit: {
+          title: 'CRUSH the Sicilian! 2...Nc6',
+          author: 'Bosburp',
+          url: 'https://lichess.org/study/55CPbtmd',
+        },
+        // The theory chapters; the sidelines heading, thanks, community and outro teach nothing.
+        chapters: (title: string) =>
+          !/Section 4: Sidelines|Special Thanks|Community|Outro/.test(title),
+        chapterName: (title: string) => chapterNamed(PORTSMOUTH_CHAPTERS, 'Portsmouth', title),
+      },
+      {
+        study: 'Vpb6r3Wq',
+        credit: {
+          title: 'CRUSH the Sicilian! 2...d6',
+          author: 'Bosburp',
+          url: 'https://lichess.org/study/Vpb6r3Wq',
+        },
+        chapters: (title: string) => !/Community|Outro/.test(title),
+        chapterName: (title: string) => chapterNamed(SICILIAN_BC4_CHAPTERS, '3.Bc4', title),
+      },
+    ],
+    engineCheck: true,
+    info: { id: 'anti-sicilian', title: 'Anti-Sicilian', side: 'white' },
+  },
+  italian: {
+    from: [
+      {
+        ...LENIN_ITALIAN,
+        ...onlyChapters(ITALIAN_CHAPTERS),
+      },
+      {
+        ...KITSUNE_EVANS,
+        ...onlyChapters(EVANS_CHAPTERS),
+      },
+      {
+        study: 'UmI4upXD',
+        credit: {
+          title: 'Italian Game; Two Knights Defense, Knight Attack',
+          author: 'Kitsune_Cavalry',
+          url: 'https://lichess.org/study/UmI4upXD',
+        },
+        chapters: () => true,
+        chapterName: (title: string) =>
+          chapterNamed(KNIGHT_ATTACK_CHAPTERS, 'Knight Attack', title),
+      },
+      // Wikibooks fills Black's third moves, one root per move so the page budget isn't spent deep
+      // in the first one.
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...Bc5',
+        topName: 'Giuoco Piano',
+        maxPages: 15,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...Nf6',
+        topName: 'Two Knights Defence',
+        maxPages: 15,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...Be7',
+        topName: 'Hungarian Defence',
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...d6',
+        topName: 'Paris Defence',
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...Nd4',
+        topName: 'Blackburne Shilling Gambit',
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...h6',
+        topName: 'Anti-Fried Liver Defence',
+        // The page says White strikes with 4.d4 but plays no move.
+        replies: { 'e4 e5 Nf3 Nc6 Bc4 h6': 'd4' },
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...f5',
+        topName: 'Rousseau Gambit',
+      },
+    ],
+    engineCheck: true,
+    info: { id: 'italian', title: 'Italian Game', side: 'white' },
+  },
+  'kings-indian': {
+    from: [
+      {
+        study: '6KDwzqUU',
+        credit: {
+          title: "King's Indian Complete Study Guide",
+          author: 'loloriv',
+          url: 'https://lichess.org/study/6KDwzqUU',
+        },
+        // The theory chapters; the two Bayonet reviews replay the main line as whole games.
+        ...onlyChapters(LOLORIV_KID_CHAPTERS),
+      },
+      {
+        study: 'Ks4C5dXu',
+        credit: {
+          title: "King's Indian Defense",
+          author: 'LeninPerez',
+          url: 'https://lichess.org/study/Ks4C5dXu',
+        },
+        ...onlyChapters(LENIN_KID_CHAPTERS),
+      },
+      {
+        study: '4HN6lhFd',
+        credit: {
+          title: "The King's Indian Defense",
+          author: 'heyucatchthis',
+          url: 'https://lichess.org/study/4HN6lhFd',
+        },
+        ...onlyChapters(HEYU_KID_CHAPTERS),
+      },
+      {
+        // White's traps against the King's Indian, reworded for Black.
+        study: '179Uvn8y',
+        credit: {
+          title: "10 TRAPS in the King's Indian Defense (KID)",
+          author: 'Bosburp',
+          url: 'https://lichess.org/study/179Uvn8y',
+        },
+        writtenFor: 'white',
+        ...onlyChapters(KID_TRAP_CHAPTERS),
+      },
+      // Wikibooks fills White's moves the studies skip. Its King's Indian pages are short, so each
+      // root is one move.
+      {
+        root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._c4/2...g6/3._Nc3/3...Bg7/4._e4/4...d6/5._f4',
+        topName: 'Four Pawns Attack',
+      },
+      {
+        root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._c4/2...g6/3._Nc3/3...Bg7/4._e4/4...d6/5._f3',
+        topName: 'Sämisch Variation',
+      },
+      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._c4/2...g6/3._Nc3/3...Bg7/4._Nf3' },
+      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._c4/2...g6/3._Nf3' },
+      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._Nf3/2...g6' },
+      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._Bg5' },
+      { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._Bf4', topName: 'London System' },
+    ],
+    engineCheck: true,
+    info: { id: 'kings-indian', title: "King's Indian Defence", side: 'black' },
+  },
+  'queens-gambit': {
+    from: [
+      {
+        ...BOSBURP_QG,
+        // White's repertoire; the outro only says goodbye.
+        ...onlyChapters(QG_CHAPTERS),
+      },
+      // Wikibooks fills the replies the study leaves open, one root per reply so the page budget
+      // isn't spent deep in the first one.
+      {
+        root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...dxc4',
+        topName: "Queen's Gambit Accepted",
+        rename: {
+          'Classical variation': 'Classical Defence',
+          'Classical Variation': 'Classical Defence',
+        },
+        maxPages: 20,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...e6',
+        topName: "Queen's Gambit Declined",
+        maxPages: 20,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...c6',
+        topName: 'Slav Defence',
+        // Steps on the way to the Czech Variation, which the study names already.
+        rename: {
+          'Modern Line': '',
+          'Slav accepted': '',
+          'Alapin variation': '',
+          'Alapin Variation': '',
+          'Central variation': '',
+          'Central Variation': '',
+        },
+        maxPages: 6,
+      },
+      { root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...Nf6', topName: 'Marshall Defence' },
+      { root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...Bf5', topName: 'Baltic Defence' },
+      {
+        root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...Nc6',
+        topName: 'Chigorin Defence',
+        maxPages: 15,
+      },
+      { root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...c5', topName: 'Austrian Defence' },
+    ],
+    engineCheck: true,
+    info: {
+      id: 'queens-gambit',
+      title: "Queen's Gambit",
+      side: 'white',
+    },
+  },
 };

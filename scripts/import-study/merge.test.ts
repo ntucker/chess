@@ -26,14 +26,18 @@ const moves = (...sans: string[]) =>
   at(...sans).moves.map(({ uci, book, risk }) => [uci, book ?? false, risk]);
 
 describe('mergeChapters', () => {
-  it('drops accents from variation ids, keeping them in names', () => {
+  it.each([
+    ['Sämisch Variation', 'samisch-variation'],
+    ['Grünfeld', 'grunfeld'],
+    ['Nürnberg Variation', 'nurnberg-variation'],
+  ])('drops accents from variation ids, keeping them in names: %s', (name, id) => {
     const named = mergeChapters(
       lesson,
       chapters,
       chapters.map((chapter) => extractChapter(chapter, 'black')),
-      () => 'Sämisch Variation',
+      () => name,
     );
-    expect(named.variations['samisch-variation']?.name).toBe('Sämisch Variation');
+    expect(named.variations[id]?.name).toBe(name);
   });
 
   it('refuses a lesson without chapters', () => {
