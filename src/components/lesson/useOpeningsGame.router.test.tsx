@@ -81,6 +81,8 @@ afterEach(() => {
 
 describe('useOpeningsGame on the router', () => {
   it("runs navigation in transitions from the app's entry, before the router renders", () => {
+    // Back to Expo Router's default, which other tests' `open()` changes, so
+    // only the entry can set it.
     router.setTransitionMode('preload-only');
     jest.requireActual('../../../index');
     expect(mockModeAtEntry).toBe('always');
