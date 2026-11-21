@@ -422,7 +422,7 @@ function openingMoves(index: LessonIndex, side: Color): Map<PositionKey, Opening
   );
 }
 
-const isLichessStudy = ({ url }: LessonSource) => {
+export const isLichessStudy = ({ url }: LessonSource) => {
   const parsed = new URL(url);
   return onDomain(parsed, 'lichess.org') && parsed.pathname.startsWith('/study/');
 };

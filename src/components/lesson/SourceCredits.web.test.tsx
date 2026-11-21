@@ -50,9 +50,28 @@ describe('SourceCredits', () => {
     );
   });
 
-  it('names two studies by one author by their titles though the index has neither', () => {
+  it('credits two studies by one author together, numbered', () => {
     expect(credits([study('Loaded', 'loaded'), study('Other', 'other')], [])).toBe(
-      'Lesson from Loaded by Matkun and Other by Matkun',
+      'Lesson from lichess studies by Matkun (1, 2)',
+    );
+  });
+
+  it('credits one site at a time, Wikibooks pages under their book', () => {
+    const page = (moves: string): LessonSource => ({
+      title: `Chess Opening Theory, ${moves}`,
+      author: 'Wikibooks contributors',
+      url: `https://en.wikibooks.org/wiki/${moves}`,
+      license: { name: 'CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },
+    });
+    const sources = [
+      study('Slav', 'slav'),
+      page('1.e4 c6'),
+      { ...study('Caro', 'caro'), author: 'wub1234' },
+      page('1.e4 e5'),
+    ];
+    expect(credits(sources, sources)).toBe(
+      'Lesson from lichess studies by Matkun and wub1234; Chess Opening Theory by Wikibooks' +
+        ' contributors (CC\u00a0BY-SA\u00a04.0): 1.e4\u00a0c6 and 1.e4\u00a0e5',
     );
   });
 });
