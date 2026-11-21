@@ -5,7 +5,10 @@ import { createRoot, type Root } from 'test-renderer';
 import { KEEP_MS, StockfishWhileNeeded, useNeedsStockfish } from './demand';
 
 // The settings pick Maia for both, so only screens ask for Stockfish.
-const mockSettings = { evaluationEngine: 'maia', opponent: 1500 };
+const mockSettings: { evaluationEngine: string; opponent: number | string } = {
+  evaluationEngine: 'maia',
+  opponent: 1500,
+};
 jest.mock('@/settings/SettingsProvider', () => ({
   useSettings: () => mockSettings,
 }));
@@ -24,6 +27,18 @@ function Host() {
   return null;
 }
 
+// Whether full Stockfish's host is mounted.
+let fullHost = false;
+function FullHost() {
+  useEffect(() => {
+    fullHost = true;
+    return () => {
+      fullHost = false;
+    };
+  }, []);
+  return null;
+}
+
 function Screen({ needed }: { readonly needed: boolean }) {
   useNeedsStockfish(needed);
   return null;
@@ -35,7 +50,7 @@ const render = (screens: readonly boolean[]) =>
   act(async () => {
     root ??= createRoot();
     root.render(
-      <StockfishWhileNeeded host={<Host />}>
+      <StockfishWhileNeeded host={<Host />} fullHost={<FullHost />}>
         {screens.map((needed, n) => (
           <Screen key={n} needed={needed} />
         ))}
@@ -50,6 +65,7 @@ beforeEach(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   jest.useFakeTimers();
   mockSettings.evaluationEngine = 'maia';
+  mockSettings.opponent = 1500;
 });
 
 afterEach(async () => {
@@ -96,5 +112,19 @@ describe('StockfishWhileNeeded', () => {
     mockSettings.evaluationEngine = 'stockfish';
     await render([]);
     expect(hosts).toBe(1);
+  });
+
+  it('runs full Stockfish only while it is the opponent, and a minute after', async () => {
+    mockSettings.opponent = 'stockfish-full';
+    await render([]);
+    expect(fullHost).toBe(true);
+    expect(hosts).toBe(0);
+    mockSettings.opponent = 'stockfish';
+    await render([]);
+    expect(hosts).toBe(1);
+    await wait(KEEP_MS - 1);
+    expect(fullHost).toBe(true);
+    await wait(1);
+    expect(fullHost).toBe(false);
   });
 });

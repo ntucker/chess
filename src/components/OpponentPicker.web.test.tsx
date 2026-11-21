@@ -1,10 +1,16 @@
 // Renders Silk, which ships ES modules: the web project's transformIgnorePatterns
 // (package.json) lets @reactive through Babel for it.
+import { DataProvider } from '@data-client/react';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { SilkProvider } from '@reactive/silk-native';
-import { act } from 'react';
+import { act, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
+import {
+  type DownloadFailure,
+  type ReportDownload,
+  useReportFullStockfishDownload,
+} from '@/resources/download';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
 
@@ -17,6 +23,15 @@ jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 
 let root: Root | undefined;
 let host: HTMLElement;
+/** Reports full Stockfish's download as its host does. */
+let reportDownload: ReportDownload;
+function GrabReport() {
+  const report = useReportFullStockfishDownload();
+  useEffect(() => {
+    reportDownload = report;
+  }, [report]);
+  return null;
+}
 
 beforeEach(async () => {
   localStorage.clear();
@@ -25,11 +40,14 @@ beforeEach(async () => {
   root = createRoot(host);
   await act(async () =>
     root!.render(
-      <SilkProvider theme={themes.dark}>
-        <SettingsProvider>
-          <OpponentPicker />
-        </SettingsProvider>
-      </SilkProvider>,
+      <DataProvider>
+        <SilkProvider theme={themes.dark}>
+          <SettingsProvider>
+            <GrabReport />
+            <OpponentPicker />
+          </SettingsProvider>
+        </SilkProvider>
+      </DataProvider>,
     ),
   );
 });
@@ -70,6 +88,7 @@ describe('OpponentPicker', () => {
       '1500, Club',
       '1900, Advanced',
       'Stockfish, Best move',
+      'Full Stockfish, Full strength',
     ]);
     expect(focusedLabel()).toBe('1500, Club');
     expect(document.activeElement?.getAttribute('aria-selected')).toBe('true');
@@ -77,7 +96,7 @@ describe('OpponentPicker', () => {
     expect(press('ArrowDown')).toBe(true);
     expect(focusedLabel()).toBe('1900, Advanced');
     press('End');
-    expect(focusedLabel()).toBe('Stockfish, Best move');
+    expect(focusedLabel()).toBe('Full Stockfish, Full strength');
     press('Home');
     expect(focusedLabel()).toBe('1100, Beginner');
   });
@@ -209,6 +228,7 @@ describe('OpponentPicker', () => {
       '1500, Club',
       '1900, Advanced',
       'Stockfish, Best move',
+      'Full Stockfish, Full strength',
     ]);
     expect(focusedLabel()).toBe('1300');
     press('ArrowDown');
@@ -240,5 +260,29 @@ describe('OpponentPicker', () => {
     act(() => options()[3].click());
     expect(trigger().textContent).toBe('Stockfish');
     expect(list()).toBeNull();
+  });
+
+  it("shows full Stockfish's download beside it while it runs", async () => {
+    act(() => trigger().click());
+    act(() => options()[4].click());
+    expect(trigger().textContent).toBe('Full Stockfish');
+    const progress = () => trigger().nextElementSibling?.textContent;
+    // Nothing yet: the host hasn't started, or found the files in the cache.
+    expect(progress()).toBeUndefined();
+    const report = (percent: number, failure?: DownloadFailure) =>
+      act(async () => {
+        reportDownload(percent, failure);
+      });
+    await report(42);
+    expect(progress()).toBe('· 42% downloaded');
+    await report(0, 'retrying');
+    expect(progress()).toBe('· retrying download');
+    await report(0, 'newVersion');
+    expect(progress()).toBe('· site updated');
+    const reload = trigger().nextElementSibling?.nextElementSibling;
+    expect(reload?.getAttribute('role')).toBe('button');
+    expect(reload?.textContent).toBe('Reload');
+    await report(100);
+    expect(progress()).toBeUndefined();
   });
 });

@@ -21,7 +21,7 @@ import {
 import { lastPosition } from '@/game/replay';
 import { maiaEvaluation } from '@/maia/engine';
 import { JUDGE_RATING } from '@/maia/maia';
-import { watchStockfish } from '@/stockfish/engine';
+import { liteStockfish } from '@/stockfish/engine';
 
 /**
  * How `engine` judges the position after `moves` (UCI, space-separated): one
@@ -60,7 +60,7 @@ export const analysisKey = (engine: EvaluationEngine, line: readonly string[]) =
 
 /**
  * Tells `watcher` how `engine` judges the position after `line`: each deeper
- * depth of Stockfish's search, then its final one (`watchStockfish`). Maia
+ * depth of Stockfish's search, then its final one (`Stockfish.watch`). Maia
  * and a finished game (scored by its result: 1, 0.5 or 0) answer final at
  * once. Returns a function that stops watching.
  */
@@ -70,7 +70,7 @@ function watchAnalysis(
   watcher: Watcher,
 ): () => void {
   const { result } = lastPosition(line);
-  if (engine === 'stockfish' && !result) return watchStockfish(line, watcher);
+  if (engine === 'stockfish' && !result) return liteStockfish.watch(line, watcher);
   let watching = true;
   (result ? Promise.resolve(resultEvaluation(result)) : maiaEvaluation(JUDGE_RATING, line)).then(
     (evaluation) => {
@@ -150,7 +150,7 @@ interface Shown {
  * each deeper depth goes into the store as it arrives, so every screen
  * showing that position updates. The final analysis settles `getAnalysis`
  * too, for anything waiting on it. A position no screen shows any more
- * stops being searched (`watchStockfish`).
+ * stops being searched (`Stockfish.watch`).
  */
 export class AnalysisManager implements Manager {
   protected controller!: Controller;

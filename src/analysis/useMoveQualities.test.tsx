@@ -14,9 +14,11 @@ import { useMoveQualities } from './useMoveQualities';
 // Every position the hook has Stockfish search, by the moves before it; none answers.
 const mockSearched: string[] = [];
 jest.mock('@/stockfish/engine', () => ({
-  watchStockfish: (line: readonly string[]) => {
-    mockSearched.push(line.join(' '));
-    return () => {};
+  liteStockfish: {
+    watch: (line: readonly string[]) => {
+      mockSearched.push(line.join(' '));
+      return () => {};
+    },
   },
 }));
 

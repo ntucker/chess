@@ -8,7 +8,7 @@ import type { SquareName } from 'chessops/types';
 
 import type { AnalysisLine, Evaluation } from '@/evaluation/evaluation';
 import { parsePositionKey, playLine, playMove, positionKey } from '@/game/replay';
-import type { Opponent } from '@/opponent/opponent';
+import { isStockfish, type Opponent } from '@/opponent/opponent';
 
 import {
   type Lesson,
@@ -206,7 +206,7 @@ export function bookMoves(lesson: Lesson, line: readonly Uci[]): boolean[] {
  */
 export function opponentBand(lesson: Lesson, opponent: Opponent): number | undefined {
   if (!lesson.popularity) return undefined;
-  return ratingBandIndex(lesson.popularity, opponent === 'stockfish' ? Infinity : opponent);
+  return ratingBandIndex(lesson.popularity, isStockfish(opponent) ? Infinity : opponent);
 }
 
 /** A variation with its id. */

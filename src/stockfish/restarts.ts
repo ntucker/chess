@@ -41,7 +41,7 @@ export function restarts(setRunning: (running: boolean) => void): Supervisor & {
 
 /**
  * Whether a host runs its engine now, and the supervisor to attach it with
- * (`attachStockfish`) and to tell when it fails to start. `running` is false
+ * (`Stockfish.attach`) and to tell when it fails to start. `running` is false
  * from a failure until the restart, so a stuck engine stops at once.
  */
 export function useRestarts(): readonly [running: boolean, supervisor: Supervisor] {

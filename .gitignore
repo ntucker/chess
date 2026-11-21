@@ -3,6 +3,9 @@
 # dependencies
 node_modules/
 
+# Full Stockfish, copied from node_modules by `yarn install` (scripts/copy-stockfish.mjs)
+public/stockfish/
+
 # Expo
 .expo/
 dist/

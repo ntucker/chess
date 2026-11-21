@@ -2,5 +2,5 @@
 // app imports, so this never ships.
 import type { Supervisor } from './engine';
 
-/** A supervisor for an engine in a test (`attachStockfish`) that never restarts it. */
+/** A supervisor for an engine in a test (`Stockfish.attach`) that never restarts it. */
 export const NO_RESTARTS: Supervisor = { ready() {}, failed() {} };

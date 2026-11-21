@@ -5,7 +5,10 @@ import { type KeyDownEvent, ScrollView, StyleSheet, View } from 'react-native';
 
 import { hoversControl } from '@/board/pointer';
 import { describeOpponent, type Opponent, OPPONENT_PRESETS, OPPONENTS } from '@/opponent/opponent';
+import { reload } from '@/files/newVersion';
+import { type DownloadFailure, useFullStockfishDownload } from '@/resources/download';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
+import { FROM_OWN_SITE } from '@/stockfish/fullFiles';
 import { narrowLength, narrowStyles } from '@/theme/narrow';
 import { useNarrowStyles } from '@/theme/Narrow';
 
@@ -116,6 +119,7 @@ export function OpponentPicker() {
           );
         }}
       </Pressable>
+      {opponent === 'stockfish-full' ? <FullStockfishProgress /> : null}
       {opened ? (
         <Popup
           anchor={trigger}
@@ -131,6 +135,43 @@ export function OpponentPicker() {
             onClose={close}
           />
         </Popup>
+      ) : null}
+    </>
+  );
+}
+
+/** What a failed download says, kept short to fit beside the name on a phone. */
+const FAILURES: Record<DownloadFailure, string> = {
+  retrying: '· retrying download',
+  // A preview sharing the live site's copy needs a new build of its own.
+  newVersion: FROM_OWN_SITE
+    ? '· site updated'
+    : WEB
+      ? '· preview out of date'
+      : '· needs an app update',
+};
+
+/**
+ * How full Stockfish's one download is going, beside its name while it runs
+ * ("· 42% downloaded": the percent first, so a phone's crowded bar cuts the
+ * word, not the number), or that it failed and is tried again, or that the
+ * site has moved to a newer build, with a reload where that helps.
+ */
+function FullStockfishProgress() {
+  const download = useFullStockfishDownload();
+  if (!download) return null;
+  return (
+    <>
+      <Text role="caption" tone="secondary" numberOfLines={1} style={styles.progress}>
+        {download.failure ? FAILURES[download.failure] : `· ${download.percent}% downloaded`}
+      </Text>
+      {/* Beside the message rather than in it, so a narrow bar cuts the message, not the reload. */}
+      {FROM_OWN_SITE && download.failure === 'newVersion' ? (
+        <Pressable accessibilityRole="button" onPress={reload} style={styles.reload}>
+          <Text role="caption" tone="accent" style={styles.underlined}>
+            Reload
+          </Text>
+        </Pressable>
       ) : null}
     </>
   );
@@ -287,6 +328,10 @@ const styles = StyleSheet.create({
     textDecorationStyle: 'dotted',
   },
   chevronOpen: { transform: [{ rotate: '180deg' }] },
+  // Gives way like "· to move" beside it (PlayerBar).
+  progress: { flexShrink: 1, minWidth: 0, fontVariant: ['tabular-nums'] },
+  reload: { flexShrink: 0 },
+  underlined: { textDecorationLine: 'underline' },
   list: { width: 232, padding: 6, flexShrink: 1 },
   heading: { paddingHorizontal: 10, paddingTop: 6, paddingBottom: 6 },
   rows: { flexShrink: 1 },

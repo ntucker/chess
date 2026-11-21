@@ -2,23 +2,57 @@ import { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { readAsset } from '@/files/readAsset';
+import type { ReportDownload } from '@/resources/download';
 
-import { attachStockfish, type Connection, type Supervisor } from './engine';
+import { type Connection, liteStockfish, type Stockfish, type Supervisor } from './engine';
 import EngineView, { type EngineViewRef } from './EngineView';
 import { LOADER, WASM } from './files';
 import { useRestarts } from './restarts';
 
 /**
- * Runs Stockfish for as long as it's mounted, in a hidden web view
- * (EngineView), and connects it to watchStockfish. An engine that
+ * Runs Stockfish lite for as long as it's mounted, in a hidden web view
+ * (EngineView), and connects it to `liteStockfish`. An engine that
  * crashes, stops answering or can't start gets a new web view. Unmounting it
  * frees the engine and its web view.
  */
 export function StockfishHost() {
+  return <HiddenHost engine={liteStockfish} start={startLite} />;
+}
+
+/**
+ * Starts the engine in a web view whose page has loaded, unless `signal`
+ * aborts first (the web view went); throws if it can't.
+ */
+type StartEngine = (view: EngineViewRef, signal: AbortSignal) => Promise<void> | void;
+
+/**
+ * Lite's files are read each time rather than kept, so choosing Maia frees
+ * them too.
+ */
+async function startLite(view: EngineViewRef, signal: AbortSignal) {
+  const [loader, wasm] = await Promise.all([
+    readAsset(LOADER).then((file) => file.text()),
+    readAsset(WASM).then((file) => file.base64()),
+  ]);
+  if (!signal.aborted) view.start(loader, wasm);
+}
+
+interface HostProps {
+  readonly engine: Stockfish;
+  readonly start: StartEngine;
+  /** How a download the web view does itself goes (EngineView's `startFull`). */
+  readonly onDownload?: ReportDownload;
+}
+
+/**
+ * Runs a Stockfish build in a hidden web view while mounted, connected to
+ * `engine`, replacing a web view whose engine fails (`useRestarts`).
+ */
+export function HiddenHost(props: HostProps) {
   const [running, supervisor] = useRestarts();
   return (
     <View pointerEvents="none" style={styles.hidden}>
-      {running ? <Engine supervisor={supervisor} /> : null}
+      {running ? <Engine {...props} supervisor={supervisor} /> : null}
     </View>
   );
 }
@@ -27,39 +61,55 @@ export function StockfishHost() {
  * One engine in its own web view. Each restart mounts a new one, with its own
  * ref: Expo's DOM component binds a ref to the first web view it's given.
  */
-function Engine({ supervisor }: { readonly supervisor: Supervisor }) {
+function Engine({
+  engine,
+  start,
+  onDownload,
+  supervisor,
+}: HostProps & { readonly supervisor: Supervisor }) {
   const view = useRef<EngineViewRef>(null);
   const connection = useRef<Connection>(null);
-  const stopped = useRef(false);
+  // Aborts when this web view goes, so nothing reaches it or restarts it after.
+  const stop = useRef<AbortController>(null);
+  const stopped = () => stop.current?.signal.aborted ?? true;
 
   // Also runs after the web view's page reloads, which Expo does when the
-  // system ends the web view's process. The new engine then takes over the
-  // search the old one was running. The files are read each time rather
-  // than kept, so choosing Maia frees them too.
+  // system ends the web view's process. The old engine went with it: its
+  // search waits, detached, for the new one (`onStarted`), so its time to
+  // answer doesn't run out while the new one loads.
   const onLoad = async () => {
+    connection.current?.detach();
+    connection.current = null;
+    const page = view.current;
+    if (!page || !stop.current) return;
     try {
-      const [loader, wasm] = await Promise.all([
-        readAsset(LOADER).then((file) => file.text()),
-        readAsset(WASM).then((file) => file.base64()),
-      ]);
-      const engine = view.current;
-      if (!engine || stopped.current) return;
-      engine.start(loader, wasm);
-      // Expo's ref hands out standalone functions, which need no `this`.
-      connection.current = attachStockfish(engine.send, supervisor);
+      await start(page, stop.current.signal);
     } catch (error) {
-      if (stopped.current) return;
-      console.error(error);
-      supervisor.failed();
+      onError(String(error));
     }
   };
+  // Attached only once the engine has its files, so its time to answer
+  // (engine.ts) doesn't run during a download.
+  const onStarted = () => {
+    const started = view.current;
+    if (!started || stopped()) return;
+    // Expo's ref hands out standalone functions, which need no `this`.
+    connection.current = engine.attach(started.send, supervisor);
+  };
   const onLine = (line: string) => connection.current?.receive(line);
-  const onError = (message: string) => connection.current?.fail(message);
+  const onError = (message: string) => {
+    if (connection.current) return connection.current.fail(message);
+    // Not attached yet: its files didn't load, or its worker didn't start.
+    if (stopped()) return;
+    console.error(message);
+    supervisor.failed();
+  };
 
   useEffect(() => {
-    stopped.current = false;
+    const controller = new AbortController();
+    stop.current = controller;
     return () => {
-      stopped.current = true;
+      controller.abort();
       connection.current?.detach();
     };
   }, []);
@@ -70,6 +120,8 @@ function Engine({ supervisor }: { readonly supervisor: Supervisor }) {
       onLoad={onLoad}
       onLine={onLine}
       onError={onError}
+      onDownload={onDownload}
+      onStarted={onStarted}
       dom={{ style: styles.hidden }}
     />
   );

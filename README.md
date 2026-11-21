@@ -29,7 +29,7 @@ yarn web        # or: yarn android
 | `yarn vendor:silk [path]` | Rebuild the vendored Silk packages from a Silk checkout (default `../silk`) |
 | `yarn brand` | Redraw the logo and every icon made from it (`scripts/make-brand.mjs`) |
 | `yarn maia` | Download Maia's models and convert them for the app (see [Maia](#maia)) |
-| `yarn stockfish` | Copy Stockfish from the pinned `stockfish` package into `assets/stockfish/` (see [Evaluation bar](#evaluation-bar)) |
+| `yarn stockfish` | Copy Stockfish from the pinned `stockfish` package into `assets/stockfish/`, and full Stockfish into `public/stockfish/` (every `yarn install` runs it; see [Evaluation bar](#evaluation-bar)) |
 | `yarn import-study <name>` | Turn the lichess studies and Wikibooks pages listed in `scripts/import-study/studies.ts` into a lesson file in `assets/lessons/`, with popularity from the lichess explorer, which needs a lichess token in `LICHESS_TOKEN` or a proxy that adds one, notes rewritten by Claude through a signed-in `claude` CLI, and a generated idea note for each book move no guide explains (Claude's, Stockfish's and the explorer's answers committed in `scripts/import-study/answers/`, so a rerun rebuilds the same file and `--no-model` calls no model; usage in `scripts/import-study/index.ts`) |
 
 ## How it fits together
@@ -41,8 +41,8 @@ yarn web        # or: yarn android
 | Design system | [Silk](https://github.com/reactive/silk) (`@reactive/silk-native`) | `src/components/` |
 | Board | [chessground](https://github.com/lichess-org/chessground) in an [Expo DOM component](https://docs.expo.dev/guides/dom-components/) | `src/components/Board.tsx` |
 | Chess rules | [chessops](https://github.com/niklasf/chessops) | `src/game/` |
-| Opponent | [Maia](https://github.com/CSSLab/maia-chess) at a rating from 1100 to 1900 (1500 by default), or Stockfish as the hardest step; the rating in the opponent's name bar ("plays like a 1500") opens a list to pick it from, as does a footnote under the scoresheet ("Play against 1100 · 1500 · 1900 · Stockfish") | `src/opponent/` |
-| Evaluation bar, and the opponent when chosen | [Stockfish](https://stockfishchess.org) 19 lite in WebAssembly, run on the device | `src/stockfish/` |
+| Opponent | [Maia](https://github.com/CSSLab/maia-chess) at a rating from 1100 to 1900 (1500 by default), or Stockfish above them: lite, then full Stockfish as the hardest step; the rating in the opponent's name bar ("plays like a 1500") opens a list to pick it from, as does a footnote under the scoresheet ("Play against 1100 · 1500 · 1900 · Stockfish · Full Stockfish") | `src/opponent/` |
+| Evaluation bar, and the opponent when chosen | [Stockfish](https://stockfishchess.org) 19 lite in WebAssembly, run on the device; full Stockfish 19, downloaded when first chosen as the opponent | `src/stockfish/` |
 
 Silk isn't on npm yet, so the app installs it from the tarballs in `vendor/`.
 
@@ -65,11 +65,13 @@ The bar beside the board shows how the position stands: White's share of the bar
 
 On 240 positions from club-level games, judged against full Stockfish 19 at depth 24, Stockfish lite at depth 12 was off by 3.4 percentage points of expected score on average, and Maia 1900 by 10.4. Maia also misses mates: after 1. e4 e5 2. Qh5 d6 3. Nf3 Be6 4. Nc3 Nf6 5. Qh4 Be7 6. Ng5 O-O 7. Bd3 Bd7 8. Nd5 Nxd5, White mates with Qxh7, and Maia gives White 59%.
 
+The top opponent, **Full Stockfish**, is the package's full build: Stockfish 19 with its large network, a 99 MB WebAssembly file (79 MB compressed). Neither git nor the app holds it: the web export serves it from `public/stockfish/`, and the app downloads it the first time it's picked and keeps it (on Android, from the live site).
+
 Stockfish runs in a Web Worker. On the web that's in the page; on Android, whose JavaScript engine (Hermes) has no WebAssembly, it's inside a hidden web view (`src/stockfish/EngineView.tsx`, an Expo DOM component). Either way it searches off every thread that draws the app. It is licensed under the GPL-3.0 and ships unmodified as separate files that the app only talks to with UCI text commands; see `assets/stockfish/LICENSE` and the source at https://github.com/nmrugg/stockfish.js and https://github.com/official-stockfish/Stockfish.
 
 ## Web deploys
 
-Every push to `main` publishes the web app to GitHub Pages, at https://ntucker.github.io/chess/ (`.github/workflows/web.yml`). Every pull request from this repository also gets a preview at `https://ntucker.github.io/chess/pr-preview/pr-<number>/`, linked in a comment on the pull request. Previews skip minifying to build faster, keep their own settings and lesson progress, and are removed when the pull request closes. Fork and Dependabot pull requests only build.
+Every push to `main` publishes the web app to GitHub Pages, at https://ntucker.github.io/chess/ (`.github/workflows/web.yml`). Every pull request from this repository also gets a preview at `https://ntucker.github.io/chess/pr-preview/pr-<number>/`, linked in a comment on the pull request. Previews skip minifying to build faster, keep their own settings and lesson progress, and are removed when the pull request closes. Each copy of full Stockfish's 99 MB counts toward Pages' 1 GB site limit, so a preview loads the live site's copy, unless its pull request changes the Stockfish build. Once `main` changes the build, an older preview can't load it until it's built again. Fork and Dependabot pull requests only build.
 
 The workflow writes both into the `gh-pages` branch, which holds a single commit. A publish from `main` also keeps the hashed files of the site's last 10 builds (`scripts/replace-site.mjs`), so a page opened before a deploy still finds the files it loads late, such as Maia's worker or a lesson. A page older than that says a new version is out and offers a reload. The one-time setup is to set **Source** to **Deploy from a branch**, branch `gh-pages`, folder `/ (root)`, in the repository's **Settings → Pages**. Do it after the workflow has published `main` once, or the site is empty until it does.
 

@@ -5,12 +5,7 @@
  * a rerun searches only new positions and books the moves the last import did.
  */
 import { type Evaluation, settledAnalysis } from '@/evaluation/evaluation';
-import {
-  attachStockfish,
-  type Connection,
-  type SearchBudget,
-  stockfishAnalysis,
-} from '@/stockfish/engine';
+import { type Connection, liteStockfish, type SearchBudget } from '@/stockfish/engine';
 import { type NodeEngine, sendTo, startNodeEngine } from '@/stockfish/node';
 
 import type { Evaluate } from './engineCheck';
@@ -56,7 +51,7 @@ export async function nodeStockfish(cacheFile: string): Promise<{
     engine?.terminate?.();
     const started = await startNodeEngine();
     engine = started;
-    connection = attachStockfish(
+    connection = liteStockfish.attach(
       sendTo(started),
       {
         ready() {},
@@ -83,7 +78,7 @@ export async function nodeStockfish(cacheFile: string): Promise<{
       const { best, ...evaluation } = known.evaluation;
       return settledAnalysis(evaluation, best);
     }
-    const analysis = await stockfishAnalysis(line);
+    const analysis = await liteStockfish.analysis(line);
     const [{ uci, evaluation }] = analysis.lines;
     cache.add({
       key,

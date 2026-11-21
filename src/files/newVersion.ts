@@ -4,7 +4,9 @@ export const NEW_VERSION = 'A new version is out.';
 /**
  * A newer build of the web app has replaced the one this page loaded. A file
  * the page loads late (a lesson, Maia's worker) may then be gone
- * from the site: asking again can't help, but reloading the page can.
+ * from the site: asking again can't help, but reloading the page can. Full
+ * Stockfish's files (src/stockfish/full.ts) say the same when their folder
+ * serves another build, where on Android only an app update helps.
  */
 export class NewVersionError extends Error {
   constructor(options?: ErrorOptions) {

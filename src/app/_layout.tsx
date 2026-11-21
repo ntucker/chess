@@ -20,6 +20,7 @@ import { AnalysisManager } from '@/resources/analysis';
 import { ProgressSync } from '@/resources/progress';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { StockfishWhileNeeded } from '@/stockfish/demand';
+import { FullStockfishHost } from '@/stockfish/FullStockfishHost';
 import { StockfishHost } from '@/stockfish/StockfishHost';
 import { navigationThemes } from '@/theme/navigationTheme';
 import { themes } from '@/theme/theme';
@@ -45,7 +46,7 @@ export default function RootLayout() {
       <SettingsProvider>
         <SilkProvider theme={themes[colorScheme]}>
           <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-          <StockfishWhileNeeded host={<StockfishHost />}>
+          <StockfishWhileNeeded host={<StockfishHost />} fullHost={<FullStockfishHost />}>
             {/* Every screen ships in the app's first file (app.json turns off
                 Expo Router's asyncRoutes): a screen whose file loads on its
                 first visit opens empty for a moment, even in a transition,

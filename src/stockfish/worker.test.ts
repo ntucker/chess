@@ -23,16 +23,20 @@ class FakeWorker {
 
 /** Blob addresses created and not yet revoked. */
 let live: Set<string>;
+/** The types of the Blobs given addresses, in order. */
+let types: string[];
 /** Every address passed to URL.revokeObjectURL. */
 let revoked: string[];
 let created: number;
 
 beforeEach(() => {
   live = new Set();
+  types = [];
   revoked = [];
   created = 0;
   Object.assign(globalThis, { Worker: FakeWorker });
-  URL.createObjectURL = () => {
+  URL.createObjectURL = (blob: Blob) => {
+    types.push(blob.type);
     const url = `blob:${++created}`;
     live.add(url);
     return url;
@@ -52,6 +56,8 @@ describe('startStockfishWorker', () => {
   it('passes the WebAssembly address in the hash, and frees both files once the engine prints', () => {
     const lines: string[] = [];
     start((line) => lines.push(line));
+    // Typed, whatever the caller's Blob says.
+    expect(types).toEqual(['text/javascript', 'application/wasm']);
     expect(FakeWorker.last.url).toBe(`blob:1#${encodeURIComponent('blob:2')}`);
     expect(live.size).toBe(2);
     FakeWorker.last.onmessage?.({ data: 'uciok' });
