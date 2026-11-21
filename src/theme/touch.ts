@@ -31,3 +31,11 @@ export function touchPadding(content: number, least = 0): number {
     ? (`max(${least}px, (var(--touch-target, 0px) - ${content}px) / 2)` as unknown as number)
     : Math.max(least, (TOUCH_TARGET - content) / 2);
 }
+
+/**
+ * `length` negated, for a margin that undoes a padding from `touchPadding`:
+ * on the web a CSS length, so `calc` negates it.
+ */
+export function negated(length: number): number {
+  return WEB ? (`calc(-1 * ${length})` as unknown as number) : -length;
+}

@@ -33,26 +33,34 @@ export function SourceCredits({ sources }: { readonly sources: readonly LessonSo
   const Item = counted ? GroupCount : Group;
   return (
     <Text role="caption" tone="secondary">
-      Lesson from{' '}
-      {groups.map((group, i) => (
-        <Span key={i}>
-          {counted ? listSeparator(i, groups.length) : i > 0 ? '; ' : null}
-          <Item group={group} name={name} />
-        </Span>
-      ))}
-      {collapsible ? (
-        <>
-          {' · '}
-          <Span
-            role="button"
-            {...a11yState({ expanded: showAll })}
-            onPress={() => setShowAll(!showAll)}
-            style={styles.toggle}
-          >
-            {showAll ? 'Show fewer' : 'Show all sources'}
+      {/*
+       * All of it in a span, none straight in the paragraph. Android redoes a
+       * paragraph's text each time the paragraph moves if any text sits straight in
+       * it, and redone text of the same size loses its links' underlines
+       * (facebook/react-native#58579). A span's text doesn't move with it.
+       */}
+      <Span>
+        Lesson from{' '}
+        {groups.map((group, i) => (
+          <Span key={i}>
+            {counted ? listSeparator(i, groups.length) : i > 0 ? '; ' : null}
+            <Item group={group} name={name} />
           </Span>
-        </>
-      ) : null}
+        ))}
+        {collapsible ? (
+          <>
+            {' · '}
+            <Span
+              role="button"
+              {...a11yState({ expanded: showAll })}
+              onPress={() => setShowAll(!showAll)}
+              style={styles.toggle}
+            >
+              {showAll ? 'Show fewer' : 'Show all sources'}
+            </Span>
+          </>
+        ) : null}
+      </Span>
     </Text>
   );
 }
