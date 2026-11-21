@@ -154,22 +154,6 @@ describe('OpponentPicker', () => {
     expect(document.activeElement).toBe(trigger());
   });
 
-  it('shows disabled with the reason as its tooltip, and chooses nothing', async () => {
-    await show(<OpponentPicker disabledReason="Auto play is off" />);
-    act(() => trigger().focus());
-    press('ArrowDown');
-    expect(thumb()!.getAttribute('aria-disabled')).toBe('true');
-    expect(stop()).toBe('1500, Club');
-    expect(description()).toBe('Auto play is off');
-    // The thumb takes no focus, so the whole does, and says why.
-    expect(document.activeElement?.getAttribute('aria-label')).toBe('Opponent strength');
-    expect(document.activeElement?.contains(thumb())).toBe(true);
-    expect(tooltip()!.textContent).toBe('Auto play is off');
-    press('ArrowRight');
-    expect(stop()).toBe('1500, Club');
-    expect(trigger().textContent).toBe('1500');
-  });
-
   it('closes when scrolling moves the rating, not when a list elsewhere scrolls', () => {
     act(() => trigger().click());
     const elsewhere = document.createElement('div');

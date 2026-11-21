@@ -1,4 +1,4 @@
-import { a11yState, Inline, Pressable, Text, Tooltip, useTheme } from '@reactive/silk-native';
+import { a11yState, Inline, Pressable, Text, useTheme } from '@reactive/silk-native';
 import { useId } from 'react';
 import { StyleSheet } from 'react-native';
 
@@ -23,8 +23,6 @@ interface Props<T extends string | number> {
   readonly options: readonly FootnoteOption<T>[];
   readonly value: T;
   readonly onChange: (value: T) => void;
-  /** Why it can't be changed now, when it does nothing: it shows disabled, and this is its tooltip. */
-  readonly disabledReason?: string;
 }
 
 /**
@@ -32,7 +30,6 @@ interface Props<T extends string | number> {
  * chosen option in the primary ink. For settings changed rarely, so it stays
  * small and quiet. On a touch screen each option is at least a finger's
  * size (`touchTarget`), which spaces the options and the lines apart.
- * While it does nothing it shows disabled, its reason in a tooltip.
  */
 export function FootnoteChoice<T extends string | number>({
   name,
@@ -40,12 +37,10 @@ export function FootnoteChoice<T extends string | number>({
   options,
   value,
   onChange,
-  disabledReason,
 }: Props<T>) {
   const { color } = useTheme().theme.semantic;
   const id = useId();
-  const disabled = disabledReason !== undefined;
-  const choice = (
+  return (
     <Inline
       gap="0"
       align="center"
@@ -70,8 +65,7 @@ export function FootnoteChoice<T extends string | number>({
               // React Native Web ignores accessibilityHint, so the web reads
               // the hint from the hidden text below.
               {...(WEB ? { 'aria-describedby': hintId } : {})}
-              {...a11yState({ checked: selected, disabled })}
-              disabled={disabled}
+              {...a11yState({ checked: selected })}
               onPress={() => onChange(option.value)}
               style={styles.option}
             >
@@ -79,8 +73,7 @@ export function FootnoteChoice<T extends string | number>({
                 <Text
                   role="caption"
                   style={{
-                    color:
-                      (selected || hovered) && !disabled ? color.textPrimary : color.textSecondary,
+                    color: selected || hovered ? color.textPrimary : color.textSecondary,
                     fontWeight: selected ? '600' : '400',
                     textDecorationLine: hovered && !selected ? 'underline' : 'none',
                   }}
@@ -105,26 +98,6 @@ export function FootnoteChoice<T extends string | number>({
         );
       })}
     </Inline>
-  );
-  if (!disabled) return choice;
-  const reasonId = `${id}-reason`;
-  return (
-    <Tooltip.Root>
-      <Tooltip.Trigger
-        // Disabled options take no focus, so the whole is the Tab stop: the keyboard finds the reason.
-        tabIndex={0}
-        {...(WEB ? { 'aria-describedby': reasonId } : {})}
-        accessibilityHint={disabledReason}
-      >
-        {choice}
-        {WEB ? (
-          <Text nativeID={reasonId} aria-hidden style={styles.hint}>
-            {disabledReason}
-          </Text>
-        ) : null}
-      </Tooltip.Trigger>
-      <Tooltip.Content>{disabledReason}</Tooltip.Content>
-    </Tooltip.Root>
   );
 }
 

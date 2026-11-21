@@ -12,7 +12,7 @@ const OPTIONS = OPPONENT_PRESETS.map((opponent) => {
  * A footnote that picks how hard the opponent plays, easiest first:
  * "Play against 1100 · 1500 · 1900 · Stockfish · Full Stockfish".
  */
-export function OpponentChoice({ disabledReason }: { readonly disabledReason?: string }) {
+export function OpponentChoice() {
   const { opponent } = useSettings();
   const dispatch = useSettingsDispatch();
   return (
@@ -22,7 +22,6 @@ export function OpponentChoice({ disabledReason }: { readonly disabledReason?: s
       options={OPTIONS}
       value={opponent}
       onChange={(choice) => dispatch({ type: 'chosen', choice: { opponent: choice } })}
-      disabledReason={disabledReason}
     />
   );
 }

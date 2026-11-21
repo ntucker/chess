@@ -46,14 +46,6 @@ const HOVER_GRACE_MS = 200;
 /** How the popover was opened: by pointing at the trigger, or by pressing it (or a key). */
 type Opened = 'hover' | 'pressed';
 
-interface Props {
-  /**
-   * Why the opponent can't be changed now ("Auto play is off"), when it
-   * can't: the slider still opens, disabled, with this as its tooltip.
-   */
-  readonly disabledReason?: string;
-}
-
 /**
  * The opponent's step on the difficulty ladder ("1500", "Stockfish") as a
  * control in running text, opening a rating slider with a stop for each step.
@@ -63,7 +55,7 @@ interface Props {
  * the keyboard, Enter, Space or the up and down arrows open it with the thumb
  * focused, the arrows, Home and End choose, and Escape closes it.
  */
-export function OpponentPicker({ disabledReason }: Props) {
+export function OpponentPicker() {
   const { opponent } = useSettings();
   const dispatch = useSettingsDispatch();
   const { color } = useTheme().theme.semantic;
@@ -201,7 +193,7 @@ export function OpponentPicker({ disabledReason }: Props) {
           onPointerDown={holdWhilePressed}
           style={styles.popover}
         >
-          <StrengthSlider value={opponent} onChoose={choose} disabledReason={disabledReason} />
+          <StrengthSlider value={opponent} onChoose={choose} />
         </Popover.Content>
       </Popover.Root>
     </>
@@ -274,7 +266,7 @@ function aboutOf(opponent: Opponent) {
   return estimated ? `${style} Its rating is an estimate.` : style;
 }
 
-interface StrengthProps extends Props {
+interface StrengthProps {
   readonly value: Opponent;
   readonly onChoose: (opponent: Opponent) => void;
 }
@@ -287,9 +279,9 @@ interface StrengthProps extends Props {
  * go (or on each key), so sliding across full Stockfish doesn't start its
  * download. Nothing explains itself in standing text: how the stop plays is
  * the tooltip of the whole (a resting mouse, the keyboard's focus, or a tap
- * on the heading shows it), and so is why it can't be changed, when it can't.
+ * on the heading shows it).
  */
-function StrengthSlider({ value, onChoose, disabledReason }: StrengthProps) {
+function StrengthSlider({ value, onChoose }: StrengthProps) {
   const { color } = useTheme().theme.semantic;
   const [kept] = useState(value);
   const steps = stepsFor(value, kept);
@@ -298,23 +290,17 @@ function StrengthSlider({ value, onChoose, disabledReason }: StrengthProps) {
   const shown = slid ?? value;
   const shownAt = steps.indexOf(shown);
   const { level, preset } = describeOpponent(shown);
-  const disabled = disabledReason !== undefined;
-  const tip = disabledReason ?? aboutOf(shown);
+  const tip = aboutOf(shown);
   const tipId = useId();
   // React Native Web ignores accessibilityHint, so the web reads the tip from the hidden text below.
   const described = WEB ? { 'aria-describedby': tipId } : {};
   return (
     <Tooltip.Root>
-      <Tooltip.Trigger
-        // A disabled thumb takes no focus, so then the whole is the Tab stop: the keyboard finds
-        // the reason there.
-        tabIndex={disabled ? 0 : undefined}
-        {...(disabled ? { role: 'group', 'aria-label': 'Opponent strength', ...described } : {})}
-      >
+      <Tooltip.Trigger>
         <View style={styles.heading}>
           <Eyebrow>Opponent strength</Eyebrow>
           <View style={styles.readout}>
-            <Text role="heading" tone={disabled ? 'secondary' : 'primary'} numberOfLines={1}>
+            <Text role="heading" numberOfLines={1}>
               {preset ?? level}
             </Text>
             {preset ? (
@@ -333,9 +319,6 @@ function StrengthSlider({ value, onChoose, disabledReason }: StrengthProps) {
         </View>
         <Slider
           size={SLIDER_SIZE}
-          // Without the spotlight's color while it can't be changed.
-          tone={disabled ? 'neutral' : 'accent'}
-          disabled={disabled}
           // A rating scale runs left to right in every language.
           dir="ltr"
           accessibilityLabel="Opponent strength"
@@ -353,7 +336,7 @@ function StrengthSlider({ value, onChoose, disabledReason }: StrengthProps) {
           }}
           style={styles.slider}
         >
-          <Scale steps={steps} shownAt={shownAt} disabled={disabled} />
+          <Scale steps={steps} shownAt={shownAt} />
         </Slider>
         {WEB ? (
           // aria-hidden keeps it out of the reading order; aria-describedby still reads it.
@@ -399,7 +382,6 @@ interface ScaleProps {
   readonly steps: readonly Opponent[];
   /** The index of the stop under the thumb. */
   readonly shownAt: number;
-  readonly disabled: boolean;
 }
 
 /**
@@ -407,10 +389,9 @@ interface ScaleProps {
  * lit up to the thumb, its rating below, the break between Maia's last stop
  * and Stockfish's first (the scale jumps there, and so does the way of
  * playing), and each engine's name where its stops start, the thumb's lit.
- * Disabled, it dims with the slider and lights no engine.
  * Hidden from screen readers, which hear the thumb's own text.
  */
-function Scale({ steps, shownAt, disabled }: ScaleProps) {
+function Scale({ steps, shownAt }: ScaleProps) {
   const { theme, density } = useTheme();
   const { color } = theme.semantic;
   const { thumbSize } = mapSliderStyle(theme, { size: SLIDER_SIZE }, density);
@@ -420,18 +401,18 @@ function Scale({ steps, shownAt, disabled }: ScaleProps) {
   const engineBreak = steps.findIndex(isStockfish) - 0.5;
   const onStockfish = isStockfish(steps[shownAt]!);
   // The track's own fill, so a passed stop reads as a bead on it.
-  const lit = color.tones[disabled ? 'neutral' : 'accent'].solid;
+  const lit = color.tones.accent.solid;
   return (
     <View aria-hidden style={StyleSheet.absoluteFill}>
       <Eyebrow
-        tone={!disabled && !onStockfish ? 'primary' : 'secondary'}
+        tone={onStockfish ? 'secondary' : 'primary'}
         numberOfLines={1}
         style={[styles.engine, styles.maia]}
       >
         Maia
       </Eyebrow>
       <Eyebrow
-        tone={!disabled && onStockfish ? 'primary' : 'secondary'}
+        tone={onStockfish ? 'primary' : 'secondary'}
         numberOfLines={1}
         style={[styles.engine, at(engineBreak, NAME_INSET)]}
       >
