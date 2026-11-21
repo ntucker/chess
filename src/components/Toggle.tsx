@@ -28,7 +28,9 @@ export function Toggle({ label, checked, onChange, quiet, disabled, style }: Pro
   const field = (
     <Field.Root orientation="horizontal" disabled={Boolean(disabled)} style={[styles.field, style]}>
       <Switch size="sm" tone="accent" checked={checked} onCheckedChange={onChange} />
+      {/* Disabled, the label takes no press natively, so a tap on it reaches the tooltip. */}
       <Field.Label
+        disabled={Boolean(disabled)}
         numberOfLines={quiet ? 1 : undefined}
         style={[styles.label, quiet && { color: theme.semantic.color.textSecondary }]}
       >
