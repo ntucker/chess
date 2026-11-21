@@ -24,7 +24,7 @@ export interface ReviewScreen {
 }
 
 export type ReviewAction =
-  /** Starts the review of `game` afresh: another game on the same page. */
+  /** Starts the review afresh if `game` is another game than the one reviewed. */
   | { readonly type: 'review'; readonly game: string }
   /** Shows `plies[ply]`. */
   | { readonly type: 'goto'; readonly ply: number }

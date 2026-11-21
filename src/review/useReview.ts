@@ -57,7 +57,9 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
   useNeedsStockfish(active);
   const game = reviewedGame(learner, moves);
   const [stored, dispatch] = useReducer(reviewReducer, game, startReview);
-  // Another game on the same page starts its review afresh, from this render on.
+  // Another game on the same page starts its review afresh. React renders
+  // again at once with the new state, but this pass runs on, so it reads
+  // the fresh review too rather than a ply the new game may not have.
   if (stored.game !== game) dispatch({ type: 'review', game });
   const screen = stored.game === game ? stored : startReview(game);
   const { ply, dwelt } = screen;

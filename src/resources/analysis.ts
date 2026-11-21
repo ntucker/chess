@@ -145,10 +145,11 @@ export const storedAnalyses = (
 
 /**
  * Whether `engine`'s search of the position after `line` gave up (the engine
- * stopped on it too often): the error `AnalysisManager` stores for it, until
- * the search starts again. `ctrl.invalidate(getAnalysis, engine, line)`
- * starts it again for a screen still showing the position; a screen that
- * shows it later starts it too.
+ * stopped on it too often): the error `AnalysisManager` stores for it.
+ * `ctrl.invalidate(getAnalysis, engine, line)` clears it and starts the
+ * search again for a screen still showing the position. A screen that shows
+ * it later starts it again too, and the error stays until that search
+ * reports a depth.
  */
 export const analysisFailed = (
   ctrl: Controller,
@@ -235,9 +236,11 @@ export class AnalysisManager implements Manager {
     const state = ctrl.getState();
     if (isFinal(ctrl.get(PositionAnalysis, key, state))) return;
     // A search started again, by a later visit, stops counting as one that
-    // gave up once it reports a depth: invalidating clears the error, and
-    // the middleware starts nothing more, as it's running. Until then it may
-    // fail again at once, and asks for nothing more.
+    // gave up once it reports a depth: invalidating clears the error. The
+    // middleware checks `shown.release` only after the invalidate is
+    // reduced, by when this has returned and set it, so it starts no second
+    // search. Until a depth arrives the search may fail again at once, and
+    // then asks for nothing more.
     let gaveUp = analysisFailed(ctrl, engine, line, state);
     // False once it fails, which can happen before `watchAnalysis` returns.
     let running = true;
