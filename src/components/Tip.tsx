@@ -12,7 +12,7 @@ interface Props {
   readonly style?: StyleProp<ViewStyle>;
   /**
    * Keyboard focus can land on the tip itself, for `children` that take
-   * none, such as a badge: focus opens it as on a control.
+   * none, such as a disabled button: focus opens it as on a control.
    */
   readonly focusable?: boolean;
 }

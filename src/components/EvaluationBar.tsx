@@ -1,4 +1,4 @@
-import { useQuery, useSubscription } from '@data-client/react';
+import { useQuery } from '@data-client/react';
 import { a11yValue, Text, useReducedMotion, useTheme } from '@reactive/silk-native';
 import { useIsFocused } from 'expo-router';
 import { useMemo } from 'react';
@@ -12,7 +12,7 @@ import {
   type Reading,
   resultEvaluation,
 } from '@/evaluation/evaluation';
-import { analysisKey, getAnalysis, PositionAnalysis } from '@/resources/analysis';
+import { analysisKey, PositionAnalysis, useAnalysis } from '@/resources/analysis';
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNarrowPart } from '@/theme/Narrow';
 import { pieceColors } from '@/theme/pieceColors';
@@ -41,7 +41,7 @@ interface Props {
  * from Black's, in proportion to how each side is expected to score, with the
  * leading side's advantage in pawns (or moves to mate) at its end, as the
  * engine chosen in the settings judges it. It follows the analysis as it
- * deepens. Until the board's position has its first depth,
+ * deepens (`useAnalysis`). Until the board's position has its first depth,
  * the position before stands in when the store has it (the move's label
  * asks for it): how it scored the move played, when it lists that move,
  * else how it scored itself.
@@ -55,9 +55,7 @@ export function EvaluationBar({ line, orientation, style, reads }: Props) {
   const moves = useMemo(() => (position ? position.split(' ') : []), [position]);
   // A finished game reads as its result (1-0, ½) rather than an advantage.
   const result = useMemo(() => lastPosition(moves).result, [moves]);
-  const shown = result ? null : moves;
-  useSubscription(getAnalysis, ...(focused && shown && !reads ? [engine, shown] : [null]));
-  const analysis = useQuery(PositionAnalysis, ...(shown ? [analysisKey(engine, shown)] : [null]));
+  const analysis = useAnalysis(engine, result ? null : moves, focused && !reads);
   const before = useQuery(
     PositionAnalysis,
     ...(moves.length && !analysis ? [analysisKey(engine, moves.slice(0, -1))] : [null]),

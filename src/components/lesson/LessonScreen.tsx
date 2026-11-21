@@ -25,7 +25,7 @@ import { lessonsAfter, lessonsFrom, openingsLesson, withOpenings } from '@/lesso
 import { type Candidate, captionName, pathNames, shareSource } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
 import { describeOpponent } from '@/opponent/opponent';
-import { getLesson, LessonIndexContext, LESSONS, type LessonId } from '@/resources/lesson';
+import { getLesson, isLessonId, LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
@@ -62,12 +62,12 @@ export function LessonPage({
   /** The history entry the address is (`useOpeningsGame`). */
   readonly entry?: string;
 }) {
-  if (id !== undefined && !Object.hasOwn(LESSONS, id)) {
+  if (id !== undefined && !isLessonId(id)) {
     return <LessonPlaceholder message="There is no lesson here." />;
   }
   return (
     <BrowserOnly fallback={<LessonPlaceholder />}>
-      <Openings address={id as LessonId | undefined} variation={variation} entry={entry} />
+      <Openings address={id} variation={variation} entry={entry} />
     </BrowserOnly>
   );
 }
@@ -314,7 +314,7 @@ function LessonScreen({
   /** The game's moves, for the scoresheet beside the panes or in their place. */
   const scoresheetProps = {
     plies: game.plies,
-    qualities: game.qualities,
+    marks: game.qualities,
     ply: game.ply,
     // A record of the line, so it outlives the trap's card.
     trapped: view.trap && view.trap.ply + 1,

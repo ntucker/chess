@@ -2,9 +2,10 @@ import { Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import type { MoveQuality } from '@/analysis/quality';
+import { type MoveQuality, qualityRule } from '@/analysis/quality';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
+import { PointingArea } from '@/components/lesson/PointingArea';
 import { QualityBadge } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import type { Uci } from '@/lesson/lesson';
@@ -31,56 +32,59 @@ interface Props {
  * Stockfish's other top moves from the same position, each with how it
  * changes the position for the learner. Pointing at a row (the mouse
  * moving over it, keyboard focus, or a tap) previews its move on the board;
- * the mouse leaving the cards ends the preview.
+ * the mouse or focus leaving the cards ends the preview (`PointingArea`).
  */
 export function MoveCard({ whose, comparison, quality, qualityDetail, pointed, onPoint }: Props) {
   const labelled = useLabelled();
   const { played, others } = comparison;
-  const endPreview = ({ nativeEvent }: { readonly nativeEvent: { pointerType: string } }) => {
-    if (hovers(nativeEvent.pointerType)) onPoint(undefined);
-  };
+  const tip = quality && qualityTip(quality, qualityDetail);
   return (
-    <Stack gap="4" onPointerLeave={endPreview}>
-      <Stack style={labelled}>
-        <Eyebrow>{whose === 'yours' ? 'Your move' : 'Their move'}</Eyebrow>
-        <Surface elevation="sunken" border="subtle" radius="md" style={styles.card}>
-          <Row
-            move={played}
-            badge={quality && <LabelBadge quality={quality} detail={qualityDetail} />}
-            pointed={pointed === played.uci}
-            onPoint={onPoint}
-          />
-        </Surface>
-      </Stack>
-      {others.length ? (
+    <PointingArea onLeave={() => onPoint(undefined)}>
+      <Stack gap="4">
         <Stack style={labelled}>
-          <Eyebrow>{"Stockfish's moves"}</Eyebrow>
+          <Eyebrow>{whose === 'yours' ? 'Your move' : 'Their move'}</Eyebrow>
           <Surface elevation="sunken" border="subtle" radius="md" style={styles.card}>
-            {others.map((move) => (
-              <Row key={move.uci} move={move} pointed={pointed === move.uci} onPoint={onPoint} />
-            ))}
+            <Row
+              move={played}
+              badge={quality && tip && <LabelBadge quality={quality} tip={tip} />}
+              spoken={tip}
+              pointed={pointed === played.uci}
+              onPoint={onPoint}
+            />
           </Surface>
         </Stack>
-      ) : null}
-    </Stack>
+        {others.length ? (
+          <Stack style={labelled}>
+            <Eyebrow>{"Stockfish's moves"}</Eyebrow>
+            <Surface elevation="sunken" border="subtle" radius="md" style={styles.card}>
+              {others.map((move) => (
+                <Row key={move.uci} move={move} pointed={pointed === move.uci} onPoint={onPoint} />
+              ))}
+            </Surface>
+          </Stack>
+        ) : null}
+      </Stack>
+    </PointingArea>
   );
 }
 
 interface RowProps {
   readonly move: ComparedMove;
   readonly badge?: ReactNode;
+  /** What the badge says, for screen readers, which read the row's label in place of what's inside it. */
+  readonly spoken?: string;
   readonly pointed: boolean;
   readonly onPoint: (uci?: Uci) => void;
 }
 
-function Row({ move, badge, pointed, onPoint }: RowProps) {
+function Row({ move, badge, spoken, pointed, onPoint }: RowProps) {
   const { theme } = useTheme();
   const { uci, san, change } = move;
   const point = () => onPoint(uci);
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={[san, change?.description].filter(Boolean).join(', ')}
+      accessibilityLabel={[san, spoken, change?.description].filter(Boolean).join(', ')}
       accessibilityHint="Shows this move on the board"
       onPress={point}
       onFocus={point}
@@ -109,29 +113,13 @@ function Row({ move, badge, pointed, onPoint }: RowProps) {
   );
 }
 
-/** What each label means, said in its badge's tooltip. */
-const QUALITY_RULES: Readonly<Record<MoveQuality, string>> = {
-  book: "the guide's own move",
-  best: "Stockfish's top move, or one that gives nothing away",
-  good: 'gave away under 5% of the winning chances',
-  inaccuracy: 'gave away 5% to 10% of the winning chances',
-  mistake: 'gave away 10% to 20% of the winning chances',
-  blunder: 'gave away 20% or more of the winning chances',
-};
-
 /** "Blunder: gave away 20% or more of the winning chances. Here: 26%." */
-export const qualityTip = (quality: MoveQuality, detail?: string) =>
-  `${qualityLooks[quality].name}: ${QUALITY_RULES[quality]}.${detail ? ` ${detail}` : ''}`;
+const qualityTip = (quality: MoveQuality, detail?: string) =>
+  `${qualityLooks[quality].name}: ${qualityRule(quality)}.${detail ? ` ${detail}` : ''}`;
 
-function LabelBadge({
-  quality,
-  detail,
-}: {
-  readonly quality: MoveQuality;
-  readonly detail?: string;
-}) {
+function LabelBadge({ quality, tip }: { readonly quality: MoveQuality; readonly tip: string }) {
   return (
-    <Tip tip={qualityTip(quality, detail)}>
+    <Tip tip={tip}>
       <QualityBadge quality={quality} size={BADGE_SIZE} />
     </Tip>
   );

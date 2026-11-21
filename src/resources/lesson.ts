@@ -33,6 +33,9 @@ export const LESSONS = {
 
 export type LessonId = keyof typeof LESSONS;
 
+/** Whether `id` names a lesson, as an address's `lesson=` may not. */
+export const isLessonId = (id: string): id is LessonId => Object.hasOwn(LESSONS, id);
+
 /**
  * What the start position shows of each lesson before it loads, in the order
  * it lists them (src/lesson/openings.ts). The importer writes it beside the

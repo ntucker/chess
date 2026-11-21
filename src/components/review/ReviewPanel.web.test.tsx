@@ -42,7 +42,6 @@ function review(ply: number, searched: readonly number[], overrides: Partial<Rev
     moves,
     analyses,
     pointed: undefined,
-    waiting: moves.filter(({ status }) => status === 'waiting').length,
     nextMoment: undefined,
     goto: () => {},
     point: () => {},

@@ -120,7 +120,9 @@ export const getAnalysis = new Endpoint(
  * goes deeper until it's `final`. Undefined until the first depth arrives,
  * and while `line` is null, which asks for nothing (a screen that isn't
  * focused, or the first render, which the web export pre-renders and so
- * must not start an engine; asking starts only after rendering).
+ * must not start an engine; asking starts only after rendering). With
+ * `searches` false it only reads what the store has, for a screen that runs
+ * its own searches (the review).
  *
  * ```ts
  * const analysis = useAnalysis('stockfish', focused ? line : null);
@@ -130,8 +132,10 @@ export const getAnalysis = new Endpoint(
 export function useAnalysis(
   engine: EvaluationEngine,
   line: readonly string[] | null,
+  searches = true,
 ): Analysis | undefined {
-  useSubscription(getAnalysis, ...(line ? ([engine, line] as const) : ([null] as const)));
+  const asked = searches ? line : null;
+  useSubscription(getAnalysis, ...(asked ? ([engine, asked] as const) : ([null] as const)));
   return useQuery(PositionAnalysis, ...(line ? [analysisKey(engine, line)] : [null]));
 }
 
@@ -144,19 +148,19 @@ export const storedAnalyses = (
 ) => lines.map((line) => ctrl.get(PositionAnalysis, analysisKey(engine, line), state));
 
 /**
- * Whether `engine`'s search of the position after `line` gave up (the engine
- * stopped on it too often): the error `AnalysisManager` stores for it.
+ * Why `engine`'s search of the position after `line` gave up (the engine
+ * stopped on it too often), when it did: the error `AnalysisManager` stores.
  * `ctrl.invalidate(getAnalysis, engine, line)` clears it and starts the
  * search again for a screen still showing the position. A screen that shows
  * it later starts it again too, and the error stays until that search
  * reports a depth.
  */
-export const analysisFailed = (
+export const analysisError = (
   ctrl: Controller,
   engine: EvaluationEngine,
   line: readonly string[],
   state: State<unknown>,
-) => ctrl.getError(getAnalysis, engine, line, state) !== undefined;
+) => ctrl.getError(getAnalysis, engine, line, state);
 
 /** A position some screen shows (`useAnalysis`), and its search's watch, while it runs. */
 interface Shown {
@@ -241,7 +245,7 @@ export class AnalysisManager implements Manager {
     // reduced, by when this has returned and set it, so it starts no second
     // search. Until a depth arrives the search may fail again at once, and
     // then asks for nothing more.
-    let gaveUp = analysisFailed(ctrl, engine, line, state);
+    let gaveUp = analysisError(ctrl, engine, line, state) !== undefined;
     // False once it fails, which can happen before `watchAnalysis` returns.
     let running = true;
     const release = watchAnalysis(engine, line, {
@@ -253,7 +257,7 @@ export class AnalysisManager implements Manager {
         else ctrl.set(PositionAnalysis, key, record);
       },
       // The screen keeps the last depth it showed. The error goes into the
-      // store, so a screen can tell the search gave up (`analysisFailed`)
+      // store, so a screen can tell the search gave up (`analysisError`)
       // until it's invalidated or searched again.
       fail(error) {
         running = false;

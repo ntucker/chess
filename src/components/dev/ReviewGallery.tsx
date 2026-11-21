@@ -139,7 +139,6 @@ function StateCard({ title, sentence, searched, failed = [], ply }: State) {
     moves,
     analyses,
     pointed: screen.pointed,
-    waiting: moves.filter(({ status }) => status === 'waiting').length,
     nextMoment: undefined,
     goto: (target) => dispatch({ type: 'goto', ply: target }),
     point: (uci) => dispatch({ type: 'point', uci }),

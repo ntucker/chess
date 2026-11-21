@@ -70,7 +70,7 @@ describe('useReview', () => {
     expect(mockSearched).toEqual(['']);
     await sketch(0);
     expect(mockSearched).toEqual(['', 'e2e4']);
-    expect(reviews.at(-1)!.waiting).toBe(4);
+    expect(reviews.at(-1)!.moves.map(({ status }) => status)).toEqual(Array(4).fill('waiting'));
   });
 
   it('asks for nothing behind another screen', async () => {
@@ -82,13 +82,18 @@ describe('useReview', () => {
 
   it('skips a position whose search gave up, and searches it again on Try again', async () => {
     await render();
+    const error = new Error('gave up');
     await act(async () => {
-      void controllers[0].setError(getAnalysis, 'stockfish', [], new Error('gave up'));
+      void controllers[0].setError(getAnalysis, 'stockfish', [], error);
     });
     expect(mockSearched).toEqual(['', 'e2e4']);
     expect(reviews.at(-1)!.moves[0].status).toBe('failed');
+    // 1.e4's label needs the start; 2.Nf3's needs none of the positions that gave up.
+    expect(reviews.at(-1)!.failure(1)).toBe(error);
+    expect(reviews.at(-1)!.failure(3)).toBeUndefined();
     await act(async () => reviews.at(-1)!.tryAgain(1));
     expect(reviews.at(-1)!.moves[0].status).toBe('waiting');
+    expect(reviews.at(-1)!.failure(1)).toBeUndefined();
     expect(mockSearched.at(-1)).toBe('');
   });
 

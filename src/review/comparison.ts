@@ -29,9 +29,6 @@ export interface Comparison {
   readonly others: readonly ComparedMove[];
 }
 
-/** How many of Stockfish's moves the comparison looks at: all it ranks. */
-const TOP_MOVES = 3;
-
 /**
  * The move that leads to `plies[ply]` (from 1) beside Stockfish's top moves
  * from `plies[ply - 1]`, once its search there is final. Each reads as the
@@ -39,7 +36,8 @@ const TOP_MOVES = 3;
  * reads "0.0". The move played is measured as its label measures it
  * (`judgement`), so the two agree. Example: for Black after 7.Nc3, 7...Qxb2
  * reads "−3.3" beside 7...Nc6's "0.0". A book move, never searched, has no
- * changes and no other moves.
+ * changes and no other moves, and neither has any move until the search
+ * before it is final.
  */
 export function compareMove(
   plies: readonly Ply[],
@@ -55,12 +53,10 @@ export function compareMove(
     best && evaluation ? moveChange(best, evaluation, learner) : undefined;
   const played = before && judgement(before, finalOnly(analyses[ply]), uci, turn);
   const pos = parsePosition(fen)!;
-  const others = (before?.lines ?? [])
-    .slice(0, TOP_MOVES)
-    .flatMap(({ uci: other, evaluation }) =>
-      other && other !== uci
-        ? [{ uci: other, san: lineSans([other], pos.clone())[0], change: change(evaluation) }]
-        : [],
-    );
+  const others = (before?.lines ?? []).flatMap(({ uci: other, evaluation }) =>
+    other && other !== uci
+      ? [{ uci: other, san: lineSans([other], pos.clone())[0], change: change(evaluation) }]
+      : [],
+  );
   return { played: { uci, san, change: change(played?.evaluation) }, others };
 }

@@ -19,16 +19,7 @@ import { MoveCard } from './MoveCard';
 /** What the panel shows of a review (`useReview`); any analyses will do, so the gallery can make them up. */
 export type ReviewView = { readonly analyses: readonly (Analysis | undefined)[] } & Pick<
   Review,
-  | 'plies'
-  | 'ply'
-  | 'moves'
-  | 'pointed'
-  | 'waiting'
-  | 'nextMoment'
-  | 'goto'
-  | 'point'
-  | 'tryAgain'
-  | 'failure'
+  'plies' | 'ply' | 'moves' | 'pointed' | 'nextMoment' | 'goto' | 'point' | 'tryAgain' | 'failure'
 >;
 
 interface Props {
@@ -54,7 +45,8 @@ export function ReviewPanel({ eyebrow, learner, review }: Props) {
       {move ? (
         <MoveCard
           whose={move.mover === learner ? 'yours' : 'theirs'}
-          comparison={compareMove(plies, analyses, ply, learner)}
+          // A book move is the guide's: no other moves, and no changes beside its badge.
+          comparison={compareMove(plies, move.status === 'book' ? [] : analyses, ply, learner)}
           quality={move.quality}
           qualityDetail={lossDetail(move)}
           pointed={pointed}
@@ -79,10 +71,7 @@ export function ReviewPanel({ eyebrow, learner, review }: Props) {
         <Eyebrow>Scoresheet</Eyebrow>
         <Scoresheet
           plies={plies}
-          qualities={moves.map(({ quality }) => quality)}
-          unjudged={moves.map(({ status }) =>
-            status === 'waiting' || status === 'failed' ? status : undefined,
-          )}
+          marks={moves.map((move) => (move.quality === undefined ? move.status : move.quality))}
           ply={ply}
           onGoto={goto}
         />
@@ -91,7 +80,7 @@ export function ReviewPanel({ eyebrow, learner, review }: Props) {
   );
 }
 
-/** An action as an icon, named by its tooltip and to screen readers; none works yet. */
+/** An action as an icon, named by its tooltip and to screen readers; none works yet, so focus lands on the tip. */
 function ActionIcon({
   icon,
   label,
@@ -100,7 +89,7 @@ function ActionIcon({
   readonly label: string;
 }) {
   return (
-    <Tip tip={label}>
+    <Tip tip={label} focusable>
       <Button variant="outline" disabled accessibilityLabel={label}>
         <Ionicons name={icon} size={17} />
       </Button>
@@ -113,15 +102,15 @@ function ActionIcon({
  * one of them, that the reviews are coming in, with how far they've got;
  * at a move, its label; at a move whose search gave up, a Try again.
  */
-export function reviewHeadline({
+function reviewHeadline({
   plies,
   ply,
   moves,
-  waiting,
   failure,
   tryAgain,
-}: Pick<ReviewView, 'plies' | 'ply' | 'moves' | 'waiting' | 'failure' | 'tryAgain'>) {
+}: Pick<ReviewView, 'plies' | 'ply' | 'moves' | 'failure' | 'tryAgain'>) {
   const move = ply > 0 ? moves[ply - 1] : undefined;
+  const waiting = moves.filter(({ status }) => status === 'waiting').length;
   const coming = {
     title: 'The reviews are coming in…',
     detail: `Checking each move: ${moves.length - waiting} of ${moves.length}.`,

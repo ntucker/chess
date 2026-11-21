@@ -14,8 +14,8 @@ import { material } from '@/game/material';
 import { type Color, colorName, fenAfter, opposite, replay } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 import { withOpenings } from '@/lesson/openings';
-import { getLesson, LessonIndexContext, LESSONS, type LessonId } from '@/resources/lesson';
-import { useReview } from '@/review/useReview';
+import { getLesson, isLessonId, LessonIndexContext, type LessonId } from '@/resources/lesson';
+import { REVIEW_ENGINE, useReview } from '@/review/useReview';
 
 import { ReviewPanel } from './ReviewPanel';
 
@@ -30,6 +30,7 @@ export interface ReviewAddress {
 }
 
 const TITLE = 'Review · Opening Night';
+const HEADER = { place: { name: 'Review' }, back: { href: '/', label: 'Back to the game' } };
 
 /**
  * The review of the game the address names, on the board's page: the board
@@ -39,7 +40,7 @@ const TITLE = 'Review · Opening Night';
  */
 export function ReviewPage({ moves = '', side, lesson }: ReviewAddress) {
   if (side !== 'white' && side !== 'black') return <ReviewPlaceholder message={NO_GAME} />;
-  if (lesson !== undefined && !Object.hasOwn(LESSONS, lesson)) {
+  if (lesson !== undefined && !isLessonId(lesson)) {
     return <ReviewPlaceholder message="There is no lesson here." />;
   }
   const line = moves ? moves.split(' ') : [];
@@ -48,7 +49,7 @@ export function ReviewPage({ moves = '', side, lesson }: ReviewAddress) {
   return (
     <BrowserOnly fallback={<ReviewPlaceholder />}>
       <AsyncBoundary fallback={<ReviewPlaceholder />} errorComponent={ReviewFailure}>
-        <ReviewScreen moves={played} learner={side} lesson={lesson as LessonId | undefined} />
+        <ReviewScreen moves={played} learner={side} lesson={lesson} />
       </AsyncBoundary>
     </BrowserOnly>
   );
@@ -76,7 +77,7 @@ function ReviewScreen({
   return (
     <Stage
       title={TITLE}
-      header={{ place: { name: 'Review' }, back: { href: '/', label: 'Back to the game' } }}
+      header={HEADER}
       board={
         <BoardColumn
           game={{
@@ -100,7 +101,7 @@ function ReviewScreen({
             check: current.check,
             onMove: () => {},
           }}
-          evaluationReads="stockfish"
+          evaluationReads={REVIEW_ENGINE}
         />
       }
       program={
@@ -127,7 +128,7 @@ function ReviewPlaceholder({ message }: { readonly message?: string }) {
   return (
     <Stage
       title={TITLE}
-      header={{ place: { name: 'Review' }, back: { href: '/', label: 'Back to the game' } }}
+      header={HEADER}
       board={
         <BoardColumnPlaceholder>
           {message ? null : <Spinner label="Setting up the review" />}
