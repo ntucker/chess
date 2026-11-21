@@ -1579,6 +1579,8 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
           url: 'https://lichess.org/study/dV73Jv0R',
         },
         ...onlyChapters(LBB86_BERLIN_CHAPTERS),
+        // From 3...Nf6: its note on 1.e4 links a video of the study.
+        namedFrom: 6,
       },
       {
         // loloriv's Berlin chapter, written for Black; the rest of the study is White's Ruy Lopez.
@@ -1640,7 +1642,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
           url: 'https://lichess.org/study/hjMiyfDf',
         },
         writtenFor: 'white',
-        // Not its links or its example game.
+        // Its d3 chapter, not "links to other studies" or "Example Game 1".
         ...onlyChapters({ 'Anti-Berlin with d3': 'Anti-Berlin Variation' }),
       },
       {
@@ -1652,6 +1654,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
           url: 'https://lichess.org/study/b9PURAHh',
         },
         writtenFor: 'white',
+        // Its only chapter, named for the line it analyses.
         ...onlyChapters({
           'Attack the Berlin Defense - 5. Re1 - Full analysis by a GM': '4.O-O: 5.Re1',
         }),
