@@ -140,9 +140,9 @@ export function OpponentPicker() {
   );
 }
 
+/** What a failed download says, kept short to fit beside the name on a phone. */
 const FAILURES: Record<DownloadFailure, string> = {
   retrying: '· retrying download',
-  // Short, to fit beside the name.
   // A preview sharing the live site's copy needs a new build of its own.
   newVersion: FROM_OWN_SITE
     ? '· site updated'
