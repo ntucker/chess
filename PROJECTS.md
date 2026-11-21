@@ -66,10 +66,10 @@ new project follow `.agents/projects/setup.md`.
   dark versions only when the change looks different between the two (colors, theme tokens, images).
 - PRs changing native code (native modules or config, worklets like `src/maia/runNetwork.ts`,
   `android` branches of `Platform.OS`), touch handling they write (touch events, gestures; not a
-  Silk component's own), or platform-specific layout (flex tricks, `NATIVE_PARTS`) are checked on the Android emulator
-  (`.agents/projects/person-machine.md`), and say what was checked. Other PRs, such as text changes
-  or UI built from Silk components and existing narrow parts, need only the web check; say so in
-  the PR.
+  Silk component's own), or platform-specific layout (flex tricks, `NATIVE_PARTS`) are checked on
+  the Android emulator (`.agents/projects/person-machine.md`), and say what was checked. Other
+  PRs, such as text changes or UI built from Silk components and existing narrow parts, need only
+  the web check; say so in the PR.
 
 ## Follow-ups
 
