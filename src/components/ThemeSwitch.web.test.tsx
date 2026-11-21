@@ -39,6 +39,19 @@ afterEach(async () => {
 
 const button = () => host.querySelector<HTMLElement>('[role="button"]')!;
 const saved = () => JSON.parse(localStorage.getItem('settings')!).theme;
+const radio = (label: string) =>
+  host.querySelector<HTMLElement>(`[role="radio"][aria-label="${label}"]`)!;
+const choicesOpen = () => radio('Light').parentElement!.getAttribute('aria-hidden') !== 'true';
+/** A pointer of `pointerType` coming onto the button, or leaving it for the page. */
+const pointer = (type: 'pointerover' | 'pointerout', pointerType: string) =>
+  act(() => {
+    // jsdom has no PointerEvent: a mouse event that carries the pointer's type.
+    const event = new MouseEvent(type, {
+      bubbles: true,
+      relatedTarget: type === 'pointerout' ? document.body : null,
+    });
+    button().dispatchEvent(Object.assign(event, { pointerType }));
+  });
 
 describe('ThemeSwitch', () => {
   it('shows the theme in use, and a tap steps to the next', async () => {
@@ -52,11 +65,22 @@ describe('ThemeSwitch', () => {
   });
 
   it('names each choice for screen readers, and marks the one in use', async () => {
-    const radio = (label: string) =>
-      host.querySelector<HTMLElement>(`[role="radio"][aria-label="${label}"]`)!;
     expect(radio("Device's theme").getAttribute('aria-checked')).toBe('true');
     await act(async () => radio('Dark').click());
     expect(saved()).toBe('dark');
     expect(radio('Dark').getAttribute('aria-checked')).toBe('true');
+  });
+
+  it.each(['mouse', 'pen'])('opens the choices while a %s rests on it', (pointerType) => {
+    expect(choicesOpen()).toBe(false);
+    pointer('pointerover', pointerType);
+    expect(choicesOpen()).toBe(true);
+    pointer('pointerout', pointerType);
+    expect(choicesOpen()).toBe(false);
+  });
+
+  it("leaves a finger's choices to holding it", () => {
+    pointer('pointerover', 'touch');
+    expect(choicesOpen()).toBe(false);
   });
 });

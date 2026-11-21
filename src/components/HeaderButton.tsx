@@ -1,14 +1,23 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, type PressableProps, useTheme } from '@reactive/silk-native';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ComponentRef, Ref } from 'react';
+import type { View } from 'react-native';
 
 import { narrowLength, narrowStyles } from '@/theme/narrow';
 import { useNarrowStyles } from '@/theme/Narrow';
 
 interface Props extends Pick<
   PressableProps,
-  'accessibilityRole' | 'accessibilityLabel' | 'href' | 'hrefAttrs' | 'onPress'
+  | 'accessibilityRole'
+  | 'accessibilityLabel'
+  | 'accessibilityHint'
+  | 'href'
+  | 'hrefAttrs'
+  | 'onPress'
+  | 'onLongPress'
+  | 'delayLongPress'
 > {
+  readonly ref?: Ref<ComponentRef<typeof View>>;
   readonly icon: ComponentProps<typeof Ionicons>['name'];
   readonly iconSize: number;
 }

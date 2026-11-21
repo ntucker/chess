@@ -5,14 +5,13 @@ import { type GestureResponderEvent, type PointerEvent, View } from 'react-nativ
 import Animated from 'react-native-reanimated';
 
 import { hoversControl } from '@/board/pointer';
+import { HEADER_BUTTON_SIZE, HeaderButton } from '@/components/HeaderButton';
 import { springMotion, springs } from '@/motion/spring';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
 import { type Theme, THEMES } from '@/settings/settings';
 import { narrowStyles } from '@/theme/narrow';
 import { useNarrowStyles } from '@/theme/Narrow';
 import { timingFunction } from '@/theme/timingFunction';
-
-import { HEADER_BUTTON_SIZE } from './HeaderButton';
 
 const CHOICES: Record<Theme, { label: string; icon: ComponentProps<typeof Ionicons>['name'] }> = {
   system: { label: "Device's theme", icon: 'contrast-outline' },
@@ -25,14 +24,14 @@ const ICON_SIZE = 19;
 const HOLD_MS = 400;
 const MOTION = springMotion(springs.snappy);
 
-/** How the choices were opened: a mouse resting on the button, or a finger held on it. */
+/** How the choices were opened: a mouse or pen resting on the button, or a finger held on it. */
 type Opened = 'hover' | 'hold';
 
 /**
  * The header's theme button: one round button showing the theme in use.
- * A tap steps to the next theme. A resting mouse, or a finger held down,
- * springs the button open into all three, leftward; a mouse clicks one, and
- * a finger slides to one and lifts.
+ * A tap steps to the next theme. A resting mouse or pen (`hoversControl`),
+ * or a finger held down, springs the button open into all three, leftward;
+ * a mouse or pen clicks one, and a finger slides to one and lifts.
  */
 export function ThemeSwitch() {
   const { theme } = useSettings();
@@ -40,31 +39,27 @@ export function ThemeSwitch() {
   const { color, shadow } = useTheme().theme.semantic;
   const reducedMotion = useReducedMotion();
   const styles = useNarrowStyles(STYLES);
-  const [opened, setOpened] = useState<Opened>();
-  // The choice under the pointer while open: the theme in use until it moves.
-  const [pointed, setPointed] = useState<Theme>();
+  // While open: how, and the choice under the pointer once it moves.
+  const [menu, setMenu] = useState<{ how: Opened; pointed?: Theme }>();
   const button = useRef<ComponentRef<typeof View>>(null);
   // Where the open choices start and how wide each is, in window coordinates.
   const slots = useRef<{ left: number; size: number }>(undefined);
 
   const choose = (choice: Theme) => dispatch({ type: 'chosen', choice: { theme: choice } });
   const open = (how: Opened) => {
-    setOpened(how);
-    setPointed(undefined);
+    setMenu({ how });
     button.current?.measureInWindow((x, _y, size) => {
       slots.current = { left: x + size - THEMES.length * size, size };
     });
   };
-  const close = () => {
-    setOpened(undefined);
-    setPointed(undefined);
-  };
+  const close = () => setMenu(undefined);
   const point = (pageX: number) => {
-    if (!slots.current) return;
+    if (!slots.current || !menu) return;
     const index = Math.floor((pageX - slots.current.left) / slots.current.size);
-    setPointed(THEMES[Math.min(THEMES.length - 1, Math.max(0, index))]);
+    setMenu({ ...menu, pointed: THEMES[Math.min(THEMES.length - 1, Math.max(0, index))] });
   };
-  const shown = pointed ?? theme;
+  // Lit: the choice under the pointer, else the theme in use (whose icon alone is inked).
+  const lit = menu?.pointed ?? theme;
   const { label, icon } = CHOICES[theme];
 
   return (
@@ -74,53 +69,51 @@ export function ThemeSwitch() {
         if (hoversControl(nativeEvent.pointerType)) open('hover');
       }}
       onPointerMove={({ nativeEvent }: PointerEvent) => {
-        if (opened === 'hover' && hoversControl(nativeEvent.pointerType)) point(nativeEvent.pageX);
+        if (menu?.how === 'hover' && hoversControl(nativeEvent.pointerType)) {
+          point(nativeEvent.pageX);
+        }
       }}
       onPointerLeave={({ nativeEvent }: PointerEvent) => {
-        if (opened === 'hover' && hoversControl(nativeEvent.pointerType)) close();
+        if (menu?.how === 'hover' && hoversControl(nativeEvent.pointerType)) close();
       }}
       // A held finger keeps the button's touch as it slides over the choices.
       onTouchMove={({ nativeEvent }: GestureResponderEvent) => {
         // React Native Web leaves the touch's position to its touches.
-        if (opened === 'hold') point(nativeEvent.touches[0]?.pageX ?? nativeEvent.pageX);
+        if (menu?.how === 'hold') point(nativeEvent.touches[0]?.pageX ?? nativeEvent.pageX);
       }}
       onTouchEnd={() => {
-        if (opened !== 'hold') return;
-        choose(shown);
+        if (menu?.how !== 'hold') return;
+        if (menu.pointed && menu.pointed !== theme) choose(menu.pointed);
         close();
       }}
+      onTouchCancel={() => {
+        if (menu?.how === 'hold') close();
+      }}
     >
-      <Pressable
+      <HeaderButton
         ref={button}
+        icon={icon}
+        iconSize={ICON_SIZE}
         accessibilityRole="button"
         accessibilityLabel={`Theme: ${label}`}
         accessibilityHint="Switches to the next theme"
         onPress={() => choose(THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length])}
-        onLongPress={() => open('hold')}
+        // A mouse or pen already opened them by resting on the button.
+        onLongPress={() => {
+          if (!menu) open('hold');
+        }}
         delayLongPress={HOLD_MS}
-        style={({ pressed, hovered }) => [
-          styles.slot,
-          (pressed || hovered) && { backgroundColor: color.tones.neutral.subtle },
-        ]}
-      >
-        {({ pressed, hovered }) => (
-          <Ionicons
-            name={icon}
-            size={ICON_SIZE}
-            color={pressed || hovered ? color.textPrimary : color.textSecondary}
-          />
-        )}
-      </Pressable>
+      />
       <Animated.View
-        aria-hidden={!opened}
-        pointerEvents={opened ? 'auto' : 'none'}
+        aria-hidden={!menu}
+        pointerEvents={menu ? 'auto' : 'none'}
         style={[
           styles.choices,
-          opened ? styles.open : styles.shut,
+          menu ? styles.open : styles.shut,
           {
             backgroundColor: color.surfaceRaised,
             borderColor: color.borderSubtle,
-            shadowOpacity: opened ? shadow.raised.opacity : 0,
+            shadowOpacity: menu ? shadow.raised.opacity : 0,
           },
           // A Reanimated CSS transition, which StyleSheet's types don't know.
           {
@@ -136,12 +129,9 @@ export function ThemeSwitch() {
             accessibilityRole="radio"
             accessibilityLabel={CHOICES[choice].label}
             {...a11yState({ checked: choice === theme })}
-            focusable={Boolean(opened)}
+            focusable={Boolean(menu)}
             onPress={() => choose(choice)}
-            style={[
-              styles.slot,
-              choice === shown && { backgroundColor: color.tones.neutral.subtle },
-            ]}
+            style={[styles.slot, choice === lit && { backgroundColor: color.tones.neutral.subtle }]}
           >
             <Ionicons
               name={CHOICES[choice].icon}
