@@ -1,9 +1,9 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from '@jest/globals';
+import { afterEach, beforeAll, describe, expect, it, jest } from '@jest/globals';
 import { router, Slot, Stack } from 'expo-router';
 import { act, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
-import { goBack, useNavigationTransitions } from '@/components/navigation';
+import { goBack, runNavigationInTransitions } from '@/components/navigation';
 import { uciLine } from '@/lesson/lesson.fixture';
 import { lessonHref, variationHref } from '@/lesson/openings';
 import { FIXTURE_INDEX } from '@/lesson/openings.fixture';
@@ -18,7 +18,19 @@ import { useOpeningsGame } from './useOpeningsGame';
 import 'expo-router/build/testing-library/mocks';
 import { ExpoRoot } from 'expo-router/build/ExpoRoot';
 import { getMockContext } from 'expo-router/build/testing-library/mock-config';
-import { getDefaultTransitionMode } from 'expo-router/build/global-state/router';
+
+// The app's entry (index.ts) without Expo Router's, which would render the
+// app: it notes the transition mode the router would first render with. Jest
+// runs this once, when the entry test first requires index.ts.
+let mockModeAtEntry: string | undefined;
+jest.mock('expo-router/entry', () => {
+  mockModeAtEntry = jest
+    .requireActual<typeof import('expo-router/build/global-state/router')>(
+      'expo-router/build/global-state/router',
+    )
+    .getDefaultTransitionMode();
+  return {};
+});
 
 let latest: ReturnType<typeof useOpeningsGame> & { readonly id?: string };
 /** The openings layout, as `src/app/(openings)/_layout.tsx` reads its address. */
@@ -31,16 +43,10 @@ function Page() {
   return <Slot />;
 }
 
-/** The root layout's navigator, with navigation in transitions as the app has it. */
-function RootLayout() {
-  useNavigationTransitions();
-  return <Stack screenOptions={{ headerShown: false }} />;
-}
-
 let root: Root | undefined;
 async function open(url: string) {
   const context = getMockContext({
-    _layout: RootLayout,
+    _layout: () => <Stack screenOptions={{ headerShown: false }} />,
     '(openings)/_layout': () => (
       <LessonIndexContext value={FIXTURE_INDEX}>
         <SettingsProvider>
@@ -52,6 +58,8 @@ async function open(url: string) {
     '(openings)/lesson/[id]': () => null,
     openings: () => null,
   });
+  // As the app's entry does, before the router first renders.
+  runNavigationInTransitions();
   root = createRoot();
   await act(async () => root!.render(<ExpoRoot context={context} location={url} />));
 }
@@ -66,19 +74,18 @@ beforeAll(() => {
   // Load the routes at once, as the test's context holds them, not lazily.
   process.env.EXPO_ROUTER_IMPORT_MODE = 'sync';
 });
-beforeEach(() => {
-  // Each test starts from Expo Router's default, so only its layout sets the mode.
-  router.setTransitionMode('preload-only');
-});
 afterEach(() => {
   act(() => root?.unmount());
   root = undefined;
 });
 
 describe('useOpeningsGame on the router', () => {
-  it('runs navigation in transitions once the root layout is up', async () => {
-    await open('/');
-    expect(getDefaultTransitionMode()).toBe('always');
+  it("runs navigation in transitions from the app's entry, before the router renders", () => {
+    // Back to Expo Router's default, which other tests' `open()` changes, so
+    // only the entry can set it.
+    router.setTransitionMode('preload-only');
+    jest.requireActual('../../../index');
+    expect(mockModeAtEntry).toBe('always');
   });
 
   it('keeps the game as its own picks move the address, and resumes it on Back', async () => {
