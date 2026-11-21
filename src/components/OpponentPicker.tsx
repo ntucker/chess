@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   elevationBackground,
   mapSliderStyle,
+  sliderMarkStyle,
   Popover,
   Pressable,
   Slider,
@@ -15,7 +16,6 @@ import {
   type PointerEvent as ViewPointerEvent,
   StyleSheet,
   View,
-  type ViewStyle,
 } from 'react-native';
 
 import { hoversControl } from '@/board/pointer';
@@ -73,14 +73,14 @@ export function OpponentPicker({ disabledReason }: Props) {
   const trigger = useRef<ComponentRef<typeof View>>(null);
   const closing = useRef<ReturnType<typeof setTimeout>>(undefined);
   // Whether the pointer is over the trigger, and over the popover.
-  const over = useRef({ trigger: false, list: false });
+  const over = useRef({ trigger: false, popover: false });
   // Set while a press that began in the popover is held: aborting it stops listening for its lift.
-  const sliding = useRef<AbortController>(undefined);
+  const pressing = useRef<AbortController>(undefined);
   const popoverId = useId();
   useEffect(
     () => () => {
       clearTimeout(closing.current);
-      sliding.current?.abort();
+      pressing.current?.abort();
     },
     [],
   );
@@ -92,19 +92,19 @@ export function OpponentPicker({ disabledReason }: Props) {
   };
   const close = () => {
     clearTimeout(closing.current);
-    over.current.list = false;
+    over.current.popover = false;
     setOpened(undefined);
   };
   // The two report in either order as the pointer crosses from one to the other.
-  const hover = (part: 'trigger' | 'list', on: boolean) => {
+  const hover = (part: 'trigger' | 'popover', on: boolean) => {
     over.current[part] = on;
     if (on) return open('hover');
     leave();
   };
   /** Closes a popover opened by pointing, a moment after the pointer is off it and its trigger. */
   const leave = () => {
-    // A slide that strays off the popover keeps it until the pointer lifts.
-    if (sliding.current || over.current.trigger || over.current.list) return;
+    // A press (a slide) that strays off the popover keeps it until the pointer lifts.
+    if (pressing.current || over.current.trigger || over.current.popover) return;
     clearTimeout(closing.current);
     closing.current = setTimeout(
       () => setOpened((was) => (was === 'hover' ? undefined : was)),
@@ -112,18 +112,18 @@ export function OpponentPicker({ disabledReason }: Props) {
     );
   };
   // A finger's pointer leaves as it lifts, so only a hovering pointer counts on the popover.
-  const hoverList = ({ nativeEvent }: ViewPointerEvent, on: boolean) => {
-    if (hoversControl(nativeEvent.pointerType)) hover('list', on);
+  const hoverPopover = ({ nativeEvent }: ViewPointerEvent, on: boolean) => {
+    if (hoversControl(nativeEvent.pointerType)) hover('popover', on);
   };
   // The pointer may lift anywhere on the page, so the page listens for it.
-  const onSlideStart = () => {
+  const holdWhilePressed = () => {
     if (!WEB) return;
-    sliding.current?.abort();
+    pressing.current?.abort();
     const held = new AbortController();
-    sliding.current = held;
+    pressing.current = held;
     const onLift = () => {
       held.abort();
-      if (sliding.current === held) sliding.current = undefined;
+      if (pressing.current === held) pressing.current = undefined;
       leave();
     };
     window.addEventListener('pointerup', onLift, { signal: held.signal });
@@ -196,9 +196,9 @@ export function OpponentPicker({ disabledReason }: Props) {
           onOpenAutoFocus={(event) => {
             if (!focusesSlider) event.preventDefault();
           }}
-          onPointerEnter={(event) => hoverList(event, true)}
-          onPointerLeave={(event) => hoverList(event, false)}
-          onPointerDown={onSlideStart}
+          onPointerEnter={(event) => hoverPopover(event, true)}
+          onPointerLeave={(event) => hoverPopover(event, false)}
+          onPointerDown={holdWhilePressed}
           style={styles.popover}
         >
           <StrengthSlider value={opponent} onChoose={choose} disabledReason={disabledReason} />
@@ -251,13 +251,13 @@ const stepsFor = (value: Opponent, kept: Opponent) =>
     (opponent) => OPPONENT_PRESETS.includes(opponent) || opponent === value || opponent === kept,
   );
 
-/** A step's rating as the scale prints it: "1500", or "≈3000" for an estimate. */
+/** A step's rating as the scale prints it: "1500", or "≈3200" for an estimate. */
 function ratingOf(opponent: Opponent) {
   const { rating, estimated } = describeOpponent(opponent);
   return estimated ? `≈${rating}` : String(rating);
 }
 
-/** A step as a screen reader says it: "1500, Club", "Stockfish, about 3000, Best move". */
+/** A step as a screen reader says it: "1500, Club", "Stockfish, about 3200, Best move". */
 function spoken(opponent: Opponent) {
   const { level, rating, estimated, preset } = describeOpponent(opponent);
   return [level, estimated ? `about ${rating}` : undefined, preset]
@@ -296,6 +296,7 @@ function StrengthSlider({ value, onChoose, disabledReason }: StrengthProps) {
   // The stop the thumb is sliding over, until it is let go.
   const [slid, setSlid] = useState<Opponent>();
   const shown = slid ?? value;
+  const shownAt = steps.indexOf(shown);
   const { level, preset } = describeOpponent(shown);
   const disabled = disabledReason !== undefined;
   const tip = disabledReason ?? aboutOf(shown);
@@ -343,7 +344,7 @@ function StrengthSlider({ value, onChoose, disabledReason }: StrengthProps) {
           min={0}
           max={steps.length - 1}
           step={1}
-          value={[steps.indexOf(shown)]}
+          value={[shownAt]}
           thumbValueText={[spoken(shown)]}
           onValueChange={([index]) => setSlid(steps[index])}
           onValueCommit={([index]) => {
@@ -352,7 +353,7 @@ function StrengthSlider({ value, onChoose, disabledReason }: StrengthProps) {
           }}
           style={styles.slider}
         >
-          <Scale steps={steps} shown={shown} disabled={disabled} />
+          <Scale steps={steps} shownAt={shownAt} disabled={disabled} />
         </Slider>
         {WEB ? (
           // aria-hidden keeps it out of the reading order; aria-describedby still reads it.
@@ -396,8 +397,8 @@ const TIP_OFFSET = POPOVER_EDGE + 5;
 
 interface ScaleProps {
   readonly steps: readonly Opponent[];
-  /** The stop under the thumb. */
-  readonly shown: Opponent;
+  /** The index of the stop under the thumb. */
+  readonly shownAt: number;
   readonly disabled: boolean;
 }
 
@@ -409,26 +410,15 @@ interface ScaleProps {
  * Disabled, it dims with the slider and lights no engine.
  * Hidden from screen readers, which hear the thumb's own text.
  */
-function Scale({ steps, shown, disabled }: ScaleProps) {
+function Scale({ steps, shownAt, disabled }: ScaleProps) {
   const { theme, density } = useTheme();
   const { color } = theme.semantic;
   const { thumbSize } = mapSliderStyle(theme, { size: SLIDER_SIZE }, density);
   const last = steps.length - 1;
-  /**
-   * Places something `offset` right of where the thumb's center is at stop
-   * `index` (a half is midway between two stops): Silk's own placement, in
-   * percent, so it needs no measured width. Half its width back centers it.
-   */
-  const at = (index: number, offset: number): ViewStyle => {
-    const fraction = index / last;
-    return {
-      left: `${fraction * 100}%`,
-      marginLeft: thumbSize / 2 - fraction * thumbSize + offset,
-    };
-  };
-  const shownAt = steps.indexOf(shown);
+  /** Places something `offset` right of the thumb's center at stop `index` (a half is midway). */
+  const at = (index: number, offset: number) => sliderMarkStyle(index / last, thumbSize, offset);
   const engineBreak = steps.findIndex(isStockfish) - 0.5;
-  const onStockfish = isStockfish(shown);
+  const onStockfish = isStockfish(steps[shownAt]!);
   // The track's own fill, so a passed stop reads as a bead on it.
   const lit = color.tones[disabled ? 'neutral' : 'accent'].solid;
   return (
@@ -472,7 +462,7 @@ function Scale({ steps, shown, disabled }: ScaleProps) {
         <Text
           key={step}
           role="caption"
-          tone={step === shown ? 'primary' : 'secondary'}
+          tone={index === shownAt ? 'primary' : 'secondary'}
           style={[
             styles.rating,
             styles.stopRating,

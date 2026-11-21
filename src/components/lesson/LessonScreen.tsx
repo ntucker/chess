@@ -186,6 +186,8 @@ function LessonScreen({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [scoresheetOpen, setScoresheetOpen] = useState(false);
   const { auto } = useSettings();
+  // With auto play off the learner moves both sides, so the opponent's strength does nothing.
+  const strengthOff = auto ? undefined : 'Auto play is off';
   const learner = lesson.side;
   const rival = opposite(learner);
   const described = describeOpponent(opponent);
@@ -322,7 +324,7 @@ function LessonScreen({
     <>
       <LessonControls mode={mode} onMode={chooseMode} />
       <Stack gap="1">
-        <OpponentChoice />
+        <OpponentChoice disabledReason={strengthOff} />
         {credits}
       </Stack>
     </>
@@ -352,10 +354,7 @@ function LessonScreen({
             name: colorName(rival),
             detail: `The guide's moves, then ${described.lead.toLowerCase()}`,
             brief: described.lead,
-            // With auto play off the learner moves both sides, so strength does nothing.
-            detailControl: (
-              <OpponentPicker disabledReason={auto ? undefined : 'Auto play is off'} />
-            ),
+            detailControl: <OpponentPicker disabledReason={strengthOff} />,
             children: <AutoPlay />,
           }}
           board={{ ...board, onDrag }}
