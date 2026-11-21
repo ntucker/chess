@@ -1,7 +1,8 @@
 import { Dialog, Inline } from '@reactive/silk-native';
 import { useIsFocused } from 'expo-router';
 import { type ReactNode, useEffect, useEffectEvent } from 'react';
-import { ScrollView } from 'react-native';
+import { Platform, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HEADER_BUTTON_SIZE, HeaderButton } from '@/components/HeaderButton';
 import { narrowStyles } from '@/theme/narrow';
@@ -31,12 +32,17 @@ export function Sheet({ title, onClose, children }: Props) {
   const focused = useIsFocused();
   const close = useEffectEvent(onClose);
   const styles = useNarrowStyles(STYLES);
+  const bottom = useBottomInset();
   useEffect(() => {
     if (!focused) close();
   }, [focused]);
   return (
     <Dialog.Root open onOpenChange={onClose}>
-      <Dialog.Content placement="bottom" testID="sheet" style={styles.sheet}>
+      <Dialog.Content
+        placement="bottom"
+        testID="sheet"
+        style={[styles.sheet, { paddingBottom: bottom }]}
+      >
         <Inline align="center" justify="between" wrap="nowrap" style={styles.head}>
           <Dialog.Title>{title}</Dialog.Title>
           <HeaderButton
@@ -52,6 +58,12 @@ export function Sheet({ title, onClose, children }: Props) {
     </Dialog.Root>
   );
 }
+
+/**
+ * The navigation bar's height on Android, where the sheet runs to the screen's
+ * bottom edge under it (edge-to-edge). The web's sheet ends above it.
+ */
+const useBottomInset = Platform.OS === 'web' ? () => 0 : () => useSafeAreaInsets().bottom;
 
 /** Space inside the sheet: Silk's step 5. */
 const INSET = themes.dark.semantic.space[5];
