@@ -249,7 +249,10 @@ describe('ThemeSwitch', () => {
       expect(saved()).toBe('light');
     });
 
-    it.each([1, 3])('follows a lone new finger %i after a lost lift', (identifier) => {
+    it.each([
+      ["reuses the lost one's identifier", 1],
+      ['has a fresh identifier', 3],
+    ])('follows a lone new finger that %s after a lost lift', (_, identifier) => {
       touch('touchstart', 100);
       const next = finger(115, 15, identifier);
       send('touchstart', next, [next]);

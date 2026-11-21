@@ -82,10 +82,19 @@ interface Finger extends Point {
   readonly id: number;
 }
 
-/** Finger `id` if a touch event is about it (it went down, moved or lifted), else the event's first. */
+type Touches = GestureResponderEvent['nativeEvent']['touches'];
+
+/** Finger `id`'s touch in `touches`, if it's there. */
+const touchOf = (touches: Touches, id: number) =>
+  [...touches].find((touch) => touch.identifier === id);
+
+/**
+ * The finger a touch event is about (it went down, moved or lifted): with
+ * `id`, that finger, or undefined if the event isn't about it; without, the first.
+ */
 function fingerOf({ nativeEvent }: GestureResponderEvent, id?: number): Finger | undefined {
-  const touches = [...nativeEvent.changedTouches];
-  const touch = id === undefined ? touches[0] : touches.find((each) => each.identifier === id);
+  const { changedTouches } = nativeEvent;
+  const touch = id === undefined ? changedTouches[0] : touchOf(changedTouches, id);
   return touch && { id: touch.identifier, x: touch.pageX, y: touch.pageY };
 }
 
@@ -174,11 +183,9 @@ export function ThemeSwitch() {
         // button's touch to it. Once that finger is gone from the screen, or its
         // identifier comes back on a new finger, the next finger down starts
         // over, so a lost lift can't stick.
+        const { touches, changedTouches } = event.nativeEvent;
         const from = start.current;
-        const startOver =
-          !from ||
-          fingerOf(event, from.id) ||
-          ![...event.nativeEvent.touches].some((touch) => touch.identifier === from.id);
+        const startOver = !from || touchOf(changedTouches, from.id) || !touchOf(touches, from.id);
         if (startOver) start.current = fingerOf(event);
       }}
       // A held finger keeps the button's touch as it swipes over the choices.
