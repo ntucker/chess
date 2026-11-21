@@ -194,7 +194,8 @@ function variationLines(lesson: Lesson, picks: readonly Uci[][]): IndexVariation
  * `variation` that games play most often: the product of each move's share
  * of its position's games (`moveShares`). Best first, so the first position
  * of `variation` reached is the likeliest; every move past it only lowers
- * the share. With `bookOnly` the learner plays only book moves.
+ * the share. With `bookOnly` the learner plays only book moves past the
+ * starts; a start may already hold one outside the book (`startShare`).
  */
 function likeliestInto(
   lesson: Lesson,
@@ -206,19 +207,12 @@ function likeliestInto(
   const queue = new LikeliestFirst();
   // Each start counts as often as games play it, so a rare line that picks
   // the lesson (1.e4 e5 2.Qf3) doesn't open a variation the main lines reach.
-  // The learner plays the book here too, but a start may hold a move outside
-  // it (one found by the search for any move), which games share with all.
-  // Every move of a start is the lesson's, so none is missing from both.
-  const shareOf = (pos: Chess, uci: Uci) =>
-    [bookOnly, false]
-      .map((only) => sharesAt(lesson, pos, only).find((move) => move.uci === uci)?.share)
-      .find((share) => share !== undefined) ?? 0;
   for (const line of starts) {
     const pos = Chess.default();
     let share = 1;
     let legal = true;
     for (const uci of line) {
-      share *= shareOf(pos, uci); // Its share where it's played, so before playing it.
+      share *= startShare(lesson, pos, uci, bookOnly); // Where it's played, so before playing it.
       legal = !!playMove(pos, uci);
       if (!legal) break;
     }
@@ -238,6 +232,18 @@ function likeliestInto(
     }
   }
   return undefined;
+}
+
+/**
+ * The share of the games at `pos` of `uci`, a move of a line `likeliestInto`
+ * starts from: as `sharesAt` gives it, or, for a learner's move outside the
+ * book (a line the search for any move found), its share among all the
+ * moves there; 0 for a move the lesson doesn't have there.
+ */
+function startShare(lesson: Lesson, pos: Chess, uci: Uci, bookOnly: boolean): number {
+  const shareIn = (only: boolean) =>
+    sharesAt(lesson, pos, only).find((move) => move.uci === uci)?.share;
+  return shareIn(bookOnly) ?? (bookOnly ? shareIn(false) : undefined) ?? 0;
 }
 
 /**

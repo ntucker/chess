@@ -89,7 +89,7 @@ describe('engineCheck', () => {
     it('says the position is level, or that the learner is still ahead, when the engine does', async () => {
       // Black stands better after 1.d4, and 1...e5 gives away 0.12 of it.
       const noteAfter = async (before: number, after: { score: number; pawns: number }) => {
-        const scores: Record<string, FinalAnalysis> = {
+        const scores: Partial<Record<string, FinalAnalysis>> = {
           [keyAfter('d4')]: scored({ score: before, pawns: -2 }),
           [keyAfter('d4', 'd5')]: scored({ score: before, pawns: -2 }),
           [keyAfter('d4', 'e5')]: scored(after),
