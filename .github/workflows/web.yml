@@ -195,11 +195,14 @@ jobs:
             tree=$(git write-tree)
             # A newer push to main publishes its own build, so this older one
             # would only roll the site back. Checked on every attempt, right
-            # before pushing.
-            if [ "$target" = . ] && [ "$(git ls-remote origin refs/heads/main | cut -f1)" != "$GITHUB_SHA" ]; then
-              echo "::notice::Not published: a newer push to main publishes instead."
-              echo "copied=false" >> "$GITHUB_OUTPUT"
-              exit 0
+            # before pushing; a failed lookup retries rather than skipping.
+            if [ "$target" = . ]; then
+              main=$(git ls-remote --exit-code origin refs/heads/main) || { sleep $((attempt * 5)); continue; }
+              if [ "${main%%$'\t'*}" != "$GITHUB_SHA" ]; then
+                echo "::notice::Not published: a newer push to main publishes instead."
+                echo "copied=false" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
             fi
             # An unchanged tree (say, a close after a run already dropped the
             # preview) skips the push, which would only rebuild Pages. A re-run
