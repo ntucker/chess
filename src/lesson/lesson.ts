@@ -176,7 +176,8 @@ export interface Note {
    * The AI model that wrote the text and chose its ideas (the importer's own
    * ideas on the same move may join them), on every note an AI step of the
    * importer wrote: a rewritten comment, or a `generated` note. The app
-   * credits it. Absent on notes no model wrote.
+   * credits it on a `generated` note only, since a rewritten comment is the
+   * study's analysis. Absent on notes no model wrote.
    */
   readonly model?: AiModel;
   /** What the board draws; none means the note is text only. */
