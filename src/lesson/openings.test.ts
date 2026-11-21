@@ -518,6 +518,19 @@ describe('openingsLesson', () => {
     );
   });
 
+  it("names a study by its title where another lesson credits its author's other study", () => {
+    const index = {
+      slav: { ...INDEX.slav, sources: [{ ...study('Matkun'), title: 'Slav' }] },
+      other: {
+        ...INDEX.slav,
+        title: 'Other',
+        sources: [{ ...study('Matkun'), title: 'Other', url: 'https://lichess.org/study/other' }],
+      },
+    };
+    const [slav] = openingsLesson(index, 'black').positions[keyAfter()].moves;
+    expect(slav.notes?.[0].text).toBe('Slav Defence, from Slav by Matkun.');
+  });
+
   it("names a lichess study's license when it has one", () => {
     const license = { name: 'CC0', url: 'https://creativecommons.org/publicdomain/zero/1.0/' };
     const index = { slav: { ...INDEX.slav, sources: [{ ...study('Matkun'), license }] } };

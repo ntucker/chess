@@ -372,6 +372,7 @@ function openingMoves(index: LessonIndex, side: Color): Map<PositionKey, Opening
       found.book ||= parsePositionKey(key)!.turn === side && line.lineEnds.length > 0;
     }
   }
+  const credited = sourcesOf(index);
   return new Map(
     [...at].map(([key, moves]) => [
       key,
@@ -381,7 +382,7 @@ function openingMoves(index: LessonIndex, side: Color): Map<PositionKey, Opening
         notes: ids.map((id) => {
           const { title, sources } = index[id];
           return {
-            text: `${title}, from ${listed(sources.map((source) => credit(source, sources)))}.`,
+            text: `${title}, from ${listed(sources.map((source) => credit(source, credited)))}.`,
           };
         }),
       })),
@@ -395,30 +396,36 @@ const isLichessStudy = ({ url }: LessonSource) => {
 };
 
 /**
- * How the app names `source` among the lesson's `sources`: a lichess study by
- * its author, anything else, or a study whose author wrote another of them, by
- * its title and author. Its URL parses: the checker has read every shipped
- * lesson's sources.
+ * How the app names `source`. A lichess study is "author's lichess study"
+ * when it is the only lichess study by its author among `credited` (every
+ * source the app credits, from `sourcesOf`), so one study reads the same on
+ * every screen; any other source is its title and author. Its URL parses: the
+ * checker has read every shipped lesson's sources.
  */
-export function sourceName(source: LessonSource, sources: readonly LessonSource[]): string {
-  const { title, author } = source;
-  const alone = !sources.some(
-    (other) => other !== source && other.author === author && isLichessStudy(other),
+export function sourceName(source: LessonSource, credited: readonly LessonSource[]): string {
+  const { title, author, url } = source;
+  const hasSiblingStudy = credited.some(
+    (other) => other.url !== url && other.author === author && isLichessStudy(other),
   );
-  return isLichessStudy(source) && alone ? `${author}'s lichess study` : `${title} by ${author}`;
+  return isLichessStudy(source) && !hasSiblingStudy
+    ? `${author}'s lichess study`
+    : `${title} by ${author}`;
 }
 
 /** How a note credits `source`: its name, then its license's. A note is plain text; the lesson screen's credits link both. */
-const credit = (source: LessonSource, sources: readonly LessonSource[]) =>
-  source.license
-    ? `${sourceName(source, sources)} (${source.license.name})`
-    : sourceName(source, sources);
+const credit = (source: LessonSource, credited: readonly LessonSource[]) => {
+  const name = sourceName(source, credited);
+  return source.license ? `${name} (${source.license.name})` : name;
+};
 
-/** Every source the index's lessons credit, each once (the same URL is the same source). */
-const sourcesOf = (index: LessonIndex): LessonSource[] => [
+/** Every source the index's lessons and `more` credit, each once (the same URL is the same source). */
+export const sourcesOf = (
+  index: LessonIndex,
+  more: readonly LessonSource[] = [],
+): LessonSource[] => [
   ...new Map(
-    Object.values(index).flatMap(({ sources }) =>
-      sources.map((source) => [source.url, source] as const),
+    [...Object.values(index).flatMap(({ sources }) => sources), ...more].map(
+      (source) => [source.url, source] as const,
     ),
   ).values(),
 ];

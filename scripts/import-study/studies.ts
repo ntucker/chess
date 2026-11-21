@@ -8,7 +8,7 @@ import { numberedChapterName, type ChapterName, type LessonInfo } from './merge'
 import { rootSans, type WikibooksOptions } from './wikibooks';
 
 /** A lichess study, by its id. */
-interface StudySource {
+export interface StudySource {
   /** How the lesson credits it. */
   readonly credit: LessonSource;
   readonly study: string;
@@ -56,7 +56,8 @@ interface StudySource {
  * Pages of Wikibooks' Chess Opening Theory (wikibooks.ts), the learner being
  * the lesson's side. Credited by its root page (`wikibooksCredit`).
  */
-type WikibooksSource = Omit<WikibooksOptions, 'learner' | 'log'> & Pick<StudySource, 'replies'>;
+export type WikibooksSource = Omit<WikibooksOptions, 'learner' | 'log'> &
+  Pick<StudySource, 'replies'>;
 
 export type ChapterSource = StudySource | WikibooksSource;
 
@@ -139,6 +140,26 @@ const BOSBURP_QG = {
   },
   // The introduction's jokes: "You found the Easter Egg".
   leave: ['b3', 'e4'],
+} as const;
+
+/** LeninPerez's Italian for White: the Italian lesson's own, and the open game's reworded for Black. */
+const LENIN_ITALIAN = {
+  study: 'vJsZScnC',
+  credit: {
+    title: 'Italian Opening',
+    author: 'LeninPerez',
+    url: 'https://lichess.org/study/vJsZScnC',
+  },
+} as const;
+
+/** Kitsune_Cavalry's Evans Gambit for White, in the Italian lesson and the open game. */
+const KITSUNE_EVANS = {
+  study: 'ZlQ1Gez5',
+  credit: {
+    title: 'Italian Game, Evans Gambit',
+    author: 'Kitsune_Cavalry',
+    url: 'https://lichess.org/study/ZlQ1Gez5',
+  },
 } as const;
 
 export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
@@ -385,12 +406,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
       },
       {
         // White's Italian, reworded for Black.
-        study: 'vJsZScnC',
-        credit: {
-          title: 'Italian Opening',
-          author: 'LeninPerez',
-          url: 'https://lichess.org/study/vJsZScnC',
-        },
+        ...LENIN_ITALIAN,
         writtenFor: 'white',
         chapters: (title: string) => Object.hasOwn(LENIN_ITALIAN_CHAPTERS, title),
         chapterName: (title: string) => LENIN_ITALIAN_CHAPTERS[title],
@@ -398,12 +414,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
       },
       {
         // The Evans Gambit (4.b4), White's view, reworded for Black.
-        study: 'ZlQ1Gez5',
-        credit: {
-          title: 'Italian Game, Evans Gambit',
-          author: 'Kitsune_Cavalry',
-          url: 'https://lichess.org/study/ZlQ1Gez5',
-        },
+        ...KITSUNE_EVANS,
         writtenFor: 'white',
         // The theory chapters, not the master game.
         chapters: (title: string) => title !== 'Garry Kasparov vs Viswanathan Anand 1995',
@@ -755,22 +766,12 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
   italian: {
     from: [
       {
-        study: 'vJsZScnC',
-        credit: {
-          title: 'Italian Opening',
-          author: 'LeninPerez',
-          url: 'https://lichess.org/study/vJsZScnC',
-        },
+        ...LENIN_ITALIAN,
         chapters: (title: string) => Object.hasOwn(ITALIAN_CHAPTERS, title),
         chapterName: (title: string) => ITALIAN_CHAPTERS[title],
       },
       {
-        study: 'ZlQ1Gez5',
-        credit: {
-          title: 'Italian Game, Evans Gambit',
-          author: 'Kitsune_Cavalry',
-          url: 'https://lichess.org/study/ZlQ1Gez5',
-        },
+        ...KITSUNE_EVANS,
         chapters: (title: string) => Object.hasOwn(EVANS_CHAPTERS, title),
         chapterName: (title: string) => EVANS_CHAPTERS[title],
       },
