@@ -81,6 +81,23 @@ const report = (percent: number, failure?: DownloadFailure) =>
 const load = (folder = `${ORIGIN}/chess/stockfish/`) =>
   loadFullStockfish(folder, new AbortController().signal, report);
 
+/** A promise and the function that resolves it. */
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => (resolve = done));
+  return { promise, resolve };
+}
+
+const tick = () => new Promise((resolve) => setTimeout(resolve));
+
+/** Waits, a macrotask at a time, until `done` holds; fails after 100. */
+async function until(done: () => boolean) {
+  for (let ticks = 0; !done(); ticks++) {
+    if (ticks > 100) throw new Error(`Never happened: ${done}`);
+    await tick();
+  }
+}
+
 describe('loadFullStockfish', () => {
   it('downloads the files once, telling how much has arrived by the percent, then reads them from the cache', async () => {
     const files = (await load())!;
@@ -131,6 +148,63 @@ describe('loadFullStockfish', () => {
   it("takes a folder without the build's files for a newer build's", async () => {
     await expect(load(`${ORIGIN}/elsewhere/`)).rejects.toBeInstanceOf(NewVersionError);
     expect(reports).toEqual(['0 newVersion']);
+  });
+
+  it('aborts the WebAssembly, and tells no more of its percent, when the loader is missing', async () => {
+    const loaderAnswer = deferred<Response>();
+    const secondHalf = deferred<void>();
+    let wasmSignal: AbortSignal | undefined;
+    const encoder = new TextEncoder();
+    jest.spyOn(globalThis, 'fetch').mockImplementation((async (url: string, init?: RequestInit) => {
+      if (url.endsWith('.js')) return loaderAnswer.promise;
+      wasmSignal = init?.signal ?? undefined;
+      let sent = 0;
+      // Ignores the abort, as a chunk already on its way would.
+      return new Response(
+        new ReadableStream({
+          async pull(controller) {
+            if (sent++) await secondHalf.promise;
+            controller.enqueue(encoder.encode('x'.repeat(100)));
+          },
+        }),
+      );
+    }) as typeof fetch);
+    const loading = load();
+    // The WebAssembly's first half arrives before the loader's 404.
+    await until(() => reports.length > 0);
+    loaderAnswer.resolve(new Response('', { status: 404 }));
+    await expect(loading).rejects.toBeInstanceOf(NewVersionError);
+    expect(wasmSignal?.aborted).toBe(true);
+    secondHalf.resolve();
+    await tick();
+    expect(reports).toEqual(['50', '0 newVersion']);
+  });
+
+  it('aborts the loader when the WebAssembly is missing', async () => {
+    let loaderSignal: AbortSignal | undefined;
+    jest.spyOn(globalThis, 'fetch').mockImplementation((async (url: string, init?: RequestInit) => {
+      if (url.endsWith('.wasm')) return new Response('', { status: 404 });
+      loaderSignal = init?.signal ?? undefined;
+      return new Promise<Response>(() => {});
+    }) as typeof fetch);
+    await expect(load()).rejects.toBeInstanceOf(NewVersionError);
+    expect(loaderSignal?.aborted).toBe(true);
+  });
+
+  it('aborts both downloads when the caller aborts', async () => {
+    const signals: AbortSignal[] = [];
+    jest.spyOn(globalThis, 'fetch').mockImplementation((async (
+      _url: string,
+      init?: RequestInit,
+    ) => {
+      signals.push(init!.signal!);
+      return new Promise<Response>(() => {});
+    }) as typeof fetch);
+    const stop = new AbortController();
+    void loadFullStockfish(`${ORIGIN}/chess/stockfish/`, stop.signal, report).catch(() => {});
+    await until(() => signals.length === 2);
+    stop.abort();
+    expect(signals.map((signal) => signal.aborted)).toEqual([true, true]);
   });
 
   it('says it tries again, and fails, when the site answers with another error', async () => {

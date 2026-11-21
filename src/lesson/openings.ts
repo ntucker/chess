@@ -21,12 +21,11 @@ import {
 import { positionHash } from '@/progress/progress';
 
 import { cleanLineEnds, gamesPlayed, inCleanRun } from './cleanRun';
+import { sourcesOf } from './credits';
 import {
   LESSON_FORMAT,
-  onDomain,
   type Lesson,
   type LessonMove,
-  type LessonSource,
   type Note,
   type PositionKey,
   type Uci,
@@ -53,8 +52,8 @@ export interface OpeningLine {
 }
 
 /**
- * What the start position needs to know of a lesson before it loads. Its
- * sources are credited on the start position's page, which leads to it.
+ * What the start position needs to know of a lesson before it loads. The
+ * start position's page credits its sources.
  */
 export interface IndexEntry extends Pick<Lesson, 'title' | 'side' | 'sources'> {
   /** The lines that pick it, in the guide's order. */
@@ -387,8 +386,7 @@ type OpeningMove = LessonMove & { readonly notes: readonly Note[] };
 
 /**
  * The moves `side`'s lessons share and the moves that pick them, at each
- * position before a line picks one, each naming the lessons it leads to (the
- * page credits their sources).
+ * position before a line picks one, each naming the lessons it leads to.
  * A learner's move is a book move where a clean run can go on through it.
  */
 function openingMoves(index: LessonIndex, side: Color): Map<PositionKey, OpeningMove[]> {
@@ -402,7 +400,8 @@ function openingMoves(index: LessonIndex, side: Color): Map<PositionKey, Opening
       const found = moves.get(uci) ?? { ids: [], book: false };
       moves.set(uci, found);
       if (!found.ids.includes(id)) found.ids.push(id);
-      found.book ||= parsePositionKey(key)!.turn === side && line.lineEnds.length > 0;
+      // Lines play from the start, so white moves at even plies.
+      found.book ||= line.lineEnds.length > 0 && (n % 2 === 0 ? 'white' : 'black') === side;
     }
   }
   return new Map(
@@ -411,49 +410,12 @@ function openingMoves(index: LessonIndex, side: Color): Map<PositionKey, Opening
       [...moves].map(([uci, { ids, book }]) => ({
         uci,
         ...(book && { book }),
+        // A note object per move: the idea card tells notes apart by identity.
         notes: ids.map((id) => ({ text: index[id].title })),
       })),
     ]),
   );
 }
-
-const isLichessStudy = ({ url }: LessonSource) => {
-  const parsed = new URL(url);
-  return onDomain(parsed, 'lichess.org') && parsed.pathname.startsWith('/study/');
-};
-
-/**
- * How the app names `source`. A lichess study is "author's lichess study"
- * when it is the only lichess study by its author among `credited` (every
- * source the app credits, from `sourcesOf`), so one study reads the same on
- * every screen; any other source is its title and author. Its URL parses: the
- * checker has read every shipped lesson's sources.
- */
-export function sourceName(source: LessonSource, credited: readonly LessonSource[]): string {
-  const { title, author, url } = source;
-  const hasSiblingStudy = credited.some(
-    (other) => other.url !== url && other.author === author && isLichessStudy(other),
-  );
-  return isLichessStudy(source) && !hasSiblingStudy
-    ? `${author}'s lichess study`
-    : `${title} by ${author}`;
-}
-
-/** Every source the index's lessons and `more` credit, each once (the same URL is the same source). */
-export const sourcesOf = (
-  index: LessonIndex,
-  more: readonly LessonSource[] = [],
-): LessonSource[] => [
-  ...new Map(
-    [...Object.values(index).flatMap(({ sources }) => sources), ...more].map(
-      (source) => [source.url, source] as const,
-    ),
-  ).values(),
-];
-
-/** What comes before item `i` of `count` in an English list: "a", "a and b", "a, b and c". */
-export const listSeparator = (i: number, count: number) =>
-  i === 0 ? '' : i === count - 1 ? ' and ' : ', ';
 
 /** The variation of the positions before a lesson is picked. */
 const OPENINGS_VARIATION = 'openings';
@@ -472,7 +434,7 @@ export function openingsLesson(index: LessonIndex, side: Color): Lesson {
     title: 'Openings',
     side,
     start: INITIAL_FEN,
-    // It leads to the lessons, so it credits their sources.
+    // Its moves are the lessons' lines, so it credits their sources.
     sources: sourcesOf(ofSide),
     variations: { [OPENINGS_VARIATION]: { name: 'Openings' } },
     positions: Object.fromEntries(

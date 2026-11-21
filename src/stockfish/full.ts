@@ -55,10 +55,7 @@ async function getFiles(
   const cached = cache && (await readCache(cache));
   if (cached) return cached;
 
-  const [loader, wasm] = await Promise.all([
-    download(folder, FULL_LOADER, signal).then((response) => response.text()),
-    download(folder, FULL_WASM, signal).then((response) => readWasm(response, onProgress)),
-  ]);
+  const [loader, wasm] = await downloadBoth(folder, signal, onProgress);
   if (cache) {
     // A cache that can't keep them (out of space, say) costs the next visit
     // a download, not this one its engine.
@@ -73,6 +70,43 @@ async function getFiles(
     }
   }
   return { loader, wasm };
+}
+
+/**
+ * Both files from `folder`. Either failing aborts the other's download and
+ * its progress, so the WebAssembly's percent never replaces the failure's
+ * report. (A listener links the signals: older Android web views lack
+ * AbortSignal.any.)
+ */
+async function downloadBoth(
+  folder: string,
+  signal: AbortSignal,
+  onProgress: (percent: number) => void,
+): Promise<[string, Blob]> {
+  const stop = new AbortController();
+  const stopBoth = () => stop.abort();
+  signal.addEventListener('abort', stopBoth);
+  if (signal.aborted) stopBoth();
+  const failBoth = (error: unknown): never => {
+    stopBoth();
+    throw error;
+  };
+  try {
+    return await Promise.all([
+      download(folder, FULL_LOADER, stop.signal)
+        .then((response) => response.text())
+        .catch(failBoth),
+      download(folder, FULL_WASM, stop.signal)
+        .then((response) =>
+          readWasm(response, (percent) => {
+            if (!stop.signal.aborted) onProgress(percent);
+          }),
+        )
+        .catch(failBoth),
+    ]);
+  } finally {
+    signal.removeEventListener('abort', stopBoth);
+  }
 }
 
 /**

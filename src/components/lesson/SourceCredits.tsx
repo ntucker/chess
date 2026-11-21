@@ -4,24 +4,24 @@ import { Text as Span } from 'react-native';
 
 import { ExternalLink } from '@/components/ExternalLink';
 import type { LessonSource } from '@/lesson/lesson';
-import { listSeparator, sourceName, sourcesOf } from '@/lesson/openings';
+import { listSeparator, sourceNamer, sourcesOf } from '@/lesson/credits';
 import { LessonIndexContext } from '@/resources/lesson';
 
 /**
- * The footnote crediting what a lesson was made from: "Lesson from MMatkun's
+ * The footnote crediting what a lesson was made from: "Lesson from Matkun's
  * lichess study and Chess Opening Theory by Wikibooks contributors (CC BY-SA
  * 4.0)", each source and license a link. A share-alike license asks for its
- * link wherever its text is shown, which a note's plain text can't hold.
+ * link wherever its text is shown.
  */
 export function SourceCredits({ sources }: { readonly sources: readonly LessonSource[] }) {
-  const credited = sourcesOf(use(LessonIndexContext), sources);
+  const name = sourceNamer(sourcesOf(use(LessonIndexContext), sources));
   return (
     <Text role="caption" tone="secondary">
       Lesson from{' '}
       {sources.map((source, i) => (
         <Span key={source.url}>
           {listSeparator(i, sources.length)}
-          <ExternalLink url={source.url}>{sourceName(source, credited)}</ExternalLink>
+          <ExternalLink url={source.url}>{name(source)}</ExternalLink>
           {source.license ? (
             <>
               {' ('}

@@ -23,7 +23,6 @@ import {
   lessonsAfter,
   lessonsFrom,
   openingsLesson,
-  sourceName,
   variationHref,
   variationLine,
   withOpenings,
@@ -591,23 +590,5 @@ describe('variationHref', () => {
       params: { variation: 'advance-variation' },
     });
     expect(variationHref('caro-kann')).toEqual({ pathname: '/lesson/caro-kann', params: {} });
-  });
-});
-
-describe('sourceName', () => {
-  it.each([
-    ['https://lichess.org/study/abcd1234', "Matkun's lichess study"],
-    ['http://lichess.org/study/abcd1234', "Matkun's lichess study"],
-    ['https://www.lichess.org/study/abcd1234', "Matkun's lichess study"],
-    ['https://lichess.org/@/Matkun', 'A study by Matkun'],
-    ['https://lichess.org.example.com/study/abcd1234', 'A study by Matkun'],
-  ])('names %s as %s', (url, name) => {
-    const source = { ...study('Matkun'), url };
-    expect(sourceName(source, [source])).toBe(name);
-  });
-
-  it("names a study by its title where the app credits its author's other study", () => {
-    const other = { ...study('Matkun'), title: 'Other', url: 'https://lichess.org/study/other' };
-    expect(sourceName({ ...study('Matkun'), title: 'Slav' }, [other])).toBe('Slav by Matkun');
   });
 });
