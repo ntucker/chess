@@ -2,7 +2,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { PillChoice } from '@/components/PillChoice';
 import { Toggle } from '@/components/Toggle';
-import type { LessonMode } from '@/lesson/guidance';
+import { type LessonMode, movesSwitchApplies } from '@/lesson/guidance';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
 
 const MODES = [
@@ -30,6 +30,7 @@ export function LessonControls({ mode, onMode }: Props) {
         <Toggle
           label="Moves on the board"
           checked={showMoves}
+          disabled={!movesSwitchApplies(mode)}
           onChange={(on) => dispatch({ type: 'chosen', choice: { showMoves: on } })}
         />
         <Toggle
