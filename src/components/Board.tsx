@@ -151,11 +151,10 @@ export default function Board({
     () => (endingKey ? endingAct(JSON.parse(endingKey) as Ending, orientation) : undefined),
     [endingKey, orientation],
   );
-  // Read as each event comes, so the press that plays the mating move, before
-  // the ending arrives, reports nothing.
-  const handleEndingPointer = useEffectEvent((pointer: BoardPointer) => {
-    if (act) onEndingPointer?.(pointer);
-  });
+  // Read as each event comes: the press that plays the mating move starts
+  // before the ending arrives, so its lift is no tap.
+  const showsEnding = useEffectEvent(() => act !== undefined);
+  const handleEndingPointer = useEffectEvent((pointer: BoardPointer) => onEndingPointer?.(pointer));
 
   // Chessground reuses piece elements as pieces move, so the lit, faded and
   // previewed pieces, and an ending's kings, are marked again whenever the
@@ -260,7 +259,7 @@ export default function Board({
       (from, to) => boardPlays(board, from, to),
       handleDrag,
     );
-    const stopWatchingEnding = watchBoardPointer(target, handleEndingPointer);
+    const stopWatchingEnding = watchBoardPointer(target, showsEnding, handleEndingPointer);
     return () => {
       cancelAnimationFrame(frame.current);
       target.removeEventListener('pointerdown', notePick, { capture: true });

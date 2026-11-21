@@ -95,22 +95,26 @@ const TAP_SLOP = 10;
 /**
  * Reports a mouse coming onto `target` and leaving it, and a finger or pen
  * tapping it: pressing it and lifting without ever moving more than
- * `TAP_SLOP`. A swipe across it, or a press that started elsewhere, is no tap. Returns a
+ * `TAP_SLOP`. Only while `listening`, which a tap must be from its press on:
+ * a press that plays a move making the board listen lifts as no tap. A swipe
+ * across it, or a press that started elsewhere, is no tap either. Returns a
  * function that stops.
  */
 export function watchBoardPointer(
   target: PointerSource,
+  listening: () => boolean,
   report: (pointer: BoardPointer) => void,
 ): () => void {
   let press: { x: number; y: number } | undefined;
   const onEnter = ({ pointerType }: PointerEvent) => {
-    if (hovers(pointerType)) report('enter');
+    if (hovers(pointerType) && listening()) report('enter');
   };
   const onLeave = ({ pointerType }: PointerEvent) => {
-    if (hovers(pointerType)) report('leave');
+    if (hovers(pointerType) && listening()) report('leave');
   };
   const onDown = ({ pointerType, isPrimary, clientX, clientY }: PointerEvent) => {
-    press = isPrimary && !hovers(pointerType) ? { x: clientX, y: clientY } : undefined;
+    const tapping = isPrimary && !hovers(pointerType) && listening();
+    press = tapping ? { x: clientX, y: clientY } : undefined;
   };
   // A press that strays further than TAP_SLOP is no tap, even if it comes back.
   const strays = ({ clientX, clientY }: PointerEvent) =>
@@ -120,7 +124,7 @@ export function watchBoardPointer(
   };
   const onUp = (event: PointerEvent) => {
     if (!event.isPrimary) return;
-    if (press && !strays(event)) report('tap');
+    if (press && !strays(event) && listening()) report('tap');
     press = undefined;
   };
   const onCancel = () => {
