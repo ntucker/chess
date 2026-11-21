@@ -293,7 +293,8 @@ export function notationProblem(text: string): string | undefined {
 /**
  * Words that point to the study a note came from, which the learner never
  * sees: "see chapter 12", "the most important section", "the heart button".
- * A false hit (a "queenside section") costs a reworded note.
+ * The checker refuses a false hit (a "queenside section") like any other, so
+ * the importer asks for a new wording first.
  */
 const STUDY_MENTION = /\b(?:chapters?|sections?|buttons?|(?:the|this|that|our|my) study)\b/i;
 
