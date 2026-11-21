@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import { act, createRef } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
-import { NewVersionError } from '@/files/newVersion';
+import { NEW_VERSION, NewVersionError } from '@/files/newVersion';
 
 import EngineView, { type EngineViewRef } from './EngineView';
 import { loadFullStockfish } from './full';
@@ -41,7 +41,7 @@ async function startFullFailing(error: Error) {
 describe('EngineView', () => {
   it('says when the folder serves another build, which the app gives up on', async () => {
     const { onError } = await startFullFailing(new NewVersionError());
-    expect(onError).toHaveBeenCalledWith('NewVersionError: A new version is out.', true);
+    expect(onError).toHaveBeenCalledWith(`NewVersionError: ${NEW_VERSION}`, true);
   });
 
   it('fails when the download fails any other way, which the app restarts', async () => {

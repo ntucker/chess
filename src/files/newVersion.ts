@@ -9,9 +9,10 @@ export type Needs = 'an app update' | 'a newer preview';
  * the page loads late (a lesson, Maia's worker) may then be gone
  * from the site: asking again can't help, but reloading the page can. Full
  * Stockfish's files (src/stockfish/full.ts) say the same when their folder
- * serves another build, with `needs` where a reload can't help either.
+ * serves another build.
  */
 export class NewVersionError extends Error {
+  /** What the app needs where a reload can't help either, which full Stockfish's hosts add. */
   readonly needs?: Needs;
 
   constructor(options?: ErrorOptions & { readonly needs?: Needs }) {

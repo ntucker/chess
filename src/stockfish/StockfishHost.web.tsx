@@ -58,7 +58,7 @@ export function useWorkerHost(
       if (stop.signal.aborted) return;
       console.error(error);
       if (error instanceof NewVersionError)
-        engine.unavailable(new NewVersionError({ cause: error, needs }));
+        engine.unavailable(new NewVersionError({ cause: error.cause, needs }));
       else supervisor.failed();
     });
     return () => {

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import { act } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
-import { NewVersionError } from '@/files/newVersion';
+import { NEW_VERSION, NewVersionError } from '@/files/newVersion';
 
 import { type Connection, fullStockfish } from './engine';
 import type EngineView from './EngineView';
@@ -87,7 +87,7 @@ describe('FullStockfishHost', () => {
     await reload();
     const unavailable = jest.spyOn(fullStockfish, 'unavailable').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
-    act(() => view.onError('NewVersionError: A new version is out.', true));
+    act(() => view.onError(`NewVersionError: ${NEW_VERSION}`, true));
     const [error] = unavailable.mock.calls[0];
     expect(error).toBeInstanceOf(NewVersionError);
     expect((error as NewVersionError).needs).toBe('an app update');

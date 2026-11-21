@@ -249,7 +249,7 @@ export function createStockfish(defaultBudget: SearchBudget): Stockfish {
    * running one if it isn't that (its `bestmove` then starts the next).
    */
   function decide() {
-    // No engine is connected meanwhile (`unavailable` disconnects it).
+    // `unavailable` disconnected the engine, so there's no search to stop or start.
     if (unavailableError) {
       for (const position of wanted.values()) giveUp(position, unavailableError);
       return;

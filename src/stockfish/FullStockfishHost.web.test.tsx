@@ -16,6 +16,11 @@ jest.mock('./full', () => ({
 }));
 // Lite's asset files, which the host's module names but this test never loads.
 jest.mock('./files', () => ({ LOADER: 0, WASM: 0 }));
+// As a preview that shares the live site's copy says, though Jest names no preview folder.
+jest.mock('./fullFiles', () => ({
+  ...jest.requireActual<typeof import('./fullFiles')>('./fullFiles'),
+  OUTDATED_NEEDS: 'a newer preview',
+}));
 const load = jest.mocked(loadFullStockfish);
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -73,7 +78,7 @@ describe('FullStockfishHost', () => {
   });
 
   it('stops trying once the site serves a newer build, and fails what is asked of it', async () => {
-    const outdated = new NewVersionError();
+    const outdated = new NewVersionError({ cause: new Error('HTTP 404') });
     load.mockImplementation(async (_folder, _signal, report) => {
       report(0, 'newVersion');
       throw outdated;
@@ -81,8 +86,9 @@ describe('FullStockfishHost', () => {
     const unavailable = jest.spyOn(fullStockfish, 'unavailable').mockImplementation(() => {});
     await mount();
     expect(failure).toBe('newVersion');
-    // Jest's build names no preview folder, so a reload brings the newer build.
-    expect(unavailable.mock.calls[0][0]).toMatchObject({ cause: outdated, needs: undefined });
+    const [error] = unavailable.mock.calls[0];
+    expect(error).toBeInstanceOf(NewVersionError);
+    expect(error).toMatchObject({ cause: outdated.cause, needs: 'a newer preview' });
     await act(async () => jest.advanceTimersByTime(60_000));
     expect(load).toHaveBeenCalledTimes(1);
   });
