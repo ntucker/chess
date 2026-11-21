@@ -691,7 +691,8 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
           url: 'https://lichess.org/study/cpULfWpl',
         },
         chapters: () => true,
-        chapterName: (title: string) => RADIANT_FRENCH_CHAPTERS[title],
+        chapterName: (title: string) =>
+          chapterNamed(RADIANT_FRENCH_CHAPTERS, 'RadiantSmrf French', title),
       },
       {
         study: 'bgAmUOck',
@@ -701,10 +702,11 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
           url: 'https://lichess.org/study/bgAmUOck',
         },
         chapters: () => true,
-        chapterName: (title: string) => MMATKUN_FRENCH_CHAPTERS[title],
+        chapterName: (title: string) =>
+          chapterNamed(MMATKUN_FRENCH_CHAPTERS, 'MMatkun French', title),
       },
-      // Wikibooks fills White's second moves the studies skip (2.Nf3 d5 3.exd5 is a fifth of games
-      // at 1400), one root per move so the page budget isn't spent deep in the first one.
+      // Wikibooks fills White's second moves the studies skip, one root per move so the page budget
+      // isn't spent deep in the first one.
       { root: 'Chess_Opening_Theory/1._e4/1...e6/2._Nf3', maxPages: 12 },
       { root: 'Chess_Opening_Theory/1._e4/1...e6/2._Bc4' },
       { root: 'Chess_Opening_Theory/1._e4/1...e6/2._e5' },
@@ -865,7 +867,7 @@ const RADIANT_FRENCH_CHAPTERS: Readonly<Record<string, string | undefined>> = {
   "Chapter #12 - King's Indian Attack Part #3": 'Two Knights Variation',
   "Chapter #14 - King's Indian Attack Part #4": 'Two Knights Variation',
   'Chapter #15 - Two Knights Attack - Part #1': 'Two Knights Variation',
-  // 3.Nd2 dxe4 and 3.Nc3 dxe4.
+  // The study's titles don't match the moves: #16 is 3.Nd2 dxe4 and #18 is 3.Nc3 dxe4.
   'Chapter #16 - Two Knights Attack - Part #2': 'Rubinstein Variation',
   'Chapter #17 - Tarrasch Variation Part #1': 'Tarrasch Variation',
   'Chapter #18 - Tarrasch Variation Part #2': 'Rubinstein Variation',
