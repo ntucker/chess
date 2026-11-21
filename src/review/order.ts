@@ -7,7 +7,7 @@
 import { type Analysis, forSide, isFinal } from '@/evaluation/evaluation';
 import type { Color } from '@/game/replay';
 
-import { judgedPosition, type ReviewMove } from './review';
+import { judgedPosition, labelPositions, lostPosition, type ReviewMove } from './review';
 
 /**
  * How deep a sketch goes: the first whole depth of at least this (about 0.3 s
@@ -71,27 +71,20 @@ export function nextSearch({
   failed,
 }: OrderInput): number | undefined {
   const count = moves.length;
-  const searchable = (ply: number) => !failed.has(ply);
+  const lost = (ply: number) => lostPosition(failed, analyses, ply);
   const unfinished = (ply: number) =>
-    searchable(ply) && judgedPosition(book, ply, count) && !isFinal(analyses[ply]);
+    !lost(ply) && judgedPosition(book, ply, count) && !isFinal(analyses[ply]);
   const board =
     dwelt !== undefined && moves[dwelt - 1]?.status === 'waiting' ? labelPositions(dwelt - 1) : [];
   const positions = Array.from({ length: count + 1 }, (_, ply) => ply);
   return (
     board.find(unfinished) ??
     positions.find((ply) => unfinished(ply) && (analyses[ply]?.depth ?? 0) >= RUNNING_DEPTH) ??
-    positions.find((ply) => searchable(ply) && !sketched(analyses[ply])) ??
+    positions.find((ply) => !lost(ply) && !sketched(analyses[ply])) ??
     worstFirst(moves, analyses, learner).flatMap(labelPositions).find(unfinished) ??
     positions.find(unfinished)
   );
 }
-
-/**
- * The positions the label of the move from position `ply` needs, in order:
- * the one before it, the one after it, and the one before the opponent's
- * previous move, which Miss reads.
- */
-const labelPositions = (ply: number) => (ply > 0 ? [ply, ply + 1, ply - 1] : [ply, ply + 1]);
 
 /** Whether `analysis` is at least a sketch. */
 const sketched = (analysis: Analysis | undefined) =>

@@ -94,6 +94,15 @@ describe('reviewMoves against the game', () => {
     const moves = reviewMoves({ plies, book: [], legal, analyses, failed: new Set([1]) });
     // 1.e4 is Stockfish's listed move, so it needs no position after it.
     expect(moves.slice(0, 3).map(({ status }) => status)).toEqual(['judged', 'failed', 'waiting']);
+    // 5...Nd4 isn't listed, so it needs the position after it, which failed;
+    // while the position before is still searching, it might yet list the move.
+    const needsAfter = [...Array(5).fill(undefined), listing(['g8f6', 0.52])];
+    expect(
+      reviewMoves({ plies, book: [], legal, analyses: needsAfter, failed: new Set([6]) })[5].status,
+    ).toBe('failed');
+    expect(
+      reviewMoves({ plies, book: [], legal, analyses: [], failed: new Set([6]) })[5].status,
+    ).toBe('waiting');
   });
 });
 

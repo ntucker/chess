@@ -54,6 +54,8 @@ describe('nextSearch', () => {
     expect(order([], { failed: new Set([0]) })).toBe(1);
     const even = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5].map(sketch);
     expect(order(even, { failed: new Set([2, 3]) })).toBe(4);
+    expect(order([], { dwelt: 4, failed: new Set([3]) })).toBe(4);
+    expect(order(sketched, { failed: new Set([4]) })).toBe(5);
   });
 
   it('keeps a search running in full until it is final', () => {

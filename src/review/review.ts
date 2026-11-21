@@ -6,7 +6,7 @@
  * it fills in by itself as searches finish.
  */
 import { judgement, type MoveQuality } from '@/analysis/quality';
-import { type FinalAnalysis, scoreFor } from '@/evaluation/evaluation';
+import { type Analysis, type FinalAnalysis, isFinal, scoreFor } from '@/evaluation/evaluation';
 import type { Color, Ply } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { lineKeys } from '@/lesson/select';
@@ -69,7 +69,10 @@ export function reviewMoves({ plies, book, legal, analyses, failed }: ReviewInpu
     const before = analyses[ply];
     const judged = before && judgement(before, analyses[ply + 1], uci, mover);
     if (!judged) {
-      const lost = (failed.has(ply) && !before) || (failed.has(ply + 1) && !analyses[ply + 1]);
+      // With the position before final, the label waits only on the one after.
+      const lost = before
+        ? lostPosition(failed, analyses, ply + 1)
+        : lostPosition(failed, analyses, ply);
       return { ply, mover, status: lost ? 'failed' : 'waiting' };
     }
     return {
@@ -82,6 +85,23 @@ export function reviewMoves({ plies, book, legal, analyses, failed }: ReviewInpu
     };
   });
 }
+
+/**
+ * Whether the search of the position after `ply` failed for good: the
+ * engine gave up on it (`failed`) and the store has no final analysis of it.
+ */
+export const lostPosition = (
+  failed: ReadonlySet<number>,
+  analyses: readonly (Analysis | undefined)[],
+  ply: number,
+) => failed.has(ply) && !isFinal(analyses[ply]);
+
+/**
+ * The positions the label of the move from position `ply` needs, in order:
+ * the one before it, the one after it, and the one before the opponent's
+ * previous move, which Miss (planned) reads.
+ */
+export const labelPositions = (ply: number) => (ply > 0 ? [ply, ply + 1, ply - 1] : [ply, ply + 1]);
 
 /**
  * Whether the review searches the position after `ply` of a game of

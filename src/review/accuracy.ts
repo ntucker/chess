@@ -7,7 +7,7 @@
 import type { FinalAnalysis } from '@/evaluation/evaluation';
 import type { Color } from '@/game/replay';
 
-import { judgedPosition, type ReviewMove } from './review';
+import { judgedPosition, lostPosition, type ReviewMove } from './review';
 
 /**
  * One move's accuracy, from the mover's win percent before it and after it:
@@ -52,7 +52,7 @@ export function gameAccuracy(
   );
   if (counted.length < LEAST_COUNTED) return 'brief';
   const isSearched = (ply: number) =>
-    judgedPosition(book, ply, moves.length) && !(failed.has(ply) && !analyses[ply]);
+    judgedPosition(book, ply, moves.length) && !lostPosition(failed, analyses, ply);
   const known = Array.from({ length: moves.length + 1 }, (_, ply) =>
     isSearched(ply) ? analyses[ply]?.lines[0].evaluation.score : undefined,
   );
@@ -64,6 +64,7 @@ export function gameAccuracy(
       ? [{ accuracy: moveAccuracy(move.before * 100, move.after * 100), weight: weights[move.ply] }]
       : [],
   );
+  if (!scored.length) return undefined;
   return (weightedMean(scored) + harmonicMean(scored.map(({ accuracy }) => accuracy))) / 2;
 }
 
