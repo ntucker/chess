@@ -6,6 +6,7 @@ import {
   type GuidanceInput,
   type LessonMode,
   type LessonSwitches,
+  listedEngineMoves,
   notePlayback,
   type ShownIdea,
 } from './guidance';
@@ -59,12 +60,14 @@ function shown(
 ): Guidance {
   const view = sampleView(sans);
   const stockfish = engineView(sans, engine);
+  // As useLesson does: a pointer previews only the rows the list shows.
+  const listed = listedEngineMoves(view, mode, picking, stockfish.top, stockfish.final);
   return guidance({
     view,
     mode,
     switches: { ...ALL_ON, ...switches },
     picking,
-    preview: pointer && preview(SAMPLE, view, pointer, stockfish.top),
+    preview: pointer && preview(SAMPLE, view, pointer, listed),
     lifted,
     engine: stockfish,
   });
@@ -156,6 +159,30 @@ describe('guidance', () => {
       // Practice hides them, as every hint.
       const practice = shown(beyond, 'practice', {}, { engine });
       expect(summary(practice)).toMatchObject({ top: [], best: undefined });
+    });
+
+    it("lists Stockfish's best after the opponent's candidates when the guide lacks it", () => {
+      // After MAIN the guide gives White e5, exd5, Nc3 and Nd2; Stockfish names f3.
+      const engine = { best: 'f2f3', top: ['f2f3', 'e4e5', 'b1c3'], final: true };
+      expect(summary(shown(MAIN, 'explore', {}, { engine }))).toMatchObject({
+        candidates: ['e5', 'exd5', 'Nc3', 'Nd2'],
+        best: 'f2f3',
+        top: ['f3'],
+      });
+      // Its row previews, and its piece lights it, as a candidate's does.
+      const row = shown(MAIN, 'explore', {}, { engine, pointer: { at: 'row', uci: 'f2f3' } });
+      expect(row.preview).toMatchObject({ slide: true, candidate: { san: 'f3' } });
+      const pickedUp = shown(MAIN, 'explore', {}, { engine, lifted: 'f2' });
+      expect(pickedUp.drawnCandidates.map(({ san }) => san)).toEqual(['f3']);
+      // Only the best, once final, when the guide lacks it, on the opponent's turn, in Explore.
+      const notFinal = shown(MAIN, 'explore', {}, { engine: { ...engine, final: false } });
+      const guides = { best: 'e4e5', top: ['e4e5', 'f2f3'], final: true };
+      const learners = { best: 'g8f6', top: ['g8f6', 'c8f5'], final: true };
+      expect(notFinal.top).toEqual([]);
+      expect(shown(MAIN, 'explore', {}, { engine: guides }).top).toEqual([]);
+      expect(shown(ADVANCE, 'explore', {}, { engine: learners }).top).toEqual([]);
+      expect(shown(MAIN, 'practice', { auto: false }, { engine }).top).toEqual([]);
+      expect(shown(MAIN, 'explore', {}, { engine, picking: true }).top).toEqual([]);
     });
 
     it('draws each idea in the position it is checked in', () => {

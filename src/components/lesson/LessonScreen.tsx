@@ -275,8 +275,26 @@ function LessonScreen({
     label: 'Every opening',
   } as const;
 
-  // The moves the learner can point at: past the guide Stockfish's, else the guide's.
-  const moveList = guidance.top.length ? (
+  // The moves the learner can point at: the guide's, with any of Stockfish's
+  // after them, or past the guide's moves Stockfish's alone.
+  const moveList = guidance.candidates.length ? (
+    <CandidateList
+      {...rowProps}
+      heading={view.learnerToMove ? 'Your candidates' : rivalMoves}
+      owner={view.learnerToMove ? undefined : colorName(rival)}
+      // At the start each move's opening is the point, so its rows keep it.
+      compact={!picking}
+      leadsTo={leadsTo}
+      candidates={guidance.candidates}
+      // Inside the guide, Stockfish's rows are at most its best (`listedEngineMoves`).
+      engineBest={guidance.top.at(0)}
+      rare={guidance.rare}
+      rareShown={rareShown}
+      onShowRare={showRare}
+      main={guidance.main}
+      onPoint={pointCandidate}
+    />
+  ) : guidance.top.length ? (
     <CandidateList
       {...rowProps}
       heading="top moves"
@@ -289,21 +307,6 @@ function LessonScreen({
       onShowRare={showRare}
       main={guidance.top[0]}
       onPoint={pointRow}
-    />
-  ) : guidance.candidates.length ? (
-    <CandidateList
-      {...rowProps}
-      heading={view.learnerToMove ? 'Your candidates' : rivalMoves}
-      owner={view.learnerToMove ? undefined : colorName(rival)}
-      // At the start each move's opening is the point, so its rows keep it.
-      compact={!picking}
-      leadsTo={leadsTo}
-      candidates={guidance.candidates}
-      rare={guidance.rare}
-      rareShown={rareShown}
-      onShowRare={showRare}
-      main={guidance.main}
-      onPoint={pointCandidate}
     />
   ) : null;
 
