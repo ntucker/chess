@@ -69,6 +69,9 @@ describe('reviewMoves', () => {
 });
 
 describe('reviewMoves against the game', () => {
+  /** Final up to before 5...Nd4, which it doesn't list. */
+  const needsAfter = [...Array(5).fill(undefined), listing(['g8f6', 0.52])];
+
   it("labels each move as the live game's judgeMove does", () => {
     const analyses = [
       listing(['e2e4', 0.53]),
@@ -96,7 +99,6 @@ describe('reviewMoves against the game', () => {
     expect(moves.slice(0, 3).map(({ status }) => status)).toEqual(['judged', 'failed', 'waiting']);
     // 5...Nd4 isn't listed, so it needs the position after it, which failed;
     // while the position before is still searching, it might yet list the move.
-    const needsAfter = [...Array(5).fill(undefined), listing(['g8f6', 0.52])];
     expect(
       reviewMoves({ plies, book: [], legal, analyses: needsAfter, failed: new Set([6]) })[5].status,
     ).toBe('failed');
@@ -106,11 +108,7 @@ describe('reviewMoves against the game', () => {
   });
 
   it('counts a failed position that finished anyway', () => {
-    const analyses = [
-      ...Array(5).fill(undefined),
-      listing(['g8f6', 0.52]),
-      listing(['f3d4', 0.75]),
-    ];
+    const analyses = [...needsAfter, listing(['f3d4', 0.75])];
     expect(reviewMoves({ plies, book: [], legal, analyses, failed: new Set([6]) })[5].quality).toBe(
       'blunder',
     );
