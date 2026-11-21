@@ -5,7 +5,7 @@
  * lesson's guide recommends, and the final analyses already in the store, so
  * it fills in by itself as searches finish.
  */
-import { judgement, type MoveQuality } from '@/analysis/quality';
+import { labelMove, type MoveQuality } from '@/analysis/quality';
 import { type Analysis, type FinalAnalysis, isFinal, scoreFor } from '@/evaluation/evaluation';
 import type { Color, Ply } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
@@ -52,7 +52,7 @@ export interface ReviewInput {
   readonly plies: readonly Ply[];
   /** Whether the guide recommends each move (`bookMoves`); empty for a game with no lesson. */
   readonly book: readonly boolean[];
-  /** How many moves are legal in each position, `legal[n]` in `plies[n]` (`legalMoveCount`). */
+  /** How many moves are legal in each position, `legal[n]` in `plies[n]` (`legalMoveCountAt`). */
   readonly legal: readonly number[];
   /** Stockfish's final analysis of each position, where the store has one. */
   readonly analyses: readonly (FinalAnalysis | undefined)[];
@@ -60,28 +60,36 @@ export interface ReviewInput {
   readonly failed: ReadonlySet<number>;
 }
 
-/** Each move of the game, judged as far as the final analyses allow. */
+/**
+ * Each move of the game, labelled as far as the final analyses allow
+ * (`labelMove`, as the game labels it), or why it isn't yet.
+ */
 export function reviewMoves({ plies, book, legal, analyses, failed }: ReviewInput): ReviewMove[] {
   return plies.slice(0, -1).map(({ turn: mover }, ply): ReviewMove => {
-    const uci = plies[ply + 1].move!.uci;
-    if (book[ply]) return { ply, mover, status: 'book', quality: 'book' };
-    if (legal[ply] === 1) return { ply, mover, status: 'forced', quality: 'best' };
     const before = analyses[ply];
-    const judged = before && judgement(before, analyses[ply + 1], uci, mover);
-    if (!judged) {
+    const label = labelMove({
+      uci: plies[ply + 1].move!.uci,
+      mover,
+      book: book[ply],
+      legal: legal[ply],
+      before,
+      after: analyses[ply + 1],
+    });
+    if (!label) {
       // With the position before final, the label waits only on the one after.
       const lost = before
         ? lostPosition(failed, analyses, ply + 1)
         : lostPosition(failed, analyses, ply);
       return { ply, mover, status: lost ? 'failed' : 'waiting' };
     }
+    if (label.status !== 'judged') return { ply, mover, ...label };
     return {
       ply,
       mover,
       status: 'judged',
-      quality: judged.quality,
-      before: scoreFor(before.lines[0].evaluation, mover),
-      after: scoreFor(judged.evaluation, mover),
+      quality: label.quality,
+      before: scoreFor(before!.lines[0].evaluation, mover),
+      after: scoreFor(label.evaluation, mover),
     };
   });
 }

@@ -94,6 +94,45 @@ export function refutation(
 const isMistake = (quality: MoveQuality | undefined) =>
   quality === 'mistake' || quality === 'blunder';
 
+/** A game's move, as `labelMove` needs it. */
+export interface GameMove {
+  readonly uci: string;
+  readonly mover: Color;
+  /** Whether the lesson's guide recommends it. */
+  readonly book?: boolean;
+  /** How many moves were legal where it was played; without it a forced move waits for its search. */
+  readonly legal?: number;
+  /** Stockfish's final analyses of the positions before the move and after it, where there are. */
+  readonly before?: FinalAnalysis;
+  readonly after?: FinalAnalysis;
+}
+
+/** Why a move has its label: the guide's move, the only legal move, or `judgement`'s. */
+export type MoveLabel =
+  | { readonly status: 'book'; readonly quality: 'book' }
+  | { readonly status: 'forced'; readonly quality: 'best' }
+  | { readonly status: 'judged'; readonly quality: MoveQuality; readonly evaluation: Evaluation };
+
+/**
+ * A move's label, the one rule the game and the review share: `book`
+ * for the guide's move, which is never searched; `best` for the only legal
+ * move, as Stockfish would rank it; else `judgement`'s, undefined while an
+ * analysis it needs is missing.
+ */
+export function labelMove({
+  uci,
+  mover,
+  book,
+  legal,
+  before,
+  after,
+}: GameMove): MoveLabel | undefined {
+  if (book) return { status: 'book', quality: 'book' };
+  if (legal === 1) return { status: 'forced', quality: 'best' };
+  const judged = before && judgement(before, after, uci, mover);
+  return judged && { status: 'judged', ...judged };
+}
+
 /** The evaluation `judgement` judges `uci` by; undefined while `after` is needed and missing. */
 function judgedEvaluation(
   before: FinalAnalysis,

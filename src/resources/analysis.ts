@@ -3,6 +3,7 @@ import {
   type Controller,
   type Manager,
   type Middleware,
+  type State,
   useQuery,
   useSubscription,
 } from '@data-client/react';
@@ -134,6 +135,29 @@ export function useAnalysis(
   return useQuery(PositionAnalysis, ...(line ? [analysisKey(engine, line)] : [null]));
 }
 
+/** `engine`'s analysis of the position after each of `lines`, as far as the store has it. */
+export const storedAnalyses = (
+  ctrl: Controller,
+  engine: EvaluationEngine,
+  lines: readonly (readonly string[])[],
+  state: State<unknown>,
+) => lines.map((line) => ctrl.get(PositionAnalysis, analysisKey(engine, line), state));
+
+/**
+ * Whether `engine`'s search of the position after `line` gave up (the engine
+ * stopped on it too often): the error `AnalysisManager` stores for it.
+ * `ctrl.invalidate(getAnalysis, engine, line)` clears it and starts the
+ * search again for a screen still showing the position. A screen that shows
+ * it later starts it again too, and the error stays until that search
+ * reports a depth.
+ */
+export const analysisFailed = (
+  ctrl: Controller,
+  engine: EvaluationEngine,
+  line: readonly string[],
+  state: State<unknown>,
+) => ctrl.getError(getAnalysis, engine, line, state) !== undefined;
+
 /** A position some screen shows (`useAnalysis`), and its search's watch, while it runs. */
 interface Shown {
   readonly engine: EvaluationEngine;
@@ -169,7 +193,12 @@ export class AnalysisManager implements Manager {
         else this.hide(action.key);
         return;
       }
-      return next(action);
+      if (action.type !== actionTypes.INVALIDATE) return next(action);
+      // Once its error is cleared, a search that gave up starts again for
+      // the screens still showing it.
+      await next(action);
+      const shown = this.shown.get(action.key);
+      if (shown && !shown.release && !this.paused) this.run(shown);
     };
   };
 
@@ -204,17 +233,34 @@ export class AnalysisManager implements Manager {
     const { controller: ctrl } = this;
     const { engine, line } = shown;
     const key = analysisKey(engine, line);
-    if (isFinal(ctrl.get(PositionAnalysis, key, ctrl.getState()))) return;
-    shown.release = watchAnalysis(engine, line, {
+    const state = ctrl.getState();
+    if (isFinal(ctrl.get(PositionAnalysis, key, state))) return;
+    // A search started again, by a later visit, stops counting as one that
+    // gave up once it reports a depth: invalidating clears the error. The
+    // middleware checks `shown.release` only after the invalidate is
+    // reduced, by when this has returned and set it, so it starts no second
+    // search. Until a depth arrives the search may fail again at once, and
+    // then asks for nothing more.
+    let gaveUp = analysisFailed(ctrl, engine, line, state);
+    // False once it fails, which can happen before `watchAnalysis` returns.
+    let running = true;
+    const release = watchAnalysis(engine, line, {
       update(analysis) {
+        if (gaveUp && !analysis.final) void ctrl.invalidate(getAnalysis, engine, line);
+        gaveUp = false;
         const record = { ...key, ...analysis };
         if (analysis.final) ctrl.setResponse(getAnalysis, engine, line, record);
         else ctrl.set(PositionAnalysis, key, record);
       },
-      // The screen keeps the last depth it showed; a later visit asks again.
+      // The screen keeps the last depth it showed. The error goes into the
+      // store, so a screen can tell the search gave up (`analysisFailed`)
+      // until it's invalidated or searched again.
       fail(error) {
-        console.error(error);
+        running = false;
+        shown.release = undefined;
+        ctrl.setError(getAnalysis, engine, line, error);
       },
     });
+    if (running) shown.release = release;
   }
 }
