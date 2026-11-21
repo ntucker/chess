@@ -244,9 +244,9 @@ function OpponentList({ id, value, focusOnOpen, onChoose }: ListProps) {
                 >
                   <Listbox.ItemText style={styles.stepLevel}>{level}</Listbox.ItemText>
                   {preset ? (
-                    <Text role="caption" tone="secondary">
+                    <Listbox.ItemText role="caption" tone="secondary">
                       {preset}
-                    </Text>
+                    </Listbox.ItemText>
                   ) : null}
                 </Listbox.Item>
               </View>
