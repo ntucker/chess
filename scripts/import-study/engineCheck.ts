@@ -26,7 +26,7 @@ import { Chess } from 'chessops/chess';
 import type { Color } from 'chessops/types';
 
 import { pawnsLabel, type Evaluation, type FinalAnalysis } from '@/evaluation/evaluation';
-import { judgeMove } from '@/analysis/quality';
+import { judgedEvaluation, judgeMove } from '@/analysis/quality';
 import { lineSans, numberedLine, parsePosition, playMove, positionKey } from '@/game/replay';
 import type {
   Evaluation as Verdict,
@@ -115,7 +115,10 @@ export async function engineCheck(
         const quality = judgeMove(before, afterAnalysis, move.uci, lesson.side);
         const engine =
           gambit && quality === 'mistake'
-            ? playableGambit(judgedBy(before, afterAnalysis, move.uci), lesson.side)
+            ? playableGambit(
+                judgedEvaluation(before, afterAnalysis, move.uci, lesson.side)!,
+                lesson.side,
+              )
             : undefined;
         if (engine) {
           gambitNote = gambitNoteFor(engine, lesson.side);
@@ -429,13 +432,6 @@ function apart(verdict: Verdict, engine: Evaluation): boolean {
 
 /** The expected score (0 to 1) of `side` in a position the engine scores `engine`. */
 const learnerScore = ({ score }: Evaluation, side: Color) => (side === 'white' ? score : 1 - score);
-
-/**
- * The evaluation `judgeMove` labelled `uci` by: its own line where the
- * position before lists it, else the position after's first line.
- */
-const judgedBy = (before: FinalAnalysis, after: FinalAnalysis, uci: Uci): Evaluation =>
-  (before.lines.find((line) => line.uci === uci) ?? after.lines[0]).evaluation;
 
 /** `engine`, when a gambit lesson's mistake that leaves it is still playable for `side`. */
 const playableGambit = (engine: Evaluation, side: Color): Evaluation | undefined =>

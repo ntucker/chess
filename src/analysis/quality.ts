@@ -46,18 +46,37 @@ export function judgeMove(
   uci: string,
   mover: Color,
 ): MoveQuality | undefined {
-  const [first] = before.lines;
-  /** How much of the mover's expected score playing into `evaluation` gives away. */
-  const lossTo = ({ score }: Evaluation) =>
-    mover === 'white' ? first.evaluation.score - score : score - first.evaluation.score;
-  const listed = before.lines.find((line) => line.uci === uci);
-  const last = before.lines.at(-1)!;
-  // A list without moves (Maia's) ranks nothing.
-  const lastListedLoss = last.uci ? lossTo(last.evaluation) : -Infinity;
-  let loss: number;
-  if (listed) loss = lossTo(listed.evaluation);
-  else if (after) loss = Math.max(lossTo(after.lines[0].evaluation), lastListedLoss);
-  else return undefined;
-  if (uci === first.uci || loss <= 0) return 'best';
+  const judged = judgedEvaluation(before, after, uci, mover);
+  if (!judged) return undefined;
+  const loss = lossTo(before, judged, mover);
+  if (uci === before.lines[0].uci || loss <= 0) return 'best';
   return LEAST_LOSS.find(([threshold]) => loss >= threshold)?.[1] ?? 'good';
+}
+
+/** How much of `mover`'s expected score playing from `before` into `evaluation` gives away. */
+const lossTo = (before: FinalAnalysis, { score }: Evaluation, mover: Color) =>
+  mover === 'white'
+    ? before.lines[0].evaluation.score - score
+    : score - before.lines[0].evaluation.score;
+
+/**
+ * The evaluation `judgeMove` labels `uci` by (see there): its own line where
+ * `before` lists it, else `after`'s first line, but never better for `mover`
+ * than the list's last move; undefined while `after` is needed and missing.
+ */
+export function judgedEvaluation(
+  before: FinalAnalysis,
+  after: FinalAnalysis | undefined,
+  uci: string,
+  mover: Color,
+): Evaluation | undefined {
+  const listed = before.lines.find((line) => line.uci === uci);
+  if (listed) return listed.evaluation;
+  if (!after) return undefined;
+  const last = before.lines.at(-1)!;
+  const reached = after.lines[0].evaluation;
+  // A list without moves (Maia's) ranks nothing.
+  return last.uci && lossTo(before, last.evaluation, mover) > lossTo(before, reached, mover)
+    ? last.evaluation
+    : reached;
 }
