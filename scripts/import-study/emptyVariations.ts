@@ -7,12 +7,10 @@
  * with nothing to learn. Each such position takes the variation of the
  * position the lesson reaches it from, as a side line does in `merge`.
  */
-import { parsePositionKey, positionKey } from '@/game/replay';
-import type { Lesson, LessonPosition, PositionKey, VariationId } from '@/lesson/lesson';
 import { teachingVariations } from '@/lesson/check';
+import type { Lesson, LessonPosition, PositionKey, VariationId } from '@/lesson/lesson';
 
-import { startOf } from './engineCheck';
-import { played } from './study';
+import { linesTo } from './engineCheck';
 
 /** `lesson` without variations that teach nothing, and the ones it dropped. */
 export function withoutEmptyVariations(lesson: Lesson): {
@@ -37,27 +35,15 @@ export function withoutEmptyVariations(lesson: Lesson): {
 /**
  * `lesson.positions` with each one in a variation not `kept` moved to the
  * variation of the position the lesson first reaches it from, the start
- * staying in the opening's own.
+ * staying in the opening's own (`merge` gives it the lesson's id).
  */
 function renamed(lesson: Lesson, kept: ReadonlySet<VariationId>): Lesson['positions'] {
-  const start = startOf(lesson);
-  const startKey = positionKey(start);
-  const root = Object.keys(lesson.variations).find((id) => !lesson.variations[id].parent)!;
   const named = new Map<PositionKey, VariationId>();
-  const name = (key: PositionKey, from: VariationId) => {
-    const own = lesson.positions[key].variation;
-    named.set(key, kept.has(own) ? own : from);
-  };
-  name(startKey, root);
-  const queue = [startKey];
-  for (let key = queue.shift(); key !== undefined; key = queue.shift()) {
-    const pos = parsePositionKey(key)!;
-    for (const { uci } of lesson.positions[key].moves) {
-      const after = positionKey(played(pos, uci));
-      if (named.has(after) || !(after in lesson.positions)) continue;
-      name(after, named.get(key)!);
-      queue.push(after);
-    }
+  // In the order `linesTo` reaches them, so each one's `from` is named first.
+  for (const [key, { from }] of linesTo(lesson)) {
+    const own = lesson.positions[key]?.variation;
+    if (own === undefined) continue;
+    named.set(key, kept.has(own) ? own : from === undefined ? lesson.id : named.get(from)!);
   }
   return Object.fromEntries(
     Object.entries(lesson.positions).map(([key, position]): [PositionKey, LessonPosition] => {
