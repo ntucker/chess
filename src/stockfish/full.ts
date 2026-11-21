@@ -138,10 +138,10 @@ async function readWasm(response: Response, onProgress: (percent: number) => voi
         received += chunk.length;
         if (received > FULL_WASM_BYTES) failSize();
         controller.enqueue(chunk);
-        const now = Math.floor((received / FULL_WASM_BYTES) * 100);
-        if (now === percent) return;
-        percent = now;
-        onProgress(now);
+        const whole = Math.floor((received / FULL_WASM_BYTES) * 100);
+        if (whole === percent) return;
+        percent = whole;
+        onProgress(whole);
       },
       flush() {
         if (received !== FULL_WASM_BYTES) failSize();
