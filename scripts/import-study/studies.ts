@@ -693,6 +693,9 @@ const KID_TRAP_CHAPTERS: Readonly<Record<string, string | undefined>> = {
   'Trap 10: win the rook (again)': 'Sämisch Variation',
 };
 
+/** The Caro-Kann's 4.h4 and 4.g4 chapter, its study title shortened to fit a 360px phone's header. */
+const TAL_BAYONET = 'Tal (4.h4) & Bayonet Attack (4.g4)';
+
 export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
   'caro-kann': {
     from: [
@@ -707,12 +710,14 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         chapters: (title: string) => /^(?:🔵|🟢)/u.test(title),
         // "Sidelines Index" names the chapter's contents page, not a variation.
         chapterName: (title, chapter) =>
-          numberedChapterName(title, chapter)?.replace(/: Sidelines Index$/, ''),
+          numberedChapterName(title, chapter)
+            ?.replace(/: Sidelines Index$/, '')
+            .replace('Tal Variation (4.h4) & Bayonet Attack (4.g4)', TAL_BAYONET),
       },
       {
         root: 'Chess_Opening_Theory/1._e4/1...c6',
         rename: {
-          'Tal variation': 'Tal (4.h4) & Bayonet Attack (4.g4)',
+          'Tal variation': TAL_BAYONET,
           // 3.Nd2, which the main study teaches under the Classical Variation.
           'Modern variation': '',
           'Accelerated Panov attack': 'Accelerated Panov',
