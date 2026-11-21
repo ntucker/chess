@@ -49,8 +49,9 @@ interface Props {
  * What the guide says about the position, or about the move being previewed:
  * each note's kind, its sentence, the study's own words behind "More", the
  * study's verdict, a play-through for a plan, a line or a trap, and a mark
- * naming the AI model that wrote it where no guide explains the move. A note whose idea is on the
- * board, pointed at or playing back, lights its rule in that idea's color.
+ * naming the AI model that wrote it where no guide explains the move. A note
+ * whose idea is on the board, pointed at or playing back, lights its rule in
+ * that idea's color.
  */
 export function IdeaCard({
   title,
@@ -137,8 +138,9 @@ export function NoteView({
   const playing = playback.playing?.note === note ? playback.playing : undefined;
   const original = note.original && note.original !== note.text ? note.original : undefined;
   const playable = playback.playable(shown);
-  // Only a note the AI wrote from nothing is credited: a rewritten study comment is the study's analysis.
-  const model = note.generated ? note.model : undefined;
+  // Only a note the AI wrote from nothing is credited: a rewritten study
+  // comment is the study's analysis, so its model stays in the data only.
+  const creditedModel = note.generated ? note.model : undefined;
   // The idea on the board, whose color lights the rule: the one playing back,
   // or while pointed at, the note's first.
   const litIdea = playing ? playing.idea : pointed ? drawn : undefined;
@@ -210,7 +212,7 @@ export function NoteView({
           </Text>
         ) : null}
       </Stack>
-      {original || playable || model ? (
+      {original || playable || creditedModel ? (
         <View style={styles.actions}>
           {playing ? (
             <PlayingControls playing={playing} goto={playback.goto} stop={playback.stop} />
@@ -232,7 +234,7 @@ export function NoteView({
               </Text>
             </Pressable>
           ) : null}
-          {model ? <ModelMark model={model} /> : null}
+          {creditedModel ? <ModelMark model={creditedModel} /> : null}
         </View>
       ) : null}
     </Stack>
