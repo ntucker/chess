@@ -105,8 +105,8 @@ export function useGame(
     quality: qualities[ply - 1],
     /**
      * The reply that punishes the mistake or blunder that led to `current`,
-     * when one clearly does (`refutation`), whoever played it: after the
-     * opponent's, it is the player's next move, so the screen decides.
+     * when one clearly does (`refutation`), whoever played it: the screen
+     * decides whose it shows.
      */
     refutation: refutations[ply - 1],
     /** What each side is up on the board shown, so it follows the moves stepped through. */

@@ -217,12 +217,11 @@ describe('guidance', () => {
       expect(shown(beyond, 'explore', {}, { engine, refutation }).top).toHaveLength(3);
     });
 
-    it("marks the reply to the opponent's mistake only as a hint: Explore, moves on the board on", () => {
+    it("never marks the reply to the opponent's mistake: on the learner's turn it would be their move", () => {
       // After ADVANCE it is the learner's turn: say White's e5 was a mistake that ...c5 punishes.
-      const punish = { refutation: 'c7c5' };
-      expect(shown(ADVANCE, 'explore', {}, punish).refutation).toBe('c7c5');
-      expect(shown(ADVANCE, 'explore', { showMoves: false }, punish).refutation).toBeUndefined();
-      expect(shown(ADVANCE, 'practice', {}, punish).refutation).toBeUndefined();
+      for (const mode of ['explore', 'practice'] as const) {
+        expect(shown(ADVANCE, mode, {}, { refutation: 'c7c5' }).refutation).toBeUndefined();
+      }
     });
 
     it('hides it while a move is previewed or a piece picked up', () => {

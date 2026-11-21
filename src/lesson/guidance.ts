@@ -47,15 +47,14 @@
  *   them wherever the piece is over, so dragging across the board moves
  *   nothing else on it; the idea card shows the move under it. A click hides
  *   the resting best-move mark the same way, until the piece is unselected.
- * - After a mistake or blunder, the reply that punishes it (`refutation` in
- *   src/analysis/quality.ts) is marked while nothing is previewed, pointed
- *   at, picked up or playing back. On the opponent's turn (after a move of
- *   the learner's side) it is marked in every mode, with "moves on the
- *   board" on or off, since it judges the move just played. On the learner's
- *   turn it is their next move, a hint, so it follows the best move's rule:
- *   Explore, with "moves on the board" on. Where the best move or a
- *   candidate is the same move, the refutation's arrow is drawn instead of
- *   theirs. Its being a rare reply doesn't hide it: it still punishes.
+ * - After a mistake or blunder of the learner's side, the reply that punishes
+ *   it (`refutation` in src/analysis/quality.ts) is marked while nothing is
+ *   previewed, pointed at, picked up or playing back, in every mode and with
+ *   "moves on the board" on or off, since it judges the move just played.
+ *   Never on the learner's turn: there it would be their own next move,
+ *   drawn in the color of what goes wrong. Where the best move or a candidate
+ *   is the same move, the refutation's arrow is drawn instead of theirs. Its
+ *   being a rare reply doesn't hide it: it still punishes.
  * - Rare candidates (`Candidate.rare`) are left off the list, which shows
  *   them only when asked, and off the board's arrows; Stockfish's best isn't
  *   tagged on one either. Only a preview of one, or dragging its piece,
@@ -107,7 +106,10 @@ export interface GuidanceInput {
   /** The note whose idea plays back on the board. */
   readonly playing?: Note;
   readonly engine?: EngineView;
-  /** The reply that punishes the move into the shown position, if one clearly does. */
+  /**
+   * The reply that punishes the move into the shown position, if one clearly
+   * does, whoever played it.
+   */
   readonly refutation?: Uci;
 }
 
@@ -226,7 +228,6 @@ export function guidance(input: GuidanceInput): Guidance {
     pointed,
     playing: playingNote,
     engine,
-    refutation: punishes,
   } = input;
   const explore = mode === 'explore';
   const movesShown = switches.showMoves || !movesSwitchApplies(mode);
@@ -273,9 +274,11 @@ export function guidance(input: GuidanceInput): Guidance {
   });
   // The board at rest: nothing previewed, picked up, pointed at or playing back.
   const resting = !preview && !lifted && !playing && !pointedNote;
-  const hints = explore && movesShown && resting;
-  const refutation = (view.learnerToMove ? hints : resting) ? punishes : undefined;
-  const best = hints && engine?.best !== refutation ? engine?.best : undefined;
+  // Only after a move of the learner's side: on their turn it would be their
+  // own next move, drawn in the color of what goes wrong.
+  const refutation = resting && !view.learnerToMove ? input.refutation : undefined;
+  const best =
+    explore && movesShown && resting && engine?.best !== refutation ? engine?.best : undefined;
 
   return {
     candidates,
