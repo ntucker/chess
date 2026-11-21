@@ -35,16 +35,17 @@ export default function PlayScreen() {
     judge: evaluationEngine,
   });
   const { moves, ply, current, thinking, goto } = game;
+  const restart = game.newGame;
 
   const newGame = (side: Color) => {
     setPlayerColor(side);
-    game.newGame();
+    restart();
   };
 
   return (
     <Stage
       title="Free play · Opening Night"
-      header={{ onRestart: game.newGame }}
+      header={{ onRestart: () => newGame(playerColor) }}
       board={
         <BoardColumn
           game={game}

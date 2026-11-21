@@ -63,7 +63,10 @@ export function Header({ place, placeLink, back, onSettings, onRestart }: Header
             accessibilityRole="button"
             accessibilityLabel="Start over"
             onPress={onRestart}
-            style={({ pressed }) => [styles.logoButton, pressed && styles.pressed]}
+            style={({ pressed, hovered }) => [
+              styles.logoButton,
+              (pressed || hovered) && styles.lit,
+            ]}
           >
             {logo}
           </Pressable>
@@ -194,13 +197,16 @@ const nativeFit = (largest: number) =>
     ? {}
     : { adjustsFontSizeToFit: true, minimumFontScale: PLACE_TYPE.smallest / largest };
 
+const LOGO_RADIUS = 10;
+
 const STYLES = narrowStyles((px) => ({
   // Fills the header but gives way to the source link, so the place gets what's left.
   brand: { flexGrow: 1, flexShrink: 1, minWidth: 0 },
-  logo: { width: px(HEADER_HEIGHT), height: px(HEADER_HEIGHT), borderRadius: 10 },
+  logo: { width: px(HEADER_HEIGHT), height: px(HEADER_HEIGHT), borderRadius: LOGO_RADIUS },
   // Rounded like the logo, so the focus ring follows its corners.
-  logoButton: { borderRadius: 10 },
-  pressed: { opacity: 0.8 },
+  logoButton: { borderRadius: LOGO_RADIUS },
+  // An image has no ink to light up, as the header's icon buttons do, so it dims.
+  lit: { opacity: 0.85 },
   wordmark: {
     fontFamily: fonts.display,
     fontSize: px(narrowLength('wordmark-size', 26)),
