@@ -6,7 +6,7 @@ import Animated, { type CSSAnimationKeyframes } from 'react-native-reanimated';
 import { type Ending, endingWords, type Mood } from '@/game/ending';
 import { ACT_TIMES, type CardBand, cardBand } from '@/board/endingAct';
 import type { Color } from '@/game/replay';
-import { springMotion } from '@/motion/spring';
+import { springMotion, springs } from '@/motion/spring';
 import { timingFunction } from '@/theme/timingFunction';
 import { rgba } from '@/theme/theme';
 
@@ -16,6 +16,8 @@ interface Props {
   readonly rival: string;
   /** The side at the bottom of the board, so the card keeps off the two kings and the last move. */
   readonly orientation: Color;
+  /** The learner put the card aside to see the board under it: it fades out until this is false. */
+  readonly aside?: boolean;
 }
 
 /**
@@ -23,10 +25,11 @@ interface Props {
  * did. It is a playbill's banner across the board, which comes on once the
  * board has acted the ending out (Board.tsx), in step with it through
  * ACT_TIMES. It stays for as long as the board shows the final position,
- * keeping off both kings so the position can still be studied. A win
+ * keeping off both kings and the mating piece, and fades while it is put
+ * `aside` so the whole position can be studied. A win
  * springs open in the accent color; a loss comes down slowly and plainly.
  */
-export function EndingCard({ ending, rival, orientation }: Props) {
+export function EndingCard({ ending, rival, orientation, aside = false }: Props) {
   const { theme } = useTheme();
   const reducedMotion = useReducedMotion();
   // The board's width sets the type's size, so the banner fits a phone's board and fills a desktop's.
@@ -47,59 +50,69 @@ export function EndingCard({ ending, rival, orientation }: Props) {
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
     >
       {width ? (
-        <Animated.View style={[styles.band, { paddingVertical: size.pad }, at(cue.band)]}>
-          <Animated.View
-            style={[
-              StyleSheet.absoluteFill,
-              styles.ground,
-              { backgroundColor: look.ground, boxShadow: look.shadow },
-              at(cue.ground),
-            ]}
-          >
-            {cue.gleam ? (
-              <Animated.View
-                style={[styles.gleam, { backgroundColor: look.gleam }, at(cue.gleam)]}
-              />
-            ) : null}
-          </Animated.View>
-          <Rules color={look.rule} double={mood === 'won'} style={at(cue.rules)} />
-          <Animated.View style={[styles.eyebrowRow, at(cue.eyebrow)]}>
-            {ornament}
-            <Text
-              role="label"
-              numberOfLines={1}
+        // Its own view, since the band's entrance animates the same opacity.
+        <Animated.View
+          style={{
+            opacity: aside ? 0 : 1,
+            transitionProperty: 'opacity',
+            transitionDuration: reducedMotion ? 0 : FADE.durationMs,
+            transitionTimingFunction: timingFunction(FADE.easing),
+          }}
+        >
+          <Animated.View style={[styles.band, { paddingVertical: size.pad }, at(cue.band)]}>
+            <Animated.View
               style={[
-                styles.eyebrow,
-                {
-                  color: look.eyebrow,
-                  fontSize: size.eyebrow,
-                  lineHeight: Math.round(size.eyebrow * 1.3),
-                  letterSpacing: size.eyebrow * 0.26,
-                },
+                StyleSheet.absoluteFill,
+                styles.ground,
+                { backgroundColor: look.ground, boxShadow: look.shadow },
+                at(cue.ground),
               ]}
             >
-              {eyebrow}
-            </Text>
-            {ornament}
-          </Animated.View>
-          {/* A view animates in the title's place: on Android, nested text can't. */}
-          <Animated.View style={at(cue.title)}>
-            <Text
-              role="headingXl"
-              accessibilityRole="header"
-              accessibilityLiveRegion="polite"
-              numberOfLines={1}
-              style={[
-                styles.title,
-                {
-                  color: look.title,
-                  fontSize: size.title,
-                  lineHeight: Math.round(size.title * 1.12),
-                },
-              ]}
-            >
-              {title}
-            </Text>
+              {cue.gleam ? (
+                <Animated.View
+                  style={[styles.gleam, { backgroundColor: look.gleam }, at(cue.gleam)]}
+                />
+              ) : null}
+            </Animated.View>
+            <Rules color={look.rule} double={mood === 'won'} style={at(cue.rules)} />
+            <Animated.View style={[styles.eyebrowRow, at(cue.eyebrow)]}>
+              {ornament}
+              <Text
+                role="label"
+                numberOfLines={1}
+                style={[
+                  styles.eyebrow,
+                  {
+                    color: look.eyebrow,
+                    fontSize: size.eyebrow,
+                    lineHeight: Math.round(size.eyebrow * 1.3),
+                    letterSpacing: size.eyebrow * 0.26,
+                  },
+                ]}
+              >
+                {eyebrow}
+              </Text>
+              {ornament}
+            </Animated.View>
+            {/* A view animates in the title's place: on Android, nested text can't. */}
+            <Animated.View style={at(cue.title)}>
+              <Text
+                role="headingXl"
+                accessibilityRole="header"
+                accessibilityLiveRegion="polite"
+                numberOfLines={1}
+                style={[
+                  styles.title,
+                  {
+                    color: look.title,
+                    fontSize: size.title,
+                    lineHeight: Math.round(size.title * 1.12),
+                  },
+                ]}
+              >
+                {title}
+              </Text>
+            </Animated.View>
           </Animated.View>
         </Animated.View>
       ) : null}
@@ -231,6 +244,8 @@ const GLEAM = {
 
 /** Springs for a win: the ground snaps open, and the title lands with more bounce. */
 const SNAP = springMotion({ duration: 0.4, bounce: 0.3 });
+/** Put aside and back, like a toggle. */
+const FADE = springMotion(springs.snappy);
 const LAND = springMotion({ duration: 0.5, bounce: 0.4 });
 const EASE_OUT = 'cubic-bezier(0.2, 0, 0, 1)';
 

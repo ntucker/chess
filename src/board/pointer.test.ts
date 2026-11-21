@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from '@jest/globals';
 
-import { type Drag, hovers, hoversControl, watchDrag } from './pointer';
+import { type Drag, hovers, hoversControl, watchDrag, watchHoverAndTap } from './pointer';
 
 /** Squares 10 pixels wide along one rank: x 0-9 is a1, 10-19 is b1, and so on; nothing past h1. */
 const squareAt = (x: number) =>
@@ -118,5 +118,48 @@ describe('hoversControl', () => {
     expect(hoversControl('mouse')).toBe(true);
     expect(hoversControl('pen')).toBe(true);
     expect(hoversControl('touch')).toBe(false);
+  });
+});
+
+describe('watchHoverAndTap', () => {
+  function setupBoard() {
+    const board = new EventTarget();
+    const hover = jest.fn<(over: boolean) => void>();
+    const tap = jest.fn<() => void>();
+    const stop = watchHoverAndTap(board, hover, tap);
+    const fire = (type: string, pointerType: string, isPrimary = true) =>
+      board.dispatchEvent(Object.assign(new Event(type), { pointerType, isPrimary }));
+    return { hover, tap, stop, fire };
+  }
+
+  it('reports a mouse coming onto the board and leaving it, and no taps for its clicks', () => {
+    const { hover, tap, fire } = setupBoard();
+    fire('pointerenter', 'mouse');
+    fire('pointerup', 'mouse');
+    fire('pointerleave', 'mouse');
+    expect(hover.mock.calls).toEqual([[true], [false]]);
+    expect(tap).not.toHaveBeenCalled();
+  });
+
+  it('reports a finger or pen lifting as a tap, and never as hovering', () => {
+    const { hover, tap, fire } = setupBoard();
+    for (const pointerType of ['touch', 'pen']) {
+      fire('pointerenter', pointerType);
+      fire('pointerup', pointerType);
+      fire('pointerleave', pointerType);
+    }
+    // A second finger taps nothing.
+    fire('pointerup', 'touch', false);
+    expect(tap).toHaveBeenCalledTimes(2);
+    expect(hover).not.toHaveBeenCalled();
+  });
+
+  it('reports nothing once stopped', () => {
+    const { hover, tap, stop, fire } = setupBoard();
+    stop();
+    fire('pointerenter', 'mouse');
+    fire('pointerup', 'touch');
+    expect(hover).not.toHaveBeenCalled();
+    expect(tap).not.toHaveBeenCalled();
   });
 });

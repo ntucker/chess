@@ -28,7 +28,7 @@ import {
   MOVE_MS,
 } from '@/board/endingAct';
 import { type BoardMarks, boardMarks, toneBrushes } from '@/board/marks';
-import { type Drag, watchDrag } from '@/board/pointer';
+import { type Drag, watchDrag, watchHoverAndTap } from '@/board/pointer';
 import {
   NO_PREVIEW,
   type Pieces,
@@ -82,6 +82,14 @@ export interface BoardProps {
    * before it, if any. It comes just after the board has acted on the press.
    */
   readonly onPress?: (square: Square, selected?: Square) => void;
+  /**
+   * While the board shows an `ending`: a mouse came onto the board (true) or
+   * left it (false). A mouse already on it as the ending arrives reports
+   * nothing until it leaves.
+   */
+  readonly onEndingHover?: (over: boolean) => void;
+  /** While the board shows an `ending`: a finger or pen tapped the board. */
+  readonly onEndingTap?: () => void;
   readonly dom?: DOMProps;
 }
 
@@ -99,6 +107,8 @@ export default function Board({
   onMove,
   onDrag,
   onPress,
+  onEndingHover,
+  onEndingTap,
 }: BoardProps) {
   const element = useRef<HTMLDivElement>(null);
   const api = useRef<Api>(null);
@@ -144,6 +154,14 @@ export default function Board({
     () => (endingKey ? endingAct(JSON.parse(endingKey) as Ending, orientation) : undefined),
     [endingKey, orientation],
   );
+  // Read as each event comes, so the press that plays the mating move, before
+  // the ending arrives, reports nothing.
+  const handleEndingHover = useEffectEvent((over: boolean) => {
+    if (act) onEndingHover?.(over);
+  });
+  const handleEndingTap = useEffectEvent(() => {
+    if (act) onEndingTap?.();
+  });
 
   // Chessground reuses piece elements as pieces move, so the lit, faded and
   // previewed pieces, and an ending's kings, are marked again whenever the
@@ -248,10 +266,12 @@ export default function Board({
       (from, to) => boardPlays(board, from, to),
       handleDrag,
     );
+    const stopWatchingEnding = watchHoverAndTap(target, handleEndingHover, handleEndingTap);
     return () => {
       cancelAnimationFrame(frame.current);
       target.removeEventListener('pointerdown', notePick, { capture: true });
       stopWatching();
+      stopWatchingEnding();
       resizes.disconnect();
       board.destroy();
       api.current = null;

@@ -1,7 +1,7 @@
 // Which pointers hover, and what the pointer does on the board that
-// chessground doesn't report: where a piece being dragged is over. Moves
-// still belong to chessground, and a pointer that only passes over the board
-// reports nothing.
+// chessground doesn't report: where a piece being dragged is over, and a
+// mouse coming onto the board or a finger tapping it. Moves still belong to
+// chessground.
 
 /**
  * Whether a pointer of `pointerType` hovers: a mouse does; a finger or pen
@@ -80,5 +80,35 @@ export function watchDrag<S extends string>(
     page.removeEventListener('pointercancel', onCancel);
     // A drag in progress ends, so whoever listens isn't left showing it.
     show(null);
+  };
+}
+
+/**
+ * Reports a hovering pointer (a mouse) coming onto `target` (true) and
+ * leaving it (false), and calls `tap` as a finger or pen lifts from it.
+ * Returns a function that stops. Example: the board's ending card hides while
+ * a mouse is over the board, and a tap hides or shows it.
+ */
+export function watchHoverAndTap(
+  target: PointerSource,
+  hover: (over: boolean) => void,
+  tap: () => void,
+): () => void {
+  const onEnter = ({ pointerType }: PointerEvent) => {
+    if (hovers(pointerType)) hover(true);
+  };
+  const onLeave = ({ pointerType }: PointerEvent) => {
+    if (hovers(pointerType)) hover(false);
+  };
+  const onUp = ({ pointerType, isPrimary }: PointerEvent) => {
+    if (isPrimary && !hovers(pointerType)) tap();
+  };
+  target.addEventListener('pointerenter', onEnter);
+  target.addEventListener('pointerleave', onLeave);
+  target.addEventListener('pointerup', onUp);
+  return () => {
+    target.removeEventListener('pointerenter', onEnter);
+    target.removeEventListener('pointerleave', onLeave);
+    target.removeEventListener('pointerup', onUp);
   };
 }
