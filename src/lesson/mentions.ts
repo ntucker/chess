@@ -4,12 +4,13 @@
  * pawn", "takes on d4") is shown lit in the note's position. A move ("Bf5",
  * "...e5", "O-O", "a4-a5") is shown played from the nearest position where
  * it is legal, looking a tier at a time: the note's own position (with a
- * threat's side to move there), the position its move was played in, then
- * each ply onward along its line or trap and the guide. Where one tier's
- * positions read it as different moves, or none within reach has it, the
- * text stays plain: a guess shown as fact misleads. So does a move placed
- * as one move where the side not to move in the note's position could make
- * it as another: a note often names either side's moves without dots.
+ * threat's side to move there), where its own line or trap plays it, the
+ * position its move was played in, then each ply onward along its line or
+ * trap and the guide. Where one tier's positions read it as different
+ * moves, or none within reach has it, the text stays plain: a guess shown as
+ * fact misleads. So does a move placed as one move where the side not to
+ * move in the note's position could make it as another: a note often names
+ * either side's moves without dots.
  */
 import type { Chess } from 'chessops/chess';
 import type { Color, SquareName } from 'chessops/types';
@@ -111,9 +112,12 @@ function placed(
   find: (pos: Chess) => Uci | undefined,
 ): Mention | undefined {
   const witnessed: Uci[] = [];
-  for (const { positions, witnesses } of places.tiers()) {
+  for (const { positions, plays, witnesses } of places.tiers()) {
     witnessed.push(...witnesses.flatMap((pos) => find(pos) ?? []));
-    const readings = positions.map(find);
+    const readings = positions.map((pos, n) => {
+      const uci = find(pos);
+      return plays && uci !== plays[n] ? undefined : uci;
+    });
     const uci = readings.find(Boolean);
     if (!uci) continue;
     if ([...readings, ...witnessed].some((other) => other && other !== uci)) return undefined;
@@ -132,6 +136,8 @@ function mentionOf(text: string, before: Chess, uci: Uci): Mention {
 interface Tier {
   /** Positions a move may be read in, the likeliest first. */
   readonly positions: readonly Chess[];
+  /** The move a line plays from each position, if any: only it is read there. */
+  readonly plays?: readonly Uci[];
   /** Positions where a different reading makes the mention unplaceable, here or in a later tier. */
   readonly witnesses: readonly Chess[];
 }
@@ -163,7 +169,8 @@ function notePlaces(lesson: Lesson, { note, after, before }: ShownNote): Places 
 
 /**
  * Where a note's mentioned moves are looked for, nearest first: its
- * position; the position its move was played in; then each ply onward.
+ * position; a move its own line or trap plays, which the note describes; the
+ * position its move was played in; then each ply onward.
  */
 function* tiers(
   lesson: Lesson,
@@ -179,13 +186,23 @@ function* tiers(
   yield threatened
     ? { positions: [start, passed], witnesses: [] }
     : { positions: [start], witnesses: [passed] };
+  const lines = ideaLines(ideas, start);
+  const steps = lines.flatMap(({ positions, moves }) =>
+    moves.map((uci, n) => ({ pos: positions[n], uci })),
+  );
+  if (steps.length) {
+    yield {
+      positions: steps.map(({ pos }) => pos),
+      plays: steps.map(({ uci }) => uci),
+      witnesses: [],
+    };
+  }
   const playedIn = before && readPositionKey(before);
   if (playedIn) yield { positions: [playedIn], witnesses: [] };
-  const lines = ideaLines(ideas, start);
   const guide = guidePlies(lesson, start, after);
   for (let ply = 1; ply <= REACH; ply++) {
     const positions = [
-      ...lines.flatMap((line) => (line[ply] ? [line[ply]] : [])),
+      ...lines.flatMap(({ positions: line }) => (line[ply] ? [line[ply]] : [])),
       ...(guide.next().value ?? []),
     ];
     if (!positions.length) return;
@@ -193,13 +210,20 @@ function* tiers(
   }
 }
 
-/** Each line or trap the note's ideas play from `start`, as its positions: index n after n moves. */
-function ideaLines(ideas: readonly Idea[], start: Chess): Chess[][] {
-  return ideas.flatMap((idea) =>
-    idea.type === 'line' || idea.type === 'trap'
-      ? [Array.from(playLine(idea.moves.slice(0, REACH), start.clone()), ({ pos }) => pos.clone())]
-      : [],
-  );
+/**
+ * Each line or trap the note's ideas play from `start`: its positions, index n
+ * after n moves, and the moves played from them.
+ */
+function ideaLines(
+  ideas: readonly Idea[],
+  start: Chess,
+): { positions: Chess[]; moves: readonly Uci[] }[] {
+  return ideas.flatMap((idea) => {
+    if (idea.type !== 'line' && idea.type !== 'trap') return [];
+    const line = idea.moves.slice(0, REACH);
+    const positions = Array.from(playLine(line, start.clone()), ({ pos }) => pos.clone());
+    return [{ positions, moves: line.slice(0, positions.length - 1) }];
+  });
 }
 
 /** The positions the guide's moves reach from `start`, a ply at a time, each once. */

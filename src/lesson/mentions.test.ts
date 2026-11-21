@@ -70,6 +70,26 @@ describe('noteParts', () => {
     ]);
   });
 
+  it('shows a move where the note’s own trap plays it, over the position its move was played in', () => {
+    // On 5.Qe2: Nd6 is legal before Qe2 too, but mates only after the trap's ...Ngf6.
+    const before = 'r1bqkbnr/pp1npppp/2p5/8/3PN3/8/PPP2PPP/R1BQKBNR w KQkq -' as PositionKey;
+    const after = 'r1bqkbnr/pp1npppp/2p5/8/3PN3/8/PPP1QPPP/R1B1KBNR b KQkq -' as PositionKey;
+    const trap = note('Don’t play ...Ngf6, because Nd6 is mate.', {
+      ideas: [{ type: 'trap', moves: ['g8f6', 'e4d6'], verdict: 'losesMaterial' }],
+    });
+    const [, , , mate] = noteParts({ positions: {} } as unknown as Lesson, {
+      note: trap,
+      after,
+      before,
+    });
+    expect(mate).toEqual({
+      text: 'Nd6',
+      key: 'r1bqkb1r/pp1npppp/2pN1n2/8/3P4/8/PPP1QPPP/R1B1KBNR b KQkq -',
+      lit: ['e4', 'd6'],
+      kind: 'move',
+    });
+  });
+
   it('shows a route written square to square as its move', () => {
     const after = keyAfter('e4', 'c6', 'd4', 'd5', 'e5');
     const [, mention] = noteParts(SAMPLE, { note: note('Then c6-c5 hits d4.'), after });
