@@ -1,9 +1,11 @@
 import { Text } from '@reactive/silk-native';
+import { use } from 'react';
 import { Text as Span } from 'react-native';
 
 import { ExternalLink } from '@/components/ExternalLink';
 import type { LessonSource } from '@/lesson/lesson';
-import { listSeparator, sourceName } from '@/lesson/openings';
+import { listSeparator, sourceName, sourcesOf } from '@/lesson/openings';
+import { LessonIndexContext } from '@/resources/lesson';
 
 /**
  * The footnote crediting what a lesson was made from: "Lesson from MMatkun's
@@ -12,13 +14,14 @@ import { listSeparator, sourceName } from '@/lesson/openings';
  * link wherever its text is shown, which a note's plain text can't hold.
  */
 export function SourceCredits({ sources }: { readonly sources: readonly LessonSource[] }) {
+  const credited = sourcesOf(use(LessonIndexContext), sources);
   return (
     <Text role="caption" tone="secondary">
       Lesson from{' '}
       {sources.map((source, i) => (
         <Span key={source.url}>
           {listSeparator(i, sources.length)}
-          <ExternalLink url={source.url}>{sourceName(source)}</ExternalLink>
+          <ExternalLink url={source.url}>{sourceName(source, credited)}</ExternalLink>
           {source.license ? (
             <>
               {' ('}

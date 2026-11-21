@@ -501,6 +501,36 @@ describe('openingsLesson', () => {
     expect(slav.notes?.[0].text).toBe(`Slav Defence, from ${credit}.`);
   });
 
+  it('names two lichess studies by one author by their titles', () => {
+    const index = {
+      slav: {
+        ...INDEX.slav,
+        sources: [
+          { ...study('Matkun'), title: 'Slav, part 1' },
+          { ...study('Matkun'), title: 'Slav, part 2', url: 'https://lichess.org/study/part2' },
+          study('Kitsune'),
+        ],
+      },
+    };
+    const [slav] = openingsLesson(index, 'black').positions[keyAfter()].moves;
+    expect(slav.notes?.[0].text).toBe(
+      "Slav Defence, from Slav, part 1 by Matkun, Slav, part 2 by Matkun and Kitsune's lichess study.",
+    );
+  });
+
+  it("names a study by its title where another lesson credits its author's other study", () => {
+    const index = {
+      slav: { ...INDEX.slav, sources: [{ ...study('Matkun'), title: 'Slav' }] },
+      other: {
+        ...INDEX.slav,
+        title: 'Other',
+        sources: [{ ...study('Matkun'), title: 'Other', url: 'https://lichess.org/study/other' }],
+      },
+    };
+    const [slav] = openingsLesson(index, 'black').positions[keyAfter()].moves;
+    expect(slav.notes?.[0].text).toBe('Slav Defence, from Slav by Matkun.');
+  });
+
   it("names a lichess study's license when it has one", () => {
     const license = { name: 'CC0', url: 'https://creativecommons.org/publicdomain/zero/1.0/' };
     const index = { slav: { ...INDEX.slav, sources: [{ ...study('Matkun'), license }] } };

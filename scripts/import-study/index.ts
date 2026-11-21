@@ -62,7 +62,14 @@ import { indexedWith, readLessonFile, registered, writeIndex } from './register'
 import { report, sourceReport } from './report';
 import { nodeStockfish } from './stockfish';
 import { parseStudy, withoutLeadComments, withoutLines, withReplies, type Chapter } from './study';
-import { credit, lessonInfo, STUDIES, type ChapterSource } from './studies';
+import {
+  credit,
+  lessonInfo,
+  STUDIES,
+  type ChapterSource,
+  type StudySource,
+  type WikibooksSource,
+} from './studies';
 import { noteTranspositions } from './transpositions';
 import { wikibooksPgn } from './wikibooks';
 
@@ -205,19 +212,25 @@ function writeLesson(file: string, lesson: Lesson) {
   console.log(`wrote ${file}: ${Buffer.byteLength(json)} bytes`);
 }
 
-/** The chapters `from` gives a lesson that teaches `side`. */
+/** The chapters `from` gives a lesson that teaches `side`, with the replies it names in words. */
 async function sourceChapters(from: ChapterSource, side: Color): Promise<Chapter[]> {
-  if ('study' in from) {
-    const pgn = from.file
-      ? readFileSync(join(ROOT, 'scripts/import-study/sources', from.file), 'utf8')
-      : await studyPgn(from.study);
-    const read = parseStudy(pgn, from.chapters);
-    const kept = from.leave ? withoutLines(read, from.leave) : read;
-    const chapters = from.namedFrom ? withoutLeadComments(kept, from.namedFrom) : kept;
-    return from.replies ? withReplies(chapters, from.replies) : chapters;
-  }
-  const pgn = await wikibooksPgn(wikibooksPage, { ...from, learner: side });
-  return parseStudy(pgn, () => true);
+  const chapters =
+    'study' in from ? await studyChapters(from) : await wikibooksChapters(from, side);
+  return from.replies ? withReplies(chapters, from.replies) : chapters;
+}
+
+async function studyChapters(from: StudySource): Promise<Chapter[]> {
+  const pgn = from.file
+    ? readFileSync(join(ROOT, 'scripts/import-study/sources', from.file), 'utf8')
+    : await studyPgn(from.study);
+  const read = parseStudy(pgn, from.chapters);
+  const kept = from.leave ? withoutLines(read, from.leave) : read;
+  return from.namedFrom ? withoutLeadComments(kept, from.namedFrom) : kept;
+}
+
+async function wikibooksChapters(from: WikibooksSource, side: Color): Promise<Chapter[]> {
+  const { replies: _replies, ...options } = from;
+  return parseStudy(await wikibooksPgn(wikibooksPage, { ...options, learner: side }), () => true);
 }
 
 /** The study's PGN, downloaded once into the cache. */
