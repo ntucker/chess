@@ -21,10 +21,10 @@ function movedBy({ nativeEvent }: GestureResponderEvent, from: Finger): Point | 
 }
 
 /**
- * The finger pressing a control, followed by its touch identifier from where
+ * Tracks the finger that pressed a control, by its touch identifier and where
  * it went down, so other fingers on the screen can't move, lift or cancel
- * it. Pass `down` as the control's `onTouchStart`; the others read the
- * matching touch events.
+ * the press. Pass `down` as the control's `onTouchStart`, and call `moved`,
+ * `lift` and `cancel` from its other touch handlers.
  */
 export function usePressingFinger() {
   const start = useRef<Finger>(undefined);
@@ -38,7 +38,8 @@ export function usePressingFinger() {
     down(event: GestureResponderEvent) {
       const { touches, changedTouches } = event.nativeEvent;
       const from = start.current;
-      if (from && !touchOf(changedTouches, from.id) && touchOf(touches, from.id)) return;
+      const stillPressing = from && !touchOf(changedTouches, from.id) && touchOf(touches, from.id);
+      if (stillPressing) return;
       const [touch] = changedTouches;
       start.current = touch && { id: touch.identifier, x: touch.pageX, y: touch.pageY };
     },
@@ -46,18 +47,18 @@ export function usePressingFinger() {
     moved(event: GestureResponderEvent) {
       return start.current && movedBy(event, start.current);
     },
-    /** How far the pressing finger moved before lifting, if `event` is its lift; the press ends. */
-    lifted(event: GestureResponderEvent) {
+    /** Ends the press if `event` is the pressing finger's lift, with how far it moved. */
+    lift(event: GestureResponderEvent) {
       const offset = start.current && movedBy(event, start.current);
       if (offset) start.current = undefined;
       return offset;
     },
     /**
-     * Whether `event` cancels the press, which ends it: a cancel that doesn't
-     * list the pressing finger is another finger's, while a whole gesture's
-     * cancel lists every finger.
+     * Ends the press, and returns true, unless `event` is another finger's
+     * cancel: one that doesn't list the pressing finger (a whole gesture's
+     * cancel lists every finger). With no press, there is nothing to keep.
      */
-    cancelled(event: GestureResponderEvent) {
+    cancel(event: GestureResponderEvent) {
       const from = start.current;
       if (from && !touchOf(event.nativeEvent.changedTouches, from.id)) return false;
       start.current = undefined;

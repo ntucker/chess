@@ -165,14 +165,14 @@ export function ThemeSwitch() {
       }}
       onTouchEnd={(event) => {
         // How far the finger went before lifting, which a move's render may not have reached yet.
-        const lifted = finger.lifted(event);
+        const lifted = finger.lift(event);
         if (!lifted || opening.current !== 'hold') return;
         const choice = menu && swiped(menu, lifted);
         if (choice && choice !== theme) choose(choice);
         close();
       }}
       onTouchCancel={(event) => {
-        if (finger.cancelled(event) && opening.current === 'hold') close();
+        if (finger.cancel(event) && opening.current === 'hold') close();
       }}
     >
       <HeaderButton
