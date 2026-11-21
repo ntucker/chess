@@ -3,7 +3,7 @@ import { router, Slot, Stack } from 'expo-router';
 import { act, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
-import { goBack, navigateInTransitions } from '@/components/navigation';
+import { goBack, runNavigationInTransitions } from '@/components/navigation';
 import { uciLine } from '@/lesson/lesson.fixture';
 import { lessonHref, variationHref } from '@/lesson/openings';
 import { FIXTURE_INDEX } from '@/lesson/openings.fixture';
@@ -18,10 +18,18 @@ import { useOpeningsGame } from './useOpeningsGame';
 import 'expo-router/build/testing-library/mocks';
 import { ExpoRoot } from 'expo-router/build/ExpoRoot';
 import { getMockContext } from 'expo-router/build/testing-library/mock-config';
-import { getDefaultTransitionMode } from 'expo-router/build/global-state/router';
 
-// The app's entry (index.ts) without Expo Router's, which would render the app.
-jest.mock('expo-router/entry', () => ({}));
+// The app's entry (index.ts) without Expo Router's, which would render the
+// app: it notes the transition mode the router would first render with.
+let mockModeAtEntry: string | undefined;
+jest.mock('expo-router/entry', () => {
+  mockModeAtEntry = jest
+    .requireActual<typeof import('expo-router/build/global-state/router')>(
+      'expo-router/build/global-state/router',
+    )
+    .getDefaultTransitionMode();
+  return {};
+});
 
 let latest: ReturnType<typeof useOpeningsGame> & { readonly id?: string };
 /** The openings layout, as `src/app/(openings)/_layout.tsx` reads its address. */
@@ -53,7 +61,7 @@ async function open(url: string) {
     openings: () => null,
   });
   // As the app's entry does, before the router first renders.
-  navigateInTransitions();
+  runNavigationInTransitions();
   root = createRoot();
   await act(async () => root!.render(<ExpoRoot context={context} location={url} />));
 }
@@ -80,7 +88,7 @@ afterEach(() => {
 describe('useOpeningsGame on the router', () => {
   it("runs navigation in transitions from the app's entry, before the router renders", () => {
     jest.requireActual('../../../index');
-    expect(getDefaultTransitionMode()).toBe('always');
+    expect(mockModeAtEntry).toBe('always');
   });
 
   it('keeps the game as its own picks move the address, and resumes it on Back', async () => {

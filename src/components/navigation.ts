@@ -15,7 +15,7 @@ export const AT_ONCE = { inTransition: false } as const;
  * layout's effect, the change re-renders the router while the page is still
  * hydrating, and on the web the home page can then stay loading forever.
  */
-export function navigateInTransitions() {
+export function runNavigationInTransitions() {
   router.setTransitionMode('always');
 }
 
