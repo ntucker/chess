@@ -391,6 +391,13 @@ const ARCO_BISHOPS_CHAPTERS: Readonly<Record<string, string | undefined>> = {
 };
 
 /**
+ * A study read only to fill gaps: it names no line, so the earlier sources'
+ * names stand. Without it, `chapterName`'s default reads the study's
+ * chapter titles as variation names.
+ */
+const NAMES_NO_LINE = { chapterName: () => undefined } as const;
+
+/**
  * A study's `chapters` and `chapterName` from one map of its chapters: the
  * chapters it lists, named as it says. Unlike `chapterNamed`, a chapter the
  * study gained since is left out, for a study read only for some chapters.
@@ -810,7 +817,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         },
         // Its theory chapters, not the middlegame plans, model games or puzzles.
         chapters: (title: string) => /^(?:Quickstarter Guide|Chapter #)/.test(title),
-        chapterName: () => undefined,
+        ...NAMES_NO_LINE,
       },
       {
         study: 'EMa4kq6F',
@@ -822,7 +829,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         // Its lines, not the introduction or the pawn-only minority-attack lessons.
         chapters: (title: string) =>
           /^(?:(?:Push|Take|Defend)-Variation: (?!Minority)|What if White)/.test(title),
-        chapterName: () => undefined,
+        ...NAMES_NO_LINE,
       },
       {
         study: '8isfzJc8',
@@ -833,7 +840,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         },
         // Its theory sections, not the sparring positions or model games.
         chapters: (title: string) => /^Section \d/.test(title),
-        chapterName: () => undefined,
+        ...NAMES_NO_LINE,
         // Its comparisons with the French Advance and with 1.d4 d5, not Caro-Kann lines.
         leave: ['e4 e6', 'd4'],
       },
@@ -846,7 +853,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         },
         // Its lines, each titled under a book emoji: not the introduction, section titles or advice.
         chapters: (title: string) => /^[📗📘📙📕📒📖]/u.test(title),
-        chapterName: () => undefined,
+        ...NAMES_NO_LINE,
       },
       {
         study: 'coIcWRAj',
@@ -855,9 +862,10 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
           author: 'gabesness',
           url: 'https://lichess.org/study/coIcWRAj',
         },
-        // The chapters titled by their line's move: not the section titles, or 1.d4 c6.
+        // The chapters titled by a move ("4.Nf3 — Short Variation"), not the section titles
+        // in dashes, one of which is its 1.d4 chapter.
         chapters: (title: string) => /^\d\.(?:\.\.)?[A-Za-z]/.test(title),
-        chapterName: () => undefined,
+        ...NAMES_NO_LINE,
       },
       {
         study: 'Ov8HP8iB',
@@ -867,7 +875,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
           url: 'https://lichess.org/study/Ov8HP8iB',
         },
         chapters: (title: string) => title.startsWith('Option '),
-        chapterName: () => undefined,
+        ...NAMES_NO_LINE,
       },
       {
         study: 'pxThshmj',
@@ -879,7 +887,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         // Its lines, and the introduction their set-up positions continue from.
         chapters: (title: string) =>
           title === 'Introduction' || title.startsWith('Caro-Kann defence: '),
-        chapterName: () => undefined,
+        ...NAMES_NO_LINE,
       },
     ],
     engineCheck: true,
@@ -1021,7 +1029,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         },
         // The 1...d5 chapter; the others answer 1.d4 with 1...Nf6, and the example games come later.
         chapters: (title: string) => title === '1...d5 Set-up',
-        chapterName: () => undefined,
+        ...NAMES_NO_LINE,
       },
       { root: 'Chess_Opening_Theory/1._d4/1...d5/2._Bf4' },
       // 2...Nf6 by the other move order: 3.e3, and the 3.Nc3 that leads into the next root.
@@ -1678,7 +1686,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         // After LBB86's, whose chapters each name one of White's fourth moves: a chapter of all of
         // them first would name every shared position for its main line.
         ...LOLORIV_BERLIN,
-        chapterName: () => undefined,
+        ...NAMES_NO_LINE,
       },
       {
         study: 'fpOrtRTd',
