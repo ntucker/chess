@@ -59,6 +59,20 @@ describe('SourceCredits', () => {
     expect(labels).toEqual(['1: Loaded', '2: Other']);
   });
 
+  it('credits the license studies share after their authors', () => {
+    const license = {
+      name: 'CC BY-SA 4.0',
+      url: 'https://creativecommons.org/licenses/by-sa/4.0/',
+    };
+    const sources = [
+      { ...study('Slav', 'slav'), license },
+      { ...study('Caro', 'caro'), author: 'wub1234', license },
+    ];
+    expect(credits(sources, sources).text).toBe(
+      'Lesson from lichess studies by Matkun and wub1234 (CC\u00a0BY-SA\u00a04.0)',
+    );
+  });
+
   it('credits one site at a time, Wikibooks pages under their book', () => {
     const page = (moves: string): LessonSource => ({
       title: `Chess Opening Theory, ${moves}`,
@@ -78,7 +92,7 @@ describe('SourceCredits', () => {
     );
   });
 
-  it('lets a long page label break only before a move number', () => {
+  it("joins a page label's moves with no-break spaces, all but those before a move number", () => {
     const page: LessonSource = {
       title: 'Chess Opening Theory, 1.d4 Nf6 2.c4 g6',
       author: 'Wikibooks contributors',
