@@ -319,10 +319,11 @@ const marksConfig = (marks: BoardMarks): Config => ({
 /**
  * A tinted square in each tone (marks.ts names the classes), under its piece.
  * Written from TONES and toneColors, so a new tone or color needs no CSS edit.
+ * The tone at 40% alpha (`66` after its #rrggbb), not color-mix(), which
+ * Android web views before Chromium 111 drop.
  */
 const TINT_CSS = TONES.map(
-  (tone) =>
-    `cg-board square.tint-${tone} { background-color: color-mix(in oklab, ${toneColors[tone]} 40%, transparent); }`,
+  (tone) => `cg-board square.tint-${tone} { background-color: ${toneColors[tone]}66; }`,
 ).join('\n');
 
 /** The preview's own layer, over chessground's pieces and under its arrows. */
