@@ -4,8 +4,8 @@ import type { MoveQuality } from '@/analysis/quality';
 
 // How each move label looks: a colored disc with a white glyph, drawn in the
 // scoresheet (QualityBadge) and on the board (Board.tsx, in a web view on
-// Android, which is why this file imports only Silk's color helper, which imports
-// nothing).
+// Android, which is why this file imports only `@reactive/silk-core/color`, which
+// imports nothing).
 // Greens for good moves, then gold, orange and red as the loss grows, as
 // chess.com and lichess color them; each disc holds its white glyph at 3:1 or
 // more.

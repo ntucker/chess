@@ -100,10 +100,10 @@ const darkTones = { accent: { onSolid: surfaces.dark.surface } };
 // The generated grays are cool; the program's paper is warm, so its neutral
 // fills are parchment, with plum ink for solid controls and ivory on red.
 const lightTones = {
-  accent: { onSolid: oklch(0.994, 0.007, 89) },
+  accent: { onSolid: surfaces.light.surfaceRaised },
   neutral: {
     solid: surfaces.light.textPrimary,
-    onSolid: oklch(0.994, 0.007, 89),
+    onSolid: surfaces.light.surfaceRaised,
     text: surfaces.light.textPrimary,
     subtle: oklch(0.934, 0.025, 83),
     subtleHover: oklch(0.907, 0.03, 84),

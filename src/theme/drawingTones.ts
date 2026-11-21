@@ -3,8 +3,8 @@ import { oklch } from '@reactive/silk-core/color';
 import type { Tone } from '@/board/drawing';
 
 // The colors of the board's drawings (src/board/drawing.ts). Imports only
-// Silk's color helper, which imports nothing, since the board runs in a web
-// view on Android.
+// `@reactive/silk-core/color`, which imports nothing, since the board runs in
+// a web view on Android.
 // The board looks the same in light and dark mode, so each tone has one
 // color, chosen to read on both the parchment and the plum squares and to
 // stay apart from the spotlight gold of the last move and the selection.

@@ -1,7 +1,7 @@
 // Turns the board's drawings into what chessground and the board's CSS draw.
 // Pure, so it's tested without a DOM. Imports only files that import nothing
-// but Silk's color helper (which imports nothing), since the board runs in a
-// web view on Android.
+// but `@reactive/silk-core/color`, since the board runs in a web view on
+// Android.
 import type { DrawBrush, DrawShape } from '@lichess-org/chessground/draw';
 import type { Key } from '@lichess-org/chessground/types';
 

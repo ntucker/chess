@@ -3228,10 +3228,10 @@ __metadata:
 
 "@reactive/silk-core@file:./vendor/reactive-silk-core.tgz::locator=opening-night%40workspace%3A.":
   version: 0.0.0
-  resolution: "@reactive/silk-core@file:./vendor/reactive-silk-core.tgz#./vendor/reactive-silk-core.tgz::hash=e87bcb&locator=opening-night%40workspace%3A."
+  resolution: "@reactive/silk-core@file:./vendor/reactive-silk-core.tgz#./vendor/reactive-silk-core.tgz::hash=f72679&locator=opening-night%40workspace%3A."
   dependencies:
     culori: "npm:^4.0.2"
-  checksum: 10c0/666c40e7d752997f14b7bdfc596cf944670a7699406e43e0468dd1ae9ea30f2b0fe69c19ed945cca8b03f073cbe37a1fc599b433e6a49ff542f9d8b8c861e010
+  checksum: 10c0/2dc7fc644353ee2d342306305bb15c009aa1970ac739ef5cedd94ac697f94c4e199c51b0573bb9db7a77ecc584d908ca720dc6ec4d4df35dd9bc3959d8098956
   languageName: node
   linkType: hard
 

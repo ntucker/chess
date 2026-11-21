@@ -1,5 +1,5 @@
 import { Text, useReducedMotion, useTheme } from '@reactive/silk-native';
-import { oklch } from '@reactive/silk-core';
+import { oklch } from '@reactive/silk-core/color';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { type CSSAnimationKeyframes } from 'react-native-reanimated';
