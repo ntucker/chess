@@ -34,10 +34,10 @@ export const LEAST_COUNTED = 8;
  *
  * Only judged moves count: book and forced moves, and moves whose search
  * failed, are left out. With fewer than `LEAST_COUNTED` of them the answer
- * is `'brief'`, known at once. Otherwise it's undefined until every position
+ * is `'brief'`. Otherwise it's undefined until every position
  * the review searches (`judgedPosition`) is final or failed, since a move's
- * weight reads positions on both sides: once shown, the number never
- * changes. The swings are read only from those positions, so a search the
+ * weight reads positions on both sides: once shown, the number changes only
+ * if a failed search is tried again and finishes. The swings are read only from those positions, so a search the
  * game happened to run elsewhere can't change it.
  */
 export function gameAccuracy(
