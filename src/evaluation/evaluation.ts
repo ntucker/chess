@@ -153,6 +153,7 @@ export interface MoveChange {
  * mate reads as `mateChange` says.
  */
 export function moveChange(before: Evaluation, after: Evaluation, side: Color): MoveChange {
+  // The mate a changed mate names; checked too so its type is a number.
   const mate = after.mate ?? before.mate;
   if (mate !== undefined && after.mate !== before.mate) {
     return mateChange(before, after, mate, side);
@@ -185,6 +186,9 @@ function mateChange(before: Evaluation, after: Evaluation, mate: number, side: C
   return { label, description: `${mating ? 'You mate' : 'Your opponent mates'} in ${moves}` };
 }
 
+/** More moves than any mate an engine reports, so every mate ranks away from none. */
+const LONGEST_MATE = 1000;
+
 /**
  * How good a position's mate is for `side`, to compare two: its own mate
  * beats none, the sooner the better, and the opponent's is worse than none,
@@ -192,12 +196,9 @@ function mateChange(before: Evaluation, after: Evaluation, mate: number, side: C
  */
 function mateRank(evaluation: Evaluation, side: Color): number {
   if (evaluation.mate === undefined) return 0;
-  const urgency = MATE_RANKS - Math.abs(evaluation.mate);
+  const urgency = LONGEST_MATE - Math.abs(evaluation.mate);
   return evaluationLeader(evaluation) === side ? urgency : -urgency;
 }
-
-/** More than any mate's moves, so every mate ranks away from no mate. */
-const MATE_RANKS = 1000;
 
 const withSign = (label: string, plus: boolean) => `${plus ? '+' : '\u2212'}${label}`;
 

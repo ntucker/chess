@@ -29,7 +29,7 @@ describe('moveChange', () => {
     });
   });
 
-  it('names the mate a move leads to, plus when the side mates', () => {
+  it('names the mate a move leads to, signed better or worse for the side', () => {
     expect(moveChange(even, { score: 0, pawns: 0, mate: -2 }, 'black')).toEqual({
       label: '+M2',
       description: 'You mate in 2 moves',
@@ -47,6 +47,11 @@ describe('moveChange', () => {
     expect(moveChange(blackMates, { score: 0, pawns: 0, mate: -5 }, 'black')).toEqual({
       label: '\u2212M5',
       description: 'You mate in 5 moves',
+    });
+    // From mating to getting mated.
+    expect(moveChange(blackMates, { score: 1, pawns: 0, mate: 2 }, 'black')).toEqual({
+      label: '\u2212M2',
+      description: 'Your opponent mates in 2 moves',
     });
     // Getting mated: a move that puts it off is better.
     expect(moveChange(blackMates, { score: 0, pawns: 0, mate: -5 }, 'white')).toMatchObject({
