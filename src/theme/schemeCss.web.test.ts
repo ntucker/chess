@@ -82,9 +82,9 @@ describe('SCHEME_CSS', () => {
     expect(light.get('color-scheme')).toBe('light');
   });
 
-  it("paints the page behind the app in the stage's color, outweighing Board.css's html rule", () => {
+  it("paints the page behind the app in the stage's color, with selectors that outweigh Board.css's html and body", () => {
     expect(found.get(':root,:root>body')?.get('background-color')).toBe(
-      'var(--chess-color-surface)',
+      shownThemes.light.semantic.color.surface,
     );
   });
 });
