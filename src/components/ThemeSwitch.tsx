@@ -28,15 +28,18 @@ const EDGE = 4;
 const HOLD_MS = 400;
 const MOTION = springMotion(springs.snappy);
 
-/** The styles placing the open choices, and the row inside them shut, by the anchor's index in THEMES. */
+/**
+ * The styles placing the open choices, and the row inside them shut, by the
+ * anchor's index in THEMES. `satisfies` stops the build if THEMES' length changes.
+ */
 const OPEN_AT = ['openAt0', 'openAt1', 'openAt2'] as const satisfies {
   length: (typeof THEMES)['length'];
 };
 const ROW_SHUT_AT = ['rowShutAt0', 'rowShutAt1', 'rowShutAt2'] as const satisfies {
   length: (typeof THEMES)['length'];
 };
-/** How many slots' height a held finger moves up or down to close the choices unchanged. */
-const AWAY = 2;
+/** How many slots up or down a held finger moves to close the choices unchanged. */
+const AWAY_SLOTS = 2;
 
 /** How the choices were opened: a mouse or pen resting on the button, or a finger held on it. */
 type Opened = 'hover' | 'hold';
@@ -46,8 +49,6 @@ interface Menu {
   readonly how: Opened;
   /** The choice that opened over the button: the theme in use then. */
   readonly anchor: number;
-  /** How far the choices moved to stay in the window, in pixels. */
-  readonly shift: number;
   /** Where the first choice starts and how wide each is, in window pixels. */
   readonly left: number;
   readonly size: number;
@@ -67,17 +68,26 @@ const slotAt = (menu: Menu, pageX: number) =>
  * The choice a held finger picks by moving `dx` and `dy` from where it was
  * held: a slot's width per choice, after half a slot that keeps the anchor
  * (so a wobble changes nothing), past either end the end one. Moved more
- * than AWAY slots up or down, none: the finger is leaving to close it.
+ * than AWAY_SLOTS up or down, it picks nothing: the finger is leaving to
+ * close the choices unchanged.
  */
 function swiped(menu: Menu, dx: number, dy: number) {
-  if (Math.abs(dy) > AWAY * menu.size) return undefined;
+  if (Math.abs(dy) > AWAY_SLOTS * menu.size) return undefined;
   return stepped(menu, Math.sign(dx) * Math.floor((Math.abs(dx) + menu.size / 2) / menu.size));
 }
 
-/** Where a touch event's finger is, or last was. React Native Web leaves it to the touches. */
-function touchAt({ nativeEvent }: GestureResponderEvent) {
-  const touch = nativeEvent.touches[0] ?? nativeEvent.changedTouches[0];
-  return { x: touch?.pageX ?? nativeEvent.pageX, y: touch?.pageY ?? nativeEvent.pageY };
+/** A finger: which one, and where it is. */
+interface Finger {
+  readonly id: number;
+  readonly x: number;
+  readonly y: number;
+}
+
+/** Finger `id` if a touch event is about it (it went down, moved or lifted), else the event's first. */
+function fingerOf({ nativeEvent }: GestureResponderEvent, id?: number): Finger | undefined {
+  const touches = [...nativeEvent.changedTouches];
+  const touch = id === undefined ? touches[0] : touches.find((each) => each.identifier === id);
+  return touch && { id: Number(touch.identifier), x: touch.pageX, y: touch.pageY };
 }
 
 /**
@@ -96,12 +106,18 @@ export function ThemeSwitch() {
   const reducedMotion = useReducedMotion();
   const styles = useNarrowStyles(STYLES);
   const [menu, setMenu] = useState<Menu>();
+  // How far the choices last moved to stay in the window, kept once they
+  // close so they don't jump while fading out.
+  const [shift, setShift] = useState(0);
   const button = useRef<ComponentRef<typeof View>>(null);
-  // How the choices are opening or open: set before they're measured, so a
-  // pointer that leaves or a finger that lifts first stops them opening.
+  // How the choices are opening or open, set before they're measured: what
+  // closes them reads it, so a pointer that leaves or a finger that lifts
+  // first stops them opening. What points at them reads `menu`, which
+  // exists once they're measured.
   const opening = useRef<Opened>(undefined);
-  // Where the finger went down, which a held finger's swipe is measured from.
-  const start = useRef<{ x: number; y: number }>(undefined);
+  // The finger pressing the button, from where it went down: a held finger's
+  // swipe is measured from there, and other fingers are ignored.
+  const start = useRef<Finger>(undefined);
 
   const choose = (choice: Theme) => dispatch({ type: 'chosen', choice: { theme: choice } });
   // Opens once measured, already inside the window, so nothing moves after it shows.
@@ -119,7 +135,8 @@ export function ThemeSwitch() {
         right + BORDER > bounds.right
           ? bounds.right - right - BORDER
           : Math.max(0, bounds.left - left + BORDER);
-      setMenu({ how, anchor, shift, left: left + shift, size });
+      setShift(shift);
+      setMenu({ how, anchor, left: left + shift, size });
     });
   };
   const close = () => {
@@ -154,25 +171,31 @@ export function ThemeSwitch() {
         if (opening.current === 'hover' && hoversControl(nativeEvent.pointerType)) close();
       }}
       onTouchStart={(event: GestureResponderEvent) => {
-        start.current = touchAt(event);
+        // The first finger down; one alone on the screen starts over, so a lost lift can't stick.
+        if (!start.current || event.nativeEvent.touches.length === 1) {
+          start.current = fingerOf(event);
+        }
       }}
       // A held finger keeps the button's touch as it swipes over the choices.
       onTouchMove={(event: GestureResponderEvent) => {
         const from = start.current;
-        if (menu?.how !== 'hold' || !from) return;
-        const { x, y } = touchAt(event);
-        point((shown) => swiped(shown, x - from.x, y - from.y));
+        const at = from && fingerOf(event, from.id);
+        if (menu?.how !== 'hold' || !from || !at) return;
+        point((shown) => swiped(shown, at.x - from.x, at.y - from.y));
       }}
       onTouchEnd={(event: GestureResponderEvent) => {
         const from = start.current;
-        if (opening.current !== 'hold') return;
         // Where the finger lifts, which a move's render may not have reached yet.
-        const { x, y } = touchAt(event);
-        const lifted = menu && from && swiped(menu, x - from.x, y - from.y);
+        const at = from && fingerOf(event, from.id);
+        if (!from || !at) return;
+        start.current = undefined;
+        if (opening.current !== 'hold') return;
+        const lifted = menu && swiped(menu, at.x - from.x, at.y - from.y);
         if (lifted && lifted !== theme) choose(lifted);
         close();
       }}
       onTouchCancel={() => {
+        start.current = undefined;
         if (opening.current === 'hold') close();
       }}
     >
@@ -200,10 +223,11 @@ export function ThemeSwitch() {
             backgroundColor: color.surfaceRaised,
             borderColor: color.borderSubtle,
             shadowOpacity: menu ? shadow.raised.opacity : 0,
-            transform: [{ translateX: menu?.shift ?? 0 }],
+            transform: [{ translateX: shift }],
           },
           // Reanimated CSS transitions, which StyleSheet's types don't know.
-          { transitionProperty: ['left', 'width', 'opacity', 'transform'], ...transition },
+          // Not the shift: they open already in place.
+          { transitionProperty: ['left', 'width', 'opacity'], ...transition },
         ]}
       >
         <Animated.View

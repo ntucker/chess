@@ -59,7 +59,7 @@ const pointer = (type: 'pointerover' | 'pointerout', pointerType: string) =>
       relatedTarget: type === 'pointerout' ? document.body : null,
     });
     button().dispatchEvent(Object.assign(event, { pointerType }));
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 0));
   });
 
 describe('ThemeSwitch', () => {
@@ -95,7 +95,7 @@ describe('ThemeSwitch', () => {
       button().dispatchEvent(Object.assign(over, { pointerType: 'mouse' }));
       button().dispatchEvent(Object.assign(out, { pointerType: 'mouse' }));
     });
-    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
     expect(choicesOpen()).toBe(false);
   });
 
@@ -106,16 +106,27 @@ describe('ThemeSwitch', () => {
 
   describe('held by a finger', () => {
     /** A touch event on `target` at `pageX` and `pageY`, as React Native Web reads one. */
-    const touch = (type: string, pageX: number, pageY = 15, target: Element = button()) =>
+    /** A finger, 1 unless said, at `pageX` and `pageY`. */
+    const finger = (pageX: number, pageY = 15, identifier = 1) => ({
+      identifier,
+      pageX,
+      pageY,
+      clientX: pageX,
+      clientY: pageY,
+      target: button(),
+    });
+    /** A touch event for finger 1 at `pageX` and `pageY`, with `others` down too, as React Native Web reads one. */
+    const touch = (type: string, pageX: number, pageY = 15, others: object[] = []) =>
       act(() => {
-        const point = { identifier: 1, pageX, pageY, clientX: pageX, clientY: pageY, target };
+        const point = finger(pageX, pageY);
         const ended = type === 'touchend' || type === 'touchcancel';
+        const down = ended ? others : [...others, point];
         const event = Object.assign(new Event(type, { bubbles: true, cancelable: true }), {
-          touches: ended ? [] : [point],
+          touches: down,
           changedTouches: [point],
-          targetTouches: ended ? [] : [point],
+          targetTouches: down,
         });
-        target.dispatchEvent(event);
+        button().dispatchEvent(event);
       });
     /** Holds a finger on the button's middle long enough to open the choices. */
     const hold = () => {
@@ -133,7 +144,6 @@ describe('ThemeSwitch', () => {
     });
     afterEach(() => {
       jest.useRealTimers();
-      jest.restoreAllMocks();
     });
 
     it('opens the choices, and a swipe then a lift chooses by how far it went', () => {
@@ -190,6 +200,15 @@ describe('ThemeSwitch', () => {
         touch('touchend', 145);
       });
       expect(saved()).toBe('light');
+    });
+
+    it('reads the held finger, not another one down on the screen', () => {
+      const resting = finger(300, 400, 2);
+      touch('touchstart', 115, 15, [resting]);
+      act(() => jest.advanceTimersByTime(600));
+      touch('touchmove', 175, 15, [resting]);
+      touch('touchend', 175, 15, [resting]);
+      expect(saved()).toBe('dark');
     });
 
     it('closes without choosing when the touch is cancelled', () => {
