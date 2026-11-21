@@ -4,7 +4,8 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Eyebrow } from '@/components/Eyebrow';
-import { fonts, spotlight } from '@/theme/theme';
+import { useSchemeColors } from '@/theme/shownTheme';
+import { fonts } from '@/theme/theme';
 
 /** The frame of a developer page: the app's background, a heading and a short intro above `children`. */
 export function DevPage({
@@ -17,13 +18,14 @@ export function DevPage({
   readonly children: ReactNode;
 }) {
   const { theme } = useTheme();
+  const schemeColors = useSchemeColors();
   return (
     <View
       style={[
         devStyles.fill,
         {
           backgroundColor: theme.semantic.color.surface,
-          backgroundImage: spotlight[theme.colorScheme],
+          backgroundImage: schemeColors.spotlight,
         },
       ]}
     >

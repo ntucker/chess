@@ -10,6 +10,14 @@ const PREFIX = process.env.EXPO_PUBLIC_STORAGE_PREFIX ?? '';
 /** The key `name` is saved under in this build. */
 export const storageKey = (name: string) => `${PREFIX}${name}`;
 
+/**
+ * JavaScript that reads the text saved under `key`, for a script in a web
+ * page's head that runs before the app does (src/theme/schemeCss.ts). It
+ * throws where storage is blocked.
+ */
+export const readStorageScript = (key: string) =>
+  `localStorage.getItem(${JSON.stringify(key).replace(/</g, '\\u003c')})`;
+
 // What could not be saved (storage blocked, for example in a private window,
 // or full), kept for this visit so later reads still see it.
 const unsaved = new Map<string, string>();

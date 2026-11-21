@@ -8,7 +8,7 @@ import { Header, type HeaderProps } from '@/components/Header';
 import { PAGE_SPACE } from '@/theme/sideBySide';
 import { narrowStyles } from '@/theme/narrow';
 import { useNarrowPageHeight, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
-import { spotlight } from '@/theme/theme';
+import { useSchemeColors } from '@/theme/shownTheme';
 
 interface Props {
   /** The browser tab's title; none leaves it as it is. */
@@ -38,6 +38,7 @@ interface Props {
  */
 export function Page({ title, header, maxWidth, fillsWindow = false, children, footer }: Props) {
   const { theme } = useTheme();
+  const schemeColors = useSchemeColors();
   const styles = useNarrowStyles(STYLES);
   const part = useNarrowPart();
   const windowHeight = useNarrowPageHeight();
@@ -48,7 +49,7 @@ export function Page({ title, header, maxWidth, fillsWindow = false, children, f
         styles.fill,
         {
           backgroundColor: theme.semantic.color.surface,
-          backgroundImage: spotlight[theme.colorScheme],
+          backgroundImage: schemeColors.spotlight,
         },
       ]}
     >

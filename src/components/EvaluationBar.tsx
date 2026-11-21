@@ -11,6 +11,7 @@ import { analysisKey, PositionAnalysis, useAnalysis } from '@/resources/analysis
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNarrowPart } from '@/theme/Narrow';
 import { pieceColors } from '@/theme/pieceColors';
+import { useSchemeColors } from '@/theme/shownTheme';
 import { fonts } from '@/theme/theme';
 import { timingFunction } from '@/theme/timingFunction';
 
@@ -71,6 +72,7 @@ function Bar({
 }: Partial<Reading> & Pick<Props, 'orientation' | 'style'>) {
   const { theme } = useTheme();
   const { color, motion } = theme.semantic;
+  const schemeColors = useSchemeColors();
   const reducedMotion = useReducedMotion();
   const part = useNarrowPart();
   const score = reading.score ?? 0.5;
@@ -88,9 +90,7 @@ function Bar({
         style,
         {
           backgroundColor: pieceColors.black,
-          // On the light page the bar's white end needs a firmer edge.
-          borderColor:
-            theme.colorScheme === 'dark' ? color.borderSubtle : color.tones.neutral.border,
+          borderColor: schemeColors.evaluationEdge,
           borderRadius: theme.semantic.radius.sm,
         },
       ]}
