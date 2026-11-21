@@ -107,8 +107,10 @@ jobs:
               # A failed lookup keeps building.
               main=$(git ls-remote origin refs/heads/main) && [ -n "$main" ] || continue
               if [ "${main%%$'\t'*}" != "$GITHUB_SHA" ]; then
-                # Marked first, so the step never sees the stop unmarked, and
-                # unmarked if the export had already ended, so its own exit stands.
+                # Marked before the kill, so the step can't take the stop for a
+                # failure, and unmarked if nothing was left to stop. An export
+                # failing on its own at that same moment may pass; the newer
+                # build checks the same code.
                 touch "$superseded"
                 kill -- "-$expo" || rm "$superseded"
                 break
