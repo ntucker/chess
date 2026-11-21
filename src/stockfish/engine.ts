@@ -249,10 +249,11 @@ export function createStockfish(defaultBudget: SearchBudget): Stockfish {
    * running one if it isn't that (its `bestmove` then starts the next).
    */
   function decide() {
-    for (const position of wanted.values()) {
-      if (unavailableError) giveUp(position, unavailableError);
-      else if (!position.watchers.size) remove(position);
+    if (unavailableError) {
+      for (const position of wanted.values()) giveUp(position, unavailableError);
+      return;
     }
+    for (const position of wanted.values()) if (!position.watchers.size) remove(position);
     const next = [...wanted.values()].at(-1);
     if (running) {
       if (!running.stopping && running.wanted !== next) {

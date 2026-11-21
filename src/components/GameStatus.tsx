@@ -127,12 +127,8 @@ interface Failure {
  * the engine's file so asking again can't help, a reload, or what the app
  * needs when a reload can't help either.
  */
-function FailureLine({ who, error, onRetry }: Failure) {
-  const { message, action, onPress } = !(error instanceof NewVersionError)
-    ? { message: `${who} didn't answer.`, action: 'Try again', onPress: onRetry }
-    : error.needs
-      ? { message: `${who} needs ${error.needs}.` }
-      : { message: NEW_VERSION, action: 'Reload', onPress: reload };
+function FailureLine(failure: Failure) {
+  const { message, action, onPress } = failureLine(failure);
   return (
     <Inline gap="3" align="center">
       <Text role="bodySm" tone="danger">
@@ -145,6 +141,18 @@ function FailureLine({ who, error, onRetry }: Failure) {
       ) : null}
     </Inline>
   );
+}
+
+/** What a failure says, and the button that can fix it, if one can. */
+function failureLine({ who, error, onRetry }: Failure): {
+  message: string;
+  action?: string;
+  onPress?: () => void;
+} {
+  if (!(error instanceof NewVersionError))
+    return { message: `${who} didn't answer.`, action: 'Try again', onPress: onRetry };
+  if (error.needs) return { message: `${who} needs ${error.needs}.` };
+  return { message: NEW_VERSION, action: 'Reload', onPress: reload };
 }
 
 type Game = Omit<Props, 'error' | 'onRetry'>;

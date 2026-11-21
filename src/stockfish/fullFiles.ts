@@ -5,7 +5,8 @@
 // scripts/copy-stockfish.mjs), which the web export serves beside the app.
 // The app downloads them only when the learner first picks full Stockfish
 // (full.ts): the web app from its own site, Android from the live site.
-// Imports nothing, so the opponent ladder can name the size.
+// Imports only a type, so the opponent ladder can name the size.
+import type { Needs } from '@/files/newVersion';
 
 /** The engine's JavaScript loader, in public/stockfish/. */
 export const FULL_LOADER = 'stockfish-19-single.js';
@@ -41,5 +42,5 @@ export const PREVIEW_FOLDER = process.env.EXPO_PUBLIC_STOCKFISH_FOLDER ?? '';
  * but a reload, which brings the newer build's; a preview that shares the live
  * site's copy needs a newer build of its own, and Android an app update.
  */
-export const OUTDATED_NEEDS =
+export const OUTDATED_NEEDS: Needs | undefined =
   process.env.EXPO_OS !== 'web' ? 'an app update' : PREVIEW_FOLDER ? 'a newer preview' : undefined;

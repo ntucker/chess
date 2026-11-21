@@ -1,6 +1,9 @@
 /** What the app says when a newer build has replaced the page's. */
 export const NEW_VERSION = 'A new version is out.';
 
+/** What an app that a reload can't update needs, as it reads after "needs". */
+export type Needs = 'an app update' | 'a newer preview';
+
 /**
  * A newer build of the web app has replaced the one this page loaded. A file
  * the page loads late (a lesson, Maia's worker) may then be gone
@@ -11,10 +14,10 @@ export const NEW_VERSION = 'A new version is out.';
  * `needs` says what does.
  */
 export class NewVersionError extends Error {
-  /** What the app needs instead of a reload, such as "an app update". */
-  readonly needs?: string;
+  /** What the app needs instead of a reload. */
+  readonly needs?: Needs;
 
-  constructor(options?: ErrorOptions & { readonly needs?: string }) {
+  constructor(options?: ErrorOptions & { readonly needs?: Needs }) {
     super(options?.needs ? `Needs ${options.needs}.` : NEW_VERSION, options);
     this.name = 'NewVersionError';
     this.needs = options?.needs;

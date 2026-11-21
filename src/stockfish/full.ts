@@ -24,12 +24,11 @@ const CACHE = `${CACHE_PREFIX}${FULL_WASM}:${FULL_WASM_BYTES}`;
  * Full Stockfish's loader and WebAssembly: from the browser's cache when an
  * earlier visit downloaded them, else downloaded from `folder` (an absolute
  * address ending in `/`) and then cached. `report` hears each whole percent
- * of the WebAssembly as it arrives, and 100 once the files are in hand. When the folder
- * serves another build (no file by this build's name, or a WebAssembly of
- * another size), trying again can't help, only a newer app (on the web, a
- * reload): it reports `newVersion` and rejects with a NewVersionError. Any
- * other failure reports `retrying` and rejects; an abort of `signal` rejects
- * without a report.
+ * of the WebAssembly as it arrives, and 100 once the files are in hand. A
+ * folder that serves another build (no file by this build's name, or a
+ * WebAssembly of another size) reports `newVersion` and rejects with a
+ * NewVersionError; any other failure reports `retrying` and rejects. An abort
+ * of `signal` rejects without a report.
  */
 export async function loadFullStockfish(
   folder: string,
@@ -160,8 +159,8 @@ async function readWasm(response: Response, onProgress: (percent: number) => voi
 }
 
 /**
- * The folder serves another build. Android's web view says so to its host,
- * which makes its own error (StockfishHost's `onOutdated`).
+ * The folder serves another build, and `needs` says what loads this one.
+ * Android's web view passes only the fact to its host (`onOutdated`).
  */
 const outdated = (cause: unknown) => new NewVersionError({ cause, needs: OUTDATED_NEEDS });
 
