@@ -23,9 +23,9 @@ export function moveAccuracy(before: number, after: number): number {
 }
 
 /**
- * `side`'s accuracy for the game: the average of a mean of its moves'
- * accuracies, each weighted by how much the game swung where it was played,
- * and their harmonic mean, which a single bad move pulls down. A move's
+ * `side`'s accuracy for the game: the average of two means of its moves'
+ * accuracies, one weighting each move by how much the game swung where it
+ * was played, the other harmonic, which a single bad move pulls down. A move's
  * accuracy comes from the expected scores its label measured, so the number
  * agrees with the badges; a book move counts as 100 and a forced one not at
  * all.
@@ -41,14 +41,13 @@ export function gameAccuracy(
   book: readonly boolean[],
   side: Color,
 ): number | undefined {
-  const searched = Array.from({ length: moves.length + 1 }, (_, ply) =>
-    judgedPosition(book, ply, moves.length),
+  const isSearched = (ply: number) => judgedPosition(book, ply, moves.length);
+  const known = Array.from({ length: moves.length + 1 }, (_, ply) =>
+    isSearched(ply) ? analyses[ply]?.lines[0].evaluation.score : undefined,
   );
-  if (searched.some((isSearched, ply) => isSearched && !analyses[ply])) return undefined;
-  const known = searched.map((isSearched, ply) =>
-    isSearched ? analyses[ply]!.lines[0].evaluation.score : undefined,
-  );
+  if (known.some((score, ply) => score === undefined && isSearched(ply))) return undefined;
   const weights = swingWeights(whiteWinPercents(known));
+  // Once every searched position is final no move is waiting; the check narrows the type.
   const scored = moves.flatMap((move) => {
     if (move.mover !== side || move.status === 'forced' || move.status === 'waiting') return [];
     const accuracy =
@@ -90,8 +89,8 @@ function whiteWinPercents(known: readonly (number | undefined)[]): number[] {
 function swingWeights(percents: readonly number[]): number[] {
   const size = Math.min(Math.max(Math.floor((percents.length - 1) / 10), 2), 8);
   return Array.from({ length: percents.length - 1 }, (_, move) => {
-    const start = Math.max(0, move - size + 2);
-    return Math.min(Math.max(deviation(percents.slice(start, start + size)), 0.5), 12);
+    const end = Math.max(move + 2, size); // exclusive: the position after the move
+    return Math.min(Math.max(deviation(percents.slice(end - size, end)), 0.5), 12);
   });
 }
 
