@@ -1,0 +1,60 @@
+import { describe, expect, it } from '@jest/globals';
+
+import type { Analysis } from '@/evaluation/evaluation';
+
+import { nextSearch, type OrderInput, SKETCH_DEPTH } from './order';
+import type { ReviewMove } from './review';
+import { listing, partial } from './review.fixture';
+
+/** Six moves, the first two from the guide; the learner plays White. */
+const book = [true, true];
+const moves: ReviewMove[] = Array.from({ length: 6 }, (_, ply) => ({
+  ply,
+  mover: ply % 2 === 0 ? 'white' : 'black',
+  forced: false,
+  ...(book[ply] && { quality: 'book' }),
+}));
+
+/** A sketch where White's expected score is `score`. */
+const sketch = (score: number) => partial(SKETCH_DEPTH, ['a', score]);
+const final = (score: number) => listing(['a', score]);
+
+const order = (analyses: (Analysis | undefined)[], input: Partial<OrderInput> = {}) =>
+  nextSearch({ moves, book, analyses, learner: 'white', shown: 0, ...input });
+
+describe('nextSearch', () => {
+  it('sketches every position first, in game order', () => {
+    expect(order([])).toBe(0);
+    expect(order([sketch(0.5), partial(SKETCH_DEPTH - 1, ['a', 0.5])])).toBe(1);
+    expect(order([final(0.5), sketch(0.5), sketch(0.5)])).toBe(3);
+  });
+
+  it("puts the board's move first, unless it's from the guide", () => {
+    expect(order([], { shown: 4 })).toBe(3);
+    expect(order([undefined, undefined, undefined, final(0.5)], { shown: 4 })).toBe(4);
+    expect(order([], { shown: 2 })).toBe(0);
+  });
+
+  // White's moves at ply 2 and 4 drop 0.1 and 0.3; Black's at ply 3 and 5 nothing.
+  const sketched = [0.5, 0.5, 0.5, 0.4, 0.4, 0.1, 0.1].map(sketch);
+
+  it("then searches in full around the learner's biggest drops, largest first", () => {
+    expect(order(sketched)).toBe(4);
+    const worstDone = [...sketched.slice(0, 4), final(0.4), final(0.1), sketched[6]];
+    expect(order(worstDone)).toBe(2);
+    expect(order([...worstDone.slice(0, 2), final(0.5), ...worstDone.slice(3)])).toBe(3);
+  });
+
+  it('then the rest in game order, skipping positions only guide moves touch', () => {
+    // Without drops, the positions in game order; 0 and 1 are only touched by book moves.
+    const even = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5].map(sketch);
+    expect(order(even)).toBe(2);
+    const done = [...even.slice(0, 2), ...[0.5, 0.5, 0.5, 0.5, 0.5].map(final)];
+    expect(order(done)).toBeUndefined();
+  });
+
+  it('keeps a search running in full until it is final', () => {
+    const running = [...sketched.slice(0, 6), partial(SKETCH_DEPTH + 3, ['a', 0.1])];
+    expect(order(running)).toBe(6);
+  });
+});
