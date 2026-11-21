@@ -170,17 +170,15 @@ export function ThemeSwitch() {
         if (opening.current === 'hover' && hoversControl(nativeEvent.pointerType)) close();
       }}
       onTouchStart={(event: GestureResponderEvent) => {
-        // The first finger down. A finger alone on the screen, or one down after
-        // the pressing finger is gone, starts over, so a lost lift can't stick.
-        const { touches } = event.nativeEvent;
+        // The first finger down, which is the press: React Native gives the
+        // button's touch to it. Once that finger is gone from the screen, or its
+        // identifier comes back on a new finger, the next finger down starts
+        // over, so a lost lift can't stick.
+        const { touches, changedTouches } = event.nativeEvent;
         const from = start.current;
-        if (
-          !from ||
-          touches.length === 1 ||
-          ![...touches].some((touch) => touch.identifier === from.id)
-        ) {
-          start.current = fingerOf(event);
-        }
+        const has = (list: typeof touches) =>
+          [...list].some((touch) => touch.identifier === from?.id);
+        if (!from || has(changedTouches) || !has(touches)) start.current = fingerOf(event);
       }}
       // A held finger keeps the button's touch as it swipes over the choices.
       onTouchMove={(event: GestureResponderEvent) => {
@@ -201,6 +199,7 @@ export function ThemeSwitch() {
         close();
       }}
       onTouchCancel={(event: GestureResponderEvent) => {
+        // Only the pressing finger's cancel closes them (a whole gesture's cancel lists every finger).
         const from = start.current;
         if (from && !fingerOf(event, from.id)) return;
         start.current = undefined;

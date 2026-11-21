@@ -114,7 +114,11 @@ describe('ThemeSwitch', () => {
       clientY: pageY,
       target: button(),
     });
-    /** A finger resting on the page away from the button. */
+    /**
+     * A finger resting on the page away from the button. Its own touchstart
+     * lands outside the switch: it only tells React Native Web's touch
+     * bookkeeping the finger is down, which then expects it in later events.
+     */
     const resting = (identifier = 2) => ({
       ...finger(300, 400, identifier),
       target: document.body,
@@ -230,6 +234,18 @@ describe('ThemeSwitch', () => {
       expect(choicesOpen()).toBe(true);
       touch('touchmove', 145);
       touch('touchend', 145);
+      expect(saved()).toBe('light');
+    });
+
+    it("follows a new finger that reuses a lost finger's identifier, with another one down", () => {
+      // Finger 1's lift never arrives; Android hands its identifier to the next finger.
+      touch('touchstart', 100);
+      const other = resting();
+      send('touchstart', other, [other]);
+      touch('touchstart', 115, 15, [other]);
+      act(() => jest.advanceTimersByTime(600));
+      touch('touchmove', 145, 15, [other]);
+      touch('touchend', 145, 15, [other]);
       expect(saved()).toBe('light');
     });
 
