@@ -147,7 +147,8 @@ const styles = StyleSheet.create({
   // Its gap to the first option's text, as wide as an option's padding.
   lead: { marginRight: OPTION_PADDING },
   // Pulls each line's first option left by its padding, so its text starts where the lead's does.
-  options: { marginLeft: negated(OPTION_PADDING) },
+  // It shrinks to the line where it can't fit on one, so its options wrap rather than overflow.
+  options: { marginLeft: negated(OPTION_PADDING), flexShrink: 1 },
   option: {
     minHeight: touchTarget,
     justifyContent: 'center',
