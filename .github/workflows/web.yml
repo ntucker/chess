@@ -30,9 +30,11 @@ jobs:
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # A newer push makes this build worthless; publishes still never overlap.
+    # A newer push to a pull request makes its older build worthless. Every
+    # other run gets its own group: GitHub marks a cancelled run's commit
+    # failed, so an older build of main finishes and its publish steps aside.
     concurrency:
-      group: pages-build-${{ github.ref }}
+      group: pages-build-${{ github.event.pull_request.number || github.run_id }}
       cancel-in-progress: true
     outputs:
       site-url: ${{ steps.pages.outputs.base_url }}
@@ -118,11 +120,12 @@ jobs:
         || github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # One publish per target at a time, so a close waits for the preview it
-    # removes. Different targets retry on each other's pushes below. (One
-    # group for all would cancel all but the newest waiting run.)
+    # One publish per pull request at a time, so a close waits for the
+    # preview it removes. Main's runs don't queue, because a newer run would
+    # cancel the waiting one and mark its commit failed; an older one skips
+    # publishing below instead. Runs retry on each other's pushes below.
     concurrency:
-      group: pages-publish-${{ github.event.pull_request.number || 'main' }}
+      group: pages-publish-${{ github.event.pull_request.number || github.run_id }}
     permissions:
       contents: write
       pull-requests: write
@@ -190,6 +193,14 @@ jobs:
             touch .nojekyll
             git add -A
             tree=$(git write-tree)
+            # A newer push to main publishes its own build, so this older one
+            # would only roll the site back. Checked on every attempt, right
+            # before pushing.
+            if [ "$target" = . ] && [ "$(git ls-remote origin refs/heads/main | cut -f1)" != "$GITHUB_SHA" ]; then
+              echo "::notice::Not published: a newer push to main publishes instead."
+              echo "copied=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             # An unchanged tree (say, a close after a run already dropped the
             # preview) skips the push, which would only rebuild Pages. A re-run
             # or manual run still pushes, to retry a failed Pages build.
