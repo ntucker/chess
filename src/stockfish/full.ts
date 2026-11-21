@@ -101,7 +101,10 @@ async function readCache(cache: Cache): Promise<EngineFiles | undefined> {
     const [loader, wasm] = await Promise.all(
       [FULL_LOADER, FULL_WASM].map((file) => cache.match(cacheKey(file))),
     );
-    if (loader && wasm) return { loader: await loader.text(), wasm: await wasm.blob() };
+    if (loader && wasm) {
+      const [text, blob] = await Promise.all([loader.text(), wasm.blob()]);
+      return { loader: text, wasm: blob };
+    }
   } catch (error) {
     console.error(error);
   }
@@ -157,7 +160,7 @@ async function readWasm(response: Response, onProgress: (percent: number) => voi
     throw new Error(`Full Stockfish: got ${received} bytes, not ${FULL_WASM_BYTES}`);
   }
   try {
-    return await new Response(counted, { headers: { 'content-type': 'application/wasm' } }).blob();
+    return await new Response(counted).blob();
   } catch (error) {
     throw otherSize ? new NewVersionError({ cause: error }) : error;
   }

@@ -69,5 +69,5 @@ async function loadLite(signal: AbortSignal): Promise<EngineFiles> {
     fetchOk(assetUrl(LOADER), { signal }).then((file) => file.text()),
     fetchOk(assetUrl(WASM), { signal }).then((file) => file.blob()),
   ]);
-  return { loader, wasm: new Blob([wasm], { type: 'application/wasm' }) };
+  return { loader, wasm };
 }

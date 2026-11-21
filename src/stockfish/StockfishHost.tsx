@@ -2,12 +2,11 @@ import { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { readAsset } from '@/files/readAsset';
-import { useReportFullStockfishDownload } from '@/resources/download';
+import type { ReportDownload } from '@/resources/download';
 
-import { type Connection, fullStockfish, liteStockfish, type Supervisor } from './engine';
+import { type Connection, liteStockfish, type Stockfish, type Supervisor } from './engine';
 import EngineView, { type EngineViewRef } from './EngineView';
 import { LOADER, WASM } from './files';
-import { LIVE_FOLDER } from './fullFiles';
 import { useRestarts } from './restarts';
 
 /**
@@ -17,21 +16,43 @@ import { useRestarts } from './restarts';
  * frees the engine and its web view.
  */
 export function StockfishHost() {
-  return <HiddenHost />;
+  return <HiddenHost engine={liteStockfish} start={startLite} />;
 }
 
 /**
- * Runs a Stockfish build in a hidden web view while mounted, connected to its
- * engine, replacing a web view whose engine fails (`useRestarts`): Stockfish
- * lite, whose files the app sends, or with `full`, full Stockfish, which the
- * web view downloads itself from the live site (EngineView's `startFull`),
- * reporting the download to the store (`Download`).
+ * Starts the engine in a web view whose page has loaded, unless `signal`
+ * aborts first (the web view went); throws if it can't.
  */
-export function HiddenHost({ full = false }: { readonly full?: boolean }) {
+type StartEngine = (view: EngineViewRef, signal: AbortSignal) => Promise<void> | void;
+
+/**
+ * Lite's files are read each time rather than kept, so choosing Maia frees
+ * them too.
+ */
+async function startLite(view: EngineViewRef, signal: AbortSignal) {
+  const [loader, wasm] = await Promise.all([
+    readAsset(LOADER).then((file) => file.text()),
+    readAsset(WASM).then((file) => file.base64()),
+  ]);
+  if (!signal.aborted) view.start(loader, wasm);
+}
+
+interface HostProps {
+  readonly engine: Stockfish;
+  readonly start: StartEngine;
+  /** How a download the web view does itself goes (EngineView's `startFull`). */
+  readonly onDownload?: ReportDownload;
+}
+
+/**
+ * Runs a Stockfish build in a hidden web view while mounted, connected to
+ * `engine`, replacing a web view whose engine fails (`useRestarts`).
+ */
+export function HiddenHost(props: HostProps) {
   const [running, supervisor] = useRestarts();
   return (
     <View pointerEvents="none" style={styles.hidden}>
-      {running ? <Engine full={full} supervisor={supervisor} /> : null}
+      {running ? <Engine {...props} supervisor={supervisor} /> : null}
     </View>
   );
 }
@@ -40,44 +61,38 @@ export function HiddenHost({ full = false }: { readonly full?: boolean }) {
  * One engine in its own web view. Each restart mounts a new one, with its own
  * ref: Expo's DOM component binds a ref to the first web view it's given.
  */
-function Engine({ full, supervisor }: { readonly full: boolean; readonly supervisor: Supervisor }) {
-  const engine = full ? fullStockfish : liteStockfish;
-  const report = useReportFullStockfishDownload();
+function Engine({
+  engine,
+  start,
+  onDownload,
+  supervisor,
+}: HostProps & { readonly supervisor: Supervisor }) {
   const view = useRef<EngineViewRef>(null);
   const connection = useRef<Connection>(null);
-  const stopped = useRef(false);
+  // Aborts when this web view goes, so nothing reaches it or restarts it after.
+  const stop = useRef<AbortController>(null);
+  const stopped = () => stop.current?.signal.aborted ?? true;
 
   // Also runs after the web view's page reloads, which Expo does when the
   // system ends the web view's process. The old engine went with it: its
   // search waits, detached, for the new one (`onStarted`), so its time to
-  // answer doesn't run out while the new one loads. Lite's files are read
-  // each time rather than kept, so choosing Maia frees them too; full
-  // Stockfish's come from the web view's cache.
+  // answer doesn't run out while the new one loads.
   const onLoad = async () => {
     connection.current?.detach();
     connection.current = null;
-    if (full) {
-      view.current?.startFull(LIVE_FOLDER);
-      return;
-    }
+    const page = view.current;
+    if (!page || !stop.current) return;
     try {
-      const [loader, wasm] = await Promise.all([
-        readAsset(LOADER).then((file) => file.text()),
-        readAsset(WASM).then((file) => file.base64()),
-      ]);
-      if (stopped.current) return;
-      view.current?.start(loader, wasm);
+      await start(page, stop.current.signal);
     } catch (error) {
-      if (stopped.current) return;
-      console.error(error);
-      supervisor.failed();
+      onError(String(error));
     }
   };
   // Attached only once the engine has its files, so its time to answer
   // (engine.ts) doesn't run during a download.
   const onStarted = () => {
     const started = view.current;
-    if (!started || stopped.current) return;
+    if (!started || stopped()) return;
     // Expo's ref hands out standalone functions, which need no `this`.
     connection.current = engine.attach(started.send, supervisor);
   };
@@ -85,15 +100,16 @@ function Engine({ full, supervisor }: { readonly full: boolean; readonly supervi
   const onError = (message: string) => {
     if (connection.current) return connection.current.fail(message);
     // Not attached yet: its files didn't load, or its worker didn't start.
-    if (stopped.current) return;
+    if (stopped()) return;
     console.error(message);
     supervisor.failed();
   };
 
   useEffect(() => {
-    stopped.current = false;
+    const controller = new AbortController();
+    stop.current = controller;
     return () => {
-      stopped.current = true;
+      controller.abort();
       connection.current?.detach();
     };
   }, []);
@@ -104,7 +120,7 @@ function Engine({ full, supervisor }: { readonly full: boolean; readonly supervi
       onLoad={onLoad}
       onLine={onLine}
       onError={onError}
-      onDownload={report}
+      onDownload={onDownload}
       onStarted={onStarted}
       dom={{ style: styles.hidden }}
     />

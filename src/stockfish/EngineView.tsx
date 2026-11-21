@@ -40,7 +40,7 @@ interface Props {
   /** The engine failed to start or crashed (or its files to download); it answers nothing more. */
   readonly onError: (message: string) => void;
   /** How full Stockfish's download goes (`startFull`, `loadFullStockfish`'s `report`). */
-  readonly onDownload: ReportDownload;
+  readonly onDownload?: ReportDownload;
   /** The engine has its files and is starting, ready for commands. */
   readonly onStarted: () => void;
   readonly dom?: DOMProps;
@@ -63,7 +63,7 @@ export default function EngineView({ ref, onLoad, onLine, onError, onDownload, o
         start(...[loader, wasmBase64]: Parameters<DOMImperativeFactory[string]>) {
           if (typeof loader !== 'string' || typeof wasmBase64 !== 'string') return;
           try {
-            run(loader, new Blob([decodeBase64(wasmBase64)], { type: 'application/wasm' }));
+            run(loader, new Blob([decodeBase64(wasmBase64)]));
           } catch (error) {
             onError(String(error));
           }
@@ -75,7 +75,7 @@ export default function EngineView({ ref, onLoad, onLine, onError, onDownload, o
           download.current = stop;
           // Resolves no files for another build, which only a newer app can
           // start: then no `onError`, so no restart.
-          loadFullStockfish(folder, stop.signal, onDownload)
+          loadFullStockfish(folder, stop.signal, onDownload ?? ignore)
             .then((files) => {
               if (files && !stop.signal.aborted) run(files.loader, files.wasm);
             })
@@ -101,6 +101,9 @@ export default function EngineView({ ref, onLoad, onLine, onError, onDownload, o
   }, []);
   return null;
 }
+
+/** For a host that doesn't show a download (lite's). */
+const ignore = () => {};
 
 /** Bytes from base64, without a callback per byte (the WebAssembly is 1.8 MB). */
 function decodeBase64(base64: string): Uint8Array<ArrayBuffer> {

@@ -90,10 +90,10 @@ jobs:
           EXPO_PUBLIC_STORAGE_PREFIX: ${{ env.PREVIEW && format('pr-{0}:', github.event.number) || '' }}
           EXPO_PUBLIC_STOCKFISH_FOLDER: ${{ steps.stockfish.outputs.folder }}
         run: |
+          if [ -n "$EXPO_PUBLIC_STOCKFISH_FOLDER" ]; then rm -r public/stockfish; fi
           yarn expo export --platform web ${{ env.PREVIEW && '--no-minify' || '' }}
           # Pages shows the site's root 404.html for any path it has no file for.
           cp dist/+not-found.html dist/404.html
-          if [ -n "$EXPO_PUBLIC_STOCKFISH_FOLDER" ]; then rm -r dist/stockfish; fi
 
       - name: Upload the site
         uses: actions/upload-artifact@v7

@@ -85,7 +85,6 @@ describe('loadFullStockfish', () => {
     const files = (await load())!;
     expect(files.loader).toBe('loader');
     expect(await files.wasm.text()).toBe(WHOLE.join(''));
-    expect(files.wasm.type).toBe('application/wasm');
     // Each percent as it arrives, then all of it once the files are in hand.
     expect(reports).toEqual(['50', '100', '100']);
     expect(fetched).toEqual([

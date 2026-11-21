@@ -1,3 +1,8 @@
+import { useReportFullStockfishDownload } from '@/resources/download';
+
+import { fullStockfish } from './engine';
+import type { EngineViewRef } from './EngineView';
+import { LIVE_FOLDER } from './fullFiles';
 import { HiddenHost } from './StockfishHost';
 
 /**
@@ -9,5 +14,8 @@ import { HiddenHost } from './StockfishHost';
  * picker to show.
  */
 export function FullStockfishHost() {
-  return <HiddenHost full />;
+  const report = useReportFullStockfishDownload();
+  return <HiddenHost engine={fullStockfish} start={startFull} onDownload={report} />;
 }
+
+const startFull = (view: EngineViewRef) => view.startFull(LIVE_FOLDER);

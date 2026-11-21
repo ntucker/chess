@@ -17,10 +17,6 @@ export class Download extends Entity {
    */
   readonly failure?: DownloadFailure;
 
-  pk() {
-    return this.id;
-  }
-
   static key = 'Download';
 }
 

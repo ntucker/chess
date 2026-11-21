@@ -1,12 +1,16 @@
 // Renders Silk, which ships ES modules: the web project's transformIgnorePatterns
 // (package.json) lets @reactive through Babel for it.
-import { type Controller, DataProvider, useController } from '@data-client/react';
+import { DataProvider } from '@data-client/react';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { SilkProvider } from '@reactive/silk-native';
 import { act, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
-import { Download, type DownloadFailure, FULL_STOCKFISH_DOWNLOAD } from '@/resources/download';
+import {
+  type DownloadFailure,
+  type ReportDownload,
+  useReportFullStockfishDownload,
+} from '@/resources/download';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
 
@@ -19,13 +23,13 @@ jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 
 let root: Root | undefined;
 let host: HTMLElement;
-/** The store the picker reads full Stockfish's download from. */
-let ctrl: Controller;
-function GrabController() {
-  const controller = useController();
+/** Reports full Stockfish's download as its host does. */
+let reportDownload: ReportDownload;
+function GrabReport() {
+  const report = useReportFullStockfishDownload();
   useEffect(() => {
-    ctrl = controller;
-  }, [controller]);
+    reportDownload = report;
+  }, [report]);
   return null;
 }
 
@@ -39,7 +43,7 @@ beforeEach(async () => {
       <DataProvider>
         <SilkProvider theme={themes.dark}>
           <SettingsProvider>
-            <GrabController />
+            <GrabReport />
             <OpponentPicker />
           </SettingsProvider>
         </SilkProvider>
@@ -267,12 +271,7 @@ describe('OpponentPicker', () => {
     expect(progress()).toBeUndefined();
     const report = (percent: number, failure?: DownloadFailure) =>
       act(async () => {
-        // Not awaited: act flushes the update.
-        void ctrl.set(Download, FULL_STOCKFISH_DOWNLOAD, {
-          ...FULL_STOCKFISH_DOWNLOAD,
-          percent,
-          failure,
-        });
+        reportDownload(percent, failure);
       });
     await report(42);
     expect(progress()).toBe('· 42% downloaded');

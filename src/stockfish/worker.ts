@@ -33,7 +33,8 @@ export function startStockfishWorker(
   onError: (message: string) => void,
 ): StockfishWorker {
   const script = URL.createObjectURL(new Blob([loader], { type: 'text/javascript' }));
-  const wasmUrl = URL.createObjectURL(wasm);
+  // Typed, since the loader compiles it as it streams, which needs the type.
+  const wasmUrl = URL.createObjectURL(new Blob([wasm], { type: 'application/wasm' }));
   const worker = new Worker(`${script}#${encodeURIComponent(wasmUrl)}`);
   // Blob addresses keep their bytes alive until they're revoked. The engine
   // has read both files by the time it prints anything, so its first line
