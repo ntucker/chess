@@ -712,7 +712,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
       {
         root: 'Chess_Opening_Theory/1._e4/1...c6',
         rename: {
-          'Tal variation': 'Tal Variation (4.h4) & Bayonet Attack (4.g4)',
+          'Tal variation': 'Tal (4.h4) & Bayonet Attack (4.g4)',
           // 3.Nd2, which the main study teaches under the Classical Variation.
           'Modern variation': '',
           'Accelerated Panov attack': 'Accelerated Panov',

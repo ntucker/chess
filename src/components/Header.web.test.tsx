@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client';
 
 import { readShippedLesson, shippedIds } from '@/lesson/lesson.fixture';
 import { pathNames, variationPath } from '@/lesson/select';
+import { SettingsProvider } from '@/settings/SettingsProvider';
 import { NARROW_PX } from '@/theme/narrow';
 import { themes } from '@/theme/theme';
 
@@ -25,7 +26,9 @@ function buttonParts(props: Parameters<typeof Header>[0]) {
   act(() =>
     root.render(
       <SilkProvider theme={themes.dark}>
-        <Header {...props} />
+        <SettingsProvider>
+          <Header {...props} />
+        </SettingsProvider>
       </SilkProvider>,
     ),
   );
@@ -58,7 +61,9 @@ describe('Header', () => {
     act(() =>
       root.render(
         <SilkProvider theme={themes.dark}>
-          <Header onRestart={onRestart} />
+          <SettingsProvider>
+            <Header onRestart={onRestart} />
+          </SettingsProvider>
         </SilkProvider>,
       ),
     );
@@ -77,17 +82,17 @@ describe('Header', () => {
 
 /**
  * The width a 360px page's header leaves its place: the page less its
- * padding each side, the logo (as tall as the header), the source link or
- * the settings button in its place (both HeaderButton's size), and
- * Header.tsx's gaps of 8 and 12.
+ * padding each side, the logo (as tall as the header), the theme button
+ * and the source link or the settings button in its place (all
+ * HeaderButton's size), and Header.tsx's gaps of 8, 12 and 12.
  */
 const PLACE_AT_360 =
   360 -
   2 * NARROW_PX['page-space'] -
   NARROW_PX['header-height'] -
-  NARROW_PX['header-button-size'] -
+  2 * NARROW_PX['header-button-size'] -
   8 -
-  12;
+  2 * 12;
 
 describe('the narrow header place', () => {
   it("fits every shipped line's name on a 360px page by its estimate", () => {
@@ -99,8 +104,8 @@ describe('the narrow header place', () => {
           (name) => name.length * PLACE_TYPE.emPerCharacter * PLACE_TYPE.smallest > PLACE_AT_360,
         );
     });
-    // The export measured 264 at 360px; this sum must keep up with the header's layout.
-    expect(PLACE_AT_360).toBe(264);
+    // The export measured 224 at 360px; this sum must keep up with the header's layout.
+    expect(PLACE_AT_360).toBe(224);
     expect(tooLong).toEqual([]);
   });
 });

@@ -34,6 +34,7 @@ describe('settings', () => {
       showMoves: false,
       showTraps: true,
       side: 'white',
+      theme: 'dark',
     } as const;
     expect(parseSettings(JSON.stringify(rated))).toEqual(rated);
   });
@@ -44,7 +45,7 @@ describe('settings', () => {
       opponent: 1500,
       evaluationEngine: 'maia',
     });
-    expect(parseSettings('{"opponent":"1900"}')).toEqual(DEFAULT_SETTINGS);
+    expect(parseSettings('{"opponent":"1900","theme":"sepia"}')).toEqual(DEFAULT_SETTINGS);
     expect(parseSettings('not json')).toEqual(DEFAULT_SETTINGS);
   });
 });
