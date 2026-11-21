@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { afterEach, beforeAll, describe, expect, it, jest } from '@jest/globals';
 import { router, Slot, Stack } from 'expo-router';
 import { act, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'test-renderer';
@@ -20,7 +20,8 @@ import { ExpoRoot } from 'expo-router/build/ExpoRoot';
 import { getMockContext } from 'expo-router/build/testing-library/mock-config';
 
 // The app's entry (index.ts) without Expo Router's, which would render the
-// app: it notes the transition mode the router would first render with.
+// app: it notes the transition mode the router would first render with. Jest
+// runs this once, when the entry test first requires index.ts.
 let mockModeAtEntry: string | undefined;
 jest.mock('expo-router/entry', () => {
   mockModeAtEntry = jest
@@ -42,13 +43,10 @@ function Page() {
   return <Slot />;
 }
 
-/** The root layout's navigator. */
-const RootLayout = () => <Stack screenOptions={{ headerShown: false }} />;
-
 let root: Root | undefined;
 async function open(url: string) {
   const context = getMockContext({
-    _layout: RootLayout,
+    _layout: () => <Stack screenOptions={{ headerShown: false }} />,
     '(openings)/_layout': () => (
       <LessonIndexContext value={FIXTURE_INDEX}>
         <SettingsProvider>
@@ -76,10 +74,6 @@ beforeAll(() => {
   // Load the routes at once, as the test's context holds them, not lazily.
   process.env.EXPO_ROUTER_IMPORT_MODE = 'sync';
 });
-beforeEach(() => {
-  // Each test starts from Expo Router's default, so only the entry sets the mode.
-  router.setTransitionMode('preload-only');
-});
 afterEach(() => {
   act(() => root?.unmount());
   root = undefined;
@@ -87,6 +81,7 @@ afterEach(() => {
 
 describe('useOpeningsGame on the router', () => {
   it("runs navigation in transitions from the app's entry, before the router renders", () => {
+    router.setTransitionMode('preload-only');
     jest.requireActual('../../../index');
     expect(mockModeAtEntry).toBe('always');
   });
