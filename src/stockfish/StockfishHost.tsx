@@ -48,11 +48,14 @@ function Engine({ full, supervisor }: { readonly full: boolean; readonly supervi
   const stopped = useRef(false);
 
   // Also runs after the web view's page reloads, which Expo does when the
-  // system ends the web view's process. The new engine then takes over the
-  // search the old one was running. Lite's files are read each time rather
-  // than kept, so choosing Maia frees them too; full Stockfish's come from
-  // the web view's cache.
+  // system ends the web view's process. The old engine went with it: its
+  // search waits, detached, for the new one (`onStarted`), so its time to
+  // answer doesn't run out while the new one loads. Lite's files are read
+  // each time rather than kept, so choosing Maia frees them too; full
+  // Stockfish's come from the web view's cache.
   const onLoad = async () => {
+    connection.current?.detach();
+    connection.current = null;
     if (full) {
       view.current?.startFull(LIVE_FOLDER);
       return;
