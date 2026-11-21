@@ -6,7 +6,7 @@
 import type { Chess } from 'chessops/chess';
 import type { SquareName } from 'chessops/types';
 
-import type { AnalysisLine, Evaluation } from '@/evaluation/evaluation';
+import { type AnalysisLine, type MoveChange, moveChange } from '@/evaluation/evaluation';
 import { parsePositionKey, playLine, playMove, positionKey } from '@/game/replay';
 import { isStockfish, type Opponent } from '@/opponent/opponent';
 
@@ -76,10 +76,10 @@ export interface Candidate {
    */
   readonly rare?: boolean;
   /**
-   * How the position stands after the move, on a row of Stockfish's top
-   * moves (`engineCandidates`), which only these rows have.
+   * How the move changes the position for the learner, on a row of
+   * Stockfish's top moves (`engineCandidates`), which only these rows have.
    */
-  readonly engine?: Evaluation;
+  readonly engine?: MoveChange;
 }
 
 /**
@@ -135,8 +135,11 @@ export function candidates(
 /**
  * Stockfish's top moves at `key` as rows of their own, best first, listed
  * where the guide has no candidates. A move that leads back into the guide
- * names its variation, as a guide move does. Example: beyond the guide after
- * 1.e4 c6 2.Qh5, Stockfish's g8f6 is the row Nf6, with the evaluation after it.
+ * names its variation, as a guide move does. Each row says how its move
+ * changes the position (the first line's evaluation) for the learner, on
+ * either side's turn (`moveChange`), so the best move reads "0.0". Example:
+ * beyond the guide after 1.e4 c6 2.Qh5, Stockfish's g8f6 is the row Nf6, and
+ * for a Black learner a move a pawn worse than the best reads "\u22121.0".
  */
 export function engineCandidates(
   lesson: Lesson,
@@ -147,7 +150,7 @@ export function engineCandidates(
   if (!pos) return [];
   return top.flatMap(({ uci, evaluation }) => {
     const row = uci && candidateRow(lesson, pos, { uci });
-    return row ? [{ ...row, engine: evaluation }] : [];
+    return row ? [{ ...row, engine: moveChange(top[0].evaluation, evaluation, lesson.side) }] : [];
   });
 }
 

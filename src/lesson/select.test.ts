@@ -10,6 +10,7 @@ import {
   bookMoves,
   candidates,
   captionName,
+  engineCandidates,
   FEWEST_RARE,
   RARE_SHARE,
   ALWAYS_LISTED,
@@ -191,6 +192,33 @@ describe('candidates', () => {
       ]);
       expect(rareOnes(rarely, learnerKey, 2)).toEqual([]);
     });
+  });
+});
+
+describe('engineCandidates', () => {
+  /** Stockfish's lines at `key`, best first, each scored `pawns` for White. */
+  const labels = (key: PositionKey, lines: [string, number][]) =>
+    engineCandidates(
+      SAMPLE,
+      key,
+      lines.map(([uci, pawns]) => ({ uci, evaluation: { score: 0.5, pawns } })),
+    ).map(({ san, engine }) => `${san} ${engine?.label}`);
+
+  it("labels each move by how it changes the position for the learner, on either side's turn", () => {
+    // The learner (Black) to move: the best keeps the position, the rest lose some of it.
+    expect(
+      labels(keyAfter('e4', 'c6', 'Qh5'), [
+        ['g8f6', -1.5],
+        ['d7d5', -1.1],
+      ]),
+    ).toEqual(['Nf6 0.0', 'd5 \u22120.4']);
+    // The opponent to move: its best keeps the position too, and its worse moves help the learner.
+    expect(
+      labels(keyAfter('e4', 'c6', 'Qh5', 'Nf6'), [
+        ['h5e2', -1.5],
+        ['h5f3', -2],
+      ]),
+    ).toEqual(['Qe2 0.0', 'Qf3 +0.5']);
   });
 });
 

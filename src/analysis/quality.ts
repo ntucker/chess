@@ -2,7 +2,7 @@
  * How good a move was, as chess.com labels moves: by how much of the mover's
  * expected score it gave away.
  */
-import type { Evaluation, FinalAnalysis } from '@/evaluation/evaluation';
+import { type Evaluation, type FinalAnalysis, forSide } from '@/evaluation/evaluation';
 import type { Color } from '@/game/replay';
 
 /**
@@ -94,4 +94,4 @@ function judgedEvaluation(
  * the same loss for either side, even at a label's limit (in floats,
  * 0.06 - 0.01 is under 0.05 but 0.99 - 0.94 is over).
  */
-const signed = ({ score }: Evaluation, mover: Color) => (mover === 'white' ? score : -score);
+const signed = ({ score }: Evaluation, mover: Color) => forSide(score, mover);
