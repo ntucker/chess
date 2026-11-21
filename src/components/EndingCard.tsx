@@ -45,78 +45,79 @@ export function EndingCard({ ending, rival, orientation, aside = false }: Props)
   const at = (step: Step | undefined) => step && play(step, start);
   const ornament = <Ornament color={look.rule} star={mood === 'won'} />;
   return (
-    <View
-      style={[StyleSheet.absoluteFill, styles.board, BANDS[band]]}
+    <Animated.View
+      style={[
+        StyleSheet.absoluteFill,
+        styles.board,
+        BANDS[band],
+        // A transition here, since the band inside animates its own opacity as it comes on.
+        {
+          opacity: aside ? 0 : 1,
+          transitionProperty: 'opacity',
+          transitionDuration: reducedMotion ? 0 : FADE.durationMs,
+          transitionTimingFunction: timingFunction(FADE.easing),
+        },
+      ]}
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
     >
       {width ? (
-        // Its own view, since the band's entrance animates the same opacity.
-        <Animated.View
-          style={{
-            opacity: aside ? 0 : 1,
-            transitionProperty: 'opacity',
-            transitionDuration: reducedMotion ? 0 : FADE.durationMs,
-            transitionTimingFunction: timingFunction(FADE.easing),
-          }}
-        >
-          <Animated.View style={[styles.band, { paddingVertical: size.pad }, at(cue.band)]}>
-            <Animated.View
+        <Animated.View style={[styles.band, { paddingVertical: size.pad }, at(cue.band)]}>
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFill,
+              styles.ground,
+              { backgroundColor: look.ground, boxShadow: look.shadow },
+              at(cue.ground),
+            ]}
+          >
+            {cue.gleam ? (
+              <Animated.View
+                style={[styles.gleam, { backgroundColor: look.gleam }, at(cue.gleam)]}
+              />
+            ) : null}
+          </Animated.View>
+          <Rules color={look.rule} double={mood === 'won'} style={at(cue.rules)} />
+          <Animated.View style={[styles.eyebrowRow, at(cue.eyebrow)]}>
+            {ornament}
+            <Text
+              role="label"
+              numberOfLines={1}
               style={[
-                StyleSheet.absoluteFill,
-                styles.ground,
-                { backgroundColor: look.ground, boxShadow: look.shadow },
-                at(cue.ground),
+                styles.eyebrow,
+                {
+                  color: look.eyebrow,
+                  fontSize: size.eyebrow,
+                  lineHeight: Math.round(size.eyebrow * 1.3),
+                  letterSpacing: size.eyebrow * 0.26,
+                },
               ]}
             >
-              {cue.gleam ? (
-                <Animated.View
-                  style={[styles.gleam, { backgroundColor: look.gleam }, at(cue.gleam)]}
-                />
-              ) : null}
-            </Animated.View>
-            <Rules color={look.rule} double={mood === 'won'} style={at(cue.rules)} />
-            <Animated.View style={[styles.eyebrowRow, at(cue.eyebrow)]}>
-              {ornament}
-              <Text
-                role="label"
-                numberOfLines={1}
-                style={[
-                  styles.eyebrow,
-                  {
-                    color: look.eyebrow,
-                    fontSize: size.eyebrow,
-                    lineHeight: Math.round(size.eyebrow * 1.3),
-                    letterSpacing: size.eyebrow * 0.26,
-                  },
-                ]}
-              >
-                {eyebrow}
-              </Text>
-              {ornament}
-            </Animated.View>
-            {/* A view animates in the title's place: on Android, nested text can't. */}
-            <Animated.View style={at(cue.title)}>
-              <Text
-                role="headingXl"
-                accessibilityRole="header"
-                accessibilityLiveRegion="polite"
-                numberOfLines={1}
-                style={[
-                  styles.title,
-                  {
-                    color: look.title,
-                    fontSize: size.title,
-                    lineHeight: Math.round(size.title * 1.12),
-                  },
-                ]}
-              >
-                {title}
-              </Text>
-            </Animated.View>
+              {eyebrow}
+            </Text>
+            {ornament}
+          </Animated.View>
+          {/* A view animates in the title's place: on Android, nested text can't. */}
+          <Animated.View style={at(cue.title)}>
+            <Text
+              role="headingXl"
+              accessibilityRole="header"
+              accessibilityLiveRegion="polite"
+              numberOfLines={1}
+              style={[
+                styles.title,
+                {
+                  color: look.title,
+                  fontSize: size.title,
+                  lineHeight: Math.round(size.title * 1.12),
+                },
+              ]}
+            >
+              {title}
+            </Text>
           </Animated.View>
         </Animated.View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }
 

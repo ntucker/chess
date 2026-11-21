@@ -117,7 +117,7 @@ export function BoardColumn({ game, rival, board, onSwap, stepperMiddle }: Board
             {...board}
             ending={ending}
             onEndingHover={(over) => setAsideAt(over ? showing : undefined)}
-            onEndingTap={() => setAsideAt(asideAt ? undefined : showing)}
+            onEndingTap={() => setAsideAt((at) => (at ? undefined : showing))}
             dom={{ style: styles.fill, scrollEnabled: false }}
           />
           {ending ? (
