@@ -799,6 +799,88 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         ...WUB_C6,
         ...onlyChapters(WUB_CARO_KANN),
       },
+      // The most popular Caro-Kann studies on lichess, after the three above: each explains
+      // moves only where the earlier ones are silent, and names no line of its own.
+      {
+        study: 'MBQ3N0F8',
+        credit: {
+          title: 'The Caro Kann Defence: Complete Repertoire',
+          author: 'Shreksify',
+          url: 'https://lichess.org/study/MBQ3N0F8',
+        },
+        // Its theory chapters, not the middlegame plans, model games or puzzles.
+        chapters: (title: string) => /^(?:Quickstarter Guide|Chapter #)/.test(title),
+        chapterName: () => undefined,
+      },
+      {
+        study: 'EMa4kq6F',
+        credit: {
+          title: 'WIN with the Caro-Kann!',
+          author: 'MSHARK19',
+          url: 'https://lichess.org/study/EMa4kq6F',
+        },
+        // Its lines, not the introduction or the pawn-only minority-attack lessons.
+        chapters: (title: string) =>
+          /^(?:(?:Push|Take|Defend)-Variation: (?!Minority)|What if White)/.test(title),
+        chapterName: () => undefined,
+      },
+      {
+        study: '8isfzJc8',
+        credit: {
+          title: 'Learn the Caro-Kann like a BOSS',
+          author: 'NoseKnowsAll',
+          url: 'https://lichess.org/study/8isfzJc8',
+        },
+        // Its theory sections, not the sparring positions or model games.
+        chapters: (title: string) => /^Section \d/.test(title),
+        chapterName: () => undefined,
+        // Its comparisons with the French Advance and with 1.d4 d5, not Caro-Kann lines.
+        leave: ['e4 e6', 'd4'],
+      },
+      {
+        study: 'oWZx54ef',
+        credit: {
+          title: 'Crush 1.e4 with the Caro-Kann! Full Repertoire!',
+          author: 'ST123_stsoham_Chess',
+          url: 'https://lichess.org/study/oWZx54ef',
+        },
+        // Its lines, each titled under a book emoji: not the introduction, section titles or advice.
+        chapters: (title: string) => /^[📗📘📙📕📒📖]/u.test(title),
+        chapterName: () => undefined,
+      },
+      {
+        study: 'coIcWRAj',
+        credit: {
+          title: 'Caro-Kann: An Overview',
+          author: 'gabesness',
+          url: 'https://lichess.org/study/coIcWRAj',
+        },
+        // The chapters titled by their line's move: not the section titles, or 1.d4 c6.
+        chapters: (title: string) => /^\d\.(?:\.\.)?[A-Za-z]/.test(title),
+        chapterName: () => undefined,
+      },
+      {
+        study: 'Ov8HP8iB',
+        credit: {
+          title: "Gotham's Caro-Kann Practice",
+          author: 'fletchgraham',
+          url: 'https://lichess.org/study/Ov8HP8iB',
+        },
+        chapters: (title: string) => title.startsWith('Option '),
+        chapterName: () => undefined,
+      },
+      {
+        study: 'pxThshmj',
+        credit: {
+          title: 'Caro-Kann defence',
+          author: 'EverGiven',
+          url: 'https://lichess.org/study/pxThshmj',
+        },
+        // Its lines, and the introduction their set-up positions continue from.
+        chapters: (title: string) =>
+          title === 'Introduction' || title.startsWith('Caro-Kann defence: '),
+        chapterName: () => undefined,
+      },
     ],
     engineCheck: true,
     info: {
