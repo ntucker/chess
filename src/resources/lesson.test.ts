@@ -3,7 +3,7 @@ import { makeSan } from 'chessops/san';
 import { parseUci } from 'chessops/util';
 
 import { NAMED_MOVE, parsePosition, positionKey } from '@/game/replay';
-import { checkLesson, pointsToStudy } from '@/lesson/check';
+import { checkLesson } from '@/lesson/check';
 import type { Lesson } from '@/lesson/lesson';
 import { readShippedLesson, shippedIds } from '@/lesson/lesson.fixture';
 import { lessonIndex, meets } from '@/lesson/openings';
@@ -42,14 +42,6 @@ describe('shipped lessons', () => {
     const lesson = readShippedLesson(id);
     expect(lesson.id).toBe(id);
     expect(checkLesson(lesson)).toEqual([]);
-  });
-
-  it.each(shippedIds)('%s has no note pointing to the study it came from', (id) => {
-    const { positions } = readShippedLesson(id);
-    const texts = Object.values(positions).flatMap(({ notes, moves }) =>
-      [...(notes ?? []), ...moves.flatMap((move) => move.notes ?? [])].map(({ text }) => text),
-    );
-    expect(texts.filter(pointsToStudy)).toEqual([]);
   });
 
   it.each(shippedIds)("%s names no variation after a guide's contents page", (id) => {

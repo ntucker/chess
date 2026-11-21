@@ -11,7 +11,7 @@ import type { Color } from 'chessops/types';
 
 import { balance } from '@/game/material';
 import { parsePosition } from '@/game/replay';
-import { generatedIdeaProblem, noteTextProblem, pointsToStudy } from '@/lesson/check';
+import { generatedIdeaProblem, noteTextProblem } from '@/lesson/check';
 import type { Idea, Note } from '@/lesson/lesson';
 
 import type { Answer } from '../convert/answer';
@@ -114,7 +114,6 @@ export function explainedNote(answer: Answer, move: Played): Explained {
     return refuse(
       'it says you are ahead on material, but after the opponent’s best reply you are not',
     );
-  if (pointsToStudy(text)) return refuse('it points to the study, which the learner never sees');
   const ideas: Idea[] = [];
   for (const raw of written.ideas) {
     // `false` so an evaluation is refused below as a type no generated note

@@ -290,22 +290,28 @@ export function notationProblem(text: string): string | undefined {
   return undefined;
 }
 
-/** Words that point to a guide's own pages: "see chapter 12", "the most important section", "the heart button". */
+/**
+ * Words that point to the study a note came from, which the learner never
+ * sees: "see chapter 12", "the most important section", "the heart button".
+ * A false hit (a "queenside section") costs a reworded note.
+ */
 const STUDY_MENTION = /\b(?:chapters?|sections?|buttons?|(?:the|this|that|our|my) study)\b/i;
 
-/**
- * Whether note `text` points to the study it came from, which the learner
- * never sees. The import steps reword or refuse such notes; a test, not
- * `checkLesson`, keeps them out of the shipped lessons.
- */
+/** Whether note `text` points to the study it came from. */
 export const pointsToStudy = (text: string) => STUDY_MENTION.test(text);
 
-/** What is wrong with a note's text, or undefined: empty, too long, or written in notation. */
+/**
+ * What is wrong with a note's text, or undefined: empty, too long, written in
+ * notation, or pointing to the study.
+ */
 export function noteTextProblem(text: string): string | undefined {
   const words = text.split(/\s+/).filter(Boolean).length;
   if (words === 0) return 'is empty';
   if (words > MAX_NOTE_WORDS) return `has ${words} words (most ${MAX_NOTE_WORDS})`;
-  return notationProblem(text);
+  const notation = notationProblem(text);
+  if (notation) return notation;
+  if (pointsToStudy(text)) return 'points to the study it came from';
+  return undefined;
 }
 
 /**

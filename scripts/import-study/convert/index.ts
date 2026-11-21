@@ -8,8 +8,8 @@
  * Opus writes notation too, or gives no answer (a failed request, or a
  * `--no-model` run without one stored), the lesson checker refuses the import.
  * A note that points to the study itself ("covered in chapter 12"), which the
- * learner never sees, is asked again the same way; an answer that still does
- * is not kept, and the first note stays.
+ * learner never sees, is asked again the same way; if the answer still does,
+ * the first note stays and the lesson checker refuses the import.
  * A comment with no answer at all keeps the notes `extractChapter` made.
  *
  * Runs only when someone imports a study on purpose (`yarn import-study`):

@@ -3,7 +3,7 @@ import { Chess } from 'chessops/chess';
 import { parseFen } from 'chessops/fen';
 import { parseSan } from 'chessops/san';
 
-import { checkIdea, checkLesson, generatedIdeaProblem, pointsToStudy } from './check';
+import { checkIdea, checkLesson, generatedIdeaProblem } from './check';
 import { parsePositionKey, positionKey } from '@/game/replay';
 
 import { type Idea, type Lesson, LESSON_FORMAT, type Purpose } from './lesson';
@@ -760,6 +760,18 @@ describe('checkLesson', () => {
   });
 
   it.each([
+    'This transposes into the Classical Defense, covered in chapter four.',
+    'According to the study, Black cannot stop the mate.',
+    'Save it with the heart button.',
+  ])('refuses a note pointing to the study it came from: %s', (text) => {
+    expect(noteProblems(text)).toEqual([
+      { path: notePath, message: 'points to the study it came from' },
+    ]);
+  });
+
+  it.each([
+    'This reaches a position you already know.',
+    'Your study of the centre pays off: d5 is strong.',
     'This is a blunder: after 7.Nxe5 Bxd1 8.Bb5+ White comes out ahead.',
     'Against Ng3, develop with e6 and Be7, castle, then play b6, Bb7 and break with c5.',
     'Avoid.',
@@ -797,20 +809,5 @@ describe('generatedIdeaProblem', () => {
     expect(generatedIdeaProblem({ type: 'evaluation', value: 'equal' }, qgd)).toBe(
       'is a type no generated note draws',
     );
-  });
-});
-
-describe('pointsToStudy', () => {
-  it('finds notes that point to the guide itself', () => {
-    expect(
-      pointsToStudy('This transposes into the Classical Defense, covered in chapter four.'),
-    ).toBe(true);
-    expect(pointsToStudy('According to the study, Black cannot stop the mate.')).toBe(true);
-    expect(pointsToStudy('Save it with the heart button.')).toBe(true);
-  });
-
-  it('passes notes about the board', () => {
-    expect(pointsToStudy('This reaches a position you already know.')).toBe(false);
-    expect(pointsToStudy('Your study of the centre pays off: d5 is strong.')).toBe(false);
   });
 });
