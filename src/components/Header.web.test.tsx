@@ -95,7 +95,7 @@ const PLACE_AT_360 =
   2 * 12;
 
 describe('the narrow header place', () => {
-  it("fits every shipped line's name but one on a 360px page by its estimate", () => {
+  it("fits every shipped line's name on a 360px page by its estimate", () => {
     const tooLong = shippedIds.flatMap((id) => {
       const lesson = readShippedLesson(id);
       return Object.keys(lesson.variations)
@@ -106,7 +106,6 @@ describe('the narrow header place', () => {
     });
     // The export measured 224 at 360px; this sum must keep up with the header's layout.
     expect(PLACE_AT_360).toBe(224);
-    // The theme button costs this one an ellipsis at 360px; it fits from 390px.
-    expect(tooLong).toEqual(['Tal Variation (4.h4) & Bayonet Attack (4.g4)']);
+    expect(tooLong).toEqual([]);
   });
 });
