@@ -6,10 +6,14 @@ import { qualityLooks } from '@/theme/moveQuality';
 /** The name of the screen where the openings are picked. */
 export const OPENINGS_TITLE = 'Openings';
 
+/** The titles of the headlines telling that the guide has no moves here, also the heading of what they tell (`pastGuide`). */
+const OFF_GUIDE = 'Off the guide';
+const LINE_END = 'End of this line';
+
 /** The headline while a lesson loads. */
 export const LOADING = { title: 'Setting the stage…', detail: 'Loading the lesson.' } as const;
 
-export interface StatusInput {
+interface StatusInput {
   /** Whether the board shows where the openings are picked (`isPicking`). */
   readonly picking: boolean;
   /** The game has moved on to a lesson that has been loading long enough to say so. */
@@ -44,8 +48,11 @@ export interface StatusInput {
 
 /** The panel's headline, as `describeStatus` gives it. */
 type Status = Pick<HeadlineProps, 'eyebrow' | 'title' | 'detail' | 'news'> & {
-  /** It tells that the guide has no moves here: off it, or at a line's end. */
-  readonly pastGuide?: true;
+  /**
+   * Where the headline tells that the guide has no moves here (off it, or at
+   * a line's end), its title as a heading for the detail told apart from it.
+   */
+  readonly pastGuide?: string;
 };
 
 /**
@@ -57,7 +64,7 @@ type Status = Pick<HeadlineProps, 'eyebrow' | 'title' | 'detail' | 'news'> & {
  * news. See `StatusHeadline`.
  */
 export function describeStatus(
-  view: LessonView,
+  view: Pick<LessonView, 'place' | 'learnerToMove' | 'ply'>,
   {
     picking,
     loading,
@@ -94,19 +101,19 @@ export function describeStatus(
   if (lineEnded)
     return {
       eyebrow,
-      title: 'End of this line.',
+      title: `${LINE_END}.`,
       detail: practice
         ? 'This run wasn’t clean: a slip, a take-back, or Practice chosen after your first move. Go back to your first move and play it through.'
         : `The guide stops here. Step back to try another branch, or ${playOn}.`,
-      pastGuide: true,
+      pastGuide: LINE_END,
     };
   // An `end` place is always a line end the headline tells (see above).
   if (view.place === 'beyond')
     return {
       eyebrow,
-      title: 'Off the guide.',
+      title: `${OFF_GUIDE}.`,
       detail: `This position isn't in the lesson. Step back to return to the guide, or ${playOn}.`,
-      pastGuide: true,
+      pastGuide: OFF_GUIDE,
     };
   if (view.learnerToMove)
     return {

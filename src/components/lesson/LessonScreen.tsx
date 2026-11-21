@@ -219,7 +219,7 @@ function LessonScreen({
     pastGuide && listsTopMoves(view, mode) && !ideaCard && !game.error ? (
       // The headline tells it on a wide page, and to screen readers.
       <View aria-hidden>
-        <IdeaAside title={status.title.replace(/\.$/, '')} detail={status.detail} />
+        <IdeaAside title={pastGuide} detail={status.detail} />
       </View>
     ) : null;
 
@@ -372,7 +372,8 @@ function LessonScreen({
             failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
             eyebrowInHeader
             eyebrowLink={listLink}
-            news={aside ? 'none' : (status.news ?? 'all')}
+            // The scoresheet drawer covers the aside, so the headline tells it then.
+            news={aside && !scoresheetOpen ? 'none' : (status.news ?? 'all')}
           />
           {/* The scoresheet drawer takes the place of this part on a narrow page, under the headline, which tells of a failure. */}
           <View {...part(scoresheetOpen ? 'wide-only' : 'lesson-body', styles.sections)}>

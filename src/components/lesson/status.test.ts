@@ -19,19 +19,17 @@ const INPUT = {
   startsRun: false,
 };
 
-/** The view's fields the headline reads. */
-const view = (place: LessonView['place']) =>
-  ({ place, learnerToMove: true, ply: 8 }) as unknown as LessonView;
+const view = (place: LessonView['place']) => ({ place, learnerToMove: true, ply: 8 });
 
 describe('describeStatus', () => {
   it('says the guide has no moves off it and at a line end', () => {
     expect(describeStatus(view('beyond'), INPUT)).toMatchObject({
       title: 'Off the guide.',
-      pastGuide: true,
+      pastGuide: 'Off the guide',
     });
     expect(describeStatus(view('end'), { ...INPUT, lineEnded: true })).toMatchObject({
       title: 'End of this line.',
-      pastGuide: true,
+      pastGuide: 'End of this line',
     });
   });
 
