@@ -206,6 +206,9 @@ export const visuallyHidden = {
   overflow: 'hidden',
 } as const satisfies ViewStyle;
 
+/** Out of sight and out of layout, but read by screen readers. */
+export const spokenOnly = { ...visuallyHidden, opacity: 0 } as const satisfies ViewStyle;
+
 /** How a part looks off the web, on each kind of page. */
 interface NativePart {
   readonly wide?: ViewStyle & TextStyle;

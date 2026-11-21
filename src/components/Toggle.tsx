@@ -1,7 +1,7 @@
 import { Field, Switch, Tooltip, useTheme } from '@reactive/silk-native';
 import { type StyleProp, StyleSheet, type ViewStyle } from 'react-native';
 
-import { visuallyHidden } from '@/theme/narrow';
+import { spokenOnly } from '@/theme/narrow';
 import { lineHeightOf } from '@/theme/theme';
 import { touchPadding, touchTarget } from '@/theme/touch';
 
@@ -11,7 +11,7 @@ interface Props {
   readonly onChange: (checked: boolean) => void;
   /** A quieter, one-line label, for a switch beside more important text. */
   readonly quiet?: boolean;
-  /** Why it can't be changed now: given, the switch shows disabled, with this as its tooltip. */
+  /** Why it can't be changed now: given (not empty), the switch shows disabled, with this as its tooltip. */
   readonly disabled?: string;
   readonly style?: StyleProp<ViewStyle>;
 }
@@ -26,11 +26,7 @@ interface Props {
 export function Toggle({ label, checked, onChange, quiet, disabled, style }: Props) {
   const { theme } = useTheme();
   const field = (
-    <Field.Root
-      orientation="horizontal"
-      disabled={disabled !== undefined}
-      style={[styles.field, style]}
-    >
+    <Field.Root orientation="horizontal" disabled={Boolean(disabled)} style={[styles.field, style]}>
       <Switch size="sm" tone="accent" checked={checked} onCheckedChange={onChange} />
       <Field.Label
         numberOfLines={quiet ? 1 : undefined}
@@ -56,5 +52,5 @@ const styles = StyleSheet.create({
   // label's text out; the least height lets the row stand out past it instead.
   field: { minHeight: touchTarget },
   label: { userSelect: 'none', paddingVertical: touchPadding(lineHeightOf('label')) },
-  spoken: { ...visuallyHidden, opacity: 0 },
+  spoken: spokenOnly,
 });
