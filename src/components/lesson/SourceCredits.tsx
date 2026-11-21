@@ -26,13 +26,21 @@ export function SourceCredits({ sources }: { readonly sources: readonly LessonSo
   const name = sourceNamer(sourcesOf(use(LessonIndexContext), sources));
   return (
     <Text role="caption" tone="secondary">
-      Lesson from{' '}
-      {creditGroups(sources).map((group, i) => (
-        <Span key={i}>
-          {i > 0 ? '; ' : null}
-          <Group group={group} name={name} />
-        </Span>
-      ))}
+      {/*
+       * All of it in a span, none straight in the paragraph. Android redoes a
+       * paragraph's text each time the paragraph moves if any text sits straight in
+       * it, and redone text of the same size loses its links' underlines
+       * (facebook/react-native#58579). A span's text doesn't move with it.
+       */}
+      <Span>
+        Lesson from{' '}
+        {creditGroups(sources).map((group, i) => (
+          <Span key={i}>
+            {i > 0 ? '; ' : null}
+            <Group group={group} name={name} />
+          </Span>
+        ))}
+      </Span>
     </Text>
   );
 }
