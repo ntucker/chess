@@ -131,6 +131,24 @@ describe('CandidateList', () => {
     expect(row).toEqual(['Nf3the Nf3 line\u22120.4', 'Nf3, 0.4 pawns worse for you']);
   });
 
+  it("lists Stockfish's moves after the guide's, marked as top engine moves", () => {
+    const best = {
+      ...candidate('f8b4', 'Bb4+'),
+      engine: { label: '0.0', description: 'No change' },
+    };
+    const rows = render({ rare: [], engineMoves: [best] }, (host) =>
+      [...host.querySelectorAll('[role="button"]')].map((button) => [
+        button.textContent,
+        button.getAttribute('aria-label'),
+      ]),
+    );
+    // A lone guide move shows no share, and the engine's row no change label.
+    expect(rows).toEqual([
+      ['Nf3the Nf3 line', 'Nf3'],
+      ['Bb4+the Bb4+ line', 'Bb4+, top engine move'],
+    ]);
+  });
+
   it('fades rows for showing rare ones, not for leaving a position that showed them', () => {
     const list = mount();
     mockFades.length = 0;
