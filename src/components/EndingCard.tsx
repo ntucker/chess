@@ -7,8 +7,8 @@ import { type Ending, endingWords, type Mood } from '@/game/ending';
 import { ACT_TIMES, type CardBand, cardBand } from '@/board/endingAct';
 import type { Color } from '@/game/replay';
 import { springMotion, springs } from '@/motion/spring';
+import { type SchemeColors, useSchemeColors } from '@/theme/schemeColors';
 import { timingFunction } from '@/theme/timingFunction';
-import { rgba } from '@/theme/theme';
 
 interface Props {
   readonly ending: Ending;
@@ -31,12 +31,13 @@ interface Props {
  */
 export function EndingCard({ ending, rival, orientation, aside = false }: Props) {
   const { theme } = useTheme();
+  const schemeColors = useSchemeColors();
   const reducedMotion = useReducedMotion();
   // The board's width sets the type's size, so the banner fits a phone's board and fills a desktop's.
   const [width, setWidth] = useState(0);
   const { mood } = ending;
   const { eyebrow, title } = endingWords(ending, rival);
-  const look = cardLook(mood, theme);
+  const look = cardLook(mood, theme, schemeColors);
   const size = cardSizes(width, title, mood);
   const cue = reducedMotion ? STILL : CUES[mood];
   // Without motion the board shows its ending at once, so the card doesn't wait for it.
@@ -163,25 +164,20 @@ type Theme = ReturnType<typeof useTheme>['theme'];
  * curtain red on the program's paper); a loss and a draw are in plain ink
  * on a duller ground, so only a win looks like a celebration.
  */
-function cardLook(mood: Mood, theme: Theme) {
+function cardLook(mood: Mood, theme: Theme, schemeColors: SchemeColors) {
   const { color, shadow } = theme.semantic;
   const { accent, neutral } = color.tones;
-  const dark = theme.colorScheme === 'dark';
   const { offsetY, blur, opacity } = shadow.overlay;
   const won = mood === 'won';
   return {
-    ground: rgba(won ? color.surfaceRaised : color.surfaceSunken, GROUND_ALPHA),
+    ground: schemeColors[won ? 'ending-ground-won' : 'ending-ground-plain'],
     shadow: `0px ${offsetY}px ${blur}px rgba(0, 0, 0, ${opacity})`,
     rule: won ? accent.solid : neutral.border,
-    // Small type takes the accent's text color, which is lighter than its solid on velvet.
-    eyebrow: won ? (dark ? accent.text : accent.solid) : color.textSecondary,
+    eyebrow: won ? schemeColors['ending-eyebrow-won'] : color.textSecondary,
     title: won ? accent.solid : color.textPrimary,
-    gleam: rgba(dark ? color.textPrimary : accent.solid, dark ? 0.1 : 0.07),
+    gleam: schemeColors['ending-gleam'],
   };
 }
-
-/** Lets a little of the board through, so the banner lies on it rather than cutting it in two. */
-const GROUND_ALPHA = 0.94;
 
 /** A win's title is the largest, a loss's smaller and a draw's smaller still. */
 const TITLE_SCALE: Record<Mood, number> = { won: 1, lost: 0.8, drawn: 0.62 };
