@@ -13,6 +13,7 @@ import type { Color } from 'chessops/types';
 import { opposite } from 'chessops/util';
 
 import { colorName } from '@/game/replay';
+import type { AiModel } from '@/lesson/lesson';
 
 import { answersFile } from '../jsonLines';
 
@@ -28,8 +29,7 @@ export const MODELS = {
   convert: 'claude-sonnet-5-5',
   retry: 'claude-opus-5-5',
   explain: 'claude-fable-5-2',
-} as const;
-export type Model = (typeof MODELS)[keyof typeof MODELS];
+} as const satisfies Record<string, AiModel>;
 
 /**
  * Answers for `items` (comments, unless the CLI was made for others) by id; an
@@ -39,7 +39,7 @@ export type Model = (typeof MODELS)[keyof typeof MODELS];
  * still match.
  */
 export type Ask<T = Comment> = (
-  model: Model,
+  model: AiModel,
   items: readonly T[],
   addendum?: string,
 ) => Promise<Map<string, Answer>>;
@@ -98,7 +98,7 @@ export function claudeCli<T extends { readonly id: string } = Comment>({
     (row) => row.key,
     (row) => asAnswer(row.answer) !== undefined,
   );
-  const keyOf = (model: Model, system: string, item: T) =>
+  const keyOf = (model: AiModel, system: string, item: T) =>
     createHash('sha256')
       .update(JSON.stringify([model, system, itemKey(item)]))
       .digest('hex');
@@ -153,7 +153,7 @@ export function claudeCli<T extends { readonly id: string } = Comment>({
 
 /** One `claude -p` run: the prompt as the system prompt, the items as the message, no tools. */
 function request(
-  model: Model,
+  model: AiModel,
   prompt: string,
   items: readonly unknown[],
   effort: Effort | undefined,

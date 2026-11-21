@@ -172,11 +172,31 @@ export interface Note {
    * The app says so; such a note has no `original`.
    */
   readonly generated?: true;
+  /**
+   * The AI model that wrote the text and chose its ideas (the importer's own
+   * ideas on the same move may join them), on every note an AI step of the
+   * importer wrote: a rewritten comment, or a `generated` note. The app
+   * credits it on a `generated` note only, since a rewritten comment is the
+   * study's analysis. Absent on notes no model wrote.
+   */
+  readonly model?: AiModel;
   /** What the board draws; none means the note is text only. */
   readonly ideas?: readonly Idea[];
 }
 
 export const MAX_NOTE_WORDS = 20;
+
+/**
+ * The AI models the importer asks (scripts/import-study/convert/claude.ts),
+ * each with the name the app credits. Add a new model here before importing
+ * with it; keep an old one while any lesson file still cites it.
+ */
+export const AI_MODELS = {
+  'claude-sonnet-5-5': 'Claude Sonnet 5.5',
+  'claude-opus-5-5': 'Claude Opus 5.5',
+  'claude-fable-5-2': 'Claude Fable 5.2',
+} as const;
+export type AiModel = keyof typeof AI_MODELS;
 
 /** What a note shows: something drawn on the board, only an evaluation badge, or text alone. */
 export type NoteShows = 'drawn' | 'badge' | 'text';
