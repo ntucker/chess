@@ -1,6 +1,6 @@
 // Renders Silk, which ships ES modules: the web project's transformIgnorePatterns
 // (package.json) lets @reactive through Babel for it.
-import { describe, expect, it, jest } from '@jest/globals';
+import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import { SilkProvider } from '@reactive/silk-native';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -21,6 +21,9 @@ jest.mock('expo-router', () => ({ useIsFocused: () => mockFocused }));
  * Renders the sheet open, with reduced motion: React Native Web's Modal
  * takes Escape once its entrance animation ends, which jsdom never runs.
  */
+let cleanup = () => {};
+afterEach(() => cleanup());
+
 function renderSheet(onClose: () => void) {
   const matchMedia = window.matchMedia;
   window.matchMedia = ((media: string) => ({
@@ -38,10 +41,11 @@ function renderSheet(onClose: () => void) {
       </SilkProvider>,
     ),
   );
-  return () => {
+  cleanup = () => {
     act(() => root.unmount());
     host.remove();
     window.matchMedia = matchMedia;
+    cleanup = () => {};
   };
 }
 
@@ -49,20 +53,19 @@ describe('Sheet', () => {
   it('closes on Escape', () => {
     mockFocused = true;
     const onClose = jest.fn();
-    const cleanup = renderSheet(onClose);
+    renderSheet(onClose);
     act(() => {
       document.activeElement!.dispatchEvent(
         new KeyboardEvent('keyup', { key: 'Escape', bubbles: true, cancelable: true }),
       );
     });
     expect(onClose).toHaveBeenCalledTimes(1);
-    cleanup();
   });
 
   it('closes on a press beside it, not on one inside it', () => {
     mockFocused = true;
     const onClose = jest.fn();
-    const cleanup = renderSheet(onClose);
+    renderSheet(onClose);
     const title = document.getElementById(
       document.querySelector('[aria-modal="true"]')!.getAttribute('aria-labelledby')!,
     )!;
@@ -77,7 +80,6 @@ describe('Sheet', () => {
     expect(onClose).not.toHaveBeenCalled();
     tap(veil);
     expect(onClose).toHaveBeenCalledTimes(1);
-    cleanup();
   });
 
   it('closes once another screen comes on top of its own', () => {
