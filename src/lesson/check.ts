@@ -322,7 +322,7 @@ export function notationProblem(text: string): string | undefined {
  * the importer asks for a new wording first.
  */
 const STUDY_MENTION =
-  /\b(?:chapters?|sections?|buttons?|videos?|(?:the|this|that|our|my) study)\b/i;
+  /\b(?:chapters?|sections?|buttons?|videos?|(?:the|this|that|our|my|another) study)\b/i;
 
 /** Whether note `text` points to the study it came from. */
 export const pointsToStudy = (text: string) => STUDY_MENTION.test(text);

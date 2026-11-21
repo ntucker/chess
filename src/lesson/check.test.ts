@@ -822,6 +822,7 @@ describe('checkLesson', () => {
     'According to the study, Black cannot stop the mate.',
     'Save it with the heart button.',
     'This lesson has a companion video; watch it to follow the ideas.',
+    'This is the Traxler Counterattack, covered in another study.',
   ])('refuses a note pointing to the study it came from: %s', (text) => {
     expect(noteProblems(text)).toEqual([
       { path: notePath, message: 'points to the study it came from' },
