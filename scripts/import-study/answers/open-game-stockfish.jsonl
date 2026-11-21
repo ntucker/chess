@@ -441,4 +441,4 @@
 {"key":"rnbqkbnr/pppp1ppp/8/8/4Pp2/7N/PPPP2PP/RNBQKB1R b KQkq -","search":"1x100000","evaluation":{"score":0.3939345129435846,"pawns":-1.17,"best":"d7d5"}}
 {"key":"rnbqkbnr/pppp1ppp/8/8/4Pp2/8/PPPP2PP/RNBQKBNR w KQkq -","search":"1x100000","evaluation":{"score":0.454103562397001,"pawns":-0.5,"best":"g1f3"}}
 {"key":"rnbqkbnr/pppp3p/5p2/6p1/4Pp1P/5N2/PPPP2P1/RNBQKB1R w KQkq -","search":"1x100000","evaluation":{"score":0.6406270050754315,"pawns":1.57,"best":"f3g5"}}
-{"key":"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -","evaluation":{"score":0.5275875538925041,"pawns":0.3,"best":"e7e5"}}
+{"key":"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -","search":"1x100000","evaluation":{"score":0.5275875538925041,"pawns":0.3,"best":"e7e5"}}

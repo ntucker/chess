@@ -730,5 +730,5 @@
 {"key":"rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -","search":"1x100000","evaluation":{"score":0.5202403732122675,"pawns":0.22,"best":"b1c3"}}
 {"key":"rnbqkbnr/pppp2pp/8/4pP2/8/5N2/PPPP1PPP/RNBQKB1R b KQkq -","search":"1x100000","evaluation":{"score":0.6269544312155905,"pawns":1.41,"best":"b8c6"}}
 {"key":"rnbqkbnr/pppp2pp/8/4pp2/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq -","search":"1x100000","evaluation":{"score":0.6312501413084699,"pawns":1.46,"best":"f3e5"}}
-{"key":"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -","evaluation":{"score":0.5275875538925041,"pawns":0.3,"best":"e7e5"}}
-{"key":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -","evaluation":{"score":0.5211593152406621,"pawns":0.23,"best":"e2e4"}}
+{"key":"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -","search":"1x100000","evaluation":{"score":0.5275875538925041,"pawns":0.3,"best":"e7e5"}}
+{"key":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -","search":"1x100000","evaluation":{"score":0.5211593152406621,"pawns":0.23,"best":"e2e4"}}
