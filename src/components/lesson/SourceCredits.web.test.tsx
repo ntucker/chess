@@ -137,6 +137,15 @@ describe('SourceCredits', () => {
     });
   });
 
+  it('lists many sources of different sites in full, since counting them saves nothing', () => {
+    const lone = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'].map((id): LessonSource => ({
+      title: id,
+      author: id,
+      url: `https://${id}.example/`,
+    }));
+    expect(credits(lone, lone).text).not.toMatch(/Show all/);
+  });
+
   it('lists a short list in full, with no toggle', () => {
     const short = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((id) => study(id, id));
     expect(credits(short, short).text).not.toMatch(/Show all/);

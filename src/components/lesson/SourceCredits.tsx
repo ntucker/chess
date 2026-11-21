@@ -1,4 +1,4 @@
-import { Text } from '@reactive/silk-native';
+import { a11yState, Text } from '@reactive/silk-native';
 import { Fragment, use, useState } from 'react';
 import { Text as Span, StyleSheet } from 'react-native';
 
@@ -27,29 +27,25 @@ export function SourceCredits({ sources }: { readonly sources: readonly LessonSo
   const name = sourceNamer(sourcesOf(use(LessonIndexContext), sources));
   const [showAll, setShowAll] = useState(false);
   const groups = creditGroups(sources);
-  const long = sources.length > MOST_LISTED;
+  // Counting helps only where a group credits several sources at once.
+  const long = sources.length > MOST_LISTED && groups.some(({ kind }) => kind !== 'source');
+  const counted = long && !showAll;
+  const Item = counted ? GroupCount : Group;
   return (
     <Text role="caption" tone="secondary">
       Lesson from{' '}
-      {long && !showAll
-        ? groups.map((group, i) => (
-            <Span key={i}>
-              {listSeparator(i, groups.length)}
-              <GroupCount group={group} name={name} />
-            </Span>
-          ))
-        : groups.map((group, i) => (
-            <Span key={i}>
-              {i > 0 ? '; ' : null}
-              <Group group={group} name={name} />
-            </Span>
-          ))}
+      {groups.map((group, i) => (
+        <Span key={i}>
+          {counted ? listSeparator(i, groups.length) : i > 0 ? '; ' : null}
+          <Item group={group} name={name} />
+        </Span>
+      ))}
       {long ? (
         <>
           {' · '}
           <Span
             role="button"
-            aria-expanded={showAll}
+            {...a11yState({ expanded: showAll })}
             onPress={() => setShowAll(!showAll)}
             style={styles.toggle}
           >
