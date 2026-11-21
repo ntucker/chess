@@ -81,10 +81,10 @@ function whiteWinPercents(known: readonly (number | undefined)[]): number[] {
 
 /**
  * Each move's weight, `weights[n]` for the move from position n: the
- * standard deviation of the win percent over a window of positions, as many
- * as a tenth of the game's moves (2 to 8), clamped to 0.5 to 12. A move's window ends at
- * the position after it; the first moves share the first window, as lichess
- * slides it.
+ * standard deviation of the win percent over a window of positions, as
+ * many as a tenth of the game's moves (2 to 8), clamped to 0.5 to 12. A
+ * move's window ends at the position after it; the first moves share the
+ * first window, as lichess slides it.
  */
 function swingWeights(percents: readonly number[]): number[] {
   const size = Math.min(Math.max(Math.floor((percents.length - 1) / 10), 2), 8);
