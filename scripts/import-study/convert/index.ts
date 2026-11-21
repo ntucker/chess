@@ -120,7 +120,7 @@ async function convertComments(
     .filter(([, result]) => allRefused(result))
     .map(([id]) => comments.get(id)!);
   if (retry.length > 0) keep(await ask(MODELS.retry, retry), keepsMore);
-  /** The comments whose answer has note texts `textsOf` refuses, each with those texts. */
+  /** The comments whose answer has note texts `textsOf` picks out as refused, each with those texts. */
   const refusedBy = (textsOf: (result: Converted) => string[]) =>
     [...converted].flatMap(([id, result]) => {
       const refusedText = textsOf(result);

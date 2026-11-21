@@ -239,9 +239,12 @@ describe('convertChapters', () => {
 
     it('is asked again for a button the study names', async () => {
       const text = 'Press the heart button if this line helped.';
-      const { ask } = fakeAsk({ [MODELS.convert]: { Be2: [{ ...plain[0], text }] } });
-      const { report } = await convertChapters(extracted, ask);
-      expect(report.unmoored).toBe(1);
+      const { ask, asked, addenda } = fakeAsk({
+        [MODELS.convert]: { Be2: [{ ...plain[0], text }] },
+      });
+      await convertChapters(extracted, ask);
+      expect(asked.at(-1)).toEqual([MODELS.retry, ['Be2']]);
+      expect(addenda.at(-1)).toBe(STANDALONE);
     });
 
     it('is not asked again for "study" as a verb', async () => {
