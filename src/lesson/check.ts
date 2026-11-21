@@ -393,14 +393,11 @@ function checkNotes(notes: readonly Note[] | undefined, pos: Chess, path: string
     if (wording) report(`${path}[${i}].text`, wording);
     if (note.generated && note.original !== undefined)
       report(`${path}[${i}].original`, 'is on a generated note, which no guide wrote');
-    const modelProblem =
-      note.model !== undefined ? notOneOf(Object.keys(AI_MODELS), note.model) : undefined;
+    // An empty model (or null in the JSON) credits nobody, like none at all.
+    const modelProblem = note.model
+      ? notOneOf(Object.keys(AI_MODELS), note.model)
+      : note.generated && 'is missing on a generated note, so the app could not credit it';
     if (modelProblem) report(`${path}[${i}].model`, modelProblem);
-    if (note.generated && !note.model)
-      report(
-        `${path}[${i}].model`,
-        'is missing on a generated note, so the app could not credit it',
-      );
     note.ideas?.forEach((idea, j) => {
       const problem =
         checkIdea(idea, pos) ?? (note.generated ? generatedIdeaProblem(idea, pos) : undefined);

@@ -185,7 +185,11 @@ export interface Note {
 
 export const MAX_NOTE_WORDS = 20;
 
-/** The AI models the importer asks (scripts/import-study/convert/claude.ts), each with the name the app credits. */
+/**
+ * The AI models the importer asks (scripts/import-study/convert/claude.ts),
+ * each with the name the app credits. Add a new model here before importing
+ * with it; keep an old one while any lesson file still cites it.
+ */
 export const AI_MODELS = {
   'claude-sonnet-5-5': 'Claude Sonnet 5.5',
   'claude-opus-5-5': 'Claude Opus 5.5',

@@ -737,6 +737,7 @@ describe('checkLesson', () => {
       { text: 'Your pawn holds d5.', generated: true },
       { text: 'Your pawn holds d5.', model: 'gpt-4' },
       { text: 'Your pawn holds d5.', model: 'claude-sonnet-5-5' },
+      { text: 'Your pawn holds d5.', generated: true, model: '' },
     ] as Note[];
     expect(checkLesson(withPosition(key, { variation: 'caro', moves: [], notes }))).toEqual([
       {
@@ -746,6 +747,10 @@ describe('checkLesson', () => {
       {
         path: `positions["${key}"].notes[1].model`,
         message: 'gpt-4 is not one of claude-sonnet-5-5, claude-opus-5-5, claude-fable-5-2',
+      },
+      {
+        path: `positions["${key}"].notes[3].model`,
+        message: 'is missing on a generated note, so the app could not credit it',
       },
     ]);
   });
