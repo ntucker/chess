@@ -171,12 +171,12 @@ function cardLook(mood: Mood, theme: Theme, schemeColors: SchemeColors) {
   const { offsetY, blur, opacity } = shadow.overlay;
   const won = mood === 'won';
   return {
-    ground: schemeColors[won ? 'ending-ground-won' : 'ending-ground-plain'],
+    ground: won ? schemeColors.endingGroundWon : schemeColors.endingGroundPlain,
     shadow: `0px ${offsetY}px ${blur}px rgba(0, 0, 0, ${opacity})`,
     rule: won ? accent.solid : neutral.border,
-    eyebrow: won ? schemeColors['ending-eyebrow-won'] : color.textSecondary,
+    eyebrow: won ? schemeColors.endingEyebrowWon : color.textSecondary,
     title: won ? accent.solid : color.textPrimary,
-    gleam: schemeColors['ending-gleam'],
+    gleam: schemeColors.endingGleam,
   };
 }
 

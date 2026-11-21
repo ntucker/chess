@@ -161,15 +161,15 @@ function buildSchemeColors(colorScheme: ColorScheme) {
     /** The page's pool of light from above the stage (Page.tsx). */
     spotlight: spotlight[colorScheme],
     /** The evaluation bar's edge: on the light page its white end needs a firmer one. */
-    'evaluation-edge': dark ? color.borderSubtle : neutral.border,
+    evaluationEdge: dark ? color.borderSubtle : neutral.border,
     /** The ending banner's ground (EndingCard.tsx), letting a little of the board through... */
-    'ending-ground-won': rgba(color.surfaceRaised, ENDING_GROUND_ALPHA),
+    endingGroundWon: rgba(color.surfaceRaised, ENDING_GROUND_ALPHA),
     /** ...duller for a loss or a draw. */
-    'ending-ground-plain': rgba(color.surfaceSunken, ENDING_GROUND_ALPHA),
+    endingGroundPlain: rgba(color.surfaceSunken, ENDING_GROUND_ALPHA),
     /** A win's small type: the accent's text color, lighter than its solid on velvet. */
-    'ending-eyebrow-won': dark ? accent.text : accent.solid,
+    endingEyebrowWon: dark ? accent.text : accent.solid,
     /** The sheen that sweeps across a win's banner. */
-    'ending-gleam': rgba(dark ? color.textPrimary : accent.solid, dark ? 0.1 : 0.07),
+    endingGleam: rgba(dark ? color.textPrimary : accent.solid, dark ? 0.1 : 0.07),
   };
 }
 

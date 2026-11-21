@@ -90,7 +90,7 @@ function Bar({
         style,
         {
           backgroundColor: pieceColors.black,
-          borderColor: schemeColors['evaluation-edge'],
+          borderColor: schemeColors.evaluationEdge,
           borderRadius: theme.semantic.radius.sm,
         },
       ]}
