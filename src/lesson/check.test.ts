@@ -823,7 +823,9 @@ describe('checkLesson', () => {
     'Save it with the heart button.',
     'This lesson has a companion video; watch it to follow the ideas.',
     'This is the Traxler Counterattack, covered in another study.',
-  ])('refuses a note pointing to the study it came from: %s', (text) => {
+    'The Traxler is covered in a different study.',
+    'Other studies cover 4.Ng5 in depth.',
+  ])('refuses a note pointing outside the lesson: %s', (text) => {
     expect(noteProblems(text)).toEqual([
       { path: notePath, message: 'points to the study it came from' },
     ]);
@@ -832,6 +834,7 @@ describe('checkLesson', () => {
   it.each([
     'This reaches a position you already know.',
     'Your study of the centre pays off: d5 is strong.',
+    "You'll reach this position often; study it carefully.",
     'This is a blunder: after 7.Nxe5 Bxd1 8.Bb5+ White comes out ahead.',
     'Against Ng3, develop with e6 and Be7, castle, then play b6, Bb7 and break with c5.',
     'Avoid.',
