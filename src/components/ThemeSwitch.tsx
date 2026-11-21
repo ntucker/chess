@@ -54,9 +54,10 @@ export function ThemeSwitch() {
   };
   const close = () => setMenu(undefined);
   const point = (pageX: number) => {
-    if (!slots.current || !menu) return;
+    if (!slots.current) return;
     const index = Math.floor((pageX - slots.current.left) / slots.current.size);
-    setMenu({ ...menu, pointed: THEMES[Math.min(THEMES.length - 1, Math.max(0, index))] });
+    const pointed = THEMES[Math.min(THEMES.length - 1, Math.max(0, index))];
+    setMenu((shown) => shown && { ...shown, pointed });
   };
   // Lit: the choice under the pointer, else the theme in use (whose icon alone is inked).
   const lit = menu?.pointed ?? theme;

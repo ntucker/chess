@@ -104,7 +104,7 @@ describe('the narrow header place', () => {
           (name) => name.length * PLACE_TYPE.emPerCharacter * PLACE_TYPE.smallest > PLACE_AT_360,
         );
     });
-    // The export measured 264 at 360px; this sum must keep up with the header's layout.
+    // The export measured 224 at 360px; this sum must keep up with the header's layout.
     expect(PLACE_AT_360).toBe(224);
     // The theme button costs this one an ellipsis at 360px; it fits from 390px.
     expect(tooLong).toEqual(['Tal Variation (4.h4) & Bayonet Attack (4.g4)']);
