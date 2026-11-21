@@ -173,6 +173,12 @@ export interface Stockfish {
   watch(line: readonly string[], watcher: Watcher): () => void;
   /** The final analysis of the position after `line` (`watch`). */
   analysis(line: readonly string[]): Promise<FinalAnalysis>;
+  /**
+   * The host can't start an engine, and trying again won't help, as when the
+   * site serves another build's files: fails every position watched, and each
+   * one watched from now until an engine attaches, with `error`.
+   */
+  unavailable(error: Error): void;
 }
 
 /** An engine whose searches each do `defaultBudget` unless `attach` says otherwise. */
@@ -185,9 +191,12 @@ export function createStockfish(defaultBudget: SearchBudget): Stockfish {
   const wanted = new Map<string, Wanted>();
   /** A decision on what to search is queued (`decideSoon`). */
   let deciding = false;
+  /** Why no engine can start (`unavailable`), until one attaches. */
+  let unavailableError: Error | undefined;
 
   function attach(send: Send, supervisor: Supervisor, budget = defaultBudget): Connection {
     disconnect();
+    unavailableError = undefined;
     const session: Session = { send, supervisor, budget, ready: false, quietAnswers: 0 };
     connected = session;
     send('uci');
@@ -235,12 +244,15 @@ export function createStockfish(defaultBudget: SearchBudget): Stockfish {
   }
 
   /**
-   * Drops the positions nobody watches any more, then starts the newest
-   * position's search, or stops the running one if it isn't that (its
-   * `bestmove` then starts the next).
+   * Drops the positions nobody watches any more (or fails them all while no
+   * engine can start), then starts the newest position's search, or stops the
+   * running one if it isn't that (its `bestmove` then starts the next).
    */
   function decide() {
-    for (const position of wanted.values()) if (!position.watchers.size) remove(position);
+    for (const position of wanted.values()) {
+      if (unavailableError) giveUp(position, unavailableError);
+      else if (!position.watchers.size) remove(position);
+    }
     const next = [...wanted.values()].at(-1);
     if (running) {
       if (!running.stopping && running.wanted !== next) {
@@ -320,10 +332,7 @@ export function createStockfish(defaultBudget: SearchBudget): Stockfish {
       if (position.deepest) {
         const final = { ...position.deepest, final: true };
         for (const watcher of position.watchers) watcher.update(final);
-      } else {
-        const error = new Error('Stockfish finished without a score');
-        for (const watcher of position.watchers) watcher.fail(error);
-      }
+      } else giveUp(position, new Error('Stockfish finished without a score'));
     }
     decide();
   }
@@ -332,6 +341,12 @@ export function createStockfish(defaultBudget: SearchBudget): Stockfish {
   function remove(position: Wanted) {
     const key = position.line.join(' ');
     if (wanted.get(key) === position) wanted.delete(key);
+  }
+
+  /** Stops watching `position`, and tells its watchers it failed with `error`. */
+  function giveUp(position: Wanted, error: Error) {
+    remove(position);
+    for (const watcher of position.watchers) watcher.fail(error);
   }
 
   /** Watches `session` afresh (`armWatchdog`), from a line that shows it's getting on. */
@@ -374,18 +389,23 @@ export function createStockfish(defaultBudget: SearchBudget): Stockfish {
     if (position && ++position.failures >= TRIES) {
       // Most likely this position crashes Stockfish: give up on it rather
       // than restart engines forever, and let the positions behind it run.
-      remove(position);
-      const error = new Error(`Stockfish stopped ${TRIES} times on this position: ${message}`);
-      for (const watcher of position.watchers) watcher.fail(error);
+      giveUp(position, new Error(`Stockfish stopped ${TRIES} times on this position: ${message}`));
     }
     disconnect();
     session.supervisor.failed();
+  }
+
+  function unavailable(error: Error) {
+    disconnect();
+    unavailableError = error;
+    decide();
   }
 
   return {
     attach,
     watch,
     analysis: (line) => finalAnalysis((watcher) => watch(line, watcher)),
+    unavailable,
   };
 }
 

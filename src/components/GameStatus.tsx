@@ -124,21 +124,25 @@ interface Failure {
 
 /**
  * The opponent didn't answer, with a retry; or, when a newer deploy removed
- * the engine's file so asking again can't help, a reload.
+ * the engine's file so asking again can't help, a reload, or what the app
+ * needs when a reload can't help either.
  */
 function FailureLine({ who, error, onRetry }: Failure) {
-  const { message, action, onPress } =
-    error instanceof NewVersionError
-      ? { message: NEW_VERSION, action: 'Reload', onPress: reload }
-      : { message: `${who} didn't answer.`, action: 'Try again', onPress: onRetry };
+  const { message, action, onPress } = !(error instanceof NewVersionError)
+    ? { message: `${who} didn't answer.`, action: 'Try again', onPress: onRetry }
+    : error.needs
+      ? { message: `${who} needs ${error.needs}.` }
+      : { message: NEW_VERSION, action: 'Reload', onPress: reload };
   return (
     <Inline gap="3" align="center">
       <Text role="bodySm" tone="danger">
         {message}
       </Text>
-      <Button size="sm" variant="soft" tone="danger" onPress={onPress}>
-        {action}
-      </Button>
+      {action ? (
+        <Button size="sm" variant="soft" tone="danger" onPress={onPress}>
+          {action}
+        </Button>
+      ) : null}
     </Inline>
   );
 }

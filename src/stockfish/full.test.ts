@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { TransformStream } from 'node:stream/web';
 
+import { NewVersionError } from '@/files/newVersion';
 import type { DownloadFailure } from '@/resources/download';
 
 import { loadFullStockfish } from './full';
@@ -117,9 +118,9 @@ describe('loadFullStockfish', () => {
 
   it("takes a WebAssembly of another size for a newer build's, and keeps nothing", async () => {
     wasmChunks = WHOLE.slice(0, 1);
-    expect(await load()).toBeUndefined();
+    await expect(load()).rejects.toBeInstanceOf(NewVersionError);
     wasmChunks = [...WHOLE, 'z'];
-    expect(await load()).toBeUndefined();
+    await expect(load()).rejects.toBeInstanceOf(NewVersionError);
     expect(reports.filter((said) => said.includes(' '))).toEqual(['0 newVersion', '0 newVersion']);
     fetched.length = 0;
     wasmChunks = WHOLE;
@@ -128,7 +129,7 @@ describe('loadFullStockfish', () => {
   });
 
   it("takes a folder without the build's files for a newer build's", async () => {
-    expect(await load(`${ORIGIN}/elsewhere/`)).toBeUndefined();
+    await expect(load(`${ORIGIN}/elsewhere/`)).rejects.toBeInstanceOf(NewVersionError);
     expect(reports).toEqual(['0 newVersion']);
   });
 

@@ -3,8 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals
 import { act, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
+import { NewVersionError } from '@/files/newVersion';
 import { Download, FULL_STOCKFISH_DOWNLOAD } from '@/resources/download';
 
+import { fullStockfish } from './engine';
 import { loadFullStockfish } from './full';
 import { FullStockfishHost } from './FullStockfishHost.web';
 
@@ -54,7 +56,7 @@ const mount = () =>
 describe('FullStockfishHost', () => {
   it("downloads from the page's own site when the build names no preview folder", async () => {
     // Jest sets no base path (EXPO_BASE_URL) or preview folder (PREVIEW_FOLDER).
-    load.mockResolvedValue(undefined);
+    load.mockReturnValue(new Promise(() => {}));
     await mount();
     expect(load.mock.calls[0][0]).toBe(`${location.origin}/stockfish/`);
   });
@@ -70,13 +72,16 @@ describe('FullStockfishHost', () => {
     expect(load).toHaveBeenCalledTimes(2);
   });
 
-  it('stops trying once the site serves a newer build', async () => {
+  it('stops trying once the site serves a newer build, and fails what is asked of it', async () => {
+    const outdated = new NewVersionError();
     load.mockImplementation(async (_folder, _signal, report) => {
       report(0, 'newVersion');
-      return undefined;
+      throw outdated;
     });
+    const unavailable = jest.spyOn(fullStockfish, 'unavailable').mockImplementation(() => {});
     await mount();
     expect(failure).toBe('newVersion');
+    expect(unavailable).toHaveBeenCalledWith(outdated);
     await act(async () => jest.advanceTimersByTime(60_000));
     expect(load).toHaveBeenCalledTimes(1);
   });

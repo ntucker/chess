@@ -10,7 +10,7 @@ import { fetchOk, HttpError } from '@/files/fetchOk';
 import { NewVersionError } from '@/files/newVersion';
 import type { ReportDownload } from '@/resources/download';
 
-import { FULL_LOADER, FULL_WASM, FULL_WASM_BYTES, LIVE_FOLDER } from './fullFiles';
+import { FULL_LOADER, FULL_WASM, FULL_WASM_BYTES, LIVE_FOLDER, OUTDATED_NEEDS } from './fullFiles';
 import type { EngineFiles } from './worker';
 
 /**
@@ -25,9 +25,9 @@ const CACHE = `${CACHE_PREFIX}${FULL_WASM}:${FULL_WASM_BYTES}`;
  * earlier visit downloaded them, else downloaded from `folder` (an absolute
  * address ending in `/`) and then cached. `report` hears each whole percent
  * of the WebAssembly as it arrives, and 100 once the files are in hand. When the folder
- * serves another build (a NewVersionError: no file by this build's name, or a
- * WebAssembly of another size), trying again can't help, only a newer app (on
- * the web, a reload): it reports `newVersion` and resolves undefined. Any
+ * serves another build (no file by this build's name, or a WebAssembly of
+ * another size), trying again can't help, only a newer app (on the web, a
+ * reload): it reports `newVersion` and rejects with a NewVersionError. Any
  * other failure reports `retrying` and rejects; an abort of `signal` rejects
  * without a report.
  */
@@ -35,18 +35,13 @@ export async function loadFullStockfish(
   folder: string,
   signal: AbortSignal,
   report: ReportDownload,
-): Promise<EngineFiles | undefined> {
+): Promise<EngineFiles> {
   try {
     const files = await getFiles(folder, signal, report);
     report(100);
     return files;
   } catch (error) {
-    if (signal.aborted) throw error;
-    if (error instanceof NewVersionError) {
-      report(0, 'newVersion');
-      return undefined;
-    }
-    report(0, 'retrying');
+    if (!signal.aborted) report(0, error instanceof NewVersionError ? 'newVersion' : 'retrying');
     throw error;
   }
 }
@@ -121,9 +116,7 @@ const cacheKey = (file: string) => new URL(file, LIVE_FOLDER).href;
 /** `file` from `folder`; a folder without it serves another build. */
 const download = (folder: string, file: string, signal: AbortSignal) =>
   fetchOk(new URL(file, folder).href, { signal }).catch((error: unknown) => {
-    throw error instanceof HttpError && error.status === 404
-      ? new NewVersionError({ cause: error })
-      : error;
+    throw error instanceof HttpError && error.status === 404 ? outdated(error) : error;
   });
 
 /**
@@ -162,9 +155,15 @@ async function readWasm(response: Response, onProgress: (percent: number) => voi
   try {
     return await new Response(counted).blob();
   } catch (error) {
-    throw otherSize ? new NewVersionError({ cause: error }) : error;
+    throw otherSize ? outdated(error) : error;
   }
 }
+
+/**
+ * The folder serves another build. Android's web view says so to its host,
+ * which makes its own error (StockfishHost's `onOutdated`).
+ */
+const outdated = (cause: unknown) => new NewVersionError({ cause, needs: OUTDATED_NEEDS });
 
 /** Frees the space an older Stockfish build's files took. */
 async function dropOtherBuilds() {

@@ -5,6 +5,7 @@ import { SilkProvider } from '@reactive/silk-native';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { NEW_VERSION, NewVersionError } from '@/files/newVersion';
 import { themes } from '@/theme/theme';
 
 import { StatusHeadline } from './GameStatus';
@@ -74,5 +75,22 @@ describe('StatusHeadline', () => {
       headline: undefined,
       line: 'Play here.',
     });
+  });
+
+  it.each([
+    ['a retry', new Error('down'), "Maia didn't answer.Try again"],
+    ['a reload', new NewVersionError(), `${NEW_VERSION}Reload`],
+    [
+      'what the app needs',
+      new NewVersionError({ needs: 'an app update' }),
+      'Maia needs an app update.',
+    ],
+  ])('offers %s for a failure', (_, error, said) => {
+    const failure = { who: 'Maia', error, onRetry: () => {} };
+    const line = render(
+      { failure },
+      (host) => host.firstElementChild?.lastElementChild?.textContent,
+    );
+    expect(line).toBe(said);
   });
 });

@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import { act } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
+import { NewVersionError } from '@/files/newVersion';
+
 import { type Connection, fullStockfish } from './engine';
 import type EngineView from './EngineView';
 import { FullStockfishHost } from './FullStockfishHost';
@@ -77,5 +79,18 @@ describe('FullStockfishHost', () => {
     // A new web view after the first restart's pause.
     await act(async () => jest.advanceTimersByTime(1000));
     expect(views).toBe(2);
+  });
+
+  it('fails what is asked of the engine, and stops, when the site serves a newer build', async () => {
+    jest.useFakeTimers();
+    await startHost();
+    await reload();
+    const unavailable = jest.spyOn(fullStockfish, 'unavailable').mockImplementation(() => {});
+    act(() => view.onOutdated!());
+    const [error] = unavailable.mock.calls[0];
+    expect(error).toBeInstanceOf(NewVersionError);
+    expect((error as NewVersionError).needs).toBe('an app update');
+    await act(async () => jest.advanceTimersByTime(60_000));
+    expect(views).toBe(1);
   });
 });

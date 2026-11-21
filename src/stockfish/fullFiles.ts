@@ -36,8 +36,10 @@ export const LIVE_FOLDER = 'https://ntucker.github.io/chess/stockfish/';
 export const PREVIEW_FOLDER = process.env.EXPO_PUBLIC_STOCKFISH_FOLDER ?? '';
 
 /**
- * Whether the files download from the site that serves this build, so a
- * reload brings a newer build's: the web app, but not a preview that shares
- * the live site's copy, nor Android.
+ * What the app needs once the folder its files download from serves another
+ * build (`NewVersionError`'s `needs`): on the web, from its own site, nothing
+ * but a reload, which brings the newer build's; a preview that shares the live
+ * site's copy needs a newer build of its own, and Android an app update.
  */
-export const FROM_OWN_SITE = process.env.EXPO_OS === 'web' && !PREVIEW_FOLDER;
+export const OUTDATED_NEEDS =
+  process.env.EXPO_OS !== 'web' ? 'an app update' : PREVIEW_FOLDER ? 'a newer preview' : undefined;

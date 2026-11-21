@@ -1,12 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { NewVersionError } from '@/files/newVersion';
 import { readAsset } from '@/files/readAsset';
 import type { ReportDownload } from '@/resources/download';
 
 import { type Connection, liteStockfish, type Stockfish, type Supervisor } from './engine';
 import EngineView, { type EngineViewRef } from './EngineView';
 import { LOADER, WASM } from './files';
+import { OUTDATED_NEEDS } from './fullFiles';
 import { useRestarts } from './restarts';
 
 /**
@@ -104,6 +106,10 @@ function Engine({
     console.error(message);
     supervisor.failed();
   };
+  // Errors cross from the web view as text, so the app makes this one.
+  const onOutdated = () => {
+    if (!stopped()) engine.unavailable(new NewVersionError({ needs: OUTDATED_NEEDS }));
+  };
 
   useEffect(() => {
     const controller = new AbortController();
@@ -122,6 +128,7 @@ function Engine({
       onError={onError}
       onDownload={onDownload}
       onStarted={onStarted}
+      onOutdated={onOutdated}
       dom={{ style: styles.hidden }}
     />
   );

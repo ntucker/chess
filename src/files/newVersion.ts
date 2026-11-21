@@ -6,12 +6,18 @@ export const NEW_VERSION = 'A new version is out.';
  * the page loads late (a lesson, Maia's worker) may then be gone
  * from the site: asking again can't help, but reloading the page can. Full
  * Stockfish's files (src/stockfish/full.ts) say the same when their folder
- * serves another build, where on Android only an app update helps.
+ * serves another build; where they come from another site (Android, or a
+ * preview sharing the live site's copy), a reload can't help either, and
+ * `needs` says what does.
  */
 export class NewVersionError extends Error {
-  constructor(options?: ErrorOptions) {
-    super(NEW_VERSION, options);
+  /** What the app needs instead of a reload, such as "an app update". */
+  readonly needs?: string;
+
+  constructor(options?: ErrorOptions & { readonly needs?: string }) {
+    super(options?.needs ? `Needs ${options.needs}.` : NEW_VERSION, options);
     this.name = 'NewVersionError';
+    this.needs = options?.needs;
   }
 }
 
