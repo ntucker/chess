@@ -20,6 +20,8 @@ const study = (title: string, id: string): LessonSource => ({
   url: `https://lichess.org/study/${id}`,
 });
 
+const CC_BY_SA = { name: 'CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' };
+
 function credits(sources: readonly LessonSource[], indexed: readonly LessonSource[]) {
   const index = { ...FIXTURE_INDEX, slav: { ...FIXTURE_INDEX.slav, sources: indexed } };
   const host = document.createElement('div');
@@ -60,13 +62,9 @@ describe('SourceCredits', () => {
   });
 
   it('credits the license studies share after their authors', () => {
-    const license = {
-      name: 'CC BY-SA 4.0',
-      url: 'https://creativecommons.org/licenses/by-sa/4.0/',
-    };
     const sources = [
-      { ...study('Slav', 'slav'), license },
-      { ...study('Caro', 'caro'), author: 'wub1234', license },
+      { ...study('Slav', 'slav'), license: CC_BY_SA },
+      { ...study('Caro', 'caro'), author: 'wub1234', license: CC_BY_SA },
     ];
     expect(credits(sources, sources).text).toBe(
       'Lesson from lichess studies by Matkun and wub1234 (CC\u00a0BY-SA\u00a04.0)',
@@ -78,7 +76,7 @@ describe('SourceCredits', () => {
       title: `Chess Opening Theory, ${moves}`,
       author: 'Wikibooks contributors',
       url: `https://en.wikibooks.org/wiki/${moves}`,
-      license: { name: 'CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },
+      license: CC_BY_SA,
     });
     const sources = [
       study('Slav', 'slav'),
