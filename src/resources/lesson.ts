@@ -22,6 +22,7 @@ export const LESSONS = {
   'open-game': () => import('@/assets/lessons/open-game.json'),
   'queens-gambit': () => import('@/assets/lessons/queens-gambit.json'),
   french: () => import('@/assets/lessons/french.json'),
+  'anti-sicilian': () => import('@/assets/lessons/anti-sicilian.json'),
 };
 
 export type LessonId = keyof typeof LESSONS;
