@@ -142,6 +142,12 @@ const LOLORIV_RUY = {
   },
 } as const;
 
+/** loloriv's Berlin chapter, written for Black: in the Ruy Lopez lesson reworded for White, and the Berlin lesson's own. */
+const LOLORIV_BERLIN = {
+  ...LOLORIV_RUY,
+  chapters: (title: string) => title === 'Berlin Defense Theory',
+} as const;
+
 /** Bosburp's Queen's Gambit repertoire for White. */
 const BOSBURP_QG = {
   study: '0uRBskUV',
@@ -1237,9 +1243,8 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
       },
       {
         // The Berlin, shown from Black's side, reworded for White: it books none of White's moves.
-        ...LOLORIV_RUY,
+        ...LOLORIV_BERLIN,
         writtenFor: 'black',
-        chapters: (title: string) => title === 'Berlin Defense Theory',
         chapterName: () => 'Berlin Defence',
       },
       {
@@ -1579,8 +1584,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         // loloriv's Berlin chapter, written for Black; the rest of the study is White's Ruy Lopez.
         // After LBB86's, whose chapters each name one of White's fourth moves: a chapter of all of
         // them first would name every shared position for its main line.
-        ...LOLORIV_RUY,
-        chapters: (title: string) => title === 'Berlin Defense Theory',
+        ...LOLORIV_BERLIN,
         chapterName: () => undefined,
       },
       {
@@ -1614,7 +1618,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
       {
         root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bb5/3...Nf6',
         rename: { 'Open Berlin': '4.O-O', 'Anti-Berlin': 'Anti-Berlin Variation' },
-        maxPages: 80,
+        maxPages: 40,
       },
       {
         // White's view, reworded for Black: what each move of the main line is for.
@@ -1636,8 +1640,8 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
           url: 'https://lichess.org/study/hjMiyfDf',
         },
         writtenFor: 'white',
-        chapters: (title: string) => title === 'Anti-Berlin with d3',
-        chapterName: () => 'Anti-Berlin Variation',
+        // Not its links or its example game.
+        ...onlyChapters({ 'Anti-Berlin with d3': 'Anti-Berlin Variation' }),
       },
       {
         // A GM's analysis of 5.Re1 for White, reworded for Black.
@@ -1648,8 +1652,9 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
           url: 'https://lichess.org/study/b9PURAHh',
         },
         writtenFor: 'white',
-        chapters: () => true,
-        chapterName: () => '4.O-O: 5.Re1',
+        ...onlyChapters({
+          'Attack the Berlin Defense - 5. Re1 - Full analysis by a GM': '4.O-O: 5.Re1',
+        }),
       },
     ],
     engineCheck: true,
