@@ -55,9 +55,25 @@ async function getFiles(
   const cached = cache && (await readCache(cache));
   if (cached) return cached;
 
+  // Either file failing stops the other, so the 99 MB doesn't download on,
+  // telling its progress over the failure.
+  const failed = new AbortController();
+  const both = AbortSignal.any([signal, failed.signal]);
+  const stopBoth = (error: unknown): never => {
+    failed.abort();
+    throw error;
+  };
   const [loader, wasm] = await Promise.all([
-    download(folder, FULL_LOADER, signal).then((response) => response.text()),
-    download(folder, FULL_WASM, signal).then((response) => readWasm(response, onProgress)),
+    download(folder, FULL_LOADER, both)
+      .then((response) => response.text())
+      .catch(stopBoth),
+    download(folder, FULL_WASM, both)
+      .then((response) =>
+        readWasm(response, (percent) => {
+          if (!both.aborted) onProgress(percent);
+        }),
+      )
+      .catch(stopBoth),
   ]);
   if (cache) {
     // A cache that can't keep them (out of space, say) costs the next visit

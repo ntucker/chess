@@ -133,6 +133,33 @@ describe('loadFullStockfish', () => {
     expect(reports).toEqual(['0 newVersion']);
   });
 
+  it('stops the WebAssembly and its progress when the loader is missing', async () => {
+    let wasmSignal: AbortSignal | undefined;
+    const encoder = new TextEncoder();
+    jest.spyOn(globalThis, 'fetch').mockImplementation((async (url: string, init?: RequestInit) => {
+      if (url.endsWith('.js')) {
+        // Missing, once the WebAssembly's first half has arrived.
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        return new Response('', { status: 404 });
+      }
+      wasmSignal = init?.signal ?? undefined;
+      let sent = 0;
+      return new Response(
+        new ReadableStream({
+          async pull(controller) {
+            // The second half arrives late, after the loader's 404.
+            if (sent++) await new Promise((resolve) => setTimeout(resolve, 50));
+            controller.enqueue(encoder.encode('x'.repeat(100)));
+          },
+        }),
+      );
+    }) as typeof fetch);
+    await expect(load()).rejects.toBeInstanceOf(NewVersionError);
+    expect(wasmSignal?.aborted).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(reports).toEqual(['50', '0 newVersion']);
+  });
+
   it('says it tries again, and fails, when the site answers with another error', async () => {
     jest
       .spyOn(globalThis, 'fetch')
