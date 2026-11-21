@@ -1,0 +1,5 @@
+@media (pointer: coarse) {
+  :root {
+    --touch-target: 48px;
+  }
+}
