@@ -3,12 +3,14 @@
 A Review page that judges a game move by move, like chess.com's Game Review, and has the learner
 replay each mistake before it shows the answer. Full design (rules, layouts, timings):
 [design doc](https://claude.ai/artifact/NuWRdeFy8bWp91bsu1JAew); screens:
-[mockups](https://claude.ai/artifact/TauxeQqXhXMLezLf8DF2og).
+[mockups](https://claude.ai/artifact/TauxeQqXhXMLezLf8DF2og). Each piece copies the rules it builds
+(thresholds, timings) into its section here, so the plan doesn't depend on those links.
 
 ## Decisions (Nathaniel, 2026-11-21)
 
 - One Stockfish lite engine at the app's search (`APP_SEARCH`), so a review label is the label the
-  game showed. Several engines at once stays a later option.
+  game showed, except that the review leaves a forced move unlabelled. Several engines at once stays
+  a later option.
 - Review is offered when the game ends, in every mode; before the end only in a lesson's Practice
   mode, once the game has a move off the guide. Elsewhere the scoresheet's Review button is disabled.
 - The review adds Brilliant, Great and Miss, which only refine today's labels; `judgeMove` and live
@@ -41,7 +43,8 @@ sketches in game order, full searches worst drop first, then the rest). Tests; n
 ### Piece 2: Review page
 
 The route, both entry buttons, headline, scoresheet, move card with Stockfish's rows as score
-changes for the learner, the search order wired to the store (`useNeedsStockfish`, nothing while
+changes for the learner, `useMoveQualities` and `reviewMoves` sharing one labelling rule, the
+search order wired to the store (`useNeedsStockfish`, nothing while
 another screen is in front), and a tooltip on Silk's Popover. Android check: layout.
 
 ### Piece 3: Graph

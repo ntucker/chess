@@ -35,6 +35,13 @@ describe('gameAccuracy', () => {
     expect(white).toBeLessThan(100);
   });
 
+  it('floors a move scored 0 at 1 in the harmonic mean, so one blunder cannot zero it', () => {
+    const lost = [judgedMove(0, 'blunder', 0.95, 0.05), judgedMove(1, 'best', 0.05)];
+    expect(moveAccuracy(95, 5)).toBe(0);
+    // Weighted mean 0, harmonic mean 1.
+    expect(gameAccuracy(lost, finals(0.95, 0.05, 0.05), [], 'white')).toBe(0.5);
+  });
+
   it('weights a move by how much the game swung where it was played', () => {
     // Ten moves, so each window is 2 positions. White gives away 30 points
     // at ply 6 and nothing elsewhere; only the swings around it differ.

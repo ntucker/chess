@@ -63,8 +63,9 @@ const weightedMean = (values: readonly { accuracy: number; weight: number }[]) =
   values.reduce((sum, { accuracy, weight }) => sum + accuracy * weight, 0) /
   values.reduce((sum, { weight }) => sum + weight, 0);
 
+/** Each value floored at 1, so one move scored 0 can't make the whole mean 0. */
 const harmonicMean = (values: readonly number[]) =>
-  values.length / values.reduce((sum, value) => sum + 1 / value, 0);
+  values.length / values.reduce((sum, value) => sum + 1 / Math.max(value, 1), 0);
 
 /**
  * White's win percent in each position, from White's expected score in the
