@@ -142,19 +142,25 @@ export function endingAct(
  */
 export type CardBand = 'upper' | 'middle' | 'lower';
 
-/** Each band's top row, from the top of the board, in the order they're tried. */
-const BAND_TOPS: Readonly<Record<CardBand, number>> = { middle: 3, upper: 1, lower: 5 };
+/** Each band and its top row, from the top of the board, in the order they're tried. */
+const BANDS: readonly (readonly [CardBand, number])[] = [
+  ['middle', 3],
+  ['upper', 1],
+  ['lower', 5],
+];
 
 export function cardBand(
   { kings, landed }: Pick<Ending, 'kings' | 'landed'>,
   orientation: Color,
 ): CardBand {
   const row = (square: Square) => squareOffset(square, orientation)[1];
-  const clearOf = (squares: readonly Square[]) => (band: CardBand) =>
-    !squares.some((square) => row(square) >= BAND_TOPS[band] && row(square) < BAND_TOPS[band] + 2);
+  const clearOf =
+    (rows: readonly number[]) =>
+    ([, top]: (typeof BANDS)[number]) =>
+      !rows.some((each) => each >= top && each < top + 2);
   // Two kings block at most two of the three bands.
-  const open = (Object.keys(BAND_TOPS) as CardBand[]).filter(clearOf(Object.values(kings)));
-  return open.find(clearOf([landed])) ?? open[0];
+  const open = BANDS.filter(clearOf(Object.values(kings).map(row)));
+  return (open.find(clearOf([row(landed)])) ?? open[0])[0];
 }
 
 /**
