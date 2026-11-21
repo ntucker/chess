@@ -3,17 +3,11 @@ import { describe, expect, it } from '@jest/globals';
 import type { Analysis } from '@/evaluation/evaluation';
 
 import { nextSearch, type OrderInput, SKETCH_DEPTH } from './order';
-import type { ReviewMove } from './review';
-import { listing, partial } from './review.fixture';
+import { bookMove, listing, partial, unjudgedMove } from './review.fixture';
 
-/** Six moves, the first two from the guide; the learner plays White. */
+/** Six moves, the first two from the guide, the rest not judged yet; the learner plays White. */
 const book = [true, true];
-const moves: ReviewMove[] = Array.from({ length: 6 }, (_, ply) => ({
-  ply,
-  mover: ply % 2 === 0 ? 'white' : 'black',
-  forced: false,
-  ...(book[ply] && { quality: 'book' }),
-}));
+const moves = [bookMove(0), bookMove(1), ...[2, 3, 4, 5].map((ply) => unjudgedMove(ply))];
 
 /** A sketch where White's expected score is `score`. */
 const sketch = (score: number) => partial(SKETCH_DEPTH, ['a', score]);
@@ -51,6 +45,12 @@ describe('nextSearch', () => {
     expect(order(even)).toBe(2);
     const done = [...even.slice(0, 2), ...[0.5, 0.5, 0.5, 0.5, 0.5].map(final)];
     expect(order(done)).toBeUndefined();
+  });
+
+  it('skips positions whose search failed, so the rest go on', () => {
+    expect(order([], { failed: new Set([0]) })).toBe(1);
+    const even = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5].map(sketch);
+    expect(order(even, { failed: new Set([2, 3]) })).toBe(4);
   });
 
   it('keeps a search running in full until it is final', () => {

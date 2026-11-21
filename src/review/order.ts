@@ -4,7 +4,7 @@
  * When an analysis arrives the answer changes by itself, and the page asks
  * for the new one; the engine stops a search nobody watches any more.
  */
-import { type Analysis, scoreFor } from '@/evaluation/evaluation';
+import { type Analysis, forSide, isFinal } from '@/evaluation/evaluation';
 import type { Color } from '@/game/replay';
 
 import { judgedPosition, type ReviewMove } from './review';
@@ -17,10 +17,11 @@ import { judgedPosition, type ReviewMove } from './review';
 export const SKETCH_DEPTH = 12;
 
 /**
- * A search that has finished this depth without being final is running, or
- * ran, in full, rather than a sketch that stopped at `SKETCH_DEPTH` (or the
- * next depth or two, when one isn't whole): it's kept on until it's final,
- * so a ranking that shifts as its lines deepen doesn't stop it halfway.
+ * A search past this depth that isn't final is a full search, running or
+ * stopped: it's kept on until final, so a ranking that shifts as its lines
+ * deepen doesn't stop it halfway. A sketch stops at `SKETCH_DEPTH`, or a
+ * depth or two later when that one doesn't arrive whole; three depths of
+ * margin keep a sketch from passing for a full search.
  */
 const RUNNING_DEPTH = SKETCH_DEPTH + 3;
 
@@ -38,6 +39,8 @@ export interface OrderInput {
   readonly learner: Color;
   /** The ply the board shows. */
   readonly shown: number;
+  /** Positions whose search failed (engines crashed on them): skipped, so the rest go on. */
+  readonly failed?: ReadonlySet<number>;
 }
 
 /**
@@ -62,20 +65,22 @@ export function nextSearch({
   analyses,
   learner,
   shown,
+  failed,
 }: OrderInput): number | undefined {
   const count = moves.length;
-  const unfinished = (ply: number) => judgedPosition(book, ply, count) && !analyses[ply]?.final;
-  const shownMove = moves[shown - 1];
-  const board = shownMove && !book[shown - 1] && !shownMove.forced ? [shown - 1, shown] : [];
-  const plies = Array.from({ length: count + 1 }, (_, ply) => ply);
+  const searchable = (ply: number) => !failed?.has(ply);
+  const unfinished = (ply: number) =>
+    searchable(ply) && judgedPosition(book, ply, count) && !isFinal(analyses[ply]);
+  const board = moves[shown - 1]?.status === 'waiting' ? [shown - 1, shown] : [];
+  const positions = Array.from({ length: count + 1 }, (_, ply) => ply);
   return (
     board.find(unfinished) ??
-    plies.find((ply) => unfinished(ply) && (analyses[ply]?.depth ?? 0) >= RUNNING_DEPTH) ??
-    plies.find((ply) => !sketched(analyses[ply])) ??
+    positions.find((ply) => unfinished(ply) && (analyses[ply]?.depth ?? 0) >= RUNNING_DEPTH) ??
+    positions.find((ply) => searchable(ply) && !sketched(analyses[ply])) ??
     worstFirst(moves, analyses, learner)
       .flatMap(({ ply }) => [ply, ply + 1])
       .find(unfinished) ??
-    plies.find(unfinished)
+    positions.find(unfinished)
   );
 }
 
@@ -94,11 +99,14 @@ function worstFirst(
   learner: Color,
 ): { ply: number; drop: number }[] {
   return moves
-    .flatMap(({ ply, mover, quality, forced }) => {
+    .flatMap(({ ply, mover, status }) => {
       const before = analyses[ply]?.lines[0];
       const after = analyses[ply + 1]?.lines[0];
-      if (mover !== learner || forced || quality === 'book' || !before || !after) return [];
-      const drop = scoreFor(before.evaluation, mover) - scoreFor(after.evaluation, mover);
+      if (mover !== learner || status === 'book' || status === 'forced' || !before || !after) {
+        return [];
+      }
+      // Negated rather than `scoreFor`, as labels measure it, so a drop at the limit agrees with them.
+      const drop = forSide(before.evaluation.score - after.evaluation.score, mover);
       return drop >= LEAST_DROP ? [{ ply, drop }] : [];
     })
     .sort((a, b) => b.drop - a.drop);

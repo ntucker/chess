@@ -24,18 +24,20 @@ export function moveAccuracy(before: number, after: number): number {
 
 /**
  * `side`'s accuracy for the game: the average of a mean of its moves'
- * accuracies, each weighted by how much the game swung around it, and their
- * harmonic mean, which a single bad move pulls down. Each move's accuracy
- * comes from the expected scores its label measured, so the number never
- * disagrees with the badges; a book move counts as 100 and a forced one not
- * at all. Undefined until every other move of `side`'s is judged.
+ * accuracies, each weighted by how much the game swung where it was played,
+ * and their harmonic mean, which a single bad move pulls down. Each move's
+ * accuracy comes from the expected scores its label measured, so the number
+ * never disagrees with the badges; a book move counts as 100 and a forced
+ * one not at all.
  *
  * The swings are the standard deviation of the win percent over a window of
  * positions (a tenth of the game, 2 to 8 positions, clamped to 0.5 to 12),
  * read from the final analyses of the positions the review searches
  * (`judgedPosition`); a book position the review doesn't search takes the
- * nearest searched one's before it (or after it, at the start), so a
- * search the game happened to run there can't change the number.
+ * nearest searched one's before it (or after it, at the start), so a search
+ * the game happened to run there can't change the number. A window spans
+ * both sides' positions, so the number waits until every searched position
+ * is final: once shown, it never changes.
  */
 export function gameAccuracy(
   moves: readonly ReviewMove[],
@@ -43,19 +45,28 @@ export function gameAccuracy(
   book: readonly boolean[],
   side: Color,
 ): number | undefined {
-  const own = moves.filter(({ mover, forced }) => mover === side && !forced);
-  if (!own.length || own.some(({ quality }) => !quality)) return undefined;
+  const searched = Array.from({ length: moves.length + 1 }, (_, ply) => ply).filter((ply) =>
+    judgedPosition(book, ply, moves.length),
+  );
+  if (searched.some((ply) => !analyses[ply])) return undefined;
   const weights = swingWeights(whiteWinPercents(moves.length, analyses, book));
-  const scored = own.map((move) => ({
-    accuracy: move.quality === 'book' ? 100 : moveAccuracy(move.before! * 100, move.after! * 100),
-    weight: weights[move.ply],
-  }));
-  const weighted =
-    scored.reduce((sum, { accuracy, weight }) => sum + accuracy * weight, 0) /
-    scored.reduce((sum, { weight }) => sum + weight, 0);
-  const harmonic = scored.length / scored.reduce((sum, { accuracy }) => sum + 1 / accuracy, 0);
-  return (weighted + harmonic) / 2;
+  // With every searched position final, every move is judged, book or forced.
+  const scored = moves.flatMap((move) => {
+    if (move.mover !== side || move.status === 'forced' || move.status === 'waiting') return [];
+    const accuracy =
+      move.status === 'book' ? 100 : moveAccuracy(move.before * 100, move.after * 100);
+    return [{ accuracy, weight: weights[move.ply] }];
+  });
+  if (!scored.length) return undefined;
+  return (weightedMean(scored) + harmonicMean(scored.map(({ accuracy }) => accuracy))) / 2;
 }
+
+const weightedMean = (values: readonly { accuracy: number; weight: number }[]) =>
+  values.reduce((sum, { accuracy, weight }) => sum + accuracy * weight, 0) /
+  values.reduce((sum, { weight }) => sum + weight, 0);
+
+const harmonicMean = (values: readonly number[]) =>
+  values.length / values.reduce((sum, value) => sum + 1 / value, 0);
 
 /** White's win percent in each of the game's `moves + 1` positions, as `gameAccuracy` reads them. */
 function whiteWinPercents(
@@ -75,10 +86,11 @@ function whiteWinPercents(
 }
 
 /**
- * Each move's weight (`weights[n]` for the move from position n): the
- * standard deviation of the win percent over the window of positions
- * around it, as lichess slides it: the first window repeats for the first
- * few moves, so there is one per move.
+ * Each move's weight, `weights[n]` for the move from position n: the
+ * standard deviation of the win percent over a window of positions, slid
+ * as lichess slides it. The first window repeats for the first few moves,
+ * so there is one per move, and a later move's window ends at the position
+ * after it.
  */
 function swingWeights(percents: readonly number[]): number[] {
   const size = Math.min(Math.max(Math.floor((percents.length - 1) / 10), 2), 8);

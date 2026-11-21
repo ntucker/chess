@@ -11,26 +11,30 @@ import type { Color, Ply } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { lineKeys } from '@/lesson/select';
 
-/** One move of the game as the review judges it: the move leading from `plies[ply]` to `plies[ply + 1]`. */
-export interface ReviewMove {
-  readonly ply: number;
-  readonly mover: Color;
-  /**
-   * Its label: `book` for a move the guide recommends, which is never
-   * searched, else `judgeMove`'s, once the analyses it needs are final.
-   * Undefined while they aren't, and always for a forced move.
-   */
-  readonly quality?: MoveQuality;
-  /** The only legal move: it gets no label and doesn't count toward accuracy. */
-  readonly forced: boolean;
-  /**
-   * The mover's expected score (0 to 1) before the move and after it, as the
-   * label measured them (`judgement`); absent for a book move, a forced one,
-   * and one not judged yet.
-   */
-  readonly before?: number;
-  readonly after?: number;
-}
+/**
+ * One move of the game as the review judges it: the move leading from
+ * `plies[ply]` to `plies[ply + 1]`, and how far the review has got with it.
+ */
+export type ReviewMove = { readonly ply: number; readonly mover: Color } & (
+  | /** A move the guide recommends: labelled `book`, never searched. */
+    {
+      readonly status: 'book';
+      readonly quality: 'book';
+    } /** The only legal move: no label, and it doesn't count toward accuracy. */
+  | {
+      readonly status: 'forced';
+      readonly quality?: undefined;
+    } /** The analyses its label needs aren't final yet. */
+  | { readonly status: 'waiting'; readonly quality?: undefined }
+  | {
+      readonly status: 'judged';
+      /** `judgeMove`'s label. */
+      readonly quality: MoveQuality;
+      /** The mover's expected score (0 to 1) before the move and after it, as the label measured them (`judgement`). */
+      readonly before: number;
+      readonly after: number;
+    }
+);
 
 /** What the review needs to know about a game. */
 export interface ReviewInput {
@@ -48,16 +52,16 @@ export interface ReviewInput {
 export function reviewMoves({ plies, book, legal, analyses }: ReviewInput): ReviewMove[] {
   return plies.slice(0, -1).map(({ turn: mover }, ply): ReviewMove => {
     const uci = plies[ply + 1].move!.uci;
-    if (book[ply]) return { ply, mover, quality: 'book', forced: false };
-    if (legal[ply] === 1) return { ply, mover, forced: true };
+    if (book[ply]) return { ply, mover, status: 'book', quality: 'book' };
+    if (legal[ply] === 1) return { ply, mover, status: 'forced' };
     const before = analyses[ply];
     const judged = before && judgement(before, analyses[ply + 1], uci, mover);
-    if (!judged) return { ply, mover, forced: false };
+    if (!judged) return { ply, mover, status: 'waiting' };
     return {
       ply,
       mover,
+      status: 'judged',
       quality: judged.quality,
-      forced: false,
       before: scoreFor(before.lines[0].evaluation, mover),
       after: scoreFor(judged.evaluation, mover),
     };
@@ -100,18 +104,18 @@ const MOMENT_QUALITIES: ReadonlySet<MoveQuality | undefined> = new Set(['mistake
 
 /**
  * The learner's moves worth stopping at, in game order (their plies): their
- * mistakes and blunders, and `leftGuide`, the move where they left the
- * lesson's guide, if any.
+ * mistakes and blunders, and `leftGuidePly`, the move where they left the
+ * lesson's guide (`leftGuide`), if any.
  */
 export function moments(
   moves: readonly ReviewMove[],
   learner: Color,
-  leftGuide?: number,
+  leftGuidePly?: number,
 ): number[] {
   return moves
     .filter(
       ({ ply, mover, quality }) =>
-        mover === learner && (ply === leftGuide || MOMENT_QUALITIES.has(quality)),
+        mover === learner && (ply === leftGuidePly || MOMENT_QUALITIES.has(quality)),
     )
     .map(({ ply }) => ply);
 }

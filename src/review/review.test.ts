@@ -4,8 +4,8 @@ import { replay } from '@/game/replay';
 import { ADVANCE, SAMPLE, uciLine } from '@/lesson/lesson.fixture';
 import { bookMoves } from '@/lesson/select';
 
-import { judgedPosition, leftGuide, moments, type ReviewMove, reviewMoves, tally } from './review';
-import { listing } from './review.fixture';
+import { judgedPosition, leftGuide, moments, reviewMoves, tally } from './review';
+import { bookMove, judgedMove, listing, unjudgedMove } from './review.fixture';
 
 const line = uciLine('e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Nd4');
 const plies = replay(line);
@@ -41,8 +41,8 @@ describe('reviewMoves', () => {
     expect(later[5]).toEqual({
       ply: 5,
       mover: 'black',
+      status: 'judged',
       quality: 'blunder',
-      forced: false,
       before: 1 - 0.52,
       after: 1 - 0.75,
     });
@@ -56,9 +56,9 @@ describe('reviewMoves', () => {
       analyses: [],
     });
     expect(moves.slice(0, 3)).toEqual([
-      { ply: 0, mover: 'white', quality: 'book', forced: false },
-      { ply: 1, mover: 'black', forced: true },
-      { ply: 2, mover: 'white', quality: 'book', forced: false },
+      { ply: 0, mover: 'white', status: 'book', quality: 'book' },
+      { ply: 1, mover: 'black', status: 'forced' },
+      { ply: 2, mover: 'white', status: 'book', quality: 'book' },
     ]);
   });
 });
@@ -95,22 +95,15 @@ describe('leftGuide', () => {
   });
 });
 
-const move = (ply: number, quality?: ReviewMove['quality']): ReviewMove => ({
-  ply,
-  mover: ply % 2 === 0 ? 'white' : 'black',
-  quality,
-  forced: false,
-});
-
 describe('moments', () => {
   const moves = [
-    move(0, 'book'),
-    move(1, 'blunder'),
-    move(2, 'good'),
-    move(3, 'mistake'),
-    move(4, 'blunder'),
-    move(5, 'inaccuracy'),
-    move(6),
+    bookMove(0),
+    judgedMove(1, 'blunder'),
+    judgedMove(2, 'good'),
+    judgedMove(3, 'mistake'),
+    judgedMove(4, 'blunder'),
+    judgedMove(5, 'inaccuracy'),
+    unjudgedMove(6),
   ];
 
   it("lists the learner's mistakes and blunders, and where they left the guide, in game order", () => {
@@ -123,11 +116,11 @@ describe('moments', () => {
 describe('tally', () => {
   it("counts each label of a side's judged moves", () => {
     const moves = [
-      move(0, 'book'),
-      move(1, 'best'),
-      move(2, 'blunder'),
-      move(3),
-      move(4, 'blunder'),
+      bookMove(0),
+      judgedMove(1, 'best'),
+      judgedMove(2, 'blunder'),
+      unjudgedMove(3),
+      judgedMove(4, 'blunder'),
     ];
     expect(tally(moves, 'white')).toEqual({ book: 1, blunder: 2 });
     expect(tally(moves, 'black')).toEqual({ best: 1 });
