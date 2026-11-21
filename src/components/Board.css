@@ -1,4 +1,8 @@
-/* On Android the board is the whole page of its web view. */
+/*
+ * On Android the board is the whole page of its web view. The web app loads
+ * this file too, where the page head's SCHEME_CSS (src/theme/schemeCss.ts)
+ * outweighs this rule's background with :root selectors: keep these plain.
+ */
 html,
 body {
   margin: 0;
