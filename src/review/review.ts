@@ -82,8 +82,7 @@ export function reviewMoves({ plies, book, legal, analyses, failed }: ReviewInpu
         : lostPosition(failed, analyses, ply);
       return { ply, mover, status: lost ? 'failed' : 'waiting' };
     }
-    if (label.kind === 'book') return { ply, mover, status: 'book', quality: 'book' };
-    if (label.kind === 'forced') return { ply, mover, status: 'forced', quality: 'best' };
+    if (label.status !== 'judged') return { ply, mover, ...label };
     return {
       ply,
       mover,

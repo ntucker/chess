@@ -46,6 +46,10 @@ export type FinalAnalysis = Analysis & { readonly final: true };
 export const isFinal = (analysis: Analysis | undefined): analysis is FinalAnalysis =>
   !!analysis?.final;
 
+/** `analysis` once it's final, else undefined: what a move's label may read. */
+export const finalOnly = (analysis: Analysis | undefined) =>
+  isFinal(analysis) ? analysis : undefined;
+
 /**
  * A final analysis of one line: how the position stands (`evaluation`), and
  * the move it names, if any. Maia and a finished game name none.

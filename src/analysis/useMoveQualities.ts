@@ -1,7 +1,7 @@
 import { StateContext, useController, useSubscription } from '@data-client/react';
 import { use } from 'react';
 
-import { type EvaluationEngine, isFinal } from '@/evaluation/evaluation';
+import { type EvaluationEngine, finalOnly } from '@/evaluation/evaluation';
 import type { Ply } from '@/game/replay';
 import { getAnalysis, storedAnalyses } from '@/resources/analysis';
 
@@ -56,9 +56,7 @@ export function useMoveQualities(
   // The position before first: the engine searches the newest asked for, the board's.
   useSubscription(getAnalysis, ...args(-1));
   useSubscription(getAnalysis, ...args(0));
-  const analyses = storedAnalyses(ctrl, engine, lines, state).map((analysis) =>
-    isFinal(analysis) ? analysis : undefined,
-  );
+  const analyses = storedAnalyses(ctrl, engine, lines, state).map(finalOnly);
   const qualities = moves.map(
     (uci, n) =>
       labelMove({

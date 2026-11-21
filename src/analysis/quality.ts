@@ -109,9 +109,9 @@ export interface GameMove {
 
 /** Why a move has its label: the guide's move, the only legal move, or `judgement`'s. */
 export type MoveLabel =
-  | { readonly kind: 'book'; readonly quality: 'book' }
-  | { readonly kind: 'forced'; readonly quality: 'best' }
-  | { readonly kind: 'judged'; readonly quality: MoveQuality; readonly evaluation: Evaluation };
+  | { readonly status: 'book'; readonly quality: 'book' }
+  | { readonly status: 'forced'; readonly quality: 'best' }
+  | { readonly status: 'judged'; readonly quality: MoveQuality; readonly evaluation: Evaluation };
 
 /**
  * A game's move's label, the one rule the game and the review share: `book`
@@ -127,10 +127,10 @@ export function labelMove({
   before,
   after,
 }: GameMove): MoveLabel | undefined {
-  if (book) return { kind: 'book', quality: 'book' };
-  if (legal === 1) return { kind: 'forced', quality: 'best' };
+  if (book) return { status: 'book', quality: 'book' };
+  if (legal === 1) return { status: 'forced', quality: 'best' };
   const judged = before && judgement(before, after, uci, mover);
-  return judged && { kind: 'judged', ...judged };
+  return judged && { status: 'judged', ...judged };
 }
 
 /** The evaluation `judgement` judges `uci` by; undefined while `after` is needed and missing. */

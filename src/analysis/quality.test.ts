@@ -139,14 +139,14 @@ describe('labelMove', () => {
   const move = { uci: 'e2e4', mover: 'white' } as const;
 
   it("labels the guide's move book and the only legal move best, without analyses", () => {
-    expect(labelMove({ ...move, book: true })).toEqual({ kind: 'book', quality: 'book' });
-    expect(labelMove({ ...move, legal: 1 })).toEqual({ kind: 'forced', quality: 'best' });
+    expect(labelMove({ ...move, book: true })).toEqual({ status: 'book', quality: 'book' });
+    expect(labelMove({ ...move, legal: 1 })).toEqual({ status: 'forced', quality: 'best' });
   });
 
   it("is judgement's label otherwise, waiting while an analysis it needs is missing", () => {
     expect(labelMove(move)).toBeUndefined();
     expect(labelMove({ ...move, legal: 20, before: listing(['e2e4', 0.55]) })).toEqual({
-      kind: 'judged',
+      status: 'judged',
       quality: 'best',
       evaluation: at(0.55),
     });
