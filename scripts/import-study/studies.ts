@@ -681,6 +681,43 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
       side: 'white',
     },
   },
+  french: {
+    from: [
+      {
+        study: 'cpULfWpl',
+        credit: {
+          title: 'French Defence - Complete Repertoire',
+          author: 'RadiantSmrf',
+          url: 'https://lichess.org/study/cpULfWpl',
+        },
+        chapters: () => true,
+        chapterName: (title: string) => RADIANT_FRENCH_CHAPTERS[title],
+      },
+      {
+        study: 'bgAmUOck',
+        credit: {
+          title: 'Black repertoaire: French defense',
+          author: 'MMatkun',
+          url: 'https://lichess.org/study/bgAmUOck',
+        },
+        chapters: () => true,
+        chapterName: (title: string) => MMATKUN_FRENCH_CHAPTERS[title],
+      },
+      // Wikibooks fills White's second moves the studies skip (2.Nf3 d5 3.exd5 is a fifth of games
+      // at 1400), one root per move so the page budget isn't spent deep in the first one.
+      { root: 'Chess_Opening_Theory/1._e4/1...e6/2._Nf3', maxPages: 12 },
+      { root: 'Chess_Opening_Theory/1._e4/1...e6/2._Bc4' },
+      { root: 'Chess_Opening_Theory/1._e4/1...e6/2._e5' },
+      { root: 'Chess_Opening_Theory/1._e4/1...e6/2._Nc3', maxPages: 10 },
+      { root: 'Chess_Opening_Theory/1._e4/1...e6/2._d3', topName: "King's Indian Attack" },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e6/2._d4/2...d5/3._exd5',
+        topName: 'Exchange Variation',
+      },
+    ],
+    engineCheck: true,
+    info: { id: 'french', title: 'French Defence', side: 'black' },
+  },
   'queens-gambit': {
     from: [
       {
@@ -808,6 +845,50 @@ const QG_CHAPTERS: Readonly<Record<string, string | undefined>> = {
   'Marshall Defense 2...Nf6': 'Marshall Defence',
   'Baltic Defense 2...Bf5': 'Baltic Defence',
   'Zibermints Gambit 2...b5?': 'Zibermints Gambit',
+};
+
+/** RadiantSmrf's French chapters, as variation names; the introduction and 3.Nf3 take the lesson's. */
+const RADIANT_FRENCH_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  'Introduction - French Defence': undefined,
+  'Chapter #1: The Advance Variation - Part #1': 'Advance Variation',
+  'Chapter #2: The Advance Variation - Part #2': 'Advance Variation',
+  'Chapter #3: The Advance Variation - Part #3': 'Advance Variation',
+  'Chapter #4: The Advance Variation - Part #4': 'Advance Variation',
+  'Chapter #5: Winawer Variation - Part #1': 'Winawer Variation',
+  'Chapter #6: Winawer Variation - Part #2': 'Winawer Variation',
+  'Chapter #7: Winawer Variation - Part #3': 'Winawer Variation',
+  'Chapter #8 Exchange Variation - Part #1': 'Exchange Variation',
+  'Chapter #9 Exchange Variation - Part #2': 'Exchange Variation',
+  "Chapter #10 - King's Indian Attack Part #1": "King's Indian Attack",
+  "Chapter #11 - King's Indian Attack Part #2": "King's Indian Attack",
+  // 2.Nc3 d5 3.Nf3, which the study files under the King's Indian Attack.
+  "Chapter #12 - King's Indian Attack Part #3": 'Two Knights Variation',
+  "Chapter #14 - King's Indian Attack Part #4": 'Two Knights Variation',
+  'Chapter #15 - Two Knights Attack - Part #1': 'Two Knights Variation',
+  // 3.Nd2 dxe4 and 3.Nc3 dxe4.
+  'Chapter #16 - Two Knights Attack - Part #2': 'Rubinstein Variation',
+  'Chapter #17 - Tarrasch Variation Part #1': 'Tarrasch Variation',
+  'Chapter #18 - Tarrasch Variation Part #2': 'Rubinstein Variation',
+  'Chapter #19 - Sidelines and Everything Else Part #1': undefined,
+  'Chapter #20 - Sidelines and Everything Else Part #2': 'La Bourdonnais Variation',
+  'Chapter #21 - Sidelines and Everything Else Part #3': 'Steiner Variation',
+  'Chapter #22 - Sidelines and Everything Else Part #4': 'Steiner Variation',
+};
+
+/** MMatkun's French chapters, as variation names. */
+const MMATKUN_FRENCH_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  Introduction: undefined,
+  'French defense: Advanced Variation with 6.Be2': 'Advance Variation',
+  'French defense: Advanced variation with 6.Bd3': 'Advance Variation',
+  'French defense : Advanced variation with 6. a3': 'Advance Variation',
+  'French defense: Tarrasch variation 3.Nd2 Nf6': 'Tarrasch Variation',
+  'French defense : Classical variation 3. Nc3 Bb4 Winaver': 'Winawer Variation',
+  'French Defense : Exchange variation aka French killer': 'Exchange Variation',
+  'French defense : Exchange variation 4.c4': 'Exchange Variation',
+  'French defense: 2.d3': "King's Indian Attack",
+  'French defense : 2. Nf3': undefined,
+  'French defense : 3.Bd3': undefined,
+  'French defense : Wing gambit': 'Wing Gambit',
 };
 
 /** Arco47's Bishop's Opening chapters, as variation names. */
