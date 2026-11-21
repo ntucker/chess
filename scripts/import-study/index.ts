@@ -154,12 +154,14 @@ async function main() {
   );
   let engineReport: EngineReport | undefined;
   if (study.engineCheck) {
-    const checked = await engineCheck(lesson, stockfish.evaluate);
+    const checked = await engineCheck(lesson, stockfish.evaluate, {
+      gambit: study.engineCheck === 'gambit',
+    });
     lesson = checked.lesson;
     engineReport = checked.report;
-    const { unbooked, unreachable, cut, dropped, refilled } = checked.report;
+    const { gambits, unbooked, unreachable, cut, dropped, refilled } = checked.report;
     console.log(
-      `engine check: ${unbooked.length} book moves overruled (${cut.length} cut, the guide's only move; ${refilled.filled.length} picked again among the guide's others, ${refilled.ended.length} ended where it overruled them all and named none), ${unreachable.length} more left unreachable, ${dropped.length} notes dropped`,
+      `engine check: ${gambits.length} gambit mistakes kept, ${unbooked.length} book moves overruled (${cut.length} cut, the guide's only move; ${refilled.filled.length} picked again among the guide's others, ${refilled.ended.length} ended where it overruled them all and named none), ${unreachable.length} more left unreachable, ${dropped.length} notes dropped`,
     );
   }
   writeFileSync(engineFile, `${JSON.stringify({ ...filled.report, ...engineReport }, null, 2)}\n`);

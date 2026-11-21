@@ -81,6 +81,14 @@ export function finalAnalysis(watch: (watcher: Watcher) => unknown): Promise<Fin
 }
 
 /**
+ * `side`'s expected score (0 to 1) in a position scored `evaluation`, which
+ * is White's. Not for a difference of two scores near a limit: `1 - score`
+ * rounds, so move labels negate instead (`signed` in src/analysis/quality.ts).
+ */
+export const scoreFor = ({ score }: Evaluation, side: Color) =>
+  side === 'white' ? score : 1 - score;
+
+/**
  * The size of an advantage of `pawns`, as the evaluation bar and engine lines
  * write it: tenths of a pawn below 10, whole pawns from there up to 99.
  */

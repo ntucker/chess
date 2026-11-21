@@ -1,5 +1,5 @@
 import type { MoveQuality } from '@/analysis/quality';
-import type { HeadlineProps } from '@/components/GameStatus';
+import type { HeadlineProps, News } from '@/components/GameStatus';
 import type { LessonView } from '@/lesson/view';
 import { qualityLooks } from '@/theme/moveQuality';
 
@@ -145,6 +145,30 @@ export function describeStatus(
       ? 'Point at a reply to see what it aims for, then play it.'
       : 'Point at a reply to see what it aims for.',
   };
+}
+
+/** What a narrow page's layout around the headline shows, for `headlineNews`. */
+interface Surroundings {
+  /** The idea pane's place tells the past-guide headline (LessonScreen's `aside`). */
+  readonly aside: boolean;
+  /** The scoresheet drawer covers the panes, and the aside with them. */
+  readonly scoresheetOpen: boolean;
+  /** The opponent didn't answer, so the headline draws its retry. */
+  readonly failed: boolean;
+}
+
+/**
+ * What a narrow page draws of the headline (`news`): nothing where the aside
+ * tells it, nor where the open scoresheet drawer covers the panes and the
+ * headline only says the board is off the guide. A failure keeps it, beside
+ * the retry.
+ */
+export function headlineNews(
+  { news, pastGuide }: Pick<Status, 'news' | 'pastGuide'>,
+  { aside, scoresheetOpen, failed }: Surroundings,
+): News {
+  const untold = scoresheetOpen ? pastGuide === OFF_GUIDE && !failed : aside;
+  return untold ? 'none' : (news ?? 'all');
 }
 
 /**

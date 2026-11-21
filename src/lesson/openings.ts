@@ -194,7 +194,8 @@ function variationLines(lesson: Lesson, picks: readonly Uci[][]): IndexVariation
  * `variation` that games play most often: the product of each move's share
  * of its position's games (`moveShares`). Best first, so the first position
  * of `variation` reached is the likeliest; every move past it only lowers
- * the share. With `bookOnly` the learner plays only book moves.
+ * the share. With `bookOnly` the learner plays only book moves past the
+ * starts; a start may already hold one outside the book (`startShare`).
  */
 function likeliestInto(
   lesson: Lesson,
@@ -204,9 +205,18 @@ function likeliestInto(
 ): Uci[] | undefined {
   const reached = new Set<PositionKey>();
   const queue = new LikeliestFirst();
+  // Each start counts as often as games play it, so a rare line that picks
+  // the lesson (1.e4 e5 2.Qf3) doesn't open a variation the main lines reach.
   for (const line of starts) {
     const pos = Chess.default();
-    if (line.every((uci) => playMove(pos, uci))) queue.push({ line: [...line], pos, share: 1 });
+    let share = 1;
+    let legal = true;
+    for (const uci of line) {
+      share *= startShare(lesson, pos, uci, bookOnly); // Where it's played, so before playing it.
+      legal = !!playMove(pos, uci);
+      if (!legal) break;
+    }
+    if (legal) queue.push({ line: [...line], pos, share });
   }
   for (let next = queue.pop(); next; next = queue.pop()) {
     const { line, pos, share } = next;
@@ -215,21 +225,43 @@ function likeliestInto(
     if (!here || reached.has(key)) continue;
     if (here.variation === variation) return line;
     reached.add(key);
-    // The learner plays the book, however rarely games do: only its book
-    // moves share the games, where it has any.
-    const learner = pos.turn === lesson.side;
-    const moves =
-      learner && here.moves.some(({ book }) => book) && bookOnly
-        ? here.moves.filter(({ book }) => book)
-        : here.moves;
-    const shares = moveShares(moves);
-    moves.forEach(({ uci }, i) => {
+    for (const move of sharesAt(lesson, pos, bookOnly)) {
       const played = pos.clone();
-      if (playMove(played, uci))
-        queue.push({ line: [...line, uci], pos: played, share: share * shares[i] });
-    });
+      if (playMove(played, move.uci))
+        queue.push({ line: [...line, move.uci], pos: played, share: share * move.share });
+    }
   }
   return undefined;
+}
+
+/**
+ * The share of the games at `pos` of `uci`, a move of a line `likeliestInto`
+ * starts from: as `sharesAt` gives it, or, for a learner's move outside the
+ * book (a line the search for any move found), its share among all the
+ * moves there; 0 for a move the lesson doesn't have there.
+ */
+function startShare(lesson: Lesson, pos: Chess, uci: Uci, bookOnly: boolean): number {
+  const shareIn = (only: boolean) =>
+    sharesAt(lesson, pos, only).find((move) => move.uci === uci)?.share;
+  return shareIn(bookOnly) ?? (bookOnly ? shareIn(false) : undefined) ?? 0;
+}
+
+/**
+ * The moves `likeliestInto` follows from `pos` (none off `lesson`), each
+ * with its share of the games (`moveShares`). The learner plays the book,
+ * however rarely games do: with `bookOnly`, only its book moves share the
+ * games, where it has any.
+ */
+function sharesAt(lesson: Lesson, pos: Chess, bookOnly: boolean) {
+  const here = lesson.positions[positionKey(pos)];
+  if (!here) return [];
+  const learner = pos.turn === lesson.side;
+  const moves =
+    learner && here.moves.some(({ book }) => book) && bookOnly
+      ? here.moves.filter(({ book }) => book)
+      : here.moves;
+  const shares = moveShares(moves);
+  return moves.map(({ uci }, i) => ({ uci, share: shares[i] }));
 }
 
 /**
