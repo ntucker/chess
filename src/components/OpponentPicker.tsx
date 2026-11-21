@@ -138,6 +138,10 @@ export function OpponentPicker() {
           side="bottom"
           align="start"
           sideOffset={6}
+          // Opened by hover, focus stays on the trigger; a press then focuses the list.
+          onOpenAutoFocus={(event) => {
+            if (opened !== 'pressed') event.preventDefault();
+          }}
           onPointerEnter={(event) => hoverList(event, true)}
           onPointerLeave={(event) => hoverList(event, false)}
           style={styles.list}
