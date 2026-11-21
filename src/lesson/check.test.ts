@@ -6,7 +6,7 @@ import { parseSan } from 'chessops/san';
 import { checkIdea, checkLesson, generatedIdeaProblem } from './check';
 import { parsePositionKey, positionKey } from '@/game/replay';
 
-import { type Idea, type Lesson, LESSON_FORMAT, type Purpose } from './lesson';
+import { type Idea, type Lesson, LESSON_FORMAT, type Note, type Purpose } from './lesson';
 import { keyAfter, SAMPLE } from './lesson.fixture';
 
 /** The position after `sans`, played from the start. */
@@ -714,12 +714,38 @@ describe('checkLesson', () => {
     const lesson = withPosition(positionKey(afterC6), {
       variation: 'caro',
       moves: [],
-      notes: [{ text: 'Your pawn holds d5.', generated: true, original: 'c6 prepares d5' }],
+      notes: [
+        {
+          text: 'Your pawn holds d5.',
+          generated: true,
+          model: 'claude-fable-5-2',
+          original: 'c6 prepares d5',
+        },
+      ],
     });
     expect(checkLesson(lesson)).toEqual([
       {
         path: `positions["${positionKey(afterC6)}"].notes[0].original`,
         message: 'is on a generated note, which no guide wrote',
+      },
+    ]);
+  });
+
+  it('refuses a generated note no model is credited with, and a model it does not know', () => {
+    const key = positionKey(afterC6);
+    const notes = [
+      { text: 'Your pawn holds d5.', generated: true },
+      { text: 'Your pawn holds d5.', model: 'gpt-4' },
+      { text: 'Your pawn holds d5.', model: 'claude-sonnet-5-5' },
+    ] as Note[];
+    expect(checkLesson(withPosition(key, { variation: 'caro', moves: [], notes }))).toEqual([
+      {
+        path: `positions["${key}"].notes[0].model`,
+        message: 'is missing on a generated note, so the app could not credit it',
+      },
+      {
+        path: `positions["${key}"].notes[1].model`,
+        message: 'gpt-4 is not one of claude-sonnet-5-5, claude-opus-5-5, claude-fable-5-2',
       },
     ]);
   });
@@ -732,6 +758,7 @@ describe('checkLesson', () => {
         {
           text: 'Your pawn heads for d5.',
           generated: true,
+          model: 'claude-fable-5-2',
           ideas: [{ type: 'evaluation', value: 'equal' }],
         },
       ],
@@ -749,7 +776,14 @@ describe('checkLesson', () => {
     const lesson = withPosition(positionKey(afterC6), {
       variation: 'caro',
       moves: [],
-      notes: [{ text: 'Your queen eyes a5.', generated: true, ideas: [threat('d8a5')] }],
+      notes: [
+        {
+          text: 'Your queen eyes a5.',
+          generated: true,
+          model: 'claude-fable-5-2',
+          ideas: [threat('d8a5')],
+        },
+      ],
     });
     expect(checkLesson(lesson)).toEqual([
       {

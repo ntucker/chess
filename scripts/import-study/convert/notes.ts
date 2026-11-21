@@ -10,6 +10,7 @@ import { sanToUci } from '@/game/replay';
 import { checkIdea, withTurn } from '@/lesson/check';
 import {
   MAX_NOTE_WORDS,
+  type AiModel,
   type Idea,
   type Note,
   type StructureFeature,
@@ -37,14 +38,16 @@ export interface Converted {
 export const notesOf = (result: Converted): readonly Note[] => [...result.move, ...result.before];
 
 /**
- * `answer` for `comment` as notes, checked in `positions`. `own` is the
- * importer's ideas on the move's note: they join the model's first note on the
- * move. Ideas repeating anything in `comment.extracted` (those, plus the
- * importer's notes on other positions) are dropped.
+ * `answer` for `comment` as notes credited to `model`, which wrote it, checked
+ * in `positions`. `own` is the importer's ideas on the move's note: they join
+ * the model's first note on the move. Ideas repeating anything in
+ * `comment.extracted` (those, plus the importer's notes on other positions)
+ * are dropped.
  */
 export function convertedNotes(
   comment: Comment,
   answer: Answer,
+  model: AiModel,
   positions: { readonly before: Chess; readonly after: Chess },
   own: readonly Idea[],
 ): Converted {
@@ -73,7 +76,7 @@ export function convertedNotes(
           kept++;
           return [result];
         });
-        return lessonNote(shown(note.text), comment.comment, ideas);
+        return lessonNote(shown(note.text), comment.comment, ideas, model);
       })
       .filter((note) => note.text);
   const before = notesAbout('before');
@@ -83,10 +86,13 @@ export function convertedNotes(
     own.length === 0
       ? moves
       : [
-          lessonNote(first?.text ?? shown(comment.comment), comment.comment, [
-            ...own,
-            ...(first?.ideas ?? []),
-          ]),
+          // With no note of the model's on the move, the comment's own words stand, credited to no model.
+          lessonNote(
+            first?.text ?? shown(comment.comment),
+            comment.comment,
+            [...own, ...(first?.ideas ?? [])],
+            first?.model,
+          ),
           ...rest,
         ];
   return { move, before, kept, rejected, cut };
@@ -102,8 +108,18 @@ function noteText(text: string): string {
 const labelless = (text: string) =>
   text.trim().replace(/^(?:Plan|Trap|Threat|Idea|Line)\s*:\s*/i, '');
 
-function lessonNote(text: string, original: string, ideas: readonly Idea[]): Note {
-  return { text, ...(text !== original && { original }), ...(ideas.length > 0 && { ideas }) };
+function lessonNote(
+  text: string,
+  original: string,
+  ideas: readonly Idea[],
+  model: AiModel | undefined,
+): Note {
+  return {
+    text,
+    ...(text !== original && { original }),
+    ...(model && { model }),
+    ...(ideas.length > 0 && { ideas }),
+  };
 }
 
 /**
