@@ -5,7 +5,8 @@
 // scripts/copy-stockfish.mjs), which the web export serves beside the app.
 // The app downloads them only when the learner first picks full Stockfish
 // (full.ts): the web app from its own site, Android from the live site.
-// Imports nothing, so the opponent ladder can name the size.
+// Imports only a type, so the opponent ladder can name the size.
+import type { Needs } from '@/files/newVersion';
 
 /** The engine's JavaScript loader, in public/stockfish/. */
 export const FULL_LOADER = 'stockfish-19-single.js';
@@ -36,8 +37,10 @@ export const LIVE_FOLDER = 'https://ntucker.github.io/chess/stockfish/';
 export const PREVIEW_FOLDER = process.env.EXPO_PUBLIC_STOCKFISH_FOLDER ?? '';
 
 /**
- * Whether the files download from the site that serves this build, so a
- * reload brings a newer build's: the web app, but not a preview that shares
- * the live site's copy, nor Android.
+ * What the app needs beyond a reload once the files' folder serves another
+ * build (`NewVersionError`'s `needs`); none where a reload brings them, from
+ * the web app's own site. Read by the app, not the web view that runs the
+ * engine on Android.
  */
-export const FROM_OWN_SITE = process.env.EXPO_OS === 'web' && !PREVIEW_FOLDER;
+export const OUTDATED_NEEDS: Needs | undefined =
+  process.env.EXPO_OS !== 'web' ? 'an app update' : PREVIEW_FOLDER ? 'a newer preview' : undefined;
