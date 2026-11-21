@@ -9,7 +9,7 @@ replay each mistake before it shows the answer. Full design (rules, layouts, tim
 ## Decisions (Nathaniel, 2026-11-21)
 
 - One Stockfish lite engine at the app's search (`APP_SEARCH`), so a review label is the label the
-  game showed. Several engines at once stays a later option.
+  game showed (forced moves aside: Piece 1). Several engines at once stays a later option.
 - Review is offered when the game ends, in every mode; before the end only in a lesson's Practice
   mode, once the game has a move off the guide. Elsewhere the scoresheet's Review button is disabled.
 - The review adds Brilliant, Great and Miss, which only refine today's labels; `judgeMove` and live
@@ -43,7 +43,7 @@ then the rest). Tests; no screen.
 Accuracy rules: a move scores 103.1668 e^(-0.04354 × win points lost) - 3.1669, plus 1, within 0 to
 100; a side's number is the average of its moves' swing-weighted mean and their harmonic mean (each
 move floored at 1 there). A move's weight is the standard deviation of the win percent over a
-window of a tenth of the game's positions (2 to 8) ending after it, within 0.5 to 12. A sketch is
+window of positions ending after it, as many as a tenth of the game's moves (2 to 8), within 0.5 to 12. A sketch is
 the first whole depth of at least 12.
 
 ### Piece 2: Review page
