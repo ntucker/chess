@@ -1,8 +1,8 @@
 import { StateContext, useController, useSubscription } from '@data-client/react';
-import { use, useEffect, useReducer, useState } from 'react';
+import { use, useEffect, useReducer } from 'react';
 
 import { finalOnly } from '@/evaluation/evaluation';
-import { analyze, type Color, legalMovesAt, replay } from '@/game/replay';
+import { analyze, type Color, legalMoveCountAt, replay } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { bookMoves } from '@/lesson/select';
 import { analysisFailed, getAnalysis, storedAnalyses } from '@/resources/analysis';
@@ -19,10 +19,7 @@ import {
   reviewMoves,
   tally,
 } from './review';
-import { initialReview, reviewReducer } from './screen';
-
-/** How long the board rests on a move not judged yet before its positions go next. */
-const DWELL_MS = 1000;
+import { DWELL_MS, initialReview, reviewReducer } from './screen';
 
 /** The review judges with Stockfish lite whatever the settings say, as lessons do. */
 const ENGINE = 'stockfish';
@@ -59,13 +56,9 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
   const state = use(StateContext);
   useNeedsStockfish(active);
   const [screen, dispatch] = useReducer(reviewReducer, initialReview);
-  const { ply } = screen;
-  // The ply the board last rested on for `DWELL_MS`; only while it's still
-  // shown does its move go next, so stepping through leaves the search alone.
-  const [rested, setRested] = useState(ply);
-  const dwelt = rested === ply ? ply : undefined;
+  const { ply, dwelt } = screen;
   useEffect(() => {
-    const timer = setTimeout(() => setRested(ply), DWELL_MS);
+    const timer = setTimeout(() => dispatch({ type: 'dwell', ply }), DWELL_MS);
     return () => clearTimeout(timer);
   }, [ply]);
 
@@ -73,7 +66,7 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
   // The moves before each position: `lines[n]` leads to `plies[n]`.
   const lines = plies.map((_, n) => moves.slice(0, n));
   const book = lesson ? bookMoves(lesson, moves) : [];
-  const legal = plies.map(({ fen }) => legalMovesAt(fen));
+  const legal = plies.map(({ fen }) => legalMoveCountAt(fen));
   const analyses = storedAnalyses(ctrl, ENGINE, lines, state);
   const final = analyses.map(finalOnly);
   const failed = new Set(
@@ -97,11 +90,9 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
     /** The position shown, with what the board needs (`analyze`). */
     current: analyze(plies[ply]),
     ...screen,
-    /** The ply the board has rested on about a second, while it's shown. */
-    dwelt,
     /** Each move as judged so far: `moves[n]` leads to `plies[n + 1]`. */
     moves: judged,
-    /** Whatever Stockfish's analysis of each position has reached: `analyses[n]` is of `plies[n]`. */
+    /** How far Stockfish's analysis of each position has got: `analyses[n]` is of `plies[n]`. */
     analyses,
     /** Whether the guide recommends each move. */
     book,

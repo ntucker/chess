@@ -21,8 +21,9 @@ export interface MoveJudgements {
  * labels the move that leads to `plies[n + 1]`, once those are final. Only
  * final analyses count, so a move gets the same label whichever screen
  * shows it, in whatever order: the bar and lines show a search as it
- * deepens, but a label waits for it to finish. The reply that punishes a mistake or blunder comes from the same
- * analysis of the position after it, so it shows with the label.
+ * deepens, but a label waits for it to finish. The reply that punishes a
+ * mistake or blunder comes from the same analysis of the position after it,
+ * so it shows with the label.
  *
  * A move `book` marks (`book[n]` for the nth move) is labelled `book` at once,
  * since a lesson's guide recommends it; the engine never judges it.
@@ -57,6 +58,8 @@ export function useMoveQualities(
   useSubscription(getAnalysis, ...args(-1));
   useSubscription(getAnalysis, ...args(0));
   const analyses = storedAnalyses(ctrl, engine, lines, state).map(finalOnly);
+  // No legal-move counts: a forced move waits for its search, which lists
+  // it first, so it's labelled best then, as the review labels it at once.
   const qualities = moves.map(
     (uci, n) =>
       labelMove({

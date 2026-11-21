@@ -255,7 +255,8 @@ export class AnalysisManager implements Manager {
     if (!running) return;
     shown.release = release;
     // A search started again, by a later visit, is no longer one that gave up.
-    // Invalidating clears the error; the middleware sees it running.
+    // Invalidating clears the error; the middleware starts nothing more, since
+    // `shown.release` is already set.
     if (gaveUp) void ctrl.invalidate(getAnalysis, engine, line);
   }
 }

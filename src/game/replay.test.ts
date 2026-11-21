@@ -8,6 +8,7 @@ import {
   dropMove,
   lastPosition,
   legalMoveCount,
+  legalMoveCountAt,
   lineMove,
   NAMED_MOVE,
   numberedLine,
@@ -103,6 +104,17 @@ describe('analyze', () => {
     const start = lastPosition([]);
     expect(start.dests.e2).toEqual(['e3', 'e4']);
     expect(Object.keys(start.dests)).toHaveLength(10);
+  });
+});
+
+describe('legalMoveCountAt', () => {
+  it("counts a position's legal moves from its FEN, as legalMoveCount does from the moves", () => {
+    // After 3.e5 d5 White can take en passant on d6.
+    const line = ['e2e4', 'c7c6', 'e4e5', 'd7d5'];
+    const plies = replay(line);
+    expect(plies.map(({ fen }) => legalMoveCountAt(fen))).toEqual(
+      plies.map((_, n) => legalMoveCount(line.slice(0, n))),
+    );
   });
 });
 
