@@ -317,15 +317,15 @@ function LessonScreen({
     trapped: view.trap && view.trap.ply + 1,
     onGoto: game.goto,
   };
-  const credits = <SourceCredits sources={lesson.sources} />;
-  /** The settings, beside the board or in a narrow page's sheet; `footnote` follows them. */
-  const settings = (footnote?: ReactNode) => (
+  const lessonCredits = <SourceCredits sources={lesson.sources} />;
+  /** The settings, beside the board or in a narrow page's sheet, which ends them with the `credits`. */
+  const settings = (credits?: ReactNode) => (
     <>
       <LessonControls mode={mode} onMode={chooseMode} />
       <Stack gap="1">
         <OpponentChoice />
         <FootnoteLink href="/play">Or play a free game, from the first move</FootnoteLink>
-        {footnote}
+        {credits}
       </Stack>
     </>
   );
@@ -342,8 +342,9 @@ function LessonScreen({
         // Only a narrow page shows the button, so only there does the sheet open.
         onSettings: () => setSettingsOpen(true),
       }}
-      // A wide page credits the lesson's sources at its foot, a narrow one in its settings sheet.
-      footer={credits}
+      // A wide page credits the lesson's sources at its foot, a narrow one in its settings
+      // sheet. One copy at a time, as with the settings: the sheet may stay open on a widened window.
+      footer={settingsOpen ? undefined : lessonCredits}
       board={
         <BoardColumn
           game={game}
@@ -455,7 +456,7 @@ function LessonScreen({
               <Stack style={styles.sections}>
                 {/* A phone's name-bar discs are dots too small to find; this swaps sides from the sheet, in a lesson too. */}
                 <SideChoice side={learner} onChange={onPlayAs} />
-                {settings(credits)}
+                {settings(lessonCredits)}
                 <SourceFootnote />
               </Stack>
             </Sheet>

@@ -69,7 +69,8 @@ const STYLES = narrowStyles((px) => ({
   fill: { flex: 1 },
   // Fills the window with the page's background; a narrow page natively takes its own height.
   fillGrow: { flexGrow: 1 },
-  // Grows to the window's height, so a footer can sit at its foot (Stage.tsx).
+  // Every page grows to the window's height, so a footer can sit at its foot (Stage.tsx).
+  // Nothing else grows with it, and natively a narrow page grew already (NATIVE_PARTS).
   page: { flexGrow: 1, padding: px(PAGE_SPACE), gap: px(PAGE_SPACE), alignItems: 'center' },
   header: { width: '100%' },
 }));

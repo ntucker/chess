@@ -1,4 +1,4 @@
-import { Separator, Surface, useTheme } from '@reactive/silk-native';
+import { Separator, Stack, Surface, useTheme } from '@reactive/silk-native';
 import type { ComponentProps, ReactNode } from 'react';
 import { View } from 'react-native';
 
@@ -26,7 +26,6 @@ import { useStepKeys } from '@/components/useStepKeys';
 import { colorName, opposite } from '@/game/replay';
 import type { Game } from '@/game/useGame';
 import { narrowLength, narrowStyles } from '@/theme/narrow';
-import { themes } from '@/theme/theme';
 import { NarrowScroll, useNarrowPart, useNarrowStyles, useNarrowViewport } from '@/theme/Narrow';
 
 interface StageProps {
@@ -64,10 +63,10 @@ export function Stage({ title, header, board, program, footer }: StageProps) {
         </NarrowScroll>
       </View>
       {footer ? (
-        <View {...part('wide-only', styles.footer)}>
+        <Stack gap="3" {...part('wide-only', styles.footer)}>
           <Separator />
           {footer}
-        </View>
+        </Stack>
       ) : null}
     </Page>
   );
@@ -235,10 +234,5 @@ const STYLES = narrowStyles((px) => ({
     marginTop: px(WRAPPED_GAP),
   },
   // At the window's foot when the page is shorter than it (Page.tsx), else after the stage.
-  footer: {
-    width: '100%',
-    maxWidth: STAGE_MAX,
-    marginTop: 'auto',
-    gap: themes.dark.semantic.space[3],
-  },
+  footer: { width: '100%', maxWidth: STAGE_MAX, marginTop: 'auto' },
 }));
