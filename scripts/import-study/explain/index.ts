@@ -70,10 +70,11 @@ export async function explainBookMoves(
   const jobs = await bookMoveItems(lesson, moves, evaluate);
   const results = new Map<string, Explained>();
   const judge = async (items: readonly BookMove[], addendum?: string) => {
-    const answers = await ask(MODELS.explain, items, addendum);
+    const model = MODELS.explain;
+    const answers = await ask(model, items, addendum);
     for (const item of items) {
       const answer = answers.get(item.id);
-      if (answer) results.set(item.id, explainedNote(answer, item));
+      if (answer) results.set(item.id, explainedNote(answer, item, model));
     }
   };
   await judge(jobs.map(({ item }) => item));

@@ -47,6 +47,14 @@
  *   them wherever the piece is over, so dragging across the board moves
  *   nothing else on it; the idea card shows the move under it. A click hides
  *   the resting best-move mark the same way, until the piece is unselected.
+ * - After a mistake or blunder of the learner's side, the reply that punishes
+ *   it (`refutation` in src/analysis/quality.ts) is marked while nothing is
+ *   previewed, pointed at, picked up or playing back, in every mode and with
+ *   "moves on the board" on or off, since it judges the move just played.
+ *   Never on the learner's turn: there it would be their own next move,
+ *   drawn in the color of what goes wrong. Where the best move or a candidate
+ *   is the same move, the refutation's arrow is drawn instead of theirs. Its
+ *   being a rare reply doesn't hide it: it still punishes.
  * - Rare candidates (`Candidate.rare`) are left off the list, which shows
  *   them only when asked, and off the board's arrows; Stockfish's best isn't
  *   tagged on one either. Only a preview of one, or dragging its piece,
@@ -98,6 +106,11 @@ export interface GuidanceInput {
   /** The note whose idea plays back on the board. */
   readonly playing?: Note;
   readonly engine?: EngineView;
+  /**
+   * The reply that punishes the move into the shown position, if one clearly
+   * does, whoever played it.
+   */
+  readonly refutation?: Uci;
 }
 
 /** An idea to draw, and the position it is checked in. */
@@ -150,6 +163,8 @@ export interface Guidance {
   readonly best?: Uci;
   /** Stockfish's rows the list shows (`listedEngineMoves`). */
   readonly top: readonly Candidate[];
+  /** The reply that punishes the move just played, where guidance marks it. */
+  readonly refutation?: Uci;
   /** A trap the line fell into, while its card shows (see `trapShown`). */
   readonly trap?: LandedTrap;
   /** The line has reached a guide line's end, and the headline tells it (see `newsShown`). */
@@ -257,10 +272,13 @@ export function guidance(input: GuidanceInput): Guidance {
     showMoves: movesShown,
     moveIdeas,
   });
+  // The board at rest: nothing previewed, picked up, pointed at or playing back.
+  const resting = !preview && !lifted && !playing && !pointedNote;
+  // Only after a move of the learner's side: on their turn it would be their
+  // own next move, drawn in the color of what goes wrong.
+  const refutation = resting && !view.learnerToMove ? input.refutation : undefined;
   const best =
-    explore && movesShown && !preview && !lifted && !playing && !pointedNote
-      ? engine?.best
-      : undefined;
+    explore && movesShown && resting && engine?.best !== refutation ? engine?.best : undefined;
 
   return {
     candidates,
@@ -271,12 +289,13 @@ export function guidance(input: GuidanceInput): Guidance {
     pointable,
     ideas,
     drawn: firstPlanOnly(board.drawn),
-    drawnCandidates: board.candidates,
+    drawnCandidates: board.candidates.filter(({ move }) => move.uci !== refutation),
     playable,
     playing,
     pointed: pointedNote,
     best: best && tagsBest(view, engine?.final, best) ? best : undefined,
     top,
+    refutation,
     trap,
     lineEnded: view.lineEnd !== undefined && newsShown(view, view.lineEnd),
   };

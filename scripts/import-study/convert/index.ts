@@ -21,7 +21,7 @@ import { parseUci } from 'chessops/util';
 
 import { parsePosition, positionKey, sanToUci } from '@/game/replay';
 import { notationProblem, pointsToStudy } from '@/lesson/check';
-import { noteShows, type Note, type NoteShows } from '@/lesson/lesson';
+import { noteShows, type AiModel, type Note, type NoteShows } from '@/lesson/lesson';
 
 import type { ChapterNotes, MoveNote, PositionNote } from '../extract';
 import { topReasons } from '../report';
@@ -100,26 +100,38 @@ async function convertComments(
 ): Promise<{ converted: Map<string, Converted>; retries: Retries }> {
   const ask = withWrittenFor(askModel);
   const converted = new Map<string, Converted>();
-  /** Puts each answer's notes in `converted` where there are none yet or they `replace` what is there. */
-  const keep = (
-    answers: Map<string, Answer>,
+  /**
+   * Asks `model` about `items` and puts each answer's notes in `converted`
+   * where there are none yet or they `replace` what is there.
+   */
+  const askAndKeep = async (
+    model: AiModel,
+    items: readonly Comment[],
     replaces: (result: Converted, previous: Converted, comment: Comment) => boolean,
+    addendum?: string,
   ) => {
+    const answers = await ask(model, items, addendum);
     for (const { moveNote, comment } of jobs) {
       const answer = comment && answers.get(comment.id);
       if (!answer) continue;
-      const result = convertedNotes(comment, answer, moveNote.move, moveNote.note.ideas ?? []);
+      const result = convertedNotes(
+        comment,
+        answer,
+        model,
+        moveNote.move,
+        moveNote.note.ideas ?? [],
+      );
       if (notesOf(result).length === 0) continue;
       const previous = converted.get(comment.id);
       if (!previous || replaces(result, previous, comment)) converted.set(comment.id, result);
     }
   };
   const keepsMore = (result: Converted, previous: Converted) => result.kept > previous.kept;
-  keep(await ask(MODELS.convert, [...comments.values()]), keepsMore);
+  await askAndKeep(MODELS.convert, [...comments.values()], keepsMore);
   const retry = [...converted]
     .filter(([, result]) => allRefused(result))
     .map(([id]) => comments.get(id)!);
-  if (retry.length > 0) keep(await ask(MODELS.retry, retry), keepsMore);
+  if (retry.length > 0) await askAndKeep(MODELS.retry, retry, keepsMore);
   /** The comments whose answer has note texts `textsOf` picks out as refused, each with those texts. */
   const refusedBy = (textsOf: (result: Converted) => string[]) =>
     [...converted].flatMap(([id, result]) => {
@@ -132,9 +144,9 @@ async function convertComments(
   // Read before the rewording answers replace any of them.
   const before = keptByReworded();
   if (reword.length > 0)
-    keep(await ask(MODELS.retry, reword, REWORD), (result) => notationTexts(result).length === 0);
+    await askAndKeep(MODELS.retry, reword, (result) => notationTexts(result).length === 0, REWORD);
   const unmoored = refusedBy(studyTexts);
-  if (unmoored.length > 0) keep(await ask(MODELS.retry, unmoored, STANDALONE), acceptedText);
+  if (unmoored.length > 0) await askAndKeep(MODELS.retry, unmoored, acceptedText, STANDALONE);
   const punish = [...converted].flatMap(([id, result]) => {
     const comment = comments.get(id)!;
     const mistakes = undrawnMistakes(comment, result);
@@ -142,10 +154,12 @@ async function convertComments(
   });
   // Without an answer (a --no-model run, a failed request) the earlier notes stay.
   if (punish.length > 0)
-    keep(
-      await ask(MODELS.retry, punish, DRAW_MISTAKES),
+    await askAndKeep(
+      MODELS.retry,
+      punish,
       (result, previous, comment) =>
         acceptedText(result) && drawnMistakes(comment, result) > drawnMistakes(comment, previous),
+      DRAW_MISTAKES,
     );
   // A comment marking mistakes is asked to draw them again too, so a shorter answer can keep them.
   const shorten = [...converted].flatMap(([id, result]) => {
@@ -161,9 +175,9 @@ async function convertComments(
     result.cut.length === 0 &&
     acceptedText(result) &&
     drawnMistakes(comment, result) >= drawnMistakes(comment, previous);
-  if (plain.length > 0) keep(await ask(MODELS.retry, plain, SHORTEN), shortened);
+  if (plain.length > 0) await askAndKeep(MODELS.retry, plain, shortened, SHORTEN);
   if (drawing.length > 0)
-    keep(await ask(MODELS.retry, drawing, DRAW_MISTAKES + SHORTEN), shortened);
+    await askAndKeep(MODELS.retry, drawing, shortened, DRAW_MISTAKES + SHORTEN);
   return {
     converted,
     retries: {
