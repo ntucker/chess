@@ -142,6 +142,25 @@ describe('lichessExplorer', () => {
     expect(resumed.answeredOn()).toBe('2026-11-21');
   });
 
+  it('dates the counts by the latest answer asked for', async () => {
+    const cacheFile = join(mkdtempSync(join(tmpdir(), 'explorer-')), 'explorer.jsonl');
+    writeFileSync(
+      cacheFile,
+      [
+        [`1400 ${key()}`, { e2e4: 10 }, '2026-11-21'],
+        [`1600 ${key()}`, { e2e4: 20 }, '2026-11-19'],
+      ]
+        .map((row) => `${JSON.stringify(row)}\n`)
+        .join(''),
+    );
+    const explorer = lichessExplorer({ cacheFile, today: '2026-12-01', sleep: async () => {} });
+    await explorer.ask(key(), 1600);
+    expect(explorer.answeredOn()).toBe('2026-11-19');
+    await explorer.ask(key(), 1400);
+    await explorer.ask(key(), 1600);
+    expect(explorer.answeredOn()).toBe('2026-11-21');
+  });
+
   it('asks again about everything when fresh, and replaces the file once saved', async () => {
     const cacheFile = join(mkdtempSync(join(tmpdir(), 'explorer-')), 'explorer.jsonl');
     writeFileSync(cacheFile, `${JSON.stringify([`1400 ${key()}`, { e2e4: 10 }, '2026-11-20'])}\n`);
