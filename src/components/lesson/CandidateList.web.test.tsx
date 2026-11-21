@@ -106,9 +106,17 @@ describe('CandidateList', () => {
     expect(partTexts({ owner: 'White' })).toContainEqual(['wide-only-spoken', "White's\u00a0"]);
   });
 
-  it('leaves where each row leads to the line under a compact list', () => {
-    expect(partTexts({}).filter(([part]) => part === 'leads-to')).toEqual([]);
-    expect(partTexts({ compact: false })).toContainEqual(['leads-to', 'the Nf3 line']);
+  it('leaves where each row leads to the line under a compact list on a narrow page', () => {
+    expect(partTexts({})).toContainEqual(['wide-only', 'the Nf3 line']);
+  });
+
+  it('keeps where each row leads on every page when the list is not compact', () => {
+    const parts = render({ compact: false }, (host) =>
+      [...host.querySelectorAll('*')]
+        .filter((node) => node.children.length === 0 && node.textContent === 'the Nf3 line')
+        .map((node) => node.getAttribute('data-narrow')),
+    );
+    expect(parts).toEqual([null]);
   });
 
   it("shows a Stockfish row's change label, and says its description", () => {

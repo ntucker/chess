@@ -21,12 +21,11 @@ import {
 import { positionHash } from '@/progress/progress';
 
 import { cleanLineEnds, gamesPlayed, inCleanRun } from './cleanRun';
+import { sourcesOf } from './credits';
 import {
   LESSON_FORMAT,
-  onDomain,
   type Lesson,
   type LessonMove,
-  type LessonSource,
   type Note,
   type PositionKey,
   type Uci,
@@ -53,8 +52,8 @@ export interface OpeningLine {
 }
 
 /**
- * What the start position needs to know of a lesson before it loads. Its
- * sources are credited where the start position previews the lesson's move.
+ * What the start position needs to know of a lesson before it loads. The
+ * start position's page credits its sources.
  */
 export interface IndexEntry extends Pick<Lesson, 'title' | 'side' | 'sources'> {
   /** The lines that pick it, in the guide's order. */
@@ -382,12 +381,12 @@ export function lessonsFrom<Id extends string>(
   );
 }
 
-/** A move listed before a lesson is picked, crediting the lessons it leads to. */
+/** A move listed before a lesson is picked, naming the lessons it leads to. */
 type OpeningMove = LessonMove & { readonly notes: readonly Note[] };
 
 /**
  * The moves `side`'s lessons share and the moves that pick them, at each
- * position before a line picks one, each crediting the lessons it leads to.
+ * position before a line picks one, each naming the lessons it leads to.
  * A learner's move is a book move where a clean run can go on through it.
  */
 function openingMoves(index: LessonIndex, side: Color): Map<PositionKey, OpeningMove[]> {
@@ -405,17 +404,6 @@ function openingMoves(index: LessonIndex, side: Color): Map<PositionKey, Opening
       found.book ||= line.lineEnds.length > 0 && (n % 2 === 0 ? 'white' : 'black') === side;
     }
   }
-  const name = sourceNamer(sourcesOf(index));
-  // How a note credits a source: its name, then its license's. A note is plain
-  // text; the lesson screen's credits link both.
-  const credit = (source: LessonSource) =>
-    source.license ? `${name(source)} (${source.license.name})` : name(source);
-  // Each lesson's note text, written once for every move that leads to it.
-  const noteText = new Map(
-    Object.entries(index)
-      .filter(([, entry]) => entry.side === side)
-      .map(([id, { title, sources }]) => [id, `${title}, from ${listed(sources.map(credit))}.`]),
-  );
   return new Map(
     [...at].map(([key, moves]) => [
       key,
@@ -423,59 +411,11 @@ function openingMoves(index: LessonIndex, side: Color): Map<PositionKey, Opening
         uci,
         ...(book && { book }),
         // A note object per move: the idea card tells notes apart by identity.
-        notes: ids.map((id) => ({ text: noteText.get(id)! })),
+        notes: ids.map((id) => ({ text: index[id].title })),
       })),
     ]),
   );
 }
-
-export const isLichessStudy = ({ url }: LessonSource) => {
-  const parsed = new URL(url);
-  return onDomain(parsed, 'lichess.org') && parsed.pathname.startsWith('/study/');
-};
-
-/**
- * How the app names a source among `credited` (every source the app credits,
- * from `sourcesOf`). A lichess study is "author's lichess study" when it is
- * the only lichess study by its author among them, so one study reads the
- * same on every screen; any other source is its title and author. Each URL
- * parses once per name and once here, not once per other source: the checker
- * has read every shipped lesson's sources.
- */
-export function sourceNamer(credited: readonly LessonSource[]): (source: LessonSource) => string {
-  const studies = new Map<string, string[]>();
-  for (const { author, url } of credited.filter(isLichessStudy)) {
-    const urls = studies.get(author) ?? [];
-    studies.set(author, urls);
-    urls.push(url);
-  }
-  return (source) => {
-    const { title, author, url } = source;
-    const hasSiblingStudy = studies.get(author)?.some((other) => other !== url);
-    return isLichessStudy(source) && !hasSiblingStudy
-      ? `${author}'s lichess study`
-      : `${title} by ${author}`;
-  };
-}
-
-/** Every source the index's lessons and `more` credit, each once (the same URL is the same source). */
-export const sourcesOf = (
-  index: LessonIndex,
-  more: readonly LessonSource[] = [],
-): LessonSource[] => [
-  ...new Map(
-    [...Object.values(index).flatMap(({ sources }) => sources), ...more].map(
-      (source) => [source.url, source] as const,
-    ),
-  ).values(),
-];
-
-/** What comes before item `i` of `count` in an English list: "a", "a and b", "a, b and c". */
-export const listSeparator = (i: number, count: number) =>
-  i === 0 ? '' : i === count - 1 ? ' and ' : ', ';
-
-const listed = (items: readonly string[]) =>
-  items.map((item, i) => listSeparator(i, items.length) + item).join('');
 
 /** The variation of the positions before a lesson is picked. */
 const OPENINGS_VARIATION = 'openings';
@@ -494,7 +434,7 @@ export function openingsLesson(index: LessonIndex, side: Color): Lesson {
     title: 'Openings',
     side,
     start: INITIAL_FEN,
-    // Its notes come from the lessons', so it credits their sources.
+    // Its moves are the lessons' lines, so it credits their sources.
     sources: sourcesOf(ofSide),
     variations: { [OPENINGS_VARIATION]: { name: 'Openings' } },
     positions: Object.fromEntries(

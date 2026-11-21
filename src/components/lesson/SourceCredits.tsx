@@ -3,19 +3,24 @@ import { Fragment, use } from 'react';
 import { Text as Span } from 'react-native';
 
 import { ExternalLink } from '@/components/ExternalLink';
-import { type CreditGroup, creditGroups } from '@/lesson/credits';
+import {
+  type CreditGroup,
+  creditGroups,
+  listSeparator,
+  sourceNamer,
+  sourcesOf,
+} from '@/lesson/credits';
 import type { License, LessonSource } from '@/lesson/lesson';
-import { listSeparator, sourceNamer, sourcesOf } from '@/lesson/openings';
 import { LessonIndexContext } from '@/resources/lesson';
 
 /**
- * The footnote crediting what a lesson was made from: "Lesson from MMatkun's
+ * The footnote crediting what a lesson was made from: "Lesson from Matkun's
  * lichess study; Chess Opening Theory, 1.e4 c6 by Wikibooks contributors (CC
  * BY-SA 4.0)", each source and license a link. Sources of one site are
  * credited together (`creditGroups`): "lichess studies by A and B (1, 2)",
  * "Chess Opening Theory by Wikibooks contributors (CC BY-SA 4.0): 1.e4 c6,
  * 1.e4 e5". A share-alike license asks for its link wherever its text is
- * shown, which a note's plain text can't hold.
+ * shown.
  */
 export function SourceCredits({ sources }: { readonly sources: readonly LessonSource[] }) {
   const name = sourceNamer(sourcesOf(use(LessonIndexContext), sources));

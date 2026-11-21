@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { creditGroups } from './credits';
+import { creditGroups, sourceNamer } from './credits';
 import type { LessonSource } from './lesson';
 
 const study = (author: string, id: string): LessonSource => ({
@@ -99,5 +99,18 @@ describe('creditGroups', () => {
       page('1.e4 e5'),
     ]);
     expect(groups.map(({ kind }) => kind)).toEqual(['studies', 'pages']);
+  });
+});
+
+describe('sourceNamer', () => {
+  it.each([
+    ['https://lichess.org/study/abcd1234', "Matkun's lichess study"],
+    ['http://lichess.org/study/abcd1234', "Matkun's lichess study"],
+    ['https://www.lichess.org/study/abcd1234', "Matkun's lichess study"],
+    ['https://lichess.org/@/Matkun', 'Study abcd1234 by Matkun'],
+    ['https://lichess.org.example.com/study/abcd1234', 'Study abcd1234 by Matkun'],
+  ])('names %s as %s', (url, name) => {
+    const source = { ...study('Matkun', 'abcd1234'), url };
+    expect(sourceNamer([source])(source)).toBe(name);
   });
 });

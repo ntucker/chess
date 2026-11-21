@@ -533,79 +533,9 @@ describe('openingsLesson', () => {
     expect(unbooked.book).toBeUndefined();
   });
 
-  it("credits each opening's source in its move's note, each lesson a move leads to", () => {
+  it('names each lesson a move leads to in its note, without crediting their sources', () => {
     const [, d4] = openingsLesson(INDEX, 'black').positions[keyAfter()].moves;
-    expect(d4.notes).toEqual([
-      { text: "Slav Defence, from Matkun's lichess study." },
-      { text: "Anti-London, from Cold's lichess study." },
-    ]);
-  });
-
-  it('credits every source, with the license of one that has it', () => {
-    const wikibooks = {
-      title: 'Wikibooks Chess Opening Theory',
-      author: 'Wikibooks contributors',
-      url: 'https://en.wikibooks.org/wiki/Chess_Opening_Theory',
-      license: { name: 'CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },
-    };
-    const index = {
-      slav: { ...INDEX.slav, sources: [study('Matkun'), study('Kitsune'), wikibooks] },
-    };
-    const [slav] = openingsLesson(index, 'black').positions[keyAfter()].moves;
-    expect(slav.notes).toEqual([
-      {
-        text: "Slav Defence, from Matkun's lichess study, Kitsune's lichess study and Wikibooks Chess Opening Theory by Wikibooks contributors (CC BY-SA 4.0).",
-      },
-    ]);
-  });
-
-  it.each([
-    ['https://lichess.org/study/abcd1234', "Matkun's lichess study"],
-    ['http://lichess.org/study/abcd1234', "Matkun's lichess study"],
-    ['https://www.lichess.org/study/abcd1234', "Matkun's lichess study"],
-    ['https://lichess.org/@/Matkun', 'A study by Matkun'],
-    ['https://lichess.org.example.com/study/abcd1234', 'A study by Matkun'],
-  ])('credits %s as %s', (url, credit) => {
-    const index = { slav: { ...INDEX.slav, sources: [{ ...study('Matkun'), url }] } };
-    const [slav] = openingsLesson(index, 'black').positions[keyAfter()].moves;
-    expect(slav.notes?.[0].text).toBe(`Slav Defence, from ${credit}.`);
-  });
-
-  it('names two lichess studies by one author by their titles', () => {
-    const index = {
-      slav: {
-        ...INDEX.slav,
-        sources: [
-          { ...study('Matkun'), title: 'Slav, part 1' },
-          { ...study('Matkun'), title: 'Slav, part 2', url: 'https://lichess.org/study/part2' },
-          study('Kitsune'),
-        ],
-      },
-    };
-    const [slav] = openingsLesson(index, 'black').positions[keyAfter()].moves;
-    expect(slav.notes?.[0].text).toBe(
-      "Slav Defence, from Slav, part 1 by Matkun, Slav, part 2 by Matkun and Kitsune's lichess study.",
-    );
-  });
-
-  it("names a study by its title where another lesson credits its author's other study", () => {
-    const index = {
-      slav: { ...INDEX.slav, sources: [{ ...study('Matkun'), title: 'Slav' }] },
-      other: {
-        ...INDEX.slav,
-        title: 'Other',
-        sources: [{ ...study('Matkun'), title: 'Other', url: 'https://lichess.org/study/other' }],
-      },
-    };
-    const [slav] = openingsLesson(index, 'black').positions[keyAfter()].moves;
-    expect(slav.notes?.[0].text).toBe('Slav Defence, from Slav by Matkun.');
-  });
-
-  it("names a lichess study's license when it has one", () => {
-    const license = { name: 'CC0', url: 'https://creativecommons.org/publicdomain/zero/1.0/' };
-    const index = { slav: { ...INDEX.slav, sources: [{ ...study('Matkun'), license }] } };
-    const [slav] = openingsLesson(index, 'black').positions[keyAfter()].moves;
-    expect(slav.notes?.[0].text).toBe("Slav Defence, from Matkun's lichess study (CC0).");
+    expect(d4.notes).toEqual([{ text: 'Slav Defence' }, { text: 'Anti-London' }]);
   });
 
   it("credits the lessons' sources, a source two lessons share once", () => {
@@ -632,10 +562,7 @@ describe('withOpenings', () => {
     expect(own(lesson)).toEqual({
       ...own(SAMPLE),
       games: undefined,
-      notes: [
-        { text: "Caro-Kann Defence, from Kampf's lichess study." },
-        ...(own(SAMPLE).notes ?? []),
-      ],
+      notes: [{ text: 'Caro-Kann Defence' }, ...(own(SAMPLE).notes ?? [])],
     });
     // Without its count, it lists in the index's order, as from any other lesson.
     expect(own(SAMPLE).games).toBeDefined();
