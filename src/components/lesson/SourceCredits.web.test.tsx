@@ -37,7 +37,8 @@ function credits(sources: readonly LessonSource[], indexed: readonly LessonSourc
     ),
   );
   for (let n = 0; n < presses; n++) {
-    act(() => host.querySelector<HTMLElement>('[role="button"]')!.click());
+    // A real <button>, so a keyboard reaches and presses it too.
+    act(() => host.querySelector('button')!.click());
   }
   const text = host.textContent;
   const labels = [...host.querySelectorAll('[aria-label]')].map((link) =>
@@ -117,7 +118,8 @@ describe('SourceCredits', () => {
       license: CC_BY_SA,
     });
     const sources = [
-      ...['a', 'b', 'c', 'd', 'e'].map((id) => study(`Study ${id}`, id)),
+      ...['a', 'b', 'c', 'd'].map((id) => study(`Study ${id}`, id)),
+      { ...study('Study e', 'e'), author: 'wub1234' },
       ...['1.e4', '1.d4', '1.c4', '1.Nf3'].map(page),
     ];
 
@@ -130,7 +132,7 @@ describe('SourceCredits', () => {
 
     it('shows every source on a press, and the counts again on another', () => {
       expect(credits(sources, sources, 1).text).toBe(
-        'Lesson from lichess studies by Matkun (1, 2, 3, 4, 5); Chess Opening Theory by' +
+        'Lesson from lichess studies by Matkun (1, 2, 3, 4) and wub1234; Chess Opening Theory by' +
           ' Wikibooks contributors (CC\u00a0BY-SA\u00a04.0): 1.e4, 1.d4, 1.c4 and 1.Nf3 · Show fewer',
       );
       expect(credits(sources, sources, 2).text).toMatch(/^Lesson from 5 lichess studies/);

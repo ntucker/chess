@@ -28,8 +28,8 @@ export function SourceCredits({ sources }: { readonly sources: readonly LessonSo
   const [showAll, setShowAll] = useState(false);
   const groups = creditGroups(sources);
   // Counting helps only where a group credits several sources at once.
-  const long = sources.length > MOST_LISTED && groups.some(({ kind }) => kind !== 'source');
-  const counted = long && !showAll;
+  const collapsible = sources.length > MOST_LISTED && groups.some(({ kind }) => kind !== 'source');
+  const counted = collapsible && !showAll;
   const Item = counted ? GroupCount : Group;
   return (
     <Text role="caption" tone="secondary">
@@ -40,7 +40,7 @@ export function SourceCredits({ sources }: { readonly sources: readonly LessonSo
           <Item group={group} name={name} />
         </Span>
       ))}
-      {long ? (
+      {collapsible ? (
         <>
           {' · '}
           <Span
