@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals
 import { SilkProvider } from '@reactive/silk-native';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { Dimensions } from 'react-native';
 
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
@@ -41,7 +42,9 @@ const button = () => host.querySelector<HTMLElement>('[role="button"]')!;
 const saved = () => JSON.parse(localStorage.getItem('settings')!).theme;
 const radio = (label: string) =>
   host.querySelector<HTMLElement>(`[role="radio"][aria-label="${label}"]`)!;
-const choicesOpen = () => radio('Light').parentElement!.getAttribute('aria-hidden') !== 'true';
+/** Whether the choices are open: their pill, around the row of radios, is shown. */
+const choicesOpen = () =>
+  radio('Light').parentElement!.parentElement!.getAttribute('aria-hidden') !== 'true';
 /** A pointer of `pointerType` coming onto the button, or leaving it for the page. */
 const pointer = (type: 'pointerover' | 'pointerout', pointerType: string) =>
   act(() => {
@@ -105,10 +108,15 @@ describe('ThemeSwitch', () => {
 
     beforeEach(() => {
       jest.useFakeTimers();
-      // The button 30 wide at x 100, so the open choices span 40 to 130: Device's theme, Light, Dark.
+      // The button 30 wide at x 100. Opened from the device's theme, the
+      // choices span 100 to 190: Device's theme, Light, Dark.
       jest
         .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
         .mockReturnValue({ x: 100, y: 0, left: 100, top: 0, width: 30, height: 30 } as DOMRect);
+      // jsdom's page has no size.
+      jest
+        .spyOn(Dimensions, 'get')
+        .mockReturnValue({ width: 1024, height: 768, scale: 1, fontScale: 1 });
     });
     afterEach(() => {
       jest.useRealTimers();
@@ -118,23 +126,47 @@ describe('ThemeSwitch', () => {
     it('opens the choices, and a slide then a lift chooses the one under the finger', () => {
       hold();
       expect(choicesOpen()).toBe(true);
-      touch('touchmove', 85);
-      touch('touchend', 85);
+      touch('touchmove', 145);
+      touch('touchend', 145);
       expect(saved()).toBe('light');
       expect(choicesOpen()).toBe(false);
     });
 
-    it('keeps the theme when the finger lifts without sliding', () => {
+    it('keeps the theme when the finger lifts where it was held, even after wobbling', () => {
       hold();
-      touch('touchend', 0);
+      touch('touchmove', 112);
+      touch('touchmove', 126);
+      touch('touchend', 120);
       expect(localStorage.getItem('settings')).toBeNull();
       expect(choicesOpen()).toBe(false);
     });
 
+    it('takes the end choice for a slide past either end', () => {
+      hold();
+      touch('touchmove', 600);
+      touch('touchend', 600);
+      expect(saved()).toBe('dark');
+      // Opened from Dark, the choices span 40 to 130, Dark over the button.
+      hold();
+      touch('touchmove', -50);
+      touch('touchend', -50);
+      expect(saved()).toBe('system');
+    });
+
+    it('chooses where the finger lifts, before its slide has drawn', () => {
+      hold();
+      act(() => {
+        // One act: the move's render hasn't happened when the finger lifts.
+        touch('touchmove', 145);
+        touch('touchend', 145);
+      });
+      expect(saved()).toBe('light');
+    });
+
     it('closes without choosing when the touch is cancelled', () => {
       hold();
-      touch('touchmove', 85);
-      touch('touchcancel', 85);
+      touch('touchmove', 145);
+      touch('touchcancel', 145);
       expect(localStorage.getItem('settings')).toBeNull();
       expect(choicesOpen()).toBe(false);
     });

@@ -24,8 +24,7 @@ interface Props extends Pick<
 
 /**
  * A round icon button in the header (the source link, settings, a back
- * button, the theme button, which holds open by its long press and `ref`),
- * or the close of a sheet or drawer. It stays quiet in the
+ * button, the theme button), or the close of a sheet or drawer. It stays quiet in the
  * secondary ink and lights up on hover, like the transport's buttons.
  */
 export function HeaderButton({ icon, iconSize, ...pressable }: Props) {

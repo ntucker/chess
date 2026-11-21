@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { a11yState, Pressable, useReducedMotion, useTheme } from '@reactive/silk-native';
 import { type ComponentProps, type ComponentRef, useRef, useState } from 'react';
-import { type GestureResponderEvent, type PointerEvent, View } from 'react-native';
+import { Dimensions, type GestureResponderEvent, type PointerEvent, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { hoversControl } from '@/board/pointer';
@@ -22,18 +22,37 @@ const CHOICES: Record<Theme, { label: string; icon: ComponentProps<typeof Ionico
 const ICON_SIZE = 19;
 /** The open choices' border width. */
 const BORDER = 1;
+/** The least room the open choices leave at the window's edge. */
+const EDGE = 4;
 /** How long a finger rests on the button before the choices open under it: Android's long press. */
 const HOLD_MS = 400;
 const MOTION = springMotion(springs.snappy);
 
+/** The styles placing the open choices, and the row inside them shut, by the anchor's index in THEMES. */
+const OPEN_AT = ['openAt0', 'openAt1', 'openAt2'] as const;
+const ROW_SHUT_AT = ['rowShutAt0', 'rowShutAt1', 'rowShutAt2'] as const;
+
 /** How the choices were opened: a mouse or pen resting on the button, or a finger held on it. */
 type Opened = 'hover' | 'hold';
+
+/** The open choices. */
+interface Menu {
+  readonly how: Opened;
+  /** The choice that opened over the button: the theme in use then. */
+  readonly anchor: number;
+  /** How far the choices moved to stay in the window, in pixels. */
+  readonly shift: number;
+  /** The choice under the pointer, once it moves. */
+  readonly pointed?: Theme;
+}
 
 /**
  * The header's theme button: one round button showing the theme in use.
  * A tap steps to the next theme. A resting mouse or pen (`hoversControl`),
- * or a finger held down, springs the button open into all three, leftward;
- * a mouse or pen clicks one, and a finger slides to one and lifts.
+ * or a finger held down, springs it open into all three, with the theme in
+ * use staying where it is (unless that would leave the window). A mouse or
+ * pen clicks one. A finger slides to one and lifts, and a slide past either
+ * end takes the end one; lifting where it started keeps the theme.
  */
 export function ThemeSwitch() {
   const { theme } = useSettings();
@@ -41,29 +60,48 @@ export function ThemeSwitch() {
   const { color, shadow } = useTheme().theme.semantic;
   const reducedMotion = useReducedMotion();
   const styles = useNarrowStyles(STYLES);
-  // While open: how, and the choice under the pointer once it moves.
-  const [menu, setMenu] = useState<{ how: Opened; pointed?: Theme }>();
+  const [menu, setMenu] = useState<Menu>();
   const button = useRef<ComponentRef<typeof View>>(null);
   // Where the open choices start and how wide each is, in window coordinates.
   const slots = useRef<{ left: number; size: number }>(undefined);
 
   const choose = (choice: Theme) => dispatch({ type: 'chosen', choice: { theme: choice } });
   const open = (how: Opened) => {
-    setMenu({ how });
+    const anchor = THEMES.indexOf(theme);
+    setMenu({ how, anchor, shift: 0 });
     button.current?.measureInWindow((x, _y, size) => {
-      slots.current = { left: x + size - THEMES.length * size, size };
+      const left = x - anchor * size;
+      const right = left + THEMES.length * size;
+      const { width } = Dimensions.get('window');
+      const shift =
+        right + BORDER > width - EDGE
+          ? width - EDGE - right - BORDER
+          : Math.max(0, EDGE - left + BORDER);
+      slots.current = { left: left + shift, size };
+      setMenu((shown) => shown && { ...shown, shift });
     });
   };
   const close = () => setMenu(undefined);
-  const point = (pageX: number) => {
-    if (!slots.current) return;
+  /** The choice open over `pageX`; past either end, the end one. */
+  const slotAt = (pageX: number) => {
+    if (!slots.current) return undefined;
     const index = Math.floor((pageX - slots.current.left) / slots.current.size);
-    const pointed = THEMES[Math.min(THEMES.length - 1, Math.max(0, index))];
-    setMenu((shown) => shown && { ...shown, pointed });
+    return THEMES[Math.min(THEMES.length - 1, Math.max(0, index))];
+  };
+  const point = (pageX: number) => {
+    const pointed = slotAt(pageX);
+    // From the latest state, so a move can't reopen what a close just shut.
+    if (pointed) setMenu((shown) => shown && { ...shown, pointed });
   };
   // Lit: the choice under the pointer, else the theme in use (whose icon alone is inked).
   const lit = menu?.pointed ?? theme;
   const { label, icon } = CHOICES[theme];
+  // The choice over the button: while open, the one it opened with; shut, the theme in use.
+  const anchor = menu?.anchor ?? THEMES.indexOf(theme);
+  const transition = {
+    transitionDuration: reducedMotion ? 0 : MOTION.durationMs,
+    transitionTimingFunction: timingFunction(MOTION.easing),
+  };
 
   return (
     <View
@@ -84,9 +122,11 @@ export function ThemeSwitch() {
         // React Native Web leaves the touch's position to its touches.
         if (menu?.how === 'hold') point(nativeEvent.touches[0]?.pageX ?? nativeEvent.pageX);
       }}
-      onTouchEnd={() => {
+      onTouchEnd={({ nativeEvent }: GestureResponderEvent) => {
         if (menu?.how !== 'hold') return;
-        if (menu.pointed && menu.pointed !== theme) choose(menu.pointed);
+        // Where the finger lifts, which a move's render may not have reached yet.
+        const lifted = slotAt(nativeEvent.changedTouches[0]?.pageX ?? nativeEvent.pageX);
+        if (lifted && lifted !== theme) choose(lifted);
         close();
       }}
       onTouchCancel={() => {
@@ -111,76 +151,97 @@ export function ThemeSwitch() {
         aria-hidden={!menu}
         pointerEvents={menu ? 'auto' : 'none'}
         style={[
-          styles.choices,
-          menu ? styles.open : styles.shut,
+          styles.pill,
+          menu ? [styles.open, styles[OPEN_AT[anchor]]] : styles.shut,
           {
             backgroundColor: color.surfaceRaised,
             borderColor: color.borderSubtle,
             shadowOpacity: menu ? shadow.raised.opacity : 0,
+            transform: [{ translateX: menu?.shift ?? 0 }],
           },
-          // A Reanimated CSS transition, which StyleSheet's types don't know.
-          {
-            transitionProperty: ['width', 'opacity'],
-            transitionDuration: reducedMotion ? 0 : MOTION.durationMs,
-            transitionTimingFunction: timingFunction(MOTION.easing),
-          },
+          // Reanimated CSS transitions, which StyleSheet's types don't know.
+          { transitionProperty: ['left', 'width', 'opacity', 'transform'], ...transition },
         ]}
       >
-        {THEMES.map((choice) => (
-          <Pressable
-            key={choice}
-            accessibilityRole="radio"
-            accessibilityLabel={CHOICES[choice].label}
-            {...a11yState({ checked: choice === theme })}
-            focusable={Boolean(menu)}
-            onPress={() => choose(choice)}
-            style={[styles.slot, choice === lit && { backgroundColor: color.tones.neutral.subtle }]}
-          >
-            <Ionicons
-              name={CHOICES[choice].icon}
-              size={ICON_SIZE}
-              color={choice === theme ? color.textPrimary : color.textSecondary}
-            />
-          </Pressable>
-        ))}
+        <Animated.View
+          style={[
+            styles.row,
+            menu ? styles.rowOpen : styles[ROW_SHUT_AT[anchor]],
+            { transitionProperty: 'left', ...transition },
+          ]}
+        >
+          {THEMES.map((choice) => (
+            <Pressable
+              key={choice}
+              accessibilityRole="radio"
+              accessibilityLabel={CHOICES[choice].label}
+              {...a11yState({ checked: choice === theme })}
+              focusable={Boolean(menu)}
+              onPress={() => choose(choice)}
+              style={[
+                styles.slot,
+                choice === lit && { backgroundColor: color.tones.neutral.subtle },
+              ]}
+            >
+              <Ionicons
+                name={CHOICES[choice].icon}
+                size={ICON_SIZE}
+                color={choice === theme ? color.textPrimary : color.textSecondary}
+              />
+            </Pressable>
+          ))}
+        </Animated.View>
       </Animated.View>
     </View>
   );
 }
 
-const STYLES = narrowStyles((px) => ({
-  // A held finger slides over the choices rather than scrolling the page.
-  root: {
-    width: px(HEADER_BUTTON_SIZE),
-    height: px(HEADER_BUTTON_SIZE),
-    zIndex: 1,
-    ...(process.env.EXPO_OS === 'web' ? { touchAction: 'none' as const } : {}),
-  },
-  slot: {
-    width: px(HEADER_BUTTON_SIZE),
-    height: px(HEADER_BUTTON_SIZE),
-    flexShrink: 0,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Over the button, growing leftward from its right edge. The border sits
-  // outside the slots, so each slot is a whole button and the last one
-  // covers the button exactly.
-  choices: {
-    position: 'absolute',
-    top: -BORDER,
-    right: -BORDER,
-    height: px(HEADER_BUTTON_SIZE.plus(2 * BORDER)),
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    overflow: 'hidden',
-    borderRadius: 999,
-    borderWidth: BORDER,
-    shadowColor: '#000',
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  open: { width: px(HEADER_BUTTON_SIZE.times(THEMES.length).plus(2 * BORDER)), opacity: 1 },
-  shut: { width: px(HEADER_BUTTON_SIZE.plus(2 * BORDER)), opacity: 0 },
-}));
+const STYLES = narrowStyles((px) => {
+  const size = HEADER_BUTTON_SIZE;
+  return {
+    // A held finger slides over the choices rather than scrolling the page.
+    root: {
+      width: px(size),
+      height: px(size),
+      zIndex: 1,
+      ...(process.env.EXPO_OS === 'web' ? { touchAction: 'none' as const } : {}),
+    },
+    slot: {
+      width: px(size),
+      height: px(size),
+      borderRadius: 999,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    // Over the button. The border sits outside the slots, so each slot is a
+    // whole button and the anchor's covers the button exactly.
+    pill: {
+      position: 'absolute',
+      top: -BORDER,
+      height: px(size.plus(2 * BORDER)),
+      overflow: 'hidden',
+      borderRadius: 999,
+      borderWidth: BORDER,
+      shadowColor: '#000',
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 },
+    },
+    // Shut, it is the button's size, showing the anchor through a window.
+    shut: { left: -BORDER, width: px(size.plus(2 * BORDER)), opacity: 0 },
+    // Open, it reaches out both ways from the anchor.
+    open: { width: px(size.times(THEMES.length).plus(2 * BORDER)), opacity: 1 },
+    openAt0: { left: px(size.times(0).minus(BORDER)) },
+    openAt1: { left: px(size.times(-1).minus(BORDER)) },
+    openAt2: { left: px(size.times(-2).minus(BORDER)) },
+    row: {
+      position: 'absolute',
+      top: 0,
+      width: px(size.times(THEMES.length)),
+      flexDirection: 'row',
+    },
+    rowOpen: { left: 0 },
+    rowShutAt0: { left: px(size.times(0)) },
+    rowShutAt1: { left: px(size.times(-1)) },
+    rowShutAt2: { left: px(size.times(-2)) },
+  };
+});
