@@ -24,13 +24,13 @@ jest.mock('@/stockfish/demand', () => ({ useNeedsStockfish: () => {} }));
 const MOVES = ['e2e4', 'e7e5', 'g1f3', 'b8c6'];
 
 let root: Root | undefined;
-let controller: Controller;
-let review: Review;
+const controllers: Controller[] = [];
+const reviews: Review[] = [];
 const managers = () => [new AnalysisManager(), ...getDefaultManagers()];
 
 function Reviewed({ active }: { readonly active: boolean }) {
-  controller = useController();
-  review = useReview({ moves: MOVES, learner: 'black', active });
+  controllers.push(useController());
+  reviews.push(useReview({ moves: MOVES, learner: 'black', active }));
   return null;
 }
 
@@ -48,7 +48,7 @@ const render = (active = true) =>
 const sketch = (plies: number) =>
   act(async () => {
     const args = { engine: 'stockfish', moves: MOVES.slice(0, plies).join(' ') } as const;
-    controller.set(PositionAnalysis, args, { ...args, ...partial(12, ['a2a3', 0.5]) });
+    controllers[0].set(PositionAnalysis, args, { ...args, ...partial(12, ['a2a3', 0.5]) });
   });
 
 beforeEach(() => {
@@ -59,6 +59,8 @@ afterEach(async () => {
   await act(async () => root?.unmount());
   root = undefined;
   mockSearched.length = 0;
+  controllers.length = 0;
+  reviews.length = 0;
   jest.useRealTimers();
 });
 
@@ -68,7 +70,7 @@ describe('useReview', () => {
     expect(mockSearched).toEqual(['']);
     await sketch(0);
     expect(mockSearched).toEqual(['', 'e2e4']);
-    expect(review.waiting).toBe(4);
+    expect(reviews.at(-1)!.waiting).toBe(4);
   });
 
   it('asks for nothing behind another screen', async () => {
@@ -81,23 +83,23 @@ describe('useReview', () => {
   it('skips a position whose search gave up, and searches it again on Try again', async () => {
     await render();
     await act(async () => {
-      void controller.setError(getAnalysis, 'stockfish', [], new Error('gave up'));
+      void controllers[0].setError(getAnalysis, 'stockfish', [], new Error('gave up'));
     });
     expect(mockSearched).toEqual(['', 'e2e4']);
-    expect(review.moves[0].status).toBe('failed');
-    await act(async () => review.tryAgain(1));
-    expect(review.moves[0].status).toBe('waiting');
+    expect(reviews.at(-1)!.moves[0].status).toBe('failed');
+    await act(async () => reviews.at(-1)!.tryAgain(1));
+    expect(reviews.at(-1)!.moves[0].status).toBe('waiting');
     expect(mockSearched.at(-1)).toBe('');
   });
 
   it('searches the move the board rests on, once it has rested about a second', async () => {
     await render();
     jest.useFakeTimers();
-    await act(async () => review.goto(3));
+    await act(async () => reviews.at(-1)!.goto(3));
     await act(async () => {
       jest.advanceTimersByTime(999);
     });
-    expect(review.dwelt).toBeUndefined();
+    expect(reviews.at(-1)!.dwelt).toBeUndefined();
     await act(async () => {
       jest.advanceTimersByTime(1);
     });
@@ -105,6 +107,6 @@ describe('useReview', () => {
     await act(() => new Promise((resolve) => setTimeout(resolve)));
     // The position before 2.Nf3 first: its label needs it, then the one after.
     expect(mockSearched).toEqual(['', 'e2e4 e7e5']);
-    expect(review.visited).toEqual(new Set([3]));
+    expect(reviews.at(-1)!.visited).toEqual(new Set([3]));
   });
 });
