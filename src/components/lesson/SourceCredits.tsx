@@ -37,7 +37,7 @@ function Group({
   name,
 }: {
   readonly group: CreditGroup;
-  /** How the app names a source, so one study reads the same everywhere (`sourceNamer`). */
+  /** How the app names a source credited alone, as every screen names it (`sourceNamer`). */
   readonly name: (source: LessonSource) => string;
 }) {
   switch (group.kind) {
@@ -52,50 +52,57 @@ function Group({
       return (
         <>
           lichess studies by{' '}
-          {group.authors.map(({ author, studies }, i) => (
-            <Fragment key={author}>
+          {group.authors.map((author, i) => (
+            <Fragment key={author.author}>
               {listSeparator(i, group.authors.length)}
-              {studies.length === 1 ? (
-                <ExternalLink url={studies[0].url}>{author}</ExternalLink>
-              ) : (
-                <>
-                  {author} (
-                  {studies.map((study, n) => (
-                    <Fragment key={study.url}>
-                      {n > 0 ? ', ' : null}
-                      <ExternalLink url={study.url} label={study.title}>
-                        {String(n + 1)}
-                      </ExternalLink>
-                    </Fragment>
-                  ))}
-                  )
-                </>
-              )}
+              <AuthorStudies {...author} />
             </Fragment>
           ))}
+          <LicenseNote license={group.license} />
         </>
       );
     case 'pages': {
       const pages = group.pages.map(({ label, source }, i) => (
         <Fragment key={source.url}>
           {listSeparator(i, group.pages.length)}
-          {/* Kept on one line, as a license's name is: "1.e4 c6" broken in two reads as two. */}
-          <ExternalLink url={source.url}>{unbroken(label)}</ExternalLink>
+          <ExternalLink url={source.url}>{byMove(label)}</ExternalLink>
         </Fragment>
       ));
-      return group.title === undefined ? (
+      const titled = group.title !== undefined;
+      return (
         <>
-          {pages} by {group.author}
+          {titled ? group.title : pages} by {group.author}
           <LicenseNote license={group.license} />
-        </>
-      ) : (
-        <>
-          {group.title} by {group.author}
-          <LicenseNote license={group.license} />: {pages}
+          {titled ? <>: {pages}</> : null}
         </>
       );
     }
   }
+}
+
+/** An author's studies: their name linking to one, else a numbered link to each. */
+function AuthorStudies({
+  author,
+  studies,
+}: {
+  readonly author: string;
+  readonly studies: readonly LessonSource[];
+}) {
+  if (studies.length === 1) return <ExternalLink url={studies[0].url}>{author}</ExternalLink>;
+  return (
+    <>
+      {author} (
+      {studies.map((study, n) => (
+        <Fragment key={study.url}>
+          {n > 0 ? ', ' : null}
+          <ExternalLink url={study.url} label={`${n + 1}: ${study.title}`}>
+            {String(n + 1)}
+          </ExternalLink>
+        </Fragment>
+      ))}
+      )
+    </>
+  );
 }
 
 function LicenseNote({ license }: { readonly license?: License }) {
@@ -113,3 +120,9 @@ function LicenseNote({ license }: { readonly license?: License }) {
 
 /** `text` with no-break spaces, so it wraps as one word. */
 const unbroken = (text: string) => text.replaceAll(' ', '\u00a0');
+
+/**
+ * `moves` kept whole move by move: "1.e4 c6" broken in two reads as two, but
+ * a long line of moves may still break before a move number to fit a phone.
+ */
+const byMove = (moves: string) => moves.replace(/ (?!\d+\.)/g, '\u00a0');

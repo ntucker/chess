@@ -34,26 +34,29 @@ function credits(sources: readonly LessonSource[], indexed: readonly LessonSourc
     ),
   );
   const text = host.textContent;
+  const labels = [...host.querySelectorAll('[aria-label]')].map((link) =>
+    link.getAttribute('aria-label'),
+  );
   act(() => root.unmount());
-  return text;
+  return { text, labels };
 }
 
 describe('SourceCredits', () => {
   it("names a lesson's study by its author when no other credited study shares the author", () => {
     const slav = study('Slav', 'slav');
-    expect(credits([slav], [slav])).toBe("Lesson from Matkun's lichess study");
+    expect(credits([slav], [slav]).text).toBe("Lesson from Matkun's lichess study");
   });
 
   it('names it by its title where another lesson credits the same author', () => {
-    expect(credits([study('Loaded', 'loaded')], [study('Slav', 'slav')])).toBe(
+    expect(credits([study('Loaded', 'loaded')], [study('Slav', 'slav')]).text).toBe(
       'Lesson from Loaded by Matkun',
     );
   });
 
-  it('credits two studies by one author together, numbered', () => {
-    expect(credits([study('Loaded', 'loaded'), study('Other', 'other')], [])).toBe(
-      'Lesson from lichess studies by Matkun (1, 2)',
-    );
+  it('credits two studies by one author together, numbered, each link named by its study', () => {
+    const { text, labels } = credits([study('Loaded', 'loaded'), study('Other', 'other')], []);
+    expect(text).toBe('Lesson from lichess studies by Matkun (1, 2)');
+    expect(labels).toEqual(['1: Loaded', '2: Other']);
   });
 
   it('credits one site at a time, Wikibooks pages under their book', () => {
@@ -69,9 +72,24 @@ describe('SourceCredits', () => {
       { ...study('Caro', 'caro'), author: 'wub1234' },
       page('1.e4 e5'),
     ];
-    expect(credits(sources, sources)).toBe(
+    expect(credits(sources, sources).text).toBe(
       'Lesson from lichess studies by Matkun and wub1234; Chess Opening Theory by Wikibooks' +
         ' contributors (CC\u00a0BY-SA\u00a04.0): 1.e4\u00a0c6 and 1.e4\u00a0e5',
+    );
+  });
+
+  it('lets a long page label break only before a move number', () => {
+    const page: LessonSource = {
+      title: 'Chess Opening Theory, 1.d4 Nf6 2.c4 g6',
+      author: 'Wikibooks contributors',
+      url: 'https://en.wikibooks.org/wiki/long',
+    };
+    const sources = [
+      page,
+      { ...page, title: 'Chess Opening Theory, 1.e4', url: 'https://en.wikibooks.org/wiki/e4' },
+    ];
+    expect(credits(sources, sources).text).toBe(
+      'Lesson from Chess Opening Theory by Wikibooks contributors: 1.d4\u00a0Nf6 2.c4\u00a0g6 and 1.e4',
     );
   });
 });

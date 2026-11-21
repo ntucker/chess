@@ -39,6 +39,28 @@ describe('creditGroups', () => {
     ]);
   });
 
+  it('keeps studies under a license apart from those without, to credit it', () => {
+    const [a, b] = [study('Matkun', 'a'), { ...study('Matkun', 'b'), license: LICENSE }];
+    const [c, d] = [study('Bosburp', 'c'), { ...study('Bosburp', 'd'), license: LICENSE }];
+    expect(creditGroups([a, b, c, d])).toEqual([
+      {
+        kind: 'studies',
+        authors: [
+          { author: 'Matkun', studies: [a] },
+          { author: 'Bosburp', studies: [c] },
+        ],
+      },
+      {
+        kind: 'studies',
+        license: LICENSE,
+        authors: [
+          { author: 'Matkun', studies: [b] },
+          { author: 'Bosburp', studies: [d] },
+        ],
+      },
+    ]);
+  });
+
   it('credits pages of one site, author and license under the title they share', () => {
     const [e4, d4] = [page('1.e4 c6'), page('1.d4 d5 2.c4 c6')];
     expect(creditGroups([e4, d4])).toEqual([
