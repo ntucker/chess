@@ -30,7 +30,7 @@ import { reload } from '@/files/newVersion';
 import { type DownloadFailure, useFullStockfishDownload } from '@/resources/download';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
 import { OUTDATED_NEEDS } from '@/stockfish/fullFiles';
-import { visuallyHidden } from '@/theme/narrow';
+import { spokenOnly } from '@/theme/narrow';
 import { fonts } from '@/theme/theme';
 
 import { Eyebrow } from './Eyebrow';
@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
     marginRight: 19,
   },
   // Out of sight and out of layout, but still readable as a description.
-  tip: { ...visuallyHidden, opacity: 0 },
+  tip: spokenOnly,
   engine: { position: 'absolute', top: 0, fontSize: 10, lineHeight: 13 },
   // Out to where the first rating starts.
   maia: { left: -5 },
