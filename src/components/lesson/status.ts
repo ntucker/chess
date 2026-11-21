@@ -7,7 +7,7 @@ import { qualityLooks } from '@/theme/moveQuality';
 export const OPENINGS_TITLE = 'Openings';
 
 /** The titles of the headlines telling that the guide has no moves here, also the heading of what they tell (`pastGuide`). */
-export const OFF_GUIDE = 'Off the guide';
+const OFF_GUIDE = 'Off the guide';
 const LINE_END = 'End of this line';
 
 /** The headline while a lesson loads. */
@@ -145,6 +145,30 @@ export function describeStatus(
       ? 'Point at a reply to see what it aims for, then play it.'
       : 'Point at a reply to see what it aims for.',
   };
+}
+
+/** What a narrow page's layout around the headline shows, for `headlineNews`. */
+interface Surroundings {
+  /** The idea pane's place tells the past-guide headline (LessonScreen's `aside`). */
+  readonly aside: boolean;
+  /** The scoresheet drawer covers the panes, and the aside with them. */
+  readonly scoresheetOpen: boolean;
+  /** The opponent didn't answer, so the headline draws its retry. */
+  readonly failed: boolean;
+}
+
+/**
+ * What a narrow page draws of the headline (`news`): nothing where the aside
+ * tells it, nor where the open scoresheet drawer covers the panes and the
+ * headline only says the board is off the guide. A failure keeps it, beside
+ * the retry.
+ */
+export function headlineNews(
+  { news, pastGuide }: Pick<Status, 'news' | 'pastGuide'>,
+  { aside, scoresheetOpen, failed }: Surroundings,
+): NonNullable<Status['news']> {
+  const untold = scoresheetOpen ? pastGuide === OFF_GUIDE && !failed : aside;
+  return untold ? 'none' : (news ?? 'all');
 }
 
 /**

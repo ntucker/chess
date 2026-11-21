@@ -39,7 +39,7 @@ import { IdeaAside, IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
 import { SideChoice } from './SideChoice';
-import { describeStatus, LOADING, OFF_GUIDE, OPENINGS_TITLE } from './status';
+import { describeStatus, headlineNews, LOADING, OPENINGS_TITLE } from './status';
 import { SourceCredits } from './SourceCredits';
 import { ScoresheetDrawer, ScoresheetOpener } from './ScoresheetDrawer';
 import { TrapCard } from './TrapCard';
@@ -372,10 +372,10 @@ function LessonScreen({
             failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
             eyebrowInHeader
             eyebrowLink={listLink}
-            // A narrow page tells it in the aside instead, or not at all over the open scoresheet drawer.
-            news={
-              (scoresheetOpen ? pastGuide === OFF_GUIDE : aside) ? 'none' : (status.news ?? 'all')
-            }
+            news={headlineNews(
+              { ...status, pastGuide },
+              { aside: !!aside, scoresheetOpen, failed: !!game.error },
+            )}
           />
           {/* The scoresheet drawer takes the place of this part on a narrow page, under the headline, which tells of a failure. */}
           <View {...part(scoresheetOpen ? 'wide-only' : 'lesson-body', styles.sections)}>

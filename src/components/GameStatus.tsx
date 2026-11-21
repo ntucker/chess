@@ -52,8 +52,9 @@ export interface HeadlineProps {
    * leaves its room to the panel below: the title run in before the detail
    * (`all`); the detail alone, when the title only says whose move it is,
    * which the name bars show (`detail`); or nothing, when the detail is how
-   * to use the screen too, which the learner has seen (`none`; a failure
-   * still draws the detail). Without it, the narrow page draws the full
+   * to use the screen too, which the learner has seen, or the screen tells
+   * it elsewhere or leaves it untold (`none`; a failure still draws the
+   * detail). Without it, the narrow page draws the full
    * headline. Screen readers hear the full headline either way.
    */
   readonly news?: News;
