@@ -27,6 +27,8 @@ export type Mood = Verdict['mood'];
 export type Ending = Verdict & {
   /** The square each side's king stands on at the end: the learner's, and the other side's. */
   readonly kings: Readonly<Record<'learner' | 'rival', SquareName>>;
+  /** Where the last move landed: in a mate, the piece that gave it. */
+  readonly landed: SquareName;
 };
 
 /** How `result` went for the learner playing `learner`. */
@@ -37,7 +39,7 @@ export const resultVerdict = (result: GameResult, learner: Color): Verdict =>
 
 /** How the game ended at `position` for the learner playing `learner`; none while it goes on. */
 export function gameEnding(
-  { fen, result }: Pick<Position, 'fen' | 'result'>,
+  { fen, result, move }: Pick<Position, 'fen' | 'result' | 'move'>,
   learner: Color,
 ): Ending | undefined {
   if (!result) return undefined;
@@ -49,6 +51,8 @@ export function gameEnding(
       learner: makeSquare(board.kingOf(learner)!),
       rival: makeSquare(board.kingOf(opposite(learner))!),
     },
+    // A game ends only on a move.
+    landed: move!.to,
   };
 }
 

@@ -78,10 +78,9 @@ export interface ActTimes {
   readonly dim: number;
   /** The winner's king takes the light; in a draw, both kings. */
   readonly rise: number;
-  /** The card comes on over the board, and leaves. */
+  /** The card comes on over the board, and stays while the final position is shown. */
   readonly card: number;
-  readonly cardOut: number;
-  /** The lights come back up, leaving the position to study. */
+  /** The lights come back up, leaving the position to study under the card. */
   readonly up: number;
 }
 
@@ -95,9 +94,9 @@ export const MOVE_MS = 200;
  * slides off. A draw only pauses.
  */
 export const ACT_TIMES: Readonly<Record<Mood, ActTimes>> = {
-  won: { strike: 220, crownOff: 920, dim: 300, rise: 420, card: 640, cardOut: 3000, up: 3100 },
-  lost: { strike: 380, crownOff: 1780, dim: 240, rise: 1100, card: 1150, cardOut: 3700, up: 3800 },
-  drawn: { strike: 0, crownOff: 0, dim: 240, rise: 300, card: 380, cardOut: 2500, up: 2600 },
+  won: { strike: 220, crownOff: 920, dim: 300, rise: 420, card: 640, up: 3100 },
+  lost: { strike: 380, crownOff: 1780, dim: 240, rise: 1100, card: 1150, up: 3800 },
+  drawn: { strike: 0, crownOff: 0, dim: 240, rise: 300, card: 380, up: 2600 },
 };
 
 /** The parts of the learner's king and the rival's. */
@@ -133,17 +132,30 @@ export function endingAct(
   };
 }
 
-/**
- * Where the card sits so it covers neither king: across the middle two ranks
- * unless a king stands there, then the two above or below them.
- */
+/** Which two ranks the card lies across, off the middle or on it. */
 export type CardBand = 'upper' | 'middle' | 'lower';
 
-export function cardBand(kings: Ending['kings'], orientation: Color): CardBand {
-  const rows = Object.values(kings).map((square) => squareOffset(square, orientation)[1]);
-  const free = (from: number) => !rows.some((row) => row >= from && row < from + 2);
+/** Each band's top row, from the top of the board, in the order they're tried. */
+const BAND_TOPS: Readonly<Record<CardBand, number>> = { middle: 3, upper: 1, lower: 5 };
+
+/**
+ * Where the card sits, which it stays for as long as the final position is
+ * shown: across the middle two ranks, else the two above or below them. It
+ * never covers a king, and covers the piece that made the last move only
+ * when the kings leave it no other band. Example: after 1.f3 e5 2.g4 Qh4#
+ * from White's side, the queen on h4 is in the middle two ranks, so the
+ * card goes above them.
+ */
+export function cardBand(
+  { kings, landed }: Pick<Ending, 'kings' | 'landed'>,
+  orientation: Color,
+): CardBand {
+  const row = (square: Square) => squareOffset(square, orientation)[1];
+  const clearOf = (squares: readonly Square[]) => (band: CardBand) =>
+    !squares.some((square) => row(square) >= BAND_TOPS[band] && row(square) < BAND_TOPS[band] + 2);
   // Two kings block at most two of the three bands.
-  return free(3) ? 'middle' : free(1) ? 'upper' : 'lower';
+  const open = (Object.keys(BAND_TOPS) as CardBand[]).filter(clearOf(Object.values(kings)));
+  return open.find(clearOf([landed])) ?? open[0];
 }
 
 /**

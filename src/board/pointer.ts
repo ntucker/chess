@@ -1,7 +1,7 @@
 // Which pointers hover, and what the pointer does on the board that
-// chessground doesn't report: where a piece being dragged is over. Moves
-// still belong to chessground, and a pointer that only passes over the board
-// reports nothing.
+// chessground doesn't report: where a piece being dragged is over, and a
+// mouse coming onto the board or a finger tapping it. Moves still belong to
+// chessground.
 
 /**
  * Whether a pointer of `pointerType` hovers: a mouse does; a finger or pen
@@ -80,5 +80,68 @@ export function watchDrag<S extends string>(
     page.removeEventListener('pointercancel', onCancel);
     // A drag in progress ends, so whoever listens isn't left showing it.
     show(null);
+  };
+}
+
+/**
+ * What a pointer did to the board as a whole: a hovering pointer (a mouse)
+ * came onto it or left it, or a finger or pen tapped it.
+ */
+export type BoardPointer = 'enter' | 'leave' | 'tap';
+
+/** How far, in CSS pixels, a press may move and still be a tap. */
+const TAP_SLOP = 10;
+
+/**
+ * Reports a mouse coming onto `target` and leaving it, and a finger or pen
+ * tapping it: pressing it and lifting without ever moving more than
+ * `TAP_SLOP`. Reports only while `listening()` is true, and a tap only when it
+ * was true at both press and lift: the press that plays the mating move starts
+ * before the board listens, so its lift is no tap. A swipe across it, or a
+ * press that started elsewhere, is no tap either. Returns a function that stops.
+ */
+export function watchBoardPointer(
+  target: PointerSource,
+  listening: () => boolean,
+  report: (pointer: BoardPointer) => void,
+): () => void {
+  let press: { x: number; y: number } | undefined;
+  const onEnter = ({ pointerType }: PointerEvent) => {
+    if (hovers(pointerType) && listening()) report('enter');
+  };
+  const onLeave = ({ pointerType }: PointerEvent) => {
+    if (hovers(pointerType) && listening()) report('leave');
+  };
+  const onDown = ({ pointerType, isPrimary, clientX, clientY }: PointerEvent) => {
+    const tapping = isPrimary && !hovers(pointerType) && listening();
+    press = tapping ? { x: clientX, y: clientY } : undefined;
+  };
+  // A press that strays further than TAP_SLOP is no tap, even if it comes back.
+  const strays = ({ clientX, clientY }: PointerEvent) =>
+    !!press && Math.hypot(clientX - press.x, clientY - press.y) > TAP_SLOP;
+  const onMove = (event: PointerEvent) => {
+    if (event.isPrimary && strays(event)) press = undefined;
+  };
+  const onUp = (event: PointerEvent) => {
+    if (!event.isPrimary) return;
+    if (press && !strays(event) && listening()) report('tap');
+    press = undefined;
+  };
+  const onCancel = () => {
+    press = undefined;
+  };
+  target.addEventListener('pointerenter', onEnter);
+  target.addEventListener('pointerleave', onLeave);
+  target.addEventListener('pointerdown', onDown);
+  target.addEventListener('pointermove', onMove);
+  target.addEventListener('pointerup', onUp);
+  target.addEventListener('pointercancel', onCancel);
+  return () => {
+    target.removeEventListener('pointerenter', onEnter);
+    target.removeEventListener('pointerleave', onLeave);
+    target.removeEventListener('pointerdown', onDown);
+    target.removeEventListener('pointermove', onMove);
+    target.removeEventListener('pointerup', onUp);
+    target.removeEventListener('pointercancel', onCancel);
   };
 }
