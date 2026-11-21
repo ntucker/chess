@@ -46,19 +46,32 @@ export function judgeMove(
   uci: string,
   mover: Color,
 ): MoveQuality | undefined {
-  const judged = judgedEvaluation(before, after, uci, mover);
-  if (!judged) return undefined;
-  const loss = signed(before.lines[0].evaluation, mover) - signed(judged, mover);
-  if (uci === before.lines[0].uci || loss <= 0) return 'best';
-  return LEAST_LOSS.find(([threshold]) => loss >= threshold)?.[1] ?? 'good';
+  return judgement(before, after, uci, mover)?.quality;
 }
 
 /**
- * The evaluation `judgeMove` labels `uci` by (see there): its own line where
- * `before` lists it, else `after`'s first line, but never better for `mover`
- * than the list's last move; undefined while `after` is needed and missing.
+ * `judgeMove`'s label with the evaluation it judged the move by (see there):
+ * its own line where `before` lists it, else `after`'s first line, but never
+ * better for `mover` than the list's last move.
  */
-export function judgedEvaluation(
+export function judgement(
+  before: FinalAnalysis,
+  after: FinalAnalysis | undefined,
+  uci: string,
+  mover: Color,
+): { quality: MoveQuality; evaluation: Evaluation } | undefined {
+  const evaluation = judgedEvaluation(before, after, uci, mover);
+  if (!evaluation) return undefined;
+  const loss = signed(before.lines[0].evaluation, mover) - signed(evaluation, mover);
+  const quality: MoveQuality =
+    uci === before.lines[0].uci || loss <= 0
+      ? 'best'
+      : (LEAST_LOSS.find(([threshold]) => loss >= threshold)?.[1] ?? 'good');
+  return { quality, evaluation };
+}
+
+/** The evaluation `judgement` judges `uci` by; undefined while `after` is needed and missing. */
+function judgedEvaluation(
   before: FinalAnalysis,
   after: FinalAnalysis | undefined,
   uci: string,

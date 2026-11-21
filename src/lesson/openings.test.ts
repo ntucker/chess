@@ -329,6 +329,34 @@ describe('lessonIndex', () => {
     );
   });
 
+  it('weighs each line that picks the lesson by how often games play it', () => {
+    // Another lesson's 3.Nc3 makes 3.e5 and 3.exd5 each pick the Caro-Kann.
+    const caro = guideLesson(
+      'caro',
+      'black',
+      ['e4', 'c6', 'd4', 'd5', 'e5', 'Bf5', 'Nf3'],
+      ['e4', 'c6', 'd4', 'd5', 'exd5', 'cxd5', 'c4'],
+    );
+    const other = guideLesson('other', 'black', ['e4', 'c6', 'd4', 'd5', 'Nc3', 'dxe4']);
+    const games: Record<string, number[]> = {
+      [uciLine('e4', 'c6', 'd4', 'd5', 'e5').at(-1)!]: [10],
+      [uciLine('e4', 'c6', 'd4', 'd5', 'exd5').at(-1)!]: [1000],
+    };
+    const counted = withMoves(caro, keyAfter('e4', 'c6', 'd4', 'd5'), (moves) =>
+      moves.map((move) => ({ ...move, games: games[move.uci] })),
+    );
+    const lesson = inVariation(
+      { ...counted, variations: { caro: { name: 'Caro' }, v: { name: 'V', parent: 'caro' } } },
+      'v',
+      ['e4', 'c6', 'd4', 'd5', 'e5', 'Bf5'],
+      ['e4', 'c6', 'd4', 'd5', 'exd5', 'cxd5'],
+    );
+    // Each is one move from V, but games play 3.exd5 a hundred times as often.
+    expect(
+      lessonIndex([lesson, other]).caro.variations.find(({ id }) => id === 'v')!.moves,
+    ).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'exd5', 'cxd5'));
+  });
+
   it('keeps the opening itself at the line that picks it when no position is its own', () => {
     const caro = guideLesson('caro', 'black', ['e4', 'c6', 'd4', 'd5', 'e5']);
     const lesson: Lesson = {

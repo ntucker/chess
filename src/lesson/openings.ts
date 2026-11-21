@@ -204,9 +204,16 @@ function likeliestInto(
 ): Uci[] | undefined {
   const reached = new Set<PositionKey>();
   const queue = new LikeliestFirst();
+  // Each start counts as often as games play it, so a rare line that picks
+  // the lesson (1.e4 e5 2.Qf3) doesn't open a variation the main lines reach.
   for (const line of starts) {
     const pos = Chess.default();
-    if (line.every((uci) => playMove(pos, uci))) queue.push({ line: [...line], pos, share: 1 });
+    let share = 1;
+    const legal = line.every((uci) => {
+      share *= sharesAt(lesson, pos, bookOnly).find((move) => move.uci === uci)?.share ?? 0;
+      return playMove(pos, uci);
+    });
+    if (legal) queue.push({ line: [...line], pos, share });
   }
   for (let next = queue.pop(); next; next = queue.pop()) {
     const { line, pos, share } = next;
@@ -215,21 +222,31 @@ function likeliestInto(
     if (!here || reached.has(key)) continue;
     if (here.variation === variation) return line;
     reached.add(key);
-    // The learner plays the book, however rarely games do: only its book
-    // moves share the games, where it has any.
-    const learner = pos.turn === lesson.side;
-    const moves =
-      learner && here.moves.some(({ book }) => book) && bookOnly
-        ? here.moves.filter(({ book }) => book)
-        : here.moves;
-    const shares = moveShares(moves);
-    moves.forEach(({ uci }, i) => {
+    for (const move of sharesAt(lesson, pos, bookOnly)) {
       const played = pos.clone();
-      if (playMove(played, uci))
-        queue.push({ line: [...line, uci], pos: played, share: share * shares[i] });
-    });
+      if (playMove(played, move.uci))
+        queue.push({ line: [...line, move.uci], pos: played, share: share * move.share });
+    }
   }
   return undefined;
+}
+
+/**
+ * The moves `likeliestInto` follows from `pos` (none off `lesson`), each
+ * with its share of the games (`moveShares`). The learner plays the book,
+ * however rarely games do: with `bookOnly`, only its book moves share the
+ * games, where it has any.
+ */
+function sharesAt(lesson: Lesson, pos: Chess, bookOnly: boolean) {
+  const here = lesson.positions[positionKey(pos)];
+  if (!here) return [];
+  const learner = pos.turn === lesson.side;
+  const moves =
+    learner && here.moves.some(({ book }) => book) && bookOnly
+      ? here.moves.filter(({ book }) => book)
+      : here.moves;
+  const shares = moveShares(moves);
+  return moves.map(({ uci }, i) => ({ uci, share: shares[i] }));
 }
 
 /**

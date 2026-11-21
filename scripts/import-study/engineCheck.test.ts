@@ -86,6 +86,28 @@ describe('engineCheck', () => {
       expect(report.unbooked).toEqual([]);
     });
 
+    it('says the position is level, or that the learner is still ahead, when the engine does', async () => {
+      // Black stands better after 1.d4, and 1...e5 gives away 0.12 of it.
+      const noteAfter = async (before: number, after: { score: number; pawns: number }) => {
+        const check = async (line: readonly string[], key: string): Promise<FinalAnalysis> =>
+          key === keyAfter('d4') || key === keyAfter('d4', 'd5')
+            ? scored({ score: before, pawns: -2 })
+            : key === keyAfter('d4', 'e5') || key === keyAfter('d4', 'e5', 'dxe5')
+              ? scored(after)
+              : evaluate(line, key);
+        const { lesson } = await engineCheck(LESSON, check, { gambit: true });
+        return lesson.positions[keyAfter('d4')].moves[1].notes?.[0];
+      };
+      expect(await noteAfter(0.38, { score: 0.5, pawns: 0.1 })).toEqual({
+        text: 'Stockfish calls this a mistake: the position is about level. You play it for attack and traps.',
+        ideas: [{ type: 'evaluation', value: 'equal' }],
+      });
+      expect(await noteAfter(0.2, { score: 0.32, pawns: -1.2 })).toEqual({
+        text: 'Stockfish calls this a mistake: you are still about 1.2 pawns up. You play it for attack and traps.',
+        ideas: [{ type: 'evaluation', value: 'blackClearly' }],
+      });
+    });
+
     it('unbooks a mistake that leaves the learner under the floor', async () => {
       // White already stands better after 1.d4, and 1...e5 gives away another 0.12.
       const worse = async (line: readonly string[], key: string): Promise<FinalAnalysis> =>

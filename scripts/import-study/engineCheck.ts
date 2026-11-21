@@ -25,8 +25,13 @@
 import { Chess } from 'chessops/chess';
 import type { Color } from 'chessops/types';
 
-import { pawnsLabel, scoreFor, type Evaluation, type FinalAnalysis } from '@/evaluation/evaluation';
-import { judgedEvaluation, judgeMove } from '@/analysis/quality';
+import {
+  evaluationReading,
+  scoreFor,
+  type Evaluation,
+  type FinalAnalysis,
+} from '@/evaluation/evaluation';
+import { judgeMove, judgement } from '@/analysis/quality';
 import { lineSans, numberedLine, parsePosition, playMove, positionKey } from '@/game/replay';
 import type {
   Evaluation as Verdict,
@@ -112,14 +117,14 @@ export async function engineCheck(
       if (book && at.pos.turn === lesson.side) {
         const before = await evaluation(at.line, at.pos);
         const afterAnalysis = await evaluation(line, after);
-        const quality = judgeMove(before, afterAnalysis, move.uci, lesson.side);
-        const judged = judgedEvaluation(before, afterAnalysis, move.uci, lesson.side);
-        if (gambit && quality === 'mistake' && judged && playable(judged, lesson.side)) {
-          gambitNote = gambitNoteFor(judged, lesson.side);
+        const judged = judgement(before, afterAnalysis, move.uci, lesson.side);
+        const quality = judged?.quality;
+        if (gambit && judged?.quality === 'mistake' && playable(judged.evaluation, lesson.side)) {
+          gambitNote = gambitNoteFor(judged.evaluation, lesson.side);
           report.gambits.push({
             line: sans(lesson, at.line),
             move: san(at.pos, move.uci),
-            evaluation: describe(judged),
+            evaluation: describe(judged.evaluation),
           });
         } else if (quality === 'mistake' || quality === 'blunder') {
           book = undefined;
@@ -445,14 +450,13 @@ export const isGambitNote = (note: Note) => note.text.startsWith(GAMBIT_NOTE_STA
  */
 function gambitNoteFor(engine: Evaluation, side: Color): Note {
   const value = VERDICTS[engineStep(engine)];
-  const pawns = side === 'white' ? engine.pawns : -engine.pawns;
-  const size = pawnsLabel(pawns);
+  const { label, leader } = evaluationReading(engine);
   const standing =
     value === 'equal'
       ? 'the position is about level'
-      : pawns < 0
-        ? `you are about ${size} pawns down`
-        : `you are still about ${size} pawns up`;
+      : leader === side
+        ? `you are still about ${label} pawns up`
+        : `you are about ${label} pawns down`;
   return {
     text: `${GAMBIT_NOTE_START} ${standing}. You play it for attack and traps.`,
     ideas: [{ type: 'evaluation', value }],
