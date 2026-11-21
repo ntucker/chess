@@ -27,6 +27,24 @@ const LEAST_LOSS: readonly (readonly [number, MoveQuality])[] = [
 ];
 
 /**
+ * What `quality` means, in words for its badge's tooltip. Example: "gave
+ * away 10% to 20% of the winning chances" for a mistake, from `LEAST_LOSS`.
+ */
+export function qualityRule(quality: MoveQuality): string {
+  if (quality === 'book') return "the guide's own move";
+  if (quality === 'best') return "Stockfish's top move, or one that gives nothing away";
+  const percent = (loss: number) => `${Math.round(loss * 100)}%`;
+  const at = LEAST_LOSS.findIndex(([, label]) => label === quality);
+  const range =
+    at < 0
+      ? `under ${percent(LEAST_LOSS.at(-1)![0])}` // good
+      : at === 0
+        ? `${percent(LEAST_LOSS[0][0])} or more`
+        : `${percent(LEAST_LOSS[at][0])} to ${percent(LEAST_LOSS[at - 1][0])}`;
+  return `gave away ${range} of the winning chances`;
+}
+
+/**
  * A move's label, from the analysis of the position before it and, unless
  * that lists the move, the position after it; undefined while one it needs
  * is missing. The first line is the position's score; the move is the best

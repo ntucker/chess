@@ -26,7 +26,7 @@ export interface ReviewScreen {
 export type ReviewAction =
   /** Starts the review afresh if `game` is another game than the one reviewed. */
   | { readonly type: 'review'; readonly game: string }
-  /** Shows `plies[ply]`. */
+  /** Shows `plies[ply]`, or the end it's past: the arrow keys step past either end. */
   | { readonly type: 'goto'; readonly ply: number }
   /** Points at the row of `uci`, or at none. */
   | { readonly type: 'point'; readonly uci?: Uci }
@@ -48,12 +48,15 @@ export function reviewReducer(state: ReviewScreen, action: ReviewAction): Review
     case 'review':
       return action.game === state.game ? state : startReview(action.game);
     case 'goto': {
-      if (action.ply === state.ply) return state;
+      // The game's words are the learner's side, then one per move.
+      const moves = state.game.split(' ').filter(Boolean).length - 1;
+      const ply = Math.max(0, Math.min(action.ply, moves));
+      if (ply === state.ply) return state;
       const { visited } = state;
       return {
         game: state.game,
-        ply: action.ply,
-        visited: visited.has(action.ply) ? visited : new Set(visited).add(action.ply),
+        ply,
+        visited: visited.has(ply) ? visited : new Set(visited).add(ply),
       };
     }
     case 'point':

@@ -32,13 +32,7 @@ function renderDrawer(ply: number) {
   act(() =>
     root.render(
       <SilkProvider theme={themes.dark}>
-        <ScoresheetDrawer
-          plies={plies}
-          qualities={[]}
-          ply={ply}
-          onGoto={onGoto}
-          onClose={onClose}
-        />
+        <ScoresheetDrawer plies={plies} marks={[]} ply={ply} onGoto={onGoto} onClose={onClose} />
       </SilkProvider>,
     ),
   );
@@ -168,7 +162,7 @@ describe('shownMove', () => {
             <OpponentPicker />
             <ScoresheetDrawer
               plies={plies}
-              qualities={[]}
+              marks={[]}
               ply={1}
               onGoto={() => {}}
               onClose={onClose}

@@ -5,7 +5,7 @@ import { finalOnly } from '@/evaluation/evaluation';
 import { analyze, type Color, legalMoveCountAt, replay } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { bookMoves } from '@/lesson/select';
-import { analysisFailed, getAnalysis, storedAnalyses } from '@/resources/analysis';
+import { analysisError, getAnalysis, storedAnalyses } from '@/resources/analysis';
 import { useNeedsStockfish } from '@/stockfish/demand';
 
 import { gameAccuracy } from './accuracy';
@@ -22,7 +22,7 @@ import {
 import { DWELL_MS, reviewedGame, reviewReducer, startReview } from './screen';
 
 /** The review judges with Stockfish lite whatever the settings say, as lessons do. */
-const ENGINE = 'stockfish';
+export const REVIEW_ENGINE = 'stockfish';
 
 /** What the review is of. */
 interface ReviewOf {
@@ -73,11 +73,11 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
   const lines = plies.map((_, n) => moves.slice(0, n));
   const book = lesson ? bookMoves(lesson, moves) : [];
   const legal = plies.map(({ fen }) => legalMoveCountAt(fen));
-  const analyses = storedAnalyses(ctrl, ENGINE, lines, state);
+  const analyses = storedAnalyses(ctrl, REVIEW_ENGINE, lines, state);
   const final = analyses.map(finalOnly);
-  const failed = new Set(
-    lines.flatMap((line, n) => (analysisFailed(ctrl, ENGINE, line, state) ? [n] : [])),
-  );
+  // Why each position's search gave up, where one did.
+  const errors = lines.map((line) => analysisError(ctrl, REVIEW_ENGINE, line, state));
+  const failed = new Set(errors.flatMap((error, n) => (error ? [n] : [])));
   const judged = reviewMoves({ plies, book, legal, analyses: final, failed });
   const leftAt = lesson && leftGuide(lesson, moves, learner, book);
   // The board's ply after each moment's move.
@@ -87,9 +87,12 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
   useSubscription(
     getAnalysis,
     ...(active && searched !== undefined
-      ? ([ENGINE, lines[searched]] as const)
+      ? ([REVIEW_ENGINE, lines[searched]] as const)
       : ([null] as const)),
   );
+  // The positions the label of the move leading to `plies[target]` needs whose search gave up.
+  const lostFor = (target: number) =>
+    labelPositions(target - 1).filter((n) => lostPosition(failed, analyses, n));
   const accuracy = (side: Color) => gameAccuracy(judged, final, book, side, failed);
   return {
     plies,
@@ -109,8 +112,14 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
     moments: shownMoments,
     /** The ply Next moment shows: after the earliest moment not visited yet. */
     nextMoment: nextMoment(shownMoments, screen.visited),
-    /** How many moves still wait for an analysis; none once the game is checked. */
-    waiting: judged.filter(({ status }) => status === 'waiting').length,
+    /**
+     * Why a search the label of the move leading to `plies[target]` needs
+     * gave up, when one did: that move shows Try again (`tryAgain`).
+     */
+    failure(target: number) {
+      const [lost] = lostFor(target);
+      return lost === undefined ? undefined : errors[lost];
+    },
     tally: { white: tally(judged, 'white'), black: tally(judged, 'black') },
     /** Each side's accuracy (`gameAccuracy`). */
     accuracy: { white: accuracy('white'), black: accuracy('black') },
@@ -122,9 +131,7 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
      * meanwhile, and so does each accuracy.
      */
     tryAgain(target: number) {
-      for (const n of labelPositions(target - 1)) {
-        if (lostPosition(failed, analyses, n)) void ctrl.invalidate(getAnalysis, ENGINE, lines[n]);
-      }
+      for (const n of lostFor(target)) void ctrl.invalidate(getAnalysis, REVIEW_ENGINE, lines[n]);
     },
   };
 }
