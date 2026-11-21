@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import type { AnalysisLine, Evaluation, FinalAnalysis } from '@/evaluation/evaluation';
 
-import { judgeMove } from './quality';
+import { judgeMove, judgement } from './quality';
 
 /** An evaluation where White's expected score is `score`. */
 const at = (score: number): Evaluation => ({ score, pawns: 0 });
@@ -42,6 +42,15 @@ describe('judgeMove', () => {
     expect(black(0.43)).toBe('good');
     expect(black(0.47)).toBe('inaccuracy');
     expect(black(0.85)).toBe('blunder');
+  });
+
+  it("labels the same swing in White's score the same for either side, even near a limit", () => {
+    // Float subtraction lands each of these a hair from 0.05: 0.06 - 0.01 just
+    // under, 0.99 - 0.94 just over. Black's loss must land on the same side.
+    expect(judgeMove(scored(0.06), scored(0.01), 'd2d4', 'white')).toBe('good');
+    expect(judgeMove(scored(0.01), scored(0.06), 'g7g5', 'black')).toBe('good');
+    expect(judgeMove(scored(0.99), scored(0.94), 'd2d4', 'white')).toBe('inaccuracy');
+    expect(judgeMove(scored(0.94), scored(0.99), 'g7g5', 'black')).toBe('inaccuracy');
   });
 
   it('calls a move that gives nothing away the best, whichever move the engine names', () => {
@@ -86,6 +95,13 @@ describe('judgeMove', () => {
     it('never judges a move the list skips as better than its last move', () => {
       // The next position's search scores a6 as well as c5, but the list ranked it below e6.
       expect(judgeMove(list, scored(0.4), 'a7a6', 'black')).toBe('inaccuracy');
+    });
+
+    it('gives the evaluation it judges by: the own line, else the position after, but no better than the last', () => {
+      expect(judgement(list, undefined, 'e7e5', 'black')?.evaluation).toEqual(at(0.47));
+      expect(judgement(list, undefined, 'a7a6', 'black')).toBeUndefined();
+      expect(judgement(list, scored(0.75), 'a7a6', 'black')?.evaluation).toEqual(at(0.75));
+      expect(judgement(list, scored(0.4), 'a7a6', 'black')?.evaluation).toEqual(at(0.48));
     });
   });
 });

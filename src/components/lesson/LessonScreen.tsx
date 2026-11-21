@@ -5,7 +5,6 @@ import { View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
-import { FootnoteLink } from '@/components/FootnoteLink';
 import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
@@ -39,7 +38,7 @@ import { IdeaAside, IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
 import { SideChoice } from './SideChoice';
-import { describeStatus, LOADING, OPENINGS_TITLE } from './status';
+import { describeStatus, headlineNews, LOADING, OPENINGS_TITLE } from './status';
 import { SourceCredits } from './SourceCredits';
 import { ScoresheetDrawer, ScoresheetOpener } from './ScoresheetDrawer';
 import { TrapCard } from './TrapCard';
@@ -322,7 +321,6 @@ function LessonScreen({
       <LessonControls mode={mode} onMode={chooseMode} />
       <Stack gap="1">
         <OpponentChoice />
-        <FootnoteLink href="/play">Or play a free game, from the first move</FootnoteLink>
         <SourceCredits sources={lesson.sources} />
       </Stack>
     </>
@@ -372,8 +370,10 @@ function LessonScreen({
             failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
             eyebrowInHeader
             eyebrowLink={listLink}
-            // The scoresheet drawer covers the aside, so the headline tells it then.
-            news={aside && !scoresheetOpen ? 'none' : (status.news ?? 'all')}
+            news={headlineNews(
+              { news: status.news, pastGuide },
+              { aside: !!aside, scoresheetOpen, failed: !!game.error },
+            )}
           />
           {/* The scoresheet drawer takes the place of this part on a narrow page, under the headline, which tells of a failure. */}
           <View {...part(scoresheetOpen ? 'wide-only' : 'lesson-body', styles.sections)}>

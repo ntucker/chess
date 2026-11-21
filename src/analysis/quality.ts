@@ -46,18 +46,52 @@ export function judgeMove(
   uci: string,
   mover: Color,
 ): MoveQuality | undefined {
-  const [first] = before.lines;
-  /** How much of the mover's expected score playing into `evaluation` gives away. */
-  const lossTo = ({ score }: Evaluation) =>
-    mover === 'white' ? first.evaluation.score - score : score - first.evaluation.score;
-  const listed = before.lines.find((line) => line.uci === uci);
-  const last = before.lines.at(-1)!;
-  // A list without moves (Maia's) ranks nothing.
-  const lastListedLoss = last.uci ? lossTo(last.evaluation) : -Infinity;
-  let loss: number;
-  if (listed) loss = lossTo(listed.evaluation);
-  else if (after) loss = Math.max(lossTo(after.lines[0].evaluation), lastListedLoss);
-  else return undefined;
-  if (uci === first.uci || loss <= 0) return 'best';
-  return LEAST_LOSS.find(([threshold]) => loss >= threshold)?.[1] ?? 'good';
+  return judgement(before, after, uci, mover)?.quality;
 }
+
+/**
+ * `judgeMove`'s label with the evaluation it judged the move by (see there):
+ * its own line where `before` lists it, else `after`'s first line, but never
+ * better for `mover` than the list's last move.
+ */
+export function judgement(
+  before: FinalAnalysis,
+  after: FinalAnalysis | undefined,
+  uci: string,
+  mover: Color,
+): { quality: MoveQuality; evaluation: Evaluation } | undefined {
+  const evaluation = judgedEvaluation(before, after, uci, mover);
+  if (!evaluation) return undefined;
+  const loss = signed(before.lines[0].evaluation, mover) - signed(evaluation, mover);
+  const quality: MoveQuality =
+    uci === before.lines[0].uci || loss <= 0
+      ? 'best'
+      : (LEAST_LOSS.find(([threshold]) => loss >= threshold)?.[1] ?? 'good');
+  return { quality, evaluation };
+}
+
+/** The evaluation `judgement` judges `uci` by; undefined while `after` is needed and missing. */
+function judgedEvaluation(
+  before: FinalAnalysis,
+  after: FinalAnalysis | undefined,
+  uci: string,
+  mover: Color,
+): Evaluation | undefined {
+  const listed = before.lines.find((line) => line.uci === uci);
+  if (listed) return listed.evaluation;
+  if (!after) return undefined;
+  const last = before.lines.at(-1)!;
+  const reached = after.lines[0].evaluation;
+  // A list without moves (Maia's) ranks nothing.
+  return last.uci && signed(last.evaluation, mover) < signed(reached, mover)
+    ? last.evaluation
+    : reached;
+}
+
+/**
+ * White's score, negated for Black: higher is better for `mover`, like
+ * `scoreFor`, but negating is exact, so the same swing in White's score is
+ * the same loss for either side, even at a label's limit (in floats,
+ * 0.06 - 0.01 is under 0.05 but 0.99 - 0.94 is over).
+ */
+const signed = ({ score }: Evaluation, mover: Color) => (mover === 'white' ? score : -score);
