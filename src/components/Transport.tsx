@@ -25,7 +25,7 @@ export function Transport({ ply, total, onGoto, middle }: Props) {
   const { theme } = useTheme();
   const { color } = theme.semantic;
   const part = useNarrowPart();
-  const held = useHeldStep(ply, total, onGoto);
+  const holdHandlers = useHeldStep(ply, total, onGoto);
   const buttons: {
     label: string;
     icon: ComponentProps<typeof Ionicons>['name'];
@@ -68,7 +68,7 @@ export function Transport({ ply, total, onGoto, middle }: Props) {
       accessibilityLabel={label}
       disabled={disabled}
       onPress={() => onGoto(target)}
-      {...(step && held.handlers(step))}
+      {...(step && holdHandlers(step, target))}
       style={({ pressed, hovered }) => [
         styles.button,
         (pressed || hovered) && !disabled && { backgroundColor: color.tones.neutral.subtle },
@@ -122,7 +122,8 @@ const REPEAT_MS = 120;
 function useHeldStep(ply: number, total: number, onGoto: (ply: number) => void) {
   const [held, setHeld] = useState<Step>();
   const next = held === undefined ? undefined : ply + held;
-  // An arrow turns disabled at either end, which may cut its press short.
+  // The hold ends at either end of the game, even with the finger still
+  // down (the arrow turns disabled), so it doesn't resume if the game grows.
   if (next !== undefined && (next < 0 || next > total)) setHeld(undefined);
   const goto = useEffectEvent(onGoto);
   useEffect(() => {
@@ -130,16 +131,15 @@ function useHeldStep(ply: number, total: number, onGoto: (ply: number) => void) 
     const timer = setTimeout(() => goto(next), REPEAT_MS);
     return () => clearTimeout(timer);
   }, [next]);
-  return {
-    handlers: (step: Step) => ({
-      delayLongPress: HOLD_MS,
-      onLongPress: () => {
-        onGoto(ply + step);
-        setHeld(step);
-      },
-      onPressOut: () => setHeld(undefined),
-    }),
-  };
+  /** A step arrow's press handlers: `target` is where its first step goes. */
+  return (step: Step, target: number) => ({
+    delayLongPress: HOLD_MS,
+    onLongPress: () => {
+      onGoto(target);
+      setHeld(step);
+    },
+    onPressOut: () => setHeld(undefined),
+  });
 }
 
 const STEP_BUTTON_WIDTH = 44;

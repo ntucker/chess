@@ -10,6 +10,7 @@ jest.mock('expo-router', () => ({ useIsFocused: () => mockFocused }));
 
 let root: Root | undefined;
 afterEach(() => {
+  jest.restoreAllMocks();
   act(() => root?.unmount());
   root = undefined;
   mockFocused = true;
