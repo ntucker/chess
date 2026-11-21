@@ -4,7 +4,7 @@ import { isLichessStudy } from './openings';
 /**
  * Sources credited together, so a long list (the start position credits
  * every lesson's) names each site once:
- * - `source`: one source alone, named as `sourceName` names it.
+ * - `source`: one source alone, named as `sourceNamer` names it.
  * - `studies`: two or more lichess studies, by their authors, each author's
  *   studies in the order given.
  * - `pages`: two or more pages of one site by one author under one license,

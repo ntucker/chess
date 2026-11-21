@@ -5,7 +5,7 @@ import { Text as Span } from 'react-native';
 import { ExternalLink } from '@/components/ExternalLink';
 import { type CreditGroup, creditGroups } from '@/lesson/credits';
 import type { License, LessonSource } from '@/lesson/lesson';
-import { listSeparator, sourceName, sourcesOf } from '@/lesson/openings';
+import { listSeparator, sourceNamer, sourcesOf } from '@/lesson/openings';
 import { LessonIndexContext } from '@/resources/lesson';
 
 /**
@@ -18,14 +18,14 @@ import { LessonIndexContext } from '@/resources/lesson';
  * shown, which a note's plain text can't hold.
  */
 export function SourceCredits({ sources }: { readonly sources: readonly LessonSource[] }) {
-  const credited = sourcesOf(use(LessonIndexContext), sources);
+  const name = sourceNamer(sourcesOf(use(LessonIndexContext), sources));
   return (
     <Text role="caption" tone="secondary">
       Lesson from{' '}
       {creditGroups(sources).map((group, i) => (
         <Span key={i}>
           {i > 0 ? '; ' : null}
-          <Group group={group} credited={credited} />
+          <Group group={group} name={name} />
         </Span>
       ))}
     </Text>
@@ -34,17 +34,17 @@ export function SourceCredits({ sources }: { readonly sources: readonly LessonSo
 
 function Group({
   group,
-  credited,
+  name,
 }: {
   readonly group: CreditGroup;
-  /** Every source the app credits, so one study reads the same everywhere (`sourceName`). */
-  readonly credited: readonly LessonSource[];
+  /** How the app names a source, so one study reads the same everywhere (`sourceNamer`). */
+  readonly name: (source: LessonSource) => string;
 }) {
   switch (group.kind) {
     case 'source':
       return (
         <>
-          <ExternalLink url={group.source.url}>{sourceName(group.source, credited)}</ExternalLink>
+          <ExternalLink url={group.source.url}>{name(group.source)}</ExternalLink>
           <LicenseNote license={group.source.license} />
         </>
       );
