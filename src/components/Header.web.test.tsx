@@ -44,6 +44,13 @@ describe('Header', () => {
     expect(buttonParts({})).toEqual({ 'Source code on GitHub': undefined });
   });
 
+  it('makes the logo a start-over button only where the page can start over', () => {
+    expect(buttonParts({ onRestart: () => {} })).toEqual({
+      'Source code on GitHub': undefined,
+      'Start over': undefined,
+    });
+  });
+
   it('puts the settings button in the source link’s place on a narrow page', () => {
     expect(buttonParts({ onSettings: () => {} })).toEqual({
       'Source code on GitHub': 'wide-only',

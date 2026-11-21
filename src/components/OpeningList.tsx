@@ -43,6 +43,7 @@ import { fonts, typography } from '@/theme/theme';
 export function OpeningList({ here }: { readonly here?: ListPlace<LessonId> }) {
   const index = use(LessonIndexContext);
   const openings = useMemo(() => openingList(index), [index]);
+  const router = useRouter();
   return (
     <Page
       title="Openings · Opening Night"
@@ -52,6 +53,8 @@ export function OpeningList({ here }: { readonly here?: ListPlace<LessonId> }) {
           href: here ? variationHref(here.lesson, here.variation) : '/',
           label: 'Back to the board',
         },
+        // To the board, started over: Back from there returns to the game left.
+        onRestart: () => goBack(router, '/', '/'),
       }}
       maxWidth={STAGE_MAX}
     >

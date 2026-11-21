@@ -339,6 +339,8 @@ function LessonScreen({
         placeLink: listLink,
         // Only a narrow page shows the button, so only there does the sheet open.
         onSettings: () => setSettingsOpen(true),
+        // Back to the start position, from the side the learner plays, in the same mode.
+        onRestart: game.newGame,
       }}
       // A wide page credits the lesson's sources at its foot, a narrow one in its settings
       // sheet. One copy at a time, as with the settings: the sheet may stay open on a widened window.

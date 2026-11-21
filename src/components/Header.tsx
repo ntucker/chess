@@ -1,4 +1,4 @@
-import { Inline, Separator, Text } from '@reactive/silk-native';
+import { Inline, Pressable, Separator, Text } from '@reactive/silk-native';
 import { Image, View } from 'react-native';
 
 import { BackButton } from '@/components/BackButton';
@@ -34,6 +34,8 @@ export interface HeaderProps {
    * itself, and no button shows.
    */
   readonly onSettings?: () => void;
+  /** The logo starts the board over from its start position; without it, the logo is only a picture. */
+  readonly onRestart?: () => void;
 }
 
 /**
@@ -42,18 +44,32 @@ export interface HeaderProps {
  * one slim row: a smaller logo, the page's `place` (or the name, when there
  * is none), and no tagline. A page on top of another starts with a back button.
  */
-export function Header({ place, placeLink, back, onSettings }: HeaderProps) {
+export function Header({ place, placeLink, back, onSettings, onRestart }: HeaderProps) {
   const styles = useNarrowStyles(STYLES);
   const part = useNarrowPart();
+  const logo = (
+    <Image
+      source={require('@/assets/images/logo-mark.png')}
+      style={styles.logo}
+      accessibilityIgnoresInvertColors
+    />
+  );
   return (
     <Inline gap="2" align="center" justify="between" wrap="nowrap">
       <Inline gap="3" align="center" wrap="nowrap" style={styles.brand}>
         {back ? <BackButton {...back} /> : null}
-        <Image
-          source={require('@/assets/images/logo-mark.png')}
-          style={styles.logo}
-          accessibilityIgnoresInvertColors
-        />
+        {onRestart ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Start over"
+            onPress={onRestart}
+            style={({ pressed }) => [styles.logoButton, pressed && styles.pressed]}
+          >
+            {logo}
+          </Pressable>
+        ) : (
+          logo
+        )}
         <Text
           role="heading"
           accessibilityRole="header"
@@ -182,6 +198,9 @@ const STYLES = narrowStyles((px) => ({
   // Fills the header but gives way to the source link, so the place gets what's left.
   brand: { flexGrow: 1, flexShrink: 1, minWidth: 0 },
   logo: { width: px(HEADER_HEIGHT), height: px(HEADER_HEIGHT), borderRadius: 10 },
+  // Rounded like the logo, so the focus ring follows its corners.
+  logoButton: { borderRadius: 10 },
+  pressed: { opacity: 0.8 },
   wordmark: {
     fontFamily: fonts.display,
     fontSize: px(narrowLength('wordmark-size', 26)),

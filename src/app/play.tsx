@@ -44,6 +44,7 @@ export default function PlayScreen() {
   return (
     <Stage
       title="Free play · Opening Night"
+      header={{ onRestart: game.newGame }}
       board={
         <BoardColumn
           game={game}
