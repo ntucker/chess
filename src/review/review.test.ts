@@ -12,6 +12,7 @@ import { bookMove, judgedMove, listing, waitingMove } from './review.fixture';
 const line = uciLine('e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Nd4');
 const plies = replay(line);
 const legal = plies.map(() => 20);
+const none: ReadonlySet<number> = new Set();
 
 describe('reviewMoves', () => {
   it("labels each move from its positions' final analyses, as the game does", () => {
@@ -24,7 +25,7 @@ describe('reviewMoves', () => {
       listing(['g8f6', 0.52]),
       undefined,
     ];
-    const moves = reviewMoves({ plies, book: [], legal, analyses });
+    const moves = reviewMoves({ plies, book: [], legal, analyses, failed: none });
     expect(moves.map(({ quality }) => quality)).toEqual([
       'best',
       'best',
@@ -39,6 +40,7 @@ describe('reviewMoves', () => {
       book: [],
       legal,
       analyses: [...analyses.slice(0, -1), listing(['f3d4', 0.75])],
+      failed: none,
     });
     expect(later[5]).toEqual({
       ply: 5,
@@ -56,6 +58,7 @@ describe('reviewMoves', () => {
       book: [true, false, true],
       legal: [20, 1, 20, 20, 20, 20, 20],
       analyses: [],
+      failed: none,
     });
     expect(moves.slice(0, 3)).toEqual([
       { ply: 0, mover: 'white', status: 'book', quality: 'book' },
@@ -79,7 +82,9 @@ describe('reviewMoves against the game', () => {
     const live = plies
       .slice(0, -1)
       .map(({ turn }, n) => judgeMove(analyses[n], analyses[n + 1], plies[n + 1].move!.uci, turn));
-    const review = reviewMoves({ plies, book: [], legal, analyses }).map(({ quality }) => quality);
+    const review = reviewMoves({ plies, book: [], legal, analyses, failed: none }).map(
+      ({ quality }) => quality,
+    );
     expect(review).toEqual(live);
     expect(review).toContain('good');
   });

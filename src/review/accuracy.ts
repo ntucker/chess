@@ -45,13 +45,14 @@ export function gameAccuracy(
   analyses: readonly (FinalAnalysis | undefined)[],
   book: readonly boolean[],
   side: Color,
-  failed?: ReadonlySet<number>,
+  failed: ReadonlySet<number>,
 ): number | 'brief' | undefined {
   const counted = moves.filter(
     ({ mover, status }) => mover === side && (status === 'judged' || status === 'waiting'),
   );
   if (counted.length < LEAST_COUNTED) return 'brief';
-  const isSearched = (ply: number) => judgedPosition(book, ply, moves.length) && !failed?.has(ply);
+  const isSearched = (ply: number) =>
+    judgedPosition(book, ply, moves.length) && !(failed.has(ply) && !analyses[ply]);
   const known = Array.from({ length: moves.length + 1 }, (_, ply) =>
     isSearched(ply) ? analyses[ply]?.lines[0].evaluation.score : undefined,
   );

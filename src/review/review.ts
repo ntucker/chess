@@ -57,7 +57,7 @@ export interface ReviewInput {
   /** Stockfish's final analysis of each position, where the store has one. */
   readonly analyses: readonly (FinalAnalysis | undefined)[];
   /** Positions whose search the engine gave up on. */
-  readonly failed?: ReadonlySet<number>;
+  readonly failed: ReadonlySet<number>;
 }
 
 /** Each move of the game, judged as far as the final analyses allow. */
@@ -69,7 +69,7 @@ export function reviewMoves({ plies, book, legal, analyses, failed }: ReviewInpu
     const before = analyses[ply];
     const judged = before && judgement(before, analyses[ply + 1], uci, mover);
     if (!judged) {
-      const lost = (failed?.has(ply) && !before) || (failed?.has(ply + 1) && !analyses[ply + 1]);
+      const lost = (failed.has(ply) && !before) || (failed.has(ply + 1) && !analyses[ply + 1]);
       return { ply, mover, status: lost ? 'failed' : 'waiting' };
     }
     return {

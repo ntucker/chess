@@ -42,7 +42,7 @@ export interface OrderInput {
    */
   readonly dwelt?: number;
   /** Positions whose search the engine gave up on: skipped, so the rest go on. */
-  readonly failed?: ReadonlySet<number>;
+  readonly failed: ReadonlySet<number>;
 }
 
 /**
@@ -71,7 +71,7 @@ export function nextSearch({
   failed,
 }: OrderInput): number | undefined {
   const count = moves.length;
-  const searchable = (ply: number) => !failed?.has(ply);
+  const searchable = (ply: number) => !failed.has(ply);
   const unfinished = (ply: number) =>
     searchable(ply) && judgedPosition(book, ply, count) && !isFinal(analyses[ply]);
   const board =

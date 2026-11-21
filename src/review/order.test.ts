@@ -14,7 +14,7 @@ const sketch = (score: number) => partial(SKETCH_DEPTH, ['a', score]);
 const final = (score: number) => listing(['a', score]);
 
 const order = (analyses: (Analysis | undefined)[], input: Partial<OrderInput> = {}) =>
-  nextSearch({ moves, book, analyses, learner: 'white', ...input });
+  nextSearch({ moves, book, analyses, learner: 'white', failed: new Set(), ...input });
 
 describe('nextSearch', () => {
   it('sketches every position first, in game order', () => {

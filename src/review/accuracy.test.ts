@@ -20,6 +20,9 @@ describe('moveAccuracy', () => {
   });
 });
 
+/** No failed searches. */
+const none: ReadonlySet<number> = new Set();
+
 /** Final analyses where White's expected score is each of `scores`. */
 const finals = (...scores: number[]) => scores.map((score) => listing(['a', score]));
 
@@ -41,8 +44,8 @@ describe('gameAccuracy', () => {
   const analyses = finals(...gameScores(18, 6));
 
   it("averages a side's weighted and harmonic means", () => {
-    expect(gameAccuracy(moves, analyses, [], 'black')).toBe(100);
-    const white = gameAccuracy(moves, analyses, [], 'white') as number;
+    expect(gameAccuracy(moves, analyses, [], 'black', none)).toBe(100);
+    const white = gameAccuracy(moves, analyses, [], 'white', none) as number;
     // Eight moves at 100 and one losing 20 points (about 41): both means sit between them.
     expect(white).toBeGreaterThan(moveAccuracy(50, 30));
     expect(white).toBeLessThan(100);
@@ -58,7 +61,7 @@ describe('gameAccuracy', () => {
     const scores = Array.from({ length: 17 }, (_, ply) => (ply % 2 === 0 ? 0.95 : 0.05));
     expect(moveAccuracy(95, 5)).toBe(0);
     // Weighted mean 0, harmonic mean 1.
-    expect(gameAccuracy(swings, finals(...scores), [], 'white')).toBe(0.5);
+    expect(gameAccuracy(swings, finals(...scores), [], 'white', none)).toBe(0.5);
   });
 
   it('weights a move by how much the game swung where it was played', () => {
@@ -68,7 +71,7 @@ describe('gameAccuracy', () => {
       ply === 6 ? judgedMove(ply, 'blunder', 0.5, 0.2) : judgedMove(ply, 'best', 0.5),
     );
     const accuracy = (scores: number[]) =>
-      gameAccuracy(twenty, finals(...scores), [], 'white') as number;
+      gameAccuracy(twenty, finals(...scores), [], 'white', none) as number;
     const calm = accuracy(Array.from({ length: 21 }, () => 0.5));
     const wild = accuracy(
       Array.from({ length: 21 }, (_, ply) => (ply < 6 ? 0.5 : ply === 6 ? 0.9 : 0.2)),
@@ -78,12 +81,12 @@ describe('gameAccuracy', () => {
   });
 
   it('leaves out book, forced and failed moves, and gives no number under 8 judged moves', () => {
-    expect(gameAccuracy(game(12), finals(...gameScores(12)), [], 'white')).toBe('brief');
+    expect(gameAccuracy(game(12), finals(...gameScores(12)), [], 'white', none)).toBe('brief');
     // One book and one forced move leave White seven of nine.
     const book = [true];
     const someLeftOut = [bookMove(0), ...moves.slice(1, 2), forcedMove(2), ...moves.slice(3)];
-    expect(gameAccuracy(someLeftOut, analyses, book, 'white')).toBe('brief');
-    expect(gameAccuracy(someLeftOut, analyses, book, 'black')).toBe(100);
+    expect(gameAccuracy(someLeftOut, analyses, book, 'white', none)).toBe('brief');
+    expect(gameAccuracy(someLeftOut, analyses, book, 'black', none)).toBe(100);
     // A failed position isn't waited for, and its moves don't count.
     const failed = new Set([18]);
     const lastFailed = [...moves.slice(0, 17), failedMove(17)];
@@ -91,14 +94,14 @@ describe('gameAccuracy', () => {
     // Black keeps eight of its nine moves.
     expect(gameAccuracy(lastFailed, unsearched, [], 'black', failed)).toBe(100);
     expect(gameAccuracy(lastFailed, unsearched, [], 'white', failed)).toBe(
-      gameAccuracy(moves, analyses, [], 'white'),
+      gameAccuracy(moves, analyses, [], 'white', none),
     );
   });
 
   it('waits until every position the review searches is final', () => {
     const waiting = [...moves.slice(0, 17), waitingMove(17)];
     // White's moves are all judged, but a window reads the position still searched.
-    expect(gameAccuracy(waiting, [...analyses.slice(0, 18), undefined], [], 'white')).toBe(
+    expect(gameAccuracy(waiting, [...analyses.slice(0, 18), undefined], [], 'white', none)).toBe(
       undefined,
     );
   });
@@ -108,8 +111,8 @@ describe('gameAccuracy', () => {
     const fromBook = [bookMove(0), bookMove(1), ...game(20, 6).slice(2)];
     const scores = finals(...gameScores(20, 6));
     const searchedStart = [listing(['e2e4', 0.9]), ...scores.slice(1)];
-    expect(gameAccuracy(fromBook, searchedStart, book, 'white')).toBe(
-      gameAccuracy(fromBook, scores, book, 'white'),
+    expect(gameAccuracy(fromBook, searchedStart, book, 'white', none)).toBe(
+      gameAccuracy(fromBook, scores, book, 'white', none),
     );
   });
 });
