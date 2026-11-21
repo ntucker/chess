@@ -30,12 +30,15 @@ jobs:
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # A newer push makes this build worthless; publishes still never overlap.
+    # A newer push to a pull request makes its older build worthless. Every
+    # other run gets its own group, because GitHub marks a cancelled run's
+    # commit failed; a build of main stops itself instead (see the export).
     concurrency:
-      group: pages-build-${{ github.ref }}
+      group: pages-build-${{ github.event.pull_request.number || github.run_id }}
       cancel-in-progress: true
     outputs:
       site-url: ${{ steps.pages.outputs.base_url }}
+      superseded: ${{ steps.export.outputs.superseded }}
 
     steps:
       - name: Checkout
@@ -82,8 +85,10 @@ jobs:
           echo "folder=$LIVE" >> "$GITHUB_OUTPUT"
 
       # Previews skip minifying, which takes about 40% of the export, so they
-      # come up sooner.
+      # come up sooner. A build of main checks every 10 s whether main has
+      # moved on, and if so stops and passes, leaving the newer run to publish.
       - name: Export the web app
+        id: export
         env:
           PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}${{ env.PREVIEW && format('/{0}', env.PREVIEW) || '' }}
           # Previews share the live site's localStorage; this keeps them apart.
@@ -91,11 +96,44 @@ jobs:
           EXPO_PUBLIC_STOCKFISH_FOLDER: ${{ steps.stockfish.outputs.folder }}
         run: |
           if [ -n "$EXPO_PUBLIC_STOCKFISH_FOLDER" ]; then rm -r public/stockfish; fi
-          yarn expo export --platform web ${{ env.PREVIEW && '--no-minify' || '' }}
+          # Its own process group, so stopping it stops everything it started.
+          setsid yarn expo export --platform web ${{ env.PREVIEW && '--no-minify' || '' }} &
+          expo=$!
+          superseded="$RUNNER_TEMP/superseded"
+          watcher=
+          if [ "$GITHUB_REF" = refs/heads/main ]; then
+            # Its output goes nowhere: a sleep holding the step's output open
+            # would keep the step from finishing. A failed lookup keeps building.
+            while :; do
+              if main=$(git ls-remote --exit-code origin refs/heads/main) \
+                && [ "${main%%$'\t'*}" != "$GITHUB_SHA" ]; then
+                # Marked before the kill, so the step can't take the stop for a
+                # failure, and unmarked if nothing was left to stop. An export
+                # failing on its own at that same moment may pass; the newer
+                # build checks its changes again, with the newer ones.
+                touch "$superseded"
+                kill -- "-$expo" || rm "$superseded"
+                break
+              fi
+              sleep 10
+            done > /dev/null 2>&1 &
+            watcher=$!
+          fi
+          status=0
+          wait "$expo" || status=$?
+          # The watcher may have stopped already.
+          [ -z "$watcher" ] || kill "$watcher" 2> /dev/null || true
+          if [ -e "$superseded" ]; then
+            echo "::notice::Stopped: a newer push to main builds and publishes instead."
+            echo "superseded=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          [ "$status" = 0 ] || exit "$status"
           # Pages shows the site's root 404.html for any path it has no file for.
           cp dist/+not-found.html dist/404.html
 
       - name: Upload the site
+        if: steps.export.outputs.superseded != 'true'
         uses: actions/upload-artifact@v7
         with:
           name: site
@@ -111,18 +149,20 @@ jobs:
     # token, so they never publish.
     if: >-
       !cancelled()
-      && (needs.build.result == 'success' || github.event.action == 'closed')
+      && ((needs.build.result == 'success' && needs.build.outputs.superseded != 'true')
+        || github.event.action == 'closed')
       && (github.event_name == 'pull_request'
         && !github.event.pull_request.head.repo.fork
         && github.event.pull_request.user.login != 'dependabot[bot]'
         || github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # One publish per target at a time, so a close waits for the preview it
-    # removes. Different targets retry on each other's pushes below. (One
-    # group for all would cancel all but the newest waiting run.)
+    # One publish per pull request at a time, so a close waits for the
+    # preview it removes. Main's runs don't queue, because a newer run would
+    # cancel the waiting one and mark its commit failed; an older one skips
+    # publishing below instead. Runs retry on each other's pushes below.
     concurrency:
-      group: pages-publish-${{ github.event.pull_request.number || 'main' }}
+      group: pages-publish-${{ github.event.pull_request.number || github.run_id }}
     permissions:
       contents: write
       pull-requests: write
@@ -190,6 +230,16 @@ jobs:
             touch .nojekyll
             git add -A
             tree=$(git write-tree)
+            # A newer push to main publishes its own build, so this older one
+            # would only roll the site back. Checked on every attempt, right
+            # before pushing; a failed lookup retries rather than skipping.
+            if [ "$target" = . ]; then
+              main=$(git ls-remote --exit-code origin refs/heads/main) || { sleep $((attempt * 5)); continue; }
+              if [ "${main%%$'\t'*}" != "$GITHUB_SHA" ]; then
+                echo "::notice::Not published: a newer push to main publishes instead."
+                exit 0
+              fi
+            fi
             # An unchanged tree (say, a close after a run already dropped the
             # preview) skips the push, which would only rebuild Pages. A re-run
             # or manual run still pushes, to retry a failed Pages build.
