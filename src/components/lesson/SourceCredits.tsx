@@ -4,7 +4,7 @@ import { Text as Span } from 'react-native';
 
 import { ExternalLink } from '@/components/ExternalLink';
 import type { LessonSource } from '@/lesson/lesson';
-import { listSeparator, sourceName, sourcesOf } from '@/lesson/openings';
+import { listSeparator, sourceNames, sourcesOf } from '@/lesson/openings';
 import { LessonIndexContext } from '@/resources/lesson';
 
 /**
@@ -14,14 +14,14 @@ import { LessonIndexContext } from '@/resources/lesson';
  * link wherever its text is shown, which a note's plain text can't hold.
  */
 export function SourceCredits({ sources }: { readonly sources: readonly LessonSource[] }) {
-  const credited = sourcesOf(use(LessonIndexContext), sources);
+  const name = sourceNames(sourcesOf(use(LessonIndexContext), sources));
   return (
     <Text role="caption" tone="secondary">
       Lesson from{' '}
       {sources.map((source, i) => (
         <Span key={source.url}>
           {listSeparator(i, sources.length)}
-          <ExternalLink url={source.url}>{sourceName(source, credited)}</ExternalLink>
+          <ExternalLink url={source.url}>{name(source)}</ExternalLink>
           {source.license ? (
             <>
               {' ('}
