@@ -5,7 +5,7 @@ import { ADVANCE, SAMPLE, uciLine } from '@/lesson/lesson.fixture';
 import { bookMoves } from '@/lesson/select';
 
 import { judgedPosition, leftGuide, moments, reviewMoves, tally } from './review';
-import { bookMove, judgedMove, listing, unjudgedMove } from './review.fixture';
+import { bookMove, judgedMove, listing, waitingMove } from './review.fixture';
 
 const line = uciLine('e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Nd4');
 const plies = replay(line);
@@ -103,7 +103,7 @@ describe('moments', () => {
     judgedMove(3, 'mistake'),
     judgedMove(4, 'blunder'),
     judgedMove(5, 'inaccuracy'),
-    unjudgedMove(6),
+    waitingMove(6),
   ];
 
   it("lists the learner's mistakes and blunders, and where they left the guide, in game order", () => {
@@ -119,7 +119,7 @@ describe('tally', () => {
       bookMove(0),
       judgedMove(1, 'best'),
       judgedMove(2, 'blunder'),
-      unjudgedMove(3),
+      waitingMove(3),
       judgedMove(4, 'blunder'),
     ];
     expect(tally(moves, 'white')).toEqual({ book: 1, blunder: 2 });

@@ -35,14 +35,18 @@ export const bookMove = (ply: number): ReviewMove => ({
   quality: 'book',
 });
 
-/** A move at `ply` the review hasn't judged yet, or a forced one. */
-export const unjudgedMove = (
-  ply: number,
-  status: 'waiting' | 'forced' = 'waiting',
-): ReviewMove => ({
+/** A move at `ply` the review hasn't judged yet. */
+export const waitingMove = (ply: number): ReviewMove => ({
   ply,
   mover: mover(ply),
-  status,
+  status: 'waiting',
+});
+
+/** The only legal move at `ply`. */
+export const forcedMove = (ply: number): ReviewMove => ({
+  ply,
+  mover: mover(ply),
+  status: 'forced',
 });
 
 /**

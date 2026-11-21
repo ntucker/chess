@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
 import { gameAccuracy, moveAccuracy } from './accuracy';
-import { bookMove, judgedMove, listing, unjudgedMove } from './review.fixture';
+import { bookMove, forcedMove, judgedMove, listing, waitingMove } from './review.fixture';
 
 describe('moveAccuracy', () => {
   it('scores 100 for a move that loses nothing, falling off with the win percent lost', () => {
@@ -51,14 +51,14 @@ describe('gameAccuracy', () => {
 
   it('waits until every position the review searches is final, leaving out forced moves', () => {
     const waiting = [...analyses.slice(0, 3), undefined, analyses[4]];
-    const judgedSoFar = [...moves.slice(0, 2), unjudgedMove(2), unjudgedMove(3)];
+    const judgedSoFar = [...moves.slice(0, 2), waitingMove(2), waitingMove(3)];
     expect(gameAccuracy(judgedSoFar, waiting, book, 'black')).toBeUndefined();
     // White's moves are all judged, but a window reads the position still searched.
-    const whiteJudged = [...moves.slice(0, 3), unjudgedMove(3)];
+    const whiteJudged = [...moves.slice(0, 3), waitingMove(3)];
     expect(gameAccuracy(whiteJudged, [...analyses.slice(0, 4), undefined], book, 'white')).toBe(
       undefined,
     );
-    const forced = [...moves.slice(0, 3), unjudgedMove(3, 'forced')];
+    const forced = [...moves.slice(0, 3), forcedMove(3)];
     expect(gameAccuracy(forced, analyses, book, 'black')).toBe(100);
   });
 

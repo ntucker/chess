@@ -16,21 +16,26 @@ import { lineKeys } from '@/lesson/select';
  * `plies[ply]` to `plies[ply + 1]`, and how far the review has got with it.
  */
 export type ReviewMove = { readonly ply: number; readonly mover: Color } & (
-  | /** A move the guide recommends: labelled `book`, never searched. */
-    {
+  | {
+      /** A move the guide recommends: labelled `book`, never searched. */
       readonly status: 'book';
       readonly quality: 'book';
-    } /** The only legal move: no label, and it doesn't count toward accuracy. */
+    }
   | {
+      /** The only legal move: no label, and it doesn't count toward accuracy. */
       readonly status: 'forced';
       readonly quality?: undefined;
-    } /** The analyses its label needs aren't final yet. */
-  | { readonly status: 'waiting'; readonly quality?: undefined }
+    }
+  | {
+      /** The analyses its label needs aren't final yet. */
+      readonly status: 'waiting';
+      readonly quality?: undefined;
+    }
   | {
       readonly status: 'judged';
       /** `judgeMove`'s label. */
       readonly quality: MoveQuality;
-      /** The mover's expected score (0 to 1) before the move and after it, as the label measured them (`judgement`). */
+      /** The mover's expected score (0 to 1) before the move and after it, as the label measured them. */
       readonly before: number;
       readonly after: number;
     }
@@ -99,9 +104,6 @@ export function leftGuide(
   return ply === -1 ? undefined : ply;
 }
 
-/** The labels the review stops at when the learner played them. */
-const MOMENT_QUALITIES: ReadonlySet<MoveQuality | undefined> = new Set(['mistake', 'blunder']);
-
 /**
  * The learner's moves worth stopping at, in game order (their plies): their
  * mistakes and blunders, and `leftGuidePly`, the move where they left the
@@ -115,12 +117,13 @@ export function moments(
   return moves
     .filter(
       ({ ply, mover, quality }) =>
-        mover === learner && (ply === leftGuidePly || MOMENT_QUALITIES.has(quality)),
+        mover === learner &&
+        (ply === leftGuidePly || quality === 'mistake' || quality === 'blunder'),
     )
     .map(({ ply }) => ply);
 }
 
-/** How many of a side's moves got each label. */
+/** How many moves got each label. */
 export type Tally = Readonly<Partial<Record<MoveQuality, number>>>;
 
 /** How many of `side`'s judged moves got each label. */

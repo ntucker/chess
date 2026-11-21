@@ -17,11 +17,10 @@ import { judgedPosition, type ReviewMove } from './review';
 export const SKETCH_DEPTH = 12;
 
 /**
- * A search past this depth that isn't final is a full search, running or
- * stopped: it's kept on until final, so a ranking that shifts as its lines
- * deepen doesn't stop it halfway. A sketch stops at `SKETCH_DEPTH`, or a
- * depth or two later when that one doesn't arrive whole; three depths of
- * margin keep a sketch from passing for a full search.
+ * A search past this depth that isn't final is a full one, kept on until
+ * final so a ranking that shifts as its lines deepen doesn't stop it
+ * halfway. Three depths of margin keep a sketch, which can overshoot
+ * `SKETCH_DEPTH` by a depth or two, from passing for one.
  */
 const RUNNING_DEPTH = SKETCH_DEPTH + 3;
 
@@ -39,8 +38,6 @@ export interface OrderInput {
   readonly learner: Color;
   /** The ply the board shows. */
   readonly shown: number;
-  /** Positions whose search failed (engines crashed on them): skipped, so the rest go on. */
-  readonly failed?: ReadonlySet<number>;
 }
 
 /**
@@ -65,20 +62,17 @@ export function nextSearch({
   analyses,
   learner,
   shown,
-  failed,
 }: OrderInput): number | undefined {
   const count = moves.length;
-  const searchable = (ply: number) => !failed?.has(ply);
-  const unfinished = (ply: number) =>
-    searchable(ply) && judgedPosition(book, ply, count) && !isFinal(analyses[ply]);
+  const unfinished = (ply: number) => judgedPosition(book, ply, count) && !isFinal(analyses[ply]);
   const board = moves[shown - 1]?.status === 'waiting' ? [shown - 1, shown] : [];
   const positions = Array.from({ length: count + 1 }, (_, ply) => ply);
   return (
     board.find(unfinished) ??
     positions.find((ply) => unfinished(ply) && (analyses[ply]?.depth ?? 0) >= RUNNING_DEPTH) ??
-    positions.find((ply) => searchable(ply) && !sketched(analyses[ply])) ??
+    positions.find((ply) => !sketched(analyses[ply])) ??
     worstFirst(moves, analyses, learner)
-      .flatMap(({ ply }) => [ply, ply + 1])
+      .flatMap((ply) => [ply, ply + 1])
       .find(unfinished) ??
     positions.find(unfinished)
   );
@@ -89,15 +83,14 @@ const sketched = (analysis: Analysis | undefined) =>
   !!analysis && (analysis.final || analysis.depth >= SKETCH_DEPTH);
 
 /**
- * The learner's moves that drop at least `LEAST_DROP` by the analyses so far
- * (the first line before the move against the first line after it), largest
- * drop first.
+ * The plies of the learner's moves that drop at least `LEAST_DROP` by the
+ * analyses so far, largest drop first.
  */
 function worstFirst(
   moves: readonly ReviewMove[],
   analyses: readonly (Analysis | undefined)[],
   learner: Color,
-): { ply: number; drop: number }[] {
+): number[] {
   return moves
     .flatMap(({ ply, mover, status }) => {
       const before = analyses[ply]?.lines[0];
@@ -109,5 +102,6 @@ function worstFirst(
       const drop = forSide(before.evaluation.score - after.evaluation.score, mover);
       return drop >= LEAST_DROP ? [{ ply, drop }] : [];
     })
-    .sort((a, b) => b.drop - a.drop);
+    .sort((a, b) => b.drop - a.drop)
+    .map(({ ply }) => ply);
 }
