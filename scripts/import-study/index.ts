@@ -9,7 +9,8 @@
  * recommends none, and (`engineCheck` in studies.ts) drop what Stockfish
  * contradicts (./engineCheck) → give notes written on another move order to
  * the position the lesson reaches (./transpositions) → write the idea of each
- * book move nothing explains with AI (./explain) → add popularity → checkLesson → write
+ * book move nothing explains with AI (./explain) → drop variations that teach
+ * nothing (./emptyVariations) → add popularity → checkLesson → write
  * assets/lessons/<id>.json, register it in src/resources/lesson.ts and list
  * it in assets/lessons/index.json.
  * `caro-kann` names a study listed in studies.ts. With --no-popularity the
@@ -58,6 +59,7 @@ import { lessonIndex } from '@/lesson/openings';
 
 import { convertChapters, convertReport } from './convert';
 import { claudeCli } from './convert/claude';
+import { withoutEmptyVariations } from './emptyVariations';
 import { engineCheck, ENGINES_OWN, fillBook, type EngineReport } from './engineCheck';
 import { explainBookMoves, explainCli, explainReport } from './explain';
 import { extractChapter } from './extract';
@@ -174,6 +176,11 @@ async function main() {
   const explained = await explainBookMoves(lesson, explainer.ask, stockfish.evaluate);
   lesson = explained.lesson;
   console.log(explainReport(explained.report));
+  const taught = withoutEmptyVariations(lesson);
+  lesson = taught.lesson;
+  console.log(
+    `variations dropped for teaching nothing (no book move or note in or under them): ${taught.dropped.join(', ') || 'none'}`,
+  );
   stockfish.stop();
   // A run without the model can miss answers a run with it used, so it must not drop them.
   if (callModel) for (const answers of [cli, explainer, stockfish]) answers.saveUsed();

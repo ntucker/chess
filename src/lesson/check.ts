@@ -50,6 +50,7 @@ import {
   type StructureFeature,
   type Threat,
   type Trap,
+  type VariationId,
 } from './lesson';
 import {
   filePawnCount,
@@ -239,6 +240,33 @@ function checkVariations(lesson: Lesson, report: Report) {
       ancestors.add(parent);
     }
   }
+  const teaching = teachingVariations(lesson);
+  for (const id of Object.keys(lesson.variations)) {
+    if (!teaching.has(id))
+      report(
+        `variations[${JSON.stringify(id)}]`,
+        'teaches nothing: no position in it or under it has a book move or a note',
+      );
+  }
+}
+
+/**
+ * The variations worth naming: the opening itself, and each with a position,
+ * its own or under it, that has a book move or a note. One without leads the
+ * opening list to a line with nothing to learn.
+ */
+export function teachingVariations({ variations, positions }: Lesson): Set<VariationId> {
+  const teaching = new Set(Object.keys(variations).filter((id) => !variations[id].parent));
+  for (const { variation, moves, notes } of Object.values(positions)) {
+    if (!notes?.length && !moves.some((move) => move.book || move.notes?.length)) continue;
+    for (
+      let id: VariationId | undefined = variation;
+      id && !teaching.has(id);
+      id = variations[id]?.parent
+    )
+      teaching.add(id);
+  }
+  return teaching;
 }
 
 /** The position after `move`, or undefined after reporting why it is wrong. */
