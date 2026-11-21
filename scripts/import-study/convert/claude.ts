@@ -14,7 +14,7 @@ import { opposite } from 'chessops/util';
 
 import { colorName } from '@/game/replay';
 
-import { appendJsonLine, readJsonLines, writeJsonLines } from '../jsonLines';
+import { answersFile } from '../jsonLines';
 
 import { asAnswer, SCHEMA, type Answer } from './answer';
 import type { Comment } from './comments';
@@ -75,11 +75,7 @@ interface Options<T> {
 
 export interface ClaudeCli<T> {
   readonly ask: Ask<T>;
-  /**
-   * Rewrites the answers file with only the answers this run used, so stale
-   * ones don't pile up. Does nothing without the model: a run that could not
-   * replace a stale answer must not drop it.
-   */
+  /** Rewrites the answers file with only the answers this run used, so stale ones don't pile up. */
   readonly saveUsed: () => void;
 }
 
@@ -97,13 +93,15 @@ export function claudeCli<T extends { readonly id: string } = Comment>({
   const prompt = template
     .replaceAll('{LEARNER}', colorName(learner))
     .replaceAll('{OPPONENT}', colorName(opposite(learner)));
-  const cache = readCache(cacheFile);
+  const cache = answersFile<{ key: string; answer: Answer }>(
+    cacheFile,
+    (row) => row.key,
+    (row) => asAnswer(row.answer) !== undefined,
+  );
   const keyOf = (model: Model, system: string, item: T) =>
     createHash('sha256')
       .update(JSON.stringify([model, system, itemKey(item)]))
       .digest('hex');
-
-  const used = new Set<string>();
 
   const ask: Ask<T> = async (model, items, addendum = '') => {
     const system = prompt + addendum;
@@ -112,9 +110,8 @@ export function claudeCli<T extends { readonly id: string } = Comment>({
     const asking: T[] = [];
     for (const item of items) {
       const key = keys.get(item.id)!;
-      const cached = cache.get(key);
+      const cached = cache.get(key)?.answer;
       if (cached) {
-        used.add(key);
         answers.set(item.id, { ...cached, id: item.id });
       } else asking.push(item);
     }
@@ -138,10 +135,8 @@ export function claudeCli<T extends { readonly id: string } = Comment>({
         for (const answer of result.answers) {
           if (!asked.has(answer.id)) continue;
           const key = keys.get(answer.id)!;
-          used.add(key);
           answers.set(answer.id, answer);
-          cache.set(key, answer);
-          appendJsonLine(cacheFile, { key, answer });
+          cache.add({ key, answer });
         }
       } catch (error) {
         log(
@@ -153,25 +148,7 @@ export function claudeCli<T extends { readonly id: string } = Comment>({
     return answers;
   };
 
-  const saveUsed = () => {
-    if (!callModel) return;
-    writeJsonLines(
-      cacheFile,
-      [...used].sort().map((key) => ({ key, answer: cache.get(key) })),
-    );
-  };
-
-  return { ask, saveUsed };
-}
-
-function readCache(file: string): Map<string, Answer> {
-  const cache = new Map<string, Answer>();
-  for (const line of readJsonLines(file)) {
-    const { key, answer } = line as { key: string; answer: unknown };
-    const valid = asAnswer(answer);
-    if (valid) cache.set(key, valid);
-  }
-  return cache;
+  return { ask, saveUsed: cache.saveUsed };
 }
 
 /** One `claude -p` run: the prompt as the system prompt, the items as the message, no tools. */

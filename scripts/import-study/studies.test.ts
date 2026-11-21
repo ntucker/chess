@@ -1,4 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { lessonInfo, STUDIES } from './studies';
 
@@ -20,5 +22,17 @@ describe('lessonInfo', () => {
       'https://lichess.org/study/abcd1234',
       'https://en.wikibooks.org/wiki/Chess_Opening_Theory/1._e4/1...c5',
     ]);
+  });
+});
+
+describe('STUDIES', () => {
+  // Without them a rerun on another machine asks again, and can book other moves or count other games.
+  it("commits every recipe's answers files, so its import rebuilds the same lesson", () => {
+    const missing = Object.values(STUDIES).flatMap(({ info: { id } }) =>
+      ['', '-explain', '-stockfish', '-explorer']
+        .map((step) => `answers/${id}${step}.jsonl`)
+        .filter((file) => !existsSync(join(__dirname, file))),
+    );
+    expect(missing).toEqual([]);
   });
 });

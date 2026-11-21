@@ -11,7 +11,8 @@
  */
 :root [data-narrow='narrow-only'],
 :root [data-narrow='place'],
-:root [data-narrow='scoresheet-drawer'] {
+:root [data-narrow='scoresheet-drawer'],
+:root [data-narrow='narrow-idea-pane'] {
   display: none;
 }
 
@@ -129,16 +130,24 @@
     flex-direction: row;
     min-height: 140px;
   }
-  /* The moves get two parts of the width and the idea three; a pane alone gets all of it. */
+  /*
+   * The moves get two parts of the width and the idea three; a pane alone gets all of it.
+   * Past the guide, the idea pane only a narrow page shows tells why the moves are Stockfish's.
+   */
+  :root [data-narrow='narrow-idea-pane'] {
+    display: flex;
+  }
   :root [data-narrow='moves-pane'],
-  :root [data-narrow='idea-pane'] {
+  :root [data-narrow='idea-pane'],
+  :root [data-narrow='narrow-idea-pane'] {
     width: 0;
     min-width: 0;
   }
   :root [data-narrow='moves-pane'] {
     flex: 2 1 auto;
   }
-  :root [data-narrow='idea-pane'] {
+  :root [data-narrow='idea-pane'],
+  :root [data-narrow='narrow-idea-pane'] {
     flex: 3 1 auto;
   }
   /*
@@ -156,7 +165,8 @@
   }
   /* A scroll inside the panel stops at its ends rather than scroll the panel on. */
   :root [data-narrow='list-scroll'],
-  :root [data-narrow='idea-pane'] {
+  :root [data-narrow='idea-pane'],
+  :root [data-narrow='narrow-idea-pane'] {
     overscroll-behavior: contain;
   }
   /* The rows' scroll pads the card's bottom itself, to clear its fade. */
@@ -194,7 +204,8 @@
    */
   :root [data-narrow='program'],
   :root [data-narrow='list-scroll'],
-  :root [data-narrow='idea-pane'] {
+  :root [data-narrow='idea-pane'],
+  :root [data-narrow='narrow-idea-pane'] {
     overflow-y: auto;
     padding-bottom: var(--fade);
     /* A mask reads only alpha, so black here is opaque, not a theme color. */
