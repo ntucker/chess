@@ -44,7 +44,7 @@ interface StudySource {
    */
   readonly file?: string;
   /**
-   * Replies the study names in words where its line stops, read as its own
+   * Replies the source names in words where its line stops, read as its own
    * moves (`withReplies`): the line's moves in SAN from the start, then the reply.
    */
   readonly replies?: Readonly<Record<string, string>>;
@@ -56,7 +56,7 @@ interface StudySource {
  * Pages of Wikibooks' Chess Opening Theory (wikibooks.ts), the learner being
  * the lesson's side. Credited by its root page (`wikibooksCredit`).
  */
-type WikibooksSource = Omit<WikibooksOptions, 'learner' | 'log'>;
+type WikibooksSource = Omit<WikibooksOptions, 'learner' | 'log'> & Pick<StudySource, 'replies'>;
 
 export type ChapterSource = StudySource | WikibooksSource;
 
@@ -752,6 +752,77 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
     engineCheck: true,
     info: { id: 'anti-sicilian', title: 'Anti-Sicilian', side: 'white' },
   },
+  italian: {
+    from: [
+      {
+        study: 'vJsZScnC',
+        credit: {
+          title: 'Italian Opening',
+          author: 'LeninPerez',
+          url: 'https://lichess.org/study/vJsZScnC',
+        },
+        chapters: (title: string) => Object.hasOwn(ITALIAN_CHAPTERS, title),
+        chapterName: (title: string) => ITALIAN_CHAPTERS[title],
+      },
+      {
+        study: 'ZlQ1Gez5',
+        credit: {
+          title: 'Italian Game, Evans Gambit',
+          author: 'Kitsune_Cavalry',
+          url: 'https://lichess.org/study/ZlQ1Gez5',
+        },
+        chapters: (title: string) => Object.hasOwn(EVANS_CHAPTERS, title),
+        chapterName: (title: string) => EVANS_CHAPTERS[title],
+      },
+      {
+        study: 'UmI4upXD',
+        credit: {
+          title: 'Italian Game; Two Knights Defense, Knight Attack',
+          author: 'Kitsune_Cavalry',
+          url: 'https://lichess.org/study/UmI4upXD',
+        },
+        chapters: () => true,
+        chapterName: (title: string) =>
+          chapterNamed(KNIGHT_ATTACK_CHAPTERS, 'Knight Attack', title),
+      },
+      // Wikibooks fills Black's third moves, one root per move so the page budget isn't spent deep
+      // in the first one.
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...Bc5',
+        topName: 'Giuoco Piano',
+        maxPages: 15,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...Nf6',
+        topName: 'Two Knights Defence',
+        maxPages: 15,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...Be7',
+        topName: 'Hungarian Defence',
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...d6',
+        topName: 'Paris Defence',
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...Nd4',
+        topName: 'Blackburne Shilling Gambit',
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...h6',
+        topName: 'Anti-Fried Liver Defence',
+        // The page says White strikes with 4.d4 but plays no move.
+        replies: { 'e4 e5 Nf3 Nc6 Bc4 h6': 'd4' },
+      },
+      {
+        root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bc4/3...f5',
+        topName: 'Rousseau Gambit',
+      },
+    ],
+    engineCheck: true,
+    info: { id: 'italian', title: 'Italian Game', side: 'white' },
+  },
   'queens-gambit': {
     from: [
       {
@@ -820,6 +891,44 @@ const BOSBURP_KG_CHAPTERS: Readonly<Record<string, string | undefined>> = {
   '♔ Introduction ♔': undefined,
   "✦ Section 1: King's Gambit Accepted ✦": "King's Gambit",
   'KGA: Fischer Defense 3...d6': "King's Gambit: Fischer Defence",
+};
+
+/**
+ * LeninPerez's Italian chapters for White, as variation names. Left out: the chapters set up where
+ * no chapter goes (Pianissimo ideas after ...O-O, the Legal Trap after 3...d6, a trap after 3...Nf6
+ * 4.d4), the trap that has White fall into the Blackburne Shilling, the example games and the
+ * conclusion.
+ */
+const ITALIAN_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  Introduction: undefined,
+  'Giuoco Piano': 'Giuoco Piano',
+  'Greco Attack': 'Giuoco Piano: Greco Attack',
+  'Giuoco Pianissimo': 'Giuoco Piano: Pianissimo',
+  'Evans Gambit': 'Evans Gambit',
+  // 4.Ng5 d5 5.exd5 Na5. Named for the whole Two Knights, whose first moves only it plays here.
+  'Fegatello Attack': 'Two Knights Defence',
+};
+
+/** Kitsune_Cavalry's Evans Gambit chapters, as variation names. Not the master game. */
+const EVANS_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  Introduction: 'Evans Gambit',
+  '4... Nxb4 (not great)': 'Evans Gambit',
+  '4... Bb6 (Evans Gambit Declined)': 'Evans Gambit Declined',
+  '5... Bf8 Mayet Defense': 'Evans Gambit: Mayet Defence',
+  '5... Be7 Anderssen Variation': 'Evans Gambit: Anderssen Variation',
+  '5... Bc5 McDonnel Defense': 'Evans Gambit: McDonnell Defence',
+  '5... Bd6 Stone-Ware Variation': 'Evans Gambit: Stone-Ware Variation',
+  '5... Ba5 6. d4 d6 Main Line, Bronstein Defense (or Lasker Variation later)':
+    'Evans Gambit: Bronstein Defence',
+  '5... Ba5 6. d4 exd4 Main Line, Pierce Defense': 'Evans Gambit: Pierce Defence',
+};
+
+/** Kitsune_Cavalry's Two Knights chapters (4.Ng5), as variation names. */
+const KNIGHT_ATTACK_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  Introduction: 'Two Knights Defence',
+  '5... Na5 Polerio Defense': 'Two Knights Defence: Polerio Defence',
+  '5... b5 Ulvestad Variation': 'Two Knights Defence: Ulvestad Variation',
+  '5... Nd4 Fritz Variation': 'Two Knights Defence: Fritz Variation',
 };
 
 /** LeninPerez's Italian chapters with ...Bc5, as variation names. */

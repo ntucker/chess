@@ -380,27 +380,39 @@ function openingMoves(index: LessonIndex, side: Color): Map<PositionKey, Opening
         ...(book && { book }),
         notes: ids.map((id) => {
           const { title, sources } = index[id];
-          return { text: `${title}, from ${listed(sources.map(credit))}.` };
+          return {
+            text: `${title}, from ${listed(sources.map((source) => credit(source, sources)))}.`,
+          };
         }),
       })),
     ]),
   );
 }
 
+const isLichessStudy = ({ url }: LessonSource) => {
+  const parsed = new URL(url);
+  return onDomain(parsed, 'lichess.org') && parsed.pathname.startsWith('/study/');
+};
+
 /**
- * How the app names `source`: a lichess study by its author, anything else by
+ * How the app names `source` among the lesson's `sources`: a lichess study by
+ * its author, anything else, or a study whose author wrote another of them, by
  * its title and author. Its URL parses: the checker has read every shipped
  * lesson's sources.
  */
-export function sourceName({ title, author, url }: LessonSource): string {
-  const parsed = new URL(url);
-  const study = onDomain(parsed, 'lichess.org') && parsed.pathname.startsWith('/study/');
-  return study ? `${author}'s lichess study` : `${title} by ${author}`;
+export function sourceName(source: LessonSource, sources: readonly LessonSource[]): string {
+  const { title, author } = source;
+  const alone = !sources.some(
+    (other) => other !== source && other.author === author && isLichessStudy(other),
+  );
+  return isLichessStudy(source) && alone ? `${author}'s lichess study` : `${title} by ${author}`;
 }
 
 /** How a note credits `source`: its name, then its license's. A note is plain text; the lesson screen's credits link both. */
-const credit = (source: LessonSource) =>
-  source.license ? `${sourceName(source)} (${source.license.name})` : sourceName(source);
+const credit = (source: LessonSource, sources: readonly LessonSource[]) =>
+  source.license
+    ? `${sourceName(source, sources)} (${source.license.name})`
+    : sourceName(source, sources);
 
 /** Every source the index's lessons credit, each once (the same URL is the same source). */
 const sourcesOf = (index: LessonIndex): LessonSource[] => [

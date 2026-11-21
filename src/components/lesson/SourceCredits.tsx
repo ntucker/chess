@@ -18,7 +18,7 @@ export function SourceCredits({ sources }: { readonly sources: readonly LessonSo
       {sources.map((source, i) => (
         <Span key={source.url}>
           {listSeparator(i, sources.length)}
-          <ExternalLink url={source.url}>{sourceName(source)}</ExternalLink>
+          <ExternalLink url={source.url}>{sourceName(source, sources)}</ExternalLink>
           {source.license ? (
             <>
               {' ('}

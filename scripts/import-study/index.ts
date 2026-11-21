@@ -216,8 +216,12 @@ async function sourceChapters(from: ChapterSource, side: Color): Promise<Chapter
     const chapters = from.namedFrom ? withoutLeadComments(kept, from.namedFrom) : kept;
     return from.replies ? withReplies(chapters, from.replies) : chapters;
   }
-  const pgn = await wikibooksPgn(wikibooksPage, { ...from, learner: side });
-  return parseStudy(pgn, () => true);
+  const { replies, ...options } = from;
+  const chapters = parseStudy(
+    await wikibooksPgn(wikibooksPage, { ...options, learner: side }),
+    () => true,
+  );
+  return replies ? withReplies(chapters, replies) : chapters;
 }
 
 /** The study's PGN, downloaded once into the cache. */
