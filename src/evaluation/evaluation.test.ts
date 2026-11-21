@@ -38,10 +38,15 @@ describe('moveChange', () => {
       label: '\u2212M1',
       description: 'Your opponent mates in 1 move',
     });
-    // Already mating: the best move keeps the mate, and a slower one still reads plus.
+    // Already mating: the best move keeps the mate, and a slower one is worse.
     const blackMates = { score: 0, pawns: 0, mate: -3 };
     expect(moveChange(blackMates, blackMates, 'black')).toMatchObject({ label: '0.0' });
-    expect(moveChange(blackMates, { score: 0, pawns: 0, mate: -5 }, 'black')).toMatchObject({
+    expect(moveChange(blackMates, { score: 0, pawns: 0, mate: -5 }, 'black')).toEqual({
+      label: '\u2212M5',
+      description: 'You mate in 5 moves',
+    });
+    // Getting mated: a move that puts it off is better.
+    expect(moveChange(blackMates, { score: 0, pawns: 0, mate: -5 }, 'white')).toMatchObject({
       label: '+M5',
     });
   });

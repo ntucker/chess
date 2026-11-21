@@ -83,12 +83,15 @@ export function finalAnalysis(watch: (watcher: Watcher) => unknown): Promise<Fin
 /**
  * `side`'s expected score (0 to 1) in a position scored `evaluation`, which
  * is White's. Not for a difference of two scores near a limit: `1 - score`
- * rounds, so move labels negate instead (`signed` in src/analysis/quality.ts).
+ * rounds, so move labels negate instead (`forSide`).
  */
 export const scoreFor = ({ score }: Evaluation, side: Color) =>
   side === 'white' ? score : 1 - score;
 
-/** An amount on White's side (a score's or pawns' difference) for `side`: higher is better for it. */
+/**
+ * An amount on White's side (a score, or a difference in pawns) for `side`:
+ * higher is better for it.
+ */
 export const forSide = (amount: number, side: Color) => (side === 'white' ? amount : -amount);
 
 /**
@@ -144,46 +147,59 @@ export interface MoveChange {
 
 /**
  * How a move from a position scored `before` to one scored `after` changes
- * it for `side`: the pawns it gains or loses, so a move keeping the position
- * as it stands (an engine's best) reads "0.0". Example: for Black, a move
- * from +0.3 to \u22120.1 reads "+0.4". A move that changes a forced mate
- * reads as `mateChange` says.
+ * it for `side` ("you"): the pawns it gains or loses, so a move keeping the
+ * position as it stands (an engine's best) reads "0.0". Example: for Black,
+ * a move from +0.3 to \u22120.1 reads "+0.4". A move that changes a forced
+ * mate reads as `mateChange` says.
  */
 export function moveChange(before: Evaluation, after: Evaluation, side: Color): MoveChange {
-  if (after.mate !== before.mate) return mateChange(before, after, side);
+  const mate = after.mate ?? before.mate;
+  if (mate !== undefined && after.mate !== before.mate) {
+    return mateChange(before, after, mate, side);
+  }
   const gain = forSide(after.pawns - before.pawns, side);
   const label = pawnsLabel(gain);
   if (Number(label) === 0) return { label, description: 'No change' };
   const better = gain > 0;
   return {
-    label: signed(label, better),
+    label: withSign(label, better),
     description: `${label} pawns ${better ? 'better' : 'worse'} for you`,
   };
 }
 
 /**
- * A move into, out of or between forced mates, which pawns can't count: the
- * label is the mate the move leads to, plus when `side` mates, even when it
- * only mates later than before; else the mate it ends, plus when `side` was
- * the one getting mated. Example: for Black, a move that lets White mate in
- * 2 reads "\u2212M2".
+ * A move into, out of or between forced mates, which pawns can't count. The
+ * sign still says better or worse for `side`, and the label names `mate`:
+ * the one the move leads to, or else the one it ends. Example: for Black, a
+ * move that lets White mate in 2 reads "\u2212M2", and when Black mates in
+ * 3, a move that mates in 5 instead reads "\u2212M5".
  */
-function mateChange(before: Evaluation, after: Evaluation, side: Color): MoveChange {
-  if (after.mate !== undefined) {
-    const better = evaluationLeader(after) === side;
-    return {
-      label: signed(mateLabel(after.mate), better),
-      description: `${better ? 'You mate' : 'Your opponent mates'} in ${moveCount(after.mate)}`,
-    };
+function mateChange(before: Evaluation, after: Evaluation, mate: number, side: Color): MoveChange {
+  const better = mateRank(after, side) > mateRank(before, side);
+  const label = withSign(mateLabel(mate), better);
+  const moves = moveCount(mate);
+  if (after.mate === undefined) {
+    return { label, description: `Ends ${better ? "your opponent's" : 'your'} mate in ${moves}` };
   }
-  const better = evaluationLeader(before) !== side;
-  return {
-    label: signed(mateLabel(before.mate!), better),
-    description: `Ends ${better ? "your opponent's" : 'your'} mate in ${moveCount(before.mate!)}`,
-  };
+  const mating = evaluationLeader(after) === side;
+  return { label, description: `${mating ? 'You mate' : 'Your opponent mates'} in ${moves}` };
 }
 
-const signed = (label: string, plus: boolean) => `${plus ? '+' : '\u2212'}${label}`;
+/**
+ * How good a position's mate is for `side`, to compare two: its own mate
+ * beats none, the sooner the better, and the opponent's is worse than none,
+ * the sooner the worse.
+ */
+function mateRank(evaluation: Evaluation, side: Color): number {
+  if (evaluation.mate === undefined) return 0;
+  const urgency = MATE_RANKS - Math.abs(evaluation.mate);
+  return evaluationLeader(evaluation) === side ? urgency : -urgency;
+}
+
+/** More than any mate's moves, so every mate ranks away from no mate. */
+const MATE_RANKS = 1000;
+
+const withSign = (label: string, plus: boolean) => `${plus ? '+' : '\u2212'}${label}`;
 
 /** A mate's label, without its side: "M3". */
 const mateLabel = (mate: number) => `M${Math.abs(mate)}`;
