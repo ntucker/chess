@@ -50,6 +50,7 @@ import {
   type StructureFeature,
   type Threat,
   type Trap,
+  type VariationId,
 } from './lesson';
 import {
   filePawnCount,
@@ -239,6 +240,28 @@ function checkVariations(lesson: Lesson, report: Report) {
       ancestors.add(parent);
     }
   }
+  const named = namedVariations(lesson);
+  for (const id of Object.keys(lesson.variations)) {
+    if (!named.has(id))
+      report(`variations[${JSON.stringify(id)}]`, 'names no position, in it or under it');
+  }
+}
+
+/**
+ * The variations that name a position, or hold one that does. Every other
+ * name is a leftover: the opening list leaves it out and nothing shows it.
+ */
+export function namedVariations({ variations, positions }: Lesson): Set<VariationId> {
+  const named = new Set<VariationId>();
+  for (const { variation } of Object.values(positions)) {
+    for (
+      let id: VariationId | undefined = variation;
+      id && !named.has(id);
+      id = variations[id]?.parent
+    )
+      named.add(id);
+  }
+  return named;
 }
 
 /** The position after `move`, or undefined after reporting why it is wrong. */
