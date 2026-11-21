@@ -59,6 +59,37 @@ describe('parseStudy', () => {
     expect(isDubious([...mainLine(joined.moves[0])][2])).toBe(true);
   });
 
+  it('joins a chapter set up where only a later chapter goes, keeping study order', () => {
+    const pgn = [
+      chapter('London', '1. d4 d5 *'),
+      chapter('Main line', '3. e3 { Solid. } c5 *', AFTER_NF6),
+      chapter('Bf4', '1. d4 d5 2. Bf4 Nf6 *'),
+    ].join('\n');
+    const chapters = parseStudy(pgn, () => true);
+    expect(chapters.map(({ title }) => title)).toEqual(['London', 'Main line', 'Bf4']);
+    const joined = chapters[1];
+    expect(positionKey(joined.start)).toBe(positionKey(chapters[0].start));
+    expect([...mainLine(joined.moves[0])].map(({ uci }) => uci)).toEqual(
+      uciLine('d4', 'd5', 'Bf4', 'Nf6', 'e3', 'c5'),
+    );
+  });
+
+  it('joins a chapter that waits on another waiting chapter, or comes first in the study', () => {
+    const AFTER_E3 = 'rnbqkb1r/ppp1pppp/5n2/3p4/3P1B2/4P3/PPP2PPP/RN1QKBNR b KQkq - 0 3';
+    const pgn = [
+      chapter('After e3', '3... c5 *', AFTER_E3),
+      chapter('Main line', '3. e3 { Solid. } e6 *', AFTER_NF6),
+      chapter('London', '1. d4 d5 *'),
+      chapter('Bf4', '1. d4 d5 2. Bf4 Nf6 *'),
+    ].join('\n');
+    const chapters = parseStudy(pgn, () => true);
+    expect(chapters.map(({ title }) => title)).toEqual(['After e3', 'Main line', 'London', 'Bf4']);
+    for (const one of chapters) expect(one.start.fullmoves).toBe(1);
+    expect([...mainLine(chapters[0].moves[0])].map(({ uci }) => uci)).toEqual(
+      uciLine('d4', 'd5', 'Bf4', 'Nf6', 'e3', 'c5'),
+    );
+  });
+
   it('keeps a chapter set up where no earlier chapter goes', () => {
     const pgn = [
       chapter('London', '1. d4 d5 *'),
@@ -71,8 +102,11 @@ describe('parseStudy', () => {
 });
 
 describe('side-line introductions', () => {
-  const commentOn = (pgn: string, sans: string[]) => {
-    const chapter = parseStudy(pgn, () => true).at(-1)!;
+  const commentOn = (pgn: string, sans: string[], title?: string) => {
+    const chapters = parseStudy(pgn, () => true);
+    const chapter =
+      title === undefined ? chapters.at(-1) : chapters.find((one) => one.title === title);
+    if (!chapter) throw new Error(`No chapter ${title}`);
     return [...chapterMoves(chapter)]
       .filter((move) => sans.includes(move.san))
       .map(({ san, comment }) => [san, comment]);
@@ -118,6 +152,18 @@ describe('side-line introductions', () => {
           .map(({ san, comment }) => [san, comment]),
       );
     expect(comments).toEqual([[['d5', 'A solid reply.']], [['d5', 'Before Nf6 c5.']]]);
+  });
+
+  it('reads intros against earlier chapters in the study, even in a chapter that waited', () => {
+    const pgn = [
+      chapter('London', '1. d4 d5 *'),
+      chapter('Main line', '3. e3 e6 (3... c5 { Before e6, c5 and Nc6. } 4. c3 Nc6) *', AFTER_NF6),
+      chapter('Later', '1. d4 d5 2. Bf4 Nf6 3. e3 c5 4. c3 *'),
+    ].join('\n');
+    expect(commentOn(pgn, ['c5', 'Nc6'], 'Main line')).toEqual([
+      ['c5', 'Before e6, c5 and Nc6.'],
+      ['Nc6', ''],
+    ]);
   });
 });
 

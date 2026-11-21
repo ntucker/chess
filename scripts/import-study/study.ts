@@ -88,35 +88,68 @@ export const isDubious = (move: StudyMove) => move.nags.some((nag) => DUBIOUS_NA
 
 /**
  * The chapters of `pgn` whose title `include` accepts, in study order. A
- * chapter set up from a position an earlier chapter's moves reach (studies
+ * chapter set up from a position another chapter's moves reach (studies
  * that go on where the last chapter stopped) starts where that one does,
- * through those moves, which keep no comment: the earlier chapter says it.
+ * through those moves, which keep no comment: that chapter says it. One
+ * whose position only a later chapter reaches waits for it. The lesson
+ * starts where the first chapter not set up from a position does.
  */
 export function parseStudy(pgn: string, include: (title: string) => boolean): Chapter[] {
-  const chapters: Chapter[] = [];
-  // The positions earlier chapters reach, for `withLineIntros`.
-  const known = new Set<string>();
-  const add = (chapter: Chapter) => {
-    chapters.push(chapter);
-    for (const move of chapterMoves(chapter)) known.add(positionKey(move.after));
-  };
-  for (const game of parsePgn(pgn)) {
+  const games = parsePgn(pgn).flatMap((game) => {
     const title = game.headers.get('ChapterName') ?? game.headers.get('Event') ?? '';
-    if (!include(title)) continue;
     const start = startingPosition(game.headers).unwrap() as Chess;
-    const namedFrom = Number(game.headers.get('NamedFrom')) || undefined;
+    return include(title) ? [{ game, title, start }] : [];
+  });
+  if (games.length === 0) return [];
+  const startKey = positionKey(
+    (games.find(({ game }) => !game.headers.has('FEN')) ?? games[0]).start,
+  );
+  const chapters: Chapter[] = [];
+  const studyIndex = new Map<Chapter, number>();
+  const add = (chapter: Chapter, index: number) => {
+    chapters.push(chapter);
+    studyIndex.set(chapter, index);
+  };
+  const read = (index: number) => {
+    const { game, title, start } = games[index];
     const lead = leadTo(chapters, start);
-    if (!lead) {
-      const moves = withLineIntros(readMoves(game.moves.children, start, 1), known);
-      add({ title, start, moves, ...(namedFrom && { namedFrom, cut: true }) });
-      continue;
+    if (lead) {
+      const first = copyLead(lead, (end) =>
+        readMoves(game.moves.children, end.after, end.ply + 1, end),
+      );
+      add({ title, start: chapters[0].start, moves: [first] }, index);
+      return;
     }
-    const first = copyLead(lead, (last) =>
-      readMoves(game.moves.children, last.after, last.ply + 1, last),
-    );
-    add({ title, start: chapters[0].start, moves: withLineIntros([first], known) });
+    const namedFrom = Number(game.headers.get('NamedFrom')) || undefined;
+    const moves = readMoves(game.moves.children, start, 1);
+    add({ title, start, moves, ...(namedFrom && { namedFrom, cut: true }) }, index);
+  };
+  // Chapter `index` can be read once it starts at the lesson's start, or a read chapter leads there.
+  const ready = (index: number) =>
+    positionKey(games[index].start) === startKey || !!leadTo(chapters, games[index].start);
+  let waiting = games.map((_, index) => index);
+  // Pass after pass, while one reads a chapter.
+  for (let count = Infinity; waiting.length < count;) {
+    count = waiting.length;
+    waiting = waiting.filter((index) => {
+      if (!ready(index)) return true;
+      read(index);
+      return false;
+    });
   }
-  return chapters;
+  // No chapter reaches these: each keeps its own start.
+  for (const index of waiting) read(index);
+  return withStudyIntros(chapters.sort((a, b) => studyIndex.get(a)! - studyIndex.get(b)!));
+}
+
+/** `chapters`, in study order, with side-line intros moved against the chapters before each one. */
+function withStudyIntros(chapters: readonly Chapter[]): Chapter[] {
+  const known = new Set<string>();
+  return chapters.map((chapter) => {
+    const introduced = { ...chapter, moves: withLineIntros(chapter.moves, known) };
+    for (const move of chapterMoves(introduced)) known.add(positionKey(move.after));
+    return introduced;
+  });
 }
 
 /**
@@ -281,7 +314,7 @@ function copyLead(
   return copy;
 }
 
-/** The moves from the first chapter's start to `pos` in an earlier chapter; none for that start itself or a position none reaches. */
+/** The moves from the first chapter's start to `pos` in a chapter read before; none for that start itself or a position none reaches. */
 function leadTo(chapters: readonly Chapter[], pos: Chess): StudyMove[] | undefined {
   const key = positionKey(pos);
   if (chapters.length === 0 || positionKey(chapters[0].start) === key) return undefined;

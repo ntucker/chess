@@ -129,6 +129,18 @@ const LOLORIV_RUY = {
   },
 } as const;
 
+/** Bosburp's Queen's Gambit repertoire for White. */
+const BOSBURP_QG = {
+  study: '0uRBskUV',
+  credit: {
+    title: "Queen's Gambit | Full Repertoire",
+    author: 'Bosburp',
+    url: 'https://lichess.org/study/0uRBskUV',
+  },
+  // The introduction's jokes: "You found the Easter Egg".
+  leave: ['b3', 'e4'],
+} as const;
+
 export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
   'caro-kann': {
     from: [
@@ -446,17 +458,11 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
       },
       {
         // White's view of the Albin, reworded for Black; its introduction leads to it.
-        study: '0uRBskUV',
-        credit: {
-          title: "Queen's Gambit | Full Repertoire",
-          author: 'Bosburp',
-          url: 'https://lichess.org/study/0uRBskUV',
-        },
+        ...BOSBURP_QG,
         writtenFor: 'white',
-        chapters: (title: string) => Object.hasOwn(BOSBURP_QG_CHAPTERS, title),
-        // The introduction's jokes: "You found the Easter Egg".
-        leave: ['b3', 'e4'],
-        chapterName: (title: string) => BOSBURP_QG_CHAPTERS[title],
+        chapters: (title: string) =>
+          title === QG_INTRO || QG_CHAPTERS[title] === 'Albin Countergambit',
+        chapterName: (title: string) => QG_CHAPTERS[title],
         namedFrom: 3,
       },
       {
@@ -675,6 +681,60 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
       side: 'white',
     },
   },
+  'queens-gambit': {
+    from: [
+      {
+        ...BOSBURP_QG,
+        // White's repertoire; the outro only says goodbye.
+        chapters: (title: string) => Object.hasOwn(QG_CHAPTERS, title),
+        chapterName: (title: string) => QG_CHAPTERS[title],
+      },
+      // Wikibooks fills the replies the study leaves open, one root per reply so the page budget
+      // isn't spent deep in the first one.
+      {
+        root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...dxc4',
+        topName: "Queen's Gambit Accepted",
+        rename: {
+          'Classical variation': 'Classical Defence',
+          'Classical Variation': 'Classical Defence',
+        },
+        maxPages: 20,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...e6',
+        topName: "Queen's Gambit Declined",
+        maxPages: 20,
+      },
+      {
+        root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...c6',
+        topName: 'Slav Defence',
+        // Steps on the way to the Czech Variation, which the study names already.
+        rename: {
+          'Modern Line': '',
+          'Slav accepted': '',
+          'Alapin variation': '',
+          'Alapin Variation': '',
+          'Central variation': '',
+          'Central Variation': '',
+        },
+        maxPages: 6,
+      },
+      { root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...Nf6', topName: 'Marshall Defence' },
+      { root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...Bf5', topName: 'Baltic Defence' },
+      {
+        root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...Nc6',
+        topName: 'Chigorin Defence',
+        maxPages: 15,
+      },
+      { root: 'Chess_Opening_Theory/1._d4/1...d5/2._c4/2...c5', topName: 'Austrian Defence' },
+    ],
+    engineCheck: true,
+    info: {
+      id: 'queens-gambit',
+      title: "Queen's Gambit",
+      side: 'white',
+    },
+  },
 };
 
 /** nohandlebars' Fischer Defense chapters the lesson reads, as variation names. */
@@ -699,10 +759,55 @@ const LENIN_ITALIAN_CHAPTERS: Readonly<Record<string, string | undefined>> = {
   'Evans Gambit': 'Italian: Giuoco Piano: Evans Gambit',
 };
 
-/** Bosburp's Queen's Gambit chapters leading to and covering the Albin, as variation names. */
-const BOSBURP_QG_CHAPTERS: Readonly<Record<string, string | undefined>> = {
-  '♕ Introduction ♕': undefined,
+/** Bosburp's introduction chapter, which the Queen's Gambit lesson's own name covers. */
+const QG_INTRO = '♕ Introduction ♕';
+
+/**
+ * Bosburp's Queen's Gambit chapters, as variation names. A chapter named only by its move takes its
+ * section's name, since a heading names no move.
+ */
+const QG_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  // The lesson's own name.
+  [QG_INTRO]: undefined,
+  "✦ Section 1: Queen's Gambit Accepted ✦": "Queen's Gambit Accepted",
+  'QGA: Rosenthal Defense 3...e6': "Queen's Gambit Accepted: Rosenthal Defence",
+  'QGA: Classical Defense 3...Nf6-4...e6-5...c5': "Queen's Gambit Accepted: Classical Defence",
+  'QGA: Smyslov Variation 3...Nf6 with 4...g6': "Queen's Gambit Accepted: Smyslov Variation",
+  'QGA: Janowski-Larsen Variation 3...Nf6 with 4...Bg4':
+    "Queen's Gambit Accepted: Janowski-Larsen Variation",
+  'QGA: Gunsberg Defense 3...c5': "Queen's Gambit Accepted: Gunsberg Defence",
+  'QGA: Alekhine Defense 3...a6': "Queen's Gambit Accepted: Alekhine Defence",
+  'QGA: Slav Gambit 3...b5': "Queen's Gambit Accepted: Slav Gambit",
+  'QGA: 4...c5': "Queen's Gambit Accepted",
+  'QGA: 3...c6': "Queen's Gambit Accepted",
+  'QGA: 3...Bg4?!': "Queen's Gambit Accepted",
+  'QGA: 3...Nc6': "Queen's Gambit Accepted",
+  "✦ Section 2: Queen's Gambit Declined ✦": "Queen's Gambit Declined",
+  'QGD: Exchange Variation 3...Nf6 4. cxd5': "Queen's Gambit Declined: Exchange Variation",
+  'QGD: Charousek Variation 3...Be7': "Queen's Gambit Declined: Charousek Variation",
+  'QGD: Tarrasch Defense 3...c5': "Queen's Gambit Declined: Tarrasch Defence",
+  'QGD: Janowski Variation 3...a6': "Queen's Gambit Declined: Janowski Variation",
+  'QGD: 3...dxc4': "Queen's Gambit Declined",
+  '✦ Section 3: Slav/Semi-Slav Defense ✦': 'Slav Defence',
+  'Slav: Czech Variation 4...dxc4 with 5...Bf5': 'Slav Defence: Czech Variation',
+  'Slav: Steiner Variation 4...dxc4 with 5...Bg4': 'Slav Defence: Steiner Variation',
+  'Slav: Soultanbeieff Variation 4...dxc4 with 5...e6': 'Slav Defence: Soultanbeieff Variation',
+  'Slav: Smyslov Variation 4...dxc4 with 5...Na6': 'Slav Defence: Smyslov Variation',
+  'Slav: 3...Bf5': 'Slav Defence',
+  'Slav: 4...Bf5': 'Slav Defence',
+  'Semi-Slav: Botvinnik Variation 5...dxc4 6. e4': 'Semi-Slav Defence: Botvinnik Variation',
+  'Semi-Slav: 5...Be7': 'Semi-Slav Defence',
+  'Semi-Slav: 5...Nbd7': 'Semi-Slav Defence',
+  'Semi-Slav: Anti-Moscow Gambit 5...h6': 'Semi-Slav Defence: Anti-Moscow Gambit',
+  'Semi-Slav: 4...f5 Stonewall-ish': 'Semi-Slav Defence: Stonewall',
+  'Semi-Slav: Anti-Noteboom Gambit 4...dxc4 5. g3': 'Semi-Slav Defence: Anti-Noteboom Gambit',
+  '✦ Section 4: move 2 sidelines ✦': undefined,
   'Albin Countergambit 2...e5': 'Albin Countergambit',
+  'Chigorin Defense 2...Nc6': 'Chigorin Defence',
+  'Austrian Defense 2...c5': 'Austrian Defence',
+  'Marshall Defense 2...Nf6': 'Marshall Defence',
+  'Baltic Defense 2...Bf5': 'Baltic Defence',
+  'Zibermints Gambit 2...b5?': 'Zibermints Gambit',
 };
 
 /** Arco47's Bishop's Opening chapters, as variation names. */

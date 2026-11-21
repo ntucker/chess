@@ -20,6 +20,7 @@ export const LESSONS = {
   'bc4-system': () => import('@/assets/lessons/bc4-system.json'),
   albin: () => import('@/assets/lessons/albin.json'),
   'open-game': () => import('@/assets/lessons/open-game.json'),
+  'queens-gambit': () => import('@/assets/lessons/queens-gambit.json'),
 };
 
 export type LessonId = keyof typeof LESSONS;
