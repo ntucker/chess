@@ -20,11 +20,13 @@ describe('reviewReducer', () => {
     expect(reviewReducer(shown, { type: 'dwell', ply: 2 }).dwelt).toBe(2);
   });
 
-  it('keeps the visited plies as they are when the board returns to one', () => {
-    const back = [3, 5, 3].reduce(
+  it('keeps the visited set itself when the board returns to a ply it showed', () => {
+    const seen = [3, 5].reduce(
       (state, ply) => reviewReducer(state, { type: 'goto', ply }),
       initialReview,
     );
-    expect(back).toEqual({ ply: 3, visited: new Set([3, 5]) });
+    const back = reviewReducer(seen, { type: 'goto', ply: 3 });
+    expect(back.ply).toBe(3);
+    expect(back.visited).toBe(seen.visited);
   });
 });

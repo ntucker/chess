@@ -46,7 +46,7 @@ export type FinalAnalysis = Analysis & { readonly final: true };
 export const isFinal = (analysis: Analysis | undefined): analysis is FinalAnalysis =>
   !!analysis?.final;
 
-/** `analysis` once it's final, else undefined: what a move's label may read. */
+/** `analysis` if it's final, else undefined. */
 export const finalOnly = (analysis: Analysis | undefined) =>
   isFinal(analysis) ? analysis : undefined;
 

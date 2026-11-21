@@ -58,8 +58,8 @@ export function useMoveQualities(
   useSubscription(getAnalysis, ...args(-1));
   useSubscription(getAnalysis, ...args(0));
   const analyses = storedAnalyses(ctrl, engine, lines, state).map(finalOnly);
-  // No legal-move counts: a forced move waits for its search, which lists
-  // it first, so it's labelled best then, as the review labels it at once.
+  // No legal-move counts here, so a forced move waits for its own search,
+  // which labels it best; the review counts them and labels it at once.
   const qualities = moves.map(
     (uci, n) =>
       labelMove({
