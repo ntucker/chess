@@ -1,4 +1,5 @@
 import { Text, useReducedMotion, useTheme } from '@reactive/silk-native';
+import { oklch } from '@reactive/silk-core/color';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { type CSSAnimationKeyframes } from 'react-native-reanimated';
@@ -172,7 +173,7 @@ function cardLook(mood: Mood, theme: Theme, schemeColors: SchemeColors) {
   const won = mood === 'won';
   return {
     ground: won ? schemeColors.endingGroundWon : schemeColors.endingGroundPlain,
-    shadow: `0px ${offsetY}px ${blur}px rgba(0, 0, 0, ${opacity})`,
+    shadow: `0px ${offsetY}px ${blur}px ${oklch(0, 0, 0, opacity)}`,
     rule: won ? accent.solid : neutral.border,
     eyebrow: won ? schemeColors.endingEyebrowWon : color.textSecondary,
     title: won ? accent.solid : color.textPrimary,
