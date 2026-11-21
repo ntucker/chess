@@ -50,4 +50,15 @@ describe('SettingsProvider on the web', () => {
     });
     expect(seen.at(-1)?.opponent).toBe(1100);
   });
+
+  it("doesn't write back what it loads, so tabs on two builds don't echo each other", async () => {
+    await renderSettings();
+    // An older build's save, which has no theme.
+    const newValue = JSON.stringify({ opponent: 1100 });
+    localStorage.setItem('settings', newValue);
+    await act(async () => {
+      window.dispatchEvent(new StorageEvent('storage', { key: 'settings', newValue }));
+    });
+    expect(localStorage.getItem('settings')).toBe(newValue);
+  });
 });

@@ -14,31 +14,33 @@ import { writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
+import { oklch } from '@reactive/silk-core/color';
+
 const SIZE = 1024;
 const root = fileURLToPath(new URL('..', import.meta.url));
 
 // The three brand colors, as in src/theme/theme.ts.
 const brand = {
-  velvet: '#3b2d55',
-  spotlight: '#d9a441',
-  curtain: '#8f1b35',
+  velvet: oklch(0.332, 0.07, 299),
+  spotlight: oklch(0.751, 0.1295, 79.8),
+  curtain: oklch(0.429, 0.15, 14.3),
 };
 
 const color = {
   // The stage: the back wall, the dark it fades to, the beam and the floor.
-  night: '#231a3a',
-  dark: '#0e0a18',
-  beam: '#9a86c8',
-  floorFar: '#1a1229',
-  floorNear: '#0c0814',
+  night: oklch(0.247, 0.06, 295),
+  dark: oklch(0.158, 0.03, 296),
+  beam: oklch(0.663, 0.098, 298),
+  floorFar: oklch(0.205, 0.045, 298),
+  floorNear: oklch(0.147, 0.026, 299),
   // The curtains' folds, from the lit side to the deepest shadow.
-  sheen: '#a8223f',
-  fold: '#6c1329',
-  shadow: '#4c0c1c',
+  sheen: oklch(0.483, 0.169, 14.7),
+  fold: oklch(0.352, 0.122, 12.5),
+  shadow: oklch(0.278, 0.094, 12),
   // The knight, from where the light hits it outward, and its eye.
-  lightCore: '#fff6dc',
-  lightMid: '#f7cf74',
-  eye: '#2a1838',
+  lightCore: oklch(0.973, 0.035, 91),
+  lightMid: oklch(0.87, 0.119, 86),
+  eye: oklch(0.25, 0.062, 309),
 };
 
 // The knight, facing left. Each point is [x, y]; a third element marks a
@@ -294,7 +296,11 @@ const pngs = [
     size: 1024,
     svg: logo({ scale: ANDROID, layers: ['knight'] }),
   },
-  { file: 'android-icon-monochrome.png', size: 1024, svg: logo({ scale: ANDROID, flat: '#fff' }) },
+  {
+    file: 'android-icon-monochrome.png',
+    size: 1024,
+    svg: logo({ scale: ANDROID, flat: oklch(1, 0, 0) }),
+  },
   // Android 12 and later crop the splash image to a circle two thirds as wide.
   { file: 'splash-icon.png', size: 512, svg: logo({ scale: 0.76, layers: ['knight'] }) },
   { file: 'logo-mark.png', size: 160, svg: logo() },

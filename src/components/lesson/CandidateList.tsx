@@ -401,22 +401,27 @@ const BOOK_BADGE_SIZE = 16;
 const INFO_SIZE = 13;
 
 /**
- * The list's heading, with a mark that a tap or a resting mouse says whose
- * games the percentages count, when they show: the words stay out of the
- * panel until asked for. Screen readers read them after the heading.
+ * The list's heading, which a tap or a resting mouse makes say whose games
+ * the percentages count, when they show: the words stay out of the panel
+ * until asked for. A mark beside it hints at that on a wide page. Screen
+ * readers read them after the heading.
  */
 function ShareTip({ tip, children }: { readonly tip?: string; readonly children: ReactNode }) {
   const { theme } = useTheme();
+  const part = useNarrowPart();
   if (!tip) return children;
   return (
     <Tooltip.Root>
       <Tooltip.Trigger style={STATIC.tipped}>
         {children}
-        <Ionicons
-          name="information-circle-outline"
-          size={INFO_SIZE}
-          color={theme.semantic.color.textSecondary}
-        />
+        {/* A narrow pane has no room for it beside the heading: a tap on the heading still opens the tip. */}
+        <View {...part('wide-only')}>
+          <Ionicons
+            name="information-circle-outline"
+            size={INFO_SIZE}
+            color={theme.semantic.color.textSecondary}
+          />
+        </View>
         <Text style={STATIC.spoken}>{tip}</Text>
       </Tooltip.Trigger>
       <Tooltip.Content>{tip}</Tooltip.Content>
