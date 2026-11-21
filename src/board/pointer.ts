@@ -94,8 +94,8 @@ const TAP_SLOP = 10;
 
 /**
  * Reports a mouse coming onto `target` and leaving it, and a finger or pen
- * tapping it: pressing it and lifting without moving more than `TAP_SLOP`.
- * A swipe across it, or a press that started elsewhere, is no tap. Returns a
+ * tapping it: pressing it and lifting without ever moving more than
+ * `TAP_SLOP`. A swipe across it, or a press that started elsewhere, is no tap. Returns a
  * function that stops.
  */
 export function watchBoardPointer(
@@ -112,9 +112,15 @@ export function watchBoardPointer(
   const onDown = ({ pointerType, isPrimary, clientX, clientY }: PointerEvent) => {
     press = isPrimary && !hovers(pointerType) ? { x: clientX, y: clientY } : undefined;
   };
-  const onUp = ({ isPrimary, clientX, clientY }: PointerEvent) => {
-    if (!isPrimary || !press) return;
-    if (Math.hypot(clientX - press.x, clientY - press.y) <= TAP_SLOP) report('tap');
+  // A press that strays further than TAP_SLOP is no tap, even if it comes back.
+  const strays = ({ clientX, clientY }: PointerEvent) =>
+    !!press && Math.hypot(clientX - press.x, clientY - press.y) > TAP_SLOP;
+  const onMove = (event: PointerEvent) => {
+    if (event.isPrimary && strays(event)) press = undefined;
+  };
+  const onUp = (event: PointerEvent) => {
+    if (!event.isPrimary) return;
+    if (press && !strays(event)) report('tap');
     press = undefined;
   };
   const onCancel = () => {
@@ -123,12 +129,14 @@ export function watchBoardPointer(
   target.addEventListener('pointerenter', onEnter);
   target.addEventListener('pointerleave', onLeave);
   target.addEventListener('pointerdown', onDown);
+  target.addEventListener('pointermove', onMove);
   target.addEventListener('pointerup', onUp);
   target.addEventListener('pointercancel', onCancel);
   return () => {
     target.removeEventListener('pointerenter', onEnter);
     target.removeEventListener('pointerleave', onLeave);
     target.removeEventListener('pointerdown', onDown);
+    target.removeEventListener('pointermove', onMove);
     target.removeEventListener('pointerup', onUp);
     target.removeEventListener('pointercancel', onCancel);
   };

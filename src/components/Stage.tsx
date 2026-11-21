@@ -2,7 +2,7 @@ import { Surface, useTheme } from '@reactive/silk-native';
 import { type ComponentProps, type ReactNode, useState } from 'react';
 import { View } from 'react-native';
 
-import { asideAfter, type CardAside } from '@/board/endingAct';
+import { asideAfter, type CardAside } from '@/board/cardAside';
 import { gameEnding } from '@/game/ending';
 import Board, { type BoardProps } from '@/components/Board';
 import { EndingCard } from '@/components/EndingCard';
@@ -116,9 +116,9 @@ export function BoardColumn({ game, rival, board, onSwap, stepperMiddle }: Board
           <Board
             {...board}
             ending={ending}
-            onEndingPointer={(pointer) =>
-              endingFen && setAside((current) => asideAfter(current, pointer, endingFen))
-            }
+            onEndingPointer={(pointer) => {
+              if (endingFen) setAside((current) => asideAfter(current, pointer, endingFen));
+            }}
             dom={{ style: styles.fill, scrollEnabled: false }}
           />
           {ending ? (

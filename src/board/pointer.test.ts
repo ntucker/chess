@@ -162,15 +162,21 @@ describe('watchBoardPointer', () => {
     expect(report.mock.calls).toEqual([['tap'], ['tap']]);
   });
 
-  it('takes no swipe, second finger, cancelled press or press from elsewhere for a tap', () => {
+  it('takes no swipe, second finger, cancelled press or lift without a press for a tap', () => {
     const { report, fire, tap } = setupBoard();
     tap('touch', 0, 60);
+    // Out and back again.
+    fire('pointerdown', 'touch', 0);
+    fire('pointermove', 'touch', 60);
+    fire('pointerup', 'touch', 2);
+    // A second finger joins the first, which then lifts.
+    fire('pointerdown', 'touch', 0);
     fire('pointerdown', 'touch', 0, false);
-    fire('pointerup', 'touch', 0, false);
+    fire('pointerup', 'touch', 0);
     fire('pointerdown', 'touch');
     fire('pointercancel', 'touch');
     fire('pointerup', 'touch');
-    // Lifted on the board after pressing off it.
+    // A lift with no press on the board, as when one started off it.
     fire('pointerup', 'touch');
     expect(report).not.toHaveBeenCalled();
   });
