@@ -8,7 +8,6 @@ import { createRoot, type Root } from 'react-dom/client';
 
 import { Download, type DownloadFailure, FULL_STOCKFISH_DOWNLOAD } from '@/resources/download';
 import { SettingsProvider } from '@/settings/SettingsProvider';
-import { FULL_WASM_BYTES } from '@/stockfish/fullFiles';
 import { themes } from '@/theme/theme';
 
 import { OpponentPicker } from './OpponentPicker';
@@ -266,16 +265,16 @@ describe('OpponentPicker', () => {
     const progress = () => trigger().nextElementSibling?.textContent;
     // Nothing yet: the host hasn't started, or found the files in the cache.
     expect(progress()).toBeUndefined();
-    const report = (received: number, failure?: DownloadFailure) =>
+    const report = (percent: number, failure?: DownloadFailure) =>
       act(async () => {
         // Not awaited: act flushes the update.
         void ctrl.set(Download, FULL_STOCKFISH_DOWNLOAD, {
           ...FULL_STOCKFISH_DOWNLOAD,
-          received,
+          percent,
           failure,
         });
       });
-    await report(Math.floor(FULL_WASM_BYTES * 0.425));
+    await report(42);
     expect(progress()).toBe('· downloading 42%');
     await report(0, 'retrying');
     expect(progress()).toBe('· download failed, trying again');
@@ -284,7 +283,7 @@ describe('OpponentPicker', () => {
     const reload = trigger().nextElementSibling?.nextElementSibling;
     expect(reload?.getAttribute('role')).toBe('button');
     expect(reload?.textContent).toBe('Reload');
-    await report(FULL_WASM_BYTES);
+    await report(100);
     expect(progress()).toBeUndefined();
   });
 });

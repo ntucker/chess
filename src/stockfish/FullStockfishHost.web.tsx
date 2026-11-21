@@ -2,7 +2,7 @@ import { useReportFullStockfishDownload } from '@/resources/download';
 
 import { fullStockfish } from './engine';
 import { loadFullStockfish } from './full';
-import { PREVIEW_FOLDER } from './fullFiles';
+import { FROM_OWN_SITE, PREVIEW_FOLDER } from './fullFiles';
 import { useWorkerHost } from './StockfishHost.web';
 
 /**
@@ -20,5 +20,5 @@ export function FullStockfishHost() {
 /** Where the files download from: the live site's folder for a preview that shares it, else the page's own site's. */
 function folder() {
   const base = (process.env.EXPO_BASE_URL ?? '').replace(/\/$/, '');
-  return PREVIEW_FOLDER || new URL(`${base}/stockfish/`, location.origin).href;
+  return FROM_OWN_SITE ? new URL(`${base}/stockfish/`, location.origin).href : PREVIEW_FOLDER;
 }

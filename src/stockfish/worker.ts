@@ -8,6 +8,12 @@ export interface StockfishWorker {
   terminate(): void;
 }
 
+/** The files a Web Worker starts the engine from (`startStockfishWorker`). */
+export interface EngineFiles {
+  readonly loader: string;
+  readonly wasm: Blob;
+}
+
 /**
  * Starts Stockfish in a Web Worker. `loader` is the source of the engine's
  * JavaScript loader, and `wasm` its WebAssembly; the loader reads the

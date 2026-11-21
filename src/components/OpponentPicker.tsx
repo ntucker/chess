@@ -8,7 +8,7 @@ import { describeOpponent, type Opponent, OPPONENT_PRESETS, OPPONENTS } from '@/
 import { reload } from '@/files/newVersion';
 import { type DownloadFailure, useFullStockfishDownload } from '@/resources/download';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
-import { FULL_WASM_BYTES, PREVIEW_FOLDER } from '@/stockfish/fullFiles';
+import { FROM_OWN_SITE } from '@/stockfish/fullFiles';
 import { narrowLength, narrowStyles } from '@/theme/narrow';
 import { useNarrowStyles } from '@/theme/Narrow';
 
@@ -140,17 +140,15 @@ export function OpponentPicker() {
   );
 }
 
-/**
- * A reload brings the site's newer build, except to Android, whose app an
- * update catches up with, and to a preview that downloads from the live site,
- * which needs a new build of its own.
- */
-const RELOADS = WEB && !PREVIEW_FOLDER;
-
 const FAILURES: Record<DownloadFailure, string> = {
   retrying: '· download failed, trying again',
   // Short, to fit beside the name.
-  newVersion: RELOADS ? '· site updated' : WEB ? '· preview out of date' : '· needs an app update',
+  // A preview sharing the live site's copy needs a new build of its own.
+  newVersion: FROM_OWN_SITE
+    ? '· site updated'
+    : WEB
+      ? '· preview out of date'
+      : '· needs an app update',
 };
 
 /**
@@ -161,14 +159,13 @@ const FAILURES: Record<DownloadFailure, string> = {
 function FullStockfishProgress() {
   const download = useFullStockfishDownload();
   if (!download) return null;
-  const percent = Math.floor((download.received / FULL_WASM_BYTES) * 100);
   return (
     <>
       <Text role="caption" tone="secondary" numberOfLines={1} style={styles.progress}>
-        {download.failure ? FAILURES[download.failure] : `· downloading ${percent}%`}
+        {download.failure ? FAILURES[download.failure] : `· downloading ${download.percent}%`}
       </Text>
       {/* Beside the message rather than in it, so a narrow bar cuts the message, not the reload. */}
-      {RELOADS && download.failure === 'newVersion' ? (
+      {FROM_OWN_SITE && download.failure === 'newVersion' ? (
         <Pressable role="button" onPress={reload} style={styles.reload}>
           <Text role="caption" tone="accent" style={styles.underlined}>
             Reload

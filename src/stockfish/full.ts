@@ -8,15 +8,10 @@
 // web view.
 import { fetchOk, HttpError } from '@/files/fetchOk';
 import { NewVersionError } from '@/files/newVersion';
-import type { DownloadFailure } from '@/resources/download';
+import type { ReportDownload } from '@/resources/download';
 
 import { FULL_LOADER, FULL_WASM, FULL_WASM_BYTES } from './fullFiles';
-
-/** The files a Web Worker starts the engine from (`startStockfishWorker`). */
-export interface EngineFiles {
-  readonly loader: string;
-  readonly wasm: Blob;
-}
+import type { EngineFiles } from './worker';
 
 /**
  * All of the app's Stockfish caches start with this; each build's has its own
@@ -28,9 +23,8 @@ const CACHE = `${CACHE_PREFIX}${FULL_WASM}:${FULL_WASM_BYTES}`;
 /**
  * Full Stockfish's loader and WebAssembly: from the browser's cache when an
  * earlier visit downloaded them, else downloaded from `folder` (an absolute
- * address ending in `/`) and then cached. `report` hears how many of the
- * WebAssembly's `FULL_WASM_BYTES` have arrived, each time another whole
- * percent has, and all of them once the files are in hand. When the folder
+ * address ending in `/`) and then cached. `report` hears each whole percent
+ * of the WebAssembly as it arrives, and 100 once the files are in hand. When the folder
  * serves another build (a NewVersionError: no file by this build's name, or a
  * WebAssembly of another size), trying again can't help, only a newer app (on
  * the web, a reload): it reports `newVersion` and resolves undefined. Any
@@ -40,11 +34,11 @@ const CACHE = `${CACHE_PREFIX}${FULL_WASM}:${FULL_WASM_BYTES}`;
 export async function loadFullStockfish(
   folder: string,
   signal: AbortSignal,
-  report: (received: number, failure?: DownloadFailure) => void,
+  report: ReportDownload,
 ): Promise<EngineFiles | undefined> {
   try {
     const files = await getFiles(folder, signal, report);
-    report(FULL_WASM_BYTES);
+    report(100);
     return files;
   } catch (error) {
     if (signal.aborted) throw error;
@@ -61,7 +55,7 @@ export async function loadFullStockfish(
 async function getFiles(
   folder: string,
   signal: AbortSignal,
-  onProgress: (received: number) => void,
+  onProgress: (percent: number) => void,
 ): Promise<EngineFiles> {
   const cache = await openCache();
   const cached = cache && (await readCache(cache));
@@ -134,7 +128,7 @@ const download = (folder: string, file: string, signal: AbortSignal) =>
  * browser gathers the body into the Blob, so the page never holds a second
  * copy of its 99 MB.
  */
-async function readWasm(response: Response, onProgress: (received: number) => void): Promise<Blob> {
+async function readWasm(response: Response, onProgress: (percent: number) => void): Promise<Blob> {
   let received = 0;
   let percent = -1;
   let otherSize = false;
@@ -147,7 +141,7 @@ async function readWasm(response: Response, onProgress: (received: number) => vo
         const now = Math.floor((received / FULL_WASM_BYTES) * 100);
         if (now === percent) return;
         percent = now;
-        onProgress(received);
+        onProgress(now);
       },
       flush() {
         if (received !== FULL_WASM_BYTES) failSize();

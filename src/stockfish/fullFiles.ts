@@ -33,3 +33,10 @@ export const LIVE_FOLDER = 'https://ntucker.github.io/chess/stockfish/';
  * otherwise, and outside previews.
  */
 export const PREVIEW_FOLDER = process.env.EXPO_PUBLIC_STOCKFISH_FOLDER ?? '';
+
+/**
+ * Whether the files download from the site that serves this build, so a
+ * reload brings a newer build's: the web app, but not a preview that shares
+ * the live site's copy, nor Android.
+ */
+export const FROM_OWN_SITE = process.env.EXPO_OS === 'web' && !PREVIEW_FOLDER;

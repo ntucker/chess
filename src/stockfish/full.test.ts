@@ -73,10 +73,10 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-/** What `report` heard, as `received` or `received failure`. */
+/** What `report` heard, as `percent` or `percent failure`. */
 let reports: string[] = [];
-const report = (received: number, failure?: DownloadFailure) =>
-  reports.push(failure ? `${received} ${failure}` : `${received}`);
+const report = (percent: number, failure?: DownloadFailure) =>
+  reports.push(failure ? `${percent} ${failure}` : `${percent}`);
 const load = (folder = `${ORIGIN}/chess/stockfish/`) =>
   loadFullStockfish(folder, new AbortController().signal, report);
 
@@ -87,7 +87,7 @@ describe('loadFullStockfish', () => {
     expect(await files.wasm.text()).toBe(WHOLE.join(''));
     expect(files.wasm.type).toBe('application/wasm');
     // Each percent as it arrives, then all of it once the files are in hand.
-    expect(reports).toEqual(['100', '200', '200']);
+    expect(reports).toEqual(['50', '100', '100']);
     expect(fetched).toEqual([
       `${ORIGIN}/chess/stockfish/engine.js`,
       `${ORIGIN}/chess/stockfish/engine.wasm`,
@@ -99,14 +99,14 @@ describe('loadFullStockfish', () => {
     expect(fetched).toEqual([]);
     expect(again.loader).toBe('loader');
     expect(await again.wasm.text()).toBe(WHOLE.join(''));
-    expect(reports).toEqual(['200']);
+    expect(reports).toEqual(['100']);
   });
 
   it('tells only the chunks that reach another whole percent', async () => {
     wasmChunks = ['a', 'b', 'c', 'z'.repeat(197)];
     await load();
     // 0%, 1%, (still 1%), 100%, then done.
-    expect(reports).toEqual(['1', '2', '200', '200']);
+    expect(reports).toEqual(['0', '1', '100', '100']);
   });
 
   it("takes a WebAssembly of another size for a newer build's, and keeps nothing", async () => {

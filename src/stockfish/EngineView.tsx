@@ -8,7 +8,7 @@ import type { DOMImperativeFactory, DOMProps } from 'expo/dom';
 import { useDOMImperativeHandle } from 'expo/dom';
 import { type Ref, useEffect, useRef } from 'react';
 
-import type { DownloadFailure } from '@/resources/download';
+import type { ReportDownload } from '@/resources/download';
 
 import { loadFullStockfish } from './full';
 import { startStockfishWorker, type StockfishWorker } from './worker';
@@ -39,7 +39,7 @@ interface Props {
   /** The engine failed to start or crashed (or its files to download); it answers nothing more. */
   readonly onError: (message: string) => void;
   /** How full Stockfish's download goes (`startFull`, `loadFullStockfish`'s `report`). */
-  readonly onDownload: (received: number, failure?: DownloadFailure) => void;
+  readonly onDownload: ReportDownload;
   /** The engine has its files and is starting, ready for commands. */
   readonly onStarted: () => void;
   readonly dom?: DOMProps;

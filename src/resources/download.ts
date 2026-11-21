@@ -1,8 +1,6 @@
 import { useController, useQuery } from '@data-client/react';
 import { Entity } from '@data-client/rest';
 
-import { FULL_WASM_BYTES } from '@/stockfish/fullFiles';
-
 /**
  * How far a download of a big file the app fetches only when first needed
  * has got, as its host reports it (FullStockfishHost, for full Stockfish).
@@ -10,8 +8,8 @@ import { FULL_WASM_BYTES } from '@/stockfish/fullFiles';
  */
 export class Download extends Entity {
   readonly id: string = '';
-  /** How many bytes have arrived, of `FULL_WASM_BYTES`. */
-  readonly received: number = 0;
+  /** How much has arrived, in whole percent. */
+  readonly percent: number = 0;
   /**
    * Why the last try failed, if it did: the host tries again, except when the
    * site serves a newer build (`NewVersionError`), which only a reload (or on
@@ -29,6 +27,9 @@ export class Download extends Entity {
 /** Why a download failed: `retrying` it, or a `newVersion` of the site serves other files. */
 export type DownloadFailure = 'retrying' | 'newVersion';
 
+/** Tells how a download goes: how much has arrived (100 once the files are in hand), or that it failed. */
+export type ReportDownload = (percent: number, failure?: DownloadFailure) => void;
+
 /** The download of full Stockfish's files (src/stockfish/full.ts). */
 export const FULL_STOCKFISH_DOWNLOAD = { id: 'stockfish-full' };
 
@@ -38,22 +39,12 @@ export const FULL_STOCKFISH_DOWNLOAD = { id: 'stockfish-full' };
  */
 export function useFullStockfishDownload(): Download | undefined {
   const download = useQuery(Download, FULL_STOCKFISH_DOWNLOAD);
-  return download && (download.failure || download.received < FULL_WASM_BYTES)
-    ? download
-    : undefined;
+  return download && (download.failure || download.percent < 100) ? download : undefined;
 }
 
-/**
- * How full Stockfish's host reports its download: how many bytes have
- * arrived (all of them once the files are in hand, from the cache too), or
- * that it failed.
- */
-export function useReportFullStockfishDownload() {
+/** How full Stockfish's host reports its download (100 once the files are in hand, from the cache too). */
+export function useReportFullStockfishDownload(): ReportDownload {
   const ctrl = useController();
-  return (received: number, failure?: DownloadFailure) =>
-    ctrl.set(Download, FULL_STOCKFISH_DOWNLOAD, {
-      ...FULL_STOCKFISH_DOWNLOAD,
-      received,
-      failure,
-    });
+  return (percent, failure) =>
+    ctrl.set(Download, FULL_STOCKFISH_DOWNLOAD, { ...FULL_STOCKFISH_DOWNLOAD, percent, failure });
 }

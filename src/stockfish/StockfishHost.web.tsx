@@ -5,9 +5,8 @@ import { fetchOk } from '@/files/fetchOk';
 
 import { type Connection, liteStockfish, type Stockfish } from './engine';
 import { LOADER, WASM } from './files';
-import type { EngineFiles } from './full';
 import { useRestarts } from './restarts';
-import { startStockfishWorker, type StockfishWorker } from './worker';
+import { type EngineFiles, startStockfishWorker, type StockfishWorker } from './worker';
 
 /**
  * Runs Stockfish lite in a Web Worker for as long as it's mounted and
