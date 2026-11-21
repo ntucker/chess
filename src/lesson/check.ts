@@ -295,10 +295,8 @@ const STUDY_MENTION = /\b(?:chapters?|sections?|buttons?|(?:the|this|that|our|my
 
 /**
  * Whether note `text` points to the study it came from, which the learner
- * never sees. The importer asks such notes again, and a test keeps them out
- * of the shipped lessons; the lesson checker allows them, so an import whose
- * retry still points to the study is written and then fails that test. A
- * false hit (a "queenside section") costs only a reworded note.
+ * never sees. The import steps reword or refuse such notes; a test, not
+ * `checkLesson`, keeps them out of the shipped lessons.
  */
 export const pointsToStudy = (text: string) => STUDY_MENTION.test(text);
 
