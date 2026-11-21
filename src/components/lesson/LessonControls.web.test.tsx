@@ -13,7 +13,7 @@ import { LessonControls } from './LessonControls';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-let root: Root | undefined;
+let root: Root;
 let host: HTMLElement;
 
 beforeEach(() => {
@@ -23,13 +23,13 @@ beforeEach(() => {
   root = createRoot(host);
 });
 afterEach(async () => {
-  await act(async () => root?.unmount());
+  await act(async () => root.unmount());
   host.remove();
 });
 
 const render = (mode: LessonMode) =>
   act(async () =>
-    root!.render(
+    root.render(
       <SilkProvider theme={themes.dark}>
         <SettingsProvider>
           <LessonControls mode={mode} onMode={() => {}} />

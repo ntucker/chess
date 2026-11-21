@@ -18,8 +18,7 @@ interface Props {
 /**
  * The lesson's switches: Explore or Practice, and what the board draws. The
  * mode belongs to the screen; the rest are settings, so they are remembered.
- * Who moves the opponent is the opponent's bar's (`AutoPlay`). A switch
- * that changes nothing in the mode shows disabled, keeping its value.
+ * Who moves the opponent is the opponent's bar's (`AutoPlay`).
  */
 export function LessonControls({ mode, onMode }: Props) {
   const { showMoves, showTraps } = useSettings();

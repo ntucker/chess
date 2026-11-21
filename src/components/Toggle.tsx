@@ -10,7 +10,7 @@ interface Props {
   readonly onChange: (checked: boolean) => void;
   /** A quieter, one-line label, for a switch beside more important text. */
   readonly quiet?: boolean;
-  /** Shown but not changeable, keeping its value: it does nothing where it is now. */
+  /** Shown, but can't be changed. */
   readonly disabled?: boolean;
   readonly style?: StyleProp<ViewStyle>;
 }

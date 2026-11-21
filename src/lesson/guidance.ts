@@ -29,7 +29,8 @@
  *   the learner points at a row or drags a piece; the list still shows them.
  *   The board draws the ideas of the move just played in their place.
  *   Practice ignores it (`movesSwitchApplies`) and draws the arrows of the
- *   choices it lists.
+ *   few choices it lists (the opening's pick, the opponent's reply with auto
+ *   play off).
  * - Traps: with "show traps" on, a trap's sequence is drawn before the
  *   learner commits, beside the candidates; off, it isn't. A trap fallen
  *   into is shown either way, and plays back, through the trap's moves and
@@ -156,12 +157,7 @@ export interface Guidance {
   readonly lineEnded: boolean;
 }
 
-/**
- * Whether "Moves on the board" changes anything in `mode`: only in Explore.
- * Practice hides the learner's moves itself, and draws the arrows of the
- * few choices it lists (the opening's pick, the opponent's reply with auto
- * play off) as it would with the switch on.
- */
+/** Whether "Moves on the board" changes anything in `mode`: only in Explore. */
 export const movesSwitchApplies = (mode: LessonMode) => mode === 'explore';
 
 /** Whether Stockfish's top moves are listed: in Explore, past the guide's moves. */
