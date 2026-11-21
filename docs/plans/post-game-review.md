@@ -44,8 +44,9 @@ sketches in game order, full searches worst drop first, then the rest). Tests; n
 
 The route, both entry buttons, headline, scoresheet, move card with Stockfish's rows as score
 changes for the learner, `useMoveQualities` and `reviewMoves` sharing one labelling rule, the
-search order wired to the store (`useNeedsStockfish`, nothing while
-another screen is in front), and a tooltip on Silk's Popover. Android check: layout.
+search order wired to the store (`useNeedsStockfish`, nothing while another screen is in front; a
+position whose search fails is skipped and its moves shown unavailable, so the rest still
+finishes), and a tooltip on Silk's Popover. Android check: layout.
 
 ### Piece 3: Graph
 
