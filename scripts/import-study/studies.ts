@@ -785,6 +785,19 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         // The theory chapters, not "Conversions into Slav" (from 1.c4) or the example games.
         ...onlyChapters(WURZELKRAFT_CHAPTERS),
       },
+      {
+        // 3.c5, which no guide covers: 3...e5 against each of White's common replies.
+        study: 'slav-3-c5',
+        file: 'slav-3-c5.pgn',
+        credit: {
+          title: 'Punishing 3.c5',
+          author: 'Opening Night',
+          url: 'https://github.com/ntucker/chess/blob/main/scripts/import-study/sources/slav-3-c5.pgn',
+        },
+        chapters: () => true,
+        chapterName: () => '3.c5',
+        namedFrom: 5,
+      },
     ],
     engineCheck: true,
     info: {
