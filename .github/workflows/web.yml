@@ -98,24 +98,30 @@ jobs:
           if [ -n "$EXPO_PUBLIC_STOCKFISH_FOLDER" ]; then rm -r public/stockfish; fi
           # Its own process group, so stopping it stops everything it started.
           setsid yarn expo export --platform web ${{ env.PREVIEW && '--no-minify' || '' }} &
-          export=$!
-          stopped="$RUNNER_TEMP/superseded"
+          expo=$!
+          superseded="$RUNNER_TEMP/superseded"
           if [ "$GITHUB_REF" = refs/heads/main ] && [ -z "$PREVIEW" ]; then
+            # Its output goes nowhere: a sleep holding the step's output open
+            # would keep the step from finishing.
             while sleep 10; do
               # A failed lookup keeps building.
               main=$(git ls-remote origin refs/heads/main) && [ -n "$main" ] || continue
               if [ "${main%%$'\t'*}" != "$GITHUB_SHA" ]; then
-                touch "$stopped"
-                kill -- "-$export"
+                # Only a running export, so a failure of its own still fails.
+                if kill -0 -- "-$expo"; then
+                  touch "$superseded"
+                  kill -- "-$expo"
+                fi
                 break
               fi
-            done &
+            done > /dev/null 2>&1 &
             watcher=$!
           fi
           status=0
-          wait "$export" || status=$?
+          wait "$expo" || status=$?
+          # The watcher may have stopped already.
           [ -z "${watcher-}" ] || kill "$watcher" 2> /dev/null || true
-          if [ -e "$stopped" ]; then
+          if [ -e "$superseded" ]; then
             echo "::notice::Stopped: a newer push to main builds and publishes instead."
             echo "superseded=true" >> "$GITHUB_OUTPUT"
             exit 0
@@ -141,7 +147,7 @@ jobs:
     # token, so they never publish.
     if: >-
       !cancelled()
-      && (needs.build.result == 'success' && needs.build.outputs.superseded != 'true'
+      && ((needs.build.result == 'success' && needs.build.outputs.superseded != 'true')
         || github.event.action == 'closed')
       && (github.event_name == 'pull_request'
         && !github.event.pull_request.head.repo.fork
