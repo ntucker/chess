@@ -31,9 +31,10 @@ export interface HeaderProps {
    */
   readonly back?: Destination;
   /**
-   * A narrow page's one button of its own, in the source link's place, such
-   * as the lesson's settings, which a narrow page keeps in a sheet (so the
-   * sheet should link to the source, `SourceFootnote`). A wide page shows
+   * A narrow page's one button of its own, such as the lesson's settings or
+   * the review's scoresheet. It takes the source link's place, so the page
+   * links to the source elsewhere (`SourceFootnote`): in the lesson's
+   * settings sheet, at the foot of the review's panel. A wide page shows
    * what it opens itself, and no button shows.
    */
   readonly narrowButton?: NarrowButton;

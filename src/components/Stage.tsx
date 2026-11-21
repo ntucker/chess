@@ -23,6 +23,7 @@ import {
   PROGRAM_FOOT,
   PROGRAM_WIDTH,
   STAGE_GAP,
+  WRAPPED_GAP,
 } from '@/theme/sideBySide';
 import { Transport } from '@/components/Transport';
 import { useStepKeys } from '@/components/useStepKeys';
@@ -272,8 +273,6 @@ function useBoardFit(foot: boolean) {
   const viewport = useNarrowViewport();
   return viewport && { maxWidth: boardColumnLimit(viewport.height, viewport.px, foot) };
 }
-/** Space above the program when it sits below the board. */
-const WRAPPED_GAP = narrowLength('wrapped-gap', 32);
 /** How far the column is raised so the program lines up beside it (see below). */
 const COLUMN_RAISE = BOARD_OFFSET.minus(WRAPPED_GAP);
 

@@ -1,4 +1,4 @@
-import { narrowCalc, narrowLength, type Px } from '@/theme/narrow';
+import { narrowCalc, narrowLength, PROGRAM_FLOOR, type Px } from '@/theme/narrow';
 
 // The board page's geometry (Stage.tsx), beside the narrow decision that depends on it (Narrow.tsx).
 
@@ -71,8 +71,17 @@ export const PROGRAM_FOOT = narrowLength('program-foot', 0);
 /** Height around the board, and what is kept below it: the panel's reserve, and any controls under the panel. */
 const besideHeight = (foot: boolean) =>
   AROUND_BOARD.plus(foot ? PANEL_RESERVE.plus(PROGRAM_FOOT) : PANEL_RESERVE);
-/** A narrow page's least height natively: the board at its smallest, and what is kept below it. */
-export const narrowPageMin = (foot = false) => besideHeight(foot).plus(BOARD_MIN).narrow;
+/** Space above the panel when it sits below the board (Stage.tsx). */
+export const WRAPPED_GAP = narrowLength('wrapped-gap', 32);
+/**
+ * A narrow page's least height natively: the board at its smallest, and the
+ * panel at its floor below it, with any controls under the panel (`foot`).
+ * Shorter, the page scrolls, as narrow.css lets a web page grow.
+ */
+export function narrowPageMin(foot = false) {
+  const least = AROUND_BOARD.plus(BOARD_MIN).plus(WRAPPED_GAP).plus(PROGRAM_FLOOR);
+  return (foot ? least.plus(PROGRAM_FOOT) : least).narrow;
+}
 /**
  * The board column's width limit on the web, on a page with controls under
  * its panel (`foot`) or without. The board also shrinks to fit the window's

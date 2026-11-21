@@ -10,6 +10,7 @@ import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { OpponentPicker } from '@/components/OpponentPicker';
 import { Scoresheet } from '@/components/Scoresheet';
+import { ScoresheetDrawer, ScoresheetOpener } from '@/components/ScoresheetDrawer';
 import { Sheet } from '@/components/Sheet';
 import { SourceFootnote } from '@/components/SourceLink';
 import { resetListener } from '@/components/resetListener';
@@ -38,7 +39,6 @@ import { PointingArea } from './PointingArea';
 import { SideChoice } from './SideChoice';
 import { describeStatus, headlineNews, LOADING, OPENINGS_TITLE } from './status';
 import { SourceCredits } from './SourceCredits';
-import { ScoresheetDrawer, ScoresheetOpener } from './ScoresheetDrawer';
 import { TrapCard } from './TrapCard';
 import { useOpeningsGame } from './useOpeningsGame';
 

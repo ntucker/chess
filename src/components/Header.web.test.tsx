@@ -82,6 +82,35 @@ describe('Header', () => {
       Settings: 'narrow-only',
     });
   });
+
+  it('says whether what its narrow button opens is open', () => {
+    const expanded = (open?: boolean) => {
+      const host = document.createElement('div');
+      const root = createRoot(host);
+      act(() =>
+        root.render(
+          <SilkProvider theme={themes.dark}>
+            <SettingsProvider>
+              <Header
+                narrowButton={{
+                  icon: 'list',
+                  label: 'Scoresheet',
+                  onPress: () => {},
+                  expanded: open,
+                }}
+              />
+            </SettingsProvider>
+          </SilkProvider>,
+        ),
+      );
+      const state = host.querySelector('[aria-label="Scoresheet"]')?.getAttribute('aria-expanded');
+      act(() => root.unmount());
+      return state;
+    };
+    expect(expanded(true)).toBe('true');
+    expect(expanded(false)).toBe('false');
+    expect(expanded()).toBeNull();
+  });
 });
 
 /**

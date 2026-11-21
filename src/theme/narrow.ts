@@ -241,6 +241,9 @@ const PANES_FLOOR = 140;
  * strip beside the board, or the panes split unevenly. Yoga works out an
  * automatic basis afresh each time. Seen on React Native 0.88.1.
  */
+/** The panel's least height under the board on a narrow page: a few lines of it (narrow.css's `program` writes it too). */
+export const PROGRAM_FLOOR = 120;
+
 export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
   'wide-only': { narrow: { display: 'none' } },
   'wide-only-spoken': { narrow: visuallyHidden },
@@ -264,7 +267,7 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
       flexShrink: 1,
       flexBasis: 'auto',
       height: 0,
-      minHeight: 120,
+      minHeight: PROGRAM_FLOOR,
       width: '100%',
     },
   },

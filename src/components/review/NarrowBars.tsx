@@ -1,14 +1,13 @@
-import { Text, useTheme } from '@reactive/silk-native';
+import { Text } from '@reactive/silk-native';
 import { StyleSheet, View } from 'react-native';
 
-import { shownMove } from '@/components/lesson/ScoresheetDrawer';
+import { ShownMove } from '@/components/ScoresheetDrawer';
 import { Disc } from '@/components/PlayerBar';
 import { stepButton } from '@/components/Transport';
 import { type Color, opposite } from '@/game/replay';
 import { PLAYER_DISC } from '@/theme/sideBySide';
 import { narrowStyles } from '@/theme/narrow';
 import { useNarrowStyles } from '@/theme/Narrow';
-import { fonts } from '@/theme/theme';
 
 /**
  * A narrow page's one bar of both players, above the board: the opponent at
@@ -36,16 +35,9 @@ export function ReviewNames({ learner }: { readonly learner: Color }) {
  * will go: until then, the move on the board, "7…Qxb2", or "Start".
  */
 export function GraphPlace({ san, ply }: { readonly san?: string; readonly ply: number }) {
-  const { theme } = useTheme();
   return (
     <View style={styles.place}>
-      <Text
-        role="body"
-        numberOfLines={1}
-        style={[styles.move, { color: theme.semantic.color.textPrimary }]}
-      >
-        {shownMove(san, ply)}
-      </Text>
+      <ShownMove san={san} ply={ply} />
     </View>
   );
 }
@@ -58,5 +50,4 @@ const STYLES = narrowStyles((px) => ({
 
 const styles = StyleSheet.create({
   place: { ...stepButton, alignItems: 'center', justifyContent: 'center' },
-  move: { fontFamily: fonts.mono, fontSize: 14 },
 });

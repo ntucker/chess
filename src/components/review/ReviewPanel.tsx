@@ -3,14 +3,15 @@ import { View } from 'react-native';
 
 import { Eyebrow, useLabelled, useSections } from '@/components/Eyebrow';
 import { StatusHeadline } from '@/components/GameStatus';
-import { ScoresheetDrawer } from '@/components/lesson/ScoresheetDrawer';
+import { ScoresheetDrawer } from '@/components/ScoresheetDrawer';
 import { Scoresheet } from '@/components/Scoresheet';
+import { SourceFootnote } from '@/components/SourceLink';
 import type { Analysis } from '@/evaluation/evaluation';
 import { type Color, numberedMove } from '@/game/replay';
 import { compareMove } from '@/review/comparison';
 import type { ReviewMove } from '@/review/review';
 import type { Review } from '@/review/useReview';
-import { useNarrowPart } from '@/theme/Narrow';
+import { NarrowOnly, useNarrowPart } from '@/theme/Narrow';
 import { qualityLooks } from '@/theme/moveQuality';
 
 import { MoveCard } from './MoveCard';
@@ -68,6 +69,10 @@ export function ReviewPanel({ eyebrow, learner, review, drawer }: Props) {
             onPoint={point}
           />
         ) : null}
+        {/* The header's scoresheet button takes the source link's place there. */}
+        <NarrowOnly>
+          <SourceFootnote />
+        </NarrowOnly>
       </View>
       {drawer ? <ScoresheetDrawer {...scoresheet} onClose={drawer.onClose} /> : null}
       {/* This scoresheet stays while the drawer is open, so a window widened meanwhile still shows one. */}

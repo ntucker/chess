@@ -2,7 +2,7 @@ import { describe, expect, it, jest } from '@jest/globals';
 
 import { NARROW_PX, PX } from '@/theme/narrow';
 
-import { BOARD_COLUMN_MAX, boardColumnLimit } from './sideBySide';
+import { BOARD_COLUMN_MAX, boardColumnLimit, narrowPageMin } from './sideBySide';
 
 // Jest can't load a stylesheet.
 jest.mock('@/theme/narrow.css', () => ({}));
@@ -25,5 +25,12 @@ describe('boardColumnLimit', () => {
     expect(boardColumnLimit(800, PX.narrow, true)).toBe(
       boardColumnLimit(800, PX.narrow) - NARROW_PX['program-foot'],
     );
+  });
+});
+
+describe('narrowPageMin', () => {
+  it('fits a 640-tall phone page with controls fixed under the panel, as the review has', () => {
+    expect(narrowPageMin(true)).toBeLessThanOrEqual(640);
+    expect(narrowPageMin(true)).toBe(narrowPageMin() + NARROW_PX['program-foot']);
   });
 });

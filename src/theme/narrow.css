@@ -189,7 +189,7 @@
   :root [data-narrow='program'] {
     flex: 1 1 auto;
     height: 0;
-    /* The panel's floor: a few lines of it. */
+    /* The panel's floor: a few lines of it (PROGRAM_FLOOR in narrow.ts). */
     min-height: 120px;
     width: 100%;
   }

@@ -4,6 +4,7 @@ import type { ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Tip } from '@/components/Tip';
+import { TOUCH_TARGET } from '@/theme/touch';
 
 import type { ReviewView } from './ReviewPanel';
 
@@ -36,9 +37,7 @@ export function ReviewActions({ ply, nextMoment, goto }: Props) {
         </Tip>
       ))}
       <View style={styles.spacer} />
-      <NextMoment ply={ply} nextMoment={nextMoment} goto={goto}>
-        {ply === 0 ? 'First moment' : 'Next moment'}
-      </NextMoment>
+      <NextMoment ply={ply} nextMoment={nextMoment} goto={goto} />
     </View>
   );
 }
@@ -60,37 +59,40 @@ export function ReviewActionBar({ ply, nextMoment, goto }: Props) {
         </Tip>
       ))}
       <View style={styles.grow}>
-        <NextMoment ply={ply} nextMoment={nextMoment} goto={goto} style={styles.barButton}>
-          {ply === 0 ? 'First moment' : 'Next'}
-        </NextMoment>
+        <NextMoment ply={ply} nextMoment={nextMoment} goto={goto} short style={styles.barButton} />
       </View>
     </View>
   );
 }
 
-/** Next moment, named `children`: disabled once every moment has been visited. */
+/**
+ * Next moment, or First moment at the start: disabled once every moment
+ * has been visited. `short` names it in one word, for the bar's third of a
+ * phone's width; screen readers hear the whole name either way.
+ */
 function NextMoment({
   ply,
   nextMoment,
   goto,
+  short,
   style,
-  children,
-}: Props & { readonly style?: ComponentProps<typeof Button>['style']; readonly children: string }) {
+}: Props & {
+  readonly short?: boolean;
+  readonly style?: ComponentProps<typeof Button>['style'];
+}) {
+  const [word, name] = ply === 0 ? ['First', 'First moment'] : ['Next', 'Next moment'];
   return (
     <Button
       disabled={nextMoment === undefined}
       onPress={() => nextMoment !== undefined && goto(nextMoment)}
-      accessibilityLabel={ply === 0 ? 'First moment' : 'Next moment'}
+      accessibilityLabel={name}
       style={style}
     >
-      {`${children} `}
+      {`${short ? word : name} `}
       <Ionicons name="arrow-forward" size={15} />
     </Button>
   );
 }
-
-/** A thumb's height: the touch target the app's Android work set. */
-const BAR_BUTTON_HEIGHT = 48;
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -98,5 +100,5 @@ const styles = StyleSheet.create({
   bar: { flexDirection: 'row', gap: 8 },
   grow: { flex: 1 },
   // Silk's button keeps to its content's width; here it fills its share.
-  barButton: { width: '100%', height: BAR_BUTTON_HEIGHT, paddingHorizontal: 6 },
+  barButton: { width: '100%', height: TOUCH_TARGET, paddingHorizontal: 6 },
 });
