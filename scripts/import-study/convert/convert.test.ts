@@ -237,14 +237,19 @@ describe('convertChapters', () => {
       expect(notesOn(chapter, 'Be2')[0].text).toBe(pointing[0].text);
     });
 
-    it.each(['Study this position: the next moves are forced.'])(
-      'is not asked again for chess prose: "%s"',
-      async (text) => {
-        const { ask } = fakeAsk({ [MODELS.convert]: { Be2: [{ ...plain[0], text }] } });
-        const { report } = await convertChapters(extracted, ask);
-        expect(report.unmoored).toBe(0);
-      },
-    );
+    it('is asked again for a button the study names', async () => {
+      const text = 'Press the heart button if this line helped.';
+      const { ask } = fakeAsk({ [MODELS.convert]: { Be2: [{ ...plain[0], text }] } });
+      const { report } = await convertChapters(extracted, ask);
+      expect(report.unmoored).toBe(1);
+    });
+
+    it('is not asked again for "study" as a verb', async () => {
+      const text = 'Study this position: the next moves are forced.';
+      const { ask } = fakeAsk({ [MODELS.convert]: { Be2: [{ ...plain[0], text }] } });
+      const { report } = await convertChapters(extracted, ask);
+      expect(report.unmoored).toBe(0);
+    });
   });
 
   it('keeps the importer’s note where the model gave no answer', async () => {

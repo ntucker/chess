@@ -120,10 +120,10 @@ async function convertComments(
     .filter(([, result]) => allRefused(result))
     .map(([id]) => comments.get(id)!);
   if (retry.length > 0) keep(await ask(MODELS.retry, retry), keepsMore);
-  /** The comments with note texts `refused` finds, each with those texts. */
-  const refusedBy = (refused: (result: Converted) => string[]) =>
+  /** The comments whose answer has note texts `textsOf` refuses, each with those texts. */
+  const refusedBy = (textsOf: (result: Converted) => string[]) =>
     [...converted].flatMap(([id, result]) => {
-      const refusedText = refused(result);
+      const refusedText = textsOf(result);
       return refusedText.length > 0 ? [{ ...comments.get(id)!, refusedText }] : [];
     });
   const reword = refusedBy(notationTexts);
