@@ -203,9 +203,9 @@ export function ThemeSwitch() {
           },
           // Reanimated CSS transitions, which StyleSheet's types don't know.
           // Not the shift: it is set as the choices open, and animating it
-          // would slide them sideways while they open. Opening, they show
-          // at once: they cover the button, which loses its hover light, so a
-          // fade would blink it off first. Closing, they fade.
+          // would slide them sideways while they open. Opening, they don't
+          // fade in, only grow: they cover the button, which loses its hover
+          // light, so a fade would blink it off first. Closing, they fade.
           {
             transitionProperty: menu ? ['left', 'width'] : ['left', 'width', 'opacity'],
             ...transition,
