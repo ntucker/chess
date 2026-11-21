@@ -153,7 +153,8 @@ const FAILURES: Record<DownloadFailure, string> = {
 
 /**
  * How full Stockfish's one download is going, beside its name while it runs
- * ("· downloading 42%"), or that it failed and is tried again, or that the
+ * ("· 42% downloaded": the percent first, so a phone's crowded bar cuts the
+ * word, not the number), or that it failed and is tried again, or that the
  * site has moved to a newer build, with a reload where that helps.
  */
 function FullStockfishProgress() {
@@ -162,7 +163,7 @@ function FullStockfishProgress() {
   return (
     <>
       <Text role="caption" tone="secondary" numberOfLines={1} style={styles.progress}>
-        {download.failure ? FAILURES[download.failure] : `· downloading ${download.percent}%`}
+        {download.failure ? FAILURES[download.failure] : `· ${download.percent}% downloaded`}
       </Text>
       {/* Beside the message rather than in it, so a narrow bar cuts the message, not the reload. */}
       {FROM_OWN_SITE && download.failure === 'newVersion' ? (

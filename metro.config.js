@@ -9,7 +9,8 @@ config.resolver.assetExts.push('bin', 'wasm', 'txt');
 // An app's build (`expo export:embed`, which Gradle runs) copies public/ into
 // the app beside its DOM components' pages. public/ holds only full Stockfish
 // (99 MB, scripts/copy-stockfish.mjs), which the app downloads instead, so the
-// build reads public/ from a folder that doesn't exist. Web builds keep it.
-if (process.argv.includes('export:embed')) process.env.EXPO_PUBLIC_FOLDER = 'no-public-in-apps';
+// build reads public/ from a folder that doesn't exist, unless one is set. Web
+// builds keep it.
+if (process.argv.includes('export:embed')) process.env.EXPO_PUBLIC_FOLDER ??= 'no-public-in-apps';
 
 module.exports = config;

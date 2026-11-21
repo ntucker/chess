@@ -275,7 +275,7 @@ describe('OpponentPicker', () => {
         });
       });
     await report(42);
-    expect(progress()).toBe('· downloading 42%');
+    expect(progress()).toBe('· 42% downloaded');
     await report(0, 'retrying');
     expect(progress()).toBe('· retrying download');
     await report(0, 'newVersion');
