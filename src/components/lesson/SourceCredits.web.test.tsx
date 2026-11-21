@@ -44,9 +44,15 @@ describe('SourceCredits', () => {
     expect(credits([slav], [slav])).toBe("Lesson from Matkun's lichess study");
   });
 
-  it('names it by its title where another lesson credits the same author, even one off the index', () => {
+  it('names it by its title where another lesson credits the same author', () => {
     expect(credits([study('Loaded', 'loaded')], [study('Slav', 'slav')])).toBe(
       'Lesson from Loaded by Matkun',
+    );
+  });
+
+  it('names two studies by one author by their titles though the index has neither', () => {
+    expect(credits([study('Loaded', 'loaded'), study('Other', 'other')], [])).toBe(
+      'Lesson from Loaded by Matkun and Other by Matkun',
     );
   });
 });
