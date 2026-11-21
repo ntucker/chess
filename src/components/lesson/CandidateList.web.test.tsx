@@ -132,6 +132,12 @@ describe('CandidateList', () => {
     expect(hint({ candidates: shared })).toBe(true);
     // A lone move's share isn't shown, so there's nothing to explain.
     expect(hint({ candidates: [shared[0]!] })).toBe(false);
+    // Nor beside Stockfish's row, which has no share.
+    const best = {
+      ...candidate('f8b4', 'Bb4+'),
+      engine: { label: '0.0', description: 'No change' },
+    };
+    expect(hint({ candidates: [shared[0]!], engineBest: best })).toBe(false);
     expect(hint({ candidates: [COMMON, candidate('e2e4', 'e4')] })).toBe(false);
   });
 

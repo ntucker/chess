@@ -118,6 +118,8 @@ export function CandidateList({
   const rows = [...candidates, ...engineRows, ...(rareShown ? rare : [])];
   // The guide's rows shown, whose shares are of each other's games.
   const guideCount = candidates.length + (rareShown ? rare.length : 0);
+  // A lone move's share is always all of the games, so it isn't shown.
+  const showsShares = guideCount > 1 && rows.some(({ share }) => share !== undefined);
   const shownMarks = new Set(
     rows.map(({ move }) => marks.get(move.uci)).filter((mark) => mark !== undefined),
   );
@@ -134,11 +136,7 @@ export function CandidateList({
          * Whose moves is an eyebrow of its own: off the web a nested text can't be hidden.
          * Its no-break space keeps the gap a space would leave inside one text.
          */}
-        <ShareTip
-          tip={
-            rows.length > 1 && rows.some(({ share }) => share !== undefined) ? shareTip : undefined
-          }
-        >
+        <ShareTip tip={showsShares ? shareTip : undefined}>
           <View style={styles.heading}>
             {owner ? (
               <View {...part('wide-only-spoken')}>
@@ -175,8 +173,7 @@ export function CandidateList({
                   markSlot={shownMarks.size > 0}
                   leadsTo={leadsTo(candidate)}
                   compact={compact}
-                  // A lone move's share is always all of the games.
-                  share={guideCount > 1 ? candidate.share : undefined}
+                  share={showsShares ? candidate.share : undefined}
                   playable={playable}
                   onPlay={onPlay}
                   onPoint={onPoint}
