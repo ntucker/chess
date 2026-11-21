@@ -10,16 +10,18 @@ export const opensUrl = (url: string) =>
     ? { href: url, hrefAttrs: { target: '_blank', rel: 'noopener noreferrer' } }
     : { onPress: () => Linking.openURL(url) };
 
-/** A link inside text, opening `url` outside the app. */
+/** A link inside text, opening `url` outside the app; `label` names it where its text is too short to. */
 export function ExternalLink({
   url,
+  label,
   children,
 }: {
   readonly url: string;
+  readonly label?: string;
   readonly children: string;
 }) {
   return (
-    <Span {...opensUrl(url)} role="link" style={styles.link}>
+    <Span {...opensUrl(url)} role="link" aria-label={label} style={styles.link}>
       {children}
     </Span>
   );
