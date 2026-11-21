@@ -456,8 +456,11 @@ function chapterVariations(
   return { variations, chapterVariation };
 }
 
+/** `name` as an id: "Sämisch Variation" becomes "samisch-variation". */
 const slug = (name: string) =>
   name
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');

@@ -24,6 +24,7 @@ export const LESSONS = {
   french: () => import('@/assets/lessons/french.json'),
   'anti-sicilian': () => import('@/assets/lessons/anti-sicilian.json'),
   italian: () => import('@/assets/lessons/italian.json'),
+  'kings-indian': () => import('@/assets/lessons/kings-indian.json'),
 };
 
 export type LessonId = keyof typeof LESSONS;
