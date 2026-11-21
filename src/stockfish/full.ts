@@ -24,29 +24,23 @@ const CACHE = `${CACHE_PREFIX}${FULL_WASM}:${FULL_WASM_BYTES}`;
  * Full Stockfish's loader and WebAssembly: from the browser's cache when an
  * earlier visit downloaded them, else downloaded from `folder` (an absolute
  * address ending in `/`) and then cached. `report` hears each whole percent
- * of the WebAssembly as it arrives, and 100 once the files are in hand. When the folder
- * serves another build (a NewVersionError: no file by this build's name, or a
- * WebAssembly of another size), trying again can't help, only a newer app (on
- * the web, a reload): it reports `newVersion` and resolves undefined. Any
- * other failure reports `retrying` and rejects; an abort of `signal` rejects
- * without a report.
+ * of the WebAssembly as it arrives, and 100 once the files are in hand. A
+ * folder that serves another build (no file by this build's name, or a
+ * WebAssembly of another size) reports `newVersion` and rejects with a
+ * NewVersionError; any other failure reports `retrying` and rejects. An abort
+ * of `signal` rejects without a report.
  */
 export async function loadFullStockfish(
   folder: string,
   signal: AbortSignal,
   report: ReportDownload,
-): Promise<EngineFiles | undefined> {
+): Promise<EngineFiles> {
   try {
     const files = await getFiles(folder, signal, report);
     report(100);
     return files;
   } catch (error) {
-    if (signal.aborted) throw error;
-    if (error instanceof NewVersionError) {
-      report(0, 'newVersion');
-      return undefined;
-    }
-    report(0, 'retrying');
+    if (!signal.aborted) report(0, error instanceof NewVersionError ? 'newVersion' : 'retrying');
     throw error;
   }
 }
@@ -61,10 +55,7 @@ async function getFiles(
   const cached = cache && (await readCache(cache));
   if (cached) return cached;
 
-  const [loader, wasm] = await Promise.all([
-    download(folder, FULL_LOADER, signal).then((response) => response.text()),
-    download(folder, FULL_WASM, signal).then((response) => readWasm(response, onProgress)),
-  ]);
+  const [loader, wasm] = await downloadBoth(folder, signal, onProgress);
   if (cache) {
     // A cache that can't keep them (out of space, say) costs the next visit
     // a download, not this one its engine.
@@ -79,6 +70,43 @@ async function getFiles(
     }
   }
   return { loader, wasm };
+}
+
+/**
+ * Both files from `folder`. Either failing aborts the other's download and
+ * its progress, so the WebAssembly's percent never replaces the failure's
+ * report. (A listener links the signals: older Android web views lack
+ * AbortSignal.any.)
+ */
+async function downloadBoth(
+  folder: string,
+  signal: AbortSignal,
+  onProgress: (percent: number) => void,
+): Promise<[string, Blob]> {
+  const stop = new AbortController();
+  const stopBoth = () => stop.abort();
+  signal.addEventListener('abort', stopBoth);
+  if (signal.aborted) stopBoth();
+  const failBoth = (error: unknown): never => {
+    stopBoth();
+    throw error;
+  };
+  try {
+    return await Promise.all([
+      download(folder, FULL_LOADER, stop.signal)
+        .then((response) => response.text())
+        .catch(failBoth),
+      download(folder, FULL_WASM, stop.signal)
+        .then((response) =>
+          readWasm(response, (percent) => {
+            if (!stop.signal.aborted) onProgress(percent);
+          }),
+        )
+        .catch(failBoth),
+    ]);
+  } finally {
+    signal.removeEventListener('abort', stopBoth);
+  }
 }
 
 /**

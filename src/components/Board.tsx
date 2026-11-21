@@ -28,7 +28,7 @@ import {
   MOVE_MS,
 } from '@/board/endingAct';
 import { type BoardMarks, boardMarks, toneBrushes } from '@/board/marks';
-import { type Drag, watchDrag } from '@/board/pointer';
+import { type BoardPointer, type Drag, watchBoardPointer, watchDrag } from '@/board/pointer';
 import {
   NO_PREVIEW,
   type Pieces,
@@ -82,6 +82,12 @@ export interface BoardProps {
    * before it, if any. It comes just after the board has acted on the press.
    */
   readonly onPress?: (square: Square, selected?: Square) => void;
+  /**
+   * While the board shows an `ending`: a mouse came onto the board or left
+   * it, or a finger or pen tapped it. A mouse already on the board as the
+   * ending arrives reports nothing until it leaves.
+   */
+  readonly onEndingPointer?: (pointer: BoardPointer) => void;
   readonly dom?: DOMProps;
 }
 
@@ -99,6 +105,7 @@ export default function Board({
   onMove,
   onDrag,
   onPress,
+  onEndingPointer,
 }: BoardProps) {
   const element = useRef<HTMLDivElement>(null);
   const api = useRef<Api>(null);
@@ -144,6 +151,10 @@ export default function Board({
     () => (endingKey ? endingAct(JSON.parse(endingKey) as Ending, orientation) : undefined),
     [endingKey, orientation],
   );
+  // Read as each event comes: the press that plays the mating move starts
+  // before the ending arrives, so its lift is no tap.
+  const showsEnding = useEffectEvent(() => act !== undefined);
+  const handleEndingPointer = useEffectEvent((pointer: BoardPointer) => onEndingPointer?.(pointer));
 
   // Chessground reuses piece elements as pieces move, so the lit, faded and
   // previewed pieces, and an ending's kings, are marked again whenever the
@@ -248,10 +259,12 @@ export default function Board({
       (from, to) => boardPlays(board, from, to),
       handleDrag,
     );
+    const stopWatchingEnding = watchBoardPointer(target, showsEnding, handleEndingPointer);
     return () => {
       cancelAnimationFrame(frame.current);
       target.removeEventListener('pointerdown', notePick, { capture: true });
       stopWatching();
+      stopWatchingEnding();
       resizes.disconnect();
       board.destroy();
       api.current = null;

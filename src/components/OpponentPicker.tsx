@@ -14,7 +14,7 @@ import { describeOpponent, type Opponent, OPPONENT_PRESETS, OPPONENTS } from '@/
 import { reload } from '@/files/newVersion';
 import { type DownloadFailure, useFullStockfishDownload } from '@/resources/download';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
-import { FROM_OWN_SITE } from '@/stockfish/fullFiles';
+import { OUTDATED_NEEDS } from '@/stockfish/fullFiles';
 import { narrowLength, narrowStyles } from '@/theme/narrow';
 import { useNarrowStyles } from '@/theme/Narrow';
 
@@ -158,12 +158,7 @@ export function OpponentPicker() {
 /** What a failed download says, kept short to fit beside the name on a phone. */
 const FAILURES: Record<DownloadFailure, string> = {
   retrying: '· retrying download',
-  // A preview sharing the live site's copy needs a new build of its own.
-  newVersion: FROM_OWN_SITE
-    ? '· site updated'
-    : WEB
-      ? '· preview out of date'
-      : '· needs an app update',
+  newVersion: OUTDATED_NEEDS ? `· needs ${OUTDATED_NEEDS}` : '· site updated',
 };
 
 /**
@@ -181,7 +176,7 @@ function FullStockfishProgress() {
         {download.failure ? FAILURES[download.failure] : `· ${download.percent}% downloaded`}
       </Text>
       {/* Beside the message rather than in it, so a narrow bar cuts the message, not the reload. */}
-      {FROM_OWN_SITE && download.failure === 'newVersion' ? (
+      {!OUTDATED_NEEDS && download.failure === 'newVersion' ? (
         <Pressable accessibilityRole="button" onPress={reload} style={styles.reload}>
           <Text role="caption" tone="accent" style={styles.underlined}>
             Reload

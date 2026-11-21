@@ -21,12 +21,11 @@ import {
 import { positionHash } from '@/progress/progress';
 
 import { cleanLineEnds, gamesPlayed, inCleanRun } from './cleanRun';
+import { sourcesOf } from './credits';
 import {
   LESSON_FORMAT,
-  onDomain,
   type Lesson,
   type LessonMove,
-  type LessonSource,
   type Note,
   type PositionKey,
   type Uci,
@@ -53,8 +52,8 @@ export interface OpeningLine {
 }
 
 /**
- * What the start position needs to know of a lesson before it loads. Its
- * sources are credited where the start position previews the lesson's move.
+ * What the start position needs to know of a lesson before it loads. The
+ * start position's page credits its sources.
  */
 export interface IndexEntry extends Pick<Lesson, 'title' | 'side' | 'sources'> {
   /** The lines that pick it, in the guide's order. */
@@ -194,7 +193,8 @@ function variationLines(lesson: Lesson, picks: readonly Uci[][]): IndexVariation
  * `variation` that games play most often: the product of each move's share
  * of its position's games (`moveShares`). Best first, so the first position
  * of `variation` reached is the likeliest; every move past it only lowers
- * the share. With `bookOnly` the learner plays only book moves.
+ * the share. With `bookOnly` the learner plays only book moves past the
+ * starts; a start may already hold one outside the book (`startShare`).
  */
 function likeliestInto(
   lesson: Lesson,
@@ -204,9 +204,18 @@ function likeliestInto(
 ): Uci[] | undefined {
   const reached = new Set<PositionKey>();
   const queue = new LikeliestFirst();
+  // Each start counts as often as games play it, so a rare line that picks
+  // the lesson (1.e4 e5 2.Qf3) doesn't open a variation the main lines reach.
   for (const line of starts) {
     const pos = Chess.default();
-    if (line.every((uci) => playMove(pos, uci))) queue.push({ line: [...line], pos, share: 1 });
+    let share = 1;
+    let legal = true;
+    for (const uci of line) {
+      share *= startShare(lesson, pos, uci, bookOnly); // Where it's played, so before playing it.
+      legal = !!playMove(pos, uci);
+      if (!legal) break;
+    }
+    if (legal) queue.push({ line: [...line], pos, share });
   }
   for (let next = queue.pop(); next; next = queue.pop()) {
     const { line, pos, share } = next;
@@ -215,21 +224,43 @@ function likeliestInto(
     if (!here || reached.has(key)) continue;
     if (here.variation === variation) return line;
     reached.add(key);
-    // The learner plays the book, however rarely games do: only its book
-    // moves share the games, where it has any.
-    const learner = pos.turn === lesson.side;
-    const moves =
-      learner && here.moves.some(({ book }) => book) && bookOnly
-        ? here.moves.filter(({ book }) => book)
-        : here.moves;
-    const shares = moveShares(moves);
-    moves.forEach(({ uci }, i) => {
+    for (const move of sharesAt(lesson, pos, bookOnly)) {
       const played = pos.clone();
-      if (playMove(played, uci))
-        queue.push({ line: [...line, uci], pos: played, share: share * shares[i] });
-    });
+      if (playMove(played, move.uci))
+        queue.push({ line: [...line, move.uci], pos: played, share: share * move.share });
+    }
   }
   return undefined;
+}
+
+/**
+ * The share of the games at `pos` of `uci`, a move of a line `likeliestInto`
+ * starts from: as `sharesAt` gives it, or, for a learner's move outside the
+ * book (a line the search for any move found), its share among all the
+ * moves there; 0 for a move the lesson doesn't have there.
+ */
+function startShare(lesson: Lesson, pos: Chess, uci: Uci, bookOnly: boolean): number {
+  const shareIn = (only: boolean) =>
+    sharesAt(lesson, pos, only).find((move) => move.uci === uci)?.share;
+  return shareIn(bookOnly) ?? (bookOnly ? shareIn(false) : undefined) ?? 0;
+}
+
+/**
+ * The moves `likeliestInto` follows from `pos` (none off `lesson`), each
+ * with its share of the games (`moveShares`). The learner plays the book,
+ * however rarely games do: with `bookOnly`, only its book moves share the
+ * games, where it has any.
+ */
+function sharesAt(lesson: Lesson, pos: Chess, bookOnly: boolean) {
+  const here = lesson.positions[positionKey(pos)];
+  if (!here) return [];
+  const learner = pos.turn === lesson.side;
+  const moves =
+    learner && here.moves.some(({ book }) => book) && bookOnly
+      ? here.moves.filter(({ book }) => book)
+      : here.moves;
+  const shares = moveShares(moves);
+  return moves.map(({ uci }, i) => ({ uci, share: shares[i] }));
 }
 
 /**
@@ -350,12 +381,12 @@ export function lessonsFrom<Id extends string>(
   );
 }
 
-/** A move listed before a lesson is picked, crediting the lessons it leads to. */
+/** A move listed before a lesson is picked, naming the lessons it leads to. */
 type OpeningMove = LessonMove & { readonly notes: readonly Note[] };
 
 /**
  * The moves `side`'s lessons share and the moves that pick them, at each
- * position before a line picks one, each crediting the lessons it leads to.
+ * position before a line picks one, each naming the lessons it leads to.
  * A learner's move is a book move where a clean run can go on through it.
  */
 function openingMoves(index: LessonIndex, side: Color): Map<PositionKey, OpeningMove[]> {
@@ -369,73 +400,22 @@ function openingMoves(index: LessonIndex, side: Color): Map<PositionKey, Opening
       const found = moves.get(uci) ?? { ids: [], book: false };
       moves.set(uci, found);
       if (!found.ids.includes(id)) found.ids.push(id);
-      found.book ||= parsePositionKey(key)!.turn === side && line.lineEnds.length > 0;
+      // Lines play from the start, so white moves at even plies.
+      found.book ||= line.lineEnds.length > 0 && (n % 2 === 0 ? 'white' : 'black') === side;
     }
   }
-  const credited = sourcesOf(index);
   return new Map(
     [...at].map(([key, moves]) => [
       key,
       [...moves].map(([uci, { ids, book }]) => ({
         uci,
         ...(book && { book }),
-        notes: ids.map((id) => {
-          const { title, sources } = index[id];
-          return {
-            text: `${title}, from ${listed(sources.map((source) => credit(source, credited)))}.`,
-          };
-        }),
+        // A note object per move: the idea card tells notes apart by identity.
+        notes: ids.map((id) => ({ text: index[id].title })),
       })),
     ]),
   );
 }
-
-const isLichessStudy = ({ url }: LessonSource) => {
-  const parsed = new URL(url);
-  return onDomain(parsed, 'lichess.org') && parsed.pathname.startsWith('/study/');
-};
-
-/**
- * How the app names `source`. A lichess study is "author's lichess study"
- * when it is the only lichess study by its author among `credited` (every
- * source the app credits, from `sourcesOf`), so one study reads the same on
- * every screen; any other source is its title and author. Its URL parses: the
- * checker has read every shipped lesson's sources.
- */
-export function sourceName(source: LessonSource, credited: readonly LessonSource[]): string {
-  const { title, author, url } = source;
-  const hasSiblingStudy = credited.some(
-    (other) => other.url !== url && other.author === author && isLichessStudy(other),
-  );
-  return isLichessStudy(source) && !hasSiblingStudy
-    ? `${author}'s lichess study`
-    : `${title} by ${author}`;
-}
-
-/** How a note credits `source`: its name, then its license's. A note is plain text; the lesson screen's credits link both. */
-const credit = (source: LessonSource, credited: readonly LessonSource[]) => {
-  const name = sourceName(source, credited);
-  return source.license ? `${name} (${source.license.name})` : name;
-};
-
-/** Every source the index's lessons and `more` credit, each once (the same URL is the same source). */
-export const sourcesOf = (
-  index: LessonIndex,
-  more: readonly LessonSource[] = [],
-): LessonSource[] => [
-  ...new Map(
-    [...Object.values(index).flatMap(({ sources }) => sources), ...more].map(
-      (source) => [source.url, source] as const,
-    ),
-  ).values(),
-];
-
-/** What comes before item `i` of `count` in an English list: "a", "a and b", "a, b and c". */
-export const listSeparator = (i: number, count: number) =>
-  i === 0 ? '' : i === count - 1 ? ' and ' : ', ';
-
-const listed = (items: readonly string[]) =>
-  items.map((item, i) => listSeparator(i, items.length) + item).join('');
 
 /** The variation of the positions before a lesson is picked. */
 const OPENINGS_VARIATION = 'openings';
@@ -454,7 +434,7 @@ export function openingsLesson(index: LessonIndex, side: Color): Lesson {
     title: 'Openings',
     side,
     start: INITIAL_FEN,
-    // Its notes come from the lessons', so it credits their sources.
+    // Its moves are the lessons' lines, so it credits their sources.
     sources: sourcesOf(ofSide),
     variations: { [OPENINGS_VARIATION]: { name: 'Openings' } },
     positions: Object.fromEntries(

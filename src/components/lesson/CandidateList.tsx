@@ -2,7 +2,6 @@ import { a11yState, Pressable, Stack, Surface, Text, useTheme } from '@reactive/
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { View } from 'react-native';
 
-import { evaluationReading, signedEvaluation } from '@/evaluation/evaluation';
 import { candidateTone } from '@/lesson/drawings';
 import type { PositionKey, Uci } from '@/lesson/lesson';
 import type { Candidate } from '@/lesson/select';
@@ -63,12 +62,12 @@ interface Props {
 
 /**
  * The guide's moves at the position on the board, one row each, most played
- * first, or past them Stockfish's top moves, best first, each with the
- * evaluation after it in place of its share. Pointing at a row previews its
- * move on the board; pressing it plays the move when it's the learner's to
- * play. Each row's dot matches its arrow on the board; the dot of a row the
- * board draws no arrow for is hollow: a rare row's, or one of Stockfish's
- * but its best. A row's progress mark ends it, and a key beside the heading
+ * first, or past them Stockfish's top moves, best first, each with how it
+ * changes the position for the learner in place of its share. Pointing at a
+ * row previews its move on the board; pressing it plays the move when it's
+ * the learner's to play. Each row's dot matches its arrow on the board; the
+ * dot of a row the board draws no arrow for is hollow: a rare row's, or one
+ * of Stockfish's but its best. A row's progress mark ends it, and a key beside the heading
  * names the marks the list shows (not in a narrow web page's pane).
  */
 export function CandidateList({
@@ -270,7 +269,7 @@ function Row({
         san,
         move.book && 'book move',
         share !== undefined && `${percent(share)} of games`,
-        engine && evaluationReading(engine).description,
+        engine?.description,
         mark && SPOKEN_MARKS[mark],
       ]
         .filter(Boolean)
@@ -316,19 +315,14 @@ function Row({
           ) : null}
         </View>
         {leadsTo ? (
-          <Text
-            role="caption"
-            tone="secondary"
-            numberOfLines={1}
-            {...part(compact ? 'wide-only' : 'leads-to')}
-          >
+          <Text role="caption" tone="secondary" numberOfLines={1} {...part(compact && 'wide-only')}>
             {leadsTo}
           </Text>
         ) : null}
       </View>
       {engine ? (
         <Text role="caption" tone="secondary" style={styles.evaluation}>
-          {signedEvaluation(engine)}
+          {engine.label}
         </Text>
       ) : null}
       {share === undefined ? null : (

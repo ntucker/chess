@@ -1,11 +1,10 @@
 import { AsyncBoundary, useController, useFetch, useSuspense } from '@data-client/react';
 import { Separator, Spinner, Stack } from '@reactive/silk-native';
-import { use, useMemo, useState } from 'react';
+import { type ReactNode, use, useMemo, useState } from 'react';
 import { View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
-import { FootnoteLink } from '@/components/FootnoteLink';
 import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
@@ -39,7 +38,7 @@ import { IdeaAside, IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
 import { SideChoice } from './SideChoice';
-import { describeStatus, LOADING, OPENINGS_TITLE } from './status';
+import { describeStatus, headlineNews, LOADING, OPENINGS_TITLE } from './status';
 import { SourceCredits } from './SourceCredits';
 import { ScoresheetDrawer, ScoresheetOpener } from './ScoresheetDrawer';
 import { TrapCard } from './TrapCard';
@@ -317,13 +316,14 @@ function LessonScreen({
     trapped: view.trap && view.trap.ply + 1,
     onGoto: game.goto,
   };
-  const settings = (
+  const lessonCredits = <SourceCredits sources={lesson.sources} />;
+  /** The settings, beside the board or in a narrow page's sheet, which adds the lesson's `credits`. */
+  const settings = (credits?: ReactNode) => (
     <>
       <LessonControls mode={mode} onMode={chooseMode} />
       <Stack gap="1">
         <OpponentChoice />
-        <FootnoteLink href="/play">Or play a free game, from the first move</FootnoteLink>
-        <SourceCredits sources={lesson.sources} />
+        {credits}
       </Stack>
     </>
   );
@@ -340,6 +340,9 @@ function LessonScreen({
         // Only a narrow page shows the button, so only there does the sheet open.
         onSettings: () => setSettingsOpen(true),
       }}
+      // A wide page credits the lesson's sources at its foot, a narrow one in its settings
+      // sheet. One copy at a time, as with the settings: the sheet may stay open on a widened window.
+      footer={settingsOpen ? undefined : lessonCredits}
       board={
         <BoardColumn
           game={game}
@@ -372,8 +375,10 @@ function LessonScreen({
             failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
             eyebrowInHeader
             eyebrowLink={listLink}
-            // The scoresheet drawer covers the aside, so the headline tells it then.
-            news={aside && !scoresheetOpen ? 'none' : (status.news ?? 'all')}
+            news={headlineNews(
+              { news: status.news, pastGuide },
+              { aside: !!aside, scoresheetOpen, failed: !!game.error },
+            )}
           />
           {/* The scoresheet drawer takes the place of this part on a narrow page, under the headline, which tells of a failure. */}
           <View {...part(scoresheetOpen ? 'wide-only' : 'lesson-body', styles.sections)}>
@@ -440,7 +445,7 @@ function LessonScreen({
             {settingsOpen ? null : (
               <>
                 <Separator />
-                {settings}
+                {settings()}
               </>
             )}
           </Stack>
@@ -449,7 +454,7 @@ function LessonScreen({
               <Stack style={styles.sections}>
                 {/* A phone's name-bar discs are dots too small to find; this swaps sides from the sheet, in a lesson too. */}
                 <SideChoice side={learner} onChange={onPlayAs} />
-                {settings}
+                {settings(lessonCredits)}
                 <SourceFootnote />
               </Stack>
             </Sheet>

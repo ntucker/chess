@@ -1,7 +1,8 @@
 import { Surface, useTheme } from '@reactive/silk-native';
-import type { ComponentProps, ReactNode } from 'react';
+import { type ComponentProps, type ReactNode, useState } from 'react';
 import { View } from 'react-native';
 
+import { asideAfter, type CardAside } from '@/board/cardAside';
 import { gameEnding } from '@/game/ending';
 import Board, { type BoardProps } from '@/components/Board';
 import { EndingCard } from '@/components/EndingCard';
@@ -37,6 +38,8 @@ interface StageProps {
   readonly board: ReactNode;
   /** The panel beside the board, or below it on a narrow screen. */
   readonly program: ReactNode;
+  /** Small print across the foot of a wide page, under the board and the panel (`Page`). */
+  readonly footer?: ReactNode;
 }
 
 /**
@@ -45,12 +48,12 @@ interface StageProps {
  * way. On a narrow page the panel goes below the board and scrolls on its
  * own, so the board stays in view.
  */
-export function Stage({ title, header, board, program }: StageProps) {
+export function Stage({ title, header, board, program, footer }: StageProps) {
   const styles = useNarrowStyles(STYLES);
   const part = useNarrowPart();
   const fit = useBoardFit();
   return (
-    <Page title={title} header={header} maxWidth={STAGE_MAX} fillsWindow>
+    <Page title={title} header={header} maxWidth={STAGE_MAX} fillsWindow footer={footer}>
       <View {...part('stage', styles.stage)}>
         <View {...part('board-column', [styles.boardColumn, fit])}>{board}</View>
         <NarrowScroll part="program" style={styles.program}>
@@ -70,7 +73,7 @@ interface BoardColumnProps {
     'name' | 'detail' | 'brief' | 'detailControl' | 'children'
   >;
   /** The board, with the player's side (`orientation`) at the bottom. */
-  readonly board: Omit<BoardProps, 'dom' | 'ending'>;
+  readonly board: Omit<BoardProps, 'dom' | 'ending' | 'onEndingPointer'>;
   /** Swaps the sides: given, either name bar's disc is a button that does it. */
   readonly onSwap?: () => void;
   /** The move stepper's middle on a narrow page (`Transport`). */
@@ -92,6 +95,12 @@ export function BoardColumn({ game, rival, board, onSwap, stepperMiddle }: Board
   // Only the game's last position has a result, so stepping back from it puts
   // the ending away; so does a lesson's idea playing back over it on the board.
   const ending = board.fen === game.current.fen ? gameEnding(game.current, side) : undefined;
+  // The ending card stays up while the final position is shown, so the
+  // learner can put it aside to see the board (`asideAfter`). Leaving that
+  // position brings the card back for its next showing.
+  const endingFen = ending && board.fen;
+  const [aside, setAside] = useState<CardAside>();
+  if (aside && aside.at !== endingFen) setAside(undefined);
   return (
     <>
       <PlayerBar
@@ -106,8 +115,22 @@ export function BoardColumn({ game, rival, board, onSwap, stepperMiddle }: Board
       <View style={styles.boardRow}>
         <EvaluationBar line={moves.slice(0, ply)} orientation={side} style={styles.evaluation} />
         <BoardFrame>
-          <Board {...board} ending={ending} dom={{ style: styles.fill, scrollEnabled: false }} />
-          {ending ? <EndingCard ending={ending} rival={rival.name} orientation={side} /> : null}
+          <Board
+            {...board}
+            ending={ending}
+            onEndingPointer={(pointer) => {
+              if (endingFen) setAside((current) => asideAfter(current, pointer, endingFen));
+            }}
+            dom={{ style: styles.fill, scrollEnabled: false }}
+          />
+          {ending ? (
+            <EndingCard
+              ending={ending}
+              rival={rival.name}
+              orientation={side}
+              aside={aside !== undefined}
+            />
+          ) : null}
         </BoardFrame>
       </View>
       <PlayerBar

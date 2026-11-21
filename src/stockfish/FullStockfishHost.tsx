@@ -2,7 +2,7 @@ import { useReportFullStockfishDownload } from '@/resources/download';
 
 import { fullStockfish } from './engine';
 import type { EngineViewRef } from './EngineView';
-import { LIVE_FOLDER } from './fullFiles';
+import { LIVE_FOLDER, OUTDATED_NEEDS } from './fullFiles';
 import { HiddenHost } from './StockfishHost';
 
 /**
@@ -15,7 +15,14 @@ import { HiddenHost } from './StockfishHost';
  */
 export function FullStockfishHost() {
   const report = useReportFullStockfishDownload();
-  return <HiddenHost engine={fullStockfish} start={startFull} onDownload={report} />;
+  return (
+    <HiddenHost
+      engine={fullStockfish}
+      start={startFull}
+      onDownload={report}
+      needs={OUTDATED_NEEDS}
+    />
+  );
 }
 
 const startFull = (view: EngineViewRef) => view.startFull(LIVE_FOLDER);

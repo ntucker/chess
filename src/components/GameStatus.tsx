@@ -52,14 +52,15 @@ export interface HeadlineProps {
    * leaves its room to the panel below: the title run in before the detail
    * (`all`); the detail alone, when the title only says whose move it is,
    * which the name bars show (`detail`); or nothing, when the detail is how
-   * to use the screen too, which the learner has seen (`none`; a failure
-   * still draws the detail). Without it, the narrow page draws the full
+   * to use the screen too, which the learner has seen, or the screen tells
+   * it elsewhere or leaves it untold (`none`; a failure still draws the
+   * detail). Without it, the narrow page draws the full
    * headline. Screen readers hear the full headline either way.
    */
   readonly news?: News;
 }
 
-type News = 'all' | 'detail' | 'none';
+export type News = 'all' | 'detail' | 'none';
 
 /** A panel's headline, announced as it changes, with a retry when the opponent didn't answer. */
 export function StatusHeadline({
@@ -122,25 +123,35 @@ interface Failure {
   readonly onRetry: () => void;
 }
 
-/**
- * The opponent didn't answer, with a retry; or, when a newer deploy removed
- * the engine's file so asking again can't help, a reload.
- */
-function FailureLine({ who, error, onRetry }: Failure) {
-  const { message, action, onPress } =
-    error instanceof NewVersionError
-      ? { message: NEW_VERSION, action: 'Reload', onPress: reload }
-      : { message: `${who} didn't answer.`, action: 'Try again', onPress: onRetry };
+function FailureLine(failure: Failure) {
+  const { message, button } = describeFailure(failure);
   return (
     <Inline gap="3" align="center">
       <Text role="bodySm" tone="danger">
         {message}
       </Text>
-      <Button size="sm" variant="soft" tone="danger" onPress={onPress}>
-        {action}
-      </Button>
+      {button ? (
+        <Button size="sm" variant="soft" tone="danger" onPress={button.onPress}>
+          {button.label}
+        </Button>
+      ) : null}
     </Inline>
   );
+}
+
+/**
+ * The opponent didn't answer, with a retry; or, when a newer deploy removed
+ * the engine's file so asking again can't help, a reload, or what the app
+ * needs when a reload can't help either.
+ */
+function describeFailure({ who, error, onRetry }: Failure): {
+  message: string;
+  button?: { label: string; onPress: () => void };
+} {
+  if (!(error instanceof NewVersionError))
+    return { message: `${who} didn't answer.`, button: { label: 'Try again', onPress: onRetry } };
+  if (error.needs) return { message: `${who} needs ${error.needs}.` };
+  return { message: NEW_VERSION, button: { label: 'Reload', onPress: reload } };
 }
 
 type Game = Omit<Props, 'error' | 'onRetry'>;

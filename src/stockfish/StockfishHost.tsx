@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { type Needs, NewVersionError } from '@/files/newVersion';
 import { readAsset } from '@/files/readAsset';
 import type { ReportDownload } from '@/resources/download';
 
@@ -42,6 +43,8 @@ interface HostProps {
   readonly start: StartEngine;
   /** How a download the web view does itself goes (EngineView's `startFull`). */
   readonly onDownload?: ReportDownload;
+  /** What the app needs when the engine's files are another build's (`Stockfish.unavailable`). */
+  readonly needs?: Needs;
 }
 
 /**
@@ -65,6 +68,7 @@ function Engine({
   engine,
   start,
   onDownload,
+  needs,
   supervisor,
 }: HostProps & { readonly supervisor: Supervisor }) {
   const view = useRef<EngineViewRef>(null);
@@ -97,12 +101,14 @@ function Engine({
     connection.current = engine.attach(started.send, supervisor);
   };
   const onLine = (line: string) => connection.current?.receive(line);
-  const onError = (message: string) => {
+  const onError = (message: string, newVersion?: boolean) => {
     if (connection.current) return connection.current.fail(message);
     // Not attached yet: its files didn't load, or its worker didn't start.
     if (stopped()) return;
     console.error(message);
-    supervisor.failed();
+    // Another build's files: trying again can't help.
+    if (newVersion) engine.unavailable(new NewVersionError({ needs }));
+    else supervisor.failed();
   };
 
   useEffect(() => {

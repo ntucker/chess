@@ -680,7 +680,26 @@ describe('checkLesson', () => {
     });
     expect(problems.map((p) => p.message)).toEqual([
       'variations form a cycle',
+      'names no position, in it or under it',
       'key is not a position key (FEN without move counters, see positionKey)',
+    ]);
+  });
+
+  it('refuses a variation no position is in or under', () => {
+    const variations = {
+      ...lesson.variations,
+      advance: { name: 'Advance Variation', parent: 'caro' },
+      tal: { name: 'Advance Variation: Tal Variation', parent: 'advance' },
+      empty: { name: 'Empty', parent: 'caro' },
+    };
+    // 1.e4 c6 is in 'tal', so 'advance' above it names a position too.
+    const named = withPosition(positionKey(afterC6), {
+      variation: 'tal',
+      moves: [],
+      notes: [{ text: 'White chooses a system.' }],
+    });
+    expect(checkLesson({ ...named, variations })).toEqual([
+      { path: 'variations["empty"]', message: 'names no position, in it or under it' },
     ]);
   });
 

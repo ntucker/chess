@@ -92,7 +92,6 @@ export const NARROW_PARTS = [
   'move-list',
   'list-card',
   'list-scroll',
-  'leads-to',
 ] as const;
 
 /** A part of the page, as narrow.css names it. */
@@ -209,11 +208,10 @@ export const visuallyHidden = {
   overflow: 'hidden',
 } as const satisfies ViewStyle;
 
-/** How a part looks off the web: on each kind of page, and the props it takes on a narrow one. */
+/** How a part looks off the web, on each kind of page. */
 interface NativePart {
   readonly wide?: ViewStyle & TextStyle;
   readonly narrow?: ViewStyle & TextStyle;
-  readonly narrowProps?: { readonly numberOfLines?: number };
 }
 
 /** The idea pane on a narrow page, beside the moves (`NATIVE_PARTS`). */
@@ -245,7 +243,8 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
   'wide-only-spoken': { narrow: visuallyHidden },
   'narrow-only': { wide: { display: 'none' } },
   place: { wide: { display: 'none' } },
-  page: { narrow: { flexGrow: 1 } },
+  // Page.tsx grows every page to the window, for its footer; only the web needs the height (CSS_ONLY).
+  page: {},
   stage: {
     narrow: {
       flexGrow: 1,
@@ -299,7 +298,6 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
   'move-list': { narrow: { flexShrink: 1, minHeight: 0 } },
   'list-card': { narrow: { flexShrink: 1, minHeight: 0, paddingBottom: 0 } },
   'list-scroll': { narrow: { flexShrink: 1, minHeight: 0 } },
-  'leads-to': { narrowProps: { numberOfLines: undefined } },
 };
 
 /**
@@ -346,8 +344,6 @@ export const CSS_ONLY: Readonly<Partial<Record<NarrowPartName, readonly string[]
   'lesson-panel': ['min-height: 100%'],
   // Natively the panes' floor is their height instead (`NATIVE_ONLY`).
   panes: ['height: 0'],
-  // Native's leads-to takes `narrowProps` instead.
-  'leads-to': ['white-space: normal'],
   // `NarrowScroll` scrolls these natively, with a fading edge and the same padding.
   program: SCROLLS,
   'list-scroll': ['overscroll-behavior: contain', ...SCROLLS],

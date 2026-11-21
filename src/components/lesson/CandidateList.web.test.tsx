@@ -106,9 +106,29 @@ describe('CandidateList', () => {
     expect(partTexts({ owner: 'White' })).toContainEqual(['wide-only-spoken', "White's\u00a0"]);
   });
 
-  it('leaves where each row leads to the line under a compact list', () => {
-    expect(partTexts({}).filter(([part]) => part === 'leads-to')).toEqual([]);
-    expect(partTexts({ compact: false })).toContainEqual(['leads-to', 'the Nf3 line']);
+  it('leaves where each row leads to the line under a compact list on a narrow page', () => {
+    expect(partTexts({})).toContainEqual(['wide-only', 'the Nf3 line']);
+  });
+
+  it('keeps where each row leads on every page when the list is not compact', () => {
+    const parts = render({ compact: false }, (host) =>
+      [...host.querySelectorAll('*')]
+        .filter((node) => node.children.length === 0 && node.textContent === 'the Nf3 line')
+        .map((node) => node.getAttribute('data-narrow')),
+    );
+    expect(parts).toEqual([null]);
+  });
+
+  it("shows a Stockfish row's change label, and says its description", () => {
+    const engine = {
+      ...COMMON,
+      engine: { label: '\u22120.4', description: '0.4 pawns worse for you' },
+    };
+    const row = render({ candidates: [engine], rare: [] }, (host) => {
+      const button = host.querySelector('[role="button"]');
+      return [button?.textContent, button?.getAttribute('aria-label')];
+    });
+    expect(row).toEqual(['Nf3the Nf3 line\u22120.4', 'Nf3, 0.4 pawns worse for you']);
   });
 
   it('fades rows for showing rare ones, not for leaving a position that showed them', () => {

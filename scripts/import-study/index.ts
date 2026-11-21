@@ -9,7 +9,8 @@
  * recommends none, and (`engineCheck` in studies.ts) drop what Stockfish
  * contradicts (./engineCheck) → give notes written on another move order to
  * the position the lesson reaches (./transpositions) → write the idea of each
- * book move nothing explains with AI (./explain) → add popularity → checkLesson → write
+ * book move nothing explains with AI (./explain) → drop variation names no
+ * position carries (./emptyVariations) → add popularity → checkLesson → write
  * assets/lessons/<id>.json, register it in src/resources/lesson.ts and list
  * it in assets/lessons/index.json.
  * `caro-kann` names a study listed in studies.ts. With --no-popularity the
@@ -58,6 +59,7 @@ import { lessonIndex } from '@/lesson/openings';
 
 import { convertChapters, convertReport } from './convert';
 import { claudeCli } from './convert/claude';
+import { withoutEmptyVariations } from './emptyVariations';
 import { engineCheck, ENGINES_OWN, fillBook, type EngineReport } from './engineCheck';
 import { explainBookMoves, explainCli, explainReport } from './explain';
 import { extractChapter } from './extract';
@@ -152,12 +154,14 @@ async function main() {
   );
   let engineReport: EngineReport | undefined;
   if (study.engineCheck) {
-    const checked = await engineCheck(lesson, stockfish.evaluate);
+    const checked = await engineCheck(lesson, stockfish.evaluate, {
+      gambit: study.engineCheck === 'gambit',
+    });
     lesson = checked.lesson;
     engineReport = checked.report;
-    const { unbooked, unreachable, cut, dropped, refilled } = checked.report;
+    const { gambits, unbooked, unreachable, cut, dropped, refilled } = checked.report;
     console.log(
-      `engine check: ${unbooked.length} book moves overruled (${cut.length} cut, the guide's only move; ${refilled.filled.length} picked again among the guide's others, ${refilled.ended.length} ended where it overruled them all and named none), ${unreachable.length} more left unreachable, ${dropped.length} notes dropped`,
+      `engine check: ${gambits.length} gambit mistakes kept, ${unbooked.length} book moves overruled (${cut.length} cut, the guide's only move; ${refilled.filled.length} picked again among the guide's others, ${refilled.ended.length} ended where it overruled them all and named none), ${unreachable.length} more left unreachable, ${dropped.length} notes dropped`,
     );
   }
   writeFileSync(engineFile, `${JSON.stringify({ ...filled.report, ...engineReport }, null, 2)}\n`);
@@ -174,6 +178,9 @@ async function main() {
   const explained = await explainBookMoves(lesson, explainer.ask, stockfish.evaluate);
   lesson = explained.lesson;
   console.log(explainReport(explained.report));
+  const named = withoutEmptyVariations(lesson);
+  lesson = named.lesson;
+  console.log(`variations dropped for naming no position: ${named.dropped.join(', ') || 'none'}`);
   stockfish.stop();
   // A run without the model can miss answers a run with it used, so it must not drop them.
   if (callModel) for (const answers of [cli, explainer, stockfish]) answers.saveUsed();

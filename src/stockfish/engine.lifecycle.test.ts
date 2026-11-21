@@ -353,4 +353,21 @@ describe('the engine lifecycle', () => {
     expect(searching()).toBe('position startpos moves d2d4');
     expect(other.failures).toEqual([]);
   });
+
+  it('fails what is watched while no engine can start, until one attaches', async () => {
+    const before = watch(['e2e4']);
+    const outdated = new Error('another build');
+    engine.liteStockfish.unavailable(outdated);
+    expect(before.failures).toEqual([outdated]);
+    const after = watch(['d2d4']);
+    await decided();
+    expect(after.failures).toEqual([outdated]);
+
+    const { print, searching } = scripted();
+    print('uciok');
+    const attached = watch(['c2c4']);
+    await decided();
+    expect(searching()).toBe('position startpos moves c2c4');
+    expect(attached.failures).toEqual([]);
+  });
 });

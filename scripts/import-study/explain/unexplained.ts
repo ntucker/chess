@@ -4,7 +4,7 @@
  */
 import { noteShows, type Lesson, type Note, type PositionKey, type Uci } from '@/lesson/lesson';
 
-import { bookReach } from '../engineCheck';
+import { bookReach, isGambitNote } from '../engineCheck';
 import { allMoves } from '../transpositions';
 
 /**
@@ -38,6 +38,8 @@ const words = (text: string) => text.split(/\s+/).filter(Boolean).length;
 
 /** Why `note` explains nothing, or undefined when it says something about the position. */
 export function bareNote(note: Note): Exclude<Unexplained, 'none'> | undefined {
+  // A gambit note is Stockfish's verdict whatever its ideas show, so drawn ideas don't excuse it.
+  if (isGambitNote(note)) return 'verdict';
   if (noteShows(note.ideas) === 'drawn') return undefined;
   const text = note.text.trim();
   if (text.endsWith('…') || words(text) < FRAGMENT_WORDS) return 'fragment';

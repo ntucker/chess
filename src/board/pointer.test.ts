@@ -1,6 +1,13 @@
 import { describe, expect, it, jest } from '@jest/globals';
 
-import { type Drag, hovers, hoversControl, watchDrag } from './pointer';
+import {
+  type BoardPointer,
+  type Drag,
+  hovers,
+  hoversControl,
+  watchBoardPointer,
+  watchDrag,
+} from './pointer';
 
 /** Squares 10 pixels wide along one rank: x 0-9 is a1, 10-19 is b1, and so on; nothing past h1. */
 const squareAt = (x: number) =>
@@ -118,5 +125,91 @@ describe('hoversControl', () => {
     expect(hoversControl('mouse')).toBe(true);
     expect(hoversControl('pen')).toBe(true);
     expect(hoversControl('touch')).toBe(false);
+  });
+});
+
+describe('watchBoardPointer', () => {
+  function setupBoard() {
+    const board = new EventTarget();
+    const report = jest.fn<(pointer: BoardPointer) => void>();
+    let listening = true;
+    const stop = watchBoardPointer(board, () => listening, report);
+    const listen = (on: boolean) => {
+      listening = on;
+    };
+    const fire = (type: string, pointerType: string, clientX = 0, isPrimary = true) =>
+      board.dispatchEvent(
+        Object.assign(new Event(type), { pointerType, isPrimary, clientX, clientY: 0 }),
+      );
+    const tap = (pointerType: string, from = 0, to = from) => {
+      fire('pointerdown', pointerType, from);
+      fire('pointerup', pointerType, to);
+    };
+    return { report, stop, fire, tap, listen };
+  }
+
+  it('reports a mouse coming onto the board and leaving it, and no taps for its clicks', () => {
+    const { report, fire, tap } = setupBoard();
+    fire('pointerenter', 'mouse');
+    tap('mouse');
+    fire('pointerleave', 'mouse');
+    expect(report.mock.calls).toEqual([['enter'], ['leave']]);
+  });
+
+  it('reports a finger or pen pressing and lifting in place as a tap, and never as hovering', () => {
+    const { report, fire, tap } = setupBoard();
+    for (const pointerType of ['touch', 'pen']) {
+      fire('pointerenter', pointerType);
+      tap(pointerType, 40, 48);
+      fire('pointerleave', pointerType);
+    }
+    expect(report.mock.calls).toEqual([['tap'], ['tap']]);
+  });
+
+  it('takes no swipe, second finger, cancelled press or lift without a press for a tap', () => {
+    const { report, fire, tap } = setupBoard();
+    tap('touch', 0, 60);
+    // Out and back again.
+    fire('pointerdown', 'touch', 0);
+    fire('pointermove', 'touch', 60);
+    fire('pointerup', 'touch', 2);
+    // A second finger joins the first, which cancels its press, so its lift is no tap.
+    fire('pointerdown', 'touch', 0);
+    fire('pointerdown', 'touch', 0, false);
+    fire('pointerup', 'touch', 0);
+    fire('pointerdown', 'touch');
+    fire('pointercancel', 'touch');
+    fire('pointerup', 'touch');
+    // A lift with no press on the board, as when one started off it.
+    fire('pointerup', 'touch');
+    expect(report).not.toHaveBeenCalled();
+  });
+
+  it('reports only while listening, and a tap only when it listened at both press and lift', () => {
+    const { report, fire, tap, listen } = setupBoard();
+    listen(false);
+    fire('pointerenter', 'mouse');
+    tap('touch');
+    // The press plays the mating move, and the board listens before the finger lifts.
+    fire('pointerdown', 'touch');
+    listen(true);
+    fire('pointerup', 'touch');
+    expect(report).not.toHaveBeenCalled();
+    tap('touch');
+    // A mouse is heard again once the board listens.
+    fire('pointerenter', 'mouse');
+    // The board stops listening, as on a step back, before the finger lifts.
+    fire('pointerdown', 'touch');
+    listen(false);
+    fire('pointerup', 'touch');
+    expect(report.mock.calls).toEqual([['tap'], ['enter']]);
+  });
+
+  it('reports nothing once stopped', () => {
+    const { report, stop, fire, tap } = setupBoard();
+    stop();
+    fire('pointerenter', 'mouse');
+    tap('touch');
+    expect(report).not.toHaveBeenCalled();
   });
 });
