@@ -40,6 +40,9 @@ const color = {
   lightCore: '#fff6dc',
   lightMid: '#f7cf74',
   eye: '#2a1838',
+  // The app's dark surface and text (src/theme/theme.ts), behind and in the feature graphic.
+  surface: '#120d1f',
+  text: '#f4eee2',
 };
 
 // The knight, facing left. Each point is [x, y]; a third element marks a
@@ -309,8 +312,9 @@ const pngs = [
   { file: 'assets/images/logo-mark.png', size: 160, svg: logo() },
   { file: 'assets/images/favicon.png', size: 48, svg: logo({ scale: 1.12, corner: 230 }) },
   // Google Play's listing: a square icon it rounds itself, and the banner atop the page.
-  { file: 'store/icon-512.png', size: 512, svg: logo(), opaque: true },
-  { file: 'store/feature-graphic.png', size: [1024, 500], html: featureGraphic(), opaque: true },
+  // Play asks for a 32-bit PNG, so the icon keeps an alpha channel though it has no transparent pixel.
+  { file: 'store/icon-512.png', size: 512, svg: logo(), opaque: true, alpha: true },
+  { file: 'store/feature-graphic.png', size: [1024, 500], html: featureGraphic, opaque: true },
 ];
 
 /**
@@ -328,9 +332,9 @@ function featureGraphic() {
 ${font('Display', 'dm-serif-display/400Regular/DMSerifDisplay_400Regular.ttf')}
 ${font('Sans', 'instrument-sans/400Regular/InstrumentSans_400Regular.ttf')}
 body{margin:0;width:1024px;height:500px;display:flex;align-items:center;gap:56px;padding:0 0 0 100px;box-sizing:border-box;
-background:radial-gradient(ellipse 70% 80% at 30% -10%,rgba(217,164,65,.3),rgba(217,164,65,0) 70%),#120d1f}
+background:radial-gradient(ellipse 70% 80% at 30% -10%,${brand.spotlight}4d,${brand.spotlight}00 70%),${color.surface}}
 svg{display:block;flex:none;filter:drop-shadow(0 18px 40px rgba(0,0,0,.55))}
-h1{margin:0;font:400 92px/1 Display;color:#f4eee2;letter-spacing:-.5px}
+h1{margin:0;font:400 92px/1 Display;color:${color.text};letter-spacing:-.5px}
 p{margin:22px 0 0;font:400 32px/1.2 Sans;color:${brand.spotlight};letter-spacing:.5px}
 </style>${tile}<div><h1>Opening<br>Night</h1><p>Learn your lines</p></div>`;
 }
@@ -342,18 +346,33 @@ let chromium;
 try {
   ({ chromium } = createRequire(import.meta.url)('playwright'));
 } catch {
-  console.error('Playwright not found, so the PNGs in assets/images were left as they were.');
+  console.error('Playwright not found, so the PNGs were left as they were.');
   process.exit(1);
 }
 const browser = await chromium.launch();
-for (const { file, size, svg, html, opaque } of pngs) {
+for (const { file, size, svg, html, opaque, alpha } of pngs) {
   const [width, height] = Array.isArray(size) ? size : [size, size];
   const page = await browser.newPage({ viewport: { width, height } });
   await page.setContent(
-    html ??
+    html?.() ??
       `<body style="margin:0">${svg.replace('<svg ', `<svg width="${width}" height="${height}" style="display:block" `)}`,
   );
-  await page.screenshot({ path: root + file, omitBackground: !opaque });
+  const png = await page.screenshot({ omitBackground: !opaque });
+  // Chromium saves an image with no transparent pixel without its alpha channel; a canvas keeps it.
+  const kept = alpha
+    ? await page.evaluate(async (data) => {
+        const image = new Image();
+        image.src = `data:image/png;base64,${data}`;
+        await image.decode();
+        const canvas = Object.assign(document.createElement('canvas'), {
+          width: image.width,
+          height: image.height,
+        });
+        canvas.getContext('2d').drawImage(image, 0, 0);
+        return canvas.toDataURL('image/png').split(',')[1];
+      }, png.toString('base64'))
+    : undefined;
+  writeFileSync(root + file, kept ? Buffer.from(kept, 'base64') : png);
   await page.close();
 }
 await browser.close();
