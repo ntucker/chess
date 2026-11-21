@@ -886,8 +886,8 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         maxPages: 60,
       },
       {
-        // White's Italian, reworded for Black. Named from 4.b4 so its Evans Gambit chapter doesn't
-        // name 3...Bc5's other replies; the Wikibooks root names the Giuoco Piano.
+        // White's Italian, reworded for Black. Named from 4.b4: its Evans Gambit chapter starts
+        // after 3...Bc5, and the Wikibooks root above names the Giuoco Piano.
         ...LENIN_ITALIAN,
         writtenFor: 'white',
         ...onlyChapters(LENIN_ITALIAN_CHAPTERS),
