@@ -18,24 +18,29 @@ jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 let root: Root;
 let host: HTMLElement;
 
+/** The switch, in a window `width` wide. */
+const render = (width = 1024) => {
+  jest.spyOn(Dimensions, 'get').mockReturnValue({ width, height: 768, scale: 1, fontScale: 1 });
+  root.render(
+    <SilkProvider theme={themes.dark}>
+      <SettingsProvider>
+        <ThemeSwitch />
+      </SettingsProvider>
+    </SilkProvider>,
+  );
+};
+
 beforeEach(async () => {
   localStorage.clear();
   host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
-  await act(async () =>
-    root.render(
-      <SilkProvider theme={themes.dark}>
-        <SettingsProvider>
-          <ThemeSwitch />
-        </SettingsProvider>
-      </SilkProvider>,
-    ),
-  );
+  await act(async () => render());
 });
 afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
+  jest.restoreAllMocks();
 });
 
 const button = () => host.querySelector<HTMLElement>('[role="button"]')!;
@@ -45,15 +50,16 @@ const radio = (label: string) =>
 /** Whether the choices are open: their pill, around the row of radios, is shown. */
 const choicesOpen = () =>
   radio('Light').parentElement!.parentElement!.getAttribute('aria-hidden') !== 'true';
-/** A pointer of `pointerType` coming onto the button, or leaving it for the page. */
+/** A pointer of `pointerType` coming onto the button, or leaving it for the page; the choices open once measured. */
 const pointer = (type: 'pointerover' | 'pointerout', pointerType: string) =>
-  act(() => {
+  act(async () => {
     // jsdom has no PointerEvent: a mouse event that carries the pointer's type.
     const event = new MouseEvent(type, {
       bubbles: true,
       relatedTarget: type === 'pointerout' ? document.body : null,
     });
     button().dispatchEvent(Object.assign(event, { pointerType }));
+    await new Promise((resolve) => setTimeout(resolve, 50));
   });
 
 describe('ThemeSwitch', () => {
@@ -74,24 +80,35 @@ describe('ThemeSwitch', () => {
     expect(radio('Dark').getAttribute('aria-checked')).toBe('true');
   });
 
-  it.each(['mouse', 'pen'])('opens the choices while a %s rests on it', (pointerType) => {
+  it.each(['mouse', 'pen'])('opens the choices while a %s rests on it', async (pointerType) => {
     expect(choicesOpen()).toBe(false);
-    pointer('pointerover', pointerType);
+    await pointer('pointerover', pointerType);
     expect(choicesOpen()).toBe(true);
-    pointer('pointerout', pointerType);
+    await pointer('pointerout', pointerType);
     expect(choicesOpen()).toBe(false);
   });
 
-  it("leaves a finger's choices to holding it", () => {
-    pointer('pointerover', 'touch');
+  it('stays shut for a mouse that leaves before the choices are measured', async () => {
+    act(() => {
+      const over = new MouseEvent('pointerover', { bubbles: true, relatedTarget: null });
+      const out = new MouseEvent('pointerout', { bubbles: true, relatedTarget: document.body });
+      button().dispatchEvent(Object.assign(over, { pointerType: 'mouse' }));
+      button().dispatchEvent(Object.assign(out, { pointerType: 'mouse' }));
+    });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(choicesOpen()).toBe(false);
+  });
+
+  it("leaves a finger's choices to holding it", async () => {
+    await pointer('pointerover', 'touch');
     expect(choicesOpen()).toBe(false);
   });
 
   describe('held by a finger', () => {
-    /** A touch event on `target` at `pageX`, as React Native Web reads one. */
-    const touch = (type: string, pageX: number, target: Element = button()) =>
+    /** A touch event on `target` at `pageX` and `pageY`, as React Native Web reads one. */
+    const touch = (type: string, pageX: number, pageY = 15, target: Element = button()) =>
       act(() => {
-        const point = { identifier: 1, pageX, pageY: 10, clientX: pageX, clientY: 10, target };
+        const point = { identifier: 1, pageX, pageY, clientX: pageX, clientY: pageY, target };
         const ended = type === 'touchend' || type === 'touchcancel';
         const event = Object.assign(new Event(type, { bubbles: true, cancelable: true }), {
           touches: ended ? [] : [point],
@@ -100,9 +117,9 @@ describe('ThemeSwitch', () => {
         });
         target.dispatchEvent(event);
       });
-    /** Holds a finger on the button long enough to open the choices. */
+    /** Holds a finger on the button's middle long enough to open the choices. */
     const hold = () => {
-      touch('touchstart', 0);
+      touch('touchstart', 115);
       act(() => jest.advanceTimersByTime(600));
     };
 
@@ -113,17 +130,13 @@ describe('ThemeSwitch', () => {
       jest
         .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
         .mockReturnValue({ x: 100, y: 0, left: 100, top: 0, width: 30, height: 30 } as DOMRect);
-      // jsdom's page has no size.
-      jest
-        .spyOn(Dimensions, 'get')
-        .mockReturnValue({ width: 1024, height: 768, scale: 1, fontScale: 1 });
     });
     afterEach(() => {
       jest.useRealTimers();
       jest.restoreAllMocks();
     });
 
-    it('opens the choices, and a slide then a lift chooses the one under the finger', () => {
+    it('opens the choices, and a swipe then a lift chooses by how far it went', () => {
       hold();
       expect(choicesOpen()).toBe(true);
       touch('touchmove', 145);
@@ -134,26 +147,42 @@ describe('ThemeSwitch', () => {
 
     it('keeps the theme when the finger lifts where it was held, even after wobbling', () => {
       hold();
-      touch('touchmove', 112);
-      touch('touchmove', 126);
+      touch('touchmove', 104);
+      touch('touchmove', 128);
       touch('touchend', 120);
       expect(localStorage.getItem('settings')).toBeNull();
       expect(choicesOpen()).toBe(false);
     });
 
-    it('takes the end choice for a slide past either end', () => {
+    it('takes the end choice for a swipe past either end', () => {
       hold();
       touch('touchmove', 600);
       touch('touchend', 600);
       expect(saved()).toBe('dark');
-      // Opened from Dark, the choices span 40 to 130, Dark over the button.
       hold();
       touch('touchmove', -50);
       touch('touchend', -50);
       expect(saved()).toBe('system');
     });
 
-    it('chooses where the finger lifts, before its slide has drawn', () => {
+    it('keeps the theme when the finger leaves up or down to close', () => {
+      hold();
+      touch('touchmove', 175, 100);
+      touch('touchend', 175, 100);
+      expect(localStorage.getItem('settings')).toBeNull();
+      expect(choicesOpen()).toBe(false);
+    });
+
+    it("keeps the theme when held and lifted at the window's edge", () => {
+      // 160 wide: the choices move 35 left to stay 4 inside, off the button's middle.
+      act(() => render(160));
+      hold();
+      expect(choicesOpen()).toBe(true);
+      touch('touchend', 115);
+      expect(localStorage.getItem('settings')).toBeNull();
+    });
+
+    it('chooses where the finger lifts, before its swipe has drawn', () => {
       hold();
       act(() => {
         // One act: the move's render hasn't happened when the finger lifts.

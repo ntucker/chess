@@ -29,8 +29,14 @@ const HOLD_MS = 400;
 const MOTION = springMotion(springs.snappy);
 
 /** The styles placing the open choices, and the row inside them shut, by the anchor's index in THEMES. */
-const OPEN_AT = ['openAt0', 'openAt1', 'openAt2'] as const;
-const ROW_SHUT_AT = ['rowShutAt0', 'rowShutAt1', 'rowShutAt2'] as const;
+const OPEN_AT = ['openAt0', 'openAt1', 'openAt2'] as const satisfies {
+  length: (typeof THEMES)['length'];
+};
+const ROW_SHUT_AT = ['rowShutAt0', 'rowShutAt1', 'rowShutAt2'] as const satisfies {
+  length: (typeof THEMES)['length'];
+};
+/** How many slots' height a held finger moves up or down to close the choices unchanged. */
+const AWAY = 2;
 
 /** How the choices were opened: a mouse or pen resting on the button, or a finger held on it. */
 type Opened = 'hover' | 'hold';
@@ -42,8 +48,36 @@ interface Menu {
   readonly anchor: number;
   /** How far the choices moved to stay in the window, in pixels. */
   readonly shift: number;
-  /** The choice under the pointer, once it moves. */
+  /** Where the first choice starts and how wide each is, in window pixels. */
+  readonly left: number;
+  readonly size: number;
+  /** The choice the pointer or finger is on, once it moves. */
   readonly pointed?: Theme;
+}
+
+/** A choice `steps` from `menu`'s anchor; past either end, the end one. */
+const stepped = (menu: Menu, steps: number) =>
+  THEMES[Math.min(THEMES.length - 1, Math.max(0, menu.anchor + steps))];
+
+/** The choice open over `pageX`. */
+const slotAt = (menu: Menu, pageX: number) =>
+  stepped(menu, Math.floor((pageX - menu.left) / menu.size) - menu.anchor);
+
+/**
+ * The choice a held finger picks by moving `dx` and `dy` from where it was
+ * held: a slot's width per choice, after half a slot that keeps the anchor
+ * (so a wobble changes nothing), past either end the end one. Moved more
+ * than AWAY slots up or down, none: the finger is leaving to close it.
+ */
+function swiped(menu: Menu, dx: number, dy: number) {
+  if (Math.abs(dy) > AWAY * menu.size) return undefined;
+  return stepped(menu, Math.sign(dx) * Math.floor((Math.abs(dx) + menu.size / 2) / menu.size));
+}
+
+/** Where a touch event's finger is, or last was. React Native Web leaves it to the touches. */
+function touchAt({ nativeEvent }: GestureResponderEvent) {
+  const touch = nativeEvent.touches[0] ?? nativeEvent.changedTouches[0];
+  return { x: touch?.pageX ?? nativeEvent.pageX, y: touch?.pageY ?? nativeEvent.pageY };
 }
 
 /**
@@ -51,8 +85,9 @@ interface Menu {
  * A tap steps to the next theme. A resting mouse or pen (`hoversControl`),
  * or a finger held down, springs it open into all three, with the theme in
  * use staying where it is (unless that would leave the window). A mouse or
- * pen clicks one. A finger slides to one and lifts, and a slide past either
- * end takes the end one; lifting where it started keeps the theme.
+ * pen clicks one. A held finger swipes to one and lifts: the farther the
+ * swipe, the farther the choice, and past either end the end one. Lifting
+ * where it was held, or after moving well up or down, keeps the theme.
  */
 export function ThemeSwitch() {
   const { theme } = useSettings();
@@ -62,38 +97,39 @@ export function ThemeSwitch() {
   const styles = useNarrowStyles(STYLES);
   const [menu, setMenu] = useState<Menu>();
   const button = useRef<ComponentRef<typeof View>>(null);
-  // Where the open choices start and how wide each is, in window coordinates.
-  const slots = useRef<{ left: number; size: number }>(undefined);
+  // How the choices are opening or open: set before they're measured, so a
+  // pointer that leaves or a finger that lifts first stops them opening.
+  const opening = useRef<Opened>(undefined);
+  // Where the finger went down, which a held finger's swipe is measured from.
+  const start = useRef<{ x: number; y: number }>(undefined);
 
   const choose = (choice: Theme) => dispatch({ type: 'chosen', choice: { theme: choice } });
+  // Opens once measured, already inside the window, so nothing moves after it shows.
   const open = (how: Opened) => {
     const anchor = THEMES.indexOf(theme);
-    setMenu({ how, anchor, shift: 0 });
+    // The window in measureInWindow's own coordinates. Not layout: the
+    // choices float over the header, placed where they were measured.
+    const bounds = { left: EDGE, right: Dimensions.get('window').width - EDGE };
+    opening.current = how;
     button.current?.measureInWindow((x, _y, size) => {
+      if (opening.current !== how) return;
       const left = x - anchor * size;
       const right = left + THEMES.length * size;
-      const { width } = Dimensions.get('window');
       const shift =
-        right + BORDER > width - EDGE
-          ? width - EDGE - right - BORDER
-          : Math.max(0, EDGE - left + BORDER);
-      slots.current = { left: left + shift, size };
-      setMenu((shown) => shown && { ...shown, shift });
+        right + BORDER > bounds.right
+          ? bounds.right - right - BORDER
+          : Math.max(0, bounds.left - left + BORDER);
+      setMenu({ how, anchor, shift, left: left + shift, size });
     });
   };
-  const close = () => setMenu(undefined);
-  /** The choice open over `pageX`; past either end, the end one. */
-  const slotAt = (pageX: number) => {
-    if (!slots.current) return undefined;
-    const index = Math.floor((pageX - slots.current.left) / slots.current.size);
-    return THEMES[Math.min(THEMES.length - 1, Math.max(0, index))];
+  const close = () => {
+    opening.current = undefined;
+    setMenu(undefined);
   };
-  const point = (pageX: number) => {
-    const pointed = slotAt(pageX);
-    // From the latest state, so a move can't reopen what a close just shut.
-    if (pointed) setMenu((shown) => shown && { ...shown, pointed });
-  };
-  // Lit: the choice under the pointer, else the theme in use (whose icon alone is inked).
+  // From the latest state, so a move can't reopen what a close just shut.
+  const point = (pick: (shown: Menu) => Theme | undefined) =>
+    setMenu((shown) => shown && { ...shown, pointed: pick(shown) });
+  // Lit: the choice pointed at, else the theme in use (whose icon alone is inked).
   const lit = menu?.pointed ?? theme;
   const { label, icon } = CHOICES[theme];
   // The choice over the button: while open, the one it opened with; shut, the theme in use.
@@ -111,26 +147,33 @@ export function ThemeSwitch() {
       }}
       onPointerMove={({ nativeEvent }: PointerEvent) => {
         if (menu?.how === 'hover' && hoversControl(nativeEvent.pointerType)) {
-          point(nativeEvent.pageX);
+          point((shown) => slotAt(shown, nativeEvent.pageX));
         }
       }}
       onPointerLeave={({ nativeEvent }: PointerEvent) => {
-        if (menu?.how === 'hover' && hoversControl(nativeEvent.pointerType)) close();
+        if (opening.current === 'hover' && hoversControl(nativeEvent.pointerType)) close();
       }}
-      // A held finger keeps the button's touch as it slides over the choices.
-      onTouchMove={({ nativeEvent }: GestureResponderEvent) => {
-        // React Native Web leaves the touch's position to its touches.
-        if (menu?.how === 'hold') point(nativeEvent.touches[0]?.pageX ?? nativeEvent.pageX);
+      onTouchStart={(event: GestureResponderEvent) => {
+        start.current = touchAt(event);
       }}
-      onTouchEnd={({ nativeEvent }: GestureResponderEvent) => {
-        if (menu?.how !== 'hold') return;
+      // A held finger keeps the button's touch as it swipes over the choices.
+      onTouchMove={(event: GestureResponderEvent) => {
+        const from = start.current;
+        if (menu?.how !== 'hold' || !from) return;
+        const { x, y } = touchAt(event);
+        point((shown) => swiped(shown, x - from.x, y - from.y));
+      }}
+      onTouchEnd={(event: GestureResponderEvent) => {
+        const from = start.current;
+        if (opening.current !== 'hold') return;
         // Where the finger lifts, which a move's render may not have reached yet.
-        const lifted = slotAt(nativeEvent.changedTouches[0]?.pageX ?? nativeEvent.pageX);
+        const { x, y } = touchAt(event);
+        const lifted = menu && from && swiped(menu, x - from.x, y - from.y);
         if (lifted && lifted !== theme) choose(lifted);
         close();
       }}
       onTouchCancel={() => {
-        if (menu?.how === 'hold') close();
+        if (opening.current === 'hold') close();
       }}
     >
       <HeaderButton
@@ -143,7 +186,7 @@ export function ThemeSwitch() {
         onPress={() => choose(THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length])}
         // A mouse or pen already opened them by resting on the button.
         onLongPress={() => {
-          if (!menu) open('hold');
+          if (!opening.current) open('hold');
         }}
         delayLongPress={HOLD_MS}
       />
