@@ -55,26 +55,7 @@ async function getFiles(
   const cached = cache && (await readCache(cache));
   if (cached) return cached;
 
-  // Either file failing stops the other, so the 99 MB doesn't download on,
-  // telling its progress over the failure.
-  const failed = new AbortController();
-  const both = AbortSignal.any([signal, failed.signal]);
-  const stopBoth = (error: unknown): never => {
-    failed.abort();
-    throw error;
-  };
-  const [loader, wasm] = await Promise.all([
-    download(folder, FULL_LOADER, both)
-      .then((response) => response.text())
-      .catch(stopBoth),
-    download(folder, FULL_WASM, both)
-      .then((response) =>
-        readWasm(response, (percent) => {
-          if (!both.aborted) onProgress(percent);
-        }),
-      )
-      .catch(stopBoth),
-  ]);
+  const [loader, wasm] = await downloadBoth(folder, signal, onProgress);
   if (cache) {
     // A cache that can't keep them (out of space, say) costs the next visit
     // a download, not this one its engine.
@@ -89,6 +70,43 @@ async function getFiles(
     }
   }
   return { loader, wasm };
+}
+
+/**
+ * Both files from `folder`. Either failing aborts the other's download and
+ * its progress, so the WebAssembly's percent never replaces the failure's
+ * report. (A listener links the signals: older Android web views lack
+ * AbortSignal.any.)
+ */
+async function downloadBoth(
+  folder: string,
+  signal: AbortSignal,
+  onProgress: (percent: number) => void,
+): Promise<[string, Blob]> {
+  const stop = new AbortController();
+  const abort = () => stop.abort();
+  signal.addEventListener('abort', abort);
+  if (signal.aborted) abort();
+  const stopBoth = (error: unknown): never => {
+    abort();
+    throw error;
+  };
+  try {
+    return await Promise.all([
+      download(folder, FULL_LOADER, stop.signal)
+        .then((response) => response.text())
+        .catch(stopBoth),
+      download(folder, FULL_WASM, stop.signal)
+        .then((response) =>
+          readWasm(response, (percent) => {
+            if (!stop.signal.aborted) onProgress(percent);
+          }),
+        )
+        .catch(stopBoth),
+    ]);
+  } finally {
+    signal.removeEventListener('abort', abort);
+  }
 }
 
 /**

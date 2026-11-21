@@ -81,6 +81,18 @@ const report = (percent: number, failure?: DownloadFailure) =>
 const load = (folder = `${ORIGIN}/chess/stockfish/`) =>
   loadFullStockfish(folder, new AbortController().signal, report);
 
+/** A promise and the function that resolves it. */
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => (resolve = done));
+  return { promise, resolve };
+}
+
+/** Waits, a macrotask at a time, until `done` holds. */
+async function until(done: () => boolean) {
+  while (!done()) await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 describe('loadFullStockfish', () => {
   it('downloads the files once, telling how much has arrived by the percent, then reads them from the cache', async () => {
     const files = (await load())!;
@@ -133,31 +145,44 @@ describe('loadFullStockfish', () => {
     expect(reports).toEqual(['0 newVersion']);
   });
 
-  it('stops the WebAssembly and its progress when the loader is missing', async () => {
+  it('aborts the WebAssembly, and tells no more of its percent, when the loader is missing', async () => {
+    const loaderAnswer = deferred<Response>();
+    const secondHalf = deferred<void>();
     let wasmSignal: AbortSignal | undefined;
     const encoder = new TextEncoder();
     jest.spyOn(globalThis, 'fetch').mockImplementation((async (url: string, init?: RequestInit) => {
-      if (url.endsWith('.js')) {
-        // Missing, once the WebAssembly's first half has arrived.
-        await new Promise((resolve) => setTimeout(resolve, 10));
-        return new Response('', { status: 404 });
-      }
+      if (url.endsWith('.js')) return loaderAnswer.promise;
       wasmSignal = init?.signal ?? undefined;
       let sent = 0;
+      // Ignores the abort, as a chunk already on its way would.
       return new Response(
         new ReadableStream({
           async pull(controller) {
-            // The second half arrives late, after the loader's 404.
-            if (sent++) await new Promise((resolve) => setTimeout(resolve, 50));
+            if (sent++) await secondHalf.promise;
             controller.enqueue(encoder.encode('x'.repeat(100)));
           },
         }),
       );
     }) as typeof fetch);
-    await expect(load()).rejects.toBeInstanceOf(NewVersionError);
+    const loading = load();
+    await until(() => reports.length > 0);
+    loaderAnswer.resolve(new Response('', { status: 404 }));
+    await expect(loading).rejects.toBeInstanceOf(NewVersionError);
     expect(wasmSignal?.aborted).toBe(true);
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    secondHalf.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(reports).toEqual(['50', '0 newVersion']);
+  });
+
+  it('aborts the loader when the WebAssembly is missing', async () => {
+    let loaderSignal: AbortSignal | undefined;
+    jest.spyOn(globalThis, 'fetch').mockImplementation((async (url: string, init?: RequestInit) => {
+      if (url.endsWith('.wasm')) return new Response('', { status: 404 });
+      loaderSignal = init?.signal ?? undefined;
+      return new Promise<Response>(() => {});
+    }) as typeof fetch);
+    await expect(load()).rejects.toBeInstanceOf(NewVersionError);
+    expect(loaderSignal?.aborted).toBe(true);
   });
 
   it('says it tries again, and fails, when the site answers with another error', async () => {
