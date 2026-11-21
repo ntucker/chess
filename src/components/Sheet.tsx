@@ -1,7 +1,8 @@
-import { Inline, Surface, Text, useTheme } from '@reactive/silk-native';
+import { Dialog, Inline } from '@reactive/silk-native';
 import { useIsFocused } from 'expo-router';
 import { type ReactNode, useEffect, useEffectEvent } from 'react';
-import { Modal, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HEADER_BUTTON_SIZE, HeaderButton } from '@/components/HeaderButton';
 import { narrowStyles } from '@/theme/narrow';
@@ -23,55 +24,48 @@ interface Props {
  * A sheet that rises from the bottom of the screen over a veiled page, for
  * what a small screen has no room to keep in view, such as settings. Shown
  * while mounted. Its content scrolls once taller than the screen allows.
- * React Native's Modal, so it traps focus on the web and works the same on
+ * Silk's bottom Dialog, so it traps focus on the web and works the same on
  * Android.
  */
 export function Sheet({ title, onClose, children }: Props) {
-  const { theme } = useTheme();
-  const { color, radius } = theme.semantic;
-  // A screen left underneath stays mounted, and the Modal would cover the one on top.
+  // A screen left underneath stays mounted, and the dialog would cover the one on top.
   const focused = useIsFocused();
   const close = useEffectEvent(onClose);
   const styles = useNarrowStyles(STYLES);
+  const bottom = useBottomInset();
   useEffect(() => {
     if (!focused) close();
   }, [focused]);
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <View style={[styles.veil, { backgroundColor: color.overlay }]}>
-        {/* A tap beside the sheet closes it: not a button, since the close button is the one to reach. */}
-        <View
-          style={StyleSheet.absoluteFill}
-          onStartShouldSetResponder={() => true}
-          onResponderRelease={onClose}
-        />
-        <Surface
-          elevation="overlay"
-          border="subtle"
-          aria-label={title}
-          style={[
-            styles.sheet,
-            { borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg },
-          ]}
-        >
-          <Inline align="center" justify="between" wrap="nowrap" style={styles.head}>
-            <Text role="heading" accessibilityRole="header">
-              {title}
-            </Text>
-            <HeaderButton
-              icon="close"
-              iconSize={CLOSE_ICON}
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-              onPress={onClose}
-            />
-          </Inline>
-          <ScrollView contentContainerStyle={styles.content}>{children}</ScrollView>
-        </Surface>
-      </View>
-    </Modal>
+    <Dialog.Root open onOpenChange={onClose}>
+      <Dialog.Content
+        placement="bottom"
+        testID="sheet"
+        style={[styles.sheet, { paddingBottom: bottom }]}
+      >
+        <Inline align="center" justify="between" wrap="nowrap" style={styles.head}>
+          <Dialog.Title>{title}</Dialog.Title>
+          <HeaderButton
+            icon="close"
+            iconSize={CLOSE_ICON}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            onPress={onClose}
+          />
+        </Inline>
+        <ScrollView contentContainerStyle={styles.content}>{children}</ScrollView>
+      </Dialog.Content>
+    </Dialog.Root>
   );
 }
+
+/**
+ * The bottom safe-area inset on native (Android's navigation bar), where the
+ * app is edge-to-edge and the sheet runs to the screen's bottom edge under it,
+ * so the sheet's padding (0 in STYLES) takes the inset instead. The web's sheet
+ * ends above the browser's bars.
+ */
+const useBottomInset = process.env.EXPO_OS === 'web' ? () => 0 : () => useSafeAreaInsets().bottom;
 
 /** Space inside the sheet: Silk's step 5. */
 const INSET = themes.dark.semantic.space[5];
@@ -86,15 +80,7 @@ const AROUND_BUTTON = HEADER_BUTTON_SIZE.minus(CLOSE_ICON).times(-0.5).plus(INSE
 
 const STYLES = narrowStyles((px) => ({
   head: { paddingTop: px(AROUND_BUTTON), paddingLeft: INSET, paddingRight: px(AROUND_BUTTON) },
-  veil: { flex: 1, justifyContent: 'flex-end', alignItems: 'center' },
-  sheet: {
-    width: '100%',
-    maxWidth: 560,
-    maxHeight: '88%',
-    borderBottomWidth: 0,
-    overflow: 'hidden',
-    // Over the veil, which is positioned and so would cover it.
-    zIndex: 1,
-  },
+  // The head and the scrolling content keep their own insets, so the content scrolls edge to edge.
+  sheet: { maxWidth: 560, padding: 0 },
   content: { padding: INSET, paddingTop: HEAD_GAP },
 }));
