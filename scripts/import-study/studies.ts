@@ -712,9 +712,9 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         },
         /** The theory chapters: 🔵 core and 🟢 extra. Guides, plans and model games come later. */
         chapters: (title: string) => /^(?:🔵|🟢)/u.test(title),
+        // "Sidelines Index" names the chapter's contents page, not a variation.
         chapterName: (title, chapter) =>
           numberedChapterName(title, chapter)
-            // "Sidelines Index" names the chapter's contents page, not a variation.
             ?.replace(/: Sidelines Index$/, '')
             .replace('Tal Variation (4.h4) & Bayonet Attack (4.g4)', TAL_BAYONET),
       },
