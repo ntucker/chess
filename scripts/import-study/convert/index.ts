@@ -20,7 +20,7 @@ import { makeSan } from 'chessops/san';
 import { parseUci } from 'chessops/util';
 
 import { parsePosition, positionKey, sanToUci } from '@/game/replay';
-import { notationProblem } from '@/lesson/check';
+import { notationProblem, pointsToStudy } from '@/lesson/check';
 import { noteShows, type Note, type NoteShows } from '@/lesson/lesson';
 
 import type { ChapterNotes, MoveNote, PositionNote } from '../extract';
@@ -244,13 +244,6 @@ const withWrittenFor =
 const allRefused = (result: Converted) =>
   result.kept === 0 && result.rejected.some(({ idea }) => idea.type !== 'evaluation');
 
-/**
- * Words that point to the study a comment came from, which the learner never
- * sees: "see chapter 12", "the most important section", "the heart button". A
- * false hit (a "queenside section") only costs a retry.
- */
-const STUDY_MENTION = /\b(?:chapters?|sections?|buttons?|(?:the|this|that|our|my) study)\b/i;
-
 /** The note texts in `result` that `refused` finds. */
 const textsWhere = (result: Converted, refused: (text: string) => boolean) =>
   notesOf(result)
@@ -258,7 +251,7 @@ const textsWhere = (result: Converted, refused: (text: string) => boolean) =>
     .filter(refused);
 
 /** The note texts in `result` that point to the study itself. */
-const studyTexts = (result: Converted) => textsWhere(result, (text) => STUDY_MENTION.test(text));
+const studyTexts = (result: Converted) => textsWhere(result, pointsToStudy);
 
 /** The note texts in `result` that the lesson checker refuses as notation. */
 const notationTexts = (result: Converted) =>
