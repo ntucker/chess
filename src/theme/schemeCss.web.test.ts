@@ -81,6 +81,12 @@ describe('SCHEME_CSS', () => {
     expect(dark.get('color-scheme')).toBe('dark');
     expect(light.get('color-scheme')).toBe('light');
   });
+
+  it("paints the page behind the app in the stage's color, outweighing Board.css's html rule", () => {
+    expect(found.get(':root,:root>body')?.get('background-color')).toBe(
+      'var(--chess-color-surface)',
+    );
+  });
 });
 
 describe('PRE_PAINT_SCRIPT', () => {

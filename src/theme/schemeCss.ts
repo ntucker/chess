@@ -16,13 +16,14 @@ const declarationsFor = (colorScheme: ColorScheme) =>
 /**
  * The color variables' values: light, or dark when the learner chose Dark, or
  * chose nothing (System) on a dark device. The page behind the app takes the
- * stage's color.
+ * stage's color: `:root` outweighs Board.css's `html, body` (written for the
+ * Android board's web view, but loaded on every web page too).
  */
 export const SCHEME_CSS = [
   `:root{${declarationsFor('light')}}`,
   `:root[data-theme=dark]{${declarationsFor('dark')}}`,
   `@media (prefers-color-scheme:dark){:root:not([data-theme=light]){${declarationsFor('dark')}}}`,
-  'html,body{background-color:var(--chess-color-surface)}',
+  ':root,:root>body{background-color:var(--chess-color-surface)}',
 ].join('\n');
 
 /** The themes a learner can choose, which pin the scheme whatever the device says. */
