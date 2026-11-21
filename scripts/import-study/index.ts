@@ -26,12 +26,15 @@
  * importer's notes, and book moves missing there stay unexplained.
  * Stockfish's evaluations and the explorer's counts are kept the same way
  * (<name>-stockfish.jsonl, <name>-explorer.jsonl), so a rerun on any machine
- * books the same moves and writes the same counts; delete the explorer file
- * to count again.
+ * books the same moves and writes the same counts. Only a run with the model
+ * rewrites these files with what it used; one without it adds what it asked.
+ * The study and the Wikibooks pages are downloaded again on a new machine, so
+ * a rebuild there is exact only while their authors haven't changed them.
  *
  *   yarn import-study --popularity assets/lessons/caro-kann.json
  *
- * only recounts popularity in an existing lesson file.
+ * only recounts popularity in an existing lesson file, asking lichess again
+ * about every position and replacing <name>-explorer.jsonl.
  *
  * Popularity comes from the lichess opening explorer, which needs a lichess
  * token (a personal token with no scopes is enough): set LICHESS_TOKEN, or
@@ -88,13 +91,14 @@ async function main() {
   if (first === '--popularity') {
     if (rest.length !== 1) throw new Error(USAGE);
     const file = rest[0];
-    writeLesson(file, checked(await withPopularity(readLessonFile(file))));
+    writeLesson(file, checked(await withPopularity(readLessonFile(file), { fresh: true })));
     return;
   }
   const study = Object.hasOwn(STUDIES, first) ? STUDIES[first] : undefined;
   // An unknown flag must fail rather than be ignored: a mistyped --no-model would call the model for an hour.
   if (!study || rest.some((flag) => !STUDY_FLAGS.includes(flag))) throw new Error(USAGE);
   const info = lessonInfo(study);
+  const callModel = !rest.includes('--no-model');
   const chapters: Chapter[] = [];
   for (const [source, from] of study.from.entries()) {
     const read = await sourceChapters(from, info.side);
@@ -122,14 +126,13 @@ async function main() {
   };
   const cli = claudeCli({
     learner: info.side,
-    cacheFile: answersPath(first),
-    callModel: !rest.includes('--no-model'),
+    cacheFile: answersPath(info.id),
+    callModel,
   });
   const converted = await convertChapters(
     chapters.map((chapter) => extractChapter(chapter, info.side)),
     cli.ask,
   );
-  cli.saveUsed();
   const { extracted } = converted;
   console.log(convertReport(converted.report));
   const tally: SourceTally[] = [];
@@ -138,7 +141,7 @@ async function main() {
   console.log(sourceReport(study.from.map(credit), tally));
   if (lesson.start !== INITIAL_FEN)
     throw new Error('The engine plays lines from the standard start');
-  const stockfish = await nodeStockfish(answersPath(`${first}-stockfish`));
+  const stockfish = await nodeStockfish(answersPath(info.id, '-stockfish'));
   const filled = await fillBook(lesson, stockfish.evaluate);
   lesson = filled.lesson;
   const engineFile = join(CACHE, `${lesson.id}-engine.json`);
@@ -165,16 +168,16 @@ async function main() {
   );
   const explainer = explainCli({
     learner: info.side,
-    cacheFile: answersPath(`${first}-explain`),
-    callModel: !rest.includes('--no-model'),
+    cacheFile: answersPath(info.id, '-explain'),
+    callModel,
   });
   const explained = await explainBookMoves(lesson, explainer.ask, stockfish.evaluate);
-  explainer.saveUsed();
   lesson = explained.lesson;
   console.log(explainReport(explained.report));
-  stockfish.saveUsed();
   stockfish.stop();
-  if (!rest.includes('--no-popularity')) lesson = await withPopularity(lesson);
+  // A run without the model can miss answers a run with it used, so it must not drop them.
+  if (callModel) for (const answers of [cli, explainer, stockfish]) answers.saveUsed();
+  if (!rest.includes('--no-popularity')) lesson = await withPopularity(lesson, { save: callModel });
   // The checker, the index and the registry each refuse a lesson by throwing, so all come before any
   // write: a lesson file written without its registry entry or index line fails lesson.test.ts.
   checked(lesson);
@@ -189,27 +192,31 @@ async function main() {
 }
 
 /**
- * A lesson's committed answers file: `<lesson>.jsonl` holds the model's
+ * A lesson's committed answers file for one step: `''` holds the model's
  * conversions, and `-explain`, `-stockfish` and `-explorer` the other steps'
  * answers, so a rerun rebuilds the same lesson file.
  */
-const answersPath = (name: string) => join(ROOT, `scripts/import-study/answers/${name}.jsonl`);
+const answersPath = (lessonId: string, step: '' | '-explain' | '-stockfish' | '-explorer' = '') =>
+  join(ROOT, `scripts/import-study/answers/${lessonId}${step}.jsonl`);
 
-async function withPopularity(lesson: Lesson): Promise<Lesson> {
+/**
+ * `lesson` with its popularity counted: `fresh` asks lichess about every
+ * position again, and `save` rewrites the answers file with only the answers used.
+ */
+async function withPopularity(
+  lesson: Lesson,
+  { fresh = false, save = fresh }: { fresh?: boolean; save?: boolean },
+): Promise<Lesson> {
   const explorer = lichessExplorer({
     token: process.env.LICHESS_TOKEN,
-    cacheFile: answersPath(`${lesson.id}-explorer`),
+    cacheFile: answersPath(lesson.id, '-explorer'),
+    fresh,
   });
   // Dated by when lichess gave the counts, which a rerun reads from the answers file.
-  const counted = await addPopularity(
-    lesson,
-    explorer.ask,
-    () => explorer.answeredOn() ?? new Date().toISOString().slice(0, 10),
-    (asked) => {
-      if (asked % 50 === 0) console.log(`popularity: ${asked} positions`);
-    },
-  );
-  explorer.saveUsed();
+  const counted = await addPopularity(lesson, explorer.ask, explorer.answeredOn, (asked) => {
+    if (asked % 50 === 0) console.log(`popularity: ${asked} positions`);
+  });
+  if (save) explorer.saveUsed();
   return counted;
 }
 

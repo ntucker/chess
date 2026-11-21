@@ -28,9 +28,9 @@ describe('lessonInfo', () => {
 describe('STUDIES', () => {
   // Without them a rerun on another machine asks again, and can book other moves or count other games.
   it("commits every recipe's answers files, so its import rebuilds the same lesson", () => {
-    const missing = Object.keys(STUDIES).flatMap((name) =>
+    const missing = Object.values(STUDIES).flatMap(({ info: { id } }) =>
       ['', '-explain', '-stockfish', '-explorer']
-        .map((step) => `answers/${name}${step}.jsonl`)
+        .map((step) => `answers/${id}${step}.jsonl`)
         .filter((file) => !existsSync(join(__dirname, file))),
     );
     expect(missing).toEqual([]);

@@ -75,11 +75,7 @@ interface Options<T> {
 
 export interface ClaudeCli<T> {
   readonly ask: Ask<T>;
-  /**
-   * Rewrites the answers file with only the answers this run used, so stale
-   * ones don't pile up. Does nothing without the model: a run that could not
-   * replace a stale answer must not drop it.
-   */
+  /** Rewrites the answers file with only the answers this run used, so stale ones don't pile up. */
   readonly saveUsed: () => void;
 }
 
@@ -140,7 +136,7 @@ export function claudeCli<T extends { readonly id: string } = Comment>({
           if (!asked.has(answer.id)) continue;
           const key = keys.get(answer.id)!;
           answers.set(answer.id, answer);
-          cache.add(key, { key, answer });
+          cache.add({ key, answer });
         }
       } catch (error) {
         log(
@@ -152,11 +148,7 @@ export function claudeCli<T extends { readonly id: string } = Comment>({
     return answers;
   };
 
-  const saveUsed = () => {
-    if (callModel) cache.saveUsed();
-  };
-
-  return { ask, saveUsed };
+  return { ask, saveUsed: cache.saveUsed };
 }
 
 /** One `claude -p` run: the prompt as the system prompt, the items as the message, no tools. */

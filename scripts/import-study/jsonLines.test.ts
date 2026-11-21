@@ -5,9 +5,9 @@ import { join } from 'node:path';
 
 import { answersFile, appendJsonLine, readJsonLines } from './jsonLines';
 
-describe('readJsonLines', () => {
-  const file = () => join(mkdtempSync(join(tmpdir(), 'json-lines-')), 'cache', 'answers.jsonl');
+const file = () => join(mkdtempSync(join(tmpdir(), 'json-lines-')), 'cache', 'answers.jsonl');
 
+describe('readJsonLines', () => {
   it('reads what was appended, and nothing from a missing file', () => {
     const path = file();
     expect(readJsonLines(path)).toEqual([]);
@@ -27,7 +27,6 @@ describe('readJsonLines', () => {
 });
 
 describe('answersFile', () => {
-  const file = () => join(mkdtempSync(join(tmpdir(), 'answers-')), 'answers.jsonl');
   type Row = { key: string; n: number };
   const open = (path: string) =>
     answersFile<Row>(
@@ -38,14 +37,11 @@ describe('answersFile', () => {
 
   it('keeps new answers at once, and saves only the used ones, sorted by key', () => {
     const path = file();
-    writeFileSync(
-      path,
-      ['c', 'a', 'stale'].map((key) => `${JSON.stringify({ key, n: 1 })}\n`).join(''),
-    );
+    for (const key of ['c', 'a', 'stale']) appendJsonLine(path, { key, n: 1 });
     const answers = open(path);
     expect(answers.get('c')).toEqual({ key: 'c', n: 1 });
     expect(answers.get('missing')).toBeUndefined();
-    answers.add('b', { key: 'b', n: 2 });
+    answers.add({ key: 'b', n: 2 });
     expect(open(path).get('b')).toEqual({ key: 'b', n: 2 });
     answers.get('a');
     answers.saveUsed();

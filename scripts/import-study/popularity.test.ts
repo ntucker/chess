@@ -134,10 +134,29 @@ describe('lichessExplorer', () => {
     expect(requests[0][1]?.headers).toEqual({ Authorization: 'Bearer secret' });
 
     const resumed = lichessExplorer({ cacheFile, today: '2026-12-01', fetch, sleep });
+    // Before any answer, the counts would be today's.
+    expect(resumed.answeredOn()).toBe('2026-12-01');
     expect(await resumed.ask(key(), 1400)).toEqual({ e2e4: 10 });
     expect(requests).toHaveLength(2);
     // The answer keeps the date lichess gave it, not the rerun's.
     expect(resumed.answeredOn()).toBe('2026-11-21');
+  });
+
+  it('asks again about everything when fresh, and replaces the file once saved', async () => {
+    const cacheFile = join(mkdtempSync(join(tmpdir(), 'explorer-')), 'explorer.jsonl');
+    writeFileSync(cacheFile, `${JSON.stringify([`1400 ${key()}`, { e2e4: 10 }, '2026-11-20'])}\n`);
+    const fetch = (async () =>
+      answer(200, {
+        moves: [{ uci: 'e2e4', white: 30, draws: 0, black: 0 }],
+      })) as typeof globalThis.fetch;
+    const open = (fresh: boolean) =>
+      lichessExplorer({ cacheFile, fresh, today: '2026-12-01', fetch, sleep: async () => {} });
+    const recount = open(true);
+    expect(await recount.ask(key(), 1400)).toEqual({ e2e4: 30 });
+    recount.saveUsed();
+    const after = open(false);
+    expect(await after.ask(key(), 1400)).toEqual({ e2e4: 30 });
+    expect(after.answeredOn()).toBe('2026-12-01');
   });
 
   it('asks again for an answer whose cache line a stopped crawl cut short, and resumes after', async () => {

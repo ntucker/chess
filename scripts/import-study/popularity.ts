@@ -29,6 +29,8 @@ interface ExplorerOptions {
    * appended to as answers arrive, so a stopped crawl resumes where it left off.
    */
   readonly cacheFile: string;
+  /** Ask lichess again about everything, replacing the file's answers once saved. */
+  readonly fresh?: boolean;
   /** The date an answer lichess gives now is stamped with (default: today, UTC). */
   readonly today?: string;
   readonly fetch?: typeof fetch;
@@ -40,8 +42,8 @@ type ExplorerRow = readonly [id: string, counts: LichessCounts, date: string];
 
 export interface LichessExplorer {
   readonly ask: Explorer;
-  /** The latest date among the answers asked for so far: when their counts were fetched. */
-  readonly answeredOn: () => string | undefined;
+  /** When the counts asked for so far were fetched: the latest of their dates, or `today`. */
+  readonly answeredOn: () => string;
   /** Rewrites the answers file with only the answers asked for. */
   readonly saveUsed: () => void;
 }
@@ -57,11 +59,12 @@ const REQUEST_INTERVAL_MS = 2_500;
 /**
  * The lichess explorer, answering from `cacheFile` first. The file keeps
  * lichess's own UCI (castling as the king taking its rook, `e1h1`); answers
- * use the lesson's (`e1g1`). Rows without a date are asked again.
+ * use the lesson's (`e1g1`).
  */
 export function lichessExplorer({
   token,
   cacheFile,
+  fresh = false,
   today = new Date().toISOString().slice(0, 10),
   fetch: get = fetch,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
@@ -69,7 +72,7 @@ export function lichessExplorer({
   const cache = answersFile<ExplorerRow>(
     cacheFile,
     ([id]) => id,
-    ([, , date]) => typeof date === 'string',
+    () => !fresh,
   );
   let answeredOn: string | undefined;
   let lastRequest = -Infinity;
@@ -108,13 +111,13 @@ export function lichessExplorer({
         body.moves.map((move) => [move.uci, move.white + move.draws + move.black]),
       );
       const row: ExplorerRow = [id, counts, today];
-      cache.add(id, row);
+      cache.add(row);
       return row;
     }
   };
   return {
     ask,
-    answeredOn: () => answeredOn,
+    answeredOn: () => answeredOn ?? today,
     saveUsed: cache.saveUsed,
   };
 }

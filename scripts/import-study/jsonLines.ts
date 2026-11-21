@@ -33,7 +33,7 @@ export function appendJsonLine(file: string, value: unknown): void {
 }
 
 /** Replaces `file` with `values`, all at once, so a stopped run never leaves it half-written. */
-export function writeJsonLines(file: string, values: readonly unknown[]): void {
+function writeJsonLines(file: string, values: readonly unknown[]): void {
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(`${file}.tmp`, values.map((value) => `${JSON.stringify(value)}\n`).join(''));
   renameSync(`${file}.tmp`, file);
@@ -48,7 +48,7 @@ export function writeJsonLines(file: string, values: readonly unknown[]): void {
  */
 export interface AnswersFile<Row> {
   get(key: string): Row | undefined;
-  add(key: string, row: Row): void;
+  add(row: Row): void;
   saveUsed(): void;
 }
 
@@ -56,7 +56,7 @@ export interface AnswersFile<Row> {
 export function answersFile<Row>(
   file: string,
   keyOf: (row: Row) => string,
-  keep: (row: Row) => boolean = () => true,
+  keep: (row: Row) => boolean,
 ): AnswersFile<Row> {
   const rows = new Map<string, Row>();
   for (const row of readJsonLines(file) as Row[]) if (keep(row)) rows.set(keyOf(row), row);
@@ -67,7 +67,8 @@ export function answersFile<Row>(
       if (row !== undefined) used.add(key);
       return row;
     },
-    add(key, row) {
+    add(row) {
+      const key = keyOf(row);
       rows.set(key, row);
       used.add(key);
       appendJsonLine(file, row);

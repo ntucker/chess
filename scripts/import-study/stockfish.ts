@@ -4,7 +4,7 @@
  * Each position's analysis is kept in the lesson's committed answers file, so
  * a rerun searches only new positions and books the moves the last import did.
  */
-import { type Evaluation, type FinalAnalysis, settledAnalysis } from '@/evaluation/evaluation';
+import { type Evaluation, settledAnalysis } from '@/evaluation/evaluation';
 import {
   attachStockfish,
   type Connection,
@@ -22,26 +22,13 @@ import { answersFile } from './jsonLines';
  * about 14 hours at the app's search (`APP_SEARCH`); the check only needs to
  * tell a mistake from a sound move. Each cached row names the search that
  * filled it (`searchName`), and rows from another search are searched again.
+ * (Rows from before rows named theirs also stopped at 1.5 s, which at about
+ * 0.3 s a search hardly ever mattered; they carry this search's name.)
  */
 const CHECK_SEARCH: SearchBudget = { ranks: 1, nodes: 100_000 };
 
 /** How a cache row names the search that filled it, as `1x100000`. */
 const searchName = ({ ranks, nodes }: SearchBudget) => `${ranks}x${nodes}`;
-
-/**
- * The search every row cached before rows named theirs came from (it also
- * stopped at 1.5 s, which at about 0.3 s a search hardly ever mattered).
- */
-const UNNAMED_SEARCH = searchName({ ranks: 1, nodes: 100_000 });
-
-/** A cached row as the analysis it holds. */
-export function cachedAnalysis({ evaluation: { best, ...evaluation } }: CacheRow): FinalAnalysis {
-  return settledAnalysis(evaluation, best);
-}
-
-/** Whether `row` was filled by `search` (`searchName`). */
-export const searchedBy = (row: CacheRow, search: string) =>
-  (row.search ?? UNNAMED_SEARCH) === search;
 
 /** How many engines may stop (crash, or never answer) before the import gives up. */
 const MAX_RESTARTS = 5;
@@ -87,15 +74,18 @@ export async function nodeStockfish(cacheFile: string): Promise<{
   const cache = answersFile<CacheRow>(
     cacheFile,
     (row) => row.key,
-    (row) => searchedBy(row, checkSearch),
+    (row) => row.search === checkSearch,
   );
   let searched = 0;
   const evaluate: Evaluate = async (line, key) => {
     const known = cache.get(key);
-    if (known) return cachedAnalysis(known);
+    if (known) {
+      const { best, ...evaluation } = known.evaluation;
+      return settledAnalysis(evaluation, best);
+    }
     const analysis = await stockfishAnalysis(line);
     const [{ uci, evaluation }] = analysis.lines;
-    cache.add(key, {
+    cache.add({
       key,
       search: checkSearch,
       evaluation: { ...evaluation, ...(uci && { best: uci }) },
@@ -114,10 +104,10 @@ export async function nodeStockfish(cacheFile: string): Promise<{
 }
 
 /** A cached analysis, as the cache file holds it: its first line. */
-export interface CacheRow {
+interface CacheRow {
   readonly key: string;
   /** The search that filled it (`searchName`). */
-  readonly search?: string;
+  readonly search: string;
   readonly evaluation: Evaluation & { readonly best?: string };
 }
 
