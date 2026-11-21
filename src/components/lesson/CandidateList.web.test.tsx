@@ -106,9 +106,10 @@ describe('CandidateList', () => {
     expect(partTexts({ owner: 'White' })).toContainEqual(['wide-only-spoken', "White's\u00a0"]);
   });
 
-  it('leaves where each row leads to the line under a compact list', () => {
-    expect(partTexts({}).filter(([part]) => part === 'leads-to')).toEqual([]);
-    expect(partTexts({ compact: false })).toContainEqual(['leads-to', 'the Nf3 line']);
+  it('leaves where each row leads to the line under a compact list on a narrow page', () => {
+    expect(partTexts({})).toContainEqual(['wide-only', 'the Nf3 line']);
+    // Elsewhere each row keeps it, on one line on every page.
+    expect(partTexts({ compact: false }).filter(([, text]) => text === 'the Nf3 line')).toEqual([]);
   });
 
   it('fades rows for showing rare ones, not for leaving a position that showed them', () => {

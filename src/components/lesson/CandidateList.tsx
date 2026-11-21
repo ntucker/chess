@@ -316,12 +316,7 @@ function Row({
           ) : null}
         </View>
         {leadsTo ? (
-          <Text
-            role="caption"
-            tone="secondary"
-            numberOfLines={1}
-            {...part(compact ? 'wide-only' : 'leads-to')}
-          >
+          <Text role="caption" tone="secondary" numberOfLines={1} {...part(compact && 'wide-only')}>
             {leadsTo}
           </Text>
         ) : null}

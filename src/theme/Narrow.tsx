@@ -53,7 +53,6 @@ type AnyStyle = StyleProp<TextStyle>;
 interface PartProps {
   readonly dataSet?: { readonly narrow: NarrowPartName };
   readonly style?: AnyStyle;
-  readonly numberOfLines?: number;
 }
 
 /**
@@ -77,9 +76,9 @@ function partProps(
   const own = style === undefined ? {} : { style };
   if (!part) return own;
   if (NARROW_CSS_LOADS) return { dataSet: { narrow: part }, ...own };
-  const { wide, narrow: narrowStyle, narrowProps } = NATIVE_PARTS[part];
+  const { wide, narrow: narrowStyle } = NATIVE_PARTS[part];
   const added = narrow ? narrowStyle : wide;
-  return { style: added ? [style, added] : style, ...(narrow ? narrowProps : {}) };
+  return { style: added ? [style, added] : style };
 }
 
 /**

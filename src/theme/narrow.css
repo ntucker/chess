@@ -173,10 +173,6 @@
   :root [data-narrow='list-card'] {
     padding-bottom: 0;
   }
-  /* Where a candidate row leads wraps rather than lose its end (a compact list's rows leave it out). */
-  :root [data-narrow='leads-to'] {
-    white-space: normal;
-  }
   :root [data-narrow='page'] {
     min-height: 100dvh;
   }
