@@ -135,9 +135,8 @@ export function endingAct(
 /** Which two ranks the card lies across, off the middle or on it. */
 export type CardBand = 'upper' | 'middle' | 'lower';
 
-/** The bands in the order they're tried, and each one's top row from the top of the board. */
-const BANDS: readonly CardBand[] = ['middle', 'upper', 'lower'];
-const BAND_TOP: Readonly<Record<CardBand, number>> = { upper: 1, middle: 3, lower: 5 };
+/** Each band's top row, from the top of the board, in the order they're tried. */
+const BAND_TOPS: Readonly<Record<CardBand, number>> = { middle: 3, upper: 1, lower: 5 };
 
 /**
  * Where the card sits, which it stays for as long as the final position is
@@ -153,9 +152,9 @@ export function cardBand(
 ): CardBand {
   const row = (square: Square) => squareOffset(square, orientation)[1];
   const clearOf = (squares: readonly Square[]) => (band: CardBand) =>
-    squares.every((square) => row(square) < BAND_TOP[band] || row(square) >= BAND_TOP[band] + 2);
+    !squares.some((square) => row(square) >= BAND_TOPS[band] && row(square) < BAND_TOPS[band] + 2);
   // Two kings block at most two of the three bands.
-  const open = BANDS.filter(clearOf(Object.values(kings)));
+  const open = (Object.keys(BAND_TOPS) as CardBand[]).filter(clearOf(Object.values(kings)));
   return open.find(clearOf([landed])) ?? open[0];
 }
 
