@@ -20,7 +20,10 @@ jest.mock('./PieceGlyph', () => ({
 
 const AFTER_E4 = lineKeys(uciLine('e4'))[1];
 
-/** Each square's piece (or '') and whether it is lit, top left to bottom right. */
+/**
+ * Each square's piece (or ''), whether it is lit, and whether the piece paints
+ * above the tint (positioned, and after it), top left to bottom right.
+ */
 function squares(orientation: 'white' | 'black') {
   const host = document.createElement('div');
   const root = createRoot(host);
@@ -42,6 +45,9 @@ function squares(orientation: 'white' | 'black') {
   const result = [...host.firstElementChild!.children].map((square) => ({
     piece: square.querySelector('i')?.title ?? '',
     lit: lit(square),
+    pieceOnTop:
+      !!square.lastElementChild?.querySelector('i') &&
+      getComputedStyle(square.lastElementChild).position === 'absolute',
   }));
   act(() => root.unmount());
   return result;
@@ -64,6 +70,7 @@ describe('MiniBoard', () => {
     // e4 and e2: rank 4 and rank 2 from the top are rows 4 and 6.
     expect(board.flatMap((square, n) => (square.lit ? [n] : []))).toEqual([36, 52]);
     expect(board[36].piece).toBe('white pawn');
+    expect(board[36].pieceOnTop).toBe(true);
   });
 
   it('turns it round for Black', () => {
