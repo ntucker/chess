@@ -1,7 +1,7 @@
 import type { ColorScheme, Theme } from '@reactive/silk-core';
 import { DarkTheme, DefaultTheme, type Theme as NavigationTheme } from 'expo-router';
 
-import { themes } from '@/theme/theme';
+import { shownThemes } from '@/theme/shownTheme';
 
 const navigationTheme = (base: NavigationTheme, { semantic: { color } }: Theme) => ({
   ...base,
@@ -19,6 +19,6 @@ const navigationTheme = (base: NavigationTheme, { semantic: { color } }: Theme) 
  * content renders shows the stage, not React Navigation's light gray.
  */
 export const navigationThemes: Readonly<Record<ColorScheme, NavigationTheme>> = {
-  light: navigationTheme(DefaultTheme, themes.light),
-  dark: navigationTheme(DarkTheme, themes.dark),
+  light: navigationTheme(DefaultTheme, shownThemes.light),
+  dark: navigationTheme(DarkTheme, shownThemes.dark),
 };
