@@ -95,8 +95,8 @@ The lesson page and the free-game page start from a given line; the link in the 
 
 Brilliant, Great and Miss: rules (a static exchange count for Brilliant; Great tuned to about one a
 game on the measured games; Miss built on `refutation`, which PR #156 adds to
-`src/analysis/quality.ts` for the board's red arrow, so the two agree), badges in `src/theme/moveQuality.ts`, tooltips, contrast
-checks; they join the moments.
+`src/analysis/quality.ts` for the board's red arrow, so the two agree), badges in
+`src/theme/moveQuality.ts`, tooltips, contrast checks; they join the moments.
 
 ### Piece 9: Summary
 

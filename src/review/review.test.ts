@@ -69,7 +69,7 @@ describe('reviewMoves', () => {
 });
 
 describe('reviewMoves against the game', () => {
-  /** Final up to before 5...Nd4, which it doesn't list. */
+  /** Only the position before 5...Nd4 is final, and it doesn't list the move. */
   const needsAfter = [...Array(5).fill(undefined), listing(['g8f6', 0.52])];
 
   it("labels each move as the live game's judgeMove does", () => {

@@ -37,8 +37,8 @@ export const LEAST_COUNTED = 8;
  * is `'brief'`. Otherwise it's undefined until every position the review
  * searches (`judgedPosition`) is final or failed, since a move's weight
  * reads positions on both sides. So once shown, the number changes only
- * when a failed position is searched again: taken out of `failed` for
- * that, it hides the number until it finishes.
+ * when a failed position is searched again: it leaves `failed`, and the
+ * number stays hidden until that search finishes.
  * The swings are read only from those positions, so a search the game
  * happened to run elsewhere can't change it.
  */
@@ -61,7 +61,7 @@ export function gameAccuracy(
   if (known.some((score, ply) => score === undefined && isSearched(ply))) return undefined;
   const weights = swingWeights(whiteWinPercents(known));
   const scored = counted.flatMap((move) =>
-    // A counted move still waiting has an unfinished searched position, caught above.
+    // Never empty: a counted move still waiting has an unfinished searched position, caught above.
     move.status === 'judged'
       ? [{ accuracy: moveAccuracy(move.before * 100, move.after * 100), weight: weights[move.ply] }]
       : [],
