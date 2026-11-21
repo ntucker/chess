@@ -31,13 +31,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # A newer push to a pull request makes its older build worthless. Every
-    # other run gets its own group: GitHub marks a cancelled run's commit
-    # failed, so an older build of main finishes and its publish steps aside.
+    # other run gets its own group, because GitHub marks a cancelled run's
+    # commit failed; a build of main stops itself instead (see the export).
     concurrency:
       group: pages-build-${{ github.event.pull_request.number || github.run_id }}
       cancel-in-progress: true
     outputs:
       site-url: ${{ steps.pages.outputs.base_url }}
+      superseded: ${{ steps.export.outputs.superseded }}
 
     steps:
       - name: Checkout
@@ -84,8 +85,10 @@ jobs:
           echo "folder=$LIVE" >> "$GITHUB_OUTPUT"
 
       # Previews skip minifying, which takes about 40% of the export, so they
-      # come up sooner.
+      # come up sooner. A build of main checks every 10 s whether main has
+      # moved on, and if so stops and passes, leaving the newer run to publish.
       - name: Export the web app
+        id: export
         env:
           PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}${{ env.PREVIEW && format('/{0}', env.PREVIEW) || '' }}
           # Previews share the live site's localStorage; this keeps them apart.
@@ -93,11 +96,36 @@ jobs:
           EXPO_PUBLIC_STOCKFISH_FOLDER: ${{ steps.stockfish.outputs.folder }}
         run: |
           if [ -n "$EXPO_PUBLIC_STOCKFISH_FOLDER" ]; then rm -r public/stockfish; fi
-          yarn expo export --platform web ${{ env.PREVIEW && '--no-minify' || '' }}
+          # Its own process group, so stopping it stops everything it started.
+          setsid yarn expo export --platform web ${{ env.PREVIEW && '--no-minify' || '' }} &
+          export=$!
+          stopped="$RUNNER_TEMP/superseded"
+          if [ "$GITHUB_REF" = refs/heads/main ] && [ -z "$PREVIEW" ]; then
+            while sleep 10; do
+              # A failed lookup keeps building.
+              main=$(git ls-remote origin refs/heads/main) && [ -n "$main" ] || continue
+              if [ "${main%%$'\t'*}" != "$GITHUB_SHA" ]; then
+                touch "$stopped"
+                kill -- "-$export"
+                break
+              fi
+            done &
+            watcher=$!
+          fi
+          status=0
+          wait "$export" || status=$?
+          [ -z "${watcher-}" ] || kill "$watcher" 2> /dev/null || true
+          if [ -e "$stopped" ]; then
+            echo "::notice::Stopped: a newer push to main builds and publishes instead."
+            echo "superseded=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          [ "$status" = 0 ] || exit "$status"
           # Pages shows the site's root 404.html for any path it has no file for.
           cp dist/+not-found.html dist/404.html
 
       - name: Upload the site
+        if: steps.export.outputs.superseded != 'true'
         uses: actions/upload-artifact@v7
         with:
           name: site
@@ -113,7 +141,8 @@ jobs:
     # token, so they never publish.
     if: >-
       !cancelled()
-      && (needs.build.result == 'success' || github.event.action == 'closed')
+      && (needs.build.result == 'success' && needs.build.outputs.superseded != 'true'
+        || github.event.action == 'closed')
       && (github.event_name == 'pull_request'
         && !github.event.pull_request.head.repo.fork
         && github.event.pull_request.user.login != 'dependabot[bot]'
