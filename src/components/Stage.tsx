@@ -1,4 +1,4 @@
-import { Surface, useTheme } from '@reactive/silk-native';
+import { Separator, Surface, useTheme } from '@reactive/silk-native';
 import type { ComponentProps, ReactNode } from 'react';
 import { View } from 'react-native';
 
@@ -26,6 +26,7 @@ import { useStepKeys } from '@/components/useStepKeys';
 import { colorName, opposite } from '@/game/replay';
 import type { Game } from '@/game/useGame';
 import { narrowLength, narrowStyles } from '@/theme/narrow';
+import { themes } from '@/theme/theme';
 import { NarrowScroll, useNarrowPart, useNarrowStyles, useNarrowViewport } from '@/theme/Narrow';
 
 interface StageProps {
@@ -37,6 +38,11 @@ interface StageProps {
   readonly board: ReactNode;
   /** The panel beside the board, or below it on a narrow screen. */
   readonly program: ReactNode;
+  /**
+   * Small print across the foot of a wide page, under the board and the
+   * panel. A narrow page has no room for it, so the screen shows it elsewhere.
+   */
+  readonly footer?: ReactNode;
 }
 
 /**
@@ -45,7 +51,7 @@ interface StageProps {
  * way. On a narrow page the panel goes below the board and scrolls on its
  * own, so the board stays in view.
  */
-export function Stage({ title, header, board, program }: StageProps) {
+export function Stage({ title, header, board, program, footer }: StageProps) {
   const styles = useNarrowStyles(STYLES);
   const part = useNarrowPart();
   const fit = useBoardFit();
@@ -57,6 +63,12 @@ export function Stage({ title, header, board, program }: StageProps) {
           {program}
         </NarrowScroll>
       </View>
+      {footer ? (
+        <View {...part('wide-only', styles.footer)}>
+          <Separator />
+          {footer}
+        </View>
+      ) : null}
     </Page>
   );
 }
@@ -221,5 +233,12 @@ const STYLES = narrowStyles((px) => ({
     width: PROGRAM_WIDTH,
     maxWidth: PROGRAM_MAX,
     marginTop: px(WRAPPED_GAP),
+  },
+  // At the window's foot when the page is shorter than it (Page.tsx), else after the stage.
+  footer: {
+    width: '100%',
+    maxWidth: STAGE_MAX,
+    marginTop: 'auto',
+    gap: themes.dark.semantic.space[3],
   },
 }));
