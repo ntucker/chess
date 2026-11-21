@@ -724,6 +724,33 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
     engineCheck: true,
     info: { id: 'french', title: 'French Defence', side: 'black' },
   },
+  'anti-sicilian': {
+    from: [
+      {
+        study: '55CPbtmd',
+        credit: {
+          title: 'CRUSH the Sicilian! 2...Nc6',
+          author: 'Bosburp',
+          url: 'https://lichess.org/study/55CPbtmd',
+        },
+        // The theory chapters; the thanks, community and outro chapters teach nothing.
+        chapters: (title: string) => Object.hasOwn(PORTSMOUTH_CHAPTERS, title),
+        chapterName: (title: string) => PORTSMOUTH_CHAPTERS[title],
+      },
+      {
+        study: 'Vpb6r3Wq',
+        credit: {
+          title: 'CRUSH the Sicilian! 2...d6',
+          author: 'Bosburp',
+          url: 'https://lichess.org/study/Vpb6r3Wq',
+        },
+        chapters: (title: string) => Object.hasOwn(SICILIAN_BC4_CHAPTERS, title),
+        chapterName: (title: string) => SICILIAN_BC4_CHAPTERS[title],
+      },
+    ],
+    engineCheck: true,
+    info: { id: 'anti-sicilian', title: 'Anti-Sicilian', side: 'white' },
+  },
   'queens-gambit': {
     from: [
       {
@@ -896,6 +923,50 @@ const MMATKUN_FRENCH_CHAPTERS: Readonly<Record<string, string | undefined>> = {
   'French defense : 3.Bd3': undefined,
   // 2.Nf3 d5 3.e5, the Knight Variation. Wikibooks names the Wing Gambit from 4.b4.
   'French defense : Wing gambit': 'Knight Variation',
+};
+
+/** Bosburp's 2...Nc6 3.b4 chapters (the Portsmouth Gambit), as variation names. */
+const PORTSMOUTH_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  // Ends at 3.b4, where the gambit's three answers part.
+  '🚀 == Introduction  == 🚀': undefined,
+  '🎯 Section 1: 4...d5': 'Portsmouth Gambit: 4...d5',
+  '📕 Introduction to 8. Rb1!!': 'Portsmouth Gambit: 4...d5',
+  '📕 Punishing 10...Nb8??': 'Portsmouth Gambit: 4...d5',
+  '📕 Punishing 10...Nd8??': 'Portsmouth Gambit: 4...d5',
+  '📕 Punishing 10...Na5??': 'Portsmouth Gambit: 4...d5',
+  '📕 10...e6': 'Portsmouth Gambit: 4...d5',
+  '📕 6...Qe4+?': 'Portsmouth Gambit: 4...d5',
+  '📕 6...Qd8': 'Portsmouth Gambit: 4...d5',
+  '📕 8...e6': 'Portsmouth Gambit: 4...d5',
+  '🌿 Section 2: 4...e6': 'Portsmouth Gambit: 4...e6',
+  '📗 5...exd5?!': 'Portsmouth Gambit: 4...e6',
+  '📗 5...exd5?! with 6...Qe7+?': 'Portsmouth Gambit: 4...e6',
+  '📗 5...Qf6!': 'Portsmouth Gambit: 4...e6',
+  '🌊 Section 3: 4...d6?!': 'Portsmouth Gambit: 4...d6',
+  '📘 7...f6?!': 'Portsmouth Gambit: 4...d6',
+  '📘 7...Qc7/Qd6?!': 'Portsmouth Gambit: 4...d6',
+  '📘 7...Nf6': 'Portsmouth Gambit: 4...d6',
+  '📙 3...e6?!': 'Portsmouth Gambit Declined',
+  '📙 3...Nxb4 with 8...Qd8??': '3...Nxb4',
+  '📙 3...Nxb4 with 5...d5': '3...Nxb4',
+  '📙 3...Nxb4 with 5...e6': '3...Nxb4',
+};
+
+/** Bosburp's 2...d6 3.Bc4 chapters, as variation names. */
+const SICILIAN_BC4_CHAPTERS: Readonly<Record<string, string | undefined>> = {
+  '🚀 == Introduction  == 🚀': '2...d6 3.Bc4',
+  '🎯 Section 1: 3...Nf6': '2...d6 3.Bc4: 3...Nf6',
+  '📕 6...Nbd7?? + 5th moves': '2...d6 3.Bc4: 3...Nf6',
+  '📕 6...Be7': '2...d6 3.Bc4: 3...Nf6',
+  '📕 6...Bd6': '2...d6 3.Bc4: 3...Nf6',
+  '🌿 Section 2: 3...e6': '2...d6 3.Bc4: 3...e6',
+  '📗 4...Nf6': '2...d6 3.Bc4: 3...e6',
+  '📗 4...Nc6': '2...d6 3.Bc4: 3...e6',
+  '📗 4...a6': '2...d6 3.Bc4: 3...e6',
+  '🌊 Section 3: 3...Nc6 + Various Other Sidelines': '2...d6 3.Bc4: 3...Nc6',
+  '📘 3...Nc6': '2...d6 3.Bc4: 3...Nc6',
+  '📙 3...Bg4??': '2...d6 3.Bc4',
+  '📙 3...g6': '2...d6 3.Bc4: 3...g6',
 };
 
 /** Arco47's Bishop's Opening chapters, as variation names. */
