@@ -439,6 +439,12 @@ const VERDICTS = Object.fromEntries(
   Object.entries(STEPS).map(([verdict, step]) => [step, verdict as Verdict]),
 );
 
+/** How a gambit note (`gambitNoteFor`) starts. */
+const GAMBIT_NOTE_START = 'Stockfish calls this a mistake:';
+
+/** Whether `note` is a gambit note: only the engine's verdict, which says nothing of the move's idea. */
+export const isGambitNote = (note: Note) => note.text.startsWith(GAMBIT_NOTE_START);
+
 /**
  * The note a gambit lesson's mistake gets: what Stockfish thinks of the
  * position it leaves, said to the learner, with that verdict as its badge.
@@ -454,7 +460,7 @@ function gambitNoteFor(engine: Evaluation, side: Color): Note {
         ? `you are about ${size} pawns down`
         : `you are still about ${size} pawns up`;
   return {
-    text: `Stockfish calls this a mistake: ${standing}. You play it for attack and traps.`,
+    text: `${GAMBIT_NOTE_START} ${standing}. You play it for attack and traps.`,
     ideas: [{ type: 'evaluation', value }],
   };
 }

@@ -69,6 +69,13 @@ describe('unexplainedMoves', () => {
   it('counts a cut or two-word note as saying nothing, and a drawn one as explaining', () => {
     expect(bareNote({ text: 'Your pawn grabs the centre and…' })).toBe('fragment');
     expect(bareNote({ text: 'Solid move.' })).toBe('fragment');
+    // A gambit lesson's verdict on its mistake, however long, says nothing of the move's idea.
+    expect(
+      bareNote({
+        text: 'Stockfish calls this a mistake: you are about 1.8 pawns down. You play it for attack and traps.',
+        ideas: [{ type: 'evaluation', value: 'whiteClearly' }],
+      }),
+    ).toBe('verdict');
     expect(
       bareNote({
         text: 'You are fine.',
