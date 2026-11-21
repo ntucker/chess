@@ -111,7 +111,7 @@ describe('CandidateList', () => {
     expect(partTexts({ compact: false })).toContainEqual(['leads-to', 'the Nf3 line']);
   });
 
-  it("shows a Stockfish row's change for the learner, and says it", () => {
+  it("shows a Stockfish row's change label, and says its description", () => {
     const engine = {
       ...COMMON,
       engine: { label: '\u22120.4', description: '0.4 pawns worse for you' },
