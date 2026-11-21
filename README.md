@@ -30,7 +30,7 @@ yarn web        # or: yarn android
 | `yarn brand` | Redraw the logo and every icon made from it (`scripts/make-brand.mjs`) |
 | `yarn maia` | Download Maia's models and convert them for the app (see [Maia](#maia)) |
 | `yarn stockfish` | Copy Stockfish from the pinned `stockfish` package into `assets/stockfish/` (see [Evaluation bar](#evaluation-bar)) |
-| `yarn import-study <name>` | Turn the lichess studies and Wikibooks pages listed in `scripts/import-study/studies.ts` into a lesson file in `assets/lessons/`, with popularity from the lichess explorer, which needs a lichess token in `LICHESS_TOKEN` or a proxy that adds one, notes rewritten by Claude through a signed-in `claude` CLI, and a generated idea note for each book move no guide explains (answers committed in `scripts/import-study/answers/`, which `--no-model` reuses without calling it; usage in `scripts/import-study/index.ts`) |
+| `yarn import-study <name>` | Turn the lichess studies and Wikibooks pages listed in `scripts/import-study/studies.ts` into a lesson file in `assets/lessons/`, with popularity from the lichess explorer, which needs a lichess token in `LICHESS_TOKEN` or a proxy that adds one, notes rewritten by Claude through a signed-in `claude` CLI, and a generated idea note for each book move no guide explains (Claude's, Stockfish's and the explorer's answers committed in `scripts/import-study/answers/`, so a rerun rebuilds the same file and `--no-model` calls no model; usage in `scripts/import-study/index.ts`) |
 
 ## How it fits together
 

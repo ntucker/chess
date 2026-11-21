@@ -1273,7 +1273,7 @@
 "r1b1k1nr/1pppbppp/p7/4Nq2/3P4/2P5/PP3PPP/RNBQR1K1 b kq -":{"variation":"frankfurt-defence","moves":[{"uci":"d7d6"}]},
 "r1b1k1nr/1pp1bppp/p2p4/4Nq2/3P4/2P5/PP3PPP/RNBQR1K1 w kq -":{"variation":"frankfurt-defence","moves":[{"uci":"e5f3"}]},
 "r1b1k1nr/1pp1bppp/p2p4/5q2/3P4/2P2N2/PP3PPP/RNBQR1K1 b kq -":{"variation":"frankfurt-defence","moves":[{"uci":"c8e6"}]},
-"r1bqkbnr/pppp2pp/2n2p2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq -":{"variation":"ruy-lopez","moves":[{"uci":"d2d4","book":true,"notes":[{"text":"Your d-pawn hits e5 at once, opening the centre while Black's kingside is loosened.","generated":true,"ideas":[{"type":"pressure","side":"white","target":"e5","attackers":["d4","f3"],"defenders":["c6","f6"]}]}],"games":[27617,51656,55365,34161,14995]},{"uci":"b5c6","games":[129245,223800,188329,80529,22114]},{"uci":"f3e5","games":[1817,2549,2009,776,215]}]},
+"r1bqkbnr/pppp2pp/2n2p2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq -":{"variation":"ruy-lopez","moves":[{"uci":"e1g1","book":true,"notes":[{"text":"Your king gets safe first, so you can open the centre with your d-pawn next.","generated":true,"ideas":[{"type":"plan","side":"white","routes":[{"from":"d2","to":"d4","moves":1}]}]}],"games":[98329,171179,155404,81364,29864]},{"uci":"b5c6","games":[129245,223800,188329,80529,22114]},{"uci":"f3e5","games":[1817,2549,2009,776,215]}]},
 "r1bqkbnr/pppp2pp/2B2p2/4p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq -":{"variation":"ruy-lopez","moves":[{"uci":"d7c6"}]},
 "r1bqkbnr/ppp3pp/2p2p2/4p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq -":{"variation":"ruy-lopez","moves":[{"uci":"f3e5"}]},
 "r1bqkbnr/pppp2pp/2n2p2/1B2N3/4P3/8/PPPP1PPP/RNBQK2R b KQkq -":{"variation":"ruy-lopez","moves":[{"uci":"f6e5"}]},

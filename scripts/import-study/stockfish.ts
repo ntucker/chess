@@ -1,9 +1,10 @@
 /**
  * Stockfish as the app runs it (the same build), in Node, for the engine
  * check (./engineCheck), with a smaller search than the app's (`CHECK_SEARCH`).
- * Each position's analysis is cached, so a rerun searches only new positions.
+ * Each position's analysis is kept in the lesson's committed answers file, so
+ * a rerun searches only new positions and books the moves the last import did.
  */
-import { type Evaluation, type FinalAnalysis, settledAnalysis } from '@/evaluation/evaluation';
+import { type Evaluation, settledAnalysis } from '@/evaluation/evaluation';
 import {
   attachStockfish,
   type Connection,
@@ -13,7 +14,7 @@ import {
 import { type NodeEngine, sendTo, startNodeEngine } from '@/stockfish/node';
 
 import type { Evaluate } from './engineCheck';
-import { appendJsonLine, readJsonLines } from './jsonLines';
+import { answersFile } from './jsonLines';
 
 /**
  * The engine check's search: the best move, from 100,000 positions (about
@@ -21,32 +22,13 @@ import { appendJsonLine, readJsonLines } from './jsonLines';
  * about 14 hours at the app's search (`APP_SEARCH`); the check only needs to
  * tell a mistake from a sound move. Each cached row names the search that
  * filled it (`searchName`), and rows from another search are searched again.
+ * (Rows from before rows named theirs also stopped at 1.5 s, which at about
+ * 0.3 s a search hardly ever mattered; they carry this search's name.)
  */
 const CHECK_SEARCH: SearchBudget = { ranks: 1, nodes: 100_000 };
 
 /** How a cache row names the search that filled it, as `1x100000`. */
 const searchName = ({ ranks, nodes }: SearchBudget) => `${ranks}x${nodes}`;
-
-/**
- * The search every row cached before rows named theirs came from (it also
- * stopped at 1.5 s, which at about 0.3 s a search hardly ever mattered).
- */
-const UNNAMED_SEARCH = searchName({ ranks: 1, nodes: 100_000 });
-
-/** A cache file's rows as analyses by position, keeping only those `search` (`searchName`) filled. */
-export function cachedAnalyses(
-  rows: readonly CacheRow[],
-  search: string,
-): Map<string, FinalAnalysis> {
-  return new Map(
-    rows
-      .filter((row) => (row.search ?? UNNAMED_SEARCH) === search)
-      .map(({ key, evaluation: { best, ...evaluation } }) => [
-        key,
-        settledAnalysis(evaluation, best),
-      ]),
-  );
-}
 
 /** How many engines may stop (crash, or never answer) before the import gives up. */
 const MAX_RESTARTS = 5;
@@ -56,9 +38,12 @@ const MAX_RESTARTS = 5;
  * position that stops `TRIES` engines (src/stockfish/engine.ts) rejects its search, and an engine that
  * can't be started, or stops more than `MAX_RESTARTS` times, ends the import.
  */
-export async function nodeStockfish(
-  cacheFile: string,
-): Promise<{ evaluate: Evaluate; stop: () => void }> {
+export async function nodeStockfish(cacheFile: string): Promise<{
+  evaluate: Evaluate;
+  /** Rewrites the answers file with only the positions this run evaluated. */
+  saveUsed: () => void;
+  stop: () => void;
+}> {
   let engine: NodeEngine | undefined;
   let connection: Connection | undefined;
   let restarts = 0;
@@ -85,25 +70,32 @@ export async function nodeStockfish(
   await connect();
 
   const checkSearch = searchName(CHECK_SEARCH);
-  const cached = cachedAnalyses(readJsonLines(cacheFile) as CacheRow[], checkSearch);
+  // Rows from another search are searched again, and left out when the file is rewritten.
+  const cache = answersFile<CacheRow>(
+    cacheFile,
+    (row) => row.key,
+    (row) => row.search === checkSearch,
+  );
   let searched = 0;
   const evaluate: Evaluate = async (line, key) => {
-    const known = cached.get(key);
-    if (known) return known;
+    const known = cache.get(key);
+    if (known) {
+      const { best, ...evaluation } = known.evaluation;
+      return settledAnalysis(evaluation, best);
+    }
     const analysis = await stockfishAnalysis(line);
-    cached.set(key, analysis);
     const [{ uci, evaluation }] = analysis.lines;
-    const row: CacheRow = {
+    cache.add({
       key,
       search: checkSearch,
       evaluation: { ...evaluation, ...(uci && { best: uci }) },
-    };
-    appendJsonLine(cacheFile, row);
+    });
     if (++searched % 100 === 0) console.log(`engine check: ${searched} positions searched`);
     return analysis;
   };
   return {
     evaluate,
+    saveUsed: cache.saveUsed,
     stop() {
       connection?.detach();
       engine?.terminate?.();
@@ -112,10 +104,10 @@ export async function nodeStockfish(
 }
 
 /** A cached analysis, as the cache file holds it: its first line. */
-export interface CacheRow {
+interface CacheRow {
   readonly key: string;
   /** The search that filled it (`searchName`). */
-  readonly search?: string;
+  readonly search: string;
   readonly evaluation: Evaluation & { readonly best?: string };
 }
 
