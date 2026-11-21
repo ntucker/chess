@@ -3,7 +3,7 @@ import { type StyleProp, StyleSheet, type ViewStyle } from 'react-native';
 
 import { spokenOnly } from '@/theme/narrow';
 import { lineHeightOf } from '@/theme/theme';
-import { touchPadding, touchTarget } from '@/theme/touch';
+import { touchLine, touchTarget } from '@/theme/touch';
 
 interface Props {
   readonly label: string;
@@ -18,10 +18,10 @@ interface Props {
 
 /**
  * A switch with its label beside it; the label names it and toggles it too.
- * On a touch screen the label's padding makes the row a finger tall
- * (`touchPadding`), so the small switch is easy to hit. A disabled one says
- * why in a tooltip (a resting mouse, or a tap), and to screen readers as its
- * description, since the tooltip isn't read from it.
+ * On a touch screen the label makes the row a finger tall (`touchLine`), so
+ * the small switch is easy to hit. A disabled one says why in a tooltip (a
+ * resting mouse, or a tap), and to screen readers as its description, since
+ * the tooltip isn't read from it.
  */
 export function Toggle({ label, checked, onChange, quiet, disabled, style }: Props) {
   const { theme } = useTheme();
@@ -47,10 +47,9 @@ export function Toggle({ label, checked, onChange, quiet, disabled, style }: Pro
 }
 
 const styles = StyleSheet.create({
-  // The label's padding alone would do in a browser, but natively a shorter
-  // parent (a phone's 32 dp name bar) fits the row inside it and squeezes the
-  // label's text out; the least height lets the row stand out past it instead.
+  // Natively a shorter parent (a phone's 32 dp name bar) would fit the row
+  // inside it; the least height lets the row stand out past it instead.
   field: { minHeight: touchTarget },
-  label: { userSelect: 'none', paddingVertical: touchPadding(lineHeightOf('label')) },
+  label: { userSelect: 'none', ...touchLine(lineHeightOf('label')) },
   spoken: spokenOnly,
 });

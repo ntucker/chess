@@ -1,3 +1,5 @@
+import type { TextStyle } from 'react-native';
+
 import './touch.css';
 
 const WEB = process.env.EXPO_OS === 'web';
@@ -30,6 +32,19 @@ export function touchPadding(content: number, least = 0): number {
   return WEB
     ? (`max(${least}px, (var(--touch-target, 0px) - ${content}px) / 2)` as unknown as number)
     : Math.max(least, (TOUCH_TARGET - content) / 2);
+}
+
+/**
+ * The style that makes a line of text `lineHeight` tall at least
+ * `touchTarget` tall, its text centered: padding on the web, and off it a
+ * least height, since padding worked out for the text's own size would
+ * squeeze the text out once Android's font size setting enlarges it inside a
+ * parent no taller than the target (a phone's name bar).
+ */
+export function touchLine(lineHeight: number): TextStyle {
+  return WEB
+    ? { paddingVertical: touchPadding(lineHeight) }
+    : { minHeight: TOUCH_TARGET, textAlignVertical: 'center' };
 }
 
 /**
