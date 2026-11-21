@@ -99,11 +99,14 @@ describe('engineCheck', () => {
       expect(report.unbooked).toEqual([{ line: '1.d4', move: 'e5', quality: 'mistake' }]);
     });
 
-    it('unbooks a blunder', async () => {
+    it('unbooks a blunder, even one that leaves a playable position', async () => {
+      // Black stands well after 1.d4, and 1...e5 gives away 0.22 yet still leaves 0.38.
       const blunder = async (line: readonly string[], key: string): Promise<FinalAnalysis> =>
-        key === keyAfter('d4', 'e5') || key === keyAfter('d4', 'e5', 'dxe5')
-          ? scored({ score: 0.75, pawns: 2.6 })
-          : evaluate(line, key);
+        key === keyAfter('d4') || key === keyAfter('d4', 'd5')
+          ? scored({ score: 0.4, pawns: -0.7 })
+          : key === keyAfter('d4', 'e5') || key === keyAfter('d4', 'e5', 'dxe5')
+            ? scored({ score: 0.62, pawns: 1.3 })
+            : evaluate(line, key);
       const { report } = await engineCheck(LESSON, blunder, { gambit: true });
       expect(report.gambits).toEqual([]);
       expect(report.unbooked).toEqual([{ line: '1.d4', move: 'e5', quality: 'blunder' }]);

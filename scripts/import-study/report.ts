@@ -16,7 +16,7 @@ export function report(
     chapters.flatMap((c) => [...chapterMoves(c)].map((m) => `${positionKey(m.before)} ${m.uci}`)),
   );
   // Counted move by move, not as a difference: an engine cut leaves fewer moves than the study has.
-  const fromText = Object.entries(lesson.positions).flatMap(([key, entry]) =>
+  const textOnlyMoves = Object.entries(lesson.positions).flatMap(([key, entry]) =>
     entry.moves.filter(({ uci }) => !studied.has(`${key} ${uci}`)),
   );
   const moves = entries.flatMap((entry) => entry.moves);
@@ -45,7 +45,7 @@ export function report(
     ],
     // A real line this long would vanish with no other sign: check these are games.
     ['comment runs dropped as quoted games (plies)', extracted.flatMap((e) => e.quotedGamePlies)],
-    ['moves only in comment text (traps and sequences)', fromText.length],
+    ['moves only in comment text (traps and sequences)', textOnlyMoves.length],
   ];
   return rows
     .map(

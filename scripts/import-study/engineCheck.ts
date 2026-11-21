@@ -9,7 +9,7 @@
  *   theory is full of them, and the app labels it for the learner anyway.
  *   In a gambit lesson (`gambit`) a mistake stays too while the learner's
  *   expected score after it is still `GAMBIT_FLOOR` or more, and gets a note
- *   saying what Stockfish thinks of it: the Stafford's 4...Nc6 gives away
+ *   saying what Stockfish thinks of it: the Stafford's 3...Nc6 gives away
  *   0.12 for its traps. The floor is the board's, not the move's, so a line
  *   of such mistakes can't slide toward a lost position.
  * - A note goes when its verdict is two or more steps from the engine's on
@@ -25,7 +25,7 @@
 import { Chess } from 'chessops/chess';
 import type { Color } from 'chessops/types';
 
-import type { Evaluation, FinalAnalysis } from '@/evaluation/evaluation';
+import { pawnsLabel, type Evaluation, type FinalAnalysis } from '@/evaluation/evaluation';
 import { judgeMove } from '@/analysis/quality';
 import { lineSans, numberedLine, parsePosition, playMove, positionKey } from '@/game/replay';
 import type {
@@ -71,7 +71,7 @@ export interface EngineReport {
  * The least expected score (0 to 1) a gambit lesson's mistake may leave the
  * learner: about two pawns down. The Stafford's 5...Ne4 leaves 0.31.
  */
-export const GAMBIT_FLOOR = 0.3;
+const GAMBIT_FLOOR = 0.3;
 
 /** `lesson` with what `evaluate` overrules taken out, and what was taken. */
 export async function engineCheck(
@@ -110,17 +110,14 @@ export async function engineCheck(
       let book = move.book;
       let gambitNote: Note | undefined;
       if (book && at.pos.turn === lesson.side) {
+        const before = await evaluation(at.line, at.pos);
         const afterAnalysis = await evaluation(line, after);
-        const quality = judgeMove(
-          await evaluation(at.line, at.pos),
-          afterAnalysis,
-          move.uci,
-          lesson.side,
-        );
-        const engine = afterAnalysis.lines[0].evaluation;
-        const playable =
-          engine.mate === undefined && learnerScore(engine, lesson.side) >= GAMBIT_FLOOR;
-        if (gambit && quality === 'mistake' && playable) {
+        const quality = judgeMove(before, afterAnalysis, move.uci, lesson.side);
+        const engine =
+          gambit && quality === 'mistake'
+            ? playableGambit(judgedBy(before, afterAnalysis, move.uci), lesson.side)
+            : undefined;
+        if (engine) {
           gambitNote = gambitNoteFor(engine, lesson.side);
           report.gambits.push({
             line: sans(lesson, at.line),
@@ -326,8 +323,7 @@ async function pickBookMove(
       const quality = judgeMove(before, after, uci, side);
       const sound = quality !== 'mistake' && quality !== 'blunder';
       const main = !!notes?.some(({ text }) => MAIN.test(text));
-      const { score } = after.lines[0].evaluation;
-      return { uci, sound, main, score: side === 'white' ? score : 1 - score };
+      return { uci, sound, main, score: learnerScore(after.lines[0].evaluation, side) };
     }),
   );
   const main = judged.filter((move) => move.main);
@@ -434,6 +430,17 @@ function apart(verdict: Verdict, engine: Evaluation): boolean {
 /** The expected score (0 to 1) of `side` in a position the engine scores `engine`. */
 const learnerScore = ({ score }: Evaluation, side: Color) => (side === 'white' ? score : 1 - score);
 
+/**
+ * The evaluation `judgeMove` labelled `uci` by: its own line where the
+ * position before lists it, else the position after's first line.
+ */
+const judgedBy = (before: FinalAnalysis, after: FinalAnalysis, uci: Uci): Evaluation =>
+  (before.lines.find((line) => line.uci === uci) ?? after.lines[0]).evaluation;
+
+/** `engine`, when a gambit lesson's mistake that leaves it is still playable for `side`. */
+const playableGambit = (engine: Evaluation, side: Color): Evaluation | undefined =>
+  engine.mate === undefined && learnerScore(engine, side) >= GAMBIT_FLOOR ? engine : undefined;
+
 /** The verdicts by step on the scale, from -3 (Black winning) to 3. */
 const VERDICTS = Object.fromEntries(
   Object.entries(STEPS).map(([verdict, step]) => [step, verdict as Verdict]),
@@ -452,7 +459,7 @@ export const isGambitNote = (note: Note) => note.text.startsWith(GAMBIT_NOTE_STA
 function gambitNoteFor(engine: Evaluation, side: Color): Note {
   const value = VERDICTS[engineStep(engine)];
   const pawns = side === 'white' ? engine.pawns : -engine.pawns;
-  const size = Math.abs(pawns).toFixed(1);
+  const size = pawnsLabel(pawns);
   const standing =
     value === 'equal'
       ? 'the position is about level'

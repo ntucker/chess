@@ -1455,7 +1455,6 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         chapterName: (title: string) => chapterNamed(STAFFORD_CHAPTERS, 'Stafford Gambit', title),
       },
     ],
-    // A gambit: Stockfish keeps the learner's mistakes that leave a playable position.
     engineCheck: 'gambit',
     info: { id: 'stafford', title: 'Stafford Gambit', side: 'black' },
   },
@@ -1474,7 +1473,6 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         leave: ['h3'],
       },
     ],
-    // A gambit: Stockfish keeps the learner's mistakes that leave a playable position.
     engineCheck: 'gambit',
     info: { id: 'lucchini', title: 'Lucchini Gambit', side: 'black' },
   },
@@ -1492,7 +1490,6 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
           chapterNamed(BODEN_CHAPTERS, 'Boden-Kieseritzky Gambit', title),
       },
     ],
-    // A gambit: Stockfish keeps the learner's mistakes that leave a playable position.
     engineCheck: 'gambit',
     info: { id: 'boden-kieseritzky', title: 'Boden-Kieseritzky Gambit', side: 'white' },
   },
