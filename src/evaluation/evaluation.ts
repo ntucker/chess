@@ -80,6 +80,10 @@ export function finalAnalysis(watch: (watcher: Watcher) => unknown): Promise<Fin
   });
 }
 
+/** `side`'s expected score (0 to 1) in a position scored `evaluation`, which is White's. */
+export const scoreFor = ({ score }: Evaluation, side: Color) =>
+  side === 'white' ? score : 1 - score;
+
 /**
  * The size of an advantage of `pawns`, as the evaluation bar and engine lines
  * write it: tenths of a pawn below 10, whole pawns from there up to 99.

@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import type { AnalysisLine, Evaluation, FinalAnalysis } from '@/evaluation/evaluation';
 
-import { judgeMove } from './quality';
+import { judgedEvaluation, judgeMove } from './quality';
 
 /** An evaluation where White's expected score is `score`. */
 const at = (score: number): Evaluation => ({ score, pawns: 0 });
@@ -86,6 +86,13 @@ describe('judgeMove', () => {
     it('never judges a move the list skips as better than its last move', () => {
       // The next position's search scores a6 as well as c5, but the list ranked it below e6.
       expect(judgeMove(list, scored(0.4), 'a7a6', 'black')).toBe('inaccuracy');
+    });
+
+    it('gives the evaluation it judges by: the own line, else the position after, but no better than the last', () => {
+      expect(judgedEvaluation(list, undefined, 'e7e5', 'black')).toEqual(at(0.47));
+      expect(judgedEvaluation(list, undefined, 'a7a6', 'black')).toBeUndefined();
+      expect(judgedEvaluation(list, scored(0.75), 'a7a6', 'black')).toEqual(at(0.75));
+      expect(judgedEvaluation(list, scored(0.4), 'a7a6', 'black')).toEqual(at(0.48));
     });
   });
 });

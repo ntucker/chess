@@ -2,7 +2,7 @@
  * How good a move was, as chess.com labels moves: by how much of the mover's
  * expected score it gave away.
  */
-import type { Evaluation, FinalAnalysis } from '@/evaluation/evaluation';
+import { scoreFor, type Evaluation, type FinalAnalysis } from '@/evaluation/evaluation';
 import type { Color } from '@/game/replay';
 
 /**
@@ -48,16 +48,10 @@ export function judgeMove(
 ): MoveQuality | undefined {
   const judged = judgedEvaluation(before, after, uci, mover);
   if (!judged) return undefined;
-  const loss = lossTo(before, judged, mover);
+  const loss = scoreFor(before.lines[0].evaluation, mover) - scoreFor(judged, mover);
   if (uci === before.lines[0].uci || loss <= 0) return 'best';
   return LEAST_LOSS.find(([threshold]) => loss >= threshold)?.[1] ?? 'good';
 }
-
-/** How much of `mover`'s expected score playing from `before` into `evaluation` gives away. */
-const lossTo = (before: FinalAnalysis, { score }: Evaluation, mover: Color) =>
-  mover === 'white'
-    ? before.lines[0].evaluation.score - score
-    : score - before.lines[0].evaluation.score;
 
 /**
  * The evaluation `judgeMove` labels `uci` by (see there): its own line where
@@ -76,7 +70,7 @@ export function judgedEvaluation(
   const last = before.lines.at(-1)!;
   const reached = after.lines[0].evaluation;
   // A list without moves (Maia's) ranks nothing.
-  return last.uci && lossTo(before, last.evaluation, mover) > lossTo(before, reached, mover)
+  return last.uci && scoreFor(last.evaluation, mover) < scoreFor(reached, mover)
     ? last.evaluation
     : reached;
 }

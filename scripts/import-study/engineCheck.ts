@@ -25,7 +25,7 @@
 import { Chess } from 'chessops/chess';
 import type { Color } from 'chessops/types';
 
-import { pawnsLabel, type Evaluation, type FinalAnalysis } from '@/evaluation/evaluation';
+import { pawnsLabel, scoreFor, type Evaluation, type FinalAnalysis } from '@/evaluation/evaluation';
 import { judgedEvaluation, judgeMove } from '@/analysis/quality';
 import { lineSans, numberedLine, parsePosition, playMove, positionKey } from '@/game/replay';
 import type {
@@ -113,19 +113,13 @@ export async function engineCheck(
         const before = await evaluation(at.line, at.pos);
         const afterAnalysis = await evaluation(line, after);
         const quality = judgeMove(before, afterAnalysis, move.uci, lesson.side);
-        const keptGambit =
-          gambit && quality === 'mistake'
-            ? playableGambit(
-                judgedEvaluation(before, afterAnalysis, move.uci, lesson.side)!,
-                lesson.side,
-              )
-            : undefined;
-        if (keptGambit) {
-          gambitNote = gambitNoteFor(keptGambit, lesson.side);
+        const judged = judgedEvaluation(before, afterAnalysis, move.uci, lesson.side);
+        if (gambit && quality === 'mistake' && judged && playable(judged, lesson.side)) {
+          gambitNote = gambitNoteFor(judged, lesson.side);
           report.gambits.push({
             line: sans(lesson, at.line),
             move: san(at.pos, move.uci),
-            evaluation: describe(keptGambit),
+            evaluation: describe(judged),
           });
         } else if (quality === 'mistake' || quality === 'blunder') {
           book = undefined;
@@ -326,7 +320,7 @@ async function pickBookMove(
       const quality = judgeMove(before, after, uci, side);
       const sound = quality !== 'mistake' && quality !== 'blunder';
       const main = !!notes?.some(({ text }) => MAIN.test(text));
-      return { uci, sound, main, score: learnerScore(after.lines[0].evaluation, side) };
+      return { uci, sound, main, score: scoreFor(after.lines[0].evaluation, side) };
     }),
   );
   const main = judged.filter((move) => move.main);
@@ -430,12 +424,9 @@ function apart(verdict: Verdict, engine: Evaluation): boolean {
   return Math.abs(said - seen) >= 2 && !understated;
 }
 
-/** The expected score (0 to 1) of `side` in a position the engine scores `engine`. */
-const learnerScore = ({ score }: Evaluation, side: Color) => (side === 'white' ? score : 1 - score);
-
-/** `engine`, when a gambit lesson's mistake that leaves it is still playable for `side`. */
-const playableGambit = (engine: Evaluation, side: Color): Evaluation | undefined =>
-  engine.mate === undefined && learnerScore(engine, side) >= GAMBIT_FLOOR ? engine : undefined;
+/** Whether a gambit lesson's mistake that leaves `engine` is still playable for `side`. */
+const playable = (engine: Evaluation, side: Color) =>
+  engine.mate === undefined && scoreFor(engine, side) >= GAMBIT_FLOOR;
 
 /** The verdicts by step on the scale, from -3 (Black winning) to 3. */
 const VERDICTS = Object.fromEntries(
