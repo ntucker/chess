@@ -12,9 +12,8 @@ import { themes } from '@/theme/theme';
 
 import { ScoresheetDrawer, ScoresheetOpener, shownMove } from './ScoresheetDrawer';
 
-// Their font and images need Expo's asset registry, which the web preset doesn't resolve.
+// Its font needs Expo's asset registry, which the web preset doesn't resolve.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
-jest.mock('@/components/QualityBadge', () => ({ QualityBadge: () => null }));
 // Stands in for the navigator: whether the drawer's screen is in front.
 let mockFocused = true;
 jest.mock('expo-router', () => ({ useIsFocused: () => mockFocused }));

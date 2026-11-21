@@ -107,6 +107,15 @@ describe('noteParts', () => {
       const after = 'rnbqkb1r/pppppppp/8/3n4/8/8/PPPPPPPP/RNBQKBNR b KQkq -' as PositionKey;
       expect(noteParts(bare, { note: note('Nc3 controls d5.'), after })[0]).toBe('Nc3 controls ');
     });
+
+    it('when the side not to move reads it as a different move than a later position does', () => {
+      // White can't play Nc3 here, Black's knight can, and White's could before e4.
+      const after = 'rnbqkb1r/pppppppp/8/3n4/4P3/8/PPPP1PPP/R1BQKBNR w KQkq -' as PositionKey;
+      const before = 'rnbqkb1r/pppppppp/8/3n4/8/8/PPPPPPPP/RNBQKBNR w KQkq -' as PositionKey;
+      expect(noteParts(bare, { note: note('Nc3 controls d5.'), after, before })[0]).toBe(
+        'Nc3 controls ',
+      );
+    });
   });
 
   it('keeps a diagonal’s name as words, and a numbered move’s number in its mention', () => {

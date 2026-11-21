@@ -7,9 +7,9 @@
  * threat's side to move there), the position its move was played in, then
  * each ply onward along its line or trap and the guide. Where one tier's
  * positions read it as different moves, or none within reach has it, the
- * text stays plain: a guess shown as fact misleads. So does a move read for
- * the side to move in the note's position that the other side could make
- * there too: a note often names either side's moves without dots.
+ * text stays plain: a guess shown as fact misleads. So does a move placed
+ * as one move where the side not to move in the note's position could make
+ * it as another: a note often names either side's moves without dots.
  */
 import type { Chess } from 'chessops/chess';
 import type { Color, SquareName } from 'chessops/types';
@@ -102,26 +102,27 @@ function named(
 
 /**
  * `text` as the move `find` reads in the nearest tier of `places` where it
- * reads one, if every position there, and every witness, reads the same move.
+ * reads one, if every position there, and every witness up to there, reads
+ * the same move.
  */
 function placed(
   text: string,
   places: Places,
   find: (pos: Chess) => Uci | undefined,
 ): Mention | undefined {
+  const witnessed: Uci[] = [];
   for (const { positions, witnesses } of places.tiers()) {
+    witnessed.push(...witnesses.flatMap((pos) => find(pos) ?? []));
     const readings = positions.map(find);
     const uci = readings.find(Boolean);
     if (!uci) continue;
-    if ([...readings, ...witnesses.map(find)].some((other) => other && other !== uci)) {
-      return undefined;
-    }
-    return played(text, positions[readings.indexOf(uci)], uci);
+    if ([...readings, ...witnessed].some((other) => other && other !== uci)) return undefined;
+    return mentionOf(text, positions[readings.indexOf(uci)], uci);
   }
   return undefined;
 }
 
-function played(text: string, before: Chess, uci: Uci): Mention {
+function mentionOf(text: string, before: Chess, uci: Uci): Mention {
   const after = before.clone();
   const { from, to } = playMove(after, uci)!;
   return { text, key: positionKey(after), lit: [from, to] as SquareName[], kind: 'move' };
@@ -131,7 +132,7 @@ function played(text: string, before: Chess, uci: Uci): Mention {
 interface Tier {
   /** Positions a move may be read in, the likeliest first. */
   readonly positions: readonly Chess[];
-  /** Positions where a different reading only makes the mention unplaceable. */
+  /** Positions where a different reading makes the mention unplaceable, here or in a later tier. */
   readonly witnesses: readonly Chess[];
 }
 
