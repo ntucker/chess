@@ -104,7 +104,8 @@ describe('cardBand', () => {
     cardBand({ kings: { learner, rival }, landed }, orientation);
 
   it('lies across the middle while the kings and the last move are elsewhere', () => {
-    expect(band('e1', 'e8', 'f7')).toBe('middle');
+    // All three bands are open, so the middle one wins.
+    expect(band('e1', 'e8', 'h1')).toBe('middle');
   });
 
   it('moves off a king in the middle', () => {
