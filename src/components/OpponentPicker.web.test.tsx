@@ -101,7 +101,7 @@ describe('OpponentPicker', () => {
     expect(focusedLabel()).toBe('1100, Beginner');
   });
 
-  it('closes when the page scrolls, not when a list elsewhere does', () => {
+  it('closes when scrolling moves the rating, not when a list elsewhere scrolls', () => {
     act(() => trigger().click());
     const elsewhere = document.createElement('div');
     document.body.append(elsewhere);
@@ -110,6 +110,8 @@ describe('OpponentPicker', () => {
         elsewhere.dispatchEvent(new Event('scroll'));
       });
       expect(list()).not.toBeNull();
+      // The page scrolled the rating up (jsdom lays nothing out, so say where it went).
+      trigger().getBoundingClientRect = () => new DOMRect(0, -40, 60, 20);
       act(() => {
         document.dispatchEvent(new Event('scroll'));
       });
@@ -201,6 +203,13 @@ describe('OpponentPicker', () => {
     expect(document.activeElement).toBe(document.body);
   });
 
+  it('moves focus into a list opened by pointing once the rating is pressed', () => {
+    point('mouseenter');
+    expect(document.activeElement).toBe(document.body);
+    act(() => trigger().click());
+    expect(focusedLabel()).toBe('1500, Club');
+  });
+
   it('stays open after a press, when the pointer leaves', () => {
     jest.useFakeTimers();
     try {
@@ -245,13 +254,27 @@ describe('OpponentPicker', () => {
     expect(list()).not.toBeNull();
   });
 
-  it('opens on a press, and a press elsewhere closes it', () => {
+  it('opens on a press, and a press elsewhere closes it', async () => {
     act(() => trigger().click());
     expect(list()).not.toBeNull();
+    // The list starts listening for presses outside it a moment after it opens.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
     act(() => {
       // jsdom has no PointerEvent; the listener reads only its target.
       document.body.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
     });
+    expect(list()).toBeNull();
+  });
+
+  it('closes on a second press of the rating, without opening again', async () => {
+    act(() => trigger().click());
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    // A press on the rating is left to its own toggle, not taken as one outside the list.
+    act(() => {
+      trigger().dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
+    });
+    expect(list()).not.toBeNull();
+    act(() => trigger().click());
     expect(list()).toBeNull();
   });
 
