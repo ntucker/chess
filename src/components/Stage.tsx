@@ -37,6 +37,8 @@ interface StageProps {
   readonly board: ReactNode;
   /** The panel beside the board, or below it on a narrow screen. */
   readonly program: ReactNode;
+  /** Small print across the foot of a wide page, under the board and the panel (`Page`). */
+  readonly footer?: ReactNode;
 }
 
 /**
@@ -45,12 +47,12 @@ interface StageProps {
  * way. On a narrow page the panel goes below the board and scrolls on its
  * own, so the board stays in view.
  */
-export function Stage({ title, header, board, program }: StageProps) {
+export function Stage({ title, header, board, program, footer }: StageProps) {
   const styles = useNarrowStyles(STYLES);
   const part = useNarrowPart();
   const fit = useBoardFit();
   return (
-    <Page title={title} header={header} maxWidth={STAGE_MAX} fillsWindow>
+    <Page title={title} header={header} maxWidth={STAGE_MAX} fillsWindow footer={footer}>
       <View {...part('stage', styles.stage)}>
         <View {...part('board-column', [styles.boardColumn, fit])}>{board}</View>
         <NarrowScroll part="program" style={styles.program}>
