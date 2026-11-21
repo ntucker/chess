@@ -54,7 +54,7 @@ export interface OpeningLine {
 
 /**
  * What the start position needs to know of a lesson before it loads. Its
- * sources are credited where the start position previews the lesson's move.
+ * sources are credited on the start position's page, which leads to it.
  */
 export interface IndexEntry extends Pick<Lesson, 'title' | 'side' | 'sources'> {
   /** The lines that pick it, in the guide's order. */
@@ -382,12 +382,13 @@ export function lessonsFrom<Id extends string>(
   );
 }
 
-/** A move listed before a lesson is picked, crediting the lessons it leads to. */
+/** A move listed before a lesson is picked, naming the lessons it leads to. */
 type OpeningMove = LessonMove & { readonly notes: readonly Note[] };
 
 /**
  * The moves `side`'s lessons share and the moves that pick them, at each
- * position before a line picks one, each crediting the lessons it leads to.
+ * position before a line picks one, each naming the lessons it leads to (the
+ * page credits their sources).
  * A learner's move is a book move where a clean run can go on through it.
  */
 function openingMoves(index: LessonIndex, side: Color): Map<PositionKey, OpeningMove[]> {
@@ -404,19 +405,13 @@ function openingMoves(index: LessonIndex, side: Color): Map<PositionKey, Opening
       found.book ||= parsePositionKey(key)!.turn === side && line.lineEnds.length > 0;
     }
   }
-  const credited = sourcesOf(index);
   return new Map(
     [...at].map(([key, moves]) => [
       key,
       [...moves].map(([uci, { ids, book }]) => ({
         uci,
         ...(book && { book }),
-        notes: ids.map((id) => {
-          const { title, sources } = index[id];
-          return {
-            text: `${title}, from ${listed(sources.map((source) => credit(source, credited)))}.`,
-          };
-        }),
+        notes: ids.map((id) => ({ text: index[id].title })),
       })),
     ]),
   );
@@ -444,12 +439,6 @@ export function sourceName(source: LessonSource, credited: readonly LessonSource
     : `${title} by ${author}`;
 }
 
-/** How a note credits `source`: its name, then its license's. A note is plain text; the lesson screen's credits link both. */
-const credit = (source: LessonSource, credited: readonly LessonSource[]) => {
-  const name = sourceName(source, credited);
-  return source.license ? `${name} (${source.license.name})` : name;
-};
-
 /** Every source the index's lessons and `more` credit, each once (the same URL is the same source). */
 export const sourcesOf = (
   index: LessonIndex,
@@ -465,9 +454,6 @@ export const sourcesOf = (
 /** What comes before item `i` of `count` in an English list: "a", "a and b", "a, b and c". */
 export const listSeparator = (i: number, count: number) =>
   i === 0 ? '' : i === count - 1 ? ' and ' : ', ';
-
-const listed = (items: readonly string[]) =>
-  items.map((item, i) => listSeparator(i, items.length) + item).join('');
 
 /** The variation of the positions before a lesson is picked. */
 const OPENINGS_VARIATION = 'openings';
@@ -486,7 +472,7 @@ export function openingsLesson(index: LessonIndex, side: Color): Lesson {
     title: 'Openings',
     side,
     start: INITIAL_FEN,
-    // Its notes come from the lessons', so it credits their sources.
+    // It leads to the lessons, so it credits their sources.
     sources: sourcesOf(ofSide),
     variations: { [OPENINGS_VARIATION]: { name: 'Openings' } },
     positions: Object.fromEntries(

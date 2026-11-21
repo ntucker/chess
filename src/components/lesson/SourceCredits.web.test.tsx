@@ -55,4 +55,16 @@ describe('SourceCredits', () => {
       'Lesson from Loaded by Matkun and Other by Matkun',
     );
   });
+
+  it("names a source's license after it, kept on one line", () => {
+    const wikibooks: LessonSource = {
+      title: 'Chess Opening Theory',
+      author: 'Wikibooks contributors',
+      url: 'https://en.wikibooks.org/wiki/Chess_Opening_Theory',
+      license: { name: 'CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' },
+    };
+    expect(credits([wikibooks], [])).toBe(
+      'Lesson from Chess Opening Theory by Wikibooks contributors (CC\u00a0BY-SA\u00a04.0)',
+    );
+  });
 });
