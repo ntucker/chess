@@ -77,3 +77,14 @@ it('stops at the end of the game it holds toward, after which a tap steps once',
   wait(2000);
   expect(ply()).toBe(1);
 });
+
+it('steps once per tap, each way, and turns an arrow off at its end', () => {
+  const { arrow, ply } = stepper(1, 2);
+  act(() => arrow('Back').onPress());
+  expect(ply()).toBe(0);
+  expect(arrow('Back').disabled).toBe(true);
+  act(() => arrow('Forward').onPress());
+  act(() => arrow('Forward').onPress());
+  expect(ply()).toBe(2);
+  expect(arrow('Forward').disabled).toBe(true);
+});

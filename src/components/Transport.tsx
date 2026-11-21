@@ -26,7 +26,10 @@ export function Transport({ ply, total, onGoto, middle }: Props) {
   const { color } = theme.semantic;
   const part = useNarrowPart();
   const holdHandlersFor = useHeldStep(ply, total, onGoto);
-  const arrow = (step: Step) => ({ step, target: ply + step });
+  const arrow = (step: Step) => {
+    const target = ply + step;
+    return { step, target, disabled: target < 0 || target > total };
+  };
   const buttons: {
     label: string;
     icon: ComponentProps<typeof Ionicons>['name'];
@@ -42,14 +45,12 @@ export function Transport({ ply, total, onGoto, middle }: Props) {
       label: 'Back',
       icon: 'chevron-back',
       size: 22,
-      disabled: ply === 0,
       ...arrow(-1),
     },
     {
       label: 'Forward',
       icon: 'chevron-forward',
       size: 22,
-      disabled: ply === total,
       ...arrow(1),
     },
     {
