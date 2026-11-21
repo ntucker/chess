@@ -22,7 +22,8 @@ const study = (title: string, id: string): LessonSource => ({
 
 const CC_BY_SA = { name: 'CC BY-SA 4.0', url: 'https://creativecommons.org/licenses/by-sa/4.0/' };
 
-function credits(sources: readonly LessonSource[], indexed: readonly LessonSource[]) {
+/** The credits' text, link names and show-all toggle's state, after pressing their show-all toggle `presses` times. */
+function credits(sources: readonly LessonSource[], indexed: readonly LessonSource[], presses = 0) {
   const index = { ...FIXTURE_INDEX, slav: { ...FIXTURE_INDEX.slav, sources: indexed } };
   const host = document.createElement('div');
   const root = createRoot(host);
@@ -35,12 +36,17 @@ function credits(sources: readonly LessonSource[], indexed: readonly LessonSourc
       </SilkProvider>,
     ),
   );
+  for (let n = 0; n < presses; n++) {
+    // A real <button>, so a keyboard reaches and presses it too.
+    act(() => host.querySelector('button')!.click());
+  }
   const text = host.textContent;
   const labels = [...host.querySelectorAll('[aria-label]')].map((link) =>
     link.getAttribute('aria-label'),
   );
+  const expanded = host.querySelector('button')?.getAttribute('aria-expanded');
   act(() => root.unmount());
-  return { text, labels };
+  return { text, labels, expanded };
 }
 
 describe('SourceCredits', () => {
@@ -103,5 +109,54 @@ describe('SourceCredits', () => {
     expect(credits(sources, sources).text).toBe(
       'Lesson from Chess Opening Theory by Wikibooks contributors: 1.d4\u00a0Nf6 2.c4\u00a0g6 and 1.e4',
     );
+  });
+
+  describe('a long list', () => {
+    const page = (moves: string): LessonSource => ({
+      title: `Chess Opening Theory, ${moves}`,
+      author: 'Wikibooks contributors',
+      url: `https://en.wikibooks.org/wiki/${moves}`,
+      license: CC_BY_SA,
+    });
+    const sources = [
+      ...['a', 'b', 'c', 'd'].map((id) => study(`Study ${id}`, id)),
+      { ...study('Study e', 'e'), author: 'wub1234' },
+      ...['1.e4', '1.d4', '1.c4', '1.Nf3'].map(page),
+    ];
+
+    it('starts as a count of each site, its license still linked', () => {
+      const { text, expanded } = credits(sources, sources);
+      expect(text).toBe(
+        'Lesson from 5 lichess studies and 4 pages of Chess Opening Theory by Wikibooks' +
+          ' contributors (CC\u00a0BY-SA\u00a04.0) · Show all sources',
+      );
+      expect(expanded).toBe('false');
+    });
+
+    it('shows every source on a press, and the counts again on another', () => {
+      const open = credits(sources, sources, 1);
+      expect(open.expanded).toBe('true');
+      expect(open.text).toBe(
+        'Lesson from lichess studies by Matkun (1, 2, 3, 4) and wub1234; Chess Opening Theory by' +
+          ' Wikibooks contributors (CC\u00a0BY-SA\u00a04.0): 1.e4, 1.d4, 1.c4 and 1.Nf3 · Show fewer',
+      );
+      const closed = credits(sources, sources, 2);
+      expect(closed.expanded).toBe('false');
+      expect(closed.text).toMatch(/^Lesson from 5 lichess studies/);
+    });
+  });
+
+  it('lists many sources of different sites in full, since counting them saves nothing', () => {
+    const lone = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'].map((id): LessonSource => ({
+      title: id,
+      author: id,
+      url: `https://${id}.example/`,
+    }));
+    expect(credits(lone, lone).text).not.toMatch(/Show all/);
+  });
+
+  it('lists a short list in full, with no toggle', () => {
+    const short = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((id) => study(id, id));
+    expect(credits(short, short).text).not.toMatch(/Show all/);
   });
 });

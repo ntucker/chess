@@ -1,6 +1,6 @@
-import { Text } from '@reactive/silk-native';
-import { Fragment, use } from 'react';
-import { Text as Span } from 'react-native';
+import { a11yState, Text } from '@reactive/silk-native';
+import { Fragment, use, useState } from 'react';
+import { Text as Span, StyleSheet } from 'react-native';
 
 import { ExternalLink } from '@/components/ExternalLink';
 import {
@@ -20,21 +20,75 @@ import { LessonIndexContext } from '@/resources/lesson';
  * credited together (`creditGroups`): "lichess studies by A and B (1, 2)",
  * "Chess Opening Theory by Wikibooks contributors (CC BY-SA 4.0): 1.e4 c6,
  * 1.e4 e5". A share-alike license asks for its link wherever its text is
- * shown.
+ * shown. A long list where a site credits several sources starts as a count
+ * of each site's, its licenses still linked, until the learner shows them all.
  */
 export function SourceCredits({ sources }: { readonly sources: readonly LessonSource[] }) {
   const name = sourceNamer(sourcesOf(use(LessonIndexContext), sources));
+  const [showAll, setShowAll] = useState(false);
+  const groups = creditGroups(sources);
+  // Counting helps only where a group credits several sources at once.
+  const collapsible = sources.length > MOST_LISTED && groups.some(({ kind }) => kind !== 'source');
+  const counted = collapsible && !showAll;
+  const Item = counted ? GroupCount : Group;
   return (
     <Text role="caption" tone="secondary">
       Lesson from{' '}
-      {creditGroups(sources).map((group, i) => (
+      {groups.map((group, i) => (
         <Span key={i}>
-          {i > 0 ? '; ' : null}
-          <Group group={group} name={name} />
+          {counted ? listSeparator(i, groups.length) : i > 0 ? '; ' : null}
+          <Item group={group} name={name} />
         </Span>
       ))}
+      {collapsible ? (
+        <>
+          {' · '}
+          <Span
+            role="button"
+            {...a11yState({ expanded: showAll })}
+            onPress={() => setShowAll(!showAll)}
+            style={styles.toggle}
+          >
+            {showAll ? 'Show fewer' : 'Show all sources'}
+          </Span>
+        </>
+      ) : null}
     </Text>
   );
+}
+
+/** The most sources credited in full before the list starts as counts (a lesson credits up to 15). */
+const MOST_LISTED = 8;
+
+/** A group as a count of its sources, with its license ("52 pages of Chess Opening Theory by …"). */
+function GroupCount({
+  group,
+  name,
+}: {
+  readonly group: CreditGroup;
+  readonly name: (source: LessonSource) => string;
+}) {
+  switch (group.kind) {
+    case 'source':
+      return <Group group={group} name={name} />;
+    case 'studies': {
+      const count = group.authors.reduce((sum, { studies }) => sum + studies.length, 0);
+      return (
+        <>
+          {count} lichess studies
+          <LicenseNote license={group.license} />
+        </>
+      );
+    }
+    case 'pages':
+      return (
+        <>
+          {group.pages.length} pages {group.title === undefined ? '' : `of ${group.title} `}by{' '}
+          {group.author}
+          <LicenseNote license={group.license} />
+        </>
+      );
+  }
 }
 
 function Group({
@@ -131,3 +185,8 @@ const unbroken = (text: string) => text.replaceAll(' ', '\u00a0');
  * a long line of moves may still break before a move number to fit a phone.
  */
 const byMove = (moves: string) => moves.replace(/ (?!\d+\.)/g, '\u00a0');
+
+const styles = StyleSheet.create({
+  // Underlined like the links beside it, since it sits in the same line of small print.
+  toggle: { textDecorationLine: 'underline' },
+});
