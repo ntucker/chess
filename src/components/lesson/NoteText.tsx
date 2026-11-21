@@ -1,6 +1,6 @@
 import { Text, Tooltip, useTheme } from '@reactive/silk-native';
 import { useMemo } from 'react';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 
 import { MiniBoard } from '@/components/MiniBoard';
 import type { Color } from '@/game/replay';
@@ -21,6 +21,11 @@ interface Props {
   readonly learner: Color;
 }
 
+// Web only for now: on Android a trigger inside a line of text rides above
+// the words, and its open tooltip swallows every later tap. There the
+// notation is plain mono text.
+const TIPS = Platform.OS === 'web';
+
 /**
  * A note's sentence, with each move or square it names (`noteParts`) set as
  * notation that shows it on a small board: under a resting mouse, or on a
@@ -36,7 +41,15 @@ export function NoteText({ lesson, shown, learner }: Props) {
   return (
     <Text role="body">
       {parts.map((part, n) =>
-        typeof part === 'string' ? part : <MentionTip key={n} mention={part} learner={learner} />,
+        typeof part === 'string' ? (
+          part
+        ) : TIPS ? (
+          <MentionTip key={n} mention={part} learner={learner} />
+        ) : (
+          <Text key={n} role="body" style={styles.notation}>
+            {part.text}
+          </Text>
+        ),
       )}
     </Text>
   );
