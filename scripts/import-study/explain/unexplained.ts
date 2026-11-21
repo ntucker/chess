@@ -38,7 +38,7 @@ const words = (text: string) => text.split(/\s+/).filter(Boolean).length;
 
 /** Why `note` explains nothing, or undefined when it says something about the position. */
 export function bareNote(note: Note): Exclude<Unexplained, 'none'> | undefined {
-  // Before the drawn test: a gambit note is Stockfish's verdict, whatever its ideas show.
+  // A gambit note is Stockfish's verdict whatever its ideas show, so drawn ideas don't excuse it.
   if (isGambitNote(note)) return 'verdict';
   if (noteShows(note.ideas) === 'drawn') return undefined;
   const text = note.text.trim();

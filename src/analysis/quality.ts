@@ -2,7 +2,7 @@
  * How good a move was, as chess.com labels moves: by how much of the mover's
  * expected score it gave away.
  */
-import { scoreFor, type Evaluation, type FinalAnalysis } from '@/evaluation/evaluation';
+import type { Evaluation, FinalAnalysis } from '@/evaluation/evaluation';
 import type { Color } from '@/game/replay';
 
 /**
@@ -48,7 +48,7 @@ export function judgeMove(
 ): MoveQuality | undefined {
   const judged = judgedEvaluation(before, after, uci, mover);
   if (!judged) return undefined;
-  const loss = scoreFor(before.lines[0].evaluation, mover) - scoreFor(judged, mover);
+  const loss = signed(before.lines[0].evaluation, mover) - signed(judged, mover);
   if (uci === before.lines[0].uci || loss <= 0) return 'best';
   return LEAST_LOSS.find(([threshold]) => loss >= threshold)?.[1] ?? 'good';
 }
@@ -70,7 +70,15 @@ export function judgedEvaluation(
   const last = before.lines.at(-1)!;
   const reached = after.lines[0].evaluation;
   // A list without moves (Maia's) ranks nothing.
-  return last.uci && scoreFor(last.evaluation, mover) < scoreFor(reached, mover)
+  return last.uci && signed(last.evaluation, mover) < signed(reached, mover)
     ? last.evaluation
     : reached;
 }
+
+/**
+ * White's score, negated for Black: higher is better for `mover`, like
+ * `scoreFor`, but negating is exact, so the same swing in White's score is
+ * the same loss for either side, even at a label's limit (in floats,
+ * 0.06 - 0.01 is under 0.05 but 0.99 - 0.94 is over).
+ */
+const signed = ({ score }: Evaluation, mover: Color) => (mover === 'white' ? score : -score);

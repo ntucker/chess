@@ -42,6 +42,10 @@ describe('judgeMove', () => {
     expect(black(0.43)).toBe('good');
     expect(black(0.47)).toBe('inaccuracy');
     expect(black(0.85)).toBe('blunder');
+    // The same swing in White's score is the same loss for either side, even at a limit.
+    expect(judgeMove(scored(0.01), scored(0.06), 'g7g5', 'black')).toBe(
+      judgeMove(scored(0.06), scored(0.01), 'd2d4', 'white'),
+    );
   });
 
   it('calls a move that gives nothing away the best, whichever move the engine names', () => {
