@@ -41,7 +41,7 @@ yarn web        # or: yarn android
 | Design system | [Silk](https://github.com/reactive/silk) (`@reactive/silk-native`) | `src/components/` |
 | Board | [chessground](https://github.com/lichess-org/chessground) in an [Expo DOM component](https://docs.expo.dev/guides/dom-components/) | `src/components/Board.tsx` |
 | Chess rules | [chessops](https://github.com/niklasf/chessops) | `src/game/` |
-| Opponent | [Maia](https://github.com/CSSLab/maia-chess) at a rating from 1100 to 1900 (1500 by default), or Stockfish as the hardest step; the rating in the opponent's name bar ("plays like a 1500") opens a list to pick it from, as does a footnote under the scoresheet ("Play against 1100 · 1500 · 1900 · Stockfish") | `src/opponent/` |
+| Opponent | [Maia](https://github.com/CSSLab/maia-chess) at a rating from 1100 to 1900 (1500 by default), or Stockfish above them: lite, then full Stockfish as the hardest step; the rating in the opponent's name bar ("plays like a 1500") opens a list to pick it from, as does a footnote under the scoresheet ("Play against 1100 · 1500 · 1900 · Stockfish · Full Stockfish") | `src/opponent/` |
 | Evaluation bar, and the opponent when chosen | [Stockfish](https://stockfishchess.org) 19 lite in WebAssembly, run on the device; full Stockfish 19, downloaded when first chosen as the opponent | `src/stockfish/` |
 
 Silk isn't on npm yet, so the app installs it from the tarballs in `vendor/`.
@@ -65,7 +65,7 @@ The bar beside the board shows how the position stands: White's share of the bar
 
 On 240 positions from club-level games, judged against full Stockfish 19 at depth 24, Stockfish lite at depth 12 was off by 3.4 percentage points of expected score on average, and Maia 1900 by 10.4. Maia also misses mates: after 1. e4 e5 2. Qh5 d6 3. Nf3 Be6 4. Nc3 Nf6 5. Qh4 Be7 6. Ng5 O-O 7. Bd3 Bd7 8. Nd5 Nxd5, White mates with Qxh7, and Maia gives White 59%.
 
-The top opponent, **Full Stockfish**, is the package's full build: Stockfish 19 with its large network, a 99 MB WebAssembly file (79 MB compressed). It is not committed or bundled: `yarn install` copies it into `public/stockfish/`, which the web export serves, and the app downloads it the first time it's picked and keeps it in the browser's Cache Storage (Android's web view downloads it from the live site). It searches 1,000,000 positions for one move, which takes about as long as lite's search, since its network is about 1.8 times slower.
+The top opponent, **Full Stockfish**, is the package's full build: Stockfish 19 with its large network, a 99 MB WebAssembly file (79 MB compressed). Neither git nor the app holds it: the web export serves it from `public/stockfish/`, and the app downloads it the first time it's picked and keeps it (on Android, from the live site).
 
 Stockfish runs in a Web Worker. On the web that's in the page; on Android, whose JavaScript engine (Hermes) has no WebAssembly, it's inside a hidden web view (`src/stockfish/EngineView.tsx`, an Expo DOM component). Either way it searches off every thread that draws the app. It is licensed under the GPL-3.0 and ships unmodified as separate files that the app only talks to with UCI text commands; see `assets/stockfish/LICENSE` and the source at https://github.com/nmrugg/stockfish.js and https://github.com/official-stockfish/Stockfish.
 

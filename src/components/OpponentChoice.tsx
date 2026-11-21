@@ -10,7 +10,7 @@ const OPTIONS = OPPONENT_PRESETS.map((opponent) => {
 
 /**
  * A footnote that picks how hard the opponent plays, easiest first:
- * "Play against 1100 · 1500 · 1900 · Stockfish".
+ * "Play against 1100 · 1500 · 1900 · Stockfish · Full Stockfish".
  */
 export function OpponentChoice() {
   const { opponent } = useSettings();
