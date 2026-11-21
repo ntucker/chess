@@ -22,7 +22,7 @@ import type { GameStore } from '@/game/useGame';
 import { listsTopMoves } from '@/lesson/guidance';
 import type { Uci, VariationId } from '@/lesson/lesson';
 import { lessonsAfter, lessonsFrom, openingsLesson, withOpenings } from '@/lesson/openings';
-import { type Candidate, captionName, pathNames } from '@/lesson/select';
+import { type Candidate, captionName, pathNames, shareSource } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
 import { describeOpponent } from '@/opponent/opponent';
 import { getLesson, LessonIndexContext, LESSONS, type LessonId } from '@/resources/lesson';
@@ -294,6 +294,7 @@ function LessonScreen({
     <CandidateList
       {...rowProps}
       heading={view.learnerToMove ? 'Your candidates' : rivalMoves}
+      shareTip={shareSource(lesson, opponent)}
       owner={view.learnerToMove ? undefined : colorName(rival)}
       // At the start each move's opening is the point, so its rows keep it.
       compact={!picking}

@@ -1,6 +1,15 @@
-import { a11yState, Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
-import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import {
+  a11yState,
+  Pressable,
+  Stack,
+  Surface,
+  Text,
+  Tooltip,
+  useTheme,
+} from '@reactive/silk-native';
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import { candidateTone } from '@/lesson/drawings';
 import type { PositionKey, Uci } from '@/lesson/lesson';
@@ -9,7 +18,7 @@ import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { QualityBadge } from '@/components/QualityBadge';
 import type { Mark } from '@/progress/progress';
-import { narrowLength, narrowStyles } from '@/theme/narrow';
+import { narrowLength, narrowStyles, visuallyHidden } from '@/theme/narrow';
 import { NarrowScroll, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
 import { fonts } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
@@ -20,6 +29,8 @@ import { MARK_SIZE, MarkLegend, ProgressMark, SPOKEN_MARKS } from './ProgressMar
 interface Props {
   /** The list's heading: what moves these are, and whose unless `owner` says. */
   readonly heading: string;
+  /** Whose games the rows' shares count (`shareSource`), said in a tooltip on the heading. */
+  readonly shareTip?: string;
   /** Whose moves these are, before `heading`; only spoken in a narrow page's pane, where it would wrap. */
   readonly owner?: string;
   /** The position whose moves these are: another position's moves are another list */
@@ -72,6 +83,7 @@ interface Props {
  */
 export function CandidateList({
   heading,
+  shareTip,
   owner,
   position,
   candidates,
@@ -106,14 +118,20 @@ export function CandidateList({
          * Whose moves is an eyebrow of its own: off the web a nested text can't be hidden.
          * Its no-break space keeps the gap a space would leave inside one text.
          */}
-        <View style={styles.heading}>
-          {owner ? (
-            <View {...part('wide-only-spoken')}>
-              <Eyebrow>{`${owner}'s\u00a0`}</Eyebrow>
-            </View>
-          ) : null}
-          <Eyebrow>{heading}</Eyebrow>
-        </View>
+        <ShareTip
+          tip={
+            rows.length > 1 && rows.some(({ share }) => share !== undefined) ? shareTip : undefined
+          }
+        >
+          <View style={styles.heading}>
+            {owner ? (
+              <View {...part('wide-only-spoken')}>
+                <Eyebrow>{`${owner}'s\u00a0`}</Eyebrow>
+              </View>
+            ) : null}
+            <Eyebrow>{heading}</Eyebrow>
+          </View>
+        </ShareTip>
         {/* A narrow pane has no room for the key: each mark's row still says it to screen readers. */}
         <View {...part('wide-only')}>
           <MarkLegend marks={shownMarks} />
@@ -347,6 +365,40 @@ function Row({
 
 /** The book badge, as in the scoresheet, about the height of the notation's capitals. */
 const BOOK_BADGE_SIZE = 16;
+
+/** The info mark beside the heading, about as tall as the eyebrow's capitals. */
+const INFO_SIZE = 13;
+
+/**
+ * The list's heading, with a mark that a tap or a resting mouse says whose
+ * games the percentages count, when they show: the words stay out of the
+ * panel until asked for. Screen readers read them after the heading.
+ */
+function ShareTip({ tip, children }: { readonly tip?: string; readonly children: ReactNode }) {
+  const { theme } = useTheme();
+  if (!tip) return children;
+  return (
+    <Tooltip.Root>
+      <Tooltip.Trigger style={STATIC.tipped}>
+        {children}
+        <Ionicons
+          name="information-circle-outline"
+          size={INFO_SIZE}
+          color={theme.semantic.color.textSecondary}
+        />
+        <Text style={STATIC.spoken}>{tip}</Text>
+      </Tooltip.Trigger>
+      <Tooltip.Content>{tip}</Tooltip.Content>
+    </Tooltip.Root>
+  );
+}
+
+const STATIC = StyleSheet.create({
+  // The mark beside the heading's last word, as wide as it needs.
+  tipped: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
+  // Out of sight and out of layout, but read.
+  spoken: { ...visuallyHidden, opacity: 0 },
+});
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;
 

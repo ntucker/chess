@@ -20,6 +20,7 @@ import {
   lineVariation,
   nameWithin,
   opponentBand,
+  shareSource,
   pathNames,
   variationPath,
 } from './select';
@@ -240,6 +241,24 @@ describe('opponentBand', () => {
 
   it('is undefined for a lesson without counts', () => {
     expect(opponentBand({ ...SAMPLE, popularity: undefined }, 1500)).toBeUndefined();
+  });
+});
+
+describe('shareSource', () => {
+  it('names the band a Maia rating reads, with its speeds', () => {
+    expect(shareSource(SAMPLE, 1500)).toMatch(
+      /rated 1400–1599 play each move in .+ games\. That's the band for your opponent's 1500\.$/,
+    );
+  });
+
+  it('names the top band open-ended for Stockfish', () => {
+    expect(shareSource(SAMPLE, 'stockfish')).toMatch(
+      /rated 1800 and up .+ since Stockfish plays above it\.$/,
+    );
+  });
+
+  it('is undefined for a lesson without counts', () => {
+    expect(shareSource({ ...SAMPLE, popularity: undefined }, 1500)).toBeUndefined();
   });
 });
 

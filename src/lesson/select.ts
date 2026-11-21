@@ -212,6 +212,30 @@ export function opponentBand(lesson: Lesson, opponent: Opponent): number | undef
   return ratingBandIndex(lesson.popularity, isStockfish(opponent) ? Infinity : opponent);
 }
 
+/** `words` read as a list: "blitz, rapid and classical". */
+const listed = (words: readonly string[]): string =>
+  words.length > 1 ? `${words.slice(0, -1).join(', ')} and ${words.at(-1)}` : (words[0] ?? '');
+
+/**
+ * Whose games a candidate's share counts, for `opponent`, in words for a
+ * tooltip: the players in `opponentBand`, as "rated 1400–1599" (1500's band)
+ * or "rated 1800 and up" (the top band, Stockfish's). Undefined when the
+ * lesson has no counts.
+ */
+export function shareSource(lesson: Lesson, opponent: Opponent): string | undefined {
+  const band = opponentBand(lesson, opponent);
+  if (!lesson.popularity || band === undefined) return undefined;
+  const { ratingBands, speeds } = lesson.popularity;
+  const next = ratingBands[band + 1];
+  const rated =
+    next === undefined ? `${ratingBands[band]} and up` : `${ratingBands[band]}–${next - 1}`;
+  const games = speeds.length ? ` in ${listed(speeds)} games` : '';
+  const why = isStockfish(opponent)
+    ? 'the strongest band, since Stockfish plays above it'
+    : `the band for your opponent's ${opponent}`;
+  return `Percentages: how often Lichess players rated ${rated} play each move${games}. That's ${why}.`;
+}
+
 /** A variation with its id. */
 export interface VariationOf extends Variation {
   readonly id: VariationId;
