@@ -5,7 +5,6 @@ import { View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
-import { FootnoteLink } from '@/components/FootnoteLink';
 import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
@@ -318,13 +317,12 @@ function LessonScreen({
     onGoto: game.goto,
   };
   const lessonCredits = <SourceCredits sources={lesson.sources} />;
-  /** The settings, beside the board or in a narrow page's sheet, which ends them with the `credits`. */
+  /** The settings, beside the board or in a narrow page's sheet, which adds the lesson's `credits`. */
   const settings = (credits?: ReactNode) => (
     <>
       <LessonControls mode={mode} onMode={chooseMode} />
       <Stack gap="1">
         <OpponentChoice />
-        <FootnoteLink href="/play">Or play a free game, from the first move</FootnoteLink>
         {credits}
       </Stack>
     </>

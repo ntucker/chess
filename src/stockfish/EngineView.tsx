@@ -8,6 +8,7 @@ import type { DOMImperativeFactory, DOMProps } from 'expo/dom';
 import { useDOMImperativeHandle } from 'expo/dom';
 import { type Ref, useEffect, useRef } from 'react';
 
+import { NewVersionError } from '@/files/newVersion';
 import type { ReportDownload } from '@/resources/download';
 
 import { loadFullStockfish } from './full';
@@ -24,7 +25,7 @@ export interface EngineViewRef {
    * Starts full Stockfish, whose files are too big to send: the web view
    * downloads them from `folder` itself, or takes them from its cache
    * (`loadFullStockfish`), telling `onDownload`, then `onStarted` once it
-   * starts, which it doesn't when the folder serves another build.
+   * starts, or `onError` when it can't.
    */
   startFull(folder: string): void;
   /** Sends the engine one UCI command. */
@@ -37,8 +38,12 @@ interface Props {
   readonly onLoad: () => void;
   /** A line the engine printed that the app needs (`forwardNeededLines`). */
   readonly onLine: (line: string) => void;
-  /** The engine failed to start or crashed (or its files to download); it answers nothing more. */
-  readonly onError: (message: string) => void;
+  /**
+   * The engine failed to start or crashed (or its files to download); it
+   * answers nothing more. `newVersion` when its folder serves another build
+   * (a NewVersionError, which crosses to the app as text).
+   */
+  readonly onError: (message: string, newVersion?: boolean) => void;
   /** How full Stockfish's download goes (`startFull`, `loadFullStockfish`'s `report`). */
   readonly onDownload?: ReportDownload;
   /** The engine has its files and is starting, ready for commands. */
@@ -73,14 +78,12 @@ export default function EngineView({ ref, onLoad, onLine, onError, onDownload, o
           download.current?.abort();
           const stop = new AbortController();
           download.current = stop;
-          // Resolves no files for another build, which only a newer app can
-          // start: then no `onError`, so no restart.
           loadFullStockfish(folder, stop.signal, onDownload ?? ignore)
             .then((files) => {
-              if (files && !stop.signal.aborted) run(files.loader, files.wasm);
+              if (!stop.signal.aborted) run(files.loader, files.wasm);
             })
             .catch((error: unknown) => {
-              if (!stop.signal.aborted) onError(String(error));
+              if (!stop.signal.aborted) onError(String(error), error instanceof NewVersionError);
             });
         },
         send(...[command]: Parameters<DOMImperativeFactory[string]>) {

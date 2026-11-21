@@ -2,7 +2,7 @@ import { useReportFullStockfishDownload } from '@/resources/download';
 
 import { fullStockfish } from './engine';
 import { loadFullStockfish } from './full';
-import { PREVIEW_FOLDER } from './fullFiles';
+import { OUTDATED_NEEDS, PREVIEW_FOLDER } from './fullFiles';
 import { useWorkerHost } from './StockfishHost.web';
 
 /**
@@ -13,7 +13,11 @@ import { useWorkerHost } from './StockfishHost.web';
  */
 export function FullStockfishHost() {
   const report = useReportFullStockfishDownload();
-  useWorkerHost(fullStockfish, (signal) => loadFullStockfish(folder(), signal, report));
+  useWorkerHost(
+    fullStockfish,
+    (signal) => loadFullStockfish(folder(), signal, report),
+    OUTDATED_NEEDS,
+  );
   return null;
 }
 
