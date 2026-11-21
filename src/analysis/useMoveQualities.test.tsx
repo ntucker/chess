@@ -8,8 +8,7 @@ import { replay } from '@/game/replay';
 import { AnalysisManager, PositionAnalysis } from '@/resources/analysis';
 import { evaluationFromScore } from '@/stockfish/uci';
 
-import type { MoveQuality } from './quality';
-import { useMoveQualities } from './useMoveQualities';
+import { type MoveJudgements, useMoveQualities } from './useMoveQualities';
 
 // Every position the hook has Stockfish search, by the moves before it; none answers.
 const mockSearched: string[] = [];
@@ -39,7 +38,9 @@ const analysis = (plies: number, lines: [string, number][], final = true): Analy
 
 let root: Root | undefined;
 const controllers: Controller[] = [];
-const renders: (readonly (MoveQuality | undefined)[])[] = [];
+const renders: MoveJudgements[] = [];
+/** The last render's labels. */
+const labels = () => renders.at(-1)?.qualities;
 const managers = () => [new AnalysisManager(), ...getDefaultManagers()];
 
 function Labels({ shown, book }: { readonly shown: number | null; readonly book?: boolean[] }) {
@@ -86,7 +87,7 @@ describe('useMoveQualities', () => {
   it('asks for nothing at the starting position', async () => {
     await render(0);
     expect(mockSearched).toEqual([]);
-    expect(renders.at(-1)).toEqual([undefined, undefined, undefined]);
+    expect(labels()).toEqual([undefined, undefined, undefined]);
   });
 
   it('asks for nothing behind another screen, then for the positions around the shown move', async () => {
@@ -117,16 +118,16 @@ describe('useMoveQualities', () => {
     );
     await store(['e2e4', 'e7e5'], analysis(2, [['g1f3', 250]], false));
     // e5's position is still being searched: no label yet.
-    expect(renders.at(-1)).toEqual(['best', undefined, undefined]);
+    expect(labels()).toEqual(['best', undefined, undefined]);
     // Once it's final, it judges e5, and lists Nf3 first: the best.
     await store(['e2e4', 'e7e5'], analysis(2, [['g1f3', 250]]));
-    expect(renders.at(-1)).toEqual(['best', 'blunder', 'best']);
+    expect(labels()).toEqual(['best', 'blunder', 'best']);
   });
 
   it('labels book moves without asking the engine', async () => {
     await render(2, [false, true, false]);
     expect(mockSearched).toEqual([]);
-    expect(renders.at(-1)).toEqual([undefined, 'book', undefined]);
+    expect(labels()).toEqual([undefined, 'book', undefined]);
   });
 
   // Stockfish's own numbers from a Semi-Slav (after 10.O-O, Noteboom), put on
@@ -142,8 +143,25 @@ describe('useMoveQualities', () => {
         ['e7e6', 103],
       ]),
     );
-    expect(renders.at(-1)?.[1]).toBe('good');
+    expect(labels()?.[1]).toBe('good');
     await store(['e2e4', 'e7e5'], analysis(2, [['g1f3', -38]]));
-    expect(renders.at(-1)?.[1]).toBe('good');
+    expect(labels()?.[1]).toBe('good');
+  });
+
+  it('names the reply that punishes a mistake, from the analysis that labels it', async () => {
+    await render(2);
+    await store(['e2e4'], analysis(1, [['c7c5', 40]]));
+    // After e5, White's Nf3 is far ahead of its second line.
+    await store(
+      ['e2e4', 'e7e5'],
+      analysis(2, [
+        ['g1f3', 250],
+        ['d2d4', 60],
+      ]),
+    );
+    expect(renders.at(-1)).toMatchObject({
+      qualities: [undefined, 'blunder', 'best'],
+      refutations: [undefined, 'g1f3', undefined],
+    });
   });
 });

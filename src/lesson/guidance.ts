@@ -12,7 +12,10 @@
  *   or playing back. Past the guide's moves, Stockfish's top three are
  *   listed in the candidates' place, and preview and play as they do; the
  *   resting board marks only the first, as the best move, with no arrows
- *   for the other two.
+ *   for the other two. Inside the guide, on the opponent's turn, Stockfish's
+ *   best is listed after the candidates when it isn't one of them, so the
+ *   learner can practice the strongest reply beside the guide's
+ *   (`listedEngineMoves`).
  * - Practice hides every hint while it is the learner's turn: no candidates,
  *   previews, best move or top moves, and of the notes only those of the move
  *   just played, and a trap's warning while traps are shown. Right after the
@@ -44,6 +47,14 @@
  *   them wherever the piece is over, so dragging across the board moves
  *   nothing else on it; the idea card shows the move under it. A click hides
  *   the resting best-move mark the same way, until the piece is unselected.
+ * - After a mistake or blunder of the learner's side, the reply that punishes
+ *   it (`refutation` in src/analysis/quality.ts) is marked while nothing is
+ *   previewed, pointed at, picked up or playing back, in every mode and with
+ *   "moves on the board" on or off, since it judges the move just played.
+ *   Never on the learner's turn: there it would be their own next move,
+ *   drawn in the color of what goes wrong. Where the best move or a candidate
+ *   is the same move, the refutation's arrow is drawn instead of theirs. Its
+ *   being a rare reply doesn't hide it: it still punishes.
  * - Rare candidates (`Candidate.rare`) are left off the list, which shows
  *   them only when asked, and off the board's arrows; Stockfish's best isn't
  *   tagged on one either. Only a preview of one, or dragging its piece,
@@ -95,6 +106,11 @@ export interface GuidanceInput {
   /** The note whose idea plays back on the board. */
   readonly playing?: Note;
   readonly engine?: EngineView;
+  /**
+   * The reply that punishes the move into the shown position, if one clearly
+   * does, whoever played it.
+   */
+  readonly refutation?: Uci;
 }
 
 /** An idea to draw, and the position it is checked in. */
@@ -141,16 +157,14 @@ export interface Guidance {
   readonly pointed?: Note;
   /**
    * Stockfish's best move to mark, with "moves on the board" on, while nothing
-   * is previewed, pointed at or playing back. Inside the guide the candidates
-   * are what is highlighted, so it is tagged only when it isn't one of them,
-   * and only once its search is final: in about a quarter of lesson positions
-   * an earlier depth names a move outside the guide that the final one
-   * doesn't, for about half a second (more on a phone).
+   * is previewed, pointed at or playing back, when `tagsBest` says so.
    * Past the guide's moves it is the first of `top`: both come from one analysis.
    */
   readonly best?: Uci;
-  /** Stockfish's top three, listed in Explore where the guide has no candidates. */
+  /** Stockfish's rows the list shows (`listedEngineMoves`). */
   readonly top: readonly Candidate[];
+  /** The reply that punishes the move just played, where guidance marks it. */
+  readonly refutation?: Uci;
   /** A trap the line fell into, while its card shows (see `trapShown`). */
   readonly trap?: LandedTrap;
   /** The line has reached a guide line's end, and the headline tells it (see `newsShown`). */
@@ -163,6 +177,45 @@ export const movesSwitchApplies = (mode: LessonMode) => mode === 'explore';
 /** Whether Stockfish's top moves are listed: in Explore, past the guide's moves. */
 export const listsTopMoves = (view: LessonView, mode: LessonMode) =>
   mode === 'explore' && view.place !== 'inside';
+
+/**
+ * Whether Stockfish's best move `uci` is tagged as the best: past the guide's
+ * moves as soon as it arrives; inside them, where the candidates are what is
+ * highlighted, only when it isn't one of them (rare ones included), and only
+ * once its search is final: in about a quarter of lesson positions an earlier
+ * depth names a move outside the guide that the final one doesn't.
+ */
+const tagsBest = (view: LessonView, final: boolean | undefined, uci: Uci) =>
+  view.place !== 'inside' || (final === true && !isCandidate(view, uci));
+
+/**
+ * Stockfish's rows the list shows, from its top three (`EngineView.top`), in
+ * Explore: past the guide's moves all three, in the
+ * candidates' place (`listsTopMoves`); inside, on the opponent's turn, its
+ * best after the candidates, when the board tags it (`tagsBest`). The
+ * guide's reply often teaches a trick, so the learner can practice both it
+ * and the strongest reply. Example: in the Urusov Gambit,
+ * after 1.e4 e5 2.Bc4 Nf6 3.d4 exd4 4.Nf3, the guide lists only 4...Nxe4 and
+ * Stockfish's 4...Bb4+ is listed after it. Where the moves pick the opening
+ * the rows are openings, so none is added.
+ */
+export function listedEngineMoves(
+  view: LessonView,
+  mode: LessonMode,
+  picking: boolean,
+  top: readonly Candidate[],
+  final: boolean | undefined,
+): readonly Candidate[] {
+  if (listsTopMoves(view, mode)) return top;
+  const best = top.at(0);
+  const listsBest =
+    mode === 'explore' &&
+    !picking &&
+    !view.learnerToMove &&
+    best !== undefined &&
+    tagsBest(view, final, best.move.uci);
+  return listsBest ? [best] : [];
+}
 
 export function guidance(input: GuidanceInput): Guidance {
   const {
@@ -207,7 +260,7 @@ export function guidance(input: GuidanceInput): Guidance {
     .filter(({ note }) => note.ideas?.some((idea) => drawsOnBoard(idea) && allowed(idea)))
     .map(({ note }) => note);
   const pointedNote = !playing && pointed && pointable.includes(pointed) ? pointed : undefined;
-  const top = listsTopMoves(view, mode) ? (engine?.top ?? []) : [];
+  const top = listedEngineMoves(view, mode, picking, engine?.top ?? [], engine?.final);
   const board = boardShown({
     candidates,
     liftable: [...withRare, ...top],
@@ -219,14 +272,13 @@ export function guidance(input: GuidanceInput): Guidance {
     showMoves: movesShown,
     moveIdeas,
   });
+  // The board at rest: nothing previewed, picked up, pointed at or playing back.
+  const resting = !preview && !lifted && !playing && !pointedNote;
+  // Only after a move of the learner's side: on their turn it would be their
+  // own next move, drawn in the color of what goes wrong.
+  const refutation = resting && !view.learnerToMove ? input.refutation : undefined;
   const best =
-    explore && movesShown && !preview && !lifted && !playing && !pointedNote
-      ? engine?.best
-      : undefined;
-  // Inside the guide the learner's candidates are highlighted, so Stockfish's
-  // best is tagged only when it's another move, and only once its search is
-  // final; past the guide it shows live.
-  const insideGuide = view.candidates.length > 0;
+    explore && movesShown && resting && engine?.best !== refutation ? engine?.best : undefined;
 
   return {
     candidates,
@@ -237,12 +289,13 @@ export function guidance(input: GuidanceInput): Guidance {
     pointable,
     ideas,
     drawn: firstPlanOnly(board.drawn),
-    drawnCandidates: board.candidates,
+    drawnCandidates: board.candidates.filter(({ move }) => move.uci !== refutation),
     playable,
     playing,
     pointed: pointedNote,
-    best: insideGuide && (!engine?.final || isCandidate(view, best)) ? undefined : best,
+    best: best && tagsBest(view, engine?.final, best) ? best : undefined,
     top,
+    refutation,
     trap,
     lineEnded: view.lineEnd !== undefined && newsShown(view, view.lineEnd),
   };

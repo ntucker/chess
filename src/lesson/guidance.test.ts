@@ -6,6 +6,7 @@ import {
   type GuidanceInput,
   type LessonMode,
   type LessonSwitches,
+  listedEngineMoves,
   notePlayback,
   type ShownIdea,
 } from './guidance';
@@ -50,23 +51,28 @@ function shown(
     lifted,
     engine = ENGINE,
     picking = sans.length === 0,
+    refutation,
   }: {
     pointer?: Pointer;
     lifted?: Candidate['from'];
     engine?: { best?: string; top?: string[]; final?: boolean };
     picking?: boolean;
+    refutation?: string;
   } = {},
 ): Guidance {
   const view = sampleView(sans);
   const stockfish = engineView(sans, engine);
+  // As useLesson does: a pointer previews only the rows the list shows.
+  const listed = listedEngineMoves(view, mode, picking, stockfish.top, stockfish.final);
   return guidance({
     view,
     mode,
     switches: { ...ALL_ON, ...switches },
     picking,
-    preview: pointer && preview(SAMPLE, view, pointer, stockfish.top),
+    preview: pointer && preview(SAMPLE, view, pointer, listed),
     lifted,
     engine: stockfish,
+    refutation,
   });
 }
 
@@ -158,6 +164,30 @@ describe('guidance', () => {
       expect(summary(practice)).toMatchObject({ top: [], best: undefined });
     });
 
+    it("lists Stockfish's best after the opponent's candidates when the guide lacks it", () => {
+      // After MAIN the guide gives White e5, exd5, Nc3 and Nd2; Stockfish names f3.
+      const engine = { best: 'f2f3', top: ['f2f3', 'e4e5', 'b1c3'], final: true };
+      expect(summary(shown(MAIN, 'explore', {}, { engine }))).toMatchObject({
+        candidates: ['e5', 'exd5', 'Nc3', 'Nd2'],
+        best: 'f2f3',
+        top: ['f3'],
+      });
+      // Its row previews, and its piece lights it, as a candidate's does.
+      const row = shown(MAIN, 'explore', {}, { engine, pointer: { at: 'row', uci: 'f2f3' } });
+      expect(row.preview).toMatchObject({ slide: true, candidate: { san: 'f3' } });
+      const pickedUp = shown(MAIN, 'explore', {}, { engine, lifted: 'f2' });
+      expect(pickedUp.drawnCandidates.map(({ san }) => san)).toEqual(['f3']);
+      // Only the best, once final, when the guide lacks it, on the opponent's turn, in Explore.
+      const notFinal = shown(MAIN, 'explore', {}, { engine: { ...engine, final: false } });
+      const guides = { best: 'e4e5', top: ['e4e5', 'f2f3'], final: true };
+      const learners = { best: 'g8f6', top: ['g8f6', 'c8f5'], final: true };
+      expect(notFinal.top).toEqual([]);
+      expect(shown(MAIN, 'explore', {}, { engine: guides }).top).toEqual([]);
+      expect(shown(ADVANCE, 'explore', {}, { engine: learners }).top).toEqual([]);
+      expect(shown(MAIN, 'practice', { auto: false }, { engine }).top).toEqual([]);
+      expect(shown(MAIN, 'explore', {}, { engine, picking: true }).top).toEqual([]);
+    });
+
     it('draws each idea in the position it is checked in', () => {
       // The position after ...c5 has its own note: the pawn on d4 attacks c5.
       const attack = shown([...ADVANCE, 'c5'], 'explore').ideas.find(
@@ -166,6 +196,50 @@ describe('guidance', () => {
       expect(attack).toMatchObject({ idea: { from: 'd4' }, at: keyAfter(...ADVANCE, 'c5') });
       const ideas = shown(ADVANCE, 'explore').ideas;
       expect(ideas.map(({ at }) => at)).toEqual(ideas.map(() => keyAfter(...ADVANCE)));
+    });
+  });
+
+  describe("the reply that punishes the learner's mistake", () => {
+    // ...a6 leaves the guide; say it was a mistake that Nf3 punishes.
+    const beyond = [...ADVANCE, 'a6'];
+    const engine = { best: 'g1f3', top: ['g1f3', 'c2c3', 'f1d3'], final: true };
+    const refutation = 'g1f3';
+
+    it('marks it in every mode, with moves on the board on or off, in place of the best', () => {
+      for (const mode of ['explore', 'practice'] as const) {
+        for (const showMoves of [true, false]) {
+          const marked = shown(beyond, mode, { showMoves }, { engine, refutation });
+          expect(marked.refutation).toBe('g1f3');
+          expect(marked.best).toBeUndefined();
+        }
+      }
+      // Its row stays listed beside the other top moves.
+      expect(shown(beyond, 'explore', {}, { engine, refutation }).top).toHaveLength(3);
+    });
+
+    it("never marks the reply to the opponent's mistake: on the learner's turn it would be their move", () => {
+      // After ADVANCE it is the learner's turn: say White's e5 was a mistake that ...c5 punishes.
+      for (const mode of ['explore', 'practice'] as const) {
+        expect(shown(ADVANCE, mode, {}, { refutation: 'c7c5' }).refutation).toBeUndefined();
+      }
+    });
+
+    it('hides it while a move is previewed or a piece picked up', () => {
+      const row = { at: 'row', uci: 'c2c3' } as const;
+      expect(shown(beyond, 'explore', {}, { engine, refutation, pointer: row })).toMatchObject({
+        refutation: undefined,
+        best: undefined,
+      });
+      expect(
+        shown(beyond, 'explore', {}, { engine, refutation, lifted: 'f1' }).refutation,
+      ).toBeUndefined();
+    });
+
+    it("draws it in place of the guide's arrow for the same move, which stays listed", () => {
+      // After MAIN the guide gives White e5, exd5, Nc3 and Nd2.
+      const marked = shown(MAIN, 'explore', {}, { refutation: 'e4e5' });
+      expect(marked.candidates.map(({ san }) => san)).toEqual(['e5', 'exd5', 'Nc3', 'Nd2']);
+      expect(marked.drawnCandidates.map(({ san }) => san)).toEqual(['exd5', 'Nc3', 'Nd2']);
     });
   });
 

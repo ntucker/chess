@@ -4,8 +4,9 @@
  * candidate, by its list row or a piece dragged or clicked, and a note on
  * the idea card), an idea playing back, the mode (Explore or Practice),
  * the learner's progress marks, Stockfish's best move and top three in
- * Explore, and the board. Where the opponent plays its own moves (`opponentPlays`) the learner
- * moves their own side; elsewhere, either.
+ * Explore, the reply that punishes a mistake, and the board. Where the
+ * opponent plays its own moves (`opponentPlays`) the learner moves their own
+ * side; elsewhere, either.
  */
 import { useController, useSuspense } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
@@ -29,7 +30,7 @@ import { ideaPlayback } from './drawings';
 import {
   guidance,
   type LessonMode,
-  listsTopMoves,
+  listedEngineMoves,
   notePlayback,
   type PlayedBack,
 } from './guidance';
@@ -174,16 +175,18 @@ export function useLesson(
   // A playback plays in its candidate's position, wherever the pointer goes.
   const pointer = playing ? playing.from : here?.candidate;
   // Stockfish's best move for the board's position, whatever engine judges
-  // the bar, and past the guide's moves its top three, both from the
+  // the bar, and the rows of its moves the list shows, both from the
   // analysis the move labels read, deepening while it runs. Only Explore
   // shows them, so Practice asks for nothing here.
   const explore = focused && mode === 'explore';
   const analysis = useAnalysis('stockfish', explore ? shownLine : null);
-  const lines = listsTopMoves(view, mode) ? analysis?.lines : undefined;
-  const top = useMemo(
+  const lines = analysis?.lines;
+  const engineRows = useMemo(
     () => (lines ? engineCandidates(lesson, key, lines) : []),
     [lesson, key, lines],
   );
+  const final = analysis?.final;
+  const top = listedEngineMoves(view, mode, picking, engineRows, final);
   const previewOf = (at: Pointer) => preview(lesson, view, at, top);
   const shown = guidance({
     view,
@@ -195,7 +198,8 @@ export function useLesson(
     lifted: pointer?.at === 'drag' ? pointer.from : here?.selected,
     pointed: here?.note,
     playing: playing?.played,
-    engine: { best: analysis?.lines[0].uci, top, final: analysis?.final },
+    engine: { best: lines?.[0].uci, top: engineRows, final },
+    refutation: game.refutation,
   });
   const frames = shown.playing
     ? ideaPlayback(shown.playing.idea, parsePositionKey(shown.playing.at)!)

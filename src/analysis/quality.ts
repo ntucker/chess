@@ -3,7 +3,7 @@
  * expected score it gave away.
  */
 import { type Evaluation, type FinalAnalysis, forSide } from '@/evaluation/evaluation';
-import type { Color } from '@/game/replay';
+import { type Color, opposite } from '@/game/replay';
 
 /**
  * The labels, from best to worst. `book` is the opening guide's own move; it
@@ -69,6 +69,30 @@ export function judgement(
       : (LEAST_LOSS.find(([threshold]) => loss >= threshold)?.[1] ?? 'good');
   return { quality, evaluation };
 }
+
+/**
+ * The reply that punishes a move labelled `quality` (a mistake or a blunder),
+ * from `after`, the final analysis of the position the move reached: its
+ * first line's move, when that is clearly the best, meaning the replier's
+ * second line would itself be a mistake beside it. Example: a queen move that
+ * leaves a bishop to be taken for free, where taking it is the only move that
+ * wins. A slip with no one answer (a mistake that only loosens the position)
+ * has none, and nor does a forced reply (no second line) or an analysis that
+ * names no move (Maia's, a finished game's).
+ */
+export function refutation(
+  quality: MoveQuality | undefined,
+  after: FinalAnalysis | undefined,
+  mover: Color,
+): string | undefined {
+  if (!isMistake(quality) || !after) return undefined;
+  const [best, second] = after.lines;
+  if (!best?.uci || !second?.uci) return undefined;
+  return isMistake(judgeMove(after, undefined, second.uci, opposite(mover))) ? best.uci : undefined;
+}
+
+const isMistake = (quality: MoveQuality | undefined) =>
+  quality === 'mistake' || quality === 'blunder';
 
 /** The evaluation `judgement` judges `uci` by; undefined while `after` is needed and missing. */
 function judgedEvaluation(

@@ -4,7 +4,7 @@ import { Button, Inline, Separator, Stack } from '@reactive/silk-native';
 import { useIsFocused } from 'expo-router';
 import { useReducer, useState } from 'react';
 
-import { lastMoveBadge } from '@/board/drawing';
+import { lastMoveBadge, refutationArrow } from '@/board/drawing';
 import { EvaluationEngineChoice } from '@/components/EvaluationEngineChoice';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { FootnoteLink } from '@/components/FootnoteLink';
@@ -62,7 +62,11 @@ export default function PlayScreen() {
             movableColor: game.canMove ? playerColor : undefined,
             dests: current.dests,
             lastMove: current.move ? [current.move.from, current.move.to] : undefined,
-            drawings: lastMoveBadge(current.move?.to, game.quality),
+            drawings: [
+              ...lastMoveBadge(current.move?.to, game.quality),
+              // Only the player's mistakes: after the opponent's it would give the move away.
+              ...refutationArrow(current.turn === playerColor ? undefined : game.refutation),
+            ],
             check: current.check,
             onMove: game.move,
           }}

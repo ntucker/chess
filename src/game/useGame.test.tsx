@@ -8,7 +8,9 @@ import { useGame } from './useGame';
 
 // Labels read the evaluation engines through Data Client; these tests are
 // about the opponent.
-jest.mock('@/analysis/useMoveQualities', () => ({ useMoveQualities: () => [] }));
+jest.mock('@/analysis/useMoveQualities', () => ({
+  useMoveQualities: () => ({ qualities: [], refutations: [] }),
+}));
 
 /** An opponent whose every request waits until the test answers it. */
 function scripted(id: string) {
