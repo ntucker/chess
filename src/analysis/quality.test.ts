@@ -42,10 +42,12 @@ describe('judgeMove', () => {
     expect(black(0.43)).toBe('good');
     expect(black(0.47)).toBe('inaccuracy');
     expect(black(0.85)).toBe('blunder');
-    // The same swing in White's score is the same loss for either side, even at a limit.
-    expect(judgeMove(scored(0.01), scored(0.06), 'g7g5', 'black')).toBe(
-      judgeMove(scored(0.06), scored(0.01), 'd2d4', 'white'),
-    );
+  });
+
+  it("labels the same swing in White's score the same for either side, even at a limit", () => {
+    // In floats 0.06 - 0.01 is just under 0.05, but 0.99 - 0.94 is just over.
+    expect(judgeMove(scored(0.06), scored(0.01), 'd2d4', 'white')).toBe('good');
+    expect(judgeMove(scored(0.01), scored(0.06), 'g7g5', 'black')).toBe('good');
   });
 
   it('calls a move that gives nothing away the best, whichever move the engine names', () => {
