@@ -6,7 +6,7 @@ import { View } from 'react-native';
 import { BrowserOnly } from '@/components/BrowserOnly';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { FootnoteLink } from '@/components/FootnoteLink';
-import { type HeadlineProps, StatusHeadline } from '@/components/GameStatus';
+import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { OpponentPicker } from '@/components/OpponentPicker';
@@ -17,23 +17,21 @@ import { resetListener } from '@/components/resetListener';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { useLongWait } from '@/components/useLongWait';
 import { useNavigating } from '@/components/navigation';
-import type { MoveQuality } from '@/analysis/quality';
 import { NewVersionError } from '@/files/newVersion';
 import { type Color, colorName, opposite } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
+import { listsTopMoves } from '@/lesson/guidance';
 import type { Uci, VariationId } from '@/lesson/lesson';
 import { lessonsAfter, lessonsFrom, openingsLesson, withOpenings } from '@/lesson/openings';
 import { type Candidate, captionName, pathNames } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
-import type { LessonView } from '@/lesson/view';
 import { describeOpponent } from '@/opponent/opponent';
 import { getLesson, LessonIndexContext, LESSONS, type LessonId } from '@/resources/lesson';
 import { getProgress } from '@/resources/progress';
 import { useSettings } from '@/settings/SettingsProvider';
-import { qualityLooks } from '@/theme/moveQuality';
 import { themes } from '@/theme/theme';
 import { narrowLength, narrowStyles } from '@/theme/narrow';
-import { NarrowScroll, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
+import { NarrowOnly, NarrowScroll, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
 
 import { AutoPlay } from './AutoPlay';
 import { CandidateList } from './CandidateList';
@@ -41,6 +39,7 @@ import { IdeaAside, IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
 import { SideChoice } from './SideChoice';
+import { describeStatus, LOADING, OPENINGS_TITLE } from './status';
 import { SourceCredits } from './SourceCredits';
 import { ScoresheetDrawer, ScoresheetOpener } from './ScoresheetDrawer';
 import { TrapCard } from './TrapCard';
@@ -123,8 +122,6 @@ function Openings({
   );
 }
 
-const OPENINGS_TITLE = 'Openings';
-
 /**
  * The lesson `id` played on the board, in Explore or Practice, or before
  * one is picked, the openings of `side` alone.
@@ -196,10 +193,10 @@ function LessonScreen({
   const preview = guidance.preview?.candidate;
   const { trap } = guidance;
   // The card is for notes, or for the notes of a candidate pointed at.
-  // Stockfish's moves have none of their own, so their list stands alone.
+  // Stockfish's moves have none of their own.
   const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
   const names = pathNames(view.variation);
-  const { offGuide, ...status } = describeStatus(view, {
+  const { pastGuide, ...status } = describeStatus(view, {
     picking,
     loading,
     title: lesson.title,
@@ -215,6 +212,16 @@ function LessonScreen({
     practice:
       modeState.mode === 'practice' ? { clean: modeState.clean, verdict: game.quality } : undefined,
   });
+  // Where Stockfish's moves stand in for the guide's, a narrow page tells why
+  // in the idea pane's place, beside them as the idea is beside the guide's
+  // moves, rather than under the headline. A failure keeps the headline's.
+  const aside =
+    pastGuide && listsTopMoves(view, mode) && !ideaCard && !game.error ? (
+      // The headline tells it on a wide page, and to screen readers.
+      <View aria-hidden>
+        <IdeaAside title={status.title.replace(/\.$/, '')} detail={status.detail} />
+      </View>
+    ) : null;
 
   // What the list of the rival's moves holds.
   const rivalMoves = !picking ? 'likely replies' : view.ply ? 'next move' : 'first move';
@@ -365,7 +372,7 @@ function LessonScreen({
             failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
             eyebrowInHeader
             eyebrowLink={listLink}
-            news={status.news ?? 'all'}
+            news={aside ? 'none' : (status.news ?? 'all')}
           />
           {/* The scoresheet drawer takes the place of this part on a narrow page, under the headline, which tells of a failure. */}
           <View {...part(scoresheetOpen ? 'wide-only' : 'lesson-body', styles.sections)}>
@@ -387,7 +394,7 @@ function LessonScreen({
              * Leaving a row for the idea card keeps its preview, so its notes can be pointed at.
              * On a narrow page the moves and the idea are panes side by side.
              */}
-            {moveList || ideaCard || offGuide ? (
+            {moveList || ideaCard ? (
               // A View, so narrow.css can make it a row, which a Stack's inline style would override.
               <PointingArea onLeave={leave} {...part('panes', styles.sections)}>
                 {moveList ? <View {...part('moves-pane', styles.sections)}>{moveList}</View> : null}
@@ -405,16 +412,14 @@ function LessonScreen({
                       onReach={reachCard}
                     />
                   </NarrowScroll>
-                ) : offGuide ? (
-                  // The headline tells it on a wide page, and to screen readers.
-                  <NarrowScroll part="narrow-idea-pane">
-                    <View aria-hidden>
-                      <IdeaAside title="Off the guide" text={status.detail} />
-                    </View>
-                  </NarrowScroll>
+                ) : aside ? (
+                  <NarrowScroll part="narrow-idea-pane">{aside}</NarrowScroll>
                 ) : null}
               </PointingArea>
-            ) : null}
+            ) : (
+              // Before Stockfish's moves arrive, or where none are listed, it has the panel to itself.
+              aside && <NarrowOnly>{aside}</NarrowOnly>
+            )}
           </View>
           {scoresheetOpen ? (
             <ScoresheetDrawer {...scoresheetProps} onClose={() => setScoresheetOpen(false)} />
@@ -454,156 +459,6 @@ function LessonScreen({
   );
 }
 
-interface StatusInput {
-  /** Whether the board shows where the openings are picked (`isPicking`). */
-  readonly picking: boolean;
-  /** The game has moved on to a lesson that has been loading long enough to say so. */
-  readonly loading: boolean;
-  /** The lesson's title, for a position before any variation. */
-  readonly title: string;
-  /** The names along the board's variation (`pathNames`). */
-  readonly names: readonly string[];
-  /** The opponent's side, as shown: "White". */
-  readonly rival: string;
-  /** Who plays past the guide: "Maia". */
-  readonly engine: string;
-  /** The opponent is replying to the position shown (`Game.replying`). */
-  readonly replying: boolean;
-  /** The board shows an earlier move than the latest. */
-  readonly viewing: boolean;
-  /** Auto play: the opponent plays on by itself past the guide. */
-  readonly auto: boolean;
-  /** The learner may play the side to move's move now: on the opponent's turn, they pick it. */
-  readonly canPlay: boolean;
-  /** The headline tells of a guide line's end (`Guidance.lineEnded`). */
-  readonly lineEnded: boolean;
-  /**
-   * No move of the learner's comes before the board's position: the learner
-   * has yet to move, and a move there starts a Practice run, so it's no
-   * take-back (`beforeSideMoves`).
-   */
-  readonly startsRun: boolean;
-  /** In Practice: whether the run is clean, and the label of the move the board shows. */
-  readonly practice?: { readonly clean: boolean; readonly verdict?: MoveQuality };
-}
-
-/** The panel's headline, as `describeStatus` gives it. */
-type Status = Pick<HeadlineProps, 'eyebrow' | 'title' | 'detail' | 'news'> & {
-  /**
-   * Past the guide: a narrow page tells the detail in the idea pane, beside
-   * Stockfish's moves as the idea is beside the guide's, rather than under the title.
-   */
-  readonly offGuide?: true;
-};
-
-/**
- * The panel's headline: where the lesson stands and whose move it is. In
- * Practice, right after the learner's move, it judges that move first.
- * `news` says what of it is news, where the title only says whose move it
- * is (`detail`), or the detail is also how to use the screen, once the
- * learner has moved and so has seen how (`none`); left out, all of it is
- * news. See `StatusHeadline`.
- */
-function describeStatus(
-  view: LessonView,
-  {
-    picking,
-    loading,
-    title,
-    names,
-    rival,
-    engine,
-    replying,
-    viewing,
-    auto,
-    canPlay,
-    lineEnded,
-    startsRun,
-    practice,
-  }: StatusInput,
-): Status {
-  if (loading) return { eyebrow: picking ? OPENINGS_TITLE : title, ...LOADING };
-  if (picking)
-    return {
-      eyebrow: OPENINGS_TITLE,
-      title: 'Pick an opening.',
-      detail:
-        'Each move here leads to the lesson named beside it. Play one on the board or in the list.',
-    };
-  const eyebrow = names.join(' · ') || title;
-  // Beyond the guide with auto play off, nobody replies: the learner moves both sides.
-  const playOn = auto ? `play on against ${engine}` : 'play on, moving both sides';
-  if (lineEnded && practice?.clean)
-    return {
-      eyebrow,
-      title: 'Line complete.',
-      detail: 'A clean run: each of your moves from the book, and nothing taken back.',
-    };
-  if (lineEnded)
-    return {
-      eyebrow,
-      title: 'End of this line.',
-      detail: practice
-        ? 'This run wasn’t clean: a slip, a take-back, or Practice chosen after your first move. Go back to your first move and play it through.'
-        : `The guide stops here. Step back to try another branch, or ${playOn}.`,
-    };
-  // An `end` place is always a line end the headline tells (see above).
-  if (view.place === 'beyond')
-    return {
-      eyebrow,
-      title: 'Off the guide.',
-      detail: `This position isn't in the lesson. Step back to return to the guide, or ${playOn}.`,
-      news: 'none',
-      offGuide: true,
-    };
-  if (view.learnerToMove)
-    return {
-      eyebrow,
-      title: 'Your move.',
-      // Only Explore's detail at the latest move is how-to; the others say what a move here does.
-      news: !startsRun && !practice && !viewing ? 'none' : 'detail',
-      detail:
-        practice && startsRun && viewing
-          ? YOUR_MOVE.practice.restart
-          : YOUR_MOVE[practice ? 'practice' : 'explore'][viewing ? 'viewing' : 'latest'],
-    };
-  const reply = canPlay
-    ? `Choose ${rival}'s reply.`
-    : replying
-      ? `${rival} is choosing…`
-      : `${rival}'s move.`;
-  if (practice && view.ply > 0)
-    return {
-      eyebrow,
-      title: practice.verdict ? `${qualityLooks[practice.verdict].name}.` : 'Checking your move…',
-      detail: reply,
-    };
-  return {
-    eyebrow,
-    title: reply,
-    news: startsRun ? 'detail' : 'none',
-    detail: canPlay
-      ? 'Point at a reply to see what it aims for, then play it.'
-      : 'Point at a reply to see what it aims for.',
-  };
-}
-
-/**
- * The detail under "Your move.", by mode and whether an earlier move is
- * shown; `restart` is Practice's when a move there starts a run.
- */
-const YOUR_MOVE = {
-  explore: {
-    latest: 'Point at a candidate or a note to see it on the board, then play any move you like.',
-    viewing: 'Play a move here to try another branch.',
-  },
-  practice: {
-    latest: 'No hints in Practice. Play the move you would choose.',
-    viewing: 'Playing here takes a move back, which ends a clean run.',
-    restart: 'Playing here starts a new run from your first move.',
-  },
-} as const;
-
 /** The lesson page when its lesson failed to load. */
 function LessonFailure({ error }: { readonly error: Error }) {
   if (error instanceof NewVersionError) {
@@ -611,9 +466,6 @@ function LessonFailure({ error }: { readonly error: Error }) {
   }
   return <LessonPlaceholder message={error.message} />;
 }
-
-/** The headline while a lesson loads. */
-const LOADING = { title: 'Setting the stage…', detail: 'Loading the lesson.' } as const;
 
 /**
  * The lesson page before the lesson arrives, or with `message` when it can't
