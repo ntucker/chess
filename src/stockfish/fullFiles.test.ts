@@ -10,4 +10,8 @@ describe('full Stockfish files', () => {
     expect(statSync(join(bin, FULL_WASM)).size).toBe(FULL_WASM_BYTES);
     expect(statSync(join(bin, FULL_LOADER)).isFile()).toBe(true);
   });
+
+  it("fits under GitHub's 100 MiB file limit, so Publish can push it to gh-pages", () => {
+    expect(FULL_WASM_BYTES).toBeLessThan(100 * 2 ** 20);
+  });
 });

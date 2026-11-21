@@ -10,15 +10,16 @@ import { FULL_STOCKFISH_MB } from '@/stockfish/fullFiles';
  */
 export type Opponent = MaiaRating | StockfishOpponent;
 
-/** The Stockfish steps at the top of the ladder. */
-type StockfishOpponent = 'stockfish' | 'stockfish-full';
+/** The Stockfish steps at the top of the ladder, easiest first. */
+const STOCKFISH_OPPONENTS = ['stockfish', 'stockfish-full'] as const;
+type StockfishOpponent = (typeof STOCKFISH_OPPONENTS)[number];
 
 /** Every opponent, easiest first. */
-export const OPPONENTS: readonly Opponent[] = [...MAIA_RATINGS, 'stockfish', 'stockfish-full'];
+export const OPPONENTS: readonly Opponent[] = [...MAIA_RATINGS, ...STOCKFISH_OPPONENTS];
 
 /** Whether `opponent` is Stockfish, which plays its best move rather than a rating's. */
 export const isStockfish = (opponent: Opponent): opponent is StockfishOpponent =>
-  opponent === 'stockfish' || opponent === 'stockfish-full';
+  (STOCKFISH_OPPONENTS as readonly Opponent[]).includes(opponent);
 
 /** The landmarks on the ladder, named for who plays there. */
 const PRESETS: Partial<Record<Opponent, string>> = {

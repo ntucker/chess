@@ -280,7 +280,10 @@ describe('OpponentPicker', () => {
     await report(0, 'retrying');
     expect(progress()).toBe('· download failed, trying again');
     await report(0, 'newVersion');
-    expect(progress()).toBe('· A new version is out. Reload to download');
+    expect(progress()).toBe('· site updated');
+    const reload = trigger().nextElementSibling?.nextElementSibling;
+    expect(reload?.getAttribute('role')).toBe('button');
+    expect(reload?.textContent).toBe('Reload');
     await report(200);
     expect(progress()).toBeUndefined();
   });

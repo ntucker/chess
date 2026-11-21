@@ -63,6 +63,24 @@ jobs:
         id: pages
         uses: actions/configure-pages@v5
 
+      # Full Stockfish (public/stockfish/, 99 MB) would count again in every
+      # preview's folder toward Pages' 1 GB site limit. A preview loads the
+      # live site's copy instead when the live site serves the same files,
+      # compared by size (src/stockfish/full.ts keys its cache the same way).
+      # A preview whose pull request changes the build keeps its own.
+      - name: Share the live site's full Stockfish
+        id: stockfish
+        if: env.PREVIEW
+        env:
+          LIVE: ${{ steps.pages.outputs.base_url }}/stockfish/
+        run: |
+          for file in public/stockfish/*; do
+            # Fails (and the preview keeps its copy) where the live site has no such file.
+            size=$(curl -sfI -o /dev/null -w '%header{content-length}' "$LIVE${file##*/}") || exit 0
+            [ "$size" = "$(stat -c %s "$file")" ] || exit 0
+          done
+          echo "folder=$LIVE" >> "$GITHUB_OUTPUT"
+
       # Previews skip minifying, which takes about 40% of the export, so they
       # come up sooner.
       - name: Export the web app
@@ -70,10 +88,12 @@ jobs:
           PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}${{ env.PREVIEW && format('/{0}', env.PREVIEW) || '' }}
           # Previews share the live site's localStorage; this keeps them apart.
           EXPO_PUBLIC_STORAGE_PREFIX: ${{ env.PREVIEW && format('pr-{0}:', github.event.number) || '' }}
+          EXPO_PUBLIC_STOCKFISH_FOLDER: ${{ steps.stockfish.outputs.folder }}
         run: |
           yarn expo export --platform web ${{ env.PREVIEW && '--no-minify' || '' }}
           # Pages shows the site's root 404.html for any path it has no file for.
           cp dist/+not-found.html dist/404.html
+          if [ -n "$EXPO_PUBLIC_STOCKFISH_FOLDER" ]; then rm -r dist/stockfish; fi
 
       - name: Upload the site
         uses: actions/upload-artifact@v7

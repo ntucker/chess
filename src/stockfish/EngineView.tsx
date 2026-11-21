@@ -8,7 +8,9 @@ import type { DOMImperativeFactory, DOMProps } from 'expo/dom';
 import { useDOMImperativeHandle } from 'expo/dom';
 import { type Ref, useEffect, useRef } from 'react';
 
-import { loadFullStockfish } from './full';
+import type { DownloadFailure } from '@/resources/download';
+
+import { loadFullStockfish, OtherBuildError } from './full';
 import { startStockfishWorker, type StockfishWorker } from './worker';
 
 export interface EngineViewRef {
@@ -21,7 +23,7 @@ export interface EngineViewRef {
   /**
    * Starts full Stockfish, whose files are too big to send: the web view
    * downloads them from `folder` itself, or takes them from its cache
-   * (`loadFullStockfish`), telling `onProgress`, then `onStarted`.
+   * (`loadFullStockfish`), telling `onDownload`, then `onStarted`.
    */
   startFull(folder: string): void;
   /** Sends the engine one UCI command. */
@@ -36,14 +38,18 @@ interface Props {
   readonly onLine: (line: string) => void;
   /** The engine failed to start or crashed (or its files to download); it answers nothing more. */
   readonly onError: (message: string) => void;
-  /** How many bytes of full Stockfish have arrived (`startFull`), at each whole percent. */
-  readonly onProgress?: (received: number) => void;
+  /**
+   * How many bytes of full Stockfish have arrived (`startFull`), at each
+   * whole percent; or `newVersion` when the folder serves another build, which
+   * only a newer app can start (no `onError` follows, so no restart).
+   */
+  readonly onDownload?: (received: number, failure?: DownloadFailure) => void;
   /** Full Stockfish has its files and is starting (`startFull`). */
   readonly onStarted?: () => void;
   readonly dom?: DOMProps;
 }
 
-export default function EngineView({ ref, onLoad, onLine, onError, onProgress, onStarted }: Props) {
+export default function EngineView({ ref, onLoad, onLine, onError, onDownload, onStarted }: Props) {
   const worker = useRef<StockfishWorker>(null);
   // Aborts full Stockfish's download when the page goes.
   const download = useRef<AbortController>(null);
@@ -69,14 +75,16 @@ export default function EngineView({ ref, onLoad, onLine, onError, onProgress, o
           download.current?.abort();
           const stop = new AbortController();
           download.current = stop;
-          loadFullStockfish(folder, stop.signal, (received) => onProgress?.(received))
+          loadFullStockfish(folder, stop.signal, (received) => onDownload?.(received))
             .then(({ loader, wasm }) => {
               if (stop.signal.aborted) return;
               run(loader, wasm);
               onStarted?.();
             })
             .catch((error: unknown) => {
-              if (!stop.signal.aborted) onError(String(error));
+              if (stop.signal.aborted) return;
+              if (error instanceof OtherBuildError) onDownload?.(0, 'newVersion');
+              else onError(String(error));
             });
         },
         send(...[command]: Parameters<DOMImperativeFactory[string]>) {
@@ -84,7 +92,7 @@ export default function EngineView({ ref, onLoad, onLine, onError, onProgress, o
         },
       };
     },
-    [onLine, onError, onProgress, onStarted],
+    [onLine, onError, onDownload, onStarted],
   );
   useEffect(() => {
     onLoad();

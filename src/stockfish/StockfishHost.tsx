@@ -25,8 +25,9 @@ interface HostProps {
   /**
    * Full Stockfish, which the web view downloads itself from `folder`
    * (EngineView's `startFull`), telling `report` how many bytes have arrived
-   * (all of them once the files are in hand), or that it failed. Without it,
-   * Stockfish lite, whose files the app sends.
+   * (all of them once the files are in hand), or that it failed: `retrying`,
+   * or `newVersion` when the folder serves another build, after which the
+   * engine stays off. Without it, Stockfish lite, whose files the app sends.
    */
   readonly full?: {
     readonly folder: string;
@@ -118,7 +119,7 @@ function Engine({ engine, full, supervisor }: HostProps & { readonly supervisor:
       onLoad={onLoad}
       onLine={onLine}
       onError={onError}
-      onProgress={full?.report}
+      onDownload={full?.report}
       onStarted={onStarted}
       dom={{ style: styles.hidden }}
     />

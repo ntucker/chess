@@ -23,11 +23,12 @@ export function StockfishHost() {
  * Runs a Stockfish build in a Web Worker while the calling component is
  * mounted, from the files `load` fetches, and connects it to `engine`. A
  * worker that crashes, stops answering, or whose files can't be loaded is
- * replaced after a pause (`useRestarts`), which loads the files again.
+ * replaced after a pause (`useRestarts`), which loads the files again. `load`
+ * resolves undefined when trying again can't help: the engine then stays off.
  */
 export function useWorkerHost(
   engine: Stockfish,
-  load: (signal: AbortSignal) => Promise<EngineFiles>,
+  load: (signal: AbortSignal) => Promise<EngineFiles | undefined>,
 ) {
   const [running, supervisor] = useRestarts();
   // The latest `load`, so a new function each render doesn't restart the engine.
@@ -41,11 +42,11 @@ export function useWorkerHost(
     (async () => {
       // Loaded here, not by the worker, so the engine's time to answer
       // (engine.ts) starts once it has its files, however slow the network.
-      const { loader, wasm } = await loadFiles(stop.signal);
-      if (stop.signal.aborted) return;
+      const files = await loadFiles(stop.signal);
+      if (!files || stop.signal.aborted) return;
       worker = startStockfishWorker(
-        loader,
-        wasm,
+        files.loader,
+        files.wasm,
         (line) => connection?.receive(line),
         (message) => connection?.fail(message),
       );

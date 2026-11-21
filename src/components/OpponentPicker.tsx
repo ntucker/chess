@@ -5,7 +5,7 @@ import { type KeyDownEvent, ScrollView, StyleSheet, View } from 'react-native';
 
 import { hoversControl } from '@/board/pointer';
 import { describeOpponent, type Opponent, OPPONENT_PRESETS, OPPONENTS } from '@/opponent/opponent';
-import { NEW_VERSION } from '@/files/newVersion';
+import { reload } from '@/files/newVersion';
 import { type DownloadFailure, useFullStockfishDownload } from '@/resources/download';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
 import { narrowLength, narrowStyles } from '@/theme/narrow';
@@ -141,22 +141,38 @@ export function OpponentPicker() {
 
 const FAILURES: Record<DownloadFailure, string> = {
   retrying: '· download failed, trying again',
-  newVersion: `· ${NEW_VERSION} Reload to download`,
+  // Short, to fit beside the name. Android downloads from the live site,
+  // which an app update catches up with.
+  newVersion: WEB ? '· site updated' : '· needs an app update',
 };
 
 /**
  * How full Stockfish's one download is going, beside its name while it runs
  * ("· downloading 42%"), or that it failed and is tried again, or that the
- * page must reload for it (a newer build of the site replaced its files).
+ * site has moved to a newer build, with a reload on the web.
  */
 function FullStockfishProgress() {
+  const { color } = useTheme().theme.semantic;
   const download = useFullStockfishDownload();
   if (!download) return null;
   const percent = Math.floor((download.received / download.total) * 100);
   return (
-    <Text role="caption" tone="secondary" numberOfLines={1} style={styles.progress}>
-      {download.failure ? FAILURES[download.failure] : `· downloading ${percent}%`}
-    </Text>
+    <>
+      <Text role="caption" tone="secondary" numberOfLines={1} style={styles.progress}>
+        {download.failure ? FAILURES[download.failure] : `· downloading ${percent}%`}
+      </Text>
+      {/* Beside the message rather than in it, so a narrow bar cuts the message, not the reload. */}
+      {WEB && download.failure === 'newVersion' ? (
+        <Text
+          role="caption"
+          accessibilityRole="button"
+          onPress={reload}
+          style={[styles.reload, { color: color.tones.accent.text }]}
+        >
+          Reload
+        </Text>
+      ) : null}
+    </>
   );
 }
 
@@ -313,6 +329,7 @@ const styles = StyleSheet.create({
   chevronOpen: { transform: [{ rotate: '180deg' }] },
   // Gives way like "· to move" beside it (PlayerBar).
   progress: { flexShrink: 1, minWidth: 0, fontVariant: ['tabular-nums'] },
+  reload: { flexShrink: 0, textDecorationLine: 'underline' },
   list: { width: 232, padding: 6, flexShrink: 1 },
   heading: { paddingHorizontal: 10, paddingTop: 6, paddingBottom: 6 },
   rows: { flexShrink: 1 },

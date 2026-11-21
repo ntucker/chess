@@ -2,7 +2,7 @@
 // project's jsdom lacks; the page's address and Cache Storage are faked below.
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 
-import { loadFullStockfish } from './full';
+import { loadFullStockfish, OtherBuildError } from './full';
 
 // Small files, so a download is a few chunks.
 jest.mock('./fullFiles', () => ({
@@ -98,20 +98,63 @@ describe('loadFullStockfish', () => {
     expect(progress).toEqual([1, 2, 200]);
   });
 
-  it('fails a download that comes up short, and keeps nothing', async () => {
+  it("takes a WebAssembly of another size for another build's, and keeps nothing", async () => {
     wasmChunks = WHOLE.slice(0, 1);
-    await expect(load()).rejects.toThrow('got 100 of 200 bytes');
+    await expect(load()).rejects.toBeInstanceOf(OtherBuildError);
+    wasmChunks = [...WHOLE, 'z'];
+    await expect(load()).rejects.toBeInstanceOf(OtherBuildError);
     fetched.length = 0;
     wasmChunks = WHOLE;
     await load();
     expect(fetched).toHaveLength(2);
   });
 
-  it('drops the files of an older Stockfish build once the new one is kept', async () => {
+  it("takes a folder without the build's files for another build's", async () => {
+    await expect(
+      loadFullStockfish(`${ORIGIN}/elsewhere/`, new AbortController().signal, () => {}),
+    ).rejects.toBeInstanceOf(OtherBuildError);
+  });
+
+  it('fails, without blaming the build, when the site answers with another error', async () => {
+    jest
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation((async () => new Response('', { status: 503 })) as typeof fetch);
+    const failure = load();
+    await expect(failure).rejects.toThrow('HTTP 503');
+    await expect(failure).rejects.not.toBeInstanceOf(OtherBuildError);
+  });
+
+  it('keeps each build apart, by its name and size, and drops the others once the new one is kept', async () => {
     stored.set('opening-night-engine:stockfish-18-single.wasm', new Map([['old', 'x']]));
+    stored.set('opening-night-engine:engine.wasm:100', new Map([['old', 'x']]));
     stored.set('another-app', new Map());
     await load();
-    expect([...stored.keys()]).toEqual(['another-app', 'opening-night-engine:engine.wasm']);
+    expect([...stored.keys()]).toEqual(['another-app', 'opening-night-engine:engine.wasm:200']);
+  });
+
+  it("still starts the engine when the cache can't be read or keep the files", async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    const broken = {
+      match: async () => {
+        throw new Error('unreadable');
+      },
+      put: async () => {
+        throw new Error('full');
+      },
+    };
+    Object.assign(globalThis, { caches: { ...fakeCaches, open: async () => broken } });
+    expect((await load()).loader).toBe('loader');
+
+    Object.assign(globalThis, {
+      caches: {
+        ...fakeCaches,
+        open: async () => {
+          throw new Error('blocked');
+        },
+      },
+    });
+    expect((await load()).loader).toBe('loader');
+    expect(console.error).toHaveBeenCalledTimes(3);
   });
 
   it('downloads every time where the browser has no cache', async () => {
