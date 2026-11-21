@@ -58,6 +58,8 @@ describe('FullStockfishHost', () => {
       throw new Error('offline');
     });
     await mount();
+    // The page's own site, outside a preview that shares the live site's.
+    expect(load.mock.calls[0][0]).toBe(`${location.origin}/stockfish/`);
     expect(failure).toBe('retrying');
     await act(async () => jest.advanceTimersByTime(1000));
     expect(load).toHaveBeenCalledTimes(2);
