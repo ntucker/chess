@@ -7,9 +7,9 @@
 // 1024 grid: the knight from the points in `KNIGHT`, the stage and curtains
 // from the shapes in `stage()` and `curtain()`.
 //
-// The SVGs in assets/brand need nothing but Node. The PNGs in assets/images,
-// and the Google Play listing's icon and feature graphic in store/, are
-// rendered with Playwright's Chromium, which this app doesn't depend on: run
+// The SVGs in assets/brand need only Node and the app's own packages. The PNGs
+// in assets/images, and the Google Play listing's icon and feature graphic in
+// store/, are rendered with Playwright's Chromium, which this app doesn't depend on: run
 // the script somewhere `playwright` resolves, or it stops after the SVGs.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';

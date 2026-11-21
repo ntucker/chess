@@ -37,10 +37,11 @@ export function PrivacyPolicy() {
           Uninstalling the app, or clearing the site&apos;s data in your browser, deletes them.
         </Section>
         <Section heading="What the app downloads">
-          The engines and lessons come with the app and run on your device. The one exception is
-          Full Stockfish, the strongest opponent: the first time you pick it, the app downloads it
-          from this website, which GitHub Pages hosts, and keeps it. Like any web server, GitHub may
-          log the address your device connects from when it asks for a file; its{' '}
+          The engines and lessons run on your device. The Android app comes with them, except Full
+          Stockfish, the strongest opponent: the first time you pick it, the app downloads it from
+          this website, which GitHub Pages hosts, and keeps it. On the web, they load from this
+          website like the rest of the page. Like any web server, GitHub may log the address your
+          device connects from when it asks for a file; its{' '}
           <ExternalLink url={GITHUB_PRIVACY}>privacy statement</ExternalLink> says how it handles
           that.
         </Section>
