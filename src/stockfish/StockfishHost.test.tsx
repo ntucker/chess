@@ -86,7 +86,8 @@ describe('FullStockfishHost', () => {
     await startHost();
     await reload();
     const unavailable = jest.spyOn(fullStockfish, 'unavailable').mockImplementation(() => {});
-    act(() => view.onOutdated!());
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    act(() => view.onError('NewVersionError: A new version is out.', true));
     const [error] = unavailable.mock.calls[0];
     expect(error).toBeInstanceOf(NewVersionError);
     expect((error as NewVersionError).needs).toBe('an app update');

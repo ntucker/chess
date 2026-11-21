@@ -25,7 +25,7 @@ export interface EngineViewRef {
    * Starts full Stockfish, whose files are too big to send: the web view
    * downloads them from `folder` itself, or takes them from its cache
    * (`loadFullStockfish`), telling `onDownload`, then `onStarted` once it
-   * starts, or `onOutdated` when the folder serves another build.
+   * starts, or `onError` when it can't.
    */
   startFull(folder: string): void;
   /** Sends the engine one UCI command. */
@@ -38,26 +38,20 @@ interface Props {
   readonly onLoad: () => void;
   /** A line the engine printed that the app needs (`forwardNeededLines`). */
   readonly onLine: (line: string) => void;
-  /** The engine failed to start or crashed (or its files to download); it answers nothing more. */
-  readonly onError: (message: string) => void;
+  /**
+   * The engine failed to start or crashed (or its files to download); it
+   * answers nothing more. `newVersion` when its folder serves another build
+   * (a NewVersionError, which crosses to the app as text).
+   */
+  readonly onError: (message: string, newVersion?: boolean) => void;
   /** How full Stockfish's download goes (`startFull`, `loadFullStockfish`'s `report`). */
   readonly onDownload?: ReportDownload;
   /** The engine has its files and is starting, ready for commands. */
   readonly onStarted: () => void;
-  /** Full Stockfish's folder serves another build, which only a newer app can start (`startFull`). */
-  readonly onOutdated?: () => void;
   readonly dom?: DOMProps;
 }
 
-export default function EngineView({
-  ref,
-  onLoad,
-  onLine,
-  onError,
-  onDownload,
-  onStarted,
-  onOutdated,
-}: Props) {
+export default function EngineView({ ref, onLoad, onLine, onError, onDownload, onStarted }: Props) {
   const worker = useRef<StockfishWorker>(null);
   // Aborts full Stockfish's download when the page goes.
   const download = useRef<AbortController>(null);
@@ -89,10 +83,7 @@ export default function EngineView({
               if (!stop.signal.aborted) run(files.loader, files.wasm);
             })
             .catch((error: unknown) => {
-              if (stop.signal.aborted) return;
-              // Not `onError`, which restarts: trying again can't help.
-              if (error instanceof NewVersionError) onOutdated?.();
-              else onError(String(error));
+              if (!stop.signal.aborted) onError(String(error), error instanceof NewVersionError);
             });
         },
         send(...[command]: Parameters<DOMImperativeFactory[string]>) {
@@ -100,7 +91,7 @@ export default function EngineView({
         },
       };
     },
-    [onLine, onError, onDownload, onStarted, onOutdated],
+    [onLine, onError, onDownload, onStarted],
   );
   useEffect(() => {
     onLoad();

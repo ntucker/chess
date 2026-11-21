@@ -2,7 +2,7 @@ import { useEffect, useEffectEvent } from 'react';
 
 import { assetUrl } from '@/files/assetUrl';
 import { fetchOk } from '@/files/fetchOk';
-import { NewVersionError } from '@/files/newVersion';
+import { type Needs, NewVersionError } from '@/files/newVersion';
 
 import { type Connection, liteStockfish, type Stockfish } from './engine';
 import { LOADER, WASM } from './files';
@@ -25,11 +25,13 @@ export function StockfishHost() {
  * worker that crashes, stops answering, or whose files can't be loaded is
  * replaced after a pause (`useRestarts`), which loads the files again. When
  * `load` rejects with a NewVersionError, trying again can't help: the engine
- * stays off, and fails what's asked of it (`Stockfish.unavailable`).
+ * stays off, and fails what's asked of it (`Stockfish.unavailable`) with
+ * `needs`, where a reload can't help either.
  */
 export function useWorkerHost(
   engine: Stockfish,
   load: (signal: AbortSignal) => Promise<EngineFiles>,
+  needs?: Needs,
 ) {
   const [running, supervisor] = useRestarts();
   // The latest `load`, so a new function each render doesn't restart the engine.
@@ -55,7 +57,8 @@ export function useWorkerHost(
     })().catch((error: unknown) => {
       if (stop.signal.aborted) return;
       console.error(error);
-      if (error instanceof NewVersionError) engine.unavailable(error);
+      if (error instanceof NewVersionError)
+        engine.unavailable(new NewVersionError({ cause: error, needs }));
       else supervisor.failed();
     });
     return () => {
@@ -63,7 +66,7 @@ export function useWorkerHost(
       worker?.terminate();
       connection?.detach();
     };
-  }, [running, supervisor, engine]);
+  }, [running, supervisor, engine, needs]);
 }
 
 /** Stockfish lite's files, which ship with the app. */

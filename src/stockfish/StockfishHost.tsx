@@ -1,14 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { NewVersionError } from '@/files/newVersion';
+import { type Needs, NewVersionError } from '@/files/newVersion';
 import { readAsset } from '@/files/readAsset';
 import type { ReportDownload } from '@/resources/download';
 
 import { type Connection, liteStockfish, type Stockfish, type Supervisor } from './engine';
 import EngineView, { type EngineViewRef } from './EngineView';
 import { LOADER, WASM } from './files';
-import { OUTDATED_NEEDS } from './fullFiles';
 import { useRestarts } from './restarts';
 
 /**
@@ -44,6 +43,8 @@ interface HostProps {
   readonly start: StartEngine;
   /** How a download the web view does itself goes (EngineView's `startFull`). */
   readonly onDownload?: ReportDownload;
+  /** What the app needs when the engine's files are another build's (`Stockfish.unavailable`). */
+  readonly needs?: Needs;
 }
 
 /**
@@ -67,6 +68,7 @@ function Engine({
   engine,
   start,
   onDownload,
+  needs,
   supervisor,
 }: HostProps & { readonly supervisor: Supervisor }) {
   const view = useRef<EngineViewRef>(null);
@@ -99,16 +101,14 @@ function Engine({
     connection.current = engine.attach(started.send, supervisor);
   };
   const onLine = (line: string) => connection.current?.receive(line);
-  const onError = (message: string) => {
+  const onError = (message: string, newVersion?: boolean) => {
     if (connection.current) return connection.current.fail(message);
     // Not attached yet: its files didn't load, or its worker didn't start.
     if (stopped()) return;
     console.error(message);
-    supervisor.failed();
-  };
-  // Errors cross from the web view as text, so the app makes this one.
-  const onOutdated = () => {
-    if (!stopped()) engine.unavailable(new NewVersionError({ needs: OUTDATED_NEEDS }));
+    // Another build's files: trying again can't help.
+    if (newVersion) engine.unavailable(new NewVersionError({ needs }));
+    else supervisor.failed();
   };
 
   useEffect(() => {
@@ -128,7 +128,6 @@ function Engine({
       onError={onError}
       onDownload={onDownload}
       onStarted={onStarted}
-      onOutdated={onOutdated}
       dom={{ style: styles.hidden }}
     />
   );

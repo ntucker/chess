@@ -10,7 +10,7 @@ import { fetchOk, HttpError } from '@/files/fetchOk';
 import { NewVersionError } from '@/files/newVersion';
 import type { ReportDownload } from '@/resources/download';
 
-import { FULL_LOADER, FULL_WASM, FULL_WASM_BYTES, LIVE_FOLDER, OUTDATED_NEEDS } from './fullFiles';
+import { FULL_LOADER, FULL_WASM, FULL_WASM_BYTES, LIVE_FOLDER } from './fullFiles';
 import type { EngineFiles } from './worker';
 
 /**
@@ -115,7 +115,9 @@ const cacheKey = (file: string) => new URL(file, LIVE_FOLDER).href;
 /** `file` from `folder`; a folder without it serves another build. */
 const download = (folder: string, file: string, signal: AbortSignal) =>
   fetchOk(new URL(file, folder).href, { signal }).catch((error: unknown) => {
-    throw error instanceof HttpError && error.status === 404 ? outdated(error) : error;
+    throw error instanceof HttpError && error.status === 404
+      ? new NewVersionError({ cause: error })
+      : error;
   });
 
 /**
@@ -154,15 +156,9 @@ async function readWasm(response: Response, onProgress: (percent: number) => voi
   try {
     return await new Response(counted).blob();
   } catch (error) {
-    throw otherSize ? outdated(error) : error;
+    throw otherSize ? new NewVersionError({ cause: error }) : error;
   }
 }
-
-/**
- * The folder serves another build, and `needs` says what loads this one.
- * Android's web view passes only the fact to its host (`onOutdated`).
- */
-const outdated = (cause: unknown) => new NewVersionError({ cause, needs: OUTDATED_NEEDS });
 
 /** Frees the space an older Stockfish build's files took. */
 async function dropOtherBuilds() {

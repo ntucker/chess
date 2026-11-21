@@ -122,37 +122,35 @@ interface Failure {
   readonly onRetry: () => void;
 }
 
-/**
- * The opponent didn't answer, with a retry; or, when a newer deploy removed
- * the engine's file so asking again can't help, a reload, or what the app
- * needs when a reload can't help either.
- */
 function FailureLine(failure: Failure) {
-  const { message, action, onPress } = failureLine(failure);
+  const { message, button } = describeFailure(failure);
   return (
     <Inline gap="3" align="center">
       <Text role="bodySm" tone="danger">
         {message}
       </Text>
-      {action ? (
-        <Button size="sm" variant="soft" tone="danger" onPress={onPress}>
-          {action}
+      {button ? (
+        <Button size="sm" variant="soft" tone="danger" onPress={button.onPress}>
+          {button.label}
         </Button>
       ) : null}
     </Inline>
   );
 }
 
-/** What a failure says, and the button that can fix it, if one can. */
-function failureLine({ who, error, onRetry }: Failure): {
+/**
+ * The opponent didn't answer, with a retry; or, when a newer deploy removed
+ * the engine's file so asking again can't help, a reload, or what the app
+ * needs when a reload can't help either.
+ */
+function describeFailure({ who, error, onRetry }: Failure): {
   message: string;
-  action?: string;
-  onPress?: () => void;
+  button?: { label: string; onPress: () => void };
 } {
   if (!(error instanceof NewVersionError))
-    return { message: `${who} didn't answer.`, action: 'Try again', onPress: onRetry };
+    return { message: `${who} didn't answer.`, button: { label: 'Try again', onPress: onRetry } };
   if (error.needs) return { message: `${who} needs ${error.needs}.` };
-  return { message: NEW_VERSION, action: 'Reload', onPress: reload };
+  return { message: NEW_VERSION, button: { label: 'Reload', onPress: reload } };
 }
 
 type Game = Omit<Props, 'error' | 'onRetry'>;

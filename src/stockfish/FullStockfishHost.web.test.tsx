@@ -81,7 +81,8 @@ describe('FullStockfishHost', () => {
     const unavailable = jest.spyOn(fullStockfish, 'unavailable').mockImplementation(() => {});
     await mount();
     expect(failure).toBe('newVersion');
-    expect(unavailable).toHaveBeenCalledWith(outdated);
+    // Jest's build names no preview folder, so a reload brings the newer build.
+    expect(unavailable.mock.calls[0][0]).toMatchObject({ cause: outdated, needs: undefined });
     await act(async () => jest.advanceTimersByTime(60_000));
     expect(load).toHaveBeenCalledTimes(1);
   });

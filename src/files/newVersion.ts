@@ -1,7 +1,7 @@
 /** What the app says when a newer build has replaced the page's. */
 export const NEW_VERSION = 'A new version is out.';
 
-/** What an app that a reload can't update needs, as it reads after "needs". */
+/** What the app needs when a reload can't bring the newer build, as it reads after "needs". */
 export type Needs = 'an app update' | 'a newer preview';
 
 /**
@@ -9,16 +9,13 @@ export type Needs = 'an app update' | 'a newer preview';
  * the page loads late (a lesson, Maia's worker) may then be gone
  * from the site: asking again can't help, but reloading the page can. Full
  * Stockfish's files (src/stockfish/full.ts) say the same when their folder
- * serves another build; where they come from another site (Android, or a
- * preview sharing the live site's copy), a reload can't help either, and
- * `needs` says what does.
+ * serves another build, with `needs` where a reload can't help either.
  */
 export class NewVersionError extends Error {
-  /** What the app needs instead of a reload. */
   readonly needs?: Needs;
 
   constructor(options?: ErrorOptions & { readonly needs?: Needs }) {
-    super(options?.needs ? `Needs ${options.needs}.` : NEW_VERSION, options);
+    super(NEW_VERSION, options);
     this.name = 'NewVersionError';
     this.needs = options?.needs;
   }

@@ -31,7 +31,6 @@ async function startFullFailing(error: Error) {
     onLine() {},
     onStarted() {},
     onError: jest.fn(),
-    onOutdated: jest.fn(),
   };
   root = createRoot(document.createElement('div'));
   act(() => root.render(<EngineView ref={ref} {...props} />));
@@ -40,15 +39,13 @@ async function startFullFailing(error: Error) {
 }
 
 describe('EngineView', () => {
-  it('says the folder serves another build, rather than failing, which restarts', async () => {
-    const { onError, onOutdated } = await startFullFailing(new NewVersionError());
-    expect(onOutdated).toHaveBeenCalled();
-    expect(onError).not.toHaveBeenCalled();
+  it('says when the folder serves another build, which the app gives up on', async () => {
+    const { onError } = await startFullFailing(new NewVersionError());
+    expect(onError).toHaveBeenCalledWith('NewVersionError: A new version is out.', true);
   });
 
-  it('fails when the download fails any other way', async () => {
-    const { onError, onOutdated } = await startFullFailing(new Error('offline'));
-    expect(onError).toHaveBeenCalledWith('Error: offline');
-    expect(onOutdated).not.toHaveBeenCalled();
+  it('fails when the download fails any other way, which the app restarts', async () => {
+    const { onError } = await startFullFailing(new Error('offline'));
+    expect(onError).toHaveBeenCalledWith('Error: offline', false);
   });
 });
