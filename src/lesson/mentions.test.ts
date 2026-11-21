@@ -10,6 +10,9 @@ const keyAfter = (...sans: string[]) => lineKeys(uciLine(...sans)).at(-1)!;
 
 const note = (text: string, extra: Partial<Note> = {}): Note => ({ text, ...extra });
 
+/** A lesson with no guide, so only the note and its ideas place a move. */
+const bare = { positions: {} } as unknown as Lesson;
+
 describe('noteParts', () => {
   it('leaves a note naming nothing as its words', () => {
     const after = keyAfter('e4');
@@ -77,7 +80,7 @@ describe('noteParts', () => {
     const trap = note('Don’t play ...Ngf6, because Nd6 is mate.', {
       ideas: [{ type: 'trap', moves: ['g8f6', 'e4d6'], verdict: 'losesMaterial' }],
     });
-    const [, , , mate] = noteParts({ positions: {} } as unknown as Lesson, {
+    const [, , , mate] = noteParts(bare, {
       note: trap,
       after,
       before,
@@ -95,7 +98,7 @@ describe('noteParts', () => {
     const line = note('Then ...Nc6.', {
       ideas: [{ type: 'line', moves: ['e2e4', 'g8f6', 'b1c3', 'b8c6'], verdict: 'equal' }],
     });
-    const [, mention] = noteParts({ positions: {} } as unknown as Lesson, {
+    const [, mention] = noteParts(bare, {
       note: line,
       after: keyAfter(),
     });
@@ -114,8 +117,6 @@ describe('noteParts', () => {
   });
 
   describe('leaves a move it can’t place as words', () => {
-    const bare = { positions: {} } as unknown as Lesson;
-
     it('when no position within reach has it', () => {
       const after = '4r1k1/5ppp/8/8/8/8/5PPP/R5K1 w - -' as PositionKey;
       expect(noteParts(bare, { note: note('Not Qh5 here.'), after })).toEqual(['Not Qh5 here.']);

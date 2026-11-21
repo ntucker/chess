@@ -3,14 +3,14 @@
  * for, so the idea card can show a small board for it. A square ("the e5
  * pawn", "takes on d4") is shown lit in the note's position. A move ("Bf5",
  * "...e5", "O-O", "a4-a5") is shown played from the nearest position where
- * it is played or legal, looking a tier at a time: the note's own position (with a
- * threat's side to move there), where its own line or trap plays it, the
- * position its move was played in, then each ply onward along its line or
- * trap and the guide. Where one tier's positions read it as different
- * moves, or none within reach has it, the text stays plain: a guess shown as
- * fact misleads. So does a move placed as one move where the side not to
- * move in the note's position could make it as another: a note often names
- * either side's moves without dots.
+ * it is played or legal, looking a tier at a time: the note's own position
+ * (with a threat's side to move there), where its own line or trap plays
+ * it, the position its move was played in, then each ply onward along its
+ * line or trap and the guide. Where one tier's positions read it as
+ * different moves, or none within reach has it, the text stays plain: a
+ * guess shown as fact misleads. So does a move placed as one move where the
+ * side not to move in the note's position could make it as another: a note
+ * often names either side's moves without dots.
  */
 import type { Chess } from 'chessops/chess';
 import type { Color, SquareName } from 'chessops/types';
@@ -212,7 +212,8 @@ function* tiers(
 
 /**
  * Each line or trap the note's ideas play from `start`: its positions, index n
- * after n moves, and its legal moves, index n played from position n.
+ * after n moves, and its moves up to the first illegal one, index n played
+ * from position n.
  */
 function ideaLines(
   ideas: readonly Idea[],
