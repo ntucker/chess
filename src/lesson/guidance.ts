@@ -49,12 +49,13 @@
  *   the resting best-move mark the same way, until the piece is unselected.
  * - After a mistake or blunder, the reply that punishes it (`refutation` in
  *   src/analysis/quality.ts) is marked while nothing is previewed, pointed
- *   at, picked up or playing back. After the learner's move it is marked in
- *   every mode, with "moves on the board" on or off, since it judges the
- *   move just played. On the learner's turn it is their next move, a hint,
- *   so it follows the best move's rule: Explore, with "moves on the board"
- *   on. It takes the place of the best-move mark and of a candidate's arrow
- *   for the same move.
+ *   at, picked up or playing back. On the opponent's turn (after a move of
+ *   the learner's side) it is marked in every mode, with "moves on the
+ *   board" on or off, since it judges the move just played. On the learner's
+ *   turn it is their next move, a hint, so it follows the best move's rule:
+ *   Explore, with "moves on the board" on. Where the best move or a
+ *   candidate is the same move, the refutation's arrow is drawn instead of
+ *   theirs. Its being a rare reply doesn't hide it: it still punishes.
  * - Rare candidates (`Candidate.rare`) are left off the list, which shows
  *   them only when asked, and off the board's arrows; Stockfish's best isn't
  *   tagged on one either. Only a preview of one, or dragging its piece,

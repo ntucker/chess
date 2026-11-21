@@ -4,8 +4,9 @@
  * candidate, by its list row or a piece dragged or clicked, and a note on
  * the idea card), an idea playing back, the mode (Explore or Practice),
  * the learner's progress marks, Stockfish's best move and top three in
- * Explore, the reply that punishes the learner's mistake, and the board. Where the opponent plays its own moves (`opponentPlays`) the learner
- * moves their own side; elsewhere, either.
+ * Explore, the reply that punishes a mistake, and the board. Where the
+ * opponent plays its own moves (`opponentPlays`) the learner moves their own
+ * side; elsewhere, either.
  */
 import { useController, useSuspense } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
