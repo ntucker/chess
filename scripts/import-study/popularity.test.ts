@@ -46,7 +46,7 @@ describe('addPopularity', () => {
       asked.push([at, band]);
       return band === 1000 && at === AFTER_BF5 ? { g2g4: 1 } : counts[at];
     };
-    const result = await addPopularity(lesson, explorer, '2026-11-19');
+    const result = await addPopularity(lesson, explorer, () => '2026-11-19');
 
     expect([...new Set(asked.map(([at]) => at))]).toEqual([
       AFTER_C6,
@@ -94,7 +94,7 @@ describe('addPopularity', () => {
       asked.push(at);
       return at === AFTER_C6 ? { d2d4: 10 } : { c8f5: 5, g8f6: 5 };
     };
-    await addPopularity(small, explorer, '2026-11-19');
+    await addPopularity(small, explorer, () => '2026-11-19');
 
     expect(
       asked.filter((at) => at === key('e4', 'c6', 'd4', 'd5', 'Nc3', 'dxe4', 'Nxe4')),
@@ -120,22 +120,31 @@ describe('lichessExplorer', () => {
     }) as typeof globalThis.fetch;
     const sleep = async (ms: number) => void waits.push(ms);
 
-    const explorer = lichessExplorer({ token: 'secret', cacheFile, fetch, sleep });
-    expect(await explorer(key(), 1400)).toEqual({ e2e4: 10 });
+    const explorer = lichessExplorer({
+      token: 'secret',
+      cacheFile,
+      today: '2026-11-21',
+      fetch,
+      sleep,
+    });
+    expect(await explorer.ask(key(), 1400)).toEqual({ e2e4: 10 });
+    expect(explorer.answeredOn()).toBe('2026-11-21');
     expect(waits.filter((ms) => ms > 0)).toEqual([60_000, expect.any(Number)]);
     expect(requests[0][0].searchParams.get('ratings')).toBe('1400');
     expect(requests[0][1]?.headers).toEqual({ Authorization: 'Bearer secret' });
 
-    const resumed = lichessExplorer({ cacheFile, fetch, sleep });
-    expect(await resumed(key(), 1400)).toEqual({ e2e4: 10 });
+    const resumed = lichessExplorer({ cacheFile, today: '2026-12-01', fetch, sleep });
+    expect(await resumed.ask(key(), 1400)).toEqual({ e2e4: 10 });
     expect(requests).toHaveLength(2);
+    // The answer keeps the date lichess gave it, not the rerun's.
+    expect(resumed.answeredOn()).toBe('2026-11-21');
   });
 
   it('asks again for an answer whose cache line a stopped crawl cut short, and resumes after', async () => {
     const cacheFile = join(mkdtempSync(join(tmpdir(), 'explorer-')), 'explorer.jsonl');
     writeFileSync(
       cacheFile,
-      `${JSON.stringify([`1400 ${key()}`, { e2e4: 10 }])}\n["1600 ${key()}",{"e2`,
+      `${JSON.stringify([`1400 ${key()}`, { e2e4: 10 }, '2026-11-20'])}\n["1600 ${key()}",{"e2`,
     );
     let requests = 0;
     const fetch = (async () => {
@@ -144,11 +153,11 @@ describe('lichessExplorer', () => {
     }) as typeof globalThis.fetch;
     const openExplorer = () => lichessExplorer({ cacheFile, fetch, sleep: async () => {} });
     const explorer = openExplorer();
-    expect(await explorer(key(), 1400)).toEqual({ e2e4: 10 });
-    expect(await explorer(key(), 1600)).toEqual({ e2e4: 20 });
+    expect(await explorer.ask(key(), 1400)).toEqual({ e2e4: 10 });
+    expect(await explorer.ask(key(), 1600)).toEqual({ e2e4: 20 });
     const resumed = openExplorer();
-    expect(await resumed(key(), 1400)).toEqual({ e2e4: 10 });
-    expect(await resumed(key(), 1600)).toEqual({ e2e4: 20 });
+    expect(await resumed.ask(key(), 1400)).toEqual({ e2e4: 10 });
+    expect(await resumed.ask(key(), 1600)).toEqual({ e2e4: 20 });
     expect(requests).toBe(1);
   });
 
@@ -161,8 +170,8 @@ describe('lichessExplorer', () => {
     }) as typeof globalThis.fetch;
     const openExplorer = () => lichessExplorer({ cacheFile, fetch, sleep: async () => {} });
     const castles = key('e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Bc5');
-    expect(await openExplorer()(castles, 1400)).toEqual({ e1g1: 5 });
-    expect(await openExplorer()(castles, 1400)).toEqual({ e1g1: 5 });
+    expect(await openExplorer().ask(castles, 1400)).toEqual({ e1g1: 5 });
+    expect(await openExplorer().ask(castles, 1400)).toEqual({ e1g1: 5 });
     expect(requests).toBe(1);
   });
 });

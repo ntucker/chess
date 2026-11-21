@@ -38,3 +38,45 @@ export function writeJsonLines(file: string, values: readonly unknown[]): void {
   writeFileSync(`${file}.tmp`, values.map((value) => `${JSON.stringify(value)}\n`).join(''));
   renameSync(`${file}.tmp`, file);
 }
+
+/**
+ * A committed answers file (JSON lines): the answers a lesson's last import
+ * used, so the next one gets the same answers instead of asking again.
+ * `get` and `add` mark an answer used; `add` appends it at once, so a stopped
+ * run keeps it. `saveUsed` rewrites the file with only the used answers,
+ * sorted by key, so a rerun that asks the same questions writes the same file.
+ */
+export interface AnswersFile<Row> {
+  get(key: string): Row | undefined;
+  add(key: string, row: Row): void;
+  saveUsed(): void;
+}
+
+/** `file` as an answers file whose rows are keyed by `keyOf`; rows `keep` refuses are left out. */
+export function answersFile<Row>(
+  file: string,
+  keyOf: (row: Row) => string,
+  keep: (row: Row) => boolean = () => true,
+): AnswersFile<Row> {
+  const rows = new Map<string, Row>();
+  for (const row of readJsonLines(file) as Row[]) if (keep(row)) rows.set(keyOf(row), row);
+  const used = new Set<string>();
+  return {
+    get(key) {
+      const row = rows.get(key);
+      if (row !== undefined) used.add(key);
+      return row;
+    },
+    add(key, row) {
+      rows.set(key, row);
+      used.add(key);
+      appendJsonLine(file, row);
+    },
+    saveUsed() {
+      writeJsonLines(
+        file,
+        [...used].sort().map((key) => rows.get(key)),
+      );
+    },
+  };
+}

@@ -24,6 +24,10 @@
  * scripts/import-study/answers/<name>-explain.jsonl. --no-model takes answers
  * from the files only and calls no model; comments missing there keep the
  * importer's notes, and book moves missing there stay unexplained.
+ * Stockfish's evaluations and the explorer's counts are kept the same way
+ * (<name>-stockfish.jsonl, <name>-explorer.jsonl), so a rerun on any machine
+ * books the same moves and writes the same counts; delete the explorer file
+ * to count again.
  *
  *   yarn import-study --popularity assets/lessons/caro-kann.json
  *
@@ -33,11 +37,10 @@
  * token (a personal token with no scopes is enough): set LICHESS_TOKEN, or
  * run where a proxy adds it (Node's fetch uses HTTPS_PROXY only with
  * NODE_USE_ENV_PROXY=1, which the yarn script sets).
- * The study, the Wikibooks pages, the explorer's answers and Stockfish's
- * evaluations are cached in IMPORT_STUDY_CACHE (default .cache/import-study),
- * so a stopped crawl resumes. Lichess allows about 24 requests a minute, so
- * the first crawl of the Caro-Kann takes about four hours; later runs read
- * the cache.
+ * The study and the Wikibooks pages are cached in IMPORT_STUDY_CACHE
+ * (default .cache/import-study). Lichess allows about 24 requests a minute, so
+ * the first crawl of the Caro-Kann takes about four hours; a stopped crawl
+ * resumes from the explorer's answers file.
  */
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -119,7 +122,7 @@ async function main() {
   };
   const cli = claudeCli({
     learner: info.side,
-    cacheFile: join(ROOT, `scripts/import-study/answers/${first}.jsonl`),
+    cacheFile: answersPath(first),
     callModel: !rest.includes('--no-model'),
   });
   const converted = await convertChapters(
@@ -135,7 +138,7 @@ async function main() {
   console.log(sourceReport(study.from.map(credit), tally));
   if (lesson.start !== INITIAL_FEN)
     throw new Error('The engine plays lines from the standard start');
-  const stockfish = await nodeStockfish(join(CACHE, 'stockfish.jsonl'));
+  const stockfish = await nodeStockfish(answersPath(`${first}-stockfish`));
   const filled = await fillBook(lesson, stockfish.evaluate);
   lesson = filled.lesson;
   const engineFile = join(CACHE, `${lesson.id}-engine.json`);
@@ -162,13 +165,14 @@ async function main() {
   );
   const explainer = explainCli({
     learner: info.side,
-    cacheFile: join(ROOT, `scripts/import-study/answers/${first}-explain.jsonl`),
+    cacheFile: answersPath(`${first}-explain`),
     callModel: !rest.includes('--no-model'),
   });
   const explained = await explainBookMoves(lesson, explainer.ask, stockfish.evaluate);
   explainer.saveUsed();
   lesson = explained.lesson;
   console.log(explainReport(explained.report));
+  stockfish.saveUsed();
   stockfish.stop();
   if (!rest.includes('--no-popularity')) lesson = await withPopularity(lesson);
   // The checker, the index and the registry each refuse a lesson by throwing, so all come before any
@@ -184,15 +188,29 @@ async function main() {
   console.log(report(lesson, chapters, extracted));
 }
 
-function withPopularity(lesson: Lesson): Promise<Lesson> {
+/**
+ * A lesson's committed answers file: `<lesson>.jsonl` holds the model's
+ * conversions, and `-explain`, `-stockfish` and `-explorer` the other steps'
+ * answers, so a rerun rebuilds the same lesson file.
+ */
+const answersPath = (name: string) => join(ROOT, `scripts/import-study/answers/${name}.jsonl`);
+
+async function withPopularity(lesson: Lesson): Promise<Lesson> {
   const explorer = lichessExplorer({
     token: process.env.LICHESS_TOKEN,
-    cacheFile: join(CACHE, 'explorer.jsonl'),
+    cacheFile: answersPath(`${lesson.id}-explorer`),
   });
-  const date = new Date().toISOString().slice(0, 10);
-  return addPopularity(lesson, explorer, date, (asked) => {
-    if (asked % 50 === 0) console.log(`popularity: ${asked} positions`);
-  });
+  // Dated by when lichess gave the counts, which a rerun reads from the answers file.
+  const counted = await addPopularity(
+    lesson,
+    explorer.ask,
+    () => explorer.answeredOn() ?? new Date().toISOString().slice(0, 10),
+    (asked) => {
+      if (asked % 50 === 0) console.log(`popularity: ${asked} positions`);
+    },
+  );
+  explorer.saveUsed();
+  return counted;
 }
 
 /** `lesson`, once the checker passes it; throws with its first problems otherwise. */

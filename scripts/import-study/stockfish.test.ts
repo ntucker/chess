@@ -3,9 +3,9 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from '@jest/globals';
 
-import { cachedAnalyses } from './stockfish';
+import { cachedAnalysis, searchedBy } from './stockfish';
 
-describe('cachedAnalyses', () => {
+describe('cached rows', () => {
   const evaluation = { score: 0.55, pawns: 0.3 };
   const rows = [
     { key: 'unnamed', evaluation: { ...evaluation, best: 'e2e4' } },
@@ -14,10 +14,11 @@ describe('cachedAnalyses', () => {
   ];
 
   it("keeps only the rows the check's search filled, counting unnamed ones as its old search", () => {
-    const cached = cachedAnalyses(rows, '1x100000');
-    expect([...cached.keys()]).toEqual(['unnamed', 'check']);
-    expect(cached.get('unnamed')?.lines).toEqual([{ uci: 'e2e4', evaluation }]);
-    expect([...cachedAnalyses(rows, '3x2000000').keys()]).toEqual(['other']);
+    const by = (search: string) =>
+      rows.filter((row) => searchedBy(row, search)).map((row) => row.key);
+    expect(by('1x100000')).toEqual(['unnamed', 'check']);
+    expect(by('3x2000000')).toEqual(['other']);
+    expect(cachedAnalysis(rows[0]).lines).toEqual([{ uci: 'e2e4', evaluation }]);
   });
 });
 

@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { appendJsonLine, readJsonLines } from './jsonLines';
+import { answersFile, appendJsonLine, readJsonLines } from './jsonLines';
 
 describe('readJsonLines', () => {
   const file = () => join(mkdtempSync(join(tmpdir(), 'json-lines-')), 'cache', 'answers.jsonl');
@@ -23,5 +23,45 @@ describe('readJsonLines', () => {
     expect(readJsonLines(path)).toEqual([1]);
     appendJsonLine(path, 2);
     expect(readJsonLines(path)).toEqual([1, 2]);
+  });
+});
+
+describe('answersFile', () => {
+  const file = () => join(mkdtempSync(join(tmpdir(), 'answers-')), 'answers.jsonl');
+  type Row = { key: string; n: number };
+  const open = (path: string) =>
+    answersFile<Row>(
+      path,
+      (row) => row.key,
+      (row) => row.n >= 0,
+    );
+
+  it('keeps new answers at once, and saves only the used ones, sorted by key', () => {
+    const path = file();
+    writeFileSync(
+      path,
+      ['c', 'a', 'stale'].map((key) => `${JSON.stringify({ key, n: 1 })}\n`).join(''),
+    );
+    const answers = open(path);
+    expect(answers.get('c')).toEqual({ key: 'c', n: 1 });
+    expect(answers.get('missing')).toBeUndefined();
+    answers.add('b', { key: 'b', n: 2 });
+    expect(open(path).get('b')).toEqual({ key: 'b', n: 2 });
+    answers.get('a');
+    answers.saveUsed();
+    expect(readJsonLines(path)).toEqual([
+      { key: 'a', n: 1 },
+      { key: 'b', n: 2 },
+      { key: 'c', n: 1 },
+    ]);
+  });
+
+  it('leaves out rows it does not keep', () => {
+    const path = file();
+    appendJsonLine(path, { key: 'old', n: -1 });
+    const answers = open(path);
+    expect(answers.get('old')).toBeUndefined();
+    answers.saveUsed();
+    expect(readJsonLines(path)).toEqual([]);
   });
 });

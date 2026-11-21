@@ -8,7 +8,7 @@
 import { parsePosition, parsePositionKey, positionKey, recordedMove } from '@/game/replay';
 import type { Lesson, PositionKey, Uci } from '@/lesson/lesson';
 
-import { appendJsonLine, readJsonLines } from './jsonLines';
+import { answersFile } from './jsonLines';
 import { played } from './study';
 
 /** The explorer's bands the app reads (see `ratingBandIndex`), each counting ratings up to the next. */
@@ -24,10 +24,26 @@ export type Explorer = (key: PositionKey, band: number) => Promise<MoveCounts>;
 
 interface ExplorerOptions {
   readonly token?: string;
-  /** Where answers are kept, one per line, so a stopped crawl resumes where it left off. */
+  /**
+   * The lesson's committed answers file, read before lichess is asked and
+   * appended to as answers arrive, so a stopped crawl resumes where it left off.
+   */
   readonly cacheFile: string;
+  /** The date an answer lichess gives now is stamped with (default: today, UTC). */
+  readonly today?: string;
   readonly fetch?: typeof fetch;
   readonly sleep?: (ms: number) => Promise<void>;
+}
+
+/** An answers file row: what the explorer answered for `<band> <position>`, and on which date. */
+type ExplorerRow = readonly [id: string, counts: LichessCounts, date: string];
+
+export interface LichessExplorer {
+  readonly ask: Explorer;
+  /** The latest date among the answers asked for so far: when their counts were fetched. */
+  readonly answeredOn: () => string | undefined;
+  /** Rewrites the answers file with only the answers asked for. */
+  readonly saveUsed: () => void;
 }
 
 /** The most moves the explorer lists for a position: more than any guide position has. */
@@ -39,27 +55,36 @@ const NO_BANDS: readonly boolean[] = RATING_BANDS.map(() => false);
 const REQUEST_INTERVAL_MS = 2_500;
 
 /**
- * The lichess explorer, answering from `cacheFile` first. The cache keeps
+ * The lichess explorer, answering from `cacheFile` first. The file keeps
  * lichess's own UCI (castling as the king taking its rook, `e1h1`); answers
- * use the lesson's (`e1g1`).
+ * use the lesson's (`e1g1`). Rows without a date are asked again.
  */
 export function lichessExplorer({
   token,
   cacheFile,
+  today = new Date().toISOString().slice(0, 10),
   fetch: get = fetch,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-}: ExplorerOptions): Explorer {
-  const cache = new Map(readJsonLines(cacheFile) as [string, LichessCounts][]);
+}: ExplorerOptions): LichessExplorer {
+  const cache = answersFile<ExplorerRow>(
+    cacheFile,
+    ([id]) => id,
+    ([, , date]) => typeof date === 'string',
+  );
+  let answeredOn: string | undefined;
   let lastRequest = -Infinity;
   const paced = async (url: URL) => {
     await sleep(Math.max(0, lastRequest + REQUEST_INTERVAL_MS - Date.now()));
     lastRequest = Date.now();
     return get(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
   };
-  const answer = async (key: PositionKey, band: number): Promise<LichessCounts> => {
+  const ask: Explorer = async (key, band) => {
     const id = `${band} ${key}`;
-    const cached = cache.get(id);
-    if (cached) return cached;
+    const [, counts, date] = cache.get(id) ?? (await fetched(id, key, band));
+    if (!answeredOn || date > answeredOn) answeredOn = date;
+    return recordedCounts(key, counts);
+  };
+  const fetched = async (id: string, key: PositionKey, band: number): Promise<ExplorerRow> => {
     const url = new URL('https://explorer.lichess.ovh/lichess');
     url.search = new URLSearchParams({
       fen: `${key} 0 1`,
@@ -82,12 +107,16 @@ export function lichessExplorer({
       const counts = Object.fromEntries(
         body.moves.map((move) => [move.uci, move.white + move.draws + move.black]),
       );
-      cache.set(id, counts);
-      appendJsonLine(cacheFile, [id, counts]);
-      return counts;
+      const row: ExplorerRow = [id, counts, today];
+      cache.add(id, row);
+      return row;
     }
   };
-  return async (key, band) => recordedCounts(key, await answer(key, band));
+  return {
+    ask,
+    answeredOn: () => answeredOn,
+    saveUsed: cache.saveUsed,
+  };
 }
 
 /**
@@ -105,7 +134,8 @@ function recordedCounts(key: PositionKey, counts: LichessCounts): MoveCounts {
  * `lesson` with games per band for the moves of each position where the side
  * to move has a choice: the opponent's first, nearest the start first, then
  * the learner's. Moves without a choice get no counts ("not measured"), and
- * counts already in `lesson` are replaced.
+ * counts already in `lesson` are replaced. `date` says when the counts were
+ * fetched; it is asked once the crawl is done.
  *
  * A band is not asked about where no game can reach the position, because
  * every move into it counted 0 games there, or left a position no game
@@ -116,7 +146,7 @@ function recordedCounts(key: PositionKey, counts: LichessCounts): MoveCounts {
 export async function addPopularity(
   lesson: Lesson,
   explorer: Explorer,
-  date: string,
+  date: () => string,
   onProgress?: (asked: number) => void,
 ): Promise<Lesson> {
   const start = positionKey(parsePosition(lesson.start)!);
@@ -158,7 +188,7 @@ export async function addPopularity(
   await crawl((key) => choice(key) && learnerToMove(key));
   return {
     ...lesson,
-    popularity: { ratingBands: RATING_BANDS, speeds: SPEEDS, date },
+    popularity: { ratingBands: RATING_BANDS, speeds: SPEEDS, date: date() },
     positions: Object.fromEntries(
       Object.entries(lesson.positions).map(([key, entry]) => {
         const games = counts.get(key);
