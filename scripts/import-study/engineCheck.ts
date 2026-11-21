@@ -472,27 +472,17 @@ const describe = ({ pawns, mate }: Evaluation) =>
 /** The lesson's start position, which the checker has read. */
 export const startOf = (lesson: Lesson): Chess => parsePosition(lesson.start)!;
 
-interface LineTo {
-  readonly line: Uci[];
-  readonly pos: Chess;
-  readonly from?: PositionKey;
-}
-
-/**
- * The first line (UCI) found to each position the lesson reaches, the
- * position, and the one that line comes from (none for the start), shortest lines first.
- */
-export function linesTo(lesson: Lesson): Map<PositionKey, LineTo> {
+/** The first line (UCI) found to each position the lesson reaches, and the position. */
+export function linesTo(lesson: Lesson): Map<PositionKey, { line: Uci[]; pos: Chess }> {
   const start = startOf(lesson);
-  const found = new Map<PositionKey, LineTo>([[positionKey(start), { line: [], pos: start }]]);
+  const found = new Map([[positionKey(start), { line: [] as Uci[], pos: start }]]);
   const queue = [...found.values()];
   for (let next = queue.shift(); next; next = queue.shift()) {
-    const from = positionKey(next.pos);
-    for (const { uci } of lesson.positions[from]?.moves ?? []) {
+    for (const { uci } of lesson.positions[positionKey(next.pos)]?.moves ?? []) {
       const pos = played(next.pos, uci);
       const key = positionKey(pos);
       if (found.has(key)) continue;
-      const at = { line: [...next.line, uci], pos, from };
+      const at = { line: [...next.line, uci], pos };
       found.set(key, at);
       queue.push(at);
     }

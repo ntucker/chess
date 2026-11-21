@@ -240,33 +240,28 @@ function checkVariations(lesson: Lesson, report: Report) {
       ancestors.add(parent);
     }
   }
-  const teaching = teachingVariations(lesson);
+  const named = namedVariations(lesson);
   for (const id of Object.keys(lesson.variations)) {
-    if (!teaching.has(id))
-      report(
-        `variations[${JSON.stringify(id)}]`,
-        'teaches nothing: no position in it or under it has a book move or a note',
-      );
+    if (!named.has(id))
+      report(`variations[${JSON.stringify(id)}]`, 'names no position, in it or under it');
   }
 }
 
 /**
- * The variations worth naming: the opening itself, and each with a position,
- * its own or under it, that has a book move or a note. One without leads the
- * opening list to a line with nothing to learn.
+ * The variations that name a position, or hold one that does. Every other
+ * name is a leftover: the opening list leaves it out and nothing shows it.
  */
-export function teachingVariations({ variations, positions }: Lesson): Set<VariationId> {
-  const teaching = new Set(Object.keys(variations).filter((id) => !variations[id].parent));
-  for (const { variation, moves, notes } of Object.values(positions)) {
-    if (!notes?.length && !moves.some((move) => move.book || move.notes?.length)) continue;
+export function namedVariations({ variations, positions }: Lesson): Set<VariationId> {
+  const named = new Set<VariationId>();
+  for (const { variation } of Object.values(positions)) {
     for (
       let id: VariationId | undefined = variation;
-      id && !teaching.has(id);
+      id && !named.has(id);
       id = variations[id]?.parent
     )
-      teaching.add(id);
+      named.add(id);
   }
-  return teaching;
+  return named;
 }
 
 /** The position after `move`, or undefined after reporting why it is wrong. */
