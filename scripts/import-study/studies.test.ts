@@ -1,7 +1,9 @@
 import { describe, expect, it } from '@jest/globals';
+import assert from 'node:assert';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
+import type { Chapter } from './study';
 import { lessonInfo, STUDIES } from './studies';
 
 describe('lessonInfo', () => {
@@ -34,5 +36,14 @@ describe('STUDIES', () => {
         .filter((file) => !existsSync(join(__dirname, file))),
     );
     expect(missing).toEqual([]);
+  });
+
+  it('names the Caro-Kann Tal chapter alike from the study and from Wikibooks', () => {
+    const [study, wikibooks] = STUDIES['caro-kann'].from;
+    assert('chapterName' in study && study.chapterName && 'rename' in wikibooks);
+    const title = '🔵 14 Advance Variation: Tal Variation (4.h4) & Bayonet Attack (4.g4)';
+    expect(study.chapterName(title, {} as Chapter)).toBe(
+      `Advance Variation: ${wikibooks.rename?.['Tal variation']}`,
+    );
   });
 });

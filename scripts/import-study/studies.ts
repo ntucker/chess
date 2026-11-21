@@ -693,7 +693,11 @@ const KID_TRAP_CHAPTERS: Readonly<Record<string, string | undefined>> = {
   'Trap 10: win the rook (again)': 'Sämisch Variation',
 };
 
-/** The Caro-Kann's 4.h4 and 4.g4 chapter, its study title shortened to fit a 360px phone's header. */
+/**
+ * The Caro-Kann lesson's name for 4.h4 and 4.g4, shorter than the main study's chapter title
+ * ("Tal Variation (4.h4) & …") so it fits a 360px phone's header. Both sources use it, or the
+ * variation splits in two.
+ */
 const TAL_BAYONET = 'Tal (4.h4) & Bayonet Attack (4.g4)';
 
 export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
@@ -708,9 +712,9 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         },
         /** The theory chapters: 🔵 core and 🟢 extra. Guides, plans and model games come later. */
         chapters: (title: string) => /^(?:🔵|🟢)/u.test(title),
-        // "Sidelines Index" names the chapter's contents page, not a variation.
         chapterName: (title, chapter) =>
           numberedChapterName(title, chapter)
+            // "Sidelines Index" names the chapter's contents page, not a variation.
             ?.replace(/: Sidelines Index$/, '')
             .replace('Tal Variation (4.h4) & Bayonet Attack (4.g4)', TAL_BAYONET),
       },
