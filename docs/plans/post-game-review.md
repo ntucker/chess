@@ -93,7 +93,8 @@ The lesson page and the free-game page start from a given line; the link in the 
 ### Piece 8: New labels
 
 Brilliant, Great and Miss: rules (a static exchange count for Brilliant; Great tuned to about one a
-game on the measured games), badges in `src/theme/moveQuality.ts`, tooltips, contrast checks; they
+game on the measured games; Miss built on `refutation` in `src/analysis/quality.ts`, so it agrees
+with the board's red arrow), badges in `src/theme/moveQuality.ts`, tooltips, contrast checks; they
 join the moments.
 
 ### Piece 9: Summary
