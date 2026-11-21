@@ -23,7 +23,8 @@ export const FULL_STOCKFISH_MB = Math.round(FULL_WASM_BYTES / 1_000_000);
  * Where Android downloads the files: public/stockfish/ on the live site,
  * which GitHub Pages serves to any origin (CORS). The names carry the
  * Stockfish build, and the site serves only its own: once it moves to a newer
- * build, an app built before can't download full Stockfish.
+ * build, an app built before can't download full Stockfish. Every platform
+ * also keeps the files in its cache under their addresses here (full.ts).
  */
 export const LIVE_FOLDER = 'https://ntucker.github.io/chess/stockfish/';
 

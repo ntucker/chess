@@ -52,7 +52,7 @@ const mount = () =>
   );
 
 describe('FullStockfishHost', () => {
-  it("downloads from the page's own site, outside a preview that shares the live site's", async () => {
+  it("downloads from the page's own site when the build names no preview folder", async () => {
     // Jest sets no base path (EXPO_BASE_URL) or preview folder (PREVIEW_FOLDER).
     load.mockResolvedValue(undefined);
     await mount();

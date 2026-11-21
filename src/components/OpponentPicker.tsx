@@ -141,7 +141,7 @@ export function OpponentPicker() {
 }
 
 const FAILURES: Record<DownloadFailure, string> = {
-  retrying: '· download failed, trying again',
+  retrying: '· retrying download',
   // Short, to fit beside the name.
   // A preview sharing the live site's copy needs a new build of its own.
   newVersion: FROM_OWN_SITE
