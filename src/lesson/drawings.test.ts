@@ -304,6 +304,24 @@ describe('lessonDrawings', () => {
     );
   });
 
+  it("draws the reply that punishes the learner's mistake in the danger tone, in the best move's place", () => {
+    const view = sampleView([...ADVANCE, 'a6']);
+    const top = engineCandidates(SAMPLE, view.key, [
+      { uci: 'g1f3', evaluation: { score: 0.6, pawns: 0.7 } },
+    ]);
+    const shown = guidance({
+      picking: false,
+      view,
+      mode: 'explore',
+      switches: SWITCHES,
+      engine: { best: 'g1f3', top },
+      refutation: 'g1f3',
+    });
+    expect(lessonDrawings(shown, view.key, 'black')).toEqual([
+      { kind: 'arrow', from: 'g1', to: 'f3', tone: 'danger', step: undefined },
+    ]);
+  });
+
   it("marks Stockfish's best move where guidance does", () => {
     const view = sampleView([...ADVANCE, 'a6']);
     const top = engineCandidates(SAMPLE, view.key, [

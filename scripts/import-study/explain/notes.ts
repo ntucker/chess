@@ -12,7 +12,7 @@ import type { Color } from 'chessops/types';
 import { balance } from '@/game/material';
 import { parsePosition } from '@/game/replay';
 import { generatedIdeaProblem, noteTextProblem } from '@/lesson/check';
-import type { Idea, Note } from '@/lesson/lesson';
+import type { AiModel, Idea, Note } from '@/lesson/lesson';
 
 import type { Answer } from '../convert/answer';
 import { lessonIdea } from '../convert/notes';
@@ -92,8 +92,8 @@ export type Explained =
   /** The model found no idea it was sure of. */
   | { readonly none: true };
 
-/** `answer` as the note on the book move `move`. */
-export function explainedNote(answer: Answer, move: Played): Explained {
+/** `answer` as the note on the book move `move`, credited to `model`, which wrote it. */
+export function explainedNote(answer: Answer, move: Played, model: AiModel): Explained {
   const after = parsePosition(move.fenAfter)!;
   const [written] = answer.notes.filter((note) => note.about === 'move');
   if (!written) return { none: true };
@@ -124,7 +124,7 @@ export function explainedNote(answer: Answer, move: Played): Explained {
     if (problem) return refuse(`its ${idea.type} ${problem}`);
     ideas.push(idea);
   }
-  return { note: { text, generated: true, ...(ideas.length > 0 && { ideas }) } };
+  return { note: { text, generated: true, model, ...(ideas.length > 0 && { ideas }) } };
 }
 
 /**

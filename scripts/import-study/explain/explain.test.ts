@@ -85,14 +85,19 @@ describe('unexplainedMoves', () => {
   });
 });
 
+/** `explainedNote` for an answer Fable wrote. */
+const explained = (written: Answer, move: Parameters<typeof explainedNote>[1]) =>
+  explainedNote(written, move, 'claude-fable-5-2');
+
 describe('explainedNote', () => {
-  it('keeps a true note, marked generated', () => {
+  it('keeps a true note, marked generated and credited to its model', () => {
     expect(
-      explainedNote(answer('Your pawn takes the centre.', [CONTROLS]), bookMove(['d4', 'd5'])),
+      explained(answer('Your pawn takes the centre.', [CONTROLS]), bookMove(['d4', 'd5'])),
     ).toEqual({
       note: {
         text: 'Your pawn takes the centre.',
         generated: true,
+        model: 'claude-fable-5-2',
         ideas: [{ type: 'purpose', from: 'd5', relation: 'controls', targets: ['c4', 'e4'] }],
       },
     });
@@ -117,30 +122,26 @@ describe('explainedNote', () => {
       'false here',
     ],
   ])('refuses %s', (_, written, why) => {
-    const result = explainedNote(written, bookMove(['d4', 'd5']));
+    const result = explained(written, bookMove(['d4', 'd5']));
     expect('refused' in result && result.refused.why).toContain(why);
   });
 
   it('answers none when the model gives no note', () => {
-    expect(explainedNote({ id: 'x', notes: [] }, bookMove(['d4', 'd5']))).toEqual({ none: true });
+    expect(explained({ id: 'x', notes: [] }, bookMove(['d4', 'd5']))).toEqual({ none: true });
   });
 
   it('refuses a win of material that Stockfish’s reply takes back', () => {
     const grab = answer('You win the e4 pawn for nothing.');
-    const result = explainedNote(grab, bookMove(['e4', 'Nf6', 'Nc3', 'Nxe4'], 'Nxe4'));
+    const result = explained(grab, bookMove(['e4', 'Nf6', 'Nc3', 'Nxe4'], 'Nxe4'));
     expect('refused' in result && result.refused.why).toContain('you win material');
-    expect(explainedNote(grab, bookMove(['e4', 'Nf6', 'Nc3', 'Nxe4'], 'd3'))).toHaveProperty(
-      'note',
-    );
+    expect(explained(grab, bookMove(['e4', 'Nf6', 'Nc3', 'Nxe4'], 'd3'))).toHaveProperty('note');
   });
 
   it('refuses a material lead the position after Stockfish’s reply does not have', () => {
     const ahead = answer('Your knight takes, leaving you a pawn up.');
-    const result = explainedNote(ahead, bookMove(['e4', 'Nf6', 'Nc3', 'Nxe4'], 'Nxe4'));
+    const result = explained(ahead, bookMove(['e4', 'Nf6', 'Nc3', 'Nxe4'], 'Nxe4'));
     expect('refused' in result && result.refused.why).toContain('ahead on material');
-    expect(explainedNote(ahead, bookMove(['e4', 'Nf6', 'Nc3', 'Nxe4'], 'd3'))).toHaveProperty(
-      'note',
-    );
+    expect(explained(ahead, bookMove(['e4', 'Nf6', 'Nc3', 'Nxe4'], 'd3'))).toHaveProperty('note');
   });
 });
 
@@ -159,7 +160,7 @@ describe('the material guard', () => {
     'Your knight wins the pawn back next towards the king.',
     'Your knight wins the pawn back for Black.',
   ])('refuses "%s" when the reply takes it back', (text) => {
-    const result = explainedNote(answer(text), recaptured);
+    const result = explained(answer(text), recaptured);
     expect(result).toHaveProperty('refused');
     // The refusal is part of a retry's stored key, so it never names the reply.
     const why = 'refused' in result ? result.refused.why : '';
@@ -176,7 +177,7 @@ describe('the material guard', () => {
     'You win a tempo back.',
     'You threaten the e4 pawn: if White ignores it, your knight wins it.',
   ])('keeps "%s", which claims no win now', (text) => {
-    expect(explainedNote(answer(text), recaptured)).toHaveProperty('note');
+    expect(explained(answer(text), recaptured)).toHaveProperty('note');
   });
 });
 

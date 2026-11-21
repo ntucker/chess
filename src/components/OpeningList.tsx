@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { a11yState, Badge, Pressable, Stack, Text, useTheme } from '@reactive/silk-native';
+import { a11yState, Badge, Pressable, Text, useTheme } from '@reactive/silk-native';
 import { Link, useRouter } from 'expo-router';
 import {
   type ComponentRef,
@@ -16,6 +16,7 @@ import { Eyebrow } from '@/components/Eyebrow';
 import { plainPress } from '@/components/FootnoteLink';
 import { goBack } from '@/components/navigation';
 import { Page } from '@/components/Page';
+import { PageIntro, textColumn } from '@/components/PageIntro';
 import { SourceCredits } from '@/components/lesson/SourceCredits';
 import { STAGE_MAX } from '@/components/Stage';
 import { type Color, COLORS, colorName } from '@/game/replay';
@@ -56,15 +57,9 @@ export function OpeningList({ here }: { readonly here?: ListPlace<LessonId> }) {
       maxWidth={STAGE_MAX}
     >
       <View style={styles.content}>
-        <Stack gap="2">
-          <Eyebrow>The program</Eyebrow>
-          <Text role="headingXl" accessibilityRole="header" style={styles.title}>
-            Every opening
-          </Text>
-          <Text role="body" tone="secondary">
-            Pick a line to play it from its first move. Going back keeps the game you left.
-          </Text>
-        </Stack>
+        <PageIntro eyebrow="The program" title="Every opening">
+          Pick a line to play it from its first move. Going back keeps the game you left.
+        </PageIntro>
         {COLORS.map((side) => (
           <SideSection key={side} side={side} openings={openings[side]} here={here} />
         ))}
@@ -368,8 +363,6 @@ function scrollIntoView(row: ComponentRef<typeof View> | null) {
   node?.scrollIntoView?.({ block: 'center' });
 }
 
-/** The list's width: one column, a program's page, wide enough for a long line beside its name. */
-const CONTENT_MAX = 760;
 const DOT = 8;
 const CHEVRON = 14;
 const HIT_SLOP = { top: 4, bottom: 4, left: 8, right: 8 };
@@ -394,8 +387,7 @@ const STYLES = narrowStyles((px) => ({
 }));
 
 const styles = StyleSheet.create({
-  content: { width: '100%', maxWidth: CONTENT_MAX, gap: 40, paddingTop: 12, paddingBottom: 48 },
-  title: { fontFamily: fonts.display },
+  content: { ...textColumn, gap: 40 },
   side: { gap: 28 },
   sideHead: { borderBottomWidth: StyleSheet.hairlineWidth, paddingBottom: 8 },
   opening: { gap: 6 },

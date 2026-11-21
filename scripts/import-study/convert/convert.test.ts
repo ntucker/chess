@@ -1,12 +1,13 @@
 import { describe, expect, it } from '@jest/globals';
 
 import { positionKey } from '@/game/replay';
+import type { AiModel } from '@/lesson/lesson';
 
 import { extractChapter } from '../extract';
 import { STUDY_PGN } from '../fixture';
 import { parseStudy } from '../study';
 import type { AnswerNote } from './answer';
-import { MODELS, type Ask, type Model } from './claude';
+import { MODELS, type Ask } from './claude';
 import { noteComment, type Comment } from './comments';
 import { DRAW_MISTAKES, REWORD, SHORTEN, STANDALONE, WRITTEN_FOR_OPPONENT } from './prompt';
 import { convertChapters } from '.';
@@ -14,14 +15,14 @@ import { convertChapters } from '.';
 const [advance] = parseStudy(STUDY_PGN, () => true);
 const extracted = [extractChapter(advance, 'black')];
 
-type Answers = Partial<Record<Model, Record<string, AnswerNote[]>>>;
+type Answers = Partial<Record<AiModel, Record<string, AnswerNote[]>>>;
 
 /**
  * An `Ask` answering each comment by its move, per model, and recording what
  * was asked. A comment asked again for refused text is answered from `reworded`.
  */
 function fakeAsk(answers: Answers, reworded: Answers = {}) {
-  const asked: [Model, string[]][] = [];
+  const asked: [AiModel, string[]][] = [];
   const refused: (readonly string[] | undefined)[] = [];
   const addenda: (string | undefined)[] = [];
   const seen: Comment[] = [];
@@ -109,6 +110,7 @@ describe('convertChapters', () => {
     ).toContainEqual({
       text: 'White can bring the knight out to f3.',
       original: 'You plan ...e6, ...c5 and ...Nc6.',
+      model: MODELS.convert,
       ideas: [{ type: 'purpose', from: 'g1', relation: 'controls', targets: ['f3'] }],
     });
   });
@@ -138,7 +140,10 @@ describe('convertChapters', () => {
     } = await convertChapters(extracted, ask);
     expect(asked.at(-1)).toEqual([MODELS.retry, ['Be2']]);
     expect(report.retried).toBe(1);
-    expect(notesOn(chapter, 'Be2')[0].text).toBe('Your bishop eyes the c2 pawn.');
+    expect(notesOn(chapter, 'Be2')[0]).toMatchObject({
+      text: 'Your bishop eyes the c2 pawn.',
+      model: MODELS.retry,
+    });
   });
 
   describe('a note written in notation', () => {
@@ -373,7 +378,7 @@ describe('convertChapters', () => {
           extracted: [chapter],
         } = await convertChapters(mistake, ask);
         expect(notesOn(chapter, 'h5')).toEqual([
-          { text: claim[0].text, original: expect.any(String) },
+          { text: claim[0].text, original: expect.any(String), model: MODELS.convert },
         ]);
       }
     });

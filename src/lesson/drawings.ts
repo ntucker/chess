@@ -11,7 +11,7 @@ import { SquareSet } from 'chessops/squareSet';
 import { type Color, FILE_NAMES, type FileName, type Piece, type SquareName } from 'chessops/types';
 import { makeSquare, opposite, parseSquare } from 'chessops/util';
 
-import type { Drawing, Tone } from '@/board/drawing';
+import { type Drawing, moveArrow, refutationArrow, type Tone } from '@/board/drawing';
 import { parsePositionKey, pieceAt, playLine, type Position } from '@/game/replay';
 
 import type { Guidance, PlayedBack } from './guidance';
@@ -25,8 +25,8 @@ import type { LandedTrap } from './view';
  * The board's drawings for `guidance` while the board shows `shown`, for a
  * learner playing `learner`: the candidates and ideas guidance draws (ideas
  * only on the position they are about), a glow where a sliding preview's
- * piece lands (the board draws its slide), Stockfish's best move and a trap
- * fallen into.
+ * piece lands (the board draws its slide), Stockfish's best move, the reply
+ * that punishes the learner's mistake, and a trap fallen into.
  */
 export function lessonDrawings(guidance: Guidance, shown: PositionKey, learner: Color): Drawing[] {
   const { main } = guidance;
@@ -37,6 +37,7 @@ export function lessonDrawings(guidance: Guidance, shown: PositionKey, learner: 
     ...candidateDrawings(guidance.drawnCandidates, main),
     ...ideasDrawings(ideas, shown, learner),
     ...bestDrawings(guidance.best),
+    ...refutationArrow(guidance.refutation),
     ...(guidance.trap ? landedTrapDrawings(guidance.trap, shown) : []),
   ];
 }
@@ -306,15 +307,6 @@ const fileSquares = (files: readonly FileName[]) =>
 /** `side`'s pawns on `files`. */
 const filePawns = (board: Board, side: Color, files: readonly FileName[]) =>
   squaresOf(board.pieces(side, 'pawn').intersect(fileSquares(files)));
-
-/** An arrow for a move written in UCI, numbered `step` in a sequence. */
-const moveArrow = (uci: Uci, tone: Tone, step?: number): Extract<Drawing, { kind: 'arrow' }> => ({
-  kind: 'arrow',
-  from: uci.slice(0, 2) as SquareName,
-  to: uci.slice(2, 4) as SquareName,
-  tone,
-  step,
-});
 
 /** Stockfish's best move, where guidance marks it (see `Guidance.best`). */
 const bestDrawings = (best: Uci | undefined): Drawing[] =>
