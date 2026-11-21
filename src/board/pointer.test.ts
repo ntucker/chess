@@ -1,6 +1,13 @@
 import { describe, expect, it, jest } from '@jest/globals';
 
-import { type Drag, hovers, hoversControl, watchDrag, watchHoverAndTap } from './pointer';
+import {
+  type BoardPointer,
+  type Drag,
+  hovers,
+  hoversControl,
+  watchBoardPointer,
+  watchDrag,
+} from './pointer';
 
 /** Squares 10 pixels wide along one rank: x 0-9 is a1, 10-19 is b1, and so on; nothing past h1. */
 const squareAt = (x: number) =>
@@ -121,45 +128,58 @@ describe('hoversControl', () => {
   });
 });
 
-describe('watchHoverAndTap', () => {
+describe('watchBoardPointer', () => {
   function setupBoard() {
     const board = new EventTarget();
-    const hover = jest.fn<(over: boolean) => void>();
-    const tap = jest.fn<() => void>();
-    const stop = watchHoverAndTap(board, hover, tap);
-    const fire = (type: string, pointerType: string, isPrimary = true) =>
-      board.dispatchEvent(Object.assign(new Event(type), { pointerType, isPrimary }));
-    return { hover, tap, stop, fire };
+    const report = jest.fn<(pointer: BoardPointer) => void>();
+    const stop = watchBoardPointer(board, report);
+    const fire = (type: string, pointerType: string, clientX = 0, isPrimary = true) =>
+      board.dispatchEvent(
+        Object.assign(new Event(type), { pointerType, isPrimary, clientX, clientY: 0 }),
+      );
+    const tap = (pointerType: string, from = 0, to = from) => {
+      fire('pointerdown', pointerType, from);
+      fire('pointerup', pointerType, to);
+    };
+    return { report, stop, fire, tap };
   }
 
   it('reports a mouse coming onto the board and leaving it, and no taps for its clicks', () => {
-    const { hover, tap, fire } = setupBoard();
+    const { report, fire, tap } = setupBoard();
     fire('pointerenter', 'mouse');
-    fire('pointerup', 'mouse');
+    tap('mouse');
     fire('pointerleave', 'mouse');
-    expect(hover.mock.calls).toEqual([[true], [false]]);
-    expect(tap).not.toHaveBeenCalled();
+    expect(report.mock.calls).toEqual([['enter'], ['leave']]);
   });
 
-  it('reports a finger or pen lifting as a tap, and never as hovering', () => {
-    const { hover, tap, fire } = setupBoard();
+  it('reports a finger or pen pressing and lifting in place as a tap, and never as hovering', () => {
+    const { report, fire, tap } = setupBoard();
     for (const pointerType of ['touch', 'pen']) {
       fire('pointerenter', pointerType);
-      fire('pointerup', pointerType);
+      tap(pointerType, 40, 48);
       fire('pointerleave', pointerType);
     }
-    // A second finger taps nothing.
-    fire('pointerup', 'touch', false);
-    expect(tap).toHaveBeenCalledTimes(2);
-    expect(hover).not.toHaveBeenCalled();
+    expect(report.mock.calls).toEqual([['tap'], ['tap']]);
+  });
+
+  it('takes no swipe, second finger, cancelled press or press from elsewhere for a tap', () => {
+    const { report, fire, tap } = setupBoard();
+    tap('touch', 0, 60);
+    fire('pointerdown', 'touch', 0, false);
+    fire('pointerup', 'touch', 0, false);
+    fire('pointerdown', 'touch');
+    fire('pointercancel', 'touch');
+    fire('pointerup', 'touch');
+    // Lifted on the board after pressing off it.
+    fire('pointerup', 'touch');
+    expect(report).not.toHaveBeenCalled();
   });
 
   it('reports nothing once stopped', () => {
-    const { hover, tap, stop, fire } = setupBoard();
+    const { report, stop, fire, tap } = setupBoard();
     stop();
     fire('pointerenter', 'mouse');
-    fire('pointerup', 'touch');
-    expect(hover).not.toHaveBeenCalled();
-    expect(tap).not.toHaveBeenCalled();
+    tap('touch');
+    expect(report).not.toHaveBeenCalled();
   });
 });

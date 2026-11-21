@@ -84,31 +84,52 @@ export function watchDrag<S extends string>(
 }
 
 /**
- * Reports a hovering pointer (a mouse) coming onto `target` (true) and
- * leaving it (false), and calls `tap` as a finger or pen lifts from it.
- * Returns a function that stops. Example: the board's ending card hides while
- * a mouse is over the board, and a tap hides or shows it.
+ * What a pointer did to the board as a whole: a hovering pointer (a mouse)
+ * came onto it or left it, or a finger or pen tapped it.
  */
-export function watchHoverAndTap(
+export type BoardPointer = 'enter' | 'leave' | 'tap';
+
+/** How far, in CSS pixels, a press may move and still be a tap. */
+const TAP_SLOP = 10;
+
+/**
+ * Reports a mouse coming onto `target` and leaving it, and a finger or pen
+ * tapping it: pressing it and lifting without moving more than `TAP_SLOP`.
+ * A swipe across it, or a press that started elsewhere, is no tap. Returns a
+ * function that stops.
+ */
+export function watchBoardPointer(
   target: PointerSource,
-  hover: (over: boolean) => void,
-  tap: () => void,
+  report: (pointer: BoardPointer) => void,
 ): () => void {
+  let press: { x: number; y: number } | undefined;
   const onEnter = ({ pointerType }: PointerEvent) => {
-    if (hovers(pointerType)) hover(true);
+    if (hovers(pointerType)) report('enter');
   };
   const onLeave = ({ pointerType }: PointerEvent) => {
-    if (hovers(pointerType)) hover(false);
+    if (hovers(pointerType)) report('leave');
   };
-  const onUp = ({ pointerType, isPrimary }: PointerEvent) => {
-    if (isPrimary && !hovers(pointerType)) tap();
+  const onDown = ({ pointerType, isPrimary, clientX, clientY }: PointerEvent) => {
+    press = isPrimary && !hovers(pointerType) ? { x: clientX, y: clientY } : undefined;
+  };
+  const onUp = ({ isPrimary, clientX, clientY }: PointerEvent) => {
+    if (!isPrimary || !press) return;
+    if (Math.hypot(clientX - press.x, clientY - press.y) <= TAP_SLOP) report('tap');
+    press = undefined;
+  };
+  const onCancel = () => {
+    press = undefined;
   };
   target.addEventListener('pointerenter', onEnter);
   target.addEventListener('pointerleave', onLeave);
+  target.addEventListener('pointerdown', onDown);
   target.addEventListener('pointerup', onUp);
+  target.addEventListener('pointercancel', onCancel);
   return () => {
     target.removeEventListener('pointerenter', onEnter);
     target.removeEventListener('pointerleave', onLeave);
+    target.removeEventListener('pointerdown', onDown);
     target.removeEventListener('pointerup', onUp);
+    target.removeEventListener('pointercancel', onCancel);
   };
 }

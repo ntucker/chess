@@ -3,7 +3,17 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { gameEnding } from '@/game/ending';
-import { ACT_TIMES, cardBand, endingAct, KING_PARTS, MOVE_MS, TINTS } from '@/board/endingAct';
+import {
+  ACT_TIMES,
+  asideAfter,
+  type CardAside,
+  cardBand,
+  endingAct,
+  KING_PARTS,
+  MOVE_MS,
+  TINTS,
+} from '@/board/endingAct';
+import type { BoardPointer } from '@/board/pointer';
 import { endingExamples } from '@/board/endingExamples';
 import type { Square } from '@/board/drawing';
 import { type Color, lastPosition } from '@/game/replay';
@@ -120,6 +130,26 @@ describe('cardBand', () => {
     expect(band('e1', 'e8', 'h4')).toBe('upper');
     // Kings on e5 and e2 leave only the upper band, so the card covers the rook on a7.
     expect(band('e5', 'e2', 'a7')).toBe('upper');
+  });
+});
+
+describe('asideAfter', () => {
+  const FEN = 'final';
+  const after = (...pointers: BoardPointer[]) =>
+    pointers.reduce<CardAside>((aside, pointer) => asideAfter(aside, pointer, FEN), undefined);
+
+  it('puts the card aside while a mouse is over the board', () => {
+    expect(after('enter')).toEqual({ at: FEN, by: 'hover' });
+    expect(after('enter', 'leave')).toBeUndefined();
+  });
+
+  it('puts the card aside on a tap, and brings it back on the next', () => {
+    expect(after('tap')).toEqual({ at: FEN, by: 'tap' });
+    expect(after('tap', 'tap')).toBeUndefined();
+  });
+
+  it("keeps a tap's aside when a mouse passes over and off the board", () => {
+    expect(after('tap', 'enter', 'leave')).toEqual({ at: FEN, by: 'tap' });
   });
 });
 

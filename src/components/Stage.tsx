@@ -2,6 +2,7 @@ import { Surface, useTheme } from '@reactive/silk-native';
 import { type ComponentProps, type ReactNode, useState } from 'react';
 import { View } from 'react-native';
 
+import { asideAfter, type CardAside } from '@/board/endingAct';
 import { gameEnding } from '@/game/ending';
 import Board, { type BoardProps } from '@/components/Board';
 import { EndingCard } from '@/components/EndingCard';
@@ -70,7 +71,7 @@ interface BoardColumnProps {
     'name' | 'detail' | 'brief' | 'detailControl' | 'children'
   >;
   /** The board, with the player's side (`orientation`) at the bottom. */
-  readonly board: Omit<BoardProps, 'dom' | 'ending' | 'onEndingHover' | 'onEndingTap'>;
+  readonly board: Omit<BoardProps, 'dom' | 'ending' | 'onEndingPointer'>;
   /** Swaps the sides: given, either name bar's disc is a button that does it. */
   readonly onSwap?: () => void;
   /** The move stepper's middle on a narrow page (`Transport`). */
@@ -93,12 +94,11 @@ export function BoardColumn({ game, rival, board, onSwap, stepperMiddle }: Board
   // the ending away; so does a lesson's idea playing back over it on the board.
   const ending = board.fen === game.current.fen ? gameEnding(game.current, side) : undefined;
   // The ending card stays up while the final position is shown, so the
-  // learner can put it aside to see the board: it hides while a mouse is over
-  // the board, and a tap hides or shows it. This holds the position it was
-  // put aside at; leaving that position brings the card back next time.
-  const showing = ending && board.fen;
-  const [asideAt, setAsideAt] = useState<string>();
-  if (asideAt !== undefined && asideAt !== showing) setAsideAt(undefined);
+  // learner can put it aside to see the board (`asideAfter`). Leaving that
+  // position brings the card back for its next showing.
+  const endingFen = ending && board.fen;
+  const [aside, setAside] = useState<CardAside>();
+  if (aside && aside.at !== endingFen) setAside(undefined);
   return (
     <>
       <PlayerBar
@@ -116,8 +116,9 @@ export function BoardColumn({ game, rival, board, onSwap, stepperMiddle }: Board
           <Board
             {...board}
             ending={ending}
-            onEndingHover={(over) => setAsideAt(over ? showing : undefined)}
-            onEndingTap={() => setAsideAt((at) => (at ? undefined : showing))}
+            onEndingPointer={(pointer) =>
+              endingFen && setAside((current) => asideAfter(current, pointer, endingFen))
+            }
             dom={{ style: styles.fill, scrollEnabled: false }}
           />
           {ending ? (
@@ -125,7 +126,7 @@ export function BoardColumn({ game, rival, board, onSwap, stepperMiddle }: Board
               ending={ending}
               rival={rival.name}
               orientation={side}
-              aside={asideAt !== undefined}
+              aside={aside !== undefined}
             />
           ) : null}
         </BoardFrame>

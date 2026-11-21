@@ -25,8 +25,8 @@ interface Props {
  * did. It is a playbill's banner across the board, which comes on once the
  * board has acted the ending out (Board.tsx), in step with it through
  * ACT_TIMES. It stays for as long as the board shows the final position,
- * keeping off both kings and the mating piece, and fades while it is put
- * `aside` so the whole position can be studied. A win
+ * keeping off both kings (and the mating piece, where the kings leave room),
+ * and fades while it is put `aside` so the whole position can be studied. A win
  * springs open in the accent color; a loss comes down slowly and plainly.
  */
 export function EndingCard({ ending, rival, orientation, aside = false }: Props) {
