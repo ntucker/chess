@@ -177,7 +177,7 @@ export function guidance(input: GuidanceInput): Guidance {
     engine,
   } = input;
   const explore = mode === 'explore';
-  const showMoves = switches.showMoves || !movesSwitchApplies(mode);
+  const movesShown = switches.showMoves || !movesSwitchApplies(mode);
   // Where the moves pick the opening they are a choice, not a quiz.
   const choices = explore || picking || (!view.learnerToMove && !switches.auto);
   const preview = choices ? pointerPreview : undefined;
@@ -216,11 +216,11 @@ export function guidance(input: GuidanceInput): Guidance {
     ideas,
     playing,
     pointed: pointedNote,
-    showMoves,
+    showMoves: movesShown,
     moveIdeas,
   });
   const best =
-    explore && showMoves && !preview && !lifted && !playing && !pointedNote
+    explore && movesShown && !preview && !lifted && !playing && !pointedNote
       ? engine?.best
       : undefined;
   // Inside the guide the learner's candidates are highlighted, so Stockfish's
