@@ -25,6 +25,7 @@ import {
 } from '@/theme/sideBySide';
 import { Transport } from '@/components/Transport';
 import { useStepKeys } from '@/components/useStepKeys';
+import type { EvaluationEngine } from '@/evaluation/evaluation';
 import { colorName, opposite } from '@/game/replay';
 import type { Game } from '@/game/useGame';
 import { narrowLength, narrowStyles } from '@/theme/narrow';
@@ -65,9 +66,15 @@ export function Stage({ title, header, board, program, footer }: StageProps) {
   );
 }
 
+/** What the board column shows of a game: its moves, the one on the board, and whose turn it is. */
+export type BoardGame = Pick<
+  Game,
+  'moves' | 'ply' | 'goto' | 'current' | 'toMove' | 'thinking' | 'material'
+>;
+
 interface BoardColumnProps {
   /** The game on the board. */
-  readonly game: Game;
+  readonly game: BoardGame;
   /** The opponent's name bar: who plays the other side and how, and any small control at its end. */
   readonly rival: Pick<
     ComponentProps<typeof PlayerBar>,
@@ -79,6 +86,8 @@ interface BoardColumnProps {
   readonly onSwap?: () => void;
   /** The move stepper's middle on a narrow page (`Transport`). */
   readonly stepperMiddle?: ReactNode;
+  /** The evaluation bar shows only this engine's analyses in the store (`EvaluationBar`'s `reads`). */
+  readonly evaluationReads?: EvaluationEngine;
 }
 
 /**
@@ -87,7 +96,14 @@ interface BoardColumnProps {
  * arrow keys step through the moves too. On Android, each move the learner
  * plays ticks (`tickMove`).
  */
-export function BoardColumn({ game, rival, board, onSwap, stepperMiddle }: BoardColumnProps) {
+export function BoardColumn({
+  game,
+  rival,
+  board,
+  onSwap,
+  stepperMiddle,
+  evaluationReads,
+}: BoardColumnProps) {
   const { moves, ply, goto } = game;
   const side = board.orientation;
   const other = opposite(side);
@@ -115,7 +131,12 @@ export function BoardColumn({ game, rival, board, onSwap, stepperMiddle }: Board
         swap={swap}
       />
       <View style={styles.boardRow}>
-        <EvaluationBar line={moves.slice(0, ply)} orientation={side} style={styles.evaluation} />
+        <EvaluationBar
+          line={moves.slice(0, ply)}
+          orientation={side}
+          reads={evaluationReads}
+          style={styles.evaluation}
+        />
         <BoardFrame>
           <Board
             {...board}

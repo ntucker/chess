@@ -17,8 +17,9 @@ import type { Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { QualityBadge } from '@/components/QualityBadge';
+import { Tip } from '@/components/Tip';
 import type { Mark } from '@/progress/progress';
-import { narrowLength, narrowStyles, spokenOnly } from '@/theme/narrow';
+import { narrowLength, narrowStyles } from '@/theme/narrow';
 import { NarrowScroll, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
 import { fonts } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
@@ -411,29 +412,23 @@ function ShareTip({ tip, children }: { readonly tip?: string; readonly children:
   const part = useNarrowPart();
   if (!tip) return children;
   return (
-    <Tooltip.Root>
-      <Tooltip.Trigger style={STATIC.tipped}>
-        {children}
-        {/* A narrow pane has no room for it beside the heading: a tap on the heading still opens the tip. */}
-        <View {...part('wide-only')}>
-          <Ionicons
-            name="information-circle-outline"
-            size={INFO_SIZE}
-            color={theme.semantic.color.textSecondary}
-          />
-        </View>
-        <Text style={STATIC.spoken}>{tip}</Text>
-      </Tooltip.Trigger>
-      <Tooltip.Content>{tip}</Tooltip.Content>
-    </Tooltip.Root>
+    <Tip tip={tip} style={STATIC.tipped}>
+      {children}
+      {/* A narrow pane has no room for it beside the heading: a tap on the heading still opens the tip. */}
+      <View {...part('wide-only')}>
+        <Ionicons
+          name="information-circle-outline"
+          size={INFO_SIZE}
+          color={theme.semantic.color.textSecondary}
+        />
+      </View>
+    </Tip>
   );
 }
 
 const STATIC = StyleSheet.create({
   // The mark beside the heading's last word, as wide as it needs.
   tipped: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
-  // Out of sight and out of layout, but read.
-  spoken: spokenOnly,
 });
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;

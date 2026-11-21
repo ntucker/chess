@@ -12,8 +12,13 @@ import { QualityBadge } from './QualityBadge';
 interface Props {
   /** Every position of the game; `plies[n]` follows the nth move. */
   readonly plies: readonly Ply[];
-  /** Each move's label once it's judged: `qualities[n]` labels the move that leads to `plies[n + 1]`. */
-  readonly qualities: readonly (MoveQuality | undefined)[];
+  /**
+   * Each move's mark: `marks[n]` for the move that leads to `plies[n + 1]`.
+   * A label once the move is judged; in the review, until then, why it has
+   * none: a move still waiting for its analyses gets a dashed ring where its
+   * badge will go, and one whose search gave up gets a warning mark.
+   */
+  readonly marks: readonly (Mark | undefined)[];
   readonly ply: number;
   /** The ply after a move that fell into a trap, marked as the mistake. */
   readonly trapped?: number;
@@ -22,11 +27,17 @@ interface Props {
   readonly fill?: boolean;
 }
 
+/** Why a move has no label: its analyses haven't come in, or a search they need gave up. */
+export type Unjudged = 'waiting' | 'failed';
+
+/** What the scoresheet shows beside a move: its label, or why it has none. */
+export type Mark = MoveQuality | Unjudged;
+
 /**
- * The moves as a two-column scoresheet (1. e4 e5), each with its label, and
+ * The moves as a two-column scoresheet (1. e4 e5), each with its mark, and
  * a move that fell into a trap marked; tap one to see it.
  */
-export function Scoresheet({ plies, qualities, ply, trapped, onGoto, fill }: Props) {
+export function Scoresheet({ plies, marks, ply, trapped, onGoto, fill }: Props) {
   const scroll = useRef<ScrollViewInstance>(null);
   const san = (n: number) => plies[n]?.move?.san;
 
@@ -57,8 +68,8 @@ export function Scoresheet({ plies, qualities, ply, trapped, onGoto, fill }: Pro
               white={white}
               whiteSan={san(white)}
               blackSan={san(white + 1)}
-              whiteQuality={qualities[white - 1]}
-              blackQuality={qualities[white]}
+              whiteMark={marks[white - 1]}
+              blackMark={marks[white]}
               selected={inRow(ply, white)}
               trapped={inRow(trapped, white)}
               striped={i % 2 === 1}
@@ -76,8 +87,8 @@ interface RowProps {
   readonly white: number;
   readonly whiteSan?: string;
   readonly blackSan?: string;
-  readonly whiteQuality?: MoveQuality;
-  readonly blackQuality?: MoveQuality;
+  readonly whiteMark?: Mark;
+  readonly blackMark?: Mark;
   /** The shown ply, when it's in this row. */
   readonly selected?: number;
   /** The trapped ply, when it's in this row. */
@@ -90,8 +101,8 @@ function Row({
   white,
   whiteSan,
   blackSan,
-  whiteQuality,
-  blackQuality,
+  whiteMark,
+  blackMark,
   selected,
   trapped,
   striped,
@@ -100,7 +111,7 @@ function Row({
   const { theme } = useTheme();
   const { color } = theme.semantic;
 
-  const cell = (n: number, san?: string, quality?: MoveQuality) => {
+  const cell = (n: number, san?: string, mark?: Mark) => {
     if (san === undefined) return <View style={styles.cell} />;
     const current = n === selected;
     const trap = n === trapped;
@@ -111,11 +122,17 @@ function Row({
       : trap
         ? [danger.text, danger.subtle, danger.subtleHover]
         : [color.textPrimary, undefined, neutral.subtle];
+    const unjudged = isUnjudged(mark) ? mark : undefined;
+    const quality = isUnjudged(mark) ? undefined : mark;
+    // An unjudged move's mark: the move's ink when shown, quieter otherwise.
+    const markInk = current ? ink : color.textSecondary;
     return (
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ selected: current }}
-        accessibilityLabel={trap ? `${san}, fell into a trap` : undefined}
+        accessibilityLabel={
+          trap ? `${san}, fell into a trap` : unjudged && `${san}, ${UNJUDGED_SPOKEN[unjudged]}`
+        }
         onPress={() => onGoto(n)}
         style={({ hovered }) => [
           styles.cell,
@@ -129,6 +146,10 @@ function Row({
           {san}
         </Text>
         {quality && <QualityBadge quality={quality} size={BADGE_SIZE} />}
+        {unjudged === 'waiting' && <View style={[styles.ring, { borderColor: markInk }]} />}
+        {unjudged === 'failed' && (
+          <Ionicons name="alert-circle-outline" size={BADGE_SIZE} color={markInk} />
+        )}
       </Pressable>
     );
   };
@@ -138,14 +159,22 @@ function Row({
       <Text role="bodySm" tone="secondary" style={styles.number}>
         {(white + 1) / 2}
       </Text>
-      {cell(white, whiteSan, whiteQuality)}
-      {cell(white + 1, blackSan, blackQuality)}
+      {cell(white, whiteSan, whiteMark)}
+      {cell(white + 1, blackSan, blackMark)}
     </View>
   );
 }
 
 /** A label's badge beside its move, about the height of the notation's capitals. */
 const BADGE_SIZE = 15;
+
+const isUnjudged = (mark?: Mark): mark is Unjudged => mark === 'waiting' || mark === 'failed';
+
+/** What a screen reader hears after a move with no label yet. */
+const UNJUDGED_SPOKEN: Readonly<Record<Unjudged, string>> = {
+  waiting: 'not judged yet',
+  failed: "Stockfish couldn't judge it",
+};
 
 /**
  * `ply` when it is in the row whose White move leads to `white` or after it;
@@ -185,4 +214,14 @@ const styles = StyleSheet.create({
     outlineOffset: 1,
   },
   san: { fontFamily: fonts.mono, fontSize: 15 },
+  // Where the badge will go, a little inside its disc.
+  ring: {
+    width: BADGE_SIZE - 2,
+    height: BADGE_SIZE - 2,
+    margin: 1,
+    borderRadius: BADGE_SIZE,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    opacity: 0.7,
+  },
 });
