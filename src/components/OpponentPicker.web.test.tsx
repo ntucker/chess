@@ -269,11 +269,12 @@ describe('OpponentPicker', () => {
   it('closes on a second press of the rating, without opening again', async () => {
     act(() => trigger().click());
     await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    // A press on the rating is left to its own toggle, not taken as one outside the list.
     act(() => {
-      // A press on the rating is left to its own toggle, not taken as one outside the list.
       trigger().dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
-      trigger().click();
     });
+    expect(list()).not.toBeNull();
+    act(() => trigger().click());
     expect(list()).toBeNull();
   });
 
