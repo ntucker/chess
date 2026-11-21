@@ -760,6 +760,18 @@ describe('checkLesson', () => {
   });
 
   it.each([
+    'This transposes into the Classical Defense, covered in chapter four.',
+    'According to the study, Black cannot stop the mate.',
+    'Save it with the heart button.',
+  ])('refuses a note pointing to the study it came from: %s', (text) => {
+    expect(noteProblems(text)).toEqual([
+      { path: notePath, message: 'points to the study it came from' },
+    ]);
+  });
+
+  it.each([
+    'This reaches a position you already know.',
+    'Your study of the centre pays off: d5 is strong.',
     'This is a blunder: after 7.Nxe5 Bxd1 8.Bb5+ White comes out ahead.',
     'Against Ng3, develop with e6 and Be7, castle, then play b6, Bb7 and break with c5.',
     'Avoid.',

@@ -886,11 +886,12 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         maxPages: 60,
       },
       {
-        // White's Italian, reworded for Black.
+        // White's Italian, reworded for Black. Named from 4.b4: its Evans Gambit chapter starts
+        // after 3...Bc5, and the Wikibooks root above names the Giuoco Piano.
         ...LENIN_ITALIAN,
         writtenFor: 'white',
         ...onlyChapters(LENIN_ITALIAN_CHAPTERS),
-        namedFrom: 5,
+        namedFrom: 7,
       },
       {
         // The Evans Gambit (4.b4), White's view, reworded for Black.
@@ -899,7 +900,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         // The theory chapters, not the master game.
         chapters: (title: string) => title !== 'Garry Kasparov vs Viswanathan Anand 1995',
         chapterName: () => 'Italian: Giuoco Piano: Evans Gambit',
-        namedFrom: 5,
+        namedFrom: 7,
       },
       {
         root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bb5/3...Bc5',
