@@ -15,15 +15,15 @@ import { readStorage, storageKey, subscribeStorage, writeStorage } from '@/conte
 import {
   DEFAULT_SETTINGS,
   parseSettings,
+  SETTINGS_KEY,
   settingsFrom,
   type Settings,
   type SettingsAction,
   settingsReducer,
 } from './settings';
 
-const KEY = storageKey('settings');
 // Before the settings were one object, the evaluation bar's engine was saved
-// alone under this key; it is read while nothing is saved under KEY.
+// alone under this key; it is read while nothing is saved under SETTINGS_KEY.
 const LEGACY_EVALUATION_ENGINE_KEY = storageKey('evaluationEngine');
 
 // Native has no pre-rendered page to match, so its first frame can show the
@@ -62,7 +62,7 @@ export function SettingsProvider({ children }: { readonly children: ReactNode })
   useLayoutEffect(() => {
     if (NATIVE) return;
     load();
-    return subscribeStorage(KEY, load);
+    return subscribeStorage(SETTINGS_KEY, load);
   }, []);
 
   useEffect(() => {
@@ -72,7 +72,7 @@ export function SettingsProvider({ children }: { readonly children: ReactNode })
     // fire the other's load and write forever. DEFAULT_SETTINGS means nothing
     // was chosen or remembered yet. Any choice, even of the same values, is a
     // new object.
-    if (!UNCHOSEN.has(settings)) writeStorage(KEY, JSON.stringify(settings));
+    if (!UNCHOSEN.has(settings)) writeStorage(SETTINGS_KEY, JSON.stringify(settings));
   }, [settings]);
 
   return (
@@ -99,7 +99,7 @@ function loadSettings(): Settings | undefined {
 }
 
 function readSettings(): Settings | undefined {
-  const stored = readStorage(KEY);
+  const stored = readStorage(SETTINGS_KEY);
   if (stored != null) return parseSettings(stored);
   const evaluationEngine = readStorage(LEGACY_EVALUATION_ENGINE_KEY);
   return evaluationEngine == null ? undefined : settingsFrom({ evaluationEngine });

@@ -14,7 +14,7 @@ jest.mock('@reactive/silk-native', () => ({
   Stack: jest.requireActual<typeof import('react-native')>('react-native').View,
 }));
 jest.mock('@/components/Header', () => ({ Header: () => null }));
-jest.mock('@/theme/theme', () => ({ spotlight: {} }));
+jest.mock('@/theme/shownTheme', () => ({ useSchemeColors: () => ({ spotlight: 'none' }) }));
 
 let root: Root | undefined;
 afterEach(() => {

@@ -1,7 +1,10 @@
-import { parseStoredObject } from '@/context/storage';
+import { parseStoredObject, storageKey } from '@/context/storage';
 import { EVALUATION_ENGINES, type EvaluationEngine } from '@/evaluation/evaluation';
 import { type Color, COLORS } from '@/game/replay';
 import { type Opponent, OPPONENTS } from '@/opponent/opponent';
+
+/** The key the settings are saved under. */
+export const SETTINGS_KEY = storageKey('settings');
 
 export const THEMES = ['system', 'light', 'dark'] as const;
 export type Theme = (typeof THEMES)[number];
