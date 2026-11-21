@@ -20,6 +20,8 @@ const CHOICES: Record<Theme, { label: string; icon: ComponentProps<typeof Ionico
 };
 
 const ICON_SIZE = 19;
+/** The open choices' border width. */
+const BORDER = 1;
 /** How long a finger rests on the button before the choices open under it: Android's long press. */
 const HOLD_MS = 400;
 const MOTION = springMotion(springs.snappy);
@@ -162,21 +164,23 @@ const STYLES = narrowStyles((px) => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Over the button, growing leftward from its right edge.
+  // Over the button, growing leftward from its right edge. The border sits
+  // outside the slots, so each slot is a whole button and the last one
+  // covers the button exactly.
   choices: {
     position: 'absolute',
-    top: 0,
-    right: 0,
-    height: px(HEADER_BUTTON_SIZE),
+    top: -BORDER,
+    right: -BORDER,
+    height: px(HEADER_BUTTON_SIZE.plus(2 * BORDER)),
     flexDirection: 'row',
     justifyContent: 'flex-end',
     overflow: 'hidden',
     borderRadius: 999,
-    borderWidth: 1,
+    borderWidth: BORDER,
     shadowColor: '#000',
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
   },
-  open: { width: px(HEADER_BUTTON_SIZE.times(THEMES.length)), opacity: 1 },
-  shut: { width: px(HEADER_BUTTON_SIZE), opacity: 0 },
+  open: { width: px(HEADER_BUTTON_SIZE.times(THEMES.length).plus(2 * BORDER)), opacity: 1 },
+  shut: { width: px(HEADER_BUTTON_SIZE.plus(2 * BORDER)), opacity: 0 },
 }));
