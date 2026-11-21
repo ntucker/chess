@@ -73,7 +73,11 @@ describe('Header', () => {
   });
 
   it('puts the settings button in the source link’s place on a narrow page', () => {
-    expect(buttonParts({ onSettings: () => {} })).toEqual({
+    expect(
+      buttonParts({
+        narrowButton: { icon: 'settings-outline', label: 'Settings', onPress: () => {} },
+      }),
+    ).toEqual({
       'Source code on GitHub': 'wide-only',
       Settings: 'narrow-only',
     });

@@ -18,11 +18,12 @@ interface Props extends Omit<ComponentProps<typeof Scoresheet>, 'fill'> {
 }
 
 /**
- * The scoresheet of a narrow page, opened from the move stepper: it takes
- * the panel's place under the board, so the board stays in view while the
- * learner taps through the moves, and stays open until closed. Its head holds
- * the jumps to the first and latest move, which the stepper leaves out there.
- * Shown while mounted, on a narrow page only.
+ * The scoresheet of a narrow page, opened from the move stepper (the lesson)
+ * or the header (the review): it takes the panel's place under the board,
+ * so the board stays in view while the learner taps through the moves, and
+ * stays open until closed. Its head holds the jumps to the first and latest
+ * move, which the stepper leaves out there. Shown while mounted, on a narrow
+ * page only.
  */
 export function ScoresheetDrawer({ onClose, ...scoresheet }: Props) {
   const { plies, ply, onGoto } = scoresheet;

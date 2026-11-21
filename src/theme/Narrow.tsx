@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { ScrollView, type StyleProp, type TextStyle, View, type ViewStyle } from 'react-native';
 import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { NARROW_PAGE_MIN, SIDE_BY_SIDE_MIN } from '@/theme/sideBySide';
+import { narrowPageMin, SIDE_BY_SIDE_MIN } from '@/theme/sideBySide';
 import {
   NARROW_CSS_LOADS,
   NARROW_PX,
@@ -85,9 +85,15 @@ function partProps(
  * Children only a narrow page shows. They stay mounted on a wide page,
  * hidden, so a window crossing the width keeps their state.
  */
-export function NarrowOnly({ children }: { readonly children: ReactNode }) {
+export function NarrowOnly({
+  children,
+  style,
+}: {
+  readonly children: ReactNode;
+  readonly style?: StyleProp<ViewStyle>;
+}) {
   const part = useNarrowPart();
-  return <View {...part('narrow-only')}>{children}</View>;
+  return <View {...part('narrow-only', style)}>{children}</View>;
 }
 
 /**
@@ -138,18 +144,18 @@ export const useNarrowViewport: () => { readonly px: Px; readonly height: number
 /**
  * Off the web, a narrow page's height: the app's, less its system bars, or
  * what the board at its smallest and the panel at its reserve need, if more
- * (the page then scrolls). A definite height, so the panel below the board
+ * (the page then scrolls), with any controls fixed under the panel (`foot`). A definite height, so the panel below the board
  * gets what the board leaves: Yoga ignores a zero flex basis in a scroll
  * view's content otherwise. None on a wide page, which grows to its
  * content, or on the web, where narrow.css's `min-height: 100dvh` does it.
  */
-export const useNarrowPageHeight: () => number | undefined = NARROW_CSS_LOADS
+export const useNarrowPageHeight: (foot?: boolean) => number | undefined = NARROW_CSS_LOADS
   ? () => undefined
   : useNativePageHeight;
 
-function useNativePageHeight() {
+function useNativePageHeight(foot = false) {
   const { width, height } = useNativeArea();
-  return width < SIDE_BY_SIDE_MIN ? Math.max(height, NARROW_PAGE_MIN) : undefined;
+  return width < SIDE_BY_SIDE_MIN ? Math.max(height, narrowPageMin(foot)) : undefined;
 }
 
 function useNativeViewport() {

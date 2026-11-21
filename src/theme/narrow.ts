@@ -42,7 +42,7 @@ export const NARROW_PX = {
   'headline-size': 20,
   /** Space between the board column and the panel below it (Stage.tsx). */
   'wrapped-gap': 12,
-  /** Space between the panel's sections (LessonScreen.tsx)... */
+  /** Space between the panel's sections (Eyebrow.tsx)... */
   'section-gap': 12,
   /** ...and between a section's label and what it labels (Eyebrow.tsx). */
   'label-gap': 6,
@@ -53,6 +53,8 @@ export const NARROW_PX = {
   'board-min': 300,
   /** ...to leave this much for the panel (a label and a couple of moves) and the gap above it. */
   'panel-reserve': 172,
+  /** The review's actions fixed under its panel (Stage.tsx), a thumb's height, and the gap above them. */
+  'program-foot': 60,
   /** A candidate row's compact spacing, in its narrow pane (CandidateList.tsx). */
   'candidate-gap': 8,
   'candidate-inset': 10,
@@ -80,7 +82,7 @@ export const NARROW_PARTS = [
   'board-column',
   'program',
   'player-names',
-  'lesson-panel',
+  'drawer-panel',
   'lesson-body',
   'scoresheet-drawer',
   'panes',
@@ -267,7 +269,7 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
     },
   },
   'player-names': { narrow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 } },
-  'lesson-panel': { narrow: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' } },
+  'drawer-panel': { narrow: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' } },
   'lesson-body': { narrow: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' } },
   'scoresheet-drawer': {
     wide: { display: 'none' },
@@ -342,7 +344,7 @@ export const CSS_ONLY: Readonly<Partial<Record<NarrowPartName, readonly string[]
   ],
   // Natively the panel grows in its scroll view's content, which already fills the
   // program; a percentage there adds the fade's padding again, so the panel scrolled by it.
-  'lesson-panel': ['min-height: 100%'],
+  'drawer-panel': ['min-height: 100%'],
   // Natively the panes' floor is their height instead (`NATIVE_ONLY`).
   panes: ['height: 0'],
   // `NarrowScroll` scrolls these natively, with a fading edge and the same padding.

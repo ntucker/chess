@@ -16,7 +16,10 @@ interface Props extends Pick<
   | 'onPress'
   | 'onLongPress'
   | 'delayLongPress'
+  | 'accessibilityState'
 > {
+  /** Whether what the button opens is open (`a11yState`'s web alias of `accessibilityState`). */
+  readonly 'aria-expanded'?: boolean;
   readonly ref?: Ref<ComponentRef<typeof View>>;
   readonly icon: ComponentProps<typeof Ionicons>['name'];
   readonly iconSize: number;

@@ -11,7 +11,7 @@ import {
   useNarrowStyles,
   useNarrowViewport,
 } from '@/theme/Narrow';
-import { NARROW_PAGE_MIN } from '@/theme/sideBySide';
+import { narrowPageMin } from '@/theme/sideBySide';
 
 // Jest can't load a stylesheet.
 jest.mock('@/theme/narrow.css', () => ({}));
@@ -20,7 +20,8 @@ const STYLES = narrowStyles((px) => ({
   bar: { height: px(narrowLength('names-bar-height', 60)) },
 }));
 
-let seen: { height: unknown; part: unknown; viewport: unknown; page: unknown } | undefined;
+let seen:
+  { height: unknown; part: unknown; viewport: unknown; page: unknown; footed: unknown } | undefined;
 let mounts = 0;
 
 function Probe() {
@@ -28,8 +29,15 @@ function Probe() {
   const part = useNarrowPart();
   const viewport = useNarrowViewport();
   const page = useNarrowPageHeight();
+  const footed = useNarrowPageHeight(true);
   useLayoutEffect(() => {
-    seen = { height: bar.height, part: part('panes').style, viewport: viewport?.height, page };
+    seen = {
+      height: bar.height,
+      part: part('panes').style,
+      viewport: viewport?.height,
+      page,
+      footed,
+    };
   });
   return null;
 }
@@ -96,7 +104,9 @@ describe('a native page', () => {
     await render(360, 1000);
     expect(seen?.page).toBe(1000 - 24 - 16);
     await render(360, 500);
-    expect(seen?.page).toBe(NARROW_PAGE_MIN);
+    expect(seen?.page).toBe(narrowPageMin());
+    // Controls fixed under the panel raise the floor by their height.
+    expect(seen?.footed).toBe(narrowPageMin() + NARROW_PX['program-foot']);
     await render(800);
     expect(seen?.page).toBeUndefined();
   });

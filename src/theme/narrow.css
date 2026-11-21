@@ -7,7 +7,7 @@
  * applies: each length falls back to the wide value written beside it in
  * code, and each part keeps its wide layout. The one exception is the rule
  * just below, which keeps narrow-only parts, the header's place and the
- * lesson's scoresheet drawer hidden outside the media query.
+ * scoresheet drawer hidden outside the media query.
  */
 :root [data-narrow='narrow-only'],
 :root [data-narrow='place'],
@@ -40,6 +40,7 @@
     --label-gap: 6px;
     --board-min: 300px;
     --panel-reserve: 172px;
+    --program-foot: 60px;
     --candidate-gap: 8px;
     --candidate-inset: 10px;
     --candidate-padding: 6px;
@@ -97,13 +98,14 @@
     gap: 8px;
   }
   /*
-   * The lesson's panel (LessonScreen.tsx) fills the space under the board, and
-   * its moves and its idea share that space side by side, the list's rows and
-   * the idea each scrolling on their own, so neither pushes the other out of
-   * view. Should the panel's other parts (a trap's card) crowd them, the panes
-   * keep a floor and the panel scrolls instead.
+   * A panel that a scoresheet drawer can fill (the lesson's and the
+   * review's) fills the space under the board. The lesson's moves and its
+   * idea share that space side by side, the list's rows and the idea each
+   * scrolling on their own, so neither pushes the other out of view. Should
+   * the panel's other parts (a trap's card) crowd them, the panes keep a
+   * floor and the panel scrolls instead.
    */
-  :root [data-narrow='lesson-panel'] {
+  :root [data-narrow='drawer-panel'] {
     flex: 1 0 auto;
     min-height: 100%;
   }

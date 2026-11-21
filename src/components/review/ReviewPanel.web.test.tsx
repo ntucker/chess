@@ -11,12 +11,15 @@ import { reviewMoves } from '@/review/review';
 import { listing } from '@/review/review.fixture';
 import { themes } from '@/theme/theme';
 
+import { ReviewActionBar } from './ReviewActions';
 import { ReviewPanel, type ReviewView } from './ReviewPanel';
 
 // Its react-native-svg needs Expo's asset registry, which the web preset doesn't resolve.
 jest.mock('@/components/QualityBadge', () => ({ QualityBadge: () => null }));
 // Its font needs Expo's asset registry too.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
+// The scoresheet drawer's Escape listens only on the focused screen, as this one is.
+jest.mock('expo-router', () => ({ useIsFocused: () => true }));
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -51,18 +54,16 @@ function review(ply: number, searched: readonly number[], overrides: Partial<Rev
   } satisfies ReviewView;
 }
 
-/** Renders the panel, and reads its host with `read`. */
-function render<T>(view: ReviewView, read: (host: HTMLElement) => T) {
+/** Renders the panel (or `ui`), and reads its host with `read`. */
+function render<T>(
+  view: ReviewView,
+  read: (host: HTMLElement) => T,
+  ui = <ReviewPanel eyebrow="Review" learner="black" review={view} />,
+) {
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
-  act(() =>
-    root.render(
-      <SilkProvider theme={themes.dark}>
-        <ReviewPanel eyebrow="Review" learner="black" review={view} />
-      </SilkProvider>,
-    ),
-  );
+  act(() => root.render(<SilkProvider theme={themes.dark}>{ui}</SilkProvider>));
   const result = read(host);
   act(() => root.unmount());
   host.remove();
@@ -127,5 +128,42 @@ describe('ReviewPanel', () => {
     render(review(3, [0, 1, 2, 3]), (host) => {
       expect(button(host, /Next moment/)?.getAttribute('aria-disabled')).toBe('true');
     });
+  });
+
+  it("opens a narrow page's scoresheet in a drawer, which closes again", () => {
+    const view = review(2, [0, 1, 2, 3]);
+    const onClose = jest.fn();
+    render(
+      view,
+      (host) => {
+        expect(host.querySelector('[role="region"][aria-label="Scoresheet"]')).not.toBeNull();
+        act(() => button(host, /Close the scoresheet/)!.click());
+        expect(onClose).toHaveBeenCalled();
+      },
+      <ReviewPanel eyebrow="Review" learner="black" review={view} drawer={{ onClose }} />,
+    );
+    render(view, (host) => {
+      expect(host.querySelector('[role="region"]')).toBeNull();
+    });
+  });
+});
+
+describe('ReviewActionBar', () => {
+  it('names its three actions, and goes to the next moment', () => {
+    const goto = jest.fn();
+    const view = review(1, [0, 1, 2, 3], { nextMoment: 2, goto });
+    render(
+      view,
+      (host) => {
+        expect(host.querySelector('[role="toolbar"]')?.getAttribute('aria-label')).toBe(
+          'Review actions',
+        );
+        expect(button(host, /^Retry/)?.getAttribute('aria-disabled')).toBe('true');
+        expect(button(host, /^Show best/)?.getAttribute('aria-disabled')).toBe('true');
+        act(() => button(host, /^Next moment$/)!.click());
+        expect(goto).toHaveBeenCalledWith(2);
+      },
+      <ReviewActionBar ply={view.ply} nextMoment={view.nextMoment} goto={view.goto} />,
+    );
   });
 });

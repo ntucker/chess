@@ -1,6 +1,6 @@
 import { Surface, useTheme } from '@reactive/silk-native';
 import { type ComponentProps, type ReactNode, useState } from 'react';
-import { View } from 'react-native';
+import { type StyleProp, View, type ViewStyle } from 'react-native';
 
 import { asideAfter, type CardAside } from '@/board/cardAside';
 import { gameEnding } from '@/game/ending';
@@ -13,13 +13,14 @@ import { Page } from '@/components/Page';
 import { PlayerBar } from '@/components/PlayerBar';
 import {
   BOARD_COLUMN_GAP,
-  BOARD_COLUMN_LIMIT_CSS,
   BOARD_COLUMN_MAX,
   BOARD_COLUMN_WIDTH,
   BOARD_OFFSET,
   boardColumnLimit,
+  boardColumnLimitCss,
   PLAYER_BAR_HEIGHT,
   PLAYER_DISC,
+  PROGRAM_FOOT,
   PROGRAM_WIDTH,
   STAGE_GAP,
 } from '@/theme/sideBySide';
@@ -29,7 +30,13 @@ import type { EvaluationEngine } from '@/evaluation/evaluation';
 import { colorName, opposite } from '@/game/replay';
 import type { Game } from '@/game/useGame';
 import { narrowLength, narrowStyles } from '@/theme/narrow';
-import { NarrowScroll, useNarrowPart, useNarrowStyles, useNarrowViewport } from '@/theme/Narrow';
+import {
+  NarrowOnly,
+  NarrowScroll,
+  useNarrowPart,
+  useNarrowStyles,
+  useNarrowViewport,
+} from '@/theme/Narrow';
 
 interface StageProps {
   /** The browser tab's title; none leaves it as it is. */
@@ -42,6 +49,8 @@ interface StageProps {
   readonly program: ReactNode;
   /** Small print across the foot of a wide page, under the board and the panel (`Page`). */
   readonly footer?: ReactNode;
+  /** On a narrow page, controls fixed under the panel at the screen's foot, such as the review's actions. */
+  readonly programFoot?: ReactNode;
 }
 
 /**
@@ -50,17 +59,34 @@ interface StageProps {
  * way. On a narrow page the panel goes below the board and scrolls on its
  * own, so the board stays in view.
  */
-export function Stage({ title, header, board, program, footer }: StageProps) {
+export function Stage({ title, header, board, program, footer, programFoot }: StageProps) {
   const styles = useNarrowStyles(STYLES);
   const part = useNarrowPart();
-  const fit = useBoardFit();
+  const foot = Boolean(programFoot);
+  const fit = useBoardFit(foot);
   return (
-    <Page title={title} header={header} maxWidth={STAGE_MAX} fillsWindow footer={footer}>
+    <Page
+      title={title}
+      header={header}
+      maxWidth={STAGE_MAX}
+      fillsWindow
+      fixedFoot={foot}
+      footer={footer}
+    >
       <View {...part('stage', styles.stage)}>
-        <View {...part('board-column', [styles.boardColumn, fit])}>{board}</View>
+        <View
+          {...part('board-column', [
+            styles.boardColumn,
+            foot ? styles.footLimit : styles.limit,
+            fit,
+          ])}
+        >
+          {board}
+        </View>
         <NarrowScroll part="program" style={styles.program}>
           {program}
         </NarrowScroll>
+        {programFoot ? <NarrowOnly style={styles.programFoot}>{programFoot}</NarrowOnly> : null}
       </View>
     </Page>
   );
@@ -88,6 +114,12 @@ interface BoardColumnProps {
   readonly stepperMiddle?: ReactNode;
   /** The evaluation bar shows only this engine's analyses in the store (`EvaluationBar`'s `reads`). */
   readonly evaluationReads?: EvaluationEngine;
+  /**
+   * On a narrow page, what stands in for the name bars above and below the
+   * board, in their heights: the review's one bar of both players, and its
+   * stepper.
+   */
+  readonly narrowBars?: { readonly names: ReactNode; readonly controls: ReactNode };
 }
 
 /**
@@ -103,6 +135,7 @@ export function BoardColumn({
   onSwap,
   stepperMiddle,
   evaluationReads,
+  narrowBars,
 }: BoardColumnProps) {
   const { moves, ply, goto } = game;
   const side = board.orientation;
@@ -110,6 +143,17 @@ export function BoardColumn({
   useStepKeys(ply, moves.length, goto);
   const swap = onSwap && { label: `Play as ${colorName(other)}`, onPress: onSwap };
   const styles = useNarrowStyles(STYLES);
+  const part = useNarrowPart();
+  /** A name bar, or with `narrowBars` the bar on a wide page and its stand-in on a narrow one. */
+  const bar = (wide: ReactNode, narrow: ReactNode, style: StyleProp<ViewStyle>) =>
+    narrowBars ? (
+      <>
+        <View {...part('wide-only')}>{wide}</View>
+        <NarrowOnly style={style}>{narrow}</NarrowOnly>
+      </>
+    ) : (
+      wide
+    );
   // Only the game's last position has a result, so stepping back from it puts
   // the ending away; so does a lesson's idea playing back over it on the board.
   const ending = board.fen === game.current.fen ? gameEnding(game.current, side) : undefined;
@@ -121,15 +165,19 @@ export function BoardColumn({
   if (aside && aside.at !== endingFen) setAside(undefined);
   return (
     <>
-      <PlayerBar
-        {...rival}
-        style={styles.namesBar}
-        color={other}
-        toMove={game.toMove === other}
-        thinking={game.thinking}
-        material={game.material[other]}
-        swap={swap}
-      />
+      {bar(
+        <PlayerBar
+          {...rival}
+          style={styles.namesBar}
+          color={other}
+          toMove={game.toMove === other}
+          thinking={game.thinking}
+          material={game.material[other]}
+          swap={swap}
+        />,
+        narrowBars?.names,
+        styles.namesBar,
+      )}
       <View style={styles.boardRow}>
         <EvaluationBar
           line={moves.slice(0, ply)}
@@ -160,17 +208,21 @@ export function BoardColumn({
           ) : null}
         </BoardFrame>
       </View>
-      <PlayerBar
-        name="You"
-        detail={colorName(side)}
-        style={styles.controlsBar}
-        color={side}
-        toMove={game.toMove === side}
-        material={game.material[side]}
-        swap={swap}
-      >
-        <Transport ply={ply} total={moves.length} onGoto={goto} middle={stepperMiddle} />
-      </PlayerBar>
+      {bar(
+        <PlayerBar
+          name="You"
+          detail={colorName(side)}
+          style={styles.controlsBar}
+          color={side}
+          toMove={game.toMove === side}
+          material={game.material[side]}
+          swap={swap}
+        >
+          <Transport ply={ply} total={moves.length} onGoto={goto} middle={stepperMiddle} />
+        </PlayerBar>,
+        narrowBars?.controls,
+        styles.controlsBar,
+      )}
     </>
   );
 }
@@ -216,9 +268,9 @@ const PROGRAM_MAX = 400;
 /** Wide enough for the board and the program at their largest: the header's width on every page. */
 export const STAGE_MAX = BOARD_COLUMN_MAX + STAGE_GAP + PROGRAM_MAX;
 /** The board column's width limit off the web, from the window's height; on the web, none to add. */
-function useBoardFit() {
+function useBoardFit(foot: boolean) {
   const viewport = useNarrowViewport();
-  return viewport && { maxWidth: boardColumnLimit(viewport.height, viewport.px) };
+  return viewport && { maxWidth: boardColumnLimit(viewport.height, viewport.px, foot) };
 }
 /** Space above the program when it sits below the board. */
 const WRAPPED_GAP = narrowLength('wrapped-gap', 32);
@@ -250,10 +302,12 @@ const STYLES = narrowStyles((px) => ({
     flexGrow: 1,
     flexShrink: 1,
     width: BOARD_COLUMN_WIDTH,
-    maxWidth: BOARD_COLUMN_LIMIT_CSS,
     marginTop: px(COLUMN_RAISE.times(-1)),
     gap: BOARD_COLUMN_GAP,
   },
+  // Its width limit, which keeps room under it for the panel, and for any controls fixed under that.
+  limit: { maxWidth: boardColumnLimitCss(false) },
+  footLimit: { maxWidth: boardColumnLimitCss(true) },
   namesBar: { height: px(PLAYER_BAR_HEIGHT.names) },
   controlsBar: { height: px(PLAYER_BAR_HEIGHT.controls) },
   // The evaluation bar sits in the column of the players' discs, between
@@ -272,4 +326,6 @@ const STYLES = narrowStyles((px) => ({
     maxWidth: PROGRAM_MAX,
     marginTop: px(WRAPPED_GAP),
   },
+  // The gap above is the foot's own: PROGRAM_FOOT is the two together.
+  programFoot: { width: '100%', height: px(PROGRAM_FOOT), paddingTop: px(WRAPPED_GAP) },
 }));

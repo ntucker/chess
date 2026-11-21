@@ -1,20 +1,20 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { Button, Separator, Stack } from '@reactive/silk-native';
-import type { ComponentProps } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Separator, Stack } from '@reactive/silk-native';
+import { View } from 'react-native';
 
-import { Eyebrow, useLabelled } from '@/components/Eyebrow';
+import { Eyebrow, useLabelled, useSections } from '@/components/Eyebrow';
 import { StatusHeadline } from '@/components/GameStatus';
+import { ScoresheetDrawer } from '@/components/lesson/ScoresheetDrawer';
 import { Scoresheet } from '@/components/Scoresheet';
-import { Tip } from '@/components/Tip';
 import type { Analysis } from '@/evaluation/evaluation';
 import { type Color, numberedMove } from '@/game/replay';
 import { compareMove } from '@/review/comparison';
 import type { ReviewMove } from '@/review/review';
 import type { Review } from '@/review/useReview';
+import { useNarrowPart } from '@/theme/Narrow';
 import { qualityLooks } from '@/theme/moveQuality';
 
 import { MoveCard } from './MoveCard';
+import { ReviewActions } from './ReviewActions';
 
 /** What the panel shows of a review (`useReview`); any analyses will do, so the gallery can make them up. */
 export type ReviewView = { readonly analyses: readonly (Analysis | undefined)[] } & Pick<
@@ -28,72 +28,58 @@ interface Props {
   /** The learner's side. */
   readonly learner: Color;
   readonly review: ReviewView;
+  /** On a narrow page, the scoresheet drawer while it's open (from the header), covering the headline and the move card. */
+  readonly drawer?: { readonly onClose: () => void };
 }
 
 /**
  * The review's panel beside the board: the headline, the move card for the
  * move shown, the three actions, and the scoresheet. At the start position,
- * before any move, the headline speaks for the whole game.
+ * before any move, the headline speaks for the whole game. A narrow page
+ * draws the headline as one line under the header, which names the place,
+ * keeps the actions in a bar at the screen's foot (`ReviewActionBar`), and
+ * opens the scoresheet in a drawer.
  */
-export function ReviewPanel({ eyebrow, learner, review }: Props) {
+export function ReviewPanel({ eyebrow, learner, review, drawer }: Props) {
+  const part = useNarrowPart();
   const labelled = useLabelled();
+  const sections = useSections();
   const { plies, ply, moves, analyses, pointed, nextMoment, goto, point } = review;
   const move = ply > 0 ? moves[ply - 1] : undefined;
+  const scoresheet = {
+    plies,
+    marks: moves.map((move) => (move.quality === undefined ? move.status : move.quality)),
+    ply,
+    onGoto: goto,
+  };
   return (
-    <Stack gap="5">
-      <StatusHeadline eyebrow={eyebrow} {...reviewHeadline(review)} />
-      {move ? (
-        <MoveCard
-          whose={move.mover === learner ? 'yours' : 'theirs'}
-          // A book move is the guide's: no other moves, and no changes beside its badge.
-          comparison={compareMove(plies, move.status === 'book' ? [] : analyses, ply, learner)}
-          quality={move.quality}
-          qualityDetail={lossDetail(move)}
-          pointed={pointed}
-          onPoint={point}
-        />
-      ) : null}
-      <View style={styles.actions}>
-        {/* Retry and Show best come with retrying a moment; until then they do nothing. */}
-        <ActionIcon icon="refresh" label="Retry: play this move again" />
-        <ActionIcon icon="bulb-outline" label="Show best: Stockfish's best move here" />
-        <View style={styles.spacer} />
-        <Button
-          disabled={nextMoment === undefined}
-          onPress={() => nextMoment !== undefined && goto(nextMoment)}
-        >
-          {ply === 0 ? 'First moment ' : 'Next moment '}
-          <Ionicons name="arrow-forward" size={15} />
-        </Button>
+    <Stack {...part('drawer-panel', sections)}>
+      {/* The drawer covers the rest, on a phone's short page all the room it can get. */}
+      <View {...part(drawer && 'wide-only', sections)}>
+        <StatusHeadline eyebrow={eyebrow} eyebrowInHeader news="all" {...reviewHeadline(review)} />
+        {move ? (
+          <MoveCard
+            whose={move.mover === learner ? 'yours' : 'theirs'}
+            // A book move is the guide's: no other moves, and no changes beside its badge.
+            comparison={compareMove(plies, move.status === 'book' ? [] : analyses, ply, learner)}
+            quality={move.quality}
+            qualityDetail={lossDetail(move)}
+            pointed={pointed}
+            onPoint={point}
+          />
+        ) : null}
       </View>
-      <Separator />
-      <Stack style={labelled}>
-        <Eyebrow>Scoresheet</Eyebrow>
-        <Scoresheet
-          plies={plies}
-          marks={moves.map((move) => (move.quality === undefined ? move.status : move.quality))}
-          ply={ply}
-          onGoto={goto}
-        />
+      {drawer ? <ScoresheetDrawer {...scoresheet} onClose={drawer.onClose} /> : null}
+      {/* This scoresheet stays while the drawer is open, so a window widened meanwhile still shows one. */}
+      <Stack {...part('wide-only', sections)}>
+        <ReviewActions ply={ply} nextMoment={nextMoment} goto={goto} />
+        <Separator />
+        <Stack style={labelled}>
+          <Eyebrow>Scoresheet</Eyebrow>
+          <Scoresheet {...scoresheet} />
+        </Stack>
       </Stack>
     </Stack>
-  );
-}
-
-/** An action as an icon, named by its tooltip and to screen readers; none works yet, so focus lands on the tip. */
-function ActionIcon({
-  icon,
-  label,
-}: {
-  readonly icon: ComponentProps<typeof Ionicons>['name'];
-  readonly label: string;
-}) {
-  return (
-    <Tip tip={label} focusable>
-      <Button variant="outline" disabled accessibilityLabel={label}>
-        <Ionicons name={icon} size={17} />
-      </Button>
-    </Tip>
   );
 }
 
@@ -144,8 +130,3 @@ function lossDetail(move: ReviewMove) {
   const lost = Math.round((move.before - move.after) * 100);
   return lost > 0 ? `Here: ${lost}%.` : undefined;
 }
-
-const styles = StyleSheet.create({
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  spacer: { flexGrow: 1 },
-});
