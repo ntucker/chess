@@ -2,6 +2,7 @@ import { type Controller, useController } from '@data-client/react';
 import { Endpoint } from '@data-client/rest';
 import { useEffect } from 'react';
 
+import type { Analysis } from '@/evaluation/evaluation';
 import type { GameOpponent } from '@/game/game';
 import { isStockfish, type Opponent } from '@/opponent/opponent';
 import { fullStockfish } from '@/stockfish/engine';
@@ -37,7 +38,12 @@ export async function fetchOpponentMove(
 ): Promise<string> {
   if (opponent === 'stockfish-full') return ctrl.fetchIfStale(getFullStockfishMove, line);
   if (opponent !== 'stockfish') return ctrl.fetchIfStale(getMaiaMove, opponent, line);
-  const best = (await ctrl.fetchIfStale(getAnalysis, 'stockfish', line)).lines[0]?.uci;
+  return bestMove(await ctrl.fetchIfStale(getAnalysis, 'stockfish', line));
+}
+
+/** The first line's move of Stockfish's final analysis. */
+function bestMove({ lines }: Analysis): string {
+  const best = lines[0]?.uci;
   if (!best) throw new Error('Stockfish found no move');
   return best;
 }
@@ -48,11 +54,7 @@ export async function fetchOpponentMove(
  * failure goes stale at once so the next ask tries again.
  */
 export const getFullStockfishMove = new Endpoint(
-  async (line: readonly string[]) => {
-    const best = (await fullStockfish.analysis(line)).lines[0]?.uci;
-    if (!best) throw new Error('Stockfish found no move');
-    return best;
-  },
+  async (line: readonly string[]) => bestMove(await fullStockfish.analysis(line)),
   { name: 'getFullStockfishMove', dataExpiryLength: Infinity, errorExpiryLength: 0 },
 );
 

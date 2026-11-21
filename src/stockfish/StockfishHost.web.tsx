@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useEffectEvent } from 'react';
 
 import { assetUrl } from '@/files/assetUrl';
+import { fetchOk } from '@/files/fetchOk';
 
 import { type Connection, liteStockfish, type Stockfish } from './engine';
 import { LOADER, WASM } from './files';
@@ -29,6 +30,8 @@ export function useWorkerHost(
   load: (signal: AbortSignal) => Promise<EngineFiles>,
 ) {
   const [running, supervisor] = useRestarts();
+  // The latest `load`, so a new function each render doesn't restart the engine.
+  const loadFiles = useEffectEvent(load);
   useEffect(() => {
     if (!running) return;
     let worker: StockfishWorker | undefined;
@@ -38,7 +41,7 @@ export function useWorkerHost(
     (async () => {
       // Loaded here, not by the worker, so the engine's time to answer
       // (engine.ts) starts once it has its files, however slow the network.
-      const { loader, wasm } = await load(stop.signal);
+      const { loader, wasm } = await loadFiles(stop.signal);
       if (stop.signal.aborted) return;
       worker = startStockfishWorker(
         loader,
@@ -57,21 +60,14 @@ export function useWorkerHost(
       worker?.terminate();
       connection?.detach();
     };
-  }, [running, supervisor, engine, load]);
+  }, [running, supervisor, engine]);
 }
 
 /** Stockfish lite's files, which ship with the app. */
 async function loadLite(signal: AbortSignal): Promise<EngineFiles> {
   const [loader, wasm] = await Promise.all([
-    download(LOADER, signal).then((file) => file.text()),
-    download(WASM, signal).then((file) => file.blob()),
+    fetchOk(assetUrl(LOADER), { signal }).then((file) => file.text()),
+    fetchOk(assetUrl(WASM), { signal }).then((file) => file.blob()),
   ]);
   return { loader, wasm: new Blob([wasm], { type: 'application/wasm' }) };
-}
-
-async function download(asset: number, signal: AbortSignal): Promise<Response> {
-  const url = assetUrl(asset);
-  const response = await fetch(url, { signal });
-  if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
-  return response;
 }

@@ -1,3 +1,4 @@
+import { explainLoadFailure, NewVersionError } from '@/files/newVersion';
 import { useReportFullStockfishDownload } from '@/resources/download';
 
 import { fullStockfish } from './engine';
@@ -25,8 +26,12 @@ export function FullStockfishHost() {
       report(FULL_WASM_BYTES);
       return files;
     } catch (error) {
-      if (!signal.aborted) report(0, true);
-      throw error;
+      if (signal.aborted) throw error;
+      // Its files are named for their Stockfish build, which a newer build
+      // of the site may have replaced.
+      const explained = await explainLoadFailure(error);
+      report(0, explained instanceof NewVersionError ? 'newVersion' : 'retrying');
+      throw explained;
     }
   };
   useWorkerHost(fullStockfish, load);

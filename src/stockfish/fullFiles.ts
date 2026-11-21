@@ -21,7 +21,8 @@ export const FULL_STOCKFISH_MB = Math.round(FULL_WASM_BYTES / 1_000_000);
 
 /**
  * Where Android downloads the files: public/stockfish/ on the live site,
- * which GitHub Pages serves to any origin (CORS). A file's name changes with
- * its Stockfish build, so an app built from another commit finds its own.
+ * which GitHub Pages serves to any origin (CORS). The names carry the
+ * Stockfish build, and the site serves only its own: once it moves to a newer
+ * build, an app built before can't download full Stockfish.
  */
 export const LIVE_FOLDER = 'https://ntucker.github.io/chess/stockfish/';

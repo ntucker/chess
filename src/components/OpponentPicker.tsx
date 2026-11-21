@@ -5,7 +5,8 @@ import { type KeyDownEvent, ScrollView, StyleSheet, View } from 'react-native';
 
 import { hoversControl } from '@/board/pointer';
 import { describeOpponent, type Opponent, OPPONENT_PRESETS, OPPONENTS } from '@/opponent/opponent';
-import { useFullStockfishDownload } from '@/resources/download';
+import { NEW_VERSION } from '@/files/newVersion';
+import { type DownloadFailure, useFullStockfishDownload } from '@/resources/download';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
 import { narrowLength, narrowStyles } from '@/theme/narrow';
 import { useNarrowStyles } from '@/theme/Narrow';
@@ -138,9 +139,15 @@ export function OpponentPicker() {
   );
 }
 
+const FAILURES: Record<DownloadFailure, string> = {
+  retrying: '· download failed, trying again',
+  newVersion: `· ${NEW_VERSION} Reload to download`,
+};
+
 /**
  * How full Stockfish's one download is going, beside its name while it runs
- * ("· downloading 42%"), or that it failed and is tried again.
+ * ("· downloading 42%"), or that it failed and is tried again, or that the
+ * page must reload for it (a newer build of the site replaced its files).
  */
 function FullStockfishProgress() {
   const download = useFullStockfishDownload();
@@ -148,7 +155,7 @@ function FullStockfishProgress() {
   const percent = Math.floor((download.received / download.total) * 100);
   return (
     <Text role="caption" tone="secondary" numberOfLines={1} style={styles.progress}>
-      {download.failed ? '· download failed, trying again' : `· downloading ${percent}%`}
+      {download.failure ? FAILURES[download.failure] : `· downloading ${percent}%`}
     </Text>
   );
 }

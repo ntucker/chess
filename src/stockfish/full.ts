@@ -5,6 +5,8 @@
 // with its Stockfish build. On Android the hidden web view that runs the
 // engine (EngineView) downloads them from the live site and keeps them in
 // its own cache. Uses only the DOM, for that web view.
+import { fetchOk } from '@/files/fetchOk';
+
 import { FULL_LOADER, FULL_WASM, FULL_WASM_BYTES } from './fullFiles';
 
 /** The files a Web Worker starts the engine from (`startStockfishWorker`). */
@@ -30,8 +32,7 @@ export async function loadFullStockfish(
   signal: AbortSignal,
   onProgress: (received: number) => void,
 ): Promise<EngineFiles> {
-  // Missing outside a secure context (http:// other than localhost): download every time.
-  const cache = await globalThis.caches?.open(CACHE);
+  const cache = await openCache();
   const [cachedLoader, cachedWasm] = await Promise.all(
     [FULL_LOADER, FULL_WASM].map((file) => cache?.match(cacheKey(file))),
   );
@@ -43,24 +44,40 @@ export async function loadFullStockfish(
     download(folder, FULL_WASM, signal).then((response) => readWasm(response, onProgress)),
   ]);
   if (cache) {
-    await Promise.all([
-      cache.put(cacheKey(FULL_LOADER), new Response(loader)),
-      cache.put(cacheKey(FULL_WASM), new Response(wasm)),
-    ]);
-    await dropOtherBuilds();
+    // A cache that can't keep them (out of space, say) costs the next visit
+    // a download, not this one its engine.
+    try {
+      await Promise.all([
+        cache.put(cacheKey(FULL_LOADER), new Response(loader)),
+        cache.put(cacheKey(FULL_WASM), new Response(wasm)),
+      ]);
+      await dropOtherBuilds();
+    } catch (error) {
+      console.error(error);
+    }
   }
   return { loader, wasm };
+}
+
+/**
+ * The cache the files are kept in, or undefined where there is none (outside
+ * a secure context, such as http:// other than localhost) or it can't be
+ * opened: then they download every time.
+ */
+async function openCache(): Promise<Cache | undefined> {
+  try {
+    return await globalThis.caches?.open(CACHE);
+  } catch (error) {
+    console.error(error);
+    return undefined;
+  }
 }
 
 /** Where a file is kept in the cache: at the origin's root, whichever page or preview downloaded it. */
 const cacheKey = (file: string) => new URL(`/${CACHE}/${file}`, location.origin).href;
 
-async function download(folder: string, file: string, signal: AbortSignal): Promise<Response> {
-  const url = new URL(file, folder).href;
-  const response = await fetch(url, { signal });
-  if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
-  return response;
-}
+const download = (folder: string, file: string, signal: AbortSignal) =>
+  fetchOk(new URL(file, folder).href, { signal });
 
 /**
  * The WebAssembly from `response`, telling `onProgress` as each whole

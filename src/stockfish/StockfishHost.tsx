@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { readAsset } from '@/files/readAsset';
+import type { DownloadFailure } from '@/resources/download';
 
 import { type Connection, liteStockfish, type Stockfish, type Supervisor } from './engine';
 import EngineView, { type EngineViewRef } from './EngineView';
@@ -29,7 +30,7 @@ interface HostProps {
    */
   readonly full?: {
     readonly folder: string;
-    readonly report: (received: number, failed?: boolean) => void;
+    readonly report: (received: number, failure?: DownloadFailure) => void;
   };
 }
 
@@ -91,10 +92,11 @@ function Engine({ engine, full, supervisor }: HostProps & { readonly supervisor:
   const onLine = (line: string) => connection.current?.receive(line);
   const onError = (message: string) => {
     if (connection.current) return connection.current.fail(message);
-    // Before it started: full Stockfish's files didn't download.
+    // Not attached yet, which only full Stockfish can be (it attaches once
+    // its files arrive): they didn't download, or its worker didn't start.
     if (stopped.current) return;
     console.error(message);
-    full?.report(0, true);
+    full?.report(0, 'retrying');
     supervisor.failed();
   };
   const onStarted = () => {

@@ -28,14 +28,15 @@ const outDir = fileURLToPath(new URL('../assets/stockfish/', import.meta.url));
 const publicDir = fileURLToPath(new URL('../public/stockfish/', import.meta.url));
 mkdirSync(outDir, { recursive: true });
 mkdirSync(publicDir, { recursive: true });
+// Each file the package has, and where it goes.
 const files = {
-  'bin/stockfish-19-lite-single.js': join(outDir, 'stockfish-19-lite-single.js.txt'),
-  'bin/stockfish-19-lite-single.wasm': join(outDir, 'stockfish-19-lite-single.wasm'),
-  'Copying.txt': join(outDir, 'LICENSE'),
+  'bin/stockfish-19-lite-single.js': [join(outDir, 'stockfish-19-lite-single.js.txt')],
+  'bin/stockfish-19-lite-single.wasm': [join(outDir, 'stockfish-19-lite-single.wasm')],
+  'Copying.txt': [join(outDir, 'LICENSE'), join(publicDir, 'LICENSE')],
   // The names src/stockfish/fullFiles.ts gives.
-  'bin/stockfish-19-single.js': join(publicDir, 'stockfish-19-single.js'),
-  'bin/stockfish-19-single.wasm': join(publicDir, 'stockfish-19-single.wasm'),
+  'bin/stockfish-19-single.js': [join(publicDir, 'stockfish-19-single.js')],
+  'bin/stockfish-19-single.wasm': [join(publicDir, 'stockfish-19-single.wasm')],
 };
-for (const [from, to] of Object.entries(files)) copyFileSync(join(pkg, from), to);
-copyFileSync(join(pkg, 'Copying.txt'), join(publicDir, 'LICENSE'));
+for (const [from, to] of Object.entries(files))
+  for (const path of to) copyFileSync(join(pkg, from), path);
 console.log(`Copied Stockfish from ${pkg} to ${outDir} and ${publicDir}`);

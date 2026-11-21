@@ -18,7 +18,7 @@ export const OPPONENTS: readonly Opponent[] = [...MAIA_RATINGS, 'stockfish', 'st
 
 /** Whether `opponent` is Stockfish, which plays its best move rather than a rating's. */
 export const isStockfish = (opponent: Opponent): opponent is StockfishOpponent =>
-  typeof opponent === 'string';
+  opponent === 'stockfish' || opponent === 'stockfish-full';
 
 /** The landmarks on the ladder, named for who plays there. */
 const PRESETS: Partial<Record<Opponent, string>> = {
@@ -41,27 +41,22 @@ export const OPPONENT_PRESETS: readonly Opponent[] = OPPONENTS.filter(
  */
 export function describeOpponent(opponent: Opponent) {
   const preset = PRESETS[opponent];
-  if (opponent === 'stockfish-full')
+  if (!isStockfish(opponent))
     return {
-      name: 'Stockfish',
-      level: 'Full Stockfish',
-      lead: 'Plays like',
+      name: 'Maia',
+      level: String(opponent),
+      lead: 'Plays like a',
       preset,
-      style: `Stockfish's full network, stronger still: a one-time ${FULL_STOCKFISH_MB} MB download.`,
+      style: `Maia plays the way people rated about ${opponent} do.`,
     };
-  return opponent === 'stockfish'
-    ? {
-        name: 'Stockfish',
-        level: 'Stockfish',
-        lead: 'Plays like',
-        preset,
-        style: 'Stockfish plays the move it judges best.',
-      }
-    : {
-        name: 'Maia',
-        level: String(opponent),
-        lead: 'Plays like a',
-        preset,
-        style: `Maia plays the way people rated about ${opponent} do.`,
-      };
+  return { name: 'Stockfish', lead: 'Plays like', preset, ...STOCKFISH[opponent] };
 }
+
+/** How each Stockfish step differs from the other. */
+const STOCKFISH: Record<StockfishOpponent, { level: string; style: string }> = {
+  stockfish: { level: 'Stockfish', style: 'Stockfish plays the move it judges best.' },
+  'stockfish-full': {
+    level: 'Full Stockfish',
+    style: `Stockfish's full network, stronger still: a one-time ${FULL_STOCKFISH_MB} MB download.`,
+  },
+};

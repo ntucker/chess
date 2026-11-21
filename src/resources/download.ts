@@ -14,8 +14,12 @@ export class Download extends Entity {
   readonly received: number = 0;
   /** How many there are in all. */
   readonly total: number = 0;
-  /** The last try failed; the host tries again. */
-  readonly failed: boolean = false;
+  /**
+   * Why the last try failed, if it did: the host tries again, but files a
+   * newer build of the site replaced won't come back until the page reloads
+   * (`NewVersionError`).
+   */
+  readonly failure?: DownloadFailure;
 
   pk() {
     return this.id;
@@ -23,6 +27,9 @@ export class Download extends Entity {
 
   static key = 'Download';
 }
+
+/** Why a download failed: `retrying` it, or a `newVersion` of the site replaced its files. */
+export type DownloadFailure = 'retrying' | 'newVersion';
 
 /** The download of full Stockfish's files (src/stockfish/full.ts). */
 export const FULL_STOCKFISH_DOWNLOAD = { id: 'stockfish-full' };
@@ -33,7 +40,9 @@ export const FULL_STOCKFISH_DOWNLOAD = { id: 'stockfish-full' };
  */
 export function useFullStockfishDownload(): Download | undefined {
   const download = useQuery(Download, FULL_STOCKFISH_DOWNLOAD);
-  return download && (download.failed || download.received < download.total) ? download : undefined;
+  return download && (download.failure || download.received < download.total)
+    ? download
+    : undefined;
 }
 
 /**
@@ -43,11 +52,11 @@ export function useFullStockfishDownload(): Download | undefined {
  */
 export function useReportFullStockfishDownload() {
   const ctrl = useController();
-  return (received: number, failed = false) =>
+  return (received: number, failure?: DownloadFailure) =>
     ctrl.set(Download, FULL_STOCKFISH_DOWNLOAD, {
       ...FULL_STOCKFISH_DOWNLOAD,
       received,
       total: FULL_WASM_BYTES,
-      failed,
+      failure,
     });
 }

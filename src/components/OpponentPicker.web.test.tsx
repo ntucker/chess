@@ -6,7 +6,7 @@ import { SilkProvider } from '@reactive/silk-native';
 import { act, useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
-import { Download, FULL_STOCKFISH_DOWNLOAD } from '@/resources/download';
+import { Download, type DownloadFailure, FULL_STOCKFISH_DOWNLOAD } from '@/resources/download';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
 
@@ -265,20 +265,22 @@ describe('OpponentPicker', () => {
     const progress = () => trigger().nextElementSibling?.textContent;
     // Nothing yet: the host hasn't started, or found the files in the cache.
     expect(progress()).toBeUndefined();
-    const report = (received: number, failed = false) =>
+    const report = (received: number, failure?: DownloadFailure) =>
       act(async () => {
         // Not awaited: act flushes the update.
         void ctrl.set(Download, FULL_STOCKFISH_DOWNLOAD, {
           ...FULL_STOCKFISH_DOWNLOAD,
           received,
           total: 200,
-          failed,
+          failure,
         });
       });
     await report(85);
     expect(progress()).toBe('· downloading 42%');
-    await report(0, true);
+    await report(0, 'retrying');
     expect(progress()).toBe('· download failed, trying again');
+    await report(0, 'newVersion');
+    expect(progress()).toBe('· A new version is out. Reload to download');
     await report(200);
     expect(progress()).toBeUndefined();
   });

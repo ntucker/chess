@@ -1,4 +1,6 @@
 /// <reference lib="webworker" />
+import { fetchOk } from '@/files/fetchOk';
+
 import { loadOnce } from './loadOnce';
 import { forward, type NetworkOutput, parseNetwork } from './network';
 
@@ -14,8 +16,7 @@ export type MaiaResponse =
   | { readonly id: number; readonly error: string };
 
 const loadNetwork = loadOnce(async (url: string) => {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
+  const response = await fetchOk(url);
   return parseNetwork(await response.arrayBuffer());
 });
 
