@@ -85,9 +85,15 @@ function partProps(
  * Children only a narrow page shows. They stay mounted on a wide page,
  * hidden, so a window crossing the width keeps their state.
  */
-export function NarrowOnly({ children }: { readonly children: ReactNode }) {
+export function NarrowOnly({
+  children,
+  style,
+}: {
+  readonly children: ReactNode;
+  readonly style?: StyleProp<ViewStyle>;
+}) {
   const part = useNarrowPart();
-  return <View {...part('narrow-only')}>{children}</View>;
+  return <View {...part('narrow-only', style)}>{children}</View>;
 }
 
 /**

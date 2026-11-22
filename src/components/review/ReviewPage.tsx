@@ -1,7 +1,7 @@
 import { AsyncBoundary, useSuspense } from '@data-client/react';
 import { Spinner } from '@reactive/silk-native';
 import { useIsFocused } from 'expo-router';
-import { use } from 'react';
+import { use, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { lastMoveBadge } from '@/board/drawing';
@@ -9,6 +9,7 @@ import { BrowserOnly } from '@/components/BrowserOnly';
 import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
+import { Transport } from '@/components/Transport';
 import { NewVersionError } from '@/files/newVersion';
 import { material } from '@/game/material';
 import { type Color, colorName, fenAfter, opposite, replay } from '@/game/replay';
@@ -17,6 +18,8 @@ import { withOpenings } from '@/lesson/openings';
 import { getLesson, isLessonId, LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { REVIEW_ENGINE, useReview } from '@/review/useReview';
 
+import { GraphPlace, ReviewNames } from './NarrowBars';
+import { ReviewActionBar } from './ReviewActions';
 import { ReviewPanel } from './ReviewPanel';
 
 /** The review's address, as the URL has it: `/review?moves=e2e4 c7c6&side=black&lesson=caro-kann`. */
@@ -30,7 +33,7 @@ export interface ReviewAddress {
 }
 
 const TITLE = 'Review · Opening Night';
-const HEADER = { place: { name: 'Review' }, back: { href: '/', label: 'Back to the game' } };
+const BACK = { href: '/', label: 'Back to the game' } as const;
 
 /**
  * The review of the game the address names, on the board's page: the board
@@ -80,19 +83,30 @@ function ReviewScreen({
   // The lesson as the game played it: with the other openings' first moves (`withOpenings`).
   const played = picked ? withOpenings(picked, index) : undefined;
   const review = useReview({ moves, learner, lesson: played, active: useIsFocused() });
-  const { plies, ply, current, pointed } = review;
+  const { plies, ply, current, pointed, nextMoment, goto } = review;
   const move = ply > 0 ? review.moves[ply - 1] : undefined;
   const preview = pointed && ply > 0 ? fenAfter(plies[ply - 1].fen, pointed) : undefined;
+  // Only a narrow page shows the header's button, so only there does the drawer open.
+  const [scoresheetOpen, setScoresheetOpen] = useState(false);
   return (
     <Stage
       title={TITLE}
-      header={HEADER}
+      header={{
+        place: picked ? { name: picked.title, parent: 'Review' } : { name: 'Review' },
+        back: BACK,
+        narrowButton: {
+          icon: 'list',
+          label: 'Scoresheet',
+          expanded: scoresheetOpen,
+          onPress: () => setScoresheetOpen(!scoresheetOpen),
+        },
+      }}
       board={
         <BoardColumn
           game={{
             moves,
             ply,
-            goto: review.goto,
+            goto,
             current,
             toMove: undefined,
             thinking: false,
@@ -111,6 +125,17 @@ function ReviewScreen({
             onMove: () => {},
           }}
           evaluationReads={REVIEW_ENGINE}
+          narrowBars={{
+            names: <ReviewNames learner={learner} />,
+            controls: (
+              <Transport
+                ply={ply}
+                total={moves.length}
+                onGoto={goto}
+                middle={<GraphPlace san={current.move?.san} ply={ply} />}
+              />
+            ),
+          }}
         />
       }
       program={
@@ -118,8 +143,10 @@ function ReviewScreen({
           eyebrow={picked ? `Review · ${picked.title}` : 'Review'}
           learner={learner}
           review={review}
+          drawer={scoresheetOpen ? { onClose: () => setScoresheetOpen(false) } : undefined}
         />
       }
+      programFoot={<ReviewActionBar ply={ply} nextMoment={nextMoment} goto={goto} />}
     />
   );
 }
@@ -137,7 +164,7 @@ function ReviewPlaceholder({ message }: { readonly message?: string }) {
   return (
     <Stage
       title={TITLE}
-      header={HEADER}
+      header={{ place: { name: 'Review' }, back: BACK }}
       board={
         <BoardColumnPlaceholder>
           {message ? null : <Spinner label="Setting up the review" />}
@@ -152,6 +179,8 @@ function ReviewPlaceholder({ message }: { readonly message?: string }) {
           />
         </View>
       }
+      // Holds the action bar's room while the review loads, so the board doesn't shrink when it comes.
+      programFoot={message ? undefined : <View />}
     />
   );
 }
