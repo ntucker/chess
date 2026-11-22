@@ -1,5 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
+import { playMove, positionKey, readPositionKey } from '@/game/replay';
+
 import type { Lesson, Note, PositionKey } from './lesson';
 import { SAMPLE, uciLine } from './lesson.fixture';
 import { noteParts } from './mentions';
@@ -103,6 +105,19 @@ describe('noteParts', () => {
       after: keyAfter(),
     });
     expect(mention).toMatchObject({ key: keyAfter('e4', 'Nf6', 'Nc3', 'Nc6'), lit: ['b8', 'c6'] });
+  });
+
+  it('shows a move only the side not to move can play now, played from there', () => {
+    // The Caro-Kann note on ...e5, White to move: Black's ...Be7 answers Bg5 later.
+    const before = 'r1bqkb1r/pp2pppp/2n2n2/3p4/8/1B1P1N2/PPP2PPP/RNBQK2R b KQkq -' as PositionKey;
+    const pos = readPositionKey(before)!;
+    playMove(pos, 'e7e5');
+    const parts = noteParts(bare, {
+      note: note('You still play ...e5 and answer Bg5 with ...Be7.'),
+      after: positionKey(pos),
+      before,
+    });
+    expect(parts.at(-2)).toMatchObject({ text: '...Be7', lit: ['f8', 'e7'], kind: 'move' });
   });
 
   it('shows a route written square to square as its move', () => {

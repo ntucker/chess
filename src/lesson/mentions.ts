@@ -111,19 +111,27 @@ function placed(
   places: Places,
   find: (pos: Chess) => Uci | undefined,
 ): Mention | undefined {
-  const witnessed: Uci[] = [];
+  const witnessed: { pos: Chess; uci: Uci }[] = [];
   for (const { positions, plays, witnesses } of places.tiers()) {
-    witnessed.push(...witnesses.flatMap((pos) => find(pos) ?? []));
+    for (const pos of witnesses) {
+      const uci = find(pos);
+      if (uci) witnessed.push({ pos, uci });
+    }
     const readings = positions.map((pos, n) => {
       const uci = find(pos);
       return plays && uci !== plays[n] ? undefined : uci;
     });
     const uci = readings.find(Boolean);
     if (!uci) continue;
-    if ([...readings, ...witnessed].some((other) => other && other !== uci)) return undefined;
+    if ([...readings, ...witnessed.map((w) => w.uci)].some((other) => other && other !== uci)) {
+      return undefined;
+    }
     return mentionOf(text, positions[readings.indexOf(uci)], uci);
   }
-  return undefined;
+  // No position read it, but the side not to move could play it now: the note names its next move.
+  const [first] = witnessed;
+  if (!first || witnessed.some(({ uci }) => uci !== first.uci)) return undefined;
+  return mentionOf(text, first.pos, first.uci);
 }
 
 function mentionOf(text: string, before: Chess, uci: Uci): Mention {
