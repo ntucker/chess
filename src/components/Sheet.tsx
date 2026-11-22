@@ -27,8 +27,9 @@ interface Props {
  * what a small screen has no room to keep in view, such as settings. Its
  * content scrolls once taller than the screen allows. Silk's bottom Dialog
  * from its `/gesture` entry, so it traps focus on the web, works the same on
- * Android, and drags down to close, with a pull-down at the content's top
- * handed to the sheet.
+ * Android, and drags down to close. On Android a pull-down at the content's
+ * top moves the sheet; on the web a drag in the content is the browser's
+ * scrolling, so only the head and handle drag it there.
  */
 export function Sheet({ open, title, onClose, children }: Props) {
   // A screen left underneath stays mounted, and the dialog would cover the one on top.
