@@ -174,6 +174,14 @@ describe('noteParts', () => {
     });
   });
 
+  it('keeps a capture plain where the square it takes on stands empty', () => {
+    // White's knight can go to e5, but takes nothing there.
+    const after = keyAfter('e4', 'd5', 'Nf3');
+    expect(noteParts(bare, { note: note('Nxe5 comes later.'), after })[0]).toBe(
+      'Nxe5 comes later.',
+    );
+  });
+
   it('reads past a position where the SAN would take a piece it doesn’t say it takes', () => {
     // On its own move's note, "Qb6" isn't White's queen taking on b6 after it.
     const before =

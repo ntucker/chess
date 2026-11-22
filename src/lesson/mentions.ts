@@ -7,9 +7,10 @@
  * (with a threat's side to move there), where its own line or trap plays
  * it, the position its move was played in, each ply onward along its line
  * or trap and the guide, then last the note's position with the other side
- * to move, for a move only that side can play now. A SAN without an x is
- * never read as a capture, so a note recapping a move already played
- * doesn't show another piece taking the one that made it. Where one tier's
+ * to move, for a move only that side can play now. A SAN is read only as
+ * a move that takes a piece exactly when it has an x: a recap's "Qe3",
+ * where the queen already stands, isn't the other queen taking it, and
+ * "Bxd8" where d8 stands empty isn't a quiet bishop move. Where one tier's
  * positions read it as different moves, or none within reach has it, the
  * text stays plain: a guess shown as fact misleads. So does a move placed
  * as one move where the side not to move in the note's position could make
@@ -104,7 +105,8 @@ function named(
   return placed(text, places, (pos) => {
     if (mover && pos.turn !== mover) return undefined;
     const uci = sanToUci(pos, san);
-    return uci && !takes && takenRole(pos, parseUci(uci) as NormalMove) ? undefined : uci;
+    // Read only as a move that takes exactly when its SAN says so (see above).
+    return uci && takes !== Boolean(takenRole(pos, parseUci(uci) as NormalMove)) ? undefined : uci;
   });
 }
 
