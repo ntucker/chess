@@ -86,6 +86,16 @@ export function positionKey(pos: Chess): string {
   return makeFen(pos.toSetup(), { epd: true });
 }
 
+/** A copy of `pos` with `color` to move, as if the other side passed. */
+export function withTurn(pos: Chess, color: Color): Chess {
+  const copy = pos.clone();
+  if (copy.turn !== color) {
+    copy.turn = color;
+    copy.epSquare = undefined;
+  }
+  return copy;
+}
+
 /** The position `fen` describes, or undefined if it is not a legal position. */
 export function parsePosition(fen: string): Chess | undefined {
   const setup = parseFen(fen);

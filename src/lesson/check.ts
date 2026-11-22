@@ -27,6 +27,7 @@ import {
   positionKey,
   recordedMove,
   WRITTEN_MOVE,
+  withTurn,
 } from '@/game/replay';
 
 import {
@@ -446,16 +447,6 @@ function played(pos: Chess, ucis: readonly string[]): Chess {
   const after = pos.clone();
   for (const uci of ucis) after.play(legalMove(after, uci));
   return after;
-}
-
-/** A copy of `pos` with `color` to move, as if the other side passed. */
-export function withTurn(pos: Chess, color: Color): Chess {
-  const copy = pos.clone();
-  if (copy.turn !== color) {
-    copy.turn = color;
-    copy.epSquare = undefined;
-  }
-  return copy;
 }
 
 function pieceAt(board: Board, at: string, what: string): Piece {

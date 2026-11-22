@@ -1,21 +1,22 @@
 import type { ReactElement } from 'react';
+import type { Role } from 'chessops/types';
 import Svg, { Circle, G, Path } from 'react-native-svg';
 
-import type { MaterialRole } from '@/game/material';
 import { type Color, opposite } from '@/game/replay';
 import { pieceColors } from '@/theme/pieceColors';
 
 interface Props {
-  readonly role: MaterialRole;
+  readonly role: Role;
   readonly color: Color;
   readonly size: number;
 }
 
 /**
- * A chess piece small enough to sit in a line of text, in the same colors as
- * the discs that stand for each side. The shapes are the board's own cburnett
- * pieces (by Colin M.L. Burnett, GPLv2+ as lichess lists them; the board shows
- * the same art through chessground), copied from chessground's cburnett CSS
+ * A chess piece small enough to sit in a line of text or on a note's small
+ * board (MiniBoard.tsx), in the same colors as the discs that stand for each
+ * side. The shapes are the board's own cburnett pieces (by Colin M.L.
+ * Burnett, GPLv2+ as lichess lists them; the board shows the same art
+ * through chessground), copied from chessground's cburnett CSS
  * because React Native can't draw that CSS's SVG images. Outline and inner
  * lines are drawn in the other side's color, so a black piece stays visible on
  * the dark stage, a white one on the light paper, and stacked pieces stay apart.
@@ -39,7 +40,7 @@ export function PieceGlyph({ role, color, size }: Props) {
 }
 
 /** Each piece's paths, in the fill and line color their group sets. */
-const shapes: Record<MaterialRole, (line: string) => ReactElement> = {
+const shapes: Record<Role, (line: string) => ReactElement> = {
   pawn: () => (
     <Path d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" />
   ),
@@ -103,6 +104,21 @@ const shapes: Record<MaterialRole, (line: string) => ReactElement> = {
       <Path d="M11 38.5a35 35 1 0 0 23 0" fill="none" strokeLinecap="butt" />
       <Path
         d="M11 29a35 35 1 0 1 23 0m-21.5 2.5h20m-21 3a35 35 1 0 0 22 0m-23 3a35 35 1 0 0 24 0"
+        fill="none"
+      />
+    </>
+  ),
+  king: () => (
+    <>
+      <Path d="M22.5 11.63V6M20 8h5" fill="none" strokeLinejoin="miter" />
+      <Path
+        d="M22.5 25s4.5-7.5 3-10.5c0 0-1-2.5-3-2.5s-3 2.5-3 2.5c-1.5 3 3 10.5 3 10.5"
+        strokeLinecap="butt"
+        strokeLinejoin="miter"
+      />
+      <Path d="M12.5 37c5.5 3.5 14.5 3.5 20 0v-7s9-4.5 6-10.5c-4-6.5-13.5-3.5-16 4V27v-3.5c-2.5-7.5-12-10.5-16-4-3 6 6 10.5 6 10.5v7" />
+      <Path
+        d="M12.5 30c5.5-3 14.5-3 20 0m-20 3.5c5.5-3 14.5-3 20 0m-20 3.5c5.5-3 14.5-3 20 0"
         fill="none"
       />
     </>
