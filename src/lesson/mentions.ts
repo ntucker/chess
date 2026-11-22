@@ -7,15 +7,17 @@
  * (with a threat's side to move there), where its own line or trap plays
  * it, the position its move was played in, each ply onward along its line
  * or trap and the guide, then last the note's position with the other side
- * to move, for a move only that side can play now. Where one tier's
+ * to move, for a move only that side can play now. A SAN without an x is
+ * never read as a capture, so a note recapping a move already played
+ * doesn't show another piece taking the one that made it. Where one tier's
  * positions read it as different moves, or none within reach has it, the
  * text stays plain: a guess shown as fact misleads. So does a move placed
  * as one move where the side not to move in the note's position could make
  * it as another: a note often names either side's moves without dots.
  */
 import type { Chess } from 'chessops/chess';
-import type { Color, SquareName } from 'chessops/types';
-import { opposite, parseSquare } from 'chessops/util';
+import type { Color, NormalMove, SquareName } from 'chessops/types';
+import { opposite, parseSquare, parseUci, squareFile } from 'chessops/util';
 
 import {
   MOVE_NUMBER,
@@ -97,9 +99,21 @@ function named(
   // Three dots, numbered or not, are Black's move; a number's single dot, White's.
   const mover: Color | undefined =
     number === undefined ? undefined : number.includes('...') ? 'black' : 'white';
-  return placed(text, places, (pos) =>
-    mover && pos.turn !== mover ? undefined : sanToUci(pos, san),
-  );
+  // A SAN without an x takes nothing: a recap's "Qe3", where the queen
+  // already stands, isn't the other queen taking it.
+  const takes = san.includes('x');
+  return placed(text, places, (pos) => {
+    if (mover && pos.turn !== mover) return undefined;
+    const uci = sanToUci(pos, san);
+    return uci && !takes && captures(pos, uci) ? undefined : uci;
+  });
+}
+
+/** Whether `uci`, legal in `pos`, takes a piece: on its square, or en passant. */
+function captures(pos: Chess, uci: Uci): boolean {
+  const { from, to } = parseUci(uci) as NormalMove;
+  if (pos.board.get(to)?.color === opposite(pos.turn)) return true;
+  return pos.board.get(from)?.role === 'pawn' && squareFile(from) !== squareFile(to);
 }
 
 /**
