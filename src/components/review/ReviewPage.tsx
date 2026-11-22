@@ -16,24 +16,17 @@ import { type Color, colorName, fenAfter, opposite, replay } from '@/game/replay
 import type { Uci } from '@/lesson/lesson';
 import { withOpenings } from '@/lesson/openings';
 import { getLesson, isLessonId, LessonIndexContext, type LessonId } from '@/resources/lesson';
+import { addressMoves, type ReviewAddress } from '@/review/address';
 import { REVIEW_ENGINE, useReview } from '@/review/useReview';
 
 import { GraphPlace, ReviewNames } from './NarrowBars';
 import { ReviewActionBar } from './ReviewActions';
 import { ReviewPanel } from './ReviewPanel';
 
-/** The review's address, as the URL has it: `/review?moves=e2e4 c7c6&side=black&lesson=caro-kann`. */
-export interface ReviewAddress {
-  /** The game's moves (UCI) from the start, separated by spaces. */
-  readonly moves?: string;
-  /** The learner's side. */
-  readonly side?: string;
-  /** The lesson the game was played in, if any. */
-  readonly lesson?: string;
-}
-
 const TITLE = 'Review · Opening Night';
-const BACK = { href: '/', label: 'Back to the game' } as const;
+/** Back to the game: history's previous page, or, opened fresh, the lesson the review came from. */
+const back = (lesson?: LessonId) =>
+  ({ href: lesson ? `/lesson/${lesson}` : '/', label: 'Back to the game' }) as const;
 
 /**
  * The review of the game the address names, on the board's page: the board
@@ -57,7 +50,7 @@ function AddressedReview({ moves = '', side, lesson }: ReviewAddress) {
   if (lesson !== undefined && !isLessonId(lesson)) {
     return <ReviewPlaceholder message="There is no lesson here." />;
   }
-  const line = moves ? moves.split(' ') : [];
+  const line = addressMoves(moves);
   const played = line.slice(0, replay(line).length - 1);
   if (!played.length) return <ReviewPlaceholder message={NO_GAME} />;
   return (
@@ -93,7 +86,7 @@ function ReviewScreen({
       title={TITLE}
       header={{
         place: picked ? { name: picked.title, parent: 'Review' } : { name: 'Review' },
-        back: BACK,
+        back: back(lesson),
         narrowButton: {
           icon: 'list',
           label: 'Scoresheet',
@@ -164,7 +157,7 @@ function ReviewPlaceholder({ message }: { readonly message?: string }) {
   return (
     <Stage
       title={TITLE}
-      header={{ place: { name: 'Review' }, back: BACK }}
+      header={{ place: { name: 'Review' }, back: back() }}
       board={
         <BoardColumnPlaceholder>
           {message ? null : <Spinner label="Setting up the review" />}

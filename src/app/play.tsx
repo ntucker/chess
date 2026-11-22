@@ -11,7 +11,7 @@ import { FootnoteLink } from '@/components/FootnoteLink';
 import { GameStatus } from '@/components/GameStatus';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { OpponentPicker } from '@/components/OpponentPicker';
-import { reviewHref, ScoresheetReview } from '@/components/ReviewLinks';
+import { ScoresheetReview } from '@/components/ReviewLinks';
 import { Scoresheet } from '@/components/Scoresheet';
 import { BoardColumn, Stage } from '@/components/Stage';
 import { gameReducer, initialGame } from '@/game/game';
@@ -19,6 +19,7 @@ import { type Color, colorName, opposite } from '@/game/replay';
 import { useGame } from '@/game/useGame';
 import { describeOpponent } from '@/opponent/opponent';
 import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
+import { reviewHref } from '@/review/address';
 import { useSettings } from '@/settings/SettingsProvider';
 
 export default function PlayScreen() {

@@ -14,7 +14,7 @@ import { ScoresheetDrawer, ScoresheetOpener } from '@/components/ScoresheetDrawe
 import { Sheet } from '@/components/Sheet';
 import { SourceFootnote } from '@/components/SourceLink';
 import { resetListener } from '@/components/resetListener';
-import { ReviewGameButton, reviewHref, ScoresheetReview } from '@/components/ReviewLinks';
+import { ReviewGameButton, ScoresheetReview } from '@/components/ReviewLinks';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { useLongWait } from '@/components/useLongWait';
 import { useNavigating } from '@/components/navigation';
@@ -25,8 +25,9 @@ import type { GameStore } from '@/game/useGame';
 import { listsTopMoves } from '@/lesson/guidance';
 import type { Uci, VariationId } from '@/lesson/lesson';
 import { lessonsAfter, lessonsFrom, openingsLesson, withOpenings } from '@/lesson/openings';
-import { type Candidate, captionName, leavesGuide, pathNames, shareSource } from '@/lesson/select';
+import { type Candidate, captionName, pathNames, shareSource } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
+import { reviewHref } from '@/review/address';
 import { describeOpponent } from '@/opponent/opponent';
 import { getLesson, isLessonId, LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { getProgress } from '@/resources/progress';
@@ -39,7 +40,7 @@ import { IdeaAside, IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
 import { SideChoice } from './SideChoice';
-import { describeStatus, headlineNews, LOADING, OPENINGS_TITLE } from './status';
+import { describeStatus, headlineNews, LOADING, OPENINGS_TITLE, reviewClosed } from './status';
 import { SourceCredits } from './SourceCredits';
 import { TrapCard } from './TrapCard';
 import { useOpeningsGame } from './useOpeningsGame';
@@ -196,22 +197,19 @@ function LessonScreen({
   const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
   const names = pathNames(view.variation);
   const { result } = game.latest;
-  // The game's review opens once the game ends, or in Practice once a move leaves the guide.
-  const review =
-    !picking && (result || (mode === 'practice' && leavesGuide(lesson, game.moves)))
-      ? reviewHref(game.moves, learner, id)
-      : undefined;
+  // How the game ended, while the board shows its final position, not an idea played over it.
+  const ending =
+    result && game.atLatest && !playback.playing ? resultVerdict(result, learner) : undefined;
+  const reviewShut = reviewClosed({
+    picking,
+    ended: !!result,
+    practice: mode === 'practice',
+    leftGuide: view.guideMoves.includes(undefined),
+  });
+  const review = reviewShut ? undefined : reviewHref(game.moves, learner, id);
   /** The Review button by the scoresheet's title, or in the narrow drawer's head (`compact`). */
   const scoresheetReview = (compact?: boolean) => (
-    <ScoresheetReview
-      href={review}
-      closed={
-        mode === 'practice'
-          ? 'Review opens after a move off the guide, or once the game ends.'
-          : 'Review opens once the game ends, or in Practice after a move off the guide.'
-      }
-      compact={compact}
-    />
+    <ScoresheetReview href={review} closed={reviewShut ?? ''} compact={compact} />
   );
   const { pastGuide, ...status } = describeStatus(view, {
     picking,
@@ -228,8 +226,7 @@ function LessonScreen({
     startsRun,
     practice:
       modeState.mode === 'practice' ? { clean: modeState.clean, verdict: game.quality } : undefined,
-    // While the board shows how the game ended.
-    ending: result && game.atLatest ? resultVerdict(result, learner) : undefined,
+    ending,
   });
   // Where Stockfish's moves stand in for the guide's, a narrow page tells why
   // in the idea pane's place, beside them as the idea is beside the guide's
@@ -405,7 +402,7 @@ function LessonScreen({
             failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
             eyebrowInHeader
             eyebrowLink={listLink}
-            action={result && game.atLatest && review ? <ReviewGameButton href={review} /> : null}
+            action={ending && review ? <ReviewGameButton href={review} /> : null}
             news={headlineNews(
               { news: status.news, pastGuide },
               { aside: !!aside, scoresheetOpen, failed: !!game.error },
@@ -463,7 +460,7 @@ function LessonScreen({
           {scoresheetOpen ? (
             <ScoresheetDrawer
               {...scoresheetProps}
-              review={scoresheetReview(true)}
+              reviewButton={scoresheetReview(true)}
               onClose={() => setScoresheetOpen(false)}
             />
           ) : null}

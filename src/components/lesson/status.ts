@@ -153,6 +153,28 @@ export function describeStatus(
   };
 }
 
+/**
+ * Why the scoresheet's Review button doesn't open yet, for its tip, or
+ * undefined once it opens: when the game has ended, or in Practice once a
+ * move left the guide. Never while picking a line.
+ */
+export function reviewClosed({
+  picking,
+  ended,
+  practice,
+  leftGuide,
+}: {
+  readonly picking: boolean;
+  readonly ended: boolean;
+  readonly practice: boolean;
+  readonly leftGuide: boolean;
+}): string | undefined {
+  if (!picking && (ended || (practice && leftGuide))) return undefined;
+  return practice
+    ? 'Review opens after a move off the guide, or once the game ends.'
+    : 'Review opens once the game ends, or in Practice after a move off the guide.';
+}
+
 /** What a narrow page's layout around the headline shows, for `headlineNews`. */
 interface Surroundings {
   /** The idea pane's place tells the past-guide headline (LessonScreen's `aside`). */

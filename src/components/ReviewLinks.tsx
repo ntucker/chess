@@ -3,19 +3,10 @@ import { Button, Inline } from '@reactive/silk-native';
 import { type Href, useRouter } from 'expo-router';
 
 import { Tip } from '@/components/Tip';
-import type { Color } from '@/game/replay';
-import type { LessonId } from '@/resources/lesson';
 
 /** The review's mark: a line graph, as the review charts the game. */
 const ICON = 'analytics-outline';
 const LABEL = 'Review the game';
-
-/**
- * The review of a game, at `/review?moves=…&side=…&lesson=…`: its moves from
- * the start, the learner's side, and the lesson it was played in, if any.
- */
-export const reviewHref = (moves: readonly string[], side: Color, lesson?: LessonId): Href =>
-  `/review?${new URLSearchParams({ moves: moves.join(' '), side, ...(lesson && { lesson }) })}`;
 
 /** "Review the game", under the headline of a game that ended: opens its review on top of the game. */
 export function ReviewGameButton({ href }: { readonly href: Href }) {

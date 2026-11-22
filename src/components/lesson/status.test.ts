@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import type { LessonView } from '@/lesson/view';
 
-import { describeStatus, headlineNews } from './status';
+import { describeStatus, headlineNews, reviewClosed } from './status';
 
 const INPUT = {
   picking: false,
@@ -77,5 +77,27 @@ describe('headlineNews', () => {
     expect(headlineNews(describeStatus(view('inside'), { ...INPUT, viewing: true }), open)).toBe(
       'detail',
     );
+  });
+});
+
+describe('reviewClosed', () => {
+  const shut = { picking: false, ended: false, practice: false, leftGuide: false };
+  it('opens once the game ends, in either mode', () => {
+    expect(reviewClosed({ ...shut, ended: true })).toBeUndefined();
+    expect(reviewClosed({ ...shut, ended: true, practice: true })).toBeUndefined();
+  });
+  it('opens in Practice once a move left the guide', () => {
+    expect(reviewClosed({ ...shut, practice: true, leftGuide: true })).toBeUndefined();
+  });
+  it('says why it stays shut, in the words of the mode', () => {
+    expect(reviewClosed({ ...shut, practice: true })).toBe(
+      'Review opens after a move off the guide, or once the game ends.',
+    );
+    expect(reviewClosed({ ...shut, leftGuide: true })).toBe(
+      'Review opens once the game ends, or in Practice after a move off the guide.',
+    );
+  });
+  it('stays shut while picking a line', () => {
+    expect(reviewClosed({ ...shut, picking: true, ended: true })).toBeDefined();
   });
 });

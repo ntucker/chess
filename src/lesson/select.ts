@@ -192,12 +192,6 @@ const trapStarts = (entry: LessonPosition): Uci[] =>
 export const guideMove = (lesson: Lesson, key: PositionKey, uci: Uci): LessonMove | undefined =>
   lesson.positions[key]?.moves.find((move) => move.uci === uci);
 
-/** Whether a move of `line` left the guide: the guide has no such move where it was played. */
-export function leavesGuide(lesson: Lesson, line: readonly Uci[]): boolean {
-  const keys = lineKeys(line);
-  return line.some((uci, n) => !guideMove(lesson, keys[n], uci));
-}
-
 /** Whether the guide recommends `uci` at `key`: a book move. */
 const isBook = (lesson: Lesson, key: PositionKey, uci: Uci): boolean =>
   guideMove(lesson, key, uci)?.book === true;

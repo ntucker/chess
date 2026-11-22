@@ -5,9 +5,10 @@ import { SilkProvider } from '@reactive/silk-native';
 import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { reviewHref } from '@/review/address';
 import { themes } from '@/theme/theme';
 
-import { ReviewGameButton, reviewHref, ScoresheetReview } from './ReviewLinks';
+import { ReviewGameButton, ScoresheetReview } from './ReviewLinks';
 
 // Its font needs Expo's asset registry, which the web preset doesn't resolve.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
@@ -29,13 +30,6 @@ function render(children: ReactNode, check: (host: HTMLElement) => void) {
 
 const reviewButton = (host: HTMLElement) =>
   host.querySelector<HTMLElement>('[role="button"][aria-label="Review the game"]');
-
-describe('reviewHref', () => {
-  it('names the moves, the side and the lesson', () => {
-    expect(HREF).toBe('/review?moves=e2e4+c7c6&side=black&lesson=caro-kann');
-    expect(reviewHref([], 'white')).toBe('/review?moves=&side=white');
-  });
-});
 
 describe('ReviewGameButton', () => {
   it('opens the review on top of the game', () => {

@@ -16,7 +16,6 @@ import {
   ALWAYS_LISTED,
   guideMove,
   guidePosition,
-  leavesGuide,
   lineKeys,
   lineVariation,
   nameWithin,
@@ -281,13 +280,6 @@ describe('bookMoves', () => {
       false,
       false,
     ]);
-  });
-});
-
-describe('leavesGuide', () => {
-  it('is false while every move is a guide move, and true from the first that is not', () => {
-    expect(leavesGuide(SAMPLE, uciLine(...ADVANCE))).toBe(false);
-    expect(leavesGuide(SAMPLE, uciLine(...ADVANCE, 'a6'))).toBe(true);
   });
 });
 

@@ -16,7 +16,7 @@ interface Props extends Omit<ComponentProps<typeof Scoresheet>, 'fill'> {
   /** Its close button, Escape, or Android's back. */
   readonly onClose: () => void;
   /** The game's Review button, first in its head (the lesson's). */
-  readonly review?: ReactNode;
+  readonly reviewButton?: ReactNode;
 }
 
 /**
@@ -27,7 +27,7 @@ interface Props extends Omit<ComponentProps<typeof Scoresheet>, 'fill'> {
  * move, which the stepper leaves out there. Shown while mounted, on a narrow
  * page only.
  */
-export function ScoresheetDrawer({ onClose, review, ...scoresheet }: Props) {
+export function ScoresheetDrawer({ onClose, reviewButton, ...scoresheet }: Props) {
   const { plies, ply, onGoto } = scoresheet;
   /** The ply of the latest move: `plies` begins with the start position. */
   const last = plies.length - 1;
@@ -39,7 +39,7 @@ export function ScoresheetDrawer({ onClose, review, ...scoresheet }: Props) {
       <Inline align="center" justify="between" wrap="nowrap">
         <Eyebrow>Scoresheet</Eyebrow>
         <Inline align="center" gap="1" wrap="nowrap">
-          {review}
+          {reviewButton}
           <Jump label="Start" disabled={ply === 0} onPress={() => onGoto(0)} />
           <Jump label="Latest" disabled={ply === last} onPress={() => onGoto(last)} />
           <HeaderButton
