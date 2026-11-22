@@ -102,8 +102,11 @@ export default function PlayScreen() {
             <Inline align="center" justify="between" wrap="nowrap">
               <Eyebrow>Scoresheet</Eyebrow>
               <ScoresheetReview
-                href={game.latest.result ? review : undefined}
-                closed="Review opens once the game ends."
+                link={
+                  game.latest.result
+                    ? { href: review }
+                    : { shut: 'Review opens once the game ends.' }
+                }
               />
             </Inline>
             <Scoresheet plies={game.plies} marks={game.qualities} ply={ply} onGoto={goto} />

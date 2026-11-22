@@ -46,9 +46,8 @@ describe('ReviewGameButton', () => {
 describe('ScoresheetReview', () => {
   it('opens the review when it has one', () => {
     mockPush.mockClear();
-    render(<ScoresheetReview href={HREF} closed="Not yet." />, (host) => {
+    render(<ScoresheetReview link={{ href: HREF }} />, (host) => {
       expect(reviewButton(host)?.getAttribute('aria-disabled')).toBeNull();
-      expect(host.textContent).not.toContain('Not yet.');
       act(() => reviewButton(host)!.click());
     });
     expect(mockPush).toHaveBeenCalledWith(HREF);
@@ -56,7 +55,7 @@ describe('ScoresheetReview', () => {
 
   it('shows disabled without one, and says why in its tip', () => {
     mockPush.mockClear();
-    render(<ScoresheetReview closed="Review opens once the game ends." />, (host) => {
+    render(<ScoresheetReview link={{ shut: 'Review opens once the game ends.' }} />, (host) => {
       expect(reviewButton(host)?.getAttribute('aria-disabled')).toBe('true');
       expect(host.textContent).toContain('Review opens once the game ends.');
       act(() => reviewButton(host)!.click());
@@ -65,7 +64,7 @@ describe('ScoresheetReview', () => {
   });
 
   it('draws only its icon when compact, keeping its spoken name', () => {
-    render(<ScoresheetReview href={HREF} closed="Not yet." compact />, (host) => {
+    render(<ScoresheetReview link={{ href: HREF }} compact />, (host) => {
       expect(reviewButton(host)?.textContent).toBe('');
     });
   });

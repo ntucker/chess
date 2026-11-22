@@ -46,15 +46,17 @@ export function ReviewPage(address: ReviewAddress) {
 
 /** The review the address names, or why there is none. */
 function AddressedReview({ moves, side, lesson }: ReviewAddress) {
-  if (side !== 'white' && side !== 'black') return <ReviewPlaceholder message={NO_GAME} />;
   if (lesson !== undefined && !isLessonId(lesson)) {
     return <ReviewPlaceholder message="There is no lesson here." />;
   }
+  if (side !== 'white' && side !== 'black') {
+    return <ReviewPlaceholder message={NO_GAME} lesson={lesson} />;
+  }
   const line = addressMoves(moves);
   const played = line.slice(0, replay(line).length - 1);
-  if (!played.length) return <ReviewPlaceholder message={NO_GAME} />;
+  if (!played.length) return <ReviewPlaceholder message={NO_GAME} lesson={lesson} />;
   return (
-    <AsyncBoundary fallback={<ReviewPlaceholder />} errorComponent={ReviewFailure}>
+    <AsyncBoundary fallback={<ReviewPlaceholder lesson={lesson} />} errorComponent={ReviewFailure}>
       <ReviewScreen moves={played} learner={side} lesson={lesson} />
     </AsyncBoundary>
   );
@@ -152,12 +154,21 @@ function ReviewFailure({ error }: { readonly error: Error }) {
   return <ReviewPlaceholder message={error.message} />;
 }
 
-/** The review's page before its game is ready, or with `message` when it can't be shown. */
-function ReviewPlaceholder({ message }: { readonly message?: string }) {
+/**
+ * The review's page before its game is ready, or with `message` when it
+ * can't be shown. Back goes to `lesson`, when the address names one.
+ */
+function ReviewPlaceholder({
+  message,
+  lesson,
+}: {
+  readonly message?: string;
+  readonly lesson?: LessonId;
+}) {
   return (
     <Stage
       title={TITLE}
-      header={{ place: { name: 'Review' }, back: back() }}
+      header={{ place: { name: 'Review' }, back: back(lesson) }}
       board={
         <BoardColumnPlaceholder>
           {message ? null : <Spinner label="Setting up the review" />}

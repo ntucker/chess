@@ -20,22 +20,24 @@ export function ReviewGameButton({ href }: { readonly href: Href }) {
   );
 }
 
+/** Where the scoresheet's Review button opens, or why it doesn't open yet, for its tip. */
+export type ReviewLink = { readonly href: Href } | { readonly shut: string };
+
 /**
- * The Review button by the scoresheet's title: opens the review at `href`,
- * or, with none, shows disabled, with why it doesn't open yet (`closed`) in
- * its tip. `compact` draws only its icon, for the narrow scoresheet drawer's
- * head; screen readers hear its name either way.
+ * The Review button by the scoresheet's title: opens the review `link`
+ * names, or shows disabled, with why it doesn't open yet in its tip.
+ * `compact` draws only its icon, for the narrow scoresheet drawer's head;
+ * screen readers hear its name either way.
  */
 export function ScoresheetReview({
-  href,
-  closed,
+  link,
   compact,
 }: {
-  readonly href?: Href;
-  readonly closed?: string;
+  readonly link: ReviewLink;
   readonly compact?: boolean;
 }) {
   const router = useRouter();
+  const href = 'href' in link ? link.href : undefined;
   const button = (
     <Button
       size="sm"
@@ -48,11 +50,10 @@ export function ScoresheetReview({
       {compact ? null : ' Review'}
     </Button>
   );
+  if (!('shut' in link)) return button;
   // Disabled, the button takes no focus, so the tip takes it to open from the keyboard.
-  return href || !closed ? (
-    button
-  ) : (
-    <Tip tip={closed} focusable>
+  return (
+    <Tip tip={link.shut} focusable>
       {button}
     </Tip>
   );
