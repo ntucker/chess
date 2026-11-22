@@ -105,7 +105,7 @@ function named(
   return placed(text, places, (pos) => {
     if (mover && pos.turn !== mover) return undefined;
     const uci = sanToUci(pos, san);
-    // Read only as a move that takes exactly when its SAN says so (see above).
+    // Only a move that takes a piece exactly when the SAN has an x.
     return uci && takes !== Boolean(takenRole(pos, parseUci(uci) as NormalMove)) ? undefined : uci;
   });
 }
