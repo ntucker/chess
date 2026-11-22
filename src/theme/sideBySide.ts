@@ -75,15 +75,12 @@ const besideHeight = (foot: boolean) =>
 export const WRAPPED_GAP = narrowLength('wrapped-gap', 32);
 /**
  * A narrow page's least height natively: the board at its smallest, and the
- * panel at its floor below it, with any controls under the panel (`foot`).
+ * panel at its floor below it, which holds any controls under the panel.
  * Shorter, the page scrolls, as narrow.css lets a web page grow.
  */
-export function narrowPageMin(foot = false) {
-  return AROUND_BOARD.plus(BOARD_MIN)
-    .plus(WRAPPED_GAP)
-    .plus(PROGRAM_FLOOR)
-    .plus(foot ? PROGRAM_FOOT : 0).narrow;
-}
+export const NARROW_PAGE_MIN = AROUND_BOARD.plus(BOARD_MIN)
+  .plus(WRAPPED_GAP)
+  .plus(PROGRAM_FLOOR).narrow;
 /**
  * The board column's width limit on the web, on a page with controls under
  * its panel (`foot`) or without. The board also shrinks to fit the window's

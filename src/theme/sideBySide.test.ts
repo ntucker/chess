@@ -1,8 +1,8 @@
 import { describe, expect, it, jest } from '@jest/globals';
 
-import { NARROW_PX, PX } from '@/theme/narrow';
+import { NARROW_PX, NATIVE_PARTS, PROGRAM_FLOOR, PX } from '@/theme/narrow';
 
-import { BOARD_COLUMN_MAX, boardColumnLimit, narrowPageMin } from './sideBySide';
+import { BOARD_COLUMN_MAX, boardColumnLimit, NARROW_PAGE_MIN } from './sideBySide';
 
 // Jest can't load a stylesheet.
 jest.mock('@/theme/narrow.css', () => ({}));
@@ -28,9 +28,12 @@ describe('boardColumnLimit', () => {
   });
 });
 
-describe('narrowPageMin', () => {
-  it('fits a 640-tall phone page with controls fixed under the panel, as the review has', () => {
-    expect(narrowPageMin(true)).toBeLessThanOrEqual(640);
-    expect(narrowPageMin(true)).toBe(narrowPageMin() + NARROW_PX['program-foot']);
+describe('NARROW_PAGE_MIN', () => {
+  it('fits a 640-tall phone less its status bar and gesture bar, with controls fixed under the panel', () => {
+    expect(NARROW_PAGE_MIN).toBeLessThanOrEqual(640 - 24 - 16);
+    // Those controls take their room from the panel's floor, not the page's.
+    expect(NATIVE_PARTS['footed-program'].narrow?.minHeight).toBe(
+      PROGRAM_FLOOR - NARROW_PX['program-foot'],
+    );
   });
 });

@@ -81,6 +81,7 @@ export const NARROW_PARTS = [
   'stage',
   'board-column',
   'program',
+  'footed-program',
   'player-names',
   'drawer-panel',
   'lesson-body',
@@ -104,6 +105,7 @@ export type NarrowPartName = (typeof NARROW_PARTS)[number];
  */
 export const SCROLLING_PARTS = [
   'program',
+  'footed-program',
   'list-scroll',
   'idea-pane',
   'narrow-idea-pane',
@@ -229,8 +231,21 @@ const IDEA_PANE = {
 /** The lesson panes' least height on a narrow page: a couple of moves. */
 const PANES_FLOOR = 140;
 
-/** The panel's least height under the board on a narrow page: a few lines of it (narrow.css's `program` writes it too). */
+/**
+ * The panel's least height under the board on a narrow page, with any
+ * controls fixed under it (Stage's `programFoot`): a few lines of it.
+ * narrow.css's `program` and `footed-program` write it too.
+ */
 export const PROGRAM_FLOOR = 120;
+
+/** The panel under the board on a narrow page, short of its floor. */
+const PROGRAM = {
+  flexGrow: 1,
+  flexShrink: 1,
+  flexBasis: 'auto',
+  height: 0,
+  width: '100%',
+} as const satisfies ViewStyle;
 
 /**
  * narrow.css's rules as native styles. narrow.test.ts checks each declaration
@@ -261,15 +276,10 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
     },
   },
   'board-column': { narrow: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', width: '100%' } },
-  program: {
-    narrow: {
-      flexGrow: 1,
-      flexShrink: 1,
-      flexBasis: 'auto',
-      height: 0,
-      minHeight: PROGRAM_FLOOR,
-      width: '100%',
-    },
+  program: { narrow: { ...PROGRAM, minHeight: PROGRAM_FLOOR } },
+  // The controls under it take the rest of the floor, so they fit any window a page without them does.
+  'footed-program': {
+    narrow: { ...PROGRAM, minHeight: PROGRAM_FLOOR - NARROW_PX['program-foot'] },
   },
   'player-names': { narrow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 } },
   'drawer-panel': { narrow: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' } },
@@ -352,6 +362,7 @@ export const CSS_ONLY: Readonly<Partial<Record<NarrowPartName, readonly string[]
   panes: ['height: 0'],
   // `NarrowScroll` scrolls these natively, with a fading edge and the same padding.
   program: SCROLLS,
+  'footed-program': SCROLLS,
   'list-scroll': ['overscroll-behavior: contain', ...SCROLLS],
   'idea-pane': ['overscroll-behavior: contain', ...SCROLLS],
   // Unhidden as `narrow-only` is, and scrolled as the idea pane is.

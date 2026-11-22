@@ -22,8 +22,6 @@ interface Props {
    * scroll on its own (the board page). Otherwise it grows with its content.
    */
   readonly fillsWindow?: boolean;
-  /** A page that fills the window ends in controls fixed at its foot, which its least height makes room for. */
-  readonly fixedFoot?: boolean;
   readonly children: ReactNode;
   /**
    * Small print across the foot of a wide page, under a rule: at the window's
@@ -38,20 +36,12 @@ interface Props {
  * and the content below it, scrolling as one. A page that `fillsWindow` scrolls
  * only once the panel inside is at its floor.
  */
-export function Page({
-  title,
-  header,
-  maxWidth,
-  fillsWindow = false,
-  fixedFoot,
-  children,
-  footer,
-}: Props) {
+export function Page({ title, header, maxWidth, fillsWindow = false, children, footer }: Props) {
   const { theme } = useTheme();
   const schemeColors = useSchemeColors();
   const styles = useNarrowStyles(STYLES);
   const part = useNarrowPart();
-  const windowHeight = useNarrowPageHeight(fixedFoot);
+  const windowHeight = useNarrowPageHeight();
   const height = fillsWindow ? windowHeight : undefined;
   return (
     <View

@@ -66,14 +66,7 @@ export function Stage({ title, header, board, program, footer, programFoot }: St
   const foot = Boolean(programFoot);
   const fit = useBoardFit(foot);
   return (
-    <Page
-      title={title}
-      header={header}
-      maxWidth={STAGE_MAX}
-      fillsWindow
-      fixedFoot={foot}
-      footer={footer}
-    >
+    <Page title={title} header={header} maxWidth={STAGE_MAX} fillsWindow footer={footer}>
       <View {...part('stage', styles.stage)}>
         <View
           {...part('board-column', [
@@ -84,7 +77,7 @@ export function Stage({ title, header, board, program, footer, programFoot }: St
         >
           {board}
         </View>
-        <NarrowScroll part="program" style={styles.program}>
+        <NarrowScroll part={foot ? 'footed-program' : 'program'} style={styles.program}>
           {program}
         </NarrowScroll>
         {programFoot ? <NarrowOnly style={styles.programFoot}>{programFoot}</NarrowOnly> : null}

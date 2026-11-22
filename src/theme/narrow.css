@@ -186,12 +186,19 @@
     flex: 0 0 auto;
     width: 100%;
   }
-  :root [data-narrow='program'] {
+  :root [data-narrow='program'],
+  :root [data-narrow='footed-program'] {
     flex: 1 1 auto;
     height: 0;
-    /* The panel's floor: a few lines of it (PROGRAM_FLOOR in narrow.ts). */
-    min-height: 120px;
     width: 100%;
+  }
+  /* The panel's floor: a few lines of it (PROGRAM_FLOOR in narrow.ts). */
+  :root [data-narrow='program'] {
+    min-height: 120px;
+  }
+  /* The controls fixed under it take the rest of the floor: 120px less --program-foot. */
+  :root [data-narrow='footed-program'] {
+    min-height: 60px;
   }
   /*
    * The panel, a candidate list's rows and the idea pane scroll on their own. Each fades
@@ -199,6 +206,7 @@
    * line clear it.
    */
   :root [data-narrow='program'],
+  :root [data-narrow='footed-program'],
   :root [data-narrow='list-scroll'],
   :root [data-narrow='idea-pane'],
   :root [data-narrow='narrow-idea-pane'] {
