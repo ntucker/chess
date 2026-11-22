@@ -17,7 +17,7 @@
  */
 import type { Chess } from 'chessops/chess';
 import type { Color, NormalMove, SquareName } from 'chessops/types';
-import { opposite, parseSquare, parseUci, squareFile } from 'chessops/util';
+import { opposite, parseSquare, parseUci } from 'chessops/util';
 
 import {
   MOVE_NUMBER,
@@ -28,6 +28,7 @@ import {
   recordedMove,
   SAN,
   sanToUci,
+  takenRole,
   withTurn,
 } from '@/game/replay';
 
@@ -99,21 +100,12 @@ function named(
   // Three dots, numbered or not, are Black's move; a number's single dot, White's.
   const mover: Color | undefined =
     number === undefined ? undefined : number.includes('...') ? 'black' : 'white';
-  // A SAN without an x takes nothing: a recap's "Qe3", where the queen
-  // already stands, isn't the other queen taking it.
   const takes = san.includes('x');
   return placed(text, places, (pos) => {
     if (mover && pos.turn !== mover) return undefined;
     const uci = sanToUci(pos, san);
-    return uci && !takes && captures(pos, uci) ? undefined : uci;
+    return uci && !takes && takenRole(pos, parseUci(uci) as NormalMove) ? undefined : uci;
   });
-}
-
-/** Whether `uci`, legal in `pos`, takes a piece: on its square, or en passant. */
-function captures(pos: Chess, uci: Uci): boolean {
-  const { from, to } = parseUci(uci) as NormalMove;
-  if (pos.board.get(to)?.color === opposite(pos.turn)) return true;
-  return pos.board.get(from)?.role === 'pawn' && squareFile(from) !== squareFile(to);
 }
 
 /**
