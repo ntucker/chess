@@ -1,6 +1,7 @@
 import type { MoveQuality } from '@/analysis/quality';
 import type { HeadlineProps, News } from '@/components/GameStatus';
-import { endingHeadline, type Verdict } from '@/game/ending';
+import { endingHeadline, resultVerdict, type Verdict } from '@/game/ending';
+import type { Color, GameResult } from '@/game/replay';
 import type { LessonView } from '@/lesson/view';
 import { qualityLooks } from '@/theme/moveQuality';
 
@@ -154,11 +155,21 @@ export function describeStatus(
 }
 
 /**
+ * How the game ended, for the headline: only while the board shows its final
+ * position, not a move stepped back to or an idea played over it.
+ */
+export const shownEnding = (
+  { result, atLatest, playing }: { result?: GameResult; atLatest: boolean; playing: boolean },
+  learner: Color,
+): Verdict | undefined =>
+  result && atLatest && !playing ? resultVerdict(result, learner) : undefined;
+
+/**
  * Why the scoresheet's Review button doesn't open yet, for its tip, or
  * undefined once it opens: when the game has ended, or in Practice once a
  * move left the guide. Never while picking a line.
  */
-export function reviewClosed({
+export function whyReviewShut({
   picking,
   ended,
   practice,

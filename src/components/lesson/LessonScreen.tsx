@@ -19,12 +19,17 @@ import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { useLongWait } from '@/components/useLongWait';
 import { useNavigating } from '@/components/navigation';
 import { NewVersionError } from '@/files/newVersion';
-import { resultVerdict } from '@/game/ending';
 import { type Color, colorName, opposite } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
 import { listsTopMoves } from '@/lesson/guidance';
 import type { Uci, VariationId } from '@/lesson/lesson';
-import { lessonsAfter, lessonsFrom, openingsLesson, withOpenings } from '@/lesson/openings';
+import {
+  isPicking,
+  lessonsAfter,
+  lessonsFrom,
+  openingsLesson,
+  withOpenings,
+} from '@/lesson/openings';
 import { type Candidate, captionName, pathNames, shareSource } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
 import { reviewHref } from '@/review/address';
@@ -40,7 +45,14 @@ import { IdeaAside, IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
 import { SideChoice } from './SideChoice';
-import { describeStatus, headlineNews, LOADING, OPENINGS_TITLE, reviewClosed } from './status';
+import {
+  describeStatus,
+  headlineNews,
+  LOADING,
+  OPENINGS_TITLE,
+  shownEnding,
+  whyReviewShut,
+} from './status';
 import { SourceCredits } from './SourceCredits';
 import { TrapCard } from './TrapCard';
 import { useOpeningsGame } from './useOpeningsGame';
@@ -197,11 +209,14 @@ function LessonScreen({
   const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
   const names = pathNames(view.variation);
   const { result } = game.latest;
-  // How the game ended, while the board shows its final position, not an idea played over it.
-  const ending =
-    result && game.atLatest && !playback.playing ? resultVerdict(result, learner) : undefined;
-  const reviewShut = reviewClosed({
-    picking,
+  const ending = shownEnding(
+    { result, atLatest: game.atLatest, playing: !!playback.playing },
+    learner,
+  );
+  // The whole game, not the move on the board: stepping back into the
+  // openings' first moves doesn't close the review of a game played past them.
+  const reviewShut = whyReviewShut({
+    picking: isPicking(index, learner, game.moves),
     ended: !!result,
     practice: mode === 'practice',
     leftGuide: view.guideMoves.includes(undefined),
@@ -209,7 +224,7 @@ function LessonScreen({
   const review = reviewShut ? undefined : reviewHref(game.moves, learner, id);
   /** The Review button by the scoresheet's title, or in the narrow drawer's head (`compact`). */
   const scoresheetReview = (compact?: boolean) => (
-    <ScoresheetReview href={review} closed={reviewShut ?? ''} compact={compact} />
+    <ScoresheetReview href={review} closed={reviewShut} compact={compact} />
   );
   const { pastGuide, ...status } = describeStatus(view, {
     picking,

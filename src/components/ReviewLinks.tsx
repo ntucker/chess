@@ -32,7 +32,7 @@ export function ScoresheetReview({
   compact,
 }: {
   readonly href?: Href;
-  readonly closed: string;
+  readonly closed?: string;
   readonly compact?: boolean;
 }) {
   const router = useRouter();
@@ -49,7 +49,7 @@ export function ScoresheetReview({
     </Button>
   );
   // Disabled, the button takes no focus, so the tip takes it to open from the keyboard.
-  return href ? (
+  return href || !closed ? (
     button
   ) : (
     <Tip tip={closed} focusable>

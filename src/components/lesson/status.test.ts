@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import type { LessonView } from '@/lesson/view';
 
-import { describeStatus, headlineNews, reviewClosed } from './status';
+import { describeStatus, headlineNews, shownEnding, whyReviewShut } from './status';
 
 const INPUT = {
   picking: false,
@@ -80,24 +80,38 @@ describe('headlineNews', () => {
   });
 });
 
-describe('reviewClosed', () => {
-  const shut = { picking: false, ended: false, practice: false, leftGuide: false };
+describe('whyReviewShut', () => {
+  const open = { picking: false, ended: false, practice: false, leftGuide: false };
   it('opens once the game ends, in either mode', () => {
-    expect(reviewClosed({ ...shut, ended: true })).toBeUndefined();
-    expect(reviewClosed({ ...shut, ended: true, practice: true })).toBeUndefined();
+    expect(whyReviewShut({ ...open, ended: true })).toBeUndefined();
+    expect(whyReviewShut({ ...open, ended: true, practice: true })).toBeUndefined();
   });
   it('opens in Practice once a move left the guide', () => {
-    expect(reviewClosed({ ...shut, practice: true, leftGuide: true })).toBeUndefined();
+    expect(whyReviewShut({ ...open, practice: true, leftGuide: true })).toBeUndefined();
   });
   it('says why it stays shut, in the words of the mode', () => {
-    expect(reviewClosed({ ...shut, practice: true })).toBe(
+    expect(whyReviewShut({ ...open, practice: true })).toBe(
       'Review opens after a move off the guide, or once the game ends.',
     );
-    expect(reviewClosed({ ...shut, leftGuide: true })).toBe(
+    expect(whyReviewShut({ ...open, leftGuide: true })).toBe(
       'Review opens once the game ends, or in Practice after a move off the guide.',
     );
   });
   it('stays shut while picking a line', () => {
-    expect(reviewClosed({ ...shut, picking: true, ended: true })).toBeDefined();
+    expect(whyReviewShut({ ...open, picking: true, ended: true })).toBeDefined();
+  });
+});
+
+describe('shownEnding', () => {
+  const mate = { reason: 'checkmate', winner: 'white' } as const;
+  const shown = { result: mate, atLatest: true, playing: false };
+  it('tells how the game ended, for the side the learner played', () => {
+    expect(shownEnding(shown, 'white')).toEqual({ mood: 'won', reason: 'checkmate' });
+    expect(shownEnding(shown, 'black')).toEqual({ mood: 'lost', reason: 'checkmate' });
+  });
+  it('waits while the board shows another position', () => {
+    expect(shownEnding({ ...shown, atLatest: false }, 'white')).toBeUndefined();
+    expect(shownEnding({ ...shown, playing: true }, 'white')).toBeUndefined();
+    expect(shownEnding({ ...shown, result: undefined }, 'white')).toBeUndefined();
   });
 });

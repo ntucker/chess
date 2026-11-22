@@ -14,7 +14,7 @@ import { NewVersionError } from '@/files/newVersion';
 import { material } from '@/game/material';
 import { type Color, colorName, fenAfter, opposite, replay } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
-import { withOpenings } from '@/lesson/openings';
+import { lessonHref, withOpenings } from '@/lesson/openings';
 import { getLesson, isLessonId, LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { addressMoves, type ReviewAddress } from '@/review/address';
 import { REVIEW_ENGINE, useReview } from '@/review/useReview';
@@ -26,7 +26,7 @@ import { ReviewPanel } from './ReviewPanel';
 const TITLE = 'Review · Opening Night';
 /** Back to the game: history's previous page, or, opened fresh, the lesson the review came from. */
 const back = (lesson?: LessonId) =>
-  ({ href: lesson ? `/lesson/${lesson}` : '/', label: 'Back to the game' }) as const;
+  ({ href: lesson ? lessonHref(lesson) : '/', label: 'Back to the game' }) as const;
 
 /**
  * The review of the game the address names, on the board's page: the board
@@ -45,7 +45,7 @@ export function ReviewPage(address: ReviewAddress) {
 }
 
 /** The review the address names, or why there is none. */
-function AddressedReview({ moves = '', side, lesson }: ReviewAddress) {
+function AddressedReview({ moves, side, lesson }: ReviewAddress) {
   if (side !== 'white' && side !== 'black') return <ReviewPlaceholder message={NO_GAME} />;
   if (lesson !== undefined && !isLessonId(lesson)) {
     return <ReviewPlaceholder message="There is no lesson here." />;
