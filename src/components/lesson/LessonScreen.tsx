@@ -441,8 +441,9 @@ function LessonScreen({
           {/*
            * A narrow page has no room for the rest under the panes: the
            * scoresheet opens in the drawer, the settings in a sheet. The page's
-           * copy of the settings unmounts while the sheet is open. This scoresheet stays
-           * while the drawer is open, so a window widened meanwhile still shows one.
+           * copy of the settings unmounts while the sheet is open. This
+           * scoresheet stays while the drawer is open, so a window widened
+           * meanwhile still shows one.
            */}
           <Stack {...part('wide-only', styles.sections)}>
             <Separator />
