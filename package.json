@@ -99,7 +99,8 @@
           "<rootDir>/jest.web.setup.ts"
         ],
         "moduleNameMapper": {
-          "^@/assets/(.*)$": "<rootDir>/assets/$1"
+          "^@/assets/(.*)$": "<rootDir>/assets/$1",
+          "^@react-native/assets-registry/registry$": "<rootDir>/jest.web.assetsRegistry.ts"
         },
         "testMatch": [
           "<rootDir>/src/**/*.web.test.ts?(x)"

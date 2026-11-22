@@ -5,8 +5,7 @@
  */
 import type { Color, SquareName } from 'chessops/types';
 
-import { colorName, SAN, sanToUci } from '@/game/replay';
-import { withTurn } from '@/lesson/check';
+import { colorName, SAN, sanToUci, withTurn } from '@/game/replay';
 import type { Route } from '@/lesson/lesson';
 
 import { findOnLine, playedBy, type Found, type Spot } from './line';

@@ -11,13 +11,24 @@ import { Transport } from '@/components/Transport';
 import type { Color } from '@/game/replay';
 import { ideaTone } from '@/lesson/drawings';
 import type { PlayedBack } from '@/lesson/guidance';
-import { AI_MODELS, type AiModel, type Evaluation, type Idea, type Note } from '@/lesson/lesson';
+import {
+  AI_MODELS,
+  type AiModel,
+  type Evaluation,
+  type Idea,
+  type Lesson,
+  type Note,
+} from '@/lesson/lesson';
 import type { Playback, Playing } from '@/lesson/useLesson';
 import type { ShownNote } from '@/lesson/view';
 import { toneColors } from '@/theme/drawingTones';
 import { NarrowOnly, useNarrowPart } from '@/theme/Narrow';
 
+import { NoteText } from './NoteText';
+
 interface Props {
+  /** The lesson the notes come from, which places the moves they name. */
+  readonly lesson: Lesson;
   readonly title: string;
   readonly notes: readonly ShownNote[];
   /** The learner's side: a note's kind takes its color from the board's drawings. */
@@ -45,6 +56,7 @@ interface Props {
  * that idea's color.
  */
 export function IdeaCard({
+  lesson,
   title,
   notes,
   learner,
@@ -70,6 +82,7 @@ export function IdeaCard({
             <NoteView
               // A position's notes differ as a whole (merge.ts drops exact repeats), not always in text.
               key={JSON.stringify(shown.note) + (shown.before ?? '')}
+              lesson={lesson}
               shown={shown}
               learner={learner}
               playback={playback}
@@ -103,6 +116,7 @@ export function IdeaAside({ title, detail }: { readonly title: string; readonly 
 }
 
 export function NoteView({
+  lesson,
   shown,
   learner,
   playback,
@@ -111,6 +125,7 @@ export function NoteView({
   onPoint,
   onLeave,
 }: {
+  readonly lesson: Lesson;
   readonly shown: ShownNote;
   readonly learner: Color;
   readonly playback: Playback;
@@ -195,7 +210,7 @@ export function NoteView({
         }}
       >
         {verdictBelow ? <View {...part('wide-only')}>{heading}</View> : heading}
-        <Text role="body">{note.text}</Text>
+        <NoteText lesson={lesson} shown={shown} learner={learner} />
         {verdictBelow ? <NarrowOnly>{heading}</NarrowOnly> : null}
         {more && original ? (
           <Text role="bodySm" tone="secondary">

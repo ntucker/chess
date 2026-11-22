@@ -3,12 +3,14 @@ import { Button, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
 import { StyleSheet, View } from 'react-native';
 
 import { type Color, colorName } from '@/game/replay';
+import type { Lesson } from '@/lesson/lesson';
 import type { Playback } from '@/lesson/useLesson';
 import type { LandedTrap } from '@/lesson/view';
 
 import { NoteView } from './IdeaCard';
 
 interface Props {
+  readonly lesson: Lesson;
   readonly trap: LandedTrap;
   /** The tempting move, as the scoresheet writes it: "Nxe5". */
   readonly mistake: string;
@@ -26,7 +28,7 @@ interface Props {
  * for which move, the guide's note on it with its play-through, and a way
  * back to before the mistake.
  */
-export function TrapCard({ trap, mistake, fell, learner, playback, onBack }: Props) {
+export function TrapCard({ lesson, trap, mistake, fell, learner, playback, onBack }: Props) {
   const { theme } = useTheme();
   const danger = theme.semantic.color.tones.danger;
   const yours = fell === learner;
@@ -47,6 +49,7 @@ export function TrapCard({ trap, mistake, fell, learner, playback, onBack }: Pro
         </View>
         {/* Its ideas are about the position before the mistake, so pointing draws nothing. */}
         <NoteView
+          lesson={lesson}
           shown={trap.note}
           learner={learner}
           playback={playback}
