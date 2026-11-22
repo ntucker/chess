@@ -21,15 +21,14 @@ interface Props {
   readonly learner: Color;
 }
 
-// Whether mentions open boards: web only until #171. On Android a trigger
-// inside a line of text rides above the words, and its open tooltip swallows
-// every later tap, so there the notation is plain mono text.
-const SHOW_BOARDS = Platform.OS === 'web';
+// Natively a trigger inside a line of text is a span, which has no padding:
+// thin spaces inside its background stand in for the chip's.
+const PAD = Platform.OS === 'web' ? '' : '\u2009';
 
 /**
  * A note's sentence, with each move or square it names (`noteParts`) set as
- * notation that, on the web, shows it on a small board: under a resting
- * mouse, or on a tap. A tap there, or on the board, doesn't point at the note.
+ * notation that shows it on a small board: under a resting mouse, or on a
+ * tap. A tap there, or on the board, doesn't point at the note.
  */
 export function NoteText({ lesson, shown, learner }: Props) {
   const { note, after, before } = shown;
@@ -41,15 +40,7 @@ export function NoteText({ lesson, shown, learner }: Props) {
   return (
     <Text role="body">
       {parts.map((part, n) =>
-        typeof part === 'string' ? (
-          part
-        ) : SHOW_BOARDS ? (
-          <MentionTip key={n} mention={part} learner={learner} />
-        ) : (
-          <Text key={n} role="body" style={styles.notation}>
-            {part.text}
-          </Text>
-        ),
+        typeof part === 'string' ? part : <MentionTip key={n} mention={part} learner={learner} />,
       )}
     </Text>
   );
@@ -68,7 +59,9 @@ function MentionTip({ mention, learner }: { readonly mention: Mention; readonly 
         onPointerUp={keepFromNote}
       >
         <Text role="body" style={[styles.notation, { color: accent.text }]}>
+          {PAD}
           {mention.text}
+          {PAD}
         </Text>
       </Tooltip.Trigger>
       <Tooltip.Content style={styles.tip} onPointerUp={keepFromNote}>
