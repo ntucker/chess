@@ -6,7 +6,12 @@ import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { type Color, colorName, type GameResult, lastPosition, opposite } from '@/game/replay';
-import { evaluationReading, type Reading, resultEvaluation } from '@/evaluation/evaluation';
+import {
+  type EvaluationEngine,
+  evaluationReading,
+  type Reading,
+  resultEvaluation,
+} from '@/evaluation/evaluation';
 import { analysisKey, PositionAnalysis, useAnalysis } from '@/resources/analysis';
 import { useSettings } from '@/settings/SettingsProvider';
 import { useNarrowPart } from '@/theme/Narrow';
@@ -22,6 +27,13 @@ interface Props {
   readonly orientation: Color;
   /** Sets the bar's width; it stretches to its row's height. */
   readonly style?: StyleProp<ViewStyle>;
+  /**
+   * Shows what the store has from this engine and asks it for nothing, for
+   * a page that runs its own searches (the review). Without it, the bar
+   * follows the engine chosen in the settings, searching while its screen
+   * is in front.
+   */
+  readonly reads?: EvaluationEngine;
 }
 
 /**
@@ -34,15 +46,16 @@ interface Props {
  * asks for it): how it scored the move played, when it lists that move,
  * else how it scored itself.
  */
-export function EvaluationBar({ line, orientation, style }: Props) {
-  const engine = useSettings().evaluationEngine;
+export function EvaluationBar({ line, orientation, style, reads }: Props) {
+  const chosen = useSettings().evaluationEngine;
+  const engine = reads ?? chosen;
   // Asks only while its screen is in front, never while the web export pre-renders.
   const focused = useIsFocused();
   const position = line.join(' ');
   const moves = useMemo(() => (position ? position.split(' ') : []), [position]);
   // A finished game reads as its result (1-0, ½) rather than an advantage.
   const result = useMemo(() => lastPosition(moves).result, [moves]);
-  const analysis = useAnalysis(engine, focused && !result ? moves : null);
+  const analysis = useAnalysis(engine, result ? null : moves, focused && !reads);
   const before = useQuery(
     PositionAnalysis,
     ...(moves.length && !analysis ? [analysisKey(engine, moves.slice(0, -1))] : [null]),

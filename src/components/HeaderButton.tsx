@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, type PressableProps, useTheme } from '@reactive/silk-native';
+import { a11yState, Pressable, type PressableProps, useTheme } from '@reactive/silk-native';
 import type { ComponentProps, ComponentRef, Ref } from 'react';
 import type { View } from 'react-native';
 
@@ -17,6 +17,8 @@ interface Props extends Pick<
   | 'onLongPress'
   | 'delayLongPress'
 > {
+  /** Whether what the button opens is open, for a button that closes it again. */
+  readonly expanded?: boolean;
   readonly ref?: Ref<ComponentRef<typeof View>>;
   readonly icon: ComponentProps<typeof Ionicons>['name'];
   readonly iconSize: number;
@@ -27,13 +29,14 @@ interface Props extends Pick<
  * button, the theme button), or the close of a sheet or drawer. It stays quiet in the
  * secondary ink and lights up on hover, like the transport's buttons.
  */
-export function HeaderButton({ icon, iconSize, ...pressable }: Props) {
+export function HeaderButton({ icon, iconSize, expanded, ...pressable }: Props) {
   const { theme } = useTheme();
   const { color } = theme.semantic;
   const styles = useNarrowStyles(STYLES);
   return (
     <Pressable
       {...pressable}
+      {...(expanded !== undefined && a11yState({ expanded }))}
       style={({ pressed, hovered }) => [
         styles.button,
         (pressed || hovered) && { backgroundColor: color.tones.neutral.subtle },

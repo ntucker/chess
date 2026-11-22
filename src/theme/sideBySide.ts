@@ -1,4 +1,4 @@
-import { narrowCalc, narrowLength, type Px } from '@/theme/narrow';
+import { narrowCalc, narrowLength, PROGRAM_FLOOR, type Px } from '@/theme/narrow';
 
 // The board page's geometry (Stage.tsx), beside the narrow decision that depends on it (Narrow.tsx).
 
@@ -62,24 +62,41 @@ const AROUND_BOARD = PAGE_SPACE.times(3).plus(HEADER_HEIGHT).plus(BOARD_OFFSET).
 const BOARD_MIN = narrowLength('board-min', 320);
 /** Height kept below the board column for the panel: none beside it, some below it on a narrow page. */
 const PANEL_RESERVE = narrowLength('panel-reserve', 0);
-/** Height around the board, and the panel's reserve below it. */
-const BESIDE_HEIGHT = AROUND_BOARD.plus(PANEL_RESERVE);
-/** A narrow page's least height natively: the board at its smallest, and the panel's reserve below it. */
-export const NARROW_PAGE_MIN = BESIDE_HEIGHT.plus(BOARD_MIN).narrow;
 /**
- * The board column's width limit on the web. The board also shrinks to fit
- * the window's height, so the player's name bar and the move buttons stay in
- * view, and on a narrow page the start of the panel too. CSS does it, since
- * the server can't measure the window; natively `boardColumnLimit` does.
- * `clamp()` has no NarrowLength form, so the two are written apart.
+ * Height a narrow page's controls fixed under the panel take, with the gap
+ * above them (Stage's `programFoot`, such as the review's actions): kept
+ * below the board too, on a page that has them. A wide page has none.
  */
-export const BOARD_COLUMN_LIMIT_CSS = narrowCalc(
-  `clamp(${BOARD_MIN.css}, 100svh - ${BESIDE_HEIGHT.css}, ${BOARD_MAX}px) + ${BESIDE_BOARD.css}`,
-  BOARD_COLUMN_MAX,
-);
+export const PROGRAM_FOOT = narrowLength('program-foot', 0);
+/** Height around the board, and what is kept below it: the panel's reserve, and any controls under the panel. */
+const besideHeight = (foot: boolean) =>
+  AROUND_BOARD.plus(PANEL_RESERVE).plus(foot ? PROGRAM_FOOT : 0);
+/** Space above the panel when it sits below the board (Stage.tsx). */
+export const WRAPPED_GAP = narrowLength('wrapped-gap', 32);
+/**
+ * A narrow page's least height natively: the board at its smallest, and the
+ * panel at its floor below it, which holds any controls under the panel.
+ * Shorter, the page scrolls, as narrow.css lets a web page grow.
+ */
+export const NARROW_PAGE_MIN = AROUND_BOARD.plus(BOARD_MIN)
+  .plus(WRAPPED_GAP)
+  .plus(PROGRAM_FLOOR).narrow;
+/**
+ * The board column's width limit on the web, on a page with controls under
+ * its panel (`foot`) or without. The board also shrinks to fit the window's
+ * height, so the player's name bar and the move buttons stay in view, and
+ * on a narrow page the start of the panel and those controls too. CSS does
+ * it, since the server can't measure the window; natively `boardColumnLimit`
+ * does. `clamp()` has no NarrowLength form, so the two are written apart.
+ */
+export const boardColumnLimitCss = (foot: boolean) =>
+  narrowCalc(
+    `clamp(${BOARD_MIN.css}, 100svh - ${besideHeight(foot).css}, ${BOARD_MAX}px) + ${BESIDE_BOARD.css}`,
+    BOARD_COLUMN_MAX,
+  );
 
-/** `BOARD_COLUMN_LIMIT_CSS` off the web: for a window `height` tall, with lengths read by `px`. */
-export function boardColumnLimit(height: number, px: Px) {
-  const board = Math.min(Math.max(px(BOARD_MIN), height - px(BESIDE_HEIGHT)), BOARD_MAX);
+/** `boardColumnLimitCss` off the web: for a window `height` tall, with lengths read by `px`. */
+export function boardColumnLimit(height: number, px: Px, foot = false) {
+  const board = Math.min(Math.max(px(BOARD_MIN), height - px(besideHeight(foot))), BOARD_MAX);
   return board + px(BESIDE_BOARD);
 }

@@ -86,6 +86,16 @@ export function positionKey(pos: Chess): string {
   return makeFen(pos.toSetup(), { epd: true });
 }
 
+/** A copy of `pos` with `color` to move, as if the other side passed. */
+export function withTurn(pos: Chess, color: Color): Chess {
+  const copy = pos.clone();
+  if (copy.turn !== color) {
+    copy.turn = color;
+    copy.epSquare = undefined;
+  }
+  return copy;
+}
+
 /** The position `fen` describes, or undefined if it is not a legal position. */
 export function parsePosition(fen: string): Chess | undefined {
   const setup = parseFen(fen);
@@ -190,6 +200,12 @@ function gameResult(pos: Chess, repetitions: number): GameResult | undefined {
   if (repetitions >= 3) return { reason: 'threefold repetition' };
   if (pos.halfmoves >= 100) return { reason: 'fifty-move rule' };
   return undefined;
+}
+
+/** The position (FEN) after playing `uci` from `fen`, if it's legal there. */
+export function fenAfter(fen: string, uci: string): string | undefined {
+  const pos = parsePosition(fen);
+  return pos && playMove(pos, uci) ? makeFen(pos.toSetup()) : undefined;
 }
 
 /** The position after `line`, ready for the board. */

@@ -8,6 +8,8 @@ import { themes } from '@/theme/theme';
 
 /** Space between an eyebrow and what it labels: Silk's step 3, less on a narrow page. */
 const LABEL_GAP = narrowLength('label-gap', themes.dark.semantic.space[3]);
+/** Space between the panel's sections, each under its eyebrow: Silk's step 5, less on a narrow page. */
+const SECTION_GAP = narrowLength('section-gap', themes.dark.semantic.space[5]);
 
 interface Props {
   readonly children: ReactNode;
@@ -31,7 +33,13 @@ const styles = StyleSheet.create({
   eyebrow: { textTransform: 'uppercase', letterSpacing: 1.6 },
 });
 
-const STYLES = narrowStyles((px) => ({ labelled: { gap: px(LABEL_GAP) } }));
+const STYLES = narrowStyles((px) => ({
+  labelled: { gap: px(LABEL_GAP) },
+  sections: { gap: px(SECTION_GAP) },
+}));
 
 /** A Stack's style that spaces an eyebrow from what it labels. */
 export const useLabelled = () => useNarrowStyles(STYLES).labelled;
+
+/** A Stack's style that spaces the panel's sections. */
+export const useSections = () => useNarrowStyles(STYLES).sections;

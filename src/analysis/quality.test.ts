@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import type { AnalysisLine, Evaluation, FinalAnalysis } from '@/evaluation/evaluation';
 
-import { judgeMove, judgement, labelMove, refutation } from './quality';
+import { judgeMove, judgement, labelMove, qualityRule, refutation } from './quality';
 
 /** An evaluation where White's expected score is `score`. */
 const at = (score: number): Evaluation => ({ score, pawns: 0 });
@@ -150,5 +150,14 @@ describe('labelMove', () => {
       quality: 'best',
       evaluation: at(0.55),
     });
+  });
+});
+
+describe('qualityRule', () => {
+  it("says each label's limits as the labels apply them", () => {
+    expect(qualityRule('good')).toBe('gave away under 5% of the winning chances');
+    expect(qualityRule('inaccuracy')).toBe('gave away 5% to 10% of the winning chances');
+    expect(qualityRule('mistake')).toBe('gave away 10% to 20% of the winning chances');
+    expect(qualityRule('blunder')).toBe('gave away 20% or more of the winning chances');
   });
 });

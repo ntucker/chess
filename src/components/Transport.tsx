@@ -100,7 +100,7 @@ export function Transport({ ply, total, onGoto, middle }: Props) {
     >
       {jump(first)}
       {button(back)}
-      {middle ? <NarrowOnly>{middle}</NarrowOnly> : null}
+      {middle ? <NarrowOnly style={styles.middle}>{middle}</NarrowOnly> : null}
       {button(forward)}
       {jump(latest)}
     </View>
@@ -157,6 +157,8 @@ const styles = StyleSheet.create({
     padding: 4,
     gap: 4,
   },
+  // Grows into any room the stepper is given, such as the review's whole row; in a name bar it has none.
+  middle: { flexGrow: 1 },
   button: {
     width: STEP_BUTTON_WIDTH,
     ...stepButton,

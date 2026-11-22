@@ -10,8 +10,6 @@ import { themes } from '@/theme/theme';
 
 import { CandidateList } from './CandidateList';
 
-// Its react-native-svg needs Expo's asset registry, which the web preset doesn't resolve.
-jest.mock('@/components/QualityBadge', () => ({ QualityBadge: () => null }));
 // Its font needs Expo's asset registry too.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 // Records whether each change the rows' motion animates fades rows in and out.

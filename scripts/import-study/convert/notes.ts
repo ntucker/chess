@@ -6,8 +6,8 @@
 import type { Chess } from 'chessops/chess';
 import { isDeepStrictEqual } from 'node:util';
 
-import { sanToUci } from '@/game/replay';
-import { checkIdea, withTurn } from '@/lesson/check';
+import { sanToUci, withTurn } from '@/game/replay';
+import { checkIdea } from '@/lesson/check';
 import {
   MAX_NOTE_WORDS,
   type AiModel,

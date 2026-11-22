@@ -96,7 +96,7 @@ export default function PlayScreen() {
           <Separator />
           <Stack style={labelled}>
             <Eyebrow>Scoresheet</Eyebrow>
-            <Scoresheet plies={game.plies} qualities={game.qualities} ply={ply} onGoto={goto} />
+            <Scoresheet plies={game.plies} marks={game.qualities} ply={ply} onGoto={goto} />
           </Stack>
           <Stack gap="1">
             <OpponentChoice />
