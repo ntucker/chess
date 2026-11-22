@@ -48,9 +48,11 @@ const RELAYOUT = `
     if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) relayOutAtFontScale()
   }
 
-  // React Native lays text out again itself only for a change it is told of
-  // while the app is in front (ReactHostImpl.onConfigurationChanged), so a
-  // change made while the app was away would keep the old size.
+  // React Native lays its text out again for a new font scale only when
+  // something else dirties the tree in the same layout pass: its root takes
+  // the new scale without dirtying itself (RootShadowNode::clone dirties only
+  // for new size constraints). A change made while the app is in front gets
+  // one; a change made while it was away doesn't, and keeps the old size.
   private fun relayOutAtFontScale() {
     val fontScale = resources.configuration.fontScale
     if (fontScale == laidOutFontScale) return
@@ -58,14 +60,23 @@ const RELAYOUT = `
     laidOutFontScale = fontScale
     if (first) return
     DisplayMetricsHolder.initDisplayMetrics(this)
-    requestReactLayout(window.decorView)
+    relayOutReactViews(window.decorView)
   }
 
-  private fun requestReactLayout(view: View) {
+  // Measuring a root view one pixel taller hands React Native new size
+  // constraints, which dirty the tree, so the text is measured again at the
+  // new scale; the layout pass it asks for then measures it at its own size.
+  private fun relayOutReactViews(view: View) {
     if (view is ReactRootView) {
+      if (view.width > 0 && view.height > 0) {
+        view.measure(
+          View.MeasureSpec.makeMeasureSpec(view.width, View.MeasureSpec.EXACTLY),
+          View.MeasureSpec.makeMeasureSpec(view.height + 1, View.MeasureSpec.EXACTLY),
+        )
+      }
       view.requestLayout()
     } else if (view is ViewGroup) {
-      for (i in 0 until view.childCount) requestReactLayout(view.getChildAt(i))
+      for (i in 0 until view.childCount) relayOutReactViews(view.getChildAt(i))
     }
   }
 `;
