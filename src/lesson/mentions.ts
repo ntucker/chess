@@ -105,8 +105,10 @@ function named(
   return placed(text, places, (pos) => {
     if (mover && pos.turn !== mover) return undefined;
     const uci = sanToUci(pos, san);
+    if (!uci) return undefined;
     // Only a move that takes a piece exactly when the SAN has an x.
-    return uci && takes !== Boolean(takenRole(pos, parseUci(uci) as NormalMove)) ? undefined : uci;
+    const capture = takenRole(pos, parseUci(uci) as NormalMove) !== undefined;
+    return capture === takes ? uci : undefined;
   });
 }
 
