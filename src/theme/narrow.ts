@@ -42,7 +42,7 @@ export const NARROW_PX = {
   'headline-size': 20,
   /** Space between the board column and the panel below it (Stage.tsx). */
   'wrapped-gap': 12,
-  /** Space between the panel's sections (LessonScreen.tsx)... */
+  /** Space between the panel's sections (Eyebrow.tsx)... */
   'section-gap': 12,
   /** ...and between a section's label and what it labels (Eyebrow.tsx). */
   'label-gap': 6,
@@ -53,6 +53,8 @@ export const NARROW_PX = {
   'board-min': 300,
   /** ...to leave this much for the panel (a label and a couple of moves) and the gap above it. */
   'panel-reserve': 172,
+  /** The review's actions fixed under its panel (Stage.tsx), a thumb's height, and the gap above them. */
+  'program-foot': 60,
   /** A candidate row's compact spacing, in its narrow pane (CandidateList.tsx). */
   'candidate-gap': 8,
   'candidate-inset': 10,
@@ -79,8 +81,9 @@ export const NARROW_PARTS = [
   'stage',
   'board-column',
   'program',
+  'footed-program',
   'player-names',
-  'lesson-panel',
+  'drawer-panel',
   'lesson-body',
   'scoresheet-drawer',
   'panes',
@@ -102,6 +105,7 @@ export type NarrowPartName = (typeof NARROW_PARTS)[number];
  */
 export const SCROLLING_PARTS = [
   'program',
+  'footed-program',
   'list-scroll',
   'idea-pane',
   'narrow-idea-pane',
@@ -228,6 +232,22 @@ const IDEA_PANE = {
 const PANES_FLOOR = 140;
 
 /**
+ * The panel's least height under the board on a narrow page, with any
+ * controls fixed under it (Stage's `programFoot`): a few lines of it.
+ * narrow.css's `program` and `footed-program` write it too.
+ */
+export const PROGRAM_FLOOR = 120;
+
+/** The panel under the board on a narrow page, short of its floor. */
+const PROGRAM = {
+  flexGrow: 1,
+  flexShrink: 1,
+  flexBasis: 'auto',
+  height: 0,
+  width: '100%',
+} as const satisfies ViewStyle;
+
+/**
  * narrow.css's rules as native styles. narrow.test.ts checks each declaration
  * is in the part's rule there (`wide` in the rules outside the media query),
  * unless `NATIVE_ONLY` lists it, and each declaration there is here or in `CSS_ONLY`.
@@ -256,18 +276,13 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
     },
   },
   'board-column': { narrow: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', width: '100%' } },
-  program: {
-    narrow: {
-      flexGrow: 1,
-      flexShrink: 1,
-      flexBasis: 'auto',
-      height: 0,
-      minHeight: 120,
-      width: '100%',
-    },
+  program: { narrow: { ...PROGRAM, minHeight: PROGRAM_FLOOR } },
+  // The controls under it take the rest of the floor, so they fit any window a page without them does.
+  'footed-program': {
+    narrow: { ...PROGRAM, minHeight: PROGRAM_FLOOR - NARROW_PX['program-foot'] },
   },
   'player-names': { narrow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 } },
-  'lesson-panel': { narrow: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' } },
+  'drawer-panel': { narrow: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' } },
   'lesson-body': { narrow: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' } },
   'scoresheet-drawer': {
     wide: { display: 'none' },
@@ -342,11 +357,12 @@ export const CSS_ONLY: Readonly<Partial<Record<NarrowPartName, readonly string[]
   ],
   // Natively the panel grows in its scroll view's content, which already fills the
   // program; a percentage there adds the fade's padding again, so the panel scrolled by it.
-  'lesson-panel': ['min-height: 100%'],
+  'drawer-panel': ['min-height: 100%'],
   // Natively the panes' floor is their height instead (`NATIVE_ONLY`).
   panes: ['height: 0'],
   // `NarrowScroll` scrolls these natively, with a fading edge and the same padding.
   program: SCROLLS,
+  'footed-program': SCROLLS,
   'list-scroll': ['overscroll-behavior: contain', ...SCROLLS],
   'idea-pane': ['overscroll-behavior: contain', ...SCROLLS],
   // Unhidden as `narrow-only` is, and scrolled as the idea pane is.

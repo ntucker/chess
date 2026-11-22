@@ -1,4 +1,6 @@
+import type Ionicons from '@expo/vector-icons/Ionicons';
 import { Inline, Pressable, Separator, Text } from '@reactive/silk-native';
+import type { ComponentProps } from 'react';
 import { Image, View } from 'react-native';
 
 import { BackButton } from '@/components/BackButton';
@@ -29,14 +31,24 @@ export interface HeaderProps {
    */
   readonly back?: Destination;
   /**
-   * Opens the page's settings, which a narrow page keeps in a sheet: there
-   * a settings button takes the source link's place, so the sheet should link
-   * to the source (`SourceFootnote`). Elsewhere the page shows its settings
-   * itself, and no button shows.
+   * A narrow page's one button of its own, such as the lesson's settings or
+   * the review's scoresheet. It takes the source link's place, so the page
+   * links to the source elsewhere (`SourceFootnote`): in the lesson's
+   * settings sheet, at the foot of the review's panel. A wide page shows
+   * what it opens itself, and no button shows.
    */
-  readonly onSettings?: () => void;
+  readonly narrowButton?: NarrowButton;
   /** The logo starts the board over from its start position; without it, the logo is only a picture. */
   readonly onRestart?: () => void;
+}
+
+/** A narrow header's button: an icon, named for screen readers, that opens something. */
+export interface NarrowButton {
+  readonly icon: ComponentProps<typeof Ionicons>['name'];
+  readonly label: string;
+  readonly onPress: () => void;
+  /** Whether what it opens is open, for a button that closes it again. */
+  readonly expanded?: boolean;
 }
 
 /**
@@ -45,7 +57,7 @@ export interface HeaderProps {
  * one slim row: a smaller logo, the page's `place` (or the name, when there
  * is none), and no tagline. A page on top of another starts with a back button.
  */
-export function Header({ place, placeLink, back, onSettings, onRestart }: HeaderProps) {
+export function Header({ place, placeLink, back, narrowButton, onRestart }: HeaderProps) {
   const styles = useNarrowStyles(STYLES);
   const part = useNarrowPart();
   const logo = (
@@ -91,17 +103,18 @@ export function Header({ place, placeLink, back, onSettings, onRestart }: Header
           <Separator orientation="vertical" style={styles.rule} />
         </Inline>
         <ThemeSwitch />
-        <View {...part(Boolean(onSettings) && 'wide-only')}>
+        <View {...part(Boolean(narrowButton) && 'wide-only')}>
           <SourceLink />
         </View>
-        {onSettings ? (
+        {narrowButton ? (
           <NarrowOnly>
             <HeaderButton
-              icon="settings-outline"
+              icon={narrowButton.icon}
               iconSize={19}
               accessibilityRole="button"
-              accessibilityLabel="Settings"
-              onPress={onSettings}
+              accessibilityLabel={narrowButton.label}
+              expanded={narrowButton.expanded}
+              onPress={narrowButton.onPress}
             />
           </NarrowOnly>
         ) : null}

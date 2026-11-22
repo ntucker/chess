@@ -18,11 +18,12 @@ interface Props extends Omit<ComponentProps<typeof Scoresheet>, 'fill'> {
 }
 
 /**
- * The scoresheet of a narrow page, opened from the move stepper: it takes
- * the panel's place under the board, so the board stays in view while the
- * learner taps through the moves, and stays open until closed. Its head holds
- * the jumps to the first and latest move, which the stepper leaves out there.
- * Shown while mounted, on a narrow page only.
+ * The scoresheet of a narrow page, opened from the move stepper (the lesson)
+ * or the header (the review): it takes the panel's place under the board,
+ * so the board stays in view while the learner taps through the moves, and
+ * stays open until closed. Its head holds the jumps to the first and latest
+ * move, which the stepper leaves out there. Shown while mounted, on a narrow
+ * page only.
  */
 export function ScoresheetDrawer({ onClose, ...scoresheet }: Props) {
   const { plies, ply, onGoto } = scoresheet;
@@ -91,19 +92,35 @@ export function ScoresheetOpener({
         },
       ]}
     >
-      <Text
-        role="body"
-        numberOfLines={1}
-        style={[styles.openerText, { color: ink ?? color.textPrimary }]}
-      >
-        {move}
-      </Text>
+      <ShownMove san={san} ply={ply} ink={ink} />
       <Ionicons
         name={open ? 'chevron-down' : 'chevron-up'}
         size={12}
         color={ink ?? color.textSecondary}
       />
     </Pressable>
+  );
+}
+
+/** The move on the board in the stepper's middle (`shownMove`), in `ink`, or the primary ink. */
+export function ShownMove({
+  san,
+  ply,
+  ink,
+}: {
+  readonly san?: string;
+  readonly ply: number;
+  readonly ink?: string;
+}) {
+  const { theme } = useTheme();
+  return (
+    <Text
+      role="body"
+      numberOfLines={1}
+      style={[styles.move, { color: ink ?? theme.semantic.color.textPrimary }]}
+    >
+      {shownMove(san, ply)}
+    </Text>
   );
 }
 
@@ -160,5 +177,5 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 6,
   },
-  openerText: { fontFamily: fonts.mono, fontSize: 14 },
+  move: { fontFamily: fonts.mono, fontSize: 14 },
 });
