@@ -396,6 +396,7 @@ function LessonScreen({
             </View>
             {trap ? (
               <TrapCard
+                lesson={lesson}
                 trap={trap}
                 mistake={game.plies[trap.ply + 1].move!.san}
                 fell={game.plies[trap.ply].turn}
@@ -415,6 +416,7 @@ function LessonScreen({
                 {ideaCard ? (
                   <NarrowScroll part="idea-pane">
                     <IdeaCard
+                      lesson={lesson}
                       title={preview ? `If ${preview.san}` : 'The idea'}
                       notes={guidance.notes}
                       learner={learner}

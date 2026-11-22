@@ -998,6 +998,17 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
       },
       { root: 'Chess_Opening_Theory/1._d4/1...d5/2._Bf4' },
       { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._Bf4' },
+      {
+        // Black copying White's setup (...d5, ...Bf5, ...e6, ...c6), which the guides leave after
+        // move 6: Black's moves are the club players' common replies, White's Stockfish's, and
+        // among near-equal ones Fable's pick. Generated against the albin lesson's London Mirror.
+        ...committedPgn('london-mirror.pgn', {
+          title: 'Against the London mirror',
+          author: 'Opening Night',
+        }),
+        chapters: () => true,
+        ...NAMES_NO_LINE,
+      },
     ],
     engineCheck: true,
     info: {
