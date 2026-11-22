@@ -999,6 +999,65 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
       { root: 'Chess_Opening_Theory/1._d4/1...d5/2._Bf4' },
       { root: 'Chess_Opening_Theory/1._d4/1...Nf6/2._Bf4' },
       {
+        study: 'KjivNw7F',
+        credit: {
+          title: 'Ideas in the London System',
+          author: 'FunnyAnimatorJimTV',
+          url: 'https://lichess.org/study/KjivNw7F',
+        },
+        // The introduction only names the setup; the anti-London chapter is Black's.
+        chapters: (title: string) => title !== 'Introduction' && title !== 'Anti-London For Black',
+        ...NAMES_NO_LINE,
+      },
+      {
+        study: 'HM0m7zRB',
+        credit: {
+          title: 'The Mighty London System!',
+          author: 'george_mcgeorge',
+          url: 'https://lichess.org/study/HM0m7zRB',
+        },
+        // The setup chapter starts from a diagram of White's pieces alone, and the Jobava London
+        // (2.Nc3) is another opening.
+        chapters: (title: string) => !/^(?:The London System: )?Introduction|Jobava/.test(title),
+        ...NAMES_NO_LINE,
+      },
+      {
+        study: 'K4oR74Te',
+        credit: {
+          title: 'Key to the London System!',
+          author: 'mAtteoYOsef07',
+          url: 'https://lichess.org/study/K4oR74Te',
+        },
+        // Setups, traps and White's alternatives; the patterns start from diagrams, the games
+        // run past the opening, and section 6 is Black's.
+        chapters: (title: string) =>
+          /^Section [135]: (?!Introduction|Outroduction|Black London|London vs d5 setups \(Jobava)/.test(
+            title,
+          ),
+        ...NAMES_NO_LINE,
+      },
+      {
+        study: '17XtK3x9',
+        credit: {
+          title: 'London System',
+          author: 'caelT8',
+          url: 'https://lichess.org/study/17XtK3x9',
+        },
+        // "Main Setup" shuffles Black's knight to show White's setup.
+        chapters: (title: string) => /^(?:Black |A Brilliant|An Early)/.test(title),
+        ...NAMES_NO_LINE,
+      },
+      {
+        study: 'oOrjXWzS',
+        credit: {
+          title: 'London System',
+          author: 'ChessStudyCreator',
+          url: 'https://lichess.org/study/oOrjXWzS',
+        },
+        chapters: (title: string) => title !== 'Conclusion',
+        ...NAMES_NO_LINE,
+      },
+      {
         // Black copying White's setup (...d5, ...Bf5, ...e6, ...c6), which the guides leave after
         // move 6: Black's moves are the club players' common replies, White's Stockfish's, and
         // among near-equal ones Fable's pick. Generated against the albin lesson's London Mirror.
