@@ -35,7 +35,7 @@ function renderSheet(onClose: () => void) {
   act(() =>
     root.render(
       <SilkProvider theme={themes.dark}>
-        <Sheet title="Settings" onClose={onClose}>
+        <Sheet open title="Settings" onClose={onClose}>
           {null}
         </Sheet>
       </SilkProvider>,
@@ -69,8 +69,11 @@ describe('Sheet', () => {
     const title = document.getElementById(
       document.querySelector('[aria-modal="true"]')!.getAttribute('aria-labelledby')!,
     )!;
-    // Silk's Dialog catches presses on the veil in a layer just before its panel.
-    const veil = document.querySelector('[data-testid="sheet"]')!.previousElementSibling!;
+    // Silk's Dialog catches presses on the veil in a layer just before its
+    // panel (which its gesture detector may wrap).
+    let panel = document.querySelector('[data-testid="sheet"]')!;
+    while (!panel.previousElementSibling) panel = panel.parentElement!;
+    const veil = panel.previousElementSibling!;
     const tap = (on: Element) =>
       act(() => {
         on.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
@@ -82,25 +85,43 @@ describe('Sheet', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('closes once another screen comes on top of its own', () => {
-    const onClose = jest.fn();
+  /** Renders the sheet into a detached root; call again to re-render with the current focus. */
+  function renderFocusable(open: boolean, onClose: () => void) {
     const root = createRoot(document.createElement('div'));
     const render = () =>
       act(() =>
         root.render(
           <SilkProvider theme={themes.dark}>
-            <Sheet title="Settings" onClose={onClose}>
+            <Sheet open={open} title="Settings" onClose={onClose}>
               {null}
             </Sheet>
           </SilkProvider>,
         ),
       );
+    return { render, unmount: () => act(() => root.unmount()) };
+  }
+
+  it('closes once another screen comes on top of its own', () => {
+    const onClose = jest.fn();
+    const sheet = renderFocusable(true, onClose);
     mockFocused = true;
-    render();
+    sheet.render();
     expect(onClose).not.toHaveBeenCalled();
     mockFocused = false;
-    render();
+    sheet.render();
     expect(onClose).toHaveBeenCalledTimes(1);
-    act(() => root.unmount());
+    sheet.unmount();
+  });
+
+  it('closed, shows nothing and leaves its screen going behind another alone', () => {
+    const onClose = jest.fn();
+    const sheet = renderFocusable(false, onClose);
+    mockFocused = true;
+    sheet.render();
+    expect(document.querySelector('[aria-modal="true"]')).toBeNull();
+    mockFocused = false;
+    sheet.render();
+    expect(onClose).not.toHaveBeenCalled();
+    sheet.unmount();
   });
 });
