@@ -22,17 +22,17 @@ export function ReviewGameButton({ href }: { readonly href: Href }) {
 
 /**
  * The Review button by the scoresheet's title: opens the review at `href`,
- * or, while `shut` says why it doesn't open yet, shows disabled with that in
- * its tip. `compact` draws only its icon, for the narrow scoresheet drawer's
- * head; screen readers hear its name either way.
+ * or, given `disabled` (why it doesn't open yet, as `Toggle` takes it),
+ * shows disabled with that in its tip. `compact` draws only its icon, for
+ * the narrow scoresheet drawer's head; screen readers hear its name either way.
  */
 export function ScoresheetReview({
   href,
-  shut,
+  disabled,
   compact,
 }: {
   readonly href: Href;
-  readonly shut?: string;
+  readonly disabled?: string;
   readonly compact?: boolean;
 }) {
   const router = useRouter();
@@ -40,7 +40,7 @@ export function ScoresheetReview({
     <Button
       size="sm"
       variant="outline"
-      disabled={shut !== undefined}
+      disabled={!!disabled}
       accessibilityLabel={LABEL}
       onPress={() => router.push(href)}
     >
@@ -48,10 +48,10 @@ export function ScoresheetReview({
       {compact ? null : ' Review'}
     </Button>
   );
-  if (shut === undefined) return button;
+  if (!disabled) return button;
   // Disabled, the button takes no focus, so the tip takes it to open from the keyboard.
   return (
-    <Tip tip={shut} focusable>
+    <Tip tip={disabled} focusable>
       {button}
     </Tip>
   );

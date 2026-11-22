@@ -103,7 +103,7 @@ export default function PlayScreen() {
               <Eyebrow>Scoresheet</Eyebrow>
               <ScoresheetReview
                 href={review}
-                shut={game.latest.result ? undefined : 'Review opens once the game ends.'}
+                disabled={game.latest.result ? undefined : 'Review opens once the game ends.'}
               />
             </Inline>
             <Scoresheet plies={game.plies} marks={game.qualities} ply={ply} onGoto={goto} />

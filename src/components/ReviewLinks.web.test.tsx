@@ -55,7 +55,7 @@ describe('ScoresheetReview', () => {
 
   it('shows disabled without one, and says why in its tip', () => {
     mockPush.mockClear();
-    render(<ScoresheetReview href={HREF} shut="Review opens once the game ends." />, (host) => {
+    render(<ScoresheetReview href={HREF} disabled="Review opens once the game ends." />, (host) => {
       expect(reviewButton(host)?.getAttribute('aria-disabled')).toBe('true');
       expect(host.textContent).toContain('Review opens once the game ends.');
       act(() => reviewButton(host)!.click());

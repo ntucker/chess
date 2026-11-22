@@ -472,7 +472,7 @@ function LessonScreen({
           {scoresheetOpen ? (
             <ScoresheetDrawer
               {...scoresheetProps}
-              reviewButton={<ScoresheetReview href={review} shut={reviewShut} compact />}
+              reviewButton={<ScoresheetReview href={review} disabled={reviewShut} compact />}
               onClose={() => setScoresheetOpen(false)}
             />
           ) : null}
@@ -487,7 +487,7 @@ function LessonScreen({
             <Stack style={labelled}>
               <Inline align="center" justify="between" wrap="nowrap">
                 <Eyebrow>Scoresheet</Eyebrow>
-                <ScoresheetReview href={review} shut={reviewShut} />
+                <ScoresheetReview href={review} disabled={reviewShut} />
               </Inline>
               <Scoresheet {...scoresheetProps} />
             </Stack>
