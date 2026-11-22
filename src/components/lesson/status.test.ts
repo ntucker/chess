@@ -36,6 +36,24 @@ describe('describeStatus', () => {
   it('leaves it out inside the guide', () => {
     expect(describeStatus(view('inside'), INPUT).pastGuide).toBeUndefined();
   });
+
+  it('tells how the game ended, over where the guide stands', () => {
+    const ended = (ending: NonNullable<Parameters<typeof describeStatus>[1]['ending']>) =>
+      describeStatus(view('beyond'), { ...INPUT, ending });
+    expect(ended({ mood: 'won', reason: 'checkmate' })).toEqual({
+      eyebrow: 'Giuoco Piano',
+      title: 'Checkmate. Bravo!',
+      detail: 'You won. Take a bow, then see how it went.',
+    });
+    expect(ended({ mood: 'lost', reason: 'checkmate' })).toMatchObject({
+      title: 'Checkmate.',
+      detail: 'Black won this one. The review shows where it turned.',
+    });
+    expect(ended({ mood: 'drawn', reason: 'stalemate' })).toMatchObject({
+      title: 'A draw.',
+      detail: 'By stalemate.',
+    });
+  });
 });
 
 describe('headlineNews', () => {

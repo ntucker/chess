@@ -11,6 +11,7 @@ import { FootnoteLink } from '@/components/FootnoteLink';
 import { GameStatus } from '@/components/GameStatus';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { OpponentPicker } from '@/components/OpponentPicker';
+import { reviewHref, ScoresheetReview } from '@/components/ReviewLinks';
 import { Scoresheet } from '@/components/Scoresheet';
 import { BoardColumn, Stage } from '@/components/Stage';
 import { gameReducer, initialGame } from '@/game/game';
@@ -37,6 +38,7 @@ export default function PlayScreen() {
   const { moves, ply, current, thinking, goto } = game;
   // Not `game`, which changes every move, so `newGame` and the header's restart don't either.
   const restart = game.newGame;
+  const review = reviewHref(moves, playerColor);
 
   const newGame = (side: Color) => {
     setPlayerColor(side);
@@ -86,6 +88,7 @@ export default function PlayScreen() {
             thinking={thinking}
             error={game.error}
             onRetry={game.retry}
+            review={review}
           />
           <Separator />
           <Inline>
@@ -95,7 +98,13 @@ export default function PlayScreen() {
           </Inline>
           <Separator />
           <Stack style={labelled}>
-            <Eyebrow>Scoresheet</Eyebrow>
+            <Inline align="center" justify="between" wrap="nowrap">
+              <Eyebrow>Scoresheet</Eyebrow>
+              <ScoresheetReview
+                href={game.latest.result ? review : undefined}
+                closed="Review opens once the game ends."
+              />
+            </Inline>
             <Scoresheet plies={game.plies} marks={game.qualities} ply={ply} onGoto={goto} />
           </Stack>
           <Stack gap="1">

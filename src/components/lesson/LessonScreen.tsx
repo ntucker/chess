@@ -1,5 +1,5 @@
 import { AsyncBoundary, useController, useFetch, useSuspense } from '@data-client/react';
-import { Separator, Spinner, Stack } from '@reactive/silk-native';
+import { Inline, Separator, Spinner, Stack } from '@reactive/silk-native';
 import { type ReactNode, use, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -14,16 +14,18 @@ import { ScoresheetDrawer, ScoresheetOpener } from '@/components/ScoresheetDrawe
 import { Sheet } from '@/components/Sheet';
 import { SourceFootnote } from '@/components/SourceLink';
 import { resetListener } from '@/components/resetListener';
+import { ReviewGameButton, reviewHref, ScoresheetReview } from '@/components/ReviewLinks';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { useLongWait } from '@/components/useLongWait';
 import { useNavigating } from '@/components/navigation';
 import { NewVersionError } from '@/files/newVersion';
+import { resultVerdict } from '@/game/ending';
 import { type Color, colorName, opposite } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
 import { listsTopMoves } from '@/lesson/guidance';
 import type { Uci, VariationId } from '@/lesson/lesson';
 import { lessonsAfter, lessonsFrom, openingsLesson, withOpenings } from '@/lesson/openings';
-import { type Candidate, captionName, pathNames, shareSource } from '@/lesson/select';
+import { type Candidate, captionName, leavesGuide, pathNames, shareSource } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
 import { describeOpponent } from '@/opponent/opponent';
 import { getLesson, isLessonId, LessonIndexContext, type LessonId } from '@/resources/lesson';
@@ -193,6 +195,24 @@ function LessonScreen({
   // Stockfish's moves have none of their own.
   const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
   const names = pathNames(view.variation);
+  const { result } = game.latest;
+  // The game's review opens once the game ends, or in Practice once a move leaves the guide.
+  const review =
+    !picking && (result || (mode === 'practice' && leavesGuide(lesson, game.moves)))
+      ? reviewHref(game.moves, learner, id)
+      : undefined;
+  /** The Review button by the scoresheet's title, or in the narrow drawer's head (`compact`). */
+  const scoresheetReview = (compact?: boolean) => (
+    <ScoresheetReview
+      href={review}
+      closed={
+        mode === 'practice'
+          ? 'Review opens after a move off the guide, or once the game ends.'
+          : 'Review opens once the game ends, or in Practice after a move off the guide.'
+      }
+      compact={compact}
+    />
+  );
   const { pastGuide, ...status } = describeStatus(view, {
     picking,
     loading,
@@ -208,6 +228,8 @@ function LessonScreen({
     startsRun,
     practice:
       modeState.mode === 'practice' ? { clean: modeState.clean, verdict: game.quality } : undefined,
+    // While the board shows how the game ended.
+    ending: result && game.atLatest ? resultVerdict(result, learner) : undefined,
   });
   // Where Stockfish's moves stand in for the guide's, a narrow page tells why
   // in the idea pane's place, beside them as the idea is beside the guide's
@@ -383,6 +405,7 @@ function LessonScreen({
             failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
             eyebrowInHeader
             eyebrowLink={listLink}
+            action={result && game.atLatest && review ? <ReviewGameButton href={review} /> : null}
             news={headlineNews(
               { news: status.news, pastGuide },
               { aside: !!aside, scoresheetOpen, failed: !!game.error },
@@ -438,7 +461,11 @@ function LessonScreen({
             )}
           </View>
           {scoresheetOpen ? (
-            <ScoresheetDrawer {...scoresheetProps} onClose={() => setScoresheetOpen(false)} />
+            <ScoresheetDrawer
+              {...scoresheetProps}
+              review={scoresheetReview(true)}
+              onClose={() => setScoresheetOpen(false)}
+            />
           ) : null}
           {/*
            * A narrow page has no room for the rest under the panes: the
@@ -449,7 +476,10 @@ function LessonScreen({
           <Stack {...part('wide-only', sections)}>
             <Separator />
             <Stack style={labelled}>
-              <Eyebrow>Scoresheet</Eyebrow>
+              <Inline align="center" justify="between" wrap="nowrap">
+                <Eyebrow>Scoresheet</Eyebrow>
+                {scoresheetReview()}
+              </Inline>
               <Scoresheet {...scoresheetProps} />
             </Stack>
             {settingsOpen ? null : (

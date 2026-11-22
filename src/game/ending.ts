@@ -71,3 +71,19 @@ export function endingWords(verdict: Verdict, rival: string) {
   if (verdict.mood === 'drawn') return { eyebrow: 'Draw', title: DRAWS[verdict.reason] };
   return { eyebrow: 'Checkmate', title: verdict.mood === 'won' ? 'You win' : `${rival} wins` };
 }
+
+/**
+ * The panel's headline for a finished game. Example: a loss by mate to
+ * Maia reads "Checkmate." over "Maia won this one. The review shows where it
+ * turned."; a stalemate reads "A draw." over "By stalemate.".
+ */
+export function endingHeadline(verdict: Verdict, rival: string) {
+  if (verdict.mood === 'won')
+    return { title: 'Checkmate. Bravo!', detail: 'You won. Take a bow, then see how it went.' };
+  if (verdict.mood === 'lost')
+    return {
+      title: 'Checkmate.',
+      detail: `${rival} won this one. The review shows where it turned.`,
+    };
+  return { title: 'A draw.', detail: `By ${verdict.reason}.` };
+}

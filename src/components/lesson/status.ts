@@ -1,5 +1,6 @@
 import type { MoveQuality } from '@/analysis/quality';
 import type { HeadlineProps, News } from '@/components/GameStatus';
+import { endingHeadline, type Verdict } from '@/game/ending';
 import type { LessonView } from '@/lesson/view';
 import { qualityLooks } from '@/theme/moveQuality';
 
@@ -44,6 +45,8 @@ interface StatusInput {
   readonly startsRun: boolean;
   /** In Practice: whether the run is clean, and the label of the move the board shows. */
   readonly practice?: { readonly clean: boolean; readonly verdict?: MoveQuality };
+  /** How the game ended for the learner, while the board shows its final position. */
+  readonly ending?: Verdict;
 }
 
 /** The panel's headline, as `describeStatus` gives it. */
@@ -56,8 +59,9 @@ type Status = Pick<HeadlineProps, 'eyebrow' | 'title' | 'detail' | 'news'> & {
 };
 
 /**
- * The panel's headline: where the lesson stands and whose move it is. In
- * Practice, right after the learner's move, it judges that move first.
+ * The panel's headline: where the lesson stands and whose move it is, or
+ * how the game ended. In Practice, right after the learner's move, it judges
+ * that move first.
  * `news` says what of it is news, where the title only says whose move it
  * is (`detail`), or the detail is also how to use the screen, once the
  * learner has moved and so has seen how (`none`); left out, all of it is
@@ -79,6 +83,7 @@ export function describeStatus(
     lineEnded,
     startsRun,
     practice,
+    ending,
   }: StatusInput,
 ): Status {
   if (loading) return { eyebrow: picking ? OPENINGS_TITLE : title, ...LOADING };
@@ -90,6 +95,7 @@ export function describeStatus(
         'Each move here leads to the lesson named beside it. Play one on the board or in the list.',
     };
   const eyebrow = names.join(' · ') || title;
+  if (ending) return { eyebrow, ...endingHeadline(ending, rival) };
   // Beyond the guide with auto play off, nobody replies: the learner moves both sides.
   const playOn = auto ? `play on against ${engine}` : 'play on, moving both sides';
   if (lineEnded && practice?.clean)

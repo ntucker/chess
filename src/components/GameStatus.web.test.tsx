@@ -46,6 +46,12 @@ function narrowParts(props: Props) {
 }
 
 describe('StatusHeadline', () => {
+  it('draws what it leads to under it', () => {
+    expect(render({ action: <span>Review the game</span> }, (host) => host.textContent)).toContain(
+      'Play here.Review the game',
+    );
+  });
+
   it('draws the full headline on a narrow page without news', () => {
     expect(narrowParts({})).toEqual({ headline: undefined, full: undefined, line: undefined });
   });
