@@ -179,6 +179,8 @@ function ReviewPlaceholder({ message }: { readonly message?: string }) {
           />
         </View>
       }
+      // Holds the action bar's room while the review loads, so the board doesn't shrink when it comes.
+      programFoot={message ? undefined : <View />}
     />
   );
 }
