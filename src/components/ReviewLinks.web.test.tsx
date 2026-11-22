@@ -46,7 +46,7 @@ describe('ReviewGameButton', () => {
 describe('ScoresheetReview', () => {
   it('opens the review when it has one', () => {
     mockPush.mockClear();
-    render(<ScoresheetReview link={{ href: HREF }} />, (host) => {
+    render(<ScoresheetReview href={HREF} />, (host) => {
       expect(reviewButton(host)?.getAttribute('aria-disabled')).toBeNull();
       act(() => reviewButton(host)!.click());
     });
@@ -55,7 +55,7 @@ describe('ScoresheetReview', () => {
 
   it('shows disabled without one, and says why in its tip', () => {
     mockPush.mockClear();
-    render(<ScoresheetReview link={{ shut: 'Review opens once the game ends.' }} />, (host) => {
+    render(<ScoresheetReview href={HREF} shut="Review opens once the game ends." />, (host) => {
       expect(reviewButton(host)?.getAttribute('aria-disabled')).toBe('true');
       expect(host.textContent).toContain('Review opens once the game ends.');
       act(() => reviewButton(host)!.click());
@@ -64,7 +64,7 @@ describe('ScoresheetReview', () => {
   });
 
   it('draws only its icon when compact, keeping its spoken name', () => {
-    render(<ScoresheetReview link={{ href: HREF }} compact />, (host) => {
+    render(<ScoresheetReview href={HREF} compact />, (host) => {
       expect(reviewButton(host)?.textContent).toBe('');
     });
   });

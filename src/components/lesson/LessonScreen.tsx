@@ -14,7 +14,7 @@ import { ScoresheetDrawer, ScoresheetOpener } from '@/components/ScoresheetDrawe
 import { Sheet } from '@/components/Sheet';
 import { SourceFootnote } from '@/components/SourceLink';
 import { resetListener } from '@/components/resetListener';
-import { type ReviewLink, ReviewGameButton, ScoresheetReview } from '@/components/ReviewLinks';
+import { ReviewGameButton, ScoresheetReview } from '@/components/ReviewLinks';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { useLongWait } from '@/components/useLongWait';
 import { useNavigating } from '@/components/navigation';
@@ -222,13 +222,7 @@ function LessonScreen({
     practice: mode === 'practice',
     leftGuide: view.guideMoves.includes(undefined),
   });
-  const reviewLink: ReviewLink = reviewShut
-    ? { shut: reviewShut }
-    : { href: reviewHref(game.moves, learner, id) };
-  /** The Review button by the scoresheet's title, or in the narrow drawer's head (`compact`). */
-  const scoresheetReview = (compact?: boolean) => (
-    <ScoresheetReview link={reviewLink} compact={compact} />
-  );
+  const review = reviewHref(game.moves, learner, id);
   const { pastGuide, ...status } = describeStatus(view, {
     picking,
     loading,
@@ -420,9 +414,7 @@ function LessonScreen({
             failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
             eyebrowInHeader
             eyebrowLink={listLink}
-            action={
-              ending && 'href' in reviewLink ? <ReviewGameButton href={reviewLink.href} /> : null
-            }
+            action={ending && !reviewShut ? <ReviewGameButton href={review} /> : null}
             news={headlineNews(
               { news: status.news, pastGuide },
               { aside: !!aside, scoresheetOpen, failed: !!game.error },
@@ -480,7 +472,7 @@ function LessonScreen({
           {scoresheetOpen ? (
             <ScoresheetDrawer
               {...scoresheetProps}
-              reviewButton={scoresheetReview(true)}
+              reviewButton={<ScoresheetReview href={review} shut={reviewShut} compact />}
               onClose={() => setScoresheetOpen(false)}
             />
           ) : null}
@@ -495,7 +487,7 @@ function LessonScreen({
             <Stack style={labelled}>
               <Inline align="center" justify="between" wrap="nowrap">
                 <Eyebrow>Scoresheet</Eyebrow>
-                {scoresheetReview()}
+                <ScoresheetReview href={review} shut={reviewShut} />
               </Inline>
               <Scoresheet {...scoresheetProps} />
             </Stack>
