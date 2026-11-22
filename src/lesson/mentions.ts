@@ -5,12 +5,13 @@
  * "...e5", "O-O", "a4-a5") is shown played from the nearest position where
  * it is played or legal, looking a tier at a time: the note's own position
  * (with a threat's side to move there), where its own line or trap plays
- * it, the position its move was played in, then each ply onward along its
- * line or trap and the guide. Where one tier's positions read it as
- * different moves, or none within reach has it, the text stays plain: a
- * guess shown as fact misleads. So does a move placed as one move where the
- * side not to move in the note's position could make it as another: a note
- * often names either side's moves without dots.
+ * it, the position its move was played in, each ply onward along its line
+ * or trap and the guide, then last the note's position with the other side
+ * to move, for a move only that side can play now. Where one tier's
+ * positions read it as different moves, or none within reach has it, the
+ * text stays plain: a guess shown as fact misleads. So does a move placed
+ * as one move where the side not to move in the note's position could make
+ * it as another: a note often names either side's moves without dots.
  */
 import type { Chess } from 'chessops/chess';
 import type { Color, SquareName } from 'chessops/types';
@@ -111,27 +112,19 @@ function placed(
   places: Places,
   find: (pos: Chess) => Uci | undefined,
 ): Mention | undefined {
-  const witnessed: { pos: Chess; uci: Uci }[] = [];
+  const witnessed: Uci[] = [];
   for (const { positions, plays, witnesses } of places.tiers()) {
-    for (const pos of witnesses) {
-      const uci = find(pos);
-      if (uci) witnessed.push({ pos, uci });
-    }
+    witnessed.push(...witnesses.flatMap((pos) => find(pos) ?? []));
     const readings = positions.map((pos, n) => {
       const uci = find(pos);
       return plays && uci !== plays[n] ? undefined : uci;
     });
     const uci = readings.find(Boolean);
     if (!uci) continue;
-    if ([...readings, ...witnessed.map((w) => w.uci)].some((other) => other && other !== uci)) {
-      return undefined;
-    }
+    if ([...readings, ...witnessed].some((other) => other && other !== uci)) return undefined;
     return mentionOf(text, positions[readings.indexOf(uci)], uci);
   }
-  // No position read it, but the side not to move could play it now: the note names its next move.
-  const [first] = witnessed;
-  if (!first || witnessed.some(({ uci }) => uci !== first.uci)) return undefined;
-  return mentionOf(text, first.pos, first.uci);
+  return undefined;
 }
 
 function mentionOf(text: string, before: Chess, uci: Uci): Mention {
@@ -146,7 +139,10 @@ interface Tier {
   readonly positions: readonly Chess[];
   /** The move a line plays from each position, if any: only it is read there. */
   readonly plays?: readonly Uci[];
-  /** Positions where a different reading makes the mention unplaceable, here or in a later tier. */
+  /**
+   * Positions where a different reading makes the mention unplaceable, here
+   * or in a later tier; the last tier reads them as its positions.
+   */
   readonly witnesses: readonly Chess[];
 }
 
@@ -178,7 +174,8 @@ function notePlaces(lesson: Lesson, { note, after, before }: ShownNote): Places 
 /**
  * Where a note's mentioned moves are looked for, nearest first: its
  * position; a move its own line or trap plays, which the note describes; the
- * position its move was played in; then each ply onward.
+ * position its move was played in; each ply onward; last, the other side to
+ * move in its position.
  */
 function* tiers(
   lesson: Lesson,
@@ -213,9 +210,10 @@ function* tiers(
       ...lines.flatMap(({ positions: line }) => (line[ply] ? [line[ply]] : [])),
       ...(guide.next().value ?? []),
     ];
-    if (!positions.length) return;
+    if (!positions.length) break;
     yield { positions, witnesses: [] };
   }
+  if (!threatened) yield { positions: [passed], witnesses: [] };
 }
 
 /**
