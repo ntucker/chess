@@ -24,16 +24,8 @@ jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 // A link draws its text, and names where it goes and how.
 jest.mock('expo-router', () => ({
   useIsFocused: () => true,
-  Link: ({
-    children,
-    href,
-    dismissTo,
-  }: {
-    children: ReactNode;
-    href: unknown;
-    dismissTo?: boolean;
-  }) => (
-    <span data-href={JSON.stringify(href)} data-dismiss-to={dismissTo}>
+  Link: ({ children, href, push }: { children: ReactNode; href: unknown; push?: boolean }) => (
+    <span data-href={JSON.stringify(href)} data-push={push}>
       {children}
     </span>
   ),
@@ -233,7 +225,7 @@ describe('ReviewPanel', () => {
     );
   });
 
-  it('offers Play on from here once revealed, back to the game it replaces', () => {
+  it('offers Play on from here once revealed, over the review', () => {
     const playOn = { pathname: '/lesson/caro-kann', params: { moves: 'e2e4 e7e5 g1f3' } };
     const link = (host: HTMLElement) =>
       [...host.querySelectorAll('[data-href]')].find((element) =>
@@ -249,7 +241,7 @@ describe('ReviewPanel', () => {
       revealed,
       (host) => {
         expect(JSON.parse(link(host)!.getAttribute('data-href')!)).toEqual(playOn);
-        expect(link(host)!.getAttribute('data-dismiss-to')).toBe('true');
+        expect(link(host)!.getAttribute('data-push')).toBe('true');
       },
       <ReviewPanel eyebrow="Review" learner="white" review={revealed} lesson="caro-kann" />,
     );

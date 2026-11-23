@@ -248,14 +248,15 @@ function Row({ move, badge, spoken, pointed, onPoint }: RowProps) {
 }
 
 /**
- * "Play on from here": back to the game's page, where a new game against the
- * same opponent starts from the corrected line, in place of the game reviewed.
+ * "Play on from here": the game's page over the review, where a new game
+ * against the same opponent starts from the corrected line. Back returns to
+ * the review, and Back again to the game reviewed.
  */
 function PlayOn({ href }: { readonly href: Href }) {
   const { theme } = useTheme();
   return (
-    <Tip tip="A new game from the corrected position, against the same opponent. It replaces the game reviewed.">
-      <Link href={href} dismissTo>
+    <Tip tip="A new game from the corrected position, against the same opponent. Back returns to the review.">
+      <Link href={href} push>
         <View style={styles.playOn}>
           <Ionicons name="play-outline" size={16} color={theme.semantic.color.tones.accent.text} />
           <Text role="body" tone="accent" style={styles.link}>

@@ -79,7 +79,7 @@ interface Visit extends Address {
  * resumes the game the page had there, if the learner left it from where it
  * still is, else starts the entry's address. In the same entry (only a
  * change of variation or moves keeps it, as a link to the page already open
- * does, such as an Android deep link or "Play on from here") it starts the address.
+ * does, such as an Android deep link) it starts the address.
  *
  * The side is the lesson address's, or at a start resumed by Back or Forward
  * the side its game was played from; the `side` setting saves it, so the
@@ -165,7 +165,7 @@ export function useOpeningsGame(
         setAddressSide(resumed.side);
       }
     } else {
-      // A link to the page already open, such as "Play on from here".
+      // A link to the page already open, such as an Android deep link.
       dispatch({ type: 'newGame', moves: startOf(index, at) });
     }
     setSynced({ entry, ...at, sent });

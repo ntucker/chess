@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, jest } from '@jest/globals';
-import { router, Slot, Stack } from 'expo-router';
+import { router, Slot, Stack, useIsFocused, usePathname } from 'expo-router';
 import { act, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
@@ -34,20 +34,31 @@ jest.mock('expo-router/entry', () => {
 });
 
 let latest: ReturnType<typeof useOpeningsGame> & { readonly id?: string };
-/** The openings layout, as `src/app/(openings)/_layout.tsx` reads its address. */
+/** The openings layout, as `src/app/(openings)/_layout.tsx` reads its address; `latest` is the one in front. */
 function Page() {
   const { id, variation, moves, entry } = useOpeningsAddress();
   const answer = { ...useOpeningsGame(id as LessonId | undefined, variation, entry, moves), id };
+  const focused = useIsFocused();
   useLayoutEffect(() => {
-    latest = answer;
+    if (focused) latest = answer;
   });
   return <Slot />;
+}
+
+let path: string | undefined;
+/** The app's root stack, noting the address it shows. */
+function RootStack() {
+  const shown = usePathname();
+  useLayoutEffect(() => {
+    path = shown;
+  });
+  return <Stack screenOptions={{ headerShown: false }} />;
 }
 
 let root: Root | undefined;
 async function open(url: string) {
   const context = getMockContext({
-    _layout: () => <Stack screenOptions={{ headerShown: false }} />,
+    _layout: RootStack,
     '(openings)/_layout': () => (
       <LessonIndexContext value={FIXTURE_INDEX}>
         <SettingsProvider>
@@ -139,26 +150,29 @@ describe('useOpeningsGame on the router', () => {
     expect(latest.side).toBe('black');
   });
 
-  it('plays on from the review: back to the game, starting the corrected line in its place', async () => {
+  it('plays on from the review over it: Back returns to the review, then to the game reviewed', async () => {
     const corrected = uciLine('e4', 'c6', 'd4', 'd5');
     await open(lessonHref('caro-kann'));
     await play('c7c6', 'd2d4', 'e7e5');
     await run(() => router.push('/review'));
-    await run(() => router.dismissTo(playOnHref(corrected, 'black', 'caro-kann')));
-    expect([latest.id, moves()]).toEqual(['caro-kann', corrected]);
-    // The review is gone, and so is the game it reviewed.
+    await run(() => router.push(playOnHref(corrected, 'black', 'caro-kann')));
+    expect([path, latest.id, moves()]).toEqual(['/lesson/caro-kann', 'caro-kann', corrected]);
+    // A move past the line drops it from the address.
+    await play('g1f3');
+    expect(moves()).toEqual([...corrected, 'g1f3']);
+    await run(() => router.back());
+    expect(path).toBe('/review');
+    await run(() => router.back());
+    expect([path, moves()]).toEqual(['/lesson/caro-kann', uciLine('e4', 'c6', 'd4', 'e5')]);
     expect(router.canGoBack()).toBe(false);
-    // A move past the line drops it, so the same link starts it again.
-    await play('e4e5');
-    await run(() => router.push('/review'));
-    await run(() => router.dismissTo(playOnHref(corrected, 'black', 'caro-kann')));
-    expect(moves()).toEqual(corrected);
   });
 
-  it('plays on from a review opened on its own, in its place', async () => {
+  it('plays on from a review opened on its own, over it', async () => {
     await open('/review');
     const corrected = uciLine('e4', 'c6', 'd4', 'd5');
-    await run(() => router.dismissTo(playOnHref(corrected, 'black', 'caro-kann')));
+    await run(() => router.push(playOnHref(corrected, 'black', 'caro-kann')));
     expect([latest.id, moves(), latest.side]).toEqual(['caro-kann', corrected, 'black']);
+    await run(() => router.back());
+    expect(path).toBe('/review');
   });
 });
