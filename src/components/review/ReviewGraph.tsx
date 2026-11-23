@@ -237,8 +237,9 @@ function shownShare({ from, to, progress }: AreaSpring, ply: number): number {
 
 /**
  * `values`, kept as the same array while its numbers stay the same, so an
- * effect that depends on it reruns only when a number changes, not for each
- * array made fresh while rendering.
+ * effect that depends on it doesn't rerun for each array made fresh while
+ * rendering. (A memo, so React may still make it afresh; nothing depends on
+ * that for more than skipping work.) No values give no key, and no numbers.
  */
 function useSameNumbers(values: readonly number[]): readonly number[] {
   const key = values.join(' ');
@@ -247,6 +248,12 @@ function useSameNumbers(values: readonly number[]): readonly number[] {
 
 /** How close the area's spring comes to the new scores before it stops: under a quarter pixel on the desktop's 72. */
 const SETTLED = 0.003;
+
+/** Where the scrub line stands, in px across a graph `width` wide, over position `at` of `total`. */
+function scrubX(at: number, total: number, width: number): number {
+  'worklet';
+  return total > 0 ? (at / total) * width : 0;
+}
 
 /**
  * The scrub gesture: where its line and bubble stand, on the UI thread, and
@@ -315,18 +322,16 @@ function useScrub({
     onFinalize: hide,
   });
   const gesture = useSimultaneousGestures(hover, useExclusiveGestures(pan, tap));
-  const x = () => {
-    'worklet';
-    const { total } = game.value;
-    return total > 0 ? (at.value / total) * width.value : 0;
-  };
+  // Each style reads its shared values itself: a style reruns only for the
+  // shared values its own body names, not those a helper it calls reads.
   const lineStyle = useAnimatedStyle(() => ({
     opacity: shown.value ? 1 : 0,
-    transform: [{ translateX: x() }],
+    transform: [{ translateX: scrubX(at.value, game.value.total, width.value) }],
   }));
   const bubbleStyle = useAnimatedStyle(() => {
+    const x = scrubX(at.value, game.value.total, width.value);
     // Over the line, kept within the graph.
-    const left = Math.min(Math.max(x() - BUBBLE.width / 2, -PAD), width.value + PAD - BUBBLE.width);
+    const left = Math.min(Math.max(x - BUBBLE.width / 2, -PAD), width.value + PAD - BUBBLE.width);
     return { opacity: shown.value ? 1 : 0, transform: [{ translateX: left }] };
   });
   const stripStyle = useAnimatedStyle(() => ({
