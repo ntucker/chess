@@ -6,6 +6,7 @@ import type { NormalMove } from 'chessops/types';
 import { parseUci } from 'chessops/util';
 
 import {
+  shownMove,
   analyze,
   dropMove,
   fenAfter,
@@ -193,6 +194,16 @@ describe('dropMove', () => {
     expect(dropMove(castles, 'e1', 'h1')).toBe('e1g1');
     expect(dropMove(castles, 'e1', 'g1')).toBe('e1g1');
     expect(dropMove(castles, 'e1', 'e3')).toBeUndefined();
+  });
+});
+
+describe('shownMove', () => {
+  it('names the start, then White’s moves with a dot and Black’s with an ellipsis', () => {
+    expect([shownMove(undefined, 0), shownMove('e4', 1), shownMove('c6', 2)]).toEqual([
+      'Start',
+      '1.e4',
+      '1…c6',
+    ]);
   });
 });
 

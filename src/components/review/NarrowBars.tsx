@@ -1,9 +1,7 @@
 import { Text } from '@reactive/silk-native';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { ShownMove } from '@/components/ScoresheetDrawer';
 import { Disc } from '@/components/PlayerBar';
-import { stepButton } from '@/components/Transport';
 import { type Color, opposite } from '@/game/replay';
 import { PLAYER_DISC } from '@/theme/sideBySide';
 import { narrowStyles } from '@/theme/narrow';
@@ -30,24 +28,8 @@ export function ReviewNames({ learner }: { readonly learner: Color }) {
   );
 }
 
-/**
- * The narrow stepper's middle (`Transport`), where the graph of the game
- * will go: until then, the move on the board, "7…Qxb2", or "Start".
- */
-export function GraphPlace({ san, ply }: { readonly san?: string; readonly ply: number }) {
-  return (
-    <View style={styles.place}>
-      <ShownMove san={san} ply={ply} />
-    </View>
-  );
-}
-
 const STYLES = narrowStyles((px) => ({
   bar: { height: '100%', flexDirection: 'row', alignItems: 'center', gap: px(PLAYER_DISC.gap) },
   // Takes the room between, pushing the learner's name to the end.
   name: { flex: 1, minWidth: 0 },
 }));
-
-const styles = StyleSheet.create({
-  place: { ...stepButton, alignItems: 'center', justifyContent: 'center' },
-});

@@ -9,7 +9,7 @@ import { ReviewPanel, type ReviewView } from '@/components/review/ReviewPanel';
 import { legalMoveCountAt, replay } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 import { reviewHref } from '@/review/address';
-import { reviewMoves } from '@/review/review';
+import { moments, reviewMoves } from '@/review/review';
 import { reviewedGame, reviewReducer, startReview } from '@/review/screen';
 import { evaluationFromScore } from '@/stockfish/uci';
 
@@ -137,6 +137,8 @@ function StateCard({ title, sentence, searched, failed = [], ply }: State) {
     ply: screen.ply,
     moves,
     analyses,
+    book: BOOK,
+    moments: moments(moves, 'black').map((move) => move + 1),
     pointed: screen.pointed,
     nextMoment: undefined,
     goto: (target) => dispatch({ type: 'goto', ply: target }),

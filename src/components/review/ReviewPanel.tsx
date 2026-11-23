@@ -1,13 +1,12 @@
 import { Separator, Stack } from '@reactive/silk-native';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Eyebrow, useLabelled, useSections } from '@/components/Eyebrow';
 import { StatusHeadline } from '@/components/GameStatus';
 import { ScoresheetDrawer } from '@/components/ScoresheetDrawer';
 import { Scoresheet } from '@/components/Scoresheet';
 import { SourceFootnote } from '@/components/SourceLink';
-import type { Analysis } from '@/evaluation/evaluation';
-import { type Color, numberedMove } from '@/game/replay';
+import { type Color, shownMove } from '@/game/replay';
 import { compareMove } from '@/review/comparison';
 import type { ReviewMove } from '@/review/review';
 import type { Review } from '@/review/useReview';
@@ -16,12 +15,11 @@ import { qualityLooks } from '@/theme/moveQuality';
 
 import { MoveCard } from './MoveCard';
 import { ReviewActions } from './ReviewActions';
+import { type GraphView, ReviewGraph } from './ReviewGraph';
 
 /** What the panel shows of a review (`useReview`); any analyses will do, so the gallery can make them up. */
-export type ReviewView = { readonly analyses: readonly (Analysis | undefined)[] } & Pick<
-  Review,
-  'plies' | 'ply' | 'moves' | 'pointed' | 'nextMoment' | 'goto' | 'point' | 'tryAgain' | 'failure'
->;
+export type ReviewView = GraphView &
+  Pick<Review, 'pointed' | 'nextMoment' | 'point' | 'tryAgain' | 'failure'>;
 
 interface Props {
   /** What the headline's eyebrow names: "Review · Caro-Kann". */
@@ -34,7 +32,7 @@ interface Props {
 }
 
 /**
- * The review's panel beside the board: the headline, the move card for the
+ * The review's panel beside the board: the headline, the graph of the game, the move card for the
  * move shown, the three actions, and the scoresheet. At the start position,
  * before any move, the headline speaks for the whole game. A narrow page
  * draws the headline as one line under the header, which names the place,
@@ -58,6 +56,10 @@ export function ReviewPanel({ eyebrow, learner, review, drawer }: Props) {
       {/* The drawer covers the rest, on a phone's short page all the room it can get. */}
       <View {...part(drawer && 'wide-only', sections)}>
         <StatusHeadline eyebrow={eyebrow} eyebrowInHeader news="all" {...reviewHeadline(review)} />
+        {/* A narrow page draws the graph in the row under the board. */}
+        <View {...part('wide-only', styles.graph)}>
+          <ReviewGraph review={review} learner={learner} height={GRAPH_HEIGHT} />
+        </View>
         {move ? (
           <MoveCard
             whose={move.mover === learner ? 'yours' : 'theirs'}
@@ -116,7 +118,7 @@ function reviewHeadline({
         : `All ${moves.length} moves checked.`,
     };
   }
-  const named = numberedMove(plies[ply].move!.san, ply, '…');
+  const named = shownMove(plies[ply].move?.san, ply);
   if (move.status === 'waiting') return coming;
   if (move.status === 'failed') {
     const error = failure(ply);
@@ -135,3 +137,8 @@ function lossDetail(move: ReviewMove) {
   const lost = Math.round((move.before - move.after) * 100);
   return lost > 0 ? `Here: ${lost}%.` : undefined;
 }
+
+/** The graph's height on a wide page. */
+const GRAPH_HEIGHT = 72;
+
+const styles = StyleSheet.create({ graph: { marginVertical: 12 } });

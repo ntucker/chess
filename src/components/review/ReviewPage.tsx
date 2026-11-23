@@ -9,7 +9,7 @@ import { BrowserOnly } from '@/components/BrowserOnly';
 import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
-import { Transport } from '@/components/Transport';
+import { stepButton, Transport } from '@/components/Transport';
 import { NewVersionError } from '@/files/newVersion';
 import { material } from '@/game/material';
 import { type Color, colorName, fenAfter, opposite, replay } from '@/game/replay';
@@ -19,8 +19,9 @@ import { getLesson, isLessonId, LessonIndexContext, type LessonId } from '@/reso
 import { addressMoves, type ReviewAddress } from '@/review/address';
 import { REVIEW_ENGINE, useReview } from '@/review/useReview';
 
-import { GraphPlace, ReviewNames } from './NarrowBars';
+import { ReviewNames } from './NarrowBars';
 import { ReviewActionBar } from './ReviewActions';
+import { ReviewGraph } from './ReviewGraph';
 import { ReviewPanel } from './ReviewPanel';
 
 const TITLE = 'Review · Opening Night';
@@ -128,7 +129,9 @@ function ReviewScreen({
                 total={moves.length}
                 onGoto={goto}
                 fill
-                middle={<GraphPlace san={current.move?.san} ply={ply} />}
+                middle={
+                  <ReviewGraph review={review} learner={learner} height={stepButton.height} />
+                }
               />
             ),
           }}

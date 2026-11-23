@@ -14,6 +14,8 @@ import { themes } from '@/theme/theme';
 import { ReviewActionBar } from './ReviewActions';
 import { ReviewPanel, type ReviewView } from './ReviewPanel';
 
+// The graph draws with react-native-svg, and its gestures need gesture handler's root.
+jest.mock('./ReviewGraph', () => ({ ReviewGraph: () => null }));
 // Its font needs Expo's asset registry too.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 // The scoresheet drawer's Escape listens only on the focused screen, as this one is.
@@ -42,6 +44,8 @@ function review(ply: number, searched: readonly number[], overrides: Partial<Rev
     ply,
     moves,
     analyses,
+    book: [],
+    moments: [],
     pointed: undefined,
     nextMoment: undefined,
     goto: () => {},

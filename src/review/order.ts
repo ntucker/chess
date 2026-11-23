@@ -94,7 +94,7 @@ const sketched = (analysis: Analysis | undefined) =>
  * The plies of the learner's moves that drop at least `LEAST_DROP` by the
  * analyses so far, largest drop first.
  */
-function worstFirst(
+export function worstFirst(
   moves: readonly ReviewMove[],
   analyses: readonly (Analysis | undefined)[],
   learner: Color,

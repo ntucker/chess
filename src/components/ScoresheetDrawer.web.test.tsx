@@ -10,7 +10,7 @@ import { replay } from '@/game/replay';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
 
-import { ScoresheetDrawer, ScoresheetOpener, shownMove } from './ScoresheetDrawer';
+import { ScoresheetDrawer, ScoresheetOpener } from './ScoresheetDrawer';
 
 // Its font needs Expo's asset registry, which the web preset doesn't resolve.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
@@ -141,15 +141,7 @@ describe('ScoresheetOpener', () => {
   });
 });
 
-describe('shownMove', () => {
-  it('names the start, then White’s moves with a dot and Black’s with an ellipsis', () => {
-    expect([shownMove(undefined, 0), shownMove('e4', 1), shownMove('c6', 2)]).toEqual([
-      'Start',
-      '1.e4',
-      '1…c6',
-    ]);
-  });
-
+describe('ScoresheetDrawer under another overlay', () => {
   it('stays open as one Escape closes the opponent slider over it', () => {
     const onClose = jest.fn();
     const host = document.body.appendChild(document.createElement('div'));
