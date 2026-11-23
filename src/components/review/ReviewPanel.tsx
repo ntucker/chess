@@ -21,7 +21,16 @@ import { type GraphView, ReviewGraph } from './ReviewGraph';
 export type ReviewView = GraphView &
   Pick<
     Review,
-    'pointed' | 'nextMoment' | 'point' | 'tryAgain' | 'failure' | 'moment' | 'retry' | 'showAnswer'
+    | 'pointed'
+    | 'nextMoment'
+    | 'point'
+    | 'tryAgain'
+    | 'failure'
+    | 'moment'
+    | 'retry'
+    | 'showAnswer'
+    | 'tryFailure'
+    | 'searchTriesAgain'
   >;
 
 interface Props {
@@ -70,7 +79,7 @@ export function ReviewPanel({ eyebrow, learner, review, drawer }: Props) {
             comparison={compareMove(plies, move.status === 'book' ? [] : analyses, ply, learner)}
             quality={move.quality}
             qualityDetail={lossDetail(move)}
-            hidden={moment.hidden}
+            hidden={moment.hidden ? (moment.answer ? 'until retry' : 'until judged') : undefined}
             tries={moment.tries}
             guide={moment.revealed ? moment.answer : undefined}
             pointed={pointed}
@@ -107,8 +116,11 @@ function reviewHeadline({
   moves,
   failure,
   tryAgain,
-  moment,
-}: Pick<ReviewView, 'plies' | 'ply' | 'moves' | 'failure' | 'tryAgain' | 'moment'>) {
+  ...retried
+}: Pick<
+  ReviewView,
+  'plies' | 'ply' | 'moves' | 'failure' | 'tryAgain' | 'moment' | 'tryFailure' | 'searchTriesAgain'
+>) {
   const move = ply > 0 ? moves[ply - 1] : undefined;
   const waiting = moves.filter(({ status }) => status === 'waiting').length;
   const coming = {
@@ -136,7 +148,7 @@ function reviewHeadline({
     };
   }
   return (
-    momentHeadline(moment, move, ply, named) ?? {
+    momentHeadline(retried, move, ply, named) ?? {
       title: `${qualityLooks[move.quality].name}.`,
       detail: named,
     }
@@ -149,11 +161,16 @@ function reviewHeadline({
  * hidden. Undefined where the move's own label says it all.
  */
 function momentHeadline(
-  { board, tries, answer, hidden, canRetry }: ReviewView['moment'],
+  {
+    moment,
+    tryFailure,
+    searchTriesAgain,
+  }: Pick<ReviewView, 'moment' | 'tryFailure' | 'searchTriesAgain'>,
   move: ReviewMove,
   ply: number,
   named: string,
 ) {
+  const { board, tries, answer, hidden, canRetry } = moment;
   // "Find a better move than 7…Qxb2.", or the guide's move when the move left the guide but lost nothing.
   const goal =
     answer?.guide && (move.quality === 'best' || move.quality === 'good')
@@ -166,13 +183,21 @@ function momentHeadline(
     if (latest.status !== 'judged') {
       return latest.status === 'waiting'
         ? { title: 'Checking your try…', detail: tried }
-        : { title: 'No verdict yet.', detail: `${tried} couldn't be checked.` };
+        : {
+            title: 'No verdict yet.',
+            detail: tried,
+            failure: tryFailure && {
+              who: 'Stockfish',
+              error: tryFailure,
+              onRetry: searchTriesAgain,
+            },
+          };
     }
     return {
       title: `${qualityLooks[latest.quality].name}.`,
       detail: latest.passed
         ? `Found with ${tried}, on try ${tries.length}.`
-        : `Your retry ${tried}. Retry, or Show best.`,
+        : `Your retry: ${tried}.`,
     };
   }
   if (board === 'answer' && answer) {

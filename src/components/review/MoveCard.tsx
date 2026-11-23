@@ -24,8 +24,11 @@ interface Props {
   readonly quality?: MoveQuality;
   /** What the label says of this move, after its rule: "Here: 26%." */
   readonly qualityDetail?: string;
-  /** Whether Stockfish's moves stay hidden until a retry passes or Show best (`Moment.hidden`). */
-  readonly hidden?: boolean;
+  /**
+   * Whether Stockfish's moves stay hidden (`Moment.hidden`): until a retry
+   * passes or Show best, or until the move is judged.
+   */
+  readonly hidden?: 'until retry' | 'until judged';
   /** The learner's tries at this move, oldest first. */
   readonly tries?: readonly Try[];
   /** The answer, once revealed: the guide's move gets a line naming it, with "Practice this line". */
@@ -58,7 +61,7 @@ export function MoveCard({
   const labelled = useLabelled();
   const { played, others } = comparison;
   const tip = quality && qualityTip(quality, qualityDetail);
-  const book = guide?.guide;
+  const guideMove = guide?.guide;
   return (
     <PointingArea onLeave={() => onPoint(undefined)}>
       <Stack gap="4">
@@ -74,7 +77,7 @@ export function MoveCard({
               pointed={pointed === played.uci}
               onPoint={onPoint}
             />
-            {hidden ? <HiddenRow /> : null}
+            {hidden ? <HiddenRow until={hidden} /> : null}
           </Surface>
         </Stack>
         {tries.length ? (
@@ -103,7 +106,9 @@ export function MoveCard({
             </Surface>
           </Stack>
         ) : null}
-        {book ? <GuideLine san={guide.san} note={book.note} practice={book.practice} /> : null}
+        {guideMove ? (
+          <GuideLine san={guide.san} note={guideMove.note} practice={guideMove.practice} />
+        ) : null}
       </Stack>
     </PointingArea>
   );
@@ -145,12 +150,18 @@ function TryRow({
   );
 }
 
-/** Stands in for Stockfish's moves until a retry passes or Show best is pressed. */
-function HiddenRow() {
+/** Stands in for Stockfish's moves until a retry passes or Show best is pressed, or the move is judged. */
+function HiddenRow({ until }: { readonly until: NonNullable<Props['hidden']> }) {
   const { theme } = useTheme();
   const muted = theme.semantic.color.textSecondary;
   return (
-    <Tip tip="Retry, or press Show best, to see Stockfish's moves">
+    <Tip
+      tip={
+        until === 'until retry'
+          ? "Retry, or press Show best, to see Stockfish's moves"
+          : "Stockfish's moves show once this move is judged"
+      }
+    >
       <View style={[styles.row, styles.hidden]}>
         <Ionicons name="eye-off-outline" size={16} color={muted} />
         <Text role="caption" tone="secondary">

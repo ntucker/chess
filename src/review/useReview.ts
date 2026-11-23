@@ -87,6 +87,7 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
   // The moment shown: its tries, judged on the analyses after each.
   const base = ply > 0 ? lines[ply - 1] : [];
   const tryLines = (screen.tries.get(ply) ?? []).map((uci) => [...base, uci]);
+  const tryErrors = tryLines.map((line) => analysisError(ctrl, REVIEW_ENGINE, line, state));
   // The guide's moves there matter only to judge tries, or as the answer where the learner left it.
   const guide =
     lesson && ply > 0 && (tryLines.length || ply - 1 === leftAt)
@@ -103,7 +104,7 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
     guide: ply - 1 === leftAt ? guide?.answer : undefined,
     screen,
     tryAnalyses: storedAnalyses(ctrl, REVIEW_ENGINE, tryLines, state).map(finalOnly),
-    tryFailed: tryLines.map((line) => !!analysisError(ctrl, REVIEW_ENGINE, line, state)),
+    tryFailed: tryErrors.map(Boolean),
   });
   // The line the board shows: the game's to `ply`, or at a moment, the one before its move and what's played there.
   const shownLine = moment.shownMove
@@ -111,13 +112,18 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
     : lines[moment.board === 'retry' ? ply - 1 : ply];
 
   // A try waiting for its search goes first: the learner is waiting for it.
+  const next = nextSearch({ moves: judged, book, analyses, learner, dwelt, failed });
   const searched =
     moment.searching !== undefined
       ? tryLines[moment.searching]
-      : lines[nextSearch({ moves: judged, book, analyses, learner, dwelt, failed }) ?? -1];
+      : next === undefined
+        ? undefined
+        : lines[next];
   useSubscription(
     getAnalysis,
-    ...(active && searched ? ([REVIEW_ENGINE, searched] as const) : ([null] as const)),
+    ...(active && searched !== undefined
+      ? ([REVIEW_ENGINE, searched] as const)
+      : ([null] as const)),
   );
   // The positions the label of the move leading to `plies[target]` needs whose search gave up.
   const lostFor = (target: number) =>
@@ -164,6 +170,14 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
     play: (uci: Uci) => dispatch({ type: 'try', uci }),
     /** Show best: shows the moment's answer. */
     showAnswer: () => dispatch({ type: 'show answer' }),
+    /** Why the search after the latest try at the moment shown gave up, when it did. */
+    tryFailure: tryErrors.at(-1),
+    /** Searches again the positions after the moment's tries whose search gave up. */
+    searchTriesAgain() {
+      tryLines.forEach((line, n) => {
+        if (tryErrors[n]) void ctrl.invalidate(getAnalysis, REVIEW_ENGINE, line);
+      });
+    },
     /**
      * Searches again the positions the label of the move leading to
      * `plies[target]` needs whose search gave up; the move waits again

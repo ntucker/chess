@@ -8,7 +8,7 @@
  */
 import { judgement, labelMove, type MoveQuality } from '@/analysis/quality';
 import { type FinalAnalysis, type MoveChange, moveChange, scoreFor } from '@/evaluation/evaluation';
-import { type Color, lineSans, parsePosition, type Ply } from '@/game/replay';
+import { type Color, parsePosition, playMove, type Ply } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { variationHref } from '@/lesson/openings';
 import { lineKeys } from '@/lesson/select';
@@ -143,8 +143,8 @@ export function momentAt({
   const before = ply > 0 ? analyses[ply - 1] : undefined;
   const board = screen.board ?? 'game';
   if (!move || move.mover !== learner) return { ...NOTHING, board, badge: move?.quality };
-  const pos = parsePosition(plies[ply - 1].fen);
-  const sanOf = (uci: Uci) => lineSans([uci], pos?.clone())[0];
+  const pos = parsePosition(plies[ply - 1].fen)!;
+  const sanOf = (uci: Uci) => playMove(pos.clone(), uci)?.san ?? uci;
   const tries = (screen.tries.get(ply) ?? []).map((uci, n): Try => {
     const san = sanOf(uci);
     const after = tryAnalyses[n];
@@ -184,7 +184,7 @@ export function momentAt({
   const revealed =
     screen.shown.has(ply) || tries.some((tried) => tried.status === 'judged' && tried.passed);
   const latest = tries.at(-1);
-  const shown =
+  const onBoard =
     board === 'try' && latest
       ? { uci: latest.uci, quality: latest.status === 'judged' ? latest.quality : undefined }
       : board === 'answer'
@@ -199,9 +199,9 @@ export function momentAt({
     tries,
     searching: searching === -1 ? undefined : searching,
     board,
-    shownMove: shown?.uci,
-    badge: board === 'game' ? move.quality : shown?.quality,
-    arrow: shown && revealed ? plies[ply].move?.uci : undefined,
+    shownMove: onBoard?.uci,
+    badge: board === 'game' ? move.quality : onBoard?.quality,
+    arrow: onBoard && revealed ? plies[ply].move?.uci : undefined,
   };
 }
 
@@ -218,7 +218,7 @@ const retries = (move: ReviewMove, leftAt: number | undefined) =>
 /**
  * Whether a try labelled `quality`, scoring `score` (the learner's expected
  * score, 0 to 1), beats the game's `move`: it's best or good, and better
- * than the move was. The guide's move passes too, before this.
+ * than the move was. (`momentAt` passes the guide's move, labelled book, without asking.)
  */
 const passes = (quality: MoveQuality, score: number, move: ReviewMove) =>
   (quality === 'best' || quality === 'good') && move.status === 'judged' && score > move.after;

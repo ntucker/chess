@@ -81,6 +81,8 @@ function review(
     failure: () => undefined,
     retry: () => {},
     showAnswer: () => {},
+    tryFailure: undefined,
+    searchTriesAgain: () => {},
     ...overrides,
   } satisfies ReviewView;
 }
@@ -217,7 +219,7 @@ describe('ReviewPanel', () => {
       failed,
       (host) => {
         expect(heading(host)).toBe('Blunder.');
-        expect(host.textContent).toContain('Your retry 2.a3. Retry, or Show best.');
+        expect(host.textContent).toContain('Your retry: 2.a3.');
         expect(host.textContent).toContain('Other moves hidden');
       },
       asWhite(failed),

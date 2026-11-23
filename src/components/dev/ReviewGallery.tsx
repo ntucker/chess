@@ -185,6 +185,8 @@ function StateCard({ title, sentence, searched, failed = [], ply, retried }: Sta
     point: (uci) => dispatch({ type: 'point', uci }),
     retry: () => dispatch({ type: 'retry' }),
     showAnswer: () => dispatch({ type: 'show answer' }),
+    tryFailure: undefined,
+    searchTriesAgain: () => {},
     tryAgain: () => {},
     failure: () => (failed.length ? new Error('Stockfish stopped') : undefined),
   };
