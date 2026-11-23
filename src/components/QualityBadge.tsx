@@ -1,7 +1,9 @@
 import { View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 
-import type { MoveQuality } from '@/analysis/quality';
+import type { EngineVerdict, MoveQuality } from '@/analysis/quality';
+import { Tip } from '@/components/Tip';
+import { NO_CHANGE } from '@/evaluation/evaluation';
 import { BADGE_BOX, badgeMarkup, qualityLooks } from '@/theme/moveQuality';
 
 interface Props {
@@ -20,4 +22,23 @@ export function QualityBadge({ quality, size }: Props) {
       />
     </View>
   );
+}
+
+/** `QualityBadge` with what it means in a tooltip (`Tip`). */
+export function TippedBadge({ tip, ...badge }: Props & { readonly tip: string }) {
+  return (
+    <Tip tip={tip}>
+      <QualityBadge {...badge} />
+    </Tip>
+  );
+}
+
+/**
+ * Stockfish's verdict in words: "Stockfish: Inaccuracy, 0.4 pawns worse for
+ * you". A move that changes nothing, like the best, says only its label.
+ */
+export function verdictText({ quality, change: { description } }: EngineVerdict) {
+  const verdict = `Stockfish: ${qualityLooks[quality].name}`;
+  if (description === NO_CHANGE) return verdict;
+  return `${verdict}, ${description.charAt(0).toLowerCase()}${description.slice(1)}`;
 }

@@ -30,13 +30,7 @@ import {
   openingsLesson,
   withOpenings,
 } from '@/lesson/openings';
-import {
-  type Candidate,
-  captionName,
-  type EngineVerdict,
-  pathNames,
-  shareSource,
-} from '@/lesson/select';
+import { type Candidate, captionName, pathNames, shareSource } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
 import { reviewHref } from '@/review/address';
 import { describeOpponent } from '@/opponent/opponent';
@@ -46,8 +40,8 @@ import { useSettings } from '@/settings/SettingsProvider';
 import { NarrowOnly, NarrowScroll, useNarrowPart } from '@/theme/Narrow';
 
 import { AutoPlay } from './AutoPlay';
-import { CandidateList, useListMinWidth, verdictText } from './CandidateList';
-import { IdeaAside, IdeaCard } from './IdeaCard';
+import { CandidateList, useListMinWidth } from './CandidateList';
+import { IdeaAside, IdeaCard, noNotes } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
 import { SideChoice } from './SideChoice';
@@ -375,7 +369,7 @@ function LessonScreen({
       <IdeaCard
         lesson={lesson}
         title={preview ? `If ${preview.san}` : 'The idea'}
-        empty={preview && previewEmpty(preview, guidance.verdicts)}
+        empty={preview && noNotes(preview.san, guidance.verdicts?.get(preview.move.uci))}
         notes={guidance.notes}
         learner={learner}
         playback={playback}
@@ -532,16 +526,6 @@ function LessonScreen({
       }
     />
   );
-}
-
-/**
- * What the idea card says for a move pointed at that has no notes: that it
- * has none, and Stockfish's verdict on it when there is one.
- * Example: "No notes on Bg4. Stockfish: Best move."
- */
-function previewEmpty(preview: Candidate, verdicts?: ReadonlyMap<Uci, EngineVerdict>) {
-  const verdict = verdicts?.get(preview.move.uci);
-  return `No notes on ${preview.san}.${verdict ? ` ${verdictText(verdict)}.` : ''}`;
 }
 
 /** The lesson page when its lesson failed to load. */

@@ -28,6 +28,7 @@ jest.mock('@data-client/react', () => ({
   useSuspense: () => ({}),
 }));
 jest.mock('@/resources/analysis', () => ({
+  analysisError: () => undefined,
   storedAnalyses: (_ctrl: unknown, _engine: unknown, lines: readonly unknown[]) =>
     lines.map(() => undefined),
   useAnalysis: () => undefined,

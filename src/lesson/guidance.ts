@@ -67,11 +67,12 @@
  * guidance stays in lesson terms; lessonDrawings (./drawings.ts) turns it
  * into board shapes, and says which ideas draw nothing (`drawsOnBoard`).
  */
+import type { EngineVerdict } from '@/analysis/quality';
 import type { Settings } from '@/settings/settings';
 
 import { drawsOnBoard } from './drawings';
 import type { Idea, Note, PositionKey, Uci } from './lesson';
-import { type Candidate, type EngineVerdict, mainCandidate } from './select';
+import { type Candidate, mainCandidate } from './select';
 import { type LandedTrap, type LessonView, type Preview, type ShownNote, shownKey } from './view';
 
 export type LessonMode = 'explore' | 'practice';

@@ -8,7 +8,9 @@ import { createRoot } from 'react-dom/client';
 import type { Candidate } from '@/lesson/select';
 import { themes, typography } from '@/theme/theme';
 
-import { CandidateList, listMinWidth, verdictText } from './CandidateList';
+import { verdictText } from '@/components/QualityBadge';
+
+import { CandidateList, listMinWidth } from './CandidateList';
 
 // Its font needs Expo's asset registry too.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
@@ -203,10 +205,13 @@ describe('CandidateList', () => {
         button.getAttribute('aria-label'),
       ]),
     );
-    // A lone guide move shows no share, and the engine's row no change label.
+    // A lone guide move shows no share, and the engine's row no change label: its star's tip says what it is.
     expect(rows).toEqual([
       ['Nf3the Nf3 line', 'Nf3'],
-      ['Bb4+the Bb4+ line', 'Bb4+, top engine move'],
+      [
+        "Bb4+Top engine move: Stockfish's best reply here, not one the guide teaches.the Bb4+ line",
+        'Bb4+, top engine move',
+      ],
     ]);
   });
 

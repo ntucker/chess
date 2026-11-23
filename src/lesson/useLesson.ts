@@ -12,13 +12,14 @@ import { StateContext, useController, useSubscription, useSuspense } from '@data
 import { useIsFocused } from 'expo-router';
 import { use, useEffect, useMemo, useReducer } from 'react';
 
+import { engineVerdict } from '@/analysis/quality';
 import type { Square } from '@/board/drawing';
 import type { Drag } from '@/board/pointer';
 import type { BoardProps } from '@/components/Board';
 import { dropMove, parsePositionKey } from '@/game/replay';
 import { type GameStore, useGame } from '@/game/useGame';
 import { finalOnly } from '@/evaluation/evaluation';
-import { getAnalysis, storedAnalyses, useAnalysis } from '@/resources/analysis';
+import { analysisError, getAnalysis, storedAnalyses, useAnalysis } from '@/resources/analysis';
 import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
 import { hasMark, UNTOUCHED } from '@/progress/progress';
 import { LessonIndexContext } from '@/resources/lesson';
@@ -42,7 +43,7 @@ import { lessonOpponent } from './opponent';
 import { samePointer } from './peek';
 import { beforeSideMoves, moveKinds, opponentPlays } from './practice';
 import { initialScreen, screenReducer } from './screen';
-import { bookMoves, type Candidate, engineCandidates, engineVerdict } from './select';
+import { bookMoves, type Candidate, engineCandidates } from './select';
 import { lessonView, type Pointer, preview, type ShownNote } from './view';
 
 /** How long each board of a playback shows before the next. */
@@ -191,10 +192,11 @@ export function useLesson(
   // and, for a move it doesn't list, the final analysis of where that leads.
   const state = use(StateContext);
   const before = finalOnly(analysis);
+  const after = (uci: Uci) => [...shownLine, uci];
   const afters = storedAnalyses(
     ctrl,
     'stockfish',
-    view.candidates.map(({ move }) => [...shownLine, move.uci]),
+    view.candidates.map(({ move }) => after(move.uci)),
     state,
   ).map(finalOnly);
   const verdicts = new Map(
@@ -221,17 +223,19 @@ export function useLesson(
   });
   // A listed candidate still unjudged waits for a search of where it leads:
   // one at a time, the one pointed at first, and only once the board's own
-  // search is final, since the engine runs the newest search asked for.
+  // search is final, since the engine runs the newest search asked for. One
+  // whose search gave up stays unjudged rather than hold up the rest.
   const unjudged = [...shown.candidates, ...(rareShown ? shown.rare : [])]
     .map(({ move }) => move.uci)
-    .filter((uci) => shown.verdicts && !shown.verdicts.has(uci));
+    .filter((uci) => shown.verdicts && !shown.verdicts.has(uci))
+    .filter((uci) => !analysisError(ctrl, 'stockfish', after(uci), state));
   const pointedUci = shown.preview?.candidate.move.uci;
   const judging = final
     ? (unjudged.find((uci) => uci === pointedUci) ?? unjudged.at(0))
     : undefined;
   useSubscription(
     getAnalysis,
-    ...(judging ? (['stockfish', [...shownLine, judging]] as const) : ([null] as const)),
+    ...(judging ? (['stockfish', after(judging)] as const) : ([null] as const)),
   );
   const frames = shown.playing
     ? ideaPlayback(shown.playing.idea, parsePositionKey(shown.playing.at)!)

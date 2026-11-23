@@ -1,25 +1,15 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import {
-  a11yState,
-  Pressable,
-  Stack,
-  Surface,
-  Text,
-  Tooltip,
-  useTheme,
-} from '@reactive/silk-native';
+import { a11yState, Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { candidateTone } from '@/lesson/drawings';
 import type { PositionKey, Uci } from '@/lesson/lesson';
-import { NO_CHANGE } from '@/evaluation/evaluation';
-import type { Candidate, EngineVerdict } from '@/lesson/select';
-import { qualityLooks } from '@/theme/moveQuality';
+import type { Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
-import type { MoveQuality } from '@/analysis/quality';
-import { QualityBadge } from '@/components/QualityBadge';
+import type { EngineVerdict } from '@/analysis/quality';
+import { QualityBadge, TippedBadge, verdictText } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import type { Mark } from '@/progress/progress';
 import { NARROW_CSS_LOADS, narrowLength, narrowStyles } from '@/theme/narrow';
@@ -361,8 +351,10 @@ function Row({
           </Text>
           {move.book ? <QualityBadge quality="book" size={BADGE_SIZE} /> : null}
           {/* Each badge says what it means on a resting mouse or a tap; the row's label says it aloud. */}
-          {topEngine ? <TippedBadge quality="best" tip={TOP_ENGINE_TIP} /> : null}
-          {verdict ? <TippedBadge quality={verdict.quality} tip={verdictText(verdict)} /> : null}
+          {topEngine ? <TippedBadge quality="best" size={BADGE_SIZE} tip={TOP_ENGINE_TIP} /> : null}
+          {verdict ? (
+            <TippedBadge quality={verdict.quality} size={BADGE_SIZE} tip={verdictText(verdict)} />
+          ) : null}
           {move.risk ? (
             <Text role="caption" tone="secondary" style={styles.risk}>
               {move.risk}
@@ -398,29 +390,6 @@ function Row({
       ) : null}
     </Pressable>
   );
-}
-
-/** A move's label as a badge, with what it means in a tooltip. */
-function TippedBadge({ quality, tip }: { readonly quality: MoveQuality; readonly tip: string }) {
-  return (
-    <Tooltip.Root>
-      <Tooltip.Trigger>
-        <QualityBadge quality={quality} size={BADGE_SIZE} />
-      </Tooltip.Trigger>
-      <Tooltip.Content>{tip}</Tooltip.Content>
-    </Tooltip.Root>
-  );
-}
-
-/**
- * Stockfish's verdict in words, for its badge's tooltip and the row's label:
- * "Stockfish: Inaccuracy, 0.4 pawns worse for you". A move that changes
- * nothing, like the best, says only its label.
- */
-export function verdictText({ quality, change: { description } }: EngineVerdict) {
-  const verdict = `Stockfish: ${qualityLooks[quality].name}`;
-  if (description === NO_CHANGE) return verdict;
-  return `${verdict}, ${description.charAt(0).toLowerCase()}${description.slice(1)}`;
 }
 
 /** What a row of Stockfish's among the guide's says it is. */

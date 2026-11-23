@@ -6,7 +6,7 @@ import { createRoot, type Root } from 'test-renderer';
 
 import type { Analysis } from '@/evaluation/evaluation';
 import { gameReducer, startGame } from '@/game/game';
-import { AnalysisManager, PositionAnalysis } from '@/resources/analysis';
+import { AnalysisManager, getAnalysis, PositionAnalysis } from '@/resources/analysis';
 import { LessonIndexContext } from '@/resources/lesson';
 
 import { ADVANCE, SAMPLE, uciLine } from './lesson.fixture';
@@ -211,6 +211,21 @@ describe("useLesson's verdicts on the candidates", () => {
     await store(line, [['g8f6', 0.45]]);
     expect(mockSearched.at(-1)).toBe(after('c8f5'));
     await act(async () => lesson().pointRow('c6c5'));
+    expect(mockSearched.at(-1)).toBe(after('c6c5'));
+  });
+
+  it('passes over a candidate whose search gave up, to judge the rest', async () => {
+    await render(line);
+    await store(line, [['g8f6', 0.45]]);
+    expect(mockSearched.at(-1)).toBe(after('c8f5'));
+    await act(async () => {
+      void controllers[0].setError(
+        getAnalysis,
+        'stockfish',
+        [...line, 'c8f5'],
+        new Error('gave up'),
+      );
+    });
     expect(mockSearched.at(-1)).toBe(after('c6c5'));
   });
 
