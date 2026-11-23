@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
-import { Link } from 'expo-router';
+import { type Href, Link } from 'expo-router';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -33,6 +33,8 @@ interface Props {
   readonly tries?: readonly Try[];
   /** The answer, once revealed: the guide's move gets a line naming it, with "Practice this line". */
   readonly guide?: Answer;
+  /** Once revealed, where "Play on from here" goes: the game's page, with the corrected line. */
+  readonly playOn?: Href;
   /** The row previewed on the board. */
   readonly pointed?: Uci;
   /** The learner points at a row, or at none. */
@@ -55,6 +57,7 @@ export function MoveCard({
   hidden,
   tries = [],
   guide,
+  playOn,
   pointed,
   onPoint,
 }: Props) {
@@ -109,6 +112,7 @@ export function MoveCard({
         {guideMove ? (
           <GuideLine san={guide.san} note={guideMove.note} practice={guideMove.practice} />
         ) : null}
+        {playOn ? <PlayOn href={playOn} /> : null}
       </Stack>
     </PointingArea>
   );
@@ -243,6 +247,26 @@ function Row({ move, badge, spoken, pointed, onPoint }: RowProps) {
   );
 }
 
+/**
+ * "Play on from here": back to the game's page, where a new game against the
+ * same opponent starts from the corrected line, in place of the game reviewed.
+ */
+function PlayOn({ href }: { readonly href: Href }) {
+  const { theme } = useTheme();
+  return (
+    <Tip tip="A new game from the corrected position, against the same opponent. It replaces the game reviewed.">
+      <Link href={href} dismissTo>
+        <View style={styles.playOn}>
+          <Ionicons name="play-outline" size={16} color={theme.semantic.color.tones.accent.text} />
+          <Text role="body" tone="accent" style={styles.link}>
+            Play on from here
+          </Text>
+        </View>
+      </Link>
+    </Tip>
+  );
+}
+
 /** "Blunder: gave away 20% or more of the winning chances. Here: 26%." */
 const qualityTip = (quality: MoveQuality, detail?: string) =>
   `${qualityLooks[quality].name}: ${qualityRule(quality)}.${detail ? ` ${detail}` : ''}`;
@@ -266,4 +290,5 @@ const styles = StyleSheet.create({
   hidden: { gap: 8 },
   guide: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 4 },
   link: { textDecorationLine: 'underline' },
+  playOn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
 });

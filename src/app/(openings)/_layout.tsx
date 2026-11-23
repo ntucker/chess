@@ -9,14 +9,15 @@ import { useOpeningsAddress } from '@/components/lesson/useOpeningsAddress';
  * Picking an opening moves to its address and the browser's Back returns to
  * the start, while the game and the screen's mode carry on. A lesson's
  * address can name a variation to open (`?variation=`, from the opening
- * list). Going Back or Forward resumes the game each history entry had.
+ * list), or moves to start from (`?moves=`, the review's "Play on from
+ * here"). Going Back or Forward resumes the game each history entry had.
  * The routes themselves draw nothing.
  */
 export default function OpeningsLayout() {
-  const { id, variation, entry } = useOpeningsAddress();
+  const { id, variation, moves, entry } = useOpeningsAddress();
   return (
     <>
-      <LessonPage id={id} variation={variation} entry={entry} />
+      <LessonPage id={id} variation={variation} moves={moves} entry={entry} />
       <Slot />
     </>
   );

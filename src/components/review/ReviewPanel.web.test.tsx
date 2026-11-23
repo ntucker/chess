@@ -2,7 +2,7 @@
 // (package.json) lets @reactive through Babel for it.
 import { describe, expect, it, jest } from '@jest/globals';
 import { SilkProvider } from '@reactive/silk-native';
-import { act } from 'react';
+import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import type { FinalAnalysis } from '@/evaluation/evaluation';
@@ -21,7 +21,23 @@ jest.mock('./ReviewGraph', () => ({ ReviewGraph: () => null }));
 // Its font needs Expo's asset registry too.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 // The scoresheet drawer's Escape listens only on the focused screen, as this one is.
-jest.mock('expo-router', () => ({ useIsFocused: () => true }));
+// A link draws its text, and names where it goes and how.
+jest.mock('expo-router', () => ({
+  useIsFocused: () => true,
+  Link: ({
+    children,
+    href,
+    dismissTo,
+  }: {
+    children: ReactNode;
+    href: unknown;
+    dismissTo?: boolean;
+  }) => (
+    <span data-href={JSON.stringify(href)} data-dismiss-to={dismissTo}>
+      {children}
+    </span>
+  ),
+}));
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -214,6 +230,38 @@ describe('ReviewPanel', () => {
         expect(button(host, /^Show best/)?.getAttribute('aria-disabled')).toBe('true');
       },
       asWhite(view),
+    );
+  });
+
+  it('offers Play on from here once revealed, back to the game it replaces', () => {
+    const playOn = { pathname: '/lesson/caro-kann', params: { moves: 'e2e4 e7e5 g1f3' } };
+    const link = (host: HTMLElement) =>
+      [...host.querySelectorAll('[data-href]')].find((element) =>
+        element.textContent?.includes('Play on from here'),
+      );
+    const revealed = review(
+      3,
+      [0, 1, 2, 3],
+      {},
+      { learner: 'white', screen: { tries: new Map([[3, ['g1f3']]]) } },
+    );
+    render(
+      revealed,
+      (host) => {
+        expect(JSON.parse(link(host)!.getAttribute('data-href')!)).toEqual(playOn);
+        expect(link(host)!.getAttribute('data-dismiss-to')).toBe('true');
+      },
+      <ReviewPanel eyebrow="Review" learner="white" review={revealed} lesson="caro-kann" />,
+    );
+    // Without a lesson, the link goes to the free-game page, keeping the learner's side.
+    render(
+      revealed,
+      (host) =>
+        expect(JSON.parse(link(host)!.getAttribute('data-href')!)).toEqual({
+          pathname: '/play',
+          params: { moves: 'e2e4 e7e5 g1f3', side: 'white' },
+        }),
+      <ReviewPanel eyebrow="Review" learner="white" review={revealed} />,
     );
   });
 

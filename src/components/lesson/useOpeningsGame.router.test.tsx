@@ -8,6 +8,7 @@ import { uciLine } from '@/lesson/lesson.fixture';
 import { lessonHref, variationHref } from '@/lesson/openings';
 import { FIXTURE_INDEX } from '@/lesson/openings.fixture';
 import { LessonIndexContext, type LessonId } from '@/resources/lesson';
+import { playOnHref } from '@/review/address';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 
 import { useOpeningsAddress } from './useOpeningsAddress';
@@ -35,8 +36,8 @@ jest.mock('expo-router/entry', () => {
 let latest: ReturnType<typeof useOpeningsGame> & { readonly id?: string };
 /** The openings layout, as `src/app/(openings)/_layout.tsx` reads its address. */
 function Page() {
-  const { id, variation, entry } = useOpeningsAddress();
-  const answer = { ...useOpeningsGame(id as LessonId | undefined, variation, entry), id };
+  const { id, variation, moves, entry } = useOpeningsAddress();
+  const answer = { ...useOpeningsGame(id as LessonId | undefined, variation, entry, moves), id };
   useLayoutEffect(() => {
     latest = answer;
   });
@@ -57,6 +58,7 @@ async function open(url: string) {
     '(openings)/index': () => null,
     '(openings)/lesson/[id]': () => null,
     openings: () => null,
+    review: () => null,
   });
   // As the app's entry does, before the router first renders.
   runNavigationInTransitions();
@@ -135,5 +137,28 @@ describe('useOpeningsGame on the router', () => {
     await run(() => router.navigate(variationHref('slav', 'semi-slav')));
     expect(latest.id).toBe('slav');
     expect(latest.side).toBe('black');
+  });
+
+  it('plays on from the review: back to the game, starting the corrected line in its place', async () => {
+    const corrected = uciLine('e4', 'c6', 'd4', 'd5');
+    await open(lessonHref('caro-kann'));
+    await play('c7c6', 'd2d4', 'e7e5');
+    await run(() => router.push('/review'));
+    await run(() => router.dismissTo(playOnHref(corrected, 'black', 'caro-kann')));
+    expect([latest.id, moves()]).toEqual(['caro-kann', corrected]);
+    // The review is gone, and so is the game it reviewed.
+    expect(router.canGoBack()).toBe(false);
+    // A move past the line drops it, so the same link starts it again.
+    await play('e4e5');
+    await run(() => router.push('/review'));
+    await run(() => router.dismissTo(playOnHref(corrected, 'black', 'caro-kann')));
+    expect(moves()).toEqual(corrected);
+  });
+
+  it('plays on from a review opened on its own, in its place', async () => {
+    await open('/review');
+    const corrected = uciLine('e4', 'c6', 'd4', 'd5');
+    await run(() => router.dismissTo(playOnHref(corrected, 'black', 'caro-kann')));
+    expect([latest.id, moves(), latest.side]).toEqual(['caro-kann', corrected, 'black']);
   });
 });

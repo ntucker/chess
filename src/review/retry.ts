@@ -97,6 +97,12 @@ export interface Moment {
    * while its piece still stands where it moved from: not after a try with the same piece.
    */
   readonly arrow?: Uci;
+  /**
+   * Once revealed, the line "Play on from here" starts from: the game's moves
+   * before this one, then in its place the try or answer the board shows,
+   * else the latest try that passed, else the answer.
+   */
+  readonly playOn?: readonly Uci[];
 }
 
 /** What `momentAt` reads. */
@@ -184,8 +190,8 @@ export function momentAt({
     retryable && before && answerUci
       ? { uci: answerUci, san: sanOf(answerUci), quality: guide ? 'book' : 'best', guide }
       : undefined;
-  const revealed =
-    screen.shown.has(ply) || tries.some((tried) => tried.status === 'judged' && tried.passed);
+  const passed = tries.filter((tried) => tried.status === 'judged' && tried.passed);
+  const revealed = screen.shown.has(ply) || passed.length > 0;
   const latest = tries.at(-1);
   const onBoard =
     board === 'try' && latest
@@ -194,6 +200,13 @@ export function momentAt({
         ? answer
         : undefined;
   const searching = tries.findIndex(({ status }) => status === 'waiting');
+  const shownPasses =
+    onBoard && (board === 'answer' || passed.some(({ uci }) => uci === onBoard.uci));
+  const correction = revealed
+    ? shownPasses
+      ? onBoard.uci
+      : (passed.at(-1)?.uci ?? answer?.uci)
+    : undefined;
   return {
     canRetry: !!answer && board !== 'retry',
     answer,
@@ -205,6 +218,10 @@ export function momentAt({
     shownMove: onBoard?.uci,
     badge: board === 'game' ? move.quality : onBoard?.quality,
     arrow: onBoard && revealed ? arrowBeside(plies[ply].move?.uci, onBoard.uci) : undefined,
+    playOn:
+      correction === undefined
+        ? undefined
+        : [...plies.slice(1, ply).flatMap(({ move }) => (move ? [move.uci] : [])), correction],
   };
 }
 

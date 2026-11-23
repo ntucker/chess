@@ -161,6 +161,17 @@ function StateCard({ title, sentence, searched, failed = [], ply, retried }: Sta
   const analyses = PLIES.map((_, n) => (searched.includes(n) ? SEARCHED[n] : undefined));
   const lost = new Set(failed);
   const moves = reviewMoves({ plies: PLIES, book: BOOK, legal: LEGAL, analyses, failed: lost });
+  const moment = momentAt({
+    plies: PLIES,
+    moves,
+    analyses,
+    legal: LEGAL,
+    learner: 'black',
+    book: [],
+    screen,
+    tryAnalyses: (screen.tries.get(screen.ply) ?? []).map((uci) => TRIED[uci]),
+    tryFailed: [],
+  });
   const review: ReviewView = {
     plies: PLIES,
     ply: screen.ply,
@@ -170,17 +181,7 @@ function StateCard({ title, sentence, searched, failed = [], ply, retried }: Sta
     moments: moments(moves, 'black').map((move) => move + 1),
     pointed: screen.pointed,
     nextMoment: undefined,
-    moment: momentAt({
-      plies: PLIES,
-      moves,
-      analyses,
-      legal: LEGAL,
-      learner: 'black',
-      book: [],
-      screen,
-      tryAnalyses: (screen.tries.get(screen.ply) ?? []).map((uci) => TRIED[uci]),
-      tryFailed: [],
-    }),
+    moment,
     goto: (target) => dispatch({ type: 'goto', ply: target }),
     point: (uci) => dispatch({ type: 'point', uci }),
     retry: () => dispatch({ type: 'retry' }),
@@ -197,7 +198,12 @@ function StateCard({ title, sentence, searched, failed = [], ply, retried }: Sta
         <Text role="bodySm">{sentence}</Text>
       </Stack>
       <Surface elevation="raised" radius="md" border="subtle" style={styles.panel}>
-        <ReviewPanel eyebrow="Review · Caro-Kann" learner="black" review={review} />
+        <ReviewPanel
+          eyebrow="Review · Caro-Kann"
+          learner="black"
+          review={review}
+          lesson="caro-kann"
+        />
       </Surface>
     </Stack>
   );

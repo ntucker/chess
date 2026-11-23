@@ -117,7 +117,7 @@ describe('useOpeningsGame', () => {
     expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'e5'));
     expect(mockRouter.setParams).not.toHaveBeenCalled();
     await play('c8f5');
-    expect(mockRouter.setParams).toHaveBeenCalledWith({ variation: undefined });
+    expect(mockRouter.setParams).toHaveBeenCalledWith({ variation: undefined, moves: undefined });
     // The address dropping it keeps the game.
     await show('caro-kann');
     expect(moves()).toEqual(uciLine('e4', 'c6', 'd4', 'd5', 'e5', 'Bf5'));
