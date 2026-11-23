@@ -1,8 +1,8 @@
 # Builds the Android app on every push to main that changes more than
 # Markdown, and publishes it at one fixed address, so a phone installs the
-# newest build from its browser. A pull request that changes this file only
-# builds. README.md, under "Android
-# builds", says how to install it.
+# newest build from its browser. A pull request that changes the native build
+# (this file, dependencies, app config, patches) only builds. README.md, under
+# "Android builds", says how to install it.
 name: Android
 
 on:
@@ -10,7 +10,13 @@ on:
     branches: [main]
     paths-ignore: ['**/*.md']
   pull_request:
-    paths: ['.github/workflows/android.yml']
+    paths:
+      - .github/workflows/android.yml
+      - package.json
+      - yarn.lock
+      - .yarn/patches/**
+      - app.json
+      - app.config.ts
   workflow_dispatch:
 
 permissions:
@@ -21,7 +27,6 @@ env:
   TAG: android
   # README.md links to this file on that release.
   APK: opening-night.apk
-  BUILT: android/app/build/outputs/apk/release/app-release.apk
 
 jobs:
   build:
@@ -60,7 +65,9 @@ jobs:
       # Phones in use are 64-bit ARM; one architecture builds about 4x faster.
       - name: Build
         working-directory: android
-        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a
+        run: |
+          ./gradlew assembleRelease --build-cache -PreactNativeArchitectures=arm64-v8a
+          mv app/build/outputs/apk/release/app-release.apk "../$APK"
 
       # Release builds use the key in Expo's template (android/app/debug.keystore),
       # the same key as every build installed so far. Android installs an
@@ -69,23 +76,24 @@ jobs:
       - name: Check the signing key
         run: |
           apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
-          "$apksigner" verify --print-certs "$BUILT" | tee certs.txt
+          "$apksigner" verify --print-certs "$APK" | tee certs.txt
           grep -qi 'SHA-256 digest: fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c' certs.txt
 
       - name: Upload the APK
         uses: actions/upload-artifact@v7
         with:
           name: apk
-          path: ${{ env.BUILT }}
+          path: ${{ env.APK }}
           retention-days: 7
 
   publish:
     name: Publish the APK
     needs: build
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
+      actions: read
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
@@ -97,38 +105,27 @@ jobs:
         with:
           name: apk
 
-      # A newer push to main that changes more than Markdown builds and
-      # publishes its own APK; this older one would only replace it.
+      # A newer run of this workflow on main publishes its own build; this
+      # older one would only replace it.
       - name: Check this is main's newest build
         id: newest
         run: |
-          newer=$(gh api "repos/$GH_REPO/compare/$GITHUB_SHA...main" --jq '.files[].filename')
-          if [ -n "$(grep -v '\.md$' <<< "$newer")" ]; then
-            echo "::notice::Not published: a newer push to main publishes instead."
+          newer=$(gh run list --workflow android.yml --branch main --limit 20 --json databaseId \
+            --jq "map(select(.databaseId > $GITHUB_RUN_ID)) | length")
+          if [ "$newer" -gt 0 ]; then
+            echo "::notice::Not published: a newer run on main publishes instead."
           else
             echo "newest=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # The new file goes up under its build name, then takes the fixed name,
-      # so the link is missing only between the delete and the rename. The
-      # tag and notes move last, so the page names a commit only once its APK
-      # is up.
+      # The tag stays where the first publish made it (moving it would break
+      # `git fetch` in clones that have it); the notes name each build's commit.
       - name: Publish to the release
         if: steps.newest.outputs.newest
         run: |
-          if ! gh api "repos/$GH_REPO/git/ref/tags/$TAG" > /dev/null 2>&1; then
-            gh api "repos/$GH_REPO/git/refs" -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA" > /dev/null
-          fi
           gh release view "$TAG" > /dev/null 2>&1 \
-            || gh release create "$TAG" --verify-tag --title 'Android app (newest main)' --notes ''
-          gh release upload "$TAG" app-release.apk --clobber
-          release=$(gh api "repos/$GH_REPO/releases/tags/$TAG" --jq .id)
-          asset() { gh api "repos/$GH_REPO/releases/$release/assets" --jq ".[] | select(.name == \"$1\") | .id"; }
-          old=$(asset "$APK")
-          new=$(asset app-release.apk)
-          [ -z "$old" ] || gh api -X DELETE "repos/$GH_REPO/releases/assets/$old"
-          gh api -X PATCH "repos/$GH_REPO/releases/assets/$new" -f name="$APK" > /dev/null
-          gh api -X PATCH "repos/$GH_REPO/git/refs/tags/$TAG" -f sha="$GITHUB_SHA" -F force=true > /dev/null
+            || gh release create "$TAG" --target "$GITHUB_SHA" --title 'Android app (newest main)' --notes ''
+          gh release upload "$TAG" "$APK" --clobber
           gh release edit "$TAG" --notes "Built from $GITHUB_SHA on $(date -u '+%Y-%m-%d %H:%M UTC').
 
           To install it, open https://github.com/$GH_REPO/releases/download/$TAG/$APK on the phone. README.md, under \"Android builds\", has the steps."
