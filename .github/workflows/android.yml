@@ -1,8 +1,9 @@
 # Builds the Android app on every push to main that changes more than
 # Markdown, and publishes it at one fixed address, so a phone installs the
-# newest build from its browser. A pull request that changes the native build
-# (this file, dependencies, app config, patches) only builds. README.md, under
-# "Android builds", says how to install it.
+# newest build from its browser. A pull request only builds, and only when it
+# changes what the native build reads (the paths below); one changing app code
+# alone is left to main. README.md, under "Android builds", says how to install
+# it.
 name: Android
 
 on:
@@ -17,13 +18,16 @@ on:
       - .yarn/patches/**
       - app.json
       - app.config.ts
+      - metro.config.js
+      - assets/images/**
   workflow_dispatch:
 
 permissions:
   contents: read
 
 env:
-  # The release, and its tag, that always holds main's newest build.
+  # The release that always holds main's newest build. Its tag stays at the
+  # first build's commit; the release notes name each build's.
   TAG: android
   # README.md links to this file on that release.
   APK: opening-night.apk
@@ -63,6 +67,7 @@ jobs:
         run: yarn expo prebuild --platform android --no-install
 
       # Phones in use are 64-bit ARM; one architecture builds about 4x faster.
+      # The build cache reuses unchanged tasks' outputs, which setup-gradle saves.
       - name: Build
         working-directory: android
         run: |
@@ -105,27 +110,36 @@ jobs:
         with:
           name: apk
 
-      # A newer run of this workflow on main publishes its own build; this
-      # older one would only replace it.
+      # A newer run of this workflow on main publishes its own build, if it
+      # builds; this older one would only replace it. Pull request runs from a
+      # fork's main share the branch name, so they don't count.
       - name: Check this is main's newest build
         id: newest
         run: |
-          newer=$(gh run list --workflow android.yml --branch main --limit 20 --json databaseId \
-            --jq "map(select(.databaseId > $GITHUB_RUN_ID)) | length")
-          if [ "$newer" -gt 0 ]; then
-            echo "::notice::Not published: a newer run on main publishes instead."
+          newer_runs=$(gh run list --workflow android.yml --branch main --limit 20 --json databaseId,event \
+            --jq "map(select(.databaseId > $GITHUB_RUN_ID and .event != \"pull_request\")) | length")
+          if [ "$newer_runs" -gt 0 ]; then
+            echo "::notice::Not published: a newer run on main publishes its build instead."
           else
             echo "newest=true" >> "$GITHUB_OUTPUT"
           fi
 
       # The tag stays where the first publish made it (moving it would break
-      # `git fetch` in clones that have it); the notes name each build's commit.
+      # `git fetch` in clones that have it). The new file goes up under another
+      # name, then takes the fixed one, so the link is missing only between the
+      # delete and the rename, not for the whole upload.
       - name: Publish to the release
         if: steps.newest.outputs.newest
         run: |
           gh release view "$TAG" > /dev/null 2>&1 \
             || gh release create "$TAG" --target "$GITHUB_SHA" --title 'Android app (newest main)' --notes ''
-          gh release upload "$TAG" "$APK" --clobber
+          mv "$APK" "next-$APK"
+          gh release upload "$TAG" "next-$APK" --clobber
+          assets=$(gh api "repos/$GH_REPO/releases/tags/$TAG" --jq '.assets[] | "\(.name) \(.id)"')
+          old=$(awk -v name="$APK" '$1 == name { print $2 }' <<< "$assets")
+          next=$(awk -v name="next-$APK" '$1 == name { print $2 }' <<< "$assets")
+          [ -z "$old" ] || gh api -X DELETE "repos/$GH_REPO/releases/assets/$old"
+          gh api -X PATCH "repos/$GH_REPO/releases/assets/$next" -f name="$APK" > /dev/null
           gh release edit "$TAG" --notes "Built from $GITHUB_SHA on $(date -u '+%Y-%m-%d %H:%M UTC').
 
           To install it, open https://github.com/$GH_REPO/releases/download/$TAG/$APK on the phone. README.md, under \"Android builds\", has the steps."
