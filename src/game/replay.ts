@@ -173,11 +173,12 @@ export function playMove(pos: Chess, uci: string): Ply['move'] {
 }
 
 /**
- * Every position of `line`, so that index `n` is the position after `n`
- * moves. Stops early at the first move that isn't legal.
+ * Every position of `line` from `start` (the starting position unless
+ * given), so that index `n` is the position after `n` moves. Stops early at
+ * the first move that isn't legal.
  */
-export function replay(line: readonly string[]): Ply[] {
-  return Array.from(playLine(line), ({ pos, repetitions, move }) => ({
+export function replay(line: readonly string[], start?: Chess): Ply[] {
+  return Array.from(playLine(line, start), ({ pos, repetitions, move }) => ({
     fen: makeFen(pos.toSetup()),
     turn: pos.turn,
     move,

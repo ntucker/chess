@@ -39,6 +39,9 @@ const LEAST_LOSS: readonly (readonly [number, MoveQuality])[] = [
   [0.05, 'inaccuracy'],
 ];
 
+/** An expected score (0 to 1) as a percentage of the winning chances: "15%". */
+export const percent = (score: number) => `${Math.round(score * 100)}%`;
+
 /**
  * What `quality` means, in words for its badge's tooltip. Example: "gave
  * away 10% to 20% of the winning chances" for a mistake, from `LEAST_LOSS`.
@@ -46,7 +49,6 @@ const LEAST_LOSS: readonly (readonly [number, MoveQuality])[] = [
 export function qualityRule(quality: MoveQuality): string {
   if (quality === 'book') return "the guide's own move";
   if (quality === 'best') return "Stockfish's top move, or one that gives nothing away";
-  const percent = (loss: number) => `${Math.round(loss * 100)}%`;
   const at = LEAST_LOSS.findIndex(([, label]) => label === quality);
   const range =
     at < 0
@@ -141,7 +143,7 @@ export function engineVerdict(
  * names no move (Maia's, a finished game's).
  */
 export function refutation(
-  quality: MoveQuality | undefined,
+  quality: ReviewQuality | undefined,
   after: FinalAnalysis | undefined,
   mover: Color,
 ): string | undefined {
@@ -151,7 +153,8 @@ export function refutation(
   return isMistake(judgeMove(after, undefined, second.uci, opposite(mover))) ? best.uci : undefined;
 }
 
-const isMistake = (quality: MoveQuality | undefined) =>
+/** Whether `quality` is a mistake or a blunder: a slip one reply may punish (`refutation`). */
+export const isMistake = (quality: ReviewQuality | undefined) =>
   quality === 'mistake' || quality === 'blunder';
 
 /** A game's move, as `labelMove` needs it. */

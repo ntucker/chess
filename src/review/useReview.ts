@@ -1,5 +1,5 @@
 import { StateContext, useController, useSubscription } from '@data-client/react';
-import { use, useEffect, useReducer } from 'react';
+import { use, useEffect, useMemo, useReducer } from 'react';
 
 import { finalOnly } from '@/evaluation/evaluation';
 import { analyze, type Color, lastPosition, legalMoveCountAt, replay } from '@/game/replay';
@@ -10,6 +10,7 @@ import { useNeedsStockfish } from '@/stockfish/demand';
 
 import { gameAccuracy } from './accuracy';
 import { nextSearch } from './order';
+import { movesGivenUp } from './refine';
 import { guideAt, momentAt } from './retry';
 import {
   labelPositions,
@@ -69,7 +70,10 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
     return () => clearTimeout(timer);
   }, [ply]);
 
-  const plies = replay(moves);
+  // Kept by hand: the compiler doesn't keep `plies` past `useSubscription`, and what each move
+  // gives up (a search of every capture) should be worked out once a game, not each render.
+  const plies = useMemo(() => replay(moves), [moves]);
+  const givenUp = useMemo(() => movesGivenUp(plies), [plies]);
   // The moves before each position: `lines[n]` leads to `plies[n]`.
   const lines = plies.map((_, n) => moves.slice(0, n));
   const book = lesson ? bookMoves(lesson, moves) : [];
@@ -79,7 +83,7 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
   // Why each position's search gave up, where one did.
   const errors = lines.map((line) => analysisError(ctrl, REVIEW_ENGINE, line, state));
   const failed = new Set(errors.flatMap((error, n) => (error ? [n] : [])));
-  const judged = reviewMoves({ plies, book, legal, analyses: final, failed });
+  const judged = reviewMoves({ plies, book, legal, analyses: final, failed, givenUp });
   const leftAt = lesson && leftGuide(lesson, moves, learner, book);
   // The board's ply after each moment's move.
   const shownMoments = moments(judged, learner, leftAt).map((move) => move + 1);

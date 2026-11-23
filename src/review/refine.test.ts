@@ -1,21 +1,14 @@
 import { describe, expect, it } from '@jest/globals';
-import { makeFen } from 'chessops/fen';
 
-import { type Color, parsePosition, playLine, type Ply, replay } from '@/game/replay';
+import { type Color, parsePosition, type Ply, replay } from '@/game/replay';
 import { uciLine } from '@/lesson/lesson.fixture';
 
-import { reviewRule } from './refine';
+import { movesGivenUp, reviewRule } from './refine';
 import { reviewMoves } from './review';
 import { listing } from './review.fixture';
 
-/** Every position of `line` played from `fen`, as `replay` lists a game's. */
-const playFrom = (fen: string, line: readonly string[]): Ply[] =>
-  Array.from(playLine(line, parsePosition(fen)), ({ pos, repetitions, move }) => ({
-    fen: makeFen(pos.toSetup()),
-    turn: pos.turn,
-    move,
-    repetitions,
-  }));
+/** Every position of `line` played from `fen`. */
+const playFrom = (fen: string, line: readonly string[]) => replay(line, parsePosition(fen));
 
 /** A position's lines, as `listing` takes them; none for a position not searched. */
 type Lines = Parameters<typeof listing>;
@@ -28,6 +21,7 @@ const labels = (plies: readonly Ply[], analyses: readonly Lines[]) =>
     legal: plies.map(() => 20),
     analyses: analyses.map((lines) => (lines.length ? listing(...lines) : undefined)),
     failed: new Set(),
+    givenUp: movesGivenUp(plies),
   }).map(({ quality }) => quality);
 
 // The Greek gift: 1.Bxh7+ Kxh7 gives up a bishop for a pawn.
@@ -79,32 +73,22 @@ describe('Great', () => {
   };
 
   it('is the top move when the next best loses a lot', () => {
-    expect(labels(plies, [onlyMove('e2e4', 0.6), [], [], [], []])[0]).toBe('great');
+    // 1.e4's label, with `lines` listed before it.
+    const first = (lines: Lines) => labels(plies, [lines, [], [], [], []])[0];
+    expect(first(onlyMove('e2e4', 0.6))).toBe('great');
     // Without a third line, or with the second losing less, it stays best.
     expect(
-      labels(plies, [
-        [
-          ['e2e4', 0.6],
-          ['d2d4', 0.4],
-        ],
-        [],
-        [],
-        [],
-        [],
-      ])[0],
+      first([
+        ['e2e4', 0.6],
+        ['d2d4', 0.4],
+      ]),
     ).toBe('best');
     expect(
-      labels(plies, [
-        [
-          ['e2e4', 0.6],
-          ['d2d4', 0.55],
-          ['c2c4', 0.5],
-        ],
-        [],
-        [],
-        [],
-        [],
-      ])[0],
+      first([
+        ['e2e4', 0.6],
+        ['d2d4', 0.55],
+        ['c2c4', 0.5],
+      ]),
     ).toBe('best');
   });
 

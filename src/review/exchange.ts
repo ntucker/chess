@@ -9,19 +9,16 @@
  */
 import type { Chess } from 'chessops/chess';
 import type { NormalMove, Role, Square } from 'chessops/types';
-import { parseUci } from 'chessops/util';
+import { SquareSet } from 'chessops/squareSet';
 
+import { VALUES } from '@/game/material';
 import { opposite, takenRole, withTurn } from '@/game/replay';
 
-/** Pieces in pawns, as players count them. The king is never taken. */
-const VALUE: Readonly<Record<Role, number>> = {
-  pawn: 1,
-  knight: 3,
-  bishop: 3,
-  rook: 5,
-  queen: 9,
-  king: 0,
-};
+/** A piece's value in pawns (`VALUES`); the king is never taken. */
+const value = (role: Role) => (role === 'king' ? 0 : VALUES[role]);
+
+/** The king's cost as a capturer: more than any piece, so it captures last. */
+const KING_LAST = 100;
 
 /** The pieces a sacrifice gives up: anything but pawns and the king. */
 const PIECES: readonly Role[] = ['knight', 'bishop', 'rook', 'queen'];
@@ -38,36 +35,39 @@ export function exchangeGain(pos: Chess, square: Square): number {
   if (!capture) return 0;
   const next = pos.clone();
   next.play(capture);
-  return Math.max(0, VALUE[target.role] + promotionGain(capture) - exchangeGain(next, square));
+  return Math.max(0, value(target.role) + promotionGain(capture) - exchangeGain(next, square));
 }
 
 /**
- * What the move `uci`, legal in `before`, gives up: the most the opponent
+ * What `move`, legal in `before`, gives up: the most the opponent
  * then wins on any square holding one of the mover's pieces (not a pawn),
- * less what the move itself took. It gives up nothing when that piece was
- * already as good as lost before the move: a knight a pawn attacks that takes
- * a pawn on its way out gives up nothing, since it was lost anyway.
+ * less what the move itself took and what the opponent could already win
+ * before it. A knight a pawn attacks that takes a pawn on its way out gives
+ * up nothing, since it was lost anyway.
  */
-export function materialGivenUp(before: Chess, uci: string): number {
-  const move = parseUci(uci) as NormalMove;
-  const after = before.clone();
-  after.play(move);
-  const lost = mostAtStake(after);
-  // A move out of check had nothing at stake before: the opponent wasn't to move.
+export function materialGivenUp(before: Chess, move: NormalMove): number {
+  const after = playing(before, move);
+  const given = mostAtStake(after) - moveGain(before, move);
+  if (given <= 0) return 0;
+  // In check, the position with the opponent to move isn't legal: nothing counts as at stake before.
   const lostAnyway = before.isCheck() ? 0 : mostAtStake(withTurn(before, after.turn));
-  return lost > lostAnyway ? Math.max(0, lost - moveGain(before, move)) : 0;
+  return Math.max(0, given - lostAnyway);
 }
 
 /**
- * Whether the move `uci`, legal in `before`, simply wins material: it takes
- * more than the opponent can win back on its square.
+ * Whether `move`, legal in `before`, is a capture that simply wins material:
+ * it takes more than the opponent can win back on its square.
  */
-export function winsMaterial(before: Chess, uci: string): boolean {
-  const move = parseUci(uci) as NormalMove;
-  const after = before.clone();
-  after.play(move);
-  return moveGain(before, move) > exchangeGain(after, move.to);
-}
+export const winsMaterial = (before: Chess, move: NormalMove) =>
+  !!takenRole(before, move) &&
+  moveGain(before, move) > exchangeGain(playing(before, move), move.to);
+
+/**
+ * Whether `move` takes back on the square where `previous`, the opponent's
+ * move just before it from `previousPos`, captured.
+ */
+export const recaptures = (previousPos: Chess, previous: NormalMove, move: NormalMove) =>
+  move.to === previous.to && !!takenRole(previousPos, previous);
 
 /**
  * Whether the piece on `square`, the mover's in `pos`, was about to be lost
@@ -75,6 +75,13 @@ export function winsMaterial(before: Chess, uci: string): boolean {
  */
 export const hanging = (pos: Chess, square: Square) =>
   !pos.isCheck() && exchangeGain(withTurn(pos, opposite(pos.turn)), square) > 0;
+
+/** `pos` after `move`, leaving `pos` as it was. */
+function playing(pos: Chess, move: NormalMove): Chess {
+  const after = pos.clone();
+  after.play(move);
+  return after;
+}
 
 /** The most the side to move in `pos` wins on one square holding an opposing piece (not a pawn). */
 function mostAtStake(pos: Chess): number {
@@ -91,22 +98,25 @@ function mostAtStake(pos: Chess): number {
 /** What `move`, legal in `pos`, takes, and what a promotion adds. */
 const moveGain = (pos: Chess, move: NormalMove) => {
   const taken = takenRole(pos, move);
-  return (taken ? VALUE[taken] : 0) + promotionGain(move);
+  return (taken ? value(taken) : 0) + promotionGain(move);
 };
 
 const promotionGain = ({ promotion }: NormalMove) =>
-  promotion ? VALUE[promotion] - VALUE.pawn : 0;
+  promotion ? value(promotion) - VALUES.pawn : 0;
 
 /** The side to move's legal capture on `square` with its cheapest piece, the king last. */
 function cheapestCapture(pos: Chess, square: Square): NormalMove | undefined {
+  // Only the pieces attacking the square can capture there; most squares have none.
+  const attackers = pos.kingAttackers(square, pos.turn, pos.board.occupied);
+  if (attackers.isEmpty()) return undefined;
+  const ctx = pos.ctx();
   let cheapest: NormalMove | undefined;
   let cheapestCost = Infinity;
-  for (const [from, dests] of pos.allDests()) {
-    if (!dests.has(square)) continue;
+  for (const from of attackers) {
     const role = pos.board.getRole(from)!;
-    const cost = role === 'king' ? 100 : VALUE[role];
-    if (cost < cheapestCost) {
-      const promotes = role === 'pawn' && (square < 8 || square >= 56);
+    const cost = role === 'king' ? KING_LAST : value(role);
+    if (cost < cheapestCost && pos.dests(from, ctx).has(square)) {
+      const promotes = role === 'pawn' && SquareSet.backranks().has(square);
       cheapest = { from, to: square, ...(promotes && { promotion: 'queen' as const }) };
       cheapestCost = cost;
     }

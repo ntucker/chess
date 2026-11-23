@@ -6,6 +6,7 @@ import { bookMoves } from '@/lesson/select';
 
 import { judgeMove } from '@/analysis/quality';
 
+import { movesGivenUp } from './refine';
 import { judgedPosition, leftGuide, moments, nextMoment, reviewMoves, tally } from './review';
 import { bookMove, judgedMove, listing, waitingMove } from './review.fixture';
 
@@ -13,6 +14,7 @@ const line = uciLine('e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Nd4');
 const plies = replay(line);
 const legal = plies.map(() => 20);
 const none: ReadonlySet<number> = new Set();
+const givenUp = movesGivenUp(plies);
 
 describe('reviewMoves', () => {
   it("labels each move from its positions' final analyses, as the game does", () => {
@@ -25,7 +27,7 @@ describe('reviewMoves', () => {
       listing(['g8f6', 0.52]),
       undefined,
     ];
-    const moves = reviewMoves({ plies, book: [], legal, analyses, failed: none });
+    const moves = reviewMoves({ plies, book: [], legal, analyses, failed: none, givenUp });
     expect(moves.map(({ quality }) => quality)).toEqual([
       'best',
       'best',
@@ -41,6 +43,7 @@ describe('reviewMoves', () => {
       legal,
       analyses: [...analyses.slice(0, -1), listing(['f3d4', 0.75])],
       failed: none,
+      givenUp,
     });
     expect(later[5]).toEqual({
       ply: 5,
@@ -59,6 +62,7 @@ describe('reviewMoves', () => {
       legal: [20, 1, 20, 20, 20, 20, 20],
       analyses: [],
       failed: none,
+      givenUp,
     });
     expect(moves.slice(0, 3)).toEqual([
       { ply: 0, mover: 'white', status: 'book', quality: 'book' },
@@ -85,7 +89,7 @@ describe('reviewMoves against the game', () => {
     const live = plies
       .slice(0, -1)
       .map(({ turn }, n) => judgeMove(analyses[n], analyses[n + 1], plies[n + 1].move!.uci, turn));
-    const review = reviewMoves({ plies, book: [], legal, analyses, failed: none }).map(
+    const review = reviewMoves({ plies, book: [], legal, analyses, failed: none, givenUp }).map(
       ({ quality }) => quality,
     );
     expect(review).toEqual(live);
@@ -94,24 +98,32 @@ describe('reviewMoves against the game', () => {
 
   it('marks a move failed when a position its label needs failed to search', () => {
     const analyses = [listing(['e2e4', 0.53]), undefined];
-    const moves = reviewMoves({ plies, book: [], legal, analyses, failed: new Set([1]) });
+    const moves = reviewMoves({ plies, book: [], legal, analyses, failed: new Set([1]), givenUp });
     // 1.e4 is Stockfish's listed move, so it needs no position after it.
     expect(moves.slice(0, 3).map(({ status }) => status)).toEqual(['judged', 'failed', 'waiting']);
     // 5...Nd4 isn't listed, so it needs the position after it, which failed;
     // while the position before is still searching, it might yet list the move.
     expect(
-      reviewMoves({ plies, book: [], legal, analyses: needsAfter, failed: new Set([6]) })[5].status,
+      reviewMoves({
+        plies,
+        book: [],
+        legal,
+        analyses: needsAfter,
+        failed: new Set([6]),
+        givenUp,
+      })[5].status,
     ).toBe('failed');
     expect(
-      reviewMoves({ plies, book: [], legal, analyses: [], failed: new Set([6]) })[5].status,
+      reviewMoves({ plies, book: [], legal, analyses: [], failed: new Set([6]), givenUp })[5]
+        .status,
     ).toBe('waiting');
   });
 
   it('counts a failed position that finished anyway', () => {
     const analyses = [...needsAfter, listing(['f3d4', 0.75])];
-    expect(reviewMoves({ plies, book: [], legal, analyses, failed: new Set([6]) })[5].quality).toBe(
-      'blunder',
-    );
+    expect(
+      reviewMoves({ plies, book: [], legal, analyses, failed: new Set([6]), givenUp })[5].quality,
+    ).toBe('blunder');
   });
 });
 

@@ -9,6 +9,7 @@ import { ReviewPanel, type ReviewView } from '@/components/review/ReviewPanel';
 import { legalMoveCountAt, replay } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 import { reviewHref } from '@/review/address';
+import { movesGivenUp } from '@/review/refine';
 import { momentAt } from '@/review/retry';
 import { moments, reviewMoves } from '@/review/review';
 import { type ReviewScreen, reviewedGame, reviewReducer, startReview } from '@/review/screen';
@@ -62,6 +63,7 @@ const PLIES = replay(LINE);
 /** The first ten moves are the guide's. */
 const BOOK = LINE.map((_, n) => n < 10);
 const LEGAL = PLIES.map(({ fen }) => legalMoveCountAt(fen));
+const GIVEN_UP = movesGivenUp(PLIES);
 
 /** A final analysis of lines (move, White's advantage in pawns), best first. */
 const analysis = (...lines: [Uci, number][]): FinalAnalysis => ({
@@ -160,7 +162,14 @@ function StateCard({ title, sentence, searched, failed = [], ply, retried }: Sta
   const [screen, dispatch] = useReducer(reviewReducer, { ...startReview(game), ...retried, ply });
   const analyses = PLIES.map((_, n) => (searched.includes(n) ? SEARCHED[n] : undefined));
   const lost = new Set(failed);
-  const moves = reviewMoves({ plies: PLIES, book: BOOK, legal: LEGAL, analyses, failed: lost });
+  const moves = reviewMoves({
+    plies: PLIES,
+    book: BOOK,
+    legal: LEGAL,
+    analyses,
+    failed: lost,
+    givenUp: GIVEN_UP,
+  });
   const moment = momentAt({
     plies: PLIES,
     moves,

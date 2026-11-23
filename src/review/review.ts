@@ -60,6 +60,8 @@ export interface ReviewInput {
   readonly analyses: readonly (FinalAnalysis | undefined)[];
   /** Positions whose search the engine gave up on. */
   readonly failed: ReadonlySet<number>;
+  /** What each move gives up in material, `givenUp[n]` by the move from `plies[n]` (`movesGivenUp`). */
+  readonly givenUp: readonly number[];
 }
 
 /**
@@ -70,7 +72,7 @@ export function reviewMoves(input: ReviewInput): ReviewMove[] {
   const labelled = labelledMoves(input);
   return labelled.map((move) =>
     move.status === 'judged'
-      ? { ...move, quality: refine(move, labelled[move.ply - 1]?.quality, input) }
+      ? { ...move, quality: refine(move, labelled[move.ply - 1], input) }
       : move,
   );
 }
@@ -155,7 +157,7 @@ export function leftGuide(
 }
 
 /** The labels whose moves are worth stopping at: the review's own three, and the worst two. */
-const MOMENTS: ReadonlySet<ReviewQuality> = new Set([
+const MOMENTS: ReadonlySet<ReviewQuality | undefined> = new Set<ReviewQuality>([
   'brilliant',
   'great',
   'miss',
@@ -177,7 +179,7 @@ export function moments(
   return moves
     .filter(
       ({ ply, mover, quality }) =>
-        mover === learner && (ply === leftGuidePly || (!!quality && MOMENTS.has(quality))),
+        mover === learner && (ply === leftGuidePly || MOMENTS.has(quality)),
     )
     .map(({ ply }) => ply);
 }
