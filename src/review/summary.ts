@@ -9,7 +9,7 @@ import { analyze, type Color, type Ply } from '@/game/replay';
 import { LEAST_COUNTED, verdictLine } from './accuracy';
 import type { ReviewMove } from './review';
 
-interface Summed {
+interface SummaryInput {
   readonly plies: readonly Ply[];
   readonly moves: readonly ReviewMove[];
   /** The learner's moments. */
@@ -23,14 +23,15 @@ interface Summed {
  * The verdict on the learner's accuracy (`verdictLine`) over how the game
  * went and how many moments it has. Example: "Warm applause." over "You won
  * in 34 moves. 3 moments to replay.". With too few of their moves judged,
- * "A brief appearance." says why there's no verdict.
+ * "A brief appearance.", with why there's no verdict in its tooltip.
  */
-export function summaryHeadline({ plies, moves, moments, accuracy, learner }: Summed) {
+export function summaryHeadline({ plies, moves, moments, accuracy, learner }: SummaryInput) {
   const game = gameLength(plies, learner);
   if (accuracy === 'brief') {
     return {
       title: 'A brief appearance.',
-      detail: `${game} Fewer than ${LEAST_COUNTED} of your moves were judged, too few for a verdict.`,
+      titleTip: `No verdict or accuracy: fewer than ${LEAST_COUNTED} of your moves were judged, too few to count.`,
+      detail: game,
     };
   }
   const failed = moves.filter(({ status }) => status === 'failed').length;

@@ -36,12 +36,13 @@ describe('summaryHeadline', () => {
     });
   });
 
-  it('gives no verdict on too few judged moves', () => {
+  it('gives no verdict on too few judged moves, and says why in a tooltip', () => {
     expect(
       summaryHeadline({ plies: MATE, moves, moments: [], accuracy: 'brief', learner: 'black' }),
     ).toEqual({
       title: 'A brief appearance.',
-      detail: 'You won in 2 moves. Fewer than 8 of your moves were judged, too few for a verdict.',
+      titleTip: 'No verdict or accuracy: fewer than 8 of your moves were judged, too few to count.',
+      detail: 'You won in 2 moves.',
     });
   });
 });

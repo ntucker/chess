@@ -1,11 +1,12 @@
 import { Button, Inline, Stack, Text } from '@reactive/silk-native';
 import type { Href } from 'expo-router';
 import type { ReactNode } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Eyebrow } from '@/components/Eyebrow';
 import { type Destination, PlaceLink } from '@/components/PlaceLink';
 import { ReviewGameButton } from '@/components/ReviewLinks';
+import { Tip } from '@/components/Tip';
 import { NEW_VERSION, NewVersionError, reload } from '@/files/newVersion';
 import { endingHeadline, resultVerdict } from '@/game/ending';
 import type { Color, Position } from '@/game/replay';
@@ -44,6 +45,8 @@ export function GameStatus({ error, onRetry, review, ...game }: Props) {
 export interface HeadlineProps {
   readonly eyebrow: string;
   readonly title: string;
+  /** Why the title says what it does, in a tooltip on it: "A brief appearance." says why there's no verdict. */
+  readonly titleTip?: string;
   readonly detail: string;
   /** The opponent `who` didn't answer with `error`, and `onRetry` asks it again. */
   readonly failure?: Failure;
@@ -71,10 +74,22 @@ export interface HeadlineProps {
 
 export type News = 'all' | 'detail' | 'none';
 
+/** `children`, with `tip` in a tooltip when there is one (`Tip`), held to their own width. */
+function Tipped({ tip, children }: { readonly tip?: string; readonly children: ReactNode }) {
+  return tip ? (
+    <Tip tip={tip} style={tipped.box}>
+      {children}
+    </Tip>
+  ) : (
+    children
+  );
+}
+
 /** A panel's headline, announced as it changes, with a retry when the opponent didn't answer. */
 export function StatusHeadline({
   eyebrow,
   title,
+  titleTip,
   detail,
   failure,
   eyebrowInHeader,
@@ -97,14 +112,16 @@ export function StatusHeadline({
       {/* With a short line drawn, a narrow page keeps the full headline for screen readers only. */}
       <Stack gap="2" {...part(short && 'wide-only-spoken')}>
         {eyebrowInHeader ? <View {...part('wide-only')}>{label}</View> : label}
-        <Text
-          role="headingLg"
-          accessibilityRole="header"
-          accessibilityLiveRegion="polite"
-          style={styles.title}
-        >
-          {title}
-        </Text>
+        <Tipped tip={titleTip}>
+          <Text
+            role="headingLg"
+            accessibilityRole="header"
+            accessibilityLiveRegion="polite"
+            style={styles.title}
+          >
+            {title}
+          </Text>
+        </Tipped>
         <Text role="bodySm" tone="secondary">
           {detail}
         </Text>
@@ -112,14 +129,16 @@ export function StatusHeadline({
       {short ? (
         <NarrowOnly>
           {/* What the full headline says, so screen readers skip it. */}
-          <Text role="bodySm" tone="secondary" aria-hidden>
-            {drawn === 'all' ? (
-              <Text role="bodySm" tone="primary" style={styles.runIn}>
-                {`${title} `}
-              </Text>
-            ) : null}
-            {detail}
-          </Text>
+          <Tipped tip={drawn === 'all' ? titleTip : undefined}>
+            <Text role="bodySm" tone="secondary" aria-hidden>
+              {drawn === 'all' ? (
+                <Text role="bodySm" tone="primary" style={styles.runIn}>
+                  {`${title} `}
+                </Text>
+              ) : null}
+              {detail}
+            </Text>
+          </Tipped>
         </NarrowOnly>
       ) : null}
       {failure ? <FailureLine {...failure} /> : null}
@@ -212,3 +231,5 @@ const STYLES = narrowStyles((px) => ({
   // The display serif carries the hierarchy (theme.ts), a step up from the detail's size.
   runIn: { fontFamily: fonts.display, fontSize: RUN_IN_SIZE },
 }));
+
+const tipped = StyleSheet.create({ box: { alignSelf: 'flex-start' } });

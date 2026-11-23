@@ -190,8 +190,9 @@ describe('ReviewPanel', () => {
     });
     render(checked('brief'), (host) => {
       expect(heading(host)).toBe('A brief appearance.');
+      // The reason is the title's tooltip, which screen readers hear after it.
       expect(host.textContent).toContain(
-        '2 moves. Fewer than 8 of your moves were judged, too few for a verdict.',
+        'A brief appearance.No verdict or accuracy: fewer than 8 of your moves were judged',
       );
     });
   });

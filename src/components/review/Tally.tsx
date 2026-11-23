@@ -7,14 +7,11 @@ import { Eyebrow } from '@/components/Eyebrow';
 import { qualityTip, TippedBadge } from '@/components/QualityBadge';
 import { Sheet } from '@/components/Sheet';
 import { type Color, opposite } from '@/game/replay';
-import type { Tally } from '@/review/review';
+import { LABELS_BEST_FIRST, type Tally } from '@/review/review';
 import type { Review } from '@/review/useReview';
 import { NarrowOnly, useNarrowPart } from '@/theme/Narrow';
 import { qualityLooks } from '@/theme/moveQuality';
 import { fonts } from '@/theme/theme';
-
-/** The labels the tally counts, from the best moves to the worst. */
-const LABELS = Object.keys(qualityLooks) as readonly ReviewQuality[];
 
 /** How many labels a row of a narrow page's grid holds. */
 const COLUMNS = 3;
@@ -63,12 +60,12 @@ function TallyTable({ tally, learner }: Props) {
       <View role="row" style={styles.row}>
         <View style={styles.label} />
         {['You', 'Opponent'].map((side) => (
-          <Eyebrow key={side} style={styles.column}>
+          <Eyebrow key={side} numberOfLines={1} style={styles.column}>
             {side}
           </Eyebrow>
         ))}
       </View>
-      {LABELS.map((quality) => (
+      {LABELS_BEST_FIRST.map((quality) => (
         <View key={quality} role="row" style={styles.row}>
           <Label quality={quality} dim={sides.every((counts) => !counts[quality])} />
           {sides.map((counts, n) => (
@@ -82,8 +79,8 @@ function TallyTable({ tally, learner }: Props) {
 
 /** One side's counts in `COLUMNS` columns, as a phone has room for. */
 function TallyGrid({ counts }: { readonly counts: Tally }) {
-  const rows = Array.from({ length: Math.ceil(LABELS.length / COLUMNS) }, (_, row) =>
-    LABELS.slice(row * COLUMNS, (row + 1) * COLUMNS),
+  const rows = Array.from({ length: Math.ceil(LABELS_BEST_FIRST.length / COLUMNS) }, (_, row) =>
+    LABELS_BEST_FIRST.slice(row * COLUMNS, (row + 1) * COLUMNS),
   );
   return (
     <View>
@@ -137,7 +134,8 @@ const styles = StyleSheet.create({
   cell: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', minHeight: 30 },
   label: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 6 },
   name: { flexShrink: 1 },
-  column: { width: 72, textAlign: 'right' },
+  // Room for the spaced-out "Opponent" heading, so it stays on one line.
+  column: { width: 96, textAlign: 'right' },
   count: { fontFamily: fonts.mono, fontVariant: ['tabular-nums'] },
   dim: { opacity: 0.45 },
 });

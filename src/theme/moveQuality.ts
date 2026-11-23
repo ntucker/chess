@@ -44,7 +44,6 @@ const question = (x: number, scale = 1) => {
 /** An exclamation mark centered on `x`. */
 const exclamation = (x: number) => `M${x} 6.6 v6.4 M${x} 17.4 v0.01`;
 
-/** Each label's look, from the best moves to the worst: the order the review's tally lists them in. */
 export const qualityLooks: Readonly<Record<ReviewQuality, QualityLook>> = {
   brilliant: {
     name: 'Brilliant move',
@@ -57,6 +56,16 @@ export const qualityLooks: Readonly<Record<ReviewQuality, QualityLook>> = {
     short: 'Great',
     color: oklch(0.587, 0.125, 252.2),
     glyph: { d: exclamation(12) },
+  },
+  book: {
+    name: 'Book move',
+    short: 'Book',
+    color: oklch(0.59, 0.07, 66),
+    glyph: {
+      d:
+        'M5.5 8.2c2.2-1 4.4-.9 6.5.7 2.1-1.6 4.3-1.7 6.5-.7v8.6c-2.2-1-4.4-.9-6.5.7' +
+        '-2.1-1.6-4.3-1.7-6.5-.7zM12 8.9v8.6',
+    },
   },
   best: {
     name: 'Best move',
@@ -73,27 +82,11 @@ export const qualityLooks: Readonly<Record<ReviewQuality, QualityLook>> = {
     color: oklch(0.59, 0.038, 149),
     glyph: { d: 'M7.2 12.4l3.3 3.4 6.3-7.2' },
   },
-  book: {
-    name: 'Book move',
-    short: 'Book',
-    color: oklch(0.59, 0.07, 66),
-    glyph: {
-      d:
-        'M5.5 8.2c2.2-1 4.4-.9 6.5.7 2.1-1.6 4.3-1.7 6.5-.7v8.6c-2.2-1-4.4-.9-6.5.7' +
-        '-2.1-1.6-4.3-1.7-6.5-.7zM12 8.9v8.6',
-    },
-  },
   inaccuracy: {
     name: 'Inaccuracy',
     short: 'Inaccuracy',
     color: oklch(0.649, 0.1276, 79),
     glyph: { d: `${question(9.6, 0.85)} ${exclamation(16.4)}` },
-  },
-  miss: {
-    name: 'Missed chance',
-    short: 'Miss',
-    color: oklch(0.56, 0.152, 354.3),
-    glyph: { d: 'M8 8l8 8M16 8l-8 8' },
   },
   mistake: {
     name: 'Mistake',
@@ -106,6 +99,12 @@ export const qualityLooks: Readonly<Record<ReviewQuality, QualityLook>> = {
     short: 'Blunder',
     color: oklch(0.553, 0.189, 22),
     glyph: { d: `${question(8.4, 0.85)} ${question(15.6, 0.85)}` },
+  },
+  miss: {
+    name: 'Missed chance',
+    short: 'Miss',
+    color: oklch(0.56, 0.152, 354.3),
+    glyph: { d: 'M8 8l8 8M16 8l-8 8' },
   },
 };
 
