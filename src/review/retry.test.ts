@@ -56,7 +56,8 @@ describe('momentAt', () => {
       },
     ]);
     expect(moment).toMatchObject({ revealed: true, hidden: false, searching: undefined });
-    expect(moment.shownMove).toEqual({ uci: 'b1c3', quality: 'good' });
+    // The board shows the try, badged, with the game's move as the danger it was.
+    expect(moment).toMatchObject({ shownMove: 'b1c3', badge: 'good', arrow: 'd1h5' });
   });
 
   it('waits on the search after a try Stockfish did not list, and searches it first', () => {
@@ -86,11 +87,20 @@ describe('momentAt', () => {
   it('reveals the answer once Show best is pressed, on the board too', () => {
     const moment = momentOf({}, { shown: new Set([3]), board: 'answer' });
     expect(moment).toMatchObject({ revealed: true, hidden: false, canRetry: true });
-    expect(moment.shownMove).toEqual({ uci: 'g1f3', quality: 'best' });
+    expect(moment).toMatchObject({ shownMove: 'g1f3', badge: 'best', arrow: 'd1h5' });
   });
 
-  it('has nothing to retry where the board waits for a try already', () => {
-    expect(momentOf({}, { board: 'retry' }).canRetry).toBe(false);
+  it('has nothing to retry where the board waits for a try already, and badges nothing', () => {
+    expect(momentOf({}, { board: 'retry' })).toMatchObject({ canRetry: false, badge: undefined });
+  });
+
+  it("badges the game's move, with no arrow, until a try or the answer is on the board", () => {
+    expect(momentOf()).toMatchObject({ badge: 'mistake', arrow: undefined });
+    const missed = momentOf(
+      { tryAnalyses: [listing(['e7e5', 0.3])] },
+      { tries: tried('a2a3'), board: 'try' },
+    );
+    expect(missed).toMatchObject({ badge: 'blunder', arrow: undefined });
   });
 
   it("shows a fine move's and the opponent's comparison at once", () => {

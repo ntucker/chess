@@ -2,7 +2,7 @@ import { StateContext, useController, useSubscription } from '@data-client/react
 import { use, useEffect, useReducer } from 'react';
 
 import { finalOnly } from '@/evaluation/evaluation';
-import { analyze, type Color, legalMoveCountAt, replay } from '@/game/replay';
+import { analyze, type Color, lastPosition, legalMoveCountAt, replay } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { bookMoves } from '@/lesson/select';
 import { analysisError, getAnalysis, storedAnalyses } from '@/resources/analysis';
@@ -87,7 +87,11 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
   // The moment shown: its tries, judged on the analyses after each.
   const base = ply > 0 ? lines[ply - 1] : [];
   const tryLines = (screen.tries.get(ply) ?? []).map((uci) => [...base, uci]);
-  const guide = lesson && ply > 0 ? guideAt(lesson, base) : undefined;
+  // The guide's moves there matter only to judge tries, or as the answer where the learner left it.
+  const guide =
+    lesson && ply > 0 && (tryLines.length || ply - 1 === leftAt)
+      ? guideAt(lesson, base)
+      : undefined;
   const moment = momentAt({
     plies,
     moves: judged,
@@ -103,9 +107,8 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
   });
   // The line the board shows: the game's to `ply`, or at a moment, the one before its move and what's played there.
   const shownLine = moment.shownMove
-    ? [...base, moment.shownMove.uci]
+    ? [...base, moment.shownMove]
     : lines[moment.board === 'retry' ? ply - 1 : ply];
-  const shownPly = moment.shownMove ? replay(shownLine).at(-1)! : plies[shownLine.length];
 
   // A try waiting for its search goes first: the learner is waiting for it.
   const searched =
@@ -123,7 +126,7 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
   return {
     plies,
     /** The position the board shows (`shownLine`), with what the board needs (`analyze`). */
-    current: analyze(shownPly),
+    current: moment.shownMove ? lastPosition(shownLine) : analyze(plies[shownLine.length]),
     /** The moves to the position the board shows: the game's to `ply`, or at a moment its retry's. */
     shownLine,
     ply,

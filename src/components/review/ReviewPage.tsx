@@ -4,7 +4,7 @@ import { useIsFocused } from 'expo-router';
 import { use, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { lastMoveBadge, moveArrow } from '@/board/drawing';
+import { lastMoveBadge, refutationArrow } from '@/board/drawing';
 import { BrowserOnly } from '@/components/BrowserOnly';
 import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
@@ -80,7 +80,6 @@ function ReviewScreen({
   const played = picked ? withOpenings(picked, index) : undefined;
   const review = useReview({ moves, learner, lesson: played, active: useIsFocused() });
   const { plies, ply, current, pointed, moment, goto } = review;
-  const move = ply > 0 ? review.moves[ply - 1] : undefined;
   const preview = pointed && ply > 0 ? fenAfter(plies[ply - 1].fen, pointed) : undefined;
   const retrying = moment.board === 'retry';
   // Only a narrow page shows the header's button, so only there does the drawer open.
@@ -119,14 +118,8 @@ function ReviewScreen({
             dests: retrying ? current.dests : {},
             lastMove: current.move ? [current.move.from, current.move.to] : undefined,
             drawings: [
-              ...lastMoveBadge(
-                current.move?.to,
-                moment.board === 'game' ? move?.quality : moment.shownMove?.quality,
-              ),
-              // Beside a try or the answer, once revealed, the game's move as the danger it was.
-              ...(moment.shownMove && moment.revealed && move
-                ? [moveArrow(plies[ply].move!.uci, 'danger')]
-                : []),
+              ...lastMoveBadge(current.move?.to, moment.badge),
+              ...refutationArrow(moment.arrow),
             ],
             check: current.check,
             onMove: (from, to) => {

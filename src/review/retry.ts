@@ -89,7 +89,11 @@ export interface Moment {
   /** What the board shows (`ReviewScreen.board`), `game` for the game's move. */
   readonly board: NonNullable<ReviewScreen['board']> | 'game';
   /** The move the board shows played in place of the game's: the latest try, or the answer. */
-  readonly shownMove?: { readonly uci: Uci; readonly quality?: MoveQuality };
+  readonly shownMove?: Uci;
+  /** The label badged on the board's last move: the game's move's, the try's or the answer's; none during a retry. */
+  readonly badge?: MoveQuality;
+  /** The game's move, drawn as a danger arrow beside a revealed try or answer. */
+  readonly arrow?: Uci;
 }
 
 /** What `momentAt` reads. */
@@ -138,8 +142,9 @@ export function momentAt({
   const move = ply > 0 ? moves[ply - 1] : undefined;
   const before = ply > 0 ? analyses[ply - 1] : undefined;
   const board = screen.board ?? 'game';
-  if (!move || move.mover !== learner) return { ...NOTHING, board };
-  const sanOf = (uci: Uci) => lineSans([uci], parsePosition(plies[ply - 1].fen))[0];
+  if (!move || move.mover !== learner) return { ...NOTHING, board, badge: move?.quality };
+  const pos = parsePosition(plies[ply - 1].fen);
+  const sanOf = (uci: Uci) => lineSans([uci], pos?.clone())[0];
   const tries = (screen.tries.get(ply) ?? []).map((uci, n): Try => {
     const san = sanOf(uci);
     const after = tryAnalyses[n];
@@ -153,15 +158,17 @@ export function momentAt({
     });
     if (!label) return { uci, san, status: tryFailed[n] ? 'failed' : 'waiting' };
     // A book move's label needs no search, but its line can say how it scores.
-    const judged = before && judgement(before, after, uci, learner);
+    const judged =
+      label.status === 'judged' ? label : before && judgement(before, after, uci, learner);
     return {
       uci,
       san,
       status: 'judged',
       quality: label.quality,
-      change: judged
-        ? moveChange(before.lines[0].evaluation, judged.evaluation, learner)
-        : undefined,
+      change:
+        judged && before
+          ? moveChange(before.lines[0].evaluation, judged.evaluation, learner)
+          : undefined,
       passed:
         label.status === 'book' ||
         (!!judged && passes(label.quality, scoreFor(judged.evaluation, learner), move)),
@@ -177,7 +184,12 @@ export function momentAt({
   const revealed =
     screen.shown.has(ply) || tries.some((tried) => tried.status === 'judged' && tried.passed);
   const latest = tries.at(-1);
-  const shown = board === 'try' ? latest : board === 'answer' ? answer : undefined;
+  const shown =
+    board === 'try' && latest
+      ? { uci: latest.uci, quality: latest.status === 'judged' ? latest.quality : undefined }
+      : board === 'answer'
+        ? answer
+        : undefined;
   const searching = tries.findIndex(({ status }) => status === 'waiting');
   return {
     canRetry: !!answer && board !== 'retry',
@@ -187,7 +199,9 @@ export function momentAt({
     tries,
     searching: searching === -1 ? undefined : searching,
     board,
-    shownMove: shown && { uci: shown.uci, quality: 'quality' in shown ? shown.quality : undefined },
+    shownMove: shown?.uci,
+    badge: board === 'game' ? move.quality : shown?.quality,
+    arrow: shown && revealed ? plies[ply].move?.uci : undefined,
   };
 }
 
