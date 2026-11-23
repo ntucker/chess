@@ -189,10 +189,21 @@ function lerp(start: number, end: number, t: number): number {
   return start + (end - start) * t;
 }
 
+/** The share at position `n`, partway (`progress`, 0 to 1) from `from`'s to `to`'s; a position new to `to` stands at its own. */
+function shareAt(
+  from: readonly number[],
+  to: readonly number[],
+  progress: number,
+  n: number,
+): number {
+  'worklet';
+  return lerp(from[n] ?? to[n], to[n], progress);
+}
+
 /** `from` partway (`progress`, 0 to 1) to `to`. */
 function mix(from: readonly number[], to: readonly number[], progress: number): number[] {
   'worklet';
-  return to.map((score, n) => lerp(from[n] ?? score, score, progress));
+  return to.map((_, n) => shareAt(from, to, progress, n));
 }
 
 /** The area's outline, springing to each new set of scores (or jumping, `still`), on the UI thread. */
@@ -352,11 +363,10 @@ function Dot({
 }) {
   const { from, to, progress } = spring;
   // A transform, not `top`, so following the spring lays nothing out. The
-  // style reads the spring's shared values itself, as the scrub's styles do.
+  // reads of the spring stay in the style's body: Reanimated reruns a style
+  // only for the shared values its body names, not those a helper reads.
   const onEdge = useAnimatedStyle(() => {
-    const { ply } = mark;
-    const share = lerp(from.value[ply] ?? to.value[ply], to.value[ply], progress.value);
-    const edge = share * height;
+    const edge = shareAt(from.value, to.value, progress.value, mark.ply) * height;
     const center = Math.min(Math.max(edge, DOT / 2), height - DOT / 2);
     return { transform: [{ translateY: center - DOT / 2 }] };
   });
