@@ -6,9 +6,11 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import type { FinalAnalysis } from '@/evaluation/evaluation';
-import { legalMoveCountAt, replay } from '@/game/replay';
+import { type Color, legalMoveCountAt, replay } from '@/game/replay';
+import { momentAt } from '@/review/retry';
 import { reviewMoves } from '@/review/review';
 import { listing } from '@/review/review.fixture';
+import { type ReviewScreen, startReview } from '@/review/screen';
 import { themes } from '@/theme/theme';
 
 import { ReviewActionBar } from './ReviewActions';
@@ -34,11 +36,35 @@ const SEARCHED: readonly FinalAnalysis[] = [
   listing(['b8c6', 0.4]),
 ];
 
+/** How a review is shown: whose moves are the learner's, and the page's state of retries. */
+interface Shown {
+  readonly learner?: Color;
+  readonly screen?: Partial<ReviewScreen>;
+  /** The final analysis after each try, where there is one. */
+  readonly tryAnalyses?: readonly (FinalAnalysis | undefined)[];
+}
+
 /** The review of LINE with the analyses of `searched` plies, at `ply`. */
-function review(ply: number, searched: readonly number[], overrides: Partial<ReviewView> = {}) {
+function review(
+  ply: number,
+  searched: readonly number[],
+  overrides: Partial<ReviewView> = {},
+  { learner = 'black', screen = {}, tryAnalyses = [] }: Shown = {},
+) {
   const analyses = PLIES.map((_, n) => (searched.includes(n) ? SEARCHED[n] : undefined));
   const failed = new Set(overrides.failure ? [ply] : []);
   const moves = reviewMoves({ plies: PLIES, book: [], legal: LEGAL, analyses, failed });
+  const moment = momentAt({
+    plies: PLIES,
+    moves,
+    analyses,
+    legal: LEGAL,
+    learner,
+    book: [],
+    screen: { ...startReview(''), ...screen, ply },
+    tryAnalyses,
+    tryFailed: [],
+  });
   return {
     plies: PLIES,
     ply,
@@ -48,10 +74,15 @@ function review(ply: number, searched: readonly number[], overrides: Partial<Rev
     moments: [],
     pointed: undefined,
     nextMoment: undefined,
+    moment,
     goto: () => {},
     point: () => {},
     tryAgain: () => {},
     failure: () => undefined,
+    retry: () => {},
+    showAnswer: () => {},
+    tryFailure: undefined,
+    searchTriesAgain: () => {},
     ...overrides,
   } satisfies ReviewView;
 }
@@ -132,6 +163,76 @@ describe('ReviewPanel', () => {
     });
   });
 
+  /** The panel of White's review, at 2.Qh5, a mistake. */
+  const asWhite = (view: ReviewView) => (
+    <ReviewPanel eyebrow="Review" learner="white" review={view} />
+  );
+
+  it("hides Stockfish's moves at the learner's mistake, and offers Retry and Show best", () => {
+    const retry = jest.fn();
+    const showAnswer = jest.fn();
+    const view = review(3, [0, 1, 2, 3], { retry, showAnswer }, { learner: 'white' });
+    render(
+      view,
+      (host) => {
+        expect(heading(host)).toBe('Mistake.');
+        expect(host.textContent).toContain('Find a better move than 2.Qh5.');
+        expect(host.textContent).toContain('Other moves hidden');
+        expect(button(host, /^Nf3/)).toBeUndefined();
+        act(() => button(host, /^Retry/)!.click());
+        expect(retry).toHaveBeenCalled();
+        act(() => button(host, /^Show best/)!.click());
+        expect(showAnswer).toHaveBeenCalled();
+      },
+      asWhite(view),
+    );
+  });
+
+  it("names a try that passes, and shows Stockfish's moves with Show best disabled", () => {
+    const tries = new Map([[3, ['g1f3']]]);
+    const view = review(3, [0, 1, 2, 3], {}, { learner: 'white', screen: { tries, board: 'try' } });
+    render(
+      view,
+      (host) => {
+        expect(heading(host)).toBe('Best move.');
+        expect(host.textContent).toContain('Found with 2.Nf3, on try 1.');
+        expect(host.textContent).not.toContain('Other moves hidden');
+        expect(button(host, /^Nc3/)).toBeDefined();
+        expect(button(host, /^Show best/)?.getAttribute('aria-disabled')).toBe('true');
+      },
+      asWhite(view),
+    );
+  });
+
+  it('checks a try Stockfish did not list, then keeps the moves hidden when it fails', () => {
+    const tries = new Map([[3, ['a2a3']]]);
+    const screen = { tries, board: 'try' } as const;
+    const waiting = review(3, [0, 1, 2, 3], {}, { learner: 'white', screen });
+    render(waiting, (host) => expect(heading(host)).toBe('Checking your try…'), asWhite(waiting));
+    const failed = review(
+      3,
+      [0, 1, 2, 3],
+      {},
+      { learner: 'white', screen, tryAnalyses: [listing(['e7e5', 0.3])] },
+    );
+    render(
+      failed,
+      (host) => {
+        expect(heading(host)).toBe('Blunder.');
+        expect(host.textContent).toContain('Your retry: 2.a3.');
+        expect(host.textContent).toContain('Other moves hidden');
+      },
+      asWhite(failed),
+    );
+  });
+
+  it("shows the opponent's move with its comparison, and nothing to retry", () => {
+    render(review(3, [0, 1, 2, 3]), (host) => {
+      expect(host.textContent).not.toContain('Other moves hidden');
+      expect(button(host, /^Retry/)?.getAttribute('aria-disabled')).toBe('true');
+    });
+  });
+
   it("opens a narrow page's scoresheet in a drawer, which closes again", () => {
     const view = review(2, [0, 1, 2, 3]);
     const onClose = jest.fn();
@@ -165,7 +266,7 @@ describe('ReviewActionBar', () => {
         act(() => button(host, /^Next moment$/)!.click());
         expect(goto).toHaveBeenCalledWith(2);
       },
-      <ReviewActionBar ply={view.ply} nextMoment={view.nextMoment} goto={view.goto} />,
+      <ReviewActionBar {...view} />,
     );
   });
 });

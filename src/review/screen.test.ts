@@ -12,7 +12,7 @@ describe('reviewReducer', () => {
       { type: 'point', uci: 'e2e4' },
     );
     expect(reviewReducer(pointed, { type: 'goto', ply: 5 })).toEqual({
-      game: GAME,
+      ...initialReview,
       ply: 5,
       visited: new Set([5]),
     });
@@ -46,5 +46,34 @@ describe('reviewReducer', () => {
     expect(reviewReducer(shown, { type: 'review', game: 'white d2d4' })).toEqual(
       startReview('white d2d4'),
     );
+  });
+
+  it("keeps each moment's tries and answers shown, and ends what the board shows on leaving it", () => {
+    const atMoment = reviewReducer(initialReview, { type: 'goto', ply: 3 });
+    // A try waits for Retry.
+    expect(reviewReducer(atMoment, { type: 'try', uci: 'g1f3' })).toBe(atMoment);
+    const pointed = reviewReducer(atMoment, { type: 'point', uci: 'g1f3' });
+    const retrying = reviewReducer(pointed, { type: 'retry' });
+    expect(retrying.board).toBe('retry');
+    // The row pointed at no longer previews over the board put back.
+    expect(retrying.pointed).toBeUndefined();
+    expect(reviewReducer(retrying, { type: 'retry' })).toBe(retrying);
+    const tried = [
+      { type: 'try', uci: 'g1f3' },
+      { type: 'retry' },
+      { type: 'try', uci: 'b1c3' },
+    ] as const;
+    const twice = tried.reduce(reviewReducer, retrying);
+    expect(twice.tries.get(3)).toEqual(['g1f3', 'b1c3']);
+    expect(twice.board).toBe('try');
+    const answered = reviewReducer(twice, { type: 'show answer' });
+    expect(answered.shown).toEqual(new Set([3]));
+    expect(answered.board).toBe('answer');
+
+    const away = reviewReducer(answered, { type: 'goto', ply: 5 });
+    expect(away.board).toBeUndefined();
+    const back = reviewReducer(away, { type: 'goto', ply: 3 });
+    expect(back.tries).toBe(answered.tries);
+    expect(back.shown).toBe(answered.shown);
   });
 });

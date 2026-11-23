@@ -8,30 +8,51 @@ import { TOUCH_TARGET } from '@/theme/touch';
 
 import type { ReviewView } from './ReviewPanel';
 
-type Props = Pick<ReviewView, 'ply' | 'nextMoment' | 'goto'>;
+type Props = Pick<ReviewView, 'ply' | 'nextMoment' | 'goto' | 'moment' | 'retry' | 'showAnswer'>;
 
-/** Retry and Show best, which come with retrying a moment; until then they do nothing. */
-const IDLE = [
-  { icon: 'refresh', name: 'Retry', tip: 'Retry: play this move again' },
-  { icon: 'bulb-outline', name: 'Show best', tip: "Show best: Stockfish's best move here" },
-] as const satisfies readonly {
-  icon: ComponentProps<typeof Ionicons>['name'];
-  name: string;
-  tip: string;
-}[];
+interface Action {
+  readonly icon: ComponentProps<typeof Ionicons>['name'];
+  readonly name: string;
+  readonly tip: string;
+  /** Undefined when it does nothing at the move shown. */
+  readonly onPress?: () => void;
+}
+
+/**
+ * Retry and Show best at the move shown. Retry works at a move to retry
+ * (`Moment.canRetry`); Show best there too, until the answer is revealed.
+ */
+function retryActions({ moment, retry, showAnswer }: Props): readonly Action[] {
+  const best = moment.answer?.guide ? "the guide's move" : "Stockfish's best move";
+  return [
+    {
+      icon: 'refresh',
+      name: 'Retry',
+      tip: 'Retry: play this move again',
+      onPress: moment.canRetry ? retry : undefined,
+    },
+    {
+      icon: 'bulb-outline',
+      name: 'Show best',
+      tip: `Show best: ${best} here`,
+      onPress: moment.answer && !moment.revealed ? showAnswer : undefined,
+    },
+  ];
+}
 
 /**
  * The review's three actions in the panel beside the board: Retry and Show
  * best as icons named by their tooltips, and Next moment (First moment at
  * the start), which goes to the earliest moment not visited yet.
  */
-export function ReviewActions({ ply, nextMoment, goto }: Props) {
+export function ReviewActions(props: Props) {
+  const { ply, nextMoment, goto } = props;
   return (
     <View style={styles.row}>
-      {IDLE.map(({ icon, tip }) => (
+      {retryActions(props).map(({ icon, tip, onPress }) => (
         // Disabled, the button takes no focus, so the tip takes it to open from the keyboard.
-        <Tip key={icon} tip={tip} focusable>
-          <Button variant="outline" disabled accessibilityLabel={tip}>
+        <Tip key={icon} tip={tip} focusable={!onPress}>
+          <Button variant="outline" disabled={!onPress} onPress={onPress} accessibilityLabel={tip}>
             <Ionicons name={icon} size={17} />
           </Button>
         </Tip>
@@ -47,12 +68,19 @@ export function ReviewActions({ ply, nextMoment, goto }: Props) {
  * in reach while the panel scrolls: three buttons a thumb's height, sharing
  * the width, each with its icon and its name.
  */
-export function ReviewActionBar({ ply, nextMoment, goto }: Props) {
+export function ReviewActionBar(props: Props) {
+  const { ply, nextMoment, goto } = props;
   return (
     <View role="toolbar" aria-label="Review actions" style={styles.bar}>
-      {IDLE.map(({ icon, name, tip }) => (
-        <Tip key={icon} tip={tip} focusable style={styles.grow}>
-          <Button variant="outline" disabled accessibilityLabel={tip} style={styles.barButton}>
+      {retryActions(props).map(({ icon, name, tip, onPress }) => (
+        <Tip key={icon} tip={tip} focusable={!onPress} style={styles.grow}>
+          <Button
+            variant="outline"
+            disabled={!onPress}
+            onPress={onPress}
+            accessibilityLabel={tip}
+            style={styles.barButton}
+          >
             <Ionicons name={icon} size={16} />
             {` ${name}`}
           </Button>
@@ -76,7 +104,7 @@ function NextMoment({
   goto,
   short,
   style,
-}: Props & {
+}: Pick<Props, 'ply' | 'nextMoment' | 'goto'> & {
   readonly short?: boolean;
   readonly style?: ComponentProps<typeof Button>['style'];
 }) {

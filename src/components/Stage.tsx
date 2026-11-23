@@ -108,6 +108,8 @@ interface BoardColumnProps {
   readonly stepperMiddle?: ReactNode;
   /** The evaluation bar shows only this engine's analyses in the store (`EvaluationBar`'s `reads`). */
   readonly evaluationReads?: EvaluationEngine;
+  /** The moves to the position the evaluation bar reads, when the board shows another than the game's at `ply`. */
+  readonly evaluationLine?: readonly string[];
   /**
    * On a narrow page, what stands in for the name bars above and below the
    * board, in their heights: the review's one bar of both players, and its
@@ -129,6 +131,7 @@ export function BoardColumn({
   onSwap,
   stepperMiddle,
   evaluationReads,
+  evaluationLine,
   narrowBars,
 }: BoardColumnProps) {
   const { moves, ply, goto } = game;
@@ -174,7 +177,7 @@ export function BoardColumn({
       )}
       <View style={styles.boardRow}>
         <EvaluationBar
-          line={moves.slice(0, ply)}
+          line={evaluationLine ?? moves.slice(0, ply)}
           orientation={side}
           reads={evaluationReads}
           style={styles.evaluation}
