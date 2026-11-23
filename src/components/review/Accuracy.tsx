@@ -25,7 +25,7 @@ export function AccuracyMark({ accuracy, whose, named }: Props) {
   const shown = Math.round(accuracy);
   return (
     <Tip
-      tip={`${whose} accuracy: ${shown} of 100, from how much of the winning chances each judged move gave away. Book and forced moves don't count.`}
+      tip={`${whose} accuracy: ${shown} of 100, from how much of the winning chances each judged move gave away. Book and forced moves, and moves that couldn't be checked, don't count.`}
       focusable
     >
       <View style={styles.mark}>

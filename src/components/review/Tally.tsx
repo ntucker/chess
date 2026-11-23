@@ -14,17 +14,10 @@ import { qualityLooks } from '@/theme/moveQuality';
 import { fonts } from '@/theme/theme';
 
 /** The labels the tally counts, from the best moves to the worst. */
-const LABELS: readonly ReviewQuality[] = [
-  'brilliant',
-  'great',
-  'best',
-  'good',
-  'book',
-  'inaccuracy',
-  'miss',
-  'mistake',
-  'blunder',
-];
+const LABELS = Object.keys(qualityLooks) as readonly ReviewQuality[];
+
+/** How many labels a row of a narrow page's grid holds. */
+const COLUMNS = 3;
 
 interface Props {
   readonly tally: Review['tally'];
@@ -87,9 +80,11 @@ function TallyTable({ tally, learner }: Props) {
   );
 }
 
-/** One side's counts in three columns, as a phone has room for. */
+/** One side's counts in `COLUMNS` columns, as a phone has room for. */
 function TallyGrid({ counts }: { readonly counts: Tally }) {
-  const rows = [0, 3, 6].map((start) => LABELS.slice(start, start + 3));
+  const rows = Array.from({ length: Math.ceil(LABELS.length / COLUMNS) }, (_, row) =>
+    LABELS.slice(row * COLUMNS, (row + 1) * COLUMNS),
+  );
   return (
     <View>
       {rows.map((row) => (

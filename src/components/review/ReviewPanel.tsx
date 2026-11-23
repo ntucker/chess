@@ -6,13 +6,12 @@ import { StatusHeadline } from '@/components/GameStatus';
 import { ScoresheetDrawer } from '@/components/ScoresheetDrawer';
 import { Scoresheet } from '@/components/Scoresheet';
 import { SourceFootnote } from '@/components/SourceLink';
-import { resultVerdict } from '@/game/ending';
-import { analyze, type Color, shownMove } from '@/game/replay';
+import { type Color, shownMove } from '@/game/replay';
 import type { LessonId } from '@/resources/lesson';
 import { playOnHref } from '@/review/address';
-import { LEAST_COUNTED, verdictLine } from '@/review/accuracy';
 import { compareMove } from '@/review/comparison';
 import { isFine, type ReviewMove } from '@/review/review';
+import { summaryHeadline } from '@/review/summary';
 import type { Review } from '@/review/useReview';
 import { NarrowOnly, useNarrowPart } from '@/theme/Narrow';
 import { qualityLooks } from '@/theme/moveQuality';
@@ -136,7 +135,9 @@ function reviewHeadline(
     moves,
     failure,
     tryAgain,
-    ...rest
+    moments,
+    accuracy,
+    ...retried
   }: Pick<
     ReviewView,
     | 'plies'
@@ -159,9 +160,8 @@ function reviewHeadline(
     detail: `Checking each move: ${moves.length - waiting} of ${moves.length}.`,
   };
   if (!move) {
-    return waiting
-      ? coming
-      : summaryHeadline({ plies, moves, ...rest }, rest.accuracy[learner], learner);
+    if (waiting) return coming;
+    return summaryHeadline({ plies, moves, moments, accuracy: accuracy[learner], learner });
   }
   const named = shownMove(plies[ply].move?.san, ply);
   if (move.status === 'waiting') return coming;
@@ -174,59 +174,11 @@ function reviewHeadline(
     };
   }
   return (
-    momentHeadline(rest, move, ply, named) ?? {
+    momentHeadline(retried, move, ply, named) ?? {
       title: `${qualityLooks[move.quality].name}.`,
       detail: named,
     }
   );
-}
-
-/**
- * The headline at the start once every move is checked: the verdict on the
- * learner's accuracy (`verdictLine`), over how the game went and how many
- * moments it has. Example: "Warm applause." over "You won in 34 moves. 3
- * moments to replay.". With too few of their moves judged, "A brief
- * appearance." says why there's no verdict.
- */
-function summaryHeadline(
-  { plies, moves, moments }: Pick<ReviewView, 'plies' | 'moves' | 'moments'>,
-  accuracy: ReviewView['accuracy']['white'],
-  learner: Color,
-) {
-  const length = gameLength(plies, learner);
-  if (accuracy === 'brief') {
-    return {
-      title: 'A brief appearance.',
-      detail: `${length} Fewer than ${LEAST_COUNTED} of your moves were judged, too few for a verdict.`,
-    };
-  }
-  const failed = moves.filter(({ status }) => status === 'failed').length;
-  return {
-    title: accuracy === undefined ? 'The reviews are in.' : verdictLine(accuracy),
-    detail: [
-      length,
-      count(moments.length, 'moment', 'to replay', 'No moments to replay.'),
-      failed ? count(failed, 'move', "couldn't be checked") : undefined,
-    ]
-      .filter(Boolean)
-      .join(' '),
-  };
-}
-
-/** How long the game went, and how it ended for the learner: "You won in 34 moves.", "Drawn in 12 moves.", "34 moves." */
-function gameLength(plies: ReviewView['plies'], learner: Color) {
-  const length = count(Math.ceil((plies.length - 1) / 2), 'move');
-  const { result } = analyze(plies.at(-1)!);
-  if (!result) return `${length}.`;
-  const { mood } = resultVerdict(result, learner);
-  return mood === 'drawn' ? `Drawn in ${length}.` : `You ${mood} in ${length}.`;
-}
-
-/** "3 moments to replay.", "1 move couldn't be checked.", or with none, `none`. */
-function count(n: number, noun: string, after?: string, none?: string) {
-  if (n === 0 && none) return none;
-  const counted = `${n} ${noun}${n === 1 ? '' : 's'}`;
-  return after ? `${counted} ${after}.` : counted;
 }
 
 /**
