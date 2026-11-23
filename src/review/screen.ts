@@ -90,8 +90,9 @@ export function reviewReducer(state: ReviewScreen, action: ReviewAction): Review
       return action.ply !== state.ply || state.dwelt === action.ply
         ? state
         : { ...state, dwelt: action.ply };
+    // Each of these changes the board, so the row pointed at stops previewing over it.
     case 'retry':
-      return state.board === 'retry' ? state : { ...state, board: 'retry' };
+      return state.board === 'retry' ? state : { ...state, board: 'retry', pointed: undefined };
     case 'try': {
       // A try is played only on the board put back for one.
       if (state.board !== 'retry') return state;
@@ -100,6 +101,7 @@ export function reviewReducer(state: ReviewScreen, action: ReviewAction): Review
         ...state,
         tries: new Map(state.tries).set(state.ply, [...tried, action.uci]),
         board: 'try',
+        pointed: undefined,
       };
     }
     case 'show answer':
@@ -107,6 +109,7 @@ export function reviewReducer(state: ReviewScreen, action: ReviewAction): Review
         ...state,
         shown: state.shown.has(state.ply) ? state.shown : new Set(state.shown).add(state.ply),
         board: 'answer',
+        pointed: undefined,
       };
   }
 }
