@@ -12,16 +12,20 @@ function workletSources(): { file: string; text: string }[] {
     .filter(({ text }) => text.includes("'worklet'"));
 }
 
-const isWorklet = (fn: NodePath<t.Function>) =>
-  t.isBlockStatement(fn.node.body) &&
-  fn.node.body.directives.some((directive) => directive.value.value === 'worklet');
+const hasWorkletDirective = (block: t.BlockStatement | t.Program) =>
+  block.directives.some((directive) => directive.value.value === 'worklet');
+
+/** A function the worklets plugin ships to the UI thread: marked itself, or in a file marked so. */
+const isWorklet = (fn: NodePath<t.Function>, program: t.Program) =>
+  hasWorkletDirective(program) ||
+  (t.isBlockStatement(fn.node.body) && hasWorkletDirective(fn.node.body));
 
 // Jest runs worklets as plain functions. On the UI thread a worklet binds what
 // it captured (module constants, imports) in its body, after its parameter
 // defaults run, so a default that reads one throws there.
 it('no worklet reads a captured value in a parameter default', () => {
   let worklets = 0;
-  const early: string[] = [];
+  const readEarly: string[] = [];
   for (const { file, text } of workletSources()) {
     const ast = parseSync(text, {
       filename: file,
@@ -31,7 +35,7 @@ it('no worklet reads a captured value in a parameter default', () => {
     });
     traverse(ast!, {
       Function(fn) {
-        if (!isWorklet(fn)) return;
+        if (!isWorklet(fn, ast!.program)) return;
         worklets++;
         for (const param of fn.get('params')) {
           param.traverse({
@@ -39,7 +43,7 @@ it('no worklet reads a captured value in a parameter default', () => {
               const binding = id.scope.getBinding(id.node.name);
               const inDefault = id.findParent((parent) => parent.isAssignmentPattern());
               if (inDefault && binding && !binding.path.isDescendant(fn)) {
-                early.push(`${path.relative(__dirname, file)}: ${id.node.name}`);
+                readEarly.push(`${path.relative(__dirname, file)}: ${id.node.name}`);
               }
             },
           });
@@ -48,5 +52,5 @@ it('no worklet reads a captured value in a parameter default', () => {
     });
   }
   expect(worklets).toBeGreaterThan(0);
-  expect(early).toEqual([]);
+  expect(readEarly).toEqual([]);
 });
