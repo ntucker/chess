@@ -161,7 +161,7 @@ function LessonScreen({
   const part = useNarrowPart();
   const labelled = useLabelled();
   const sections = useSections();
-  const moveListWidth = useListMinWidth();
+  const movesPaneStyle = useListMinWidth();
   // The progress loads beside the lesson, rather than once it has loaded.
   useFetch(getProgress);
   const picked = useSuspense(getLesson, id ?? null);
@@ -469,7 +469,7 @@ function LessonScreen({
                   // Beside the idea it widens for larger text; alone it fills the row.
                   <View
                     {...(ideaPane
-                      ? part('moves-pane', [sections, moveListWidth])
+                      ? part('moves-pane', [sections, movesPaneStyle])
                       : part('lone-pane', sections))}
                   >
                     {moveList}
