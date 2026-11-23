@@ -46,7 +46,7 @@ import { useSettings } from '@/settings/SettingsProvider';
 import { NarrowOnly, NarrowScroll, useNarrowPart } from '@/theme/Narrow';
 
 import { AutoPlay } from './AutoPlay';
-import { CandidateList, verdictText } from './CandidateList';
+import { CandidateList, useListMinWidth, verdictText } from './CandidateList';
 import { IdeaAside, IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
@@ -167,6 +167,7 @@ function LessonScreen({
   const part = useNarrowPart();
   const labelled = useLabelled();
   const sections = useSections();
+  const movesPaneStyle = useListMinWidth();
   // The progress loads beside the lesson, rather than once it has loaded.
   useFetch(getProgress);
   const picked = useSuspense(getLesson, id ?? null);
@@ -368,6 +369,27 @@ function LessonScreen({
     </>
   );
 
+  /** The pane beside the moves on a narrow page: the idea card, else past the guide the headline's aside, else none. */
+  const ideaPane = ideaCard ? (
+    <NarrowScroll part="idea-pane">
+      <IdeaCard
+        lesson={lesson}
+        title={preview ? `If ${preview.san}` : 'The idea'}
+        empty={preview && previewEmpty(preview, guidance.verdicts)}
+        notes={guidance.notes}
+        learner={learner}
+        playback={playback}
+        pointable={guidance.pointable}
+        pointed={pointedNote}
+        onPoint={pointNote}
+        onLeave={leaveNote}
+        onReach={reachCard}
+      />
+    </NarrowScroll>
+  ) : aside ? (
+    <NarrowScroll part="narrow-idea-pane">{aside}</NarrowScroll>
+  ) : null;
+
   return (
     <Stage
       title={`${lesson.title} · Opening Night`}
@@ -451,26 +473,17 @@ function LessonScreen({
             {moveList || ideaCard ? (
               // A View, so narrow.css can make it a row, which a Stack's inline style would override.
               <PointingArea onLeave={leave} {...part('panes', sections)}>
-                {moveList ? <View {...part('moves-pane', sections)}>{moveList}</View> : null}
-                {ideaCard ? (
-                  <NarrowScroll part="idea-pane">
-                    <IdeaCard
-                      lesson={lesson}
-                      title={preview ? `If ${preview.san}` : 'The idea'}
-                      empty={preview && previewEmpty(preview, guidance.verdicts)}
-                      notes={guidance.notes}
-                      learner={learner}
-                      playback={playback}
-                      pointable={guidance.pointable}
-                      pointed={pointedNote}
-                      onPoint={pointNote}
-                      onLeave={leaveNote}
-                      onReach={reachCard}
-                    />
-                  </NarrowScroll>
-                ) : aside ? (
-                  <NarrowScroll part="narrow-idea-pane">{aside}</NarrowScroll>
+                {moveList ? (
+                  // Beside the idea it widens for larger text; alone it fills the row.
+                  <View
+                    {...(ideaPane
+                      ? part('moves-pane', [sections, movesPaneStyle])
+                      : part('lone-pane', sections))}
+                  >
+                    {moveList}
+                  </View>
                 ) : null}
+                {ideaPane}
               </PointingArea>
             ) : (
               // Before Stockfish's moves arrive, or where none are listed, it has the panel to itself.
