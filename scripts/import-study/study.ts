@@ -17,7 +17,14 @@ import { parseUci } from 'chessops/util';
 import { positionKey, sanToUci } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 
-import { letterCastling, namedMoves, nextPly, NUMBER_SLACK, plainSan } from './text';
+import {
+  letterCastling,
+  namedMoves,
+  nextPly,
+  NUMBER_SLACK,
+  plainSan,
+  withoutCitation,
+} from './text';
 
 export interface Chapter {
   /** The chapter's name, as the study shows it. */
@@ -354,7 +361,7 @@ function readMoves(
       children,
       // Castling is lettered here, once, so every later reader of the comment sees one spelling.
       comment: comments
-        .map((raw) => letterCastling(parseComment(raw).text.trim()))
+        .map((raw) => withoutCitation(letterCastling(parseComment(raw).text.trim())))
         .filter(Boolean)
         .join('\n'),
       nags: node.data.nags ?? [],

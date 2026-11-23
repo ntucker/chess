@@ -111,6 +111,15 @@ export function sentenceEnds(text: string): number[] {
 }
 
 /**
+ * A comment that only cites the study chapter it was copied from, ending in that chapter's link:
+ * "Tarrasch Variation …, https://lichess.org/study/KHRUxEM1/Bj2dzMTU, 2022.07.11".
+ */
+const CITATION = /https:\/\/lichess\.org\/study\/\w+\/\w+,?(?:\s+\d{4}\.\d\d\.\d\d)?$/;
+
+/** `text`, a study comment, or nothing when it only cites the chapter it was copied from. */
+export const withoutCitation = (text: string) => (CITATION.test(text) ? '' : text);
+
+/**
  * `text` as a note's sentence: its first sentence, cut to the word limit.
  * A placeholder until the AI step rewrites it; the whole comment stays in
  * the note's `original`.
