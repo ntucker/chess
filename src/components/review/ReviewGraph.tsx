@@ -230,12 +230,6 @@ interface AreaSpring {
   readonly progress: SharedValue<number>;
 }
 
-/** The top side's share the area shows at `ply` this frame, partway along its spring. */
-function shownShare({ from, to, progress }: AreaSpring, ply: number): number {
-  'worklet';
-  return lerp(from.value[ply] ?? to.value[ply], to.value[ply], progress.value);
-}
-
 /**
  * `values`, as the same array while its numbers stay the same, so an effect
  * that depends on it skips the arrays each render makes afresh. React may
@@ -356,9 +350,13 @@ function Dot({
   readonly spring: AreaSpring;
   readonly height: number;
 }) {
-  // A transform, not `top`, so following the spring lays nothing out.
+  const { from, to, progress } = spring;
+  // A transform, not `top`, so following the spring lays nothing out. The
+  // style reads the spring's shared values itself, as the scrub's styles do.
   const onEdge = useAnimatedStyle(() => {
-    const edge = shownShare(spring, mark.ply) * height;
+    const { ply } = mark;
+    const share = lerp(from.value[ply] ?? to.value[ply], to.value[ply], progress.value);
+    const edge = share * height;
     const center = Math.min(Math.max(edge, DOT / 2), height - DOT / 2);
     return { transform: [{ translateY: center - DOT / 2 }] };
   });
