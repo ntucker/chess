@@ -1,6 +1,6 @@
 import { Button, Inline, Stack, Text } from '@reactive/silk-native';
 import type { Href } from 'expo-router';
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Eyebrow } from '@/components/Eyebrow';
@@ -75,9 +75,16 @@ export interface HeadlineProps {
 export type News = 'all' | 'detail' | 'none';
 
 /** `children`, with `tip` in a tooltip when there is one (`Tip`), held to their own width. */
-function Tipped({ tip, children }: { readonly tip?: string; readonly children: ReactNode }) {
+function Tipped({
+  tip,
+  children,
+  ...rest
+}: Pick<ComponentProps<typeof Tip>, 'focusable' | 'unspoken'> & {
+  readonly tip?: string;
+  readonly children: ReactNode;
+}) {
   return tip ? (
-    <Tip tip={tip} style={tipped.box}>
+    <Tip tip={tip} {...rest} style={tipped.box}>
       {children}
     </Tip>
   ) : (
@@ -112,16 +119,14 @@ export function StatusHeadline({
       {/* With a short line drawn, a narrow page keeps the full headline for screen readers only. */}
       <Stack gap="2" {...part(short && 'wide-only-spoken')}>
         {eyebrowInHeader ? <View {...part('wide-only')}>{label}</View> : label}
-        <Tipped tip={titleTip}>
-          <Text
-            role="headingLg"
-            accessibilityRole="header"
-            accessibilityLiveRegion="polite"
-            style={styles.title}
-          >
-            {title}
-          </Text>
-        </Tipped>
+        {/* The live region stays put while a tooltip comes and goes around the title. */}
+        <View accessibilityLiveRegion="polite">
+          <Tipped tip={titleTip} focusable>
+            <Text role="headingLg" accessibilityRole="header" style={styles.title}>
+              {title}
+            </Text>
+          </Tipped>
+        </View>
         <Text role="bodySm" tone="secondary">
           {detail}
         </Text>
@@ -129,7 +134,7 @@ export function StatusHeadline({
       {short ? (
         <NarrowOnly>
           {/* What the full headline says, so screen readers skip it. */}
-          <Tipped tip={drawn === 'all' ? titleTip : undefined}>
+          <Tipped tip={drawn === 'all' ? titleTip : undefined} unspoken>
             <Text role="bodySm" tone="secondary" aria-hidden>
               {drawn === 'all' ? (
                 <Text role="bodySm" tone="primary" style={styles.runIn}>

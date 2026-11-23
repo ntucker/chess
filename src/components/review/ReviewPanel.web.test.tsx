@@ -194,6 +194,8 @@ describe('ReviewPanel', () => {
       expect(host.textContent).toContain(
         'A brief appearance.No verdict or accuracy: fewer than 8 of your moves were judged',
       );
+      // Once: the narrow page's short line, which screen readers skip, doesn't repeat it.
+      expect(host.textContent?.split('No verdict or accuracy').length).toBe(2);
     });
   });
 

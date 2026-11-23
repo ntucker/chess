@@ -202,18 +202,23 @@ const FINE: ReadonlySet<ReviewQuality | undefined> = new Set([
 /** Whether a move labelled `quality` gave nothing much away (`FINE`). */
 export const isFine = (quality: ReviewQuality | undefined) => FINE.has(quality);
 
+/** Each label's place in the tally, from the best moves to the worst; a Record, so none is left out. */
+const TALLY_PLACE: Readonly<Record<ReviewQuality, number>> = {
+  brilliant: 0,
+  great: 1,
+  best: 2,
+  good: 3,
+  book: 4,
+  inaccuracy: 5,
+  miss: 6,
+  mistake: 7,
+  blunder: 8,
+};
+
 /** Every label, from the best moves to the worst: the order the tally lists them in. */
-export const LABELS_BEST_FIRST = [
-  'brilliant',
-  'great',
-  'best',
-  'good',
-  'book',
-  'inaccuracy',
-  'miss',
-  'mistake',
-  'blunder',
-] as const satisfies readonly ReviewQuality[];
+export const LABELS_BEST_FIRST = (Object.keys(TALLY_PLACE) as ReviewQuality[]).sort(
+  (a, b) => TALLY_PLACE[a] - TALLY_PLACE[b],
+);
 
 /** How many moves got each label. */
 export type Tally = Readonly<Partial<Record<ReviewQuality, number>>>;
