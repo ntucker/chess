@@ -16,6 +16,7 @@ import { SourceFootnote } from '@/components/SourceLink';
 import { resetListener } from '@/components/resetListener';
 import { ReviewGameButton, ScoresheetReview } from '@/components/ReviewLinks';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
+import { useBackToReview } from '@/components/useBackToReview';
 import { useLongWait } from '@/components/useLongWait';
 import { useNavigating } from '@/components/navigation';
 import { NewVersionError } from '@/files/newVersion';
@@ -210,6 +211,7 @@ function LessonScreen({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [scoresheetOpen, setScoresheetOpen] = useState(false);
   const { auto } = useSettings();
+  const back = useBackToReview();
   const learner = lesson.side;
   const rival = opposite(learner);
   const described = describeOpponent(opponent);
@@ -403,6 +405,7 @@ function LessonScreen({
           ? { name: OPENINGS_TITLE }
           : { name: names.at(-1) ?? lesson.title, parent: names.at(-2) },
         placeLink: listLink,
+        back,
         // Only a narrow page shows the button, so only there does the sheet open.
         narrowButton: {
           icon: 'settings-outline',

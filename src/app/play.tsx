@@ -13,6 +13,7 @@ import { OpponentPicker } from '@/components/OpponentPicker';
 import { ScoresheetReview } from '@/components/ReviewLinks';
 import { Scoresheet } from '@/components/Scoresheet';
 import { BoardColumn, Stage } from '@/components/Stage';
+import { useBackToReview } from '@/components/useBackToReview';
 import { usePlayAddress } from '@/components/usePlayAddress';
 import { type Color, colorName, opposite } from '@/game/replay';
 import { useGame } from '@/game/useGame';
@@ -32,6 +33,7 @@ export default function PlayScreen() {
   const labelled = useLabelled();
   const { store, side: playerColor, setSide: setPlayerColor } = usePlayAddress();
   const active = useIsFocused();
+  const back = useBackToReview();
   useWarmOpponent(opponent, active);
   const game = useGame(store, gameOpponent(ctrl, opponent), {
     side: playerColor,
@@ -51,7 +53,7 @@ export default function PlayScreen() {
   return (
     <Stage
       title="Free play · Opening Night"
-      header={{ onRestart: () => newGame(playerColor) }}
+      header={{ back, onRestart: () => newGame(playerColor) }}
       board={
         <BoardColumn
           game={game}
