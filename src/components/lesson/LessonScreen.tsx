@@ -414,11 +414,11 @@ function LessonScreen({
               // A View, so narrow.css can make it a row, which a Stack's inline style would override.
               <PointingArea onLeave={leave} {...part('panes', sections)}>
                 {moveList ? (
+                  // Beside the idea it widens for larger text; alone it fills the row.
                   <View
-                    {...part(ideaCard || aside ? 'moves-pane' : 'lone-pane', [
-                      sections,
-                      listMinWidth,
-                    ])}
+                    {...(ideaCard || aside
+                      ? part('moves-pane', [sections, listMinWidth])
+                      : part('lone-pane', sections))}
                   >
                     {moveList}
                   </View>

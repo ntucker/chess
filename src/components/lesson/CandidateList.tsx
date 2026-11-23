@@ -19,7 +19,7 @@ import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { QualityBadge } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import type { Mark } from '@/progress/progress';
-import { narrowLength, narrowStyles } from '@/theme/narrow';
+import { NARROW_CSS_LOADS, narrowLength, narrowStyles } from '@/theme/narrow';
 import { NarrowScroll, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
 import { fonts, typography } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
@@ -292,7 +292,6 @@ function Row({
   const { theme } = useTheme();
   const styles = useNarrowStyles(STYLES);
   const part = useNarrowPart();
-  const mono = useMonoWidth();
   const { color } = theme.semantic;
   const { move, san, engine } = candidate;
   const tone = toneColors[candidateTone(candidate, main)];
@@ -342,7 +341,7 @@ function Row({
       />
       <View style={styles.move}>
         <View style={styles.title}>
-          <Text role="body" style={styles.san}>
+          <Text role="body" style={styles.san} {...SAN_FIT}>
             {san}
           </Text>
           {move.book ? <QualityBadge quality="book" size={BOOK_BADGE_SIZE} /> : null}
@@ -368,11 +367,7 @@ function Row({
         ) : null}
       </View>
       {engine && !topEngine ? (
-        <Text
-          role="caption"
-          tone="secondary"
-          style={[styles.evaluation, { minWidth: mono(EVALUATION_CHARS, VALUE_SIZE) }]}
-        >
+        <Text role="caption" tone="secondary" style={styles.evaluation}>
           {engine.label}
         </Text>
       ) : null}
@@ -384,11 +379,7 @@ function Row({
           >
             <View style={[styles.fillBar, { width: `${share * 100}%`, backgroundColor: tone }]} />
           </View>
-          <Text
-            role="caption"
-            tone="secondary"
-            style={[styles.percent, { minWidth: mono(SHARE_CHARS, VALUE_SIZE) }]}
-          >
+          <Text role="caption" tone="secondary" style={styles.percent}>
             {percent(share)}
           </Text>
         </View>
@@ -448,38 +439,41 @@ const MONO_ADVANCE = 0.6;
 const SAN_SIZE = 17;
 /** A share's and an evaluation's size, Silk's caption. */
 const VALUE_SIZE = typography.caption.size;
-/** The longest move a row holds whole: a piece taking with check, as Nxe5+. */
-const SAN_CHARS = 5;
-/** The widest share, 100%. */
-const SHARE_CHARS = 4;
-/** The widest evaluation, as −12.3, with a character to spare. */
-const EVALUATION_CHARS = 6;
+/** A share's least width, which holds 100% in caption text: larger text widens it. */
+const SHARE_WIDTH = 32;
+/** An evaluation's least width, which holds its longest label (as −M12) in caption text. */
+const EVALUATION_WIDTH = 44;
 
 /**
- * Monospaced text's width at the system's text size, by its characters and
- * size: React Native scales text by `fontScale`, which the web leaves at 1.
+ * Off the web, a move too long for its row's room shrinks to fit on its line,
+ * rather than break over two: four characters or more at large text. The web
+ * keeps its size, as there text is never larger than its pixels.
  */
-function useMonoWidth() {
-  const { fontScale } = useWindowDimensions();
-  return (chars: number, size: number) => chars * MONO_ADVANCE * size * fontScale;
-}
+const SAN_FIT = NARROW_CSS_LOADS
+  ? {}
+  : ({ numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.7 } as const);
 
 /**
- * The least width of a narrow page's moves pane, as a style: a row holds
- * whole at the system's text size, with a five-character move, its badge,
- * its share and a mark, or a move of Stockfish's with its evaluation. Larger
- * text widens the pane, rather than break the move or its share over two
- * lines or draw the badge over the share.
+ * The least width of a narrow page's moves pane, as a style: a row of a
+ * three-character move (Bf5), its badge, its share and a mark holds whole at
+ * the system's text size, as does a row of Stockfish's with its evaluation.
+ * At normal text that is the pane's two fifths on a phone; larger text widens
+ * it, rather than break the move or its share over two lines or draw the
+ * badge over the share. React Native scales text by the window's `fontScale`,
+ * which the web leaves at 1; this reads no size of the window. A wide page's
+ * panel is wider than this at any text size.
  */
 export function useListMinWidth() {
-  const mono = useMonoWidth();
+  const { fontScale } = useWindowDimensions();
+  const mono = (chars: number, size: number) => chars * MONO_ADVANCE * size * fontScale;
   const gap = ROW_GAP.narrow;
-  // The row's insets, its dot, the move, and the mark that ends it, each after a gap.
-  const shared =
-    2 * ROW_INSET.narrow + DOT_SIZE + gap + mono(SAN_CHARS, SAN_SIZE) + gap + MARK_SIZE;
-  const guide = TITLE_GAP + BOOK_BADGE_SIZE + gap + mono(SHARE_CHARS, VALUE_SIZE);
-  const engine = gap + mono(EVALUATION_CHARS, VALUE_SIZE);
-  return { minWidth: Math.ceil(shared + Math.max(guide, engine)) };
+  // The row's insets and dot, then the move and the mark, each after a gap.
+  const ends = 2 * ROW_INSET.narrow + DOT_SIZE + gap + mono(3, SAN_SIZE) + gap + MARK_SIZE;
+  // After the move, a guide's row has its badge and share, one of Stockfish's its evaluation.
+  const badgeAndShare =
+    TITLE_GAP + BOOK_BADGE_SIZE + gap + Math.max(SHARE_WIDTH, mono('100%'.length, VALUE_SIZE));
+  const evaluation = gap + Math.max(EVALUATION_WIDTH, mono('\u2212M12'.length, VALUE_SIZE));
+  return { minWidth: Math.ceil(ends + Math.max(badgeAndShare, evaluation)) };
 }
 
 /** A row's spacing, more compact in a narrow pane. */
@@ -514,14 +508,13 @@ const STYLES = narrowStyles((px) => ({
   toggle: { paddingLeft: px(ROW_INSET.plus(DOT_SIZE).plus(ROW_GAP)) },
   move: { flex: 1, gap: 1 },
   title: { flexDirection: 'row', alignItems: 'center', gap: TITLE_GAP },
-  // Too long a move wraps in its place rather than push its badge over the share.
+  // Too long a move gives way in its place (`SAN_FIT`) rather than push its badge over the share.
   san: { fontFamily: fonts.mono, fontSize: SAN_SIZE, flexShrink: 1 },
   risk: { textTransform: 'capitalize' },
   share: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   track: { width: 52, height: 4, borderRadius: 2, overflow: 'hidden' },
   fillBar: { height: '100%', borderRadius: 2 },
-  // Each at least its widest value's width (`useMonoWidth`), so the column lines up.
-  percent: { textAlign: 'right', fontFamily: fonts.mono },
-  evaluation: { textAlign: 'right', fontFamily: fonts.mono },
+  percent: { minWidth: SHARE_WIDTH, textAlign: 'right', fontFamily: fonts.mono },
+  evaluation: { minWidth: EVALUATION_WIDTH, textAlign: 'right', fontFamily: fonts.mono },
   mark: { width: MARK_SIZE, height: MARK_SIZE },
 }));
