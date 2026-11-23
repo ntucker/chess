@@ -31,6 +31,7 @@ yarn web        # or: yarn android
 | `yarn maia` | Download Maia's models and convert them for the app (see [Maia](#maia)) |
 | `yarn stockfish` | Copy Stockfish from the pinned `stockfish` package into `assets/stockfish/`, and full Stockfish into `public/stockfish/` (every `yarn install` runs it; see [Evaluation bar](#evaluation-bar)) |
 | `yarn import-study <name>` | Turn the lichess studies and Wikibooks pages listed in `scripts/import-study/studies.ts` into a lesson file in `assets/lessons/`, with popularity from the lichess explorer, which needs a lichess token in `LICHESS_TOKEN` or a proxy that adds one, notes rewritten by Claude through a signed-in `claude` CLI, and a generated idea note for each book move no guide explains (Claude's, Stockfish's and the explorer's answers committed in `scripts/import-study/answers/`, so a rerun rebuilds the same file and `--no-model` calls no model; usage in `scripts/import-study/index.ts`) |
+| `yarn cover-opponent <source>` | Check that a lesson answers every line a known opponent plays, from the opponent's lesson and then club players' common moves, and write a PGN source that fills the gaps with Stockfish's moves (Fable picking among near-equal ones); `--measure` only counts the gaps. Sources and settings are in `scripts/import-study/coverOpponent.ts` |
 
 ## How it fits together
 

@@ -67,7 +67,7 @@
     "postinstall": "node ./scripts/copy-stockfish.mjs",
     "import-study": "NODE_USE_ENV_PROXY=1 tsx scripts/import-study/index.ts",
     "index-lessons": "tsx scripts/import-study/reindex.ts",
-    "cover-opponent": "NODE_USE_ENV_PROXY=1 tsx scripts/import-study/opponent.ts"
+    "cover-opponent": "NODE_USE_ENV_PROXY=1 tsx scripts/import-study/coverOpponent.ts"
   },
   "private": true,
   "packageManager": "yarn@4.18.1",

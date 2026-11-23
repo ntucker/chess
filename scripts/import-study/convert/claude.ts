@@ -47,7 +47,7 @@ export type Ask<T = Comment> = (
 /** Comments per request by default: enough to share the prompt, few enough to answer carefully. */
 const BATCH = 20;
 /** Requests at once. */
-const PARALLEL = 4;
+export const PARALLEL = 4;
 
 export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 

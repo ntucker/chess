@@ -1,7 +1,7 @@
 /**
  * Stockfish as the app runs it (the same build), in Node, for the engine
  * check (./engineCheck), with a smaller search than the app's (`CHECK_SEARCH`),
- * and for the opponent check (./opponent), with the app's own.
+ * and for the opponent check (./coverOpponent), with the app's own.
  * Each position's analysis is kept in a committed answers file, so a rerun
  * searches only new positions and books the moves the last import did.
  */
@@ -70,7 +70,7 @@ export async function nodeStockfish(
 
   const checkSearch = searchName(search);
   // Rows from another search are searched again, and left out when the file is rewritten.
-  const cache = answersFile<CacheRow>(
+  const cache = answersFile<CacheRow | RankedRow>(
     cacheFile,
     (row) => row.key,
     (row) => row.search === checkSearch,
@@ -79,7 +79,7 @@ export async function nodeStockfish(
   const evaluate: Evaluate = async (line, key) => {
     const known = cache.get(key);
     if (known) {
-      if (known.lines) return { lines: known.lines, depth: known.depth ?? 0, final: true };
+      if ('lines' in known) return { lines: known.lines, depth: known.depth, final: true };
       const { best, ...evaluation } = known.evaluation;
       return settledAnalysis(evaluation, best);
     }
@@ -111,9 +111,12 @@ interface CacheRow {
   /** The search that filled it (`searchName`). */
   readonly search: string;
   readonly evaluation: Evaluation & { readonly best?: string };
-  /** Every move a search ranking several ranked, best first, and how deep it looked. */
-  readonly lines?: readonly AnalysisLine[];
-  readonly depth?: number;
+}
+
+/** A search ranking several moves keeps every one, best first, and how deep it looked. */
+interface RankedRow extends CacheRow {
+  readonly lines: readonly AnalysisLine[];
+  readonly depth: number;
 }
 
 function giveUp(error: unknown): never {
