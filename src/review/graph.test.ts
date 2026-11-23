@@ -1,6 +1,15 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { graphMarks, topShares, guideEnd, plyAt, SNAP_PX, topArea, unreadSpans } from './graph';
+import {
+  graphMarks,
+  guideEnd,
+  plyAt,
+  plyX,
+  SNAP_PX,
+  topArea,
+  topShares,
+  unreadSpans,
+} from './graph';
 import { bookMove, judgedMove, listing, partial, waitingMove } from './review.fixture';
 
 describe('topShares', () => {
@@ -98,5 +107,18 @@ describe('plyAt', () => {
 
   it('names the start in an empty game', () => {
     expect(plyAt(10, 200, 0, [])).toBe(0);
+  });
+});
+
+describe('plyX', () => {
+  it('stands each position where plyAt reads it', () => {
+    expect(plyX(0, 200, 10)).toBe(0);
+    expect(plyX(3, 200, 10)).toBe(60);
+    expect(plyX(10, 200, 10)).toBe(200);
+    expect(plyAt(plyX(7, 200, 10), 200, 10, [])).toBe(7);
+  });
+
+  it('stands an empty game at the start', () => {
+    expect(plyX(0, 200, 0)).toBe(0);
   });
 });

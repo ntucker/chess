@@ -104,6 +104,12 @@ export function unreadSpans(shares: readonly (number | undefined)[]): [number, n
   return spans;
 }
 
+/** How many px along a graph `width` px wide position `ply` of a game of `total` moves stands: `plyAt` the other way. A worklet. */
+export function plyX(ply: number, width: number, total: number): number {
+  'worklet';
+  return total > 0 ? (ply / total) * width : 0;
+}
+
 /**
  * The ply a point `x` px along a graph `width` px wide names, in a game of
  * `total` moves: the nearest position, or a moment's (`snaps`) within
