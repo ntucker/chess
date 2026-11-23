@@ -93,6 +93,8 @@ export function reviewReducer(state: ReviewScreen, action: ReviewAction): Review
     case 'retry':
       return state.board === 'retry' ? state : { ...state, board: 'retry' };
     case 'try': {
+      // A try is played only on the board put back for one.
+      if (state.board !== 'retry') return state;
       const tried = state.tries.get(state.ply) ?? [];
       return {
         ...state,

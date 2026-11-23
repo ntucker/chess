@@ -90,6 +90,15 @@ describe('momentAt', () => {
     expect(moment).toMatchObject({ shownMove: 'g1f3', badge: 'best', arrow: 'd1h5' });
   });
 
+  it('draws no arrow for the game move after a try with the same piece', () => {
+    // 2.Qf3, the queen again: d1 stands empty on the board.
+    const moment = momentOf(
+      { tryAnalyses: [listing(['b8c6', 0.56])] },
+      { tries: tried('d1f3'), board: 'try' },
+    );
+    expect(moment).toMatchObject({ revealed: true, shownMove: 'd1f3', arrow: undefined });
+  });
+
   it('has nothing to retry where the board waits for a try already, and badges nothing', () => {
     expect(momentOf({}, { board: 'retry' })).toMatchObject({ canRetry: false, badge: undefined });
   });

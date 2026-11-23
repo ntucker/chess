@@ -92,7 +92,10 @@ export interface Moment {
   readonly shownMove?: Uci;
   /** The label badged on the board's last move: the game's move's, the try's or the answer's; none during a retry. */
   readonly badge?: MoveQuality;
-  /** The game's move, drawn as a danger arrow beside a revealed try or answer. */
+  /**
+   * The game's move, drawn as a danger arrow beside a revealed try or answer,
+   * while its piece still stands where it moved from: not after a try with the same piece.
+   */
   readonly arrow?: Uci;
 }
 
@@ -201,9 +204,13 @@ export function momentAt({
     board,
     shownMove: onBoard?.uci,
     badge: board === 'game' ? move.quality : onBoard?.quality,
-    arrow: onBoard && revealed ? plies[ply].move?.uci : undefined,
+    arrow: onBoard && revealed ? arrowBeside(plies[ply].move?.uci, onBoard.uci) : undefined,
   };
 }
+
+/** The game's move `game` as an arrow beside `played`, unless `played` moved its piece away. */
+const arrowBeside = (game: Uci | undefined, played: Uci) =>
+  game && game.slice(0, 2) !== played.slice(0, 2) ? game : undefined;
 
 /** A moment with nothing to retry. */
 const NOTHING = { canRetry: false, revealed: false, hidden: false, tries: [] } as const;

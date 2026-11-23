@@ -50,6 +50,8 @@ describe('reviewReducer', () => {
 
   it("keeps each moment's tries and answers shown, and ends what the board shows on leaving it", () => {
     const atMoment = reviewReducer(initialReview, { type: 'goto', ply: 3 });
+    // A try waits for Retry.
+    expect(reviewReducer(atMoment, { type: 'try', uci: 'g1f3' })).toBe(atMoment);
     const retrying = reviewReducer(atMoment, { type: 'retry' });
     expect(retrying.board).toBe('retry');
     expect(reviewReducer(retrying, { type: 'retry' })).toBe(retrying);
