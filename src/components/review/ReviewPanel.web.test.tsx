@@ -253,7 +253,7 @@ describe('ReviewPanel', () => {
       },
       <ReviewPanel eyebrow="Review" learner="white" review={revealed} lesson="caro-kann" />,
     );
-    // A free game's goes back to the free-game page, from the learner's side.
+    // Without a lesson, the link goes to the free-game page, keeping the learner's side.
     render(
       revealed,
       (host) =>
