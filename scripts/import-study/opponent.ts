@@ -93,6 +93,15 @@ function advance(step: Step, uci: Uci): Step {
   return { pos, line: [...step.line, san], ucis: [...step.ucis, uci], node };
 }
 
+/** Adds `from`'s moves to `into` where it lacks them, after its own at each position. */
+export function mergeTrees(into: Node<PgnNodeData>, from: Node<PgnNodeData>): void {
+  for (const child of from.children) {
+    const same = into.children.find(({ data }) => data.san === child.data.san);
+    if (same) mergeTrees(same, child);
+    else into.children.push(child);
+  }
+}
+
 /** The tree as one PGN game, its first move at each position the main line. */
 export const pgnOf = (tree: Node<PgnNodeData>, headers: Readonly<Record<string, string>>) =>
   makePgn({ headers: new Map(Object.entries({ ...headers, Result: '*' })), moves: tree });

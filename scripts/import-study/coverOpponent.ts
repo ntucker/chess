@@ -14,16 +14,19 @@
  * `SETTINGS.nearPawns` of the best, Fable picks the one a club player should
  * learn. The PGN holds the whole walk (./opponent.ts), the lesson's own book
  * moves too, so rerunning it on a lesson already built from it writes the same
- * file. It goes last in the learner's recipe in studies.ts (with
+ * file. A rerun keeps every line the file already had too, even one the
+ * opponent no longer reaches (their lesson or the explorer changed), since
+ * the lesson may teach it. It goes last in the learner's recipe in studies.ts (with
  * `committedPgn`), where the importer books its moves and the explain step
  * writes their ideas. Engine, explorer and Fable answers are appended to
  * answers/opponent-<source>-*.jsonl and never pruned, so a rerun asks only
  * about positions none has seen.
  */
 import { join } from 'node:path';
-import { writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
 import type { Chess } from 'chessops/chess';
+import { parsePgn } from 'chessops/pgn';
 import { makeSan } from 'chessops/san';
 import { parseUci } from 'chessops/util';
 
@@ -34,7 +37,7 @@ import { APP_SEARCH } from '@/stockfish/engine';
 
 import { chunks, claudeJson, MODELS, PARALLEL, pool } from './convert/claude';
 import { answersFile } from './jsonLines';
-import { type Step, pgnOf, walk } from './opponent';
+import { mergeTrees, pgnOf, type Step, walk } from './opponent';
 import { lichessExplorer } from './popularity';
 import { readLessonFile } from './register';
 import { nodeStockfish } from './stockfish';
@@ -71,8 +74,8 @@ interface OpponentSource {
  * credit live on its `committedPgn` entry in studies.ts.
  */
 const OPPONENT_SOURCES: Readonly<Record<string, OpponentSource>> = {
-  // Regenerating london-mirror.pgn changes some of its White moves: it was searched deeper
-  // (full Stockfish, depth 18) than this check searches.
+  // Most of london-mirror.pgn's White moves came from a deeper search (full Stockfish, depth 18);
+  // a rerun keeps them, since the lesson books them.
   'london-mirror': {
     mine: 'london',
     theirs: 'albin',
@@ -218,6 +221,7 @@ async function run(name: string, measure: boolean) {
   for (const { line } of open) console.log(`  ${line.join(' ')}`);
   if (!filler) return;
   const file = join(ROOT, `scripts/import-study/sources/${name}.pgn`);
+  if (existsSync(file)) mergeTrees(tree, parsePgn(readFileSync(file, 'utf8'))[0].moves);
   writeFileSync(
     file,
     pgnOf(tree, {
