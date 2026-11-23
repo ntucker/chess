@@ -94,6 +94,28 @@ describe('CandidateList', () => {
     expect(caption({ pointed: 'g1f3' })).toBe('Nf3: the Nf3 line');
   });
 
+  it("says Stockfish's verdict on a row in its badge and its label", () => {
+    const verdicts = new Map([
+      [
+        'g1f3',
+        {
+          quality: 'inaccuracy',
+          change: { label: '\u22120.4', description: '0.4 pawns worse for you' },
+        },
+      ] as const,
+    ]);
+    const read = (host: HTMLElement) => ({
+      badge: host.querySelector('[aria-label="Inaccuracy"]') !== null,
+      row: host.querySelector('[role="button"]')?.getAttribute('aria-label'),
+    });
+    expect(render({ verdicts }, read)).toEqual({
+      badge: true,
+      row: 'Nf3, Stockfish: Inaccuracy, 0.4 pawns worse for you',
+    });
+    // A row still being judged has neither.
+    expect(render({}, read)).toEqual({ badge: false, row: 'Nf3' });
+  });
+
   it('names where a dragged rare move leads while its row is hidden', () => {
     expect(caption({ pointed: 'h2h4' })).toBe('h4: the h4 line');
   });
@@ -175,10 +197,13 @@ describe('CandidateList', () => {
         button.getAttribute('aria-label'),
       ]),
     );
-    // A lone guide move shows no share, and the engine's row no change label.
+    // A lone guide move shows no share, and the engine's row no change label: its star's tip says what it is.
     expect(rows).toEqual([
       ['Nf3the Nf3 line', 'Nf3'],
-      ['Bb4+the Bb4+ line', 'Bb4+, top engine move'],
+      [
+        "Bb4+Top engine move: Stockfish's best reply here, not one the guide teaches.the Bb4+ line",
+        'Bb4+, top engine move',
+      ],
     ]);
   });
 

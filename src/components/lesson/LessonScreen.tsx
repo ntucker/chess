@@ -41,7 +41,7 @@ import { NarrowOnly, NarrowScroll, useNarrowPart } from '@/theme/Narrow';
 
 import { AutoPlay } from './AutoPlay';
 import { CandidateList, useListMinWidth } from './CandidateList';
-import { IdeaAside, IdeaCard } from './IdeaCard';
+import { IdeaAside, IdeaCard, noNotesText } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
 import { SideChoice } from './SideChoice';
@@ -319,6 +319,7 @@ function LessonScreen({
       candidates={guidance.candidates}
       // Inside the guide, Stockfish's rows are at most its best (`listedEngineMoves`).
       engineBest={guidance.top.at(0)}
+      verdicts={guidance.verdicts}
       rare={guidance.rare}
       rareShown={rareShown}
       onShowRare={showRare}
@@ -368,6 +369,7 @@ function LessonScreen({
       <IdeaCard
         lesson={lesson}
         title={preview ? `If ${preview.san}` : 'The idea'}
+        empty={preview && noNotesText(preview.san, guidance.verdicts?.get(preview.move.uci))}
         notes={guidance.notes}
         learner={learner}
         playback={playback}

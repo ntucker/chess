@@ -2,7 +2,13 @@
  * How good a move was, as chess.com labels moves: by how much of the mover's
  * expected score it gave away.
  */
-import { type Evaluation, type FinalAnalysis, forSide } from '@/evaluation/evaluation';
+import {
+  type Evaluation,
+  type FinalAnalysis,
+  forSide,
+  type MoveChange,
+  moveChange,
+} from '@/evaluation/evaluation';
 import { type Color, opposite } from '@/game/replay';
 
 /**
@@ -86,6 +92,35 @@ export function judgement(
       ? 'best'
       : (LEAST_LOSS.find(([threshold]) => loss >= threshold)?.[1] ?? 'good');
   return { quality, evaluation };
+}
+
+/** What Stockfish makes of a move: its label, and how it changes the position for the learner. */
+export interface EngineVerdict {
+  readonly quality: MoveQuality;
+  readonly change: MoveChange;
+}
+
+/**
+ * Stockfish's verdict on `uci`, played by `mover` in the position `before`
+ * analyses: its label (`judgement`) and the pawns it gains or loses for
+ * `learner` beside the best (`moveChange`), so the best reads "0.0". A move
+ * `before` doesn't list needs `after`, the final analysis of the position it
+ * leads to; undefined while that is missing.
+ */
+export function engineVerdict(
+  before: FinalAnalysis,
+  after: FinalAnalysis | undefined,
+  uci: string,
+  mover: Color,
+  learner: Color,
+): EngineVerdict | undefined {
+  const judged = judgement(before, after, uci, mover);
+  return (
+    judged && {
+      quality: judged.quality,
+      change: moveChange(before.lines[0].evaluation, judged.evaluation, learner),
+    }
+  );
 }
 
 /**

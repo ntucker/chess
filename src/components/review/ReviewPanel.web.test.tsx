@@ -14,8 +14,6 @@ import { themes } from '@/theme/theme';
 import { ReviewActionBar } from './ReviewActions';
 import { ReviewPanel, type ReviewView } from './ReviewPanel';
 
-// Its react-native-svg needs Expo's asset registry, which the web preset doesn't resolve.
-jest.mock('@/components/QualityBadge', () => ({ QualityBadge: () => null }));
 // Its font needs Expo's asset registry too.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 // The scoresheet drawer's Escape listens only on the focused screen, as this one is.

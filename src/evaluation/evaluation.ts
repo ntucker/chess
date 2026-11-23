@@ -149,6 +149,9 @@ export interface MoveChange {
   readonly description: string;
 }
 
+/** `MoveChange.description` of a move that changes nothing, at the label's precision. */
+export const NO_CHANGE = 'No change';
+
 /**
  * How a move from a position scored `before` to one scored `after` changes
  * it for `side` ("you"): the pawns it gains or loses, so a move keeping the
@@ -164,7 +167,7 @@ export function moveChange(before: Evaluation, after: Evaluation, side: Color): 
   }
   const gain = forSide(after.pawns - before.pawns, side);
   const label = pawnsLabel(gain);
-  if (Number(label) === 0) return { label, description: 'No change' };
+  if (Number(label) === 0) return { label, description: NO_CHANGE };
   const better = gain > 0;
   return {
     label: withSign(label, better),

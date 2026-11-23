@@ -6,7 +6,7 @@ import { type MoveQuality, qualityRule } from '@/analysis/quality';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { PointingArea } from '@/components/lesson/PointingArea';
-import { QualityBadge } from '@/components/QualityBadge';
+import { TippedBadge } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import type { Uci } from '@/lesson/lesson';
 import type { ComparedMove, Comparison } from '@/review/comparison';
@@ -46,7 +46,9 @@ export function MoveCard({ whose, comparison, quality, qualityDetail, pointed, o
           <Surface elevation="sunken" border="subtle" radius="md" style={styles.card}>
             <Row
               move={played}
-              badge={quality && tip && <LabelBadge quality={quality} tip={tip} />}
+              badge={
+                quality && tip && <TippedBadge quality={quality} size={BADGE_SIZE} tip={tip} />
+              }
               spoken={tip}
               pointed={pointed === played.uci}
               onPoint={onPoint}
@@ -116,14 +118,6 @@ function Row({ move, badge, spoken, pointed, onPoint }: RowProps) {
 /** "Blunder: gave away 20% or more of the winning chances. Here: 26%." */
 const qualityTip = (quality: MoveQuality, detail?: string) =>
   `${qualityLooks[quality].name}: ${qualityRule(quality)}.${detail ? ` ${detail}` : ''}`;
-
-function LabelBadge({ quality, tip }: { readonly quality: MoveQuality; readonly tip: string }) {
-  return (
-    <Tip tip={tip}>
-      <QualityBadge quality={quality} size={BADGE_SIZE} />
-    </Tip>
-  );
-}
 
 /** The label's badge beside the move, about the height of the notation's capitals. */
 const BADGE_SIZE = 16;

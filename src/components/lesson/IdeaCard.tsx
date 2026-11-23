@@ -3,9 +3,11 @@ import { a11yState, Badge, Button, Pressable, Stack, Text, useTheme } from '@rea
 import { type FocusEvent as ReactFocusEvent, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import type { EngineVerdict } from '@/analysis/quality';
 import type { Tone } from '@/board/drawing';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
+import { verdictText } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import { Transport } from '@/components/Transport';
 import type { Color } from '@/game/replay';
@@ -31,6 +33,8 @@ interface Props {
   readonly lesson: Lesson;
   readonly title: string;
   readonly notes: readonly ShownNote[];
+  /** What the card says when it has no notes, in place of a hint to point at a move. */
+  readonly empty?: string;
   /** The learner's side: a note's kind takes its color from the board's drawings. */
   readonly learner: Color;
   /** Plays a note's plan, line or trap through on the board. */
@@ -59,6 +63,7 @@ export function IdeaCard({
   lesson,
   title,
   notes,
+  empty = 'No notes here. Point at a move to see what it aims for.',
   learner,
   playback,
   pointable,
@@ -95,12 +100,20 @@ export function IdeaCard({
         </View>
       ) : (
         <Text role="bodySm" tone="secondary">
-          No notes here. Point at a move to see what it aims for.
+          {empty}
         </Text>
       )}
     </Stack>
   );
 }
+
+/**
+ * What the idea card says for a move pointed at that has no notes: that it
+ * has none, and Stockfish's verdict on it when there is one.
+ * Example: "No notes on g6. Stockfish: Inaccuracy, 0.6 pawns worse for you."
+ */
+export const noNotesText = (san: string, verdict?: EngineVerdict) =>
+  `No notes on ${san}.${verdict ? ` ${verdictText(verdict)}.` : ''}`;
 
 /** What stands in the idea card's place where it has nothing to show: a heading, as the card's, over `detail`. */
 export function IdeaAside({ title, detail }: { readonly title: string; readonly detail: string }) {

@@ -1,13 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import {
-  a11yState,
-  Pressable,
-  Stack,
-  Surface,
-  Text,
-  Tooltip,
-  useTheme,
-} from '@reactive/silk-native';
+import { a11yState, Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
@@ -16,7 +8,8 @@ import type { PositionKey, Uci } from '@/lesson/lesson';
 import type { Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
-import { QualityBadge } from '@/components/QualityBadge';
+import type { EngineVerdict } from '@/analysis/quality';
+import { QualityBadge, TippedBadge, verdictText } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import type { Mark } from '@/progress/progress';
 import { NARROW_CSS_LOADS, narrowLength, narrowStyles } from '@/theme/narrow';
@@ -42,6 +35,11 @@ interface Props {
    * the top engine move, for when the guide doesn't list it.
    */
   readonly engineBest?: Candidate;
+  /**
+   * Stockfish's verdict on each guide candidate, by move: a badge after its
+   * move, whose tooltip says the verdict and the change for the learner.
+   */
+  readonly verdicts?: ReadonlyMap<Uci, EngineVerdict>;
   /** Rare candidates, listed after the others while `rareShown`. */
   readonly rare: readonly Candidate[];
   readonly rareShown: boolean;
@@ -80,7 +78,8 @@ interface Props {
 /**
  * A list of moves at the position on the board, one row each, in one of two
  * kinds:
- * - The guide's moves, most played first, each with its share of the games.
+ * - The guide's moves, most played first, each with its share of the games
+ *   and Stockfish's verdict on it (`verdicts`) once it has one.
  *   Stockfish's best follows them when the guide lacks it (`engineBest`),
  *   with a star whose tooltip says it is the top engine move. Rare rows come
  *   after it, when the learner asks for them.
@@ -101,6 +100,7 @@ export function CandidateList({
   position,
   candidates,
   engineBest,
+  verdicts,
   rare,
   rareShown,
   onShowRare,
@@ -168,6 +168,7 @@ export function CandidateList({
                   candidate={candidate}
                   main={candidate === main}
                   topEngine={candidate === engineBest}
+                  verdict={verdicts?.get(candidate.move.uci)}
                   pointed={candidate.move.uci === pointed}
                   mark={marks.get(candidate.move.uci)}
                   // Every row keeps room for a mark once one has one, so their shares line up.
@@ -257,6 +258,8 @@ interface RowProps {
   readonly main: boolean;
   /** One of Stockfish's moves listed after the guide's: marked as its top move. */
   readonly topEngine: boolean;
+  /** Stockfish's verdict on a guide's move. */
+  readonly verdict?: EngineVerdict;
   readonly pointed: boolean;
   readonly mark?: Mark;
   /** Some row of the list has a mark, so this one keeps room for one. */
@@ -278,6 +281,7 @@ function Row({
   candidate,
   main,
   topEngine,
+  verdict,
   pointed,
   mark,
   markSlot,
@@ -307,6 +311,7 @@ function Row({
         move.book && 'book move',
         share !== undefined && `${percent(share)} of games`,
         topEngine ? TOP_ENGINE_MOVE : engine?.description,
+        verdict && verdictText(verdict),
         mark && SPOKEN_MARKS[mark],
       ]
         .filter(Boolean)
@@ -344,15 +349,11 @@ function Row({
           <Text role="body" style={styles.san} {...SHRINK_TO_LINE}>
             {san}
           </Text>
-          {move.book ? <QualityBadge quality="book" size={BOOK_BADGE_SIZE} /> : null}
-          {topEngine ? (
-            // The badge says what it means on a resting mouse or a tap; the row's label says it aloud.
-            <Tooltip.Root>
-              <Tooltip.Trigger>
-                <QualityBadge quality="best" size={BOOK_BADGE_SIZE} />
-              </Tooltip.Trigger>
-              <Tooltip.Content>{TOP_ENGINE_TIP}</Tooltip.Content>
-            </Tooltip.Root>
+          {move.book ? <QualityBadge quality="book" size={BADGE_SIZE} /> : null}
+          {/* Each badge says what it means on a resting mouse or a tap; the row's label says it aloud. */}
+          {topEngine ? <TippedBadge quality="best" size={BADGE_SIZE} tip={TOP_ENGINE_TIP} /> : null}
+          {verdict ? (
+            <TippedBadge quality={verdict.quality} size={BADGE_SIZE} tip={verdictText(verdict)} />
           ) : null}
           {move.risk ? (
             <Text role="caption" tone="secondary" style={styles.risk}>
@@ -395,8 +396,8 @@ function Row({
 const TOP_ENGINE_MOVE = 'top engine move';
 const TOP_ENGINE_TIP = "Top engine move: Stockfish's best reply here, not one the guide teaches.";
 
-/** The book badge, as in the scoresheet, about the height of the notation's capitals. */
-const BOOK_BADGE_SIZE = 16;
+/** A row's badges (the book's, Stockfish's), as in the scoresheet, about the height of the notation's capitals. */
+const BADGE_SIZE = 16;
 
 /** The info mark beside the heading, about as tall as the eyebrow's capitals. */
 const INFO_SIZE = 13;
@@ -449,7 +450,7 @@ const LONGEST_EVALUATION = '\u22129.9';
 
 /**
  * A move on one line, whose text shrinks when its row has too little room
- * for it. Beside its badge in a pane at its least width (`listMinWidth`),
+ * for it. Beside its badges in a pane at its least width (`listMinWidth`),
  * which holds `LONGEST_MOVE`, a five-character move needs 0.8 of its size
  * and a promotion with check (exd8=Q+) 0.57, which the floor still holds.
  * Off the web only: the web's `fontScale` is always 1, so its pane holds a
@@ -468,7 +469,8 @@ export function useListMinWidth() {
 
 /**
  * The least width of a narrow page's moves pane at a text scale: a row of
- * `LONGEST_MOVE`, its badge, its share and a mark holds whole, as does a row
+ * `LONGEST_MOVE`, its two badges (the book's and Stockfish's verdict), its
+ * share and a mark holds whole, as does a row
  * of Stockfish's with its evaluation. Larger text widens it, rather than
  * break the move or its share over two lines or draw the badge over the
  * share. The heading's longest word (CANDIDATES) is narrower at every scale,
@@ -481,10 +483,9 @@ export function listMinWidth(fontScale: number) {
   // The row's insets and dot, then the move and the mark, each after a gap.
   const ends =
     2 * ROW_INSET.narrow + DOT_SIZE + gap + mono(LONGEST_MOVE.length, SAN_SIZE) + gap + MARK_SIZE;
-  // After the move, a guide's row has its badge and share, one of Stockfish's its evaluation.
+  // After the move, a guide's row has its badges and share, one of Stockfish's its evaluation.
   const badgeAndShare =
-    TITLE_GAP +
-    BOOK_BADGE_SIZE +
+    2 * (TITLE_GAP + BADGE_SIZE) +
     gap +
     Math.max(SHARE_WIDTH, mono(LONGEST_SHARE.length, VALUE_SIZE));
   const evaluation = gap + Math.max(EVALUATION_WIDTH, mono(LONGEST_EVALUATION.length, VALUE_SIZE));

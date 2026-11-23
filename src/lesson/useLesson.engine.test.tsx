@@ -6,7 +6,7 @@ import { createRoot, type Root } from 'test-renderer';
 
 import type { Analysis } from '@/evaluation/evaluation';
 import { gameReducer, startGame } from '@/game/game';
-import { AnalysisManager, PositionAnalysis } from '@/resources/analysis';
+import { AnalysisManager, getAnalysis, PositionAnalysis } from '@/resources/analysis';
 import { LessonIndexContext } from '@/resources/lesson';
 
 import { ADVANCE, SAMPLE, uciLine } from './lesson.fixture';
@@ -176,6 +176,96 @@ describe("useLesson's Stockfish best move", () => {
     await act(async () => lesson().board.onPress?.('g1', 'g1'));
     expect(lesson().guidance.best).toBe('c2c3');
     expect(lesson().guidance.drawnCandidates).toEqual([]);
+  });
+});
+
+describe("useLesson's verdicts on the candidates", () => {
+  const line = uciLine(...ADVANCE);
+  const after = (uci: string) => [...line, uci].join(' ');
+  // White's e5, which the board shows, is labelled from the position before it.
+  const labelE5 = () => store(line.slice(0, -1), [['e4e5', 0.5]]);
+  // The searches of where a candidate leads, past the move labels' own.
+  const judging = () => mockSearched.filter((moves) => moves.startsWith(`${line.join(' ')} `));
+  const verdicts = () =>
+    Object.fromEntries(
+      [...(lesson().guidance.verdicts ?? [])].map(([uci, { quality }]) => [uci, quality]),
+    );
+
+  it('judges the candidates the search lists at once, and searches where the others lead', async () => {
+    await render(line);
+    await labelE5();
+    // Nothing more while the board's own search runs.
+    await store(line, [['c8f5', 0.45]], false);
+    expect(judging()).toEqual([]);
+    expect(verdicts()).toEqual({});
+    await store(line, [
+      ['c8f5', 0.45],
+      ['g8f6', 0.46],
+    ]);
+    expect(verdicts()).toEqual({ c8f5: 'best' });
+    expect(mockSearched.at(-1)).toBe(after('c6c5'));
+    // Black's c5 judged from the search of where it leads: White's best reply there.
+    await store([...line, 'c6c5'], [['d4c5', 0.62]]);
+    expect(verdicts()).toEqual({ c8f5: 'best', c6c5: 'mistake' });
+  });
+
+  it('waits for the label of the move the board shows', async () => {
+    await render(line);
+    await store(line, [['g8f6', 0.45]]);
+    expect(judging()).toEqual([]);
+    await labelE5();
+    expect(mockSearched.at(-1)).toBe(after('c8f5'));
+  });
+
+  it('judges the candidates when the search before the shown move gave up', async () => {
+    await render(line);
+    await store(line, [['g8f6', 0.45]]);
+    await act(async () => {
+      void controllers[0].setError(
+        getAnalysis,
+        'stockfish',
+        line.slice(0, -1),
+        new Error('gave up'),
+      );
+    });
+    expect(mockSearched.at(-1)).toBe(after('c8f5'));
+  });
+
+  it('searches the candidate pointed at first, unless one has started', async () => {
+    await render(line);
+    await labelE5();
+    await store(line, [['g8f6', 0.45]]);
+    expect(mockSearched.at(-1)).toBe(after('c8f5'));
+    await act(async () => lesson().pointRow('c6c5'));
+    expect(mockSearched.at(-1)).toBe(after('c6c5'));
+    // A search with a depth in runs on while the learner points elsewhere.
+    await store([...line, 'c6c5'], [['d4c5', 0.6]], false);
+    await act(async () => lesson().pointRow('c8f5'));
+    expect(mockSearched.at(-1)).toBe(after('c6c5'));
+  });
+
+  it('passes over a candidate whose search gave up, to judge the rest', async () => {
+    await render(line);
+    await labelE5();
+    await store(line, [['g8f6', 0.45]]);
+    expect(mockSearched.at(-1)).toBe(after('c8f5'));
+    await act(async () => {
+      void controllers[0].setError(
+        getAnalysis,
+        'stockfish',
+        [...line, 'c8f5'],
+        new Error('gave up'),
+      );
+    });
+    expect(mockSearched.at(-1)).toBe(after('c6c5'));
+  });
+
+  it('judges nothing in Practice', async () => {
+    await render(line);
+    await act(async () => lesson().chooseMode('practice'));
+    await store(line, [['g8f6', 0.45]]);
+    expect(lesson().guidance.verdicts).toBeUndefined();
+    expect(judging()).toEqual([]);
   });
 });
 

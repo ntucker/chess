@@ -22,10 +22,17 @@ jest.mock('@/analysis/useMoveQualities', () => ({
 }));
 const mockFetch = jest.fn(async (..._args: unknown[]) => {});
 jest.mock('@data-client/react', () => ({
+  StateContext: jest.requireActual<typeof import('react')>('react').createContext({}),
   useController: () => ({ fetch: mockFetch }),
+  useSubscription: () => {},
   useSuspense: () => ({}),
 }));
-jest.mock('@/resources/analysis', () => ({ useAnalysis: () => undefined }));
+jest.mock('@/resources/analysis', () => ({
+  analysisError: () => undefined,
+  storedAnalyses: (_ctrl: unknown, _engine: unknown, lines: readonly unknown[]) =>
+    lines.map(() => undefined),
+  useAnalysis: () => undefined,
+}));
 jest.mock('@/resources/opponent', () => ({
   gameOpponent: () => undefined,
   useWarmOpponent: () => {},
