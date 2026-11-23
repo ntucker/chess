@@ -7,15 +7,18 @@
  * (with a threat's side to move there), where its own line or trap plays
  * it, the position its move was played in, each ply onward along its line
  * or trap and the guide, then last the note's position with the other side
- * to move, for a move only that side can play now. Where one tier's
+ * to move, for a move only that side can play now. A SAN is read only as
+ * a move that takes a piece exactly when it has an x: a recap's "Qe3",
+ * where the queen already stands, isn't the other queen taking it, and
+ * "Bxd8" where d8 stands empty isn't a quiet bishop move. Where one tier's
  * positions read it as different moves, or none within reach has it, the
  * text stays plain: a guess shown as fact misleads. So does a move placed
  * as one move where the side not to move in the note's position could make
  * it as another: a note often names either side's moves without dots.
  */
 import type { Chess } from 'chessops/chess';
-import type { Color, SquareName } from 'chessops/types';
-import { opposite, parseSquare } from 'chessops/util';
+import type { Color, NormalMove, SquareName } from 'chessops/types';
+import { opposite, parseSquare, parseUci } from 'chessops/util';
 
 import {
   MOVE_NUMBER,
@@ -26,6 +29,7 @@ import {
   recordedMove,
   SAN,
   sanToUci,
+  takenRole,
   withTurn,
 } from '@/game/replay';
 
@@ -97,9 +101,15 @@ function named(
   // Three dots, numbered or not, are Black's move; a number's single dot, White's.
   const mover: Color | undefined =
     number === undefined ? undefined : number.includes('...') ? 'black' : 'white';
-  return placed(text, places, (pos) =>
-    mover && pos.turn !== mover ? undefined : sanToUci(pos, san),
-  );
+  const takes = san.includes('x');
+  return placed(text, places, (pos) => {
+    if (mover && pos.turn !== mover) return undefined;
+    const uci = sanToUci(pos, san);
+    if (!uci) return undefined;
+    // Only a move that takes a piece exactly when the SAN has an x.
+    const capture = takenRole(pos, parseUci(uci) as NormalMove) !== undefined;
+    return capture === takes ? uci : undefined;
+  });
 }
 
 /**
