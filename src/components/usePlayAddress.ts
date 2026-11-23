@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useReducer, useState } from 'react';
 
+import { useInBrowser } from '@/components/BrowserOnly';
 import { gameReducer, startGame } from '@/game/game';
 import { type Color, COLORS } from '@/game/replay';
 import { sameLine } from '@/lesson/openings';
@@ -20,7 +21,10 @@ type Params = { readonly moves?: string; readonly side?: string };
  */
 export function usePlayAddress() {
   const router = useRouter();
-  const address = useLocalSearchParams<Params>();
+  const params = useLocalSearchParams<Params>();
+  // The static export knows no address: the first render in the browser
+  // starts empty as it did, and the address's game follows at once.
+  const address: Params = useInBrowser() ? params : {};
   const named = addressMoves(address.moves);
   // The side of the game on the board, which the next game keeps.
   const [side, setSide] = useState<Color>(sideOf(address.side) ?? 'white');
