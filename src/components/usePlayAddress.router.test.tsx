@@ -1,9 +1,10 @@
 import { afterEach, beforeAll, describe, expect, it } from '@jest/globals';
-import { router, Stack, useIsFocused, usePathname } from 'expo-router';
+import { router, useIsFocused } from 'expo-router';
 import { act, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
 import { runNavigationInTransitions } from '@/components/navigation';
+import { RootStack, shown } from '@/components/testing';
 import { uciLine } from '@/lesson/lesson.fixture';
 import { playOnHref } from '@/review/address';
 
@@ -23,16 +24,6 @@ function Play() {
     if (focused) latest = answer;
   });
   return null;
-}
-
-let path: string | undefined;
-/** The app's root stack, noting the address it shows. */
-function RootStack() {
-  const shown = usePathname();
-  useLayoutEffect(() => {
-    path = shown;
-  });
-  return <Stack screenOptions={{ headerShown: false }} />;
 }
 
 let root: Root | undefined;
@@ -85,12 +76,15 @@ describe('usePlayAddress', () => {
     await play('e2e4', 'e7e5');
     await run(() => router.push('/review'));
     await run(() => router.push(playOnHref(CORRECTED, 'black')));
-    expect([path, moves(), latest.side]).toEqual(['/play', CORRECTED, 'black']);
+    expect([shown.path, moves(), latest.side]).toEqual(['/play', CORRECTED, 'black']);
+    expect(shown.params).toMatchObject({ moves: CORRECTED.join(' '), side: 'black' });
+    // A move past the line drops it, and the side, from the address.
     await play('g1f3');
+    expect([shown.params.moves, shown.params.side]).toEqual([undefined, undefined]);
     await run(() => router.back());
-    expect(path).toBe('/review');
+    expect(shown.path).toBe('/review');
     await run(() => router.back());
-    expect([path, moves(), latest.side]).toEqual(['/play', uciLine('e4', 'e5'), 'white']);
+    expect([shown.path, moves(), latest.side]).toEqual(['/play', uciLine('e4', 'e5'), 'white']);
     expect(router.canGoBack()).toBe(false);
   });
 
@@ -99,6 +93,6 @@ describe('usePlayAddress', () => {
     await run(() => router.push(playOnHref(CORRECTED, 'black')));
     expect([moves(), latest.side]).toEqual([CORRECTED, 'black']);
     await run(() => router.back());
-    expect(path).toBe('/review');
+    expect(shown.path).toBe('/review');
   });
 });

@@ -1,9 +1,10 @@
 import { afterEach, beforeAll, describe, expect, it, jest } from '@jest/globals';
-import { router, Slot, Stack, useIsFocused, usePathname } from 'expo-router';
+import { router, Slot, useIsFocused } from 'expo-router';
 import { act, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
 import { goBack, runNavigationInTransitions } from '@/components/navigation';
+import { RootStack, shown } from '@/components/testing';
 import { uciLine } from '@/lesson/lesson.fixture';
 import { lessonHref, variationHref } from '@/lesson/openings';
 import { FIXTURE_INDEX } from '@/lesson/openings.fixture';
@@ -43,16 +44,6 @@ function Page() {
     if (focused) latest = answer;
   });
   return <Slot />;
-}
-
-let path: string | undefined;
-/** The app's root stack, noting the address it shows. */
-function RootStack() {
-  const shown = usePathname();
-  useLayoutEffect(() => {
-    path = shown;
-  });
-  return <Stack screenOptions={{ headerShown: false }} />;
 }
 
 let root: Root | undefined;
@@ -156,14 +147,15 @@ describe('useOpeningsGame on the router', () => {
     await play('c7c6', 'd2d4', 'e7e5');
     await run(() => router.push('/review'));
     await run(() => router.push(playOnHref(corrected, 'black', 'caro-kann')));
-    expect([path, latest.id, moves()]).toEqual(['/lesson/caro-kann', 'caro-kann', corrected]);
+    expect([shown.path, latest.id, moves()]).toEqual(['/lesson/caro-kann', 'caro-kann', corrected]);
+    expect(shown.params.moves).toBe(corrected.join(' '));
     // A move past the line drops it from the address.
     await play('g1f3');
-    expect(moves()).toEqual([...corrected, 'g1f3']);
+    expect([moves(), shown.params.moves]).toEqual([[...corrected, 'g1f3'], undefined]);
     await run(() => router.back());
-    expect(path).toBe('/review');
+    expect(shown.path).toBe('/review');
     await run(() => router.back());
-    expect([path, moves()]).toEqual(['/lesson/caro-kann', uciLine('e4', 'c6', 'd4', 'e5')]);
+    expect([shown.path, moves()]).toEqual(['/lesson/caro-kann', uciLine('e4', 'c6', 'd4', 'e5')]);
     expect(router.canGoBack()).toBe(false);
   });
 
@@ -173,6 +165,6 @@ describe('useOpeningsGame on the router', () => {
     await run(() => router.push(playOnHref(corrected, 'black', 'caro-kann')));
     expect([latest.id, moves(), latest.side]).toEqual(['caro-kann', corrected, 'black']);
     await run(() => router.back());
-    expect(path).toBe('/review');
+    expect(shown.path).toBe('/review');
   });
 });
