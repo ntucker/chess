@@ -55,6 +55,10 @@
  *   drawn in the color of what goes wrong. Where the best move or a candidate
  *   is the same move, the refutation's arrow is drawn instead of theirs. Its
  *   being a rare reply doesn't hide it: it still punishes.
+ * - In Explore, each guide candidate carries Stockfish's verdict on it
+ *   (`Guidance.verdicts`), the book move too, so the learner can tell a
+ *   popular move from a good one. Practice keeps it hidden like every
+ *   engine hint, and where the moves pick the opening there is none.
  * - Rare candidates (`Candidate.rare`) are left off the list, which shows
  *   them only when asked, and off the board's arrows; Stockfish's best isn't
  *   tagged on one either. Only a preview of one, or dragging its piece,
@@ -63,6 +67,7 @@
  * guidance stays in lesson terms; lessonDrawings (./drawings.ts) turns it
  * into board shapes, and says which ideas draw nothing (`drawsOnBoard`).
  */
+import type { EngineVerdict } from '@/analysis/quality';
 import type { Settings } from '@/settings/settings';
 
 import { drawsOnBoard } from './drawings';
@@ -83,6 +88,8 @@ export interface EngineView {
   readonly top?: readonly Candidate[];
   /** Its search has finished, so `best` won't change. */
   readonly final?: boolean;
+  /** Its verdict on each guide candidate it has judged, by move (`engineVerdict`). */
+  readonly verdicts?: ReadonlyMap<Uci, EngineVerdict>;
 }
 
 export interface GuidanceInput {
@@ -163,6 +170,12 @@ export interface Guidance {
   readonly best?: Uci;
   /** Stockfish's rows the list shows (`listedEngineMoves`). */
   readonly top: readonly Candidate[];
+  /**
+   * Stockfish's verdict on each candidate, by move, where the list shows
+   * verdicts: in Explore, away from the moves that pick the opening. A
+   * candidate missing from it is still being judged. Undefined elsewhere.
+   */
+  readonly verdicts?: ReadonlyMap<Uci, EngineVerdict>;
   /** The reply that punishes the move just played, where guidance marks it. */
   readonly refutation?: Uci;
   /** A trap the line fell into, while its card shows (see `trapShown`). */
@@ -171,12 +184,46 @@ export interface Guidance {
   readonly lineEnded: boolean;
 }
 
+const NO_VERDICTS: ReadonlyMap<Uci, EngineVerdict> = new Map();
+
 /** Whether "Moves on the board" changes anything in `mode`: only in Explore. */
 export const movesSwitchApplies = (mode: LessonMode) => mode === 'explore';
 
 /** Whether Stockfish's top moves are listed: in Explore, past the guide's moves. */
 export const listsTopMoves = (view: LessonView, mode: LessonMode) =>
   mode === 'explore' && view.place !== 'inside';
+
+/** How far Stockfish has got with where a candidate leads, for `verdictSearch`. */
+export type Searched = 'none' | 'started' | 'final' | 'failed';
+
+/**
+ * The listed candidate to search where it leads next, for its verdict: one
+ * the board's analysis doesn't judge (`Guidance.verdicts`), once the
+ * board's own searches are done (`ready`: its analysis final, its move
+ * labelled or that label's search given up), since the engine runs the
+ * newest search asked for. One search at a time: a search already started
+ * runs on, so pointing at row after row
+ * doesn't keep restarting them; then the row pointed at, even one whose
+ * search gave up (pointing tries it again); then the first not searched.
+ */
+export function verdictSearch(
+  shown: Guidance,
+  rareShown: boolean,
+  ready: boolean | undefined,
+  searchOf: (uci: Uci) => Searched,
+): Uci | undefined {
+  const { verdicts } = shown;
+  if (!ready || !verdicts) return undefined;
+  const waiting = [...shown.candidates, ...(rareShown ? shown.rare : [])]
+    .map(({ move }) => move.uci)
+    .filter((uci) => !verdicts.has(uci) && searchOf(uci) !== 'final');
+  const pointed = shown.preview?.candidate.move.uci;
+  return (
+    waiting.find((uci) => searchOf(uci) === 'started') ??
+    waiting.find((uci) => uci === pointed) ??
+    waiting.find((uci) => searchOf(uci) === 'none')
+  );
+}
 
 /**
  * Whether Stockfish's best move `uci` is tagged as the best: past the guide's
@@ -295,6 +342,7 @@ export function guidance(input: GuidanceInput): Guidance {
     pointed: pointedNote,
     best: best && tagsBest(view, engine?.final, best) ? best : undefined,
     top,
+    verdicts: explore && !picking ? (engine?.verdicts ?? NO_VERDICTS) : undefined,
     refutation,
     trap,
     lineEnded: view.lineEnd !== undefined && newsShown(view, view.lineEnd),

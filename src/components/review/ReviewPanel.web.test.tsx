@@ -14,9 +14,7 @@ import { themes } from '@/theme/theme';
 import { ReviewActionBar } from './ReviewActions';
 import { ReviewPanel, type ReviewView } from './ReviewPanel';
 
-// Its react-native-svg needs Expo's asset registry, which the web preset doesn't resolve.
-jest.mock('@/components/QualityBadge', () => ({ QualityBadge: () => null }));
-// The graph draws with react-native-svg too, and its gestures need gesture handler's root.
+// The graph draws with react-native-svg, and its gestures need gesture handler's root.
 jest.mock('./ReviewGraph', () => ({ ReviewGraph: () => null }));
 // Its font needs Expo's asset registry too.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);

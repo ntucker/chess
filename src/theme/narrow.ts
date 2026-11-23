@@ -88,6 +88,7 @@ export const NARROW_PARTS = [
   'scoresheet-drawer',
   'panes',
   'moves-pane',
+  'lone-pane',
   'idea-pane',
   'narrow-idea-pane',
   'move-list',
@@ -298,9 +299,13 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
       height: PANES_FLOOR,
     },
   },
+  // A width, not a share of the growth: Yoga grows a pane held at its least width past it.
   'moves-pane': {
+    narrow: { flexGrow: 0, flexShrink: 1, flexBasis: 'auto', width: '40%', overflow: 'hidden' },
+  },
+  'lone-pane': {
     narrow: {
-      flexGrow: 2,
+      flexGrow: 1,
       flexShrink: 1,
       flexBasis: 'auto',
       width: 0,

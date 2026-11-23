@@ -19,7 +19,9 @@ const { addImports, appendContentsInsideDeclarationBlock } = AndroidConfig.CodeM
  *
  * React Native lays its text out again at the new size only when it is told
  * of the change while the app is in front, so the activity also does it when
- * it comes back after a change made in the system settings.
+ * it comes back after a change made in the system settings. React Native tells
+ * JavaScript of the new size only on resume, so the activity also does that for
+ * a change made while the app is in front.
  */
 const withLiveFontScale: ConfigPlugin = (config) =>
   withRelayout(
@@ -60,9 +62,20 @@ const RELAYOUT = `
     laidOutFontScale = fontScale
     if (first) return
     // React Native's own handler may not have run yet (Expo hands the delegate
-    // its calls later), and the text is measured from these metrics.
+    // its calls later), and both the text and JavaScript's event read these metrics.
     DisplayMetricsHolder.initDisplayMetrics(this)
+    tellJavaScriptOfFontScale()
     relayOutReactViews(window.decorView)
+  }
+
+  // React Native tells JavaScript of a new font scale (useWindowDimensions)
+  // only on resume, from its DeviceInfo module, whose class isn't public: a
+  // change made while the app is in front needs telling too. app.config.test.ts
+  // fails when a React Native upgrade breaks this.
+  private fun tellJavaScriptOfFontScale() {
+    val deviceInfo = (application as? ReactApplication)?.reactHost?.currentReactContext
+      ?.getNativeModule("DeviceInfo")
+    (deviceInfo as? LifecycleEventListener)?.onHostResume()
   }
 
   // Measuring a root view one pixel taller hands React Native new size
@@ -97,7 +110,9 @@ const withRelayout: ConfigPlugin = (config) =>
           'android.view.View',
           'android.view.ViewGroup',
           'androidx.lifecycle.Lifecycle',
+          'com.facebook.react.ReactApplication',
           'com.facebook.react.ReactRootView',
+          'com.facebook.react.bridge.LifecycleEventListener',
           'com.facebook.react.uimanager.DisplayMetricsHolder',
         ],
         false,

@@ -1,27 +1,20 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import {
-  a11yState,
-  Pressable,
-  Stack,
-  Surface,
-  Text,
-  Tooltip,
-  useTheme,
-} from '@reactive/silk-native';
+import { a11yState, Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { candidateTone } from '@/lesson/drawings';
 import type { PositionKey, Uci } from '@/lesson/lesson';
 import type { Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
-import { QualityBadge } from '@/components/QualityBadge';
+import type { EngineVerdict } from '@/analysis/quality';
+import { QualityBadge, TippedBadge, verdictText } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import type { Mark } from '@/progress/progress';
-import { narrowLength, narrowStyles } from '@/theme/narrow';
+import { NARROW_CSS_LOADS, narrowLength, narrowStyles } from '@/theme/narrow';
 import { NarrowScroll, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
-import { fonts } from '@/theme/theme';
+import { fonts, MONO_ADVANCE, typography } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
 import { MotionList, MotionView } from '@/motion/MotionList';
 
@@ -42,6 +35,11 @@ interface Props {
    * the top engine move, for when the guide doesn't list it.
    */
   readonly engineBest?: Candidate;
+  /**
+   * Stockfish's verdict on each guide candidate, by move: a badge after its
+   * move, whose tooltip says the verdict and the change for the learner.
+   */
+  readonly verdicts?: ReadonlyMap<Uci, EngineVerdict>;
   /** Rare candidates, listed after the others while `rareShown`. */
   readonly rare: readonly Candidate[];
   readonly rareShown: boolean;
@@ -80,7 +78,8 @@ interface Props {
 /**
  * A list of moves at the position on the board, one row each, in one of two
  * kinds:
- * - The guide's moves, most played first, each with its share of the games.
+ * - The guide's moves, most played first, each with its share of the games
+ *   and Stockfish's verdict on it (`verdicts`) once it has one.
  *   Stockfish's best follows them when the guide lacks it (`engineBest`),
  *   with a star whose tooltip says it is the top engine move. Rare rows come
  *   after it, when the learner asks for them.
@@ -101,6 +100,7 @@ export function CandidateList({
   position,
   candidates,
   engineBest,
+  verdicts,
   rare,
   rareShown,
   onShowRare,
@@ -168,6 +168,7 @@ export function CandidateList({
                   candidate={candidate}
                   main={candidate === main}
                   topEngine={candidate === engineBest}
+                  verdict={verdicts?.get(candidate.move.uci)}
                   pointed={candidate.move.uci === pointed}
                   mark={marks.get(candidate.move.uci)}
                   // Every row keeps room for a mark once one has one, so their shares line up.
@@ -257,6 +258,8 @@ interface RowProps {
   readonly main: boolean;
   /** One of Stockfish's moves listed after the guide's: marked as its top move. */
   readonly topEngine: boolean;
+  /** Stockfish's verdict on a guide's move. */
+  readonly verdict?: EngineVerdict;
   readonly pointed: boolean;
   readonly mark?: Mark;
   /** Some row of the list has a mark, so this one keeps room for one. */
@@ -278,6 +281,7 @@ function Row({
   candidate,
   main,
   topEngine,
+  verdict,
   pointed,
   mark,
   markSlot,
@@ -307,6 +311,7 @@ function Row({
         move.book && 'book move',
         share !== undefined && `${percent(share)} of games`,
         topEngine ? TOP_ENGINE_MOVE : engine?.description,
+        verdict && verdictText(verdict),
         mark && SPOKEN_MARKS[mark],
       ]
         .filter(Boolean)
@@ -341,18 +346,14 @@ function Row({
       />
       <View style={styles.move}>
         <View style={styles.title}>
-          <Text role="body" style={styles.san}>
+          <Text role="body" style={styles.san} {...SHRINK_TO_LINE}>
             {san}
           </Text>
-          {move.book ? <QualityBadge quality="book" size={BOOK_BADGE_SIZE} /> : null}
-          {topEngine ? (
-            // The badge says what it means on a resting mouse or a tap; the row's label says it aloud.
-            <Tooltip.Root>
-              <Tooltip.Trigger>
-                <QualityBadge quality="best" size={BOOK_BADGE_SIZE} />
-              </Tooltip.Trigger>
-              <Tooltip.Content>{TOP_ENGINE_TIP}</Tooltip.Content>
-            </Tooltip.Root>
+          {move.book ? <QualityBadge quality="book" size={BADGE_SIZE} /> : null}
+          {/* Each badge says what it means on a resting mouse or a tap; the row's label says it aloud. */}
+          {topEngine ? <TippedBadge quality="best" size={BADGE_SIZE} tip={TOP_ENGINE_TIP} /> : null}
+          {verdict ? (
+            <TippedBadge quality={verdict.quality} size={BADGE_SIZE} tip={verdictText(verdict)} />
           ) : null}
           {move.risk ? (
             <Text role="caption" tone="secondary" style={styles.risk}>
@@ -395,8 +396,8 @@ function Row({
 const TOP_ENGINE_MOVE = 'top engine move';
 const TOP_ENGINE_TIP = "Top engine move: Stockfish's best reply here, not one the guide teaches.";
 
-/** The book badge, as in the scoresheet, about the height of the notation's capitals. */
-const BOOK_BADGE_SIZE = 16;
+/** A row's badges (the book's, Stockfish's), as in the scoresheet, about the height of the notation's capitals. */
+const BADGE_SIZE = 16;
 
 /** The info mark beside the heading, about as tall as the eyebrow's capitals. */
 const INFO_SIZE = 13;
@@ -433,11 +434,71 @@ const STATIC = StyleSheet.create({
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;
 
+/** The notation's size in a row. */
+const SAN_SIZE = 17;
+/** A share's and an evaluation's size, Silk's caption. */
+const VALUE_SIZE = typography.caption.size;
+/** A share's least width, which holds 100% in caption text: larger text widens it. */
+const SHARE_WIDTH = 32;
+/** An evaluation's least width, which holds its longest label (as −9.9 or −M12) in caption text. */
+const EVALUATION_WIDTH = 44;
+/** The longest move a narrow pane's row holds at its own size: a capture. */
+const LONGEST_MOVE = 'exd5';
+/** The longest share and evaluation, which larger text can widen past their least widths. */
+const LONGEST_SHARE = '100%';
+const LONGEST_EVALUATION = '\u22129.9';
+
+/**
+ * A move on one line, whose text shrinks when its row has too little room
+ * for it. Beside its badges in a pane at its least width (`listMinWidth`),
+ * which holds `LONGEST_MOVE`, a five-character move needs 0.8 of its size
+ * and a promotion with check (exd8=Q+) 0.57, which the floor still holds.
+ * Off the web only: the web's `fontScale` is always 1, so its pane holds a
+ * four-character move, and a longer one overflows its place.
+ */
+const SHRINK_TO_LINE = NARROW_CSS_LOADS
+  ? {}
+  : ({ numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.55 } as const);
+
+/** `listMinWidth` at the system's text size, as a style. */
+export function useListMinWidth() {
+  // React Native scales text by `fontScale`, the one value read from the window (the web's is always 1).
+  const { fontScale } = useWindowDimensions();
+  return { minWidth: listMinWidth(fontScale) };
+}
+
+/**
+ * The least width of a narrow page's moves pane at a text scale: a row of
+ * `LONGEST_MOVE`, its two badges (the book's and Stockfish's verdict), its
+ * share and a mark holds whole, as does a row
+ * of Stockfish's with its evaluation. Larger text widens it, rather than
+ * break the move or its share over two lines or draw the badge over the
+ * share. The heading's longest word (CANDIDATES) is narrower at every scale,
+ * so it never breaks mid-word (CandidateList.web.test.tsx checks). A wide
+ * page's panel is wider than this at any text size.
+ */
+export function listMinWidth(fontScale: number) {
+  const mono = (chars: number, size: number) => chars * MONO_ADVANCE * size * fontScale;
+  const gap = ROW_GAP.narrow;
+  // The row's insets and dot, then the move and the mark, each after a gap.
+  const ends =
+    2 * ROW_INSET.narrow + DOT_SIZE + gap + mono(LONGEST_MOVE.length, SAN_SIZE) + gap + MARK_SIZE;
+  // After the move, a guide's row has its badges and share, one of Stockfish's its evaluation.
+  const badgeAndShare =
+    2 * (TITLE_GAP + BADGE_SIZE) +
+    gap +
+    Math.max(SHARE_WIDTH, mono(LONGEST_SHARE.length, VALUE_SIZE));
+  const evaluation = gap + Math.max(EVALUATION_WIDTH, mono(LONGEST_EVALUATION.length, VALUE_SIZE));
+  return Math.ceil(ends + Math.max(badgeAndShare, evaluation));
+}
+
 /** A row's spacing, more compact in a narrow pane. */
 const ROW_INSET = narrowLength('candidate-inset', 14);
 const ROW_GAP = narrowLength('candidate-gap', 12);
 const ROW_PADDING = narrowLength('candidate-padding', 8);
 const DOT_SIZE = 10;
+/** Space between a row's move and its badge. */
+const TITLE_GAP = 8;
 
 const STYLES = narrowStyles((px) => ({
   head: {
@@ -462,13 +523,14 @@ const STYLES = narrowStyles((px) => ({
   // Text lines up with the rows' moves, past the dot and its gap.
   toggle: { paddingLeft: px(ROW_INSET.plus(DOT_SIZE).plus(ROW_GAP)) },
   move: { flex: 1, gap: 1 },
-  title: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  san: { fontFamily: fonts.mono, fontSize: 17 },
+  title: { flexDirection: 'row', alignItems: 'center', gap: TITLE_GAP },
+  // Off the web, too long a move shrinks to its line (`SHRINK_TO_LINE`) rather than push its badge over the share.
+  san: { fontFamily: fonts.mono, fontSize: SAN_SIZE, flexShrink: 1 },
   risk: { textTransform: 'capitalize' },
   share: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   track: { width: 52, height: 4, borderRadius: 2, overflow: 'hidden' },
   fillBar: { height: '100%', borderRadius: 2 },
-  percent: { width: 32, textAlign: 'right', fontFamily: fonts.mono },
-  evaluation: { minWidth: 44, textAlign: 'right', fontFamily: fonts.mono },
+  percent: { minWidth: SHARE_WIDTH, textAlign: 'right', fontFamily: fonts.mono },
+  evaluation: { minWidth: EVALUATION_WIDTH, textAlign: 'right', fontFamily: fonts.mono },
   mark: { width: MARK_SIZE, height: MARK_SIZE },
 }));

@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import type { AnalysisLine, Evaluation, FinalAnalysis } from '@/evaluation/evaluation';
 
-import { judgeMove, judgement, labelMove, qualityRule, refutation } from './quality';
+import { engineVerdict, judgeMove, judgement, labelMove, qualityRule, refutation } from './quality';
 
 /** An evaluation where White's expected score is `score`. */
 const at = (score: number): Evaluation => ({ score, pawns: 0 });
@@ -159,5 +159,40 @@ describe('qualityRule', () => {
     expect(qualityRule('inaccuracy')).toBe('gave away 5% to 10% of the winning chances');
     expect(qualityRule('mistake')).toBe('gave away 10% to 20% of the winning chances');
     expect(qualityRule('blunder')).toBe('gave away 20% or more of the winning chances');
+  });
+});
+
+describe('engineVerdict', () => {
+  /** A final analysis: its moves, each with White's expected score and pawns after it. */
+  const analysis = (...lines: [string | undefined, number, number][]): FinalAnalysis => ({
+    lines: lines.map(([uci, score, pawns]) => ({ uci, evaluation: { score, pawns } })),
+    depth: 19,
+    final: true,
+  });
+  // Black to move, at +0.3 for White.
+  const before = analysis(['g8f6', 0.53, 0.3], ['d7d5', 0.6, 0.9], ['c7c5', 0.62, 1.1]);
+
+  it('judges a listed move by its own line, the change for the learner beside it', () => {
+    expect(engineVerdict(before, undefined, 'g8f6', 'black', 'black')).toEqual({
+      quality: 'best',
+      change: { label: '0.0', description: 'No change' },
+    });
+    expect(engineVerdict(before, undefined, 'd7d5', 'black', 'black')).toEqual({
+      quality: 'inaccuracy',
+      change: { label: '\u22120.6', description: '0.6 pawns worse for you' },
+    });
+    // The opponent's slip, as the learner (White) sees it: better for them.
+    expect(engineVerdict(before, undefined, 'c7c5', 'black', 'white')).toMatchObject({
+      quality: 'inaccuracy',
+      change: { label: '+0.8' },
+    });
+  });
+
+  it('waits for the position after a move the analysis skips, and judges it by that', () => {
+    expect(engineVerdict(before, undefined, 'a7a6', 'black', 'black')).toBeUndefined();
+    expect(engineVerdict(before, analysis(['e2e4', 0.68, 2.4]), 'a7a6', 'black', 'black')).toEqual({
+      quality: 'mistake',
+      change: { label: '\u22122.1', description: '2.1 pawns worse for you' },
+    });
   });
 });
