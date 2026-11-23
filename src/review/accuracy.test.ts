@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { gameAccuracy, moveAccuracy } from './accuracy';
+import { gameAccuracy, moveAccuracy, verdictLine } from './accuracy';
 import {
   bookMove,
   failedMove,
@@ -114,5 +114,18 @@ describe('gameAccuracy', () => {
     expect(gameAccuracy(fromBook, searchedStart, book, 'white', none)).toBe(
       gameAccuracy(fromBook, scores, book, 'white', none),
     );
+  });
+});
+
+describe('verdictLine', () => {
+  it('picks the theater line by the accuracy as shown, rounded', () => {
+    expect(verdictLine(100)).toBe('Standing ovation.');
+    expect(verdictLine(89.6)).toBe('Standing ovation.');
+    expect(verdictLine(89.4)).toBe('Warm applause.');
+    expect(verdictLine(75)).toBe('Warm applause.');
+    expect(verdictLine(74)).toBe('Mixed notices.');
+    expect(verdictLine(60)).toBe('Mixed notices.');
+    expect(verdictLine(59)).toBe('A rough night.');
+    expect(verdictLine(0)).toBe('A rough night.');
   });
 });

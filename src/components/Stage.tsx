@@ -100,6 +100,8 @@ interface BoardColumnProps {
     ComponentProps<typeof PlayerBar>,
     'name' | 'detail' | 'brief' | 'detailControl' | 'children'
   >;
+  /** The player's name bar: anything to show before the move stepper at its end. */
+  readonly player?: Pick<ComponentProps<typeof PlayerBar>, 'children'>;
   /** The board, with the player's side (`orientation`) at the bottom. */
   readonly board: Omit<BoardProps, 'dom' | 'ending' | 'onEndingPointer'>;
   /** Swaps the sides: given, either name bar's disc is a button that does it. */
@@ -127,6 +129,7 @@ interface BoardColumnProps {
 export function BoardColumn({
   game,
   rival,
+  player,
   board,
   onSwap,
   stepperMiddle,
@@ -215,6 +218,7 @@ export function BoardColumn({
           material={game.material[side]}
           swap={swap}
         >
+          {player?.children}
           <Transport ply={ply} total={moves.length} onGoto={goto} middle={stepperMiddle} />
         </PlayerBar>,
         narrowBars?.controls,

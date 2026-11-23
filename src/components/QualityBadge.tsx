@@ -4,6 +4,7 @@ import { SvgXml } from 'react-native-svg';
 import type { EngineVerdict, ReviewQuality } from '@/analysis/quality';
 import { Tip } from '@/components/Tip';
 import { NO_CHANGE } from '@/evaluation/evaluation';
+import { reviewRule } from '@/review/refine';
 import { BADGE_BOX, badgeMarkup, qualityLooks } from '@/theme/moveQuality';
 
 interface Props {
@@ -43,3 +44,7 @@ export function verdictText({ quality, change: { description } }: EngineVerdict)
   if (description === NO_CHANGE) return verdict;
   return `${verdict}, ${description.charAt(0).toLowerCase()}${description.slice(1)}`;
 }
+
+/** A label's rule in words, for its badge's tooltip in the review: "Blunder: gave away 20% or more of the winning chances. Here: 26%." */
+export const qualityTip = (quality: ReviewQuality, detail?: string) =>
+  `${qualityLooks[quality].name}: ${reviewRule(quality)}.${detail ? ` ${detail}` : ''}`;

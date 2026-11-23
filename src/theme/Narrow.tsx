@@ -83,17 +83,25 @@ function partProps(
 
 /**
  * Children only a narrow page shows. They stay mounted on a wide page,
- * hidden, so a window crossing the width keeps their state.
+ * hidden, so a window crossing the width keeps their state. `aria-hidden`
+ * keeps screen readers out of them, for children that repeat what they hear
+ * elsewhere.
  */
 export function NarrowOnly({
   children,
   style,
+  'aria-hidden': hidden,
 }: {
   readonly children: ReactNode;
   readonly style?: StyleProp<ViewStyle>;
+  readonly 'aria-hidden'?: boolean;
 }) {
   const part = useNarrowPart();
-  return <View {...part('narrow-only', style)}>{children}</View>;
+  return (
+    <View aria-hidden={hidden} {...part('narrow-only', style)}>
+      {children}
+    </View>
+  );
 }
 
 /**

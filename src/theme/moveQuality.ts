@@ -25,6 +25,8 @@ interface QualityGlyph {
 interface QualityLook {
   /** What the label is called, for screen readers. */
   readonly name: string;
+  /** Its name in a word, where a list of labels names each: the review's tally. */
+  readonly short: string;
   readonly color: string;
   readonly glyph: QualityGlyph;
 }
@@ -45,12 +47,19 @@ const exclamation = (x: number) => `M${x} 6.6 v6.4 M${x} 17.4 v0.01`;
 export const qualityLooks: Readonly<Record<ReviewQuality, QualityLook>> = {
   brilliant: {
     name: 'Brilliant move',
+    short: 'Brilliant',
     color: oklch(0.628, 0.105, 194.8),
     glyph: { d: `${exclamation(8.8)} ${exclamation(15.2)}` },
   },
-  great: { name: 'Great move', color: oklch(0.587, 0.125, 252.2), glyph: { d: exclamation(12) } },
+  great: {
+    name: 'Great move',
+    short: 'Great',
+    color: oklch(0.587, 0.125, 252.2),
+    glyph: { d: exclamation(12) },
+  },
   book: {
     name: 'Book move',
+    short: 'Book',
     color: oklch(0.59, 0.07, 66),
     glyph: {
       d:
@@ -60,6 +69,7 @@ export const qualityLooks: Readonly<Record<ReviewQuality, QualityLook>> = {
   },
   best: {
     name: 'Best move',
+    short: 'Best',
     color: oklch(0.587, 0.1299, 158.8),
     glyph: {
       d: 'M12 5.6L13.7 10.25L18.66 10.44L14.76 13.5L16.11 18.26L12 15.5L7.89 18.26L9.24 13.5L5.34 10.44L10.3 10.25Z',
@@ -68,22 +78,31 @@ export const qualityLooks: Readonly<Record<ReviewQuality, QualityLook>> = {
   },
   good: {
     name: 'Good move',
+    short: 'Good',
     color: oklch(0.59, 0.038, 149),
     glyph: { d: 'M7.2 12.4l3.3 3.4 6.3-7.2' },
   },
   inaccuracy: {
     name: 'Inaccuracy',
+    short: 'Inaccuracy',
     color: oklch(0.649, 0.1276, 79),
     glyph: { d: `${question(9.6, 0.85)} ${exclamation(16.4)}` },
   },
-  mistake: { name: 'Mistake', color: oklch(0.606, 0.151, 47.7), glyph: { d: question(12) } },
+  mistake: {
+    name: 'Mistake',
+    short: 'Mistake',
+    color: oklch(0.606, 0.151, 47.7),
+    glyph: { d: question(12) },
+  },
   blunder: {
     name: 'Blunder',
+    short: 'Blunder',
     color: oklch(0.553, 0.189, 22),
     glyph: { d: `${question(8.4, 0.85)} ${question(15.6, 0.85)}` },
   },
   miss: {
     name: 'Missed chance',
+    short: 'Miss',
     color: oklch(0.56, 0.152, 354.3),
     glyph: { d: 'M8 8l8 8M16 8l-8 8' },
   },

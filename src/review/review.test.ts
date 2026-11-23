@@ -5,11 +5,13 @@ import { ADVANCE, SAMPLE, uciLine } from '@/lesson/lesson.fixture';
 import { bookMoves } from '@/lesson/select';
 
 import { judgeMove, type ReviewQuality } from '@/analysis/quality';
+import { qualityLooks } from '@/theme/moveQuality';
 
 import { movesGivenUp } from './refine';
 import {
   isFine,
   judgedPosition,
+  LABELS_BEST_FIRST,
   leftGuide,
   moments,
   nextMoment,
@@ -202,6 +204,12 @@ describe('isFine', () => {
     const notFine: (ReviewQuality | undefined)[] = ['inaccuracy', 'miss', 'book', undefined];
     expect(fine.every(isFine)).toBe(true);
     expect(notFine.some(isFine)).toBe(false);
+  });
+});
+
+describe('LABELS_BEST_FIRST', () => {
+  it('lists every label once', () => {
+    expect([...LABELS_BEST_FIRST].sort()).toEqual(Object.keys(qualityLooks).sort());
   });
 });
 
