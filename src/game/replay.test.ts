@@ -14,6 +14,7 @@ import {
   legalMoveCount,
   legalMoveCountAt,
   lineMove,
+  lineSans,
   NAMED_MOVE,
   numberedLine,
   numberedMove,
@@ -95,6 +96,14 @@ describe('replay', () => {
     expect(plies.map((p) => p.repetitions)).toEqual([1, 1, 1, 1, 2, 2, 2, 2, 3]);
     expect(analyze(plies[7]).result).toBeUndefined();
     expect(analyze(plies[8]).result).toEqual({ reason: 'threefold repetition' });
+  });
+
+  it('plays from a start position, leaving it as it was, as lineSans does', () => {
+    const start = parsePosition('4k3/8/8/8/8/8/8/R3K3 w - - 0 1')!;
+    const key = positionKey(start);
+    expect(replay(['a1a8'], start)[1].move?.san).toBe('Ra8+');
+    expect(lineSans(['a1a8'], start)).toEqual(['Ra8+']);
+    expect(positionKey(start)).toBe(key);
   });
 });
 
