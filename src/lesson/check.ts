@@ -26,6 +26,7 @@ import {
   parsePositionKey,
   positionKey,
   recordedMove,
+  takenRole,
   WRITTEN_MOVE,
   withTurn,
 } from '@/game/replay';
@@ -368,8 +369,7 @@ function emptyThreat(threat: Threat, pos: Chess): string | undefined {
   const threatening = withTurn(pos, threat.side);
   const move = parseUci(threat.move) as NormalMove;
   const mover = threatening.board.get(move.from)!;
-  const enPassant = mover.role === 'pawn' && move.to === threatening.epSquare;
-  const taken = enPassant ? 'pawn' : threatening.board.get(move.to)?.role;
+  const taken = takenRole(threatening, move);
   const after = threatening.clone();
   after.play(move);
   if (after.isCheckmate()) return undefined;

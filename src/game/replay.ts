@@ -3,7 +3,7 @@ import { chessgroundDests, chessgroundMove } from 'chessops/compat';
 import { makeFen, parseFen } from 'chessops/fen';
 import { makeSanAndPlay, parseSan } from 'chessops/san';
 import { SquareSet } from 'chessops/squareSet';
-import type { Color, Piece, SquareName } from 'chessops/types';
+import type { Color, NormalMove, Piece, Role, SquareName } from 'chessops/types';
 import { kingCastlesTo, makeUci, opposite, parseSquare, parseUci } from 'chessops/util';
 
 export { COLORS, type Color } from 'chessops/types';
@@ -263,6 +263,13 @@ export function recordedMove(pos: Chess, uci: string): string | undefined {
   const side = castlingSide(pos, move);
   if (!side || !('from' in move)) return uci;
   return makeUci({ from: move.from, to: kingCastlesTo(pos.turn, side) });
+}
+
+/** The piece `move`, legal in `pos`, takes: on its square, or a pawn en passant. */
+export function takenRole(pos: Chess, { from, to }: NormalMove): Role | undefined {
+  if (pos.board.get(from)?.role === 'pawn' && to === pos.epSquare) return 'pawn';
+  const piece = pos.board.get(to);
+  return piece?.color === opposite(pos.turn) ? piece.role : undefined;
 }
 
 /** The piece on `square` (a name like `e4`) in `fen`, if any. */

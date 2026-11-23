@@ -164,6 +164,33 @@ describe('noteParts', () => {
         'Nc3 controls ',
       );
     });
+
+    it('when the only reading takes a piece the SAN doesn’t say it takes', () => {
+      // A recap: White's queen already stands on e3, and only Black's could go there, taking it.
+      const after = 'r1b1k2r/p3b1pp/2p2p2/1pn1p3/3qP2N/1B2Q3/PPP2PPP/R1B2RK1 w kq -' as PositionKey;
+      expect(noteParts(bare, { note: note('Qe3 is the cautious choice.'), after })[0]).toBe(
+        'Qe3 is the cautious choice.',
+      );
+    });
+  });
+
+  it('keeps a capture plain where the square it takes on stands empty', () => {
+    // White's knight can go to e5, but takes nothing there.
+    const after = keyAfter('e4', 'd5', 'Nf3');
+    expect(noteParts(bare, { note: note('Nxe5 comes later.'), after })[0]).toBe(
+      'Nxe5 comes later.',
+    );
+  });
+
+  it('reads past a position where the SAN would take a piece it doesn’t say it takes', () => {
+    // On its own move's note, "Qb6" isn't White's queen taking on b6 after it.
+    const before =
+      'rn1qkb1r/pp3ppp/2p1pn2/3p1b2/2PP1B2/1QN1P3/PP3PPP/R3KBNR b KQkq -' as PositionKey;
+    const pos = readPositionKey(before)!;
+    playMove(pos, 'd8b6');
+    const after = positionKey(pos);
+    const parts = noteParts(bare, { note: note('Qb6 is the usual move.'), after, before });
+    expect(parts[0]).toEqual({ text: 'Qb6', key: after, lit: ['d8', 'b6'], kind: 'move' });
   });
 
   it('keeps a diagonal’s name as words, and a numbered move’s number in its mention', () => {

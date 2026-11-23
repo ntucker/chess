@@ -2,6 +2,8 @@ import { describe, expect, it } from '@jest/globals';
 
 import { Chess } from 'chessops/chess';
 import { INITIAL_FEN } from 'chessops/fen';
+import type { NormalMove } from 'chessops/types';
+import { parseUci } from 'chessops/util';
 
 import {
   shownMove,
@@ -15,10 +17,12 @@ import {
   NAMED_MOVE,
   numberedLine,
   numberedMove,
+  parsePosition,
   pieceAt,
   playMove,
   positionKey,
   replay,
+  takenRole,
   toUci,
 } from './replay';
 
@@ -200,5 +204,22 @@ describe('shownMove', () => {
       '1.e4',
       '1…c6',
     ]);
+  });
+});
+
+describe('takenRole', () => {
+  const taken = (fen: string, uci: string) =>
+    takenRole(parsePosition(fen)!, parseUci(uci) as NormalMove);
+
+  it('names the piece a move takes on its square, and none for a quiet move', () => {
+    // 1.e4 d5: exd5 takes a pawn; Nf3 takes nothing.
+    const fen = 'rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2';
+    expect(taken(fen, 'e4d5')).toBe('pawn');
+    expect(taken(fen, 'g1f3')).toBeUndefined();
+  });
+
+  it('names a pawn for en passant, onto an empty square', () => {
+    const fen = 'rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3';
+    expect(taken(fen, 'e5f6')).toBe('pawn');
   });
 });
