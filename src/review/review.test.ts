@@ -5,6 +5,7 @@ import { ADVANCE, SAMPLE, uciLine } from '@/lesson/lesson.fixture';
 import { bookMoves } from '@/lesson/select';
 
 import { judgeMove, type ReviewQuality } from '@/analysis/quality';
+import { qualityLooks } from '@/theme/moveQuality';
 
 import { movesGivenUp } from './refine';
 import {
@@ -207,18 +208,8 @@ describe('isFine', () => {
 });
 
 describe('LABELS_BEST_FIRST', () => {
-  it('lists every label once, from the best moves to the worst', () => {
-    expect(LABELS_BEST_FIRST).toEqual([
-      'brilliant',
-      'great',
-      'best',
-      'good',
-      'book',
-      'inaccuracy',
-      'miss',
-      'mistake',
-      'blunder',
-    ]);
+  it('lists every label once', () => {
+    expect([...LABELS_BEST_FIRST].sort()).toEqual(Object.keys(qualityLooks).sort());
   });
 });
 

@@ -15,8 +15,6 @@ interface Props {
    * none, such as a disabled button: focus opens it as on a control.
    */
   readonly focusable?: boolean;
-  /** Screen readers don't hear the tip here, for `children` they skip because they hear the same words elsewhere. */
-  readonly unspoken?: boolean;
 }
 
 /**
@@ -31,12 +29,12 @@ interface Props {
  * </Tip>
  * ```
  */
-export function Tip({ tip, children, style, focusable, unspoken }: Props) {
+export function Tip({ tip, children, style, focusable }: Props) {
   return (
     <Tooltip.Root>
       <Tooltip.Trigger style={style} focusable={focusable}>
         {children}
-        {unspoken ? null : <Text style={spokenOnly}>{tip}</Text>}
+        <Text style={spokenOnly}>{tip}</Text>
       </Tooltip.Trigger>
       <Tooltip.Content>{tip}</Tooltip.Content>
     </Tooltip.Root>

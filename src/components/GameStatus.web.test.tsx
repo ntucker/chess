@@ -41,7 +41,7 @@ function narrowParts(props: Props) {
       .querySelector('[role="heading"]')
       ?.closest('[data-narrow]')
       ?.getAttribute('data-narrow'),
-    line: host.querySelector('[data-narrow="narrow-only"] > [aria-hidden="true"]')?.textContent,
+    line: host.querySelector('[data-narrow="narrow-only"][aria-hidden="true"]')?.textContent,
   }));
 }
 

@@ -127,6 +127,13 @@ function render<T>(
   return result;
 }
 
+/** What screen readers hear: the text outside `aria-hidden` parts. */
+function spoken(host: HTMLElement) {
+  const copy = host.cloneNode(true) as HTMLElement;
+  for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
+  return copy.textContent ?? '';
+}
+
 const heading = (host: HTMLElement) => host.querySelector('[role="heading"]')?.textContent;
 const button = (host: HTMLElement, name: RegExp) =>
   [...host.querySelectorAll<HTMLElement>('[role="button"]')].find((element) =>
@@ -195,7 +202,7 @@ describe('ReviewPanel', () => {
         'A brief appearance.No verdict or accuracy: fewer than 8 of your moves were judged',
       );
       // Once: the narrow page's short line, which screen readers skip, doesn't repeat it.
-      expect(host.textContent?.split('No verdict or accuracy').length).toBe(2);
+      expect(spoken(host).split('No verdict or accuracy').length).toBe(2);
     });
   });
 

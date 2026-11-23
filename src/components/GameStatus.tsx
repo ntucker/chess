@@ -1,6 +1,6 @@
 import { Button, Inline, Stack, Text } from '@reactive/silk-native';
 import type { Href } from 'expo-router';
-import type { ComponentProps, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Eyebrow } from '@/components/Eyebrow';
@@ -77,14 +77,15 @@ export type News = 'all' | 'detail' | 'none';
 /** `children`, with `tip` in a tooltip when there is one (`Tip`), held to their own width. */
 function Tipped({
   tip,
+  focusable,
   children,
-  ...rest
-}: Pick<ComponentProps<typeof Tip>, 'focusable' | 'unspoken'> & {
+}: {
   readonly tip?: string;
+  readonly focusable?: boolean;
   readonly children: ReactNode;
 }) {
   return tip ? (
-    <Tip tip={tip} {...rest} style={tipped.box}>
+    <Tip tip={tip} focusable={focusable} style={tipped.box}>
       {children}
     </Tip>
   ) : (
@@ -132,10 +133,10 @@ export function StatusHeadline({
         </Text>
       </Stack>
       {short ? (
-        <NarrowOnly>
-          {/* What the full headline says, so screen readers skip it. */}
-          <Tipped tip={drawn === 'all' ? titleTip : undefined} unspoken>
-            <Text role="bodySm" tone="secondary" aria-hidden>
+        // What the full headline says, so screen readers skip it, tip and all.
+        <NarrowOnly aria-hidden>
+          <Tipped tip={drawn === 'all' ? titleTip : undefined}>
+            <Text role="bodySm" tone="secondary">
               {drawn === 'all' ? (
                 <Text role="bodySm" tone="primary" style={styles.runIn}>
                   {`${title} `}
