@@ -24,9 +24,6 @@ export function springTo(
   { track, precision }: SpringToOptions = {},
 ) {
   'worklet';
-  // Not a parameter default: on the UI thread a worklet binds what it
-  // captured in its body, after its defaults run.
-  const stopWithin = precision ?? SUBPIXEL;
   return defineAnimation<AnimationObject<number>>(target, () => {
     'worklet';
     return {
@@ -46,7 +43,9 @@ export function springTo(
       },
       onFrame(animation: AnimationObject<number>, now: number) {
         const state = springAt(spring, animation.start, (now - animation.startTime) / 1000);
-        const done = atRest(state, stopWithin);
+        // Not a parameter default: on the UI thread a worklet binds what it
+        // captured in its body, after its defaults run.
+        const done = atRest(state, precision ?? SUBPIXEL);
         animation.current = target + (done ? 0 : state.offset);
         return done;
       },

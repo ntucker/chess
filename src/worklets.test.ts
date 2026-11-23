@@ -1,48 +1,52 @@
-import { transformSync } from '@babel/core';
+import { type NodePath, parseSync, traverse, types as t } from '@babel/core';
 import { expect, it } from '@jest/globals';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-/** Every source file in src that holds a worklet. */
-function workletSources(): string[] {
+/** Every non-test source file in src that holds a worklet, with its text. */
+function workletSources(): { file: string; text: string }[] {
   return readdirSync(__dirname, { recursive: true, encoding: 'utf8' })
     .filter((file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file))
     .map((file) => path.join(__dirname, file))
-    .filter((file) => readFileSync(file, 'utf8').includes("'worklet'"));
+    .map((file) => ({ file, text: readFileSync(file, 'utf8') }))
+    .filter(({ text }) => text.includes("'worklet'"));
 }
 
-/**
- * A worklet as the worklets Babel plugin ships it to the UI thread: its
- * parameters, then the names it captured, bound at the top of its body
- * (an array or an object pattern, by plugin version).
- */
-const SHIPPED_WORKLET = /code: "\(function \w+\((.*?)\)\{const[[{]([^\]}]*)[\]}]=this\.__closure;/g;
+const isWorklet = (fn: NodePath<t.Function>) =>
+  t.isBlockStatement(fn.node.body) &&
+  fn.node.body.directives.some((directive) => directive.value.value === 'worklet');
 
-// Jest runs worklets as plain functions, so this checks what the worklets
-// Babel plugin makes of them, as the Android build does.
+// Jest runs worklets as plain functions. On the UI thread a worklet binds what
+// it captured (module constants, imports) in its body, after its parameter
+// defaults run, so a default that reads one throws there.
 it('no worklet reads a captured value in a parameter default', () => {
-  const files = workletSources();
-  expect(files.length).toBeGreaterThan(0);
-  let checked = 0;
-  for (const file of files) {
-    const { code } = transformSync(readFileSync(file, 'utf8'), {
+  let worklets = 0;
+  const early: string[] = [];
+  for (const { file, text } of workletSources()) {
+    const ast = parseSync(text, {
       filename: file,
       babelrc: false,
       configFile: false,
-      presets: [
-        ['@babel/preset-typescript', { isTSX: file.endsWith('.tsx'), allExtensions: true }],
-      ],
-      plugins: ['react-native-worklets/plugin'],
-    })!;
-    // On the UI thread a worklet binds what it captured in its body, after its defaults run.
-    for (const [, params, captured] of code!.matchAll(SHIPPED_WORKLET)) {
-      checked++;
-      const early = captured!
-        .split(',')
-        .filter((name) => new RegExp(`=[^,{}]*\\b${name.replaceAll('$', '\\$')}\\b`).test(params!));
-      expect({ file, early }).toEqual({ file, early: [] });
-    }
+      presets: ['@babel/preset-typescript'],
+    });
+    traverse(ast!, {
+      Function(fn) {
+        if (!isWorklet(fn)) return;
+        worklets++;
+        for (const param of fn.get('params')) {
+          param.traverse({
+            ReferencedIdentifier(id) {
+              const binding = id.scope.getBinding(id.node.name);
+              const inDefault = id.findParent((parent) => parent.isAssignmentPattern());
+              if (inDefault && binding && !binding.path.isDescendant(fn)) {
+                early.push(`${path.relative(__dirname, file)}: ${id.node.name}`);
+              }
+            },
+          });
+        }
+      },
+    });
   }
-  // A plugin update that changes its output would otherwise pass this silently.
-  expect(checked).toBeGreaterThan(0);
+  expect(worklets).toBeGreaterThan(0);
+  expect(early).toEqual([]);
 });
