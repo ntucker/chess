@@ -16,6 +16,8 @@ import { ReviewPanel, type ReviewView } from './ReviewPanel';
 
 // Its react-native-svg needs Expo's asset registry, which the web preset doesn't resolve.
 jest.mock('@/components/QualityBadge', () => ({ QualityBadge: () => null }));
+// The graph draws with react-native-svg too, and its gestures need gesture handler's root.
+jest.mock('./ReviewGraph', () => ({ ReviewGraph: () => null }));
 // Its font needs Expo's asset registry too.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 // The scoresheet drawer's Escape listens only on the focused screen, as this one is.
@@ -44,6 +46,8 @@ function review(ply: number, searched: readonly number[], overrides: Partial<Rev
     ply,
     moves,
     analyses,
+    book: [],
+    moments: [],
     pointed: undefined,
     nextMoment: undefined,
     goto: () => {},

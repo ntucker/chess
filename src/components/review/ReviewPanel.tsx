@@ -1,5 +1,5 @@
 import { Separator, Stack } from '@reactive/silk-native';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Eyebrow, useLabelled, useSections } from '@/components/Eyebrow';
 import { StatusHeadline } from '@/components/GameStatus';
@@ -16,11 +16,22 @@ import { qualityLooks } from '@/theme/moveQuality';
 
 import { MoveCard } from './MoveCard';
 import { ReviewActions } from './ReviewActions';
+import { ReviewGraph } from './ReviewGraph';
 
 /** What the panel shows of a review (`useReview`); any analyses will do, so the gallery can make them up. */
 export type ReviewView = { readonly analyses: readonly (Analysis | undefined)[] } & Pick<
   Review,
-  'plies' | 'ply' | 'moves' | 'pointed' | 'nextMoment' | 'goto' | 'point' | 'tryAgain' | 'failure'
+  | 'plies'
+  | 'ply'
+  | 'moves'
+  | 'book'
+  | 'moments'
+  | 'pointed'
+  | 'nextMoment'
+  | 'goto'
+  | 'point'
+  | 'tryAgain'
+  | 'failure'
 >;
 
 interface Props {
@@ -34,7 +45,7 @@ interface Props {
 }
 
 /**
- * The review's panel beside the board: the headline, the move card for the
+ * The review's panel beside the board: the headline, the graph of the game, the move card for the
  * move shown, the three actions, and the scoresheet. At the start position,
  * before any move, the headline speaks for the whole game. A narrow page
  * draws the headline as one line under the header, which names the place,
@@ -58,6 +69,10 @@ export function ReviewPanel({ eyebrow, learner, review, drawer }: Props) {
       {/* The drawer covers the rest, on a phone's short page all the room it can get. */}
       <View {...part(drawer && 'wide-only', sections)}>
         <StatusHeadline eyebrow={eyebrow} eyebrowInHeader news="all" {...reviewHeadline(review)} />
+        {/* A narrow page draws the graph in the row under the board. */}
+        <View {...part('wide-only', styles.graph)}>
+          <ReviewGraph review={review} learner={learner} height={GRAPH_HEIGHT} />
+        </View>
         {move ? (
           <MoveCard
             whose={move.mover === learner ? 'yours' : 'theirs'}
@@ -135,3 +150,8 @@ function lossDetail(move: ReviewMove) {
   const lost = Math.round((move.before - move.after) * 100);
   return lost > 0 ? `Here: ${lost}%.` : undefined;
 }
+
+/** The graph's height on a wide page. */
+const GRAPH_HEIGHT = 72;
+
+const styles = StyleSheet.create({ graph: { marginVertical: 12 } });

@@ -19,8 +19,9 @@ import { getLesson, isLessonId, LessonIndexContext, type LessonId } from '@/reso
 import { addressMoves, type ReviewAddress } from '@/review/address';
 import { REVIEW_ENGINE, useReview } from '@/review/useReview';
 
-import { GraphPlace, ReviewNames } from './NarrowBars';
+import { ReviewNames } from './NarrowBars';
 import { ReviewActionBar } from './ReviewActions';
+import { ReviewGraph } from './ReviewGraph';
 import { ReviewPanel } from './ReviewPanel';
 
 const TITLE = 'Review · Opening Night';
@@ -128,7 +129,7 @@ function ReviewScreen({
                 total={moves.length}
                 onGoto={goto}
                 fill
-                middle={<GraphPlace san={current.move?.san} ply={ply} />}
+                middle={<ReviewGraph review={review} learner={learner} />}
               />
             ),
           }}

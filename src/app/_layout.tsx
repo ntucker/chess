@@ -11,6 +11,8 @@ import {
 import { InstrumentSans_400Regular } from '@expo-google-fonts/instrument-sans';
 import { useFonts } from 'expo-font';
 import { type ErrorBoundaryProps, Stack } from 'expo-router';
+import { StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { ScreenFailure } from '@/components/NewVersion';
 import { AnalysisManager } from '@/resources/analysis';
@@ -35,19 +37,22 @@ export default function RootLayout() {
   if (!fontsLoaded && process.env.EXPO_OS !== 'web') return null;
 
   return (
-    <DataProvider managers={managers}>
-      <SettingsProvider>
-        <AppTheme>
-          <StockfishWhileNeeded host={<StockfishHost />} fullHost={<FullStockfishHost />}>
-            {/* Every screen ships in the app's first file (app.json turns off
-                Expo Router's asyncRoutes): a screen whose file loads on its
-                first visit opens empty for a moment, even in a transition,
-                since its Suspense boundary is new. */}
-            <Stack screenOptions={{ headerShown: false }} />
-          </StockfishWhileNeeded>
-        </AppTheme>
-      </SettingsProvider>
-    </DataProvider>
+    // Gesture handler's gestures (the review's graph) work only inside it.
+    <GestureHandlerRootView style={styles.root}>
+      <DataProvider managers={managers}>
+        <SettingsProvider>
+          <AppTheme>
+            <StockfishWhileNeeded host={<StockfishHost />} fullHost={<FullStockfishHost />}>
+              {/* Every screen ships in the app's first file (app.json turns off
+                  Expo Router's asyncRoutes): a screen whose file loads on its
+                  first visit opens empty for a moment, even in a transition,
+                  since its Suspense boundary is new. */}
+              <Stack screenOptions={{ headerShown: false }} />
+            </StockfishWhileNeeded>
+          </AppTheme>
+        </SettingsProvider>
+      </DataProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -67,3 +72,5 @@ export function ErrorBoundary({ error }: ErrorBoundaryProps) {
     </SettingsProvider>
   );
 }
+
+const styles = StyleSheet.create({ root: { flex: 1 } });

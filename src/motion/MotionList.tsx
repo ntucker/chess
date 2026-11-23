@@ -16,15 +16,14 @@
 import { useReducedMotion } from '@reactive/silk-native';
 import { Component, createContext, useContext, useMemo, useState } from 'react';
 import Animated, {
-  type AnimationObject,
-  defineAnimation,
   type EntryExitAnimationFunction,
   type LayoutAnimationFunction,
   type SharedValue,
   useSharedValue,
 } from 'react-native-reanimated';
 
-import { atRest, springAt, springs, SUBPIXEL, type Spring, type SpringState } from './spring';
+import { springs, type Spring } from './spring';
+import { type Runs, springTo } from './springTo';
 import type { MotionListProps, MotionViewProps } from './types';
 
 export function MotionList(props: MotionListProps) {
@@ -67,13 +66,8 @@ class Arrivals extends Component<ArrivalsProps, State> {
 const ListContext = createContext<Arriving>(null);
 
 const SPRING = springs.brisk;
-
-/** Where a view's spring on one axis started, to read its speed if interrupted */
-interface Run {
-  readonly start: SpringState;
-  readonly startedAt: number;
-}
-type Runs = { x?: Run; y?: Run };
+/** An arrival's fade stops once what's left of it can't be seen: under a pixel's precision, it jumped the last quarter. */
+const OPACITY_STEP = 0.01;
 
 export function MotionView({ id: _id, ...rest }: MotionViewProps) {
   const arriving = useContext(ListContext);
@@ -97,8 +91,8 @@ function layoutTransition(spring: Spring, runs: SharedValue<Runs>): LayoutAnimat
     return {
       initialValues: { originX: values.currentOriginX, originY: values.currentOriginY, ...size },
       animations: {
-        originX: springTo(values.targetOriginX, spring, runs, 'x'),
-        originY: springTo(values.targetOriginY, spring, runs, 'y'),
+        originX: springTo(values.targetOriginX, spring, { runs, axis: 'x' }),
+        originY: springTo(values.targetOriginY, spring, { runs, axis: 'y' }),
       },
     };
   };
@@ -108,39 +102,9 @@ function layoutTransition(spring: Spring, runs: SharedValue<Runs>): LayoutAnimat
 function enterAnimation(spring: Spring): EntryExitAnimationFunction {
   return () => {
     'worklet';
-    return { initialValues: { opacity: 0 }, animations: { opacity: springTo(1, spring) } };
-  };
-}
-
-/**
- * An animation from wherever the value is to `target` on `spring`. With
- * `runs`, it starts at the speed the axis's last spring had at that moment,
- * and records its own start for the next.
- */
-function springTo(target: number, spring: Spring, runs?: SharedValue<Runs>, axis?: 'x' | 'y') {
-  'worklet';
-  return defineAnimation<AnimationObject<number>>(target, () => {
-    'worklet';
     return {
-      onStart(animation: AnimationObject<number>, value: number, now: number) {
-        const last = runs && axis ? runs.value[axis] : undefined;
-        const velocity = last
-          ? springAt(spring, last.start, (now - last.startedAt) / 1000).velocity
-          : 0;
-        const start = { offset: value - target, velocity };
-        animation.start = start;
-        animation.startTime = now;
-        animation.current = value;
-        if (runs && axis) runs.value = { ...runs.value, [axis]: { start, startedAt: now } };
-      },
-      onFrame(animation: AnimationObject<number>, now: number) {
-        const state = springAt(spring, animation.start, (now - animation.startTime) / 1000);
-        const done = atRest(state, SUBPIXEL);
-        animation.current = target + (done ? 0 : state.offset);
-        return done;
-      },
-      current: target,
-      toValue: target,
+      initialValues: { opacity: 0 },
+      animations: { opacity: springTo(1, spring, { precision: OPACITY_STEP }) },
     };
-  }) as unknown as number;
+  };
 }
