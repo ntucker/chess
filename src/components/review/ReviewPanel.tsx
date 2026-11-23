@@ -11,6 +11,7 @@ import type { LessonId } from '@/resources/lesson';
 import { playOnHref } from '@/review/address';
 import { compareMove } from '@/review/comparison';
 import { isFine, type ReviewMove } from '@/review/review';
+import { summaryHeadline } from '@/review/summary';
 import type { Review } from '@/review/useReview';
 import { NarrowOnly, useNarrowPart } from '@/theme/Narrow';
 import { qualityLooks } from '@/theme/moveQuality';
@@ -18,6 +19,7 @@ import { qualityLooks } from '@/theme/moveQuality';
 import { MoveCard } from './MoveCard';
 import { ReviewActions } from './ReviewActions';
 import { type GraphView, ReviewGraph } from './ReviewGraph';
+import { ReviewTally } from './Tally';
 
 /** What the panel shows of a review (`useReview`); any analyses will do, so the gallery can make them up. */
 export type ReviewView = GraphView &
@@ -33,6 +35,8 @@ export type ReviewView = GraphView &
     | 'showAnswer'
     | 'tryFailure'
     | 'searchTriesAgain'
+    | 'tally'
+    | 'accuracy'
   >;
 
 interface Props {
@@ -71,7 +75,12 @@ export function ReviewPanel({ eyebrow, learner, review, drawer, lesson }: Props)
     <Stack {...part('drawer-panel', sections)}>
       {/* The drawer covers the rest, on a phone's short page all the room it can get. */}
       <View {...part(drawer && 'wide-only', sections)}>
-        <StatusHeadline eyebrow={eyebrow} eyebrowInHeader news="all" {...reviewHeadline(review)} />
+        <StatusHeadline
+          eyebrow={eyebrow}
+          eyebrowInHeader
+          news="all"
+          {...reviewHeadline(review, learner)}
+        />
         {/* A narrow page draws the graph in the row under the board. */}
         <View {...part('wide-only', styles.graph)}>
           <ReviewGraph review={review} learner={learner} height={GRAPH_HEIGHT} />
@@ -90,7 +99,9 @@ export function ReviewPanel({ eyebrow, learner, review, drawer, lesson }: Props)
             pointed={pointed}
             onPoint={point}
           />
-        ) : null}
+        ) : (
+          <ReviewTally tally={review.tally} learner={learner} />
+        )}
         {/* The header's scoresheet button takes the source link's place there. */}
         <NarrowOnly>
           <SourceFootnote />
@@ -113,19 +124,35 @@ export function ReviewPanel({ eyebrow, learner, review, drawer, lesson }: Props)
 /**
  * The headline: while moves still wait for Stockfish, at the start or at
  * one of them, that the reviews are coming in, with how far they've got;
- * at a move, its label; at a move whose search gave up, a Try again.
+ * at the start once they're in, the verdict on the learner's game
+ * (`summaryHeadline`); at a move, its label; at a move whose search gave
+ * up, a Try again.
  */
-function reviewHeadline({
-  plies,
-  ply,
-  moves,
-  failure,
-  tryAgain,
-  ...retried
-}: Pick<
-  ReviewView,
-  'plies' | 'ply' | 'moves' | 'failure' | 'tryAgain' | 'moment' | 'tryFailure' | 'searchTriesAgain'
->) {
+function reviewHeadline(
+  {
+    plies,
+    ply,
+    moves,
+    failure,
+    tryAgain,
+    moments,
+    accuracy,
+    ...retried
+  }: Pick<
+    ReviewView,
+    | 'plies'
+    | 'ply'
+    | 'moves'
+    | 'failure'
+    | 'tryAgain'
+    | 'moment'
+    | 'tryFailure'
+    | 'searchTriesAgain'
+    | 'moments'
+    | 'accuracy'
+  >,
+  learner: Color,
+) {
   const move = ply > 0 ? moves[ply - 1] : undefined;
   const waiting = moves.filter(({ status }) => status === 'waiting').length;
   const coming = {
@@ -134,13 +161,7 @@ function reviewHeadline({
   };
   if (!move) {
     if (waiting) return coming;
-    const failed = moves.filter(({ status }) => status === 'failed').length;
-    return {
-      title: 'The reviews are in.',
-      detail: failed
-        ? `${failed} of ${moves.length} moves couldn't be checked.`
-        : `All ${moves.length} moves checked.`,
-    };
+    return summaryHeadline({ plies, moves, moments, accuracy: accuracy[learner], learner });
   }
   const named = shownMove(plies[ply].move?.san, ply);
   if (move.status === 'waiting') return coming;

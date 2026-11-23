@@ -109,3 +109,18 @@ function deviation(values: readonly number[]): number {
   const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
   return Math.sqrt(values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length);
 }
+
+/** The lowest rounded accuracy for each verdict, best first. */
+const VERDICTS: readonly (readonly [number, string])[] = [
+  [90, 'Standing ovation.'],
+  [75, 'Warm applause.'],
+  [60, 'Mixed notices.'],
+  [0, 'A rough night.'],
+];
+
+/**
+ * The review's verdict on a side's `accuracy`, a theater line picked by the
+ * number as shown, rounded: 89.6 shows as 90 and reads "Standing ovation.".
+ */
+export const verdictLine = (accuracy: number) =>
+  VERDICTS.find(([least]) => Math.round(accuracy) >= least)![1];

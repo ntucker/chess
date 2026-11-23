@@ -14,19 +14,27 @@ import { StatusHeadline } from './GameStatus';
 
 type Props = Partial<Parameters<typeof StatusHeadline>[0]>;
 
-/** Renders the headline, and reads its host with `read`. */
-function render<T>(props: Props, read: (host: HTMLElement) => T) {
+/** A detached `host`, a `draw` that renders a headline there with `props`, and `unmount`. */
+function mount() {
   const host = document.createElement('div');
   const root = createRoot(host);
-  act(() =>
-    root.render(
-      <SilkProvider theme={themes.dark}>
-        <StatusHeadline eyebrow="Line" title="Your move." detail="Play here." {...props} />
-      </SilkProvider>,
-    ),
-  );
+  const draw = (props: Props) =>
+    act(() =>
+      root.render(
+        <SilkProvider theme={themes.dark}>
+          <StatusHeadline eyebrow="Line" title="Your move." detail="Play here." {...props} />
+        </SilkProvider>,
+      ),
+    );
+  return { host, draw, unmount: () => act(() => root.unmount()) };
+}
+
+/** Renders the headline, and reads its host with `read`. */
+function render<T>(props: Props, read: (host: HTMLElement) => T) {
+  const { host, draw, unmount } = mount();
+  draw(props);
   const result = read(host);
-  act(() => root.unmount());
+  unmount();
   return result;
 }
 
@@ -41,7 +49,7 @@ function narrowParts(props: Props) {
       .querySelector('[role="heading"]')
       ?.closest('[data-narrow]')
       ?.getAttribute('data-narrow'),
-    line: host.querySelector('[data-narrow="narrow-only"] > [aria-hidden="true"]')?.textContent,
+    line: host.querySelector('[data-narrow="narrow-only"][aria-hidden="true"]')?.textContent,
   }));
 }
 
@@ -98,5 +106,15 @@ describe('StatusHeadline', () => {
       (host) => host.firstElementChild?.lastElementChild?.textContent,
     );
     expect(line).toBe(said);
+  });
+  it('announces the title with its tip, in one live region that stays as the tip comes', () => {
+    const { host, draw, unmount } = mount();
+    draw({});
+    const live = host.querySelector('[aria-live="polite"]');
+    expect(live?.textContent).toBe('Your move.');
+    draw({ title: 'A brief appearance.', titleTip: 'Too few moves.' });
+    expect(host.querySelector('[aria-live="polite"]')).toBe(live);
+    expect(live?.textContent).toBe('A brief appearance.Too few moves.');
+    unmount();
   });
 });

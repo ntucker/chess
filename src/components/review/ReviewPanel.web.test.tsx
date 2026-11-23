@@ -9,7 +9,7 @@ import type { FinalAnalysis } from '@/evaluation/evaluation';
 import { type Color, legalMoveCountAt, replay } from '@/game/replay';
 import { movesGivenUp } from '@/review/refine';
 import { type GuideAnswer, momentAt } from '@/review/retry';
-import { reviewMoves } from '@/review/review';
+import { reviewMoves, tally } from '@/review/review';
 import { listing } from '@/review/review.fixture';
 import { type ReviewScreen, startReview } from '@/review/screen';
 import { themes } from '@/theme/theme';
@@ -105,6 +105,8 @@ function review(
     showAnswer: () => {},
     tryFailure: undefined,
     searchTriesAgain: () => {},
+    tally: { white: tally(moves, 'white'), black: tally(moves, 'black') },
+    accuracy: { white: undefined, black: undefined },
     ...overrides,
   } satisfies ReviewView;
 }
@@ -123,6 +125,13 @@ function render<T>(
   act(() => root.unmount());
   host.remove();
   return result;
+}
+
+/** What screen readers hear: the text outside `aria-hidden` parts. */
+function spoken(host: HTMLElement) {
+  const copy = host.cloneNode(true) as HTMLElement;
+  for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
+  return copy.textContent ?? '';
 }
 
 const heading = (host: HTMLElement) => host.querySelector('[role="heading"]')?.textContent;
@@ -177,6 +186,37 @@ describe('ReviewPanel', () => {
       expect(button(host, /^Retry/)?.getAttribute('aria-disabled')).toBe('true');
       expect(button(host, /^Show best/)?.getAttribute('aria-disabled')).toBe('true');
     });
+  });
+
+  it("gives the verdict on the learner's accuracy at the start, over the game and its moments", () => {
+    const checked = (black: ReviewView['accuracy']['black']) =>
+      review(0, [0, 1, 2, 3], { accuracy: { white: 64, black }, moments: [2] });
+    render(checked(81), (host) => {
+      expect(heading(host)).toBe('Warm applause.');
+      expect(host.textContent).toContain('2 moves. 1 moment to replay.');
+    });
+    render(checked('brief'), (host) => {
+      expect(heading(host)).toBe('A brief appearance.');
+      // The reason is the title's tooltip, which screen readers hear after it.
+      expect(host.textContent).toContain(
+        'A brief appearance.No verdict or accuracy: fewer than 8 of your moves were judged',
+      );
+      // Once: the narrow page's short line, which screen readers skip, doesn't repeat it.
+      expect(spoken(host).match(/No verdict or accuracy/g)).toHaveLength(1);
+    });
+  });
+
+  it("tallies each side's labels at the start, the learner's first, and none at a move", () => {
+    /** Each label's row: its counts, the learner's then the opponent's. */
+    const counts = (host: HTMLElement) =>
+      [...host.querySelectorAll('[role="table"] [role="row"]')]
+        .slice(1)
+        .map((row) => row.textContent?.slice(-2));
+    // 1.e4 and 1...e5 are each side's best move; 2.Qh5 is White's mistake.
+    render(review(0, [0, 1, 2, 3]), (host) => {
+      expect(counts(host)).toEqual(['00', '00', '11', '00', '00', '00', '00', '01', '00']);
+    });
+    render(review(2, [0, 1, 2, 3]), (host) => expect(counts(host)).toEqual([]));
   });
 
   it('keeps Next moment disabled with no moment left to visit', () => {

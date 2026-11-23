@@ -11,7 +11,8 @@ import type { Uci } from '@/lesson/lesson';
 import { reviewHref } from '@/review/address';
 import { movesGivenUp } from '@/review/refine';
 import { momentAt } from '@/review/retry';
-import { moments, reviewMoves } from '@/review/review';
+import { gameAccuracy } from '@/review/accuracy';
+import { moments, reviewMoves, tally } from '@/review/review';
 import { type ReviewScreen, reviewedGame, reviewReducer, startReview } from '@/review/screen';
 import { evaluationFromScore } from '@/stockfish/uci';
 
@@ -98,6 +99,8 @@ interface State {
   readonly ply: number;
   /** The retries there: the tries at 7...Qxb2, and what the board shows. */
   readonly retried?: Pick<ReviewScreen, 'tries' | 'shown' | 'board'>;
+  /** Black's accuracy, made up: this game is too short for a real one. */
+  readonly accuracy?: number;
 }
 
 const STATES: readonly State[] = [
@@ -151,13 +154,21 @@ const STATES: readonly State[] = [
   },
   {
     title: 'Checked',
-    sentence: 'The start once every move is checked.',
+    sentence:
+      "The start once every move is checked: Black's 7 moves are too few for a verdict, and the tally.",
     searched: [10, 11, 12, 13, 14],
     ply: 0,
   },
+  {
+    title: 'A verdict',
+    sentence: 'The start as a longer game would show it, with an accuracy of 81: Warm applause.',
+    searched: [10, 11, 12, 13, 14],
+    ply: 0,
+    accuracy: 81,
+  },
 ];
 
-function StateCard({ title, sentence, searched, failed = [], ply, retried }: State) {
+function StateCard({ title, sentence, searched, failed = [], ply, retried, accuracy }: State) {
   const game = reviewedGame('black', LINE);
   const [screen, dispatch] = useReducer(reviewReducer, { ...startReview(game), ...retried, ply });
   const analyses = PLIES.map((_, n) => (searched.includes(n) ? SEARCHED[n] : undefined));
@@ -199,6 +210,11 @@ function StateCard({ title, sentence, searched, failed = [], ply, retried }: Sta
     searchTriesAgain: () => {},
     tryAgain: () => {},
     failure: () => (failed.length ? new Error('Stockfish stopped') : undefined),
+    tally: { white: tally(moves, 'white'), black: tally(moves, 'black') },
+    accuracy: {
+      white: gameAccuracy(moves, analyses, BOOK, 'white', lost),
+      black: accuracy ?? gameAccuracy(moves, analyses, BOOK, 'black', lost),
+    },
   };
   return (
     <Stack gap="3" style={[devStyles.card, styles.card]}>

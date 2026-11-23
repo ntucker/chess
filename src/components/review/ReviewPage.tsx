@@ -19,6 +19,7 @@ import { getLesson, isLessonId, LessonIndexContext, type LessonId } from '@/reso
 import { addressMoves, type ReviewAddress } from '@/review/address';
 import { REVIEW_ENGINE, useReview } from '@/review/useReview';
 
+import { AccuracyMark } from './Accuracy';
 import { ReviewNames } from './NarrowBars';
 import { ReviewActionBar } from './ReviewActions';
 import { ReviewGraph } from './ReviewGraph';
@@ -107,7 +108,20 @@ function ReviewScreen({
             thinking: false,
             material: material(current.fen),
           }}
-          rival={{ name: 'Opponent', detail: colorName(opposite(learner)) }}
+          rival={{
+            name: 'Opponent',
+            detail: colorName(opposite(learner)),
+            children: (
+              <AccuracyMark
+                accuracy={review.accuracy[opposite(learner)]}
+                whose="The opponent's"
+                named
+              />
+            ),
+          }}
+          player={{
+            children: <AccuracyMark accuracy={review.accuracy[learner]} whose="Your" named />,
+          }}
           board={{
             fen: current.fen,
             preview: preview === current.fen ? undefined : preview,
@@ -129,7 +143,7 @@ function ReviewScreen({
           evaluationReads={REVIEW_ENGINE}
           evaluationLine={review.shownLine}
           narrowBars={{
-            names: <ReviewNames learner={learner} />,
+            names: <ReviewNames learner={learner} accuracy={review.accuracy} />,
             controls: (
               <Transport
                 ply={ply}
