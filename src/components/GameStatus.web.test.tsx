@@ -14,7 +14,7 @@ import { StatusHeadline } from './GameStatus';
 
 type Props = Partial<Parameters<typeof StatusHeadline>[0]>;
 
-/** Mounts a headline in `host`, which `draw` redraws with new props. */
+/** A detached `host`, a `draw` that renders a headline there with `props`, and `unmount`. */
 function mount() {
   const host = document.createElement('div');
   const root = createRoot(host);
