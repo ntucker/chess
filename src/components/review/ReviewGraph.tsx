@@ -48,8 +48,7 @@ interface Props {
   readonly review: GraphView;
   /** The learner's side, drawn at the bottom, as the evaluation bar draws it. */
   readonly learner: Color;
-  /** How tall the graph is drawn; without it, as tall as the row it's in (the phone's stepper). */
-  readonly height?: number;
+  readonly height: number;
 }
 
 /**
@@ -82,7 +81,7 @@ export function ReviewGraph({ review, learner, height }: Props) {
   const percent = (at: number) => `${(at / total) * 100}%` as const;
   const slide = still ? { transitionDuration: 0 } : SLIDE;
   const hatch = `hatch${useId().replace(/[^\w-]/g, '')}`;
-  const guide = guideEnd(book);
+  const guide = guideEnd(book, learner);
   const step = (by: number) => {
     const target = ply + by;
     if (target >= 0 && target <= total) goto(target);
@@ -100,7 +99,7 @@ export function ReviewGraph({ review, learner, height }: Props) {
         onAccessibilityAction={({ nativeEvent }) =>
           step(nativeEvent.actionName === 'increment' ? 1 : -1)
         }
-        style={[styles.graph, height === undefined ? styles.fill : { height }]}
+        style={[styles.graph, { height }]}
       >
         <View
           onLayout={({ nativeEvent }: LayoutChangeEvent) =>
@@ -114,14 +113,17 @@ export function ReviewGraph({ review, learner, height }: Props) {
               { backgroundColor: graphColors[learner], borderRadius: theme.semantic.radius.sm },
             ]}
           >
+            {/* Sized in full: an svg left to its viewBox's shape on the web keeps that shape. */}
             <Svg
               style={StyleSheet.absoluteFill}
+              width="100%"
+              height="100%"
               viewBox={`0 0 ${total} 1`}
               preserveAspectRatio="none"
             >
               <AnimatedPath animatedProps={area} fill={graphColors[top]} />
             </Svg>
-            <Svg style={StyleSheet.absoluteFill}>
+            <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
               <Defs>
                 <Pattern
                   id={hatch}
@@ -435,7 +437,6 @@ const SLIDE = {
 
 const styles = StyleSheet.create({
   graph: { paddingHorizontal: PAD },
-  fill: { alignSelf: 'stretch', flexGrow: 1 },
   track: { flex: 1 },
   plot: { ...StyleSheet.absoluteFill, overflow: 'hidden' },
   middle: { position: 'absolute', left: 0, right: 0, top: '50%', height: 1 },

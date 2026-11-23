@@ -49,10 +49,16 @@ export function graphMarks(
     .map((ply) => ({ ply, quality: moves[ply - 1]?.quality }));
 }
 
-/** The ply the guide's band ends at: the position after the game's last move in a row from the start that the guide recommends. */
-export function guideEnd(book: readonly boolean[]): number {
-  const left = book.indexOf(false);
-  return left === -1 ? book.length : left;
+/**
+ * The ply the guide's band ends at: the position after the guide's last move
+ * before the learner's first move that isn't the guide's (`book`), or 0 when
+ * the guide recommends none. The opponent's moves may not be the guide's
+ * (a lesson for Black recommends only Black's moves), so they don't end it.
+ */
+export function guideEnd(book: readonly boolean[], learner: Color): number {
+  const learners = (ply: number) => (ply % 2 === 0) === (learner === 'white');
+  const left = book.findIndex((recommended, ply) => learners(ply) && !recommended);
+  return book.slice(0, left === -1 ? undefined : left).lastIndexOf(true) + 1;
 }
 
 /** `n` to three decimals, which keeps an outline short. Above `topArea`: a worklet's helpers have to be defined before it. */

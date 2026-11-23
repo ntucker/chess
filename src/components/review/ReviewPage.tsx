@@ -9,7 +9,7 @@ import { BrowserOnly } from '@/components/BrowserOnly';
 import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
-import { Transport } from '@/components/Transport';
+import { stepButton, Transport } from '@/components/Transport';
 import { NewVersionError } from '@/files/newVersion';
 import { material } from '@/game/material';
 import { type Color, colorName, fenAfter, opposite, replay } from '@/game/replay';
@@ -129,7 +129,9 @@ function ReviewScreen({
                 total={moves.length}
                 onGoto={goto}
                 fill
-                middle={<ReviewGraph review={review} learner={learner} />}
+                middle={
+                  <ReviewGraph review={review} learner={learner} height={stepButton.height} />
+                }
               />
             ),
           }}

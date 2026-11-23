@@ -48,11 +48,18 @@ describe('graphMarks', () => {
 });
 
 describe('guideEnd', () => {
-  it('ends after the last move in a row from the start that the guide recommends', () => {
-    expect(guideEnd([true, true, false, true])).toBe(2);
-    expect(guideEnd([false, true])).toBe(0);
-    expect(guideEnd([true, true])).toBe(2);
-    expect(guideEnd([])).toBe(0);
+  it("ends after the guide's last move before the learner leaves it", () => {
+    expect(guideEnd([true, true, false, true], 'white')).toBe(2);
+    expect(guideEnd([true, true, true, false, true], 'black')).toBe(3);
+    expect(guideEnd([false, true], 'white')).toBe(0);
+    expect(guideEnd([true, true], 'white')).toBe(2);
+    expect(guideEnd([], 'white')).toBe(0);
+  });
+
+  it("isn't ended by an opponent's move the guide doesn't recommend", () => {
+    // A lesson for Black: White's moves aren't the guide's.
+    expect(guideEnd([false, true, false, true, false, false], 'black')).toBe(4);
+    expect(guideEnd([false, true, false, true], 'black')).toBe(4);
   });
 });
 
