@@ -172,7 +172,7 @@ function momentHeadline(
 ) {
   const { board, tries, answer, hidden, canRetry } = moment;
   // "Find a better move than 7…Qxb2."; where the move left the guide but lost nothing, the guide's
-  // move, though a best or good try stronger than the game's passes too (`passes`).
+  // move, though a best or good try that beats the game's move also passes (`passes`, review/retry.ts).
   const goal =
     answer?.guide && (move.quality === 'best' || move.quality === 'good')
       ? `Find the guide's move, or one stronger than ${named}.`

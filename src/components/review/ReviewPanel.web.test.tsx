@@ -7,7 +7,7 @@ import { createRoot } from 'react-dom/client';
 
 import type { FinalAnalysis } from '@/evaluation/evaluation';
 import { type Color, legalMoveCountAt, replay } from '@/game/replay';
-import { momentAt } from '@/review/retry';
+import { type GuideAnswer, momentAt } from '@/review/retry';
 import { reviewMoves } from '@/review/review';
 import { listing } from '@/review/review.fixture';
 import { type ReviewScreen, startReview } from '@/review/screen';
@@ -42,6 +42,9 @@ interface Shown {
   readonly screen?: Partial<ReviewScreen>;
   /** The final analysis after each try, where there is one. */
   readonly tryAnalyses?: readonly (FinalAnalysis | undefined)[];
+  /** Where the learner left the guide, and the guide's move there. */
+  readonly leftAt?: number;
+  readonly guide?: GuideAnswer;
 }
 
 /** The review of LINE with the analyses of `searched` plies, at `ply`. */
@@ -49,7 +52,7 @@ function review(
   ply: number,
   searched: readonly number[],
   overrides: Partial<ReviewView> = {},
-  { learner = 'black', screen = {}, tryAnalyses = [] }: Shown = {},
+  { learner = 'black', screen = {}, tryAnalyses = [], leftAt, guide }: Shown = {},
 ) {
   const analyses = PLIES.map((_, n) => (searched.includes(n) ? SEARCHED[n] : undefined));
   const failed = new Set(overrides.failure ? [ply] : []);
@@ -60,7 +63,9 @@ function review(
     analyses,
     legal: LEGAL,
     learner,
-    book: [],
+    leftAt,
+    book: guide ? [guide.uci] : [],
+    guide,
     screen: { ...startReview(''), ...screen, ply },
     tryAnalyses,
     tryFailed: [],
@@ -186,6 +191,14 @@ describe('ReviewPanel', () => {
       },
       asWhite(view),
     );
+  });
+
+  it("asks for the guide's move, or one stronger than the game's, where a fine move left the guide", () => {
+    const guide = { uci: 'c7c5', practice: { pathname: '/lesson/x', params: {} } } as const;
+    render(review(2, [0, 1, 2, 3], {}, { leftAt: 1, guide }), (host) => {
+      expect(host.textContent).toContain("Find the guide's move, or one stronger than 1…e5.");
+      expect(host.textContent).toContain('Other moves hidden');
+    });
   });
 
   it("names a try that passes, and shows Stockfish's moves with Show best disabled", () => {
