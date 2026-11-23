@@ -34,6 +34,11 @@ describe('materialGivenUp', () => {
     expect(materialGivenUp(at('4k3/5p2/3p4/4N3/3P4/8/8/4K3 w - - 0 1'), move('e5f7'))).toBe(0);
   });
 
+  it('counts a piece left to be taken, even with another already hanging', () => {
+    // The rook on a5 hangs to the pawn on b6 already; Nd4-c6?? hangs the knight to the pawn on b7 too.
+    expect(materialGivenUp(at('4k3/1p6/1p6/R7/3N4/8/8/4K3 w - - 0 1'), move('d4c6'))).toBe(3);
+  });
+
   it('counts a pawn that promotes where it is taken as only a pawn', () => {
     expect(materialGivenUp(at('r3k3/1P6/8/8/8/8/8/4K3 w - - 0 1'), move('b7b8q'))).toBe(1);
   });

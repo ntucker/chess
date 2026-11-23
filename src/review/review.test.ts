@@ -4,10 +4,18 @@ import { replay } from '@/game/replay';
 import { ADVANCE, SAMPLE, uciLine } from '@/lesson/lesson.fixture';
 import { bookMoves } from '@/lesson/select';
 
-import { judgeMove } from '@/analysis/quality';
+import { judgeMove, type ReviewQuality } from '@/analysis/quality';
 
 import { movesGivenUp } from './refine';
-import { judgedPosition, leftGuide, moments, nextMoment, reviewMoves, tally } from './review';
+import {
+  isFine,
+  judgedPosition,
+  leftGuide,
+  moments,
+  nextMoment,
+  reviewMoves,
+  tally,
+} from './review';
 import { bookMove, judgedMove, listing, waitingMove } from './review.fixture';
 
 const line = uciLine('e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Nd4');
@@ -185,6 +193,15 @@ describe('nextMoment', () => {
     expect(nextMoment([7, 12, 20], new Set())).toBe(7);
     expect(nextMoment([7, 12, 20], new Set([7, 20]))).toBe(12);
     expect(nextMoment([7], new Set([7]))).toBeUndefined();
+  });
+});
+
+describe('isFine', () => {
+  it("holds for moves that gave nothing much away, the review's Brilliant and Great too", () => {
+    const fine: ReviewQuality[] = ['best', 'good', 'brilliant', 'great'];
+    const notFine: (ReviewQuality | undefined)[] = ['inaccuracy', 'miss', 'book', undefined];
+    expect(fine.every(isFine)).toBe(true);
+    expect(notFine.some(isFine)).toBe(false);
   });
 });
 

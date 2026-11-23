@@ -8,7 +8,7 @@
  * never takes a defended piece. Brilliant and Great read this (`refine.ts`).
  */
 import type { Chess } from 'chessops/chess';
-import type { NormalMove, Role, Square } from 'chessops/types';
+import type { Color, NormalMove, Role, Square } from 'chessops/types';
 import { SquareSet } from 'chessops/squareSet';
 
 import { VALUES } from '@/game/material';
@@ -39,19 +39,26 @@ export function exchangeGain(pos: Chess, square: Square): number {
 }
 
 /**
- * What `move`, legal in `before`, gives up: the most the opponent
- * then wins on any square holding one of the mover's pieces (not a pawn),
- * less what the move itself took and what the opponent could already win
- * before it. A knight a pawn attacks that takes a pawn on its way out gives
- * up nothing, since it was lost anyway.
+ * What `move`, legal in `before`, gives up: the most the opponent then wins
+ * on a square holding one of the mover's pieces (not a pawn), beyond what
+ * they could already win from that piece where it stood, less what the move
+ * itself took. Example: a knight a pawn attacks that takes a pawn on its way
+ * out gives up nothing, since it was lost anyway; but a quiet move that
+ * leaves a knight to be taken gives it up, even with a rook hanging
+ * elsewhere.
  */
 export function materialGivenUp(before: Chess, move: NormalMove): number {
   const after = playing(before, move);
-  const given = mostAtStake(after) - moveGain(before, move);
-  if (given <= 0) return 0;
-  // In check, the position with the opponent to move isn't legal: nothing counts as at stake before.
-  const lostAnyway = before.isCheck() ? 0 : mostAtStake(withTurn(before, after.turn));
-  return Math.max(0, given - lostAnyway);
+  // In check, the position with the opponent to move isn't legal: nothing was at stake before.
+  const was = before.isCheck() ? undefined : withTurn(before, after.turn);
+  let given = 0;
+  for (const square of piecesOf(after, before.turn)) {
+    const now = exchangeGain(after, square);
+    if (now <= given) continue;
+    const stood = square === move.to ? move.from : square;
+    given = Math.max(given, now - (was ? exchangeGain(was, stood) : 0));
+  }
+  return Math.max(0, given - moveGain(before, move));
 }
 
 /**
@@ -83,16 +90,9 @@ function playing(pos: Chess, move: NormalMove): Chess {
   return after;
 }
 
-/** The most the side to move in `pos` wins on one square holding an opposing piece (not a pawn). */
-function mostAtStake(pos: Chess): number {
-  const theirs = pos.board[opposite(pos.turn)];
-  let most = 0;
-  for (const role of PIECES) {
-    for (const square of pos.board[role].intersect(theirs)) {
-      most = Math.max(most, exchangeGain(pos, square));
-    }
-  }
-  return most;
+/** The squares of `color`'s pieces in `pos` that a sacrifice can give up (not pawns or the king). */
+function* piecesOf(pos: Chess, color: Color): Iterable<Square> {
+  for (const role of PIECES) yield* pos.board[role].intersect(pos.board[color]);
 }
 
 /** What `move`, legal in `pos`, takes, and what a promotion adds. */

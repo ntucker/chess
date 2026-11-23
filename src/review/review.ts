@@ -157,7 +157,7 @@ export function leftGuide(
 }
 
 /** The labels whose moves are worth stopping at: the review's own three, and the worst two. */
-const MOMENTS: ReadonlySet<ReviewQuality | undefined> = new Set<ReviewQuality>([
+const MOMENTS: ReadonlySet<ReviewQuality> = new Set([
   'brilliant',
   'great',
   'miss',
@@ -179,7 +179,7 @@ export function moments(
   return moves
     .filter(
       ({ ply, mover, quality }) =>
-        mover === learner && (ply === leftGuidePly || MOMENTS.has(quality)),
+        mover === learner && (ply === leftGuidePly || (!!quality && MOMENTS.has(quality))),
     )
     .map(({ ply }) => ply);
 }
@@ -190,6 +190,12 @@ export function moments(
  */
 export const nextMoment = (moments: readonly number[], visited: ReadonlySet<number>) =>
   moments.find((ply) => !visited.has(ply));
+
+/** The labels of moves that gave nothing much away: best and good, and the review's Brilliant and Great. */
+const FINE: ReadonlySet<ReviewQuality> = new Set(['best', 'good', 'brilliant', 'great']);
+
+/** Whether a move labelled `quality` gave nothing much away (`FINE`). */
+export const isFine = (quality: ReviewQuality | undefined) => !!quality && FINE.has(quality);
 
 /** How many moves got each label. */
 export type Tally = Readonly<Partial<Record<ReviewQuality, number>>>;

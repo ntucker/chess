@@ -1,7 +1,6 @@
 import { Separator, Stack } from '@reactive/silk-native';
 import { StyleSheet, View } from 'react-native';
 
-import type { ReviewQuality } from '@/analysis/quality';
 import { Eyebrow, useLabelled, useSections } from '@/components/Eyebrow';
 import { StatusHeadline } from '@/components/GameStatus';
 import { ScoresheetDrawer } from '@/components/ScoresheetDrawer';
@@ -11,7 +10,7 @@ import { type Color, shownMove } from '@/game/replay';
 import type { LessonId } from '@/resources/lesson';
 import { playOnHref } from '@/review/address';
 import { compareMove } from '@/review/comparison';
-import type { ReviewMove } from '@/review/review';
+import { isFine, type ReviewMove } from '@/review/review';
 import type { Review } from '@/review/useReview';
 import { NarrowOnly, useNarrowPart } from '@/theme/Narrow';
 import { qualityLooks } from '@/theme/moveQuality';
@@ -180,7 +179,7 @@ function momentHeadline(
   // "Find a better move than 7…Qxb2."; where the move left the guide but lost nothing, the guide's
   // move, though a best or good try that beats the game's move also passes (`passes`, review/retry.ts).
   const goal =
-    answer?.guide && move.quality && FINE.has(move.quality)
+    answer?.guide && isFine(move.quality)
       ? `Find the guide's move, or one stronger than ${named}.`
       : `Find a better move than ${named}.`;
   const latest = tries.at(-1);
@@ -226,9 +225,6 @@ function lossDetail(move: ReviewMove) {
   const lost = Math.round((move.before - move.after) * 100);
   return lost > 0 ? `Here: ${lost}%.` : undefined;
 }
-
-/** The labels of moves that gave nothing much away. */
-const FINE: ReadonlySet<ReviewQuality> = new Set(['best', 'good', 'brilliant', 'great']);
 
 /** The graph's height on a wide page. */
 const GRAPH_HEIGHT = 72;

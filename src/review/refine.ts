@@ -100,13 +100,14 @@ function brilliant({ ply, mover, quality, before, after }: JudgedMove, game: Gam
 function great({ ply, mover }: JudgedMove, { plies, analyses }: Game): boolean {
   const analysis = analyses[ply]!;
   const [first, second] = analysis.lines;
-  const { uci } = plies[ply + 1].move!;
-  if (analysis.lines.length < 3 || uci !== first.uci || winning(analysis, mover)) return false;
+  const playedMove = plies[ply + 1].move!;
+  if (analysis.lines.length < 3 || playedMove.uci !== first.uci || winning(analysis, mover))
+    return false;
   if (scoreFor(first.evaluation, mover) - scoreFor(second.evaluation, mover) < ONLY_MOVE) {
     return false;
   }
   const pos = parsePosition(plies[ply].fen)!;
-  const move = played(plies[ply + 1].move);
+  const move = played(playedMove);
   const previous = plies[ply].move;
   return (
     !pos.isCheck() &&
@@ -126,7 +127,7 @@ function great({ ply, mover }: JudgedMove, { plies, analyses }: Game): boolean {
 function missed({ ply, mover, after }: JudgedMove, previous: ReviewMove | undefined, game: Game) {
   if (previous?.status !== 'judged') return false;
   if (!refutation(previous.quality, game.analyses[ply], opposite(mover))) return false;
-  return after >= 1 - previous.before;
+  return after >= scoreFor(game.analyses[ply - 1]!.lines[0].evaluation, mover);
 }
 
 /** Whether `mover` was already winning: even Stockfish's second line keeps a score of `WINNING`. */

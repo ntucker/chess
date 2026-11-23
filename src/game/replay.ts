@@ -178,7 +178,7 @@ export function playMove(pos: Chess, uci: string): Ply['move'] {
  * the first move that isn't legal.
  */
 export function replay(line: readonly string[], start?: Chess): Ply[] {
-  return Array.from(playLine(line, start), ({ pos, repetitions, move }) => ({
+  return Array.from(playLine(line, start?.clone()), ({ pos, repetitions, move }) => ({
     fen: makeFen(pos.toSetup()),
     turn: pos.turn,
     move,
