@@ -26,7 +26,7 @@ const isWorklet = (fn: NodePath<t.Function>, program: t.Program) =>
  * functions, but on the UI thread a worklet binds what it captured in its
  * body, after its parameter defaults run, so such a default throws there.
  */
-function checkWorklets(file: string, text: string) {
+function scanWorklets(file: string, text: string) {
   let worklets = 0;
   const readEarly: string[] = [];
   const ast = parseSync(text, {
@@ -60,7 +60,7 @@ describe('worklet parameter defaults', () => {
     let worklets = 0;
     const readEarly: string[] = [];
     for (const { file, text } of workletSources()) {
-      const found = checkWorklets(file, text);
+      const found = scanWorklets(file, text);
       worklets += found.worklets;
       readEarly.push(
         ...found.readEarly.map((name) => `${path.relative(__dirname, file)}: ${name}`),
@@ -72,18 +72,22 @@ describe('worklet parameter defaults', () => {
 
   it('are checked in a worklet marked itself', () => {
     const text = `const SUB = 1;
-      export function f(a: number, { p = SUB, q = a } = {}) {
+      export function f(a: number, { p = SUB, q = a, r = Math.PI } = {}) {
         'worklet';
-        return a + p + q + Math.max(a, p);
+        return a + p + q + r;
       }`;
-    expect(checkWorklets('f.ts', text)).toEqual({ worklets: 1, readEarly: ['SUB'] });
+    expect(scanWorklets('f.ts', text)).toEqual({ worklets: 1, readEarly: ['SUB'] });
   });
 
   it('are checked in every function of a file marked as worklets', () => {
     const text = `'worklet';
       import { SUB } from './spring';
-      export const f = (a: number, p = SUB) => a + p;`;
-    expect(checkWorklets('f.ts', text)).toEqual({ worklets: 1, readEarly: ['SUB'] });
+      import { LIMIT } from './limits';
+      export const f = (a: number, p = SUB) => a + p;
+      export function g(b: number, q = LIMIT) {
+        return b + q;
+      }`;
+    expect(scanWorklets('f.ts', text)).toEqual({ worklets: 2, readEarly: ['SUB', 'LIMIT'] });
   });
 
   it('leave functions that are not worklets alone', () => {
@@ -91,6 +95,6 @@ describe('worklet parameter defaults', () => {
       export function f(a: number, p = SUB) {
         return a + p;
       }`;
-    expect(checkWorklets('f.ts', text)).toEqual({ worklets: 0, readEarly: [] });
+    expect(scanWorklets('f.ts', text)).toEqual({ worklets: 0, readEarly: [] });
   });
 });
