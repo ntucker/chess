@@ -16,7 +16,7 @@ import { type Color, colorName, dropMove, fenAfter, opposite } from '@/game/repl
 import type { Uci } from '@/lesson/lesson';
 import { lessonHref, withOpenings } from '@/lesson/openings';
 import { getLesson, isLessonId, LessonIndexContext, type LessonId } from '@/resources/lesson';
-import { addressMoves, playOnHref, type ReviewAddress } from '@/review/address';
+import { addressMoves, type ReviewAddress } from '@/review/address';
 import { REVIEW_ENGINE, useReview } from '@/review/useReview';
 
 import { ReviewNames } from './NarrowBars';
@@ -150,7 +150,7 @@ function ReviewScreen({
           learner={learner}
           review={review}
           drawer={scoresheetOpen ? { onClose: () => setScoresheetOpen(false) } : undefined}
-          playOn={moment.playOn && playOnHref(moment.playOn, learner, lesson)}
+          lesson={lesson}
         />
       }
       programFoot={<ReviewActionBar {...review} />}

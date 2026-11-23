@@ -1,5 +1,4 @@
 import { Separator, Stack } from '@reactive/silk-native';
-import type { Href } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { Eyebrow, useLabelled, useSections } from '@/components/Eyebrow';
@@ -8,6 +7,8 @@ import { ScoresheetDrawer } from '@/components/ScoresheetDrawer';
 import { Scoresheet } from '@/components/Scoresheet';
 import { SourceFootnote } from '@/components/SourceLink';
 import { type Color, shownMove } from '@/game/replay';
+import type { LessonId } from '@/resources/lesson';
+import { playOnHref } from '@/review/address';
 import { compareMove } from '@/review/comparison';
 import type { ReviewMove } from '@/review/review';
 import type { Review } from '@/review/useReview';
@@ -42,8 +43,8 @@ interface Props {
   readonly review: ReviewView;
   /** On a narrow page, the scoresheet drawer while it's open (from the header), covering the headline and the move card. */
   readonly drawer?: { readonly onClose: () => void };
-  /** Where "Play on from here" goes, once the moment shown is revealed (`playOnHref`). */
-  readonly playOn?: Href;
+  /** The lesson the game was played in, if any: "Play on from here" returns to its page. */
+  readonly lesson?: LessonId;
 }
 
 /**
@@ -54,7 +55,7 @@ interface Props {
  * keeps the actions in a bar at the screen's foot (`ReviewActionBar`), and
  * opens the scoresheet in a drawer.
  */
-export function ReviewPanel({ eyebrow, learner, review, drawer, playOn }: Props) {
+export function ReviewPanel({ eyebrow, learner, review, drawer, lesson }: Props) {
   const part = useNarrowPart();
   const labelled = useLabelled();
   const sections = useSections();
@@ -85,7 +86,7 @@ export function ReviewPanel({ eyebrow, learner, review, drawer, playOn }: Props)
             hidden={moment.hidden ? (moment.answer ? 'until retry' : 'until judged') : undefined}
             tries={moment.tries}
             guide={moment.revealed ? moment.answer : undefined}
-            playOn={playOn}
+            playOn={moment.playOn && playOnHref(moment.playOn, learner, lesson)}
             pointed={pointed}
             onPoint={point}
           />

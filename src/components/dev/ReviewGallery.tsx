@@ -8,7 +8,7 @@ import { Eyebrow } from '@/components/Eyebrow';
 import { ReviewPanel, type ReviewView } from '@/components/review/ReviewPanel';
 import { legalMoveCountAt, replay } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
-import { playOnHref, reviewHref } from '@/review/address';
+import { reviewHref } from '@/review/address';
 import { momentAt } from '@/review/retry';
 import { moments, reviewMoves } from '@/review/review';
 import { type ReviewScreen, reviewedGame, reviewReducer, startReview } from '@/review/screen';
@@ -172,7 +172,6 @@ function StateCard({ title, sentence, searched, failed = [], ply, retried }: Sta
     tryAnalyses: (screen.tries.get(screen.ply) ?? []).map((uci) => TRIED[uci]),
     tryFailed: [],
   });
-  const playOn = moment.playOn && playOnHref(moment.playOn, 'black', 'caro-kann');
   const review: ReviewView = {
     plies: PLIES,
     ply: screen.ply,
@@ -199,7 +198,12 @@ function StateCard({ title, sentence, searched, failed = [], ply, retried }: Sta
         <Text role="bodySm">{sentence}</Text>
       </Stack>
       <Surface elevation="raised" radius="md" border="subtle" style={styles.panel}>
-        <ReviewPanel eyebrow="Review · Caro-Kann" learner="black" review={review} playOn={playOn} />
+        <ReviewPanel
+          eyebrow="Review · Caro-Kann"
+          learner="black"
+          review={review}
+          lesson="caro-kann"
+        />
       </Surface>
     </Stack>
   );

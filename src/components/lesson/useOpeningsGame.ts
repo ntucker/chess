@@ -31,10 +31,10 @@ const startOf = (index: LessonIndex<LessonId>, at: Address) =>
     ? []
     : (opensAt(index[at.address], at) ?? index[at.address].lines[0].moves);
 
-/** The line an address of lesson `entry` opens at: the moves it names, else its variation's line, if any. */
-function opensAt(entry: Parameters<typeof variationLine>[0], { variation, moves }: Address) {
+/** The line an address of `lesson` opens at: the moves it names, else its variation's line, if any. */
+function opensAt(lesson: Parameters<typeof variationLine>[0], { variation, moves }: Address) {
   const named = addressMoves(moves);
-  return named.length ? named : variationLine(entry, variation);
+  return named.length ? named : variationLine(lesson, variation);
 }
 
 /**
@@ -68,7 +68,7 @@ interface Visit extends Address {
  * (`dismissTo` would land on the entry underneath and take its game).
  * An address can also name one of its lesson's variations
  * (`/lesson/<id>?variation=<id>`, from the opening list), which starts the
- * game at the line that opens it, or moves (`start`: `?moves=e2e4 c7c6`, the
+ * game at the line that opens it, or moves (`movesParam`: `?moves=e2e4 c7c6`, the
  * review's "Play on from here"), which start the game having played them; a
  * move past that line drops it.
  *
@@ -98,7 +98,7 @@ export function useOpeningsGame(
   address: LessonId | undefined,
   variation: VariationId | undefined,
   entry: string | undefined,
-  start?: string,
+  movesParam?: string,
 ) {
   const router = useRouter();
   const index = use(LessonIndexContext);
@@ -111,7 +111,7 @@ export function useOpeningsGame(
   );
   const side = addressSide ?? settings.side;
   const [game, dispatch] = useReducer(gameReducer, undefined, () =>
-    startGame(startOf(index, { address, variation, moves: start })),
+    startGame(startOf(index, { address, variation, moves: movesParam })),
   );
   const { moves } = game;
   /** The lesson the game plays, named by the moves that pick it. */
@@ -121,12 +121,12 @@ export function useOpeningsGame(
     entry,
     address,
     variation,
-    moves: start,
+    moves: movesParam,
     sent: [],
   });
   // Each history entry the page left, while the game was still at its address.
   const [left, setLeft] = useState<Partial<Record<string, Visit>>>({});
-  const at: Address = { address, variation, moves: start };
+  const at: Address = { address, variation, moves: movesParam };
   if (entry !== synced.entry || !sameAddress(at, synced)) {
     if (address !== undefined && address !== synced.address) {
       setAddressSide(index[address].side);

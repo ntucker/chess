@@ -15,7 +15,8 @@ type Params = { readonly moves?: string; readonly side?: string };
  * (`/play?moves=e2e4 e7e5&side=black`): the review's "Play on from here"
  * (`playOnHref`), which may land on the page already open. A move past those
  * moves, or a new game, drops them from the address, so the same link starts
- * its game afresh. Without them the game starts empty, as White.
+ * its game afresh. The side counts only with moves. Without them the game
+ * starts empty, as White.
  */
 export function usePlayAddress() {
   const router = useRouter();

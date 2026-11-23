@@ -234,7 +234,7 @@ describe('ReviewPanel', () => {
   });
 
   it('offers Play on from here once revealed, back to the game it replaces', () => {
-    const playOn = { pathname: '/play', params: { moves: 'e2e4 e7e5 g1f3', side: 'white' } };
+    const playOn = { pathname: '/lesson/caro-kann', params: { moves: 'e2e4 e7e5 g1f3' } };
     const link = (host: HTMLElement) =>
       [...host.querySelectorAll('[data-href]')].find((element) =>
         element.textContent?.includes('Play on from here'),
@@ -251,7 +251,7 @@ describe('ReviewPanel', () => {
         expect(JSON.parse(link(host)!.getAttribute('data-href')!)).toEqual(playOn);
         expect(link(host)!.getAttribute('data-dismiss-to')).toBe('true');
       },
-      <ReviewPanel eyebrow="Review" learner="white" review={revealed} playOn={playOn} />,
+      <ReviewPanel eyebrow="Review" learner="white" review={revealed} lesson="caro-kann" />,
     );
   });
 
