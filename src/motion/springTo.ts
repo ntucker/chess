@@ -21,7 +21,7 @@ interface SpringToOptions {
 export function springTo(
   target: number,
   spring: Spring,
-  { track, precision = SUBPIXEL }: SpringToOptions = {},
+  { track, precision }: SpringToOptions = {},
 ) {
   'worklet';
   return defineAnimation<AnimationObject<number>>(target, () => {
@@ -43,7 +43,9 @@ export function springTo(
       },
       onFrame(animation: AnimationObject<number>, now: number) {
         const state = springAt(spring, animation.start, (now - animation.startTime) / 1000);
-        const done = atRest(state, precision);
+        // Resolved here, never as a parameter default: on the UI thread a worklet
+        // binds what it captured in its body, after its defaults run.
+        const done = atRest(state, precision ?? SUBPIXEL);
         animation.current = target + (done ? 0 : state.offset);
         return done;
       },
