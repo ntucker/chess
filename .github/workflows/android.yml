@@ -1,9 +1,12 @@
 # Builds the Android app on every push to main that changes more than
 # Markdown, and publishes it at one fixed address, so a phone installs the
-# newest build from its browser. A pull request only builds, and only when it
-# changes native config or dependencies (the paths below); app code and bundled
-# assets can't break the native build, so they are left to main. README.md, under "Android builds", says how to install
-# it.
+# newest build from its browser. README.md, under "Android builds", says how
+# to install it.
+#
+# A pull request only builds, and only when it changes native config,
+# dependencies or icons (the paths below). Other changes are left to main,
+# since a build takes about 14 minutes and CI's typecheck and tests cover app
+# code.
 name: Android
 
 on:
@@ -138,6 +141,7 @@ jobs:
           asset() { gh api "repos/$GH_REPO/releases/tags/$TAG" --jq ".assets[] | select(.name == \"$1\") | .id"; }
           old=$(asset "$APK")
           next=$(asset "next-$APK")
+          # Delete the live file only once its replacement is listed.
           [ -n "$next" ]
           [ -z "$old" ] || gh api -X DELETE "repos/$GH_REPO/releases/assets/$old"
           gh api -X PATCH "repos/$GH_REPO/releases/assets/$next" -f name="$APK" > /dev/null
