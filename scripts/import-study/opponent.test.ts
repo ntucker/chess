@@ -1,11 +1,12 @@
 import { describe, expect, it } from '@jest/globals';
 import { Chess } from 'chessops/chess';
 import { parseFen } from 'chessops/fen';
+import { parsePgn } from 'chessops/pgn';
 
 import { positionKey } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 
-import { nextLearnerMove, pgnOf, walk } from './opponent';
+import { mergeTrees, nextLearnerMove, pgnOf, walk } from './opponent';
 
 const keyOf = (fen: string) => positionKey(Chess.fromSetup(parseFen(fen).unwrap()).unwrap());
 
@@ -57,5 +58,17 @@ describe('the opponent walk', () => {
       answer: async (steps) => steps.map(() => undefined),
     });
     expect(open.map(({ line }) => line.join(' '))).toEqual(['e4 e5']);
+  });
+});
+
+describe('merging trees', () => {
+  it('keeps both trees’ moves, the first tree’s first', () => {
+    const [ours, theirs] = ['1. e4 e5 2. Nf3 *', '1. e4 c5 ( 1... e5 2. Bc4 ) 2. Nf3 *'].map(
+      (text) => parsePgn(text)[0].moves,
+    );
+    mergeTrees(ours, theirs);
+    expect(pgnOf(ours, {})).toBe(
+      '[Result "*"]\n\n1. e4 e5 ( 1... c5 2. Nf3 ) 2. Nf3 ( 2. Bc4 ) *\n',
+    );
   });
 });
