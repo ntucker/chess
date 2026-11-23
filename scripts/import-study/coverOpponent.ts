@@ -23,11 +23,12 @@
 import { join } from 'node:path';
 import { writeFileSync } from 'node:fs';
 
+import type { Chess } from 'chessops/chess';
 import { makeSan } from 'chessops/san';
 import { parseUci } from 'chessops/util';
 
 import { positionKey, sanToUci } from '@/game/replay';
-import { forSide } from '@/evaluation/evaluation';
+import { type Evaluation, forSide } from '@/evaluation/evaluation';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { APP_SEARCH } from '@/stockfish/engine';
 
@@ -118,6 +119,11 @@ interface Candidate {
   readonly pawns: number;
 }
 
+const toCandidate = ({ san, evaluation }: { san: string; evaluation: Evaluation }, pos: Chess) => ({
+  san,
+  pawns: forSide(evaluation.pawns, pos.turn),
+});
+
 /** Fills gaps with Stockfish's moves, Fable picking among near-best ones; counts what it did. */
 function gapFiller(source: string, mine: Lesson, style: string, engine: Engine) {
   const picks = answersFile<{ key: string; move: string }>(
@@ -127,14 +133,19 @@ function gapFiller(source: string, mine: Lesson, style: string, engine: Engine) 
   );
   const counts = { filled: 0, picked: 0 };
 
+  /** The engine's moves within `nearPawns` of its best; a mate it finds is the only move. */
   const nearBest = async ({ pos, ucis }: Step): Promise<readonly Candidate[]> => {
     const { lines } = await engine.evaluate(ucis, positionKey(pos));
     const ranked = lines.flatMap(({ uci, evaluation }) =>
-      uci
-        ? [{ san: makeSan(pos, parseUci(uci)!), pawns: forSide(evaluation.pawns, pos.turn) }]
-        : [],
+      uci ? [{ san: makeSan(pos, parseUci(uci)!), evaluation }] : [],
     );
-    return ranked.filter(({ pawns }) => pawns >= ranked[0].pawns - SETTINGS.nearPawns);
+    // A mate's pawns are 0, so mates are judged apart: the best line mates, or the
+    // engine would rank it lower, and a line that gets mated is never near the best.
+    if (ranked[0]?.evaluation.mate !== undefined) return [toCandidate(ranked[0], pos)];
+    const candidates = ranked
+      .filter(({ evaluation }) => evaluation.mate === undefined)
+      .map((line) => toCandidate(line, pos));
+    return candidates.filter(({ pawns }) => pawns >= candidates[0].pawns - SETTINGS.nearPawns);
   };
   const pickKey = (step: Step, candidates: readonly Candidate[]) =>
     `${positionKey(step.pos)} ${candidates.map(({ san }) => san).join(',')}`;
