@@ -1,4 +1,11 @@
-import { type Href, type ImperativeRouter, router, unstable_useIsNavigating } from 'expo-router';
+import {
+  type Href,
+  type ImperativeRouter,
+  router,
+  unstable_useIsNavigating,
+  useNavigation,
+  useRouter,
+} from 'expo-router';
 
 /**
  * Navigation to a page that loads first, such as another lesson: outside a
@@ -34,6 +41,19 @@ export function goBack(router: ImperativeRouter, fallback: Href, next?: Href) {
     router.back(AT_ONCE);
     router.push(next, AT_ONCE);
   }
+}
+
+/**
+ * A header back button's press: back to the page under this one in the
+ * root stack, as `goBack` goes, but past any history this page keeps of its
+ * own, such as the lines a lesson's page moved through, which the router's
+ * Back would step through first. With nothing underneath, `fallback`
+ * replaces this page.
+ */
+export function useBack(fallback: Href) {
+  const navigation = useNavigation();
+  const router = useRouter();
+  return () => (navigation.canGoBack() ? navigation.goBack() : router.replace(fallback, AT_ONCE));
 }
 
 /**

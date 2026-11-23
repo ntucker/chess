@@ -3,9 +3,9 @@ import { router, Slot, useIsFocused } from 'expo-router';
 import { act, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
-import { runNavigationInTransitions } from '@/components/navigation';
+import { goBack, runNavigationInTransitions, useBack } from '@/components/navigation';
 import type { Destination } from '@/components/PlaceLink';
-import { RootStack } from '@/components/testing';
+import { RootStack, shown } from '@/components/testing';
 import { uciLine } from '@/lesson/lesson.fixture';
 import { playOnHref, reviewHref } from '@/review/address';
 
@@ -19,6 +19,8 @@ import { getMockContext } from 'expo-router/build/testing-library/mock-config';
 /** Each game page's back button, as of its last render in front. */
 let play: Destination | undefined;
 let lesson: Destination | undefined;
+/** The lesson page's back button's press, as `BackButton` presses it. */
+let pressBack: () => void;
 
 /** The free-game page, reading its back button as `play.tsx` does. */
 function Play() {
@@ -33,9 +35,10 @@ function Play() {
 /** The openings layout, which reads the lesson page's back button around its routes. */
 function Openings() {
   const back = useBackToReview();
+  const press = useBack('/');
   const focused = useIsFocused();
   useLayoutEffect(() => {
-    if (focused) lesson = back;
+    if (focused) [lesson, pressBack] = [back, press];
   });
   return <Slot />;
 }
@@ -48,6 +51,7 @@ async function open(url: string) {
     '(openings)/index': () => null,
     '(openings)/lesson/[id]': () => null,
     play: Play,
+    openings: () => null,
     review: () => null,
   });
   runNavigationInTransitions();
@@ -91,9 +95,21 @@ describe('useBackToReview', () => {
     await run(() => router.push(REVIEW));
     await run(() => router.push(playOnHref(GAME, 'black', 'caro-kann')));
     expect(lesson?.label).toBe('Back to the review');
-    // Back on the lesson's page the review opened from, nothing is under it.
+    // Back on the start page the review opened from, nothing is under it.
     await run(() => router.back());
     await run(() => router.back());
     expect(lesson).toBeUndefined();
+  });
+
+  it('goes straight back to the review after picking another line on the lesson page', async () => {
+    await open('/');
+    await run(() => router.push(REVIEW));
+    await run(() => router.push(playOnHref(GAME, 'black', 'caro-kann')));
+    // A line picked from the opening list, as OpeningList picks it.
+    await run(() => router.push('/openings'));
+    await run(() => goBack(router, '/', '/lesson/caro-kann?variation=exchange-variation'));
+    expect(shown.params.variation).toBe('exchange-variation');
+    await run(pressBack);
+    expect([shown.path, shown.params]).toEqual(['/review', REVIEW.params]);
   });
 });
