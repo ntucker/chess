@@ -132,6 +132,7 @@ function ReviewScreen({
                 ply={ply}
                 total={moves.length}
                 onGoto={goto}
+                fill
                 middle={<GraphPlace san={current.move?.san} ply={ply} />}
               />
             ),
