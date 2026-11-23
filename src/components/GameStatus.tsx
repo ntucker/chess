@@ -1,10 +1,13 @@
 import { Button, Inline, Stack, Text } from '@reactive/silk-native';
+import type { Href } from 'expo-router';
+import type { ReactNode } from 'react';
 import { View } from 'react-native';
 
 import { Eyebrow } from '@/components/Eyebrow';
 import { type Destination, PlaceLink } from '@/components/PlaceLink';
+import { ReviewGameButton } from '@/components/ReviewLinks';
 import { NEW_VERSION, NewVersionError, reload } from '@/files/newVersion';
-import { resultVerdict } from '@/game/ending';
+import { endingHeadline, resultVerdict } from '@/game/ending';
 import type { Color, Position } from '@/game/replay';
 import { describeOpponent, type Opponent } from '@/opponent/opponent';
 import { narrowLength, narrowStyles } from '@/theme/narrow';
@@ -22,14 +25,18 @@ interface Props {
   readonly thinking: boolean;
   readonly error?: Error;
   readonly onRetry: () => void;
+  /** The game's review, which the headline offers once the game ends. */
+  readonly review: Href;
 }
 
-/** The headline of the panel: whose move it is, or how the game ended. */
-export function GameStatus({ error, onRetry, ...game }: Props) {
+/** The headline of the panel: whose move it is, or how the game ended, with its review. */
+export function GameStatus({ error, onRetry, review, ...game }: Props) {
+  const ended = game.latest.result && game.viewing === undefined;
   return (
     <StatusHeadline
       {...describe(game)}
       failure={error && { who: describeOpponent(game.opponent).name, error, onRetry }}
+      action={ended ? <ReviewGameButton href={review} /> : null}
     />
   );
 }
@@ -58,6 +65,8 @@ export interface HeadlineProps {
    * headline. Screen readers hear the full headline either way.
    */
   readonly news?: News;
+  /** What the headline leads to, under it: "Review the game" when a game ends. */
+  readonly action?: ReactNode;
 }
 
 export type News = 'all' | 'detail' | 'none';
@@ -71,6 +80,7 @@ export function StatusHeadline({
   eyebrowInHeader,
   eyebrowLink,
   news,
+  action,
 }: HeadlineProps) {
   const part = useNarrowPart();
   const styles = useNarrowStyles(STYLES);
@@ -113,6 +123,7 @@ export function StatusHeadline({
         </NarrowOnly>
       ) : null}
       {failure ? <FailureLine {...failure} /> : null}
+      {action}
     </Stack>
   );
 }
@@ -154,7 +165,7 @@ function describeFailure({ who, error, onRetry }: Failure): {
   return { message: NEW_VERSION, button: { label: 'Reload', onPress: reload } };
 }
 
-type Game = Omit<Props, 'error' | 'onRetry'>;
+type Game = Omit<Props, 'error' | 'onRetry' | 'review'>;
 
 function describe({ viewing, total, ...game }: Game) {
   const { title, detail } = describeLatest(game);
@@ -174,16 +185,8 @@ function describeLatest({
   thinking,
 }: Omit<Game, 'viewing' | 'total'>) {
   const { result } = latest;
-  const mood = result && resultVerdict(result, playerColor).mood;
   const { name, style } = describeOpponent(opponent);
-  if (mood === 'won')
-    return { title: 'Checkmate. Bravo!', detail: 'You won. Take a bow, then start a new game.' };
-  if (mood === 'lost')
-    return {
-      title: 'Checkmate.',
-      detail: `${name} won this one. Step back through it to see where it turned.`,
-    };
-  if (result) return { title: 'A draw.', detail: `By ${result.reason}.` };
+  if (result) return endingHeadline(resultVerdict(result, playerColor), name);
   if (latest.turn === playerColor)
     return {
       title: 'Your move.',

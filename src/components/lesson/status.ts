@@ -1,5 +1,7 @@
 import type { MoveQuality } from '@/analysis/quality';
 import type { HeadlineProps, News } from '@/components/GameStatus';
+import { endingHeadline, resultVerdict, type Verdict } from '@/game/ending';
+import type { Color, GameResult } from '@/game/replay';
 import type { LessonView } from '@/lesson/view';
 import { qualityLooks } from '@/theme/moveQuality';
 
@@ -44,6 +46,8 @@ interface StatusInput {
   readonly startsRun: boolean;
   /** In Practice: whether the run is clean, and the label of the move the board shows. */
   readonly practice?: { readonly clean: boolean; readonly verdict?: MoveQuality };
+  /** How the game ended for the learner, while the board shows its final position. */
+  readonly ending?: Verdict;
 }
 
 /** The panel's headline, as `describeStatus` gives it. */
@@ -56,8 +60,9 @@ type Status = Pick<HeadlineProps, 'eyebrow' | 'title' | 'detail' | 'news'> & {
 };
 
 /**
- * The panel's headline: where the lesson stands and whose move it is. In
- * Practice, right after the learner's move, it judges that move first.
+ * The panel's headline: where the lesson stands and whose move it is, or
+ * how the game ended. In Practice, right after the learner's move, it judges
+ * that move first.
  * `news` says what of it is news, where the title only says whose move it
  * is (`detail`), or the detail is also how to use the screen, once the
  * learner has moved and so has seen how (`none`); left out, all of it is
@@ -79,6 +84,7 @@ export function describeStatus(
     lineEnded,
     startsRun,
     practice,
+    ending,
   }: StatusInput,
 ): Status {
   if (loading) return { eyebrow: picking ? OPENINGS_TITLE : title, ...LOADING };
@@ -90,6 +96,7 @@ export function describeStatus(
         'Each move here leads to the lesson named beside it. Play one on the board or in the list.',
     };
   const eyebrow = names.join(' · ') || title;
+  if (ending) return { eyebrow, ...endingHeadline(ending, rival) };
   // Beyond the guide with auto play off, nobody replies: the learner moves both sides.
   const playOn = auto ? `play on against ${engine}` : 'play on, moving both sides';
   if (lineEnded && practice?.clean)
@@ -145,6 +152,38 @@ export function describeStatus(
       ? 'Point at a reply to see what it aims for, then play it.'
       : 'Point at a reply to see what it aims for.',
   };
+}
+
+/**
+ * How the game ended, for the headline: only while the board shows its final
+ * position, not a move stepped back to or an idea played over it.
+ */
+export const shownEnding = (
+  { result, atLatest, playing }: { result?: GameResult; atLatest: boolean; playing: boolean },
+  learner: Color,
+): Verdict | undefined =>
+  result && atLatest && !playing ? resultVerdict(result, learner) : undefined;
+
+/**
+ * Why the scoresheet's Review button doesn't open yet, for its tip, or
+ * undefined once it opens: when the game has ended, or in Practice once a
+ * move left the guide. Never while picking a line.
+ */
+export function whyReviewShut({
+  picking,
+  ended,
+  practice,
+  leftGuide,
+}: {
+  readonly picking: boolean;
+  readonly ended: boolean;
+  readonly practice: boolean;
+  readonly leftGuide: boolean;
+}): string | undefined {
+  if (!picking && (ended || (practice && leftGuide))) return undefined;
+  return practice
+    ? 'Review opens after a move off the guide, or once the game ends.'
+    : 'Review opens once the game ends, or in Practice after a move off the guide.';
 }
 
 /** What a narrow page's layout around the headline shows, for `headlineNews`. */

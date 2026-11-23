@@ -8,6 +8,7 @@ import { Eyebrow } from '@/components/Eyebrow';
 import { ReviewPanel, type ReviewView } from '@/components/review/ReviewPanel';
 import { legalMoveCountAt, replay } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
+import { reviewHref } from '@/review/address';
 import { reviewMoves } from '@/review/review';
 import { reviewedGame, reviewReducer, startReview } from '@/review/screen';
 import { evaluationFromScore } from '@/stockfish/uci';
@@ -25,9 +26,7 @@ export function ReviewGallery() {
       title="Game review"
       intro="The review's panel in each state it can be in, for one Caro-Kann game where Black blunders with 7...Qxb2. Step through each with its scoresheet; point at a move card's rows."
     >
-      <Link
-        href={`/review?${new URLSearchParams({ moves: LINE.join(' '), side: 'black', lesson: 'caro-kann' })}`}
-      >
+      <Link href={reviewHref(LINE, 'black', 'caro-kann')}>
         <Text role="body" tone="accent">
           {"Open this game's review, searched for real"}
         </Text>
