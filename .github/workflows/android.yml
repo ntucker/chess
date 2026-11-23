@@ -1,8 +1,8 @@
 # Builds the Android app on every push to main that changes more than
 # Markdown, and publishes it at one fixed address, so a phone installs the
 # newest build from its browser. A pull request only builds, and only when it
-# changes what the native build reads (the paths below); one changing app code
-# alone is left to main. README.md, under "Android builds", says how to install
+# changes native config or dependencies (the paths below); app code and bundled
+# assets can't break the native build, so they are left to main. README.md, under "Android builds", says how to install
 # it.
 name: Android
 
@@ -110,9 +110,10 @@ jobs:
         with:
           name: apk
 
-      # A newer run of this workflow on main publishes its own build, if it
-      # builds; this older one would only replace it. Pull request runs from a
-      # fork's main share the branch name, so they don't count.
+      # An older run stands down for any newer run on main, which publishes its
+      # own build; if that build fails, the link keeps the build before both
+      # until the next push. Pull request runs from a fork's main share the
+      # branch name, so they don't count.
       - name: Check this is main's newest build
         id: newest
         run: |
@@ -124,20 +125,20 @@ jobs:
             echo "newest=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # The tag stays where the first publish made it (moving it would break
-      # `git fetch` in clones that have it). The new file goes up under another
-      # name, then takes the fixed one, so the link is missing only between the
-      # delete and the rename, not for the whole upload.
+      # Moving the tag would break `git fetch` in clones that have it.
       - name: Publish to the release
         if: steps.newest.outputs.newest
         run: |
           gh release view "$TAG" > /dev/null 2>&1 \
             || gh release create "$TAG" --target "$GITHUB_SHA" --title 'Android app (newest main)' --notes ''
+          # The new file goes up under another name, then takes the fixed one,
+          # so the link is missing only between the delete and the rename.
           mv "$APK" "next-$APK"
           gh release upload "$TAG" "next-$APK" --clobber
-          assets=$(gh api "repos/$GH_REPO/releases/tags/$TAG" --jq '.assets[] | "\(.name) \(.id)"')
-          old=$(awk -v name="$APK" '$1 == name { print $2 }' <<< "$assets")
-          next=$(awk -v name="next-$APK" '$1 == name { print $2 }' <<< "$assets")
+          asset() { gh api "repos/$GH_REPO/releases/tags/$TAG" --jq ".assets[] | select(.name == \"$1\") | .id"; }
+          old=$(asset "$APK")
+          next=$(asset "next-$APK")
+          [ -n "$next" ]
           [ -z "$old" ] || gh api -X DELETE "repos/$GH_REPO/releases/assets/$old"
           gh api -X PATCH "repos/$GH_REPO/releases/assets/$next" -f name="$APK" > /dev/null
           gh release edit "$TAG" --notes "Built from $GITHUB_SHA on $(date -u '+%Y-%m-%d %H:%M UTC').
