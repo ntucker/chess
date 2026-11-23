@@ -20,7 +20,7 @@ import { getMockContext } from 'expo-router/build/testing-library/mock-config';
 let play: Destination | undefined;
 let lesson: Destination | undefined;
 /** The lesson page's back button's press, as `BackButton` presses it. */
-let pressBack: () => void;
+let pressBack: (() => void) | undefined;
 
 /** The free-game page, reading its back button as `play.tsx` does. */
 function Play() {
@@ -66,7 +66,7 @@ beforeAll(() => {
 afterEach(() => {
   act(() => root?.unmount());
   root = undefined;
-  play = lesson = undefined;
+  play = lesson = pressBack = undefined;
 });
 
 const GAME = uciLine('e4', 'c6', 'd4', 'd5');
@@ -109,7 +109,7 @@ describe('useBackToReview', () => {
     await run(() => router.push('/openings'));
     await run(() => goBack(router, '/', '/lesson/caro-kann?variation=exchange-variation'));
     expect(shown.params.variation).toBe('exchange-variation');
-    await run(pressBack);
+    await run(pressBack!);
     expect([shown.path, shown.params]).toEqual(['/review', REVIEW.params]);
   });
 });

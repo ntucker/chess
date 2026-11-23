@@ -4,8 +4,8 @@ import {
   router,
   unstable_useIsNavigating,
   useNavigation,
-  useRouter,
 } from 'expo-router';
+import { startTransition } from 'react';
 
 /**
  * Navigation to a page that loads first, such as another lesson: outside a
@@ -44,16 +44,19 @@ export function goBack(router: ImperativeRouter, fallback: Href, next?: Href) {
 }
 
 /**
- * A header back button's press: back to the page under this one in the
- * root stack, as `goBack` goes, but past any history this page keeps of its
- * own, such as the lines a lesson's page moved through, which the router's
- * Back would step through first. With nothing underneath, `fallback`
- * replaces this page.
+ * A header back button's press: back to the page under this one, as
+ * `goBack` goes, but past any history this page keeps of its own, such as
+ * the lines a lesson's page moved through, which the router's Back steps
+ * through first. It pops the page from the navigator holding it, which for
+ * every page is the root stack. Like the router's, the pop runs in a
+ * transition. With nothing underneath, `fallback` replaces this page.
  */
 export function useBack(fallback: Href) {
   const navigation = useNavigation();
-  const router = useRouter();
-  return () => (navigation.canGoBack() ? navigation.goBack() : router.replace(fallback, AT_ONCE));
+  return () => {
+    if (navigation.canGoBack()) startTransition(() => navigation.goBack());
+    else router.replace(fallback, AT_ONCE);
+  };
 }
 
 /**
