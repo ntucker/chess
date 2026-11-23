@@ -1,5 +1,6 @@
 import { oklch } from '@reactive/silk-core/color';
 
+import { BOARD_OKLCH } from './boardColors';
 import { pieceColors } from './pieceColors';
 
 /**
@@ -17,7 +18,7 @@ export const graphColors = {
   /** The stripes over Black's area where no analysis has read the game yet. */
   hatch: oklch(0.37, 0.04, 305),
   /** The move the page shows: the board's spotlight gold. */
-  current: oklch(0.751, 0.1295, 79.8),
+  current: oklch(...BOARD_OKLCH.gold),
   /**
    * The edge around the marks that cross both areas (the gold line, the
    * scrub line, the dots), so each reads on White's light area as well as

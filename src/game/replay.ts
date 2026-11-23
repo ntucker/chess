@@ -35,6 +35,10 @@ export function numberedMove(san: string, ply: number, blackMark = '...'): strin
   return `${Math.ceil(ply / 2)}${ply % 2 === 1 ? '.' : blackMark}${san}`;
 }
 
+/** The move on the board as the stepper names it, "12…Nc6" (`ply` moves in), or "Start" before any. */
+export const shownMove = (san: string | undefined, ply: number) =>
+  san ? numberedMove(san, ply, '…') : 'Start';
+
 /** `sans` numbered, the first played at `firstPly` (1 is White's first move): `1.e4 c6 2.d4`, or `2...d5 3.e5`. */
 export function numberedLine(sans: readonly string[], firstPly = 1): string {
   return sans

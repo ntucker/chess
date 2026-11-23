@@ -75,4 +75,17 @@ describe('ReviewGraph', () => {
       ]);
     });
   });
+
+  it("dots the learner's moments by label, and rings the likely ones", () => {
+    // White's 2.Nf3 drops 0.15: judged a mistake, a moment; not judged yet, a likely one.
+    const dots = (host: HTMLElement) =>
+      [...host.querySelectorAll('[data-testid^="dot-"]')].map((dot) =>
+        dot.getAttribute('data-testid'),
+      );
+    render(view(), (host) => expect(dots(host)).toEqual(['dot-mistake']));
+    const waiting = [...MOVES.slice(0, 2), waitingMove(2), waitingMove(3)];
+    render(view({ moves: waiting, moments: [] }), (host) =>
+      expect(dots(host)).toEqual(['dot-likely']),
+    );
+  });
 });

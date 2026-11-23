@@ -1,15 +1,13 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { graphMarks, graphScores, guideEnd, plyAt, SNAP_PX, topArea, unreadSpans } from './graph';
+import { graphMarks, topShares, guideEnd, plyAt, SNAP_PX, topArea, unreadSpans } from './graph';
 import { bookMove, judgedMove, listing, partial, waitingMove } from './review.fixture';
 
-describe('graphScores', () => {
-  it("reads White's score from the best line of each analysis, sketch or final", () => {
-    expect(graphScores([listing(['a', 0.5]), undefined, partial(12, ['a', 0.3])])).toEqual([
-      0.5,
-      undefined,
-      0.3,
-    ]);
+describe('topShares', () => {
+  it("reads the top side's score from the best line of each analysis, sketch or final", () => {
+    const analyses = [listing(['a', 0.5]), undefined, partial(12, ['a', 0.3])];
+    expect(topShares(analyses, 'white')).toEqual([0.5, undefined, 0.3]);
+    expect(topShares(analyses, 'black')).toEqual([0.5, undefined, 0.7]);
   });
 });
 
@@ -65,8 +63,7 @@ describe('guideEnd', () => {
 
 describe('topArea', () => {
   it("outlines the top side's share at each position", () => {
-    expect(topArea([0.5, 0.75, 0.5], 'white')).toBe('M0 0 L0 0.5 L1 0.75 L2 0.5 L2 0 Z');
-    expect(topArea([0.5, 0.75], 'black')).toBe('M0 0 L0 0.5 L1 0.25 L1 0 Z');
+    expect(topArea([0.5, 0.75, 0.5])).toBe('M0 0 L0 0.5 L1 0.75 L2 0.5 L2 0 Z');
   });
 });
 

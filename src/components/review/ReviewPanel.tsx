@@ -6,7 +6,6 @@ import { StatusHeadline } from '@/components/GameStatus';
 import { ScoresheetDrawer } from '@/components/ScoresheetDrawer';
 import { Scoresheet } from '@/components/Scoresheet';
 import { SourceFootnote } from '@/components/SourceLink';
-import type { Analysis } from '@/evaluation/evaluation';
 import { type Color, numberedMove } from '@/game/replay';
 import { compareMove } from '@/review/comparison';
 import type { ReviewMove } from '@/review/review';
@@ -16,23 +15,11 @@ import { qualityLooks } from '@/theme/moveQuality';
 
 import { MoveCard } from './MoveCard';
 import { ReviewActions } from './ReviewActions';
-import { ReviewGraph } from './ReviewGraph';
+import { type GraphView, ReviewGraph } from './ReviewGraph';
 
 /** What the panel shows of a review (`useReview`); any analyses will do, so the gallery can make them up. */
-export type ReviewView = { readonly analyses: readonly (Analysis | undefined)[] } & Pick<
-  Review,
-  | 'plies'
-  | 'ply'
-  | 'moves'
-  | 'book'
-  | 'moments'
-  | 'pointed'
-  | 'nextMoment'
-  | 'goto'
-  | 'point'
-  | 'tryAgain'
-  | 'failure'
->;
+export type ReviewView = GraphView &
+  Pick<Review, 'pointed' | 'nextMoment' | 'point' | 'tryAgain' | 'failure'>;
 
 interface Props {
   /** What the headline's eyebrow names: "Review · Caro-Kann". */

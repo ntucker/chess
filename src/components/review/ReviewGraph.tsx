@@ -1,5 +1,5 @@
 import { a11yValue, Text, useReducedMotion, useTheme } from '@reactive/silk-native';
-import { useEffect, useId, useState } from 'react';
+import { memo, useEffect, useId, useState } from 'react';
 import { type LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import {
   GestureDetector,
@@ -19,18 +19,17 @@ import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
 import type { MoveQuality } from '@/analysis/quality';
 import { QualityBadge } from '@/components/QualityBadge';
-import { shownMove } from '@/components/ScoresheetDrawer';
 import type { Analysis } from '@/evaluation/evaluation';
-import { type Color, opposite } from '@/game/replay';
+import { type Color, opposite, shownMove } from '@/game/replay';
 import { springMotion, springs } from '@/motion/spring';
 import { springTo } from '@/motion/springTo';
 import {
   type GraphMark,
   graphMarks,
-  graphScores,
   guideEnd,
   plyAt,
   topArea,
+  topShares,
   unreadSpans,
 } from '@/review/graph';
 import type { Review } from '@/review/useReview';
@@ -68,24 +67,19 @@ export function ReviewGraph({ review, learner, height }: Props) {
   const { theme } = useTheme();
   const still = useReducedMotion();
   const total = moves.length;
-  const scores = graphScores(analyses);
-  const marks = graphMarks(moves, analyses, learner, moments);
   const top = opposite(learner);
-  const [size, setSize] = useState({ width: 0, height: 0 });
+  const shares = topShares(analyses, top);
+  const marks = graphMarks(moves, analyses, learner, moments);
+  // A position not read yet stands at even, under the hatch.
   const area = useSpringArea(
-    scores.map((score) => score ?? 0.5),
-    top,
+    shares.map((share) => share ?? 0.5),
     still,
   );
-  const scrub = useScrub({ total, width: size.width, snaps: marks.map((mark) => mark.ply), goto });
+  const scrub = useScrub({ total, snaps: marks.map((mark) => mark.ply), goto });
   const percent = (at: number) => `${(at / total) * 100}%` as const;
   const slide = still ? { transitionDuration: 0 } : SLIDE;
   const hatch = `hatch${useId().replace(/[^\w-]/g, '')}`;
   const guide = guideEnd(book, learner);
-  const step = (by: number) => {
-    const target = ply + by;
-    if (target >= 0 && target <= total) goto(target);
-  };
   return (
     // On the web, an up-and-down drag that starts on it still scrolls the page.
     <GestureDetector gesture={scrub.gesture} touchAction="pan-y">
@@ -97,14 +91,13 @@ export function ReviewGraph({ review, learner, height }: Props) {
         {...a11yValue({ min: 0, max: total, now: ply, text: shownMove(plies[ply].move?.san, ply) })}
         accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
         onAccessibilityAction={({ nativeEvent }) =>
-          step(nativeEvent.actionName === 'increment' ? 1 : -1)
+          // The review keeps the move within the game.
+          goto(ply + (nativeEvent.actionName === 'increment' ? 1 : -1))
         }
         style={[styles.graph, { height }]}
       >
         <View
-          onLayout={({ nativeEvent }: LayoutChangeEvent) =>
-            setSize({ width: nativeEvent.layout.width, height: nativeEvent.layout.height })
-          }
+          onLayout={({ nativeEvent }: LayoutChangeEvent) => scrub.measure(nativeEvent.layout.width)}
           style={styles.track}
         >
           <View
@@ -121,7 +114,7 @@ export function ReviewGraph({ review, learner, height }: Props) {
               viewBox={`0 0 ${total} 1`}
               preserveAspectRatio="none"
             >
-              <AnimatedPath animatedProps={area} fill={graphColors[top]} />
+              <AnimatedPath animatedProps={area.outline} fill={graphColors[top]} />
             </Svg>
             <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
               <Defs>
@@ -136,7 +129,7 @@ export function ReviewGraph({ review, learner, height }: Props) {
                   <Rect width={HATCH / 2} height={HATCH} fill={graphColors.hatch} />
                 </Pattern>
               </Defs>
-              {unreadSpans(scores).map(([from, to]) => (
+              {unreadSpans(shares).map(([from, to]) => (
                 <Rect
                   key={from}
                   x={percent(from)}
@@ -156,20 +149,11 @@ export function ReviewGraph({ review, learner, height }: Props) {
               />
             ) : null}
           </View>
-          <Animated.View
-            style={[styles.line, styles.current, { left: percent(ply) }, slide]}
-            pointerEvents="none"
-          >
+          <Animated.View style={[styles.line, { left: percent(ply) }, slide]} pointerEvents="none">
             <View style={[styles.lineCore, { backgroundColor: graphColors.current }]} />
           </Animated.View>
           {marks.map((mark) => (
-            <Dot
-              key={mark.ply}
-              mark={mark}
-              left={percent(mark.ply)}
-              top={dotTop(scores[mark.ply] ?? 0.5, top, size.height)}
-              slide={slide}
-            />
+            <Dot key={mark.ply} mark={mark} left={percent(mark.ply)} area={area} height={height} />
           ))}
           <Animated.View style={[styles.line, styles.scrub, scrub.lineStyle]} pointerEvents="none">
             <View style={[styles.lineCore, { backgroundColor: graphColors.scrub }]} />
@@ -189,31 +173,56 @@ export function ReviewGraph({ review, learner, height }: Props) {
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 /** The area's outline, springing to each new set of scores (or jumping, `still`), on the UI thread. */
-function useSpringArea(scores: readonly number[], top: Color, still: boolean) {
+function useSpringArea(shown: readonly number[], still: boolean) {
+  const scores = useSameContents(shown);
   const from = useSharedValue(scores);
   const to = useSharedValue(scores);
   const progress = useSharedValue(1);
-  // The scores' contents, not the array made fresh each render, start a spring.
-  const key = scores.join(' ');
   useEffect(() => {
     scheduleOnUI(
       (next: readonly number[], jump: boolean) => {
         'worklet';
+        // Nothing to spring to, as at the start, where `to` holds these already.
+        if (next.every((score, n) => score === to.value[n])) return;
         from.value = mix(from.value, to.value, progress.value);
         to.value = next;
         progress.value = 0;
         progress.value = jump ? 1 : springTo(1, springs.smooth, { precision: SETTLED });
       },
-      key.split(' ').map(Number),
+      scores,
       still,
     );
-  }, [key, still, from, to, progress]);
-  return useAnimatedProps(() => ({
-    d: topArea(mix(from.value, to.value, progress.value), top),
+  }, [scores, still, from, to, progress]);
+  const outline = useAnimatedProps(() => ({
+    d: topArea(mix(from.value, to.value, progress.value)),
   }));
+  return { from, to, progress, outline };
 }
 
-/** `from` partway (`progress`, 0 to 1) to `to`. */
+type SpringArea = ReturnType<typeof useSpringArea>;
+
+/** The top side's share the area shows at `ply` this frame, partway along its spring. */
+function shownShare({ from, to, progress }: SpringArea, ply: number): number {
+  'worklet';
+  const target = to.value[ply];
+  const start = from.value[ply] ?? target;
+  return start + (target - start) * progress.value;
+}
+
+/**
+ * `values`, or the array of the same numbers kept from an earlier render, so
+ * an effect or memo that depends on it reruns only when a number changes,
+ * not for each array made fresh while rendering.
+ */
+function useSameContents(values: readonly number[]): readonly number[] {
+  const [kept, setKept] = useState(values);
+  const same = kept.length === values.length && kept.every((value, n) => value === values[n]);
+  if (same) return kept;
+  setKept(values);
+  return values;
+}
+
+/** `from` partway (`progress`, 0 to 1) to `to`. Above its callers: a worklet's helpers have to be defined before it. */
 function mix(from: readonly number[], to: readonly number[], progress: number): number[] {
   'worklet';
   return to.map((score, n) => (from[n] ?? score) + (score - (from[n] ?? score)) * progress);
@@ -229,32 +238,35 @@ const SETTLED = 0.003;
  */
 function useScrub({
   total,
-  width,
   snaps,
   goto,
 }: {
   readonly total: number;
-  readonly width: number;
   readonly snaps: readonly number[];
   readonly goto: (ply: number) => void;
 }) {
   const at = useSharedValue(0);
   const shown = useSharedValue(false);
-  const layout = useSharedValue({ total, width, snaps });
-  // The snaps' contents, not the array made fresh each render, change the layout.
-  const snapsKey = snaps.join(' ');
+  const width = useSharedValue(0);
+  const kept = useSameContents(snaps);
+  const game = useSharedValue({ total, snaps: kept });
+  // A shared value can't change while rendering; the gestures read this one a commit later.
   useEffect(() => {
-    layout.value = { total, width, snaps: snapsKey ? snapsKey.split(' ').map(Number) : [] };
-  }, [total, width, snapsKey, layout]);
+    game.value = { total, snaps: kept };
+  }, [total, kept, game]);
   const plyUnder = (x: number) => {
     'worklet';
-    const { total, width, snaps } = layout.value;
-    return plyAt(x - PAD, width, total, snaps);
+    const { total, snaps } = game.value;
+    return plyAt(x - PAD, width.value, total, snaps);
   };
   const scrubTo = (x: number) => {
     'worklet';
     at.value = plyUnder(x);
     shown.value = true;
+  };
+  const follow = ({ x }: { readonly x: number }) => {
+    'worklet';
+    scrubTo(x);
   };
   const hide = () => {
     'worklet';
@@ -265,14 +277,8 @@ function useScrub({
     activeOffsetX: [-SWAY, SWAY],
     failOffsetY: [-DRIFT, DRIFT],
     hitSlop: TOUCH_SLOP,
-    onActivate: (event) => {
-      'worklet';
-      scrubTo(event.x);
-    },
-    onUpdate: (event) => {
-      'worklet';
-      scrubTo(event.x);
-    },
+    onActivate: follow,
+    onUpdate: follow,
     onDeactivate: (event) => {
       'worklet';
       if (!event.canceled) scheduleOnRN(goto, at.value);
@@ -287,64 +293,69 @@ function useScrub({
     },
   });
   const hover = useHoverGesture({
-    onActivate: (event) => {
-      'worklet';
-      scrubTo(event.x);
-    },
-    onUpdate: (event) => {
-      'worklet';
-      scrubTo(event.x);
-    },
+    onActivate: follow,
+    onUpdate: follow,
     onFinalize: hide,
   });
   const gesture = useSimultaneousGestures(hover, useExclusiveGestures(pan, tap));
   const x = () => {
     'worklet';
-    const { total, width } = layout.value;
-    return total > 0 ? (at.value / total) * width : 0;
+    const { total } = game.value;
+    return total > 0 ? (at.value / total) * width.value : 0;
   };
   const lineStyle = useAnimatedStyle(() => ({
     opacity: shown.value ? 1 : 0,
     transform: [{ translateX: x() }],
   }));
   const bubbleStyle = useAnimatedStyle(() => {
-    const { width } = layout.value;
     // Over the line, kept within the graph.
-    const left = Math.min(Math.max(x() - BUBBLE.width / 2, -PAD), width + PAD - BUBBLE.width);
+    const left = Math.min(Math.max(x() - BUBBLE.width / 2, -PAD), width.value + PAD - BUBBLE.width);
     return { opacity: shown.value ? 1 : 0, transform: [{ translateX: left }] };
   });
   const stripStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: -at.value * BUBBLE.width }],
   }));
-  return { gesture, lineStyle, bubbleStyle, stripStyle };
+  /** Takes the graph's measured width, which only the gestures read. */
+  const measure = (measured: number) => {
+    width.value = measured;
+  };
+  return { gesture, measure, lineStyle, bubbleStyle, stripStyle };
 }
 
 /**
  * A dot on the graph at one of the learner's moments, in its label's color;
  * a ring for a likely one, not judged yet. Each sits on the area's edge,
- * two-toned so it reads on either side's area.
+ * following it as it springs (`area`), and is two-toned so it reads on
+ * either side's area.
  */
 function Dot({
   mark,
   left,
-  top,
-  slide,
+  area,
+  height,
 }: {
   readonly mark: GraphMark;
   readonly left: `${number}%`;
-  readonly top: number | `${number}%`;
-  readonly slide: object;
+  readonly area: SpringArea;
+  readonly height: number;
 }) {
+  // A transform, not `top`, so following the spring lays nothing out.
+  const onEdge = useAnimatedStyle(() => {
+    const edge = shownShare(area, mark.ply) * height;
+    const center = Math.min(Math.max(edge, DOT / 2), height - DOT / 2);
+    return { transform: [{ translateY: center - DOT / 2 }] };
+  });
   return (
     <Animated.View
       pointerEvents="none"
+      testID={mark.quality ? `dot-${mark.quality}` : 'dot-likely'}
       style={[
         styles.dot,
-        { left, top },
+        { left },
         mark.quality
           ? { backgroundColor: graphColors.scrub, borderColor: graphColors.edge }
           : { backgroundColor: graphColors.edge, borderColor: graphColors.scrub, borderWidth: 2 },
-        slide,
+        onEdge,
       ]}
     >
       {mark.quality ? (
@@ -352,13 +363,6 @@ function Dot({
       ) : null}
     </Animated.View>
   );
-}
-
-/** Where a dot's top goes for the position's score: on the area's edge, kept within the graph. */
-function dotTop(score: number, top: Color, height: number): `${number}%` | number {
-  const share = top === 'white' ? score : 1 - score;
-  if (!height) return `${share * 100}%`;
-  return Math.min(Math.max(share * height, DOT / 2), height - DOT / 2) - DOT / 2;
 }
 
 /**
@@ -372,8 +376,8 @@ function Bubble({
   style,
   stripStyle,
 }: Pick<GraphView, 'plies' | 'moves'> & {
-  readonly style: object;
-  readonly stripStyle: object;
+  readonly style: AnimatedViewStyle;
+  readonly stripStyle: AnimatedViewStyle;
 }) {
   const { theme } = useTheme();
   const { color } = theme.semantic;
@@ -404,8 +408,20 @@ function Bubble({
   );
 }
 
-/** One position's name in the bubble's strip: "24…Rxc3" and its badge. */
-function BubbleName({ name, quality }: { readonly name: string; readonly quality?: MoveQuality }) {
+type AnimatedViewStyle = ReturnType<typeof useAnimatedStyle>;
+
+/**
+ * One position's name in the bubble's strip: "24…Rxc3" and its badge. Kept
+ * from render to render (`memo`), since the strip holds every position and
+ * redraws with each analysis.
+ */
+const BubbleName = memo(function BubbleName({
+  name,
+  quality,
+}: {
+  readonly name: string;
+  readonly quality?: MoveQuality;
+}) {
   return (
     <View style={styles.name}>
       <Text role="bodySm" numberOfLines={1}>
@@ -414,7 +430,7 @@ function BubbleName({ name, quality }: { readonly name: string; readonly quality
       {quality ? <QualityBadge quality={quality} size={14} /> : null}
     </View>
   );
-}
+});
 
 /** Room on each side of the graph, so a dot at either end isn't cut off. */
 const DOT = 12;
@@ -428,9 +444,9 @@ const DRIFT = 10;
 const TOUCH_SLOP = { vertical: 6 };
 const BUBBLE = { width: 112, height: 28 };
 const SLIDE_MOTION = springMotion(springs.snappy);
-/** The gold line and the dots slide on the app's snappy spring. */
+/** The gold line slides on the app's snappy spring. */
 const SLIDE = {
-  transitionProperty: ['left', 'top'],
+  transitionProperty: 'left',
   transitionDuration: SLIDE_MOTION.durationMs,
   transitionTimingFunction: timingFunction(SLIDE_MOTION.easing),
 };
@@ -442,12 +458,20 @@ const styles = StyleSheet.create({
   middle: { position: 'absolute', left: 0, right: 0, top: '50%', height: 1 },
   guide: { position: 'absolute', left: 0, bottom: 0, height: 3 },
   // A 2px line in a dark 1px edge, centered on its position.
-  line: { position: 'absolute', top: 0, bottom: 0, width: 4, marginLeft: -2, padding: 1 },
+  line: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 4,
+    marginLeft: -2,
+    padding: 1,
+    backgroundColor: graphColors.edge,
+  },
   lineCore: { flex: 1 },
-  current: { backgroundColor: graphColors.edge },
-  scrub: { left: 0, backgroundColor: graphColors.edge },
+  scrub: { left: 0 },
   dot: {
     position: 'absolute',
+    top: 0,
     width: DOT,
     height: DOT,
     marginLeft: -DOT / 2,

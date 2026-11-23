@@ -11,9 +11,8 @@ export type Runs = { x?: Run; y?: Run };
 
 /** How `springTo` keeps an axis's speed, and when it stops. */
 interface SpringToOptions {
-  /** With `axis`, the spring starts at the speed the axis's last spring had, and records its own start for the next. */
-  readonly runs?: SharedValue<Runs>;
-  readonly axis?: 'x' | 'y';
+  /** The axis whose last spring's speed this one starts at, recording its own start for the next. */
+  readonly track?: { readonly runs: SharedValue<Runs>; readonly axis: 'x' | 'y' };
   /** How close to `target` (and how slow) it stops: by default under a pixel, for a value in pixels. */
   readonly precision?: number;
 }
@@ -22,14 +21,14 @@ interface SpringToOptions {
 export function springTo(
   target: number,
   spring: Spring,
-  { runs, axis, precision = SUBPIXEL }: SpringToOptions = {},
+  { track, precision = SUBPIXEL }: SpringToOptions = {},
 ) {
   'worklet';
   return defineAnimation<AnimationObject<number>>(target, () => {
     'worklet';
     return {
       onStart(animation: AnimationObject<number>, value: number, now: number) {
-        const last = runs && axis ? runs.value[axis] : undefined;
+        const last = track?.runs.value[track.axis];
         const velocity = last
           ? springAt(spring, last.start, (now - last.startedAt) / 1000).velocity
           : 0;
@@ -37,7 +36,10 @@ export function springTo(
         animation.start = start;
         animation.startTime = now;
         animation.current = value;
-        if (runs && axis) runs.value = { ...runs.value, [axis]: { start, startedAt: now } };
+        if (track) {
+          const { runs, axis } = track;
+          runs.value = { ...runs.value, [axis]: { start, startedAt: now } };
+        }
       },
       onFrame(animation: AnimationObject<number>, now: number) {
         const state = springAt(spring, animation.start, (now - animation.startTime) / 1000);

@@ -4,7 +4,7 @@
  * point along it names. `ReviewGraph` draws them.
  */
 import type { MoveQuality } from '@/analysis/quality';
-import type { Analysis } from '@/evaluation/evaluation';
+import { type Analysis, scoreFor } from '@/evaluation/evaluation';
 import type { Color } from '@/game/replay';
 
 import { worstFirst } from './order';
@@ -14,11 +14,15 @@ import type { ReviewMove } from './review';
 export const SNAP_PX = 8;
 
 /**
- * White's expected score (0 to 1) at each position, by the deepest analysis
- * the store has, a sketch or final; undefined where none has arrived yet.
+ * The expected score (0 to 1) of the side drawn at the top (`top`) at each
+ * position, by the deepest analysis the store has, a sketch or final;
+ * undefined where none has arrived yet.
  */
-export const graphScores = (analyses: readonly (Analysis | undefined)[]) =>
-  analyses.map((analysis) => analysis?.lines[0]?.evaluation.score);
+export const topShares = (analyses: readonly (Analysis | undefined)[], top: Color) =>
+  analyses.map((analysis) => {
+    const best = analysis?.lines[0];
+    return best && scoreFor(best.evaluation, top);
+  });
 
 /**
  * A dot on the graph, at the board's ply after one of the learner's moves.
@@ -68,19 +72,16 @@ function round(n: number) {
 }
 
 /**
- * The outline of the area of the side at the top (`top`), in a box one unit
- * a ply wide and 1 tall: from the top edge down to its share of White's
- * expected score (`scores`) at each position. A worklet, so the UI thread
- * draws it while the scores spring from a sketch to the final analysis.
+ * The outline of the area of the side at the top, in a box one unit a ply
+ * wide and 1 tall: from the top edge down to its expected score (`shares`)
+ * at each position. A worklet, so the UI thread draws it while the scores
+ * spring from a sketch to the final analysis.
  */
-export function topArea(scores: readonly number[], top: Color): string {
+export function topArea(shares: readonly number[]): string {
   'worklet';
   let outline = 'M0 0';
-  for (let ply = 0; ply < scores.length; ply++) {
-    const share = top === 'white' ? scores[ply] : 1 - scores[ply];
-    outline += ` L${ply} ${round(share)}`;
-  }
-  return `${outline} L${scores.length - 1} 0 Z`;
+  for (let ply = 0; ply < shares.length; ply++) outline += ` L${ply} ${round(shares[ply])}`;
+  return `${outline} L${shares.length - 1} 0 Z`;
 }
 
 /**
@@ -88,12 +89,12 @@ export function topArea(scores: readonly number[], top: Color): string {
  * each from the last position read before it (or the start) to the first
  * read after it (or the end), so the hatch covers the line drawn across it.
  */
-export function unreadSpans(scores: readonly (number | undefined)[]): [number, number][] {
+export function unreadSpans(shares: readonly (number | undefined)[]): [number, number][] {
   const spans: [number, number][] = [];
-  const total = scores.length - 1;
+  const total = shares.length - 1;
   let from: number | undefined;
-  scores.forEach((score, ply) => {
-    if (score === undefined) from ??= Math.max(0, ply - 1);
+  shares.forEach((share, ply) => {
+    if (share === undefined) from ??= Math.max(0, ply - 1);
     else if (from !== undefined) {
       spans.push([from, ply]);
       from = undefined;

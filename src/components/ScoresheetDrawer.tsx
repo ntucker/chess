@@ -8,7 +8,7 @@ import { HeaderButton } from '@/components/HeaderButton';
 import { Scoresheet } from '@/components/Scoresheet';
 import { stepButton } from '@/components/Transport';
 import { useCloseKeys } from '@/components/useCloseKeys';
-import { numberedMove } from '@/game/replay';
+import { shownMove } from '@/game/replay';
 import { useNarrowPart } from '@/theme/Narrow';
 import { fonts } from '@/theme/theme';
 
@@ -126,10 +126,6 @@ export function ShownMove({
     </Text>
   );
 }
-
-/** The move on the board as the stepper names it, "12…Nc6" (`ply` moves in), or "Start" before any. */
-export const shownMove = (san: string | undefined, ply: number) =>
-  san ? numberedMove(san, ply, '…') : 'Start';
 
 /**
  * A jump to either end of the game, in words: quiet text that lights up on

@@ -66,8 +66,8 @@ class Arrivals extends Component<ArrivalsProps, State> {
 const ListContext = createContext<Arriving>(null);
 
 const SPRING = springs.brisk;
-/** An arrival's fade stops once what's left of it can't be seen: under a pixel's precision, it jumped the last quarter. */
-const OPACITY_STEP = 0.01;
+/** How close to fully shown an arrival's fade comes before it stops: what's left can't be seen. */
+const FADE_PRECISION = 0.01;
 
 export function MotionView({ id: _id, ...rest }: MotionViewProps) {
   const arriving = useContext(ListContext);
@@ -91,8 +91,8 @@ function layoutTransition(spring: Spring, runs: SharedValue<Runs>): LayoutAnimat
     return {
       initialValues: { originX: values.currentOriginX, originY: values.currentOriginY, ...size },
       animations: {
-        originX: springTo(values.targetOriginX, spring, { runs, axis: 'x' }),
-        originY: springTo(values.targetOriginY, spring, { runs, axis: 'y' }),
+        originX: springTo(values.targetOriginX, spring, { track: { runs, axis: 'x' } }),
+        originY: springTo(values.targetOriginY, spring, { track: { runs, axis: 'y' } }),
       },
     };
   };
@@ -104,7 +104,7 @@ function enterAnimation(spring: Spring): EntryExitAnimationFunction {
     'worklet';
     return {
       initialValues: { opacity: 0 },
-      animations: { opacity: springTo(1, spring, { precision: OPACITY_STEP }) },
+      animations: { opacity: springTo(1, spring, { precision: FADE_PRECISION }) },
     };
   };
 }

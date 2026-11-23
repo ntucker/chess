@@ -3,6 +3,8 @@ import { contrastRatio } from '@reactive/silk-core';
 
 import { graphColors } from './graphColors';
 
+// Silk's checkThemeContrast reads a whole theme; these colors are the same in
+// both themes and in none, so their pairs are checked one by one.
 const ratio = (a: string, b: string) => contrastRatio(a, b) ?? 0;
 const { white, black, edge, scrub, current } = graphColors;
 
