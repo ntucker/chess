@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'test-renderer';
 
 import { AnalysisManager, getAnalysis, PositionAnalysis } from '@/resources/analysis';
 
-import { partial } from './review.fixture';
+import { listing, partial } from './review.fixture';
 import { type Review, useReview } from './useReview';
 
 // Every position the review has Stockfish search, by the moves before it; none answers.
@@ -49,6 +49,13 @@ const sketch = (plies: number) =>
   act(async () => {
     const args = { engine: 'stockfish', moves: MOVES.slice(0, plies).join(' ') } as const;
     controllers[0].set(PositionAnalysis, args, { ...args, ...partial(12, ['a2a3', 0.5]) });
+  });
+
+/** Stores the final analysis of the position after the first `plies` moves. */
+const final = (plies: number, ...lines: Parameters<typeof listing>) =>
+  act(async () => {
+    const args = { engine: 'stockfish', moves: MOVES.slice(0, plies).join(' ') } as const;
+    controllers[0].set(PositionAnalysis, args, { ...args, ...listing(...lines) });
   });
 
 beforeEach(() => {
@@ -120,5 +127,21 @@ describe('useReview', () => {
     await act(async () => reviews.at(-1)!.goto(3));
     await render(true, ['d2d4']);
     expect(reviews.at(-1)).toMatchObject({ ply: 0, visited: new Set() });
+  });
+
+  it('searches a try Stockfish did not list before its own next position, and shows it on the board', async () => {
+    await render();
+    // 2...Nc6 drops White's expected score from 0.45 to 0.7 for Black: a blunder.
+    await final(3, ['g8f6', 0.45], ['d7d6', 0.5]);
+    await final(4, ['f1b5', 0.7]);
+    await act(async () => reviews.at(-1)!.goto(4));
+    expect(reviews.at(-1)!.moment.canRetry).toBe(true);
+    await act(async () => reviews.at(-1)!.retry());
+    // Back one move, Black to play.
+    expect(reviews.at(-1)!.current.turn).toBe('black');
+    await act(async () => reviews.at(-1)!.play('a7a6'));
+    expect(mockSearched.at(-1)).toBe('e2e4 e7e5 g1f3 a7a6');
+    expect(reviews.at(-1)!.current.move?.san).toBe('a6');
+    expect(reviews.at(-1)!.shownLine).toEqual(['e2e4', 'e7e5', 'g1f3', 'a7a6']);
   });
 });

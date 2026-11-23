@@ -10,6 +10,7 @@ import { useNeedsStockfish } from '@/stockfish/demand';
 
 import { gameAccuracy } from './accuracy';
 import { nextSearch } from './order';
+import { guideAt, momentAt } from './retry';
 import {
   labelPositions,
   leftGuide,
@@ -83,12 +84,37 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
   // The board's ply after each moment's move.
   const shownMoments = moments(judged, learner, leftAt).map((move) => move + 1);
 
-  const searched = nextSearch({ moves: judged, book, analyses, learner, dwelt, failed });
+  // The moment shown: its tries, judged on the analyses after each.
+  const base = ply > 0 ? lines[ply - 1] : [];
+  const tryLines = (screen.tries.get(ply) ?? []).map((uci) => [...base, uci]);
+  const guide = lesson && ply > 0 ? guideAt(lesson, base) : undefined;
+  const moment = momentAt({
+    plies,
+    moves: judged,
+    analyses: final,
+    legal,
+    learner,
+    leftAt,
+    book: guide?.book ?? [],
+    guide: ply - 1 === leftAt ? guide?.answer : undefined,
+    screen,
+    tryAnalyses: storedAnalyses(ctrl, REVIEW_ENGINE, tryLines, state).map(finalOnly),
+    tryFailed: tryLines.map((line) => !!analysisError(ctrl, REVIEW_ENGINE, line, state)),
+  });
+  // The line the board shows: the game's to `ply`, or at a moment, the one before its move and what's played there.
+  const shownLine = moment.shownMove
+    ? [...base, moment.shownMove.uci]
+    : lines[moment.board === 'retry' ? ply - 1 : ply];
+  const shownPly = moment.shownMove ? replay(shownLine).at(-1)! : plies[shownLine.length];
+
+  // A try waiting for its search goes first: the learner is waiting for it.
+  const searched =
+    moment.searching !== undefined
+      ? tryLines[moment.searching]
+      : lines[nextSearch({ moves: judged, book, analyses, learner, dwelt, failed }) ?? -1];
   useSubscription(
     getAnalysis,
-    ...(active && searched !== undefined
-      ? ([REVIEW_ENGINE, lines[searched]] as const)
-      : ([null] as const)),
+    ...(active && searched ? ([REVIEW_ENGINE, searched] as const) : ([null] as const)),
   );
   // The positions the label of the move leading to `plies[target]` needs whose search gave up.
   const lostFor = (target: number) =>
@@ -96,8 +122,10 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
   const accuracy = (side: Color) => gameAccuracy(judged, final, book, side, failed);
   return {
     plies,
-    /** The position shown, with what the board needs (`analyze`). */
-    current: analyze(plies[ply]),
+    /** The position the board shows (`shownLine`), with what the board needs (`analyze`). */
+    current: analyze(shownPly),
+    /** The moves to the position the board shows: the game's to `ply`, or at a moment its retry's. */
+    shownLine,
     ply,
     pointed: screen.pointed,
     visited: screen.visited,
@@ -121,10 +149,18 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
       return lost === undefined ? undefined : errors[lost];
     },
     tally: { white: tally(judged, 'white'), black: tally(judged, 'black') },
+    /** The moment shown: what retrying it shows (`momentAt`). */
+    moment,
     /** Each side's accuracy (`gameAccuracy`). */
     accuracy: { white: accuracy('white'), black: accuracy('black') },
     goto: (target: number) => dispatch({ type: 'goto', ply: target }),
     point: (uci?: Uci) => dispatch({ type: 'point', uci }),
+    /** Retry: the board goes back one move for a try. */
+    retry: () => dispatch({ type: 'retry' }),
+    /** Tries `uci` at the moment shown. */
+    play: (uci: Uci) => dispatch({ type: 'try', uci }),
+    /** Show best: shows the moment's answer. */
+    showAnswer: () => dispatch({ type: 'show answer' }),
     /**
      * Searches again the positions the label of the move leading to
      * `plies[target]` needs whose search gave up; the move waits again

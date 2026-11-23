@@ -19,7 +19,10 @@ import { type GraphView, ReviewGraph } from './ReviewGraph';
 
 /** What the panel shows of a review (`useReview`); any analyses will do, so the gallery can make them up. */
 export type ReviewView = GraphView &
-  Pick<Review, 'pointed' | 'nextMoment' | 'point' | 'tryAgain' | 'failure'>;
+  Pick<
+    Review,
+    'pointed' | 'nextMoment' | 'point' | 'tryAgain' | 'failure' | 'moment' | 'retry' | 'showAnswer'
+  >;
 
 interface Props {
   /** What the headline's eyebrow names: "Review · Caro-Kann". */
@@ -43,7 +46,7 @@ export function ReviewPanel({ eyebrow, learner, review, drawer }: Props) {
   const part = useNarrowPart();
   const labelled = useLabelled();
   const sections = useSections();
-  const { plies, ply, moves, analyses, pointed, nextMoment, goto, point } = review;
+  const { plies, ply, moves, analyses, pointed, moment, goto, point } = review;
   const move = ply > 0 ? moves[ply - 1] : undefined;
   const scoresheet = {
     plies,
@@ -67,6 +70,9 @@ export function ReviewPanel({ eyebrow, learner, review, drawer }: Props) {
             comparison={compareMove(plies, move.status === 'book' ? [] : analyses, ply, learner)}
             quality={move.quality}
             qualityDetail={lossDetail(move)}
+            hidden={moment.hidden}
+            tries={moment.tries}
+            guide={moment.revealed ? moment.answer : undefined}
             pointed={pointed}
             onPoint={point}
           />
@@ -79,7 +85,7 @@ export function ReviewPanel({ eyebrow, learner, review, drawer }: Props) {
       {drawer ? <ScoresheetDrawer {...scoresheet} onClose={drawer.onClose} /> : null}
       {/* This scoresheet stays while the drawer is open, so a window widened meanwhile still shows one. */}
       <Stack {...part('wide-only', sections)}>
-        <ReviewActions ply={ply} nextMoment={nextMoment} goto={goto} />
+        <ReviewActions {...review} />
         <Separator />
         <Stack style={labelled}>
           <Eyebrow>Scoresheet</Eyebrow>
@@ -101,7 +107,8 @@ function reviewHeadline({
   moves,
   failure,
   tryAgain,
-}: Pick<ReviewView, 'plies' | 'ply' | 'moves' | 'failure' | 'tryAgain'>) {
+  moment,
+}: Pick<ReviewView, 'plies' | 'ply' | 'moves' | 'failure' | 'tryAgain' | 'moment'>) {
   const move = ply > 0 ? moves[ply - 1] : undefined;
   const waiting = moves.filter(({ status }) => status === 'waiting').length;
   const coming = {
@@ -128,7 +135,57 @@ function reviewHeadline({
       failure: error && { who: 'Stockfish', error, onRetry: () => tryAgain(ply) },
     };
   }
-  return { title: `${qualityLooks[move.quality].name}.`, detail: named };
+  return (
+    momentHeadline(moment, move, ply, named) ?? {
+      title: `${qualityLooks[move.quality].name}.`,
+      detail: named,
+    }
+  );
+}
+
+/**
+ * The headline at a moment being retried: what the board shows in place of
+ * the game's move, or the game's move with what to find while its answer is
+ * hidden. Undefined where the move's own label says it all.
+ */
+function momentHeadline(
+  { board, tries, answer, hidden, canRetry }: ReviewView['moment'],
+  move: ReviewMove,
+  ply: number,
+  named: string,
+) {
+  // "Find a better move than 7…Qxb2.", or the guide's move when the move left the guide but lost nothing.
+  const goal =
+    answer?.guide && (move.quality === 'best' || move.quality === 'good')
+      ? "Find the guide's move."
+      : `Find a better move than ${named}.`;
+  const latest = tries.at(-1);
+  if (board === 'retry') return { title: 'Your move.', detail: goal };
+  if (board === 'try' && latest) {
+    const tried = shownMove(latest.san, ply);
+    if (latest.status !== 'judged') {
+      return latest.status === 'waiting'
+        ? { title: 'Checking your try…', detail: tried }
+        : { title: 'No verdict yet.', detail: `${tried} couldn't be checked.` };
+    }
+    return {
+      title: `${qualityLooks[latest.quality].name}.`,
+      detail: latest.passed
+        ? `Found with ${tried}, on try ${tries.length}.`
+        : `Your retry ${tried}. Retry, or Show best.`,
+    };
+  }
+  if (board === 'answer' && answer) {
+    const whose = answer.guide ? "The guide's move" : "Stockfish's move";
+    return {
+      title: `${qualityLooks[answer.quality].name}.`,
+      detail: `${whose}: ${shownMove(answer.san, ply)}.`,
+    };
+  }
+  if (hidden && canRetry && move.quality) {
+    return { title: `${qualityLooks[move.quality].name}.`, detail: goal };
+  }
+  return undefined;
 }
 
 /** How much of the mover's winning chances a judged move gave away, when it gave any: "Here: 26%." */

@@ -4,7 +4,7 @@ import { useIsFocused } from 'expo-router';
 import { use, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { lastMoveBadge } from '@/board/drawing';
+import { lastMoveBadge, moveArrow } from '@/board/drawing';
 import { BrowserOnly } from '@/components/BrowserOnly';
 import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
@@ -12,7 +12,7 @@ import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { stepButton, Transport } from '@/components/Transport';
 import { NewVersionError } from '@/files/newVersion';
 import { material } from '@/game/material';
-import { type Color, colorName, fenAfter, opposite, replay } from '@/game/replay';
+import { type Color, colorName, dropMove, fenAfter, opposite, replay } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 import { lessonHref, withOpenings } from '@/lesson/openings';
 import { getLesson, isLessonId, LessonIndexContext, type LessonId } from '@/resources/lesson';
@@ -79,9 +79,10 @@ function ReviewScreen({
   // The lesson as the game played it: with the other openings' first moves (`withOpenings`).
   const played = picked ? withOpenings(picked, index) : undefined;
   const review = useReview({ moves, learner, lesson: played, active: useIsFocused() });
-  const { plies, ply, current, pointed, nextMoment, goto } = review;
+  const { plies, ply, current, pointed, moment, goto } = review;
   const move = ply > 0 ? review.moves[ply - 1] : undefined;
   const preview = pointed && ply > 0 ? fenAfter(plies[ply - 1].fen, pointed) : undefined;
+  const retrying = moment.board === 'retry';
   // Only a narrow page shows the header's button, so only there does the drawer open.
   const [scoresheetOpen, setScoresheetOpen] = useState(false);
   return (
@@ -104,7 +105,7 @@ function ReviewScreen({
             ply,
             goto,
             current,
-            toMove: undefined,
+            toMove: retrying ? learner : undefined,
             thinking: false,
             material: material(current.fen),
           }}
@@ -114,13 +115,27 @@ function ReviewScreen({
             preview: preview === current.fen ? undefined : preview,
             orientation: learner,
             turnColor: current.turn,
-            dests: {},
+            movableColor: retrying ? learner : undefined,
+            dests: retrying ? current.dests : {},
             lastMove: current.move ? [current.move.from, current.move.to] : undefined,
-            drawings: lastMoveBadge(current.move?.to, move?.quality),
+            drawings: [
+              ...lastMoveBadge(
+                current.move?.to,
+                moment.board === 'game' ? move?.quality : moment.shownMove?.quality,
+              ),
+              // Beside a try or the answer, once revealed, the game's move as the danger it was.
+              ...(moment.shownMove && moment.revealed && move
+                ? [moveArrow(plies[ply].move!.uci, 'danger')]
+                : []),
+            ],
             check: current.check,
-            onMove: () => {},
+            onMove: (from, to) => {
+              const uci = retrying ? dropMove(current.fen, from, to) : undefined;
+              if (uci) review.play(uci);
+            },
           }}
           evaluationReads={REVIEW_ENGINE}
+          evaluationLine={review.shownLine}
           narrowBars={{
             names: <ReviewNames learner={learner} />,
             controls: (
@@ -145,7 +160,7 @@ function ReviewScreen({
           drawer={scoresheetOpen ? { onClose: () => setScoresheetOpen(false) } : undefined}
         />
       }
-      programFoot={<ReviewActionBar ply={ply} nextMoment={nextMoment} goto={goto} />}
+      programFoot={<ReviewActionBar {...review} />}
     />
   );
 }

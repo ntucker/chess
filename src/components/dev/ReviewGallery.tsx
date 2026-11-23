@@ -9,8 +9,9 @@ import { ReviewPanel, type ReviewView } from '@/components/review/ReviewPanel';
 import { legalMoveCountAt, replay } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 import { reviewHref } from '@/review/address';
+import { momentAt } from '@/review/retry';
 import { moments, reviewMoves } from '@/review/review';
-import { reviewedGame, reviewReducer, startReview } from '@/review/screen';
+import { type ReviewScreen, reviewedGame, reviewReducer, startReview } from '@/review/screen';
 import { evaluationFromScore } from '@/stockfish/uci';
 
 import { DevPage, devStyles } from './DevPage';
@@ -81,6 +82,9 @@ const SEARCHED: Readonly<Record<number, FinalAnalysis>> = {
   14: analysis(['c3b5', 3.6], ['e3d2', 1.2], ['e1g1', 0.9]),
 };
 
+/** Stockfish's analyses after the tries it didn't list, by try: 7...a6 lets White win the queen. */
+const TRIED: Readonly<Record<Uci, FinalAnalysis>> = { a7a6: analysis(['c3a4', 2.5]) };
+
 interface State {
   readonly title: string;
   readonly sentence: string;
@@ -90,6 +94,8 @@ interface State {
   readonly failed?: readonly number[];
   /** Where the card starts. */
   readonly ply: number;
+  /** The retries there: the tries at 7...Qxb2, and what the board shows. */
+  readonly retried?: Pick<ReviewScreen, 'tries' | 'shown' | 'board'>;
 }
 
 const STATES: readonly State[] = [
@@ -112,6 +118,29 @@ const STATES: readonly State[] = [
     ply: 14,
   },
   {
+    title: 'Retry first',
+    sentence:
+      "After a retry that missed with 7...a6: Stockfish's moves stay hidden until a try passes or Show best.",
+    searched: [10, 11, 12, 13, 14],
+    ply: 14,
+    retried: { tries: new Map([[14, ['a7a6']]]), shown: new Set(), board: 'try' },
+  },
+  {
+    title: 'A retry that passed',
+    sentence:
+      "7...Nc6, Stockfish's best, on the second try: the moves show, and Show best is done.",
+    searched: [10, 11, 12, 13, 14],
+    ply: 14,
+    retried: { tries: new Map([[14, ['a7a6', 'b8c6']]]), shown: new Set(), board: 'try' },
+  },
+  {
+    title: 'Show best',
+    sentence: "Show best pressed at 7...Qxb2: Stockfish's move on the board, and the moves shown.",
+    searched: [10, 11, 12, 13, 14],
+    ply: 14,
+    retried: { tries: new Map(), shown: new Set([14]), board: 'answer' },
+  },
+  {
     title: 'A search that gave up',
     sentence: 'Stockfish stopped on the position after 7...Qxb2: Try again searches it again.',
     searched: [10, 11, 12, 13],
@@ -126,9 +155,9 @@ const STATES: readonly State[] = [
   },
 ];
 
-function StateCard({ title, sentence, searched, failed = [], ply }: State) {
+function StateCard({ title, sentence, searched, failed = [], ply, retried }: State) {
   const game = reviewedGame('black', LINE);
-  const [screen, dispatch] = useReducer(reviewReducer, { ...startReview(game), ply });
+  const [screen, dispatch] = useReducer(reviewReducer, { ...startReview(game), ...retried, ply });
   const analyses = PLIES.map((_, n) => (searched.includes(n) ? SEARCHED[n] : undefined));
   const lost = new Set(failed);
   const moves = reviewMoves({ plies: PLIES, book: BOOK, legal: LEGAL, analyses, failed: lost });
@@ -141,8 +170,21 @@ function StateCard({ title, sentence, searched, failed = [], ply }: State) {
     moments: moments(moves, 'black').map((move) => move + 1),
     pointed: screen.pointed,
     nextMoment: undefined,
+    moment: momentAt({
+      plies: PLIES,
+      moves,
+      analyses,
+      legal: LEGAL,
+      learner: 'black',
+      book: [],
+      screen,
+      tryAnalyses: (screen.tries.get(screen.ply) ?? []).map((uci) => TRIED[uci]),
+      tryFailed: [],
+    }),
     goto: (target) => dispatch({ type: 'goto', ply: target }),
     point: (uci) => dispatch({ type: 'point', uci }),
+    retry: () => dispatch({ type: 'retry' }),
+    showAnswer: () => dispatch({ type: 'show answer' }),
     tryAgain: () => {},
     failure: () => (failed.length ? new Error('Stockfish stopped') : undefined),
   };

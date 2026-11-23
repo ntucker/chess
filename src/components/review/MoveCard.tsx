@@ -1,4 +1,6 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
+import { Link } from 'expo-router';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -10,6 +12,7 @@ import { TippedBadge } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import type { Uci } from '@/lesson/lesson';
 import type { ComparedMove, Comparison } from '@/review/comparison';
+import type { Answer, GuideAnswer, Try } from '@/review/retry';
 import { qualityLooks } from '@/theme/moveQuality';
 import { fonts } from '@/theme/theme';
 
@@ -21,6 +24,12 @@ interface Props {
   readonly quality?: MoveQuality;
   /** What the label says of this move, after its rule: "Here: 26%." */
   readonly qualityDetail?: string;
+  /** Whether Stockfish's moves stay hidden until a retry passes or Show best (`Moment.hidden`). */
+  readonly hidden?: boolean;
+  /** The learner's tries at this move, oldest first. */
+  readonly tries?: readonly Try[];
+  /** The answer, once revealed: the guide's move gets a line naming it, with "Practice this line". */
+  readonly guide?: Answer;
   /** The row previewed on the board. */
   readonly pointed?: Uci;
   /** The learner points at a row, or at none. */
@@ -28,16 +37,28 @@ interface Props {
 }
 
 /**
- * The move shown, as two cards: the move played, with its label, and
- * Stockfish's other top moves from the same position, each with how it
- * changes the position for the learner. Pointing at a row (the mouse
- * moving over it, keyboard focus, or a tap) previews its move on the board;
- * the mouse or focus leaving the cards ends the preview (`PointingArea`).
+ * The move shown, as cards: the move played, with its label; the learner's
+ * tries at it; and Stockfish's other top moves from the same position, or
+ * "Other moves hidden" until a retry passes. Each says how it changes the
+ * position for the learner. Pointing at a row (the mouse moving over it,
+ * keyboard focus, or a tap) previews its move on the board; the mouse or
+ * focus leaving the cards ends the preview (`PointingArea`).
  */
-export function MoveCard({ whose, comparison, quality, qualityDetail, pointed, onPoint }: Props) {
+export function MoveCard({
+  whose,
+  comparison,
+  quality,
+  qualityDetail,
+  hidden,
+  tries = [],
+  guide,
+  pointed,
+  onPoint,
+}: Props) {
   const labelled = useLabelled();
   const { played, others } = comparison;
   const tip = quality && qualityTip(quality, qualityDetail);
+  const book = guide?.guide;
   return (
     <PointingArea onLeave={() => onPoint(undefined)}>
       <Stack gap="4">
@@ -53,9 +74,26 @@ export function MoveCard({ whose, comparison, quality, qualityDetail, pointed, o
               pointed={pointed === played.uci}
               onPoint={onPoint}
             />
+            {hidden ? <HiddenRow /> : null}
           </Surface>
         </Stack>
-        {others.length ? (
+        {tries.length ? (
+          <Stack style={labelled}>
+            <Eyebrow>Your tries</Eyebrow>
+            <Surface elevation="sunken" border="subtle" radius="md" style={styles.card}>
+              {tries.map((tried, n) => (
+                <TryRow
+                  // A move tried twice is two rows.
+                  key={`${n} ${tried.uci}`}
+                  tried={tried}
+                  pointed={pointed === tried.uci}
+                  onPoint={onPoint}
+                />
+              ))}
+            </Surface>
+          </Stack>
+        ) : null}
+        {!hidden && others.length ? (
           <Stack style={labelled}>
             <Eyebrow>{"Stockfish's moves"}</Eyebrow>
             <Surface elevation="sunken" border="subtle" radius="md" style={styles.card}>
@@ -65,8 +103,87 @@ export function MoveCard({ whose, comparison, quality, qualityDetail, pointed, o
             </Surface>
           </Stack>
         ) : null}
+        {book ? <GuideLine san={guide.san} note={book.note} practice={book.practice} /> : null}
       </Stack>
     </PointingArea>
+  );
+}
+
+/** A try's row: its label once judged, and how it changes the position. */
+function TryRow({
+  tried,
+  pointed,
+  onPoint,
+}: {
+  readonly tried: Try;
+  readonly pointed: boolean;
+  readonly onPoint: (uci?: Uci) => void;
+}) {
+  if (tried.status !== 'judged') {
+    const status = tried.status === 'waiting' ? 'Checking…' : "Couldn't be checked";
+    return (
+      <Row
+        move={{
+          ...tried,
+          change: { label: tried.status === 'waiting' ? '…' : '–', description: status },
+        }}
+        spoken={status}
+        pointed={pointed}
+        onPoint={onPoint}
+      />
+    );
+  }
+  const tip = qualityTip(tried.quality);
+  return (
+    <Row
+      move={tried}
+      badge={<TippedBadge quality={tried.quality} size={BADGE_SIZE} tip={tip} />}
+      spoken={tip}
+      pointed={pointed}
+      onPoint={onPoint}
+    />
+  );
+}
+
+/** Stands in for Stockfish's moves until a retry passes or Show best is pressed. */
+function HiddenRow() {
+  const { theme } = useTheme();
+  const muted = theme.semantic.color.textSecondary;
+  return (
+    <Tip tip="Retry, or press Show best, to see Stockfish's moves">
+      <View style={[styles.row, styles.hidden]}>
+        <Ionicons name="eye-off-outline" size={16} color={muted} />
+        <Text role="caption" tone="secondary">
+          Other moves hidden
+        </Text>
+      </View>
+    </Tip>
+  );
+}
+
+/**
+ * The guide's move, once revealed where the learner left the guide: its
+ * badge, its name with the lesson's idea note as the tooltip, and a link
+ * that opens the lesson on that line.
+ */
+function GuideLine({ san, note, practice }: { readonly san: string } & Omit<GuideAnswer, 'uci'>) {
+  const named = `${san} is the guide's move.`;
+  return (
+    <View style={styles.guide}>
+      <TippedBadge quality="book" size={BADGE_SIZE} tip={qualityTip('book')} />
+      {note ? (
+        <Tip tip={note}>
+          <Text role="body">{named}</Text>
+        </Tip>
+      ) : (
+        <Text role="body">{named}</Text>
+      )}
+      <Link href={practice}>
+        <Text role="body" tone="accent" style={styles.link}>
+          Practice this line
+        </Text>
+      </Link>
+    </View>
   );
 }
 
@@ -135,4 +252,7 @@ const styles = StyleSheet.create({
   move: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
   san: { fontFamily: fonts.mono, fontSize: 17 },
   change: { minWidth: 44, textAlign: 'right', fontFamily: fonts.mono },
+  hidden: { gap: 8 },
+  guide: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 4 },
+  link: { textDecorationLine: 'underline' },
 });

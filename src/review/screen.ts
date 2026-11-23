@@ -1,7 +1,8 @@
 /**
  * The review page's one reducer: the move shown, the Stockfish row pointed
- * at, the plies visited (for Next moment) and the ply the board has rested
- * on. Everything else the page shows is worked out from these, the moves
+ * at, the plies visited (for Next moment), the ply the board has rested on,
+ * each moment's tries and answers shown, and what the board shows at a
+ * moment (`retry.ts`). Everything else the page shows is worked out from these, the moves
  * and the analyses in the store (`review.ts`, `order.ts`, `accuracy.ts`).
  */
 import type { Uci } from '@/lesson/lesson';
@@ -21,6 +22,16 @@ export interface ReviewScreen {
    * Stepping on clears it, so stepping through doesn't restart the search.
    */
   readonly dwelt?: number;
+  /** The learner's tries at each moment, by its ply, oldest first: coming back shows them. */
+  readonly tries: ReadonlyMap<number, readonly Uci[]>;
+  /** The moments whose answer Show best has shown, by ply. */
+  readonly shown: ReadonlySet<number>;
+  /**
+   * What the board shows at the moment at `ply` in place of its move: the
+   * position before it, for a try (`retry`); the latest try (`try`); or the
+   * answer Show best shows (`answer`). Going to another ply ends it.
+   */
+  readonly board?: 'retry' | 'try' | 'answer';
 }
 
 export type ReviewAction =
@@ -31,7 +42,13 @@ export type ReviewAction =
   /** Points at the row of `uci`, or at none. */
   | { readonly type: 'point'; readonly uci?: Uci }
   /** The board has shown `ply` for `DWELL_MS`. */
-  | { readonly type: 'dwell'; readonly ply: number };
+  | { readonly type: 'dwell'; readonly ply: number }
+  /** Retry: the board goes back one move for a try at the moment shown. */
+  | { readonly type: 'retry' }
+  /** The learner tries `uci` at the moment shown, and the board shows it. */
+  | { readonly type: 'try'; readonly uci: Uci }
+  /** Show best: the moment shown shows its answer, on the board too. */
+  | { readonly type: 'show answer' };
 
 /** How long the board rests on a move before its positions go next. */
 export const DWELL_MS = 1000;
@@ -40,8 +57,14 @@ export const DWELL_MS = 1000;
 export const reviewedGame = (learner: string, moves: readonly Uci[]) =>
   `${learner} ${moves.join(' ')}`;
 
-/** `game`'s review at its start: the summary, before any move, with nothing visited. */
-export const startReview = (game: string): ReviewScreen => ({ game, ply: 0, visited: new Set() });
+/** `game`'s review at its start: the summary, before any move, with nothing visited or tried. */
+export const startReview = (game: string): ReviewScreen => ({
+  game,
+  ply: 0,
+  visited: new Set(),
+  tries: new Map(),
+  shown: new Set(),
+});
 
 export function reviewReducer(state: ReviewScreen, action: ReviewAction): ReviewScreen {
   switch (action.type) {
@@ -52,11 +75,13 @@ export function reviewReducer(state: ReviewScreen, action: ReviewAction): Review
       const moves = state.game.split(' ').filter(Boolean).length - 1;
       const ply = Math.max(0, Math.min(action.ply, moves));
       if (ply === state.ply) return state;
-      const { visited } = state;
+      const { game, visited, tries, shown } = state;
       return {
-        game: state.game,
+        game,
         ply,
         visited: visited.has(ply) ? visited : new Set(visited).add(ply),
+        tries,
+        shown,
       };
     }
     case 'point':
@@ -65,5 +90,21 @@ export function reviewReducer(state: ReviewScreen, action: ReviewAction): Review
       return action.ply !== state.ply || state.dwelt === action.ply
         ? state
         : { ...state, dwelt: action.ply };
+    case 'retry':
+      return state.board === 'retry' ? state : { ...state, board: 'retry' };
+    case 'try': {
+      const tried = state.tries.get(state.ply) ?? [];
+      return {
+        ...state,
+        tries: new Map(state.tries).set(state.ply, [...tried, action.uci]),
+        board: 'try',
+      };
+    }
+    case 'show answer':
+      return {
+        ...state,
+        shown: state.shown.has(state.ply) ? state.shown : new Set(state.shown).add(state.ply),
+        board: 'answer',
+      };
   }
 }
