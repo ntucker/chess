@@ -19,14 +19,7 @@ import type { BoardProps } from '@/components/Board';
 import { dropMove, parsePositionKey } from '@/game/replay';
 import { type GameStore, useGame } from '@/game/useGame';
 import { finalOnly, isFinal } from '@/evaluation/evaluation';
-import {
-  analysisError,
-  analysisKey,
-  getAnalysis,
-  PositionAnalysis,
-  storedAnalyses,
-  useAnalysis,
-} from '@/resources/analysis';
+import { analysisError, getAnalysis, storedAnalyses, useAnalysis } from '@/resources/analysis';
 import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
 import { hasMark, UNTOUCHED } from '@/progress/progress';
 import { LessonIndexContext } from '@/resources/lesson';
@@ -243,7 +236,7 @@ export function useLesson(
     analysisError(ctrl, 'stockfish', shownLine.slice(0, -1), state) !== undefined;
   const judging = verdictSearch(shown, rareShown, final && labelled, (uci) => {
     const line = lineAfter(uci);
-    const after = ctrl.get(PositionAnalysis, analysisKey('stockfish', line), state);
+    const [after] = storedAnalyses(ctrl, 'stockfish', [line], state);
     if (isFinal(after)) return 'final';
     if (analysisError(ctrl, 'stockfish', line, state)) return 'failed';
     return after ? 'started' : 'none';

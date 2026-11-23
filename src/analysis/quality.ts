@@ -8,10 +8,8 @@ import {
   forSide,
   type MoveChange,
   moveChange,
-  NO_CHANGE,
 } from '@/evaluation/evaluation';
 import { type Color, opposite } from '@/game/replay';
-import { qualityLooks } from '@/theme/moveQuality';
 
 /**
  * The labels, from best to worst. `book` is the opening guide's own move; it
@@ -123,16 +121,6 @@ export function engineVerdict(
       change: moveChange(before.lines[0].evaluation, judged.evaluation, learner),
     }
   );
-}
-
-/**
- * Stockfish's verdict in words: "Stockfish: Inaccuracy, 0.4 pawns worse for
- * you". A move that changes nothing, like the best, says only its label.
- */
-export function verdictText({ quality, change: { description } }: EngineVerdict) {
-  const verdict = `Stockfish: ${qualityLooks[quality].name}`;
-  if (description === NO_CHANGE) return verdict;
-  return `${verdict}, ${description.charAt(0).toLowerCase()}${description.slice(1)}`;
 }
 
 /**

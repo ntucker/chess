@@ -3,10 +3,11 @@ import { a11yState, Badge, Button, Pressable, Stack, Text, useTheme } from '@rea
 import { type FocusEvent as ReactFocusEvent, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { type EngineVerdict, verdictText } from '@/analysis/quality';
+import type { EngineVerdict } from '@/analysis/quality';
 import type { Tone } from '@/board/drawing';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
+import { verdictText } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import { Transport } from '@/components/Transport';
 import type { Color } from '@/game/replay';

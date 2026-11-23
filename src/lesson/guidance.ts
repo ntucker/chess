@@ -200,8 +200,9 @@ export type Searched = 'none' | 'started' | 'final' | 'failed';
  * The listed candidate to search where it leads next, for its verdict: one
  * the board's analysis doesn't judge (`Guidance.verdicts`), once the
  * board's own searches are done (`ready`: its analysis final, its move
- * labelled), since the engine runs the newest search asked for. One search at a
- * time: a search already started runs on, so pointing at row after row
+ * labelled or that label's search given up), since the engine runs the
+ * newest search asked for. One search at a time: a search already started
+ * runs on, so pointing at row after row
  * doesn't keep restarting them; then the row pointed at, even one whose
  * search gave up (pointing tries it again); then the first not searched.
  */
@@ -209,18 +210,18 @@ export function verdictSearch(
   shown: Guidance,
   rareShown: boolean,
   ready: boolean | undefined,
-  searched: (uci: Uci) => Searched,
+  searchOf: (uci: Uci) => Searched,
 ): Uci | undefined {
   const { verdicts } = shown;
   if (!ready || !verdicts) return undefined;
   const waiting = [...shown.candidates, ...(rareShown ? shown.rare : [])]
     .map(({ move }) => move.uci)
-    .filter((uci) => !verdicts.has(uci) && searched(uci) !== 'final');
+    .filter((uci) => !verdicts.has(uci) && searchOf(uci) !== 'final');
   const pointed = shown.preview?.candidate.move.uci;
   return (
-    waiting.find((uci) => searched(uci) === 'started') ??
+    waiting.find((uci) => searchOf(uci) === 'started') ??
     waiting.find((uci) => uci === pointed) ??
-    waiting.find((uci) => searched(uci) === 'none')
+    waiting.find((uci) => searchOf(uci) === 'none')
   );
 }
 
