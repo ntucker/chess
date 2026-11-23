@@ -889,6 +889,17 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
           title === 'Introduction' || title.startsWith('Caro-Kann defence: '),
         ...NAMES_NO_LINE,
       },
+      {
+        // The friend's Bowdler (2.Bc4), which no guide follows past move 5: White's moves are
+        // the bc4-system lesson's and club players' common ones; Black's come from
+        // `yarn cover-opponent caro-kann-hillbilly` (scripts/import-study/coverOpponent.ts).
+        ...committedPgn('caro-kann-hillbilly.pgn', {
+          title: 'Against the Hillbilly Attack',
+          author: 'Opening Night',
+        }),
+        chapters: () => true,
+        ...NAMES_NO_LINE,
+      },
     ],
     engineCheck: true,
     info: {
@@ -1059,8 +1070,8 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
       },
       {
         // Black copying White's setup (...d5, ...Bf5, ...e6, ...c6), which the guides leave after
-        // move 6: Black's moves are the club players' common replies, White's Stockfish's, and
-        // among near-equal ones Fable's pick. Generated against the albin lesson's London Mirror.
+        // move 6: Black's moves are the albin lesson's and club players' common ones; White's
+        // come from the opponent check (scripts/import-study/coverOpponent.ts, 'london-mirror').
         ...committedPgn('london-mirror.pgn', {
           title: 'Against the London mirror',
           author: 'Opening Night',
