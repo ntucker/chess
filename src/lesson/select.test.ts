@@ -2,6 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import { makeUci } from 'chessops/util';
 
+import type { FinalAnalysis } from '@/evaluation/evaluation';
 import { parsePositionKey } from '@/game/replay';
 
 import type { Idea, Lesson, Note, PositionKey } from './lesson';
@@ -11,6 +12,7 @@ import {
   candidates,
   captionName,
   engineCandidates,
+  engineVerdict,
   FEWEST_RARE,
   RARE_SHARE,
   ALWAYS_LISTED,
@@ -192,6 +194,41 @@ describe('candidates', () => {
         { uci: 'd7d6', games: [1, 1, 1, 1, 1] },
       ]);
       expect(rareOnes(rarely, learnerKey, 2)).toEqual([]);
+    });
+  });
+});
+
+describe('engineVerdict', () => {
+  /** A final analysis: its moves, each with White's expected score and pawns after it. */
+  const analysis = (...lines: [string | undefined, number, number][]): FinalAnalysis => ({
+    lines: lines.map(([uci, score, pawns]) => ({ uci, evaluation: { score, pawns } })),
+    depth: 19,
+    final: true,
+  });
+  // Black to move, at +0.3 for White.
+  const before = analysis(['g8f6', 0.53, 0.3], ['d7d5', 0.6, 0.9], ['c7c5', 0.62, 1.1]);
+
+  it('judges a listed move by its own line, the change for the learner beside it', () => {
+    expect(engineVerdict(before, undefined, 'g8f6', 'black', 'black')).toEqual({
+      quality: 'best',
+      change: { label: '0.0', description: 'No change' },
+    });
+    expect(engineVerdict(before, undefined, 'd7d5', 'black', 'black')).toEqual({
+      quality: 'inaccuracy',
+      change: { label: '\u22120.6', description: '0.6 pawns worse for you' },
+    });
+    // The opponent's slip, as the learner (White) sees it: better for them.
+    expect(engineVerdict(before, undefined, 'c7c5', 'black', 'white')).toMatchObject({
+      quality: 'inaccuracy',
+      change: { label: '+0.8' },
+    });
+  });
+
+  it('waits for the position after a move the analysis skips, and judges it by that', () => {
+    expect(engineVerdict(before, undefined, 'a7a6', 'black', 'black')).toBeUndefined();
+    expect(engineVerdict(before, analysis(['e2e4', 0.68, 2.4]), 'a7a6', 'black', 'black')).toEqual({
+      quality: 'mistake',
+      change: { label: '\u22122.1', description: '2.1 pawns worse for you' },
     });
   });
 });

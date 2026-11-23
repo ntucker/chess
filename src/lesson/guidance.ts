@@ -55,6 +55,10 @@
  *   drawn in the color of what goes wrong. Where the best move or a candidate
  *   is the same move, the refutation's arrow is drawn instead of theirs. Its
  *   being a rare reply doesn't hide it: it still punishes.
+ * - In Explore, each guide candidate carries Stockfish's verdict on it
+ *   (`Guidance.verdicts`), the book move too, so the learner can tell a
+ *   popular move from a good one. Practice keeps it hidden like every
+ *   engine hint, and where the moves pick the opening there is none.
  * - Rare candidates (`Candidate.rare`) are left off the list, which shows
  *   them only when asked, and off the board's arrows; Stockfish's best isn't
  *   tagged on one either. Only a preview of one, or dragging its piece,
@@ -67,7 +71,7 @@ import type { Settings } from '@/settings/settings';
 
 import { drawsOnBoard } from './drawings';
 import type { Idea, Note, PositionKey, Uci } from './lesson';
-import { type Candidate, mainCandidate } from './select';
+import { type Candidate, type EngineVerdict, mainCandidate } from './select';
 import { type LandedTrap, type LessonView, type Preview, type ShownNote, shownKey } from './view';
 
 export type LessonMode = 'explore' | 'practice';
@@ -83,6 +87,8 @@ export interface EngineView {
   readonly top?: readonly Candidate[];
   /** Its search has finished, so `best` won't change. */
   readonly final?: boolean;
+  /** Its verdict on each guide candidate it has judged, by move (`engineVerdict`). */
+  readonly verdicts?: ReadonlyMap<Uci, EngineVerdict>;
 }
 
 export interface GuidanceInput {
@@ -163,6 +169,12 @@ export interface Guidance {
   readonly best?: Uci;
   /** Stockfish's rows the list shows (`listedEngineMoves`). */
   readonly top: readonly Candidate[];
+  /**
+   * Stockfish's verdict on each candidate, by move, where the list shows
+   * verdicts: in Explore, away from the moves that pick the opening. A
+   * candidate missing from it is still being judged. Undefined elsewhere.
+   */
+  readonly verdicts?: ReadonlyMap<Uci, EngineVerdict>;
   /** The reply that punishes the move just played, where guidance marks it. */
   readonly refutation?: Uci;
   /** A trap the line fell into, while its card shows (see `trapShown`). */
@@ -170,6 +182,8 @@ export interface Guidance {
   /** The line has reached a guide line's end, and the headline tells it (see `newsShown`). */
   readonly lineEnded: boolean;
 }
+
+const NO_VERDICTS: ReadonlyMap<Uci, EngineVerdict> = new Map();
 
 /** Whether "Moves on the board" changes anything in `mode`: only in Explore. */
 export const movesSwitchApplies = (mode: LessonMode) => mode === 'explore';
@@ -295,6 +309,7 @@ export function guidance(input: GuidanceInput): Guidance {
     pointed: pointedNote,
     best: best && tagsBest(view, engine?.final, best) ? best : undefined,
     top,
+    verdicts: explore && !picking ? (engine?.verdicts ?? NO_VERDICTS) : undefined,
     refutation,
     trap,
     lineEnded: view.lineEnd !== undefined && newsShown(view, view.lineEnd),

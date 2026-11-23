@@ -31,6 +31,8 @@ interface Props {
   readonly lesson: Lesson;
   readonly title: string;
   readonly notes: readonly ShownNote[];
+  /** What the card says when it has no notes, in place of a hint to point at a move. */
+  readonly empty?: string;
   /** The learner's side: a note's kind takes its color from the board's drawings. */
   readonly learner: Color;
   /** Plays a note's plan, line or trap through on the board. */
@@ -59,6 +61,7 @@ export function IdeaCard({
   lesson,
   title,
   notes,
+  empty = 'No notes here. Point at a move to see what it aims for.',
   learner,
   playback,
   pointable,
@@ -95,7 +98,7 @@ export function IdeaCard({
         </View>
       ) : (
         <Text role="bodySm" tone="secondary">
-          No notes here. Point at a move to see what it aims for.
+          {empty}
         </Text>
       )}
     </Stack>

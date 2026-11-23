@@ -2,6 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import {
   guidance,
+  type EngineView,
   type Guidance,
   type GuidanceInput,
   type LessonMode,
@@ -116,6 +117,25 @@ describe('guidance', () => {
         notes: ['move'],
         ideas: ['plan'],
       });
+    });
+
+    it("hands Stockfish's verdicts on the candidates to the list, only in Explore off the picking moves", () => {
+      const verdicts = new Map([
+        ['c8f5', { quality: 'good', change: { label: '\u22120.1', description: '' } }] as const,
+      ]);
+      const at = (sans: string[], mode: LessonMode, engine: EngineView = { verdicts }) =>
+        guidance({
+          view: sampleView(sans),
+          mode,
+          switches: ALL_ON,
+          picking: sans.length === 0,
+          engine,
+        }).verdicts;
+      expect(at(ADVANCE, 'explore')).toBe(verdicts);
+      // None judged yet: the list shows verdicts, and waits for them.
+      expect(at(ADVANCE, 'explore', {})).toEqual(new Map());
+      expect(at(ADVANCE, 'practice')).toBeUndefined();
+      expect(at([], 'explore')).toBeUndefined();
     });
 
     it("lists Stockfish's top three beyond the guide, and at a guide end, marking the first as best", () => {

@@ -179,6 +179,50 @@ describe("useLesson's Stockfish best move", () => {
   });
 });
 
+describe("useLesson's verdicts on the candidates", () => {
+  const line = uciLine(...ADVANCE);
+  const after = (uci: string) => [...line, uci].join(' ');
+  // The searches of where a candidate leads, past the move labels' own.
+  const judging = () => mockSearched.filter((moves) => moves.startsWith(`${line.join(' ')} `));
+  const verdicts = () =>
+    Object.fromEntries(
+      [...(lesson().guidance.verdicts ?? [])].map(([uci, { quality }]) => [uci, quality]),
+    );
+
+  it('judges the candidates the search lists at once, and searches where the others lead', async () => {
+    await render(line);
+    // Nothing more while the board's own search runs.
+    await store(line, [['c8f5', 0.45]], false);
+    expect(judging()).toEqual([]);
+    expect(verdicts()).toEqual({});
+    await store(line, [
+      ['c8f5', 0.45],
+      ['g8f6', 0.46],
+    ]);
+    expect(verdicts()).toEqual({ c8f5: 'best' });
+    expect(mockSearched.at(-1)).toBe(after('c6c5'));
+    // Black's c5 judged from the search of where it leads: White's best reply there.
+    await store([...line, 'c6c5'], [['d4c5', 0.62]]);
+    expect(verdicts()).toEqual({ c8f5: 'best', c6c5: 'mistake' });
+  });
+
+  it('searches the candidate pointed at first', async () => {
+    await render(line);
+    await store(line, [['g8f6', 0.45]]);
+    expect(mockSearched.at(-1)).toBe(after('c8f5'));
+    await act(async () => lesson().pointRow('c6c5'));
+    expect(mockSearched.at(-1)).toBe(after('c6c5'));
+  });
+
+  it('judges nothing in Practice', async () => {
+    await render(line);
+    await act(async () => lesson().chooseMode('practice'));
+    await store(line, [['g8f6', 0.45]]);
+    expect(lesson().guidance.verdicts).toBeUndefined();
+    expect(judging()).toEqual([]);
+  });
+});
+
 describe("useLesson's move labels", () => {
   // Black's a6 is Stockfish's second move, 0.07 behind its first. Its h6
   // is unlisted, and the search after it rates it as well as the best, but

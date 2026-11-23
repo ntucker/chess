@@ -13,9 +13,12 @@ import { StyleSheet, View } from 'react-native';
 
 import { candidateTone } from '@/lesson/drawings';
 import type { PositionKey, Uci } from '@/lesson/lesson';
-import type { Candidate } from '@/lesson/select';
+import { NO_CHANGE } from '@/evaluation/evaluation';
+import type { Candidate, EngineVerdict } from '@/lesson/select';
+import { qualityLooks } from '@/theme/moveQuality';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
+import type { MoveQuality } from '@/analysis/quality';
 import { QualityBadge } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import type { Mark } from '@/progress/progress';
@@ -42,6 +45,11 @@ interface Props {
    * the top engine move, for when the guide doesn't list it.
    */
   readonly engineBest?: Candidate;
+  /**
+   * Stockfish's verdict on each guide candidate, by move: a badge after its
+   * move, whose tooltip says the verdict and the change for the learner.
+   */
+  readonly verdicts?: ReadonlyMap<Uci, EngineVerdict>;
   /** Rare candidates, listed after the others while `rareShown`. */
   readonly rare: readonly Candidate[];
   readonly rareShown: boolean;
@@ -80,7 +88,8 @@ interface Props {
 /**
  * A list of moves at the position on the board, one row each, in one of two
  * kinds:
- * - The guide's moves, most played first, each with its share of the games.
+ * - The guide's moves, most played first, each with its share of the games
+ *   and Stockfish's verdict on it (`verdicts`) once it has one.
  *   Stockfish's best follows them when the guide lacks it (`engineBest`),
  *   with a star whose tooltip says it is the top engine move. Rare rows come
  *   after it, when the learner asks for them.
@@ -101,6 +110,7 @@ export function CandidateList({
   position,
   candidates,
   engineBest,
+  verdicts,
   rare,
   rareShown,
   onShowRare,
@@ -168,6 +178,7 @@ export function CandidateList({
                   candidate={candidate}
                   main={candidate === main}
                   topEngine={candidate === engineBest}
+                  verdict={verdicts?.get(candidate.move.uci)}
                   pointed={candidate.move.uci === pointed}
                   mark={marks.get(candidate.move.uci)}
                   // Every row keeps room for a mark once one has one, so their shares line up.
@@ -257,6 +268,8 @@ interface RowProps {
   readonly main: boolean;
   /** One of Stockfish's moves listed after the guide's: marked as its top move. */
   readonly topEngine: boolean;
+  /** Stockfish's verdict on a guide's move. */
+  readonly verdict?: EngineVerdict;
   readonly pointed: boolean;
   readonly mark?: Mark;
   /** Some row of the list has a mark, so this one keeps room for one. */
@@ -278,6 +291,7 @@ function Row({
   candidate,
   main,
   topEngine,
+  verdict,
   pointed,
   mark,
   markSlot,
@@ -307,6 +321,7 @@ function Row({
         move.book && 'book move',
         share !== undefined && `${percent(share)} of games`,
         topEngine ? TOP_ENGINE_MOVE : engine?.description,
+        verdict && verdictText(verdict),
         mark && SPOKEN_MARKS[mark],
       ]
         .filter(Boolean)
@@ -345,15 +360,9 @@ function Row({
             {san}
           </Text>
           {move.book ? <QualityBadge quality="book" size={BOOK_BADGE_SIZE} /> : null}
-          {topEngine ? (
-            // The badge says what it means on a resting mouse or a tap; the row's label says it aloud.
-            <Tooltip.Root>
-              <Tooltip.Trigger>
-                <QualityBadge quality="best" size={BOOK_BADGE_SIZE} />
-              </Tooltip.Trigger>
-              <Tooltip.Content>{TOP_ENGINE_TIP}</Tooltip.Content>
-            </Tooltip.Root>
-          ) : null}
+          {/* Each badge says what it means on a resting mouse or a tap; the row's label says it aloud. */}
+          {topEngine ? <TippedBadge quality="best" tip={TOP_ENGINE_TIP} /> : null}
+          {verdict ? <TippedBadge quality={verdict.quality} tip={verdictText(verdict)} /> : null}
           {move.risk ? (
             <Text role="caption" tone="secondary" style={styles.risk}>
               {move.risk}
@@ -389,6 +398,29 @@ function Row({
       ) : null}
     </Pressable>
   );
+}
+
+/** A move's label as a badge, with what it means in a tooltip. */
+function TippedBadge({ quality, tip }: { readonly quality: MoveQuality; readonly tip: string }) {
+  return (
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        <QualityBadge quality={quality} size={BOOK_BADGE_SIZE} />
+      </Tooltip.Trigger>
+      <Tooltip.Content>{tip}</Tooltip.Content>
+    </Tooltip.Root>
+  );
+}
+
+/**
+ * Stockfish's verdict in words, for its badge's tooltip and the row's label:
+ * "Stockfish: Inaccuracy, 0.4 pawns worse for you". A move that changes
+ * nothing, like the best, says only its label.
+ */
+export function verdictText({ quality, change: { description } }: EngineVerdict) {
+  const verdict = `Stockfish: ${qualityLooks[quality].name}`;
+  if (description === NO_CHANGE) return verdict;
+  return `${verdict}, ${description.charAt(0).toLowerCase()}${description.slice(1)}`;
 }
 
 /** What a row of Stockfish's among the guide's says it is. */

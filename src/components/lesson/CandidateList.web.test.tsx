@@ -8,7 +8,7 @@ import { createRoot } from 'react-dom/client';
 import type { Candidate } from '@/lesson/select';
 import { themes } from '@/theme/theme';
 
-import { CandidateList } from './CandidateList';
+import { CandidateList, verdictText } from './CandidateList';
 
 // Its font needs Expo's asset registry too.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
@@ -92,6 +92,34 @@ function partTexts(props: Props) {
 describe('CandidateList', () => {
   it('names where the pointed row leads', () => {
     expect(caption({ pointed: 'g1f3' })).toBe('Nf3: the Nf3 line');
+  });
+
+  it("says Stockfish's verdict on a row in its badge and its label", () => {
+    const verdicts = new Map([
+      [
+        'g1f3',
+        {
+          quality: 'inaccuracy',
+          change: { label: '\u22120.4', description: '0.4 pawns worse for you' },
+        },
+      ] as const,
+    ]);
+    const read = (host: HTMLElement) => ({
+      badge: host.querySelector('[aria-label="Inaccuracy"]') !== null,
+      row: host.querySelector('[role="button"]')?.getAttribute('aria-label'),
+    });
+    expect(render({ verdicts }, read)).toEqual({
+      badge: true,
+      row: 'Nf3, Stockfish: Inaccuracy, 0.4 pawns worse for you',
+    });
+    // A row still being judged has neither.
+    expect(render({}, read)).toEqual({ badge: false, row: 'Nf3' });
+  });
+
+  it('says only the label of a verdict that changes nothing', () => {
+    expect(
+      verdictText({ quality: 'best', change: { label: '0.0', description: 'No change' } }),
+    ).toBe('Stockfish: Best move');
   });
 
   it('names where a dragged rare move leads while its row is hidden', () => {

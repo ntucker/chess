@@ -6,8 +6,14 @@
 import type { Chess } from 'chessops/chess';
 import type { SquareName } from 'chessops/types';
 
-import { type AnalysisLine, type MoveChange, moveChange } from '@/evaluation/evaluation';
-import { parsePositionKey, playLine, playMove, positionKey } from '@/game/replay';
+import { judgement, type MoveQuality } from '@/analysis/quality';
+import {
+  type AnalysisLine,
+  type FinalAnalysis,
+  type MoveChange,
+  moveChange,
+} from '@/evaluation/evaluation';
+import { type Color, parsePositionKey, playLine, playMove, positionKey } from '@/game/replay';
 import { isStockfish, type Opponent } from '@/opponent/opponent';
 
 import {
@@ -152,6 +158,35 @@ export function engineCandidates(
     const row = uci && candidateRow(lesson, pos, { uci });
     return row ? [{ ...row, engine: moveChange(top[0].evaluation, evaluation, lesson.side) }] : [];
   });
+}
+
+/** What Stockfish makes of a guide's move: its label, and how it changes the position for the learner. */
+export interface EngineVerdict {
+  readonly quality: MoveQuality;
+  readonly change: MoveChange;
+}
+
+/**
+ * Stockfish's verdict on `uci`, played by `mover` in the position `before`
+ * analyses: the label the move gets once played (`judgement`, so the two
+ * agree), and the change for `learner` as a row of Stockfish's top moves
+ * shows it. A move `before` doesn't list needs `after`, the final analysis
+ * of the position it leads to; undefined while that is missing.
+ */
+export function engineVerdict(
+  before: FinalAnalysis,
+  after: FinalAnalysis | undefined,
+  uci: Uci,
+  mover: Color,
+  learner: Color,
+): EngineVerdict | undefined {
+  const judged = judgement(before, after, uci, mover);
+  return (
+    judged && {
+      quality: judged.quality,
+      change: moveChange(before.lines[0].evaluation, judged.evaluation, learner),
+    }
+  );
 }
 
 /** `move` played at `pos`: the row's move, squares and where it leads, or undefined if illegal. */
