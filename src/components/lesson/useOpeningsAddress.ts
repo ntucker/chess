@@ -3,11 +3,13 @@ import { useNavigationState } from 'expo-router/react-navigation';
 
 /**
  * An address's params, as the URL has them: a lesson's id, and a variation to
- * open. A type, as `useLocalSearchParams` takes no interface.
+ * open or moves to start from. A type, as `useLocalSearchParams` takes no interface.
  */
 type Params = {
   readonly id?: string;
   readonly variation?: string;
+  /** The moves (UCI, separated by spaces) the game starts having played: "Play on from here". */
+  readonly moves?: string;
 };
 
 /** A route as far as the address needs it. */
@@ -34,7 +36,7 @@ export function focusedRoute(root: Routes, key: string): Route | undefined {
  * own navigator, so a screen pushed in front (free play) doesn't change it.
  *
  * `entry` is the history entry: the route's key. A push, a replace or Back
- * changes it; only a change of variation keeps it (the game dropping one, or
+ * changes it; only a change of variation or moves keeps it (the game dropping one, or
  * a link to the lesson already open naming one). The params are the route's
  * own: the layout's (`useLocalSearchParams`) keep the first address's lesson
  * after a replace to `/`. Before the navigator has state (the first render,
@@ -44,6 +46,6 @@ export function useOpeningsAddress() {
   const { key } = useRoute();
   const route = useNavigationState((root) => focusedRoute(root, key));
   const url = useLocalSearchParams<Params>();
-  const { id, variation }: Params = route ? (route.params ?? {}) : url;
-  return { entry: route?.key, id, variation };
+  const { id, variation, moves }: Params = route ? (route.params ?? {}) : url;
+  return { entry: route?.key, id, variation, moves };
 }

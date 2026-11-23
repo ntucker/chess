@@ -67,11 +67,14 @@ import { useOpeningsGame } from './useOpeningsGame';
 export function LessonPage({
   id,
   variation,
+  moves,
   entry,
 }: {
   readonly id?: string;
   /** A variation of the lesson to open at (`useOpeningsGame`). */
   readonly variation?: string;
+  /** Moves the game starts from, as the URL has them ("Play on from here", `useOpeningsGame`). */
+  readonly moves?: string;
   /** The history entry the address is (`useOpeningsGame`). */
   readonly entry?: string;
 }) {
@@ -80,7 +83,7 @@ export function LessonPage({
   }
   return (
     <BrowserOnly fallback={<LessonPlaceholder />}>
-      <Openings address={id} variation={variation} entry={entry} />
+      <Openings address={id} variation={variation} moves={moves} entry={entry} />
     </BrowserOnly>
   );
 }
@@ -99,13 +102,20 @@ export function LessonPage({
 function Openings({
   address,
   variation,
+  moves,
   entry,
 }: {
   readonly address?: LessonId;
   readonly variation?: VariationId;
+  readonly moves?: string;
   readonly entry?: string;
 }) {
-  const { store, lesson, side, playAs, pending } = useOpeningsGame(address, variation, entry);
+  const { store, lesson, side, playAs, pending } = useOpeningsGame(
+    address,
+    variation,
+    entry,
+    moves,
+  );
   // A navigation in a transition (the browser's Back or Forward) keeps the page
   // up while the next one loads its lesson: a long one says so too. It changes
   // nothing else, so the board, maybe hidden by then, doesn't redraw.

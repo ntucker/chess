@@ -8,7 +8,7 @@ import { Eyebrow } from '@/components/Eyebrow';
 import { ReviewPanel, type ReviewView } from '@/components/review/ReviewPanel';
 import { legalMoveCountAt, replay } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
-import { reviewHref } from '@/review/address';
+import { playOnHref, reviewHref } from '@/review/address';
 import { momentAt } from '@/review/retry';
 import { moments, reviewMoves } from '@/review/review';
 import { type ReviewScreen, reviewedGame, reviewReducer, startReview } from '@/review/screen';
@@ -161,6 +161,20 @@ function StateCard({ title, sentence, searched, failed = [], ply, retried }: Sta
   const analyses = PLIES.map((_, n) => (searched.includes(n) ? SEARCHED[n] : undefined));
   const lost = new Set(failed);
   const moves = reviewMoves({ plies: PLIES, book: BOOK, legal: LEGAL, analyses, failed: lost });
+  const moment = momentAt({
+    plies: PLIES,
+    moves,
+    analyses,
+    legal: LEGAL,
+    learner: 'black',
+    book: [],
+    screen,
+    tryAnalyses: (screen.tries.get(screen.ply) ?? []).map((uci) => TRIED[uci]),
+    tryFailed: [],
+  });
+  const playOn =
+    moment.correction &&
+    playOnHref([...LINE.slice(0, screen.ply - 1), moment.correction], 'black', 'caro-kann');
   const review: ReviewView = {
     plies: PLIES,
     ply: screen.ply,
@@ -170,17 +184,7 @@ function StateCard({ title, sentence, searched, failed = [], ply, retried }: Sta
     moments: moments(moves, 'black').map((move) => move + 1),
     pointed: screen.pointed,
     nextMoment: undefined,
-    moment: momentAt({
-      plies: PLIES,
-      moves,
-      analyses,
-      legal: LEGAL,
-      learner: 'black',
-      book: [],
-      screen,
-      tryAnalyses: (screen.tries.get(screen.ply) ?? []).map((uci) => TRIED[uci]),
-      tryFailed: [],
-    }),
+    moment,
     goto: (target) => dispatch({ type: 'goto', ply: target }),
     point: (uci) => dispatch({ type: 'point', uci }),
     retry: () => dispatch({ type: 'retry' }),
@@ -197,7 +201,7 @@ function StateCard({ title, sentence, searched, failed = [], ply, retried }: Sta
         <Text role="bodySm">{sentence}</Text>
       </Stack>
       <Surface elevation="raised" radius="md" border="subtle" style={styles.panel}>
-        <ReviewPanel eyebrow="Review · Caro-Kann" learner="black" review={review} />
+        <ReviewPanel eyebrow="Review · Caro-Kann" learner="black" review={review} playOn={playOn} />
       </Surface>
     </Stack>
   );

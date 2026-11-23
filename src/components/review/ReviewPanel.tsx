@@ -1,4 +1,5 @@
 import { Separator, Stack } from '@reactive/silk-native';
+import type { Href } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { Eyebrow, useLabelled, useSections } from '@/components/Eyebrow';
@@ -41,6 +42,8 @@ interface Props {
   readonly review: ReviewView;
   /** On a narrow page, the scoresheet drawer while it's open (from the header), covering the headline and the move card. */
   readonly drawer?: { readonly onClose: () => void };
+  /** Where "Play on from here" goes, once the moment shown is revealed (`playOnHref`). */
+  readonly playOn?: Href;
 }
 
 /**
@@ -51,7 +54,7 @@ interface Props {
  * keeps the actions in a bar at the screen's foot (`ReviewActionBar`), and
  * opens the scoresheet in a drawer.
  */
-export function ReviewPanel({ eyebrow, learner, review, drawer }: Props) {
+export function ReviewPanel({ eyebrow, learner, review, drawer, playOn }: Props) {
   const part = useNarrowPart();
   const labelled = useLabelled();
   const sections = useSections();
@@ -82,6 +85,7 @@ export function ReviewPanel({ eyebrow, learner, review, drawer }: Props) {
             hidden={moment.hidden ? (moment.answer ? 'until retry' : 'until judged') : undefined}
             tries={moment.tries}
             guide={moment.revealed ? moment.answer : undefined}
+            playOn={playOn}
             pointed={pointed}
             onPoint={point}
           />

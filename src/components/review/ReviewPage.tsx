@@ -12,11 +12,11 @@ import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { stepButton, Transport } from '@/components/Transport';
 import { NewVersionError } from '@/files/newVersion';
 import { material } from '@/game/material';
-import { type Color, colorName, dropMove, fenAfter, opposite, replay } from '@/game/replay';
+import { type Color, colorName, dropMove, fenAfter, opposite } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 import { lessonHref, withOpenings } from '@/lesson/openings';
 import { getLesson, isLessonId, LessonIndexContext, type LessonId } from '@/resources/lesson';
-import { addressMoves, type ReviewAddress } from '@/review/address';
+import { addressMoves, playOnHref, type ReviewAddress } from '@/review/address';
 import { REVIEW_ENGINE, useReview } from '@/review/useReview';
 
 import { ReviewNames } from './NarrowBars';
@@ -53,8 +53,7 @@ function AddressedReview({ moves, side, lesson }: ReviewAddress) {
   if (side !== 'white' && side !== 'black') {
     return <ReviewPlaceholder message={NO_GAME} lesson={lesson} />;
   }
-  const line = addressMoves(moves);
-  const played = line.slice(0, replay(line).length - 1);
+  const played = addressMoves(moves);
   if (!played.length) return <ReviewPlaceholder message={NO_GAME} lesson={lesson} />;
   return (
     <AsyncBoundary fallback={<ReviewPlaceholder lesson={lesson} />} errorComponent={ReviewFailure}>
@@ -151,6 +150,10 @@ function ReviewScreen({
           learner={learner}
           review={review}
           drawer={scoresheetOpen ? { onClose: () => setScoresheetOpen(false) } : undefined}
+          playOn={
+            moment.correction &&
+            playOnHref([...moves.slice(0, ply - 1), moment.correction], learner, lesson)
+          }
         />
       }
       programFoot={<ReviewActionBar {...review} />}

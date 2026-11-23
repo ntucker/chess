@@ -2,7 +2,6 @@ import { useController } from '@data-client/react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Button, Inline, Separator, Stack } from '@reactive/silk-native';
 import { useIsFocused } from 'expo-router';
-import { useReducer, useState } from 'react';
 
 import { lastMoveBadge, refutationArrow } from '@/board/drawing';
 import { EvaluationEngineChoice } from '@/components/EvaluationEngineChoice';
@@ -14,7 +13,7 @@ import { OpponentPicker } from '@/components/OpponentPicker';
 import { ScoresheetReview } from '@/components/ReviewLinks';
 import { Scoresheet } from '@/components/Scoresheet';
 import { BoardColumn, Stage } from '@/components/Stage';
-import { gameReducer, initialGame } from '@/game/game';
+import { usePlayAddress } from '@/components/usePlayAddress';
 import { type Color, colorName, opposite } from '@/game/replay';
 import { useGame } from '@/game/useGame';
 import { describeOpponent } from '@/opponent/opponent';
@@ -22,16 +21,19 @@ import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
 import { reviewHref } from '@/review/address';
 import { useSettings } from '@/settings/SettingsProvider';
 
+/**
+ * A free game against the opponent of the settings, from its address
+ * (`usePlayAddress`): at the start, or the review's "Play on from here".
+ */
 export default function PlayScreen() {
   const ctrl = useController();
   const { opponent, evaluationEngine } = useSettings();
   const described = describeOpponent(opponent);
   const labelled = useLabelled();
-  // The side of the game on the board, which the next game keeps.
-  const [playerColor, setPlayerColor] = useState<Color>('white');
+  const { store, side: playerColor, setSide: setPlayerColor } = usePlayAddress();
   const active = useIsFocused();
   useWarmOpponent(opponent, active);
-  const game = useGame(useReducer(gameReducer, initialGame), gameOpponent(ctrl, opponent), {
+  const game = useGame(store, gameOpponent(ctrl, opponent), {
     side: playerColor,
     active,
     judge: evaluationEngine,

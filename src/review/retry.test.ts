@@ -112,6 +112,29 @@ describe('momentAt', () => {
     expect(missed).toMatchObject({ badge: 'blunder', arrow: undefined });
   });
 
+  describe('the move "Play on from here" plays', () => {
+    it('is none until the moment is revealed', () => {
+      expect(momentOf().correction).toBeUndefined();
+      const missed = momentOf({ tryAnalyses: [listing(['e7e5', 0.3])] }, { tries: tried('a2a3') });
+      expect(missed.correction).toBeUndefined();
+    });
+
+    it('is the try or the answer the board shows', () => {
+      expect(momentOf({}, { tries: tried('b1c3'), board: 'try' }).correction).toBe('b1c3');
+      expect(momentOf({}, { shown: new Set([3]), board: 'answer' }).correction).toBe('g1f3');
+    });
+
+    it('is the latest try that passed, else the answer, once the board shows something else', () => {
+      // Nc3 passed, then a3 missed: the board shows a3.
+      const after = momentOf(
+        { tryAnalyses: [undefined, listing(['e7e5', 0.3])] },
+        { tries: tried('b1c3', 'a2a3'), board: 'try' },
+      );
+      expect(after.correction).toBe('b1c3');
+      expect(momentOf({}, { shown: new Set([3]) }).correction).toBe('g1f3');
+    });
+  });
+
   it("shows a fine move's and the opponent's comparison at once", () => {
     const fine = momentOf({
       moves: [judgedMove(0, 'best'), judgedMove(1, 'best'), judgedMove(2, 'good')],
