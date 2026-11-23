@@ -6,7 +6,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import type { Candidate } from '@/lesson/select';
-import { themes } from '@/theme/theme';
+import { themes, typography } from '@/theme/theme';
 
 import { CandidateList, listMinWidth } from './CandidateList';
 
@@ -204,9 +204,11 @@ describe('CandidateList', () => {
     list.unmount();
   });
 
-  // CANDIDATES in the heading's caption, uppercase: its glyphs at 12 px in Instrument Sans,
-  // measured in Chromium, and its letter spacing, which text scaling leaves alone.
-  const headingWord = (fontScale: number) => 76.1 * fontScale + 10 * 1.6;
+  // CANDIDATES in the heading's caption, uppercase: its glyphs in Instrument Sans, 76.1 px at
+  // 12 px as measured in Chromium (measure again if the font or the eyebrow's style changes),
+  // and Eyebrow's letter spacing, which text scaling leaves alone.
+  const headingWord = (fontScale: number) =>
+    (76.1 / 12) * typography.caption.size * fontScale + 'CANDIDATES'.length * 1.6;
 
   it.each([1, 1.3, 1.8, 2])(
     'leaves room in a narrow pane for the heading’s longest word at text scale %f',

@@ -40,11 +40,14 @@ export const fonts = {
   /** Display serif for headlines and the wordmark. Has one weight. */
   display: 'DMSerifDisplay_400Regular',
   displayItalic: 'DMSerifDisplay_400Regular_Italic',
-  /** Text and controls. */
+  /** Text and controls. CandidateList.web.test.tsx measures a heading's word in it. */
   text: 'InstrumentSans_400Regular',
-  /** Move numbers and notation. Its glyphs' width sets CandidateList.tsx's `MONO_ADVANCE`. */
+  /** Move numbers and notation. */
   mono: 'DMMono_400Regular',
 } as const;
+
+/** `fonts.mono`'s advance as a share of its size: each of its glyphs is this wide. */
+export const MONO_ADVANCE = 0.6;
 
 // Silk picks a font by family slot (sans, serif, mono) and a weight, but each
 // loaded file is its own family on Android, so a weight the file

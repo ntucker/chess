@@ -21,7 +21,7 @@ import { Tip } from '@/components/Tip';
 import type { Mark } from '@/progress/progress';
 import { NARROW_CSS_LOADS, narrowLength, narrowStyles } from '@/theme/narrow';
 import { NarrowScroll, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
-import { fonts, typography } from '@/theme/theme';
+import { fonts, MONO_ADVANCE, typography } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
 import { MotionList, MotionView } from '@/motion/MotionList';
 
@@ -433,8 +433,6 @@ const STATIC = StyleSheet.create({
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;
 
-/** `fonts.mono`'s (DM Mono's) advance as a share of its size: each of its glyphs is this wide. */
-const MONO_ADVANCE = 0.6;
 /** The notation's size in a row. */
 const SAN_SIZE = 17;
 /** A share's and an evaluation's size, Silk's caption. */
@@ -443,26 +441,25 @@ const VALUE_SIZE = typography.caption.size;
 const SHARE_WIDTH = 32;
 /** An evaluation's least width, which holds its longest label (as −9.9 or −M12) in caption text. */
 const EVALUATION_WIDTH = 44;
+/** The longest move a narrow pane's row holds at its own size: a capture. */
+const LONGEST_MOVE = 'exd5';
+/** The longest share and evaluation, which larger text can widen past their least widths. */
+const LONGEST_SHARE = '100%';
+const LONGEST_EVALUATION = '\u22129.9';
 
 /**
- * A move on one line, whose text shrinks, down to 0.7 of its size, when its
- * row has too little room for it: a five-character move beside its badge in
- * a pane at its least width (`listMinWidth`) needs 0.8. Off the web only:
- * the web's `fontScale` is always 1, so its pane holds a four-character move,
- * and a longer one overflows its place.
+ * A move on one line, whose text shrinks when its row has too little room
+ * for it. Beside its badge in a pane at its least width (`listMinWidth`),
+ * which holds `LONGEST_MOVE`, a five-character move needs 0.8 of its size
+ * and a promotion with check (exd8=Q+) 0.57, which the floor still holds.
+ * Off the web only: the web's `fontScale` is always 1, so its pane holds a
+ * four-character move, and a longer one overflows its place.
  */
 const SHRINK_TO_LINE = NARROW_CSS_LOADS
   ? {}
-  : ({ numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.7 } as const);
+  : ({ numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.55 } as const);
 
-/**
- * The least width of a narrow page's moves pane, as a style: a row of a
- * four-character move (a capture, as exd5), its badge, its share and a mark
- * holds whole at the system's text size, as does a row of Stockfish's with
- * its evaluation. Larger text widens it, rather than break the move or its
- * share over two lines or draw the badge over the share. A wide page's panel
- * is wider than this at any text size.
- */
+/** `listMinWidth` at the system's text size, as a style. */
 export function useListMinWidth() {
   // React Native scales text by `fontScale`, the one value read from the window (the web's is always 1).
   const { fontScale } = useWindowDimensions();
@@ -470,20 +467,27 @@ export function useListMinWidth() {
 }
 
 /**
- * `useListMinWidth`'s width at a text scale. The heading's longest word
- * (CANDIDATES) is narrower at every scale, so it never breaks mid-word
- * (CandidateList.web.test.tsx checks).
+ * The least width of a narrow page's moves pane at a text scale: a row of
+ * `LONGEST_MOVE`, its badge, its share and a mark holds whole, as does a row
+ * of Stockfish's with its evaluation. Larger text widens it, rather than
+ * break the move or its share over two lines or draw the badge over the
+ * share. The heading's longest word (CANDIDATES) is narrower at every scale,
+ * so it never breaks mid-word (CandidateList.web.test.tsx checks). A wide
+ * page's panel is wider than this at any text size.
  */
 export function listMinWidth(fontScale: number) {
   const mono = (chars: number, size: number) => chars * MONO_ADVANCE * size * fontScale;
   const gap = ROW_GAP.narrow;
   // The row's insets and dot, then the move and the mark, each after a gap.
   const ends =
-    2 * ROW_INSET.narrow + DOT_SIZE + gap + mono('exd5'.length, SAN_SIZE) + gap + MARK_SIZE;
+    2 * ROW_INSET.narrow + DOT_SIZE + gap + mono(LONGEST_MOVE.length, SAN_SIZE) + gap + MARK_SIZE;
   // After the move, a guide's row has its badge and share, one of Stockfish's its evaluation.
   const badgeAndShare =
-    TITLE_GAP + BOOK_BADGE_SIZE + gap + Math.max(SHARE_WIDTH, mono('100%'.length, VALUE_SIZE));
-  const evaluation = gap + Math.max(EVALUATION_WIDTH, mono('\u22129.9'.length, VALUE_SIZE));
+    TITLE_GAP +
+    BOOK_BADGE_SIZE +
+    gap +
+    Math.max(SHARE_WIDTH, mono(LONGEST_SHARE.length, VALUE_SIZE));
+  const evaluation = gap + Math.max(EVALUATION_WIDTH, mono(LONGEST_EVALUATION.length, VALUE_SIZE));
   return Math.ceil(ends + Math.max(badgeAndShare, evaluation));
 }
 

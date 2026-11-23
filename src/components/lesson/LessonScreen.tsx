@@ -146,7 +146,7 @@ function LessonScreen({
   const part = useNarrowPart();
   const labelled = useLabelled();
   const sections = useSections();
-  const listMinWidth = useListMinWidth();
+  const moveListWidth = useListMinWidth();
   // The progress loads beside the lesson, rather than once it has loaded.
   useFetch(getProgress);
   const picked = useSuspense(getLesson, id ?? null);
@@ -331,7 +331,7 @@ function LessonScreen({
     </>
   );
 
-  /** The pane beside the moves on a narrow page: the idea, or past the guide the headline's aside. */
+  /** The pane beside the moves on a narrow page: the idea card, else past the guide the headline's aside, else none. */
   const ideaPane = ideaCard ? (
     <NarrowScroll part="idea-pane">
       <IdeaCard
@@ -437,7 +437,7 @@ function LessonScreen({
                   // Beside the idea it widens for larger text; alone it fills the row.
                   <View
                     {...(ideaPane
-                      ? part('moves-pane', [sections, listMinWidth])
+                      ? part('moves-pane', [sections, moveListWidth])
                       : part('lone-pane', sections))}
                   >
                     {moveList}
