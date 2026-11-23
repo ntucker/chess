@@ -2,7 +2,15 @@ import { describe, expect, it } from '@jest/globals';
 
 import type { AnalysisLine, Evaluation, FinalAnalysis } from '@/evaluation/evaluation';
 
-import { engineVerdict, judgeMove, judgement, labelMove, qualityRule, refutation } from './quality';
+import {
+  engineVerdict,
+  judgeMove,
+  judgement,
+  labelMove,
+  qualityRule,
+  refutation,
+  verdictText,
+} from './quality';
 
 /** An evaluation where White's expected score is `score`. */
 const at = (score: number): Evaluation => ({ score, pawns: 0 });
@@ -194,5 +202,28 @@ describe('engineVerdict', () => {
       quality: 'mistake',
       change: { label: '\u22122.1', description: '2.1 pawns worse for you' },
     });
+  });
+});
+
+describe('verdictText', () => {
+  it('says the label and the change for the learner', () => {
+    expect(
+      verdictText({
+        quality: 'mistake',
+        change: { label: '\u22121.6', description: '1.6 pawns worse for you' },
+      }),
+    ).toBe('Stockfish: Mistake, 1.6 pawns worse for you');
+    expect(
+      verdictText({
+        quality: 'mistake',
+        change: { label: '+M2', description: 'You mate in 2' },
+      }),
+    ).toBe('Stockfish: Mistake, you mate in 2');
+  });
+
+  it('says only the label of a move that changes nothing', () => {
+    expect(
+      verdictText({ quality: 'best', change: { label: '0.0', description: 'No change' } }),
+    ).toBe('Stockfish: Best move');
   });
 });

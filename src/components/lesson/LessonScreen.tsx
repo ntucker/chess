@@ -41,7 +41,7 @@ import { NarrowOnly, NarrowScroll, useNarrowPart } from '@/theme/Narrow';
 
 import { AutoPlay } from './AutoPlay';
 import { CandidateList, useListMinWidth } from './CandidateList';
-import { IdeaAside, IdeaCard, noNotes } from './IdeaCard';
+import { IdeaAside, IdeaCard, noNotesText } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
 import { SideChoice } from './SideChoice';
@@ -369,7 +369,7 @@ function LessonScreen({
       <IdeaCard
         lesson={lesson}
         title={preview ? `If ${preview.san}` : 'The idea'}
-        empty={preview && noNotes(preview.san, guidance.verdicts?.get(preview.move.uci))}
+        empty={preview && noNotesText(preview.san, guidance.verdicts?.get(preview.move.uci))}
         notes={guidance.notes}
         learner={learner}
         playback={playback}

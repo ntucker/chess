@@ -10,6 +10,7 @@ import {
   listedEngineMoves,
   notePlayback,
   type ShownIdea,
+  verdictSearch,
 } from './guidance';
 import type { Idea } from './lesson';
 import { type Candidate, engineCandidates } from './select';
@@ -725,5 +726,36 @@ describe('guidance', () => {
       expect(trapAt(TRAP_PUNISHED)).toBeDefined();
       expect(trapAt([...TRAP_PUNISHED, 'a6'])).toBeUndefined();
     });
+  });
+});
+
+describe('verdictSearch', () => {
+  // Black's candidates after the Advance: Bf5 and c5, neither judged yet.
+  const at = (pointer?: Pointer) => shown(ADVANCE, 'explore', {}, { pointer });
+  const none = () => 'none' as const;
+
+  it('waits until the board is ready, and searches the first candidate first', () => {
+    expect(verdictSearch(at(), false, false, none)).toBeUndefined();
+    expect(verdictSearch(at(), false, true, none)).toBe('c8f5');
+  });
+
+  it('takes a search already started, then the row pointed at, even one that gave up', () => {
+    const pointed = at({ at: 'row', uci: 'c6c5' });
+    expect(verdictSearch(pointed, false, true, none)).toBe('c6c5');
+    expect(
+      verdictSearch(pointed, false, true, (uci) => (uci === 'c8f5' ? 'started' : 'none')),
+    ).toBe('c8f5');
+    expect(verdictSearch(pointed, false, true, (uci) => (uci === 'c6c5' ? 'failed' : 'none'))).toBe(
+      'c6c5',
+    );
+    // Unpointed, one that gave up waits, and a finished one is done.
+    expect(verdictSearch(at(), false, true, (uci) => (uci === 'c8f5' ? 'failed' : 'none'))).toBe(
+      'c6c5',
+    );
+    expect(verdictSearch(at(), false, true, () => 'final')).toBeUndefined();
+  });
+
+  it('searches nothing where the list shows no verdicts', () => {
+    expect(verdictSearch(shown(ADVANCE, 'practice'), false, true, none)).toBeUndefined();
   });
 });

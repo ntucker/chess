@@ -11,7 +11,7 @@ import { lineKeys } from '@/lesson/select';
 import type { Playback } from '@/lesson/useLesson';
 import { themes } from '@/theme/theme';
 
-import { noNotes, NoteView } from './IdeaCard';
+import { noNotesText, NoteView } from './IdeaCard';
 
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 
@@ -118,11 +118,11 @@ describe('NoteView', () => {
   });
 });
 
-describe('noNotes', () => {
+describe('noNotesText', () => {
   it("says a move has no notes, with Stockfish's verdict once there is one", () => {
-    expect(noNotes('g6')).toBe('No notes on g6.');
+    expect(noNotesText('g6')).toBe('No notes on g6.');
     expect(
-      noNotes('g6', {
+      noNotesText('g6', {
         quality: 'inaccuracy',
         change: { label: '\u22120.6', description: '0.6 pawns worse for you' },
       }),

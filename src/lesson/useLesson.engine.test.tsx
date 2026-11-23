@@ -182,6 +182,8 @@ describe("useLesson's Stockfish best move", () => {
 describe("useLesson's verdicts on the candidates", () => {
   const line = uciLine(...ADVANCE);
   const after = (uci: string) => [...line, uci].join(' ');
+  // White's e5, which the board shows, is labelled from the position before it.
+  const labelE5 = () => store(line.slice(0, -1), [['e4e5', 0.5]]);
   // The searches of where a candidate leads, past the move labels' own.
   const judging = () => mockSearched.filter((moves) => moves.startsWith(`${line.join(' ')} `));
   const verdicts = () =>
@@ -191,6 +193,7 @@ describe("useLesson's verdicts on the candidates", () => {
 
   it('judges the candidates the search lists at once, and searches where the others lead', async () => {
     await render(line);
+    await labelE5();
     // Nothing more while the board's own search runs.
     await store(line, [['c8f5', 0.45]], false);
     expect(judging()).toEqual([]);
@@ -206,16 +209,30 @@ describe("useLesson's verdicts on the candidates", () => {
     expect(verdicts()).toEqual({ c8f5: 'best', c6c5: 'mistake' });
   });
 
-  it('searches the candidate pointed at first', async () => {
+  it('waits for the label of the move the board shows', async () => {
     await render(line);
+    await store(line, [['g8f6', 0.45]]);
+    expect(judging()).toEqual([]);
+    await labelE5();
+    expect(mockSearched.at(-1)).toBe(after('c8f5'));
+  });
+
+  it('searches the candidate pointed at first, unless one has started', async () => {
+    await render(line);
+    await labelE5();
     await store(line, [['g8f6', 0.45]]);
     expect(mockSearched.at(-1)).toBe(after('c8f5'));
     await act(async () => lesson().pointRow('c6c5'));
+    expect(mockSearched.at(-1)).toBe(after('c6c5'));
+    // A search with a depth in runs on while the learner points elsewhere.
+    await store([...line, 'c6c5'], [['d4c5', 0.6]], false);
+    await act(async () => lesson().pointRow('c8f5'));
     expect(mockSearched.at(-1)).toBe(after('c6c5'));
   });
 
   it('passes over a candidate whose search gave up, to judge the rest', async () => {
     await render(line);
+    await labelE5();
     await store(line, [['g8f6', 0.45]]);
     expect(mockSearched.at(-1)).toBe(after('c8f5'));
     await act(async () => {

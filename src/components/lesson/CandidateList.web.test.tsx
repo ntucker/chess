@@ -8,8 +8,6 @@ import { createRoot } from 'react-dom/client';
 import type { Candidate } from '@/lesson/select';
 import { themes, typography } from '@/theme/theme';
 
-import { verdictText } from '@/components/QualityBadge';
-
 import { CandidateList, listMinWidth } from './CandidateList';
 
 // Its font needs Expo's asset registry too.
@@ -116,12 +114,6 @@ describe('CandidateList', () => {
     });
     // A row still being judged has neither.
     expect(render({}, read)).toEqual({ badge: false, row: 'Nf3' });
-  });
-
-  it('says only the label of a verdict that changes nothing', () => {
-    expect(
-      verdictText({ quality: 'best', change: { label: '0.0', description: 'No change' } }),
-    ).toBe('Stockfish: Best move');
   });
 
   it('names where a dragged rare move leads while its row is hidden', () => {

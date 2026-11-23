@@ -12,14 +12,21 @@ import { StateContext, useController, useSubscription, useSuspense } from '@data
 import { useIsFocused } from 'expo-router';
 import { use, useEffect, useMemo, useReducer } from 'react';
 
-import { engineVerdict } from '@/analysis/quality';
+import { type EngineVerdict, engineVerdict } from '@/analysis/quality';
 import type { Square } from '@/board/drawing';
 import type { Drag } from '@/board/pointer';
 import type { BoardProps } from '@/components/Board';
 import { dropMove, parsePositionKey } from '@/game/replay';
 import { type GameStore, useGame } from '@/game/useGame';
-import { finalOnly } from '@/evaluation/evaluation';
-import { analysisError, getAnalysis, storedAnalyses, useAnalysis } from '@/resources/analysis';
+import { finalOnly, isFinal } from '@/evaluation/evaluation';
+import {
+  analysisError,
+  analysisKey,
+  getAnalysis,
+  PositionAnalysis,
+  storedAnalyses,
+  useAnalysis,
+} from '@/resources/analysis';
 import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
 import { hasMark, UNTOUCHED } from '@/progress/progress';
 import { LessonIndexContext } from '@/resources/lesson';
@@ -35,6 +42,7 @@ import {
   listedEngineMoves,
   notePlayback,
   type PlayedBack,
+  verdictSearch,
 } from './guidance';
 import type { Lesson, Note, PositionKey, Uci } from './lesson';
 import { earnedMark, openingMarks, rowMarks, steering } from './marks';
@@ -192,19 +200,25 @@ export function useLesson(
   // and, for a move it doesn't list, the final analysis of where that leads.
   const state = use(StateContext);
   const before = finalOnly(analysis);
-  const after = (uci: Uci) => [...shownLine, uci];
-  const afters = storedAnalyses(
-    ctrl,
-    'stockfish',
-    view.candidates.map(({ move }) => after(move.uci)),
-    state,
-  ).map(finalOnly);
-  const verdicts = new Map(
-    view.candidates.flatMap(({ move }, n) => {
-      const verdict =
-        before && engineVerdict(before, afters[n], move.uci, current.turn, lesson.side);
-      return verdict ? [[move.uci, verdict] as const] : [];
-    }),
+  const lineAfter = (uci: Uci) => [...shownLine, uci];
+  const afters = before
+    ? storedAnalyses(
+        ctrl,
+        'stockfish',
+        view.candidates.map(({ move }) => lineAfter(move.uci)),
+        state,
+      ).map(finalOnly)
+    : [];
+  const judged = view.candidates.flatMap(({ move }, n) => {
+    const verdict = before && engineVerdict(before, afters[n], move.uci, current.turn, lesson.side);
+    return verdict ? [[move.uci, verdict] as const] : [];
+  });
+  // The same map until a verdict changes, so the screen's guidance holds
+  // through each depth of a search that changes none.
+  const judgedText = JSON.stringify(judged);
+  const verdicts = useMemo(
+    () => new Map<Uci, EngineVerdict>(JSON.parse(judgedText) as typeof judged),
+    [judgedText],
   );
   const top = listedEngineMoves(view, mode, picking, engineRows, final);
   const previewOf = (at: Pointer) => preview(lesson, view, at, top);
@@ -221,21 +235,18 @@ export function useLesson(
     engine: { best: lines?.[0].uci, top: engineRows, final, verdicts },
     refutation: game.refutation,
   });
-  // A listed candidate still unjudged waits for a search of where it leads:
-  // one at a time, the one pointed at first, and only once the board's own
-  // search is final, since the engine runs the newest search asked for. One
-  // whose search gave up stays unjudged rather than hold up the rest.
-  const unjudged = [...shown.candidates, ...(rareShown ? shown.rare : [])]
-    .map(({ move }) => move.uci)
-    .filter((uci) => shown.verdicts && !shown.verdicts.has(uci))
-    .filter((uci) => !analysisError(ctrl, 'stockfish', after(uci), state));
-  const pointedUci = shown.preview?.candidate.move.uci;
-  const judging = final
-    ? (unjudged.find((uci) => uci === pointedUci) ?? unjudged.at(0))
-    : undefined;
+  // The board's own move's label comes first: it needs the position before too.
+  const labelled = ply === 0 || game.quality !== undefined;
+  const judging = verdictSearch(shown, rareShown, final && labelled, (uci) => {
+    const line = lineAfter(uci);
+    const after = ctrl.get(PositionAnalysis, analysisKey('stockfish', line), state);
+    if (isFinal(after)) return 'final';
+    if (analysisError(ctrl, 'stockfish', line, state)) return 'failed';
+    return after ? 'started' : 'none';
+  });
   useSubscription(
     getAnalysis,
-    ...(judging ? (['stockfish', after(judging)] as const) : ([null] as const)),
+    ...(judging ? (['stockfish', lineAfter(judging)] as const) : ([null] as const)),
   );
   const frames = shown.playing
     ? ideaPlayback(shown.playing.idea, parsePositionKey(shown.playing.at)!)
