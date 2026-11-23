@@ -1,5 +1,5 @@
 import { a11yValue, Text, useReducedMotion, useTheme } from '@reactive/silk-native';
-import { memo, useEffect, useId, useState } from 'react';
+import { memo, useEffect, useId, useMemo } from 'react';
 import { type LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import {
   GestureDetector,
@@ -10,6 +10,7 @@ import {
   useTapGesture,
 } from 'react-native-gesture-handler';
 import Animated, {
+  type SharedValue,
   useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
@@ -153,7 +154,13 @@ export function ReviewGraph({ review, learner, height }: Props) {
             <View style={[styles.lineCore, { backgroundColor: graphColors.current }]} />
           </Animated.View>
           {marks.map((mark) => (
-            <Dot key={mark.ply} mark={mark} left={percent(mark.ply)} area={area} height={height} />
+            <Dot
+              key={mark.ply}
+              mark={mark}
+              left={percent(mark.ply)}
+              spring={area.spring}
+              height={height}
+            />
           ))}
           <Animated.View style={[styles.line, styles.scrub, scrub.lineStyle]} pointerEvents="none">
             <View style={[styles.lineCore, { backgroundColor: graphColors.scrub }]} />
@@ -172,9 +179,24 @@ export function ReviewGraph({ review, learner, height }: Props) {
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
+// The worklets the area's spring calls come first: a worklet's helpers have
+// to be defined before it.
+
+/** `start` partway (`t`, 0 to 1) to `end`. */
+function lerp(start: number, end: number, t: number): number {
+  'worklet';
+  return start + (end - start) * t;
+}
+
+/** `from` partway (`progress`, 0 to 1) to `to`. */
+function mix(from: readonly number[], to: readonly number[], progress: number): number[] {
+  'worklet';
+  return to.map((score, n) => lerp(from[n] ?? score, score, progress));
+}
+
 /** The area's outline, springing to each new set of scores (or jumping, `still`), on the UI thread. */
 function useSpringArea(shown: readonly number[], still: boolean) {
-  const scores = useSameContents(shown);
+  const scores = useSameNumbers(shown);
   const from = useSharedValue(scores);
   const to = useSharedValue(scores);
   const progress = useSharedValue(1);
@@ -182,8 +204,9 @@ function useSpringArea(shown: readonly number[], still: boolean) {
     scheduleOnUI(
       (next: readonly number[], jump: boolean) => {
         'worklet';
-        // Nothing to spring to, as at the start, where `to` holds these already.
-        if (next.every((score, n) => score === to.value[n])) return;
+        // Scores the area already springs to (as at the start) keep its spring on course.
+        const same = next.length === to.value.length && next.every((s, n) => s === to.value[n]);
+        if (same) return;
         from.value = mix(from.value, to.value, progress.value);
         to.value = next;
         progress.value = 0;
@@ -196,36 +219,30 @@ function useSpringArea(shown: readonly number[], still: boolean) {
   const outline = useAnimatedProps(() => ({
     d: topArea(mix(from.value, to.value, progress.value)),
   }));
-  return { from, to, progress, outline };
+  return { spring: { from, to, progress }, outline };
 }
 
-type SpringArea = ReturnType<typeof useSpringArea>;
+/** The area's spring: from the shares it left, to the shares it heads for, and how far along (0 to 1). */
+interface AreaSpring {
+  readonly from: SharedValue<readonly number[]>;
+  readonly to: SharedValue<readonly number[]>;
+  readonly progress: SharedValue<number>;
+}
 
 /** The top side's share the area shows at `ply` this frame, partway along its spring. */
-function shownShare({ from, to, progress }: SpringArea, ply: number): number {
+function shownShare({ from, to, progress }: AreaSpring, ply: number): number {
   'worklet';
-  const target = to.value[ply];
-  const start = from.value[ply] ?? target;
-  return start + (target - start) * progress.value;
+  return lerp(from.value[ply] ?? to.value[ply], to.value[ply], progress.value);
 }
 
 /**
- * `values`, or the array of the same numbers kept from an earlier render, so
- * an effect or memo that depends on it reruns only when a number changes,
- * not for each array made fresh while rendering.
+ * `values`, kept as the same array while its numbers stay the same, so an
+ * effect that depends on it reruns only when a number changes, not for each
+ * array made fresh while rendering.
  */
-function useSameContents(values: readonly number[]): readonly number[] {
-  const [kept, setKept] = useState(values);
-  const same = kept.length === values.length && kept.every((value, n) => value === values[n]);
-  if (same) return kept;
-  setKept(values);
-  return values;
-}
-
-/** `from` partway (`progress`, 0 to 1) to `to`. Above its callers: a worklet's helpers have to be defined before it. */
-function mix(from: readonly number[], to: readonly number[], progress: number): number[] {
-  'worklet';
-  return to.map((score, n) => (from[n] ?? score) + (score - (from[n] ?? score)) * progress);
+function useSameNumbers(values: readonly number[]): readonly number[] {
+  const key = values.join(' ');
+  return useMemo(() => (key ? key.split(' ').map(Number) : []), [key]);
 }
 
 /** How close the area's spring comes to the new scores before it stops: under a quarter pixel on the desktop's 72. */
@@ -248,7 +265,7 @@ function useScrub({
   const at = useSharedValue(0);
   const shown = useSharedValue(false);
   const width = useSharedValue(0);
-  const kept = useSameContents(snaps);
+  const kept = useSameNumbers(snaps);
   const game = useSharedValue({ total, snaps: kept });
   // A shared value can't change while rendering; the gestures read this one a commit later.
   useEffect(() => {
@@ -325,23 +342,23 @@ function useScrub({
 /**
  * A dot on the graph at one of the learner's moments, in its label's color;
  * a ring for a likely one, not judged yet. Each sits on the area's edge,
- * following it as it springs (`area`), and is two-toned so it reads on
+ * following it as it springs (`spring`), and is two-toned so it reads on
  * either side's area.
  */
 function Dot({
   mark,
   left,
-  area,
+  spring,
   height,
 }: {
   readonly mark: GraphMark;
   readonly left: `${number}%`;
-  readonly area: SpringArea;
+  readonly spring: AreaSpring;
   readonly height: number;
 }) {
   // A transform, not `top`, so following the spring lays nothing out.
   const onEdge = useAnimatedStyle(() => {
-    const edge = shownShare(area, mark.ply) * height;
+    const edge = shownShare(spring, mark.ply) * height;
     const center = Math.min(Math.max(edge, DOT / 2), height - DOT / 2);
     return { transform: [{ translateY: center - DOT / 2 }] };
   });
@@ -376,8 +393,8 @@ function Bubble({
   style,
   stripStyle,
 }: Pick<GraphView, 'plies' | 'moves'> & {
-  readonly style: AnimatedViewStyle;
-  readonly stripStyle: AnimatedViewStyle;
+  readonly style: AnimatedStyle;
+  readonly stripStyle: AnimatedStyle;
 }) {
   const { theme } = useTheme();
   const { color } = theme.semantic;
@@ -408,7 +425,7 @@ function Bubble({
   );
 }
 
-type AnimatedViewStyle = ReturnType<typeof useAnimatedStyle>;
+type AnimatedStyle = ReturnType<typeof useAnimatedStyle>;
 
 /**
  * One position's name in the bubble's strip: "24…Rxc3" and its badge. Kept

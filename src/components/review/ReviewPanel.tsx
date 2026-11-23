@@ -6,7 +6,7 @@ import { StatusHeadline } from '@/components/GameStatus';
 import { ScoresheetDrawer } from '@/components/ScoresheetDrawer';
 import { Scoresheet } from '@/components/Scoresheet';
 import { SourceFootnote } from '@/components/SourceLink';
-import { type Color, numberedMove } from '@/game/replay';
+import { type Color, shownMove } from '@/game/replay';
 import { compareMove } from '@/review/comparison';
 import type { ReviewMove } from '@/review/review';
 import type { Review } from '@/review/useReview';
@@ -118,7 +118,7 @@ function reviewHeadline({
         : `All ${moves.length} moves checked.`,
     };
   }
-  const named = numberedMove(plies[ply].move!.san, ply, '…');
+  const named = shownMove(plies[ply].move?.san, ply);
   if (move.status === 'waiting') return coming;
   if (move.status === 'failed') {
     const error = failure(ply);
