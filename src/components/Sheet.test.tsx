@@ -9,13 +9,12 @@ import { Sheet } from './Sheet';
 // Jest can't load a stylesheet, and the native project doesn't transform Silk's ES modules.
 jest.mock('@/theme/narrow.css', () => ({}));
 jest.mock('@reactive/silk-native', () => {
-  const Pass = ({ children }: { children?: ReactNode }) => children;
-  return { Inline: Pass };
-});
-jest.mock('@reactive/silk-native/gesture', () => {
   const { View: MockView } = jest.requireActual<typeof import('react-native')>('react-native');
   const Pass = ({ children }: { children?: ReactNode }) => children;
-  return { Dialog: { Root: Pass, Content: MockView, Title: Pass, ScrollView: MockView } };
+  return {
+    Inline: Pass,
+    Dialog: { Root: Pass, Content: MockView, Title: Pass, ScrollView: MockView },
+  };
 });
 jest.mock('@/components/HeaderButton', () => {
   const { narrowLength } = jest.requireActual<typeof import('@/theme/narrow')>('@/theme/narrow');
