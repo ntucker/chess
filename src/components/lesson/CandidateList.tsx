@@ -8,7 +8,7 @@ import type { PositionKey, Uci } from '@/lesson/lesson';
 import type { Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
-import type { EngineVerdict } from '@/analysis/quality';
+import { type EngineVerdict, percent } from '@/analysis/quality';
 import { QualityBadge, TippedBadge, verdictText } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import type { Mark } from '@/progress/progress';
@@ -431,8 +431,6 @@ const STATIC = StyleSheet.create({
   // The mark beside the heading's last word, as wide as it needs.
   tipped: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
 });
-
-const percent = (share: number) => `${Math.round(share * 100)}%`;
 
 /** The notation's size in a row. */
 const SAN_SIZE = 17;

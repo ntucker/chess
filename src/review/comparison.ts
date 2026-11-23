@@ -55,7 +55,7 @@ export function compareMove(
   const pos = parsePosition(fen)!;
   const others = (before?.lines ?? []).flatMap(({ uci: other, evaluation }) =>
     other && other !== uci
-      ? [{ uci: other, san: lineSans([other], pos.clone())[0], change: change(evaluation) }]
+      ? [{ uci: other, san: lineSans([other], pos)[0], change: change(evaluation) }]
       : [],
   );
   return { played: { uci, san, change: played?.change }, others };

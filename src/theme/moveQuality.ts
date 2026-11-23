@@ -1,14 +1,15 @@
 import { oklch } from '@reactive/silk-core/color';
 
-import type { MoveQuality } from '@/analysis/quality';
+import type { ReviewQuality } from '@/analysis/quality';
 
 // How each move label looks: a colored disc with a white glyph, drawn in the
 // scoresheet (QualityBadge) and on the board (Board.tsx, in a web view on
 // Android, which is why this file imports only `@reactive/silk-core/color`, which
 // imports nothing).
 // Greens for good moves, then gold, orange and red as the loss grows, as
-// chess.com and lichess color them; each disc holds its white glyph at 3:1 or
-// more.
+// chess.com and lichess color them; teal and blue for the review's Brilliant
+// and Great, and magenta for its Miss. Each disc holds its white glyph at 3:1
+// or more.
 
 /** The badge's box: a 24 by 24 square, holding a disc of radius 12. */
 export const BADGE_BOX = 24;
@@ -41,7 +42,13 @@ const question = (x: number, scale = 1) => {
 /** An exclamation mark centered on `x`. */
 const exclamation = (x: number) => `M${x} 6.6 v6.4 M${x} 17.4 v0.01`;
 
-export const qualityLooks: Readonly<Record<MoveQuality, QualityLook>> = {
+export const qualityLooks: Readonly<Record<ReviewQuality, QualityLook>> = {
+  brilliant: {
+    name: 'Brilliant move',
+    color: oklch(0.628, 0.105, 194.8),
+    glyph: { d: `${exclamation(8.8)} ${exclamation(15.2)}` },
+  },
+  great: { name: 'Great move', color: oklch(0.587, 0.125, 252.2), glyph: { d: exclamation(12) } },
   book: {
     name: 'Book move',
     color: oklch(0.59, 0.07, 66),
@@ -75,6 +82,11 @@ export const qualityLooks: Readonly<Record<MoveQuality, QualityLook>> = {
     color: oklch(0.553, 0.189, 22),
     glyph: { d: `${question(8.4, 0.85)} ${question(15.6, 0.85)}` },
   },
+  miss: {
+    name: 'Missed chance',
+    color: oklch(0.56, 0.152, 354.3),
+    glyph: { d: 'M8 8l8 8M16 8l-8 8' },
+  },
 };
 
 /**
@@ -82,7 +94,7 @@ export const qualityLooks: Readonly<Record<MoveQuality, QualityLook>> = {
  * scoresheet (React Native) and the board (a web view's DOM) draw the same
  * thing. `ring` outlines the disc, to set it off from what's behind it.
  */
-export function badgeMarkup(quality: MoveQuality, ring?: string): string {
+export function badgeMarkup(quality: ReviewQuality, ring?: string): string {
   const { color, glyph } = qualityLooks[quality];
   const paint = glyph.filled
     ? `fill="${GLYPH_INK}"`

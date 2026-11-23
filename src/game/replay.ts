@@ -154,9 +154,9 @@ export function* playLine(line: readonly string[], pos = Chess.default()): Gener
   }
 }
 
-/** `line`'s moves in SAN from `pos`, up to the first illegal one. */
+/** `line`'s moves in SAN from `pos`, up to the first illegal one, leaving `pos` as it was. */
 export const lineSans = (line: readonly string[], pos?: Chess): string[] =>
-  Array.from(playLine(line, pos), ({ move }) => move?.san).filter(
+  Array.from(playLine(line, pos?.clone()), ({ move }) => move?.san).filter(
     (san): san is string => san !== undefined,
   );
 
@@ -173,11 +173,12 @@ export function playMove(pos: Chess, uci: string): Ply['move'] {
 }
 
 /**
- * Every position of `line`, so that index `n` is the position after `n`
- * moves. Stops early at the first move that isn't legal.
+ * Every position of `line` from `start` (the starting position unless
+ * given), so that index `n` is the position after `n` moves. Stops early at
+ * the first move that isn't legal.
  */
-export function replay(line: readonly string[]): Ply[] {
-  return Array.from(playLine(line), ({ pos, repetitions, move }) => ({
+export function replay(line: readonly string[], start?: Chess): Ply[] {
+  return Array.from(playLine(line, start?.clone()), ({ pos, repetitions, move }) => ({
     fen: makeFen(pos.toSetup()),
     turn: pos.turn,
     move,

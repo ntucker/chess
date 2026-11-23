@@ -18,6 +18,13 @@ import { type Color, opposite } from '@/game/replay';
 export type MoveQuality = 'book' | 'best' | 'good' | 'inaccuracy' | 'mistake' | 'blunder';
 
 /**
+ * The review's labels: `MoveQuality`'s, and three it refines a judged move's
+ * into once the whole game is searched (src/review/refine.ts): Brilliant and
+ * Great for a best or good move, Miss for a mistake or blunder.
+ */
+export type ReviewQuality = MoveQuality | 'brilliant' | 'great' | 'miss';
+
+/**
  * The least expected score (0 to 1, the mover's) a move must give away for
  * each label. These are chess.com's "expected points lost" limits
  * (https://support.chess.com/en/articles/8572705), with its "excellent"
@@ -32,6 +39,9 @@ const LEAST_LOSS: readonly (readonly [number, MoveQuality])[] = [
   [0.05, 'inaccuracy'],
 ];
 
+/** An expected score (0 to 1) as a percentage of the winning chances: "15%". */
+export const percent = (score: number) => `${Math.round(score * 100)}%`;
+
 /**
  * What `quality` means, in words for its badge's tooltip. Example: "gave
  * away 10% to 20% of the winning chances" for a mistake, from `LEAST_LOSS`.
@@ -39,7 +49,6 @@ const LEAST_LOSS: readonly (readonly [number, MoveQuality])[] = [
 export function qualityRule(quality: MoveQuality): string {
   if (quality === 'book') return "the guide's own move";
   if (quality === 'best') return "Stockfish's top move, or one that gives nothing away";
-  const percent = (loss: number) => `${Math.round(loss * 100)}%`;
   const at = LEAST_LOSS.findIndex(([, label]) => label === quality);
   const range =
     at < 0
@@ -134,7 +143,7 @@ export function engineVerdict(
  * names no move (Maia's, a finished game's).
  */
 export function refutation(
-  quality: MoveQuality | undefined,
+  quality: ReviewQuality | undefined,
   after: FinalAnalysis | undefined,
   mover: Color,
 ): string | undefined {
@@ -144,7 +153,8 @@ export function refutation(
   return isMistake(judgeMove(after, undefined, second.uci, opposite(mover))) ? best.uci : undefined;
 }
 
-const isMistake = (quality: MoveQuality | undefined) =>
+/** Whether `quality` is a mistake or a blunder: a slip one reply may punish (`refutation`). */
+export const isMistake = (quality: ReviewQuality | undefined) =>
   quality === 'mistake' || quality === 'blunder';
 
 /** A game's move, as `labelMove` needs it. */

@@ -7,7 +7,7 @@
  * Only types are imported, so the board and its callers share this file
  * without depending on each other.
  */
-import type { MoveQuality } from '@/analysis/quality';
+import type { ReviewQuality } from '@/analysis/quality';
 import type { Color, Piece, SquareName } from 'chessops/types';
 
 /** A square's name, like `e4` (chessops' type, so lesson data needs no conversion). */
@@ -62,14 +62,14 @@ export type Drawing =
   /** A see-through piece on `square`: where a piece was, or will be. */
   | { readonly kind: 'ghost'; readonly square: Square; readonly piece: BoardPiece }
   /** A move label's badge on the piece on `square`, which also glows in the label's color. */
-  | { readonly kind: 'badge'; readonly square: Square; readonly quality: MoveQuality }
+  | { readonly kind: 'badge'; readonly square: Square; readonly quality: ReviewQuality }
   /** Every piece fades except those on `except`: to show a pawn structure. */
   | { readonly kind: 'fade'; readonly except: readonly Square[] };
 
 /** A move label's badge on the piece that moved to `square`, once both are known. */
 export const lastMoveBadge = (
   square: Square | undefined,
-  quality: MoveQuality | undefined,
+  quality: ReviewQuality | undefined,
 ): Drawing[] => (square && quality ? [{ kind: 'badge', square, quality }] : []);
 
 /**
