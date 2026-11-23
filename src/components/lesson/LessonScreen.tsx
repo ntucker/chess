@@ -32,7 +32,7 @@ import { useSettings } from '@/settings/SettingsProvider';
 import { NarrowOnly, NarrowScroll, useNarrowPart } from '@/theme/Narrow';
 
 import { AutoPlay } from './AutoPlay';
-import { CandidateList } from './CandidateList';
+import { CandidateList, useListMinWidth } from './CandidateList';
 import { IdeaAside, IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
@@ -146,6 +146,7 @@ function LessonScreen({
   const part = useNarrowPart();
   const labelled = useLabelled();
   const sections = useSections();
+  const listMinWidth = useListMinWidth();
   // The progress loads beside the lesson, rather than once it has loaded.
   useFetch(getProgress);
   const picked = useSuspense(getLesson, id ?? null);
@@ -412,7 +413,16 @@ function LessonScreen({
             {moveList || ideaCard ? (
               // A View, so narrow.css can make it a row, which a Stack's inline style would override.
               <PointingArea onLeave={leave} {...part('panes', sections)}>
-                {moveList ? <View {...part('moves-pane', sections)}>{moveList}</View> : null}
+                {moveList ? (
+                  <View
+                    {...part(ideaCard || aside ? 'moves-pane' : 'lone-pane', [
+                      sections,
+                      listMinWidth,
+                    ])}
+                  >
+                    {moveList}
+                  </View>
+                ) : null}
                 {ideaCard ? (
                   <NarrowScroll part="idea-pane">
                     <IdeaCard
