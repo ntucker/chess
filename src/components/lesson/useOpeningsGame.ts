@@ -26,11 +26,15 @@ const sameAddress = (a: Address, b: Address) =>
  * names ("Play on from here"), else the line that opens the variation it
  * names, else the first line that picks the lesson.
  */
-function startOf(index: LessonIndex<LessonId>, { address, variation, moves }: Address) {
-  if (address === undefined) return [];
+const startOf = (index: LessonIndex<LessonId>, at: Address) =>
+  at.address === undefined
+    ? []
+    : (opensAt(index[at.address], at) ?? index[at.address].lines[0].moves);
+
+/** The line an address of lesson `entry` opens at: the moves it names, else its variation's line, if any. */
+function opensAt(entry: Parameters<typeof variationLine>[0], { variation, moves }: Address) {
   const named = addressMoves(moves);
-  if (named.length) return named;
-  return variationLine(index[address], variation) ?? index[address].lines[0].moves;
+  return named.length ? named : variationLine(entry, variation);
 }
 
 /**
@@ -40,7 +44,7 @@ function startOf(index: LessonIndex<LessonId>, { address, variation, moves }: Ad
  */
 type Send =
   | { readonly how: 'push'; readonly address: LessonId; readonly variation?: undefined }
-  | (Omit<Address, 'moves'> & { readonly how: 'replace' | 'drop'; readonly moves?: undefined });
+  | (Address & { readonly how: 'replace' | 'drop' });
 
 /** The address the page last caught up with, and its sends on their way, in order. */
 interface Synced extends Address {
@@ -236,8 +240,7 @@ function nextSend(
       : { address: picked, how: 'replace' };
   }
   if (bound.address === undefined) return undefined;
-  const named = addressMoves(bound.moves);
-  const opens = named.length ? named : variationLine(index[bound.address], bound.variation);
+  const opens = opensAt(index[bound.address], bound);
   return opens !== undefined && !sameLine(moves, opens)
     ? { address: picked, how: 'drop' }
     : undefined;

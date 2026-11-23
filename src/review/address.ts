@@ -29,7 +29,8 @@ export const reviewHref = (moves: readonly Uci[], side: Color, lesson?: LessonId
  * to the first that isn't legal: `?moves=e2e4 e2e5 e7e5` reads as 1.e4.
  */
 export function addressMoves(moves = ''): Uci[] {
-  const line = moves ? moves.split(' ') : [];
+  if (!moves) return [];
+  const line = moves.split(' ');
   return line.slice(0, replay(line).length - 1);
 }
 

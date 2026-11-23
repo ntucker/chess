@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useReducer, useState } from 'react';
 
 import { gameReducer, startGame } from '@/game/game';
-import type { Color } from '@/game/replay';
+import { type Color, COLORS } from '@/game/replay';
 import { sameLine } from '@/lesson/openings';
 import { addressMoves } from '@/review/address';
 
@@ -30,7 +30,8 @@ export function usePlayAddress() {
   if (address.moves !== startedAt) {
     setStartedAt(address.moves);
     if (address.moves !== undefined) {
-      setSide(sideOf(address.side) ?? side);
+      const addressSide = sideOf(address.side);
+      if (addressSide) setSide(addressSide);
       store[1]({ type: 'newGame', moves: named });
     }
   }
@@ -43,5 +44,4 @@ export function usePlayAddress() {
 }
 
 /** A side as the address names it, if it names one. */
-const sideOf = (side?: string): Color | undefined =>
-  side === 'white' || side === 'black' ? side : undefined;
+const sideOf = (side?: string) => COLORS.find((color) => color === side);

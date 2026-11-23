@@ -150,10 +150,7 @@ function ReviewScreen({
           learner={learner}
           review={review}
           drawer={scoresheetOpen ? { onClose: () => setScoresheetOpen(false) } : undefined}
-          playOn={
-            moment.correction &&
-            playOnHref([...moves.slice(0, ply - 1), moment.correction], learner, lesson)
-          }
+          playOn={moment.playOn && playOnHref(moment.playOn, learner, lesson)}
         />
       }
       programFoot={<ReviewActionBar {...review} />}

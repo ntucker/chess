@@ -112,16 +112,22 @@ describe('momentAt', () => {
     expect(missed).toMatchObject({ badge: 'blunder', arrow: undefined });
   });
 
-  describe('the move "Play on from here" plays', () => {
+  describe('the line "Play on from here" starts from', () => {
     it('is none until the moment is revealed', () => {
-      expect(momentOf().correction).toBeUndefined();
+      expect(momentOf().playOn).toBeUndefined();
       const missed = momentOf({ tryAnalyses: [listing(['e7e5', 0.3])] }, { tries: tried('a2a3') });
-      expect(missed.correction).toBeUndefined();
+      expect(missed.playOn).toBeUndefined();
     });
 
     it('is the try or the answer the board shows', () => {
-      expect(momentOf({}, { tries: tried('b1c3'), board: 'try' }).correction).toBe('b1c3');
-      expect(momentOf({}, { shown: new Set([3]), board: 'answer' }).correction).toBe('g1f3');
+      expect(momentOf({}, { tries: tried('b1c3'), board: 'try' }).playOn).toEqual([
+        ...LINE.slice(0, 2),
+        'b1c3',
+      ]);
+      expect(momentOf({}, { shown: new Set([3]), board: 'answer' }).playOn).toEqual([
+        ...LINE.slice(0, 2),
+        'g1f3',
+      ]);
     });
 
     it('is the latest try that passed, else the answer, once the board shows something else', () => {
@@ -130,8 +136,8 @@ describe('momentAt', () => {
         { tryAnalyses: [undefined, listing(['e7e5', 0.3])] },
         { tries: tried('b1c3', 'a2a3'), board: 'try' },
       );
-      expect(after.correction).toBe('b1c3');
-      expect(momentOf({}, { shown: new Set([3]) }).correction).toBe('g1f3');
+      expect(after.playOn).toEqual([...LINE.slice(0, 2), 'b1c3']);
+      expect(momentOf({}, { shown: new Set([3]) }).playOn).toEqual([...LINE.slice(0, 2), 'g1f3']);
     });
   });
 

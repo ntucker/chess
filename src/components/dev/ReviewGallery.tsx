@@ -172,9 +172,7 @@ function StateCard({ title, sentence, searched, failed = [], ply, retried }: Sta
     tryAnalyses: (screen.tries.get(screen.ply) ?? []).map((uci) => TRIED[uci]),
     tryFailed: [],
   });
-  const playOn =
-    moment.correction &&
-    playOnHref([...LINE.slice(0, screen.ply - 1), moment.correction], 'black', 'caro-kann');
+  const playOn = moment.playOn && playOnHref(moment.playOn, 'black', 'caro-kann');
   const review: ReviewView = {
     plies: PLIES,
     ply: screen.ply,

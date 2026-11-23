@@ -98,10 +98,11 @@ export interface Moment {
    */
   readonly arrow?: Uci;
   /**
-   * Once revealed, the move "Play on from here" plays in place of the game's:
-   * the try or answer the board shows, else the latest try that passed, else the answer.
+   * Once revealed, the line "Play on from here" starts from: the game's moves
+   * before this one, then in its place the try or answer the board shows,
+   * else the latest try that passed, else the answer.
    */
-  readonly correction?: Uci;
+  readonly playOn?: readonly Uci[];
 }
 
 /** What `momentAt` reads. */
@@ -201,11 +202,11 @@ export function momentAt({
   const searching = tries.findIndex(({ status }) => status === 'waiting');
   const shownPasses =
     onBoard && (board === 'answer' || passed.some(({ uci }) => uci === onBoard.uci));
-  const correction = !revealed
-    ? undefined
-    : shownPasses
+  const correction = revealed
+    ? shownPasses
       ? onBoard.uci
-      : (passed.at(-1)?.uci ?? answer?.uci);
+      : (passed.at(-1)?.uci ?? answer?.uci)
+    : undefined;
   return {
     canRetry: !!answer && board !== 'retry',
     answer,
@@ -217,7 +218,10 @@ export function momentAt({
     shownMove: onBoard?.uci,
     badge: board === 'game' ? move.quality : onBoard?.quality,
     arrow: onBoard && revealed ? arrowBeside(plies[ply].move?.uci, onBoard.uci) : undefined,
-    correction,
+    playOn:
+      correction === undefined
+        ? undefined
+        : [...plies.slice(1, ply).flatMap(({ move }) => (move ? [move.uci] : [])), correction],
   };
 }
 
