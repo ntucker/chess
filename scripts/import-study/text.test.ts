@@ -2,13 +2,41 @@ import { describe, expect, it } from '@jest/globals';
 
 import { parsePosition, sanToUci } from '@/game/replay';
 
-import { letterCastling, moveInWords, namedMoves, shorten, sideDoes, textVerdicts } from './text';
+import {
+  letterCastling,
+  moveInWords,
+  namedMoves,
+  shorten,
+  sideDoes,
+  textVerdicts,
+  withoutCitation,
+} from './text';
 
 describe('letterCastling', () => {
   it('writes castling in zeros with letters, leaving scores alone', () => {
     expect(letterCastling('9.0-0-0 Bb7 10.a3 0-0, not the score 10-0 or 1-0')).toBe(
       '9.O-O-O Bb7 10.a3 O-O, not the score 10-0 or 1-0',
     );
+  });
+});
+
+describe('withoutCitation', () => {
+  it('drops a comment that only cites the chapter it was copied from', () => {
+    expect(
+      withoutCitation(
+        'Tarrasch Variation: - Theory B, French Defence: Complete Repertoire: White - Black, https://lichess.org/study/KHRUxEM1/Bj2dzMTU,',
+      ),
+    ).toBe('');
+    expect(
+      withoutCitation(
+        'Chapter 3: - Advance Variation, French Defence - Complete Repertoire:\nChapter #4,\nhttps://lichess.org/study/GZi874Eu/8YPVonGG, 2022.07.11',
+      ),
+    ).toBe('');
+  });
+
+  it('keeps a comment about the game', () => {
+    const text = 'Bxh4 is just not possible because of h5! The bishop is now trapped!';
+    expect(withoutCitation(text)).toBe(text);
   });
 });
 
