@@ -96,7 +96,14 @@ The lesson page and the free-game page start from a given line; the link in the 
 Brilliant, Great and Miss: rules (a static exchange count for Brilliant; Great tuned to about one a
 game on the measured games; Miss built on `refutation`, which PR #156 adds to
 `src/analysis/quality.ts` for the board's red arrow, so the two agree), badges in
-`src/theme/moveQuality.ts`, tooltips, contrast checks; they join the moments.
+`src/theme/moveQuality.ts`, tooltips, contrast checks; they join the moments. As built (`src/review/refine.ts`):
+Brilliant is a move within 0.02 of the best that gives up 2 pawns or more of material and leaves
+the mover at 0.3 or better, by a mover not already winning (second line under 0.9); Great is
+Stockfish's top move of three when the second loses 0.10 or more beside it, not counting moves
+anyone finds (out of check, recaptures, queen promotions, plain winning captures, saving a hanging
+piece), and fired 23 times on 20 club games; Miss is a mistake or blunder right after the
+opponent's own that `refutation` punishes, leaving the mover no worse off than before it. Scores are
+the mover's expected score, 0 to 1.
 
 ### Piece 9: Summary
 
