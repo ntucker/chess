@@ -1483,6 +1483,50 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
         root: 'Chess_Opening_Theory/1._e4/1...e6/2._d4/2...d5/3._exd5',
         topName: 'Exchange Variation',
       },
+      {
+        study: 'qm9JfUff',
+        credit: {
+          title: "IM Levy's French Defense",
+          author: 'undrgrnd_games',
+          url: 'https://lichess.org/study/qm9JfUff',
+        },
+        chapters: () => true,
+        ...NAMES_NO_LINE,
+      },
+      {
+        study: 'GZi874Eu',
+        credit: {
+          title: 'French Defence - Complete Repertoire',
+          author: 'Shreksify',
+          url: 'https://lichess.org/study/GZi874Eu',
+        },
+        // Its theory chapters; the example games run past the opening.
+        chapters: (title: string) => title.startsWith('Chapter #'),
+        ...NAMES_NO_LINE,
+      },
+      {
+        study: 'QU8o2AIu',
+        credit: {
+          title: 'French Defense',
+          author: 'caelT8',
+          url: 'https://lichess.org/study/QU8o2AIu',
+        },
+        chapters: (title: string) => title !== 'Introduction' && title !== 'Conclusion',
+        ...NAMES_NO_LINE,
+      },
+      {
+        study: 'OpEaOMPc',
+        credit: {
+          title: 'French Defense: High Win% for Black',
+          author: 'BossStephen',
+          url: 'https://lichess.org/study/OpEaOMPc',
+        },
+        // Each line starts after 1.e4 e6, which the first chapter reaches. Its notes on 1.e4 e6 are
+        // about the study itself, and one quotes 3...c5 4.c3 so that it reads as 1...c5 2.c3.
+        chapters: () => true,
+        namedFrom: 3,
+        ...NAMES_NO_LINE,
+      },
     ],
     engineCheck: true,
     info: { id: 'french', title: 'French Defence', side: 'black' },
