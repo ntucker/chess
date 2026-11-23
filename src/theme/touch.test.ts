@@ -2,7 +2,7 @@ import { describe, expect, it, jest } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { negated, TOUCH_TARGET, touchPadding, touchTarget } from './touch';
+import { negated, TOUCH_TARGET, touchLine, touchPadding, touchTarget } from './touch';
 
 // Jest can't load a stylesheet; this test reads it as text instead.
 jest.mock('./touch.css', () => ({}));
@@ -27,6 +27,11 @@ describe('touch lengths off the web', () => {
     expect(touchPadding(16)).toBe(16);
     expect(touchPadding(25, 4)).toBe(11.5);
     expect(touchPadding(60, 4)).toBe(4);
+  });
+
+  it('make a line of text a finger tall by its least height, centering the text', () => {
+    // Padding worked out for the text's own size would squeeze it once Android enlarges it.
+    expect(touchLine(20)).toEqual({ minHeight: 48, textAlignVertical: 'center' });
   });
 
   it('negate a padding, for a margin that undoes it', () => {
