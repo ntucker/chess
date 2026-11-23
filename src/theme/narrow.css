@@ -132,20 +132,25 @@
     min-height: 140px;
   }
   /*
-   * The moves get two parts of the width and the idea three; a pane alone gets all of it.
+   * The moves get two fifths of the width, or more for larger text (CandidateList.tsx's
+   * useListMinWidth), and the idea the rest; a pane alone gets all of it.
    * Past the guide, the idea pane only a narrow page shows tells why the moves are Stockfish's.
    */
   :root [data-narrow='narrow-idea-pane'] {
     display: flex;
   }
-  :root [data-narrow='moves-pane'],
+  :root [data-narrow='lone-pane'],
   :root [data-narrow='idea-pane'],
   :root [data-narrow='narrow-idea-pane'] {
     width: 0;
     min-width: 0;
   }
   :root [data-narrow='moves-pane'] {
-    flex: 2 1 auto;
+    flex: 0 1 auto;
+    width: 40%;
+  }
+  :root [data-narrow='lone-pane'] {
+    flex: 1 1 auto;
   }
   :root [data-narrow='idea-pane'],
   :root [data-narrow='narrow-idea-pane'] {
@@ -155,7 +160,8 @@
    * A candidate list (CandidateList.tsx) keeps its heading in view: the list
    * and its card shrink to the pane, and its rows scroll inside the card.
    */
-  :root [data-narrow='moves-pane'] {
+  :root [data-narrow='moves-pane'],
+  :root [data-narrow='lone-pane'] {
     overflow: hidden;
   }
   :root [data-narrow='move-list'],
