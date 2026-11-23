@@ -341,7 +341,7 @@ function Row({
       />
       <View style={styles.move}>
         <View style={styles.title}>
-          <Text role="body" style={styles.san} {...SAN_FIT}>
+          <Text role="body" style={styles.san} {...SHRINK_TO_LINE}>
             {san}
           </Text>
           {move.book ? <QualityBadge quality="book" size={BOOK_BADGE_SIZE} /> : null}
@@ -433,7 +433,7 @@ const STATIC = StyleSheet.create({
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;
 
-/** DM Mono's advance as a share of its size: each of its glyphs is this wide. */
+/** `fonts.mono`'s (DM Mono's) advance as a share of its size: each of its glyphs is this wide. */
 const MONO_ADVANCE = 0.6;
 /** The notation's size in a row. */
 const SAN_SIZE = 17;
@@ -441,39 +441,50 @@ const SAN_SIZE = 17;
 const VALUE_SIZE = typography.caption.size;
 /** A share's least width, which holds 100% in caption text: larger text widens it. */
 const SHARE_WIDTH = 32;
-/** An evaluation's least width, which holds its longest label (as −M12) in caption text. */
+/** An evaluation's least width, which holds its longest label (as −9.9 or −M12) in caption text. */
 const EVALUATION_WIDTH = 44;
 
 /**
- * Off the web, a move too long for its row's room shrinks to fit on its line,
- * rather than break over two: four characters or more at large text. The web
- * keeps its size, as there text is never larger than its pixels.
+ * A move on one line, whose text shrinks, down to 0.7 of its size, when its
+ * row has too little room for it: a five-character move beside its badge in
+ * a pane at its least width (`listMinWidth`) needs 0.8. Off the web only:
+ * the web's `fontScale` is always 1, so its pane holds a four-character move,
+ * and a longer one overflows its place.
  */
-const SAN_FIT = NARROW_CSS_LOADS
+const SHRINK_TO_LINE = NARROW_CSS_LOADS
   ? {}
   : ({ numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.7 } as const);
 
 /**
  * The least width of a narrow page's moves pane, as a style: a row of a
- * three-character move (Bf5), its badge, its share and a mark holds whole at
- * the system's text size, as does a row of Stockfish's with its evaluation.
- * At normal text that is the pane's two fifths on a phone; larger text widens
- * it, rather than break the move or its share over two lines or draw the
- * badge over the share. React Native scales text by the window's `fontScale`,
- * which the web leaves at 1; this reads no size of the window. A wide page's
- * panel is wider than this at any text size.
+ * four-character move (a capture, as exd5), its badge, its share and a mark
+ * holds whole at the system's text size, as does a row of Stockfish's with
+ * its evaluation. Larger text widens it, rather than break the move or its
+ * share over two lines or draw the badge over the share. A wide page's panel
+ * is wider than this at any text size.
  */
 export function useListMinWidth() {
+  // React Native scales text by `fontScale`, the one value read from the window (the web's is always 1).
   const { fontScale } = useWindowDimensions();
+  return { minWidth: listMinWidth(fontScale) };
+}
+
+/**
+ * `useListMinWidth`'s width at a text scale. The heading's longest word
+ * (CANDIDATES) is narrower at every scale, so it never breaks mid-word
+ * (CandidateList.web.test.tsx checks).
+ */
+export function listMinWidth(fontScale: number) {
   const mono = (chars: number, size: number) => chars * MONO_ADVANCE * size * fontScale;
   const gap = ROW_GAP.narrow;
   // The row's insets and dot, then the move and the mark, each after a gap.
-  const ends = 2 * ROW_INSET.narrow + DOT_SIZE + gap + mono(3, SAN_SIZE) + gap + MARK_SIZE;
+  const ends =
+    2 * ROW_INSET.narrow + DOT_SIZE + gap + mono('exd5'.length, SAN_SIZE) + gap + MARK_SIZE;
   // After the move, a guide's row has its badge and share, one of Stockfish's its evaluation.
   const badgeAndShare =
     TITLE_GAP + BOOK_BADGE_SIZE + gap + Math.max(SHARE_WIDTH, mono('100%'.length, VALUE_SIZE));
-  const evaluation = gap + Math.max(EVALUATION_WIDTH, mono('\u2212M12'.length, VALUE_SIZE));
-  return { minWidth: Math.ceil(ends + Math.max(badgeAndShare, evaluation)) };
+  const evaluation = gap + Math.max(EVALUATION_WIDTH, mono('\u22129.9'.length, VALUE_SIZE));
+  return Math.ceil(ends + Math.max(badgeAndShare, evaluation));
 }
 
 /** A row's spacing, more compact in a narrow pane. */
@@ -508,7 +519,7 @@ const STYLES = narrowStyles((px) => ({
   toggle: { paddingLeft: px(ROW_INSET.plus(DOT_SIZE).plus(ROW_GAP)) },
   move: { flex: 1, gap: 1 },
   title: { flexDirection: 'row', alignItems: 'center', gap: TITLE_GAP },
-  // Too long a move gives way in its place (`SAN_FIT`) rather than push its badge over the share.
+  // Off the web, too long a move shrinks to its line (`SHRINK_TO_LINE`) rather than push its badge over the share.
   san: { fontFamily: fonts.mono, fontSize: SAN_SIZE, flexShrink: 1 },
   risk: { textTransform: 'capitalize' },
   share: { flexDirection: 'row', alignItems: 'center', gap: 8 },

@@ -42,7 +42,7 @@ export const fonts = {
   displayItalic: 'DMSerifDisplay_400Regular_Italic',
   /** Text and controls. */
   text: 'InstrumentSans_400Regular',
-  /** Move numbers and notation. */
+  /** Move numbers and notation. Its glyphs' width sets CandidateList.tsx's `MONO_ADVANCE`. */
   mono: 'DMMono_400Regular',
 } as const;
 

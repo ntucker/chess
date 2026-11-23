@@ -8,7 +8,7 @@ import { createRoot } from 'react-dom/client';
 import type { Candidate } from '@/lesson/select';
 import { themes } from '@/theme/theme';
 
-import { CandidateList } from './CandidateList';
+import { CandidateList, listMinWidth } from './CandidateList';
 
 // Its font needs Expo's asset registry too.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
@@ -203,4 +203,15 @@ describe('CandidateList', () => {
     expect(mockFades).toEqual([false]);
     list.unmount();
   });
+
+  // CANDIDATES in the heading's caption, uppercase: its glyphs at 12 px in Instrument Sans,
+  // measured in Chromium, and its letter spacing, which text scaling leaves alone.
+  const headingWord = (fontScale: number) => 76.1 * fontScale + 10 * 1.6;
+
+  it.each([1, 1.3, 1.8, 2])(
+    'leaves room in a narrow pane for the heading’s longest word at text scale %f',
+    (fontScale) => {
+      expect(listMinWidth(fontScale)).toBeGreaterThanOrEqual(headingWord(fontScale));
+    },
+  );
 });

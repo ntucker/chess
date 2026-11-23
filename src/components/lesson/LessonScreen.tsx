@@ -331,6 +331,26 @@ function LessonScreen({
     </>
   );
 
+  /** The pane beside the moves on a narrow page: the idea, or past the guide the headline's aside. */
+  const ideaPane = ideaCard ? (
+    <NarrowScroll part="idea-pane">
+      <IdeaCard
+        lesson={lesson}
+        title={preview ? `If ${preview.san}` : 'The idea'}
+        notes={guidance.notes}
+        learner={learner}
+        playback={playback}
+        pointable={guidance.pointable}
+        pointed={pointedNote}
+        onPoint={pointNote}
+        onLeave={leaveNote}
+        onReach={reachCard}
+      />
+    </NarrowScroll>
+  ) : aside ? (
+    <NarrowScroll part="narrow-idea-pane">{aside}</NarrowScroll>
+  ) : null;
+
   return (
     <Stage
       title={`${lesson.title} · Opening Night`}
@@ -416,31 +436,14 @@ function LessonScreen({
                 {moveList ? (
                   // Beside the idea it widens for larger text; alone it fills the row.
                   <View
-                    {...(ideaCard || aside
+                    {...(ideaPane
                       ? part('moves-pane', [sections, listMinWidth])
                       : part('lone-pane', sections))}
                   >
                     {moveList}
                   </View>
                 ) : null}
-                {ideaCard ? (
-                  <NarrowScroll part="idea-pane">
-                    <IdeaCard
-                      lesson={lesson}
-                      title={preview ? `If ${preview.san}` : 'The idea'}
-                      notes={guidance.notes}
-                      learner={learner}
-                      playback={playback}
-                      pointable={guidance.pointable}
-                      pointed={pointedNote}
-                      onPoint={pointNote}
-                      onLeave={leaveNote}
-                      onReach={reachCard}
-                    />
-                  </NarrowScroll>
-                ) : aside ? (
-                  <NarrowScroll part="narrow-idea-pane">{aside}</NarrowScroll>
-                ) : null}
+                {ideaPane}
               </PointingArea>
             ) : (
               // Before Stockfish's moves arrive, or where none are listed, it has the panel to itself.
