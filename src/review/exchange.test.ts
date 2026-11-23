@@ -1,0 +1,66 @@
+import { describe, expect, it } from '@jest/globals';
+import { parseSquare } from 'chessops/util';
+
+import { parsePosition } from '@/game/replay';
+
+import { exchangeGain, hanging, materialGivenUp, winsMaterial } from './exchange';
+
+const at = (fen: string) => parsePosition(fen)!;
+const square = (name: string) => parseSquare(name)!;
+
+describe('materialGivenUp', () => {
+  it('counts a bishop given for a pawn, taken by the king', () => {
+    // The Greek gift: Bxh7+ Kxh7.
+    const before = at('r1bq1rk1/pppn1ppp/4p3/3pP3/1b1P4/2NB1N2/PPP2PPP/R1BQK2R w KQ - 0 1');
+    expect(materialGivenUp(before, 'd3h7')).toBe(2);
+  });
+
+  it("doesn't count a piece the only capturer can't take, being pinned", () => {
+    // Bb5 pins the knight on d7 to its king, so Ne5 is safe.
+    expect(materialGivenUp(at('4k3/3n4/8/1B6/8/5N2/8/4K3 w - - 0 1'), 'f3e5')).toBe(0);
+    expect(materialGivenUp(at('4k3/3n4/8/8/8/5N2/8/4K3 w - - 0 1'), 'f3e5')).toBe(3);
+  });
+
+  it("doesn't count a piece that was lost anyway and takes something first", () => {
+    // The pawn on d6 attacks the knight, which takes on f7 on its way out.
+    expect(materialGivenUp(at('4k3/5p2/3p4/4N3/8/8/8/4K3 w - - 0 1'), 'e5f7')).toBe(0);
+    expect(materialGivenUp(at('4k3/5p2/8/4N3/8/8/8/4K3 w - - 0 1'), 'e5f7')).toBe(2);
+  });
+
+  it('counts a pawn that promotes where it is taken as only a pawn', () => {
+    expect(materialGivenUp(at('r3k3/1P6/8/8/8/8/8/4K3 w - - 0 1'), 'b7b8q')).toBe(1);
+  });
+
+  it("doesn't count a defended piece the opponent would lose more to take", () => {
+    // Taking the knight on e5 with the rook loses the rook to the pawn on d4.
+    expect(materialGivenUp(at('4k3/4r3/8/8/3P4/5N2/8/6K1 w - - 0 1'), 'f3e5')).toBe(0);
+  });
+});
+
+describe('exchangeGain', () => {
+  it('counts a pawn that captures onto its last rank as a queen, taken back', () => {
+    // bxa8=Q wins the rook and makes a queen (13), then the bishop takes the queen (9).
+    expect(exchangeGain(at('r3k3/1P6/8/8/8/8/8/4K2b w - - 0 1'), square('a8'))).toBe(4);
+  });
+
+  it('is 0 for an empty square or one of the side to move', () => {
+    const pos = at('4k3/8/8/8/8/8/8/R3K3 w - - 0 1');
+    expect(exchangeGain(pos, square('a1'))).toBe(0);
+    expect(exchangeGain(pos, square('a5'))).toBe(0);
+  });
+});
+
+describe('winsMaterial', () => {
+  it('holds for a free capture, not for an even trade', () => {
+    expect(winsMaterial(at('4k3/8/8/3n4/8/8/8/3RK3 w - - 0 1'), 'd1d5')).toBe(true);
+    expect(winsMaterial(at('4k3/8/4p3/3n4/8/2N5/8/4K3 w - - 0 1'), 'c3d5')).toBe(false);
+  });
+});
+
+describe('hanging', () => {
+  it('holds for a piece the opponent would win by taking', () => {
+    const pos = at('4k3/8/3p4/4N3/8/8/8/4K3 w - - 0 1');
+    expect(hanging(pos, square('e5'))).toBe(true);
+    expect(hanging(at('4k3/8/8/4N3/8/8/8/4K3 w - - 0 1'), square('e5'))).toBe(false);
+  });
+});

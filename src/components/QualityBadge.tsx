@@ -1,13 +1,13 @@
 import { View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 
-import type { EngineVerdict, MoveQuality } from '@/analysis/quality';
+import type { EngineVerdict, ReviewQuality } from '@/analysis/quality';
 import { Tip } from '@/components/Tip';
 import { NO_CHANGE } from '@/evaluation/evaluation';
 import { BADGE_BOX, badgeMarkup, qualityLooks } from '@/theme/moveQuality';
 
 interface Props {
-  readonly quality: MoveQuality;
+  readonly quality: ReviewQuality;
   readonly size: number;
 }
 

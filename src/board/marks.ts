@@ -5,7 +5,7 @@
 import type { DrawBrush, DrawShape } from '@lichess-org/chessground/draw';
 import type { Key } from '@lichess-org/chessground/types';
 
-import type { MoveQuality } from '@/analysis/quality';
+import type { ReviewQuality } from '@/analysis/quality';
 import { type Drawing, type Square, squareOffset, TONES, type Tone } from '@/board/drawing';
 import type { Color } from '@/game/replay';
 import { toneColors } from '@/theme/drawingTones';
@@ -147,7 +147,7 @@ const BADGE_RING = pieceColors.black;
 const BADGE = { size: 34, x: 82, y: 18 } as const;
 
 /** A label's badge, overlapping the top right corner of its square. */
-function badgeCorner(quality: MoveQuality): string {
+function badgeCorner(quality: ReviewQuality): string {
   const scale = BADGE.size / BADGE_BOX;
   const x = BADGE.x - BADGE.size / 2;
   const y = BADGE.y - BADGE.size / 2;

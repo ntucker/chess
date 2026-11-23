@@ -4,7 +4,7 @@ import { type Href, Link } from 'expo-router';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { type MoveQuality, qualityRule } from '@/analysis/quality';
+import type { ReviewQuality } from '@/analysis/quality';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { PointingArea } from '@/components/lesson/PointingArea';
@@ -12,6 +12,7 @@ import { TippedBadge } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import type { Uci } from '@/lesson/lesson';
 import type { ComparedMove, Comparison } from '@/review/comparison';
+import { reviewRule } from '@/review/refine';
 import type { Answer, GuideAnswer, Try } from '@/review/retry';
 import { qualityLooks } from '@/theme/moveQuality';
 import { fonts } from '@/theme/theme';
@@ -21,7 +22,7 @@ interface Props {
   readonly whose: 'yours' | 'theirs';
   readonly comparison: Comparison;
   /** The move played's label, once it has one. */
-  readonly quality?: MoveQuality;
+  readonly quality?: ReviewQuality;
   /** What the label says of this move, after its rule: "Here: 26%." */
   readonly qualityDetail?: string;
   /**
@@ -269,8 +270,8 @@ function PlayOn({ href }: { readonly href: Href }) {
 }
 
 /** "Blunder: gave away 20% or more of the winning chances. Here: 26%." */
-const qualityTip = (quality: MoveQuality, detail?: string) =>
-  `${qualityLooks[quality].name}: ${qualityRule(quality)}.${detail ? ` ${detail}` : ''}`;
+const qualityTip = (quality: ReviewQuality, detail?: string) =>
+  `${qualityLooks[quality].name}: ${reviewRule(quality)}.${detail ? ` ${detail}` : ''}`;
 
 /** The label's badge beside the move, about the height of the notation's capitals. */
 const BADGE_SIZE = 16;

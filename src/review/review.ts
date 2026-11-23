@@ -5,11 +5,13 @@
  * lesson's guide recommends, and the final analyses already in the store, so
  * it fills in by itself as searches finish.
  */
-import { labelMove, type MoveQuality } from '@/analysis/quality';
+import { labelMove, type ReviewQuality } from '@/analysis/quality';
 import { type Analysis, type FinalAnalysis, isFinal, scoreFor } from '@/evaluation/evaluation';
 import type { Color, Ply } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { lineKeys } from '@/lesson/select';
+
+import { refine } from './refine';
 
 /**
  * One move of the game as the review judges it: the move leading from
@@ -38,8 +40,8 @@ export type ReviewMove = { readonly ply: number; readonly mover: Color } & (
     }
   | {
       readonly status: 'judged';
-      /** `judgeMove`'s label. */
-      readonly quality: MoveQuality;
+      /** `judgeMove`'s label, or the one `refine` makes of it. */
+      readonly quality: ReviewQuality;
       /** The mover's expected score (0 to 1) before the move and after it, as the label measured them. */
       readonly before: number;
       readonly after: number;
@@ -62,9 +64,19 @@ export interface ReviewInput {
 
 /**
  * Each move of the game, labelled as far as the final analyses allow
- * (`labelMove`, as the game labels it), or why it isn't yet.
+ * (`labelMove`, as the game labels it, then `refine`), or why it isn't yet.
  */
-export function reviewMoves({ plies, book, legal, analyses, failed }: ReviewInput): ReviewMove[] {
+export function reviewMoves(input: ReviewInput): ReviewMove[] {
+  const labelled = labelledMoves(input);
+  return labelled.map((move) =>
+    move.status === 'judged'
+      ? { ...move, quality: refine(move, labelled[move.ply - 1]?.quality, input) }
+      : move,
+  );
+}
+
+/** Each move of the game with `labelMove`'s label, as the game labels it, or why it hasn't one yet. */
+function labelledMoves({ plies, book, legal, analyses, failed }: ReviewInput): ReviewMove[] {
   return plies.slice(0, -1).map(({ turn: mover }, ply): ReviewMove => {
     const before = analyses[ply];
     const label = labelMove({
@@ -142,10 +154,20 @@ export function leftGuide(
   return ply === -1 ? undefined : ply;
 }
 
+/** The labels whose moves are worth stopping at: the review's own three, and the worst two. */
+const MOMENTS: ReadonlySet<ReviewQuality> = new Set([
+  'brilliant',
+  'great',
+  'miss',
+  'mistake',
+  'blunder',
+]);
+
 /**
  * The learner's moves worth stopping at, in game order (their plies): their
- * mistakes and blunders, and `leftGuidePly`, the move where they left the
- * lesson's guide (`leftGuide`), if any.
+ * brilliant, great and missed moves, mistakes and blunders, and
+ * `leftGuidePly`, the move where they left the lesson's guide (`leftGuide`),
+ * if any.
  */
 export function moments(
   moves: readonly ReviewMove[],
@@ -155,8 +177,7 @@ export function moments(
   return moves
     .filter(
       ({ ply, mover, quality }) =>
-        mover === learner &&
-        (ply === leftGuidePly || quality === 'mistake' || quality === 'blunder'),
+        mover === learner && (ply === leftGuidePly || (!!quality && MOMENTS.has(quality))),
     )
     .map(({ ply }) => ply);
 }
@@ -169,11 +190,11 @@ export const nextMoment = (moments: readonly number[], visited: ReadonlySet<numb
   moments.find((ply) => !visited.has(ply));
 
 /** How many moves got each label. */
-export type Tally = Readonly<Partial<Record<MoveQuality, number>>>;
+export type Tally = Readonly<Partial<Record<ReviewQuality, number>>>;
 
 /** How many of `side`'s judged moves got each label. */
 export function tally(moves: readonly ReviewMove[], side: Color): Tally {
-  const counts: Partial<Record<MoveQuality, number>> = {};
+  const counts: Partial<Record<ReviewQuality, number>> = {};
   for (const { mover, quality } of moves) {
     if (mover === side && quality) counts[quality] = (counts[quality] ?? 0) + 1;
   }

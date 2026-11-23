@@ -156,12 +156,15 @@ describe('moments', () => {
     judgedMove(4, 'blunder'),
     judgedMove(5, 'inaccuracy'),
     waitingMove(6),
+    judgedMove(7, 'brilliant'),
+    judgedMove(8, 'great'),
+    judgedMove(9, 'miss'),
   ];
 
-  it("lists the learner's mistakes and blunders, and where they left the guide, in game order", () => {
-    expect(moments(moves, 'white', 2)).toEqual([2, 4]);
-    expect(moments(moves, 'black')).toEqual([1, 3]);
-    expect(moments(moves, 'black', 5)).toEqual([1, 3, 5]);
+  it("lists the learner's moves worth a look, and where they left the guide, in game order", () => {
+    expect(moments(moves, 'white', 2)).toEqual([2, 4, 8]);
+    expect(moments(moves, 'black')).toEqual([1, 3, 7, 9]);
+    expect(moments(moves, 'black', 5)).toEqual([1, 3, 5, 7, 9]);
   });
 });
 

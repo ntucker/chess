@@ -18,6 +18,13 @@ import { type Color, opposite } from '@/game/replay';
 export type MoveQuality = 'book' | 'best' | 'good' | 'inaccuracy' | 'mistake' | 'blunder';
 
 /**
+ * The review's labels: `MoveQuality`'s, and three it refines a judged move's
+ * into once the whole game is searched (src/review/refine.ts): Brilliant and
+ * Great for a best or good move, Miss for a mistake or blunder.
+ */
+export type ReviewQuality = MoveQuality | 'brilliant' | 'great' | 'miss';
+
+/**
  * The least expected score (0 to 1, the mover's) a move must give away for
  * each label. These are chess.com's "expected points lost" limits
  * (https://support.chess.com/en/articles/8572705), with its "excellent"

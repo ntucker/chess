@@ -6,7 +6,7 @@
  * Pure, like the rest of the review: worked out from the page's state
  * (`screen.ts`), the moves and the final analyses in the store.
  */
-import { judgement, labelMove, type MoveQuality } from '@/analysis/quality';
+import { judgement, labelMove, type MoveQuality, type ReviewQuality } from '@/analysis/quality';
 import { type FinalAnalysis, type MoveChange, moveChange, scoreFor } from '@/evaluation/evaluation';
 import { type Color, parsePosition, playMove, type Ply } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
@@ -91,7 +91,7 @@ export interface Moment {
   /** The move the board shows played in place of the game's: the latest try, or the answer. */
   readonly shownMove?: Uci;
   /** The label badged on the board's last move: the game's move's, the try's or the answer's; none during a retry. */
-  readonly badge?: MoveQuality;
+  readonly badge?: ReviewQuality;
   /**
    * The game's move, drawn as a danger arrow beside a revealed try or answer,
    * while its piece still stands where it moved from: not after a try with the same piece.
@@ -233,7 +233,7 @@ const arrowBeside = (game: Uci | undefined, played: Uci) =>
 const NOTHING = { canRetry: false, revealed: false, hidden: false, tries: [] } as const;
 
 /** The labels of the moves worth retrying. */
-const SLIPS: ReadonlySet<MoveQuality> = new Set(['inaccuracy', 'mistake', 'blunder']);
+const SLIPS: ReadonlySet<ReviewQuality> = new Set(['inaccuracy', 'mistake', 'blunder', 'miss']);
 
 /** Whether the learner's `move` is worth retrying: a slip, or the move that left the guide. */
 const retries = (move: ReviewMove, leftAt: number | undefined) =>
