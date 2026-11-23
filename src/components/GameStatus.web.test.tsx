@@ -99,4 +99,23 @@ describe('StatusHeadline', () => {
     );
     expect(line).toBe(said);
   });
+  it('announces the title with its tip, in one live region that stays as the tip comes', () => {
+    const host = document.createElement('div');
+    const root = createRoot(host);
+    const draw = (props: Props) =>
+      act(() =>
+        root.render(
+          <SilkProvider theme={themes.dark}>
+            <StatusHeadline eyebrow="Line" title="Your move." detail="Play here." {...props} />
+          </SilkProvider>,
+        ),
+      );
+    draw({});
+    const live = host.querySelector('[aria-live="polite"]');
+    expect(live?.textContent).toBe('Your move.');
+    draw({ title: 'A brief appearance.', titleTip: 'Too few moves.' });
+    expect(host.querySelector('[aria-live="polite"]')).toBe(live);
+    expect(live?.textContent).toBe('A brief appearance.Too few moves.');
+    act(() => root.unmount());
+  });
 });

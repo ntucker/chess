@@ -202,7 +202,7 @@ describe('ReviewPanel', () => {
         'A brief appearance.No verdict or accuracy: fewer than 8 of your moves were judged',
       );
       // Once: the narrow page's short line, which screen readers skip, doesn't repeat it.
-      expect(spoken(host).split('No verdict or accuracy').length).toBe(2);
+      expect(spoken(host).match(/No verdict or accuracy/g)).toHaveLength(1);
     });
   });
 
