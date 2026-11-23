@@ -84,7 +84,7 @@ PAGES_BASE_PATH=/chess yarn expo export --platform web
 
 ## Android builds
 
-Every push to `main` also builds the Android app (`.github/workflows/android.yml`, about 20 minutes) and replaces the APK at https://github.com/ntucker/chess/releases/download/android/opening-night.apk. To install it, open that link on the phone and open the download. The first time, Android asks to allow installs from the browser: tap **Settings**, turn on **Allow from this source**, and go back. Then tap **Update** (or **Install**); if Play Protect warns about an unknown app, choose to install anyway.
+Every push to `main` that changes more than Markdown also builds the Android app (`.github/workflows/android.yml`) and replaces the APK at https://github.com/ntucker/chess/releases/download/android/opening-night.apk. To install it, open that link on the phone and open the download. The first time, Android asks to allow installs from the browser: tap **Settings**, turn on **Allow from this source**, and go back. Then tap **Update** (or **Install**); if Play Protect warns about an unknown app, choose to install anyway.
 
 Builds are signed with the key in Expo's template, like local release builds, so each one installs over the last and keeps the app's data. A Google Play build is signed with another key: switching to it takes one uninstall.
 
