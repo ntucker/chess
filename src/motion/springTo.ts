@@ -21,9 +21,12 @@ interface SpringToOptions {
 export function springTo(
   target: number,
   spring: Spring,
-  { track, precision = SUBPIXEL }: SpringToOptions = {},
+  { track, precision }: SpringToOptions = {},
 ) {
   'worklet';
+  // Not a parameter default: on the UI thread a worklet binds what it
+  // captured in its body, after its defaults run.
+  const stopWithin = precision ?? SUBPIXEL;
   return defineAnimation<AnimationObject<number>>(target, () => {
     'worklet';
     return {
@@ -43,7 +46,7 @@ export function springTo(
       },
       onFrame(animation: AnimationObject<number>, now: number) {
         const state = springAt(spring, animation.start, (now - animation.startTime) / 1000);
-        const done = atRest(state, precision);
+        const done = atRest(state, stopWithin);
         animation.current = target + (done ? 0 : state.offset);
         return done;
       },
