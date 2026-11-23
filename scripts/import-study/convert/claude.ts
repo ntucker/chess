@@ -47,9 +47,9 @@ export type Ask<T = Comment> = (
 /** Comments per request by default: enough to share the prompt, few enough to answer carefully. */
 const BATCH = 20;
 /** Requests at once. */
-const PARALLEL = 4;
+export const PARALLEL = 4;
 
-type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 interface Options<T> {
   readonly learner: Color;
@@ -152,21 +152,38 @@ export function claudeCli<T extends { readonly id: string } = Comment>({
 }
 
 /** One `claude -p` run: the prompt as the system prompt, the items as the message, no tools. */
-function request(
+async function request(
   model: AiModel,
   prompt: string,
   items: readonly unknown[],
   effort: Effort | undefined,
 ): Promise<{ answers: Answer[]; cost: number }> {
+  const { output, cost } = await claudeJson(model, prompt, JSON.stringify(items), SCHEMA, effort);
+  const { comments: answers } = (output ?? {}) as { comments?: unknown[] };
+  return { answers: (answers ?? []).flatMap((answer) => asAnswer(answer) ?? []), cost };
+}
+
+/**
+ * One `claude -p` run with no tools: `system` as the system prompt and `message`
+ * as the message. Resolves to the answer that `schema` (a JSON schema) shapes,
+ * and what the run cost at list price.
+ */
+export function claudeJson(
+  model: AiModel,
+  system: string,
+  message: string,
+  schema: object,
+  effort?: Effort,
+): Promise<{ output: unknown; cost: number }> {
   const args = [
     '-p',
     '--model',
     model,
     ...(effort ? ['--effort', effort] : []),
     '--system-prompt',
-    prompt,
+    system,
     '--json-schema',
-    JSON.stringify(SCHEMA),
+    JSON.stringify(schema),
     '--output-format',
     'json',
     '--tools',
@@ -197,29 +214,29 @@ function request(
         };
         if (code !== 0 || result.is_error)
           throw new Error(`claude exited ${code}: ${result.result ?? err}`);
-        const { comments: answers } = (result.structured_output ?? {}) as { comments?: unknown[] };
-        resolve({
-          answers: (answers ?? []).flatMap((answer) => asAnswer(answer) ?? []),
-          cost: result.total_cost_usd ?? 0,
-        });
+        resolve({ output: result.structured_output, cost: result.total_cost_usd ?? 0 });
       } catch (error) {
         reject(
           error instanceof SyntaxError ? new Error(`claude exited ${code}: ${err || out}`) : error,
         );
       }
     });
-    child.stdin.end(JSON.stringify(items));
+    child.stdin.end(message);
   });
 }
 
-function chunks<T>(items: readonly T[], size: number): T[][] {
+export function chunks<T>(items: readonly T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
   return out;
 }
 
 /** Runs `work` on every item, at most `limit` at once. */
-async function pool<T>(items: readonly T[], limit: number, work: (item: T) => Promise<void>) {
+export async function pool<T>(
+  items: readonly T[],
+  limit: number,
+  work: (item: T) => Promise<void>,
+) {
   let next = 0;
   const worker = async () => {
     while (next < items.length) await work(items[next++]);

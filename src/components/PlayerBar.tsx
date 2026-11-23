@@ -173,9 +173,12 @@ const STYLES = narrowStyles((px) => ({
   // name's line's 1, kept far above it, so a short name ("White") stays whole
   // beside a switch at the bar's end.
   detail: { flexDirection: 'row', alignItems: 'baseline', gap: 4, flexShrink: 1000, minWidth: 0 },
-  // Within it, its words end in an ellipsis first, then "· to move"; a
-  // control stays whole.
-  detailText: { flexShrink: 100, minWidth: 0 },
+  // Within it, its words and "· to move" end in an ellipsis together, each
+  // in proportion to its length; a control stays whole. Not the words first:
+  // React Native's Yoga shrinks nothing at all once the words would need to
+  // go below nothing while "· to move" could still give way (Android's
+  // largest font sizes), and the line runs under the switch.
+  detailText: { flexShrink: 1, minWidth: 0 },
   turn: { flexShrink: 1, minWidth: 0 },
   // The captured pieces give way first (see Captures), then the name ends in
   // an ellipsis; the line is clipped rather than run under the controls.

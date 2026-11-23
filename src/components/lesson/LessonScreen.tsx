@@ -1,5 +1,5 @@
 import { AsyncBoundary, useController, useFetch, useSuspense } from '@data-client/react';
-import { Separator, Spinner, Stack } from '@reactive/silk-native';
+import { Inline, Separator, Spinner, Stack } from '@reactive/silk-native';
 import { type ReactNode, use, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -14,6 +14,7 @@ import { ScoresheetDrawer, ScoresheetOpener } from '@/components/ScoresheetDrawe
 import { Sheet } from '@/components/Sheet';
 import { SourceFootnote } from '@/components/SourceLink';
 import { resetListener } from '@/components/resetListener';
+import { ReviewGameButton, ScoresheetReview } from '@/components/ReviewLinks';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { useLongWait } from '@/components/useLongWait';
 import { useNavigating } from '@/components/navigation';
@@ -22,9 +23,16 @@ import { type Color, colorName, opposite } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
 import { listsTopMoves } from '@/lesson/guidance';
 import type { Uci, VariationId } from '@/lesson/lesson';
-import { lessonsAfter, lessonsFrom, openingsLesson, withOpenings } from '@/lesson/openings';
+import {
+  isPicking,
+  lessonsAfter,
+  lessonsFrom,
+  openingsLesson,
+  withOpenings,
+} from '@/lesson/openings';
 import { type Candidate, captionName, pathNames, shareSource } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
+import { reviewHref } from '@/review/address';
 import { describeOpponent } from '@/opponent/opponent';
 import { getLesson, isLessonId, LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { getProgress } from '@/resources/progress';
@@ -37,7 +45,14 @@ import { IdeaAside, IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
 import { SideChoice } from './SideChoice';
-import { describeStatus, headlineNews, LOADING, OPENINGS_TITLE } from './status';
+import {
+  describeStatus,
+  headlineNews,
+  LOADING,
+  OPENINGS_TITLE,
+  shownEnding,
+  whyReviewShut,
+} from './status';
 import { SourceCredits } from './SourceCredits';
 import { TrapCard } from './TrapCard';
 import { useOpeningsGame } from './useOpeningsGame';
@@ -193,6 +208,21 @@ function LessonScreen({
   // Stockfish's moves have none of their own.
   const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
   const names = pathNames(view.variation);
+  const { result } = game.latest;
+  const ending = shownEnding(
+    { result, atLatest: game.atLatest, playing: !!playback.playing },
+    learner,
+  );
+  // The whole game, not the move on the board: stepping back into the
+  // openings' first moves doesn't close the review of a game played past them.
+  const gamePicking = isPicking(index, learner, game.moves);
+  const reviewShut = whyReviewShut({
+    picking: gamePicking,
+    ended: !!result,
+    practice: mode === 'practice',
+    leftGuide: view.guideMoves.includes(undefined),
+  });
+  const review = reviewHref(game.moves, learner, id);
   const { pastGuide, ...status } = describeStatus(view, {
     picking,
     loading,
@@ -208,6 +238,7 @@ function LessonScreen({
     startsRun,
     practice:
       modeState.mode === 'practice' ? { clean: modeState.clean, verdict: game.quality } : undefined,
+    ending,
   });
   // Where Stockfish's moves stand in for the guide's, a narrow page tells why
   // in the idea pane's place, beside them as the idea is beside the guide's
@@ -383,6 +414,7 @@ function LessonScreen({
             failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
             eyebrowInHeader
             eyebrowLink={listLink}
+            action={ending && !reviewShut ? <ReviewGameButton href={review} /> : null}
             news={headlineNews(
               { news: status.news, pastGuide },
               { aside: !!aside, scoresheetOpen, failed: !!game.error },
@@ -438,7 +470,11 @@ function LessonScreen({
             )}
           </View>
           {scoresheetOpen ? (
-            <ScoresheetDrawer {...scoresheetProps} onClose={() => setScoresheetOpen(false)} />
+            <ScoresheetDrawer
+              {...scoresheetProps}
+              reviewButton={<ScoresheetReview href={review} disabled={reviewShut} compact />}
+              onClose={() => setScoresheetOpen(false)}
+            />
           ) : null}
           {/*
            * A narrow page has no room for the rest under the panes: the
@@ -450,7 +486,10 @@ function LessonScreen({
           <Stack {...part('wide-only', sections)}>
             <Separator />
             <Stack style={labelled}>
-              <Eyebrow>Scoresheet</Eyebrow>
+              <Inline align="center" justify="between" wrap="nowrap">
+                <Eyebrow>Scoresheet</Eyebrow>
+                <ScoresheetReview href={review} disabled={reviewShut} />
+              </Inline>
               <Scoresheet {...scoresheetProps} />
             </Stack>
             {settingsOpen ? null : (

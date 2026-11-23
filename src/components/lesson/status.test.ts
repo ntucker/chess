@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import type { LessonView } from '@/lesson/view';
 
-import { describeStatus, headlineNews } from './status';
+import { describeStatus, headlineNews, shownEnding, whyReviewShut } from './status';
 
 const INPUT = {
   picking: false,
@@ -36,6 +36,24 @@ describe('describeStatus', () => {
   it('leaves it out inside the guide', () => {
     expect(describeStatus(view('inside'), INPUT).pastGuide).toBeUndefined();
   });
+
+  it('tells how the game ended, over where the guide stands', () => {
+    const ended = (ending: NonNullable<Parameters<typeof describeStatus>[1]['ending']>) =>
+      describeStatus(view('beyond'), { ...INPUT, ending });
+    expect(ended({ mood: 'won', reason: 'checkmate' })).toEqual({
+      eyebrow: 'Giuoco Piano',
+      title: 'Checkmate. Bravo!',
+      detail: 'You won. Take a bow, then see how it went.',
+    });
+    expect(ended({ mood: 'lost', reason: 'checkmate' })).toMatchObject({
+      title: 'Checkmate.',
+      detail: 'Black won this one. The review shows where it turned.',
+    });
+    expect(ended({ mood: 'drawn', reason: 'stalemate' })).toMatchObject({
+      title: 'A draw.',
+      detail: 'By stalemate.',
+    });
+  });
 });
 
 describe('headlineNews', () => {
@@ -59,5 +77,41 @@ describe('headlineNews', () => {
     expect(headlineNews(describeStatus(view('inside'), { ...INPUT, viewing: true }), open)).toBe(
       'detail',
     );
+  });
+});
+
+describe('whyReviewShut', () => {
+  const open = { picking: false, ended: false, practice: false, leftGuide: false };
+  it('opens once the game ends, in either mode', () => {
+    expect(whyReviewShut({ ...open, ended: true })).toBeUndefined();
+    expect(whyReviewShut({ ...open, ended: true, practice: true })).toBeUndefined();
+  });
+  it('opens in Practice once a move left the guide', () => {
+    expect(whyReviewShut({ ...open, practice: true, leftGuide: true })).toBeUndefined();
+  });
+  it('says why it stays shut, in the words of the mode', () => {
+    expect(whyReviewShut({ ...open, practice: true })).toBe(
+      'Review opens after a move off the guide, or once the game ends.',
+    );
+    expect(whyReviewShut({ ...open, leftGuide: true })).toBe(
+      'Review opens once the game ends, or in Practice after a move off the guide.',
+    );
+  });
+  it('stays shut while picking a line', () => {
+    expect(whyReviewShut({ ...open, picking: true, ended: true })).toBeDefined();
+  });
+});
+
+describe('shownEnding', () => {
+  const mate = { reason: 'checkmate', winner: 'white' } as const;
+  const shown = { result: mate, atLatest: true, playing: false };
+  it('tells how the game ended, for the side the learner played', () => {
+    expect(shownEnding(shown, 'white')).toEqual({ mood: 'won', reason: 'checkmate' });
+    expect(shownEnding(shown, 'black')).toEqual({ mood: 'lost', reason: 'checkmate' });
+  });
+  it('waits while the board shows another position', () => {
+    expect(shownEnding({ ...shown, atLatest: false }, 'white')).toBeUndefined();
+    expect(shownEnding({ ...shown, playing: true }, 'white')).toBeUndefined();
+    expect(shownEnding({ ...shown, result: undefined }, 'white')).toBeUndefined();
   });
 });
