@@ -123,13 +123,13 @@ export function StatusHeadline({
       {/* With a short line drawn, a narrow page keeps the full headline for screen readers only. */}
       <Stack gap="2" {...part(short && 'wide-only-spoken')}>
         {eyebrowInHeader ? <View {...part('wide-only')}>{label}</View> : label}
-        {/*
-          The live region announces the title with its tip, and stays put while a
-          tooltip comes and goes around it. On a narrow page drawing a short line,
-          the focusable title is visually hidden, yet keyboard users still reach
-          its tip: the short line, hidden from screen readers, can't take focus.
-        */}
+        {/* The live region announces the title with its tip, and stays put while a tooltip comes and goes around it. */}
         <View accessibilityLiveRegion="polite">
+          {/*
+            Focus reaches the tip here even where a narrow page hides this title
+            under its short line: that line is hidden from screen readers, so it
+            takes no focus, and focus here shows the tooltip itself.
+          */}
           <Tipped tip={titleTip} focusable>
             <Text role="headingLg" accessibilityRole="header" style={styles.title}>
               {title}

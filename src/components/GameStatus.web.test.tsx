@@ -14,19 +14,27 @@ import { StatusHeadline } from './GameStatus';
 
 type Props = Partial<Parameters<typeof StatusHeadline>[0]>;
 
-/** Renders the headline, and reads its host with `read`. */
-function render<T>(props: Props, read: (host: HTMLElement) => T) {
+/** Mounts a headline in `host`, which `draw` redraws with new props. */
+function mount() {
   const host = document.createElement('div');
   const root = createRoot(host);
-  act(() =>
-    root.render(
-      <SilkProvider theme={themes.dark}>
-        <StatusHeadline eyebrow="Line" title="Your move." detail="Play here." {...props} />
-      </SilkProvider>,
-    ),
-  );
+  const draw = (props: Props) =>
+    act(() =>
+      root.render(
+        <SilkProvider theme={themes.dark}>
+          <StatusHeadline eyebrow="Line" title="Your move." detail="Play here." {...props} />
+        </SilkProvider>,
+      ),
+    );
+  return { host, draw, unmount: () => act(() => root.unmount()) };
+}
+
+/** Renders the headline, and reads its host with `read`. */
+function render<T>(props: Props, read: (host: HTMLElement) => T) {
+  const { host, draw, unmount } = mount();
+  draw(props);
   const result = read(host);
-  act(() => root.unmount());
+  unmount();
   return result;
 }
 
@@ -100,22 +108,13 @@ describe('StatusHeadline', () => {
     expect(line).toBe(said);
   });
   it('announces the title with its tip, in one live region that stays as the tip comes', () => {
-    const host = document.createElement('div');
-    const root = createRoot(host);
-    const draw = (props: Props) =>
-      act(() =>
-        root.render(
-          <SilkProvider theme={themes.dark}>
-            <StatusHeadline eyebrow="Line" title="Your move." detail="Play here." {...props} />
-          </SilkProvider>,
-        ),
-      );
+    const { host, draw, unmount } = mount();
     draw({});
     const live = host.querySelector('[aria-live="polite"]');
     expect(live?.textContent).toBe('Your move.');
     draw({ title: 'A brief appearance.', titleTip: 'Too few moves.' });
     expect(host.querySelector('[aria-live="polite"]')).toBe(live);
     expect(live?.textContent).toBe('A brief appearance.Too few moves.');
-    act(() => root.unmount());
+    unmount();
   });
 });
