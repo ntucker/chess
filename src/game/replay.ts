@@ -154,9 +154,9 @@ export function* playLine(line: readonly string[], pos = Chess.default()): Gener
   }
 }
 
-/** `line`'s moves in SAN from `pos`, up to the first illegal one. */
+/** `line`'s moves in SAN from `pos`, up to the first illegal one, leaving `pos` as it was. */
 export const lineSans = (line: readonly string[], pos?: Chess): string[] =>
-  Array.from(playLine(line, pos), ({ move }) => move?.san).filter(
+  Array.from(playLine(line, pos?.clone()), ({ move }) => move?.san).filter(
     (san): san is string => san !== undefined,
   );
 

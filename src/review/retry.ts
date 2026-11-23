@@ -13,7 +13,7 @@ import type { Lesson, Uci } from '@/lesson/lesson';
 import { variationHref } from '@/lesson/openings';
 import { lineKeys } from '@/lesson/select';
 
-import type { ReviewMove } from './review';
+import { isFine, type ReviewMove } from './review';
 import type { ReviewScreen } from './screen';
 
 /** A try at a moment, judged as the game judges a move (`labelMove`), or why it isn't yet. */
@@ -232,12 +232,9 @@ const arrowBeside = (game: Uci | undefined, played: Uci) =>
 /** A moment with nothing to retry. */
 const NOTHING = { canRetry: false, revealed: false, hidden: false, tries: [] } as const;
 
-/** The labels of the moves worth retrying. */
-const SLIPS: ReadonlySet<ReviewQuality> = new Set(['inaccuracy', 'mistake', 'blunder', 'miss']);
-
-/** Whether the learner's `move` is worth retrying: a slip, or the move that left the guide. */
+/** Whether the learner's `move` is worth retrying: one that isn't `isFine`, or the move that left the guide. */
 const retries = (move: ReviewMove, leftAt: number | undefined) =>
-  move.ply === leftAt || (move.status === 'judged' && SLIPS.has(move.quality));
+  move.ply === leftAt || (move.status === 'judged' && !isFine(move.quality));
 
 /**
  * Whether a try labelled `quality`, scoring `score` (the learner's expected
@@ -245,4 +242,4 @@ const retries = (move: ReviewMove, leftAt: number | undefined) =>
  * than the move was. (`momentAt` passes the guide's move, labelled book, without asking.)
  */
 const passes = (quality: MoveQuality, score: number, move: ReviewMove) =>
-  (quality === 'best' || quality === 'good') && move.status === 'judged' && score > move.after;
+  isFine(quality) && move.status === 'judged' && score > move.after;

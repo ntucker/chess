@@ -8,7 +8,7 @@
  * never takes a defended piece. Brilliant and Great read this (`refine.ts`).
  */
 import type { Chess } from 'chessops/chess';
-import type { Color, NormalMove, Role, Square } from 'chessops/types';
+import type { NormalMove, Role, Square } from 'chessops/types';
 import { SquareSet } from 'chessops/squareSet';
 
 import { VALUES } from '@/game/material';
@@ -19,9 +19,6 @@ const value = (role: Role) => (role === 'king' ? 0 : VALUES[role]);
 
 /** The king's cost as a capturer: more than any piece, so it captures last. */
 const KING_LAST = 100;
-
-/** The pieces a sacrifice gives up: anything but pawns and the king. */
-const PIECES: readonly Role[] = ['knight', 'bishop', 'rook', 'queen'];
 
 /**
  * How much the side to move in `pos` wins by capturing on `square`, trading
@@ -49,14 +46,14 @@ export function exchangeGain(pos: Chess, square: Square): number {
  */
 export function materialGivenUp(before: Chess, move: NormalMove): number {
   const after = playing(before, move);
-  // In check, the position with the opponent to move isn't legal: nothing was at stake before.
-  const was = before.isCheck() ? undefined : withTurn(before, after.turn);
+  // The pieces a sacrifice gives up: anything but pawns and the king.
+  const pieces = after.board[before.turn].diff(after.board.pawn).diff(after.board.king);
   let given = 0;
-  for (const square of piecesOf(after, before.turn)) {
+  for (const square of pieces) {
     const now = exchangeGain(after, square);
     if (now <= given) continue;
     const stood = square === move.to ? move.from : square;
-    given = Math.max(given, now - (was ? exchangeGain(was, stood) : 0));
+    given = Math.max(given, now - atStake(before, stood));
   }
   return Math.max(0, given - moveGain(before, move));
 }
@@ -80,19 +77,21 @@ export const recaptures = (previousPos: Chess, previous: NormalMove, move: Norma
  * Whether the piece on `square`, the mover's in `pos`, was about to be lost
  * there: the opponent, were it their move, would win something taking it.
  */
-export const hanging = (pos: Chess, square: Square) =>
-  !pos.isCheck() && exchangeGain(withTurn(pos, opposite(pos.turn)), square) > 0;
+export const hanging = (pos: Chess, square: Square) => atStake(pos, square) > 0;
+
+/**
+ * What the opponent would win taking the piece on `square`, the mover's in
+ * `pos`, were it their move. In check that position isn't legal, so nothing
+ * is at stake.
+ */
+const atStake = (pos: Chess, square: Square) =>
+  pos.isCheck() ? 0 : exchangeGain(withTurn(pos, opposite(pos.turn)), square);
 
 /** `pos` after `move`, leaving `pos` as it was. */
 function playing(pos: Chess, move: NormalMove): Chess {
   const after = pos.clone();
   after.play(move);
   return after;
-}
-
-/** The squares of `color`'s pieces in `pos` that a sacrifice can give up (not pawns or the king). */
-function* piecesOf(pos: Chess, color: Color): Iterable<Square> {
-  for (const role of PIECES) yield* pos.board[role].intersect(pos.board[color]);
 }
 
 /** What `move`, legal in `pos`, takes, and what a promotion adds. */
