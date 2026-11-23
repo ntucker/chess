@@ -1,0 +1,119 @@
+# Builds the Android app on every push to main and publishes it at one fixed
+# address, so a phone installs the newest build from its browser. A pull
+# request that changes this file only builds. README.md, under "Android
+# builds", says how to install it.
+name: Android
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**/*.md']
+  pull_request:
+    paths: ['.github/workflows/android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # The release, and its tag, that always holds main's newest build.
+  TAG: android
+  APK: opening-night.apk
+
+jobs:
+  build:
+    name: Build the APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Install
+        run: yarn install --immutable
+
+      - name: Generate the native project
+        run: yarn expo prebuild --platform android --no-install
+
+      # Phones in use are 64-bit ARM; one architecture builds about 4x faster.
+      - name: Build
+        working-directory: android
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a
+
+      # Release builds use the key in Expo's template (android/app/debug.keystore),
+      # the same key as every build installed so far. Android installs an
+      # update only over an app with the same key, so a template change would
+      # make every phone refuse the next build: fail here instead.
+      - name: Check the signing key
+        run: |
+          apk=android/app/build/outputs/apk/release/app-release.apk
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
+          "$apksigner" verify --print-certs "$apk" | tee certs.txt
+          grep -qi 'SHA-256 digest: fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c' certs.txt
+          mv "$apk" "$APK"
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: apk
+          path: ${{ env.APK }}
+          retention-days: 7
+
+  publish:
+    name: Publish the APK
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+
+    steps:
+      - name: Download the APK
+        uses: actions/download-artifact@v8
+        with:
+          name: apk
+
+      - name: Publish to the release
+        run: |
+          # A newer push to main publishes its own build; this older one would
+          # only replace it. A failed lookup fails the run rather than guess.
+          main=$(git ls-remote --exit-code "https://github.com/$GH_REPO.git" refs/heads/main)
+          if [ "${main%%$'\t'*}" != "$GITHUB_SHA" ]; then
+            echo "::notice::Not published: a newer push to main publishes instead."
+            exit 0
+          fi
+          # The tag follows the build, so the release page shows its commit.
+          gh api -X PATCH "repos/$GH_REPO/git/refs/tags/$TAG" -f sha="$GITHUB_SHA" -F force=true > /dev/null \
+            || gh api "repos/$GH_REPO/git/refs" -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA" > /dev/null
+          notes="Built from $GITHUB_SHA on $(date -u '+%Y-%m-%d %H:%M UTC').
+
+          Install on Android: open https://github.com/$GH_REPO/releases/download/$TAG/$APK on the phone. README.md, under \"Android builds\", has the steps."
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release edit "$TAG" --notes "$notes"
+          else
+            gh release create "$TAG" --verify-tag --title 'Android app (newest main)' --notes "$notes"
+          fi
+          gh release upload "$TAG" "$APK" --clobber
