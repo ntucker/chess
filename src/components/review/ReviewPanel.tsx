@@ -43,7 +43,7 @@ interface Props {
   readonly review: ReviewView;
   /** On a narrow page, the scoresheet drawer while it's open (from the header), covering the headline and the move card. */
   readonly drawer?: { readonly onClose: () => void };
-  /** The lesson the game was played in, if any: "Play on from here" returns to its page. */
+  /** The lesson the game was played in, if any: "Play on from here" opens its page. */
   readonly lesson?: LessonId;
 }
 

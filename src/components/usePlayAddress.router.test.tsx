@@ -1,9 +1,10 @@
 import { afterEach, beforeAll, describe, expect, it } from '@jest/globals';
-import { router, Stack } from 'expo-router';
+import { router, useIsFocused } from 'expo-router';
 import { act, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
 import { runNavigationInTransitions } from '@/components/navigation';
+import { RootStack, shown } from '@/components/testing';
 import { uciLine } from '@/lesson/lesson.fixture';
 import { playOnHref } from '@/review/address';
 
@@ -15,11 +16,12 @@ import { ExpoRoot } from 'expo-router/build/ExpoRoot';
 import { getMockContext } from 'expo-router/build/testing-library/mock-config';
 
 let latest: ReturnType<typeof usePlayAddress>;
-/** The free-game page, as `src/app/play.tsx` reads its address. */
+/** The free-game page, as `src/app/play.tsx` reads its address; `latest` is the one in front. */
 function Play() {
   const answer = usePlayAddress();
+  const focused = useIsFocused();
   useLayoutEffect(() => {
-    latest = answer;
+    if (focused) latest = answer;
   });
   return null;
 }
@@ -27,7 +29,7 @@ function Play() {
 let root: Root | undefined;
 async function open(url: string) {
   const context = getMockContext({
-    _layout: () => <Stack screenOptions={{ headerShown: false }} />,
+    _layout: RootStack,
     index: () => null,
     play: Play,
     review: () => null,
@@ -69,24 +71,28 @@ describe('usePlayAddress', () => {
     expect([moves(), latest.side]).toEqual([uciLine('e4', 'c6'), 'black']);
   });
 
-  it('plays on from the review on the page already open, in place of its game, and again after a move', async () => {
+  it('plays on from the review over it: Back returns to the review, then to the game reviewed', async () => {
     await open('/play');
     await play('e2e4', 'e7e5');
     await run(() => router.push('/review'));
-    await run(() => router.dismissTo(playOnHref(CORRECTED, 'black')));
-    expect([moves(), latest.side]).toEqual([CORRECTED, 'black']);
+    await run(() => router.push(playOnHref(CORRECTED, 'black')));
+    expect([shown.path, moves(), latest.side]).toEqual(['/play', CORRECTED, 'black']);
+    expect(shown.params).toMatchObject({ moves: CORRECTED.join(' '), side: 'black' });
+    // A move past the line drops it, and the side, from the address.
+    await play('g1f3');
+    expect([shown.params.moves, shown.params.side]).toEqual([undefined, undefined]);
+    await run(() => router.back());
+    expect(shown.path).toBe('/review');
+    await run(() => router.back());
+    expect([shown.path, moves(), latest.side]).toEqual(['/play', uciLine('e4', 'e5'), 'white']);
     expect(router.canGoBack()).toBe(false);
-    // A move past the line drops it from the address, so the same link starts it again.
-    await play('e4e5');
-    await run(() => router.push('/review'));
-    await run(() => router.dismissTo(playOnHref(CORRECTED, 'black')));
-    expect(moves()).toEqual(CORRECTED);
   });
 
-  it('plays on from a review opened on its own, in its place', async () => {
+  it('plays on from a review opened on its own, over it', async () => {
     await open('/review');
-    await run(() => router.dismissTo(playOnHref(CORRECTED, 'black')));
+    await run(() => router.push(playOnHref(CORRECTED, 'black')));
     expect([moves(), latest.side]).toEqual([CORRECTED, 'black']);
-    expect(router.canGoBack()).toBe(false);
+    await run(() => router.back());
+    expect(shown.path).toBe('/review');
   });
 });

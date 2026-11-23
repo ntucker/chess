@@ -14,10 +14,9 @@ type Params = { readonly moves?: string; readonly side?: string };
  * The free-game page's game and side, kept in step with its address, which
  * can start the game having played moves, from a side
  * (`/play?moves=e2e4 e7e5&side=black`): the review's "Play on from here"
- * (`playOnHref`), which may land on the page already open. A move past those
- * moves, or a new game, drops them from the address, so the same link starts
- * its game afresh. The side counts only with moves. Without them the game
- * starts empty, as White.
+ * (`playOnHref`). A move past those moves, or a new game, drops them from the
+ * address, which no longer names the game on the board. The side counts only
+ * with moves. Without them the game starts empty, as White.
  */
 export function usePlayAddress() {
   const router = useRouter();
