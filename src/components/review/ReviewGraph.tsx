@@ -182,6 +182,10 @@ const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 // The worklets the area's spring calls come first: a worklet's helpers have
 // to be defined before it.
+//
+// Shared values here are read with get() and written with set(), never
+// `.value`: the React Compiler memoizes a closure on the `.value` paths it
+// reads, which reads them while rendering.
 
 /** `start` partway (`t`, 0 to 1) to `end`. */
 function lerp(start: number, end: number, t: number): number {
@@ -217,19 +221,19 @@ function useSpringArea(shown: readonly number[], still: boolean) {
       (next: readonly number[], jump: boolean) => {
         'worklet';
         // Scores the area already springs to (as at the start) keep its spring on course.
-        const same = next.length === to.value.length && next.every((s, n) => s === to.value[n]);
+        const same = next.length === to.get().length && next.every((s, n) => s === to.get()[n]);
         if (same) return;
-        from.value = mix(from.value, to.value, progress.value);
-        to.value = next;
-        progress.value = 0;
-        progress.value = jump ? 1 : springTo(1, springs.smooth, { precision: SETTLED });
+        from.set(mix(from.get(), to.get(), progress.get()));
+        to.set(next);
+        progress.set(0);
+        progress.set(jump ? 1 : springTo(1, springs.smooth, { precision: SETTLED }));
       },
       scores,
       still,
     );
   }, [scores, still, from, to, progress]);
   const outline = useAnimatedProps(() => ({
-    d: topArea(mix(from.value, to.value, progress.value)),
+    d: topArea(mix(from.get(), to.get(), progress.get())),
   }));
   return { spring: { from, to, progress }, outline };
 }
@@ -276,17 +280,17 @@ function useScrub({
   const game = useSharedValue({ total, snaps: kept });
   // A shared value can't change while rendering; the gestures read this one a commit later.
   useEffect(() => {
-    game.value = { total, snaps: kept };
+    game.set({ total, snaps: kept });
   }, [total, kept, game]);
   const plyUnder = (x: number) => {
     'worklet';
-    const { total, snaps } = game.value;
+    const { total, snaps } = game.get();
     return plyAt(x - PAD, width.get(), total, snaps);
   };
   const scrubTo = (x: number) => {
     'worklet';
-    at.value = plyUnder(x);
-    shown.value = true;
+    at.set(plyUnder(x));
+    shown.set(true);
   };
   const follow = ({ x }: { readonly x: number }) => {
     'worklet';
@@ -294,7 +298,7 @@ function useScrub({
   };
   const hide = () => {
     'worklet';
-    shown.value = false;
+    shown.set(false);
   };
   const pan = usePanGesture({
     // Sideways only: an up-and-down drag still scrolls the page.
@@ -305,7 +309,7 @@ function useScrub({
     onUpdate: follow,
     onDeactivate: (event) => {
       'worklet';
-      if (!event.canceled) scheduleOnRN(goto, at.value);
+      if (!event.canceled) scheduleOnRN(goto, at.get());
     },
     onFinalize: hide,
   });
@@ -325,17 +329,17 @@ function useScrub({
   // Each style reads its shared values itself: a style reruns only for the
   // shared values its own body names, not those a helper it calls reads.
   const lineStyle = useAnimatedStyle(() => ({
-    opacity: shown.value ? 1 : 0,
-    transform: [{ translateX: plyX(at.value, width.get(), game.value.total) }],
+    opacity: shown.get() ? 1 : 0,
+    transform: [{ translateX: plyX(at.get(), width.get(), game.get().total) }],
   }));
   const bubbleStyle = useAnimatedStyle(() => {
-    const x = plyX(at.value, width.get(), game.value.total);
+    const x = plyX(at.get(), width.get(), game.get().total);
     // Over the line, kept within the graph.
     const left = Math.min(Math.max(x - BUBBLE.width / 2, -PAD), width.get() + PAD - BUBBLE.width);
-    return { opacity: shown.value ? 1 : 0, transform: [{ translateX: left }] };
+    return { opacity: shown.get() ? 1 : 0, transform: [{ translateX: left }] };
   });
   const stripStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: -at.value * BUBBLE.width }],
+    transform: [{ translateX: -at.get() * BUBBLE.width }],
   }));
   /** Takes the graph's measured width, which the gestures and the scrub's styles read. */
   const measure = (measured: number) => {
@@ -366,7 +370,7 @@ function Dot({
   // reads of the spring stay in the style's body: Reanimated reruns a style
   // only for the shared values its body names, not those a helper reads.
   const onEdge = useAnimatedStyle(() => {
-    const edge = shareAt(from.value, to.value, progress.value, mark.ply) * height;
+    const edge = shareAt(from.get(), to.get(), progress.get(), mark.ply) * height;
     const center = Math.min(Math.max(edge, DOT / 2), height - DOT / 2);
     return { transform: [{ translateY: center - DOT / 2 }] };
   });
