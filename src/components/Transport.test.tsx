@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, it, jest } from '@jest/globals';
 import { act, type ReactNode, useState } from 'react';
 import { SafeAreaFrameContext, SafeAreaInsetsContext } from 'react-native-safe-area-context';
+import { StyleSheet, View } from 'react-native';
 import { createRoot, type Root } from 'test-renderer';
 
 import { Transport } from './Transport';
@@ -34,6 +35,20 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
+/** Renders `children` on a narrow phone screen. */
+function render(children: ReactNode) {
+  act(() => {
+    root = createRoot();
+    root.render(
+      <SafeAreaFrameContext.Provider value={{ x: 0, y: 0, width: 360, height: 800 }}>
+        <SafeAreaInsetsContext.Provider value={{ top: 0, bottom: 0, left: 0, right: 0 }}>
+          {children}
+        </SafeAreaInsetsContext.Provider>
+      </SafeAreaFrameContext.Provider>,
+    );
+  });
+}
+
 /** A stepper over a game of `total` moves, at `start`; returns where it is now. */
 function stepper(start: number, total: number) {
   let at = start;
@@ -42,16 +57,7 @@ function stepper(start: number, total: number) {
     at = ply;
     return <Transport ply={ply} total={total} onGoto={setPly} />;
   }
-  act(() => {
-    root = createRoot();
-    root.render(
-      <SafeAreaFrameContext.Provider value={{ x: 0, y: 0, width: 360, height: 800 }}>
-        <SafeAreaInsetsContext.Provider value={{ top: 0, bottom: 0, left: 0, right: 0 }}>
-          <Game />
-        </SafeAreaInsetsContext.Provider>
-      </SafeAreaFrameContext.Provider>,
-    );
-  });
+  render(<Game />);
   const arrow = (label: string) =>
     root!.container.queryAll((node) => node.props.accessibilityLabel === label)[0].props;
   return { arrow, ply: () => at };
@@ -87,4 +93,25 @@ it('steps once per tap, each way, and turns an arrow off at its end', () => {
   act(() => arrow('Forward').onPress());
   expect(ply()).toBe(2);
   expect(arrow('Forward').disabled).toBe(true);
+});
+
+it('grows its middle only when asked to fill its row, never in a name bar', () => {
+  const middleGrow = (fill: boolean) => {
+    render(
+      <Transport
+        ply={0}
+        total={2}
+        onGoto={() => {}}
+        fill={fill}
+        middle={<View testID="middle" />}
+      />,
+    );
+    const [middle] = root!.container.queryAll((node) => node.props.testID === 'middle');
+    const grow = StyleSheet.flatten(middle.parent!.props.style)?.flexGrow;
+    act(() => root!.unmount());
+    root = undefined;
+    return grow;
+  };
+  expect(middleGrow(true)).toBe(1);
+  expect(middleGrow(false)).toBeUndefined();
 });

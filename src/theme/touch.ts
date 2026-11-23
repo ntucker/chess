@@ -24,9 +24,10 @@ export const touchTarget: number = WEB
 /**
  * Padding on each side of something `content` long that makes it
  * `touchTarget` long, or `least` where that is more (a mouse's page). For
- * text, which can't center itself in a least height off the web, or for
- * controls in a row that should keep even gaps rather than each grow to
- * `touchTarget`. Example: a caption line's 16 px take 16 px above and below.
+ * text that can't take a least height (a link in a line of text; a line on
+ * its own takes `touchLine`), or for controls in a row that should keep even
+ * gaps rather than each grow to `touchTarget`. Example: a caption line's
+ * 16 px take 16 px above and below.
  */
 export function touchPadding(content: number, least = 0): number {
   return WEB

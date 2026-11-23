@@ -59,6 +59,8 @@ const RELAYOUT = `
     val first = laidOutFontScale == 0f
     laidOutFontScale = fontScale
     if (first) return
+    // React Native's own handler may not have run yet (Expo hands the delegate
+    // its calls later), and the text is measured from these metrics.
     DisplayMetricsHolder.initDisplayMetrics(this)
     relayOutReactViews(window.decorView)
   }
