@@ -217,6 +217,20 @@ describe("useLesson's verdicts on the candidates", () => {
     expect(mockSearched.at(-1)).toBe(after('c8f5'));
   });
 
+  it('judges the candidates when the search before the shown move gave up', async () => {
+    await render(line);
+    await store(line, [['g8f6', 0.45]]);
+    await act(async () => {
+      void controllers[0].setError(
+        getAnalysis,
+        'stockfish',
+        line.slice(0, -1),
+        new Error('gave up'),
+      );
+    });
+    expect(mockSearched.at(-1)).toBe(after('c8f5'));
+  });
+
   it('searches the candidate pointed at first, unless one has started', async () => {
     await render(line);
     await labelE5();

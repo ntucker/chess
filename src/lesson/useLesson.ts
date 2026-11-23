@@ -235,8 +235,12 @@ export function useLesson(
     engine: { best: lines?.[0].uci, top: engineRows, final, verdicts },
     refutation: game.refutation,
   });
-  // The board's own move's label comes first: it needs the position before too.
-  const labelled = ply === 0 || game.quality !== undefined;
+  // The board's own move's label comes first: it needs the position before
+  // too. If that search gave up, the label never comes, so don't wait for it.
+  const labelled =
+    ply === 0 ||
+    game.quality !== undefined ||
+    analysisError(ctrl, 'stockfish', shownLine.slice(0, -1), state) !== undefined;
   const judging = verdictSearch(shown, rareShown, final && labelled, (uci) => {
     const line = lineAfter(uci);
     const after = ctrl.get(PositionAnalysis, analysisKey('stockfish', line), state);
