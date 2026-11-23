@@ -10,7 +10,7 @@ import { type Color, shownMove } from '@/game/replay';
 import type { LessonId } from '@/resources/lesson';
 import { playOnHref } from '@/review/address';
 import { compareMove } from '@/review/comparison';
-import type { ReviewMove } from '@/review/review';
+import { isFine, type ReviewMove } from '@/review/review';
 import type { Review } from '@/review/useReview';
 import { NarrowOnly, useNarrowPart } from '@/theme/Narrow';
 import { qualityLooks } from '@/theme/moveQuality';
@@ -179,7 +179,7 @@ function momentHeadline(
   // "Find a better move than 7…Qxb2."; where the move left the guide but lost nothing, the guide's
   // move, though a best or good try that beats the game's move also passes (`passes`, review/retry.ts).
   const goal =
-    answer?.guide && (move.quality === 'best' || move.quality === 'good')
+    answer?.guide && isFine(move.quality)
       ? `Find the guide's move, or one stronger than ${named}.`
       : `Find a better move than ${named}.`;
   const latest = tries.at(-1);

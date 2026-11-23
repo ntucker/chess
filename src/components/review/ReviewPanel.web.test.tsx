@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client';
 
 import type { FinalAnalysis } from '@/evaluation/evaluation';
 import { type Color, legalMoveCountAt, replay } from '@/game/replay';
+import { movesGivenUp } from '@/review/refine';
 import { type GuideAnswer, momentAt } from '@/review/retry';
 import { reviewMoves } from '@/review/review';
 import { listing } from '@/review/review.fixture';
@@ -37,6 +38,7 @@ jest.mock('expo-router', () => ({
 const LINE = ['e2e4', 'e7e5', 'd1h5'];
 const PLIES = replay(LINE);
 const LEGAL = PLIES.map(({ fen }) => legalMoveCountAt(fen));
+const GIVEN_UP = movesGivenUp(PLIES);
 const SEARCHED: readonly FinalAnalysis[] = [
   listing(['e2e4', 0.55], ['d2d4', 0.55]),
   listing(['e7e5', 0.55], ['c7c5', 0.56], ['e7e6', 0.57]),
@@ -64,7 +66,14 @@ function review(
 ) {
   const analyses = PLIES.map((_, n) => (searched.includes(n) ? SEARCHED[n] : undefined));
   const failed = new Set(overrides.failure ? [ply] : []);
-  const moves = reviewMoves({ plies: PLIES, book: [], legal: LEGAL, analyses, failed });
+  const moves = reviewMoves({
+    plies: PLIES,
+    book: [],
+    legal: LEGAL,
+    analyses,
+    failed,
+    givenUp: GIVEN_UP,
+  });
   const moment = momentAt({
     plies: PLIES,
     moves,

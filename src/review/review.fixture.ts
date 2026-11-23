@@ -1,6 +1,6 @@
 // For tests only: analyses written as their moves and White's expected scores,
 // and review moves.
-import type { MoveQuality } from '@/analysis/quality';
+import type { ReviewQuality } from '@/analysis/quality';
 import type { Analysis, AnalysisLine, FinalAnalysis } from '@/evaluation/evaluation';
 
 import type { ReviewMove } from './review';
@@ -63,7 +63,7 @@ export const failedMove = (ply: number): ReviewMove => ({
  */
 export function judgedMove(
   ply: number,
-  quality: MoveQuality = 'good',
+  quality: ReviewQuality = 'good',
   before = 0.5,
   after = before,
 ): ReviewMove {

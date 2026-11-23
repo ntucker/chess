@@ -18,7 +18,7 @@ import Animated, {
 import Svg, { Defs, Path, Pattern, Rect } from 'react-native-svg';
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
-import type { MoveQuality } from '@/analysis/quality';
+import type { ReviewQuality } from '@/analysis/quality';
 import { QualityBadge } from '@/components/QualityBadge';
 import type { Analysis } from '@/evaluation/evaluation';
 import { type Color, opposite, shownMove } from '@/game/replay';
@@ -449,7 +449,7 @@ const BubbleName = memo(function BubbleName({
   quality,
 }: {
   readonly name: string;
-  readonly quality?: MoveQuality;
+  readonly quality?: ReviewQuality;
 }) {
   return (
     <View style={styles.name}>

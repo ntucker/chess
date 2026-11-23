@@ -1,7 +1,5 @@
-import { useRouter } from 'expo-router';
-
 import { HeaderButton } from '@/components/HeaderButton';
-import { goBack } from '@/components/navigation';
+import { useBack } from '@/components/navigation';
 import type { Destination } from '@/components/PlaceLink';
 
 /**
@@ -11,14 +9,14 @@ import type { Destination } from '@/components/PlaceLink';
  * reader says, such as "Back to the board".
  */
 export function BackButton({ href, label }: Destination) {
-  const router = useRouter();
+  const back = useBack(href);
   return (
     <HeaderButton
       icon="chevron-back"
       iconSize={22}
       accessibilityRole="button"
       accessibilityLabel={label}
-      onPress={() => goBack(router, href)}
+      onPress={back}
     />
   );
 }

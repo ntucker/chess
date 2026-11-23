@@ -3,7 +3,7 @@
  * stands, the moments it marks, how far the guide went, and which move a
  * point along it names. `ReviewGraph` draws them.
  */
-import type { MoveQuality } from '@/analysis/quality';
+import type { ReviewQuality } from '@/analysis/quality';
 import { type Analysis, scoreFor } from '@/evaluation/evaluation';
 import type { Color } from '@/game/replay';
 
@@ -31,7 +31,7 @@ export const topShares = (analyses: readonly (Analysis | undefined)[], top: Colo
  */
 export interface GraphMark {
   readonly ply: number;
-  readonly quality?: MoveQuality;
+  readonly quality?: ReviewQuality;
 }
 
 /**

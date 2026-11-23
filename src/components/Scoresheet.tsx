@@ -3,7 +3,7 @@ import { Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
 import { useRef } from 'react';
 import { ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
 
-import type { MoveQuality } from '@/analysis/quality';
+import type { ReviewQuality } from '@/analysis/quality';
 import type { Ply } from '@/game/replay';
 import { fonts } from '@/theme/theme';
 
@@ -31,7 +31,7 @@ interface Props {
 export type Unjudged = 'waiting' | 'failed';
 
 /** What the scoresheet shows beside a move: its label, or why it has none. */
-export type Mark = MoveQuality | Unjudged;
+export type Mark = ReviewQuality | Unjudged;
 
 /**
  * The moves as a two-column scoresheet (1. e4 e5), each with its mark, and

@@ -149,6 +149,16 @@ describe('momentAt', () => {
     expect(momentOf({ learner: 'black' })).toMatchObject({ canRetry: false, hidden: false });
   });
 
+  it('retries a missed chance, but not a brilliant or great move', () => {
+    const labelled = (quality: 'miss' | 'brilliant' | 'great') =>
+      momentOf({
+        moves: [judgedMove(0, 'best'), judgedMove(1, 'best'), judgedMove(2, quality, 0.55, 0.4)],
+      });
+    expect(labelled('miss')).toMatchObject({ canRetry: true, hidden: true });
+    expect(labelled('brilliant')).toMatchObject({ canRetry: false, hidden: false });
+    expect(labelled('great')).toMatchObject({ canRetry: false, hidden: false });
+  });
+
   it("hides the learner's move still waiting for its label, with nothing to retry yet", () => {
     const waiting = momentOf({ moves: [judgedMove(0), judgedMove(1), waitingMove(2)] });
     expect(waiting).toMatchObject({ canRetry: false, hidden: true });
