@@ -1,5 +1,4 @@
-import { Inline } from '@reactive/silk-native';
-import { Dialog } from '@reactive/silk-native/gesture';
+import { Dialog, Inline } from '@reactive/silk-native';
 import { useIsFocused } from 'expo-router';
 import { type ReactNode, useEffect, useEffectEvent } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
