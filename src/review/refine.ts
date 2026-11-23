@@ -9,9 +9,9 @@
  * - Great: the one good move, when every other loses a lot.
  * - Miss: a mistake or blunder right after the opponent's own, letting it go.
  */
-import { qualityRule, refutation, type ReviewQuality } from '@/analysis/quality';
 import { parseSquare } from 'chessops/util';
 
+import { qualityRule, refutation, type ReviewQuality } from '@/analysis/quality';
 import { type FinalAnalysis, scoreFor } from '@/evaluation/evaluation';
 import { type Color, opposite, parsePosition } from '@/game/replay';
 
@@ -53,8 +53,9 @@ export function refine(
     if (brilliant(move, game)) return 'brilliant';
     if (great(move, game)) return 'great';
   }
-  if ((quality === 'mistake' || quality === 'blunder') && missed(move, previous, game))
+  if ((quality === 'mistake' || quality === 'blunder') && missed(move, previous, game)) {
     return 'miss';
+  }
   return quality;
 }
 
