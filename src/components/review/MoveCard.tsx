@@ -8,13 +8,11 @@ import type { ReviewQuality } from '@/analysis/quality';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { PointingArea } from '@/components/lesson/PointingArea';
-import { TippedBadge } from '@/components/QualityBadge';
+import { qualityTip, TippedBadge } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import type { Uci } from '@/lesson/lesson';
 import type { ComparedMove, Comparison } from '@/review/comparison';
-import { reviewRule } from '@/review/refine';
 import type { Answer, GuideAnswer, Try } from '@/review/retry';
-import { qualityLooks } from '@/theme/moveQuality';
 import { fonts } from '@/theme/theme';
 
 interface Props {
@@ -268,10 +266,6 @@ function PlayOn({ href }: { readonly href: Href }) {
     </Tip>
   );
 }
-
-/** "Blunder: gave away 20% or more of the winning chances. Here: 26%." */
-const qualityTip = (quality: ReviewQuality, detail?: string) =>
-  `${qualityLooks[quality].name}: ${reviewRule(quality)}.${detail ? ` ${detail}` : ''}`;
 
 /** The label's badge beside the move, about the height of the notation's capitals. */
 const BADGE_SIZE = 16;

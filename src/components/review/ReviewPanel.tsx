@@ -6,9 +6,11 @@ import { StatusHeadline } from '@/components/GameStatus';
 import { ScoresheetDrawer } from '@/components/ScoresheetDrawer';
 import { Scoresheet } from '@/components/Scoresheet';
 import { SourceFootnote } from '@/components/SourceLink';
-import { type Color, shownMove } from '@/game/replay';
+import { resultVerdict } from '@/game/ending';
+import { analyze, type Color, shownMove } from '@/game/replay';
 import type { LessonId } from '@/resources/lesson';
 import { playOnHref } from '@/review/address';
+import { LEAST_COUNTED, verdictLine } from '@/review/accuracy';
 import { compareMove } from '@/review/comparison';
 import { isFine, type ReviewMove } from '@/review/review';
 import type { Review } from '@/review/useReview';
@@ -18,6 +20,7 @@ import { qualityLooks } from '@/theme/moveQuality';
 import { MoveCard } from './MoveCard';
 import { ReviewActions } from './ReviewActions';
 import { type GraphView, ReviewGraph } from './ReviewGraph';
+import { ReviewTally } from './Tally';
 
 /** What the panel shows of a review (`useReview`); any analyses will do, so the gallery can make them up. */
 export type ReviewView = GraphView &
@@ -33,6 +36,8 @@ export type ReviewView = GraphView &
     | 'showAnswer'
     | 'tryFailure'
     | 'searchTriesAgain'
+    | 'tally'
+    | 'accuracy'
   >;
 
 interface Props {
@@ -71,7 +76,12 @@ export function ReviewPanel({ eyebrow, learner, review, drawer, lesson }: Props)
     <Stack {...part('drawer-panel', sections)}>
       {/* The drawer covers the rest, on a phone's short page all the room it can get. */}
       <View {...part(drawer && 'wide-only', sections)}>
-        <StatusHeadline eyebrow={eyebrow} eyebrowInHeader news="all" {...reviewHeadline(review)} />
+        <StatusHeadline
+          eyebrow={eyebrow}
+          eyebrowInHeader
+          news="all"
+          {...reviewHeadline(review, learner)}
+        />
         {/* A narrow page draws the graph in the row under the board. */}
         <View {...part('wide-only', styles.graph)}>
           <ReviewGraph review={review} learner={learner} height={GRAPH_HEIGHT} />
@@ -90,7 +100,9 @@ export function ReviewPanel({ eyebrow, learner, review, drawer, lesson }: Props)
             pointed={pointed}
             onPoint={point}
           />
-        ) : null}
+        ) : (
+          <ReviewTally tally={review.tally} learner={learner} />
+        )}
         {/* The header's scoresheet button takes the source link's place there. */}
         <NarrowOnly>
           <SourceFootnote />
@@ -113,19 +125,33 @@ export function ReviewPanel({ eyebrow, learner, review, drawer, lesson }: Props)
 /**
  * The headline: while moves still wait for Stockfish, at the start or at
  * one of them, that the reviews are coming in, with how far they've got;
- * at a move, its label; at a move whose search gave up, a Try again.
+ * at the start once they're in, the verdict on the learner's game
+ * (`summaryHeadline`); at a move, its label; at a move whose search gave
+ * up, a Try again.
  */
-function reviewHeadline({
-  plies,
-  ply,
-  moves,
-  failure,
-  tryAgain,
-  ...retried
-}: Pick<
-  ReviewView,
-  'plies' | 'ply' | 'moves' | 'failure' | 'tryAgain' | 'moment' | 'tryFailure' | 'searchTriesAgain'
->) {
+function reviewHeadline(
+  {
+    plies,
+    ply,
+    moves,
+    failure,
+    tryAgain,
+    ...rest
+  }: Pick<
+    ReviewView,
+    | 'plies'
+    | 'ply'
+    | 'moves'
+    | 'failure'
+    | 'tryAgain'
+    | 'moment'
+    | 'tryFailure'
+    | 'searchTriesAgain'
+    | 'moments'
+    | 'accuracy'
+  >,
+  learner: Color,
+) {
   const move = ply > 0 ? moves[ply - 1] : undefined;
   const waiting = moves.filter(({ status }) => status === 'waiting').length;
   const coming = {
@@ -133,14 +159,9 @@ function reviewHeadline({
     detail: `Checking each move: ${moves.length - waiting} of ${moves.length}.`,
   };
   if (!move) {
-    if (waiting) return coming;
-    const failed = moves.filter(({ status }) => status === 'failed').length;
-    return {
-      title: 'The reviews are in.',
-      detail: failed
-        ? `${failed} of ${moves.length} moves couldn't be checked.`
-        : `All ${moves.length} moves checked.`,
-    };
+    return waiting
+      ? coming
+      : summaryHeadline({ plies, moves, ...rest }, rest.accuracy[learner], learner);
   }
   const named = shownMove(plies[ply].move?.san, ply);
   if (move.status === 'waiting') return coming;
@@ -153,11 +174,59 @@ function reviewHeadline({
     };
   }
   return (
-    momentHeadline(retried, move, ply, named) ?? {
+    momentHeadline(rest, move, ply, named) ?? {
       title: `${qualityLooks[move.quality].name}.`,
       detail: named,
     }
   );
+}
+
+/**
+ * The headline at the start once every move is checked: the verdict on the
+ * learner's accuracy (`verdictLine`), over how the game went and how many
+ * moments it has. Example: "Warm applause." over "You won in 34 moves. 3
+ * moments to replay.". With too few of their moves judged, "A brief
+ * appearance." says why there's no verdict.
+ */
+function summaryHeadline(
+  { plies, moves, moments }: Pick<ReviewView, 'plies' | 'moves' | 'moments'>,
+  accuracy: ReviewView['accuracy']['white'],
+  learner: Color,
+) {
+  const length = gameLength(plies, learner);
+  if (accuracy === 'brief') {
+    return {
+      title: 'A brief appearance.',
+      detail: `${length} Fewer than ${LEAST_COUNTED} of your moves were judged, too few for a verdict.`,
+    };
+  }
+  const failed = moves.filter(({ status }) => status === 'failed').length;
+  return {
+    title: accuracy === undefined ? 'The reviews are in.' : verdictLine(accuracy),
+    detail: [
+      length,
+      count(moments.length, 'moment', 'to replay', 'No moments to replay.'),
+      failed ? count(failed, 'move', "couldn't be checked") : undefined,
+    ]
+      .filter(Boolean)
+      .join(' '),
+  };
+}
+
+/** How long the game went, and how it ended for the learner: "You won in 34 moves.", "Drawn in 12 moves.", "34 moves." */
+function gameLength(plies: ReviewView['plies'], learner: Color) {
+  const length = count(Math.ceil((plies.length - 1) / 2), 'move');
+  const { result } = analyze(plies.at(-1)!);
+  if (!result) return `${length}.`;
+  const { mood } = resultVerdict(result, learner);
+  return mood === 'drawn' ? `Drawn in ${length}.` : `You ${mood} in ${length}.`;
+}
+
+/** "3 moments to replay.", "1 move couldn't be checked.", or with none, `none`. */
+function count(n: number, noun: string, after?: string, none?: string) {
+  if (n === 0 && none) return none;
+  const counted = `${n} ${noun}${n === 1 ? '' : 's'}`;
+  return after ? `${counted} ${after}.` : counted;
 }
 
 /**
