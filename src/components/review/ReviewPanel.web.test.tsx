@@ -253,6 +253,16 @@ describe('ReviewPanel', () => {
       },
       <ReviewPanel eyebrow="Review" learner="white" review={revealed} lesson="caro-kann" />,
     );
+    // A free game's goes back to the free-game page, from the learner's side.
+    render(
+      revealed,
+      (host) =>
+        expect(JSON.parse(link(host)!.getAttribute('data-href')!)).toEqual({
+          pathname: '/play',
+          params: { moves: 'e2e4 e7e5 g1f3', side: 'white' },
+        }),
+      <ReviewPanel eyebrow="Review" learner="white" review={revealed} />,
+    );
   });
 
   it('checks a try Stockfish did not list, then keeps the moves hidden when it fails', () => {

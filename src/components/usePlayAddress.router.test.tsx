@@ -59,6 +59,11 @@ describe('usePlayAddress', () => {
     expect([moves(), latest.side]).toEqual([[], 'white']);
   });
 
+  it('takes the side only with moves', async () => {
+    await open('/play?side=black');
+    expect([moves(), latest.side]).toEqual([[], 'white']);
+  });
+
   it('starts the moves and side the address names, up to the first illegal move', async () => {
     await open('/play?moves=e2e4 c7c6 e2e5&side=black');
     expect([moves(), latest.side]).toEqual([uciLine('e4', 'c6'), 'black']);

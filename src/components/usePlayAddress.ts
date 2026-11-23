@@ -27,7 +27,9 @@ export function usePlayAddress() {
   const address: Params = useInBrowser() ? params : {};
   const named = addressMoves(address.moves);
   // The side of the game on the board, which the next game keeps.
-  const [side, setSide] = useState<Color>(sideOf(address.side) ?? 'white');
+  const [side, setSide] = useState<Color>(
+    (address.moves !== undefined && sideOf(address.side)) || 'white',
+  );
   const store = useReducer(gameReducer, named, startGame);
   // An address that names moves starts their game; one that names none is
   // the page's own drop. Checked during render.

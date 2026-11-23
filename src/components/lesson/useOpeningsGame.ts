@@ -68,7 +68,7 @@ interface Visit extends Address {
  * (`dismissTo` would land on the entry underneath and take its game).
  * An address can also name one of its lesson's variations
  * (`/lesson/<id>?variation=<id>`, from the opening list), which starts the
- * game at the line that opens it, or moves (`movesParam`: `?moves=e2e4 c7c6`, the
+ * game at the line that opens it, or moves (`?moves=e2e4 c7c6`, the
  * review's "Play on from here"), which start the game having played them; a
  * move past that line drops it.
  *
