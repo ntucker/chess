@@ -117,7 +117,7 @@ export function findOpportunities({
     if (visited.has(node.key) || node.line.length >= lastPly) continue;
     visited.add(node.key);
     if (node.pos.turn === side) {
-      for (const uci of ownMoves(node, context)) {
+      for (const uci of punishingMoves(node, context)) {
         const next = child(node, uci, node.reach);
         if (next) frontier.push(next);
       }
@@ -137,10 +137,10 @@ export function findOpportunities({
   return { finds: [...finds.values()].sort(byScore), thin, requests };
 }
 
-/** The punishing side's moves at `node`: its own, else Stockfish's best; none until known. */
-function ownMoves(node: Node, { answers, ask }: Context): readonly Uci[] {
-  const own = answers.ownMoves?.(node);
-  if (own) return own;
+/** The punishing side's moves at `node`: the guide's, else Stockfish's best; none until known. */
+function punishingMoves(node: Node, { answers, ask }: Context): readonly Uci[] {
+  const guide = answers.guideMoves?.(node);
+  if (guide?.length) return guide;
   const analysis = answers.analysis(node);
   if (!sketched(analysis)) {
     ask('sketch', node);

@@ -42,7 +42,7 @@ type Lines = [san: string | undefined, score: number | string][];
 const replies = new Map<string, MoveCounts>();
 /** Each position's searches, shallowest first. */
 const analyses = new Map<string, Analysis[]>();
-const ownMoves = new Map<string, Uci[]>();
+const guideMoves = new Map<string, Uci[]>();
 
 /** The games each move (SAN) was played in after `sans`. */
 function games(sans: string, counts: Record<string, number>) {
@@ -81,7 +81,7 @@ searched(OPENING, search(OPENING, [['d3', 0.6]]));
 for (const san of ['d3', 'Nc3', 'e5', 'Bc4']) {
   searched(`${OPENING} ${san}`, search(`${OPENING} ${san}`, [[undefined, 0.58]]));
 }
-ownMoves.set(at(`${OPENING} d3`).key, [last(SETUP)]); // the lesson's book move
+guideMoves.set(at(`${OPENING} d3`).key, [last(SETUP)]); // the lesson's book move
 games(SETUP, { Be2: 410, f3: 190, Bg5: 150, h3: 100, Nc3: 80, c3: 70 });
 searched(
   SETUP,
@@ -127,7 +127,7 @@ const fromGames =
 const known: Answers = {
   replies: fromGames(),
   analysis: ({ key }) => analyses.get(key)?.at(-1) ?? NO_MOVE,
-  ownMoves: ({ key }) => ownMoves.get(key),
+  guideMoves: ({ key }) => guideMoves.get(key),
 };
 
 /** A host that has only the answers asked for so far (a sketch where asked for one, if any). */
@@ -141,7 +141,7 @@ function asking() {
       if (has('sketch', spot)) return analyses.get(spot.key)?.[0] ?? NO_MOVE;
       return undefined;
     },
-    ownMoves: known.ownMoves,
+    guideMoves: known.guideMoves,
   };
   const answer = (requests: readonly Request[]) => {
     for (const { kind, spot } of requests) asked.add(`${kind} ${spot.key}`);
@@ -238,6 +238,44 @@ describe('findOpportunities', () => {
   it('stops Act III after the most moves the punishing side may play', () => {
     const [bg5] = find(known, { payoffMoves: 1 }).finds;
     expect(bg5.payoff).toEqual(BG5.payoff.slice(0, 2));
+  });
+
+  describe('Act III at the erring side', () => {
+    const AFTER = `${CUE} Nxe4`;
+    const BE3 = `${AFTER} Be3`;
+    /** `known`, with `analysis` for `sans` and the guide's move Be3 after 6...Nxe4. */
+    const withGuide = (sans: string, analysis: Analysis): Answers => ({
+      ...known,
+      guideMoves: (spot) => (spot.key === at(AFTER).key ? [last(BE3)] : known.guideMoves!(spot)),
+      analysis: (spot) => (spot.key === at(sans).key ? analysis : known.analysis(spot)),
+    });
+
+    it("follows the guide's move over the most played one", () => {
+      const answers = withGuide(
+        BE3,
+        full(BE3, [
+          ['Bxe3', 0.1],
+          ['h6', 0.4],
+        ]),
+      );
+      const [bg5] = find(answers, { payoffMoves: 1 }).finds;
+      expect(bg5.payoff).toEqual(uci(`${BE3} Bxe3`).slice(-2));
+    });
+
+    it("ends where the guide's move leaves the punishing side no longer winning", () => {
+      const [bg5] = find(withGuide(BE3, full(BE3, [['Bxe3', 0.5]]))).finds;
+      expect(bg5.payoff).toEqual([last(BE3)]);
+    });
+
+    it("plays Stockfish's reply at a thin position and goes on", () => {
+      const [bg5] = find({
+        ...withGuide(AFTER, full(AFTER, [['Be3', 0.2]])),
+        guideMoves: known.guideMoves,
+        replies: (spot) =>
+          spot.key === at(AFTER).key ? repliesFrom({}, LIMITS.minGames) : known.replies(spot),
+      }).finds;
+      expect(bg5.payoff).toEqual([last(BE3)]);
+    });
   });
 
   it('leaves the found rate out where too few games reach the cue', () => {

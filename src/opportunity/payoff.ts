@@ -10,15 +10,18 @@ import { child, type Context, type Node, type Replies } from './walk';
 /**
  * The moves from `start` (the position after the cue's best reply) until the
  * win is obvious, or undefined while an answer is missing. The punishing
- * side plays Stockfish's best; the erring side its most played reply, or
- * Stockfish's best where the position is thin. It ends at mate
- * (a mating line plays out), when the punishing side is `materialUp` points
- * ahead and winning, when its second-best move is winning too, after
- * `payoffMoves` of its moves, or when the game ends.
+ * side plays Stockfish's best; the erring side the guide's move, else its most
+ * played reply, else Stockfish's best where the position is thin. It ends at
+ * mate (a mating line plays out), when the punishing side is `materialUp`
+ * points ahead and winning, when its second-best move is winning too, after
+ * `payoffMoves` of its moves, where a guide move leaves it no longer winning
+ * (the guide holds a better defence, and Act III adds no move to beat it), or
+ * when the game ends.
  */
 export function payoff(start: Node, { side, answers, limits, ask }: Context): Uci[] | undefined {
   const moves: Uci[] = [];
   let punishingMoves = 0;
+  let guided = false;
   for (let node = start; !node.pos.isEnd();) {
     const analysis = answers.analysis(node);
     const full = () => (isFinal(analysis) ? analysis : void ask('full', node));
@@ -29,6 +32,7 @@ export function payoff(start: Node, { side, answers, limits, ask }: Context): Uc
       const [best, second] = final.lines;
       const winning = (line: typeof best | undefined) =>
         !!line && scoreFor(line.evaluation, side) >= limits.winScore;
+      if (guided && !winning(best)) break;
       const mating = forSide(best.evaluation.mate ?? 0, side) > 0;
       const won =
         !mating &&
@@ -38,16 +42,16 @@ export function payoff(start: Node, { side, answers, limits, ask }: Context): Uc
       uci = best.uci;
       punishingMoves++;
     } else {
-      const replies = answers.replies(node);
-      if (!replies) {
-        ask('replies', node);
-        return undefined;
-      }
-      uci = mostPlayed(replies);
-      if (!uci) {
-        const final = full();
-        if (!final) return undefined;
-        uci = final.lines[0].uci;
+      uci = answers.guideMoves?.(node)?.[0];
+      guided = uci !== undefined;
+      if (!guided) {
+        const replies = answers.replies(node);
+        if (!replies) {
+          ask('replies', node);
+          return undefined;
+        }
+        uci = mostPlayed(replies) ?? full()?.lines[0].uci;
+        if (!uci) return undefined;
       }
     }
     const next = uci === undefined ? undefined : child(node, uci, 0);

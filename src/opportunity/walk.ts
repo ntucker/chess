@@ -37,10 +37,12 @@ export interface Answers {
   /** Stockfish's analysis of the position: the deepest the host has, final or not. */
   analysis(spot: Spot): Analysis | undefined;
   /**
-   * The punishing side's own moves here (a lesson's book moves), where the host
-   * has some; elsewhere the finder plays Stockfish's best.
+   * A lesson's moves here, most played first (its book moves at its own side's
+   * turn, every move at the other's), where the host has some. The finder
+   * follows them for the punishing side, and Act III plays the first for the
+   * erring side; elsewhere they come from Stockfish or the replies.
    */
-  ownMoves?(spot: Spot): readonly Uci[] | undefined;
+  guideMoves?(spot: Spot): readonly Uci[] | undefined;
 }
 
 /**
