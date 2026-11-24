@@ -198,7 +198,8 @@ export function analyze(ply: Ply): Position {
   };
 }
 
-function gameResult(pos: Chess, repetitions: number): GameResult | undefined {
+/** How the game stands over at `pos`, seen `repetitions` times in it; undefined while it goes on. */
+export function gameResult(pos: Chess, repetitions: number): GameResult | undefined {
   if (pos.isCheckmate()) return { winner: opposite(pos.turn), reason: 'checkmate' };
   if (pos.isStalemate()) return { reason: 'stalemate' };
   if (pos.isInsufficientMaterial()) return { reason: 'insufficient material' };

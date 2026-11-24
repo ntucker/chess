@@ -421,4 +421,22 @@ describe('payoff', () => {
       payoff(start, { before: final, cue: final }, { side: 'white', answers, limits: LIMITS, ask }),
     ).toEqual({ moves: ['b4b3'], end: 0.5 });
   });
+
+  it("scores a mate the erring side's move gives as a loss", () => {
+    // Black's rook mates White's king on the back rank.
+    const start = walkTo('r3k3/8/8/8/8/8/6PP/7K b - - 0 1', [])!;
+    const final = { lines: [{ evaluation: evaluation(0.9) }], depth: 18, final: true } as const;
+    const answers: Answers = {
+      replies: () => undefined,
+      analysis: () => undefined,
+      guideMoves: (spot) => (spot.key === start.key ? ['a8a1'] : undefined),
+    };
+    expect(
+      payoff(
+        start,
+        { before: final, cue: final },
+        { side: 'white', answers, limits: LIMITS, ask: () => {} },
+      ),
+    ).toEqual({ moves: ['a8a1'], end: 0 });
+  });
 });

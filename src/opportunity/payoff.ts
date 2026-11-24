@@ -6,10 +6,11 @@ import {
   type FinalAnalysis,
   forSide,
   isFinal,
+  resultEvaluation,
   scoreFor,
 } from '@/evaluation/evaluation';
 import { balance } from '@/game/material';
-import type { Color } from '@/game/replay';
+import { gameResult } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 
 import { child, type Context, type Node, punishingLoss, type Replies } from './walk';
@@ -77,14 +78,9 @@ export function payoff(
     moves.push(uci);
     node = next;
   }
-  return { moves, end: result(node, side) ?? end };
-}
-
-/** The punishing side's score where the game is over at `node`; undefined while it goes on. */
-function result({ pos }: Node, side: Color): number | undefined {
-  if (!pos.isEnd()) return undefined;
-  if (!pos.isCheckmate()) return 0.5;
-  return pos.turn === side ? 0 : 1;
+  // Act III never repeats a position, so a repetition can't end it.
+  const over = gameResult(node.pos, 1);
+  return { moves, end: over ? scoreFor(resultEvaluation(over), side) : end };
 }
 
 /** The final analysis of `node`, asking for it while it's missing. */
