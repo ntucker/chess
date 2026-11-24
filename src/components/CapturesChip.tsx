@@ -1,4 +1,11 @@
-import { Popover, Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
+import {
+  Popover,
+  Pressable,
+  Surface,
+  Text,
+  useReducedMotion,
+  useTheme,
+} from '@reactive/silk-native';
 import { type ComponentRef, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { type EntryExitAnimationFunction, withDelay } from 'react-native-reanimated';
@@ -8,6 +15,7 @@ import { type Color, colorName, COLORS, opposite } from '@/game/replay';
 import { springs } from '@/motion/spring';
 import { springTo } from '@/motion/springTo';
 import { fonts } from '@/theme/theme';
+import { plural } from '@/words';
 
 import { tickHold } from './haptics';
 import { PieceGlyph } from './PieceGlyph';
@@ -67,7 +75,7 @@ export function CapturesChip({ captures, color }: Props) {
         onHoverOut={unpeek}
         style={styles.chip}
       >
-        <Surface elevation="raised" radius="lg" style={styles.pill}>
+        <Surface elevation="raised" style={styles.pill}>
           {even ? (
             <Text role="label" style={styles.lead}>
               =
@@ -147,6 +155,10 @@ function Pieces({
 
 /** Both sides' full lists, with their points, and one line on who is ahead. */
 function CapturesCard({ captures }: { readonly captures: Captures }) {
+  // Shown at once on the web, where Reanimated's entrances don't run here (as in MotionList),
+  // and when motion is reduced.
+  const still = useReducedMotion();
+  const fan = !WEB && !still;
   return (
     <View style={styles.card}>
       {COLORS.map((side) => (
@@ -156,11 +168,7 @@ function CapturesCard({ captures }: { readonly captures: Captures }) {
           </Text>
           <View style={styles.fan}>
             {captures.taken[side].map((role, i) => (
-              <Animated.View
-                key={i}
-                // The web shows them at once: Reanimated's entrances are native only here, as in MotionList.
-                entering={WEB ? undefined : FAN[Math.min(i, FAN.length - 1)]}
-              >
+              <Animated.View key={i} entering={fan ? FAN[Math.min(i, FAN.length - 1)] : undefined}>
                 <PieceGlyph role={role} color={opposite(side)} size={SIZE} />
               </Animated.View>
             ))}
@@ -185,18 +193,18 @@ export function standing({ material }: Captures) {
     .map(named)
     .join(' for ');
   if (lead === 0) return trade ? `Level on points: ${trade}.` : 'Level.';
-  return `${colorName(ahead)} is ${lead} ${lead === 1 ? 'point' : 'points'} up${trade ? `: ${trade}` : ''}.`;
+  return `${colorName(ahead)} is ${plural(lead, 'point')} up${trade ? `: ${trade}` : ''}.`;
 }
 
 /** "Up a rook and 2 pawns, 7 points ahead", for screen readers. */
 function upBy(pieces: readonly MaterialRole[], lead: number) {
-  const ahead = lead > 0 ? `, ${lead} ${lead === 1 ? 'point' : 'points'} ahead` : '';
+  const ahead = lead > 0 ? `, ${plural(lead, 'point')} ahead` : '';
   return `Up ${named(pieces)}${ahead}`;
 }
 
 /** "a rook and 2 pawns". */
 function named(pieces: readonly MaterialRole[]) {
-  const parts = groupByRole(pieces).map(([role, n]) => (n === 1 ? `a ${role}` : `${n} ${role}s`));
+  const parts = groupByRole(pieces).map(([role, n]) => (n === 1 ? `a ${role}` : plural(n, role)));
   return parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`;
 }
 
@@ -212,18 +220,13 @@ const pointsOf = (pieces: readonly MaterialRole[]) =>
 
 /** How far apart the card's pieces fan out of the chip, one after another. */
 const FAN_STAGGER_MS = 18;
-/** A piece that fans out comes from a little smaller and to the left. */
-const FAN_FROM = { opacity: 0, scale: 0.6, translateX: -6 };
-
 function fanIn(delay: number): EntryExitAnimationFunction {
   return () => {
     'worklet';
     const spring = (to: number) => withDelay(delay, springTo(to, springs.snappy));
     return {
-      initialValues: {
-        opacity: FAN_FROM.opacity,
-        transform: [{ translateX: FAN_FROM.translateX }, { scale: FAN_FROM.scale }],
-      },
+      // From a little smaller and to the left.
+      initialValues: { opacity: 0, transform: [{ translateX: -6 }, { scale: 0.6 }] },
       animations: {
         opacity: spring(1),
         transform: [{ translateX: spring(0) }, { scale: spring(1) }],
@@ -248,6 +251,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 8,
     height: SIZE + 6,
+    // Surface's radii stop at lg: a pill is round end to end.
     borderRadius: 999,
   },
   lead: { fontFamily: fonts.mono, flexShrink: 0 },

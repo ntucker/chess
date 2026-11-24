@@ -5,6 +5,7 @@
  */
 import { resultVerdict } from '@/game/ending';
 import { analyze, type Color, type Ply } from '@/game/replay';
+import { plural } from '@/words';
 
 import { LEAST_COUNTED, verdictLine } from './accuracy';
 import type { ReviewMove } from './review';
@@ -55,4 +56,3 @@ function gameLength(plies: readonly Ply[], learner: Color) {
 }
 
 /** "1 move", "3 moves". */
-const plural = (n: number, noun: string) => `${n} ${noun}${n === 1 ? '' : 's'}`;

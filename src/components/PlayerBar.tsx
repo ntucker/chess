@@ -15,11 +15,8 @@ import { CapturesChip } from './CapturesChip';
 interface Props {
   readonly name: string;
   readonly detail: string;
-  /**
-   * A shorter `detail` for a narrow page, where it shares the name's line;
-   * empty for none, where `detailControl` says enough.
-   */
-  readonly brief?: string;
+  /** Show `detail` on a wide page only: on a narrow one, `detailControl` says enough. */
+  readonly detailWideOnly?: boolean;
   /** A control that ends the detail's line, such as the opponent's strength. */
   readonly detailControl?: ReactNode;
   readonly color: Color;
@@ -51,7 +48,7 @@ const SWAP_ICON = 16;
 export function PlayerBar({
   name,
   detail,
-  brief,
+  detailWideOnly,
   detailControl,
   color,
   toMove,
@@ -79,14 +76,9 @@ export function PlayerBar({
           <CapturesChip captures={captures} color={color} />
         </View>
         <View style={styles.detail}>
-          <Text {...caption} {...part(brief !== undefined && 'wide-only', styles.detailText)}>
+          <Text {...caption} {...part(detailWideOnly && 'wide-only', styles.detailText)}>
             {detail}
           </Text>
-          {brief ? (
-            <Text {...caption} {...part('narrow-only', styles.detailText)}>
-              {brief}
-            </Text>
-          ) : null}
           {detailControl}
           {/* The disc's lit ring shows it; screen readers hear it. */}
           {toMove ? <Text style={spokenOnly}>to move</Text> : null}
@@ -175,7 +167,7 @@ const STYLES = narrowStyles((px) => ({
   detail: { flexDirection: 'row', alignItems: 'baseline', gap: 4, flexShrink: 1000, minWidth: 0 },
   // Within it, the words end in an ellipsis; a control stays whole.
   detailText: { flexShrink: 1, minWidth: 0 },
-  // The captured pieces give way first (see Captures), then the name ends in
+  // The captured pieces give way first (see CapturesChip), then the name ends in
   // an ellipsis; the line is clipped rather than run under the controls.
   name: { flexShrink: 1, minWidth: 0 },
 }));

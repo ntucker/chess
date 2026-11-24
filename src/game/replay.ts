@@ -59,6 +59,8 @@ export interface Ply {
     readonly san: string;
     readonly from: SquareName;
     readonly to: SquareName;
+    /** The piece it took, as it stood (a promoted pawn as what it became), if any. */
+    readonly captured?: TakenRole;
   };
   /** How many times this position has occurred so far, counting this time. */
   readonly repetitions: number;
@@ -168,8 +170,9 @@ export function playMove(pos: Chess, uci: string): Ply['move'] {
   const move = parseUci(uci);
   if (!move || !pos.isLegal(move)) return undefined;
   const [from, to] = chessgroundMove(move);
+  const captured = 'from' in move ? takenRole(pos, move) : undefined;
   const san = makeSanAndPlay(pos, move);
-  return { uci, san, from, to };
+  return { uci, san, from, to, captured };
 }
 
 /**
@@ -267,11 +270,17 @@ export function recordedMove(pos: Chess, uci: string): string | undefined {
   return makeUci({ from: move.from, to: kingCastlesTo(pos.turn, side) });
 }
 
-/** The piece `move`, legal in `pos`, takes: on its square, or a pawn en passant. */
-export function takenRole(pos: Chess, { from, to }: NormalMove): Role | undefined {
+/** A piece a move can take: a legal move never takes a king. */
+export type TakenRole = Exclude<Role, 'king'>;
+
+/**
+ * The piece `move`, legal in `pos`, takes: on its square, or a pawn en passant.
+ * A king taking its own rook, as castling may be written, takes nothing.
+ */
+export function takenRole(pos: Chess, { from, to }: NormalMove): TakenRole | undefined {
   if (pos.board.get(from)?.role === 'pawn' && to === pos.epSquare) return 'pawn';
   const piece = pos.board.get(to);
-  return piece?.color === opposite(pos.turn) ? piece.role : undefined;
+  return piece?.color === opposite(pos.turn) ? (piece.role as TakenRole) : undefined;
 }
 
 /** The piece on `square` (a name like `e4`) in `fen`, if any. */
