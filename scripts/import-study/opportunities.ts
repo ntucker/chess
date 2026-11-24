@@ -18,10 +18,9 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import type { Analysis } from '@/evaluation/evaluation';
-import { lineSans, numberedLine, parsePosition, playLine } from '@/game/replay';
-import { gamesPlayed } from '@/lesson/cleanRun';
+import { lineSans, numberedLine, parsePosition, playLine, readPositionKey } from '@/game/replay';
+import { gamesPlayed, inCleanRun } from '@/lesson/cleanRun';
 import type { Lesson, Uci } from '@/lesson/lesson';
-import { playedMoves } from '@/lesson/openings';
 import { type Find, findOpportunities, type ThinEnd } from '@/opportunity/finder';
 import { LIMITS } from '@/opportunity/limits';
 import { type Answers, type Replies, repliesFrom, type Request } from '@/opportunity/walk';
@@ -67,9 +66,11 @@ async function host(lesson: Lesson, band: number) {
     },
     // The run is for `lesson.side`, so these are its book moves and every move of the erring side.
     guideMoves: ({ key }) => {
-      const played = [...playedMoves(lesson, key)].sort(
-        (a, b) => (gamesPlayed(b) ?? -1) - (gamesPlayed(a) ?? -1),
-      );
+      const learner = readPositionKey(key)!.turn === lesson.side;
+      const moves = lesson.positions[key]?.moves ?? [];
+      const played = moves
+        .filter((move) => inCleanRun(move, learner))
+        .sort((a, b) => (gamesPlayed(b) ?? -1) - (gamesPlayed(a) ?? -1));
       return played.length ? played.map((move) => move.uci) : undefined;
     },
   };

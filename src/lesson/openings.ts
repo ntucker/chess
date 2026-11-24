@@ -123,16 +123,6 @@ export function lessonIndex(lessons: readonly Lesson[]): LessonIndex {
 }
 
 /**
- * The guide's moves at `key` that `lesson` plays: only its book moves at its
- * own side's turn (a move a guide warns against is not one it plays), every
- * move at the other side's.
- */
-export function playedMoves(lesson: Lesson, key: PositionKey): readonly LessonMove[] {
-  const learner = readPositionKey(key)!.turn === lesson.side;
-  return (lesson.positions[key]?.moves ?? []).filter((move) => inCleanRun(move, learner));
-}
-
-/**
  * Follows the guide moves `sharing` all play after `line`, at the learner's
  * turns only their book moves (a move a guide warns against picks nothing): a
  * move only one of them plays ends a line of its; one several play goes on. A
@@ -146,7 +136,10 @@ function walkShared(
 ) {
   const key = lineKeys(line).at(-1)!;
   if (passed.has(key)) return;
-  const movesOf = (lesson: Lesson) => playedMoves(lesson, key);
+  // `lessonIndex` walks each side's lessons apart, so they all share one side.
+  const learnerMoves = readPositionKey(key)!.turn === sharing[0].side;
+  const movesOf = (lesson: Lesson) =>
+    (lesson.positions[key]?.moves ?? []).filter((move) => inCleanRun(move, learnerMoves));
   const ucis = new Set(sharing.flatMap((lesson) => movesOf(lesson).map(({ uci }) => uci)));
   for (const uci of ucis) {
     const playing = sharing.filter((lesson) => movesOf(lesson).some((move) => move.uci === uci));
@@ -261,8 +254,11 @@ function startShare(lesson: Lesson, pos: Chess, uci: Uci, bookOnly: boolean): nu
 function sharesAt(lesson: Lesson, pos: Chess, bookOnly: boolean) {
   const here = lesson.positions[positionKey(pos)];
   if (!here) return [];
-  const played = bookOnly ? playedMoves(lesson, positionKey(pos)) : here.moves;
-  const moves = played.length ? played : here.moves;
+  const learner = pos.turn === lesson.side;
+  const moves =
+    learner && here.moves.some(({ book }) => book) && bookOnly
+      ? here.moves.filter(({ book }) => book)
+      : here.moves;
   const shares = moveShares(moves);
   return moves.map(({ uci }, i) => ({ uci, share: shares[i] }));
 }
