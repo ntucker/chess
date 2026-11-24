@@ -249,7 +249,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     height: SIZE + 6,
     borderRadius: 999,
-    overflow: 'hidden',
   },
   lead: { fontFamily: fonts.mono, flexShrink: 0 },
   pieces: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, overflow: 'hidden' },
