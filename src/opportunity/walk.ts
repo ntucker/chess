@@ -112,12 +112,12 @@ export function child(node: Node, uci: Uci, reach: number): Node | undefined {
  */
 export function legalChild(node: Node, uci: Uci, reach: number): Node {
   const next = child(node, uci, reach);
-  if (!next) throw illegalMove(node, uci);
+  if (!next) throw illegalMoveError(node, uci);
   return next;
 }
 
 /** The error for a trusted move that isn't legal at `node`. */
-export const illegalMove = (node: Spot, uci: Uci) =>
+export const illegalMoveError = (node: Spot, uci: Uci) =>
   new Error(`Move ${uci} is illegal in ${node.key}`);
 
 /**

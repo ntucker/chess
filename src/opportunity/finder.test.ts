@@ -350,22 +350,20 @@ describe('findOpportunities', () => {
     });
 
     it('throws on an illegal guide move for either side', () => {
-      const illegalAt = (line: string): Answers => ({
-        ...withGuide([
+      const KXD8 = `${BXD8} Kxd8`;
+      /** `withGuide` where Black takes back on d8, with an illegal guide move at `line`. */
+      const illegalAt = (line: string): Answers => {
+        const answers = withGuide([
           ['Bxf2+', 0.3],
           ['Kxd8', 0.35],
-        ]),
-        guideMoves: (spot) =>
-          spot.key === at(line).key
-            ? ['a1a8']
-            : spot.key === at(BXD8).key
-              ? [last(`${BXD8} Kxd8`)]
-              : known.guideMoves!(spot),
-      });
+        ]);
+        return {
+          ...answers,
+          guideMoves: (spot) => (spot.key === at(line).key ? ['a1a8'] : answers.guideMoves!(spot)),
+        };
+      };
       expect(() => find(illegalAt(BXD8), { payoffMoves: 1 })).toThrow('Move a1a8 is illegal');
-      expect(() => find(illegalAt(`${BXD8} Kxd8`), { payoffMoves: 2 })).toThrow(
-        'Move a1a8 is illegal',
-      );
+      expect(() => find(illegalAt(KXD8), { payoffMoves: 2 })).toThrow('Move a1a8 is illegal');
     });
   });
 
@@ -397,6 +395,18 @@ describe('findOpportunities', () => {
     };
     const result = findOpportunities({ start: fen, line: [], side: 'white', answers });
     expect(result).toMatchObject({ finds: [], dropped: [], requests: [] });
+  });
+
+  it('throws where the walk meets an illegal guide move', () => {
+    // White's Ra8 is blocked by its own pawn on a2, at the walk's first position.
+    const answers: Answers = {
+      replies: () => undefined,
+      analysis: () => undefined,
+      guideMoves: () => ['a1a8'],
+    };
+    expect(() => findOpportunities({ start: START, line: [], side: 'white', answers })).toThrow(
+      'Move a1a8 is illegal',
+    );
   });
 
   it("stops where the punishing side's move ends the game", () => {

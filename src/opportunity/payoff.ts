@@ -15,7 +15,7 @@ import type { Uci } from '@/lesson/lesson';
 
 import {
   type Context,
-  illegalMove,
+  illegalMoveError,
   legalChild,
   type Node,
   punishingLoss,
@@ -103,6 +103,7 @@ export function payoff(
       if (!move) return undefined;
       ({ uci, guided } = move);
     }
+    // A best line with no move has nothing left to play; not broken data.
     if (uci === undefined) break;
     moves.push(uci);
     node = legalChild(node, uci, 0);
@@ -173,7 +174,7 @@ function punishingMove(
   if (!guide || guide === best.uci) return best;
   const judged = punishingLoss(node, final, guide, context);
   if (judged === 'pending') return judged;
-  if (!judged) throw illegalMove(node, guide);
+  if (!judged) throw illegalMoveError(node, guide);
   return judged.loss < MISTAKE_LOSS
     ? { uci: guide, evaluation: judged.evaluation, guide }
     : { ...best, guide };

@@ -28,7 +28,6 @@ import { type Limits, LIMITS } from './limits';
 import { type Disagreement, payoff } from './payoff';
 import {
   type Answers,
-  child,
   punishingLoss,
   type Context,
   legalChild,
@@ -204,9 +203,9 @@ function erringSteps(node: Node, context: Context): ErringStep[] | 'thin' {
     return [];
   }
   return played.flatMap(([uci, share]): ErringStep[] => {
-    const cue = child(node, uci, node.reach * share);
+    const cue = legalChild(node, uci, node.reach * share);
     // A move that ends the game leaves nothing to punish, and no line to walk on.
-    if (!cue || resultAt(cue)) return [];
+    if (resultAt(cue)) return [];
     const after = sketchOnly(answers.analysis(cue));
     if (!after) {
       ask('sketch', cue);
@@ -240,8 +239,7 @@ function confirm(
   const replies = acceptedReplies(before, after, side);
   const played = answers.replies(cue);
   if (!played) ask('replies', cue);
-  const best = child(cue, replies[0], 0);
-  const rest = best && payoff(best, { before, cue: after }, context);
+  const rest = payoff(legalChild(cue, replies[0], 0), { before, cue: after }, context);
   const losses = played && replyLosses(cue, after, played.shares, context);
   if (!played || !rest || !losses) return 'pending';
   const found = played.thin
