@@ -21,7 +21,12 @@ import type { Analysis } from '@/evaluation/evaluation';
 import { lineSans, numberedLine, parsePosition, playLine, readPositionKey } from '@/game/replay';
 import { gamesPlayed, inCleanRun } from '@/lesson/cleanRun';
 import type { Lesson, Uci } from '@/lesson/lesson';
-import { type Find, findOpportunities, type ThinEnd } from '@/opportunity/finder';
+import {
+  type Find,
+  findOpportunities,
+  type FinderResult,
+  type ThinEnd,
+} from '@/opportunity/finder';
 import { LIMITS } from '@/opportunity/limits';
 import { type Answers, type Replies, repliesFrom, type Request } from '@/opportunity/walk';
 import { SKETCH_DEPTH } from '@/review/order';
@@ -140,9 +145,9 @@ async function run(id: string, band: number, top: number, out: string | undefine
     result = findOpportunities(input);
   }
   stop();
-  const report = reportOf(lesson, band, result.finds.slice(0, top), result.finds.length, [
+  const report = reportOf(lesson, band, result, top, [
     thinSummary(result.thin),
-    guideSummary(lesson, result.finds, answers),
+    guideSummary(lesson, [...result.finds, ...result.dropped], answers),
   ]);
   if (out) writeFileSync(out, report);
   else console.log(report);
@@ -150,12 +155,14 @@ async function run(id: string, band: number, top: number, out: string | undefine
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;
 
-/** The finds as a Markdown report: one table row each, then each line in full. */
+const points = (score: number) => Math.round(score * 100);
+
+/** The finds as a Markdown report: the best `top` kept ones, then every dropped one. */
 function reportOf(
   lesson: Lesson,
   band: number,
-  finds: readonly Find[],
-  total: number,
+  { finds, dropped }: FinderResult,
+  top: number,
   summaries: readonly string[],
 ): string {
   const start = parsePosition(lesson.start)!;
@@ -166,34 +173,45 @@ function reportOf(
     const key = [...playLine(find.line, start.clone())].at(-1)!.key;
     return lesson.positions[key]?.moves.some((move) => move.uci === find.mistake) ? 'yes' : 'no';
   };
-  const rows = finds.map((find, rank) => {
+  const row = (find: Find, rank: number) => {
     const cue = [...find.line, find.mistake];
-    return [
+    const cells = [
       rank + 1,
       numbered([], find.line) || '(start)',
       numbered(find.line, [find.mistake]),
       percent(find.share),
-      Math.round(find.cost * 100),
       percent(find.reach),
+      points(find.cost),
       find.found === undefined ? '?' : percent(find.found),
-      (find.score * 1000).toFixed(1),
+      `${find.estimate ? '~' : ''}${points(find.gain)}`,
+      (find.score * 1000).toFixed(2),
+      points(find.end),
+      find.holds ? 'holds' : 'practical',
       find.replies.map((reply) => numbered(cue, [reply])).join(', '),
       numbered([...cue, find.replies[0]], find.payoff),
       inGuide(find),
-    ].join(' | ');
-  });
+    ];
+    return `| ${cells.join(' | ')} |`;
+  };
+  const header = [
+    '| # | After | Mistake | Share | Reach | Cost | Found | Gain | Score | End | Holds | Punish with | Then | In guide |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+  ];
   return [
     `# Opportunities in ${lesson.title}, lichess ${band} band`,
     '',
-    `${total} finds; the best ${finds.length} below. Share: how often the opponent plays the mistake there. Cost: points of expected score it gives away (of 100). Reach: how often games get there. Found: how often players there find a punishing reply. Score: reach × share × cost, in thousandths. In guide: whether the lesson already lists the mistake.`,
+    `${finds.length} finds kept; the best ${Math.min(top, finds.length)} below, then the ${dropped.length} dropped. Share: how often the opponent plays the mistake there. Reach: how often games get there. Cost: points of expected score (of 100) the mistake gives away. Found: how often players at the cue find a punishing reply. Gain: points a player at the cue scores more by knowing the punishment than by playing as the band does (~: an estimate, the cue is thin or its measured replies cover under half its games). Score: reach × share × gain, in thousandths, which ranks. End: the learner's expected score where Act III ends, following the band's likely replies. Holds: the best reply alone keeps the learner at least ${points(LIMITS.keepScore)} against best defence; practical: only the band's likely replies get there. In guide: whether the lesson already lists the mistake.`,
     '',
     `Limits: ${Object.entries(LIMITS)
       .map(([name, value]) => `${name} ${value}`)
       .join(', ')} (src/opportunity/limits.ts).`,
     '',
-    '| # | After | Mistake | Share | Cost | Reach | Found | Score | Punish with | Then | In guide |',
-    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
-    ...rows.map((row) => `| ${row} |`),
+    ...header,
+    ...finds.slice(0, top).map(row),
+    '',
+    `## Dropped: Act III ends under ${points(LIMITS.keepScore)}`,
+    '',
+    ...(dropped.length ? [...header, ...dropped.map(row)] : ['None.']),
     '',
     ...summaries,
     '',
