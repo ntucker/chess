@@ -27,7 +27,7 @@ import {
   type FinderResult,
   type ThinEnd,
 } from '@/opportunity/finder';
-import { LIMITS } from '@/opportunity/limits';
+import { LIMITS, MIN_GAMES } from '@/opportunity/limits';
 import { type Answers, type Replies, repliesFrom, type Request } from '@/opportunity/walk';
 import { APP_SEARCH, liteStockfish } from '@/stockfish/engine';
 
@@ -107,7 +107,7 @@ async function host(lesson: Lesson, band: number) {
   };
   const ask = async ({ spot }: Request) => {
     // The explorer's moves add up to the games reaching the position, less those that ended there.
-    replies.set(spot.key, repliesFrom(await explorer.ask(spot.key, band), LIMITS.minGames));
+    replies.set(spot.key, repliesFrom(await explorer.ask(spot.key, band), MIN_GAMES));
   };
 
   /**
@@ -201,7 +201,7 @@ function reportOf(
     '',
     `${finds.length} finds kept; the best ${Math.min(top, finds.length)} below, then the ${dropped.length} dropped. Share: how often the opponent plays the mistake there. Reach: how often games get there. Cost: points of expected score (of 100) the mistake gives away. Found: how often players at the cue find a punishing reply. Gain: points a player at the cue scores more by knowing the punishment than by playing as the band does (~: an estimate, the cue is thin or its measured replies cover under ${percent(LIMITS.estimateCoverage)} of its games). Score: reach × share × gain, in thousandths, which ranks. End: the learner's expected score where Act III ends, following the band's likely replies. Holds: the best reply alone keeps the learner at least ${points(LIMITS.keepScore)} against best defence; practical: only the band's likely replies get there. In guide: whether the lesson already lists the mistake.`,
     '',
-    `Limits: ${Object.entries(LIMITS)
+    `Limits: minGames ${MIN_GAMES}, ${Object.entries(LIMITS)
       .map(([name, value]) => `${name} ${value}`)
       .join(', ')} (src/opportunity/limits.ts).`,
     '',
@@ -227,7 +227,7 @@ function thinSummary(thin: readonly ThinEnd[]): string {
     .map(([ply, count]) => `ply ${ply}: ${count}`)
     .join(', ');
   const reach = thin.reduce((sum, end) => sum + end.reach, 0);
-  return `Thin: ${thin.length} walks ended where fewer than ${LIMITS.minGames} games reach the position (${plies}), ${percent(reach)} of games in all.`;
+  return `Thin: ${thin.length} walks ended where fewer than ${MIN_GAMES} games reach the position (${plies}), ${percent(reach)} of games in all.`;
 }
 
 /**
