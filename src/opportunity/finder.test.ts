@@ -278,6 +278,34 @@ describe('findOpportunities', () => {
     });
   });
 
+  describe('Act III at the punishing side', () => {
+    const BXD8 = `${CUE} Nxe4 Bxd8`;
+    /** `known`, with the guide's move Kxd8 after 7.Bxd8, which Black's lines score as given. */
+    const withGuide = (lines: Lines): Answers => ({
+      ...known,
+      guideMoves: (spot) =>
+        spot.key === at(BXD8).key ? [last(`${BXD8} Kxd8`)] : known.guideMoves!(spot),
+      analysis: (spot) => (spot.key === at(BXD8).key ? full(BXD8, lines) : known.analysis(spot)),
+    });
+    const payoffOf = (answers: Answers) => find(answers, { payoffMoves: 1 }).finds[0].payoff;
+
+    it("follows the guide's move where it gives back less than the cost floor", () => {
+      const answers = withGuide([
+        ['Bxf2+', 0.3],
+        ['Kxd8', 0.35],
+      ]);
+      expect(payoffOf(answers)).toEqual(uci(`${BXD8} Kxd8`).slice(-2));
+    });
+
+    it("plays Stockfish's best where the guide's move gives back more", () => {
+      const answers = withGuide([
+        ['Bxf2+', 0.3],
+        ['Kxd8', 0.45],
+      ]);
+      expect(payoffOf(answers)).toEqual(uci(`${BXD8} Bxf2+`).slice(-2));
+    });
+  });
+
   it('leaves the found rate out where too few games reach the cue', () => {
     const [bg5] = find({
       ...known,
