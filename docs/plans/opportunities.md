@@ -69,13 +69,14 @@ plan doesn't depend on those links.
   which its rare-row rule `rareLast` reads), `countedReplies` (all bands), `moveShares` in
   `src/lesson/openings.ts` (all bands; with `bookOnly` it then renormalizes the function's values
   over the book moves to sum to one, not a second ratio, since the learner plays the book however
-  rarely games do, which gives today's ratio over the book moves), `opponentModel` in
-  `scripts/import-study/coverOpponent.ts` (its common-move filter, on the explorer's counts) and
-  piece A's `repliesFrom` (the lichess host's conversion, which computes the same ratio until then).
-  Piece C adds it and moves the callers onto it. The function alone alters no lesson until D1 or D3
-  writes its totals; then that lesson's shares get smaller, since unlisted moves join the
-  denominator, and its rare rows and counted replies can shift slightly. A Maia share is a separate
-  source for the same field: a softmax over the legal moves' policy scores (piece J).
+  rarely games do, which gives today's ratio over the book moves; where no move has counts it keeps
+  today's 1 for each, so which variation line wins doesn't change before any total exists),
+  `opponentModel` in `scripts/import-study/coverOpponent.ts` (its common-move filter, on the
+  explorer's counts) and piece A's `repliesFrom` (the lichess host's conversion, which computes the
+  same ratio until then). Piece C adds it and moves the callers onto it. The function alone alters
+  no lesson until D1 or D3 writes its totals; then that lesson's shares get smaller, since unlisted
+  moves join the denominator, and its rare rows and counted replies can shift slightly. A Maia share
+  is a separate source for the same field: a softmax over the legal moves' policy scores (piece J).
 - Derived, one pure function each in `src/opportunity/`: reach (shares of the erring side's moves
   multiplied along the path), the cue's accepted replies (`acceptedReplies`, Rules), found rate (the
   sum of their shares at the cue), score, role (trap or opportunity, from the learner's side), the
