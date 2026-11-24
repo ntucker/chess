@@ -278,8 +278,9 @@ interface StrengthProps {
  * follow the thumb as it slides; the stop is chosen only as the thumb is let
  * go (or on each key), so sliding across full Stockfish doesn't start its
  * download. Nothing explains itself in standing text: how the stop plays is
- * the tooltip of the whole (a resting mouse, the keyboard's focus, or a tap
- * on the heading shows it).
+ * a tooltip. On the web the heading and slider together are its trigger (a
+ * resting mouse, the keyboard's focus, or a tap on the heading shows it); on
+ * native only the heading is, since a tap on the slider moves its thumb.
  */
 function StrengthSlider({ value, onChoose }: StrengthProps) {
   const { color } = useTheme().theme.semantic;
@@ -352,7 +353,7 @@ function StrengthSlider({ value, onChoose }: StrengthProps) {
         </Tooltip.Trigger>
       ) : (
         <>
-          {/* A tap on the slider moves its thumb, so on a phone only the heading's opens the tip. */}
+          {/* A tap on the slider moves its thumb, so on native only the heading opens the tip. */}
           <Tooltip.Trigger>{heading}</Tooltip.Trigger>
           {slider}
         </>
@@ -361,7 +362,7 @@ function StrengthSlider({ value, onChoose }: StrengthProps) {
       <Tooltip.Content
         side="bottom"
         align="start"
-        // On a phone it opens from the heading alone, so it reaches past the slider too.
+        // On native it opens from the heading's foot, which the slider sits right under.
         sideOffset={WEB ? TIP_OFFSET : TIP_OFFSET + SLIDER_BOX}
       >
         {tip}
@@ -380,7 +381,7 @@ const SLIDER_SIZE = 'sm';
 const SLIDER_HEIGHT = 60;
 /** Space above and below the slider. */
 const SLIDER_MARGIN = { top: 8, bottom: 6 } as const;
-/** The slider's height with its margins. */
+/** The slider's height with its margins: from the heading's foot to the slider's. */
 const SLIDER_BOX = SLIDER_MARGIN.top + SLIDER_HEIGHT + SLIDER_MARGIN.bottom;
 /** Space between the thumb and the ratings under it, clear of the thumb's focus ring. */
 const RATING_GAP = 6;
