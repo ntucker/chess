@@ -106,7 +106,8 @@ function measure(board) {
     screen: { width: innerWidth, height: innerHeight },
     // React Native Web scrolls a view inside the document, so the page's own box shows whether it fits.
     page: box(part('page')),
-    pageWidth: document.documentElement.scrollWidth,
+    // That view clips sideways, so what runs past the page's right edge widens only the page's scroll width.
+    pageWidth: document.querySelector(part('page'))?.scrollWidth,
     board: box(board),
     column: box(part('board-column')),
     program: program?.getBoundingClientRect().toJSON(),
@@ -133,7 +134,9 @@ function problems(
   ];
   if (missing.length) return missing;
   const issues = [];
-  if (pageWidth > screen.width) issues.push(`the page scrolls sideways (${pageWidth}px wide)`);
+  if (page.left + pageWidth > screen.width + SLACK) {
+    issues.push(`the page runs off the side (${pageWidth}px wide)`);
+  }
   if (page.bottom > screen.height + SLACK) issues.push(`the page scrolls (${page.bottom}px tall)`);
   if (Math.abs(board.width - board.height) > SLACK) {
     issues.push(`the board isn't square (${board.width}×${board.height})`);
