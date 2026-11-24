@@ -10,7 +10,7 @@ import {
 import { parsePosition, playLine, sanToUci } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 
-import { acceptedReplies, byScore, type Find, findOpportunities } from './finder';
+import { acceptedReplies, byScore, type Find, findOpportunities, reachOf } from './finder';
 import { gainIfKnown } from './gain';
 import { LIMITS, MIN_GAMES } from './limits';
 import { keepsGuide, payoff } from './payoff';
@@ -174,6 +174,7 @@ const BG5: Find = {
   end: 1,
   holds: true,
   reach: 0.4,
+  onGuide: true,
   share: 0.15,
   cost: 0.45,
   found: 0.3,
@@ -309,6 +310,40 @@ describe('findOpportunities', () => {
       }).dropped;
       expect(bg5.payoff).toEqual([last(BE3)]);
     });
+  });
+
+  it('marks a find off the guide where Stockfish, not the guide, plays a punishing move', () => {
+    const D3 = `${OPENING} d3`;
+    const [bg5] = find({
+      ...known,
+      guideMoves: (spot) => (spot.key === at(D3).key ? undefined : known.guideMoves!(spot)),
+      analysis: (spot) =>
+        spot.key === at(D3).key ? search(D3, [['Bc5', 0.58]]) : known.analysis(spot),
+    }).finds;
+    expect(bg5).toMatchObject({ mistake: last(CUE), onGuide: false, reach: expect.closeTo(0.4) });
+  });
+
+  it("names the guide's move at the cue where the cue doesn't accept it", () => {
+    const [bg5] = find({
+      ...known,
+      guideMoves: (spot) =>
+        spot.key === at(CUE).key ? [last(`${CUE} h6`)] : known.guideMoves!(spot),
+    }).finds;
+    expect(bg5.guideReply).toBe(last(`${CUE} h6`));
+  });
+
+  it('walks on past a mistake whose punishment everyone finds', () => {
+    const result = find({
+      ...known,
+      replies: (spot) =>
+        spot.key === at(CUE).key
+          ? repliesFrom(spot.key, { [last(`${CUE} Nxe4`)]: 1000 }, MIN_GAMES)
+          : known.replies(spot),
+    });
+    expect([...result.finds, ...result.dropped]).toEqual([]);
+    // White's 7.Bxd8, the next mistake on, awaits its full search.
+    const { line, key } = at(`${CUE} Nxe4`);
+    expect(result.requests).toContainEqual({ kind: 'full', spot: { line, key } });
   });
 
   describe('Act III at the punishing side', () => {
@@ -481,7 +516,61 @@ describe('gainIfKnown', () => {
   });
 });
 
+describe('reachOf', () => {
+  it('sums the move orders that reach a position, and with `guided`, only those the guide plays', () => {
+    // S -> A (0.5), S -> B (0.2); A -> C (0.4, the guide's), B -> C (0.5, Stockfish's); C -> A repeats.
+    const moves = new Map([
+      [
+        'A',
+        [
+          { from: 'S', share: 0.5, guided: true },
+          { from: 'C', share: 1, guided: true },
+        ],
+      ],
+      ['B', [{ from: 'S', share: 0.2, guided: true }]],
+      [
+        'C',
+        [
+          { from: 'A', share: 0.4, guided: true },
+          { from: 'B', share: 0.5, guided: false },
+        ],
+      ],
+    ]);
+    const reach = reachOf('S', moves);
+    expect(reach('C', false)).toBeCloseTo(0.5 * 0.4 + 0.2 * 0.5);
+    expect(reach('C', true)).toBeCloseTo(0.5 * 0.4);
+  });
+});
+
 describe('payoff', () => {
+  it('plays on while the punishing side is behind in material, however winning', () => {
+    // White's rook against Black's queen, which Stockfish (here) rates winning for White.
+    const start = walkTo('k7/8/4q3/8/8/8/8/K6R w - - 0 1', [])!;
+    const winning = {
+      lines: [
+        { uci: 'h1h8', evaluation: evaluation(0.9) },
+        { uci: 'h1h2', evaluation: evaluation(0.85) },
+      ],
+      depth: 18,
+      final: true,
+    } as const;
+    const answers: Answers = {
+      replies: () => undefined,
+      analysis: (spot) => (spot.key === start.key ? winning : undefined),
+    };
+    const context = {
+      side: 'white' as const,
+      answers,
+      limits: { ...LIMITS, payoffMoves: 1 },
+      ask: () => {},
+    };
+    expect(payoff(start, { before: winning, cue: winning }, context)).toEqual({
+      moves: ['h1h8'],
+      disagreements: [],
+      end: 0.9,
+    });
+  });
+
   it("scores a game the erring side's move ends as its result", () => {
     // Black's queen move stalemates White's lone king.
     const start = walkTo('8/8/8/8/1q6/8/2k5/K7 b - - 0 1', [])!;
