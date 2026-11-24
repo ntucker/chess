@@ -6,7 +6,7 @@
  *   yarn opportunities <lesson> [--band 1400] [--top 20] [--out report.md]
  *
  * The opponent's replies come from the lichess explorer alone (which needs a
- * token, as ./index.ts says), so a thin position ends the walk; the report
+ * token, as ./index.ts says), so a thin position ends the search for mistakes; the report
  * counts where. Stockfish's searches from the app's engine in
  * Node: sketches stop at the first whole depth of `SKETCH_DEPTH`, full
  * searches are the app's (`APP_SEARCH`). Every answer is appended to the
@@ -19,7 +19,9 @@ import { join } from 'node:path';
 
 import type { Analysis } from '@/evaluation/evaluation';
 import { lineSans, numberedLine, parsePosition, playLine } from '@/game/replay';
+import { gamesPlayed } from '@/lesson/cleanRun';
 import type { Lesson, Uci } from '@/lesson/lesson';
+import { playedMoves } from '@/lesson/openings';
 import { type Find, findOpportunities, type ThinEnd } from '@/opportunity/finder';
 import { LIMITS } from '@/opportunity/limits';
 import { type Answers, type Replies, repliesFrom, type Request } from '@/opportunity/walk';
@@ -63,9 +65,11 @@ async function host(lesson: Lesson, band: number) {
         fulls.get(key) ?? (sketch && { lines: sketch.lines, depth: sketch.depth, final: false })
       );
     },
-    ownMoves: ({ key }) => {
-      const book = lesson.positions[key]?.moves.filter((move) => move.book).map((move) => move.uci);
-      return book?.length ? book : undefined;
+    guideMoves: ({ key }) => {
+      const played = [...playedMoves(lesson, key)].sort(
+        (a, b) => (gamesPlayed(b) ?? -1) - (gamesPlayed(a) ?? -1),
+      );
+      return played.length ? played.map((move) => move.uci) : undefined;
     },
   };
 
