@@ -73,8 +73,8 @@ export interface LessonScreenModel {
   /**
    * What the status says beyond the headline: how much of it a narrow page
    * draws, and why Stockfish's moves stand in for the guide's. A layout reads
-   * them with `headlineNews`, which needs what only it knows (the scoresheet
-   * shown, the aside drawn).
+   * them with `headlineNews`, which also needs whether the scoresheet is
+   * shown, which only the layout knows.
    */
   readonly status: Pick<Status, 'news' | 'pastGuide'>;
   /**
@@ -176,7 +176,7 @@ export function useLessonScreen({
     practice: mode === 'practice',
     leftGuide: view.guideMoves.includes(undefined),
   });
-  const { pastGuide, news, ...status } = describeStatus(view, {
+  const { pastGuide, news, ...headline } = describeStatus(view, {
     picking,
     loading,
     title: lesson.title,
@@ -197,7 +197,7 @@ export function useLessonScreen({
   // in the idea pane's place. A failure keeps the headline's.
   const aside =
     pastGuide && listsTopMoves(view, mode) && !ideaCard && !game.error
-      ? { title: pastGuide, detail: status.detail }
+      ? { title: pastGuide, detail: headline.detail }
       : null;
 
   // What the list of the rival's moves holds.
@@ -314,7 +314,7 @@ export function useLessonScreen({
     },
     stepper: { san: game.plies[game.ply].move?.san, ply: game.ply, started: game.moves.length > 0 },
     headline: {
-      ...status,
+      ...headline,
       failure: game.error && { who: described.name, error: game.error, onRetry: game.retry },
       eyebrowLink: listLink,
     },

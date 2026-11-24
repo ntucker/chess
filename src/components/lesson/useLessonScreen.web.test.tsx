@@ -130,6 +130,6 @@ describe('useLessonScreen', () => {
   it('passes on how much of the headline a narrow page draws', async () => {
     await showAfter(CARO_KANN, 'e4', 'c6', 'd4');
     // No "your move" line once the learner has moved, and the guide still leads.
-    expect(shown().status).toEqual({ news: 'none', pastGuide: undefined });
+    expect(shown().status).toStrictEqual({ news: 'none', pastGuide: undefined });
   });
 });
