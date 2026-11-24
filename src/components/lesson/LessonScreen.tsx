@@ -1,6 +1,6 @@
-import { AsyncBoundary, useController, useFetch, useSuspense } from '@data-client/react';
+import { AsyncBoundary, useFetch, useSuspense } from '@data-client/react';
 import { Inline, Separator, Spinner, Stack } from '@reactive/silk-native';
-import { type ReactNode, use, useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
@@ -20,42 +20,23 @@ import { useBackToReview } from '@/components/useBackToReview';
 import { useLongWait } from '@/components/useLongWait';
 import { useNavigating } from '@/components/navigation';
 import { NewVersionError } from '@/files/newVersion';
-import { type Color, colorName, opposite } from '@/game/replay';
+import type { Color } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
-import { listsTopMoves } from '@/lesson/guidance';
-import type { Uci, VariationId } from '@/lesson/lesson';
-import {
-  isPicking,
-  lessonsAfter,
-  lessonsFrom,
-  openingsLesson,
-  withOpenings,
-} from '@/lesson/openings';
-import { type Candidate, captionName, pathNames, shareSource } from '@/lesson/select';
-import { useLesson } from '@/lesson/useLesson';
-import { reviewHref } from '@/review/address';
-import { describeOpponent } from '@/opponent/opponent';
-import { getLesson, isLessonId, LessonIndexContext, type LessonId } from '@/resources/lesson';
+import type { VariationId } from '@/lesson/lesson';
+import { getLesson, isLessonId, type LessonId } from '@/resources/lesson';
 import { getProgress } from '@/resources/progress';
-import { useSettings } from '@/settings/SettingsProvider';
 import { NarrowOnly, NarrowScroll, useNarrowPart } from '@/theme/Narrow';
 
 import { AutoPlay } from './AutoPlay';
 import { CandidateList, useListMinWidth } from './CandidateList';
-import { IdeaAside, IdeaCard, noNotesText } from './IdeaCard';
+import { IdeaAside, IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
 import { SideChoice } from './SideChoice';
-import {
-  describeStatus,
-  headlineNews,
-  LOADING,
-  OPENINGS_TITLE,
-  shownEnding,
-  whyReviewShut,
-} from './status';
+import { headlineNews, LOADING } from './status';
 import { SourceCredits } from './SourceCredits';
 import { TrapCard } from './TrapCard';
+import { useLessonScreen } from './useLessonScreen';
 import { useOpeningsGame } from './useOpeningsGame';
 
 /**
@@ -168,7 +149,6 @@ function LessonScreen({
   /** A lesson, or the next page, has been loading long enough to say so. */
   readonly loading: boolean;
 }) {
-  const ctrl = useController();
   const part = useNarrowPart();
   const labelled = useLabelled();
   const sections = useSections();
@@ -176,198 +156,24 @@ function LessonScreen({
   // The progress loads beside the lesson, rather than once it has loaded.
   useFetch(getProgress);
   const picked = useSuspense(getLesson, id ?? null);
-  const index = use(LessonIndexContext);
-  // Before one is picked, the openings of `side` alone.
-  const lesson = useMemo(
-    () => (picked ? withOpenings(picked, index) : openingsLesson(index, side)),
-    [picked, index, side],
-  );
-  const {
-    game,
-    opponent,
-    picking,
-    shownLine,
-    view,
-    guidance,
-    board,
-    playback,
-    canPlay,
-    play,
-    pointedNote,
-    marks,
-    rareShown,
-    showRare,
-    pointRow,
-    reachCard,
-    pointNote,
-    leaveNote,
-    leave,
-    modeState,
-    startsRun,
-    chooseMode,
-  } = useLesson(lesson, store, { pending });
-  const { mode } = modeState;
+  const model = useLessonScreen({ id, picked, side, onPlayAs, store, pending, loading });
+  const { headline, review, scoresheet } = model;
   // A narrow page's settings sheet, and its scoresheet drawer.
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [scoresheetOpen, setScoresheetOpen] = useState(false);
-  const { auto } = useSettings();
   const back = useBackToReview();
-  const learner = lesson.side;
-  const rival = opposite(learner);
-  const described = describeOpponent(opponent);
-  const preview = guidance.preview?.candidate;
-  const { trap } = guidance;
-  // The card is for notes, or for the notes of a candidate pointed at.
-  // Stockfish's moves have none of their own.
-  const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
-  const names = pathNames(view.variation);
-  const { result } = game.latest;
-  const ending = shownEnding(
-    { result, atLatest: game.atLatest, playing: !!playback.playing },
-    learner,
+  // The headline tells it on a wide page, and to screen readers.
+  const aside = model.aside && (
+    <View aria-hidden>
+      <IdeaAside {...model.aside} />
+    </View>
   );
-  // The whole game, not the move on the board: stepping back into the
-  // openings' first moves doesn't close the review of a game played past them.
-  const gamePicking = isPicking(index, learner, game.moves);
-  const reviewShut = whyReviewShut({
-    picking: gamePicking,
-    ended: !!result,
-    practice: mode === 'practice',
-    leftGuide: view.guideMoves.includes(undefined),
-  });
-  const review = reviewHref(game.moves, learner, id);
-  const { pastGuide, ...status } = describeStatus(view, {
-    picking,
-    loading,
-    title: lesson.title,
-    names,
-    rival: colorName(rival),
-    engine: described.name,
-    replying: game.replying,
-    viewing: !game.atLatest,
-    auto,
-    canPlay,
-    lineEnded: guidance.lineEnded,
-    startsRun,
-    practice:
-      modeState.mode === 'practice' ? { clean: modeState.clean, verdict: game.quality } : undefined,
-    ending,
-  });
-  // Where Stockfish's moves stand in for the guide's, a narrow page tells why
-  // in the idea pane's place, beside them as the idea is beside the guide's
-  // moves, rather than under the headline. A failure keeps the headline's.
-  const aside =
-    pastGuide && listsTopMoves(view, mode) && !ideaCard && !game.error ? (
-      // The headline tells it on a wide page, and to screen readers.
-      <View aria-hidden>
-        <IdeaAside title={pastGuide} detail={status.detail} />
-      </View>
-    ) : null;
-
-  // What the list of the rival's moves holds.
-  const rivalMoves = !picking ? 'likely replies' : view.ply ? 'next move' : 'first move';
-  /** Where the openings are picked, the lessons a move leads to. */
-  const openings = (uci: Uci) => (picking ? lessonsAfter(index, learner, [...shownLine, uci]) : []);
-  const line = view.variation.at(-1);
-  // While picking, the header names no line, so a caption keeps its groups.
-  const shortName = (id: VariationId) =>
-    captionName(lesson.variations[id].name, picking ? [] : view.variation);
-  const leadsTo = (candidate: Candidate) => {
-    const into = openings(candidate.move.uci);
-    if (into.length) return into.map((id) => index[id].title).join(' or ');
-    if (candidate.variation === undefined) return 'Leaves the guide';
-    return candidate.variation === line?.id ? undefined : shortName(candidate.variation);
-  };
-  // What the guide's candidate rows and Stockfish's top moves' rows share.
-  const rowProps = {
-    position: view.key,
-    pointed: preview?.move.uci,
-    marks,
-    playable: canPlay,
-    onPlay: play,
-    onTabOut: leave,
-  };
-  // Past the guide, a move of Stockfish's can lead back into it.
-  const rejoins = ({ variation }: Candidate) =>
-    variation === undefined ? undefined : `Rejoins ${shortName(variation)}`;
-  // Pointing at an opening, or picking up a piece that plays one, starts
-  // loading its lesson, so playing it needn't wait. A failure shows once the
-  // opening is picked.
-  const load = (id: LessonId) => {
-    ctrl.fetchIfStale(getLesson, id);
-  };
-  const pointCandidate = (uci: Uci, time?: number) => {
-    openings(uci).forEach(load);
-    pointRow(uci, time);
-  };
-  const onDrag: typeof board.onDrag = (drag) => {
-    // Each report repeats the request, which fetchIfStale makes free.
-    if (picking && drag) lessonsFrom(index, learner, shownLine, drag.from).forEach(load);
-    board.onDrag?.(drag);
-  };
-
-  // The opening's name opens the list of every opening, which marks where the board is.
-  // From the line's id, which the React Compiler sees unchanged from move to move.
-  const lineId = line?.id;
-  const listLink = {
-    href: {
-      pathname: '/openings',
-      params: id === undefined ? {} : { lesson: id, ...(lineId && { variation: lineId }) },
-    },
-    label: 'Every opening',
-  } as const;
-
-  // The moves the learner can point at: the guide's, with any of Stockfish's
-  // after them, or past the guide's moves Stockfish's alone.
-  const moveList = guidance.candidates.length ? (
-    <CandidateList
-      {...rowProps}
-      heading={view.learnerToMove ? 'Your candidates' : rivalMoves}
-      shareTip={shareSource(lesson, opponent)}
-      owner={view.learnerToMove ? undefined : colorName(rival)}
-      // At the start each move's opening is the point, so its rows keep it.
-      compact={!picking}
-      leadsTo={leadsTo}
-      candidates={guidance.candidates}
-      // Inside the guide, Stockfish's rows are at most its best (`listedEngineMoves`).
-      engineBest={guidance.top.at(0)}
-      verdicts={guidance.verdicts}
-      rare={guidance.rare}
-      rareShown={rareShown}
-      onShowRare={showRare}
-      main={guidance.main}
-      onPoint={pointCandidate}
-    />
-  ) : guidance.top.length ? (
-    <CandidateList
-      {...rowProps}
-      heading="top moves"
-      owner="Stockfish"
-      compact
-      leadsTo={rejoins}
-      candidates={guidance.top}
-      rare={[]}
-      rareShown={false}
-      onShowRare={showRare}
-      main={guidance.top[0]}
-      onPoint={pointRow}
-    />
-  ) : null;
-
-  /** The game's moves, for the scoresheet beside the panes or in their place. */
-  const scoresheetProps = {
-    plies: game.plies,
-    marks: game.qualities,
-    ply: game.ply,
-    // A record of the line, so it outlives the trap's card.
-    trapped: view.trap && view.trap.ply + 1,
-    onGoto: game.goto,
-  };
-  const lessonCredits = <SourceCredits sources={lesson.sources} />;
+  const moveList = model.moves && <CandidateList {...model.moves} />;
+  const lessonCredits = <SourceCredits sources={model.sources} />;
   /** The settings, beside the board or in a narrow page's sheet, which adds the lesson's `credits`. */
   const settings = (credits?: ReactNode) => (
     <>
-      <LessonControls mode={mode} onMode={chooseMode} />
+      <LessonControls {...model.controls} />
       <Stack gap="1">
         <OpponentChoice />
         {credits}
@@ -376,21 +182,9 @@ function LessonScreen({
   );
 
   /** The pane beside the moves on a narrow page: the idea card, else past the guide the headline's aside, else none. */
-  const ideaPane = ideaCard ? (
+  const ideaPane = model.idea ? (
     <NarrowScroll part="idea-pane">
-      <IdeaCard
-        lesson={lesson}
-        title={preview ? `If ${preview.san}` : 'The idea'}
-        empty={preview && noNotesText(preview.san, guidance.verdicts?.get(preview.move.uci))}
-        notes={guidance.notes}
-        learner={learner}
-        playback={playback}
-        pointable={guidance.pointable}
-        pointed={pointedNote}
-        onPoint={pointNote}
-        onLeave={leaveNote}
-        onReach={reachCard}
-      />
+      <IdeaCard {...model.idea} />
     </NarrowScroll>
   ) : aside ? (
     <NarrowScroll part="narrow-idea-pane">{aside}</NarrowScroll>
@@ -398,13 +192,9 @@ function LessonScreen({
 
   return (
     <Stage
-      title={`${lesson.title} · Opening Night`}
+      title={model.title}
       header={{
-        // Only the latest line's name and its parent's, since the path won't fit a narrow page.
-        place: picking
-          ? { name: OPENINGS_TITLE }
-          : { name: names.at(-1) ?? lesson.title, parent: names.at(-2) },
-        placeLink: listLink,
+        ...model.header,
         back,
         // Only a narrow page shows the button, so only there does the sheet open.
         narrowButton: {
@@ -412,31 +202,24 @@ function LessonScreen({
           label: 'Settings',
           onPress: () => setSettingsOpen(true),
         },
-        // Back to the start position, from the side the learner plays, in the same mode.
-        onRestart: game.newGame,
       }}
       // A wide page credits the lesson's sources at its foot, a narrow one in its settings
       // sheet. One copy at a time, as with the settings: the sheet may stay open on a widened window.
       footer={settingsOpen ? undefined : lessonCredits}
       board={
         <BoardColumn
-          game={game}
+          {...model.board}
           rival={{
-            name: colorName(rival),
-            detail: `The guide's moves, then ${described.lead.toLowerCase()}`,
-            brief: described.lead,
+            ...model.board.rival,
             detailControl: <OpponentPicker />,
             children: <AutoPlay />,
           }}
-          board={{ ...board, onDrag }}
-          // The side is the lesson's once one is picked.
-          onSwap={picking ? () => onPlayAs(rival) : undefined}
           stepperMiddle={
             <ScoresheetOpener
-              san={game.plies[game.ply].move?.san}
-              ply={game.ply}
+              san={model.stepper.san}
+              ply={model.stepper.ply}
               // Nothing to open before the first move, but an open drawer can always close: a new game empties it.
-              disabled={!scoresheetOpen && game.moves.length === 0}
+              disabled={!scoresheetOpen && !model.stepper.started}
               open={scoresheetOpen}
               onToggle={() => setScoresheetOpen(!scoresheetOpen)}
             />
@@ -446,15 +229,14 @@ function LessonScreen({
       program={
         <Stack {...part('drawer-panel', sections)}>
           <StatusHeadline
-            {...status}
-            failure={game.error && { who: described.name, error: game.error, onRetry: game.retry }}
+            {...headline}
             eyebrowInHeader
-            eyebrowLink={listLink}
-            action={ending && !reviewShut ? <ReviewGameButton href={review} /> : null}
-            news={headlineNews(
-              { news: status.news, pastGuide },
-              { aside: !!aside, scoresheetOpen, failed: !!game.error },
-            )}
+            action={review.offered ? <ReviewGameButton href={review.href} /> : null}
+            news={headlineNews(headline, {
+              aside: !!aside,
+              scoresheetOpen,
+              failed: !!headline.failure,
+            })}
           />
           {/* The scoresheet drawer takes the place of this part on a narrow page, under the headline, which tells of a failure. */}
           <View {...part(scoresheetOpen ? 'wide-only' : 'lesson-body', sections)}>
@@ -462,24 +244,14 @@ function LessonScreen({
             <View {...part('wide-only')}>
               <Separator />
             </View>
-            {trap ? (
-              <TrapCard
-                lesson={lesson}
-                trap={trap}
-                mistake={game.plies[trap.ply + 1].move!.san}
-                fell={game.plies[trap.ply].turn}
-                learner={learner}
-                playback={playback}
-                onBack={() => game.goto(trap.ply)}
-              />
-            ) : null}
+            {model.trap ? <TrapCard {...model.trap} /> : null}
             {/*
              * Leaving a row for the idea card keeps its preview, so its notes can be pointed at.
              * On a narrow page the moves and the idea are panes side by side.
              */}
-            {moveList || ideaCard ? (
+            {moveList || model.idea ? (
               // A View, so narrow.css can make it a row, which a Stack's inline style would override.
-              <PointingArea onLeave={leave} {...part('panes', sections)}>
+              <PointingArea onLeave={model.onLeave} {...part('panes', sections)}>
                 {moveList ? (
                   // Beside the idea it widens for larger text; alone it fills the row.
                   <View
@@ -499,8 +271,8 @@ function LessonScreen({
           </View>
           {scoresheetOpen ? (
             <ScoresheetDrawer
-              {...scoresheetProps}
-              reviewButton={<ScoresheetReview href={review} disabled={reviewShut} compact />}
+              {...scoresheet}
+              reviewButton={<ScoresheetReview href={review.href} disabled={review.shut} compact />}
               onClose={() => setScoresheetOpen(false)}
             />
           ) : null}
@@ -516,9 +288,9 @@ function LessonScreen({
             <Stack style={labelled}>
               <Inline align="center" justify="between" wrap="nowrap">
                 <ScoresheetTitle />
-                <ScoresheetReview href={review} disabled={reviewShut} />
+                <ScoresheetReview href={review.href} disabled={review.shut} />
               </Inline>
-              <Scoresheet {...scoresheetProps} />
+              <Scoresheet {...scoresheet} />
             </Stack>
             {settingsOpen ? null : (
               <>
@@ -530,7 +302,7 @@ function LessonScreen({
           <Sheet open={settingsOpen} title="Settings" onClose={() => setSettingsOpen(false)}>
             <Stack style={sections}>
               {/* A phone's name-bar discs are dots too small to find; this swaps sides from the sheet, in a lesson too. */}
-              <SideChoice side={learner} onChange={onPlayAs} />
+              <SideChoice side={model.learner} onChange={onPlayAs} />
               {settings(lessonCredits)}
               <SourceFootnote />
             </Stack>
