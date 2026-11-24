@@ -2,7 +2,7 @@ import { useController } from '@data-client/react';
 import { type ComponentProps, use, useMemo } from 'react';
 
 import type { Header } from '@/components/Header';
-import type { HeadlineProps, News } from '@/components/GameStatus';
+import type { HeadlineProps } from '@/components/GameStatus';
 import type { Scoresheet } from '@/components/Scoresheet';
 import type { ScoresheetOpener } from '@/components/ScoresheetDrawer';
 import type { BoardColumn } from '@/components/Stage';
@@ -28,7 +28,7 @@ import type { CandidateList } from './CandidateList';
 import { type IdeaAside, type IdeaCard, noNotesText } from './IdeaCard';
 import type { LessonControls } from './LessonControls';
 import type { TrapCard } from './TrapCard';
-import { describeStatus, headlineNews, OPENINGS_TITLE, shownEnding, whyReviewShut } from './status';
+import { describeStatus, OPENINGS_TITLE, type Status, shownEnding, whyReviewShut } from './status';
 
 /** What the lesson screen is given: the address's lesson and the game held above it. */
 export interface LessonScreenInput {
@@ -71,10 +71,12 @@ export interface LessonScreenModel {
     'eyebrow' | 'title' | 'detail' | 'failure' | 'eyebrowLink'
   >;
   /**
-   * What a narrow page draws of the headline (`headlineNews`): with the
-   * panes under it, and with the scoresheet in their place.
+   * What the status says beyond the headline: how much of it a narrow page
+   * draws, and why Stockfish's moves stand in for the guide's. A layout reads
+   * them with `headlineNews`, which needs what only it knows (the scoresheet
+   * shown, the aside drawn).
    */
-  readonly news: { readonly panes: News; readonly scoresheet: News };
+  readonly status: Pick<Status, 'news' | 'pastGuide'>;
   /**
    * The game's review: its address, why it is shut (none when open), and
    * whether the headline offers it: once the game ends, if it is open.
@@ -97,7 +99,7 @@ export interface LessonScreenModel {
   readonly trap: ComponentProps<typeof TrapCard> | null;
   /** The game's moves. */
   readonly scoresheet: Omit<ComponentProps<typeof Scoresheet>, 'fill'>;
-  readonly controls: Pick<ComponentProps<typeof LessonControls>, 'mode' | 'onMode'>;
+  readonly settings: Pick<ComponentProps<typeof LessonControls>, 'mode' | 'onMode'>;
   /** The side the learner plays (the lesson's once one is picked). */
   readonly learner: Color;
   readonly sources: Lesson['sources'];
@@ -316,16 +318,7 @@ export function useLessonScreen({
       failure: game.error && { who: described.name, error: game.error, onRetry: game.retry },
       eyebrowLink: listLink,
     },
-    news: {
-      panes: headlineNews(
-        { news, pastGuide },
-        { aside: !!aside, scoresheetOpen: false, failed: !!game.error },
-      ),
-      scoresheet: headlineNews(
-        { news, pastGuide },
-        { aside: !!aside, scoresheetOpen: true, failed: !!game.error },
-      ),
-    },
+    status: { news, pastGuide },
     review: {
       href: reviewHref(game.moves, learner, id),
       shut: reviewShut,
@@ -367,7 +360,7 @@ export function useLessonScreen({
       trapped: view.trap && view.trap.ply + 1,
       onGoto: game.goto,
     },
-    controls: { mode, onMode: chooseMode },
+    settings: { mode, onMode: chooseMode },
     learner,
     sources: lesson.sources,
     onLeave: leave,

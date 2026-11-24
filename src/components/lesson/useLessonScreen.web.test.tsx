@@ -127,8 +127,9 @@ describe('useLessonScreen', () => {
     expect(headline.eyebrowLink).toBe(header.placeLink);
   });
 
-  it('draws no "your move" line on a narrow page once the learner has moved', async () => {
+  it('passes on how much of the headline a narrow page draws', async () => {
     await showAfter(CARO_KANN, 'e4', 'c6', 'd4');
-    expect(shown().news).toEqual({ panes: 'none', scoresheet: 'none' });
+    // No "your move" line once the learner has moved, and the guide still leads.
+    expect(shown().status).toEqual({ news: 'none', pastGuide: undefined });
   });
 });

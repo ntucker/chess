@@ -31,7 +31,7 @@ import { IdeaAside, IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
 import { SideChoice } from './SideChoice';
-import { LOADING } from './status';
+import { headlineNews, LOADING } from './status';
 import { SourceCredits } from './SourceCredits';
 import { TrapCard } from './TrapCard';
 import { type LessonScreenInput, useLessonScreen } from './useLessonScreen';
@@ -152,7 +152,7 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
   /** The settings, beside the board or in a narrow page's sheet, which adds the lesson's `credits`. */
   const settings = (credits?: ReactNode) => (
     <>
-      <LessonControls {...model.controls} />
+      <LessonControls {...model.settings} />
       <Stack gap="1">
         <OpponentChoice />
         {credits}
@@ -211,7 +211,11 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
             {...model.headline}
             eyebrowInHeader
             action={model.review.offered ? <ReviewGameButton href={model.review.href} /> : null}
-            news={scoresheetOpen ? model.news.scoresheet : model.news.panes}
+            news={headlineNews(model.status, {
+              aside: !!model.aside,
+              scoresheetOpen,
+              failed: !!model.headline.failure,
+            })}
           />
           {/* The scoresheet drawer takes the place of this part on a narrow page, under the headline, which tells of a failure. */}
           <View {...part(scoresheetOpen ? 'wide-only' : 'lesson-body', sections)}>
