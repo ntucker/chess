@@ -233,6 +233,8 @@ function confirm(
   const cost = moveLoss(before, after, mistake, node.pos.turn)!.loss;
   if (cost < MISTAKE_LOSS) return undefined;
   const replies = acceptedReplies(before, after, side);
+  // A mistake that ends the game, such as a stalemate, leaves no reply to punish it.
+  if (!replies.length) return undefined;
   const played = answers.replies(cue);
   if (!played) ask('replies', cue);
   const best = child(cue, replies[0], 0);

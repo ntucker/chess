@@ -352,6 +352,28 @@ describe('findOpportunities', () => {
     }).finds;
     expect(bg5.found).toBeUndefined();
   });
+
+  it('finds nothing in a mistake that ends the game', () => {
+    // Black, mating with Qb2, stalemates White's lone king with Qb3 instead.
+    const fen = '8/8/8/8/1q6/8/2k5/K7 b - - 0 1';
+    const start = walkTo(fen, [])!;
+    const final = (lines: FinalAnalysis['lines']): FinalAnalysis => ({
+      lines,
+      depth: 18,
+      final: true,
+    });
+    const answers: Answers = {
+      replies: (spot) =>
+        spot.key === start.key ? { shares: { b4b3: 1 }, thin: false } : undefined,
+      analysis: (spot) =>
+        spot.key === start.key
+          ? final([{ uci: 'b4b2', evaluation: evaluation('#-1') }])
+          : final([{ evaluation: evaluation(0.5) }]),
+    };
+    const result = findOpportunities({ start: fen, line: [], side: 'white', answers });
+    expect(result.finds).toEqual([]);
+    expect(result.dropped).toEqual([]);
+  });
 });
 
 describe('acceptedReplies', () => {
