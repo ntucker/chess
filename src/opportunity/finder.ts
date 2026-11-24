@@ -104,10 +104,12 @@ export interface FinderInput {
 export type ThinEnd = Pick<Node, 'line' | 'key' | 'reach'>;
 
 export interface FinderResult {
-  /** Best first (`byScore`), each leaving the learner clearly better where Act III ends. */
+  /** Finds on the guide, best first (`byScore`), each leaving the learner clearly better where Act III ends. */
   readonly finds: readonly Find[];
-  /** Finds where Act III ends short of clearly better (`keepScore`), best first. */
+  /** Finds on the guide where Act III ends short of clearly better (`keepScore`), best first. */
   readonly dropped: readonly Find[];
+  /** Finds off the guide, kept or not, best first: evidence only, never written into a lesson. */
+  readonly offGuide: readonly Find[];
   /** Where the walk ended thin, most reached first. */
   readonly thin: readonly ThinEnd[];
   /** The answers still missing, most useful first. Empty once the walk is done. */
@@ -150,12 +152,15 @@ export function findOpportunities({
   if (!opening) throw new Error(`The finder's start line isn't legal: ${start} ${line.join(' ')}`);
   const lastPly = line.length + limits.maxPlies;
   // Most reached first, then in the order added.
-  const frontier = new LikeliestFirst<Walked>((node) => node.reach);
-  frontier.push({ ...opening, onGuide: true });
+  const frontier = new LikeliestFirst<Node>((node) => node.reach);
+  frontier.push(opening);
   const visited = new Set<PositionKey>();
   const moves = new Map<PositionKey, Move[]>();
-  const walkedInto = (to: Node, move: Move) =>
-    moves.set(to.key, [...(moves.get(to.key) ?? []), move]);
+  const walkedInto = (to: Node, move: Move) => {
+    const into = moves.get(to.key);
+    if (into) into.push(move);
+    else moves.set(to.key, [move]);
+  };
   const finds = new Map<PositionKey, { confirmed: Confirmed; from: PositionKey }>();
   const thinKeys = new Map<PositionKey, readonly Uci[]>();
 
@@ -167,7 +172,7 @@ export function findOpportunities({
       for (const uci of ucis) {
         const next = legalChild(node, uci, node.reach);
         walkedInto(next, { from: node.key, share: 1, guided });
-        frontier.push({ ...next, onGuide: node.onGuide && guided });
+        frontier.push(next);
       }
       continue;
     }
@@ -180,7 +185,7 @@ export function findOpportunities({
       walkedInto(next, { from: node.key, share, guided: true });
       if (confirmed) {
         if (!finds.has(next.key)) finds.set(next.key, { confirmed, from: node.key });
-      } else if (next.reach >= limits.reachFloor) frontier.push({ ...next, onGuide: node.onGuide });
+      } else if (next.reach >= limits.reachFloor) frontier.push(next);
     }
   }
   const reach = reachOf(opening.key, moves);
@@ -195,17 +200,14 @@ export function findOpportunities({
     .map(([key, line]) => ({ line, key, reach: reach(key, false) }))
     .sort((a, b) => b.reach - a.reach);
   const kept = (find: Find) => find.end >= limits.keepScore;
+  const guided = sorted.filter((find) => find.onGuide);
   return {
-    finds: sorted.filter(kept),
-    dropped: sorted.filter((find) => !kept(find)),
+    finds: guided.filter(kept),
+    dropped: guided.filter((find) => !kept(find)),
+    offGuide: sorted.filter((find) => !find.onGuide),
     thin,
     requests,
   };
-}
-
-/** A position the walk reached, and whether the guide's moves alone lead the punishing side there. */
-interface Walked extends Node {
-  readonly onGuide: boolean;
 }
 
 /** One move the walk took into a position: from where, its share of the games there, and whether the guide plays it. */

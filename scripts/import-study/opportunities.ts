@@ -17,6 +17,8 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import type { Chess } from 'chessops/chess';
+
 import { percent } from '@/analysis/quality';
 import { type Analysis, sketched } from '@/evaluation/evaluation';
 import { lineSans, numberedLine, parsePosition, playLine, readPositionKey } from '@/game/replay';
@@ -24,7 +26,6 @@ import { gamesPlayed, inCleanRun } from '@/lesson/cleanRun';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import {
   type Find,
-  byScore,
   findOpportunities,
   type FinderResult,
   type ThinEnd,
@@ -161,7 +162,7 @@ const points = (score: number) => Math.round(score * 100);
 function reportOf(
   lesson: Lesson,
   band: number,
-  { finds, dropped, thin }: FinderResult,
+  { finds, dropped, offGuide: off, thin }: FinderResult,
   top: number,
 ): string {
   const start = parsePosition(lesson.start)!;
@@ -194,23 +195,21 @@ function reportOf(
   const header = [tableRow(columns.map(([name]) => name)), tableRow(columns.map(() => '---'))];
   const table = (rows: readonly Find[]) =>
     rows.length ? [...header, ...rows.map(row)] : ['None.'];
-  const kept = finds.filter((find) => find.onGuide);
-  const keptDropped = dropped.filter((find) => find.onGuide);
-  const off = [...finds, ...dropped].filter((find) => !find.onGuide).sort(byScore);
+  const guided = [...finds, ...dropped];
   return [
     `# Opportunities in ${lesson.title}, lichess ${band} band`,
     '',
-    `On the guide (the punishing side plays only the lesson's moves to get there): ${kept.length} finds kept, the best ${Math.min(top, kept.length)} below, then the ${keptDropped.length} dropped. Off the guide: ${off.length} more, listed last. A mistake whose punishment nearly everyone finds (gain under ${points(LIMITS.minGain)}) is no find. Share: how often the opponent plays the mistake there. Reach: how often games get there, summed over the move orders that do (on the guide, only those the guide plays). Cost: points of expected score (of 100) the mistake gives away. Found: how often players at the cue find a punishing reply. Gain: points a player at the cue scores more by knowing the punishment than by playing as the band does (~: an estimate, the cue is thin or its measured replies cover under ${percent(LIMITS.estimateCoverage)} of its games). Score: the games that reach the cue by any move order (reach × share when one does) × gain, in thousandths, which ranks. End: the learner's expected score where Act III ends, following the band's likely replies. Holds: the best reply alone keeps the learner at least ${points(LIMITS.keepScore)} against best defence; practical: only the band's likely replies get there. In guide: whether the lesson already lists the mistake.`,
+    `On the guide (the punishing side plays only the lesson's moves to get there): ${finds.length} finds kept, the best ${Math.min(top, finds.length)} below, then the ${dropped.length} dropped. Off the guide: ${off.length} more, listed last. A mistake whose punishment nearly everyone finds (gain under ${points(LIMITS.minGain)}) is no find. Share: how often the opponent plays the mistake there. Reach: how often games get there, summed over the move orders that do (on the guide, only those the guide plays). Cost: points of expected score (of 100) the mistake gives away. Found: how often players at the cue find a punishing reply. Gain: points a player at the cue scores more by knowing the punishment than by playing as the band does (~: an estimate, the cue is thin or its measured replies cover under ${percent(LIMITS.estimateCoverage)} of its games). Score: the games that reach the cue by any move order (reach × share when one does) × gain, in thousandths, which ranks. End: the learner's expected score where Act III ends, following the band's likely replies. Holds: the best reply alone keeps the learner at least ${points(LIMITS.keepScore)} against best defence; practical: only the band's likely replies get there. In guide: whether the lesson already lists the mistake.`,
     '',
     `Limits: minGames ${MIN_GAMES}, ${Object.entries(LIMITS)
       .map(([name, value]) => `${name} ${value}`)
       .join(', ')} (src/opportunity/limits.ts).`,
     '',
-    ...table(kept.slice(0, top)),
+    ...table(finds.slice(0, top)),
     '',
     `## Dropped: Act III ends under ${points(LIMITS.keepScore)}`,
     '',
-    ...table(keptDropped),
+    ...table(dropped),
     '',
     '## Off the guide',
     '',
@@ -220,9 +219,9 @@ function reportOf(
     '',
     thinSummary(thin),
     '',
-    guideSummary(lesson, [...kept, ...keptDropped]),
+    guideSummary(lesson, guided),
     '',
-    guideReplySummary(lesson, [...kept, ...keptDropped]),
+    guideReplySummary(lesson, guided),
     '',
   ].join('\n');
 }
@@ -257,9 +256,7 @@ function guideSummary(lesson: Lesson, finds: readonly Find[]): string {
     .filter(({ find, ...disagreement }) => !keepsGuide(find.payoff, disagreement))
     .map(({ find, at, guide }) => {
       const line = [...find.line, find.mistake, find.replies[0], ...find.payoff.slice(0, at)];
-      const sans = lineSans([...line, guide], start);
-      const played = lineSans([...line, find.payoff[at]], start).at(-1);
-      return `- ${numberedLine(sans.slice(0, -1))}: the guide's ${sans.at(-1)}, Act III plays ${played}`;
+      return guideRow(start, line, guide, `Act III plays ${uciSan(start, line, find.payoff[at])}`);
     });
   const summary = `Act III: the guide and Stockfish differ at ${disagreements.length} of the punishing side's moves in the finds' Act IIIs; Act III kept the guide's move at ${disagreements.length - overrides.length}.`;
   return [
@@ -281,14 +278,10 @@ function guideSummary(lesson: Lesson, finds: readonly Find[]): string {
  */
 function guideReplySummary(lesson: Lesson, finds: readonly Find[]): string {
   const start = parsePosition(lesson.start)!;
-  const rows = finds.flatMap((find) => {
-    if (!find.guideReply) return [];
-    const cue = [...find.line, find.mistake];
-    const guide = lineSans([...cue, find.guideReply], start);
-    const best = lineSans([...cue, find.replies[0]], start).at(-1);
-    return [
-      `- ${numberedLine(guide.slice(0, -1))}: the guide's ${guide.at(-1)}, the cue's best ${best}`,
-    ];
+  const rows = finds.flatMap(({ line, mistake, guideReply, replies }) => {
+    if (!guideReply) return [];
+    const cue = [...line, mistake];
+    return [guideRow(start, cue, guideReply, `the cue's best ${uciSan(start, cue, replies[0])}`)];
   });
   return rows.length
     ? ["Cues where the guide's move misses the punishment (check before merge):", ...rows].join(
@@ -296,6 +289,16 @@ function guideReplySummary(lesson: Lesson, finds: readonly Find[]): string {
       )
     : "At every cue, the guide's move (where it has one) is a punishing reply.";
 }
+
+/** A row naming the guide's move after `line` beside what the finder plays there (`other`, already worded). */
+function guideRow(start: Chess, line: readonly Uci[], guide: Uci, other: string): string {
+  const sans = lineSans([...line, guide], start);
+  return `- ${numberedLine(sans.slice(0, -1))}: the guide's ${sans.at(-1)}, ${other}`;
+}
+
+/** The SAN of `uci` played after `line`. */
+const uciSan = (start: Chess, line: readonly Uci[], uci: Uci) =>
+  lineSans([...line, uci], start).at(-1);
 
 const args = process.argv.slice(2);
 const flag = (name: string) => {

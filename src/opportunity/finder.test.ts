@@ -312,15 +312,18 @@ describe('findOpportunities', () => {
     });
   });
 
-  it('marks a find off the guide where Stockfish, not the guide, plays a punishing move', () => {
+  it('lists a find off the guide apart, where Stockfish, not the guide, plays a punishing move', () => {
     const D3 = `${OPENING} d3`;
-    const [bg5] = find({
+    const result = find({
       ...known,
       guideMoves: (spot) => (spot.key === at(D3).key ? undefined : known.guideMoves!(spot)),
       analysis: (spot) =>
         spot.key === at(D3).key ? search(D3, [['Bc5', 0.58]]) : known.analysis(spot),
-    }).finds;
-    expect(bg5).toMatchObject({ mistake: last(CUE), onGuide: false, reach: expect.closeTo(0.4) });
+    });
+    expect(result.finds).toEqual([]);
+    expect(result.offGuide).toMatchObject([
+      { mistake: last(CUE), onGuide: false, reach: expect.closeTo(0.4) },
+    ]);
   });
 
   it("names the guide's move at the cue where the cue doesn't accept it", () => {
@@ -340,7 +343,7 @@ describe('findOpportunities', () => {
           ? repliesFrom(spot.key, { [last(`${CUE} Nxe4`)]: 1000 }, MIN_GAMES)
           : known.replies(spot),
     });
-    expect([...result.finds, ...result.dropped]).toEqual([]);
+    expect([...result.finds, ...result.dropped, ...result.offGuide]).toEqual([]);
     // White's 7.Bxd8, the next mistake on, awaits its full search.
     const { line, key } = at(`${CUE} Nxe4`);
     expect(result.requests).toContainEqual({ kind: 'full', spot: { line, key } });
