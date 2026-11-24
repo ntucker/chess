@@ -31,7 +31,7 @@ depend on those links.
 - The finder opens at any position (in a lesson, past a guide, in free play) and finds can be saved
   on the device. Publishing finds to other users is later and not in this plan.
 - In the app, "how often" comes from the learner's connected lichess account, else (no account, or
-  too few games) Maia on the device. Each number says which source it came from.
+  too few games) Maia on the device, as its own run. Each number says which source it came from.
 - In Practice, an opportunity common enough to count (see "Line to pass" in Rules) is a line to
   pass, and the opponent steers into it until it is passed. Inside one, the opponent also walks
   every reply played 10% or more. A dice mode (real rates) and guides extended to every common reply
@@ -170,14 +170,15 @@ before any lesson file changes. The report prints the limits it ran with.
   All optional, so the format number stays 3.
 - The `Trap` idea goes. Each existing trap idea (254: 172 in position notes, 82 in move notes)
   becomes guide-tree moves with the marker on its first move. A note whose only drawn idea was the
-  trap moves to the marked move; a note with other ideas keeps them and its text where it was.
-  Positions reached through a marked move of the learner's side are outside the book, so a clean run
-  never reaches them and the checker needs no book move there.
+  trap moves to the marked move; a note with other ideas keeps them and its text where it was. A
+  marked move of the learner's side is not a book move, so the checker's walk (book moves for the
+  learner, every opponent move) does not follow it; a position a book line also reaches still needs
+  a book move, and there is no exemption for positions after a marked move.
 - The app reads the new shape. The trap card, its playback and landing (`LandedTrap`) behave as
   before, except for the "show traps" scope in Decisions (before, it hid every trap). The marker
   takes over two call sites of the `Trap` idea: a landed trap still explains itself with show traps
   off (`guidance.ts`), and a marked move stays out of the rare rows (`trapStarts` in
-  `src/lesson/select.ts`). The PR note says `cost` is absent on every migrated trap.
+  `src/lesson/select.ts`).
 - Checker rules for marked moves (legal; `cost` at or over the floor when present). README for
   `assets/lessons/` and `AGENTS.md` updated.
 - No new finds: shipped lessons change only by the migration, rebuilt by the importer from committed
@@ -220,8 +221,9 @@ find's path are asked again and their new answers committed in the same PR, keep
 Elsewhere a row without a total reads it as unknown, never as 0 or as enough games. Then it writes
 the marked move with its cost, and the accepted replies and Act III as Rules say. Popularity, which
 runs after it, must not drop counts it did not remeasure (today it drops them wherever it did not
-ask, such as positions with one guide move). Stafford only, with B's floors. Merges after E and F,
-because new lines change what the Practice opponent plays.
+ask, such as positions with one guide move), and where it does remeasure it writes the position
+total from that same answer. Stafford only, with B's floors. Merges after E and F, because new lines
+change what the Practice opponent plays.
 
 ### Piece D2: Names and notes
 
