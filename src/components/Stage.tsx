@@ -1,6 +1,7 @@
-import { Surface, useTheme } from '@reactive/silk-native';
+import { Surface, useFlickGesture, useTheme } from '@reactive/silk-native';
 import { type ComponentProps, type ReactNode, useState } from 'react';
 import { type StyleProp, View, type ViewStyle } from 'react-native';
+import { GestureDetector } from 'react-native-gesture-handler';
 
 import { asideAfter, type CardAside } from '@/board/cardAside';
 import { gameEnding } from '@/game/ending';
@@ -101,7 +102,10 @@ interface BoardColumnProps {
     'name' | 'detail' | 'detailWideOnly' | 'detailControl' | 'children'
   >;
   /** The player's name bar: anything to show before the move stepper at its end. */
-  readonly player?: Pick<ComponentProps<typeof PlayerBar>, 'children'>;
+  readonly player?: Pick<ComponentProps<typeof PlayerBar>, 'children'> & {
+    /** A finger thrown up from the bar, as on a phone that opens its settings this way. */
+    readonly onFlickUp?: () => void;
+  };
   /** The board, with the player's side (`orientation`) at the bottom. */
   readonly board: Omit<BoardProps, 'dom' | 'ending' | 'onEndingPointer'>;
   /** Swaps the sides: given, either name bar's disc is a button that does it. */
@@ -142,6 +146,11 @@ export function BoardColumn({
   const other = opposite(side);
   useStepKeys(ply, moves.length, goto);
   const swap = onSwap && { label: `Play as ${colorName(other)}`, onPress: onSwap };
+  const flickUp = useFlickGesture({
+    direction: 'up',
+    onFlick: () => player?.onFlickUp?.(),
+    enabled: Boolean(player?.onFlickUp),
+  });
   const styles = useNarrowStyles(STYLES);
   const part = useNarrowPart();
   /** A name bar, or with `narrowBars` the bar on a wide page and its stand-in on a narrow one. */
@@ -209,18 +218,22 @@ export function BoardColumn({
         </BoardFrame>
       </View>
       {bar(
-        <PlayerBar
-          name="You"
-          detail={colorName(side)}
-          style={styles.controlsBar}
-          color={side}
-          toMove={game.toMove === side}
-          captures={game.captures}
-          swap={swap}
-        >
-          {player?.children}
-          <Transport ply={ply} total={moves.length} onGoto={goto} middle={stepperMiddle} />
-        </PlayerBar>,
+        <GestureDetector {...flickUp}>
+          <View>
+            <PlayerBar
+              name="You"
+              detail={colorName(side)}
+              style={styles.controlsBar}
+              color={side}
+              toMove={game.toMove === side}
+              captures={game.captures}
+              swap={swap}
+            >
+              {player?.children}
+              <Transport ply={ply} total={moves.length} onGoto={goto} middle={stepperMiddle} />
+            </PlayerBar>
+          </View>
+        </GestureDetector>,
         narrowBars?.controls,
         styles.controlsBar,
       )}

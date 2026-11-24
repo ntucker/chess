@@ -1,5 +1,6 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Field, Switch, Tooltip, useTheme } from '@reactive/silk-native';
-import { type StyleProp, StyleSheet, type ViewStyle } from 'react-native';
+import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { spokenOnly } from '@/theme/narrow';
 import { lineHeightOf } from '@/theme/theme';
@@ -13,6 +14,8 @@ interface Props {
   readonly quiet?: boolean;
   /** Why it can't be changed now: given (not empty), the switch shows disabled, with this as its tooltip. */
   readonly disabled?: string;
+  /** What it does, for a short label: its tooltip while it can be changed. */
+  readonly hint?: string;
   readonly style?: StyleProp<ViewStyle>;
 }
 
@@ -20,11 +23,14 @@ interface Props {
  * A switch with its label beside it; the label names it and toggles it too.
  * On a touch screen the label makes the row a finger tall (`touchLine`), so
  * the small switch is easy to hit. A disabled one says why in a tooltip (a
- * resting mouse, or a tap), and to screen readers as its description, since
- * the tooltip isn't read from it.
+ * resting mouse, or a tap), and an enabled one its `hint`, marked by an
+ * info icon, since a tap on the label toggles it: a tap on the icon shows
+ * it. Screen readers hear either as its description, since the tooltip
+ * isn't read from it.
  */
-export function Toggle({ label, checked, onChange, quiet, disabled, style }: Props) {
+export function Toggle({ label, checked, onChange, quiet, disabled, hint, style }: Props) {
   const { theme } = useTheme();
+  const tip = disabled || hint;
   const field = (
     <Field.Root orientation="horizontal" disabled={Boolean(disabled)} style={[styles.field, style]}>
       <Switch size="sm" tone="accent" checked={checked} onCheckedChange={onChange} />
@@ -34,17 +40,29 @@ export function Toggle({ label, checked, onChange, quiet, disabled, style }: Pro
       >
         {label}
       </Field.Label>
-      {disabled ? <Field.Description style={styles.spoken}>{disabled}</Field.Description> : null}
+      {hint && !disabled ? (
+        // Screen readers hear the hint as the switch's description.
+        <View aria-hidden testID="toggle-hint" style={styles.info}>
+          <Ionicons
+            name="information-circle-outline"
+            size={INFO_SIZE}
+            color={theme.semantic.color.textSecondary}
+          />
+        </View>
+      ) : null}
+      {tip ? <Field.Description style={styles.spoken}>{tip}</Field.Description> : null}
     </Field.Root>
   );
-  if (!disabled) return field;
+  if (!tip) return field;
   return (
     <Tooltip.Root>
       <Tooltip.Trigger>{field}</Tooltip.Trigger>
-      <Tooltip.Content>{disabled}</Tooltip.Content>
+      <Tooltip.Content>{tip}</Tooltip.Content>
     </Tooltip.Root>
   );
 }
+
+const INFO_SIZE = 15;
 
 const styles = StyleSheet.create({
   // Natively a shorter parent (a phone's 32 dp name bar) would fit the row
@@ -52,4 +70,6 @@ const styles = StyleSheet.create({
   field: { minHeight: touchTarget },
   label: { userSelect: 'none', ...touchLine(lineHeightOf('label')) },
   spoken: spokenOnly,
+  // The row's height, so a finger finds it beside the label.
+  info: { alignSelf: 'stretch', justifyContent: 'center', paddingHorizontal: 4 },
 });

@@ -66,8 +66,8 @@ jest.mock('./layouts/PhoneLesson', () => ({
     `phone${scoresheetOpen ? ' scoresheet' : ''}`,
 }));
 jest.mock('./layouts/WideLesson', () => ({ WideLesson: () => 'wide' }));
-jest.mock('@/components/Sheet', () => ({
-  Sheet: ({ open }: { open: boolean }) => (open ? ' settings' : null),
+jest.mock('./LessonSettings', () => ({
+  LessonSettings: ({ open }: { open: boolean }) => (open ? ' settings' : null),
 }));
 jest.mock('./SourceCredits', () => ({ SourceCredits: () => null }));
 

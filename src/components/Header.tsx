@@ -49,6 +49,8 @@ export interface NarrowButton {
   readonly onPress: () => void;
   /** Whether what it opens is open, for a button that closes it again. */
   readonly expanded?: boolean;
+  /** What it opens holds the theme choice, so the narrow header leaves out its theme button. */
+  readonly holdsTheme?: boolean;
 }
 
 /**
@@ -102,7 +104,7 @@ export function Header({ place, placeLink, back, narrowButton, onRestart }: Head
           </Text>
           <Separator orientation="vertical" style={styles.rule} />
         </Inline>
-        <ThemeSwitch />
+        <ThemeSwitch wideOnly={narrowButton?.holdsTheme} />
         <View {...part(Boolean(narrowButton) && 'wide-only')}>
           <SourceLink />
         </View>

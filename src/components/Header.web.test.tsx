@@ -42,6 +42,27 @@ function buttonParts(props: Parameters<typeof Header>[0]) {
   return parts;
 }
 
+/** The narrow part around the header's theme button. */
+function themePart(props: Parameters<typeof Header>[0]) {
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  act(() =>
+    root.render(
+      <SilkProvider theme={themes.dark}>
+        <SettingsProvider>
+          <Header {...props} />
+        </SettingsProvider>
+      </SilkProvider>,
+    ),
+  );
+  const part = host
+    .querySelector('[aria-label^="Theme:"]')
+    ?.closest('[data-narrow]')
+    ?.getAttribute('data-narrow');
+  act(() => root.unmount());
+  return part;
+}
+
 describe('Header', () => {
   it('keeps the source link on every page without settings', () => {
     expect(buttonParts({})).toEqual({ 'Source code on GitHub': undefined });
@@ -81,6 +102,12 @@ describe('Header', () => {
       'Source code on GitHub': 'wide-only',
       Settings: 'narrow-only',
     });
+  });
+
+  it("leaves out a narrow page's theme button when its narrow button holds the theme", () => {
+    const narrowButton = { icon: 'settings-outline', label: 'Settings', onPress: () => {} } as const;
+    expect(themePart({ narrowButton })).toBeUndefined();
+    expect(themePart({ narrowButton: { ...narrowButton, holdsTheme: true } })).toBe('wide-only');
   });
 
   it('says whether what its narrow button opens is open', () => {
