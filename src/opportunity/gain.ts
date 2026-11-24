@@ -13,9 +13,10 @@ export interface Gain {
 
 /**
  * The share-weighted loss of the band's replies at the cue beside the best,
- * over the replies with a measured loss (`losses`, from `judgement`'s rule);
- * the rest are left out and the measured ones renormalised. 0 where none is
- * measured.
+ * over the replies with a measured loss (`losses`, from `judgement`'s rule,
+ * floored at 0 so a reply a search rates above the first line gives
+ * nothing); the rest are left out and the measured ones renormalised. 0
+ * where none is measured.
  */
 export function gainIfKnown(
   shares: Readonly<Record<Uci, number>>,
@@ -26,7 +27,7 @@ export function gainIfKnown(
   for (const [uci, loss] of Object.entries(losses)) {
     const share = shares[uci] ?? 0;
     covered += share;
-    lost += share * loss;
+    lost += share * Math.max(0, loss);
   }
   return { gain: covered && lost / covered, covered };
 }

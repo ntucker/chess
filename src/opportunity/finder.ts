@@ -17,7 +17,7 @@ import {
   forSide,
   isFinal,
   scoreFor,
-  sketched,
+  sketchOnly,
 } from '@/evaluation/evaluation';
 import type { Color } from '@/game/replay';
 import type { PositionKey, Uci } from '@/lesson/lesson';
@@ -122,7 +122,7 @@ export function findOpportunities({
   const context: Context = { side, answers, limits, ask };
 
   const opening = walkTo(start, line);
-  if (!opening) return { finds: [], dropped: [], thin: [], requests: [] };
+  if (!opening) throw new Error(`The finder's start line isn't legal: ${start} ${line.join(' ')}`);
   const lastPly = line.length + limits.maxPlies;
   // Most reached first, then in the order added.
   const frontier = new LikeliestFirst<Node>((node) => node.reach);
@@ -166,8 +166,8 @@ export function findOpportunities({
 function punishingMoves(node: Node, { answers, ask }: Context): readonly Uci[] {
   const guide = answers.guideMoves?.(node);
   if (guide?.length) return guide;
-  const analysis = answers.analysis(node);
-  if (!sketched(analysis)) {
+  const analysis = sketchOnly(answers.analysis(node));
+  if (!analysis) {
     ask('sketch', node);
     return [];
   }
@@ -194,16 +194,16 @@ function erringSteps(node: Node, context: Context): ErringStep[] | 'thin' {
   const played = Object.entries(replies.shares)
     .filter(([, share]) => share >= limits.shareFloor)
     .sort(([, a], [, b]) => b - a);
-  const before = answers.analysis(node);
-  if (!sketched(before)) {
+  const before = sketchOnly(answers.analysis(node));
+  if (!before) {
     ask('sketch', node);
     return [];
   }
   return played.flatMap(([uci, share]): ErringStep[] => {
     const cue = child(node, uci, node.reach * share);
     if (!cue) return [];
-    const after = answers.analysis(cue);
-    if (!sketched(after)) {
+    const after = sketchOnly(answers.analysis(cue));
+    if (!after) {
       ask('sketch', cue);
       return [];
     }
@@ -277,7 +277,7 @@ function replyLosses(
     if (share < context.limits.shareFloor) continue;
     const loss = punishingLoss(cue, after, uci, context);
     if (loss === 'pending') pending = true;
-    else if (loss !== undefined) losses[uci] = Math.max(0, loss);
+    else if (loss !== undefined) losses[uci] = loss;
   }
   return pending ? undefined : losses;
 }

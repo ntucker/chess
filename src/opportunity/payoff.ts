@@ -33,7 +33,7 @@ export function payoff(
   { before, cue }: { before: FinalAnalysis; cue: FinalAnalysis },
   context: Context,
 ): Payoff | undefined {
-  const { side, answers, limits, ask } = context;
+  const { side, limits } = context;
   const moves: Uci[] = [];
   let punishingMoves = 0;
   let guided = false;
@@ -41,52 +41,74 @@ export function payoff(
   const unpunished = forSide(before.lines[0].evaluation.score, side);
   let end = scoreFor(cue.lines[0].evaluation, side);
   let node = start;
-  while (!node.pos.isEnd()) {
-    const analysis = answers.analysis(node);
-    const full = () => (isFinal(analysis) ? analysis : void ask('full', node));
+  while (!node.pos.isEnd() && punishingMoves < limits.payoffMoves) {
     let uci: Uci | undefined;
     if (node.pos.turn === side) {
-      const final = full();
+      const final = fullAnalysis(node, context);
       if (!final) return undefined;
-      const [best, second] = final.lines;
-      // As the review's `winning` (`src/review/refine.ts`) reads Stockfish's
-      // second line, at the finder's own `winScore`.
-      const winning = (line: typeof best | undefined) =>
-        !!line && scoreFor(line.evaluation, side) >= limits.winScore;
-      end = scoreFor(best.evaluation, side);
-      const stillWon = forSide(best.evaluation.score, side) - unpunished;
-      if (guided && stillWon < limits.costFloor) break;
-      const mating = forSide(best.evaluation.mate ?? 0, side) > 0;
-      const won =
-        !mating &&
-        winning(best) &&
-        (winning(second) || balance(node.pos.board, side) >= limits.materialUp);
-      if (won) break;
+      const best = final.lines[0].evaluation;
+      end = scoreFor(best, side);
+      if (guided && forSide(best.score, side) - unpunished < limits.costFloor) break;
+      if (obviouslyWon(node, final, context)) break;
       const move = punishingMove(node, final, context);
       if (move === 'pending') return undefined;
       uci = move;
       punishingMoves++;
     } else {
-      uci = answers.guideMoves?.(node)?.[0];
-      guided = uci !== undefined;
-      if (!guided) {
-        const replies = answers.replies(node);
-        if (!replies) {
-          ask('replies', node);
-          return undefined;
-        }
-        uci = mostPlayed(replies) ?? full()?.lines[0].uci;
-        if (!uci) return undefined;
-      }
+      const move = erringMove(node, context);
+      if (!move) return undefined;
+      ({ uci, guided } = move);
     }
     const next = uci === undefined ? undefined : child(node, uci, 0);
     if (!next) break;
-    moves.push(next.line.at(-1)!);
-    const punished = node.pos.turn === side;
+    moves.push(uci!);
     node = next;
-    if (punished && punishingMoves === limits.payoffMoves) break;
   }
   return { moves, end: node.pos.isCheckmate() && node.pos.turn !== side ? 1 : end };
+}
+
+/** The final analysis of `node`, asking for it while it's missing. */
+function fullAnalysis(node: Node, { answers, ask }: Context): FinalAnalysis | undefined {
+  const analysis = answers.analysis(node);
+  if (isFinal(analysis)) return analysis;
+  ask('full', node);
+  return undefined;
+}
+
+/**
+ * Whether the punishing side's win at `node` is obvious: winning, with its
+ * second-best move winning too or `materialUp` points ahead. A mating line
+ * plays out instead. Like the review's `winning` (`src/review/refine.ts`), it
+ * reads Stockfish's second line, at the finder's own `winScore`.
+ */
+function obviouslyWon(node: Node, final: FinalAnalysis, { side, limits }: Context): boolean {
+  const [best, second] = final.lines;
+  const winning = (line: typeof best | undefined) =>
+    !!line && scoreFor(line.evaluation, side) >= limits.winScore;
+  const mating = forSide(best.evaluation.mate ?? 0, side) > 0;
+  return (
+    !mating &&
+    winning(best) &&
+    (winning(second) || balance(node.pos.board, side) >= limits.materialUp)
+  );
+}
+
+/**
+ * The erring side's move at `node`, and whether the guide gave it: the
+ * guide's, else its most played reply, else Stockfish's best where the
+ * position is thin; undefined while an answer is missing.
+ */
+function erringMove(node: Node, context: Context): { uci: Uci; guided: boolean } | undefined {
+  const { answers, ask } = context;
+  const guide = answers.guideMoves?.(node)?.[0];
+  if (guide !== undefined) return { uci: guide, guided: true };
+  const replies = answers.replies(node);
+  if (!replies) {
+    ask('replies', node);
+    return undefined;
+  }
+  const uci = mostPlayed(replies) ?? fullAnalysis(node, context)?.lines[0].uci;
+  return uci === undefined ? undefined : { uci, guided: false };
 }
 
 /**
@@ -111,5 +133,7 @@ function punishingMove(
 /** The most played move, unless the position is thin. */
 function mostPlayed({ shares, thin }: Replies): Uci | undefined {
   if (thin) return undefined;
-  return Object.entries(shares).reduce((most, entry) => (entry[1] > most[1] ? entry : most))[0];
+  let most: [Uci, number] | undefined;
+  for (const entry of Object.entries(shares)) if (!most || entry[1] > most[1]) most = entry;
+  return most?.[0];
 }

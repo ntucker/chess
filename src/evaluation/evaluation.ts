@@ -58,8 +58,12 @@ export const finalOnly = (analysis: Analysis | undefined) =>
 export const SKETCH_DEPTH = 12;
 
 /** Whether `analysis` is at least a sketch. */
-export const sketched = (analysis: Analysis | undefined): analysis is Analysis =>
+export const sketched = (analysis: Analysis | undefined) =>
   !!analysis && (analysis.final || analysis.depth >= SKETCH_DEPTH);
+
+/** `analysis` if it's at least a sketch, else undefined. */
+export const sketchOnly = (analysis: Analysis | undefined) =>
+  sketched(analysis) ? analysis : undefined;
 
 /**
  * A final analysis of one line: how the position stands (`evaluation`), and

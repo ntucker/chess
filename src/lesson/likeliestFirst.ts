@@ -56,7 +56,7 @@ export class LikeliestFirst<T> {
 
   private before(a: number, b: number) {
     const [x, y] = [this.heap[a], this.heap[b]];
-    const [likelier, asLikely] = [this.share(x.walked), this.share(y.walked)];
-    return likelier > asLikely || (likelier === asLikely && x.order < y.order);
+    const [shareX, shareY] = [this.share(x.walked), this.share(y.walked)];
+    return shareX > shareY || (shareX === shareY && x.order < y.order);
   }
 }
