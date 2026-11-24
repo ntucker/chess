@@ -3,6 +3,7 @@
  * expected score it gave away.
  */
 import {
+  type Analysis,
   type Evaluation,
   type FinalAnalysis,
   forSide,
@@ -24,6 +25,9 @@ export type MoveQuality = 'book' | 'best' | 'good' | 'inaccuracy' | 'mistake' | 
  */
 export type ReviewQuality = MoveQuality | 'brilliant' | 'great' | 'miss';
 
+/** The least expected score (0 to 1, the mover's) a mistake gives away (see `LEAST_LOSS`). */
+export const MISTAKE_LOSS = 0.1;
+
 /**
  * The least expected score (0 to 1, the mover's) a move must give away for
  * each label. These are chess.com's "expected points lost" limits
@@ -35,7 +39,7 @@ export type ReviewQuality = MoveQuality | 'brilliant' | 'great' | 'miss';
  */
 const LEAST_LOSS: readonly (readonly [number, MoveQuality])[] = [
   [0.2, 'blunder'],
-  [0.1, 'mistake'],
+  [MISTAKE_LOSS, 'mistake'],
   [0.05, 'inaccuracy'],
 ];
 
@@ -93,14 +97,41 @@ export function judgement(
   uci: string,
   mover: Color,
 ): { quality: MoveQuality; evaluation: Evaluation } | undefined {
-  const evaluation = judgedEvaluation(before, after, uci, mover);
-  if (!evaluation) return undefined;
-  const loss = signed(before.lines[0].evaluation, mover) - signed(evaluation, mover);
+  const judged = moveLoss(before, after, uci, mover);
+  if (!judged) return undefined;
+  const { loss, evaluation } = judged;
   const quality: MoveQuality =
     uci === before.lines[0].uci || loss <= 0
       ? 'best'
       : (LEAST_LOSS.find(([threshold]) => loss >= threshold)?.[1] ?? 'good');
   return { quality, evaluation };
+}
+
+/** What a move gives away beside the best (0 to 1, the mover's), and the evaluation that judges it. */
+export interface MoveLoss {
+  readonly loss: number;
+  readonly evaluation: Evaluation;
+}
+
+/**
+ * The expected score (0 to 1) `uci` gives away for `mover` beside the best
+ * move, and the evaluation it is judged by, by `judgement`'s rule. It takes
+ * analyses that may not be final, to screen moves before searching them in
+ * full (src/opportunity); a label must come from final ones (`judgement`).
+ */
+export function moveLoss(
+  before: Analysis,
+  after: Analysis | undefined,
+  uci: string,
+  mover: Color,
+): MoveLoss | undefined {
+  const evaluation = judgedEvaluation(before, after, uci, mover);
+  return (
+    evaluation && {
+      loss: signed(before.lines[0].evaluation, mover) - signed(evaluation, mover),
+      evaluation,
+    }
+  );
 }
 
 /** What Stockfish makes of a move: its label, and how it changes the position for the learner. */
@@ -198,8 +229,8 @@ export function labelMove({
 
 /** The evaluation `judgement` judges `uci` by; undefined while `after` is needed and missing. */
 function judgedEvaluation(
-  before: FinalAnalysis,
-  after: FinalAnalysis | undefined,
+  before: Analysis,
+  after: Analysis | undefined,
   uci: string,
   mover: Color,
 ): Evaluation | undefined {

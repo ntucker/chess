@@ -1,8 +1,8 @@
 import { describe, expect, it } from '@jest/globals';
 
-import type { Analysis } from '@/evaluation/evaluation';
+import { type Analysis, SKETCH_DEPTH } from '@/evaluation/evaluation';
 
-import { nextSearch, type OrderInput, SKETCH_DEPTH } from './order';
+import { nextSearch, type OrderInput } from './order';
 import { bookMove, listing, partial, waitingMove } from './review.fixture';
 
 /** Six moves, the first two from the guide, the rest not judged yet; the learner plays White. */

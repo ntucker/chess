@@ -31,7 +31,7 @@ import {
   type Uci,
   type VariationId,
 } from './lesson';
-import { LikeliestFirst } from './likeliestFirst';
+import { LikeliestFirst, type Walked } from './likeliestFirst';
 import { lineKeys, type VariationOf } from './select';
 
 /**
@@ -203,7 +203,7 @@ function likeliestInto(
   bookOnly: boolean,
 ): Uci[] | undefined {
   const reached = new Set<PositionKey>();
-  const queue = new LikeliestFirst();
+  const queue = new LikeliestFirst<Walked>((walked) => walked.share);
   // Each start counts as often as games play it, so a rare line that picks
   // the lesson (1.e4 e5 2.Qf3) doesn't open a variation the main lines reach.
   for (const line of starts) {

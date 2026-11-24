@@ -51,6 +51,21 @@ export const finalOnly = (analysis: Analysis | undefined) =>
   isFinal(analysis) ? analysis : undefined;
 
 /**
+ * How deep a sketch goes: the first whole depth of at least this (about 0.3 s
+ * on a desktop). Sketches screen positions (the review's graph and search
+ * order, the opportunity finder's replies); they never label a move.
+ */
+export const SKETCH_DEPTH = 12;
+
+/** Whether `analysis` is at least a sketch. */
+export const sketched = (analysis: Analysis | undefined) =>
+  !!analysis && (analysis.final || analysis.depth >= SKETCH_DEPTH);
+
+/** `analysis` if it's at least a sketch, else undefined. */
+export const sketchOnly = (analysis: Analysis | undefined) =>
+  sketched(analysis) ? analysis : undefined;
+
+/**
  * A final analysis of one line: how the position stands (`evaluation`), and
  * the move it names, if any. Maia and a finished game name none.
  */
