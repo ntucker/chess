@@ -1,0 +1,132 @@
+# Builds the Android app on every push to main that changes more than
+# Markdown, and publishes it at one fixed address, so a phone installs the
+# newest build from its browser. README.md, under "Android builds", says how
+# to install it.
+name: Android
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**/*.md']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # The release that always holds main's newest build. Its tag stays at the
+  # first build's commit; the release notes name each build's.
+  TAG: android
+  # README.md links to this file on that release.
+  APK: opening-night.apk
+
+jobs:
+  build:
+    name: Build the APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Install
+        run: yarn install --immutable
+
+      - name: Generate the native project
+        run: yarn expo prebuild --platform android --no-install
+
+      # Phones in use are 64-bit ARM; one architecture builds about 4x faster.
+      # The build cache reuses unchanged tasks' outputs, which setup-gradle saves.
+      - name: Build
+        working-directory: android
+        run: |
+          ./gradlew assembleRelease --build-cache -PreactNativeArchitectures=arm64-v8a
+          mv app/build/outputs/apk/release/app-release.apk "../$APK"
+
+      # Release builds use the key in Expo's template (android/app/debug.keystore),
+      # the same key as every build installed so far. Android installs an
+      # update only over an app with the same key, so a template change would
+      # make every phone refuse the next build: fail here instead.
+      - name: Check the signing key
+        run: |
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
+          "$apksigner" verify --print-certs "$APK" | tee certs.txt
+          grep -qi 'SHA-256 digest: fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c' certs.txt
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: apk
+          path: ${{ env.APK }}
+          retention-days: 7
+
+  publish:
+    name: Publish the APK
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+
+    steps:
+      - name: Download the APK
+        uses: actions/download-artifact@v8
+        with:
+          name: apk
+
+      # An older run stands down for any newer run on main, which publishes its
+      # own build; if that build fails, the link keeps the build before both
+      # until the next push.
+      - name: Check this is main's newest build
+        id: newest
+        run: |
+          newer_runs=$(gh run list --workflow android.yml --branch main --limit 20 --json databaseId \
+            --jq "map(select(.databaseId > $GITHUB_RUN_ID)) | length")
+          if [ "$newer_runs" -gt 0 ]; then
+            echo "::notice::Not published: a newer run on main publishes its build instead."
+          else
+            echo "newest=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Moving the tag would break `git fetch` in clones that have it.
+      - name: Publish to the release
+        if: steps.newest.outputs.newest
+        run: |
+          gh release view "$TAG" > /dev/null 2>&1 \
+            || gh release create "$TAG" --target "$GITHUB_SHA" --title 'Android app (newest main)' --notes ''
+          # The new file goes up under another name, then takes the fixed one,
+          # so the link is missing only between the delete and the rename.
+          mv "$APK" "next-$APK"
+          gh release upload "$TAG" "next-$APK" --clobber
+          asset() { gh api "repos/$GH_REPO/releases/tags/$TAG" --jq ".assets[] | select(.name == \"$1\") | .id"; }
+          old=$(asset "$APK")
+          next=$(asset "next-$APK")
+          # Delete the live file only once its replacement is listed.
+          [ -n "$next" ]
+          [ -z "$old" ] || gh api -X DELETE "repos/$GH_REPO/releases/assets/$old"
+          gh api -X PATCH "repos/$GH_REPO/releases/assets/$next" -f name="$APK" > /dev/null
+          gh release edit "$TAG" --notes "Built from $GITHUB_SHA on $(date -u '+%Y-%m-%d %H:%M UTC')."

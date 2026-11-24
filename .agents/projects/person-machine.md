@@ -18,3 +18,6 @@ defaults. Cap Metro's workers in `android/app/build.gradle` (`extraPackagerArgs 
 
 Git on Windows has no GitHub sign-in there; WSL's `gh` does. To push from GLADOS, run
 `git -c credential.helper='!gh auth git-credential' push` in WSL.
+
+To put `main` on the person's phone, send the APK link in README.md, "Android builds": it needs no
+PC or cable. Install over USB only a build of unmerged code.
