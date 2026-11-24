@@ -44,20 +44,21 @@ const render = (active = true, moves = MOVES) =>
     );
   });
 
-/** Stores a sketch of the position after the first `plies` moves. */
-const sketch = (plies: number) =>
+/** Stores `value` as Stockfish's analysis of the position after the first `plies` moves of `moves`. */
+const store = (moves: readonly string[], plies: number, value: object) =>
   act(async () => {
-    const args = { engine: 'stockfish', moves: MOVES.slice(0, plies).join(' ') } as const;
-    controllers[0].set(PositionAnalysis, args, { ...args, ...partial(12, ['a2a3', 0.5]) });
+    const args = { engine: 'stockfish', moves: moves.slice(0, plies).join(' ') } as const;
+    controllers[0].set(PositionAnalysis, args, { ...args, ...value });
   });
+
+/** Stores a sketch of the position after the first `plies` moves. */
+const sketch = (plies: number) => store(MOVES, plies, partial(12, ['a2a3', 0.5]));
 
 /** Stores the final analysis of the position after the first `plies` moves of `moves`. */
 const finalOf = (moves: readonly string[], plies: number, ...lines: Parameters<typeof listing>) =>
-  act(async () => {
-    const args = { engine: 'stockfish', moves: moves.slice(0, plies).join(' ') } as const;
-    controllers[0].set(PositionAnalysis, args, { ...args, ...listing(...lines) });
-  });
-/** `finalOf` the review's usual game. */
+  store(moves, plies, listing(...lines));
+
+/** Stores the final analysis of the position after the first `plies` moves of the usual game. */
 const final = (plies: number, ...lines: Parameters<typeof listing>) =>
   finalOf(MOVES, plies, ...lines);
 
@@ -153,7 +154,7 @@ describe('useReview', () => {
     const traded = ['e2e4', 'd7d5', 'e4d5', 'd8d5'];
     await render(true, traded);
     expect(reviews.at(-1)!.captures.material.white.lead).toBe(0);
-    // 2...Qxd5 drops White's expected score from 0.45 to 0.7 for Black: a blunder.
+    // 2...Qxd5 lifts White's expected score from 0.45 to 0.7: a blunder by Black.
     await finalOf(traded, 3, ['g8f6', 0.45], ['c7c6', 0.5]);
     await finalOf(traded, 4, ['b1c3', 0.7]);
     await act(async () => reviews.at(-1)!.goto(4));
