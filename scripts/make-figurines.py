@@ -10,10 +10,10 @@ the black parts are the glyph, and the light inner lines are cut out of it,
 drawn thicker than on the board so they stay open at text sizes. Text in the
 font takes the color of the words around it.
 
-Every glyph is as wide as DM Mono's, so a move measures the same in either
-(MONO_ADVANCE in src/theme/theme.ts), and the font's ascent and descent sit
-inside the app's text fonts', so a piece never makes a line taller. A piece is
-slightly wider than its advance, which the letters' own side bearings absorb.
+Each piece is as wide as its art, so a piece is wider than DM Mono's letters;
+the script prints the widest's advance, which FIGURINE_ADVANCE in
+src/theme/theme.ts must match. The font's ascent and descent sit inside the
+app's text fonts', so a piece never makes a line taller.
 
 The pieces are by Colin M.L. Burnett, GPLv2+ (as lichess lists them), like
 src/components/PieceGlyph.tsx; so is this font.
@@ -40,8 +40,9 @@ LETTERS = {'K': 'king', 'Q': 'queen', 'R': 'rook', 'B': 'bishop', 'N': 'knight'}
 
 UNITS_PER_EM = 1000
 # Every piece is drawn at one scale, so they keep the board's sizes relative to
-# each other, about as tall as a capital (the king 725 units, crown to foot).
-SCALE = 21
+# each other, a little taller than a capital (the king 785 units, crown to
+# foot), since a piece fills less of its height than a letter.
+SCALE = 22.5
 # The pieces' feet (y 39.5 in the 45-unit art, with its outline) on the baseline.
 BASELINE = 40.2
 # Space on either side of a piece, about a letter's.

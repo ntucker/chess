@@ -55,7 +55,7 @@ export const fonts = {
 export const MONO_ADVANCE = 0.6;
 
 /** The widest piece's advance in `fonts.figurines` (the queen), as a share of its size: scripts/make-figurines.py prints it. */
-export const FIGURINE_ADVANCE = 0.898;
+export const FIGURINE_ADVANCE = 0.956;
 
 // Silk picks a font by family slot (sans, serif, mono) and a weight, but each
 // loaded file is its own family on Android, so a weight the file

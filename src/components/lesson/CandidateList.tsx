@@ -454,7 +454,7 @@ const LONGEST_EVALUATION = '\u22129.9';
 /**
  * A move on one line, whose text shrinks when its row has too little room
  * for it. Beside its badges in a pane at its least width (`listMinWidth`),
- * which holds `LONGEST_MOVE`, a five-character move needs 0.84 of its size
+ * which holds `LONGEST_MOVE`, a five-character move needs 0.85 of its size
  * and the longest moves, a promotion with check (exd8=Q+) or a queen's
  * move named by its square, with check (Qh4xe1+), 0.6, which the floor
  * still holds.
