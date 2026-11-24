@@ -139,16 +139,15 @@ async function run(id: string, band: number, top: number, out: string | undefine
     result = findOpportunities(input);
   }
   stop();
-  const report = reportOf(
-    lesson,
-    band,
-    result.finds.slice(0, top),
-    result.finds.length,
-    result.thin,
-  );
+  const report = reportOf(lesson, band, result.finds.slice(0, top), result.finds.length, [
+    thinSummary(result.thin),
+    guideSummary(lesson, result.finds, answers),
+  ]);
   if (out) writeFileSync(out, report);
   else console.log(report);
 }
+
+const percent = (share: number) => `${Math.round(share * 100)}%`;
 
 /** The finds as a Markdown report: one table row each, then each line in full. */
 function reportOf(
@@ -156,10 +155,9 @@ function reportOf(
   band: number,
   finds: readonly Find[],
   total: number,
-  thin: readonly ThinEnd[],
+  summaries: readonly string[],
 ): string {
   const start = parsePosition(lesson.start)!;
-  const percent = (share: number) => `${Math.round(share * 100)}%`;
   const sans = (line: readonly Uci[]) => lineSans(line, start);
   const numbered = (from: readonly Uci[], moves: readonly Uci[]) =>
     numberedLine(sans([...from, ...moves]).slice(from.length), from.length + 1);
@@ -196,13 +194,13 @@ function reportOf(
     '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
     ...rows.map((row) => `| ${row} |`),
     '',
-    thinSummary(thin, percent),
+    ...summaries,
     '',
   ].join('\n');
 }
 
 /** Where the walk ended thin: how many positions, at which plies, and how many games reach them. */
-function thinSummary(thin: readonly ThinEnd[], percent: (share: number) => string): string {
+function thinSummary(thin: readonly ThinEnd[]): string {
   if (!thin.length) return 'No walk ended at a thin position.';
   const byPly = new Map<number, number>();
   for (const { line } of thin) byPly.set(line.length, (byPly.get(line.length) ?? 0) + 1);
@@ -212,6 +210,36 @@ function thinSummary(thin: readonly ThinEnd[], percent: (share: number) => strin
     .join(', ');
   const reach = thin.reduce((sum, end) => sum + end.reach, 0);
   return `Thin: ${thin.length} walks ended where fewer than ${LIMITS.minGames} games reach the position (${plies}), ${percent(reach)} of games in all.`;
+}
+
+/**
+ * Where the guide and Stockfish name different moves for the punishing side
+ * in Act III, and how often Act III kept the guide's (it gives back less
+ * than the cost floor there).
+ */
+function guideSummary(lesson: Lesson, finds: readonly Find[], answers: Answers): string {
+  let differ = 0;
+  let kept = 0;
+  for (const find of finds) {
+    const line = [...find.line, find.mistake, find.replies[0], ...find.payoff];
+    const from = find.line.length + 2;
+    const steps = [...playLine(line, parsePosition(lesson.start)!)].map(({ pos, key }) => ({
+      turn: pos.turn,
+      key,
+    }));
+    for (let ply = from; ply < line.length; ply++) {
+      const { turn, key } = steps[ply];
+      if (turn !== lesson.side) continue;
+      const spot = { line: line.slice(0, ply), key };
+      const guide = answers.guideMoves?.(spot)?.[0];
+      if (!guide || guide === answers.analysis(spot)?.lines[0]?.uci) continue;
+      differ++;
+      if (line[ply] === guide) kept++;
+    }
+  }
+  return differ
+    ? `Act III: the guide and Stockfish differ at ${differ} of the punishing side's positions; Act III kept the guide's move at ${kept}.`
+    : "Act III: the guide never differs from Stockfish's best for the punishing side.";
 }
 
 const args = process.argv.slice(2);
