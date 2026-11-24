@@ -2,7 +2,8 @@ import { StateContext, useController, useSubscription } from '@data-client/react
 import { use, useEffect, useMemo, useReducer } from 'react';
 
 import { finalOnly } from '@/evaluation/evaluation';
-import { analyze, type Color, lastPosition, legalMoveCountAt, replay } from '@/game/replay';
+import { captures } from '@/game/material';
+import { analyze, type Color, legalMoveCountAt, replay } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { bookMoves } from '@/lesson/select';
 import { analysisError, getAnalysis, storedAnalyses } from '@/resources/analysis';
@@ -114,6 +115,8 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
   const shownLine = moment.shownMove
     ? [...base, moment.shownMove]
     : lines[moment.board === 'retry' ? ply - 1 : ply];
+  // The positions along it: the game's, or at a moment its retry's.
+  const shownPlies = moment.shownMove ? replay(shownLine) : plies;
 
   // A try waiting for its search goes first: the learner is waiting for it.
   const next = nextSearch({ moves: judged, book, analyses, learner, dwelt, failed });
@@ -136,7 +139,9 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
   return {
     plies,
     /** The position the board shows (`shownLine`), with what the board needs (`analyze`). */
-    current: moment.shownMove ? lastPosition(shownLine) : analyze(plies[shownLine.length]),
+    current: analyze(shownPlies[shownLine.length]),
+    /** What each side is up and has taken by the position the board shows (`captures`). */
+    captures: captures(shownPlies, shownLine.length),
     /** The moves to the position the board shows: the game's to `ply`, or at a moment its retry's. */
     shownLine,
     ply,

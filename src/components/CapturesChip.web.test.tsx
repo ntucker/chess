@@ -72,6 +72,15 @@ describe('CapturesChip', () => {
     expect(card()).toBeNull();
   });
 
+  it('leaves a pinned card closed once the chip has hidden and come back', () => {
+    show(PAWN_UP, 'white');
+    act(() => chip()!.click());
+    show(after(['e2e4']), 'white');
+    expect(chip()).toBeNull();
+    show(PAWN_UP, 'white');
+    expect(card()).toBeNull();
+  });
+
   // jsdom has no PointerEvent, so React Native Web hovers by mouse events.
   it('peeks at the lists under a resting mouse, and a click there pins them', () => {
     show(PAWN_UP, 'white');

@@ -270,7 +270,7 @@ export function recordedMove(pos: Chess, uci: string): string | undefined {
   return makeUci({ from: move.from, to: kingCastlesTo(pos.turn, side) });
 }
 
-/** A piece a move can take: a legal move never takes a king. */
+/** A piece a move can take, as material counts it: any but a king. */
 export type TakenRole = Exclude<Role, 'king'>;
 
 /**
@@ -280,7 +280,7 @@ export type TakenRole = Exclude<Role, 'king'>;
 export function takenRole(pos: Chess, { from, to }: NormalMove): TakenRole | undefined {
   if (pos.board.get(from)?.role === 'pawn' && to === pos.epSquare) return 'pawn';
   const piece = pos.board.get(to);
-  return piece?.color === opposite(pos.turn) ? (piece.role as TakenRole) : undefined;
+  return piece?.color === opposite(pos.turn) && piece.role !== 'king' ? piece.role : undefined;
 }
 
 /** The piece on `square` (a name like `e4`) in `fen`, if any. */

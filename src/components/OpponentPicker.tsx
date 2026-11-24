@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
     textDecorationStyle: 'dotted',
   },
   chevronOpen: { transform: [{ rotate: '180deg' }] },
-  // Gives way like "· to move" beside it (PlayerBar).
+  // Gives way before the strength and its chevron beside it.
   progress: { flexShrink: 1, minWidth: 0, fontVariant: ['tabular-nums'] },
   reload: { flexShrink: 0 },
   underlined: { textDecorationLine: 'underline' },

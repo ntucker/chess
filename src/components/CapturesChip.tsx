@@ -10,8 +10,8 @@ import { type ComponentRef, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { type EntryExitAnimationFunction, withDelay } from 'react-native-reanimated';
 
-import { type Captures, type MaterialRole, VALUES } from '@/game/material';
-import { type Color, colorName, COLORS, opposite } from '@/game/replay';
+import { type Captures, pointsOf } from '@/game/material';
+import { type Color, colorName, COLORS, opposite, type TakenRole } from '@/game/replay';
 import { springs } from '@/motion/spring';
 import { springTo } from '@/motion/springTo';
 import { fonts } from '@/theme/theme';
@@ -47,13 +47,17 @@ interface Props {
  * outside it, or Back.
  */
 export function CapturesChip({ captures, color }: Props) {
-  const { pieces, lead } = captures.material[color];
   const even = COLORS.every((side) => captures.material[side].pieces.length === 0);
   const anyTaken = COLORS.some((side) => captures.taken[side].length > 0);
+  const shown = captures.material[color].pieces.length > 0 || (even && anyTaken);
+  // Unmounted while hidden, so a card left open doesn't open again when the chip comes back.
+  return shown ? <Chip captures={captures} color={color} even={even} /> : null;
+}
+
+function Chip({ captures, color, even }: Props & { readonly even: boolean }) {
+  const { pieces, lead } = captures.material[color];
   const [card, setCard] = useState<'peek' | 'pin'>();
   const anchor = useRef<ComponentRef<typeof View>>(null);
-  if (pieces.length === 0 && !(even && anyTaken)) return null;
-
   const peek = () => setCard((was) => was ?? 'peek');
   const unpeek = () => setCard((was) => (was === 'peek' ? undefined : was));
   return (
@@ -124,7 +128,7 @@ function Pieces({
   pieces,
   color,
 }: {
-  readonly pieces: readonly MaterialRole[];
+  readonly pieces: readonly TakenRole[];
   readonly color: Color;
 }) {
   const { theme } = useTheme();
@@ -197,26 +201,23 @@ export function standing({ material }: Captures) {
 }
 
 /** "Up a rook and 2 pawns, 7 points ahead", for screen readers. */
-function upBy(pieces: readonly MaterialRole[], lead: number) {
+function upBy(pieces: readonly TakenRole[], lead: number) {
   const ahead = lead > 0 ? `, ${plural(lead, 'point')} ahead` : '';
   return `Up ${named(pieces)}${ahead}`;
 }
 
 /** "a rook and 2 pawns". */
-function named(pieces: readonly MaterialRole[]) {
+function named(pieces: readonly TakenRole[]) {
   const parts = groupByRole(pieces).map(([role, n]) => (n === 1 ? `a ${role}` : plural(n, role)));
   return parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`;
 }
 
 /** Each role in `pieces` with how many times it appears, in their order. */
-function groupByRole(pieces: readonly MaterialRole[]): [MaterialRole, number][] {
-  const counts = new Map<MaterialRole, number>();
+function groupByRole(pieces: readonly TakenRole[]): [TakenRole, number][] {
+  const counts = new Map<TakenRole, number>();
   for (const role of pieces) counts.set(role, (counts.get(role) ?? 0) + 1);
   return [...counts];
 }
-
-const pointsOf = (pieces: readonly MaterialRole[]) =>
-  pieces.reduce((sum, role) => sum + VALUES[role], 0);
 
 /** How far apart the card's pieces fan out of the chip, one after another. */
 const FAN_STAGGER_MS = 18;

@@ -54,5 +54,3 @@ function gameLength(plies: readonly Ply[], learner: Color) {
   const { mood } = resultVerdict(result, learner);
   return mood === 'drawn' ? `Drawn in ${length}.` : `You ${mood} in ${length}.`;
 }
-
-/** "1 move", "3 moves". */
