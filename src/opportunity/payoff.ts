@@ -14,6 +14,7 @@ import { balance } from '@/game/material';
 import type { Uci } from '@/lesson/lesson';
 
 import {
+  child,
   type Context,
   illegalMoveError,
   legalChild,
@@ -152,7 +153,7 @@ function erringMove(node: Node, context: Context): { uci: Uci; guided: boolean }
     ask('replies', node);
     return undefined;
   }
-  const uci = mostPlayed(replies) ?? fullAnalysis(node, context)?.lines[0].uci;
+  const uci = mostPlayed(node, replies) ?? fullAnalysis(node, context)?.lines[0].uci;
   return uci === undefined ? undefined : { uci, guided: false };
 }
 
@@ -180,12 +181,16 @@ function punishingMove(
     : { ...best, guide };
 }
 
-/** The most played move; undefined where the position is thin or no move was played. */
-function mostPlayed({ shares, thin }: Replies): Uci | undefined {
+/**
+ * The most played move at `node`; undefined where the position is thin or no
+ * move was played. It skips a key it can't play (lichess's own notation for a
+ * move `recordedMove` rejects), which counts toward the total but is no move.
+ */
+function mostPlayed(node: Node, { shares, thin }: Replies): Uci | undefined {
   if (thin) return undefined;
   let most: [Uci, number] | undefined;
   for (const entry of Object.entries(shares)) {
-    if (!most || entry[1] > most[1]) most = entry;
+    if ((!most || entry[1] > most[1]) && child(node, entry[0], 0)) most = entry;
   }
   return most?.[0];
 }

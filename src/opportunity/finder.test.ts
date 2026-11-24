@@ -397,6 +397,22 @@ describe('findOpportunities', () => {
     expect(result).toMatchObject({ finds: [], dropped: [], requests: [] });
   });
 
+  it("skips an explorer reply it can't play", () => {
+    // Black has only king moves; lichess's key h8h1 is no move here.
+    const fen = '8/8/8/8/1q6/8/2k5/K7 b - - 0 1';
+    const start = walkTo(fen, [])!;
+    const answers: Answers = {
+      replies: (spot) =>
+        spot.key === start.key ? { shares: { h8h1: 1 }, thin: false } : undefined,
+      analysis: (spot) =>
+        spot.key === start.key
+          ? { lines: [{ uci: 'b4b2', evaluation: evaluation('#-1') }], depth: 18, final: true }
+          : undefined,
+    };
+    const result = findOpportunities({ start: fen, line: [], side: 'white', answers });
+    expect(result).toMatchObject({ finds: [], dropped: [], requests: [] });
+  });
+
   it('throws where the walk meets an illegal guide move', () => {
     // White's Ra8 is blocked by its own pawn on a2, at the walk's first position.
     const answers: Answers = {

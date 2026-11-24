@@ -107,8 +107,8 @@ export function child(node: Node, uci: Uci, reach: number): Node | undefined {
 
 /**
  * The node a move the finder trusts leads to: the guide's (the lesson checker
- * rules out an illegal one), the opponent's replies, or Stockfish's. Throws
- * where it isn't legal, since the data that gave it is broken.
+ * rules out an illegal one), Stockfish's, or an explorer reply already checked.
+ * Throws where it isn't legal, since the data that gave it is broken.
  */
 export function legalChild(node: Node, uci: Uci, reach: number): Node {
   const next = child(node, uci, reach);
