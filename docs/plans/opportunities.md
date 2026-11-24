@@ -58,13 +58,14 @@ depend on those links.
 
 - A move's lichess share has one definition: its games over the position's explorer total where
   `LessonPosition.games` exists, else over the sum of the listed moves' games (older data). One
-  function in `src/lesson/`, beside `gamesPlayed` in `cleanRun.ts`, computes it for one band or
-  summed over all bands, and is called by `candidates` in `src/lesson/select.ts` (one band), by
-  Practice's rare-row rule and by the counted-reply rule (all bands), and by the finder's lichess
-  host (`repliesFrom`). Piece C adds the function. This change alone alters no lesson until D1 or D3
-  writes its totals; then that lesson's shares get smaller, since unlisted moves join the
-  denominator, and its rare rows and counted replies can shift slightly. A Maia share is a separate
-  source for the same field: a softmax over the legal moves' policy scores (piece J).
+  function in `src/lesson/cleanRun.ts`, generalizing `gamesPlayed` there, computes it for one band
+  or summed over all bands, given the position's total when it has one. `candidates` in
+  `src/lesson/select.ts` (one band, which its rare-row rule `rareLast` reads), `countedReplies` (all
+  bands) and piece A's `repliesFrom` (the lichess host's conversion) all call it. Piece C adds it.
+  Piece C alone alters no lesson until D1 or D3 writes its totals; then that lesson's shares get
+  smaller, since unlisted moves join the denominator, and its rare rows and counted replies can
+  shift slightly. A Maia share is a separate source for the same field: a softmax over the legal
+  moves' policy scores (piece J).
 - Derived, one pure function each in `src/opportunity/`: reach (shares of the erring side's moves
   multiplied along the path), found rate (the sum of the accepted replies' shares at the cue),
   score, role (trap or opportunity, from the learner's side), the current act, whether a position is
@@ -138,11 +139,12 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
 
 - One function of the answers known so far, like the review's `nextSearch`: it takes the start line,
   the side looking for opportunities, the band, the limits, and lookups for the replies (each move's
-  share of the games at the position, and whether the position is too thin to judge), analyses
-  (sketch or final) and the punishing side's own moves (a lesson's book moves, where it has some)
-  that the host has so far. It returns the finds so far and the requests still missing, most useful
-  first: a position's replies, a sketch, or a full search, each naming its line and position. The
-  script loops over it; the app derives it each render. No async generator and no queue.
+  share of the games at the position, and whether the position is too thin to judge; `repliesFrom`
+  turns lichess counts into that), analyses (sketch or final) and the punishing side's own moves (a
+  lesson's book moves, where it has some) that the host has so far. It returns the finds so far and
+  the requests still missing, most useful first: a position's replies, a sketch, or a full search,
+  each naming its line and position. The script loops over it; the app derives it from the store. No
+  async generator and no queue.
 - The walk is best-first by reach from the start (reach 1). At the erring side's turn it screens
   every reply over the share floor with a sketch, confirms each reply at or over the cost floor with
   full searches, then asks for the cue position's replies (found rate) and builds Act III. Replies
@@ -187,6 +189,8 @@ before any lesson file changes. The report prints the limits it ran with.
   takes over two call sites of the `Trap` idea: a landed trap still explains itself with show traps
   off (`guidance.ts`), and a marked move stays out of the rare rows (`trapStarts` in
   `src/lesson/select.ts`).
+- The share function above, with `countedReplies` and `candidates` gaining the position's total as a
+  parameter, and `countedReplies`' exception for a marked move without counts (Rules).
 - Checker rules for marked moves (legal; `cost` at or over the floor when present). README for
   `assets/lessons/` and `AGENTS.md` updated.
 - No new finds: shipped lessons change only by the migration, rebuilt by the importer from committed
