@@ -51,7 +51,7 @@ interface StatusInput {
 }
 
 /** The panel's headline, as `describeStatus` gives it. */
-type Status = Pick<HeadlineProps, 'eyebrow' | 'title' | 'detail' | 'news'> & {
+export type Status = Pick<HeadlineProps, 'eyebrow' | 'title' | 'detail' | 'news'> & {
   /**
    * Where the headline tells that the guide has no moves here (off it, or at
    * a line's end), its title as a heading for the detail told apart from it.
