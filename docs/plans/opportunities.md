@@ -60,15 +60,22 @@ depend on those links.
   `LessonPosition.games` exists, else over the sum of the listed moves' games (older data). One
   function computes it, in its own module `src/lesson/share.ts` (where `gamesPlayed` moves, so
   `select.ts` and `cleanRun.ts`, which already imports `select.ts`, can both import it without a
-  cycle). It takes a band index or `'all'` (summed over every band), and the position's total, or
-  undefined for older data. Its callers: `candidates` in `src/lesson/select.ts` (one band, which its
-  rare-row rule `rareLast` reads), `countedReplies` (all bands), `moveShares` in
-  `src/lesson/openings.ts` (all bands, keeping its small floor for moves without counts, which only
-  orders its walk) and piece A's `repliesFrom` (the lichess host's conversion, which computes the
-  same ratio until then). Piece C adds it and moves the callers onto it. The function alone alters
-  no lesson until D1 or D3 writes its totals; then that lesson's shares get smaller, since unlisted
-  moves join the denominator, and its rare rows and counted replies can shift slightly. A Maia share
-  is a separate source for the same field: a softmax over the legal moves' policy scores (piece J).
+  cycle). It works on game counts: a move's games, the listed moves' games and the position's total,
+  or undefined for older data, so callers holding raw explorer counts use it too; a helper beside it
+  reads a `LessonMove`'s games in one band or `'all'` (summed over every band). A move without
+  counts has no share (undefined), and each caller keeps today's handling of that: `candidates`
+  shows none, `countedReplies` counts the move (but see its marked-move exception in Rules), and
+  `moveShares` uses its small floor. Its callers: `candidates` in `src/lesson/select.ts` (one band,
+  which its rare-row rule `rareLast` reads), `countedReplies` (all bands), `moveShares` in
+  `src/lesson/openings.ts` (all bands; with `bookOnly` it then scales the book moves' shares to sum
+  to one, since the learner plays the book however rarely games do, which gives today's ratio over
+  the book moves), `opponentModel` in `scripts/import-study/coverOpponent.ts` (its common-move
+  filter, on the explorer's counts) and piece A's `repliesFrom` (the lichess host's conversion,
+  which computes the same ratio until then). Piece C adds it and moves the callers onto it. The
+  function alone alters no lesson until D1 or D3 writes its totals; then that lesson's shares get
+  smaller, since unlisted moves join the denominator, and its rare rows and counted replies can
+  shift slightly. A Maia share is a separate source for the same field: a softmax over the legal
+  moves' policy scores (piece J).
 - Derived, one pure function each in `src/opportunity/`: reach (shares of the erring side's moves
   multiplied along the path), found rate (the sum of the accepted replies' shares at the cue),
   score, role (trap or opportunity, from the learner's side), the current act, whether a position is
@@ -194,8 +201,10 @@ before any lesson file changes. The report prints the limits it ran with.
   takes over two call sites of the `Trap` idea: a landed trap still explains itself with show traps
   off (`guidance.ts`), and a marked move stays out of the rare rows (`trapStarts` in
   `src/lesson/select.ts`).
-- The share function above, with `countedReplies` and `candidates` gaining the position's total as a
-  parameter, and `countedReplies`' exception for a marked move without counts (Rules).
+- `src/lesson/share.ts` above, with `gamesPlayed` moved into it, and every caller it names moved
+  onto it: `candidates` and `countedReplies` gain the position's total as a parameter, `moveShares`
+  keeps its floor and book-only scaling, and `repliesFrom` and `coverOpponent.ts` drop their own
+  ratio. Also `countedReplies`' exception for a marked move without counts (Rules).
 - Checker rules for marked moves (legal; `cost` at or over the floor when present). README for
   `assets/lessons/` and `AGENTS.md` updated.
 - No new finds: shipped lessons change only by the migration, rebuilt by the importer from committed
