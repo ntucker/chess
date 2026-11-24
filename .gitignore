@@ -10,6 +10,8 @@ public/stockfish/
 .expo/
 dist/
 web-build/
+# Screenshots from `yarn check:layout`
+layout-check/
 expo-env.d.ts
 
 # Native
