@@ -16,25 +16,30 @@ export interface Payoff {
 }
 
 /**
- * The moves from `start` (the position after the cue's best reply, which
- * `cue`, the cue's final analysis, scores) until the win is obvious, or
- * undefined while an answer is missing. The punishing side plays the guide's
- * move where it gives back less than the cost floor, else Stockfish's best;
- * the erring side the guide's move, else its most played reply, else
- * Stockfish's best where the position is thin. It ends at mate (a mating line
- * plays out), when the punishing side is `materialUp` points ahead and
- * winning, when its second-best move is winning too, after `payoffMoves` of
- * its moves, where a guide move takes back at least the cost floor of its
- * expected score (the guide holds a better defence than its line, and Act III
- * adds no move to beat it), or when the game ends.
+ * The moves from `start` (the position after the cue's best reply) until the
+ * win is obvious, or undefined while an answer is missing. `before` and `cue`
+ * are the final analyses of the positions before the mistake and at the cue.
+ * The punishing side plays the guide's move where it gives back less than the
+ * cost floor, else Stockfish's best; the erring side the guide's move, else
+ * its most played reply, else Stockfish's best where the position is thin. It
+ * ends at mate (a mating line plays out), when the punishing side is
+ * `materialUp` points ahead and winning, when its second-best move is winning
+ * too, after `payoffMoves` of its moves, where after an erring-side guide move
+ * the punishment wins less than the cost floor beside `before` (the guide
+ * holds a better defence, and Act III adds no move to beat it), or when the
+ * game ends.
  */
-export function payoff(start: Node, cue: FinalAnalysis, context: Context): Payoff | undefined {
+export function payoff(
+  start: Node,
+  { before, cue }: { before: FinalAnalysis; cue: FinalAnalysis },
+  context: Context,
+): Payoff | undefined {
   const { side, answers, limits, ask } = context;
   const moves: Uci[] = [];
   let punishingMoves = 0;
   let guided = false;
   // Signed, not `scoreFor`: a difference near a limit must not round.
-  let held = forSide(cue.lines[0].evaluation.score, side);
+  const unpunished = forSide(before.lines[0].evaluation.score, side);
   let end = scoreFor(cue.lines[0].evaluation, side);
   let node = start;
   for (; !node.pos.isEnd();) {
@@ -47,10 +52,9 @@ export function payoff(start: Node, cue: FinalAnalysis, context: Context): Payof
       const [best, second] = final.lines;
       const winning = (line: typeof best | undefined) =>
         !!line && scoreFor(line.evaluation, side) >= limits.winScore;
-      const score = forSide(best.evaluation.score, side);
       end = scoreFor(best.evaluation, side);
-      if (guided && held - score >= limits.costFloor) break;
-      held = score;
+      const stillWon = forSide(best.evaluation.score, side) - unpunished;
+      if (guided && stillWon < limits.costFloor) break;
       const mating = forSide(best.evaluation.mate ?? 0, side) > 0;
       const won =
         !mating &&

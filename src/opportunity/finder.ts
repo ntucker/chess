@@ -235,7 +235,7 @@ function confirm(
   const played = answers.replies(cue);
   if (!played) ask('replies', cue);
   const best = child(cue, replies[0], 0);
-  const rest = best && payoff(best, after, context);
+  const rest = best && payoff(best, { before, cue: after }, context);
   const losses = played && replyLosses(cue, after, played.shares, context);
   if (!played || !rest || !losses) return 'pending';
   const found = played.thin

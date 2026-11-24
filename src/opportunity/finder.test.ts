@@ -272,7 +272,7 @@ describe('findOpportunities', () => {
       expect(bg5.payoff).toEqual(uci(`${BE3} Bxe3`).slice(-2));
     });
 
-    it("ends where the guide's move takes back the gain, and drops a find left level", () => {
+    it("ends where after the guide's move the punishment wins too little, and drops the find", () => {
       const { finds, dropped } = find(withGuide(BE3, full(BE3, [['Bxe3', 0.5]])));
       expect(finds).toEqual([]);
       expect(dropped).toMatchObject([{ payoff: [last(BE3)], end: 0.5, holds: true }]);
