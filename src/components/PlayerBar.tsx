@@ -78,7 +78,7 @@ export function PlayerBar({
           </Text>
           <CapturesChip captures={captures} color={color} />
         </View>
-        <View style={styles.detail}>
+        <View style={[styles.detail, detailWideOnly && styles.controlOnly]}>
           <Text {...caption} {...part(detailWideOnly && 'wide-only', styles.detailText)}>
             {detail}
           </Text>
@@ -174,6 +174,9 @@ const STYLES = narrowStyles((px) => ({
   // name's line's 1, kept far above it, so a short name ("White") stays whole
   // beside a switch at the bar's end.
   detail: { flexDirection: 'row', alignItems: 'baseline', gap: 4, flexShrink: 1000, minWidth: 0 },
+  // Where only its control shows (a narrow page with `detailWideOnly`), it keeps
+  // its width: the name's line gives way instead, its chip first.
+  controlOnly: { flexShrink: 0 },
   // Within it, the words end in an ellipsis; a control stays whole.
   detailText: { flexShrink: 1, minWidth: 0 },
   // The captured pieces give way first (see CapturesChip), then the name ends in
