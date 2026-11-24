@@ -13,7 +13,7 @@ import type { Uci } from '@/lesson/lesson';
 import { acceptedReplies, byScore, type Find, findOpportunities } from './finder';
 import { gainIfKnown } from './gain';
 import { LIMITS, MIN_GAMES } from './limits';
-import { payoff } from './payoff';
+import { keepsGuide, payoff } from './payoff';
 import {
   type Answers,
   type MoveCounts,
@@ -134,7 +134,7 @@ const NO_MOVE: FinalAnalysis = { lines: [{ evaluation: evaluation(0.5) }], depth
 const fromGames =
   (minGames = MIN_GAMES) =>
   ({ key }: Spot) =>
-    repliesFrom(replies.get(key) ?? {}, minGames);
+    repliesFrom(key, replies.get(key) ?? {}, minGames);
 
 /** Every answer known at once. */
 const known: Answers = {
@@ -170,6 +170,7 @@ const BG5: Find = {
   mistake: last(CUE),
   replies: [last(`${CUE} Nxe4`), last(`${CUE} Bxf2+`)],
   payoff: uci(`${CUE} Nxe4 Bxd8 Bxf2+ Ke2 Bg4#`).slice(-4),
+  disagreements: [],
   end: 1,
   holds: true,
   reach: 0.4,
@@ -302,7 +303,9 @@ describe('findOpportunities', () => {
         ...withGuide(AFTER, full(AFTER, [['Be3', 0.2]])),
         guideMoves: known.guideMoves,
         replies: (spot) =>
-          spot.key === at(AFTER).key ? repliesFrom({}, MIN_GAMES) : known.replies(spot),
+          spot.key === at(AFTER).key
+            ? repliesFrom(at(AFTER).key, {}, MIN_GAMES)
+            : known.replies(spot),
       }).dropped;
       expect(bg5.payoff).toEqual([last(BE3)]);
     });
@@ -317,14 +320,16 @@ describe('findOpportunities', () => {
         spot.key === at(BXD8).key ? [last(`${BXD8} Kxd8`)] : known.guideMoves!(spot),
       analysis: (spot) => (spot.key === at(BXD8).key ? full(BXD8, lines) : known.analysis(spot)),
     });
-    const payoffOf = (answers: Answers) => find(answers, { payoffMoves: 1 }).finds[0].payoff;
 
     it("follows the guide's move where it gives back less than the mistake limit", () => {
       const answers = withGuide([
         ['Bxf2+', 0.3],
         ['Kxd8', 0.35],
       ]);
-      expect(payoffOf(answers)).toEqual(uci(`${BXD8} Kxd8`).slice(-2));
+      const [bg5] = find(answers, { payoffMoves: 1 }).finds;
+      expect(bg5.payoff).toEqual(uci(`${BXD8} Kxd8`).slice(-2));
+      expect(bg5.disagreements).toEqual([{ at: 1, guide: last(`${BXD8} Kxd8`) }]);
+      expect(keepsGuide(bg5.payoff, bg5.disagreements[0])).toBe(true);
     });
 
     it("ends at the guide's move's score, not Stockfish's best's", () => {
@@ -340,7 +345,27 @@ describe('findOpportunities', () => {
         ['Bxf2+', 0.3],
         ['Kxd8', 0.45],
       ]);
-      expect(payoffOf(answers)).toEqual(uci(`${BXD8} Bxf2+`).slice(-2));
+      const [bg5] = find(answers, { payoffMoves: 1 }).finds;
+      expect(bg5.payoff).toEqual(uci(`${BXD8} Bxf2+`).slice(-2));
+      expect(bg5.disagreements).toEqual([{ at: 1, guide: last(`${BXD8} Kxd8`) }]);
+      expect(keepsGuide(bg5.payoff, bg5.disagreements[0])).toBe(false);
+    });
+
+    it('throws on an illegal guide move for either side', () => {
+      const KXD8 = `${BXD8} Kxd8`;
+      /** `withGuide` where Black takes back on d8, with an illegal guide move at `line`. */
+      const illegalAt = (line: string): Answers => {
+        const answers = withGuide([
+          ['Bxf2+', 0.3],
+          ['Kxd8', 0.35],
+        ]);
+        return {
+          ...answers,
+          guideMoves: (spot) => (spot.key === at(line).key ? ['a1a8'] : answers.guideMoves!(spot)),
+        };
+      };
+      expect(() => find(illegalAt(BXD8), { payoffMoves: 1 })).toThrow('Move a1a8 is illegal');
+      expect(() => find(illegalAt(KXD8), { payoffMoves: 2 })).toThrow('Move a1a8 is illegal');
     });
   });
 
@@ -348,9 +373,58 @@ describe('findOpportunities', () => {
     const [bg5] = find({
       ...known,
       replies: (spot) =>
-        spot.key === at(CUE).key ? repliesFrom({ a: 5 }, MIN_GAMES) : known.replies(spot),
+        spot.key === at(CUE).key
+          ? repliesFrom(at(CUE).key, { [last(`${CUE} Nxe4`)]: 5 }, MIN_GAMES)
+          : known.replies(spot),
     }).finds;
     expect(bg5.found).toBeUndefined();
+  });
+
+  it('neither screens nor walks past a move that ends the game', () => {
+    // Black, mating with Qb2, stalemates White's lone king with Qb3 instead.
+    const fen = '8/8/8/8/1q6/8/2k5/K7 b - - 0 1';
+    const start = walkTo(fen, [])!;
+    const final = (lines: FinalAnalysis['lines']): FinalAnalysis => ({
+      lines,
+      depth: 18,
+      final: true,
+    });
+    const answers: Answers = {
+      replies: (spot) =>
+        spot.key === start.key ? { shares: { b4b3: 1 }, thin: false } : undefined,
+      analysis: (spot) =>
+        spot.key === start.key
+          ? final([{ uci: 'b4b2', evaluation: evaluation('#-1') }])
+          : final([{ evaluation: evaluation(0.5) }]),
+    };
+    const result = findOpportunities({ start: fen, line: [], side: 'white', answers });
+    expect(result).toMatchObject({ finds: [], dropped: [], requests: [] });
+  });
+
+  it('throws where the walk meets an illegal guide move', () => {
+    // White's Ra8 is blocked by its own pawn on a2, at the walk's first position.
+    const answers: Answers = {
+      replies: () => undefined,
+      analysis: () => undefined,
+      guideMoves: () => ['a1a8'],
+    };
+    expect(() => findOpportunities({ start: START, line: [], side: 'white', answers })).toThrow(
+      'Move a1a8 is illegal',
+    );
+  });
+
+  it("stops where the punishing side's move ends the game", () => {
+    // White's Rh8 mates; the walk asks nothing about the mated position.
+    const fen = 'k7/8/1K6/8/8/8/8/7R w - - 0 1';
+    const answers: Answers = {
+      replies: () => undefined,
+      analysis: (spot) =>
+        spot.line.length
+          ? undefined
+          : { lines: [{ uci: 'h1h8', evaluation: evaluation('#1') }], depth: 18, final: true },
+    };
+    const result = findOpportunities({ start: fen, line: [], side: 'white', answers });
+    expect(result).toMatchObject({ finds: [], thin: [], requests: [] });
   });
 });
 
@@ -420,7 +494,7 @@ describe('payoff', () => {
     const ask = () => {};
     expect(
       payoff(start, { before: final, cue: final }, { side: 'white', answers, limits: LIMITS, ask }),
-    ).toEqual({ moves: ['b4b3'], end: 0.5 });
+    ).toEqual({ moves: ['b4b3'], disagreements: [], end: 0.5 });
   });
 
   it("scores a mate the erring side's move gives as a loss", () => {
@@ -438,7 +512,7 @@ describe('payoff', () => {
         { before: final, cue: final },
         { side: 'white', answers, limits: LIMITS, ask: () => {} },
       ),
-    ).toEqual({ moves: ['a8a1'], end: 0 });
+    ).toEqual({ moves: ['a8a1'], disagreements: [], end: 0 });
   });
 
   it('stops at a fifty-move draw and scores it as one', () => {
@@ -456,6 +530,6 @@ describe('payoff', () => {
         { before: final, cue: final },
         { side: 'white', answers, limits: LIMITS, ask: () => {} },
       ),
-    ).toEqual({ moves: ['e8d8'], end: 0.5 });
+    ).toEqual({ moves: ['e8d8'], disagreements: [], end: 0.5 });
   });
 });

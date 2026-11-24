@@ -25,14 +25,15 @@ import { LikeliestFirst } from '@/lesson/likeliestFirst';
 
 import { gainIfKnown } from './gain';
 import { type Limits, LIMITS } from './limits';
-import { payoff } from './payoff';
+import { type Disagreement, payoff } from './payoff';
 import {
   type Answers,
-  child,
   punishingLoss,
   type Context,
+  legalChild,
   type Node,
   type Request,
+  resultAt,
   type Spot,
   walkTo,
 } from './walk';
@@ -47,6 +48,8 @@ export interface Find {
   readonly replies: readonly Uci[];
   /** Act III: the moves after the best reply (`payoff`). */
   readonly payoff: readonly Uci[];
+  /** Where the guide and Stockfish differ for the punishing side in Act III (`Payoff`), indexing `payoff`. */
+  readonly disagreements: readonly Disagreement[];
   /** The punishing side's expected score (0 to 1) where Act III ends. */
   readonly end: number;
   /** Whether the cue's best reply alone keeps the learner clearly better, against best defence. */
@@ -96,12 +99,13 @@ export interface FinderResult {
  * The opportunities the answers so far confirm, and the answers still
  * missing. The walk goes from where the finder opens, most reached position
  * first. Where the erring side moves, every reply over the share floor is
- * screened with a sketch; one at or over the mistake limit is confirmed with full
- * searches of the positions before and after it, and becomes a find once its
- * cue's replies and its payoff are known. Other replies go on, as does the
- * punishing side's move (its own moves, else Stockfish's best). The walk
- * stops at thin positions, below the reach floor and past the ply cap; a
- * position reached again adds nothing, and so does a second find of one cue.
+ * screened with a sketch; one at or over the mistake limit is confirmed with
+ * full searches of the positions before and after it, and becomes a find once
+ * its cue's replies and its payoff are known. Other replies go on, as does the
+ * punishing side's move (its own moves, else Stockfish's best). The walk stops
+ * where the game is over, at thin positions, below the reach floor and past
+ * the ply cap; a position reached again adds nothing, and so does a second
+ * find of one cue.
  */
 export function findOpportunities({
   start,
@@ -132,12 +136,11 @@ export function findOpportunities({
   const thin: ThinEnd[] = [];
 
   for (let node = frontier.pop(); node; node = frontier.pop()) {
-    if (visited.has(node.key) || node.line.length > lastPly) continue;
+    if (visited.has(node.key) || node.line.length > lastPly || resultAt(node)) continue;
     visited.add(node.key);
     if (node.pos.turn === side) {
       for (const uci of punishingMoves(node, context)) {
-        const next = child(node, uci, node.reach);
-        if (next) frontier.push(next);
+        frontier.push(legalChild(node, uci, node.reach));
       }
       continue;
     }
@@ -200,8 +203,9 @@ function erringSteps(node: Node, context: Context): ErringStep[] | 'thin' {
     return [];
   }
   return played.flatMap(([uci, share]): ErringStep[] => {
-    const cue = child(node, uci, node.reach * share);
-    if (!cue) return [];
+    // A move that ends the game leaves nothing to punish, and no line to walk on.
+    const cue = legalChild(node, uci, node.reach * share);
+    if (resultAt(cue)) return [];
     const after = sketchOnly(answers.analysis(cue));
     if (!after) {
       ask('sketch', cue);
@@ -235,8 +239,8 @@ function confirm(
   const replies = acceptedReplies(before, after, side);
   const played = answers.replies(cue);
   if (!played) ask('replies', cue);
-  const best = child(cue, replies[0], 0);
-  const rest = best && payoff(best, { before, cue: after }, context);
+  const best = legalChild(cue, replies[0], 0);
+  const rest = payoff(best, { before, cue: after }, context);
   const losses = played && replyLosses(cue, after, played.shares, context);
   if (!played || !rest || !losses) return 'pending';
   const found = played.thin
@@ -248,6 +252,7 @@ function confirm(
     mistake,
     replies,
     payoff: rest.moves,
+    disagreements: rest.disagreements,
     end: rest.end,
     holds: scoreFor(after.lines[0].evaluation, side) >= limits.keepScore,
     reach: node.reach,

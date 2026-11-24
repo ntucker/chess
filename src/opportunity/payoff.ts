@@ -11,14 +11,39 @@ import {
   scoreFor,
 } from '@/evaluation/evaluation';
 import { balance } from '@/game/material';
-import { gameResult } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 
-import { child, type Context, type Node, punishingLoss, type Replies } from './walk';
+import {
+  type Context,
+  illegalMoveError,
+  legalChild,
+  type Node,
+  punishingLoss,
+  type Replies,
+  resultAt,
+} from './walk';
+
+/**
+ * A place where the guide's move for the punishing side is not Stockfish's
+ * best. Act III keeps it where it gives back less than the mistake limit
+ * (`keepsGuide`), else overrides it with Stockfish's best.
+ */
+export interface Disagreement {
+  /** The index in Act III's moves of the move it plays there. */
+  readonly at: number;
+  /** The guide's move. */
+  readonly guide: Uci;
+}
+
+/** Whether Act III played the guide's move at `disagreement`, given its `moves`. */
+export const keepsGuide = (moves: readonly Uci[], { at, guide }: Disagreement) =>
+  moves[at] === guide;
 
 /** Act III: its moves, and the punishing side's expected score (0 to 1) where it ends. */
 export interface Payoff {
   readonly moves: readonly Uci[];
+  /** Where the guide and Stockfish differ for the punishing side, which the report counts and lists. */
+  readonly disagreements: readonly Disagreement[];
   /**
    * Where the game is over, its result (1 for the punishing side's mate, 0
    * for its opponent's, 0.5 for a draw); else the evaluation `judgement` gave
@@ -40,7 +65,8 @@ export interface Payoff {
  * winning, when its second-best move is winning too, after `payoffMoves` of
  * its moves, where after an erring-side guide move the punishment wins less
  * than the mistake limit beside `before` (the guide holds a better defence, and
- * Act III adds no move to beat it), or when the game ends.
+ * Act III adds no move to beat it), or when the game ends. It throws where a
+ * move it plays is illegal (`legalChild`).
  */
 export function payoff(
   start: Node,
@@ -49,6 +75,7 @@ export function payoff(
 ): Payoff | undefined {
   const { side, limits } = context;
   const moves: Uci[] = [];
+  const disagreements: Disagreement[] = [];
   let punishingMoves = 0;
   let guided = false;
   // Signed, not `scoreFor`: a difference near a limit must not round.
@@ -68,6 +95,7 @@ export function payoff(
       const move = punishingMove(node, final, context);
       if (move === 'pending') return undefined;
       uci = move.uci;
+      if (move.guide) disagreements.push({ at: moves.length, guide: move.guide });
       end = scoreFor(move.evaluation, side);
       punishingMoves++;
     } else {
@@ -75,21 +103,14 @@ export function payoff(
       if (!move) return undefined;
       ({ uci, guided } = move);
     }
-    const next = uci === undefined ? undefined : child(node, uci, 0);
-    if (!uci || !next) break;
+    // A best line with no move has nothing left to play; not broken data.
+    if (uci === undefined) break;
     moves.push(uci);
-    node = next;
+    node = legalChild(node, uci, 0);
     result = resultAt(node);
   }
-  return { moves, end: result ? scoreFor(resultEvaluation(result), side) : end };
+  return { moves, disagreements, end: result ? scoreFor(resultEvaluation(result), side) : end };
 }
-
-/**
- * The game's result at `node`, if it is over: `gameResult`, since chessops'
- * `isEnd` misses the fifty-move rule. Act III counts each position as seen
- * once, so a repetition inside its few moves doesn't end it.
- */
-const resultAt = (node: Node) => gameResult(node.pos, 1);
 
 /** The final analysis of `node`, asking for it while it's missing. */
 function fullAnalysis(node: Node, { answers, ask }: Context): FinalAnalysis | undefined {
@@ -139,21 +160,24 @@ function erringMove(node: Node, context: Context): { uci: Uci; guided: boolean }
  * The punishing side's move at `node`, with the evaluation it leads to: the
  * guide's where it has one that gives back less than the mistake limit beside
  * Stockfish's best (so the tree stays the one source for the line), else
- * Stockfish's best; `'pending'` while the guide's move awaits its full search.
+ * Stockfish's best; with the guide's move where it differs from Stockfish's
+ * best; `'pending'` while the guide's move awaits its full search. Throws on
+ * an illegal guide move.
  */
 function punishingMove(
   node: Node,
   final: FinalAnalysis,
   context: Context,
-): { uci?: Uci; evaluation: Evaluation } | 'pending' {
+): { uci?: Uci; evaluation: Evaluation; guide?: Uci } | 'pending' {
   const best = final.lines[0];
   const guide = context.answers.guideMoves?.(node)?.[0];
   if (!guide || guide === best.uci) return best;
   const judged = punishingLoss(node, final, guide, context);
   if (judged === 'pending') return judged;
-  return judged && judged.loss < MISTAKE_LOSS
-    ? { uci: guide, evaluation: judged.evaluation }
-    : best;
+  if (!judged) throw illegalMoveError(node, guide);
+  return judged.loss < MISTAKE_LOSS
+    ? { uci: guide, evaluation: judged.evaluation, guide }
+    : { ...best, guide };
 }
 
 /** The most played move; undefined where the position is thin or no move was played. */

@@ -7,7 +7,14 @@ import { parseUci } from 'chessops/util';
 
 import { type MoveLoss, moveLoss } from '@/analysis/quality';
 import { type Analysis, type FinalAnalysis, isFinal } from '@/evaluation/evaluation';
-import { type Color, parsePosition, positionKey } from '@/game/replay';
+import {
+  type Color,
+  gameResult,
+  parsePosition,
+  parsePositionKey,
+  positionKey,
+  recordedMove,
+} from '@/game/replay';
 import type { PositionKey, Uci } from '@/lesson/lesson';
 
 import type { Limits } from './limits';
@@ -19,6 +26,7 @@ export type MoveCounts = Readonly<Record<Uci, number>>;
  * A position's replies as the run's one source gives them: each move's share
  * of the games there (0 to 1; a move missing was not played), and whether too
  * few games reach the position to judge it. The walk ends at a thin position.
+ * Every key is a legal move there (`repliesFrom` drops any that isn't).
  */
 export interface Replies {
   readonly shares: Readonly<Record<Uci, number>>;
@@ -105,6 +113,29 @@ export function child(node: Node, uci: Uci, reach: number): Node | undefined {
   return { pos, key: positionKey(pos), line: [...node.line, uci], reach };
 }
 
+/**
+ * The node a move the finder has chosen to play leads to. Every source of one
+ * promises a legal move (the lesson checker for the guide's, Stockfish, and
+ * `repliesFrom` for the explorer's), so this throws where it isn't legal,
+ * since the data that gave it is broken.
+ */
+export function legalChild(node: Node, uci: Uci, reach: number): Node {
+  const next = child(node, uci, reach);
+  if (!next) throw illegalMoveError(node, uci);
+  return next;
+}
+
+/** The error for a trusted move that isn't legal at `node`. */
+export const illegalMoveError = (node: Spot, uci: Uci) =>
+  new Error(`Move ${uci} is illegal in ${node.key}`);
+
+/**
+ * The game's result at `node`, if it is over: `gameResult`, since chessops'
+ * `isEnd` misses the fifty-move rule. The finder counts each position as
+ * seen once, so a repetition inside its few moves doesn't end a line.
+ */
+export const resultAt = (node: Node) => gameResult(node.pos, 1);
+
 /** The node `line` reaches from the FEN `start`, with reach 1; undefined if a move isn't legal. */
 export function walkTo(start: string, line: readonly Uci[]): Node | undefined {
   const pos = parsePosition(start);
@@ -114,14 +145,21 @@ export function walkTo(start: string, line: readonly Uci[]): Node | undefined {
 }
 
 /**
- * Lichess's `counts` as replies: each move's games over the games reaching
- * the position, and thin when fewer than `minGames` do.
+ * Lichess's `counts` at the position `key` as replies: each move's games over
+ * the games reaching the position, and thin when fewer than `minGames` do. A
+ * key that is no move there (lichess's own notation for a move `recordedMove`
+ * rejects, kept by `scripts/import-study/popularity.ts`) counts toward the
+ * total but gets no share.
  */
-export function repliesFrom(counts: MoveCounts, minGames: number): Replies {
+export function repliesFrom(key: PositionKey, counts: MoveCounts, minGames: number): Replies {
+  const pos = parsePositionKey(key);
+  if (!pos) throw new Error(`Not a position key: ${key}`);
   const total = Object.values(counts).reduce((sum, games) => sum + games, 0);
   return {
     shares: Object.fromEntries(
-      Object.entries(counts).map(([uci, games]) => [uci, total && games / total]),
+      Object.entries(counts)
+        .filter(([uci]) => recordedMove(pos, uci) !== undefined)
+        .map(([uci, games]) => [uci, total && games / total]),
     ),
     thin: total < minGames,
   };
