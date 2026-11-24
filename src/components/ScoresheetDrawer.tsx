@@ -3,9 +3,10 @@ import { a11yState, Inline, Pressable, Text, useTheme } from '@reactive/silk-nat
 import type { ComponentProps, ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Eyebrow, useLabelled } from '@/components/Eyebrow';
+import { useLabelled } from '@/components/Eyebrow';
 import { HeaderButton } from '@/components/HeaderButton';
-import { Scoresheet } from '@/components/Scoresheet';
+import { Notation } from '@/components/Notation';
+import { Scoresheet, ScoresheetTitle } from '@/components/Scoresheet';
 import { stepButton } from '@/components/Transport';
 import { useCloseKeys } from '@/components/useCloseKeys';
 import { shownMove } from '@/game/replay';
@@ -37,7 +38,7 @@ export function ScoresheetDrawer({ onClose, reviewButton, ...scoresheet }: Props
   return (
     <View role="region" aria-label="Scoresheet" {...part('scoresheet-drawer', labelled)}>
       <Inline align="center" justify="between" wrap="nowrap">
-        <Eyebrow>Scoresheet</Eyebrow>
+        <ScoresheetTitle />
         <Inline align="center" gap="1" wrap="nowrap">
           {reviewButton}
           <Jump label="Start" disabled={ply === 0} onPress={() => onGoto(0)} />
@@ -122,7 +123,7 @@ export function ShownMove({
       numberOfLines={1}
       style={[styles.move, { color: ink ?? theme.semantic.color.textPrimary }]}
     >
-      {shownMove(san, ply)}
+      <Notation>{shownMove(san, ply)}</Notation>
     </Text>
   );
 }

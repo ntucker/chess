@@ -6,6 +6,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import type { Candidate } from '@/lesson/select';
+import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes, typography } from '@/theme/theme';
 
 import { CandidateList, listMinWidth } from './CandidateList';
@@ -57,7 +58,9 @@ function mount() {
       act(() =>
         root.render(
           <SilkProvider theme={themes.dark}>
-            <CandidateList {...DEFAULTS} {...props} />
+            <SettingsProvider>
+              <CandidateList {...DEFAULTS} {...props} />
+            </SettingsProvider>
           </SilkProvider>,
         ),
       ),

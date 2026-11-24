@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client';
 
 import { replay } from '@/game/replay';
 import { bookMove, judgedMove, partial, waitingMove } from '@/review/review.fixture';
+import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
 
 import { type GraphView, ReviewGraph } from './ReviewGraph';
@@ -42,7 +43,9 @@ function render<T>(graph: GraphView, read: (host: HTMLElement) => T) {
   act(() =>
     root.render(
       <SilkProvider theme={themes.dark}>
-        <ReviewGraph review={graph} learner="white" height={72} />
+        <SettingsProvider>
+          <ReviewGraph review={graph} learner="white" height={72} />
+        </SettingsProvider>
       </SilkProvider>,
     ),
   );

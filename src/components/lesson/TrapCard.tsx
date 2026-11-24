@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Button, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
 import { StyleSheet, View } from 'react-native';
 
+import { Notation } from '@/components/Notation';
 import { type Color, colorName } from '@/game/replay';
 import type { Lesson } from '@/lesson/lesson';
 import type { Playback } from '@/lesson/useLesson';
@@ -42,9 +43,11 @@ export function TrapCard({ lesson, trap, mistake, fell, learner, playback, onBac
         <View style={styles.heading}>
           <Ionicons name="warning" size={18} color={danger.text} />
           <Text role="headingSm" style={styles.title}>
-            {yours
-              ? `${mistake} walked into a trap.`
-              : `${colorName(fell)} fell for it with ${mistake}.`}
+            <Notation>
+              {yours
+                ? `${mistake} walked into a trap.`
+                : `${colorName(fell)} fell for it with ${mistake}.`}
+            </Notation>
           </Text>
         </View>
         {/* Its ideas are about the position before the mistake, so pointing draws nothing. */}

@@ -61,3 +61,4 @@ work-queue.archive.jsonl
 
 # importer downloads and explorer answers (scripts/import-study)
 .cache/
+.venv-figurines/

@@ -8,6 +8,7 @@ import type { ReviewQuality } from '@/analysis/quality';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { PointingArea } from '@/components/lesson/PointingArea';
+import { Notation } from '@/components/Notation';
 import { qualityTip, TippedBadge } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import type { Uci } from '@/lesson/lesson';
@@ -187,10 +188,14 @@ function GuideLine({ san, note, practice }: { readonly san: string } & Omit<Guid
       <TippedBadge quality="book" size={BADGE_SIZE} tip={qualityTip('book')} />
       {note ? (
         <Tip tip={note}>
-          <Text role="body">{named}</Text>
+          <Text role="body">
+            <Notation>{named}</Notation>
+          </Text>
         </Tip>
       ) : (
-        <Text role="body">{named}</Text>
+        <Text role="body">
+          <Notation>{named}</Notation>
+        </Text>
       )}
       <Link href={practice}>
         <Text role="body" tone="accent" style={styles.link}>
@@ -231,7 +236,7 @@ function Row({ move, badge, spoken, pointed, onPoint }: RowProps) {
     >
       <View style={styles.move}>
         <Text role="body" style={styles.san}>
-          {san}
+          <Notation>{san}</Notation>
         </Text>
         {badge}
       </View>

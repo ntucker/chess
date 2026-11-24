@@ -8,13 +8,14 @@ import type { PositionKey, Uci } from '@/lesson/lesson';
 import type { Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
+import { Notation } from '@/components/Notation';
 import { type EngineVerdict, percent } from '@/analysis/quality';
 import { QualityBadge, TippedBadge, verdictText } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import type { Mark } from '@/progress/progress';
 import { NARROW_CSS_LOADS, narrowLength, narrowStyles } from '@/theme/narrow';
 import { NarrowScroll, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
-import { fonts, MONO_ADVANCE, typography } from '@/theme/theme';
+import { FIGURINE_ADVANCE, fonts, MONO_ADVANCE, typography } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
 import { MotionList, MotionView } from '@/motion/MotionList';
 
@@ -198,7 +199,7 @@ export function CandidateList({
       </Surface>
       {caption ? (
         <Text role="caption" tone="secondary" {...part('narrow-only')}>
-          {`${pointedRow.san}: ${caption}`}
+          <Notation>{`${pointedRow.san}: ${caption}`}</Notation>
         </Text>
       ) : null}
     </Stack>
@@ -347,7 +348,7 @@ function Row({
       <View style={styles.move}>
         <View style={styles.title}>
           <Text role="body" style={styles.san} {...SHRINK_TO_LINE}>
-            {san}
+            <Notation>{san}</Notation>
           </Text>
           {move.book ? <QualityBadge quality="book" size={BADGE_SIZE} /> : null}
           {/* Each badge says what it means on a resting mouse or a tap; the row's label says it aloud. */}
@@ -440,8 +441,12 @@ const VALUE_SIZE = typography.caption.size;
 const SHARE_WIDTH = 32;
 /** An evaluation's least width, which holds its longest label (as −9.9 or −M12) in caption text. */
 const EVALUATION_WIDTH = 44;
-/** The longest move a narrow pane's row holds at its own size: a capture. */
-const LONGEST_MOVE = 'exd5';
+/**
+ * The longest move a narrow pane's row holds at its own size: a capture by
+ * the widest piece (Qxd5), its piece drawn as an icon (`Notation`), which is
+ * wider than a letter.
+ */
+const LONGEST_MOVE = 'Qxd5';
 /** The longest share and evaluation, which larger text can widen past their least widths. */
 const LONGEST_SHARE = '100%';
 const LONGEST_EVALUATION = '\u22129.9';
@@ -449,8 +454,10 @@ const LONGEST_EVALUATION = '\u22129.9';
 /**
  * A move on one line, whose text shrinks when its row has too little room
  * for it. Beside its badges in a pane at its least width (`listMinWidth`),
- * which holds `LONGEST_MOVE`, a five-character move needs 0.8 of its size
- * and a promotion with check (exd8=Q+) 0.57, which the floor still holds.
+ * which holds `LONGEST_MOVE`, a five-character move needs 0.84 of its size
+ * and the longest moves, a promotion with check (exd8=Q+) or a queen's
+ * move named by its square, with check (Qh4xe1+), 0.6, which the floor
+ * still holds.
  * Off the web only: the web's `fontScale` is always 1, so its pane holds a
  * four-character move, and a longer one overflows its place.
  */
@@ -480,7 +487,12 @@ export function listMinWidth(fontScale: number) {
   const gap = ROW_GAP.narrow;
   // The row's insets and dot, then the move and the mark, each after a gap.
   const ends =
-    2 * ROW_INSET.narrow + DOT_SIZE + gap + mono(LONGEST_MOVE.length, SAN_SIZE) + gap + MARK_SIZE;
+    2 * ROW_INSET.narrow +
+    DOT_SIZE +
+    gap +
+    (FIGURINE_ADVANCE * SAN_SIZE * fontScale + mono(LONGEST_MOVE.length - 1, SAN_SIZE)) +
+    gap +
+    MARK_SIZE;
   // After the move, a guide's row has its badges and share, one of Stockfish's its evaluation.
   const badgeAndShare =
     2 * (TITLE_GAP + BADGE_SIZE) +

@@ -1,12 +1,27 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { a11yState, Pressable, type PressableProps, useTheme } from '@reactive/silk-native';
-import type { ComponentProps, ComponentRef, Ref } from 'react';
+import type { ComponentProps, ComponentRef, ReactNode, Ref } from 'react';
 import type { View } from 'react-native';
 
 import { narrowLength, narrowStyles } from '@/theme/narrow';
 import { useNarrowStyles } from '@/theme/Narrow';
 
-interface Props extends Pick<
+type Props = Base &
+  (
+    | {
+        readonly icon: ComponentProps<typeof Ionicons>['name'];
+        readonly iconSize: number;
+        readonly face?: never;
+      }
+    /** Its face in place of an icon, drawn in `ink`: the notation switch's piece. */
+    | {
+        readonly face: (ink: string) => ReactNode;
+        readonly icon?: never;
+        readonly iconSize?: never;
+      }
+  );
+
+interface Base extends Pick<
   PressableProps,
   | 'accessibilityRole'
   | 'accessibilityLabel'
@@ -19,36 +34,34 @@ interface Props extends Pick<
 > {
   /** Whether what the button opens is open, for a button that closes it again. */
   readonly expanded?: boolean;
+  /** Whether it is on, for a switch. */
+  readonly checked?: boolean;
   readonly ref?: Ref<ComponentRef<typeof View>>;
-  readonly icon: ComponentProps<typeof Ionicons>['name'];
-  readonly iconSize: number;
 }
 
 /**
  * A round icon button in the header (the source link, settings, a back
- * button, the theme button), or the close of a sheet or drawer. It stays quiet in the
+ * button, the theme button), or the close of a sheet or drawer, or the
+ * scoresheet's notation switch. It stays quiet in the
  * secondary ink and lights up on hover, like the transport's buttons.
  */
-export function HeaderButton({ icon, iconSize, expanded, ...pressable }: Props) {
+export function HeaderButton({ icon, iconSize, face, expanded, checked, ...pressable }: Props) {
   const { theme } = useTheme();
   const { color } = theme.semantic;
   const styles = useNarrowStyles(STYLES);
   return (
     <Pressable
       {...pressable}
-      {...(expanded !== undefined && a11yState({ expanded }))}
+      {...((expanded ?? checked) !== undefined && a11yState({ expanded, checked }))}
       style={({ pressed, hovered }) => [
         styles.button,
         (pressed || hovered) && { backgroundColor: color.tones.neutral.subtle },
       ]}
     >
-      {({ pressed, hovered }) => (
-        <Ionicons
-          name={icon}
-          size={iconSize}
-          color={pressed || hovered ? color.textPrimary : color.textSecondary}
-        />
-      )}
+      {({ pressed, hovered }) => {
+        const ink = pressed || hovered ? color.textPrimary : color.textSecondary;
+        return face ? face(ink) : <Ionicons name={icon} size={iconSize} color={ink} />;
+      }}
     </Pressable>
   );
 }

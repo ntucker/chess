@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
+import { Inline, Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
 import { useRef } from 'react';
 import { ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
 
@@ -7,6 +7,9 @@ import type { ReviewQuality } from '@/analysis/quality';
 import type { Ply } from '@/game/replay';
 import { fonts } from '@/theme/theme';
 
+import { Eyebrow } from './Eyebrow';
+import { Notation } from './Notation';
+import { NotationSwitch } from './NotationSwitch';
 import { QualityBadge } from './QualityBadge';
 
 interface Props {
@@ -82,6 +85,16 @@ export function Scoresheet({ plies, marks, ply, trapped, onGoto, fill }: Props) 
   );
 }
 
+/** The scoresheet's eyebrow, with the switch between piece icons and letters beside it. */
+export function ScoresheetTitle() {
+  return (
+    <Inline align="center" gap="1" wrap="nowrap">
+      <Eyebrow>Scoresheet</Eyebrow>
+      <NotationSwitch />
+    </Inline>
+  );
+}
+
 interface RowProps {
   /** White's ply; Black's is the next one. */
   readonly white: number;
@@ -143,7 +156,7 @@ function Row({
       >
         {trap && <Ionicons name="warning" size={BADGE_SIZE - 2} color={ink} />}
         <Text role="body" style={[styles.san, { color: ink }]}>
-          {san}
+          <Notation>{san}</Notation>
         </Text>
         {quality && <QualityBadge quality={quality} size={BADGE_SIZE} />}
         {unjudged === 'waiting' && <View style={[styles.ring, { borderColor: markInk }]} />}

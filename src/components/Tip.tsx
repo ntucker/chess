@@ -2,6 +2,7 @@ import { Text, Tooltip } from '@reactive/silk-native';
 import type { ReactNode } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 
+import { Notation } from '@/components/Notation';
 import { spokenOnly } from '@/theme/narrow';
 
 interface Props {
@@ -36,7 +37,12 @@ export function Tip({ tip, children, style, focusable }: Props) {
         {children}
         <Text style={spokenOnly}>{tip}</Text>
       </Tooltip.Trigger>
-      <Tooltip.Content>{tip}</Tooltip.Content>
+      {/* As Silk sets a string, with any move it names in the learner's notation. */}
+      <Tooltip.Content>
+        <Text role="label">
+          <Notation>{tip}</Notation>
+        </Text>
+      </Tooltip.Content>
     </Tooltip.Root>
   );
 }

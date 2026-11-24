@@ -22,6 +22,7 @@ import { StockfishWhileNeeded } from '@/stockfish/demand';
 import { FullStockfishHost } from '@/stockfish/FullStockfishHost';
 import { StockfishHost } from '@/stockfish/StockfishHost';
 import { AppTheme } from '@/theme/AppTheme';
+import { fonts } from '@/theme/theme';
 
 const managers = () => [new ProgressSync(), new AnalysisManager(), ...getDefaultManagers()];
 
@@ -31,6 +32,7 @@ export default function RootLayout() {
     DMSerifDisplay_400Regular_Italic,
     InstrumentSans_400Regular,
     DMMono_400Regular,
+    [fonts.figurines]: require('@/assets/fonts/Figurines.ttf'),
   });
   // Native waits under the splash screen; the web page is rendered on the
   // server and shows fallback fonts until these arrive.

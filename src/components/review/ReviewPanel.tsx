@@ -1,10 +1,10 @@
 import { Separator, Stack } from '@reactive/silk-native';
 import { StyleSheet, View } from 'react-native';
 
-import { Eyebrow, useLabelled, useSections } from '@/components/Eyebrow';
+import { useLabelled, useSections } from '@/components/Eyebrow';
 import { StatusHeadline } from '@/components/GameStatus';
 import { ScoresheetDrawer } from '@/components/ScoresheetDrawer';
-import { Scoresheet } from '@/components/Scoresheet';
+import { Scoresheet, ScoresheetTitle } from '@/components/Scoresheet';
 import { SourceFootnote } from '@/components/SourceLink';
 import { type Color, shownMove } from '@/game/replay';
 import type { LessonId } from '@/resources/lesson';
@@ -113,7 +113,7 @@ export function ReviewPanel({ eyebrow, learner, review, drawer, lesson }: Props)
         <ReviewActions {...review} />
         <Separator />
         <Stack style={labelled}>
-          <Eyebrow>Scoresheet</Eyebrow>
+          <ScoresheetTitle />
           <Scoresheet {...scoresheet} />
         </Stack>
       </Stack>
