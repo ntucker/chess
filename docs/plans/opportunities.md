@@ -114,8 +114,11 @@ the app's mistake limit and is not a gate setting.
 - **Share floor**: a reply played in under 5% of the games at its position (in the band) is not
   screened.
 - **Minimum games**: a position fewer than 100 games reach (in the band) is too thin to judge; the
-  lichess host marks it thin, and the walk ends there. A Maia run has no thin positions; it ends at
-  the reach floor and the ply cap.
+  lichess host marks it thin, and the search for further mistakes ends there. Act III is not that
+  search: at a thin position it takes Stockfish's reply and goes on under its own ends, since the
+  position after the cue can be thin when the mistake's position was not (only the games that played
+  the mistake reach it). A Maia run has no thin positions; its search ends at the reach floor and
+  the ply cap.
 - **Line to pass**: an opportunity whose mistake `countedReplies` counts (`src/lesson/cleanRun.ts`:
   10% over all bands, or the most played reply). Other finds show in the list and the finder but are
   never required. Piece C adds one exception to `countedReplies`, beside `COUNTED_SHARE`: a marked
@@ -129,15 +132,20 @@ the app's mistake limit and is not a gate setting.
   importer writes every accepted reply, and the punishing side's Act III moves, as book moves where
   the punishing side is `Lesson.side`, and as ordinary moves where it is the other side (a migrated
   trap that `Lesson.side` falls into).
-- **The erring side's Act III moves** stay ordinary moves. At each of its positions Act III takes
-  one reply: the most played, which `countedReplies` keeps, or, where the position is thin,
-  Stockfish's. A thin position's reply is then the only one in the tree there, so a clean run plays
-  through it, and it never adds a second line to pass.
-- **Act III** follows the punishing side's best move and the erring side's most played reply (else
-  Stockfish's), and ends at mate, when the punishing side is three points of material up (`balance`
-  in `src/game/material.ts`) and winning (the punishing side's expected score of at least 0.8, by
-  `scoreFor` in `src/evaluation/evaluation.ts`), when its second-best move is also winning, or after
-  six of its moves. The 0.8 and the three points are `limits.ts` constants tuned at piece B's gate.
+- **The erring side's Act III moves** stay ordinary moves. Where the guide already has moves at one
+  of its positions, Act III follows the guide's most played move there (else the guide's first) and
+  adds nothing, so the tree stays the one source for that line. Only where the guide has none does
+  it add one reply: the most played, which `countedReplies` keeps, or, where the position is thin,
+  Stockfish's. That reply is then the only one in the tree there, so a clean run plays through it,
+  and it never adds a second line to pass. If the guide's move is a better defence than the payoff
+  assumed, so the punishing side is no longer winning, Act III ends there; it never adds a competing
+  move to force the payoff.
+- **Act III** follows the punishing side's best move and the erring side's reply (the guide's, else
+  the most played, else Stockfish's), and ends at mate, when the punishing side is three points of
+  material up (`balance` in `src/game/material.ts`) and winning (the punishing side's expected score
+  of at least 0.8, by `scoreFor` in `src/evaluation/evaluation.ts`), when its second-best move is
+  also winning, after six of its moves, or where a guide move it follows leaves the punishing side
+  no longer winning. The 0.8 and the three points are `limits.ts` constants tuned at piece B's gate.
 - **Sketch and full**: a sketch is a search that reached at least `SKETCH_DEPTH`
   (`src/review/order.ts`); full is the app's search (`APP_SEARCH`). Sketches screen replies; only
   full searches confirm a find or set a stored cost. Analyses stay keyed as the store keys them.
@@ -152,17 +160,19 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
 - One function of the answers known so far, like the review's `nextSearch`: it takes the start line,
   the side looking for opportunities, the band, the limits, and lookups for the replies (each move's
   share of the games at the position, and whether the position is too thin to judge; `repliesFrom`
-  turns lichess counts into that), analyses (sketch or final) and the punishing side's own moves (a
-  lesson's book moves, where it has some) that the host has so far. It returns the finds so far and
-  the requests still missing, most useful first: a position's replies, a sketch, or a full search,
-  each naming its line and position. The script loops over it; the app derives it from the store. No
-  async generator and no queue.
+  turns lichess counts into that), analyses (sketch or final) and the guide's moves (a lesson's
+  moves at a position, most played first: its book moves at `Lesson.side`'s turn, every move at the
+  other side's) that the host has so far. It returns the finds so far and the requests still
+  missing, most useful first: a position's replies, a sketch, or a full search, each naming its line
+  and position. The script loops over it; the app derives it from the store. No async generator and
+  no queue.
 - The walk is best-first by reach from the start (reach 1). At the erring side's turn it screens
   every reply over the share floor with a sketch, confirms each reply at or over the cost floor with
   full searches, then asks for the cue position's replies (found rate) and builds Act III. Replies
-  under the cost floor continue the walk. At the punishing side's turn it follows the given moves,
-  else Stockfish's best. It stops below a reach floor, past a ply cap, or at a thin position. One
-  find per cue position; a position reached again adds nothing.
+  under the cost floor continue the walk. At the punishing side's turn it follows the guide's moves,
+  else Stockfish's best. Its search for mistakes stops below a reach floor, past a ply cap, or at a
+  thin position; Act III continues past a thin position (Rules). One find per cue position; a
+  position reached again adds nothing.
 - Its own floors and caps are named constants in `src/opportunity/limits.ts`, tuned at piece B's
   gate: the share floor and minimum games from Rules, the Act III caps, a reach floor (1%) and a ply
   cap (24 plies past where the finder opens).
