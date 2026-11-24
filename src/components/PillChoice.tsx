@@ -87,5 +87,5 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   // A round slot as tall as a labelled option, and as wide.
-  iconOption: { flex: 0, width: 36, paddingVertical: 8 },
+  iconOption: { flex: 0, width: 36 },
 });

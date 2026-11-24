@@ -9,13 +9,13 @@ import {
 } from 'react-native';
 
 import { hoversControl } from '@/board/pointer';
-import { describeOpponent, type Opponent } from '@/opponent/opponent';
+import { describeOpponent } from '@/opponent/opponent';
 import { reload } from '@/files/newVersion';
 import { type DownloadFailure, useFullStockfishDownload } from '@/resources/download';
-import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
+import { useSettings } from '@/settings/SettingsProvider';
 import { OUTDATED_NEEDS } from '@/stockfish/fullFiles';
 
-import { StrengthSlider } from './StrengthSlider';
+import { OpponentStrength } from './StrengthSlider';
 
 const WEB = process.env.EXPO_OS === 'web';
 
@@ -39,7 +39,6 @@ type Opened = 'hover' | 'pressed';
  */
 export function OpponentPicker() {
   const { opponent } = useSettings();
-  const dispatch = useSettingsDispatch();
   const { color } = useTheme().theme.semantic;
   const [opened, setOpened] = useState<Opened>();
   // A press (or key) moves focus onto the slider; pointing leaves it on the trigger.
@@ -103,7 +102,6 @@ export function OpponentPicker() {
     window.addEventListener('pointerup', onLift, { signal: held.signal });
     window.addEventListener('pointercancel', onLift, { signal: held.signal });
   };
-  const choose = (choice: Opponent) => dispatch({ type: 'chosen', choice: { opponent: choice } });
   const onTriggerKey = (event: KeyDownEvent) => {
     const { key } = event.nativeEvent;
     if (key !== 'ArrowDown' && key !== 'ArrowUp') return;
@@ -175,7 +173,7 @@ export function OpponentPicker() {
           onPointerDown={holdWhilePressed}
           style={styles.popover}
         >
-          <StrengthSlider value={opponent} onChoose={choose} />
+          <OpponentStrength />
         </Popover.Content>
       </Popover.Root>
     </>

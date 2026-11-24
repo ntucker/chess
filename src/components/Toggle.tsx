@@ -1,7 +1,7 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { Field, Switch, Tooltip, useTheme } from '@reactive/silk-native';
 import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 
+import { InfoMark } from '@/components/Tip';
 import { spokenOnly } from '@/theme/narrow';
 import { lineHeightOf } from '@/theme/theme';
 import { touchLine, touchTarget } from '@/theme/touch';
@@ -43,11 +43,7 @@ export function Toggle({ label, checked, onChange, quiet, disabled, hint, style 
       {hint && !disabled ? (
         // Screen readers hear the hint as the switch's description.
         <View aria-hidden testID="toggle-hint" style={styles.info}>
-          <Ionicons
-            name="information-circle-outline"
-            size={INFO_SIZE}
-            color={theme.semantic.color.textSecondary}
-          />
+          <InfoMark size={INFO_SIZE} />
         </View>
       ) : null}
       {tip ? <Field.Description style={styles.spoken}>{tip}</Field.Description> : null}

@@ -102,10 +102,9 @@ interface BoardColumnProps {
     'name' | 'detail' | 'detailWideOnly' | 'detailControl' | 'children'
   >;
   /** The player's name bar: anything to show before the move stepper at its end. */
-  readonly player?: Pick<ComponentProps<typeof PlayerBar>, 'children'> & {
-    /** A finger thrown up from the bar, as on a phone that opens its settings this way. */
-    readonly onFlickUp?: () => void;
-  };
+  readonly player?: Pick<ComponentProps<typeof PlayerBar>, 'children'>;
+  /** A finger thrown up from the player's bar: a phone's way to open its settings. */
+  readonly onFlickUp?: () => void;
   /** The board, with the player's side (`orientation`) at the bottom. */
   readonly board: Omit<BoardProps, 'dom' | 'ending' | 'onEndingPointer'>;
   /** Swaps the sides: given, either name bar's disc is a button that does it. */
@@ -137,6 +136,7 @@ export function BoardColumn({
   board,
   onSwap,
   stepperMiddle,
+  onFlickUp,
   evaluationReads,
   evaluationLine,
   narrowBars,
@@ -146,13 +146,22 @@ export function BoardColumn({
   const other = opposite(side);
   useStepKeys(ply, moves.length, goto);
   const swap = onSwap && { label: `Play as ${colorName(other)}`, onPress: onSwap };
-  const flickUp = useFlickGesture({
-    direction: 'up',
-    onFlick: () => player?.onFlickUp?.(),
-    enabled: Boolean(player?.onFlickUp),
-  });
   const styles = useNarrowStyles(STYLES);
   const part = useNarrowPart();
+  const playerBar = (
+    <PlayerBar
+      name="You"
+      detail={colorName(side)}
+      style={styles.controlsBar}
+      color={side}
+      toMove={game.toMove === side}
+      captures={game.captures}
+      swap={swap}
+    >
+      {player?.children}
+      <Transport ply={ply} total={moves.length} onGoto={goto} middle={stepperMiddle} />
+    </PlayerBar>
+  );
   /** A name bar, or with `narrowBars` the bar on a wide page and its stand-in on a narrow one. */
   const bar = (wide: ReactNode, narrow: ReactNode, style: StyleProp<ViewStyle>) =>
     narrowBars ? (
@@ -218,26 +227,27 @@ export function BoardColumn({
         </BoardFrame>
       </View>
       {bar(
-        <GestureDetector {...flickUp}>
-          <View>
-            <PlayerBar
-              name="You"
-              detail={colorName(side)}
-              style={styles.controlsBar}
-              color={side}
-              toMove={game.toMove === side}
-              captures={game.captures}
-              swap={swap}
-            >
-              {player?.children}
-              <Transport ply={ply} total={moves.length} onGoto={goto} middle={stepperMiddle} />
-            </PlayerBar>
-          </View>
-        </GestureDetector>,
+        onFlickUp ? <FlickUp onFlick={onFlickUp}>{playerBar}</FlickUp> : playerBar,
         narrowBars?.controls,
         styles.controlsBar,
       )}
     </>
+  );
+}
+
+/** `children`, with a finger thrown up from them calling `onFlick` (silk's `useFlickGesture`). */
+function FlickUp({
+  onFlick,
+  children,
+}: {
+  readonly onFlick: () => void;
+  readonly children: ReactNode;
+}) {
+  const flick = useFlickGesture({ direction: 'up', onFlick });
+  return (
+    <GestureDetector {...flick}>
+      <View>{children}</View>
+    </GestureDetector>
   );
 }
 

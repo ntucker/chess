@@ -4,11 +4,10 @@ import type { ComponentProps } from 'react';
 import { useSections } from '@/components/Eyebrow';
 import { Sheet } from '@/components/Sheet';
 import { SourceFootnote } from '@/components/SourceLink';
-import { StrengthSlider } from '@/components/StrengthSlider';
+import { OpponentStrength } from '@/components/StrengthSlider';
 import { ThemeChoice } from '@/components/ThemeSwitch';
 import type { Color } from '@/game/replay';
 import type { LessonSource } from '@/lesson/lesson';
-import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
 
 import { LessonControls } from './LessonControls';
 import { SideChoice } from './SideChoice';
@@ -33,18 +32,13 @@ interface Props extends ComponentProps<typeof LessonControls> {
  */
 export function LessonSettings({ open, onClose, learner, onPlayAs, sources, ...controls }: Props) {
   const sections = useSections();
-  const { opponent } = useSettings();
-  const dispatch = useSettingsDispatch();
   return (
     <Sheet open={open} title="Settings" aside={<ThemeChoice />} onClose={onClose}>
       <Stack style={sections}>
         {/* A phone's name-bar discs are dots too small to find; this swaps sides from the sheet, in a lesson too. */}
         <SideChoice side={learner} onChange={onPlayAs} />
         <LessonControls {...controls} />
-        <StrengthSlider
-          value={opponent}
-          onChoose={(choice) => dispatch({ type: 'chosen', choice: { opponent: choice } })}
-        />
+        <OpponentStrength />
         <SourceCredits sources={sources} />
         <SourceFootnote />
       </Stack>

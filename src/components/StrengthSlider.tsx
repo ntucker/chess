@@ -1,4 +1,3 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   elevationBackground,
   mapSliderStyle,
@@ -18,10 +17,12 @@ import {
   OPPONENT_PRESETS,
   OPPONENTS,
 } from '@/opponent/opponent';
+import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
 import { spokenOnly } from '@/theme/narrow';
 import { fonts } from '@/theme/theme';
 
 import { Eyebrow } from './Eyebrow';
+import { InfoMark } from './Tip';
 
 const WEB = process.env.EXPO_OS === 'web';
 
@@ -59,6 +60,18 @@ function aboutOf(opponent: Opponent) {
   return estimated ? `${style} Its rating is an estimate.` : style;
 }
 
+/** The opponent setting on the strength slider: the bar's picker and a phone's settings sheet. */
+export function OpponentStrength() {
+  const { opponent } = useSettings();
+  const dispatch = useSettingsDispatch();
+  return (
+    <StrengthSlider
+      value={opponent}
+      onChoose={(choice) => dispatch({ type: 'chosen', choice: { opponent: choice } })}
+    />
+  );
+}
+
 interface StrengthProps {
   readonly value: Opponent;
   readonly onChoose: (opponent: Opponent) => void;
@@ -75,8 +88,7 @@ interface StrengthProps {
  * resting mouse, the keyboard's focus, or a tap on the heading shows it); on
  * native only the heading is, since a tap on the slider moves its thumb.
  */
-export function StrengthSlider({ value, onChoose }: StrengthProps) {
-  const { color } = useTheme().theme.semantic;
+function StrengthSlider({ value, onChoose }: StrengthProps) {
   const [kept] = useState(value);
   const steps = stepsFor(value, kept);
   // The stop the thumb is sliding over, until it is let go.
@@ -101,12 +113,7 @@ export function StrengthSlider({ value, onChoose }: StrengthProps) {
           </Text>
         ) : null}
         {/* The mark that there is more to say: a tap on the heading says it. */}
-        <Ionicons
-          name="information-circle-outline"
-          size={INFO_SIZE}
-          color={color.textSecondary}
-          style={styles.info}
-        />
+        <InfoMark size={INFO_SIZE} style={styles.info} />
       </View>
     </View>
   );

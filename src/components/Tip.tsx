@@ -1,6 +1,7 @@
-import { Text, Tooltip } from '@reactive/silk-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Text, Tooltip, useTheme } from '@reactive/silk-native';
 import type { ReactNode } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
+import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 
 import { Notation } from '@/components/Notation';
 import { spokenOnly } from '@/theme/narrow';
@@ -44,5 +45,24 @@ export function Tip({ tip, children, style, focusable }: Props) {
         </Text>
       </Tooltip.Content>
     </Tooltip.Root>
+  );
+}
+
+/** The mark that something has a tip to show, `size` to suit the text beside it. */
+export function InfoMark({
+  size,
+  style,
+}: {
+  readonly size: number;
+  readonly style?: StyleProp<TextStyle>;
+}) {
+  const { theme } = useTheme();
+  return (
+    <Ionicons
+      name="information-circle-outline"
+      size={size}
+      color={theme.semantic.color.textSecondary}
+      style={style}
+    />
   );
 }

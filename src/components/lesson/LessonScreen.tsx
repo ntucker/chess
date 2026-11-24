@@ -127,10 +127,9 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
   useFetch(getProgress);
   const picked = useSuspense(getLesson, id ?? null);
   const model = useLessonScreen({ id, picked, onPlayAs, ...input });
-  // A phone's settings sheet and scoresheet drawer, shut while the window is wide.
+  // A phone's settings sheet and scoresheet drawer, shut while the window is wide (the sheet unmounts).
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [scoresheetOpen, setScoresheetOpen] = useState(false);
-  const settingsShown = phone && settingsOpen;
   const scoresheetShown = phone && scoresheetOpen;
   const back = useBackToReview();
   const openSettings = () => setSettingsOpen(true);
@@ -160,7 +159,7 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
             children: <AutoPlay />,
           }}
           // A phone's settings open from the bar under the board too, so they come back the way the sheet went.
-          player={{ onFlickUp: phone ? openSettings : undefined }}
+          onFlickUp={phone ? openSettings : undefined}
           stepperMiddle={
             <ScoresheetOpener
               san={model.stepper.san}
@@ -184,14 +183,16 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
           ) : (
             <WideLesson model={model} />
           )}
-          <LessonSettings
-            open={settingsShown}
-            onClose={() => setSettingsOpen(false)}
-            learner={model.learner}
-            onPlayAs={onPlayAs}
-            sources={model.sources}
-            {...model.settings}
-          />
+          {phone ? (
+            <LessonSettings
+              open={settingsOpen}
+              onClose={() => setSettingsOpen(false)}
+              learner={model.learner}
+              onPlayAs={onPlayAs}
+              sources={model.sources}
+              {...model.settings}
+            />
+          ) : null}
         </>
       }
     />
