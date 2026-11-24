@@ -141,9 +141,9 @@ The report prints the limits it ran with.
 
 - Format: `LessonPosition.games` (games reaching the position, per band of
   `Lesson.popularity.ratingBands`; absent means not measured) and `LessonMove.mistake`
-  (`{ cost?, name?, verdict? }`: cost as above, absent only on migrated guide traps until piece D1's importer step measures it; `name` a short
-  title for the list; `verdict` the `Trap` verdict it replaces). All optional, so the format number
-  stays 3.
+  (`{ cost?, name?, verdict? }`: cost as above, absent only on migrated guide traps until piece D1's
+  importer step measures it; `name` a short title for the list; `verdict` the `Trap` verdict it
+  replaces). All optional, so the format number stays 3.
 - The `Trap` idea goes. Each existing trap (57 on positions, 82 in move notes) becomes guide-tree
   moves with the marker on its first move. A note whose only drawn idea was the trap moves to the
   marked move; a note with other ideas keeps them and its text where it was. Positions reached
