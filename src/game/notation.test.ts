@@ -35,5 +35,6 @@ describe('splitPieceLetters', () => {
       'd7, Black Queens up',
     ]);
     expect(splitPieceLetters('KQRBN and Ka')).toEqual(['KQRBN and Ka']);
+    expect(splitPieceLetters('a =Q, a Nf3-file, ANf3')).toEqual(['a =Q, a Nf3-file, ANf3']);
   });
 });

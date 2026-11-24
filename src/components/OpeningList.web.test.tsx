@@ -9,6 +9,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { FIXTURE_INDEX } from '@/lesson/openings.fixture';
 import { type ListPlace, openingList } from '@/lesson/openingList';
 import { LessonIndexContext, type LessonId } from '@/resources/lesson';
+import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
 
 import { OpeningList } from './OpeningList';
@@ -45,9 +46,11 @@ function render(here?: ListPlace<LessonId>) {
   act(() =>
     root!.render(
       <SilkProvider theme={themes.dark}>
-        <LessonIndexContext value={FIXTURE_INDEX}>
-          <OpeningList here={here} />
-        </LessonIndexContext>
+        <SettingsProvider>
+          <LessonIndexContext value={FIXTURE_INDEX}>
+            <OpeningList here={here} />
+          </LessonIndexContext>
+        </SettingsProvider>
       </SilkProvider>,
     ),
   );

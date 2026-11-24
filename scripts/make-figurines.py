@@ -11,8 +11,8 @@ drawn thicker than on the board so they stay open at text sizes. Text in the
 font takes the color of the words around it.
 
 Each piece is as wide as its art, so a piece is wider than DM Mono's letters;
-the script prints the widest's advance, which FIGURINE_ADVANCE in
-src/theme/theme.ts must match. The font's ascent and descent sit inside the
+the script fails until FIGURINE_ADVANCE in src/theme/theme.ts matches the
+widest's advance. The font's ascent and descent sit inside the
 app's text fonts', so a piece never makes a line taller.
 
 The pieces are by Colin M.L. Burnett, GPLv2+ (as lichess lists them), like
@@ -34,6 +34,7 @@ from fontTools.svgLib.path import parse_path
 ROOT = FilePath(__file__).resolve().parent.parent
 CSS = ROOT / 'node_modules/@lichess-org/chessground/assets/chessground.cburnett.css'
 OUT = ROOT / 'assets/fonts/Figurines.ttf'
+THEME = ROOT / 'src/theme/theme.ts'
 
 FAMILY = 'Opening Night Figurines'
 LETTERS = {'K': 'king', 'Q': 'queen', 'R': 'rook', 'B': 'bishop', 'N': 'knight'}
@@ -66,10 +67,13 @@ def black_pieces():
     return {role: base64.b64decode(data).decode() for role, data in re.findall(pattern, css)}
 
 
-def shapes(element, style=None):
+# What SVG paints with where nothing says otherwise.
+SVG_DEFAULTS = {'fill': '#000', 'stroke': 'none', 'stroke-width': '1'}
+
+
+def shapes(element, style=SVG_DEFAULTS):
     """Each path and circle under `element`, in painting order, with the style it inherits."""
-    style = {'fill': '#000', 'stroke': 'none', 'stroke-width': '1', **(style or {})}
-    style.update({key: element.get(key) for key in INHERITED if element.get(key) is not None})
+    style = {**style, **{key: element.get(key) for key in INHERITED if element.get(key) is not None}}
     tag = element.tag.removeprefix(SVG)
     if tag in ('path', 'circle'):
         yield element, style
@@ -173,10 +177,15 @@ def main():
         fsType=0,
     )
     builder.setupPost()
+    # A fixed date, so the same pieces always build the same file.
+    builder.font['head'].created = builder.font['head'].modified = 0
+    builder.font.recalcTimestamp = False
     OUT.parent.mkdir(parents=True, exist_ok=True)
     builder.save(OUT)
+    print(f'Wrote {OUT.relative_to(ROOT)}')
     widest = max(advances[letter] for letter in LETTERS) / UNITS_PER_EM
-    print(f'Wrote {OUT.relative_to(ROOT)}; widest piece {widest} em (FIGURINE_ADVANCE)')
+    if f'FIGURINE_ADVANCE = {widest};' not in THEME.read_text():
+        raise SystemExit(f'Set FIGURINE_ADVANCE in {THEME.relative_to(ROOT)} to {widest}.')
 
 
 if __name__ == '__main__':

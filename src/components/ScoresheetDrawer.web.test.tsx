@@ -154,16 +154,14 @@ describe('ScoresheetDrawer under another overlay', () => {
       root.render(
         <SilkProvider theme={themes.dark}>
           <SettingsProvider>
-            <SettingsProvider>
-              <OpponentPicker />
-              <ScoresheetDrawer
-                plies={plies}
-                marks={[]}
-                ply={1}
-                onGoto={() => {}}
-                onClose={onClose}
-              />
-            </SettingsProvider>
+            <OpponentPicker />
+            <ScoresheetDrawer
+              plies={plies}
+              marks={[]}
+              ply={1}
+              onGoto={() => {}}
+              onClose={onClose}
+            />
           </SettingsProvider>
         </SilkProvider>,
       ),

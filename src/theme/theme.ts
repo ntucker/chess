@@ -54,7 +54,7 @@ export const fonts = {
 /** `fonts.mono`'s advance as a share of its size: each of its glyphs is this wide. */
 export const MONO_ADVANCE = 0.6;
 
-/** The widest piece's advance in `fonts.figurines` (the queen), as a share of its size: scripts/make-figurines.py prints it. */
+/** The widest piece's advance in `fonts.figurines` (the queen), as a share of its size: scripts/make-figurines.py checks it. */
 export const FIGURINE_ADVANCE = 0.956;
 
 // Silk picks a font by family slot (sans, serif, mono) and a weight, but each

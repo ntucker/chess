@@ -182,21 +182,15 @@ function HiddenRow({ until }: { readonly until: NonNullable<Props['hidden']> }) 
  * that opens the lesson on that line.
  */
 function GuideLine({ san, note, practice }: { readonly san: string } & Omit<GuideAnswer, 'uci'>) {
-  const named = `${san} is the guide's move.`;
+  const named = (
+    <Text role="body">
+      <Notation>{`${san} is the guide's move.`}</Notation>
+    </Text>
+  );
   return (
     <View style={styles.guide}>
       <TippedBadge quality="book" size={BADGE_SIZE} tip={qualityTip('book')} />
-      {note ? (
-        <Tip tip={note}>
-          <Text role="body">
-            <Notation>{named}</Notation>
-          </Text>
-        </Tip>
-      ) : (
-        <Text role="body">
-          <Notation>{named}</Notation>
-        </Text>
-      )}
+      {note ? <Tip tip={note}>{named}</Tip> : named}
       <Link href={practice}>
         <Text role="body" tone="accent" style={styles.link}>
           Practice this line
