@@ -112,8 +112,9 @@ plan doesn't depend on those links.
 
 ## Rules
 
-Minimum games, the share floor and `keepScore` are starting values, tuned at piece B's gate. The
-cost floor is the app's mistake limit and is not a gate setting.
+Minimum games, the share floor, the estimate's coverage mark (half) and `keepScore` are starting
+values in `limits.ts`, tuned at piece B's gate. The cost floor is the app's mistake limit and is not
+a gate setting.
 
 - **Score** of an opportunity for a band: the reach of the mistake's position × the mistake's share
   there × gain if known. A find without a gain (a migrated trap not yet measured) has no score and
@@ -231,8 +232,9 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
   stops below a reach floor, past a ply cap, or at a thin position; Act III continues past a thin
   position (Rules). One find per cue position; a position reached again adds nothing.
 - Its own floors and caps are named constants in `src/opportunity/limits.ts`, tuned at piece B's
-  gate: the share floor (starting as `RARE_SHARE`), minimum games and `keepScore` from Rules, the
-  Act III caps, a reach floor (1%) and a ply cap (24 plies past where the finder opens).
+  gate: the share floor (starting as `RARE_SHARE`), minimum games, the estimate's coverage mark and
+  `keepScore` from Rules, the Act III caps, a reach floor (1%) and a ply cap (24 plies past where
+  the finder opens).
 - The cost floor has no value of its own: `limits.ts` reads it from `quality.ts`, where piece A
   exports `MISTAKE_LOSS` and `moveLoss` (the signed loss `judgement` labels by) and builds
   `LEAST_LOSS`'s mistake entry from it, so 0.10 lives in one place. The gate does not change it,
