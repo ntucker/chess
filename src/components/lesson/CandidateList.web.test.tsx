@@ -121,9 +121,14 @@ describe('CandidateList', () => {
     expect(text).toContain("White's Likely replies");
   });
 
-  it('leaves the heading and the key out of a compact list, keeping only its rows', () => {
-    const text = render({ owner: 'White', density: 'compact' }, (host) => host.textContent);
-    expect(text).not.toContain('Likely replies');
+  it("only speaks a compact list's heading, which takes no room", () => {
+    const heading = render({ owner: 'White', density: 'compact' }, (host) => {
+      const text = [...host.querySelectorAll('div')].find(
+        (div) => div.textContent === "White's Likely replies",
+      )!;
+      return { opacity: getComputedStyle(text).opacity, position: getComputedStyle(text).position };
+    });
+    expect(heading).toEqual({ opacity: '0', position: 'absolute' });
   });
 
   it('leaves where each row leads to the idea card in a compact list', () => {

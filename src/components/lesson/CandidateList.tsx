@@ -13,7 +13,7 @@ import { type EngineVerdict, percent } from '@/analysis/quality';
 import { QualityBadge, TippedBadge, verdictText } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import type { Mark } from '@/progress/progress';
-import { NARROW_CSS_LOADS } from '@/theme/narrow';
+import { NARROW_CSS_LOADS, spokenOnly } from '@/theme/narrow';
 import type { Density } from '@/theme/Narrow';
 import { fonts } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
@@ -178,12 +178,21 @@ export function CandidateList({
       ) : null}
     </MotionList>
   );
-  if (compact) return list;
+  const title = owner ? `${owner}'s ${heading}` : heading;
+  if (compact) {
+    return (
+      <View>
+        {/* No room to show it, but screen readers still hear whose moves these are. */}
+        <Text style={spokenOnly}>{title}</Text>
+        {list}
+      </View>
+    );
+  }
   return (
     <Stack style={labelled}>
       <View style={styles.head}>
         <ShareTip tip={shares} marked>
-          <Eyebrow>{owner ? `${owner}'s ${heading}` : heading}</Eyebrow>
+          <Eyebrow>{title}</Eyebrow>
         </ShareTip>
         <MarkLegend marks={shownMarks} />
       </View>
