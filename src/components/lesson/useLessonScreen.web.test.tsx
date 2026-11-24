@@ -131,6 +131,7 @@ describe('useLessonScreen', () => {
     await showAfter(CARO_KANN, 'e4', 'c6', 'd4');
     const { headline, header } = shown();
     expect(headline.title).toEqual(expect.any(String));
+    expect(headline).not.toHaveProperty('pastGuide');
     expect(headline.failure).toBeUndefined();
     expect(headline.eyebrowLink).toBe(header.placeLink);
   });

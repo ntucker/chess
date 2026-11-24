@@ -20,8 +20,6 @@ import { useBackToReview } from '@/components/useBackToReview';
 import { useLongWait } from '@/components/useLongWait';
 import { useNavigating } from '@/components/navigation';
 import { NewVersionError } from '@/files/newVersion';
-import type { Color } from '@/game/replay';
-import type { GameStore } from '@/game/useGame';
 import type { VariationId } from '@/lesson/lesson';
 import { getLesson, isLessonId, type LessonId } from '@/resources/lesson';
 import { getProgress } from '@/resources/progress';
@@ -33,10 +31,10 @@ import { IdeaAside, IdeaCard } from './IdeaCard';
 import { LessonControls } from './LessonControls';
 import { PointingArea } from './PointingArea';
 import { SideChoice } from './SideChoice';
-import { headlineNews, LOADING } from './status';
+import { LOADING } from './status';
 import { SourceCredits } from './SourceCredits';
 import { TrapCard } from './TrapCard';
-import { useLessonScreen } from './useLessonScreen';
+import { type LessonScreenInput, useLessonScreen } from './useLessonScreen';
 import { useOpeningsGame } from './useOpeningsGame';
 
 /**
@@ -130,25 +128,7 @@ function Openings({
  * The lesson `id` played on the board, in Explore or Practice, or before
  * one is picked, the openings of `side` alone.
  */
-function LessonScreen({
-  id,
-  side,
-  onPlayAs,
-  store,
-  pending,
-  loading,
-}: {
-  readonly id?: LessonId;
-  /** The side the learner plays, the lesson's once one is picked. */
-  readonly side: Color;
-  /** The learner chooses to play as the other side, from its start. */
-  readonly onPlayAs: (side: Color) => void;
-  readonly store: GameStore;
-  /** The game has moved on to a lesson still loading: the learner can't move. */
-  readonly pending: boolean;
-  /** A lesson, or the next page, has been loading long enough to say so. */
-  readonly loading: boolean;
-}) {
+function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picked'>) {
   const part = useNarrowPart();
   const labelled = useLabelled();
   const sections = useSections();
@@ -156,8 +136,7 @@ function LessonScreen({
   // The progress loads beside the lesson, rather than once it has loaded.
   useFetch(getProgress);
   const picked = useSuspense(getLesson, id ?? null);
-  const model = useLessonScreen({ id, picked, side, onPlayAs, store, pending, loading });
-  const { headline, review, scoresheet } = model;
+  const model = useLessonScreen({ id, picked, onPlayAs, ...input });
   // A narrow page's settings sheet, and its scoresheet drawer.
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [scoresheetOpen, setScoresheetOpen] = useState(false);
@@ -229,14 +208,10 @@ function LessonScreen({
       program={
         <Stack {...part('drawer-panel', sections)}>
           <StatusHeadline
-            {...headline}
+            {...model.headline}
             eyebrowInHeader
-            action={review.offered ? <ReviewGameButton href={review.href} /> : null}
-            news={headlineNews(headline, {
-              aside: !!aside,
-              scoresheetOpen,
-              failed: !!headline.failure,
-            })}
+            action={model.review.offered ? <ReviewGameButton href={model.review.href} /> : null}
+            news={scoresheetOpen ? model.news.scoresheet : model.news.panes}
           />
           {/* The scoresheet drawer takes the place of this part on a narrow page, under the headline, which tells of a failure. */}
           <View {...part(scoresheetOpen ? 'wide-only' : 'lesson-body', sections)}>
@@ -271,8 +246,10 @@ function LessonScreen({
           </View>
           {scoresheetOpen ? (
             <ScoresheetDrawer
-              {...scoresheet}
-              reviewButton={<ScoresheetReview href={review.href} disabled={review.shut} compact />}
+              {...model.scoresheet}
+              reviewButton={
+                <ScoresheetReview href={model.review.href} disabled={model.review.shut} compact />
+              }
               onClose={() => setScoresheetOpen(false)}
             />
           ) : null}
@@ -288,9 +265,9 @@ function LessonScreen({
             <Stack style={labelled}>
               <Inline align="center" justify="between" wrap="nowrap">
                 <ScoresheetTitle />
-                <ScoresheetReview href={review.href} disabled={review.shut} />
+                <ScoresheetReview href={model.review.href} disabled={model.review.shut} />
               </Inline>
-              <Scoresheet {...scoresheet} />
+              <Scoresheet {...model.scoresheet} />
             </Stack>
             {settingsOpen ? null : (
               <>

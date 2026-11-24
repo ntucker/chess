@@ -2,8 +2,9 @@ import { useController } from '@data-client/react';
 import { type ComponentProps, use, useMemo } from 'react';
 
 import type { Header } from '@/components/Header';
-import type { HeadlineProps } from '@/components/GameStatus';
+import type { HeadlineProps, News } from '@/components/GameStatus';
 import type { Scoresheet } from '@/components/Scoresheet';
+import type { ScoresheetOpener } from '@/components/ScoresheetDrawer';
 import type { BoardColumn } from '@/components/Stage';
 import { type Color, colorName, opposite } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
@@ -24,12 +25,13 @@ import { reviewHref } from '@/review/address';
 import { useSettings } from '@/settings/SettingsProvider';
 
 import type { CandidateList } from './CandidateList';
-import { type IdeaCard, noNotesText } from './IdeaCard';
+import { type IdeaAside, type IdeaCard, noNotesText } from './IdeaCard';
 import type { LessonControls } from './LessonControls';
 import type { TrapCard } from './TrapCard';
-import { describeStatus, OPENINGS_TITLE, shownEnding, whyReviewShut } from './status';
+import { describeStatus, headlineNews, OPENINGS_TITLE, shownEnding, whyReviewShut } from './status';
 
-interface Input {
+/** What the lesson screen is given: the address's lesson and the game held above it. */
+export interface LessonScreenInput {
   /** The lesson the address names, none at the start. */
   readonly id?: LessonId;
   /** That lesson, loaded; none before one is picked. */
@@ -50,8 +52,8 @@ type BoardColumnProps = ComponentProps<typeof BoardColumn>;
 
 /**
  * What the lesson screen shows, worked out once and handed to whichever
- * layout draws it. Data only: a layout decides where each block goes and
- * how it looks, never what it says.
+ * layout draws it: plain data, and the props of the blocks every layout
+ * shares. A layout decides where each block goes, never what it says.
  */
 export interface LessonScreenModel {
   /** The tab's title. */
@@ -61,15 +63,18 @@ export interface LessonScreenModel {
     readonly rival: Pick<BoardColumnProps['rival'], 'name' | 'detail' | 'brief'>;
   };
   /** The move on the board, for the stepper's middle; `started` once the game has a move. */
-  readonly stepper: { readonly san?: string; readonly ply: number; readonly started: boolean };
-  /** The headline, all but what of it a layout draws (`headlineNews`). */
+  readonly stepper: Pick<ComponentProps<typeof ScoresheetOpener>, 'san' | 'ply'> & {
+    readonly started: boolean;
+  };
   readonly headline: Pick<
     HeadlineProps,
-    'eyebrow' | 'title' | 'detail' | 'news' | 'failure' | 'eyebrowLink'
-  > & {
-    /** Where the guide has no moves here, the title that heads the detail (`describeStatus`). */
-    readonly pastGuide?: string;
-  };
+    'eyebrow' | 'title' | 'detail' | 'failure' | 'eyebrowLink'
+  >;
+  /**
+   * What a narrow page draws of the headline (`headlineNews`): with the
+   * panes under it, and with the scoresheet in their place.
+   */
+  readonly news: { readonly panes: News; readonly scoresheet: News };
   /**
    * The game's review: its address, why it is shut (none when open), and
    * whether the headline offers it: once the game ends, if it is open.
@@ -84,7 +89,7 @@ export interface LessonScreenModel {
    * idea card shows, why: the headline's title and detail again, for a
    * narrow page to show in the idea pane's place.
    */
-  readonly aside: { readonly title: string; readonly detail: string } | null;
+  readonly aside: ComponentProps<typeof IdeaAside> | null;
   /** The moves the learner can point at: the guide's, else past it Stockfish's. */
   readonly moves: ComponentProps<typeof CandidateList> | null;
   /** The notes of the position, or of the candidate pointed at. */
@@ -112,7 +117,7 @@ export function useLessonScreen({
   store,
   pending,
   loading,
-}: Input): LessonScreenModel {
+}: LessonScreenInput): LessonScreenModel {
   const ctrl = useController();
   const index = use(LessonIndexContext);
   // Before one is picked, the openings of `side` alone.
@@ -169,7 +174,7 @@ export function useLessonScreen({
     practice: mode === 'practice',
     leftGuide: view.guideMoves.includes(undefined),
   });
-  const { pastGuide, ...status } = describeStatus(view, {
+  const { pastGuide, news, ...status } = describeStatus(view, {
     picking,
     loading,
     title: lesson.title,
@@ -308,9 +313,18 @@ export function useLessonScreen({
     stepper: { san: game.plies[game.ply].move?.san, ply: game.ply, started: game.moves.length > 0 },
     headline: {
       ...status,
-      pastGuide,
       failure: game.error && { who: described.name, error: game.error, onRetry: game.retry },
       eyebrowLink: listLink,
+    },
+    news: {
+      panes: headlineNews(
+        { news, pastGuide },
+        { aside: !!aside, scoresheetOpen: false, failed: !!game.error },
+      ),
+      scoresheet: headlineNews(
+        { news, pastGuide },
+        { aside: !!aside, scoresheetOpen: true, failed: !!game.error },
+      ),
     },
     review: {
       href: reviewHref(game.moves, learner, id),
