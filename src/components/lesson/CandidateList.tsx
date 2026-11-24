@@ -454,10 +454,10 @@ const LONGEST_EVALUATION = '\u22129.9';
 /**
  * A move on one line, whose text shrinks when its row has too little room
  * for it. Beside its badges in a pane at its least width (`listMinWidth`),
- * which holds Qxd5 (`LONGEST_MOVE_AFTER_PIECE`), a five-character move (Nbxd7) needs 0.85 of its size
- * and the longest moves, a promotion with check (exd8=Q+) or a queen's
- * move named by its square, with check (Qh4xe1+), 0.6, which the floor
- * still holds.
+ * which holds Qxd5 (`LONGEST_MOVE_AFTER_PIECE`), a five-character move
+ * (Nbxd7) needs 0.85 of its size and the longest moves, a promotion with
+ * check (exd8=Q+) or a queen's move named by its square, with check
+ * (Qh4xe1+), 0.6, which the floor still holds.
  * Off the web only: the web's `fontScale` is always 1, so its pane holds a
  * four-character move, and a longer one overflows its place.
  */

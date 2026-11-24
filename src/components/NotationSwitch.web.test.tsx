@@ -5,6 +5,7 @@ import { SilkProvider, Text } from '@reactive/silk-native';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
+import { SETTINGS_KEY } from '@/settings/settings';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { fonts, themes } from '@/theme/theme';
 
@@ -58,7 +59,7 @@ describe('NotationSwitch', () => {
     expect(toggle().getAttribute('aria-checked')).toBe('false');
     expect(pieces()).toEqual([]);
     expect(move().textContent).toBe('Found with 9.Ne1, on try 2.');
-    expect(JSON.parse(localStorage.getItem('settings')!).notation).toBe('letters');
+    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!).notation).toBe('letters');
 
     await act(async () => toggle().click());
     expect(pieces()).toEqual(['N']);
