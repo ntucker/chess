@@ -29,6 +29,7 @@ import {
   type ThinEnd,
 } from '@/opportunity/finder';
 import { LIMITS, MIN_GAMES } from '@/opportunity/limits';
+import { keepsGuide } from '@/opportunity/payoff';
 import { type Answers, type Replies, repliesFrom, type Request } from '@/opportunity/walk';
 import { APP_SEARCH, liteStockfish } from '@/stockfish/engine';
 
@@ -236,7 +237,7 @@ function guideSummary(lesson: Lesson, finds: readonly Find[]): string {
   if (!disagreements.length)
     return "Act III: the guide never differs from Stockfish's best for the punishing side.";
   const overrides = disagreements
-    .filter(({ find, at, guide }) => find.payoff[at] !== guide)
+    .filter(({ find, ...disagreement }) => !keepsGuide(find.payoff, disagreement))
     .map(({ find, at, guide }) => {
       const line = [...find.line, find.mistake, find.replies[0], ...find.payoff.slice(0, at)];
       const sans = lineSans([...line, guide], start);

@@ -17,8 +17,8 @@ import { child, type Context, type Node, punishingLoss, type Replies, resultAt }
 
 /**
  * A place where the guide's move for the punishing side is not Stockfish's
- * best. Act III kept it where it plays it there (`moves[at] === guide`): it
- * gives back less than the mistake limit; else it overrides it.
+ * best. Act III keeps it where it gives back less than the mistake limit
+ * (`keepsGuide`), else overrides it with Stockfish's best.
  */
 export interface Disagreement {
   /** The index in Act III's moves of the move it plays there. */
@@ -26,6 +26,10 @@ export interface Disagreement {
   /** The guide's move. */
   readonly guide: Uci;
 }
+
+/** Whether Act III played the guide's move at `disagreement`, given its `moves`. */
+export const keepsGuide = (moves: readonly Uci[], { at, guide }: Disagreement) =>
+  moves[at] === guide;
 
 /** Act III: its moves, and the punishing side's expected score (0 to 1) where it ends. */
 export interface Payoff {
@@ -159,9 +163,9 @@ function punishingMove(
   const guide = context.answers.guideMoves?.(node)?.[0];
   if (!guide || guide === best.uci) return best;
   const judged = punishingLoss(node, final, guide, context);
-  if (judged === 'pending') return judged;
-  // An unjudged guide move is an illegal one, so Stockfish's best overrides it too.
-  return judged && judged.loss < MISTAKE_LOSS
+  // Unjudged only if illegal, which the lesson checker rules out for every move.
+  if (judged === 'pending' || !judged) return judged ?? best;
+  return judged.loss < MISTAKE_LOSS
     ? { uci: guide, evaluation: judged.evaluation, guide }
     : { ...best, guide };
 }
