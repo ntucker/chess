@@ -95,7 +95,17 @@ describe('CapturesChip', () => {
     act(() => {
       chip()!.dispatchEvent(new MouseEvent('mouseenter'));
     });
+    // A click's own mouse-up doesn't end the peek before the click pins it.
+    act(() => {
+      chip()!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    });
+    act(() => {
+      chip()!.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    });
+    expect(card()).not.toBeNull();
     act(() => chip()!.click());
+    // Focus moves to the layer holding the card, as on a pin without a peek.
+    expect(document.activeElement!.contains(card())).toBe(true);
     act(() => {
       chip()!.dispatchEvent(new MouseEvent('mouseleave'));
     });

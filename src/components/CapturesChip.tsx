@@ -31,6 +31,8 @@ const PILL_HEIGHT = SIZE + 6;
 /** The most glyphs a chip draws: past it, each kind shows once with its count. */
 const MOST_GLYPHS = 4;
 
+type Peek = 'hold' | 'hover';
+
 interface Props {
   readonly captures: Captures;
   /** Whose bar it sits on: the chip shows what this side is up. */
@@ -58,10 +60,11 @@ export function CapturesChip({ captures, color }: Props) {
 
 function Chip({ captures, color, even }: Props & { readonly even: boolean }) {
   const { pieces, lead } = captures.material[color];
-  const [card, setCard] = useState<'peek' | 'pin'>();
+  // A peek by a held press or a resting pointer, each let go by its own end, or a pin.
+  const [card, setCard] = useState<Peek | 'pin'>();
   const anchor = useRef<ComponentRef<typeof View>>(null);
-  const peek = () => setCard((was) => was ?? 'peek');
-  const unpeek = () => setCard((was) => (was === 'peek' ? undefined : was));
+  const peek = (by: Peek) => setCard((was) => was ?? by);
+  const unpeek = (by: Peek) => setCard((was) => (was === by ? undefined : was));
   return (
     <>
       <Pressable
@@ -74,11 +77,11 @@ function Chip({ captures, color, even }: Props & { readonly even: boolean }) {
         onPress={() => setCard((was) => (was === 'pin' ? undefined : 'pin'))}
         onLongPress={() => {
           tickHold();
-          peek();
+          peek('hold');
         }}
-        onPressOut={unpeek}
-        onHoverIn={peek}
-        onHoverOut={unpeek}
+        onPressOut={() => unpeek('hold')}
+        onHoverIn={() => peek('hover')}
+        onHoverOut={() => unpeek('hover')}
         style={styles.chip}
       >
         <Surface elevation="raised" style={styles.pill}>
@@ -106,13 +109,15 @@ function Chip({ captures, color, even }: Props & { readonly even: boolean }) {
         anchor={anchor}
       >
         <Popover.Content
+          // Opens anew when a press pins a peek, so focus moves in as on any pin.
+          key={card === 'pin' ? 'pin' : 'peek'}
           role="dialog"
           aria-label="Pieces taken"
           align="start"
           sideOffset={6}
           // A peek leaves focus where it is, as a tooltip does; a pin moves it in.
           onOpenAutoFocus={(event) => {
-            if (card === 'peek') event.preventDefault();
+            if (card !== 'pin') event.preventDefault();
           }}
         >
           <CapturesCard captures={captures} />
