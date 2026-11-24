@@ -39,7 +39,8 @@ jobs:
       cancel-in-progress: true
     outputs:
       site-url: ${{ steps.pages.outputs.base_url }}
-      base-path: ${{ steps.pages.outputs.base_path }}
+      # The path the export was built for, which the Layout job serves it under.
+      base-path: ${{ steps.export.outputs.base-path }}
       superseded: ${{ steps.export.outputs.superseded }}
 
     steps:
@@ -97,6 +98,7 @@ jobs:
           EXPO_PUBLIC_STORAGE_PREFIX: ${{ env.PREVIEW && format('pr-{0}:', github.event.number) || '' }}
           EXPO_PUBLIC_STOCKFISH_FOLDER: ${{ steps.stockfish.outputs.folder }}
         run: |
+          echo "base-path=$PAGES_BASE_PATH" >> "$GITHUB_OUTPUT"
           if [ -n "$EXPO_PUBLIC_STOCKFISH_FOLDER" ]; then rm -r public/stockfish; fi
           # Its own process group, so stopping it stops everything it started.
           setsid yarn expo export --platform web ${{ env.PREVIEW && '--no-minify' || '' }} &
@@ -182,8 +184,7 @@ jobs:
 
       - name: Check the phone layout
         env:
-          # The path the export was built for, which the check serves it under.
-          PAGES_BASE_PATH: ${{ needs.build.outputs.base-path }}${{ env.PREVIEW && format('/{0}', env.PREVIEW) || '' }}
+          PAGES_BASE_PATH: ${{ needs.build.outputs.base-path }}
         run: yarn check:layout site layout-check
 
       - name: Upload the screenshots

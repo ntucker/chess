@@ -82,7 +82,7 @@ To try the Pages build locally, export it the way the workflow does and serve `d
 PAGES_BASE_PATH=/chess yarn expo export --platform web
 ```
 
-Each build's phone layout is also checked in a real browser, at 390×844, 390×664 and 360×640 (the Layout job, `scripts/check-layout.mjs`); its screenshots are the run's `layout-check` artifact. To run it on that export:
+Each build's phone layout is also checked in a real browser, at three phone sizes (the Layout job, `scripts/check-layout.mjs`); its screenshots are the run's `layout-check` artifact. To run it on that export:
 
 ```bash
 yarn playwright install chromium   # once
