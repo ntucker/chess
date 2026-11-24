@@ -138,14 +138,15 @@ the app's mistake limit and is not a gate setting.
   it add one reply: the most played, which `countedReplies` keeps, or, where the position is thin,
   Stockfish's. That reply is then the only one in the tree there, so a clean run plays through it,
   and it never adds a second line to pass. If the guide's move is a better defence than the payoff
-  assumed, so the punishing side is no longer winning, Act III ends there; it never adds a competing
-  move to force the payoff.
+  assumed, taking back at least the cost floor of the punishing side's expected score, Act III ends
+  there; it never adds a competing move to force the payoff.
 - **Act III** follows the punishing side's best move and the erring side's reply (the guide's, else
   the most played, else Stockfish's), and ends at mate, when the punishing side is three points of
   material up (`balance` in `src/game/material.ts`) and winning (the punishing side's expected score
   of at least 0.8, by `scoreFor` in `src/evaluation/evaluation.ts`), when its second-best move is
-  also winning, after six of its moves, or where a guide move it follows leaves the punishing side
-  no longer winning. The 0.8 and the three points are `limits.ts` constants tuned at piece B's gate.
+  also winning, after six of its moves, or where a guide move it follows takes back at least the
+  cost floor of the punishing side's expected score. The 0.8 and the three points are `limits.ts`
+  constants tuned at piece B's gate.
 - **Sketch and full**: a sketch is a search that reached at least `SKETCH_DEPTH`
   (`src/review/order.ts`); full is the app's search (`APP_SEARCH`). Sketches screen replies; only
   full searches confirm a find or set a stored cost. Analyses stay keyed as the store keys them.
@@ -163,7 +164,7 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
   turns lichess counts into that), analyses (sketch or final) and the guide's moves (a lesson's
   moves at a position, most played first: its book moves at `Lesson.side`'s turn, every move at the
   other side's; the host takes them through the book-move filter `openings.ts` already applies in
-  `movesOf` and `sharesAt`, extracted to one shared helper, in `candidates`' order) that the host
+  `movesOf` and `sharesAt`, extracted to one shared helper) that the host
   has so far. It returns the finds so far and the requests still missing, most useful first: a
   position's replies, a sketch, or a full search, each naming its line and position. The script
   loops over it; the app derives it from the store. No async generator and no queue.
