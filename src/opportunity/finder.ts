@@ -23,7 +23,6 @@ import {
   type Answers,
   child,
   type Context,
-  gamesIn,
   type Node,
   type Request,
   type Spot,
@@ -46,7 +45,7 @@ export interface Find {
   readonly share: number;
   /** The expected score (0 to 1) the mistake gives away, from full searches. */
   readonly cost: number;
-  /** The share of games at the cue that play an accepted reply; absent where too few reach it. */
+  /** The share of games at the cue that play an accepted reply; absent where the cue is thin. */
   readonly found?: number;
   /** reach × share × cost: the expected score the opportunity is worth per game. */
   readonly score: number;
@@ -63,9 +62,14 @@ export interface FinderInput {
   readonly limits?: Partial<Limits>;
 }
 
+/** A position where the walk ended because it is thin, and the share of games that reach it. */
+export type ThinEnd = Pick<Node, 'line' | 'key' | 'reach'>;
+
 export interface FinderResult {
   /** Best first (`byScore`). */
   readonly finds: readonly Find[];
+  /** Where the walk ended thin, most reached first. */
+  readonly thin: readonly ThinEnd[];
   /** The answers still missing, most useful first. Empty once the walk is done. */
   readonly requests: readonly Request[];
 }
@@ -100,13 +104,14 @@ export function findOpportunities({
   const context: Context = { side, answers, limits, ask };
 
   const opening = walkTo(start, line);
-  if (!opening) return { finds: [], requests: [] };
+  if (!opening) return { finds: [], thin: [], requests: [] };
   const lastPly = line.length + limits.maxPlies;
   // Most reached first, then in the order added.
   const frontier = new LikeliestFirst<Node>((node) => node.reach);
   frontier.push(opening);
   const visited = new Set<PositionKey>();
   const finds = new Map<PositionKey, Find>();
+  const thin: ThinEnd[] = [];
 
   for (let node = frontier.pop(); node; node = frontier.pop()) {
     if (visited.has(node.key) || node.line.length >= lastPly) continue;
@@ -118,13 +123,18 @@ export function findOpportunities({
       }
       continue;
     }
-    for (const step of erringSteps(node, context)) {
+    const steps = erringSteps(node, context);
+    if (steps === 'thin') {
+      thin.push({ line: node.line, key: node.key, reach: node.reach });
+      continue;
+    }
+    for (const step of steps) {
       if ('find' in step) {
         if (!finds.has(step.cue)) finds.set(step.cue, step.find);
       } else if (step.reach >= limits.reachFloor) frontier.push(step);
     }
   }
-  return { finds: [...finds.values()].sort(byScore), requests };
+  return { finds: [...finds.values()].sort(byScore), thin, requests };
 }
 
 /** The punishing side's moves at `node`: its own, else Stockfish's best; none until known. */
@@ -146,27 +156,25 @@ type ErringStep = Node | { readonly cue: PositionKey; readonly find: Find };
 /**
  * The erring side's replies at `node` over the share floor, most played
  * first: each a find once confirmed, or a reply to walk on from. A reply
- * still being judged is neither.
+ * still being judged is neither. `'thin'` where the position is.
  */
-function erringSteps(node: Node, context: Context): ErringStep[] {
+function erringSteps(node: Node, context: Context): ErringStep[] | 'thin' {
   const { answers, limits, ask } = context;
-  const counts = answers.replies(node);
-  if (!counts) {
+  const replies = answers.replies(node);
+  if (!replies) {
     ask('replies', node);
     return [];
   }
-  const total = gamesIn(counts);
-  if (total < limits.minGames) return [];
-  const played = Object.entries(counts)
-    .map(([uci, games]) => ({ uci, share: games / total }))
-    .filter(({ share }) => share >= limits.shareFloor)
-    .sort((a, b) => b.share - a.share);
+  if (replies.thin) return 'thin';
+  const played = Object.entries(replies.shares)
+    .filter(([, share]) => share >= limits.shareFloor)
+    .sort(([, a], [, b]) => b - a);
   const before = answers.analysis(node);
   if (!sketched(before)) {
     ask('sketch', node);
     return [];
   }
-  return played.flatMap(({ uci, share }): ErringStep[] => {
+  return played.flatMap(([uci, share]): ErringStep[] => {
     const cue = child(node, uci, node.reach * share);
     if (!cue) return [];
     const after = answers.analysis(cue);
@@ -200,13 +208,14 @@ function confirm(
   const cost = moveLoss(before, after, mistake, node.pos.turn)!.loss;
   if (cost < limits.costFloor) return undefined;
   const replies = acceptedReplies(before, after, side, limits);
-  const counts = answers.replies(cue);
-  if (!counts) ask('replies', cue);
+  const played = answers.replies(cue);
+  if (!played) ask('replies', cue);
   const best = child(cue, replies[0], 0);
   const rest = best && payoff(best, context);
-  if (!counts || !rest) return 'pending';
-  const total = gamesIn(counts);
-  const found = total >= limits.minGames ? gamesIn(counts, replies) / total : undefined;
+  if (!played || !rest) return 'pending';
+  const found = played.thin
+    ? undefined
+    : replies.reduce((sum, uci) => sum + (played.shares[uci] ?? 0), 0);
   return {
     line: node.line,
     mistake,

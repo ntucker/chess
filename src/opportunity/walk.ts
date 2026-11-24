@@ -14,6 +14,16 @@ import type { Limits } from './limits';
 /** Games per move in one position, in the band the host answers for; a move missing was not played. */
 export type MoveCounts = Readonly<Record<Uci, number>>;
 
+/**
+ * A position's replies as the run's one source gives them: each move's share
+ * of the games there (0 to 1; a move missing was not played), and whether too
+ * few games reach the position to judge it. The walk ends at a thin position.
+ */
+export interface Replies {
+  readonly shares: Readonly<Record<Uci, number>>;
+  readonly thin: boolean;
+}
+
 /** A position the finder asks about: the line from the start that reaches it, and its key. */
 export interface Spot {
   readonly line: readonly Uci[];
@@ -22,8 +32,8 @@ export interface Spot {
 
 /** What the host knows so far. Each lookup is undefined until the host has the answer. */
 export interface Answers {
-  /** Games per move played at the position (one source and band for the whole run). */
-  replies(spot: Spot): MoveCounts | undefined;
+  /** The replies played at the position (one source and band for the whole run). */
+  replies(spot: Spot): Replies | undefined;
   /** Stockfish's analysis of the position: the deepest the host has, final or not. */
   analysis(spot: Spot): Analysis | undefined;
   /**
@@ -74,6 +84,19 @@ export function walkTo(start: string, line: readonly Uci[]): Node | undefined {
   return node;
 }
 
-/** The games in `counts`, or only those of `moves`. */
-export const gamesIn = (counts: MoveCounts, moves: readonly Uci[] = Object.keys(counts)) =>
-  moves.reduce((sum, uci) => sum + (counts[uci] ?? 0), 0);
+/**
+ * Lichess's `counts` as replies: each move's games over `total`, the games
+ * reaching the position, and thin when fewer than `minGames` do.
+ */
+export function repliesFrom(
+  counts: MoveCounts,
+  minGames: number,
+  total = Object.values(counts).reduce((sum, games) => sum + games, 0),
+): Replies {
+  return {
+    shares: Object.fromEntries(
+      Object.entries(counts).map(([uci, games]) => [uci, total && games / total]),
+    ),
+    thin: total < minGames,
+  };
+}

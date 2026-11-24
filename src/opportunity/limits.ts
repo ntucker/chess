@@ -7,7 +7,7 @@ import { MISTAKE_LOSS } from '@/analysis/quality';
 export interface Limits {
   /** A reply played under this share of the position's games is not screened. */
   readonly shareFloor: number;
-  /** A position fewer games reach is too thin to judge, and the walk stops there. */
+  /** A position fewer games reach is too thin to judge (`repliesFrom`, the lichess host's). */
   readonly minGames: number;
   /** The least expected score (0 to 1) a reply must give away to be a mistake. */
   readonly costFloor: number;

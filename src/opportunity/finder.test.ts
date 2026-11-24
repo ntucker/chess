@@ -7,7 +7,8 @@ import type { Uci } from '@/lesson/lesson';
 import { SKETCH_DEPTH } from '@/review/order';
 
 import { acceptedReplies, byScore, type Find, findOpportunities } from './finder';
-import type { Answers, MoveCounts, Request, Spot } from './walk';
+import { LIMITS } from './limits';
+import { type Answers, type MoveCounts, repliesFrom, type Request, type Spot } from './walk';
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -116,9 +117,15 @@ searched(`${CUE} Nxe4 Bxd8 Bxf2+ Ke2`, full(`${CUE} Nxe4 Bxd8 Bxf2+ Ke2`, [['Bg4
 
 const NO_MOVE: FinalAnalysis = { lines: [{ evaluation: evaluation(0.5) }], depth: 18, final: true };
 
+/** The replies the lichess host gives from the games above, thin under `minGames`. */
+const fromGames =
+  (minGames = LIMITS.minGames) =>
+  ({ key }: Spot) =>
+    repliesFrom(replies.get(key) ?? {}, minGames);
+
 /** Every answer known at once. */
 const known: Answers = {
-  replies: ({ key }) => replies.get(key) ?? {},
+  replies: fromGames(),
   analysis: ({ key }) => analyses.get(key)?.at(-1) ?? NO_MOVE,
   ownMoves: ({ key }) => ownMoves.get(key),
 };
@@ -218,8 +225,14 @@ describe('findOpportunities', () => {
     expect(find(known, { shareFloor: 0.2 }).finds).toEqual([]);
     expect(find(known, { costFloor: 0.5 }).finds).toEqual([]);
     expect(find(known, { reachFloor: 0.5 }).finds).toEqual([]);
-    expect(find(known, { minGames: 1001 }).finds).toEqual([]);
     expect(find(known, { maxPlies: 2 }).finds).toEqual([]);
+  });
+
+  it('ends the walk at a thin position, and says where', () => {
+    const { finds, thin } = find({ ...known, replies: fromGames(1001) });
+    expect(finds).toEqual([]);
+    expect(thin).toEqual([{ line: uci(OPENING), key: at(OPENING).key, reach: 1 }]);
+    expect(find(known).thin).toEqual([]);
   });
 
   it('stops Act III after the most moves the punishing side may play', () => {
@@ -230,7 +243,8 @@ describe('findOpportunities', () => {
   it('leaves the found rate out where too few games reach the cue', () => {
     const [bg5] = find({
       ...known,
-      replies: (spot) => (spot.key === at(CUE).key ? { a: 5 } : known.replies(spot)),
+      replies: (spot) =>
+        spot.key === at(CUE).key ? repliesFrom({ a: 5 }, LIMITS.minGames) : known.replies(spot),
     }).finds;
     expect(bg5.found).toBeUndefined();
   });
