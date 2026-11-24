@@ -3,6 +3,7 @@
  * (piece B of docs/plans/opportunities.md) can tune them.
  */
 import { MISTAKE_LOSS } from '@/analysis/quality';
+import { RARE_SHARE } from '@/lesson/select';
 
 export interface Limits {
   /** A reply played under this share of the position's games is not screened. */
@@ -24,7 +25,8 @@ export interface Limits {
 }
 
 export const LIMITS: Limits = {
-  shareFloor: 0.05,
+  // The share under which the list calls a reply rare.
+  shareFloor: RARE_SHARE,
   minGames: 100,
   // The mistake limit, so every opportunity's first move labels as a mistake or a blunder.
   costFloor: MISTAKE_LOSS,
