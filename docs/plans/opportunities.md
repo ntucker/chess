@@ -89,7 +89,9 @@ The numbers here are starting values, tuned at piece B's gate.
   **Minimum games**: a position fewer than 100 games reach (in the band) is too thin to judge.
 - **Line to pass**: an opportunity whose mistake `countedReplies` counts (`src/lesson/cleanRun.ts`:
   10% over all bands, or the most played reply). Other finds show in the list and the finder but
-  are never required. A marked move without counts never counts toward passing.
+  are never required. Piece C adds one exception to `countedReplies`, beside `COUNTED_SHARE`: a
+  marked move without counts never counts (today a move without counts does). Once the importer
+  writes its counts, the 10% rule applies to it like any other move.
 - **The cue's accepted replies**: the punishing side's moves in the cue position's final analysis
   that label best or good beside its first line and keep at least the cost floor of the gain. The
   importer writes each as a book move, and Act III's moves too, so a clean run can play them.
@@ -121,7 +123,7 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
   else Stockfish's best. It stops below a reach floor, past a ply cap, or at a thin position. One
   find per cue position; a position reached again adds nothing.
 - Its floors and caps are named constants in `src/opportunity/limits.ts`, tuned at piece B's gate:
-  the share floor, minimum games and cost floor (the mistake limit, read from `quality.ts`) from
+  the share floor, minimum games and cost floor (`MISTAKE_LOSS`, which `quality.ts` exports) from
   Rules, the Act III caps, a reach floor (1%) and a ply cap (24 plies past where the finder opens).
 
 ### Piece B: Report script
@@ -132,13 +134,14 @@ report to the project files. It changes no lesson file. Its answers go in its ow
 `scripts/import-study/answers/<id>-opportunities-*.jsonl`, which no other step reads or prunes (as
 `coverOpponent.ts` keeps its own); commit them.
 
-Gate: Nathaniel reads the top 20 finds and sets the floors before any lesson file changes.
+Gate: Nathaniel reads the top 20 finds and sets the floors and caps before any lesson file changes.
+The report prints the limits it ran with.
 
 ### Piece C: Lesson data
 
 - Format: `LessonPosition.games` (games reaching the position, per band of
   `Lesson.popularity.ratingBands`; absent means not measured) and `LessonMove.mistake`
-  (`{ cost?, name?, verdict? }`: cost as above, absent until the importer measures it; `name` a short
+  (`{ cost?, name?, verdict? }`: cost as above, absent only on migrated guide traps until piece D1's importer step measures it; `name` a short
   title for the list; `verdict` the `Trap` verdict it replaces). All optional, so the format number
   stays 3.
 - The `Trap` idea goes. Each existing trap (57 on positions, 82 in move notes) becomes guide-tree
