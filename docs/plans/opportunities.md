@@ -251,9 +251,9 @@ position ends the walk (the search for another mistake; each find's Act III stil
 and the report counts how many walks ended thin and at what depth, so the gate can judge whether a
 Maia supplement in the script is worth building. None is built now.
 
-Gate: Nathaniel reads the top 20 finds and the dropped ones and sets the `limits.ts` settings Rules
-and piece A list (not the cost floor) before any lesson file changes. The report prints the limits
-it ran with.
+Gate: Nathaniel reads the top 20 finds and the dropped ones and sets the `limits.ts` settings that
+Rules and piece A name (not the cost floor) before any lesson file changes. The report prints the
+limits it ran with.
 
 ### Piece C: Lesson data
 
