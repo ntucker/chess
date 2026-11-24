@@ -11,33 +11,24 @@ import { DEFAULT_SETTINGS } from '@/settings/settings';
 
 import { type LessonScreenModel, useLessonScreen } from './useLessonScreen';
 
-// The same stand-ins as useLesson.test.tsx: labels, Stockfish and progress
-// read through Data Client, and nobody replies with auto play off. These
-// tests are about what the screen shows, not about the engines.
-jest.mock('@/analysis/useMoveQualities', () => ({
-  useMoveQualities: () => ({ qualities: [], refutations: [] }),
-}));
+// What useLesson reads besides the lesson and the game is stood in for
+// (useLesson.testing.ts), and nobody replies with auto play off: these tests
+// are about what the screen shows, not about the engines.
+type StandIns = typeof import('@/lesson/useLesson.testing');
+function mockStandIns() {
+  return jest.requireActual<StandIns>('@/lesson/useLesson.testing');
+}
+jest.mock('@/analysis/useMoveQualities', () => mockStandIns().moveQualities);
+jest.mock('@/resources/analysis', () => mockStandIns().analysis);
+jest.mock('@/resources/opponent', () => mockStandIns().opponent);
+jest.mock('expo-router', () => mockStandIns().router);
+jest.mock('@/stockfish/demand', () => mockStandIns().demand);
 const mockFetchIfStale = jest.fn((..._args: unknown[]) => {});
-jest.mock('@data-client/react', () => ({
-  StateContext: jest.requireActual<typeof import('react')>('react').createContext({}),
-  useController: () => ({ fetch: async () => {}, fetchIfStale: mockFetchIfStale }),
-  useSubscription: () => {},
-  useSuspense: () => ({}),
-}));
-jest.mock('@/resources/analysis', () => ({
-  analysisError: () => undefined,
-  storedAnalyses: (_ctrl: unknown, _engine: unknown, lines: readonly unknown[]) =>
-    lines.map(() => undefined),
-  useAnalysis: () => undefined,
-}));
-jest.mock('@/resources/opponent', () => ({
-  gameOpponent: () => undefined,
-  useWarmOpponent: () => {},
-}));
-jest.mock('expo-router', () => ({ useIsFocused: () => true }));
-jest.mock('@/stockfish/demand', () => ({ useNeedsStockfish: () => {} }));
+jest.mock('@data-client/react', () =>
+  mockStandIns().dataClient(() => ({ fetch: async () => {}, fetchIfStale: mockFetchIfStale })),
+);
 const mockSettings = { ...DEFAULT_SETTINGS, auto: false };
-jest.mock('@/settings/SettingsProvider', () => ({ useSettings: () => mockSettings }));
+jest.mock('@/settings/SettingsProvider', () => mockStandIns().settingsProvider(() => mockSettings));
 
 const CARO_KANN = FIXTURE_LESSONS['caro-kann'] as Lesson;
 const onPlayAs = jest.fn();
@@ -112,7 +103,7 @@ describe('useLessonScreen', () => {
   it("shows the lesson's line once picked, with compact rows and no swap", async () => {
     await showAfter(CARO_KANN, 'e4', 'c6', 'd4');
     const { header, moves, board, idea, learner, scoresheet } = shown();
-    expect(header.place?.name).not.toBe('Openings');
+    expect(header.place).toEqual({ name: 'Caro-Kann Defence', parent: undefined });
     expect(header.placeLink?.href).toMatchObject({ params: { lesson: 'caro-kann' } });
     expect(moves).toMatchObject({ heading: 'Your candidates', owner: undefined, compact: true });
     expect(board.onSwap).toBeUndefined();
@@ -130,8 +121,10 @@ describe('useLessonScreen', () => {
   it('takes the headline from the status and links its eyebrow to every opening', async () => {
     await showAfter(CARO_KANN, 'e4', 'c6', 'd4');
     const { headline, header } = shown();
-    expect(headline.title).toEqual(expect.any(String));
+    expect(headline).toMatchObject({ eyebrow: 'Caro-Kann Defence', title: 'Your move.' });
     expect(headline).not.toHaveProperty('pastGuide');
+    // Once the learner has moved, a narrow page draws no "your move" line.
+    expect(shown().news).toEqual({ panes: 'none', scoresheet: 'none' });
     expect(headline.failure).toBeUndefined();
     expect(headline.eyebrowLink).toBe(header.placeLink);
   });

@@ -12,35 +12,23 @@ import { FIXTURE_INDEX, FIXTURE_LESSONS } from './openings.fixture';
 import { HOLD_MS } from './peek';
 import { useLesson } from './useLesson';
 
-// Labels, Stockfish's best move and progress read through Data Client
-// (useLesson.engine.test.tsx covers the best move), the opponent runs
-// an engine, and the screen's focus and Stockfish's demand come from the
-// app's providers; these tests are about the Practice run. With auto play
-// off nobody replies.
-jest.mock('@/analysis/useMoveQualities', () => ({
-  useMoveQualities: () => ({ qualities: [], refutations: [] }),
-}));
+// What useLesson reads besides the lesson and the game is stood in for
+// (useLesson.testing.ts; useLesson.engine.test.tsx covers Stockfish's best
+// move): these tests are about the Practice run. With auto play off nobody
+// replies.
+type StandIns = typeof import('@/lesson/useLesson.testing');
+function mockStandIns() {
+  return jest.requireActual<StandIns>('@/lesson/useLesson.testing');
+}
+jest.mock('@/analysis/useMoveQualities', () => mockStandIns().moveQualities);
+jest.mock('@/resources/analysis', () => mockStandIns().analysis);
+jest.mock('@/resources/opponent', () => mockStandIns().opponent);
+jest.mock('expo-router', () => mockStandIns().router);
+jest.mock('@/stockfish/demand', () => mockStandIns().demand);
 const mockFetch = jest.fn(async (..._args: unknown[]) => {});
-jest.mock('@data-client/react', () => ({
-  StateContext: jest.requireActual<typeof import('react')>('react').createContext({}),
-  useController: () => ({ fetch: mockFetch }),
-  useSubscription: () => {},
-  useSuspense: () => ({}),
-}));
-jest.mock('@/resources/analysis', () => ({
-  analysisError: () => undefined,
-  storedAnalyses: (_ctrl: unknown, _engine: unknown, lines: readonly unknown[]) =>
-    lines.map(() => undefined),
-  useAnalysis: () => undefined,
-}));
-jest.mock('@/resources/opponent', () => ({
-  gameOpponent: () => undefined,
-  useWarmOpponent: () => {},
-}));
-jest.mock('expo-router', () => ({ useIsFocused: () => true }));
-jest.mock('@/stockfish/demand', () => ({ useNeedsStockfish: () => {} }));
+jest.mock('@data-client/react', () => mockStandIns().dataClient(() => ({ fetch: mockFetch })));
 const mockSettings = { ...DEFAULT_SETTINGS, auto: false };
-jest.mock('@/settings/SettingsProvider', () => ({ useSettings: () => mockSettings }));
+jest.mock('@/settings/SettingsProvider', () => mockStandIns().settingsProvider(() => mockSettings));
 
 let root: Root | undefined;
 /** What useLesson answered on each render; the latest last. */
