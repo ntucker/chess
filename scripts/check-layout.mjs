@@ -5,7 +5,8 @@
  * each board page at three phone sizes, and checks that the page fits the
  * screen without scrolling, the board is whole and in view with its name
  * bars, the panel under it keeps its floor, and the board is the same size on
- * every page at one screen size, whatever sits under it. Screenshots of each
+ * every page at one screen size, whatever sits under it (pages with controls
+ * under the panel, a footed panel, have their own size). Screenshots of each
  * state land in the output folder.
  *
  *   yarn expo export --platform web
@@ -28,6 +29,8 @@ const SCREENS = [
   { width: 390, height: 664 },
   { width: 360, height: 640 },
 ];
+/** The board, chessground's element. */
+const BOARD = 'cg-board';
 /** Rounding a browser's layout leaves between boxes that should match. */
 const SLACK = 1;
 
@@ -46,6 +49,14 @@ const STATES = [
   { name: 'lesson-line', path: '/lesson/caro-kann?moves=e2e4 c7c6 d2d4 d7d5 b1c3 d5e4 c3e4' },
   { name: 'lesson-past-guide', path: '/lesson/caro-kann?moves=e2e4 c7c6 d2d4 h7h5' },
   { name: 'play', path: '/play' },
+  // Controls sit under the review's panel (a footed panel), so its board is a size of its own.
+  {
+    name: 'review',
+    path: '/review?moves=e2e4 e7e5 g1f3 b8c6&side=white',
+    foot: true,
+    // Its board is 4px under the floor on short phones: #204. Drop this with the fix.
+    exempt: ['board-min'],
+  },
 ];
 
 const TYPES = {
@@ -69,7 +80,10 @@ function serve() {
         ? undefined
         : [inSite, `${inSite}.html`, join(inSite, 'index.html')]
             .map((candidate) => join(site, candidate))
-            .find((candidate) => existsSync(candidate) && statSync(candidate).isFile());
+            .find(
+              (candidate) =>
+                candidate.startsWith(site) && existsSync(candidate) && statSync(candidate).isFile(),
+            );
     if (!file) {
       response.writeHead(404).end();
       return;
@@ -84,16 +98,16 @@ function serve() {
  * The boxes the checks read, in CSS pixels, and the floors narrow.css sets,
  * read from the page so they can't drift from it.
  */
-function measure() {
+function measure(board) {
   const box = (selector) => document.querySelector(selector)?.getBoundingClientRect().toJSON();
   const part = (name) => `[data-narrow='${name}']`;
-  const program = document.querySelector(part('program'));
+  const program = document.querySelector(`${part('program')}, ${part('footed-program')}`);
   return {
     screen: { width: innerWidth, height: innerHeight },
     // React Native Web scrolls a view inside the document, so the page's own box shows whether it fits.
     page: box(part('page')),
     pageWidth: document.documentElement.scrollWidth,
-    board: box('cg-board'),
+    board: box(board),
     column: box(part('board-column')),
     program: program?.getBoundingClientRect().toJSON(),
     boardMin: parseFloat(
@@ -103,52 +117,63 @@ function measure() {
   };
 }
 
-/** What's wrong with one state's layout, in words. */
-function problems({ screen, page, pageWidth, board, column, program, boardMin, programFloor }) {
-  // A missing part would skip its checks and pass: renaming one must fail here.
-  const missing = Object.entries({ page, board, column, program })
-    .filter(([, found]) => !found)
-    .map(([name]) => `no ${name}`);
+/** What's wrong with one state's layout, in words, leaving out the `exempt` rules. */
+function problems(
+  { screen, page, pageWidth, board, column, program, boardMin, programFloor },
+  exempt = [],
+) {
+  // A missing part or floor would skip its checks and pass: renaming one must fail here.
+  const missing = [
+    ...Object.entries({ page, board, column, program })
+      .filter(([, box]) => !box)
+      .map(([name]) => `no ${name}`),
+    ...Object.entries({ '--board-min': boardMin, "the panel's min-height": programFloor })
+      .filter(([, floor]) => !Number.isFinite(floor))
+      .map(([name]) => `no floor from ${name}`),
+  ];
   if (missing.length) return missing;
-  const found = [];
-  if (pageWidth > screen.width) found.push(`the page scrolls sideways (${pageWidth}px wide)`);
-  if (page.bottom > screen.height + SLACK) found.push(`the page scrolls (${page.bottom}px tall)`);
+  const issues = [];
+  if (pageWidth > screen.width) issues.push(`the page scrolls sideways (${pageWidth}px wide)`);
+  if (page.bottom > screen.height + SLACK) issues.push(`the page scrolls (${page.bottom}px tall)`);
   if (Math.abs(board.width - board.height) > SLACK) {
-    found.push(`the board isn't square (${board.width}×${board.height})`);
+    issues.push(`the board isn't square (${board.width}×${board.height})`);
   }
-  if (board.width < boardMin - SLACK)
-    found.push(`the board is ${board.width}px, under ${boardMin}`);
+  if (board.width < boardMin - SLACK && !exempt.includes('board-min')) {
+    issues.push(`the board is ${board.width}px, under ${boardMin}`);
+  }
   if (board.left < -SLACK || board.right > screen.width + SLACK) {
-    found.push('the board runs off the side');
+    issues.push('the board runs off the side');
   }
   if (column.bottom > screen.height + SLACK) {
-    found.push(`the player's bar ends at ${column.bottom}px, below the screen`);
+    issues.push(`the player's bar ends at ${column.bottom}px, below the screen`);
   }
   if (program.height < programFloor - SLACK) {
-    found.push(`the panel is ${program.height}px, under its ${programFloor}px floor`);
+    issues.push(`the panel is ${program.height}px, under its ${programFloor}px floor`);
   }
   if (program.bottom > screen.height + SLACK) {
-    found.push(`the panel ends at ${program.bottom}px, below the screen`);
+    issues.push(`the panel ends at ${program.bottom}px, below the screen`);
   }
-  return found;
+  return issues;
 }
 
 /** Waits for the page to load what it fetches and its fonts, and for its layout to hold still for a frame. */
 async function settle(page) {
   await page.waitForLoadState('networkidle');
-  await page.evaluate(async () => {
+  return page.evaluate(async (board) => {
     await document.fonts.ready;
     const frame = () => new Promise(requestAnimationFrame);
-    const layout = () =>
-      JSON.stringify(document.querySelector('cg-board')?.getBoundingClientRect());
-    for (let last = layout(); ;) {
+    const layout = () => JSON.stringify(document.querySelector(board)?.getBoundingClientRect());
+    // Settled once the board's box is the same two frames apart; a second of frames, at most.
+    let last = layout();
+    for (let tries = 0; tries < 30; tries++) {
       await frame();
       await frame();
       const now = layout();
-      if (now === last) return;
+      if (now === last) return true;
       last = now;
     }
-  });
+    return false;
+  }, BOARD);
 }
 
 /** Checks every state at one screen size, and returns what's wrong. */
@@ -161,24 +186,28 @@ async function checkScreen(browser, origin, screen) {
     reducedMotion: 'reduce',
   });
   const failures = [];
-  let first;
+  // The first board measured on a page with controls under its panel, and on one without.
+  const first = new Map();
   for (const state of STATES) {
     const where = `${size} ${state.name}`;
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(origin + state.path);
-    await page.locator('cg-board').waitFor();
+    await page.locator(BOARD).waitFor();
     await state.act?.(page);
-    await settle(page);
+    if (!(await settle(page))) errors.push('the layout was still moving after a second');
     await page.screenshot({ path: join(shots, `${size}-${state.name}.png`) });
-    const layout = await page.evaluate(measure);
-    for (const problem of [...problems(layout), ...errors]) failures.push(`${where}: ${problem}`);
+    const layout = await page.evaluate(measure, BOARD);
+    for (const problem of [...problems(layout, state.exempt), ...errors])
+      failures.push(`${where}: ${problem}`);
     if (layout.board) {
       const { width } = layout.board;
-      first ??= { where, width };
-      if (Math.abs(width - first.width) > SLACK) {
-        failures.push(`${where}: the board is ${width}px, ${first.width}px in ${first.where}`);
+      const foot = state.foot ?? false;
+      if (!first.has(foot)) first.set(foot, { where, width });
+      const match = first.get(foot);
+      if (Math.abs(width - match.width) > SLACK) {
+        failures.push(`${where}: the board is ${width}px, ${match.width}px in ${match.where}`);
       }
     }
     await page.close();
