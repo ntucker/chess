@@ -111,6 +111,7 @@ searched(
   ]),
 );
 games(`${CUE} Nxe4 Bxd8 Bxf2+`, { Ke2: 500 });
+searched(`${CUE} Nxe4 Bxd8 Bxf2+`, search(`${CUE} Nxe4 Bxd8 Bxf2+`, [['Ke2', '#-1']]));
 searched(`${CUE} Nxe4 Bxd8 Bxf2+ Ke2`, full(`${CUE} Nxe4 Bxd8 Bxf2+ Ke2`, [['Bg4#', '#-1']]));
 
 const NO_MOVE: FinalAnalysis = { lines: [{ evaluation: evaluation(0.5) }], depth: 18, final: true };

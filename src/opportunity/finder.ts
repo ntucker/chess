@@ -10,10 +10,12 @@
  * of them and asks again; there is no queue to keep in step. The import script
  * answers from lichess and Node Stockfish, the app from its store.
  */
-import { isMistake, judgement, moveLoss } from '@/analysis/quality';
-import { type FinalAnalysis, forSide, isFinal } from '@/evaluation/evaluation';
-import { type Color, countLegalMoves, opposite } from '@/game/replay';
+import { judgement, moveLoss } from '@/analysis/quality';
+import { type Analysis, type FinalAnalysis, forSide, isFinal } from '@/evaluation/evaluation';
+import type { Color } from '@/game/replay';
 import type { PositionKey, Uci } from '@/lesson/lesson';
+import { LikeliestFirst } from '@/lesson/likeliestFirst';
+import { sketched } from '@/review/order';
 
 import { type Limits, LIMITS } from './limits';
 import { payoff } from './payoff';
@@ -24,7 +26,6 @@ import {
   gamesIn,
   type Node,
   type Request,
-  sketched,
   type Spot,
   walkTo,
 } from './walk';
@@ -101,21 +102,26 @@ export function findOpportunities({
   const opening = walkTo(start, line);
   if (!opening) return { finds: [], requests: [] };
   const lastPly = line.length + limits.maxPlies;
-  const frontier = new Frontier(opening);
+  // Most reached first, then in the order added.
+  const frontier = new LikeliestFirst<Node>((node) => node.reach);
+  frontier.push(opening);
   const visited = new Set<PositionKey>();
   const finds = new Map<PositionKey, Find>();
 
-  for (let node = frontier.next(); node; node = frontier.next()) {
+  for (let node = frontier.pop(); node; node = frontier.pop()) {
     if (visited.has(node.key) || node.line.length >= lastPly) continue;
     visited.add(node.key);
     if (node.pos.turn === side) {
-      for (const uci of ownMoves(node, context)) frontier.add(child(node, uci, node.reach));
+      for (const uci of ownMoves(node, context)) {
+        const next = child(node, uci, node.reach);
+        if (next) frontier.push(next);
+      }
       continue;
     }
     for (const step of erringSteps(node, context)) {
       if ('find' in step) {
         if (!finds.has(step.cue)) finds.set(step.cue, step.find);
-      } else if (step.reach >= limits.reachFloor) frontier.add(child(node, step.uci, step.reach));
+      } else if (step.reach >= limits.reachFloor) frontier.push(step);
     }
   }
   return { finds: [...finds.values()].sort(byScore), requests };
@@ -134,10 +140,8 @@ function ownMoves(node: Node, { answers, ask }: Context): readonly Uci[] {
   return best ? [best] : [];
 }
 
-/** Where the erring side moves: a reply to walk on from, or a find keyed by its cue position. */
-type ErringStep =
-  | { readonly uci: Uci; readonly reach: number }
-  | { readonly cue: PositionKey; readonly find: Find };
+/** Where the erring side moves: a reply's position to walk on from, or a find keyed by its cue. */
+type ErringStep = Node | { readonly cue: PositionKey; readonly find: Find };
 
 /**
  * The erring side's replies at `node` over the share floor, most played
@@ -154,32 +158,27 @@ function erringSteps(node: Node, context: Context): ErringStep[] {
   const total = gamesIn(counts);
   if (total < limits.minGames) return [];
   const played = Object.entries(counts)
-    .filter(([, games]) => games / total >= limits.shareFloor)
-    .sort(([, a], [, b]) => b - a);
-  // The only legal move is never a mistake, as `labelMove` has it.
-  if (countLegalMoves(node.pos) === 1) {
-    return played.map(([uci, games]) => ({ uci, reach: (node.reach * games) / total }));
-  }
+    .map(([uci, games]) => ({ uci, share: games / total }))
+    .filter(({ share }) => share >= limits.shareFloor)
+    .sort((a, b) => b.share - a.share);
   const before = answers.analysis(node);
   if (!sketched(before)) {
     ask('sketch', node);
     return [];
   }
-  return played.flatMap(([uci, games]): ErringStep[] => {
-    const cue = child(node, uci, 0);
+  return played.flatMap(({ uci, share }): ErringStep[] => {
+    const cue = child(node, uci, node.reach * share);
     if (!cue) return [];
     const after = answers.analysis(cue);
     if (!sketched(after)) {
       ask('sketch', cue);
       return [];
     }
-    const share = games / total;
-    const walkOn = [{ uci, reach: node.reach * share }];
     const screened = moveLoss(before, after, uci, node.pos.turn);
-    if (!screened || screened.loss < limits.costFloor) return walkOn;
-    const find = confirm(node, cue, share, context);
+    if (!screened || screened.loss < limits.costFloor) return [cue];
+    const find = confirm({ node, before }, { cue, after }, share, context);
     if (find === 'pending') return [];
-    return find ? [{ cue: cue.key, find }] : walkOn;
+    return find ? [{ cue: cue.key, find }] : [cue];
   });
 }
 
@@ -188,19 +187,17 @@ function erringSteps(node: Node, context: Context): ErringStep[] {
  * undefined if they don't, `'pending'` while an answer is missing.
  */
 function confirm(
-  node: Node,
-  cue: Node,
+  { node, before }: { node: Node; before: Analysis },
+  { cue, after }: { cue: Node; after: Analysis },
   share: number,
   context: Context,
 ): Find | undefined | 'pending' {
   const { side, answers, limits, ask } = context;
-  const before = answers.analysis(node);
-  const after = answers.analysis(cue);
   if (!isFinal(before)) ask('full', node);
   if (!isFinal(after)) ask('full', cue);
   if (!isFinal(before) || !isFinal(after)) return 'pending';
   const mistake = cue.line.at(-1)!;
-  const cost = moveLoss(before, after, mistake, opposite(side))!.loss;
+  const cost = moveLoss(before, after, mistake, node.pos.turn)!.loss;
   if (cost < limits.costFloor) return undefined;
   const replies = acceptedReplies(before, after, side, limits);
   const counts = answers.replies(cue);
@@ -240,7 +237,7 @@ export function acceptedReplies(
   return after.lines.flatMap(({ uci, evaluation }, rank) => {
     if (!uci) return [];
     const quality = judgement(after, undefined, uci, side)?.quality;
-    const good = !isMistake(quality) && quality !== 'inaccuracy';
+    const good = quality === 'best' || quality === 'good';
     const kept = forSide(evaluation.score, side) - base >= limits.costFloor;
     return rank === 0 || (good && kept) ? [uci] : [];
   });
@@ -249,19 +246,3 @@ export function acceptedReplies(
 /** Higher score first; on a tie, the opportunity players find less often, unknown last. */
 export const byScore = (a: Find, b: Find) =>
   b.score - a.score || (a.found ?? Infinity) - (b.found ?? Infinity);
-
-/** The positions still to visit, most reached first, then in the order they were added. */
-class Frontier {
-  private readonly nodes: Node[];
-  constructor(first: Node) {
-    this.nodes = [first];
-  }
-  add(node: Node | undefined) {
-    if (!node) return;
-    const at = this.nodes.findIndex((other) => other.reach < node.reach);
-    this.nodes.splice(at < 0 ? this.nodes.length : at, 0, node);
-  }
-  next() {
-    return this.nodes.shift();
-  }
-}

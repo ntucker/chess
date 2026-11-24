@@ -21,18 +21,18 @@ export function payoff(start: Node, { side, answers, limits, ask }: Context): Uc
   let punishingMoves = 0;
   for (let node = start; !node.pos.isEnd();) {
     const analysis = answers.analysis(node);
+    const full = () => (isFinal(analysis) ? analysis : void ask('full', node));
     let uci: Uci | undefined;
     if (node.pos.turn === side) {
-      if (!isFinal(analysis)) {
-        ask('full', node);
-        return undefined;
-      }
-      const [best, second] = analysis.lines;
-      const winning = (line = best) => !!line && scoreFor(line.evaluation, side) >= limits.winScore;
+      const final = full();
+      if (!final) return undefined;
+      const [best, second] = final.lines;
+      const winning = (line: typeof best | undefined) =>
+        !!line && scoreFor(line.evaluation, side) >= limits.winScore;
       const mating = forSide(best.evaluation.mate ?? 0, side) > 0;
       const won =
         !mating &&
-        winning() &&
+        winning(best) &&
         (winning(second) || balance(node.pos.board, side) >= limits.materialUp);
       if (won) break;
       uci = best.uci;
@@ -45,11 +45,9 @@ export function payoff(start: Node, { side, answers, limits, ask }: Context): Uc
       }
       uci = mostPlayed(counts, limits.minGames);
       if (!uci) {
-        if (!isFinal(analysis)) {
-          ask('full', node);
-          return undefined;
-        }
-        uci = analysis.lines[0].uci;
+        const final = full();
+        if (!final) return undefined;
+        uci = final.lines[0].uci;
       }
     }
     const next = uci === undefined ? undefined : child(node, uci, 0);

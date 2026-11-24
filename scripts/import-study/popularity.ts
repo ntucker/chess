@@ -6,7 +6,8 @@
  */
 
 import { parsePosition, parsePositionKey, positionKey, recordedMove } from '@/game/replay';
-import type { Lesson, PositionKey, Uci } from '@/lesson/lesson';
+import type { Lesson, PositionKey } from '@/lesson/lesson';
+import type { MoveCounts } from '@/opportunity/walk';
 
 import { answersFile } from './jsonLines';
 import { played } from './study';
@@ -16,8 +17,7 @@ export const RATING_BANDS = [1000, 1200, 1400, 1600, 1800];
 /** Bullet games are left out: they are played too fast to say what players choose. */
 const SPEEDS = ['blitz', 'rapid', 'classical'];
 
-/** Games per move in one position and band; a move missing from it was not played. */
-export type MoveCounts = Readonly<Record<Uci, number>>;
+export type { MoveCounts };
 /** Games per move as lichess writes moves (castling as the king taking its rook, `e1h1`). */
 type LichessCounts = Readonly<Record<string, number>>;
 export type Explorer = (key: PositionKey, band: number) => Promise<MoveCounts>;

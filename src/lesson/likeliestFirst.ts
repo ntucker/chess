@@ -1,6 +1,7 @@
 /**
- * The queue of a best-first walk through a lesson's guide
- * (`likeliestInto` in openings.ts): lines by the share of games that play them.
+ * The queue of a best-first walk: lines by the share of games that play them.
+ * The lesson's guide (`likeliestInto` in openings.ts) and the opportunity
+ * finder walk with it.
  */
 import type { Chess } from 'chessops/chess';
 
@@ -13,12 +14,17 @@ export interface Walked {
   readonly share: number;
 }
 
-/** A binary heap of walked lines, the likeliest on top; of lines as likely, the one pushed first. */
-export class LikeliestFirst {
-  private readonly heap: { readonly walked: Walked; readonly order: number }[] = [];
+/**
+ * A binary heap of walked lines, the likeliest on top; of lines as likely,
+ * the one pushed first. `share` reads how likely a line is.
+ */
+export class LikeliestFirst<T = Walked> {
+  private readonly heap: { readonly walked: T; readonly order: number }[] = [];
   private pushed = 0;
 
-  push(walked: Walked) {
+  constructor(private readonly share: (walked: T) => number) {}
+
+  push(walked: T) {
     const { heap } = this;
     heap.push({ walked, order: this.pushed++ });
     for (let i = heap.length - 1; i > 0;) {
@@ -29,7 +35,7 @@ export class LikeliestFirst {
     }
   }
 
-  pop(): Walked | undefined {
+  pop(): T | undefined {
     const { heap } = this;
     const top = heap[0];
     const last = heap.pop();
@@ -50,8 +56,7 @@ export class LikeliestFirst {
 
   private before(a: number, b: number) {
     const [x, y] = [this.heap[a], this.heap[b]];
-    return (
-      x.walked.share > y.walked.share || (x.walked.share === y.walked.share && x.order < y.order)
-    );
+    const [likelier, asLikely] = [this.share(x.walked), this.share(y.walked)];
+    return likelier > asLikely || (likelier === asLikely && x.order < y.order);
   }
 }

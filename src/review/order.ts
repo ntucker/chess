@@ -87,7 +87,7 @@ export function nextSearch({
 }
 
 /** Whether `analysis` is at least a sketch. */
-const sketched = (analysis: Analysis | undefined) =>
+export const sketched = (analysis: Analysis | undefined): analysis is Analysis =>
   !!analysis && (analysis.final || analysis.depth >= SKETCH_DEPTH);
 
 /**

@@ -3,11 +3,11 @@
  * it reads about them, and the answers it asks for.
  */
 import type { Chess } from 'chessops/chess';
+import { parseUci } from 'chessops/util';
 
 import type { Analysis } from '@/evaluation/evaluation';
-import { type Color, parsePosition, playMove, positionKey } from '@/game/replay';
+import { type Color, parsePosition, positionKey } from '@/game/replay';
 import type { PositionKey, Uci } from '@/lesson/lesson';
-import { SKETCH_DEPTH } from '@/review/order';
 
 import type { Limits } from './limits';
 
@@ -59,8 +59,10 @@ export interface Context {
 
 /** The node `uci` leads to from `node`, with `reach`; undefined if it isn't legal. */
 export function child(node: Node, uci: Uci, reach: number): Node | undefined {
+  const move = parseUci(uci);
+  if (!move || !node.pos.isLegal(move)) return undefined;
   const pos = node.pos.clone();
-  if (!playMove(pos, uci)) return undefined;
+  pos.play(move);
   return { pos, key: positionKey(pos), line: [...node.line, uci], reach };
 }
 
@@ -71,10 +73,6 @@ export function walkTo(start: string, line: readonly Uci[]): Node | undefined {
   for (const uci of line) node = node && child(node, uci, 1);
   return node;
 }
-
-/** Whether `analysis` is at least a sketch. */
-export const sketched = (analysis: Analysis | undefined): analysis is Analysis =>
-  !!analysis && (analysis.final || analysis.depth >= SKETCH_DEPTH);
 
 /** The games in `counts`, or only those of `moves`. */
 export const gamesIn = (counts: MoveCounts, moves: readonly Uci[] = Object.keys(counts)) =>

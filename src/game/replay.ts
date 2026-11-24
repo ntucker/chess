@@ -232,8 +232,7 @@ export function legalMoveCount(line: readonly string[]): number {
 /** `legalMoveCount` of the position `fen`, without replaying the moves to it. */
 export const legalMoveCountAt = (fen: string) => countLegalMoves(parsePosition(fen)!);
 
-/** How many moves are legal in `pos`, as `legalMoveCount` counts them. */
-export function countLegalMoves(pos: Chess): number {
+function countLegalMoves(pos: Chess): number {
   let count = 0;
   for (const [from, dests] of pos.allDests()) {
     const pawn = pos.board.pawn.has(from);
