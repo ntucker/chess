@@ -294,59 +294,76 @@ function StrengthSlider({ value, onChoose }: StrengthProps) {
   const tipId = useId();
   // React Native Web ignores accessibilityHint, so the web reads the tip from the hidden text below.
   const described = WEB ? { 'aria-describedby': tipId } : {};
+  const heading = (
+    <View style={styles.heading}>
+      <Eyebrow>Opponent strength</Eyebrow>
+      <View style={styles.readout}>
+        <Text role="heading" numberOfLines={1}>
+          {preset ?? level}
+        </Text>
+        {preset ? (
+          <Text role="label" tone="secondary" style={styles.rating}>
+            {ratingOf(shown)}
+          </Text>
+        ) : null}
+        {/* The mark that there is more to say: a tap on the heading says it. */}
+        <Ionicons
+          name="information-circle-outline"
+          size={INFO_SIZE}
+          color={color.textSecondary}
+          style={styles.info}
+        />
+      </View>
+    </View>
+  );
+  const slider = (
+    <Slider
+      size={SLIDER_SIZE}
+      // A rating scale runs left to right in every language.
+      dir="ltr"
+      accessibilityLabel="Opponent strength"
+      accessibilityHint={tip}
+      {...described}
+      min={0}
+      max={steps.length - 1}
+      step={1}
+      value={[shownAt]}
+      thumbValueText={[spoken(shown)]}
+      onValueChange={([index]) => setSlid(steps[index])}
+      onValueCommit={([index]) => {
+        setSlid(undefined);
+        onChoose(steps[index]);
+      }}
+      style={styles.slider}
+    >
+      <Scale steps={steps} shownAt={shownAt} />
+    </Slider>
+  );
   return (
     <Tooltip.Root>
-      <Tooltip.Trigger>
-        <View style={styles.heading}>
-          <Eyebrow>Opponent strength</Eyebrow>
-          <View style={styles.readout}>
-            <Text role="heading" numberOfLines={1}>
-              {preset ?? level}
-            </Text>
-            {preset ? (
-              <Text role="label" tone="secondary" style={styles.rating}>
-                {ratingOf(shown)}
-              </Text>
-            ) : null}
-            {/* The mark that there is more to say: a tap on the heading says it. */}
-            <Ionicons
-              name="information-circle-outline"
-              size={INFO_SIZE}
-              color={color.textSecondary}
-              style={styles.info}
-            />
-          </View>
-        </View>
-        <Slider
-          size={SLIDER_SIZE}
-          // A rating scale runs left to right in every language.
-          dir="ltr"
-          accessibilityLabel="Opponent strength"
-          accessibilityHint={tip}
-          {...described}
-          min={0}
-          max={steps.length - 1}
-          step={1}
-          value={[shownAt]}
-          thumbValueText={[spoken(shown)]}
-          onValueChange={([index]) => setSlid(steps[index])}
-          onValueCommit={([index]) => {
-            setSlid(undefined);
-            onChoose(steps[index]);
-          }}
-          style={styles.slider}
-        >
-          <Scale steps={steps} shownAt={shownAt} />
-        </Slider>
-        {WEB ? (
-          // aria-hidden keeps it out of the reading order; aria-describedby still reads it.
+      {WEB ? (
+        <Tooltip.Trigger>
+          {heading}
+          {slider}
+          {/* aria-hidden keeps it out of the reading order; aria-describedby still reads it. */}
           <Text nativeID={tipId} aria-hidden style={styles.tip}>
             {tip}
           </Text>
-        ) : null}
-      </Tooltip.Trigger>
+        </Tooltip.Trigger>
+      ) : (
+        <>
+          {/* A tap on the slider moves its thumb, so on a phone only the heading's opens the tip. */}
+          <Tooltip.Trigger>{heading}</Tooltip.Trigger>
+          {slider}
+        </>
+      )}
       {/* Under the popover, clear of the scale and of the rating it opened from. */}
-      <Tooltip.Content side="bottom" align="start" sideOffset={TIP_OFFSET}>
+      <Tooltip.Content
+        side="bottom"
+        align="start"
+        // On a phone it opens from the heading alone, so it reaches past the slider too.
+        sideOffset={WEB ? TIP_OFFSET : TIP_OFFSET + SLIDER_BOX}
+      >
         {tip}
       </Tooltip.Content>
     </Tooltip.Root>
@@ -361,6 +378,10 @@ const SLIDER_SIZE = 'sm';
  * to the nearest stop. More than a finger needs (touch.ts).
  */
 const SLIDER_HEIGHT = 60;
+/** Space above and below the slider. */
+const SLIDER_MARGIN = { top: 8, bottom: 6 } as const;
+/** The slider's height with its margins. */
+const SLIDER_BOX = SLIDER_MARGIN.top + SLIDER_HEIGHT + SLIDER_MARGIN.bottom;
 /** Space between the thumb and the ratings under it, clear of the thumb's focus ring. */
 const RATING_GAP = 6;
 /** A stop's dot on the track. */
@@ -491,8 +512,8 @@ const styles = StyleSheet.create({
     width: 'auto',
     alignSelf: 'stretch',
     height: SLIDER_HEIGHT,
-    marginTop: 8,
-    marginBottom: 6,
+    marginTop: SLIDER_MARGIN.top,
+    marginBottom: SLIDER_MARGIN.bottom,
     marginLeft: 15,
     marginRight: 19,
   },
