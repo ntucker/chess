@@ -254,7 +254,7 @@ function confirm(
     cost,
     ...(found !== undefined && { found }),
     gain,
-    ...((played.thin || covered < 0.5) && { estimate: true as const }),
+    ...((played.thin || covered < limits.estimateCoverage) && { estimate: true as const }),
     score: node.reach * share * gain,
   };
 }

@@ -24,6 +24,8 @@ export interface Limits {
   readonly payoffMoves: number;
   /** A find is kept where Act III ends with the punishing side's expected score at least this. */
   readonly keepScore: number;
+  /** A gain is an estimate where the replies it measures cover under this share of the cue's games. */
+  readonly estimateCoverage: number;
 }
 
 export const LIMITS: Limits = {
@@ -40,4 +42,5 @@ export const LIMITS: Limits = {
   payoffMoves: 6,
   // Clearly better, short of winning.
   keepScore: 0.6,
+  estimateCoverage: 0.5,
 };
