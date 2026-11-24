@@ -532,6 +532,19 @@ describe('reachOf', () => {
     expect(reach('C', true)).toBeCloseTo(0.5 * 0.4);
   });
 
+  it("counts the guide's fewest moves on the guide, beside a shorter way off it", () => {
+    // S -> A -> B -> C on the guide; S -> C off it, in fewer moves.
+    const moves = [
+      { from: 'S', to: 'A', share: 0.5, guided: true },
+      { from: 'A', to: 'B', share: 1, guided: true },
+      { from: 'B', to: 'C', share: 0.5, guided: true },
+      { from: 'S', to: 'C', share: 0.1, guided: false },
+    ];
+    const reach = reachOf('S', moves);
+    expect(reach('C', false)).toBeCloseTo(0.1);
+    expect(reach('C', true)).toBeCloseTo(0.25);
+  });
+
   it('counts a repetition for nothing, so the start stays 1 and each game counts once', () => {
     // S -> X -> Y -> Z, then Z back to X and to S.
     const moves = [

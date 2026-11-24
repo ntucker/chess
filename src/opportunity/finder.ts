@@ -222,40 +222,53 @@ export interface Move {
 }
 
 /**
- * Each walked position's reach: the share of games that get there, summed
- * over the move orders of fewest moves the walk took to it (every order of
- * the same moves; a repetition or a lost tempo adds nothing, so the start
- * stays 1 and each game counts once). With `guided`, only the move orders
- * where the guide plays every punishing-side move count. Reach stays derived:
- * nothing stores it.
+ * Each walked position's reach: the share of games that get there by a move
+ * order of fewest moves, summed over those orders (every order of the same
+ * moves). A game that gets there only by a repetition or a lost tempo isn't
+ * counted, so the start stays 1 and each game counts once. With `guided`,
+ * only the moves the guide plays for the punishing side count, fewest among
+ * them. Reach stays derived: nothing stores it.
  */
 export function reachOf(start: PositionKey, moves: readonly Move[]) {
+  const all = gamesReaching(start, moves);
+  const guided = gamesReaching(
+    start,
+    moves.filter((move) => move.guided),
+  );
+  return (key: PositionKey, onGuide: boolean) => (onGuide ? guided : all).get(key) ?? 0;
+}
+
+/** The share of games that reach each position by `moves`, over move orders of fewest moves. */
+function gamesReaching(start: PositionKey, moves: readonly Move[]): Map<PositionKey, number> {
+  const games = new Map([[start, 1]]);
+  for (const move of fewestMoves(start, moves)) {
+    add(games, move.to, (games.get(move.from) ?? 0) * move.share);
+  }
+  return games;
+}
+
+/**
+ * The moves that go one deeper than the fewest moves to where they start,
+ * breadth-first from `start`: so each comes after every move into the
+ * position it leaves, and a sum over them in order is final where it is read.
+ */
+function fewestMoves(start: PositionKey, moves: readonly Move[]): Move[] {
   const out = new Map<PositionKey, Move[]>();
   for (const move of moves) append(out, move.from, move);
-  // Nearest first: the moves that go one deeper than their position's
-  // fewest moves, each after every move into the position it leaves.
   const order = [start];
   const depth = new Map([[start, 0]]);
   const fewest: Move[] = [];
   for (const key of order) {
+    const next = depth.get(key)! + 1;
     for (const move of out.get(key) ?? []) {
       if (!depth.has(move.to)) {
-        depth.set(move.to, depth.get(key)! + 1);
+        depth.set(move.to, next);
         order.push(move.to);
       }
-      if (depth.get(move.to) === depth.get(key)! + 1) fewest.push(move);
+      if (depth.get(move.to) === next) fewest.push(move);
     }
   }
-  const gamesReaching = (guided: boolean) => {
-    const games = new Map([[start, 1]]);
-    for (const move of fewest) {
-      if (!guided || move.guided) add(games, move.to, (games.get(move.from) ?? 0) * move.share);
-    }
-    return games;
-  };
-  const allGames = gamesReaching(false);
-  const guidedGames = gamesReaching(true);
-  return (key: PositionKey, guided: boolean) => (guided ? guidedGames : allGames).get(key) ?? 0;
+  return fewest;
 }
 
 /** Adds `amount` to `map`'s number at `key`, from 0 where there is none. */
