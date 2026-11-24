@@ -77,8 +77,9 @@ depend on those links.
   account can answer, else Maia), and its finds carry that source's name. A thin lichess position
   ends the walk there. A list may show a run of each, lichess rows first and Maia rows labeled
   estimates; their scores are never combined.
-- Pieces E, G, I, K and L must be checked on Android (touch, the haptic tick, the pager, the sign-in
-  redirect, on-device search, the bookmark). H's dot only displays, so the web check covers it.
+- Pieces E, G, I, J, K and L must be checked on Android (touch, the haptic tick, the pager, the
+  sign-in redirect, the Maia worklet in `src/maia/network.ts`, on-device search, the bookmark). H's
+  dot only displays, so the web check covers it.
 - Code says `opportunity`, `trap` and `mistake`, never `slip` (`practice.ts` uses that for a
   learner's non-book move).
 
@@ -107,7 +108,8 @@ the app's mistake limit and is not a gate setting.
   that label best or good beside its first line and keep at least the cost floor of the gain. Only
   the learner's side has book moves (`lesson.ts`, `check.ts`), so the importer writes every accepted
   reply, and the punishing side's Act III moves, as book moves where the punishing side is the
-  learner, and as ordinary moves where it is not.
+  lesson's side (the format's `Lesson.side`), and as ordinary moves where it is not, as in a
+  migrated trap the learner's side falls into.
 - **The erring side's Act III moves** stay ordinary moves. At each of its positions Act III takes
   one reply: the most played, which `countedReplies` keeps, or, where the position is thin,
   Stockfish's. A thin position's reply is then the only one in the tree there, so a clean run plays
@@ -212,18 +214,19 @@ since E, F and H all touch `guidance.ts`, `screen.ts` and the candidate list.
 ### Piece D1: Importer step on Stafford
 
 An opportunities step in `scripts/import-study`, before the explain step (popularity stays last),
-fed by piece B's answers files and the explorer directly: it asks the explorer about every position
-on a find's path and writes, from that one answer, `LessonPosition.games` (the explorer's own count
-of games reaching the position, which `lichessExplorer` must start returning, never a sum of the
-listed moves) and every move's counts. The explorer's cached rows gain a total for this: when asked
-for a total, `lichessExplorer` treats a cached row without one as missing, so the positions on a
-find's path are asked again and their new answers committed in the same PR, keeping reruns exact.
-Elsewhere a row without a total reads it as unknown, never as 0 or as enough games. Then it writes
-the marked move with its cost, and the accepted replies and Act III as Rules say. Popularity, which
-runs after it, must not drop counts it did not remeasure (today it drops them wherever it did not
-ask, such as positions with one guide move), and where it does remeasure it writes the position
-total from that same answer. Stafford only, with B's floors. Merges after E and F, because new lines
-change what the Practice opponent plays.
+that runs the finder for the lesson's side, fed by piece B's answers files and the explorer
+directly: it asks the explorer about every position on a find's path and writes, from that one
+answer, `LessonPosition.games` (the explorer's own count of games reaching the position, which
+`lichessExplorer` must start returning, never a sum of the listed moves) and every move's counts.
+The explorer's cached rows gain a total for this: when asked for a total, `lichessExplorer` treats a
+cached row without one as missing, so the positions on a find's path are asked again and their new
+answers committed in the same PR, keeping reruns exact. Elsewhere a row without a total reads it as
+unknown, never as 0 or as enough games. Then it writes the marked move with its cost, and the
+accepted replies and Act III as Rules say. Popularity, which runs after it, must not drop counts it
+did not remeasure (today it drops them wherever it did not ask, such as positions with one guide
+move), and where it does remeasure it writes the position total from that same answer. Stafford
+only, with B's floors. Merges after E and F, because new lines change what the Practice opponent
+plays.
 
 ### Piece D2: Names and notes
 
