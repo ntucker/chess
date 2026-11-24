@@ -522,23 +522,13 @@ describe('gainIfKnown', () => {
 describe('reachOf', () => {
   it('sums the move orders that reach a position, and with `guided`, only those the guide plays', () => {
     // S -> A (0.5), S -> B (0.2); A -> C (0.4, the guide's), B -> C (0.5, Stockfish's); C -> A repeats.
-    const moves = new Map([
-      [
-        'A',
-        [
-          { from: 'S', share: 0.5, guided: true },
-          { from: 'C', share: 1, guided: true },
-        ],
-      ],
-      ['B', [{ from: 'S', share: 0.2, guided: true }]],
-      [
-        'C',
-        [
-          { from: 'A', share: 0.4, guided: true },
-          { from: 'B', share: 0.5, guided: false },
-        ],
-      ],
-    ]);
+    const moves = [
+      { from: 'S', to: 'A', share: 0.5, guided: true },
+      { from: 'S', to: 'B', share: 0.2, guided: true },
+      { from: 'A', to: 'C', share: 0.4, guided: true },
+      { from: 'B', to: 'C', share: 0.5, guided: false },
+      { from: 'C', to: 'A', share: 1, guided: true },
+    ];
     const reach = reachOf('S', moves);
     expect(reach('C', false)).toBeCloseTo(0.5 * 0.4 + 0.2 * 0.5);
     expect(reach('C', true)).toBeCloseTo(0.5 * 0.4);
@@ -547,17 +537,12 @@ describe('reachOf', () => {
 
   it('gives each position one reach, whichever is asked first', () => {
     // S -> X (0.5) -> Y (1) -> Z (0.5) -> X repeats.
-    const moves = new Map([
-      [
-        'X',
-        [
-          { from: 'S', share: 0.5, guided: true },
-          { from: 'Z', share: 1, guided: true },
-        ],
-      ],
-      ['Y', [{ from: 'X', share: 1, guided: true }]],
-      ['Z', [{ from: 'Y', share: 0.5, guided: true }]],
-    ]);
+    const moves = [
+      { from: 'S', to: 'X', share: 0.5, guided: true },
+      { from: 'X', to: 'Y', share: 1, guided: true },
+      { from: 'Y', to: 'Z', share: 0.5, guided: true },
+      { from: 'Z', to: 'X', share: 1, guided: true },
+    ];
     const xFirst = reachOf('S', moves);
     const yFirst = reachOf('S', moves);
     expect([xFirst('X', false), xFirst('Y', false), xFirst('Z', false)]).toEqual([0.5, 0.5, 0.25]);

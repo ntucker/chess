@@ -155,7 +155,7 @@ export function findOpportunities({
   const frontier = new LikeliestFirst<Node>((node) => node.reach);
   frontier.push(opening);
   const visited = new Set<PositionKey>();
-  const moves = new Map<PositionKey, Move[]>();
+  const moves: Move[] = [];
   const finds = new Map<PositionKey, { confirmed: Confirmed; from: PositionKey }[]>();
   const thinKeys = new Map<PositionKey, readonly Uci[]>();
 
@@ -166,7 +166,7 @@ export function findOpportunities({
       const { ucis, guided } = punishingMoves(node, context);
       for (const uci of ucis) {
         const next = legalChild(node, uci, node.reach);
-        append(moves, next.key, { from: node.key, share: 1, guided });
+        moves.push({ from: node.key, to: next.key, share: 1, guided });
         frontier.push(next);
       }
       continue;
@@ -177,7 +177,7 @@ export function findOpportunities({
       continue;
     }
     for (const { next, share, confirmed } of steps) {
-      append(moves, next.key, { from: node.key, share, guided: true });
+      moves.push({ from: node.key, to: next.key, share, guided: true });
       if (confirmed) {
         append(finds, next.key, { confirmed, from: node.key });
       } else if (next.reach >= limits.reachFloor) frontier.push(next);
@@ -209,9 +209,10 @@ export function findOpportunities({
   };
 }
 
-/** One move the walk took into a position: from where, and its share of the games there. */
+/** One move the walk took: between which positions, and its share of the games where it is played. */
 export interface Move {
   readonly from: PositionKey;
+  readonly to: PositionKey;
   readonly share: number;
   /** Whether a move order through it stays on the guide: the guide's punishing-side move, or any erring-side reply. */
   readonly guided: boolean;
@@ -221,11 +222,14 @@ export interface Move {
  * Each walked position's reach: the sum over the distinct move orders that
  * reach it (each a different move, or a different position before it, so
  * none is counted twice) of the shares along them. With `guided`, only the
- * move orders where the guide plays every punishing-side move count. Reach
- * stays derived: nothing stores it.
+ * move orders where the guide plays every punishing-side move count; a
+ * repetition's way back counts for none (`repetitionsBack`). Reach stays
+ * derived: nothing stores it.
  */
-export function reachOf(start: PositionKey, moves: ReadonlyMap<PositionKey, readonly Move[]>) {
-  const into = forwardMoves(start, moves);
+export function reachOf(start: PositionKey, moves: readonly Move[]) {
+  const back = repetitionsBack(start, moves);
+  const into = new Map<PositionKey, Move[]>();
+  for (const move of moves) if (!back.has(move)) append(into, move.to, move);
   const known = new Map<string, number>();
   const reach = (key: PositionKey, guided: boolean): number => {
     if (key === start) return 1;
@@ -243,34 +247,28 @@ export function reachOf(start: PositionKey, moves: ReadonlyMap<PositionKey, read
 }
 
 /**
- * `moves` (into each position) less each repetition's way back: a move into
- * a position already on the line that leads to it, going depth-first from
- * `start` in the order the moves were walked. What is left has no cycle, so
- * each position's reach is one fixed sum, whatever is asked first.
+ * Each repetition's way back, which adds nothing to reach: a move into a
+ * position already on the line that leads to it, going depth-first from
+ * `start` in the order the moves were walked. Without them the moves have no
+ * cycle, so each position's reach is one fixed sum, whatever is asked first.
  */
-function forwardMoves(
-  start: PositionKey,
-  moves: ReadonlyMap<PositionKey, readonly Move[]>,
-): Map<PositionKey, Move[]> {
-  const out = new Map<PositionKey, { to: PositionKey; move: Move }[]>();
-  for (const [to, list] of moves) {
-    for (const move of list) append(out, move.from, { to, move });
-  }
-  const into = new Map<PositionKey, Move[]>();
+function repetitionsBack(start: PositionKey, moves: readonly Move[]): Set<Move> {
+  const out = new Map<PositionKey, Move[]>();
+  for (const move of moves) append(out, move.from, move);
+  const back = new Set<Move>();
   const onLine = new Set<PositionKey>();
   const walked = new Set<PositionKey>();
   const walk = (key: PositionKey) => {
     onLine.add(key);
     walked.add(key);
-    for (const { to, move } of out.get(key) ?? []) {
-      if (onLine.has(to)) continue; // A repetition's way back adds nothing.
-      append(into, to, move);
-      if (!walked.has(to)) walk(to);
+    for (const move of out.get(key) ?? []) {
+      if (onLine.has(move.to)) back.add(move);
+      else if (!walked.has(move.to)) walk(move.to);
     }
     onLine.delete(key);
   };
   walk(start);
-  return into;
+  return back;
 }
 
 function append<K, V>(map: Map<K, V[]>, key: K, value: V) {
