@@ -107,7 +107,7 @@ async function host(lesson: Lesson, band: number) {
   };
   const ask = async ({ spot }: Request) => {
     // The explorer's moves add up to the games reaching the position, less those that ended there.
-    replies.set(spot.key, repliesFrom(await explorer.ask(spot.key, band), MIN_GAMES));
+    replies.set(spot.key, repliesFrom(spot.key, await explorer.ask(spot.key, band), MIN_GAMES));
   };
 
   /**

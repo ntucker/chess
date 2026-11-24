@@ -134,7 +134,7 @@ const NO_MOVE: FinalAnalysis = { lines: [{ evaluation: evaluation(0.5) }], depth
 const fromGames =
   (minGames = MIN_GAMES) =>
   ({ key }: Spot) =>
-    repliesFrom(replies.get(key) ?? {}, minGames);
+    repliesFrom(key, replies.get(key) ?? {}, minGames);
 
 /** Every answer known at once. */
 const known: Answers = {
@@ -303,7 +303,9 @@ describe('findOpportunities', () => {
         ...withGuide(AFTER, full(AFTER, [['Be3', 0.2]])),
         guideMoves: known.guideMoves,
         replies: (spot) =>
-          spot.key === at(AFTER).key ? repliesFrom({}, MIN_GAMES) : known.replies(spot),
+          spot.key === at(AFTER).key
+            ? repliesFrom(at(AFTER).key, {}, MIN_GAMES)
+            : known.replies(spot),
       }).dropped;
       expect(bg5.payoff).toEqual([last(BE3)]);
     });
@@ -371,7 +373,9 @@ describe('findOpportunities', () => {
     const [bg5] = find({
       ...known,
       replies: (spot) =>
-        spot.key === at(CUE).key ? repliesFrom({ a: 5 }, MIN_GAMES) : known.replies(spot),
+        spot.key === at(CUE).key
+          ? repliesFrom(at(CUE).key, { [last(`${CUE} Nxe4`)]: 5 }, MIN_GAMES)
+          : known.replies(spot),
     }).finds;
     expect(bg5.found).toBeUndefined();
   });
@@ -392,22 +396,6 @@ describe('findOpportunities', () => {
         spot.key === start.key
           ? final([{ uci: 'b4b2', evaluation: evaluation('#-1') }])
           : final([{ evaluation: evaluation(0.5) }]),
-    };
-    const result = findOpportunities({ start: fen, line: [], side: 'white', answers });
-    expect(result).toMatchObject({ finds: [], dropped: [], requests: [] });
-  });
-
-  it("skips an explorer reply it can't play", () => {
-    // Black has no piece on h8, so lichess's key h8h1 is no move here.
-    const fen = '8/8/8/8/1q6/8/2k5/K7 b - - 0 1';
-    const start = walkTo(fen, [])!;
-    const answers: Answers = {
-      replies: (spot) =>
-        spot.key === start.key ? { shares: { h8h1: 1 }, thin: false } : undefined,
-      analysis: (spot) =>
-        spot.key === start.key
-          ? { lines: [{ uci: 'b4b2', evaluation: evaluation('#-1') }], depth: 18, final: true }
-          : undefined,
     };
     const result = findOpportunities({ start: fen, line: [], side: 'white', answers });
     expect(result).toMatchObject({ finds: [], dropped: [], requests: [] });
@@ -437,6 +425,17 @@ describe('findOpportunities', () => {
     };
     const result = findOpportunities({ start: fen, line: [], side: 'white', answers });
     expect(result).toMatchObject({ finds: [], thin: [], requests: [] });
+  });
+});
+
+describe('repliesFrom', () => {
+  it('counts a key that is no move toward the total but gives it no share', () => {
+    // No piece stands on h8 at the start, so lichess's key h8h1 is no move there.
+    const { key } = walkTo(START, [])!;
+    expect(repliesFrom(key, { e2e4: 30, h8h1: 10 }, 50)).toEqual({
+      shares: { e2e4: 0.75 },
+      thin: true,
+    });
   });
 });
 
@@ -494,24 +493,6 @@ describe('gainIfKnown', () => {
 });
 
 describe('payoff', () => {
-  it("plays the erring side's most played reply it can play", () => {
-    // The most played key, h8h1, is no move (no piece on h8); Black's Qb3 stalemates.
-    const start = walkTo('8/8/8/8/1q6/8/2k5/K7 b - - 0 1', [])!;
-    const final = { lines: [{ evaluation: evaluation(0.1) }], depth: 18, final: true } as const;
-    const answers: Answers = {
-      replies: (spot) =>
-        spot.key === start.key ? { shares: { h8h1: 0.9, b4b3: 0.1 }, thin: false } : undefined,
-      analysis: () => undefined,
-    };
-    expect(
-      payoff(
-        start,
-        { before: final, cue: final },
-        { side: 'white', answers, limits: LIMITS, ask: () => {} },
-      ),
-    ).toEqual({ moves: ['b4b3'], disagreements: [], end: 0.5 });
-  });
-
   it("scores a game the erring side's move ends as its result", () => {
     // Black's queen move stalemates White's lone king.
     const start = walkTo('8/8/8/8/1q6/8/2k5/K7 b - - 0 1', [])!;

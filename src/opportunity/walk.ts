@@ -7,7 +7,14 @@ import { parseUci } from 'chessops/util';
 
 import { type MoveLoss, moveLoss } from '@/analysis/quality';
 import { type Analysis, type FinalAnalysis, isFinal } from '@/evaluation/evaluation';
-import { type Color, gameResult, parsePosition, positionKey } from '@/game/replay';
+import {
+  type Color,
+  gameResult,
+  parsePosition,
+  parsePositionKey,
+  positionKey,
+  recordedMove,
+} from '@/game/replay';
 import type { PositionKey, Uci } from '@/lesson/lesson';
 
 import type { Limits } from './limits';
@@ -19,8 +26,6 @@ export type MoveCounts = Readonly<Record<Uci, number>>;
  * A position's replies as the run's one source gives them: each move's share
  * of the games there (0 to 1; a move missing was not played), and whether too
  * few games reach the position to judge it. The walk ends at a thin position.
- * A key may be no move to play (`playable`): lichess's own notation for a move
- * `recordedMove` rejects. It counts toward the total, and the finder skips it.
  */
 export interface Replies {
   readonly shares: Readonly<Record<Uci, number>>;
@@ -107,12 +112,6 @@ export function child(node: Node, uci: Uci, reach: number): Node | undefined {
   return { pos, key: positionKey(pos), line: [...node.line, uci], reach };
 }
 
-/** Whether `uci` is a legal move at `node`, as `child` asks. */
-export function playable(node: Node, uci: Uci): boolean {
-  const move = parseUci(uci);
-  return !!move && node.pos.isLegal(move);
-}
-
 /**
  * The node a move the finder trusts leads to: the guide's (the lesson checker
  * rules out an illegal one) or Stockfish's.
@@ -144,14 +143,19 @@ export function walkTo(start: string, line: readonly Uci[]): Node | undefined {
 }
 
 /**
- * Lichess's `counts` as replies: each move's games over the games reaching
- * the position, and thin when fewer than `minGames` do.
+ * Lichess's `counts` at the position `key` as replies: each move's games over
+ * the games reaching the position, and thin when fewer than `minGames` do. A
+ * key that is no move there (lichess's own notation for a move `recordedMove`
+ * rejects, kept by `popularity.ts`) counts toward the total but gets no share.
  */
-export function repliesFrom(counts: MoveCounts, minGames: number): Replies {
+export function repliesFrom(key: PositionKey, counts: MoveCounts, minGames: number): Replies {
+  const pos = parsePositionKey(key);
   const total = Object.values(counts).reduce((sum, games) => sum + games, 0);
   return {
     shares: Object.fromEntries(
-      Object.entries(counts).map(([uci, games]) => [uci, total && games / total]),
+      Object.entries(counts)
+        .filter(([uci]) => pos && recordedMove(pos, uci) !== undefined)
+        .map(([uci, games]) => [uci, total && games / total]),
     ),
     thin: total < minGames,
   };
