@@ -28,6 +28,13 @@ on:
 permissions:
   contents: read
 
+# A newer push to a pull request makes its older build worthless. Every other
+# run gets its own group, so no push to main is cancelled (GitHub marks a
+# cancelled run's commit failed); the publish job checks for newer runs instead.
+concurrency:
+  group: android-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 env:
   # The release that always holds main's newest build. Its tag stays at the
   # first build's commit; the release notes name each build's.
@@ -64,6 +71,12 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Install
+        # Yarn turns on hardened mode for public pull requests: it re-resolves the
+        # lockfile to catch tampering, which costs about 5 s. Only fork pull
+        # requests keep it: branches in this repo come from people with write
+        # access, who are trusted with yarn.lock. Other events never use it.
+        env:
+          YARN_ENABLE_HARDENED_MODE: ${{ github.event.pull_request.head.repo.fork && '1' || '0' }}
         run: yarn install --immutable
 
       - name: Generate the native project
@@ -145,6 +158,4 @@ jobs:
           [ -n "$next" ]
           [ -z "$old" ] || gh api -X DELETE "repos/$GH_REPO/releases/assets/$old"
           gh api -X PATCH "repos/$GH_REPO/releases/assets/$next" -f name="$APK" > /dev/null
-          gh release edit "$TAG" --notes "Built from $GITHUB_SHA on $(date -u '+%Y-%m-%d %H:%M UTC').
-
-          To install it, open https://github.com/$GH_REPO/releases/download/$TAG/$APK on the phone. README.md, under \"Android builds\", has the steps."
+          gh release edit "$TAG" --notes "Built from $GITHUB_SHA on $(date -u '+%Y-%m-%d %H:%M UTC')."
