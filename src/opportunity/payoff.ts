@@ -55,8 +55,8 @@ export function payoff(
   const unpunished = forSide(before.lines[0].evaluation.score, side);
   let end = scoreFor(cue.lines[0].evaluation, side);
   let node = start;
-  // Act III scores the position alone: a repetition inside its few moves doesn't end it.
-  while (!gameResult(node.pos, 1) && punishingMoves < limits.payoffMoves) {
+  let over = gameOver(node);
+  while (!over && punishingMoves < limits.payoffMoves) {
     let uci: Uci | undefined;
     if (node.pos.turn === side) {
       const final = fullAnalysis(node, context);
@@ -79,10 +79,17 @@ export function payoff(
     if (!uci || !next) break;
     moves.push(uci);
     node = next;
+    over = gameOver(node);
   }
-  const over = gameResult(node.pos, 1);
   return { moves, end: over ? scoreFor(resultEvaluation(over), side) : end };
 }
+
+/**
+ * How the game stands over at `node`, if it is: `gameResult`, since chessops'
+ * `isEnd` misses the fifty-move rule. Act III reads the position alone, so a
+ * repetition inside its few moves doesn't end it.
+ */
+const gameOver = (node: Node) => gameResult(node.pos, 1);
 
 /** The final analysis of `node`, asking for it while it's missing. */
 function fullAnalysis(node: Node, { answers, ask }: Context): FinalAnalysis | undefined {
