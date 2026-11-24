@@ -26,8 +26,6 @@ const WEB = process.env.EXPO_OS === 'web';
 const SIZE = 20;
 /** How much of a glyph the next piece of the same kind covers. */
 const OVERLAP = SIZE * 0.45;
-/** The pill's height: a glyph with a little room. */
-const PILL_HEIGHT = SIZE + 6;
 /** The most glyphs a chip draws: past it, each kind shows once with its count. */
 const MOST_GLYPHS = 4;
 
@@ -258,10 +256,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 8,
-    height: PILL_HEIGHT,
-    // Round end to end (Surface's radii stop at lg). Exactly half the height: Android
-    // draws a larger radius's shadow as a square box.
-    borderRadius: PILL_HEIGHT / 2,
+    height: SIZE + 6,
+    // Surface's radii stop at lg: a pill is round end to end.
+    borderRadius: 999,
   },
   lead: { fontFamily: fonts.mono, flexShrink: 0 },
   pieces: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, overflow: 'hidden' },

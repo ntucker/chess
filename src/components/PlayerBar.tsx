@@ -41,6 +41,8 @@ interface Swap {
 }
 
 const DISC_BORDER = narrowLength('player-disc-border', 2.5);
+/** How far a raised Surface's shadow reaches: Silk's offset of 4 plus its blur of 12. */
+const CHIP_SHADOW = 16;
 /** The swap graphic inside a wide page's disc, within its border. */
 const SWAP_ICON = 16;
 
@@ -160,6 +162,12 @@ const STYLES = narrowStyles((px) => ({
     overflow: 'hidden',
     flexShrink: 1,
     minWidth: 0,
+    // Room inside the clip for the captures chip's shadow, which Android
+    // would cut square at the line's edges; the margins give it back.
+    paddingVertical: CHIP_SHADOW,
+    marginVertical: -CHIP_SHADOW,
+    paddingRight: CHIP_SHADOW,
+    marginRight: -CHIP_SHADOW,
   },
   // The detail gives way as a whole. Its flexShrink is a weight against the
   // name's line's 1, kept far above it, so a short name ("White") stays whole
