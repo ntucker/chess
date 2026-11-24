@@ -71,7 +71,8 @@ export function PlayerBar({
     <View style={[styles.bar, style]}>
       <Disc color={color} toMove={toMove} swap={swap} />
       <View {...part('player-names', styles.names)}>
-        <View style={styles.nameLine}>
+        {/* Only its children take presses: its padding reaches over its neighbours. */}
+        <View pointerEvents="box-none" style={styles.nameLine}>
           <Text role="headingSm" numberOfLines={1} style={styles.name}>
             {name}
           </Text>

@@ -117,7 +117,8 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
     : lines[moment.board === 'retry' ? ply - 1 : ply];
   // The positions along it: the game's, or at a moment its retry's.
   const shownPlies = moment.shownMove ? replay(shownLine) : plies;
-  // The board's position in them: a shown move that isn't legal there stops the replay short of it.
+  // The board's position in them. A shown move that isn't legal there stops the replay short
+  // of it, and the board shows the last position reached, as it always has (`lastPosition`).
   const shownAt = Math.min(shownLine.length, shownPlies.length - 1);
 
   // A try waiting for its search goes first: the learner is waiting for it.
