@@ -46,16 +46,20 @@ export function Toggle({ label, checked, onChange, quiet, disabled, hint, style 
   if (!tip) return field;
   return (
     <Tooltip.Root>
-      {/* Beside the field, not in it: a press in the field toggles it, one on the mark only shows the tip. */}
-      <Tooltip.Trigger style={styles.row}>
-        {field}
-        {disabled ? null : (
-          // Screen readers hear the hint as the switch's description.
-          <View aria-hidden testID="toggle-hint" style={styles.info}>
+      {disabled ? (
+        // A disabled field takes no press, so a tap anywhere on it says why.
+        <Tooltip.Trigger>{field}</Tooltip.Trigger>
+      ) : (
+        // The mark alone is the trigger: on the web a press on the label is a
+        // click for its switch, which a trigger around the field opens on too.
+        <View style={styles.row}>
+          {field}
+          {/* Screen readers hear the hint as the switch's description. */}
+          <Tooltip.Trigger aria-hidden testID="toggle-hint" style={styles.info}>
             <InfoMark size={INFO_SIZE} />
-          </View>
-        )}
-      </Tooltip.Trigger>
+          </Tooltip.Trigger>
+        </View>
+      )}
       <Tooltip.Content>{tip}</Tooltip.Content>
     </Tooltip.Root>
   );

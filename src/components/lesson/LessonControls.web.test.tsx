@@ -92,6 +92,18 @@ describe('LessonControls', () => {
     expect(tip()).toMatch(/^Draws a trap's moves/);
   });
 
+  it('toggles a hinted switch from its label, without its tooltip', async () => {
+    const tip = () => document.querySelector('[role="tooltip"]');
+    await render('explore');
+    const traps = toggle('Warn of traps');
+    const label = [...host.querySelectorAll<HTMLElement>('[data-field-label]')].find(
+      (node) => node.textContent === 'Warn of traps',
+    )!;
+    await act(async () => tap(label));
+    expect(traps.getAttribute('aria-checked')).toBe('true');
+    expect(tip()).toBeNull();
+  });
+
   it('lets "Arrows" change in Explore', async () => {
     await render('explore');
     expect(moves().getAttribute('aria-disabled')).not.toBe('true');
