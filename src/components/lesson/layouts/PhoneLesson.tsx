@@ -69,19 +69,24 @@ export function PhoneLesson({
       <Activity mode={scoresheetOpen ? 'hidden' : 'visible'}>
         {model.trap ? <TrapCard {...model.trap} /> : null}
         {/* Leaving a row for the idea keeps its preview, so its notes can be pointed at. */}
-        <PointingArea onLeave={model.onLeave} style={styles.panes}>
-          {moves ? (
-            <FadingScroll style={[ideaPane ? styles.moves : styles.pane, styles.bleed]}>
-              <CandidateList {...moves} density="compact" />
-            </FadingScroll>
-          ) : null}
-          {moves && ideaPane ? <Separator orientation="vertical" style={styles.hairline} /> : null}
-          {ideaPane ? (
-            <FadingScroll style={styles.pane} contentStyle={styles.idea}>
-              {ideaPane}
-            </FadingScroll>
-          ) : null}
-        </PointingArea>
+        {/* Practice can hide both, and then the panes take no room. */}
+        {moves || ideaPane ? (
+          <PointingArea onLeave={model.onLeave} style={styles.panes}>
+            {moves ? (
+              <FadingScroll style={[ideaPane ? styles.moves : styles.pane, styles.bleed]}>
+                <CandidateList {...moves} density="compact" />
+              </FadingScroll>
+            ) : null}
+            {moves && ideaPane ? (
+              <Separator orientation="vertical" style={styles.hairline} />
+            ) : null}
+            {ideaPane ? (
+              <FadingScroll style={styles.pane} contentStyle={styles.idea}>
+                {ideaPane}
+              </FadingScroll>
+            ) : null}
+          </PointingArea>
+        ) : null}
       </Activity>
     </Stack>
   );

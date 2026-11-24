@@ -55,11 +55,11 @@ afterEach(() => {
   mockMovesMounts = 0;
 });
 
-const render = (scoresheetOpen: boolean) =>
+const render = (scoresheetOpen: boolean, model = MODEL) =>
   act(() =>
     root.render(
       <SilkProvider theme={themes.dark}>
-        <PhoneLesson model={MODEL} scoresheetOpen={scoresheetOpen} onCloseScoresheet={() => {}} />
+        <PhoneLesson model={model} scoresheetOpen={scoresheetOpen} onCloseScoresheet={() => {}} />
       </SilkProvider>,
     ),
   );
@@ -75,5 +75,11 @@ describe('PhoneLesson', () => {
     render(false);
     expect(host.textContent).not.toContain('scoresheet');
     expect(mockMovesMounts).toBe(1);
+  });
+
+  it('leaves out the panes when there are neither moves nor an idea, as Practice can', () => {
+    render(false, { ...MODEL, moves: null, idea: null });
+    // The panel holds nothing but the headline, stood in for by nothing.
+    expect(host.firstElementChild?.childElementCount).toBe(0);
   });
 });
