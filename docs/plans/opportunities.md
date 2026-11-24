@@ -58,14 +58,17 @@ depend on those links.
 
 - A move's lichess share has one definition: its games over the position's explorer total where
   `LessonPosition.games` exists, else over the sum of the listed moves' games (older data). One
-  function in `src/lesson/cleanRun.ts`, generalizing `gamesPlayed` there, computes it for one band
-  or summed over all bands, given the position's total when it has one. `candidates` in
-  `src/lesson/select.ts` (one band, which its rare-row rule `rareLast` reads), `countedReplies` (all
-  bands) and piece A's `repliesFrom` (the lichess host's conversion) all call it. Piece C adds it.
-  Piece C alone alters no lesson until D1 or D3 writes its totals; then that lesson's shares get
-  smaller, since unlisted moves join the denominator, and its rare rows and counted replies can
-  shift slightly. A Maia share is a separate source for the same field: a softmax over the legal
-  moves' policy scores (piece J).
+  function computes it, in its own module `src/lesson/share.ts` (where `gamesPlayed` moves, so
+  `select.ts` and `cleanRun.ts`, which already imports `select.ts`, can both import it without a
+  cycle). It takes a band index or `'all'` (summed over every band), and the position's total, or
+  undefined for older data. Its callers: `candidates` in `src/lesson/select.ts` (one band, which its
+  rare-row rule `rareLast` reads), `countedReplies` (all bands), `moveShares` in
+  `src/lesson/openings.ts` (all bands, keeping its small floor for moves without counts, which only
+  orders its walk) and piece A's `repliesFrom` (the lichess host's conversion, which computes the
+  same ratio until then). Piece C adds it and moves the callers onto it. The function alone alters
+  no lesson until D1 or D3 writes its totals; then that lesson's shares get smaller, since unlisted
+  moves join the denominator, and its rare rows and counted replies can shift slightly. A Maia share
+  is a separate source for the same field: a softmax over the legal moves' policy scores (piece J).
 - Derived, one pure function each in `src/opportunity/`: reach (shares of the erring side's moves
   multiplied along the path), found rate (the sum of the accepted replies' shares at the cue),
   score, role (trap or opportunity, from the learner's side), the current act, whether a position is
@@ -109,8 +112,10 @@ the app's mistake limit and is not a gate setting.
 - **Line to pass**: an opportunity whose mistake `countedReplies` counts (`src/lesson/cleanRun.ts`:
   10% over all bands, or the most played reply). Other finds show in the list and the finder but are
   never required. Piece C adds one exception to `countedReplies`, beside `COUNTED_SHARE`: a marked
-  move without counts never counts (today a move without counts does). Once the importer writes its
-  counts, the 10% rule applies to it like any other move.
+  move without counts never counts (today a move without counts does). Today's traps are notes, not
+  moves a clean run walks, so this keeps the migrated trap lines out of Practice's walk and
+  steering, as they are now; without it each would become a required line. Once the importer writes
+  its counts, the 10% rule applies to it like any other move.
 - **The cue's accepted replies**: the punishing side's moves in the cue position's final analysis
   that label best or good beside its first line and keep at least the cost floor of the gain. Only
   `Lesson.side`, the side the learner plays, has book moves (`lesson.ts`, `check.ts`), so the
