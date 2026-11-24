@@ -183,9 +183,11 @@ export function findOpportunities({
       } else if (next.reach >= limits.reachFloor) frontier.push(next);
     }
   }
-  const reach = reachOf(opening.key, moves);
+  // The walk moves from positions up to `maxPlies` past the opening.
+  const reach = reachOf(opening.key, moves, limits.maxPlies + 1);
   const sorted = [...finds]
     .map(([cue, ways]): Find => {
+      // On the guide where any move order the guide plays reaches the cue.
       const onGuide = reach(cue, true) > 0;
       const games = (key: PositionKey) => reach(key, onGuide);
       // A cue several mistakes lead to is one find, shown by the most reached.
@@ -219,58 +221,39 @@ export interface Move {
 }
 
 /**
- * Each walked position's reach: the sum over the distinct move orders that
- * reach it (each a different move, or a different position before it, so
- * none is counted twice) of the shares along them. With `guided`, only the
- * move orders where the guide plays every punishing-side move count; a
- * repetition's way back counts for none (`repetitionsBack`). Reach stays
- * derived: nothing stores it.
+ * Each walked position's reach: the share of games that get there, summed
+ * over every move order the walk took, ply by ply from `start` for at most
+ * `plies` moves, so it is one fixed sum whatever is asked first. With
+ * `guided`, only the move orders where the guide plays every punishing-side
+ * move count. A game that comes back to a position (both sides shuffling,
+ * which the walk's moves rarely do) counts there again. Reach stays derived:
+ * nothing stores it.
  */
-export function reachOf(start: PositionKey, moves: readonly Move[]) {
-  const back = repetitionsBack(start, moves);
-  const into = new Map<PositionKey, Move[]>();
-  for (const move of moves) if (!back.has(move)) append(into, move.to, move);
-  const known = new Map<string, number>();
-  const reach = (key: PositionKey, guided: boolean): number => {
-    if (key === start) return 1;
-    const id = `${guided} ${key}`;
-    const seen = known.get(id);
-    if (seen !== undefined) return seen;
-    let sum = 0;
-    for (const move of into.get(key) ?? []) {
-      if (!guided || move.guided) sum += reach(move.from, guided) * move.share;
-    }
-    known.set(id, sum);
-    return sum;
-  };
-  return reach;
-}
-
-/**
- * Each repetition's way back, which adds nothing to reach: a move into a
- * position already on the line that leads to it, going depth-first from
- * `start` in the order the moves were walked. Without them the moves have no
- * cycle, so each position's reach is one fixed sum, whatever is asked first.
- */
-function repetitionsBack(start: PositionKey, moves: readonly Move[]): Set<Move> {
+export function reachOf(start: PositionKey, moves: readonly Move[], plies: number) {
   const out = new Map<PositionKey, Move[]>();
   for (const move of moves) append(out, move.from, move);
-  const back = new Set<Move>();
-  const onLine = new Set<PositionKey>();
-  const walked = new Set<PositionKey>();
-  const walk = (key: PositionKey) => {
-    onLine.add(key);
-    walked.add(key);
-    for (const move of out.get(key) ?? []) {
-      if (onLine.has(move.to)) back.add(move);
-      else if (!walked.has(move.to)) walk(move.to);
+  const sums = (guided: boolean) => {
+    const total = new Map([[start, 1]]);
+    let layer = total;
+    for (let ply = 0; ply < plies && layer.size; ply++) {
+      const next = new Map<PositionKey, number>();
+      for (const [key, games] of layer) {
+        for (const move of out.get(key) ?? []) {
+          if (guided && !move.guided) continue;
+          next.set(move.to, (next.get(move.to) ?? 0) + games * move.share);
+        }
+      }
+      for (const [key, games] of next) total.set(key, (total.get(key) ?? 0) + games);
+      layer = next;
     }
-    onLine.delete(key);
+    return total;
   };
-  walk(start);
-  return back;
+  const all = sums(false);
+  const onGuide = sums(true);
+  return (key: PositionKey, guided: boolean) => (guided ? onGuide : all).get(key) ?? 0;
 }
 
+/** Adds `value` to `map`'s list at `key`, starting the list where there is none. */
 function append<K, V>(map: Map<K, V[]>, key: K, value: V) {
   const list = map.get(key);
   if (list) list.push(value);

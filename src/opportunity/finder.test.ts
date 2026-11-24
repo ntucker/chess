@@ -521,32 +521,41 @@ describe('gainIfKnown', () => {
 
 describe('reachOf', () => {
   it('sums the move orders that reach a position, and with `guided`, only those the guide plays', () => {
-    // S -> A (0.5), S -> B (0.2); A -> C (0.4, the guide's), B -> C (0.5, Stockfish's); C -> A repeats.
     const moves = [
       { from: 'S', to: 'A', share: 0.5, guided: true },
       { from: 'S', to: 'B', share: 0.2, guided: true },
       { from: 'A', to: 'C', share: 0.4, guided: true },
       { from: 'B', to: 'C', share: 0.5, guided: false },
-      { from: 'C', to: 'A', share: 1, guided: true },
     ];
-    const reach = reachOf('S', moves);
+    const reach = reachOf('S', moves, 2);
     expect(reach('C', false)).toBeCloseTo(0.5 * 0.4 + 0.2 * 0.5);
     expect(reach('C', true)).toBeCloseTo(0.5 * 0.4);
-    expect(reach('A', false)).toBe(0.5);
   });
 
-  it('gives each position one reach, whichever is asked first', () => {
-    // S -> X (0.5) -> Y (1) -> Z (0.5) -> X repeats.
+  it('counts every move order between two positions that reach each other, in any order walked', () => {
+    // S -> A -> B and S -> B -> A, neither repeating a position.
+    const moves = [
+      { from: 'S', to: 'A', share: 0.5, guided: true },
+      { from: 'A', to: 'B', share: 1, guided: true },
+      { from: 'B', to: 'A', share: 1, guided: true },
+      { from: 'S', to: 'B', share: 0.2, guided: true },
+    ];
+    for (const order of [moves, [...moves].reverse()]) {
+      const reach = reachOf('S', order, 2);
+      expect([reach('B', false), reach('A', false)]).toEqual([0.7, 0.7]);
+    }
+  });
+
+  it('counts no further than its plies', () => {
+    // S -> X -> Y -> Z -> X: the way back to X is a fourth ply.
     const moves = [
       { from: 'S', to: 'X', share: 0.5, guided: true },
       { from: 'X', to: 'Y', share: 1, guided: true },
       { from: 'Y', to: 'Z', share: 0.5, guided: true },
       { from: 'Z', to: 'X', share: 1, guided: true },
     ];
-    const xFirst = reachOf('S', moves);
-    const yFirst = reachOf('S', moves);
-    expect([xFirst('X', false), xFirst('Y', false), xFirst('Z', false)]).toEqual([0.5, 0.5, 0.25]);
-    expect([yFirst('Z', false), yFirst('Y', false), yFirst('X', false)]).toEqual([0.25, 0.5, 0.5]);
+    const reach = reachOf('S', moves, 3);
+    expect([reach('Z', false), reach('Y', false), reach('X', false)]).toEqual([0.25, 0.5, 0.5]);
   });
 });
 
