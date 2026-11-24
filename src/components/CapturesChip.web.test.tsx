@@ -31,6 +31,7 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   host.remove();
+  jest.useRealTimers();
 });
 
 const show = (shown: Captures, color: Color) =>
@@ -132,7 +133,6 @@ describe('CapturesChip', () => {
       chip()!.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
     });
     expect(card()).toBeNull();
-    jest.useRealTimers();
   });
 });
 

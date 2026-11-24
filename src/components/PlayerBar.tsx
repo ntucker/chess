@@ -175,7 +175,8 @@ const STYLES = narrowStyles((px) => ({
   // beside a switch at the bar's end.
   detail: { flexDirection: 'row', alignItems: 'baseline', gap: 4, flexShrink: 1000, minWidth: 0 },
   // Where only its control shows (a narrow page with `detailWideOnly`), it keeps
-  // its width: the name's line gives way instead, its chip first.
+  // its width: the name's line gives way instead, its chip first. A wide page
+  // stacks the two lines in a bar tall enough for both, so it changes nothing there.
   controlOnly: { flexShrink: 0 },
   // Within it, the words end in an ellipsis; a control stays whole.
   detailText: { flexShrink: 1, minWidth: 0 },
