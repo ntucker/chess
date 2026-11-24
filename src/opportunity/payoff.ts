@@ -54,7 +54,8 @@ export function payoff(
   const unpunished = forSide(before.lines[0].evaluation.score, side);
   let end = scoreFor(cue.lines[0].evaluation, side);
   let node = start;
-  while (!node.pos.isEnd() && punishingMoves < limits.payoffMoves) {
+  // Act III scores the position alone: a repetition inside its few moves doesn't end it.
+  while (!gameResult(node.pos, 1) && punishingMoves < limits.payoffMoves) {
     let uci: Uci | undefined;
     if (node.pos.turn === side) {
       const final = fullAnalysis(node, context);
@@ -78,7 +79,6 @@ export function payoff(
     moves.push(uci);
     node = next;
   }
-  // Act III never repeats a position, so a repetition can't end it.
   const over = gameResult(node.pos, 1);
   return { moves, end: over ? scoreFor(resultEvaluation(over), side) : end };
 }

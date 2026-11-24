@@ -439,4 +439,22 @@ describe('payoff', () => {
       ),
     ).toEqual({ moves: ['a8a1'], end: 0 });
   });
+
+  it('stops at a fifty-move draw and scores it as one', () => {
+    // Black's quiet king move is the hundredth half-move without a capture or pawn move.
+    const start = walkTo('4k3/8/8/8/8/8/8/R3K3 b - - 99 80', [])!;
+    const final = { lines: [{ evaluation: evaluation(0.9) }], depth: 18, final: true } as const;
+    const answers: Answers = {
+      replies: () => undefined,
+      analysis: () => undefined,
+      guideMoves: (spot) => (spot.key === start.key ? ['e8d8'] : undefined),
+    };
+    expect(
+      payoff(
+        start,
+        { before: final, cue: final },
+        { side: 'white', answers, limits: LIMITS, ask: () => {} },
+      ),
+    ).toEqual({ moves: ['e8d8'], end: 0.5 });
+  });
 });
