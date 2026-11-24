@@ -22,6 +22,8 @@ export interface Limits {
   readonly materialUp: number;
   /** Act III ends after at most this many of the punishing side's moves. */
   readonly payoffMoves: number;
+  /** A find is kept where Act III ends with the punishing side's expected score at least this. */
+  readonly keepScore: number;
 }
 
 export const LIMITS: Limits = {
@@ -36,4 +38,6 @@ export const LIMITS: Limits = {
   winScore: 0.8,
   materialUp: 3,
   payoffMoves: 6,
+  // Clearly better, short of winning.
+  keepScore: 0.6,
 };

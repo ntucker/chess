@@ -8,9 +8,16 @@ import type { Uci } from '@/lesson/lesson';
 
 import { child, type Context, type Node, type Replies } from './walk';
 
+/** Act III: its moves, and the punishing side's expected score (0 to 1) where it ends. */
+export interface Payoff {
+  readonly moves: readonly Uci[];
+  /** 1 where it ends in mate; else from the last analysis of the punishing side's position. */
+  readonly end: number;
+}
+
 /**
  * The moves from `start` (the position after the cue's best reply, which
- * gives the punishing side the `expected` score, signed by `forSide`) until the win is obvious, or
+ * `cue`, the cue's final analysis, scores) until the win is obvious, or
  * undefined while an answer is missing. The punishing side plays the guide's
  * move where it gives back less than the cost floor, else Stockfish's best;
  * the erring side the guide's move, else its most played reply, else
@@ -21,13 +28,16 @@ import { child, type Context, type Node, type Replies } from './walk';
  * expected score (the guide holds a better defence than its line, and Act III
  * adds no move to beat it), or when the game ends.
  */
-export function payoff(start: Node, expected: number, context: Context): Uci[] | undefined {
+export function payoff(start: Node, cue: FinalAnalysis, context: Context): Payoff | undefined {
   const { side, answers, limits, ask } = context;
   const moves: Uci[] = [];
   let punishingMoves = 0;
   let guided = false;
-  let held = expected;
-  for (let node = start; !node.pos.isEnd();) {
+  // Signed, not `scoreFor`: a difference near a limit must not round.
+  let held = forSide(cue.lines[0].evaluation.score, side);
+  let end = scoreFor(cue.lines[0].evaluation, side);
+  let node = start;
+  for (; !node.pos.isEnd();) {
     const analysis = answers.analysis(node);
     const full = () => (isFinal(analysis) ? analysis : void ask('full', node));
     let uci: Uci | undefined;
@@ -37,8 +47,8 @@ export function payoff(start: Node, expected: number, context: Context): Uci[] |
       const [best, second] = final.lines;
       const winning = (line: typeof best | undefined) =>
         !!line && scoreFor(line.evaluation, side) >= limits.winScore;
-      // Signed, not `scoreFor`: a difference near a limit must not round.
       const score = forSide(best.evaluation.score, side);
+      end = scoreFor(best.evaluation, side);
       if (guided && held - score >= limits.costFloor) break;
       held = score;
       const mating = forSide(best.evaluation.mate ?? 0, side) > 0;
@@ -67,10 +77,11 @@ export function payoff(start: Node, expected: number, context: Context): Uci[] |
     const next = uci === undefined ? undefined : child(node, uci, 0);
     if (!next) break;
     moves.push(next.line.at(-1)!);
-    if (punishingMoves === limits.payoffMoves && node.pos.turn === side) break;
+    const punished = node.pos.turn === side;
     node = next;
+    if (punished && punishingMoves === limits.payoffMoves) break;
   }
-  return moves;
+  return { moves, end: node.pos.isCheckmate() && node.pos.turn !== side ? 1 : end };
 }
 
 /**

@@ -11,12 +11,19 @@
  * answers from lichess and Node Stockfish, the app from its store.
  */
 import { judgement, moveLoss } from '@/analysis/quality';
-import { type Analysis, type FinalAnalysis, forSide, isFinal } from '@/evaluation/evaluation';
+import {
+  type Analysis,
+  type FinalAnalysis,
+  forSide,
+  isFinal,
+  scoreFor,
+} from '@/evaluation/evaluation';
 import type { Color } from '@/game/replay';
 import type { PositionKey, Uci } from '@/lesson/lesson';
 import { LikeliestFirst } from '@/lesson/likeliestFirst';
 import { sketched } from '@/review/order';
 
+import { gainIfKnown } from './gain';
 import { type Limits, LIMITS } from './limits';
 import { payoff } from './payoff';
 import {
@@ -39,15 +46,23 @@ export interface Find {
   readonly replies: readonly Uci[];
   /** Act III: the moves after the best reply (`payoff`). */
   readonly payoff: readonly Uci[];
+  /** The punishing side's expected score (0 to 1) where Act III ends. */
+  readonly end: number;
+  /** Whether the cue's best reply alone keeps the learner clearly better, against best defence. */
+  readonly holds: boolean;
   /** The share of games that reach the position: the erring side's shares along the line. */
   readonly reach: number;
   /** The mistake's share of the games at its position. */
   readonly share: number;
-  /** The expected score (0 to 1) the mistake gives away, from full searches. */
+  /** The expected score (0 to 1) the mistake gives away, from full searches; shown, not ranked. */
   readonly cost: number;
   /** The share of games at the cue that play an accepted reply; absent where the cue is thin. */
   readonly found?: number;
-  /** reach × share × cost: the expected score the opportunity is worth per game. */
+  /** What knowing the cue is worth per game at it (`gainIfKnown`). */
+  readonly gain: number;
+  /** Set where the gain is an estimate: the cue is thin, or its measured replies cover under half. */
+  readonly estimate?: true;
+  /** reach × share × gain: the expected score knowing the opportunity is worth per game. */
   readonly score: number;
 }
 
@@ -66,8 +81,10 @@ export interface FinderInput {
 export type ThinEnd = Pick<Node, 'line' | 'key' | 'reach'>;
 
 export interface FinderResult {
-  /** Best first (`byScore`). */
+  /** Best first (`byScore`), each leaving the learner clearly better where Act III ends. */
   readonly finds: readonly Find[];
+  /** Finds where Act III ends short of clearly better (`keepScore`), best first. */
+  readonly dropped: readonly Find[];
   /** Where the walk ended thin, most reached first. */
   readonly thin: readonly ThinEnd[];
   /** The answers still missing, most useful first. Empty once the walk is done. */
@@ -104,7 +121,7 @@ export function findOpportunities({
   const context: Context = { side, answers, limits, ask };
 
   const opening = walkTo(start, line);
-  if (!opening) return { finds: [], thin: [], requests: [] };
+  if (!opening) return { finds: [], dropped: [], thin: [], requests: [] };
   const lastPly = line.length + limits.maxPlies;
   // Most reached first, then in the order added.
   const frontier = new LikeliestFirst<Node>((node) => node.reach);
@@ -134,7 +151,14 @@ export function findOpportunities({
       } else if (step.reach >= limits.reachFloor) frontier.push(step);
     }
   }
-  return { finds: [...finds.values()].sort(byScore), thin, requests };
+  const sorted = [...finds.values()].sort(byScore);
+  const kept = (find: Find) => find.end >= limits.keepScore;
+  return {
+    finds: sorted.filter(kept),
+    dropped: sorted.filter((find) => !kept(find)),
+    thin,
+    requests,
+  };
 }
 
 /** The punishing side's moves at `node`: the guide's, else Stockfish's best; none until known. */
@@ -211,22 +235,57 @@ function confirm(
   const played = answers.replies(cue);
   if (!played) ask('replies', cue);
   const best = child(cue, replies[0], 0);
-  const rest = best && payoff(best, forSide(after.lines[0].evaluation.score, side), context);
-  if (!played || !rest) return 'pending';
+  const rest = best && payoff(best, after, context);
+  const losses = played && replyLosses(cue, after, played.shares, context);
+  if (!played || !rest || !losses) return 'pending';
   const found = played.thin
     ? undefined
     : replies.reduce((sum, uci) => sum + (played.shares[uci] ?? 0), 0);
+  const { gain, covered } = gainIfKnown(played.shares, losses);
   return {
     line: node.line,
     mistake,
     replies,
-    payoff: rest,
+    payoff: rest.moves,
+    end: rest.end,
+    holds: scoreFor(after.lines[0].evaluation, side) >= limits.keepScore,
     reach: node.reach,
     share,
     cost,
     ...(found !== undefined && { found }),
-    score: node.reach * share * cost,
+    gain,
+    ...((played.thin || covered < 0.5) && { estimate: true as const }),
+    score: node.reach * share * gain,
   };
+}
+
+/**
+ * Each reply the band plays at the cue over the share floor, with what it
+ * gives away beside the best (`moveLoss`); undefined while a reply the cue's
+ * analysis doesn't list awaits its full search.
+ */
+function replyLosses(
+  cue: Node,
+  after: FinalAnalysis,
+  shares: Readonly<Record<Uci, number>>,
+  { side, answers, limits, ask }: Context,
+): Record<Uci, number> | undefined {
+  const losses: Record<Uci, number> = {};
+  let pending = false;
+  for (const [uci, share] of Object.entries(shares)) {
+    if (share < limits.shareFloor) continue;
+    const listed = after.lines.some((line) => line.uci === uci);
+    const reply = listed ? undefined : child(cue, uci, 0);
+    const analysis = reply && answers.analysis(reply);
+    if (reply && !isFinal(analysis)) {
+      ask('full', reply);
+      pending = true;
+      continue;
+    }
+    const loss = moveLoss(after, analysis, uci, side)?.loss;
+    if (loss !== undefined) losses[uci] = Math.max(0, loss);
+  }
+  return pending ? undefined : losses;
 }
 
 /**
@@ -252,6 +311,8 @@ export function acceptedReplies(
   });
 }
 
-/** Higher score first; on a tie, the opportunity players find less often, unknown last. */
+/** Higher score first; on a tie, the more reached, then by line, so the order is stable. */
 export const byScore = (a: Find, b: Find) =>
-  b.score - a.score || (a.found ?? Infinity) - (b.found ?? Infinity);
+  b.score - a.score ||
+  b.reach - a.reach ||
+  [...a.line, a.mistake].join(' ').localeCompare([...b.line, b.mistake].join(' '));

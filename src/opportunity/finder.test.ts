@@ -7,6 +7,7 @@ import type { Uci } from '@/lesson/lesson';
 import { SKETCH_DEPTH } from '@/review/order';
 
 import { acceptedReplies, byScore, type Find, findOpportunities } from './finder';
+import { gainIfKnown } from './gain';
 import { LIMITS } from './limits';
 import { type Answers, type MoveCounts, repliesFrom, type Request, type Spot } from './walk';
 
@@ -157,11 +158,16 @@ const BG5: Find = {
   mistake: last(CUE),
   replies: [last(`${CUE} Nxe4`), last(`${CUE} Bxf2+`)],
   payoff: uci(`${CUE} Nxe4 Bxd8 Bxf2+ Ke2 Bg4#`).slice(-4),
+  end: 1,
+  holds: true,
   reach: 0.4,
   share: 0.15,
   cost: 0.45,
   found: 0.3,
-  score: 0.4 * 0.15 * 0.45,
+  // h6 (40%) keeps 0.35 less than Nxe4, Be7 and Qd6 (30%) 0.4 less (unsearched here: 0.5),
+  // Bxf2+ (5%) 0.01 less.
+  gain: 0.4 * 0.35 + 0.3 * 0.4 + 0.05 * 0.01,
+  score: 0.4 * 0.15 * (0.4 * 0.35 + 0.3 * 0.4 + 0.05 * 0.01),
 };
 
 describe('findOpportunities', () => {
@@ -174,6 +180,7 @@ describe('findOpportunities', () => {
       ...BG5,
       reach: expect.closeTo(0.4),
       cost: expect.closeTo(0.45),
+      gain: expect.closeTo(BG5.gain),
       score: expect.closeTo(BG5.score),
     });
   });
@@ -201,11 +208,14 @@ describe('findOpportunities', () => {
       kinds.push(...result.requests.map(({ kind, spot }) => `${kind} ${spot.line.length}`));
       host.answer(result.requests);
     }
-    // Full searches: the position before 6.Bg5, the cue, and the payoff's two positions for Black.
+    // Full searches: the position before 6.Bg5, the cue, the payoff's two positions for Black,
+    // and the replies Black plays at the cue that its analysis doesn't list (Be7, Qd6).
     expect(kinds.filter((kind) => kind.startsWith('full'))).toEqual([
       'full 10',
       'full 11',
       'full 13',
+      'full 12',
+      'full 12',
       'full 15',
     ]);
   });
@@ -262,9 +272,10 @@ describe('findOpportunities', () => {
       expect(bg5.payoff).toEqual(uci(`${BE3} Bxe3`).slice(-2));
     });
 
-    it("ends where the guide's move takes back the punishing side's gain", () => {
-      const [bg5] = find(withGuide(BE3, full(BE3, [['Bxe3', 0.5]]))).finds;
-      expect(bg5.payoff).toEqual([last(BE3)]);
+    it("ends where the guide's move takes back the gain, and drops a find left level", () => {
+      const { finds, dropped } = find(withGuide(BE3, full(BE3, [['Bxe3', 0.5]])));
+      expect(finds).toEqual([]);
+      expect(dropped).toMatchObject([{ payoff: [last(BE3)], end: 0.5, holds: true }]);
     });
 
     it("plays Stockfish's reply at a thin position and goes on", () => {
@@ -273,7 +284,7 @@ describe('findOpportunities', () => {
         guideMoves: known.guideMoves,
         replies: (spot) =>
           spot.key === at(AFTER).key ? repliesFrom({}, LIMITS.minGames) : known.replies(spot),
-      }).finds;
+      }).dropped;
       expect(bg5.payoff).toEqual([last(BE3)]);
     });
   });
@@ -332,14 +343,32 @@ describe('acceptedReplies', () => {
 });
 
 describe('byScore', () => {
-  it('ranks by score, then the opportunity found less often, unknown last', () => {
-    const at = (score: number, found?: number): Find => ({ ...BG5, score, found });
-    const sorted = [at(1, undefined), at(1, 0.5), at(2, 0.9), at(1, 0.1)].sort(byScore);
-    expect(sorted.map(({ score, found }) => [score, found])).toEqual([
-      [2, 0.9],
-      [1, 0.1],
-      [1, 0.5],
-      [1, undefined],
+  it('ranks by score, then the more reached, then by line', () => {
+    const at = (score: number, reach: number, mistake = BG5.mistake): Find => ({
+      ...BG5,
+      score,
+      reach,
+      mistake,
+    });
+    const sorted = [at(1, 0.2, 'b'), at(1, 0.2, 'a'), at(2, 0.1), at(1, 0.3)].sort(byScore);
+    expect(sorted.map(({ score, reach, mistake }) => [score, reach, mistake])).toEqual([
+      [2, 0.1, BG5.mistake],
+      [1, 0.3, BG5.mistake],
+      [1, 0.2, 'a'],
+      [1, 0.2, 'b'],
     ]);
+  });
+});
+
+describe('gainIfKnown', () => {
+  it('weighs each measured reply by its share, renormalised over those measured', () => {
+    expect(gainIfKnown({ a: 0.5, b: 0.3, c: 0.2 }, { a: 0, b: 0.2 })).toEqual({
+      gain: expect.closeTo((0.3 * 0.2) / 0.8),
+      covered: 0.8,
+    });
+  });
+
+  it('is 0 where no reply is measured', () => {
+    expect(gainIfKnown({ a: 1 }, {})).toEqual({ gain: 0, covered: 0 });
   });
 });
