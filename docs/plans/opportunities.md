@@ -34,8 +34,8 @@ plan doesn't depend on those links.
   Qxd5, played by 100%) above finds whose natural reply is the wrong one (5.Nxf7, where 76%
   recapture and 8% find 5...Qe7). A find is kept only where Act III leaves the learner clearly
   better.
-- Act III's ends and its overrides of the guide's moves (Rules) were settled in planning on
-  2026-11-24 at Nathaniel's direction; merging this file is his approval of them.
+- Act III's ends and its overrides of the guide's moves (Rules) were agreed with the planning thread
+  on 2026-11-24, where Nathaniel asked that plan revisions be settled.
 - The finder opens at any position (in a lesson, past a guide, in free play) and finds can be saved
   on the device. Publishing finds to other users is later and not in this plan.
 - In the app, "how often" comes from the learner's connected lichess account, else (no account, or
@@ -125,9 +125,10 @@ cost floor is the app's mistake limit and is not a gate setting.
 - **Gain if known**: at the cue, each reply the band plays over the share floor, weighted by its
   share, times what it gives away beside the best reply (`moveLoss` in `quality.ts`, the signed loss
   `judgement` labels by, as for cost, floored at 0 so a reply a search rates above the first line
-  gives nothing), over the shares of the replies measured; where none is measured the gain is 0 and
-  marked an estimate. It is what a player at the cue scores more by knowing the punishment than by
-  playing as the band does: a recapture everyone finds gains nothing (6.Bxd5 Qxd5), a cue whose
+  gives nothing), over the shares of the replies measured; where the finder measures no reply the
+  gain is 0 and marked an estimate. A migrated trap's gain is absent, not 0, until the importer
+  measures it (piece C). It is what a player at the cue scores more by knowing the punishment than
+  by playing as the band does: a recapture everyone finds gains nothing (6.Bxd5 Qxd5), a cue whose
   natural reply is wrong gains most (5.Nxf7 Kxf7). Replies under the share floor are left out and
   the rest renormalised. Where the cue is thin, or the measured replies cover under half its games,
   the gain is an estimate and the report marks it. Each measured reply the cue's final analysis
