@@ -28,6 +28,12 @@ plan doesn't depend on those links.
 - Traps and opportunities are one shape. "Show traps" stays a pure display setting: it only filters
   in `src/lesson/guidance.ts` and never shapes, drops or gates loaded data. Off, it hides only the
   traps the learner's side can fall into, so opportunities stay shown.
+- An opportunity is ranked by what knowing it is worth, not by how bad the mistake is: score =
+  reach × share × gain if known (Rules). This replaces the product plan's "how often × how bad ×
+  reach", agreed by Nathaniel 2026-11-24 after the Stafford report ranked recaptures everyone finds
+  (6.Bxd5 Qxd5, played by 100%) above finds whose natural reply is the wrong one (5.Nxf7, where 76%
+  recapture and 8% find 5...Qe7). A find is kept only where Act III leaves the learner clearly
+  better.
 - The finder opens at any position (in a lesson, past a guide, in free play) and finds can be saved
   on the device. Publishing finds to other users is later and not in this plan.
 - In the app, "how often" comes from the learner's connected lichess account, else (no account, or
@@ -52,7 +58,8 @@ plan doesn't depend on those links.
   | Games per move, per band                 | `LessonMove.games`, as today                           |
   | Games reaching a position, per band      | New: `LessonPosition.games`                            |
   | This move is the mistake                 | New: `LessonMove.mistake`, a marker on the erring move |
-  | How much the mistake gives away (import) | `cost` on that marker, used only to rank the list      |
+  | How much the mistake gives away (import) | `cost` on that marker: gates the find, and is shown   |
+  | What knowing the cue is worth, per band  | `gain` on that marker, written at import; ranks only   |
   | The mistake's title in the list          | `name` on that marker, written by the explain step     |
   | The guide's verdict on a migrated trap   | `verdict` on that marker (today `Trap.verdict`)        |
 
@@ -79,9 +86,10 @@ plan doesn't depend on those links.
   is a separate source for the same field: a softmax over the legal moves' policy scores (piece J).
 - Derived, one pure function each in `src/opportunity/`: reach (shares of the erring side's moves
   multiplied along the path), the cue's accepted replies (`acceptedReplies`, Rules), found rate (the
-  sum of their shares at the cue), score, role (trap or opportunity, from the learner's side), the
-  current act, whether a position is a cue, and whether an opportunity is a line to pass. No
-  component recomputes them.
+  sum of their shares at the cue), gain if known (`gainIfKnown`, `src/opportunity/gain.ts`, which
+  the importer and the live finder both call; nothing else computes it), score, role (trap or
+  opportunity, from the learner's side), the current act, whether a position is a cue, and whether
+  an opportunity is a line to pass. No component recomputes them.
 - App state the whole feature adds: saved finds and the lichess token, each under its own storage
   key, kept as `src/resources/progress.ts` keeps progress (`storageKey`, `readStorage`,
   `writeStorage` and `subscribeStorage` from `src/context/storage.ts`), and its own parser beside
@@ -104,15 +112,33 @@ plan doesn't depend on those links.
 
 ## Rules
 
-Minimum games and the share floor are starting values, tuned at piece B's gate. The cost floor is
-the app's mistake limit and is not a gate setting.
+Minimum games, the share floor and `keepScore` are starting values, tuned at piece B's gate. The
+cost floor is the app's mistake limit and is not a gate setting.
 
-- **Score** of an opportunity for a band: reach × share × cost. Ties: the lower found rate ranks
-  first, since teaching pays most where players miss the punishment.
+- **Score** of an opportunity for a band: reach × share × gain if known. Ties break by reach, then
+  by the line, so the order is stable. Found rate is still shown, derived from shares, but no longer
+  breaks ties: the gain already counts who misses the punishment.
+- **Gain if known**: at the cue, each reply the band plays over the share floor, weighted by its
+  share, times what it gives away beside the best reply (`judgement`'s signed loss, as for cost),
+  over the shares of the replies measured. It is what a player at the cue scores more by knowing
+  the punishment than by playing as the band does: a recapture everyone finds gains nothing
+  (6.Bxd5 Qxd5), a cue whose natural reply is wrong gains most (5.Nxf7 Kxf7). Replies under the
+  share floor are left out and the rest renormalised. Where the cue is thin, or the measured
+  replies cover under half its games, the gain is an estimate and the report marks it. Each
+  measured reply the cue's final analysis doesn't list takes one full search (about 60 for
+  Stafford). Deriving the gain from stored moves instead, by writing each wrong cue reply as a
+  marked move, is rejected for now: it would put the learner's wrong replies in the guide tree and
+  change Practice's lists.
+- **Clearly better**: a find is kept only where the learner's expected score at Act III's end is at
+  least `keepScore` (0.6, a `limits.ts` gate setting). Act III follows the band's likely replies, so
+  a practical trap survives where best defence would hold (6.Bc4 Ng4 is 58 against best defence,
+  yet the replies 1400s play walk into mate). The report marks each kept find "holds" (the cue's
+  best reply alone reaches `keepScore` against best defence) or "practical" (only the band's likely
+  replies get there), and lists each dropped find with its Act III end.
 - **Cost**: the expected score the erring side gives away beside its best move, by `judgement` in
   `src/analysis/quality.ts`. The floor is that module's mistake limit (0.10), so every opportunity's
-  first move labels as a mistake or a blunder. A stored cost only ranks; screens show the live
-  verdict.
+  first move labels as a mistake or a blunder. Cost gates a find and is the number the product
+  shows; ranking no longer reads it. Screens show the live verdict.
 - **Share floor**: a reply played in under 5% of the games at its position (in the band) is not
   screened. It is a bare 5% test on every reply, with none exempt as some of the list's rows are.
   It starts as `RARE_SHARE` (`src/lesson/select.ts`), the share under which the list calls a reply
@@ -179,7 +205,8 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
   turns lichess counts into that), analyses (sketch or final) and the guide's moves (a lesson's
   moves at a position, most played first: every guide move at the erring side's turn, and at the
   punishing side's turn those it plays, as Rules define them) that the host has so far. It returns
-  the finds so far and the requests still missing, most useful first: a position's replies, a
+  the finds so far (kept ones, and those dropped as not clearly better, Rules), where walks ended
+  thin, and the requests still missing, most useful first: a position's replies, a
   sketch, or a full search, each naming its line and position. The script loops over it; the app
   derives it from the store. No async generator and no queue. The hosts filter the punishing side's
   moves by `inCleanRun` (`src/lesson/cleanRun.ts`), the rule `walkShared` in `openings.ts` already
@@ -210,15 +237,17 @@ position ends the walk (the search for another mistake; each find's Act III stil
 and the report counts how many walks ended thin and at what depth, so the gate can judge whether a
 Maia supplement in the script is worth building. None is built now.
 
-Gate: Nathaniel reads the top 20 finds and sets the `limits.ts` floors and caps (not the cost floor)
-before any lesson file changes. The report prints the limits it ran with.
+Gate: Nathaniel reads the top 20 finds and the dropped ones and sets the `limits.ts` floors, caps
+and `keepScore` (not the cost floor) before any lesson file changes. The report prints the limits it
+ran with.
 
 ### Piece C: Lesson data
 
 - Format: `LessonPosition.games` (games reaching the position, per band of
   `Lesson.popularity.ratingBands`; absent means not measured) and `LessonMove.mistake` (`{ cost?,
-  name?, verdict? }`: cost as above, absent only on migrated guide traps until the importer step
-  measures it (piece D1 for Stafford, D3 for the rest); `name` a short title for the list; `verdict`
+  gain?, name?, verdict? }`: cost and gain (one per band of `Lesson.popularity.ratingBands`) as
+  above, absent only on migrated guide traps until the importer step measures them (piece D1 for
+  Stafford, D3 for the rest); `name` a short title for the list; `verdict`
   the `Trap` verdict it replaces). All optional, so the format number stays 3.
 - The `Trap` idea goes. Each existing trap idea (254: 172 in position notes, 82 in move notes)
   becomes guide-tree moves with the marker on its first move. A note whose only drawn idea was the
@@ -278,13 +307,13 @@ answer, `LessonPosition.games` (the explorer's own count of games reaching the p
 The explorer's cached rows gain a total for this: when asked for a total, `lichessExplorer` treats a
 cached row without one as missing, so the positions on a find's path are asked again and their new
 answers committed in the same PR, keeping reruns exact. Elsewhere a row without a total reads it as
-unknown, never as 0 or as enough games. Then it writes the marked move with its cost, and the
-accepted replies and Act III as Rules say. Popularity, which runs after it, must not drop counts it
-did not remeasure (today it drops them wherever it did not ask, such as positions with one guide
-move), and where it does remeasure it writes the position total from that same answer. Stafford
-only, with B's floors. The D1 PR lists the rows whose rare-row or counted-reply status changed once
-the totals change shares. Merges after E and F, because new lines change what the Practice opponent
-plays.
+unknown, never as 0 or as enough games. Then it writes the marked move with its cost and its gain
+per band, and the accepted replies and Act III as Rules say. Popularity, which runs after it, must
+not drop counts it did not remeasure (today it drops them wherever it did not ask, such as positions
+with one guide move), and where it does remeasure it writes the position total from that same
+answer. Stafford only, with B's floors. The D1 PR lists the rows whose rare-row or counted-reply
+status changed once the totals change shares. Merges after E and F, because new lines change what
+the Practice opponent plays.
 
 ### Piece D2: Names and notes
 
@@ -300,7 +329,7 @@ too much for phones (the Caro-Kann file is already 5.3 MB).
 
 ### Piece G: List page
 
-Opportunities for the lesson and the band, ranked by score (a migrated trap without a cost yet lists
+Opportunities for the lesson and the band, ranked by score (a migrated trap without a gain yet lists
 after the scored rows), each row with reach, how often and payoff meters and the passed mark;
 tapping a row plays Act I and hands over the board at the cue. A section in the wide panel; on
 phones the pager's leftmost page (opportunities, lesson, scoresheet), holding the list and the
@@ -334,7 +363,9 @@ and listed after lichess ones, never ranked together.
 
 The core run from any position, derived from the store and memoized on its only inputs, the answers
 it reads: engine answers through `useAnalysis` and replies through I or J. It has no queue of its
-own. Finds join the list page as they are confirmed, each number's source labeled.
+own. Finds join the list page as they are confirmed, each number's source labeled. The cue
+replies' searches for the gain run at sketch depth first, and the ranking updates as full results
+arrive, with no stored list.
 The finder's searches use the existing Stockfish watch and queue behind whatever the board is
 watching: they never become the newest request (the engine searches the newest position first) while
 the board shows a position, or `decide` would stop the bar's and the lesson's searches. Measures
