@@ -28,12 +28,13 @@ plan doesn't depend on those links.
 - Traps and opportunities are one shape. "Show traps" stays a pure display setting: it only filters
   in `src/lesson/guidance.ts` and never shapes, drops or gates loaded data. Off, it hides only the
   traps the learner's side can fall into, so opportunities stay shown.
-- An opportunity is ranked by what knowing it is worth, not by how bad the mistake is: score =
-  reach × share × gain if known (Rules). This replaces the product plan's "how often × how bad ×
-  reach", agreed by Nathaniel 2026-11-24 after the Stafford report ranked recaptures everyone finds
-  (6.Bxd5 Qxd5, played by 100%) above finds whose natural reply is the wrong one (5.Nxf7, where 76%
+- An opportunity is ranked by what knowing it is worth, not by how bad the mistake is: score = reach
+  × share × gain if known (Rules). This replaces the product plan's "how often × how bad × reach",
+  agreed by Nathaniel 2026-11-24 after the Stafford report ranked recaptures everyone finds (6.Bxd5
+  Qxd5, played by 100%) above finds whose natural reply is the wrong one (5.Nxf7, where 76%
   recapture and 8% find 5...Qe7). A find is kept only where Act III leaves the learner clearly
-  better.
+  better. Act III's ends and its overrides of the guide were agreed with the planning thread the
+  same day.
 - The finder opens at any position (in a lesson, past a guide, in free play) and finds can be saved
   on the device. Publishing finds to other users is later and not in this plan.
 - In the app, "how often" comes from the learner's connected lichess account, else (no account, or
@@ -122,12 +123,13 @@ cost floor is the app's mistake limit and is not a gate setting.
 - **Gain if known**: at the cue, each reply the band plays over the share floor, weighted by its
   share, times what it gives away beside the best reply (`moveLoss` in `quality.ts`, the signed loss
   `judgement` labels by, as for cost, floored at 0 so a reply a search rates above the first line
-  gives nothing), over the shares of the replies measured; where none is measured the gain is 0. It
-  is what a player at the cue scores more by knowing the punishment than by playing as the band
-  does: a recapture everyone finds gains nothing (6.Bxd5 Qxd5), a cue whose natural reply is wrong
-  gains most (5.Nxf7 Kxf7). Replies under the share floor are left out and the rest renormalised.
-  Where the cue is thin, or the measured replies cover under half its games, the gain is an estimate
-  and the report marks it. Each measured reply the cue's final analysis doesn't list takes one full
+  gives nothing), over the shares of the replies measured; where none is measured the gain is 0 and
+  marked an estimate (an absent gain, on a migrated trap, means not yet measured). It is what a
+  player at the cue scores more by knowing the punishment than by playing as the band does: a
+  recapture everyone finds gains nothing (6.Bxd5 Qxd5), a cue whose natural reply is wrong gains
+  most (5.Nxf7 Kxf7). Replies under the share floor are left out and the rest renormalised. Where
+  the cue is thin, or the measured replies cover under half its games, the gain is an estimate and
+  the report marks it. Each measured reply the cue's final analysis doesn't list takes one full
   search (about 60 for Stafford). Deriving the gain from stored moves instead, by writing each wrong
   cue reply as a marked move, is rejected for now: it would put the learner's wrong replies in the
   guide tree and change Practice's lists.
@@ -177,22 +179,24 @@ cost floor is the app's mistake limit and is not a gate setting.
   book or not.
 - **The punishing side's Act III moves** also prefer the guide, by a different test: where the guide
   has a move the punishing side plays there (a book move where it is `Lesson.side`, any guide move
-  otherwise, as the hosts' `inCleanRun` filter gives), Act III follows the guide's most played one
-  (else its first, where no move has counts) as long as that move gives back less than
+  otherwise, as `inCleanRun` in `src/lesson/cleanRun.ts` gives), Act III follows the guide's most
+  played one (else its first, where no move has counts) as long as that move gives back less than
   `MISTAKE_LOSS` beside Stockfish's best in the same position, so the tree stays the one source for
   the line; otherwise, or where the guide has none, it plays Stockfish's best, which the importer
-  writes into the tree as a book move beside the guide's (so the tree stays the one source there
-  too). Piece B's report counts the positions where the two differ and how often Act III kept the
-  guide's move, and lists each override, as the lesson's D1 or D3 pull request does: the guide's own
-  book move costs a mistake's worth there, so a person looks at it before merge.
+  writes into the tree beside the guide's (a book move where the punishing side is `Lesson.side`, an
+  ordinary move otherwise, so the tree stays the one source there too). Piece B's report counts the
+  positions where the two differ and how often Act III kept the guide's move, and lists each
+  override, as the lesson's D1 or D3 pull request does: the guide's own move costs a mistake's worth
+  there, so a person looks at it before merge.
 - **Act III** follows those moves for both sides, and ends at mate, when the punishing side is three
   points of material up (`balance` in `src/game/material.ts`) and winning (the punishing side's
   expected score of at least 0.8, by `scoreFor` in `src/evaluation/evaluation.ts`), when its
   second-best move is also winning, after six of its moves, or where, after an erring-side guide
   move it follows, what the punishment still wins is under `MISTAKE_LOSS` (the cost floor): the
   punishing side's score there less its score before the mistake, both signed by `forSide` (a
-  difference near a limit must not round, as `judgement` measures). The find then drops as not
-  clearly better. The 0.8 and the three points are `limits.ts` constants tuned at piece B's gate.
+  difference near a limit must not round, as `judgement` measures). `keepScore` then judges the find
+  at that end, as it judges every find. The 0.8 and the three points are `limits.ts` constants tuned
+  at piece B's gate.
 - **Sketch and full**: a sketch is a search that reached at least `SKETCH_DEPTH`
   (`src/review/order.ts`); full is the app's search (`APP_SEARCH`). Sketches screen replies; only
   full searches confirm a find or set a stored cost or gain; the live list's gain may rest on
@@ -319,7 +323,7 @@ per band, and the accepted replies and Act III as Rules say. Popularity, which r
 not drop counts it did not remeasure (today it drops them wherever it did not ask, such as positions
 with one guide move), and where it does remeasure it writes the position total from that same
 answer. Stafford only, with B's floors. The D1 PR lists the rows whose rare-row or counted-reply
-status changed once the totals change shares, and each Act III override of a guide book move
+status changed once the totals change shares, and each Act III override of a guide move
 (Rules). Merges after E and F, because new lines change what the Practice opponent plays.
 
 ### Piece D2: Names and notes
@@ -331,7 +335,7 @@ before it lands.
 ### Piece D3: Rollout
 
 The step runs on every lesson; `--no-model` rebuilds each exactly. The PR lists, per lesson, the
-rows whose rare-row or counted-reply status changed and each Act III override of a guide book move.
+rows whose rare-row or counted-reply status changed and each Act III override of a guide move.
 Cap finds per lesson by score if the files grow too much for phones (the Caro-Kann file is already
 5.3 MB).
 
