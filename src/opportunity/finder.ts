@@ -183,8 +183,8 @@ export function findOpportunities({
       } else if (next.reach >= limits.reachFloor) frontier.push(next);
     }
   }
-  // The walk moves from positions up to `maxPlies` past the opening.
-  const reach = reachOf(opening.key, moves, limits.maxPlies + 1);
+  // The walk moves from positions up to `lastPly`, so its moves end a ply later.
+  const reach = reachOf(opening.key, moves, lastPly + 1 - line.length);
   const sorted = [...finds]
     .map(([cue, ways]): Find => {
       // On the guide where any move order the guide plays reaches the cue.
@@ -223,11 +223,10 @@ export interface Move {
 /**
  * Each walked position's reach: the share of games that get there, summed
  * over every move order the walk took, ply by ply from `start` for at most
- * `plies` moves, so it is one fixed sum whatever is asked first. With
- * `guided`, only the move orders where the guide plays every punishing-side
- * move count. A game that comes back to a position (both sides shuffling,
- * which the walk's moves rarely do) counts there again. Reach stays derived:
- * nothing stores it.
+ * `plies` moves. With `guided`, only the move orders where the guide plays
+ * every punishing-side move count. A game that comes back to a position
+ * (both sides shuffling, which the walk's moves rarely do) counts there
+ * again. Reach stays derived: nothing stores it.
  */
 export function reachOf(start: PositionKey, moves: readonly Move[], plies: number) {
   const out = new Map<PositionKey, Move[]>();
@@ -240,10 +239,10 @@ export function reachOf(start: PositionKey, moves: readonly Move[], plies: numbe
       for (const [key, games] of layer) {
         for (const move of out.get(key) ?? []) {
           if (guided && !move.guided) continue;
-          next.set(move.to, (next.get(move.to) ?? 0) + games * move.share);
+          add(next, move.to, games * move.share);
         }
       }
-      for (const [key, games] of next) total.set(key, (total.get(key) ?? 0) + games);
+      for (const [key, games] of next) add(total, key, games);
       layer = next;
     }
     return total;
@@ -251,6 +250,11 @@ export function reachOf(start: PositionKey, moves: readonly Move[], plies: numbe
   const all = sums(false);
   const onGuide = sums(true);
   return (key: PositionKey, guided: boolean) => (guided ? onGuide : all).get(key) ?? 0;
+}
+
+/** Adds `amount` to `map`'s number at `key`, from 0 where there is none. */
+function add<K>(map: Map<K, number>, key: K, amount: number) {
+  map.set(key, (map.get(key) ?? 0) + amount);
 }
 
 /** Adds `value` to `map`'s list at `key`, starting the list where there is none. */
