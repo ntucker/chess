@@ -27,9 +27,9 @@ export const router = { useIsFocused: () => true };
 export const demand = { useNeedsStockfish: () => {} };
 
 /**
- * Data Client, whose controller `controller` gives; nothing loads. Getters,
- * here and below, since `jest.mock` runs its factory before the test file's
- * own consts are set.
+ * Data Client, whose controller `controller` returns; nothing loads. Here and
+ * below a function returns what the test passes, read only when the app calls
+ * it, since `jest.mock` runs its factory before the test file's consts are set.
  */
 export const dataClient = (controller: () => object) => ({
   StateContext: createContext({}),

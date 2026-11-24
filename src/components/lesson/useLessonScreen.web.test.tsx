@@ -12,11 +12,11 @@ import { DEFAULT_SETTINGS } from '@/settings/settings';
 import { type LessonScreenModel, useLessonScreen } from './useLessonScreen';
 
 // What useLesson reads besides the lesson and the game is stood in for
-// (useLesson.testing.ts), and nobody replies with auto play off: these tests
+// (useLesson.fixture.ts), and nobody replies with auto play off: these tests
 // are about what the screen shows, not about the engines.
-type StandIns = typeof import('@/lesson/useLesson.testing');
+type StandIns = typeof import('@/lesson/useLesson.fixture');
 function mockStandIns() {
-  return jest.requireActual<StandIns>('@/lesson/useLesson.testing');
+  return jest.requireActual<StandIns>('@/lesson/useLesson.fixture');
 }
 jest.mock('@/analysis/useMoveQualities', () => mockStandIns().moveQualities);
 jest.mock('@/resources/analysis', () => mockStandIns().analysis);
@@ -103,7 +103,7 @@ describe('useLessonScreen', () => {
   it("shows the lesson's line once picked, with compact rows and no swap", async () => {
     await showAfter(CARO_KANN, 'e4', 'c6', 'd4');
     const { header, moves, board, idea, learner, scoresheet } = shown();
-    expect(header.place).toEqual({ name: 'Caro-Kann Defence', parent: undefined });
+    expect(header.place).toStrictEqual({ name: 'Caro-Kann Defence', parent: undefined });
     expect(header.placeLink?.href).toMatchObject({ params: { lesson: 'caro-kann' } });
     expect(moves).toMatchObject({ heading: 'Your candidates', owner: undefined, compact: true });
     expect(board.onSwap).toBeUndefined();
@@ -123,9 +123,12 @@ describe('useLessonScreen', () => {
     const { headline, header } = shown();
     expect(headline).toMatchObject({ eyebrow: 'Caro-Kann Defence', title: 'Your move.' });
     expect(headline).not.toHaveProperty('pastGuide');
-    // Once the learner has moved, a narrow page draws no "your move" line.
-    expect(shown().news).toEqual({ panes: 'none', scoresheet: 'none' });
     expect(headline.failure).toBeUndefined();
     expect(headline.eyebrowLink).toBe(header.placeLink);
+  });
+
+  it('draws no "your move" line on a narrow page once the learner has moved', async () => {
+    await showAfter(CARO_KANN, 'e4', 'c6', 'd4');
+    expect(shown().news).toEqual({ panes: 'none', scoresheet: 'none' });
   });
 });

@@ -13,12 +13,12 @@ import { HOLD_MS } from './peek';
 import { useLesson } from './useLesson';
 
 // What useLesson reads besides the lesson and the game is stood in for
-// (useLesson.testing.ts; useLesson.engine.test.tsx covers Stockfish's best
+// (useLesson.fixture.ts; useLesson.engine.test.tsx covers Stockfish's best
 // move): these tests are about the Practice run. With auto play off nobody
 // replies.
-type StandIns = typeof import('@/lesson/useLesson.testing');
+type StandIns = typeof import('@/lesson/useLesson.fixture');
 function mockStandIns() {
-  return jest.requireActual<StandIns>('@/lesson/useLesson.testing');
+  return jest.requireActual<StandIns>('@/lesson/useLesson.fixture');
 }
 jest.mock('@/analysis/useMoveQualities', () => mockStandIns().moveQualities);
 jest.mock('@/resources/analysis', () => mockStandIns().analysis);
