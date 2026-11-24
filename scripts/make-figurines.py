@@ -96,7 +96,13 @@ def outline(element):
 
 def painted(element, style, paint):
     """The area the element paints in `paint` (dark or light), filled and stroked."""
-    is_paint = lambda color: color not in (None, 'none') and (color == '#000') == (paint == 'dark')
+
+    def is_paint(color):
+        """Whether `color` is this paint: black is dark, any other color light."""
+        if color in (None, 'none'):
+            return False
+        return paint == ('dark' if color == '#000' else 'light')
+
     area = pathops.Path()
     if is_paint(style['fill']):
         filled = outline(element)

@@ -9,8 +9,8 @@ export const SETTINGS_KEY = storageKey('settings');
 export const THEMES = ['system', 'light', 'dark'] as const;
 export type Theme = (typeof THEMES)[number];
 
-export const NOTATIONS = ['icons', 'letters'] as const;
-export type Notation = (typeof NOTATIONS)[number];
+export const NOTATION_STYLES = ['icons', 'letters'] as const;
+export type NotationStyle = (typeof NOTATION_STYLES)[number];
 
 /** What the learner chose, remembered on the device as one object. */
 export interface Settings {
@@ -29,7 +29,7 @@ export interface Settings {
   /** Light or dark colors, or the device's light or dark setting. */
   readonly theme: Theme;
   /** How a move's name shows its piece: as an icon (♞f3) or a letter (Nf3). */
-  readonly notation: Notation;
+  readonly notation: NotationStyle;
 }
 
 /** The settings before the learner chooses, which the pre-rendered page shows. */
@@ -85,7 +85,7 @@ export function settingsFrom(stored: StoredSettings): Settings {
     showTraps: oneOf(BOOLEANS, stored.showTraps) ?? DEFAULT_SETTINGS.showTraps,
     side: oneOf(COLORS, stored.side) ?? DEFAULT_SETTINGS.side,
     theme: oneOf(THEMES, stored.theme) ?? DEFAULT_SETTINGS.theme,
-    notation: oneOf(NOTATIONS, stored.notation) ?? DEFAULT_SETTINGS.notation,
+    notation: oneOf(NOTATION_STYLES, stored.notation) ?? DEFAULT_SETTINGS.notation,
   };
 }
 

@@ -52,7 +52,7 @@ export function HeaderButton({ icon, iconSize, face, expanded, checked, ...press
   return (
     <Pressable
       {...pressable}
-      {...((expanded ?? checked) !== undefined && a11yState({ expanded, checked }))}
+      {...((expanded !== undefined || checked !== undefined) && a11yState({ expanded, checked }))}
       style={({ pressed, hovered }) => [
         styles.button,
         (pressed || hovered) && { backgroundColor: color.tones.neutral.subtle },

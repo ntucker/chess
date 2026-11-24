@@ -442,11 +442,11 @@ const SHARE_WIDTH = 32;
 /** An evaluation's least width, which holds its longest label (as −9.9 or −M12) in caption text. */
 const EVALUATION_WIDTH = 44;
 /**
- * The longest move a narrow pane's row holds at its own size: a capture by
- * the widest piece (Qxd5), its piece drawn as an icon (`Notation`), which is
- * wider than a letter, and three more characters.
+ * The longest move a narrow pane's row holds at its own size is a capture by
+ * the widest piece, Qxd5: the queen's icon (`Notation`), wider than a
+ * letter, then this many characters.
  */
-const LONGEST_MOVE_AFTER_PIECE = 'xd5'.length;
+const LONGEST_MOVE_AFTER_PIECE = 3;
 /** The longest share and evaluation, which larger text can widen past their least widths. */
 const LONGEST_SHARE = '100%';
 const LONGEST_EVALUATION = '\u22129.9';
@@ -454,7 +454,7 @@ const LONGEST_EVALUATION = '\u22129.9';
 /**
  * A move on one line, whose text shrinks when its row has too little room
  * for it. Beside its badges in a pane at its least width (`listMinWidth`),
- * which holds Qxd5 (`LONGEST_MOVE_AFTER_PIECE`), a five-character move needs 0.85 of its size
+ * which holds Qxd5 (`LONGEST_MOVE_AFTER_PIECE`), a five-character move (Nbxd7) needs 0.85 of its size
  * and the longest moves, a promotion with check (exd8=Q+) or a queen's
  * move named by its square, with check (Qh4xe1+), 0.6, which the floor
  * still holds.
