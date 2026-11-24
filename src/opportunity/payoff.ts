@@ -13,7 +13,15 @@ import {
 import { balance } from '@/game/material';
 import type { Uci } from '@/lesson/lesson';
 
-import { child, type Context, type Node, punishingLoss, type Replies, resultAt } from './walk';
+import {
+  type Context,
+  illegalMove,
+  legalChild,
+  type Node,
+  punishingLoss,
+  type Replies,
+  resultAt,
+} from './walk';
 
 /**
  * A place where the guide's move for the punishing side is not Stockfish's
@@ -57,7 +65,8 @@ export interface Payoff {
  * winning, when its second-best move is winning too, after `payoffMoves` of
  * its moves, where after an erring-side guide move the punishment wins less
  * than the mistake limit beside `before` (the guide holds a better defence, and
- * Act III adds no move to beat it), or when the game ends.
+ * Act III adds no move to beat it), or when the game ends. It throws where a
+ * move it plays is illegal (`legalChild`).
  */
 export function payoff(
   start: Node,
@@ -94,10 +103,9 @@ export function payoff(
       if (!move) return undefined;
       ({ uci, guided } = move);
     }
-    const next = uci === undefined ? undefined : child(node, uci, 0);
-    if (!uci || !next) break;
+    if (uci === undefined) break;
     moves.push(uci);
-    node = next;
+    node = legalChild(node, uci, 0);
     result = resultAt(node);
   }
   return { moves, disagreements, end: result ? scoreFor(resultEvaluation(result), side) : end };
@@ -165,8 +173,7 @@ function punishingMove(
   if (!guide || guide === best.uci) return best;
   const judged = punishingLoss(node, final, guide, context);
   if (judged === 'pending') return judged;
-  // As `select.ts` does: the lesson checker rules out an illegal guide move.
-  if (!judged) throw new Error(`Guide move ${guide} is illegal in ${node.key}`);
+  if (!judged) throw illegalMove(node, guide);
   return judged.loss < MISTAKE_LOSS
     ? { uci: guide, evaluation: judged.evaluation, guide }
     : { ...best, guide };

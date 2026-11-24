@@ -31,6 +31,7 @@ import {
   child,
   punishingLoss,
   type Context,
+  legalChild,
   type Node,
   type Request,
   resultAt,
@@ -140,8 +141,7 @@ export function findOpportunities({
     visited.add(node.key);
     if (node.pos.turn === side) {
       for (const uci of punishingMoves(node, context)) {
-        const next = child(node, uci, node.reach);
-        if (next) frontier.push(next);
+        frontier.push(legalChild(node, uci, node.reach));
       }
       continue;
     }

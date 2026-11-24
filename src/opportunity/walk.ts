@@ -106,6 +106,21 @@ export function child(node: Node, uci: Uci, reach: number): Node | undefined {
 }
 
 /**
+ * The node a move the finder trusts leads to: the guide's (the lesson checker
+ * rules out an illegal one), the opponent's replies, or Stockfish's. Throws
+ * where it isn't legal, since the data that gave it is broken.
+ */
+export function legalChild(node: Node, uci: Uci, reach: number): Node {
+  const next = child(node, uci, reach);
+  if (!next) throw illegalMove(node, uci);
+  return next;
+}
+
+/** The error for a trusted move that isn't legal at `node`. */
+export const illegalMove = (node: Spot, uci: Uci) =>
+  new Error(`Move ${uci} is illegal in ${node.key}`);
+
+/**
  * The game's result at `node`, if it is over: `gameResult`, since chessops'
  * `isEnd` misses the fifty-move rule. The finder counts each position as
  * seen once, so a repetition inside its few moves doesn't end a line.

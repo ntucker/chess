@@ -349,12 +349,23 @@ describe('findOpportunities', () => {
       expect(keepsGuide(bg5.payoff, bg5.disagreements[0])).toBe(false);
     });
 
-    it('throws on an illegal guide move', () => {
-      const answers: Answers = {
-        ...withGuide([['Bxf2+', 0.3]]),
-        guideMoves: (spot) => (spot.key === at(BXD8).key ? ['a1a8'] : known.guideMoves!(spot)),
-      };
-      expect(() => find(answers, { payoffMoves: 1 })).toThrow('Guide move a1a8 is illegal');
+    it('throws on an illegal guide move for either side', () => {
+      const illegalAt = (line: string): Answers => ({
+        ...withGuide([
+          ['Bxf2+', 0.3],
+          ['Kxd8', 0.35],
+        ]),
+        guideMoves: (spot) =>
+          spot.key === at(line).key
+            ? ['a1a8']
+            : spot.key === at(BXD8).key
+              ? [last(`${BXD8} Kxd8`)]
+              : known.guideMoves!(spot),
+      });
+      expect(() => find(illegalAt(BXD8), { payoffMoves: 1 })).toThrow('Move a1a8 is illegal');
+      expect(() => find(illegalAt(`${BXD8} Kxd8`), { payoffMoves: 2 })).toThrow(
+        'Move a1a8 is illegal',
+      );
     });
   });
 
