@@ -76,7 +76,8 @@ plan doesn't depend on those links.
 
 ## Rules
 
-The numbers here are starting values, tuned at piece B's gate.
+The share floor and minimum games are starting values, tuned at piece B's gate. The cost floor is
+the app's mistake limit and is not a gate setting.
 
 - **Score** of an opportunity for a band: reach × share × cost. Ties: the lower found rate ranks
   first, since teaching pays most where players miss the punishment.
@@ -122,12 +123,12 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
   under the cost floor continue the walk. At the punishing side's turn it follows the given moves,
   else Stockfish's best. It stops below a reach floor, past a ply cap, or at a thin position. One
   find per cue position; a position reached again adds nothing.
-- Its floors and caps are named constants in `src/opportunity/limits.ts`, tuned at piece B's gate:
+- Its own floors and caps are named constants in `src/opportunity/limits.ts`, tuned at piece B's gate:
   the share floor and minimum games from Rules, the Act III caps, a reach floor (1%) and a ply cap
   (24 plies past where the finder opens).
 - The cost floor has no value of its own: `limits.ts` reads it from `quality.ts`, where piece A
-  pulls the mistake entry of `LEAST_LOSS` out as an exported `MISTAKE_LOSS`. Changing it at the
-  gate would change the app's mistake label too.
+  exports `MISTAKE_LOSS` and builds `LEAST_LOSS`'s mistake entry from it, so 0.10 lives in one
+  place. The gate does not change it, since that would change the app's mistake label too.
 
 ### Piece B: Report script
 
@@ -137,7 +138,8 @@ report to the project files. It changes no lesson file. Its answers go in its ow
 `scripts/import-study/answers/<id>-opportunities-*.jsonl`, which no other step reads or prunes (as
 `coverOpponent.ts` keeps its own); commit them.
 
-Gate: Nathaniel reads the top 20 finds and sets the floors and caps before any lesson file changes.
+Gate: Nathaniel reads the top 20 finds and sets the `limits.ts` floors and caps (not the cost floor)
+before any lesson file changes.
 The report prints the limits it ran with.
 
 ### Piece C: Lesson data
