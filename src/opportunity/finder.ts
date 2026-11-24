@@ -128,7 +128,7 @@ export interface FinderResult {
  * and the walk goes on past it. The walk stops where the game is over, at
  * thin positions, below the reach floor and past the ply cap; a position
  * reached again is not walked again but adds to its reach (`reachOf`), and a
- * second find of one cue adds nothing.
+ * cue several mistakes lead to is one find.
  */
 export function findOpportunities({
   start,
@@ -156,12 +156,7 @@ export function findOpportunities({
   frontier.push(opening);
   const visited = new Set<PositionKey>();
   const moves = new Map<PositionKey, Move[]>();
-  const walkedInto = (to: Node, move: Move) => {
-    const into = moves.get(to.key);
-    if (into) into.push(move);
-    else moves.set(to.key, [move]);
-  };
-  const finds = new Map<PositionKey, { confirmed: Confirmed; from: PositionKey }>();
+  const finds = new Map<PositionKey, { confirmed: Confirmed; from: PositionKey }[]>();
   const thinKeys = new Map<PositionKey, readonly Uci[]>();
 
   for (let node = frontier.pop(); node; node = frontier.pop()) {
@@ -171,7 +166,7 @@ export function findOpportunities({
       const { ucis, guided } = punishingMoves(node, context);
       for (const uci of ucis) {
         const next = legalChild(node, uci, node.reach);
-        walkedInto(next, { from: node.key, share: 1, guided });
+        append(moves, next.key, { from: node.key, share: 1, guided });
         frontier.push(next);
       }
       continue;
@@ -182,17 +177,21 @@ export function findOpportunities({
       continue;
     }
     for (const { next, share, confirmed } of steps) {
-      walkedInto(next, { from: node.key, share, guided: true });
+      append(moves, next.key, { from: node.key, share, guided: true });
       if (confirmed) {
-        if (!finds.has(next.key)) finds.set(next.key, { confirmed, from: node.key });
+        append(finds, next.key, { confirmed, from: node.key });
       } else if (next.reach >= limits.reachFloor) frontier.push(next);
     }
   }
   const reach = reachOf(opening.key, moves);
   const sorted = [...finds]
-    .map(([cue, { confirmed, from }]): Find => {
-      const onGuide = reach(from, true) > 0;
+    .map(([cue, ways]): Find => {
+      const onGuide = reach(cue, true) > 0;
       const games = (key: PositionKey) => reach(key, onGuide);
+      // A cue several mistakes lead to is one find, shown by the most reached.
+      const { confirmed, from } = ways.reduce((most, way) =>
+        games(way.from) > games(most.from) ? way : most,
+      );
       return { ...confirmed, reach: games(from), onGuide, score: games(cue) * confirmed.gain };
     })
     .sort(byScore);
@@ -210,10 +209,11 @@ export function findOpportunities({
   };
 }
 
-/** One move the walk took into a position: from where, its share of the games there, and whether the guide plays it. */
+/** One move the walk took into a position: from where, and its share of the games there. */
 export interface Move {
   readonly from: PositionKey;
   readonly share: number;
+  /** Whether a move order through it stays on the guide: the guide's punishing-side move, or any erring-side reply. */
   readonly guided: boolean;
 }
 
@@ -225,21 +225,58 @@ export interface Move {
  * stays derived: nothing stores it.
  */
 export function reachOf(start: PositionKey, moves: ReadonlyMap<PositionKey, readonly Move[]>) {
+  const into = forwardMoves(start, moves);
   const known = new Map<string, number>();
   const reach = (key: PositionKey, guided: boolean): number => {
     if (key === start) return 1;
     const id = `${guided} ${key}`;
     const seen = known.get(id);
     if (seen !== undefined) return seen;
-    known.set(id, 0); // A repetition's way back adds nothing.
     let sum = 0;
-    for (const move of moves.get(key) ?? []) {
+    for (const move of into.get(key) ?? []) {
       if (!guided || move.guided) sum += reach(move.from, guided) * move.share;
     }
     known.set(id, sum);
     return sum;
   };
   return reach;
+}
+
+/**
+ * `moves` (into each position) less each repetition's way back: a move into
+ * a position already on the line that leads to it, going depth-first from
+ * `start` in the order the moves were walked. What is left has no cycle, so
+ * each position's reach is one fixed sum, whatever is asked first.
+ */
+function forwardMoves(
+  start: PositionKey,
+  moves: ReadonlyMap<PositionKey, readonly Move[]>,
+): Map<PositionKey, Move[]> {
+  const out = new Map<PositionKey, { to: PositionKey; move: Move }[]>();
+  for (const [to, list] of moves) {
+    for (const move of list) append(out, move.from, { to, move });
+  }
+  const into = new Map<PositionKey, Move[]>();
+  const onLine = new Set<PositionKey>();
+  const walked = new Set<PositionKey>();
+  const walk = (key: PositionKey) => {
+    onLine.add(key);
+    walked.add(key);
+    for (const { to, move } of out.get(key) ?? []) {
+      if (onLine.has(to)) continue; // A repetition's way back adds nothing.
+      append(into, to, move);
+      if (!walked.has(to)) walk(to);
+    }
+    onLine.delete(key);
+  };
+  walk(start);
+  return into;
+}
+
+function append<K, V>(map: Map<K, V[]>, key: K, value: V) {
+  const list = map.get(key);
+  if (list) list.push(value);
+  else map.set(key, [value]);
 }
 
 /**

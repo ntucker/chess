@@ -542,6 +542,26 @@ describe('reachOf', () => {
     const reach = reachOf('S', moves);
     expect(reach('C', false)).toBeCloseTo(0.5 * 0.4 + 0.2 * 0.5);
     expect(reach('C', true)).toBeCloseTo(0.5 * 0.4);
+    expect(reach('A', false)).toBe(0.5);
+  });
+
+  it('gives each position one reach, whichever is asked first', () => {
+    // S -> X (0.5) -> Y (1) -> Z (0.5) -> X repeats.
+    const moves = new Map([
+      [
+        'X',
+        [
+          { from: 'S', share: 0.5, guided: true },
+          { from: 'Z', share: 1, guided: true },
+        ],
+      ],
+      ['Y', [{ from: 'X', share: 1, guided: true }]],
+      ['Z', [{ from: 'Y', share: 0.5, guided: true }]],
+    ]);
+    const xFirst = reachOf('S', moves);
+    const yFirst = reachOf('S', moves);
+    expect([xFirst('X', false), xFirst('Y', false), xFirst('Z', false)]).toEqual([0.5, 0.5, 0.25]);
+    expect([yFirst('Z', false), yFirst('Y', false), yFirst('X', false)]).toEqual([0.25, 0.5, 0.5]);
   });
 });
 
