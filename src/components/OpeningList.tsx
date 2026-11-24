@@ -15,6 +15,7 @@ import { Text as RNText, StyleSheet, View } from 'react-native';
 import { Eyebrow } from '@/components/Eyebrow';
 import { plainPress } from '@/components/FootnoteLink';
 import { goBack } from '@/components/navigation';
+import { Notation } from '@/components/Notation';
 import { Page } from '@/components/Page';
 import { PageIntro, textColumn } from '@/components/PageIntro';
 import { SourceCredits } from '@/components/lesson/SourceCredits';
@@ -347,7 +348,7 @@ function LineLink({
               </View>
               <View style={[styles.leader, { borderBottomColor: neutral.border }]} />
               <Text role="caption" tone="secondary" style={styles.line}>
-                {variation.line}
+                <Notation>{variation.line}</Notation>
               </Text>
             </View>
           );

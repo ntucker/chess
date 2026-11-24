@@ -5,13 +5,13 @@ import { useIsFocused } from 'expo-router';
 
 import { lastMoveBadge, refutationArrow } from '@/board/drawing';
 import { EvaluationEngineChoice } from '@/components/EvaluationEngineChoice';
-import { Eyebrow, useLabelled } from '@/components/Eyebrow';
+import { useLabelled } from '@/components/Eyebrow';
 import { FootnoteLink } from '@/components/FootnoteLink';
 import { GameStatus } from '@/components/GameStatus';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { OpponentPicker } from '@/components/OpponentPicker';
 import { ScoresheetReview } from '@/components/ReviewLinks';
-import { Scoresheet } from '@/components/Scoresheet';
+import { Scoresheet, ScoresheetTitle } from '@/components/Scoresheet';
 import { BoardColumn, Stage } from '@/components/Stage';
 import { useBackToReview } from '@/components/useBackToReview';
 import { usePlayAddress } from '@/components/usePlayAddress';
@@ -104,7 +104,7 @@ export default function PlayScreen() {
           <Separator />
           <Stack style={labelled}>
             <Inline align="center" justify="between" wrap="nowrap">
-              <Eyebrow>Scoresheet</Eyebrow>
+              <ScoresheetTitle />
               <ScoresheetReview
                 href={review}
                 disabled={game.latest.result ? undefined : 'Review opens once the game ends.'}

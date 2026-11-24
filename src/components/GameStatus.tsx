@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Eyebrow } from '@/components/Eyebrow';
+import { Notation } from '@/components/Notation';
 import { type Destination, PlaceLink } from '@/components/PlaceLink';
 import { ReviewGameButton } from '@/components/ReviewLinks';
 import { Tip } from '@/components/Tip';
@@ -137,7 +138,7 @@ export function StatusHeadline({
           </Tipped>
         </View>
         <Text role="bodySm" tone="secondary">
-          {detail}
+          <Notation>{detail}</Notation>
         </Text>
       </Stack>
       {short ? (
@@ -150,7 +151,7 @@ export function StatusHeadline({
                   {`${title} `}
                 </Text>
               ) : null}
-              {detail}
+              <Notation>{detail}</Notation>
             </Text>
           </Tipped>
         </NarrowOnly>

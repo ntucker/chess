@@ -8,6 +8,7 @@ import type { ReviewQuality } from '@/analysis/quality';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { PointingArea } from '@/components/lesson/PointingArea';
+import { Notation } from '@/components/Notation';
 import { qualityTip, TippedBadge } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import type { Uci } from '@/lesson/lesson';
@@ -181,17 +182,15 @@ function HiddenRow({ until }: { readonly until: NonNullable<Props['hidden']> }) 
  * that opens the lesson on that line.
  */
 function GuideLine({ san, note, practice }: { readonly san: string } & Omit<GuideAnswer, 'uci'>) {
-  const named = `${san} is the guide's move.`;
+  const named = (
+    <Text role="body">
+      <Notation>{`${san} is the guide's move.`}</Notation>
+    </Text>
+  );
   return (
     <View style={styles.guide}>
       <TippedBadge quality="book" size={BADGE_SIZE} tip={qualityTip('book')} />
-      {note ? (
-        <Tip tip={note}>
-          <Text role="body">{named}</Text>
-        </Tip>
-      ) : (
-        <Text role="body">{named}</Text>
-      )}
+      {note ? <Tip tip={note}>{named}</Tip> : named}
       <Link href={practice}>
         <Text role="body" tone="accent" style={styles.link}>
           Practice this line
@@ -231,7 +230,7 @@ function Row({ move, badge, spoken, pointed, onPoint }: RowProps) {
     >
       <View style={styles.move}>
         <Text role="body" style={styles.san}>
-          {san}
+          <Notation>{san}</Notation>
         </Text>
         {badge}
       </View>

@@ -3,14 +3,15 @@ import { a11yState, Inline, Pressable, Text, useTheme } from '@reactive/silk-nat
 import type { ComponentProps, ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Eyebrow, useLabelled } from '@/components/Eyebrow';
+import { useLabelled } from '@/components/Eyebrow';
 import { HeaderButton } from '@/components/HeaderButton';
-import { Scoresheet } from '@/components/Scoresheet';
+import { Notation } from '@/components/Notation';
+import { Scoresheet, ScoresheetTitle } from '@/components/Scoresheet';
 import { stepButton } from '@/components/Transport';
 import { useCloseKeys } from '@/components/useCloseKeys';
 import { shownMove } from '@/game/replay';
 import { useNarrowPart } from '@/theme/Narrow';
-import { fonts } from '@/theme/theme';
+import { FIGURINE_ADVANCE, fonts, MONO_ADVANCE } from '@/theme/theme';
 
 interface Props extends Omit<ComponentProps<typeof Scoresheet>, 'fill'> {
   /** Its close button, Escape, or Android's back. */
@@ -37,7 +38,7 @@ export function ScoresheetDrawer({ onClose, reviewButton, ...scoresheet }: Props
   return (
     <View role="region" aria-label="Scoresheet" {...part('scoresheet-drawer', labelled)}>
       <Inline align="center" justify="between" wrap="nowrap">
-        <Eyebrow>Scoresheet</Eyebrow>
+        <ScoresheetTitle />
         <Inline align="center" gap="1" wrap="nowrap">
           {reviewButton}
           <Jump label="Start" disabled={ply === 0} onPress={() => onGoto(0)} />
@@ -98,7 +99,7 @@ export function ScoresheetOpener({
       <ShownMove san={san} ply={ply} ink={ink} />
       <Ionicons
         name={open ? 'chevron-down' : 'chevron-up'}
-        size={12}
+        size={CHEVRON_SIZE}
         color={ink ?? color.textSecondary}
       />
     </Pressable>
@@ -122,7 +123,7 @@ export function ShownMove({
       numberOfLines={1}
       style={[styles.move, { color: ink ?? theme.semantic.color.textPrimary }]}
     >
-      {shownMove(san, ply)}
+      <Notation>{shownMove(san, ply)}</Notation>
     </Text>
   );
 }
@@ -162,19 +163,29 @@ function Jump({
   );
 }
 
+const MOVE_SIZE = 14;
+const OPENER_GAP = 4;
+const OPENER_PADDING = 6;
+const CHEVRON_SIZE = 12;
+
 const styles = StyleSheet.create({
   jump: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
   /*
-   * Wide enough for "12…Nxd5", so the stepper keeps its width from move to
-   * move, and no wider than the two jumps it replaces, so the name bar keeps its room.
+   * Wide enough for "12…Nxd5" with its piece as an icon (six mono characters
+   * and the widest piece), so the stepper keeps its width from move to move,
+   * and no wider than the two jumps it replaces, so the name bar keeps its room.
    */
   opener: {
-    width: 88,
+    width:
+      Math.ceil(MOVE_SIZE * (6 * MONO_ADVANCE + FIGURINE_ADVANCE)) +
+      OPENER_GAP +
+      CHEVRON_SIZE +
+      2 * OPENER_PADDING,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    paddingHorizontal: 6,
+    gap: OPENER_GAP,
+    paddingHorizontal: OPENER_PADDING,
   },
-  move: { fontFamily: fonts.mono, fontSize: 14 },
+  move: { fontFamily: fonts.mono, fontSize: MOVE_SIZE },
 });

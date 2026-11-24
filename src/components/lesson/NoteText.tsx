@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { Platform, StyleSheet } from 'react-native';
 
 import { MiniBoard } from '@/components/MiniBoard';
+import { Notation } from '@/components/Notation';
 import type { Color } from '@/game/replay';
 import type { Lesson } from '@/lesson/lesson';
 import { type Mention, noteParts } from '@/lesson/mentions';
@@ -60,7 +61,7 @@ function MentionTip({ mention, learner }: { readonly mention: Mention; readonly 
       >
         <Text role="body" style={[styles.notation, { color: accent.text }]}>
           {PAD}
-          {mention.text}
+          <Notation>{mention.text}</Notation>
           {PAD}
         </Text>
       </Tooltip.Trigger>

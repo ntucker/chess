@@ -19,6 +19,7 @@ import Svg, { Defs, Path, Pattern, Rect } from 'react-native-svg';
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
 import type { ReviewQuality } from '@/analysis/quality';
+import { Notation } from '@/components/Notation';
 import { QualityBadge } from '@/components/QualityBadge';
 import type { Analysis } from '@/evaluation/evaluation';
 import { type Color, opposite, shownMove } from '@/game/replay';
@@ -454,7 +455,7 @@ const BubbleName = memo(function BubbleName({
   return (
     <View style={styles.name}>
       <Text role="bodySm" numberOfLines={1}>
-        {name}
+        <Notation>{name}</Notation>
       </Text>
       {quality ? <QualityBadge quality={quality} size={14} /> : null}
     </View>

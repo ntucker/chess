@@ -4,12 +4,12 @@ import { type ReactNode, use, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
-import { Eyebrow, useLabelled, useSections } from '@/components/Eyebrow';
+import { useLabelled, useSections } from '@/components/Eyebrow';
 import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { OpponentPicker } from '@/components/OpponentPicker';
-import { Scoresheet } from '@/components/Scoresheet';
+import { Scoresheet, ScoresheetTitle } from '@/components/Scoresheet';
 import { ScoresheetDrawer, ScoresheetOpener } from '@/components/ScoresheetDrawer';
 import { Sheet } from '@/components/Sheet';
 import { SourceFootnote } from '@/components/SourceLink';
@@ -515,7 +515,7 @@ function LessonScreen({
             <Separator />
             <Stack style={labelled}>
               <Inline align="center" justify="between" wrap="nowrap">
-                <Eyebrow>Scoresheet</Eyebrow>
+                <ScoresheetTitle />
                 <ScoresheetReview href={review} disabled={reviewShut} />
               </Inline>
               <Scoresheet {...scoresheetProps} />

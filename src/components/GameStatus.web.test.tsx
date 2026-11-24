@@ -6,6 +6,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { NEW_VERSION, NewVersionError } from '@/files/newVersion';
+import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
 
 import { StatusHeadline } from './GameStatus';
@@ -22,7 +23,9 @@ function mount() {
     act(() =>
       root.render(
         <SilkProvider theme={themes.dark}>
-          <StatusHeadline eyebrow="Line" title="Your move." detail="Play here." {...props} />
+          <SettingsProvider>
+            <StatusHeadline eyebrow="Line" title="Your move." detail="Play here." {...props} />
+          </SettingsProvider>
         </SilkProvider>,
       ),
     );

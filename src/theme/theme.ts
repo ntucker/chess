@@ -44,10 +44,18 @@ export const fonts = {
   text: 'InstrumentSans_400Regular',
   /** Move numbers and notation. */
   mono: 'DMMono_400Regular',
+  /**
+   * The board's pieces as letters K, Q, R, B and N, drawn in a move's name
+   * by `Notation` (scripts/make-figurines.py). Only those five glyphs.
+   */
+  figurines: 'Figurines',
 } as const;
 
 /** `fonts.mono`'s advance as a share of its size: each of its glyphs is this wide. */
 export const MONO_ADVANCE = 0.6;
+
+/** The widest piece's advance in `fonts.figurines` (the queen), as a share of its size: scripts/make-figurines.py checks it. */
+export const FIGURINE_ADVANCE = 0.956;
 
 // Silk picks a font by family slot (sans, serif, mono) and a weight, but each
 // loaded file is its own family on Android, so a weight the file

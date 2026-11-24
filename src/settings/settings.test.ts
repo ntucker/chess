@@ -35,6 +35,7 @@ describe('settings', () => {
       showTraps: true,
       side: 'white',
       theme: 'dark',
+      notation: 'letters',
     } as const;
     expect(parseSettings(JSON.stringify(rated))).toEqual(rated);
   });

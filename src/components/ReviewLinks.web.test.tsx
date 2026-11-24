@@ -6,6 +6,7 @@ import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { reviewHref } from '@/review/address';
+import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
 
 import { ReviewGameButton, ScoresheetReview } from './ReviewLinks';
@@ -23,7 +24,13 @@ const HREF = reviewHref(['e2e4', 'c7c6'], 'black', 'caro-kann');
 function render(children: ReactNode, check: (host: HTMLElement) => void) {
   const host = document.createElement('div');
   const root = createRoot(host);
-  act(() => root.render(<SilkProvider theme={themes.dark}>{children}</SilkProvider>));
+  act(() =>
+    root.render(
+      <SilkProvider theme={themes.dark}>
+        <SettingsProvider>{children}</SettingsProvider>
+      </SilkProvider>,
+    ),
+  );
   check(host);
   act(() => root.unmount());
 }

@@ -31,7 +31,9 @@ function renderDrawer(ply: number) {
   act(() =>
     root.render(
       <SilkProvider theme={themes.dark}>
-        <ScoresheetDrawer plies={plies} marks={[]} ply={ply} onGoto={onGoto} onClose={onClose} />
+        <SettingsProvider>
+          <ScoresheetDrawer plies={plies} marks={[]} ply={ply} onGoto={onGoto} onClose={onClose} />
+        </SettingsProvider>
       </SilkProvider>,
     ),
   );
@@ -110,7 +112,9 @@ describe('ScoresheetOpener', () => {
     act(() =>
       root.render(
         <SilkProvider theme={themes.dark}>
-          <ScoresheetOpener {...props} />
+          <SettingsProvider>
+            <ScoresheetOpener {...props} />
+          </SettingsProvider>
         </SilkProvider>,
       ),
     );

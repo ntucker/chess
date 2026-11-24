@@ -9,6 +9,7 @@ import type { Note, PositionKey } from '@/lesson/lesson';
 import { SAMPLE, uciLine } from '@/lesson/lesson.fixture';
 import { lineKeys } from '@/lesson/select';
 import type { Playback } from '@/lesson/useLesson';
+import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
 
 import { noNotesText, NoteView } from './IdeaCard';
@@ -34,16 +35,18 @@ function renderNote(
   act(() =>
     root.render(
       <SilkProvider theme={themes.dark}>
-        <NoteView
-          lesson={SAMPLE}
-          learner="black"
-          playback={PLAYBACK}
-          pointable={false}
-          pointed={false}
-          onPoint={() => {}}
-          onLeave={() => {}}
-          {...props}
-        />
+        <SettingsProvider>
+          <NoteView
+            lesson={SAMPLE}
+            learner="black"
+            playback={PLAYBACK}
+            pointable={false}
+            pointed={false}
+            onPoint={() => {}}
+            onLeave={() => {}}
+            {...props}
+          />
+        </SettingsProvider>
       </SilkProvider>,
     ),
   );

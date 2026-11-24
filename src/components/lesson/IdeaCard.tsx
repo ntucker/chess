@@ -7,6 +7,7 @@ import type { EngineVerdict } from '@/analysis/quality';
 import type { Tone } from '@/board/drawing';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
+import { Notation } from '@/components/Notation';
 import { verdictText } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import { Transport } from '@/components/Transport';
@@ -80,7 +81,9 @@ export function IdeaCard({
         if (hovers(nativeEvent.pointerType)) onReach(timeStamp);
       }}
     >
-      <Eyebrow>{title}</Eyebrow>
+      <Eyebrow>
+        <Notation>{title}</Notation>
+      </Eyebrow>
       {notes.length ? (
         <View>
           {notes.map((shown) => (
@@ -100,7 +103,7 @@ export function IdeaCard({
         </View>
       ) : (
         <Text role="bodySm" tone="secondary">
-          {empty}
+          <Notation>{empty}</Notation>
         </Text>
       )}
     </Stack>
