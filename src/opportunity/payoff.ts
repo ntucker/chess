@@ -151,8 +151,9 @@ function erringMove(node: Node, context: Context): { uci: Uci; guided: boolean }
  * The punishing side's move at `node`, with the evaluation it leads to: the
  * guide's where it has one that gives back less than the mistake limit beside
  * Stockfish's best (so the tree stays the one source for the line), else
- * Stockfish's best; with the guide's move where it differs from Stockfish's best; `'pending'` while
- * the guide's move awaits its full search.
+ * Stockfish's best; with the guide's move where it differs from Stockfish's
+ * best; `'pending'` while the guide's move awaits its full search. Throws on
+ * an illegal guide move.
  */
 function punishingMove(
   node: Node,
@@ -163,8 +164,9 @@ function punishingMove(
   const guide = context.answers.guideMoves?.(node)?.[0];
   if (!guide || guide === best.uci) return best;
   const judged = punishingLoss(node, final, guide, context);
-  // Unjudged only if illegal, which the lesson checker rules out for every move.
-  if (judged === 'pending' || !judged) return judged ?? best;
+  if (judged === 'pending') return judged;
+  // As `select.ts` does: the lesson checker rules out an illegal guide move.
+  if (!judged) throw new Error(`Guide move ${guide} is illegal in ${node.key}`);
   return judged.loss < MISTAKE_LOSS
     ? { uci: guide, evaluation: judged.evaluation, guide }
     : { ...best, guide };

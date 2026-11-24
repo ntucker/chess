@@ -13,7 +13,7 @@ import type { Uci } from '@/lesson/lesson';
 import { acceptedReplies, byScore, type Find, findOpportunities } from './finder';
 import { gainIfKnown } from './gain';
 import { LIMITS, MIN_GAMES } from './limits';
-import { payoff } from './payoff';
+import { keepsGuide, payoff } from './payoff';
 import {
   type Answers,
   type MoveCounts,
@@ -327,6 +327,7 @@ describe('findOpportunities', () => {
       const [bg5] = find(answers, { payoffMoves: 1 }).finds;
       expect(bg5.payoff).toEqual(uci(`${BXD8} Kxd8`).slice(-2));
       expect(bg5.disagreements).toEqual([{ at: 1, guide: last(`${BXD8} Kxd8`) }]);
+      expect(keepsGuide(bg5.payoff, bg5.disagreements[0])).toBe(true);
     });
 
     it("ends at the guide's move's score, not Stockfish's best's", () => {
@@ -345,6 +346,15 @@ describe('findOpportunities', () => {
       const [bg5] = find(answers, { payoffMoves: 1 }).finds;
       expect(bg5.payoff).toEqual(uci(`${BXD8} Bxf2+`).slice(-2));
       expect(bg5.disagreements).toEqual([{ at: 1, guide: last(`${BXD8} Kxd8`) }]);
+      expect(keepsGuide(bg5.payoff, bg5.disagreements[0])).toBe(false);
+    });
+
+    it('throws on an illegal guide move', () => {
+      const answers: Answers = {
+        ...withGuide([['Bxf2+', 0.3]]),
+        guideMoves: (spot) => (spot.key === at(BXD8).key ? ['a1a8'] : known.guideMoves!(spot)),
+      };
+      expect(() => find(answers, { payoffMoves: 1 })).toThrow('Guide move a1a8 is illegal');
     });
   });
 
