@@ -17,11 +17,11 @@ import {
   forSide,
   isFinal,
   scoreFor,
+  sketched,
 } from '@/evaluation/evaluation';
 import type { Color } from '@/game/replay';
 import type { PositionKey, Uci } from '@/lesson/lesson';
 import { LikeliestFirst } from '@/lesson/likeliestFirst';
-import { sketched } from '@/review/order';
 
 import { gainIfKnown } from './gain';
 import { type Limits, LIMITS } from './limits';
@@ -29,6 +29,7 @@ import { payoff } from './payoff';
 import {
   type Answers,
   child,
+  punishingLoss,
   type Context,
   type Node,
   type Request,
@@ -268,22 +269,15 @@ function replyLosses(
   cue: Node,
   after: FinalAnalysis,
   shares: Readonly<Record<Uci, number>>,
-  { side, answers, limits, ask }: Context,
+  context: Context,
 ): Record<Uci, number> | undefined {
   const losses: Record<Uci, number> = {};
   let pending = false;
   for (const [uci, share] of Object.entries(shares)) {
-    if (share < limits.shareFloor) continue;
-    const listed = after.lines.some((line) => line.uci === uci);
-    const reply = listed ? undefined : child(cue, uci, 0);
-    const analysis = reply && answers.analysis(reply);
-    if (reply && !isFinal(analysis)) {
-      ask('full', reply);
-      pending = true;
-      continue;
-    }
-    const loss = moveLoss(after, analysis, uci, side)?.loss;
-    if (loss !== undefined) losses[uci] = Math.max(0, loss);
+    if (share < context.limits.shareFloor) continue;
+    const loss = punishingLoss(cue, after, uci, context);
+    if (loss === 'pending') pending = true;
+    else if (loss !== undefined) losses[uci] = Math.max(0, loss);
   }
   return pending ? undefined : losses;
 }

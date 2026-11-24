@@ -1,5 +1,5 @@
 /**
- * The queue of a best-first walk: lines by the share of games that play them.
+ * The queue of a best-first walk: whatever it walks, likeliest first.
  * The lesson's guide (`likeliestInto` in openings.ts) and the opportunity
  * finder walk with it.
  */
@@ -18,7 +18,7 @@ export interface Walked {
  * A binary heap of walked lines, the likeliest on top; of lines as likely,
  * the one pushed first. `share` reads how likely a line is.
  */
-export class LikeliestFirst<T = Walked> {
+export class LikeliestFirst<T> {
   private readonly heap: { readonly walked: T; readonly order: number }[] = [];
   private pushed = 0;
 

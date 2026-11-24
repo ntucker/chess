@@ -1,10 +1,14 @@
 import { describe, expect, it } from '@jest/globals';
 import type { Chess } from 'chessops/chess';
 
-import type { Analysis, Evaluation, FinalAnalysis } from '@/evaluation/evaluation';
+import {
+  type Analysis,
+  type Evaluation,
+  type FinalAnalysis,
+  SKETCH_DEPTH,
+} from '@/evaluation/evaluation';
 import { parsePosition, playLine, sanToUci } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
-import { SKETCH_DEPTH } from '@/review/order';
 
 import { acceptedReplies, byScore, type Find, findOpportunities } from './finder';
 import { gainIfKnown } from './gain';

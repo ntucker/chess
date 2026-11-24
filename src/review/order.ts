@@ -4,17 +4,10 @@
  * When an analysis arrives the answer changes by itself, and the page asks
  * for the new one; the engine stops a search nobody watches any more.
  */
-import { type Analysis, forSide, isFinal } from '@/evaluation/evaluation';
+import { type Analysis, forSide, isFinal, SKETCH_DEPTH, sketched } from '@/evaluation/evaluation';
 import type { Color } from '@/game/replay';
 
 import { judgedPosition, labelPositions, lostPosition, type ReviewMove } from './review';
-
-/**
- * How deep a sketch goes: the first whole depth of at least this (about 0.3 s
- * on a desktop). Sketches draw the graph and pick which positions to search
- * in full first; they never label a move.
- */
-export const SKETCH_DEPTH = 12;
 
 /**
  * A search past this depth that isn't final is a full one, kept on until
@@ -85,10 +78,6 @@ export function nextSearch({
     positions.find(unfinished)
   );
 }
-
-/** Whether `analysis` is at least a sketch. */
-export const sketched = (analysis: Analysis | undefined): analysis is Analysis =>
-  !!analysis && (analysis.final || analysis.depth >= SKETCH_DEPTH);
 
 /**
  * The plies of the learner's moves that drop at least `LEAST_DROP` by the

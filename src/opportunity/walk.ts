@@ -5,7 +5,8 @@
 import type { Chess } from 'chessops/chess';
 import { parseUci } from 'chessops/util';
 
-import type { Analysis } from '@/evaluation/evaluation';
+import { moveLoss } from '@/analysis/quality';
+import { type Analysis, type FinalAnalysis, isFinal } from '@/evaluation/evaluation';
 import { type Color, parsePosition, positionKey } from '@/game/replay';
 import type { PositionKey, Uci } from '@/lesson/lesson';
 
@@ -47,7 +48,7 @@ export interface Answers {
 
 /**
  * An answer the finder needs: a position's replies, a sketch (a search that
- * reached `SKETCH_DEPTH`) or a full search (a final analysis).
+ * reached `SKETCH_DEPTH`, `src/evaluation/evaluation.ts`) or a full search (a final analysis).
  */
 export interface Request {
   readonly kind: 'replies' | 'sketch' | 'full';
@@ -69,7 +70,33 @@ export interface Context {
   readonly ask: (kind: Request['kind'], spot: Spot) => void;
 }
 
-/** The node `uci` leads to from `node`, with `reach`; undefined if it isn't legal. */
+/**
+ * What the punishing side's `uci` at `node` gives away beside the best move
+ * of `final`, its final analysis (`moveLoss`): undefined where it can't be
+ * judged, `'pending'` while a move `final` doesn't list awaits its own full
+ * search.
+ */
+export function punishingLoss(
+  node: Node,
+  final: FinalAnalysis,
+  uci: Uci,
+  { side, answers, ask }: Context,
+): number | undefined | 'pending' {
+  const listed = final.lines.some((line) => line.uci === uci);
+  const next = listed ? undefined : child(node, uci, 0);
+  const analysis = next && answers.analysis(next);
+  if (next && !isFinal(analysis)) {
+    ask('full', next);
+    return 'pending';
+  }
+  return moveLoss(final, analysis, uci, side)?.loss;
+}
+
+/**
+ * The node `uci` leads to from `node`, with `reach`; undefined if it isn't
+ * legal. Not `playMove` (`replay.ts`), which also writes the move's SAN that
+ * the walk never reads.
+ */
 export function child(node: Node, uci: Uci, reach: number): Node | undefined {
   const move = parseUci(uci);
   if (!move || !node.pos.isLegal(move)) return undefined;
@@ -87,14 +114,11 @@ export function walkTo(start: string, line: readonly Uci[]): Node | undefined {
 }
 
 /**
- * Lichess's `counts` as replies: each move's games over `total`, the games
- * reaching the position, and thin when fewer than `minGames` do.
+ * Lichess's `counts` as replies: each move's games over the games reaching
+ * the position, and thin when fewer than `minGames` do.
  */
-export function repliesFrom(
-  counts: MoveCounts,
-  minGames: number,
-  total = Object.values(counts).reduce((sum, games) => sum + games, 0),
-): Replies {
+export function repliesFrom(counts: MoveCounts, minGames: number): Replies {
+  const total = Object.values(counts).reduce((sum, games) => sum + games, 0);
   return {
     shares: Object.fromEntries(
       Object.entries(counts).map(([uci, games]) => [uci, total && games / total]),

@@ -1,12 +1,11 @@
 /**
  * Act III of an opportunity: play on after the cue until the win is obvious.
  */
-import { moveLoss } from '@/analysis/quality';
 import { type FinalAnalysis, forSide, isFinal, scoreFor } from '@/evaluation/evaluation';
 import { balance } from '@/game/material';
 import type { Uci } from '@/lesson/lesson';
 
-import { child, type Context, type Node, type Replies } from './walk';
+import { child, type Context, type Node, punishingLoss, type Replies } from './walk';
 
 /** Act III: its moves, and the punishing side's expected score (0 to 1) where it ends. */
 export interface Payoff {
@@ -42,7 +41,7 @@ export function payoff(
   const unpunished = forSide(before.lines[0].evaluation.score, side);
   let end = scoreFor(cue.lines[0].evaluation, side);
   let node = start;
-  for (; !node.pos.isEnd();) {
+  while (!node.pos.isEnd()) {
     const analysis = answers.analysis(node);
     const full = () => (isFinal(analysis) ? analysis : void ask('full', node));
     let uci: Uci | undefined;
@@ -50,6 +49,8 @@ export function payoff(
       const final = full();
       if (!final) return undefined;
       const [best, second] = final.lines;
+      // As the review's `winning` (`src/review/refine.ts`) reads Stockfish's
+      // second line, at the finder's own `winScore`.
       const winning = (line: typeof best | undefined) =>
         !!line && scoreFor(line.evaluation, side) >= limits.winScore;
       end = scoreFor(best.evaluation, side);
@@ -97,20 +98,14 @@ export function payoff(
 function punishingMove(
   node: Node,
   final: FinalAnalysis,
-  { side, answers, limits, ask }: Context,
+  context: Context,
 ): Uci | undefined | 'pending' {
   const best = final.lines[0].uci;
-  const guide = answers.guideMoves?.(node)?.[0];
+  const guide = context.answers.guideMoves?.(node)?.[0];
   if (!guide || guide === best) return best;
-  const listed = final.lines.some((line) => line.uci === guide);
-  const after = listed ? undefined : child(node, guide, 0);
-  const analysis = after && answers.analysis(after);
-  if (after && !isFinal(analysis)) {
-    ask('full', after);
-    return 'pending';
-  }
-  const loss = moveLoss(final, analysis, guide, side)?.loss;
-  return loss !== undefined && loss < limits.costFloor ? guide : best;
+  const loss = punishingLoss(node, final, guide, context);
+  if (loss === 'pending') return loss;
+  return loss !== undefined && loss < context.limits.costFloor ? guide : best;
 }
 
 /** The most played move, unless the position is thin. */
