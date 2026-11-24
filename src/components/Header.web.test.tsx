@@ -32,9 +32,11 @@ function withHeader<T>(props: Parameters<typeof Header>[0], read: (host: HTMLEle
       </SilkProvider>,
     ),
   );
-  const result = read(host);
-  act(() => root.unmount());
-  return result;
+  try {
+    return read(host);
+  } finally {
+    act(() => root.unmount());
+  }
 }
 
 /** The narrow part around `element`, if any. */

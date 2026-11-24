@@ -9,8 +9,8 @@ import {
 } from 'react-native';
 
 import { hoversControl } from '@/board/pointer';
-import { describeOpponent } from '@/opponent/opponent';
 import { reload } from '@/files/newVersion';
+import { describeOpponent } from '@/opponent/opponent';
 import { type DownloadFailure, useFullStockfishDownload } from '@/resources/download';
 import { useSettings } from '@/settings/SettingsProvider';
 import { OUTDATED_NEEDS } from '@/stockfish/fullFiles';

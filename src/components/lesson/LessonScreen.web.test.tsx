@@ -26,6 +26,7 @@ jest.mock('@/components/useBackToReview', () => ({ useBackToReview: () => undefi
 let mockBoardMounts = 0;
 let mockStepper: { onToggle: () => void } | undefined;
 let mockOpenSettings: (() => void) | undefined;
+let mockFlickUp: (() => void) | undefined;
 jest.mock('@/components/Stage', () => {
   const { useEffect } = jest.requireActual<typeof import('react')>('react');
   return {
@@ -46,7 +47,14 @@ jest.mock('@/components/Stage', () => {
         </>
       );
     },
-    BoardColumn: ({ stepperMiddle }: { stepperMiddle: ReactNode }) => {
+    BoardColumn: ({
+      stepperMiddle,
+      onFlickUp,
+    }: {
+      stepperMiddle: ReactNode;
+      onFlickUp?: () => void;
+    }) => {
+      mockFlickUp = onFlickUp;
       useEffect(() => {
         mockBoardMounts += 1;
       }, []);
@@ -104,6 +112,7 @@ afterEach(() => {
   jest.restoreAllMocks();
   screen.phone = false;
   mockBoardMounts = 0;
+  mockFlickUp = undefined;
 });
 
 const open = (phone: boolean) => {
@@ -140,6 +149,15 @@ describe('LessonScreen', () => {
     await resize(true);
     expect(shown()).toBe('phone scoresheet settings');
     expect(mockBoardMounts).toBe(1);
+  });
+
+  it('opens the settings with a flick up from the bar under the board, on a phone only', async () => {
+    await open(false);
+    expect(mockFlickUp).toBeUndefined();
+    await resize(true);
+    expect(shown()).toBe('phone');
+    act(() => mockFlickUp!());
+    expect(shown()).toBe('phone settings');
   });
 });
 

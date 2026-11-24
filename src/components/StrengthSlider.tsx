@@ -89,6 +89,7 @@ interface StrengthProps {
  * native only the heading is, since a tap on the slider moves its thumb.
  */
 function StrengthSlider({ value, onChoose }: StrengthProps) {
+  // The step it opened on, from its mount: the popover and the sheet unmount it as they close.
   const [kept] = useState(value);
   const steps = stepsFor(value, kept);
   // The stop the thumb is sliding over, until it is let go.

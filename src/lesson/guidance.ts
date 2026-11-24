@@ -50,7 +50,7 @@
  * - After a mistake or blunder of the learner's side, the reply that punishes
  *   it (`refutation` in src/analysis/quality.ts) is marked while nothing is
  *   previewed, pointed at, picked up or playing back, in every mode and with
- *   "moves on the board" on or off, since it judges the move just played.
+ *   "Arrows" on or off, since it judges the move just played.
  *   Never on the learner's turn: there it would be their own next move,
  *   drawn in the color of what goes wrong. Where the best move or a candidate
  *   is the same move, the refutation's arrow is drawn instead of theirs. Its
@@ -163,7 +163,7 @@ export interface Guidance {
    */
   readonly pointed?: Note;
   /**
-   * Stockfish's best move to mark, with "moves on the board" on, while nothing
+   * Stockfish's best move to mark, with "Arrows" on, while nothing
    * is previewed, pointed at or playing back, when `tagsBest` says so.
    * Past the guide's moves it is the first of `top`: both come from one analysis.
    */

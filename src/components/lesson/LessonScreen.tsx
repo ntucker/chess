@@ -158,7 +158,7 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
             detailControl: <OpponentPicker />,
             children: <AutoPlay />,
           }}
-          // A phone's settings open from the bar under the board too, so they come back the way the sheet went.
+          // The sheet closes with a drag down, so a flick up from the bar under the board opens it too.
           onFlickUp={phone ? openSettings : undefined}
           stepperMiddle={
             <ScoresheetOpener
