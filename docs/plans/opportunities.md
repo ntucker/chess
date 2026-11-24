@@ -25,17 +25,19 @@ plan doesn't depend on those links.
   other side. Which directions the app teaches is a separate product choice: it does not train
   learners to avoid their own likely mistakes.
 - Traps and opportunities are one shape. "Show traps" stays a pure display setting: it only filters
-  in `src/lesson/guidance.ts` and never shapes, drops or gates loaded data.
+  in `src/lesson/guidance.ts` and never shapes, drops or gates loaded data. Off, it hides only the
+  traps the learner's side can fall into, so opportunities stay shown.
 - The finder opens at any position (in a lesson, past a guide, in free play) and finds can be saved
   on the device. Publishing finds to other users is later and not in this plan.
-- In the app, "how often" comes from the learner's connected lichess account, else Maia on the
-  device. Each number says which source it came from.
-- In Practice, each opportunity is a line to pass, and the opponent steers into it until it is
-  passed. Inside one, the opponent also walks every reply played 10% or more. A dice mode (real
+- In the app, "how often" comes from the learner's connected lichess account, else (no account, or
+  too few games) Maia on the device. Each number says which source it came from.
+- In Practice, each opportunity played often enough (see "Line to pass" below) is a line to pass,
+  and the opponent steers into it until it is passed. Inside one, the opponent also walks every reply played 10% or more. A dice mode (real
   rates) and guides extended to every common reply are future ideas, not started.
 - Names: "Opportunities" for the list, "Your cue." for the moment.
 - Phones are first-class. The phone screens build on the phone redesign's two panes and pager.
-  Pieces E, G and K are checked on Android (touch, the haptic tick, the pager, on-device search).
+  Pieces E, G, I and K must be checked on Android (touch, the haptic tick, the pager, the sign-in
+  redirect, on-device search).
 - Saved progress is not migrated: new lines can reopen rows a learner already passed. Release notes
   say so.
 
@@ -51,6 +53,8 @@ plan doesn't depend on those links.
   | Games reaching a position, per band      | New: `LessonPosition.games`                            |
   | This move is the mistake                 | New: `LessonMove.mistake`, a marker on the erring move |
   | How much the mistake gives away (import) | `cost` on that marker, used only to rank the list      |
+  | The mistake's title in the list          | `name` on that marker, written by the explain step     |
+  | The guide's verdict on a migrated trap   | `verdict` on that marker (today `Trap.verdict`)        |
 
 - Derived, one pure function each in `src/opportunity/`: a move's share (its games over the
   position's), reach (shares of the erring side's moves multiplied along the path), found rate (the
@@ -71,8 +75,7 @@ plan doesn't depend on those links.
 
 ## Rules
 
-The numbers here are starting values. Piece B's report tunes them, and Nathaniel sets the floors at
-its gate; the reach floor (1%) and the ply cap (24 plies) are named constants in piece A.
+The numbers here are starting values, tuned at piece B's gate.
 
 - **Score** of an opportunity for a band: reach × share × cost. Ties: the lower found rate ranks
   first, since teaching pays most where players miss the punishment.
@@ -80,7 +83,7 @@ its gate; the reach floor (1%) and the ply cap (24 plies) are named constants in
   `src/analysis/quality.ts`. The floor is that module's mistake limit (0.10), so every
   opportunity's first move labels as a mistake or a blunder. A stored cost only ranks; screens show
   the live verdict.
-- **Share floor**: a reply played under 5% of the band's games is not screened. **Minimum games**:
+- **Share floor**: a reply played in under 5% of the games at its position (in the band) is not screened. **Minimum games**:
   a position fewer than 100 games reach (in the band) is too thin to judge.
 - **Line to pass**: only at 10% over all bands (`COUNTED_SHARE` in `src/lesson/cleanRun.ts`). Finds
   between 5% and 10% show in the list and the finder but are never required. A marked move without
@@ -115,7 +118,8 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
   under the cost floor continue the walk. At the punishing side's turn it follows the given moves,
   else Stockfish's best. It stops below a reach floor, past a ply cap, or at a thin position. One
   find per cue position; a position reached again adds nothing.
-- Floors and caps are named constants, which piece B tunes.
+- The Rules' numbers, a reach floor (1%) and a ply cap (24 plies past where the finder opens) are
+  named constants in one file.
 
 ### Piece B: Report script
 
@@ -140,9 +144,8 @@ Gate: Nathaniel reads the top 20 finds and sets the floors before any lesson fil
   through a marked move of the learner's side are outside the book, so a clean run never reaches
   them and the checker needs no book move there.
 - The app reads the new shape, and the trap card, its playback and landing (`LandedTrap`) behave as
-  before. One rule changes, as decided: "show traps" off now hides a marked move's notes and
-  playback only when the learner is the side that falls in (today it hides every trap). It still
-  only filters in `guidance.ts`.
+  before, except that "show traps" off hides a marked move's notes and playback only when the
+  learner is the side that falls in (see Decisions; before, it hid every trap).
 - Checker rules for marked moves (legal; `cost` at or over the floor when present). README for
   `assets/lessons/` and `AGENTS.md` updated.
 - No new finds: shipped lessons change only by the migration, rebuilt by the importer from
@@ -216,7 +219,8 @@ rating; if far, Maia finds are labeled estimates and rank below lichess ones.
 
 The core run from any position, derived each render from the store (engine answers through
 `useAnalysis`, replies through I or J), with finds joining the list page as they are confirmed and
-each number's source labeled. Measures sketch time on a phone first. After A, G, I and J.
+each number's source labeled. Measures first how long the first find takes on a phone, with
+lichess's pacing (one request every 2.5 s) and with Maia, and walks the nearest positions first. After A, G, I and J.
 
 ### Piece L: Saved finds
 
