@@ -60,8 +60,6 @@ function Chip({ captures, color, even }: Props & { readonly even: boolean }) {
   const { pieces, lead } = captures.material[color];
   // A peek by a held press or a resting pointer, each let go by its own end, or a pin.
   const [card, setCard] = useState<Peek | 'pin'>();
-  // How many times a pin has taken over from a peek: each opens the card anew.
-  const [pinnedPeeks, setPinnedPeeks] = useState(0);
   const anchor = useRef<ComponentRef<typeof View>>(null);
   // A hold takes over from a hover, so the pointer leaving mid-hold doesn't end it.
   const peek = (by: Peek) => setCard((was) => (was === 'pin' || was === 'hold' ? was : by));
@@ -75,10 +73,7 @@ function Chip({ captures, color, even }: Props & { readonly even: boolean }) {
         accessibilityHint="Shows the pieces each side has taken"
         aria-expanded={card !== undefined}
         hitSlop={6}
-        onPress={() => {
-          if (card === 'hover' || card === 'hold') setPinnedPeeks((n) => n + 1);
-          setCard((was) => (was === 'pin' ? undefined : 'pin'));
-        }}
+        onPress={() => setCard((was) => (was === 'pin' ? undefined : 'pin'))}
         onLongPress={() => {
           tickHold();
           peek('hold');
@@ -113,9 +108,8 @@ function Chip({ captures, color, even }: Props & { readonly even: boolean }) {
         anchor={anchor}
       >
         <Popover.Content
-          // Opens anew when a press pins a peek, so focus moves in as on any pin;
-          // closing keeps the key, so the card animates out.
-          key={pinnedPeeks}
+          // Opens anew when a press pins a peek, so focus moves in as on any pin.
+          key={card === 'pin' ? 'pin' : 'peek'}
           role="dialog"
           aria-label="Pieces taken"
           align="start"

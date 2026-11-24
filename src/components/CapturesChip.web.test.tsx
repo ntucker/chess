@@ -1,6 +1,6 @@
 // Renders Silk, which ships ES modules: the web project's transformIgnorePatterns
 // (package.json) lets @reactive through Babel for it.
-import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { SilkProvider } from '@reactive/silk-native';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -110,6 +110,29 @@ describe('CapturesChip', () => {
       chip()!.dispatchEvent(new MouseEvent('mouseleave'));
     });
     expect(card()).not.toBeNull();
+  });
+
+  it('keeps a held peek open while the mouse leaves, until let go', () => {
+    jest.useFakeTimers();
+    show(PAWN_UP, 'white');
+    act(() => {
+      chip()!.dispatchEvent(new MouseEvent('mouseenter'));
+    });
+    act(() => {
+      chip()!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    });
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    act(() => {
+      chip()!.dispatchEvent(new MouseEvent('mouseleave'));
+    });
+    expect(card()).not.toBeNull();
+    act(() => {
+      chip()!.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    });
+    expect(card()).toBeNull();
+    jest.useRealTimers();
   });
 });
 
