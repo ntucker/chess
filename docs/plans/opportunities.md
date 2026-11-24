@@ -206,14 +206,15 @@ before any lesson file changes. The report prints the limits it ran with.
 In Explore, after the erring side plays a marked move into a cue, `guidance.ts` hides the
 candidates, Stockfish's best and verdicts until the learner tries (Practice's existing "hide every
 hint" branch); a `screen.ts` cue state holds the tries with Retry, Show the move and Skip, judged by
-`labelMove` alone (not `src/review/retry.ts`, which is tied to a finished game); Act III plays back
-through the lesson opponent; a haptic tick marks the cue in Explore. Wide layout, and the phone
-layout on the redesign's two panes: three act rows on the left, one line and three icon buttons on
-the right. Waits on the phone redesign's panes. Starts with a design review of whether the cue is a
-third mode-like state in `screen.ts`, and records its outcome here before building. The starting
-proposal: a try is a board preview until it passes, then a move through `useGame` (the screen
-reducer does not own the game); Act III reuses peek's playback, which does not move the game; the
-three acts replace the trap card for a marked line, so landing stays the one trigger.
+`labelMove` alone (a booked accepted reply labels `book`, which passes) (not `src/review/retry.ts`,
+which is tied to a finished game); Act III plays back through the lesson opponent; a haptic tick
+marks the cue in Explore. Wide layout, and the phone layout on the redesign's two panes: three act
+rows on the left, one line and three icon buttons on the right. Waits on the phone redesign's panes.
+Starts with a design review of whether the cue is a third mode-like state in `screen.ts`, and
+records its outcome here before building. The starting proposal: a try is a board preview until it
+passes, then a move through `useGame` (the screen reducer does not own the game); Act III reuses
+peek's playback, which does not move the game; the three acts replace the trap card for a marked
+line, so landing stays the one trigger.
 
 ### Piece F: Practice and marks
 
@@ -280,20 +281,24 @@ lessons. `/privacy` and the Play listing's Data safety answers updated.
 
 Reply shares from Maia's policy scores for the legal moves (the scores themselves are not shares). J
 extracts the legal-move walk from `bestMove` in `src/maia/maia.ts` into a shared helper that yields
-each legal move with its policy slot, rebuilds `bestMove` on it, and exports the private `softmax`
-from `src/maia/network.ts` to apply to those slots' scores only. The shares form a host source
-labeled `maia` for a whole run. Checks first how close they come to lichess's at the same rating.
-Maia finds are labeled estimates and listed after lichess ones, never ranked together.
+each legal move (the chessops move) with its policy slot, rebuilds `bestMove` on it (still returning
+that move's UCI, so a castle stays the king taking its rook there), and exports the private
+`softmax` from `src/maia/network.ts` to apply to those slots' scores only. Each share is keyed by
+`lineMove` of the move (`src/game/replay.ts`), the name lesson lines and the game record, so a
+castle's share matches the line. The shares form a host source labeled `maia` for a whole run.
+Checks first how close they come to lichess's at the same rating. Maia finds are labeled estimates
+and listed after lichess ones, never ranked together.
 
 ### Piece K: Finder in the app
 
-The core run from any position, derived from the store and memoized on the answers it reads (engine
-answers through `useAnalysis`, replies through I or J), with finds joining the list page as they are
-confirmed and each number's source labeled. The finder's searches use the existing Stockfish watch
-and queue behind whatever the board is watching: they never become the newest request (the engine
-searches the newest position first) while the board shows a position, or `decide` would stop the
-bar's and the lesson's searches. Measures first how long the first find takes on a phone, with
-lichess's pacing (one request every 2.5 s) and with Maia. After A, G, I and J.
+The core run from any position, derived from the store and memoized with the answers it reads as its
+only inputs (no queue of its own) (engine answers through `useAnalysis`, replies through I or J),
+with finds joining the list page as they are confirmed and each number's source labeled. The
+finder's searches use the existing Stockfish watch and queue behind whatever the board is watching:
+they never become the newest request (the engine searches the newest position first) while the board
+shows a position, or `decide` would stop the bar's and the lesson's searches. Measures first how
+long the first find takes on a phone, with lichess's pacing (one request every 2.5 s) and with Maia.
+After A, G, I and J.
 
 ### Piece L: Saved finds
 
