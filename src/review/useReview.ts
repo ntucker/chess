@@ -116,7 +116,7 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
     ? [...base, moment.shownMove]
     : lines[moment.board === 'retry' ? ply - 1 : ply];
   // The positions along it: the game's, or at a moment its retry's.
-  const shownPlies = moment.shownMove ? replay(shownLine) : plies;
+  const shownPlies = moment.shownMove ? replay(shownLine) : plies.slice(0, shownLine.length + 1);
 
   // A try waiting for its search goes first: the learner is waiting for it.
   const next = nextSearch({ moves: judged, book, analyses, learner, dwelt, failed });
@@ -139,9 +139,9 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
   return {
     plies,
     /** The position the board shows (`shownLine`), with what the board needs (`analyze`). */
-    current: analyze(shownPlies[shownLine.length]),
+    current: analyze(shownPlies.at(-1)!),
     /** What each side is up and has taken by the position the board shows (`captures`). */
-    captures: captures(shownPlies, shownLine.length),
+    captures: captures(shownPlies, shownPlies.length - 1),
     /** The moves to the position the board shows: the game's to `ply`, or at a moment its retry's. */
     shownLine,
     ply,

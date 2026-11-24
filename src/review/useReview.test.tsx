@@ -51,12 +51,15 @@ const sketch = (plies: number) =>
     controllers[0].set(PositionAnalysis, args, { ...args, ...partial(12, ['a2a3', 0.5]) });
   });
 
-/** Stores the final analysis of the position after the first `plies` moves. */
-const final = (plies: number, ...lines: Parameters<typeof listing>) =>
+/** Stores the final analysis of the position after the first `plies` moves of `moves`. */
+const finalOf = (moves: readonly string[], plies: number, ...lines: Parameters<typeof listing>) =>
   act(async () => {
-    const args = { engine: 'stockfish', moves: MOVES.slice(0, plies).join(' ') } as const;
+    const args = { engine: 'stockfish', moves: moves.slice(0, plies).join(' ') } as const;
     controllers[0].set(PositionAnalysis, args, { ...args, ...listing(...lines) });
   });
+/** `finalOf` the review's usual game. */
+const final = (plies: number, ...lines: Parameters<typeof listing>) =>
+  finalOf(MOVES, plies, ...lines);
 
 beforeEach(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -143,5 +146,21 @@ describe('useReview', () => {
     expect(mockSearched.at(-1)).toBe('e2e4 e7e5 g1f3 a7a6');
     expect(reviews.at(-1)!.current.move?.san).toBe('a6');
     expect(reviews.at(-1)!.shownLine).toEqual(['e2e4', 'e7e5', 'g1f3', 'a7a6']);
+  });
+
+  it("shows the captures of the board's position on a retry, not the game's", async () => {
+    // 1. e4 d5 2. exd5 Qxd5: a pawn each in the game.
+    const traded = ['e2e4', 'd7d5', 'e4d5', 'd8d5'];
+    await render(true, traded);
+    expect(reviews.at(-1)!.captures.material.white.lead).toBe(0);
+    // 2...Qxd5 drops White's expected score from 0.45 to 0.7 for Black: a blunder.
+    await finalOf(traded, 3, ['g8f6', 0.45], ['c7c6', 0.5]);
+    await finalOf(traded, 4, ['b1c3', 0.7]);
+    await act(async () => reviews.at(-1)!.goto(4));
+    await act(async () => reviews.at(-1)!.retry());
+    // Back before 2...Qxd5: White is a pawn up, and only White has taken.
+    const { captures } = reviews.at(-1)!;
+    expect(captures.material.white).toEqual({ pieces: ['pawn'], lead: 1 });
+    expect(captures.taken).toEqual({ white: ['pawn'], black: [] });
   });
 });
