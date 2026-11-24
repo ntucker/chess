@@ -115,23 +115,25 @@ plan doesn't depend on those links.
 Minimum games, the share floor and `keepScore` are starting values, tuned at piece B's gate. The
 cost floor is the app's mistake limit and is not a gate setting.
 
-- **Score** of an opportunity for a band: reach × share × gain if known. Ties break by reach, then
-  by the line, so the order is stable. Found rate is still shown, derived from shares, but no longer
-  breaks ties: the gain already counts who misses the punishment.
+- **Score** of an opportunity for a band: the reach of the mistake's position × the mistake's share
+  there × gain if known. Ties break by reach, then by the line, so the order is stable. Found rate
+  is still shown, derived from shares, but no longer breaks ties: the gain already counts who misses
+  the punishment.
 - **Gain if known**: at the cue, each reply the band plays over the share floor, weighted by its
-  share, times what it gives away beside the best reply (`judgement`'s signed loss, as for cost),
-  over the shares of the replies measured. It is what a player at the cue scores more by knowing
-  the punishment than by playing as the band does: a recapture everyone finds gains nothing
-  (6.Bxd5 Qxd5), a cue whose natural reply is wrong gains most (5.Nxf7 Kxf7). Replies under the
-  share floor are left out and the rest renormalised. Where the cue is thin, or the measured
-  replies cover under half its games, the gain is an estimate and the report marks it. Each
-  measured reply the cue's final analysis doesn't list takes one full search (about 60 for
-  Stafford). Deriving the gain from stored moves instead, by writing each wrong cue reply as a
-  marked move, is rejected for now: it would put the learner's wrong replies in the guide tree and
-  change Practice's lists.
+  share, times what it gives away beside the best reply (`moveLoss` in `quality.ts`, the signed loss
+  `judgement` labels by, as for cost, floored at 0 so a reply a search rates above the first line
+  gives nothing), over the shares of the replies measured; where none is measured the gain is 0. It
+  is what a player at the cue scores more by knowing the punishment than by playing as the band
+  does: a recapture everyone finds gains nothing (6.Bxd5 Qxd5), a cue whose natural reply is wrong
+  gains most (5.Nxf7 Kxf7). Replies under the share floor are left out and the rest renormalised.
+  Where the cue is thin, or the measured replies cover under half its games, the gain is an estimate
+  and the report marks it. Each measured reply the cue's final analysis doesn't list takes one full
+  search (about 60 for Stafford). Deriving the gain from stored moves instead, by writing each wrong
+  cue reply as a marked move, is rejected for now: it would put the learner's wrong replies in the
+  guide tree and change Practice's lists.
 - **Clearly better**: a find is kept only where the learner's expected score at Act III's end is at
   least `keepScore` (0.6, a `limits.ts` gate setting). Act III follows the band's likely replies, so
-  a practical trap survives where best defence would hold (6.Bc4 Ng4 is 58 against best defence,
+  a practical trap survives where best defence would hold (6.Bc4 Ng4 is 0.58 against best defence,
   yet the replies 1400s play walk into mate). The report marks each kept find "holds" (the cue's
   best reply alone reaches `keepScore` against best defence) or "practical" (only the band's likely
   replies get there), and lists each dropped find with its Act III end.
@@ -157,11 +159,11 @@ cost floor is the app's mistake limit and is not a gate setting.
   steering, as they are now; without it each would become a required line. Once the importer writes
   its counts, the 10% rule applies to it like any other move.
 - **The cue's accepted replies**: the punishing side's moves in the cue position's final analysis
-  that label best or good beside its first line and keep at least the cost floor of the gain
-  (`acceptedReplies`). The punishing side's moves (its accepted replies and its Act III moves) are
-  book moves where the punishing side is `Lesson.side`, else ordinary moves (a migrated trap that
-  `Lesson.side` falls into): only `Lesson.side`, the side the learner plays, has book moves
-  (`lesson.ts`, `check.ts`).
+  that label best or good beside its first line and still win at least the cost floor over the
+  punishing side's score before the mistake (`acceptedReplies`). The punishing side's moves (its
+  accepted replies and its Act III moves) are book moves where the punishing side is `Lesson.side`,
+  else ordinary moves (a migrated trap that `Lesson.side` falls into): only `Lesson.side`, the side
+  the learner plays, has book moves (`lesson.ts`, `check.ts`).
 - **The erring side's Act III moves** stay ordinary moves. Where the guide already has moves at one
   of its positions, Act III follows the guide's most played move there (else its first, where no
   move has counts) and adds nothing, so the tree stays the one source for that line. Only where the
@@ -174,15 +176,15 @@ cost floor is the app's mistake limit and is not a gate setting.
   force the payoff. These guide moves are every move the guide has at the erring side's position,
   book or not.
 - **The punishing side's Act III moves** also prefer the guide, by a different test: where the guide
-  has a move the punishing side plays there (its book moves, by the accepted-replies rule above),
-  Act III follows the guide's most played one (else its first, where no move has counts) as long as
-  that move gives back less than `MISTAKE_LOSS` beside Stockfish's best in the same position, so the
-  tree stays the one source for the line; otherwise, or where the guide has none, it plays
-  Stockfish's best, which the importer writes into the tree as a book move beside the guide's (so
-  the tree stays the one source there too). Piece B's report counts the positions where the two
-  differ and how often Act III kept the guide's move, and lists each override, as the lesson's D1
-  or D3 pull request does: the guide's own book move costs a mistake's worth there, so a person
-  looks at it before merge.
+  has a move the punishing side plays there (a book move where it is `Lesson.side`, any guide move
+  otherwise, as the hosts' `inCleanRun` filter gives), Act III follows the guide's most played one
+  (else its first, where no move has counts) as long as that move gives back less than
+  `MISTAKE_LOSS` beside Stockfish's best in the same position, so the tree stays the one source for
+  the line; otherwise, or where the guide has none, it plays Stockfish's best, which the importer
+  writes into the tree as a book move beside the guide's (so the tree stays the one source there
+  too). Piece B's report counts the positions where the two differ and how often Act III kept the
+  guide's move, and lists each override, as the lesson's D1 or D3 pull request does: the guide's own
+  book move costs a mistake's worth there, so a person looks at it before merge.
 - **Act III** follows those moves for both sides, and ends at mate, when the punishing side is three
   points of material up (`balance` in `src/game/material.ts`) and winning (the punishing side's
   expected score of at least 0.8, by `scoreFor` in `src/evaluation/evaluation.ts`), when its
@@ -193,7 +195,8 @@ cost floor is the app's mistake limit and is not a gate setting.
   clearly better. The 0.8 and the three points are `limits.ts` constants tuned at piece B's gate.
 - **Sketch and full**: a sketch is a search that reached at least `SKETCH_DEPTH`
   (`src/review/order.ts`); full is the app's search (`APP_SEARCH`). Sketches screen replies; only
-  full searches confirm a find or set a stored cost. Analyses stay keyed as the store keys them.
+  full searches confirm a find or set a stored cost or gain; the live list's gain may rest on
+  sketches until full results arrive. Analyses stay keyed as the store keys them.
 
 ## Pieces
 
@@ -223,11 +226,12 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
   stops below a reach floor, past a ply cap, or at a thin position; Act III continues past a thin
   position (Rules). One find per cue position; a position reached again adds nothing.
 - Its own floors and caps are named constants in `src/opportunity/limits.ts`, tuned at piece B's
-  gate: the share floor (starting as `RARE_SHARE`) and minimum games from Rules, the Act III caps, a
-  reach floor (1%) and a ply cap (24 plies past where the finder opens).
+  gate: the share floor (starting as `RARE_SHARE`), minimum games and `keepScore` from Rules, the
+  Act III caps, a reach floor (1%) and a ply cap (24 plies past where the finder opens).
 - The cost floor has no value of its own: `limits.ts` reads it from `quality.ts`, where piece A
-  exports `MISTAKE_LOSS` and builds `LEAST_LOSS`'s mistake entry from it, so 0.10 lives in one
-  place. The gate does not change it, since that would change the app's mistake label too.
+  exports `MISTAKE_LOSS` and `moveLoss` (the signed loss `judgement` labels by) and builds
+  `LEAST_LOSS`'s mistake entry from it, so 0.10 lives in one place. The gate does not change it,
+  since that would change the app's mistake label too.
 
 ### Piece B: Report script
 
@@ -248,10 +252,10 @@ ran with.
 
 - Format: `LessonPosition.games` (games reaching the position, per band of
   `Lesson.popularity.ratingBands`; absent means not measured) and `LessonMove.mistake` (`{ cost?,
-  gain?, name?, verdict? }`: cost and gain (one per band of `Lesson.popularity.ratingBands`) as
-  above, absent only on migrated guide traps until the importer step measures them (piece D1 for
-  Stafford, D3 for the rest); `name` a short title for the list; `verdict`
-  the `Trap` verdict it replaces). All optional, so the format number stays 3.
+  gain?, name?, verdict? }`: cost (one value) and gain (one per band of
+  `Lesson.popularity.ratingBands`) as above, absent only on migrated guide traps until the importer
+  step measures them (piece D1 for Stafford, D3 for the rest); `name` a short title for the list;
+  `verdict` the `Trap` verdict it replaces). All optional, so the format number stays 3.
 - The `Trap` idea goes. Each existing trap idea (254: 172 in position notes, 82 in move notes)
   becomes guide-tree moves with the marker on its first move. A note whose only drawn idea was the
   trap moves to the marked move; a note with other ideas keeps them and its text where it was. A
@@ -279,15 +283,15 @@ candidates, Stockfish's best and verdicts until the learner tries (Practice's ex
 hint" branch); a `screen.ts` cue state holds the tries with Retry, Show the move and Skip, judged by
 `labelMove`, not `src/review/retry.ts` (tied to a finished game). A booked reply passes; any other
 passes only where it meets the Rules' accepted-reply test (piece A's `acceptedReplies`: best or
-good, keeping the cost floor of the gain; those replies are book moves where the punishing side is
-`Lesson.side`, Rules); Act III plays back through the lesson opponent; a haptic tick (`tickMove`,
-`src/components/haptics.ts`) marks the cue in Explore. Wide layout, and the phone layout on the
-redesign's two panes: three act rows on the left, one line and three icon buttons on the right.
-Waits on the phone redesign's panes. Starts with a design review of whether the cue is a third
-mode-like state in `screen.ts`, and records its outcome here before building. The starting proposal:
-a try is a board preview until it passes, then a move through `useGame` (the screen reducer does not
-own the game); Act III reuses peek's playback, which does not move the game; the three acts replace
-the trap card for a marked line, so landing stays the one trigger.
+good, still winning the cost floor over the score before the mistake; those replies are book moves
+where the punishing side is `Lesson.side`, Rules); Act III plays back through the lesson opponent; a
+haptic tick (`tickMove`, `src/components/haptics.ts`) marks the cue in Explore. Wide layout, and the
+phone layout on the redesign's two panes: three act rows on the left, one line and three icon
+buttons on the right. Waits on the phone redesign's panes. Starts with a design review of whether
+the cue is a third mode-like state in `screen.ts`, and records its outcome here before building. The
+starting proposal: a try is a board preview until it passes, then a move through `useGame` (the
+screen reducer does not own the game); Act III reuses peek's playback, which does not move the game;
+the three acts replace the trap card for a marked line, so landing stays the one trigger.
 
 ### Piece F: Practice and marks
 
@@ -334,8 +338,8 @@ Cap finds per lesson by score if the files grow too much for phones (the Caro-Ka
 ### Piece G: List page
 
 Opportunities for the lesson and the band, ranked by score (a migrated trap without a gain yet lists
-after the scored rows), each row with reach, how often and payoff meters and the passed mark;
-tapping a row plays Act I and hands over the board at the cue. A section in the wide panel; on
+after the scored rows), each row with reach, how often and payoff (the cost) meters and the passed
+mark; tapping a row plays Act I and hands over the board at the cue. A section in the wide panel; on
 phones the pager's leftmost page (opportunities, lesson, scoresheet), holding the list and the
 finder's "from this position" button and source chip. The band is the opponent setting's, by
 `opponentBand` in `src/lesson/select.ts` as Practice picks it. Waits on the redesign's pager and on
