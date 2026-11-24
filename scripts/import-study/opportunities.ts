@@ -65,6 +65,7 @@ async function host(lesson: Lesson, band: number) {
         fulls.get(key) ?? (sketch && { lines: sketch.lines, depth: sketch.depth, final: false })
       );
     },
+    // The run is for `lesson.side`, so these are its book moves and every move of the erring side.
     guideMoves: ({ key }) => {
       const played = [...playedMoves(lesson, key)].sort(
         (a, b) => (gamesPlayed(b) ?? -1) - (gamesPlayed(a) ?? -1),
