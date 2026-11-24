@@ -31,8 +31,8 @@ plan doesn't depend on those links.
   on the device. Publishing finds to other users is later and not in this plan.
 - In the app, "how often" comes from the learner's connected lichess account, else (no account, or
   too few games) Maia on the device. Each number says which source it came from.
-- In Practice, an opportunity whose mistake is played 10% or more over all bands is a line to pass,
-  and the opponent steers into it until it is passed. Inside one, the opponent also walks every
+- In Practice, an opportunity common enough to count (see "Line to pass" in Rules) is a line to
+  pass, and the opponent steers into it until it is passed. Inside one, the opponent also walks every
   reply played 10% or more. A dice mode (real rates) and guides extended to every common reply are
   future ideas, not started.
 - Names: "Opportunities" for the list, "Your cue." for the moment.
@@ -85,7 +85,7 @@ The numbers here are starting values, tuned at piece B's gate.
   opportunity's first move labels as a mistake or a blunder. A stored cost only ranks; screens show
   the live verdict.
 - **Share floor**: a reply played in under 5% of the games at its position (in the band) is not
-  screened; the same 5% as `RARE_SHARE` in `src/lesson/select.ts`, which folds such rows away.
+  screened.
   **Minimum games**: a position fewer than 100 games reach (in the band) is too thin to judge.
 - **Line to pass**: an opportunity whose mistake `countedReplies` counts (`src/lesson/cleanRun.ts`:
   10% over all bands, or the most played reply). Other finds show in the list and the finder but
@@ -120,8 +120,9 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
   under the cost floor continue the walk. At the punishing side's turn it follows the given moves,
   else Stockfish's best. It stops below a reach floor, past a ply cap, or at a thin position. One
   find per cue position; a position reached again adds nothing.
-- All its floors and caps are named constants in `src/opportunity/limits.ts`, tuned at piece B's
-  gate: the Rules' numbers, a reach floor (1%) and a ply cap (24 plies past where the finder opens).
+- Its floors and caps are named constants in `src/opportunity/limits.ts`, tuned at piece B's gate:
+  the share floor, minimum games and cost floor (the mistake limit, read from `quality.ts`) from
+  Rules, the Act III caps, a reach floor (1%) and a ply cap (24 plies past where the finder opens).
 
 ### Piece B: Report script
 
