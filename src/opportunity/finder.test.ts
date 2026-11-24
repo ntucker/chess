@@ -262,7 +262,7 @@ describe('findOpportunities', () => {
       expect(bg5.payoff).toEqual(uci(`${BE3} Bxe3`).slice(-2));
     });
 
-    it("ends where the guide's move leaves the punishing side no longer winning", () => {
+    it("ends where the guide's move takes back the punishing side's gain", () => {
       const [bg5] = find(withGuide(BE3, full(BE3, [['Bxe3', 0.5]]))).finds;
       expect(bg5.payoff).toEqual([last(BE3)]);
     });

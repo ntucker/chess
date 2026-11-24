@@ -11,7 +11,13 @@
  * answers from lichess and Node Stockfish, the app from its store.
  */
 import { judgement, moveLoss } from '@/analysis/quality';
-import { type Analysis, type FinalAnalysis, forSide, isFinal } from '@/evaluation/evaluation';
+import {
+  type Analysis,
+  type FinalAnalysis,
+  forSide,
+  isFinal,
+  scoreFor,
+} from '@/evaluation/evaluation';
 import type { Color } from '@/game/replay';
 import type { PositionKey, Uci } from '@/lesson/lesson';
 import { LikeliestFirst } from '@/lesson/likeliestFirst';
@@ -211,7 +217,7 @@ function confirm(
   const played = answers.replies(cue);
   if (!played) ask('replies', cue);
   const best = child(cue, replies[0], 0);
-  const rest = best && payoff(best, context);
+  const rest = best && payoff(best, scoreFor(after.lines[0].evaluation, side), context);
   if (!played || !rest) return 'pending';
   const found = played.thin
     ? undefined

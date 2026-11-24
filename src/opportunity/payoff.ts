@@ -8,20 +8,26 @@ import type { Uci } from '@/lesson/lesson';
 import { child, type Context, type Node, type Replies } from './walk';
 
 /**
- * The moves from `start` (the position after the cue's best reply) until the
- * win is obvious, or undefined while an answer is missing. The punishing
- * side plays Stockfish's best; the erring side the guide's move, else its most
- * played reply, else Stockfish's best where the position is thin. It ends at
- * mate (a mating line plays out), when the punishing side is `materialUp`
- * points ahead and winning, when its second-best move is winning too, after
- * `payoffMoves` of its moves, where a guide move leaves it no longer winning
- * (the guide holds a better defence, and Act III adds no move to beat it), or
- * when the game ends.
+ * The moves from `start` (the position after the cue's best reply, which
+ * gives the punishing side the `expected` score) until the win is obvious, or
+ * undefined while an answer is missing. The punishing side plays Stockfish's
+ * best; the erring side the guide's move, else its most played reply, else
+ * Stockfish's best where the position is thin. It ends at mate (a mating line
+ * plays out), when the punishing side is `materialUp` points ahead and
+ * winning, when its second-best move is winning too, after `payoffMoves` of
+ * its moves, where a guide move takes back at least the cost floor of its
+ * expected score (the guide holds a better defence than its line, and Act III
+ * adds no move to beat it), or when the game ends.
  */
-export function payoff(start: Node, { side, answers, limits, ask }: Context): Uci[] | undefined {
+export function payoff(
+  start: Node,
+  expected: number,
+  { side, answers, limits, ask }: Context,
+): Uci[] | undefined {
   const moves: Uci[] = [];
   let punishingMoves = 0;
   let guided = false;
+  let held = expected;
   for (let node = start; !node.pos.isEnd();) {
     const analysis = answers.analysis(node);
     const full = () => (isFinal(analysis) ? analysis : void ask('full', node));
@@ -32,7 +38,9 @@ export function payoff(start: Node, { side, answers, limits, ask }: Context): Uc
       const [best, second] = final.lines;
       const winning = (line: typeof best | undefined) =>
         !!line && scoreFor(line.evaluation, side) >= limits.winScore;
-      if (guided && !winning(best)) break;
+      const score = scoreFor(best.evaluation, side);
+      if (guided && held - score >= limits.costFloor) break;
+      held = score;
       const mating = forSide(best.evaluation.mate ?? 0, side) > 0;
       const won =
         !mating &&
