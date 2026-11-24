@@ -175,6 +175,12 @@ const BG5: Find = {
 };
 
 describe('findOpportunities', () => {
+  it('throws on a start line that is not legal', () => {
+    expect(() =>
+      findOpportunities({ start: START, line: ['e2e5'], side: 'black', answers: known }),
+    ).toThrow("The finder's start line isn't legal");
+  });
+
   it('finds the Stafford 6.Bg5 trap: the setup, the cue and the payoff', () => {
     const { finds, requests } = find(known);
     expect(requests).toEqual([]);
@@ -312,6 +318,14 @@ describe('findOpportunities', () => {
       expect(payoffOf(answers)).toEqual(uci(`${BXD8} Kxd8`).slice(-2));
     });
 
+    it("ends at the guide's move's score, not Stockfish's best's", () => {
+      const answers = withGuide([
+        ['Bxf2+', 0.3],
+        ['Kxd8', 0.35],
+      ]);
+      expect(find(answers, { payoffMoves: 1 }).finds[0].end).toBeCloseTo(0.65);
+    });
+
     it("plays Stockfish's best where the guide's move gives back more", () => {
       const answers = withGuide([
         ['Bxf2+', 0.3],
@@ -374,5 +388,12 @@ describe('gainIfKnown', () => {
 
   it('is 0 where no reply is measured', () => {
     expect(gainIfKnown({ a: 1 }, {})).toEqual({ gain: 0, covered: 0 });
+  });
+
+  it('counts a reply a search rates above the first line as giving nothing', () => {
+    expect(gainIfKnown({ a: 0.5, b: 0.5 }, { a: -0.3, b: 0.2 })).toEqual({
+      gain: expect.closeTo(0.1),
+      covered: 1,
+    });
   });
 });

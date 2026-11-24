@@ -275,9 +275,9 @@ function replyLosses(
   let pending = false;
   for (const [uci, share] of Object.entries(shares)) {
     if (share < context.limits.shareFloor) continue;
-    const loss = punishingLoss(cue, after, uci, context);
-    if (loss === 'pending') pending = true;
-    else if (loss !== undefined) losses[uci] = loss;
+    const judged = punishingLoss(cue, after, uci, context);
+    if (judged === 'pending') pending = true;
+    else if (judged) losses[uci] = judged.loss;
   }
   return pending ? undefined : losses;
 }

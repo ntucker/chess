@@ -72,16 +72,16 @@ export interface Context {
 
 /**
  * What the punishing side's `uci` at `node` gives away beside the best move
- * of `final`, its final analysis (`moveLoss`): undefined where it can't be
- * judged, `'pending'` while a move `final` doesn't list awaits its own full
- * search.
+ * of `final`, its final analysis, and the evaluation that judges it
+ * (`moveLoss`): undefined where it can't be judged, `'pending'` while a move
+ * `final` doesn't list awaits its own full search.
  */
 export function punishingLoss(
   node: Node,
   final: FinalAnalysis,
   uci: Uci,
   { side, answers, ask }: Context,
-): number | undefined | 'pending' {
+): ReturnType<typeof moveLoss> | 'pending' {
   const listed = final.lines.some((line) => line.uci === uci);
   const next = listed ? undefined : child(node, uci, 0);
   const analysis = next && answers.analysis(next);
@@ -89,7 +89,7 @@ export function punishingLoss(
     ask('full', next);
     return 'pending';
   }
-  return moveLoss(final, analysis, uci, side)?.loss;
+  return moveLoss(final, analysis, uci, side);
 }
 
 /**

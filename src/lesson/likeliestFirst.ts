@@ -15,8 +15,8 @@ export interface Walked {
 }
 
 /**
- * A binary heap of walked lines, the likeliest on top; of lines as likely,
- * the one pushed first. `share` reads how likely a line is.
+ * A binary heap, the likeliest item on top; of items as likely, the one
+ * pushed first. `share` reads how likely an item is.
  */
 export class LikeliestFirst<T> {
   private readonly heap: { readonly walked: T; readonly order: number }[] = [];
