@@ -121,8 +121,9 @@ export function IdeaCard({
           ))}
         </View>
       ) : (
-        // A move pointed at says its own name ("No notes on g6"), so needs no lead.
+        // A move pointed at says its name ("No notes on g6"), but where it leads only in the lead.
         <Text role="bodySm" tone="secondary">
+          {leadsTo ? lead : null}
           <Notation>{empty}</Notation>
         </Text>
       )}

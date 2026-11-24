@@ -1,4 +1,5 @@
 import { Separator, Stack } from '@reactive/silk-native';
+import { Activity } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useSections } from '@/components/Eyebrow';
@@ -60,27 +61,28 @@ export function PhoneLesson({
           }
           onClose={onCloseScoresheet}
         />
-      ) : (
-        <>
-          {model.trap ? <TrapCard {...model.trap} /> : null}
-          {/* Leaving a row for the idea keeps its preview, so its notes can be pointed at. */}
-          <PointingArea onLeave={model.onLeave} style={styles.panes}>
-            {moves ? (
-              <FadingScroll style={[ideaPane ? styles.moves : styles.pane, styles.bleed]}>
-                <CandidateList {...moves} density="compact" />
-              </FadingScroll>
-            ) : null}
-            {moves && ideaPane ? (
-              <Separator orientation="vertical" style={styles.hairline} />
-            ) : null}
-            {ideaPane ? (
-              <FadingScroll style={styles.pane} contentStyle={styles.idea}>
-                {ideaPane}
-              </FadingScroll>
-            ) : null}
-          </PointingArea>
-        </>
-      )}
+      ) : null}
+      {/*
+       * Hidden under the scoresheet, not unmounted, so the panes keep where
+       * they're scrolled to and the notes opened in them.
+       */}
+      <Activity mode={scoresheetOpen ? 'hidden' : 'visible'}>
+        {model.trap ? <TrapCard {...model.trap} /> : null}
+        {/* Leaving a row for the idea keeps its preview, so its notes can be pointed at. */}
+        <PointingArea onLeave={model.onLeave} style={styles.panes}>
+          {moves ? (
+            <FadingScroll style={[ideaPane ? styles.moves : styles.pane, styles.bleed]}>
+              <CandidateList {...moves} density="compact" />
+            </FadingScroll>
+          ) : null}
+          {moves && ideaPane ? <Separator orientation="vertical" style={styles.hairline} /> : null}
+          {ideaPane ? (
+            <FadingScroll style={styles.pane} contentStyle={styles.idea}>
+              {ideaPane}
+            </FadingScroll>
+          ) : null}
+        </PointingArea>
+      </Activity>
     </Stack>
   );
 }

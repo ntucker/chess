@@ -188,7 +188,7 @@ export function whyReviewShut({
 
 /** What a narrow page's layout around the headline shows, for `headlineNews`. */
 interface Surroundings {
-  /** The idea pane's place tells the past-guide headline (LessonScreen's `aside`). */
+  /** The idea pane's place tells the past-guide headline (the model's `aside`, drawn by PhoneLesson). */
   readonly aside: boolean;
   /** The scoresheet drawer covers the panes, and the aside with them. */
   readonly scoresheetOpen: boolean;
