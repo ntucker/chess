@@ -52,8 +52,7 @@ export function Toggle({ label, checked, onChange, quiet, disabled, hint, style 
         // A disabled field takes no press, so a tap anywhere on it says why.
         <Tooltip.Trigger>{field}</Tooltip.Trigger>
       ) : (
-        // The mark alone is the trigger: on the web a press on the label is a
-        // click for its switch, which a trigger around the field opens on too.
+        // The mark alone is the trigger, until silk#38 (see above).
         <View style={styles.row}>
           {field}
           {/* Screen readers hear the hint as the switch's description. */}

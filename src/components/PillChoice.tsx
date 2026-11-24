@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
   },
   // Labelled options share the pill's width.
   labelOption: { flex: 1 },
-  // A round slot as tall as a labelled option, and as wide. No `flex` at all: natively `flex: 1`
-  // sets a basis of 0 under an `auto` basis, and React Native Web reads `flex: 0` as one; either beats the width.
+  // A round slot as tall as a labelled option, and as wide. Set no `flex`: `flex: 1` natively
+  // and `flex: 0` on React Native Web each set a flex basis of 0, which overrides `width`.
   iconOption: { width: 36 },
 });
