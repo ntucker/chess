@@ -40,19 +40,22 @@ export function Toggle({ label, checked, onChange, quiet, disabled, hint, style 
       >
         {label}
       </Field.Label>
-      {hint && !disabled ? (
-        // Screen readers hear the hint as the switch's description.
-        <View aria-hidden testID="toggle-hint" style={styles.info}>
-          <InfoMark size={INFO_SIZE} />
-        </View>
-      ) : null}
       {tip ? <Field.Description style={styles.spoken}>{tip}</Field.Description> : null}
     </Field.Root>
   );
   if (!tip) return field;
   return (
     <Tooltip.Root>
-      <Tooltip.Trigger>{field}</Tooltip.Trigger>
+      {/* Beside the field, not in it: a press in the field toggles it, one on the mark only shows the tip. */}
+      <Tooltip.Trigger style={styles.row}>
+        {field}
+        {disabled ? null : (
+          // Screen readers hear the hint as the switch's description.
+          <View aria-hidden testID="toggle-hint" style={styles.info}>
+            <InfoMark size={INFO_SIZE} />
+          </View>
+        )}
+      </Tooltip.Trigger>
       <Tooltip.Content>{tip}</Tooltip.Content>
     </Tooltip.Root>
   );
@@ -66,6 +69,7 @@ const styles = StyleSheet.create({
   field: { minHeight: touchTarget },
   label: { userSelect: 'none', ...touchLine(lineHeightOf('label')) },
   spoken: spokenOnly,
+  row: { flexDirection: 'row', alignItems: 'stretch' },
   // The row's height, so a finger finds it beside the label.
   info: { alignSelf: 'stretch', justifyContent: 'center', paddingHorizontal: 4 },
 });

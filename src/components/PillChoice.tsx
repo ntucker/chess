@@ -86,6 +86,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: 8,
   },
-  // A round slot as tall as a labelled option, and as wide.
-  iconOption: { flex: 0, width: 36 },
+  // A round slot as tall as a labelled option, and as wide. Not `flex: 0`: React Native Web
+  // reads it as a basis of 0, which beats the width.
+  iconOption: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', width: 36 },
 });
