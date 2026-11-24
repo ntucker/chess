@@ -20,7 +20,7 @@ thread, what is left.
 - On the head commit:
   - Steps 3-7 are done (so the PR is ready for review and mergeable), and its base is `main`.
   - These checks exist and succeeded: `Format, lint, typecheck and test`, `Build`, `Publish`,
-    `Cursor Bugbot`. Missing, running, skipped, neutral, cancelled or failed is not a pass (a
+    `Layout`, `Cursor Bugbot`. Missing, running, skipped, neutral, cancelled or failed is not a pass (a
     Markdown-only PR runs none of them, so it waits for the person).
   - Staff's verdict, the most recently edited comment that starts with `**Staff Reviewer:**`, reads
     `LGTM <head>` or `LGTM+FOLLOW_UP <head>` (`at <head>` also counts). Anything else, `reviewing`

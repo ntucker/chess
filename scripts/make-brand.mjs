@@ -9,11 +9,10 @@
 //
 // The SVGs in assets/brand need only Node and the app's own packages. The PNGs
 // in assets/images, and the Google Play listing's icon and feature graphic in
-// store/, are rendered with Playwright's Chromium, which this app doesn't depend on: run
-// the script somewhere `playwright` resolves, or it stops after the SVGs.
+// store/, are rendered with Playwright's Chromium (`yarn playwright install chromium` once).
 import { readFileSync, writeFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
 
 import { oklch } from '@reactive/silk-core/color';
 
@@ -344,13 +343,6 @@ p{margin:22px 0 0;font:400 32px/1.2 Sans;color:${brand.spotlight};letter-spacing
 for (const [file, svg] of Object.entries(svgs)) writeFileSync(root + file, svg);
 console.log(`Wrote ${Object.keys(svgs).join(', ')}`);
 
-let chromium;
-try {
-  ({ chromium } = createRequire(import.meta.url)('playwright'));
-} catch {
-  console.error('Playwright not found, so the PNGs were left as they were.');
-  process.exit(1);
-}
 const browser = await chromium.launch();
 for (const { file, size, svg, html, opaque, alpha } of pngs) {
   const [width, height] = Array.isArray(size) ? size : [size, size];

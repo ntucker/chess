@@ -82,6 +82,13 @@ To try the Pages build locally, export it the way the workflow does and serve `d
 PAGES_BASE_PATH=/chess yarn expo export --platform web
 ```
 
+Each build's phone layout is also checked in a real browser, at three phone sizes (the Layout job, `scripts/check-layout.mjs`); its screenshots are the run's `layout-check` artifact. To run it on that export:
+
+```bash
+yarn playwright install chromium   # once
+PAGES_BASE_PATH=/chess yarn check:layout
+```
+
 ## Android builds
 
 Every push to `main` that changes more than Markdown also builds the Android app (`.github/workflows/android.yml`) and replaces the APK at https://github.com/ntucker/chess/releases/download/android/opening-night.apk. To install it, open that link on the phone and open the download. The first time, Android asks to allow installs from the browser: tap **Settings**, turn on **Allow from this source**, and go back. Then tap **Update** (or **Install**); if Play Protect warns about an unknown app, choose to install anyway.

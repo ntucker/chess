@@ -50,6 +50,7 @@ yarn format                 # format with Prettier
 yarn lint                   # lint
 yarn typecheck              # typecheck
 yarn test                   # unit tests (Jest, jest-expo preset)
+yarn check:layout           # phone layout of a web export, in a real browser (scripts/check-layout.mjs)
 npx expo-doctor             # diagnose dependency and config issues
 npx expo install --fix      # fix incompatible package versions
 ```
