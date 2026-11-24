@@ -19,6 +19,8 @@ export type MoveCounts = Readonly<Record<Uci, number>>;
  * A position's replies as the run's one source gives them: each move's share
  * of the games there (0 to 1; a move missing was not played), and whether too
  * few games reach the position to judge it. The walk ends at a thin position.
+ * A key may be no move to play (`playable`): lichess's own notation for a move
+ * `recordedMove` rejects. It counts toward the total, and the finder skips it.
  */
 export interface Replies {
   readonly shares: Readonly<Record<Uci, number>>;
@@ -105,9 +107,15 @@ export function child(node: Node, uci: Uci, reach: number): Node | undefined {
   return { pos, key: positionKey(pos), line: [...node.line, uci], reach };
 }
 
+/** Whether `uci` is a legal move at `node`, as `child` asks. */
+export function playable(node: Node, uci: Uci): boolean {
+  const move = parseUci(uci);
+  return !!move && node.pos.isLegal(move);
+}
+
 /**
  * The node a move the finder trusts leads to: the guide's (the lesson checker
- * rules out an illegal one), Stockfish's, or an explorer reply already checked.
+ * rules out an illegal one) or Stockfish's.
  * Throws where it isn't legal, since the data that gave it is broken.
  */
 export function legalChild(node: Node, uci: Uci, reach: number): Node {

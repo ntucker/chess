@@ -204,9 +204,8 @@ function erringSteps(node: Node, context: Context): ErringStep[] | 'thin' {
     return [];
   }
   return played.flatMap(([uci, share]): ErringStep[] => {
-    // An illegal key is lichess's own notation for a move `recordedMove`
-    // rejects; it counts toward the total but is no move to play. A move that
-    // ends the game leaves nothing to punish, and no line to walk on.
+    // Skips a key that is no move (`Replies`). A move that ends the game
+    // leaves nothing to punish, and no line to walk on.
     const cue = child(node, uci, node.reach * share);
     if (!cue || resultAt(cue)) return [];
     const after = sketchOnly(answers.analysis(cue));

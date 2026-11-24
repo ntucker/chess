@@ -14,11 +14,11 @@ import { balance } from '@/game/material';
 import type { Uci } from '@/lesson/lesson';
 
 import {
-  child,
   type Context,
   illegalMoveError,
   legalChild,
   type Node,
+  playable,
   punishingLoss,
   type Replies,
   resultAt,
@@ -182,15 +182,14 @@ function punishingMove(
 }
 
 /**
- * The most played move at `node`; undefined where the position is thin or no
- * move was played. It skips a key it can't play (lichess's own notation for a
- * move `recordedMove` rejects), which counts toward the total but is no move.
+ * The most played move at `node`, skipping a key that is no move
+ * (`Replies`); undefined where the position is thin or no move was played.
  */
 function mostPlayed(node: Node, { shares, thin }: Replies): Uci | undefined {
   if (thin) return undefined;
   let most: [Uci, number] | undefined;
   for (const entry of Object.entries(shares)) {
-    if ((!most || entry[1] > most[1]) && child(node, entry[0], 0)) most = entry;
+    if ((!most || entry[1] > most[1]) && playable(node, entry[0])) most = entry;
   }
   return most?.[0];
 }

@@ -398,7 +398,7 @@ describe('findOpportunities', () => {
   });
 
   it("skips an explorer reply it can't play", () => {
-    // Black has only king moves; lichess's key h8h1 is no move here.
+    // Black has no piece on h8, so lichess's key h8h1 is no move here.
     const fen = '8/8/8/8/1q6/8/2k5/K7 b - - 0 1';
     const start = walkTo(fen, [])!;
     const answers: Answers = {
@@ -494,6 +494,24 @@ describe('gainIfKnown', () => {
 });
 
 describe('payoff', () => {
+  it("plays the erring side's most played reply it can play", () => {
+    // The most played key, h8h1, is no move (no piece on h8); Black's Qb3 stalemates.
+    const start = walkTo('8/8/8/8/1q6/8/2k5/K7 b - - 0 1', [])!;
+    const final = { lines: [{ evaluation: evaluation(0.1) }], depth: 18, final: true } as const;
+    const answers: Answers = {
+      replies: (spot) =>
+        spot.key === start.key ? { shares: { h8h1: 0.9, b4b3: 0.1 }, thin: false } : undefined,
+      analysis: () => undefined,
+    };
+    expect(
+      payoff(
+        start,
+        { before: final, cue: final },
+        { side: 'white', answers, limits: LIMITS, ask: () => {} },
+      ),
+    ).toEqual({ moves: ['b4b3'], disagreements: [], end: 0.5 });
+  });
+
   it("scores a game the erring side's move ends as its result", () => {
     // Black's queen move stalemates White's lone king.
     const start = walkTo('8/8/8/8/1q6/8/2k5/K7 b - - 0 1', [])!;
