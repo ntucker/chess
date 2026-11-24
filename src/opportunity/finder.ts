@@ -56,8 +56,9 @@ export interface Find {
   readonly holds: boolean;
   /**
    * The share of games that reach the position: the erring side's shares
-   * along each move order that reaches it, summed (`reachOf`). On the guide,
-   * only the move orders the guide plays for the punishing side count.
+   * along each move order of fewest moves that reaches it, summed
+   * (`reachOf`). On the guide, only the move orders the guide plays for the
+   * punishing side count.
    */
   readonly reach: number;
   /**
@@ -79,8 +80,8 @@ export interface Find {
   /** Set where the gain is an estimate: the cue is thin, or its measured replies cover under half. */
   readonly estimate?: true;
   /**
-   * The share of games that reach the cue, by any move order (`reachOf`; on
-   * the guide, those the guide plays), × gain: the expected score knowing the
+   * The share of games that reach the cue, by any move order of fewest moves
+   * (`reachOf`; on the guide, those the guide plays), × gain: the expected score knowing the
    * opportunity is worth per game. With one move order, reach × share × gain.
    */
   readonly score: number;
@@ -127,8 +128,9 @@ export interface FinderResult {
  * whose punishment nearly everyone finds (gain under `minGain`) is no find,
  * and the walk goes on past it. The walk stops where the game is over, at
  * thin positions, below the reach floor and past the ply cap; a position
- * reached again is not walked again but adds to its reach (`reachOf`), and a
- * cue several mistakes lead to is one find.
+ * reached again is not walked again, though another order of the same moves
+ * adds to its reach (`reachOf`), and a cue several mistakes lead to is one
+ * find.
  */
 export function findOpportunities({
   start,
@@ -230,24 +232,24 @@ export interface Move {
 export function reachOf(start: PositionKey, moves: readonly Move[]) {
   const out = new Map<PositionKey, Move[]>();
   for (const move of moves) append(out, move.from, move);
-  // Fewest moves to each position; `order` lists them nearest first.
+  // Nearest first: the moves that go one deeper than their position's
+  // fewest moves, each after every move into the position it leaves.
   const order = [start];
   const depth = new Map([[start, 0]]);
+  const fewest: Move[] = [];
   for (const key of order) {
-    for (const { to } of out.get(key) ?? []) {
-      if (depth.has(to)) continue;
-      depth.set(to, depth.get(key)! + 1);
-      order.push(to);
+    for (const move of out.get(key) ?? []) {
+      if (!depth.has(move.to)) {
+        depth.set(move.to, depth.get(key)! + 1);
+        order.push(move.to);
+      }
+      if (depth.get(move.to) === depth.get(key)! + 1) fewest.push(move);
     }
   }
   const gamesReaching = (guided: boolean) => {
     const games = new Map([[start, 1]]);
-    for (const key of order) {
-      const here = games.get(key) ?? 0;
-      for (const move of out.get(key) ?? []) {
-        const fewest = depth.get(move.to) === depth.get(key)! + 1;
-        if (fewest && (!guided || move.guided)) add(games, move.to, here * move.share);
-      }
+    for (const move of fewest) {
+      if (!guided || move.guided) add(games, move.to, (games.get(move.from) ?? 0) * move.share);
     }
     return games;
   };
