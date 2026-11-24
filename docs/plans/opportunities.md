@@ -31,13 +31,12 @@ plan doesn't depend on those links.
   on the device. Publishing finds to other users is later and not in this plan.
 - In the app, "how often" comes from the learner's connected lichess account, else (no account, or
   too few games) Maia on the device. Each number says which source it came from.
-- In Practice, each opportunity played often enough (see "Line to pass" below) is a line to pass,
-  and the opponent steers into it until it is passed. Inside one, the opponent also walks every reply played 10% or more. A dice mode (real
-  rates) and guides extended to every common reply are future ideas, not started.
+- In Practice, an opportunity whose mistake is played 10% or more over all bands is a line to pass,
+  and the opponent steers into it until it is passed. Inside one, the opponent also walks every
+  reply played 10% or more. A dice mode (real rates) and guides extended to every common reply are
+  future ideas, not started.
 - Names: "Opportunities" for the list, "Your cue." for the moment.
 - Phones are first-class. The phone screens build on the phone redesign's two panes and pager.
-  Pieces E, G, I and K must be checked on Android (touch, the haptic tick, the pager, the sign-in
-  redirect, on-device search).
 - Saved progress is not migrated: new lines can reopen rows a learner already passed. Release notes
   say so.
 
@@ -70,6 +69,8 @@ plan doesn't depend on those links.
   never write derived values back.
 - A score never mixes sources: one host-chosen source answers a whole finder run, and its finds
   carry that source's name.
+- Pieces E, G, I and K must be checked on Android (touch, the haptic tick, the pager, the sign-in
+  redirect, on-device search).
 - Code says `opportunity`, `trap` and `mistake`, never `slip` (`practice.ts` uses that for a
   learner's non-book move).
 
@@ -83,11 +84,12 @@ The numbers here are starting values, tuned at piece B's gate.
   `src/analysis/quality.ts`. The floor is that module's mistake limit (0.10), so every
   opportunity's first move labels as a mistake or a blunder. A stored cost only ranks; screens show
   the live verdict.
-- **Share floor**: a reply played in under 5% of the games at its position (in the band) is not screened. **Minimum games**:
-  a position fewer than 100 games reach (in the band) is too thin to judge.
-- **Line to pass**: only at 10% over all bands (`COUNTED_SHARE` in `src/lesson/cleanRun.ts`). Finds
-  between 5% and 10% show in the list and the finder but are never required. A marked move without
-  counts never counts toward passing.
+- **Share floor**: a reply played in under 5% of the games at its position (in the band) is not
+  screened; the same 5% as `RARE_SHARE` in `src/lesson/select.ts`, which folds such rows away.
+  **Minimum games**: a position fewer than 100 games reach (in the band) is too thin to judge.
+- **Line to pass**: an opportunity whose mistake `countedReplies` counts (`src/lesson/cleanRun.ts`:
+  10% over all bands, or the most played reply). Other finds show in the list and the finder but
+  are never required. A marked move without counts never counts toward passing.
 - **The cue's accepted replies**: the punishing side's moves in the cue position's final analysis
   that label best or good beside its first line and keep at least the cost floor of the gain. The
   importer writes each as a book move, and Act III's moves too, so a clean run can play them.
@@ -118,8 +120,8 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
   under the cost floor continue the walk. At the punishing side's turn it follows the given moves,
   else Stockfish's best. It stops below a reach floor, past a ply cap, or at a thin position. One
   find per cue position; a position reached again adds nothing.
-- The Rules' numbers, a reach floor (1%) and a ply cap (24 plies past where the finder opens) are
-  named constants in one file.
+- All its floors and caps are named constants in `src/opportunity/limits.ts`, tuned at piece B's
+  gate: the Rules' numbers, a reach floor (1%) and a ply cap (24 plies past where the finder opens).
 
 ### Piece B: Report script
 
@@ -143,9 +145,8 @@ Gate: Nathaniel reads the top 20 finds and sets the floors before any lesson fil
   marked move; a note with other ideas keeps them and its text where it was. Positions reached
   through a marked move of the learner's side are outside the book, so a clean run never reaches
   them and the checker needs no book move there.
-- The app reads the new shape, and the trap card, its playback and landing (`LandedTrap`) behave as
-  before, except that "show traps" off hides a marked move's notes and playback only when the
-  learner is the side that falls in (see Decisions; before, it hid every trap).
+- The app reads the new shape. The trap card, its playback and landing (`LandedTrap`) behave as
+  before, except for the "show traps" scope in Decisions (before, it hid every trap).
 - Checker rules for marked moves (legal; `cost` at or over the floor when present). README for
   `assets/lessons/` and `AGENTS.md` updated.
 - No new finds: shipped lessons change only by the migration, rebuilt by the importer from
@@ -220,7 +221,7 @@ rating; if far, Maia finds are labeled estimates and rank below lichess ones.
 The core run from any position, derived each render from the store (engine answers through
 `useAnalysis`, replies through I or J), with finds joining the list page as they are confirmed and
 each number's source labeled. Measures first how long the first find takes on a phone, with
-lichess's pacing (one request every 2.5 s) and with Maia, and walks the nearest positions first. After A, G, I and J.
+lichess's pacing (one request every 2.5 s) and with Maia. After A, G, I and J.
 
 ### Piece L: Saved finds
 
