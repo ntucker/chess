@@ -56,13 +56,17 @@ depend on those links.
   | The mistake's title in the list          | `name` on that marker, written by the explain step     |
   | The guide's verdict on a migrated trap   | `verdict` on that marker (today `Trap.verdict`)        |
 
-- Derived, one pure function each in `src/opportunity/`: a move's share (from lichess, its games
-  over the games reaching the position, a different number from `candidates` in
-  `src/lesson/select.ts`, which keeps its share of the guide's listed moves for Practice's rare
-  rows; from Maia, a softmax over the legal moves' policy scores), reach (shares of the erring
-  side's moves multiplied along the path), found rate (the sum of the accepted replies' shares at
-  the cue), score, role (trap or opportunity, from the learner's side), the current act, whether a
-  position is a cue, and whether an opportunity is a line to pass. No component recomputes them.
+- A move's share has one definition, one function that `candidates` in `src/lesson/select.ts`,
+  Practice's rare-row and counted-reply rules, and the finder's lichess host (`repliesFrom`) all
+  call: its games over the position's explorer total where `LessonPosition.games` exists, else over
+  the sum of the listed moves' games (older data). No lesson changes behavior until D1 or D3 writes
+  its totals; then that lesson's shares get smaller, since unlisted moves join the denominator, and
+  its rare rows and counted replies can shift slightly. From Maia, a share is a softmax over the
+  legal moves' policy scores (piece J).
+- Derived, one pure function each in `src/opportunity/`: reach (shares of the erring side's moves
+  multiplied along the path), found rate (the sum of the accepted replies' shares at the cue),
+  score, role (trap or opportunity, from the learner's side), the current act, whether a position is
+  a cue, and whether an opportunity is a line to pass. No component recomputes them.
 - App state the whole feature adds: saved finds and the lichess token, each under its own storage
   key, kept as `src/resources/progress.ts` keeps progress (`storageKey`, `readStorage`,
   `writeStorage` and `subscribeStorage` from `src/context/storage.ts`), and its own parser beside
@@ -225,8 +229,8 @@ unknown, never as 0 or as enough games. Then it writes the marked move with its 
 accepted replies and Act III as Rules say. Popularity, which runs after it, must not drop counts it
 did not remeasure (today it drops them wherever it did not ask, such as positions with one guide
 move), and where it does remeasure it writes the position total from that same answer. Stafford
-only, with B's floors. Merges after E and F, because new lines change what the Practice opponent
-plays.
+only, with B's floors. Its PR lists which rows changed fold (rare) or counted status once the totals
+change shares. Merges after E and F, because new lines change what the Practice opponent plays.
 
 ### Piece D2: Names and notes
 
@@ -236,8 +240,9 @@ before it lands.
 
 ### Piece D3: Rollout
 
-The step runs on every lesson; `--no-model` rebuilds each exactly. Cap finds per lesson by score if
-the files grow too much for phones (the Caro-Kann file is already 5.3 MB).
+The step runs on every lesson; `--no-model` rebuilds each exactly. The PR lists, per lesson, which
+rows changed fold or counted status. Cap finds per lesson by score if the files grow too much for
+phones (the Caro-Kann file is already 5.3 MB).
 
 ### Piece G: List page
 
