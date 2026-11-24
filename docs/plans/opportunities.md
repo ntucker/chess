@@ -8,10 +8,10 @@ which gives away 43% of White's winning chances, and Black answers 6...Nxe4 (Act
 7.Bxd8 Bxf2+ 8.Ke2 Bg4# follows (Act III, the payoff).
 
 Product plan with mockups: [product plan](https://claude.ai/artifact/Bun3eWNJZdbhDW2iAv9vAZ).
-Technical plan and its adversarial review:
-[technical plan](https://claude.ai/artifact/W7ri91SoRGYDqHcowjnz33). This file restates both as
-built; where they differ, this file wins. Each piece's section holds the rules it builds, so the
-plan doesn't depend on those links.
+Technical plan and its adversarial review: [technical
+plan](https://claude.ai/artifact/W7ri91SoRGYDqHcowjnz33). This file restates both as built; where
+they differ, this file wins. Each piece's section holds the rules it builds, so the plan doesn't
+depend on those links.
 
 ## Decisions (Nathaniel, 2026-11-22 to 2026-11-24)
 
@@ -57,22 +57,22 @@ plan doesn't depend on those links.
   | The guide's verdict on a migrated trap   | `verdict` on that marker (today `Trap.verdict`)        |
 
 - Derived, one pure function each in `src/opportunity/`: a move's share (from lichess, its games
-  over the games reaching the position, by extending `candidates` in `src/lesson/select.ts` so
-  Practice and the list show one number; from Maia, a softmax over the legal moves' policy scores),
-  reach (shares of the erring side's moves multiplied along the path), found rate (the sum of the
-  accepted replies' shares at the cue), score, role (trap or opportunity, from the learner's side),
-  the current act, whether a position is a cue, and whether an opportunity is a line to pass. No
-  component recomputes them.
+  over the games reaching the position, a different number from `candidates` in
+  `src/lesson/select.ts`, which keeps its share of the guide's listed moves for Practice's rare
+  rows; from Maia, a softmax over the legal moves' policy scores), reach (shares of the erring
+  side's moves multiplied along the path), found rate (the sum of the accepted replies' shares at
+  the cue), score, role (trap or opportunity, from the learner's side), the current act, whether a
+  position is a cue, and whether an opportunity is a line to pass. No component recomputes them.
 - App state the whole feature adds: saved finds and the lichess token, each under its own storage
-  key, declared by its owner with `storageKey` from `src/context/storage.ts` as `settings.ts` does,
-  and its own parser beside its type, as `parseProgress` sits in
-  `src/progress/progress.ts` (not `SavedProgress`, whose parser drops shapes it doesn't know, and
-  not `Settings`, the preference record every tab syncs). The finder has none of its own: engine
-  answers and lichess replies live in the Data Client store keyed by their request, and the finds
-  and the next request are computed from them each render.
+  key, kept as `src/resources/progress.ts` keeps progress (`storageKey`, `readStorage`,
+  `writeStorage` and `subscribeStorage` from `src/context/storage.ts`), and its own parser beside
+  its type, as `parseProgress` sits in `src/progress/progress.ts` (not `SavedProgress`, whose parser
+  drops shapes it doesn't know, and not `Settings`, the preference record every tab syncs). The
+  finder has none of its own: engine answers and lichess replies live in the Data Client store keyed
+  by their request, and the finds and the next request are computed from them each render.
 - Flow: lesson file or network, into the store, through the pure functions, through `guidance.ts`
-  (the only place anything is hidden), into components. Components send events to reducers and
-  never write derived values back.
+  (the only place anything is hidden), into components. Components send events to reducers and never
+  write derived values back.
 - A score never mixes sources: the host picks one source for a whole finder run (lichess when the
   account can answer, else Maia), and its finds carry that source's name. A thin lichess position
   ends the walk there. A list may show a run of each, lichess rows first and Maia rows labeled
@@ -90,24 +90,24 @@ the app's mistake limit and is not a gate setting.
 - **Score** of an opportunity for a band: reach × share × cost. Ties: the lower found rate ranks
   first, since teaching pays most where players miss the punishment.
 - **Cost**: the expected score the erring side gives away beside its best move, by `judgement` in
-  `src/analysis/quality.ts`. The floor is that module's mistake limit (0.10), so every
-  opportunity's first move labels as a mistake or a blunder. A stored cost only ranks; screens show
-  the live verdict.
+  `src/analysis/quality.ts`. The floor is that module's mistake limit (0.10), so every opportunity's
+  first move labels as a mistake or a blunder. A stored cost only ranks; screens show the live
+  verdict.
 - **Share floor**: a reply played in under 5% of the games at its position (in the band) is not
   screened.
 - **Minimum games**: a position fewer than 100 games reach (in the band) is too thin to judge; the
-  lichess host marks it thin, and the walk ends there. A Maia
-  run has no thin positions; it ends at the reach floor and the ply cap.
+  lichess host marks it thin, and the walk ends there. A Maia run has no thin positions; it ends at
+  the reach floor and the ply cap.
 - **Line to pass**: an opportunity whose mistake `countedReplies` counts (`src/lesson/cleanRun.ts`:
-  10% over all bands, or the most played reply). Other finds show in the list and the finder but
-  are never required. Piece C adds one exception to `countedReplies`, beside `COUNTED_SHARE`: a
-  marked move without counts never counts (today a move without counts does). Once the importer
-  writes its counts, the 10% rule applies to it like any other move.
+  10% over all bands, or the most played reply). Other finds show in the list and the finder but are
+  never required. Piece C adds one exception to `countedReplies`, beside `COUNTED_SHARE`: a marked
+  move without counts never counts (today a move without counts does). Once the importer writes its
+  counts, the 10% rule applies to it like any other move.
 - **The cue's accepted replies**: the punishing side's moves in the cue position's final analysis
   that label best or good beside its first line and keep at least the cost floor of the gain. Only
-  the learner's side has book moves (`lesson.ts`, `check.ts`), and the importer runs the finder for
-  the lesson's side, so the punishing side is the learner: it writes every accepted reply, and the
-  punishing side's Act III moves, as book moves.
+  the learner's side has book moves (`lesson.ts`, `check.ts`), so the importer writes every accepted
+  reply, and the punishing side's Act III moves, as book moves where the punishing side is the
+  learner, and as ordinary moves where it is not.
 - **The erring side's Act III moves** stay ordinary moves. At each of its positions Act III takes
   one reply: the most played, which `countedReplies` keeps, or, where the position is thin,
   Stockfish's. A thin position's reply is then the only one in the tree there, so a clean run plays
@@ -128,14 +128,13 @@ the app's mistake limit and is not a gate setting.
 `src/opportunity/`, pure like `src/review/`: no React, lichess, Stockfish builds or file access.
 Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
 
-- One function of the answers known so far, like the review's `nextSearch`: it takes the start
-  line, the side looking for opportunities, the band, the limits, and lookups for the replies
-  (each move's share of the games at the position, and whether the position is too thin to judge),
-  analyses (sketch or final) and the punishing side's own moves (a lesson's book
-  moves, where it has some) that the host has so far. It returns the finds so far and the requests
-  still missing, most useful first: a position's replies, a sketch, or a full search, each naming
-  its line and position. The script loops over it; the app derives it each render. No async
-  generator and no queue.
+- One function of the answers known so far, like the review's `nextSearch`: it takes the start line,
+  the side looking for opportunities, the band, the limits, and lookups for the replies (each move's
+  share of the games at the position, and whether the position is too thin to judge), analyses
+  (sketch or final) and the punishing side's own moves (a lesson's book moves, where it has some)
+  that the host has so far. It returns the finds so far and the requests still missing, most useful
+  first: a position's replies, a sketch, or a full search, each naming its line and position. The
+  script loops over it; the app derives it each render. No async generator and no queue.
 - The walk is best-first by reach from the start (reach 1). At the erring side's turn it screens
   every reply over the share floor with a sketch, confirms each reply at or over the cost floor with
   full searches, then asks for the cue position's replies (found rate) and builds Act III. Replies
@@ -160,16 +159,15 @@ position ends the walk, and the report counts how many walks ended thin and at w
 gate can judge whether a Maia supplement in the script is worth building. None is built now.
 
 Gate: Nathaniel reads the top 20 finds and sets the `limits.ts` floors and caps (not the cost floor)
-before any lesson file changes.
-The report prints the limits it ran with.
+before any lesson file changes. The report prints the limits it ran with.
 
 ### Piece C: Lesson data
 
 - Format: `LessonPosition.games` (games reaching the position, per band of
-  `Lesson.popularity.ratingBands`; absent means not measured) and `LessonMove.mistake`
-  (`{ cost?, name?, verdict? }`: cost as above, absent only on migrated guide traps until piece D1's
-  importer step measures it; `name` a short title for the list; `verdict` the `Trap` verdict it
-  replaces). All optional, so the format number stays 3.
+  `Lesson.popularity.ratingBands`; absent means not measured) and `LessonMove.mistake` (`{ cost?,
+  name?, verdict? }`: cost as above, absent only on migrated guide traps until piece D1's importer
+  step measures it; `name` a short title for the list; `verdict` the `Trap` verdict it replaces).
+  All optional, so the format number stays 3.
 - The `Trap` idea goes. Each existing trap idea (254: 172 in position notes, 82 in move notes)
   becomes guide-tree moves with the marker on its first move. A note whose only drawn idea was the
   trap moves to the marked move; a note with other ideas keeps them and its text where it was.
@@ -182,16 +180,16 @@ The report prints the limits it ran with.
   `src/lesson/select.ts`). The PR note says `cost` is absent on every migrated trap.
 - Checker rules for marked moves (legal; `cost` at or over the floor when present). README for
   `assets/lessons/` and `AGENTS.md` updated.
-- No new finds: shipped lessons change only by the migration, rebuilt by the importer from
-  committed answers.
+- No new finds: shipped lessons change only by the migration, rebuilt by the importer from committed
+  answers.
 
 ### Piece E: Cue and three acts
 
 In Explore, after the erring side plays a marked move into a cue, `guidance.ts` hides the
 candidates, Stockfish's best and verdicts until the learner tries (Practice's existing "hide every
-hint" branch); a `screen.ts` cue state holds the tries with Retry, Show the move and Skip, judged
-by `labelMove` alone (not `src/review/retry.ts`, which is tied to a finished game); Act III plays
-back through the lesson opponent; a haptic tick marks the cue in Explore. Wide layout, and the phone
+hint" branch); a `screen.ts` cue state holds the tries with Retry, Show the move and Skip, judged by
+`labelMove` alone (not `src/review/retry.ts`, which is tied to a finished game); Act III plays back
+through the lesson opponent; a haptic tick marks the cue in Explore. Wide layout, and the phone
 layout on the redesign's two panes: three act rows on the left, one line and three icon buttons on
 the right. Waits on the phone redesign's panes. Starts with a design review of whether the cue is a
 third mode-like state in `screen.ts`, and records its outcome here before building. The starting
@@ -216,14 +214,14 @@ An opportunities step in `scripts/import-study`, before the explain step (popula
 fed by piece B's answers files and the explorer directly: it asks the explorer about every position
 on a find's path and writes, from that one answer, `LessonPosition.games` (the explorer's own count
 of games reaching the position, which `lichessExplorer` must start returning, never a sum of the
-listed moves) and every move's counts. The explorer's cached rows gain a total for this: the
-positions on a find's path are asked again and their new answers committed in the same PR, so
-reruns stay exact; elsewhere a row without a total reads it as unknown, never as 0 or as enough
-games;
-then the marked move with its cost, and the accepted replies and Act III as Rules say. Popularity,
-which runs after it, must not drop counts it did not remeasure (today it drops them wherever it did
-not ask, such as positions with one guide move). Stafford only, with B's floors. Merges after E and
-F, because new lines change what the Practice opponent plays.
+listed moves) and every move's counts. The explorer's cached rows gain a total for this: when asked
+for a total, `lichessExplorer` treats a cached row without one as missing, so the positions on a
+find's path are asked again and their new answers committed in the same PR, keeping reruns exact.
+Elsewhere a row without a total reads it as unknown, never as 0 or as enough games. Then it writes
+the marked move with its cost, and the accepted replies and Act III as Rules say. Popularity, which
+runs after it, must not drop counts it did not remeasure (today it drops them wherever it did not
+ask, such as positions with one guide move). Stafford only, with B's floors. Merges after E and F,
+because new lines change what the Practice opponent plays.
 
 ### Piece D2: Names and notes
 
@@ -233,8 +231,8 @@ before it lands.
 
 ### Piece D3: Rollout
 
-The step runs on every lesson; `--no-model` rebuilds each exactly. Cap finds per lesson by score
-if the files grow too much for phones (the Caro-Kann file is already 5.3 MB).
+The step runs on every lesson; `--no-model` rebuilds each exactly. Cap finds per lesson by score if
+the files grow too much for phones (the Caro-Kann file is already 5.3 MB).
 
 ### Piece G: List page
 
@@ -257,9 +255,10 @@ lessons. `/privacy` and the Play listing's Data safety answers updated.
 
 ### Piece J: Maia shares
 
-Reply shares from Maia's policy scores for the legal moves (the scores themselves are not shares:
-the private `softmax` helper in `src/maia/network.ts`, which J exports, over the legal moves as
-`bestMove` in `src/maia/maia.ts` enumerates them, shared rather than copied), as a host source
+Reply shares from Maia's policy scores for the legal moves (the scores themselves are not shares). J
+extracts the legal-move walk from `bestMove` in `src/maia/maia.ts` into a shared helper that yields
+each legal move with its policy slot, rebuilds `bestMove` on it, and exports the private `softmax`
+from `src/maia/network.ts` to apply to those slots' scores only. The shares form a host source
 labeled `maia` for a whole run. Checks first how close they come to lichess's at the same rating.
 Maia finds are labeled estimates and listed after lichess ones, never ranked together.
 
