@@ -326,7 +326,7 @@ describe('findOpportunities', () => {
       ]);
       const [bg5] = find(answers, { payoffMoves: 1 }).finds;
       expect(bg5.payoff).toEqual(uci(`${BXD8} Kxd8`).slice(-2));
-      expect(bg5.disagreements).toEqual([{ at: 1, guide: last(`${BXD8} Kxd8`), kept: true }]);
+      expect(bg5.disagreements).toEqual([{ at: 1, guide: last(`${BXD8} Kxd8`) }]);
     });
 
     it("ends at the guide's move's score, not Stockfish's best's", () => {
@@ -344,7 +344,7 @@ describe('findOpportunities', () => {
       ]);
       const [bg5] = find(answers, { payoffMoves: 1 }).finds;
       expect(bg5.payoff).toEqual(uci(`${BXD8} Bxf2+`).slice(-2));
-      expect(bg5.disagreements).toEqual([{ at: 1, guide: last(`${BXD8} Kxd8`), kept: false }]);
+      expect(bg5.disagreements).toEqual([{ at: 1, guide: last(`${BXD8} Kxd8`) }]);
     });
   });
 

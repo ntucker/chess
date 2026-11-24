@@ -81,10 +81,8 @@ async function host(lesson: Lesson, band: number) {
   const answers: Answers = {
     replies: ({ key }) => replies.get(key),
     analysis: ({ key }) => {
-      const sketch = sketches.get(key);
-      return (
-        fulls.get(key) ?? (sketch && { lines: sketch.lines, depth: sketch.depth, final: false })
-      );
+      const row = sketches.get(key);
+      return fulls.get(key) ?? (row && { lines: row.lines, depth: row.depth, final: false });
     },
     // The run is for `lesson.side`, so these are its book moves and every move of the erring side.
     guideMoves: ({ key }) => {
@@ -238,14 +236,14 @@ function guideSummary(lesson: Lesson, finds: readonly Find[]): string {
   if (!disagreements.length)
     return "Act III: the guide never differs from Stockfish's best for the punishing side.";
   const overrides = disagreements
-    .filter(({ kept }) => !kept)
+    .filter(({ find, at, guide }) => find.payoff[at] !== guide)
     .map(({ find, at, guide }) => {
       const line = [...find.line, find.mistake, find.replies[0], ...find.payoff.slice(0, at)];
       const sans = lineSans([...line, guide], start);
       const played = lineSans([...line, find.payoff[at]], start).at(-1);
       return `- ${numberedLine(sans.slice(0, -1))}: the guide's ${sans.at(-1)}, Act III plays ${played}`;
     });
-  const summary = `Act III: the guide and Stockfish differ at ${disagreements.length} of the punishing side's positions; Act III kept the guide's move at ${disagreements.length - overrides.length}.`;
+  const summary = `Act III: the guide and Stockfish differ at ${disagreements.length} of the punishing side's moves in the finds' Act IIIs; Act III kept the guide's move at ${disagreements.length - overrides.length}.`;
   return [
     summary,
     ...(overrides.length

@@ -99,13 +99,13 @@ export interface FinderResult {
  * The opportunities the answers so far confirm, and the answers still
  * missing. The walk goes from where the finder opens, most reached position
  * first. Where the erring side moves, every reply over the share floor is
- * screened with a sketch; one at or over the mistake limit is confirmed with full
- * searches of the positions before and after it, and becomes a find once its
- * cue's replies and its payoff are known. Other replies go on, as does the
- * punishing side's move (its own moves, else Stockfish's best). The walk
- * stops where the game is over, at thin positions, below the reach floor
- * and past the ply cap; a
- * position reached again adds nothing, and so does a second find of one cue.
+ * screened with a sketch; one at or over the mistake limit is confirmed with
+ * full searches of the positions before and after it, and becomes a find once
+ * its cue's replies and its payoff are known. Other replies go on, as does the
+ * punishing side's move (its own moves, else Stockfish's best). The walk stops
+ * where the game is over, at thin positions, below the reach floor and past
+ * the ply cap; a position reached again adds nothing, and so does a second
+ * find of one cue.
  */
 export function findOpportunities({
   start,

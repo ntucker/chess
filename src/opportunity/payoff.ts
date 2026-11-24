@@ -15,14 +15,16 @@ import type { Uci } from '@/lesson/lesson';
 
 import { child, type Context, type Node, punishingLoss, type Replies, resultAt } from './walk';
 
-/** A place where the guide's move for the punishing side is not Stockfish's best. */
+/**
+ * A place where the guide's move for the punishing side is not Stockfish's
+ * best. Act III kept it where it plays it there (`moves[at] === guide`): it
+ * gives back less than the mistake limit; else it overrides it.
+ */
 export interface Disagreement {
   /** The index in Act III's moves of the move it plays there. */
   readonly at: number;
   /** The guide's move. */
   readonly guide: Uci;
-  /** Whether Act III plays it (it gives back less than the mistake limit) or overrides it with Stockfish's best. */
-  readonly kept: boolean;
 }
 
 /** Act III: its moves, and the punishing side's expected score (0 to 1) where it ends. */
@@ -80,8 +82,7 @@ export function payoff(
       const move = punishingMove(node, final, context);
       if (move === 'pending') return undefined;
       uci = move.uci;
-      if (move.guide)
-        disagreements.push({ at: moves.length, guide: move.guide, kept: uci === move.guide });
+      if (move.guide) disagreements.push({ at: moves.length, guide: move.guide });
       end = scoreFor(move.evaluation, side);
       punishingMoves++;
     } else {
@@ -158,9 +159,9 @@ function punishingMove(
   const guide = context.answers.guideMoves?.(node)?.[0];
   if (!guide || guide === best.uci) return best;
   const judged = punishingLoss(node, final, guide, context);
-  // An unjudged guide move is an illegal one.
-  if (judged === 'pending' || !judged) return judged ?? best;
-  return judged.loss < MISTAKE_LOSS
+  if (judged === 'pending') return judged;
+  // An unjudged guide move is an illegal one, so Stockfish's best overrides it too.
+  return judged && judged.loss < MISTAKE_LOSS
     ? { uci: guide, evaluation: judged.evaluation, guide }
     : { ...best, guide };
 }
