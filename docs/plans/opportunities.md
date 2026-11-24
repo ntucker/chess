@@ -55,20 +55,23 @@ plan doesn't depend on those links.
   | The mistake's title in the list          | `name` on that marker, written by the explain step     |
   | The guide's verdict on a migrated trap   | `verdict` on that marker (today `Trap.verdict`)        |
 
-- Derived, one pure function each in `src/opportunity/`: a move's share (its games over the
-  position's), reach (shares of the erring side's moves multiplied along the path), found rate (the
-  punishing move's games over the cue position's), score, role (trap or opportunity, from the
+- Derived, one pure function each in `src/opportunity/`: a move's share (from lichess, its games over the
+  games reaching the position; from Maia, a softmax over the legal moves' policy scores), reach (shares of the erring side's moves multiplied along the path), found rate (the
+  accepted replies' shares at the cue), score, role (trap or opportunity, from the
   learner's side), the current act, whether a position is a cue, and whether an opportunity is a
   line to pass. No component recomputes them.
-- App state the whole feature adds: saved finds (their own versioned store) and the lichess
-  connection (a setting). The finder has none of its own: engine answers and lichess replies live in
+- App state the whole feature adds: saved finds and the lichess token, each under its own storage
+  key with its own parser in `src/context/storage.ts` (not `SavedProgress`, whose parser drops
+  shapes it doesn't know, and not `Settings`, the preference record every tab syncs). The finder has none of its own: engine answers and lichess replies live in
   the Data Client store keyed by their request, and the finds and the next request are computed
   from them each render.
 - Flow: lesson file or network, into the store, through the pure functions, through `guidance.ts`
   (the only place anything is hidden), into components. Components send events to reducers and
   never write derived values back.
-- A score never mixes sources: one host-chosen source answers a whole finder run, and its finds
-  carry that source's name.
+- A score never mixes sources: the host picks one source for a whole finder run (lichess when the
+  account can answer, else Maia), and its finds carry that source's name. A thin lichess position
+  ends the walk there. A list may show a run of each, lichess rows first and Maia rows labeled
+  estimates; their scores are never combined.
 - Pieces E, G, I and K must be checked on Android (touch, the haptic tick, the pager, the sign-in
   redirect, on-device search).
 - Code says `opportunity`, `trap` and `mistake`, never `slip` (`practice.ts` uses that for a
@@ -87,18 +90,25 @@ the app's mistake limit and is not a gate setting.
   the live verdict.
 - **Share floor**: a reply played in under 5% of the games at its position (in the band) is not
   screened.
-  **Minimum games**: a position fewer than 100 games reach (in the band) is too thin to judge.
+  **Minimum games**: a position fewer than 100 games reach (in the band) is too thin to judge; the
+  lichess host marks it thin, and the walk ends there.
 - **Line to pass**: an opportunity whose mistake `countedReplies` counts (`src/lesson/cleanRun.ts`:
   10% over all bands, or the most played reply). Other finds show in the list and the finder but
   are never required. Piece C adds one exception to `countedReplies`, beside `COUNTED_SHARE`: a
   marked move without counts never counts (today a move without counts does). Once the importer
   writes its counts, the 10% rule applies to it like any other move.
 - **The cue's accepted replies**: the punishing side's moves in the cue position's final analysis
-  that label best or good beside its first line and keep at least the cost floor of the gain. The
-  importer writes each as a book move, and Act III's moves too, so a clean run can play them.
+  that label best or good beside its first line and keep at least the cost floor of the gain. Only
+  the learner's side has book moves (`lesson.ts`, `check.ts`), so the importer writes the accepted
+  replies and the punishing side's Act III moves as book moves; the erring side's Act III moves stay
+  ordinary moves. Each is the most played reply, which `countedReplies` keeps, or, where too few
+  games reach the position, Stockfish's; then it is the only reply in the tree there, so a clean run
+  plays through it, and it never adds a second line to pass.
 - **Act III** follows the punishing side's best move and the erring side's most played reply (else
-  Stockfish's), and ends at mate, when the punishing side is three points of material up and
-  winning, when its second-best move is also winning, or after six of its moves.
+  Stockfish's), and ends at mate, when the punishing side is three points of material up (`balance`
+  in `src/game/material.ts`) and winning (an expected score of at least 0.8, on `judgement`'s 0-to-1
+  scale), when its second-best move is also winning, or after six of its moves. The 0.8 and the
+  three points are `limits.ts` constants tuned at piece B's gate.
 - **Sketch and full**: a sketch is a search that reached at least `SKETCH_DEPTH`
   (`src/review/order.ts`); full is the app's search (`APP_SEARCH`). Sketches screen replies; only
   full searches confirm a find or set a stored cost. Analyses stay keyed as the store keys them.
@@ -112,7 +122,8 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
 
 - One function of the answers known so far, like the review's `nextSearch`: it takes the start
   line, the side looking for opportunities, the band, the limits, and lookups for the replies
-  (counts per move), analyses (sketch or final) and the punishing side's own moves (a lesson's book
+  (each move's share of the games at the position, and whether the position is too thin to judge),
+  analyses (sketch or final) and the punishing side's own moves (a lesson's book
   moves, where it has some) that the host has so far. It returns the finds so far and the requests
   still missing, most useful first: a position's replies, a sketch, or a full search, each naming
   its line and position. The script loops over it; the app derives it each render. No async
@@ -135,8 +146,10 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
 A script that runs the core over the Stafford lesson only, with the importer's lichess explorer
 (`lichessExplorer`, `scripts/import-study/popularity.ts`) and Node Stockfish, and writes a ranked
 report to the project files. It changes no lesson file. Its answers go in its own files,
-`scripts/import-study/answers/<id>-opportunities-*.jsonl`, which no other step reads or prunes (as
-`coverOpponent.ts` keeps its own); commit them.
+`scripts/import-study/answers/<id>-opportunities-*.jsonl`, which no other step prunes (as
+`coverOpponent.ts` keeps its own; piece D1 reads them); commit them. It runs on lichess only: a thin
+position ends the walk, and the report counts how many walks ended thin and at what depth, so the
+gate can judge whether a Maia supplement in the script is worth building. None is built now.
 
 Gate: Nathaniel reads the top 20 finds and sets the `limits.ts` floors and caps (not the cost floor)
 before any lesson file changes.
@@ -149,13 +162,16 @@ The report prints the limits it ran with.
   (`{ cost?, name?, verdict? }`: cost as above, absent only on migrated guide traps until piece D1's
   importer step measures it; `name` a short title for the list; `verdict` the `Trap` verdict it
   replaces). All optional, so the format number stays 3.
-- The `Trap` idea goes. Each existing trap (57 on positions, 82 in move notes) becomes guide-tree
-  moves with the marker on its first move. A note whose only drawn idea was the trap moves to the
+- The `Trap` idea goes. Each existing trap idea (254: 172 in position notes, 82 in move notes)
+  becomes guide-tree moves with the marker on its first move. A note whose only drawn idea was the trap moves to the
   marked move; a note with other ideas keeps them and its text where it was. Positions reached
   through a marked move of the learner's side are outside the book, so a clean run never reaches
   them and the checker needs no book move there.
 - The app reads the new shape. The trap card, its playback and landing (`LandedTrap`) behave as
-  before, except for the "show traps" scope in Decisions (before, it hid every trap).
+  before, except for the "show traps" scope in Decisions (before, it hid every trap). The marker
+  takes over two call sites of the `Trap` idea: a landed trap still explains itself with show traps
+  off (`guidance.ts`), and a marked move stays out of the rare rows (`trapStarts` in
+  `src/lesson/select.ts`). The PR note says `cost` is absent on every migrated trap.
 - Checker rules for marked moves (legal; `cost` at or over the floor when present). README for
   `assets/lessons/` and `AGENTS.md` updated.
 - No new finds: shipped lessons change only by the migration, rebuilt by the importer from
@@ -170,7 +186,10 @@ by `labelMove` alone (not `src/review/retry.ts`, which is tied to a finished gam
 back through the lesson opponent; a haptic tick marks the cue in Explore. Wide layout, and the phone
 layout on the redesign's two panes: three act rows on the left, one line and three icon buttons on
 the right. Waits on the phone redesign's panes. Starts with a design review of whether the cue is a
-third mode-like state in `screen.ts`.
+third mode-like state in `screen.ts`, and records its outcome here before building. The starting
+proposal: a try is a board preview until it passes, then a move through `useGame` (the screen
+reducer does not own the game); Act III reuses peek's playback, which does not move the game; the
+three acts replace the trap card for a marked line, so landing stays the one trigger.
 
 ### Piece F: Practice and marks
 
@@ -187,8 +206,11 @@ since E, F and H all touch `guidance.ts`, `screen.ts` and the candidate list.
 
 An opportunities step in `scripts/import-study`, before the explain step (popularity stays last),
 fed by piece B's answers files and the explorer directly: it asks the explorer about every position
-on a find's path, writes `LessonPosition.games`, the marked move with its counts and cost, the
-cue's accepted replies and Act III as book moves. Stafford only, with B's floors. Merges after E and
+on a find's path and writes, from that one answer, `LessonPosition.games` (the explorer's own count
+of games reaching the position, which `lichessExplorer` must start returning, never a sum of the
+listed moves) and every move's counts; then the marked move with its cost, and the accepted replies
+and Act III as Rules say. Popularity, which runs after it, must not drop counts it did not
+remeasure (today it drops them wherever it did not ask, such as positions with one guide move). Stafford only, with B's floors. Merges after E and
 F, because new lines change what the Practice opponent plays.
 
 ### Piece D2: Names and notes
@@ -200,7 +222,7 @@ before it lands.
 ### Piece D3: Rollout
 
 The step runs on every lesson; `--no-model` rebuilds each exactly. Cap finds per lesson by score
-if the files grow too much for phones (the Caro-Kann file is already 4.7 MB).
+if the files grow too much for phones (the Caro-Kann file is already 5.3 MB).
 
 ### Piece G: List page
 
@@ -213,7 +235,7 @@ band is the opponent setting. Waits on the redesign's pager and on D1.
 ### Piece I: lichess connection
 
 Sign in with lichess from the settings sheet (OAuth for apps without a server), the token kept on
-the device, and a Data Client endpoint for the explorer with the importer's pacing (one request
+the device under its own storage key (Shape), and a Data Client endpoint for the explorer with the importer's pacing (one request
 every 2.5 s) and castling conversion. Starts with a spike: may a browser page and the Android app
 call the explorer with a user's token, and does the sign-in redirect work on GitHub Pages and
 Android. If not: Maia only in the app, real counts only in shipped lessons. `/privacy` and the
@@ -221,20 +243,23 @@ Play listing's Data safety answers updated.
 
 ### Piece J: Maia shares
 
-Reply shares from Maia's move scores for the legal moves (the network already scores every move),
-as a replies source labeled `maia`. Checks first how close they come to lichess's at the same
-rating; if far, Maia finds are labeled estimates and rank below lichess ones.
+Reply shares from Maia's policy scores for the legal moves (a softmax; the scores themselves are not
+shares), as a host source labeled `maia` for a whole run. Checks first how close they come to
+lichess's at the same rating. Maia finds are labeled estimates and listed after lichess ones, never
+ranked together.
 
 ### Piece K: Finder in the app
 
 The core run from any position, derived each render from the store (engine answers through
 `useAnalysis`, replies through I or J), with finds joining the list page as they are confirmed and
-each number's source labeled. Measures first how long the first find takes on a phone, with
+each number's source labeled. The finder's searches use the existing Stockfish watch and queue
+behind whatever the board is watching: they never become the newest request while the board shows a
+position, or `decide` would stop the bar's and the lesson's searches. Measures first how long the first find takes on a phone, with
 lichess's pacing (one request every 2.5 s) and with Maia. After A, G, I and J.
 
 ### Piece L: Saved finds
 
 A bookmark saves a find on the device as the same lesson fragment the importer writes (the line,
-the marked move, the cue's replies and Act III), in its own versioned store (`SavedProgress` drops
-shapes it doesn't know), so it plays back through E's code. `/privacy` and the Play listing's Data
+the marked move, the cue's replies and Act III), under its own storage key with its own versioned parser
+(Shape; unknown versions are ignored), so it plays back through E's code. `/privacy` and the Play listing's Data
 safety answers updated for the new stored value. After K and E.
