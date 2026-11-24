@@ -5,7 +5,7 @@
 import type { Chess } from 'chessops/chess';
 import { parseUci } from 'chessops/util';
 
-import { moveLoss } from '@/analysis/quality';
+import { type MoveLoss, moveLoss } from '@/analysis/quality';
 import { type Analysis, type FinalAnalysis, isFinal } from '@/evaluation/evaluation';
 import { type Color, parsePosition, positionKey } from '@/game/replay';
 import type { PositionKey, Uci } from '@/lesson/lesson';
@@ -81,7 +81,7 @@ export function punishingLoss(
   final: FinalAnalysis,
   uci: Uci,
   { side, answers, ask }: Context,
-): ReturnType<typeof moveLoss> | 'pending' {
+): MoveLoss | undefined | 'pending' {
   const listed = final.lines.some((line) => line.uci === uci);
   const next = listed ? undefined : child(node, uci, 0);
   const analysis = next && answers.analysis(next);

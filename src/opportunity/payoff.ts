@@ -16,7 +16,12 @@ import { child, type Context, type Node, punishingLoss, type Replies } from './w
 /** Act III: its moves, and the punishing side's expected score (0 to 1) where it ends. */
 export interface Payoff {
   readonly moves: readonly Uci[];
-  /** 1 where it ends in mate; else from the last analysis of the punishing side's position. */
+  /**
+   * 1 where it ends in mate; else the evaluation that judged the punishing
+   * side's last move (`moveLoss`: a move its position's analysis doesn't list
+   * scores no better than the list's last move), or its position's best line
+   * where Act III stopped before moving.
+   */
   readonly end: number;
 }
 
@@ -67,8 +72,8 @@ export function payoff(
       ({ uci, guided } = move);
     }
     const next = uci === undefined ? undefined : child(node, uci, 0);
-    if (!next) break;
-    moves.push(next.line.at(-1)!);
+    if (!uci || !next) break;
+    moves.push(uci);
     node = next;
   }
   return { moves, end: node.pos.isCheckmate() && node.pos.turn !== side ? 1 : end };
@@ -134,13 +139,14 @@ function punishingMove(
   if (!guide || guide === best.uci) return best;
   const judged = punishingLoss(node, final, guide, context);
   if (judged === 'pending') return judged;
-  return judged && judged.loss < context.limits.costFloor ? { uci: guide, ...judged } : best;
+  return judged && judged.loss < context.limits.costFloor
+    ? { uci: guide, evaluation: judged.evaluation }
+    : best;
 }
 
-/** The most played move, unless the position is thin. */
+/** The most played move; undefined where the position is thin or no move was played. */
 function mostPlayed({ shares, thin }: Replies): Uci | undefined {
   if (thin) return undefined;
-  // Undefined where no move was played, so the caller asks Stockfish.
   let most: [Uci, number] | undefined;
   for (const entry of Object.entries(shares)) {
     if (!most || entry[1] > most[1]) most = entry;

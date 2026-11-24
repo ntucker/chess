@@ -107,6 +107,12 @@ export function judgement(
   return { quality, evaluation };
 }
 
+/** What a move gives away beside the best (0 to 1, the mover's), and the evaluation that judges it. */
+export interface MoveLoss {
+  readonly loss: number;
+  readonly evaluation: Evaluation;
+}
+
 /**
  * The expected score (0 to 1) `uci` gives away for `mover` beside the best
  * move, and the evaluation it is judged by, by `judgement`'s rule. It takes
@@ -118,7 +124,7 @@ export function moveLoss(
   after: Analysis | undefined,
   uci: string,
   mover: Color,
-): { loss: number; evaluation: Evaluation } | undefined {
+): MoveLoss | undefined {
   const evaluation = judgedEvaluation(before, after, uci, mover);
   return (
     evaluation && {
