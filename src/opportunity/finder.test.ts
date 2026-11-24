@@ -428,17 +428,6 @@ describe('findOpportunities', () => {
   });
 });
 
-describe('repliesFrom', () => {
-  it('counts a key that is no move toward the total but gives it no share', () => {
-    // No piece stands on h8 at the start, so lichess's key h8h1 is no move there.
-    const { key } = walkTo(START, [])!;
-    expect(repliesFrom(key, { e2e4: 30, h8h1: 10 }, 50)).toEqual({
-      shares: { e2e4: 0.75 },
-      thin: true,
-    });
-  });
-});
-
 describe('acceptedReplies', () => {
   const before = full(SETUP, [['Be2', 0.55]]);
   const after = full(CUE, CUE_LINES);

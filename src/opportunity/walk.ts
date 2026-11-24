@@ -26,6 +26,8 @@ export type MoveCounts = Readonly<Record<Uci, number>>;
  * A position's replies as the run's one source gives them: each move's share
  * of the games there (0 to 1; a move missing was not played), and whether too
  * few games reach the position to judge it. The walk ends at a thin position.
+ * Every key is a legal move there, as `repliesFrom` makes them: the finder
+ * plays them through `legalChild`, which throws on one that isn't.
  */
 export interface Replies {
   readonly shares: Readonly<Record<Uci, number>>;
@@ -113,9 +115,10 @@ export function child(node: Node, uci: Uci, reach: number): Node | undefined {
 }
 
 /**
- * The node a move the finder plays leads to: the guide's (the lesson checker
- * rules out an illegal one), Stockfish's, or a reply `repliesFrom` kept.
- * Throws where it isn't legal, since the data that gave it is broken.
+ * The node a move the finder has chosen to play leads to. Every source of one
+ * promises a legal move (the lesson checker for the guide's, Stockfish, and
+ * `repliesFrom` for the explorer's), so this throws where it isn't legal,
+ * since the data that gave it is broken.
  */
 export function legalChild(node: Node, uci: Uci, reach: number): Node {
   const next = child(node, uci, reach);
@@ -146,7 +149,7 @@ export function walkTo(start: string, line: readonly Uci[]): Node | undefined {
  * Lichess's `counts` at the position `key` as replies: each move's games over
  * the games reaching the position, and thin when fewer than `minGames` do. A
  * key that is no move there (lichess's own notation for a move `recordedMove`
- * rejects, kept by `popularity.ts`) counts toward the total but gets no share.
+ * rejects, kept by `scripts/import-study/popularity.ts`) counts toward the total but gets no share.
  */
 export function repliesFrom(key: PositionKey, counts: MoveCounts, minGames: number): Replies {
   const pos = parsePositionKey(key);
