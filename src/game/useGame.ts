@@ -4,7 +4,7 @@ import { useMoveQualities } from '@/analysis/useMoveQualities';
 import type { EvaluationEngine } from '@/evaluation/evaluation';
 
 import { failure, type GameAction, type GameOpponent, type GameState } from './game';
-import { material } from './material';
+import { captures } from './material';
 import { analyze, type Color, replay, toUci } from './replay';
 
 /** The least time the opponent takes to reply, so a fast answer reads as a reply, not a reflex. */
@@ -109,8 +109,8 @@ export function useGame(
      * decides whose it shows.
      */
     refutation: refutations[ply - 1],
-    /** What each side is up on the board shown, so it follows the moves stepped through. */
-    material: material(current.fen),
+    /** What each side is up and has taken by the move shown, so it follows the moves stepped through. */
+    captures: captures(plies, ply),
     latest,
     atLatest,
     /** Whose move it is in the latest position; none once the game is over. */

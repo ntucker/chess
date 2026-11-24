@@ -7,7 +7,16 @@ import { AndroidHaptics, performAndroidHapticsAsync } from 'expo-haptics';
  * buzzes the motor or clicks a hidden switch, neither of them a tick.
  */
 export function tickMove() {
+  tick(AndroidHaptics.Clock_Tick);
+}
+
+/** The press-and-hold feel, as a held control opens what it holds (the captures card). */
+export function tickHold() {
+  tick(AndroidHaptics.Long_Press);
+}
+
+function tick(feel: AndroidHaptics) {
   if (process.env.EXPO_OS !== 'android') return;
   // A phone without haptics just stays still.
-  performAndroidHapticsAsync(AndroidHaptics.Clock_Tick).catch(() => {});
+  performAndroidHapticsAsync(feel).catch(() => {});
 }

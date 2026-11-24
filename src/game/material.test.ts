@@ -2,8 +2,8 @@ import { describe, expect, it } from '@jest/globals';
 
 import { INITIAL_FEN } from 'chessops/fen';
 
-import { material } from './material';
-import { lastPosition } from './replay';
+import { material, takenBy } from './material';
+import { lastPosition, parsePosition, replay } from './replay';
 
 const even = { pieces: [], lead: 0 };
 
@@ -49,5 +49,43 @@ describe('material', () => {
       white: { pieces: ['queen'], lead: 8 },
       black: { pieces: ['pawn'], lead: 0 },
     });
+  });
+});
+
+describe('takenBy', () => {
+  const taken = (line: readonly string[]) => takenBy(replay(line));
+
+  it('lists nothing before a capture', () => {
+    expect(taken(['e2e4', 'e7e5'])).toEqual({ white: [], black: [] });
+  });
+
+  it('lists what each side took, most valuable first', () => {
+    // 1. e4 d5 2. exd5 Qxd5 3. Nc3 Qxa2 4. Rxa2: each a pawn, then Black a pawn and White the queen.
+    expect(taken(['e2e4', 'd7d5', 'e4d5', 'd8d5', 'b1c3', 'd5a2', 'a1a2'])).toEqual({
+      white: ['queen', 'pawn'],
+      black: ['pawn', 'pawn'],
+    });
+  });
+
+  it('counts a pawn taken en passant', () => {
+    // 1. e4 a6 2. e5 d5 3. exd6 e.p.
+    expect(taken(['e2e4', 'a7a6', 'e4e5', 'd7d5', 'e5d6'])).toEqual({
+      white: ['pawn'],
+      black: [],
+    });
+  });
+
+  it('counts a promoted pawn taken as the piece it became', () => {
+    // White's b-pawn takes the a8 rook and queens; Black's other rook takes the queen.
+    const start = parsePosition('r3k3/1P6/8/8/8/8/7K/r7 w - - 0 1')!;
+    expect(takenBy(replay(['b7a8q', 'a1a8'], start))).toEqual({
+      white: ['rook'],
+      black: ['queen'],
+    });
+  });
+
+  it("doesn't count castling as taking the mover's rook", () => {
+    const start = parsePosition('r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1')!;
+    expect(takenBy(replay(['e1h1'], start))).toEqual({ white: [], black: [] });
   });
 });

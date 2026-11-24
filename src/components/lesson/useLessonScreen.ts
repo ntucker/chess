@@ -307,7 +307,8 @@ export function useLessonScreen({
       rival: {
         name: colorName(rival),
         detail: `The guide's moves, then ${described.lead.toLowerCase()}`,
-        brief: described.lead,
+        // A phone's bar has room for the strength alone: its control says how it plays.
+        brief: '',
       },
       board: { ...board, onDrag },
       // The side is the lesson's once one is picked.

@@ -5,9 +5,9 @@
  */
 import type { Board } from 'chessops/board';
 import { parseFen } from 'chessops/fen';
-import { opposite } from 'chessops/util';
+import { opposite, parseSquare } from 'chessops/util';
 
-import type { Color } from './replay';
+import type { Color, Ply } from './replay';
 
 /** The roles that count, most valuable first, as pieces are listed. */
 const ROLES = ['queen', 'rook', 'bishop', 'knight', 'pawn'] as const;
@@ -56,4 +56,51 @@ export function material(fen: string): Readonly<Record<Color, Material>> {
     white: { pieces: up.white, lead: Math.max(0, score) },
     black: { pieces: up.black, lead: Math.max(0, -score) },
   };
+}
+
+/** The pieces each side has taken, most valuable first. */
+export type Taken = Readonly<Record<Color, readonly MaterialRole[]>>;
+
+/** What the name bars say of the pieces taken by a position in a game. */
+export interface Captures {
+  /** Each side's edge on the board (`material`). */
+  readonly material: Readonly<Record<Color, Material>>;
+  /** Everything each side has taken by then (`takenBy`). */
+  readonly taken: Taken;
+}
+
+/** The captures by `plies[ply]`, the position after `ply` moves of the game `plies`. */
+export function captures(plies: readonly Ply[], ply: number): Captures {
+  return { material: material(plies[ply].fen), taken: takenBy(plies.slice(0, ply + 1)) };
+}
+
+/**
+ * The pieces each side took over the moves of `plies`, each as it stood when
+ * taken: a promoted pawn taken counts as the piece it became. Folded over the
+ * moves, since a position can't tell: the starting set less what's left
+ * lists a pawn nobody took after a promotion.
+ */
+export function takenBy(plies: readonly Ply[]): Taken {
+  const taken: Record<Color, MaterialRole[]> = { white: [], black: [] };
+  for (let n = 1; n < plies.length; n++) {
+    const { move } = plies[n];
+    if (!move) continue;
+    const { board, turn } = parseFen(plies[n - 1].fen).unwrap();
+    const role = capturedRole(board, turn, move.uci);
+    if (role) taken[turn].push(role);
+  }
+  const byValue = (a: MaterialRole, b: MaterialRole) => ROLES.indexOf(a) - ROLES.indexOf(b);
+  return { white: taken.white.sort(byValue), black: taken.black.sort(byValue) };
+}
+
+/** The role `mover`'s move `uci` takes on `board`, if it takes anything. */
+function capturedRole(board: Board, mover: Color, uci: string): MaterialRole | undefined {
+  const from = parseSquare(uci.slice(0, 2));
+  const to = parseSquare(uci.slice(2, 4));
+  if (from === undefined || to === undefined) return undefined;
+  const target = board.get(to);
+  // Castling written king-takes-rook lands on the mover's own rook, which nobody takes.
+  if (target) return target.color === mover || target.role === 'king' ? undefined : target.role;
+  // A pawn moving sideways onto an empty square takes en passant.
+  return board.get(from)?.role === 'pawn' && from % 8 !== to % 8 ? 'pawn' : undefined;
 }

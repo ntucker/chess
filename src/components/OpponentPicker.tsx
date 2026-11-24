@@ -129,13 +129,13 @@ export function OpponentPicker() {
     open('pressed');
   };
 
-  const { level } = describeOpponent(opponent);
+  const { level, lead } = describeOpponent(opponent);
   return (
     <>
       <Pressable
         ref={trigger}
         accessibilityRole="button"
-        accessibilityLabel={`${level}, opponent strength`}
+        accessibilityLabel={`${lead} ${level}, opponent strength`}
         aria-expanded={opened !== undefined}
         {...(WEB ? { 'aria-haspopup': 'dialog', 'aria-controls': popoverId } : {})}
         onKeyDown={onTriggerKey}
