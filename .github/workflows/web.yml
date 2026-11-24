@@ -1,7 +1,8 @@
 # Publishes the web app to GitHub Pages: every push to main replaces the site,
 # and every pull request from this repository gets a preview under
 # pr-preview/pr-<number>/, linked in a comment on the pull request and removed
-# when it closes. Fork and Dependabot pull requests only build. Setup is in
+# when it closes. Fork and Dependabot pull requests only build. Every build's
+# phone layout is checked in a browser (the Layout job). Setup is in
 # README.md, under "Web deploys".
 name: Web
 
@@ -38,6 +39,7 @@ jobs:
       cancel-in-progress: true
     outputs:
       site-url: ${{ steps.pages.outputs.base_url }}
+      base-path: ${{ steps.pages.outputs.base_path }}
       superseded: ${{ steps.export.outputs.superseded }}
 
     steps:
@@ -139,6 +141,58 @@ jobs:
           name: site
           path: dist
           retention-days: 1
+
+  # Measures the export's phone layout in a real browser (scripts/check-layout.mjs),
+  # beside Publish, so previews and deploys don't wait for it.
+  # .agents/projects/autoland.md lists this job's name as a required check; rename both together.
+  layout:
+    name: Layout
+    needs: build
+    if: needs.build.result == 'success' && needs.build.outputs.superseded != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install
+        # Hardened mode for fork pull requests only, as in Build.
+        env:
+          YARN_ENABLE_HARDENED_MODE: ${{ github.event.pull_request.head.repo.fork && '1' || '0' }}
+        run: yarn install --immutable
+
+      - name: Install Chromium
+        run: yarn playwright install --with-deps chromium
+
+      - name: Download the site
+        uses: actions/download-artifact@v8
+        with:
+          name: site
+          path: site
+
+      - name: Check the phone layout
+        env:
+          # The path the export was built for, which the check serves it under.
+          PAGES_BASE_PATH: ${{ needs.build.outputs.base-path }}${{ env.PREVIEW && format('/{0}', env.PREVIEW) || '' }}
+        run: yarn check:layout site layout-check
+
+      - name: Upload the screenshots
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: layout-check
+          path: layout-check
+          retention-days: 7
 
   # .agents/projects/autoland.md lists this job's name as a required check; rename both together.
   publish:
