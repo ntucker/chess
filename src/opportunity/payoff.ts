@@ -78,7 +78,7 @@ export function payoff(
       const move = punishingMove(node, final, context);
       if (move === 'pending') return undefined;
       uci = move.uci;
-      if (move.overrides) overrides.push({ at: moves.length, guide: move.overrides });
+      if (move.overridden) overrides.push({ at: moves.length, guide: move.overridden });
       end = scoreFor(move.evaluation, side);
       punishingMoves++;
     } else {
@@ -143,14 +143,14 @@ function erringMove(node: Node, context: Context): { uci: Uci; guided: boolean }
  * The punishing side's move at `node`, with the evaluation it leads to: the
  * guide's where it has one that gives back less than the mistake limit beside
  * Stockfish's best (so the tree stays the one source for the line), else
- * Stockfish's best, with the guide's move it `overrides`; `'pending'` while
+ * Stockfish's best, with the guide's move it passes over (`overridden`); `'pending'` while
  * the guide's move awaits its full search.
  */
 function punishingMove(
   node: Node,
   final: FinalAnalysis,
   context: Context,
-): { uci?: Uci; evaluation: Evaluation; overrides?: Uci } | 'pending' {
+): { uci?: Uci; evaluation: Evaluation; overridden?: Uci } | 'pending' {
   const best = final.lines[0];
   const guide = context.answers.guideMoves?.(node)?.[0];
   if (!guide || guide === best.uci) return best;
@@ -158,7 +158,7 @@ function punishingMove(
   if (judged === 'pending') return judged;
   return judged && judged.loss < MISTAKE_LOSS
     ? { uci: guide, evaluation: judged.evaluation }
-    : { ...best, overrides: guide };
+    : { ...best, overridden: guide };
 }
 
 /** The most played move; undefined where the position is thin or no move was played. */

@@ -116,16 +116,14 @@ async function host(lesson: Lesson, band: number) {
    * Stockfish's one at a time beside them (it searches one position at a time).
    */
   const answer = async (requests: readonly Request[]) => {
-    const each = async (wanted: readonly Request[], get: (request: Request) => Promise<void>) => {
+    const inTurn = async (wanted: readonly Request[], get: (request: Request) => Promise<void>) => {
       for (const request of wanted) await get(request);
     };
+    const isReplies = ({ kind }: Request) => kind === 'replies';
     await Promise.all([
-      each(
-        requests.filter(({ kind }) => kind === 'replies'),
-        ask,
-      ),
-      each(
-        requests.filter(({ kind }) => kind !== 'replies'),
+      inTurn(requests.filter(isReplies), ask),
+      inTurn(
+        requests.filter((request) => !isReplies(request)),
         search,
       ),
     ]);
