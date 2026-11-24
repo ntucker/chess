@@ -1,20 +1,18 @@
 import { AsyncBoundary, useFetch, useSuspense } from '@data-client/react';
-import { Inline, Separator, Spinner, Stack } from '@reactive/silk-native';
-import { type ReactNode, useMemo, useState } from 'react';
+import { Spinner, Stack } from '@reactive/silk-native';
+import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
-import { useLabelled, useSections } from '@/components/Eyebrow';
+import { useSections } from '@/components/Eyebrow';
 import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentChoice } from '@/components/OpponentChoice';
 import { OpponentPicker } from '@/components/OpponentPicker';
-import { Scoresheet, ScoresheetTitle } from '@/components/Scoresheet';
-import { ScoresheetDrawer, ScoresheetOpener } from '@/components/ScoresheetDrawer';
+import { ScoresheetOpener } from '@/components/ScoresheetDrawer';
 import { Sheet } from '@/components/Sheet';
 import { SourceFootnote } from '@/components/SourceLink';
 import { resetListener } from '@/components/resetListener';
-import { ReviewGameButton, ScoresheetReview } from '@/components/ReviewLinks';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { useBackToReview } from '@/components/useBackToReview';
 import { useLongWait } from '@/components/useLongWait';
@@ -23,17 +21,15 @@ import { NewVersionError } from '@/files/newVersion';
 import type { VariationId } from '@/lesson/lesson';
 import { getLesson, isLessonId, type LessonId } from '@/resources/lesson';
 import { getProgress } from '@/resources/progress';
-import { NarrowOnly, NarrowScroll, useNarrowPart } from '@/theme/Narrow';
+import { useLayout } from '@/theme/Narrow';
 
 import { AutoPlay } from './AutoPlay';
-import { CandidateList, useListMinWidth } from './CandidateList';
-import { IdeaAside, IdeaCard } from './IdeaCard';
+import { PhoneLesson } from './layouts/PhoneLesson';
+import { WideLesson } from './layouts/WideLesson';
 import { LessonControls } from './LessonControls';
-import { PointingArea } from './PointingArea';
 import { SideChoice } from './SideChoice';
-import { headlineNews, LOADING } from './status';
+import { LOADING } from './status';
 import { SourceCredits } from './SourceCredits';
-import { TrapCard } from './TrapCard';
 import { type LessonScreenInput, useLessonScreen } from './useLessonScreen';
 import { useOpeningsGame } from './useOpeningsGame';
 
@@ -126,48 +122,24 @@ function Openings({
 
 /**
  * The lesson `id` played on the board, in Explore or Practice, or before
- * one is picked, the openings of `side` alone.
+ * one is picked, the openings of `side` alone. The one place that asks
+ * which layout the panel takes (`useLayout`): the frame around it, which
+ * pre-renders, takes its parts from narrow.css.
  */
 function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picked'>) {
-  const part = useNarrowPart();
-  const labelled = useLabelled();
   const sections = useSections();
-  const movesPaneStyle = useListMinWidth();
+  const phone = useLayout() === 'phone';
   // The progress loads beside the lesson, rather than once it has loaded.
   useFetch(getProgress);
   const picked = useSuspense(getLesson, id ?? null);
   const model = useLessonScreen({ id, picked, onPlayAs, ...input });
-  // A narrow page's settings sheet, and its scoresheet drawer.
+  // A phone's settings sheet and scoresheet drawer, shut while the window is wide.
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [scoresheetOpen, setScoresheetOpen] = useState(false);
+  const settingsShown = phone && settingsOpen;
+  const scoresheetShown = phone && scoresheetOpen;
   const back = useBackToReview();
-  // The headline tells it on a wide page, and to screen readers.
-  const aside = model.aside && (
-    <View aria-hidden>
-      <IdeaAside {...model.aside} />
-    </View>
-  );
-  const moveList = model.moves && <CandidateList {...model.moves} />;
   const lessonCredits = <SourceCredits sources={model.sources} />;
-  /** The settings, beside the board or in a narrow page's sheet, which adds the lesson's `credits`. */
-  const settings = (credits?: ReactNode) => (
-    <>
-      <LessonControls {...model.settings} />
-      <Stack gap="1">
-        <OpponentChoice />
-        {credits}
-      </Stack>
-    </>
-  );
-
-  /** The pane beside the moves on a narrow page: the idea card, else past the guide the headline's aside, else none. */
-  const ideaPane = model.idea ? (
-    <NarrowScroll part="idea-pane">
-      <IdeaCard {...model.idea} />
-    </NarrowScroll>
-  ) : aside ? (
-    <NarrowScroll part="narrow-idea-pane">{aside}</NarrowScroll>
-  ) : null;
 
   return (
     <Stage
@@ -175,16 +147,15 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
       header={{
         ...model.header,
         back,
-        // Only a narrow page shows the button, so only there does the sheet open.
+        // Only a phone shows the button, so only there does the sheet open.
         narrowButton: {
           icon: 'settings-outline',
           label: 'Settings',
           onPress: () => setSettingsOpen(true),
         },
       }}
-      // A wide page credits the lesson's sources at its foot, a narrow one in its settings
-      // sheet. One copy at a time, as with the settings: the sheet may stay open on a widened window.
-      footer={settingsOpen ? undefined : lessonCredits}
+      // A wide page credits the lesson's sources at its foot, a phone in its settings sheet.
+      footer={phone ? undefined : lessonCredits}
       board={
         <BoardColumn
           {...model.board}
@@ -198,97 +169,37 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
               san={model.stepper.san}
               ply={model.stepper.ply}
               // Nothing to open before the first move, but an open drawer can always close: a new game empties it.
-              disabled={!scoresheetOpen && !model.stepper.started}
-              open={scoresheetOpen}
-              onToggle={() => setScoresheetOpen(!scoresheetOpen)}
+              disabled={!scoresheetShown && !model.stepper.started}
+              open={scoresheetShown}
+              onToggle={() => setScoresheetOpen(!scoresheetShown)}
             />
           }
         />
       }
       program={
-        <Stack {...part('drawer-panel', sections)}>
-          <StatusHeadline
-            {...model.headline}
-            eyebrowInHeader
-            action={model.review.offered ? <ReviewGameButton href={model.review.href} /> : null}
-            news={headlineNews(model.status, {
-              aside: !!model.aside,
-              scoresheetOpen,
-              failed: !!model.headline.failure,
-            })}
-          />
-          {/* The scoresheet drawer takes the place of this part on a narrow page, under the headline, which tells of a failure. */}
-          <View {...part(scoresheetOpen ? 'wide-only' : 'lesson-body', sections)}>
-            {/* On a narrow page the moves follow the headline closely, with no rule between. */}
-            <View {...part('wide-only')}>
-              <Separator />
-            </View>
-            {model.trap ? <TrapCard {...model.trap} /> : null}
-            {/*
-             * Leaving a row for the idea card keeps its preview, so its notes can be pointed at.
-             * On a narrow page the moves and the idea are panes side by side.
-             */}
-            {moveList || model.idea ? (
-              // A View, so narrow.css can make it a row, which a Stack's inline style would override.
-              <PointingArea onLeave={model.onLeave} {...part('panes', sections)}>
-                {moveList ? (
-                  // Beside the idea it widens for larger text; alone it fills the row.
-                  <View
-                    {...(ideaPane
-                      ? part('moves-pane', [sections, movesPaneStyle])
-                      : part('lone-pane', sections))}
-                  >
-                    {moveList}
-                  </View>
-                ) : null}
-                {ideaPane}
-              </PointingArea>
-            ) : (
-              // Before Stockfish's moves arrive, or where none are listed, it has the panel to itself.
-              aside && <NarrowOnly>{aside}</NarrowOnly>
-            )}
-          </View>
-          {scoresheetOpen ? (
-            <ScoresheetDrawer
-              {...model.scoresheet}
-              reviewButton={
-                <ScoresheetReview href={model.review.href} disabled={model.review.shut} compact />
-              }
-              onClose={() => setScoresheetOpen(false)}
+        <>
+          {phone ? (
+            <PhoneLesson
+              model={model}
+              scoresheetOpen={scoresheetShown}
+              onCloseScoresheet={() => setScoresheetOpen(false)}
             />
-          ) : null}
-          {/*
-           * A narrow page has no room for the rest under the panes: the
-           * scoresheet opens in the drawer, the settings in a sheet. The page's
-           * copy of the settings unmounts while the sheet is open. This
-           * scoresheet stays while the drawer is open, so a window widened
-           * meanwhile still shows one.
-           */}
-          <Stack {...part('wide-only', sections)}>
-            <Separator />
-            <Stack style={labelled}>
-              <Inline align="center" justify="between" wrap="nowrap">
-                <ScoresheetTitle />
-                <ScoresheetReview href={model.review.href} disabled={model.review.shut} />
-              </Inline>
-              <Scoresheet {...model.scoresheet} />
-            </Stack>
-            {settingsOpen ? null : (
-              <>
-                <Separator />
-                {settings()}
-              </>
-            )}
-          </Stack>
-          <Sheet open={settingsOpen} title="Settings" onClose={() => setSettingsOpen(false)}>
+          ) : (
+            <WideLesson model={model} />
+          )}
+          <Sheet open={settingsShown} title="Settings" onClose={() => setSettingsOpen(false)}>
             <Stack style={sections}>
               {/* A phone's name-bar discs are dots too small to find; this swaps sides from the sheet, in a lesson too. */}
               <SideChoice side={model.learner} onChange={onPlayAs} />
-              {settings(lessonCredits)}
+              <LessonControls {...model.settings} />
+              <Stack gap="1">
+                <OpponentChoice />
+                {lessonCredits}
+              </Stack>
               <SourceFootnote />
             </Stack>
           </Sheet>
-        </Stack>
+        </>
       }
     />
   );

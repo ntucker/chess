@@ -71,10 +71,10 @@ export interface LessonScreenModel {
     'eyebrow' | 'title' | 'detail' | 'failure' | 'eyebrowLink'
   >;
   /**
-   * What the status says beyond the headline: how much of it a narrow page
-   * draws, and why Stockfish's moves stand in for the guide's. A layout reads
-   * them with `headlineNews`, which also needs whether the scoresheet is
-   * shown, which only the layout knows.
+   * What the status says beyond the headline: how much of it a phone draws,
+   * and why Stockfish's moves stand in for the guide's. The phone's layout
+   * reads them with `headlineNews`, which also needs what it shows around
+   * the headline.
    */
   readonly status: Pick<Status, 'news' | 'pastGuide'>;
   /**
@@ -93,9 +93,9 @@ export interface LessonScreenModel {
    */
   readonly aside: ComponentProps<typeof IdeaAside> | null;
   /** The moves the learner can point at: the guide's, else past it Stockfish's. */
-  readonly moves: ComponentProps<typeof CandidateList> | null;
+  readonly moves: Omit<ComponentProps<typeof CandidateList>, 'density'> | null;
   /** The notes of the position, or of the candidate pointed at. */
-  readonly idea: ComponentProps<typeof IdeaCard> | null;
+  readonly idea: Omit<ComponentProps<typeof IdeaCard>, 'density'> | null;
   readonly trap: ComponentProps<typeof TrapCard> | null;
   /** The game's moves. */
   readonly scoresheet: Omit<ComponentProps<typeof Scoresheet>, 'fill'>;
@@ -261,8 +261,8 @@ export function useLessonScreen({
         heading: view.learnerToMove ? 'Your candidates' : rivalMoves,
         shareTip: shareSource(lesson, opponent),
         owner: view.learnerToMove ? undefined : colorName(rival),
-        // At the start each move's opening is the point, so its rows keep it.
-        compact: !picking,
+        // At the start each move's opening is the point; later the idea card names it.
+        leadsAlways: picking,
         leadsTo,
         candidates: guidance.candidates,
         // Inside the guide, Stockfish's rows are at most its best (`listedEngineMoves`).
@@ -279,7 +279,8 @@ export function useLessonScreen({
           ...rowProps,
           heading: 'top moves',
           owner: 'Stockfish',
-          compact: true,
+          // No idea card names where the row pointed at leads.
+          leadsAlways: true,
           leadsTo: rejoins,
           candidates: guidance.top,
           rare: [],
@@ -330,6 +331,7 @@ export function useLessonScreen({
       ? {
           lesson,
           title: preview ? `If ${preview.san}` : 'The idea',
+          leadsTo: preview && leadsTo(preview),
           empty: preview && noNotesText(preview.san, guidance.verdicts?.get(preview.move.uci)),
           notes: guidance.notes,
           learner,

@@ -11,8 +11,7 @@
  */
 :root [data-narrow='narrow-only'],
 :root [data-narrow='place'],
-:root [data-narrow='scoresheet-drawer'],
-:root [data-narrow='narrow-idea-pane'] {
+:root [data-narrow='scoresheet-drawer'] {
   display: none;
 }
 
@@ -41,9 +40,6 @@
     --board-min: 300px;
     --panel-reserve: 172px;
     --program-foot: 60px;
-    --candidate-gap: 8px;
-    --candidate-inset: 10px;
-    --candidate-padding: 6px;
     --opening-gap: 4px;
     --fade: 16px;
   }
@@ -99,24 +95,17 @@
   }
   /*
    * A panel that a scoresheet drawer can fill (the lesson's and the
-   * review's) fills the space under the board. The lesson's moves and its
-   * idea share that space side by side, the list's rows and the idea each
-   * scrolling on their own, so neither pushes the other out of view. Should
-   * the panel's other parts (a trap's card) crowd them, the panes keep a
-   * floor and the panel scrolls instead.
+   * review's) fills the space under the board, so what it holds can share
+   * that space: the lesson's panes (PhoneLesson.tsx) and the drawer each
+   * take what the headline leaves.
    */
   :root [data-narrow='drawer-panel'] {
     flex: 1 0 auto;
     min-height: 100%;
   }
-  /* What the scoresheet drawer covers: all but the headline. */
-  :root [data-narrow='lesson-body'] {
-    flex: 1 0 auto;
-  }
   /*
    * The scoresheet drawer (ScoresheetDrawer.tsx) takes the panel's place,
-   * filling it and scrolling its moves within. What it covers stays mounted,
-   * hidden as wide-only, so the rows and the idea keep their scroll.
+   * filling it and scrolling its moves within.
    */
   :root [data-narrow='scoresheet-drawer'] {
     display: flex;
@@ -124,61 +113,6 @@
     height: 0;
     min-height: 0;
     animation: drawer-rise 220ms cubic-bezier(0.2, 0, 0, 1);
-  }
-  :root [data-narrow='panes'] {
-    flex: 1 1 auto;
-    height: 0;
-    flex-direction: row;
-    min-height: 140px;
-  }
-  /*
-   * The moves get two fifths of the width, or more for larger text (CandidateList.tsx's
-   * useListMinWidth), and the idea the rest; a pane alone gets all of it.
-   * Past the guide, the idea pane only a narrow page shows tells why the moves are Stockfish's.
-   */
-  :root [data-narrow='narrow-idea-pane'] {
-    display: flex;
-  }
-  :root [data-narrow='lone-pane'],
-  :root [data-narrow='idea-pane'],
-  :root [data-narrow='narrow-idea-pane'] {
-    width: 0;
-    min-width: 0;
-  }
-  :root [data-narrow='moves-pane'] {
-    flex: 0 1 auto;
-    width: 40%;
-  }
-  :root [data-narrow='lone-pane'] {
-    flex: 1 1 auto;
-  }
-  :root [data-narrow='idea-pane'],
-  :root [data-narrow='narrow-idea-pane'] {
-    flex: 3 1 auto;
-  }
-  /*
-   * A candidate list (CandidateList.tsx) keeps its heading in view: the list
-   * and its card shrink to the pane, and its rows scroll inside the card.
-   */
-  :root [data-narrow='moves-pane'],
-  :root [data-narrow='lone-pane'] {
-    overflow: hidden;
-  }
-  :root [data-narrow='move-list'],
-  :root [data-narrow='list-card'],
-  :root [data-narrow='list-scroll'] {
-    flex-shrink: 1;
-    min-height: 0;
-  }
-  /* A scroll inside the panel stops at its ends rather than scroll the panel on. */
-  :root [data-narrow='list-scroll'],
-  :root [data-narrow='idea-pane'],
-  :root [data-narrow='narrow-idea-pane'] {
-    overscroll-behavior: contain;
-  }
-  /* The rows' scroll pads the card's bottom itself, to clear its fade. */
-  :root [data-narrow='list-card'] {
-    padding-bottom: 0;
   }
   :root [data-narrow='page'] {
     min-height: 100dvh;
@@ -207,15 +141,11 @@
     min-height: 60px;
   }
   /*
-   * The panel, a candidate list's rows and the idea pane scroll on their own. Each fades
-   * out its bottom edge to show there's more below; the padding lets the last
-   * line clear it.
+   * The panel scrolls on its own. It fades out its bottom edge to show
+   * there's more below; the padding lets the last line clear it.
    */
   :root [data-narrow='program'],
-  :root [data-narrow='footed-program'],
-  :root [data-narrow='list-scroll'],
-  :root [data-narrow='idea-pane'],
-  :root [data-narrow='narrow-idea-pane'] {
+  :root [data-narrow='footed-program'] {
     overflow-y: auto;
     padding-bottom: var(--fade);
     /* A mask reads only alpha, so black here is opaque, not a theme color. */

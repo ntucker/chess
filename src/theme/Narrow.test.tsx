@@ -6,6 +6,7 @@ import { createRoot, type Root } from 'test-renderer';
 import { NARROW_PX, narrowLength, narrowStyles } from '@/theme/narrow';
 import {
   NarrowScroll,
+  useLayout,
   useNarrowPageHeight,
   useNarrowPart,
   useNarrowStyles,
@@ -20,7 +21,8 @@ const STYLES = narrowStyles((px) => ({
   bar: { height: px(narrowLength('names-bar-height', 60)) },
 }));
 
-let seen: { height: unknown; part: unknown; viewport: unknown; page: unknown } | undefined;
+let seen:
+  { height: unknown; part: unknown; viewport: unknown; page: unknown; layout: unknown } | undefined;
 let mounts = 0;
 
 function Probe() {
@@ -28,8 +30,15 @@ function Probe() {
   const part = useNarrowPart();
   const viewport = useNarrowViewport();
   const page = useNarrowPageHeight();
+  const layout = useLayout();
   useLayoutEffect(() => {
-    seen = { height: bar.height, part: part('panes').style, viewport: viewport?.height, page };
+    seen = {
+      height: bar.height,
+      part: part('player-names').style,
+      viewport: viewport?.height,
+      page,
+      layout,
+    };
   });
   return null;
 }
@@ -75,6 +84,7 @@ describe('a native page', () => {
     await render(360);
     expect(seen?.height).toBe(NARROW_PX['names-bar-height']);
     expect(seen?.part).toContainEqual(expect.objectContaining({ flexDirection: 'row' }));
+    expect(seen?.layout).toBe('phone');
   });
 
   it('turns wide when the window widens, keeping what a scrolling part holds', async () => {
@@ -82,6 +92,7 @@ describe('a native page', () => {
     await render(800);
     expect(seen?.height).toBe(60);
     expect(seen?.part).toBeUndefined();
+    expect(seen?.layout).toBe('wide');
     await render(360);
     expect(seen?.height).toBe(NARROW_PX['names-bar-height']);
     expect(mounts).toBe(1);

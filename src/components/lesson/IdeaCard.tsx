@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { a11yState, Badge, Button, Pressable, Stack, Text, useTheme } from '@reactive/silk-native';
-import { type FocusEvent as ReactFocusEvent, useState } from 'react';
+import { type FocusEvent as ReactFocusEvent, type ReactNode, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { EngineVerdict } from '@/analysis/quality';
@@ -25,7 +25,8 @@ import {
 import type { Playback, Playing } from '@/lesson/useLesson';
 import type { ShownNote } from '@/lesson/view';
 import { toneColors } from '@/theme/drawingTones';
-import { NarrowOnly, useNarrowPart } from '@/theme/Narrow';
+import type { Density } from '@/theme/Narrow';
+import { fonts } from '@/theme/theme';
 
 import { NoteText } from './NoteText';
 
@@ -33,6 +34,8 @@ interface Props {
   /** The lesson the notes come from, which places the moves they name. */
   readonly lesson: Lesson;
   readonly title: string;
+  /** Where the move previewed leads, which a compact card's lead names after `title`. */
+  readonly leadsTo?: string;
   readonly notes: readonly ShownNote[];
   /** What the card says when it has no notes, in place of a hint to point at a move. */
   readonly empty?: string;
@@ -50,6 +53,13 @@ interface Props {
   readonly onLeave: (note: Note) => void;
   /** The mouse comes onto the card at `time` (its event's time stamp). */
   readonly onReach: (time: number) => void;
+  /**
+   * `compact`, a phone's pane: the title leads the first note's words in
+   * the accent's italic, and the notes go without their rule, as a hairline
+   * beside the pane stands in for it. `comfortable`: the title heads the
+   * card, and each note has its rule.
+   */
+  readonly density: Density;
 }
 
 /**
@@ -63,6 +73,7 @@ interface Props {
 export function IdeaCard({
   lesson,
   title,
+  leadsTo,
   notes,
   empty = 'No notes here. Point at a move to see what it aims for.',
   learner,
@@ -72,21 +83,29 @@ export function IdeaCard({
   onPoint,
   onLeave,
   onReach,
+  density,
 }: Props) {
   const labelled = useLabelled();
+  const compact = density === 'compact';
+  // "If ♞f6 (Masi Variation):", before the first note's words.
+  const lead = compact ? <Lead>{`${title}${leadsTo ? ` (${leadsTo})` : ''}: `}</Lead> : undefined;
+  // With no notes the card names the move itself ("No notes on g6"), so leads only to say where it goes.
+  const emptyLead = leadsTo ? lead : undefined;
   return (
     <Stack
-      style={labelled}
+      style={compact ? undefined : labelled}
       onPointerEnter={({ nativeEvent, timeStamp }) => {
         if (hovers(nativeEvent.pointerType)) onReach(timeStamp);
       }}
     >
-      <Eyebrow>
-        <Notation>{title}</Notation>
-      </Eyebrow>
+      {compact ? null : (
+        <Eyebrow>
+          <Notation>{title}</Notation>
+        </Eyebrow>
+      )}
       {notes.length ? (
         <View>
-          {notes.map((shown) => (
+          {notes.map((shown, index) => (
             <NoteView
               // A position's notes differ as a whole (merge.ts drops exact repeats), not always in text.
               key={JSON.stringify(shown.note) + (shown.before ?? '')}
@@ -98,15 +117,28 @@ export function IdeaCard({
               pointed={shown.note === pointed}
               onPoint={onPoint}
               onLeave={onLeave}
+              lead={index === 0 ? lead : undefined}
+              density={density}
             />
           ))}
         </View>
       ) : (
         <Text role="bodySm" tone="secondary">
+          {emptyLead}
           <Notation>{empty}</Notation>
         </Text>
       )}
     </Stack>
+  );
+}
+
+/** A compact card's title, leading a note's words: the accent's italic, a little larger than them. */
+function Lead({ children }: { readonly children: string }) {
+  const { theme } = useTheme();
+  return (
+    <Text style={[styles.lead, { color: theme.semantic.color.tones.accent.text }]}>
+      <Notation>{children}</Notation>
+    </Text>
   );
 }
 
@@ -140,6 +172,8 @@ export function NoteView({
   pointed,
   onPoint,
   onLeave,
+  lead,
+  density,
 }: {
   readonly lesson: Lesson;
   readonly shown: ShownNote;
@@ -149,6 +183,9 @@ export function NoteView({
   readonly pointed: boolean;
   readonly onPoint: (note: Note) => void;
   readonly onLeave: (note: Note) => void;
+  /** What leads the note's words: a compact card's title. */
+  readonly lead?: ReactNode;
+  readonly density: Density;
 }) {
   const { theme } = useTheme();
   const { color } = theme.semantic;
@@ -176,7 +213,7 @@ export function NoteView({
     const { target } = event as ReactFocusEvent<Element>;
     if (target.matches(':focus-visible')) point();
   };
-  const part = useNarrowPart();
+  const compact = density === 'compact';
   const heading =
     drawn || verdict ? (
       <View style={styles.heading}>
@@ -184,8 +221,8 @@ export function NoteView({
         {verdict ? <Verdict value={verdict} /> : null}
       </View>
     ) : null;
-  // On a narrow page a verdict with no kind beside it goes below the words, which come first.
-  const verdictBelow = !drawn && Boolean(verdict);
+  // In a compact card a verdict with no kind beside it goes below the words, which come first.
+  const verdictBelow = compact && !drawn && Boolean(verdict);
 
   return (
     <Stack
@@ -201,6 +238,7 @@ export function NoteView({
       onFocus={process.env.EXPO_OS === 'web' ? focus : undefined}
       style={[
         styles.note,
+        compact && styles.compactNote,
         {
           borderTopRightRadius: theme.semantic.radius.sm,
           borderBottomRightRadius: theme.semantic.radius.sm,
@@ -210,7 +248,8 @@ export function NoteView({
               borderColor: toneColors[ideaTone(litIdea, learner)],
               backgroundColor: color.tones.neutral.subtle,
             }
-          : { borderColor: color.tones.accent.solid },
+          : // A compact note's rule shows only while its idea is on the board.
+            { borderColor: compact ? 'transparent' : color.tones.accent.solid },
       ]}
     >
       <Stack
@@ -225,11 +264,11 @@ export function NoteView({
           else point();
         }}
       >
-        {verdictBelow ? <View {...part('wide-only')}>{heading}</View> : heading}
-        <NoteText lesson={lesson} shown={shown} learner={learner} />
-        {verdictBelow ? <NarrowOnly>{heading}</NarrowOnly> : null}
+        {verdictBelow ? null : heading}
+        <NoteText lesson={lesson} shown={shown} learner={learner} lead={lead} density={density} />
+        {verdictBelow ? heading : null}
         {more && original ? (
-          <Text role="bodySm" tone="secondary">
+          <Text role="bodySm" tone="secondary" style={compact && styles.original}>
             {original}
           </Text>
         ) : null}
@@ -239,21 +278,37 @@ export function NoteView({
           {playing ? (
             <PlayingControls playing={playing} goto={playback.goto} stop={playback.stop} />
           ) : playable ? (
-            <Button size="sm" variant="soft" tone="accent" onPress={() => playback.play(shown)}>
+            <Button
+              size="sm"
+              variant="soft"
+              tone="accent"
+              accessibilityLabel={PLAY[playable]}
+              onPress={() => playback.play(shown)}
+            >
               <Ionicons name="play" size={13} />
-              {` ${PLAY[playable]}`}
+              {` ${compact ? PLAY_SHORT[playable] : PLAY[playable]}`}
             </Button>
           ) : null}
           {original ? (
+            // A compact card's is a small mark; its label says what it opens.
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={compact ? 'The study’s words' : undefined}
               {...a11yState({ expanded: more })}
               onPress={() => setMore(!more)}
-              style={styles.more}
+              style={compact ? styles.wordsButton : styles.more}
             >
-              <Text role="caption" tone="secondary" style={styles.moreText}>
-                {more ? 'Less' : 'The study’s words'}
-              </Text>
+              {compact ? (
+                <Ionicons
+                  name="reader-outline"
+                  size={18}
+                  color={more ? color.tones.accent.text : color.textSecondary}
+                />
+              ) : (
+                <Text role="caption" tone="secondary" style={styles.moreText}>
+                  {more ? 'Less' : 'The study’s words'}
+                </Text>
+              )}
             </Pressable>
           ) : null}
           {creditedModel ? <ModelMark model={creditedModel} /> : null}
@@ -328,6 +383,13 @@ const PLAY: Readonly<Record<PlayedBack['type'], string>> = {
   trap: 'Play the trap',
 };
 
+/** The same, on a compact card's small control beside its play mark. */
+const PLAY_SHORT: Readonly<Record<PlayedBack['type'], string>> = {
+  plan: 'Plan',
+  line: 'Line',
+  trap: 'Trap',
+};
+
 /** Each kind's name. */
 const KINDS: Readonly<Record<Exclude<Idea['type'], 'evaluation'>, string>> = {
   purpose: 'What it does',
@@ -358,7 +420,21 @@ const styles = StyleSheet.create({
     paddingRight: 8,
     paddingVertical: 8,
   },
-  heading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  // Its rule's room stays, so a lit note doesn't shift its words.
+  compactNote: { paddingLeft: 8, paddingRight: 4, paddingVertical: 4 },
+  lead: { fontFamily: fonts.displayItalic, fontSize: 16 },
+  // The study's own words, in the serif, as the lead.
+  original: { fontFamily: fonts.display, fontSize: 16, lineHeight: 23 },
+  wordsButton: { padding: 6 },
+  // A pane too narrow for the kind and the verdict side by side puts the verdict under the kind.
+  heading: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    rowGap: 4,
+  },
   kind: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   actions: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 },

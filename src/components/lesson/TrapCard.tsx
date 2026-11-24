@@ -58,6 +58,8 @@ export function TrapCard({ lesson, trap, mistake, fell, learner, playback, onBac
           playback={playback}
           pointable={false}
           pointed={false}
+          // A card of its own, so its note keeps its rule on a phone too.
+          density="comfortable"
           onPoint={() => undefined}
           onLeave={() => undefined}
         />

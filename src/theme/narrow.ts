@@ -55,13 +55,9 @@ export const NARROW_PX = {
   'panel-reserve': 172,
   /** The review's actions fixed under its panel (Stage.tsx), a thumb's height, and the gap above them. */
   'program-foot': 60,
-  /** A candidate row's compact spacing, in its narrow pane (CandidateList.tsx). */
-  'candidate-gap': 8,
-  'candidate-inset': 10,
-  'candidate-padding': 6,
   /** Space between a side's openings in the opening list (OpeningList.tsx): a closed one is a single row, so a phone packs them close. */
   'opening-gap': 4,
-  /** The fade at the bottom of the panel and of each of its panes (`NarrowScroll`). */
+  /** The fade at the bottom of the panel (`NarrowScroll`), and of a pane that scrolls in it (`FadingScroll`, both in Narrow.tsx). */
   fade: 16,
 } as const;
 
@@ -84,16 +80,7 @@ export const NARROW_PARTS = [
   'footed-program',
   'player-names',
   'drawer-panel',
-  'lesson-body',
   'scoresheet-drawer',
-  'panes',
-  'moves-pane',
-  'lone-pane',
-  'idea-pane',
-  'narrow-idea-pane',
-  'move-list',
-  'list-card',
-  'list-scroll',
 ] as const;
 
 /** A part of the page, as narrow.css names it. */
@@ -107,9 +94,6 @@ export type NarrowPartName = (typeof NARROW_PARTS)[number];
 export const SCROLLING_PARTS = [
   'program',
   'footed-program',
-  'list-scroll',
-  'idea-pane',
-  'narrow-idea-pane',
 ] as const satisfies readonly NarrowPartName[];
 
 export type ScrollingPart = (typeof SCROLLING_PARTS)[number];
@@ -220,18 +204,6 @@ interface NativePart {
   readonly narrow?: ViewStyle & TextStyle;
 }
 
-/** The idea pane on a narrow page, beside the moves (`NATIVE_PARTS`). */
-const IDEA_PANE = {
-  flexGrow: 3,
-  flexShrink: 1,
-  flexBasis: 'auto',
-  width: 0,
-  minWidth: 0,
-} as const satisfies ViewStyle;
-
-/** The lesson panes' least height on a narrow page: a couple of moves. */
-const PANES_FLOOR = 140;
-
 /**
  * The panel's least height under the board on a narrow page, with any
  * controls fixed under it (Stage's `programFoot`): a few lines of it.
@@ -251,13 +223,13 @@ const PROGRAM = {
 /**
  * narrow.css's rules as native styles. narrow.test.ts checks each declaration
  * is in the part's rule there (`wide` in the rules outside the media query),
- * unless `NATIVE_ONLY` lists it, and each declaration there is here or in `CSS_ONLY`.
+ * and each declaration there is here or in `CSS_ONLY`.
  *
  * A part that starts from zero length takes `flexBasis: 'auto'` and a zero
  * width or height, never `flexBasis: 0` (narrow.test.ts checks): React Native
  * keeps a node's flex basis from the page it was first laid out on when its
  * style changes, so the window crossing the narrow width left the panel a
- * strip beside the board, or the panes split unevenly. Yoga works out an
+ * strip beside the board. Yoga works out an
  * automatic basis afresh each time. Seen on React Native 0.88.1.
  */
 export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
@@ -284,54 +256,11 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
   },
   'player-names': { narrow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 } },
   'drawer-panel': { narrow: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' } },
-  'lesson-body': { narrow: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' } },
   'scoresheet-drawer': {
     wide: { display: 'none' },
     narrow: { flexGrow: 1, flexShrink: 1, flexBasis: 'auto', height: 0, minHeight: 0 },
   },
-  panes: {
-    narrow: {
-      flexGrow: 1,
-      flexShrink: 1,
-      flexBasis: 'auto',
-      flexDirection: 'row',
-      minHeight: PANES_FLOOR,
-      height: PANES_FLOOR,
-    },
-  },
-  // A width, not a share of the growth: Yoga grows a pane held at its least width past it.
-  'moves-pane': {
-    narrow: { flexGrow: 0, flexShrink: 1, flexBasis: 'auto', width: '40%', overflow: 'hidden' },
-  },
-  'lone-pane': {
-    narrow: {
-      flexGrow: 1,
-      flexShrink: 1,
-      flexBasis: 'auto',
-      width: 0,
-      minWidth: 0,
-      overflow: 'hidden',
-    },
-  },
-  'idea-pane': { narrow: IDEA_PANE },
-  // The idea pane, on a narrow page only.
-  'narrow-idea-pane': { wide: { display: 'none' }, narrow: IDEA_PANE },
-  'move-list': { narrow: { flexShrink: 1, minHeight: 0 } },
-  'list-card': { narrow: { flexShrink: 1, minHeight: 0, paddingBottom: 0 } },
-  'list-scroll': { narrow: { flexShrink: 1, minHeight: 0 } },
 };
-
-/**
- * Native styles with no rule in narrow.css, and why, so narrow.test.ts can
- * tell them from a declaration missing there.
- */
-export const NATIVE_ONLY: Readonly<Partial<Record<NarrowPartName, readonly (keyof ViewStyle)[]>>> =
-  {
-    // The panes sit in the program's scroll view, where Yoga ignores a zero
-    // height and would grow them to their content: a height at their floor is
-    // the basis there instead. CSS keeps the zero height.
-    panes: ['height'],
-  };
 
 /** What narrow.css does to a part that scrolls on its own: `NarrowScroll` does it natively. */
 const SCROLLS = [
@@ -363,13 +292,7 @@ export const CSS_ONLY: Readonly<Partial<Record<NarrowPartName, readonly string[]
   // Natively the panel grows in its scroll view's content, which already fills the
   // program; a percentage there adds the fade's padding again, so the panel scrolled by it.
   'drawer-panel': ['min-height: 100%'],
-  // Natively the panes' floor is their height instead (`NATIVE_ONLY`).
-  panes: ['height: 0'],
   // `NarrowScroll` scrolls these natively, with a fading edge and the same padding.
   program: SCROLLS,
   'footed-program': SCROLLS,
-  'list-scroll': ['overscroll-behavior: contain', ...SCROLLS],
-  'idea-pane': ['overscroll-behavior: contain', ...SCROLLS],
-  // Unhidden as `narrow-only` is, and scrolled as the idea pane is.
-  'narrow-idea-pane': ['display: flex', 'overscroll-behavior: contain', ...SCROLLS],
 };
