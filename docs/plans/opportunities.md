@@ -112,9 +112,9 @@ plan doesn't depend on those links.
 
 ## Rules
 
-Minimum games, the share floor, the estimate's coverage mark (half) and `keepScore` are starting
-values in `limits.ts`, tuned at piece B's gate. The cost floor is the app's mistake limit and is not
-a gate setting.
+Minimum games, the share floor, the estimate's coverage mark (`estimateCoverage`, half) and
+`keepScore` are starting values in `limits.ts`, tuned at piece B's gate. The cost floor is the app's
+mistake limit and is not a gate setting.
 
 - **Score** of an opportunity for a band: the reach of the mistake's position × the mistake's share
   there × gain if known. A find without a gain (a migrated trap not yet measured) has no score and
@@ -129,12 +129,12 @@ a gate setting.
   punishment than by playing as the band does: a recapture everyone finds gains nothing (6.Bxd5
   Qxd5), a cue whose natural reply is wrong gains most (5.Nxf7 Kxf7). Replies under the share floor
   are left out and the rest renormalised. Where the cue is thin, or the measured replies cover under
-  half its games, the gain is an estimate and the report marks it. Each measured reply the cue's
-  final analysis doesn't list takes one full search (about 60 for Stafford). Deriving the gain from
-  stored moves instead, by writing each wrong cue reply as a marked move, is rejected for now: it
-  would put the learner's wrong replies in the guide tree and change Practice's lists. A migrated
-  trap's gain is absent, not 0, until the importer measures it (piece D1 for Stafford, D3 for the
-  rest).
+  the coverage mark (`estimateCoverage`) of its games, the gain is an estimate and the report marks
+  it. Each measured reply the cue's final analysis doesn't list takes one full search (about 60 for
+  Stafford). Deriving the gain from stored moves instead, by writing each wrong cue reply as a
+  marked move, is rejected for now: it would put the learner's wrong replies in the guide tree and
+  change Practice's lists. A migrated trap's gain is absent, not 0, until the importer measures it
+  (piece D1 for Stafford, D3 for the rest).
 - **Clearly better**: a find is kept only where the learner's expected score at Act III's end is at
   least `keepScore` (0.6, a `limits.ts` gate setting). Act III follows the band's likely replies, so
   a practical trap survives where best defence would hold (6.Bc4 Ng4 is 0.58 against best defence,
@@ -147,8 +147,8 @@ a gate setting.
   shows; ranking no longer reads it. Screens show the live verdict.
 - **Share floor**: a reply played in under 5% of the games at its position (in the band) is not
   screened. It is a bare 5% test on every reply, with none exempt as some of the list's rows are.
-  It starts as `RARE_SHARE` (`src/lesson/select.ts`), the share under which the list calls a reply
-  rare; if the gate moves it, it becomes its own constant in `src/opportunity/limits.ts`.
+  `limits.ts` starts it at `RARE_SHARE` (`src/lesson/select.ts`), the share under which the list
+  calls a reply rare; if the gate moves it, `limits.ts` gets its own number.
 - **Minimum games**: a position fewer than 100 games reach (in the band) is too thin to judge; the
   lichess host marks it thin, and the walk (piece A's search for mistakes) ends there. Act III is
   not the walk: at a thin position with no guide move it takes Stockfish's reply and goes on under
@@ -251,9 +251,9 @@ position ends the walk (the search for another mistake; each find's Act III stil
 and the report counts how many walks ended thin and at what depth, so the gate can judge whether a
 Maia supplement in the script is worth building. None is built now.
 
-Gate: Nathaniel reads the top 20 finds and the dropped ones and sets the `limits.ts` floors, caps
-and `keepScore` (not the cost floor) before any lesson file changes. The report prints the limits it
-ran with.
+Gate: Nathaniel reads the top 20 finds and the dropped ones and sets the `limits.ts` settings Rules
+and piece A list (not the cost floor) before any lesson file changes. The report prints the limits
+it ran with.
 
 ### Piece C: Lesson data
 
