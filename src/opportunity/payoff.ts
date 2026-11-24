@@ -55,8 +55,8 @@ export function payoff(
   const unpunished = forSide(before.lines[0].evaluation.score, side);
   let end = scoreFor(cue.lines[0].evaluation, side);
   let node = start;
-  let over = gameOver(node);
-  while (!over && punishingMoves < limits.payoffMoves) {
+  let result = resultAt(node);
+  while (!result && punishingMoves < limits.payoffMoves) {
     let uci: Uci | undefined;
     if (node.pos.turn === side) {
       const final = fullAnalysis(node, context);
@@ -79,17 +79,17 @@ export function payoff(
     if (!uci || !next) break;
     moves.push(uci);
     node = next;
-    over = gameOver(node);
+    result = resultAt(node);
   }
-  return { moves, end: over ? scoreFor(resultEvaluation(over), side) : end };
+  return { moves, end: result ? scoreFor(resultEvaluation(result), side) : end };
 }
 
 /**
- * How the game stands over at `node`, if it is: `gameResult`, since chessops'
- * `isEnd` misses the fifty-move rule. Act III reads the position alone, so a
- * repetition inside its few moves doesn't end it.
+ * The game's result at `node`, if it is over: `gameResult`, since chessops'
+ * `isEnd` misses the fifty-move rule. Act III counts each position as seen
+ * once, so a repetition inside its few moves doesn't end it.
  */
-const gameOver = (node: Node) => gameResult(node.pos, 1);
+const resultAt = (node: Node) => gameResult(node.pos, 1);
 
 /** The final analysis of `node`, asking for it while it's missing. */
 function fullAnalysis(node: Node, { answers, ask }: Context): FinalAnalysis | undefined {
