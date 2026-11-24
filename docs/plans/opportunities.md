@@ -31,7 +31,7 @@ plan doesn't depend on those links.
 - The finder opens at any position (in a lesson, past a guide, in free play) and finds can be saved
   on the device. Publishing finds to other users is later and not in this plan.
 - In the app, "how often" comes from the learner's connected lichess account, else (no account, or
-  too few games) Maia on the device, as its own run. Each number says which source it came from.
+  too few games) Maia on the device. Each number says which source it came from.
 - In Practice, an opportunity common enough to count (see "Line to pass" in Rules) is a line to
   pass, and the opponent steers into it until it is passed. Inside one, the opponent also walks
   every reply played 10% or more. A dice mode (real rates) and guides extended to every common reply
@@ -57,13 +57,15 @@ plan doesn't depend on those links.
   | The guide's verdict on a migrated trap   | `verdict` on that marker (today `Trap.verdict`)        |
 
 - Derived, one pure function each in `src/opportunity/`: a move's share (from lichess, its games
-  over the games reaching the position; from Maia, a softmax over the legal moves' policy scores),
+  over the games reaching the position, by extending `candidates` in `src/lesson/select.ts` so
+  Practice and the list show one number; from Maia, a softmax over the legal moves' policy scores),
   reach (shares of the erring side's moves multiplied along the path), found rate (the sum of the
   accepted replies' shares at the cue), score, role (trap or opportunity, from the learner's side),
   the current act, whether a position is a cue, and whether an opportunity is a line to pass. No
   component recomputes them.
 - App state the whole feature adds: saved finds and the lichess token, each under its own storage
-  key in `src/context/storage.ts` and its own parser beside its type, as `parseProgress` sits in
+  key, declared by its owner with `storageKey` from `src/context/storage.ts` as `settings.ts` does,
+  and its own parser beside its type, as `parseProgress` sits in
   `src/progress/progress.ts` (not `SavedProgress`, whose parser drops shapes it doesn't know, and
   not `Settings`, the preference record every tab syncs). The finder has none of its own: engine
   answers and lichess replies live in the Data Client store keyed by their request, and the finds
@@ -94,7 +96,8 @@ the app's mistake limit and is not a gate setting.
 - **Share floor**: a reply played in under 5% of the games at its position (in the band) is not
   screened.
 - **Minimum games**: a position fewer than 100 games reach (in the band) is too thin to judge; the
-  lichess host marks it thin, and the walk ends there.
+  lichess host marks it thin, and the walk ends there. A Maia
+  run has no thin positions; it ends at the reach floor and the ply cap.
 - **Line to pass**: an opportunity whose mistake `countedReplies` counts (`src/lesson/cleanRun.ts`:
   10% over all bands, or the most played reply). Other finds show in the list and the finder but
   are never required. Piece C adds one exception to `countedReplies`, beside `COUNTED_SHARE`: a
@@ -102,8 +105,9 @@ the app's mistake limit and is not a gate setting.
   writes its counts, the 10% rule applies to it like any other move.
 - **The cue's accepted replies**: the punishing side's moves in the cue position's final analysis
   that label best or good beside its first line and keep at least the cost floor of the gain. Only
-  the learner's side has book moves (`lesson.ts`, `check.ts`), so the importer writes every accepted
-  reply, and the punishing side's Act III moves, as book moves.
+  the learner's side has book moves (`lesson.ts`, `check.ts`), and the importer runs the finder for
+  the lesson's side, so the punishing side is the learner: it writes every accepted reply, and the
+  punishing side's Act III moves, as book moves.
 - **The erring side's Act III moves** stay ordinary moves. At each of its positions Act III takes
   one reply: the most played, which `countedReplies` keeps, or, where the position is thin,
   Stockfish's. A thin position's reply is then the only one in the tree there, so a clean run plays
@@ -212,8 +216,10 @@ An opportunities step in `scripts/import-study`, before the explain step (popula
 fed by piece B's answers files and the explorer directly: it asks the explorer about every position
 on a find's path and writes, from that one answer, `LessonPosition.games` (the explorer's own count
 of games reaching the position, which `lichessExplorer` must start returning, never a sum of the
-listed moves) and every move's counts. The explorer's cached rows change shape for this: rows
-without a total are refetched, and a missing total reads as unknown, never as 0 or as enough games;
+listed moves) and every move's counts. The explorer's cached rows gain a total for this: the
+positions on a find's path are asked again and their new answers committed in the same PR, so
+reruns stay exact; elsewhere a row without a total reads it as unknown, never as 0 or as enough
+games;
 then the marked move with its cost, and the accepted replies and Act III as Rules say. Popularity,
 which runs after it, must not drop counts it did not remeasure (today it drops them wherever it did
 not ask, such as positions with one guide move). Stafford only, with B's floors. Merges after E and
@@ -233,10 +239,11 @@ if the files grow too much for phones (the Caro-Kann file is already 5.3 MB).
 ### Piece G: List page
 
 Opportunities for the lesson and the band, ranked by score, each row with reach, how often and
-payoff meters and the passed mark; tapping a row plays Act I and hands over the board at the cue.
-A section in the wide panel; on phones the pager's leftmost page (opportunities, lesson,
-scoresheet), holding the list and the finder's "from this position" button and source chip. The
-band is the opponent setting. Waits on the redesign's pager and on D1.
+payoff meters and the passed mark; tapping a row plays Act I and hands over the board at the cue. A
+section in the wide panel; on phones the pager's leftmost page (opportunities, lesson, scoresheet),
+holding the list and the finder's "from this position" button and source chip. The band is the
+opponent setting's, by `opponentBand` in `src/lesson/select.ts` as Practice picks it. Waits on the
+redesign's pager and on D1.
 
 ### Piece I: lichess connection
 
@@ -250,10 +257,11 @@ lessons. `/privacy` and the Play listing's Data safety answers updated.
 
 ### Piece J: Maia shares
 
-Reply shares from Maia's policy scores for the legal moves (a softmax, exported from
-`src/maia/network.ts`, which has one for the value head; the scores themselves are not shares), as a
-host source labeled `maia` for a whole run. Checks first how close they come to lichess's at the
-same rating. Maia finds are labeled estimates and listed after lichess ones, never ranked together.
+Reply shares from Maia's policy scores for the legal moves (the scores themselves are not shares:
+the private `softmax` helper in `src/maia/network.ts`, which J exports, over the legal moves as
+`bestMove` in `src/maia/maia.ts` enumerates them, shared rather than copied), as a host source
+labeled `maia` for a whole run. Checks first how close they come to lichess's at the same rating.
+Maia finds are labeled estimates and listed after lichess ones, never ranked together.
 
 ### Piece K: Finder in the app
 
