@@ -77,9 +77,10 @@ plan doesn't depend on those links.
   denominator, and its rare rows and counted replies can shift slightly. A Maia share is a separate
   source for the same field: a softmax over the legal moves' policy scores (piece J).
 - Derived, one pure function each in `src/opportunity/`: reach (shares of the erring side's moves
-  multiplied along the path), found rate (the sum of the accepted replies' shares at the cue),
-  score, role (trap or opportunity, from the learner's side), the current act, whether a position is
-  a cue, and whether an opportunity is a line to pass. No component recomputes them.
+  multiplied along the path), the cue's accepted replies (`acceptedReplies`, Rules), found rate (the
+  sum of their shares at the cue), score, role (trap or opportunity, from the learner's side), the
+  current act, whether a position is a cue, and whether an opportunity is a line to pass. No
+  component recomputes them.
 - App state the whole feature adds: saved finds and the lichess token, each under its own storage
   key, kept as `src/resources/progress.ts` keeps progress (`storageKey`, `readStorage`,
   `writeStorage` and `subscribeStorage` from `src/context/storage.ts`), and its own parser beside
@@ -92,7 +93,7 @@ plan doesn't depend on those links.
   write derived values back.
 - A score never mixes sources: the host picks one source for a whole finder run (lichess when the
   account can answer, else Maia), and its finds carry that source's name. A thin lichess position
-  ends the search for mistakes there (Act III goes on, Rules). A list may show a run of each,
+  ends the walk there (Act III goes on, Rules). A list may show a run of each,
   lichess rows first and Maia rows labeled estimates; their scores are never combined.
 - Pieces E, G, I, J, K and L must be checked on Android (touch, the haptic tick, the pager, the
   sign-in redirect, the Maia worklet in `src/maia/network.ts`, on-device search, the bookmark). H's
@@ -112,13 +113,14 @@ the app's mistake limit and is not a gate setting.
   first move labels as a mistake or a blunder. A stored cost only ranks; screens show the live
   verdict.
 - **Share floor**: a reply played in under 5% of the games at its position (in the band) is not
-  screened.
+  screened: `RARE_SHARE` (`src/lesson/select.ts`), the share under which the list already calls a
+  reply rare.
 - **Minimum games**: a position fewer than 100 games reach (in the band) is too thin to judge; the
-  lichess host marks it thin, and the search for further mistakes ends there. Act III is not that
-  search: at a thin position it takes Stockfish's reply and goes on under its own ends, since the
-  position after the cue can be thin when the mistake's position was not (only the games that played
-  the mistake reach it). A Maia run has no thin positions; its search ends at the reach floor and
-  the ply cap.
+  lichess host marks it thin, and the walk (piece A's search for mistakes) ends there. Act III is
+  not the walk: at a thin position with no guide move it takes Stockfish's reply and goes on under
+  its own ends, since the position after the cue can be thin when the mistake's position was not
+  (only the games that played the mistake reach it). A Maia run has no thin positions; its walk
+  ends at the reach floor and the ply cap.
 - **Line to pass**: an opportunity whose mistake `countedReplies` counts (`src/lesson/cleanRun.ts`:
   10% over all bands, or the most played reply). Other finds show in the list and the finder but are
   never required. Piece C adds one exception to `countedReplies`, beside `COUNTED_SHARE`: a marked
@@ -133,20 +135,23 @@ the app's mistake limit and is not a gate setting.
   the punishing side is `Lesson.side`, and as ordinary moves where it is the other side (a migrated
   trap that `Lesson.side` falls into).
 - **The erring side's Act III moves** stay ordinary moves. Where the guide already has moves at one
-  of its positions, Act III follows the guide's most played move there (else the guide's first) and
-  adds nothing, so the tree stays the one source for that line. Only where the guide has none does
-  it add one reply: the most played, which `countedReplies` keeps, or, where the position is thin,
-  Stockfish's. That reply is then the only one in the tree there, so a clean run plays through it,
-  and it never adds a second line to pass. If the guide's move is a better defence than the payoff
-  assumed, taking back at least the cost floor of the punishing side's expected score, Act III ends
-  there; it never adds a competing move to force the payoff.
-- **Act III** follows the punishing side's best move and the erring side's reply (the guide's, else
-  the most played, else Stockfish's), and ends at mate, when the punishing side is three points of
-  material up (`balance` in `src/game/material.ts`) and winning (the punishing side's expected score
-  of at least 0.8, by `scoreFor` in `src/evaluation/evaluation.ts`), when its second-best move is
-  also winning, after six of its moves, or where a guide move it follows takes back at least the
-  cost floor of the punishing side's expected score. The 0.8 and the three points are `limits.ts`
-  constants tuned at piece B's gate.
+  of its positions, Act III follows the guide's most played move there (the guide's first where none
+  has counts) and adds nothing, so the tree stays the one source for that line. Only where the guide
+  has none does it add one reply: the most played, which `countedReplies` keeps, or, where the
+  position is thin, Stockfish's. That reply is then the only one in the tree there, so a clean run
+  plays through it, and it never adds a second line to pass. Where the guide's move is a better
+  defence than the payoff assumed, Act III ends (its ends below); it never adds a competing move to
+  force the payoff. These guide moves are every move the guide has at the erring side's position,
+  book or not.
+- **Act III** follows the punishing side's best move (Stockfish's, not the guide's: the walk follows
+  the guide's moves to reach mistakes, the payoff is the engine's line) and the erring side's reply
+  (the guide's, else the most played, else Stockfish's), and ends at mate, when the punishing side
+  is three points of material up (`balance` in `src/game/material.ts`) and winning (the punishing
+  side's expected score of at least 0.8, by `scoreFor` in `src/evaluation/evaluation.ts`), when its
+  second-best move is also winning, after six of its moves, or where a guide move it follows takes
+  back at least `MISTAKE_LOSS` (the cost floor) of the punishing side's expected score: its score
+  after that move against its score before it, on the line Act III was following. The 0.8 and the
+  three points are `limits.ts` constants tuned at piece B's gate.
 - **Sketch and full**: a sketch is a search that reached at least `SKETCH_DEPTH`
   (`src/review/order.ts`); full is the app's search (`APP_SEARCH`). Sketches screen replies; only
   full searches confirm a find or set a stored cost. Analyses stay keyed as the store keys them.
@@ -162,9 +167,10 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
   the side looking for opportunities, the band, the limits, and lookups for the replies (each move's
   share of the games at the position, and whether the position is too thin to judge; `repliesFrom`
   turns lichess counts into that), analyses (sketch or final) and the guide's moves (a lesson's
-  moves at a position, most played first: its book moves at `Lesson.side`'s turn, every move at the
-  other side's; the host takes them through the book-move filter `openings.ts` already applies in
-  `movesOf` and `sharesAt`, extracted to one shared helper) that the host
+  moves at a position, most played first: at the punishing side's turn those the lesson plays there,
+  through `playedMoves` in `openings.ts`, the book-move filter extracted from `walkShared`, which
+  `sharesAt` also uses with `bookOnly`, keeping its fallback to every move where the learner has no
+  book move; at the erring side's turn every guide move) that the host
   has so far. It returns the finds so far and the requests still missing, most useful first: a
   position's replies, a sketch, or a full search, each naming its line and position. The script
   loops over it; the app derives it from the store. No async generator and no queue.
@@ -173,8 +179,8 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
   screens every reply over the share floor with a sketch, confirms each reply at or over the cost
   floor with full searches, then asks for the cue position's replies (found rate) and builds Act
   III. Replies under the cost floor continue the walk. At the punishing side's turn it follows the
-  guide's moves, else Stockfish's best. Its search for mistakes stops below a reach floor, past a
-  ply cap, or at a thin position; Act III continues past a thin position (Rules). One find per cue
+  guide's moves, else Stockfish's best. The walk stops below a reach floor, past a ply cap, or at
+  a thin position; Act III continues past a thin position (Rules). One find per cue
   position; a position reached again adds nothing.
 - Its own floors and caps are named constants in `src/opportunity/limits.ts`, tuned at piece B's
   gate: the share floor and minimum games from Rules, the Act III caps, a reach floor (1%) and a ply
@@ -190,7 +196,7 @@ A script that runs the core over the Stafford lesson only, with the importer's l
 report to the project files. It changes no lesson file. Its answers go in its own files,
 `scripts/import-study/answers/<id>-opportunities-*.jsonl`, which no other step prunes (as
 `coverOpponent.ts` keeps its own; piece D1 reads them); commit them. It runs on lichess only: a thin
-position ends the search for mistakes, and the report counts how many searches ended thin and at
+position ends the walk, and the report counts how many walks ended thin and at
 what depth, so the gate can judge whether a Maia supplement in the script is worth building. None is
 built now.
 
@@ -231,14 +237,15 @@ candidates, Stockfish's best and verdicts until the learner tries (Practice's ex
 hint" branch); a `screen.ts` cue state holds the tries with Retry, Show the move and Skip, judged by
 `labelMove`, not `src/review/retry.ts` (tied to a finished game). A booked reply passes; any other
 passes only where it meets the Rules' accepted-reply test (piece A's `acceptedReplies`: best or
-good, keeping the cost floor of the gain); Act III plays back through the lesson opponent; a haptic
-tick marks the cue in Explore. Wide layout, and the phone layout on the redesign's two panes: three
-act rows on the left, one line and three icon buttons on the right. Waits on the phone redesign's
-panes. Starts with a design review of whether the cue is a third mode-like state in `screen.ts`, and
-records its outcome here before building. The starting proposal: a try is a board preview until it
-passes, then a move through `useGame` (the screen reducer does not own the game); Act III reuses
-peek's playback, which does not move the game; the three acts replace the trap card for a marked
-line, so landing stays the one trigger.
+good, keeping the cost floor of the gain; the importer writes those replies as book moves, Rules);
+Act III plays back through the lesson opponent; a haptic tick (`tickMove`,
+`src/components/haptics.ts`) marks the cue in Explore. Wide layout, and the phone layout on the
+redesign's two panes: three act rows on the left, one line and three icon buttons on the right.
+Waits on the phone redesign's panes. Starts with a design review of whether the cue is a third
+mode-like state in `screen.ts`, and records its outcome here before building. The starting proposal:
+a try is a board preview until it passes, then a move through `useGame` (the screen reducer does not
+own the game); Act III reuses peek's playback, which does not move the game; the three acts replace
+the trap card for a marked line, so landing stays the one trigger.
 
 ### Piece F: Practice and marks
 
@@ -315,9 +322,9 @@ and listed after lichess ones, never ranked together.
 
 ### Piece K: Finder in the app
 
-The core run from any position, derived from the store and memoized with the answers it reads as its
-only inputs, the engine answers through `useAnalysis` and the replies through I or J, with no queue
-of its own, with finds joining the list page as they are confirmed and each number's source labeled.
+The core run from any position, derived from the store and memoized on its only inputs, the answers
+it reads: engine answers through `useAnalysis` and replies through I or J. It has no queue of its
+own. Finds join the list page as they are confirmed, each number's source labeled.
 The finder's searches use the existing Stockfish watch and queue behind whatever the board is
 watching: they never become the newest request (the engine searches the newest position first) while
 the board shows a position, or `decide` would stop the bar's and the lesson's searches. Measures
