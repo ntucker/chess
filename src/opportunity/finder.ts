@@ -57,8 +57,8 @@ export interface Find {
   /**
    * The share of games that reach the position: the erring side's shares
    * along each move order of fewest moves that reaches it, summed
-   * (`reachOf`). On the guide, only the move orders the guide plays for the
-   * punishing side count.
+   * (`reachOf`). On the guide, the fewest of the move orders the guide plays
+   * for the punishing side.
    */
   readonly reach: number;
   /**
@@ -80,9 +80,9 @@ export interface Find {
   /** Set where the gain is an estimate: the cue is thin, or its measured replies cover under half. */
   readonly estimate?: true;
   /**
-   * The share of games that reach the cue, by any move order of fewest moves
-   * (`reachOf`; on the guide, those the guide plays), × gain: the expected score knowing the
-   * opportunity is worth per game. With one move order, reach × share × gain.
+   * The share of games that reach the cue, by the move orders of fewest
+   * moves (`reachOf`; on the guide, the fewest the guide plays), × gain: the
+   * expected score knowing the opportunity is worth per game. With one move order, reach × share × gain.
    */
   readonly score: number;
 }
@@ -225,9 +225,9 @@ export interface Move {
  * Each walked position's reach: the share of games that get there by a move
  * order of fewest moves, summed over those orders (every order of the same
  * moves). A game that gets there only by a repetition or a lost tempo isn't
- * counted, so the start stays 1 and each game counts once. With `guided`,
- * only the moves the guide plays for the punishing side count, fewest among
- * them. Reach stays derived: nothing stores it.
+ * counted, so the start stays 1 and each game counts once. With `onGuide`,
+ * only guided moves count (`Move.guided`), fewest among them. Reach stays
+ * derived: nothing stores it.
  */
 export function reachOf(start: PositionKey, moves: readonly Move[]) {
   const all = gamesReaching(start, moves);
