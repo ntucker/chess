@@ -234,15 +234,17 @@ function thinSummary(thin: readonly ThinEnd[]): string {
 /**
  * Where the guide and Stockfish name different moves for the punishing side
  * in Act III, and how often Act III kept the guide's (it gives back less
- * than the cost floor there).
+ * than the cost floor there). Each override is listed: the guide's own book
+ * move costs a mistake's worth there, so a person looks at it before merge.
  */
 function guideSummary(lesson: Lesson, finds: readonly Find[], answers: Answers): string {
+  const start = parsePosition(lesson.start)!;
   let differ = 0;
-  let kept = 0;
+  const overrides: string[] = [];
   for (const find of finds) {
     const line = [...find.line, find.mistake, find.replies[0], ...find.payoff];
     const from = find.line.length + 2;
-    const steps = [...playLine(line, parsePosition(lesson.start)!)].map(({ pos, key }) => ({
+    const steps = [...playLine(line, start.clone())].map(({ pos, key }) => ({
       turn: pos.turn,
       key,
     }));
@@ -253,12 +255,24 @@ function guideSummary(lesson: Lesson, finds: readonly Find[], answers: Answers):
       const guide = answers.guideMoves?.(spot)?.[0];
       if (!guide || guide === answers.analysis(spot)?.lines[0]?.uci) continue;
       differ++;
-      if (line[ply] === guide) kept++;
+      if (line[ply] === guide) continue;
+      const sans = lineSans([...spot.line, guide], start);
+      overrides.push(
+        `- ${numberedLine(sans.slice(0, -1))}: the guide's ${sans.at(-1)}, Act III plays ${lineSans(line.slice(0, ply + 1), start).at(-1)}`,
+      );
     }
   }
-  return differ
-    ? `Act III: the guide and Stockfish differ at ${differ} of the punishing side's positions; Act III kept the guide's move at ${kept}.`
-    : "Act III: the guide never differs from Stockfish's best for the punishing side.";
+  if (!differ)
+    return "Act III: the guide never differs from Stockfish's best for the punishing side.";
+  const summary = `Act III: the guide and Stockfish differ at ${differ} of the punishing side's positions; Act III kept the guide's move at ${differ - overrides.length}.`;
+  return overrides.length
+    ? [
+        summary,
+        '',
+        "Overrides (the guide's move gives back a mistake's worth; check before merge):",
+        ...overrides,
+      ].join('\n')
+    : summary;
 }
 
 const args = process.argv.slice(2);
