@@ -3,28 +3,28 @@ import { Pressable, type PressableState, Spinner, Text, useTheme } from '@reacti
 import type { ReactNode } from 'react';
 import { type StyleProp, View, type ViewStyle } from 'react-native';
 
-import type { Material } from '@/game/material';
+import type { Captures } from '@/game/material';
 import { PLAYER_DISC } from '@/theme/sideBySide';
 import { type Color, opposite } from '@/game/replay';
-import { narrowLength, narrowStyles } from '@/theme/narrow';
+import { narrowLength, narrowStyles, spokenOnly } from '@/theme/narrow';
 import { useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
 import { pieceColors } from '@/theme/pieceColors';
 
-import { Captures } from './Captures';
+import { CapturesChip } from './CapturesChip';
 
 interface Props {
   readonly name: string;
   readonly detail: string;
-  /** A shorter `detail` for a narrow page, where it shares the name's line. */
-  readonly brief?: string;
+  /** Show `detail` on a wide page only: on a narrow one, `detailControl` says enough. */
+  readonly detailWideOnly?: boolean;
   /** A control that ends the detail's line, such as the opponent's strength. */
   readonly detailControl?: ReactNode;
   readonly color: Color;
   /** It's this player's turn in the latest position. */
   readonly toMove: boolean;
   readonly thinking?: boolean;
-  /** What this player is up on the board shown. */
-  readonly material: Material;
+  /** What each side is up and has taken on the board shown: the chip shows this player's edge. */
+  readonly captures: Captures;
   /** Pressing the disc swaps the sides; it shows a swap graphic while pointed at. */
   readonly swap?: Swap;
   /** Controls at the end of the bar, such as the move stepper. */
@@ -41,6 +41,8 @@ interface Swap {
 }
 
 const DISC_BORDER = narrowLength('player-disc-border', 2.5);
+/** How far a raised Surface's shadow reaches: Silk's offset of 4 plus its blur of 12. */
+const CHIP_SHADOW = 16;
 /** The swap graphic inside a wide page's disc, within its border. */
 const SWAP_ICON = 16;
 
@@ -48,12 +50,12 @@ const SWAP_ICON = 16;
 export function PlayerBar({
   name,
   detail,
-  brief,
+  detailWideOnly,
   detailControl,
   color,
   toMove,
   thinking,
-  material,
+  captures,
   swap,
   children,
   style,
@@ -69,27 +71,20 @@ export function PlayerBar({
     <View style={[styles.bar, style]}>
       <Disc color={color} toMove={toMove} swap={swap} />
       <View {...part('player-names', styles.names)}>
-        <View style={styles.nameLine}>
+        {/* Only its children take presses: its padding reaches over its neighbours. */}
+        <View pointerEvents="box-none" style={styles.nameLine}>
           <Text role="headingSm" numberOfLines={1} style={styles.name}>
             {name}
           </Text>
-          <Captures {...material} pieceColor={opposite(color)} />
+          <CapturesChip captures={captures} color={color} />
         </View>
-        <View style={styles.detail}>
-          <Text {...caption} {...part(Boolean(brief) && 'wide-only', styles.detailText)}>
+        <View style={[styles.detail, detailWideOnly && styles.controlOnly]}>
+          <Text {...caption} {...part(detailWideOnly && 'wide-only', styles.detailText)}>
             {detail}
           </Text>
-          {brief ? (
-            <Text {...caption} {...part('narrow-only', styles.detailText)}>
-              {brief}
-            </Text>
-          ) : null}
           {detailControl}
-          {toMove ? (
-            <Text {...caption} style={styles.turn}>
-              · to move
-            </Text>
-          ) : null}
+          {/* The disc's lit ring shows it; screen readers hear it. */}
+          {toMove ? <Text style={spokenOnly}>to move</Text> : null}
         </View>
       </View>
       {thinking ? <Spinner size="sm" tone="accent" label={`${name} is thinking`} /> : null}
@@ -168,19 +163,24 @@ const STYLES = narrowStyles((px) => ({
     overflow: 'hidden',
     flexShrink: 1,
     minWidth: 0,
+    // Room inside the clip for the captures chip's shadow, which Android
+    // would cut square at the line's edges; the margins give it back.
+    paddingVertical: CHIP_SHADOW,
+    marginVertical: -CHIP_SHADOW,
+    paddingRight: CHIP_SHADOW,
+    marginRight: -CHIP_SHADOW,
   },
   // The detail gives way as a whole. Its flexShrink is a weight against the
   // name's line's 1, kept far above it, so a short name ("White") stays whole
   // beside a switch at the bar's end.
   detail: { flexDirection: 'row', alignItems: 'baseline', gap: 4, flexShrink: 1000, minWidth: 0 },
-  // Within it, its words and "· to move" end in an ellipsis together, each
-  // in proportion to its length; a control stays whole. Not the words first:
-  // React Native's Yoga shrinks nothing at all once the words would need to
-  // go below nothing while "· to move" could still give way (Android's
-  // largest font sizes), and the line runs under the switch.
+  // Where only its control shows (a narrow page with `detailWideOnly`), it keeps
+  // its width: the name's line gives way instead, its chip first. A wide page
+  // stacks the two lines in a bar tall enough for both, so it changes nothing there.
+  controlOnly: { flexShrink: 0 },
+  // Within it, the words end in an ellipsis; a control stays whole.
   detailText: { flexShrink: 1, minWidth: 0 },
-  turn: { flexShrink: 1, minWidth: 0 },
-  // The captured pieces give way first (see Captures), then the name ends in
+  // The captured pieces give way first (see CapturesChip), then the name ends in
   // an ellipsis; the line is clipped rather than run under the controls.
   name: { flexShrink: 1, minWidth: 0 },
 }));

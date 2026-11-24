@@ -89,7 +89,7 @@ export function Stage({ title, header, board, program, footer, programFoot }: St
 /** What the board column shows of a game: its moves, the one on the board, and whose turn it is. */
 export type BoardGame = Pick<
   Game,
-  'moves' | 'ply' | 'goto' | 'current' | 'toMove' | 'thinking' | 'material'
+  'moves' | 'ply' | 'goto' | 'current' | 'toMove' | 'thinking' | 'captures'
 >;
 
 interface BoardColumnProps {
@@ -98,7 +98,7 @@ interface BoardColumnProps {
   /** The opponent's name bar: who plays the other side and how, and any small control at its end. */
   readonly rival: Pick<
     ComponentProps<typeof PlayerBar>,
-    'name' | 'detail' | 'brief' | 'detailControl' | 'children'
+    'name' | 'detail' | 'detailWideOnly' | 'detailControl' | 'children'
   >;
   /** The player's name bar: anything to show before the move stepper at its end. */
   readonly player?: Pick<ComponentProps<typeof PlayerBar>, 'children'>;
@@ -172,7 +172,7 @@ export function BoardColumn({
           color={other}
           toMove={game.toMove === other}
           thinking={game.thinking}
-          material={game.material[other]}
+          captures={game.captures}
           swap={swap}
         />,
         narrowBars?.names,
@@ -215,7 +215,7 @@ export function BoardColumn({
           style={styles.controlsBar}
           color={side}
           toMove={game.toMove === side}
-          material={game.material[side]}
+          captures={game.captures}
           swap={swap}
         >
           {player?.children}

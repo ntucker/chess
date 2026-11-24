@@ -11,7 +11,6 @@ import { NewVersionPage } from '@/components/NewVersion';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { stepButton, Transport } from '@/components/Transport';
 import { NewVersionError } from '@/files/newVersion';
-import { material } from '@/game/material';
 import { type Color, colorName, dropMove, fenAfter, opposite } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 import { lessonHref, withOpenings } from '@/lesson/openings';
@@ -106,7 +105,7 @@ function ReviewScreen({
             current,
             toMove: retrying ? learner : undefined,
             thinking: false,
-            material: material(current.fen),
+            captures: review.captures,
           }}
           rival={{
             name: 'Opponent',

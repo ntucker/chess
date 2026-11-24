@@ -60,7 +60,7 @@ export interface LessonScreenModel {
   readonly title: string;
   readonly header: Pick<HeaderProps, 'place' | 'placeLink' | 'onRestart'>;
   readonly board: Pick<BoardColumnProps, 'game' | 'board' | 'onSwap'> & {
-    readonly rival: Pick<BoardColumnProps['rival'], 'name' | 'detail' | 'brief'>;
+    readonly rival: Pick<BoardColumnProps['rival'], 'name' | 'detail' | 'detailWideOnly'>;
   };
   /** The move on the board, for the stepper's middle; `started` once the game has a move. */
   readonly stepper: Pick<ComponentProps<typeof ScoresheetOpener>, 'san' | 'ply'> & {
@@ -307,7 +307,8 @@ export function useLessonScreen({
       rival: {
         name: colorName(rival),
         detail: `The guide's moves, then ${described.lead.toLowerCase()}`,
-        brief: described.lead,
+        // A phone's bar has room for the strength alone: its control says how it plays.
+        detailWideOnly: true,
       },
       board: { ...board, onDrag },
       // The side is the lesson's once one is picked.
