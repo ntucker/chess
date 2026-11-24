@@ -183,11 +183,10 @@ export function findOpportunities({
       } else if (next.reach >= limits.reachFloor) frontier.push(next);
     }
   }
-  // The walk moves from positions up to `lastPly`, so its moves end a ply later.
-  const reach = reachOf(opening.key, moves, lastPly + 1 - line.length);
+  const reach = reachOf(opening.key, moves);
   const sorted = [...finds]
     .map(([cue, ways]): Find => {
-      // On the guide where any move order the guide plays reaches the cue.
+      // On the guide if some move order the guide plays reaches the cue.
       const onGuide = reach(cue, true) > 0;
       const games = (key: PositionKey) => reach(key, onGuide);
       // A cue several mistakes lead to is one find, shown by the most reached.
@@ -222,34 +221,39 @@ export interface Move {
 
 /**
  * Each walked position's reach: the share of games that get there, summed
- * over every move order the walk took, ply by ply from `start` for at most
- * `plies` moves. With `guided`, only the move orders where the guide plays
- * every punishing-side move count. A game that comes back to a position
- * (both sides shuffling, which the walk's moves rarely do) counts there
- * again. Reach stays derived: nothing stores it.
+ * over the move orders of fewest moves the walk took to it (every order of
+ * the same moves; a repetition or a lost tempo adds nothing, so the start
+ * stays 1 and each game counts once). With `guided`, only the move orders
+ * where the guide plays every punishing-side move count. Reach stays derived:
+ * nothing stores it.
  */
-export function reachOf(start: PositionKey, moves: readonly Move[], plies: number) {
+export function reachOf(start: PositionKey, moves: readonly Move[]) {
   const out = new Map<PositionKey, Move[]>();
   for (const move of moves) append(out, move.from, move);
-  const sums = (guided: boolean) => {
-    const total = new Map([[start, 1]]);
-    let layer = total;
-    for (let ply = 0; ply < plies && layer.size; ply++) {
-      const next = new Map<PositionKey, number>();
-      for (const [key, games] of layer) {
-        for (const move of out.get(key) ?? []) {
-          if (guided && !move.guided) continue;
-          add(next, move.to, games * move.share);
-        }
-      }
-      for (const [key, games] of next) add(total, key, games);
-      layer = next;
+  // Fewest moves to each position; `order` lists them nearest first.
+  const order = [start];
+  const depth = new Map([[start, 0]]);
+  for (const key of order) {
+    for (const { to } of out.get(key) ?? []) {
+      if (depth.has(to)) continue;
+      depth.set(to, depth.get(key)! + 1);
+      order.push(to);
     }
-    return total;
+  }
+  const gamesReaching = (guided: boolean) => {
+    const games = new Map([[start, 1]]);
+    for (const key of order) {
+      const here = games.get(key) ?? 0;
+      for (const move of out.get(key) ?? []) {
+        const fewest = depth.get(move.to) === depth.get(key)! + 1;
+        if (fewest && (!guided || move.guided)) add(games, move.to, here * move.share);
+      }
+    }
+    return games;
   };
-  const all = sums(false);
-  const onGuide = sums(true);
-  return (key: PositionKey, guided: boolean) => (guided ? onGuide : all).get(key) ?? 0;
+  const allGames = gamesReaching(false);
+  const guidedGames = gamesReaching(true);
+  return (key: PositionKey, guided: boolean) => (guided ? guidedGames : allGames).get(key) ?? 0;
 }
 
 /** Adds `amount` to `map`'s number at `key`, from 0 where there is none. */

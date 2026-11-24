@@ -527,33 +527,22 @@ describe('reachOf', () => {
       { from: 'A', to: 'C', share: 0.4, guided: true },
       { from: 'B', to: 'C', share: 0.5, guided: false },
     ];
-    const reach = reachOf('S', moves, 2);
+    const reach = reachOf('S', moves);
     expect(reach('C', false)).toBeCloseTo(0.5 * 0.4 + 0.2 * 0.5);
     expect(reach('C', true)).toBeCloseTo(0.5 * 0.4);
   });
 
-  it('counts every move order between two positions that reach each other', () => {
-    // S -> A -> B and S -> B -> A, neither repeating a position.
-    const moves = [
-      { from: 'S', to: 'A', share: 0.5, guided: true },
-      { from: 'A', to: 'B', share: 1, guided: true },
-      { from: 'B', to: 'A', share: 1, guided: true },
-      { from: 'S', to: 'B', share: 0.2, guided: true },
-    ];
-    const reach = reachOf('S', moves, 2);
-    expect([reach('B', false), reach('A', false)]).toEqual([0.7, 0.7]);
-  });
-
-  it('counts no further than its plies', () => {
-    // S -> X -> Y -> Z -> X: the way back to X is a fourth ply.
+  it('counts a repetition for nothing, so the start stays 1 and each game counts once', () => {
+    // S -> X -> Y -> Z, then Z back to X and to S.
     const moves = [
       { from: 'S', to: 'X', share: 0.5, guided: true },
       { from: 'X', to: 'Y', share: 1, guided: true },
       { from: 'Y', to: 'Z', share: 0.5, guided: true },
-      { from: 'Z', to: 'X', share: 1, guided: true },
+      { from: 'Z', to: 'X', share: 0.5, guided: true },
+      { from: 'Z', to: 'S', share: 0.5, guided: true },
     ];
-    const reach = reachOf('S', moves, 3);
-    expect([reach('Z', false), reach('Y', false), reach('X', false)]).toEqual([0.25, 0.5, 0.5]);
+    const reach = reachOf('S', moves);
+    expect(['S', 'X', 'Y', 'Z'].map((key) => reach(key, false))).toEqual([1, 0.5, 0.5, 0.25]);
   });
 });
 
