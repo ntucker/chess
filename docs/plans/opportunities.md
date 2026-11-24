@@ -155,7 +155,8 @@ the app's mistake limit and is not a gate setting.
   expected score of at least 0.8, by `scoreFor` in `src/evaluation/evaluation.ts`), when its
   second-best move is also winning, after six of its moves, or where an erring-side guide move it
   follows takes back at least `MISTAKE_LOSS` (the cost floor) of the punishing side's expected
-  score: its score after that move against its score before it, on the line Act III was following.
+  score: the remaining gain falls by that loss, measured as `judgement` measures it (signed by
+  `forSide`, not `scoreFor`), from before that move to after it on the line Act III was following.
   The 0.8 and the three points are `limits.ts` constants tuned at piece B's gate.
 - **Sketch and full**: a sketch is a search that reached at least `SKETCH_DEPTH`
   (`src/review/order.ts`); full is the app's search (`APP_SEARCH`). Sketches screen replies; only
@@ -184,11 +185,11 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
 - The walk is best-first by reach from the start (reach 1), on `LikeliestFirst`
   (`src/lesson/likeliestFirst.ts`, made generic over what it holds). At the erring side's turn it
   screens every reply over the share floor with a sketch, confirms each reply at or over the cost
-  floor with full searches, then asks for the cue position's replies (found rate) and builds Act
-  III. Replies under the cost floor continue the walk. At the punishing side's turn it follows the
-  guide's moves, else Stockfish's best. The walk stops below a reach floor, past a ply cap, or at
-  a thin position; Act III continues past a thin position (Rules). One find per cue
-  position; a position reached again adds nothing.
+  floor with full searches, then asks for the cue position's replies (found rate) and has Act III
+  built from there (Act III is not part of the walk). Replies under the cost floor continue the
+  walk. At the punishing side's turn it follows the guide's moves, else Stockfish's best. The walk
+  stops below a reach floor, past a ply cap, or at a thin position; Act III continues past a thin
+  position (Rules). One find per cue position; a position reached again adds nothing.
 - Its own floors and caps are named constants in `src/opportunity/limits.ts`, tuned at piece B's
   gate: the share floor (starting as `RARE_SHARE`) and minimum games from Rules, the Act III caps, a
   reach floor (1%) and a ply cap (24 plies past where the finder opens).
@@ -203,9 +204,9 @@ A script that runs the core over the Stafford lesson only, with the importer's l
 report to the project files. It changes no lesson file. Its answers go in its own files,
 `scripts/import-study/answers/<id>-opportunities-*.jsonl`, which no other step prunes (as
 `coverOpponent.ts` keeps its own; piece D1 reads them); commit them. It runs on lichess only: a thin
-position ends the walk, and the report counts how many walks ended thin and at
-what depth, so the gate can judge whether a Maia supplement in the script is worth building. None is
-built now.
+position ends the walk (the search for another mistake; each find's Act III still finishes, Rules),
+and the report counts how many walks ended thin and at what depth, so the gate can judge whether a
+Maia supplement in the script is worth building. None is built now.
 
 Gate: Nathaniel reads the top 20 finds and sets the `limits.ts` floors and caps (not the cost floor)
 before any lesson file changes. The report prints the limits it ran with.
