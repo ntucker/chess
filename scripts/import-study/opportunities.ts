@@ -17,7 +17,7 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { Analysis } from '@/evaluation/evaluation';
+import { type Analysis, SKETCH_DEPTH } from '@/evaluation/evaluation';
 import { lineSans, numberedLine, parsePosition, playLine, readPositionKey } from '@/game/replay';
 import { gamesPlayed, inCleanRun } from '@/lesson/cleanRun';
 import type { Lesson, Uci } from '@/lesson/lesson';
@@ -29,7 +29,6 @@ import {
 } from '@/opportunity/finder';
 import { LIMITS } from '@/opportunity/limits';
 import { type Answers, type Replies, repliesFrom, type Request } from '@/opportunity/walk';
-import { SKETCH_DEPTH } from '@/review/order';
 import { APP_SEARCH, liteStockfish } from '@/stockfish/engine';
 
 import { answersFile } from './jsonLines';
