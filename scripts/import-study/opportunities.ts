@@ -7,9 +7,9 @@
  *
  * The opponent's replies come from the lichess explorer alone (which needs a
  * token, as ./index.ts says), so a thin position ends the search for mistakes; the report
- * counts where. Stockfish's searches from the app's engine in
- * Node: sketches stop at the first whole depth of `SKETCH_DEPTH`, full
- * searches are the app's (`APP_SEARCH`). Every answer is appended to the
+ * counts where. Stockfish's searches come from the app's engine in Node:
+ * sketches stop at the first whole depth of `SKETCH_DEPTH`, full searches
+ * are the app's (`APP_SEARCH`). Every answer is appended to the
  * lesson's own files, answers/<lesson>-opportunities-{explorer,sketch,full}.jsonl,
  * which no other step reads or prunes, so a rerun asks only about positions
  * none has seen and a stopped run resumes. Commit them.
@@ -46,6 +46,23 @@ interface SketchRow extends Pick<Analysis, 'lines' | 'depth'> {
   readonly key: string;
 }
 
+/** The first whole depth of at least `SKETCH_DEPTH`, or the final analysis if the search ends sooner. */
+const sketch = (line: readonly Uci[]) =>
+  new Promise<Analysis>((resolve, reject) => {
+    let stop: (() => void) | undefined;
+    let done = false;
+    stop = liteStockfish.watch(line, {
+      update(analysis) {
+        if (done || !sketched(analysis)) return;
+        done = true;
+        resolve(analysis);
+        // The watch may answer before it returns its stop.
+        queueMicrotask(() => stop?.());
+      },
+      fail: reject,
+    });
+  });
+
 /** The host: the finder's answers, read from the answers files, and how to get the missing ones. */
 async function host(lesson: Lesson, band: number) {
   const explorer = lichessExplorer({
@@ -80,23 +97,6 @@ async function host(lesson: Lesson, band: number) {
     },
   };
 
-  /** The first whole depth of at least `SKETCH_DEPTH`, or the final analysis if the search ends sooner. */
-  const sketch = (line: readonly Uci[]) =>
-    new Promise<Analysis>((resolve, reject) => {
-      let stop: (() => void) | undefined;
-      let done = false;
-      stop = liteStockfish.watch(line, {
-        update(analysis) {
-          if (done || !sketched(analysis)) return;
-          done = true;
-          resolve(analysis);
-          // The watch may answer before it returns its stop.
-          queueMicrotask(() => stop?.());
-        },
-        fail: reject,
-      });
-    });
-
   let searched = 0;
   const search = async ({ kind, spot }: Request) => {
     if (kind === 'full') fulls.set(spot.key, await engine.evaluate(spot.line, spot.key));
@@ -116,13 +116,16 @@ async function host(lesson: Lesson, band: number) {
    * Stockfish's one at a time beside them (it searches one position at a time).
    */
   const answer = async (requests: readonly Request[]) => {
-    const inTurn = async (wanted: readonly Request[], get: (request: Request) => Promise<void>) => {
+    const oneAtATime = async (
+      wanted: readonly Request[],
+      get: (request: Request) => Promise<void>,
+    ) => {
       for (const request of wanted) await get(request);
     };
     const isReplies = ({ kind }: Request) => kind === 'replies';
     await Promise.all([
-      inTurn(requests.filter(isReplies), ask),
-      inTurn(
+      oneAtATime(requests.filter(isReplies), ask),
+      oneAtATime(
         requests.filter((request) => !isReplies(request)),
         search,
       ),
@@ -203,7 +206,7 @@ function reportOf(
     '',
     thinSummary(thin),
     '',
-    overridesSummary(lesson, [...finds, ...dropped]),
+    guideSummary(lesson, [...finds, ...dropped]),
     '',
   ].join('\n');
 }
@@ -222,26 +225,37 @@ function thinSummary(thin: readonly ThinEnd[]): string {
 }
 
 /**
- * Each place Act III plays Stockfish's move over the guide's, which gives
- * back a mistake's worth there, so a person looks at it before merge.
+ * Where the guide and Stockfish name different moves for the punishing side
+ * in Act III, how often Act III kept the guide's, and each override: there
+ * the guide's own move gives back a mistake's worth, so a person looks at it
+ * before merge.
  */
-function overridesSummary(lesson: Lesson, finds: readonly Find[]): string {
+function guideSummary(lesson: Lesson, finds: readonly Find[]): string {
   const start = parsePosition(lesson.start)!;
-  const overrides = finds.flatMap((find) => {
-    const before = [...find.line, find.mistake, find.replies[0]];
-    return find.overrides.map(({ at, guide }) => {
-      const line = [...before, ...find.payoff.slice(0, at)];
+  const disagreements = finds.flatMap((find) =>
+    find.disagreements.map((disagreement) => ({ find, ...disagreement })),
+  );
+  if (!disagreements.length)
+    return "Act III: the guide never differs from Stockfish's best for the punishing side.";
+  const overrides = disagreements
+    .filter(({ kept }) => !kept)
+    .map(({ find, at, guide }) => {
+      const line = [...find.line, find.mistake, find.replies[0], ...find.payoff.slice(0, at)];
       const sans = lineSans([...line, guide], start);
       const played = lineSans([...line, find.payoff[at]], start).at(-1);
       return `- ${numberedLine(sans.slice(0, -1))}: the guide's ${sans.at(-1)}, Act III plays ${played}`;
     });
-  });
-  return overrides.length
-    ? [
-        "Act III overrides the guide (the guide's move gives back a mistake's worth; check before merge):",
-        ...overrides,
-      ].join('\n')
-    : "Act III never overrides the guide's move for the punishing side.";
+  const summary = `Act III: the guide and Stockfish differ at ${disagreements.length} of the punishing side's positions; Act III kept the guide's move at ${disagreements.length - overrides.length}.`;
+  return [
+    summary,
+    ...(overrides.length
+      ? [
+          '',
+          "Overrides (the guide's move gives back a mistake's worth; check before merge):",
+          ...overrides,
+        ]
+      : []),
+  ].join('\n');
 }
 
 const args = process.argv.slice(2);

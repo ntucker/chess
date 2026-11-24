@@ -15,19 +15,21 @@ import type { Uci } from '@/lesson/lesson';
 
 import { child, type Context, type Node, punishingLoss, type Replies, resultAt } from './walk';
 
-/** A place Act III plays Stockfish's best over the guide's move, which gives back the mistake limit. */
-export interface Override {
-  /** The index in Act III's moves of the move it plays instead. */
+/** A place where the guide's move for the punishing side is not Stockfish's best. */
+export interface Disagreement {
+  /** The index in Act III's moves of the move it plays there. */
   readonly at: number;
-  /** The guide's move it passes over. */
+  /** The guide's move. */
   readonly guide: Uci;
+  /** Whether Act III plays it (it gives back less than the mistake limit) or overrides it with Stockfish's best. */
+  readonly kept: boolean;
 }
 
 /** Act III: its moves, and the punishing side's expected score (0 to 1) where it ends. */
 export interface Payoff {
   readonly moves: readonly Uci[];
-  /** Where it overrides the guide, for the report and the importer to list. */
-  readonly overrides: readonly Override[];
+  /** Where the guide and Stockfish differ for the punishing side, which the report counts and lists. */
+  readonly disagreements: readonly Disagreement[];
   /**
    * Where the game is over, its result (1 for the punishing side's mate, 0
    * for its opponent's, 0.5 for a draw); else the evaluation `judgement` gave
@@ -58,7 +60,7 @@ export function payoff(
 ): Payoff | undefined {
   const { side, limits } = context;
   const moves: Uci[] = [];
-  const overrides: Override[] = [];
+  const disagreements: Disagreement[] = [];
   let punishingMoves = 0;
   let guided = false;
   // Signed, not `scoreFor`: a difference near a limit must not round.
@@ -78,7 +80,8 @@ export function payoff(
       const move = punishingMove(node, final, context);
       if (move === 'pending') return undefined;
       uci = move.uci;
-      if (move.overridden) overrides.push({ at: moves.length, guide: move.overridden });
+      if (move.guide)
+        disagreements.push({ at: moves.length, guide: move.guide, kept: uci === move.guide });
       end = scoreFor(move.evaluation, side);
       punishingMoves++;
     } else {
@@ -92,7 +95,7 @@ export function payoff(
     node = next;
     result = resultAt(node);
   }
-  return { moves, overrides, end: result ? scoreFor(resultEvaluation(result), side) : end };
+  return { moves, disagreements, end: result ? scoreFor(resultEvaluation(result), side) : end };
 }
 
 /** The final analysis of `node`, asking for it while it's missing. */
@@ -143,22 +146,23 @@ function erringMove(node: Node, context: Context): { uci: Uci; guided: boolean }
  * The punishing side's move at `node`, with the evaluation it leads to: the
  * guide's where it has one that gives back less than the mistake limit beside
  * Stockfish's best (so the tree stays the one source for the line), else
- * Stockfish's best, with the guide's move it passes over (`overridden`); `'pending'` while
+ * Stockfish's best; with the guide's move where it differs from Stockfish's best; `'pending'` while
  * the guide's move awaits its full search.
  */
 function punishingMove(
   node: Node,
   final: FinalAnalysis,
   context: Context,
-): { uci?: Uci; evaluation: Evaluation; overridden?: Uci } | 'pending' {
+): { uci?: Uci; evaluation: Evaluation; guide?: Uci } | 'pending' {
   const best = final.lines[0];
   const guide = context.answers.guideMoves?.(node)?.[0];
   if (!guide || guide === best.uci) return best;
   const judged = punishingLoss(node, final, guide, context);
-  if (judged === 'pending') return judged;
-  return judged && judged.loss < MISTAKE_LOSS
-    ? { uci: guide, evaluation: judged.evaluation }
-    : { ...best, overridden: guide };
+  // An unjudged guide move is an illegal one.
+  if (judged === 'pending' || !judged) return judged ?? best;
+  return judged.loss < MISTAKE_LOSS
+    ? { uci: guide, evaluation: judged.evaluation, guide }
+    : { ...best, guide };
 }
 
 /** The most played move; undefined where the position is thin or no move was played. */

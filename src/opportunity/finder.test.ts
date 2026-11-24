@@ -170,7 +170,7 @@ const BG5: Find = {
   mistake: last(CUE),
   replies: [last(`${CUE} Nxe4`), last(`${CUE} Bxf2+`)],
   payoff: uci(`${CUE} Nxe4 Bxd8 Bxf2+ Ke2 Bg4#`).slice(-4),
-  overrides: [],
+  disagreements: [],
   end: 1,
   holds: true,
   reach: 0.4,
@@ -318,14 +318,15 @@ describe('findOpportunities', () => {
         spot.key === at(BXD8).key ? [last(`${BXD8} Kxd8`)] : known.guideMoves!(spot),
       analysis: (spot) => (spot.key === at(BXD8).key ? full(BXD8, lines) : known.analysis(spot)),
     });
-    const payoffOf = (answers: Answers) => find(answers, { payoffMoves: 1 }).finds[0].payoff;
 
     it("follows the guide's move where it gives back less than the mistake limit", () => {
       const answers = withGuide([
         ['Bxf2+', 0.3],
         ['Kxd8', 0.35],
       ]);
-      expect(payoffOf(answers)).toEqual(uci(`${BXD8} Kxd8`).slice(-2));
+      const [bg5] = find(answers, { payoffMoves: 1 }).finds;
+      expect(bg5.payoff).toEqual(uci(`${BXD8} Kxd8`).slice(-2));
+      expect(bg5.disagreements).toEqual([{ at: 1, guide: last(`${BXD8} Kxd8`), kept: true }]);
     });
 
     it("ends at the guide's move's score, not Stockfish's best's", () => {
@@ -343,7 +344,7 @@ describe('findOpportunities', () => {
       ]);
       const [bg5] = find(answers, { payoffMoves: 1 }).finds;
       expect(bg5.payoff).toEqual(uci(`${BXD8} Bxf2+`).slice(-2));
-      expect(bg5.overrides).toEqual([{ at: 1, guide: last(`${BXD8} Kxd8`) }]);
+      expect(bg5.disagreements).toEqual([{ at: 1, guide: last(`${BXD8} Kxd8`), kept: false }]);
     });
   });
 
@@ -375,6 +376,20 @@ describe('findOpportunities', () => {
     };
     const result = findOpportunities({ start: fen, line: [], side: 'white', answers });
     expect(result).toMatchObject({ finds: [], dropped: [], requests: [] });
+  });
+
+  it("stops where the punishing side's move ends the game", () => {
+    // White's Rh8 mates; the walk asks nothing about the mated position.
+    const fen = 'k7/8/1K6/8/8/8/8/7R w - - 0 1';
+    const answers: Answers = {
+      replies: () => undefined,
+      analysis: (spot) =>
+        spot.line.length
+          ? undefined
+          : { lines: [{ uci: 'h1h8', evaluation: evaluation('#1') }], depth: 18, final: true },
+    };
+    const result = findOpportunities({ start: fen, line: [], side: 'white', answers });
+    expect(result).toMatchObject({ finds: [], thin: [], requests: [] });
   });
 });
 
@@ -444,7 +459,7 @@ describe('payoff', () => {
     const ask = () => {};
     expect(
       payoff(start, { before: final, cue: final }, { side: 'white', answers, limits: LIMITS, ask }),
-    ).toEqual({ moves: ['b4b3'], overrides: [], end: 0.5 });
+    ).toEqual({ moves: ['b4b3'], disagreements: [], end: 0.5 });
   });
 
   it("scores a mate the erring side's move gives as a loss", () => {
@@ -462,7 +477,7 @@ describe('payoff', () => {
         { before: final, cue: final },
         { side: 'white', answers, limits: LIMITS, ask: () => {} },
       ),
-    ).toEqual({ moves: ['a8a1'], overrides: [], end: 0 });
+    ).toEqual({ moves: ['a8a1'], disagreements: [], end: 0 });
   });
 
   it('stops at a fifty-move draw and scores it as one', () => {
@@ -480,6 +495,6 @@ describe('payoff', () => {
         { before: final, cue: final },
         { side: 'white', answers, limits: LIMITS, ask: () => {} },
       ),
-    ).toEqual({ moves: ['e8d8'], overrides: [], end: 0.5 });
+    ).toEqual({ moves: ['e8d8'], disagreements: [], end: 0.5 });
   });
 });

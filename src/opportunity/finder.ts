@@ -25,7 +25,7 @@ import { LikeliestFirst } from '@/lesson/likeliestFirst';
 
 import { gainIfKnown } from './gain';
 import { type Limits, LIMITS } from './limits';
-import { type Override, payoff } from './payoff';
+import { type Disagreement, payoff } from './payoff';
 import {
   type Answers,
   child,
@@ -48,8 +48,8 @@ export interface Find {
   readonly replies: readonly Uci[];
   /** Act III: the moves after the best reply (`payoff`). */
   readonly payoff: readonly Uci[];
-  /** Where Act III plays Stockfish's move over the guide's, as indexes into `payoff`. */
-  readonly overrides: readonly Override[];
+  /** Where the guide and Stockfish differ for the punishing side in Act III (`Payoff`), indexing `payoff`. */
+  readonly disagreements: readonly Disagreement[];
   /** The punishing side's expected score (0 to 1) where Act III ends. */
   readonly end: number;
   /** Whether the cue's best reply alone keeps the learner clearly better, against best defence. */
@@ -103,7 +103,8 @@ export interface FinderResult {
  * searches of the positions before and after it, and becomes a find once its
  * cue's replies and its payoff are known. Other replies go on, as does the
  * punishing side's move (its own moves, else Stockfish's best). The walk
- * stops at thin positions, below the reach floor and past the ply cap; a
+ * stops where the game is over, at thin positions, below the reach floor
+ * and past the ply cap; a
  * position reached again adds nothing, and so does a second find of one cue.
  */
 export function findOpportunities({
@@ -135,7 +136,7 @@ export function findOpportunities({
   const thin: ThinEnd[] = [];
 
   for (let node = frontier.pop(); node; node = frontier.pop()) {
-    if (visited.has(node.key) || node.line.length > lastPly) continue;
+    if (visited.has(node.key) || node.line.length > lastPly || resultAt(node)) continue;
     visited.add(node.key);
     if (node.pos.turn === side) {
       for (const uci of punishingMoves(node, context)) {
@@ -252,7 +253,7 @@ function confirm(
     mistake,
     replies,
     payoff: rest.moves,
-    overrides: rest.overrides,
+    disagreements: rest.disagreements,
     end: rest.end,
     holds: scoreFor(after.lines[0].evaluation, side) >= limits.keepScore,
     reach: node.reach,
