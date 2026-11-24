@@ -56,13 +56,15 @@ depend on those links.
   | The mistake's title in the list          | `name` on that marker, written by the explain step     |
   | The guide's verdict on a migrated trap   | `verdict` on that marker (today `Trap.verdict`)        |
 
-- A move's share has one definition, one function that `candidates` in `src/lesson/select.ts`,
-  Practice's rare-row and counted-reply rules, and the finder's lichess host (`repliesFrom`) all
-  call: its games over the position's explorer total where `LessonPosition.games` exists, else over
-  the sum of the listed moves' games (older data). No lesson changes behavior until D1 or D3 writes
-  its totals; then that lesson's shares get smaller, since unlisted moves join the denominator, and
-  its rare rows and counted replies can shift slightly. From Maia, a share is a softmax over the
-  legal moves' policy scores (piece J).
+- A move's lichess share has one definition: its games over the position's explorer total where
+  `LessonPosition.games` exists, else over the sum of the listed moves' games (older data). One
+  function in `src/lesson/`, beside `gamesPlayed` in `cleanRun.ts`, computes it for one band or
+  summed over all bands, and is called by `candidates` in `src/lesson/select.ts` (one band), by
+  Practice's rare-row rule and by the counted-reply rule (all bands), and by the finder's lichess
+  host (`repliesFrom`). Piece C adds the function. This change alone alters no lesson until D1 or D3
+  writes its totals; then that lesson's shares get smaller, since unlisted moves join the
+  denominator, and its rare rows and counted replies can shift slightly. A Maia share is a separate
+  source for the same field: a softmax over the legal moves' policy scores (piece J).
 - Derived, one pure function each in `src/opportunity/`: reach (shares of the erring side's moves
   multiplied along the path), found rate (the sum of the accepted replies' shares at the cue),
   score, role (trap or opportunity, from the learner's side), the current act, whether a position is
@@ -110,10 +112,10 @@ the app's mistake limit and is not a gate setting.
   counts, the 10% rule applies to it like any other move.
 - **The cue's accepted replies**: the punishing side's moves in the cue position's final analysis
   that label best or good beside its first line and keep at least the cost floor of the gain. Only
-  the learner's side has book moves (`lesson.ts`, `check.ts`), so the importer writes every accepted
-  reply, and the punishing side's Act III moves, as book moves where the punishing side is the
-  lesson's side (the format's `Lesson.side`), and as ordinary moves where it is not, as in a
-  migrated trap the learner's side falls into.
+  `Lesson.side`, the side the learner plays, has book moves (`lesson.ts`, `check.ts`), so the
+  importer writes every accepted reply, and the punishing side's Act III moves, as book moves where
+  the punishing side is `Lesson.side`, and as ordinary moves where it is the other side (a migrated
+  trap that `Lesson.side` falls into).
 - **The erring side's Act III moves** stay ordinary moves. At each of its positions Act III takes
   one reply: the most played, which `countedReplies` keeps, or, where the position is thin,
   Stockfish's. A thin position's reply is then the only one in the tree there, so a clean run plays
@@ -171,9 +173,9 @@ before any lesson file changes. The report prints the limits it ran with.
 
 - Format: `LessonPosition.games` (games reaching the position, per band of
   `Lesson.popularity.ratingBands`; absent means not measured) and `LessonMove.mistake` (`{ cost?,
-  name?, verdict? }`: cost as above, absent only on migrated guide traps until piece D1's importer
-  step measures it; `name` a short title for the list; `verdict` the `Trap` verdict it replaces).
-  All optional, so the format number stays 3.
+  name?, verdict? }`: cost as above, absent only on migrated guide traps until the importer step
+  measures it (piece D1 for Stafford, D3 for the rest); `name` a short title for the list; `verdict`
+  the `Trap` verdict it replaces). All optional, so the format number stays 3.
 - The `Trap` idea goes. Each existing trap idea (254: 172 in position notes, 82 in move notes)
   becomes guide-tree moves with the marker on its first move. A note whose only drawn idea was the
   trap moves to the marked move; a note with other ideas keeps them and its text where it was. A
@@ -229,8 +231,9 @@ unknown, never as 0 or as enough games. Then it writes the marked move with its 
 accepted replies and Act III as Rules say. Popularity, which runs after it, must not drop counts it
 did not remeasure (today it drops them wherever it did not ask, such as positions with one guide
 move), and where it does remeasure it writes the position total from that same answer. Stafford
-only, with B's floors. Its PR lists which rows changed fold (rare) or counted status once the totals
-change shares. Merges after E and F, because new lines change what the Practice opponent plays.
+only, with B's floors. The D1 PR lists the rows whose rare-row or counted-reply status changed once
+the totals change shares. Merges after E and F, because new lines change what the Practice opponent
+plays.
 
 ### Piece D2: Names and notes
 
@@ -240,18 +243,19 @@ before it lands.
 
 ### Piece D3: Rollout
 
-The step runs on every lesson; `--no-model` rebuilds each exactly. The PR lists, per lesson, which
-rows changed fold or counted status. Cap finds per lesson by score if the files grow too much for
-phones (the Caro-Kann file is already 5.3 MB).
+The step runs on every lesson; `--no-model` rebuilds each exactly. The PR lists, per lesson, the
+rows whose rare-row or counted-reply status changed. Cap finds per lesson by score if the files grow
+too much for phones (the Caro-Kann file is already 5.3 MB).
 
 ### Piece G: List page
 
-Opportunities for the lesson and the band, ranked by score, each row with reach, how often and
-payoff meters and the passed mark; tapping a row plays Act I and hands over the board at the cue. A
-section in the wide panel; on phones the pager's leftmost page (opportunities, lesson, scoresheet),
-holding the list and the finder's "from this position" button and source chip. The band is the
-opponent setting's, by `opponentBand` in `src/lesson/select.ts` as Practice picks it. Waits on the
-redesign's pager and on D1.
+Opportunities for the lesson and the band, ranked by score (a migrated trap without a cost yet lists
+after the scored rows), each row with reach, how often and payoff meters and the passed mark;
+tapping a row plays Act I and hands over the board at the cue. A section in the wide panel; on
+phones the pager's leftmost page (opportunities, lesson, scoresheet), holding the list and the
+finder's "from this position" button and source chip. The band is the opponent setting's, by
+`opponentBand` in `src/lesson/select.ts` as Practice picks it. Waits on the redesign's pager and on
+D1.
 
 ### Piece I: lichess connection
 
