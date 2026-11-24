@@ -34,8 +34,6 @@ plan doesn't depend on those links.
   Qxd5, played by 100%) above finds whose natural reply is the wrong one (5.Nxf7, where 76%
   recapture and 8% find 5...Qe7). A find is kept only where Act III leaves the learner clearly
   better.
-- Act III's ends and its overrides of the guide's moves (Rules) were agreed with the planning thread
-  on 2026-11-24, where Nathaniel asked that plan revisions be settled.
 - The finder opens at any position (in a lesson, past a guide, in free play) and finds can be saved
   on the device. Publishing finds to other users is later and not in this plan.
 - In the app, "how often" comes from the learner's connected lichess account, else (no account, or
@@ -126,15 +124,16 @@ cost floor is the app's mistake limit and is not a gate setting.
   share, times what it gives away beside the best reply (`moveLoss` in `quality.ts`, the signed loss
   `judgement` labels by, as for cost, floored at 0 so a reply a search rates above the first line
   gives nothing), over the shares of the replies measured; where the finder measures no reply the
-  gain is 0 and marked an estimate. A migrated trap's gain is absent, not 0, until the importer
-  measures it (piece C). It is what a player at the cue scores more by knowing the punishment than
-  by playing as the band does: a recapture everyone finds gains nothing (6.Bxd5 Qxd5), a cue whose
-  natural reply is wrong gains most (5.Nxf7 Kxf7). Replies under the share floor are left out and
-  the rest renormalised. Where the cue is thin, or the measured replies cover under half its games,
-  the gain is an estimate and the report marks it. Each measured reply the cue's final analysis
-  doesn't list takes one full search (about 60 for Stafford). Deriving the gain from stored moves
-  instead, by writing each wrong cue reply as a marked move, is rejected for now: it would put the
-  learner's wrong replies in the guide tree and change Practice's lists.
+  gain is 0 and marked an estimate. It is what a player at the cue scores more by knowing the
+  punishment than by playing as the band does: a recapture everyone finds gains nothing (6.Bxd5
+  Qxd5), a cue whose natural reply is wrong gains most (5.Nxf7 Kxf7). Replies under the share floor
+  are left out and the rest renormalised. Where the cue is thin, or the measured replies cover under
+  half its games, the gain is an estimate and the report marks it. Each measured reply the cue's
+  final analysis doesn't list takes one full search (about 60 for Stafford). Deriving the gain from
+  stored moves instead, by writing each wrong cue reply as a marked move, is rejected for now: it
+  would put the learner's wrong replies in the guide tree and change Practice's lists. A migrated
+  trap's gain is absent, not 0, until the importer measures it (piece D1 for Stafford, D3 for the
+  rest).
 - **Clearly better**: a find is kept only where the learner's expected score at Act III's end is at
   least `keepScore` (0.6, a `limits.ts` gate setting). Act III follows the band's likely replies, so
   a practical trap survives where best defence would hold (6.Bc4 Ng4 is 0.58 against best defence,
