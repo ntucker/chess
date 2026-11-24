@@ -25,7 +25,7 @@ import { LikeliestFirst } from '@/lesson/likeliestFirst';
 
 import { gainIfKnown } from './gain';
 import { type Limits, LIMITS } from './limits';
-import { payoff } from './payoff';
+import { type Override, payoff } from './payoff';
 import {
   type Answers,
   child,
@@ -33,6 +33,7 @@ import {
   type Context,
   type Node,
   type Request,
+  resultAt,
   type Spot,
   walkTo,
 } from './walk';
@@ -47,6 +48,8 @@ export interface Find {
   readonly replies: readonly Uci[];
   /** Act III: the moves after the best reply (`payoff`). */
   readonly payoff: readonly Uci[];
+  /** Where Act III plays Stockfish's move over the guide's, as indexes into `payoff`. */
+  readonly overrides: readonly Override[];
   /** The punishing side's expected score (0 to 1) where Act III ends. */
   readonly end: number;
   /** Whether the cue's best reply alone keeps the learner clearly better, against best defence. */
@@ -201,7 +204,8 @@ function erringSteps(node: Node, context: Context): ErringStep[] | 'thin' {
   }
   return played.flatMap(([uci, share]): ErringStep[] => {
     const cue = child(node, uci, node.reach * share);
-    if (!cue) return [];
+    // A move that ends the game leaves nothing to punish, and no line to walk on.
+    if (!cue || resultAt(cue)) return [];
     const after = sketchOnly(answers.analysis(cue));
     if (!after) {
       ask('sketch', cue);
@@ -233,8 +237,6 @@ function confirm(
   const cost = moveLoss(before, after, mistake, node.pos.turn)!.loss;
   if (cost < MISTAKE_LOSS) return undefined;
   const replies = acceptedReplies(before, after, side);
-  // A mistake that ends the game, such as a stalemate, leaves no reply to punish it.
-  if (!replies.length) return undefined;
   const played = answers.replies(cue);
   if (!played) ask('replies', cue);
   const best = child(cue, replies[0], 0);
@@ -250,6 +252,7 @@ function confirm(
     mistake,
     replies,
     payoff: rest.moves,
+    overrides: rest.overrides,
     end: rest.end,
     holds: scoreFor(after.lines[0].evaluation, side) >= limits.keepScore,
     reach: node.reach,

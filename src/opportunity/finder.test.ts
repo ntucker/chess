@@ -170,6 +170,7 @@ const BG5: Find = {
   mistake: last(CUE),
   replies: [last(`${CUE} Nxe4`), last(`${CUE} Bxf2+`)],
   payoff: uci(`${CUE} Nxe4 Bxd8 Bxf2+ Ke2 Bg4#`).slice(-4),
+  overrides: [],
   end: 1,
   holds: true,
   reach: 0.4,
@@ -340,7 +341,9 @@ describe('findOpportunities', () => {
         ['Bxf2+', 0.3],
         ['Kxd8', 0.45],
       ]);
-      expect(payoffOf(answers)).toEqual(uci(`${BXD8} Bxf2+`).slice(-2));
+      const [bg5] = find(answers, { payoffMoves: 1 }).finds;
+      expect(bg5.payoff).toEqual(uci(`${BXD8} Bxf2+`).slice(-2));
+      expect(bg5.overrides).toEqual([{ at: 1, guide: last(`${BXD8} Kxd8`) }]);
     });
   });
 
@@ -353,7 +356,7 @@ describe('findOpportunities', () => {
     expect(bg5.found).toBeUndefined();
   });
 
-  it('finds nothing in a mistake that ends the game', () => {
+  it('neither screens nor walks past a move that ends the game', () => {
     // Black, mating with Qb2, stalemates White's lone king with Qb3 instead.
     const fen = '8/8/8/8/1q6/8/2k5/K7 b - - 0 1';
     const start = walkTo(fen, [])!;
@@ -371,8 +374,7 @@ describe('findOpportunities', () => {
           : final([{ evaluation: evaluation(0.5) }]),
     };
     const result = findOpportunities({ start: fen, line: [], side: 'white', answers });
-    expect(result.finds).toEqual([]);
-    expect(result.dropped).toEqual([]);
+    expect(result).toMatchObject({ finds: [], dropped: [], requests: [] });
   });
 });
 
@@ -442,7 +444,7 @@ describe('payoff', () => {
     const ask = () => {};
     expect(
       payoff(start, { before: final, cue: final }, { side: 'white', answers, limits: LIMITS, ask }),
-    ).toEqual({ moves: ['b4b3'], end: 0.5 });
+    ).toEqual({ moves: ['b4b3'], overrides: [], end: 0.5 });
   });
 
   it("scores a mate the erring side's move gives as a loss", () => {
@@ -460,7 +462,7 @@ describe('payoff', () => {
         { before: final, cue: final },
         { side: 'white', answers, limits: LIMITS, ask: () => {} },
       ),
-    ).toEqual({ moves: ['a8a1'], end: 0 });
+    ).toEqual({ moves: ['a8a1'], overrides: [], end: 0 });
   });
 
   it('stops at a fifty-move draw and scores it as one', () => {
@@ -478,6 +480,6 @@ describe('payoff', () => {
         { before: final, cue: final },
         { side: 'white', answers, limits: LIMITS, ask: () => {} },
       ),
-    ).toEqual({ moves: ['e8d8'], end: 0.5 });
+    ).toEqual({ moves: ['e8d8'], overrides: [], end: 0.5 });
   });
 });

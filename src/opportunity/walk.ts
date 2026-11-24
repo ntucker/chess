@@ -7,7 +7,7 @@ import { parseUci } from 'chessops/util';
 
 import { type MoveLoss, moveLoss } from '@/analysis/quality';
 import { type Analysis, type FinalAnalysis, isFinal } from '@/evaluation/evaluation';
-import { type Color, parsePosition, positionKey } from '@/game/replay';
+import { type Color, gameResult, parsePosition, positionKey } from '@/game/replay';
 import type { PositionKey, Uci } from '@/lesson/lesson';
 
 import type { Limits } from './limits';
@@ -104,6 +104,13 @@ export function child(node: Node, uci: Uci, reach: number): Node | undefined {
   pos.play(move);
   return { pos, key: positionKey(pos), line: [...node.line, uci], reach };
 }
+
+/**
+ * The game's result at `node`, if it is over: `gameResult`, since chessops'
+ * `isEnd` misses the fifty-move rule. The finder counts each position as
+ * seen once, so a repetition inside its few moves doesn't end a line.
+ */
+export const resultAt = (node: Node) => gameResult(node.pos, 1);
 
 /** The node `line` reaches from the FEN `start`, with reach 1; undefined if a move isn't legal. */
 export function walkTo(start: string, line: readonly Uci[]): Node | undefined {

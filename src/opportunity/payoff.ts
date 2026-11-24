@@ -11,14 +11,23 @@ import {
   scoreFor,
 } from '@/evaluation/evaluation';
 import { balance } from '@/game/material';
-import { gameResult } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 
-import { child, type Context, type Node, punishingLoss, type Replies } from './walk';
+import { child, type Context, type Node, punishingLoss, type Replies, resultAt } from './walk';
+
+/** A place Act III plays Stockfish's best over the guide's move, which gives back the mistake limit. */
+export interface Override {
+  /** The index in Act III's moves of the move it plays instead. */
+  readonly at: number;
+  /** The guide's move it passes over. */
+  readonly guide: Uci;
+}
 
 /** Act III: its moves, and the punishing side's expected score (0 to 1) where it ends. */
 export interface Payoff {
   readonly moves: readonly Uci[];
+  /** Where it overrides the guide, for the report and the importer to list. */
+  readonly overrides: readonly Override[];
   /**
    * Where the game is over, its result (1 for the punishing side's mate, 0
    * for its opponent's, 0.5 for a draw); else the evaluation `judgement` gave
@@ -49,6 +58,7 @@ export function payoff(
 ): Payoff | undefined {
   const { side, limits } = context;
   const moves: Uci[] = [];
+  const overrides: Override[] = [];
   let punishingMoves = 0;
   let guided = false;
   // Signed, not `scoreFor`: a difference near a limit must not round.
@@ -68,6 +78,7 @@ export function payoff(
       const move = punishingMove(node, final, context);
       if (move === 'pending') return undefined;
       uci = move.uci;
+      if (move.overrides) overrides.push({ at: moves.length, guide: move.overrides });
       end = scoreFor(move.evaluation, side);
       punishingMoves++;
     } else {
@@ -81,15 +92,8 @@ export function payoff(
     node = next;
     result = resultAt(node);
   }
-  return { moves, end: result ? scoreFor(resultEvaluation(result), side) : end };
+  return { moves, overrides, end: result ? scoreFor(resultEvaluation(result), side) : end };
 }
-
-/**
- * The game's result at `node`, if it is over: `gameResult`, since chessops'
- * `isEnd` misses the fifty-move rule. Act III counts each position as seen
- * once, so a repetition inside its few moves doesn't end it.
- */
-const resultAt = (node: Node) => gameResult(node.pos, 1);
 
 /** The final analysis of `node`, asking for it while it's missing. */
 function fullAnalysis(node: Node, { answers, ask }: Context): FinalAnalysis | undefined {
@@ -139,13 +143,14 @@ function erringMove(node: Node, context: Context): { uci: Uci; guided: boolean }
  * The punishing side's move at `node`, with the evaluation it leads to: the
  * guide's where it has one that gives back less than the mistake limit beside
  * Stockfish's best (so the tree stays the one source for the line), else
- * Stockfish's best; `'pending'` while the guide's move awaits its full search.
+ * Stockfish's best, with the guide's move it `overrides`; `'pending'` while
+ * the guide's move awaits its full search.
  */
 function punishingMove(
   node: Node,
   final: FinalAnalysis,
   context: Context,
-): { uci?: Uci; evaluation: Evaluation } | 'pending' {
+): { uci?: Uci; evaluation: Evaluation; overrides?: Uci } | 'pending' {
   const best = final.lines[0];
   const guide = context.answers.guideMoves?.(node)?.[0];
   if (!guide || guide === best.uci) return best;
@@ -153,7 +158,7 @@ function punishingMove(
   if (judged === 'pending') return judged;
   return judged && judged.loss < MISTAKE_LOSS
     ? { uci: guide, evaluation: judged.evaluation }
-    : best;
+    : { ...best, overrides: guide };
 }
 
 /** The most played move; undefined where the position is thin or no move was played. */

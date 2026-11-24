@@ -17,7 +17,8 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { type Analysis, SKETCH_DEPTH } from '@/evaluation/evaluation';
+import { percent } from '@/analysis/quality';
+import { type Analysis, sketched } from '@/evaluation/evaluation';
 import { lineSans, numberedLine, parsePosition, playLine, readPositionKey } from '@/game/replay';
 import { gamesPlayed, inCleanRun } from '@/lesson/cleanRun';
 import type { Lesson, Uci } from '@/lesson/lesson';
@@ -86,7 +87,7 @@ async function host(lesson: Lesson, band: number) {
       let done = false;
       stop = liteStockfish.watch(line, {
         update(analysis) {
-          if (done || (!analysis.final && analysis.depth < SKETCH_DEPTH)) return;
+          if (done || !sketched(analysis)) return;
           done = true;
           resolve(analysis);
           // The watch may answer before it returns its stop.
@@ -144,15 +145,10 @@ async function run(id: string, band: number, top: number, out: string | undefine
     result = findOpportunities(input);
   }
   stop();
-  const report = reportOf(lesson, band, result, top, [
-    thinSummary(result.thin),
-    guideSummary(lesson, [...result.finds, ...result.dropped], answers),
-  ]);
+  const report = reportOf(lesson, band, result, top);
   if (out) writeFileSync(out, report);
   else console.log(report);
 }
-
-const percent = (share: number) => `${Math.round(share * 100)}%`;
 
 const points = (score: number) => Math.round(score * 100);
 
@@ -160,9 +156,8 @@ const points = (score: number) => Math.round(score * 100);
 function reportOf(
   lesson: Lesson,
   band: number,
-  { finds, dropped }: FinderResult,
+  { finds, dropped, thin }: FinderResult,
   top: number,
-  summaries: readonly string[],
 ): string {
   const start = parsePosition(lesson.start)!;
   const sans = (line: readonly Uci[]) => lineSans(line, start);
@@ -172,30 +167,26 @@ function reportOf(
     const key = [...playLine(find.line, start.clone())].at(-1)!.key;
     return lesson.positions[key]?.moves.some((move) => move.uci === find.mistake) ? 'yes' : 'no';
   };
-  const row = (find: Find, rank: number) => {
-    const cue = [...find.line, find.mistake];
-    const cells = [
-      rank + 1,
-      numbered([], find.line) || '(start)',
-      numbered(find.line, [find.mistake]),
-      percent(find.share),
-      percent(find.reach),
-      points(find.cost),
-      find.found === undefined ? '?' : percent(find.found),
-      `${find.estimate ? '~' : ''}${points(find.gain)}`,
-      (find.score * 1000).toFixed(2),
-      points(find.end),
-      find.holds ? 'holds' : 'practical',
-      find.replies.map((reply) => numbered(cue, [reply])).join(', '),
-      numbered([...cue, find.replies[0]], find.payoff),
-      inGuide(find),
-    ];
-    return `| ${cells.join(' | ')} |`;
-  };
-  const header = [
-    '| # | After | Mistake | Share | Reach | Cost | Found | Gain | Score | End | Holds | Punish with | Then | In guide |',
-    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+  const cue = (find: Find) => [...find.line, find.mistake];
+  const columns: [name: string, cell: (find: Find, rank: number) => string | number][] = [
+    ['#', (_, rank) => rank + 1],
+    ['After', (find) => numbered([], find.line) || '(start)'],
+    ['Mistake', (find) => numbered(find.line, [find.mistake])],
+    ['Share', (find) => percent(find.share)],
+    ['Reach', (find) => percent(find.reach)],
+    ['Cost', (find) => points(find.cost)],
+    ['Found', (find) => (find.found === undefined ? '?' : percent(find.found))],
+    ['Gain', (find) => `${find.estimate ? '~' : ''}${points(find.gain)}`],
+    ['Score', (find) => (find.score * 1000).toFixed(2)],
+    ['End', (find) => points(find.end)],
+    ['Holds', (find) => (find.holds ? 'holds' : 'practical')],
+    ['Punish with', (find) => find.replies.map((reply) => numbered(cue(find), [reply])).join(', ')],
+    ['Then', (find) => numbered([...cue(find), find.replies[0]], find.payoff)],
+    ['In guide', inGuide],
   ];
+  const tableRow = (cells: readonly (string | number)[]) => `| ${cells.join(' | ')} |`;
+  const row = (find: Find, rank: number) => tableRow(columns.map(([, cell]) => cell(find, rank)));
+  const header = [tableRow(columns.map(([name]) => name)), tableRow(columns.map(() => '---'))];
   return [
     `# Opportunities in ${lesson.title}, lichess ${band} band`,
     '',
@@ -212,7 +203,9 @@ function reportOf(
     '',
     ...(dropped.length ? [...header, ...dropped.map(row)] : ['None.']),
     '',
-    ...summaries,
+    thinSummary(thin),
+    '',
+    overridesSummary(lesson, [...finds, ...dropped]),
     '',
   ].join('\n');
 }
@@ -231,47 +224,26 @@ function thinSummary(thin: readonly ThinEnd[]): string {
 }
 
 /**
- * Where the guide and Stockfish name different moves for the punishing side
- * in Act III, and how often Act III kept the guide's (it gives back less
- * than the cost floor there). Each override is listed: the guide's own book
- * move costs a mistake's worth there, so a person looks at it before merge.
+ * Each place Act III plays Stockfish's move over the guide's, which gives
+ * back a mistake's worth there, so a person looks at it before merge.
  */
-function guideSummary(lesson: Lesson, finds: readonly Find[], answers: Answers): string {
+function overridesSummary(lesson: Lesson, finds: readonly Find[]): string {
   const start = parsePosition(lesson.start)!;
-  let differ = 0;
-  const overrides: string[] = [];
-  for (const find of finds) {
-    const line = [...find.line, find.mistake, find.replies[0], ...find.payoff];
-    const from = find.line.length + 2;
-    const steps = [...playLine(line, start.clone())].map(({ pos, key }) => ({
-      turn: pos.turn,
-      key,
-    }));
-    for (let ply = from; ply < line.length; ply++) {
-      const { turn, key } = steps[ply];
-      if (turn !== lesson.side) continue;
-      const spot = { line: line.slice(0, ply), key };
-      const guide = answers.guideMoves?.(spot)?.[0];
-      if (!guide || guide === answers.analysis(spot)?.lines[0]?.uci) continue;
-      differ++;
-      if (line[ply] === guide) continue;
-      const sans = lineSans([...spot.line, guide], start);
-      overrides.push(
-        `- ${numberedLine(sans.slice(0, -1))}: the guide's ${sans.at(-1)}, Act III plays ${lineSans(line.slice(0, ply + 1), start).at(-1)}`,
-      );
-    }
-  }
-  if (!differ)
-    return "Act III: the guide never differs from Stockfish's best for the punishing side.";
-  const summary = `Act III: the guide and Stockfish differ at ${differ} of the punishing side's positions; Act III kept the guide's move at ${differ - overrides.length}.`;
+  const overrides = finds.flatMap((find) => {
+    const before = [...find.line, find.mistake, find.replies[0]];
+    return find.overrides.map(({ at, guide }) => {
+      const line = [...before, ...find.payoff.slice(0, at)];
+      const sans = lineSans([...line, guide], start);
+      const played = lineSans([...line, find.payoff[at]], start).at(-1);
+      return `- ${numberedLine(sans.slice(0, -1))}: the guide's ${sans.at(-1)}, Act III plays ${played}`;
+    });
+  });
   return overrides.length
     ? [
-        summary,
-        '',
-        "Overrides (the guide's move gives back a mistake's worth; check before merge):",
+        "Act III overrides the guide (the guide's move gives back a mistake's worth; check before merge):",
         ...overrides,
       ].join('\n')
-    : summary;
+    : "Act III never overrides the guide's move for the punishing side.";
 }
 
 const args = process.argv.slice(2);
