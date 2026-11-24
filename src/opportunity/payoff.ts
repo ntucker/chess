@@ -10,7 +10,7 @@ import { child, type Context, type Node, type Replies } from './walk';
 
 /**
  * The moves from `start` (the position after the cue's best reply, which
- * gives the punishing side the `expected` score) until the win is obvious, or
+ * gives the punishing side the `expected` score, signed by `forSide`) until the win is obvious, or
  * undefined while an answer is missing. The punishing side plays the guide's
  * move where it gives back less than the cost floor, else Stockfish's best;
  * the erring side the guide's move, else its most played reply, else
@@ -37,7 +37,8 @@ export function payoff(start: Node, expected: number, context: Context): Uci[] |
       const [best, second] = final.lines;
       const winning = (line: typeof best | undefined) =>
         !!line && scoreFor(line.evaluation, side) >= limits.winScore;
-      const score = scoreFor(best.evaluation, side);
+      // Signed, not `scoreFor`: a difference near a limit must not round.
+      const score = forSide(best.evaluation.score, side);
       if (guided && held - score >= limits.costFloor) break;
       held = score;
       const mating = forSide(best.evaluation.mate ?? 0, side) > 0;
