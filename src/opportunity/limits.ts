@@ -1,17 +1,18 @@
 /**
  * The floors and caps the finder walks by, in one place, so the report
- * (piece B of docs/plans/opportunities.md) can tune them.
+ * (piece B of docs/plans/opportunities.md) can tune them. The cost floor is
+ * not one of them: a mistake is a reply over `MISTAKE_LOSS`, the limit the
+ * app labels by, so every opportunity's first move labels as a mistake or a
+ * blunder.
  */
-import { MISTAKE_LOSS } from '@/analysis/quality';
 import { RARE_SHARE } from '@/lesson/select';
+
+/** A position fewer games reach is too thin to judge: the lichess host's `repliesFrom`. */
+export const MIN_GAMES = 100;
 
 export interface Limits {
   /** A reply played under this share of the position's games is not screened. */
   readonly shareFloor: number;
-  /** A position fewer games reach is too thin to judge (`repliesFrom`, the lichess host's). */
-  readonly minGames: number;
-  /** The least expected score (0 to 1) a reply must give away to be a mistake. */
-  readonly costFloor: number;
   /** The walk goes no further than positions at least this share of games reach. */
   readonly reachFloor: number;
   /** The walk goes at most this many plies past where the finder opens. */
@@ -31,9 +32,6 @@ export interface Limits {
 export const LIMITS: Limits = {
   // The share under which the list calls a reply rare.
   shareFloor: RARE_SHARE,
-  minGames: 100,
-  // The mistake limit, so every opportunity's first move labels as a mistake or a blunder.
-  costFloor: MISTAKE_LOSS,
   reachFloor: 0.01,
   maxPlies: 24,
   // About 3.8 pawns on lichess's curve (`evaluationFromScore` in src/stockfish/uci.ts).

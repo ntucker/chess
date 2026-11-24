@@ -1,6 +1,7 @@
 /**
  * Act III of an opportunity: play on after the cue until the win is obvious.
  */
+import { MISTAKE_LOSS } from '@/analysis/quality';
 import {
   type Evaluation,
   type FinalAnalysis,
@@ -32,13 +33,13 @@ export interface Payoff {
  * win is obvious, or undefined while an answer is missing. `before` and
  * `cue` are the final analyses of the positions before the mistake and at
  * the cue. The punishing side plays the guide's move where it gives back
- * less than the cost floor, else Stockfish's best (`end` reads the move it
+ * less than the mistake limit, else Stockfish's best (`end` reads the move it
  * plays); the erring side the guide's move, else its most played reply, else
  * Stockfish's best where the position is thin. It ends at mate (a mating
  * line plays out), when the punishing side is `materialUp` points ahead and
  * winning, when its second-best move is winning too, after `payoffMoves` of
  * its moves, where after an erring-side guide move the punishment wins less
- * than the cost floor beside `before` (the guide holds a better defence, and
+ * than the mistake limit beside `before` (the guide holds a better defence, and
  * Act III adds no move to beat it), or when the game ends.
  */
 export function payoff(
@@ -62,7 +63,7 @@ export function payoff(
       if (!final) return undefined;
       const best = final.lines[0].evaluation;
       end = scoreFor(best, side);
-      if (guided && forSide(best.score, side) - unpunished < limits.costFloor) break;
+      if (guided && forSide(best.score, side) - unpunished < MISTAKE_LOSS) break;
       if (obviouslyWon(node, final, context)) break;
       const move = punishingMove(node, final, context);
       if (move === 'pending') return undefined;
@@ -129,7 +130,7 @@ function erringMove(node: Node, context: Context): { uci: Uci; guided: boolean }
 
 /**
  * The punishing side's move at `node`, with the evaluation it leads to: the
- * guide's where it has one that gives back less than the cost floor beside
+ * guide's where it has one that gives back less than the mistake limit beside
  * Stockfish's best (so the tree stays the one source for the line), else
  * Stockfish's best; `'pending'` while the guide's move awaits its full search.
  */
@@ -143,7 +144,7 @@ function punishingMove(
   if (!guide || guide === best.uci) return best;
   const judged = punishingLoss(node, final, guide, context);
   if (judged === 'pending') return judged;
-  return judged && judged.loss < context.limits.costFloor
+  return judged && judged.loss < MISTAKE_LOSS
     ? { uci: guide, evaluation: judged.evaluation }
     : best;
 }

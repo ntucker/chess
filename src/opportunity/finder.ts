@@ -10,7 +10,7 @@
  * of them and asks again; there is no queue to keep in step. The import script
  * answers from lichess and Node Stockfish, the app from its store.
  */
-import { judgement, moveLoss } from '@/analysis/quality';
+import { judgement, MISTAKE_LOSS, moveLoss } from '@/analysis/quality';
 import {
   type Analysis,
   type FinalAnalysis,
@@ -96,7 +96,7 @@ export interface FinderResult {
  * The opportunities the answers so far confirm, and the answers still
  * missing. The walk goes from where the finder opens, most reached position
  * first. Where the erring side moves, every reply over the share floor is
- * screened with a sketch; one at or over the cost floor is confirmed with full
+ * screened with a sketch; one at or over the mistake limit is confirmed with full
  * searches of the positions before and after it, and becomes a find once its
  * cue's replies and its payoff are known. Other replies go on, as does the
  * punishing side's move (its own moves, else Stockfish's best). The walk
@@ -132,7 +132,7 @@ export function findOpportunities({
   const thin: ThinEnd[] = [];
 
   for (let node = frontier.pop(); node; node = frontier.pop()) {
-    if (visited.has(node.key) || node.line.length >= lastPly) continue;
+    if (visited.has(node.key) || node.line.length > lastPly) continue;
     visited.add(node.key);
     if (node.pos.turn === side) {
       for (const uci of punishingMoves(node, context)) {
@@ -208,7 +208,7 @@ function erringSteps(node: Node, context: Context): ErringStep[] | 'thin' {
       return [];
     }
     const screened = moveLoss(before, after, uci, node.pos.turn);
-    if (!screened || screened.loss < limits.costFloor) return [cue];
+    if (!screened || screened.loss < MISTAKE_LOSS) return [cue];
     const find = confirm({ node, before }, { cue, after }, share, context);
     if (find === 'pending') return [];
     return find ? [{ cue: cue.key, find }] : [cue];
@@ -231,8 +231,8 @@ function confirm(
   if (!isFinal(before) || !isFinal(after)) return 'pending';
   const mistake = cue.line.at(-1)!;
   const cost = moveLoss(before, after, mistake, node.pos.turn)!.loss;
-  if (cost < limits.costFloor) return undefined;
-  const replies = acceptedReplies(before, after, side, limits);
+  if (cost < MISTAKE_LOSS) return undefined;
+  const replies = acceptedReplies(before, after, side);
   const played = answers.replies(cue);
   if (!played) ask('replies', cue);
   const best = child(cue, replies[0], 0);
@@ -284,23 +284,18 @@ function replyLosses(
 
 /**
  * The replies the cue accepts, from its final analysis `after`: the moves it
- * lists that label best or good and still gain at least the cost floor
+ * lists that label best or good and still gain at least the mistake limit
  * beside `before`, the final analysis of the position before the mistake.
  * The best one always counts, so a cue has one even when the two searches
  * disagree a little.
  */
-export function acceptedReplies(
-  before: FinalAnalysis,
-  after: FinalAnalysis,
-  side: Color,
-  limits: Limits = LIMITS,
-): Uci[] {
+export function acceptedReplies(before: FinalAnalysis, after: FinalAnalysis, side: Color): Uci[] {
   const base = forSide(before.lines[0].evaluation.score, side);
   return after.lines.flatMap(({ uci, evaluation }, rank) => {
     if (!uci) return [];
     const quality = judgement(after, undefined, uci, side)?.quality;
     const good = quality === 'best' || quality === 'good';
-    const kept = forSide(evaluation.score, side) - base >= limits.costFloor;
+    const kept = forSide(evaluation.score, side) - base >= MISTAKE_LOSS;
     return rank === 0 || (good && kept) ? [uci] : [];
   });
 }

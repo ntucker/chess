@@ -12,7 +12,7 @@ import type { Uci } from '@/lesson/lesson';
 
 import { acceptedReplies, byScore, type Find, findOpportunities } from './finder';
 import { gainIfKnown } from './gain';
-import { LIMITS } from './limits';
+import { LIMITS, MIN_GAMES } from './limits';
 import { payoff } from './payoff';
 import {
   type Answers,
@@ -130,9 +130,9 @@ searched(`${CUE} Nxe4 Bxd8 Bxf2+ Ke2`, full(`${CUE} Nxe4 Bxd8 Bxf2+ Ke2`, [['Bg4
 
 const NO_MOVE: FinalAnalysis = { lines: [{ evaluation: evaluation(0.5) }], depth: 18, final: true };
 
-/** The replies the lichess host gives from the games above, thin under `minGames`. */
+/** The replies the lichess host gives from the games above, thin under `MIN_GAMES`. */
 const fromGames =
-  (minGames = LIMITS.minGames) =>
+  (minGames = MIN_GAMES) =>
   ({ key }: Spot) =>
     repliesFrom(replies.get(key) ?? {}, minGames);
 
@@ -251,9 +251,10 @@ describe('findOpportunities', () => {
 
   it('keeps to its floors', () => {
     expect(find(known, { shareFloor: 0.2 }).finds).toEqual([]);
-    expect(find(known, { costFloor: 0.5 }).finds).toEqual([]);
     expect(find(known, { reachFloor: 0.5 }).finds).toEqual([]);
-    expect(find(known, { maxPlies: 2 }).finds).toEqual([]);
+    // The mistake's position is two plies past the opening.
+    expect(find(known, { maxPlies: 1 }).finds).toEqual([]);
+    expect(find(known, { maxPlies: 2 }).finds).toHaveLength(1);
   });
 
   it('ends the walk at a thin position, and says where', () => {
@@ -301,7 +302,7 @@ describe('findOpportunities', () => {
         ...withGuide(AFTER, full(AFTER, [['Be3', 0.2]])),
         guideMoves: known.guideMoves,
         replies: (spot) =>
-          spot.key === at(AFTER).key ? repliesFrom({}, LIMITS.minGames) : known.replies(spot),
+          spot.key === at(AFTER).key ? repliesFrom({}, MIN_GAMES) : known.replies(spot),
       }).dropped;
       expect(bg5.payoff).toEqual([last(BE3)]);
     });
@@ -318,7 +319,7 @@ describe('findOpportunities', () => {
     });
     const payoffOf = (answers: Answers) => find(answers, { payoffMoves: 1 }).finds[0].payoff;
 
-    it("follows the guide's move where it gives back less than the cost floor", () => {
+    it("follows the guide's move where it gives back less than the mistake limit", () => {
       const answers = withGuide([
         ['Bxf2+', 0.3],
         ['Kxd8', 0.35],
@@ -347,7 +348,7 @@ describe('findOpportunities', () => {
     const [bg5] = find({
       ...known,
       replies: (spot) =>
-        spot.key === at(CUE).key ? repliesFrom({ a: 5 }, LIMITS.minGames) : known.replies(spot),
+        spot.key === at(CUE).key ? repliesFrom({ a: 5 }, MIN_GAMES) : known.replies(spot),
     }).finds;
     expect(bg5.found).toBeUndefined();
   });
