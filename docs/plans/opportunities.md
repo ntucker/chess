@@ -35,6 +35,7 @@ plan doesn't depend on those links.
   rates) and guides extended to every common reply are future ideas, not started.
 - Names: "Opportunities" for the list, "Your cue." for the moment.
 - Phones are first-class. The phone screens build on the phone redesign's two panes and pager.
+  Pieces E, G and K are checked on Android (touch, the haptic tick, the pager, on-device search).
 - Saved progress is not migrated: new lines can reopen rows a learner already passed. Release notes
   say so.
 
@@ -69,6 +70,9 @@ plan doesn't depend on those links.
   learner's non-book move).
 
 ## Rules
+
+The numbers here are starting values. Piece B's report tunes them, and Nathaniel sets the floors at
+its gate; the reach floor (1%) and the ply cap (24 plies) are named constants in piece A.
 
 - **Score** of an opportunity for a band: reach × share × cost. Ties: the lower found rate ranks
   first, since teaching pays most where players miss the punishment.
@@ -133,11 +137,12 @@ Gate: Nathaniel reads the top 20 finds and sets the floors before any lesson fil
 - The `Trap` idea goes. Each existing trap (57 on positions, 82 in move notes) becomes guide-tree
   moves with the marker on its first move. A note whose only drawn idea was the trap moves to the
   marked move; a note with other ideas keeps them and its text where it was. Positions reached
-  through a marked move of the learner's side are outside the book: the checker needs no book move
-  there.
-- The app reads the new shape with unchanged behavior: the trap card, its playback and landing
-  (`LandedTrap`), and the "show traps" rule, now "hide a marked move's notes and playback only when
-  the learner is the side that falls in".
+  through a marked move of the learner's side are outside the book, so a clean run never reaches
+  them and the checker needs no book move there.
+- The app reads the new shape, and the trap card, its playback and landing (`LandedTrap`) behave as
+  before. One rule changes, as decided: "show traps" off now hides a marked move's notes and
+  playback only when the learner is the side that falls in (today it hides every trap). It still
+  only filters in `guidance.ts`.
 - Checker rules for marked moves (legal; `cost` at or over the floor when present). README for
   `assets/lessons/` and `AGENTS.md` updated.
 - No new finds: shipped lessons change only by the migration, rebuilt by the importer from
@@ -217,4 +222,5 @@ each number's source labeled. Measures sketch time on a phone first. After A, G,
 
 A bookmark saves a find on the device as the same lesson fragment the importer writes (the line,
 the marked move, the cue's replies and Act III), in its own versioned store (`SavedProgress` drops
-shapes it doesn't know), so it plays back through E's code. After K and E.
+shapes it doesn't know), so it plays back through E's code. `/privacy` and the Play listing's Data
+safety answers updated for the new stored value. After K and E.
