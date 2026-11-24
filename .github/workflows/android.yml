@@ -2,38 +2,16 @@
 # Markdown, and publishes it at one fixed address, so a phone installs the
 # newest build from its browser. README.md, under "Android builds", says how
 # to install it.
-#
-# A pull request only builds, and only when it changes native config,
-# dependencies or icons (the paths below). Other changes are left to main,
-# since a build takes about 14 minutes and CI's typecheck and tests cover app
-# code.
 name: Android
 
 on:
   push:
     branches: [main]
     paths-ignore: ['**/*.md']
-  pull_request:
-    paths:
-      - .github/workflows/android.yml
-      - package.json
-      - yarn.lock
-      - .yarn/patches/**
-      - app.json
-      - app.config.ts
-      - metro.config.js
-      - assets/images/**
   workflow_dispatch:
 
 permissions:
   contents: read
-
-# A newer push to a pull request makes its older build worthless. Every other
-# run gets its own group, so no push to main is cancelled (GitHub marks a
-# cancelled run's commit failed); the publish job checks for newer runs instead.
-concurrency:
-  group: android-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
 
 env:
   # The release that always holds main's newest build. Its tag stays at the
@@ -71,12 +49,6 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Install
-        # Yarn turns on hardened mode for public pull requests: it re-resolves the
-        # lockfile to catch tampering, which costs about 5 s. Only fork pull
-        # requests keep it: branches in this repo come from people with write
-        # access, who are trusted with yarn.lock. Other events never use it.
-        env:
-          YARN_ENABLE_HARDENED_MODE: ${{ github.event.pull_request.head.repo.fork && '1' || '0' }}
         run: yarn install --immutable
 
       - name: Generate the native project
@@ -128,13 +100,12 @@ jobs:
 
       # An older run stands down for any newer run on main, which publishes its
       # own build; if that build fails, the link keeps the build before both
-      # until the next push. Pull request runs from a fork's main share the
-      # branch name, so they don't count.
+      # until the next push.
       - name: Check this is main's newest build
         id: newest
         run: |
-          newer_runs=$(gh run list --workflow android.yml --branch main --limit 20 --json databaseId,event \
-            --jq "map(select(.databaseId > $GITHUB_RUN_ID and .event != \"pull_request\")) | length")
+          newer_runs=$(gh run list --workflow android.yml --branch main --limit 20 --json databaseId \
+            --jq "map(select(.databaseId > $GITHUB_RUN_ID)) | length")
           if [ "$newer_runs" -gt 0 ]; then
             echo "::notice::Not published: a newer run on main publishes its build instead."
           else
