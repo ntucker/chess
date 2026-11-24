@@ -9,9 +9,9 @@ which gives away 43% of White's winning chances, and Black answers 6...Nxe4 (Act
 
 Product plan with mockups: [product plan](https://claude.ai/artifact/Bun3eWNJZdbhDW2iAv9vAZ).
 Technical plan and its adversarial review: [technical
-plan](https://claude.ai/artifact/W7ri91SoRGYDqHcowjnz33). This file restates both as built; where
-they differ, this file wins. Each piece's section holds the rules it builds, so the plan doesn't
-depend on those links.
+plan](https://claude.ai/artifact/W7ri91SoRGYDqHcowjnz33). This file restates both as they are to be
+built; where they differ, this file wins. Each piece's section holds the rules it builds, so the
+plan doesn't depend on those links.
 
 ## Decisions (Nathaniel, 2026-11-22 to 2026-11-24)
 
@@ -67,15 +67,15 @@ depend on those links.
   shows none, `countedReplies` counts the move (but see its marked-move exception in Rules), and
   `moveShares` uses its small floor. Its callers: `candidates` in `src/lesson/select.ts` (one band,
   which its rare-row rule `rareLast` reads), `countedReplies` (all bands), `moveShares` in
-  `src/lesson/openings.ts` (all bands; with `bookOnly` it then scales the book moves' shares to sum
-  to one, since the learner plays the book however rarely games do, which gives today's ratio over
-  the book moves), `opponentModel` in `scripts/import-study/coverOpponent.ts` (its common-move
-  filter, on the explorer's counts) and piece A's `repliesFrom` (the lichess host's conversion,
-  which computes the same ratio until then). Piece C adds it and moves the callers onto it. The
-  function alone alters no lesson until D1 or D3 writes its totals; then that lesson's shares get
-  smaller, since unlisted moves join the denominator, and its rare rows and counted replies can
-  shift slightly. A Maia share is a separate source for the same field: a softmax over the legal
-  moves' policy scores (piece J).
+  `src/lesson/openings.ts` (all bands; with `bookOnly` it then renormalizes the function's values
+  over the book moves to sum to one, not a second ratio, since the learner plays the book however
+  rarely games do, which gives today's ratio over the book moves), `opponentModel` in
+  `scripts/import-study/coverOpponent.ts` (its common-move filter, on the explorer's counts) and
+  piece A's `repliesFrom` (the lichess host's conversion, which computes the same ratio until then).
+  Piece C adds it and moves the callers onto it. The function alone alters no lesson until D1 or D3
+  writes its totals; then that lesson's shares get smaller, since unlisted moves join the
+  denominator, and its rare rows and counted replies can shift slightly. A Maia share is a separate
+  source for the same field: a softmax over the legal moves' policy scores (piece J).
 - Derived, one pure function each in `src/opportunity/`: reach (shares of the erring side's moves
   multiplied along the path), found rate (the sum of the accepted replies' shares at the cue),
   score, role (trap or opportunity, from the learner's side), the current act, whether a position is
@@ -162,17 +162,19 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
   share of the games at the position, and whether the position is too thin to judge; `repliesFrom`
   turns lichess counts into that), analyses (sketch or final) and the guide's moves (a lesson's
   moves at a position, most played first: its book moves at `Lesson.side`'s turn, every move at the
-  other side's) that the host has so far. It returns the finds so far and the requests still
-  missing, most useful first: a position's replies, a sketch, or a full search, each naming its line
-  and position. The script loops over it; the app derives it from the store. No async generator and
-  no queue.
-- The walk is best-first by reach from the start (reach 1). At the erring side's turn it screens
-  every reply over the share floor with a sketch, confirms each reply at or over the cost floor with
-  full searches, then asks for the cue position's replies (found rate) and builds Act III. Replies
-  under the cost floor continue the walk. At the punishing side's turn it follows the guide's moves,
-  else Stockfish's best. Its search for mistakes stops below a reach floor, past a ply cap, or at a
-  thin position; Act III continues past a thin position (Rules). One find per cue position; a
-  position reached again adds nothing.
+  other side's; the host takes them through the book-move filter `openings.ts` already applies in
+  `movesOf` and `sharesAt`, extracted to one shared helper, in `candidates`' order) that the host
+  has so far. It returns the finds so far and the requests still missing, most useful first: a
+  position's replies, a sketch, or a full search, each naming its line and position. The script
+  loops over it; the app derives it from the store. No async generator and no queue.
+- The walk is best-first by reach from the start (reach 1), on `LikeliestFirst`
+  (`src/lesson/likeliestFirst.ts`, made generic over what it holds). At the erring side's turn it
+  screens every reply over the share floor with a sketch, confirms each reply at or over the cost
+  floor with full searches, then asks for the cue position's replies (found rate) and builds Act
+  III. Replies under the cost floor continue the walk. At the punishing side's turn it follows the
+  guide's moves, else Stockfish's best. Its search for mistakes stops below a reach floor, past a
+  ply cap, or at a thin position; Act III continues past a thin position (Rules). One find per cue
+  position; a position reached again adds nothing.
 - Its own floors and caps are named constants in `src/opportunity/limits.ts`, tuned at piece B's
   gate: the share floor and minimum games from Rules, the Act III caps, a reach floor (1%) and a ply
   cap (24 plies past where the finder opens).
@@ -225,11 +227,12 @@ before any lesson file changes. The report prints the limits it ran with.
 In Explore, after the erring side plays a marked move into a cue, `guidance.ts` hides the
 candidates, Stockfish's best and verdicts until the learner tries (Practice's existing "hide every
 hint" branch); a `screen.ts` cue state holds the tries with Retry, Show the move and Skip, judged by
-`labelMove` alone (a booked accepted reply labels `book`, which passes) (not `src/review/retry.ts`,
-which is tied to a finished game); Act III plays back through the lesson opponent; a haptic tick
-marks the cue in Explore. Wide layout, and the phone layout on the redesign's two panes: three act
-rows on the left, one line and three icon buttons on the right. Waits on the phone redesign's panes.
-Starts with a design review of whether the cue is a third mode-like state in `screen.ts`, and
+`labelMove`, not `src/review/retry.ts` (tied to a finished game). A booked reply passes; any other
+passes only where it meets the Rules' accepted-reply test (piece A's `acceptedReplies`: best or
+good, keeping the cost floor of the gain); Act III plays back through the lesson opponent; a haptic
+tick marks the cue in Explore. Wide layout, and the phone layout on the redesign's two panes: three
+act rows on the left, one line and three icon buttons on the right. Waits on the phone redesign's
+panes. Starts with a design review of whether the cue is a third mode-like state in `screen.ts`, and
 records its outcome here before building. The starting proposal: a try is a board preview until it
 passes, then a move through `useGame` (the screen reducer does not own the game); Act III reuses
 peek's playback, which does not move the game; the three acts replace the trap card for a marked
@@ -311,13 +314,13 @@ and listed after lichess ones, never ranked together.
 ### Piece K: Finder in the app
 
 The core run from any position, derived from the store and memoized with the answers it reads as its
-only inputs (no queue of its own) (engine answers through `useAnalysis`, replies through I or J),
-with finds joining the list page as they are confirmed and each number's source labeled. The
-finder's searches use the existing Stockfish watch and queue behind whatever the board is watching:
-they never become the newest request (the engine searches the newest position first) while the board
-shows a position, or `decide` would stop the bar's and the lesson's searches. Measures first how
-long the first find takes on a phone, with lichess's pacing (one request every 2.5 s) and with Maia.
-After A, G, I and J.
+only inputs, the engine answers through `useAnalysis` and the replies through I or J, with no queue
+of its own, with finds joining the list page as they are confirmed and each number's source labeled.
+The finder's searches use the existing Stockfish watch and queue behind whatever the board is
+watching: they never become the newest request (the engine searches the newest position first) while
+the board shows a position, or `decide` would stop the bar's and the lesson's searches. Measures
+first how long the first find takes on a phone, with lichess's pacing (one request every 2.5 s) and
+with Maia. After A, G, I and J.
 
 ### Piece L: Saved finds
 
