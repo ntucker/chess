@@ -51,7 +51,7 @@ export function PillChoice<T extends string>({
             onPress={() => onChange(option.value)}
             style={[
               styles.option,
-              iconsOnly && styles.iconOption,
+              iconsOnly ? styles.iconOption : styles.labelOption,
               selected && {
                 backgroundColor: color.surfaceRaised,
                 shadowColor: SHADOW_INK,
@@ -78,7 +78,6 @@ export function PillChoice<T extends string>({
 const styles = StyleSheet.create({
   track: { flexDirection: 'row', borderRadius: 999, padding: 3 },
   option: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -86,7 +85,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: 8,
   },
-  // A round slot as tall as a labelled option, and as wide. Not `flex: 0`: React Native Web
-  // reads it as a basis of 0, which beats the width.
-  iconOption: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', width: 36 },
+  // Labelled options share the pill's width.
+  labelOption: { flex: 1 },
+  // A round slot as tall as a labelled option, and as wide. No `flex` at all: natively `flex: 1`
+  // sets a basis of 0 under an `auto` basis, and React Native Web reads `flex: 0` as one; either beats the width.
+  iconOption: { width: 36 },
 });
