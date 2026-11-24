@@ -7,9 +7,9 @@ import { createRoot } from 'react-dom/client';
 
 import type { Candidate } from '@/lesson/select';
 import { SettingsProvider } from '@/settings/SettingsProvider';
-import { themes, typography } from '@/theme/theme';
+import { themes } from '@/theme/theme';
 
-import { CandidateList, listMinWidth } from './CandidateList';
+import { CandidateList } from './CandidateList';
 
 // Its font needs Expo's asset registry too.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
@@ -45,7 +45,8 @@ const DEFAULTS: Parameters<typeof CandidateList>[0] = {
   onPlay: () => {},
   onPoint: () => {},
   onTabOut: () => {},
-  compact: true,
+  leadsAlways: false,
+  density: 'comfortable',
 };
 
 /** A root that renders the list with `props` over the defaults, again on each call. */
@@ -77,26 +78,22 @@ function render<T>(props: Props, read: (host: HTMLElement) => T) {
   return result;
 }
 
-/** The text of the line under a compact list, if any. */
-function caption(props: Props) {
-  return render(props, (host) => host.querySelector('[data-narrow="narrow-only"]')?.textContent);
-}
-
-/** The text a part of the list holds, by part. */
-function partTexts(props: Props) {
+/** Each row's text, and its label. */
+function rows(props: Props) {
   return render(props, (host) =>
-    [...host.querySelectorAll('[data-narrow]')].map((node) => [
-      node.getAttribute('data-narrow'),
-      node.textContent,
+    [...host.querySelectorAll('[role="button"]')].map((button) => [
+      button.textContent,
+      button.getAttribute('aria-label'),
     ]),
   );
 }
 
-describe('CandidateList', () => {
-  it('names where the pointed row leads', () => {
-    expect(caption({ pointed: 'g1f3' })).toBe('Nf3: the Nf3 line');
-  });
+const SHARED = [
+  { ...COMMON, share: 0.6 },
+  { ...candidate('e2e4', 'e4'), share: 0.4 },
+];
 
+describe('CandidateList', () => {
   it("says Stockfish's verdict on a row in its badge and its label", () => {
     const verdicts = new Map([
       [
@@ -119,62 +116,53 @@ describe('CandidateList', () => {
     expect(render({}, read)).toEqual({ badge: false, row: 'Nf3' });
   });
 
-  it('names where a dragged rare move leads while its row is hidden', () => {
-    expect(caption({ pointed: 'h2h4' })).toBe('h4: the h4 line');
+  it('heads the rows with whose moves they are, on a wide panel', () => {
+    const text = render({ owner: 'White' }, (host) => host.textContent);
+    expect(text).toContain("White's Likely replies");
   });
 
-  it('keeps each row’s own line when the list is not compact', () => {
-    expect(caption({ pointed: 'g1f3', compact: false })).toBeUndefined();
+  it('leaves the heading and the key out of a compact list, keeping only its rows', () => {
+    const text = render({ owner: 'White', density: 'compact' }, (host) => host.textContent);
+    expect(text).not.toContain('Likely replies');
   });
 
-  it('leaves whose moves out of the heading on a narrow page, but not out loud', () => {
-    expect(partTexts({ owner: 'White' })).toContainEqual(['wide-only-spoken', "White's\u00a0"]);
+  it('leaves where each row leads to the idea card in a compact list', () => {
+    expect(rows({ density: 'compact' })[0]).toEqual(['Nf3', 'Nf3']);
   });
 
-  it('leaves where each row leads to the line under a compact list on a narrow page', () => {
-    expect(partTexts({})).toContainEqual(['wide-only', 'the Nf3 line']);
+  it('keeps where each row leads in a compact list where nothing else names it', () => {
+    expect(rows({ density: 'compact', leadsAlways: true })[0]).toEqual(['Nf3the Nf3 line', 'Nf3']);
   });
 
-  it('keeps where each row leads on every page when the list is not compact', () => {
-    const parts = render({ compact: false }, (host) =>
-      [...host.querySelectorAll('*')]
-        .filter((node) => node.children.length === 0 && node.textContent === 'the Nf3 line')
-        .map((node) => node.getAttribute('data-narrow')),
-    );
-    expect(parts).toEqual([null]);
+  it('folds the rare rows into a short last row in a compact list', () => {
+    const toggle = (props: Props) => rows({ density: 'compact', ...props }).at(-1);
+    expect(toggle({})).toEqual(['+1 more', 'Show 1 rarer replies']);
+    expect(toggle({ rareShown: true })).toEqual(['Fewer', 'Hide rarer replies']);
   });
 
   it('says whose games the shares count on the heading, only while shares show', () => {
     const tip = 'Percentages: how often Lichess players rated 1400–1599 play each move.';
-    const shared = [
-      { ...COMMON, share: 0.6 },
-      { ...candidate('e2e4', 'e4'), share: 0.4 },
-    ];
     const hint = (props: Props) =>
       render({ shareTip: tip, rare: [], ...props }, (host) => host.innerHTML.includes(tip));
-    expect(hint({ candidates: shared })).toBe(true);
+    expect(hint({ candidates: SHARED })).toBe(true);
     // A lone move's share isn't shown, so there's nothing to explain.
-    expect(hint({ candidates: [shared[0]!] })).toBe(false);
+    expect(hint({ candidates: [SHARED[0]!] })).toBe(false);
     // Nor beside Stockfish's row, which has no share.
     const best = {
       ...candidate('f8b4', 'Bb4+'),
       engine: { label: '0.0', description: 'No change' },
     };
-    expect(hint({ candidates: [shared[0]!], engineBest: best })).toBe(false);
+    expect(hint({ candidates: [SHARED[0]!], engineBest: best })).toBe(false);
     expect(hint({ candidates: [COMMON, candidate('e2e4', 'e4')] })).toBe(false);
   });
 
-  it('leaves the info mark out of a narrow pane, keeping the tip on the heading', () => {
-    const shared = [
-      { ...COMMON, share: 0.6 },
-      { ...candidate('e2e4', 'e4'), share: 0.4 },
-    ];
-    const wideOnly = (shareTip?: string) =>
-      render(
-        { candidates: shared, rare: [], ...(shareTip ? { shareTip } : {}) },
-        (host) => host.querySelectorAll('[data-narrow="wide-only"]').length,
-      );
-    expect(wideOnly('Percentages: who plays each move.')).toBe(wideOnly() + 1);
+  it('says whose games the shares count once, on the top share, in a compact list', () => {
+    const tip = 'Percentages: who plays each move.';
+    const tips = render(
+      { candidates: SHARED, rare: [], shareTip: tip, density: 'compact' },
+      (host) => host.innerHTML.split(tip).length - 1,
+    );
+    expect(tips).toBe(1);
   });
 
   it("shows a Stockfish row's change label, and says its description", () => {
@@ -194,14 +182,8 @@ describe('CandidateList', () => {
       ...candidate('f8b4', 'Bb4+'),
       engine: { label: '0.0', description: 'No change' },
     };
-    const rows = render({ rare: [], engineBest: best }, (host) =>
-      [...host.querySelectorAll('[role="button"]')].map((button) => [
-        button.textContent,
-        button.getAttribute('aria-label'),
-      ]),
-    );
     // A lone guide move shows no share, and the engine's row no change label: its star's tip says what it is.
-    expect(rows).toEqual([
+    expect(rows({ rare: [], engineBest: best })).toEqual([
       ['Nf3the Nf3 line', 'Nf3'],
       [
         "Bb4+Top engine move: Stockfish's best reply here, not one the guide teaches.the Bb4+ line",
@@ -231,17 +213,4 @@ describe('CandidateList', () => {
     expect(mockFades).toEqual([false]);
     list.unmount();
   });
-
-  // CANDIDATES in the heading's caption, uppercase: its glyphs in Instrument Sans, 76.1 px at
-  // 12 px as measured in Chromium (measure again if the font or the eyebrow's style changes),
-  // and Eyebrow's letter spacing, which text scaling leaves alone.
-  const headingWord = (fontScale: number) =>
-    (76.1 / 12) * typography.caption.size * fontScale + 'CANDIDATES'.length * 1.6;
-
-  it.each([1, 1.3, 1.8, 2])(
-    'leaves room in a narrow pane for the heading’s longest word at text scale %f',
-    (fontScale) => {
-      expect(listMinWidth(fontScale)).toBeGreaterThanOrEqual(headingWord(fontScale));
-    },
-  );
 });

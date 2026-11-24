@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { a11yState, Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { candidateTone } from '@/lesson/drawings';
 import type { PositionKey, Uci } from '@/lesson/lesson';
@@ -13,9 +13,9 @@ import { type EngineVerdict, percent } from '@/analysis/quality';
 import { QualityBadge, TippedBadge, verdictText } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import type { Mark } from '@/progress/progress';
-import { NARROW_CSS_LOADS, narrowLength, narrowStyles } from '@/theme/narrow';
-import { NarrowScroll, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
-import { FIGURINE_ADVANCE, fonts, MONO_ADVANCE, typography } from '@/theme/theme';
+import { NARROW_CSS_LOADS } from '@/theme/narrow';
+import type { Density } from '@/theme/Narrow';
+import { fonts } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
 import { MotionList, MotionView } from '@/motion/MotionList';
 
@@ -24,9 +24,9 @@ import { MARK_SIZE, MarkLegend, ProgressMark, SPOKEN_MARKS } from './ProgressMar
 interface Props {
   /** The list's heading: what moves these are, and whose unless `owner` says. */
   readonly heading: string;
-  /** Whose games the rows' shares count (`shareSource`), said in a tooltip on the heading. */
+  /** Whose games the rows' shares count (`shareSource`), said in a tooltip on the heading, or compact on each share. */
   readonly shareTip?: string;
-  /** Whose moves these are, before `heading`; only spoken in a narrow page's pane, where it would wrap. */
+  /** Whose moves these are, before `heading`. */
   readonly owner?: string;
   /** The position whose moves these are: another position's moves are another list */
   readonly position: PositionKey;
@@ -69,11 +69,18 @@ interface Props {
    */
   readonly onTabOut: () => void;
   /**
-   * On a narrow page, where the list has a narrow pane, its rows leave
-   * out where they lead: a line under the list names that for the move
-   * pointed at. Leave it off where the list is about where each move leads.
+   * Each row says where it leads at any density. A compact list's rows
+   * otherwise leave it to the idea card, which names it for the row pointed
+   * at: set it where nothing does, or where the list is about where each
+   * move leads.
    */
-  readonly compact?: boolean;
+  readonly leadsAlways: boolean;
+  /**
+   * `compact`, a phone's pane: the rows alone, each on a short line, which
+   * the layout scrolls. `comfortable`, a wide panel: a heading with a key to
+   * the marks, over the rows on a card, each with its share drawn as a bar.
+   */
+  readonly density: Density;
 }
 
 /**
@@ -91,8 +98,8 @@ interface Props {
  * move when it's the learner's to play. Each row's dot matches its arrow on
  * the board; the dot of a row the board draws no arrow for is hollow: a rare
  * row's, or one of Stockfish's top moves but its best. A row's progress mark
- * ends it, and a key beside the heading names the marks the list shows (not
- * in a narrow web page's pane).
+ * ends it, and a comfortable list's key beside the heading names the marks
+ * it shows (a compact one's rows still say theirs to screen readers).
  */
 export function CandidateList({
   heading,
@@ -113,9 +120,9 @@ export function CandidateList({
   onPlay,
   onPoint,
   onTabOut,
-  compact,
+  leadsAlways,
+  density,
 }: Props) {
-  const all = [...candidates, ...rare];
   const engineRows = engineBest ? [engineBest] : [];
   const rows = [...candidates, ...engineRows, ...(rareShown ? rare : [])];
   // The guide's rows shown, whose shares are of each other's games.
@@ -125,83 +132,64 @@ export function CandidateList({
   const shownMarks = new Set(
     rows.map(({ move }) => marks.get(move.uci)).filter((mark) => mark !== undefined),
   );
-  // A drag can point at a rare candidate while its row is hidden.
-  const pointedRow = [...all, ...engineRows].find(({ move }) => move.uci === pointed);
-  const caption = compact && pointedRow && leadsTo(pointedRow);
+  const compact = density === 'compact';
+  const styles = compact ? COMPACT : COMFORTABLE;
   const labelled = useLabelled();
-  const styles = useNarrowStyles(STYLES);
-  const part = useNarrowPart();
-  return (
-    <Stack {...part('move-list', labelled)}>
-      <View style={styles.head}>
-        {/*
-         * Whose moves is an eyebrow of its own: off the web a nested text can't be hidden.
-         * Its no-break space keeps the gap a space would leave inside one text.
-         */}
-        <ShareTip tip={showsShares ? shareTip : undefined}>
-          <View style={styles.heading}>
-            {owner ? (
-              <View {...part('wide-only-spoken')}>
-                <Eyebrow>{`${owner}'s\u00a0`}</Eyebrow>
-              </View>
-            ) : null}
-            <Eyebrow>{heading}</Eyebrow>
-          </View>
-        </ShareTip>
-        {/* A narrow pane has no room for the key: each mark's row still says it to screen readers. */}
-        <View {...part('wide-only')}>
-          <MarkLegend marks={shownMarks} />
-        </View>
-      </View>
-      <Surface elevation="sunken" border="subtle" radius="md" {...part('list-card', styles.list)}>
-        {/* On a narrow page the rows scroll inside the card, under its heading. */}
-        <NarrowScroll part="list-scroll">
-          {/*
-           * Showing or hiding the rare rows slides the rows below and fades them in or out.
-           * Another position's moves are another list, so leaving one with its rare rows shown
-           * swaps the rows at once instead of fading them, while rows reordered in one position
-           * (a deeper search re-ranking Stockfish's) still glide.
-           */}
-          <MotionList key={position} layoutDependency={rareShown}>
-            {rows.map((candidate, index) => (
-              <MotionView key={candidate.move.uci} id={candidate.move.uci}>
-                <Row
-                  candidate={candidate}
-                  main={candidate === main}
-                  topEngine={candidate === engineBest}
-                  verdict={verdicts?.get(candidate.move.uci)}
-                  pointed={candidate.move.uci === pointed}
-                  mark={marks.get(candidate.move.uci)}
-                  // Every row keeps room for a mark once one has one, so their shares line up.
-                  markSlot={shownMarks.size > 0}
-                  leadsTo={leadsTo(candidate)}
-                  compact={compact}
-                  share={showsShares ? candidate.share : undefined}
-                  playable={playable}
-                  onPlay={onPlay}
-                  onPoint={onPoint}
-                  onTabOut={!rare.length && index === rows.length - 1 ? onTabOut : undefined}
-                />
-              </MotionView>
-            ))}
-            {rare.length ? (
-              <MotionView id={RARE_TOGGLE}>
-                <RareToggle
-                  count={rare.length}
-                  shown={rareShown}
-                  onToggle={() => onShowRare(!rareShown)}
-                  onTabOut={onTabOut}
-                />
-              </MotionView>
-            ) : null}
-          </MotionList>
-        </NarrowScroll>
-      </Surface>
-      {caption ? (
-        <Text role="caption" tone="secondary" {...part('narrow-only')}>
-          <Notation>{`${pointedRow.san}: ${caption}`}</Notation>
-        </Text>
+  const shares = showsShares ? shareTip : undefined;
+  // Showing or hiding the rare rows slides the rows below and fades them in or out.
+  // Another position's moves are another list, so leaving one with its rare rows shown
+  // swaps the rows at once instead of fading them, while rows reordered in one position
+  // (a deeper search re-ranking Stockfish's) still glide.
+  const list = (
+    <MotionList key={position} layoutDependency={rareShown}>
+      {rows.map((candidate, index) => (
+        <MotionView key={candidate.move.uci} id={candidate.move.uci}>
+          <Row
+            candidate={candidate}
+            main={candidate === main}
+            topEngine={candidate === engineBest}
+            verdict={verdicts?.get(candidate.move.uci)}
+            pointed={candidate.move.uci === pointed}
+            mark={marks.get(candidate.move.uci)}
+            // Every row keeps room for a mark once one has one, so their shares line up.
+            markSlot={shownMarks.size > 0}
+            leadsTo={compact && !leadsAlways ? undefined : leadsTo(candidate)}
+            styles={styles}
+            share={showsShares ? candidate.share : undefined}
+            // Once, on the top share: every row's would repeat it to screen readers.
+            shareTip={compact && index === 0 ? shares : undefined}
+            playable={playable}
+            onPlay={onPlay}
+            onPoint={onPoint}
+            onTabOut={!rare.length && index === rows.length - 1 ? onTabOut : undefined}
+          />
+        </MotionView>
+      ))}
+      {rare.length ? (
+        <MotionView id={RARE_TOGGLE}>
+          <RareToggle
+            styles={styles}
+            count={rare.length}
+            shown={rareShown}
+            onToggle={() => onShowRare(!rareShown)}
+            onTabOut={onTabOut}
+          />
+        </MotionView>
       ) : null}
+    </MotionList>
+  );
+  if (compact) return list;
+  return (
+    <Stack style={labelled}>
+      <View style={styles.head}>
+        <ShareTip tip={shares} marked>
+          <Eyebrow>{owner ? `${owner}'s ${heading}` : heading}</Eyebrow>
+        </ShareTip>
+        <MarkLegend marks={shownMarks} />
+      </View>
+      <Surface elevation="sunken" border="subtle" radius="md" style={styles.list}>
+        {list}
+      </Surface>
     </Stack>
   );
 }
@@ -211,18 +199,19 @@ const RARE_TOGGLE = 'rare-toggle';
 
 /** The last row of a list with rare candidates: shows or hides them. */
 function RareToggle({
+  styles,
   count,
   shown,
   onToggle,
   onTabOut,
 }: {
+  readonly styles: Styles;
   readonly count: number;
   readonly shown: boolean;
   readonly onToggle: () => void;
   readonly onTabOut: () => void;
 }) {
   const { theme } = useTheme();
-  const styles = useNarrowStyles(STYLES);
   // Never singular: a list hides rare rows only when at least FEWEST_RARE are rare.
   const label = shown ? 'Hide rarer replies' : `Show ${count} rarer replies`;
   return (
@@ -239,7 +228,7 @@ function RareToggle({
       ]}
     >
       <Text role="caption" tone="secondary">
-        {label}
+        {styles.compact ? (shown ? 'Fewer' : `+${count} more`) : label}
       </Text>
     </Pressable>
   );
@@ -266,10 +255,12 @@ interface RowProps {
   /** Some row of the list has a mark, so this one keeps room for one. */
   readonly markSlot: boolean;
   readonly leadsTo?: string;
-  /** As the list's `compact`: a narrow page leaves out where the row leads. */
-  readonly compact?: boolean;
+  /** The list's density's styles. */
+  readonly styles: Styles;
   /** The move's share of the games, when worth showing. */
   readonly share?: number;
+  /** Whose games the share counts, in a tooltip on it. */
+  readonly shareTip?: string;
   readonly playable: boolean;
   readonly onPlay: (candidate: Candidate) => void;
   /** As the list's `onPoint`. */
@@ -287,16 +278,15 @@ function Row({
   mark,
   markSlot,
   leadsTo,
-  compact,
+  styles,
   share,
+  shareTip,
   playable,
   onPlay,
   onPoint,
   onTabOut,
 }: RowProps) {
   const { theme } = useTheme();
-  const styles = useNarrowStyles(STYLES);
-  const part = useNarrowPart();
   const { color } = theme.semantic;
   const { move, san, engine } = candidate;
   const tone = toneColors[candidateTone(candidate, main)];
@@ -350,11 +340,17 @@ function Row({
           <Text role="body" style={styles.san} {...SHRINK_TO_LINE}>
             <Notation>{san}</Notation>
           </Text>
-          {move.book ? <QualityBadge quality="book" size={BADGE_SIZE} /> : null}
+          {move.book ? <QualityBadge quality="book" size={styles.badgeSize} /> : null}
           {/* Each badge says what it means on a resting mouse or a tap; the row's label says it aloud. */}
-          {topEngine ? <TippedBadge quality="best" size={BADGE_SIZE} tip={TOP_ENGINE_TIP} /> : null}
+          {topEngine ? (
+            <TippedBadge quality="best" size={styles.badgeSize} tip={TOP_ENGINE_TIP} />
+          ) : null}
           {verdict ? (
-            <TippedBadge quality={verdict.quality} size={BADGE_SIZE} tip={verdictText(verdict)} />
+            <TippedBadge
+              quality={verdict.quality}
+              size={styles.badgeSize}
+              tip={verdictText(verdict)}
+            />
           ) : null}
           {move.risk ? (
             <Text role="caption" tone="secondary" style={styles.risk}>
@@ -363,7 +359,7 @@ function Row({
           ) : null}
         </View>
         {leadsTo ? (
-          <Text role="caption" tone="secondary" numberOfLines={1} {...part(compact && 'wide-only')}>
+          <Text role="caption" tone="secondary" numberOfLines={1}>
             {leadsTo}
           </Text>
         ) : null}
@@ -375,15 +371,17 @@ function Row({
       ) : null}
       {share === undefined ? null : (
         <View style={styles.share}>
-          {/* A narrow pane has no room for the bar. */}
-          <View
-            {...part('wide-only', [styles.track, { backgroundColor: color.tones.neutral.subtle }])}
-          >
-            <View style={[styles.fillBar, { width: `${share * 100}%`, backgroundColor: tone }]} />
-          </View>
-          <Text role="caption" tone="secondary" style={styles.percent}>
-            {percent(share)}
-          </Text>
+          {/* A compact row has no room for the bar. */}
+          {styles.compact ? null : (
+            <View style={[styles.track, { backgroundColor: color.tones.neutral.subtle }]}>
+              <View style={[styles.fillBar, { width: `${share * 100}%`, backgroundColor: tone }]} />
+            </View>
+          )}
+          <ShareTip tip={shareTip}>
+            <Text role="caption" tone="secondary" style={styles.percent}>
+              {percent(share)}
+            </Text>
+          </ShareTip>
         </View>
       )}
       {markSlot ? (
@@ -397,33 +395,36 @@ function Row({
 const TOP_ENGINE_MOVE = 'top engine move';
 const TOP_ENGINE_TIP = "Top engine move: Stockfish's best reply here, not one the guide teaches.";
 
-/** A row's badges (the book's, Stockfish's), as in the scoresheet, about the height of the notation's capitals. */
-const BADGE_SIZE = 16;
-
 /** The info mark beside the heading, about as tall as the eyebrow's capitals. */
 const INFO_SIZE = 13;
 
 /**
- * The list's heading, which a tap or a resting mouse makes say whose games
- * the percentages count, when they show: the words stay out of the panel
- * until asked for. A mark beside it hints at that on a wide page. Screen
- * readers read them after the heading.
+ * `children`, which a tap or a resting mouse makes say whose games the
+ * shares count, when they show: the words stay out of the panel until asked
+ * for. On a heading (`marked`), a mark beside it hints at that. Screen
+ * readers read the words after `children`.
  */
-function ShareTip({ tip, children }: { readonly tip?: string; readonly children: ReactNode }) {
+function ShareTip({
+  tip,
+  marked,
+  children,
+}: {
+  readonly tip?: string;
+  readonly marked?: boolean;
+  readonly children: ReactNode;
+}) {
   const { theme } = useTheme();
-  const part = useNarrowPart();
   if (!tip) return children;
   return (
     <Tip tip={tip} style={STATIC.tipped}>
       {children}
-      {/* A narrow pane has no room for it beside the heading: a tap on the heading still opens the tip. */}
-      <View {...part('wide-only')}>
+      {marked ? (
         <Ionicons
           name="information-circle-outline"
           size={INFO_SIZE}
           color={theme.semantic.color.textSecondary}
         />
-      </View>
+      ) : null}
     </Tip>
   );
 }
@@ -433,86 +434,58 @@ const STATIC = StyleSheet.create({
   tipped: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
 });
 
-/** The notation's size in a row. */
-const SAN_SIZE = 17;
-/** A share's and an evaluation's size, Silk's caption. */
-const VALUE_SIZE = typography.caption.size;
 /** A share's least width, which holds 100% in caption text: larger text widens it. */
 const SHARE_WIDTH = 32;
 /** An evaluation's least width, which holds its longest label (as −9.9 or −M12) in caption text. */
 const EVALUATION_WIDTH = 44;
-/**
- * The longest move a narrow pane's row holds at its own size is a capture by
- * the widest piece, Qxd5: the queen's icon (`Notation`), wider than a
- * letter, then this many characters.
- */
-const LONGEST_MOVE_AFTER_PIECE = 3;
-/** The longest share and evaluation, which larger text can widen past their least widths. */
-const LONGEST_SHARE = '100%';
-const LONGEST_EVALUATION = '\u22129.9';
 
 /**
  * A move on one line, whose text shrinks when its row has too little room
- * for it. Beside its badges in a pane at its least width (`listMinWidth`),
- * which holds Qxd5 (`LONGEST_MOVE_AFTER_PIECE`), a five-character move
- * (Nbxd7) needs 0.85 of its size and the longest moves, a promotion with
- * check (exd8=Q+) or a queen's move named by its square, with check
- * (Qh4xe1+), 0.6, which the floor still holds.
- * Off the web only: the web's `fontScale` is always 1, so its pane holds a
- * four-character move, and a longer one overflows its place.
+ * for it, rather than push its badge over the share. Off the web only: the
+ * web's text doesn't scale with the system's, so its rows have room.
  */
 const SHRINK_TO_LINE = NARROW_CSS_LOADS
   ? {}
   : ({ numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.55 } as const);
 
-/** `listMinWidth` at the system's text size, as a style. */
-export function useListMinWidth() {
-  // React Native scales text by `fontScale`, the one value read from the window (the web's is always 1).
-  const { fontScale } = useWindowDimensions();
-  return { minWidth: listMinWidth(fontScale) };
-}
-
-/**
- * The least width of a narrow page's moves pane at a text scale: a row of
- * Qxd5 (`LONGEST_MOVE_AFTER_PIECE`), its two badges (the book's and Stockfish's verdict), its
- * share and a mark holds whole, as does a row
- * of Stockfish's with its evaluation. Larger text widens it, rather than
- * break the move or its share over two lines or draw the badge over the
- * share. The heading's longest word (CANDIDATES) is narrower at every scale,
- * so it never breaks mid-word (CandidateList.web.test.tsx checks). A wide
- * page's panel is wider than this at any text size.
- */
-export function listMinWidth(fontScale: number) {
-  const mono = (chars: number, size: number, advance = MONO_ADVANCE) =>
-    chars * advance * size * fontScale;
-  const gap = ROW_GAP.narrow;
-  // The row's insets and dot, then the move and the mark, each after a gap.
-  const ends =
-    2 * ROW_INSET.narrow +
-    DOT_SIZE +
-    gap +
-    mono(1, SAN_SIZE, FIGURINE_ADVANCE) +
-    mono(LONGEST_MOVE_AFTER_PIECE, SAN_SIZE) +
-    gap +
-    MARK_SIZE;
-  // After the move, a guide's row has its badges and share, one of Stockfish's its evaluation.
-  const badgeAndShare =
-    2 * (TITLE_GAP + BADGE_SIZE) +
-    gap +
-    Math.max(SHARE_WIDTH, mono(LONGEST_SHARE.length, VALUE_SIZE));
-  const evaluation = gap + Math.max(EVALUATION_WIDTH, mono(LONGEST_EVALUATION.length, VALUE_SIZE));
-  return Math.ceil(ends + Math.max(badgeAndShare, evaluation));
-}
-
-/** A row's spacing, more compact in a narrow pane. */
-const ROW_INSET = narrowLength('candidate-inset', 14);
-const ROW_GAP = narrowLength('candidate-gap', 12);
-const ROW_PADDING = narrowLength('candidate-padding', 8);
-const DOT_SIZE = 10;
 /** Space between a row's move and its badge. */
 const TITLE_GAP = 8;
 
-const STYLES = narrowStyles((px) => ({
+/** What sizes a density's rows. */
+interface Metrics {
+  /** Space at each end of a row, and between its parts. */
+  readonly inset: number;
+  readonly gap: number;
+  readonly dot: number;
+  /** The notation's size. */
+  readonly san: number;
+  /** A badge's size (the book's, Stockfish's), about the height of the notation's capitals. */
+  readonly badge: number;
+  readonly row: ViewStyle;
+}
+
+/** A density's styles, from its row's sizes, with its badges' size, which they take as a number. */
+function rowStyles({ inset, gap, dot, san, badge, row }: Metrics, compact: boolean) {
+  const sheet = StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap,
+      paddingHorizontal: inset,
+      outlineOffset: -2,
+      ...row,
+    },
+    dot: { width: dot, height: dot, borderRadius: dot / 2 },
+    // Text lines up with the rows' moves, past the dot and its gap.
+    toggle: { paddingLeft: inset + dot + gap },
+    // Off the web, too long a move shrinks to its line (`SHRINK_TO_LINE`) rather than push its badge over the share.
+    san: { fontFamily: fonts.mono, fontSize: san, flexShrink: 1 },
+  });
+  return { ...SAME, ...sheet, badgeSize: badge, compact };
+}
+
+/** What a row looks like at either density. */
+const SAME = StyleSheet.create({
   head: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -521,23 +494,9 @@ const STYLES = narrowStyles((px) => ({
     columnGap: 16,
     rowGap: 6,
   },
-  heading: { flexDirection: 'row', flexWrap: 'wrap', flexShrink: 1 },
   list: { overflow: 'hidden', paddingVertical: 4 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: px(ROW_GAP),
-    paddingHorizontal: px(ROW_INSET),
-    paddingVertical: px(ROW_PADDING),
-    outlineOffset: -2,
-  },
-  dot: { width: DOT_SIZE, height: DOT_SIZE, borderRadius: DOT_SIZE / 2 },
-  // Text lines up with the rows' moves, past the dot and its gap.
-  toggle: { paddingLeft: px(ROW_INSET.plus(DOT_SIZE).plus(ROW_GAP)) },
-  move: { flex: 1, gap: 1 },
+  move: { flexGrow: 1, flexShrink: 1, gap: 1 },
   title: { flexDirection: 'row', alignItems: 'center', gap: TITLE_GAP },
-  // Off the web, too long a move shrinks to its line (`SHRINK_TO_LINE`) rather than push its badge over the share.
-  san: { fontFamily: fonts.mono, fontSize: SAN_SIZE, flexShrink: 1 },
   risk: { textTransform: 'capitalize' },
   share: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   track: { width: 52, height: 4, borderRadius: 2, overflow: 'hidden' },
@@ -545,4 +504,34 @@ const STYLES = narrowStyles((px) => ({
   percent: { minWidth: SHARE_WIDTH, textAlign: 'right', fontFamily: fonts.mono },
   evaluation: { minWidth: EVALUATION_WIDTH, textAlign: 'right', fontFamily: fonts.mono },
   mark: { width: MARK_SIZE, height: MARK_SIZE },
-}));
+});
+
+type Styles = ReturnType<typeof rowStyles>;
+
+const COMFORTABLE = rowStyles(
+  {
+    inset: 14,
+    gap: 12,
+    dot: 10,
+    san: 17,
+    badge: 16,
+    row: { paddingVertical: 8 },
+  },
+  false,
+);
+
+/** Space at each end of a compact row: a phone's layout pulls its pane into the page's margin by it. */
+export const COMPACT_INSET = 8;
+
+/** A phone's rows: a short line each, as tall as a thumb can still pick out. */
+const COMPACT = rowStyles(
+  {
+    inset: COMPACT_INSET,
+    gap: 8,
+    dot: 8,
+    san: 16,
+    badge: 14,
+    row: { minHeight: 32, paddingVertical: 2, borderRadius: 10 },
+  },
+  true,
+);

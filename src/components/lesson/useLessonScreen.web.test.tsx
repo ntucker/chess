@@ -83,7 +83,7 @@ describe('useLessonScreen', () => {
     expect(header.place).toEqual({ name: 'Openings' });
     expect(header.placeLink?.href).toEqual({ pathname: '/openings', params: {} });
     expect(title).toBe('Openings · Opening Night');
-    expect(moves).toMatchObject({ heading: 'first move', owner: 'White', compact: false });
+    expect(moves).toMatchObject({ heading: 'first move', owner: 'White', leadsAlways: true });
     expect(moves!.candidates.map((row) => moves!.leadsTo(row))).toContain('Caro-Kann Defence');
     expect(stepper).toEqual({ san: undefined, ply: 0, started: false });
     expect(review.offered).toBe(false);
@@ -100,17 +100,29 @@ describe('useLessonScreen', () => {
     expect(mockFetchIfStale).toHaveBeenCalledWith(expect.anything(), 'caro-kann');
   });
 
-  it("shows the lesson's line once picked, with compact rows and no swap", async () => {
+  it("shows the lesson's line once picked, leaving where rows lead to the idea, with no swap", async () => {
     await showAfter(CARO_KANN, 'e4', 'c6', 'd4');
     const { header, moves, board, idea, learner, scoresheet } = shown();
     expect(header.place).toStrictEqual({ name: 'Caro-Kann Defence', parent: undefined });
     expect(header.placeLink?.href).toMatchObject({ params: { lesson: 'caro-kann' } });
-    expect(moves).toMatchObject({ heading: 'Your candidates', owner: undefined, compact: true });
+    expect(moves).toMatchObject({
+      heading: 'Your candidates',
+      owner: undefined,
+      leadsAlways: false,
+    });
     expect(board.onSwap).toBeUndefined();
     expect(board.rival.name).toBe('White');
     expect(learner).toBe('black');
     expect(idea?.title).toBe('The idea');
     expect(scoresheet.ply).toBe(3);
+  });
+
+  it('names in the idea where the row pointed at leads', async () => {
+    await showAfter(CARO_KANN, 'e4', 'c6', 'd4', 'd5');
+    const { moves } = shown();
+    const row = moves!.candidates.find((candidate) => moves!.leadsTo(candidate))!;
+    await act(async () => moves!.onPoint(row.move.uci));
+    expect(shown().idea).toMatchObject({ title: `If ${row.san}`, leadsTo: moves!.leadsTo(row) });
   });
 
   it("names the rival's moves as likely replies, with whose they are", async () => {

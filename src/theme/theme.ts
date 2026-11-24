@@ -40,7 +40,7 @@ export const fonts = {
   /** Display serif for headlines and the wordmark. Has one weight. */
   display: 'DMSerifDisplay_400Regular',
   displayItalic: 'DMSerifDisplay_400Regular_Italic',
-  /** Text and controls. CandidateList.web.test.tsx measures a heading's word in it. */
+  /** Text and controls. */
   text: 'InstrumentSans_400Regular',
   /** Move numbers and notation. */
   mono: 'DMMono_400Regular',

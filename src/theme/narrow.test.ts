@@ -7,12 +7,12 @@ import {
   CSS_ONLY,
   NARROW_PARTS,
   NARROW_PX,
-  NATIVE_ONLY,
   NATIVE_PARTS,
   narrowLength,
   SCROLLING_PARTS,
   narrowStyles,
 } from './narrow';
+import { PHONE_QUERY } from './Narrow';
 
 // Jest can't load a stylesheet; this test reads it as text instead.
 jest.mock('./narrow.css', () => ({}));
@@ -56,7 +56,12 @@ function asCss(style: object = {}) {
 
 describe('narrow.css', () => {
   it('starts the media query just below where the board and panel fit side by side', () => {
-    expect(css).toContain(`@media (max-width: ${SIDE_BY_SIDE_MIN - 0.02}px) {`);
+    expect(PHONE_QUERY).toBe(`(max-width: ${SIDE_BY_SIDE_MIN - 0.02}px)`);
+  });
+
+  // A screen picks its layout from the same query (useLayout), so its panel agrees with the frame's.
+  it('lays out a phone on the query useLayout reads', () => {
+    expect(css).toContain(`@media ${PHONE_QUERY} {`);
   });
 
   it.each(Object.entries(NARROW_PX))('sets --%s to its native pixels, %ipx', (name, px) => {
@@ -72,11 +77,7 @@ describe('narrow.css', () => {
   const wideRules = declarations(wideCss);
 
   it.each(NARROW_PARTS)('lays out the %s as natively', (part) => {
-    const nativeOnly = new Set<string>(NATIVE_ONLY[part] ?? []);
-    const narrow = Object.fromEntries(
-      Object.entries(NATIVE_PARTS[part].narrow ?? {}).filter(([key]) => !nativeOnly.has(key)),
-    );
-    const native = [...asCss(narrow), ...(CSS_ONLY[part] ?? [])];
+    const native = [...asCss(NATIVE_PARTS[part].narrow), ...(CSS_ONLY[part] ?? [])];
     expect([...(narrowRules.get(part) ?? [])].sort()).toEqual(native.sort());
     expect([...(wideRules.get(part) ?? [])].sort()).toEqual(asCss(NATIVE_PARTS[part].wide).sort());
   });

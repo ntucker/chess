@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useSyncExternalStore } from 'react';
 import { ScrollView, type StyleProp, type TextStyle, View, type ViewStyle } from 'react-native';
 import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -38,6 +38,48 @@ function useNativeArea() {
   const { top, bottom, left, right } = useSafeAreaInsets();
   return { width: width - left - right, height: height - top - bottom };
 }
+
+/**
+ * Where a screen puts its panel: under the board (`phone`) or beside it
+ * (`wide`), as narrow.css decides it on the web.
+ */
+type ScreenLayout = 'phone' | 'wide';
+
+/** narrow.css's media query: just below where the board column and the panel fit side by side. */
+export const PHONE_QUERY = `(max-width: ${SIDE_BY_SIDE_MIN - 0.02}px)`;
+
+/**
+ * The screen's layout, for a screen that draws a different panel on a
+ * phone. Only a screen calls it (lint), and hands its blocks a `Density`:
+ * a component that can pre-render takes its parts from narrow.css instead.
+ * On the web it reads the media query on the first render, so a phone
+ * never draws the wide panel first; a pre-rendered page has no window, so
+ * calling it outside `BrowserOnly` fails the export.
+ */
+export const useLayout: () => ScreenLayout = NARROW_CSS_LOADS
+  ? () => (useSyncExternalStore(onPhoneChange, isPhone, noWindow) ? 'phone' : 'wide')
+  : () => (useIsNarrowArea() ? 'phone' : 'wide');
+
+/** The query, made on first use: a module the export loads has no window. */
+let phoneQuery: MediaQueryList | undefined;
+const phoneMedia = () => (phoneQuery ??= matchMedia(PHONE_QUERY));
+
+function onPhoneChange(change: () => void) {
+  const query = phoneMedia();
+  query.addEventListener('change', change);
+  return () => query.removeEventListener('change', change);
+}
+
+const isPhone = () => phoneMedia().matches;
+
+function noWindow(): never {
+  throw new Error(
+    'useLayout reads the window, which a pre-rendered page lacks: call it under BrowserOnly.',
+  );
+}
+
+/** How much room a block has: a phone's panes (`compact`) or a wide panel's. */
+export type Density = 'comfortable' | 'compact';
 
 /** The styles of `narrowStyles` for the page as it is. */
 export function useNarrowStyles<T>(styles: NarrowStyles<T>): T {
@@ -107,29 +149,27 @@ export function NarrowOnly({
 /**
  * A part that scrolls on its own on a narrow page, fading out its bottom edge
  * to show there's more below, with room for its last line to clear the fade.
- * On the web narrow.css does it to a plain view, which `contentStyle` styles
- * too. Elsewhere it is always a scroll view, scrolling only on a narrow page,
- * so crossing the width keeps what it holds.
+ * On the web narrow.css does it to a plain view. Elsewhere it is always a
+ * scroll view, scrolling only on a narrow page, so crossing the width keeps
+ * what it holds.
  */
 export function NarrowScroll({
   part: name,
   style,
-  contentStyle,
   children,
 }: {
   readonly part: ScrollingPart;
   readonly style?: Style;
-  readonly contentStyle?: Style;
   readonly children: ReactNode;
 }) {
   const narrow = useIsNarrow();
   if (NARROW_CSS_LOADS) {
-    return <View {...partProps(narrow, name, [style, contentStyle])}>{children}</View>;
+    return <View {...partProps(narrow, name, style)}>{children}</View>;
   }
   return (
     <ScrollView
       {...partProps(narrow, name, style)}
-      contentContainerStyle={[contentStyle, narrow && FADED]}
+      contentContainerStyle={narrow && FADED}
       scrollEnabled={narrow}
       nestedScrollEnabled
       fadingEdgeLength={narrow ? FADING_EDGE : 0}
@@ -141,6 +181,44 @@ export function NarrowScroll({
 
 const FADED = { flexGrow: 1, paddingBottom: NARROW_PX.fade } as const satisfies ViewStyle;
 const FADING_EDGE = { start: 0, end: NARROW_PX.fade };
+
+/**
+ * A pane that always scrolls on its own, such as a phone's moves or the idea
+ * beside them, faded at its foot as `NarrowScroll` fades the panel around
+ * it: the web masks the edge, Android fades it itself. A scroll that reaches
+ * an end stops there rather than scroll the panel on.
+ */
+export function FadingScroll({
+  style,
+  contentStyle,
+  children,
+}: {
+  readonly style?: Style;
+  readonly contentStyle?: Style;
+  readonly children: ReactNode;
+}) {
+  return (
+    <ScrollView
+      style={[PANE_FADE, style]}
+      contentContainerStyle={[{ paddingBottom: NARROW_PX.fade }, contentStyle]}
+      showsVerticalScrollIndicator={false}
+      nestedScrollEnabled
+      fadingEdgeLength={FADING_EDGE}
+    >
+      {children}
+    </ScrollView>
+  );
+}
+
+const PANE_FADE = (
+  NARROW_CSS_LOADS
+    ? {
+        overscrollBehavior: 'contain',
+        // A mask reads only alpha, so black here is opaque, not a theme color.
+        maskImage: `linear-gradient(to bottom, black calc(100% - ${NARROW_PX.fade}px), transparent)`,
+      }
+    : {}
+) as ViewStyle;
 
 /**
  * Off the web, the app's height less its system bars, and the pixels of

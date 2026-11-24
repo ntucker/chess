@@ -1,5 +1,5 @@
 import { Text, Tooltip, useTheme } from '@reactive/silk-native';
-import { useMemo } from 'react';
+import { type ReactNode, useMemo } from 'react';
 import { Platform, StyleSheet } from 'react-native';
 
 import { MiniBoard } from '@/components/MiniBoard';
@@ -8,6 +8,7 @@ import type { Color } from '@/game/replay';
 import type { Lesson } from '@/lesson/lesson';
 import { type Mention, noteParts } from '@/lesson/mentions';
 import type { ShownNote } from '@/lesson/view';
+import type { Density } from '@/theme/Narrow';
 import { fonts } from '@/theme/theme';
 
 /** One square's width on a mention's board: 176 points across. */
@@ -20,6 +21,10 @@ interface Props {
   readonly shown: ShownNote;
   /** The side at the bottom of each mention's board. */
   readonly learner: Color;
+  /** What runs in before the sentence, such as a compact card's title. */
+  readonly lead?: ReactNode;
+  /** `compact` sets the sentence a size down, for a phone's pane. */
+  readonly density: Density;
 }
 
 // Natively a trigger inside a line of text is a span, which has no padding:
@@ -31,7 +36,7 @@ const PAD = Platform.OS === 'web' ? '' : '\u2009';
  * notation that shows it on a small board: under a resting mouse, or on a
  * tap. A tap there, or on the board, doesn't point at the note.
  */
-export function NoteText({ lesson, shown, learner }: Props) {
+export function NoteText({ lesson, shown, learner, lead, density }: Props) {
   const { note, after, before } = shown;
   // A preview builds its shown notes anew on every render, so this keys on their fields.
   const parts = useMemo(
@@ -39,7 +44,8 @@ export function NoteText({ lesson, shown, learner }: Props) {
     [lesson, note, after, before],
   );
   return (
-    <Text role="body">
+    <Text role="body" style={density === 'compact' && styles.compact}>
+      {lead}
       {parts.map((part, n) =>
         typeof part === 'string' ? part : <MentionTip key={n} mention={part} learner={learner} />,
       )}
@@ -79,6 +85,7 @@ function MentionTip({ mention, learner }: { readonly mention: Mention; readonly 
 }
 
 const styles = StyleSheet.create({
+  compact: { fontSize: 15, lineHeight: 22 },
   chip: { borderRadius: 4, paddingHorizontal: 3 },
   // Notation in the app's mono, a size down so it sits level with the words.
   notation: { fontFamily: fonts.mono, fontSize: 15 },

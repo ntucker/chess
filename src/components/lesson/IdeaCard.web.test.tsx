@@ -12,7 +12,7 @@ import type { Playback } from '@/lesson/useLesson';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
 
-import { noNotesText, NoteView } from './IdeaCard';
+import { IdeaCard, noNotesText, NoteView } from './IdeaCard';
 
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 
@@ -44,6 +44,7 @@ function renderNote(
             pointed={false}
             onPoint={() => {}}
             onLeave={() => {}}
+            density="comfortable"
             {...props}
           />
         </SettingsProvider>
@@ -118,6 +119,62 @@ describe('NoteView', () => {
     act(() => tip.querySelector('svg')!.dispatchEvent(onBoard));
     expect(onPoint).not.toHaveBeenCalled();
     unmount();
+  });
+});
+
+describe('IdeaCard', () => {
+  /** A card holding one note, `note`, at `density`: its text, and its buttons' labels. */
+  const renderCard = (density: 'comfortable' | 'compact', note: Note) => {
+    const host = document.createElement('div');
+    const root = createRoot(host);
+    act(() =>
+      root.render(
+        <SilkProvider theme={themes.dark}>
+          <SettingsProvider>
+            <IdeaCard
+              lesson={SAMPLE}
+              title="If Nf6"
+              leadsTo="Masi Variation"
+              notes={[{ note, after: 'after' as PositionKey }]}
+              learner="black"
+              playback={PLAYBACK}
+              pointable={[]}
+              onPoint={() => {}}
+              onLeave={() => {}}
+              onReach={() => {}}
+              density={density}
+            />
+          </SettingsProvider>
+        </SilkProvider>,
+      ),
+    );
+    const card = {
+      text: host.textContent ?? '',
+      buttons: [...host.querySelectorAll('[role="button"]')].map((button) =>
+        button.getAttribute('aria-label'),
+      ),
+    };
+    act(() => root.unmount());
+    return card;
+  };
+
+  it('heads a comfortable card with its title', () => {
+    expect(renderCard('comfortable', { text: 'Your knight eyes e4.' }).text).toMatch(
+      /^If Nf6Your knight eyes e4\./,
+    );
+  });
+
+  it("leads a compact card's words with its title and where the move leads", () => {
+    expect(renderCard('compact', { text: 'Your knight eyes e4.' }).text).toMatch(
+      /^If Nf6 \(Masi Variation\): Your knight eyes e4\./,
+    );
+  });
+
+  it("opens the study's words from a small control on a compact card", () => {
+    const card = renderCard('compact', { text: 'Your knight eyes e4.', original: 'Nf6 hits e4' });
+    expect(card.buttons).toContain('The study’s words');
+    expect(card.text).not.toContain('The study’s words');
+    expect(card.text).not.toContain('Nf6 hits e4');
   });
 });
 
