@@ -178,16 +178,19 @@ cost floor is the app's mistake limit and is not a gate setting.
   Act III follows the guide's most played one (else its first, where no move has counts) as long as
   that move gives back less than `MISTAKE_LOSS` beside Stockfish's best in the same position, so the
   tree stays the one source for the line; otherwise, or where the guide has none, it plays
-  Stockfish's best. Piece B's report counts the positions where the two differ and how often Act III
-  kept the guide's move.
+  Stockfish's best, which the importer writes into the tree as a book move beside the guide's (so
+  the tree stays the one source there too). Piece B's report counts the positions where the two
+  differ and how often Act III kept the guide's move, and lists each override, as the lesson's D1
+  or D3 pull request does: the guide's own book move costs a mistake's worth there, so a person
+  looks at it before merge.
 - **Act III** follows those moves for both sides, and ends at mate, when the punishing side is three
   points of material up (`balance` in `src/game/material.ts`) and winning (the punishing side's
   expected score of at least 0.8, by `scoreFor` in `src/evaluation/evaluation.ts`), when its
-  second-best move is also winning, after six of its moves, or where an erring-side guide move it
-  follows takes back at least `MISTAKE_LOSS` (the cost floor) of the punishing side's expected
-  score: the remaining gain falls by that loss, measured as `judgement` measures it (signed by
-  `forSide`, not `scoreFor`), from before that move to after it on the line Act III was following.
-  The 0.8 and the three points are `limits.ts` constants tuned at piece B's gate.
+  second-best move is also winning, after six of its moves, or where, after an erring-side guide
+  move it follows, what the punishment still wins is under `MISTAKE_LOSS` (the cost floor): the
+  punishing side's score there less its score before the mistake, both signed by `forSide` (a
+  difference near a limit must not round, as `judgement` measures). The find then drops as not
+  clearly better. The 0.8 and the three points are `limits.ts` constants tuned at piece B's gate.
 - **Sketch and full**: a sketch is a search that reached at least `SKETCH_DEPTH`
   (`src/review/order.ts`); full is the app's search (`APP_SEARCH`). Sketches screen replies; only
   full searches confirm a find or set a stored cost. Analyses stay keyed as the store keys them.
@@ -312,8 +315,8 @@ per band, and the accepted replies and Act III as Rules say. Popularity, which r
 not drop counts it did not remeasure (today it drops them wherever it did not ask, such as positions
 with one guide move), and where it does remeasure it writes the position total from that same
 answer. Stafford only, with B's floors. The D1 PR lists the rows whose rare-row or counted-reply
-status changed once the totals change shares. Merges after E and F, because new lines change what
-the Practice opponent plays.
+status changed once the totals change shares, and each Act III override of a guide book move
+(Rules). Merges after E and F, because new lines change what the Practice opponent plays.
 
 ### Piece D2: Names and notes
 
@@ -324,8 +327,9 @@ before it lands.
 ### Piece D3: Rollout
 
 The step runs on every lesson; `--no-model` rebuilds each exactly. The PR lists, per lesson, the
-rows whose rare-row or counted-reply status changed. Cap finds per lesson by score if the files grow
-too much for phones (the Caro-Kann file is already 5.3 MB).
+rows whose rare-row or counted-reply status changed and each Act III override of a guide book move.
+Cap finds per lesson by score if the files grow too much for phones (the Caro-Kann file is already
+5.3 MB).
 
 ### Piece G: List page
 
