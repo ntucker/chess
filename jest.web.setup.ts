@@ -8,3 +8,9 @@ window.matchMedia = ((media: string) => ({
   addListener() {},
   removeListener() {},
 })) as unknown as typeof window.matchMedia;
+
+// jsdom lacks pointer capture, which Gesture Handler's web pointer tracking
+// (Silk's Slider) calls on every press.
+Element.prototype.setPointerCapture ??= () => {};
+Element.prototype.releasePointerCapture ??= () => {};
+Element.prototype.hasPointerCapture ??= () => false;
