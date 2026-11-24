@@ -11,7 +11,7 @@ import { stepButton } from '@/components/Transport';
 import { useCloseKeys } from '@/components/useCloseKeys';
 import { shownMove } from '@/game/replay';
 import { useNarrowPart } from '@/theme/Narrow';
-import { fonts } from '@/theme/theme';
+import { FIGURINE_ADVANCE, fonts, MONO_ADVANCE } from '@/theme/theme';
 
 interface Props extends Omit<ComponentProps<typeof Scoresheet>, 'fill'> {
   /** Its close button, Escape, or Android's back. */
@@ -99,7 +99,7 @@ export function ScoresheetOpener({
       <ShownMove san={san} ply={ply} ink={ink} />
       <Ionicons
         name={open ? 'chevron-down' : 'chevron-up'}
-        size={12}
+        size={CHEVRON_SIZE}
         color={ink ?? color.textSecondary}
       />
     </Pressable>
@@ -163,19 +163,29 @@ function Jump({
   );
 }
 
+const MOVE_SIZE = 14;
+const OPENER_GAP = 4;
+const OPENER_PADDING = 6;
+const CHEVRON_SIZE = 12;
+
 const styles = StyleSheet.create({
   jump: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
   /*
-   * Wide enough for "12…Nxd5", so the stepper keeps its width from move to
-   * move, and no wider than the two jumps it replaces, so the name bar keeps its room.
+   * Wide enough for "12…Nxd5" with its piece as an icon (six mono characters
+   * and the widest piece), so the stepper keeps its width from move to move,
+   * and no wider than the two jumps it replaces, so the name bar keeps its room.
    */
   opener: {
-    width: 88,
+    width:
+      Math.ceil(MOVE_SIZE * (6 * MONO_ADVANCE + FIGURINE_ADVANCE)) +
+      OPENER_GAP +
+      CHEVRON_SIZE +
+      2 * OPENER_PADDING,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    paddingHorizontal: 6,
+    gap: OPENER_GAP,
+    paddingHorizontal: OPENER_PADDING,
   },
-  move: { fontFamily: fonts.mono, fontSize: 14 },
+  move: { fontFamily: fonts.mono, fontSize: MOVE_SIZE },
 });
