@@ -92,8 +92,8 @@ plan doesn't depend on those links.
   write derived values back.
 - A score never mixes sources: the host picks one source for a whole finder run (lichess when the
   account can answer, else Maia), and its finds carry that source's name. A thin lichess position
-  ends the walk there. A list may show a run of each, lichess rows first and Maia rows labeled
-  estimates; their scores are never combined.
+  ends the search for mistakes there (Act III goes on, Rules). A list may show a run of each,
+  lichess rows first and Maia rows labeled estimates; their scores are never combined.
 - Pieces E, G, I, J, K and L must be checked on Android (touch, the haptic tick, the pager, the
   sign-in redirect, the Maia worklet in `src/maia/network.ts`, on-device search, the bookmark). H's
   dot only displays, so the web check covers it.
@@ -190,8 +190,9 @@ A script that runs the core over the Stafford lesson only, with the importer's l
 report to the project files. It changes no lesson file. Its answers go in its own files,
 `scripts/import-study/answers/<id>-opportunities-*.jsonl`, which no other step prunes (as
 `coverOpponent.ts` keeps its own; piece D1 reads them); commit them. It runs on lichess only: a thin
-position ends the walk, and the report counts how many walks ended thin and at what depth, so the
-gate can judge whether a Maia supplement in the script is worth building. None is built now.
+position ends the search for mistakes, and the report counts how many searches ended thin and at
+what depth, so the gate can judge whether a Maia supplement in the script is worth building. None is
+built now.
 
 Gate: Nathaniel reads the top 20 finds and sets the `limits.ts` floors and caps (not the cost floor)
 before any lesson file changes. The report prints the limits it ran with.
