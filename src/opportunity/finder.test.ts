@@ -13,7 +13,15 @@ import type { Uci } from '@/lesson/lesson';
 import { acceptedReplies, byScore, type Find, findOpportunities } from './finder';
 import { gainIfKnown } from './gain';
 import { LIMITS } from './limits';
-import { type Answers, type MoveCounts, repliesFrom, type Request, type Spot } from './walk';
+import { payoff } from './payoff';
+import {
+  type Answers,
+  type MoveCounts,
+  repliesFrom,
+  type Request,
+  type Spot,
+  walkTo,
+} from './walk';
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -395,5 +403,22 @@ describe('gainIfKnown', () => {
       gain: expect.closeTo(0.1),
       covered: 1,
     });
+  });
+});
+
+describe('payoff', () => {
+  it("scores a game the erring side's move ends as its result", () => {
+    // Black's queen move stalemates White's lone king.
+    const start = walkTo('8/8/8/8/1q6/8/2k5/K7 b - - 0 1', [])!;
+    const final = { lines: [{ evaluation: evaluation(0.1) }], depth: 18, final: true } as const;
+    const answers: Answers = {
+      replies: () => undefined,
+      analysis: () => undefined,
+      guideMoves: (spot) => (spot.key === start.key ? ['b4b3'] : undefined),
+    };
+    const ask = () => {};
+    expect(
+      payoff(start, { before: final, cue: final }, { side: 'white', answers, limits: LIMITS, ask }),
+    ).toEqual({ moves: ['b4b3'], end: 0.5 });
   });
 });

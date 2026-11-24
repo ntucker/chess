@@ -9,6 +9,7 @@ import {
   scoreFor,
 } from '@/evaluation/evaluation';
 import { balance } from '@/game/material';
+import type { Color } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 
 import { child, type Context, type Node, punishingLoss, type Replies } from './walk';
@@ -17,10 +18,10 @@ import { child, type Context, type Node, punishingLoss, type Replies } from './w
 export interface Payoff {
   readonly moves: readonly Uci[];
   /**
-   * 1 where it ends in mate; else the evaluation that judged the punishing
-   * side's last move (`moveLoss`: a move its position's analysis doesn't list
-   * scores no better than the list's last move), or its position's best line
-   * where Act III stopped before moving.
+   * Where the game is over, its result (1 for the punishing side's mate, 0
+   * for its opponent's, 0.5 for a draw); else the evaluation `judgement` gave
+   * the punishing side's last move (`moveLoss`), or the best line of the
+   * position where Act III stopped before moving.
    */
   readonly end: number;
 }
@@ -76,7 +77,14 @@ export function payoff(
     moves.push(uci);
     node = next;
   }
-  return { moves, end: node.pos.isCheckmate() && node.pos.turn !== side ? 1 : end };
+  return { moves, end: result(node, side) ?? end };
+}
+
+/** The punishing side's score where the game is over at `node`; undefined while it goes on. */
+function result({ pos }: Node, side: Color): number | undefined {
+  if (!pos.isEnd()) return undefined;
+  if (!pos.isCheckmate()) return 0.5;
+  return pos.turn === side ? 0 : 1;
 }
 
 /** The final analysis of `node`, asking for it while it's missing. */
