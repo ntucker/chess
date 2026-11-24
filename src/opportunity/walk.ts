@@ -113,8 +113,8 @@ export function child(node: Node, uci: Uci, reach: number): Node | undefined {
 }
 
 /**
- * The node a move the finder trusts leads to: the guide's (the lesson checker
- * rules out an illegal one) or Stockfish's.
+ * The node a move the finder plays leads to: the guide's (the lesson checker
+ * rules out an illegal one), Stockfish's, or a reply `repliesFrom` kept.
  * Throws where it isn't legal, since the data that gave it is broken.
  */
 export function legalChild(node: Node, uci: Uci, reach: number): Node {
@@ -150,11 +150,12 @@ export function walkTo(start: string, line: readonly Uci[]): Node | undefined {
  */
 export function repliesFrom(key: PositionKey, counts: MoveCounts, minGames: number): Replies {
   const pos = parsePositionKey(key);
+  if (!pos) throw new Error(`Not a position key: ${key}`);
   const total = Object.values(counts).reduce((sum, games) => sum + games, 0);
   return {
     shares: Object.fromEntries(
       Object.entries(counts)
-        .filter(([uci]) => pos && recordedMove(pos, uci) !== undefined)
+        .filter(([uci]) => recordedMove(pos, uci) !== undefined)
         .map(([uci, games]) => [uci, total && games / total]),
     ),
     thin: total < minGames,
