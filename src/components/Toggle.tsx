@@ -24,9 +24,11 @@ interface Props {
  * On a touch screen the label makes the row a finger tall (`touchLine`), so
  * the small switch is easy to hit. A disabled one says why in a tooltip (a
  * resting mouse, or a tap), and an enabled one its `hint`, marked by an
- * info icon, since a tap on the label toggles it: a tap on the icon shows
- * it. Screen readers hear either as its description, since the tooltip
- * isn't read from it.
+ * info icon, since a tap on the label toggles it: a mouse resting on the
+ * icon, or a tap on it, shows it. Screen readers hear either as its
+ * description, since the tooltip isn't read from it. Until silk#38 lets a
+ * label keep its press on the web, the icon alone can open an enabled one's
+ * tooltip, so keyboard focus on the switch doesn't.
  */
 export function Toggle({ label, checked, onChange, quiet, disabled, hint, style }: Props) {
   const { theme } = useTheme();

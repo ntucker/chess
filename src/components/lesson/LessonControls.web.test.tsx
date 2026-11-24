@@ -43,6 +43,10 @@ const render = (mode: LessonMode) =>
 const toggle = (label: string) =>
   host.querySelector<HTMLElement>(`[role="switch"][aria-label="${label}"]`)!;
 const moves = () => toggle('Arrows');
+const labelOf = (label: string) =>
+  [...host.querySelectorAll<HTMLElement>('[data-field-label]')].find(
+    (node) => node.textContent === label,
+  )!;
 
 /** A press through react-native-web's responder system, which listens for mouse events. */
 function tap(element: HTMLElement) {
@@ -96,12 +100,17 @@ describe('LessonControls', () => {
     const tip = () => document.querySelector('[role="tooltip"]');
     await render('explore');
     const traps = toggle('Warn of traps');
-    const label = [...host.querySelectorAll<HTMLElement>('[data-field-label]')].find(
-      (node) => node.textContent === 'Warn of traps',
-    )!;
-    await act(async () => tap(label));
+    await act(async () => tap(labelOf('Warn of traps')));
     expect(traps.getAttribute('aria-checked')).toBe('true');
     expect(tip()).toBeNull();
+  });
+
+  it("says why from a tap on the disabled switch's label too", async () => {
+    const tip = () => document.querySelector('[role="tooltip"]')?.textContent;
+    await render('practice');
+    await act(async () => tap(labelOf('Arrows')));
+    expect(tip()).toBe('Only in Explore');
+    expect(moves().getAttribute('aria-checked')).toBe('true');
   });
 
   it('lets "Arrows" change in Explore', async () => {
