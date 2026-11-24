@@ -128,8 +128,8 @@ export function lessonIndex(lessons: readonly Lesson[]): LessonIndex {
  * move at the other side's.
  */
 export function playedMoves(lesson: Lesson, key: PositionKey): readonly LessonMove[] {
-  const moves = lesson.positions[key]?.moves ?? [];
-  return readPositionKey(key)!.turn === lesson.side ? moves.filter(({ book }) => book) : moves;
+  const learner = readPositionKey(key)!.turn === lesson.side;
+  return (lesson.positions[key]?.moves ?? []).filter((move) => inCleanRun(move, learner));
 }
 
 /**
