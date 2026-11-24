@@ -123,9 +123,11 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
   else Stockfish's best. It stops below a reach floor, past a ply cap, or at a thin position. One
   find per cue position; a position reached again adds nothing.
 - Its floors and caps are named constants in `src/opportunity/limits.ts`, tuned at piece B's gate:
-  the share floor, minimum games and cost floor from Rules (the cost floor is the mistake limit,
-  which piece A exports from `quality.ts` as `MISTAKE_LOSS`), the Act III caps, a reach floor (1%)
-  and a ply cap (24 plies past where the finder opens).
+  the share floor and minimum games from Rules, the Act III caps, a reach floor (1%) and a ply cap
+  (24 plies past where the finder opens).
+- The cost floor has no value of its own: `limits.ts` reads it from `quality.ts`, where piece A
+  pulls the mistake entry of `LEAST_LOSS` out as an exported `MISTAKE_LOSS`. Changing it at the
+  gate would change the app's mistake label too.
 
 ### Piece B: Report script
 
