@@ -89,6 +89,8 @@ export function IdeaCard({
   const compact = density === 'compact';
   // "If ♞f6 (Masi Variation):", before the first note's words.
   const lead = compact ? <Lead>{`${title}${leadsTo ? ` (${leadsTo})` : ''}: `}</Lead> : undefined;
+  // With no notes the card names the move itself ("No notes on g6"), so leads only to say where it goes.
+  const emptyLead = leadsTo ? lead : undefined;
   return (
     <Stack
       style={compact ? undefined : labelled}
@@ -121,9 +123,8 @@ export function IdeaCard({
           ))}
         </View>
       ) : (
-        // A move pointed at says its name ("No notes on g6"), but where it leads only in the lead.
         <Text role="bodySm" tone="secondary">
-          {leadsTo ? lead : null}
+          {emptyLead}
           <Notation>{empty}</Notation>
         </Text>
       )}

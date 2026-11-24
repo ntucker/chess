@@ -15,7 +15,7 @@ jest.mock('../CandidateList', () => {
   const { useState } = jest.requireActual<typeof import('react')>('react');
   return {
     COMPACT_INSET: 8,
-    // Counts states made, which a hidden Activity keeps (its effects it unmounts).
+    // A hidden Activity keeps state but unmounts effects, so this counts real mounts.
     CandidateList: () => {
       useState(() => {
         mockMovesMounts += 1;

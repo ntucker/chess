@@ -123,8 +123,11 @@ describe('NoteView', () => {
 });
 
 describe('IdeaCard', () => {
-  /** A card holding one note, `note` (none if undefined), at `density`: its text, and its buttons' labels. */
-  const renderCard = (density: 'comfortable' | 'compact', note: Note | undefined) => {
+  /**
+   * A card holding one note, `note` (none if undefined), at `density`, its move
+   * leading to the Masi Variation unless not `leads`: its text, and its buttons' labels.
+   */
+  const renderCard = (density: 'comfortable' | 'compact', note: Note | undefined, leads = true) => {
     const host = document.createElement('div');
     const root = createRoot(host);
     act(() =>
@@ -134,7 +137,7 @@ describe('IdeaCard', () => {
             <IdeaCard
               lesson={SAMPLE}
               title="If Nf6"
-              leadsTo="Masi Variation"
+              leadsTo={leads ? 'Masi Variation' : undefined}
               notes={note ? [{ note, after: 'after' as PositionKey }] : []}
               empty="No notes on Nf6."
               learner="black"
@@ -173,6 +176,10 @@ describe('IdeaCard', () => {
 
   it('says where a move with no notes leads on a compact card', () => {
     expect(renderCard('compact', undefined).text).toBe('If Nf6 (Masi Variation): No notes on Nf6.');
+  });
+
+  it('leaves a note-less compact card unled when nothing says where its move goes', () => {
+    expect(renderCard('compact', undefined, false).text).toBe('No notes on Nf6.');
   });
 
   it("opens the study's words from a small control on a compact card", () => {
