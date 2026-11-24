@@ -114,9 +114,9 @@ the app's mistake limit and is not a gate setting.
   first move labels as a mistake or a blunder. A stored cost only ranks; screens show the live
   verdict.
 - **Share floor**: a reply played in under 5% of the games at its position (in the band) is not
-  screened. A bare 5% test on every reply (none is exempt, unlike the list's rare rows), it starts
-  as `RARE_SHARE` (`src/lesson/select.ts`), the share the list folds rare rows by; if the gate moves
-  it, it becomes the finder's own constant.
+  screened. It is a bare 5% test on every reply, with none exempt as some of the list's rows are.
+  It starts as `RARE_SHARE` (`src/lesson/select.ts`), the share under which the list calls a reply
+  rare; if the gate moves it, it becomes its own constant in `src/opportunity/limits.ts`.
 - **Minimum games**: a position fewer than 100 games reach (in the band) is too thin to judge; the
   lichess host marks it thin, and the walk (piece A's search for mistakes) ends there. Act III is
   not the walk: at a thin position with no guide move it takes Stockfish's reply and goes on under
@@ -141,16 +141,19 @@ the app's mistake limit and is not a gate setting.
   move has counts) and adds nothing, so the tree stays the one source for that line. Only where the
   guide has none does it add one reply: the most played, which `countedReplies` keeps, or, where the
   position is thin, Stockfish's. That reply is then the only one in the tree there, so a clean run
-  plays through it, and it never adds a second line to pass. Where the guide's move is a better
+  plays through it, and it never adds a second line to pass (where the erring side is
+  `Lesson.side`, a migrated trap, that move is not a book move, so a clean run never plays it and
+  it adds no line to pass either). Where the guide's move is a better
   defence than the payoff assumed, Act III ends (its ends below); it never adds a competing move to
   force the payoff. These guide moves are every move the guide has at the erring side's position,
   book or not.
-- **The punishing side's Act III moves** follow the same rule from its side: where the guide has a
-  move the punishing side plays there (a book move where it is `Lesson.side`), Act III follows the
-  guide's most played one as long as it gives back less than `MISTAKE_LOSS` beside Stockfish's
-  best, so the tree stays the one source for the line; otherwise, or where the guide has none, it
-  plays Stockfish's best. Piece B's report counts the positions where the two differ and how often
-  Act III kept the guide's move (Stafford at 1400: 2 positions, both kept).
+- **The punishing side's Act III moves** also prefer the guide, by a different test: where the guide
+  has a move the punishing side plays there (its book moves, by the accepted-replies rule above),
+  Act III follows the guide's most played one (else its first, where no move has counts) as long as
+  that move gives back less than `MISTAKE_LOSS` beside Stockfish's best in the same position, so the
+  tree stays the one source for the line; otherwise, or where the guide has none, it plays
+  Stockfish's best. Piece B's report counts the positions where the two differ and how often Act III
+  kept the guide's move.
 - **Act III** follows those moves for both sides, and ends at mate, when the punishing side is three
   points of material up (`balance` in `src/game/material.ts`) and winning (the punishing side's
   expected score of at least 0.8, by `scoreFor` in `src/evaluation/evaluation.ts`), when its
@@ -174,15 +177,13 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
   the side looking for opportunities, the band, the limits, and lookups for the replies (each move's
   share of the games at the position, and whether the position is too thin to judge; `repliesFrom`
   turns lichess counts into that), analyses (sketch or final) and the guide's moves (a lesson's
-  moves at a position, most played first: every guide move at the erring side's turn; at the
-  punishing side's turn those the lesson plays, its book moves at `Lesson.side`'s turn and every
-  move at the other side's) that the host has so far. It returns the finds so far and the requests
-  still missing, most useful first: a position's replies, a sketch, or a full search, each naming
-  its line and position. The script loops over it; the app derives it from the store. No async
-  generator and no queue. The hosts filter the punishing side's moves with `playedMoves` in
-  `openings.ts`, which reads `inCleanRun` (`src/lesson/cleanRun.ts`) and which `walkShared` now uses
-  too; `sharesAt` uses it with `bookOnly` and keeps its own fallback to every move where the learner
-  has no book move.
+  moves at a position, most played first: every guide move at the erring side's turn, and at the
+  punishing side's turn those it plays, as Rules define them) that the host has so far. It returns
+  the finds so far and the requests still missing, most useful first: a position's replies, a
+  sketch, or a full search, each naming its line and position. The script loops over it; the app
+  derives it from the store. No async generator and no queue. The hosts filter the punishing side's
+  moves by `inCleanRun` (`src/lesson/cleanRun.ts`), the rule `walkShared` in `openings.ts` already
+  applies inline.
 - The walk is best-first by reach from the start (reach 1), on `LikeliestFirst`
   (`src/lesson/likeliestFirst.ts`, made generic over what it holds). At the erring side's turn it
   screens every reply over the share floor with a sketch, confirms each reply at or over the cost
@@ -222,9 +223,9 @@ before any lesson file changes. The report prints the limits it ran with.
 - The `Trap` idea goes. Each existing trap idea (254: 172 in position notes, 82 in move notes)
   becomes guide-tree moves with the marker on its first move. A note whose only drawn idea was the
   trap moves to the marked move; a note with other ideas keeps them and its text where it was. A
-  marked move of the learner's side is not a book move, so the checker's pass (book moves for the
-  learner, every opponent move) does not follow it; a position a book line also reaches still needs
-  a book move, and there is no exemption for positions after a marked move.
+  marked move of the learner's side is not a book move, so the checker's traversal (book moves for
+  the learner, every opponent move) does not follow it; a position a book line also reaches still
+  needs a book move, and there is no exemption for positions after a marked move.
 - The app reads the new shape. The trap card, its playback and landing (`LandedTrap`) behave as
   before, except for the "show traps" scope in Decisions (before, it hid every trap). The marker
   takes over two call sites of the `Trap` idea: a landed trap still explains itself with show traps
