@@ -153,3 +153,15 @@ export const SHORTEN = `
 
 ASKED AGAIN: NOTES OVER THE WORD LIMIT
 Each comment here also has "cutText": note texts you wrote for it before, which ran over 20 words, so the app cut them where you see "…" and the learner would read a sentence that stops halfway. Convert the comment again, following every rule above, and write each note's text in 20 words or fewer as a whole sentence: keep the comment's conclusion and drop detail instead. A cutText that is the comment's own words means you wrote no note about "move" before: write one now, in 20 words or fewer.`;
+
+/**
+ * Added to `PROMPT` for comments warning against a move the lesson books, for
+ * a trap that starts later (`Comment.trapStart`). Changing it re-asks only
+ * those comments.
+ */
+export const TRAP_START = `
+
+A TRAP THAT STARTS LATER
+Each comment here also has "trapStart": "moves", the moves after the commented move up to the first move of the trap the comment warns about (the last of "moves"), and "fen", the position before that first move. The lesson recommends the commented move, so the comment's warning is about the trap's first move, not about the commented move: never call the commented move a mistake, and never start a trap with it. Write the comment's notes following every rule above, and also:
+- One note about "before" warns about the trap's first move: say which later move to avoid and why, in the comment's terms. Draw a line idea from fenBefore that plays the commented move and "moves" without their last move, and stops there: the lesson picks the move to play instead. Recommend no move there in the text either.
+- One note about "trap" is shown in "fen", before the trap's first move, and its ideas are checked there: a trap idea that starts with that move and follows the comment's own moves, with the verdict the comment gives for the final position. Use "losesMaterial" only when the side that erred ends the trap with at least two points less material than it has in "fen": count only what changes hands during the trap's moves, and use an evaluation verdict otherwise.`;

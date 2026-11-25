@@ -554,7 +554,7 @@
 "r1bqk2r/pppp1ppp/1bn2n2/8/4P3/1NN5/PPP2PPP/R1BQKB1R w KQkq -":{"variation":"scotch-classical","moves":[{"uci":"d1e2"}]},
 "r1bqk2r/pppp1ppp/1bn2n2/8/4P3/1NN5/PPP1QPPP/R1B1KB1R b KQkq -":{"variation":"scotch-classical","moves":[{"uci":"e8g8","book":true,"notes":[{"text":"Your king leaves the file White's queen lined up on, and your rook can come to e8.","generated":true,"model":"claude-fable-5-2","ideas":[{"type":"plan","side":"black","routes":[{"from":"f8","to":"e8","moves":1}],"goals":["e4"]}]}]}]},
 "r1bq1rk1/pppp1ppp/1bn2n2/8/4P3/1NN5/PPP1QPPP/R1B1KB1R w KQ -":{"variation":"scotch-classical","moves":[{"uci":"c1g5"}]},
-"r1bqk1nr/pppp1ppp/2n5/2b2N2/4P3/8/PPP2PPP/RNBQKB1R b KQkq -":{"variation":"scotch-classical","moves":[{"uci":"g8f6","mistake":{"verdict":"whiteClearly","line":["f5g7","e8f8","c1h6"]}}]},
+"r1bqk1nr/pppp1ppp/2n5/2b2N2/4P3/8/PPP2PPP/RNBQKB1R b KQkq -":{"variation":"scotch-classical","moves":[{"uci":"d7d6","book":true,"notes":[{"text":"Your pawn opens the bishop's line to White's f5 knight, ready to trade it off.","generated":true,"model":"claude-fable-5-2","ideas":[{"type":"purpose","from":"c8","relation":"attacks","targets":["f5"]}]}],"games":[2284,3698,5308,5650,3030]},{"uci":"g8f6","mistake":{"verdict":"whiteClearly","line":["f5g7","e8f8","c1h6"]},"games":[2600,3776,5144,5615,2987]}]},
 "r1bqk2r/pppp1ppp/2n2n2/2b2N2/4P3/8/PPP2PPP/RNBQKB1R w KQkq -":{"variation":"scotch-classical","moves":[{"uci":"f5g7"}]},
 "r1bqk2r/pppp1pNp/2n2n2/2b5/4P3/8/PPP2PPP/RNBQKB1R b KQkq -":{"variation":"scotch-classical","moves":[{"uci":"e8f8"}]},
 "r1bq1k1r/pppp1pNp/2n2n2/2b5/4P3/8/PPP2PPP/RNBQKB1R w KQ -":{"variation":"scotch-classical","moves":[{"uci":"c1h6"}]},

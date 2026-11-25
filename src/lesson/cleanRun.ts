@@ -69,11 +69,12 @@ function lineGoesOn(lesson: Lesson, key: PositionKey): boolean {
 }
 
 /**
- * Whether a learner position with `moves` needs a book move: the line goes on
- * there (a move that isn't a marked mistake), and the guide books none.
+ * Whether a learner position with `moves` needs a book move: the guide has
+ * moves there and books none. A marked mistake never stands in for one, so a
+ * position whose moves are all marked still needs a move to play instead.
  */
 export const needsBookMove = (moves: readonly LessonMove[]) =>
-  moves.some(({ mistake }) => !mistake) && !moves.some(({ book }) => book);
+  moves.length > 0 && !moves.some(({ book }) => book);
 
 /**
  * Where the position `arrivedBy` leads to stands on a guide line: inside it

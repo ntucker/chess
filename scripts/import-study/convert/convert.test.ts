@@ -5,11 +5,18 @@ import type { AiModel } from '@/lesson/lesson';
 
 import { extractChapter } from '../extract';
 import { STUDY_PGN } from '../fixture';
-import { parseStudy } from '../study';
+import { chapterMoves, parseStudy, trapPosition, withTrapStarts } from '../study';
 import type { AnswerNote } from './answer';
 import { MODELS, type Ask } from './claude';
 import { noteComment, type Comment } from './comments';
-import { DRAW_MISTAKES, REWORD, SHORTEN, STANDALONE, WRITTEN_FOR_OPPONENT } from './prompt';
+import {
+  DRAW_MISTAKES,
+  REWORD,
+  SHORTEN,
+  STANDALONE,
+  TRAP_START,
+  WRITTEN_FOR_OPPONENT,
+} from './prompt';
 import { convertChapters } from '.';
 
 const [advance] = parseStudy(STUDY_PGN, () => true);
@@ -457,6 +464,87 @@ describe('convertChapters', () => {
     // Only the London chapter's comment, asked last, carries the side it was written for.
     expect(seen.at(-1)?.writtenFor).toBe('white');
     expect(seen.slice(0, -1).filter((comment) => comment.writtenFor)).toEqual([]);
+  });
+
+  describe('a comment whose trap starts later', () => {
+    const [italian] = withTrapStarts(
+      parseStudy(
+        '[Event "Italian"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bc4 { 3...Nd4 4.Nxe5?? Qg5 wins. } *\n',
+        () => true,
+      ),
+      { 'e4 e5 Nf3 Nc6 Bc4': 'Nd4 Nxe5' },
+    );
+    const chapters = [extractChapter(italian, 'white')];
+    const trap: AnswerNote = {
+      about: 'trap',
+      text: 'Taking on e5 loses to the queen coming to g5.',
+      ideas: [{ type: 'trap', moves: ['Nxe5', 'Qg5', 'Nxf7', 'Qxg2'], verdict: 'blackClearly' }],
+    };
+
+    it('is asked with where its trap starts, and its trap note goes there', async () => {
+      const { ask, addenda, seen } = fakeAsk({ [MODELS.convert]: { Bc4: [trap] } });
+      const {
+        extracted: [chapter],
+      } = await convertChapters(chapters, ask);
+      expect(addenda).toEqual([TRAP_START]);
+      expect(seen[0].trapStart).toEqual({
+        moves: '3...Nd4 4.Nxe5',
+        fen: 'r1bqkbnr/pppp1ppp/8/4p3/2BnP3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4',
+      });
+      const bc4 = [...chapterMoves(italian)].find((move) => move.san === 'Bc4')!;
+      const at = positionKey(trapPosition(bc4)!);
+      expect(
+        chapter.positionNotes.filter(({ pos }) => positionKey(pos) === at).map(({ note }) => note),
+      ).toEqual([
+        {
+          text: 'Taking on e5 loses to the queen coming to g5.',
+          original: '3...Nd4 4.Nxe5?? Qg5 wins.',
+          model: MODELS.convert,
+          ideas: [
+            { type: 'trap', moves: ['f3e5', 'd8g5', 'e5f7', 'g5g2'], verdict: 'blackClearly' },
+          ],
+        },
+      ]);
+    });
+
+    it('asks again when the checker refuses its trap, keeping the answer that draws it', async () => {
+      const plan: AnswerNote = {
+        about: 'move',
+        text: 'Your bishop eyes f7.',
+        ideas: [{ type: 'purpose', from: 'c4', relation: 'attacks', targets: ['f7'] }],
+      };
+      const wrong: AnswerNote = {
+        ...trap,
+        ideas: [{ type: 'trap', moves: ['Nxe5', 'Qg5'], verdict: 'losesMaterial' }],
+      };
+      // The retry keeps no more ideas than the first answer, but draws the trap.
+      const { ask, asked } = fakeAsk({
+        [MODELS.convert]: { Bc4: [plan, wrong] },
+        [MODELS.retry]: { Bc4: [trap] },
+      });
+      const {
+        extracted: [chapter],
+        report,
+      } = await convertChapters(chapters, ask);
+      expect(asked.map(([model]) => model)).toEqual([MODELS.convert, MODELS.retry]);
+      expect(report.retried).toBe(1);
+      expect(chapter.positionNotes.map(({ note }) => note.ideas?.[0]?.type)).toContain('trap');
+    });
+
+    it('drops a trap note for a comment without one', async () => {
+      const [plain] = parseStudy(
+        '[Event "Italian"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bc4 { 3...Nd4 4.Nxe5?? Qg5 wins. } *\n',
+        () => true,
+      );
+      const { ask, addenda } = fakeAsk({ [MODELS.convert]: { Bc4: [trap] } });
+      const {
+        extracted: [chapter],
+        report,
+      } = await convertChapters([extractChapter(plain, 'white')], ask);
+      expect(addenda).toEqual(['']);
+      expect(chapter.positionNotes.map(({ note }) => note.text)).not.toContain(trap.text);
+      expect(report.unconverted).toBe(1);
+    });
   });
 });
 
