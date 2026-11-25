@@ -2,8 +2,8 @@ import { AndroidHaptics, performAndroidHapticsAsync } from 'expo-haptics';
 
 /**
  * The moments the app answers with a touch, each with the Android haptic
- * that fits it: the one place that says when the app ticks. Each follows the
- * phone's touch-feedback setting, as Android's own haptics do.
+ * that fits it; each caller names its moment. Each follows the phone's
+ * touch-feedback setting, as Android's own haptics do.
  */
 const FEELS = {
   /** The learner's move lands on the board: the lightest tick, since it comes often. */
