@@ -52,6 +52,13 @@ describe('lessonOpponent', () => {
     expect(last.id).not.toBe(lessonOpponent(SAMPLE, 1500, engine('h2h3')).id);
   });
 
+  it("hands over to the engine where a choice picks none of the guide's moves", async () => {
+    const beyond = engine('h2h3');
+    const none = lessonOpponent(SAMPLE, 1500, beyond, () => undefined);
+    expect(await none.reply(uciLine(...MAIN))).toBe('h2h3');
+    expect(beyond.reply.mock.calls).toEqual([[uciLine(...MAIN)]]);
+  });
+
   it('is a different opponent for another lesson or engine', () => {
     const one = lessonOpponent(SAMPLE, 1500, engine('a2a3'));
     expect(one.id).toBe('caro-kann-sample:engine');

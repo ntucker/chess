@@ -102,7 +102,10 @@ const seenMark = (seen: ReadonlySet<string>, next: PositionKey) =>
  * count (most played first, `countedReplies`) below which the run can still
  * reach a line end not passed, or the first that counts when every one is
  * passed. The opponent's own replies never spoil a run, so each is open to
- * steer to.
+ * steer to: a marked mistake that counts is a line to pass like any other
+ * reply, and so is each reply that counts inside its line. Where none counts
+ * (only marked mistakes without counts are left, so the line ends), it picks
+ * none and the opponent plays on past the guide, as at any line end.
  */
 export function steering(
   lesson: Lesson,
@@ -124,9 +127,7 @@ export function steering(
     return (
       replies.find(
         ({ move, next }) => counted.has(move) && cleanEnds(lesson, passed, next) === 'open',
-      ) ??
-      replies.find(({ move }) => counted.has(move)) ??
-      replies[0]
+      ) ?? replies.find(({ move }) => counted.has(move))
     );
   };
 }

@@ -66,6 +66,12 @@ function marksAfter(lessonProgress: MarkedPositions, lesson: Lesson, ...sans: st
   return Object.fromEntries(view.candidates.map(({ san, move: { uci } }) => [san, marks.get(uci)]));
 }
 
+/** `lesson`'s view after `sans`, against a 1500. */
+function sampleLessonView(lesson: Lesson, sans: string[]) {
+  const line = uciLine(...sans);
+  return lessonView({ lesson, line, ply: line.length, opponent: 1500 });
+}
+
 const practice = (clean: boolean) => ({ mode: 'practice', clean, line: [] }) as const;
 
 describe('earnedMark', () => {
@@ -349,6 +355,71 @@ describe('steering', () => {
     expect(
       steering(lesson, progress([], [ENDS.d4]), practice(true))!(replies, at('e4', 'c6'))?.san,
     ).toBe('d4');
+  });
+
+  it('steers into an opportunity that counts until it is passed, and to each reply inside it', () => {
+    // White's 2.Nc3 is marked, played 25%; after 2...d5 White's exd5 and e5 each end a line.
+    const cue = at('e4', 'c6', 'Nc3', 'd5');
+    const games = {
+      [uci('e4', 'c6', 'd4')]: [75],
+      [uci('e4', 'c6', 'Nc3')]: [25],
+      [uci('e4', 'c6', 'Nc3', 'd5', 'exd5')]: [70],
+      [uci('e4', 'c6', 'Nc3', 'd5', 'e5')]: [30],
+    };
+    const withCue: Lesson = {
+      ...LESSON,
+      positions: {
+        ...LESSON.positions,
+        [cue]: {
+          ...LESSON.positions[START],
+          moves: [move(['e4', 'c6', 'Nc3', 'd5'], 'exd5'), move(['e4', 'c6', 'Nc3', 'd5'], 'e5')],
+        },
+      },
+    };
+    const lesson = [at('e4', 'c6'), cue].reduce(
+      (marked, key) =>
+        withMoves(marked, key, (moves) =>
+          moves.map((reply) => ({
+            ...reply,
+            games: games[reply.uci],
+            ...(reply.uci === uci('e4', 'c6', 'Nc3') && { mistake: {} }),
+          })),
+        ),
+      withCue,
+    );
+    const ends = {
+      exd5: at('e4', 'c6', 'Nc3', 'd5', 'exd5'),
+      e5: at('e4', 'c6', 'Nc3', 'd5', 'e5'),
+    };
+    const steered = (passed: PositionKey[], sans: string[]) => {
+      const { candidates: replies, key } = sampleLessonView(lesson, sans);
+      return steering(lesson, progress([], passed), practice(true))!(replies, key)?.san;
+    };
+    expect(steered([], ['e4', 'c6'])).toBe('d4');
+    expect(steered([ENDS.d4], ['e4', 'c6'])).toBe('Nc3');
+    expect(steered([ENDS.d4, ends.exd5], ['e4', 'c6'])).toBe('Nc3');
+    expect(steered([ENDS.d4, ends.exd5, ends.e5], ['e4', 'c6'])).toBe('d4');
+    expect(steered([], ['e4', 'c6', 'Nc3', 'd5'])).toBe('exd5');
+    expect(steered([ends.exd5], ['e4', 'c6', 'Nc3', 'd5'])).toBe('e5');
+    // The opportunity's row passes with the lines below it.
+    expect(marksAfter(progress([], [ends.exd5]), lesson, 'e4', 'c6')).toEqual({
+      d4: undefined,
+      Nc3: undefined,
+    });
+    expect(marksAfter(progress([], [ends.exd5, ends.e5]), lesson, 'e4', 'c6')).toEqual({
+      d4: undefined,
+      Nc3: 'passed',
+    });
+  });
+
+  it('never steers into a marked mistake without counts, where the line ends before it', () => {
+    // After 1.e4 e5 the guide's only move is White's 2.Nf3, marked: a trap with no counts yet.
+    const lesson = withMoves(LESSON, at('e4', 'e5'), (moves) =>
+      moves.map((reply) => ({ ...reply, mistake: {} })),
+    );
+    const { candidates: replies, key } = sampleLessonView(lesson, ['e4', 'e5']);
+    expect(replies.map(({ san }) => san)).toEqual(['Nf3']);
+    expect(steering(lesson, progress([], []), practice(true))!(replies, key)).toBeUndefined();
   });
 
   it('steers only a clean Practice run, which alone can pass a line', () => {
