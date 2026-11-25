@@ -33,7 +33,7 @@ import {
   settle,
 } from './finderHost';
 import { keepMistakeLines } from './mistakes';
-import { type Explorer, measured, RATING_BANDS, withCounts } from './popularity';
+import { type Explorer, RATING_BANDS, recount } from './popularity';
 import { played } from './study';
 
 /** A find to write into a lesson, and what knowing it is worth in each of `RATING_BANDS`. */
@@ -190,11 +190,5 @@ export async function addPathCounts(
   explorer: Explorer,
 ): Promise<Lesson> {
   const keys = new Set(finds.flatMap(({ find }) => markedPositions(lesson, find)));
-  const positions = { ...lesson.positions };
-  for (const key of keys) {
-    const answers = [];
-    for (const band of RATING_BANDS) answers.push(await explorer(key, band, { total: true }));
-    positions[key] = withCounts(positions[key], measured(positions[key].moves, answers));
-  }
-  return keepMistakeLines(lesson, { ...lesson, positions });
+  return keepMistakeLines(lesson, await recount(lesson, keys, explorer));
 }

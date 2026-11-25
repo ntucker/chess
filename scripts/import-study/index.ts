@@ -77,7 +77,7 @@ import {
   type StudyLesson,
 } from './mistakes';
 import { addPathCounts, type LessonFind, lessonFinds, withFinds } from './finds';
-import { addPopularity, lichessExplorer, type LichessExplorer } from './popularity';
+import { addPopularity, lichessExplorer, type LichessExplorer, recount } from './popularity';
 import { indexedWith, readLessonFile, registered, writeIndex } from './register';
 import { report, sourceReport } from './report';
 import { nodeStockfish } from './stockfish';
@@ -107,7 +107,13 @@ async function main() {
     const file = rest[0];
     const lesson = readLessonFile(file);
     const explorer = lessonExplorer(lesson.id, { fresh: true });
-    writeLesson(file, checked(await withPopularity(lesson, explorer)));
+    // Popularity keeps the counts where it doesn't ask (a find's path where the guide offers no
+    // choice), so count every counted position again: no count outlives the answers file.
+    const kept = Object.entries(lesson.positions)
+      .filter(([, entry]) => entry.games || entry.moves.some((move) => move.games))
+      .map(([key]) => key);
+    const recounted = keepMistakeLines(lesson, await recount(lesson, kept, explorer.ask));
+    writeLesson(file, checked(await withPopularity(recounted, explorer)));
     explorer.saveUsed();
     return;
   }

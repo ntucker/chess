@@ -16,6 +16,7 @@ import {
   type ExplorerAnswer,
   lichessExplorer,
   RATING_BANDS,
+  recount,
   type MoveCounts,
 } from './popularity';
 import { type Chapter, parseStudy } from './study';
@@ -129,6 +130,20 @@ describe('addPopularity', () => {
     expect(
       asked.filter((at) => at === key('e4', 'c6', 'd4', 'd5', 'Nc3', 'dxe4', 'Nxe4')),
     ).toHaveLength(RATING_BANDS.length);
+  });
+});
+
+describe('recount', () => {
+  it('measures only the positions asked, from one answer per band with its total', async () => {
+    const asked: string[] = [];
+    const counted = await recount(lesson, [AFTER_E5], async (key, band, options) => {
+      asked.push(`${band} ${options?.total}`);
+      return { counts: { [lesson.positions[key].moves[0].uci]: band }, total: band * 2 };
+    });
+    expect(asked).toEqual(RATING_BANDS.map((band) => `${band} true`));
+    expect(counted.positions[AFTER_E5].games).toEqual(RATING_BANDS.map((band) => band * 2));
+    expect(counted.positions[AFTER_E5].moves[0].games).toEqual(RATING_BANDS);
+    expect(counted.positions[AFTER_C6]).toBe(lesson.positions[AFTER_C6]);
   });
 });
 

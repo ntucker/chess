@@ -278,3 +278,24 @@ function byDistance(lesson: Lesson, start: PositionKey): Map<PositionKey, Positi
   }
   return order;
 }
+
+/**
+ * `lesson` with the counts of the positions at `keys` measured afresh: each
+ * move's games and the games reaching the position, per band, from one
+ * explorer answer each (asked with its total). Example: the positions on a
+ * find's path, which popularity doesn't ask about where the guide offers no
+ * choice.
+ */
+export async function recount(
+  lesson: Lesson,
+  keys: Iterable<PositionKey>,
+  explorer: Explorer,
+): Promise<Lesson> {
+  const positions = { ...lesson.positions };
+  for (const key of keys) {
+    const answers = [];
+    for (const band of RATING_BANDS) answers.push(await explorer(key, band, { total: true }));
+    positions[key] = withCounts(positions[key], measured(positions[key].moves, answers));
+  }
+  return { ...lesson, positions };
+}
