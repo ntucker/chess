@@ -125,10 +125,13 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
   const bookChildren = new Map<string, string[]>();
   /** The learner's positions without a book move. */
   const unbooked = new Set<string>();
+  /** The cues the opponent's marked mistakes set up, by the position each mark is played in. */
+  const cues = new Map<string, readonly CueReply[]>();
   for (const [key, entry] of Object.entries(lesson.positions)) {
     const checked = checkPosition(lesson, key, entry, report);
     if (!checked) continue;
     const { learner, next } = checked;
+    if (checked.cues.length > 0) cues.set(key, checked.cues);
     children.set(
       key,
       next.map(({ key: to }) => to),
@@ -144,25 +147,41 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
     if (!reached.has(key))
       report(`positions[${JSON.stringify(key)}]`, 'is not reachable from start');
   }
-  // A learner who has played only book moves must have one to play next.
   for (const key of reachable(startKey, bookChildren)) {
+    // A learner who has played only book moves must have one to play next.
     if (unbooked.has(key))
       report(`positions[${JSON.stringify(key)}]`, 'is inside the book but has no book move');
+    // The cue card counts a mark's reply as punishing it (`Cue.found`), and a
+    // clean run counts only book moves: where a clean run reaches the cue, the
+    // two must agree.
+    for (const { path, cueKey, reply } of cues.get(key) ?? []) {
+      const move = guideMove(lesson, cueKey, reply);
+      // A reply the guide lacks is reported on the mark's line (`checkMistake`), not here.
+      if (move && !move.book)
+        report(path, `a clean run reaches its cue, so its reply ${reply} must be a book move`);
+    }
   }
   return problems;
 }
 
+/** A cue an opponent's marked mistake sets up: the mark's path, the position after it, and its stored line's reply. */
+interface CueReply {
+  readonly path: string;
+  readonly cueKey: string;
+  readonly reply: Uci;
+}
+
 /**
  * Checks one entry of `lesson.positions`, and returns whether it is the
- * learner's turn and the keys its moves lead to, or undefined when `key` is
- * not a position key.
+ * learner's turn, the keys its moves lead to and the cues its marks set up,
+ * or undefined when `key` is not a position key.
  */
 function checkPosition(
   lesson: Lesson,
   key: string,
   entry: LessonPosition,
   report: Report,
-): { learner: boolean; next: { key: string; book: boolean }[] } | undefined {
+): { learner: boolean; next: { key: string; book: boolean }[]; cues: CueReply[] } | undefined {
   const at = `positions[${JSON.stringify(key)}]`;
   const pos = parsePositionKey(key);
   if (!pos) {
@@ -174,7 +193,9 @@ function checkPosition(
   }
   checkGames(lesson, entry.games, `${at}.games`, report);
   checkNotes(lesson, entry.notes, pos, `${at}.notes`, report);
+  const learner = pos.turn === lesson.side;
   const next: { key: string; book: boolean }[] = [];
+  const cues: CueReply[] = [];
   const seen = new Set<string>();
   entry.moves.forEach((move, i) => {
     const path = `${at}.moves[${i}]`;
@@ -182,11 +203,20 @@ function checkPosition(
     seen.add(move.uci);
     const after = checkMove(lesson, pos, move, path, report);
     if (!after) return;
-    next.push({ key: positionKey(after), book: !!move.book });
-    if (move.mistake) checkMistake(lesson, pos, move, move.mistake, `${path}.mistake`, report);
+    const afterKey = positionKey(after);
+    next.push({ key: afterKey, book: !!move.book });
+    if (move.mistake) {
+      checkMistake(lesson, pos, move, move.mistake, `${path}.mistake`, report);
+      // Only a stored line can pick an unbooked reply: the guide's choice rule
+      // (`guideOrder`) plays a book move wherever the cue has one, and a cue
+      // with none is already reported as inside the book without one.
+      const [reply] = move.mistake.line ?? [];
+      if (!learner && reply !== undefined)
+        cues.push({ path: `${path}.mistake`, cueKey: afterKey, reply });
+    }
     checkNotes(lesson, move.notes, after, `${path}.notes`, report);
   });
-  return { learner: pos.turn === lesson.side, next };
+  return { learner, next, cues };
 }
 
 /** Every position key reachable from `start` along `children`. */
