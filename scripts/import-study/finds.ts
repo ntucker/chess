@@ -29,6 +29,7 @@ import {
   FIND_BAND,
   finderHost,
   type FinderHost,
+  lessonStart,
   runFinder,
   settle,
 } from './finderHost';
@@ -51,7 +52,7 @@ export interface LessonFind {
 export async function lessonFinds(counted: Lesson, explorer: Explorer): Promise<LessonFind[]> {
   const host = await finderHost(counted, FIND_BAND);
   try {
-    const { finds } = await runFinder(host, { start: counted.start, line: [], side: counted.side });
+    const { finds } = await runFinder(host, lessonStart(counted));
     const written: LessonFind[] = [];
     for (const find of finds)
       written.push({ find, gain: await gainByBand(host, counted, find, explorer) });

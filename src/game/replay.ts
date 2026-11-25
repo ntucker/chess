@@ -261,6 +261,27 @@ export function sanToUci(pos: Chess, san: string): string | undefined {
   return move && recordedMove(pos, makeUci(move));
 }
 
+/**
+ * Typed or pasted move text as UCI moves from `start` (the starting position
+ * unless given; left as it was): SAN or UCI, with or without move numbers
+ * ("1.e4", "1...e5", "...e5"), annotations ("!?"), comments in braces and a
+ * game result. Throws at the first move that isn't legal.
+ */
+export function parseMoves(text: string, start = Chess.default()): string[] {
+  const pos = start.clone();
+  return text
+    .replace(/\{[^}]*\}/g, ' ')
+    .split(/\s+/)
+    .map((token) => token.replace(/^\d*\.+/, '').replace(/[!?]+$/, ''))
+    .filter((token) => token && !/^(?:1-0|0-1|1\/2-1\/2|\*)$/.test(token))
+    .map((token) => {
+      const uci = sanToUci(pos, token) ?? recordedMove(pos, token);
+      if (!uci) throw new Error(`Not a legal move here: ${token} (in "${text}")`);
+      playMove(pos, uci);
+      return uci;
+    });
+}
+
 /** `lineMove` for a position already parsed. */
 export function recordedMove(pos: Chess, uci: string): string | undefined {
   const move = parseUci(uci);

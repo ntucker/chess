@@ -182,7 +182,10 @@ export async function settle<T>(
   }
 }
 
-/** The finder's run from `from` (a lesson's start and side, or any position), once every answer is in. */
+/** Where a run over `lesson` opens: its start, for its side. */
+export const lessonStart = ({ start, side }: Lesson) => ({ start, line: [], side });
+
+/** The finder's run from `from` (`lessonStart`, or any position), once every answer is in. */
 export const runFinder = (
   host: FinderHost,
   from: Pick<FinderInput, 'start' | 'line' | 'side'>,

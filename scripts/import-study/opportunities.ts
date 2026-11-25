@@ -8,8 +8,9 @@
  *
  * With a lesson it runs from the lesson's start for the lesson's side, and
  * splits the finds the guide's moves reach from those it doesn't. With
- * `--from` it runs from the position after those moves (SAN or UCI, from the
- * standard start; move numbers optional) with no lesson, for `--side`, the
+ * `--from` it runs from the position after those moves (from the standard
+ * start, as `parseMoves` reads them: SAN or UCI, move numbers optional, a
+ * pasted game's comments and result skipped) with no lesson, for `--side`, the
  * side looking for opportunities, so every find is off the guide.
  *
  * Its answers come from its own answers files and lichess and Stockfish
@@ -28,20 +29,19 @@ import { percent } from '@/analysis/quality';
 import {
   type Color,
   colorName,
+  COLORS,
   lineSans,
   numberedLine,
+  parseMoves,
   parsePosition,
   playLine,
-  playMove,
-  recordedMove,
-  sanToUci,
 } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { type Find, type FinderResult, type ThinEnd } from '@/opportunity/finder';
 import { LIMITS, MIN_GAMES } from '@/opportunity/limits';
 import { keepsGuide } from '@/opportunity/payoff';
 
-import { FIND_BAND, finderHost, positionHost, runFinder } from './finderHost';
+import { FIND_BAND, finderHost, lessonStart, positionHost, runFinder } from './finderHost';
 import { readLessonFile } from './register';
 
 const ROOT = join(__dirname, '../..');
@@ -56,7 +56,7 @@ async function reportLesson(id: string, { band, top, out }: Options) {
   const lesson = readLessonFile(join(ROOT, `assets/lessons/${id}.json`));
   const host = await finderHost(lesson, band);
   try {
-    const result = await runFinder(host, { start: lesson.start, line: [], side: lesson.side });
+    const result = await runFinder(host, lessonStart(lesson));
     write(lessonReport(lesson, band, result, top), out);
   } finally {
     host.stop();
@@ -64,11 +64,11 @@ async function reportLesson(id: string, { band, top, out }: Options) {
 }
 
 async function reportFrom(moves: string, side: Color, { band, top, out }: Options) {
-  const line = movesFrom(moves, Chess.default());
+  const line = parseMoves(moves);
   const host = await positionHost(band);
   try {
-    const from = { start: INITIAL_FEN, line, side };
-    write(positionReport(from.line, from.side, band, await runFinder(host, from), top), out);
+    const result = await runFinder(host, { start: INITIAL_FEN, line, side });
+    write(positionReport(line, side, band, result, top), out);
   } finally {
     host.stop();
   }
@@ -78,24 +78,6 @@ const write = (report: string, out: string | undefined) => {
   if (out) writeFileSync(out, report);
   else console.log(report);
 };
-
-/**
- * `text`'s moves as UCI, played from `start` (left as it was): SAN or UCI,
- * with or without move numbers. Throws at the first move that isn't legal.
- */
-function movesFrom(text: string, start: Chess): Uci[] {
-  const pos = start.clone();
-  const tokens = text
-    .replace(/\d+\.(\.\.)?/g, ' ')
-    .split(/\s+/)
-    .filter(Boolean);
-  return tokens.map((token) => {
-    const uci = sanToUci(pos, token.replace(/[!?]+$/, '')) ?? recordedMove(pos, token);
-    if (!uci) throw new Error(`Not a legal move here: ${token} (in "${text}")`);
-    playMove(pos, uci);
-    return uci;
-  });
-}
 
 const points = (score: number) => Math.round(score * 100);
 
@@ -303,7 +285,7 @@ const flag = (name: string) => {
   const at = args.indexOf(`--${name}`);
   return at < 0 ? undefined : args[at + 1];
 };
-const fail = (message: string) => {
+const fail = (message: string): never => {
   console.error(message);
   process.exit(1);
 };
@@ -312,14 +294,17 @@ const options: Options = {
   top: Number(flag('top') ?? 20),
   out: flag('out'),
 };
-const [id] = args;
-const moves = flag('from');
-const side = flag('side');
-const isColor = (name: string | undefined): name is Color => name === 'white' || name === 'black';
-const report =
-  moves !== undefined && isColor(side)
-    ? reportFrom(moves, side, options)
-    : moves === undefined && id && !id.startsWith('--')
-      ? reportLesson(id, options)
-      : fail(USAGE);
-report?.catch((error: unknown) => fail(String(error instanceof Error ? error.stack : error)));
+
+/** Runs the report the arguments ask for: a lesson's, or one from moves with `--side`; anything else is a usage error. */
+function main(): Promise<void> {
+  const [id] = args;
+  const lesson = id && !id.startsWith('--') ? id : undefined;
+  const moves = flag('from');
+  const side = COLORS.find((color) => color === flag('side'));
+  if (moves !== undefined && side && !lesson) return reportFrom(moves, side, options);
+  if (lesson && moves === undefined && flag('side') === undefined)
+    return reportLesson(lesson, options);
+  return fail(USAGE);
+}
+
+main().catch((error: unknown) => fail(String(error instanceof Error ? error.stack : error)));
