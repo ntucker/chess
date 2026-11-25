@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Eyebrow } from '@/components/Eyebrow';
 import { Tip } from '@/components/Tip';
-import { accuracyWords } from '@/review/accuracy';
+import { accuracyWords, shownAccuracy } from '@/review/accuracy';
 import type { Review } from '@/review/useReview';
 import { fonts } from '@/theme/theme';
 
@@ -18,12 +18,11 @@ interface Props {
 
 /**
  * A side's accuracy in its name bar, once the whole game is checked: the
- * number, rounded, with what it means in a tooltip. Nothing before then,
+ * number as shown, with what it means in a tooltip. Nothing before then,
  * nor for a side with too few judged moves to count.
  */
 export function AccuracyMark({ accuracy, whose, named }: Props) {
   if (typeof accuracy !== 'number') return null;
-  const shown = Math.round(accuracy);
   return (
     <Tip
       tip={`${accuracyWords(whose, accuracy)}, from how much of the winning chances each judged move gave away. Book and forced moves, and moves that couldn't be checked, don't count.`}
@@ -32,7 +31,7 @@ export function AccuracyMark({ accuracy, whose, named }: Props) {
       <View style={styles.mark}>
         {named ? <Eyebrow>Accuracy</Eyebrow> : null}
         <Text role={named ? 'heading' : 'headingSm'} style={styles.number}>
-          {shown}
+          {shownAccuracy(accuracy)}
         </Text>
       </View>
     </Tip>

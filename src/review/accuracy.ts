@@ -118,13 +118,16 @@ const VERDICTS: readonly (readonly [number, string])[] = [
   [0, 'A rough night.'],
 ];
 
+/** A side's `accuracy` as the learner sees it: rounded, so 89.6 shows as 90. */
+export const shownAccuracy = (accuracy: number) => Math.round(accuracy);
+
 /**
  * The review's verdict on a side's `accuracy`, a theater line picked by the
- * number as shown, rounded: 89.6 shows as 90 and reads "Standing ovation.".
+ * number as shown (`shownAccuracy`): 89.6 reads "Standing ovation.".
  */
 export const verdictLine = (accuracy: number) =>
-  VERDICTS.find(([least]) => Math.round(accuracy) >= least)![1];
+  VERDICTS.find(([least]) => shownAccuracy(accuracy) >= least)![1];
 
-/** A side's `accuracy` as shown, rounded, for a sentence: "Your accuracy: 82 of 100". */
+/** A side's `accuracy` as shown, for a sentence: "Your accuracy: 82 of 100". */
 export const accuracyWords = (whose: string, accuracy: number) =>
-  `${whose} accuracy: ${Math.round(accuracy)} of 100`;
+  `${whose} accuracy: ${shownAccuracy(accuracy)} of 100`;
