@@ -221,7 +221,8 @@ describe('CandidateList', () => {
       const list = mount();
       list.show({ position: 'a' });
       list.show({ position: 'a', rareShown: true });
-      expect(fades()).toBeGreaterThan(0);
+      // the one rare row arrives
+      expect(fades()).toBe(1);
       animated.length = 0;
       // the next position mounts its own list: nothing animates the swap
       list.show({ position: 'b' });
