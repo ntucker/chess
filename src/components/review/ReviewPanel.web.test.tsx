@@ -5,6 +5,7 @@ import { SilkProvider } from '@reactive/silk-native';
 import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import type { PhonePage } from '@/components/PhonePages';
 import type { FinalAnalysis } from '@/evaluation/evaluation';
 import { type Color, legalMoveCountAt, replay } from '@/game/replay';
 import { movesGivenUp } from '@/review/refine';
@@ -12,7 +13,6 @@ import { type GuideAnswer, momentAt } from '@/review/retry';
 import { reviewMoves, tally } from '@/review/review';
 import { listing } from '@/review/review.fixture';
 import { type ReviewScreen, startReview } from '@/review/screen';
-import type { PhonePage } from '@/components/PhonePages';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
 
@@ -22,7 +22,7 @@ import { ReviewPanel } from './ReviewPanel';
 import type { ReviewView } from './reviewView';
 
 // The graph draws with react-native-svg, and its gestures need gesture handler's root.
-jest.mock('./ReviewGraph', () => ({ ReviewGraph: () => null }));
+jest.mock('./ReviewGraph', () => ({ ReviewGraph: () => <span data-testid="graph" /> }));
 // Its font needs Expo's asset registry too.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 // A sheet (the tally's) listens only on the focused screen, as this one is.
@@ -356,9 +356,12 @@ describe('PhoneReview', () => {
           const scoresheet = host.querySelector('[role="region"][aria-label="Scoresheet"]')!;
           // One of Stockfish's other moves in the move card.
           const card = button(host, /^c5/)!;
+          const graph = host.querySelector('[data-testid="graph"]')!;
           return {
             scoresheet: scoresheet.closest('[inert]') !== null,
             card: card.closest('[inert]') !== null,
+            // Above the pages, so it never slides away.
+            graph: graph.closest('[inert]') !== null,
           };
         },
         <PhoneReview
@@ -369,8 +372,8 @@ describe('PhoneReview', () => {
           onPage={() => {}}
         />,
       );
-    expect(shown('review')).toEqual({ scoresheet: true, card: false });
-    expect(shown('scoresheet')).toEqual({ scoresheet: false, card: true });
+    expect(shown('review')).toEqual({ scoresheet: true, card: false, graph: false });
+    expect(shown('scoresheet')).toEqual({ scoresheet: false, card: true, graph: false });
   });
 });
 

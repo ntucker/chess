@@ -169,10 +169,10 @@ const styles = StyleSheet.create({
   page: { flexGrow: 1, flexShrink: 1, minHeight: 0 },
   jump: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
   /*
-   * Wide enough for "12…Nxd5" with its piece as an icon (six mono characters
-   * and the widest piece), so the stepper keeps its width from move to move,
-   * and no wider than the two jumps it replaces, so the name bar keeps its room.
-   * At least that: large text widens it rather than cut the move short.
+   * At least wide enough for "12…Nxd5" with its piece as an icon (six mono
+   * characters and the widest piece), so at the usual text size the stepper
+   * keeps its width from move to move and is no wider than the two jumps it
+   * replaces. Large text widens it rather than cut the move short.
    */
   opener: {
     minWidth:

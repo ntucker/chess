@@ -3,10 +3,10 @@ import { SilkProvider } from '@reactive/silk-native';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
+import type { PhonePage } from '@/components/PhonePages';
 import { themes } from '@/theme/theme';
 
 import type { LessonScreenModel } from '../useLessonScreen';
-import type { PhonePage } from '@/components/PhonePages';
 
 import { PhoneLesson } from './PhoneLesson';
 
