@@ -1,17 +1,18 @@
-import { Text, useReducedMotion, useTheme } from '@reactive/silk-native';
+import { springMotion, Text, useMotion, useReducedMotion, useTheme } from '@reactive/silk-native';
 import { oklch } from '@reactive/silk-core/color';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { type CSSAnimationKeyframes } from 'react-native-reanimated';
+import Animated, {
+  type CSSAnimationKeyframes,
+  type CSSAnimationTimingFunction,
+  cubicBezier,
+} from 'react-native-reanimated';
 
 import { type Ending, endingWords, type Mood } from '@/game/ending';
 import { ACT_TIMES, type CardBand, cardBand } from '@/board/endingAct';
 import type { Color } from '@/game/replay';
-import { springMotion, springs } from '@/motion/spring';
-import { useSpringTransition } from '@/motion/useSpringTransition';
 import { useSchemeColors } from '@/theme/shownTheme';
 import type { SchemeColors } from '@/theme/theme';
-import { timingFunction } from '@/theme/timingFunction';
 
 interface Props {
   readonly ending: Ending;
@@ -37,7 +38,7 @@ export function EndingCard({ ending, rival, orientation, aside = false }: Props)
   const schemeColors = useSchemeColors();
   const reducedMotion = useReducedMotion();
   // Put aside and back, like a toggle.
-  const fade = useSpringTransition(springs.snappy);
+  const fade = useMotion('snappy');
   // The board's width sets the type's size, so the banner fits a phone's board and fills a desktop's.
   const [width, setWidth] = useState(0);
   const { mood } = ending;
@@ -60,7 +61,8 @@ export function EndingCard({ ending, rival, orientation, aside = false }: Props)
         {
           opacity: aside ? 0 : 1,
           transitionProperty: 'opacity',
-          ...fade,
+          transitionDuration: fade.durationMs,
+          transitionTimingFunction: fade.easing,
         },
       ]}
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
@@ -207,7 +209,7 @@ interface Step {
   readonly keyframes: CSSAnimationKeyframes;
   readonly delay: number;
   readonly durationMs: number;
-  readonly easing: string;
+  readonly easing: CSSAnimationTimingFunction;
 }
 
 /** `step` as a Reanimated CSS animation starting `start` ms after the card is shown. */
@@ -216,7 +218,7 @@ function play({ keyframes, delay, durationMs, easing }: Step, start: number) {
     animationName: keyframes,
     animationDuration: durationMs,
     animationDelay: start + delay,
-    animationTimingFunction: timingFunction(easing),
+    animationTimingFunction: easing,
     // Held at its first frame until its turn, and at its last after.
     animationFillMode: 'both',
   } as const;
@@ -244,9 +246,9 @@ const GLEAM = {
 };
 
 /** Springs for a win: the ground snaps open, and the title lands with more bounce. */
-const SNAP = springMotion({ duration: 0.4, bounce: 0.3 });
-const LAND = springMotion({ duration: 0.5, bounce: 0.4 });
-const EASE_OUT = 'cubic-bezier(0.2, 0, 0, 1)';
+const SNAP = springMotion({ durationMs: 400, bounce: 0.3 });
+const LAND = springMotion({ durationMs: 500, bounce: 0.4 });
+const EASE_OUT = cubicBezier(0.2, 0, 0, 1);
 
 /** Each mood's steps, by the part that plays them; a part without one is simply there. */
 interface Cues {
