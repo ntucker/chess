@@ -188,10 +188,11 @@ export function findOpportunities({
   const reach = reachOf(opening.key, moves);
   const sorted = [...finds]
     .map(([cue, ways]): Find => {
-      // On the guide if some move order the guide plays reaches the cue.
-      const onGuide = reach(cue, true) > 0;
+      // On the guide if the guide's moves alone lead to one of its mistakes.
+      const onGuide = ways.some(({ from }) => reach(from, true) > 0);
       const games = (key: PositionKey) => reach(key, onGuide);
-      // A cue several mistakes lead to is one find, shown by the one most games play.
+      // A cue several mistakes lead to is one find, shown by the one most games
+      // play (on the guide, one the guide leads to).
       const played = ({ confirmed, from }: (typeof ways)[number]) => games(from) * confirmed.share;
       const { confirmed, from } = ways.reduce((most, way) =>
         played(way) > played(most) ? way : most,
