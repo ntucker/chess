@@ -249,7 +249,8 @@ export function settleMistakes(
     }
   }
   // Taking a mark off can change the guide's choice where the line it was on goes (guideOrder
-  // skips marked moves), so each kept mark's line is fitted again to the tree without it.
+  // skips marked moves), so each kept mark keeps its line as the tree before showed it, stored
+  // where the tree without the refused marks would play another.
   const settled = refused.size
     ? withLinesOf(withoutMarks(fitted, new Set(refused.keys())).lesson, fitted)
     : fitted;

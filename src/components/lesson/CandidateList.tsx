@@ -134,7 +134,7 @@ export function CandidateList({
   const rows = [...candidates, ...engineRows, ...(rareShown ? rare : [])];
   // The guide's rows shown, whose shares are of the games at the position.
   const guideCount = candidates.length + (rareShown ? rare.length : 0);
-  // A lone row's share is hidden: with nothing beside it, there is no choice to weigh.
+  // Shares show only when the guide offers a choice: more than one of its rows.
   const showsShares = guideCount > 1 && rows.some(({ share }) => share !== undefined);
   const shownMarks = new Set(
     rows.map(({ move }) => marks.get(move.uci)).filter((mark) => mark !== undefined),
