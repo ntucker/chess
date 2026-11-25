@@ -200,14 +200,11 @@ async function main() {
   const counting = !rest.includes('--no-popularity');
   // Finds come from lichess's counts, and their gains are per rating band, so they need popularity.
   if (study.opportunities && counting) {
-    // The finder searches with its own engine, so the import's waits for it.
-    stockfish.stop();
     // The finder picks guide moves by their counts, as the report does on the shipped file.
     finds = await lessonFinds(
       await addPopularity(lesson, explorer.ask, explorer.answeredOn),
       explorer.ask,
     );
-    await stockfish.resume();
     lesson = withFinds(lesson, finds);
     console.log(
       `opportunities: ${finds.length} finds written: ${finds.map(({ find }) => sans(lesson, [...find.line, find.mistake])).join('; ') || 'none'}`,

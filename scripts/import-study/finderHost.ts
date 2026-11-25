@@ -16,15 +16,15 @@
 import { join } from 'node:path';
 
 import { type Analysis, sketched } from '@/evaluation/evaluation';
-import type { Lesson, Uci } from '@/lesson/lesson';
+import type { Lesson, PositionKey, Uci } from '@/lesson/lesson';
 import { guideOrder } from '@/lesson/mistakes';
 import { findOpportunities, type FinderResult } from '@/opportunity/finder';
 import { MIN_GAMES } from '@/opportunity/limits';
 import { type Answers, type Replies, repliesFrom, type Request } from '@/opportunity/walk';
-import { APP_SEARCH, liteStockfish } from '@/stockfish/engine';
+import { APP_SEARCH, type Stockfish } from '@/stockfish/engine';
 
 import { answersFile } from './jsonLines';
-import { lichessExplorer } from './popularity';
+import { type ExplorerAnswer, lichessExplorer } from './popularity';
 import { nodeStockfish } from './stockfish';
 
 const ROOT = join(__dirname, '../..');
@@ -36,12 +36,12 @@ interface SketchRow extends Pick<Analysis, 'lines' | 'depth'> {
   readonly key: string;
 }
 
-/** The first whole depth of at least `SKETCH_DEPTH`, or the final analysis if the search ends sooner. */
-const sketch = (line: readonly Uci[]) =>
+/** The first whole depth of at least `SKETCH_DEPTH` on `watch`'s engine, or the final analysis if the search ends sooner. */
+const sketch = (watch: Stockfish['watch'], line: readonly Uci[]) =>
   new Promise<Analysis>((resolve, reject) => {
     let stop: (() => void) | undefined;
     let done = false;
-    stop = liteStockfish.watch(line, {
+    stop = watch(line, {
       update(analysis) {
         if (done || !sketched(analysis)) return;
         done = true;
@@ -99,14 +99,13 @@ export async function finderHost(lesson: Lesson, band: number): Promise<FinderHo
   const search = async ({ kind, spot }: Request) => {
     if (kind === 'full') fulls.set(spot.key, await engine.evaluate(spot.line, spot.key));
     else if (!sketches.get(spot.key)) {
-      const { lines, depth } = await sketch(spot.line);
+      const { lines, depth } = await sketch(engine.watch, spot.line);
       sketches.add({ key: spot.key, lines, depth });
     }
     if (++searched % 50 === 0) console.log(`${searched} searches`);
   };
   const ask = async ({ spot }: Request) => {
-    const { counts, total } = await explorer.ask(spot.key, band);
-    replies.set(spot.key, repliesFrom(spot.key, counts, MIN_GAMES, total));
+    replies.set(spot.key, explorerReplies(spot.key, await explorer.ask(spot.key, band)));
   };
 
   /**
@@ -132,6 +131,10 @@ export async function finderHost(lesson: Lesson, band: number): Promise<FinderHo
 
   return { answers, answer, stop: engine.stop };
 }
+
+/** The explorer's answer at `key` as the finder's replies (`repliesFrom`, thin under `MIN_GAMES`). */
+export const explorerReplies = (key: PositionKey, { counts, total }: ExplorerAnswer) =>
+  repliesFrom(key, counts, MIN_GAMES, total);
 
 /**
  * The value `compute` gives once the host has every answer it asks for:
@@ -161,7 +164,7 @@ export const runFinder = (host: FinderHost, lesson: Lesson): Promise<FinderResul
     (ask) => {
       const result = findOpportunities(input);
       result.requests.forEach(ask);
-      return result.requests.length ? undefined : result;
+      return result;
     },
     (round, missing) => console.log(`round ${round}: ${missing} answers to get`),
   );

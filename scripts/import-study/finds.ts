@@ -13,13 +13,14 @@
  * measured in every band, from that band's replies at the cue.
  */
 import { isFinal } from '@/evaluation/evaluation';
-import { parsePosition, positionKey } from '@/game/replay';
+import { playLine, positionKey } from '@/game/replay';
 import type { Lesson, LessonMove, LessonPosition, PositionKey, Uci } from '@/lesson/lesson';
 import { cueGain, type Find } from '@/opportunity/finder';
-import { LIMITS, MIN_GAMES } from '@/opportunity/limits';
-import { repliesFrom, walkTo } from '@/opportunity/walk';
+import { LIMITS } from '@/opportunity/limits';
+import { type Context, walkTo } from '@/opportunity/walk';
 
-import { finderHost, type FinderHost, runFinder, settle } from './finderHost';
+import { startOf } from './engineCheck';
+import { explorerReplies, finderHost, type FinderHost, runFinder, settle } from './finderHost';
 import { keepMistakeLines } from './mistakes';
 import { type Explorer, measured, RATING_BANDS, withCounts } from './popularity';
 import { played } from './study';
@@ -60,22 +61,19 @@ async function gainByBand(
   explorer: Explorer,
 ): Promise<number[]> {
   const cue = walkTo(lesson.start, [...find.line, find.mistake])!;
-  const spot = { line: cue.line, key: cue.key };
   const gains: number[] = [];
   for (const band of RATING_BANDS) {
-    const { counts, total } = await explorer(cue.key, band, { total: true });
-    const replies = repliesFrom(cue.key, counts, MIN_GAMES, total);
+    const replies = explorerReplies(cue.key, await explorer(cue.key, band, { total: true }));
     gains.push(
       await settle(host, (ask) => {
-        const after = host.answers.analysis(spot);
-        if (!isFinal(after)) return void ask({ kind: 'full', spot });
-        const context = {
+        const context: Context = {
           side: lesson.side,
           answers: host.answers,
           limits: LIMITS,
-          ask: (kind: 'replies' | 'sketch' | 'full', at: typeof spot) =>
-            ask({ kind, spot: { line: at.line, key: at.key } }),
+          ask: (kind, { line, key }) => ask({ kind, spot: { line, key } }),
         };
+        const after = host.answers.analysis(cue);
+        if (!isFinal(after)) return void context.ask('full', cue);
         return cueGain(cue, after, replies, context)?.gain;
       }),
     );
@@ -96,6 +94,14 @@ type Entry = Omit<LessonPosition, 'moves'> & { moves: LessonMove[] };
 /** An expected score as the lesson file keeps it: to a thousandth, finer than any screen shows. */
 const thousandths = (score: number) => Math.round(score * 1000) / 1000;
 
+/** Puts `uci` among `entry`'s moves as `edit` makes it, from the guide's move or else a new one. */
+function upsert(entry: Entry, uci: Uci, edit: (move: LessonMove) => LessonMove = (move) => move) {
+  const i = entry.moves.findIndex((move) => move.uci === uci);
+  entry.moves[i < 0 ? entry.moves.length : i] = edit(entry.moves[i] ?? { uci });
+}
+
+const booked = (move: LessonMove): LessonMove => ({ ...move, book: true });
+
 /**
  * `lesson` with each of `finds` in its tree. Along Act I it adds the
  * opponent's replies the guide lacks (the learner's moves there are the
@@ -113,49 +119,37 @@ export function withFinds(lesson: Lesson, finds: readonly LessonFind[]): Lesson 
   for (const [key, entry] of Object.entries(lesson.positions))
     positions[key] = { ...entry, moves: [...entry.moves] };
   for (const { find, gain } of finds) {
-    let pos = parsePosition(lesson.start)!;
+    let pos = startOf(lesson);
     let variation = positions[positionKey(pos)].variation;
-    /** The entry where the next move is played, and that move's index in it (-1 if absent). */
-    const at = (uci: Uci) => {
+    /** The entry for `pos`, made in the variation of the position before where the guide has none. */
+    const here = () => {
       const entry = (positions[positionKey(pos)] ??= { variation, moves: [] });
       variation = entry.variation;
-      return { entry, i: entry.moves.findIndex((move) => move.uci === uci) };
+      return entry;
     };
-    /** Plays `uci`, first making it a guide move as `edit` says (`edit` gets undefined where it is new). */
-    const play = (uci: Uci, edit: (move: LessonMove | undefined) => LessonMove) => {
-      const { entry, i } = at(uci);
-      if (i < 0) entry.moves.push(edit(undefined));
-      else entry.moves[i] = edit(entry.moves[i]);
+    const play = (uci: Uci, edit?: (move: LessonMove) => LessonMove) => {
+      upsert(here(), uci, edit);
       pos = played(pos, uci);
     };
-    const book = (uci: Uci) => (move: LessonMove | undefined) => ({
-      ...(move ?? { uci }),
-      book: true,
-    });
-    const ordinary = (uci: Uci) => (move: LessonMove | undefined) => move ?? { uci };
     for (const uci of find.line) {
-      if (pos.turn === lesson.side && at(uci).i < 0)
+      if (pos.turn === lesson.side && !here().moves.some((move) => move.uci === uci))
         throw new Error(`A find on the guide plays ${uci}, which the guide lacks there`);
-      play(uci, ordinary(uci));
+      play(uci);
     }
-    const { entry, i } = at(find.mistake);
-    const marked = i >= 0 ? entry.moves[i].mistake : undefined;
-    const measured = { cost: thousandths(find.cost), gain: gain.map(thousandths) };
+    const marked = here().moves.find((move) => move.uci === find.mistake)?.mistake;
+    const scores = { cost: thousandths(find.cost), gain: gain.map(thousandths) };
     play(find.mistake, (move) => ({
-      ...(move ?? { uci: find.mistake }),
+      ...move,
       mistake: marked
-        ? { ...marked, ...measured }
-        : { ...measured, line: [find.replies[0], ...find.payoff] },
+        ? { ...marked, ...scores }
+        : { ...scores, line: [find.replies[0], ...find.payoff] },
     }));
     if (marked) continue;
-    const cue = at(find.replies[0]).entry;
+    const cue = here();
     for (const uci of [find.replies[0], ...find.payoff])
-      play(uci, pos.turn === lesson.side ? book(uci) : ordinary(uci));
+      play(uci, pos.turn === lesson.side ? booked : undefined);
     // After the best reply, so the guide's choice rule plays it first where no counts say otherwise.
-    for (const uci of find.replies.slice(1)) {
-      const r = cue.moves.findIndex((move) => move.uci === uci);
-      cue.moves[r < 0 ? cue.moves.length : r] = book(uci)(cue.moves[r]);
-    }
+    for (const uci of find.replies.slice(1)) upsert(cue, uci, booked);
   }
   // The new markers store their whole line, so this keeps each as written; the
   // older ones keep the guide's line they had before.
@@ -175,11 +169,8 @@ export async function addPathCounts(
 ): Promise<Lesson> {
   const keys = new Set<PositionKey>();
   for (const { find } of finds) {
-    let pos = parsePosition(lesson.start)!;
-    for (const uci of pathOf(find)) {
-      keys.add(positionKey(pos));
-      pos = played(pos, uci);
-    }
+    // Every position but the last, where no path move is played.
+    for (const { key } of [...playLine(pathOf(find), startOf(lesson))].slice(0, -1)) keys.add(key);
   }
   const positions = { ...lesson.positions };
   for (const key of keys) {
