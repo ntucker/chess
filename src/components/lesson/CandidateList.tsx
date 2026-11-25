@@ -141,8 +141,7 @@ export function CandidateList({
   leadsAlways,
   density,
 }: Props) {
-  const engineRows = engineBest ? [engineBest] : [];
-  const rows = [...candidates, ...engineRows, ...(rareShown ? rare : [])];
+  const rows = shownRows({ candidates, engineBest, rare, rareShown });
   // The guide's rows shown, whose shares are of the games at the position.
   const guideCount = candidates.length + (rareShown ? rare.length : 0);
   // Shares show only when the guide offers a choice: more than one of its rows.
@@ -443,6 +442,18 @@ function Row({
     </Pressable>
   );
 }
+
+/** A list's rows, in order: the guide's, Stockfish's best after them, then the rare ones while shown. */
+export const shownRows = ({
+  candidates,
+  engineBest,
+  rare,
+  rareShown,
+}: Pick<Props, 'candidates' | 'engineBest' | 'rare' | 'rareShown'>) => [
+  ...candidates,
+  ...(engineBest ? [engineBest] : []),
+  ...(rareShown ? rare : []),
+];
 
 /** What an opportunity's cost means, in its tooltip and its row's label. */
 const costTip = (cost: string) =>

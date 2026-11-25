@@ -29,7 +29,7 @@ import { getLesson, LessonIndexContext, type LessonId } from '@/resources/lesson
 import { reviewHref } from '@/review/address';
 import { useSettings } from '@/settings/SettingsProvider';
 
-import type { CandidateList } from './CandidateList';
+import { type CandidateList, shownRows } from './CandidateList';
 import type { ActsModel, OpportunityCard } from './CueActs';
 import { type IdeaAside, type IdeaCard, noNotesText } from './IdeaCard';
 import type { LessonControls } from './LessonControls';
@@ -50,8 +50,8 @@ export interface LessonScreenInput {
   readonly store: GameStore;
   /** The game has moved on to a lesson still loading: the learner can't move. */
   readonly pending: boolean;
-  /** The move that picked the lesson loading long enough to say so: its row shows the wait. */
-  readonly loadingMove?: Uci;
+  /** The move that picked the lesson loading. */
+  readonly pendingMove?: Uci;
   /** A lesson, or the next page, has been loading long enough to say so. */
   readonly loading: boolean;
 }
@@ -141,7 +141,7 @@ export function useLessonScreen({
   onPlayAs,
   store,
   pending,
-  loadingMove,
+  pendingMove,
   loading,
 }: LessonScreenInput): LessonScreenModel {
   const ctrl = useController();
@@ -202,9 +202,21 @@ export function useLessonScreen({
     { result, atLatest: game.atLatest, playing: !!playback.playing },
     learner,
   );
+  // The guide's rows; past them, Stockfish's alone (`moves`).
+  const guideRows = {
+    candidates: guidance.candidates,
+    // Inside the guide, Stockfish's rows are at most its best (`listedEngineMoves`).
+    engineBest: guidance.top.at(0),
+    rare: guidance.rare,
+    rareShown,
+  };
+  const listed = guidance.candidates.length ? shownRows(guideRows) : guidance.top;
+  // A pick's wait shows on its row, so the headline and the list stay put; a
+  // wait with no row listed for it (Back or Forward, a hidden rare move) is the headline's.
+  const loadingMove =
+    loading && listed.some(({ move }) => move.uci === pendingMove) ? pendingMove : undefined;
   const { pastGuide, news, ...headline } = describeStatus(view, {
     picking,
-    // A page loaded by Back or Forward has no row to show it, so the headline tells it.
     loading: loading && loadingMove === undefined,
     title: lesson.title,
     names,
@@ -293,13 +305,9 @@ export function useLessonScreen({
         // At the start each move's opening is the point; later the idea card names it.
         leadsAlways: picking,
         leadsTo,
-        candidates: guidance.candidates,
-        // Inside the guide, Stockfish's rows are at most its best (`listedEngineMoves`).
-        engineBest: guidance.top.at(0),
+        ...guideRows,
         verdicts: guidance.verdicts,
         opportunities: guidance.opportunities,
-        rare: guidance.rare,
-        rareShown,
         onShowRare: showRare,
         main: guidance.main,
         onPoint: pointCandidate,

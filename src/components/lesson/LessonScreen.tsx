@@ -138,8 +138,7 @@ function Openings({
         onPlayAs={playAs}
         store={store}
         pending={pending}
-        // A pick's wait shows on its row, so the headline and the list stay put.
-        loadingMove={loading ? pendingMove : undefined}
+        pendingMove={pendingMove}
         loading={loading}
       />
     </AsyncBoundary>
