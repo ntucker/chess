@@ -121,7 +121,7 @@ function measure({ board, frame }) {
     // That view clips sideways, so what runs past the page's right edge widens only the page's scroll width.
     pageWidth: document.querySelector(part('page'))?.scrollWidth,
     board: box(board),
-    frame: frameView?.getBoundingClientRect().toJSON(),
+    frame: box(frame),
     frameBorder:
       frameStyle &&
       parseFloat(frameStyle.borderLeftWidth) + parseFloat(frameStyle.borderRightWidth),
