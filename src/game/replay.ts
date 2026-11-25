@@ -92,6 +92,9 @@ export function positionKey(pos: Chess): string {
   return makeFen(pos.toSetup(), { epd: true });
 }
 
+/** Whose move it is at `key` (see `positionKey`), read from its turn field alone, without parsing the position. */
+export const keyTurn = (key: string): Color => (key.split(' ', 2)[1] === 'b' ? 'black' : 'white');
+
 /** A copy of `pos` with `color` to move, as if the other side passed. */
 export function withTurn(pos: Chess, color: Color): Chess {
   const copy = pos.clone();

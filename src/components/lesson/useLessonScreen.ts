@@ -13,6 +13,7 @@ import { listsTopMoves } from '@/lesson/guidance';
 import type { Lesson, PositionKey, Uci, VariationId } from '@/lesson/lesson';
 import { lessonsAfter, lessonsFrom, openingsLesson, withOpenings } from '@/lesson/openings';
 import {
+  bandPlayers,
   type Candidate,
   candidates,
   captionName,
@@ -20,6 +21,7 @@ import {
   pathNames,
   shareSource,
 } from '@/lesson/select';
+import { marksOpportunities } from '@/lesson/opportunities';
 import { useLesson } from '@/lesson/useLesson';
 import type { Cue } from '@/opportunity/cue';
 import { describeOpponent } from '@/opponent/opponent';
@@ -30,6 +32,7 @@ import { useSettings } from '@/settings/SettingsProvider';
 import type { CandidateList } from './CandidateList';
 import type { ActsModel, OpportunityCard } from './CueActs';
 import { type IdeaAside, type IdeaCard, noNotesText } from './IdeaCard';
+import type { OpportunityList } from './OpportunityList';
 import type { LessonControls } from './LessonControls';
 import type { TrapCard } from './TrapCard';
 import { describeStatus, OPENINGS_TITLE, type Status, shownEnding } from './status';
@@ -108,6 +111,8 @@ export interface LessonScreenModel {
   readonly acts: ActsModel | null;
   /** In Practice, whether the learner's move at a cue punished the mistake. */
   readonly opportunity: ComponentProps<typeof OpportunityCard> | null;
+  /** The lesson's list of opportunities, where it marks any of the other side's mistakes. */
+  readonly opportunities: Omit<ComponentProps<typeof OpportunityList>, 'density'> | null;
   /** The game's moves. */
   readonly scoresheet: Omit<ComponentProps<typeof Scoresheet>, 'fill'>;
   readonly settings: Pick<ComponentProps<typeof LessonControls>, 'mode' | 'onMode'>;
@@ -151,6 +156,7 @@ export function useLessonScreen({
     play,
     pointedNote,
     marks,
+    progress,
     rareShown,
     showRare,
     pointRow,
@@ -371,6 +377,17 @@ export function useLessonScreen({
             note: mistakeNote,
           }
         : null,
+    opportunities:
+      picked && marksOpportunities(picked)
+        ? {
+            // The file's own counts, which `withOpenings` drops where the openings are picked.
+            lesson: picked,
+            band: opponentBand(picked, opponent),
+            progress,
+            tip: opportunitiesTip(bandPlayers(picked, opponent)),
+            onPlay: (line) => store[1]({ type: 'newGame', moves: line }),
+          }
+        : null,
     trap: trap
       ? {
           lesson,
@@ -396,6 +413,12 @@ export function useLessonScreen({
     onLeave: leave,
   };
 }
+
+/** What the list of opportunities ranks and what its meters show, against `players` where counted. */
+const opportunitiesTip = (players: string | undefined) =>
+  `The opponent's mistakes the guide marks, best first by what knowing each is worth per game${
+    players ? ` against ${players}` : ''
+  }. Each row: how often your games reach it, how often the mistake is played there, and what it gives away (# is mate). Tap one to play up to your cue.`;
 
 /**
  * What a cue's headline names that stays while the board is at it: the

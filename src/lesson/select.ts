@@ -20,7 +20,7 @@ import {
   type Variation,
   type VariationId,
 } from './lesson';
-import { moveGames, moveShare, positionGames } from './share';
+import { bandShare, moveGames } from './share';
 
 /**
  * Where a position stands in the guide. `inside`: the guide has moves here.
@@ -105,13 +105,12 @@ export function candidates(
   if (guide.place !== 'inside' || !pos) return [];
 
   const count = (move: LessonMove) => (band === undefined ? undefined : moveGames(move, band));
-  const listed = guide.entry.moves.reduce((sum, move) => sum + (count(move) ?? 0), 0);
-  const total = band === undefined ? undefined : positionGames(guide.entry, band);
+  const share = bandShare(guide.entry, band);
   const rows = guide.entry.moves.map((move): Candidate => {
     const row = candidateRow(lesson, pos, move);
     // checkLesson proves every guide move legal, so this is a broken file.
     if (!row) throw new Error(`Guide move ${move.uci} is illegal in ${key}`);
-    return { ...row, share: moveShare(count(move), listed, total) };
+    return { ...row, share: share(move) };
   });
   // Array.sort is stable, so equal counts keep the file's order.
   rows.sort((a, b) => (count(b.move) ?? -1) - (count(a.move) ?? -1));
@@ -198,22 +197,33 @@ const listed = (words: readonly string[]): string =>
 
 /**
  * Whose games a candidate's share counts, for `opponent`, in words for a
- * tooltip: the players in `opponentBand`, as "rated 1400–1599" (1500's band)
- * or "rated 1800 and up" (the top band, Stockfish's). Undefined when the
- * lesson has no counts.
+ * tooltip: the players in `opponentBand` (`bandPlayers`), and the speeds
+ * counted. Undefined when the lesson has no counts.
  */
 export function shareSource(lesson: Lesson, opponent: Opponent): string | undefined {
-  const band = opponentBand(lesson, opponent);
-  if (!lesson.popularity || band === undefined) return undefined;
-  const { ratingBands, speeds } = lesson.popularity;
-  const next = ratingBands[band + 1];
-  const rated =
-    next === undefined ? `${ratingBands[band]} and up` : `${ratingBands[band]}–${next - 1}`;
+  const players = bandPlayers(lesson, opponent);
+  if (!lesson.popularity || !players) return undefined;
+  const { speeds } = lesson.popularity;
   const games = speeds.length ? ` in ${listed(speeds)} games` : '';
   const why = isStockfish(opponent)
     ? 'the strongest band, since Stockfish plays above it'
     : `the band for your opponent's ${opponent}`;
-  return `Percentages: how often Lichess players rated ${rated} play each move${games}. That's ${why}.`;
+  return `Percentages: how often ${players} play each move${games}. That's ${why}.`;
+}
+
+/**
+ * The players `opponentBand` counts, in words: "Lichess players rated
+ * 1400–1599" (1500's band), or "rated 1800 and up" for the top band
+ * (Stockfish's). Undefined when the lesson has no counts.
+ */
+export function bandPlayers(lesson: Lesson, opponent: Opponent): string | undefined {
+  const band = opponentBand(lesson, opponent);
+  if (!lesson.popularity || band === undefined) return undefined;
+  const { ratingBands } = lesson.popularity;
+  const next = ratingBands[band + 1];
+  const rated =
+    next === undefined ? `${ratingBands[band]} and up` : `${ratingBands[band]}–${next - 1}`;
+  return `Lichess players rated ${rated}`;
 }
 
 /** A variation with its id. */

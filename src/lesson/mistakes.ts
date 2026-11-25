@@ -7,7 +7,7 @@
  */
 import { parseUci } from 'chessops/util';
 
-import { type Color, opposite, positionKey, readPositionKey } from '@/game/replay';
+import { type Color, keyTurn, opposite, positionKey, readPositionKey } from '@/game/replay';
 
 import type {
   Idea,
@@ -61,7 +61,7 @@ export function guideOrder(
   punishing: Color,
 ): readonly LessonMove[] {
   const moves = lesson.positions[key]?.moves ?? [];
-  const toMove = readPositionKey(key)!.turn;
+  const toMove = keyTurn(key);
   const book = moves.filter((move) => move.book);
   const played =
     toMove !== punishing

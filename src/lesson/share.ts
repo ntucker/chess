@@ -30,3 +30,14 @@ export function moveShare(
   const of = total ?? listed;
   return games === undefined || of <= 0 ? undefined : games / of;
 }
+
+/**
+ * Each of `entry`'s moves' share in `band` (`moveShare`), by move: undefined
+ * for a move without counts there, and for every move without a band.
+ */
+export function bandShare(entry: LessonPosition, band: number | undefined) {
+  const count = (move: LessonMove) => (band === undefined ? undefined : moveGames(move, band));
+  const listed = entry.moves.reduce((sum, move) => sum + (count(move) ?? 0), 0);
+  const total = band === undefined ? undefined : positionGames(entry, band);
+  return (move: LessonMove) => moveShare(count(move), listed, total);
+}

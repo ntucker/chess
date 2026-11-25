@@ -9,6 +9,7 @@ import { CandidateList } from '../CandidateList';
 import { ActsCard, OpportunityCard } from '../CueActs';
 import { IdeaCard } from '../IdeaCard';
 import { LessonControls } from '../LessonControls';
+import { OpportunityList } from '../OpportunityList';
 import { PointingArea } from '../PointingArea';
 import { TrapCard } from '../TrapCard';
 import type { LessonScreenModel } from '../useLessonScreen';
@@ -16,7 +17,8 @@ import { LessonHeadline } from './LessonHeadline';
 
 /**
  * The lesson's panel beside the board: the headline, any trap or cue's card,
- * the moves over the idea, the scoresheet, then the settings.
+ * the moves over the idea, any list of opportunities, the scoresheet, then
+ * the settings.
  */
 export function WideLesson({ model }: { readonly model: LessonScreenModel }) {
   const labelled = useLabelled();
@@ -34,6 +36,12 @@ export function WideLesson({ model }: { readonly model: LessonScreenModel }) {
           {model.moves ? <CandidateList {...model.moves} density="comfortable" /> : null}
           {model.idea ? <IdeaCard {...model.idea} density="comfortable" /> : null}
         </PointingArea>
+      ) : null}
+      {model.opportunities ? (
+        <>
+          <Separator />
+          <OpportunityList {...model.opportunities} density="comfortable" />
+        </>
       ) : null}
       <Separator />
       <Stack style={labelled}>
