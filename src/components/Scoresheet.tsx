@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Inline, Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
-import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef } from 'react';
 import {
   type LayoutChangeEvent,
   type NativeScrollEvent,
@@ -19,7 +19,7 @@ import { Eyebrow } from './Eyebrow';
 import { Notation } from './Notation';
 import { NotationSwitch } from './NotationSwitch';
 import { QualityBadge } from './QualityBadge';
-import { type Frame, scrollTracker } from './scoresheetReveal';
+import { type Frame, revealOffset, type Viewport } from './scoresheetReveal';
 
 interface Props {
   /** Every position of the game; `plies[n]` follows the nth move. */
@@ -233,18 +233,21 @@ const rowOf = (ply: number) => Math.max(0, Math.floor((ply - 1) / 2));
  */
 function useRevealedRow(row: number) {
   const scroll = useRef<ScrollViewInstance>(null);
-  const [tracker] = useState(scrollTracker);
+  const viewport = useRef<Viewport>({ top: 0, height: 0 });
   const frames = useRef<Frame[]>([]);
   // The row's layout, the viewport's and the row changing come in any order:
   // each tries, and the last to come scrolls, once both are measured.
   const reveal = () => {
     const frame = frames.current[row];
-    const y = frame && tracker.reveal(frame);
-    if (y !== undefined) scroll.current?.scrollTo({ y, animated: true });
+    const y = frame && revealOffset(frame, viewport.current);
+    if (y === undefined) return;
+    // At once: an animated scroll's events report the offsets it passes, and
+    // a reveal reckoning from one of those could leave its row off screen.
+    scroll.current?.scrollTo({ y, animated: false });
+    viewport.current.top = y;
   };
   const revealNow = useEffectEvent(reveal);
   useEffect(() => revealNow(), [row]);
-  useEffect(() => tracker.dispose, [tracker]);
   return {
     reveal,
     onRowLayout: (index: number) => (event: LayoutChangeEvent) => {
@@ -254,10 +257,11 @@ function useRevealedRow(row: number) {
     scrollProps: {
       ref: scroll,
       scrollEventThrottle: 16,
-      onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) =>
-        tracker.scrolled(event.nativeEvent.contentOffset.y),
+      onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+        viewport.current.top = event.nativeEvent.contentOffset.y;
+      },
       onLayout: (event: LayoutChangeEvent) => {
-        tracker.resized(event.nativeEvent.layout.height);
+        viewport.current.height = event.nativeEvent.layout.height;
         reveal();
       },
     },
