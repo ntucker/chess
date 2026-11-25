@@ -58,18 +58,17 @@ const progress = (seen: PositionKey[], passed: PositionKey[]): MarkedPositions =
   passed: passed.map(positionHash),
 });
 
-/** The marks of `lesson`'s rows after `sans`, by SAN. */
-function marksAfter(lessonProgress: MarkedPositions, lesson: Lesson, ...sans: string[]) {
-  const line = uciLine(...sans);
-  const view = lessonView({ lesson, line, ply: line.length, opponent: 1500 });
-  const marks = rowMarks(lesson, lessonProgress, view);
-  return Object.fromEntries(view.candidates.map(({ san, move: { uci } }) => [san, marks.get(uci)]));
-}
-
 /** `lesson`'s view after `sans`, against a 1500. */
-function sampleLessonView(lesson: Lesson, sans: string[]) {
+function viewAfter(lesson: Lesson, sans: string[]) {
   const line = uciLine(...sans);
   return lessonView({ lesson, line, ply: line.length, opponent: 1500 });
+}
+
+/** The marks of `lesson`'s rows after `sans`, by SAN. */
+function marksAfter(lessonProgress: MarkedPositions, lesson: Lesson, ...sans: string[]) {
+  const view = viewAfter(lesson, sans);
+  const marks = rowMarks(lesson, lessonProgress, view);
+  return Object.fromEntries(view.candidates.map(({ san, move: { uci } }) => [san, marks.get(uci)]));
 }
 
 const practice = (clean: boolean) => ({ mode: 'practice', clean, line: [] }) as const;
@@ -357,58 +356,58 @@ describe('steering', () => {
     ).toBe('d4');
   });
 
-  it('steers into an opportunity that counts until it is passed, and to each reply inside it', () => {
-    // White's 2.Nc3 is marked, played 25%; after 2...d5 White's exd5 and e5 each end a line.
-    const cue = at('e4', 'c6', 'Nc3', 'd5');
-    const games = {
-      [uci('e4', 'c6', 'd4')]: [75],
-      [uci('e4', 'c6', 'Nc3')]: [25],
-      [uci('e4', 'c6', 'Nc3', 'd5', 'exd5')]: [70],
-      [uci('e4', 'c6', 'Nc3', 'd5', 'e5')]: [30],
-    };
-    const withCue: Lesson = {
+  describe('into an opportunity', () => {
+    // White's 2.Nc3 is a marked mistake played 25%; after 2...d5, exd5 (70%) and e5 (30%) end lines.
+    const c6 = ['e4', 'c6'];
+    const cue = [...c6, 'Nc3', 'd5'];
+    const lesson: Lesson = {
       ...LESSON,
       positions: {
         ...LESSON.positions,
-        [cue]: {
-          ...LESSON.positions[START],
-          moves: [move(['e4', 'c6', 'Nc3', 'd5'], 'exd5'), move(['e4', 'c6', 'Nc3', 'd5'], 'e5')],
+        [at(...c6)]: {
+          ...LESSON.positions[at(...c6)],
+          moves: [
+            { ...move(c6, 'd4'), games: [75] },
+            { ...move(c6, 'Nc3'), games: [25], mistake: {} },
+          ],
+        },
+        [at(...cue)]: {
+          ...LESSON.positions[at(...c6)],
+          moves: [
+            { ...move(cue, 'exd5'), games: [70] },
+            { ...move(cue, 'e5'), games: [30] },
+          ],
         },
       },
     };
-    const lesson = [at('e4', 'c6'), cue].reduce(
-      (marked, key) =>
-        withMoves(marked, key, (moves) =>
-          moves.map((reply) => ({
-            ...reply,
-            games: games[reply.uci],
-            ...(reply.uci === uci('e4', 'c6', 'Nc3') && { mistake: {} }),
-          })),
-        ),
-      withCue,
-    );
-    const ends = {
-      exd5: at('e4', 'c6', 'Nc3', 'd5', 'exd5'),
-      e5: at('e4', 'c6', 'Nc3', 'd5', 'e5'),
-    };
+    const exd5 = at(...cue, 'exd5');
+    const e5 = at(...cue, 'e5');
     const steered = (passed: PositionKey[], sans: string[]) => {
-      const { candidates: replies, key } = sampleLessonView(lesson, sans);
+      const { candidates: replies, key } = viewAfter(lesson, sans);
       return steering(lesson, progress([], passed), practice(true))!(replies, key)?.san;
     };
-    expect(steered([], ['e4', 'c6'])).toBe('d4');
-    expect(steered([ENDS.d4], ['e4', 'c6'])).toBe('Nc3');
-    expect(steered([ENDS.d4, ends.exd5], ['e4', 'c6'])).toBe('Nc3');
-    expect(steered([ENDS.d4, ends.exd5, ends.e5], ['e4', 'c6'])).toBe('d4');
-    expect(steered([], ['e4', 'c6', 'Nc3', 'd5'])).toBe('exd5');
-    expect(steered([ends.exd5], ['e4', 'c6', 'Nc3', 'd5'])).toBe('e5');
-    // The opportunity's row passes with the lines below it.
-    expect(marksAfter(progress([], [ends.exd5]), lesson, 'e4', 'c6')).toEqual({
-      d4: undefined,
-      Nc3: undefined,
+
+    it('steers into a mistake that counts until every line below it is passed', () => {
+      expect(steered([], c6)).toBe('d4');
+      expect(steered([ENDS.d4], c6)).toBe('Nc3');
+      expect(steered([ENDS.d4, exd5], c6)).toBe('Nc3');
+      expect(steered([ENDS.d4, exd5, e5], c6)).toBe('d4');
     });
-    expect(marksAfter(progress([], [ends.exd5, ends.e5]), lesson, 'e4', 'c6')).toEqual({
-      d4: undefined,
-      Nc3: 'passed',
+
+    it('steers to each reply that counts inside its line', () => {
+      expect(steered([], cue)).toBe('exd5');
+      expect(steered([exd5], cue)).toBe('e5');
+    });
+
+    it("passes the mistake's row with the lines below it", () => {
+      expect(marksAfter(progress([], [exd5]), lesson, ...c6)).toEqual({
+        d4: undefined,
+        Nc3: undefined,
+      });
+      expect(marksAfter(progress([], [exd5, e5]), lesson, ...c6)).toEqual({
+        d4: undefined,
+        Nc3: 'passed',
+      });
     });
   });
 
@@ -417,7 +416,7 @@ describe('steering', () => {
     const lesson = withMoves(LESSON, at('e4', 'e5'), (moves) =>
       moves.map((reply) => ({ ...reply, mistake: {} })),
     );
-    const { candidates: replies, key } = sampleLessonView(lesson, ['e4', 'e5']);
+    const { candidates: replies, key } = viewAfter(lesson, ['e4', 'e5']);
     expect(replies.map(({ san }) => san)).toEqual(['Nf3']);
     expect(steering(lesson, progress([], []), practice(true))!(replies, key)).toBeUndefined();
   });
