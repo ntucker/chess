@@ -140,10 +140,10 @@ mistake limit (`MISTAKE_LOSS`, which the finder reads from `quality.ts`) and is 
   tempo adds nothing, the start stays 1, and each game counts once. A find on the guide counts only
   the orders the guide plays (the guide's moves for the punishing side, any reply of the erring
   side), fewest among them.
-- **On the guide**: a find is on the guide (`Find.onGuide`) when the guide's own moves lead the
-  punishing side to one of its mistakes. Only finds on the guide are ranked, kept and written into
-  lessons; the finder returns the others apart (`FinderResult.offGuide`), and the report lists them
-  as evidence.
+- **On the guide**: a find is on the guide (`Find.onGuide`) when the guide's own moves reach a
+  position where the erring side plays one of the mistakes into its cue. Only finds on the guide are
+  ranked, kept and written into lessons; the finder returns the others apart
+  (`FinderResult.offGuide`), and the report lists them as evidence.
 - **Score** of an opportunity for a band: the reach of the cue × gain if known. A cue several
   mistakes lead to is one find, shown by the mistake most games play into it (the reach of its
   position × its share there). A mistake whose gain is under `minGain` (0.01) is no find, since
