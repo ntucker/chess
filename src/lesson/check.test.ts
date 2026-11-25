@@ -2,6 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 import { Chess } from 'chessops/chess';
 import { parseFen } from 'chessops/fen';
 import { parseSan } from 'chessops/san';
+import { makeUci } from 'chessops/util';
 
 import { checkIdea, checkLesson, generatedIdeaProblem, trapProblem } from './check';
 import { parsePositionKey, positionKey } from '@/game/replay';
@@ -590,6 +591,48 @@ describe('checkLesson', () => {
           message: 'is inside the book but has no book move',
         },
       ]);
+    });
+
+    it("holds the reply of the opponent's mark to be a book move where a clean run reaches its cue", () => {
+      const lesson = marking({ uci: 'd7d5', book: true }, {}, [{ uci: 'h7h6' }]);
+      const mark = (pos: Chess, san: string, line?: string[]) => {
+        const move = parseSan(pos, san)!;
+        const cue = pos.clone();
+        cue.play(move);
+        return [{ uci: makeUci(move), mistake: line ? { line } : {} }, positionKey(cue)] as const;
+      };
+      /** The lesson with White's 2.g4?, a cue where Black books 2...d5 and the mark's line may store 2...e5. */
+      const withG4 = (line?: string[]) => {
+        const [g4, cue] = mark(afterC6, 'g4', line);
+        return {
+          ...lesson,
+          positions: {
+            ...lesson.positions,
+            [positionKey(afterC6)]: { variation: 'caro', moves: [{ uci: 'd2d4' }, g4] },
+            [cue]: { variation: 'caro', moves: [{ uci: 'd7d5', book: true }, { uci: 'e7e5' }] },
+          },
+        };
+      };
+      expect(checkLesson(withG4())).toEqual([]);
+      expect(checkLesson(withG4(['e7e5']))).toEqual([
+        {
+          path: `positions["${positionKey(afterC6)}"].moves[1].mistake`,
+          message: 'a clean run reaches its cue, so its reply e7e5 must be a book move',
+        },
+      ]);
+      // Past Black's non-book 2...h6, no clean run reaches 3.g4?'s cue, so 3...h5 needn't be booked.
+      const afterH6 = afterD4.clone();
+      afterH6.play(parseSan(afterH6, 'h6')!);
+      const [g4, cue] = mark(afterH6, 'g4');
+      const past = {
+        ...lesson,
+        positions: {
+          ...lesson.positions,
+          [positionKey(afterH6)]: { variation: 'caro', moves: [g4] },
+          [cue]: { variation: 'caro', moves: [{ uci: 'h6h5' }] },
+        },
+      };
+      expect(checkLesson(past)).toEqual([]);
     });
 
     it('refuses a mark on a book move, and numbers out of range', () => {

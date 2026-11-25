@@ -125,10 +125,13 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
   const bookChildren = new Map<string, string[]>();
   /** The learner's positions without a book move. */
   const unbooked = new Set<string>();
+  /** The cues the opponent's marked mistakes at each position set up. */
+  const cues = new Map<string, readonly CueReply[]>();
   for (const [key, entry] of Object.entries(lesson.positions)) {
     const checked = checkPosition(lesson, key, entry, report);
     if (!checked) continue;
     const { learner, next } = checked;
+    cues.set(key, checked.cues);
     children.set(
       key,
       next.map(({ key: to }) => to),
@@ -144,25 +147,39 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
     if (!reached.has(key))
       report(`positions[${JSON.stringify(key)}]`, 'is not reachable from start');
   }
-  // A learner who has played only book moves must have one to play next.
   for (const key of reachable(startKey, bookChildren)) {
+    // A learner who has played only book moves must have one to play next.
     if (unbooked.has(key))
       report(`positions[${JSON.stringify(key)}]`, 'is inside the book but has no book move');
+    // The cue card counts a mark's reply as punishing it (`Cue.found`), and a
+    // clean run counts only book moves: where a clean run reaches the cue, the
+    // two must agree.
+    for (const { path, cue, reply } of cues.get(key) ?? []) {
+      if (!guideMove(lesson, cue, reply)?.book)
+        report(path, `a clean run reaches its cue, so its reply ${reply} must be a book move`);
+    }
   }
   return problems;
 }
 
+/** A cue an opponent's marked mistake sets up: the mark's path, the position after it, and its line's reply. */
+interface CueReply {
+  readonly path: string;
+  readonly cue: string;
+  readonly reply: Uci;
+}
+
 /**
  * Checks one entry of `lesson.positions`, and returns whether it is the
- * learner's turn and the keys its moves lead to, or undefined when `key` is
- * not a position key.
+ * learner's turn, the keys its moves lead to and the cues its marks set up,
+ * or undefined when `key` is not a position key.
  */
 function checkPosition(
   lesson: Lesson,
   key: string,
   entry: LessonPosition,
   report: Report,
-): { learner: boolean; next: { key: string; book: boolean }[] } | undefined {
+): { learner: boolean; next: { key: string; book: boolean }[]; cues: CueReply[] } | undefined {
   const at = `positions[${JSON.stringify(key)}]`;
   const pos = parsePositionKey(key);
   if (!pos) {
@@ -174,7 +191,9 @@ function checkPosition(
   }
   checkGames(lesson, entry.games, `${at}.games`, report);
   checkNotes(lesson, entry.notes, pos, `${at}.notes`, report);
+  const learner = pos.turn === lesson.side;
   const next: { key: string; book: boolean }[] = [];
+  const cues: CueReply[] = [];
   const seen = new Set<string>();
   entry.moves.forEach((move, i) => {
     const path = `${at}.moves[${i}]`;
@@ -183,10 +202,15 @@ function checkPosition(
     const after = checkMove(lesson, pos, move, path, report);
     if (!after) return;
     next.push({ key: positionKey(after), book: !!move.book });
-    if (move.mistake) checkMistake(lesson, pos, move, move.mistake, `${path}.mistake`, report);
+    if (move.mistake) {
+      checkMistake(lesson, pos, move, move.mistake, `${path}.mistake`, report);
+      const reply = learner ? undefined : mistakeLine(lesson, key, move)[1];
+      if (reply !== undefined)
+        cues.push({ path: `${path}.mistake`, cue: positionKey(after), reply });
+    }
     checkNotes(lesson, move.notes, after, `${path}.notes`, report);
   });
-  return { learner: pos.turn === lesson.side, next };
+  return { learner, next, cues };
 }
 
 /** Every position key reachable from `start` along `children`. */

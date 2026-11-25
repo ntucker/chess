@@ -29,8 +29,11 @@ export interface Cue {
   readonly tried?: Uci;
   /**
    * `tried` punishes the mistake: it is the line's reply, or a move the guide
-   * books at the cue (every reply the finder accepts is booked). False until
-   * a move is tried; read it with `tried`.
+   * books at the cue (the finder books every reply it accepts, except at a
+   * mark the study already made). Where a clean Practice run can reach the
+   * cue, the line's reply is booked too (`checkLesson`), so a found move
+   * keeps the run clean; elsewhere the run is no longer clean anyway. False
+   * until a move is tried; read it with `tried`.
    */
   readonly found: boolean;
 }
