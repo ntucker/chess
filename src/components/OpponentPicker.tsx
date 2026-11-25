@@ -182,12 +182,15 @@ export function OpponentPicker() {
 }
 
 /**
- * Full Stockfish's download while it runs, for the opponent's disc to show
- * (`PlayerBar`); a failed one is told beside the opponent's name instead.
+ * Full Stockfish's download while it runs and is the opponent, for the
+ * opponent's disc to show (`PlayerBar`); a failed one is told beside the
+ * opponent's name instead. The download stays in the store after another
+ * opponent is picked, so the setting decides.
  */
 export function useOpponentDownload(): DiscDownload | undefined {
+  const { opponent } = useSettings();
   const download = useFullStockfishDownload();
-  return download && !download.failure
+  return opponent === 'stockfish-full' && download && !download.failure
     ? { label: 'Full Stockfish', percent: download.percent }
     : undefined;
 }

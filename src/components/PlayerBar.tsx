@@ -1,5 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Pressable, type PressableState, Spinner, Text, useTheme } from '@reactive/silk-native';
+import {
+  a11yValue,
+  Pressable,
+  type PressableState,
+  Spinner,
+  Text,
+  useTheme,
+} from '@reactive/silk-native';
 import { type ReactNode, useState } from 'react';
 import { type StyleProp, View, type ViewStyle } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -204,9 +211,7 @@ function DownloadRing({ label, percent }: DiscDownload) {
       accessible
       accessibilityRole="progressbar"
       accessibilityLabel={`${label} downloading`}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={percent}
+      {...a11yValue({ min: 0, max: 100, now: percent })}
       onLayout={(event) => setSize(event.nativeEvent.layout.width)}
       style={styles.ring}
     >

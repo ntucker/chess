@@ -15,7 +15,7 @@ import { describeOpponent } from '@/opponent/opponent';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
 
-import { OpponentPicker } from './OpponentPicker';
+import { OpponentPicker, useOpponentDownload } from './OpponentPicker';
 
 // Its font loads through Expo's asset registry, which the web preset doesn't resolve.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
@@ -32,6 +32,12 @@ function GrabReport() {
     reportDownload = report;
   }, [report]);
   return null;
+}
+
+/** What the opponent's disc would show of the download, as text. */
+function DownloadProbe() {
+  const download = useOpponentDownload();
+  return <span data-testid="disc">{download ? `${download.label} ${download.percent}` : ''}</span>;
 }
 
 /** Draws `picker` in the page, in place of the one before. */
@@ -337,5 +343,24 @@ describe('OpponentPicker', () => {
     expect(reload?.textContent).toBe('Reload');
     await report(100);
     expect(progress()).toBeUndefined();
+  });
+
+  it("gives the disc full Stockfish's download only while it is the opponent", async () => {
+    await show(
+      <>
+        <OpponentPicker />
+        <DownloadProbe />
+      </>,
+    );
+    const disc = () => host.querySelector('[data-testid="disc"]')!.textContent;
+    act(() => trigger().click());
+    press('End');
+    await act(async () => {
+      reportDownload(42);
+    });
+    expect(disc()).toBe('Full Stockfish 42');
+    // The download stays in the store once another opponent is picked.
+    press('Home');
+    expect(disc()).toBe('');
   });
 });
