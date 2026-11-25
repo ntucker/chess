@@ -199,12 +199,12 @@ describe('CandidateList', () => {
       animated.length = 0;
       Element.prototype.animate = function (keyframes) {
         animated.push(Object.keys((keyframes as Keyframe[])[0]!).join());
-        return {
+        return Object.assign(new EventTarget(), {
           finished: Promise.resolve(),
           cancel: () => {},
           playState: 'running',
           currentTime: 0,
-        } as unknown as Animation;
+        }) as unknown as Animation;
       };
       Element.prototype.getBoundingClientRect = function (this: Element) {
         const index = this.parentElement ? [...this.parentElement.children].indexOf(this) : 0;
