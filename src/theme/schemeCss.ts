@@ -1,6 +1,7 @@
 import type { ColorScheme } from '@reactive/silk-core';
 
 import { readStorageScript } from '@/context/storage';
+import { COLORS } from '@/game/replay';
 import { SETTINGS_KEY, THEMES } from '@/settings/settings';
 
 import { BAR_COLORS, BAR_IDS } from './barColor';
@@ -35,9 +36,12 @@ const CHOSEN = THEMES.filter((theme) => theme !== 'system');
  * A script that, before the first paint, sets <html data-theme> to the theme
  * the learner saved (read as settings.ts reads it), so SCHEME_CSS shows the
  * page in its colors, and the browser's bars to its color (barColor.ts).
- * System needs nothing. Later, AppTheme keeps it pinned (`pinTheme`).
+ * System needs nothing. Later, AppTheme keeps it pinned (`pinTheme`). It also
+ * sets <html data-side> to the side they saved, which turns the home page's
+ * still board (src/components/savedSide.ts).
  */
 export const PRE_PAINT_SCRIPT =
-  `try{var t=JSON.parse(${readStorageScript(SETTINGS_KEY)}).theme;` +
-  `if(${JSON.stringify(CHOSEN)}.indexOf(t)>=0){document.documentElement.dataset.theme=t;` +
+  `try{var s=JSON.parse(${readStorageScript(SETTINGS_KEY)}),t=s.theme,root=document.documentElement;` +
+  `if(${JSON.stringify(COLORS)}.indexOf(s.side)>=0)root.dataset.side=s.side;` +
+  `if(${JSON.stringify(CHOSEN)}.indexOf(t)>=0){root.dataset.theme=t;` +
   `${JSON.stringify(Object.values(BAR_IDS))}.forEach(function(i){var m=document.getElementById(i);if(m)m.content=${JSON.stringify(BAR_COLORS)}[t]})}}catch(e){}`;

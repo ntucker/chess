@@ -96,7 +96,7 @@ describe('PRE_PAINT_SCRIPT', () => {
    * (light's, then dark's), after the script runs with `text` saved as the settings.
    */
   function run(text: string | null, storage: 'works' | 'blocked' = 'works') {
-    const dataset: { theme?: string } = {};
+    const dataset: { theme?: string; side?: string } = {};
     const bars = { light: { content: BAR_COLORS.light }, dark: { content: BAR_COLORS.dark } };
     const localStorage = {
       getItem: (key: string) => {
@@ -110,7 +110,11 @@ describe('PRE_PAINT_SCRIPT', () => {
       getElementById: (id: string) =>
         id === BAR_IDS.light ? bars.light : id === BAR_IDS.dark ? bars.dark : null,
     });
-    return { theme: dataset.theme, bars: [bars.light.content, bars.dark.content] };
+    return {
+      theme: dataset.theme,
+      side: dataset.side,
+      bars: [bars.light.content, bars.dark.content],
+    };
   }
 
   it('picks the theme settings.ts reads, leaving System to the device', () => {
@@ -130,6 +134,15 @@ describe('PRE_PAINT_SCRIPT', () => {
       const theme = parseSettings(text ?? '').theme;
       expect([text, run(text).theme]).toEqual([text, theme === 'system' ? undefined : theme]);
     }
+  });
+
+  it('names the side the learner saved, and nothing else', () => {
+    expect(run('{"side":"white"}').side).toBe('white');
+    expect(run('{"side":"black","theme":"dark"}')).toMatchObject({ side: 'black', theme: 'dark' });
+    for (const text of [null, 'x', 'null', '{}', '{"side":"red"}']) {
+      expect(run(text).side).toBeUndefined();
+    }
+    expect(run('{"side":"white"}', 'blocked').side).toBeUndefined();
   });
 
   it("colors the browser's bars as the theme chosen, leaving System's to the device", () => {

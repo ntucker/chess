@@ -36,10 +36,11 @@ const LIGHT = SquareSet.lightSquares();
  */
 export function MiniBoard({ position, orientation, lit, highlight, squareSize }: Props) {
   const pos = position === undefined ? undefined : readPositionKey(position);
-  if (position !== undefined && !pos) return null;
+  if (pos === null) return null;
   // Rows top to bottom and squares left to right, as the side at the bottom sees them.
   const [ranks, files] = orientation === 'white' ? [DOWNWARD, UPWARD] : [UPWARD, DOWNWARD];
-  const square = squareSize === undefined ? styles.fill : { width: squareSize, height: squareSize };
+  const squareStyle =
+    squareSize === undefined ? styles.fill : { width: squareSize, height: squareSize };
   return (
     <View
       style={[styles.board, squareSize === undefined ? styles.full : { width: squareSize * 8 }]}
@@ -54,7 +55,7 @@ export function MiniBoard({ position, orientation, lit, highlight, squareSize }:
               <View
                 key={name}
                 style={[
-                  square,
+                  squareStyle,
                   { backgroundColor: LIGHT.has(index) ? boardColors.light : boardColors.dark },
                 ]}
               >

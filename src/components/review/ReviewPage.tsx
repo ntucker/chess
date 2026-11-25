@@ -30,6 +30,11 @@ const TITLE = 'Review · Opening Night';
 /** Back to the game: history's previous page, or, opened fresh, the lesson the review came from. */
 const back = (lesson?: LessonId) =>
   ({ href: lesson ? lessonHref(lesson) : '/', label: 'Back to the game' }) as const;
+/** What the review of `title`'s lesson is called: its header's place, and its panel's eyebrow. */
+const reviewNames = (title?: string) =>
+  title
+    ? { place: { name: title, parent: 'Review' }, eyebrow: `Review · ${title}` }
+    : { place: { name: 'Review' }, eyebrow: 'Review' };
 
 /**
  * The review of the game the address names, on the board's page: the board
@@ -41,7 +46,10 @@ const back = (lesson?: LessonId) =>
  */
 export function ReviewPage(address: ReviewAddress) {
   return (
-    <BrowserOnly fallback={<ReviewPlaceholder />}>
+    <BrowserOnly
+      // The export can't know the side: the squares alone, which look the same from either.
+      fallback={<ReviewLoading still={{ orientation: 'white' }} />}
+    >
       <AddressedReview {...address} />
     </BrowserOnly>
   );
@@ -50,17 +58,17 @@ export function ReviewPage(address: ReviewAddress) {
 /** The review the address names, or why there is none. */
 function AddressedReview({ moves, side, lesson }: ReviewAddress) {
   if (lesson !== undefined && !isLessonId(lesson)) {
-    return <ReviewPlaceholder message="There is no lesson here." />;
+    return <ReviewMissing message="There is no lesson here." />;
   }
   if (side !== 'white' && side !== 'black') {
-    return <ReviewPlaceholder message={NO_GAME} lesson={lesson} />;
+    return <ReviewMissing message={NO_GAME} lesson={lesson} />;
   }
   const played = addressMoves(moves);
-  if (!played.length) return <ReviewPlaceholder message={NO_GAME} lesson={lesson} />;
+  if (!played.length) return <ReviewMissing message={NO_GAME} lesson={lesson} />;
   return (
     <AsyncBoundary
       // A review opens at the start (`startReview`).
-      fallback={<ReviewPlaceholder lesson={lesson} still={{ moves: [], orientation: side }} />}
+      fallback={<ReviewLoading lesson={lesson} still={{ moves: [], orientation: side }} />}
       errorComponent={ReviewFailure}
     >
       <ReviewScreen moves={played} learner={side} lesson={lesson} />
@@ -90,14 +98,11 @@ function ReviewScreen({
   const phone = useLayout() === 'phone';
   const { page, show } = usePages<PhonePage<'review'>>('review', phone);
   const scoresheetShown = page === 'scoresheet';
-  const eyebrow = picked ? `Review · ${picked.title}` : 'Review';
+  const { place, eyebrow } = reviewNames(picked?.title);
   return (
     <Stage
       title={TITLE}
-      header={{
-        place: picked ? { name: picked.title, parent: 'Review' } : { name: 'Review' },
-        back: back(lesson),
-      }}
+      header={{ place, back: back(lesson) }}
       board={
         <BoardColumn
           game={{
@@ -181,53 +186,57 @@ function ReviewFailure({ error }: { readonly error: Error }) {
   if (error instanceof NewVersionError) {
     return <NewVersionPage detail="Reload to open the review." />;
   }
-  return <ReviewPlaceholder message={error.message} />;
+  return <ReviewMissing message={error.message} />;
 }
 
 /**
- * The review's page before its game is ready, its board `still` (the
- * export can't know the side: the squares alone) and the outline of its panel, or with `message` when it can't be shown. Back goes to
- * `lesson`, when the address names one.
+ * The review's page before its game is ready: its board `still` and the
+ * outline of its panel. Back goes to `lesson`, when the address names one.
  */
-function ReviewPlaceholder({
-  message,
+function ReviewLoading({
   lesson,
-  still = SQUARES,
+  still,
 }: {
-  readonly message?: string;
   readonly lesson?: LessonId;
-  readonly still?: StillGame;
+  readonly still: StillGame;
 }) {
   const index = use(LessonIndexContext);
-  const title = lesson && index[lesson].title;
+  const { place, eyebrow } = reviewNames(lesson && index[lesson].title);
   return (
     <Stage
       title={TITLE}
       // As the review's header will name it: a phone's header carries the panel's eyebrow.
-      header={{
-        place: title ? { name: title, parent: 'Review' } : { name: 'Review' },
-        back: back(lesson),
-      }}
-      board={<BoardColumnPlaceholder still={message ? undefined : still} />}
-      program={
-        message ? (
-          <View style={styles.placeholder}>
-            <StatusHeadline eyebrow="Review" title="Curtain stays down." detail={message} />
-          </View>
-        ) : (
-          <LoadingProgram
-            eyebrow={title ? `Review · ${title}` : 'Review'}
-            label="Setting up the review"
-          />
-        )
-      }
+      header={{ place, back: back(lesson) }}
+      board={<BoardColumnPlaceholder still={still} />}
+      program={<LoadingProgram eyebrow={eyebrow} label="Setting up the review" />}
       // Holds the action bar's room while the review loads, so the board doesn't shrink when it comes.
-      programFoot={message ? undefined : <View />}
+      programFoot={<View />}
     />
   );
 }
 
-/** The squares alone, which look the same from either side. */
-const SQUARES: StillGame = { orientation: 'white' };
+/** The review's page when it can't be shown, and why. Back goes to `lesson`, when named. */
+function ReviewMissing({
+  message,
+  lesson,
+}: {
+  readonly message: string;
+  readonly lesson?: LessonId;
+}) {
+  const index = use(LessonIndexContext);
+  const { place } = reviewNames(lesson && index[lesson].title);
+  return (
+    <Stage
+      title={TITLE}
+      header={{ place, back: back(lesson) }}
+      board={<BoardColumnPlaceholder />}
+      program={
+        <View style={styles.placeholder}>
+          <StatusHeadline eyebrow="Review" title="Curtain stays down." detail={message} />
+        </View>
+      }
+    />
+  );
+}
 
 const styles = StyleSheet.create({ placeholder: { minHeight: 200 } });

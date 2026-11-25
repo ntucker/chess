@@ -233,6 +233,14 @@ export function legalMoveCount(line: readonly string[]): number {
   return countLegalMoves(last!);
 }
 
+/** The key of the position after `line` and the move that reached it, without the rest of the line's steps. */
+export function lastStep(line: readonly string[]): Pick<Step, 'key' | 'move'> {
+  let last: Pick<Step, 'key' | 'move'> | undefined;
+  // Each step is one object, changed by the next: keep what it holds now.
+  for (const { key, move } of playLine(line)) last = { key, move };
+  return last!;
+}
+
 /** `legalMoveCount` of the position `fen`, without replaying the moves to it. */
 export const legalMoveCountAt = (fen: string) => countLegalMoves(parsePosition(fen)!);
 

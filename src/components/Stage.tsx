@@ -31,9 +31,8 @@ import {
 import { Transport } from '@/components/Transport';
 import { useStepKeys } from '@/components/useStepKeys';
 import type { EvaluationEngine } from '@/evaluation/evaluation';
-import { type Color, colorName, opposite, playLine, type Step } from '@/game/replay';
+import { type Color, colorName, lastStep, opposite } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
-import { DEFAULT_SETTINGS } from '@/settings/settings';
 import type { Game } from '@/game/useGame';
 import { narrowLength, narrowStyles } from '@/theme/narrow';
 import {
@@ -232,12 +231,14 @@ function FlickUp({
 /**
  * The board a page opens on, drawn still while the real one loads: the
  * position after `moves`, its last move lit, with `orientation` at the
- * bottom, or `'saved'`, the side the learner last played (`savedSide.ts`).
- * No `moves` draws the squares alone, for a page that can't yet know them.
+ * bottom. No `moves` draws the squares alone, for a page that can't yet know
+ * them. `turnsWithSavedSide` marks a pre-rendered board drawn for the default
+ * side, which the page's head turns for the side the learner saved (`savedSide.ts`).
  */
 export interface StillGame {
   readonly moves?: readonly Uci[];
-  readonly orientation: Color | 'saved';
+  readonly orientation: Color;
+  readonly turnsWithSavedSide?: boolean;
 }
 
 /**
@@ -260,27 +261,18 @@ export function BoardColumnPlaceholder({ still }: { readonly still?: StillGame }
   );
 }
 
-function StillBoard({ moves, orientation }: StillGame) {
+function StillBoard({ moves, orientation, turnsWithSavedSide }: StillGame) {
   const last = moves && lastStep(moves);
-  const saved = orientation === 'saved';
   return (
-    <View {...(saved && SAVED_SIDE_PROPS)}>
+    <View {...(turnsWithSavedSide && SAVED_SIDE_PROPS)}>
       <MiniBoard
         position={last?.key}
-        orientation={saved ? DEFAULT_SETTINGS.side : orientation}
+        orientation={orientation}
         lit={last?.move ? [last.move.from, last.move.to] : []}
         highlight="lastMove"
       />
     </View>
   );
-}
-
-/** The position `moves` reach and the move that reached it. */
-function lastStep(moves: readonly Uci[]) {
-  let last: Pick<Step, 'key' | 'move'> | undefined;
-  // Each step is one object, changed by the next: keep what it holds now.
-  for (const { key, move } of playLine(moves)) last = { key, move };
-  return last;
 }
 
 /**
@@ -334,7 +326,6 @@ const COLUMN_RAISE = BOARD_OFFSET.minus(WRAPPED_GAP);
 // The two start from their widths, not a flexBasis (NATIVE_PARTS in narrow.ts says why).
 const STYLES = narrowStyles((px) => ({
   fill: { flex: 1 },
-  center: { alignItems: 'center', justifyContent: 'center' },
   stage: {
     width: '100%',
     maxWidth: STAGE_MAX,

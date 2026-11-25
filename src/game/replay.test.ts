@@ -11,6 +11,7 @@ import {
   dropMove,
   fenAfter,
   lastPosition,
+  lastStep,
   legalMoveCount,
   legalMoveCountAt,
   lineMove,
@@ -230,5 +231,17 @@ describe('takenRole', () => {
   it('names a pawn for en passant, onto an empty square', () => {
     const fen = 'rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3';
     expect(taken(fen, 'e5f6')).toBe('pawn');
+  });
+});
+
+describe('lastStep', () => {
+  it('gives the start, reached by no move, for no moves', () => {
+    expect(lastStep([])).toEqual({ key: positionKey(Chess.default()), move: undefined });
+  });
+
+  it("gives the line's last position and the move that reached it, not a later step's", () => {
+    const { key, move } = lastStep(['e2e4', 'c7c6']);
+    expect(key).toBe(positionKey(parsePosition(lastPosition(['e2e4', 'c7c6']).fen)!));
+    expect(move).toMatchObject({ from: 'c7', to: 'c6' });
   });
 });
