@@ -638,13 +638,17 @@ describe('checkLesson', () => {
         `positions["${keyAfter('e4', 'c6')}"].moves[1].mistake.line[0]`,
       ]);
       // An illegal book move at the cue is reported, not thrown, whatever the mark holds.
-      for (const mistake of [{}, { verdict: 'losesMaterial' as const }, { line: ['e7e5'] }]) {
-        const replies = [{ uci: 'e7e8', book: true }, { uci: 'e7e5' }];
-        const illegal = withMark(['e4', 'c6', 'g4'], replies, [{ uci: 'd2d4' }], mistake);
-        expect(checkLesson(illegal).map(({ path }) => path)).toContain(
-          `positions["${keyAfter('e4', 'c6', 'g4')}"].moves[0].uci`,
+      const replies = [{ uci: 'e7e8', book: true }, { uci: 'e7e5' }];
+      const illegal = (mistake: Mistake) =>
+        checkLesson(withMark(['e4', 'c6', 'g4'], replies, [{ uci: 'd2d4' }], mistake)).map(
+          ({ path }) => path,
         );
-      }
+      const atCue = `positions["${keyAfter('e4', 'c6', 'g4')}"].moves[0].uci`;
+      const mark = `positions["${keyAfter('e4', 'c6')}"].moves[1].mistake`;
+      expect(illegal({})).toEqual([atCue]);
+      // The guide's line ends before the illegal e7e8, so 2.g4 alone loses no material.
+      expect(illegal({ verdict: 'losesMaterial' })).toEqual([`${mark}.verdict`, atCue]);
+      expect(illegal({ line: ['e7e5'] })).toEqual([atCue, mark]);
       // Past Black's non-book 2...h6, no clean run reaches 3.g4?'s cue, so 3...h5 needn't be booked.
       expect(checkLesson(withMark(['e4', 'c6', 'd4', 'h6', 'g4'], [{ uci: 'h6h5' }]))).toEqual([]);
     });

@@ -23,6 +23,10 @@ const NXA6 = { uci: uci('e4', 'e5', 'Ba6', 'Nxa6'), games: [0, 0, 0, 0, 90] };
 const BXA6 = { uci: uci('e4', 'e5', 'Ba6', 'bxa6'), games: [0, 0, 0, 0, 10] };
 
 describe('mistakeLine', () => {
+  it('ends the line before an illegal guide move, which the checker reports', () => {
+    expect(lineOf(lesson([{ uci: 'e7e8', book: true }]))).toEqual([uci('e4', 'e5', 'Ba6')]);
+  });
+
   it("follows the learner's book move where it punishes, over a more played one", () => {
     expect(lineOf(lesson([NXA6, { ...BXA6, book: true }]))).toEqual(
       uciLine('e4', 'e5', 'Ba6', 'bxa6').slice(2),

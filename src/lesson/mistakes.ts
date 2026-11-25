@@ -87,8 +87,8 @@ export function mistakeLine(lesson: Lesson, key: PositionKey, move: LessonMove):
  * The line a mark on `uci` at `key` starts by the guide's choice rule alone
  * (`guideOrder`), whatever line the mark stores: `uci`, then at each position
  * the first of the guide's moves there, ending where the guide has no move to
- * pick, before an illegal one (which the checker reports), or once it comes
- * back to a position it passed.
+ * pick, before any illegal move (`uci` included, giving none; the checker
+ * reports it), or once it comes back to a position it passed.
  */
 export function guideLine(lesson: Lesson, key: PositionKey, uci: Uci): Uci[] {
   const pos = readPositionKey(key)!;
