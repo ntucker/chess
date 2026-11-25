@@ -1,5 +1,6 @@
 import type { Theme as ThemeChoice } from '@/settings/settings';
 
+import { BAR_COLORS, barMedia } from './barColor';
 import { cssVariables } from './cssVariables';
 
 // How the web shows the theme: every color a CSS variable (cssVariables.ts),
@@ -14,9 +15,16 @@ export const shownThemes = { light: light.theme, dark: dark.theme };
 // The same variables in both schemes, so no need to read which is shown.
 export const useSchemeColors = () => light.schemeColors;
 
-/** Pins <html data-theme>, which picks the variables' values, to the learner's theme. */
+/**
+ * Pins <html data-theme>, which picks the variables' values, and the browser's
+ * bars (barColor.ts) to the learner's theme.
+ */
 export function pinTheme(theme: ThemeChoice) {
   const { dataset } = document.documentElement;
   if (theme === 'system') delete dataset.theme;
   else dataset.theme = theme;
+  for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name=theme-color]')) {
+    const own = meta.media === barMedia('dark') ? 'dark' : 'light';
+    meta.content = BAR_COLORS[theme === 'system' ? own : theme];
+  }
 }
