@@ -171,10 +171,8 @@ export function BoardColumn({
   const endingFen = ending && board.fen;
   const [aside, setAside] = useState<CardAside>();
   if (aside && aside.at !== endingFen) setAside(undefined);
-  // Until the board has painted (a pre-rendered page before its script runs,
-  // Android's web view while it boots), the frame shows the game still. Android
-  // shows a web view's paint up to half a second after it happens, so the still
-  // board stays a while longer, out of sight under the board.
+  // Until the board shows (a pre-rendered page before its script runs,
+  // Android's web view while it boots), the frame shows the game still.
   const [drawn, setDrawn] = useState(false);
   const still = drawn ? undefined : { moves: moves.slice(0, ply), orientation: side };
   return (
@@ -198,7 +196,7 @@ export function BoardColumn({
         <BoardFrame still={still}>
           <Board
             {...board}
-            onDrawn={() => setTimeout(() => setDrawn(true), SHOWN_AFTER_PAINT_MS)}
+            onDrawn={() => setDrawn(true)}
             onMove={(from, to) => {
               haptic('moveLanded');
               board.onMove(from, to);
@@ -329,8 +327,6 @@ function BoardFrame({
   );
 }
 
-/** How long after a board's paint it surely shows: Android's web view took up to ~0.5 s (#255). */
-const SHOWN_AFTER_PAINT_MS = 1000;
 /** The evaluation bar's width: a thin strip on a narrow page. */
 const EVALUATION_BAR_WIDTH = narrowLength('evaluation-width', 22);
 /** The program's largest width. */

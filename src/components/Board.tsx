@@ -89,12 +89,16 @@ export interface BoardProps {
    */
   readonly onEndingPointer?: (pointer: BoardPointer) => void;
   /**
-   * The board has painted its first position (on Android, once its web view
-   * has booted), so a still board drawn under it while it loads can go.
+   * The board's first position is surely on screen (on Android, once its web
+   * view has booted and shown its paint), so a still board drawn under it while
+   * it loads can go.
    */
   readonly onDrawn?: () => void;
   readonly dom?: DOMProps;
 }
+
+/** How long after a paint it surely shows: Android's web view took up to ~0.5 s. */
+const SHOWN_MS = 1000;
 
 export default function Board({
   fen,
@@ -245,16 +249,22 @@ export default function Board({
       drawable: { brushes: toneBrushes as DrawBrushes },
     });
     api.current = board;
-    // The first paint is reported once, after the board has a size to draw
-    // in: a frame's callbacks run before it paints, so the second frame's run
-    // after the first's paint.
+    // The first paint is reported once, after the board has painted at a
+    // size: a frame's callbacks run before it paints, so the second frame's
+    // run after the first's paint. Android shows a web view's paint up to half
+    // a second after it happens (#255), so the report waits SHOWN_MS more.
     let paintFrame = 0;
+    let shownTimer: ReturnType<typeof setTimeout> | undefined;
     let paintReported = false;
     const reportPaint = () => {
       if (paintReported || !sized.current) return;
       paintReported = true;
       paintFrame = requestAnimationFrame(() => {
-        paintFrame = requestAnimationFrame(handleDrawn);
+        paintFrame = requestAnimationFrame(() => {
+          // Hidden again before it painted: the next size reports it.
+          if (!sized.current) paintReported = false;
+          else shownTimer = setTimeout(handleDrawn, SHOWN_MS);
+        });
       });
     };
     const { width, height } = target.getBoundingClientRect();
@@ -285,6 +295,7 @@ export default function Board({
     const stopWatchingEnding = watchBoardPointer(target, showsEnding, handleEndingPointer);
     return () => {
       cancelAnimationFrame(paintFrame);
+      clearTimeout(shownTimer);
       cancelAnimationFrame(frame.current);
       target.removeEventListener('pointerdown', notePick, { capture: true });
       stopWatching();

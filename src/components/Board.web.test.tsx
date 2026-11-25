@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
@@ -81,15 +81,26 @@ beforeEach(() => {
 afterEach(() => act(() => root.unmount()));
 
 describe('a board drawing its first position', () => {
-  it('says so once, after it has painted, so a still board under it can go', () => {
+  // Timers are played by hand too; animation frames stay as above.
+  beforeEach(() =>
+    jest.useFakeTimers({ doNotFake: ['requestAnimationFrame', 'cancelAnimationFrame'] }),
+  );
+  afterEach(() => jest.useRealTimers());
+  /** Time passing by `ms`. */
+  const wait = (ms: number) => act(() => jest.advanceTimersByTime(ms));
+
+  it('says so once its paint surely shows, so a still board under it can go', () => {
     let drawn = 0;
     act(() => root.render(<Board {...board()} onDrawn={() => drawn++} />));
     // Its first frame paints it; the next frame's callbacks come after that paint.
     frame();
-    expect(drawn).toBe(0);
     frame();
+    wait(999);
+    expect(drawn).toBe(0);
+    wait(1);
     expect(drawn).toBe(1);
     frame();
+    wait(1000);
     expect(drawn).toBe(1);
   });
 
@@ -99,11 +110,27 @@ describe('a board drawing its first position', () => {
     act(() => root.render(<Board {...board()} onDrawn={() => drawn++} />));
     frame();
     frame();
+    wait(1000);
     expect(drawn).toBe(0);
     resize(320);
     frame();
-    expect(drawn).toBe(0);
     frame();
+    wait(1000);
+    expect(drawn).toBe(1);
+  });
+
+  it('waits again when hidden before it painted', () => {
+    let drawn = 0;
+    act(() => root.render(<Board {...board()} onDrawn={() => drawn++} />));
+    frame();
+    resize(0);
+    frame();
+    wait(1000);
+    expect(drawn).toBe(0);
+    resize(320);
+    frame();
+    frame();
+    wait(1000);
     expect(drawn).toBe(1);
   });
 });
