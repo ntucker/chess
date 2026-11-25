@@ -162,9 +162,9 @@ export interface Acts {
    */
   readonly live: boolean;
   /**
-   * The lesson opponent waits: the board's latest move is a try at the cue
-   * that hasn't passed, so a wrong try gets no reply (the learner retries,
-   * skips, or plays the reply themselves).
+   * The lesson opponent waits, and the board takes no move: the board's
+   * latest move is a try at the cue that hasn't passed, so a wrong try gets
+   * no reply until the learner retries, is shown the move, or skips.
    */
   readonly held: boolean;
 }

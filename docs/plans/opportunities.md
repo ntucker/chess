@@ -352,8 +352,9 @@ the cue. Design review outcome (2026-11-25, agreed with the planning thread):
   the one before the mistake. A search given up leaves the try unchecked, shown as not passed.
 - While the board's latest move is a try at the cue that hasn't passed, the lesson opponent is held
   (`Acts.held`: `useLesson` gives `useGame` no opponent), so a wrong try gets no reply and no effect
-  plays a pass. While the verdict is pending the board takes no move, and only the search it
-  waits on is watched, while the screen is in front. Retry goes back to the cue;
+  plays a pass. While a try is held the board takes no move, so it ends only by passing, Retry,
+  Show the move or Skip. While its verdict is pending only the search it waits on is watched,
+  while the screen is in front. Retry goes back to the cue;
   the next move there replaces the try.
 - The one stored value is `ScreenState.cue`: the learner's choice at a cue (shown or skipped), with
   the cue's ply and key, kept while the game's line still reaches it. The line can't tell either

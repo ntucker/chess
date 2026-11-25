@@ -125,6 +125,8 @@ describe('useLesson at a cue', () => {
     await replyTime();
     expect(lesson().game.moves).toHaveLength(10);
     expect(lesson().acts).toMatchObject({ found: 'failed', held: true });
+    // Nor can the learner play the opponent's move for it.
+    expect(lesson().canPlay).toBe(false);
     await act(async () => lesson().retryCue());
     expect(lesson().game.ply).toBe(9);
     expect(lesson().acts).toMatchObject({ found: 'open', live: true });

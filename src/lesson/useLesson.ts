@@ -131,7 +131,7 @@ export function useLesson(
     on: mode === 'explore' && !picking,
     focused,
   });
-  // A try at a cue waiting for its verdict: nothing moves until it comes.
+  // A try at a cue waiting for its verdict, whose searches come first.
   const waiting = acts?.found === 'pending';
   // Through the payoff the opponent plays the line's moves.
   const payoffCue = acts?.payoff === 'playing' ? acts.cue : undefined;
@@ -158,9 +158,9 @@ export function useLesson(
   const { ply, plies, current } = game;
   // The store drops a move made while a lesson loads, so the board offers
   // none: chessground would show the dropped move until the lesson arrived.
-  // Nor while a try at a cue waits for its verdict: the next move would be
-  // the opponent's, held until then.
-  const canMove = game.canMove && !pending && !waiting;
+  // Nor while a try at a cue is held (`Acts.held`): the next move is the
+  // opponent's, and it waits for the try to pass, a retry or a skip.
+  const canMove = game.canMove && !pending && !acts?.held;
   // A move played before the learner's first starts a Practice run
   // (`modeReducer`); the moves that pick the opening are no move of theirs.
   const picks = useMemo(() => pickingMoves(index, lesson.side, moves), [index, lesson.side, moves]);
