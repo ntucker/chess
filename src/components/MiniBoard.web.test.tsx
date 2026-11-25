@@ -24,13 +24,13 @@ const AFTER_E4 = lineKeys(uciLine('e4'))[1];
  * Each square's piece (or ''), whether it is lit, and whether the piece paints
  * above the tint (positioned, and after it), top left to bottom right.
  */
-function squares(orientation: 'white' | 'black') {
+function squares(orientation: 'white' | 'black', position: string | undefined) {
   const host = document.createElement('div');
   const root = createRoot(host);
   act(() =>
     root.render(
       <MiniBoard
-        position={AFTER_E4}
+        position={position}
         orientation={orientation}
         lit={['e2', 'e4']}
         highlight="lastMove"
@@ -42,13 +42,15 @@ function squares(orientation: 'white' | 'black') {
     [...square.children].some(
       (child) => getComputedStyle(child).backgroundColor === toRgb(boardColors.lastMove),
     );
-  const result = [...host.firstElementChild!.children].map((square) => ({
-    piece: square.querySelector('i')?.title ?? '',
-    lit: lit(square),
-    pieceOnTop:
-      !!square.lastElementChild?.querySelector('i') &&
-      getComputedStyle(square.lastElementChild).position === 'absolute',
-  }));
+  const result = [...host.firstElementChild!.children]
+    .flatMap((rank) => [...rank.children])
+    .map((square) => ({
+      piece: square.querySelector('i')?.title ?? '',
+      lit: lit(square),
+      pieceOnTop:
+        !!square.lastElementChild?.querySelector('i') &&
+        getComputedStyle(square.lastElementChild).position === 'absolute',
+    }));
   act(() => root.unmount());
   return result;
 }
@@ -62,7 +64,7 @@ function toRgb(color: string): string {
 
 describe('MiniBoard', () => {
   it('shows the position as White sees it, with the lit squares', () => {
-    const board = squares('white');
+    const board = squares('white', AFTER_E4);
     expect(board).toHaveLength(64);
     expect(board[0].piece).toBe('black rook'); // a8
     expect(board[4].piece).toBe('black king'); // e8
@@ -74,10 +76,36 @@ describe('MiniBoard', () => {
   });
 
   it('turns it round for Black', () => {
-    const board = squares('black');
+    const board = squares('black', AFTER_E4);
     expect(board[0].piece).toBe('white rook'); // h1
     expect(board[3].piece).toBe('white king'); // e1
     expect(board[63].piece).toBe('black rook'); // a8
     expect(board.flatMap((square, n) => (square.lit ? [n] : []))).toEqual([11, 27]);
+  });
+
+  it('draws the squares alone with no position', () => {
+    const board = squares('white', undefined);
+    expect(board).toHaveLength(64);
+    expect(board.every((square) => square.piece === '')).toBe(true);
+  });
+
+  it('fills its parent with no square size', () => {
+    const host = document.createElement('div');
+    const root = createRoot(host);
+    act(() =>
+      root.render(
+        <MiniBoard position={AFTER_E4} orientation="white" lit={[]} highlight="lastMove" />,
+      ),
+    );
+    const board = host.firstElementChild as HTMLElement;
+    const ranks = [...board.children] as HTMLElement[];
+    expect(getComputedStyle(board).width).toBe('100%');
+    expect(ranks).toHaveLength(8);
+    // Each rank's eight squares share its width.
+    for (const rank of ranks) {
+      expect(rank.children).toHaveLength(8);
+      for (const square of rank.children) expect(getComputedStyle(square).flexGrow).toBe('1');
+    }
+    act(() => root.unmount());
   });
 });

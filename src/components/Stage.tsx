@@ -9,6 +9,8 @@ import Board, { type BoardProps } from '@/components/Board';
 import { EndingCard } from '@/components/EndingCard';
 import { EvaluationBar } from '@/components/EvaluationBar';
 import { haptic } from '@/components/haptics';
+import { MiniBoard } from '@/components/MiniBoard';
+import { SAVED_SIDE_PROPS } from '@/components/savedSide';
 import type { HeaderProps } from '@/components/Header';
 import { Page } from '@/components/Page';
 import { PlayerBar } from '@/components/PlayerBar';
@@ -29,7 +31,9 @@ import {
 import { Transport } from '@/components/Transport';
 import { useStepKeys } from '@/components/useStepKeys';
 import type { EvaluationEngine } from '@/evaluation/evaluation';
-import { colorName, opposite } from '@/game/replay';
+import { type Color, colorName, opposite, playLine, type Step } from '@/game/replay';
+import type { Uci } from '@/lesson/lesson';
+import { DEFAULT_SETTINGS } from '@/settings/settings';
 import type { Game } from '@/game/useGame';
 import { narrowLength, narrowStyles } from '@/theme/narrow';
 import {
@@ -226,23 +230,57 @@ function FlickUp({
 }
 
 /**
- * Where the board column stands while what it shows loads: the frame and the
- * space around it, so nothing moves when the board arrives.
+ * The board a page opens on, drawn still while the real one loads: the
+ * position after `moves`, its last move lit, with `orientation` at the
+ * bottom, or `'saved'`, the side the learner last played (`savedSide.ts`).
+ * No `moves` draws the squares alone, for a page that can't yet know them.
  */
-export function BoardColumnPlaceholder({ children }: { readonly children?: ReactNode }) {
+export interface StillGame {
+  readonly moves?: readonly Uci[];
+  readonly orientation: Color | 'saved';
+}
+
+/**
+ * Where the board column stands while what it shows loads: the frame and the
+ * space around it, so nothing moves when the board arrives, with `still`'s
+ * board in the frame. None leaves the frame empty, as when the page can't be
+ * shown.
+ */
+export function BoardColumnPlaceholder({ still }: { readonly still?: StillGame }) {
   const styles = useNarrowStyles(STYLES);
   return (
     <>
       <View style={styles.namesBar} />
       <View style={styles.boardRow}>
         <View style={styles.evaluation} />
-        <BoardFrame>
-          <View style={[styles.fill, styles.center]}>{children}</View>
-        </BoardFrame>
+        <BoardFrame>{still ? <StillBoard {...still} /> : null}</BoardFrame>
       </View>
       <View style={styles.controlsBar} />
     </>
   );
+}
+
+function StillBoard({ moves, orientation }: StillGame) {
+  const last = moves && lastStep(moves);
+  const saved = orientation === 'saved';
+  return (
+    <View {...(saved && SAVED_SIDE_PROPS)}>
+      <MiniBoard
+        position={last?.key}
+        orientation={saved ? DEFAULT_SETTINGS.side : orientation}
+        lit={last?.move ? [last.move.from, last.move.to] : []}
+        highlight="lastMove"
+      />
+    </View>
+  );
+}
+
+/** The position `moves` reach and the move that reached it. */
+function lastStep(moves: readonly Uci[]) {
+  let last: Pick<Step, 'key' | 'move'> | undefined;
+  // Each step is one object, changed by the next: keep what it holds now.
+  for (const { key, move } of playLine(moves)) last = { key, move };
+  return last;
 }
 
 /**

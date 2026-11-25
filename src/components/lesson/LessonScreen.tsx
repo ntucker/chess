@@ -1,6 +1,5 @@
 import { AsyncBoundary, useFetch, useSuspense } from '@data-client/react';
-import { Spinner } from '@reactive/silk-native';
-import { useMemo, useState } from 'react';
+import { use, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
@@ -11,14 +10,15 @@ import { OpponentPicker } from '@/components/OpponentPicker';
 import type { PhonePage } from '@/components/PhonePages';
 import { ScoresheetOpener } from '@/components/ScoresheetPage';
 import { resetListener } from '@/components/resetListener';
-import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
+import { LoadingProgram } from '@/components/LoadingProgram';
+import { BoardColumn, BoardColumnPlaceholder, Stage, type StillGame } from '@/components/Stage';
 import { useBackToReview } from '@/components/useBackToReview';
 import { useLongWait } from '@/components/useLongWait';
 import { useNavigating } from '@/components/navigation';
 import { usePages } from '@/components/usePages';
 import { NewVersionError } from '@/files/newVersion';
 import type { VariationId } from '@/lesson/lesson';
-import { getLesson, isLessonId, type LessonId } from '@/resources/lesson';
+import { getLesson, isLessonId, LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { getProgress } from '@/resources/progress';
 import { useLayout } from '@/theme/Narrow';
 
@@ -26,7 +26,7 @@ import { AutoPlay } from './AutoPlay';
 import { PhoneLesson } from './layouts/PhoneLesson';
 import { WideLesson } from './layouts/WideLesson';
 import { LessonSettings } from './LessonSettings';
-import { LOADING } from './status';
+import { LOADING, OPENINGS_TITLE } from './status';
 import { SourceCredits } from './SourceCredits';
 import { type LessonScreenInput, useLessonScreen } from './useLessonScreen';
 import { useOpeningsGame } from './useOpeningsGame';
@@ -52,11 +52,26 @@ export function LessonPage({
   /** The history entry the address is (`useOpeningsGame`). */
   readonly entry?: string;
 }) {
+  const index = use(LessonIndexContext);
   if (id !== undefined && !isLessonId(id)) {
     return <LessonPlaceholder message="There is no lesson here." />;
   }
+  // The export knows the lesson's address but not its search params: the
+  // lesson's first line, or at the start, the side the learner saved.
+  const known = id === undefined ? undefined : index[id];
   return (
-    <BrowserOnly fallback={<LessonPlaceholder />}>
+    <BrowserOnly
+      fallback={
+        <LessonPlaceholder
+          eyebrow={known?.title}
+          still={
+            known
+              ? { moves: known.lines[0].moves, orientation: known.side }
+              : { moves: [], orientation: 'saved' }
+          }
+        />
+      }
+    >
       <Openings address={id} variation={variation} moves={moves} entry={entry} />
     </BrowserOnly>
   );
@@ -98,11 +113,19 @@ function Openings({
   // A failed lesson clears once the page shows another (Back to the start).
   // A `key` would remount the page and lose the game, so the boundary resets.
   const resetOnLesson = useMemo(() => resetListener(lesson), [lesson]);
+  const index = use(LessonIndexContext);
+  const [game] = store;
   return (
     <AsyncBoundary
       // Untitled: React renders this fallback, uncommitted, whenever a lesson
       // loads in the background, and the tab's title would take it.
-      fallback={<LessonPlaceholder untitled />}
+      fallback={
+        <LessonPlaceholder
+          untitled
+          eyebrow={lesson && index[lesson].title}
+          still={{ moves: game.moves.slice(0, game.ply), orientation: side }}
+        />
+      }
       errorComponent={LessonFailure}
       listen={resetOnLesson}
     >
@@ -216,33 +239,40 @@ function LessonFailure({ error }: { readonly error: Error }) {
 }
 
 /**
- * The lesson page before the lesson arrives, or with `message` when it can't
- * be shown; `untitled` leaves the tab's title as it is.
+ * The lesson page before the lesson arrives, its board `still` and the
+ * outline of its panel under `eyebrow` (none: the openings), or with
+ * `message` when it can't be shown; `untitled` leaves the tab's title as it is.
  */
 function LessonPlaceholder({
   message,
   untitled,
+  eyebrow = OPENINGS_TITLE,
+  still,
 }: {
   readonly message?: string;
   readonly untitled?: boolean;
+  readonly eyebrow?: string;
+  readonly still?: StillGame;
 }) {
   return (
     <Stage
-      title={untitled ? undefined : 'Lesson · Opening Night'}
-      board={
-        <BoardColumnPlaceholder>
-          {message ? null : <Spinner label="Loading the lesson" />}
-        </BoardColumnPlaceholder>
-      }
+      title={untitled ? undefined : `${message ? 'Lesson' : eyebrow} · Opening Night`}
+      // As the lesson's header will name it: a phone's header carries the panel's eyebrow.
+      header={message ? undefined : { place: { name: eyebrow } }}
+      board={<BoardColumnPlaceholder still={message ? undefined : still} />}
       program={
-        <View style={styles.placeholder}>
-          <StatusHeadline
-            eyebrow="Lesson"
-            title={message ? 'Curtain stays down.' : LOADING.title}
-            detail={message ?? LOADING.detail}
-            news="all"
-          />
-        </View>
+        message ? (
+          <View style={styles.placeholder}>
+            <StatusHeadline
+              eyebrow="Lesson"
+              title="Curtain stays down."
+              detail={message}
+              news="all"
+            />
+          </View>
+        ) : (
+          <LoadingProgram eyebrow={eyebrow} label={LOADING.detail} />
+        )
       }
     />
   );

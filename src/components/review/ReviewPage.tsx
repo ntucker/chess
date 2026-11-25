@@ -1,5 +1,4 @@
 import { AsyncBoundary, useSuspense } from '@data-client/react';
-import { Spinner } from '@reactive/silk-native';
 import { useIsFocused } from 'expo-router';
 import { use } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -10,7 +9,8 @@ import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import type { PhonePage } from '@/components/PhonePages';
 import { ScoresheetOpener } from '@/components/ScoresheetPage';
-import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
+import { LoadingProgram } from '@/components/LoadingProgram';
+import { BoardColumn, BoardColumnPlaceholder, Stage, type StillGame } from '@/components/Stage';
 import { usePages } from '@/components/usePages';
 import { NewVersionError } from '@/files/newVersion';
 import { type Color, colorName, dropMove, fenAfter, opposite } from '@/game/replay';
@@ -58,7 +58,11 @@ function AddressedReview({ moves, side, lesson }: ReviewAddress) {
   const played = addressMoves(moves);
   if (!played.length) return <ReviewPlaceholder message={NO_GAME} lesson={lesson} />;
   return (
-    <AsyncBoundary fallback={<ReviewPlaceholder lesson={lesson} />} errorComponent={ReviewFailure}>
+    <AsyncBoundary
+      // A review opens at the start (`startReview`).
+      fallback={<ReviewPlaceholder lesson={lesson} still={{ moves: [], orientation: side }} />}
+      errorComponent={ReviewFailure}
+    >
       <ReviewScreen moves={played} learner={side} lesson={lesson} />
     </AsyncBoundary>
   );
@@ -181,38 +185,49 @@ function ReviewFailure({ error }: { readonly error: Error }) {
 }
 
 /**
- * The review's page before its game is ready, or with `message` when it
- * can't be shown. Back goes to `lesson`, when the address names one.
+ * The review's page before its game is ready, its board `still` (the
+ * export can't know the side: the squares alone) and the outline of its panel, or with `message` when it can't be shown. Back goes to
+ * `lesson`, when the address names one.
  */
 function ReviewPlaceholder({
   message,
   lesson,
+  still = SQUARES,
 }: {
   readonly message?: string;
   readonly lesson?: LessonId;
+  readonly still?: StillGame;
 }) {
+  const index = use(LessonIndexContext);
+  const title = lesson && index[lesson].title;
   return (
     <Stage
       title={TITLE}
-      header={{ place: { name: 'Review' }, back: back(lesson) }}
-      board={
-        <BoardColumnPlaceholder>
-          {message ? null : <Spinner label="Setting up the review" />}
-        </BoardColumnPlaceholder>
-      }
+      // As the review's header will name it: a phone's header carries the panel's eyebrow.
+      header={{
+        place: title ? { name: title, parent: 'Review' } : { name: 'Review' },
+        back: back(lesson),
+      }}
+      board={<BoardColumnPlaceholder still={message ? undefined : still} />}
       program={
-        <View style={styles.placeholder}>
-          <StatusHeadline
-            eyebrow="Review"
-            title={message ? 'Curtain stays down.' : 'Setting the stage…'}
-            detail={message ?? 'The review is on its way.'}
+        message ? (
+          <View style={styles.placeholder}>
+            <StatusHeadline eyebrow="Review" title="Curtain stays down." detail={message} />
+          </View>
+        ) : (
+          <LoadingProgram
+            eyebrow={title ? `Review · ${title}` : 'Review'}
+            label="Setting up the review"
           />
-        </View>
+        )
       }
       // Holds the action bar's room while the review loads, so the board doesn't shrink when it comes.
       programFoot={message ? undefined : <View />}
     />
   );
 }
+
+/** The squares alone, which look the same from either side. */
+const SQUARES: StillGame = { orientation: 'white' };
 
 const styles = StyleSheet.create({ placeholder: { minHeight: 200 } });
