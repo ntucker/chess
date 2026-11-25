@@ -6,7 +6,8 @@
  * cue's accepted replies and the learner's Act III moves become book moves,
  * the opponent's Act III moves ordinary ones; the marker stores its line only
  * where the guide's choice rule wouldn't give it. `addPathCounts` then writes
- * the explorer's counts and totals on every position of a find's path.
+ * the explorer's counts and totals on every position of the line each find's
+ * mark plays.
  *
  * The finds come from one band's run (`FIND_BAND`, the report's), so a mistake
  * common only in another band is not written; each find's gain is still
@@ -15,6 +16,7 @@
 import { isFinal } from '@/evaluation/evaluation';
 import { playLine, positionKey } from '@/game/replay';
 import type { Lesson, LessonMove, LessonPosition, PositionKey, Uci } from '@/lesson/lesson';
+import { mistakeLine } from '@/lesson/mistakes';
 import { cueGain, type Find } from '@/opportunity/finder';
 import { LIMITS } from '@/opportunity/limits';
 import { type Context, walkTo } from '@/opportunity/walk';
@@ -85,13 +87,16 @@ async function gainByBand(
   return gains;
 }
 
-/** The moves of a find from the start: Act I, the mistake, its best reply and Act III. */
-const pathOf = ({ line, mistake, replies, payoff }: Find): Uci[] => [
-  ...line,
-  mistake,
-  replies[0],
-  ...payoff,
-];
+/**
+ * The moves `find`'s mark plays in `lesson`, from the start: Act I, then the
+ * mistake's line (`mistakeLine`). That is the find's best reply and Act III,
+ * or the guide's line where the guide already marked the mistake.
+ */
+function markedPath(lesson: Lesson, find: Find): Uci[] {
+  const at = [...playLine(find.line, startOf(lesson))].at(-1)!.key;
+  const mark = lesson.positions[at].moves.find((move) => move.uci === find.mistake)!;
+  return [...find.line, ...mistakeLine(lesson, at, mark)];
+}
 
 type Entry = Omit<LessonPosition, 'moves'> & { moves: LessonMove[] };
 
@@ -161,12 +166,11 @@ export function withFinds(lesson: Lesson, finds: readonly LessonFind[]): Lesson 
 }
 
 /**
- * `lesson` with the lichess counts on every position of its tree a move of
- * `finds`' paths is played in: each move's games and the games reaching the
- * position, per band, from one explorer answer each (asked with its total).
- * A find whose mistake the guide already marked keeps the guide's line, so its
- * own path can leave the tree. Popularity, which runs after, keeps the counts
- * where it doesn't ask.
+ * `lesson` (with `finds` written in) with the lichess counts on every position
+ * a move of a find's marked path (`markedPath`) is played in: each move's games
+ * and the games reaching the position, per band, from one explorer answer each
+ * (asked with its total). Popularity, which runs after, keeps the counts where
+ * it doesn't ask.
  */
 export async function addPathCounts(
   lesson: Lesson,
@@ -176,8 +180,8 @@ export async function addPathCounts(
   const keys = new Set<PositionKey>();
   for (const { find } of finds) {
     // Every position but the last, where no path move is played.
-    for (const { key } of [...playLine(pathOf(find), startOf(lesson))].slice(0, -1))
-      if (lesson.positions[key]) keys.add(key);
+    for (const { key } of [...playLine(markedPath(lesson, find), startOf(lesson))].slice(0, -1))
+      keys.add(key);
   }
   const positions = { ...lesson.positions };
   for (const key of keys) {

@@ -151,7 +151,7 @@ describe('addPathCounts', () => {
     expect(counted.positions[keyAfter('e4', 'e5', 'Ba6', 'bxa6', 'Nf3', 'Nc6')]).toBeUndefined();
   });
 
-  it('counts only the positions of the tree where the guide already marked the mistake', async () => {
+  it("counts the guide's line where the guide already marked the mistake", async () => {
     const lesson = lessonWith({
       [keyAfter('e4', 'e5')]: at([
         { uci: uci('e4', 'e5', 'Nf3') },
@@ -163,7 +163,7 @@ describe('addPathCounts', () => {
       asked.add(key);
       return { counts: {}, total: 0 };
     };
-    // The guide's line ends at 2.Ba6, so the find's own path past it is not in the tree.
+    // The mark plays the guide's line, which ends at 2.Ba6: the find's own Act III is never counted.
     await addPathCounts(withFinds(lesson, [BA6]), [BA6], explorer);
     expect([...asked].sort()).toEqual([keyAfter(), keyAfter('e4'), keyAfter('e4', 'e5')].sort());
   });

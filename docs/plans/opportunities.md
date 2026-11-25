@@ -396,7 +396,9 @@ with the planning thread 2026-11-25):
   The walk itself still reads B's `<id>-opportunities-explorer.jsonl`, whose answers have no total,
   so the finder's shares are over the listed moves while the written gains are over each position's
   games. On the Stafford lesson the two agree: every written 1400 gain equals the report's to the
-  point.
+  point (checked 2026-11-25 against `yarn opportunities stafford`).
+- The counts go on the line each mark plays (`mistakeLine`): the find's own path, except where the
+  guide already marked the mistake (a migrated trap), whose mark keeps the guide's line.
 - The step needs popularity: `--no-popularity` skips it, since gains are per rating band.
 - Costs and gains are stored to a thousandth.
 
