@@ -150,7 +150,8 @@ const SYSTEM_BAR_ICONS = `
     val dark =
       resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
         Configuration.UI_MODE_NIGHT_YES
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+    // Android 11 takes the older flags, as React Native's own bar code does there.
+    if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) {
       val light =
         WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
           WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
