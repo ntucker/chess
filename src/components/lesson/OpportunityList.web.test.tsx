@@ -6,7 +6,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import type { Uci } from '@/lesson/lesson';
-import { readShippedLesson } from '@/lesson/lesson.fixture';
+import { readShippedLesson, uciLine } from '@/lesson/lesson.fixture';
 import { lessonOpportunities } from '@/lesson/opportunities';
 import type { Find } from '@/opportunity/finder';
 import { positionHash, UNTOUCHED } from '@/progress/progress';
@@ -65,11 +65,12 @@ const FIND: Find = {
 };
 
 /** Scholar's mate as a find: 3...Nf6?, punished by 4.Qxf7#. */
+const SCHOLAR = uciLine('e4', 'e5', 'Bc4', 'Nc6', 'Qh5', 'Nf6', 'Qxf7#');
 const MATE: Find = {
   ...FIND,
-  line: ['e2e4', 'e7e5', 'f1c4', 'b8c6', 'd1h5'],
-  mistake: 'g8f6',
-  replies: ['h5f7'],
+  line: SCHOLAR.slice(0, 5),
+  mistake: SCHOLAR[5],
+  replies: [SCHOLAR[6]],
   payoff: [],
 };
 
@@ -103,12 +104,13 @@ function render<T>(props: Partial<Props>, read: (host: HTMLElement) => T): T {
   return result;
 }
 
-const labels = (props: Partial<Props> = {}) =>
-  render(props, (host) =>
-    [...host.querySelectorAll('[role="button"]')]
-      .map((row) => row.getAttribute('aria-label'))
-      .filter((label) => label !== FIND_TIP),
-  );
+/** The aria-labels of the list's rows in `host`, leaving out the finder's button. */
+const labelsIn = (host: HTMLElement) =>
+  [...host.querySelectorAll('[role="button"]')]
+    .map((row) => row.getAttribute('aria-label'))
+    .filter((label) => label !== FIND_TIP);
+
+const labels = (props: Partial<Props> = {}) => render(props, labelsIn);
 
 const text = (props: Partial<Props>) => render(props, (host) => host.textContent ?? '');
 
@@ -182,10 +184,17 @@ describe('OpportunityList', () => {
     expect(searching).toContain('the first finds take a few minutes');
     expect(searching).not.toContain('No opportunity found');
     expect(text({})).toContain('No opportunity found from here.');
-    const elsewhere = text({
-      finder: { ...DONE, from: 'elsewhere', run: { finds: [], running: false } },
-    });
-    expect(elsewhere).toContain('From another position');
-    expect(elsewhere).not.toContain('No opportunity found');
+    const elsewhere = render(
+      { finder: { ...DONE, from: 'elsewhere', run: { finds: [FIND], running: false } } },
+      (host) => ({ text: host.textContent ?? '', labels: labelsIn(host) }),
+    );
+    expect(elsewhere.text).toContain('From another position');
+    expect(elsewhere.labels.at(-1)).toMatch(/^7\.\.\.Bg4/);
+    // A run whose only find the lesson already lists found something: no "nothing found".
+    const [first] = ranked;
+    const again: Find = { ...FIND, line: first.line.slice(0, -1), mistake: first.line.at(-1)! };
+    expect(text({ finder: { ...DONE, run: { finds: [again], running: false } } })).not.toContain(
+      'No opportunity found',
+    );
   });
 });

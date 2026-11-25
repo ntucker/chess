@@ -145,7 +145,7 @@ function FinderPart({
   // Each row replays its line: once per run's answer, not per render.
   const found = useMemo(() => run.finds.map(findRow), [run.finds]);
   const rows = found.filter((row) => !listed.has(lineKey(row)));
-  const nothing = from === 'here' && !run.running && !rows.length;
+  const nothing = from === 'here' && !run.running && !found.length;
   return (
     <View>
       <Inline gap="2" align="center" style={[styles.finder, STATIC.finderHead]}>

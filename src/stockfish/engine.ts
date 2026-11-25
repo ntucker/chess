@@ -237,7 +237,7 @@ export function createStockfish(defaultBudget: SearchBudget): Stockfish {
       wanted.set(key, position);
     } else {
       position.behind.add(watcher);
-      if (!known) toFront(key, position);
+      if (!known) putBehind(key, position);
     }
     position.watchers.add(watcher);
     decideSoon();
@@ -249,13 +249,13 @@ export function createStockfish(defaultBudget: SearchBudget): Stockfish {
       // Watched only from behind now: it gives up the place another watcher won it.
       const behindOnly =
         position.watchers.size > 0 && position.watchers.size === position.behind.size;
-      if (behindOnly && wanted.get(key) === position) toFront(key, position);
+      if (behindOnly && wanted.get(key) === position) putBehind(key, position);
       decideSoon();
     };
   }
 
-  /** Puts `position` first in `wanted`, behind every other one. */
-  function toFront(key: string, position: Wanted) {
+  /** Puts `position` first in `wanted`: the oldest, searched behind every other one. */
+  function putBehind(key: string, position: Wanted) {
     const rest = [...wanted].filter(([other]) => other !== key);
     wanted.clear();
     wanted.set(key, position);

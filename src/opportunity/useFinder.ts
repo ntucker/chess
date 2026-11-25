@@ -116,7 +116,7 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
     if (!ask) return;
     for (const line of JSON.parse(wanted) as Uci[][]) {
       // A failure is stored as the answer's error, which ends asking for it.
-      ctrl.fetchIfStale(getMaiaShares, ask.rating, line).catch(() => {});
+      void ctrl.fetchIfStale(getMaiaShares, ask.rating, line);
     }
   }, [ask, ctrl, wanted]);
 

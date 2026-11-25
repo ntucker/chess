@@ -28,9 +28,8 @@ export type LessonPageName = 'lesson' | 'opportunities';
  * a hairline between them; past the guide, where Stockfish's moves stand in,
  * the idea's pane tells why. One swipe before it, in Explore, the list of
  * opportunities, worked out the first time it shows (a big lesson's takes a
- * moment); one after it, the
- * scoresheet. All stay mounted, so the panes keep where they're scrolled to
- * and the notes opened in them.
+ * moment); one after it, the scoresheet. All stay mounted, so the panes
+ * keep where they're scrolled to and the notes opened in them.
  */
 export function PhoneLesson({
   model,
