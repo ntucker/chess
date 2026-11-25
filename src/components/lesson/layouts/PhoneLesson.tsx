@@ -26,9 +26,9 @@ export type LessonPageName = 'lesson' | 'opportunities';
  * slides between (`usePages` owns which shows). The lesson's holds the
  * moves and the idea in panes side by side, each scrolling on its own, with
  * a hairline between them; past the guide, where Stockfish's moves stand in,
- * the idea's pane tells why. One swipe before it, where the lesson marks the
- * other side's mistakes, the list of opportunities, worked out the first
- * time it shows (a big lesson's takes a moment); one after it, the
+ * the idea's pane tells why. One swipe before it, in Explore, the list of
+ * opportunities, worked out the first time it shows (a big lesson's takes a
+ * moment); one after it, the
  * scoresheet. All stay mounted, so the panes keep where they're scrolled to
  * and the notes opened in them.
  */

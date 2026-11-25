@@ -178,6 +178,17 @@ describe('the engine lifecycle', () => {
     expect(searching()).toBe('position startpos moves d2d4');
   });
 
+  it('sends a position back behind the others once only its behind watchers are left', async () => {
+    const { print, searching } = scripted();
+    watch(['e2e4']);
+    const board = watch(['d2d4']);
+    watch(['d2d4'], { behind: true });
+    board.release();
+    print('uciok');
+    await decided();
+    expect(searching()).toBe('position startpos moves e2e4');
+  });
+
   it('stops for a newer position, and starts the older one again from the beginning', async () => {
     const { print, depth, sent, searching } = scripted();
     print('uciok');

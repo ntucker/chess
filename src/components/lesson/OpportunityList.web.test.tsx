@@ -28,8 +28,7 @@ type Props = Parameters<typeof OpportunityList>[0];
 /** A finder run from the board's position and done, with nothing found. */
 const DONE: FinderProps = {
   run: { finds: [], running: false },
-  here: true,
-  started: true,
+  from: 'here',
   rating: 1500,
   onFind: () => {},
 };
@@ -65,6 +64,18 @@ const FIND: Find = {
   score: 0.0014,
 };
 
+/** Scholar's mate as a find: 3...Nf6?, punished by 4.Qxf7#. */
+const MATE: Find = {
+  ...FIND,
+  line: ['e2e4', 'e7e5', 'f1c4', 'b8c6', 'd1h5'],
+  mistake: 'g8f6',
+  replies: ['h5f7'],
+  payoff: [],
+};
+
+/** The finder's button, named by its tooltip. */
+const FIND_TIP = 'Find opportunities from this position';
+
 /** Renders the Stafford lesson's list with `props`, and reads its host with `read`. */
 function render<T>(props: Partial<Props>, read: (host: HTMLElement) => T): T {
   const host = document.createElement('div');
@@ -94,7 +105,9 @@ function render<T>(props: Partial<Props>, read: (host: HTMLElement) => T): T {
 
 const labels = (props: Partial<Props> = {}) =>
   render(props, (host) =>
-    [...host.querySelectorAll('[role="button"]')].map((row) => row.getAttribute('aria-label')),
+    [...host.querySelectorAll('[role="button"]')]
+      .map((row) => row.getAttribute('aria-label'))
+      .filter((label) => label !== FIND_TIP),
   );
 
 const text = (props: Partial<Props>) => render(props, (host) => host.textContent ?? '');
@@ -126,40 +139,53 @@ describe('OpportunityList', () => {
 
   it("lists the finder's finds after the lesson's, and plays one through its mistake", () => {
     const onPlay = jest.fn<(line: readonly Uci[]) => void>();
-    const finder = { ...DONE, run: { finds: [FIND], running: false } };
+    const finder = { ...DONE, run: { finds: [FIND, MATE], running: false } };
     const said = render({ finder, onPlay }, (host) => {
-      const rows = [...host.querySelectorAll<HTMLElement>('[role="button"]')];
-      act(() => rows.at(-1)!.click());
+      const rows = [...host.querySelectorAll<HTMLElement>('[role="button"]')].filter(
+        (row) => row.getAttribute('aria-label') !== FIND_TIP,
+      );
+      act(() => rows.at(-2)!.click());
       return rows.map((row) => row.getAttribute('aria-label'));
     });
-    expect(said).toHaveLength(ranked.length + 1);
-    expect(said.at(-1)).toMatch(
+    expect(said).toHaveLength(ranked.length + 2);
+    expect(said.at(-2)).toMatch(
       /^7\.\.\.Bg4, after 6\.\.\.Qd4 7\.O-O, reached in 12% of games, played 10% of the time, gives away 17%$/,
     );
+    expect(said.at(-1)).toMatch(/^3\.\.\.Nf6, after 2\.\.\.Nc6 3\.Qh5, .*, punished with mate$/);
     expect(onPlay).toHaveBeenCalledWith([...FIND.line, FIND.mistake]);
   });
 
-  it('offers to run the finder from a position it has not run from, and runs it when pressed', () => {
+  it('leaves out a find the lesson already lists', () => {
+    const [first] = ranked;
+    const again: Find = { ...FIND, line: first.line.slice(0, -1), mistake: first.line.at(-1)! };
+    const finder = { ...DONE, run: { finds: [again], running: false } };
+    expect(labels({ finder })).toHaveLength(ranked.length);
+  });
+
+  it('runs the finder from a position it has not run from, and is disabled where it runs', () => {
     const onFind = jest.fn();
-    const finder = { ...DONE, here: false, started: false, onFind };
-    render({ finder }, (host) => {
-      const button = [...host.querySelectorAll<HTMLElement>('[role="button"]')].find((node) =>
-        node.textContent?.includes('Find from here'),
-      );
-      act(() => button!.click());
-    });
-    expect(onFind).toHaveBeenCalledTimes(1);
+    const button = (from: FinderProps['from']) =>
+      render({ finder: { ...DONE, from, onFind } }, (host) => {
+        const found = host.querySelector<HTMLElement>(`[aria-label="${FIND_TIP}"]`)!;
+        act(() => found.click());
+        return found;
+      });
+    button('none');
+    button('elsewhere');
+    expect(onFind).toHaveBeenCalledTimes(2);
+    button('here');
+    expect(onFind).toHaveBeenCalledTimes(2);
   });
 
   it('says what the finder is doing: searching, done with nothing, or found elsewhere', () => {
-    expect(text({ finder: { ...DONE, run: { finds: [], running: true } } })).toContain(
-      'The first finds take a few minutes.',
-    );
+    const searching = text({ finder: { ...DONE, run: { finds: [], running: true } } });
+    expect(searching).toContain('the first finds take a few minutes');
+    expect(searching).not.toContain('No opportunity found');
     expect(text({})).toContain('No opportunity found from here.');
     const elsewhere = text({
-      finder: { ...DONE, here: false, run: { finds: [FIND], running: false } },
+      finder: { ...DONE, from: 'elsewhere', run: { finds: [], running: false } },
     });
-    expect(elsewhere).toContain('From an earlier position');
+    expect(elsewhere).toContain('From another position');
     expect(elsewhere).not.toContain('No opportunity found');
   });
 });

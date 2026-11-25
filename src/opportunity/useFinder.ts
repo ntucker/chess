@@ -6,12 +6,16 @@ import type { Color } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { guideOrder } from '@/lesson/mistakes';
 import type { MaiaRating } from '@/maia/ratings';
-import { analysisKey, getAnalysisBehind, PositionAnalysis } from '@/resources/analysis';
+import {
+  analysisError,
+  analysisKey,
+  getAnalysisBehind,
+  PositionAnalysis,
+} from '@/resources/analysis';
 import { getMaiaShares } from '@/resources/maia';
 import { useNeedsStockfish } from '@/stockfish/demand';
 
-import { byScore, type Find, findOpportunities } from './finder';
-import { LIMITS } from './limits';
+import { byScore, type Find, findOpportunities, keeps } from './finder';
 import { type Answers, maiaReplies } from './walk';
 
 /** Where a run of the finder opens, and whose replies it reads. */
@@ -30,7 +34,11 @@ export interface FinderAsk {
 export interface FinderRun {
   /** The finds that leave the punishing side clearly better, best first (`byScore`). */
   readonly finds: readonly Find[];
-  /** Whether answers are still missing: the run goes on. */
+  /**
+   * Whether answers it can ask for are still missing: the run goes on. One
+   * that failed (Stockfish gave up, Maia's network threw) is not asked again,
+   * so the run ends without what lies beyond it.
+   */
   readonly running: boolean;
 }
 
@@ -54,8 +62,8 @@ const MAIA_AT_ONCE = 4;
  */
 export function useFinder(ask: FinderAsk | undefined): FinderRun {
   const ctrl = useController();
-  // Worked out behind the screen's own renders: a walk takes a few milliseconds,
-  // and the store changes at every depth of every search.
+  // Worked out behind the screen's own renders: a walk takes 5 to 12 ms in Node
+  // (more on a phone), and the store changes at every depth of every search.
   const state = useDeferredValue(use(StateContext));
   const result = useMemo(() => {
     if (!ask) return undefined;
@@ -73,11 +81,24 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
           }
         : undefined,
     };
-    const { requests, ...found } = findOpportunities({ start: INITIAL_FEN, line, side, answers });
-    return { requests, finds: kept(found) };
+    const { requests, finds, offGuide } = findOpportunities({
+      start: INITIAL_FEN,
+      line,
+      side,
+      answers,
+    });
+    // An answer that failed is not asked again: the walk goes on where it can.
+    const failed = ({ kind, spot }: (typeof requests)[number]) =>
+      kind === 'replies'
+        ? ctrl.getError(getMaiaShares, rating, spot.line, state) !== undefined
+        : analysisError(ctrl, 'stockfish', spot.line, state) !== undefined;
+    return {
+      asking: requests.filter((request) => !failed(request)),
+      finds: [...finds, ...offGuide.filter((find) => keeps(find))].sort(byScore),
+    };
   }, [ask, ctrl, state]);
 
-  const asking = result?.requests ?? [];
+  const asking = result?.asking ?? [];
   const search = asking.find(({ kind }) => kind !== 'replies');
   useNeedsStockfish(search !== undefined);
   useSubscription(
@@ -94,7 +115,8 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
   useEffect(() => {
     if (!ask) return;
     for (const line of JSON.parse(wanted) as Uci[][]) {
-      void ctrl.fetchIfStale(getMaiaShares, ask.rating, line);
+      // A failure is stored as the answer's error, which ends asking for it.
+      ctrl.fetchIfStale(getMaiaShares, ask.rating, line).catch(() => {});
     }
   }, [ask, ctrl, wanted]);
 
@@ -102,9 +124,4 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
     finds: result?.finds ?? [],
     running: asking.length > 0,
   };
-}
-
-/** A run's finds that leave the punishing side clearly better, on the guide or off it. */
-function kept({ finds, offGuide }: { finds: readonly Find[]; offGuide: readonly Find[] }) {
-  return [...finds, ...offGuide.filter(({ end }) => end >= LIMITS.keepScore)].sort(byScore);
 }

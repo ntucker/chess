@@ -4,9 +4,11 @@ import { act } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
 import type { Uci } from '@/lesson/lesson';
-import { AnalysisManager, PositionAnalysis } from '@/resources/analysis';
+import { AnalysisManager, getAnalysis, PositionAnalysis } from '@/resources/analysis';
+import { getMaiaShares } from '@/resources/maia';
 import { listing } from '@/review/review.fixture';
 
+import * as finder from './finder';
 import { type FinderAsk, type FinderRun, useFinder } from './useFinder';
 
 // Every search the finder asks Stockfish for, and whether it waits behind the others; none answers.
@@ -75,6 +77,7 @@ afterEach(async () => {
   mockNeeds.length = 0;
   runs.length = 0;
   mockShares.mockClear();
+  jest.restoreAllMocks();
 });
 
 describe('useFinder', () => {
@@ -104,5 +107,41 @@ describe('useFinder', () => {
     expect(mockNeeds.at(-1)).toBe(false);
     await analyse(STAFFORD, 'd2d3');
     expect(mockShares).not.toHaveBeenCalled();
+  });
+
+  it('asks Maia for four positions at a time, and Stockfish for the first search only', async () => {
+    const spot = (n: number) => ({ line: [...STAFFORD, `a${n}`], key: `k${n}` });
+    jest.spyOn(finder, 'findOpportunities').mockReturnValue({
+      finds: [],
+      dropped: [],
+      offGuide: [],
+      thin: [],
+      requests: [
+        ...[1, 2, 3, 4, 5, 6].map((n) => ({ kind: 'replies' as const, spot: spot(n) })),
+        { kind: 'sketch', spot: spot(7) },
+        { kind: 'full', spot: spot(8) },
+      ],
+    });
+    await render(ASK);
+    expect(mockShares.mock.calls.map(([, line]) => line.at(-1))).toEqual(['a1', 'a2', 'a3', 'a4']);
+    expect(mockWatched).toEqual([{ line: spot(7).line.join(' '), behind: true }]);
+  });
+
+  it('leaves out an answer that failed, and ends the run when only failed ones are left', async () => {
+    await render(ASK);
+    await act(async () => {
+      controllers[0].setError(getAnalysis, 'stockfish', STAFFORD, new Error('gave up'));
+    });
+    expect(runs.at(-1)).toEqual({ finds: [], running: false });
+    expect(mockNeeds.at(-1)).toBe(false);
+
+    // Maia's failure is left out the same way.
+    mockShares.mockImplementationOnce(() => new Promise(() => {}));
+    await analyse(STAFFORD, 'd2d3');
+    expect(runs.at(-1)!.running).toBe(true);
+    await act(async () => {
+      controllers[0].setError(getMaiaShares, 1500, [...STAFFORD, 'd2d3'], new Error('threw'));
+    });
+    expect(runs.at(-1)!.running).toBe(false);
   });
 });

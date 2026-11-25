@@ -202,7 +202,7 @@ export function findOpportunities({
   const thin = [...thinKeys]
     .map(([key, line]) => ({ line, key, reach: reach(key, false) }))
     .sort((a, b) => b.reach - a.reach);
-  const kept = (find: Find) => find.end >= limits.keepScore;
+  const kept = (find: Find) => keeps(find, limits);
   const guided = sorted.filter((find) => find.onGuide);
   return {
     finds: guided.filter(kept),
@@ -507,3 +507,7 @@ export const rankBy =
     through(a).join(' ').localeCompare(through(b).join(' '));
 
 export const byScore = rankBy<Find>(({ line, mistake }) => [...line, mistake]);
+
+/** Whether `find` leaves the punishing side clearly better where Act III ends: a find worth keeping. */
+export const keeps = (find: Find, limits: Pick<Limits, 'keepScore'> = LIMITS) =>
+  find.end >= limits.keepScore;

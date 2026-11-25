@@ -120,9 +120,9 @@ export interface LessonScreenModel {
   /** In Practice, whether the learner's move at a cue punished the mistake. */
   readonly opportunity: ComponentProps<typeof OpportunityCard> | null;
   /**
-   * The list of the lesson's opportunities (in Explore, where the lesson marks
-   * any of the other side's mistakes), as its inputs: the list works the rows
-   * out itself, once it shows, since a big lesson's walk takes a moment.
+   * The list of the lesson's opportunities and the finder's (in Explore, on
+   * any lesson), as its inputs: the list works the lesson's rows out itself,
+   * once it shows, since a big lesson's walk takes a moment.
    * Not `opportunity`, the Practice card after the learner's move at a cue.
    */
   readonly opportunities: Omit<ComponentProps<typeof OpportunityList>, 'density'> | null;
@@ -454,8 +454,7 @@ function useLessonFinder(
   );
   return {
     run: useFinder(active ? ask : undefined),
-    here: !!line && sameLine(line, shownLine),
-    started: !!line,
+    from: !line ? 'none' : sameLine(line, shownLine) ? 'here' : 'elsewhere',
     rating,
     onFind: () => picked && setFrom({ lesson: picked, line: shownLine }),
   };

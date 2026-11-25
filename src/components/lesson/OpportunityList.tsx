@@ -1,7 +1,5 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   Badge,
-  Button,
   Inline,
   Pressable,
   Progress,
@@ -16,6 +14,7 @@ import { StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { lostPercent, percent } from '@/analysis/quality';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
+import { IconActions } from '@/components/IconActions';
 import { Notation } from '@/components/Notation';
 import { HeadingTip, Tip } from '@/components/Tip';
 import { lastPosition, lastStep, lineText, numberedMove } from '@/game/replay';
@@ -54,10 +53,11 @@ interface Props {
 /** The finder's part of the list. */
 export interface FinderProps {
   readonly run: FinderRun;
-  /** Whether the finder runs from the position the board shows; if not, the button runs it from there. */
-  readonly here: boolean;
-  /** Whether it has been run on this lesson at all: its finds are from another position when not `here`. */
-  readonly started: boolean;
+  /**
+   * Where it runs from: nowhere yet on this lesson, the position the board
+   * shows, or another one (its finds are from there).
+   */
+  readonly from: 'none' | 'here' | 'elsewhere';
   /** Whose estimate of the replies it reads (`FinderAsk.rating`), named on its source chip. */
   readonly rating: MaiaRating;
   /** Runs the finder from the position the board shows. */
@@ -92,7 +92,7 @@ export function OpportunityList({
   const labelled = useLabelled();
   const compact = density === 'compact';
   const styles = compact ? COMPACT : COMFORTABLE;
-  const rows = shown ? lessonOpportunities(shown.lesson, shown.band) : [];
+  const rows = shown ? lessonOpportunities(shown.lesson, shown.band) : NONE;
   const marks = shown ? opportunityMarks(shown.lesson, shown.progress, rows) : [];
   // A lesson that marks none of the opponent's mistakes lists the finder's alone.
   const list = rows.map((row, i) => (
@@ -103,7 +103,8 @@ export function OpportunityList({
       onPlay={onPlay}
     />
   ));
-  const found = <FinderPart finder={finder} styles={styles} onPlay={onPlay} />;
+  const listed = useMemo(() => new Set(rows.map(({ line }) => line.join(' '))), [rows]);
+  const found = <FinderPart finder={finder} listed={listed} styles={styles} onPlay={onPlay} />;
   return (
     <Stack style={compact ? STATIC.compact : labelled}>
       <HeadingTip tip={listTip(players)} style={STATIC.heading}>
@@ -125,33 +126,33 @@ export function OpportunityList({
 }
 
 /**
- * The finder's part of the list: its heading and source chip, then its finds
- * best first, or the button that runs it from the board's position, and
- * while it runs a spinner.
+ * The finder's part of the list: its heading, source chip and the button that
+ * runs it from the board's position (disabled while it runs from there), then
+ * its finds best first, but for any the lesson already lists (`listed`, by
+ * the line through the mistake). A spinner shows while it runs.
  */
 function FinderPart({
-  finder: { run, here, started, rating, onFind },
+  finder: { run, from, rating, onFind },
+  listed,
   styles,
   onPlay,
 }: {
   readonly finder: FinderProps;
+  readonly listed: ReadonlySet<string>;
   readonly styles: Styles;
   readonly onPlay: (line: readonly Uci[]) => void;
 }) {
   // Each row replays its line: once per run's answer, not per render.
-  const rows = useMemo(() => run.finds.map(findRow), [run.finds]);
-  const note = rows.length
-    ? undefined
-    : run.running
-      ? 'The first finds take a few minutes.'
-      : here
-        ? 'No opportunity found from here.'
-        : undefined;
+  const rows = useMemo(
+    () => run.finds.map(findRow).filter(({ line }) => !listed.has(line.join(' '))),
+    [run.finds, listed],
+  );
+  const nothing = from === 'here' && !run.running && !rows.length;
   return (
-    <View style={styles.finder}>
-      <Inline gap="2" align="center" style={STATIC.finderHead}>
+    <View>
+      <Inline gap="2" align="center" style={[styles.finder, STATIC.finderHead]}>
         <HeadingTip tip={FINDER_TIP}>
-          <Eyebrow>{here || !started ? 'From this position' : 'From an earlier position'}</Eyebrow>
+          <Eyebrow>{from === 'elsewhere' ? 'From another position' : 'From this position'}</Eyebrow>
         </HeadingTip>
         <Tip tip={sourceTip(rating)}>
           <Badge variant="soft" tone="neutral" size="sm">
@@ -159,27 +160,34 @@ function FinderPart({
           </Badge>
         </Tip>
         {run.running ? (
-          <Spinner size="sm" tone="accent" label="Searching for opportunities" />
+          <Tip tip={SEARCHING_TIP}>
+            <Spinner size="sm" tone="accent" label="Searching for opportunities" />
+          </Tip>
         ) : null}
+        <View style={STATIC.grow} />
+        <IconActions
+          actions={[
+            {
+              icon: 'search',
+              tip: 'Find opportunities from this position',
+              onPress: from === 'here' ? undefined : onFind,
+            },
+          ]}
+        />
       </Inline>
       {rows.map((row) => (
         <Row key={row.line.join(' ')} row={row} styles={styles} onPlay={onPlay} />
       ))}
-      {note ? (
-        <Text role="caption" tone="secondary" style={STATIC.empty}>
-          {note}
+      {nothing ? (
+        <Text role="caption" tone="secondary" style={[styles.finder, STATIC.empty]}>
+          No opportunity found from here.
         </Text>
       ) : null}
-      {here ? null : (
-        <Inline style={STATIC.finderButton}>
-          <Button size="sm" variant="outline" onPress={onFind}>
-            <Ionicons name="search" size={15} /> Find from here
-          </Button>
-        </Inline>
-      )}
     </View>
   );
 }
+
+const SEARCHING_TIP = 'Searching on this device: the first finds take a few minutes.';
 
 const FINDER_TIP =
   "Looks for the opponent's likely mistakes from the board's position, on this device: Stockfish judges each reply players are likely to make. Each find joins the list once confirmed; the whole search takes a while.";
@@ -193,6 +201,9 @@ const listTip = (players: string | undefined) =>
   `The opponent's mistakes the guide marks, best first by what knowing each is worth per game${
     players ? ` against ${players}` : ''
   }. Each row: how often your games reach it, how often the mistake is played there, and what it gives away (# is mate). Tap one to play up to your cue.`;
+
+/** No rows, the same each render. */
+const NONE: readonly Opportunity[] = [];
 
 /** The payoff meter's full width: a mistake costing this much of the expected score, or mate. */
 const FULL_COST = 0.6;
@@ -210,6 +221,8 @@ interface ListRow {
   /** The expected score the mistake gives away, where judged. */
   readonly cost?: number;
   readonly mark?: Mark;
+  /** What a press plays, for screen readers. */
+  readonly hint: string;
 }
 
 const lessonRow = (
@@ -224,6 +237,7 @@ const lessonRow = (
   mates,
   cost: move.mistake?.cost,
   mark,
+  hint: 'Plays the line up to your cue',
 });
 
 /** A find as a row: its line through the mistake, and whether its punishment mates where Act III ends. */
@@ -236,6 +250,7 @@ function findRow({ line, mistake, replies, payoff, reach, share, cost }: Find): 
     share,
     mates: lastPosition([...through, replies[0], ...payoff]).result?.reason === 'checkmate',
     cost,
+    hint: 'Plays the line through the mistake',
   };
 }
 
@@ -275,7 +290,7 @@ function Row({
       ]
         .filter(Boolean)
         .join(', ')}
-      accessibilityHint="Plays the line up to your cue"
+      accessibilityHint={row.hint}
       onPress={() => onPlay(line)}
       style={({ pressed }) => [
         styles.row,
@@ -317,7 +332,7 @@ const STATIC = StyleSheet.create({
   // As wide as its words, so its tip opens over them alone.
   heading: { alignSelf: 'flex-start' },
   finderHead: { paddingTop: 10, paddingBottom: 2 },
-  finderButton: { paddingVertical: 8 },
+  grow: { flexGrow: 1 },
   compact: { gap: 4 },
   empty: { paddingVertical: 8 },
   card: { overflow: 'hidden', paddingVertical: 4 },
