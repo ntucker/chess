@@ -129,9 +129,12 @@ function findTable(columns: readonly Column[], rows: readonly Find[]): string[] 
   ];
 }
 
-/** What the columns mean, and the limits the run used. */
-const COLUMNS_AND_LIMITS = [
-  `A mistake whose punishment nearly everyone finds (gain under ${points(LIMITS.minGain)}) is no find. Share: how often the opponent plays the mistake there. Reach: how often games get there, summed over the move orders that do (on the guide, only those the guide plays). Cost: points of expected score (of 100) the mistake gives away. Found: how often players at the cue find a punishing reply. Gain: points a player at the cue scores more by knowing the punishment than by playing as the band does (~: an estimate, the cue is thin or its measured replies cover under ${percent(LIMITS.estimateCoverage)} of its games). Score: the games that reach the cue by any move order (reach × share when one does) × gain, in thousandths, which ranks. End: the punishing side's expected score where Act III ends, following the band's likely replies; a lesson keeps only finds ending at ${points(LIMITS.keepScore)} or more. Holds: the best reply alone keeps the punishing side at least ${points(LIMITS.keepScore)} against best defence; practical: only the band's likely replies get there.`,
+/**
+ * What the columns mean, and the limits the run used; for a `lesson`, also
+ * what its guide changes (reach on the guide, the finds a lesson keeps).
+ */
+const columnsAndLimits = (lesson: boolean) => [
+  `A mistake whose punishment nearly everyone finds (gain under ${points(LIMITS.minGain)}) is no find. Share: how often the opponent plays the mistake there. Reach: how often games get there, summed over the move orders that do${lesson ? ' (on the guide, only those the guide plays)' : ''}. Cost: points of expected score (of 100) the mistake gives away. Found: how often players at the cue find a punishing reply. Gain: points a player at the cue scores more by knowing the punishment than by playing as the band does (~: an estimate, the cue is thin or its measured replies cover under ${percent(LIMITS.estimateCoverage)} of its games). Score: the games that reach the cue by any move order (reach × share when one does) × gain, in thousandths, which ranks. End: the punishing side's expected score where Act III ends, following the band's likely replies${lesson ? `; a lesson keeps only finds ending at ${points(LIMITS.keepScore)} or more` : ''}. Holds: the best reply alone keeps the punishing side at least ${points(LIMITS.keepScore)} against best defence; practical: only the band's likely replies get there.`,
   '',
   `Limits: minGames ${MIN_GAMES}, ${Object.entries(LIMITS)
     .map(([name, value]) => `${name} ${value}`)
@@ -161,7 +164,7 @@ function lessonReport(
     '',
     `On the guide (the punishing side plays only the lesson's moves to get there): ${finds.length} finds kept, the best ${Math.min(top, finds.length)} below, then the ${dropped.length} dropped. Off the guide: ${off.length} more, listed last. In guide: whether the lesson already lists the mistake.`,
     '',
-    ...COLUMNS_AND_LIMITS,
+    ...columnsAndLimits(true),
     '',
     ...findTable(columns, finds.slice(0, top)),
     '',
@@ -190,6 +193,15 @@ function lessonReport(
  * whether the finder calls them on the guide, since with no guide neither
  * decides what a lesson would keep.
  */
+/** Where `source`'s replies come from, for the report's title, and what that means for the run. */
+function describeSource(source: ReplySource): { from: string; note: string } {
+  if (source.from === 'lichess') return { from: `lichess ${source.band} band`, note: '' };
+  return {
+    from: `Maia ${source.rating} (estimates)`,
+    note: ` Shares are Maia ${source.rating}'s estimate of how people of that rating play, not counted games, so no position is thin and the walk goes on to the reach floor.`,
+  };
+}
+
 function positionReport(
   start: Chess,
   line: readonly Uci[],
@@ -200,18 +212,13 @@ function positionReport(
 ): string {
   const found = [...finds, ...dropped, ...offGuide].sort(byScore);
   const after = numberedLine(lineSans(line, start)) || 'the start';
-  const from =
-    source.from === 'lichess' ? `lichess ${source.band} band` : `Maia ${source.rating} (estimates)`;
-  const maia =
-    source.from === 'maia'
-      ? ` Shares are Maia ${source.rating}'s estimate of how people of that rating play, not counted games, so no position is thin and the walk goes on to the reach floor.`
-      : '';
+  const { from, note } = describeSource(source);
   return [
     `# Opportunities for ${colorName(side)} after ${after}, ${from}`,
     '',
-    `${found.length} finds, the best ${Math.min(top, found.length)} below. With no lesson, ${colorName(side)} plays Stockfish's best move wherever it moves.${maia}`,
+    `${found.length} finds, the best ${Math.min(top, found.length)} below. With no lesson, ${colorName(side)} plays Stockfish's best move wherever it moves.${note}`,
     '',
-    ...COLUMNS_AND_LIMITS,
+    ...columnsAndLimits(false),
     '',
     ...findTable(findColumns(start), found.slice(0, top)),
     '',
@@ -311,6 +318,17 @@ const options: Options = {
 };
 
 /**
+ * Where the arguments ask a run from moves to take its replies: Maia at
+ * `--maia`'s rating, which can't go with `--band`, else the lichess band.
+ * Undefined for a rating Maia doesn't have, or both flags.
+ */
+function sourceAsked(given: (name: string) => boolean): ReplySource | undefined {
+  if (!given('maia')) return { from: 'lichess', band: options.band };
+  const rating = MAIA_RATINGS.find((maia) => String(maia) === flag('maia'));
+  return rating && !given('band') ? { from: 'maia', rating } : undefined;
+}
+
+/**
  * Runs the report the arguments ask for: a lesson's, from its start for its
  * side; or, with no lesson, one after `--from` for `--side`. (A lesson run
  * from other moves would write ad-hoc answers into the lesson's committed
@@ -324,12 +342,7 @@ function main(): Promise<void> {
     return reportLesson(lessonId, options);
   const moves = flag('from');
   const side = COLORS.find((color) => color === flag('side'));
-  const maia = MAIA_RATINGS.find((rating) => String(rating) === flag('maia'));
-  const source: ReplySource | undefined = !given('maia')
-    ? { from: 'lichess', band: options.band }
-    : maia && !given('band')
-      ? { from: 'maia', rating: maia }
-      : undefined;
+  const source = sourceAsked(given);
   if (!lessonId && moves !== undefined && side && source)
     return reportFrom(moves, side, source, options);
   console.error(USAGE);

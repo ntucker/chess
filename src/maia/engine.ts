@@ -1,5 +1,4 @@
 import type { Evaluation } from '@/evaluation/evaluation';
-
 import type { Uci } from '@/lesson/lesson';
 
 import { bestMove, evaluation, moveShares, prepareInput } from './maia';

@@ -7,9 +7,10 @@
  * The opponent's replies come from one source for a whole run (`ReplySource`):
  * the lichess explorer (which needs a token, as ./index.ts says), where a thin
  * position ends the search for mistakes, or, for a run from a position, Maia
- * at a rating (./maia.ts), whose shares are estimates and never thin. Stockfish's searches come from the app's engine in Node: sketches
- * stop at the first whole depth of `SKETCH_DEPTH`, full searches are the
- * app's (`APP_SEARCH`). Every answer is appended to the run's own files, so a
+ * at a rating (./maia.ts), whose shares are estimates and never thin.
+ * Stockfish's searches come from the app's engine in Node: sketches stop at
+ * the first whole depth of `SKETCH_DEPTH`, full searches are the app's
+ * (`APP_SEARCH`). Every answer is appended to the run's own files, so a
  * rerun asks only about positions none has seen and a stopped run resumes: a
  * lesson's are answers/<lesson>-opportunities-{explorer,sketch,full}.jsonl,
  * which no other step reads or prunes (commit them); a run from a position
