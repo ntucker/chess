@@ -1,9 +1,9 @@
 import { useController } from '@data-client/react';
 import { type ComponentProps, use, useMemo } from 'react';
 
+import type { HeadlineProps } from '@/components/GameStatus';
 import type { Header } from '@/components/Header';
 import type { ScoresheetReview } from '@/components/ReviewLinks';
-import type { HeadlineProps } from '@/components/GameStatus';
 import type { Scoresheet } from '@/components/Scoresheet';
 import type { ScoresheetOpener } from '@/components/ScoresheetPage';
 import type { BoardColumn } from '@/components/Stage';
@@ -25,7 +25,6 @@ import type { Cue } from '@/opportunity/cue';
 import { describeOpponent } from '@/opponent/opponent';
 import { getLesson, LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { reviewHref } from '@/review/address';
-import { resigner } from '@/review/resigner';
 import { useSettings } from '@/settings/SettingsProvider';
 
 import type { CandidateList } from './CandidateList';
@@ -339,7 +338,7 @@ export function useLessonScreen({
       button: {
         href: reviewHref(game.moves, learner, id),
         started,
-        resigns: resigner(game.latest),
+        resigns: game.toMove,
       },
       offered: !!ending,
     },

@@ -10,10 +10,9 @@ an adversarial review: [design doc](https://claude.ai/artifact/NuWRdeFy8bWp91bsu
 
 - One Stockfish lite engine at the app's search (`APP_SEARCH`), measured on real devices first.
   Several engines at once stays a later option.
-- (Changed 2026-11-25.) The headline offers the review when the game ends, in every mode. The
-  scoresheet's Review button opens it at any point after the first move; a game reviewed before it
-  ends counts as resigned by the side to move (`resigner` in `src/review/resigner.ts`). The game's
-  page stays as it was, so Back returns to it and play goes on. There is no separate Resign button.
+- Review is offered when the game ends, in every mode; before the end only in a lesson's Practice
+  mode, once the game has a move off the guide. Elsewhere the scoresheet's Review button is disabled.
+  A game ends only by checkmate or a draw: no Resign button.
 - The review adds Brilliant, Great and Miss, which only refine today's labels; `judgeMove` and live
   labels don't change.
 - The graph uses softer fills than the evaluation bar (White's area `oklch(0.87 0.03 85)`, Black's

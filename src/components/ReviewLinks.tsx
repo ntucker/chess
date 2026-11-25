@@ -24,7 +24,7 @@ export function ReviewGameButton({ href }: { readonly href: Href }) {
 /**
  * The Review button by the scoresheet's title: opens the review at `href` at
  * any point of the game once it has `started`. Before the game ends, its tip
- * says who `resigns` (`resigner`). Before the first move there is nothing to
+ * says who `resigns`: the side to move. Before the first move there is nothing to
  * review, and it shows disabled. `compact` draws only its icon, for a phone's
  * scoresheet page's head; screen readers hear its name either way.
  */
@@ -40,9 +40,7 @@ export function ScoresheetReview({
   readonly compact?: boolean;
 }) {
   const router = useRouter();
-  const tip = !started
-    ? 'Review opens after the first move.'
-    : resigns && `Review the game so far, as if ${colorName(resigns)} resigned.`;
+  const tip = reviewTip(started, resigns);
   const button = (
     <Button
       size="sm"
@@ -56,10 +54,18 @@ export function ScoresheetReview({
     </Button>
   );
   if (!tip) return button;
-  // Disabled, the button takes no focus, so the tip takes it to open from the keyboard.
+  // Disabled, the button takes no focus, so the tip takes it to open from the
+  // keyboard. Enabled, focus on the button inside opens it.
   return (
     <Tip tip={tip} focusable={!started}>
       {button}
     </Tip>
   );
+}
+
+/** The scoresheet's Review button's tip: why it's disabled, or who resigns; none once the game has ended. */
+function reviewTip(started: boolean, resigns: Color | undefined) {
+  if (!started) return 'Review opens after the first move.';
+  if (resigns) return `Review the game so far, as if ${colorName(resigns)} resigned.`;
+  return undefined;
 }

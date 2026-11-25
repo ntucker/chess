@@ -40,7 +40,7 @@ describe('summaryHeadline', () => {
     );
   });
 
-  it('counts the moves that could not be checked', () => {
+  it('counts the moves that could not be checked, after how the game ended', () => {
     const plies = MATE.slice(0, 4);
     expect(
       summaryHeadline({
