@@ -4,6 +4,7 @@ import {
   AndroidConfig,
   type ConfigPlugin,
   withAndroidManifest,
+  withAndroidStyles,
   withMainActivity,
 } from 'expo/config-plugins';
 
@@ -21,19 +22,18 @@ const { addImports, appendContentsInsideDeclarationBlock } = AndroidConfig.CodeM
  * of the change while the app is in front, so the activity also does it when
  * it comes back after a change made in the system settings. React Native tells
  * JavaScript of the new size only on resume, so the activity also does that for
- * a change made while the app is in front.
+ * a change made while the app is in front (RELAYOUT, which withMainActivityCode
+ * adds to the activity).
  */
 const withLiveFontScale: ConfigPlugin = (config) =>
-  withRelayout(
-    withAndroidManifest(config, (manifest) => {
-      const activity = AndroidConfig.Manifest.getMainActivityOrThrow(manifest.modResults);
-      const changes = activity.$['android:configChanges']?.split('|') ?? [];
-      if (!changes.includes('fontScale')) {
-        activity.$['android:configChanges'] = [...changes, 'fontScale'].join('|');
-      }
-      return manifest;
-    }),
-  );
+  withAndroidManifest(config, (manifest) => {
+    const activity = AndroidConfig.Manifest.getMainActivityOrThrow(manifest.modResults);
+    const changes = activity.$['android:configChanges']?.split('|') ?? [];
+    if (!changes.includes('fontScale')) {
+      activity.$['android:configChanges'] = [...changes, 'fontScale'].join('|');
+    }
+    return manifest;
+  });
 
 const RELAYOUT = `
   /** The font scale React Native's views were last laid out at; 0 before the first. */
@@ -42,12 +42,6 @@ const RELAYOUT = `
   override fun onResume() {
     super.onResume()
     relayOutAtFontScale()
-  }
-
-  override fun onConfigurationChanged(newConfig: Configuration) {
-    super.onConfigurationChanged(newConfig)
-    // While the app is away, onResume does it once the window can lay out.
-    if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) relayOutAtFontScale()
   }
 
   // React Native lays its text out again for a new font scale only when
@@ -96,10 +90,98 @@ const RELAYOUT = `
   }
 `;
 
-const withRelayout: ConfigPlugin = (config) =>
+/**
+ * Gives Android's status and navigation bars the theme's icons: light on the
+ * dark theme, dark on the light one. The app draws under both bars, so they
+ * show its own background; the theme Android follows is the one AppTheme pins
+ * (`pinTheme`, which sets AppCompat's night mode), so the activity reads it
+ * from its own configuration.
+ *
+ * The activity is the bars' only writer, for its window and each of React
+ * Native's modal windows (the settings sheet): with expo-navigation-bar
+ * styling the navigation bar beside React Native's StatusBar, its icons stopped
+ * following the theme after a cold start, a device switch or a theme change in
+ * the sheet. Nothing in JavaScript styles the bars.
+ */
+const SYSTEM_BAR_ICONS = `
+  /** The windows of React Native's modals, which have bars of their own. */
+  private val modalWindows = mutableSetOf<Window>()
+
+  private val modalWindowListener =
+    object : ExtraWindowEventListener {
+      override fun onExtraWindowCreate(window: Window) {
+        modalWindows += window
+        showThemeInSystemBars(window)
+      }
+
+      override fun onExtraWindowDestroy(window: Window) {
+        modalWindows -= window
+      }
+    }
+
+  // A JavaScript reload starts a new React context, whose modals tell only it.
+  private val reactContextListener =
+    object : ReactInstanceEventListener {
+      override fun onReactContextInitialized(context: ReactContext) {
+        context.addExtraWindowEventListener(modalWindowListener)
+      }
+    }
+
+  private val reactHost get() = (application as? ReactApplication)?.reactHost
+
+  override fun onAttachedToWindow() {
+    super.onAttachedToWindow()
+    reactHost?.addReactInstanceEventListener(reactContextListener)
+    reactHost?.currentReactContext?.addExtraWindowEventListener(modalWindowListener)
+    showThemeInSystemBars()
+  }
+
+  override fun onDetachedFromWindow() {
+    reactHost?.removeReactInstanceEventListener(reactContextListener)
+    reactHost?.currentReactContext?.removeExtraWindowEventListener(modalWindowListener)
+    super.onDetachedFromWindow()
+  }
+
+  private fun showThemeInSystemBars() {
+    showThemeInSystemBars(window)
+    modalWindows.forEach(::showThemeInSystemBars)
+  }
+
+  // The activity's configuration, not a new one handed to onConfigurationChanged:
+  // AppCompat puts the pinned theme here, while a new configuration can carry the device's.
+  @Suppress("DEPRECATION")
+  private fun showThemeInSystemBars(window: Window) {
+    val dark =
+      resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+        Configuration.UI_MODE_NIGHT_YES
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      val light =
+        WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+          WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+      window.insetsController?.setSystemBarsAppearance(if (dark) 0 else light, light)
+    } else {
+      val decor = window.decorView
+      val light = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+      decor.systemUiVisibility =
+        if (dark) decor.systemUiVisibility and light.inv() else decor.systemUiVisibility or light
+    }
+  }
+`;
+
+/** An activity takes one onConfigurationChanged, so the two fixes above share it. */
+const CONFIGURATION_CHANGED = `
+  override fun onConfigurationChanged(newConfig: Configuration) {
+    super.onConfigurationChanged(newConfig)
+    showThemeInSystemBars()
+    // While the app is away, onResume does it once the window can lay out.
+    if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) relayOutAtFontScale()
+  }
+`;
+
+const withMainActivityCode: ConfigPlugin = (config) =>
   withMainActivity(config, (activity) => {
     if (activity.modResults.language !== 'kt') {
-      throw new Error('liveFontScale: MainActivity must be Kotlin');
+      throw new Error('withMainActivityCode: MainActivity must be Kotlin');
     }
     let source = activity.modResults.contents;
     if (!source.includes('relayOutAtFontScale')) {
@@ -107,21 +189,51 @@ const withRelayout: ConfigPlugin = (config) =>
         source,
         [
           'android.content.res.Configuration',
+          'android.os.Build',
           'android.view.View',
           'android.view.ViewGroup',
+          'android.view.Window',
+          'android.view.WindowInsetsController',
           'androidx.lifecycle.Lifecycle',
           'com.facebook.react.ReactApplication',
+          'com.facebook.react.ReactInstanceEventListener',
           'com.facebook.react.ReactRootView',
           'com.facebook.react.bridge.LifecycleEventListener',
+          'com.facebook.react.bridge.ReactContext',
+          'com.facebook.react.interfaces.ExtraWindowEventListener',
           'com.facebook.react.uimanager.DisplayMetricsHolder',
         ],
         false,
       );
-      source = appendContentsInsideDeclarationBlock(source, 'class MainActivity', RELAYOUT);
+      source = appendContentsInsideDeclarationBlock(
+        source,
+        'class MainActivity',
+        RELAYOUT + SYSTEM_BAR_ICONS + CONFIGURATION_CHANGED,
+      );
     }
     activity.modResults.contents = source;
     return activity;
   });
+
+/**
+ * Android lays a grey or white scrim behind three-button navigation unless the
+ * theme turns it off. The bars' icons take the theme's contrast instead
+ * (SYSTEM_BAR_ICONS), so the app's background shows behind the buttons.
+ */
+const withNoNavigationBarScrim: ConfigPlugin = (config) =>
+  withAndroidStyles(config, (styles) => {
+    styles.modResults = AndroidConfig.Styles.assignStylesValue(styles.modResults, {
+      add: true,
+      parent: AndroidConfig.Styles.getAppThemeGroup(),
+      name: 'android:enforceNavigationBarContrast',
+      value: 'false',
+      targetApi: '29',
+    });
+    return styles;
+  });
+
+const withAndroidNative: ConfigPlugin = (config) =>
+  withMainActivityCode(withNoNavigationBarScrim(withLiveFontScale(config)));
 
 /**
  * app.json, plus what uses a color (JSON can't call `oklch()`), and the GitHub
@@ -132,7 +244,7 @@ const withRelayout: ConfigPlugin = (config) =>
 export default ({ config }: ConfigContext): ExpoConfig => {
   const expo = config as ExpoConfig;
   const basePath = process.env.PAGES_BASE_PATH;
-  return withLiveFontScale({
+  return withAndroidNative({
     ...expo,
     android: {
       ...expo.android,

@@ -19,7 +19,8 @@ export function useSchemeColors() {
 /**
  * Pins the platform's own parts to the learner's theme. Android draws its own
  * parts (the window behind the app, the keyboard, dialogs) in the device's
- * colors unless told otherwise.
+ * colors unless told otherwise. The status and navigation bars' icons follow
+ * it too (SYSTEM_BAR_ICONS in app.config.ts).
  */
 export function pinTheme(theme: ThemeChoice) {
   Appearance.setColorScheme(theme === 'system' ? 'auto' : theme);

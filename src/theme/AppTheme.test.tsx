@@ -25,21 +25,6 @@ jest.mock('@reactive/silk-native', () => ({
   },
 }));
 
-// The icon style each system bar was last given.
-let mockBars: Record<string, string> = {};
-jest.mock('expo-status-bar', () => ({
-  StatusBar: ({ style }: { style: string }) => {
-    mockBars.status = style;
-    return null;
-  },
-}));
-jest.mock('expo-navigation-bar', () => ({
-  NavigationBar: ({ style }: { style: string }) => {
-    mockBars.navigation = style;
-    return null;
-  },
-}));
-
 let root: Root | undefined;
 
 beforeEach(() => {
@@ -62,7 +47,6 @@ async function renderScheme(theme: Theme, device: 'light' | 'dark') {
     value: { getItem: (key: string) => stored[key] ?? null, setItem: () => {} },
   });
   mockSeen = [];
-  mockBars = {};
   await act(async () => {
     root = createRoot();
     root.render(
@@ -84,14 +68,10 @@ describe('AppTheme', () => {
   );
 
   it.each([
-    ['light', 'dark', 'dark'],
-    ['dark', 'light', 'light'],
-  ] as const)(
-    'keeps %s on a %s device, tells the device, and gives the system bars %s icons',
-    async (theme, device, icons) => {
-      expect(await renderScheme(theme, device)).toEqual([theme]);
-      expect(Appearance.setColorScheme).toHaveBeenLastCalledWith(theme);
-      expect(mockBars).toEqual({ status: icons, navigation: icons });
-    },
-  );
+    ['light', 'dark'],
+    ['dark', 'light'],
+  ] as const)('keeps %s on a %s device, and tells the device', async (theme, device) => {
+    expect(await renderScheme(theme, device)).toEqual([theme]);
+    expect(Appearance.setColorScheme).toHaveBeenLastCalledWith(theme);
+  });
 });

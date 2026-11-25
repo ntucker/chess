@@ -20,10 +20,7 @@
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-    "plugins": [
-      ["expo-router", { "asyncRoutes": false }],
-      ["expo-navigation-bar", { "enforceContrast": false }]
-    ],
+    "plugins": [["expo-router", { "asyncRoutes": false }]],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
