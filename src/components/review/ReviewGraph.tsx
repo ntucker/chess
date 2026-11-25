@@ -24,8 +24,8 @@ import { QualityBadge } from '@/components/QualityBadge';
 import type { Analysis } from '@/evaluation/evaluation';
 import { type Color, opposite, shownMove } from '@/game/replay';
 import { springs } from '@/motion/spring';
-import { useSpringTransition } from '@/motion/useSpringTransition';
 import { springTo } from '@/motion/springTo';
+import { useSpringTransition } from '@/motion/useSpringTransition';
 import {
   type GraphMark,
   graphMarks,

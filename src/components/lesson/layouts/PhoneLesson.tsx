@@ -66,7 +66,7 @@ export function PhoneLesson({
         onValueChange={(value) => onPage(value as PhonePage)}
         style={styles.pages}
       >
-        <Pager.Page value={'lesson' satisfies PhonePage} style={[styles.page, sections]}>
+        <Pager.Page value="lesson" style={[styles.page, sections]}>
           {model.trap ? <TrapCard {...model.trap} /> : null}
           {/* Leaving a row for the idea keeps its preview, so its notes can be pointed at. */}
           {/* Practice can hide both, and then the panes take no room. */}
@@ -88,11 +88,7 @@ export function PhoneLesson({
             </PointingArea>
           ) : null}
         </Pager.Page>
-        <Pager.Page
-          value={'scoresheet' satisfies PhonePage}
-          disabled={!scoresheetReachable}
-          style={styles.page}
-        >
+        <Pager.Page value="scoresheet" disabled={!scoresheetReachable} style={styles.page}>
           <ScoresheetPage
             {...model.scoresheet}
             reviewButton={
