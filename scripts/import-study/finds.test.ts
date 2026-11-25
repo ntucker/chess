@@ -151,6 +151,20 @@ describe('addPathCounts', () => {
     expect(counted.positions[keyAfter('e4', 'e5', 'Ba6', 'bxa6', 'Nf3', 'Nc6')]).toBeUndefined();
   });
 
+  it("keeps the line it counted where the counts would change the guide's choice", async () => {
+    const lesson = withFinds(lessonWith(), [BA6]);
+    // At the cue 2...Nxa6 turns out far more played than the best reply 2...bxa6.
+    const explorer: Explorer = async () => ({
+      counts: { [uci('e4', 'e5', 'Ba6', 'Nxa6')]: 1000, [uci('e4', 'e5', 'Ba6', 'bxa6')]: 10 },
+      total: 1010,
+    });
+    const counted = await addPathCounts(lesson, [BA6], explorer);
+    const marked = movesAt(counted, 'e4', 'e5')[1];
+    expect(mistakeLine(counted, keyAfter('e4', 'e5'), marked)).toEqual(
+      uciLine('e4', 'e5', 'Ba6', 'bxa6', 'Nf3', 'Nc6').slice(2),
+    );
+  });
+
   it("counts the guide's line where the guide already marked the mistake", async () => {
     const lesson = lessonWith({
       [keyAfter('e4', 'e5')]: at([
@@ -184,7 +198,7 @@ describe('addPathCounts', () => {
     const explorer: Explorer = async () => ({ counts: {}, total: 0 });
     // The line goes 2...bxa6 3.Nf3, but the tree has no position after 2.Ba6.
     await expect(addPathCounts(withFinds(lesson, [BA6]), [BA6], explorer)).rejects.toThrow(
-      'plays past the tree',
+      'which the tree lacks',
     );
   });
 });

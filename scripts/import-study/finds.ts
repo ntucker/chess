@@ -89,18 +89,25 @@ async function gainByBand(
 }
 
 /**
- * The moves `find`'s mark plays in `lesson` (which `withFinds` wrote it into),
- * from the start: Act I, then the mistake's line (`mistakeLine`). That is the
- * find's best reply and Act III, or the guide's line where the guide already
- * marked the mistake. Popularity keeps each mark's line as it is here
- * (`keepMistakeLines`), so these are the moves the shipped lesson plays.
+ * The positions `find`'s mark plays a move in, in `lesson` (which `withFinds`
+ * wrote it into), from the start: along Act I, then along the mistake's line
+ * (`mistakeLine`). That line is the find's best reply and Act III, or the
+ * guide's line where the guide already marked the mistake. Throws where a
+ * move of the path is not in the tree.
  */
-function markedPath(lesson: Lesson, find: Find): Uci[] {
+function markedPositions(lesson: Lesson, find: Find): PositionKey[] {
   const mistakeKey = walkTo(lesson.start, find.line)!.key;
-  return [
+  const path = [
     ...find.line,
     ...mistakeLine(lesson, mistakeKey, guideMove(lesson, mistakeKey, find.mistake)!),
   ];
+  // Every position but the last, where no path move is played.
+  const keys = [...playLine(path, startOf(lesson))].slice(0, -1).map(({ key }) => key);
+  keys.forEach((key, i) => {
+    if (!guideMove(lesson, key, path[i]))
+      throw new Error(`The mark on ${find.mistake} plays ${path[i]}, which the tree lacks`);
+  });
+  return keys;
 }
 
 type Entry = Omit<LessonPosition, 'moves'> & { moves: LessonMove[] };
@@ -172,30 +179,23 @@ export function withFinds(lesson: Lesson, finds: readonly LessonFind[]): Lesson 
 
 /**
  * `lesson` (with `finds` written in) with the lichess counts on every position
- * a move of a find's marked path (`markedPath`) is played in: each move's games
- * and the games reaching the position, per band, from one explorer answer each
- * (asked with its total). Popularity, which runs after, keeps the counts where
- * it doesn't ask.
+ * of each find's marked path (`markedPositions`): each move's games and the
+ * games reaching the position, per band, from one explorer answer each (asked
+ * with its total). The counts can change the guide's choices, so each mark
+ * keeps the line it had (`keepMistakeLines`): the line counted is the line
+ * played. Popularity, which runs after, keeps the counts where it doesn't ask.
  */
 export async function addPathCounts(
   lesson: Lesson,
   finds: readonly LessonFind[],
   explorer: Explorer,
 ): Promise<Lesson> {
-  const keys = new Set<PositionKey>();
-  for (const { find } of finds) {
-    // Every position but the last, where no path move is played.
-    for (const { key } of [...playLine(markedPath(lesson, find), startOf(lesson))].slice(0, -1)) {
-      if (!lesson.positions[key])
-        throw new Error(`The mark on ${find.mistake} plays past the tree`);
-      keys.add(key);
-    }
-  }
+  const keys = new Set(finds.flatMap(({ find }) => markedPositions(lesson, find)));
   const positions = { ...lesson.positions };
   for (const key of keys) {
     const answers = [];
     for (const band of RATING_BANDS) answers.push(await explorer(key, band, { total: true }));
     positions[key] = withCounts(positions[key], measured(positions[key].moves, answers));
   }
-  return { ...lesson, positions };
+  return keepMistakeLines(lesson, { ...lesson, positions });
 }
