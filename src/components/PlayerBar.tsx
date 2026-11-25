@@ -1,7 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, type PressableState, Spinner, Text, useTheme } from '@reactive/silk-native';
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { type StyleProp, View, type ViewStyle } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 
 import type { Captures } from '@/game/material';
 import { PLAYER_DISC } from '@/theme/sideBySide';
@@ -11,6 +12,7 @@ import { useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
 import { pieceColors } from '@/theme/pieceColors';
 
 import { CapturesChip } from './CapturesChip';
+import { Tip } from './Tip';
 
 interface Props {
   readonly name: string;
@@ -22,7 +24,10 @@ interface Props {
   readonly color: Color;
   /** It's this player's turn in the latest position. */
   readonly toMove: boolean;
+  /** This player's engine is choosing a move: the disc's ring turns. */
   readonly thinking?: boolean;
+  /** This player's engine is downloading: the disc's ring fills, with how far in a tip. */
+  readonly download?: DiscDownload;
   /** What each side is up and has taken on the board shown: the chip shows this player's edge. */
   readonly captures: Captures;
   /** Pressing the disc swaps the sides; it shows a swap graphic while pointed at. */
@@ -31,6 +36,14 @@ interface Props {
   readonly children?: ReactNode;
   /** The bar's size; the screen fixes its height to line it up with the board. */
   readonly style?: StyleProp<ViewStyle>;
+}
+
+/** A download the disc's ring shows. */
+export interface DiscDownload {
+  /** What is downloading, as its tip names it: "Full Stockfish". */
+  readonly label: string;
+  /** How much has arrived, in whole percent. */
+  readonly percent: number;
 }
 
 /** What pressing a player's disc does. */
@@ -55,6 +68,7 @@ export function PlayerBar({
   color,
   toMove,
   thinking,
+  download,
   captures,
   swap,
   children,
@@ -67,9 +81,28 @@ export function PlayerBar({
     tone: toMove ? 'accent' : 'secondary',
     numberOfLines: 1,
   } as const;
+  const disc = (
+    <Disc color={color} toMove={toMove} swap={swap}>
+      {download ? (
+        <DownloadRing {...download} />
+      ) : thinking ? (
+        <Spinner
+          size="sm"
+          tone="accent"
+          label={`${name} is thinking`}
+          style={[styles.ring, styles.turning]}
+        />
+      ) : null}
+    </Disc>
+  );
   return (
     <View style={[styles.bar, style]}>
-      <Disc color={color} toMove={toMove} swap={swap} />
+      {download ? (
+        // On the disc as a whole, so a disc that swaps the sides keeps its press.
+        <Tip tip={`${download.label}: ${download.percent}% downloaded`}>{disc}</Tip>
+      ) : (
+        disc
+      )}
       <View {...part('player-names', styles.names)}>
         {/* Only its children take presses: its padding reaches over its neighbours. */}
         <View pointerEvents="box-none" style={styles.nameLine}>
@@ -87,14 +120,21 @@ export function PlayerBar({
           {toMove ? <Text style={spokenOnly}>to move</Text> : null}
         </View>
       </View>
-      {thinking ? <Spinner size="sm" tone="accent" label={`${name} is thinking`} /> : null}
       {children}
     </View>
   );
 }
 
-/** The side's disc, lit while it is to move; with `swap`, a button that swaps the sides. */
-function Disc({ color, toMove, swap }: Pick<Props, 'color' | 'toMove' | 'swap'>) {
+/**
+ * The side's disc, lit while it is to move; with `swap`, a button that swaps
+ * the sides. `children` is a ring drawn over its border (`styles.ring`).
+ */
+function Disc({
+  color,
+  toMove,
+  swap,
+  children,
+}: Pick<Props, 'color' | 'toMove' | 'swap' | 'children'>) {
   const { theme } = useTheme();
   const { tones } = theme.semantic.color;
   const styles = useNarrowStyles(STYLES);
@@ -107,7 +147,7 @@ function Disc({ color, toMove, swap }: Pick<Props, 'color' | 'toMove' | 'swap'>)
       borderColor: toMove ? tones.accent.solid : tones.neutral.border,
     },
   ];
-  if (!swap) return <View style={look} />;
+  if (!swap) return <View style={look}>{children}</View>;
   const pointed = ({ hovered, focusVisible }: PressableState) => hovered || focusVisible;
   return (
     <Pressable
@@ -124,15 +164,77 @@ function Disc({ color, toMove, swap }: Pick<Props, 'color' | 'toMove' | 'swap'>)
         state.pressed && styles.swapPressed,
       ]}
     >
-      {(state) =>
-        pointed(state) ? (
-          // A narrow page's dot has no room for it, and no pointer to hover.
-          <View {...part('wide-only')}>
-            <Ionicons name="swap-vertical" size={SWAP_ICON} color={pieceColors[opposite(color)]} />
-          </View>
-        ) : null
-      }
+      {(state) => (
+        <>
+          {children}
+          {pointed(state) ? (
+            // A narrow page's dot has no room for it, and no pointer to hover.
+            <View {...part('wide-only')}>
+              <Ionicons
+                name="swap-vertical"
+                size={SWAP_ICON}
+                color={pieceColors[opposite(color)]}
+              />
+            </View>
+          ) : null}
+        </>
+      )}
     </Pressable>
+  );
+}
+
+/**
+ * The disc's ring filling clockwise from the top as `percent` arrives, its
+ * name and progress told to screen readers. Drawn once the ring's box is
+ * measured, since its stroke is the disc's border.
+ */
+function DownloadRing({ label, percent }: DiscDownload) {
+  const { theme } = useTheme();
+  const styles = useNarrowStyles(STYLES);
+  const { tones } = theme.semantic.color;
+  const [size, setSize] = useState(0);
+  // A narrow page's dot has the narrow border: the two sizes never meet.
+  const border = size < PLAYER_DISC.size.wide ? DISC_BORDER.narrow : DISC_BORDER.wide;
+  const radius = (size - border) / 2;
+  const around = 2 * Math.PI * radius;
+  return (
+    <View
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel={`${label} downloading`}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={percent}
+      onLayout={(event) => setSize(event.nativeEvent.layout.width)}
+      style={styles.ring}
+    >
+      {size ? (
+        <Svg width={size} height={size}>
+          {/* The track hides the disc's own border, lit while the player is to move. */}
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={tones.neutral.border}
+            strokeWidth={border}
+          />
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={tones.accent.solid}
+            strokeWidth={border}
+            strokeLinecap="round"
+            strokeDasharray={around}
+            strokeDashoffset={around * (1 - percent / 100)}
+            // From the top, as a clock's hand starts.
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          />
+        </Svg>
+      ) : null}
+    </View>
   );
 }
 
@@ -149,6 +251,16 @@ const STYLES = narrowStyles((px) => ({
     borderWidth: px(DISC_BORDER),
   },
   swap: { alignItems: 'center', justifyContent: 'center' },
+  // Over the disc's border, its own box: the disc's inside is its padding box.
+  ring: {
+    position: 'absolute',
+    top: px(DISC_BORDER.times(-1)),
+    left: px(DISC_BORDER.times(-1)),
+    right: px(DISC_BORDER.times(-1)),
+    bottom: px(DISC_BORDER.times(-1)),
+  },
+  // Silk's spinner, sized to the ring and as thick as the border it turns over.
+  turning: { width: 'auto', height: 'auto', borderWidth: px(DISC_BORDER) },
   // Raised a little toward the pointer, and pressed back in.
   swapPointed: { transform: [{ scale: 1.1 }] },
   swapPressed: { transform: [{ scale: 0.95 }] },

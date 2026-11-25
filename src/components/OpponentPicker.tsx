@@ -15,6 +15,7 @@ import { type DownloadFailure, useFullStockfishDownload } from '@/resources/down
 import { useSettings } from '@/settings/SettingsProvider';
 import { OUTDATED_NEEDS } from '@/stockfish/fullFiles';
 
+import type { DiscDownload } from './PlayerBar';
 import { OpponentStrength } from './StrengthSlider';
 
 const WEB = process.env.EXPO_OS === 'web';
@@ -147,7 +148,7 @@ export function OpponentPicker() {
           );
         }}
       </Pressable>
-      {opponent === 'stockfish-full' ? <FullStockfishProgress /> : null}
+      {opponent === 'stockfish-full' ? <FullStockfishFailure /> : null}
       <Popover.Root
         open={opened !== undefined}
         onOpenChange={(isOpen) => {
@@ -180,6 +181,17 @@ export function OpponentPicker() {
   );
 }
 
+/**
+ * Full Stockfish's download while it runs, for the opponent's disc to show
+ * (`PlayerBar`); a failed one is told beside the opponent's name instead.
+ */
+export function useOpponentDownload(): DiscDownload | undefined {
+  const download = useFullStockfishDownload();
+  return download && !download.failure
+    ? { label: 'Full Stockfish', percent: download.percent }
+    : undefined;
+}
+
 /** What a failed download says, kept short to fit beside the name on a phone. */
 const FAILURES: Record<DownloadFailure, string> = {
   retrying: '· retrying download',
@@ -187,21 +199,20 @@ const FAILURES: Record<DownloadFailure, string> = {
 };
 
 /**
- * How full Stockfish's one download is going, beside its name while it runs
- * ("· 42% downloaded": the percent first, so a phone's crowded bar cuts the
- * word, not the number), or that it failed and is tried again, or that the
- * site has moved to a newer build, with a reload where that helps.
+ * That full Stockfish's download failed, beside its name: it is tried again,
+ * or the site has moved to a newer build, with a reload where that helps.
+ * While it runs, the opponent's disc shows how far it has got (`useOpponentDownload`).
  */
-function FullStockfishProgress() {
-  const download = useFullStockfishDownload();
-  if (!download) return null;
+function FullStockfishFailure() {
+  const failure = useFullStockfishDownload()?.failure;
+  if (!failure) return null;
   return (
     <>
       <Text role="caption" tone="secondary" numberOfLines={1} style={styles.progress}>
-        {download.failure ? FAILURES[download.failure] : `· ${download.percent}% downloaded`}
+        {FAILURES[failure]}
       </Text>
       {/* Beside the message rather than in it, so a narrow bar cuts the message, not the reload. */}
-      {!OUTDATED_NEEDS && download.failure === 'newVersion' ? (
+      {!OUTDATED_NEEDS && failure === 'newVersion' ? (
         <Pressable accessibilityRole="button" onPress={reload} style={styles.reload}>
           <Text role="caption" tone="accent" style={styles.underlined}>
             Reload
@@ -229,7 +240,7 @@ const styles = StyleSheet.create({
   },
   chevronOpen: { transform: [{ rotate: '180deg' }] },
   // Gives way before the strength and its chevron beside it.
-  progress: { flexShrink: 1, minWidth: 0, fontVariant: ['tabular-nums'] },
+  progress: { flexShrink: 1, minWidth: 0 },
   reload: { flexShrink: 0 },
   underlined: { textDecorationLine: 'underline' },
   // Room for five ratings to sit apart, and as wide as a 360 px phone allows (Silk keeps 8 px from each edge).

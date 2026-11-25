@@ -13,6 +13,7 @@ import { LessonPage } from './LessonScreen';
 jest.mock('@data-client/react', () => ({
   AsyncBoundary: ({ children }: { children: ReactNode }) => children,
   useFetch: () => {},
+  useQuery: () => undefined,
   useSuspense: () => undefined,
 }));
 jest.mock('./useOpeningsGame', () => ({

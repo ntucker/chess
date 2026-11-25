@@ -314,7 +314,7 @@ describe('OpponentPicker', () => {
     expect(popover()).toBeNull();
   });
 
-  it("shows full Stockfish's download beside it while it runs", async () => {
+  it("says beside it when full Stockfish's download fails, leaving its progress to the disc", async () => {
     act(() => trigger().click());
     press('End');
     expect(trigger().textContent).toBe('Full Stockfish');
@@ -326,7 +326,8 @@ describe('OpponentPicker', () => {
         reportDownload(percent, failure);
       });
     await report(42);
-    expect(progress()).toBe('· 42% downloaded');
+    // The opponent's disc shows it (`useOpponentDownload`, PlayerBar).
+    expect(progress()).toBeUndefined();
     await report(0, 'retrying');
     expect(progress()).toBe('· retrying download');
     await report(0, 'newVersion');
