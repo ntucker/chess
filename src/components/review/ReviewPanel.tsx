@@ -9,7 +9,7 @@ import type { LessonId } from '@/resources/lesson';
 import { ReviewActions } from './ReviewActions';
 import { ReviewGraph } from './ReviewGraph';
 import { ReviewHeadline } from './ReviewHeadline';
-import { ReviewMoment } from './ReviewMoment';
+import { ReviewCard } from './ReviewCard';
 import { reviewScoresheet, type ReviewView } from './reviewView';
 
 interface Props {
@@ -38,7 +38,7 @@ export function ReviewPanel({ eyebrow, learner, review, lesson }: Props) {
       <View style={styles.graph}>
         <ReviewGraph review={review} learner={learner} height={GRAPH_HEIGHT} />
       </View>
-      <ReviewMoment learner={learner} review={review} lesson={lesson} />
+      <ReviewCard learner={learner} review={review} lesson={lesson} />
       <ReviewActions {...review} />
       <Separator />
       <Stack style={labelled}>

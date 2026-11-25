@@ -6,7 +6,9 @@ import { createRoot, type Root } from 'react-dom/client';
 import { themes } from '@/theme/theme';
 
 import type { LessonScreenModel } from '../useLessonScreen';
-import { PhoneLesson, type PhonePage } from './PhoneLesson';
+import type { PhonePage } from '@/components/PhonePages';
+
+import { PhoneLesson } from './PhoneLesson';
 
 // The blocks are stood in for: these tests are about what the layout keeps
 // mounted, not about what each block draws.
@@ -56,7 +58,7 @@ afterEach(() => {
   mockMovesMounts = 0;
 });
 
-const render = (page: PhonePage, model = MODEL) =>
+const render = (page: PhonePage<'lesson'>, model = MODEL) =>
   act(() =>
     root.render(
       <SilkProvider theme={themes.dark}>

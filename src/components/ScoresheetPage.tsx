@@ -172,9 +172,10 @@ const styles = StyleSheet.create({
    * Wide enough for "12…Nxd5" with its piece as an icon (six mono characters
    * and the widest piece), so the stepper keeps its width from move to move,
    * and no wider than the two jumps it replaces, so the name bar keeps its room.
+   * At least that: large text widens it rather than cut the move short.
    */
   opener: {
-    width:
+    minWidth:
       Math.ceil(MOVE_SIZE * (6 * MONO_ADVANCE + FIGURINE_ADVANCE)) +
       OPENER_GAP +
       CHEVRON_SIZE +

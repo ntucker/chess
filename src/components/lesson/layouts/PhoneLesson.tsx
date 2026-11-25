@@ -1,7 +1,7 @@
 import { Separator } from '@reactive/silk-native';
 import { StyleSheet, View } from 'react-native';
 
-import { PhonePages } from '@/components/PhonePages';
+import { type PhonePage, PhonePages } from '@/components/PhonePages';
 import { ScoresheetReview } from '@/components/ReviewLinks';
 import { FadingScroll } from '@/theme/Narrow';
 
@@ -12,9 +12,6 @@ import { headlineNews } from '../status';
 import { TrapCard } from '../TrapCard';
 import type { LessonScreenModel } from '../useLessonScreen';
 import { LessonHeadline } from './LessonHeadline';
-
-/** The pages under the board on a phone, side by side: the lesson, and its scoresheet. */
-export type PhonePage = 'lesson' | 'scoresheet';
 
 /**
  * The lesson under the board on a phone: a short headline, any trap's
@@ -32,8 +29,8 @@ export function PhoneLesson({
   scoresheetReachable,
 }: {
   readonly model: LessonScreenModel;
-  readonly page: PhonePage;
-  readonly onPage: (page: PhonePage) => void;
+  readonly page: PhonePage<'lesson'>;
+  readonly onPage: (page: PhonePage<'lesson'>) => void;
   /** Whether a swipe can reach the scoresheet's page, as the pill can. */
   readonly scoresheetReachable: boolean;
 }) {

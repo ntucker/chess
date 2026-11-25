@@ -12,10 +12,11 @@ import { type GuideAnswer, momentAt } from '@/review/retry';
 import { reviewMoves, tally } from '@/review/review';
 import { listing } from '@/review/review.fixture';
 import { type ReviewScreen, startReview } from '@/review/screen';
+import type { PhonePage } from '@/components/PhonePages';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
 
-import { PhoneReview, type PhoneReviewPage } from './PhoneReview';
+import { PhoneReview } from './PhoneReview';
 import { ReviewActionBar } from './ReviewActions';
 import { ReviewPanel } from './ReviewPanel';
 import type { ReviewView } from './reviewView';
@@ -348,7 +349,7 @@ describe('ReviewPanel', () => {
 describe('PhoneReview', () => {
   it('shows the page it is given, keeping the other mounted and hidden', () => {
     const view = review(2, [0, 1, 2, 3]);
-    const shown = (page: PhoneReviewPage) =>
+    const shown = (page: PhonePage<'review'>) =>
       render(
         view,
         (host) => {

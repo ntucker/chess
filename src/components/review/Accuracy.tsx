@@ -11,7 +11,7 @@ interface Props {
   readonly accuracy: Review['accuracy']['white'];
   /** Whose it is, for its tooltip: "Your", "The opponent's". */
   readonly whose: string;
-  /** Named "Accuracy" before the number, where nothing else names it: a wide page's name bar. */
+  /** Named "Accuracy" before the number, on a wide page's name bar; a phone's bar has no room, and its tip names it. */
   readonly named?: boolean;
 }
 

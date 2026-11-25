@@ -6,6 +6,9 @@ import { useSections } from '@/components/Eyebrow';
 import { ScoresheetPage } from '@/components/ScoresheetPage';
 import { useNarrowPart } from '@/theme/Narrow';
 
+/** A phone's pages under the board: the screen's own (`home`), and the scoresheet. */
+export type PhonePage<H extends string> = H | 'scoresheet';
+
 /**
  * A phone's panel under the board: `head` over two pages side by side, the
  * screen's own (`home`) and the scoresheet, which the move pill or a
@@ -26,8 +29,8 @@ export function PhonePages<H extends string>({
 }: {
   readonly head: ReactNode;
   readonly home: H;
-  readonly page: H | 'scoresheet';
-  readonly onPage: (page: H | 'scoresheet') => void;
+  readonly page: PhonePage<H>;
+  readonly onPage: (page: PhonePage<H>) => void;
   /** The home page's content. */
   readonly children: ReactNode;
   readonly scoresheet: ComponentProps<typeof ScoresheetPage>;
@@ -44,7 +47,7 @@ export function PhonePages<H extends string>({
       {/* The pager proposes only its pages' values. */}
       <Pager.Root
         value={page}
-        onValueChange={(value) => onPage(value as H | 'scoresheet')}
+        onValueChange={(value) => onPage(value as PhonePage<H>)}
         style={[styles.pages, { marginHorizontal: -bleed }]}
       >
         <Pager.Page value={home} style={pageStyle}>

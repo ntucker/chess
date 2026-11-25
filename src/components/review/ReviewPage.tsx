@@ -8,6 +8,7 @@ import { lastMoveBadge, refutationArrow } from '@/board/drawing';
 import { BrowserOnly } from '@/components/BrowserOnly';
 import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
+import type { PhonePage } from '@/components/PhonePages';
 import { ScoresheetOpener } from '@/components/ScoresheetPage';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { usePages } from '@/components/usePages';
@@ -21,7 +22,7 @@ import { REVIEW_ENGINE, useReview } from '@/review/useReview';
 import { useLayout } from '@/theme/Narrow';
 
 import { AccuracyMark } from './Accuracy';
-import { type PhoneReviewPage, PhoneReview } from './PhoneReview';
+import { PhoneReview } from './PhoneReview';
 import { ReviewActionBar } from './ReviewActions';
 import { ReviewPanel } from './ReviewPanel';
 
@@ -83,7 +84,7 @@ function ReviewScreen({
   const preview = pointed && ply > 0 ? fenAfter(plies[ply - 1].fen, pointed) : undefined;
   const retrying = moment.board === 'retry';
   const phone = useLayout() === 'phone';
-  const { page, show } = usePages<PhoneReviewPage>('review', phone);
+  const { page, show } = usePages<PhonePage<'review'>>('review', phone);
   const scoresheetShown = page === 'scoresheet';
   const eyebrow = picked ? `Review · ${picked.title}` : 'Review';
   return (
@@ -111,12 +112,14 @@ function ReviewScreen({
               <AccuracyMark
                 accuracy={review.accuracy[opposite(learner)]}
                 whose="The opponent's"
-                named
+                named={!phone}
               />
             ),
           }}
           player={{
-            children: <AccuracyMark accuracy={review.accuracy[learner]} whose="Your" named />,
+            children: (
+              <AccuracyMark accuracy={review.accuracy[learner]} whose="Your" named={!phone} />
+            ),
           }}
           board={{
             fen: current.fen,

@@ -1,3 +1,4 @@
+import { percent } from '@/analysis/quality';
 import type { Color } from '@/game/replay';
 import type { LessonId } from '@/resources/lesson';
 import { playOnHref } from '@/review/address';
@@ -9,7 +10,7 @@ import type { ReviewView } from './reviewView';
 import { ReviewTally } from './Tally';
 
 /** What the review says of the move shown: its move card, or at the start each side's tally. */
-export function ReviewMoment({
+export function ReviewCard({
   learner,
   review,
   lesson,
@@ -42,6 +43,6 @@ export function ReviewMoment({
 /** How much of the mover's winning chances a judged move gave away, when it gave any: "Here: 26%." */
 function lossDetail(move: ReviewMove) {
   if (move.status !== 'judged') return undefined;
-  const lost = Math.round((move.before - move.after) * 100);
-  return lost > 0 ? `Here: ${lost}%.` : undefined;
+  const lost = move.before - move.after;
+  return Math.round(lost * 100) > 0 ? `Here: ${percent(lost)}.` : undefined;
 }
