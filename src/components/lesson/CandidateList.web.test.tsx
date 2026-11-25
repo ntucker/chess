@@ -1,6 +1,6 @@
 // Renders Silk, which ships ES modules: the web project's transformIgnorePatterns
 // (package.json) lets @reactive through Babel for it.
-import { describe, expect, it, jest } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { SilkProvider } from '@reactive/silk-native';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -13,15 +13,6 @@ import { CandidateList } from './CandidateList';
 
 // Its font needs Expo's asset registry too.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
-// Records whether each change the rows' motion animates fades rows in and out.
-const mockFades: boolean[] = [];
-jest.mock('@/motion/reorder', () => ({
-  measure: () => new Map(),
-  reorder: (_before: unknown, _items: unknown, _spring: unknown, { fades }: { fades: boolean }) => {
-    mockFades.push(fades);
-  },
-}));
-
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const candidate = (uci: string, san: string, rare?: boolean) =>
@@ -197,25 +188,55 @@ describe('CandidateList', () => {
     ]);
   });
 
-  it('fades rows for showing rare ones, not for leaving a position that showed them', () => {
-    const list = mount();
-    mockFades.length = 0;
-    list.show({ position: 'a' });
-    list.show({ position: 'a', rareShown: true });
-    expect(mockFades).toEqual([true]);
-    // the next position mounts its own list: nothing animates the swap
-    list.show({ position: 'b' });
-    expect(mockFades).toEqual([true]);
-    list.unmount();
-  });
+  describe('motion', () => {
+    // jsdom has no layout and no Web Animations: each element sits 40px below the one before it
+    // among its siblings, and each animation Silk's MotionList starts is recorded by what it
+    // animates (opacity for a fade, translate for a glide).
+    const animated: string[] = [];
+    const { animate } = Element.prototype;
+    const { getBoundingClientRect } = Element.prototype;
+    beforeEach(() => {
+      animated.length = 0;
+      Element.prototype.animate = function (keyframes) {
+        animated.push(Object.keys((keyframes as Keyframe[])[0]!).join());
+        return {
+          finished: Promise.resolve(),
+          cancel: () => {},
+          playState: 'running',
+          currentTime: 0,
+        } as unknown as Animation;
+      };
+      Element.prototype.getBoundingClientRect = function (this: Element) {
+        const index = this.parentElement ? [...this.parentElement.children].indexOf(this) : 0;
+        return { left: 0, top: index * 40, width: 100, height: 40 } as DOMRect;
+      };
+    });
+    afterEach(() => {
+      Element.prototype.animate = animate;
+      Element.prototype.getBoundingClientRect = getBoundingClientRect;
+    });
+    const fades = () => animated.filter((what) => what === 'opacity').length;
 
-  it('glides rows a deeper search re-ranks in one position, without fading', () => {
-    const other = candidate('d2d4', 'd4');
-    const list = mount();
-    mockFades.length = 0;
-    list.show({ candidates: [COMMON, other] });
-    list.show({ candidates: [other, COMMON] });
-    expect(mockFades).toEqual([false]);
-    list.unmount();
+    it('fades rows for showing rare ones, not for leaving a position that showed them', () => {
+      const list = mount();
+      list.show({ position: 'a' });
+      list.show({ position: 'a', rareShown: true });
+      expect(fades()).toBeGreaterThan(0);
+      animated.length = 0;
+      // the next position mounts its own list: nothing animates the swap
+      list.show({ position: 'b' });
+      expect(animated).toEqual([]);
+      list.unmount();
+    });
+
+    it('glides rows a deeper search re-ranks in one position, without fading', () => {
+      const other = candidate('d2d4', 'd4');
+      const list = mount();
+      list.show({ candidates: [COMMON, other] });
+      list.show({ candidates: [other, COMMON] });
+      expect(animated).toContain('translate');
+      expect(fades()).toBe(0);
+      list.unmount();
+    });
   });
 });

@@ -1,7 +1,11 @@
 import { useRef } from 'react';
 import type { GestureResponderEvent } from 'react-native';
 
-import type { Point } from '@/motion/dom';
+/** A point or offset in px, on screen. */
+export interface Point {
+  readonly x: number;
+  readonly y: number;
+}
 
 /** A finger: which one, and where it went down. */
 interface Finger extends Point {

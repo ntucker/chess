@@ -169,7 +169,7 @@ function Pieces({
 
 /** Both sides' full lists, with their points, and one line on who is ahead. */
 function CapturesCard({ captures }: { readonly captures: Captures }) {
-  // Shown at once on the web, where Reanimated's entrances don't run here (as in MotionList),
+  // Shown at once on the web, where Reanimated's entrances don't run here (as in silk's MotionList),
   // and when motion is reduced.
   const still = useReducedMotion();
   const fan = !WEB && !still;
