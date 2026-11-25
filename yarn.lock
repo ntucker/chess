@@ -6148,7 +6148,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo-status-bar@npm:^58.0.5, expo-status-bar@npm:~58.0.5":
+"expo-status-bar@npm:^58.0.5":
   version: 58.0.5
   resolution: "expo-status-bar@npm:58.0.5"
   peerDependencies:
@@ -9556,7 +9556,6 @@ __metadata:
     expo-router: "npm:~58.0.32"
     expo-splash-screen: "npm:~58.0.14"
     expo-sqlite: "npm:~58.0.18"
-    expo-status-bar: "npm:~58.0.5"
     expo-system-ui: "npm:~58.0.7"
     jest: "npm:^30.5.2"
     jest-expo: "npm:~58.0.15"

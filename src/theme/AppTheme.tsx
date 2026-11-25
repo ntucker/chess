@@ -1,6 +1,5 @@
 import { SilkProvider } from '@reactive/silk-native';
 import { ThemeProvider } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { type ReactNode, useLayoutEffect, useRef } from 'react';
 
 import { useSettings } from '@/settings/SettingsProvider';
@@ -30,7 +29,6 @@ export function AppTheme({ children }: { readonly children: ReactNode }) {
   }, [theme]);
   return (
     <SilkProvider theme={shownThemes[colorScheme]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       <ThemeProvider value={navigationThemes[colorScheme]}>{children}</ThemeProvider>
     </SilkProvider>
   );
