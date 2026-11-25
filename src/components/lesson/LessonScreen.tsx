@@ -158,10 +158,11 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
   const model = useLessonScreen({ id, picked, onPlayAs, ...input });
   // A phone's settings sheet (unmounted while the window is wide) and its pages under the board.
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const pages = usePages<PhonePage<LessonPageName>>('lesson', phone);
-  const { show } = pages;
-  // A lesson that lists no opportunities has no page for them.
-  const page = pages.page === 'opportunities' && !model.opportunities ? 'lesson' : pages.page;
+  const { page, show } = usePages<PhonePage<LessonPageName>>(
+    'lesson',
+    phone,
+    model.opportunities ? [] : ['opportunities'],
+  );
   const scoresheetShown = page === 'scoresheet';
   // Not before the first move; but a scoresheet showing stays, since a new game empties it.
   const scoresheetReachable = scoresheetShown || model.stepper.started;

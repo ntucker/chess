@@ -1,11 +1,13 @@
 import { Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
+import { useDeferredValue } from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 
-import { percent } from '@/analysis/quality';
+import { lostPercent, percent } from '@/analysis/quality';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
+import { MeterBar } from '@/components/MeterBar';
 import { Notation } from '@/components/Notation';
-import { InfoMark, Tip } from '@/components/Tip';
-import { lineSans, numberedLine, numberedMove } from '@/game/replay';
+import { HeadingTip } from '@/components/Tip';
+import { lineText, numberedMove } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { opportunityMarks } from '@/lesson/marks';
 import { markId } from '@/lesson/mistakes';
@@ -43,52 +45,43 @@ interface Props {
  * Act I and hands the learner the board at the cue.
  */
 export function OpportunityList({ lesson, band, progress, tip, onPlay, density }: Props) {
-  const rows = lessonOpportunities(lesson, band);
-  const marks = opportunityMarks(lesson, progress, rows);
+  // Worked out after the screen shows, since a big lesson's list takes a moment.
+  const listing = useDeferredValue<Lesson | undefined>(lesson, undefined);
   const labelled = useLabelled();
   const compact = density === 'compact';
   const styles = compact ? COMPACT : COMFORTABLE;
-  const list = rows.length ? (
-    rows.map((row) => (
+  const rows = listing ? lessonOpportunities(listing, band) : [];
+  const marks = listing ? opportunityMarks(listing, progress, rows) : [];
+  const list = !listing ? null : rows.length ? (
+    rows.map((row, i) => (
       <Row
         key={markId(row.key, row.move.uci)}
         row={row}
-        mark={marks.get(markId(row.key, row.move.uci))}
+        mark={marks[i]}
         styles={styles}
         onPlay={onPlay}
       />
     ))
   ) : (
-    <Text role="caption" tone="secondary" style={styles.empty}>
+    <Text role="caption" tone="secondary" style={STATIC.empty}>
       No line of the guide reaches the mistakes it marks.
     </Text>
   );
-  const heading = (
-    <Tip tip={tip} style={STATIC.tipped}>
-      <Eyebrow>Opportunities</Eyebrow>
-      <InfoMark size={INFO_SIZE} />
-    </Tip>
-  );
-  if (compact) {
-    return (
-      <Stack style={STATIC.compact}>
-        {heading}
-        <View>{list}</View>
-      </Stack>
-    );
-  }
   return (
-    <Stack style={labelled}>
-      {heading}
-      <Surface elevation="sunken" border="subtle" radius="md" style={STATIC.card}>
-        {list}
-      </Surface>
+    <Stack style={compact ? STATIC.compact : labelled}>
+      <HeadingTip tip={tip} style={STATIC.heading}>
+        <Eyebrow>Opportunities</Eyebrow>
+      </HeadingTip>
+      {compact ? (
+        <View>{list}</View>
+      ) : (
+        <Surface elevation="sunken" border="subtle" radius="md" style={STATIC.card}>
+          {list}
+        </Surface>
+      )}
     </Stack>
   );
 }
-
-/** The heading's info mark, about as tall as the eyebrow's capitals. */
-const INFO_SIZE = 13;
 
 /** The payoff meter's full width: a mistake costing this much of the expected score, or mate. */
 const FULL_COST = 0.6;
@@ -111,7 +104,9 @@ function Row({
   // Without a name, the two moves before it tell apart one mistake played after several.
   const caption = name ? mistake : leadIn(line);
   const cost = move.mistake?.cost;
-  const payoff = mates ? '#' : cost === undefined ? '–' : `+${Math.round(cost * 100)}`;
+  // As the candidate list shows the mistake's cost.
+  const lost = cost === undefined ? undefined : lostPercent(cost);
+  const payoff = mates ? '#' : lost ? `−${lost}` : '–';
   // Each meter's number and how full its bar is: reach, how often, payoff.
   const meters = [
     { name: 'reach', label: percent(reach), fill: reach },
@@ -155,14 +150,7 @@ function Row({
             <Text role="caption" tone="secondary" style={STATIC.mono}>
               {label}
             </Text>
-            <View style={[STATIC.track, { backgroundColor: color.tones.neutral.subtle }]}>
-              <View
-                style={[
-                  STATIC.fill,
-                  { width: `${fill * 100}%`, backgroundColor: color.tones.accent.solid },
-                ]}
-              />
-            </View>
+            <MeterBar fill={fill} color={color.tones.accent.solid} />
           </View>
         ))}
       </View>
@@ -173,20 +161,19 @@ function Row({
 /** The two moves before a line's last, numbered: "after 5.e5 Ne4"; nothing for a line that short. */
 function leadIn(line: readonly Uci[]): string | undefined {
   const before = line.length - 1;
-  if (before < 2) return undefined;
-  return `after ${numberedLine(lineSans(line.slice(0, before)).slice(-2), before - 1)}`;
+  return before < 2 ? undefined : `after ${lineText(line.slice(0, before), before - 2)}`;
 }
 
 const STATIC = StyleSheet.create({
-  tipped: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start' },
+  // As wide as its words, so its tip opens over them alone.
+  heading: { alignSelf: 'flex-start' },
   compact: { gap: 4 },
+  empty: { paddingVertical: 8 },
   card: { overflow: 'hidden', paddingVertical: 4 },
   mark: { width: MARK_SIZE, height: MARK_SIZE },
   title: { flexGrow: 1, flexShrink: 1, gap: 1 },
   mono: { fontFamily: fonts.mono },
   meters: { flexDirection: 'row', gap: 6 },
-  track: { height: 4, borderRadius: 2, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 2 },
 });
 
 /** A density's row and meter sizes: a phone's rows are 44 tall, the touch size. */
@@ -194,7 +181,6 @@ function densityStyles(meter: number, row: ViewStyle) {
   return StyleSheet.create({
     row: { flexDirection: 'row', alignItems: 'center', gap: 10, outlineOffset: -2, ...row },
     meter: { width: meter, gap: 3 },
-    empty: { paddingVertical: 8 },
   });
 }
 type Styles = ReturnType<typeof densityStyles>;

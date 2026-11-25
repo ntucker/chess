@@ -7,14 +7,7 @@
 import type { Chess } from 'chessops/chess';
 import { parseUci } from 'chessops/util';
 
-import {
-  keyTurn,
-  parsePosition,
-  playLine,
-  playMove,
-  positionKey,
-  readPositionKey,
-} from '@/game/replay';
+import { keyTurn, parsePosition, playMove, positionKey, readPositionKey } from '@/game/replay';
 import { type Move, reachOf } from '@/opportunity/finder';
 
 import type { Lesson, LessonMove, PositionKey, Uci } from './lesson';
@@ -49,14 +42,24 @@ export interface Opportunity {
   readonly score?: number;
 }
 
-/** The other side's marked mistakes in `lesson`, each with the position it is played in, in the file's order. */
-function markedMistakes(lesson: Lesson) {
-  return Object.entries(lesson.positions).flatMap(([key, { moves }]) =>
-    keyTurn(key) === lesson.side
-      ? []
-      : moves.filter((move) => move.mistake).map((move) => ({ key, move })),
-  );
+/**
+ * The other side's marked mistakes in `lesson`, each with the position it is
+ * played in, in the file's order. Read once per lesson, since a big lesson
+ * has many positions and the screen asks on every render.
+ */
+function markedMistakes(lesson: Lesson): readonly { key: PositionKey; move: LessonMove }[] {
+  let found = marked.get(lesson);
+  if (!found) {
+    found = Object.entries(lesson.positions).flatMap(([key, { moves }]) =>
+      keyTurn(key) === lesson.side
+        ? []
+        : moves.filter((move) => move.mistake).map((move) => ({ key, move })),
+    );
+    marked.set(lesson, found);
+  }
+  return found;
 }
+const marked = new WeakMap<Lesson, readonly { key: PositionKey; move: LessonMove }[]>();
 
 /** Whether `lesson` marks any of the other side's mistakes, so it may list opportunities. */
 export const marksOpportunities = (lesson: Lesson) => markedMistakes(lesson).length > 0;
@@ -82,11 +85,11 @@ const listed = new WeakMap<Lesson, Map<number | undefined, readonly Opportunity[
 
 /** `lessonOpportunities`, worked out. */
 function rankOpportunities(lesson: Lesson, band: number | undefined): Opportunity[] {
-  const marked = markedMistakes(lesson);
-  if (!marked.length) return [];
-  const walk = guideLines(lesson, band, new Set(marked.map(({ key }) => key)));
+  const mistakes = markedMistakes(lesson);
+  if (!mistakes.length) return [];
+  const walk = guideLines(lesson, band, new Set(mistakes.map(({ key }) => key)));
   const reach = reachOf(walk.start, walk.moves);
-  const found = marked.flatMap(({ key, move }): Opportunity[] => {
+  const found = mistakes.flatMap(({ key, move }): Opportunity[] => {
     const into = walk.lines.get(key);
     if (!into) return [];
     const pos = readPositionKey(key)!;
@@ -170,7 +173,8 @@ function guideLines(lesson: Lesson, band: number | undefined, wanted: ReadonlySe
 
 /** Whether the line `move`, a marked mistake at `key`, starts ends in checkmate. */
 function mates(lesson: Lesson, key: PositionKey, move: LessonMove): boolean {
-  let last;
-  for (const step of playLine(mistakeLine(lesson, key, move), readPositionKey(key)!)) last = step;
-  return last?.pos.isCheckmate() ?? false;
+  const pos = readPositionKey(key)!;
+  // Checked lines (check.ts), so this skips playMove's checks and move names, as `guideLines` does.
+  for (const uci of mistakeLine(lesson, key, move)) pos.play(parseUci(uci)!);
+  return pos.isCheckmate();
 }

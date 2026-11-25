@@ -19,7 +19,6 @@ import {
 
 import { countedReplies, inCleanRun, walkClean } from './cleanRun';
 import type { Lesson, LessonMove, PositionKey, Uci } from './lesson';
-import { markId } from './mistakes';
 import { type LessonIndex, linesThrough } from './openings';
 import type { ReplyChoice } from './opponent';
 import type { Opportunity } from './opportunities';
@@ -48,23 +47,18 @@ export function rowMarks(
 }
 
 /**
- * Each opportunity's mark (src/lesson/opportunities.ts), by its mistake's
- * `markId`: its move's row's mark at its position (`rowMarks`), so the list
+ * Each opportunity's mark (src/lesson/opportunities.ts), in the list's
+ * order: its move's row's mark at its position (`rowMarks`), so the list
  * and the rows agree. Example: 6.Bg5 is passed once clean runs have passed
  * every line end below it.
  */
 export function opportunityMarks(
   lesson: Lesson,
   progress: MarkedPositions,
-  opportunities: readonly Pick<Opportunity, 'key' | 'move' | 'next'>[],
-): ReadonlyMap<string, Mark> {
+  opportunities: readonly Pick<Opportunity, 'move' | 'next'>[],
+): (Mark | undefined)[] {
   const sets = markSets(progress, lesson);
-  const marks = new Map<string, Mark>();
-  for (const { key, move, next } of opportunities) {
-    const found = moveMark(lesson, sets, move, next, false);
-    if (found) marks.set(markId(key, move.uci), found);
-  }
-  return marks;
+  return opportunities.map(({ move, next }) => moveMark(lesson, sets, move, next, false));
 }
 
 /** A move's mark, to `next`: passed once clean runs pass every line end below it, else seen once shown. */

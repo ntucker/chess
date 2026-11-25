@@ -20,7 +20,7 @@ import {
   type Variation,
   type VariationId,
 } from './lesson';
-import { bandShare, moveGames } from './share';
+import { bandShare } from './share';
 
 /**
  * Where a position stands in the guide. `inside`: the guide has moves here.
@@ -104,7 +104,6 @@ export function candidates(
   const pos = guide.place === 'inside' ? parsePositionKey(key) : undefined;
   if (guide.place !== 'inside' || !pos) return [];
 
-  const count = (move: LessonMove) => (band === undefined ? undefined : moveGames(move, band));
   const share = bandShare(guide.entry, band);
   const rows = guide.entry.moves.map((move): Candidate => {
     const row = candidateRow(lesson, pos, move);
@@ -112,8 +111,9 @@ export function candidates(
     if (!row) throw new Error(`Guide move ${move.uci} is illegal in ${key}`);
     return { ...row, share: share(move) };
   });
-  // Array.sort is stable, so equal counts keep the file's order.
-  rows.sort((a, b) => (count(b.move) ?? -1) - (count(a.move) ?? -1));
+  // Shares at one position share a denominator, so this is by count. Array.sort is stable, so
+  // equal counts keep the file's order.
+  rows.sort((a, b) => (b.share ?? -1) - (a.share ?? -1));
   return pos.turn === lesson.side ? rows : rareLast(rows);
 }
 

@@ -120,9 +120,8 @@ describe('opportunityMarks', () => {
   const list = lessonOpportunities(LESSON, 0);
 
   it('marks a mistake seen once its cue was shown, passed once every line end below it is', () => {
-    const marks = (progress: MarkedPositions) => [
-      ...opportunityMarks(LESSON, progress, list).values(),
-    ];
+    const marks = (progress: MarkedPositions) =>
+      opportunityMarks(LESSON, progress, list).filter(Boolean);
     expect(marks(marked([]))).toEqual([]);
     expect(marks(marked([], [at('e4', 'e5', 'Qh5')]))).toEqual(['seen']);
     expect(marks(marked([at('e4', 'e5', 'Qh5', 'Nc6')]))).toEqual(['passed']);

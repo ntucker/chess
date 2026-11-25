@@ -165,6 +165,11 @@ export const lineSans = (line: readonly string[], pos?: Chess): string[] =>
     (san): san is string => san !== undefined,
   );
 
+/** `moves` from the start, numbered from the one after `from` on: `1.e4 c6`, or `3...dxe4 4.Nxe4`. */
+export function lineText(moves: readonly string[], from: number): string {
+  return numberedLine(lineSans(moves).slice(from), from + 1);
+}
+
 /**
  * Plays `uci` on `pos` and describes it as a ply records it, or returns
  * undefined, playing nothing, if it isn't legal there.

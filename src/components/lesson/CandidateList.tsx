@@ -19,7 +19,8 @@ import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { Notation } from '@/components/Notation';
 import { type EngineVerdict, lostPercent, percent } from '@/analysis/quality';
 import { QualityBadge, TippedBadge, verdictText } from '@/components/QualityBadge';
-import { InfoMark, Tip } from '@/components/Tip';
+import { MeterBar } from '@/components/MeterBar';
+import { HeadingTip, Tip } from '@/components/Tip';
 import type { Mark } from '@/progress/progress';
 import { NARROW_CSS_LOADS, spokenOnly } from '@/theme/narrow';
 import type { Density } from '@/theme/Narrow';
@@ -205,9 +206,13 @@ export function CandidateList({
   return (
     <Stack style={labelled}>
       <View style={styles.head}>
-        <ShareTip tip={shares} marked>
+        {shares ? (
+          <HeadingTip tip={shares}>
+            <Eyebrow>{title}</Eyebrow>
+          </HeadingTip>
+        ) : (
           <Eyebrow>{title}</Eyebrow>
-        </ShareTip>
+        )}
         <MarkLegend marks={shownMarks} />
       </View>
       <Surface elevation="sunken" border="subtle" radius="md" style={styles.list}>
@@ -409,11 +414,7 @@ function Row({
       {share === undefined ? null : (
         <View style={styles.share}>
           {/* A compact row has no room for the bar. */}
-          {styles.compact ? null : (
-            <View style={[styles.track, { backgroundColor: color.tones.neutral.subtle }]}>
-              <View style={[styles.fillBar, { width: `${share * 100}%`, backgroundColor: tone }]} />
-            </View>
-          )}
+          {styles.compact ? null : <MeterBar fill={share} color={tone} style={styles.track} />}
           <ShareTip tip={shareTip}>
             <Text role="caption" tone="secondary" style={styles.percent}>
               {percent(share)}
@@ -436,36 +437,23 @@ const costTip = (cost: string) =>
 const TOP_ENGINE_MOVE = 'top engine move';
 const TOP_ENGINE_TIP = "Top engine move: Stockfish's best reply here, not one the guide teaches.";
 
-/** The info mark beside the heading, about as tall as the eyebrow's capitals. */
-const INFO_SIZE = 13;
-
 /**
  * `children`, which a tap or a resting mouse makes say whose games the
  * shares count, when they show: the words stay out of the panel until asked
- * for. On a heading (`marked`), a mark beside it hints at that. Screen
- * readers read the words after `children`.
+ * for. Screen readers read the words after `children`.
  */
-function ShareTip({
-  tip,
-  marked,
-  children,
-}: {
-  readonly tip?: string;
-  readonly marked?: boolean;
-  readonly children: ReactNode;
-}) {
-  if (!tip) return children;
-  return (
+function ShareTip({ tip, children }: { readonly tip?: string; readonly children: ReactNode }) {
+  return tip ? (
     <Tip tip={tip} style={STATIC.tipped}>
       {children}
-      {marked ? <InfoMark size={INFO_SIZE} /> : null}
     </Tip>
+  ) : (
+    children
   );
 }
 
 const STATIC = StyleSheet.create({
-  // The mark beside the heading's last word, as wide as it needs.
-  tipped: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
+  tipped: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
 });
 
 /** A share's least width, which holds 100% in caption text: larger text widens it. */
@@ -534,8 +522,7 @@ const SAME = StyleSheet.create({
   risk: { textTransform: 'capitalize' },
   cost: { fontFamily: fonts.mono },
   share: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  track: { width: 52, height: 4, borderRadius: 2, overflow: 'hidden' },
-  fillBar: { height: '100%', borderRadius: 2 },
+  track: { width: 52 },
   percent: { minWidth: SHARE_WIDTH, textAlign: 'right', fontFamily: fonts.mono },
   evaluation: { minWidth: EVALUATION_WIDTH, textAlign: 'right', fontFamily: fonts.mono },
   mark: { width: MARK_SIZE, height: MARK_SIZE },
