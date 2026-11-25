@@ -5,12 +5,10 @@
  * is derived from the lesson, the game's moves and Stockfish's answers; the
  * screen stores only what the learner chose at a cue (shown or skipped).
  */
-import { parseUci } from 'chessops/util';
-
 import type { FinalAnalysis } from '@/evaluation/evaluation';
-import { positionKey, readPositionKey } from '@/game/replay';
+import { playLine, readPositionKey } from '@/game/replay';
 import type { Lesson, LessonMove, PositionKey, Uci } from '@/lesson/lesson';
-import { mistakeLine } from '@/lesson/mistakes';
+import { followedMoves, mistakeLine } from '@/lesson/mistakes';
 import type { ReplyChoice } from '@/lesson/opponent';
 import { guideMove } from '@/lesson/select';
 
@@ -37,7 +35,8 @@ export interface Cue {
 /**
  * The latest cue `line` reached within its first `shownMoves` moves: a guide
  * move with a `mistake` marker played by the side the learner doesn't play.
- * It needs no note naming the mark. A mistake of the learner's own side is a
+ * It needs no note naming the mark, but its line needs the punishing
+ * reply. A mistake of the learner's own side is a
  * trap (`LandedTrap` in src/lesson/view.ts), not a cue.
  */
 export function lineCue(
@@ -51,13 +50,14 @@ export function lineCue(
     const move = guideMoves[n];
     if (!move?.mistake || readPositionKey(keys[n])!.turn === lesson.side) continue;
     const moves = mistakeLine(lesson, keys[n], move);
-    const missed = moves.findIndex((uci, step) => uci !== line[n + step]);
+    // A mark the guide gives no punishing reply has nothing to find.
+    if (moves.length < 2) continue;
     return {
       ply: n + 1,
       before: keys[n],
       key: keys[n + 1],
       line: moves,
-      followed: missed === -1 ? moves.length : missed,
+      followed: followedMoves(moves, line, n),
     };
   }
   return undefined;
@@ -108,12 +108,8 @@ export function tryVerdict(
  * the band's most played reply to 16.Ng5 is 16...Qxg5, it plays 16...Qf6.
  */
 export function payoffReplies(cue: Cue): ReplyChoice {
-  const position = readPositionKey(cue.before)!;
-  const next = new Map<PositionKey, Uci>();
-  for (const uci of cue.line) {
-    next.set(positionKey(position), uci);
-    position.play(parseUci(uci)!);
-  }
+  const steps = Array.from(playLine(cue.line, readPositionKey(cue.before)!));
+  const next = new Map(cue.line.map((uci, n) => [steps[n].key, uci]));
   return (replies, key) => {
     const uci = next.get(key);
     return replies.find(({ move }) => move.uci === uci) ?? replies[0];
@@ -154,50 +150,51 @@ export interface Acts {
   readonly held: boolean;
 }
 
-export interface ActsInput {
+/** Where the board stands in a game that reached `cue`. */
+export interface ActsPlace {
   readonly cue: Cue;
   /** The game's moves. */
   readonly moves: readonly Uci[];
   /** How many of them the board shows. */
   readonly ply: number;
-  /** The verdict on the game's move at the cue (`moves[cue.ply]`), where it has one. */
-  readonly verdict?: TryVerdict;
   /** What the learner chose at this cue, if anything. */
   readonly choice?: CueChoice;
   /** The side to move at the board is the learner's. */
   readonly learnerToMove: boolean;
 }
 
+export interface ActsInput extends ActsPlace {
+  /** The verdict on the game's move at the cue (`moves[cue.ply]`), where it has one. */
+  readonly verdict?: TryVerdict;
+}
+
 /**
- * The acts of `cue` while the board is in them, else undefined: from the
- * cue to the last move the game plays along its line (a try off it counts
- * one move), and, where the game played the whole line, at the learner's
- * turn right after, so the news of its end stays until the learner moves
- * (as `newsShown` in src/lesson/guidance.ts). A skipped cue shows none: the board is ordinary
+ * Whether the board is in `cue`'s acts: from the cue to the last move the
+ * game plays along its line (a try off it counts one move), and, where the
+ * game played the whole line, at the learner's turn right after, so the news
+ * of its end stays until the learner moves (as `newsShown` in
+ * src/lesson/guidance.ts). A skipped cue has none: the board is ordinary
  * Explore again.
  */
-export function cueActs({
-  cue,
-  moves,
-  ply,
-  verdict,
-  choice,
-  learnerToMove,
-}: ActsInput): Acts | undefined {
-  if (choice === 'skipped' || ply < cue.ply) return undefined;
-  const tried = moves[cue.ply];
-  const last = cue.ply - 1 + Math.max(cue.followed, tried === undefined ? 1 : 2);
+export function inActs({ cue, moves, ply, choice, learnerToMove }: ActsPlace): boolean {
+  if (choice === 'skipped' || ply < cue.ply) return false;
+  const last = cue.ply - 1 + Math.max(cue.followed, moves[cue.ply] === undefined ? 1 : 2);
   const ended = cue.followed === cue.line.length;
-  if (ply > last + 1 || (ply === last + 1 && !(ended && learnerToMove))) return undefined;
+  return ply <= last || (ply === last + 1 && ended && learnerToMove);
+}
+
+/** The acts of `cue` while the board is in them (`inActs`), else undefined. */
+export function cueActs(input: ActsInput): Acts | undefined {
+  if (!inActs(input)) return undefined;
+  const { cue, moves, ply, verdict, choice } = input;
   const passed = verdict === 'passed';
-  const found: Found =
-    ply === cue.ply ? (passed ? 'passed' : (choice ?? 'open')) : (verdict ?? 'open');
-  const live = ply === cue.ply && (found === 'open' || found === 'shown');
+  const asked: Found = choice === 'shown' ? 'shown' : 'open';
+  const found = ply === cue.ply ? (passed ? 'passed' : asked) : (verdict ?? 'open');
   return {
     cue,
     found,
-    payoff: payoffOf(cue, passed, tried === cue.line[1]),
-    live,
+    payoff: payoffOf(cue, passed, moves[cue.ply] === cue.line[1]),
+    live: ply === cue.ply && (found === 'open' || found === 'shown'),
     held: ply === cue.ply + 1 && ply === moves.length && !passed,
   };
 }

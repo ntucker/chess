@@ -115,6 +115,8 @@ describe('useLesson at a cue', () => {
     await replyTime();
     expect(lesson().game.moves.slice(9)).toEqual([at('c6'), BERLIN_BC4]);
     expect(lesson().acts).toMatchObject({ found: 'passed', payoff: 'playing' });
+    // The mistake's note shows in the acts, not on a trap card.
+    expect(lesson().guidance.trapIn).toBe('acts');
   });
 
   it('holds the opponent at a wrong try, and Retry goes back to the cue', async () => {

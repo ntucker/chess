@@ -1,7 +1,8 @@
 import { describe, expect, it } from '@jest/globals';
 
 import {
-  type CueQuestion,
+  askingMode,
+  type CueGuidance,
   guidance,
   type EngineView,
   type Guidance,
@@ -63,13 +64,19 @@ function shown(
     engine?: { best?: string; top?: string[]; final?: boolean };
     picking?: boolean;
     refutation?: string;
-    cue?: CueQuestion;
+    cue?: CueGuidance;
   } = {},
 ): Guidance {
   const view = sampleView(sans);
   const stockfish = engineView(sans, engine);
   // As useLesson does: a pointer previews only the rows the list shows.
-  const listed = listedEngineMoves(view, mode, picking, stockfish.top, stockfish.final, cue);
+  const listed = listedEngineMoves(
+    view,
+    askingMode(mode, cue),
+    picking,
+    stockfish.top,
+    stockfish.final,
+  );
   return guidance({
     view,
     mode,
@@ -95,11 +102,11 @@ const summary = (shown: Guidance) => ({
 
 describe('guidance', () => {
   describe('an open cue', () => {
-    const verdicts = (sans: string[], cue?: CueQuestion) =>
+    const verdicts = (sans: string[], cue?: CueGuidance) =>
       shown(sans, 'explore', {}, { cue, pointer: { at: 'row', uci: uci(...sans, 'Bf5') } });
 
     it('hides every hint: candidates, previews, notes, best, top moves and verdicts', () => {
-      const asking = verdicts(ADVANCE, {});
+      const asking = verdicts(ADVANCE, { open: true });
       expect(summary(asking)).toEqual({
         candidates: [],
         preview: undefined,
@@ -114,7 +121,12 @@ describe('guidance', () => {
 
     it('lists and draws only the reply it reveals, with "Arrows" off too', () => {
       const reveal = uci(...ADVANCE, 'c5');
-      const revealed = shown(ADVANCE, 'explore', { showMoves: false }, { cue: { reveal } });
+      const revealed = shown(
+        ADVANCE,
+        'explore',
+        { showMoves: false },
+        { cue: { open: true, reveal } },
+      );
       expect(revealed.candidates.map(({ san }) => san)).toEqual(['c5']);
       expect(revealed.drawnCandidates.map(({ san }) => san)).toEqual(['c5']);
       expect(revealed.notes).toEqual([]);
@@ -124,7 +136,7 @@ describe('guidance', () => {
       const off = [...ADVANCE, 'a6'];
       const engine = { best: 'g1f3', top: ['g1f3'], final: true };
       expect(shown(off, 'explore', {}, { engine }).top).toHaveLength(1);
-      expect(shown(off, 'explore', {}, { engine, cue: {} }).top).toEqual([]);
+      expect(shown(off, 'explore', {}, { engine, cue: { open: true } }).top).toEqual([]);
     });
   });
 
@@ -743,6 +755,12 @@ describe('guidance', () => {
       for (const showTraps of [true, false]) {
         expect(shown(LANDED, 'practice', { showTraps }).trap).toMatchObject({ ply: TRAP.length });
       }
+    });
+
+    it("shows a trap the learner fell into on its own card, inside a cue's acts too", () => {
+      expect(shown(LANDED, 'explore').trapIn).toBe('card');
+      expect(shown(LANDED, 'explore', {}, { cue: { open: false } }).trapIn).toBe('card');
+      expect(shown(TRAP, 'explore').trapIn).toBeUndefined();
     });
 
     it("shows a trap fallen into through its moves and the learner's turn after them, until the line leaves it", () => {

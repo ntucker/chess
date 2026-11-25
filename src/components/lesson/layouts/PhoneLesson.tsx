@@ -6,8 +6,8 @@ import { ScoresheetReview } from '@/components/ReviewLinks';
 import { FadingScroll } from '@/theme/Narrow';
 
 import { CandidateList, COMPACT_INSET } from '../CandidateList';
-import { ActRows, ActsNote, asking, CuePane } from '../CueActs';
-import { IdeaAside, IdeaCard } from '../IdeaCard';
+import { ActRows, asking, CuePane } from '../CueActs';
+import { IdeaAside, IdeaCard, PastNote } from '../IdeaCard';
 import { PointingArea } from '../PointingArea';
 import { headlineNews } from '../status';
 import { TrapCard } from '../TrapCard';
@@ -37,29 +37,16 @@ export function PhoneLesson({
   /** Whether a swipe can reach the scoresheet's page, as the pill can. */
   readonly scoresheetReachable: boolean;
 }) {
-  const { idea, aside, acts } = model;
-  // At a cue the acts take the moves' pane, and the pane beside them asks
-  // the cue's question, then holds the guide's note on the mistake.
-  const moves = acts ? null : model.moves;
-  const actsPane = acts ? (
+  const { aside, acts, moves } = model;
+  // At a cue the acts take the moves' pane.
+  const movesPane = acts ? (
     <View style={styles.acts}>
       <ActRows acts={acts} direction="column" />
     </View>
+  ) : moves ? (
+    <CandidateList {...moves} density="compact" />
   ) : null;
-  // The pane beside the moves: the idea, else past the guide the headline's why.
-  const ideaPane =
-    acts && asking(acts) ? (
-      <CuePane acts={acts} />
-    ) : acts?.note ? (
-      <ActsNote note={acts.note} />
-    ) : idea ? (
-      <IdeaCard {...idea} density="compact" />
-    ) : aside ? (
-      // The headline tells it to screen readers.
-      <View aria-hidden>
-        <IdeaAside {...aside} />
-      </View>
-    ) : null;
+  const ideaPane = besideMoves(model);
   return (
     <PhonePages
       head={
@@ -94,17 +81,14 @@ export function PhoneLesson({
     >
       {/* Leaving a row for the idea keeps its preview, so its notes can be pointed at. */}
       {/* Practice can hide both, and then the panes take no room. */}
-      {moves || actsPane || ideaPane ? (
+      {movesPane || ideaPane ? (
         <PointingArea onLeave={model.onLeave} style={styles.panes}>
-          {moves ? (
-            <FadingScroll style={[ideaPane ? styles.moves : styles.pane, styles.bleed]}>
-              <CandidateList {...moves} density="compact" />
+          {movesPane ? (
+            <FadingScroll style={[ideaPane ? styles.moves : styles.pane, !acts && styles.bleed]}>
+              {movesPane}
             </FadingScroll>
           ) : null}
-          {actsPane ? (
-            <FadingScroll style={ideaPane ? styles.moves : styles.pane}>{actsPane}</FadingScroll>
-          ) : null}
-          {(moves || actsPane) && ideaPane ? (
+          {movesPane && ideaPane ? (
             <Separator orientation="vertical" style={styles.hairline} />
           ) : null}
           {ideaPane ? (
@@ -115,6 +99,24 @@ export function PhoneLesson({
         </PointingArea>
       ) : null}
     </PhonePages>
+  );
+}
+
+/**
+ * The pane beside the moves: at a cue, its question while it asks, then the
+ * guide's note on the mistake; else the idea, or past the guide the
+ * headline's why.
+ */
+function besideMoves({ acts, idea, aside }: LessonScreenModel) {
+  if (acts && asking(acts)) return <CuePane acts={acts} />;
+  if (acts?.note) return <PastNote {...acts.note} />;
+  if (idea) return <IdeaCard {...idea} density="compact" />;
+  if (!aside) return null;
+  return (
+    // The headline tells it to screen readers.
+    <View aria-hidden>
+      <IdeaAside {...aside} />
+    </View>
   );
 }
 

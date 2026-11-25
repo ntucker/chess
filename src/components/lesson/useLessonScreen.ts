@@ -26,13 +26,14 @@ import {
   shareSource,
 } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
+import type { Cue } from '@/opportunity/cue';
 import { describeOpponent } from '@/opponent/opponent';
 import { getLesson, LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { reviewHref } from '@/review/address';
 import { useSettings } from '@/settings/SettingsProvider';
 
 import type { CandidateList } from './CandidateList';
-import type { ActsModel } from './CueActs';
+import { type ActsModel, asking } from './CueActs';
 import { type IdeaAside, type IdeaCard, noNotesText } from './IdeaCard';
 import type { LessonControls } from './LessonControls';
 import type { TrapCard } from './TrapCard';
@@ -174,19 +175,15 @@ export function useLessonScreen({
   const rival = opposite(learner);
   const described = describeOpponent(opponent);
   const preview = guidance.preview?.candidate;
-  // The acts explain the other side's mistake themselves, with the trap's note.
-  const opportunity = guidance.trap && acts && !guidance.trap.trap.learnerFalls;
-  const trap = opportunity ? undefined : guidance.trap;
-  const cue = acts && {
-    found: acts.found,
-    payoff: acts.payoff,
-    mistake: game.plies[acts.cue.ply].move!.san,
-    reply: sanAfter(acts.cue.key, acts.cue.line[1]),
-    tried: game.plies[acts.cue.ply + 1]?.move?.san,
-    share: candidates(lesson, acts.cue.before, opponentBand(lesson, opponent)).find(
-      ({ move }) => move.uci === acts.cue.line[0],
-    )?.share,
-  };
+  const trap = guidance.trapIn === 'card' ? guidance.trap : undefined;
+  const cueFacts = useCueFacts(lesson, acts?.cue, opponentBand(lesson, opponent));
+  const cue = acts &&
+    cueFacts && {
+      found: acts.found,
+      payoff: acts.payoff,
+      ...cueFacts,
+      tried: game.plies[acts.cue.ply + 1]?.move?.san,
+    };
   // The card is for notes, or for the notes of a candidate pointed at.
   // Stockfish's moves have none of their own.
   const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
@@ -374,24 +371,24 @@ export function useLessonScreen({
           onReach: reachCard,
         }
       : null,
-    acts:
-      acts && cue
-        ? {
-            found: acts.found,
-            payoff: acts.payoff,
-            line: headline.detail,
-            // Only where the board shows the try that didn't pass.
-            onRetry:
-              (acts.found === 'failed' || acts.found === 'unchecked') && view.ply > acts.cue.ply
-                ? retryCue
-                : undefined,
-            onShow: acts.found !== 'passed' && acts.found !== 'shown' ? showCue : undefined,
-            onSkip: acts.found !== 'passed' ? skipCue : undefined,
-            note: opportunity
-              ? { lesson, shown: guidance.trap!.note, learner, playback }
+    acts: acts
+      ? {
+          found: acts.found,
+          payoff: acts.payoff,
+          line: headline.detail,
+          // Only where the board shows the try that didn't pass.
+          onRetry:
+            (acts.found === 'failed' || acts.found === 'unchecked') && view.ply > acts.cue.ply
+              ? retryCue
               : undefined,
-          }
-        : null,
+          onShow: asking(acts) && acts.found !== 'shown' ? showCue : undefined,
+          onSkip: asking(acts) ? skipCue : undefined,
+          note:
+            guidance.trapIn === 'acts' && guidance.trap
+              ? { lesson, shown: guidance.trap.note, learner, playback }
+              : undefined,
+        }
+      : null,
     trap: trap
       ? {
           lesson,
@@ -418,5 +415,22 @@ export function useLessonScreen({
   };
 }
 
+/**
+ * What a cue's headline names that stays while the board is at it: the
+ * mistake and its punishing reply as the scoresheet writes them, and how
+ * often the opponent's band plays the mistake.
+ */
+function useCueFacts(lesson: Lesson, cue: Cue | undefined, band: number | undefined) {
+  return useMemo(() => {
+    if (!cue) return undefined;
+    const [mistake, reply] = cue.line;
+    return {
+      mistake: sanAt(cue.before, mistake),
+      reply: sanAt(cue.key, reply),
+      share: candidates(lesson, cue.before, band).find(({ move }) => move.uci === mistake)?.share,
+    };
+  }, [lesson, cue, band]);
+}
+
 /** `uci` written as the scoresheet would, played at `key`: "Nxe4". */
-const sanAfter = (key: PositionKey, uci: Uci) => playMove(readPositionKey(key)!, uci)!.san;
+const sanAt = (key: PositionKey, uci: Uci) => playMove(readPositionKey(key)!, uci)!.san;

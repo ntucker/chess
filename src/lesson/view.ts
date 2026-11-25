@@ -18,7 +18,7 @@ import type { Opponent } from '@/opponent/opponent';
 
 import { linePlace } from './cleanRun';
 import type { Lesson, LessonMove, PositionKey, Uci } from './lesson';
-import { type BoardNote, boardNote, type Trap } from './mistakes';
+import { type BoardNote, boardNote, followedMoves, type Trap } from './mistakes';
 import {
   type Candidate,
   candidates,
@@ -230,11 +230,6 @@ function landedTrap(
   keys: readonly PositionKey[],
   guideMoves: readonly (LessonMove | undefined)[],
 ): LandedTrap | undefined {
-  // How many of `trap`'s moves the line plays from `ply` on.
-  const matchedMoves = (trap: Trap, ply: number) => {
-    const n = trap.moves.findIndex((uci, step) => uci !== line[ply + step]);
-    return n === -1 ? trap.moves.length : n;
-  };
   for (let ply = shownMoves - 1; ply >= 0; ply--) {
     for (const note of arrivalNotes(lesson, keys, guideMoves, ply)) {
       if (note.after !== keys[ply]) continue;
@@ -243,7 +238,7 @@ function landedTrap(
         // A one-move trap lands at its only move.
         const landing = Math.min(LANDING_MOVES, trap.moves.length);
         if (ply + landing > shownMoves) continue;
-        const matched = matchedMoves(trap, ply);
+        const matched = followedMoves(trap.moves, line, ply);
         if (matched >= landing)
           return { trap, note, ply, landed: keys[ply + landing], movesPlayed: matched };
       }

@@ -1,19 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Button, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
+import { Stack, Surface, Text, useTheme } from '@reactive/silk-native';
 import type { ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { type IconAction, IconActions } from '@/components/IconActions';
 import { Notation } from '@/components/Notation';
-import { Tip } from '@/components/Tip';
-import type { Lesson } from '@/lesson/lesson';
-import type { Playback } from '@/lesson/useLesson';
-import type { ShownNote } from '@/lesson/view';
-import type { Acts } from '@/opportunity/cue';
+import type { Acts, Found, Payoff } from '@/opportunity/cue';
 import { fonts } from '@/theme/theme';
 
-import { NoteView } from './IdeaCard';
-
-type IconName = ComponentProps<typeof Ionicons>['name'];
+import { PastNote } from './IdeaCard';
 
 /** What the lesson screen shows of a cue's acts (`LessonScreenModel.acts`). */
 export interface ActsModel extends Pick<Acts, 'found' | 'payoff'> {
@@ -26,48 +21,51 @@ export interface ActsModel extends Pick<Acts, 'found' | 'payoff'> {
   /** Leaves the question for ordinary Explore; undefined once passed. */
   readonly onSkip?: () => void;
   /** The guide's note on the mistake, once its punishment lands, with its play-through. */
-  readonly note?: {
-    readonly lesson: Lesson;
-    readonly shown: ShownNote;
-    readonly learner: ComponentProps<typeof NoteView>['learner'];
-    readonly playback: Playback;
-  };
+  readonly note?: ComponentProps<typeof PastNote>;
 }
 
 /** How an act stands: done, the one being played, still to come, or left out. */
 type Stage = 'done' | 'now' | 'shown' | 'missed' | 'ahead' | 'none';
 
-/** The three acts, each with its numeral, name and how it stands. */
-function actStages({ found, payoff }: Pick<ActsModel, 'found' | 'payoff'>) {
-  const cue: Stage =
-    found === 'passed'
-      ? 'done'
-      : found === 'shown'
-        ? 'shown'
-        : found === 'failed' || found === 'unchecked'
-          ? 'missed'
-          : 'now';
-  const third: Stage =
-    payoff === 'done'
-      ? 'done'
-      : payoff === 'playing'
-        ? 'now'
-        : payoff === 'none'
-          ? 'none'
-          : 'ahead';
-  return [
-    { numeral: 'I', name: 'Setup', stage: 'done' as Stage },
-    { numeral: 'II', name: 'Your cue', stage: cue },
-    { numeral: 'III', name: 'Payoff', stage: third },
-  ];
-}
+/** Act II's stage, by how the learner's try stands. */
+const CUE_STAGES: Record<Found, Stage> = {
+  open: 'now',
+  shown: 'shown',
+  pending: 'now',
+  passed: 'done',
+  failed: 'missed',
+  unchecked: 'missed',
+};
 
-/** What each stage says to a screen reader, and draws beside the act's name. */
-const STAGES: Record<Stage, { readonly spoken: string; readonly icon?: IconName }> = {
-  done: { spoken: 'done', icon: 'checkmark' },
-  now: { spoken: 'now' },
+/** Act III's stage, by how the payoff stands. */
+const PAYOFF_STAGES: Record<Payoff, Stage> = {
+  ahead: 'ahead',
+  playing: 'now',
+  done: 'done',
+  none: 'none',
+};
+
+/** The three acts, each with its numeral, name and how it stands. */
+const actStages = ({ found, payoff }: Pick<ActsModel, 'found' | 'payoff'>) => [
+  { numeral: 'I', name: 'Setup', stage: 'done' as Stage },
+  { numeral: 'II', name: 'Your cue', stage: CUE_STAGES[found] },
+  { numeral: 'III', name: 'Payoff', stage: PAYOFF_STAGES[payoff] },
+];
+
+type Tone = 'success' | 'danger' | 'accent';
+
+/**
+ * What each stage says to a screen reader, draws beside the act's name, and
+ * the tone it is inked in (none: secondary text).
+ */
+const STAGES: Record<
+  Stage,
+  { readonly spoken: string; readonly icon?: IconAction['icon']; readonly tone?: Tone }
+> = {
+  done: { spoken: 'done', icon: 'checkmark', tone: 'success' },
+  now: { spoken: 'now', tone: 'accent' },
   shown: { spoken: 'shown', icon: 'eye-outline' },
-  missed: { spoken: 'not yet', icon: 'close' },
+  missed: { spoken: 'not yet', icon: 'close', tone: 'danger' },
   ahead: { spoken: 'to come' },
   none: { spoken: 'none in this line', icon: 'remove' },
 };
@@ -93,15 +91,8 @@ export function ActRows({
     >
       {actStages(acts).map(({ numeral, name, stage }) => {
         const now = stage === 'now';
-        const ink =
-          stage === 'done'
-            ? color.tones.success.text
-            : stage === 'missed'
-              ? color.tones.danger.text
-              : now
-                ? color.tones.accent.text
-                : color.textSecondary;
-        const { icon, spoken } = STAGES[stage];
+        const { icon, spoken, tone } = STAGES[stage];
+        const ink = tone ? color.tones[tone].text : color.textSecondary;
         return (
           <View
             key={numeral}
@@ -136,7 +127,7 @@ export function CueControls({
   onShow,
   onSkip,
 }: Omit<ActsModel, 'line' | 'found' | 'payoff'>) {
-  const actions: readonly { icon: IconName; tip: string; onPress?: () => void }[] = [
+  const actions: readonly IconAction[] = [
     { icon: 'refresh', tip: 'Retry: back to the cue to try another move', onPress: onRetry },
     {
       icon: 'eye-outline',
@@ -151,41 +142,13 @@ export function CueControls({
   ];
   return (
     <View role="toolbar" aria-label="Your cue" style={styles.controls}>
-      {actions.map(({ icon, tip, onPress }) => (
-        // Disabled, the button takes no focus, so the tip takes it to open from the keyboard.
-        <Tip key={icon} tip={tip} focusable={!onPress}>
-          <Button variant="outline" disabled={!onPress} onPress={onPress} accessibilityLabel={tip}>
-            <Ionicons name={icon} size={17} />
-          </Button>
-        </Tip>
-      ))}
+      <IconActions actions={actions} />
     </View>
   );
 }
 
 /** Whether the cue's question still waits on the learner: its controls show. */
 export const asking = ({ found }: Pick<ActsModel, 'found'>) => found !== 'passed';
-
-/**
- * The guide's note on the mistake, once the punishment lands, with its
- * play-through: a card of its own, so its note keeps its rule on a phone too.
- */
-export function ActsNote({ note }: { readonly note: NonNullable<ActsModel['note']> }) {
-  return (
-    <NoteView
-      lesson={note.lesson}
-      shown={note.shown}
-      learner={note.learner}
-      playback={note.playback}
-      // Its ideas are about the position before the mistake, so pointing draws nothing.
-      pointable={false}
-      pointed={false}
-      density="comfortable"
-      onPoint={() => undefined}
-      onLeave={() => undefined}
-    />
-  );
-}
 
 /**
  * A cue's acts in the wide panel, where the trap card would be: the acts as
@@ -206,7 +169,7 @@ export function ActsCard({ acts }: { readonly acts: ActsModel }) {
       <Stack gap="3">
         <ActRows acts={acts} direction="row" />
         {asking(acts) ? <CueControls {...acts} /> : null}
-        {acts.note ? <ActsNote note={acts.note} /> : null}
+        {acts.note ? <PastNote {...acts.note} /> : null}
       </Stack>
     </Surface>
   );

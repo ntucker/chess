@@ -282,10 +282,13 @@ export function cueHeadline({
         detail: `Stockfish gave up on ${tried}. Retry, or skip to play on.`,
       };
     case 'passed':
-      return payoff === 'done'
-        ? { title: 'Payoff complete.', detail: `That is what ${mistake} gave away.` }
-        : payoff === 'playing'
-          ? { title: 'The payoff.', detail: `Play on and cash in on ${mistake}.` }
-          : { title: 'Found it.', detail: `${tried} punishes ${mistake}.` };
+      switch (payoff) {
+        case 'done':
+          return { title: 'Payoff complete.', detail: `That is what ${mistake} gave away.` };
+        case 'playing':
+          return { title: 'The payoff.', detail: `Play on and cash in on ${mistake}.` };
+        default:
+          return { title: 'Found it.', detail: `${tried} punishes ${mistake}.` };
+      }
   }
 }
