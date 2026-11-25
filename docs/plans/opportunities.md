@@ -28,10 +28,10 @@ plan doesn't depend on those links.
 - Traps and opportunities are one shape. "Show traps" stays a pure display setting: it only filters
   in `src/lesson/guidance.ts` and never shapes, drops or gates loaded data. Off, it hides only the
   traps the learner's side can fall into, so opportunities stay shown.
-- An opportunity is ranked by what knowing it is worth, not by how bad the mistake is: score = reach
-  × share × gain if known (Rules). This replaces the product plan's "how often × how bad × reach",
-  agreed by Nathaniel 2026-11-24 after the Stafford report ranked recaptures everyone finds (6.Bxd5
-  Qxd5, played by 100%) above finds whose natural reply is the wrong one (5.Nxf7, where 76%
+- An opportunity is ranked by what knowing it is worth, not by how bad the mistake is: score = games
+  reaching the cue × gain if known (Rules). This replaces the product plan's "how often × how bad ×
+  reach", agreed by Nathaniel 2026-11-24 after the Stafford report ranked recaptures everyone finds
+  (6.Bxd5 Qxd5, played by 100%) above finds whose natural reply is the wrong one (5.Nxf7, where 76%
   recapture and 8% find 5...Qe7). A find is kept only where Act III leaves the learner clearly
   better.
 - The finder opens at any position (in a lesson, past a guide, in free play) and finds can be saved
@@ -46,6 +46,11 @@ plan doesn't depend on those links.
 - Phones are first-class. The phone screens build on the phone redesign's two panes and pager.
 - Saved progress is not migrated: new lines can reopen rows a learner already passed. Release notes
   say so.
+- Piece B's gate (2026-11-24, #210), left to the build thread by Nathaniel and agreed by the
+  planning thread. Only finds on the guide count. Score is games reaching the cue × gain, with reach
+  summed over move orders, since 5.d3 Bc5 6.Nc3 and 5.Nc3 Bc5 6.d3 share a cue. `minGain` drops the
+  recaptures nearly everyone finds. The reach floor is 0.5%, since 1% missed 8.Ke1 Qh4+ on the
+  guide. Rules hold the details and `limits.ts` the values.
 
 ## Shape
 
@@ -84,12 +89,12 @@ plan doesn't depend on those links.
   no lesson until D1 or D3 writes its totals; then that lesson's shares get smaller, since unlisted
   moves join the denominator, and its rare rows and counted replies can shift slightly. A Maia share
   is a separate source for the same field: a softmax over the legal moves' policy scores (piece J).
-- Derived, one pure function each in `src/opportunity/`: reach (shares of the erring side's moves
-  multiplied along the path), the cue's accepted replies (`acceptedReplies`, Rules), found rate (the
-  sum of their shares at the cue), gain if known (`gainIfKnown`, `src/opportunity/gain.ts`, which
-  the importer and the live finder both call; nothing else computes it), score, role (trap or
-  opportunity, from the learner's side), the current act, whether a position is a cue, and whether
-  an opportunity is a line to pass. No component recomputes them.
+- Derived, one pure function each in `src/opportunity/`: reach (`reachOf`, Rules), the cue's
+  accepted replies (`acceptedReplies`, Rules), found rate (the sum of their shares at the cue), gain
+  if known (`gainIfKnown`, `src/opportunity/gain.ts`, which the importer and the live finder both
+  call; nothing else computes it), score, role (trap or opportunity, from the learner's side), the
+  current act, whether a position is a cue, and whether an opportunity is a line to pass. No
+  component recomputes them.
 - App state the whole feature adds: saved finds and the lichess token, each under its own storage
   key, kept as `src/resources/progress.ts` keeps progress (`storageKey`, `readStorage`,
   `writeStorage` and `subscribeStorage` from `src/context/storage.ts`), and its own parser beside
@@ -112,15 +117,23 @@ plan doesn't depend on those links.
 
 ## Rules
 
-Minimum games, the share floor, the estimate's coverage mark (`estimateCoverage`, half) and
-`keepScore` are starting values in `limits.ts`, tuned at piece B's gate. The cost floor is the app's
-mistake limit and is not a gate setting.
+The gate settings are in `limits.ts`, set at piece B's gate; `MIN_GAMES` sits beside them for the
+lichess host's `repliesFrom`. The cost floor is `MISTAKE_LOSS` (`quality.ts`), the app's mistake
+limit, and is not a gate setting.
 
-- **Score** of an opportunity for a band: the reach of the mistake's position × the mistake's share
-  there × gain if known. A find without a gain (a migrated trap not yet measured) has no score and
-  lists after the scored rows. Ties break by reach, then by the line, so the order is stable. Found
-  rate is still shown, derived from shares, but no longer breaks ties: the gain already counts who
-  misses the punishment.
+- **Reach** of a position: the share of games that reach it, from 1 where the finder opens: the erring
+  side's shares multiplied along each order of fewest moves into it, summed over those orders
+  (`reachOf`). Counting only fewest moves keeps a repetition or a lost tempo from counting a game
+  twice. A find on the guide counts only the orders the guide plays.
+- **On the guide**: a find is on the guide (`Find.onGuide`) when the guide's moves reach a position
+  where the erring side plays a mistake into its cue. Only these are ranked, kept and written into
+  lessons; the rest come back apart (`FinderResult.offGuide`), as evidence.
+- **Score** of an opportunity for a band: the reach of the cue × gain if known. A cue several
+  mistakes lead to is one find, shown by the mistake most games play (the reach of its position ×
+  its share). A gain under `minGain` makes no find, since nearly everyone punishes the mistake, and
+  the walk goes on past it; an estimated gain is exempt. A find without a gain (a migrated trap not
+  yet measured) has no score and lists last. Ties break by reach, then by the line. Found rate is
+  shown but breaks no ties: the gain already counts who misses the punishment.
 - **Gain if known**: at the cue, each reply the band plays over the share floor, weighted by its
   share, times what it gives away beside the best reply (`moveLoss` in `quality.ts`, the signed loss
   `judgement` labels by, as for cost, floored at 0 so a reply a search rates above the first line
@@ -150,11 +163,11 @@ mistake limit and is not a gate setting.
   `limits.ts` starts it at `RARE_SHARE` (`src/lesson/select.ts`), the share under which the list
   calls a reply rare; if the gate moves it, `limits.ts` gets its own number.
 - **Minimum games**: a position fewer than 100 games reach (in the band) is too thin to judge; the
-  lichess host marks it thin, and the walk (piece A's search for mistakes) ends there. Act III is
-  not the walk: at a thin position with no guide move it takes Stockfish's reply and goes on under
-  its own ends, since the position after the cue can be thin when the mistake's position was not
-  (only the games that played the mistake reach it). A Maia run has no thin positions; its walk
-  ends at the reach floor and the ply cap.
+  lichess host marks it thin (`repliesFrom`), and the walk (piece A's search for mistakes) ends
+  there. Act III is not the walk: at a thin position with no guide move it takes Stockfish's reply
+  and goes on under its own ends, since the position after the cue can be thin when the mistake's
+  position was not (only the games that played the mistake reach it). A Maia run has no thin
+  positions; its walk ends at the reach floor and the ply cap.
 - **Line to pass**: an opportunity whose mistake `countedReplies` counts (`src/lesson/cleanRun.ts`:
   10% over all bands, or the most played reply). Other finds show in the list and the finder but are
   never required. Piece C adds one exception to `countedReplies`, beside `COUNTED_SHARE`: a marked
@@ -167,7 +180,8 @@ mistake limit and is not a gate setting.
   punishing side's score before the mistake (`acceptedReplies`). The punishing side's moves (its
   accepted replies and its Act III moves) are book moves where the punishing side is `Lesson.side`,
   else ordinary moves (a migrated trap that `Lesson.side` falls into): only `Lesson.side`, the side
-  the learner plays, has book moves (`lesson.ts`, `check.ts`).
+  the learner plays, has book moves (`lesson.ts`, `check.ts`). A guide move at a cue that isn't one
+  of them is listed in the report (`Find.guideReply`) for a person to check before merge.
 - **The erring side's Act III moves** stay ordinary moves. Where the guide already has moves at one
   of its positions, Act III follows the guide's most played move there (else its first, where no
   move has counts) and adds nothing, so the tree stays the one source for that line. Only where the
@@ -186,23 +200,22 @@ mistake limit and is not a gate setting.
   `MISTAKE_LOSS` beside Stockfish's best in the same position, so the tree stays the one source for
   the line; otherwise, or where the guide has none, it plays Stockfish's best, which the importer
   writes into the tree beside the guide's (a book move where the punishing side is `Lesson.side`, an
-  ordinary move otherwise, so the tree stays the one source there too). Piece B's report counts the
-  positions where the two differ and how often Act III kept the guide's move, and lists each
-  override, as the lesson's D1 or D3 pull request does: the guide's own move costs a mistake's worth
-  there, so a person looks at it before merge.
-- **Act III** follows those moves for both sides, and ends at mate, when the punishing side is three
-  points of material up (`balance` in `src/game/material.ts`) and winning (the punishing side's
-  expected score of at least 0.8, by `scoreFor` in `src/evaluation/evaluation.ts`), when its
-  second-best move is also winning, after six of its moves, or where, after an erring-side guide
-  move it follows, what the punishment still wins is under `MISTAKE_LOSS` (the cost floor): the
-  punishing side's score there less its score before the mistake, both signed by `forSide` (a
-  difference near a limit must not round, as `judgement` measures). `keepScore` then judges the find
-  at that end, as it judges every find. The 0.8 and the three points are `limits.ts` constants tuned
-  at piece B's gate.
+  ordinary move otherwise, so the tree stays the one source there too). Piece B's report counts how
+  often Act III kept the guide's move and lists each override (`Find.disagreements`), as the
+  lesson's D1 or D3 pull request does: the guide's own move costs a mistake's worth there, so a
+  person looks at it before merge.
+- **Act III** follows those moves for both sides. It ends where the game is over (`gameResult`; its
+  end score is then the result), at an obvious win, after six of the punishing side's moves, or
+  where, after an erring-side guide move, the punishment wins less than `MISTAKE_LOSS` over the
+  punishing side's score before the mistake (both signed by `forSide`, unrounded, as `judgement`
+  measures). The win is obvious (`obviouslyWon`) when the punishing side scores at least 0.8
+  (`scoreFor`), has no mate to play out, isn't behind in material (`balance`), and either its
+  second-best move also wins or it is three points up. `keepScore` judges the find at that end. The
+  0.8, the three points and the six moves are `limits.ts` settings.
 - **Sketch and full**: a sketch is a search that reached at least `SKETCH_DEPTH`
-  (`src/review/order.ts`); full is the app's search (`APP_SEARCH`). Sketches screen replies; only
-  full searches confirm a find or set a stored cost or gain; the live list's gain may rest on
-  sketches until full results arrive. Analyses stay keyed as the store keys them.
+  (`src/evaluation/evaluation.ts`); full is the app's search (`APP_SEARCH`). Sketches screen
+  replies; only full searches confirm a find or set a stored cost or gain; the live list's gain may
+  rest on sketches until full results arrive. Analyses stay keyed as the store keys them.
 
 ## Pieces
 
@@ -212,31 +225,36 @@ mistake limit and is not a gate setting.
 Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
 
 - One function of the answers known so far, like the review's `nextSearch`: it takes the start line,
-  the side looking for opportunities, the band, the limits, and lookups for the replies (each move's
-  share of the games at the position, and whether the position is too thin to judge; `repliesFrom`
-  turns lichess counts into that), analyses (sketch or final) and the guide's moves (a lesson's
-  moves at a position, most played first: every guide move at the erring side's turn, and at the
-  punishing side's turn those it plays, as Rules define them) that the host has so far. It returns
-  the finds so far (kept ones, and those dropped as not clearly better, Rules), where walks ended
-  thin, and the requests still missing, most useful first: a position's replies, a
-  sketch, or a full search, each naming its line and position. The script loops over it; the app
-  derives it from the store. No async generator and no queue. The hosts filter the punishing side's
-  moves by `inCleanRun` (`src/lesson/cleanRun.ts`), the rule `walkShared` in `openings.ts` already
-  applies inline.
+  the side looking for opportunities, the limits, and lookups for the replies (each move's share of
+  the games at the position, and whether the position is too thin to judge; `repliesFrom` turns
+  lichess counts into that, dropping moves `recordedMove` rejects but counting their games),
+  analyses (sketch or final) and the guide's moves (a lesson's moves at a position, most played
+  first: every guide move at the erring side's turn, and at the punishing side's turn those it
+  plays, as Rules define them) that the host has so far. It returns the finds so far (kept, dropped
+  as not clearly better, and off the guide; Rules), where walks ended thin, and the requests still
+  missing, most useful first: a position's replies, a sketch, or a full search, each naming its line
+  and position. It takes no band, since the host's answers belong to one. The script loops over it;
+  the app derives it from the store. No async generator and no queue. The hosts filter the punishing
+  side's moves by `inCleanRun` (`src/lesson/cleanRun.ts`), the rule `walkShared` in `openings.ts`
+  already applies inline.
 - The walk is best-first by reach from the start (reach 1), on `LikeliestFirst`
   (`src/lesson/likeliestFirst.ts`, made generic over what it holds). At the erring side's turn it
   screens every reply over the share floor with a sketch, confirms each reply at or over the cost
   floor with full searches, then asks for the cue position's replies (found rate) and has Act III
-  built from there (Act III is not part of the walk). Replies under the cost floor continue the
-  walk. At the punishing side's turn it follows the guide's moves, else Stockfish's best. The walk
-  stops below a reach floor, past a ply cap, or at a thin position; Act III continues past a thin
-  position (Rules). One find per cue position; a position reached again adds nothing.
-- Its own floors and caps are named constants in `src/opportunity/limits.ts`, tuned at piece B's
-  gate: the share floor (starting as `RARE_SHARE`), minimum games, the estimate's coverage mark and
-  `keepScore` from Rules, the Act III caps, a reach floor (1%) and a ply cap (24 plies past where
-  the finder opens).
-- The cost floor has no value of its own: `limits.ts` reads it from `quality.ts`, where piece A
-  exports `MISTAKE_LOSS` and `moveLoss` (the signed loss `judgement` labels by) and builds
+  built from there (Act III is not part of the walk). Replies under the cost floor, and mistakes
+  whose gain is under `minGain`, continue the walk. At the punishing side's turn it follows the
+  guide's moves, else Stockfish's best. The walk stops where the game is over, below the reach floor
+  (along the path it arrived by, since it is best-first by that), past the ply cap (counted in
+  full), or at a thin position; Act III continues past a thin position (Rules). One find per cue; a
+  position reached again isn't walked again, but its other move orders add to its reach. Every move
+  goes through `legalChild` (`walk.ts`), which throws on an illegal one, since every source promises
+  legal moves.
+- Its own floors and caps are named settings in `src/opportunity/limits.ts`, set at piece B's gate:
+  the share floor (`RARE_SHARE`), the estimate's coverage mark, `keepScore` and `minGain` from
+  Rules, the Act III caps, a reach floor (0.5%) and a ply cap (24 plies past where the finder
+  opens). `MIN_GAMES` sits beside them (Rules).
+- The cost floor has no value of its own: the finder reads `MISTAKE_LOSS` from `quality.ts`, where
+  piece A exports it and `moveLoss` (the signed loss `judgement` labels by) and builds
   `LEAST_LOSS`'s mistake entry from it, so 0.10 lives in one place. The gate does not change it,
   since that would change the app's mistake label too.
 
@@ -253,7 +271,7 @@ Maia supplement in the script is worth building. None is built now.
 
 Gate: Nathaniel reads the top 20 finds and the dropped ones and sets the `limits.ts` settings that
 Rules and piece A name (not the cost floor) before any lesson file changes. The report prints the
-limits it ran with.
+limits it ran with. Set 2026-11-24 (Decisions).
 
 ### Piece C: Lesson data
 
@@ -292,13 +310,14 @@ hint" branch); a `screen.ts` cue state holds the tries with Retry, Show the move
 passes only where it meets the Rules' accepted-reply test (piece A's `acceptedReplies`: best or
 good, still winning the cost floor over the score before the mistake; those replies are book moves
 where the punishing side is `Lesson.side`, Rules); Act III plays back through the lesson opponent; a
-haptic tick (`tickMove`, `src/components/haptics.ts`) marks the cue in Explore. Wide layout, and the
-phone layout on the redesign's two panes: three act rows on the left, one line and three icon
-buttons on the right. Waits on the phone redesign's panes. Starts with a design review of whether
-the cue is a third mode-like state in `screen.ts`, and records its outcome here before building. The
-starting proposal: a try is a board preview until it passes, then a move through `useGame` (the
-screen reducer does not own the game); Act III reuses peek's playback, which does not move the game;
-the three acts replace the trap card for a marked line, so landing stays the one trigger.
+haptic tick (`haptic('moveLanded')`, `src/components/haptics.ts`) marks the cue in Explore. Wide
+layout, and the phone layout on the redesign's two panes: three act rows on the left, one line and
+three icon buttons on the right. Waits on the phone redesign's panes. Starts with a design review of
+whether the cue is a third mode-like state in `screen.ts`, and records its outcome here before
+building. The starting proposal: a try is a board preview until it passes, then a move through
+`useGame` (the screen reducer does not own the game); Act III reuses peek's playback, which does not
+move the game; the three acts replace the trap card for a marked line, so landing stays the one
+trigger.
 
 ### Piece F: Practice and marks
 
