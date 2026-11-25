@@ -50,6 +50,8 @@ export const fonts = {
    */
   figurines: 'Figurines',
 } as const;
+
+/** A family `fonts` names: the keys of the font files (fontFiles.ts). */
 export type FontFamily = (typeof fonts)[keyof typeof fonts];
 
 /** `fonts.mono`'s advance as a share of its size: each of its glyphs is this wide. */

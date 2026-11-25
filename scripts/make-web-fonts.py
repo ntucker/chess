@@ -7,10 +7,13 @@
 Each is the TTF that Android loads (src/theme/fontFiles.ts), glyph for glyph,
 in WOFF2's compression: the page preloads all five before its text shows, so
 smaller files show it sooner on a slow connection (src/theme/fontFiles.web.ts).
-Run it again after a font package or assets/fonts/Figurines.ttf changes:
-src/theme/fontFiles.test.ts fails until the copies match.
+It also writes assets/fonts/web/sources.json, each copy's TTF and that file's
+SHA-256: src/theme/fontFiles.test.ts fails once a TTF no longer matches (a font
+package or assets/fonts/Figurines.ttf changed) until this runs again.
 """
 
+import hashlib
+import json
 from pathlib import Path as FilePath
 
 from fontTools.ttLib import TTFont
@@ -33,6 +36,7 @@ OUT = ROOT / 'assets' / 'fonts' / 'web'
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
+    sources = {}
     for name, source in SOURCES.items():
         # The source's own timestamps, so the same TTF always writes the same file.
         font = TTFont(source, recalcTimestamp=False)
@@ -40,6 +44,11 @@ def main() -> None:
         target = OUT / f'{name}.woff2'
         font.save(target)
         print(f'{target.relative_to(ROOT)}: {source.stat().st_size} -> {target.stat().st_size} bytes')
+        sources[name] = {
+            'ttf': source.relative_to(ROOT).as_posix(),
+            'sha256': hashlib.sha256(source.read_bytes()).hexdigest(),
+        }
+    (OUT / 'sources.json').write_text(json.dumps(sources, indent=2) + '\n')
 
 
 if __name__ == '__main__':

@@ -1,0 +1,22 @@
+{
+  "DMSerifDisplay_400Regular": {
+    "ttf": "node_modules/@expo-google-fonts/dm-serif-display/400Regular/DMSerifDisplay_400Regular.ttf",
+    "sha256": "3722299d62af9b61d36c7834c0845269462de7dce47e810cac3be4c683b8e8b2"
+  },
+  "DMSerifDisplay_400Regular_Italic": {
+    "ttf": "node_modules/@expo-google-fonts/dm-serif-display/400Regular_Italic/DMSerifDisplay_400Regular_Italic.ttf",
+    "sha256": "586b6df8de9ade079b25e0308910f2e86d0f060b1f5c8c1cd8e803c14d89f4d3"
+  },
+  "InstrumentSans_400Regular": {
+    "ttf": "node_modules/@expo-google-fonts/instrument-sans/400Regular/InstrumentSans_400Regular.ttf",
+    "sha256": "a22cb26e48fd79bcb01bf2fc92d36785474dce36d9c544ab0a8868c2657c4a87"
+  },
+  "DMMono_400Regular": {
+    "ttf": "node_modules/@expo-google-fonts/dm-mono/400Regular/DMMono_400Regular.ttf",
+    "sha256": "f98ada968dc3b6b2c08d3f5caaf266977df0bfe0929372b93df5a06cf2ace450"
+  },
+  "Figurines": {
+    "ttf": "assets/fonts/Figurines.ttf",
+    "sha256": "070cee427d10aa029ca547214af7a2e4c059f7d351b8c16ca2437905c6517b02"
+  }
+}
