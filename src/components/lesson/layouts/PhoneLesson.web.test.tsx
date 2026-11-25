@@ -90,8 +90,13 @@ describe('PhoneLesson', () => {
       render(page, { ...MODEL, trap: {} } as LessonScreenModel);
       const trap = host.querySelector('[data-testid="trap"]')!;
       expect(trap).not.toBeNull();
-      expect(pageOf('movesidea').contains(trap)).toBe(false);
-      expect(pageOf('scoresheet').contains(trap)).toBe(false);
+      for (const text of ['movesidea', 'scoresheet']) {
+        // Outside the page, and before it.
+        expect(pageOf(text).contains(trap)).toBe(false);
+        expect(
+          trap.compareDocumentPosition(pageOf(text)) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+      }
     }
   });
 
