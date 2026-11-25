@@ -57,6 +57,14 @@ function tap(element: HTMLElement) {
   element.click();
 }
 
+/**
+ * Silk's Switch turns on the UI thread, which on the web is the next animation
+ * frame, and reports back in a microtask after it: wait for the frame, then a
+ * task, which runs that microtask first.
+ */
+const waitForSwitch = () =>
+  new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+
 describe('LessonControls', () => {
   it('disables "Arrows" in Practice, keeping its value', async () => {
     await render('practice');
@@ -100,7 +108,10 @@ describe('LessonControls', () => {
     const tip = () => document.querySelector('[role="tooltip"]');
     await render('explore');
     const traps = toggle('Warn of traps');
-    await act(async () => tap(labelOf('Warn of traps')));
+    await act(async () => {
+      tap(labelOf('Warn of traps'));
+      await waitForSwitch();
+    });
     expect(traps.getAttribute('aria-checked')).toBe('true');
     expect(tip()).toBeNull();
   });
@@ -116,7 +127,10 @@ describe('LessonControls', () => {
   it('lets "Arrows" change in Explore', async () => {
     await render('explore');
     expect(moves().getAttribute('aria-disabled')).not.toBe('true');
-    await act(async () => moves().click());
+    await act(async () => {
+      moves().click();
+      await waitForSwitch();
+    });
     expect(moves().getAttribute('aria-checked')).toBe('false');
   });
 });
