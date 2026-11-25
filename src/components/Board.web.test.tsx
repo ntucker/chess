@@ -121,7 +121,7 @@ describe('a board drawing its first position', () => {
     expect(drawn).toBe(1);
   });
 
-  it('waits again when hidden before it painted', () => {
+  it('waits again when hidden before it showed', () => {
     let drawn = 0;
     act(() => root.render(<Board {...board()} onDrawn={() => drawn++} />));
     frame();
@@ -134,6 +134,31 @@ describe('a board drawing its first position', () => {
     frame();
     wait(1000);
     expect(drawn).toBe(1);
+  });
+
+  it('waits again when hidden while its paint shows', () => {
+    let drawn = 0;
+    act(() => root.render(<Board {...board()} onDrawn={() => drawn++} />));
+    frame();
+    frame();
+    resize(0);
+    wait(1000);
+    expect(drawn).toBe(0);
+    resize(320);
+    frame();
+    frame();
+    wait(1000);
+    expect(drawn).toBe(1);
+  });
+
+  it('says nothing once gone', () => {
+    let drawn = 0;
+    act(() => root.render(<Board {...board()} onDrawn={() => drawn++} />));
+    frame();
+    frame();
+    act(() => root.render(null));
+    wait(1000);
+    expect(drawn).toBe(0);
   });
 });
 

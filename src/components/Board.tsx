@@ -250,9 +250,8 @@ export default function Board({
     });
     api.current = board;
     // The first paint is reported once, after the board has painted at a
-    // size: a frame's callbacks run before it paints, so the second frame's
-    // run after the first's paint. Android shows a web view's paint up to half
-    // a second after it happens (#255), so the report waits SHOWN_MS more.
+    // size (a frame's callbacks run before it paints, so the second frame's
+    // run after the first's paint) and then shown (`SHOWN_MS`).
     let paintFrame = 0;
     let shownTimer: ReturnType<typeof setTimeout> | undefined;
     let paintReported = false;
@@ -261,9 +260,11 @@ export default function Board({
       paintReported = true;
       paintFrame = requestAnimationFrame(() => {
         paintFrame = requestAnimationFrame(() => {
-          // Hidden again before it painted: the next size reports it.
-          if (!sized.current) paintReported = false;
-          else shownTimer = setTimeout(handleDrawn, SHOWN_MS);
+          shownTimer = setTimeout(() => {
+            // Hidden again meanwhile: the next size reports it.
+            if (sized.current) handleDrawn();
+            else paintReported = false;
+          }, SHOWN_MS);
         });
       });
     };
