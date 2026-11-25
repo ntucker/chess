@@ -519,13 +519,15 @@ export function cueActs(view: LessonView, mode: LessonMode, picking: boolean): A
 /**
  * Whether the learner's answer to `cue` still shows: from that move along
  * the line's moves the game plays, and as news of the last of them where it
- * ends the answer's story (the whole line played, or a move off it).
+ * ends the answer's story: the whole line played, or a move off it by either
+ * side, so a find reads as long as a miss.
  */
 function answerShown(view: LessonView, cue: Cue): boolean {
   if (cue.tried === undefined || view.ply <= cue.ply) return false;
-  const offLine = cue.tried !== cue.line[1];
   const last = cue.ply - 1 + Math.max(cue.followed, 2);
-  return alongLine(view, last, offLine || cue.followed === cue.line.length);
+  // The game plays a move past the line's moves it follows: off the line.
+  const left = view.keys.length > cue.ply + cue.followed;
+  return alongLine(view, last, left || cue.followed === cue.line.length);
 }
 
 /** `shown`'s ideas that `allowed` lets through, each with the position it is checked in. */

@@ -833,6 +833,12 @@ describe('a cue', () => {
       expect(at(upTo(12), 'practice').opportunity).toMatchObject({ found: true });
     });
 
+    it("keeps a find as news through the opponent's move off the line, until the learner's next", () => {
+      const offLine = [...upTo(10), 'Ba4'];
+      expect(at(offLine, 'practice').opportunity).toMatchObject({ found: true });
+      expect(at([...offLine, 'Qa5'], 'practice').opportunity).toBeUndefined();
+    });
+
     it("shows a miss as news of the learner's move, until their next", () => {
       const missed = [...upTo(9), 'a6'];
       expect(at(missed, 'practice').opportunity).toMatchObject({ found: false });
