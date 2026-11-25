@@ -28,6 +28,7 @@ const SIZE = 20;
 const OVERLAP = SIZE * 0.45;
 /** The most glyphs a chip draws: past it, each kind shows once with its count. */
 const MOST_GLYPHS = 4;
+/** The pill's padding at each end. */
 const PILL_PADDING = 8;
 
 type Peek = 'hold' | 'hover';
@@ -252,7 +253,7 @@ const FAN = Array.from({ length: 8 }, (_, i) => fanIn(i * FAN_STAGGER_MS));
 const styles = StyleSheet.create({
   // flexShrink is a weight against the name's 1 in PlayerBar: kept far above
   // it so the chip gives way long before the name does. It stops at the
-  // pill's padding, which can't shrink and would run past it.
+  // pill's padding at both ends, which can't shrink and would run past it.
   chip: { flexShrink: 1000, minWidth: 2 * PILL_PADDING },
   pill: {
     flexDirection: 'row',
