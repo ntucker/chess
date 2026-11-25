@@ -95,7 +95,10 @@ export interface StudyMove {
   readonly trapStart?: readonly string[];
 }
 
-/** The position before the first move of the trap `move`'s comment warns about, where that is not the next move (`StudyMove.trapStart`). */
+/**
+ * The position before the first move of the trap `move`'s comment warns
+ * about, where that is not the next move (`StudyMove.trapStart`).
+ */
 export const trapPosition = (move: StudyMove): Chess | undefined =>
   move.trapStart && afterSans(move.after, move.trapStart.slice(0, -1));
 

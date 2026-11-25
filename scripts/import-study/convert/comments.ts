@@ -73,7 +73,7 @@ export function noteComment(moveNote: MoveNote, chapter: ChapterNotes): Comment 
       .flatMap((other) => other.note.ideas ?? []),
   ];
   const fenBefore = makeFen(move.before.toSetup());
-  const trapAt = !summary && trapPosition(source);
+  const trapStart = summary ? undefined : trapStartOf(source);
   return {
     id: hash(`${fenBefore} ${move.uci} ${summary} ${comment}`),
     line: lineTo(move),
@@ -90,14 +90,16 @@ export function noteComment(moveNote: MoveNote, chapter: ChapterNotes): Comment 
     previousComment: fragment ? '' : previous,
     ...(summary && { chapterSummary: true as const }),
     ...(chapter.writtenFor && { writtenFor: chapter.writtenFor }),
-    ...(trapAt && {
-      trapStart: {
-        moves: numberedLine(source.trapStart!, move.ply + 1),
-        fen: makeFen(trapAt.toSetup()),
-      },
-    }),
+    ...(trapStart && { trapStart }),
     extracted,
   };
+}
+
+/** Where the trap `move`'s comment warns about starts, for the model (`Comment.trapStart`). */
+function trapStartOf(move: StudyMove): Comment['trapStart'] {
+  const pos = trapPosition(move);
+  if (!pos || !move.trapStart) return undefined;
+  return { moves: numberedLine(move.trapStart, move.ply + 1), fen: makeFen(pos.toSetup()) };
 }
 
 export const hash = (text: string) => createHash('sha256').update(text).digest('hex').slice(0, 16);

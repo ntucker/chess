@@ -38,8 +38,9 @@ export const notesOf = (result: Converted): readonly StudyNote[] => [
 
 /**
  * `answer` for `comment` as notes credited to `model`, which wrote it, checked
- * in `positions` (`trap` only for a comment with `trapStart`). `own` is the importer's ideas on the move's note: they join
- * the model's first note on the move. Ideas repeating anything in
+ * in `positions`, its trap notes only where `positions` has `trap`. `own` is
+ * the importer's ideas on the move's note: they join the model's first note on
+ * the move. Ideas repeating anything in
  * `comment.extracted` (those, plus the importer's notes on other positions)
  * are dropped.
  */

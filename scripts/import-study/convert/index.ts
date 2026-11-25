@@ -16,6 +16,7 @@
  * the lesson file it writes is committed, so the site build and the tests
  * never call a model.
  */
+import type { Chess } from 'chessops/chess';
 import { makeSan } from 'chessops/san';
 import { parseUci } from 'chessops/util';
 
@@ -74,6 +75,8 @@ interface Job {
   readonly moveNote: MoveNote;
   /** Undefined for a note without a comment (an evaluation glyph alone). */
   readonly comment: Comment | undefined;
+  /** Where the comment's trap starts (`Comment.trapStart`): its trap notes go there. */
+  readonly trap?: Chess;
 }
 
 /** `extracted` with every commented move's notes rewritten by the model. */
@@ -82,10 +85,11 @@ export async function convertChapters(
   ask: Ask,
 ): Promise<{ extracted: ChapterNotes[]; report: ConvertReport }> {
   const jobs = extracted.map((chapter) =>
-    chapter.moveNotes.map((moveNote): Job => ({
-      moveNote,
-      comment: noteComment(moveNote, chapter),
-    })),
+    chapter.moveNotes.map((moveNote): Job => {
+      const comment = noteComment(moveNote, chapter);
+      const trap = comment?.trapStart && trapPosition(moveNote.source);
+      return { moveNote, comment, ...(trap && { trap }) };
+    }),
   );
   const comments = new Map<string, Comment>();
   for (const { comment } of jobs.flat()) if (comment) comments.set(comment.id, comment);
@@ -120,11 +124,10 @@ async function convertComments(
     addendum?: string,
   ) => {
     const answers = await ask(model, items, addendum);
-    for (const { moveNote, comment } of jobs) {
+    for (const { moveNote, comment, trap } of jobs) {
       const answer = comment && answers.get(comment.id);
       if (!answer) continue;
-      const { move, source } = moveNote;
-      const trap = trapPosition(source);
+      const { move } = moveNote;
       const result = convertedNotes(
         comment,
         answer,
@@ -302,7 +305,7 @@ function convertedChapter(
   const moveNotes: MoveNote[] = [];
   const added: PositionNote[] = [];
   const joined = new Set<PositionNote>();
-  for (const { moveNote, comment } of jobs) {
+  for (const { moveNote, comment, trap } of jobs) {
     const result = comment && converted.get(comment.id);
     if (!result) {
       moveNotes.push(moveNote);
@@ -310,7 +313,6 @@ function convertedChapter(
     }
     const { move, source } = moveNote;
     moveNotes.push(...result.move.map((note) => ({ move, note, source })));
-    const trap = trapPosition(source);
     if (trap) added.push(...result.trap.map((note) => ({ pos: trap, note, source })));
     const [first, ...rest] = result.before;
     if (!first) continue;
