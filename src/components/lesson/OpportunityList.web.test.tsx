@@ -58,11 +58,13 @@ const labels = (props: Partial<Props> = {}) =>
 describe('OpportunityList', () => {
   const ranked = lessonOpportunities(STAFFORD, BAND);
 
-  it('lists the ranked opportunities, each saying its meters aloud', () => {
+  it('lists the ranked opportunities, each saying the moves before it and its meters aloud', () => {
     const said = labels();
     expect(said).toHaveLength(ranked.length);
     const bg5 = said.find((label) => label?.includes('6.Bg5'));
-    expect(bg5).toMatch(/reached in \d+% of games, played 15% of the time, punished with mate$/);
+    expect(bg5).toMatch(
+      /^6\.Bg5, after 5\.d3 Bc5, reached in \d+% of games, played 15% of the time, punished with mate$/,
+    );
   });
 
   it("plays a row's line when it is pressed", () => {

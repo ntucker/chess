@@ -5,7 +5,7 @@ import { percent } from '@/analysis/quality';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { Notation } from '@/components/Notation';
 import { InfoMark, Tip } from '@/components/Tip';
-import { numberedMove } from '@/game/replay';
+import { lineSans, numberedLine, numberedMove } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { opportunityMarks } from '@/lesson/marks';
 import { markId } from '@/lesson/mistakes';
@@ -35,9 +35,10 @@ interface Props {
 
 /**
  * The lesson's opportunities (`lessonOpportunities`), best first, one row
- * each: its name, or the mistake, then three meters: how often games reach
- * it, how often the opponent plays the mistake there, and what the mistake
- * gives away ("#" where the punishment mates). A row's progress mark leads
+ * each: its name over the mistake, or the mistake over the two moves
+ * before it, then three meters: how often games reach it, how often the
+ * opponent plays the mistake there, and what the mistake gives away ("#"
+ * where the punishment mates). A row's progress mark leads
  * it, as the move's row has it in the candidate list. Pressing a row plays
  * Act I and hands the learner the board at the cue.
  */
@@ -106,6 +107,9 @@ function Row({
   const { color } = useTheme().theme.semantic;
   const { move, san, line, reach, share, mates } = row;
   const mistake = numberedMove(san, line.length);
+  const { name } = move.mistake ?? {};
+  // Without a name, the two moves before it tell apart one mistake played after several.
+  const caption = name ? mistake : leadIn(line);
   const cost = move.mistake?.cost;
   const payoff = mates ? '#' : cost === undefined ? '–' : `+${Math.round(cost * 100)}`;
   // Each meter's number and how full its bar is: reach, how often, payoff.
@@ -118,8 +122,8 @@ function Row({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={[
-        move.mistake?.name,
-        mistake,
+        name ?? mistake,
+        caption,
         `reached in ${percent(reach)} of games`,
         share !== undefined && `played ${percent(share)} of the time`,
         mates ? 'punished with mate' : cost !== undefined && `gives away ${percent(cost)}`,
@@ -137,11 +141,11 @@ function Row({
       <View style={STATIC.mark}>{mark ? <ProgressMark mark={mark} /> : null}</View>
       <View style={STATIC.title} aria-hidden>
         <Text role="body" numberOfLines={1}>
-          {move.mistake?.name ?? <Notation>{mistake}</Notation>}
+          {name ?? <Notation>{mistake}</Notation>}
         </Text>
-        {move.mistake?.name ? (
+        {caption ? (
           <Text role="caption" tone="secondary" style={STATIC.mono} numberOfLines={1}>
-            <Notation>{mistake}</Notation>
+            <Notation>{caption}</Notation>
           </Text>
         ) : null}
       </View>
@@ -164,6 +168,13 @@ function Row({
       </View>
     </Pressable>
   );
+}
+
+/** The two moves before a line's last, numbered: "after 5.e5 Ne4"; nothing for a line that short. */
+function leadIn(line: readonly Uci[]): string | undefined {
+  const before = line.length - 1;
+  if (before < 2) return undefined;
+  return `after ${numberedLine(lineSans(line.slice(0, before)).slice(-2), before - 1)}`;
 }
 
 const STATIC = StyleSheet.create({
