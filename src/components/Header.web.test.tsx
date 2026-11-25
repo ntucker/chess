@@ -98,17 +98,6 @@ describe('Header', () => {
     expect(themePart({ narrowButton })).toBeUndefined();
     expect(themePart({ narrowButton: { ...narrowButton, holdsTheme: true } })).toBe('wide-only');
   });
-
-  it('says whether what its narrow button opens is open', () => {
-    const expanded = (open?: boolean) =>
-      withHeader(
-        { narrowButton: { icon: 'list', label: 'Scoresheet', onPress: () => {}, expanded: open } },
-        (host) => host.querySelector('[aria-label="Scoresheet"]')?.getAttribute('aria-expanded'),
-      );
-    expect(expanded(true)).toBe('true');
-    expect(expanded(false)).toBe('false');
-    expect(expanded()).toBeNull();
-  });
 });
 
 /**

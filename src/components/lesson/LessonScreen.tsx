@@ -8,7 +8,8 @@ import { StatusHeadline } from '@/components/GameStatus';
 import { haptic } from '@/components/haptics';
 import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentPicker } from '@/components/OpponentPicker';
-import { ScoresheetOpener } from '@/components/ScoresheetDrawer';
+import type { PhonePage } from '@/components/PhonePages';
+import { ScoresheetOpener } from '@/components/ScoresheetPage';
 import { resetListener } from '@/components/resetListener';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { useBackToReview } from '@/components/useBackToReview';
@@ -22,7 +23,7 @@ import { getProgress } from '@/resources/progress';
 import { useLayout } from '@/theme/Narrow';
 
 import { AutoPlay } from './AutoPlay';
-import { PhoneLesson, type PhonePage } from './layouts/PhoneLesson';
+import { PhoneLesson } from './layouts/PhoneLesson';
 import { WideLesson } from './layouts/WideLesson';
 import { LessonSettings } from './LessonSettings';
 import { LOADING } from './status';
@@ -119,9 +120,9 @@ function Openings({
 
 /**
  * The lesson `id` played on the board, in Explore or Practice, or before
- * one is picked, the openings of `side` alone. The one place that asks
- * which layout the panel takes (`useLayout`): the frame around it, which
- * pre-renders, takes its parts from narrow.css.
+ * one is picked, the openings of `side` alone. It asks which layout the
+ * panel takes (`useLayout`), as only a screen may: the frame around it,
+ * which pre-renders, takes its parts from narrow.css.
  */
 function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picked'>) {
   const phone = useLayout() === 'phone';
@@ -131,7 +132,7 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
   const model = useLessonScreen({ id, picked, onPlayAs, ...input });
   // A phone's settings sheet (unmounted while the window is wide) and its pages under the board.
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const { page, show } = usePages<PhonePage>('lesson', phone);
+  const { page, show } = usePages<PhonePage<'lesson'>>('lesson', phone);
   const scoresheetShown = page === 'scoresheet';
   // Not before the first move; but a scoresheet showing stays, since a new game empties it.
   const scoresheetReachable = scoresheetShown || model.stepper.started;

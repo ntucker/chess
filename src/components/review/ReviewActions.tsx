@@ -6,7 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { Tip } from '@/components/Tip';
 import { TOUCH_TARGET } from '@/theme/touch';
 
-import type { ReviewView } from './ReviewPanel';
+import type { ReviewView } from './reviewView';
 
 type Props = Pick<ReviewView, 'ply' | 'nextMoment' | 'goto' | 'moment' | 'retry' | 'showAnswer'>;
 
@@ -95,7 +95,7 @@ export function ReviewActionBar(props: Props) {
 
 /**
  * Next moment, or First moment at the start: disabled once every moment
- * has been visited. `short` names it in one word, for the bar's third of a
+ * has been visited. `short` names it in one word, for the bar's share of a
  * phone's width; screen readers hear the whole name either way.
  */
 function NextMoment({
@@ -126,7 +126,9 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   spacer: { flexGrow: 1 },
   bar: { flexDirection: 'row', gap: 8 },
-  grow: { flex: 1 },
+  // Each takes its label's width and an equal share of the rest, so a long
+  // label ("Show best") keeps to one line at large text where thirds would wrap it.
+  grow: { flexGrow: 1, flexShrink: 1, flexBasis: 'auto' },
   // Silk's button keeps to its content's width; here it fills its share.
-  barButton: { width: '100%', height: TOUCH_TARGET, paddingHorizontal: 6 },
+  barButton: { alignSelf: 'stretch', height: TOUCH_TARGET, paddingHorizontal: 6 },
 });

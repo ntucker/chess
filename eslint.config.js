@@ -40,8 +40,12 @@ const WIDTH_QUERY = {
 const LAYOUT = {
   name: '@/theme/Narrow',
   importNames: ['useLayout'],
-  message: 'Only LessonScreen.tsx picks a layout: pass a block its density instead.',
+  message:
+    'Only a screen picks a layout (LessonScreen.tsx, ReviewPage.tsx): pass a block its density instead.',
 };
+
+/** The screens that pick their panel's layout (`LAYOUT`). */
+const SCREENS = ['src/components/lesson/LessonScreen.tsx', 'src/components/review/ReviewPage.tsx'];
 
 const TESTS = 'src/**/*.test.{ts,tsx}';
 
@@ -61,13 +65,13 @@ module.exports = defineConfig([
   { rules: { 'no-restricted-imports': restrictImports() } },
   {
     files: ['src/**/*.{ts,tsx}'],
-    ignores: [TESTS, 'src/theme/Narrow.tsx', 'src/components/lesson/LessonScreen.tsx'],
+    ignores: [TESTS, 'src/theme/Narrow.tsx', ...SCREENS],
     rules: {
       'no-restricted-imports': restrictImports([LAYOUT, ...WINDOW_SIZE]),
     },
   },
   {
-    files: ['src/components/lesson/LessonScreen.tsx'],
+    files: SCREENS,
     rules: { 'no-restricted-imports': restrictImports(WINDOW_SIZE) },
   },
   {

@@ -3,10 +3,12 @@ import { SilkProvider } from '@reactive/silk-native';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
+import type { PhonePage } from '@/components/PhonePages';
 import { themes } from '@/theme/theme';
 
 import type { LessonScreenModel } from '../useLessonScreen';
-import { PhoneLesson, type PhonePage } from './PhoneLesson';
+
+import { PhoneLesson } from './PhoneLesson';
 
 // The blocks are stood in for: these tests are about what the layout keeps
 // mounted, not about what each block draws.
@@ -27,7 +29,7 @@ jest.mock('../CandidateList', () => {
 jest.mock('../IdeaCard', () => ({ IdeaCard: () => 'idea', IdeaAside: () => 'aside' }));
 jest.mock('../TrapCard', () => ({ TrapCard: () => <span data-testid="trap" /> }));
 jest.mock('./LessonHeadline', () => ({ LessonHeadline: () => null }));
-jest.mock('@/components/ScoresheetDrawer', () => ({ ScoresheetPage: () => 'scoresheet' }));
+jest.mock('@/components/ScoresheetPage', () => ({ ScoresheetPage: () => 'scoresheet' }));
 jest.mock('@/components/ReviewLinks', () => ({ ScoresheetReview: () => null }));
 
 const MODEL = {
@@ -56,7 +58,7 @@ afterEach(() => {
   mockMovesMounts = 0;
 });
 
-const render = (page: PhonePage, model = MODEL) =>
+const render = (page: PhonePage<'lesson'>, model = MODEL) =>
   act(() =>
     root.render(
       <SilkProvider theme={themes.dark}>

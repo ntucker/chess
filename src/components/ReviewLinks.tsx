@@ -24,7 +24,7 @@ export function ReviewGameButton({ href }: { readonly href: Href }) {
  * The Review button by the scoresheet's title: opens the review at `href`,
  * or, given `disabled` (why it doesn't open yet, as `Toggle` takes it),
  * shows disabled with that in its tip. `compact` draws only its icon, for
- * the narrow scoresheet drawer's head; screen readers hear its name either way.
+ * a phone's scoresheet page's head; screen readers hear its name either way.
  */
 export function ScoresheetReview({
   href,

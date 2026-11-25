@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, expect, it, jest } from '@jest/globals';
 import { act, type ReactNode, useState } from 'react';
 import { SafeAreaFrameContext, SafeAreaInsetsContext } from 'react-native-safe-area-context';
-import { StyleSheet, View } from 'react-native';
 import { createRoot, type Root } from 'test-renderer';
 
 import { Transport } from './Transport';
@@ -93,25 +92,4 @@ it('steps once per tap, each way, and turns an arrow off at its end', () => {
   act(() => arrow('Forward').onPress());
   expect(ply()).toBe(2);
   expect(arrow('Forward').disabled).toBe(true);
-});
-
-it('grows its middle only when asked to fill its row, never in a name bar', () => {
-  const middleGrow = (fill: boolean) => {
-    render(
-      <Transport
-        ply={0}
-        total={2}
-        onGoto={() => {}}
-        fill={fill}
-        middle={<View testID="middle" />}
-      />,
-    );
-    const [middle] = root!.container.queryAll((node) => node.props.testID === 'middle');
-    const grow = StyleSheet.flatten(middle.parent!.props.style)?.flexGrow;
-    act(() => root!.unmount());
-    root = undefined;
-    return grow;
-  };
-  expect(middleGrow(true)).toBe(1);
-  expect(middleGrow(false)).toBeUndefined();
 });

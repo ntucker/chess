@@ -14,10 +14,18 @@ describe('summaryHeadline', () => {
   it('gives the verdict over how the game ended for the learner, and its moments', () => {
     expect(
       summaryHeadline({ plies: MATE, moves, moments: [2, 4], accuracy: 92, learner: 'black' }),
-    ).toEqual({ title: 'Standing ovation.', detail: 'You won in 2 moves. 2 moments to replay.' });
+    ).toEqual({
+      title: 'Standing ovation.',
+      titleTip: 'Your accuracy: 92 of 100.',
+      detail: 'You won in 2 moves. 2 moments to replay.',
+    });
     expect(
       summaryHeadline({ plies: MATE, moves, moments: [], accuracy: 58, learner: 'white' }),
-    ).toEqual({ title: 'A rough night.', detail: 'You lost in 2 moves. No moments to replay.' });
+    ).toEqual({
+      title: 'A rough night.',
+      titleTip: 'Your accuracy: 58 of 100.',
+      detail: 'You lost in 2 moves. No moments to replay.',
+    });
   });
 
   it('counts an unfinished game in moves, and the moves that could not be checked', () => {

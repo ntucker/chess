@@ -6,12 +6,11 @@
  * narrow window. Everywhere else none of this
  * applies: each length falls back to the wide value written beside it in
  * code, and each part keeps its wide layout. The one exception is the rule
- * just below, which keeps narrow-only parts, the header's place and the
- * scoresheet drawer hidden outside the media query.
+ * just below, which keeps narrow-only parts and the header's place hidden
+ * outside the media query.
  */
 :root [data-narrow='narrow-only'],
-:root [data-narrow='place'],
-:root [data-narrow='scoresheet-drawer'] {
+:root [data-narrow='place'] {
   display: none;
 }
 
@@ -94,25 +93,13 @@
     gap: 8px;
   }
   /*
-   * A panel the scoresheet can fill (the lesson's pages, the review's
-   * drawer) fills the space under the board, so what it holds can share
-   * that space: the lesson's pages (PhoneLesson.tsx) and the review's drawer
-   * each take what the headline leaves.
+   * A phone's panel of pages (the lesson's, PhoneLesson.tsx, and the
+   * review's, PhoneReview.tsx) fills the space under the board, so its
+   * pages can take what the headline leaves.
    */
-  :root [data-narrow='drawer-panel'] {
+  :root [data-narrow='pages-panel'] {
     flex: 1 0 auto;
     min-height: 100%;
-  }
-  /*
-   * The scoresheet drawer (ScoresheetDrawer.tsx) takes the panel's place,
-   * filling it and scrolling its moves within.
-   */
-  :root [data-narrow='scoresheet-drawer'] {
-    display: flex;
-    flex: 1 1 auto;
-    height: 0;
-    min-height: 0;
-    animation: drawer-rise 220ms cubic-bezier(0.2, 0, 0, 1);
   }
   :root [data-narrow='page'] {
     min-height: 100dvh;
@@ -150,22 +137,5 @@
     padding-bottom: var(--fade);
     /* A mask reads only alpha, so black here is opaque, not a theme color. */
     mask-image: linear-gradient(to bottom, black calc(100% - var(--fade)), transparent);
-  }
-  @keyframes drawer-rise {
-    from {
-      opacity: 0;
-      transform: translateY(24px);
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    :root [data-narrow='scoresheet-drawer'] {
-      animation-name: drawer-fade;
-      animation-duration: 120ms;
-    }
-    @keyframes drawer-fade {
-      from {
-        opacity: 0;
-      }
-    }
   }
 }

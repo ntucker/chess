@@ -31,11 +31,10 @@ export interface HeaderProps {
    */
   readonly back?: Destination;
   /**
-   * A narrow page's one button of its own, such as the lesson's settings or
-   * the review's scoresheet. It takes the source link's place, so the page
-   * links to the source elsewhere (`SourceFootnote`): in the lesson's
-   * settings sheet, at the foot of the review's panel. A wide page shows
-   * what it opens itself, and no button shows.
+   * A narrow page's one button of its own, such as the lesson's settings.
+   * It takes the source link's place, so the page links to the source
+   * elsewhere, such as in the lesson's settings sheet (`SourceFootnote`). A
+   * wide page shows what it opens itself, and no button shows.
    */
   readonly narrowButton?: NarrowButton;
   /** The logo starts the board over from its start position; without it, the logo is only a picture. */
@@ -47,8 +46,6 @@ export interface NarrowButton {
   readonly icon: ComponentProps<typeof Ionicons>['name'];
   readonly label: string;
   readonly onPress: () => void;
-  /** Whether what it opens is open, for a button that closes it again. */
-  readonly expanded?: boolean;
   /** What it opens holds the theme choice, so the narrow header leaves out its theme button. */
   readonly holdsTheme?: boolean;
 }
@@ -115,7 +112,6 @@ export function Header({ place, placeLink, back, narrowButton, onRestart }: Head
               iconSize={19}
               accessibilityRole="button"
               accessibilityLabel={narrowButton.label}
-              expanded={narrowButton.expanded}
               onPress={narrowButton.onPress}
             />
           </NarrowOnly>

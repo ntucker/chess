@@ -5,32 +5,27 @@ import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { useLabelled } from '@/components/Eyebrow';
-import { HeaderButton } from '@/components/HeaderButton';
 import { Notation } from '@/components/Notation';
 import { Scoresheet, ScoresheetTitle } from '@/components/Scoresheet';
 import { stepButton } from '@/components/Transport';
-import { useCloseKeys } from '@/components/useCloseKeys';
 import { shownMove } from '@/game/replay';
 import { springs } from '@/motion/spring';
 import { useSpringTransition } from '@/motion/useSpringTransition';
-import { useNarrowPart } from '@/theme/Narrow';
 import { FIGURINE_ADVANCE, fonts, MONO_ADVANCE } from '@/theme/theme';
 
 interface PageProps extends Omit<ComponentProps<typeof Scoresheet>, 'fill'> {
   /** The game's Review button, first in its head (the lesson's). */
   readonly reviewButton?: ReactNode;
-  /** What closes it, last in its head. */
-  readonly closeButton?: ReactNode;
 }
 
 /**
  * The scoresheet of a narrow page, under the board, so the board stays in
  * view while the learner taps through the moves: the table filling it,
  * under a head that holds the jumps to the first and latest move, which the
- * stepper leaves out there. It fills what holds it, the lesson's page beside
- * its own (`PhoneLesson`) or the review's drawer (`ScoresheetDrawer`).
+ * stepper leaves out there. It fills its page beside the screen's own
+ * (`PhonePages`).
  */
-export function ScoresheetPage({ reviewButton, closeButton, ...scoresheet }: PageProps) {
+export function ScoresheetPage({ reviewButton, ...scoresheet }: PageProps) {
   const { plies, ply, onGoto } = scoresheet;
   /** The ply of the latest move: `plies` begins with the start position. */
   const last = plies.length - 1;
@@ -43,41 +38,9 @@ export function ScoresheetPage({ reviewButton, closeButton, ...scoresheet }: Pag
           {reviewButton}
           <Jump label="Start" disabled={ply === 0} onPress={() => onGoto(0)} />
           <Jump label="Latest" disabled={ply === last} onPress={() => onGoto(last)} />
-          {closeButton}
         </Inline>
       </Inline>
       <Scoresheet {...scoresheet} fill />
-    </View>
-  );
-}
-
-interface Props extends Omit<PageProps, 'closeButton'> {
-  /** Its close button, Escape, or Android's back. */
-  readonly onClose: () => void;
-}
-
-/**
- * The review's scoresheet on a narrow page (`ScoresheetPage`), opened from
- * the header: it takes the panel's place, rising into it, and stays open
- * until closed. Shown while mounted, on a narrow page only.
- */
-export function ScoresheetDrawer({ onClose, ...page }: Props) {
-  const part = useNarrowPart();
-  useCloseKeys(onClose);
-  return (
-    <View {...part('scoresheet-drawer')}>
-      <ScoresheetPage
-        {...page}
-        closeButton={
-          <HeaderButton
-            icon="chevron-down"
-            iconSize={20}
-            accessibilityRole="button"
-            accessibilityLabel="Close the scoresheet"
-            onPress={onClose}
-          />
-        }
-      />
     </View>
   );
 }
@@ -97,7 +60,7 @@ export function ScoresheetOpener({
   /** The move that led to the position shown, in SAN: none at the start. */
   readonly san?: string;
   readonly ply: number;
-  readonly disabled: boolean;
+  readonly disabled?: boolean;
   readonly open: boolean;
   readonly onToggle: () => void;
 }) {
@@ -206,12 +169,13 @@ const styles = StyleSheet.create({
   page: { flexGrow: 1, flexShrink: 1, minHeight: 0 },
   jump: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
   /*
-   * Wide enough for "12…Nxd5" with its piece as an icon (six mono characters
-   * and the widest piece), so the stepper keeps its width from move to move,
-   * and no wider than the two jumps it replaces, so the name bar keeps its room.
+   * At least wide enough for "12…Nxd5" with its piece as an icon (six mono
+   * characters and the widest piece), so at the usual text size the stepper
+   * keeps its width from move to move and is no wider than the two jumps it
+   * replaces. Large text widens it rather than cut the move short.
    */
   opener: {
-    width:
+    minWidth:
       Math.ceil(MOVE_SIZE * (6 * MONO_ADVANCE + FIGURINE_ADVANCE)) +
       OPENER_GAP +
       CHEVRON_SIZE +

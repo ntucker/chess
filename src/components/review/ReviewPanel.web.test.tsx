@@ -5,6 +5,7 @@ import { SilkProvider } from '@reactive/silk-native';
 import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import type { PhonePage } from '@/components/PhonePages';
 import type { FinalAnalysis } from '@/evaluation/evaluation';
 import { type Color, legalMoveCountAt, replay } from '@/game/replay';
 import { movesGivenUp } from '@/review/refine';
@@ -15,14 +16,16 @@ import { type ReviewScreen, startReview } from '@/review/screen';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
 
+import { PhoneReview } from './PhoneReview';
 import { ReviewActionBar } from './ReviewActions';
-import { ReviewPanel, type ReviewView } from './ReviewPanel';
+import { ReviewPanel } from './ReviewPanel';
+import type { ReviewView } from './reviewView';
 
 // The graph draws with react-native-svg, and its gestures need gesture handler's root.
-jest.mock('./ReviewGraph', () => ({ ReviewGraph: () => null }));
+jest.mock('./ReviewGraph', () => ({ ReviewGraph: () => <span data-testid="graph" /> }));
 // Its font needs Expo's asset registry too.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
-// The scoresheet drawer's Escape listens only on the focused screen, as this one is.
+// A sheet (the tally's) listens only on the focused screen, as this one is.
 // A link draws its text, and names where it goes and how.
 jest.mock('expo-router', () => ({
   useIsFocused: () => true,
@@ -341,22 +344,36 @@ describe('ReviewPanel', () => {
       expect(button(host, /^Retry/)?.getAttribute('aria-disabled')).toBe('true');
     });
   });
+});
 
-  it("opens a narrow page's scoresheet in a drawer, which closes again", () => {
+describe('PhoneReview', () => {
+  it('shows the page it is given, keeping the other mounted and hidden', () => {
     const view = review(2, [0, 1, 2, 3]);
-    const onClose = jest.fn();
-    render(
-      view,
-      (host) => {
-        expect(host.querySelector('[role="region"][aria-label="Scoresheet"]')).not.toBeNull();
-        act(() => button(host, /Close the scoresheet/)!.click());
-        expect(onClose).toHaveBeenCalled();
-      },
-      <ReviewPanel eyebrow="Review" learner="black" review={view} drawer={{ onClose }} />,
-    );
-    render(view, (host) => {
-      expect(host.querySelector('[role="region"]')).toBeNull();
-    });
+    const shown = (page: PhonePage<'review'>) =>
+      render(
+        view,
+        (host) => {
+          const scoresheet = host.querySelector('[role="region"][aria-label="Scoresheet"]')!;
+          // One of Stockfish's other moves in the move card.
+          const card = button(host, /^c5/)!;
+          const graph = host.querySelector('[data-testid="graph"]')!;
+          return {
+            scoresheet: scoresheet.closest('[inert]') !== null,
+            card: card.closest('[inert]') !== null,
+            // Above the pages, so it never slides away.
+            graph: graph.closest('[inert]') !== null,
+          };
+        },
+        <PhoneReview
+          eyebrow="Review"
+          learner="black"
+          review={view}
+          page={page}
+          onPage={() => {}}
+        />,
+      );
+    expect(shown('review')).toEqual({ scoresheet: true, card: false, graph: false });
+    expect(shown('scoresheet')).toEqual({ scoresheet: false, card: true, graph: false });
   });
 });
 

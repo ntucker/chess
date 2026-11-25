@@ -4,7 +4,7 @@ import { type ComponentProps, use, useMemo } from 'react';
 import type { Header } from '@/components/Header';
 import type { HeadlineProps } from '@/components/GameStatus';
 import type { Scoresheet } from '@/components/Scoresheet';
-import type { ScoresheetOpener } from '@/components/ScoresheetDrawer';
+import type { ScoresheetOpener } from '@/components/ScoresheetPage';
 import type { BoardColumn } from '@/components/Stage';
 import { type Color, colorName, opposite } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
