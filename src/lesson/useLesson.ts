@@ -131,14 +131,16 @@ export function useLesson(
     on: mode === 'explore' && !picking,
     focused,
   });
-  // A try at a cue waiting for its verdict, whose searches come first.
+  // A try at a cue waiting for its verdict: the try's label and the board's
+  // search wait, so the searches the verdict needs run first.
   const waiting = acts?.found === 'pending';
   // Through the payoff the opponent plays the line's moves.
   const payoffCue = acts?.payoff === 'playing' ? acts.cue : undefined;
   const payoff = useMemo(() => payoffCue && payoffReplies(payoffCue), [payoffCue]);
+  const opponentMoves = opponentPlays(mode, settings.auto, store[0], picking);
   // A try at a cue that hasn't passed gets no reply (`Acts.held`).
   const rival =
-    opponentPlays(mode, settings.auto, store[0], picking) && !acts?.held
+    opponentMoves && !acts?.held
       ? lessonOpponent(
           lesson,
           opponent,
@@ -266,9 +268,10 @@ export function useLesson(
     refutation: game.refutation,
     cue,
   });
-  // The cue is felt as it lands: when the mistake is played, not when the
-  // board steps back onto it or the screen opens there.
-  const landed = acts?.live && moves.length === acts.cue.ply;
+  // The cue is felt as it lands: when the opponent plays the mistake, not
+  // when the board steps back onto it or the screen opens there. A mistake
+  // the learner plays for the other side already ticks as their move.
+  const landed = opponentMoves && acts?.live && moves.length === acts.cue.ply;
   const playedBefore = useRef(moves.length);
   useEffect(() => {
     if (landed && playedBefore.current < moves.length) haptic('moveLanded');

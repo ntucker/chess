@@ -100,7 +100,10 @@ export function tryVerdict(
   return accepted ? 'passed' : 'failed';
 }
 
-/** The final answer a pending verdict waits on: the cue's, then the position before the mistake's. */
+/**
+ * The final answer a pending verdict waits on: `cue` while the cue's is
+ * missing, else `before`, the position before the mistake's (`tryVerdict`).
+ */
 export const verdictWaitsOn = ({ cue }: CueAnalyses): 'cue' | 'before' => (cue ? 'before' : 'cue');
 
 /**

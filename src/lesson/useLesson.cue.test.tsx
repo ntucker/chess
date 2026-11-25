@@ -37,7 +37,8 @@ jest.mock('@/resources/opponent', () => ({
 }));
 jest.mock('expo-router', () => mockStandIns().router);
 jest.mock('@/stockfish/demand', () => mockStandIns().demand);
-jest.mock('@/components/haptics', () => ({ haptic: () => {} }));
+const mockHaptic = jest.fn();
+jest.mock('@/components/haptics', () => ({ haptic: (moment: string) => mockHaptic(moment) }));
 jest.mock('@data-client/react', () => mockStandIns().dataClient(() => ({ fetch: async () => {} })));
 jest.mock('@/settings/SettingsProvider', () => mockStandIns().settingsProvider(() => mockSettings));
 
@@ -99,6 +100,7 @@ afterEach(async () => {
   root = undefined;
   renders.length = 0;
   mockFinals.clear();
+  mockHaptic.mockClear();
 });
 
 describe('useLesson at a cue', () => {
@@ -130,6 +132,8 @@ describe('useLesson at a cue', () => {
     await act(async () => lesson().retryCue());
     expect(lesson().game.ply).toBe(9);
     expect(lesson().acts).toMatchObject({ found: 'open', live: true });
+    // Opening at the cue and coming back to it play no haptic: only the mistake being played does.
+    expect(mockHaptic).not.toHaveBeenCalled();
   });
 
   it('lets the opponent answer once a wrong try is skipped', async () => {
