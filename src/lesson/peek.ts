@@ -10,7 +10,8 @@
  */
 import type { SquareName } from 'chessops/types';
 
-import type { Note, PositionKey } from './lesson';
+import type { PositionKey } from './lesson';
+import type { BoardNote } from './mistakes';
 import type { Pointer } from './view';
 
 /**
@@ -25,7 +26,7 @@ export const HOLD_MS = 150;
 interface Pointing {
   readonly key: PositionKey;
   readonly candidate?: Pointer;
-  readonly note?: Note;
+  readonly note?: BoardNote;
   /** Set while a hovering pointer points at `candidate`. Only this reducer reads it. */
   readonly hover?: Hover;
   /**
@@ -49,7 +50,7 @@ export type Peek =
   | (Pointing & {
       readonly kind: 'play';
       /** The note whose idea plays back, pointed at or not. */
-      readonly played: Note;
+      readonly played: BoardNote;
       /** The candidate previewed when it started, whose position it plays in. */
       readonly from?: Pointer;
       /** Which board of the playback: 0 is where the idea starts. */
@@ -78,7 +79,7 @@ export type PeekAction =
    */
   | { readonly type: 'card'; readonly key: PositionKey; readonly time: number }
   /** The learner points at a note on the idea card, or at none. */
-  | { readonly type: 'note'; readonly key: PositionKey; readonly note?: Note }
+  | { readonly type: 'note'; readonly key: PositionKey; readonly note?: BoardNote }
   /** A click selects a piece on the board, or lets it go. */
   | { readonly type: 'select'; readonly key: PositionKey; readonly selected?: SquareName }
   /**
@@ -87,14 +88,14 @@ export type PeekAction =
    * even while a switch hides its ideas. Another note pointed at by keyboard
    * focus stays.
    */
-  | { readonly type: 'leaveNote'; readonly key: PositionKey; readonly note: Note }
+  | { readonly type: 'leaveNote'; readonly key: PositionKey; readonly note: BoardNote }
   /** The learner leaves the candidates and the idea card. A playback goes on, pointing at none. */
   | { readonly type: 'leave' }
   /**
    * Plays `note`'s idea back from the candidate pointed at now, or from the
    * one the playback on the board plays from.
    */
-  | { readonly type: 'play'; readonly key: PositionKey; readonly note: Note }
+  | { readonly type: 'play'; readonly key: PositionKey; readonly note: BoardNote }
   /** The playback's next board, by itself. */
   | { readonly type: 'step' }
   /** The learner steps the playback to board `step`. */

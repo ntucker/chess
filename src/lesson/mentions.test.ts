@@ -2,15 +2,16 @@ import { describe, expect, it } from '@jest/globals';
 
 import { playMove, positionKey, readPositionKey } from '@/game/replay';
 
-import type { Lesson, Note, PositionKey } from './lesson';
+import type { Lesson, PositionKey } from './lesson';
 import { SAMPLE, uciLine } from './lesson.fixture';
 import { noteParts } from './mentions';
+import type { BoardNote } from './mistakes';
 import { lineKeys } from './select';
 
 /** The key after `sans` from the start. */
 const keyAfter = (...sans: string[]) => lineKeys(uciLine(...sans)).at(-1)!;
 
-const note = (text: string, extra: Partial<Note> = {}): Note => ({ text, ...extra });
+const note = (text: string, extra: Partial<BoardNote> = {}): BoardNote => ({ text, ...extra });
 
 /** A lesson with no guide, so only the note and its ideas place a move. */
 const bare = { positions: {} } as unknown as Lesson;
@@ -80,7 +81,9 @@ describe('noteParts', () => {
     const before = 'r1bqkbnr/pp1npppp/2p5/8/3PN3/8/PPP2PPP/R1BQKBNR w KQkq -' as PositionKey;
     const after = 'r1bqkbnr/pp1npppp/2p5/8/3PN3/8/PPP1QPPP/R1B1KBNR b KQkq -' as PositionKey;
     const trap = note('Don’t play ...Ngf6, because Nd6 is mate.', {
-      ideas: [{ type: 'trap', moves: ['g8f6', 'e4d6'], verdict: 'losesMaterial' }],
+      ideas: [
+        { type: 'trap', moves: ['g8f6', 'e4d6'], verdict: 'losesMaterial', learnerFalls: true },
+      ],
     });
     const [, , , mate] = noteParts(bare, {
       note: trap,

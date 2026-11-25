@@ -21,10 +21,9 @@ import type { Chess } from 'chessops/chess';
 
 import { percent } from '@/analysis/quality';
 import { type Analysis, sketched } from '@/evaluation/evaluation';
-import { lineSans, numberedLine, parsePosition, playLine, readPositionKey } from '@/game/replay';
-import { inCleanRun } from '@/lesson/cleanRun';
-import { moveGames } from '@/lesson/share';
+import { lineSans, numberedLine, parsePosition, playLine } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
+import { guideOrder } from '@/lesson/mistakes';
 import {
   type Find,
   findOpportunities,
@@ -90,11 +89,7 @@ async function host(lesson: Lesson, band: number) {
     },
     // The run is for `lesson.side`, so these are its book moves and every move of the erring side.
     guideMoves: ({ key }) => {
-      const learner = readPositionKey(key)!.turn === lesson.side;
-      const moves = lesson.positions[key]?.moves ?? [];
-      const played = moves
-        .filter((move) => inCleanRun(move, learner))
-        .sort((a, b) => (moveGames(b, 'all') ?? -1) - (moveGames(a, 'all') ?? -1));
+      const played = guideOrder(lesson, key, lesson.side);
       return played.length ? played.map((move) => move.uci) : undefined;
     },
   };

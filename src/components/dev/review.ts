@@ -7,14 +7,8 @@ import { makeSanAndPlay } from 'chessops/san';
 import { parseUci } from 'chessops/util';
 
 import { numberedLine, parsePosition, positionKey } from '@/game/replay';
-import {
-  noteShows,
-  type Lesson,
-  type Note,
-  type NoteShows,
-  type PositionKey,
-  type Uci,
-} from '@/lesson/lesson';
+import { noteShows, type Lesson, type Note, type NoteShows, type PositionKey, type Uci } from '@/lesson/lesson';
+import { type BoardNote, boardNote } from '@/lesson/mistakes';
 
 export interface ReviewItem {
   /** Unique within the lesson. */
@@ -22,7 +16,8 @@ export interface ReviewItem {
   /** The moves from the start to the note's position, in SAN: `1.e4 c6 2.d4`. */
   readonly line: string;
   readonly variation: string;
-  readonly note: Note;
+  /** The note as the board shows it: a mistake it names is that mistake's trap. */
+  readonly note: BoardNote;
   /** The position the note's ideas are drawn in: the note's own, or the one after its move. */
   readonly position: Chess;
   /** The note's move, for a note on a move. */
@@ -47,7 +42,7 @@ export function reviewItems(lesson: Lesson): ReviewItem[] {
         key: `${key} ${move ?? ''} ${i}`,
         line: numberedLine(sans),
         variation,
-        note,
+        note: boardNote(lesson, note, positionKey(position)),
         position,
         move,
         kind: noteShows(note.ideas),

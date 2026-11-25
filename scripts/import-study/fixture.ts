@@ -1,10 +1,16 @@
 import { INITIAL_FEN } from 'chessops/fen';
 
-import { LESSON_FORMAT, type Lesson, type LessonMove, type LessonPosition } from '@/lesson/lesson';
+import {
+  type Idea,
+  LESSON_FORMAT,
+  type Lesson,
+  type LessonMove,
+  type LessonPosition,
+} from '@/lesson/lesson';
 import { SAMPLE } from '@/lesson/lesson.fixture';
 
 /** Black's lesson from the start position, all in the variation 'test', with `positions`. */
-export const testLesson = (positions: Lesson['positions']): Lesson => ({
+export const testLesson = <I = Idea>(positions: Lesson<I>['positions']): Lesson<I> => ({
   format: LESSON_FORMAT,
   id: 'test',
   title: 'Test',
@@ -16,7 +22,10 @@ export const testLesson = (positions: Lesson['positions']): Lesson => ({
 });
 
 /** A lesson position in the variation 'test'. */
-export const at = (moves: LessonMove[], notes?: LessonPosition['notes']): LessonPosition => ({
+export const at = <I = Idea>(
+  moves: LessonMove<I>[],
+  notes?: LessonPosition<I>['notes'],
+): LessonPosition<I> => ({
   variation: 'test',
   moves,
   ...(notes && { notes }),

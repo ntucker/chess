@@ -10,20 +10,26 @@ import { keyAfter as key, SAMPLE } from '@/lesson/lesson.fixture';
 import { extractChapter } from './extract';
 import { STUDY_PGN } from './fixture';
 import { mergeChapters } from './merge';
+import { markMistakes } from './mistakes';
 import { addPopularity, lichessExplorer, RATING_BANDS, type MoveCounts } from './popularity';
-import { parseStudy } from './study';
+import { type Chapter, parseStudy } from './study';
 
 const chapters = parseStudy(STUDY_PGN, () => true);
-const lesson = mergeChapters(
-  {
-    id: 'test',
-    title: 'Test',
-    side: 'black',
-    sources: SAMPLE.sources,
-  },
-  chapters,
-  chapters.map((chapter) => extractChapter(chapter, 'black')),
-);
+/** Black's lesson from `chapters`, as the importer has it when popularity runs. */
+const lessonOf = (chapters: readonly Chapter[]) =>
+  markMistakes(
+    mergeChapters(
+      {
+        id: 'test',
+        title: 'Test',
+        side: 'black',
+        sources: SAMPLE.sources,
+      },
+      chapters,
+      chapters.map((chapter) => extractChapter(chapter, 'black')),
+    ),
+  ).lesson;
+const lesson = lessonOf(chapters);
 
 const AFTER_C6 = key('e4', 'c6'); // White: d4 or Nc3
 const AFTER_D5 = key('e4', 'c6', 'd4', 'd5'); // White: e5 or Nc3
@@ -79,16 +85,7 @@ describe('addPopularity', () => {
         `[Event "🔵 02 Two Knights"]\n\n1. e4 c6 2. Nc3 d5 3. d4 *\n`,
       () => true,
     );
-    const small = mergeChapters(
-      {
-        id: 'test',
-        title: 'Test',
-        side: 'black',
-        sources: SAMPLE.sources,
-      },
-      transposing,
-      transposing.map((chapter) => extractChapter(chapter, 'black')),
-    );
+    const small = lessonOf(transposing);
     const asked: PositionKey[] = [];
     const explorer = async (at: PositionKey): Promise<MoveCounts> => {
       asked.push(at);

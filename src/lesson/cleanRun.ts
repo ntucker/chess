@@ -11,7 +11,7 @@ import { parseUci } from 'chessops/util';
 import { positionKey, readPositionKey } from '@/game/replay';
 
 import type { Lesson, LessonMove, LessonPosition, PositionKey } from './lesson';
-import { guidePosition } from './select';
+import { type GuidePosition, guidePosition } from './select';
 import { moveGames, moveShare, positionGames } from './share';
 
 /** Any opponent's move can be part of a clean run; of the learner's, only book moves. */
@@ -20,10 +20,12 @@ export const inCleanRun = (move: LessonMove, learner: boolean) => !learner || mo
 /**
  * An opponent's reply counts toward passing when lichess players chose it at
  * least this share of the time, over all rating bands. The most played reply
- * always counts, and so does one without counts, which can't be told rare.
- * Not `RARE_SHARE` (select.ts), which only decides which rows the list
- * folds away, by the opponent's band: a reply played 5-10% gets its own row
- * but needn't be passed, and a trap start gets no exemption here.
+ * always counts, and so does one without counts, which can't be told rare,
+ * unless it is a marked mistake (`LessonMove.mistake`): a trap the guide
+ * shows needn't be passed until its counts say how often it is played. Not
+ * `RARE_SHARE` (select.ts), which only decides which rows the list folds
+ * away, by the opponent's band: a reply played 5-10% gets its own row but
+ * needn't be passed, and a marked mistake gets no exemption here.
  */
 const COUNTED_SHARE = 0.1;
 
@@ -45,16 +47,47 @@ export function countedReplies(
   const played = moves.map((move) => moveGames(move, 'all'));
   const listed = played.reduce<number>((sum, n) => sum + (n ?? 0), 0);
   const most = Math.max(...played.map((n) => n ?? 0));
-  return moves.filter((_, i) => {
+  return moves.filter((move, i) => {
+    if (played[i] === undefined) return !move.mistake;
     const share = moveShare(played[i], listed, total);
     return share === undefined || played[i] === most || share >= COUNTED_SHARE;
   });
 }
 
 /**
+ * Whether the guide's line goes on from `key`: the guide has moves there,
+ * and not only marked mistakes a clean run skips (the learner's, or the
+ * opponent's without counts). Where only those are left, the line ends and
+ * a trap starts.
+ */
+function lineGoesOn(lesson: Lesson, key: PositionKey): boolean {
+  const guide = guidePosition(lesson, key);
+  if (guide.place !== 'inside') return false;
+  const { moves } = guide.entry;
+  if (!moves.every(({ mistake }) => mistake)) return true;
+  return countedMoves(guide.entry, readPositionKey(key)!.turn === lesson.side).length > 0;
+}
+
+/**
+ * Where the position `arrivedBy` leads to stands on a guide line: inside it
+ * while the line goes on (`lineGoesOn`), at its end where a guide move led
+ * and the line stops, else beyond the guide. The shipped files keep no entry
+ * for a line's last position, so `end` comes mostly from a guide move into a
+ * position the file doesn't hold.
+ */
+export function linePlace(
+  lesson: Lesson,
+  key: PositionKey,
+  arrivedBy: LessonMove | undefined,
+): GuidePosition['place'] {
+  if (lineGoesOn(lesson, key)) return 'inside';
+  return arrivedBy || key in lesson.positions ? 'end' : 'beyond';
+}
+
+/**
  * Every guide line end a clean run from `start` can reach, each once, in
- * walk order: the positions reached by a guide move where the guide has no
- * moves. A line that comes back to a position adds nothing.
+ * walk order: the positions reached by a guide move where the line stops
+ * (`lineGoesOn`). A line that comes back to a position adds nothing.
  */
 export function cleanLineEnds(lesson: Lesson, start: PositionKey): PositionKey[] {
   const ends: PositionKey[] = [];
@@ -81,8 +114,8 @@ export function walkClean(
     const [key, pos] = step;
     if (visited.has(key)) continue;
     visited.add(key);
-    // Reached by a guide move, a position the guide has no moves at ends a line.
-    if (guidePosition(lesson, key).place === 'inside') toVisit.push(...cleanNext(lesson, key, pos));
+    // Reached by a guide move, a position where the line stops ends it.
+    if (lineGoesOn(lesson, key)) toVisit.push(...cleanNext(lesson, key, pos));
     else if (!end(key)) return false;
   }
   return true;

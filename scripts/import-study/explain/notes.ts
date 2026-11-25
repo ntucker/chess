@@ -122,7 +122,8 @@ export function explainedNote(answer: Answer, move: Played, model: AiModel): Exp
     if (typeof idea === 'string') return refuse(`its ${raw.type} is false here: ${idea}`);
     const problem = generatedIdeaProblem(idea, after);
     if (problem) return refuse(`its ${idea.type} ${problem}`);
-    ideas.push(idea);
+    // A generated note draws no trap: the problem above refuses one.
+    ideas.push(idea as Idea);
   }
   return { note: { text, generated: true, model, ...(ideas.length > 0 && { ideas }) } };
 }

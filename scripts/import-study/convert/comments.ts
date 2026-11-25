@@ -12,9 +12,9 @@ import { COLORS, ROLES, type Color } from 'chessops/types';
 import { makeSquare, roleToChar } from 'chessops/util';
 
 import { numberedLine, SAN } from '@/game/replay';
-import type { Idea } from '@/lesson/lesson';
 
 import type { ChapterNotes, MoveNote } from '../extract';
+import type { StudyIdea } from '../mistakes';
 import type { StudyMove } from '../study';
 
 /** One comment as the model reads it. */
@@ -38,7 +38,7 @@ export interface Comment {
   /** The side the study was written for, when it is not the learner's: its "you" is the opponent. */
   readonly writtenFor?: Color;
   /** Ideas the importer already read from this comment without AI. */
-  readonly extracted: readonly Idea[];
+  readonly extracted: readonly StudyIdea[];
   /** Only when asked again: the model's earlier note texts the checker refused as notation. */
   readonly refusedText?: readonly string[];
   /** Only when asked again: moves the comment marks as mistakes (`3.e3?`), in SAN, whose punishment no note draws. */

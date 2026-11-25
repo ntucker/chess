@@ -20,6 +20,7 @@ import {
 } from 'chessops/types';
 import { makeSquare, opposite, parseSquare, parseUci } from 'chessops/util';
 
+import { MISTAKE_LOSS } from '@/analysis/quality';
 import { balance, points, VALUES } from '@/game/material';
 import {
   parsePosition,
@@ -45,6 +46,8 @@ import {
   type LessonMove,
   type LessonPosition,
   type Line,
+  type Mistake,
+  type MistakeIdea,
   type Note,
   type Plan,
   type Pressure,
@@ -52,9 +55,10 @@ import {
   type Structure,
   type StructureFeature,
   type Threat,
-  type Trap,
+  type Uci,
   type VariationId,
 } from './lesson';
+import { mistakeLine } from './mistakes';
 import {
   filePawnCount,
   isBackward,
@@ -130,7 +134,9 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
       key,
       next.filter(({ book }) => book || !learner).map(({ key: to }) => to),
     );
-    if (learner && next.length > 0 && !next.some(({ book }) => book)) unbooked.add(key);
+    // Where the learner's only moves are marked mistakes, the book line ends and a trap starts.
+    const lineGoesOn = next.some(({ mistake }) => !mistake);
+    if (learner && lineGoesOn && !next.some(({ book }) => book)) unbooked.add(key);
   }
   const reached = reachable(startKey, children);
   for (const key of children.keys()) {
@@ -155,7 +161,7 @@ function checkPosition(
   key: string,
   entry: LessonPosition,
   report: Report,
-): { learner: boolean; next: { key: string; book: boolean }[] } | undefined {
+): { learner: boolean; next: { key: string; book: boolean; mistake: boolean }[] } | undefined {
   const at = `positions[${JSON.stringify(key)}]`;
   const pos = parsePositionKey(key);
   if (!pos) {
@@ -165,8 +171,8 @@ function checkPosition(
   if (!(entry.variation in lesson.variations)) {
     report(`${at}.variation`, `${entry.variation} is not in variations`);
   }
-  checkNotes(entry.notes, pos, `${at}.notes`, report);
-  const next: { key: string; book: boolean }[] = [];
+  checkNotes(lesson, entry.notes, pos, `${at}.notes`, report);
+  const next: { key: string; book: boolean; mistake: boolean }[] = [];
   const seen = new Set<string>();
   entry.moves.forEach((move, i) => {
     const path = `${at}.moves[${i}]`;
@@ -174,8 +180,9 @@ function checkPosition(
     seen.add(move.uci);
     const after = checkMove(lesson, pos, move, path, report);
     if (!after) return;
-    next.push({ key: positionKey(after), book: !!move.book });
-    checkNotes(move.notes, after, `${path}.notes`, report);
+    next.push({ key: positionKey(after), book: !!move.book, mistake: !!move.mistake });
+    if (move.mistake) checkMistake(lesson, pos, move, move.mistake, `${path}.mistake`, report);
+    checkNotes(lesson, move.notes, after, `${path}.notes`, report);
   });
   return { learner: pos.turn === lesson.side, next };
 }
@@ -296,6 +303,41 @@ function checkMove(
 
 const isCount = (n: number) => Number.isInteger(n) && n >= 0;
 
+/**
+ * Checks the marker on `move`, legal in `pos`: its numbers in range, its
+ * length (`plies`) a line the guide holds and stored only where the guide
+ * goes on past it, and its verdict true of the line (`trapProblem`).
+ */
+function checkMistake(
+  lesson: Lesson,
+  pos: Chess,
+  move: LessonMove,
+  { cost, gain, name, verdict, plies }: Mistake,
+  path: string,
+  report: Report,
+) {
+  if (move.book) report(path, 'marks a book move, which the guide recommends');
+  if (cost !== undefined && !(cost >= MISTAKE_LOSS && cost <= 1))
+    report(`${path}.cost`, `must be from ${MISTAKE_LOSS} (a mistake) to 1`);
+  const bands = lesson.popularity?.ratingBands;
+  if (gain && (gain.length !== bands?.length || !gain.every((n) => n >= 0 && n <= 1)))
+    report(`${path}.gain`, 'needs one expected score from 0 to 1 per rating band');
+  if (name !== undefined && !name.trim()) report(`${path}.name`, 'is empty');
+  const key = positionKey(pos);
+  const line = mistakeLine(lesson, key, move);
+  if (plies !== undefined) {
+    const whole = mistakeLine(lesson, key, { uci: move.uci }).length;
+    if (!Number.isInteger(plies) || plies < 1)
+      report(`${path}.plies`, 'must be a whole number of moves');
+    else if (plies > whole)
+      report(`${path}.plies`, `is ${plies}, but the guide holds ${whole} moves of the line`);
+    else if (plies === whole)
+      report(`${path}.plies`, 'is where the guide stops anyway, so it is left out');
+  }
+  const problem = verdict === undefined ? undefined : trapProblem(pos, line, verdict);
+  if (problem) report(`${path}.verdict`, problem);
+}
+
 const MOVE = new RegExp(String.raw`(?<![\w.])${WRITTEN_MOVE}(?![\w-])`, 'g');
 /** Four moves with only whitespace between them: a line in notation, like `7.Nxd4 Nc5 8.Bc4 Nbd7`. */
 const NOTATION_LINE = new RegExp(
@@ -387,13 +429,23 @@ const pieceWorth = (role: Role) => (role === 'king' ? Infinity : VALUES[role]);
  * What a generated note (`Note.generated`) may not draw that a guide's may,
  * or undefined, worded to follow the idea's type ("threat takes nothing...").
  */
-export function generatedIdeaProblem(idea: Idea, pos: Chess): string | undefined {
+export function generatedIdeaProblem(
+  idea: Idea | { readonly type: string },
+  pos: Chess,
+): string | undefined {
   if (!(GENERATED_IDEAS as readonly string[]).includes(idea.type))
     return 'is a type no generated note draws';
-  return idea.type === 'threat' ? emptyThreat(idea, pos) : undefined;
+  return idea.type === 'threat' ? emptyThreat(idea as Threat, pos) : undefined;
 }
 
-function checkNotes(notes: readonly Note[] | undefined, pos: Chess, path: string, report: Report) {
+function checkNotes(
+  lesson: Lesson,
+  notes: readonly Note[] | undefined,
+  pos: Chess,
+  path: string,
+  report: Report,
+) {
+  const key = positionKey(pos);
   notes?.forEach((note, i) => {
     const wording = noteTextProblem(note.text);
     if (wording) report(`${path}[${i}].text`, wording);
@@ -406,11 +458,19 @@ function checkNotes(notes: readonly Note[] | undefined, pos: Chess, path: string
     if (modelProblem) report(`${path}[${i}].model`, modelProblem);
     note.ideas?.forEach((idea, j) => {
       const problem =
-        checkIdea(idea, pos) ?? (note.generated ? generatedIdeaProblem(idea, pos) : undefined);
+        checkIdea(idea, pos) ??
+        (note.generated ? generatedIdeaProblem(idea, pos) : undefined) ??
+        (idea.type === 'mistake' ? unmarked(lesson, key, idea.move) : undefined);
       if (problem) report(`${path}[${i}].ideas[${j}]`, `${idea.type}: ${problem}`);
     });
   });
 }
+
+/** Why a note can't name `uci` at `key` as a mistake: the guide lists no marked move there. */
+const unmarked = (lesson: Lesson, key: string, uci: Uci) =>
+  lesson.positions[key]?.moves.find((move) => move.uci === uci)?.mistake
+    ? undefined
+    : 'names a move the guide does not mark as a mistake here';
 
 // ---------------------------------------------------------------- helpers
 
@@ -651,12 +711,35 @@ function checkThreat(pos: Chess, idea: Threat) {
   else legalMove(played(threatening, [idea.move]), idea.answer);
 }
 
-function checkTrap(pos: Chess, idea: Trap) {
-  if (idea.moves.length === 0) fail('needs a move');
+/**
+ * Why `verdict` is false of the trap `moves` plays from `pos`, which the side
+ * to move falls into, or undefined when it holds: the moves are legal, and
+ * `losesMaterial` costs that side at least two points or mates it.
+ */
+export function trapProblem(
+  pos: Chess,
+  moves: readonly Uci[],
+  verdict: Exclude<Mistake['verdict'], undefined>,
+): string | undefined {
+  try {
+    checkTrap(pos, moves, verdict);
+    return undefined;
+  } catch (error) {
+    if (error instanceof Rejection) return error.message;
+    throw error;
+  }
+}
+
+function checkTrap(
+  pos: Chess,
+  moves: readonly Uci[],
+  verdict: Exclude<Mistake['verdict'], undefined>,
+) {
+  if (moves.length === 0) fail('needs a move');
   const victim = pos.turn;
-  const end = played(pos, idea.moves);
-  if (idea.verdict !== 'losesMaterial') {
-    oneOf(EVALUATIONS, idea.verdict, 'verdict');
+  const end = played(pos, moves);
+  if (verdict !== 'losesMaterial') {
+    oneOf(EVALUATIONS, verdict, 'verdict');
     return;
   }
   const lead = (p: Chess) => balance(p.board, victim);
@@ -804,7 +887,7 @@ const CHECKS: { [T in Idea['type']]: (pos: Chess, idea: Extract<Idea, { type: T 
   pressure: checkPressure,
   plan: checkPlan,
   threat: checkThreat,
-  trap: checkTrap,
+  mistake: (pos, idea: MistakeIdea) => void legalMove(pos, idea.move),
   line: checkLine,
   structure: checkStructure,
   imbalance: checkImbalance,

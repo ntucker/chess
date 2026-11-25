@@ -14,33 +14,28 @@ import type { Drag } from '@/board/pointer';
 import { dropMove, parsePositionKey } from '@/game/replay';
 import type { Opponent } from '@/opponent/opponent';
 
-import {
-  type Lesson,
-  type LessonMove,
-  type Note,
-  type PositionKey,
-  type Trap,
-  type Uci,
-} from './lesson';
+import { linePlace } from './cleanRun';
+import type { Lesson, LessonMove, PositionKey, Uci } from './lesson';
+import { type BoardNote, boardNote, type Trap } from './mistakes';
 import {
   type Candidate,
   candidates,
   type GuidePosition,
   guideMove,
   lineKeys,
-  linePlace,
   lineVariation,
   opponentBand,
   type VariationOf,
 } from './select';
 
 /**
- * A note to show: `after` is the note's position, or the position after the
- * note's move, where its ideas hold; `before` is the position the move was
- * played in, absent for a position's own note.
+ * A note to show, as the board shows it (`boardNote`): `after` is the note's
+ * position, or the position after the note's move, where its ideas hold;
+ * `before` is the position the move was played in, absent for a position's
+ * own note.
  */
 export interface ShownNote {
-  readonly note: Note;
+  readonly note: BoardNote;
   readonly after: PositionKey;
   readonly before?: PositionKey;
 }
@@ -179,17 +174,19 @@ function cardNotes(
   before: PositionKey,
   after: PositionKey,
 ): ShownNote[] {
-  return [...moveNotes(move, before, after), ...positionNotes(lesson, after)];
+  return [...moveNotes(lesson, move, before, after), ...positionNotes(lesson, after)];
 }
 
 const moveNotes = (
+  lesson: Lesson,
   move: LessonMove | undefined,
   before: PositionKey,
   after: PositionKey,
-): ShownNote[] => (move?.notes ?? []).map((note) => ({ note, before, after }));
+): ShownNote[] =>
+  (move?.notes ?? []).map((note) => ({ note: boardNote(lesson, note, after), before, after }));
 
 const positionNotes = (lesson: Lesson, key: PositionKey): ShownNote[] =>
-  (lesson.positions[key]?.notes ?? []).map((note) => ({ note, after: key }));
+  (lesson.positions[key]?.notes ?? []).map((note) => ({ note: boardNote(lesson, note, key), after: key }));
 
 /** The idea card at `keys[ply]`: the notes of the move played into it, then its own. */
 function arrivalNotes(

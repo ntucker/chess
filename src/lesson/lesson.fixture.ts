@@ -55,20 +55,13 @@ export function withMoves(
   };
 }
 
-/** `lesson` with the trap whose moves are `moves` playing `edited` instead. */
-export function withTrapMoves(
-  lesson: Lesson,
-  moves: readonly Uci[],
-  edited: readonly Uci[],
-): Lesson {
-  return JSON.parse(
-    JSON.stringify(lesson, (_, value) =>
-      value?.type === 'trap' && String(value.moves) === String(moves)
-        ? { ...value, moves: edited }
-        : value,
+/** `lesson` with the mistake `uci` marks at `key` cut to its first `plies` moves (`Mistake.plies`). */
+export const withMistakePlies = (lesson: Lesson, key: PositionKey, uci: Uci, plies: number) =>
+  withMoves(lesson, key, (moves) =>
+    moves.map((move) =>
+      move.uci === uci ? { ...move, mistake: { ...move.mistake, plies } } : move,
     ),
   );
-}
 
 /** The last move of the line `sans`, in UCI. */
 export const uci = (...sans: string[]) => uciLine(...sans).at(-1)!;

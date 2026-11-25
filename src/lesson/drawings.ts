@@ -15,7 +15,8 @@ import { type Drawing, moveArrow, refutationArrow, type Tone } from '@/board/dra
 import { parsePositionKey, pieceAt, playLine, type Position } from '@/game/replay';
 
 import type { Guidance, PlayedBack } from './guidance';
-import type { Idea, Imbalance, PositionKey, Structure, StructureFeature, Uci } from './lesson';
+import type { Imbalance, PositionKey, Structure, StructureFeature, Uci } from './lesson';
+import type { BoardIdea } from './mistakes';
 import { relativeRank, spaceSquares } from './pawns';
 import { planBoards } from './plan';
 import { type Candidate, mainCandidate } from './select';
@@ -46,7 +47,7 @@ export function lessonDrawings(guidance: Guidance, shown: PositionKey, learner: 
  * `ideas`' drawings on the position `shown`, parsed only when there are some,
  * since this runs as the pointer moves.
  */
-function ideasDrawings(ideas: readonly Idea[], shown: PositionKey, learner: Color): Drawing[] {
+function ideasDrawings(ideas: readonly BoardIdea[], shown: PositionKey, learner: Color): Drawing[] {
   if (!ideas.length) return [];
   const position = parsePositionKey(shown)!;
   return ideas.flatMap((idea) => ideaDrawings(idea, position, learner));
@@ -91,7 +92,7 @@ export function candidateDrawings(
  * Whether `idea` draws on the board at all (`ideaDrawings`): an evaluation
  * and a material imbalance are only words.
  */
-export const drawsOnBoard = (idea: Idea) =>
+export const drawsOnBoard = (idea: BoardIdea) =>
   idea.type !== 'evaluation' && !(idea.type === 'imbalance' && idea.kind === 'material');
 
 /**
@@ -100,7 +101,7 @@ export const drawsOnBoard = (idea: Idea) =>
  * side and as the other side's otherwise, so both sides' features in one note
  * stay apart.
  */
-export function ideaDrawings(idea: Idea, position: Chess, learner: Color): Drawing[] {
+export function ideaDrawings(idea: BoardIdea, position: Chess, learner: Color): Drawing[] {
   const tone = ideaTone(idea, learner);
   switch (idea.type) {
     case 'purpose':
@@ -162,7 +163,7 @@ export function ideaDrawings(idea: Idea, position: Chess, learner: Color): Drawi
 const toneOf = (side: Color, learner: Color): Tone => (side === learner ? 'main' : 'other');
 
 /** The tone an idea's drawings lead with; the idea card's dot matches it. */
-export function ideaTone(idea: Idea, learner: Color): Tone {
+export function ideaTone(idea: BoardIdea, learner: Color): Tone {
   switch (idea.type) {
     case 'plan':
       return 'plan';

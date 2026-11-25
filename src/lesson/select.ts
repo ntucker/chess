@@ -38,21 +38,6 @@ export function guidePosition(lesson: Lesson, key: PositionKey): GuidePosition {
   return { place: entry.moves.length ? 'inside' : 'end', entry };
 }
 
-/**
- * Where the position `arrivedBy` leads to stands in the guide: as
- * `guidePosition` says, except that a guide move into a position the file
- * doesn't hold ends its line there too. The shipped files keep no entry for
- * a line's last position, so `end` comes mostly from this.
- */
-export function linePlace(
-  lesson: Lesson,
-  key: PositionKey,
-  arrivedBy: LessonMove | undefined,
-): GuidePosition['place'] {
-  const { place } = guidePosition(lesson, key);
-  return place === 'beyond' && arrivedBy ? 'end' : place;
-}
-
 /** One of the guide's moves at a position, with what its list row shows. */
 export interface Candidate {
   /** The move as the lesson file stores it: book flag, risk, notes. */
@@ -130,7 +115,7 @@ export function candidates(
   });
   // Array.sort is stable, so equal counts keep the file's order.
   rows.sort((a, b) => (count(b.move) ?? -1) - (count(a.move) ?? -1));
-  return pos.turn === lesson.side ? rows : rareLast(rows, trapStarts(guide.entry));
+  return pos.turn === lesson.side ? rows : rareLast(rows);
 }
 
 /**
@@ -172,22 +157,16 @@ function candidateRow(
 /**
  * The opponent's `rows`, most played first, with the rare ones marked and
  * moved last. A row past the first `ALWAYS_LISTED` is rare under `RARE_SHARE`,
- * unless it has no counts or starts one of `traps`, and only when at least
- * `FEWEST_RARE` are.
+ * unless it has no counts or is a marked mistake (a trap to show), and only
+ * when at least `FEWEST_RARE` are.
  */
-function rareLast(rows: readonly Candidate[], traps: readonly Uci[]): Candidate[] {
+function rareLast(rows: readonly Candidate[]): Candidate[] {
   const isRare = ({ move, share }: Candidate, n: number) =>
-    n >= ALWAYS_LISTED && share !== undefined && share < RARE_SHARE && !traps.includes(move.uci);
+    n >= ALWAYS_LISTED && share !== undefined && share < RARE_SHARE && !move.mistake;
   const marked = rows.map((row, n) => (isRare(row, n) ? { ...row, rare: true } : row));
   if (marked.filter(({ rare }) => rare).length < FEWEST_RARE) return [...rows];
   return [...marked.filter(({ rare }) => !rare), ...marked.filter(({ rare }) => rare)];
 }
-
-/** The first move of each trap in a position's notes: the move that falls in. */
-const trapStarts = (entry: LessonPosition): Uci[] =>
-  (entry.notes ?? []).flatMap(({ ideas = [] }) =>
-    ideas.flatMap((idea) => (idea.type === 'trap' ? [idea.moves[0]] : [])),
-  );
 
 /** `uci` as the guide stores it at `key`, or undefined if it isn't a guide move there. */
 export const guideMove = (lesson: Lesson, key: PositionKey, uci: Uci): LessonMove | undefined =>

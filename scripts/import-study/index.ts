@@ -5,9 +5,9 @@
  *
  * parse the study → read each chapter's fixed formats → rewrite the comments
  * with AI (./convert) → merge the chapters into one
- * position tree → pick book moves where the guide shows moves but
+ * position tree → turn its traps into marked moves (./mistakes) → pick book moves where the guide shows moves but
  * recommends none, and (`engineCheck` in studies.ts) drop what Stockfish
- * contradicts (./engineCheck) → give notes written on another move order to
+ * contradicts (./engineCheck) → settle each mistake's line (`settleMistakes`) → give notes written on another move order to
  * the position the lesson reaches (./transpositions) → write the idea of each
  * book move nothing explains with AI (./explain) → drop variation names no
  * position carries (./emptyVariations) → add popularity → checkLesson → write
@@ -65,6 +65,7 @@ import { explainBookMoves, explainCli, explainReport } from './explain';
 import { extractChapter } from './extract';
 import { lessonJson } from './lessonJson';
 import { mergeChapters, numberedChapterName, type ChapterName, type SourceTally } from './merge';
+import { markMistakes, settleMistakes } from './mistakes';
 import { addPopularity, lichessExplorer } from './popularity';
 import { indexedWith, readLessonFile, registered, writeIndex } from './register';
 import { report, sourceReport } from './report';
@@ -138,7 +139,8 @@ async function main() {
   const { extracted } = converted;
   console.log(convertReport(converted.report));
   const tally: SourceTally[] = [];
-  let lesson: Lesson = mergeChapters(info, chapters, extracted, chapterName, tally);
+  const marked = markMistakes(mergeChapters(info, chapters, extracted, chapterName, tally));
+  let lesson: Lesson = marked.lesson;
   // Tallies go by each source's place in the recipe, which can list a study twice; the lesson credits it once.
   console.log(sourceReport(study.from.map(credit), tally));
   if (lesson.start !== INITIAL_FEN)
@@ -164,7 +166,16 @@ async function main() {
       `engine check: ${gambits.length} gambit mistakes kept, ${unbooked.length} book moves overruled (${cut.length} cut, the guide's only move; ${refilled.filled.length} picked again among the guide's others, ${refilled.ended.length} ended where it overruled them all and named none), ${unreachable.length} more left unreachable, ${dropped.length} notes dropped`,
     );
   }
-  writeFileSync(engineFile, `${JSON.stringify({ ...filled.report, ...engineReport }, null, 2)}\n`);
+  const settled = settleMistakes(lesson, marked.traps);
+  lesson = settled.lesson;
+  console.log(
+    `mistakes: ${marked.traps.length} traps marked, ${settled.changed.length} with the guide's line in place of the study's, ${settled.unmarked.length} whose mark went (${engineFile})`,
+  );
+  const { changed, unmarked } = settled;
+  writeFileSync(
+    engineFile,
+    `${JSON.stringify({ ...filled.report, ...engineReport, mistakes: { changed, unmarked } }, null, 2)}\n`,
+  );
   const transposed = noteTranspositions(lesson);
   lesson = transposed.lesson;
   console.log(

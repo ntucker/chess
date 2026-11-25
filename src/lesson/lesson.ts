@@ -16,8 +16,9 @@ import type { Color, FileName, SquareName } from 'chessops/types';
  * The format this code reads. A file with another number is refused.
  * 2: ideas lost `at: 'before'`; each holds in its note's position, or after its move.
  * 3: `source` became `sources`, since one lesson can draw on several, each with its license.
+ * 4: a trap idea became a reference to a marked move (`MistakeIdea`, `LessonMove.mistake`).
  */
-export const LESSON_FORMAT = 3;
+export const LESSON_FORMAT = 4;
 
 /**
  * A move in UCI, like `g1f3`, with castling written as the king's two-square
@@ -25,7 +26,11 @@ export const LESSON_FORMAT = 3;
  */
 export type Uci = string;
 
-export interface Lesson {
+/**
+ * `I` is what a note can draw: a shipped lesson's `Idea`s, or the importer's
+ * wider set before it turns traps into marked moves.
+ */
+export interface Lesson<I = Idea> {
   readonly format: typeof LESSON_FORMAT;
   /** Stable id, like `caro-kann`: what progress and links refer to. */
   readonly id: string;
@@ -41,7 +46,7 @@ export interface Lesson {
   readonly popularity?: Popularity;
   /** Exactly one variation has no parent: the opening itself. */
   readonly variations: Readonly<Record<VariationId, Variation>>;
-  readonly positions: Readonly<Record<PositionKey, LessonPosition>>;
+  readonly positions: Readonly<Record<PositionKey, LessonPosition<I>>>;
 }
 
 export interface LessonSource {
@@ -121,7 +126,7 @@ export interface Variation {
 /** A position's FEN without the move counters, so transpositions meet (`positionKey`). */
 export type PositionKey = string;
 
-export interface LessonPosition {
+export interface LessonPosition<I = Idea> {
   /**
    * The variation this position belongs to: the idea card's subtitle. Where
    * the study reaches one position in several chapters, the first chapter's.
@@ -133,9 +138,9 @@ export interface LessonPosition {
    * whose resulting position has no entry in `Lesson.positions` leads beyond
    * the guide.
    */
-  readonly moves: readonly LessonMove[];
+  readonly moves: readonly LessonMove<I>[];
   /** What is worth knowing about this position however it was reached. */
-  readonly notes?: readonly Note[];
+  readonly notes?: readonly Note<I>[];
   /**
    * How many lichess games reached this position, one count per entry of
    * `Lesson.popularity.ratingBands`, in the same order: the explorer's own
@@ -145,7 +150,7 @@ export interface LessonPosition {
   readonly games?: readonly number[];
 }
 
-export interface LessonMove {
+export interface LessonMove<I = Idea> {
   readonly uci: Uci;
   /**
    * The guide recommends this move, or the importer picked it where the guide recommends none.
@@ -161,14 +166,49 @@ export interface LessonMove {
    */
   readonly games?: readonly number[];
   /** What this move does: shown when it is previewed or played. */
-  readonly notes?: readonly Note[];
+  readonly notes?: readonly Note<I>[];
+  /** This move is a mistake the other side can punish: a trap for the side that plays it. */
+  readonly mistake?: Mistake;
+}
+
+/**
+ * A marked mistake: the move it marks, then the guide's moves after it
+ * (`mistakeLine` in ./mistakes.ts), are the line where the other side
+ * punishes it. Read by the side that plays it, a trap; by the other, an
+ * opportunity. Each field is absent until measured: a trap migrated from a
+ * guide has only its verdict, and its length where the guide goes on past it.
+ */
+export interface Mistake {
+  /**
+   * How much the move gives away: the mover's expected score (0 to 1) before
+   * it, less after it, by Stockfish's full search. At least `MISTAKE_LOSS`
+   * (src/analysis/quality.ts).
+   */
+  readonly cost?: number;
+  /**
+   * What knowing the punishment is worth, one value per entry of
+   * `Lesson.popularity.ratingBands` (`gainIfKnown` in src/opportunity/gain.ts).
+   */
+  readonly gain?: readonly number[];
+  /** A short title for the list of opportunities. */
+  readonly name?: string;
+  /**
+   * The guide's verdict on the line's last position. `losesMaterial`: the
+   * side that errs ends at least two points worse off, or mated.
+   */
+  readonly verdict?: Evaluation | 'losesMaterial';
+  /**
+   * How many moves the line plays, this one first, where the guide goes on
+   * past its end; absent, it runs to where the guide stops.
+   */
+  readonly plies?: number;
 }
 
 export const RISKS = ['safe', 'balanced', 'sharp'] as const;
 export type Risk = (typeof RISKS)[number];
 
 /** One study comment, rewritten (or a book move's idea, `generated`): a short sentence and what can be drawn. */
-export interface Note {
+export interface Note<I = Idea> {
   /** The sentence shown, at most `MAX_NOTE_WORDS` words, in plain language. */
   readonly text: string;
   /** The study's own words, shown behind "more". */
@@ -188,7 +228,7 @@ export interface Note {
    */
   readonly model?: AiModel;
   /** What the board draws; none means the note is text only. */
-  readonly ideas?: readonly Idea[];
+  readonly ideas?: readonly I[];
 }
 
 export const MAX_NOTE_WORDS = 20;
@@ -208,7 +248,7 @@ export type AiModel = keyof typeof AI_MODELS;
 /** What a note shows: something drawn on the board, only an evaluation badge, or text alone. */
 export type NoteShows = 'drawn' | 'badge' | 'text';
 
-export const noteShows = (ideas: readonly Idea[] = []): NoteShows =>
+export const noteShows = <I extends { readonly type: string }>(ideas: readonly I[] = []): NoteShows =>
   ideas.some((idea) => idea.type !== 'evaluation') ? 'drawn' : ideas.length > 0 ? 'badge' : 'text';
 
 /**
@@ -216,7 +256,15 @@ export const noteShows = (ideas: readonly Idea[] = []): NoteShows =>
  * that position, and one in a move's notes in the position after the move.
  */
 export type Idea =
-  Purpose | Pressure | Plan | Threat | Trap | Line | Structure | Imbalance | EvaluationIdea;
+  | Purpose
+  | Pressure
+  | Plan
+  | Threat
+  | MistakeIdea
+  | Line
+  | Structure
+  | Imbalance
+  | EvaluationIdea;
 
 /** What one piece does to its targets. The piece is the one on `from`. */
 export interface Purpose {
@@ -303,14 +351,13 @@ export interface Threat {
 }
 
 /**
- * A tempting move and its punishment: the side to move plays the first move
- * and falls in. `verdict` judges the final position; `losesMaterial` means
- * that side ends at least two points worse off, or mated.
+ * A trap the note warns of: `move`, the side to move's marked mistake
+ * (`LessonMove.mistake`), which the guide lists here. The marker and the
+ * guide's moves after it hold the rest (`mistakeLine` in ./mistakes.ts).
  */
-export interface Trap {
-  readonly type: 'trap';
-  readonly moves: readonly Uci[];
-  readonly verdict: Evaluation | 'losesMaterial';
+export interface MistakeIdea {
+  readonly type: 'mistake';
+  readonly move: Uci;
 }
 
 /** A short line with both sides' moves that is not a trap, and its verdict. */

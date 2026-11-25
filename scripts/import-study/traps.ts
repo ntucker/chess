@@ -8,9 +8,10 @@ import type { Color } from 'chessops/types';
 import { opposite } from 'chessops/util';
 
 import { SAN } from '@/game/replay';
-import type { Line, Trap, Uci } from '@/lesson/lesson';
+import type { Line, Uci } from '@/lesson/lesson';
 
 import { nearestMatch, placeSequence, type Found } from './line';
+import type { Trap } from './mistakes';
 import { chapterMoves, mainLine, type Chapter, type StudyMove } from './study';
 import { moveInWords, namedMoves, plainSan, plyOf, sideDoes } from './text';
 

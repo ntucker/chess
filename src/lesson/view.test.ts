@@ -9,10 +9,11 @@ import {
   sampleView as view,
   TRAP,
   TRAP_PUNISHED,
+  uci,
   uciLine,
   WITH_RARE,
   withMoves,
-  withTrapMoves,
+  withMistakePlies,
 } from './lesson.fixture';
 import { guideMove, lineKeys } from './select';
 import { lessonView, type Pointer, preview } from './view';
@@ -131,7 +132,7 @@ describe('lessonView', () => {
       expect(trap).toMatchObject({
         ply: TRAP.length,
         landed: keyAfter(...LANDED),
-        trap: { type: 'trap', verdict: 'losesMaterial' },
+        trap: { type: 'trap', verdict: 'losesMaterial', learnerFalls: true },
       });
       expect(trap!.trap.moves).toEqual(uciLine(...TRAP_PUNISHED).slice(TRAP.length));
       expect(trap!.note).toMatchObject({
@@ -141,8 +142,7 @@ describe('lessonView', () => {
     });
 
     it('lands a one-move trap at its only move', () => {
-      const { moves } = view(LANDED).trap!.trap;
-      const lesson = withTrapMoves(SAMPLE, moves, moves.slice(0, 1));
+      const lesson = withMistakePlies(SAMPLE, keyAfter(...TRAP), uci(...TRAP, 'Nxe5'), 1);
       const line = uciLine(...TRAP, 'Nxe5');
       expect(lessonView({ lesson, line, ply: line.length, opponent: 1500 }).trap).toMatchObject({
         ply: TRAP.length,
