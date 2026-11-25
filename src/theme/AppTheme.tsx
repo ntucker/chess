@@ -32,11 +32,11 @@ export function AppTheme({ children }: { readonly children: ReactNode }) {
     if (NATIVE || firstRunDone.current) pinTheme(theme);
     firstRunDone.current = true;
   }, [theme]);
-  const icons = colorScheme === 'dark' ? 'light' : 'dark';
+  const barStyle = colorScheme === 'dark' ? 'light' : 'dark';
   return (
     <SilkProvider theme={shownThemes[colorScheme]}>
-      <StatusBar style={icons} />
-      <NavigationBar style={icons} />
+      <StatusBar style={barStyle} />
+      <NavigationBar style={barStyle} />
       <ThemeProvider value={navigationThemes[colorScheme]}>{children}</ThemeProvider>
     </SilkProvider>
   );

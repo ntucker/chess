@@ -84,20 +84,13 @@ describe('AppTheme', () => {
   );
 
   it.each([
-    ['light', 'dark'],
-    ['dark', 'light'],
-  ] as const)('keeps %s on a %s device, and tells the device', async (theme, device) => {
-    expect(await renderScheme(theme, device)).toEqual([theme]);
-    expect(Appearance.setColorScheme).toHaveBeenLastCalledWith(theme);
-  });
-
-  it.each([
     ['light', 'dark', 'dark'],
     ['dark', 'light', 'light'],
   ] as const)(
-    'gives the system bars the icons a %s theme needs on a %s device: %s',
+    'keeps %s on a %s device, tells the device, and gives the system bars %s icons',
     async (theme, device, icons) => {
-      await renderScheme(theme, device);
+      expect(await renderScheme(theme, device)).toEqual([theme]);
+      expect(Appearance.setColorScheme).toHaveBeenLastCalledWith(theme);
       expect(mockBars).toEqual({ status: icons, navigation: icons });
     },
   );
