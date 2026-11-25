@@ -208,7 +208,7 @@ function FullStockfishFailure() {
   if (!failure) return null;
   return (
     <>
-      <Text role="caption" tone="secondary" numberOfLines={1} style={styles.progress}>
+      <Text role="caption" tone="secondary" numberOfLines={1} style={styles.failure}>
         {FAILURES[failure]}
       </Text>
       {/* Beside the message rather than in it, so a narrow bar cuts the message, not the reload. */}
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
   },
   chevronOpen: { transform: [{ rotate: '180deg' }] },
   // Gives way before the strength and its chevron beside it.
-  progress: { flexShrink: 1, minWidth: 0 },
+  failure: { flexShrink: 1, minWidth: 0 },
   reload: { flexShrink: 0 },
   underlined: { textDecorationLine: 'underline' },
   // Room for five ratings to sit apart, and as wide as a 360 px phone allows (Silk keeps 8 px from each edge).

@@ -30,6 +30,7 @@ export default function PlayScreen() {
   const ctrl = useController();
   const { opponent, evaluationEngine } = useSettings();
   const described = describeOpponent(opponent);
+  const opponentDownload = useOpponentDownload();
   const labelled = useLabelled();
   const { store, side: playerColor, setSide: setPlayerColor } = usePlayAddress();
   const active = useIsFocused();
@@ -61,7 +62,7 @@ export default function PlayScreen() {
             name: described.name,
             detail: `${colorName(opposite(playerColor))} · ${described.lead.toLowerCase()}`,
             detailControl: <OpponentPicker />,
-            download: useOpponentDownload(),
+            download: opponentDownload,
           }}
           board={{
             fen: current.fen,

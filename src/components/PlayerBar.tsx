@@ -195,8 +195,10 @@ function DownloadRing({ label, percent }: DiscDownload) {
   const [size, setSize] = useState(0);
   // A narrow page's dot has the narrow border: the two sizes never meet.
   const border = size < PLAYER_DISC.size.wide ? DISC_BORDER.narrow : DISC_BORDER.wide;
+  const center = size / 2;
   const radius = (size - border) / 2;
   const around = 2 * Math.PI * radius;
+  const circle = { cx: center, cy: center, r: radius, fill: 'none', strokeWidth: border };
   return (
     <View
       accessible
@@ -211,26 +213,15 @@ function DownloadRing({ label, percent }: DiscDownload) {
       {size ? (
         <Svg width={size} height={size}>
           {/* The track hides the disc's own border, lit while the player is to move. */}
+          <Circle {...circle} stroke={tones.neutral.border} />
           <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            stroke={tones.neutral.border}
-            strokeWidth={border}
-          />
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
+            {...circle}
             stroke={tones.accent.solid}
-            strokeWidth={border}
             strokeLinecap="round"
             strokeDasharray={around}
             strokeDashoffset={around * (1 - percent / 100)}
             // From the top, as a clock's hand starts.
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            transform={`rotate(-90 ${center} ${center})`}
           />
         </Svg>
       ) : null}
