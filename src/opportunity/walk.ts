@@ -63,7 +63,7 @@ export interface Request {
   readonly spot: Spot;
 }
 
-/** A position the walk reached, and the share of games that reach it. */
+/** A position the walk reached, and the share of games that reach it by the move order the walk took (finds report `reachOf`). */
 export interface Node extends Spot {
   readonly pos: Chess;
   readonly reach: number;

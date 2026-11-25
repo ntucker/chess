@@ -48,9 +48,9 @@ plan doesn't depend on those links.
   say so.
 - Piece B's gate (2026-11-24, #210), left to the build thread by Nathaniel and agreed by the
   planning thread. Only finds on the guide count. Score is games reaching the cue × gain, with reach
-  summed over move orders, since 5.d3 Bc5 6.Nc3 and 5.Nc3 Bc5 6.d3 share a cue. `minGain` drops the
-  recaptures nearly everyone finds. The reach floor is 0.5%, since 1% missed 8.Ke1 Qh4+ on the
-  guide. Rules hold the details and `limits.ts` the values.
+  counting every way in (Rules), since 5.d3 Bc5 6.Nc3 and 5.Nc3 Bc5 6.d3 share a cue. `minGain`
+  drops the recaptures nearly everyone finds. The reach floor is 0.5%, since 1% missed 8.Ke1 Qh4+ on
+  the guide. Rules hold the details and `limits.ts` the values.
 
 ## Shape
 
@@ -121,10 +121,13 @@ The gate settings are in `limits.ts`, set at piece B's gate; `MIN_GAMES` sits be
 lichess host's `repliesFrom`. The cost floor is `MISTAKE_LOSS` (`quality.ts`), the app's mistake
 limit, and is not a gate setting.
 
-- **Reach** of a position: the share of games that reach it, from 1 where the finder opens: the erring
-  side's shares multiplied along each order of fewest moves into it, summed over those orders
-  (`reachOf`). Counting only fewest moves keeps a repetition or a lost tempo from counting a game
-  twice. A find on the guide counts only the orders the guide plays.
+- **Reach** of a position: the share of games that reach it when the punishing side steers toward
+  it, from 1 where the finder opens (`reachOf`). The erring side's replies add up, weighted by
+  share; where the punishing side has several moves (two book moves), it takes the one that gets
+  there most, since it chooses. Only orders of fewest moves count, so a repetition or a lost tempo
+  adds nothing. A find on the guide counts only the moves the guide plays. Each find assumes the
+  punishing side steers toward it, so finds after different book moves at one position each show
+  their full reach: they are alternatives, not additive. Reach is derived, never stored.
 - **On the guide**: a find is on the guide (`Find.onGuide`) when the guide's moves reach a position
   where the erring side plays a mistake into its cue. Only these are ranked, kept and written into
   lessons; the rest come back apart (`FinderResult.offGuide`), as evidence.
@@ -246,7 +249,7 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
   guide's moves, else Stockfish's best. The walk stops where the game is over, below the reach floor
   (along the path it arrived by, since it is best-first by that), past the ply cap (counted in
   full), or at a thin position; Act III continues past a thin position (Rules). One find per cue; a
-  position reached again isn't walked again, but its other move orders add to its reach. Every move
+  position reached again isn't walked again, but its reach counts every way in (Rules). Every move
   goes through `legalChild` (`walk.ts`), which throws on an illegal one, since every source promises
   legal moves.
 - Its own floors and caps are named settings in `src/opportunity/limits.ts`, set at piece B's gate:

@@ -349,6 +349,58 @@ describe('findOpportunities', () => {
     expect(result.requests).toContainEqual({ kind: 'full', spot: { line, key } });
   });
 
+  it('shows a cue two mistakes lead to by the one most games play, not the busier position', () => {
+    // 5.d3 Bc5 6.Nc3 (from a position 40% reach, 8% play 6.Nc3) and
+    // 5.Nc3 Bc5 6.d3 (30% reach, 20% play 6.d3) meet at one cue.
+    const QUIET = `${OPENING} Nc3 Bc5`;
+    const SHARED = `${QUIET} d3`;
+    const overrides = new Map<string, Partial<Answers>>([
+      [at(`${OPENING} Nc3`).key, { guideMoves: () => [last(QUIET)] }],
+      [
+        at(QUIET).key,
+        {
+          replies: (spot) =>
+            repliesFrom(spot.key, { [last(SHARED)]: 200, [last(`${QUIET} Be2`)]: 800 }, MIN_GAMES),
+          analysis: () => full(QUIET, [['Be2', 0.55]]),
+        },
+      ],
+      [
+        at(SHARED).key,
+        {
+          replies: (spot) =>
+            repliesFrom(
+              spot.key,
+              { [last(`${SHARED} Bxf2+`)]: 300, [last(`${SHARED} h6`)]: 700 },
+              MIN_GAMES,
+            ),
+          analysis: () =>
+            full(SHARED, [
+              ['Bxf2+', 0.3],
+              ['h6', 0.5],
+            ]),
+        },
+      ],
+      // Act III: 7.Kxf2, the only reply played, then nothing left to play.
+      [
+        at(`${SHARED} Bxf2+`).key,
+        {
+          replies: (spot) =>
+            repliesFrom(spot.key, { [last(`${SHARED} Bxf2+ Kxf2`)]: 1000 }, MIN_GAMES),
+        },
+      ],
+      [at(`${SHARED} Bxf2+ Kxf2`).key, { analysis: () => full(SHARED, [[undefined, 0.3]]) }],
+    ]);
+    const answers: Answers = {
+      replies: (spot) => (overrides.get(spot.key)?.replies ?? known.replies)(spot),
+      analysis: (spot) => (overrides.get(spot.key)?.analysis ?? known.analysis)(spot),
+      guideMoves: (spot) => (overrides.get(spot.key)?.guideMoves ?? known.guideMoves!)(spot),
+    };
+    expect(at(`${SETUP} Nc3`).key).toBe(at(SHARED).key);
+    const shared = find(answers).finds.find((found) => found.mistake === last(SHARED));
+    expect(shared).toMatchObject({ line: uci(QUIET), share: 0.2, reach: expect.closeTo(0.3) });
+    expect(shared!.score).toBeCloseTo((0.4 * 0.08 + 0.3 * 0.2) * shared!.gain);
+  });
+
   describe('Act III at the punishing side', () => {
     const BXD8 = `${CUE} Nxe4 Bxd8`;
     /** `known`, with the guide's move Kxd8 after 7.Bxd8, which Black's lines score as given. */
@@ -520,25 +572,57 @@ describe('gainIfKnown', () => {
 });
 
 describe('reachOf', () => {
+  /** An erring-side reply, played in `share` of the games at `from`. */
+  const reply = (from: string, to: string, share: number, guided = true) => ({
+    from,
+    to,
+    share,
+    guided,
+    chosen: false,
+  });
+  /** A punishing-side move, which its side chooses. */
+  const choice = (from: string, to: string, guided = true) => ({
+    from,
+    to,
+    share: 1,
+    guided,
+    chosen: true,
+  });
+
   it('sums the move orders that reach a position, and with `guided`, only those the guide plays', () => {
     const moves = [
-      { from: 'S', to: 'A', share: 0.5, guided: true },
-      { from: 'S', to: 'B', share: 0.2, guided: true },
-      { from: 'A', to: 'C', share: 0.4, guided: true },
-      { from: 'B', to: 'C', share: 0.5, guided: false },
+      reply('S', 'A', 0.5),
+      reply('S', 'B', 0.2),
+      reply('A', 'C', 0.4),
+      reply('B', 'C', 0.5, false),
     ];
     const reach = reachOf('S', moves);
     expect(reach('C', false)).toBeCloseTo(0.5 * 0.4 + 0.2 * 0.5);
     expect(reach('C', true)).toBeCloseTo(0.5 * 0.4);
   });
 
+  it('counts two book moves that meet again once, as the punishing side steers', () => {
+    // The learner books two moves at P; the opponent's replies to each reach X.
+    const moves = [
+      choice('P', 'A'),
+      choice('P', 'B'),
+      reply('A', 'X', 0.6),
+      reply('A', 'Y', 0.4),
+      reply('B', 'X', 0.8),
+    ];
+    const reach = reachOf('P', moves);
+    expect(reach('X', false)).toBeCloseTo(0.8);
+    expect(reach('Y', false)).toBeCloseTo(0.4);
+    expect(['P', 'A', 'B', 'X', 'Y'].every((key) => reach(key, false) <= 1)).toBe(true);
+  });
+
   it("counts the guide's fewest moves on the guide, beside a shorter way off it", () => {
     // S -> A -> B -> C on the guide; S -> C off it, in fewer moves.
     const moves = [
-      { from: 'S', to: 'A', share: 0.5, guided: true },
-      { from: 'A', to: 'B', share: 1, guided: true },
-      { from: 'B', to: 'C', share: 0.5, guided: true },
-      { from: 'S', to: 'C', share: 0.1, guided: false },
+      reply('S', 'A', 0.5),
+      choice('A', 'B'),
+      reply('B', 'C', 0.5),
+      reply('S', 'C', 0.1, false),
     ];
     const reach = reachOf('S', moves);
     expect(reach('C', false)).toBeCloseTo(0.1);
@@ -548,11 +632,11 @@ describe('reachOf', () => {
   it('counts a repetition for nothing, so the start stays 1 and each game counts once', () => {
     // S -> X -> Y -> Z, then Z back to X and to S.
     const moves = [
-      { from: 'S', to: 'X', share: 0.5, guided: true },
-      { from: 'X', to: 'Y', share: 1, guided: true },
-      { from: 'Y', to: 'Z', share: 0.5, guided: true },
-      { from: 'Z', to: 'X', share: 0.5, guided: true },
-      { from: 'Z', to: 'S', share: 0.5, guided: true },
+      reply('S', 'X', 0.5),
+      choice('X', 'Y'),
+      reply('Y', 'Z', 0.5),
+      reply('Z', 'X', 0.5),
+      reply('Z', 'S', 0.5),
     ];
     const reach = reachOf('S', moves);
     expect(['S', 'X', 'Y', 'Z'].map((key) => reach(key, false))).toEqual([1, 0.5, 0.5, 0.25]);
