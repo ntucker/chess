@@ -6,19 +6,20 @@ import { useSections } from '@/components/Eyebrow';
 import { ScoresheetPage } from '@/components/ScoresheetPage';
 import { useNarrowPart } from '@/theme/Narrow';
 
-/** A phone's pages under the board: the screen's own (`home`), and the scoresheet. */
+/** A phone's pages under the board: the screen's own (`home`, and any page before it), and the scoresheet. */
 export type PhonePage<H extends string> = H | 'scoresheet';
 
 /**
- * A phone's panel under the board: `head` over two pages side by side, the
- * screen's own (`home`) and the scoresheet, which the move pill or a
- * sideways swipe slides between (`usePages` owns which shows). Both stay
- * mounted, so a page keeps where it's scrolled to. `bleed` widens the pages
- * into the page's margin by that much, and insets each page back, for rows
- * whose highlight reaches the edge.
+ * A phone's panel under the board: `head` over pages side by side, any
+ * `before` the screen's own (`home`), then the scoresheet, which the move
+ * pill or a sideways swipe slides between (`usePages` owns which shows).
+ * All stay mounted, so a page keeps where it's scrolled to. `bleed` widens
+ * the pages into the page's margin by that much, and insets each page back,
+ * for rows whose highlight reaches the edge.
  */
 export function PhonePages<H extends string>({
   head,
+  before,
   home,
   page,
   onPage,
@@ -28,6 +29,8 @@ export function PhonePages<H extends string>({
   bleed = 0,
 }: {
   readonly head: ReactNode;
+  /** A page one swipe before the home page: which, and what it holds. */
+  readonly before?: { readonly page: H; readonly children: ReactNode };
   readonly home: H;
   readonly page: PhonePage<H>;
   readonly onPage: (page: PhonePage<H>) => void;
@@ -50,6 +53,11 @@ export function PhonePages<H extends string>({
         onValueChange={(value) => onPage(value as PhonePage<H>)}
         style={[styles.pages, { marginHorizontal: -bleed }]}
       >
+        {before ? (
+          <Pager.Page value={before.page} style={pageStyle}>
+            {before.children}
+          </Pager.Page>
+        ) : null}
         <Pager.Page value={home} style={pageStyle}>
           {children}
         </Pager.Page>

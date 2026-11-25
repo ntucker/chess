@@ -367,6 +367,8 @@ export function useLesson(
     chooseMode: (mode: LessonMode) => dispatch({ type: 'modeChosen', mode, line: moves, kinds }),
     /** Each candidate row's progress mark, by its move (`rowMarks`). */
     marks,
+    /** The lesson's saved progress marks. */
+    progress,
     /** The note pointed at on the idea card. */
     pointedNote: shown.pointed,
     /** The candidate list shows its rare rows (`Guidance.rare`). */

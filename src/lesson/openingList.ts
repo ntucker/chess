@@ -4,9 +4,9 @@
  * alone (`IndexEntry.variations`), so no lesson loads for it. Pure, like the
  * rest of src/lesson/.
  */
-import { type Color, COLORS, lineSans, numberedLine } from '@/game/replay';
+import { type Color, COLORS, lineText } from '@/game/replay';
 
-import type { LessonSource, Uci, VariationId } from './lesson';
+import type { LessonSource, VariationId } from './lesson';
 import { type IndexVariation, type LessonIndex, startsWith, variationLine } from './openings';
 
 /** A variation as the list shows it, with the variations that branch from it. */
@@ -80,11 +80,6 @@ export function listedPath(variation: ListedVariation, id?: VariationId): Variat
     if (path.length) return [variation.id, ...path];
   }
   return [];
-}
-
-/** `moves` from the one after `from` on, numbered: `1.e4 c6`, or `3...dxe4 4.Nxe4`. */
-function lineText(moves: readonly Uci[], from: number): string {
-  return numberedLine(lineSans(moves).slice(from), from + 1);
 }
 
 /** Where the board was when the list opened: a lesson, and a variation of it. */

@@ -1,27 +1,36 @@
 import { Separator } from '@reactive/silk-native';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { type PhonePage, PhonePages } from '@/components/PhonePages';
 import { ScoresheetReview } from '@/components/ReviewLinks';
+import type { Lesson } from '@/lesson/lesson';
 import { FadingScroll } from '@/theme/Narrow';
 
 import { CandidateList, COMPACT_INSET } from '../CandidateList';
 import { ActsCard, OpportunityCard } from '../CueActs';
 import { IdeaAside, IdeaCard } from '../IdeaCard';
+import { OpportunityList } from '../OpportunityList';
 import { PointingArea } from '../PointingArea';
 import { headlineNews } from '../status';
 import { TrapCard } from '../TrapCard';
 import type { LessonScreenModel } from '../useLessonScreen';
 import { LessonHeadline } from './LessonHeadline';
 
+/** A lesson's pages on a phone, besides the scoresheet. */
+export type LessonPageName = 'lesson' | 'opportunities';
+
 /**
  * The lesson under the board on a phone: a short headline, any trap's
- * warning or cue's card, then two pages that the move pill or a sideways
- * swipe slides between (`usePages` owns which shows). One holds the moves and the idea
- * in panes side by side, each scrolling on its own, with a hairline between
- * them; past the guide, where Stockfish's moves stand in, the idea's pane
- * tells why. The other is the scoresheet. Both stay mounted, so the panes
- * keep where they're scrolled to and the notes opened in them.
+ * warning or cue's card, then pages that the move pill or a sideways swipe
+ * slides between (`usePages` owns which shows). The lesson's holds the
+ * moves and the idea in panes side by side, each scrolling on its own, with
+ * a hairline between them; past the guide, where Stockfish's moves stand in,
+ * the idea's pane tells why. One swipe before it, where the lesson marks the
+ * other side's mistakes, the list of opportunities, worked out the first
+ * time it shows (a big lesson's takes a moment); one after it, the
+ * scoresheet. All stay mounted, so the panes keep where they're scrolled to
+ * and the notes opened in them.
  */
 export function PhoneLesson({
   model,
@@ -30,12 +39,19 @@ export function PhoneLesson({
   scoresheetReachable,
 }: {
   readonly model: LessonScreenModel;
-  readonly page: PhonePage<'lesson'>;
-  readonly onPage: (page: PhonePage<'lesson'>) => void;
+  readonly page: PhonePage<LessonPageName>;
+  readonly onPage: (page: PhonePage<LessonPageName>) => void;
   /** Whether a swipe can reach the scoresheet's page, as the pill can. */
   readonly scoresheetReachable: boolean;
 }) {
-  const { moves, idea, aside } = model;
+  const { moves, idea, aside, opportunities } = model;
+  // The lesson whose list has shown: it stays, so swiping back to it is instant,
+  // and another lesson's waits until its page shows.
+  const [listedFor, setListedFor] = useState<Lesson>();
+  if (page === 'opportunities' && opportunities && listedFor !== opportunities.lesson) {
+    setListedFor(opportunities.lesson);
+  }
+  const listed = !!opportunities && listedFor === opportunities.lesson;
   // The pane beside the moves: the idea, else past the guide the headline's why.
   const ideaPane = idea ? (
     <IdeaCard {...idea} density="compact" />
@@ -65,6 +81,26 @@ export function PhoneLesson({
           {model.acts ? <ActsCard acts={model.acts} /> : null}
           {model.opportunity ? <OpportunityCard {...model.opportunity} /> : null}
         </>
+      }
+      before={
+        opportunities
+          ? {
+              page: 'opportunities',
+              children: listed ? (
+                <FadingScroll style={styles.list}>
+                  <OpportunityList
+                    {...opportunities}
+                    // Back to the lesson's page, where the cue's moves and idea show.
+                    onPlay={(line) => {
+                      opportunities.onPlay(line);
+                      onPage('lesson');
+                    }}
+                    density="compact"
+                  />
+                </FadingScroll>
+              ) : null,
+            }
+          : undefined
       }
       home="lesson"
       page={page}
@@ -105,6 +141,8 @@ const styles = StyleSheet.create({
   moves: { flexGrow: 0, flexShrink: 0, maxWidth: '50%' },
   // A pane grows from no width to what the others leave: alone, all of it.
   pane: { flexGrow: 1, flexShrink: 1, width: 0, minWidth: 0 },
+  // The list takes the page's height and no more, so it scrolls within.
+  list: { flexGrow: 1, flexShrink: 1, minHeight: 0 },
   // The rows' highlight reaches into the page's margin, so their moves line up with the headline.
   bleed: { marginLeft: -COMPACT_INSET },
   hairline: { marginTop: 6, marginBottom: 20, marginLeft: 6, marginRight: 14 },

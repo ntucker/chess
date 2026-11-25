@@ -10,7 +10,7 @@ import {
 import { parsePosition, playLine, sanToUci } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 
-import { acceptedReplies, byScore, type Find, findOpportunities, reachOf } from './finder';
+import { acceptedReplies, byScore, type Find, findOpportunities, rankBy, reachOf } from './finder';
 import { gainIfKnown } from './gain';
 import { LIMITS, MIN_GAMES } from './limits';
 import { keepsGuide, payoff } from './payoff';
@@ -548,6 +548,18 @@ describe('byScore', () => {
       [1, 0.2, 'a'],
       [1, 0.2, 'b'],
     ]);
+  });
+
+  it('ranks the unscored, and the unreached, last, as the lesson list has them', () => {
+    const rows = [
+      { line: ['b'] },
+      { line: ['a'], reach: 0.1 },
+      { line: ['c'], score: 0.01 },
+      { line: ['a'] },
+    ];
+    expect(
+      rows.sort(rankBy<(typeof rows)[number]>(({ line }) => line)).map(({ line }) => line[0]),
+    ).toEqual(['c', 'a', 'a', 'b']);
   });
 });
 

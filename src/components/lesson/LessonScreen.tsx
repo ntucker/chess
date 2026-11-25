@@ -24,7 +24,7 @@ import { DEFAULT_SETTINGS } from '@/settings/settings';
 import { useLayout } from '@/theme/Narrow';
 
 import { AutoPlay } from './AutoPlay';
-import { PhoneLesson } from './layouts/PhoneLesson';
+import { type LessonPageName, PhoneLesson } from './layouts/PhoneLesson';
 import { WideLesson } from './layouts/WideLesson';
 import { LessonSettings } from './LessonSettings';
 import { LOADING, OPENINGS_TITLE } from './status';
@@ -158,7 +158,11 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
   const model = useLessonScreen({ id, picked, onPlayAs, ...input });
   // A phone's settings sheet (unmounted while the window is wide) and its pages under the board.
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const { page, show } = usePages<PhonePage<'lesson'>>('lesson', phone);
+  const { page, show } = usePages<PhonePage<LessonPageName>>(
+    'lesson',
+    phone,
+    model.opportunities ? [] : ['opportunities'],
+  );
   const scoresheetShown = page === 'scoresheet';
   // Not before the first move; but a scoresheet showing stays, since a new game empties it.
   const scoresheetReachable = scoresheetShown || model.stepper.started;

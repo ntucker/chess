@@ -19,7 +19,7 @@ import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { Notation } from '@/components/Notation';
 import { type EngineVerdict, lostPercent, percent } from '@/analysis/quality';
 import { QualityBadge, TippedBadge, verdictText } from '@/components/QualityBadge';
-import { InfoMark, Tip } from '@/components/Tip';
+import { HeadingTip, Tip } from '@/components/Tip';
 import type { Mark } from '@/progress/progress';
 import { NARROW_CSS_LOADS, spokenOnly } from '@/theme/narrow';
 import type { Density } from '@/theme/Narrow';
@@ -205,9 +205,13 @@ export function CandidateList({
   return (
     <Stack style={labelled}>
       <View style={styles.head}>
-        <ShareTip tip={shares} marked>
+        {shares ? (
+          <HeadingTip tip={shares}>
+            <Eyebrow>{title}</Eyebrow>
+          </HeadingTip>
+        ) : (
           <Eyebrow>{title}</Eyebrow>
-        </ShareTip>
+        )}
         <MarkLegend marks={shownMarks} />
       </View>
       <Surface elevation="sunken" border="subtle" radius="md" style={styles.list}>
@@ -436,36 +440,24 @@ const costTip = (cost: string) =>
 const TOP_ENGINE_MOVE = 'top engine move';
 const TOP_ENGINE_TIP = "Top engine move: Stockfish's best reply here, not one the guide teaches.";
 
-/** The info mark beside the heading, about as tall as the eyebrow's capitals. */
-const INFO_SIZE = 13;
-
 /**
  * `children`, which a tap or a resting mouse makes say whose games the
  * shares count, when they show: the words stay out of the panel until asked
- * for. On a heading (`marked`), a mark beside it hints at that. Screen
- * readers read the words after `children`.
+ * for. Screen readers read the words after `children`.
  */
-function ShareTip({
-  tip,
-  marked,
-  children,
-}: {
-  readonly tip?: string;
-  readonly marked?: boolean;
-  readonly children: ReactNode;
-}) {
-  if (!tip) return children;
-  return (
+function ShareTip({ tip, children }: { readonly tip?: string; readonly children: ReactNode }) {
+  return tip ? (
     <Tip tip={tip} style={STATIC.tipped}>
       {children}
-      {marked ? <InfoMark size={INFO_SIZE} /> : null}
     </Tip>
+  ) : (
+    children
   );
 }
 
 const STATIC = StyleSheet.create({
-  // The mark beside the heading's last word, as wide as it needs.
-  tipped: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
+  // Around the share's number alone, as wide as it needs.
+  tipped: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
 });
 
 /** A share's least width, which holds 100% in caption text: larger text widens it. */

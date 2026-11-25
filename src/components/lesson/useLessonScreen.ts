@@ -9,10 +9,12 @@ import type { ScoresheetOpener } from '@/components/ScoresheetPage';
 import type { BoardColumn } from '@/components/Stage';
 import { type Color, colorName, opposite, playMove, readPositionKey } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
-import { listsTopMoves } from '@/lesson/guidance';
+import { listsOpportunities, listsTopMoves } from '@/lesson/guidance';
 import type { Lesson, PositionKey, Uci, VariationId } from '@/lesson/lesson';
 import { lessonsAfter, lessonsFrom, openingsLesson, withOpenings } from '@/lesson/openings';
+import { listsAnyOpportunity } from '@/lesson/opportunities';
 import {
+  bandPlayers,
   type Candidate,
   candidates,
   captionName,
@@ -31,6 +33,7 @@ import type { CandidateList } from './CandidateList';
 import type { ActsModel, OpportunityCard } from './CueActs';
 import { type IdeaAside, type IdeaCard, noNotesText } from './IdeaCard';
 import type { LessonControls } from './LessonControls';
+import type { OpportunityList } from './OpportunityList';
 import type { TrapCard } from './TrapCard';
 import { describeStatus, OPENINGS_TITLE, type Status, shownEnding } from './status';
 
@@ -108,6 +111,13 @@ export interface LessonScreenModel {
   readonly acts: ActsModel | null;
   /** In Practice, whether the learner's move at a cue punished the mistake. */
   readonly opportunity: ComponentProps<typeof OpportunityCard> | null;
+  /**
+   * The list of the lesson's opportunities (in Explore, where the lesson marks
+   * any of the other side's mistakes), as its inputs: the list works the rows
+   * out itself, once it shows, since a big lesson's walk takes a moment.
+   * Not `opportunity`, the Practice card after the learner's move at a cue.
+   */
+  readonly opportunities: Omit<ComponentProps<typeof OpportunityList>, 'density'> | null;
   /** The game's moves. */
   readonly scoresheet: Omit<ComponentProps<typeof Scoresheet>, 'fill'>;
   readonly settings: Pick<ComponentProps<typeof LessonControls>, 'mode' | 'onMode'>;
@@ -151,6 +161,7 @@ export function useLessonScreen({
     play,
     pointedNote,
     marks,
+    progress,
     rareShown,
     showRare,
     pointRow,
@@ -163,6 +174,7 @@ export function useLessonScreen({
     chooseMode,
   } = useLesson(lesson, store, { pending });
   const { mode } = modeState;
+  const [, dispatchGame] = store;
   const { auto } = useSettings();
   const learner = lesson.side;
   const rival = opposite(learner);
@@ -369,6 +381,17 @@ export function useLessonScreen({
             reply: cueFacts.reply,
             tried: sanAt(opportunity.key, opportunity.tried),
             note: mistakeNote,
+          }
+        : null,
+    opportunities:
+      picked && listsOpportunities(mode) && listsAnyOpportunity(picked)
+        ? {
+            // The file's own counts, which `withOpenings` drops where the openings are picked.
+            lesson: picked,
+            band: opponentBand(picked, opponent),
+            progress,
+            players: bandPlayers(picked, opponent),
+            onPlay: (line) => dispatchGame({ type: 'newGame', moves: line }),
           }
         : null,
     trap: trap

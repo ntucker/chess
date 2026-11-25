@@ -66,3 +66,34 @@ export function InfoMark({
     />
   );
 }
+
+/**
+ * A heading, `children`, with `tip` and an info mark beside it that hints
+ * the tip is there: "Opportunities ⓘ".
+ */
+export function HeadingTip({
+  tip,
+  children,
+  style,
+}: {
+  readonly tip: string;
+  readonly children: ReactNode;
+  readonly style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <Tip tip={tip} style={[HEADING_ROW, style]}>
+      {children}
+      <InfoMark size={HEADING_INFO_SIZE} />
+    </Tip>
+  );
+}
+
+/** The mark beside the heading's last word, as wide as it needs. */
+const HEADING_ROW: ViewStyle = {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 4,
+  flexShrink: 1,
+};
+/** The info mark, about as tall as an eyebrow's capitals. */
+const HEADING_INFO_SIZE = 13;

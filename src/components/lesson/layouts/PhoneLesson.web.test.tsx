@@ -8,7 +8,7 @@ import { themes } from '@/theme/theme';
 
 import type { LessonScreenModel } from '../useLessonScreen';
 
-import { PhoneLesson } from './PhoneLesson';
+import { type LessonPageName, PhoneLesson } from './PhoneLesson';
 
 // The blocks are stood in for: these tests are about what the layout keeps
 // mounted, not about what each block draws.
@@ -27,6 +27,13 @@ jest.mock('../CandidateList', () => {
   };
 });
 jest.mock('../IdeaCard', () => ({ IdeaCard: () => 'idea', IdeaAside: () => 'aside' }));
+let mockListProps: { onPlay: (line: readonly string[]) => void } | undefined;
+jest.mock('../OpportunityList', () => ({
+  OpportunityList: (props: typeof mockListProps) => {
+    mockListProps = props;
+    return 'opportunities';
+  },
+}));
 jest.mock('../TrapCard', () => ({ TrapCard: () => <span data-testid="trap" /> }));
 jest.mock('./LessonHeadline', () => ({ LessonHeadline: () => null }));
 jest.mock('@/components/ScoresheetPage', () => ({ ScoresheetPage: () => 'scoresheet' }));
@@ -56,22 +63,27 @@ afterEach(() => {
   act(() => root.unmount());
   host.remove();
   mockMovesMounts = 0;
+  mockListProps = undefined;
 });
 
-const render = (page: PhonePage<'lesson'>, model = MODEL) =>
+const render = (
+  page: PhonePage<LessonPageName>,
+  model = MODEL,
+  onPage: (page: PhonePage<LessonPageName>) => void = () => {},
+) =>
   act(() =>
     root.render(
       <SilkProvider theme={themes.dark}>
-        <PhoneLesson model={model} page={page} onPage={() => {}} scoresheetReachable />
+        <PhoneLesson model={model} page={page} onPage={onPage} scoresheetReachable />
       </SilkProvider>,
     ),
   );
 
-/** The pager's page whose text is `text`. */
-const pageOf = (text: string) =>
-  [...host.querySelectorAll<HTMLElement>('[style*="width: 50%"]')].find(
-    (page) => page.textContent === text,
-  )!;
+/** The pager's page whose text is `text`, of two pages, or of `count`. */
+const pageOf = (text: string, count = 2) =>
+  [
+    ...host.querySelectorAll<HTMLElement>(`[style*="width: ${String(100 / count).slice(0, 5)}"]`),
+  ].find((page) => page.textContent === text)!;
 const hidden = (page: HTMLElement) => page.hasAttribute('inert');
 
 describe('PhoneLesson', () => {
@@ -105,5 +117,45 @@ describe('PhoneLesson', () => {
   it('leaves out the panes when there are neither moves nor an idea, as Practice can', () => {
     render('lesson', { ...MODEL, moves: null, idea: null });
     expect(pageOf('').childElementCount).toBe(0);
+  });
+
+  describe('with opportunities', () => {
+    const onPlay = jest.fn<(line: readonly string[]) => void>();
+    const model = {
+      ...MODEL,
+      opportunities: { onPlay, lesson: {} },
+    } as unknown as LessonScreenModel;
+
+    it('lists them one swipe before the lesson, only once their page shows, then keeps them', () => {
+      render('lesson', model);
+      expect(pageOf('', 3)).toBeDefined();
+      expect(mockListProps).toBeUndefined();
+      render('opportunities', model);
+      expect(hidden(pageOf('opportunities', 3))).toBe(false);
+      render('lesson', model);
+      expect(hidden(pageOf('opportunities', 3))).toBe(true);
+    });
+
+    it("waits for another lesson's page to show before listing that lesson", () => {
+      render('opportunities', model);
+      render('lesson', model);
+      mockListProps = undefined;
+      const next = {
+        ...model,
+        opportunities: { onPlay, lesson: {} },
+      } as unknown as LessonScreenModel;
+      render('lesson', next);
+      expect(mockListProps).toBeUndefined();
+      render('opportunities', next);
+      expect(mockListProps).toBeDefined();
+    });
+
+    it('plays a row picked and goes back to the lesson, where the cue shows', () => {
+      const onPage = jest.fn();
+      render('opportunities', model, onPage);
+      act(() => mockListProps!.onPlay(['e2e4']));
+      expect(onPlay).toHaveBeenCalledWith(['e2e4']);
+      expect(onPage).toHaveBeenCalledWith('lesson');
+    });
   });
 });

@@ -29,11 +29,12 @@ function pages() {
     return { remove: () => handlers.splice(handlers.indexOf(handler), 1) };
   });
   let current: ReturnType<typeof usePages<Page>> | undefined;
-  function Pages({ shown }: { readonly shown: boolean }) {
-    current = usePages<Page>('lesson', shown);
+  function Pages({ shown, missing }: { readonly shown: boolean; readonly missing?: Page[] }) {
+    current = usePages<Page>('lesson', shown, missing);
     return null;
   }
-  const render = (shown: boolean) => act(() => root!.render(<Pages shown={shown} />));
+  const render = (shown: boolean, missing?: Page[]) =>
+    act(() => root!.render(<Pages shown={shown} missing={missing} />));
   root = createRoot();
   render(true);
   return {
@@ -87,4 +88,15 @@ it('reads as home while the pages are not shown, leaving back to the screen', ()
   // The page picked comes back with the pages.
   render(true);
   expect(page()).toBe('scoresheet');
+});
+
+it('drops a page picked that the screen has nothing for, leaving back to the screen', () => {
+  const { page, show, render, back } = pages();
+  show('scoresheet');
+  render(true, ['scoresheet']);
+  expect(page()).toBe('lesson');
+  expect(back()).toEqual([]);
+  // It doesn't come back on its own with the page.
+  render(true);
+  expect(page()).toBe('lesson');
 });
