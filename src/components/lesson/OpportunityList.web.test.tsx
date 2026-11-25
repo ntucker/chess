@@ -164,7 +164,7 @@ describe('OpportunityList', () => {
     expect(labels({ finder })).toHaveLength(ranked.length);
   });
 
-  it("leaves out a find that reaches a listed position, or a better find's, by another order of moves", () => {
+  it('leaves out a find that reaches a listed position by another order of moves', () => {
     // 1.e4 Nf6 2.Nf3 e5 for 1.e4 e5 2.Nf3 Nf6: the same position after the mistake.
     const swapped = (line: readonly Uci[]) => [
       line[0],
@@ -179,8 +179,7 @@ describe('OpportunityList', () => {
       line: swapped(bg5.line.slice(0, -1)),
       mistake: bg5.line.at(-1)!,
     };
-    const later: Find = { ...FIND, line: swapped(FIND.line) };
-    const finder = { ...DONE, run: { finds: [transposed, FIND, later], running: false } };
+    const finder = { ...DONE, run: { finds: [transposed, FIND], running: false } };
     expect(labels({ finder })).toHaveLength(ranked.length + 1);
   });
 

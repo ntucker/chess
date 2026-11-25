@@ -127,9 +127,9 @@ export function OpportunityList({
 
 /**
  * The finder's part of the list: its heading, source chip and button
- * (`finderAction`), then its finds best first (`unlisted`): any whose mistake
- * leads to a position the lesson already lists (`listed`) or a better find
- * reached is left out, however its line got there. A spinner shows while it runs.
+ * (`finderAction`), then its finds best first, but for any whose mistake leads
+ * to a position the lesson already lists (`listed`), however its line got
+ * there. A spinner shows while it runs.
  */
 function FinderPart({
   finder: { run, from, rating, onFind },
@@ -144,7 +144,7 @@ function FinderPart({
 }) {
   // Each row replays its line: once per run's answer, not per render.
   const found = useMemo(() => run.finds.map(findRow), [run.finds]);
-  const rows = useMemo(() => unlisted(found, listed), [found, listed]);
+  const rows = found.filter(({ next }) => !listed.has(next));
   // Done where it runs from: it found nothing, or an answer failed (the button retries).
   const done = from === 'here' && !run.running;
   const note = !done
@@ -174,7 +174,7 @@ function FinderPart({
         <IconActions actions={[finderAction(from, run, onFind)]} />
       </Inline>
       {rows.map((row) => (
-        <Row key={row.cue} row={row} styles={styles} onPlay={onPlay} />
+        <Row key={row.next} row={row} styles={styles} onPlay={onPlay} />
       ))}
       {note ? (
         <Text role="caption" tone="secondary" style={[styles.finder, STATIC.empty]}>
@@ -224,7 +224,7 @@ interface ListRow {
   /** The moves from the start through the mistake, which a press plays. */
   readonly line: readonly Uci[];
   /** The position the mistake leads to: what tells a find from the lesson's rows, since lines transpose. */
-  readonly cue: PositionKey;
+  readonly next: PositionKey;
   /** The mistake as the scoresheet names it. */
   readonly san: string;
   readonly name?: string;
@@ -238,22 +238,12 @@ interface ListRow {
   readonly hint: string;
 }
 
-/** The finds, best first, but for those reaching a position already `listed` or reached by a better find. */
-function unlisted(found: readonly ListRow[], listed: ReadonlySet<PositionKey>): ListRow[] {
-  const seen = new Set(listed);
-  return found.filter(({ cue }) => {
-    if (seen.has(cue)) return false;
-    seen.add(cue);
-    return true;
-  });
-}
-
 const lessonRow = (
   { move, san, line, next, reach, share, mates }: Opportunity,
   mark: Mark | undefined,
 ): ListRow => ({
   line,
-  cue: next,
+  next,
   san,
   name: move.mistake?.name,
   reach,
@@ -270,7 +260,7 @@ function findRow({ line, mistake, replies, payoff, reach, share, cost }: Find): 
   const { key, move } = lastStep(through);
   return {
     line: through,
-    cue: key,
+    next: key,
     san: move!.san,
     reach,
     share,
