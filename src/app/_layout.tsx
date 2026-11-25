@@ -3,12 +3,6 @@
 import 'expo-sqlite/localStorage/install';
 
 import { DataProvider, getDefaultManagers } from '@data-client/react';
-import { DMMono_400Regular } from '@expo-google-fonts/dm-mono';
-import {
-  DMSerifDisplay_400Regular,
-  DMSerifDisplay_400Regular_Italic,
-} from '@expo-google-fonts/dm-serif-display';
-import { InstrumentSans_400Regular } from '@expo-google-fonts/instrument-sans';
 import { useFonts } from 'expo-font';
 import { type ErrorBoundaryProps, Stack } from 'expo-router';
 import { StyleSheet } from 'react-native';
@@ -22,18 +16,12 @@ import { StockfishWhileNeeded } from '@/stockfish/demand';
 import { FullStockfishHost } from '@/stockfish/FullStockfishHost';
 import { StockfishHost } from '@/stockfish/StockfishHost';
 import { AppTheme } from '@/theme/AppTheme';
-import { fonts } from '@/theme/theme';
+import { FONT_FILES } from '@/theme/fontFiles';
 
 const managers = () => [new ProgressSync(), new AnalysisManager(), ...getDefaultManagers()];
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
-    DMSerifDisplay_400Regular,
-    DMSerifDisplay_400Regular_Italic,
-    InstrumentSans_400Regular,
-    DMMono_400Regular,
-    [fonts.figurines]: require('@/assets/fonts/Figurines.ttf'),
-  });
+  const [fontsLoaded] = useFonts(FONT_FILES);
   // Native waits under the splash screen; the web page is rendered on the
   // server and shows fallback fonts until these arrive.
   if (!fontsLoaded && process.env.EXPO_OS !== 'web') return null;

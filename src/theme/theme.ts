@@ -35,7 +35,7 @@ const spotlight: Readonly<Record<ColorScheme, string>> = {
   light: pool(brand.curtain, 0.09),
 };
 
-/** Font files loaded at startup (see src/app/_layout.tsx), by family name. */
+/** The app's font families, whose files load at startup (src/theme/fontFiles.ts). */
 export const fonts = {
   /** Display serif for headlines and the wordmark. Has one weight. */
   display: 'DMSerifDisplay_400Regular',
@@ -50,6 +50,7 @@ export const fonts = {
    */
   figurines: 'Figurines',
 } as const;
+export type FontFamily = (typeof fonts)[keyof typeof fonts];
 
 /** `fonts.mono`'s advance as a share of its size: each of its glyphs is this wide. */
 export const MONO_ADVANCE = 0.6;
