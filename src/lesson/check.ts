@@ -125,13 +125,13 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
   const bookChildren = new Map<string, string[]>();
   /** The learner's positions without a book move. */
   const unbooked = new Set<string>();
-  /** The cues the opponent's marked mistakes at each position set up. */
+  /** The cues the opponent's marked mistakes set up, by the position each mark is played in. */
   const cues = new Map<string, readonly CueReply[]>();
   for (const [key, entry] of Object.entries(lesson.positions)) {
     const checked = checkPosition(lesson, key, entry, report);
     if (!checked) continue;
-    const { learner, next, cues: marks } = checked;
-    if (marks.length > 0) cues.set(key, marks);
+    const { learner, next } = checked;
+    if (checked.cues.length > 0) cues.set(key, checked.cues);
     children.set(
       key,
       next.map(({ key: to }) => to),
@@ -155,8 +155,10 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
     // clean run counts only book moves: where a clean run reaches the cue, the
     // two must agree. The guide's choice rule already picks a booked reply
     // there, so this holds a stored line (`Mistake.line`) to one.
-    for (const { path, cue, reply } of cues.get(key) ?? []) {
-      if (!guideMove(lesson, cue, reply)?.book)
+    // A reply the guide lacks is already reported on the mark's line.
+    for (const { path, cueKey, reply } of cues.get(key) ?? []) {
+      const move = guideMove(lesson, cueKey, reply);
+      if (move && !move.book)
         report(path, `a clean run reaches its cue, so its reply ${reply} must be a book move`);
     }
   }
@@ -166,7 +168,7 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
 /** A cue an opponent's marked mistake sets up: the mark's path, the position after it, and its line's reply. */
 interface CueReply {
   readonly path: string;
-  readonly cue: string;
+  readonly cueKey: string;
   readonly reply: Uci;
 }
 
@@ -206,9 +208,10 @@ function checkPosition(
     next.push({ key: afterKey, book: !!move.book });
     if (move.mistake) {
       checkMistake(lesson, pos, move, move.mistake, `${path}.mistake`, report);
-      const reply = mistakeLine(lesson, key, move)[1];
-      if (!learner && reply !== undefined)
-        cues.push({ path: `${path}.mistake`, cue: afterKey, reply });
+      if (!learner) {
+        const [, reply] = mistakeLine(lesson, key, move);
+        if (reply !== undefined) cues.push({ path: `${path}.mistake`, cueKey: afterKey, reply });
+      }
     }
     checkNotes(lesson, move.notes, after, `${path}.notes`, report);
   });
