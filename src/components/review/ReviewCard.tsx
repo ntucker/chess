@@ -1,4 +1,4 @@
-import { percent } from '@/analysis/quality';
+import { lostPercent } from '@/analysis/quality';
 import type { Color } from '@/game/replay';
 import type { LessonId } from '@/resources/lesson';
 import { playOnHref } from '@/review/address';
@@ -43,6 +43,6 @@ export function ReviewCard({
 /** How much of the mover's winning chances a judged move gave away, when it gave any: "Here: 26%." */
 function lossDetail(move: ReviewMove) {
   if (move.status !== 'judged') return undefined;
-  const lost = move.before - move.after;
-  return Math.round(lost * 100) > 0 ? `Here: ${percent(lost)}.` : undefined;
+  const lost = lostPercent(move.before - move.after);
+  return lost && `Here: ${lost}.`;
 }

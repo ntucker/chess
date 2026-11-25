@@ -25,8 +25,10 @@ import {
   TRAP_PUNISHED,
   uci,
   uciLine,
+  viewAfter,
   WITH_RARE,
   withMistakeLine,
+  withMoves,
 } from './lesson.fixture';
 import { lessonView, type Pointer, preview } from './view';
 
@@ -168,7 +170,10 @@ describe('guidance', () => {
 
     it("hands Stockfish's verdicts on the candidates to the list, only in Explore off the picking moves", () => {
       const verdicts = new Map([
-        ['c8f5', { quality: 'good', change: { label: '\u22120.1', description: '' } }] as const,
+        [
+          'c8f5',
+          { quality: 'good', change: { label: '\u22120.1', description: '' }, loss: 0.01 },
+        ] as const,
       ]);
       const at = (sans: string[], mode: LessonMode, engine: EngineView = { verdicts }) =>
         guidance({
@@ -183,6 +188,35 @@ describe('guidance', () => {
       expect(at(ADVANCE, 'explore', {})).toEqual(new Map());
       expect(at(ADVANCE, 'practice')).toBeUndefined();
       expect(at([], 'explore')).toBeUndefined();
+    });
+
+    it("points out the other side's marked mistakes only in Explore, on its turn, off the picking moves", () => {
+      // After 1.e4 c6 2.d4 d5 White's 3.e5 is marked; the sample's learner plays Black.
+      const marked = withMoves(SAMPLE, keyAfter(...MAIN), (moves) =>
+        moves.map((move) => (move.uci === uci(...ADVANCE) ? { ...move, mistake: {} } : move)),
+      );
+      const at = (sans: string[], mode: LessonMode) => [
+        ...guidance({
+          view: viewAfter(marked, sans),
+          mode,
+          switches: ALL_ON,
+          picking: sans.length === 0,
+        }).opportunities,
+      ];
+      expect(at(MAIN, 'explore')).toEqual([uci(...ADVANCE)]);
+      expect(at(MAIN, 'practice')).toEqual([]);
+      expect(at([], 'explore')).toEqual([]);
+      // The learner's own marked move is a trap, not an opportunity.
+      const learnerMarked = withMoves(SAMPLE, keyAfter(...ADVANCE), (moves) =>
+        moves.map((move) => ({ ...move, mistake: {} })),
+      );
+      const learnerTurn = guidance({
+        view: viewAfter(learnerMarked, ADVANCE),
+        mode: 'explore',
+        switches: ALL_ON,
+        picking: false,
+      });
+      expect([...learnerTurn.opportunities]).toEqual([]);
     });
 
     it("lists Stockfish's top three beyond the guide, and at a guide end, marking the first as best", () => {

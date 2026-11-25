@@ -2,7 +2,15 @@ import { describe, expect, it } from '@jest/globals';
 
 import type { AnalysisLine, Evaluation, FinalAnalysis } from '@/evaluation/evaluation';
 
-import { engineVerdict, judgeMove, judgement, labelMove, qualityRule, refutation } from './quality';
+import {
+  engineVerdict,
+  judgeMove,
+  judgement,
+  labelMove,
+  lostPercent,
+  qualityRule,
+  refutation,
+} from './quality';
 
 /** An evaluation where White's expected score is `score`. */
 const at = (score: number): Evaluation => ({ score, pawns: 0 });
@@ -153,6 +161,18 @@ describe('labelMove', () => {
   });
 });
 
+describe('lostPercent', () => {
+  it('shows a loss only once it rounds to a whole percent', () => {
+    expect([0.26, 0.005, 0.004, 0, -0.03].map(lostPercent)).toEqual([
+      '26%',
+      '1%',
+      undefined,
+      undefined,
+      undefined,
+    ]);
+  });
+});
+
 describe('qualityRule', () => {
   it("says each label's limits as the labels apply them", () => {
     expect(qualityRule('good')).toBe('gave away under 5% of the winning chances');
@@ -176,10 +196,12 @@ describe('engineVerdict', () => {
     expect(engineVerdict(before, undefined, 'g8f6', 'black', 'black')).toEqual({
       quality: 'best',
       change: { label: '0.0', description: 'No change' },
+      loss: 0,
     });
     expect(engineVerdict(before, undefined, 'd7d5', 'black', 'black')).toEqual({
       quality: 'inaccuracy',
       change: { label: '\u22120.6', description: '0.6 pawns worse for you' },
+      loss: expect.closeTo(0.07),
     });
     // The opponent's slip, as the learner (White) sees it: better for them.
     expect(engineVerdict(before, undefined, 'c7c5', 'black', 'white')).toMatchObject({
@@ -193,6 +215,7 @@ describe('engineVerdict', () => {
     expect(engineVerdict(before, analysis(['e2e4', 0.68, 2.4]), 'a7a6', 'black', 'black')).toEqual({
       quality: 'mistake',
       change: { label: '\u22122.1', description: '2.1 pawns worse for you' },
+      loss: expect.closeTo(0.15),
     });
   });
 });

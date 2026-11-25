@@ -30,12 +30,14 @@ import type { LandedTrap } from './view';
  * that punishes the learner's mistake, and a trap fallen into.
  */
 export function lessonDrawings(guidance: Guidance, shown: PositionKey, learner: Color): Drawing[] {
-  const { main } = guidance;
+  const { main, opportunities } = guidance;
   const ideas = guidance.drawn.filter(({ at }) => at === shown).map(({ idea }) => idea);
   const slid = slidCandidate(guidance);
   return [
-    ...(slid ? [glow(slid.to, candidateTone(slid, slid === main))] : []),
-    ...candidateDrawings(guidance.drawnCandidates, main),
+    ...(slid
+      ? [glow(slid.to, candidateTone(slid, slid === main, opportunities.has(slid.move.uci)))]
+      : []),
+    ...candidateDrawings(guidance.drawnCandidates, opportunities, main),
     ...ideasDrawings(ideas, shown, learner),
     ...bestDrawings(guidance.best),
     ...refutationArrow(guidance.refutation),
@@ -58,24 +60,34 @@ export const slidCandidate = ({ preview }: Guidance): Candidate | undefined =>
   preview?.slide ? preview.candidate : undefined;
 
 /**
- * A candidate's tone, on the board and its list row: the main one's, an
+ * A candidate's tone, on the board and its list row: the danger tone for an
+ * opportunity (`Guidance.opportunities`), else the main one's, an
  * alternative's, or Stockfish's for its top moves.
  */
-export const candidateTone = (candidate: Candidate, isMain: boolean): Tone =>
-  candidate.engine ? 'engine' : isMain ? 'main' : 'other';
+export function candidateTone(candidate: Candidate, isMain: boolean, opportunity: boolean): Tone {
+  if (opportunity) return 'danger';
+  if (candidate.engine) return 'engine';
+  return isMain ? 'main' : 'other';
+}
 
 const glow = (square: SquareName, tone: Tone): Drawing => ({ kind: 'glow', square, tone });
 
 /**
- * Each candidate's piece lit, with an arrow to where it goes: `main` (see
- * `mainCandidate`) in the main tone, the rest as alternatives.
+ * Each candidate's piece lit, with an arrow to where it goes, in its tone
+ * (`candidateTone`): `main` (see `mainCandidate`) in the main tone, the rest
+ * as alternatives.
  */
 export function candidateDrawings(
   candidates: readonly Candidate[],
+  opportunities: ReadonlySet<Uci>,
   main = mainCandidate(candidates),
 ): Drawing[] {
   const draw = (candidate: Candidate): Drawing[] => {
-    const tone = candidateTone(candidate, candidate === main);
+    const tone = candidateTone(
+      candidate,
+      candidate === main,
+      opportunities.has(candidate.move.uci),
+    );
     return [
       glow(candidate.from, tone),
       { kind: 'arrow', from: candidate.from, to: candidate.to, tone },

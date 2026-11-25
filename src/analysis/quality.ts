@@ -47,6 +47,13 @@ const LEAST_LOSS: readonly (readonly [number, MoveQuality])[] = [
 export const percent = (score: number) => `${Math.round(score * 100)}%`;
 
 /**
+ * The expected score a move gave away (0 to 1) as `percent` shows it, when
+ * that shows any: "26%" for 0.26, nothing for 0.004 or a gain.
+ */
+export const lostPercent = (loss: number) =>
+  Math.round(loss * 100) > 0 ? percent(loss) : undefined;
+
+/**
  * What `quality` means, in words for its badge's tooltip. Example: "gave
  * away 10% to 20% of the winning chances" for a mistake, from `LEAST_LOSS`.
  */
@@ -87,24 +94,23 @@ export function judgeMove(
 }
 
 /**
- * `judgeMove`'s label with the evaluation it judged the move by (see there):
- * its own line where `before` lists it, else `after`'s first line, but never
- * better for `mover` than the list's last move.
+ * `judgeMove`'s label, with what decided it (`moveLoss`): the expected score
+ * the move gives away for `mover`, and the evaluation it was judged by.
  */
 export function judgement(
   before: FinalAnalysis,
   after: FinalAnalysis | undefined,
   uci: string,
   mover: Color,
-): { quality: MoveQuality; evaluation: Evaluation } | undefined {
+): ({ quality: MoveQuality } & MoveLoss) | undefined {
   const judged = moveLoss(before, after, uci, mover);
   if (!judged) return undefined;
-  const { loss, evaluation } = judged;
+  const { loss } = judged;
   const quality: MoveQuality =
     uci === before.lines[0].uci || loss <= 0
       ? 'best'
       : (LEAST_LOSS.find(([threshold]) => loss >= threshold)?.[1] ?? 'good');
-  return { quality, evaluation };
+  return { quality, ...judged };
 }
 
 /** What a move gives away beside the best (0 to 1, the mover's), and the evaluation that judges it. */
@@ -134,16 +140,21 @@ export function moveLoss(
   );
 }
 
-/** What Stockfish makes of a move: its label, and how it changes the position for the learner. */
+/**
+ * What Stockfish makes of a move: its label, how it changes the position for
+ * the learner, and what it gives away for the side that plays it (`MoveLoss`).
+ */
 export interface EngineVerdict {
   readonly quality: MoveQuality;
   readonly change: MoveChange;
+  readonly loss: number;
 }
 
 /**
  * Stockfish's verdict on `uci`, played by `mover` in the position `before`
- * analyses: its label (`judgement`) and the pawns it gains or loses for
- * `learner` beside the best (`moveChange`), so the best reads "0.0". A move
+ * analyses: its label (`judgement`), the pawns it gains or loses for
+ * `learner` beside the best (`moveChange`), so the best reads "0.0", and the
+ * expected score it gives away for `mover` (`moveLoss`). A move
  * `before` doesn't list needs `after`, the final analysis of the position it
  * leads to; undefined while that is missing.
  */
@@ -159,6 +170,7 @@ export function engineVerdict(
     judged && {
       quality: judged.quality,
       change: moveChange(before.lines[0].evaluation, judged.evaluation, learner),
+      loss: judged.loss,
     }
   );
 }
@@ -224,7 +236,7 @@ export function labelMove({
   if (book) return { status: 'book', quality: 'book' };
   if (legal === 1) return { status: 'forced', quality: 'best' };
   const judged = before && judgement(before, after, uci, mover);
-  return judged && { status: 'judged', ...judged };
+  return judged && { status: 'judged', quality: judged.quality, evaluation: judged.evaluation };
 }
 
 /** The evaluation `judgement` judges `uci` by; undefined while `after` is needed and missing. */

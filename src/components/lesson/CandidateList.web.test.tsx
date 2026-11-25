@@ -5,6 +5,7 @@ import { SilkProvider } from '@reactive/silk-native';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { NO_CHANGE } from '@/evaluation/evaluation';
 import type { Candidate } from '@/lesson/select';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
@@ -108,6 +109,7 @@ describe('CandidateList', () => {
         {
           quality: 'inaccuracy',
           change: { label: '\u22120.4', description: '0.4 pawns worse for you' },
+          loss: 0.06,
         },
       ] as const,
     ]);
@@ -121,6 +123,49 @@ describe('CandidateList', () => {
     });
     // A row still being judged has neither.
     expect(render({}, read)).toEqual({ badge: false, row: 'Nf3' });
+  });
+
+  it("points out the other side's marked mistake with its cost, once judged, where asked", () => {
+    const mistake = { ...COMMON, move: { uci: 'g1f3', mistake: {} } } as Candidate;
+    const verdicts = new Map([
+      [
+        'g1f3',
+        {
+          quality: 'blunder',
+          change: { label: '+2.4', description: '2.4 pawns better for you' },
+          loss: 0.26,
+        },
+      ] as const,
+    ]);
+    const read = (props: Props) =>
+      render(props, (host) => {
+        const row = host.querySelector('[role="button"]')!;
+        return {
+          cost: row.textContent!.includes('\u221226%'),
+          label: row.getAttribute('aria-label'),
+        };
+      });
+    const judged = 'Nf3, Stockfish: Blunder, 2.4 pawns better for you';
+    expect(read({ candidates: [mistake], verdicts, opportunities: new Set(['g1f3']) })).toEqual({
+      cost: true,
+      label: `${judged}, An opportunity: this mistake gives away 26% of the winning chances`,
+    });
+    // Not yet judged: the dot alone. Not asked: an ordinary row.
+    expect(read({ candidates: [mistake], opportunities: new Set(['g1f3']) })).toEqual({
+      cost: false,
+      label: 'Nf3',
+    });
+    expect(read({ candidates: [mistake], verdicts })).toEqual({ cost: false, label: judged });
+    // A mistake Stockfish rates best gives nothing away, so it shows no cost.
+    const best = new Map([
+      [
+        'g1f3',
+        { quality: 'best', change: { label: '0.0', description: NO_CHANGE }, loss: -0.004 },
+      ] as const,
+    ]);
+    expect(
+      read({ candidates: [mistake], verdicts: best, opportunities: new Set(['g1f3']) }),
+    ).toEqual({ cost: false, label: 'Nf3, Stockfish: Best move' });
   });
 
   it('heads the rows with whose moves they are, on a wide panel', () => {

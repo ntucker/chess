@@ -297,6 +297,7 @@ export function useLessonScreen({
         // Inside the guide, Stockfish's rows are at most its best (`listedEngineMoves`).
         engineBest: guidance.top.at(0),
         verdicts: guidance.verdicts,
+        opportunities: guidance.opportunities,
         rare: guidance.rare,
         rareShown,
         onShowRare: showRare,
