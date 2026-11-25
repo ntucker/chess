@@ -35,6 +35,7 @@ import { narrowLength, narrowStyles } from '@/theme/narrow';
 import {
   NarrowOnly,
   NarrowScroll,
+  useNarrowPageScrolls,
   useNarrowPart,
   useNarrowStyles,
   useNarrowViewport,
@@ -103,7 +104,11 @@ interface BoardColumnProps {
   >;
   /** The player's name bar: anything to show before the move stepper at its end. */
   readonly player?: Pick<ComponentProps<typeof PlayerBar>, 'children'>;
-  /** A finger thrown up from the player's bar: a phone's way to open its settings. */
+  /**
+   * A finger thrown up from the player's bar: a phone's way to open its
+   * settings. Not on a page short enough to scroll, where a finger moving up
+   * the bar scrolls the page.
+   */
   readonly onFlickUp?: () => void;
   /** The board, with the player's side (`orientation`) at the bottom. */
   readonly board: Omit<BoardProps, 'dom' | 'ending' | 'onEndingPointer'>;
@@ -209,7 +214,10 @@ export function BoardColumn({
   );
 }
 
-/** `children`, with a finger thrown up from them calling `onFlick` (silk's `useFlickGesture`). */
+/**
+ * `children`, with a finger thrown up from them calling `onFlick` (silk's
+ * `useFlickGesture`), unless the page scrolls.
+ */
 function FlickUp({
   onFlick,
   children,
@@ -217,7 +225,8 @@ function FlickUp({
   readonly onFlick: () => void;
   readonly children: ReactNode;
 }) {
-  const flick = useFlickGesture({ direction: 'up', onFlick });
+  const scrolls = useNarrowPageScrolls();
+  const flick = useFlickGesture({ direction: 'up', onFlick, enabled: !scrolls });
   return (
     <GestureDetector {...flick}>
       <View>{children}</View>
