@@ -26,14 +26,14 @@ import {
   shareSource,
 } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
-import { type Cue, cueControls } from '@/opportunity/cue';
+import type { Cue } from '@/opportunity/cue';
 import { describeOpponent } from '@/opponent/opponent';
 import { getLesson, LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { reviewHref } from '@/review/address';
 import { useSettings } from '@/settings/SettingsProvider';
 
 import type { CandidateList } from './CandidateList';
-import type { ActsModel } from './CueActs';
+import type { ActsModel, OpportunityCard } from './CueActs';
 import { type IdeaAside, type IdeaCard, noNotesText } from './IdeaCard';
 import type { LessonControls } from './LessonControls';
 import type { TrapCard } from './TrapCard';
@@ -111,6 +111,8 @@ export interface LessonScreenModel {
    * card's place for the other side's mistake.
    */
   readonly acts: ActsModel | null;
+  /** In Practice, whether the learner's move at a cue punished the mistake. */
+  readonly opportunity: ComponentProps<typeof OpportunityCard> | null;
   /** The game's moves. */
   readonly scoresheet: Omit<ComponentProps<typeof Scoresheet>, 'fill'>;
   readonly settings: Pick<ComponentProps<typeof LessonControls>, 'mode' | 'onMode'>;
@@ -164,10 +166,6 @@ export function useLessonScreen({
     modeState,
     startsRun,
     chooseMode,
-    acts,
-    retryCue,
-    showCue,
-    skipCue,
   } = useLesson(lesson, store, { pending });
   const { mode } = modeState;
   const { auto } = useSettings();
@@ -175,20 +173,18 @@ export function useLessonScreen({
   const rival = opposite(learner);
   const described = describeOpponent(opponent);
   const preview = guidance.preview?.candidate;
+  const { acts, opportunity } = guidance;
   const trap = guidance.trapIn === 'card' ? guidance.trap : undefined;
-  const controls = acts && cueControls(acts.found);
-  const cueFacts = useCueFacts(lesson, acts?.cue, opponentBand(lesson, opponent));
-  const cue = acts &&
-    cueFacts && {
-      found: acts.found,
-      payoff: acts.payoff,
-      ...cueFacts,
-      tried: game.plies[acts.cue.ply + 1]?.move?.san,
-    };
+  // The guide's note on the cue's mistake, once its punishment lands.
+  const mistakeNote =
+    guidance.trapIn === 'cue' && guidance.trap
+      ? { lesson, shown: guidance.trap.note, learner, playback }
+      : undefined;
+  const cueFacts = useCueFacts(lesson, acts?.cue ?? opportunity, opponentBand(lesson, opponent));
+  const cue = acts && cueFacts && { found: acts.found, payoff: acts.payoff, ...cueFacts };
   // The card is for notes, or for the notes of a candidate pointed at.
   // Stockfish's moves have none of their own.
-  const ideaCard =
-    guidance.notes.length > 0 || (guidance.choices && guidance.candidates.length > 0);
+  const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
   const names = pathNames(view.variation);
   const { result } = game.latest;
   const ending = shownEnding(
@@ -374,20 +370,15 @@ export function useLessonScreen({
           onReach: reachCard,
         }
       : null,
-    acts:
-      acts && controls
+    acts: acts ? { found: acts.found, payoff: acts.payoff, note: mistakeNote } : null,
+    opportunity:
+      opportunity?.tried && cueFacts
         ? {
-            found: acts.found,
-            payoff: acts.payoff,
-            line: headline.detail,
-            asking: acts.asking,
-            onRetry: controls.retry ? retryCue : undefined,
-            onShow: controls.show ? showCue : undefined,
-            onSkip: controls.skip ? skipCue : undefined,
-            note:
-              guidance.trapIn === 'acts' && guidance.trap
-                ? { lesson, shown: guidance.trap.note, learner, playback }
-                : undefined,
+            found: opportunity.found,
+            mistake: cueFacts.mistake,
+            reply: cueFacts.reply,
+            tried: sanAt(opportunity.key, opportunity.tried),
+            note: mistakeNote,
           }
         : null,
     trap: trap

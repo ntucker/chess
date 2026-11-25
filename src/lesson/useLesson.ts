@@ -21,16 +21,7 @@ import { dropMove, parsePositionKey } from '@/game/replay';
 import { type GameStore, useGame } from '@/game/useGame';
 import { finalOnly, isFinal } from '@/evaluation/evaluation';
 import { analysisError, getAnalysis, storedAnalyses, useAnalysis } from '@/resources/analysis';
-import {
-  type Acts,
-  type Cue,
-  type CueChoice,
-  cueActs,
-  inActs,
-  payoffReplies,
-  tryVerdict,
-  verdictWaitsOn,
-} from '@/opportunity/cue';
+import { payoffReplies } from '@/opportunity/cue';
 import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
 import { hasMark, UNTOUCHED } from '@/progress/progress';
 import { LessonIndexContext } from '@/resources/lesson';
@@ -41,7 +32,7 @@ import { useNeedsStockfish } from '@/stockfish/demand';
 import { boardPress, boardSelect, lessonBoard } from './board';
 import { ideaPlayback } from './drawings';
 import {
-  type CueGuidance,
+  cueActs,
   guidance,
   type LessonMode,
   listedEngineMoves,
@@ -56,9 +47,9 @@ import { isPicking, pickingMoves } from './openings';
 import { lessonOpponent } from './opponent';
 import { samePointer } from './peek';
 import { beforeSideMoves, moveKinds, opponentPlays } from './practice';
-import { type CueRecord, initialScreen, screenReducer } from './screen';
+import { initialScreen, screenReducer } from './screen';
 import { bookMoves, type Candidate, engineCandidates } from './select';
-import { type LessonView, lessonView, type Pointer, preview, type ShownNote } from './view';
+import { lessonView, type Pointer, preview, type ShownNote } from './view';
 
 /** How long each board of a playback shows before the next. */
 const PLAYBACK_STEP_MS = 1100;
@@ -108,10 +99,7 @@ export function useLesson(
   useNeedsStockfish(focused);
   // Ready before the guide runs out, even with auto play off for now.
   useWarmOpponent(opponent, focused);
-  const [{ mode: modeState, peek, rareKey, cue: cueRecord }, dispatch] = useReducer(
-    screenReducer,
-    initialScreen,
-  );
+  const [{ mode: modeState, peek, rareKey }, dispatch] = useReducer(screenReducer, initialScreen);
   const { mode } = modeState;
   const everyProgress = useSuspense(getProgress);
   const progress = everyProgress[lesson.id] ?? UNTOUCHED;
@@ -127,44 +115,30 @@ export function useLesson(
     () => lessonView({ lesson, line: moves, ply: shownPly, opponent }),
     [lesson, moves, shownPly, opponent],
   );
-  // A choice made at a cue lasts while the game's line still reaches the cue.
-  if (cueRecord && view.keys[cueRecord.ply] !== cueRecord.key) dispatch({ type: 'cueLeft' });
-  const acts = useActs(lesson, view, moves, cueRecord, {
-    on: mode === 'explore' && !picking,
-    focused,
-  });
-  // A try at a cue waiting for its verdict: the try's label and the board's
-  // search wait, so the searches the verdict needs run first.
-  const waiting = acts?.found === 'pending';
+  const acts = useMemo(() => cueActs(view, mode, picking), [view, mode, picking]);
   // Through the payoff the opponent plays the line's moves.
   const payoffCue = acts?.payoff === 'playing' ? acts.cue : undefined;
   const payoff = useMemo(() => payoffCue && payoffReplies(payoffCue), [payoffCue]);
   const opponentMoves = opponentPlays(mode, settings.auto, store[0], picking);
-  // A try at a cue that hasn't passed gets no reply (`Acts.held`).
-  const rival =
-    opponentMoves && !acts?.held
-      ? lessonOpponent(
-          lesson,
-          opponent,
-          gameOpponent(ctrl, opponent),
-          steering(lesson, progress, modeState) ?? payoff,
-        )
-      : undefined;
+  const rival = opponentMoves
+    ? lessonOpponent(
+        lesson,
+        opponent,
+        gameOpponent(ctrl, opponent),
+        steering(lesson, progress, modeState) ?? payoff,
+      )
+    : undefined;
   const book = useMemo(() => bookMoves(lesson, moves), [lesson, moves]);
   const game = useGame(store, rival, {
     side: lesson.side,
     active: focused,
     judge: 'stockfish',
     book,
-    // The try's label waits for its verdict, whose searches come first.
-    labelling: !waiting,
   });
   const { ply, plies, current } = game;
   // The store drops a move made while a lesson loads, so the board offers
   // none: chessground would show the dropped move until the lesson arrived.
-  // Nor while a try at a cue is held (`Acts.held`): the next move is the
-  // opponent's, and it waits for the try to pass, a retry or a skip.
-  const canMove = game.canMove && !pending && !acts?.held;
+  const canMove = game.canMove && !pending;
   // A move played before the learner's first starts a Practice run
   // (`modeReducer`); the moves that pick the opening are no move of theirs.
   const picks = useMemo(() => pickingMoves(index, lesson.side, moves), [index, lesson.side, moves]);
@@ -215,10 +189,9 @@ export function useLesson(
   // Stockfish's best move for the board's position, whatever engine judges
   // the bar, and the rows of its moves the list shows, both from the
   // analysis the move labels read, deepening while it runs. Only Explore
-  // shows them, so Practice asks for nothing here; nor a try waiting for its
-  // verdict, so the candidates' badges watch nothing newer than its searches.
-  const boardSearch = focused && mode === 'explore' && !waiting;
-  const analysis = useAnalysis('stockfish', boardSearch ? shownLine : null);
+  // shows them, so Practice asks for nothing here.
+  const explore = focused && mode === 'explore';
+  const analysis = useAnalysis('stockfish', explore ? shownLine : null);
   const lines = analysis?.lines;
   const engineRows = useMemo(
     () => (lines ? engineCandidates(lesson, key, lines) : []),
@@ -249,12 +222,7 @@ export function useLesson(
     () => new Map<Uci, EngineVerdict>(JSON.parse(judgedText) as typeof judged),
     [judgedText],
   );
-  // At an open cue every hint hides, but the reply once the learner asks for it.
-  const cue: CueGuidance | undefined = acts && {
-    open: acts.live,
-    reveal: acts.found === 'shown' ? acts.cue.line[1] : undefined,
-  };
-  const top = listedEngineMoves(view, mode, picking, engineRows, final, cue);
+  const top = listedEngineMoves(view, mode, picking, engineRows, final);
   const previewOf = (at: Pointer) => preview(lesson, view, at, top);
   const shown = guidance({
     view,
@@ -268,19 +236,16 @@ export function useLesson(
     playing: playing?.played,
     engine: { best: lines?.[0].uci, top: engineRows, final, verdicts },
     refutation: game.refutation,
-    cue,
   });
   // The cue is felt as it lands: when the opponent plays the mistake, not
   // when the board steps back onto it or the screen opens there. A mistake
   // the learner plays for the other side already ticks as their move.
-  const landed = opponentMoves && acts?.live && moves.length === acts.cue.ply;
+  const landed = opponentMoves && acts && !acts.found && moves.length === acts.cue.ply;
   const playedBefore = useRef(moves.length);
   useEffect(() => {
     if (landed && playedBefore.current < moves.length) haptic('moveLanded');
     playedBefore.current = moves.length;
   }, [landed, moves.length]);
-  const chooseAtCue = (at: Cue, choice: CueChoice) =>
-    dispatch({ type: 'cue', ply: at.ply, key: at.key, choice });
   // The board's own move's label comes first: it needs the position before
   // too. If that search gave up, the label never comes, so don't wait for it.
   const labelled =
@@ -396,22 +361,6 @@ export function useLesson(
     play,
     /** Explore, or Practice with whether the run is clean. */
     modeState,
-    /** The acts of the cue the board is in, in Explore (src/opportunity/cue.ts). */
-    acts,
-    /** Back to the cue, to try another move. */
-    retryCue: () => {
-      if (acts) game.goto(acts.cue.ply);
-    },
-    /** Back to the cue, with its reply shown. */
-    showCue: () => {
-      if (!acts) return;
-      chooseAtCue(acts.cue, 'shown');
-      game.goto(acts.cue.ply);
-    },
-    /** Leaves the cue's question: the hints come back, and the opponent replies to a try. */
-    skipCue: () => {
-      if (acts) chooseAtCue(acts.cue, 'skipped');
-    },
     /** A move played on the board now starts a Practice run: no move of the learner's comes before. */
     startsRun,
     /** The learner chooses Explore or Practice. */
@@ -447,55 +396,4 @@ export function useLesson(
     /** The learner leaves the candidates and the idea card: their previews end. */
     leave: () => dispatch({ type: 'leave' }),
   };
-}
-
-/**
- * The acts of the cue the board is in (`cueActs`), where `on` (Explore,
- * past the openings' picking moves), with the verdict on the game's move at
- * the cue from Stockfish's final answers in the store. While the verdict is
- * pending and the screen is in front, it watches the search it waits on: the
- * cue's, then, for a move the cue lists after its first, the position
- * before the mistake's.
- */
-function useActs(
-  lesson: Lesson,
-  view: LessonView,
-  moves: readonly Uci[],
-  record: CueRecord | undefined,
-  { on, focused }: { readonly on: boolean; readonly focused: boolean },
-): Acts | undefined {
-  const ctrl = useController();
-  const state = use(StateContext);
-  const shown = view.cue;
-  const place = shown && {
-    cue: shown,
-    moves,
-    ply: view.ply,
-    choice: record?.ply === shown.ply && record.key === shown.key ? record.choice : undefined,
-    learnerToMove: view.learnerToMove,
-  };
-  // Past the cue's acts, its searches go unread.
-  const inside = on && place && inActs(place) ? place : undefined;
-  const cue = inside?.cue;
-  // The lines to the position before the mistake, and to the cue.
-  const lines = cue ? [moves.slice(0, cue.ply - 1), moves.slice(0, cue.ply)] : [];
-  const [beforeLine, cueLine] = lines;
-  const [before, after] = storedAnalyses(ctrl, 'stockfish', lines, state).map(finalOnly);
-  const [beforeFailed = false, cueFailed = false] = lines.map(
-    (line) => analysisError(ctrl, 'stockfish', line, state) !== undefined,
-  );
-  const tried = cue && moves[cue.ply];
-  const analyses = { before, cue: after, beforeFailed, cueFailed };
-  const verdict = cue && tried !== undefined ? tryVerdict(lesson, cue, tried, analyses) : undefined;
-  const waitsOn =
-    focused && verdict === 'pending'
-      ? verdictWaitsOn(analyses) === 'cue'
-        ? cueLine
-        : beforeLine
-      : undefined;
-  useSubscription(
-    getAnalysis,
-    ...(waitsOn ? (['stockfish', waitsOn] as const) : ([null] as const)),
-  );
-  return inside && cueActs({ ...inside, verdict });
 }

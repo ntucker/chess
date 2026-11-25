@@ -95,15 +95,4 @@ describe('screenReducer', () => {
     };
     expect(screenReducer(initialScreen, explore)).toBe(initialScreen);
   });
-
-  it("keeps a cue's choice as the board moves on, until the line leaves the cue", () => {
-    const shown: ScreenAction = { type: 'cue', ply: 9, key: 'cue', choice: 'shown' };
-    const chosen = run(POINT, shown);
-    expect(chosen.cue).toEqual({ ply: 9, key: 'cue', choice: 'shown' });
-    // A try moves the board: the peek ends, the choice stays.
-    const moved = screenReducer(chosen, { type: 'board', key: 'after' });
-    expect(moved).toEqual({ mode: initialScreen.mode, cue: chosen.cue });
-    expect(screenReducer(moved, { type: 'cueLeft' })).toEqual({ mode: initialScreen.mode });
-    expect(screenReducer(initialScreen, { type: 'cueLeft' })).toBe(initialScreen);
-  });
 });

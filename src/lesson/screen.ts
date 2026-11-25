@@ -1,13 +1,9 @@
 /**
  * The lesson screen's one reducer: the mode (`practice.ts`), what the board
- * shows beyond the game (`peek.ts`), whether the candidate list shows its
- * rare rows, and what the learner chose at a cue. The peek and the rare rows
- * belong to a position and end when the board moves on; the choice belongs
- * to a cue on the game's line, and ends once the line no longer passes it.
- * The game itself is `useGame`'s.
+ * shows beyond the game (`peek.ts`), and whether the candidate list shows its
+ * rare rows. The last two belong to a position and end when the board moves
+ * on. The game itself is `useGame`'s.
  */
-import type { CueChoice } from '@/opportunity/cue';
-
 import type { PositionKey, Uci } from './lesson';
 import { type Peek, type PeekAction, peekReducer } from './peek';
 import { initialMode, type ModeAction, modeReducer, type ModeState } from './practice';
@@ -21,20 +17,6 @@ export interface ScreenState {
    * them again, so each list starts hidden.
    */
   readonly rareKey?: PositionKey;
-  /**
-   * What the learner chose at a cue (src/opportunity/cue.ts): to be shown the
-   * reply, or to skip the question. The game's moves can't tell it, and it
-   * outlives the board moving on (a try moves it), so it is kept while the
-   * line still reaches `key` after `ply` moves.
-   */
-  readonly cue?: CueRecord;
-}
-
-/** The learner's choice at the cue reached after `ply` moves, at `key`. */
-export interface CueRecord {
-  readonly ply: number;
-  readonly key: PositionKey;
-  readonly choice: CueChoice;
 }
 
 /**
@@ -55,18 +37,7 @@ interface BoardAction {
   readonly key: PositionKey;
 }
 
-/** The learner chooses at a cue: show its reply, or skip it. */
-interface CueAction extends CueRecord {
-  readonly type: 'cue';
-}
-
-/** The game's line no longer passes the cue a choice was made at. */
-interface CueLeftAction {
-  readonly type: 'cueLeft';
-}
-
-export type ScreenAction =
-  ModeAction | PeekAction | RareAction | BoardAction | CueAction | CueLeftAction;
+export type ScreenAction = ModeAction | PeekAction | RareAction | BoardAction;
 
 export const initialScreen: ScreenState = { mode: initialMode };
 
@@ -85,11 +56,6 @@ export function screenReducer(state: ScreenState, action: ScreenAction): ScreenS
       : state.peek;
     return rareKey === state.rareKey && peek === state.peek ? state : { ...state, peek, rareKey };
   }
-  if (action.type === 'cue') {
-    const { ply, key, choice } = action;
-    return { ...state, cue: { ply, key, choice } };
-  }
-  if (action.type === 'cueLeft') return state.cue ? { ...state, cue: undefined } : state;
   if (action.type === 'board') {
     const peek = state.peek?.key === action.key ? state.peek : undefined;
     const rareKey = state.rareKey === action.key ? state.rareKey : undefined;

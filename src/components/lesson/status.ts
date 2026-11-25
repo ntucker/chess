@@ -3,7 +3,7 @@ import type { HeadlineProps, News } from '@/components/GameStatus';
 import { endingHeadline, resultVerdict, type Verdict } from '@/game/ending';
 import type { Color, GameResult } from '@/game/replay';
 import type { LessonView } from '@/lesson/view';
-import { type Acts, unanswered } from '@/opportunity/cue';
+import type { Acts } from '@/opportunity/cue';
 import { qualityLooks } from '@/theme/moveQuality';
 
 /** The name of the screen where the openings are picked. */
@@ -59,8 +59,6 @@ export interface CueStatus extends Pick<Acts, 'found' | 'payoff'> {
   readonly mistake: string;
   /** The line's reply, which punishes it: "Nxe4". */
   readonly reply: string;
-  /** The learner's move at the cue, once played. */
-  readonly tried?: string;
   /** How often players in the opponent's band play the mistake there (0 to 1), where counted. */
   readonly share?: number;
 }
@@ -113,11 +111,7 @@ export function describeStatus(
     };
   const eyebrow = names.join(' · ') || title;
   if (ending) return { eyebrow, ...endingHeadline(ending, rival) };
-  // While the question stands a phone tells it in the pane beside the acts
-  // instead, with the cue's controls; once answered, the headline tells it.
-  if (cue) {
-    return { eyebrow, ...cueHeadline(cue), news: unanswered(cue.found) ? 'none' : 'all' };
-  }
+  if (cue) return { eyebrow, ...cueHeadline(cue) };
   // Beyond the guide with auto play off, nobody replies: the learner moves both sides.
   const playOn = auto ? `play on against ${engine}` : 'play on, moving both sides';
   if (lineEnded && practice?.clean)
@@ -248,51 +242,33 @@ const YOUR_MOVE = {
 } as const;
 
 /**
- * The headline of a cue's acts (src/opportunity/cue.ts): the question while
- * it is open, then how the learner's try went, then the payoff. Example:
- * "Your cue." over "Bg5 is a mistake. Find the move that punishes it."
+ * The headline of a cue's acts in Explore (src/opportunity/cue.ts): the cue
+ * until the line's reply is played, then the payoff. Example: "Your cue."
+ * over "Bg5 is a mistake. Find the move that punishes it."
  */
 export function cueHeadline({
   found,
   payoff,
   mistake,
   reply,
-  tried = reply,
   share,
 }: CueStatus): Pick<Status, 'title' | 'titleTip' | 'detail'> {
-  switch (found) {
-    case 'open':
-      return {
-        title: 'Your cue.',
-        titleTip:
-          share === undefined
-            ? undefined
-            : `About ${percent(share)} of players at your opponent's rating make this mistake here.`,
-        detail: `${mistake} is a mistake. Find the move that punishes it.`,
-      };
-    case 'shown':
-      return { title: 'Your cue.', detail: `${reply} punishes ${mistake}. Play it.` };
-    case 'pending':
-      return { title: 'Checking your move…', detail: `Does ${tried} punish ${mistake}?` };
-    case 'failed':
-      return {
-        title: 'Not this one.',
-        detail: `${tried} doesn't punish ${mistake}. Retry, or skip to play on.`,
-      };
-    case 'unchecked':
-      return {
-        title: 'Couldn’t check it.',
-        detail: `Stockfish gave up on ${tried}. Retry, or skip to play on.`,
-      };
-    case 'passed':
-      switch (payoff) {
-        case 'done':
-          return { title: 'Payoff complete.', detail: `That is what ${mistake} gave away.` };
-        case 'playing':
-          return { title: 'The payoff.', detail: `Play on and cash in on ${mistake}.` };
-        case 'ahead':
-        case 'none':
-          return { title: 'Found it.', detail: `${tried} punishes ${mistake}.` };
-      }
+  if (!found)
+    return {
+      title: 'Your cue.',
+      titleTip:
+        share === undefined
+          ? undefined
+          : `About ${percent(share)} of players at your opponent's rating make this mistake here.`,
+      detail: `${mistake} is a mistake. Find the move that punishes it.`,
+    };
+  switch (payoff) {
+    case 'done':
+      return { title: 'Payoff complete.', detail: `That is what ${mistake} gave away.` };
+    case 'playing':
+      return { title: 'The payoff.', detail: `Play on and cash in on ${mistake}.` };
+    case 'ahead':
+    case 'none':
+      return { title: 'Found it.', detail: `${reply} punishes ${mistake}.` };
   }
 }

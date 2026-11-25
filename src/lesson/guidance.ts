@@ -40,14 +40,14 @@
  *   the learner's turn after them; a move off its sequence, by either side,
  *   ends it at once. With traps hidden, no note that holds a trap shows in
  *   Practice, on any turn.
- * - At a cue whose question is open (`Acts.live` in src/opportunity/cue.ts:
- *   the other side's marked mistake, in Explore), every hint hides until the
- *   learner tries a move: the candidates, every note (the mistake's own
- *   names its punishment), Stockfish's best, top moves and verdicts: what
- *   Practice hides on the learner's turn (`askingMode`). Once the learner
- *   asks to be shown, the line's reply alone is listed and drawn. While the
- *   board is in the cue's acts, the mistake's trap shows its note there
- *   rather than on its own card (`trapIn`). A skipped cue is ordinary Explore.
+ * - A cue (src/opportunity/cue.ts: the other side's marked mistake) hides
+ *   nothing and tests nothing of its own: the mode does. Explore shows its
+ *   three acts beside every hint, from the cue along the line's moves the
+ *   game plays (`cueActs`). In Practice the cue is an ordinary learner
+ *   turn, named by nothing before the move; after it, the cue shows found
+ *   or missed (`Guidance.opportunity`), as a trap fallen into shows its
+ *   card. Where either shows, the mistake's trap shows its note with it
+ *   rather than on its own card (`trapIn`).
  * - While a note's idea plays back, the board is the playback's: nothing else
  *   is drawn, and the preview it started from stays.
  * - While a piece is dragged, or selected by a click, the board draws only
@@ -76,6 +76,7 @@
  * into board shapes, and says which ideas draw nothing (`drawsOnBoard`).
  */
 import type { EngineVerdict } from '@/analysis/quality';
+import { type Acts, type Cue, payoffAt } from '@/opportunity/cue';
 import type { Settings } from '@/settings/settings';
 
 import { drawsOnBoard } from './drawings';
@@ -127,16 +128,6 @@ export interface GuidanceInput {
    * does, whoever played it.
    */
   readonly refutation?: Uci;
-  /** The cue whose acts the board is in, in Explore (`Acts` in src/opportunity/cue.ts). */
-  readonly cue?: CueGuidance;
-}
-
-/** A cue as guidance reads it: whether its question is open, and the reply shown once asked for. */
-export interface CueGuidance {
-  /** The board shows the cue with its question open (`Acts.live`). */
-  readonly open: boolean;
-  /** The line's reply, once the learner asks to be shown it. */
-  readonly reveal?: Uci;
 }
 
 /** An idea to draw, and the position it is checked in. */
@@ -152,12 +143,6 @@ export type PlayedBack = Extract<BoardIdea, { type: 'plan' | 'line' | 'trap' }>;
 export type ShownPlayback = ShownIdea & { readonly idea: PlayedBack };
 
 export interface Guidance {
-  /**
-   * The candidates are choices the learner can point at to preview: not on
-   * a quiz turn, such as Practice's learner turn or an open cue, whose
-   * revealed reply is listed but not previewed.
-   */
-  readonly choices: boolean;
   /** The candidate list. */
   readonly candidates: readonly Candidate[];
   /** The rare candidates, which the list shows only when asked. */
@@ -212,24 +197,23 @@ export interface Guidance {
   /** A trap the line fell into, while it shows (see `trapShown`). */
   readonly trap?: LandedTrap;
   /**
-   * Where `trap`'s note shows: on its own card, or in the acts of the cue
-   * that teaches it (the other side's mistake, in Explore).
+   * Where `trap`'s note shows: on its own card, or with the cue that teaches
+   * it (`acts` or `opportunity`).
    */
-  readonly trapIn?: 'card' | 'acts';
+  readonly trapIn?: 'card' | 'cue';
+  /** The acts of the cue the board is in, in Explore (`cueActs`). */
+  readonly acts?: Acts;
+  /**
+   * In Practice, the cue the learner just answered, found or missed
+   * (`Cue.found`), while it shows as news of that move (`answerShown`).
+   */
+  readonly opportunity?: Cue;
   /** The line has reached a guide line's end, and the headline tells it (see `newsShown`). */
   readonly lineEnded: boolean;
 }
 
 const NO_VERDICTS: ReadonlyMap<Uci, EngineVerdict> = new Map();
 const NO_OPPORTUNITIES: ReadonlySet<Uci> = new Set();
-
-/**
- * The mode whose rules guidance applies: an open cue asks the learner to
- * find a move as Practice does on their turn, so it hides what Practice
- * hides there (the candidates, Stockfish's best, top moves and verdicts).
- */
-const askingMode = (mode: LessonMode, cue: CueGuidance | undefined): LessonMode =>
-  cue?.open ? 'practice' : mode;
 
 /** Whether "Arrows" changes anything in `mode`: only in Explore. */
 export const movesSwitchApplies = (mode: LessonMode) => mode === 'explore';
@@ -289,8 +273,7 @@ const tagsBest = (view: LessonView, final: boolean | undefined, uci: Uci) =>
  * and the strongest reply. Example: in the Urusov Gambit,
  * after 1.e4 e5 2.Bc4 Nf6 3.d4 exd4 4.Nf3, the guide lists only 4...Nxe4 and
  * Stockfish's 4...Bb4+ is listed after it. Where the moves pick the opening
- * the rows are openings, so none is added; at an open cue, none either
- * (`askingMode`).
+ * the rows are openings, so none is added.
  */
 export function listedEngineMoves(
   view: LessonView,
@@ -298,13 +281,11 @@ export function listedEngineMoves(
   picking: boolean,
   top: readonly Candidate[],
   final: boolean | undefined,
-  cue: CueGuidance | undefined,
 ): readonly Candidate[] {
-  const applied = askingMode(mode, cue);
-  if (listsTopMoves(view, applied)) return top;
+  if (listsTopMoves(view, mode)) return top;
   const best = top.at(0);
   const listsBest =
-    applied === 'explore' &&
+    mode === 'explore' &&
     !picking &&
     !view.learnerToMove &&
     best !== undefined &&
@@ -315,6 +296,7 @@ export function listedEngineMoves(
 export function guidance(input: GuidanceInput): Guidance {
   const {
     view,
+    mode,
     switches,
     picking,
     preview: pointerPreview,
@@ -322,10 +304,7 @@ export function guidance(input: GuidanceInput): Guidance {
     pointed,
     playing: playingNote,
     engine,
-    cue,
   } = input;
-  const mode = askingMode(input.mode, cue);
-  const asking = cue?.open;
   const explore = mode === 'explore';
   const movesShown = switches.showMoves || !movesSwitchApplies(mode);
   // Where the moves pick the opening they are a choice, not a quiz.
@@ -334,21 +313,16 @@ export function guidance(input: GuidanceInput): Guidance {
   const lifted = choices ? pointerLifted : undefined;
   // In Practice a previewed reply leads to the learner's move, so its notes
   // are kept as on the learner's turn. Explore shows every note.
-  // An open cue shows no note either: the mistake's own names its punishment.
-  const notes = asking
-    ? []
-    : preview
-      ? preview.notes.filter((shown) => explore || beforeMove(shown, switches.showTraps))
-      : restingNotes(view, explore, switches.showTraps);
+  const notes = preview
+    ? preview.notes.filter((shown) => explore || beforeMove(shown, switches.showTraps))
+    : restingNotes(view, explore, switches.showTraps);
   const allowed = (idea: BoardIdea) => !isLearnerTrap(idea) || switches.showTraps;
   const ideas = notes.flatMap((shown) => noteIdeas(shown, allowed));
   const moveIdeas = new Set(
     notes.flatMap(({ note, before }) => (before === undefined ? [] : (note.ideas ?? []))),
   );
   const withRare = choices ? view.candidates : [];
-  const candidates = asking
-    ? view.candidates.filter(({ move }) => move.uci === cue?.reveal)
-    : withRare.filter(({ rare }) => !rare);
+  const candidates = withRare.filter(({ rare }) => !rare);
   const trap = view.trap && trapShown(view, view.trap) ? view.trap : undefined;
   const playable = [
     ...ideas.filter(playsBack),
@@ -362,7 +336,7 @@ export function guidance(input: GuidanceInput): Guidance {
     .filter(({ note }) => note.ideas?.some((idea) => drawsOnBoard(idea) && allowed(idea)))
     .map(({ note }) => note);
   const pointedNote = !playing && pointed && pointable.includes(pointed) ? pointed : undefined;
-  const top = listedEngineMoves(view, input.mode, picking, engine?.top ?? [], engine?.final, cue);
+  const top = listedEngineMoves(view, mode, picking, engine?.top ?? [], engine?.final);
   const board = boardShown({
     candidates,
     liftable: [...withRare, ...top],
@@ -384,8 +358,15 @@ export function guidance(input: GuidanceInput): Guidance {
   const best =
     explore && movesShown && resting && engine?.best !== refutation ? engine?.best : undefined;
 
+  const acts = cueActs(view, mode, picking);
+  const opportunity =
+    mode === 'practice' && !picking && view.cue && answerShown(view, view.cue)
+      ? view.cue
+      : undefined;
+  // The cue's own mistake: the cue comes right after it.
+  const shownCue = acts?.cue ?? opportunity;
+  const withCue = trap !== undefined && shownCue?.ply === trap.ply + 1;
   return {
-    choices,
     candidates,
     rare: withRare.filter(({ rare }) => rare),
     main: mainCandidate(candidates),
@@ -407,8 +388,9 @@ export function guidance(input: GuidanceInput): Guidance {
         : NO_OPPORTUNITIES,
     refutation,
     trap,
-    // The cue's own mistake: the cue comes right after it.
-    trapIn: trap && (cue && view.cue?.ply === trap.ply + 1 ? 'acts' : 'card'),
+    trapIn: trap && (withCue ? 'cue' : 'card'),
+    acts,
+    opportunity,
     lineEnded: view.lineEnd !== undefined && newsShown(view, view.lineEnd),
   };
 }
@@ -512,6 +494,33 @@ function newsShown(view: LessonView, ply: number): boolean {
 function trapShown(view: LessonView, { ply, movesPlayed, trap }: LandedTrap): boolean {
   const last = ply + movesPlayed;
   return movesPlayed < trap.moves.length ? view.ply <= last : newsShown(view, last);
+}
+
+/**
+ * The acts of the cue the board is in, in Explore away from the moves that
+ * pick the opening: from the cue to the last move the game plays along its
+ * line, and, once the whole line is played, as its news (`newsShown`). A
+ * move off the line ends them at once, as it ends a trap's card.
+ */
+export function cueActs(view: LessonView, mode: LessonMode, picking: boolean): Acts | undefined {
+  const { cue } = view;
+  if (!cue || mode !== 'explore' || picking || view.ply < cue.ply) return undefined;
+  const last = cue.ply - 1 + cue.followed;
+  const shown = view.ply <= last || (cue.followed === cue.line.length && newsShown(view, last));
+  return shown ? { cue, found: view.ply > cue.ply, payoff: payoffAt(cue, view.ply) } : undefined;
+}
+
+/**
+ * Whether the learner's answer to `cue` still shows: from that move along
+ * the line's moves the game plays, and as news of the last of them where it
+ * ends the answer's story (the whole line played, or a move off it).
+ */
+function answerShown(view: LessonView, cue: Cue): boolean {
+  if (cue.tried === undefined || view.ply <= cue.ply) return false;
+  const offLine = cue.tried !== cue.line[1];
+  const last = cue.ply - 1 + Math.max(cue.followed, 2);
+  const ended = offLine || cue.followed === cue.line.length;
+  return view.ply <= last || (ended && newsShown(view, last));
 }
 
 /** `shown`'s ideas that `allowed` lets through, each with the position it is checked in. */
