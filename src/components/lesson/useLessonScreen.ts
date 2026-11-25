@@ -26,7 +26,7 @@ import {
   shareSource,
 } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
-import { type Cue, cueControls } from '@/opportunity/cue';
+import { type Cue, cueControls, unanswered } from '@/opportunity/cue';
 import { describeOpponent } from '@/opponent/opponent';
 import { getLesson, LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { reviewHref } from '@/review/address';
@@ -186,8 +186,9 @@ export function useLessonScreen({
       tried: game.plies[acts.cue.ply + 1]?.move?.san,
     };
   // The card is for notes, or for the notes of a candidate pointed at.
-  // Stockfish's moves have none of their own.
-  const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
+  // Stockfish's moves have none of their own, and an open cue's revealed
+  // reply can't be pointed at.
+  const ideaCard = guidance.notes.length > 0 || (guidance.candidates.length > 0 && !acts?.live);
   const names = pathNames(view.variation);
   const { result } = game.latest;
   const ending = shownEnding(
@@ -378,6 +379,7 @@ export function useLessonScreen({
             found: acts.found,
             payoff: acts.payoff,
             line: headline.detail,
+            asking: unanswered(acts.found),
             onRetry: controls.retry ? retryCue : undefined,
             onShow: controls.show ? showCue : undefined,
             onSkip: controls.skip ? skipCue : undefined,

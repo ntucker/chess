@@ -24,7 +24,8 @@ export function acceptsReply(
   uci: Uci,
 ): boolean | undefined {
   const rank = after.lines.findIndex((line) => line.uci === uci);
-  if (rank <= 0) return rank === 0;
+  if (rank === -1) return false;
+  if (rank === 0) return true;
   if (!before) return undefined;
   const quality = judgement(after, undefined, uci, side)?.quality;
   const good = quality === 'best' || quality === 'good';

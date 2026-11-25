@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import type { LessonView } from '@/lesson/view';
 
-import { describeStatus, headlineNews, shownEnding, whyReviewShut } from './status';
+import { type CueStatus, describeStatus, headlineNews, shownEnding, whyReviewShut } from './status';
 
 const INPUT = {
   picking: false,
@@ -39,7 +39,7 @@ describe('describeStatus', () => {
       describeStatus(view('inside'), { ...INPUT, cue: { ...cue, found: 'open', payoff: 'ahead' } }),
     ).toMatchObject({
       title: 'Your cue.',
-      titleTip: "About 31% of players at your opponent's rating play Nxe5 here.",
+      titleTip: "About 31% of players at your opponent's rating make this mistake here.",
       detail: 'Nxe5 is a mistake. Find the move that punishes it.',
       news: 'none',
     });
@@ -55,6 +55,26 @@ describe('describeStatus', () => {
         cue: { ...cue, found: 'passed', payoff: 'playing' },
       }),
     ).toMatchObject({ title: 'The payoff.', news: 'all' });
+  });
+
+  it('words each cue state', () => {
+    const cue = { mistake: 'Nxe5', reply: 'c6', tried: 'a6' } as const;
+    const headline = (found: CueStatus['found'], payoff: CueStatus['payoff'] = 'ahead') =>
+      describeStatus(view('inside'), { ...INPUT, cue: { ...cue, found, payoff } });
+    expect(headline('shown')).toMatchObject({
+      title: 'Your cue.',
+      detail: 'c6 punishes Nxe5. Play it.',
+    });
+    expect(headline('pending')).toMatchObject({
+      title: 'Checking your move…',
+      detail: 'Does a6 punish Nxe5?',
+    });
+    expect(headline('unchecked')).toMatchObject({ title: 'Couldn’t check it.' });
+    expect(headline('passed', 'none')).toMatchObject({
+      title: 'Found it.',
+      detail: 'a6 punishes Nxe5.',
+    });
+    expect(headline('passed', 'done')).toMatchObject({ title: 'Payoff complete.', news: 'all' });
   });
 
   it('leaves it out inside the guide', () => {

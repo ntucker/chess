@@ -750,7 +750,7 @@ describe('guidance', () => {
       }
     });
 
-    it("shows a trap the learner fell into on its own card, inside a cue's acts too", () => {
+    it('shows a trap the learner fell into on its own card, with a cue given too', () => {
       expect(shown(LANDED, 'explore').trapIn).toBe('card');
       expect(shown(LANDED, 'explore', {}, { cue: { open: false } }).trapIn).toBe('card');
       expect(shown(TRAP, 'explore').trapIn).toBeUndefined();

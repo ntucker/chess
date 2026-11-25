@@ -100,6 +100,9 @@ export function tryVerdict(
   return accepted ? 'passed' : 'failed';
 }
 
+/** The final answer a pending verdict waits on: the cue's, then the position before the mistake's. */
+export const verdictWaitsOn = ({ cue }: CueAnalyses): 'cue' | 'before' => (cue ? 'before' : 'cue');
+
 /**
  * The lesson opponent's choice through the payoff: at each position of the
  * cue's line, the line's move, so the payoff the learner plays is the one

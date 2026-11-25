@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { type IconAction, IconActions } from '@/components/IconActions';
 import { Notation } from '@/components/Notation';
-import { type Acts, type Found, type Payoff, unanswered } from '@/opportunity/cue';
+import type { Acts, Found, Payoff } from '@/opportunity/cue';
 import { fonts } from '@/theme/theme';
 
 import { PastNote } from './IdeaCard';
@@ -14,6 +14,8 @@ import { PastNote } from './IdeaCard';
 export interface ActsModel extends Pick<Acts, 'found' | 'payoff'> {
   /** The headline's detail, for a phone's pane, where the headline leaves it out. */
   readonly line: string;
+  /** The cue's question still stands (no try has passed): its controls show. */
+  readonly asking: boolean;
   /** Back to the cue, after a try that didn't pass; undefined when it does nothing. */
   readonly onRetry?: () => void;
   /** The reply, drawn on the board; undefined once shown or passed. */
@@ -165,7 +167,7 @@ export function ActsCard({ acts }: { readonly acts: ActsModel }) {
     >
       <Stack gap="3">
         <ActRows acts={acts} direction="row" />
-        {unanswered(acts.found) ? <CueControls {...acts} /> : null}
+        {acts.asking ? <CueControls {...acts} /> : null}
         {acts.note ? <PastNote {...acts.note} /> : null}
       </Stack>
     </Surface>

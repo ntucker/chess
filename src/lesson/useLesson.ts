@@ -10,18 +10,25 @@
  */
 import { StateContext, useController, useSubscription, useSuspense } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
-import { use, useEffect, useMemo, useReducer } from 'react';
+import { use, useEffect, useMemo, useReducer, useRef } from 'react';
 
 import { type EngineVerdict, engineVerdict } from '@/analysis/quality';
 import type { Square } from '@/board/drawing';
 import type { Drag } from '@/board/pointer';
 import type { BoardProps } from '@/components/Board';
-import { dropMove, parsePositionKey } from '@/game/replay';
 import { haptic } from '@/components/haptics';
+import { dropMove, parsePositionKey } from '@/game/replay';
 import { type GameStore, useGame } from '@/game/useGame';
 import { finalOnly, isFinal } from '@/evaluation/evaluation';
 import { analysisError, getAnalysis, storedAnalyses, useAnalysis } from '@/resources/analysis';
-import { type Acts, cueActs, inActs, payoffReplies, tryVerdict } from '@/opportunity/cue';
+import {
+  type Acts,
+  cueActs,
+  inActs,
+  payoffReplies,
+  tryVerdict,
+  verdictWaitsOn,
+} from '@/opportunity/cue';
 import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
 import { hasMark, UNTOUCHED } from '@/progress/progress';
 import { LessonIndexContext } from '@/resources/lesson';
@@ -259,11 +266,14 @@ export function useLesson(
     refutation: game.refutation,
     cue,
   });
-  // The cue is felt as it lands: the mistake just played, at the game's latest move.
-  const landed = acts?.live && moves.length === acts.cue.ply ? acts.cue.key : undefined;
+  // The cue is felt as it lands: when the mistake is played, not when the
+  // board steps back onto it or the screen opens there.
+  const landed = acts?.live && moves.length === acts.cue.ply;
+  const playedBefore = useRef(moves.length);
   useEffect(() => {
-    if (landed) haptic('moveLanded');
-  }, [landed]);
+    if (landed && playedBefore.current < moves.length) haptic('moveLanded');
+    playedBefore.current = moves.length;
+  }, [landed, moves.length]);
   // The board's own move's label comes first: it needs the position before
   // too. If that search gave up, the label never comes, so don't wait for it.
   const labelled =
@@ -470,11 +480,14 @@ function useActs(
     (line) => analysisError(ctrl, 'stockfish', line, state) !== undefined,
   );
   const tried = cue && moves[cue.ply];
-  const verdict =
-    cue && tried !== undefined
-      ? tryVerdict(lesson, cue, tried, { before, cue: after, beforeFailed, cueFailed })
+  const analyses = { before, cue: after, beforeFailed, cueFailed };
+  const verdict = cue && tried !== undefined ? tryVerdict(lesson, cue, tried, analyses) : undefined;
+  const waitsOn =
+    focused && verdict === 'pending'
+      ? verdictWaitsOn(analyses) === 'cue'
+        ? cueLine
+        : beforeLine
       : undefined;
-  const waitsOn = focused && verdict === 'pending' ? (after ? beforeLine : cueLine) : undefined;
   useSubscription(
     getAnalysis,
     ...(waitsOn ? (['stockfish', waitsOn] as const) : ([null] as const)),

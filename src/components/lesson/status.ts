@@ -267,7 +267,7 @@ export function cueHeadline({
         titleTip:
           share === undefined
             ? undefined
-            : `About ${percent(share)} of players at your opponent's rating play ${mistake} here.`,
+            : `About ${percent(share)} of players at your opponent's rating make this mistake here.`,
         detail: `${mistake} is a mistake. Find the move that punishes it.`,
       };
     case 'shown':

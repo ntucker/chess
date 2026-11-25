@@ -6,8 +6,6 @@ import { ScoresheetReview } from '@/components/ReviewLinks';
 import { FadingScroll } from '@/theme/Narrow';
 
 import { CandidateList, COMPACT_INSET } from '../CandidateList';
-import { unanswered } from '@/opportunity/cue';
-
 import { ActRows, CuePane } from '../CueActs';
 import { IdeaAside, IdeaCard, PastNote } from '../IdeaCard';
 import { PointingArea } from '../PointingArea';
@@ -48,7 +46,7 @@ export function PhoneLesson({
   ) : moves ? (
     <CandidateList {...moves} density="compact" />
   ) : null;
-  const ideaPane = besideMoves(model);
+  const sidePane = paneBesideMoves(model);
   return (
     <PhonePages
       head={
@@ -83,19 +81,19 @@ export function PhoneLesson({
     >
       {/* Leaving a row for the idea keeps its preview, so its notes can be pointed at. */}
       {/* Practice can hide both, and then the panes take no room. */}
-      {movesPane || ideaPane ? (
+      {movesPane || sidePane ? (
         <PointingArea onLeave={model.onLeave} style={styles.panes}>
           {movesPane ? (
-            <FadingScroll style={[ideaPane ? styles.moves : styles.pane, !acts && styles.bleed]}>
+            <FadingScroll style={[sidePane ? styles.moves : styles.pane, !acts && styles.bleed]}>
               {movesPane}
             </FadingScroll>
           ) : null}
-          {movesPane && ideaPane ? (
+          {movesPane && sidePane ? (
             <Separator orientation="vertical" style={styles.hairline} />
           ) : null}
-          {ideaPane ? (
+          {sidePane ? (
             <FadingScroll style={styles.pane} contentStyle={styles.idea}>
-              {ideaPane}
+              {sidePane}
             </FadingScroll>
           ) : null}
         </PointingArea>
@@ -109,8 +107,8 @@ export function PhoneLesson({
  * guide's note on the mistake; else the idea, or past the guide the
  * headline's why.
  */
-function besideMoves({ acts, idea, aside }: LessonScreenModel) {
-  if (acts && unanswered(acts.found)) return <CuePane acts={acts} />;
+function paneBesideMoves({ acts, idea, aside }: LessonScreenModel) {
+  if (acts?.asking) return <CuePane acts={acts} />;
   if (acts?.note) return <PastNote {...acts.note} />;
   if (idea) return <IdeaCard {...idea} density="compact" />;
   if (!aside) return null;
