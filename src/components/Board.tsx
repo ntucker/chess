@@ -245,8 +245,21 @@ export default function Board({
       drawable: { brushes: toneBrushes as DrawBrushes },
     });
     api.current = board;
+    // The first paint is reported once, after the board has a size to draw
+    // in: a frame's callbacks run before it paints, so the second frame's run
+    // after the first's paint.
+    let paintFrame = 0;
+    let paintReported = false;
+    const reportPaint = () => {
+      if (paintReported || !sized.current) return;
+      paintReported = true;
+      paintFrame = requestAnimationFrame(() => {
+        paintFrame = requestAnimationFrame(handleDrawn);
+      });
+    };
     const { width, height } = target.getBoundingClientRect();
     sized.current = width > 0 && height > 0;
+    reportPaint();
     // Made after chessground's own observer, which ResizeObserver notifies
     // first, so chessground has measured the board by the time this runs.
     const resizes = new ResizeObserver(([entry]) => {
@@ -256,10 +269,7 @@ export default function Board({
         pending.current = true;
       }
       catchUp();
-      if (paintOwed && sized.current) {
-        paintOwed = false;
-        reportPaint();
-      }
+      reportPaint();
     });
     resizes.observe(target);
     const stopWatching = watchDrag<Square>(
@@ -273,21 +283,6 @@ export default function Board({
       handleDrag,
     );
     const stopWatchingEnding = watchBoardPointer(target, showsEnding, handleEndingPointer);
-    // The first paint is reported once the board has a size to draw in: a
-    // frame's callbacks run before it paints, so the second frame's run after
-    // the first's paint. Unsized then, it is reported after the paint that
-    // follows its first size.
-    let paintFrame = 0;
-    let paintOwed = false;
-    const reportPaint = () => {
-      paintFrame = requestAnimationFrame(() => {
-        paintFrame = requestAnimationFrame(() => {
-          if (sized.current) handleDrawn();
-          else paintOwed = true;
-        });
-      });
-    };
-    reportPaint();
     return () => {
       cancelAnimationFrame(paintFrame);
       cancelAnimationFrame(frame.current);
