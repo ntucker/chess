@@ -3,11 +3,12 @@
  * Checks the exported web app's phone layout in a real browser, which the
  * jsdom tests can't: they have no layout engine. It serves the export, opens
  * each board page at three phone sizes, and checks that the page fits the
- * screen without scrolling, the board keeps its floor and is whole and in
- * view with its name bars, the panel under it keeps its floor, no scroll
- * view runs past a box that clips it without scrolling, and the board is the same size on
- * every page at one screen size, whatever sits under it (pages with controls
- * under the panel, a footed panel, have their own size). Screenshots of each
+ * screen without scrolling, the board's frame keeps its floor and the board
+ * fills it, the board is whole and in view with its name bars, the panel
+ * under it keeps its floor, no scroll view runs past a box that clips it
+ * without scrolling, and the board is the same size on every page at one
+ * screen size, whatever sits under it (pages with controls under the panel,
+ * a footed panel, have their own size). Screenshots of each
  * state land in the output folder.
  *
  *   yarn expo export --platform web
@@ -108,6 +109,8 @@ function measure({ board, frame }) {
   const part = (name) => `[data-narrow='${name}']`;
   const program = document.querySelector(`${part('program')}, ${part('footed-program')}`);
   const overflow = (element) => getComputedStyle(element).overflowY;
+  const frameView = document.querySelector(frame);
+  const frameStyle = frameView && getComputedStyle(frameView);
   return {
     screen: { width: innerWidth, height: innerHeight },
     // React Native Web scrolls a view inside the document, so the page's own box shows whether it fits.
@@ -116,6 +119,10 @@ function measure({ board, frame }) {
     pageWidth: document.querySelector(part('page'))?.scrollWidth,
     board: box(board),
     frame: box(frame),
+    frameBorder:
+      frameStyle &&
+      parseFloat(frameStyle.borderLeftWidth) + parseFloat(frameStyle.borderRightWidth),
+    pixelRatio: devicePixelRatio,
     column: box(part('board-column')),
     program: program?.getBoundingClientRect().toJSON(),
     boardMin: parseFloat(
@@ -141,6 +148,8 @@ function problems({
   pageWidth,
   board,
   frame,
+  frameBorder,
+  pixelRatio,
   column,
   program,
   boardMin,
@@ -167,6 +176,11 @@ function problems({
   }
   if (frame.width < boardMin - SLACK) {
     issues.push(`the board's frame is ${frame.width}px, under ${boardMin}`);
+  }
+  // Chessground fills the frame inside its border, in whole device pixels per square (render.js).
+  const filled = Math.floor(((frame.width - frameBorder) * pixelRatio) / 8) * (8 / pixelRatio);
+  if (Math.abs(board.width - filled) > SLACK) {
+    issues.push(`the board is ${board.width}px, ${filled}px would fill its frame`);
   }
   if (board.left < -SLACK || board.right > screen.width + SLACK) {
     issues.push('the board runs off the side');
