@@ -5883,6 +5883,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"expo-application@npm:~58.1.2":
+  version: 58.1.2
+  resolution: "expo-application@npm:58.1.2"
+  peerDependencies:
+    expo: "*"
+  checksum: 10c0/73928e60fea00d0f786154a7204b7c98b410667fd669121d7b0e65da07a44deeefaf76b05910db47b6631807990036cf522b6acdb1781741dfd5d7afbb279063
+  languageName: node
+  linkType: hard
+
 "expo-asset@npm:~58.0.21":
   version: 58.0.21
   resolution: "expo-asset@npm:58.0.21"
@@ -5897,6 +5906,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"expo-auth-session@npm:~58.0.19":
+  version: 58.0.19
+  resolution: "expo-auth-session@npm:58.0.19"
+  dependencies:
+    expo-application: "npm:~58.1.2"
+    expo-constants: "npm:~58.0.16"
+    expo-crypto: "npm:~58.0.8"
+    expo-linking: "npm:~58.0.17"
+    expo-web-browser: "npm:~58.1.0"
+    invariant: "npm:^2.2.4"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/be80aaf423176e2244359619c61e5835b1ffc592deb3ca20b37af4ece4f02634914f5e8e4d7cdeb72171e45a91376ff5beeb2dfcbbc768717436e940bdd473af
+  languageName: node
+  linkType: hard
+
 "expo-constants@npm:~58.0.16":
   version: 58.0.16
   resolution: "expo-constants@npm:58.0.16"
@@ -5907,6 +5933,15 @@ __metadata:
     expo: "*"
     react-native: "*"
   checksum: 10c0/3dbd1aa5736d9a2be9482fece8a14a3b367a5620774fb35525998830c8e21db783fb1924b90be26cf01ea93c305a68a55f74ce2555d6622649a80df557591cd2
+  languageName: node
+  linkType: hard
+
+"expo-crypto@npm:~58.0.8":
+  version: 58.0.8
+  resolution: "expo-crypto@npm:58.0.8"
+  peerDependencies:
+    expo: "*"
+  checksum: 10c0/f678e930391dd8ef46b5f4f9ace8ce95c49bd910f7a428cddede0753151d5e3fce21951a3788979ef0fa159c65bb118e14cb60dc3016daea3d41d2a79d7b5a2c
   languageName: node
   linkType: hard
 
@@ -6173,6 +6208,16 @@ __metadata:
     react-native-web:
       optional: true
   checksum: 10c0/d09de8e33c5c7324199316edf486de9fede527281e28f82435cf288a3b8252deeea9b5b79c563d155791b87b644c3715279444bd605b6f385863e344ac7e003e
+  languageName: node
+  linkType: hard
+
+"expo-web-browser@npm:~58.1.0":
+  version: 58.1.0
+  resolution: "expo-web-browser@npm:58.1.0"
+  peerDependencies:
+    expo: "*"
+    react-native: "*"
+  checksum: 10c0/4c8f14b5d8f4bd083a3ceec11bfb5e432fcacf39c258760da9a7bcacfe2654c4e38f3fe070bf00addb27ac247917030832a24dc79273d1c05a18e3dc1d0d0677
   languageName: node
   linkType: hard
 
@@ -9548,6 +9593,7 @@ __metadata:
     eslint-config-expo: "npm:~58.0.4"
     expo: "npm:~58.0.26"
     expo-asset: "npm:~58.0.21"
+    expo-auth-session: "npm:~58.0.19"
     expo-constants: "npm:~58.0.16"
     expo-file-system: "npm:~58.0.14"
     expo-font: "npm:~58.0.12"
@@ -9557,6 +9603,7 @@ __metadata:
     expo-splash-screen: "npm:~58.0.14"
     expo-sqlite: "npm:~58.0.18"
     expo-system-ui: "npm:~58.0.7"
+    expo-web-browser: "npm:~58.1.0"
     jest: "npm:^30.5.2"
     jest-expo: "npm:~58.0.15"
     playwright: "npm:1.63.0"

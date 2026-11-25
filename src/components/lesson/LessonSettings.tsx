@@ -1,7 +1,8 @@
-import { Stack } from '@reactive/silk-native';
+import { Inline, Stack } from '@reactive/silk-native';
 import type { ComponentProps } from 'react';
 
 import { useSections } from '@/components/Eyebrow';
+import { LichessAccount } from '@/components/LichessAccount';
 import { Sheet } from '@/components/Sheet';
 import { SourceFootnote } from '@/components/SourceLink';
 import { OpponentStrength } from '@/components/StrengthSlider';
@@ -25,15 +26,26 @@ interface Props extends ComponentProps<typeof LessonControls> {
 }
 
 /**
- * A phone's lesson settings, in a sheet: the theme beside its title, then
+ * A phone's lesson settings, in a sheet: the lichess account and the theme
+ * beside its title, then
  * the side the learner plays, the lesson's switches, the opponent's
  * strength, and the sources. A wide page shows these around the board, and
- * its header has the theme, so the sheet is a phone's alone.
+ * its header has the account and the theme, so the sheet is a phone's alone.
  */
 export function LessonSettings({ open, onClose, learner, onPlayAs, sources, ...controls }: Props) {
   const sections = useSections();
   return (
-    <Sheet open={open} title="Settings" aside={<ThemeChoice />} onClose={onClose}>
+    <Sheet
+      open={open}
+      title="Settings"
+      aside={
+        <Inline gap="2" align="center" wrap="nowrap">
+          <LichessAccount />
+          <ThemeChoice />
+        </Inline>
+      }
+      onClose={onClose}
+    >
       <Stack style={sections}>
         {/* A phone's name-bar discs are dots too small to find; this swaps sides from the sheet, in a lesson too. */}
         <SideChoice side={learner} onChange={onPlayAs} />

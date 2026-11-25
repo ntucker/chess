@@ -1,4 +1,4 @@
-import { useController } from '@data-client/react';
+import { useController, useDLE } from '@data-client/react';
 import { useIsFocused } from 'expo-router';
 import { type ComponentProps, use, useMemo, useState } from 'react';
 
@@ -29,10 +29,13 @@ import {
   shareSource,
 } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
+import { ratingBand } from '@/lichess/explorer';
 import { MAIA_RATINGS } from '@/maia/ratings';
 import type { Cue } from '@/opportunity/cue';
 import { useFinder } from '@/opportunity/useFinder';
+import type { ReplySource } from '@/opportunity/walk';
 import { describeOpponent, isStockfish, type Opponent } from '@/opponent/opponent';
+import { getAccounts } from '@/resources/accounts';
 import { getLesson, LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { reviewHref } from '@/review/address';
 import { useSettings } from '@/settings/SettingsProvider';
@@ -445,9 +448,10 @@ export function useLessonScreen({
 /**
  * The opportunity finder on the lesson `picked`, for its list: run from the
  * position the board showed when the learner last asked, while `active`
- * (Explore, in front). The replies it reads are Maia's at the opponent's
- * rating, the top network's against Stockfish. Another lesson starts with
- * none.
+ * (Explore, in front). The replies it reads are lichess's games in the
+ * opponent's band when the learner signed in with lichess, else Maia's at the
+ * opponent's rating; against Stockfish, the top band or network. Another
+ * lesson starts with none.
  */
 function useLessonFinder(
   picked: Lesson | undefined,
@@ -457,15 +461,23 @@ function useLessonFinder(
 ): FinderProps {
   const [from, setFrom] = useState<{ readonly lesson: Lesson; readonly line: readonly Uci[] }>();
   const line = picked && from?.lesson === picked ? from.line : undefined;
-  const rating = isStockfish(opponent) ? MAIA_RATINGS.at(-1)! : opponent;
+  // Until the device answers, Maia's: a run starts only once the learner asks.
+  const signedIn = !!useDLE(getAccounts).data?.lichess;
+  const source = useMemo(
+    (): ReplySource =>
+      signedIn
+        ? { from: 'lichess', band: ratingBand(isStockfish(opponent) ? Infinity : opponent) }
+        : { from: 'maia', rating: isStockfish(opponent) ? MAIA_RATINGS.at(-1)! : opponent },
+    [signedIn, opponent],
+  );
   const ask = useMemo(
-    () => picked && line && { line, side: picked.side, rating, lesson: picked },
-    [picked, line, rating],
+    () => picked && line && { line, side: picked.side, source, lesson: picked },
+    [picked, line, source],
   );
   return {
     run: useFinder(active ? ask : undefined),
     from: !line ? 'none' : sameLine(line, shownLine) ? 'here' : 'elsewhere',
-    rating,
+    source,
     onFind: () => picked && setFrom({ lesson: picked, line: shownLine }),
   };
 }

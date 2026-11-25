@@ -22,9 +22,10 @@ import type { Lesson, PositionKey, Uci } from '@/lesson/lesson';
 import { opportunityMarks } from '@/lesson/marks';
 import { markId } from '@/lesson/mistakes';
 import { lessonOpportunities, type Opportunity } from '@/lesson/opportunities';
-import type { MaiaRating } from '@/maia/ratings';
+import { bandRatings } from '@/lichess/explorer';
 import type { Find } from '@/opportunity/finder';
 import type { FinderRun } from '@/opportunity/useFinder';
+import type { ReplySource } from '@/opportunity/walk';
 import type { Mark, MarkedPositions } from '@/progress/progress';
 import type { Density } from '@/theme/Narrow';
 import { fonts } from '@/theme/theme';
@@ -58,8 +59,8 @@ export interface FinderProps {
    * shows, or another one (its finds are from there).
    */
   readonly from: 'none' | 'here' | 'elsewhere';
-  /** Whose estimate of the replies it reads (`FinderAsk.rating`), named on its source chip. */
-  readonly rating: MaiaRating;
+  /** Where its replies come from (`FinderAsk.source`), named on its source chip. */
+  readonly source: ReplySource;
   /** Runs the finder from the position the board shows. */
   readonly onFind: () => void;
 }
@@ -132,7 +133,7 @@ export function OpportunityList({
  * got there. A spinner shows while it runs.
  */
 function FinderPart({
-  finder: { run, from, rating, onFind },
+  finder: { run, from, source, onFind },
   listed,
   styles,
   onPlay,
@@ -146,6 +147,7 @@ function FinderPart({
   const found = useMemo(() => run.finds.map(findRow), [run.finds]);
   // Each find leads to its own position (the finder keeps one per position), so `next` keys its row.
   const rows = found.filter(({ next }) => !listed.has(next));
+  const chip = sourceChip(source);
   // Done where it runs from: it found nothing, or an answer failed (the button retries).
   const done = from === 'here' && !run.running;
   const note = !done
@@ -161,9 +163,9 @@ function FinderPart({
         <HeadingTip tip={FINDER_TIP}>
           <Eyebrow>{from === 'elsewhere' ? 'From another position' : 'From this position'}</Eyebrow>
         </HeadingTip>
-        <Tip tip={sourceTip(rating)}>
+        <Tip tip={chip.tip}>
           <Badge variant="soft" tone="neutral" size="sm">
-            {`Maia ${rating}`}
+            {chip.label}
           </Badge>
         </Tip>
         {run.running ? (
@@ -204,9 +206,17 @@ const SEARCHING_TIP = 'Searching on this device: the first finds take a few minu
 const FINDER_TIP =
   "Looks for the opponent's likely mistakes from the board's position, on this device: Stockfish judges each reply players are likely to make. Each find joins the list once confirmed; the whole search takes a while.";
 
-/** What the finder's shares are: Maia's estimate at `rating`, never counted games. */
-const sourceTip = (rating: MaiaRating) =>
-  `Estimates: how often players rated about ${rating} play each move is Maia ${rating}'s guess, not counted games, so these rows rank apart from the guide's.`;
+/** The finder's source chip: whose replies, and what they are (counted games, or Maia's estimate). */
+const sourceChip = (source: ReplySource) =>
+  source.from === 'lichess'
+    ? {
+        label: `lichess ${bandRatings(source.band)}`,
+        tip: `Counted: how often lichess players rated ${bandRatings(source.band)} play each move, from lichess's opening explorer with your account. These rows rank apart from the guide's.`,
+      }
+    : {
+        label: `Maia ${source.rating}`,
+        tip: `Estimates: how often players rated about ${source.rating} play each move is Maia ${source.rating}'s guess, not counted games, so these rows rank apart from the guide's. Sign in with lichess to count real games.`,
+      };
 
 /** What the list ranks and what its rows' meters show, against `players` where counted. */
 const listTip = (players: string | undefined) =>

@@ -8,6 +8,9 @@ import { AnalysisManager, getAnalysis, PositionAnalysis } from '@/resources/anal
 import { getMaiaShares } from '@/resources/maia';
 import { listing } from '@/review/review.fixture';
 
+import { lineKeys } from '@/lesson/select';
+import * as explorer from '@/resources/explorer';
+
 import * as finder from './finder';
 import { type FinderAsk, type FinderRun, useFinder } from './useFinder';
 
@@ -35,7 +38,7 @@ jest.mock('@/stockfish/demand', () => ({
 
 /** The Stafford Gambit after 4...dxc6, White to move. */
 const STAFFORD: readonly Uci[] = ['e2e4', 'e7e5', 'g1f3', 'g8f6', 'f3e5', 'b8c6', 'e5c6', 'd7c6'];
-const ASK: FinderAsk = { line: STAFFORD, side: 'white', rating: 1500 };
+const ASK: FinderAsk = { line: STAFFORD, side: 'white', source: { from: 'maia', rating: 1500 } };
 
 let root: Root | undefined;
 const controllers: Controller[] = [];
@@ -151,5 +154,18 @@ describe('useFinder', () => {
     mockShares.mockClear();
     await act(async () => runs.at(-1)!.retry!());
     expect(mockShares).toHaveBeenCalledWith(1500, [...STAFFORD, 'd2d3']);
+  });
+
+  it("asks lichess's explorer for the replies when that is the run's source, never Maia", async () => {
+    const counted = { counts: { a7a6: 900, h7h6: 100 }, total: 1000 };
+    const asked: [number, string][] = [];
+    jest.spyOn(explorer.getExplorerCounts, 'fetch').mockImplementation(async (band, key) => {
+      asked.push([band, key]);
+      return counted;
+    });
+    await render({ ...ASK, source: { from: 'lichess', band: 1400 } });
+    await analyse(STAFFORD, 'd2d3');
+    expect(asked).toEqual([[1400, lineKeys([...STAFFORD, 'd2d3']).at(-1)]]);
+    expect(mockShares).not.toHaveBeenCalled();
   });
 });

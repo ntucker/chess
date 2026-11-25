@@ -1,11 +1,16 @@
-import { StateContext, useController, useSubscription } from '@data-client/react';
+import {
+  type Controller,
+  type State,
+  StateContext,
+  useController,
+  useSubscription,
+} from '@data-client/react';
 import { INITIAL_FEN } from 'chessops/fen';
 import { use, useDeferredValue, useEffect, useMemo } from 'react';
 
 import type { Color } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { guideOrder } from '@/lesson/mistakes';
-import type { MaiaRating } from '@/maia/ratings';
 import {
   analysisError,
   analysisKey,
@@ -13,11 +18,20 @@ import {
   getAnalysisBehind,
   PositionAnalysis,
 } from '@/resources/analysis';
+import { type ExplorerCounts, getExplorerCounts } from '@/resources/explorer';
 import { getMaiaShares } from '@/resources/maia';
 import { useNeedsStockfish } from '@/stockfish/demand';
 
 import { byScore, type Find, findOpportunities, keeps } from './finder';
-import { type Answers, maiaReplies } from './walk';
+import { MIN_GAMES } from './limits';
+import {
+  type Answers,
+  maiaReplies,
+  type Replies,
+  repliesFrom,
+  type ReplySource,
+  type Spot,
+} from './walk';
 
 /** Where a run of the finder opens, and whose replies it reads. */
 export interface FinderAsk {
@@ -25,8 +39,8 @@ export interface FinderAsk {
   readonly line: readonly Uci[];
   /** The side looking for opportunities: the one that punishes. */
   readonly side: Color;
-  /** The Maia network whose shares stand in for the opponents' replies. */
-  readonly rating: MaiaRating;
+  /** Where the opponents' replies come from: lichess's games in a band, or a Maia network's estimate. */
+  readonly source: ReplySource;
   /** A lesson whose guide the punishing side follows where it has moves (`guideOrder`). */
   readonly lesson?: Lesson;
 }
@@ -37,7 +51,7 @@ export interface FinderRun {
   readonly finds: readonly Find[];
   /**
    * Whether answers it can ask for are still missing: the run goes on. One
-   * that failed (Stockfish gave up, Maia's network threw) is not asked again,
+   * that failed (Stockfish gave up, Maia's network threw, lichess refused) is not asked again,
    * so the run can end without what lies beyond it.
    */
   readonly running: boolean;
@@ -45,12 +59,15 @@ export interface FinderRun {
   readonly retry?: () => void;
 }
 
-/** How many of Maia's answers are asked for at once: its worker answers one after another. */
-const MAIA_AT_ONCE = 4;
+/**
+ * How many replies are asked for at once: Maia's worker answers one after
+ * another, and lichess's explorer one request every 2.5 s (`pacedExplorer`).
+ */
+const REPLIES_AT_ONCE = 4;
 
 /**
  * The opportunity finder run from `ask` in the app: a pure function of the
- * answers the store has (Maia's shares at `ask.rating`, Stockfish lite's
+ * answers the store has (the replies from `ask.source`, Stockfish lite's
  * analyses), worked out again as they arrive, so nothing is stored but the
  * answers. It asks for the missing ones: Maia's a few at a time, and
  * Stockfish's one at a time behind every search a screen shows
@@ -59,7 +76,8 @@ const MAIA_AT_ONCE = 4;
  * asked for.
  *
  * ```ts
- * const run = useFinder(focused ? { line, side: 'white', rating: 1500 } : undefined);
+ * const source = { from: 'maia', rating: 1500 } as const;
+ * const run = useFinder(focused ? { line, side: 'white', source } : undefined);
  * run.finds[0]?.mistake;
  * ```
  */
@@ -70,12 +88,10 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
   const state = useDeferredValue(use(StateContext));
   const result = useMemo(() => {
     if (!ask) return undefined;
-    const { line, side, rating, lesson } = ask;
+    const { line, side, source, lesson } = ask;
+    const replies = storedReplies(ctrl, source, state);
     const answers: Answers = {
-      replies: (spot) => {
-        const shares = ctrl.getResponse(getMaiaShares, rating, spot.line, state).data;
-        return shares && maiaReplies(shares);
-      },
+      replies: (spot) => replies(spot).replies,
       analysis: (spot) => ctrl.get(PositionAnalysis, analysisKey('stockfish', spot.line), state),
       guideMoves: lesson
         ? ({ key }) => {
@@ -93,7 +109,7 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
     // An answer that failed is not asked again: the walk goes on where it can.
     const isFailed = ({ kind, spot }: (typeof requests)[number]) =>
       kind === 'replies'
-        ? ctrl.getError(getMaiaShares, rating, spot.line, state) !== undefined
+        ? replies(spot).failed
         : analysisError(ctrl, 'stockfish', spot.line, state) !== undefined;
     return {
       asking: requests.filter((request) => !isFailed(request)),
@@ -109,18 +125,18 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
     getAnalysisBehind,
     ...(search ? (['stockfish', search.spot.line] as const) : ([null] as const)),
   );
-  // As text, so the effect runs again only when the lines asked for change.
+  // As text, so the effect runs again only when the positions asked about change.
   const wanted = JSON.stringify(
     asking
       .filter(({ kind }) => kind === 'replies')
-      .slice(0, MAIA_AT_ONCE)
-      .map(({ spot }) => spot.line),
+      .slice(0, REPLIES_AT_ONCE)
+      .map(({ spot }) => spot),
   );
   useEffect(() => {
     if (!ask) return;
-    for (const line of JSON.parse(wanted) as Uci[][]) {
+    for (const spot of JSON.parse(wanted) as Spot[]) {
       // A failure is stored as the answer's error, which ends asking for it.
-      void ctrl.fetchIfStale(getMaiaShares, ask.rating, line);
+      void askReplies(ctrl, ask.source, spot);
     }
   }, [ask, ctrl, wanted]);
 
@@ -128,16 +144,50 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
   return {
     finds: result?.finds ?? [],
     running: asking.length > 0,
-    // Clearing an answer's error asks for it again: Maia's through the effect, Stockfish's
+    // Clearing an answer's error asks for it again: the replies through the effect, Stockfish's
     // through the manager, which restarts a search that gave up once it is invalidated.
     retry:
       ask && failed.length
         ? () => {
             for (const { kind, spot } of failed) {
-              if (kind === 'replies') void ctrl.invalidate(getMaiaShares, ask.rating, spot.line);
+              if (kind === 'replies') void askReplies(ctrl, ask.source, spot, true);
               else void ctrl.invalidate(getAnalysis, 'stockfish', spot.line);
             }
           }
         : undefined,
   };
+}
+
+/** The store's replies at a spot from `source`, and whether asking for them failed. */
+function storedReplies(ctrl: Controller, source: ReplySource, state: State<unknown>) {
+  return (spot: Spot): { replies?: Replies; failed: boolean } => {
+    if (source.from === 'maia') {
+      const shares = ctrl.getResponse(getMaiaShares, source.rating, spot.line, state).data;
+      return {
+        replies: shares && maiaReplies(shares),
+        failed: ctrl.getError(getMaiaShares, source.rating, spot.line, state) !== undefined,
+      };
+    }
+    // Data Client types a schema-less endpoint's stored answer as undefined.
+    const counted = ctrl.getResponse(getExplorerCounts, source.band, spot.key, state).data as
+      ExplorerCounts | undefined;
+    return {
+      replies: counted && repliesFrom(spot.key, counted.counts, MIN_GAMES, counted.total),
+      failed: ctrl.getError(getExplorerCounts, source.band, spot.key, state) !== undefined,
+    };
+  };
+}
+
+/** Asks for the replies at `spot` from `source` if the store lacks them, or `again`. */
+function askReplies(ctrl: Controller, source: ReplySource, spot: Spot, again = false) {
+  if (source.from === 'maia') {
+    const args = [source.rating, spot.line] as const;
+    return again
+      ? ctrl.invalidate(getMaiaShares, ...args)
+      : ctrl.fetchIfStale(getMaiaShares, ...args);
+  }
+  const args = [source.band, spot.key] as const;
+  return again
+    ? ctrl.invalidate(getExplorerCounts, ...args)
+    : ctrl.fetchIfStale(getExplorerCounts, ...args);
 }

@@ -28,9 +28,12 @@ jest.mock('@/stockfish/demand', () => mockStandIns().demand);
 const mockUseFinder = jest.fn((_ask: unknown) => ({ finds: [], running: false }));
 jest.mock('@/opportunity/useFinder', () => ({ useFinder: (ask: unknown) => mockUseFinder(ask) }));
 const mockFetchIfStale = jest.fn((..._args: unknown[]) => {});
-jest.mock('@data-client/react', () =>
-  mockStandIns().dataClient(() => ({ fetch: async () => {}, fetchIfStale: mockFetchIfStale })),
-);
+// The device's accounts (`getAccounts`): none unless a test signs in.
+let mockAccounts: object | undefined;
+jest.mock('@data-client/react', () => ({
+  ...mockStandIns().dataClient(() => ({ fetch: async () => {}, fetchIfStale: mockFetchIfStale })),
+  useDLE: () => ({ data: mockAccounts }),
+}));
 const mockSettings = { ...DEFAULT_SETTINGS, auto: false };
 jest.mock('@/settings/SettingsProvider', () => mockStandIns().settingsProvider(() => mockSettings));
 
@@ -98,6 +101,7 @@ afterEach(async () => {
   mockFetchIfStale.mockClear();
   mockUseFinder.mockClear();
   mockFocused = true;
+  mockAccounts = undefined;
 });
 
 describe('useLessonScreen', () => {
@@ -152,14 +156,14 @@ describe('useLessonScreen', () => {
   it('lists opportunities in Explore, running the finder from where the learner asks', async () => {
     await showAfter(CARO_KANN, 'e4', 'c6', 'd4');
     const { finder } = shown().opportunities!;
-    expect(finder).toMatchObject({ from: 'none', rating: 1500 });
+    expect(finder).toMatchObject({ from: 'none', source: { from: 'maia', rating: 1500 } });
     expect(mockUseFinder).toHaveBeenLastCalledWith(undefined);
     await act(async () => finder.onFind());
     expect(shown().opportunities!.finder).toMatchObject({ from: 'here' });
     expect(mockUseFinder).toHaveBeenLastCalledWith({
       line: uciLine('e4', 'c6', 'd4'),
       side: 'black',
-      rating: 1500,
+      source: { from: 'maia', rating: 1500 },
       lesson: CARO_KANN,
     });
     // A screen pushed on top: the finder asks for nothing until it is in front again.
@@ -175,6 +179,11 @@ describe('useLessonScreen', () => {
     expect(shown().opportunities!.finder.from).toBe('here');
   });
 
+  it("reads lichess's games in the opponent's band once the learner signed in", async () => {
+    mockAccounts = { lichess: { username: 'learner', token: 'token' } };
+    await showAfter(CARO_KANN, 'e4', 'c6', 'd4');
+    expect(shown().opportunities!.finder.source).toEqual({ from: 'lichess', band: 1400 });
+  });
   it("names the rival's moves as likely replies, with whose they are", async () => {
     await showAfter(CARO_KANN, 'e4', 'c6');
     expect(shown().moves).toMatchObject({ heading: 'likely replies', owner: 'White' });

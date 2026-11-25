@@ -37,6 +37,8 @@ export const dataClient = (controller: () => object) => ({
   useController: controller,
   useSubscription: () => {},
   useSuspense: () => ({}),
+  // Nothing loaded: no lichess account, so the finder reads Maia.
+  useDLE: () => ({ data: undefined, loading: false, error: undefined }),
 });
 
 export const settingsProvider = (settings: () => Settings) => ({ useSettings: settings });

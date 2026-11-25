@@ -185,7 +185,7 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
           icon: 'settings-outline',
           label: 'Settings',
           onPress: openSettings,
-          holdsTheme: true,
+          holdsHeaderChoices: true,
         },
       }}
       // A wide page credits the lesson's sources at its foot, a phone in its settings sheet.

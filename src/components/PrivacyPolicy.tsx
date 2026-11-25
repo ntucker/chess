@@ -9,7 +9,9 @@ import { SOURCE_URL } from '@/components/SourceLink';
 import { STAGE_MAX } from '@/components/Stage';
 
 /** When the policy below last changed. */
-const UPDATED = 'November 21, 2026';
+const UPDATED = 'November 25, 2026';
+
+const LICHESS_PRIVACY = 'https://lichess.org/privacy';
 
 const GITHUB_PRIVACY =
   'https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement';
@@ -28,13 +30,22 @@ export function PrivacyPolicy() {
     >
       <View style={styles.content}>
         <PageIntro eyebrow={`Updated ${UPDATED}`} title="Privacy">
-          Opening Night collects nothing about you. It has no accounts, ads, analytics or tracking,
-          and it sends nothing you do to anyone.
+          Opening Night collects nothing about you. It has no accounts of its own, ads, analytics or
+          tracking, and it sends nothing you do to anyone, except to lichess if you sign in with it.
         </PageIntro>
         <Section heading="What stays on your device">
           Your settings and your progress through the lessons are saved on your device, in the
           app&apos;s own storage (or, on the web, the browser&apos;s). They never leave it.
           Uninstalling the app, or clearing the site&apos;s data in your browser, deletes them.
+        </Section>
+        <Section heading="Signing in with lichess">
+          You can sign in with your lichess account, so the opportunity finder counts real lichess
+          games instead of estimating them. You sign in on lichess&apos;s own page; the app gets
+          your lichess username and a token that lets it ask lichess&apos;s opening explorer, and
+          keeps both on your device. While you are signed in, the app sends lichess each position it
+          asks about, with that token, and nothing else. Signing out deletes both from your device
+          and asks lichess to revoke the token. lichess handles these requests under its{' '}
+          <ExternalLink url={LICHESS_PRIVACY}>privacy policy</ExternalLink>.
         </Section>
         <Section heading="What the app downloads">
           The engines and lessons run on your device. The Android app comes with them, except Full
