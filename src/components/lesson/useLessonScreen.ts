@@ -1,5 +1,6 @@
 import { useController } from '@data-client/react';
-import { type ComponentProps, use, useMemo } from 'react';
+import { useIsFocused } from 'expo-router';
+import { type ComponentProps, use, useMemo, useState } from 'react';
 
 import type { HeadlineProps } from '@/components/GameStatus';
 import type { Header } from '@/components/Header';
@@ -11,8 +12,13 @@ import { type Color, colorName, opposite, playMove, readPositionKey } from '@/ga
 import type { GameStore } from '@/game/useGame';
 import { listsOpportunities, listsTopMoves } from '@/lesson/guidance';
 import type { Lesson, PositionKey, Uci, VariationId } from '@/lesson/lesson';
-import { lessonsAfter, lessonsFrom, openingsLesson, withOpenings } from '@/lesson/openings';
-import { listsAnyOpportunity } from '@/lesson/opportunities';
+import {
+  lessonsAfter,
+  lessonsFrom,
+  openingsLesson,
+  sameLine,
+  withOpenings,
+} from '@/lesson/openings';
 import {
   bandPlayers,
   type Candidate,
@@ -23,8 +29,10 @@ import {
   shareSource,
 } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
+import { MAIA_RATINGS } from '@/maia/ratings';
 import type { Cue } from '@/opportunity/cue';
-import { describeOpponent } from '@/opponent/opponent';
+import { useFinder } from '@/opportunity/useFinder';
+import { describeOpponent, isStockfish, type Opponent } from '@/opponent/opponent';
 import { getLesson, LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { reviewHref } from '@/review/address';
 import { useSettings } from '@/settings/SettingsProvider';
@@ -33,7 +41,7 @@ import type { CandidateList } from './CandidateList';
 import type { ActsModel, OpportunityCard } from './CueActs';
 import { type IdeaAside, type IdeaCard, noNotesText } from './IdeaCard';
 import type { LessonControls } from './LessonControls';
-import type { OpportunityList } from './OpportunityList';
+import type { FinderProps, OpportunityList } from './OpportunityList';
 import type { TrapCard } from './TrapCard';
 import { describeStatus, OPENINGS_TITLE, type Status, shownEnding } from './status';
 
@@ -179,6 +187,9 @@ export function useLessonScreen({
   const learner = lesson.side;
   const rival = opposite(learner);
   const described = describeOpponent(opponent);
+  const focused = useIsFocused();
+  const listing = !!picked && listsOpportunities(mode);
+  const finder = useLessonFinder(picked, opponent, shownLine, listing && focused);
   const preview = guidance.preview?.candidate;
   const { acts, opportunity } = guidance;
   const trap = guidance.trapIn === 'card' ? guidance.trap : undefined;
@@ -384,7 +395,7 @@ export function useLessonScreen({
           }
         : null,
     opportunities:
-      picked && listsOpportunities(mode) && listsAnyOpportunity(picked)
+      picked && listing
         ? {
             // The file's own counts, which `withOpenings` drops where the openings are picked.
             lesson: picked,
@@ -392,6 +403,7 @@ export function useLessonScreen({
             progress,
             players: bandPlayers(picked, opponent),
             onPlay: (line) => dispatchGame({ type: 'newGame', moves: line }),
+            finder,
           }
         : null,
     trap: trap
@@ -417,6 +429,35 @@ export function useLessonScreen({
     learner,
     sources: lesson.sources,
     onLeave: leave,
+  };
+}
+
+/**
+ * The opportunity finder on the lesson `picked`, for its list: run from the
+ * position the board showed when the learner last asked, while `active`
+ * (Explore, in front). The replies it reads are Maia's at the opponent's
+ * rating, the top network's against Stockfish. Another lesson starts with
+ * none.
+ */
+function useLessonFinder(
+  picked: Lesson | undefined,
+  opponent: Opponent,
+  shownLine: readonly Uci[],
+  active: boolean,
+): FinderProps {
+  const [from, setFrom] = useState<{ readonly lesson: Lesson; readonly line: readonly Uci[] }>();
+  const line = picked && from?.lesson === picked ? from.line : undefined;
+  const rating = isStockfish(opponent) ? MAIA_RATINGS.at(-1)! : opponent;
+  const ask = useMemo(
+    () => picked && line && { line, side: picked.side, rating, lesson: picked },
+    [picked, line, rating],
+  );
+  return {
+    run: useFinder(active ? ask : undefined),
+    here: !!line && sameLine(line, shownLine),
+    started: !!line,
+    rating,
+    onFind: () => picked && setFrom({ lesson: picked, line: shownLine }),
   };
 }
 

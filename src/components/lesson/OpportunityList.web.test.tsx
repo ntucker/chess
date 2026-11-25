@@ -8,11 +8,12 @@ import { createRoot } from 'react-dom/client';
 import type { Uci } from '@/lesson/lesson';
 import { readShippedLesson } from '@/lesson/lesson.fixture';
 import { lessonOpportunities } from '@/lesson/opportunities';
+import type { Find } from '@/opportunity/finder';
 import { positionHash, UNTOUCHED } from '@/progress/progress';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
 
-import { OpportunityList } from './OpportunityList';
+import { type FinderProps, OpportunityList } from './OpportunityList';
 
 // Its font needs Expo's asset registry too.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
@@ -23,6 +24,46 @@ const STAFFORD = readShippedLesson('stafford');
 const BAND = 2;
 
 type Props = Parameters<typeof OpportunityList>[0];
+
+/** A finder run from the board's position and done, with nothing found. */
+const DONE: FinderProps = {
+  run: { finds: [], running: false },
+  here: true,
+  started: true,
+  rating: 1500,
+  onFind: () => {},
+};
+
+/** A find after the Stafford's 4...dxc6: 5.d3 Bc5 6.Be2 Qd4 7.O-O Bg4?, punished by 8.Bxg4. */
+const FIND: Find = {
+  line: [
+    'e2e4',
+    'e7e5',
+    'g1f3',
+    'g8f6',
+    'f3e5',
+    'b8c6',
+    'e5c6',
+    'd7c6',
+    'd2d3',
+    'f8c5',
+    'f1e2',
+  ].concat(['d8d4', 'e1g1']),
+  mistake: 'c8g4',
+  replies: ['e2g4'],
+  payoff: ['f6g4', 'd1g4', 'e8g8'],
+  disagreements: [],
+  end: 0.93,
+  holds: true,
+  reach: 0.12,
+  onGuide: true,
+  share: 0.1,
+  cost: 0.17,
+  found: 0.34,
+  gain: 0.12,
+  estimate: true,
+  score: 0.0014,
+};
 
 /** Renders the Stafford lesson's list with `props`, and reads its host with `read`. */
 function render<T>(props: Partial<Props>, read: (host: HTMLElement) => T): T {
@@ -38,6 +79,7 @@ function render<T>(props: Partial<Props>, read: (host: HTMLElement) => T): T {
             progress={UNTOUCHED}
             players="Lichess players rated 1400–1599"
             onPlay={() => {}}
+            finder={DONE}
             density="comfortable"
             {...props}
           />
@@ -54,6 +96,8 @@ const labels = (props: Partial<Props> = {}) =>
   render(props, (host) =>
     [...host.querySelectorAll('[role="button"]')].map((row) => row.getAttribute('aria-label')),
   );
+
+const text = (props: Partial<Props>) => render(props, (host) => host.textContent ?? '');
 
 describe('OpportunityList', () => {
   const ranked = lessonOpportunities(STAFFORD, BAND);
@@ -78,5 +122,44 @@ describe('OpportunityList', () => {
   it('marks a row seen once its cue was shown', () => {
     const progress = { seen: [positionHash(ranked[0].next)], passed: [] };
     expect(labels({ progress })[0]).toMatch(/, seen$/);
+  });
+
+  it("lists the finder's finds after the lesson's, and plays one through its mistake", () => {
+    const onPlay = jest.fn<(line: readonly Uci[]) => void>();
+    const finder = { ...DONE, run: { finds: [FIND], running: false } };
+    const said = render({ finder, onPlay }, (host) => {
+      const rows = [...host.querySelectorAll<HTMLElement>('[role="button"]')];
+      act(() => rows.at(-1)!.click());
+      return rows.map((row) => row.getAttribute('aria-label'));
+    });
+    expect(said).toHaveLength(ranked.length + 1);
+    expect(said.at(-1)).toMatch(
+      /^7\.\.\.Bg4, after 6\.\.\.Qd4 7\.O-O, reached in 12% of games, played 10% of the time, gives away 17%$/,
+    );
+    expect(onPlay).toHaveBeenCalledWith([...FIND.line, FIND.mistake]);
+  });
+
+  it('offers to run the finder from a position it has not run from, and runs it when pressed', () => {
+    const onFind = jest.fn();
+    const finder = { ...DONE, here: false, started: false, onFind };
+    render({ finder }, (host) => {
+      const button = [...host.querySelectorAll<HTMLElement>('[role="button"]')].find((node) =>
+        node.textContent?.includes('Find from here'),
+      );
+      act(() => button!.click());
+    });
+    expect(onFind).toHaveBeenCalledTimes(1);
+  });
+
+  it('says what the finder is doing: searching, done with nothing, or found elsewhere', () => {
+    expect(text({ finder: { ...DONE, run: { finds: [], running: true } } })).toContain(
+      'The first finds take a few minutes.',
+    );
+    expect(text({})).toContain('No opportunity found from here.');
+    const elsewhere = text({
+      finder: { ...DONE, here: false, run: { finds: [FIND], running: false } },
+    });
+    expect(elsewhere).toContain('From an earlier position');
+    expect(elsewhere).not.toContain('No opportunity found');
   });
 });
