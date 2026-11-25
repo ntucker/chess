@@ -11,11 +11,11 @@ import type { Chess } from 'chessops/chess';
 import type { Color } from 'chessops/types';
 
 import { MOVE_NUMBER, SAN } from '@/game/replay';
-import { checkIdea } from '@/lesson/check';
-import type { Evaluation, Idea, Note, Uci } from '@/lesson/lesson';
+import type { Evaluation, Uci } from '@/lesson/lesson';
 
 import { choiceGuide, type Choice } from './choices';
 import { lineTo, placeSequence, type Found, type Spot } from './line';
+import { checkStudyIdea, type StudyIdea, type StudyNote } from './mistakes';
 import { planLists } from './plans';
 import { chapterMoves, type Chapter, type StudyMove } from './study';
 import { direction, namedMoves, shorten, textVerdicts } from './text';
@@ -23,13 +23,13 @@ import { trapLines, watchOuts } from './traps';
 
 export interface MoveNote {
   readonly move: StudyMove;
-  readonly note: Note;
+  readonly note: StudyNote;
   /** The move whose comment the note comes from. */
   readonly source: StudyMove;
 }
 export interface PositionNote {
   readonly pos: Chess;
-  readonly note: Note;
+  readonly note: StudyNote;
   /** The move whose comment the note comes from. */
   readonly source: StudyMove;
 }
@@ -38,7 +38,7 @@ interface Branch {
   readonly ucis: readonly Uci[];
 }
 interface Rejected {
-  readonly idea: Idea;
+  readonly idea: StudyIdea;
   readonly why: string;
   readonly comment: string;
 }
@@ -160,7 +160,7 @@ export function extractChapter(chapter: Chapter, learner: Color): ChapterNotes {
     const own: Found[] = [];
     for (const item of found) {
       const { spot, idea } = item;
-      const why = checkIdea(idea, spot.pos);
+      const why = checkStudyIdea(idea, spot.pos);
       if (why) rejected.push({ idea, why, comment });
       else if (spot.move === target) own.push(item);
       // An idea about another position (often the one before the commented move) is said there.
@@ -242,7 +242,7 @@ function namesOtherOpening(ucis: readonly Uci[], move: StudyMove, learner: Color
 }
 
 /** The note of an idea that lands away from its comment, with the study's words in `original`. */
-function awayNote({ idea, text, original }: Found): Note {
+function awayNote({ idea, text, original }: Found): StudyNote {
   return { text, ...(original && { original }), ideas: [idea] };
 }
 
@@ -251,7 +251,7 @@ function awayNote({ idea, text, original }: Found): Note {
  * without a "Plan:" or "Trap:" label, since the note's ideas show its kind,
  * and the full wording in `original` when that differs.
  */
-function note(source: string, ideas: readonly Idea[]): Note {
+function note(source: string, ideas: readonly StudyIdea[]): StudyNote {
   const text = shorten(source).replace(/^(?:Plan|Trap):\s*/, '');
   return { text, ...(text !== source && { original: source }), ...(ideas.length > 0 && { ideas }) };
 }

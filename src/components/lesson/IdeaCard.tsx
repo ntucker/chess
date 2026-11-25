@@ -14,14 +14,8 @@ import { Transport } from '@/components/Transport';
 import type { Color } from '@/game/replay';
 import { ideaTone } from '@/lesson/drawings';
 import type { PlayedBack } from '@/lesson/guidance';
-import {
-  AI_MODELS,
-  type AiModel,
-  type Evaluation,
-  type Idea,
-  type Lesson,
-  type Note,
-} from '@/lesson/lesson';
+import { AI_MODELS, type AiModel, type Evaluation, type Lesson } from '@/lesson/lesson';
+import type { BoardIdea, BoardNote } from '@/lesson/mistakes';
 import type { Playback, Playing } from '@/lesson/useLesson';
 import type { ShownNote } from '@/lesson/view';
 import { toneColors } from '@/theme/drawingTones';
@@ -44,13 +38,13 @@ interface Props {
   /** Plays a note's plan, line or trap through on the board. */
   readonly playback: Playback;
   /** The notes whose ideas draw on the board when pointed at. */
-  readonly pointable: readonly Note[];
+  readonly pointable: readonly BoardNote[];
   /** The note pointed at, whose ideas the board draws. */
-  readonly pointed?: Note;
+  readonly pointed?: BoardNote;
   /** The learner points at a note that draws on the board. */
-  readonly onPoint: (note: Note) => void;
+  readonly onPoint: (note: BoardNote) => void;
   /** The learner lets a note go: the mouse leaves it, or a second tap. */
-  readonly onLeave: (note: Note) => void;
+  readonly onLeave: (note: BoardNote) => void;
   /** The mouse comes onto the card at `time` (its event's time stamp). */
   readonly onReach: (time: number) => void;
   /**
@@ -181,8 +175,8 @@ export function NoteView({
   readonly playback: Playback;
   readonly pointable: boolean;
   readonly pointed: boolean;
-  readonly onPoint: (note: Note) => void;
-  readonly onLeave: (note: Note) => void;
+  readonly onPoint: (note: BoardNote) => void;
+  readonly onLeave: (note: BoardNote) => void;
   /** What leads the note's words: a compact card's title. */
   readonly lead?: ReactNode;
   readonly density: Density;
@@ -391,7 +385,7 @@ const PLAY_SHORT: Readonly<Record<PlayedBack['type'], string>> = {
 };
 
 /** Each kind's name. */
-const KINDS: Readonly<Record<Exclude<Idea['type'], 'evaluation'>, string>> = {
+const KINDS: Readonly<Record<Exclude<BoardIdea['type'], 'evaluation'>, string>> = {
   purpose: 'What it does',
   pressure: 'Pressure',
   plan: 'Plan',

@@ -16,6 +16,7 @@ import {
   recordedMove,
 } from '@/game/replay';
 import type { PositionKey, Uci } from '@/lesson/lesson';
+import { moveShare } from '@/lesson/share';
 
 import type { Limits } from './limits';
 
@@ -46,8 +47,8 @@ export interface Answers {
   /** Stockfish's analysis of the position: the deepest the host has, final or not. */
   analysis(spot: Spot): Analysis | undefined;
   /**
-   * A lesson's moves here, most played first (its book moves at its own side's
-   * turn, every move at the other's), where the host has some. The finder
+   * A lesson's moves here, most played first and chosen by the guide's rule
+   * (`guideOrder` in src/lesson/mistakes.ts), where the host has some. The finder
    * follows them for the punishing side, and Act III plays the first for the
    * erring side; elsewhere they come from Stockfish or the replies.
    */
@@ -159,7 +160,7 @@ export function repliesFrom(key: PositionKey, counts: MoveCounts, minGames: numb
     shares: Object.fromEntries(
       Object.entries(counts)
         .filter(([uci]) => recordedMove(pos, uci) !== undefined)
-        .map(([uci, games]) => [uci, total && games / total]),
+        .map(([uci, games]) => [uci, moveShare(games, total) ?? 0]),
     ),
     thin: total < minGames,
   };

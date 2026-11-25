@@ -8,7 +8,9 @@ import type { Chess } from 'chessops/chess';
 import type { Color } from 'chessops/types';
 
 import { sanToUci } from '@/game/replay';
-import type { Idea, Uci } from '@/lesson/lesson';
+import type { Uci } from '@/lesson/lesson';
+
+import type { StudyIdea } from './mistakes';
 
 import { mainLine, played, type StudyMove } from './study';
 import { nextPly, NUMBER_SLACK, type NamedMove } from './text';
@@ -25,7 +27,7 @@ export interface Spot {
 /** An idea a comment states, and the position it is about. */
 export interface Found {
   readonly spot: Spot;
-  readonly idea: Idea;
+  readonly idea: StudyIdea;
   /**
    * The idea's own note when it lands away from its comment, in words: the
    * moves its drawing plays are left out.

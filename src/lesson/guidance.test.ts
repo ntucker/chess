@@ -12,7 +12,7 @@ import {
   type ShownIdea,
   verdictSearch,
 } from './guidance';
-import type { Idea } from './lesson';
+import type { BoardIdea } from './mistakes';
 import { type Candidate, engineCandidates } from './select';
 import {
   ADVANCE,
@@ -24,7 +24,7 @@ import {
   TRAP_PUNISHED,
   uciLine,
   WITH_RARE,
-  withTrapMoves,
+  withMistakeLine,
 } from './lesson.fixture';
 import { lessonView, type Pointer, preview } from './view';
 
@@ -602,7 +602,7 @@ describe('guidance', () => {
     });
 
     it('draws only the first of several plans, whose numbers would run together', () => {
-      const plan = (from: string): Idea => ({
+      const plan = (from: string): BoardIdea => ({
         type: 'plan',
         side: 'black',
         routes: [{ from: from as never, to: 'a6' }],
@@ -620,7 +620,7 @@ describe('guidance', () => {
     });
 
     it("keeps each position's first plan: one on another position doesn't hide it", () => {
-      const plan = (from: string): Idea => ({
+      const plan = (from: string): BoardIdea => ({
         type: 'plan',
         side: 'black',
         routes: [{ from: from as never, to: 'a6' }],
@@ -716,7 +716,7 @@ describe('guidance', () => {
       expect(shown([...LANDED, 'Bxd1', 'Kxd1'], 'explore').trap).toBeUndefined();
       // Cut to end on the learner's move, the trap stays through the opponent's reply.
       const { moves } = sampleView(LANDED).trap!.trap;
-      const lesson = withTrapMoves(SAMPLE, moves, moves.slice(0, -1));
+      const lesson = withMistakeLine(SAMPLE, keyAfter(...TRAP), moves[0], moves.slice(1, -1));
       const trapAt = (sans: string[]) => {
         const line = uciLine(...sans);
         const view = lessonView({ lesson, line, ply: line.length, opponent: 1500 });

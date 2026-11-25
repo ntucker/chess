@@ -23,6 +23,7 @@ import { type LessonIndex, linesThrough } from './openings';
 import type { ReplyChoice } from './opponent';
 import type { ModeState } from './practice';
 import type { Candidate } from './select';
+import { positionGames } from './share';
 import type { LessonView } from './view';
 
 /**
@@ -110,9 +111,16 @@ export function steering(
 ): ReplyChoice | undefined {
   if (mode.mode !== 'practice' || !mode.clean) return undefined;
   const { passed } = markSets(progress, lesson);
-  return (replies) => {
+  return (replies, key) => {
     // A rare reply's lines don't count toward passing, so nothing steers there.
-    const counted = new Set(countedReplies(replies.map(({ move }) => move)));
+    const entry = lesson.positions[key];
+    const total = entry && positionGames(entry, 'all');
+    const counted = new Set(
+      countedReplies(
+        replies.map(({ move }) => move),
+        total,
+      ),
+    );
     return (
       replies.find(
         ({ move, next }) => counted.has(move) && cleanEnds(lesson, passed, next) === 'open',

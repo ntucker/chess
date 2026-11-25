@@ -5,11 +5,14 @@
 import type { GameOpponent } from '@/game/game';
 import type { Opponent } from '@/opponent/opponent';
 
-import type { Lesson } from './lesson';
+import type { Lesson, PositionKey } from './lesson';
 import { type Candidate, candidates, lineKeys, opponentBand } from './select';
 
-/** Picks the guide's reply from its moves, most played first; undefined hands over to the engine. */
-export type ReplyChoice = (replies: readonly Candidate[]) => Candidate | undefined;
+/** Picks the guide's reply at `key` from its moves, most played first; undefined hands over to the engine. */
+export type ReplyChoice = (
+  replies: readonly Candidate[],
+  key: PositionKey,
+) => Candidate | undefined;
 
 /**
  * The opponent in a lesson against `opponent`. Inside the guide it plays the
@@ -39,8 +42,9 @@ export function lessonOpponent(
     // A new choice asks again: a reply chosen the other way no longer fits.
     id: `${lesson.id}:${choose ? 'chosen:' : ''}${beyond.id}`,
     reply: async (line) => {
-      const replies = candidates(lesson, lineKeys(line).at(-1)!, band);
-      const guide = choose ? choose(replies) : replies[0];
+      const key = lineKeys(line).at(-1)!;
+      const replies = candidates(lesson, key, band);
+      const guide = choose ? choose(replies, key) : replies[0];
       return guide?.move.uci ?? beyond.reply(line);
     },
   };

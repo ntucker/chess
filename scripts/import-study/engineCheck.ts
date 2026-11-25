@@ -13,9 +13,12 @@
  *   0.12 for its traps. The floor is the board's, not the move's, so a line
  *   of such mistakes can't slide toward a lost position.
  * - A note goes when its verdict is two or more steps from the engine's on
- *   the scale = ⩲ ± +- (an evaluation badge, or where a line or trap ends),
- *   unless it only understates the same side's edge, or when its trap's first
- *   move is not an error at all.
+ *   the scale = ⩲ ± +- (an evaluation badge, or where a line ends), unless
+ *   it only understates the same side's edge.
+ * - A mistake's mark (`LessonMove.mistake`) goes when its verdict is that far
+ *   from the engine's where its line ends (`mistakeLine`, the line the app
+ *   shows), or when its move is no error at all; so does every note that
+ *   names it.
  *
  * Each change is reported, so a person can read what the engine overruled.
  *
@@ -32,10 +35,18 @@ import {
   type FinalAnalysis,
 } from '@/evaluation/evaluation';
 import { judgeMove, judgement } from '@/analysis/quality';
-import { lineSans, numberedLine, parsePosition, playMove, positionKey } from '@/game/replay';
+import {
+  lineSans,
+  numberedLine,
+  parsePosition,
+  parsePositionKey,
+  playMove,
+  positionKey,
+} from '@/game/replay';
+import { needsBookMove } from '@/lesson/cleanRun';
+import { markId, mistakeLine } from '@/lesson/mistakes';
 import type {
   Evaluation as Verdict,
-  Idea,
   Lesson,
   LessonMove,
   LessonPosition,
@@ -43,6 +54,8 @@ import type {
   PositionKey,
   Uci,
 } from '@/lesson/lesson';
+
+import { plyOf } from './text';
 
 /**
  * The engine's final analysis of the position after `line` from the lesson's
@@ -80,11 +93,11 @@ const GAMBIT_FLOOR = 0.3;
 
 /** `lesson` with what `evaluate` overrules taken out, and what was taken. */
 export async function engineCheck(
-  lesson: Lesson,
+  marked: Lesson,
   evaluate: Evaluate,
   { gambit = false }: { readonly gambit?: boolean } = {},
 ): Promise<{ lesson: Lesson; report: EngineReport }> {
-  const lines = linesTo(lesson);
+  const lines = linesTo(marked);
   const evaluation = cachedEvaluation(evaluate);
   const report = {
     unbooked: [] as { line: string; move: string; quality: string }[],
@@ -94,6 +107,12 @@ export async function engineCheck(
     dropped: [] as { line: string; text: string; reason: string }[],
   };
 
+  const overruledMarks = await overruledMistakes(marked, lines, evaluation, report.dropped);
+  const { lesson, dropped } = withoutMarks(marked, overruledMarks);
+  for (const { at, text } of dropped) {
+    const line = sans(lesson, lines.get(at)?.line ?? []);
+    report.dropped.push({ line, text, reason: 'names a mistake whose mark went' });
+  }
   const positions: Record<PositionKey, LessonPosition> = {};
   /** Where the engine overruled a book move. */
   const overruledAt = new Set<PositionKey>();
@@ -270,8 +289,9 @@ async function fillBookWith(
     let position = positions[key];
     if (!position) continue;
     const learner = at.pos.turn === lesson.side;
-    if (learner && position.moves.length > 0 && !position.moves.some(({ book }) => book)) {
-      const pick = await pickBookMove(position.moves, at, evaluation, lesson.side);
+    if (learner && needsBookMove(position.moves)) {
+      const unmarked = position.moves.filter(({ mistake }) => !mistake);
+      const pick = await pickBookMove(unmarked, at, evaluation, lesson.side);
       if (!pick) {
         const moves = position.moves.map(({ uci }) => san(at.pos, uci));
         const gone = endLine(lesson, positions, key, lines);
@@ -308,8 +328,7 @@ async function fillBookWith(
 /**
  * The book move `fillBook` picks at `at`, and why: one of the guide's moves
  * there, or the engine's own when it overrules them all; undefined when it
- * names none. It reads no trap ideas: a move a trap warns against is picked
- * like any other the engine rates no mistake.
+ * names none. `moves` leaves out marked mistakes.
  */
 async function pickBookMove(
   moves: readonly LessonMove[],
@@ -357,40 +376,109 @@ async function overruled(
   evaluation: CachedEvaluation,
 ): Promise<string | undefined> {
   for (const idea of note.ideas ?? []) {
-    const verdict = verdictOf(idea);
     if (idea.type === 'evaluation') {
       const engine = (await evaluation(line, pos)).lines[0].evaluation;
       if (apart(idea.value, engine)) return `says ${idea.value}, engine ${describe(engine)}`;
     }
-    if ((idea.type === 'trap' || idea.type === 'line') && verdict) {
-      let end = pos;
-      const moves: Uci[] = [];
-      for (const uci of idea.moves) {
-        end = played(end, uci);
-        moves.push(uci);
-      }
-      const engine = (await evaluation([...line, ...moves], end)).lines[0].evaluation;
-      if (apart(verdict, engine)) return `${idea.type} ends ${verdict}, engine ${describe(engine)}`;
-    }
-    if (idea.type === 'trap' && idea.moves.length > 0) {
-      const [tempting] = idea.moves;
-      const quality = judgeMove(
-        await evaluation(line, pos),
-        await evaluation([...line, tempting], played(pos, tempting)),
-        tempting,
-        pos.turn,
-      );
-      if (quality === 'best' || quality === 'good')
-        return `trap's ${san(pos, tempting)} is ${quality}`;
+    if (idea.type === 'line') {
+      const reason = await lineOverruled(pos, line, idea.moves, idea.verdict, evaluation);
+      if (reason) return `line ${reason}`;
     }
   }
   return undefined;
 }
 
-const verdictOf = (idea: Idea): Verdict | undefined =>
-  (idea.type === 'trap' || idea.type === 'line') && idea.verdict !== 'losesMaterial'
-    ? idea.verdict
-    : undefined;
+/**
+ * Why the engine overrules `verdict` where `moves` from `pos`, after `line`,
+ * end ("ends whiteWinning, engine 0.3"), or undefined when it doesn't.
+ */
+async function lineOverruled(
+  pos: Chess,
+  line: readonly Uci[],
+  moves: readonly Uci[],
+  verdict: Verdict,
+  evaluation: CachedEvaluation,
+): Promise<string | undefined> {
+  const end = moves.reduce(played, pos);
+  const engine = (await evaluation([...line, ...moves], end)).lines[0].evaluation;
+  return apart(verdict, engine) ? `ends ${verdict}, engine ${describe(engine)}` : undefined;
+}
+
+/**
+ * The marks the engine overrules (by `markId`), each reported in `dropped`:
+ * its move is best or good where it is played, or its verdict is apart from
+ * the engine's where its line ends.
+ */
+async function overruledMistakes(
+  lesson: Lesson,
+  lines: ReadonlyMap<PositionKey, { line: Uci[]; pos: Chess }>,
+  evaluation: CachedEvaluation,
+  dropped: { line: string; text: string; reason: string }[],
+): Promise<Set<string>> {
+  const overruled = new Set<string>();
+  for (const [key, position] of Object.entries(lesson.positions)) {
+    const at = lines.get(key);
+    if (!at) continue;
+    for (const move of position.moves) {
+      if (!move.mistake) continue;
+      const { verdict } = move.mistake;
+      const quality = judgeMove(
+        await evaluation(at.line, at.pos),
+        await evaluation([...at.line, move.uci], played(at.pos, move.uci)),
+        move.uci,
+        at.pos.turn,
+      );
+      const moves = mistakeLine(lesson, key, move);
+      const reason =
+        quality === 'best' || quality === 'good'
+          ? `is ${quality}`
+          : verdict && verdict !== 'losesMaterial'
+            ? await lineOverruled(at.pos, at.line, moves, verdict, evaluation)
+            : undefined;
+      if (!reason) continue;
+      overruled.add(markId(key, move.uci));
+      dropped.push({
+        line: sans(lesson, at.line),
+        text: `mistake ${san(at.pos, move.uci)}`,
+        reason,
+      });
+    }
+  }
+  return overruled;
+}
+
+/**
+ * `lesson` without the marks in `gone` (by `markId`), nor the notes that name
+ * one, and those notes, each at the position its ideas hold in.
+ */
+export function withoutMarks(
+  lesson: Lesson,
+  gone: ReadonlySet<string>,
+): { lesson: Lesson; dropped: { at: PositionKey; text: string }[] } {
+  const dropped: { at: PositionKey; text: string }[] = [];
+  if (gone.size === 0) return { lesson, dropped };
+  const notesOf = <T extends { readonly notes?: readonly Note[] }>(item: T, at: PositionKey): T => {
+    const notes = item.notes?.filter((note) => {
+      const names = note.ideas?.some(
+        (idea) => idea.type === 'mistake' && gone.has(markId(at, idea.move)),
+      );
+      if (names) dropped.push({ at, text: note.text });
+      return !names;
+    });
+    const { notes: _notes, ...rest } = item;
+    return (notes?.length ? { ...rest, notes } : rest) as T;
+  };
+  const positions: Record<PositionKey, LessonPosition> = {};
+  for (const [key, entry] of Object.entries(lesson.positions)) {
+    const pos = parsePositionKey(key)!;
+    const moves = entry.moves.map((move) => {
+      const { mistake, ...rest } = notesOf(move, positionKey(played(pos, move.uci)));
+      return mistake && !gone.has(markId(key, move.uci)) ? { ...rest, mistake } : rest;
+    });
+    positions[key] = notesOf({ ...entry, moves }, key);
+  }
+  return { lesson: { ...lesson, positions }, dropped };
+}
 
 /** The scale from Black winning (-3) to White winning (3). */
 const STEPS: Readonly<Record<Verdict, number>> = {
@@ -519,9 +607,13 @@ export const san = (pos: Chess, uci: Uci) => playMove(pos.clone(), uci)!.san;
 
 /** `line` from the lesson's start in SAN, like "1.d4 d5 2.c4". */
 export function sans(lesson: Lesson, line: readonly Uci[]): string {
+  return numberedLine(lineSans(line, startOf(lesson)), startPly(lesson));
+}
+
+/** The number of the lesson's first move as a ply (1 is White's first move). */
+export function startPly(lesson: Lesson): number {
   const start = startOf(lesson);
-  const firstPly = 2 * start.fullmoves - (start.turn === 'white' ? 1 : 0);
-  return numberedLine(lineSans(line, start), firstPly);
+  return plyOf(start.fullmoves, start.turn === 'black');
 }
 
 async function filter<T>(items: readonly T[], keep: (item: T) => Promise<boolean>): Promise<T[]> {

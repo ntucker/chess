@@ -4,7 +4,7 @@ import { makeUci } from 'chessops/util';
 
 import { parsePositionKey } from '@/game/replay';
 
-import type { Idea, Lesson, Note, PositionKey } from './lesson';
+import type { Lesson, PositionKey } from './lesson';
 import { ADVANCE, keyAfter, MAIN, SAMPLE, uciLine, WITH_RARE, withMoves } from './lesson.fixture';
 import {
   bookMoves,
@@ -27,11 +27,6 @@ import {
 
 const ucis = (lesson: Lesson, key: string, band: number | undefined) =>
   candidates(lesson, key, band).map(({ move }) => move.uci);
-
-const withNotes = (lesson: Lesson, key: PositionKey, notes: Note[]): Lesson => ({
-  ...lesson,
-  positions: { ...lesson.positions, [key]: { ...lesson.positions[key], notes } },
-});
 
 describe('guidePosition', () => {
   it('is inside the guide where the guide has moves', () => {
@@ -164,9 +159,10 @@ describe('candidates', () => {
       expect(rareOnes(short, key, 2)).toEqual([]);
     });
 
-    it('never marks a move that starts a trap the position shows, and lists it before the rare ones', () => {
-      const trap: Idea = { type: 'trap', moves: ['a2a3', 'd5e4'], verdict: 'losesMaterial' };
-      const shown = withNotes(WITH_RARE, key, [{ text: 'a3 falls in.', ideas: [trap] }]);
+    it('never marks a marked mistake, a trap to show, and lists it before the rare ones', () => {
+      const shown = withMoves(WITH_RARE, key, (moves) =>
+        moves.map((move) => (move.uci === 'a2a3' ? { ...move, mistake: {} } : move)),
+      );
       expect(rareOnes(shown, key, 2)).toEqual(['h2h3', 'g2g3', 'b2b3']);
       expect(ucis(shown, key, 2)[ALWAYS_LISTED]).toBe('a2a3');
     });

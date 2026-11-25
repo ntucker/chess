@@ -7,6 +7,7 @@ import { fillBook } from './engineCheck';
 import { extractChapter } from './extract';
 import { STUDY_PGN } from './fixture';
 import { mergeChapters, type SourceTally } from './merge';
+import { markMistakes, settleMistakes } from './mistakes';
 import { parseStudy } from './study';
 
 const chapters = parseStudy(STUDY_PGN, () => true);
@@ -44,9 +45,11 @@ describe('mergeChapters', () => {
     expect(() => mergeChapters(lesson, [], [])).toThrow('No chapters to merge for lesson test');
   });
 
-  it('writes a lesson the checker accepts, once fillBook has picked the book moves it leaves open', async () => {
+  it('writes a lesson the checker accepts, once its traps are marked and fillBook has picked the book moves it leaves open', async () => {
     const even = async () => settledAnalysis({ score: 0.5, pawns: 0 });
-    expect(checkLesson((await fillBook(lesson, even)).lesson)).toEqual([]);
+    const marked = markMistakes(lesson);
+    const filled = (await fillBook(marked.lesson, even)).lesson;
+    expect(checkLesson(settleMistakes(filled, marked.traps).lesson)).toEqual([]);
   });
 
   it("books none of the learner's moves from a chapter written for the other side", () => {

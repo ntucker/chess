@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import { type FinalAnalysis, settledAnalysis as scored } from '@/evaluation/evaluation';
 import type { Lesson } from '@/lesson/lesson';
-import { keyAfter, uci, uciLine } from '@/lesson/lesson.fixture';
+import { keyAfter, uci } from '@/lesson/lesson.fixture';
 
 import { at, testLesson } from './fixture';
 import { engineCheck, fillBook } from './engineCheck';
@@ -25,17 +25,11 @@ const LESSON = testLesson({
     { uci: uci('d4', 'e5'), book: true },
   ]),
   [keyAfter('d4', 'd5')]: at(
-    [{ uci: uci('d4', 'd5', 'c4') }],
+    [{ uci: uci('d4', 'd5', 'c4'), mistake: { verdict: 'blackClearly' } }],
     [
       {
-        text: 'Taking on c4 falls for a trap.',
-        ideas: [
-          {
-            type: 'trap',
-            moves: uciLine('d4', 'd5', 'c4', 'dxc4').slice(3),
-            verdict: 'whiteClearly',
-          },
-        ],
+        text: 'Pushing c4 falls for a trap.',
+        ideas: [{ type: 'mistake', move: uci('d4', 'd5', 'c4') }],
       },
     ],
   ),
@@ -185,22 +179,24 @@ describe('engineCheck', () => {
     expect(report.cut).toEqual([{ line: '1.d4', moves: ['e5'], positions: 3 }]);
   });
 
-  it('drops a note whose verdict the engine contradicts, and a trap whose bait is no error', async () => {
+  it('drops a note whose verdict the engine contradicts, and a mark whose move is no error, with the note naming it', async () => {
     const { lesson, report } = await engineCheck(LESSON, evaluate);
     expect(lesson.positions[keyAfter('d4')].moves[0].notes).toEqual([
       { text: 'Black claims the centre.' },
     ]);
     expect(lesson.positions[keyAfter('d4', 'd5')].notes).toBeUndefined();
+    expect(lesson.positions[keyAfter('d4', 'd5')].moves[0].mistake).toBeUndefined();
     expect(report.dropped).toEqual([
+      { line: '1.d4 d5', text: 'mistake c4', reason: 'is best' },
+      {
+        line: '1.d4 d5',
+        text: 'Pushing c4 falls for a trap.',
+        reason: 'names a mistake whose mark went',
+      },
       {
         line: '1.d4 d5',
         text: 'Black is winning here.',
         reason: 'says blackWinning, engine +0.20',
-      },
-      {
-        line: '1.d4 d5',
-        text: 'Taking on c4 falls for a trap.',
-        reason: 'trap ends whiteClearly, engine +0.20',
       },
     ]);
   });

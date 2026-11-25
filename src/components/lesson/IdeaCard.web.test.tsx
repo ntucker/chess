@@ -5,8 +5,9 @@ import { SilkProvider } from '@reactive/silk-native';
 import { act, type ComponentProps } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import type { Note, PositionKey } from '@/lesson/lesson';
+import type { PositionKey } from '@/lesson/lesson';
 import { SAMPLE, uciLine } from '@/lesson/lesson.fixture';
+import type { BoardNote } from '@/lesson/mistakes';
 import { lineKeys } from '@/lesson/select';
 import type { Playback } from '@/lesson/useLesson';
 import { SettingsProvider } from '@/settings/SettingsProvider';
@@ -61,7 +62,7 @@ function renderNote(
 }
 
 /** The text a note's view shows and reads aloud. */
-function noteText(note: Note): string {
+function noteText(note: BoardNote): string {
   const { host, unmount } = renderNote({ shown: { note, after: 'after' as PositionKey } });
   const text = host.textContent ?? '';
   unmount();
@@ -127,7 +128,11 @@ describe('IdeaCard', () => {
    * A card holding one note, `note` (none if undefined), at `density`, its move
    * leading to the Masi Variation unless not `leads`: its text, and its buttons' labels.
    */
-  const renderCard = (density: 'comfortable' | 'compact', note: Note | undefined, leads = true) => {
+  const renderCard = (
+    density: 'comfortable' | 'compact',
+    note: BoardNote | undefined,
+    leads = true,
+  ) => {
     const host = document.createElement('div');
     const root = createRoot(host);
     act(() =>

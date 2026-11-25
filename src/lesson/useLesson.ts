@@ -37,7 +37,8 @@ import {
   type PlayedBack,
   verdictSearch,
 } from './guidance';
-import type { Lesson, Note, PositionKey, Uci } from './lesson';
+import type { Lesson, PositionKey, Uci } from './lesson';
+import type { BoardNote } from './mistakes';
 import { earnedMark, openingMarks, rowMarks, steering } from './marks';
 import { isPicking, pickingMoves } from './openings';
 import { lessonOpponent } from './opponent';
@@ -52,7 +53,7 @@ const PLAYBACK_STEP_MS = 1100;
 
 /** An idea playing back on the board: its note on the idea card, and the board it is on. */
 export interface Playing {
-  readonly note: Note;
+  readonly note: BoardNote;
   /** The idea of `note` the boards play. */
   readonly idea: PlayedBack;
   /** Which board: 0 is where the idea starts. */
@@ -372,9 +373,9 @@ export function useLesson(
     /** The mouse reaches the idea card at `time`: a row it only crossed on the way gives the card back. */
     reachCard: (time: number) => dispatch({ type: 'card', key, time }),
     /** The learner points at a note on the idea card, or at none. */
-    pointNote: (note: Note | undefined) => dispatch({ type: 'note', key, note }),
+    pointNote: (note: BoardNote | undefined) => dispatch({ type: 'note', key, note }),
     /** The learner lets a note on the idea card go: the mouse leaves it, or a second tap. */
-    leaveNote: (note: Note) => dispatch({ type: 'leaveNote', key, note }),
+    leaveNote: (note: BoardNote) => dispatch({ type: 'leaveNote', key, note }),
     /** The learner leaves the candidates and the idea card: their previews end. */
     leave: () => dispatch({ type: 'leave' }),
   };

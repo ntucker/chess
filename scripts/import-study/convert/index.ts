@@ -21,9 +21,10 @@ import { parseUci } from 'chessops/util';
 
 import { parsePosition, positionKey, sanToUci } from '@/game/replay';
 import { notationProblem, pointsToStudy } from '@/lesson/check';
-import { noteShows, type AiModel, type Note, type NoteShows } from '@/lesson/lesson';
+import { noteShows, type AiModel, type NoteShows } from '@/lesson/lesson';
 
 import type { ChapterNotes, MoveNote, PositionNote } from '../extract';
+import type { StudyNote } from '../mistakes';
 import { topReasons } from '../report';
 import { namedMoves, nextPly } from '../text';
 import type { Answer, AnswerIdea } from './answer';
@@ -304,7 +305,7 @@ function convertedChapter(
     );
     for (const other of own) joined.add(other);
     const ideas = [...own.flatMap((other) => other.note.ideas ?? []), ...(first.ideas ?? [])];
-    const note: Note = { ...first, ...(ideas.length > 0 && { ideas }) };
+    const note: StudyNote = { ...first, ...(ideas.length > 0 && { ideas }) };
     added.push(...[note, ...rest].map((before) => ({ pos: move.before, note: before, source })));
   }
   const positionNotes = [...chapter.positionNotes.filter((note) => !joined.has(note)), ...added];

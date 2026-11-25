@@ -6,7 +6,7 @@ import { parsePositionKey } from '@/game/replay';
 
 import { candidateDrawings, ideaDrawings, ideaPlayback, lessonDrawings } from './drawings';
 import { guidance, type LessonSwitches } from './guidance';
-import type { Idea } from './lesson';
+import type { BoardIdea } from './mistakes';
 import {
   ADVANCE,
   keyAfter,
@@ -38,7 +38,7 @@ const explore = (sans: string[], row?: string, switches = SWITCHES) => {
 const after = (...sans: string[]) => parsePositionKey(keyAfter(...sans))!;
 const fen = (text: string) => Chess.fromSetup(parseFen(text).unwrap()).unwrap();
 /** `idea` drawn after `sans` for a learner playing Black, as in the Caro-Kann. */
-const drawn = (idea: Idea, position: Chess) => ideaDrawings(idea, position, 'black');
+const drawn = (idea: BoardIdea, position: Chess) => ideaDrawings(idea, position, 'black');
 
 describe('mainCandidate', () => {
   it('picks the book move, else the most played', () => {
@@ -77,7 +77,7 @@ describe('ideaDrawings', () => {
   });
 
   it("draws Pressure as each side's pieces lit in its tone, the target ringed and counted", () => {
-    const pressure: Idea = {
+    const pressure: BoardIdea = {
       type: 'pressure',
       side: 'black',
       target: 'd4',
@@ -136,7 +136,9 @@ describe('ideaDrawings', () => {
 
   it('draws a Trap’s tempting move and the reply that punishes it, numbered', () => {
     const moves = uciLine(...TRAP_PUNISHED).slice(TRAP.length);
-    expect(drawn({ type: 'trap', moves, verdict: 'losesMaterial' }, after(...TRAP))).toEqual([
+    expect(
+      drawn({ type: 'trap', moves, verdict: 'losesMaterial', learnerFalls: true }, after(...TRAP)),
+    ).toEqual([
       { kind: 'arrow', from: 'c6', to: 'e5', tone: 'danger', step: 1 },
       { kind: 'arrow', from: 'f3', to: 'e5', tone: 'danger', step: 2 },
     ]);
@@ -149,7 +151,7 @@ describe('ideaDrawings', () => {
   });
 
   it('fades all but the pawns for a Structure, and marks each feature', () => {
-    const chain: Idea = {
+    const chain: BoardIdea = {
       type: 'structure',
       side: 'white',
       features: [{ kind: 'pawnChain', squares: ['e5', 'd4'] }],
@@ -168,7 +170,7 @@ describe('ideaDrawings', () => {
   });
 
   it('tints a file’s empty squares and rings weak pawns, leaving pieces untinted', () => {
-    const files: Idea = {
+    const files: BoardIdea = {
       type: 'structure',
       side: 'black',
       features: [{ kind: 'halfOpenFile', files: ['c'] }],
@@ -176,7 +178,7 @@ describe('ideaDrawings', () => {
     expect(drawn(files, after(...MAIN, 'exd5', 'cxd5')).slice(1)).toEqual([
       { kind: 'tint', squares: ['c3', 'c4', 'c5', 'c6', 'c7'], tone: 'main' },
     ]);
-    const isolated: Idea = {
+    const isolated: BoardIdea = {
       type: 'structure',
       side: 'black',
       features: [
@@ -239,7 +241,10 @@ describe('ideaPlayback', () => {
 
   it("steps through a trap's or line's moves as positions", () => {
     const moves = uciLine(...TRAP_PUNISHED).slice(TRAP.length);
-    const frames = ideaPlayback({ type: 'trap', moves, verdict: 'losesMaterial' }, after(...TRAP));
+    const frames = ideaPlayback(
+      { type: 'trap', moves, verdict: 'losesMaterial', learnerFalls: true },
+      after(...TRAP),
+    );
     expect(frames).toHaveLength(moves.length + 1);
     expect(frames[1].move).toMatchObject({ from: 'c6', to: 'e5' });
     expect(frames.map(({ turn }) => turn)).toEqual(frames.map((frame) => fen(frame.fen).turn));

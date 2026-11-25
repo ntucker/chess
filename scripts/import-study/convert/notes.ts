@@ -7,16 +7,9 @@ import type { Chess } from 'chessops/chess';
 import { isDeepStrictEqual } from 'node:util';
 
 import { sanToUci, withTurn } from '@/game/replay';
-import { checkIdea } from '@/lesson/check';
-import {
-  MAX_NOTE_WORDS,
-  type AiModel,
-  type Idea,
-  type Note,
-  type StructureFeature,
-  type Uci,
-} from '@/lesson/lesson';
+import { MAX_NOTE_WORDS, type AiModel, type StructureFeature, type Uci } from '@/lesson/lesson';
 
+import { checkStudyIdea, type StudyIdea, type StudyNote } from '../mistakes';
 import { played } from '../study';
 import { shorten } from '../text';
 import type { Answer, AnswerFeature, AnswerIdea } from './answer';
@@ -24,9 +17,9 @@ import type { Comment } from './comments';
 
 export interface Converted {
   /** Notes on the commented move. */
-  readonly move: readonly Note[];
+  readonly move: readonly StudyNote[];
   /** Notes on the position before it. */
-  readonly before: readonly Note[];
+  readonly before: readonly StudyNote[];
   /** Ideas the model wrote that the lesson keeps. */
   readonly kept: number;
   readonly rejected: readonly { readonly idea: AnswerIdea; readonly why: string }[];
@@ -35,7 +28,10 @@ export interface Converted {
 }
 
 /** Every note in `result`, on the move and before it. */
-export const notesOf = (result: Converted): readonly Note[] => [...result.move, ...result.before];
+export const notesOf = (result: Converted): readonly StudyNote[] => [
+  ...result.move,
+  ...result.before,
+];
 
 /**
  * `answer` for `comment` as notes credited to `model`, which wrote it, checked
@@ -49,7 +45,7 @@ export function convertedNotes(
   answer: Answer,
   model: AiModel,
   positions: { readonly before: Chess; readonly after: Chess },
-  own: readonly Idea[],
+  own: readonly StudyIdea[],
 ): Converted {
   const rejected: { idea: AnswerIdea; why: string }[] = [];
   const extractedEvaluation = comment.extracted.some((idea) => idea.type === 'evaluation');
@@ -64,7 +60,7 @@ export function convertedNotes(
   const notesAbout = (about: 'move' | 'before') =>
     answer.notes
       .filter((note) => note.about === about)
-      .map((note): Note => {
+      .map((note): StudyNote => {
         const pos = about === 'move' ? positions.after : positions.before;
         const ideas = note.ideas.flatMap((raw) => {
           const result = lessonIdea(raw, pos, extractedEvaluation);
@@ -111,9 +107,9 @@ const labelless = (text: string) =>
 function lessonNote(
   text: string,
   original: string,
-  ideas: readonly Idea[],
+  ideas: readonly StudyIdea[],
   model: AiModel | undefined,
-): Note {
+): StudyNote {
   return {
     text,
     ...(text !== original && { original }),
@@ -131,14 +127,14 @@ export function lessonIdea(
   raw: AnswerIdea,
   pos: Chess,
   extractedEvaluation: boolean,
-): Idea | string {
+): StudyIdea | string {
   try {
     const idea = withUci(raw, pos);
     if (idea.type === 'threat' && idea.side === pos.turn)
       return 'a threat is never a move by the side to move';
     if (idea.type === 'evaluation' && extractedEvaluation)
       return 'an evaluation was already extracted';
-    return checkIdea(idea, pos) ?? idea;
+    return checkStudyIdea(idea, pos) ?? idea;
   } catch (error) {
     if (error instanceof IllegalSan) return error.message;
     throw error;
@@ -164,7 +160,7 @@ function line(pos: Chess, sans: readonly string[]): Uci[] {
   });
 }
 
-function withUci(raw: AnswerIdea, pos: Chess): Idea {
+function withUci(raw: AnswerIdea, pos: Chess): StudyIdea {
   switch (raw.type) {
     case 'threat': {
       const threatening = withTurn(pos, raw.side);
@@ -175,7 +171,7 @@ function withUci(raw: AnswerIdea, pos: Chess): Idea {
     }
     case 'trap':
     case 'line':
-      return { ...raw, moves: line(pos, raw.moves) } as Idea;
+      return { ...raw, moves: line(pos, raw.moves) } as StudyIdea;
     case 'structure':
       return {
         ...raw,

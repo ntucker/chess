@@ -10,8 +10,9 @@ import { parseUci } from 'chessops/util';
 
 import { positionKey, readPositionKey } from '@/game/replay';
 
-import type { Lesson, LessonMove, PositionKey } from './lesson';
-import { guidePosition } from './select';
+import type { Lesson, LessonMove, LessonPosition, PositionKey } from './lesson';
+import { type GuidePosition, guidePosition } from './select';
+import { moveGames, moveShare, positionGames } from './share';
 
 /** Any opponent's move can be part of a clean run; of the learner's, only book moves. */
 export const inCleanRun = (move: LessonMove, learner: boolean) => !learner || move.book === true;
@@ -19,35 +20,81 @@ export const inCleanRun = (move: LessonMove, learner: boolean) => !learner || mo
 /**
  * An opponent's reply counts toward passing when lichess players chose it at
  * least this share of the time, over all rating bands. The most played reply
- * always counts, and so does one without counts, which can't be told rare.
- * Not `RARE_SHARE` (select.ts), which only decides which rows the list
- * folds away, by the opponent's band: a reply played 5-10% gets its own row
- * but needn't be passed, and a trap start gets no exemption here.
+ * always counts, and so does one without counts, which can't be told rare,
+ * unless it is a marked mistake (`LessonMove.mistake`): a trap the guide
+ * shows needn't be passed until its counts say how often it is played. Not
+ * `RARE_SHARE` (select.ts), which only decides which rows the list folds
+ * away, by the opponent's band: a reply played 5-10% gets its own row but
+ * needn't be passed, and a marked mistake gets no exemption here.
  */
 const COUNTED_SHARE = 0.1;
 
-/** Of the guide's `moves` at a position, those a clean run plays and counts. */
-const countedMoves = (moves: readonly LessonMove[], learner: boolean) =>
-  learner ? moves.filter((move) => inCleanRun(move, learner)) : countedReplies(moves);
+/** Of the guide's moves at `entry`, those a clean run plays and counts. */
+const countedMoves = (entry: LessonPosition, learner: boolean) =>
+  learner
+    ? entry.moves.filter((move) => inCleanRun(move, learner))
+    : countedReplies(entry.moves, positionGames(entry, 'all'));
 
-/** The games a move was played in, over every rating band, if the guide counts them. */
-export const gamesPlayed = ({ games }: LessonMove) => games?.reduce((sum, n) => sum + n, 0);
-
-/** Of the opponent's replies at a position, those that count toward passing (`COUNTED_SHARE`). */
-export function countedReplies(moves: readonly LessonMove[]): readonly LessonMove[] {
-  const played = moves.map(gamesPlayed);
-  const total = played.reduce<number>((sum, n) => sum + (n ?? 0), 0);
+/**
+ * Of the opponent's replies at a position, those that count toward passing
+ * (`COUNTED_SHARE`, over every band); `total` is the games that reached it,
+ * where measured (`LessonPosition.games`).
+ */
+export function countedReplies(
+  moves: readonly LessonMove[],
+  total?: number,
+): readonly LessonMove[] {
+  const played = moves.map((move) => moveGames(move, 'all'));
+  const listed = played.reduce<number>((sum, n) => sum + (n ?? 0), 0);
   const most = Math.max(...played.map((n) => n ?? 0));
-  return moves.filter((_, i) => {
-    const n = played[i];
-    return n === undefined || total === 0 || n === most || n / total >= COUNTED_SHARE;
+  return moves.filter((move, i) => {
+    if (played[i] === undefined) return !move.mistake;
+    const share = moveShare(played[i], listed, total);
+    return share === undefined || played[i] === most || share >= COUNTED_SHARE;
   });
 }
 
 /**
+ * Whether the guide's line goes on from `key`: the guide has moves there,
+ * and not only marked mistakes a clean run skips (the learner's, or the
+ * opponent's without counts). Where only those are left, the line ends and
+ * a trap starts.
+ */
+function lineGoesOn(lesson: Lesson, key: PositionKey): boolean {
+  const guide = guidePosition(lesson, key);
+  if (guide.place !== 'inside') return false;
+  const { moves } = guide.entry;
+  if (!moves.every(({ mistake }) => mistake)) return true;
+  return countedMoves(guide.entry, readPositionKey(key)!.turn === lesson.side).length > 0;
+}
+
+/**
+ * Whether a learner position with `moves` needs a book move: the line goes on
+ * there (a move that isn't a marked mistake), and the guide books none.
+ */
+export const needsBookMove = (moves: readonly LessonMove[]) =>
+  moves.some(({ mistake }) => !mistake) && !moves.some(({ book }) => book);
+
+/**
+ * Where the position `arrivedBy` leads to stands on a guide line: inside it
+ * while the line goes on (`lineGoesOn`), at its end where a guide move led
+ * and the line stops, else beyond the guide. The shipped files keep no entry
+ * for a line's last position, so `end` comes mostly from a guide move into a
+ * position the file doesn't hold.
+ */
+export function linePlace(
+  lesson: Lesson,
+  key: PositionKey,
+  arrivedBy: LessonMove | undefined,
+): GuidePosition['place'] {
+  if (lineGoesOn(lesson, key)) return 'inside';
+  return arrivedBy || key in lesson.positions ? 'end' : 'beyond';
+}
+
+/**
  * Every guide line end a clean run from `start` can reach, each once, in
- * walk order: the positions reached by a guide move where the guide has no
- * moves. A line that comes back to a position adds nothing.
+ * walk order: the positions reached by a guide move where the line stops
+ * (`lineGoesOn`). A line that comes back to a position adds nothing.
  */
 export function cleanLineEnds(lesson: Lesson, start: PositionKey): PositionKey[] {
   const ends: PositionKey[] = [];
@@ -74,8 +121,8 @@ export function walkClean(
     const [key, pos] = step;
     if (visited.has(key)) continue;
     visited.add(key);
-    // Reached by a guide move, a position the guide has no moves at ends a line.
-    if (guidePosition(lesson, key).place === 'inside') toVisit.push(...cleanNext(lesson, key, pos));
+    // Reached by a guide move, a position where the line stops ends it.
+    if (lineGoesOn(lesson, key)) toVisit.push(...cleanNext(lesson, key, pos));
     else if (!end(key)) return false;
   }
   return true;
@@ -103,7 +150,7 @@ function cleanNext(lesson: Lesson, key: PositionKey, pos: Chess | undefined): re
   // playMove's checks and move names.
   const from = pos ?? readPositionKey(key)!;
   const learner = from.turn === lesson.side;
-  const steps = countedMoves(lesson.positions[key].moves, learner).map(({ uci }): WalkStep => {
+  const steps = countedMoves(lesson.positions[key], learner).map(({ uci }): WalkStep => {
     const after = from.clone();
     after.play(parseUci(uci)!);
     return [positionKey(after), after];

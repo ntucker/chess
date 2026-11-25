@@ -1,12 +1,13 @@
 import { describe, expect, it } from '@jest/globals';
 
-import type { Note, PositionKey } from './lesson';
+import type { PositionKey } from './lesson';
+import type { BoardNote } from './mistakes';
 import { HOLD_MS, type Peek, type PeekAction, peekReducer } from './peek';
 
 const HERE = 'here' as PositionKey;
 const THERE = 'there' as PositionKey;
-const PLAN: Note = { text: 'A plan.' };
-const STRUCTURE: Note = { text: 'A structure.' };
+const PLAN: BoardNote = { text: 'A plan.' };
+const STRUCTURE: BoardNote = { text: 'A structure.' };
 const ROW = { at: 'row', uci: 'c7c6' } as const;
 const DRAG = { at: 'drag', from: 'c7', to: 'c6' } as const;
 const OTHER = { at: 'row', uci: 'e7e6' } as const;

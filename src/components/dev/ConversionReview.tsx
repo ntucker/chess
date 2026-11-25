@@ -9,7 +9,8 @@ import { BrowserOnly } from '@/components/BrowserOnly';
 import { Eyebrow } from '@/components/Eyebrow';
 import type { Color } from '@/game/replay';
 import { ideaDrawings } from '@/lesson/drawings';
-import type { Idea, NoteShows } from '@/lesson/lesson';
+import type { NoteShows } from '@/lesson/lesson';
+import type { BoardIdea } from '@/lesson/mistakes';
 import { getLesson, type LessonId } from '@/resources/lesson';
 
 import { DevPage, devStyles, FramedBoard } from './DevPage';
@@ -22,7 +23,7 @@ const KINDS: readonly { readonly kind: NoteShows | 'all'; readonly label: string
   { kind: 'badge', label: 'Badge only' },
   { kind: 'text', label: 'Text only' },
 ];
-const TYPES: readonly (Idea['type'] | 'any')[] = [
+const TYPES: readonly (BoardIdea['type'] | 'any')[] = [
   'any',
   'purpose',
   'pressure',
@@ -61,7 +62,7 @@ function Review({ id }: { readonly id: LessonId }) {
   const lesson = useSuspense(getLesson, id);
   const items = reviewItems(lesson);
   const [kind, setKind] = useState<NoteShows | 'all'>('all');
-  const [type, setType] = useState<Idea['type'] | 'any'>('any');
+  const [type, setType] = useState<BoardIdea['type'] | 'any'>('any');
   const [page, setPage] = useState(0);
   const shown = items.filter(
     (item) =>

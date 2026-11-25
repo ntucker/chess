@@ -21,9 +21,9 @@ import type { Chess } from 'chessops/chess';
 
 import { percent } from '@/analysis/quality';
 import { type Analysis, sketched } from '@/evaluation/evaluation';
-import { lineSans, numberedLine, parsePosition, playLine, readPositionKey } from '@/game/replay';
-import { gamesPlayed, inCleanRun } from '@/lesson/cleanRun';
+import { lineSans, numberedLine, parsePosition, playLine } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
+import { guideOrder } from '@/lesson/mistakes';
 import {
   type Find,
   findOpportunities,
@@ -87,13 +87,9 @@ async function host(lesson: Lesson, band: number) {
       const row = sketches.get(key);
       return fulls.get(key) ?? (row && { lines: row.lines, depth: row.depth, final: false });
     },
-    // The run is for `lesson.side`, so these are its book moves and every move of the erring side.
+    // The run is for `lesson.side`: its book moves (off the book, its unmarked moves), and every move of the erring side.
     guideMoves: ({ key }) => {
-      const learner = readPositionKey(key)!.turn === lesson.side;
-      const moves = lesson.positions[key]?.moves ?? [];
-      const played = moves
-        .filter((move) => inCleanRun(move, learner))
-        .sort((a, b) => (gamesPlayed(b) ?? -1) - (gamesPlayed(a) ?? -1));
+      const played = guideOrder(lesson, key, lesson.side);
       return played.length ? played.map((move) => move.uci) : undefined;
     },
   };

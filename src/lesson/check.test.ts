@@ -3,7 +3,7 @@ import { Chess } from 'chessops/chess';
 import { parseFen } from 'chessops/fen';
 import { parseSan } from 'chessops/san';
 
-import { checkIdea, checkLesson, generatedIdeaProblem } from './check';
+import { checkIdea, checkLesson, generatedIdeaProblem, trapProblem } from './check';
 import { parsePositionKey, positionKey } from '@/game/replay';
 
 import { type Idea, type Lesson, LESSON_FORMAT, type Note, type Purpose } from './lesson';
@@ -238,29 +238,8 @@ const CASES: [name: string, at: Chess, idea: Idea, holds: boolean][] = [
     { type: 'threat', side: 'black', move: 'a8a1', answer: 'a1a2' },
     false,
   ],
-  [
-    'trap loses material',
-    AT.c3,
-    {
-      type: 'trap',
-      moves: ['c6e5', 'f3e5', 'g4d1', 'f1b5', 'd8d7', 'b5d7', 'e8d8', 'e1d1'],
-      verdict: 'losesMaterial',
-    },
-    true,
-  ],
-  [
-    'one-move trap does not show material loss',
-    AT.c3,
-    { type: 'trap', moves: ['c6e5'], verdict: 'losesMaterial' },
-    false,
-  ],
-  [
-    'trap with an illegal move',
-    AT.c3,
-    { type: 'trap', moves: ['c6e4'], verdict: 'whiteWinning' },
-    false,
-  ],
-  ['trap a move earlier', AT.Bg4, { type: 'trap', moves: ['d1d5'], verdict: 'blackWinning' }, true],
+  ['mistake a legal move', AT.c3, { type: 'mistake', move: 'c6e5' }, true],
+  ['mistake an illegal move', AT.c3, { type: 'mistake', move: 'c6e4' }, false],
   [
     'line with both sides moves',
     AT.dxc5,
@@ -486,6 +465,21 @@ describe('checkIdea', () => {
   });
 });
 
+describe('trapProblem', () => {
+  const NXE5 = ['c6e5', 'f3e5', 'g4d1', 'f1b5', 'd8d7', 'b5d7', 'e8d8', 'e1d1'];
+
+  it.each<[string, Chess, string[], Parameters<typeof trapProblem>[2], boolean]>([
+    ['a trap that loses material', AT.c3, NXE5, 'losesMaterial', true],
+    ['a one-move trap that shows no loss', AT.c3, NXE5.slice(0, 1), 'losesMaterial', false],
+    ['a trap with an illegal move', AT.c3, ['c6e4'], 'whiteWinning', false],
+    ['a trap a move earlier', AT.Bg4, ['d1d5'], 'blackWinning', true],
+  ])('%s', (_name, at, moves, verdict, holds) => {
+    const problem = trapProblem(at, moves, verdict);
+    if (holds) expect(problem).toBeUndefined();
+    else expect(problem).toEqual(expect.any(String));
+  });
+});
+
 describe('checkLesson', () => {
   const start = Chess.default();
   const afterE4 = start.clone();
@@ -537,6 +531,7 @@ describe('checkLesson', () => {
     const problems = checkLesson(
       withPosition(key, {
         variation: 'caro',
+        games: [5, 2.5],
         moves: [
           {
             uci: 'c7c6',
@@ -549,6 +544,7 @@ describe('checkLesson', () => {
       }),
     );
     expect(problems.map((p) => p.path)).toEqual([
+      `positions["${key}"].games`,
       `positions["${key}"].moves[0].games`,
       `positions["${key}"].moves[0].notes[0].ideas[0]`,
       `positions["${key}"].moves[1].uci`,
@@ -562,6 +558,91 @@ describe('checkLesson', () => {
     expect(checkLesson(withPosition(key, { ...entry, moves: unbooked }))).toEqual([
       { path: `positions["${key}"]`, message: 'is inside the book but has no book move' },
     ]);
+  });
+
+  describe('marked mistakes', () => {
+    const afterD4 = afterC6.clone();
+    afterD4.play(parseSan(afterD4, 'd4')!);
+    /** The lesson going on 2.d4, where Black's only move is `move`. */
+    const marking = (move: Lesson['positions'][string]['moves'][number], more = {}) => ({
+      ...withPosition(positionKey(afterC6), {
+        ...lesson.positions[positionKey(afterC6)],
+        moves: [{ uci: 'd2d4' }],
+      }),
+      ...more,
+      positions: {
+        ...withPosition(positionKey(afterC6), {
+          ...lesson.positions[positionKey(afterC6)],
+          moves: [{ uci: 'd2d4' }],
+        }).positions,
+        [positionKey(afterD4)]: { variation: 'caro', moves: [move] },
+      },
+    });
+    const at = `positions["${positionKey(afterD4)}"].moves[0].mistake`;
+
+    it("ends the book line where the learner's only moves are marked mistakes", () => {
+      expect(checkLesson(marking({ uci: 'g7g5', mistake: { verdict: 'whiteWinning' } }))).toEqual(
+        [],
+      );
+    });
+
+    it('refuses a mark on a book move, and numbers out of range', () => {
+      const problems = checkLesson(
+        marking({ uci: 'g7g5', book: true, mistake: { cost: 0.05, gain: [0.1], name: ' ' } }),
+      );
+      expect(problems.map(({ path }) => path)).toEqual([
+        at,
+        `${at}.cost`,
+        `${at}.gain`,
+        `${at}.name`,
+      ]);
+    });
+
+    it('stores a line only of guide moves, and only where the guide would play another', () => {
+      const afterG5 = afterD4.clone();
+      afterG5.play(parseSan(afterG5, 'g5')!);
+      /** `marking` with White's 3.Bxg5 or 3.h4 after the marked 2...g5, which stores `line`. */
+      const withLine = (line: string[]) => {
+        const marked = marking({ uci: 'g7g5', mistake: { line } });
+        return {
+          ...marked,
+          positions: {
+            ...marked.positions,
+            [positionKey(afterG5)]: {
+              variation: 'caro',
+              moves: [{ uci: 'c1g5' }, { uci: 'h2h4' }],
+            },
+          },
+        };
+      };
+      expect(checkLesson(withLine(['h2h4']))).toEqual([]);
+      expect(checkLesson(withLine(['c1g5']))).toEqual([
+        { path: `${at}.line`, message: 'is the line the guide gives anyway, so it is left out' },
+      ]);
+      expect(checkLesson(withLine(['f2f4']))).toEqual([
+        { path: `${at}.line[0]`, message: 'is not a guide move at its position' },
+      ]);
+    });
+
+    it("holds a verdict of losing material to the mark's line", () => {
+      expect(checkLesson(marking({ uci: 'g7g5', mistake: { verdict: 'losesMaterial' } }))).toEqual([
+        { path: `${at}.verdict`, message: 'black does not lose material: balance goes 0 to 0' },
+      ]);
+    });
+
+    it('refuses a note naming a move the guide does not mark as a mistake there', () => {
+      const key = positionKey(afterC6);
+      const named = withPosition(key, {
+        ...lesson.positions[key],
+        notes: [{ text: 'A trap.', ideas: [{ type: 'mistake', move: 'd2d4' }] }],
+      });
+      expect(checkLesson(named)).toEqual([
+        {
+          path: `positions["${key}"].notes[0].ideas[0]`,
+          message: 'mistake: names a move the guide does not mark as a mistake here',
+        },
+      ]);
+    });
   });
 
   it('requires a source, and the license of share-alike Wikibooks text', () => {

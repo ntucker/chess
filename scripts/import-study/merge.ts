@@ -12,7 +12,6 @@ import {
   LESSON_FORMAT,
   type Lesson,
   type LessonPosition,
-  type Note,
   type PositionKey,
   type Risk,
   type Uci,
@@ -21,6 +20,7 @@ import {
 } from '@/lesson/lesson';
 
 import type { ChapterNotes } from './extract';
+import type { StudyIdea, StudyLesson, StudyNote } from './mistakes';
 import { chapterMoves, isDubious, mainLine, played, type Chapter, type StudyMove } from './study';
 import { withTitleMoves } from './titleMoves';
 
@@ -31,14 +31,14 @@ interface DraftMove {
   readonly uci: Uci;
   book: boolean;
   risk?: Risk;
-  readonly notes: Note[];
+  readonly notes: StudyNote[];
   /** The source of its notes (see `Chapter.source`). */
   noteSource?: number;
 }
 
 interface DraftPosition {
   readonly moves: Map<Uci, DraftMove>;
-  readonly notes: Note[];
+  readonly notes: StudyNote[];
   noteSource?: number;
   /** The source of the first chapter to recommend a move here (see `Chapter.source`). */
   bookSource?: number;
@@ -65,7 +65,7 @@ export function mergeChapters(
   extracted: readonly ChapterNotes[],
   chapterName: ChapterName = numberedChapterName,
   tally: SourceTally[] = [],
-): Lesson {
+): StudyLesson {
   if (chapters.length === 0) throw new Error(`No chapters to merge for lesson ${info.id}`);
   const start = chapters[0].start;
   if (chapters.some((chapter) => positionKey(chapter.start) !== positionKey(start))) {
@@ -161,7 +161,11 @@ function addChapter(
     draft.book = true;
     tree.entry(positionKey(move.before)).bookSource ??= source;
   };
-  const note = (spot: { notes: Note[]; noteSource?: number }, note: Note, intro?: true) => {
+  const note = (
+    spot: { notes: StudyNote[]; noteSource?: number },
+    note: StudyNote,
+    intro?: true,
+  ) => {
     // A line's introduction leaves the spot to whichever guide explains the move itself.
     if (!intro) spot.noteSource ??= source;
     if (addNote(spot, note, source)) tally.notes++;
@@ -385,8 +389,8 @@ function bookMoves(
  * is the caller's job: a line's introduction leaves the spot open.
  */
 function addNote(
-  spot: { notes: Note[]; noteSource?: number },
-  note: Note,
+  spot: { notes: StudyNote[]; noteSource?: number },
+  note: StudyNote,
   source: number,
 ): boolean {
   if (spot.noteSource !== undefined && spot.noteSource !== source) return false;
@@ -396,7 +400,7 @@ function addNote(
   return true;
 }
 
-function finish(draft: DraftPosition, variation: VariationId): LessonPosition {
+function finish(draft: DraftPosition, variation: VariationId): LessonPosition<StudyIdea> {
   const moves = [...draft.moves.values()];
   return {
     variation,

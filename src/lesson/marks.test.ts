@@ -308,7 +308,7 @@ describe('steering', () => {
   const line = uciLine('e4', 'c6');
   const { candidates } = lessonView({ lesson: LESSON, line, ply: line.length, opponent: 1500 });
   const reply = (passed: PositionKey[]) =>
-    steering(LESSON, progress([], passed), practice(true))!(candidates)?.san;
+    steering(LESSON, progress([], passed), practice(true))!(candidates, at('e4', 'c6'))?.san;
 
   it('plays the most played reply below which a line end is still to pass', () => {
     expect(reply([])).toBe('d4');
@@ -332,7 +332,7 @@ describe('steering', () => {
     const done = progress([], [ENDS.d4]);
     expect(marksAfter(done, rare, 'e4')).toEqual({ c6: 'passed', e5: undefined });
     const { candidates: replies } = lessonView({ lesson: rare, line, ply: 2, opponent: 1500 });
-    expect(steering(rare, done, practice(true))!(replies)?.san).toBe('d4');
+    expect(steering(rare, done, practice(true))!(replies, at('e4', 'c6'))?.san).toBe('d4');
   });
 
   it('plays the first reply that counts once every counted line is passed', () => {
@@ -346,7 +346,9 @@ describe('steering', () => {
     );
     const { candidates: replies } = lessonView({ lesson, line, ply: 2, opponent: 1500 });
     expect(replies.map(({ san }) => san)).toEqual(['Nc3', 'd4']);
-    expect(steering(lesson, progress([], [ENDS.d4]), practice(true))!(replies)?.san).toBe('d4');
+    expect(
+      steering(lesson, progress([], [ENDS.d4]), practice(true))!(replies, at('e4', 'c6'))?.san,
+    ).toBe('d4');
   });
 
   it('steers only a clean Practice run, which alone can pass a line', () => {

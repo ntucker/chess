@@ -33,7 +33,8 @@ import {
   withTurn,
 } from '@/game/replay';
 
-import type { Idea, Lesson, PositionKey, Uci } from './lesson';
+import type { Lesson, PositionKey, Uci } from './lesson';
+import type { BoardIdea } from './mistakes';
 import type { ShownNote } from './view';
 
 /** A move or square a note names, and the board that shows it. */
@@ -189,7 +190,7 @@ function notePlaces(lesson: Lesson, { note, after, before }: ShownNote): Places 
  */
 function* tiers(
   lesson: Lesson,
-  ideas: readonly Idea[],
+  ideas: readonly BoardIdea[],
   after: PositionKey,
   before: PositionKey | undefined,
 ): Generator<Tier> {
@@ -232,7 +233,7 @@ function* tiers(
  * from position n.
  */
 function ideaLines(
-  ideas: readonly Idea[],
+  ideas: readonly BoardIdea[],
   start: Chess,
 ): { positions: Chess[]; moves: readonly Uci[] }[] {
   return ideas.flatMap((idea) => {
