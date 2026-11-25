@@ -8,11 +8,12 @@
  * position tree → turn its traps into marked moves (./mistakes) → pick book moves where the guide shows moves but
  * recommends none, and (`engineCheck` in studies.ts) drop what Stockfish
  * contradicts (./engineCheck) → settle each mistake's line (`settleMistakes`) → give notes written on another move order to
- * the position the lesson reaches (./transpositions) → write the idea of each
- * book move nothing explains with AI (./explain) → drop variation names no
- * position carries (./emptyVariations) → on a recipe that sets `opportunities`,
- * write the opportunity finder's finds and count the line each mark plays (./finds) → add
- * popularity → checkLesson → write
+ * the position the lesson reaches (./transpositions) → on a recipe that sets
+ * `opportunities`, write the opportunity finder's finds into the tree
+ * (./finds) → write the idea of each book move nothing explains with AI
+ * (./explain) → drop variation names no position carries (./emptyVariations)
+ * → count the line each find's mark plays (./finds) → add popularity →
+ * checkLesson → write
  * assets/lessons/<id>.json, register it in src/resources/lesson.ts and list
  * it in assets/lessons/index.json.
  * `caro-kann` names a study listed in studies.ts. With --no-popularity the
