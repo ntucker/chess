@@ -82,10 +82,12 @@ afterEach(() => act(() => root.unmount()));
 
 describe('a board drawing its first position', () => {
   // Timers are played by hand too; animation frames stay as above.
-  beforeEach(() =>
-    jest.useFakeTimers({ doNotFake: ['requestAnimationFrame', 'cancelAnimationFrame'] }),
-  );
-  afterEach(() => jest.useRealTimers());
+  beforeEach(() => {
+    jest.useFakeTimers({ doNotFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
   /** Time passing by `ms`. */
   const wait = (ms: number) => act(() => jest.advanceTimersByTime(ms));
 
