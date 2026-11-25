@@ -3,6 +3,7 @@ import {
   MotionList,
   MotionView,
   Pressable,
+  Progress,
   Stack,
   Surface,
   Text,
@@ -27,6 +28,7 @@ import { fonts } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
 
 import { MARK_SIZE, MarkLegend, ProgressMark, SPOKEN_MARKS } from './ProgressMark';
+import { LOADING } from './status';
 
 interface Props {
   /** The list's heading: what moves these are, and whose unless `owner` says. */
@@ -62,6 +64,8 @@ interface Props {
   readonly main?: Candidate;
   /** The row previewed, whether its row is pointed at or its piece dragged onto its square. */
   readonly pointed?: Uci;
+  /** The row whose move picked the lesson loading, which shows the wait. */
+  readonly loadingMove?: Uci;
   /** Each row's progress mark, by its move (`rowMarks`). */
   readonly marks: ReadonlyMap<Uci, Mark>;
   /** Where each move leads, when it enters another variation. */
@@ -127,6 +131,7 @@ export function CandidateList({
   onShowRare,
   main,
   pointed,
+  loadingMove,
   marks,
   leadsTo,
   playable,
@@ -164,6 +169,7 @@ export function CandidateList({
             verdict={verdicts?.get(candidate.move.uci)}
             opportunity={opportunities?.has(candidate.move.uci) ?? false}
             pointed={candidate.move.uci === pointed}
+            loading={candidate.move.uci === loadingMove}
             mark={marks.get(candidate.move.uci)}
             // Every row keeps room for a mark once one has one, so their shares line up.
             markSlot={shownMarks.size > 0}
@@ -280,6 +286,8 @@ interface RowProps {
   /** The row is an opportunity (the list's `opportunities`). */
   readonly opportunity: boolean;
   readonly pointed: boolean;
+  /** Its move picked the lesson loading: a sweep along its foot shows the wait. */
+  readonly loading: boolean;
   readonly mark?: Mark;
   /** Some row of the list has a mark, so this one keeps room for one. */
   readonly markSlot: boolean;
@@ -305,6 +313,7 @@ function Row({
   verdict,
   opportunity,
   pointed,
+  loading,
   mark,
   markSlot,
   leadsTo,
@@ -428,6 +437,9 @@ function Row({
       {markSlot ? (
         <View style={styles.mark}>{mark ? <ProgressMark mark={mark} /> : null}</View>
       ) : null}
+      {loading ? (
+        <Progress size="sm" tone="accent" label={LOADING.detail} style={styles.sweep} />
+      ) : null}
     </Pressable>
   );
 }
@@ -502,6 +514,8 @@ function rowStyles({ inset, gap, dot, san, badge, row }: Metrics, compact: boole
       ...row,
     },
     dot: { width: dot, height: dot, borderRadius: dot / 2 },
+    // Along the row's foot, over its padding, so the rows keep their places.
+    sweep: { position: 'absolute', left: inset, right: inset, bottom: 0 },
     // Text lines up with the rows' moves, past the dot and its gap.
     toggle: { paddingLeft: inset + dot + gap },
     // Off the web, too long a move shrinks to its line (`SHRINK_TO_LINE`) rather than push its badge over the share.

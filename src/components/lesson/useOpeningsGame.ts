@@ -197,6 +197,11 @@ export function useOpeningsGame(
   const shownSide = useDeferredValue(side);
   const shownLesson = lessonOf(index, shownSide, deferred.moves);
   const pending = picked !== undefined && shownLesson !== picked;
+  // A pick is a move played on the position shown: the game's next move after
+  // it. (Forward to a game one move on from the page names that move too, the
+  // one that led there.)
+  const pendingMove =
+    pending && game.ply === deferred.ply + 1 ? game.moves[deferred.ply] : undefined;
   const held: Dispatch<GameAction> = (action) => {
     if (!isInput(action)) dispatch(action);
   };
@@ -220,6 +225,8 @@ export function useOpeningsGame(
      * loading, and the page offers no moves.
      */
     pending,
+    /** The move that picked the lesson loading, played on the position the page shows. */
+    pendingMove,
   };
 }
 

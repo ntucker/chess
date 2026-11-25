@@ -19,7 +19,7 @@ export const LOADING = { title: 'Setting the stage…', detail: 'Loading the les
 interface StatusInput {
   /** Whether the board shows where the openings are picked (`isPicking`). */
   readonly picking: boolean;
-  /** The game has moved on to a lesson that has been loading long enough to say so. */
+  /** The next page has been loading long enough to say so, with no row of the list showing it. */
   readonly loading: boolean;
   /** The lesson's title, for a position before any variation. */
   readonly title: string;

@@ -50,6 +50,8 @@ export interface LessonScreenInput {
   readonly store: GameStore;
   /** The game has moved on to a lesson still loading: the learner can't move. */
   readonly pending: boolean;
+  /** The move that picked the lesson loading long enough to say so: its row shows the wait. */
+  readonly loadingMove?: Uci;
   /** A lesson, or the next page, has been loading long enough to say so. */
   readonly loading: boolean;
 }
@@ -139,6 +141,7 @@ export function useLessonScreen({
   onPlayAs,
   store,
   pending,
+  loadingMove,
   loading,
 }: LessonScreenInput): LessonScreenModel {
   const ctrl = useController();
@@ -201,7 +204,8 @@ export function useLessonScreen({
   );
   const { pastGuide, news, ...headline } = describeStatus(view, {
     picking,
-    loading,
+    // A page loaded by Back or Forward has no row to show it, so the headline tells it.
+    loading: loading && loadingMove === undefined,
     title: lesson.title,
     names,
     rival: colorName(rival),
@@ -242,6 +246,7 @@ export function useLessonScreen({
   const rowProps = {
     position: view.key,
     pointed: preview?.move.uci,
+    loadingMove,
     marks,
     playable: canPlay,
     onPlay: play,

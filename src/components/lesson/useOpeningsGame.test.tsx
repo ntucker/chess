@@ -369,12 +369,15 @@ describe('useOpeningsGame', () => {
     expect(mockRouter.push).toHaveBeenCalledWith('/lesson/caro-kann', AT_ONCE);
     expect(moves()).toEqual([]);
     expect(latest().pending).toBe(true);
+    // The move that picked it, for its row to show the wait.
+    expect(latest().pendingMove).toBe('e2e4');
     expect(JSON.stringify(root?.container.toJSON())).not.toContain('placeholder');
     // Back while it loads: the page is at the start again, with nothing pending.
     await push('caro-kann');
     await back();
     expect(moves()).toEqual([]);
     expect(latest().pending).toBe(false);
+    expect(latest().pendingMove).toBeUndefined();
   });
 
   it("drops the learner's moves and steps while the page shows an older game", async () => {
