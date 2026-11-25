@@ -335,45 +335,39 @@ limits it ran with. Set 2026-11-24 (Decisions).
 
 ### Piece E: Cue and three acts
 
-In Explore, after the side the learner doesn't play plays a marked move, the learner answers it at
-the cue. Design review outcome (2026-11-25, agreed with the planning thread):
+After the side the learner doesn't play plays a marked move, the learner answers it at the cue.
+Revised 2026-11-25 (Nathaniel's decision card: "Explore reveals, Practice tests"; rules agreed with
+the planning thread). The mode is the only switch between revealing and testing: the cue adds no
+hiding, no test and no stored state of its own. The first build (#229) hid every hint at an open
+cue in Explore, held the board after a wrong try, judged tries from Stockfish's final answers and
+offered Retry, Show the move and Skip; the revision removes all of it.
 
 - The cue is not a mode. It is derived from the line (`lineCue`, `src/opportunity/cue.ts`, carried
   as `LessonView.cue`): the latest marked guide move, up to the board, played by the side that
-  isn't `Lesson.side`. It needs no note naming the mark, so finder marks work. A learner-falls trap
-  keeps the trap card and `LandedTrap`, as does Practice (piece F); in Explore the acts take an
-  opportunity's trap card's place and show its note once the punishment lands.
-- A try is a real game move through `useGame`, labelled by the existing badge once its verdict
-  is in (the label's search waits, so the searches the verdict needs run first). Its verdict
-  (`tryVerdict`) is derived each render: the line's own reply and a book move pass at once (49 of
-  the 105 shipped cues have no book move there); any other passes where the cue accepts it
-  (`acceptsReply` in `accepts.ts`, the one predicate `acceptedReplies` is built on: the cue's first
-  line, or a listed move that labels best or good and still gains the mistake limit over the
-  position before), which needs the cue's final analysis and, for a listed move after the first,
-  the one before the mistake. A search given up leaves the try unchecked, shown as not passed.
-- While the board's latest move is a try at the cue that hasn't passed, the lesson opponent is held
-  (`Acts.held`: `useLesson` gives `useGame` no opponent), so a wrong try gets no reply and no effect
-  plays a pass. While a try is held the board takes no move, so it ends only by passing, Retry,
-  Show the move or Skip. While its verdict is pending only the search it waits on is watched,
-  while the screen is in front. Retry goes back to the cue;
-  the next move there replaces the try.
-- The one stored value is `ScreenState.cue`: the learner's choice at a cue (shown or skipped), with
-  the cue's ply and key, kept while the game's line still reaches it. The line can't tell either
-  choice. Show the move goes back to the cue and lists and draws only the line's reply. Skip leaves
-  the question: the hints come back and a held try gets its reply.
-- `guidance.ts` alone hides: at an open cue (`Acts.live`), the candidates, every note (the mistake's
-  own names its punishment), Stockfish's best and top moves and the verdicts.
-- Act III: the learner plays the punishing side with Explore's usual hints, and the lesson opponent
-  plays the line's moves (`payoffReplies`, since the band's most played can differ from the line).
-  The acts end at the line's end or where the game leaves it; an accepted reply other than the
-  line's has no Act III.
-- A haptic tick (`haptic('moveLanded')`) marks the cue when the opponent plays the mistake, not when
-  the screen opens at the cue or the board steps back onto it. A mistake the learner plays for the
-  other side ticks as their own move.
-- Wide: the acts as chips in a card where the trap card goes, with Retry, Show the move and Skip as
-  icon buttons while the cue asks, and the headline saying what to do. Phone, on the redesign's two
-  panes: the acts as rows in the moves pane, and in the other pane the headline's line and the
-  three icon buttons, then the guide's note once the punishment lands.
+  isn't `Lesson.side`. It needs no note naming the mark, so finder marks work. It records the game's
+  move at the cue (`tried`) and whether it punishes the mistake (`found`: the line's reply, or a
+  move the guide books there; a finder find books every accepted reply, Rules). A learner-falls
+  trap keeps the trap card and `LandedTrap`.
+- Explore (`cueActs` in `guidance.ts`): the three acts and the "Your cue." headline beside every
+  hint, as on any Explore position, from the cue along the line's moves the game plays, and as news
+  of the line's end. A move off the line ends them at once and keeps only its ordinary move label.
+  A note before the mistake that names the answer still shows (Nathaniel, 2026-11-25: Explore is
+  where the learner reads). Act III: the lesson opponent plays the line's moves (`payoffReplies`,
+  since the band's most played can differ from the line).
+- Practice: the cue is an ordinary learner turn. Hints hide as on any learner turn, and nothing
+  names the cue before the move, since naming it would hint that a punishment exists. The test is
+  Practice's own: a book move keeps the run clean, anything else is the usual non-book move. After
+  the learner's move a card says found or missed (`Guidance.opportunity`), from that move along the
+  line and as news of its last move, the way a trap fallen into shows its card. No hold and no
+  extra controls: Practice's take-back and retry apply.
+- Where the acts or the Practice card show, the mistake's trap (when a note names it) shows its
+  note there rather than on its own card (`Guidance.trapIn`). All of it is decided in `guidance.ts`.
+- A haptic tick (`haptic('moveLanded')`) marks the cue in Explore when the opponent plays the
+  mistake, not when the screen opens at the cue or the board steps back onto it. A mistake the
+  learner plays for the other side ticks as their own move.
+- Wide and phone: the acts as chips in a card where the trap card goes (on a phone, above the
+  pages, as the trap card is), with the guide's note once the punishment lands; the Practice card
+  in the same place.
 
 ### Piece F: Practice and marks
 

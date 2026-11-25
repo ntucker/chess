@@ -1,14 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Button, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
+import { Button } from '@reactive/silk-native';
 import { StyleSheet, View } from 'react-native';
 
-import { Notation } from '@/components/Notation';
 import { type Color, colorName } from '@/game/replay';
 import type { Lesson } from '@/lesson/lesson';
 import type { Playback } from '@/lesson/useLesson';
 import type { LandedTrap } from '@/lesson/view';
 
 import { PastNote } from './IdeaCard';
+import { ToneCard } from './ToneCard';
 
 interface Props {
   readonly lesson: Lesson;
@@ -30,43 +30,30 @@ interface Props {
  * back to before the mistake.
  */
 export function TrapCard({ lesson, trap, mistake, fell, learner, playback, onBack }: Props) {
-  const { theme } = useTheme();
-  const danger = theme.semantic.color.tones.danger;
   const yours = fell === learner;
   return (
-    <Surface
-      radius="md"
-      border="subtle"
-      style={[styles.card, { borderColor: danger.border, backgroundColor: danger.subtle }]}
+    <ToneCard
+      tone="danger"
+      heading={{
+        icon: 'warning',
+        title: yours
+          ? `${mistake} walked into a trap.`
+          : `${colorName(fell)} fell for it with ${mistake}.`,
+      }}
     >
-      <Stack gap="3">
-        <View style={styles.heading}>
-          <Ionicons name="warning" size={18} color={danger.text} />
-          <Text role="headingSm" style={styles.title}>
-            <Notation>
-              {yours
-                ? `${mistake} walked into a trap.`
-                : `${colorName(fell)} fell for it with ${mistake}.`}
-            </Notation>
-          </Text>
+      <PastNote lesson={lesson} shown={trap.note} learner={learner} playback={playback} />
+      {yours ? (
+        <View style={styles.back}>
+          <Button size="sm" variant="ghost" tone="danger" onPress={onBack}>
+            <Ionicons name="arrow-undo" size={13} />
+            {' Back to before the mistake'}
+          </Button>
         </View>
-        <PastNote lesson={lesson} shown={trap.note} learner={learner} playback={playback} />
-        {yours ? (
-          <View style={styles.back}>
-            <Button size="sm" variant="ghost" tone="danger" onPress={onBack}>
-              <Ionicons name="arrow-undo" size={13} />
-              {' Back to before the mistake'}
-            </Button>
-          </View>
-        ) : null}
-      </Stack>
-    </Surface>
+      ) : null}
+    </ToneCard>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { padding: 16 },
-  heading: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  title: { flexShrink: 1 },
   back: { flexDirection: 'row' },
 });

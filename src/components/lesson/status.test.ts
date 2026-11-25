@@ -33,48 +33,22 @@ describe('describeStatus', () => {
     });
   });
 
-  it("asks at a cue, told beside a phone's acts until a try passes", () => {
+  it("names a cue until the line's reply is played, then the payoff", () => {
     const cue = { mistake: 'Nxe5', reply: 'c6', share: 0.31 } as const;
-    expect(
-      describeStatus(view('inside'), { ...INPUT, cue: { ...cue, found: 'open', payoff: 'ahead' } }),
-    ).toMatchObject({
+    const headline = (replied: boolean, payoff: CueStatus['payoff']) =>
+      describeStatus(view('inside'), { ...INPUT, cue: { ...cue, replied, payoff } });
+    expect(headline(false, 'ahead')).toEqual({
+      eyebrow: 'Giuoco Piano',
       title: 'Your cue.',
       titleTip: "About 31% of players at your opponent's rating make this mistake here.",
       detail: 'Nxe5 is a mistake. Find the move that punishes it.',
-      news: 'none',
     });
-    expect(
-      describeStatus(view('inside'), {
-        ...INPUT,
-        cue: { ...cue, found: 'failed', payoff: 'ahead', tried: 'a6' },
-      }),
-    ).toMatchObject({ title: 'Not this one.', news: 'none' });
-    expect(
-      describeStatus(view('inside'), {
-        ...INPUT,
-        cue: { ...cue, found: 'passed', payoff: 'playing' },
-      }),
-    ).toMatchObject({ title: 'The payoff.', news: 'all' });
-  });
-
-  it('words each cue state', () => {
-    const cue = { mistake: 'Nxe5', reply: 'c6', tried: 'a6' } as const;
-    const headline = (found: CueStatus['found'], payoff: CueStatus['payoff'] = 'ahead') =>
-      describeStatus(view('inside'), { ...INPUT, cue: { ...cue, found, payoff } });
-    expect(headline('shown')).toMatchObject({
-      title: 'Your cue.',
-      detail: 'c6 punishes Nxe5. Play it.',
-    });
-    expect(headline('pending')).toMatchObject({
-      title: 'Checking your move…',
-      detail: 'Does a6 punish Nxe5?',
-    });
-    expect(headline('unchecked')).toMatchObject({ title: 'Couldn’t check it.' });
-    expect(headline('passed', 'none')).toMatchObject({
+    expect(headline(true, 'playing')).toMatchObject({ title: 'The payoff.' });
+    expect(headline(true, 'done')).toMatchObject({ title: 'Payoff complete.' });
+    expect(headline(true, 'none')).toMatchObject({
       title: 'Found it.',
-      detail: 'a6 punishes Nxe5.',
+      detail: 'c6 punishes Nxe5.',
     });
-    expect(headline('passed', 'done')).toMatchObject({ title: 'Payoff complete.', news: 'all' });
   });
 
   it('leaves it out inside the guide', () => {

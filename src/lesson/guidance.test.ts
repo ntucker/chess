@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
 import {
-  type CueGuidance,
+  cueActs,
   guidance,
   type EngineView,
   type Guidance,
@@ -29,6 +29,7 @@ import {
   WITH_RARE,
   withMistakeLine,
   withMoves,
+  readShippedLesson,
 } from './lesson.fixture';
 import { lessonView, type Pointer, preview } from './view';
 
@@ -58,20 +59,18 @@ function shown(
     engine = ENGINE,
     picking = sans.length === 0,
     refutation,
-    cue,
   }: {
     pointer?: Pointer;
     lifted?: Candidate['from'];
     engine?: { best?: string; top?: string[]; final?: boolean };
     picking?: boolean;
     refutation?: string;
-    cue?: CueGuidance;
   } = {},
 ): Guidance {
   const view = sampleView(sans);
   const stockfish = engineView(sans, engine);
   // As useLesson does: a pointer previews only the rows the list shows.
-  const listed = listedEngineMoves(view, mode, picking, stockfish.top, stockfish.final, cue);
+  const listed = listedEngineMoves(view, mode, picking, stockfish.top, stockfish.final);
   return guidance({
     view,
     mode,
@@ -81,7 +80,6 @@ function shown(
     lifted,
     engine: stockfish,
     refutation,
-    cue,
   });
 }
 
@@ -96,47 +94,6 @@ const summary = (shown: Guidance) => ({
 });
 
 describe('guidance', () => {
-  describe('an open cue', () => {
-    const verdicts = (sans: string[], cue?: CueGuidance) =>
-      shown(sans, 'explore', {}, { cue, pointer: { at: 'row', uci: uci(...sans, 'Bf5') } });
-
-    it('hides every hint: candidates, previews, notes, best, top moves and verdicts', () => {
-      const asking = verdicts(ADVANCE, { open: true });
-      expect(summary(asking)).toEqual({
-        candidates: [],
-        preview: undefined,
-        notes: [],
-        ideas: [],
-        best: undefined,
-        top: [],
-      });
-      expect(asking.verdicts).toBeUndefined();
-      expect(asking.drawnCandidates).toEqual([]);
-    });
-
-    it('lists and draws only the reply it reveals, with "Arrows" off too', () => {
-      const reveal = uci(...ADVANCE, 'c5');
-      const revealed = shown(
-        ADVANCE,
-        'explore',
-        { showMoves: false },
-        { cue: { open: true, reveal } },
-      );
-      expect(revealed.candidates.map(({ san }) => san)).toEqual(['c5']);
-      expect(revealed.drawnCandidates.map(({ san }) => san)).toEqual(['c5']);
-      expect(revealed.notes).toEqual([]);
-      // Listed, but not a choice to point at.
-      expect(revealed.choices).toBe(false);
-    });
-
-    it('lists no top moves past the guide', () => {
-      const off = [...ADVANCE, 'a6'];
-      const engine = { best: 'g1f3', top: ['g1f3'], final: true };
-      expect(shown(off, 'explore', {}, { engine }).top).toHaveLength(1);
-      expect(shown(off, 'explore', {}, { engine, cue: { open: true } }).top).toEqual([]);
-    });
-  });
-
   describe('Explore', () => {
     it("shows everything on the learner's turn; Stockfish's best is tagged only when the guide lacks it", () => {
       expect(summary(shown(ADVANCE, 'explore'))).toEqual({
@@ -786,9 +743,9 @@ describe('guidance', () => {
       }
     });
 
-    it('shows a trap the learner fell into on its own card, with a cue given too', () => {
+    it('shows a trap the learner fell into on its own card', () => {
       expect(shown(LANDED, 'explore').trapIn).toBe('card');
-      expect(shown(LANDED, 'explore', {}, { cue: { open: false } }).trapIn).toBe('card');
+      expect(shown(LANDED, 'practice').trapIn).toBe('card');
       expect(shown(TRAP, 'explore').trapIn).toBeUndefined();
     });
 
@@ -811,6 +768,85 @@ describe('guidance', () => {
       expect(trapAt(TRAP_PUNISHED.slice(0, -1))).toBeDefined();
       expect(trapAt(TRAP_PUNISHED)).toBeDefined();
       expect(trapAt([...TRAP_PUNISHED, 'a6'])).toBeUndefined();
+    });
+  });
+});
+
+// Black's Berlin: White's 5.Nxe5? is marked, punished by 5...c6 6.Bc4 Qa5+,
+// and the guide's note on it names the trap.
+describe('a cue', () => {
+  const BERLIN = readShippedLesson('berlin');
+  const LINE = ['e4', 'e5', 'Nf3', 'Nc6', 'Bb5', 'Nf6', 'd3', 'Ne7', 'Nxe5', 'c6', 'Bc4', 'Qa5+'];
+  const at = (sans: readonly string[], mode: LessonMode, ply = sans.length) => {
+    const view = lessonView({ lesson: BERLIN, line: uciLine(...sans), ply, opponent: 1500 });
+    return guidance({ view, mode, switches: ALL_ON, picking: false });
+  };
+  const upTo = (count: number) => LINE.slice(0, count);
+
+  describe('in Explore', () => {
+    it('shows its acts beside every hint', () => {
+      const cue = at(upTo(9), 'explore');
+      expect(cue.acts).toMatchObject({ replied: false, payoff: 'ahead' });
+      expect(cue.candidates.length).toBeGreaterThan(0);
+      expect(cue.notes.length).toBeGreaterThan(0);
+      expect(cue.opportunity).toBeUndefined();
+    });
+
+    it('follows the line through the payoff, and keeps its end as news', () => {
+      expect(at(upTo(10), 'explore').acts).toMatchObject({ replied: true, payoff: 'playing' });
+      expect(at(upTo(12), 'explore').acts).toMatchObject({ replied: true, payoff: 'done' });
+      // The mistake's trap shows its note in the acts, not on its own card.
+      expect(at(upTo(10), 'explore').trapIn).toBe('cue');
+    });
+
+    it('ends at a move off the line, which keeps only its move label', () => {
+      const offLine = [...upTo(9), 'a6'];
+      expect(at(offLine, 'explore').acts).toBeUndefined();
+      // Stepped back onto the cue, it is the cue again.
+      expect(at(offLine, 'explore', 9).acts).toMatchObject({ replied: false });
+    });
+
+    it('has no acts before the mistake, nor where the moves pick the opening', () => {
+      expect(at(upTo(8), 'explore').acts).toBeUndefined();
+      const view = lessonView({
+        lesson: BERLIN,
+        line: uciLine(...upTo(9)),
+        ply: 9,
+        opponent: 1500,
+      });
+      expect(cueActs(view, 'explore', true)).toBeUndefined();
+    });
+  });
+
+  describe('in Practice', () => {
+    it("is an ordinary learner turn: nothing names it, and Practice's hiding applies", () => {
+      const cue = at(upTo(9), 'practice');
+      expect(cue.acts).toBeUndefined();
+      expect(cue.opportunity).toBeUndefined();
+      expect(cue.candidates).toEqual([]);
+    });
+
+    it("shows the answer found after the learner's move, with the mistake's note, through the payoff", () => {
+      const found = at(upTo(10), 'practice');
+      expect(found.opportunity).toMatchObject({ ply: 9, found: true });
+      expect(found.trapIn).toBe('cue');
+      expect(at(upTo(12), 'practice').opportunity).toMatchObject({ found: true });
+    });
+
+    it("keeps a find as news through the opponent's move off the line, until the learner's next", () => {
+      const offLine = [...upTo(10), 'Ba4'];
+      expect(at(offLine, 'practice').opportunity).toMatchObject({ found: true });
+      expect(at([...offLine, 'Qa5'], 'practice').opportunity).toBeUndefined();
+    });
+
+    it("shows a miss as news of the learner's move, until their next", () => {
+      const missed = [...upTo(9), 'a6'];
+      expect(at(missed, 'practice').opportunity).toMatchObject({ found: false });
+      const answered = [...missed, 'Nf3'];
+      expect(at(answered, 'practice').opportunity).toMatchObject({ found: false });
+      expect(at([...answered, 'h6'], 'practice').opportunity).toBeUndefined();
+      // Stepped back onto the cue, nothing names it again.
+      expect(at(missed, 'practice', 9).opportunity).toBeUndefined();
     });
   });
 });

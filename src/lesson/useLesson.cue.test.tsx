@@ -3,7 +3,6 @@ import { act, useReducer } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
 import { haptic } from '@/components/haptics';
-import type { FinalAnalysis } from '@/evaluation/evaluation';
 import { gameReducer, startGame } from '@/game/game';
 import { readPositionKey, sanToUci } from '@/game/replay';
 import { LessonIndexContext } from '@/resources/lesson';
@@ -15,20 +14,14 @@ import { lineKeys } from './select';
 import { useLesson } from './useLesson';
 
 // What useLesson reads besides the lesson and the game is stood in for
-// (useLesson.fixture.ts), but for Stockfish's final answers, which these
-// tests set (`finals`), and the engine past the guide, which never answers.
+// (useLesson.fixture.ts), but for the engine past the guide, which never answers.
 type StandIns = typeof import('@/lesson/useLesson.fixture');
 function mockStandIns() {
   return jest.requireActual<StandIns>('@/lesson/useLesson.fixture');
 }
-const mockFinals = new Map<string, FinalAnalysis>();
 const mockSettings = { ...DEFAULT_SETTINGS, auto: true };
 jest.mock('@/analysis/useMoveQualities', () => mockStandIns().moveQualities);
-jest.mock('@/resources/analysis', () => ({
-  ...mockStandIns().analysis,
-  storedAnalyses: (_ctrl: unknown, _engine: unknown, lines: readonly (readonly string[])[]) =>
-    lines.map((line) => mockFinals.get(line.join(' '))),
-}));
+jest.mock('@/resources/analysis', () => mockStandIns().analysis);
 jest.mock('@/resources/opponent', () => ({
   ...mockStandIns().opponent,
   gameOpponent: () => ({
@@ -84,55 +77,49 @@ const play = (san: string) =>
 
 beforeEach(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-  // The cue's final analysis: 5...c6 best, then 5...Nc6.
-  const pos = readPositionKey(CUE_KEY)!;
-  mockFinals.set(CUE.join(' '), {
-    lines: [
-      { uci: sanToUci(pos.clone(), 'c6')!, evaluation: { score: 0.25, pawns: 0 } },
-      { uci: sanToUci(pos.clone(), 'Nc6')!, evaluation: { score: 0.3, pawns: 0 } },
-    ],
-    depth: 18,
-    final: true,
-  });
 });
 
 afterEach(async () => {
   await act(async () => root?.unmount());
   root = undefined;
   renders.length = 0;
-  mockFinals.clear();
   jest.mocked(haptic).mockClear();
 });
 
 describe('useLesson at a cue', () => {
-  it('asks at the cue, hiding every hint', async () => {
+  it('shows its acts in Explore beside every hint', async () => {
     await atCue();
-    expect(lesson().acts).toMatchObject({ found: 'open', live: true });
-    expect(lesson().guidance.candidates).toEqual([]);
-    expect(lesson().guidance.notes).toEqual([]);
+    expect(lesson().guidance.acts).toMatchObject({ replied: false, payoff: 'ahead' });
+    expect(lesson().guidance.candidates.length).toBeGreaterThan(0);
+    expect(lesson().canPlay).toBe(true);
   });
 
-  it("passes the line's reply, and the opponent answers along the line", async () => {
+  it("plays the payoff: the opponent answers along the line after the line's reply", async () => {
     await atCue();
     await play('c6');
     await replyTime();
     expect(lesson().game.moves.slice(9)).toEqual([at('c6'), BERLIN_BC4]);
-    expect(lesson().acts).toMatchObject({ found: 'passed', payoff: 'playing' });
+    expect(lesson().guidance.acts).toMatchObject({ replied: true, payoff: 'playing' });
     // The mistake's note shows in the acts, not on a trap card.
-    expect(lesson().guidance.trapIn).toBe('acts');
+    expect(lesson().guidance.trapIn).toBe('cue');
   });
 
-  it('holds the opponent at a wrong try, and Retry goes back to the cue', async () => {
+  it('holds nothing at a move off the line: the opponent answers, and the acts end', async () => {
     await atCue();
     await play('a6');
     await replyTime();
-    expect(lesson().game.moves).toHaveLength(10);
-    expect(lesson().acts).toMatchObject({ found: 'failed', held: true });
-    // Nor can the learner play the opponent's move for it.
-    expect(lesson().canPlay).toBe(false);
-    await act(async () => lesson().retryCue());
-    expect(lesson().game.ply).toBe(9);
-    expect(lesson().acts).toMatchObject({ found: 'open', live: true });
+    expect(lesson().guidance.acts).toBeUndefined();
+    // Past the guide the engine answers, which fails here: it was asked.
+    expect(lesson().game.error).toBeDefined();
+  });
+
+  it("names nothing in Practice before the learner's move, and shows a miss after it", async () => {
+    await atCue();
+    await act(async () => lesson().chooseMode('practice'));
+    expect(lesson().guidance.acts).toBeUndefined();
+    expect(lesson().guidance.opportunity).toBeUndefined();
+    await play('a6');
+    expect(lesson().guidance.opportunity).toMatchObject({ found: false, tried: at('a6') });
   });
 
   it('ticks when the opponent plays the mistake', async () => {
@@ -144,39 +131,13 @@ describe('useLesson at a cue', () => {
     expect(haptic).toHaveBeenCalledWith('moveLanded');
   });
 
-  it('stays still opening at the cue, and coming back to it', async () => {
+  it('stays still opening at the cue, and stepping back onto it', async () => {
     await atCue();
     expect(haptic).not.toHaveBeenCalled();
-    await play('a6');
+    await play('c6');
     jest.mocked(haptic).mockClear();
-    await act(async () => lesson().retryCue());
+    await act(async () => lesson().game.goto(9));
     expect(haptic).not.toHaveBeenCalled();
-  });
-
-  it('lets the opponent answer once a wrong try is skipped', async () => {
-    await atCue();
-    await play('a6');
-    await act(async () => lesson().skipCue());
-    await replyTime();
-    expect(lesson().acts).toBeUndefined();
-    // Past the guide the engine answers, which fails here: it was asked.
-    expect(lesson().game.error).toBeDefined();
-  });
-
-  it('waits, unmovable, on a listed move until the position before is judged', async () => {
-    await atCue();
-    await play('Nc6');
-    expect(lesson().acts).toMatchObject({ found: 'pending', held: true });
-    expect(lesson().canPlay).toBe(false);
-  });
-
-  it('shows the reply on the board, back at the cue', async () => {
-    await atCue();
-    await play('a6');
-    await act(async () => lesson().showCue());
-    expect(lesson().game.ply).toBe(9);
-    expect(lesson().acts).toMatchObject({ found: 'shown', live: true });
-    expect(lesson().guidance.candidates.map(({ san }) => san)).toEqual(['c6']);
   });
 });
 

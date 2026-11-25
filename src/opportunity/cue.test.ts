@@ -1,6 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
 
-import type { FinalAnalysis } from '@/evaluation/evaluation';
 import { playLine, readPositionKey, sanToUci } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { readShippedLesson, shippedIds, uciLine } from '@/lesson/lesson.fixture';
@@ -8,7 +7,7 @@ import { mistakeLine } from '@/lesson/mistakes';
 import { candidates, lineKeys } from '@/lesson/select';
 import { lessonView } from '@/lesson/view';
 
-import { type CueAnalyses, cueActs, cueControls, lineCue, payoffReplies, tryVerdict } from './cue';
+import { lineCue, payoffAt, payoffReplies } from './cue';
 
 // Black's Berlin: after 4.d3 Ne7, White's 5.Nxe5? is marked, and the line
 // punishes it with 5...c6 6.Bc4 Qa5+, forking king and knight. The guide
@@ -28,20 +27,6 @@ function played(key: string, san: string): Uci {
   return uci;
 }
 
-/** A final analysis of the position `key`: (SAN, White's expected score), best first. */
-function final(key: string, lines: [string, number][]): FinalAnalysis {
-  return {
-    lines: lines.map(([san, score]) => ({
-      uci: played(key, san),
-      evaluation: { score, pawns: 0 },
-    })),
-    depth: 18,
-    final: true,
-  };
-}
-
-const NONE: CueAnalyses = { beforeFailed: false, cueFailed: false };
-
 describe('lineCue', () => {
   it("finds the other side's marked mistake, without a note to name it", () => {
     const cue = cueAt(moves(9));
@@ -56,6 +41,27 @@ describe('lineCue', () => {
     expect(cueAt(offLine).followed).toBe(1);
   });
 
+  it("finds the line's reply or a book move, and misses any other", () => {
+    expect(cueAt(moves(9))).toMatchObject({ tried: undefined, found: false });
+    expect(cueAt(moves(10))).toMatchObject({ tried: moves(10)[9], found: true });
+    // Shown at the cue, the game's move after it still counts.
+    expect(cueAt(moves(10), 9)).toMatchObject({ found: true });
+    const key = cueAt(moves(9)).key;
+    expect(cueAt([...moves(9), played(key, 'a6')])).toMatchObject({ found: false });
+    const booked: Lesson = {
+      ...BERLIN,
+      positions: {
+        ...BERLIN.positions,
+        [key]: {
+          ...BERLIN.positions[key],
+          moves: [...BERLIN.positions[key].moves, { uci: played(key, 'a6'), book: true }],
+        },
+      },
+    };
+    const line = [...moves(9), played(key, 'a6')];
+    expect(lessonView({ lesson: booked, line, ply: 10, opponent: 1500 }).cue?.found).toBe(true);
+  });
+
   it('is none before the mistake is on the board, nor for a mark of the learner’s side', () => {
     expect(view(moves(12), 8).cue).toBeUndefined();
     const asWhite: Lesson = { ...BERLIN, side: 'white' };
@@ -64,123 +70,18 @@ describe('lineCue', () => {
   });
 });
 
-describe('tryVerdict', () => {
-  const cue = cueAt(moves(9));
-  const reply = (san: string) => played(cue.key, san);
-  // Black's expected score: 0.45 before the mistake, 0.75 after 5...c6.
-  const before = final(cue.before, [['O-O', 0.55]]);
-  const after = final(cue.key, [
-    ['c6', 0.25],
-    ['Nc6', 0.3],
-    ['Ng6', 0.5],
-  ]);
+describe('payoffAt', () => {
+  const cue = cueAt(moves(12));
 
-  it("passes the line's own reply, with no search", () => {
-    expect(tryVerdict(BERLIN, cue, reply('c6'), NONE)).toBe('passed');
+  it('is ahead at the cue, played through the line, done at its end', () => {
+    expect(payoffAt(cue, 9)).toBe('ahead');
+    expect(payoffAt(cue, 10)).toBe('playing');
+    expect(payoffAt(cue, 11)).toBe('playing');
+    expect(payoffAt(cue, 12)).toBe('done');
   });
 
-  it("passes the cue's best, and fails a move it doesn't list, from its analysis alone", () => {
-    const first = final(cue.key, [['Nc6', 0.3]]);
-    expect(tryVerdict(BERLIN, cue, reply('Nc6'), { ...NONE, cue: first })).toBe('passed');
-    expect(tryVerdict(BERLIN, cue, reply('a6'), { ...NONE, cue: after })).toBe('failed');
-  });
-
-  it('waits for the position before the mistake to judge a listed move after the first', () => {
-    expect(tryVerdict(BERLIN, cue, reply('Nc6'), { ...NONE, cue: after })).toBe('pending');
-    expect(tryVerdict(BERLIN, cue, reply('Nc6'), { ...NONE, cue: after, before })).toBe('passed');
-    // Listed, but it gives back what the mistake gave away.
-    expect(tryVerdict(BERLIN, cue, reply('Ng6'), { ...NONE, cue: after, before })).toBe('failed');
-  });
-
-  it('waits for the cue, and is unchecked where a search it needs gave up', () => {
-    expect(tryVerdict(BERLIN, cue, reply('a6'), NONE)).toBe('pending');
-    expect(tryVerdict(BERLIN, cue, reply('a6'), { ...NONE, cueFailed: true })).toBe('unchecked');
-    expect(tryVerdict(BERLIN, cue, reply('Nc6'), { ...NONE, cue: after, beforeFailed: true })).toBe(
-      'unchecked',
-    );
-  });
-});
-
-describe('cueActs', () => {
-  const cue = cueAt(moves(9));
-  const input = { cue, learnerToMove: true };
-  const wrong = [...moves(9), played(cue.key, 'a6')];
-
-  it('asks at the cue, with the payoff to come', () => {
-    expect(cueActs({ ...input, moves: moves(9), ply: 9 })).toMatchObject({
-      found: 'open',
-      payoff: 'ahead',
-      live: true,
-      held: false,
-    });
-    expect(cueActs({ ...input, moves: moves(9), ply: 9, choice: 'shown' })).toMatchObject({
-      found: 'shown',
-      live: true,
-    });
-  });
-
-  it('holds the opponent at a try that has not passed, at the latest move only', () => {
-    const tried = { ...input, moves: wrong, learnerToMove: false };
-    expect(cueActs({ ...tried, ply: 10, verdict: 'failed' })).toMatchObject({
-      found: 'failed',
-      live: false,
-      held: true,
-    });
-    expect(cueActs({ ...tried, ply: 10, verdict: 'pending' })?.held).toBe(true);
-    // Stepped back to the cue, it asks again, and nothing is held.
-    expect(cueActs({ ...input, moves: wrong, ply: 9, verdict: 'failed' })).toMatchObject({
-      found: 'open',
-      live: true,
-      held: false,
-    });
-  });
-
-  it('plays the payoff once the line’s reply passes, to its end', () => {
-    const played = cueAt(moves(10));
-    const at = (count: number, learnerToMove: boolean) =>
-      cueActs({
-        cue: cueAt(moves(count)),
-        moves: moves(count),
-        ply: count,
-        verdict: 'passed',
-        learnerToMove,
-      });
-    expect(
-      cueActs({ ...input, cue: played, moves: moves(10), ply: 10, verdict: 'passed' }),
-    ).toMatchObject({ found: 'passed', payoff: 'playing', live: false, held: false });
-    expect(at(12, false)).toMatchObject({ payoff: 'done' });
-    // Back at the cue with the reply played after it: an ordinary position.
-    expect(
-      cueActs({ ...input, cue: played, moves: moves(10), ply: 9, verdict: 'passed' }),
-    ).toMatchObject({ found: 'passed', live: false });
-  });
-
-  it('has none once skipped, nor past the line', () => {
-    expect(cueActs({ ...input, moves: moves(9), ply: 9, choice: 'skipped' })).toBeUndefined();
-    const left = [...wrong, uciLine(...SETUP, 'Nxe5', 'a6', 'Nf3').at(-1)!];
-    expect(
-      cueActs({ ...input, cue: cueAt(left), moves: left, ply: 11, verdict: 'failed' }),
-    ).toBeUndefined();
-  });
-
-  it('has no payoff for an accepted reply other than the line’s, but keeps its news through the answer', () => {
-    const other = [...moves(9), played(cue.key, 'Nc6')];
-    expect(
-      cueActs({ ...input, cue: cueAt(other), moves: other, ply: 10, verdict: 'passed' }),
-    ).toMatchObject({ found: 'passed', payoff: 'none' });
-    const answered = [...other, uciLine(...SETUP, 'Nxe5', 'Nc6', 'Nxc6').at(-1)!];
-    const after = { ...input, cue: cueAt(answered), moves: answered, ply: 11 };
-    expect(cueActs({ ...after, verdict: 'passed' })).toMatchObject({ found: 'passed' });
-    expect(cueActs({ ...after, ply: 12, verdict: 'passed' })).toBeUndefined();
-  });
-
-  it('offers Retry after a try that did not pass, Show until shown, Skip until passed', () => {
-    expect(cueControls('open')).toEqual({ retry: false, show: true, skip: true });
-    expect(cueControls('shown')).toEqual({ retry: false, show: false, skip: true });
-    expect(cueControls('failed')).toEqual({ retry: true, show: true, skip: true });
-    expect(cueControls('unchecked')).toMatchObject({ retry: true });
-    expect(cueControls('pending')).toMatchObject({ retry: false });
-    expect(cueControls('passed')).toEqual({ retry: false, show: false, skip: false });
+  it('is none for a line that ends at the reply', () => {
+    expect(payoffAt({ ...cue, line: cue.line.slice(0, 2) }, 10)).toBe('none');
   });
 });
 
@@ -199,13 +100,12 @@ describe('every shipped cue', () => {
     expect(cues.length).toBeGreaterThan(100);
   });
 
-  it("passes the line's reply at once, and the payoff's opponent plays the line", () => {
+  it("finds the line's reply, and the payoff's opponent plays the line", () => {
     for (const { id, lesson, key, move } of cues) {
       const line = mistakeLine(lesson, key, move);
       const keys = Array.from(playLine(line, readPositionKey(key)!), (step) => step.key);
       const cue = lineCue(lesson, line, keys, [move], 1)!;
-      expect([id, cue.line]).toEqual([id, line]);
-      expect([id, tryVerdict(lesson, cue, line[1], NONE)]).toEqual([id, 'passed']);
+      expect([id, cue.line, cue.found]).toEqual([id, line, true]);
       const choose = payoffReplies(cue);
       line.forEach((uci, n) => {
         if (n === 0 || readPositionKey(keys[n])!.turn === lesson.side) return;
