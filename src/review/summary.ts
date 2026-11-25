@@ -23,7 +23,7 @@ interface SummaryInput {
 /**
  * The verdict on the learner's accuracy (`verdictLine`) over how the game
  * went and how many moments it has. Example: "Warm applause." over "You won
- * in 34 moves. 3 moments to replay.". With too few of their moves judged,
+ * in 34 moves. 3 moments to replay.", with the accuracy in its tooltip. With too few of their moves judged,
  * "A brief appearance.", with why there's no verdict in its tooltip.
  */
 export function summaryHeadline({ plies, moves, moments, accuracy, learner }: SummaryInput) {
@@ -40,8 +40,12 @@ export function summaryHeadline({ plies, moves, moments, accuracy, learner }: Su
     ? `${plural(moments.length, 'moment')} to replay.`
     : 'No moments to replay.';
   const lost = failed ? ` ${plural(failed, 'move')} couldn't be checked.` : '';
+  if (accuracy === undefined)
+    return { title: 'The reviews are in.', detail: `${game} ${replay}${lost}` };
   return {
-    title: accuracy === undefined ? 'The reviews are in.' : verdictLine(accuracy),
+    title: verdictLine(accuracy),
+    // A phone's bar has no room for the number, so the verdict carries it too.
+    titleTip: `Your accuracy: ${Math.round(accuracy)} of 100.`,
     detail: `${game} ${replay}${lost}`,
   };
 }

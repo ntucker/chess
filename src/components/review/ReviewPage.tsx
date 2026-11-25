@@ -116,9 +116,11 @@ function ReviewScreen({
               />
             ),
           }}
+          // A phone's bar under the board has no room beside the stepper:
+          // the summary's verdict carries the learner's accuracy there.
           player={{
-            children: (
-              <AccuracyMark accuracy={review.accuracy[learner]} whose="Your" named={!phone} />
+            children: phone ? null : (
+              <AccuracyMark accuracy={review.accuracy[learner]} whose="Your" named />
             ),
           }}
           board={{
