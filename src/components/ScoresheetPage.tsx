@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { a11yState, Inline, Pressable, Text, useTheme } from '@reactive/silk-native';
+import { a11yState, Inline, Pressable, Text, useMotion, useTheme } from '@reactive/silk-native';
 import type { ComponentProps, ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
@@ -9,8 +9,6 @@ import { Notation } from '@/components/Notation';
 import { Scoresheet, ScoresheetTitle } from '@/components/Scoresheet';
 import { stepButton } from '@/components/Transport';
 import { shownMove } from '@/game/replay';
-import { springs } from '@/motion/spring';
-import { useSpringTransition } from '@/motion/useSpringTransition';
 import { FIGURINE_ADVANCE, fonts, MONO_ADVANCE } from '@/theme/theme';
 
 interface PageProps extends Omit<ComponentProps<typeof Scoresheet>, 'fill'> {
@@ -67,7 +65,7 @@ export function ScoresheetOpener({
   const { theme } = useTheme();
   const { color } = theme.semantic;
   // The chevron turns over as the pages slide.
-  const turn = useSpringTransition(springs.snappy);
+  const turn = useMotion('snappy');
   const move = shownMove(san, ply);
   const ink = disabled
     ? color.tones.neutral.disabledFg
@@ -93,7 +91,8 @@ export function ScoresheetOpener({
           transform: [{ rotate: open ? '180deg' : '0deg' }],
           // A Reanimated CSS transition, which StyleSheet's types don't know.
           transitionProperty: 'transform',
-          ...turn,
+          transitionDuration: turn.durationMs,
+          transitionTimingFunction: turn.easing,
         }}
       >
         <Ionicons name="chevron-up" size={CHEVRON_SIZE} color={ink ?? color.textSecondary} />

@@ -1,4 +1,12 @@
-import { a11yValue, Text, useReducedMotion, useTheme } from '@reactive/silk-native';
+import type { Spring } from '@reactive/silk-core';
+import {
+  a11yValue,
+  springTo,
+  Text,
+  useMotion,
+  useReducedMotion,
+  useTheme,
+} from '@reactive/silk-native';
 import { memo, useEffect, useId, useMemo } from 'react';
 import { type LayoutChangeEvent, StyleSheet, View } from 'react-native';
 import {
@@ -23,9 +31,6 @@ import { Notation } from '@/components/Notation';
 import { QualityBadge } from '@/components/QualityBadge';
 import type { Analysis } from '@/evaluation/evaluation';
 import { type Color, opposite, shownMove } from '@/game/replay';
-import { springs } from '@/motion/spring';
-import { springTo } from '@/motion/springTo';
-import { useSpringTransition } from '@/motion/useSpringTransition';
 import {
   type GraphMark,
   graphMarks,
@@ -76,12 +81,18 @@ export function ReviewGraph({ review, learner, height }: Props) {
   // A position not read yet stands at even, under the hatch.
   const area = useSpringArea(
     shares.map((share) => share ?? 0.5),
+    theme.semantic.motion.smooth,
     still,
   );
   const scrub = useScrub({ total, snaps: marks.map((mark) => mark.ply), goto });
   const percent = (at: number) => `${(at / total) * 100}%` as const;
   // The gold line slides on the app's snappy spring.
-  const slide = { transitionProperty: 'left' as const, ...useSpringTransition(springs.snappy) };
+  const snappy = useMotion('snappy');
+  const slide = {
+    transitionProperty: 'left' as const,
+    transitionDuration: snappy.durationMs,
+    transitionTimingFunction: snappy.easing,
+  };
   const hatch = `hatch${useId().replace(/[^\w-]/g, '')}`;
   const guide = guideEnd(book, learner);
   return (
@@ -212,8 +223,8 @@ function mix(from: readonly number[], to: readonly number[], progress: number): 
   return to.map((_, n) => shareAt(from, to, progress, n));
 }
 
-/** The area's outline, springing to each new set of scores (or jumping, `still`), on the UI thread. */
-function useSpringArea(shown: readonly number[], still: boolean) {
+/** The area's outline, springing on `spring` to each new set of scores (or jumping, `still`), on the UI thread. */
+function useSpringArea(shown: readonly number[], spring: Spring, still: boolean) {
   const scores = useSameNumbers(shown);
   const from = useSharedValue(scores);
   const to = useSharedValue(scores);
@@ -228,12 +239,12 @@ function useSpringArea(shown: readonly number[], still: boolean) {
         from.set(mix(from.get(), to.get(), progress.get()));
         to.set(next);
         progress.set(0);
-        progress.set(jump ? 1 : springTo(1, springs.smooth, { precision: SETTLED }));
+        progress.set(springTo(1, spring, { precision: SETTLED, reduceMotion: jump }));
       },
       scores,
       still,
     );
-  }, [scores, still, from, to, progress]);
+  }, [scores, spring, still, from, to, progress]);
   const outline = useAnimatedProps(() => ({
     d: topArea(mix(from.get(), to.get(), progress.get())),
   }));
