@@ -79,6 +79,7 @@ export function bestMove(pos: Chess, policy: Float32Array): string {
 export function moveShares(pos: Chess, policy: Float32Array): Record<Uci, number> {
   const legal = [...legalSlots(pos)];
   const shares = softmax(Float32Array.from(legal, ({ slot }) => policy[slot]));
+  // Every slot is a legal move, which always has a recorded form.
   return Object.fromEntries(
     legal.map(({ move }, i) => [recordedMove(pos, makeUci(move))!, shares[i]]),
   );

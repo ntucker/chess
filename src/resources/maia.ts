@@ -31,7 +31,7 @@ export const getMaiaMove = new Endpoint(maiaMove, {
  *
  * ```ts
  * const shares = await ctrl.fetch(getMaiaShares, 1400, ['e2e4']);
- * shares.e7e5; // 0.4
+ * shares.e7e5; // e7e5's share, from 0 to 1
  * ```
  */
 export const getMaiaShares = new Endpoint(maiaShares, {

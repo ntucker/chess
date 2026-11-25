@@ -39,8 +39,8 @@ import {
   playLine,
 } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
-import { byScore, type Find, type FinderResult, type ThinEnd } from '@/opportunity/finder';
 import { MAIA_RATINGS } from '@/maia/ratings';
+import { byScore, type Find, type FinderResult, type ThinEnd } from '@/opportunity/finder';
 import { LIMITS, MIN_GAMES } from '@/opportunity/limits';
 import { keepsGuide } from '@/opportunity/payoff';
 
@@ -187,21 +187,21 @@ function lessonReport(
   ].join('\n');
 }
 
+/** Where `source`'s replies come from, for the report's title, and what that means for the run. */
+function describeSource(source: ReplySource): { title: string; note: string } {
+  if (source.from === 'lichess') return { title: `lichess ${source.band} band`, note: '' };
+  return {
+    title: `Maia ${source.rating} (estimates)`,
+    note: ` Shares are Maia ${source.rating}'s estimate of how people of that rating play, not counted games, so no position is thin and the walk goes on to the reach floor.`,
+  };
+}
+
 /**
  * The finds from the position after `line` from `start` for `side`, with no
  * lesson, as a Markdown report: the best `top`, whatever Act III ends at and
  * whether the finder calls them on the guide, since with no guide neither
  * decides what a lesson would keep.
  */
-/** Where `source`'s replies come from, for the report's title, and what that means for the run. */
-function describeSource(source: ReplySource): { from: string; note: string } {
-  if (source.from === 'lichess') return { from: `lichess ${source.band} band`, note: '' };
-  return {
-    from: `Maia ${source.rating} (estimates)`,
-    note: ` Shares are Maia ${source.rating}'s estimate of how people of that rating play, not counted games, so no position is thin and the walk goes on to the reach floor.`,
-  };
-}
-
 function positionReport(
   start: Chess,
   line: readonly Uci[],
@@ -212,9 +212,9 @@ function positionReport(
 ): string {
   const found = [...finds, ...dropped, ...offGuide].sort(byScore);
   const after = numberedLine(lineSans(line, start)) || 'the start';
-  const { from, note } = describeSource(source);
+  const { title, note } = describeSource(source);
   return [
-    `# Opportunities for ${colorName(side)} after ${after}, ${from}`,
+    `# Opportunities for ${colorName(side)} after ${after}, ${title}`,
     '',
     `${found.length} finds, the best ${Math.min(top, found.length)} below. With no lesson, ${colorName(side)} plays Stockfish's best move wherever it moves.${note}`,
     '',
