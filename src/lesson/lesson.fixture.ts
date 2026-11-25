@@ -69,11 +69,15 @@ export const uci = (...sans: string[]) => uciLine(...sans).at(-1)!;
 /** The key of the position after `sans`. */
 export const keyAfter = (...sans: string[]) => lineKeys(uciLine(...sans)).at(-1)!;
 
-/** The sample's view after `sans`, against Maia 1500 unless `input` says otherwise. */
-export function sampleView(sans: string[], input: Partial<LessonViewInput> = {}) {
+/** `lesson`'s view after `sans`, against Maia 1500 unless `input` says otherwise. */
+export function viewAfter(lesson: Lesson, sans: string[], input: Partial<LessonViewInput> = {}) {
   const line = uciLine(...sans);
-  return lessonView({ lesson: SAMPLE, line, ply: line.length, opponent: 1500, ...input });
+  return lessonView({ lesson, line, ply: line.length, opponent: 1500, ...input });
 }
+
+/** The sample's view after `sans` (`viewAfter`). */
+export const sampleView = (sans: string[], input: Partial<LessonViewInput> = {}) =>
+  viewAfter(SAMPLE, sans, input);
 
 /** The Caro-Kann's first moves, to where White chooses a variation. */
 export const MAIN = ['e4', 'c6', 'd4', 'd5'];

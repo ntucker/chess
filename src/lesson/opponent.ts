@@ -18,10 +18,11 @@ export type ReplyChoice = (
  * The opponent in a lesson against `opponent`. Inside the guide it plays the
  * guide's most common move in `opponent`'s rating band: the first candidate,
  * since candidates list the most played first, with ties and moves without
- * counts in the file's order (the main line first). From the first position
- * beyond the guide, or at a guide line's end, `beyond` plays. `choose`,
- * when given, picks among the guide's moves instead (a clean Practice run
- * steers to lines not yet passed: `steering` in `marks.ts`).
+ * counts in the file's order (the main line first), even a marked mistake
+ * at a line's end. From the first position beyond the guide, or where the
+ * guide has no move, `beyond` plays. `choose`, when given, picks among the
+ * guide's moves instead, and `beyond` plays where it picks none (a clean
+ * Practice run steers to lines not yet passed: `steering` in `marks.ts`).
  *
  * ```ts
  * useGame(store, lessonOpponent(lesson, opponent, gameOpponent(ctrl, opponent)), {
