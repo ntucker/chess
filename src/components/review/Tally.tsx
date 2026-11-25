@@ -4,6 +4,7 @@ import { type StyleProp, StyleSheet, type TextStyle, View } from 'react-native';
 
 import type { ReviewQuality } from '@/analysis/quality';
 import { Eyebrow } from '@/components/Eyebrow';
+import { haptic } from '@/components/haptics';
 import { qualityTip, TippedBadge } from '@/components/QualityBadge';
 import { Sheet } from '@/components/Sheet';
 import { type Color, opposite } from '@/game/replay';
@@ -38,7 +39,14 @@ export function ReviewTally({ tally, learner }: Props) {
         <Stack gap="1">
           <View style={styles.head}>
             <Eyebrow>Your moves</Eyebrow>
-            <Button variant="outline" size="sm" onPress={() => setOpen(true)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onPress={() => {
+                haptic('sheetOpened');
+                setOpen(true);
+              }}
+            >
               Both sides
             </Button>
           </View>

@@ -17,7 +17,7 @@ import { springTo } from '@/motion/springTo';
 import { fonts } from '@/theme/theme';
 import { plural } from '@/words';
 
-import { tickHold } from './haptics';
+import { haptic } from './haptics';
 import { PieceGlyph } from './PieceGlyph';
 
 const WEB = process.env.EXPO_OS === 'web';
@@ -73,9 +73,13 @@ function Chip({ captures, color, even }: Props & { readonly even: boolean }) {
         accessibilityHint="Shows the pieces each side has taken"
         aria-expanded={card !== undefined}
         hitSlop={6}
-        onPress={() => setCard((was) => (was === 'pin' ? undefined : 'pin'))}
+        onPress={() => {
+          const pinning = card !== 'pin';
+          if (pinning) haptic('cardPinned');
+          setCard(pinning ? 'pin' : undefined);
+        }}
         onLongPress={() => {
-          tickHold();
+          haptic('cardHeld');
           peek('hold');
         }}
         onPressOut={() => unpeek('hold')}

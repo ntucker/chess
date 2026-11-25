@@ -3,10 +3,12 @@ import { act } from 'react';
 import { BackHandler } from 'react-native';
 import { createRoot, type Root } from 'test-renderer';
 
+import { haptic } from './haptics';
 import { usePages } from './usePages';
 
 let mockFocused = true;
 jest.mock('expo-router', () => ({ useIsFocused: () => mockFocused }));
+jest.mock('./haptics', () => ({ haptic: jest.fn() }));
 
 let root: Root | undefined;
 afterEach(() => {
@@ -14,6 +16,7 @@ afterEach(() => {
   act(() => root?.unmount());
   root = undefined;
   mockFocused = true;
+  jest.mocked(haptic).mockClear();
 });
 
 type Page = 'lesson' | 'scoresheet';
@@ -55,6 +58,15 @@ it("returns home on Android's back, which then stays on the screen", () => {
   expect(back()).toEqual([true]);
   expect(page()).toBe('lesson');
   expect(back()).toEqual([]);
+});
+
+it('ticks as a page is picked, but not on Back, which the system answers', () => {
+  const { show, back } = pages();
+  show('scoresheet');
+  expect(haptic).toHaveBeenCalledTimes(1);
+  expect(haptic).toHaveBeenCalledWith('pageSettled');
+  back();
+  expect(haptic).toHaveBeenCalledTimes(1);
 });
 
 it('leaves back to the screen pushed over it, as /openings is over a lesson', () => {

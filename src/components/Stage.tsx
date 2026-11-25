@@ -8,7 +8,7 @@ import { gameEnding } from '@/game/ending';
 import Board, { type BoardProps } from '@/components/Board';
 import { EndingCard } from '@/components/EndingCard';
 import { EvaluationBar } from '@/components/EvaluationBar';
-import { tickMove } from '@/components/haptics';
+import { haptic } from '@/components/haptics';
 import type { HeaderProps } from '@/components/Header';
 import { Page } from '@/components/Page';
 import { PlayerBar } from '@/components/PlayerBar';
@@ -127,7 +127,7 @@ interface BoardColumnProps {
  * The board in its frame, with the evaluation bar beside it, the opponent's
  * name bar above it and the player's below, holding the move stepper. The
  * arrow keys step through the moves too. On Android, each move the learner
- * plays ticks (`tickMove`).
+ * plays ticks (`haptic('moveLanded')`).
  */
 export function BoardColumn({
   game,
@@ -207,7 +207,7 @@ export function BoardColumn({
           <Board
             {...board}
             onMove={(from, to) => {
-              tickMove();
+              haptic('moveLanded');
               board.onMove(from, to);
             }}
             ending={ending}

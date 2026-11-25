@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
 import { StatusHeadline } from '@/components/GameStatus';
+import { haptic } from '@/components/haptics';
 import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentPicker } from '@/components/OpponentPicker';
 import { ScoresheetOpener } from '@/components/ScoresheetDrawer';
@@ -135,7 +136,10 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
   // Not before the first move; but a scoresheet showing stays, since a new game empties it.
   const scoresheetReachable = scoresheetShown || model.stepper.started;
   const back = useBackToReview();
-  const openSettings = () => setSettingsOpen(true);
+  const openSettings = () => {
+    haptic('sheetOpened');
+    setSettingsOpen(true);
+  };
 
   return (
     <Stage

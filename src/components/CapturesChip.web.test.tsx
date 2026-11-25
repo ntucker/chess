@@ -10,6 +10,9 @@ import { type Color, replay } from '@/game/replay';
 import { themes } from '@/theme/theme';
 
 import { CapturesChip, standing } from './CapturesChip';
+import { haptic } from './haptics';
+
+jest.mock('./haptics', () => ({ haptic: jest.fn() }));
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -32,6 +35,7 @@ afterEach(() => {
   act(() => root.unmount());
   host.remove();
   jest.useRealTimers();
+  jest.mocked(haptic).mockClear();
 });
 
 const show = (shown: Captures, color: Color) =>
@@ -62,15 +66,18 @@ describe('CapturesChip', () => {
     expect(chip()!.getAttribute('aria-label')).toBe('Even material');
   });
 
-  it("pins both sides' full lists on a click, until the next", () => {
+  it("pins both sides' full lists on a click, until the next, ticking as it pins", () => {
     show(TRADED, 'white');
     act(() => chip()!.click());
+    expect(haptic).toHaveBeenCalledTimes(1);
+    expect(haptic).toHaveBeenCalledWith('cardPinned');
     expect(card()!.textContent).toContain('White took');
     expect(card()!.textContent).toContain('Black took');
     expect(card()!.textContent).toContain('Level.');
     expect(chip()!.getAttribute('aria-expanded')).toBe('true');
     act(() => chip()!.click());
     expect(card()).toBeNull();
+    expect(haptic).toHaveBeenCalledTimes(1);
   });
 
   it('leaves a pinned card closed once the chip has hidden and come back', () => {
@@ -113,7 +120,7 @@ describe('CapturesChip', () => {
     expect(card()).not.toBeNull();
   });
 
-  it('keeps a held peek open while the mouse leaves, until let go', () => {
+  it('keeps a held peek open while the mouse leaves, until let go, ticking as it opens', () => {
     jest.useFakeTimers();
     show(PAWN_UP, 'white');
     act(() => {
@@ -125,6 +132,7 @@ describe('CapturesChip', () => {
     act(() => {
       jest.advanceTimersByTime(1000);
     });
+    expect(haptic).toHaveBeenCalledWith('cardHeld');
     act(() => {
       chip()!.dispatchEvent(new MouseEvent('mouseleave'));
     });
