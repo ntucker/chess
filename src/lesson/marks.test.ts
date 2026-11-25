@@ -10,6 +10,7 @@ import {
   shippedIds,
   uci,
   uciLine,
+  viewAfter,
   withMoves,
 } from './lesson.fixture';
 import { earnedMark, openingMarks, rowMarks, steering } from './marks';
@@ -57,12 +58,6 @@ const progress = (seen: PositionKey[], passed: PositionKey[]): MarkedPositions =
   seen: seen.map(positionHash),
   passed: passed.map(positionHash),
 });
-
-/** `lesson`'s view after `sans`, against a 1500. */
-function viewAfter(lesson: Lesson, sans: string[]) {
-  const line = uciLine(...sans);
-  return lessonView({ lesson, line, ply: line.length, opponent: 1500 });
-}
 
 /** The marks of `lesson`'s rows after `sans`, by SAN. */
 function marksAfter(lessonProgress: MarkedPositions, lesson: Lesson, ...sans: string[]) {

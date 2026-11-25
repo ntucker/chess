@@ -101,8 +101,8 @@ const seenMark = (seen: ReadonlySet<string>, next: PositionKey) =>
  * otherwise, so it plays its most played): the first of the replies that
  * count (most played first, `countedReplies`) below which the run can still
  * reach a line end not passed, or the first that counts when every one is
- * passed. The opponent's own replies never spoil a run, so each is open to
- * steer to, a marked mistake among them. Where none counts (only marked
+ * passed. The opponent's own replies never spoil a run, so steering may pick
+ * any that counts, marked mistakes included. Where none counts (only marked
  * mistakes without counts are left, so the line ends) it picks none, and the
  * opponent plays on past the guide.
  */
