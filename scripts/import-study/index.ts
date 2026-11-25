@@ -10,11 +10,14 @@
  * contradicts (./engineCheck) → settle each mistake's line (`settleMistakes`) → give notes written on another move order to
  * the position the lesson reaches (./transpositions) → write the idea of each
  * book move nothing explains with AI (./explain) → drop variation names no
- * position carries (./emptyVariations) → add popularity → checkLesson → write
+ * position carries (./emptyVariations) → on a recipe that sets `opportunities`,
+ * write the opportunity finder's finds and their paths' counts (./finds) → add
+ * popularity → checkLesson → write
  * assets/lessons/<id>.json, register it in src/resources/lesson.ts and list
  * it in assets/lessons/index.json.
  * `caro-kann` names a study listed in studies.ts. With --no-popularity the
- * file is written without counts, replacing any it had.
+ * file is written without counts, replacing any it had, and without finds
+ * (their gains are per rating band).
  *
  * The AI step runs the Claude Code CLI (`claude`, signed in, or
  * CLAUDE_CODE_OAUTH_TOKEN set) and keeps each answer in

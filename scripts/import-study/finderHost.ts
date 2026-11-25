@@ -27,6 +27,9 @@ import { answersFile } from './jsonLines';
 import { type ExplorerAnswer, lichessExplorer } from './popularity';
 import { nodeStockfish } from './stockfish';
 
+/** The explorer's band piece B's gate set the limits in: the report's default, and the band the importer's finds come from. */
+export const FIND_BAND = 1400;
+
 const ROOT = join(__dirname, '../..');
 const answersPath = (id: string, kind: string) =>
   join(ROOT, `scripts/import-study/answers/${id}-opportunities-${kind}.jsonl`);

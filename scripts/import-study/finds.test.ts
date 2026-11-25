@@ -84,11 +84,11 @@ describe('withFinds', () => {
   });
 
   it("adds the opponent's Act I replies the guide lacks, and refuses a learner move it lacks", () => {
-    const after = { ...BA6, find: { ...BA6.find, line: uciLine('e4', 'e5', 'd3', 'Nc6') } };
     const d3: LessonFind = {
-      ...after,
+      ...BA6,
       find: {
-        ...after.find,
+        ...BA6.find,
+        line: uciLine('e4', 'e5', 'd3', 'Nc6'),
         mistake: uci('e4', 'e5', 'd3', 'Nc6', 'Qh5'),
         replies: [uci('e4', 'e5', 'd3', 'Nc6', 'Qh5', 'Nf6')],
         payoff: [],
@@ -97,11 +97,10 @@ describe('withFinds', () => {
     const guided = lessonWith({
       [keyAfter('e4', 'e5', 'd3')]: at([{ uci: uci('e4', 'e5', 'd3', 'Nc6'), book: true }]),
     });
-    expect(movesAt(withFinds(guided, [d3]), 'e4', 'e5').map((move) => move.uci)).toEqual(
-      uciLine('e4', 'e5', 'Nf3')
-        .slice(2)
-        .concat(uci('e4', 'e5', 'd3')),
-    );
+    expect(movesAt(withFinds(guided, [d3]), 'e4', 'e5').map((move) => move.uci)).toEqual([
+      uci('e4', 'e5', 'Nf3'),
+      uci('e4', 'e5', 'd3'),
+    ]);
     expect(() => withFinds(lessonWith(), [d3])).toThrow('which the guide lacks there');
   });
 
@@ -150,6 +149,23 @@ describe('addPathCounts', () => {
     expect(asked).toHaveLength(6 * RATING_BANDS.length);
     expect(asked.every((request) => request.endsWith('true'))).toBe(true);
     expect(counted.positions[keyAfter('e4', 'e5', 'Ba6', 'bxa6', 'Nf3', 'Nc6')]).toBeUndefined();
+  });
+
+  it('counts only the positions of the tree where the guide already marked the mistake', async () => {
+    const lesson = lessonWith({
+      [keyAfter('e4', 'e5')]: at([
+        { uci: uci('e4', 'e5', 'Nf3') },
+        { uci: uci('e4', 'e5', 'Ba6'), mistake: { verdict: 'losesMaterial' } },
+      ]),
+    });
+    const asked = new Set<string>();
+    const explorer: Explorer = async (key) => {
+      asked.add(key);
+      return { counts: {}, total: 0 };
+    };
+    // The guide's line ends at 2.Ba6, so the find's own path past it is not in the tree.
+    await addPathCounts(withFinds(lesson, [BA6]), [BA6], explorer);
+    expect([...asked].sort()).toEqual([keyAfter(), keyAfter('e4'), keyAfter('e4', 'e5')].sort());
   });
 });
 

@@ -131,8 +131,8 @@ export function lichessExplorer({
       }
       if (!response.ok) throw new Error(`Explorer answered ${response.status} for ${id}`);
       const body = (await response.json()) as Games & { moves: (Games & { uci: string })[] };
-      const counts = Object.fromEntries(body.moves.map((move) => [move.uci, games(move)]));
-      const row: ExplorerRow = [id, counts, today, games(body)];
+      const counts = Object.fromEntries(body.moves.map((move) => [move.uci, gameCount(move)]));
+      const row: ExplorerRow = [id, counts, today, gameCount(body)];
       cache.add(row);
       return row;
     }
@@ -151,7 +151,7 @@ interface Games {
   readonly black: number;
 }
 
-const games = ({ white, draws, black }: Games) => white + draws + black;
+const gameCount = ({ white, draws, black }: Games) => white + draws + black;
 
 /**
  * `counts` with each move as lesson files write it (`recordedMove`). A move

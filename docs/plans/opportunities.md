@@ -393,7 +393,10 @@ with the planning thread 2026-11-25):
 - The explorer answers with totals go into the lesson's popularity answers file
   (`<id>-explorer.jsonl`), and one explorer serves the step and popularity in a run, so where
   popularity asks about a path position it reads the same answer and its save keeps the step's.
-  The walk itself still reads B's `<id>-opportunities-explorer.jsonl`.
+  The walk itself still reads B's `<id>-opportunities-explorer.jsonl`, whose answers have no total,
+  so the finder's shares are over the listed moves while the written gains are over each position's
+  games. On the Stafford lesson the two agree: every written 1400 gain equals the report's to the
+  point.
 - The step needs popularity: `--no-popularity` skips it, since gains are per rating band.
 - Costs and gains are stored to a thousandth.
 

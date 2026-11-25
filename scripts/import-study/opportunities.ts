@@ -22,7 +22,7 @@ import { type Find, type FinderResult, type ThinEnd } from '@/opportunity/finder
 import { LIMITS, MIN_GAMES } from '@/opportunity/limits';
 import { keepsGuide } from '@/opportunity/payoff';
 
-import { finderHost, runFinder } from './finderHost';
+import { FIND_BAND, finderHost, runFinder } from './finderHost';
 import { readLessonFile } from './register';
 
 const ROOT = join(__dirname, '../..');
@@ -195,7 +195,7 @@ if (!id || id.startsWith('--')) {
   console.error('Usage: yarn opportunities <lesson> [--band 1400] [--top 20] [--out report.md]');
   process.exit(1);
 }
-run(id, Number(flag('band') ?? 1400), Number(flag('top') ?? 20), flag('out')).catch(
+run(id, Number(flag('band') ?? FIND_BAND), Number(flag('top') ?? 20), flag('out')).catch(
   (error: unknown) => {
     console.error(error);
     process.exit(1);

@@ -20,13 +20,17 @@ import { LIMITS } from '@/opportunity/limits';
 import { type Context, walkTo } from '@/opportunity/walk';
 
 import { startOf } from './engineCheck';
-import { explorerReplies, finderHost, type FinderHost, runFinder, settle } from './finderHost';
+import {
+  explorerReplies,
+  FIND_BAND,
+  finderHost,
+  type FinderHost,
+  runFinder,
+  settle,
+} from './finderHost';
 import { keepMistakeLines } from './mistakes';
 import { type Explorer, measured, RATING_BANDS, withCounts } from './popularity';
 import { played } from './study';
-
-/** The explorer's band the finds come from: the report's default, where piece B's gate set the limits. */
-export const FIND_BAND = 1400;
 
 /** A find to write into a lesson, and what knowing it is worth in each of `RATING_BANDS`. */
 export interface LessonFind {
@@ -157,10 +161,12 @@ export function withFinds(lesson: Lesson, finds: readonly LessonFind[]): Lesson 
 }
 
 /**
- * `lesson` with the lichess counts on every position a move of `finds`' paths
- * is played in: each move's games and the games reaching the position, per
- * band, from one explorer answer each (asked with its total). Popularity,
- * which runs after, keeps them where it doesn't ask.
+ * `lesson` with the lichess counts on every position of its tree a move of
+ * `finds`' paths is played in: each move's games and the games reaching the
+ * position, per band, from one explorer answer each (asked with its total).
+ * A find whose mistake the guide already marked keeps the guide's line, so its
+ * own path can leave the tree. Popularity, which runs after, keeps the counts
+ * where it doesn't ask.
  */
 export async function addPathCounts(
   lesson: Lesson,
@@ -170,7 +176,8 @@ export async function addPathCounts(
   const keys = new Set<PositionKey>();
   for (const { find } of finds) {
     // Every position but the last, where no path move is played.
-    for (const { key } of [...playLine(pathOf(find), startOf(lesson))].slice(0, -1)) keys.add(key);
+    for (const { key } of [...playLine(pathOf(find), startOf(lesson))].slice(0, -1))
+      if (lesson.positions[key]) keys.add(key);
   }
   const positions = { ...lesson.positions };
   for (const key of keys) {
