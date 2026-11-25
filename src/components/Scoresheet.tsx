@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Inline, Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
-import { useEffect, useEffectEvent, useRef } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import {
   type LayoutChangeEvent,
   ScrollView,
@@ -17,7 +17,7 @@ import { Eyebrow } from './Eyebrow';
 import { Notation } from './Notation';
 import { NotationSwitch } from './NotationSwitch';
 import { QualityBadge } from './QualityBadge';
-import { type Frame, revealOffset, type Viewport } from './scoresheetReveal';
+import { type Frame, scrollTracker } from './scoresheetReveal';
 
 interface Props {
   /** Every position of the game; `plies[n]` follows the nth move. */
@@ -231,20 +231,18 @@ const rowOf = (ply: number) => Math.max(0, Math.floor((ply - 1) / 2));
  */
 function useRevealedRow(row: number) {
   const scroll = useRef<ScrollViewInstance>(null);
-  const viewport = useRef<Viewport>({ top: 0, height: 0 });
+  const [tracker] = useState(scrollTracker);
   const frames = useRef<Frame[]>([]);
   // The row's layout, the viewport's and the row changing come in any order:
   // each tries, and the last to come scrolls, once both are measured.
   const reveal = () => {
     const frame = frames.current[row];
-    const y = frame && revealOffset(frame, viewport.current);
-    if (y === undefined) return;
-    scroll.current?.scrollTo({ y, animated: true });
-    // Where it is going: the scroll's own events may lag behind or skip it.
-    viewport.current.top = y;
+    const y = frame && tracker.reveal(frame);
+    if (y !== undefined) scroll.current?.scrollTo({ y, animated: true });
   };
   const revealNow = useEffectEvent(reveal);
   useEffect(() => revealNow(), [row]);
+  useEffect(() => tracker.dispose, [tracker]);
   return {
     reveal,
     onRowLayout: (index: number) => (event: LayoutChangeEvent) => {
@@ -254,11 +252,10 @@ function useRevealedRow(row: number) {
     scrollProps: {
       ref: scroll,
       scrollEventThrottle: 16,
-      onScroll: (event: { nativeEvent: { contentOffset: { y: number } } }) => {
-        viewport.current.top = event.nativeEvent.contentOffset.y;
-      },
+      onScroll: (event: { nativeEvent: { contentOffset: { y: number } } }) =>
+        tracker.scrolled(event.nativeEvent.contentOffset.y),
       onLayout: (event: LayoutChangeEvent) => {
-        viewport.current.height = event.nativeEvent.layout.height;
+        tracker.resized(event.nativeEvent.layout.height);
         reveal();
       },
     },
