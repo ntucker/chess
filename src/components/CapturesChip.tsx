@@ -237,12 +237,12 @@ function groupByRole(pieces: readonly TakenRole[]): [TakenRole, number][] {
 
 /** How far apart the card's pieces fan out of the chip, one after another. */
 const FAN_STAGGER_MS = 18;
-/** Pieces after this many start with the last of them. */
-const FAN_STAGGERED = 8;
+/** The most staggers a piece waits: the ninth piece and later start with the eighth. */
+const FAN_MOST_STAGGERS = 7;
 
 /** The `index`th piece's entrance on `spring`: a stagger after the one before. */
 function fanIn(index: number, spring: Spring): EntryExitAnimationFunction {
-  const delay = Math.min(index, FAN_STAGGERED - 1) * FAN_STAGGER_MS;
+  const delay = Math.min(index, FAN_MOST_STAGGERS) * FAN_STAGGER_MS;
   return () => {
     'worklet';
     // The card builds no entrances when motion is reduced.
