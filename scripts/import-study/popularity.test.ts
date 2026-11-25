@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { checkLesson } from '@/lesson/check';
 import type { PositionKey } from '@/lesson/lesson';
 import { keyAfter as key, SAMPLE } from '@/lesson/lesson.fixture';
+import { RATING_BANDS } from '@/lichess/explorer';
 
 import { extractChapter } from './extract';
 import { STUDY_PGN } from './fixture';
@@ -15,7 +16,6 @@ import {
   addPopularity,
   type ExplorerAnswer,
   lichessExplorer,
-  RATING_BANDS,
   recount,
   type MoveCounts,
 } from './popularity';

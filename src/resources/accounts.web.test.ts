@@ -4,7 +4,13 @@ import { initialState, prepareStore } from '@data-client/react/redux';
 
 import { lineKeys } from '@/lesson/select';
 
-import { AccountsSync, getAccounts, signInLichess, signOutLichess } from './accounts';
+import {
+  AccountsSync,
+  getAccounts,
+  LichessRefusals,
+  signInLichess,
+  signOutLichess,
+} from './accounts';
 import { getExplorerCounts } from './explorer';
 
 /** After 1.e4 e5 2.Nf3 Nc6 3.Bc4 Nf6, where White may castle. */
@@ -22,7 +28,11 @@ const syncs: AccountsSync[] = [];
 function newStore() {
   const sync = new AccountsSync();
   syncs.push(sync);
-  const { controller } = prepareStore(initialState, () => [sync, new NetworkManager()], Controller);
+  const { controller } = prepareStore(
+    initialState,
+    () => [sync, new LichessRefusals(), new NetworkManager()],
+    Controller,
+  );
   sync.init();
   // The store takes in an answer a moment after the fetch resolves.
   const shown = async () => {
@@ -115,5 +125,18 @@ describe('lichess account on the device', () => {
       total: 10,
     });
     expect(calls[0].init!.headers).toEqual({ Authorization: 'Bearer lip_token' });
+  });
+
+  it('signs out when the explorer refuses the token, so the finder goes back to Maia', async () => {
+    localStorage.setItem(
+      'accounts',
+      JSON.stringify({ version: 1, lichess: { username: 'learner', token: 'lip_token' } }),
+    );
+    answers = [async () => ({ ok: false, status: 401 }) as Response, json({})];
+    const { controller, shown } = newStore();
+    await controller.fetch(getAccounts);
+    await expect(controller.fetch(getExplorerCounts, 1400, CASTLES)).rejects.toThrow('401');
+    expect((await shown())?.lichess).toBeUndefined();
+    expect(calls.at(-1)?.init?.method).toBe('DELETE');
   });
 });

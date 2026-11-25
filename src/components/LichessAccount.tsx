@@ -32,22 +32,23 @@ const NoButton = () => null;
 function AccountButton() {
   const ctrl = useController();
   const { lichess } = useSuspense(getAccounts);
+  if (!lichess) return <SignInButton />;
+  return (
+    <Tip tip={`Signed in to lichess as ${lichess.username}. Press to sign out.`}>
+      <HeaderButton
+        icon="person-circle"
+        iconSize={21}
+        accessibilityRole="button"
+        accessibilityLabel={`Sign out of lichess (${lichess.username})`}
+        onPress={() => void ctrl.fetch(signOutLichess)}
+      />
+    </Tip>
+  );
+}
+
+/** Signs in: its own component, so a signed-in learner's header never prepares a sign-in. */
+function SignInButton() {
   const { signIn, state } = useLichessSignIn();
-  if (lichess) {
-    const tip = `Signed in to lichess as ${lichess.username}. Press to sign out.`;
-    return (
-      <Tip tip={tip}>
-        <HeaderButton
-          icon="person-circle"
-          iconSize={21}
-          accessibilityRole="button"
-          accessibilityLabel={`Sign out of lichess (${lichess.username})`}
-          onPress={() => void ctrl.fetch(signOutLichess)}
-        />
-      </Tip>
-    );
-  }
-  const signingIn = state === 'signing-in' || !signIn;
   return (
     <Tip tip={state === 'failed' ? FAILED_TIP : SIGN_IN_TIP}>
       <HeaderButton
@@ -55,7 +56,7 @@ function AccountButton() {
         iconSize={21}
         accessibilityRole="button"
         accessibilityLabel="Sign in with lichess"
-        disabled={signingIn}
+        disabled={!signIn || state === 'signing-in'}
         onPress={() => void signIn?.()}
       />
     </Tip>

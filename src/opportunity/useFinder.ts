@@ -91,7 +91,7 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
     const { line, side, source, lesson } = ask;
     const replies = storedReplies(ctrl, source, state);
     const answers: Answers = {
-      replies: (spot) => replies(spot).replies,
+      replies: replies.at,
       analysis: (spot) => ctrl.get(PositionAnalysis, analysisKey('stockfish', spot.line), state),
       guideMoves: lesson
         ? ({ key }) => {
@@ -109,7 +109,7 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
     // An answer that failed is not asked again: the walk goes on where it can.
     const isFailed = ({ kind, spot }: (typeof requests)[number]) =>
       kind === 'replies'
-        ? replies(spot).failed
+        ? replies.failed(spot)
         : analysisError(ctrl, 'stockfish', spot.line, state) !== undefined;
     return {
       asking: requests.filter((request) => !isFailed(request)),
@@ -158,23 +158,27 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
   };
 }
 
-/** The store's replies at a spot from `source`, and whether asking for them failed. */
+/** The store's answers about the replies from `source`: the replies at a spot, and whether asking failed. */
 function storedReplies(ctrl: Controller, source: ReplySource, state: State<unknown>) {
-  return (spot: Spot): { replies?: Replies; failed: boolean } => {
-    if (source.from === 'maia') {
-      const shares = ctrl.getResponse(getMaiaShares, source.rating, spot.line, state).data;
-      return {
-        replies: shares && maiaReplies(shares),
-        failed: ctrl.getError(getMaiaShares, source.rating, spot.line, state) !== undefined,
-      };
-    }
-    // Data Client types a schema-less endpoint's stored answer as undefined.
-    const counted = ctrl.getResponse(getExplorerCounts, source.band, spot.key, state).data as
-      ExplorerCounts | undefined;
+  if (source.from === 'maia') {
+    const { rating } = source;
     return {
-      replies: counted && repliesFrom(spot.key, counted.counts, MIN_GAMES, counted.total),
-      failed: ctrl.getError(getExplorerCounts, source.band, spot.key, state) !== undefined,
+      at: (spot: Spot): Replies | undefined => {
+        const shares = ctrl.getResponse(getMaiaShares, rating, spot.line, state).data;
+        return shares && maiaReplies(shares);
+      },
+      failed: (spot: Spot) => ctrl.getError(getMaiaShares, rating, spot.line, state) !== undefined,
     };
+  }
+  const { band } = source;
+  return {
+    at: (spot: Spot): Replies | undefined => {
+      // Data Client types a schema-less endpoint's stored answer as undefined.
+      const counted = ctrl.getResponse(getExplorerCounts, band, spot.key, state).data as
+        ExplorerCounts | undefined;
+      return counted && repliesFrom(spot.key, counted.counts, MIN_GAMES, counted.total);
+    },
+    failed: (spot: Spot) => ctrl.getError(getExplorerCounts, band, spot.key, state) !== undefined,
   };
 }
 

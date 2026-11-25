@@ -18,7 +18,6 @@ import type { MoveCounts } from '@/opportunity/walk';
 import { answersFile } from './jsonLines';
 import { played } from './study';
 
-export { RATING_BANDS };
 export type { MoveCounts };
 
 /** What the explorer answered for a position in one band. */

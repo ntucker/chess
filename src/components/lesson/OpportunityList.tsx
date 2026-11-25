@@ -18,11 +18,11 @@ import { type IconAction, IconActions } from '@/components/IconActions';
 import { Notation } from '@/components/Notation';
 import { HeadingTip, Tip } from '@/components/Tip';
 import { lastPosition, lastStep, lineText, numberedMove } from '@/game/replay';
-import type { Lesson, PositionKey, Uci } from '@/lesson/lesson';
+import { bandRatings, type Lesson, type PositionKey, type Uci } from '@/lesson/lesson';
 import { opportunityMarks } from '@/lesson/marks';
 import { markId } from '@/lesson/mistakes';
 import { lessonOpportunities, type Opportunity } from '@/lesson/opportunities';
-import { bandRatings } from '@/lichess/explorer';
+import { RATING_BANDS } from '@/lichess/explorer';
 import type { Find } from '@/opportunity/finder';
 import type { FinderRun } from '@/opportunity/useFinder';
 import type { ReplySource } from '@/opportunity/walk';
@@ -207,16 +207,19 @@ const FINDER_TIP =
   "Looks for the opponent's likely mistakes from the board's position, on this device: Stockfish judges each reply players are likely to make. Each find joins the list once confirmed; the whole search takes a while.";
 
 /** The finder's source chip: whose replies, and what they are (counted games, or Maia's estimate). */
-const sourceChip = (source: ReplySource) =>
-  source.from === 'lichess'
-    ? {
-        label: `lichess ${bandRatings(source.band)}`,
-        tip: `Counted: how often lichess players rated ${bandRatings(source.band)} play each move, from lichess's opening explorer with your account. These rows rank apart from the guide's.`,
-      }
-    : {
-        label: `Maia ${source.rating}`,
-        tip: `Estimates: how often players rated about ${source.rating} play each move is Maia ${source.rating}'s guess, not counted games, so these rows rank apart from the guide's. Sign in with lichess to count real games.`,
-      };
+function sourceChip(source: ReplySource) {
+  if (source.from === 'lichess') {
+    const rated = bandRatings(RATING_BANDS, RATING_BANDS.indexOf(source.band));
+    return {
+      label: `lichess ${rated}`,
+      tip: `Counted: how often lichess players rated ${rated} play each move, from lichess's opening explorer with your account. These rows rank apart from the guide's.`,
+    };
+  }
+  return {
+    label: `Maia ${source.rating}`,
+    tip: `Estimates: how often players rated about ${source.rating} play each move is Maia ${source.rating}'s guess, not counted games, so these rows rank apart from the guide's. Sign in with lichess to count real games.`,
+  };
+}
 
 /** What the list ranks and what its rows' meters show, against `players` where counted. */
 const listTip = (players: string | undefined) =>

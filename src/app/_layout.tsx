@@ -9,7 +9,7 @@ import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { ScreenFailure } from '@/components/NewVersion';
-import { AccountsSync } from '@/resources/accounts';
+import { AccountsSync, LichessRefusals } from '@/resources/accounts';
 import { AnalysisManager } from '@/resources/analysis';
 import { ProgressSync } from '@/resources/progress';
 import { SettingsProvider } from '@/settings/SettingsProvider';
@@ -22,6 +22,7 @@ import { FONT_FILES } from '@/theme/fontFiles';
 const managers = () => [
   new ProgressSync(),
   new AccountsSync(),
+  new LichessRefusals(),
   new AnalysisManager(),
   ...getDefaultManagers(),
 ];

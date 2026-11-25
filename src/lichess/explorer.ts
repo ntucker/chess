@@ -38,9 +38,20 @@ interface Options {
   readonly sleep?: (ms: number) => Promise<void>;
 }
 
+/** The explorer refused a request: `status` 401 means the token is no longer good. */
+export class ExplorerRefusal extends Error {
+  constructor(
+    readonly status: number,
+    asked: string,
+  ) {
+    super(`Explorer answered ${status} for ${asked}`);
+  }
+}
+
 /**
  * The explorer, one request every `REQUEST_INTERVAL_MS` however many ask at
- * once, waiting a minute and asking again after a 429. Make one for every
+ * once, all waiting a minute after a 429 and then asking again; it throws
+ * `ExplorerRefusal` on any other refusal. Make one for every
  * caller that shares a token, so they share its pace.
  *
  * ```ts
@@ -66,10 +77,12 @@ export function pacedExplorer({
     for (;;) {
       const response = await paced(url, token);
       if (response.status === 429) {
+        // Every caller waits out the minute, not only this one.
+        next = Math.max(next, Date.now() + RETRY_AFTER_MS);
         await sleep(RETRY_AFTER_MS);
         continue;
       }
-      if (!response.ok) throw new Error(`Explorer answered ${response.status} for ${band} ${key}`);
+      if (!response.ok) throw new ExplorerRefusal(response.status, `${band} ${key}`);
       const body = (await response.json()) as Games & { moves: (Games & { uci: string })[] };
       return {
         counts: Object.fromEntries(body.moves.map((move) => [move.uci, gameCount(move)])),
@@ -110,14 +123,4 @@ export function recordedCounts(key: PositionKey, counts: LichessCounts): MoveCou
   return Object.fromEntries(
     Object.entries(counts).map(([uci, games]) => [recordedMove(pos, uci) ?? uci, games]),
   );
-}
-
-/** The explorer's band counting `rating`: the highest of `RATING_BANDS` at or under it, else the lowest. */
-export const ratingBand = (rating: number) =>
-  RATING_BANDS.findLast((band) => band <= rating) ?? RATING_BANDS[0];
-
-/** The ratings `band` counts, in words: "1400–1599", or "1800 and up" for the top one. */
-export function bandRatings(band: number): string {
-  const next = RATING_BANDS.find((other) => other > band);
-  return next === undefined ? `${band} and up` : `${band}–${next - 1}`;
 }

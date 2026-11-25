@@ -31,7 +31,7 @@ describe('ratingBandIndex', () => {
     [1900, 4],
     [800, 0],
   ])('reads rating %i from band %i', (rating, index) => {
-    expect(ratingBandIndex(popularity, rating)).toBe(index);
+    expect(ratingBandIndex(popularity.ratingBands, rating)).toBe(index);
   });
 });
 

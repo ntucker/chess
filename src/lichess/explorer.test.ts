@@ -2,13 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import { lineKeys } from '@/lesson/select';
 
-import {
-  bandRatings,
-  pacedExplorer,
-  ratingBand,
-  recordedCounts,
-  REQUEST_INTERVAL_MS,
-} from './explorer';
+import { pacedExplorer, recordedCounts, REQUEST_INTERVAL_MS } from './explorer';
 
 const [START] = lineKeys([]);
 /** After 1.e4 e5 2.Nf3 Nc6 3.Bc4 Nf6, where White may castle. */
@@ -51,8 +45,8 @@ describe('pacedExplorer', () => {
     expect(waits[2]).toBeGreaterThan(2 * REQUEST_INTERVAL_MS - 100);
   });
 
-  it('waits a minute after a 429 and asks again, and fails on any other refusal', async () => {
-    const statuses = [429, 200];
+  it('waits a minute after a 429, every caller, and asks again; fails on any other refusal', async () => {
+    const statuses = [429, 200, 200];
     const waits: number[] = [];
     const ask = pacedExplorer({
       fetch: async () => answer(statuses.shift()!, BODY),
@@ -60,6 +54,10 @@ describe('pacedExplorer', () => {
     });
     expect((await ask(START, 1400)).total).toBe(20);
     expect(waits).toContain(60_000);
+    // A request asked for after the 429 waits out the minute too.
+    waits.length = 0;
+    await ask(START, 1600);
+    expect(waits[0]).toBeGreaterThan(55_000);
 
     const refusing = pacedExplorer({ fetch: async () => answer(401), sleep: async () => {} });
     await expect(refusing(START, 1400)).rejects.toThrow('Explorer answered 401');
@@ -69,12 +67,5 @@ describe('pacedExplorer', () => {
 describe('recordedCounts', () => {
   it("writes lichess's castling (the king taking its rook) as lesson files do", () => {
     expect(recordedCounts(CASTLES, { e1h1: 7, d2d3: 3 })).toEqual({ e1g1: 7, d2d3: 3 });
-  });
-});
-
-describe('bands', () => {
-  it('finds the band counting a rating, and names the ratings a band counts', () => {
-    expect([ratingBand(900), ratingBand(1500), ratingBand(Infinity)]).toEqual([1000, 1400, 1800]);
-    expect([bandRatings(1400), bandRatings(1800)]).toEqual(['1400–1599', '1800 and up']);
   });
 });

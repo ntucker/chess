@@ -89,13 +89,20 @@ export interface Popularity {
 }
 
 /**
- * Which entry of `LessonMove.games` counts for an opponent of `rating`: the
- * highest band starting at or below it (1500 reads the 1400 band), or the
- * lowest band for a rating below them all.
+ * Which of `ratingBands` (`Popularity.ratingBands`, the entries of
+ * `LessonMove.games`) counts for an opponent of `rating`: the highest band
+ * starting at or below it (1500 reads the 1400 band), or the lowest band for a
+ * rating below them all. Stockfish reads the top band (`Infinity`).
  */
-export function ratingBandIndex(popularity: Popularity, rating: number): number {
-  const index = popularity.ratingBands.findLastIndex((band) => band <= rating);
+export function ratingBandIndex(ratingBands: readonly number[], rating: number): number {
+  const index = ratingBands.findLastIndex((band) => band <= rating);
   return Math.max(index, 0);
+}
+
+/** The ratings the band at `index` of `ratingBands` counts, in words: "1400–1599", or "1800 and up" for the top one. */
+export function bandRatings(ratingBands: readonly number[], index: number): string {
+  const next = ratingBands[index + 1];
+  return next === undefined ? `${ratingBands[index]} and up` : `${ratingBands[index]}–${next - 1}`;
 }
 
 /** `data` as a lesson, refusing a file written in another format. */

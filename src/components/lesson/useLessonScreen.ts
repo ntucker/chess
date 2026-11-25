@@ -11,7 +11,13 @@ import type { BoardColumn } from '@/components/Stage';
 import { type Color, colorName, opposite, playMove, readPositionKey } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
 import { listsOpportunities, listsTopMoves, shownRows } from '@/lesson/guidance';
-import type { Lesson, PositionKey, Uci, VariationId } from '@/lesson/lesson';
+import {
+  type Lesson,
+  type PositionKey,
+  ratingBandIndex,
+  type Uci,
+  type VariationId,
+} from '@/lesson/lesson';
 import {
   lessonsAfter,
   lessonsFrom,
@@ -29,7 +35,7 @@ import {
   shareSource,
 } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
-import { ratingBand } from '@/lichess/explorer';
+import { RATING_BANDS } from '@/lichess/explorer';
 import { MAIA_RATINGS } from '@/maia/ratings';
 import type { Cue } from '@/opportunity/cue';
 import { useFinder } from '@/opportunity/useFinder';
@@ -463,13 +469,13 @@ function useLessonFinder(
   const line = picked && from?.lesson === picked ? from.line : undefined;
   // Until the device answers, Maia's: a run starts only once the learner asks.
   const signedIn = !!useDLE(getAccounts).data?.lichess;
-  const source = useMemo(
-    (): ReplySource =>
-      signedIn
-        ? { from: 'lichess', band: ratingBand(isStockfish(opponent) ? Infinity : opponent) }
-        : { from: 'maia', rating: isStockfish(opponent) ? MAIA_RATINGS.at(-1)! : opponent },
-    [signedIn, opponent],
-  );
+  const source = useMemo((): ReplySource => {
+    if (!signedIn) {
+      return { from: 'maia', rating: isStockfish(opponent) ? MAIA_RATINGS.at(-1)! : opponent };
+    }
+    const band = ratingBandIndex(RATING_BANDS, isStockfish(opponent) ? Infinity : opponent);
+    return { from: 'lichess', band: RATING_BANDS[band] };
+  }, [signedIn, opponent]);
   const ask = useMemo(
     () => picked && line && { line, side: picked.side, source, lesson: picked },
     [picked, line, source],
