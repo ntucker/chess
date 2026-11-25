@@ -49,10 +49,10 @@ interface Props {
    */
   readonly verdicts?: ReadonlyMap<Uci, EngineVerdict>;
   /**
-   * Point out the other side's marked mistakes (`Guidance.opportunities`):
-   * each row's dot in the danger tone, and its cost once Stockfish judged it.
+   * The rows to point out as opportunities (`Guidance.opportunities`): a dot
+   * in the danger tone, and the cost once Stockfish has judged the move.
    */
-  readonly opportunities?: boolean;
+  readonly opportunities?: ReadonlySet<Uci>;
   /** Rare candidates, listed after the others while `rareShown`. */
   readonly rare: readonly Candidate[];
   readonly rareShown: boolean;
@@ -121,7 +121,7 @@ export function CandidateList({
   candidates,
   engineBest,
   verdicts,
-  opportunities = false,
+  opportunities = NO_OPPORTUNITIES,
   rare,
   rareShown,
   onShowRare,
@@ -162,7 +162,7 @@ export function CandidateList({
             main={candidate === main}
             topEngine={candidate === engineBest}
             verdict={verdicts?.get(candidate.move.uci)}
-            opportunities={opportunities}
+            opportunity={opportunities.has(candidate.move.uci)}
             pointed={candidate.move.uci === pointed}
             mark={marks.get(candidate.move.uci)}
             // Every row keeps room for a mark once one has one, so their shares line up.
@@ -216,6 +216,8 @@ export function CandidateList({
     </Stack>
   );
 }
+
+const NO_OPPORTUNITIES: ReadonlySet<Uci> = new Set();
 
 /** The rare toggle's key among the rows' moves. */
 const RARE_TOGGLE = 'rare-toggle';
@@ -273,8 +275,8 @@ interface RowProps {
   readonly topEngine: boolean;
   /** Stockfish's verdict on a guide's move. */
   readonly verdict?: EngineVerdict;
-  /** As the list's. */
-  readonly opportunities: boolean;
+  /** The row is an opportunity (the list's `opportunities`). */
+  readonly opportunity: boolean;
   readonly pointed: boolean;
   readonly mark?: Mark;
   /** Some row of the list has a mark, so this one keeps room for one. */
@@ -299,7 +301,7 @@ function Row({
   main,
   topEngine,
   verdict,
-  opportunities,
+  opportunity,
   pointed,
   mark,
   markSlot,
@@ -315,9 +317,9 @@ function Row({
   const { theme } = useTheme();
   const { color } = theme.semantic;
   const { move, san, engine } = candidate;
-  const tone = toneColors[candidateTone(candidate, main, opportunities)];
-  // The other side's marked mistake: what it gives away, once Stockfish judged it.
-  const cost = opportunities && move.mistake ? verdict?.loss : undefined;
+  const tone = toneColors[candidateTone(candidate, main, opportunity)];
+  // What the other side's mistake gives away, once Stockfish has judged it.
+  const cost = opportunity ? verdict?.loss : undefined;
   // The board marks Stockfish's best, the top move listed beside the guide's.
   const hollow = candidate.rare || (engine && !main && !topEngine);
   const point = () => onPoint(move.uci);

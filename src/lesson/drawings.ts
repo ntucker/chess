@@ -34,8 +34,10 @@ export function lessonDrawings(guidance: Guidance, shown: PositionKey, learner: 
   const ideas = guidance.drawn.filter(({ at }) => at === shown).map(({ idea }) => idea);
   const slid = slidCandidate(guidance);
   return [
-    ...(slid ? [glow(slid.to, candidateTone(slid, slid === main, opportunities))] : []),
-    ...candidateDrawings(guidance.drawnCandidates, main, opportunities),
+    ...(slid
+      ? [glow(slid.to, candidateTone(slid, slid === main, opportunities.has(slid.move.uci)))]
+      : []),
+    ...candidateDrawings(guidance.drawnCandidates, opportunities, main),
     ...ideasDrawings(ideas, shown, learner),
     ...bestDrawings(guidance.best),
     ...refutationArrow(guidance.refutation),
@@ -58,23 +60,15 @@ export const slidCandidate = ({ preview }: Guidance): Candidate | undefined =>
   preview?.slide ? preview.candidate : undefined;
 
 /**
- * A candidate's tone, on the board and its list row: the danger tone for the
- * other side's marked mistake where guidance points those out
- * (`Guidance.opportunities`), else the main one's, an alternative's, or
- * Stockfish's for its top moves.
+ * A candidate's tone, on the board and its list row: the danger tone for an
+ * opportunity (`Guidance.opportunities`), else the main one's, an
+ * alternative's, or Stockfish's for its top moves.
  */
-export const candidateTone = (
-  candidate: Candidate,
-  isMain: boolean,
-  opportunities = false,
-): Tone =>
-  opportunities && candidate.move.mistake
-    ? 'danger'
-    : candidate.engine
-      ? 'engine'
-      : isMain
-        ? 'main'
-        : 'other';
+export function candidateTone(candidate: Candidate, isMain: boolean, opportunity: boolean): Tone {
+  if (opportunity) return 'danger';
+  if (candidate.engine) return 'engine';
+  return isMain ? 'main' : 'other';
+}
 
 const glow = (square: SquareName, tone: Tone): Drawing => ({ kind: 'glow', square, tone });
 
@@ -85,11 +79,15 @@ const glow = (square: SquareName, tone: Tone): Drawing => ({ kind: 'glow', squar
  */
 export function candidateDrawings(
   candidates: readonly Candidate[],
+  opportunities: ReadonlySet<Uci>,
   main = mainCandidate(candidates),
-  opportunities = false,
 ): Drawing[] {
   const draw = (candidate: Candidate): Drawing[] => {
-    const tone = candidateTone(candidate, candidate === main, opportunities);
+    const tone = candidateTone(
+      candidate,
+      candidate === main,
+      opportunities.has(candidate.move.uci),
+    );
     return [
       glow(candidate.from, tone),
       { kind: 'arrow', from: candidate.from, to: candidate.to, tone },

@@ -51,21 +51,20 @@ describe('mainCandidate', () => {
 describe('candidateDrawings', () => {
   it('lights each piece with an arrow, the main one last so its glow wins', () => {
     const [bf5, c5] = sampleView(ADVANCE).candidates;
-    expect(candidateDrawings([bf5, c5])).toEqual([
+    expect(candidateDrawings([bf5, c5], new Set())).toEqual([
       { kind: 'glow', square: 'c6', tone: 'other' },
       { kind: 'arrow', from: 'c6', to: 'c5', tone: 'other' },
       { kind: 'glow', square: 'c8', tone: 'main' },
       { kind: 'arrow', from: 'c8', to: 'f5', tone: 'main' },
     ]);
   });
-  it("draws the other side's marked mistake in the danger tone where opportunities show", () => {
+  it('draws an opportunity in the danger tone', () => {
     const [bf5, c5] = sampleView(ADVANCE).candidates;
-    const marked = { ...c5, move: { ...c5.move, mistake: {} } };
-    expect(candidateDrawings([bf5, marked], bf5, true).slice(0, 2)).toEqual([
+    expect(candidateDrawings([bf5, c5], new Set([c5.move.uci])).slice(0, 2)).toEqual([
       { kind: 'glow', square: 'c6', tone: 'danger' },
       { kind: 'arrow', from: 'c6', to: 'c5', tone: 'danger' },
     ]);
-    expect(candidateDrawings([bf5, marked], bf5)[0]).toMatchObject({ tone: 'other' });
+    expect(candidateDrawings([bf5, c5], new Set())[0]).toMatchObject({ tone: 'other' });
   });
 });
 
@@ -273,7 +272,9 @@ describe('lessonDrawings', () => {
   it('draws only the candidates when nothing is previewed', () => {
     const { view, shown } = explore(ADVANCE);
     expect(shown.ideas.length).toBeGreaterThan(0);
-    expect(lessonDrawings(shown, view.key, 'black')).toEqual(candidateDrawings(shown.candidates));
+    expect(lessonDrawings(shown, view.key, 'black')).toEqual(
+      candidateDrawings(shown.candidates, new Set()),
+    );
   });
 
   it("lights a sliding preview's piece where it lands, and draws the ideas about the position after it", () => {
@@ -297,7 +298,7 @@ describe('lessonDrawings', () => {
   it('draws a trap beside the candidates when traps are shown', () => {
     const { view, shown } = explore(TRAP, undefined, { ...SWITCHES, showTraps: true });
     const drawings = lessonDrawings(shown, view.key, 'black');
-    expect(drawings.slice(0, -2)).toEqual(candidateDrawings(shown.candidates));
+    expect(drawings.slice(0, -2)).toEqual(candidateDrawings(shown.candidates, new Set()));
     expect(drawings.slice(-2)).toEqual([
       { kind: 'arrow', from: 'c6', to: 'e5', tone: 'danger', step: 1 },
       { kind: 'arrow', from: 'f3', to: 'e5', tone: 'danger', step: 2 },

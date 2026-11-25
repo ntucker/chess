@@ -145,12 +145,12 @@ describe('CandidateList', () => {
         };
       });
     const judged = 'Nf3, Stockfish: Blunder, 2.4 pawns better for you';
-    expect(read({ candidates: [mistake], verdicts, opportunities: true })).toEqual({
+    expect(read({ candidates: [mistake], verdicts, opportunities: new Set(['g1f3']) })).toEqual({
       cost: true,
       label: `${judged}, An opportunity: this mistake gives away 26% of the winning chances`,
     });
     // Not yet judged: the dot alone. Not asked: an ordinary row.
-    expect(read({ candidates: [mistake], opportunities: true })).toEqual({
+    expect(read({ candidates: [mistake], opportunities: new Set(['g1f3']) })).toEqual({
       cost: false,
       label: 'Nf3',
     });

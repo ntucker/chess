@@ -202,11 +202,11 @@ export interface Guidance {
    */
   readonly verdicts?: ReadonlyMap<Uci, EngineVerdict>;
   /**
-   * The list and the board point out the other side's marked mistakes, each
-   * an opportunity (a red dot and its cost from `verdicts`): in Explore, on
-   * the other side's turn, away from the moves that pick the opening.
+   * The candidates the list and the board point out as opportunities (a red
+   * dot, and the cost from `verdicts`): the other side's marked mistakes, in
+   * Explore away from the moves that pick the opening. Empty elsewhere.
    */
-  readonly opportunities: boolean;
+  readonly opportunities: ReadonlySet<Uci>;
   /** The reply that punishes the move just played, where guidance marks it. */
   readonly refutation?: Uci;
   /** A trap the line fell into, while it shows (see `trapShown`). */
@@ -221,6 +221,7 @@ export interface Guidance {
 }
 
 const NO_VERDICTS: ReadonlyMap<Uci, EngineVerdict> = new Map();
+const NO_OPPORTUNITIES: ReadonlySet<Uci> = new Set();
 
 /**
  * The mode whose rules guidance applies: an open cue asks the learner to
@@ -378,6 +379,8 @@ export function guidance(input: GuidanceInput): Guidance {
   // Only after a move of the learner's side: on their turn it would be their
   // own next move, drawn in the color of what goes wrong.
   const refutation = resting && !view.learnerToMove ? input.refutation : undefined;
+  // Where the list judges its moves: Stockfish's verdicts, and the opportunities.
+  const judged = explore && !picking;
   const best =
     explore && movesShown && resting && engine?.best !== refutation ? engine?.best : undefined;
 
@@ -397,8 +400,11 @@ export function guidance(input: GuidanceInput): Guidance {
     pointed: pointedNote,
     best: best && tagsBest(view, engine?.final, best) ? best : undefined,
     top,
-    verdicts: explore && !picking ? (engine?.verdicts ?? NO_VERDICTS) : undefined,
-    opportunities: explore && !picking && !view.learnerToMove,
+    verdicts: judged ? (engine?.verdicts ?? NO_VERDICTS) : undefined,
+    opportunities:
+      judged && !view.learnerToMove
+        ? new Set(view.candidates.filter(({ move }) => move.mistake).map(({ move }) => move.uci))
+        : NO_OPPORTUNITIES,
     refutation,
     trap,
     // The cue's own mistake: the cue comes right after it.
