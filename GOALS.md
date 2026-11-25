@@ -18,12 +18,6 @@ lesson, not just a giant book to read.
 ## Platforms
 
 - Web first: build, test and polish every feature there.
-- Android: supported. Every feature works there too. Judge by what a change does to the code Android
-  runs, not by which files it touches. Check on Android a change to code that runs differently there:
-  native code (modules, config, worklets, Android-only branches), touch handling you write,
-  platform-specific layout (flex tricks, a change to `NATIVE_PARTS`), new or changed behavior in the
-  native file of a `.web` twin pair (the one without `.web`), the board's web view. Check only what
-  that change could affect. A move after which Android runs the same code as before (even a move into
-  a new file), text changes, web-only files, and UI built from existing Silk components or
-  `useNarrowPart` parts need only the web check.
+- Android: supported. Every feature works there too. Check on Android only what a change could break
+  there that the web check would miss.
 - No iOS.
