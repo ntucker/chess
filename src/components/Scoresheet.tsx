@@ -147,11 +147,11 @@ function Row({
           trap ? `${san}, fell into a trap` : unjudged && `${san}, ${UNJUDGED_SPOKEN[unjudged]}`
         }
         onPress={() => onGoto(n)}
-        style={({ hovered }) => [
+        style={({ pressed, hovered }) => [
           styles.cell,
           { borderRadius: theme.semantic.radius.sm },
           trap && { borderColor: danger.border },
-          { backgroundColor: hovered ? hoverFill : fill },
+          { backgroundColor: pressed || hovered ? hoverFill : fill },
         ]}
       >
         {trap && <Ionicons name="warning" size={BADGE_SIZE - 2} color={ink} />}
