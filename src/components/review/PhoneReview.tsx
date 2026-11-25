@@ -5,8 +5,8 @@ import type { Color } from '@/game/replay';
 import type { LessonId } from '@/resources/lesson';
 import { FadingScroll } from '@/theme/Narrow';
 
-import { ReviewGraph } from './ReviewGraph';
 import { ReviewCard } from './ReviewCard';
+import { ReviewGraph } from './ReviewGraph';
 import { ReviewHeadline } from './ReviewHeadline';
 import { reviewScoresheet, type ReviewView } from './reviewView';
 

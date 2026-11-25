@@ -1,7 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Inline, Pressable, Surface, Text, useTheme } from '@reactive/silk-native';
-import { useRef } from 'react';
-import { ScrollView, type ScrollViewInstance, StyleSheet, View } from 'react-native';
+import { useEffect, useEffectEvent, useRef } from 'react';
+import {
+  type LayoutChangeEvent,
+  ScrollView,
+  type ScrollViewInstance,
+  StyleSheet,
+  View,
+} from 'react-native';
 
 import type { ReviewQuality } from '@/analysis/quality';
 import type { Ply } from '@/game/replay';
@@ -41,7 +47,7 @@ export type Mark = ReviewQuality | Unjudged;
  * a move that fell into a trap marked; tap one to see it.
  */
 export function Scoresheet({ plies, marks, ply, trapped, onGoto, fill }: Props) {
-  const scroll = useRef<ScrollViewInstance>(null);
+  const { reveal, scrollProps, rowLayout } = useRevealedRow(rowOf(ply));
   const san = (n: number) => plies[n]?.move?.san;
 
   const rows: number[] = [];
@@ -60,10 +66,11 @@ export function Scoresheet({ plies, marks, ply, trapped, onGoto, fill }: Props) 
         </Text>
       ) : (
         <ScrollView
-          ref={scroll}
           style={fill ? styles.fill : styles.scroll}
           contentContainerStyle={styles.content}
-          onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: true })}
+          // A new move, or text set larger, moves the rows.
+          onContentSizeChange={reveal}
+          {...scrollProps}
         >
           {rows.map((white, i) => (
             <Row
@@ -77,6 +84,7 @@ export function Scoresheet({ plies, marks, ply, trapped, onGoto, fill }: Props) 
               trapped={inRow(trapped, white)}
               striped={i % 2 === 1}
               onGoto={onGoto}
+              onLayout={rowLayout(i)}
             />
           ))}
         </ScrollView>
@@ -108,6 +116,7 @@ interface RowProps {
   readonly trapped?: number;
   readonly striped: boolean;
   readonly onGoto: (ply: number) => void;
+  readonly onLayout: (event: LayoutChangeEvent) => void;
 }
 
 function Row({
@@ -120,6 +129,7 @@ function Row({
   trapped,
   striped,
   onGoto,
+  onLayout,
 }: RowProps) {
   const { theme } = useTheme();
   const { color } = theme.semantic;
@@ -168,7 +178,10 @@ function Row({
   };
 
   return (
-    <View style={[styles.row, striped && { backgroundColor: color.tones.neutral.subtle }]}>
+    <View
+      onLayout={onLayout}
+      style={[styles.row, striped && { backgroundColor: color.tones.neutral.subtle }]}
+    >
       <Text role="bodySm" tone="secondary" style={styles.number}>
         {(white + 1) / 2}
       </Text>
@@ -196,6 +209,52 @@ const UNJUDGED_SPOKEN: Readonly<Record<Unjudged, string>> = {
  */
 const inRow = (ply: number | undefined, white: number) =>
   ply === white || ply === white + 1 ? ply : undefined;
+
+/** The index of the row holding `ply`: the first row at the start. */
+const rowOf = (ply: number) => Math.max(0, Math.floor((ply - 1) / 2));
+
+/**
+ * Keeps the row at index `row` in view: whenever it changes, or the rows
+ * move, the scoresheet scrolls as little as shows it whole. Rows the player
+ * scrolled to stay put while the shown row is already in view.
+ */
+function useRevealedRow(row: number) {
+  const scroll = useRef<ScrollViewInstance>(null);
+  const offset = useRef(0);
+  const height = useRef(0);
+  const frames = useRef<{ y: number; height: number }[]>([]);
+  const reveal = () => {
+    const frame = frames.current[row];
+    if (!frame) return;
+    const bottom = frame.y + frame.height;
+    const y =
+      frame.y < offset.current
+        ? frame.y
+        : bottom > offset.current + height.current
+          ? bottom - height.current
+          : undefined;
+    if (y !== undefined) scroll.current?.scrollTo({ y, animated: true });
+  };
+  const revealNow = useEffectEvent(reveal);
+  useEffect(() => revealNow(), [row]);
+  return {
+    reveal,
+    rowLayout: (index: number) => (event: LayoutChangeEvent) => {
+      const { y, height: rowHeight } = event.nativeEvent.layout;
+      frames.current[index] = { y, height: rowHeight };
+    },
+    scrollProps: {
+      ref: scroll,
+      scrollEventThrottle: 16,
+      onScroll: (event: { nativeEvent: { contentOffset: { y: number } } }) => {
+        offset.current = event.nativeEvent.contentOffset.y;
+      },
+      onLayout: (event: LayoutChangeEvent) => {
+        height.current = event.nativeEvent.layout.height;
+      },
+    },
+  };
+}
 
 const styles = StyleSheet.create({
   sheet: { overflow: 'hidden' },

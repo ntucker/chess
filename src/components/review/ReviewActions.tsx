@@ -126,7 +126,9 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   spacer: { flexGrow: 1 },
   bar: { flexDirection: 'row', gap: 8 },
-  grow: { flex: 1 },
+  // Each takes its label's width and an equal share of the rest, so a long
+  // label ("Show best") keeps to one line at large text where thirds would wrap it.
+  grow: { flexGrow: 1, flexShrink: 1, flexBasis: 'auto' },
   // Silk's button keeps to its content's width; here it fills its share.
-  barButton: { width: '100%', height: TOUCH_TARGET, paddingHorizontal: 6 },
+  barButton: { alignSelf: 'stretch', height: TOUCH_TARGET, paddingHorizontal: 6 },
 });
