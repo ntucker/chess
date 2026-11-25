@@ -308,7 +308,8 @@ export default function Board({
   useEffect(() => markAfterDraw(), [position, marks, layer, act]);
 
   return (
-    // Square by its width, since the web view's page has no height to fill.
+    // Square by its width, since the web view's page has no height to fill;
+    // positioned, so it paints over the still board under it (`BoardFrame`).
     <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', touchAction: 'none' }}>
       <style>{TINT_CSS}</style>
       <div ref={element} style={{ width: '100%', height: '100%' }} />

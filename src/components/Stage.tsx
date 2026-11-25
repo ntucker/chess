@@ -1,6 +1,6 @@
 import { Surface, useFlickGesture, useTheme } from '@reactive/silk-native';
 import { type ComponentProps, type ReactNode, useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 
 import { asideAfter, type CardAside } from '@/board/cardAside';
@@ -192,12 +192,7 @@ export function BoardColumn({
           reads={evaluationReads}
           style={styles.evaluation}
         />
-        <BoardFrame>
-          {drawn ? null : (
-            <View style={styles.under}>
-              <StillBoard moves={moves.slice(0, ply)} orientation={side} />
-            </View>
-          )}
+        <BoardFrame still={drawn ? undefined : { moves: moves.slice(0, ply), orientation: side }}>
           <Board
             {...board}
             onDrawn={() => setDrawn(true)}
@@ -273,7 +268,7 @@ export function BoardColumnPlaceholder({ still }: { readonly still?: StillGame }
       <View style={styles.namesBar} />
       <View style={styles.boardRow}>
         <View style={styles.evaluation} />
-        <BoardFrame>{still ? <StillBoard {...still} /> : null}</BoardFrame>
+        <BoardFrame still={still} />
       </View>
       <View style={styles.controlsBar} />
     </>
@@ -299,7 +294,14 @@ function StillBoard({ moves, orientation, turnsWithSavedSide }: StillGame) {
  * `--board-min`, which the layout check measures by its id. Chessground draws
  * a little smaller inside it: inside its border, in whole device pixels per square.
  */
-function BoardFrame({ children }: { readonly children: ReactNode }) {
+function BoardFrame({
+  still,
+  children,
+}: {
+  /** The game drawn still under `children`, while they load. */
+  readonly still?: StillGame;
+  readonly children?: ReactNode;
+}) {
   const { theme } = useTheme();
   const styles = useNarrowStyles(STYLES);
   return (
@@ -313,6 +315,11 @@ function BoardFrame({ children }: { readonly children: ReactNode }) {
       <View
         style={[styles.fill, { borderRadius: theme.semantic.radius.md - 1, overflow: 'hidden' }]}
       >
+        {still ? (
+          <View style={StyleSheet.absoluteFill}>
+            <StillBoard {...still} />
+          </View>
+        ) : null}
         {children}
       </View>
     </Surface>
@@ -345,7 +352,6 @@ const COLUMN_RAISE = BOARD_OFFSET.minus(WRAPPED_GAP);
 // The two start from their widths, not a flexBasis (NATIVE_PARTS in narrow.ts says why).
 const STYLES = narrowStyles((px) => ({
   fill: { flex: 1 },
-  under: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
   stage: {
     width: '100%',
     maxWidth: STAGE_MAX,

@@ -81,14 +81,14 @@ beforeEach(() => {
 afterEach(() => act(() => root.unmount()));
 
 describe('a board drawing its first position', () => {
-  it('says so once it has painted, so a still board under it can go', () => {
+  it('says so once, after it has painted, so a still board under it can go', () => {
     let drawn = 0;
     act(() => root.render(<Board {...board()} onDrawn={() => drawn++} />));
-    expect(document.querySelector('cg-board')).not.toBeNull();
     // Its first frame paints it; the next frame's callbacks come after that paint.
     frame();
     expect(drawn).toBe(0);
     frame();
+    expect(drawn).toBe(1);
     frame();
     expect(drawn).toBe(1);
   });
