@@ -254,6 +254,10 @@ export function measured(
   };
 }
 
+/** Whether `entry` carries lichess counts (`withCounts` writes them): on the position or on a move. */
+export const isCounted = (entry: LessonPosition): boolean =>
+  entry.games !== undefined || entry.moves.some((move) => move.games !== undefined);
+
 /** `entry` with the games `games` measured, replacing any it had: none reaching it where `games` has no total. */
 export function withCounts(entry: LessonPosition, { moves, total }: Measured): LessonPosition {
   const { games: _, ...rest } = entry;

@@ -33,7 +33,7 @@ import {
   settle,
 } from './finderHost';
 import { keepMistakeLines } from './mistakes';
-import { type Explorer, RATING_BANDS, recount } from './popularity';
+import { type Explorer, isCounted, RATING_BANDS, recount } from './popularity';
 import { played } from './study';
 
 /** A find to write into a lesson, and what knowing it is worth in each of `RATING_BANDS`. */
@@ -190,5 +190,25 @@ export async function addPathCounts(
   explorer: Explorer,
 ): Promise<Lesson> {
   const keys = new Set(finds.flatMap(({ find }) => markedPositions(lesson, find)));
-  return keepMistakeLines(lesson, await recount(lesson, keys, explorer));
+  return recountKeepingLines(lesson, keys, explorer);
 }
+
+/**
+ * `lesson` with every position that carries counts counted afresh, for a
+ * popularity rerun: popularity keeps the counts where it doesn't ask (a find's
+ * path where the guide offers no choice), and the rerun's save keeps only the
+ * answers asked, so no count outlives its answer.
+ */
+export const recountCounted = (lesson: Lesson, explorer: Explorer): Promise<Lesson> =>
+  recountKeepingLines(
+    lesson,
+    Object.keys(lesson.positions).filter((key) => isCounted(lesson.positions[key])),
+    explorer,
+  );
+
+/** `lesson` with the positions at `keys` counted afresh (`recount`), each mark keeping the line it had. */
+const recountKeepingLines = async (
+  lesson: Lesson,
+  keys: Iterable<PositionKey>,
+  explorer: Explorer,
+): Promise<Lesson> => keepMistakeLines(lesson, await recount(lesson, keys, explorer));

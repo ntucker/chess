@@ -6,7 +6,7 @@ import { keyAfter, readShippedLesson, uci, uciLine } from '@/lesson/lesson.fixtu
 import { mistakeLine } from '@/lesson/mistakes';
 import { lineSans, numberedLine, parsePosition, playLine, positionKey } from '@/game/replay';
 
-import { addPathCounts, type LessonFind, withFinds } from './finds';
+import { addPathCounts, type LessonFind, recountCounted, withFinds } from './finds';
 import { at, testLesson } from './fixture';
 import { type Explorer, RATING_BANDS } from './popularity';
 
@@ -211,6 +211,22 @@ describe('addPathCounts', () => {
     await expect(addPathCounts(withFinds(withCue, [BA6]), [BA6], explorer)).rejects.toThrow(
       `plays ${uci('e4', 'e5', 'Ba6', 'bxa6')}, which the tree lacks`,
     );
+  });
+});
+
+describe('recountCounted', () => {
+  it("asks again about every counted position, a find's path included, and no other", async () => {
+    const explorer: Explorer = async () => ({ counts: { e2e4: 1 }, total: 1 });
+    const counted = await addPathCounts(withFinds(lessonWith(), [BA6]), [BA6], explorer);
+    const asked = new Set<string>();
+    const recounted = await recountCounted(counted, async (key) => {
+      asked.add(key);
+      return { counts: { e2e4: 2 }, total: 2 };
+    });
+    const path = [keyAfter(), keyAfter('e4'), keyAfter('e4', 'e5'), keyAfter('e4', 'e5', 'Ba6')];
+    const rest = [keyAfter('e4', 'e5', 'Ba6', 'bxa6'), keyAfter('e4', 'e5', 'Ba6', 'bxa6', 'Nf3')];
+    expect([...asked].sort()).toEqual([...path, ...rest].sort());
+    expect(recounted.positions[keyAfter()].games).toEqual(RATING_BANDS.map(() => 2));
   });
 });
 
