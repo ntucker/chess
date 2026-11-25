@@ -174,6 +174,7 @@ export function BoardColumn({
   // Until the board has painted (a pre-rendered page before its script runs,
   // Android's web view while it boots), the frame shows the game still.
   const [drawn, setDrawn] = useState(false);
+  const still = drawn ? undefined : { moves: moves.slice(0, ply), orientation: side };
   return (
     <>
       <PlayerBar
@@ -192,7 +193,7 @@ export function BoardColumn({
           reads={evaluationReads}
           style={styles.evaluation}
         />
-        <BoardFrame still={drawn ? undefined : { moves: moves.slice(0, ply), orientation: side }}>
+        <BoardFrame still={still}>
           <Board
             {...board}
             onDrawn={() => setDrawn(true)}

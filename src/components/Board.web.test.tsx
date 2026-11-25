@@ -92,6 +92,20 @@ describe('a board drawing its first position', () => {
     frame();
     expect(drawn).toBe(1);
   });
+
+  it('waits for a size to draw in, as a web view still laying out has none', () => {
+    size = 0;
+    let drawn = 0;
+    act(() => root.render(<Board {...board()} onDrawn={() => drawn++} />));
+    frame();
+    frame();
+    expect(drawn).toBe(0);
+    resize(320);
+    frame();
+    expect(drawn).toBe(0);
+    frame();
+    expect(drawn).toBe(1);
+  });
 });
 
 describe('a board covered while chessground has a redraw queued', () => {
