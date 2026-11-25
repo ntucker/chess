@@ -3237,7 +3237,7 @@ __metadata:
 
 "@reactive/silk-native@file:./vendor/reactive-silk-native.tgz::locator=opening-night%40workspace%3A.":
   version: 0.0.0
-  resolution: "@reactive/silk-native@file:./vendor/reactive-silk-native.tgz#./vendor/reactive-silk-native.tgz::hash=9874cb&locator=opening-night%40workspace%3A."
+  resolution: "@reactive/silk-native@file:./vendor/reactive-silk-native.tgz#./vendor/reactive-silk-native.tgz::hash=48cd41&locator=opening-night%40workspace%3A."
   dependencies:
     "@radix-ui/react-dismissable-layer": "npm:^1.1.18"
     "@radix-ui/react-focus-scope": "npm:^1.3.1"
@@ -3252,7 +3252,7 @@ __metadata:
   peerDependenciesMeta:
     react-dom:
       optional: true
-  checksum: 10c0/1a685d50f8c6923f3d14b3e8d547c5ee3be2749cb9da856cd105672d0af9d216ec9c186b0f3a84ffeaf6e74b9d2b9adde153422658560f7fc5849ea54aed86d9
+  checksum: 10c0/a5909d14537094fb08e69abb9abe0727ca43f5e38afb859b0ca8184af05a7c939f5c861c6e5b03371288c28f11e4e7263c0fd519880cbc8e65d88c204aa5ff8b
   languageName: node
   linkType: hard
 
