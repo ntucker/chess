@@ -19,6 +19,7 @@ import {
   NAMED_MOVE,
   numberedLine,
   numberedMove,
+  parseMoves,
   parsePosition,
   pieceAt,
   playMove,
@@ -243,5 +244,35 @@ describe('lastStep', () => {
     const { key, move } = lastStep(['e2e4', 'c7c6']);
     expect(key).toBe(positionKey(parsePosition(lastPosition(['e2e4', 'c7c6']).fen)!));
     expect(move).toMatchObject({ from: 'c7', to: 'c6' });
+  });
+});
+
+describe('parseMoves', () => {
+  const STAFFORD = ['e2e4', 'e7e5', 'g1f3', 'g8f6', 'f3e5', 'b8c6'];
+
+  it.each([
+    '1.e4 e5 2.Nf3 Nf6 3.Nxe5 Nc6',
+    '1. e4 e5 2. Nf3 Nf6 3. Nxe5 Nc6',
+    'e4 ...e5 Nf3 1..Nf6 Nxe5!? 3...Nc6?! *',
+    '1.e4 {the king pawn} e5 2.Nf3 Nf6 3.Nxe5 Nc6 1-0',
+    '[Event "Casual"]\n1.e4 e5 (1...c5 2.Nf3 (2.c3) d6) 2.Nf3 $1 Nf6 3.Nxe5 Nc6 1/2-1/2',
+    'e2e4 e7e5 g1f3 g8f6 f3e5 b8c6',
+  ])('reads %s', (text) => {
+    expect(parseMoves(text)).toEqual(STAFFORD);
+  });
+
+  it('writes a castle as the game records it, the king moving two squares', () => {
+    expect(parseMoves('e4 e5 Nf3 Nc6 Bc4 Bc5 O-O').at(-1)).toBe('e1g1');
+    expect(parseMoves('e2e4 e7e5 g1f3 b8c6 f1c4 f8c5 e1h1').at(-1)).toBe('e1g1');
+  });
+
+  it('reads nothing as the start', () => {
+    expect(parseMoves('  ')).toEqual([]);
+  });
+
+  it('names the first move that is not legal, or not a move at all', () => {
+    expect(() => parseMoves('1.e4 e4')).toThrow('Not a legal move here: e4');
+    expect(() => parseMoves('1.e4 e5 2.Nf9 Nc6')).toThrow('Not a legal move here: Nf9');
+    expect(() => parseMoves('1.e4 e5 zz Nc6')).toThrow('Not a legal move here: zz');
   });
 });

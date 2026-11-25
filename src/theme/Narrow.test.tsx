@@ -8,6 +8,7 @@ import {
   NarrowScroll,
   useLayout,
   useNarrowPageHeight,
+  useNarrowPageScrolls,
   useNarrowPart,
   useNarrowStyles,
   useNarrowViewport,
@@ -22,7 +23,15 @@ const STYLES = narrowStyles((px) => ({
 }));
 
 let seen:
-  { height: unknown; part: unknown; viewport: unknown; page: unknown; layout: unknown } | undefined;
+  | {
+      height: unknown;
+      part: unknown;
+      viewport: unknown;
+      page: unknown;
+      scrolls: unknown;
+      layout: unknown;
+    }
+  | undefined;
 let mounts = 0;
 
 function Probe() {
@@ -30,6 +39,7 @@ function Probe() {
   const part = useNarrowPart();
   const viewport = useNarrowViewport();
   const page = useNarrowPageHeight();
+  const scrolls = useNarrowPageScrolls();
   const layout = useLayout();
   useLayoutEffect(() => {
     seen = {
@@ -37,6 +47,7 @@ function Probe() {
       part: part('player-names').style,
       viewport: viewport?.height,
       page,
+      scrolls,
       layout,
     };
   });
@@ -110,6 +121,13 @@ describe('a native page', () => {
     expect(seen?.page).toBe(NARROW_PAGE_MIN);
     await render(800);
     expect(seen?.page).toBeUndefined();
+  });
+
+  it('says a narrow page scrolls only below its floor', async () => {
+    await render(360, NARROW_PAGE_MIN + 24 + 16);
+    expect(seen?.scrolls).toBe(false);
+    await render(360, NARROW_PAGE_MIN + 24 + 15);
+    expect(seen?.scrolls).toBe(true);
   });
 
   it('is narrow where a cutout leaves too little room beside it', async () => {
