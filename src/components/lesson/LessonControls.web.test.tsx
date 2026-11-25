@@ -59,9 +59,10 @@ function tap(element: HTMLElement) {
 
 /**
  * Silk's Switch turns on the UI thread, which on the web is the next animation
- * frame, and reports back in a microtask: wait for both.
+ * frame, and reports back in a microtask after it: wait for the frame, then a
+ * task, which runs that microtask first.
  */
-const switched = () =>
+const waitForSwitch = () =>
   new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
 describe('LessonControls', () => {
@@ -109,7 +110,7 @@ describe('LessonControls', () => {
     const traps = toggle('Warn of traps');
     await act(async () => {
       tap(labelOf('Warn of traps'));
-      await switched();
+      await waitForSwitch();
     });
     expect(traps.getAttribute('aria-checked')).toBe('true');
     expect(tip()).toBeNull();
@@ -128,7 +129,7 @@ describe('LessonControls', () => {
     expect(moves().getAttribute('aria-disabled')).not.toBe('true');
     await act(async () => {
       moves().click();
-      await switched();
+      await waitForSwitch();
     });
     expect(moves().getAttribute('aria-checked')).toBe('false');
   });
