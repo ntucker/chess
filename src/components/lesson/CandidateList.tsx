@@ -438,7 +438,10 @@ function Row({
         <View style={styles.mark}>{mark ? <ProgressMark mark={mark} /> : null}</View>
       ) : null}
       {loading ? (
-        <Progress size="sm" tone="accent" label={LOADING.detail} style={styles.sweep} />
+        // Silk's track is full width, so the insets go on a view around it.
+        <View style={styles.sweep}>
+          <Progress size="sm" tone="accent" label={LOADING.detail} />
+        </View>
       ) : null}
     </Pressable>
   );

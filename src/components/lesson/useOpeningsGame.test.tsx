@@ -3,8 +3,9 @@ import { act, Suspense, use, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
 import { AT_ONCE } from '@/components/navigation';
+import type { Color } from '@/game/replay';
 import { uciLine } from '@/lesson/lesson.fixture';
-import { variationLine } from '@/lesson/openings';
+import { lessonOf, variationLine } from '@/lesson/openings';
 import { FIXTURE_INDEX } from '@/lesson/openings.fixture';
 import { LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { SettingsProvider, useSettings } from '@/settings/SettingsProvider';
@@ -29,8 +30,8 @@ const loadingForever = new Promise<never>(() => {});
 const slow = { lessons: false };
 
 /** The page's lesson: with slow lessons, it waits once the shown game picks one. */
-function Lesson({ moves }: { readonly moves: readonly string[] }) {
-  if (slow.lessons && moves.length > 0) use(loadingForever);
+function Lesson({ side, moves }: { readonly side: Color; readonly moves: readonly string[] }) {
+  if (slow.lessons && lessonOf(FIXTURE_INDEX, side, moves)) use(loadingForever);
   return 'lesson';
 }
 
@@ -51,7 +52,7 @@ function Page({
   });
   return (
     <Suspense fallback="placeholder">
-      <Lesson moves={answer.store[0].moves} />
+      <Lesson side={answer.side} moves={answer.store[0].moves} />
     </Suspense>
   );
 }
@@ -377,6 +378,19 @@ describe('useOpeningsGame', () => {
     await back();
     expect(moves()).toEqual([]);
     expect(latest().pending).toBe(false);
+    expect(latest().pendingMove).toBeUndefined();
+  });
+
+  it('names no pick when Forward goes to a game one move longer down another line', async () => {
+    await show();
+    await play('e2e4', 'c7c6', 'c2c4');
+    await push('caro-kann');
+    await back();
+    await play('d2d4', 'd7d5');
+    slow.lessons = true;
+    await push('caro-kann');
+    expect(latest().pending).toBe(true);
+    // The page still shows 1.d4 d5, whose rows list c4 too, but nobody played it there.
     expect(latest().pendingMove).toBeUndefined();
   });
 
