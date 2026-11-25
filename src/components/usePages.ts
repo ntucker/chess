@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { haptic } from '@/components/haptics';
 import { useCloseKeys } from '@/components/useCloseKeys';
 
 /**
@@ -9,14 +10,19 @@ import { useCloseKeys } from '@/components/useCloseKeys';
  * `home`, Escape and Android's back return there while the screen is in
  * front. While not `shown` (a wide page, which lays the pages out
  * otherwise), the page reads as `home`, so nothing unseen takes Back; the
- * page picked comes back if the pages show again.
+ * page picked comes back if the pages show again. A page `show` picks ticks
+ * on Android; Back doesn't, since the system answers it.
  */
 export function usePages<P extends string>(
   home: P,
   shown: boolean,
 ): { readonly page: P; readonly show: (page: P) => void } {
-  const [picked, show] = useState<P>(home);
+  const [picked, setPicked] = useState<P>(home);
   const page = shown ? picked : home;
-  useCloseKeys(page === home ? undefined : () => show(home));
+  useCloseKeys(page === home ? undefined : () => setPicked(home));
+  const show = (to: P) => {
+    haptic('pageSettled');
+    setPicked(to);
+  };
   return { page, show };
 }

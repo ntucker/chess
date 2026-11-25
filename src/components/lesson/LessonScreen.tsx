@@ -140,11 +140,6 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
     haptic('sheetOpened');
     setSettingsOpen(true);
   };
-  // A page picked by the pill or a swipe ticks; Back (in `usePages`) doesn't: the system answers it.
-  const pick = (to: PhonePage) => {
-    haptic('pageSettled');
-    show(to);
-  };
 
   return (
     <Stage
@@ -178,7 +173,7 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
               ply={model.stepper.ply}
               disabled={!scoresheetReachable}
               open={scoresheetShown}
-              onToggle={() => pick(scoresheetShown ? 'lesson' : 'scoresheet')}
+              onToggle={() => show(scoresheetShown ? 'lesson' : 'scoresheet')}
             />
           }
         />
@@ -189,7 +184,7 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
             <PhoneLesson
               model={model}
               page={page}
-              onPage={pick}
+              onPage={show}
               scoresheetReachable={scoresheetReachable}
             />
           ) : (

@@ -16,7 +16,7 @@ const FEELS = {
   pageSettled: AndroidHaptics.Gesture_End,
   /** A sheet rises, from its button or a flick up. */
   sheetOpened: AndroidHaptics.Context_Click,
-} as const satisfies Record<string, AndroidHaptics>;
+} satisfies Record<string, AndroidHaptics>;
 
 export type HapticMoment = keyof typeof FEELS;
 

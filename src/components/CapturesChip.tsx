@@ -74,8 +74,9 @@ function Chip({ captures, color, even }: Props & { readonly even: boolean }) {
         aria-expanded={card !== undefined}
         hitSlop={6}
         onPress={() => {
-          if (card !== 'pin') haptic('cardPinned');
-          setCard(card === 'pin' ? undefined : 'pin');
+          const pinning = card !== 'pin';
+          if (pinning) haptic('cardPinned');
+          setCard(pinning ? 'pin' : undefined);
         }}
         onLongPress={() => {
           haptic('cardHeld');

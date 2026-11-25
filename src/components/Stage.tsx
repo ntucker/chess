@@ -127,7 +127,7 @@ interface BoardColumnProps {
  * The board in its frame, with the evaluation bar beside it, the opponent's
  * name bar above it and the player's below, holding the move stepper. The
  * arrow keys step through the moves too. On Android, each move the learner
- * plays ticks (`haptic`).
+ * plays ticks (`haptic('moveLanded')`).
  */
 export function BoardColumn({
   game,
