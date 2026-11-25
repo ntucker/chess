@@ -596,13 +596,29 @@ describe('checkLesson', () => {
       ]);
     });
 
-    it('stores a length only where the guide goes on past it, and never past where it stops', () => {
-      const plies = (n: number) => checkLesson(marking({ uci: 'g7g5', mistake: { plies: n } }));
-      expect(plies(1)).toEqual([
-        { path: `${at}.plies`, message: 'is where the guide stops anyway, so it is left out' },
+    it('stores a line only of guide moves, and only where the guide would play another', () => {
+      const afterG5 = afterD4.clone();
+      afterG5.play(parseSan(afterG5, 'g5')!);
+      /** `marking` with White's 3.Bxg5 or 3.h4 after the marked 2...g5, which stores `line`. */
+      const withLine = (line: string[]) => {
+        const marked = marking({ uci: 'g7g5', mistake: { line } });
+        return {
+          ...marked,
+          positions: {
+            ...marked.positions,
+            [positionKey(afterG5)]: {
+              variation: 'caro',
+              moves: [{ uci: 'c1g5' }, { uci: 'h2h4' }],
+            },
+          },
+        };
+      };
+      expect(checkLesson(withLine(['h2h4']))).toEqual([]);
+      expect(checkLesson(withLine(['c1g5']))).toEqual([
+        { path: `${at}.line`, message: 'is the line the guide gives anyway, so it is left out' },
       ]);
-      expect(plies(2)).toEqual([
-        { path: `${at}.plies`, message: 'is 2, but the guide holds 1 moves of the line' },
+      expect(checkLesson(withLine(['f2f4']))).toEqual([
+        { path: `${at}.line[0]`, message: 'is not a guide move at its position' },
       ]);
     });
 

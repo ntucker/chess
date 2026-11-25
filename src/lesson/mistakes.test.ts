@@ -33,9 +33,14 @@ describe('mistakeLine', () => {
     expect(lineOf(lesson([BXA6, NXA6]))).toEqual(uciLine('e4', 'e5', 'Ba6', 'Nxa6').slice(2));
   });
 
-  it('ends where the tree does, or after its plies', () => {
+  it('ends where the tree does', () => {
     expect(lineOf(lesson([]))).toEqual([BA6.uci]);
-    const cut = { ...BA6, mistake: { ...BA6.mistake, plies: 1 } };
+  });
+
+  it('plays its stored line in place of the choice rule', () => {
+    const stored = { ...BA6, mistake: { ...BA6.mistake, line: [BXA6.uci] } };
+    expect(lineOf(lesson([NXA6, BXA6], stored), stored)).toEqual([BA6.uci, BXA6.uci]);
+    const cut = { ...BA6, mistake: { ...BA6.mistake, line: [] } };
     expect(lineOf(lesson([NXA6], cut), cut)).toEqual([BA6.uci]);
   });
 

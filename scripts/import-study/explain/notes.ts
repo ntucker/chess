@@ -120,10 +120,10 @@ export function explainedNote(answer: Answer, move: Played, model: AiModel): Exp
     // draws, not as one already extracted, which the model can't act on.
     const idea = lessonIdea(raw, after, false);
     if (typeof idea === 'string') return refuse(`its ${raw.type} is false here: ${idea}`);
+    if (idea.type === 'trap') return refuse('its trap is a type no generated note draws');
     const problem = generatedIdeaProblem(idea, after);
     if (problem) return refuse(`its ${idea.type} ${problem}`);
-    // A generated note draws no trap: the problem above refuses one.
-    ideas.push(idea as Idea);
+    ideas.push(idea);
   }
   return { note: { text, generated: true, model, ...(ideas.length > 0 && { ideas }) } };
 }

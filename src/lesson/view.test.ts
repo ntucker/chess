@@ -13,7 +13,7 @@ import {
   uciLine,
   WITH_RARE,
   withMoves,
-  withMistakePlies,
+  withMistakeLine,
 } from './lesson.fixture';
 import { guideMove, lineKeys } from './select';
 import { lessonView, type Pointer, preview } from './view';
@@ -131,7 +131,7 @@ describe('lessonView', () => {
     });
 
     it('lands a one-move trap at its only move', () => {
-      const lesson = withMistakePlies(SAMPLE, keyAfter(...TRAP), uci(...TRAP, 'Nxe5'), 1);
+      const lesson = withMistakeLine(SAMPLE, keyAfter(...TRAP), uci(...TRAP, 'Nxe5'), []);
       const line = uciLine(...TRAP, 'Nxe5');
       expect(lessonView({ lesson, line, ply: line.length, opponent: 1500 }).trap).toMatchObject({
         ply: TRAP.length,

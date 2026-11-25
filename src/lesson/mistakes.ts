@@ -18,6 +18,7 @@ import type {
   PositionKey,
   Uci,
 } from './lesson';
+import { guideMove } from './select';
 import { moveGames } from './share';
 
 /** A marked mistake's line, as the board draws and plays it back. */
@@ -58,20 +59,20 @@ export function guideOrder(
 }
 
 /**
- * The line that `move`, a marked mistake at `key`, starts: the move, then at
- * each position the first of the guide's moves there (`guideOrder`). It ends
- * after `Mistake.plies` moves, where the guide has no move to pick, or where
- * it comes back to a position it passed. Example: a marked 5.e6?
- * with only 5...fxe6 after it in the guide, and nothing after that, starts
- * the line 5.e6 fxe6.
+ * The line that `move`, a marked mistake at `key`, starts: the move, then
+ * its stored line (`Mistake.line`), or else at each position the first of the
+ * guide's moves there (`guideOrder`), ending where the guide has no move to
+ * pick, or once it comes back to a position it passed. Example: a marked
+ * 5.e6? with only 5...fxe6 after it in the guide, and nothing after that,
+ * starts the line 5.e6 fxe6.
  */
 export function mistakeLine(lesson: Lesson, key: PositionKey, move: LessonMove): Uci[] {
+  if (move.mistake?.line) return [move.uci, ...move.mistake.line];
   const pos = readPositionKey(key)!;
   const punishing = opposite(pos.turn);
-  const limit = move.mistake?.plies ?? Infinity;
   const line: Uci[] = [];
   const passed = new Set([key]);
-  for (let uci: Uci | undefined = move.uci; uci !== undefined && line.length < limit;) {
+  for (let uci: Uci | undefined = move.uci; uci !== undefined;) {
     pos.play(parseUci(uci)!);
     line.push(uci);
     const at = positionKey(pos);
@@ -82,15 +83,18 @@ export function mistakeLine(lesson: Lesson, key: PositionKey, move: LessonMove):
   return line;
 }
 
+/** A mark's id: the position its move is played in, and the move. */
+export const markId = (key: PositionKey, uci: Uci) => `${key} ${uci}`;
+
 /** The trap a note's reference names: `uci`, the guide's move at `key`, and its line. */
 function trapAt(lesson: Lesson, key: PositionKey, uci: Uci): Trap {
   let byKey = traps.get(lesson);
   if (!byKey) traps.set(lesson, (byKey = new Map()));
-  const id = `${key} ${uci}`;
+  const id = markId(key, uci);
   let trap = byKey.get(id);
   if (!trap) {
     // checkLesson proves the reference names a marked guide move here.
-    const move = lesson.positions[key]?.moves.find((guide) => guide.uci === uci) ?? { uci };
+    const move = guideMove(lesson, key, uci) ?? { uci };
     trap = {
       type: 'trap',
       moves: mistakeLine(lesson, key, move),

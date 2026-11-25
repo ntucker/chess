@@ -198,10 +198,13 @@ export interface Mistake {
    */
   readonly verdict?: Evaluation | 'losesMaterial';
   /**
-   * How many moves the line plays, this one first, where the guide goes on
-   * past its end; absent, it runs to where the guide stops.
+   * The moves of the line after this one, each a guide move at its position,
+   * stored only where the guide's choice rule (`guideOrder` in ./mistakes.ts)
+   * from this move would play another line, or go on past its end; absent,
+   * the line is that rule's. Example: a marked 15...Qe7 with the line
+   * 16.Ng5 Qf6 17.Qh7#, where the guide's most played reply to 16.Ng5 is 16...Qxg5.
    */
-  readonly plies?: number;
+  readonly line?: readonly Uci[];
 }
 
 export const RISKS = ['safe', 'balanced', 'sharp'] as const;
@@ -248,7 +251,9 @@ export type AiModel = keyof typeof AI_MODELS;
 /** What a note shows: something drawn on the board, only an evaluation badge, or text alone. */
 export type NoteShows = 'drawn' | 'badge' | 'text';
 
-export const noteShows = <I extends { readonly type: string }>(ideas: readonly I[] = []): NoteShows =>
+export const noteShows = <I extends { readonly type: string }>(
+  ideas: readonly I[] = [],
+): NoteShows =>
   ideas.some((idea) => idea.type !== 'evaluation') ? 'drawn' : ideas.length > 0 ? 'badge' : 'text';
 
 /**
@@ -256,15 +261,7 @@ export const noteShows = <I extends { readonly type: string }>(ideas: readonly I
  * that position, and one in a move's notes in the position after the move.
  */
 export type Idea =
-  | Purpose
-  | Pressure
-  | Plan
-  | Threat
-  | MistakeIdea
-  | Line
-  | Structure
-  | Imbalance
-  | EvaluationIdea;
+  Purpose | Pressure | Plan | Threat | MistakeIdea | Line | Structure | Imbalance | EvaluationIdea;
 
 /** What one piece does to its targets. The piece is the one on `from`. */
 export interface Purpose {

@@ -69,6 +69,13 @@ function lineGoesOn(lesson: Lesson, key: PositionKey): boolean {
 }
 
 /**
+ * Whether a learner position with `moves` needs a book move: the line goes on
+ * there (a move that isn't a marked mistake), and the guide books none.
+ */
+export const needsBookMove = (moves: readonly LessonMove[]) =>
+  moves.some(({ mistake }) => !mistake) && !moves.some(({ book }) => book);
+
+/**
  * Where the position `arrivedBy` leads to stands on a guide line: inside it
  * while the line goes on (`lineGoesOn`), at its end where a guide move led
  * and the line stops, else beyond the guide. The shipped files keep no entry

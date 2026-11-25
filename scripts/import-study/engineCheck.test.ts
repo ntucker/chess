@@ -190,13 +190,13 @@ describe('engineCheck', () => {
       { line: '1.d4 d5', text: 'mistake c4', reason: 'is best' },
       {
         line: '1.d4 d5',
-        text: 'Black is winning here.',
-        reason: 'says blackWinning, engine +0.20',
+        text: 'Pushing c4 falls for a trap.',
+        reason: 'names a mistake whose mark went',
       },
       {
         line: '1.d4 d5',
-        text: 'Pushing c4 falls for a trap.',
-        reason: 'names a mistake whose mark went',
+        text: 'Black is winning here.',
+        reason: 'says blackWinning, engine +0.20',
       },
     ]);
   });

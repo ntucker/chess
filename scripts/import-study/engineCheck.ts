@@ -35,8 +35,16 @@ import {
   type FinalAnalysis,
 } from '@/evaluation/evaluation';
 import { judgeMove, judgement } from '@/analysis/quality';
-import { lineSans, numberedLine, parsePosition, playMove, positionKey } from '@/game/replay';
-import { mistakeLine } from '@/lesson/mistakes';
+import {
+  lineSans,
+  numberedLine,
+  parsePosition,
+  parsePositionKey,
+  playMove,
+  positionKey,
+} from '@/game/replay';
+import { needsBookMove } from '@/lesson/cleanRun';
+import { markId, mistakeLine } from '@/lesson/mistakes';
 import type {
   Evaluation as Verdict,
   Lesson,
@@ -83,11 +91,11 @@ const GAMBIT_FLOOR = 0.3;
 
 /** `lesson` with what `evaluate` overrules taken out, and what was taken. */
 export async function engineCheck(
-  lesson: Lesson,
+  marked: Lesson,
   evaluate: Evaluate,
   { gambit = false }: { readonly gambit?: boolean } = {},
 ): Promise<{ lesson: Lesson; report: EngineReport }> {
-  const lines = linesTo(lesson);
+  const lines = linesTo(marked);
   const evaluation = cachedEvaluation(evaluate);
   const report = {
     unbooked: [] as { line: string; move: string; quality: string }[],
@@ -97,7 +105,12 @@ export async function engineCheck(
     dropped: [] as { line: string; text: string; reason: string }[],
   };
 
-  const unmarked = await overruledMistakes(lesson, lines, evaluation, report.dropped);
+  const overruledMarks = await overruledMistakes(marked, lines, evaluation, report.dropped);
+  const { lesson, dropped } = withoutMarks(marked, overruledMarks);
+  for (const { at, text } of dropped) {
+    const line = sans(lesson, lines.get(at)?.line ?? []);
+    report.dropped.push({ line, text, reason: 'names a mistake whose mark went' });
+  }
   const positions: Record<PositionKey, LessonPosition> = {};
   /** Where the engine overruled a book move. */
   const overruledAt = new Set<PositionKey>();
@@ -108,12 +121,7 @@ export async function engineCheck(
       continue;
     }
     const keepNote = (pos: Chess, line: readonly Uci[]) => async (note: Note) => {
-      const named = note.ideas?.find(
-        (idea) => idea.type === 'mistake' && unmarked.has(markId(positionKey(pos), idea.move)),
-      );
-      const reason = named
-        ? 'names a mistake whose mark went'
-        : await overruled(note, pos, line, evaluation);
+      const reason = await overruled(note, pos, line, evaluation);
       if (reason) report.dropped.push({ line: sans(lesson, line), text: note.text, reason });
       return !reason;
     };
@@ -146,14 +154,8 @@ export async function engineCheck(
       }
       const kept = await filter(move.notes ?? [], keepNote(after, line));
       const notes = gambitNote ? [...kept, gambitNote] : kept;
-      const { book: _book, notes: _notes, mistake, ...rest } = move;
-      const marked = mistake && !unmarked.has(markId(key, move.uci));
-      moves.push({
-        ...rest,
-        ...(book && { book }),
-        ...(notes.length > 0 && { notes }),
-        ...(marked && { mistake }),
-      });
+      const { book: _book, notes: _notes, ...rest } = move;
+      moves.push({ ...rest, ...(book && { book }), ...(notes.length > 0 && { notes }) });
     }
     const notes = await filter(position.notes ?? [], keepNote(at.pos, at.line));
     const { notes: _notes, ...rest } = position;
@@ -285,8 +287,9 @@ async function fillBookWith(
     let position = positions[key];
     if (!position) continue;
     const learner = at.pos.turn === lesson.side;
-    if (learner && position.moves.length > 0 && !position.moves.some(({ book }) => book)) {
-      const pick = await pickBookMove(position.moves, at, evaluation, lesson.side);
+    if (learner && needsBookMove(position.moves)) {
+      const unmarked = position.moves.filter(({ mistake }) => !mistake);
+      const pick = await pickBookMove(unmarked, at, evaluation, lesson.side);
       if (!pick) {
         const moves = position.moves.map(({ uci }) => san(at.pos, uci));
         const gone = endLine(lesson, positions, key, lines);
@@ -323,8 +326,7 @@ async function fillBookWith(
 /**
  * The book move `fillBook` picks at `at`, and why: one of the guide's moves
  * there, or the engine's own when it overrules them all; undefined when it
- * names none. It reads no trap ideas: a move a trap warns against is picked
- * like any other the engine rates no mistake.
+ * names none. `moves` leaves out marked mistakes.
  */
 async function pickBookMove(
   moves: readonly LessonMove[],
@@ -400,9 +402,6 @@ async function lineOverruled(
   return apart(verdict, engine) ? `ends ${verdict}, engine ${describe(engine)}` : undefined;
 }
 
-/** A mark's id: the position its move is played in, and the move. */
-export const markId = (key: PositionKey, uci: Uci) => `${key} ${uci}`;
-
 /**
  * The marks the engine overrules (by `markId`), each reported in `dropped`:
  * its move is best or good where it is played, or its verdict is apart from
@@ -444,6 +443,39 @@ async function overruledMistakes(
     }
   }
   return overruled;
+}
+
+/**
+ * `lesson` without the marks in `gone` (by `markId`), nor the notes that name
+ * one, and those notes, each at the position its ideas hold in.
+ */
+export function withoutMarks(
+  lesson: Lesson,
+  gone: ReadonlySet<string>,
+): { lesson: Lesson; dropped: { at: PositionKey; text: string }[] } {
+  const dropped: { at: PositionKey; text: string }[] = [];
+  if (gone.size === 0) return { lesson, dropped };
+  const notesOf = <T extends { readonly notes?: readonly Note[] }>(item: T, at: PositionKey): T => {
+    const notes = item.notes?.filter((note) => {
+      const names = note.ideas?.some(
+        (idea) => idea.type === 'mistake' && gone.has(markId(at, idea.move)),
+      );
+      if (names) dropped.push({ at, text: note.text });
+      return !names;
+    });
+    const { notes: _notes, ...rest } = item;
+    return (notes?.length ? { ...rest, notes } : rest) as T;
+  };
+  const positions: Record<PositionKey, LessonPosition> = {};
+  for (const [key, entry] of Object.entries(lesson.positions)) {
+    const pos = parsePositionKey(key)!;
+    const moves = entry.moves.map((move) => {
+      const { mistake, ...rest } = notesOf(move, positionKey(played(pos, move.uci)));
+      return mistake && !gone.has(markId(key, move.uci)) ? { ...rest, mistake } : rest;
+    });
+    positions[key] = notesOf({ ...entry, moves }, key);
+  }
+  return { lesson: { ...lesson, positions }, dropped };
 }
 
 /** The scale from Black winning (-3) to White winning (3). */
@@ -573,9 +605,13 @@ export const san = (pos: Chess, uci: Uci) => playMove(pos.clone(), uci)!.san;
 
 /** `line` from the lesson's start in SAN, like "1.d4 d5 2.c4". */
 export function sans(lesson: Lesson, line: readonly Uci[]): string {
+  return numberedLine(lineSans(line, startOf(lesson)), startPly(lesson));
+}
+
+/** The number of the lesson's first move as a ply (1 is White's first move). */
+export function startPly(lesson: Lesson): number {
   const start = startOf(lesson);
-  const firstPly = 2 * start.fullmoves - (start.turn === 'white' ? 1 : 0);
-  return numberedLine(lineSans(line, start), firstPly);
+  return 2 * start.fullmoves - (start.turn === 'white' ? 1 : 0);
 }
 
 async function filter<T>(items: readonly T[], keep: (item: T) => Promise<boolean>): Promise<T[]> {

@@ -25,6 +25,7 @@ import { balance, points, VALUES } from '@/game/material';
 import {
   parsePosition,
   parsePositionKey,
+  playMove,
   positionKey,
   recordedMove,
   takenRole,
@@ -58,7 +59,9 @@ import {
   type Uci,
   type VariationId,
 } from './lesson';
+import { needsBookMove } from './cleanRun';
 import { mistakeLine } from './mistakes';
+import { guideMove } from './select';
 import {
   filePawnCount,
   isBackward,
@@ -134,9 +137,7 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
       key,
       next.filter(({ book }) => book || !learner).map(({ key: to }) => to),
     );
-    // Where the learner's only moves are marked mistakes, the book line ends and a trap starts.
-    const lineGoesOn = next.some(({ mistake }) => !mistake);
-    if (learner && lineGoesOn && !next.some(({ book }) => book)) unbooked.add(key);
+    if (learner && needsBookMove(entry.moves)) unbooked.add(key);
   }
   const reached = reachable(startKey, children);
   for (const key of children.keys()) {
@@ -161,7 +162,7 @@ function checkPosition(
   key: string,
   entry: LessonPosition,
   report: Report,
-): { learner: boolean; next: { key: string; book: boolean; mistake: boolean }[] } | undefined {
+): { learner: boolean; next: { key: string; book: boolean }[] } | undefined {
   const at = `positions[${JSON.stringify(key)}]`;
   const pos = parsePositionKey(key);
   if (!pos) {
@@ -172,7 +173,7 @@ function checkPosition(
     report(`${at}.variation`, `${entry.variation} is not in variations`);
   }
   checkNotes(lesson, entry.notes, pos, `${at}.notes`, report);
-  const next: { key: string; book: boolean; mistake: boolean }[] = [];
+  const next: { key: string; book: boolean }[] = [];
   const seen = new Set<string>();
   entry.moves.forEach((move, i) => {
     const path = `${at}.moves[${i}]`;
@@ -180,7 +181,7 @@ function checkPosition(
     seen.add(move.uci);
     const after = checkMove(lesson, pos, move, path, report);
     if (!after) return;
-    next.push({ key: positionKey(after), book: !!move.book, mistake: !!move.mistake });
+    next.push({ key: positionKey(after), book: !!move.book });
     if (move.mistake) checkMistake(lesson, pos, move, move.mistake, `${path}.mistake`, report);
     checkNotes(lesson, move.notes, after, `${path}.notes`, report);
   });
@@ -305,14 +306,14 @@ const isCount = (n: number) => Number.isInteger(n) && n >= 0;
 
 /**
  * Checks the marker on `move`, legal in `pos`: its numbers in range, its
- * length (`plies`) a line the guide holds and stored only where the guide
- * goes on past it, and its verdict true of the line (`trapProblem`).
+ * stored line made of guide moves and stored only where the guide's choice
+ * rule plays another, and its verdict true of the line (`trapProblem`).
  */
 function checkMistake(
   lesson: Lesson,
   pos: Chess,
   move: LessonMove,
-  { cost, gain, name, verdict, plies }: Mistake,
+  { cost, gain, name, verdict, line }: Mistake,
   path: string,
   report: Report,
 ) {
@@ -324,18 +325,26 @@ function checkMistake(
     report(`${path}.gain`, 'needs one expected score from 0 to 1 per rating band');
   if (name !== undefined && !name.trim()) report(`${path}.name`, 'is empty');
   const key = positionKey(pos);
-  const line = mistakeLine(lesson, key, move);
-  if (plies !== undefined) {
-    const whole = mistakeLine(lesson, key, { uci: move.uci }).length;
-    if (!Number.isInteger(plies) || plies < 1)
-      report(`${path}.plies`, 'must be a whole number of moves');
-    else if (plies > whole)
-      report(`${path}.plies`, `is ${plies}, but the guide holds ${whole} moves of the line`);
-    else if (plies === whole)
-      report(`${path}.plies`, 'is where the guide stops anyway, so it is left out');
+  if (line) {
+    const off = offGuide(lesson, pos, [move.uci, ...line]);
+    if (off !== undefined)
+      report(`${path}.line[${off - 1}]`, 'is not a guide move at its position');
+    else if (String(mistakeLine(lesson, key, { uci: move.uci })) === String([move.uci, ...line]))
+      report(`${path}.line`, 'is the line the guide gives anyway, so it is left out');
   }
-  const problem = verdict === undefined ? undefined : trapProblem(pos, line, verdict);
+  const problem =
+    verdict === undefined ? undefined : trapProblem(pos, mistakeLine(lesson, key, move), verdict);
   if (problem) report(`${path}.verdict`, problem);
+}
+
+/** The index of the first of `moves` from `pos` that isn't a guide move where it is played, if any. */
+function offGuide(lesson: Lesson, pos: Chess, moves: readonly Uci[]): number | undefined {
+  const at = pos.clone();
+  for (const [n, uci] of moves.entries()) {
+    if (!lesson.positions[positionKey(at)]?.moves.some((move) => move.uci === uci)) return n;
+    playMove(at, uci);
+  }
+  return undefined;
 }
 
 const MOVE = new RegExp(String.raw`(?<![\w.])${WRITTEN_MOVE}(?![\w-])`, 'g');
@@ -429,13 +438,10 @@ const pieceWorth = (role: Role) => (role === 'king' ? Infinity : VALUES[role]);
  * What a generated note (`Note.generated`) may not draw that a guide's may,
  * or undefined, worded to follow the idea's type ("threat takes nothing...").
  */
-export function generatedIdeaProblem(
-  idea: Idea | { readonly type: string },
-  pos: Chess,
-): string | undefined {
+export function generatedIdeaProblem(idea: Idea, pos: Chess): string | undefined {
   if (!(GENERATED_IDEAS as readonly string[]).includes(idea.type))
     return 'is a type no generated note draws';
-  return idea.type === 'threat' ? emptyThreat(idea as Threat, pos) : undefined;
+  return idea.type === 'threat' ? emptyThreat(idea, pos) : undefined;
 }
 
 function checkNotes(
@@ -468,7 +474,7 @@ function checkNotes(
 
 /** Why a note can't name `uci` at `key` as a mistake: the guide lists no marked move there. */
 const unmarked = (lesson: Lesson, key: string, uci: Uci) =>
-  lesson.positions[key]?.moves.find((move) => move.uci === uci)?.mistake
+  guideMove(lesson, key, uci)?.mistake
     ? undefined
     : 'names a move the guide does not mark as a mistake here';
 

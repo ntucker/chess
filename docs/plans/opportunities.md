@@ -68,7 +68,7 @@ plan doesn't depend on those links.
   | The mistake's title in the list          | `name` on that marker, written by the explain step     |
   | The guide's verdict on a migrated trap   | `verdict` on that marker (today `Trap.verdict`)        |
   | The line a mistake starts                | The guide tree from the marked move (`mistakeLine`)    |
-  | Where that line stops short of the tree  | `plies` on that marker, only where the guide goes on   |
+  | That line, where the guide would differ  | `line` on that marker, the moves after it              |
 
 - A move's lichess share has one definition: its games over the position's explorer total where
   `LessonPosition.games` exists, else over the sum of the listed moves' games (older data). One
@@ -282,23 +282,30 @@ limits it ran with. Set 2026-11-24 (Decisions).
 
 - Format: `LessonPosition.games` (games reaching the position, per band of
   `Lesson.popularity.ratingBands`; absent means not measured) and `LessonMove.mistake` (`{ cost?,
-  gain?, name?, verdict?, plies? }`: cost (one value) and gain (one per band of
+  gain?, name?, verdict?, line? }`: cost (one value) and gain (one per band of
   `Lesson.popularity.ratingBands`) as above, absent only on migrated guide traps until the importer
   step measures them (piece D1 for Stafford, D3 for the rest); `name` a short title for the list;
-  `verdict` the `Trap` verdict it replaces; `plies` below). Format 4: a note's trap idea becomes a
+  `verdict` the `Trap` verdict it replaces; `line` below). Format 4: a note's trap idea becomes a
   `mistake` idea naming the marked move, which an older app can't read.
 - The `Trap` idea goes. Each existing trap idea (254: 172 in position notes, 82 in move notes)
-  becomes guide-tree moves with the marker on its first move. Its later moves go in until the guide
-  goes its own way, and the learner's punishing moves among them are book moves, as Act III writes
-  them. The line a marked move starts is then read from the tree (`mistakeLine`,
-  `src/lesson/mistakes.ts`): at each position the first move by Act III's choice rule (`guideOrder`:
-  the learner's book move where it punishes, or the most played move off the book, where it has
-  none; the most played move elsewhere), ending where the tree does, on a repetition, or after
-  `plies` moves, which the marker stores only where the guide goes on past the trap. The note stays
-  where it was, and its trap idea becomes a `{ type: 'mistake', move }` idea naming the marked move,
-  from which the app derives the trap card's line. The importer reports each trap whose line comes out other than the study wrote it, and each
-  whose mark the engine overruled or whose verdict its new line contradicts (that mark goes with the
-  notes naming it). A marked move of the learner's side is not a book move, so the checker's
+  becomes guide-tree moves with the marker on its first move. A guide trap's line is the author's
+  content and is kept exactly: every move of it goes into the tree where it isn't there yet, the
+  learner's punishing moves as book moves where the guide books no other (as Act III writes them),
+  every other move as an ordinary one. The line a marked move starts is read from the tree
+  (`mistakeLine`, `src/lesson/mistakes.ts`): the marker's `line` (the moves after it, each a guide
+  move at its position) where stored, else at each position the first move by Act III's choice rule
+  (`guideOrder`: the learner's book move where it punishes, or the most played move off the book,
+  where it has none; the most played move elsewhere), ending where the tree does or on a
+  repetition. `line` is stored exactly where that rule wouldn't give the intended line (it would
+  play another branch, or go on past its end), and the importer keeps it so when popularity counts
+  change the rule's pick. The same rule covers the lines the finder builds (D1, D3): an Act III that
+  ends before the tree does, or leaves the rule's branch, stores `line`, so piece E reads one stored
+  end for both. Where one first move has two study lines, the mark keeps the first note's, and the
+  PR lists the other. The note stays where it was, and its trap idea becomes a
+  `{ type: 'mistake', move }` idea naming the marked move, from which the app derives the trap
+  card's line. The engine judges each marker on its study line; the importer reports each trap
+  whose line comes out other than the study wrote it, and each whose mark the engine overruled or
+  whose verdict its line contradicts (that mark goes with the notes naming it). A marked move of the learner's side is not a book move, so the checker's
   traversal (book moves for the learner, every opponent move) does not follow it; a position a book
   line also reaches still needs a book move, and there is no exemption for positions after a marked
   move. Where the learner's only moves are marked, the book line ends there (`lineGoesOn`,
@@ -313,7 +320,8 @@ limits it ran with. Set 2026-11-24 (Decisions).
   keeps its floor and book-only scaling, and `repliesFrom` and `coverOpponent.ts` drop their own
   ratio. Also `countedReplies`' exception for a marked move without counts (Rules).
 - Checker rules for marked moves (legal; not a book move; `cost` at or over the floor when present;
-  `plies` within the guide's line; a `losesMaterial` verdict holds on the derived line; a
+  `line` made of guide moves and stored only where the choice rule plays another; a `losesMaterial`
+  verdict holds on the line; a
   `mistake` idea names a marked move at its position). README for
   `assets/lessons/` and `AGENTS.md` updated.
 - No new finds: shipped lessons change only by the migration, rebuilt by the importer from committed

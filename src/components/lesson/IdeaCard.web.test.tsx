@@ -128,7 +128,11 @@ describe('IdeaCard', () => {
    * A card holding one note, `note` (none if undefined), at `density`, its move
    * leading to the Masi Variation unless not `leads`: its text, and its buttons' labels.
    */
-  const renderCard = (density: 'comfortable' | 'compact', note: BoardNote | undefined, leads = true) => {
+  const renderCard = (
+    density: 'comfortable' | 'compact',
+    note: BoardNote | undefined,
+    leads = true,
+  ) => {
     const host = document.createElement('div');
     const root = createRoot(host);
     act(() =>

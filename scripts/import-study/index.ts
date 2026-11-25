@@ -65,7 +65,7 @@ import { explainBookMoves, explainCli, explainReport } from './explain';
 import { extractChapter } from './extract';
 import { lessonJson } from './lessonJson';
 import { mergeChapters, numberedChapterName, type ChapterName, type SourceTally } from './merge';
-import { markMistakes, settleMistakes } from './mistakes';
+import { keepMistakeLines, markMistakes, settleMistakes } from './mistakes';
 import { addPopularity, lichessExplorer } from './popularity';
 import { indexedWith, readLessonFile, registered, writeIndex } from './register';
 import { report, sourceReport } from './report';
@@ -235,7 +235,7 @@ async function withPopularity(
     if (asked % 50 === 0) console.log(`popularity: ${asked} positions`);
   });
   if (save) explorer.saveUsed();
-  return counted;
+  return keepMistakeLines(lesson, counted);
 }
 
 /** `lesson`, once the checker passes it; throws with its first problems otherwise. */

@@ -55,11 +55,11 @@ export function withMoves(
   };
 }
 
-/** `lesson` with the mistake `uci` marks at `key` cut to its first `plies` moves (`Mistake.plies`). */
-export const withMistakePlies = (lesson: Lesson, key: PositionKey, uci: Uci, plies: number) =>
+/** `lesson` with the mistake `uci` marks at `key` storing `line`, the moves after it (`Mistake.line`). */
+export const withMistakeLine = (lesson: Lesson, key: PositionKey, uci: Uci, line: Uci[]) =>
   withMoves(lesson, key, (moves) =>
     moves.map((move) =>
-      move.uci === uci ? { ...move, mistake: { ...move.mistake, plies } } : move,
+      move.uci === uci ? { ...move, mistake: { ...move.mistake, line } } : move,
     ),
   );
 

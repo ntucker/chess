@@ -43,7 +43,10 @@ describe('markMistakes', () => {
     const { lesson, traps } = markMistakes(withTrap());
     expect(lesson.positions[keyAfter('e4', 'e5')].moves).toEqual([
       { uci: uci('e4', 'e5', 'Nf3') },
-      { uci: uci('e4', 'e5', 'Ba6'), mistake: { verdict: 'losesMaterial', plies: 2 } },
+      {
+        uci: uci('e4', 'e5', 'Ba6'),
+        mistake: { verdict: 'losesMaterial', line: [uci('e4', 'e5', 'Ba6', 'bxa6')] },
+      },
     ]);
     expect(lesson.positions[keyAfter('e4')].moves[0].notes).toEqual([
       {
@@ -74,8 +77,8 @@ describe('markMistakes', () => {
     ]);
   });
 
-  it('leaves the line to the guide where it books another move', () => {
+  it('adds the punishing move as an ordinary one where the guide books another', () => {
     const guide = [{ uci: uci('e4', 'e5', 'Ba6', 'Nxa6'), book: true }];
-    expect(movesAfterBa6(guide)).toEqual(guide);
+    expect(movesAfterBa6(guide)).toEqual([...guide, { uci: uci('e4', 'e5', 'Ba6', 'bxa6') }]);
   });
 });

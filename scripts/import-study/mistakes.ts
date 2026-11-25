@@ -1,19 +1,18 @@
 /**
  * Turns the traps a study's notes draw into marked guide moves (format:
- * src/lesson/lesson.ts). A trap's first move gets the marker
- * (`LessonMove.mistake`) with the study's verdict; its later moves go into
- * the guide tree until the guide goes its own way, where the trap's line
- * follows the guide (`mistakeLine`), and the learner's punishing moves among
- * them become book moves; and its note stays where it is, naming the marked
- * move (`MistakeIdea`).
- * `settleMistakes`, once nothing else changes the tree, stores each line's
- * length only where the guide goes on past it, and reports each trap whose
- * line came out other than the study wrote it.
+ * src/lesson/lesson.ts). Every move of a trap's line goes into the guide
+ * tree where it isn't there yet, the learner's punishing moves as book moves
+ * where the guide books no other; its first move gets the marker
+ * (`LessonMove.mistake`) with the study's verdict and line; and its note
+ * stays where it is, naming the marked move (`MistakeIdea`). `settleMistakes`,
+ * once nothing else changes the tree, keeps each stored line only where the
+ * guide's choice rule (`mistakeLine`) would play another, and reports each
+ * trap whose line came out other than the study wrote it.
  */
 import type { Chess } from 'chessops/chess';
 import type { Color } from 'chessops/types';
 
-import { lineSans, numberedLine, parsePositionKey, playMove, positionKey } from '@/game/replay';
+import { lineSans, numberedLine, parsePositionKey, positionKey } from '@/game/replay';
 import { checkIdea, trapProblem } from '@/lesson/check';
 import type {
   Idea,
@@ -27,10 +26,13 @@ import type {
   Uci,
   VariationId,
 } from '@/lesson/lesson';
-import { mistakeLine } from '@/lesson/mistakes';
+import { markId, mistakeLine } from '@/lesson/mistakes';
+import { guideMove } from '@/lesson/select';
 
-import { linesTo, markId } from './engineCheck';
+import { linesTo, sans, startPly, withoutMarks } from './engineCheck';
+import { played } from './study';
 import { namedMoves, plainSan } from './text';
+import { allMoves } from './transpositions';
 
 /**
  * A trap as a study draws it: the side to move plays the first move and
@@ -73,11 +75,12 @@ export function markMistakes(lesson: StudyLesson): { lesson: Lesson; traps: Stud
     traps.push({ at, moves: trap.moves, text: note.text });
     const { moves } = positions[at];
     const first = moves.findIndex(({ uci }) => uci === trap.moves[0]);
-    // A move the guide recommends is no mistake, and the checker refuses the mark: the trap goes.
-    if (moves[first].book || moves[first].mistake) continue;
+    // Two traps with one first move: the first in file order keeps the mark. A book move gets the
+    // mark too, since the engine check may unbook it; `settleMistakes` drops one still booked.
+    if (moves[first].mistake) continue;
     moves[first] = {
       ...moves[first],
-      mistake: { verdict: trap.verdict, plies: trap.moves.length },
+      mistake: { verdict: trap.verdict, line: trap.moves.slice(1) },
     };
   }
   const marked = (at: PositionKey, uci: Uci) =>
@@ -104,12 +107,11 @@ export function markMistakes(lesson: StudyLesson): { lesson: Lesson; traps: Stud
     // Spread first, so each key keeps its place in the file; what has no notes holds no trap.
     marking[key] = {
       ...entry,
-      moves: entry.moves.map((move) => {
-        if (!move.notes) return move as LessonMove;
-        const after = pos.clone();
-        playMove(after, move.uci);
-        return { ...move, notes: move.notes.map(noteAt(positionKey(after))) };
-      }),
+      moves: entry.moves.map((move) =>
+        move.notes
+          ? { ...move, notes: move.notes.map(noteAt(positionKey(played(pos, move.uci)))) }
+          : (move as LessonMove),
+      ),
       ...(entry.notes && { notes: entry.notes.map(noteAt(key)) }),
     } as LessonPosition;
   }
@@ -128,26 +130,20 @@ function studyTraps(lesson: StudyLesson) {
       for (const idea of note.ideas ?? [])
         if (idea.type === 'trap') found.push({ at, variation, trap: idea, note });
   };
-  for (const [key, entry] of Object.entries(lesson.positions)) {
+  for (const [key, entry] of Object.entries(lesson.positions))
     add(key, entry.variation, entry.notes);
-    for (const move of entry.moves) {
-      if (!move.notes) continue;
-      const after = parsePositionKey(key)!;
-      playMove(after, move.uci);
-      add(positionKey(after), entry.variation, move.notes);
-    }
-  }
+  for (const { key, move, after } of allMoves(lesson))
+    add(after, lesson.positions[key].variation, move.notes);
   return found;
 }
 
 /**
- * Writes `moves`, a trap from `at`, into the guide tree: its first move
- * always, and each later one unless the guide goes its own way there, where
- * it stops. The learner's punishing moves are book moves, as Act III writes
- * them (docs/plans/opportunities.md): there the guide goes its own way only
- * with another book move. Elsewhere any other move does. New positions take
- * `variation`. Example: in Black's lesson, the trap 6.Qxd5? Qxc1#, where the
- * guide has 6...Qxc1# only as a side line's move, books 6...Qxc1#.
+ * Writes `moves`, a trap from `at`, into the guide tree, each where it isn't
+ * there yet: the learner's punishing moves as book moves, as Act III writes
+ * them (docs/plans/opportunities.md), where the guide books no other move;
+ * every other move as an ordinary one. New positions take `variation`.
+ * Example: in Black's lesson, the trap 6.Qxd5? Qxc1#, where the guide has
+ * 6...Qxc1# only as a side line's move, books 6...Qxc1#.
  */
 function placeTrap(
   positions: Record<PositionKey, Entry>,
@@ -156,21 +152,18 @@ function placeTrap(
   variation: VariationId,
   moves: readonly Uci[],
 ) {
-  const pos = parsePositionKey(at)!;
+  let pos = parsePositionKey(at)!;
   const erring = pos.turn;
-  let key = at;
-  for (const [n, uci] of moves.entries()) {
-    const entry = (positions[key] ??= { variation, moves: [] });
-    const book = pos.turn === side && pos.turn !== erring;
+  for (const uci of moves) {
+    const entry = (positions[positionKey(pos)] ??= { variation, moves: [] });
+    const book =
+      pos.turn === side &&
+      pos.turn !== erring &&
+      !entry.moves.some((move) => move.book && move.uci !== uci);
     const i = entry.moves.findIndex((move) => move.uci === uci);
-    const ownWay = book
-      ? entry.moves.some((move) => move.book && move.uci !== uci)
-      : n > 0 && i === -1 && entry.moves.length > 0;
-    if (ownWay) return;
     if (i === -1) entry.moves.push(book ? { uci, book } : { uci });
     else if (book) entry.moves[i] = { ...entry.moves[i], book };
-    playMove(pos, uci);
-    key = positionKey(pos);
+    pos = played(pos, uci);
   }
 }
 
@@ -192,11 +185,12 @@ export interface UnmarkedTrap {
 }
 
 /**
- * `lesson`, once nothing else changes its tree, with each mark's length left
- * only where the guide goes on past it, and each mark whose verdict its line
- * now contradicts by the checker's rule (`trapProblem`) taken off with the
- * notes that name it; and how each of `traps` came out: the ones whose line
- * differs from the study's, and those that lost their mark here or earlier.
+ * `lesson`, once nothing else changes its tree, with each mark's stored line
+ * left only where the guide's choice rule would play another, and each mark
+ * on a book move, or whose verdict its line contradicts by the checker's rule
+ * (`trapProblem`), taken off with the notes that name it; and how each of `traps` came out:
+ * the ones whose line differs from the study's, and those that lost their
+ * mark here or earlier.
  */
 export function settleMistakes(
   lesson: Lesson,
@@ -204,28 +198,32 @@ export function settleMistakes(
 ): { lesson: Lesson; changed: ChangedTrap[]; unmarked: UnmarkedTrap[] } {
   const fitted = {
     ...lesson,
-    positions: mapMoves(lesson, (move, key) => fitPlies(lesson, key, move)),
+    positions: mapMoves(lesson, (move, key) =>
+      fitLine(lesson, key, move, mistakeLine(lesson, key, move)),
+    ),
   };
   const refused = new Map<string, string>();
   for (const [key, { moves }] of Object.entries(fitted.positions)) {
     for (const move of moves) {
-      const verdict = move.mistake?.verdict;
-      const pos = parsePositionKey(key)!;
-      const problem = verdict && trapProblem(pos, mistakeLine(fitted, key, move), verdict);
+      if (!move.mistake) continue;
+      const { verdict } = move.mistake;
+      const problem = move.book
+        ? 'marks a book move, which the guide recommends'
+        : verdict && trapProblem(parsePositionKey(key)!, mistakeLine(fitted, key, move), verdict);
       if (problem) refused.set(markId(key, move.uci), problem);
     }
   }
-  const settled = withoutMarks(fitted, refused);
+  const settled = withoutMarks(fitted, new Set(refused.keys())).lesson;
   const lines = linesTo(settled);
   const changed: ChangedTrap[] = [];
   const unmarked: UnmarkedTrap[] = [];
   for (const { at, moves, text } of traps) {
-    const route = lines.get(at);
+    const route = lines.get(at)?.line ?? [];
     const pos = parsePositionKey(at)!;
-    const firstPly = route ? route.line.length + 1 : 1;
-    const line = route ? numberedLine(lineSans(route.line)) : at;
+    const firstPly = startPly(settled) + route.length;
+    const line = sans(settled, route);
     const study = numberedLine(lineSans(moves, pos), firstPly);
-    const move = settled.positions[at]?.moves.find(({ uci }) => uci === moves[0]);
+    const move = guideMove(settled, at, moves[0]);
     if (!move?.mistake) {
       const reason = refused.get(markId(at, moves[0]));
       unmarked.push({ line, study, ...(reason && { reason }) });
@@ -248,12 +246,39 @@ export function settleMistakes(
   return { lesson: settled, changed, unmarked };
 }
 
-/** `move` at `key` with its mark's length left out where the guide stops there anyway. */
-function fitPlies(lesson: Lesson, key: PositionKey, move: LessonMove): LessonMove {
-  if (move.mistake?.plies === undefined) return move;
-  const { plies, ...mark } = move.mistake;
-  const whole = mistakeLine(lesson, key, { uci: move.uci }).length;
-  return { ...move, mistake: plies < whole ? { ...mark, plies } : mark };
+/**
+ * `after` with each mark's line as `before` has it, which a change to the
+ * tree's counts (popularity) would otherwise move where the line is the
+ * guide's choice. Example: a mark whose line followed the only reply then
+ * counted keeps it, stored, once another reply turns out more played.
+ */
+export function keepMistakeLines(before: Lesson, after: Lesson): Lesson {
+  return {
+    ...after,
+    positions: mapMoves(after, (move, key) => {
+      const was = guideMove(before, key, move.uci);
+      return was?.mistake ? fitLine(after, key, move, mistakeLine(before, key, was)) : move;
+    }),
+  };
+}
+
+/**
+ * `move`, a mark at `key` whose line is `line`, with that line stored only
+ * where the guide's choice rule doesn't give it.
+ */
+function fitLine(
+  lesson: Lesson,
+  key: PositionKey,
+  move: LessonMove,
+  line: readonly Uci[],
+): LessonMove {
+  if (!move.mistake) return move;
+  const { line: _line, ...mark } = move.mistake;
+  const chosen = mistakeLine(lesson, key, { uci: move.uci });
+  return {
+    ...move,
+    mistake: String(chosen) === String(line) ? mark : { ...mark, line: line.slice(1) },
+  };
 }
 
 /** `lesson`'s positions with each move as `edit` makes it. */
@@ -267,24 +292,4 @@ function mapMoves(
       { ...entry, moves: entry.moves.map((move) => edit(move, key)) },
     ]),
   );
-}
-
-/** `lesson` without the marks in `gone` (by `markId`), nor the notes that name one. */
-function withoutMarks(lesson: Lesson, gone: ReadonlyMap<string, string>): Lesson {
-  if (gone.size === 0) return lesson;
-  const kept = (at: PositionKey) => (note: Note) =>
-    !note.ideas?.some((idea) => idea.type === 'mistake' && gone.has(markId(at, idea.move)));
-  const notesOf = <T extends { readonly notes?: readonly Note[] }>(item: T, at: PositionKey): T => {
-    const notes = item.notes?.filter(kept(at));
-    const { notes: _notes, ...rest } = item;
-    return (notes?.length ? { ...rest, notes } : rest) as T;
-  };
-  const positions = mapMoves(lesson, (move, key) => {
-    const after = parsePositionKey(key)!;
-    playMove(after, move.uci);
-    const { mistake, ...rest } = notesOf(move, positionKey(after));
-    return mistake && !gone.has(markId(key, move.uci)) ? { ...rest, mistake } : rest;
-  });
-  for (const [key, entry] of Object.entries(positions)) positions[key] = notesOf(entry, key);
-  return { ...lesson, positions };
 }

@@ -24,7 +24,7 @@ import {
   TRAP_PUNISHED,
   uciLine,
   WITH_RARE,
-  withMistakePlies,
+  withMistakeLine,
 } from './lesson.fixture';
 import { lessonView, type Pointer, preview } from './view';
 
@@ -716,7 +716,7 @@ describe('guidance', () => {
       expect(shown([...LANDED, 'Bxd1', 'Kxd1'], 'explore').trap).toBeUndefined();
       // Cut to end on the learner's move, the trap stays through the opponent's reply.
       const { moves } = sampleView(LANDED).trap!.trap;
-      const lesson = withMistakePlies(SAMPLE, keyAfter(...TRAP), moves[0], moves.length - 1);
+      const lesson = withMistakeLine(SAMPLE, keyAfter(...TRAP), moves[0], moves.slice(1, -1));
       const trapAt = (sans: string[]) => {
         const line = uciLine(...sans);
         const view = lessonView({ lesson, line, ply: line.length, opponent: 1500 });
