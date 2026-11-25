@@ -6,7 +6,13 @@ import { maiaEvaluation } from '@/maia/engine';
 import { liteStockfish } from '@/stockfish/engine';
 import { NO_RESTARTS } from '@/stockfish/testing';
 
-import { AnalysisManager, analysisError, getAnalysis, PositionAnalysis } from './analysis';
+import {
+  AnalysisManager,
+  analysisError,
+  getAnalysis,
+  getAnalysisBehind,
+  PositionAnalysis,
+} from './analysis';
 import { newController, waitForSearch } from './testing';
 
 // Maia runs on a worklet runtime, which Jest doesn't have, so it's scripted.
@@ -111,6 +117,25 @@ describe('AnalysisManager', () => {
     expect(settled).toBe(false);
     engine.receive('bestmove c7c5');
     expect(await analysis).toMatchObject({ depth: 10, final: true });
+    engine.detach();
+  });
+
+  it('searches a position asked for behind only once the shown one is done, into the same record', async () => {
+    const { controller, sent, engine, depth, stored } = setUp();
+    controller.subscribe(getAnalysis, 'stockfish', ['e2e4']);
+    await waitForSearch(sent, 'e2e4');
+    controller.subscribe(getAnalysisBehind, 'stockfish', ['d2d4']);
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(sent).not.toContain('stop');
+    depth(10);
+    engine.receive('bestmove c7c5');
+    await waitForSearch(sent, 'd2d4');
+    engine.receive('info depth 9 multipv 1 score cp 20 nodes 9000 pv d7d5');
+    engine.receive('info depth 9 multipv 2 score cp 10 nodes 9000 pv g8f6');
+    engine.receive('info depth 9 multipv 3 score cp 0 nodes 9000 pv e7e6');
+    expect(stored('d2d4')).toMatchObject({ depth: 9, final: false });
+    controller.unsubscribe(getAnalysisBehind, 'stockfish', ['d2d4']);
+    await new Promise((resolve) => setTimeout(resolve));
     engine.detach();
   });
 

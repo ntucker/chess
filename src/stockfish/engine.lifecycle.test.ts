@@ -44,13 +44,17 @@ function scripted() {
 }
 
 /** Watches the position after `line`, recording what the watcher is told. */
-function watch(line: string[]) {
+function watch(line: string[], options?: Engine.WatchOptions) {
   const updates: Analysis[] = [];
   const failures: Error[] = [];
-  const release = engine.liteStockfish.watch(line, {
-    update: (analysis) => updates.push(analysis),
-    fail: (error) => failures.push(error),
-  });
+  const release = engine.liteStockfish.watch(
+    line,
+    {
+      update: (analysis) => updates.push(analysis),
+      fail: (error) => failures.push(error),
+    },
+    options,
+  );
   /** Each update as its depth, its moves, and whether it's final. */
   const told = () =>
     updates.map(({ depth, lines, final }) => [depth, lines.map(({ uci }) => uci), final]);
@@ -134,6 +138,44 @@ describe('the engine lifecycle', () => {
     depth(10, 50_000, REPLIES);
     print('bestmove e7e5');
     expect(older.updates.at(-1)?.final).toBe(true);
+  });
+
+  it('searches a position asked for behind the others last, and never stops one for it', async () => {
+    const { print, depth, sent, searching } = scripted();
+    print('uciok');
+    const board = watch(['e2e4']);
+    await decided();
+    const behind = watch(['d2d4'], { behind: true });
+    await decided();
+    expect(sent).not.toContain('stop');
+    // Asked for after it, but still behind the one asked for since.
+    const later = watch(['c2c4']);
+    await decided();
+    expect(sent.at(-1)).toBe('stop');
+    print('bestmove e7e5');
+    expect(searching()).toBe('position startpos moves c2c4');
+    depth(10, 50_000, ['e7e5', 'g8f6', 'c7c5']);
+    print('bestmove e7e5');
+    expect(searching()).toBe('position startpos moves e2e4');
+    depth(10, 50_000, REPLIES);
+    print('bestmove e7e5');
+    expect(searching()).toBe('position startpos moves d2d4');
+    depth(10, 50_000, ['d7d5', 'g8f6', 'e7e6']);
+    print('bestmove d7d5');
+    expect([board, later, behind].map(({ updates }) => updates.at(-1)?.final)).toEqual([
+      true,
+      true,
+      true,
+    ]);
+  });
+
+  it('keeps the place of a position already watched when it is asked for behind', async () => {
+    const { print, searching } = scripted();
+    watch(['e2e4']);
+    watch(['d2d4']);
+    watch(['d2d4'], { behind: true });
+    print('uciok');
+    expect(searching()).toBe('position startpos moves d2d4');
   });
 
   it('stops for a newer position, and starts the older one again from the beginning', async () => {

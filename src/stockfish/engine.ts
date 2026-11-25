@@ -99,6 +99,12 @@ export interface Connection {
   fail(message: string): void;
 }
 
+/** How a position is watched (`Stockfish.watch`). */
+export interface WatchOptions {
+  /** Waits behind every other position watched rather than going first. */
+  readonly behind?: boolean;
+}
+
 /** A position someone is watching. */
 interface Wanted {
   readonly line: readonly string[];
@@ -169,8 +175,13 @@ export interface Stockfish {
    * depths with the same lines every time: one that started again repeats
    * what it found before, and `watcher` hears only about depths deeper than
    * any it was told. Returns a function that stops watching.
+   *
+   * `behind` asks without becoming the newest: the position waits behind
+   * every other one watched, so a search the board waits on is never
+   * stopped for it (the opportunity finder's searches). A position already
+   * watched keeps its place.
    */
-  watch(line: readonly string[], watcher: Watcher): () => void;
+  watch(line: readonly string[], watcher: Watcher, options?: WatchOptions): () => void;
   /** The final analysis of the position after `line` (`watch`). */
   analysis(line: readonly string[]): Promise<FinalAnalysis>;
   /**
@@ -214,12 +225,21 @@ export function createStockfish(defaultBudget: SearchBudget): Stockfish {
     };
   }
 
-  function watch(line: readonly string[], watcher: Watcher): () => void {
+  function watch(line: readonly string[], watcher: Watcher, options?: WatchOptions): () => void {
     const key = line.join(' ');
-    const position = wanted.get(key) ?? { line, watchers: new Set(), failures: 0 };
-    // To the end, as the newest.
-    wanted.delete(key);
-    wanted.set(key, position);
+    const known = wanted.get(key);
+    const position = known ?? { line, watchers: new Set(), failures: 0 };
+    if (!options?.behind) {
+      // To the end, as the newest.
+      wanted.delete(key);
+      wanted.set(key, position);
+    } else if (!known) {
+      // To the front, behind every other one.
+      const rest = [...wanted];
+      wanted.clear();
+      wanted.set(key, position);
+      for (const [other, waiting] of rest) wanted.set(other, waiting);
+    }
     position.watchers.add(watcher);
     decideSoon();
     return () => {
