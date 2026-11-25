@@ -89,7 +89,7 @@ afterEach(async () => {
 describe('useLesson at a cue', () => {
   it('shows its acts in Explore beside every hint', async () => {
     await atCue();
-    expect(lesson().guidance.acts).toMatchObject({ found: false, payoff: 'ahead' });
+    expect(lesson().guidance.acts).toMatchObject({ replied: false, payoff: 'ahead' });
     expect(lesson().guidance.candidates.length).toBeGreaterThan(0);
     expect(lesson().canPlay).toBe(true);
   });
@@ -99,7 +99,7 @@ describe('useLesson at a cue', () => {
     await play('c6');
     await replyTime();
     expect(lesson().game.moves.slice(9)).toEqual([at('c6'), BERLIN_BC4]);
-    expect(lesson().guidance.acts).toMatchObject({ found: true, payoff: 'playing' });
+    expect(lesson().guidance.acts).toMatchObject({ replied: true, payoff: 'playing' });
     // The mistake's note shows in the acts, not on a trap card.
     expect(lesson().guidance.trapIn).toBe('cue');
   });

@@ -240,7 +240,7 @@ export function useLesson(
   // The cue is felt as it lands: when the opponent plays the mistake, not
   // when the board steps back onto it or the screen opens there. A mistake
   // the learner plays for the other side already ticks as their move.
-  const landed = opponentMoves && acts && !acts.found && moves.length === acts.cue.ply;
+  const landed = opponentMoves && acts && !acts.replied && moves.length === acts.cue.ply;
   const playedBefore = useRef(moves.length);
   useEffect(() => {
     if (landed && playedBefore.current < moves.length) haptic('moveLanded');

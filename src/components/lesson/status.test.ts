@@ -35,8 +35,8 @@ describe('describeStatus', () => {
 
   it("names a cue until the line's reply is played, then the payoff", () => {
     const cue = { mistake: 'Nxe5', reply: 'c6', share: 0.31 } as const;
-    const headline = (found: boolean, payoff: CueStatus['payoff']) =>
-      describeStatus(view('inside'), { ...INPUT, cue: { ...cue, found, payoff } });
+    const headline = (replied: boolean, payoff: CueStatus['payoff']) =>
+      describeStatus(view('inside'), { ...INPUT, cue: { ...cue, replied, payoff } });
     expect(headline(false, 'ahead')).toEqual({
       eyebrow: 'Giuoco Piano',
       title: 'Your cue.',

@@ -786,15 +786,15 @@ describe('a cue', () => {
   describe('in Explore', () => {
     it('shows its acts beside every hint', () => {
       const cue = at(upTo(9), 'explore');
-      expect(cue.acts).toMatchObject({ found: false, payoff: 'ahead' });
+      expect(cue.acts).toMatchObject({ replied: false, payoff: 'ahead' });
       expect(cue.candidates.length).toBeGreaterThan(0);
       expect(cue.notes.length).toBeGreaterThan(0);
       expect(cue.opportunity).toBeUndefined();
     });
 
     it('follows the line through the payoff, and keeps its end as news', () => {
-      expect(at(upTo(10), 'explore').acts).toMatchObject({ found: true, payoff: 'playing' });
-      expect(at(upTo(12), 'explore').acts).toMatchObject({ found: true, payoff: 'done' });
+      expect(at(upTo(10), 'explore').acts).toMatchObject({ replied: true, payoff: 'playing' });
+      expect(at(upTo(12), 'explore').acts).toMatchObject({ replied: true, payoff: 'done' });
       // The mistake's trap shows its note in the acts, not on its own card.
       expect(at(upTo(10), 'explore').trapIn).toBe('cue');
     });
@@ -803,7 +803,7 @@ describe('a cue', () => {
       const offLine = [...upTo(9), 'a6'];
       expect(at(offLine, 'explore').acts).toBeUndefined();
       // Stepped back onto the cue, it is the cue again.
-      expect(at(offLine, 'explore', 9).acts).toMatchObject({ found: false });
+      expect(at(offLine, 'explore', 9).acts).toMatchObject({ replied: false });
     });
 
     it('has no acts before the mistake, nor where the moves pick the opening', () => {

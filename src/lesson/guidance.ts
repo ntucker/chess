@@ -492,9 +492,16 @@ function newsShown(view: LessonView, ply: number): boolean {
  * learner's turn after it is no longer the trap's.
  */
 function trapShown(view: LessonView, { ply, movesPlayed, trap }: LandedTrap): boolean {
-  const last = ply + movesPlayed;
-  return movesPlayed < trap.moves.length ? view.ply <= last : newsShown(view, last);
+  return alongLine(view, ply + movesPlayed, movesPlayed === trap.moves.length);
 }
+
+/**
+ * Whether a story told along a line still shows: through `last`, the last of
+ * the line's moves the game plays, and, where the story `ends` there, as that
+ * move's news (`newsShown`).
+ */
+const alongLine = (view: LessonView, last: number, ends: boolean): boolean =>
+  view.ply <= last || (ends && newsShown(view, last));
 
 /**
  * The acts of the cue the board is in, in Explore away from the moves that
@@ -505,9 +512,8 @@ function trapShown(view: LessonView, { ply, movesPlayed, trap }: LandedTrap): bo
 export function cueActs(view: LessonView, mode: LessonMode, picking: boolean): Acts | undefined {
   const { cue } = view;
   if (!cue || mode !== 'explore' || picking || view.ply < cue.ply) return undefined;
-  const last = cue.ply - 1 + cue.followed;
-  const shown = view.ply <= last || (cue.followed === cue.line.length && newsShown(view, last));
-  return shown ? { cue, found: view.ply > cue.ply, payoff: payoffAt(cue, view.ply) } : undefined;
+  const shown = alongLine(view, cue.ply - 1 + cue.followed, cue.followed === cue.line.length);
+  return shown ? { cue, replied: view.ply > cue.ply, payoff: payoffAt(cue, view.ply) } : undefined;
 }
 
 /**
@@ -519,8 +525,7 @@ function answerShown(view: LessonView, cue: Cue): boolean {
   if (cue.tried === undefined || view.ply <= cue.ply) return false;
   const offLine = cue.tried !== cue.line[1];
   const last = cue.ply - 1 + Math.max(cue.followed, 2);
-  const ended = offLine || cue.followed === cue.line.length;
-  return view.ply <= last || (ended && newsShown(view, last));
+  return alongLine(view, last, offLine || cue.followed === cue.line.length);
 }
 
 /** `shown`'s ideas that `allowed` lets through, each with the position it is checked in. */

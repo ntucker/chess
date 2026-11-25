@@ -54,7 +54,7 @@ interface StatusInput {
 }
 
 /** A cue's acts with the moves its headline names, as the scoresheet writes them. */
-export interface CueStatus extends Pick<Acts, 'found' | 'payoff'> {
+export interface CueStatus extends Pick<Acts, 'replied' | 'payoff'> {
   /** The other side's mistake: "Bg5". */
   readonly mistake: string;
   /** The line's reply, which punishes it: "Nxe4". */
@@ -247,13 +247,13 @@ const YOUR_MOVE = {
  * over "Bg5 is a mistake. Find the move that punishes it."
  */
 export function cueHeadline({
-  found,
+  replied,
   payoff,
   mistake,
   reply,
   share,
 }: CueStatus): Pick<Status, 'title' | 'titleTip' | 'detail'> {
-  if (!found)
+  if (!replied)
     return {
       title: 'Your cue.',
       titleTip:

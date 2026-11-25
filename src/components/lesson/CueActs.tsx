@@ -4,7 +4,7 @@ import type { ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Notation } from '@/components/Notation';
-import type { Acts, Payoff } from '@/opportunity/cue';
+import type { Acts, PayoffStage } from '@/opportunity/cue';
 import { fonts } from '@/theme/theme';
 
 import { PastNote } from './IdeaCard';
@@ -12,8 +12,11 @@ import { PastNote } from './IdeaCard';
 /** The guide's note on a cue's mistake, once its punishment lands, with its play-through. */
 type MistakeNote = ComponentProps<typeof PastNote>;
 
+/** How a cue's acts stand: whether the cue is answered, and how the payoff stands. */
+type ActsStanding = Pick<Acts, 'replied' | 'payoff'>;
+
 /** What the lesson screen shows of a cue's acts in Explore (`LessonScreenModel.acts`). */
-export interface ActsModel extends Pick<Acts, 'found' | 'payoff'> {
+export interface ActsModel extends ActsStanding {
   readonly note?: MistakeNote;
 }
 
@@ -21,7 +24,7 @@ export interface ActsModel extends Pick<Acts, 'found' | 'payoff'> {
 type Stage = 'done' | 'now' | 'ahead' | 'none';
 
 /** Act III's stage, by how the payoff stands. */
-const PAYOFF_STAGES: Record<Payoff, Stage> = {
+const PAYOFF_STAGES: Record<PayoffStage, Stage> = {
   ahead: 'ahead',
   playing: 'now',
   done: 'done',
@@ -29,9 +32,9 @@ const PAYOFF_STAGES: Record<Payoff, Stage> = {
 };
 
 /** The three acts, each with its numeral, name and how it stands. */
-const actStages = ({ found, payoff }: Pick<ActsModel, 'found' | 'payoff'>) => [
+const actStages = ({ replied, payoff }: ActsStanding) => [
   { numeral: 'I', name: 'Setup', stage: 'done' as Stage },
-  { numeral: 'II', name: 'Your cue', stage: (found ? 'done' : 'now') as Stage },
+  { numeral: 'II', name: 'Your cue', stage: (replied ? 'done' : 'now') as Stage },
   { numeral: 'III', name: 'Payoff', stage: PAYOFF_STAGES[payoff] },
 ];
 
@@ -56,7 +59,7 @@ const STAGES: Record<
 };
 
 /** The opportunity's three acts as a row of chips: the setup, reached; the cue; the payoff. */
-function ActChips({ acts }: { readonly acts: Pick<ActsModel, 'found' | 'payoff'> }) {
+function ActChips({ acts }: { readonly acts: ActsStanding }) {
   const { color } = useTheme().theme.semantic;
   return (
     <View role="list" aria-label="The opportunity's three acts" style={styles.chips}>

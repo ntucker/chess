@@ -181,7 +181,7 @@ export function useLessonScreen({
       ? { lesson, shown: guidance.trap.note, learner, playback }
       : undefined;
   const cueFacts = useCueFacts(lesson, acts?.cue ?? opportunity, opponentBand(lesson, opponent));
-  const cue = acts && cueFacts && { found: acts.found, payoff: acts.payoff, ...cueFacts };
+  const cue = acts && cueFacts && { replied: acts.replied, payoff: acts.payoff, ...cueFacts };
   // The card is for notes, or for the notes of a candidate pointed at.
   // Stockfish's moves have none of their own.
   const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
@@ -370,7 +370,7 @@ export function useLessonScreen({
           onReach: reachCard,
         }
       : null,
-    acts: acts ? { found: acts.found, payoff: acts.payoff, note: mistakeNote } : null,
+    acts: acts ? { replied: acts.replied, payoff: acts.payoff, note: mistakeNote } : null,
     opportunity:
       opportunity?.tried && cueFacts
         ? {

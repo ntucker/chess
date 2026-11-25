@@ -89,9 +89,9 @@ export function payoffReplies(cue: Cue): ReplyChoice {
  * cue, being played, played to the line's end, or none (the line ends at
  * the reply).
  */
-export type Payoff = 'ahead' | 'playing' | 'done' | 'none';
+export type PayoffStage = 'ahead' | 'playing' | 'done' | 'none';
 
-export function payoffAt(cue: Cue, ply: number): Payoff {
+export function payoffAt(cue: Cue, ply: number): PayoffStage {
   if (cue.line.length <= 2) return 'none';
   if (ply === cue.ply) return 'ahead';
   return ply >= cue.ply - 1 + cue.line.length ? 'done' : 'playing';
@@ -99,11 +99,11 @@ export function payoffAt(cue: Cue, ply: number): Payoff {
 
 /**
  * The three acts of the cue the board is in, as Explore shows them beside
- * every hint: I Setup (reached), II Your cue (`found` once the line's reply
+ * every hint: I Setup (reached), II Your cue (`replied` once the line's reply
  * is played), III Payoff.
  */
 export interface Acts {
   readonly cue: Cue;
-  readonly found: boolean;
-  readonly payoff: Payoff;
+  readonly replied: boolean;
+  readonly payoff: PayoffStage;
 }
