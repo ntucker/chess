@@ -18,7 +18,7 @@ import { lostPercent, percent } from '@/analysis/quality';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { Notation } from '@/components/Notation';
 import { HeadingTip, Tip } from '@/components/Tip';
-import { lastPosition, lineText, numberedMove, replay } from '@/game/replay';
+import { lastPosition, lastStep, lineText, numberedMove } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { opportunityMarks } from '@/lesson/marks';
 import { markId } from '@/lesson/mistakes';
@@ -98,7 +98,7 @@ export function OpportunityList({
   const list = rows.map((row, i) => (
     <Row
       key={markId(row.key, row.move.uci)}
-      row={{ ...lessonRow(row), mark: marks[i] }}
+      row={lessonRow(row, marks[i])}
       styles={styles}
       onPlay={onPlay}
     />
@@ -138,6 +138,15 @@ function FinderPart({
   readonly styles: Styles;
   readonly onPlay: (line: readonly Uci[]) => void;
 }) {
+  // Each row replays its line: once per run's answer, not per render.
+  const rows = useMemo(() => run.finds.map(findRow), [run.finds]);
+  const note = rows.length
+    ? undefined
+    : run.running
+      ? 'The first finds take a few minutes.'
+      : here
+        ? 'No opportunity found from here.'
+        : undefined;
   return (
     <View style={styles.finder}>
       <Inline gap="2" align="center" style={STATIC.finderHead}>
@@ -153,22 +162,12 @@ function FinderPart({
           <Spinner size="sm" tone="accent" label="Searching for opportunities" />
         ) : null}
       </Inline>
-      {run.finds.map((find) => (
-        <Row
-          key={[...find.line, find.mistake].join(' ')}
-          row={findRow(find)}
-          styles={styles}
-          onPlay={onPlay}
-        />
+      {rows.map((row) => (
+        <Row key={row.line.join(' ')} row={row} styles={styles} onPlay={onPlay} />
       ))}
-      {here && !run.running && !run.finds.length ? (
+      {note ? (
         <Text role="caption" tone="secondary" style={STATIC.empty}>
-          No opportunity found from here.
-        </Text>
-      ) : null}
-      {run.running && !run.finds.length ? (
-        <Text role="caption" tone="secondary" style={STATIC.empty}>
-          The first finds take a few minutes.
+          {note}
         </Text>
       ) : null}
       {here ? null : (
@@ -213,7 +212,10 @@ interface ListRow {
   readonly mark?: Mark;
 }
 
-const lessonRow = ({ move, san, line, reach, share, mates }: Opportunity): ListRow => ({
+const lessonRow = (
+  { move, san, line, reach, share, mates }: Opportunity,
+  mark: Mark | undefined,
+): ListRow => ({
   line,
   san,
   name: move.mistake?.name,
@@ -221,6 +223,7 @@ const lessonRow = ({ move, san, line, reach, share, mates }: Opportunity): ListR
   share,
   mates,
   cost: move.mistake?.cost,
+  mark,
 });
 
 /** A find as a row: its line through the mistake, and whether its punishment mates where Act III ends. */
@@ -228,7 +231,7 @@ function findRow({ line, mistake, replies, payoff, reach, share, cost }: Find): 
   const through = [...line, mistake];
   return {
     line: through,
-    san: replay(through).at(-1)!.move!.san,
+    san: lastStep(through).move!.san,
     reach,
     share,
     mates: lastPosition([...through, replies[0], ...payoff]).result?.reason === 'checkmate',
@@ -247,7 +250,6 @@ function Row({
 }) {
   const { color } = useTheme().theme.semantic;
   const { san, line, name, reach, share, mates, cost, mark } = row;
-  // As the move's number counts: the mistake is the line's last move.
   const mistake = numberedMove(san, line.length);
   // Without a name, the two moves before it tell apart one mistake played after several.
   const caption = name ? mistake : leadIn(line);

@@ -1,6 +1,6 @@
 import { StateContext, useController, useSubscription } from '@data-client/react';
 import { INITIAL_FEN } from 'chessops/fen';
-import { use, useEffect, useMemo } from 'react';
+import { use, useDeferredValue, useEffect, useMemo } from 'react';
 
 import type { Color } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
@@ -54,7 +54,9 @@ const MAIA_AT_ONCE = 4;
  */
 export function useFinder(ask: FinderAsk | undefined): FinderRun {
   const ctrl = useController();
-  const state = use(StateContext);
+  // Worked out behind the screen's own renders: a walk takes a few milliseconds,
+  // and the store changes at every depth of every search.
+  const state = useDeferredValue(use(StateContext));
   const result = useMemo(() => {
     if (!ask) return undefined;
     const { line, side, rating, lesson } = ask;
@@ -71,7 +73,8 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
           }
         : undefined,
     };
-    return findOpportunities({ start: INITIAL_FEN, line, side, answers });
+    const { requests, ...found } = findOpportunities({ start: INITIAL_FEN, line, side, answers });
+    return { requests, finds: kept(found) };
   }, [ask, ctrl, state]);
 
   const asking = result?.requests ?? [];
@@ -96,7 +99,7 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
   }, [ask, ctrl, wanted]);
 
   return {
-    finds: result ? kept(result) : [],
+    finds: result?.finds ?? [],
     running: asking.length > 0,
   };
 }
