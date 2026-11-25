@@ -34,9 +34,6 @@ export const FIND_BAND = 1400;
 
 const ROOT = join(__dirname, '../..');
 
-/** Where a run keeps each kind of answer. */
-type AnswersPath = (kind: 'explorer' | 'sketch' | 'full') => string;
-
 /** A sketch as its answers file keeps it. */
 interface SketchRow extends Pick<Analysis, 'lines' | 'depth'> {
   readonly key: string;
@@ -77,7 +74,7 @@ export interface FinderHost {
 export const finderHost = (lesson: Lesson, band: number): Promise<FinderHost> =>
   host(
     band,
-    (kind) => join(ROOT, `scripts/import-study/answers/${lesson.id}-opportunities-${kind}.jsonl`),
+    join(ROOT, `scripts/import-study/answers/${lesson.id}-opportunities-`),
     // The run is for `lesson.side`: its book moves (off the book, its unmarked moves), and every move of the erring side.
     ({ key }) => {
       const played = guideOrder(lesson, key, lesson.side);
@@ -87,18 +84,19 @@ export const finderHost = (lesson: Lesson, band: number): Promise<FinderHost> =>
 
 /**
  * The host for a run from any position in the explorer's `band`, with no
- * lesson: no guide moves, so every find is off the guide. Its answers are
+ * lesson: no guide moves, so its punishing side plays Stockfish's best. Its answers are
  * shared by every such run, since each is keyed by its position.
  */
 export const positionHost = (band: number): Promise<FinderHost> =>
-  host(band, (kind) => join(ROOT, `.cache/opportunities/${kind}.jsonl`));
+  host(band, join(ROOT, '.cache/opportunities/'));
 
-/** A host keeping its answers where `path` says, with a lesson's `guideMoves` where it has one. */
+/** A host keeping its answers in `<files>{explorer,sketch,full}.jsonl`, with a lesson's `guideMoves` where it has one. */
 async function host(
   band: number,
-  path: AnswersPath,
+  files: string,
   guideMoves?: Answers['guideMoves'],
 ): Promise<FinderHost> {
+  const path = (kind: string) => `${files}${kind}.jsonl`;
   const explorer = lichessExplorer({
     token: process.env.LICHESS_TOKEN,
     cacheFile: path('explorer'),
@@ -118,7 +116,7 @@ async function host(
       const row = sketches.get(key);
       return fulls.get(key) ?? (row && { lines: row.lines, depth: row.depth, final: false });
     },
-    ...(guideMoves && { guideMoves }),
+    guideMoves,
   };
 
   let searched = 0;

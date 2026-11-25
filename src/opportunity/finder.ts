@@ -58,9 +58,9 @@ export interface Find {
   /** The share of games that reach the position before the mistake (`reachOf`). */
   readonly reach: number;
   /**
-   * Whether the guide's moves alone lead the punishing side here (never
-   * without a guide, `Answers.guideMoves`). Only such a find goes into a
-   * lesson; the rest are evidence for a finder that opens anywhere.
+   * Whether the guide's moves alone lead the punishing side here. Only such
+   * a find goes into a lesson; the rest are evidence for a later finder that
+   * opens anywhere.
    */
   readonly onGuide: boolean;
   /** The guide's move at the cue where the cue doesn't accept it (`acceptedReplies`): a person looks at it. */
@@ -182,8 +182,8 @@ export function findOpportunities({
   const reach = reachOf(opening.key, moves);
   const sorted = [...finds]
     .map(([cue, ways]): Find => {
-      // On the guide if the guide's moves alone lead to one of its mistakes; with no guide, never.
-      const onGuide = !!answers.guideMoves && ways.some(({ from }) => reach(from, true) > 0);
+      // On the guide if the guide's moves alone lead to one of its mistakes.
+      const onGuide = ways.some(({ from }) => reach(from, true) > 0);
       const games = (key: PositionKey) => reach(key, onGuide);
       // A cue several mistakes lead to is one find, shown by the one most games
       // play (on the guide, one the guide leads to).

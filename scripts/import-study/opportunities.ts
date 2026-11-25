@@ -9,9 +9,8 @@
  * With a lesson it runs from the lesson's start for the lesson's side, and
  * splits the finds the guide's moves reach from those it doesn't. With
  * `--from` it runs from the position after those moves (from the standard
- * start, as `parseMoves` reads them: SAN or UCI, move numbers optional, a
- * pasted game's comments and result skipped) with no lesson, for `--side`, the
- * side looking for opportunities, so every find is off the guide.
+ * start, read by `parseMoves`) with no lesson, for `--side`, the side looking for opportunities, and lists
+ * every find in one ranking, since with no guide there is no split.
  *
  * Its answers come from its own answers files and lichess and Stockfish
  * (./finderHost.ts), so a rerun asks only about positions none has seen: a
@@ -23,7 +22,7 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { Chess } from 'chessops/chess';
-import { INITIAL_FEN } from 'chessops/fen';
+import { makeFen } from 'chessops/fen';
 
 import { percent } from '@/analysis/quality';
 import {
@@ -37,7 +36,7 @@ import {
   playLine,
 } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
-import { type Find, type FinderResult, type ThinEnd } from '@/opportunity/finder';
+import { byScore, type Find, type FinderResult, type ThinEnd } from '@/opportunity/finder';
 import { LIMITS, MIN_GAMES } from '@/opportunity/limits';
 import { keepsGuide } from '@/opportunity/payoff';
 
@@ -64,11 +63,12 @@ async function reportLesson(id: string, { band, top, out }: Options) {
 }
 
 async function reportFrom(moves: string, side: Color, { band, top, out }: Options) {
-  const line = parseMoves(moves);
+  const start = Chess.default();
+  const line = parseMoves(moves, start);
   const host = await positionHost(band);
   try {
-    const result = await runFinder(host, { start: INITIAL_FEN, line, side });
-    write(positionReport(line, side, band, result, top), out);
+    const result = await runFinder(host, { start: makeFen(start.toSetup()), line, side });
+    write(positionReport(start, line, side, band, result, top), out);
   } finally {
     host.stop();
   }
@@ -174,18 +174,20 @@ function lessonReport(
 }
 
 /**
- * The finds from the position after `line` (from the standard start) for
- * `side`, with no lesson, as a Markdown report: the best `top`, whatever
- * Act III ends at, since no guide decides which a lesson would keep.
+ * The finds from the position after `line` from `start` for `side`, with no
+ * lesson, as a Markdown report: the best `top`, whatever Act III ends at and
+ * whether the finder calls them on the guide, since with no guide neither
+ * decides what a lesson would keep.
  */
 function positionReport(
+  start: Chess,
   line: readonly Uci[],
   side: Color,
   band: number,
-  { offGuide: found, thin }: FinderResult,
+  { finds, dropped, offGuide, thin }: FinderResult,
   top: number,
 ): string {
-  const start = Chess.default();
+  const found = [...finds, ...dropped, ...offGuide].sort(byScore);
   const after = numberedLine(lineSans(line, start)) || 'the start';
   return [
     `# Opportunities for ${colorName(side)} after ${after}, lichess ${band} band`,
@@ -285,26 +287,31 @@ const flag = (name: string) => {
   const at = args.indexOf(`--${name}`);
   return at < 0 ? undefined : args[at + 1];
 };
-const fail = (message: string): never => {
-  console.error(message);
-  process.exit(1);
-};
 const options: Options = {
   band: Number(flag('band') ?? FIND_BAND),
   top: Number(flag('top') ?? 20),
   out: flag('out'),
 };
 
-/** Runs the report the arguments ask for: a lesson's, or one from moves with `--side`; anything else is a usage error. */
+/**
+ * Runs the report the arguments ask for: a lesson's, from its start for its
+ * side; or, with no lesson, one after `--from` for `--side`. (A lesson run
+ * from other moves would write ad-hoc answers into the lesson's committed
+ * files, so the two don't mix.)
+ */
 function main(): Promise<void> {
   const [id] = args;
-  const lesson = id && !id.startsWith('--') ? id : undefined;
+  const lessonId = id && !id.startsWith('--') ? id : undefined;
+  const given = (name: string) => args.includes(`--${name}`);
+  if (lessonId && !given('from') && !given('side')) return reportLesson(lessonId, options);
   const moves = flag('from');
   const side = COLORS.find((color) => color === flag('side'));
-  if (moves !== undefined && side && !lesson) return reportFrom(moves, side, options);
-  if (lesson && moves === undefined && flag('side') === undefined)
-    return reportLesson(lesson, options);
-  return fail(USAGE);
+  if (!lessonId && moves !== undefined && side) return reportFrom(moves, side, options);
+  console.error(USAGE);
+  process.exit(1);
 }
 
-main().catch((error: unknown) => fail(String(error instanceof Error ? error.stack : error)));
+main().catch((error: unknown) => {
+  console.error(error);
+  process.exit(1);
+});

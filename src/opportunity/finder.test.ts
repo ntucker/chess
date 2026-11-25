@@ -326,18 +326,6 @@ describe('findOpportunities', () => {
     ]);
   });
 
-  it('lists every find off the guide when there is no guide, even one where the finder opens', () => {
-    const { replies, analysis } = known;
-    const result = findOpportunities({
-      start: START,
-      line: uci(SETUP),
-      side: 'black',
-      answers: { replies, analysis },
-    });
-    expect([...result.finds, ...result.dropped]).toEqual([]);
-    expect(result.offGuide).toMatchObject([{ mistake: last(CUE), onGuide: false, reach: 1 }]);
-  });
-
   it("names the guide's move at the cue where the cue doesn't accept it", () => {
     const [bg5] = find({
       ...known,
