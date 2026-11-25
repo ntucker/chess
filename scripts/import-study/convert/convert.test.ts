@@ -507,18 +507,28 @@ describe('convertChapters', () => {
       ]);
     });
 
-    it('asks again when the checker refuses its trap', async () => {
+    it('asks again when the checker refuses its trap, keeping the answer that draws it', async () => {
+      const plan: AnswerNote = {
+        about: 'move',
+        text: 'Your bishop eyes f7.',
+        ideas: [{ type: 'purpose', from: 'c4', relation: 'attacks', targets: ['f7'] }],
+      };
       const wrong: AnswerNote = {
         ...trap,
         ideas: [{ type: 'trap', moves: ['Nxe5', 'Qg5'], verdict: 'losesMaterial' }],
       };
+      // The retry keeps no more ideas than the first answer, but draws the trap.
       const { ask, asked } = fakeAsk({
-        [MODELS.convert]: { Bc4: [wrong] },
+        [MODELS.convert]: { Bc4: [plan, wrong] },
         [MODELS.retry]: { Bc4: [trap] },
       });
-      const { report } = await convertChapters(chapters, ask);
+      const {
+        extracted: [chapter],
+        report,
+      } = await convertChapters(chapters, ask);
       expect(asked.map(([model]) => model)).toEqual([MODELS.convert, MODELS.retry]);
       expect(report.retried).toBe(1);
+      expect(chapter.positionNotes.map(({ note }) => note.ideas?.[0]?.type)).toContain('trap');
     });
 
     it('drops a trap note for a comment without one', async () => {

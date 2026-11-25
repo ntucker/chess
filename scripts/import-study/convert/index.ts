@@ -2,9 +2,9 @@
  * The AI step: Sonnet rewrites every comment as short notes for the learner
  * and adds what the fixed formats missed as ideas the board draws. The
  * checker drops every idea that is false in its position; a comment whose
- * ideas were all dropped, or whose trap that starts later was
- * (`Comment.trapStart`), is asked again of Opus, and the answer keeping more
- * ideas wins. A comment whose note text the checker refuses as notation is
+ * ideas were all dropped, or whose trap that starts later (`Comment.trapStart`)
+ * it dropped or the model left out, is asked again of Opus, and the answer
+ * drawing that trap, else the one keeping more ideas, wins. A comment whose note text the checker refuses as notation is
  * asked again of Opus with that text, and the answer in words replaces it; if
  * Opus writes notation too, or gives no answer (a failed request, or a
  * `--no-model` run without one stored), the lesson checker refuses the import.
@@ -146,7 +146,16 @@ async function convertComments(
   const retry = [...converted]
     .filter(([id, result]) => allRefused(result) || trapUndrawn(comments.get(id)!, result))
     .map(([id]) => comments.get(id)!);
-  if (retry.length > 0) await askAndKeep(MODELS.retry, retry, keepsMore);
+  // A later trap the first answer couldn't draw wins over more ideas elsewhere.
+  const drawsTrap = (result: Converted, previous: Converted, comment: Comment) =>
+    trapUndrawn(comment, previous) && !trapUndrawn(comment, result);
+  if (retry.length > 0)
+    await askAndKeep(
+      MODELS.retry,
+      retry,
+      (result, previous, comment) =>
+        keepsMore(result, previous) || drawsTrap(result, previous, comment),
+    );
   /** The comments whose answer has note texts `textsOf` picks out as refused, each with those texts. */
   const refusedBy = (textsOf: (result: Converted) => string[]) =>
     [...converted].flatMap(([id, result]) => {
