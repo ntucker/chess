@@ -244,6 +244,7 @@ function useRevealedRow(row: number) {
     // At once: an animated scroll's events report the offsets it passes, and
     // a reveal reckoning from one of those could leave its row off screen.
     scroll.current?.scrollTo({ y, animated: false });
+    // A reveal in the same tick, before the scroll's event, reckons from here.
     viewport.current.top = y;
   };
   const revealNow = useEffectEvent(reveal);
