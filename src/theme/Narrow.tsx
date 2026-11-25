@@ -57,40 +57,36 @@ export const PHONE_QUERY = `(max-width: ${SIDE_BY_SIDE_MIN - 0.02}px)`;
  * calling it outside `BrowserOnly` fails the export.
  */
 export const useLayout: () => ScreenLayout = NARROW_CSS_LOADS
-  ? () => (useMedia(PHONE_MEDIA, noWindow) ? 'phone' : 'wide')
+  ? () => (usePhoneMedia() ? 'phone' : 'wide')
   : () => (useIsNarrowArea() ? 'phone' : 'wide');
 
 /**
  * Whether a narrow page is too short for the board at its smallest and the
  * panel at its floor, so it scrolls (narrow.css on the web, natively
- * `useNarrowPageHeight`). A pre-rendered page, which has no window, says it
- * doesn't.
+ * `useNarrowPageHeight`). It reads the height alone, so ask it only on a
+ * narrow page. A pre-rendered page, which has no window, says it doesn't.
  */
 export const useNarrowPageScrolls: () => boolean = NARROW_CSS_LOADS
-  ? () => useMedia(SHORT_MEDIA, () => false)
+  ? mediaHook(`(max-height: ${NARROW_PAGE_MIN - 0.02}px)`, () => false)
   : () => useNativeArea().height < NARROW_PAGE_MIN;
 
-/** A media query, matched on first use: a module the export loads has no window. */
-function media(query: string) {
+/**
+ * A hook saying whether `query` matches, and `server` before there's a
+ * window. It matches on first use: a module the export loads has no window.
+ */
+function mediaHook(query: string, server: () => boolean) {
   let list: MediaQueryList | undefined;
   const matched = () => (list ??= matchMedia(query));
-  return {
-    subscribe(change: () => void) {
-      const watched = matched();
-      watched.addEventListener('change', change);
-      return () => watched.removeEventListener('change', change);
-    },
-    matches: () => matched().matches,
+  const subscribe = (change: () => void) => {
+    const watched = matched();
+    watched.addEventListener('change', change);
+    return () => watched.removeEventListener('change', change);
   };
+  const matches = () => matched().matches;
+  return () => useSyncExternalStore(subscribe, matches, server);
 }
 
-const PHONE_MEDIA = media(PHONE_QUERY);
-const SHORT_MEDIA = media(`(max-height: ${NARROW_PAGE_MIN - 0.02}px)`);
-
-/** Whether `query` matches, and `server` before there's a window. */
-function useMedia(query: ReturnType<typeof media>, server: () => boolean) {
-  return useSyncExternalStore(query.subscribe, query.matches, server);
-}
+const usePhoneMedia = mediaHook(PHONE_QUERY, noWindow);
 
 function noWindow(): never {
   throw new Error(

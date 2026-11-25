@@ -225,7 +225,8 @@ function FlickUp({
   readonly onFlick: () => void;
   readonly children: ReactNode;
 }) {
-  const flick = useFlickGesture({ direction: 'up', onFlick, enabled: !useNarrowPageScrolls() });
+  const scrolls = useNarrowPageScrolls();
+  const flick = useFlickGesture({ direction: 'up', onFlick, enabled: !scrolls });
   return (
     <GestureDetector {...flick}>
       <View>{children}</View>
