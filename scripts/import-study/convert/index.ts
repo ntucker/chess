@@ -25,13 +25,21 @@ import { noteShows, type AiModel, type NoteShows } from '@/lesson/lesson';
 
 import type { ChapterNotes, MoveNote, PositionNote } from '../extract';
 import type { StudyNote } from '../mistakes';
+import { trapPosition } from '../study';
 import { topReasons } from '../report';
 import { namedMoves, nextPly } from '../text';
 import type { Answer, AnswerIdea } from './answer';
 import { MODELS, type Ask } from './claude';
 import { noteComment, type Comment } from './comments';
 import { convertedNotes, notesOf, type Converted } from './notes';
-import { DRAW_MISTAKES, REWORD, SHORTEN, STANDALONE, WRITTEN_FOR_OPPONENT } from './prompt';
+import {
+  DRAW_MISTAKES,
+  REWORD,
+  SHORTEN,
+  STANDALONE,
+  TRAP_START,
+  WRITTEN_FOR_OPPONENT,
+} from './prompt';
 
 /** How many comments were asked again of Opus, by why, and what the rewording changed. */
 interface Retries {
@@ -99,7 +107,7 @@ async function convertComments(
   comments: ReadonlyMap<string, Comment>,
   askModel: Ask,
 ): Promise<{ converted: Map<string, Converted>; retries: Retries }> {
-  const ask = withWrittenFor(askModel);
+  const ask = withAddenda(askModel);
   const converted = new Map<string, Converted>();
   /**
    * Asks `model` about `items` and puts each answer's notes in `converted`
@@ -115,11 +123,13 @@ async function convertComments(
     for (const { moveNote, comment } of jobs) {
       const answer = comment && answers.get(comment.id);
       if (!answer) continue;
+      const { move, source } = moveNote;
+      const trap = trapPosition(source);
       const result = convertedNotes(
         comment,
         answer,
         model,
-        moveNote.move,
+        { before: move.before, after: move.after, ...(trap && { trap }) },
         moveNote.note.ideas ?? [],
       );
       if (notesOf(result).length === 0) continue;
@@ -240,18 +250,21 @@ function undrawnMistakes(comment: Comment, result: Converted): string[] {
 
 /**
  * `ask`, telling the model about comments written for the learner's opponent
- * (`Comment.writtenFor`). The others are asked as before, so their stored
+ * (`Comment.writtenFor`) and comments whose trap starts later
+ * (`Comment.trapStart`). The others are asked as before, so their stored
  * answers still match.
  */
-const withWrittenFor =
+const withAddenda =
   (ask: Ask): Ask =>
   async (model, comments, addendum = '') => {
-    const own = comments.filter((comment) => !comment.writtenFor);
-    const theirs = comments.filter((comment) => comment.writtenFor);
-    const answers = own.length > 0 ? await ask(model, own, addendum) : new Map<string, Answer>();
-    if (theirs.length > 0)
-      for (const entry of await ask(model, theirs, WRITTEN_FOR_OPPONENT + addendum))
-        answers.set(...entry);
+    const groups = Map.groupBy(
+      comments,
+      (comment) =>
+        (comment.writtenFor ? WRITTEN_FOR_OPPONENT : '') + (comment.trapStart ? TRAP_START : ''),
+    );
+    const answers = new Map<string, Answer>();
+    for (const [own, group] of groups)
+      for (const entry of await ask(model, group, own + addendum)) answers.set(...entry);
     return answers;
   };
 
@@ -297,6 +310,8 @@ function convertedChapter(
     }
     const { move, source } = moveNote;
     moveNotes.push(...result.move.map((note) => ({ move, note, source })));
+    const trap = trapPosition(source);
+    if (trap) added.push(...result.trap.map((note) => ({ pos: trap, note, source })));
     const [first, ...rest] = result.before;
     if (!first) continue;
     const key = positionKey(move.before);

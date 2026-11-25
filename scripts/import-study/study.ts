@@ -86,6 +86,28 @@ export interface StudyMove {
    * on the move still has room beside it.
    */
   readonly intro?: true;
+  /**
+   * The moves after this one, in SAN, up to and including the first move of
+   * the trap its comment warns about, where the lesson books this move
+   * (`StudySource.trapStarts`): Wikibooks warns against 8.d4 in the Ruy Lopez
+   * for 8...Nxd4 9.Nxd4 exd4 10.Qxd4?? c5, but the trap starts at 10.Qxd4.
+   */
+  readonly trapStart?: readonly string[];
+}
+
+/** The position before the first move of the trap `move`'s comment warns about, where that is not the next move (`StudyMove.trapStart`). */
+export const trapPosition = (move: StudyMove): Chess | undefined =>
+  move.trapStart && afterSans(move.after, move.trapStart.slice(0, -1));
+
+/** `pos` after `sans`, or undefined where one is not legal. */
+function afterSans(pos: Chess, sans: readonly string[]): Chess | undefined {
+  let at = pos;
+  for (const san of sans) {
+    const uci = sanToUci(at, san);
+    if (!uci) return undefined;
+    at = played(at, uci);
+  }
+  return at;
 }
 
 /** NAGs that mark a move as a mistake: ?, ??, ?!. */
@@ -223,6 +245,30 @@ export function withReplies(
 }
 
 /**
+ * `chapters` with each commented move `trapStarts` names, by the line's moves
+ * in SAN from the start, knowing where its comment's trap starts: the moves
+ * after it in SAN, the last being the trap's first move (`StudyMove.trapStart`).
+ * Throws for a line no chapter plays or moves that are not legal after it, as
+ * `withReplies` does.
+ */
+export function withTrapStarts(
+  chapters: readonly Chapter[],
+  trapStarts: Readonly<Record<string, string>>,
+): Chapter[] {
+  const edits = new Map<StudyMove, Edit>();
+  for (const [line, moves] of Object.entries(trapStarts)) {
+    const ends = lineEnds(chapters, line);
+    if (ends.length === 0) throw new Error(`No chapter plays ${line}, where a trap starts later`);
+    const trapStart = moves.split(' ');
+    for (const end of ends) {
+      if (!afterSans(end.after, trapStart)) throw new Error(`${moves} is not legal after ${line}`);
+      edits.set(end, { trapStart });
+    }
+  }
+  return chapters.map((chapter) => ({ ...chapter, moves: rebuilt(chapter.moves, edits) }));
+}
+
+/**
  * `chapters` without the side lines `lines` names, each by its moves in SAN
  * from the start, the last one leaving the line the lesson keeps (a Queen's
  * Gambit introduction's joke `b3`, "You found the Easter Egg"), in every
@@ -270,7 +316,7 @@ function lineEnds(chapters: readonly Chapter[], line: string): StudyMove[] {
 }
 
 /** What `rebuilt` changes on a move. */
-type Edit = Pick<StudyMove, 'comment'> & Partial<Pick<StudyMove, 'intro'>>;
+type Edit = Partial<Pick<StudyMove, 'comment' | 'intro' | 'trapStart'>>;
 
 /**
  * Copies of `moves` and the moves after them, each with its `edits` applied,

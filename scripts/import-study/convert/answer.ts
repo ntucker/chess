@@ -21,9 +21,15 @@ export interface Answer {
   readonly notes: readonly AnswerNote[];
 }
 
+export const NOTE_ABOUT = ['move', 'before', 'trap'] as const;
+export type NoteAbout = (typeof NOTE_ABOUT)[number];
+
 export interface AnswerNote {
-  /** About the position after the commented move (its note) or before it (that position's note). */
-  readonly about: 'move' | 'before';
+  /**
+   * About the position after the commented move (its note), before it (that
+   * position's note), or where the comment's trap starts (`Comment.trapStart`).
+   */
+  readonly about: NoteAbout;
   readonly text: string;
   readonly ideas: readonly AnswerIdea[];
 }
@@ -155,7 +161,7 @@ export const SCHEMA = object({
       notes: {
         type: 'array',
         items: object({
-          about: { enum: ['move', 'before'] },
+          about: { enum: NOTE_ABOUT },
           text: { type: 'string' },
           ideas: { type: 'array', items: idea },
         }),
@@ -172,7 +178,7 @@ export function asAnswer(value: unknown): Answer | undefined {
     Array.isArray(answer.notes) &&
     answer.notes.every(
       (note) =>
-        (note?.about === 'move' || note?.about === 'before') &&
+        NOTE_ABOUT.includes(note?.about) &&
         typeof note.text === 'string' &&
         Array.isArray(note.ideas),
     );

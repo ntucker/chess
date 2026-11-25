@@ -12,7 +12,7 @@ import { MAX_NOTE_WORDS, type AiModel, type StructureFeature, type Uci } from '@
 import { checkStudyIdea, type StudyIdea, type StudyNote } from '../mistakes';
 import { played } from '../study';
 import { shorten } from '../text';
-import type { Answer, AnswerFeature, AnswerIdea } from './answer';
+import type { Answer, AnswerFeature, AnswerIdea, NoteAbout } from './answer';
 import type { Comment } from './comments';
 
 export interface Converted {
@@ -20,6 +20,8 @@ export interface Converted {
   readonly move: readonly StudyNote[];
   /** Notes on the position before it. */
   readonly before: readonly StudyNote[];
+  /** Notes on the position where the comment's trap starts (`Comment.trapStart`). */
+  readonly trap: readonly StudyNote[];
   /** Ideas the model wrote that the lesson keeps. */
   readonly kept: number;
   readonly rejected: readonly { readonly idea: AnswerIdea; readonly why: string }[];
@@ -27,15 +29,16 @@ export interface Converted {
   readonly cut: readonly string[];
 }
 
-/** Every note in `result`, on the move and before it. */
+/** Every note in `result`, on the move, before it and where its trap starts. */
 export const notesOf = (result: Converted): readonly StudyNote[] => [
   ...result.move,
   ...result.before,
+  ...result.trap,
 ];
 
 /**
  * `answer` for `comment` as notes credited to `model`, which wrote it, checked
- * in `positions`. `own` is the importer's ideas on the move's note: they join
+ * in `positions` (`trap` only for a comment with `trapStart`). `own` is the importer's ideas on the move's note: they join
  * the model's first note on the move. Ideas repeating anything in
  * `comment.extracted` (those, plus the importer's notes on other positions)
  * are dropped.
@@ -44,7 +47,7 @@ export function convertedNotes(
   comment: Comment,
   answer: Answer,
   model: AiModel,
-  positions: { readonly before: Chess; readonly after: Chess },
+  positions: { readonly before: Chess; readonly after: Chess; readonly trap?: Chess },
   own: readonly StudyIdea[],
 ): Converted {
   const rejected: { idea: AnswerIdea; why: string }[] = [];
@@ -57,11 +60,10 @@ export function convertedNotes(
     if (text !== labelless(written) && text.endsWith('…')) cut.push(text);
     return text;
   };
-  const notesAbout = (about: 'move' | 'before') =>
+  const notesAbout = (about: NoteAbout, pos: Chess) =>
     answer.notes
       .filter((note) => note.about === about)
       .map((note): StudyNote => {
-        const pos = about === 'move' ? positions.after : positions.before;
         const ideas = note.ideas.flatMap((raw) => {
           const result = lessonIdea(raw, pos, extractedEvaluation);
           if (typeof result === 'string') {
@@ -75,8 +77,10 @@ export function convertedNotes(
         return lessonNote(shown(note.text), comment.comment, ideas, model);
       })
       .filter((note) => note.text);
-  const before = notesAbout('before');
-  const moves = notesAbout('move');
+  const before = notesAbout('before', positions.before);
+  // A trap note without the comment's trap start has no position to be said in.
+  const trap = positions.trap ? notesAbout('trap', positions.trap) : [];
+  const moves = notesAbout('move', positions.after);
   const [first, ...rest] = moves;
   const move =
     own.length === 0
@@ -91,7 +95,7 @@ export function convertedNotes(
           ),
           ...rest,
         ];
-  return { move, before, kept, rejected, cut };
+  return { move, before, trap, kept, rejected, cut };
 }
 
 /** The note's text without a label the card already shows, cut to the word limit. */

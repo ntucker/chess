@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
 import { positionKey } from '@/game/replay';
-import { uciLine } from '@/lesson/lesson.fixture';
+import { keyAfter, uciLine } from '@/lesson/lesson.fixture';
 
 import {
   chapterMoves,
@@ -9,8 +9,10 @@ import {
   mainLine,
   parseStudy,
   withoutLeadComments,
+  trapPosition,
   withoutLines,
   withReplies,
+  withTrapStarts,
 } from './study';
 
 const AFTER_NF6 = 'rnbqkb1r/ppp1pppp/5n2/3p4/3P1B2/8/PPP1PPPP/RN1QKBNR w KQkq - 2 3';
@@ -201,6 +203,28 @@ describe('withReplies', () => {
     expect(() => withReplies(chapters, { 'd4 d5 Bf4 Nf6 Nf3 c5 dxc5': 'Qxc5' })).toThrow(
       'Qxc5 is not legal',
     );
+  });
+});
+
+describe('withTrapStarts', () => {
+  const pgn = chapter('Italian', '1. e4 e5 2. Nf3 Nc6 3. Bc4 { Watch out for ...Nd4. } *');
+  const line = 'e4 e5 Nf3 Nc6 Bc4';
+
+  it('gives the commented move where its trap starts, and the position before that move', () => {
+    const [italian] = withTrapStarts(
+      parseStudy(pgn, () => true),
+      { [line]: 'Nd4 Nxe5' },
+    );
+    const bc4 = [...chapterMoves(italian)].find((move) => move.san === 'Bc4')!;
+    expect(bc4.trapStart).toEqual(['Nd4', 'Nxe5']);
+    expect(bc4.comment).toBe('Watch out for ...Nd4.');
+    expect(positionKey(trapPosition(bc4)!)).toBe(keyAfter(...line.split(' '), 'Nd4'));
+  });
+
+  it('refuses a line no chapter plays, or moves that are not legal after it', () => {
+    const chapters = parseStudy(pgn, () => true);
+    expect(() => withTrapStarts(chapters, { 'e4 c5': 'Nf3' })).toThrow('No chapter plays e4 c5');
+    expect(() => withTrapStarts(chapters, { [line]: 'Nd4 Qxe5' })).toThrow('Nd4 Qxe5 is not legal');
   });
 });
 
