@@ -25,6 +25,7 @@ jest.mock('../CandidateList', () => {
   };
 });
 jest.mock('../IdeaCard', () => ({ IdeaCard: () => 'idea', IdeaAside: () => 'aside' }));
+jest.mock('../TrapCard', () => ({ TrapCard: () => 'trap' }));
 jest.mock('./LessonHeadline', () => ({ LessonHeadline: () => null }));
 jest.mock('@/components/ScoresheetDrawer', () => ({ ScoresheetPage: () => 'scoresheet' }));
 jest.mock('@/components/ReviewLinks', () => ({ ScoresheetReview: () => null }));
@@ -82,6 +83,12 @@ describe('PhoneLesson', () => {
     render('lesson');
     expect(hidden(pageOf('scoresheet'))).toBe(true);
     expect(mockMovesMounts).toBe(1);
+  });
+
+  it('warns of a trap above the pages, where the panel scrolls, not clipped inside one', () => {
+    render('lesson', { ...MODEL, trap: {} } as LessonScreenModel);
+    expect(host.textContent).toBe('trapmovesideascoresheet');
+    expect(pageOf('movesidea')).toBeDefined();
   });
 
   it('leaves out the panes when there are neither moves nor an idea, as Practice can', () => {

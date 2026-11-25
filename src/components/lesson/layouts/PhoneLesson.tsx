@@ -18,9 +18,9 @@ import { LessonHeadline } from './LessonHeadline';
 export type PhonePage = 'lesson' | 'scoresheet';
 
 /**
- * The lesson under the board on a phone: a short headline, then two pages
- * that the move pill or a sideways swipe slides between (`usePages` owns
- * which shows). One holds the moves and the idea in panes side by side,
+ * The lesson under the board on a phone: a short headline, any trap's
+ * warning, then two pages that the move pill or a sideways swipe slides
+ * between (`usePages` owns which shows). One holds the moves and the idea in panes side by side,
  * each scrolling on its own, with a hairline between them; past the guide,
  * where Stockfish's moves stand in, the idea's pane tells why. The other is
  * the scoresheet. Both stay mounted, so the panes keep where they're
@@ -60,14 +60,15 @@ export function PhoneLesson({
           failed: !!model.headline.failure,
         })}
       />
+      {/* Above the pages, where the panel scrolls, so a long one never sits clipped in a page. */}
+      {model.trap ? <TrapCard {...model.trap} /> : null}
       {/* The pager proposes only its pages' values. */}
       <Pager.Root
         value={page}
         onValueChange={(value) => onPage(value as PhonePage)}
         style={styles.pages}
       >
-        <Pager.Page value="lesson" style={[styles.page, sections]}>
-          {model.trap ? <TrapCard {...model.trap} /> : null}
+        <Pager.Page value="lesson" style={styles.page}>
           {/* Leaving a row for the idea keeps its preview, so its notes can be pointed at. */}
           {/* Practice can hide both, and then the panes take no room. */}
           {moves || ideaPane ? (
