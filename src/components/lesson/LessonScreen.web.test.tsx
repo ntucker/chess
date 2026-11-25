@@ -17,14 +17,17 @@ jest.mock('@data-client/react', () => ({
 jest.mock('./useOpeningsGame', () => ({
   useOpeningsGame: () => ({ lesson: undefined, side: 'black', pending: false, playAs: () => {} }),
 }));
+let mockStarted = true;
 jest.mock('./useLessonScreen', () => ({
-  useLessonScreen: () => ({ board: { rival: {} }, stepper: { started: true }, header: {} }),
+  useLessonScreen: () => ({ board: { rival: {} }, stepper: { started: mockStarted }, header: {} }),
 }));
 jest.mock('@/components/navigation', () => ({ useNavigating: () => false }));
+jest.mock('expo-router', () => ({ useIsFocused: () => true }));
 jest.mock('@/components/useBackToReview', () => ({ useBackToReview: () => undefined }));
 
 let mockBoardMounts = 0;
-let mockStepper: { onToggle: () => void } | undefined;
+let mockStepper: { onToggle: () => void; disabled: boolean } | undefined;
+let mockPagerReaches: boolean | undefined;
 let mockOpenSettings: (() => void) | undefined;
 let mockFlickUp: (() => void) | undefined;
 jest.mock('@/components/Stage', () => {
@@ -64,14 +67,16 @@ jest.mock('@/components/Stage', () => {
   };
 });
 jest.mock('@/components/ScoresheetDrawer', () => ({
-  ScoresheetOpener: (props: { onToggle: () => void }) => {
+  ScoresheetOpener: (props: { onToggle: () => void; disabled: boolean }) => {
     mockStepper = props;
     return null;
   },
 }));
 jest.mock('./layouts/PhoneLesson', () => ({
-  PhoneLesson: ({ scoresheetOpen }: { scoresheetOpen: boolean }) =>
-    `phone${scoresheetOpen ? ' scoresheet' : ''}`,
+  PhoneLesson: ({ page, scoresheetReachable }: { page: string; scoresheetReachable: boolean }) => {
+    mockPagerReaches = scoresheetReachable;
+    return `phone${page === 'scoresheet' ? ' scoresheet' : ''}`;
+  },
 }));
 jest.mock('./layouts/WideLesson', () => ({ WideLesson: () => 'wide' }));
 jest.mock('./LessonSettings', () => ({
@@ -113,6 +118,7 @@ afterEach(() => {
   screen.phone = false;
   mockBoardMounts = 0;
   mockFlickUp = undefined;
+  mockStarted = true;
 });
 
 const open = (phone: boolean) => {
@@ -149,6 +155,22 @@ describe('LessonScreen', () => {
     await resize(true);
     expect(shown()).toBe('phone scoresheet settings');
     expect(mockBoardMounts).toBe(1);
+  });
+
+  it('reaches the scoresheet from the first move, and keeps it showing when a new game empties it', async () => {
+    mockStarted = false;
+    await open(true);
+    expect(mockStepper!.disabled).toBe(true);
+    expect(mockPagerReaches).toBe(false);
+    mockStarted = true;
+    await open(true);
+    expect(mockStepper!.disabled).toBe(false);
+    act(() => mockStepper!.onToggle());
+    mockStarted = false;
+    await open(true);
+    expect(shown()).toBe('phone scoresheet');
+    expect(mockStepper!.disabled).toBe(false);
+    expect(mockPagerReaches).toBe(true);
   });
 
   it('opens the settings with a flick up from the bar under the board, on a phone only', async () => {

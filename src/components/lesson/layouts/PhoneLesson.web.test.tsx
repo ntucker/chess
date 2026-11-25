@@ -6,7 +6,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { themes } from '@/theme/theme';
 
 import type { LessonScreenModel } from '../useLessonScreen';
-import { PhoneLesson } from './PhoneLesson';
+import { PhoneLesson, type PhonePage } from './PhoneLesson';
 
 // The blocks are stood in for: these tests are about what the layout keeps
 // mounted, not about what each block draws.
@@ -15,7 +15,7 @@ jest.mock('../CandidateList', () => {
   const { useState } = jest.requireActual<typeof import('react')>('react');
   return {
     COMPACT_INSET: 8,
-    // A hidden Activity keeps state but unmounts effects, so this counts real mounts.
+    // Counts real mounts, which a page sliding out of view mustn't cause.
     CandidateList: () => {
       useState(() => {
         mockMovesMounts += 1;
@@ -25,8 +25,9 @@ jest.mock('../CandidateList', () => {
   };
 });
 jest.mock('../IdeaCard', () => ({ IdeaCard: () => 'idea', IdeaAside: () => 'aside' }));
+jest.mock('../TrapCard', () => ({ TrapCard: () => <span data-testid="trap" /> }));
 jest.mock('./LessonHeadline', () => ({ LessonHeadline: () => null }));
-jest.mock('@/components/ScoresheetDrawer', () => ({ ScoresheetDrawer: () => 'scoresheet' }));
+jest.mock('@/components/ScoresheetDrawer', () => ({ ScoresheetPage: () => 'scoresheet' }));
 jest.mock('@/components/ReviewLinks', () => ({ ScoresheetReview: () => null }));
 
 const MODEL = {
@@ -55,31 +56,52 @@ afterEach(() => {
   mockMovesMounts = 0;
 });
 
-const render = (scoresheetOpen: boolean, model = MODEL) =>
+const render = (page: PhonePage, model = MODEL) =>
   act(() =>
     root.render(
       <SilkProvider theme={themes.dark}>
-        <PhoneLesson model={model} scoresheetOpen={scoresheetOpen} onCloseScoresheet={() => {}} />
+        <PhoneLesson model={model} page={page} onPage={() => {}} scoresheetReachable />
       </SilkProvider>,
     ),
   );
 
+/** The pager's page whose text is `text`. */
+const pageOf = (text: string) =>
+  [...host.querySelectorAll<HTMLElement>('[style*="width: 50%"]')].find(
+    (page) => page.textContent === text,
+  )!;
+const hidden = (page: HTMLElement) => page.hasAttribute('inert');
+
 describe('PhoneLesson', () => {
-  it('hides the panes under the scoresheet, keeping them mounted', () => {
-    render(false);
-    expect(host.textContent).toContain('moves');
-    render(true);
-    const panes = [...host.querySelectorAll('div')].find((div) => div.textContent === 'movesidea')!;
-    expect(getComputedStyle(panes).display).toBe('none');
-    expect(host.textContent).toContain('scoresheet');
-    render(false);
-    expect(host.textContent).not.toContain('scoresheet');
+  it('shows the page it is given, keeping the other mounted and hidden', () => {
+    render('lesson');
+    expect(hidden(pageOf('movesidea'))).toBe(false);
+    expect(hidden(pageOf('scoresheet'))).toBe(true);
+    render('scoresheet');
+    expect(hidden(pageOf('movesidea'))).toBe(true);
+    expect(hidden(pageOf('scoresheet'))).toBe(false);
+    render('lesson');
+    expect(hidden(pageOf('scoresheet'))).toBe(true);
     expect(mockMovesMounts).toBe(1);
   });
 
+  it('warns of a trap above the pages, where the panel scrolls, over either page', () => {
+    for (const page of ['lesson', 'scoresheet'] as const) {
+      render(page, { ...MODEL, trap: {} } as LessonScreenModel);
+      const trap = host.querySelector('[data-testid="trap"]')!;
+      expect(trap).not.toBeNull();
+      for (const text of ['movesidea', 'scoresheet']) {
+        // Outside the page, and before it.
+        expect(pageOf(text).contains(trap)).toBe(false);
+        expect(
+          trap.compareDocumentPosition(pageOf(text)) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+      }
+    }
+  });
+
   it('leaves out the panes when there are neither moves nor an idea, as Practice can', () => {
-    render(false, { ...MODEL, moves: null, idea: null });
-    // The panel holds nothing but the headline, stood in for by nothing.
-    expect(host.firstElementChild?.childElementCount).toBe(0);
+    render('lesson', { ...MODEL, moves: null, idea: null });
+    expect(pageOf('').childElementCount).toBe(0);
   });
 });

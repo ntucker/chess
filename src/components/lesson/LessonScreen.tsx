@@ -13,6 +13,7 @@ import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { useBackToReview } from '@/components/useBackToReview';
 import { useLongWait } from '@/components/useLongWait';
 import { useNavigating } from '@/components/navigation';
+import { usePages } from '@/components/usePages';
 import { NewVersionError } from '@/files/newVersion';
 import type { VariationId } from '@/lesson/lesson';
 import { getLesson, isLessonId, type LessonId } from '@/resources/lesson';
@@ -20,7 +21,7 @@ import { getProgress } from '@/resources/progress';
 import { useLayout } from '@/theme/Narrow';
 
 import { AutoPlay } from './AutoPlay';
-import { PhoneLesson } from './layouts/PhoneLesson';
+import { PhoneLesson, type PhonePage } from './layouts/PhoneLesson';
 import { WideLesson } from './layouts/WideLesson';
 import { LessonSettings } from './LessonSettings';
 import { LOADING } from './status';
@@ -127,10 +128,12 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
   useFetch(getProgress);
   const picked = useSuspense(getLesson, id ?? null);
   const model = useLessonScreen({ id, picked, onPlayAs, ...input });
-  // A phone's settings sheet and scoresheet drawer, shut while the window is wide (the sheet unmounts).
+  // A phone's settings sheet (unmounted while the window is wide) and its pages under the board.
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [scoresheetOpen, setScoresheetOpen] = useState(false);
-  const scoresheetShown = phone && scoresheetOpen;
+  const { page, show } = usePages<PhonePage>('lesson', phone);
+  const scoresheetShown = page === 'scoresheet';
+  // Not before the first move; but a scoresheet showing stays, since a new game empties it.
+  const scoresheetReachable = scoresheetShown || model.stepper.started;
   const back = useBackToReview();
   const openSettings = () => setSettingsOpen(true);
 
@@ -164,10 +167,9 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
             <ScoresheetOpener
               san={model.stepper.san}
               ply={model.stepper.ply}
-              // Nothing to open before the first move, but an open drawer can always close: a new game empties it.
-              disabled={!scoresheetShown && !model.stepper.started}
+              disabled={!scoresheetReachable}
               open={scoresheetShown}
-              onToggle={() => setScoresheetOpen(!scoresheetShown)}
+              onToggle={() => show(scoresheetShown ? 'lesson' : 'scoresheet')}
             />
           }
         />
@@ -177,8 +179,9 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
           {phone ? (
             <PhoneLesson
               model={model}
-              scoresheetOpen={scoresheetShown}
-              onCloseScoresheet={() => setScoresheetOpen(false)}
+              page={page}
+              onPage={show}
+              scoresheetReachable={scoresheetReachable}
             />
           ) : (
             <WideLesson model={model} />

@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { a11yState, Pressable, useReducedMotion, useTheme } from '@reactive/silk-native';
+import { a11yState, Pressable, useTheme } from '@reactive/silk-native';
 import { type ComponentProps, type ComponentRef, useRef, useState } from 'react';
 import { Dimensions, type PointerEvent, View } from 'react-native';
 import Animated from 'react-native-reanimated';
@@ -9,12 +9,12 @@ import { HEADER_BUTTON_SIZE, HeaderButton } from '@/components/HeaderButton';
 import { PillChoice } from '@/components/PillChoice';
 import { usePressingFinger } from '@/components/usePressingFinger';
 import type { Point } from '@/motion/dom';
-import { springMotion, springs } from '@/motion/spring';
+import { springs } from '@/motion/spring';
+import { useSpringTransition } from '@/motion/useSpringTransition';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
 import { type Theme, THEMES } from '@/settings/settings';
 import { narrowStyles } from '@/theme/narrow';
 import { useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
-import { timingFunction } from '@/theme/timingFunction';
 
 const CHOICES: Record<Theme, { label: string; icon: ComponentProps<typeof Ionicons>['name'] }> = {
   system: { label: "Device's theme", icon: 'contrast-outline' },
@@ -29,7 +29,6 @@ const BORDER = 1;
 const EDGE = 4;
 /** How long a finger rests on the button before the choices open under it: Android's long press. */
 const HOLD_MS = 400;
-const MOTION = springMotion(springs.snappy);
 
 /**
  * The styles placing the open choices, and the row inside them shut, by the
@@ -94,7 +93,7 @@ export function ThemeSwitch({ wideOnly }: { readonly wideOnly?: boolean }) {
   const { theme } = useSettings();
   const dispatch = useSettingsDispatch();
   const { color, shadow } = useTheme().theme.semantic;
-  const reducedMotion = useReducedMotion();
+  const transition = useSpringTransition(springs.snappy);
   const styles = useNarrowStyles(STYLES);
   const part = useNarrowPart();
   const [menu, setMenu] = useState<Menu>();
@@ -142,10 +141,6 @@ export function ThemeSwitch({ wideOnly }: { readonly wideOnly?: boolean }) {
   const { label, icon } = CHOICES[theme];
   // The choice over the button: while open, the one it opened with; shut, the theme in use.
   const anchor = menu?.anchor ?? THEMES.indexOf(theme);
-  const transition = {
-    transitionDuration: reducedMotion ? 0 : MOTION.durationMs,
-    transitionTimingFunction: timingFunction(MOTION.easing),
-  };
 
   return (
     <View

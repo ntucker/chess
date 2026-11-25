@@ -59,18 +59,18 @@ describe('describeStatus', () => {
 describe('headlineNews', () => {
   const offGuide = describeStatus(view('beyond'), INPUT);
   const lineEnd = describeStatus(view('end'), { ...INPUT, lineEnded: true });
-  const closed = { aside: false, scoresheetOpen: false, failed: false };
+  const closed = { aside: false, scoresheetShown: false, failed: false };
 
   it('draws nothing where the aside tells the headline', () => {
     expect(headlineNews(offGuide, { ...closed, aside: true })).toBe('none');
     expect(headlineNews(offGuide, closed)).toBe('all');
   });
 
-  it('leaves "Off the guide" untold over the open scoresheet, unless the opponent failed', () => {
-    const open = { ...closed, aside: true, scoresheetOpen: true };
+  it('leaves "Off the guide" untold over the shown scoresheet, unless the opponent failed', () => {
+    const open = { ...closed, aside: true, scoresheetShown: true };
     expect(headlineNews(offGuide, open)).toBe('none');
     expect(headlineNews(offGuide, { ...open, failed: true })).toBe('all');
-    // Where no aside would tell it (Stockfish's moves aren't listed), the drawer's rule holds all the same.
+    // Where no aside would tell it (Stockfish's moves aren't listed), the scoresheet's rule holds all the same.
     expect(headlineNews(offGuide, { ...open, aside: false })).toBe('none');
     expect(headlineNews(offGuide, { ...open, aside: false, failed: true })).toBe('all');
     expect(headlineNews(lineEnd, open)).toBe('all');

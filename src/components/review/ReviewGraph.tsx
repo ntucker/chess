@@ -23,8 +23,9 @@ import { Notation } from '@/components/Notation';
 import { QualityBadge } from '@/components/QualityBadge';
 import type { Analysis } from '@/evaluation/evaluation';
 import { type Color, opposite, shownMove } from '@/game/replay';
-import { springMotion, springs } from '@/motion/spring';
+import { springs } from '@/motion/spring';
 import { springTo } from '@/motion/springTo';
+import { useSpringTransition } from '@/motion/useSpringTransition';
 import {
   type GraphMark,
   graphMarks,
@@ -38,7 +39,6 @@ import {
 import type { Review } from '@/review/useReview';
 import { graphColors } from '@/theme/graphColors';
 import { qualityLooks } from '@/theme/moveQuality';
-import { timingFunction } from '@/theme/timingFunction';
 
 /** What the graph shows of a review (`useReview`); any analyses will do, so the gallery can make them up. */
 export type GraphView = { readonly analyses: readonly (Analysis | undefined)[] } & Pick<
@@ -80,7 +80,8 @@ export function ReviewGraph({ review, learner, height }: Props) {
   );
   const scrub = useScrub({ total, snaps: marks.map((mark) => mark.ply), goto });
   const percent = (at: number) => `${(at / total) * 100}%` as const;
-  const slide = still ? { transitionDuration: 0 } : SLIDE;
+  // The gold line slides on the app's snappy spring.
+  const slide = { transitionProperty: 'left' as const, ...useSpringTransition(springs.snappy) };
   const hatch = `hatch${useId().replace(/[^\w-]/g, '')}`;
   const guide = guideEnd(book, learner);
   return (
@@ -473,13 +474,6 @@ const DRIFT = 10;
 /** A 48dp touch area around the phone's 36px row. */
 const TOUCH_SLOP = { vertical: 6 };
 const BUBBLE = { width: 112, height: 28 };
-const SLIDE_MOTION = springMotion(springs.snappy);
-/** The gold line slides on the app's snappy spring. */
-const SLIDE = {
-  transitionProperty: 'left',
-  transitionDuration: SLIDE_MOTION.durationMs,
-  transitionTimingFunction: timingFunction(SLIDE_MOTION.easing),
-};
 
 const styles = StyleSheet.create({
   graph: { paddingHorizontal: PAD },

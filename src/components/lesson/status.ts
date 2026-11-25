@@ -190,23 +190,23 @@ export function whyReviewShut({
 interface Surroundings {
   /** The idea pane's place tells the past-guide headline (the model's `aside`, drawn by PhoneLesson). */
   readonly aside: boolean;
-  /** The scoresheet drawer covers the panes, and the aside with them. */
-  readonly scoresheetOpen: boolean;
+  /** The scoresheet's page shows in place of the panes, and the aside with them. */
+  readonly scoresheetShown: boolean;
   /** The opponent didn't answer, so the headline draws its retry. */
   readonly failed: boolean;
 }
 
 /**
  * What a narrow page draws of the headline (`news`): nothing where the aside
- * tells it, nor where the open scoresheet drawer covers the panes and the
+ * tells it, nor where the scoresheet's page shows in place of the panes and the
  * headline only says the board is off the guide. A failure keeps it, beside
  * the retry.
  */
 export function headlineNews(
   { news, pastGuide }: Pick<Status, 'news' | 'pastGuide'>,
-  { aside, scoresheetOpen, failed }: Surroundings,
+  { aside, scoresheetShown, failed }: Surroundings,
 ): News {
-  const untold = scoresheetOpen ? pastGuide === OFF_GUIDE && !failed : aside;
+  const untold = scoresheetShown ? pastGuide === OFF_GUIDE && !failed : aside;
   return untold ? 'none' : (news ?? 'all');
 }
 

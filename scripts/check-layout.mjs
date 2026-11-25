@@ -4,7 +4,8 @@
  * jsdom tests can't: they have no layout engine. It serves the export, opens
  * each board page at three phone sizes, and checks that the page fits the
  * screen without scrolling, the board is whole and in view with its name
- * bars, the panel under it keeps its floor, and the board is the same size on
+ * bars, the panel under it keeps its floor, no scroll view runs past a box
+ * that clips it without scrolling, and the board is the same size on
  * every page at one screen size, whatever sits under it (pages with controls
  * under the panel, a footed panel, have their own size). Screenshots of each
  * state land in the output folder.
@@ -102,6 +103,7 @@ function measure(board) {
   const box = (selector) => document.querySelector(selector)?.getBoundingClientRect().toJSON();
   const part = (name) => `[data-narrow='${name}']`;
   const program = document.querySelector(`${part('program')}, ${part('footed-program')}`);
+  const overflow = (element) => getComputedStyle(element).overflowY;
   return {
     screen: { width: innerWidth, height: innerHeight },
     // React Native Web scrolls a view inside the document, so the page's own box shows whether it fits.
@@ -115,12 +117,21 @@ function measure(board) {
       getComputedStyle(document.documentElement).getPropertyValue('--board-min'),
     ),
     programFloor: program && parseFloat(getComputedStyle(program).minHeight),
+    // How far each scroll view runs below the box that clips it, where that box doesn't scroll:
+    // what's past it can't be reached, and the view, as tall as its content, doesn't scroll either.
+    scrollsPastClip: [...document.querySelectorAll('*')].flatMap((view) => {
+      if (!['auto', 'scroll'].includes(overflow(view)) || view.clientHeight === 0) return [];
+      let clip = view.parentElement;
+      while (clip && overflow(clip) === 'visible') clip = clip.parentElement;
+      if (!clip || !['hidden', 'clip'].includes(overflow(clip))) return [];
+      return [view.getBoundingClientRect().bottom - clip.getBoundingClientRect().bottom];
+    }),
   };
 }
 
 /** What's wrong with one state's layout, in words, leaving out the `exempt` rules. */
 function problems(
-  { screen, page, pageWidth, board, column, program, boardMin, programFloor },
+  { screen, page, pageWidth, board, column, program, boardMin, programFloor, scrollsPastClip },
   exempt = [],
 ) {
   // A missing part or floor would skip its checks and pass: renaming one must fail here.
@@ -155,6 +166,11 @@ function problems(
   }
   if (program.bottom > screen.height + SLACK) {
     issues.push(`the panel ends at ${program.bottom}px, below the screen`);
+  }
+  for (const past of scrollsPastClip.filter((past) => past > SLACK)) {
+    issues.push(
+      `a scroll view runs ${Math.round(past)}px past the box that clips it, so it can't scroll there`,
+    );
   }
   return issues;
 }

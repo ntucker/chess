@@ -7,12 +7,14 @@ import { useEffect, useEffectEvent } from 'react';
  * pressed in a dialog over it (`Sheet`, which traps focus) are the dialog's,
  * and a key another control took first (preventing its default, as Silk's
  * Popover does with Escape and its Listbox with the arrows) is that control's.
+ * With no `onKey`, it doesn't listen.
  */
-export function useScreenKeys(onKey: (event: KeyboardEvent) => void) {
+export function useScreenKeys(onKey: ((event: KeyboardEvent) => void) | undefined) {
   const focused = useIsFocused();
-  const handle = useEffectEvent(onKey);
+  const listening = onKey !== undefined;
+  const handle = useEffectEvent((event: KeyboardEvent) => onKey?.(event));
   useEffect(() => {
-    if (process.env.EXPO_OS !== 'web' || !focused) return;
+    if (process.env.EXPO_OS !== 'web' || !focused || !listening) return;
     const listener = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
       if (event.target instanceof Element && event.target.closest('[aria-modal="true"]')) return;
@@ -20,5 +22,5 @@ export function useScreenKeys(onKey: (event: KeyboardEvent) => void) {
     };
     window.addEventListener('keydown', listener);
     return () => window.removeEventListener('keydown', listener);
-  }, [focused]);
+  }, [focused, listening]);
 }

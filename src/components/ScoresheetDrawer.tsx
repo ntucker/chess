@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { a11yState, Inline, Pressable, Text, useTheme } from '@reactive/silk-native';
 import type { ComponentProps, ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { useLabelled } from '@/components/Eyebrow';
 import { HeaderButton } from '@/components/HeaderButton';
@@ -10,46 +11,39 @@ import { Scoresheet, ScoresheetTitle } from '@/components/Scoresheet';
 import { stepButton } from '@/components/Transport';
 import { useCloseKeys } from '@/components/useCloseKeys';
 import { shownMove } from '@/game/replay';
+import { springs } from '@/motion/spring';
+import { useSpringTransition } from '@/motion/useSpringTransition';
 import { useNarrowPart } from '@/theme/Narrow';
 import { FIGURINE_ADVANCE, fonts, MONO_ADVANCE } from '@/theme/theme';
 
-interface Props extends Omit<ComponentProps<typeof Scoresheet>, 'fill'> {
-  /** Its close button, Escape, or Android's back. */
-  readonly onClose: () => void;
+interface PageProps extends Omit<ComponentProps<typeof Scoresheet>, 'fill'> {
   /** The game's Review button, first in its head (the lesson's). */
   readonly reviewButton?: ReactNode;
+  /** What closes it, last in its head. */
+  readonly closeButton?: ReactNode;
 }
 
 /**
- * The scoresheet of a narrow page, opened from the move stepper (the lesson)
- * or the header (the review): it takes the panel's place under the board,
- * so the board stays in view while the learner taps through the moves, and
- * stays open until closed. Its head holds the jumps to the first and latest
- * move, which the stepper leaves out there. Shown while mounted, on a narrow
- * page only.
+ * The scoresheet of a narrow page, under the board, so the board stays in
+ * view while the learner taps through the moves: the table filling it,
+ * under a head that holds the jumps to the first and latest move, which the
+ * stepper leaves out there. It fills what holds it, the lesson's page beside
+ * its own (`PhoneLesson`) or the review's drawer (`ScoresheetDrawer`).
  */
-export function ScoresheetDrawer({ onClose, reviewButton, ...scoresheet }: Props) {
+export function ScoresheetPage({ reviewButton, closeButton, ...scoresheet }: PageProps) {
   const { plies, ply, onGoto } = scoresheet;
   /** The ply of the latest move: `plies` begins with the start position. */
   const last = plies.length - 1;
-  const part = useNarrowPart();
   const labelled = useLabelled();
-  useCloseKeys(onClose);
   return (
-    <View role="region" aria-label="Scoresheet" {...part('scoresheet-drawer', labelled)}>
+    <View role="region" aria-label="Scoresheet" style={[labelled, styles.page]}>
       <Inline align="center" justify="between" wrap="nowrap">
         <ScoresheetTitle />
         <Inline align="center" gap="1" wrap="nowrap">
           {reviewButton}
           <Jump label="Start" disabled={ply === 0} onPress={() => onGoto(0)} />
           <Jump label="Latest" disabled={ply === last} onPress={() => onGoto(last)} />
-          <HeaderButton
-            icon="chevron-down"
-            iconSize={20}
-            accessibilityRole="button"
-            accessibilityLabel="Close the scoresheet"
-            onPress={onClose}
-          />
+          {closeButton}
         </Inline>
       </Inline>
       <Scoresheet {...scoresheet} fill />
@@ -57,9 +51,41 @@ export function ScoresheetDrawer({ onClose, reviewButton, ...scoresheet }: Props
   );
 }
 
+interface Props extends Omit<PageProps, 'closeButton'> {
+  /** Its close button, Escape, or Android's back. */
+  readonly onClose: () => void;
+}
+
+/**
+ * The review's scoresheet on a narrow page (`ScoresheetPage`), opened from
+ * the header: it takes the panel's place, rising into it, and stays open
+ * until closed. Shown while mounted, on a narrow page only.
+ */
+export function ScoresheetDrawer({ onClose, ...page }: Props) {
+  const part = useNarrowPart();
+  useCloseKeys(onClose);
+  return (
+    <View {...part('scoresheet-drawer')}>
+      <ScoresheetPage
+        {...page}
+        closeButton={
+          <HeaderButton
+            icon="chevron-down"
+            iconSize={20}
+            accessibilityRole="button"
+            accessibilityLabel="Close the scoresheet"
+            onPress={onClose}
+          />
+        }
+      />
+    </View>
+  );
+}
+
 /**
  * The move stepper's middle on a narrow page (`Transport`): the move on the
- * board, which opens the scoresheet drawer, or closes it again.
+ * board, flat in the stepper's capsule, which slides the scoresheet in, or
+ * back out. While it shows, the move is lit and the chevron turned over.
  */
 export function ScoresheetOpener({
   san,
@@ -77,8 +103,14 @@ export function ScoresheetOpener({
 }) {
   const { theme } = useTheme();
   const { color } = theme.semantic;
+  // The chevron turns over as the pages slide.
+  const turn = useSpringTransition(springs.snappy);
   const move = shownMove(san, ply);
-  const ink = disabled ? color.tones.neutral.disabledFg : undefined;
+  const ink = disabled
+    ? color.tones.neutral.disabledFg
+    : open
+      ? color.tones.accent.text
+      : undefined;
   return (
     <Pressable
       accessibilityRole="button"
@@ -89,19 +121,20 @@ export function ScoresheetOpener({
       style={({ pressed, hovered }) => [
         stepButton,
         styles.opener,
-        // Lit while the drawer is open, even with nothing to step to, and on a hover that could press it.
-        {
-          backgroundColor:
-            open || (!disabled && (pressed || hovered)) ? color.tones.neutral.subtle : undefined,
-        },
+        !disabled && (pressed || hovered) && { backgroundColor: color.tones.neutral.subtle },
       ]}
     >
       <ShownMove san={san} ply={ply} ink={ink} />
-      <Ionicons
-        name={open ? 'chevron-down' : 'chevron-up'}
-        size={CHEVRON_SIZE}
-        color={ink ?? color.textSecondary}
-      />
+      <Animated.View
+        style={{
+          transform: [{ rotate: open ? '180deg' : '0deg' }],
+          // A Reanimated CSS transition, which StyleSheet's types don't know.
+          transitionProperty: 'transform',
+          ...turn,
+        }}
+      >
+        <Ionicons name="chevron-up" size={CHEVRON_SIZE} color={ink ?? color.textSecondary} />
+      </Animated.View>
     </Pressable>
   );
 }
@@ -169,6 +202,8 @@ const OPENER_PADDING = 6;
 const CHEVRON_SIZE = 12;
 
 const styles = StyleSheet.create({
+  // As tall as what holds it and no taller, so its table scrolls within.
+  page: { flexGrow: 1, flexShrink: 1, minHeight: 0 },
   jump: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
   /*
    * Wide enough for "12…Nxd5" with its piece as an icon (six mono characters
