@@ -167,6 +167,8 @@ export interface Acts {
    * no reply until the learner retries, is shown the move, or skips.
    */
   readonly held: boolean;
+  /** The cue's question still stands (`unanswered`): its controls show. */
+  readonly asking: boolean;
 }
 
 export interface ActsInput {
@@ -214,6 +216,7 @@ export function cueActs(input: ActsInput): Acts | undefined {
     payoff: payoffOf(cue, passed, moves[cue.ply] === cue.line[1]),
     live: ply === cue.ply && (found === 'open' || found === 'shown'),
     held: ply === cue.ply + 1 && ply === moves.length && !passed,
+    asking: unanswered(found),
   };
 }
 

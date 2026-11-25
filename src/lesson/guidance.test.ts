@@ -123,6 +123,8 @@ describe('guidance', () => {
       expect(revealed.candidates.map(({ san }) => san)).toEqual(['c5']);
       expect(revealed.drawnCandidates.map(({ san }) => san)).toEqual(['c5']);
       expect(revealed.notes).toEqual([]);
+      // Listed, but not a choice to point at.
+      expect(revealed.choices).toBe(false);
     });
 
     it('lists no top moves past the guide', () => {

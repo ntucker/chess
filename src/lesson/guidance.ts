@@ -152,6 +152,12 @@ export type PlayedBack = Extract<BoardIdea, { type: 'plan' | 'line' | 'trap' }>;
 export type ShownPlayback = ShownIdea & { readonly idea: PlayedBack };
 
 export interface Guidance {
+  /**
+   * The candidates are choices the learner can point at to preview: not on
+   * a quiz turn, such as Practice's learner turn or an open cue, whose
+   * revealed reply is listed but not previewed.
+   */
+  readonly choices: boolean;
   /** The candidate list. */
   readonly candidates: readonly Candidate[];
   /** The rare candidates, which the list shows only when asked. */
@@ -370,6 +376,7 @@ export function guidance(input: GuidanceInput): Guidance {
     explore && movesShown && resting && engine?.best !== refutation ? engine?.best : undefined;
 
   return {
+    choices,
     candidates,
     rare: withRare.filter(({ rare }) => rare),
     main: mainCandidate(candidates),

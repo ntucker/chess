@@ -11,11 +11,9 @@ import { fonts } from '@/theme/theme';
 import { PastNote } from './IdeaCard';
 
 /** What the lesson screen shows of a cue's acts (`LessonScreenModel.acts`). */
-export interface ActsModel extends Pick<Acts, 'found' | 'payoff'> {
+export interface ActsModel extends Pick<Acts, 'found' | 'payoff' | 'asking'> {
   /** The headline's detail, for a phone's pane, where the headline leaves it out. */
   readonly line: string;
-  /** The cue's question still stands (no try has passed): its controls show. */
-  readonly asking: boolean;
   /** Back to the cue, after a try that didn't pass; undefined when it does nothing. */
   readonly onRetry?: () => void;
   /** The reply, drawn on the board; undefined once shown or passed. */
