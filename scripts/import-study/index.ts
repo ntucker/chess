@@ -156,10 +156,9 @@ async function main() {
   // Why each trap lost its mark, from the build that took it off.
   const reasons = new Map<string, string>();
   const built = await buildKeepingMarks(async (keep) => {
-    const traps = await checkTraps(merged, keep, stockfish.evaluate, study.engineCheck);
-    for (const { line, study, reason } of traps.settled.unmarked)
-      if (reason) reasons.set(`${line} ${study}`, reason);
-    return traps;
+    const checked = await checkTraps(merged, keep, stockfish.evaluate, study.engineCheck);
+    for (const { mark, reason } of checked.settled.unmarked) if (reason) reasons.set(mark, reason);
+    return checked;
   });
   let { lesson } = built;
   const { filled, engineReport, settled, traps } = built;
@@ -176,7 +175,7 @@ async function main() {
   }
   const { changed } = settled;
   const unmarked = settled.unmarked.map((trap) => {
-    const reason = trap.reason ?? reasons.get(`${trap.line} ${trap.study}`);
+    const reason = trap.reason ?? reasons.get(trap.mark);
     return reason ? { ...trap, reason } : trap;
   });
   console.log(

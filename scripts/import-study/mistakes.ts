@@ -194,6 +194,8 @@ export interface ChangedTrap {
 
 /** A trap that lost its mark, and why where this step took it. */
 export interface UnmarkedTrap {
+  /** The mark it would have had (`markId`), the same in every build. */
+  readonly mark: string;
   readonly line: string;
   readonly study: string;
   readonly reason?: string;
@@ -210,8 +212,7 @@ export async function buildKeepingMarks<
   Built extends { readonly lesson: Lesson; readonly tried: ReadonlySet<string> },
 >(build: (keep?: ReadonlySet<string>) => Promise<Built>): Promise<Built> {
   let built = await build();
-  for (let kept = markIds(built.lesson); kept.size < built.tried.size; kept = markIds(built.lesson))
-    built = await build(kept);
+  while (markIds(built.lesson).size < built.tried.size) built = await build(markIds(built.lesson));
   return built;
 }
 
@@ -265,8 +266,9 @@ export function settleMistakes(
     const study = numberedLine(lineSans(moves, pos), firstPly);
     const move = guideMove(settled, at, moves[0]);
     if (!move?.mistake) {
-      const reason = refused.get(markId(at, moves[0]));
-      unmarked.push({ line, study, ...(reason && { reason }) });
+      const mark = markId(at, moves[0]);
+      const reason = refused.get(mark);
+      unmarked.push({ mark, line, study, ...(reason && { reason }) });
       continue;
     }
     const shownMoves = mistakeLine(settled, at, move);
@@ -292,8 +294,9 @@ export function settleMistakes(
  * guide's choice. Example: a mark whose line followed the only reply then
  * counted keeps it, stored, once another reply turns out more played.
  */
-export const keepMistakeLines = (before: Lesson, after: Lesson): Lesson =>
-  withLinesOf(after, before);
+export function keepMistakeLines(before: Lesson, after: Lesson): Lesson {
+  return withLinesOf(after, before);
+}
 
 /**
  * `lesson` with each mark's line, as `intended` (the same marks on another
