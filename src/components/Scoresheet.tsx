@@ -238,7 +238,10 @@ function useRevealedRow(row: number) {
   const reveal = () => {
     const frame = frames.current[row];
     const y = frame && revealOffset(frame, viewport.current);
-    if (y !== undefined) scroll.current?.scrollTo({ y, animated: true });
+    if (y === undefined) return;
+    scroll.current?.scrollTo({ y, animated: true });
+    // Where it is going: the scroll's own events may lag behind or skip it.
+    viewport.current.top = y;
   };
   const revealNow = useEffectEvent(reveal);
   useEffect(() => revealNow(), [row]);
