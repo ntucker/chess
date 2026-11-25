@@ -9,8 +9,9 @@
  * With a lesson it runs from the lesson's start for the lesson's side, and
  * splits the finds the guide's moves reach from those it doesn't. With
  * `--from` it runs from the position after those moves (from the standard
- * start, read by `parseMoves`) with no lesson, for `--side`, the side looking for opportunities, and lists
- * every find in one ranking, since with no guide there is no split.
+ * start, read by `parseMoves`) with no lesson, for `--side`, the side looking
+ * for opportunities, and lists every find in one ranking, since with no guide
+ * there is no split.
  *
  * Its answers come from its own answers files and lichess and Stockfish
  * (./finderHost.ts), so a rerun asks only about positions none has seen: a
