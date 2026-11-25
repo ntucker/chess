@@ -89,6 +89,18 @@ describe('MiniBoard', () => {
     expect(board.every((square) => square.piece === '')).toBe(true);
   });
 
+  it('draws nothing for a key that is not a position', () => {
+    const host = document.createElement('div');
+    const root = createRoot(host);
+    act(() =>
+      root.render(
+        <MiniBoard position="not a key" orientation="white" lit={[]} highlight="lastMove" />,
+      ),
+    );
+    expect(host.childElementCount).toBe(0);
+    act(() => root.unmount());
+  });
+
   it('fills its parent with no square size', () => {
     const host = document.createElement('div');
     const root = createRoot(host);

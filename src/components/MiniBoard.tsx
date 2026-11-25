@@ -36,7 +36,7 @@ const LIGHT = SquareSet.lightSquares();
  */
 export function MiniBoard({ position, orientation, lit, highlight, squareSize }: Props) {
   const pos = position === undefined ? undefined : readPositionKey(position);
-  if (pos === null) return null;
+  if (position !== undefined && !pos) return null;
   // Rows top to bottom and squares left to right, as the side at the bottom sees them.
   const [ranks, files] = orientation === 'white' ? [DOWNWARD, UPWARD] : [UPWARD, DOWNWARD];
   const squareStyle =
