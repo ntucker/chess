@@ -192,8 +192,7 @@ describe('every shipped cue', () => {
       const keys = Array.from(playLine(line, readPositionKey(key)!), (step) => step.key);
       const cue = lineCue(lesson, line, keys, [move], 1)!;
       expect([id, cue.line]).toEqual([id, line]);
-      if (line.length > 1)
-        expect([id, tryVerdict(lesson, cue, line[1], NONE)]).toEqual([id, 'passed']);
+      expect([id, tryVerdict(lesson, cue, line[1], NONE)]).toEqual([id, 'passed']);
       const choose = payoffReplies(cue);
       line.forEach((uci, n) => {
         if (n === 0 || readPositionKey(keys[n])!.turn === lesson.side) return;

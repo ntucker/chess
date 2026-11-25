@@ -287,7 +287,8 @@ export function cueHeadline({
           return { title: 'Payoff complete.', detail: `That is what ${mistake} gave away.` };
         case 'playing':
           return { title: 'The payoff.', detail: `Play on and cash in on ${mistake}.` };
-        default:
+        case 'ahead':
+        case 'none':
           return { title: 'Found it.', detail: `${tried} punishes ${mistake}.` };
       }
   }

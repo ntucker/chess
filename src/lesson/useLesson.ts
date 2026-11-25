@@ -453,7 +453,8 @@ function useActs(
     learnerToMove: view.learnerToMove,
   };
   // Past the cue's acts, its searches go unread.
-  const cue = on && place && inActs(place) ? shown : undefined;
+  const inside = on && place && inActs(place) ? place : undefined;
+  const cue = inside?.cue;
   // The lines to the position before the mistake, and to the cue.
   const lines = cue ? [moves.slice(0, cue.ply - 1), moves.slice(0, cue.ply)] : [];
   const [before, after] = storedAnalyses(ctrl, 'stockfish', lines, state).map(finalOnly);
@@ -471,5 +472,5 @@ function useActs(
     getAnalysis,
     ...(waitsOnBefore ? (['stockfish', lines[0]] as const) : ([null] as const)),
   );
-  return cue && place && cueActs({ ...place, verdict });
+  return inside && cueActs({ ...inside, verdict });
 }
