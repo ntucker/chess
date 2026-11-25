@@ -202,44 +202,6 @@ export function useLessonScreen({
     { result, atLatest: game.atLatest, playing: !!playback.playing },
     learner,
   );
-  // The guide's rows; past them, Stockfish's alone (`moves`).
-  const guideRows = {
-    candidates: guidance.candidates,
-    // Inside the guide, Stockfish's rows are at most its best (`listedEngineMoves`).
-    engineBest: guidance.top.at(0),
-    rare: guidance.rare,
-    rareShown,
-  };
-  const listed = guidance.candidates.length ? shownRows(guideRows) : guidance.top;
-  // A pick's wait shows on its row, so the headline and the list stay put; a
-  // wait with no row listed for it (Back or Forward, a hidden rare move) is the headline's.
-  const loadingMove =
-    loading && listed.some(({ move }) => move.uci === pendingMove) ? pendingMove : undefined;
-  const { pastGuide, news, ...headline } = describeStatus(view, {
-    picking,
-    loading: loading && loadingMove === undefined,
-    title: lesson.title,
-    names,
-    rival: colorName(rival),
-    engine: described.name,
-    replying: game.replying,
-    viewing: !game.atLatest,
-    auto,
-    canPlay,
-    lineEnded: guidance.lineEnded,
-    startsRun,
-    practice:
-      modeState.mode === 'practice' ? { clean: modeState.clean, verdict: game.quality } : undefined,
-    ending,
-    cue,
-  });
-  // Where Stockfish's moves stand in for the guide's, a narrow page tells why
-  // in the idea pane's place. A failure keeps the headline's.
-  const aside =
-    pastGuide && listsTopMoves(view, mode) && !ideaCard && !game.error
-      ? { title: pastGuide, detail: headline.detail }
-      : null;
-
   // What the list of the rival's moves holds.
   const rivalMoves = !picking ? 'likely replies' : view.ply ? 'next move' : 'first move';
   /** Where the openings are picked, the lessons a move leads to. */
@@ -258,7 +220,6 @@ export function useLessonScreen({
   const rowProps = {
     position: view.key,
     pointed: preview?.move.uci,
-    loadingMove,
     marks,
     playable: canPlay,
     onPlay: play,
@@ -296,7 +257,7 @@ export function useLessonScreen({
 
   // The guide's moves, with any of Stockfish's after them, or past the
   // guide's moves Stockfish's alone.
-  const moves: LessonScreenModel['moves'] = guidance.candidates.length
+  const list = guidance.candidates.length
     ? {
         ...rowProps,
         heading: view.learnerToMove ? 'Your candidates' : rivalMoves,
@@ -305,9 +266,13 @@ export function useLessonScreen({
         // At the start each move's opening is the point; later the idea card names it.
         leadsAlways: picking,
         leadsTo,
-        ...guideRows,
+        candidates: guidance.candidates,
+        // Inside the guide, Stockfish's rows are at most its best (`listedEngineMoves`).
+        engineBest: guidance.top.at(0),
         verdicts: guidance.verdicts,
         opportunities: guidance.opportunities,
+        rare: guidance.rare,
+        rareShown,
         onShowRare: showRare,
         main: guidance.main,
         onPoint: pointCandidate,
@@ -327,6 +292,38 @@ export function useLessonScreen({
           main: guidance.top[0],
           onPoint: pointRow,
         }
+      : null;
+  // A pick's wait shows on its row, so the headline and the list stay put; a
+  // wait with no row shown for it (Back or Forward, a hidden rare move) is the headline's.
+  const loadingMove =
+    loading && list && shownRows(list).some(({ move }) => move.uci === pendingMove)
+      ? pendingMove
+      : undefined;
+  const moves: LessonScreenModel['moves'] = list && { ...list, loadingMove };
+
+  const { pastGuide, news, ...headline } = describeStatus(view, {
+    picking,
+    loading: loading && loadingMove === undefined,
+    title: lesson.title,
+    names,
+    rival: colorName(rival),
+    engine: described.name,
+    replying: game.replying,
+    viewing: !game.atLatest,
+    auto,
+    canPlay,
+    lineEnded: guidance.lineEnded,
+    startsRun,
+    practice:
+      modeState.mode === 'practice' ? { clean: modeState.clean, verdict: game.quality } : undefined,
+    ending,
+    cue,
+  });
+  // Where Stockfish's moves stand in for the guide's, a narrow page tells why
+  // in the idea pane's place. A failure keeps the headline's.
+  const aside =
+    pastGuide && listsTopMoves(view, mode) && !ideaCard && !game.error
+      ? { title: pastGuide, detail: headline.detail }
       : null;
 
   return {

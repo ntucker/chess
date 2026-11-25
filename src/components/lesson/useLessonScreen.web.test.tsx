@@ -157,11 +157,13 @@ describe('useLessonScreen', () => {
     expect(headline.eyebrowLink).toBe(header.placeLink);
   });
 
-  it("shows a pick's wait on its row, or in the headline when no row is listed for it", async () => {
+  it("shows a pick's wait on its row, leaving the headline as it was", async () => {
     await showWaiting('e2e4', undefined);
     expect(shown().moves?.loadingMove).toBe('e2e4');
     expect(shown().headline.title).toBe('Pick an opening.');
-    await act(async () => root?.unmount());
+  });
+
+  it("shows a pick's wait in the headline when no row is listed for it", async () => {
     await showWaiting('h2h4', undefined);
     expect(shown().moves?.loadingMove).toBeUndefined();
     expect(shown().headline.title).toBe('Setting the stage…');
