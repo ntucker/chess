@@ -153,8 +153,7 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
       report(`positions[${JSON.stringify(key)}]`, 'is inside the book but has no book move');
     // The cue card counts a mark's reply as punishing it (`Cue.found`), and a
     // clean run counts only book moves: where a clean run reaches the cue, the
-    // two must agree. The guide's choice rule already picks a booked reply
-    // there, so this holds a stored line (`Mistake.line`) to one.
+    // two must agree.
     for (const { path, cueKey, reply } of cues.get(key) ?? []) {
       const move = guideMove(lesson, cueKey, reply);
       // A reply the guide lacks is reported on the mark's line (`checkMistake`), not here.
@@ -165,7 +164,7 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
   return problems;
 }
 
-/** A cue an opponent's marked mistake sets up: the mark's path, the position after it, and its line's reply. */
+/** A cue an opponent's marked mistake sets up: the mark's path, the position after it, and its stored line's reply. */
 interface CueReply {
   readonly path: string;
   readonly cueKey: string;
@@ -208,10 +207,10 @@ function checkPosition(
     next.push({ key: afterKey, book: !!move.book });
     if (move.mistake) {
       checkMistake(lesson, pos, move, move.mistake, `${path}.mistake`, report);
-      if (!learner) {
-        const [, reply] = mistakeLine(lesson, key, move);
-        if (reply !== undefined) cues.push({ path: `${path}.mistake`, cueKey: afterKey, reply });
-      }
+      // Only a stored line can pick an unbooked reply: the guide's choice rule
+      // (`guideOrder`) plays a book move wherever the cue has one.
+      const reply = learner ? undefined : move.mistake.line?.[0];
+      if (reply !== undefined) cues.push({ path: `${path}.mistake`, cueKey: afterKey, reply });
     }
     checkNotes(lesson, move.notes, after, `${path}.notes`, report);
   });

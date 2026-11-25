@@ -625,6 +625,12 @@ describe('checkLesson', () => {
       expect(checkLesson(withG4(['e7e6'])).map(({ path }) => path)).toEqual([
         `positions["${keyAfter('e4', 'c6')}"].moves[1].mistake.line[0]`,
       ]);
+      // An illegal move at the cue is reported, not thrown.
+      const illegal = withMark(['e4', 'c6', 'g4'], [{ uci: 'e7e8' }], [{ uci: 'd2d4' }]);
+      expect(checkLesson(illegal).map(({ path }) => path)).toEqual([
+        `positions["${keyAfter('e4', 'c6', 'g4')}"].moves[0].uci`,
+        `positions["${keyAfter('e4', 'c6', 'g4')}"]`,
+      ]);
       // Past Black's non-book 2...h6, no clean run reaches 3.g4?'s cue, so 3...h5 needn't be booked.
       expect(checkLesson(withMark(['e4', 'c6', 'd4', 'h6', 'g4'], [{ uci: 'h6h5' }]))).toEqual([]);
     });
