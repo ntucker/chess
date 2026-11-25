@@ -87,7 +87,7 @@ async function host(lesson: Lesson, band: number) {
       const row = sketches.get(key);
       return fulls.get(key) ?? (row && { lines: row.lines, depth: row.depth, final: false });
     },
-    // The run is for `lesson.side`, so these are its book moves and every move of the erring side.
+    // The run is for `lesson.side`: its book moves (off the book, its unmarked moves), and every move of the erring side.
     guideMoves: ({ key }) => {
       const played = guideOrder(lesson, key, lesson.side);
       return played.length ? played.map((move) => move.uci) : undefined;

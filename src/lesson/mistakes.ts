@@ -1,8 +1,9 @@
 /**
  * Marked mistakes (`LessonMove.mistake`) read from the guide tree: the line
- * each one starts, and a note's reference to one (`MistakeIdea`) as the trap
- * the board draws and plays back. Derived on demand, never stored: the
- * marker and the guide's moves are the one home of a trap's line.
+ * each one starts (its stored `line`, else the guide's choice rule), and a
+ * note's reference to one (`MistakeIdea`) as the trap the board draws and
+ * plays back. The `Trap` is derived on demand, never stored: the marker and
+ * the guide's moves are the one home of a trap's line.
  */
 import { parseUci } from 'chessops/util';
 
@@ -39,11 +40,13 @@ export type BoardNote = Note<BoardIdea>;
 
 /**
  * The guide's moves at `key` in the order a mistake's line picks from them:
- * where the learner punishes, its book moves, or every move off the book,
- * where it has none; elsewhere every move. Most played first over every
- * band; ties, and moves without counts, keep the file's order. Act III picks
- * the same way (docs/plans/opportunities.md). Example: past 5...Qc8, a move
- * Black's guide doesn't book, 6.Qxd5? Qxc1# follows the guide's 6...Qxc1#.
+ * where the learner punishes, its book moves, or off the book, where it has
+ * none, every move it doesn't mark as a mistake; where the opponent punishes,
+ * every move it doesn't mark; where the erring side is to move, every move.
+ * Most played first over every band; ties, and moves without counts, keep the
+ * file's order. Act III picks the same way (docs/plans/opportunities.md).
+ * Example: past 5...Qc8, a move Black's guide doesn't book, 6.Qxd5? Qxc1#
+ * follows the guide's 6...Qxc1#.
  */
 export function guideOrder(
   lesson: Lesson,
@@ -51,37 +54,53 @@ export function guideOrder(
   punishing: Color,
 ): readonly LessonMove[] {
   const moves = lesson.positions[key]?.moves ?? [];
-  const book = moves.filter((move) => move.book);
   const toMove = readPositionKey(key)!.turn;
-  const played = toMove === punishing && toMove === lesson.side && book.length ? book : moves;
+  const book = moves.filter((move) => move.book);
+  const played =
+    toMove !== punishing
+      ? moves
+      : toMove === lesson.side && book.length > 0
+        ? book
+        : moves.filter((move) => !move.mistake);
   // Array.sort is stable, so equal counts keep the file's order.
   return [...played].sort((a, b) => (moveGames(b, 'all') ?? -1) - (moveGames(a, 'all') ?? -1));
 }
 
 /**
  * The line that `move`, a marked mistake at `key`, starts: the move, then
- * its stored line (`Mistake.line`), or else at each position the first of the
- * guide's moves there (`guideOrder`), ending where the guide has no move to
- * pick, or once it comes back to a position it passed. Example: a marked
- * 5.e6? with only 5...fxe6 after it in the guide, and nothing after that,
- * starts the line 5.e6 fxe6.
+ * its stored line (`Mistake.line`), or else the guide's (`guideLine`).
+ * Example: a marked 5.e6? with only 5...fxe6 after it in the guide, and
+ * nothing after that, starts the line 5.e6 fxe6.
  */
 export function mistakeLine(lesson: Lesson, key: PositionKey, move: LessonMove): Uci[] {
-  if (move.mistake?.line) return [move.uci, ...move.mistake.line];
+  return move.mistake?.line ? [move.uci, ...move.mistake.line] : guideLine(lesson, key, move.uci);
+}
+
+/**
+ * The line a mark on `uci` at `key` starts by the guide's choice rule alone
+ * (`guideOrder`), whatever line the mark stores: `uci`, then at each position
+ * the first of the guide's moves there, ending where the guide has no move to
+ * pick, or once it comes back to a position it passed.
+ */
+export function guideLine(lesson: Lesson, key: PositionKey, uci: Uci): Uci[] {
   const pos = readPositionKey(key)!;
   const punishing = opposite(pos.turn);
   const line: Uci[] = [];
   const passed = new Set([key]);
-  for (let uci: Uci | undefined = move.uci; uci !== undefined;) {
-    pos.play(parseUci(uci)!);
-    line.push(uci);
+  for (let next: Uci | undefined = uci; next !== undefined;) {
+    pos.play(parseUci(next)!);
+    line.push(next);
     const at = positionKey(pos);
     if (passed.has(at)) break;
     passed.add(at);
-    uci = guideOrder(lesson, at, punishing)[0]?.uci;
+    next = guideOrder(lesson, at, punishing)[0]?.uci;
   }
   return line;
 }
+
+/** Whether `line`, from `key`, is the one the guide's choice rule gives, so a mark stores none. */
+export const isGuideLine = (lesson: Lesson, key: PositionKey, line: readonly Uci[]) =>
+  String(guideLine(lesson, key, line[0])) === String(line);
 
 /** A mark's id: the position its move is played in, and the move. */
 export const markId = (key: PositionKey, uci: Uci) => `${key} ${uci}`;

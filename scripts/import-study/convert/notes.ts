@@ -23,7 +23,7 @@ export interface Converted {
   /** Ideas the model wrote that the lesson keeps. */
   readonly kept: number;
   readonly rejected: readonly { readonly idea: AnswerIdea; readonly why: string }[];
-  /** StudyNote texts cut mid-sentence at the word limit, as cut: the model's, or the comment's where it wrote no note on the move. */
+  /** Note texts cut mid-sentence at the word limit, as cut: the model's, or the comment's where it wrote no note on the move. */
   readonly cut: readonly string[];
 }
 
@@ -102,7 +102,7 @@ function noteText(text: string): string {
 
 /** `text` without a label the card already shows ("Plan:"). */
 const labelless = (text: string) =>
-  text.trim().replace(/^(?:Plan|Trap|Threat|StudyIdea|Line)\s*:\s*/i, '');
+  text.trim().replace(/^(?:Plan|Trap|Threat|Idea|Line)\s*:\s*/i, '');
 
 function lessonNote(
   text: string,

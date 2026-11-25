@@ -11,13 +11,13 @@ import { SAN } from '@/game/replay';
 import type { Line, Uci } from '@/lesson/lesson';
 
 import { nearestMatch, placeSequence, type Found } from './line';
-import type { Trap } from './mistakes';
+import type { StudyTrap } from './mistakes';
 import { chapterMoves, mainLine, type Chapter, type StudyMove } from './study';
 import { moveInWords, namedMoves, plainSan, plyOf, sideDoes } from './text';
 
 const TRAP = /Trap:\s*(.+?)\s+and\s+(White|Black)\s+((?:is|gets)\s+[^.]+)\./g;
 
-type TrapLine = Found & { readonly idea: Trap | Line };
+type TrapLine = Found & { readonly idea: StudyTrap | Line };
 
 /**
  * The "Trap:" lines in `move`'s comment; `learner` is the "you" of their text.
@@ -60,7 +60,7 @@ function trapText(pos: Chess, first: Uci, learner: Color, result: string): strin
 }
 
 /** "Black is losing" read as the winner's evaluation; "gets mated" as losing material. */
-function trapVerdict(winner: 'white' | 'black', outcome: string): Trap['verdict'] | undefined {
+function trapVerdict(winner: 'white' | 'black', outcome: string): StudyTrap['verdict'] | undefined {
   if (/mated/.test(outcome)) return 'losesMaterial';
   if (/losing|lost/.test(outcome)) return `${winner}Winning`;
   if (/clearly worse|big trouble|serious trouble/.test(outcome)) return `${winner}Clearly`;

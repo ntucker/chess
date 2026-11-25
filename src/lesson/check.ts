@@ -60,7 +60,7 @@ import {
   type VariationId,
 } from './lesson';
 import { needsBookMove } from './cleanRun';
-import { mistakeLine } from './mistakes';
+import { isGuideLine, mistakeLine } from './mistakes';
 import { guideMove } from './select';
 import {
   filePawnCount,
@@ -317,7 +317,7 @@ function checkMistake(
   path: string,
   report: Report,
 ) {
-  if (move.book) report(path, 'marks a book move, which the guide recommends');
+  if (move.book) report(path, BOOK_MARK);
   if (cost !== undefined && !(cost >= MISTAKE_LOSS && cost <= 1))
     report(`${path}.cost`, `must be from ${MISTAKE_LOSS} (a mistake) to 1`);
   const bands = lesson.popularity?.ratingBands;
@@ -329,13 +329,23 @@ function checkMistake(
     const off = offGuide(lesson, pos, [move.uci, ...line]);
     if (off !== undefined)
       report(`${path}.line[${off - 1}]`, 'is not a guide move at its position');
-    else if (String(mistakeLine(lesson, key, { uci: move.uci })) === String([move.uci, ...line]))
+    else if (isGuideLine(lesson, key, [move.uci, ...line]))
       report(`${path}.line`, 'is the line the guide gives anyway, so it is left out');
   }
-  const problem =
-    verdict === undefined ? undefined : trapProblem(pos, mistakeLine(lesson, key, move), verdict);
+  const problem = verdict && verdictProblem(lesson, pos, move, verdict);
   if (problem) report(`${path}.verdict`, problem);
 }
+
+/** The checker's problem with a mark on a book move. */
+export const BOOK_MARK = 'marks a book move, which the guide recommends';
+
+/** What's wrong with `verdict` as said of the line marked by `move`, legal in `pos`, if anything. */
+export const verdictProblem = (
+  lesson: Lesson,
+  pos: Chess,
+  move: LessonMove,
+  verdict: Exclude<Mistake['verdict'], undefined>,
+) => trapProblem(pos, mistakeLine(lesson, positionKey(pos), move), verdict);
 
 /** The index of the first of `moves` from `pos` that isn't a guide move where it is played, if any. */
 function offGuide(lesson: Lesson, pos: Chess, moves: readonly Uci[]): number | undefined {

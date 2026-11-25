@@ -172,11 +172,12 @@ export interface LessonMove<I = Idea> {
 }
 
 /**
- * A marked mistake: the move it marks, then the guide's moves after it
- * (`mistakeLine` in ./mistakes.ts), are the line where the other side
- * punishes it. Read by the side that plays it, a trap; by the other, an
- * opportunity. Each field is absent until measured: a trap migrated from a
- * guide has only its verdict, and its length where the guide goes on past it.
+ * A marked mistake: the move it marks, then its stored `line` or else the
+ * guide's moves after it (`mistakeLine` in ./mistakes.ts), are the line where
+ * the other side punishes it. Read by the side that plays it, a trap; by the
+ * other, an opportunity. Each field is absent until measured: a trap migrated
+ * from a guide has only its verdict, and its `line` where the guide would
+ * play another.
  */
 export interface Mistake {
   /**
