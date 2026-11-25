@@ -1,6 +1,5 @@
 import { AsyncBoundary, useFetch, useSuspense } from '@data-client/react';
-import { Spinner } from '@reactive/silk-native';
-import { useMemo, useState } from 'react';
+import { use, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
@@ -11,25 +10,27 @@ import { OpponentPicker } from '@/components/OpponentPicker';
 import type { PhonePage } from '@/components/PhonePages';
 import { ScoresheetOpener } from '@/components/ScoresheetPage';
 import { resetListener } from '@/components/resetListener';
-import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
+import { LoadingProgram } from '@/components/LoadingProgram';
+import { BoardColumn, BoardColumnPlaceholder, Stage, type StillGame } from '@/components/Stage';
 import { useBackToReview } from '@/components/useBackToReview';
 import { useLongWait } from '@/components/useLongWait';
 import { useNavigating } from '@/components/navigation';
 import { usePages } from '@/components/usePages';
 import { NewVersionError } from '@/files/newVersion';
 import type { VariationId } from '@/lesson/lesson';
-import { getLesson, isLessonId, type LessonId } from '@/resources/lesson';
+import { getLesson, isLessonId, LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { getProgress } from '@/resources/progress';
+import { DEFAULT_SETTINGS } from '@/settings/settings';
 import { useLayout } from '@/theme/Narrow';
 
 import { AutoPlay } from './AutoPlay';
 import { PhoneLesson } from './layouts/PhoneLesson';
 import { WideLesson } from './layouts/WideLesson';
 import { LessonSettings } from './LessonSettings';
-import { LOADING } from './status';
+import { LOADING, OPENINGS_TITLE } from './status';
 import { SourceCredits } from './SourceCredits';
 import { type LessonScreenInput, useLessonScreen } from './useLessonScreen';
-import { useOpeningsGame } from './useOpeningsGame';
+import { startOf, useOpeningsGame } from './useOpeningsGame';
 
 /**
  * The openings as a page: the start position, where the learner picks a
@@ -52,11 +53,28 @@ export function LessonPage({
   /** The history entry the address is (`useOpeningsGame`). */
   readonly entry?: string;
 }) {
+  const index = use(LessonIndexContext);
   if (id !== undefined && !isLessonId(id)) {
-    return <LessonPlaceholder message="There is no lesson here." />;
+    return <LessonMissing message="There is no lesson here." />;
   }
+  // The export knows the lesson's address but not its search params: the
+  // lesson's first line, or at the start, the default side, which the page's
+  // head turns around before the first paint for a learner who saved the other.
   return (
-    <BrowserOnly fallback={<LessonPlaceholder />}>
+    <BrowserOnly
+      fallback={
+        id === undefined ? (
+          <LessonLoading
+            still={{ moves: [], orientation: DEFAULT_SETTINGS.side, turnsWithSavedSide: true }}
+          />
+        ) : (
+          <LessonLoading
+            eyebrow={index[id].title}
+            still={{ moves: startOf(index, { address: id }), orientation: index[id].side }}
+          />
+        )
+      }
+    >
       <Openings address={id} variation={variation} moves={moves} entry={entry} />
     </BrowserOnly>
   );
@@ -98,11 +116,19 @@ function Openings({
   // A failed lesson clears once the page shows another (Back to the start).
   // A `key` would remount the page and lose the game, so the boundary resets.
   const resetOnLesson = useMemo(() => resetListener(lesson), [lesson]);
+  const index = use(LessonIndexContext);
+  const [game] = store;
   return (
     <AsyncBoundary
       // Untitled: React renders this fallback, uncommitted, whenever a lesson
       // loads in the background, and the tab's title would take it.
-      fallback={<LessonPlaceholder untitled />}
+      fallback={
+        <LessonLoading
+          untitled
+          eyebrow={lesson && index[lesson].title}
+          still={{ moves: game.moves.slice(0, game.ply), orientation: side }}
+        />
+      }
       errorComponent={LessonFailure}
       listen={resetOnLesson}
     >
@@ -212,34 +238,46 @@ function LessonFailure({ error }: { readonly error: Error }) {
   if (error instanceof NewVersionError) {
     return <NewVersionPage detail="Reload to open the lesson. Your progress in it stays." />;
   }
-  return <LessonPlaceholder message={error.message} />;
+  return <LessonMissing message={error.message} />;
 }
 
 /**
- * The lesson page before the lesson arrives, or with `message` when it can't
- * be shown; `untitled` leaves the tab's title as it is.
+ * The lesson page before the lesson arrives: its board `still` and the
+ * outline of its panel under `eyebrow` (none: the openings); `untitled`
+ * leaves the tab's title as it is.
  */
-function LessonPlaceholder({
-  message,
+function LessonLoading({
   untitled,
+  eyebrow = OPENINGS_TITLE,
+  still,
 }: {
-  readonly message?: string;
   readonly untitled?: boolean;
+  readonly eyebrow?: string;
+  readonly still: StillGame;
 }) {
   return (
     <Stage
-      title={untitled ? undefined : 'Lesson · Opening Night'}
-      board={
-        <BoardColumnPlaceholder>
-          {message ? null : <Spinner label="Loading the lesson" />}
-        </BoardColumnPlaceholder>
-      }
+      title={untitled ? undefined : `${eyebrow} · Opening Night`}
+      // As the lesson's header will name it: a phone's header carries the panel's eyebrow.
+      header={{ place: { name: eyebrow } }}
+      board={<BoardColumnPlaceholder still={still} />}
+      program={<LoadingProgram eyebrow={eyebrow} label={LOADING.detail} />}
+    />
+  );
+}
+
+/** The lesson page when its lesson can't be shown, and why. */
+function LessonMissing({ message }: { readonly message: string }) {
+  return (
+    <Stage
+      title="Lesson · Opening Night"
+      board={<BoardColumnPlaceholder />}
       program={
         <View style={styles.placeholder}>
           <StatusHeadline
             eyebrow="Lesson"
-            title={message ? 'Curtain stays down.' : LOADING.title}
-            detail={message ?? LOADING.detail}
+            title="Curtain stays down."
+            detail={message}
             news="all"
           />
         </View>

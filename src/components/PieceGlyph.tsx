@@ -8,7 +8,8 @@ import { pieceColors } from '@/theme/pieceColors';
 interface Props {
   readonly role: Role;
   readonly color: Color;
-  readonly size: number;
+  /** Its width and height: points, or a share of its parent's. */
+  readonly size: number | `${number}%`;
 }
 
 /**

@@ -15,7 +15,7 @@ import type { DrawBrushes } from '@lichess-org/chessground/draw';
 import { read } from '@lichess-org/chessground/fen';
 import type { Key, PieceNode } from '@lichess-org/chessground/types';
 import type { DOMProps } from 'expo/dom';
-import { useEffect, useEffectEvent, useMemo, useRef } from 'react';
+import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef } from 'react';
 
 import { type Drawing, type Square, squareOffset, TONES } from '@/board/drawing';
 import type { Ending, Mood } from '@/game/ending';
@@ -206,7 +206,9 @@ export default function Board({
       setBoard({ animation: { enabled: false } });
   });
 
-  useEffect(() => {
+  // Before the first paint, so the board never shows empty: a page's still
+  // board (`BoardColumnPlaceholder`) gives way straight to this one.
+  useLayoutEffect(() => {
     const target = element.current;
     if (!target) return;
     // The square picked before a press. Chessground reports the press a

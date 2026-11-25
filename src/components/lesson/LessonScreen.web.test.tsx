@@ -16,7 +16,13 @@ jest.mock('@data-client/react', () => ({
   useSuspense: () => undefined,
 }));
 jest.mock('./useOpeningsGame', () => ({
-  useOpeningsGame: () => ({ lesson: undefined, side: 'black', pending: false, playAs: () => {} }),
+  useOpeningsGame: () => ({
+    store: [{ moves: [], ply: 0 }, () => {}],
+    lesson: undefined,
+    side: 'black',
+    pending: false,
+    playAs: () => {},
+  }),
 }));
 let mockStarted = true;
 jest.mock('./useLessonScreen', () => ({

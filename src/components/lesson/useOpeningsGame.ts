@@ -26,7 +26,7 @@ const sameAddress = (a: Address, b: Address) =>
  * names ("Play on from here"), else the line that opens the variation it
  * names, else the first line that picks the lesson.
  */
-const startOf = (index: LessonIndex<LessonId>, at: Address) =>
+export const startOf = (index: LessonIndex<LessonId>, at: Address) =>
   at.address === undefined
     ? []
     : (opensAt(index[at.address], at) ?? index[at.address].lines[0].moves);
