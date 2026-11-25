@@ -60,7 +60,7 @@ import { lessonIndex } from '@/lesson/openings';
 import { convertChapters, convertReport } from './convert';
 import { claudeCli } from './convert/claude';
 import { withoutEmptyVariations } from './emptyVariations';
-import { engineCheck, ENGINES_OWN, type Evaluate, fillBook } from './engineCheck';
+import { engineCheck, ENGINES_OWN, type Evaluate, fillBook, sans } from './engineCheck';
 import { explainBookMoves, explainCli, explainReport } from './explain';
 import { extractChapter } from './extract';
 import { lessonJson } from './lessonJson';
@@ -73,7 +73,8 @@ import {
   settleMistakes,
   type StudyLesson,
 } from './mistakes';
-import { addPopularity, lichessExplorer } from './popularity';
+import { addPathCounts, type LessonFind, lessonFinds, withFinds } from './finds';
+import { addPopularity, lichessExplorer, type LichessExplorer } from './popularity';
 import { indexedWith, readLessonFile, registered, writeIndex } from './register';
 import { report, sourceReport } from './report';
 import { nodeStockfish } from './stockfish';
@@ -101,7 +102,10 @@ async function main() {
   if (first === '--popularity') {
     if (rest.length !== 1) throw new Error(USAGE);
     const file = rest[0];
-    writeLesson(file, checked(await withPopularity(readLessonFile(file), { fresh: true })));
+    const lesson = readLessonFile(file);
+    const explorer = lessonExplorer(lesson.id, { fresh: true });
+    writeLesson(file, checked(await withPopularity(lesson, explorer)));
+    explorer.saveUsed();
     return;
   }
   const study = Object.hasOwn(STUDIES, first) ? STUDIES[first] : undefined;
@@ -190,6 +194,25 @@ async function main() {
   console.log(
     `transpositions: ${transposed.moved} positions took the notes of a move order the lesson doesn't play`,
   );
+  // One explorer for the finds' counts and popularity, so both read one answer per position.
+  const explorer = lessonExplorer(lesson.id);
+  let finds: LessonFind[] = [];
+  const counting = !rest.includes('--no-popularity');
+  // Finds come from lichess's counts, and their gains are per rating band, so they need popularity.
+  if (study.opportunities && counting) {
+    // The finder searches with its own engine, so the import's waits for it.
+    stockfish.stop();
+    // The finder picks guide moves by their counts, as the report does on the shipped file.
+    finds = await lessonFinds(
+      await addPopularity(lesson, explorer.ask, explorer.answeredOn),
+      explorer.ask,
+    );
+    await stockfish.resume();
+    lesson = withFinds(lesson, finds);
+    console.log(
+      `opportunities: ${finds.length} finds written: ${finds.map(({ find }) => sans(lesson, [...find.line, find.mistake])).join('; ') || 'none'}`,
+    );
+  }
   const explainer = explainCli({
     learner: info.side,
     cacheFile: answersPath(info.id, '-explain'),
@@ -204,7 +227,11 @@ async function main() {
   stockfish.stop();
   // A run without the model can miss answers a run with it used, so it must not drop them.
   if (callModel) for (const answers of [cli, explainer, stockfish]) answers.saveUsed();
-  if (!rest.includes('--no-popularity')) lesson = await withPopularity(lesson, { save: callModel });
+  if (counting) {
+    lesson = await addPathCounts(lesson, finds, explorer.ask);
+    lesson = await withPopularity(lesson, explorer);
+    if (callModel) explorer.saveUsed();
+  }
   // The checker, the index and the registry each refuse a lesson by throwing, so all come before any
   // write: a lesson file written without its registry entry or index line fails lesson.test.ts.
   checked(lesson);
@@ -253,23 +280,23 @@ const answersPath = (lessonId: string, step: '' | '-explain' | '-stockfish' | '-
   join(ROOT, `scripts/import-study/answers/${lessonId}${step}.jsonl`);
 
 /**
- * `lesson` with its popularity counted: `fresh` asks lichess about every
- * position again, and `save` rewrites the answers file with only the answers used.
+ * The lichess explorer answering from the lesson's committed answers file;
+ * `fresh` asks lichess about every position again, replacing the file's
+ * answers once saved.
  */
-async function withPopularity(
-  lesson: Lesson,
-  { fresh = false, save = fresh }: { fresh?: boolean; save?: boolean },
-): Promise<Lesson> {
-  const explorer = lichessExplorer({
+const lessonExplorer = (lessonId: string, { fresh = false } = {}) =>
+  lichessExplorer({
     token: process.env.LICHESS_TOKEN,
-    cacheFile: answersPath(lesson.id, '-explorer'),
+    cacheFile: answersPath(lessonId, '-explorer'),
     fresh,
   });
+
+/** `lesson` with its popularity counted by `explorer`, each mark keeping its line. */
+async function withPopularity(lesson: Lesson, explorer: LichessExplorer): Promise<Lesson> {
   // Dated by when lichess gave the counts, which a rerun reads from the answers file.
   const counted = await addPopularity(lesson, explorer.ask, explorer.answeredOn, (asked) => {
     if (asked % 50 === 0) console.log(`popularity: ${asked} positions`);
   });
-  if (save) explorer.saveUsed();
   return keepMistakeLines(lesson, counted);
 }
 

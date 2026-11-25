@@ -42,6 +42,13 @@ export async function nodeStockfish(
   /** Rewrites the answers file with only the positions this run evaluated. */
   saveUsed: () => void;
   stop: () => void;
+  /**
+   * Starts a new engine after `stop`, keeping the answers used so far. The app's
+   * engine takes one host at a time, so another `nodeStockfish` (the
+   * opportunities step's, ./finds.ts) searches only between this one's `stop`
+   * and `resume`.
+   */
+  resume: () => Promise<void>;
 }> {
   let engine: NodeEngine | undefined;
   let connection: Connection | undefined;
@@ -102,6 +109,7 @@ export async function nodeStockfish(
       connection?.detach();
       engine?.terminate?.();
     },
+    resume: connect,
   };
 }
 

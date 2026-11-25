@@ -146,22 +146,29 @@ export function walkTo(start: string, line: readonly Uci[]): Node | undefined {
 }
 
 /**
- * Lichess's `counts` at the position `key` as replies: each move's games over
- * the games reaching the position, and thin when fewer than `minGames` do. A
- * key that is no move there (lichess's own notation for a move `recordedMove`
- * rejects, kept by `scripts/import-study/popularity.ts`) counts toward the
- * total but gets no share.
+ * Lichess's `counts` at the position `key` as replies: each move's share
+ * (`moveShare`: over `total`, the games reaching the position, where the
+ * explorer gave it, else over the listed moves' games), and thin when fewer
+ * than `minGames` games reach it. A key that is no move there (lichess's own
+ * notation for a move `recordedMove` rejects, kept by
+ * `scripts/import-study/popularity.ts`) counts toward the listed games but
+ * gets no share.
  */
-export function repliesFrom(key: PositionKey, counts: MoveCounts, minGames: number): Replies {
+export function repliesFrom(
+  key: PositionKey,
+  counts: MoveCounts,
+  minGames: number,
+  total?: number,
+): Replies {
   const pos = parsePositionKey(key);
   if (!pos) throw new Error(`Not a position key: ${key}`);
-  const total = Object.values(counts).reduce((sum, games) => sum + games, 0);
+  const listed = Object.values(counts).reduce((sum, games) => sum + games, 0);
   return {
     shares: Object.fromEntries(
       Object.entries(counts)
         .filter(([uci]) => recordedMove(pos, uci) !== undefined)
-        .map(([uci, games]) => [uci, moveShare(games, total) ?? 0]),
+        .map(([uci, games]) => [uci, moveShare(games, listed, total) ?? 0]),
     ),
-    thin: total < minGames,
+    thin: (total ?? listed) < minGames,
   };
 }

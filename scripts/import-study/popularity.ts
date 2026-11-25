@@ -6,7 +6,7 @@
  */
 
 import { parsePosition, parsePositionKey, positionKey, recordedMove } from '@/game/replay';
-import type { Lesson, PositionKey } from '@/lesson/lesson';
+import type { Lesson, LessonMove, LessonPosition, PositionKey } from '@/lesson/lesson';
 import type { MoveCounts } from '@/opportunity/walk';
 
 import { answersFile } from './jsonLines';
@@ -20,7 +20,27 @@ const SPEEDS = ['blitz', 'rapid', 'classical'];
 export type { MoveCounts };
 /** Games per move as lichess writes moves (castling as the king taking its rook, `e1h1`). */
 type LichessCounts = Readonly<Record<string, number>>;
-export type Explorer = (key: PositionKey, band: number) => Promise<MoveCounts>;
+
+/** What the explorer answered for a position in one band. */
+export interface ExplorerAnswer {
+  readonly counts: MoveCounts;
+  /**
+   * The games reaching the position: the explorer's own count, which also
+   * counts games that ended there. Absent where the cached answer predates
+   * totals: unknown, never 0 or the sum of `counts`.
+   */
+  readonly total?: number;
+}
+
+/**
+ * The explorer for one position and band. With `total`, a cached answer
+ * without one is asked again, so the answer has it.
+ */
+export type Explorer = (
+  key: PositionKey,
+  band: number,
+  options?: { readonly total?: boolean },
+) => Promise<ExplorerAnswer>;
 
 interface ExplorerOptions {
   readonly token?: string;
@@ -37,8 +57,12 @@ interface ExplorerOptions {
   readonly sleep?: (ms: number) => Promise<void>;
 }
 
-/** An answers file row: what the explorer answered for `<band> <position>`, and on which date. */
-type ExplorerRow = readonly [id: string, counts: LichessCounts, date: string];
+/**
+ * An answers file row: what the explorer answered for `<band> <position>`, on
+ * which date, and the games reaching the position (rows from before totals
+ * were kept have none).
+ */
+type ExplorerRow = readonly [id: string, counts: LichessCounts, date: string, total?: number];
 
 export interface LichessExplorer {
   readonly ask: Explorer;
@@ -81,11 +105,13 @@ export function lichessExplorer({
     lastRequest = Date.now();
     return get(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
   };
-  const ask: Explorer = async (key, band) => {
+  const ask: Explorer = async (key, band, { total: needed = false } = {}) => {
     const id = `${band} ${key}`;
-    const [, counts, date] = cache.get(id) ?? (await fetched(id, key, band));
+    const cached = cache.get(id);
+    const [, counts, date, total] =
+      cached && (!needed || cached[3] !== undefined) ? cached : await fetched(id, key, band);
     if (!answeredOn || date > answeredOn) answeredOn = date;
-    return recordedCounts(key, counts);
+    return { counts: recordedCounts(key, counts), ...(total !== undefined && { total }) };
   };
   const fetched = async (id: string, key: PositionKey, band: number): Promise<ExplorerRow> => {
     const url = new URL('https://explorer.lichess.ovh/lichess');
@@ -104,13 +130,9 @@ export function lichessExplorer({
         continue;
       }
       if (!response.ok) throw new Error(`Explorer answered ${response.status} for ${id}`);
-      const body = (await response.json()) as {
-        moves: { uci: string; white: number; draws: number; black: number }[];
-      };
-      const counts = Object.fromEntries(
-        body.moves.map((move) => [move.uci, move.white + move.draws + move.black]),
-      );
-      const row: ExplorerRow = [id, counts, today];
+      const body = (await response.json()) as Games & { moves: (Games & { uci: string })[] };
+      const counts = Object.fromEntries(body.moves.map((move) => [move.uci, games(move)]));
+      const row: ExplorerRow = [id, counts, today, games(body)];
       cache.add(row);
       return row;
     }
@@ -121,6 +143,15 @@ export function lichessExplorer({
     saveUsed: cache.saveUsed,
   };
 }
+
+/** The explorer's results for a position or a move. */
+interface Games {
+  readonly white: number;
+  readonly draws: number;
+  readonly black: number;
+}
+
+const games = ({ white, draws, black }: Games) => white + draws + black;
 
 /**
  * `counts` with each move as lesson files write it (`recordedMove`). A move
@@ -136,9 +167,12 @@ function recordedCounts(key: PositionKey, counts: LichessCounts): MoveCounts {
 /**
  * `lesson` with games per band for the moves of each position where the side
  * to move has a choice: the opponent's first, nearest the start first, then
- * the learner's. Moves without a choice get no counts ("not measured"), and
- * counts already in `lesson` are replaced. `date` says when the counts were
- * fetched; it is asked once the crawl is done.
+ * the learner's. Where it asks, it replaces the counts already in `lesson`
+ * and writes the games reaching the position (`LessonPosition.games`) from
+ * the same answers, or none where an answer predates totals; elsewhere it
+ * keeps what `lesson` has (`addPathCounts` measures a find's path), so a
+ * position without a choice has counts only where that step wrote them.
+ * `date` says when the counts were fetched; it is asked once the crawl is done.
  *
  * A band is not asked about where no game can reach the position, because
  * every move into it counted 0 games there, or left a position no game
@@ -154,7 +188,7 @@ export async function addPopularity(
 ): Promise<Lesson> {
   const start = positionKey(parsePosition(lesson.start)!);
   const order = byDistance(lesson, start);
-  const counts = new Map<PositionKey, readonly number[][]>();
+  const counts = new Map<PositionKey, Measured>();
   let asked = 0;
   const crawl = async (wanted: (key: PositionKey) => boolean) => {
     /** Per band, whether some game can reach each position, as far as the counts so far tell. */
@@ -164,16 +198,13 @@ export async function addPopularity(
       // The position that first led here comes earlier in `order`, so this one has an entry.
       const here = reached.get(key)!;
       if (wanted(key) && !counts.has(key)) {
-        const answers: (MoveCounts | undefined)[] = [];
+        const answers: (ExplorerAnswer | undefined)[] = [];
         for (const [i, band] of RATING_BANDS.entries())
           answers.push(here[i] ? await explorer(key, band) : undefined);
-        counts.set(
-          key,
-          moves.map((move) => answers.map((answer) => answer?.[move.uci] ?? 0)),
-        );
+        counts.set(key, measured(moves, answers));
         onProgress?.(++asked);
       }
-      const games = counts.get(key);
+      const games = counts.get(key)?.moves;
       // next[m] is the position moves[m] leads to.
       next.forEach((after, m) => {
         // Unmeasured moves (no counts) are assumed played.
@@ -195,13 +226,41 @@ export async function addPopularity(
     positions: Object.fromEntries(
       Object.entries(lesson.positions).map(([key, entry]) => {
         const games = counts.get(key);
-        // Counts already in the file are replaced, or dropped where nothing was asked.
-        const moves = entry.moves.map(({ games: _, ...move }, m) =>
-          games ? { ...move, games: games[m] } : move,
-        );
-        return [key, { ...entry, moves }];
+        return [key, games ? withCounts(entry, games) : entry];
       }),
     ),
+  };
+}
+
+/** What the explorer said about one position: games per move (one count per band, as `moves`), and reaching it. */
+interface Measured {
+  readonly moves: readonly (readonly number[])[];
+  readonly total?: readonly number[];
+}
+
+/**
+ * `moves`' games per band from `answers`, one per band (undefined for a band
+ * not asked, which counts 0), and the games reaching the position where every
+ * answer asked has its total.
+ */
+export function measured(
+  moves: readonly LessonMove[],
+  answers: readonly (ExplorerAnswer | undefined)[],
+): Measured {
+  const totals = answers.map((answer) => (answer ? answer.total : 0));
+  return {
+    moves: moves.map((move) => answers.map((answer) => answer?.counts[move.uci] ?? 0)),
+    ...(totals.every((total) => total !== undefined) && { total: totals }),
+  };
+}
+
+/** `entry` with the games `games` measured, replacing any it had: none reaching it where `games` has no total. */
+export function withCounts(entry: LessonPosition, { moves, total }: Measured): LessonPosition {
+  const { games: _, ...rest } = entry;
+  return {
+    ...rest,
+    moves: entry.moves.map((move, m) => ({ ...move, games: moves[m] })),
+    ...(total && { games: total }),
   };
 }
 
