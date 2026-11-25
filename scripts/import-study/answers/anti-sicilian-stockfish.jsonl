@@ -1184,3 +1184,7 @@
 {"key":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -","search":"1x100000","evaluation":{"score":0.5211593152406621,"pawns":0.23,"best":"e2e4"}}
 {"key":"rq2kb1r/pp1npppp/5n2/1N1P4/Q4B2/5N2/P4PPP/R3R1K1 b kq -","search":"1x100000","evaluation":{"score":0.981663023118368,"pawns":10.81,"best":"e8d8"}}
 {"key":"rq2kb1r/pp1npppp/5n2/1N1P4/Q7/5N2/P4PPP/R1B1R1K1 w kq -","search":"1x100000","evaluation":{"score":0.984864762793104,"pawns":11.34,"best":"c1f4"}}
+{"key":"r2n1bnr/ppk1pppp/8/3PN3/1Bq5/8/5PPP/R2QK2R w K -","search":"1x100000","evaluation":{"score":0.9755354669736912,"pawns":10.01,"best":"e5c4"}}
+{"key":"r2n1bnr/ppk1pppp/8/3P4/1BN5/8/5PPP/R2QK2R b K -","search":"1x100000","evaluation":{"score":0.9708393316291482,"pawns":9.52,"best":"g8f6"}}
+{"key":"Q3kbnr/1p1q2pp/5p2/1p2p3/4P3/2N5/PB3PPP/R3K2R b KQk -","search":"1x100000","evaluation":{"score":0.9151826607186987,"pawns":6.46,"best":"e8f7"}}
+{"key":"r1bq1r2/pp1pnppk/2n1p3/4P3/3P4/5N2/P2N1PPP/R2QK2R w KQ -","search":"1x100000","evaluation":{"score":0.7068257687656249,"pawns":2.39,"best":"f3g5"}}

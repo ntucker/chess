@@ -235,3 +235,8 @@
 ["1800 rnq1kb1r/1p3ppp/2p2n2/p2p1b2/3P1B2/1QN1P3/PP3PPP/2R1KBNR w Kkq -",{"c3b5":65,"c3d5":24,"g1f3":22,"a2a4":7,"a2a3":6,"f1e2":2,"f4g5":2,"f2f3":1,"h2h3":1,"f4e5":1,"e3e4":1},"2026-11-20"]
 ["1800 rnq1kb1r/pp3ppp/2p1pn2/3P1b2/3P1B2/1QN1P3/PP3PPP/R3KBNR b KQkq -",{"e6d5":4472,"c6d5":805,"f6d5":635,"e6e5":4,"f8e7":3,"f6e4":1},"2026-11-20"]
 ["1800 rnq1kb1r/pp3ppp/2p2n2/3p1b2/3P1B2/1QN1P3/PP3PPP/2R1KBNR b Kkq -",{"c8d7":1149,"b8d7":925,"f8e7":729,"f5e6":311,"a7a6":192,"f6e4":39,"f6h5":30,"b8a6":25,"a7a5":23,"b7b6":12,"f8d6":10,"h7h6":8,"c8e6":8,"f5d7":5,"c8d8":4,"f8b4":2,"b7b5":2,"f5g6":1},"2026-11-20"]
+["1000 rnbqk1nr/ppp2ppp/8/4P3/1BP5/8/PP3pPP/RN1QKBNR w KQkq -",{"e1e2":959,"e1f2":695},"2026-11-25"]
+["1200 rnbqk1nr/ppp2ppp/8/4P3/1BP5/8/PP3pPP/RN1QKBNR w KQkq -",{"e1e2":5045,"e1f2":2418},"2026-11-25"]
+["1400 rnbqk1nr/ppp2ppp/8/4P3/1BP5/8/PP3pPP/RN1QKBNR w KQkq -",{"e1e2":16273,"e1f2":5199},"2026-11-25"]
+["1600 rnbqk1nr/ppp2ppp/8/4P3/1BP5/8/PP3pPP/RN1QKBNR w KQkq -",{"e1e2":30087,"e1f2":5130},"2026-11-25"]
+["1800 rnbqk1nr/ppp2ppp/8/4P3/1BP5/8/PP3pPP/RN1QKBNR w KQkq -",{"e1e2":24357,"e1f2":2049},"2026-11-25"]

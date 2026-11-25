@@ -186,7 +186,10 @@ const moveNotes = (
   (move?.notes ?? []).map((note) => ({ note: boardNote(lesson, note, after), before, after }));
 
 const positionNotes = (lesson: Lesson, key: PositionKey): ShownNote[] =>
-  (lesson.positions[key]?.notes ?? []).map((note) => ({ note: boardNote(lesson, note, key), after: key }));
+  (lesson.positions[key]?.notes ?? []).map((note) => ({
+    note: boardNote(lesson, note, key),
+    after: key,
+  }));
 
 /** The idea card at `keys[ply]`: the notes of the move played into it, then its own. */
 function arrivalNotes(
@@ -209,10 +212,8 @@ const LANDING_MOVES = 2;
  * The latest trap `line` fell into within its first `shownMoves` moves (see
  * `LandedTrap`). A trap belongs to the position its idea is checked in, so
  * this reads the notes about each position on the line: its own, and those
- * of the move played into it. Traps that land alike (the same tempting move
- * and reply) part later: the one whose moves the whole line follows furthest
- * is the one it fell into, even with the board stepped back to the landing;
- * the first in note order while the line hasn't chosen.
+ * of the move played into it. Each marked move starts one line, so at most
+ * one trap there matches the line, though two notes may name it.
  */
 function landedTrap(
   lesson: Lesson,
@@ -227,8 +228,6 @@ function landedTrap(
     return n === -1 ? trap.moves.length : n;
   };
   for (let ply = shownMoves - 1; ply >= 0; ply--) {
-    let landed: LandedTrap | undefined;
-    let furthest = 0;
     for (const note of arrivalNotes(lesson, keys, guideMoves, ply)) {
       if (note.after !== keys[ply]) continue;
       for (const trap of note.note.ideas ?? []) {
@@ -237,13 +236,10 @@ function landedTrap(
         const landing = Math.min(LANDING_MOVES, trap.moves.length);
         if (ply + landing > shownMoves) continue;
         const matched = matchedMoves(trap, ply);
-        // A tie keeps the first in note order.
-        if (matched < landing || matched <= furthest) continue;
-        furthest = matched;
-        landed = { trap, note, ply, landed: keys[ply + landing], movesPlayed: matched };
+        if (matched >= landing)
+          return { trap, note, ply, landed: keys[ply + landing], movesPlayed: matched };
       }
     }
-    if (landed) return landed;
   }
   return undefined;
 }

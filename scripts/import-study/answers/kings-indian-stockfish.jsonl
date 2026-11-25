@@ -256,3 +256,5 @@
 {"key":"rnbr2k1/ppp2pbp/6p1/4N3/2P1N3/8/PP2BPPP/R1B1K2R b KQ -","search":"1x100000","evaluation":{"score":0.4944771046316658,"pawns":-0.06,"best":"g7e5"}}
 {"key":"rnbr2k1/ppp2pbp/6p1/4N3/2P1n3/2N1B3/PP3PPP/R3KB1R w KQ -","search":"1x100000","evaluation":{"score":0.42508560971233006,"pawns":-0.82,"best":"c3e4"}}
 {"key":"rnbr2k1/ppp2pbp/6p1/4N3/2P1n3/2N5/PP2BPPP/R1B1K2R w KQ -","search":"1x100000","evaluation":{"score":0.4944771046316658,"pawns":-0.06,"best":"c3e4"}}
+{"key":"r1b2rk1/ppp2pbp/n4np1/4P3/2P1P3/2N2N2/PP2B1PP/R1BqK2R w KQ -","search":"1x100000","evaluation":{"score":0.4696601598181785,"pawns":-0.33,"best":"e2d1"}}
+{"key":"r1b2rk1/ppp2pbp/n4np1/4P3/2P1P3/2N2N2/PP4PP/R1BBK2R b KQ -","search":"1x100000","evaluation":{"score":0.454103562397001,"pawns":-0.5,"best":"f6g4"}}

@@ -101,24 +101,13 @@ describe('lessonView', () => {
   describe('trap', () => {
     const LANDED = [...TRAP, 'Nxe5', 'Nxe5'];
 
-    it('follows the line between traps that land alike, in the shipped Caro-Kann', () => {
-      // After 5...Qa5+ 6.Bd2 the guide holds two traps: 6...Qb6 7.fxe4, and 6...Bxc2 7.Qxc2.
+    it('follows the guide from a marked move, in the shipped Caro-Kann', () => {
+      // After 5...Qa5+? 6.Bd2 the guide's most played reply for Black is 6...Qb6, then 7.fxe4.
       const lesson = readShippedLesson('caro-kann');
       const start = ['e4', 'c6', 'd4', 'd5', 'e5', 'Bf5', 'g4', 'Be4', 'f3', 'Qa5+', 'Bd2'];
-      const trapAfter = (...more: string[]) => {
-        const line = uciLine(...start, ...more);
-        return lessonView({ lesson, line, ply: line.length, opponent: 1500 }).trap;
-      };
-      const qb6 = ['d8a5', 'c1d2', 'a5b6', 'f3e4']; // Qa5+ Bd2 Qb6 fxe4
-      const bxc2 = ['d8a5', 'c1d2', 'e4c2', 'd1c2']; // Qa5+ Bd2 Bxc2 Qxc2
-      // At the landing the line hasn't chosen, so the first in note order shows.
-      expect(trapAfter()!.trap.moves.slice(0, 4)).toEqual(qb6);
-      expect(trapAfter('Bxc2', 'Qxc2')!.trap.moves.slice(0, 4)).toEqual(bxc2);
-      expect(trapAfter('Qb6', 'fxe4')!.trap.moves.slice(0, 4)).toEqual(qb6);
-      // Stepped back to the landing, the line has still chosen.
-      const line = uciLine(...start, 'Bxc2', 'Qxc2');
-      const back = lessonView({ lesson, line, ply: start.length, opponent: 1500 }).trap;
-      expect(back!.trap.moves.slice(0, 4)).toEqual(bxc2);
+      const line = uciLine(...start);
+      const trap = lessonView({ lesson, line, ply: line.length, opponent: 1500 }).trap;
+      expect(trap!.trap.moves.slice(0, 4)).toEqual(['d8a5', 'c1d2', 'a5b6', 'f3e4']);
     });
 
     it('is absent until the punishing reply is played', () => {
