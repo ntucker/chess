@@ -58,6 +58,15 @@ describe('candidateDrawings', () => {
       { kind: 'arrow', from: 'c8', to: 'f5', tone: 'main' },
     ]);
   });
+  it("draws the other side's marked mistake in the danger tone where opportunities show", () => {
+    const [bf5, c5] = sampleView(ADVANCE).candidates;
+    const marked = { ...c5, move: { ...c5.move, mistake: {} } };
+    expect(candidateDrawings([bf5, marked], bf5, true).slice(0, 2)).toEqual([
+      { kind: 'glow', square: 'c6', tone: 'danger' },
+      { kind: 'arrow', from: 'c6', to: 'c5', tone: 'danger' },
+    ]);
+    expect(candidateDrawings([bf5, marked], bf5)[0]).toMatchObject({ tone: 'other' });
+  });
 });
 
 describe('ideaDrawings', () => {

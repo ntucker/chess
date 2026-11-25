@@ -39,7 +39,10 @@ export function TippedBadge({ tip, ...badge }: Props & { readonly tip: string })
  * Inaccuracy, 0.4 pawns worse for you". A move that changes nothing, like
  * the best, says only its label.
  */
-export function verdictText({ quality, change: { description } }: EngineVerdict) {
+export function verdictText({
+  quality,
+  change: { description },
+}: Pick<EngineVerdict, 'quality' | 'change'>) {
   const verdict = `Stockfish: ${qualityLooks[quality].name}`;
   if (description === NO_CHANGE) return verdict;
   return `${verdict}, ${description.charAt(0).toLowerCase()}${description.slice(1)}`;

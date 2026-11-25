@@ -176,10 +176,12 @@ describe('engineVerdict', () => {
     expect(engineVerdict(before, undefined, 'g8f6', 'black', 'black')).toEqual({
       quality: 'best',
       change: { label: '0.0', description: 'No change' },
+      loss: 0,
     });
     expect(engineVerdict(before, undefined, 'd7d5', 'black', 'black')).toEqual({
       quality: 'inaccuracy',
       change: { label: '\u22120.6', description: '0.6 pawns worse for you' },
+      loss: expect.closeTo(0.07),
     });
     // The opponent's slip, as the learner (White) sees it: better for them.
     expect(engineVerdict(before, undefined, 'c7c5', 'black', 'white')).toMatchObject({
@@ -193,6 +195,7 @@ describe('engineVerdict', () => {
     expect(engineVerdict(before, analysis(['e2e4', 0.68, 2.4]), 'a7a6', 'black', 'black')).toEqual({
       quality: 'mistake',
       change: { label: '\u22122.1', description: '2.1 pawns worse for you' },
+      loss: expect.closeTo(0.15),
     });
   });
 });

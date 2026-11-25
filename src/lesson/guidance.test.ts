@@ -168,7 +168,10 @@ describe('guidance', () => {
 
     it("hands Stockfish's verdicts on the candidates to the list, only in Explore off the picking moves", () => {
       const verdicts = new Map([
-        ['c8f5', { quality: 'good', change: { label: '\u22120.1', description: '' } }] as const,
+        [
+          'c8f5',
+          { quality: 'good', change: { label: '\u22120.1', description: '' }, loss: 0.01 },
+        ] as const,
       ]);
       const at = (sans: string[], mode: LessonMode, engine: EngineView = { verdicts }) =>
         guidance({
@@ -183,6 +186,17 @@ describe('guidance', () => {
       expect(at(ADVANCE, 'explore', {})).toEqual(new Map());
       expect(at(ADVANCE, 'practice')).toBeUndefined();
       expect(at([], 'explore')).toBeUndefined();
+    });
+
+    it("points out the other side's marked mistakes only in Explore, on its turn, off the picking moves", () => {
+      const at = (sans: string[], mode: LessonMode) =>
+        guidance({ view: sampleView(sans), mode, switches: ALL_ON, picking: sans.length === 0 })
+          .opportunities;
+      // After 1.e4 c6 2.d4 d5 it is White's turn: the sample's learner plays Black.
+      expect(at(MAIN, 'explore')).toBe(true);
+      expect(at(ADVANCE, 'explore')).toBe(false);
+      expect(at(MAIN, 'practice')).toBe(false);
+      expect(at([], 'explore')).toBe(false);
     });
 
     it("lists Stockfish's top three beyond the guide, and at a guide end, marking the first as best", () => {

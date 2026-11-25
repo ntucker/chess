@@ -146,7 +146,7 @@ function Lead({ children }: { readonly children: string }) {
  * has none, and Stockfish's verdict on it when there is one.
  * Example: "No notes on g6. Stockfish: Inaccuracy, 0.6 pawns worse for you."
  */
-export const noNotesText = (san: string, verdict?: EngineVerdict) =>
+export const noNotesText = (san: string, verdict?: Pick<EngineVerdict, 'quality' | 'change'>) =>
   `No notes on ${san}.${verdict ? ` ${verdictText(verdict)}.` : ''}`;
 
 /** What stands in the idea card's place where it has nothing to show: a heading, as the card's, over `detail`. */

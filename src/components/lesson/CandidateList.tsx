@@ -48,6 +48,11 @@ interface Props {
    * move, whose tooltip says the verdict and the change for the learner.
    */
   readonly verdicts?: ReadonlyMap<Uci, EngineVerdict>;
+  /**
+   * Point out the other side's marked mistakes (`Guidance.opportunities`):
+   * each row's dot in the danger tone, and its cost once Stockfish judged it.
+   */
+  readonly opportunities?: boolean;
   /** Rare candidates, listed after the others while `rareShown`. */
   readonly rare: readonly Candidate[];
   readonly rareShown: boolean;
@@ -116,6 +121,7 @@ export function CandidateList({
   candidates,
   engineBest,
   verdicts,
+  opportunities = false,
   rare,
   rareShown,
   onShowRare,
@@ -156,6 +162,7 @@ export function CandidateList({
             main={candidate === main}
             topEngine={candidate === engineBest}
             verdict={verdicts?.get(candidate.move.uci)}
+            opportunities={opportunities}
             pointed={candidate.move.uci === pointed}
             mark={marks.get(candidate.move.uci)}
             // Every row keeps room for a mark once one has one, so their shares line up.
@@ -266,6 +273,8 @@ interface RowProps {
   readonly topEngine: boolean;
   /** Stockfish's verdict on a guide's move. */
   readonly verdict?: EngineVerdict;
+  /** As the list's. */
+  readonly opportunities: boolean;
   readonly pointed: boolean;
   readonly mark?: Mark;
   /** Some row of the list has a mark, so this one keeps room for one. */
@@ -290,6 +299,7 @@ function Row({
   main,
   topEngine,
   verdict,
+  opportunities,
   pointed,
   mark,
   markSlot,
@@ -305,7 +315,9 @@ function Row({
   const { theme } = useTheme();
   const { color } = theme.semantic;
   const { move, san, engine } = candidate;
-  const tone = toneColors[candidateTone(candidate, main)];
+  const tone = toneColors[candidateTone(candidate, main, opportunities)];
+  // The other side's marked mistake: what it gives away, once Stockfish judged it.
+  const cost = opportunities && move.mistake ? verdict?.loss : undefined;
   // The board marks Stockfish's best, the top move listed beside the guide's.
   const hollow = candidate.rare || (engine && !main && !topEngine);
   const point = () => onPoint(move.uci);
@@ -319,6 +331,7 @@ function Row({
         share !== undefined && `${percent(share)} of games`,
         topEngine ? TOP_ENGINE_MOVE : engine?.description,
         verdict && verdictText(verdict),
+        cost !== undefined && costTip(cost),
         mark && SPOKEN_MARKS[mark],
       ]
         .filter(Boolean)
@@ -368,6 +381,13 @@ function Row({
               tip={verdictText(verdict)}
             />
           ) : null}
+          {cost === undefined ? null : (
+            <Tip tip={costTip(cost)}>
+              <Text role="caption" tone="danger" style={styles.cost}>
+                {`\u2212${percent(cost)}`}
+              </Text>
+            </Tip>
+          )}
           {move.risk ? (
             <Text role="caption" tone="secondary" style={styles.risk}>
               {move.risk}
@@ -406,6 +426,10 @@ function Row({
     </Pressable>
   );
 }
+
+/** What an opportunity's cost means, in its tooltip and its row's label. */
+const costTip = (loss: number) =>
+  `An opportunity: this mistake gives away ${percent(loss)} of the winning chances`;
 
 /** What a row of Stockfish's among the guide's says it is. */
 const TOP_ENGINE_MOVE = 'top engine move';
@@ -507,6 +531,7 @@ const SAME = StyleSheet.create({
   move: { flexGrow: 1, flexShrink: 1, gap: 1 },
   title: { flexDirection: 'row', alignItems: 'center', gap: TITLE_GAP },
   risk: { textTransform: 'capitalize' },
+  cost: { fontFamily: fonts.mono },
   share: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   track: { width: 52, height: 4, borderRadius: 2, overflow: 'hidden' },
   fillBar: { height: '100%', borderRadius: 2 },

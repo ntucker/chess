@@ -201,6 +201,12 @@ export interface Guidance {
    * candidate missing from it is still being judged. Undefined elsewhere.
    */
   readonly verdicts?: ReadonlyMap<Uci, EngineVerdict>;
+  /**
+   * The list and the board point out the other side's marked mistakes, each
+   * an opportunity (a red dot and its cost from `verdicts`): in Explore, on
+   * the other side's turn, away from the moves that pick the opening.
+   */
+  readonly opportunities: boolean;
   /** The reply that punishes the move just played, where guidance marks it. */
   readonly refutation?: Uci;
   /** A trap the line fell into, while it shows (see `trapShown`). */
@@ -392,6 +398,7 @@ export function guidance(input: GuidanceInput): Guidance {
     best: best && tagsBest(view, engine?.final, best) ? best : undefined,
     top,
     verdicts: explore && !picking ? (engine?.verdicts ?? NO_VERDICTS) : undefined,
+    opportunities: explore && !picking && !view.learnerToMove,
     refutation,
     trap,
     // The cue's own mistake: the cue comes right after it.
