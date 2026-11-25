@@ -192,7 +192,8 @@ function pointwise(input: Float32Array, inputs: number, conv: Layer): Float32Arr
   return out;
 }
 
-function softmax(logits: Float32Array): Float32Array {
+/** Turns scores into chances that add up to 1, each growing with its score's exponential. */
+export function softmax(logits: Float32Array): Float32Array {
   const max = Math.max(...logits);
   const out = logits.map((v) => Math.exp(v - max));
   const sum = out.reduce((a, b) => a + b, 0);

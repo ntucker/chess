@@ -4,10 +4,11 @@ import { type NormalMove, ROLES } from 'chessops/types';
 import { makeUci, opposite } from 'chessops/util';
 
 import type { Evaluation } from '@/evaluation/evaluation';
-import { playLine } from '@/game/replay';
+import { playLine, recordedMove } from '@/game/replay';
+import type { Uci } from '@/lesson/lesson';
 
 import type { MaiaRating } from './ratings';
-import { INPUT_PLANES } from './network';
+import { INPUT_PLANES, softmax } from './network';
 import { policySlot } from './policy';
 
 const HISTORY = 8;
@@ -32,6 +33,26 @@ export function prepareInput(line: readonly string[]): { pos: Chess; planes: Flo
   return { pos: history[history.length - 1].pos, planes: encodeInput(history) };
 }
 
+/** A legal move and where its score sits in the network's policy output (`policySlot`). */
+interface SlottedMove {
+  readonly move: NormalMove;
+  readonly slot: number;
+}
+
+/** Each legal move in `pos` with its policy slot, castling as the king taking its rook (`e1h1`). */
+function* legalSlots(pos: Chess): Generator<SlottedMove> {
+  for (const [from, dests] of pos.allDests()) {
+    for (const to of dests) {
+      const promotes = pos.board.pawn.has(from) && SquareSet.backranks().has(to);
+      for (const promotion of promotes ? PROMOTIONS : [undefined]) {
+        const move = { from, to, promotion };
+        const slot = policySlot(move, pos.turn === 'black');
+        if (slot !== undefined) yield { move, slot };
+      }
+    }
+  }
+}
+
 /**
  * The legal move in `pos` that the network's `policy` output rates highest,
  * in UCI with castling as the king taking its rook (`e1h1`). Like Maia on
@@ -39,23 +60,28 @@ export function prepareInput(line: readonly string[]): { pos: Chess; planes: Flo
  * of its rating most likely plays, without searching.
  */
 export function bestMove(pos: Chess, policy: Float32Array): string {
-  let best: NormalMove | undefined;
-  let bestScore = -Infinity;
-  for (const [from, dests] of pos.allDests()) {
-    for (const to of dests) {
-      const promotes = pos.board.pawn.has(from) && SquareSet.backranks().has(to);
-      for (const promotion of promotes ? PROMOTIONS : [undefined]) {
-        const move = { from, to, promotion };
-        const slot = policySlot(move, pos.turn === 'black');
-        if (slot !== undefined && policy[slot] > bestScore) {
-          bestScore = policy[slot];
-          best = move;
-        }
-      }
-    }
+  let best: SlottedMove | undefined;
+  for (const slotted of legalSlots(pos)) {
+    if (!best || policy[slotted.slot] > policy[best.slot]) best = slotted;
   }
   if (!best) throw new Error('Maia has no legal move');
-  return makeUci(best);
+  return makeUci(best.move);
+}
+
+/**
+ * How often Maia expects people of its rating to play each legal move in
+ * `pos`, adding up to 1: a softmax over the legal moves' scores in the
+ * network's `policy` output (the scores themselves are not shares). Each move
+ * is keyed as lesson lines and the game record write it (`recordedMove`), so
+ * a castle is the king's two-square move. The finder reads them where no
+ * lichess counts are at hand.
+ */
+export function moveShares(pos: Chess, policy: Float32Array): Record<Uci, number> {
+  const legal = [...legalSlots(pos)];
+  const shares = softmax(Float32Array.from(legal, ({ slot }) => policy[slot]));
+  return Object.fromEntries(
+    legal.map(({ move }, i) => [recordedMove(pos, makeUci(move))!, shares[i]]),
+  );
 }
 
 /**

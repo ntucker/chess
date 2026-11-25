@@ -4,20 +4,22 @@
  * docs/plans/opportunities.md.
  *
  *   yarn opportunities <lesson> [--band 1400] [--top 20] [--out report.md]
- *   yarn opportunities --from "1.e4 e5 2.Nf3 Nf6" --side black [--band 1400] [--top 20] [--out report.md]
+ *   yarn opportunities --from "1.e4 e5 2.Nf3 Nf6" --side black [--band 1400 | --maia 1500] [--top 20] [--out report.md]
  *
  * With a lesson it runs from the lesson's start for the lesson's side, and
  * splits the finds the guide's moves reach from those it doesn't. With
  * `--from` it runs from the position after those moves (from the standard
  * start, read by `parseMoves`) with no lesson, for `--side`, the side looking
  * for opportunities, and lists every find in one ranking, since with no guide
- * there is no split.
+ * there is no split. Its replies come from lichess's `--band`, or with
+ * `--maia` from Maia's estimate at that rating (lichess band b matches Maia
+ * b+100 best, since band 1400 is players rated 1400 to 1599).
  *
  * Its answers come from its own answers files and lichess and Stockfish
  * (./finderHost.ts), so a rerun asks only about positions none has seen: a
  * lesson's are committed beside its other answers, a run from moves shares a
- * cache git ignores. A thin position ends the search for mistakes; the report
- * counts where.
+ * cache git ignores. A thin lichess position ends the search for mistakes;
+ * the report counts where.
  */
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -38,10 +40,18 @@ import {
 } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { byScore, type Find, type FinderResult, type ThinEnd } from '@/opportunity/finder';
+import { MAIA_RATINGS } from '@/maia/ratings';
 import { LIMITS, MIN_GAMES } from '@/opportunity/limits';
 import { keepsGuide } from '@/opportunity/payoff';
 
-import { FIND_BAND, finderHost, lessonStart, positionHost, runFinder } from './finderHost';
+import {
+  FIND_BAND,
+  finderHost,
+  lessonStart,
+  positionHost,
+  type ReplySource,
+  runFinder,
+} from './finderHost';
 import { readLessonFile } from './register';
 
 const ROOT = join(__dirname, '../..');
@@ -63,13 +73,13 @@ async function reportLesson(id: string, { band, top, out }: Options) {
   }
 }
 
-async function reportFrom(moves: string, side: Color, { band, top, out }: Options) {
+async function reportFrom(moves: string, side: Color, source: ReplySource, { top, out }: Options) {
   const start = Chess.default();
   const line = parseMoves(moves, start);
-  const host = await positionHost(band);
+  const host = await positionHost(source);
   try {
     const result = await runFinder(host, { start: makeFen(start.toSetup()), line, side });
-    write(positionReport(start, line, side, band, result, top), out);
+    write(positionReport(start, line, side, source, result, top), out);
   } finally {
     host.stop();
   }
@@ -184,16 +194,22 @@ function positionReport(
   start: Chess,
   line: readonly Uci[],
   side: Color,
-  band: number,
+  source: ReplySource,
   { finds, dropped, offGuide, thin }: FinderResult,
   top: number,
 ): string {
   const found = [...finds, ...dropped, ...offGuide].sort(byScore);
   const after = numberedLine(lineSans(line, start)) || 'the start';
+  const from =
+    source.from === 'lichess' ? `lichess ${source.band} band` : `Maia ${source.rating} (estimates)`;
+  const maia =
+    source.from === 'maia'
+      ? ` Shares are Maia ${source.rating}'s estimate of how people of that rating play, not counted games, so no position is thin and the walk goes on to the reach floor.`
+      : '';
   return [
-    `# Opportunities for ${colorName(side)} after ${after}, lichess ${band} band`,
+    `# Opportunities for ${colorName(side)} after ${after}, ${from}`,
     '',
-    `${found.length} finds, the best ${Math.min(top, found.length)} below. With no lesson, ${colorName(side)} plays Stockfish's best move wherever it moves.`,
+    `${found.length} finds, the best ${Math.min(top, found.length)} below. With no lesson, ${colorName(side)} plays Stockfish's best move wherever it moves.${maia}`,
     '',
     ...COLUMNS_AND_LIMITS,
     '',
@@ -280,7 +296,7 @@ const uciSan = (start: Chess, line: readonly Uci[], uci: Uci) =>
 
 const USAGE = [
   'Usage: yarn opportunities <lesson> [--band 1400] [--top 20] [--out report.md]',
-  '       yarn opportunities --from "<moves>" --side white|black [--band 1400] [--top 20] [--out report.md]',
+  '       yarn opportunities --from "<moves>" --side white|black [--band 1400 | --maia 1500] [--top 20] [--out report.md]',
 ].join('\n');
 
 const args = process.argv.slice(2);
@@ -304,10 +320,18 @@ function main(): Promise<void> {
   const [id] = args;
   const lessonId = id && !id.startsWith('--') ? id : undefined;
   const given = (name: string) => args.includes(`--${name}`);
-  if (lessonId && !given('from') && !given('side')) return reportLesson(lessonId, options);
+  if (lessonId && !given('from') && !given('side') && !given('maia'))
+    return reportLesson(lessonId, options);
   const moves = flag('from');
   const side = COLORS.find((color) => color === flag('side'));
-  if (!lessonId && moves !== undefined && side) return reportFrom(moves, side, options);
+  const maia = MAIA_RATINGS.find((rating) => String(rating) === flag('maia'));
+  const source: ReplySource | undefined = !given('maia')
+    ? { from: 'lichess', band: options.band }
+    : maia && !given('band')
+      ? { from: 'maia', rating: maia }
+      : undefined;
+  if (!lessonId && moves !== undefined && side && source)
+    return reportFrom(moves, side, source, options);
   console.error(USAGE);
   process.exit(1);
 }

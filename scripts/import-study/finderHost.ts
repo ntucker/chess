@@ -4,9 +4,10 @@
  * Stockfish for the missing ones. The opportunities report (./opportunities.ts)
  * and the importer's opportunities step (./finds.ts) both run the finder on it.
  *
- * The opponent's replies come from the lichess explorer alone (which needs a
- * token, as ./index.ts says), so a thin position ends the search for
- * mistakes. Stockfish's searches come from the app's engine in Node: sketches
+ * The opponent's replies come from one source for a whole run (`ReplySource`):
+ * the lichess explorer (which needs a token, as ./index.ts says), where a thin
+ * position ends the search for mistakes, or, for a run from a position, Maia
+ * at a rating (./maia.ts), whose shares are estimates and never thin. Stockfish's searches come from the app's engine in Node: sketches
  * stop at the first whole depth of `SKETCH_DEPTH`, full searches are the
  * app's (`APP_SEARCH`). Every answer is appended to the run's own files, so a
  * rerun asks only about positions none has seen and a stopped run resumes: a
@@ -20,12 +21,21 @@ import { join } from 'node:path';
 import { type Analysis, sketched } from '@/evaluation/evaluation';
 import type { Lesson, PositionKey, Uci } from '@/lesson/lesson';
 import { guideOrder } from '@/lesson/mistakes';
+import type { MaiaRating } from '@/maia/ratings';
 import { findOpportunities, type FinderInput, type FinderResult } from '@/opportunity/finder';
 import { MIN_GAMES } from '@/opportunity/limits';
-import { type Answers, type Replies, repliesFrom, type Request } from '@/opportunity/walk';
+import {
+  type Answers,
+  maiaReplies,
+  type Replies,
+  repliesFrom,
+  type Request,
+  type Spot,
+} from '@/opportunity/walk';
 import { APP_SEARCH, type Stockfish } from '@/stockfish/engine';
 
 import { answersFile } from './jsonLines';
+import { nodeMaiaShares } from './maia';
 import { type ExplorerAnswer, lichessExplorer } from './popularity';
 import { nodeStockfish } from './stockfish';
 
@@ -73,7 +83,7 @@ export interface FinderHost {
  */
 export const finderHost = (lesson: Lesson, band: number): Promise<FinderHost> =>
   host(
-    band,
+    { from: 'lichess', band },
     join(ROOT, `scripts/import-study/answers/${lesson.id}-opportunities-`),
     // The run is for `lesson.side`: its book moves (off the book, its unmarked moves), and every move of the erring side.
     ({ key }) => {
@@ -83,24 +93,29 @@ export const finderHost = (lesson: Lesson, band: number): Promise<FinderHost> =>
   );
 
 /**
- * The host for a run from any position in the explorer's `band`, with no
- * lesson: no guide moves, so its punishing side plays Stockfish's best. Its answers are
- * shared by every such run, since each is keyed by its position.
+ * Where a run's replies come from, for the whole run (a score never mixes
+ * sources): lichess's games in a rating band, or Maia's estimate at a rating.
  */
-export const positionHost = (band: number): Promise<FinderHost> =>
-  host(band, join(ROOT, '.cache/opportunities/'));
+export type ReplySource =
+  | { readonly from: 'lichess'; readonly band: number }
+  | { readonly from: 'maia'; readonly rating: MaiaRating };
+
+/**
+ * The host for a run from any position with replies from `source`, with no
+ * lesson: no guide moves, so its punishing side plays Stockfish's best. Its
+ * answers are shared by every such run, since each is keyed by its position.
+ */
+export const positionHost = (source: ReplySource): Promise<FinderHost> =>
+  host(source, join(ROOT, '.cache/opportunities/'));
 
 /** A host keeping its answers in `<prefix>{explorer,sketch,full}.jsonl`, with a lesson's `guideMoves` where it has one. */
 async function host(
-  band: number,
+  source: ReplySource,
   prefix: string,
   guideMoves?: Answers['guideMoves'],
 ): Promise<FinderHost> {
   const path = (kind: 'explorer' | 'sketch' | 'full') => `${prefix}${kind}.jsonl`;
-  const explorer = lichessExplorer({
-    token: process.env.LICHESS_TOKEN,
-    cacheFile: path('explorer'),
-  });
+  const repliesAt = replySource(source, path('explorer'));
   const sketches = answersFile<SketchRow>(
     path('sketch'),
     (row) => row.key,
@@ -129,11 +144,11 @@ async function host(
     if (++searched % 50 === 0) console.log(`${searched} searches`);
   };
   const ask = async ({ spot }: Request) => {
-    replies.set(spot.key, explorerReplies(spot.key, await explorer.ask(spot.key, band)));
+    replies.set(spot.key, await repliesAt(spot));
   };
 
   /**
-   * Gets every missing answer: the explorer's one at a time (it is paced),
+   * Gets every missing answer: the replies one at a time (the explorer is paced),
    * Stockfish's one at a time beside them (it searches one position at a time).
    */
   const answer = async (requests: readonly Request[]) => {
@@ -154,6 +169,16 @@ async function host(
   };
 
   return { answers, answer, stop: engine.stop };
+}
+
+/** The replies at a position from `source`; lichess's answers are kept in `explorerFile`. */
+function replySource(source: ReplySource, explorerFile: string): (spot: Spot) => Promise<Replies> {
+  if (source.from === 'maia') {
+    const shares = nodeMaiaShares(source.rating);
+    return async ({ line }) => maiaReplies(shares(line));
+  }
+  const explorer = lichessExplorer({ token: process.env.LICHESS_TOKEN, cacheFile: explorerFile });
+  return async ({ key }) => explorerReplies(key, await explorer.ask(key, source.band));
 }
 
 /** The explorer's answer at `key` as the finder's replies (`repliesFrom`, thin under `MIN_GAMES`). */
