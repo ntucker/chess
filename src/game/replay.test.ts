@@ -260,5 +260,6 @@ describe('parseMoves', () => {
   it('names the first move that is not legal, or not a move at all', () => {
     expect(() => parseMoves('1.e4 e4')).toThrow('Not a legal move here: e4');
     expect(() => parseMoves('1.e4 e5 2.Nf9 Nc6')).toThrow('Not a legal move here: Nf9');
+    expect(() => parseMoves('1.e4 e5 zz Nc6')).toThrow('Not a legal move here: zz');
   });
 });
