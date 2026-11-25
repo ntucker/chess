@@ -47,7 +47,7 @@ export type Mark = ReviewQuality | Unjudged;
  * a move that fell into a trap marked; tap one to see it.
  */
 export function Scoresheet({ plies, marks, ply, trapped, onGoto, fill }: Props) {
-  const { reveal, scrollProps, rowLayout } = useRevealedRow(rowOf(ply));
+  const { reveal, scrollProps, onRowLayout } = useRevealedRow(rowOf(ply));
   const san = (n: number) => plies[n]?.move?.san;
 
   const rows: number[] = [];
@@ -84,7 +84,7 @@ export function Scoresheet({ plies, marks, ply, trapped, onGoto, fill }: Props) 
               trapped={inRow(trapped, white)}
               striped={i % 2 === 1}
               onGoto={onGoto}
-              onLayout={rowLayout(i)}
+              onLayout={onRowLayout(i)}
             />
           ))}
         </ScrollView>
@@ -220,40 +220,53 @@ const rowOf = (ply: number) => Math.max(0, Math.floor((ply - 1) / 2));
  */
 function useRevealedRow(row: number) {
   const scroll = useRef<ScrollViewInstance>(null);
-  const offset = useRef(0);
-  const height = useRef(0);
-  const frames = useRef<{ y: number; height: number }[]>([]);
+  const viewport = useRef({ top: 0, height: 0 });
+  const frames = useRef<Frame[]>([]);
+  // Whichever of the row's, the viewport's and the effect's news comes last finds the others in.
   const reveal = () => {
     const frame = frames.current[row];
-    if (!frame) return;
-    const bottom = frame.y + frame.height;
-    const y =
-      frame.y < offset.current
-        ? frame.y
-        : bottom > offset.current + height.current
-          ? bottom - height.current
-          : undefined;
+    const y = frame && revealOffset(frame, viewport.current);
     if (y !== undefined) scroll.current?.scrollTo({ y, animated: true });
   };
   const revealNow = useEffectEvent(reveal);
   useEffect(() => revealNow(), [row]);
   return {
     reveal,
-    rowLayout: (index: number) => (event: LayoutChangeEvent) => {
-      const { y, height: rowHeight } = event.nativeEvent.layout;
-      frames.current[index] = { y, height: rowHeight };
+    onRowLayout: (index: number) => (event: LayoutChangeEvent) => {
+      frames.current[index] = event.nativeEvent.layout;
+      if (index === row) reveal();
     },
     scrollProps: {
       ref: scroll,
       scrollEventThrottle: 16,
       onScroll: (event: { nativeEvent: { contentOffset: { y: number } } }) => {
-        offset.current = event.nativeEvent.contentOffset.y;
+        viewport.current.top = event.nativeEvent.contentOffset.y;
       },
       onLayout: (event: LayoutChangeEvent) => {
-        height.current = event.nativeEvent.layout.height;
+        viewport.current.height = event.nativeEvent.layout.height;
+        reveal();
       },
     },
   };
+}
+
+/** Where a row sits in the scrolled content. */
+interface Frame {
+  readonly y: number;
+  readonly height: number;
+}
+
+/**
+ * Where to scroll so `frame` shows whole in a viewport scrolled to `top`:
+ * the least distance, or undefined where it already shows, or before the
+ * viewport has a height.
+ */
+export function revealOffset(frame: Frame, { top, height }: { top: number; height: number }) {
+  if (height <= 0) return undefined;
+  if (frame.y < top) return frame.y;
+  const bottom = frame.y + frame.height;
+  if (bottom > top + height) return bottom - height;
+  return undefined;
 }
 
 const styles = StyleSheet.create({

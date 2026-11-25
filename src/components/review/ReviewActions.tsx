@@ -95,7 +95,7 @@ export function ReviewActionBar(props: Props) {
 
 /**
  * Next moment, or First moment at the start: disabled once every moment
- * has been visited. `short` names it in one word, for the bar's third of a
+ * has been visited. `short` names it in one word, for the bar's share of a
  * phone's width; screen readers hear the whole name either way.
  */
 function NextMoment({
