@@ -156,11 +156,11 @@ describe('CandidateList', () => {
       label: 'Nf3',
     });
     expect(read({ candidates: [mistake], verdicts })).toEqual({ cost: false, label: judged });
-    // A mistake Stockfish rates best gives away nothing, so it shows no cost.
+    // A mistake Stockfish rates best (here a search rates it above its own first line) shows no cost.
     const best = new Map([
       [
         'g1f3',
-        { quality: 'best', change: { label: '0.0', description: NO_CHANGE }, loss: 0.004 },
+        { quality: 'best', change: { label: '0.0', description: NO_CHANGE }, loss: -0.004 },
       ] as const,
     ]);
     expect(

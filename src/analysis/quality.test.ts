@@ -2,7 +2,15 @@ import { describe, expect, it } from '@jest/globals';
 
 import type { AnalysisLine, Evaluation, FinalAnalysis } from '@/evaluation/evaluation';
 
-import { engineVerdict, judgeMove, judgement, labelMove, qualityRule, refutation } from './quality';
+import {
+  engineVerdict,
+  judgeMove,
+  judgement,
+  labelMove,
+  lostPercent,
+  qualityRule,
+  refutation,
+} from './quality';
 
 /** An evaluation where White's expected score is `score`. */
 const at = (score: number): Evaluation => ({ score, pawns: 0 });
@@ -150,6 +158,18 @@ describe('labelMove', () => {
       quality: 'best',
       evaluation: at(0.55),
     });
+  });
+});
+
+describe('lostPercent', () => {
+  it('shows a loss only once it rounds to a whole percent', () => {
+    expect([0.26, 0.005, 0.004, 0, -0.03].map(lostPercent)).toEqual([
+      '26%',
+      '1%',
+      undefined,
+      undefined,
+      undefined,
+    ]);
   });
 });
 
