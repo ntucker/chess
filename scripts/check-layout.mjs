@@ -103,6 +103,7 @@ function measure(board) {
   const box = (selector) => document.querySelector(selector)?.getBoundingClientRect().toJSON();
   const part = (name) => `[data-narrow='${name}']`;
   const program = document.querySelector(`${part('program')}, ${part('footed-program')}`);
+  const overflow = (element) => getComputedStyle(element).overflowY;
   return {
     screen: { width: innerWidth, height: innerHeight },
     // React Native Web scrolls a view inside the document, so the page's own box shows whether it fits.
@@ -119,7 +120,6 @@ function measure(board) {
     // How far each scroll view runs below the box that clips it, where that box doesn't scroll:
     // what's past it can't be reached, and the view, as tall as its content, doesn't scroll either.
     scrollsPastClip: [...document.querySelectorAll('*')].flatMap((view) => {
-      const overflow = (element) => getComputedStyle(element).overflowY;
       if (!['auto', 'scroll'].includes(overflow(view)) || view.clientHeight === 0) return [];
       let clip = view.parentElement;
       while (clip && overflow(clip) === 'visible') clip = clip.parentElement;

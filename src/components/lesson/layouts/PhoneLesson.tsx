@@ -20,11 +20,11 @@ export type PhonePage = 'lesson' | 'scoresheet';
 /**
  * The lesson under the board on a phone: a short headline, any trap's
  * warning, then two pages that the move pill or a sideways swipe slides
- * between (`usePages` owns which shows). One holds the moves and the idea in panes side by side,
- * each scrolling on its own, with a hairline between them; past the guide,
- * where Stockfish's moves stand in, the idea's pane tells why. The other is
- * the scoresheet. Both stay mounted, so the panes keep where they're
- * scrolled to and the notes opened in them.
+ * between (`usePages` owns which shows). One holds the moves and the idea
+ * in panes side by side, each scrolling on its own, with a hairline between
+ * them; past the guide, where Stockfish's moves stand in, the idea's pane
+ * tells why. The other is the scoresheet. Both stay mounted, so the panes
+ * keep where they're scrolled to and the notes opened in them.
  */
 export function PhoneLesson({
   model,
@@ -60,7 +60,10 @@ export function PhoneLesson({
           failed: !!model.headline.failure,
         })}
       />
-      {/* Above the pages, where the panel scrolls, so a long one never sits clipped in a page. */}
+      {/*
+       * Above the pages, where the panel scrolls, so a long one is never clipped in a page.
+       * It stays over the scoresheet too: the trap is in the position on the board.
+       */}
       {model.trap ? <TrapCard {...model.trap} /> : null}
       {/* The pager proposes only its pages' values. */}
       <Pager.Root
