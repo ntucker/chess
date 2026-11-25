@@ -13,6 +13,8 @@ import type { ReviewQuality } from '@/analysis/quality';
 import type { Ply } from '@/game/replay';
 import { fonts } from '@/theme/theme';
 
+import { type Frame, revealOffset, type Viewport } from './scoresheetReveal';
+
 import { Eyebrow } from './Eyebrow';
 import { Notation } from './Notation';
 import { NotationSwitch } from './NotationSwitch';
@@ -46,13 +48,7 @@ export type Mark = ReviewQuality | Unjudged;
  * The moves as a two-column scoresheet (1. e4 e5), each with its mark, and
  * a move that fell into a trap marked; tap one to see it.
  */
-export function Scoresheet({ plies, marks, ply, trapped, onGoto, fill }: Props) {
-  const { reveal, scrollProps, onRowLayout } = useRevealedRow(rowOf(ply));
-  const san = (n: number) => plies[n]?.move?.san;
-
-  const rows: number[] = [];
-  for (let n = 1; n < plies.length; n += 2) rows.push(n);
-
+export function Scoresheet({ fill, ...moves }: Props) {
   return (
     <Surface
       elevation="sunken"
@@ -60,36 +56,51 @@ export function Scoresheet({ plies, marks, ply, trapped, onGoto, fill }: Props) 
       radius="md"
       style={[styles.sheet, fill && styles.fill]}
     >
-      {rows.length === 0 ? (
+      {moves.plies.length < 2 ? (
         <Text role="bodySm" tone="secondary" style={styles.empty}>
           The moves will appear here.
         </Text>
       ) : (
-        <ScrollView
-          style={fill ? styles.fill : styles.scroll}
-          contentContainerStyle={styles.content}
-          // A new move, or text set larger, moves the rows.
-          onContentSizeChange={reveal}
-          {...scrollProps}
-        >
-          {rows.map((white, i) => (
-            <Row
-              key={white}
-              white={white}
-              whiteSan={san(white)}
-              blackSan={san(white + 1)}
-              whiteMark={marks[white - 1]}
-              blackMark={marks[white]}
-              selected={inRow(ply, white)}
-              trapped={inRow(trapped, white)}
-              striped={i % 2 === 1}
-              onGoto={onGoto}
-              onLayout={onRowLayout(i)}
-            />
-          ))}
-        </ScrollView>
+        <MoveRows {...moves} fill={fill} />
       )}
     </Surface>
+  );
+}
+
+/**
+ * The moves' rows, scrolling, keeping the shown move's row in view
+ * (`useRevealedRow`). Mounted only once there are moves, so a new game's
+ * list starts unscrolled.
+ */
+function MoveRows({ plies, marks, ply, trapped, onGoto, fill }: Props) {
+  const { reveal, scrollProps, onRowLayout } = useRevealedRow(rowOf(ply));
+  const san = (n: number) => plies[n]?.move?.san;
+  const rows: number[] = [];
+  for (let n = 1; n < plies.length; n += 2) rows.push(n);
+  return (
+    <ScrollView
+      style={fill ? styles.fill : styles.scroll}
+      contentContainerStyle={styles.content}
+      // A new move, or text set larger, moves the rows.
+      onContentSizeChange={reveal}
+      {...scrollProps}
+    >
+      {rows.map((white, i) => (
+        <Row
+          key={white}
+          white={white}
+          whiteSan={san(white)}
+          blackSan={san(white + 1)}
+          whiteMark={marks[white - 1]}
+          blackMark={marks[white]}
+          selected={inRow(ply, white)}
+          trapped={inRow(trapped, white)}
+          striped={i % 2 === 1}
+          onGoto={onGoto}
+          onLayout={onRowLayout(i)}
+        />
+      ))}
+    </ScrollView>
   );
 }
 
@@ -214,15 +225,17 @@ const inRow = (ply: number | undefined, white: number) =>
 const rowOf = (ply: number) => Math.max(0, Math.floor((ply - 1) / 2));
 
 /**
- * Keeps the row at index `row` in view: whenever it changes, or the rows
- * move, the scoresheet scrolls as little as shows it whole. Rows the player
- * scrolled to stay put while the shown row is already in view.
+ * Keeps the row at index `row` in view: whenever it changes, or the rows or
+ * the viewport move (a new move, larger text, a resized sheet), the list
+ * scrolls as little as shows it whole. A list the player scrolled stays put
+ * while the shown row is in view.
  */
 function useRevealedRow(row: number) {
   const scroll = useRef<ScrollViewInstance>(null);
-  const viewport = useRef({ top: 0, height: 0 });
+  const viewport = useRef<Viewport>({ top: 0, height: 0 });
   const frames = useRef<Frame[]>([]);
-  // Whichever of the row's, the viewport's and the effect's news comes last finds the others in.
+  // The row's layout, the viewport's and the row changing come in any order:
+  // each tries, and the last to come scrolls, once both are measured.
   const reveal = () => {
     const frame = frames.current[row];
     const y = frame && revealOffset(frame, viewport.current);
@@ -248,25 +261,6 @@ function useRevealedRow(row: number) {
       },
     },
   };
-}
-
-/** Where a row sits in the scrolled content. */
-interface Frame {
-  readonly y: number;
-  readonly height: number;
-}
-
-/**
- * Where to scroll so `frame` shows whole in a viewport scrolled to `top`:
- * the least distance, or undefined where it already shows, or before the
- * viewport has a height.
- */
-export function revealOffset(frame: Frame, { top, height }: { top: number; height: number }) {
-  if (height <= 0) return undefined;
-  if (frame.y < top) return frame.y;
-  const bottom = frame.y + frame.height;
-  if (bottom > top + height) return bottom - height;
-  return undefined;
 }
 
 const styles = StyleSheet.create({

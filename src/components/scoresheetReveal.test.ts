@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { revealOffset } from './Scoresheet';
+import { revealOffset } from './scoresheetReveal';
 
 describe('revealOffset', () => {
   const viewport = { top: 100, height: 60 };
