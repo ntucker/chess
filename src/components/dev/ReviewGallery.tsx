@@ -5,7 +5,8 @@ import { StyleSheet, View } from 'react-native';
 
 import type { FinalAnalysis } from '@/evaluation/evaluation';
 import { Eyebrow } from '@/components/Eyebrow';
-import { ReviewPanel, type ReviewView } from '@/components/review/ReviewPanel';
+import { ReviewPanel } from '@/components/review/ReviewPanel';
+import type { ReviewView } from '@/components/review/reviewView';
 import { legalMoveCountAt, replay } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
 import { reviewHref } from '@/review/address';

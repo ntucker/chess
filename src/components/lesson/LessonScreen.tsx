@@ -7,7 +7,7 @@ import { BrowserOnly } from '@/components/BrowserOnly';
 import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentPicker } from '@/components/OpponentPicker';
-import { ScoresheetOpener } from '@/components/ScoresheetDrawer';
+import { ScoresheetOpener } from '@/components/ScoresheetPage';
 import { resetListener } from '@/components/resetListener';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { useBackToReview } from '@/components/useBackToReview';

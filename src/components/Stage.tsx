@@ -1,6 +1,6 @@
 import { Surface, useFlickGesture, useTheme } from '@reactive/silk-native';
 import { type ComponentProps, type ReactNode, useState } from 'react';
-import { type StyleProp, View, type ViewStyle } from 'react-native';
+import { View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 
 import { asideAfter, type CardAside } from '@/board/cardAside';
@@ -115,12 +115,6 @@ interface BoardColumnProps {
   readonly evaluationReads?: EvaluationEngine;
   /** The moves to the position the evaluation bar reads, when the board shows another than the game's at `ply`. */
   readonly evaluationLine?: readonly string[];
-  /**
-   * On a narrow page, what stands in for the name bars above and below the
-   * board, in their heights: the review's one bar of both players, and its
-   * stepper.
-   */
-  readonly narrowBars?: { readonly names: ReactNode; readonly controls: ReactNode };
 }
 
 /**
@@ -139,7 +133,6 @@ export function BoardColumn({
   onFlickUp,
   evaluationReads,
   evaluationLine,
-  narrowBars,
 }: BoardColumnProps) {
   const { moves, ply, goto } = game;
   const side = board.orientation;
@@ -147,7 +140,6 @@ export function BoardColumn({
   useStepKeys(ply, moves.length, goto);
   const swap = onSwap && { label: `Play as ${colorName(other)}`, onPress: onSwap };
   const styles = useNarrowStyles(STYLES);
-  const part = useNarrowPart();
   const playerBar = (
     <PlayerBar
       name="You"
@@ -162,16 +154,6 @@ export function BoardColumn({
       <Transport ply={ply} total={moves.length} onGoto={goto} middle={stepperMiddle} />
     </PlayerBar>
   );
-  /** A name bar, or with `narrowBars` the bar on a wide page and its stand-in on a narrow one. */
-  const bar = (wide: ReactNode, narrow: ReactNode, style: StyleProp<ViewStyle>) =>
-    narrowBars ? (
-      <>
-        <View {...part('wide-only')}>{wide}</View>
-        <NarrowOnly style={style}>{narrow}</NarrowOnly>
-      </>
-    ) : (
-      wide
-    );
   // Only the game's last position has a result, so stepping back from it puts
   // the ending away; so does a lesson's idea playing back over it on the board.
   const ending = board.fen === game.current.fen ? gameEnding(game.current, side) : undefined;
@@ -183,19 +165,15 @@ export function BoardColumn({
   if (aside && aside.at !== endingFen) setAside(undefined);
   return (
     <>
-      {bar(
-        <PlayerBar
-          {...rival}
-          style={styles.namesBar}
-          color={other}
-          toMove={game.toMove === other}
-          thinking={game.thinking}
-          captures={game.captures}
-          swap={swap}
-        />,
-        narrowBars?.names,
-        styles.namesBar,
-      )}
+      <PlayerBar
+        {...rival}
+        style={styles.namesBar}
+        color={other}
+        toMove={game.toMove === other}
+        thinking={game.thinking}
+        captures={game.captures}
+        swap={swap}
+      />
       <View style={styles.boardRow}>
         <EvaluationBar
           line={evaluationLine ?? moves.slice(0, ply)}
@@ -226,11 +204,7 @@ export function BoardColumn({
           ) : null}
         </BoardFrame>
       </View>
-      {bar(
-        onFlickUp ? <FlickUp onFlick={onFlickUp}>{playerBar}</FlickUp> : playerBar,
-        narrowBars?.controls,
-        styles.controlsBar,
-      )}
+      {onFlickUp ? <FlickUp onFlick={onFlickUp}>{playerBar}</FlickUp> : playerBar}
     </>
   );
 }

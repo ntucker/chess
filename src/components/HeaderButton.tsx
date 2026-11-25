@@ -32,8 +32,6 @@ interface Base extends Pick<
   | 'onLongPress'
   | 'delayLongPress'
 > {
-  /** Whether what the button opens is open, for a button that closes it again. */
-  readonly expanded?: boolean;
   /** Whether it is on, for a switch. */
   readonly checked?: boolean;
   readonly ref?: Ref<ComponentRef<typeof View>>;
@@ -41,18 +39,18 @@ interface Base extends Pick<
 
 /**
  * A round icon button in the header (the source link, settings, a back
- * button, the theme button), or the close of a sheet or drawer, or the
+ * button, the theme button), or the close of a sheet, or the
  * scoresheet's notation switch. It stays quiet in the
  * secondary ink and lights up on hover, like the transport's buttons.
  */
-export function HeaderButton({ icon, iconSize, face, expanded, checked, ...pressable }: Props) {
+export function HeaderButton({ icon, iconSize, face, checked, ...pressable }: Props) {
   const { theme } = useTheme();
   const { color } = theme.semantic;
   const styles = useNarrowStyles(STYLES);
   return (
     <Pressable
       {...pressable}
-      {...((expanded !== undefined || checked !== undefined) && a11yState({ expanded, checked }))}
+      {...(checked !== undefined && a11yState({ checked }))}
       style={({ pressed, hovered }) => [
         styles.button,
         (pressed || hovered) && { backgroundColor: color.tones.neutral.subtle },

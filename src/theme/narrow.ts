@@ -79,8 +79,7 @@ export const NARROW_PARTS = [
   'program',
   'footed-program',
   'player-names',
-  'drawer-panel',
-  'scoresheet-drawer',
+  'pages-panel',
 ] as const;
 
 /** A part of the page, as narrow.css names it. */
@@ -255,11 +254,7 @@ export const NATIVE_PARTS: Readonly<Record<NarrowPartName, NativePart>> = {
     narrow: { ...PROGRAM, minHeight: PROGRAM_FLOOR - NARROW_PX['program-foot'] },
   },
   'player-names': { narrow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 } },
-  'drawer-panel': { narrow: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' } },
-  'scoresheet-drawer': {
-    wide: { display: 'none' },
-    narrow: { flexGrow: 1, flexShrink: 1, flexBasis: 'auto', height: 0, minHeight: 0 },
-  },
+  'pages-panel': { narrow: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' } },
 };
 
 /** What narrow.css does to a part that scrolls on its own: `NarrowScroll` does it natively. */
@@ -282,16 +277,9 @@ export const CSS_ONLY: Readonly<Partial<Record<NarrowPartName, readonly string[]
   'wide-only-spoken': ['clip-path: inset(50%)', 'white-space: nowrap'],
   // Natively Page.tsx gives a narrow board page its height (`useNarrowPageHeight`).
   page: ['min-height: 100dvh'],
-  // Unhidden as above; and native shows the drawer without its rise, or its fade for reduced motion.
-  'scoresheet-drawer': [
-    'display: flex',
-    'animation: drawer-rise 220ms cubic-bezier(0.2, 0, 0, 1)',
-    'animation-name: drawer-fade',
-    'animation-duration: 120ms',
-  ],
   // Natively the panel grows in its scroll view's content, which already fills the
   // program; a percentage there adds the fade's padding again, so the panel scrolled by it.
-  'drawer-panel': ['min-height: 100%'],
+  'pages-panel': ['min-height: 100%'],
   // `NarrowScroll` scrolls these natively, with a fading edge and the same padding.
   program: SCROLLS,
   'footed-program': SCROLLS,

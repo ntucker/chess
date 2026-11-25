@@ -94,7 +94,7 @@ export function PlayerBar({
 }
 
 /** The side's disc, lit while it is to move; with `swap`, a button that swaps the sides. */
-export function Disc({ color, toMove, swap }: Pick<Props, 'color' | 'toMove' | 'swap'>) {
+function Disc({ color, toMove, swap }: Pick<Props, 'color' | 'toMove' | 'swap'>) {
   const { theme } = useTheme();
   const { tones } = theme.semantic.color;
   const styles = useNarrowStyles(STYLES);

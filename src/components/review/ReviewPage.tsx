@@ -1,15 +1,16 @@
 import { AsyncBoundary, useSuspense } from '@data-client/react';
 import { Spinner } from '@reactive/silk-native';
 import { useIsFocused } from 'expo-router';
-import { use, useState } from 'react';
+import { use } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { lastMoveBadge, refutationArrow } from '@/board/drawing';
 import { BrowserOnly } from '@/components/BrowserOnly';
 import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
+import { ScoresheetOpener } from '@/components/ScoresheetPage';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
-import { stepButton, Transport } from '@/components/Transport';
+import { usePages } from '@/components/usePages';
 import { NewVersionError } from '@/files/newVersion';
 import { type Color, colorName, dropMove, fenAfter, opposite } from '@/game/replay';
 import type { Uci } from '@/lesson/lesson';
@@ -17,11 +18,11 @@ import { lessonHref, withOpenings } from '@/lesson/openings';
 import { getLesson, isLessonId, LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { addressMoves, type ReviewAddress } from '@/review/address';
 import { REVIEW_ENGINE, useReview } from '@/review/useReview';
+import { useLayout } from '@/theme/Narrow';
 
 import { AccuracyMark } from './Accuracy';
-import { ReviewNames } from './NarrowBars';
+import { type PhoneReviewPage, PhoneReview } from './PhoneReview';
 import { ReviewActionBar } from './ReviewActions';
-import { ReviewGraph } from './ReviewGraph';
 import { ReviewPanel } from './ReviewPanel';
 
 const TITLE = 'Review · Opening Night';
@@ -81,20 +82,16 @@ function ReviewScreen({
   const { plies, ply, current, pointed, moment, goto } = review;
   const preview = pointed && ply > 0 ? fenAfter(plies[ply - 1].fen, pointed) : undefined;
   const retrying = moment.board === 'retry';
-  // Only a narrow page shows the header's button, so only there does the drawer open.
-  const [scoresheetOpen, setScoresheetOpen] = useState(false);
+  const phone = useLayout() === 'phone';
+  const { page, show } = usePages<PhoneReviewPage>('review', phone);
+  const scoresheetShown = page === 'scoresheet';
+  const eyebrow = picked ? `Review · ${picked.title}` : 'Review';
   return (
     <Stage
       title={TITLE}
       header={{
         place: picked ? { name: picked.title, parent: 'Review' } : { name: 'Review' },
         back: back(lesson),
-        narrowButton: {
-          icon: 'list',
-          label: 'Scoresheet',
-          expanded: scoresheetOpen,
-          onPress: () => setScoresheetOpen(!scoresheetOpen),
-        },
       }}
       board={
         <BoardColumn
@@ -141,30 +138,29 @@ function ReviewScreen({
           }}
           evaluationReads={REVIEW_ENGINE}
           evaluationLine={review.shownLine}
-          narrowBars={{
-            names: <ReviewNames learner={learner} accuracy={review.accuracy} />,
-            controls: (
-              <Transport
-                ply={ply}
-                total={moves.length}
-                onGoto={goto}
-                fill
-                middle={
-                  <ReviewGraph review={review} learner={learner} height={stepButton.height} />
-                }
-              />
-            ),
-          }}
+          stepperMiddle={
+            <ScoresheetOpener
+              san={plies[ply].move?.san}
+              ply={ply}
+              open={scoresheetShown}
+              onToggle={() => show(scoresheetShown ? 'review' : 'scoresheet')}
+            />
+          }
         />
       }
       program={
-        <ReviewPanel
-          eyebrow={picked ? `Review · ${picked.title}` : 'Review'}
-          learner={learner}
-          review={review}
-          drawer={scoresheetOpen ? { onClose: () => setScoresheetOpen(false) } : undefined}
-          lesson={lesson}
-        />
+        phone ? (
+          <PhoneReview
+            eyebrow={eyebrow}
+            learner={learner}
+            review={review}
+            lesson={lesson}
+            page={page}
+            onPage={show}
+          />
+        ) : (
+          <ReviewPanel eyebrow={eyebrow} learner={learner} review={review} lesson={lesson} />
+        )
       }
       programFoot={<ReviewActionBar {...review} />}
     />

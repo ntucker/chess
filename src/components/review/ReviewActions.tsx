@@ -6,7 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { Tip } from '@/components/Tip';
 import { TOUCH_TARGET } from '@/theme/touch';
 
-import type { ReviewView } from './ReviewPanel';
+import type { ReviewView } from './reviewView';
 
 type Props = Pick<ReviewView, 'ply' | 'nextMoment' | 'goto' | 'moment' | 'retry' | 'showAnswer'>;
 

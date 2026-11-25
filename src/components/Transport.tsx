@@ -15,20 +15,13 @@ interface Props {
    * opener). Elsewhere the stepper keeps its four buttons.
    */
   readonly middle?: ReactNode;
-  /**
-   * The middle takes the room between the step arrows, for a stepper laid
-   * across a row of its own (the review's). Not in a name bar: there React
-   * Native would size the stepper by the room it could grow into, all of the
-   * bar's, and run it past the screen over the player's words.
-   */
-  readonly fill?: boolean;
 }
 
 /**
  * Steps through the game like a player's transport: start, back, forward,
  * end. Holding a step arrow keeps stepping, as a held arrow key does.
  */
-export function Transport({ ply, total, onGoto, middle, fill }: Props) {
+export function Transport({ ply, total, onGoto, middle }: Props) {
   const { theme } = useTheme();
   const { color } = theme.semantic;
   const part = useNarrowPart();
@@ -107,7 +100,7 @@ export function Transport({ ply, total, onGoto, middle, fill }: Props) {
     >
       {jump(first)}
       {button(back)}
-      {middle ? <NarrowOnly style={fill && styles.fill}>{middle}</NarrowOnly> : null}
+      {middle ? <NarrowOnly>{middle}</NarrowOnly> : null}
       {button(forward)}
       {jump(latest)}
     </View>
@@ -164,7 +157,6 @@ const styles = StyleSheet.create({
     padding: 4,
     gap: 4,
   },
-  fill: { flexGrow: 1 },
   button: {
     width: STEP_BUTTON_WIDTH,
     ...stepButton,

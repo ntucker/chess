@@ -66,7 +66,7 @@ jest.mock('@/components/Stage', () => {
     BoardColumnPlaceholder: () => null,
   };
 });
-jest.mock('@/components/ScoresheetDrawer', () => ({
+jest.mock('@/components/ScoresheetPage', () => ({
   ScoresheetOpener: (props: { onToggle: () => void; disabled: boolean }) => {
     mockStepper = props;
     return null;

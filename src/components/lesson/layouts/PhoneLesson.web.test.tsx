@@ -27,7 +27,7 @@ jest.mock('../CandidateList', () => {
 jest.mock('../IdeaCard', () => ({ IdeaCard: () => 'idea', IdeaAside: () => 'aside' }));
 jest.mock('../TrapCard', () => ({ TrapCard: () => <span data-testid="trap" /> }));
 jest.mock('./LessonHeadline', () => ({ LessonHeadline: () => null }));
-jest.mock('@/components/ScoresheetDrawer', () => ({ ScoresheetPage: () => 'scoresheet' }));
+jest.mock('@/components/ScoresheetPage', () => ({ ScoresheetPage: () => 'scoresheet' }));
 jest.mock('@/components/ReviewLinks', () => ({ ScoresheetReview: () => null }));
 
 const MODEL = {
