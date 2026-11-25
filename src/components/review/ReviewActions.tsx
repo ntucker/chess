@@ -3,6 +3,7 @@ import { Button } from '@reactive/silk-native';
 import type { ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { type IconAction, IconActions } from '@/components/IconActions';
 import { Tip } from '@/components/Tip';
 import { TOUCH_TARGET } from '@/theme/touch';
 
@@ -10,12 +11,8 @@ import type { ReviewView } from './reviewView';
 
 type Props = Pick<ReviewView, 'ply' | 'nextMoment' | 'goto' | 'moment' | 'retry' | 'showAnswer'>;
 
-interface Action {
-  readonly icon: ComponentProps<typeof Ionicons>['name'];
+interface Action extends IconAction {
   readonly name: string;
-  readonly tip: string;
-  /** Undefined when it does nothing at the move shown. */
-  readonly onPress?: () => void;
 }
 
 /**
@@ -49,14 +46,7 @@ export function ReviewActions(props: Props) {
   const { ply, nextMoment, goto } = props;
   return (
     <View style={styles.row}>
-      {retryActions(props).map(({ icon, tip, onPress }) => (
-        // Disabled, the button takes no focus, so the tip takes it to open from the keyboard.
-        <Tip key={icon} tip={tip} focusable={!onPress}>
-          <Button variant="outline" disabled={!onPress} onPress={onPress} accessibilityLabel={tip}>
-            <Ionicons name={icon} size={17} />
-          </Button>
-        </Tip>
-      ))}
+      <IconActions actions={retryActions(props)} />
       <View style={styles.spacer} />
       <NextMoment ply={ply} nextMoment={nextMoment} goto={goto} />
     </View>

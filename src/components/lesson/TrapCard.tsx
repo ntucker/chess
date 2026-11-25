@@ -8,7 +8,7 @@ import type { Lesson } from '@/lesson/lesson';
 import type { Playback } from '@/lesson/useLesson';
 import type { LandedTrap } from '@/lesson/view';
 
-import { NoteView } from './IdeaCard';
+import { PastNote } from './IdeaCard';
 
 interface Props {
   readonly lesson: Lesson;
@@ -50,19 +50,7 @@ export function TrapCard({ lesson, trap, mistake, fell, learner, playback, onBac
             </Notation>
           </Text>
         </View>
-        {/* Its ideas are about the position before the mistake, so pointing draws nothing. */}
-        <NoteView
-          lesson={lesson}
-          shown={trap.note}
-          learner={learner}
-          playback={playback}
-          pointable={false}
-          pointed={false}
-          // A card of its own, so its note keeps its rule on a phone too.
-          density="comfortable"
-          onPoint={() => undefined}
-          onLeave={() => undefined}
-        />
+        <PastNote lesson={lesson} shown={trap.note} learner={learner} playback={playback} />
         {yours ? (
           <View style={styles.back}>
             <Button size="sm" variant="ghost" tone="danger" onPress={onBack}>

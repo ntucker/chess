@@ -1,6 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { a11yState, Badge, Button, Pressable, Stack, Text, useTheme } from '@reactive/silk-native';
-import { type FocusEvent as ReactFocusEvent, type ReactNode, useState } from 'react';
+import {
+  type ComponentProps,
+  type FocusEvent as ReactFocusEvent,
+  type ReactNode,
+  useState,
+} from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { EngineVerdict } from '@/analysis/quality';
@@ -154,6 +159,27 @@ export function IdeaAside({ title, detail }: { readonly title: string; readonly 
         {detail}
       </Text>
     </Stack>
+  );
+}
+
+/**
+ * The guide's note on a mistake whose punishment landed, with its
+ * play-through, for a card of its own (a trap's, or a cue's acts): its
+ * ideas are about the position before the mistake, so pointing draws
+ * nothing, and it keeps its rule on a phone too.
+ */
+export function PastNote(
+  props: Pick<ComponentProps<typeof NoteView>, 'lesson' | 'shown' | 'learner' | 'playback'>,
+) {
+  return (
+    <NoteView
+      {...props}
+      pointable={false}
+      pointed={false}
+      density="comfortable"
+      onPoint={() => undefined}
+      onLeave={() => undefined}
+    />
   );
 }
 

@@ -22,6 +22,12 @@ interface Options {
   readonly judge: EvaluationEngine;
   /** Which of the game's moves a lesson's guide recommends: labelled `book`, never judged. */
   readonly book?: readonly boolean[];
+  /**
+   * Whether to label the board's move now (by default, while `active`).
+   * A lesson waits while a try at a cue waits for its verdict, so the
+   * searches the verdict needs are the newest ones watched.
+   */
+  readonly labelling?: boolean;
 }
 
 /**
@@ -47,14 +53,19 @@ export type GameStore = readonly [GameState, Dispatch<GameAction>];
 export function useGame(
   [state, dispatch]: GameStore,
   opponent: GameOpponent | undefined,
-  { side, active, judge, book }: Options,
+  { side, active, judge, book, labelling = true }: Options,
 ) {
   const { moves, ply } = state;
   const plies = replay(moves);
   const latest = analyze(plies[plies.length - 1]);
   const atLatest = ply === moves.length;
   const current = atLatest ? latest : analyze(plies[ply]);
-  const { qualities, refutations } = useMoveQualities(plies, active ? ply : null, judge, book);
+  const { qualities, refutations } = useMoveQualities(
+    plies,
+    active && labelling ? ply : null,
+    judge,
+    book,
+  );
   const error = failure(state, opponent?.id);
   const thinking = !!opponent && !latest.result && latest.turn !== side && !error;
   const replying = atLatest && thinking;
