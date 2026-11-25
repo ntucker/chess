@@ -26,9 +26,8 @@ interface Props {
  * resting mouse, or a tap), and an enabled one its `hint`, marked by an
  * info icon, since a tap on the label toggles it: a mouse resting on the
  * icon, or a tap on it, shows it. Screen readers hear either as its
- * description, since the tooltip isn't read from it. Until silk#38 lets a
- * label keep its press on the web, the icon alone can open an enabled one's
- * tooltip, so keyboard focus on the switch doesn't.
+ * description, since the tooltip isn't read from it. Only the icon opens an
+ * enabled one's tooltip, so keyboard focus on the switch doesn't.
  */
 export function Toggle({ label, checked, onChange, quiet, disabled, hint, style }: Props) {
   const { theme } = useTheme();
@@ -52,7 +51,7 @@ export function Toggle({ label, checked, onChange, quiet, disabled, hint, style 
         // A disabled field takes no press, so a tap anywhere on it says why.
         <Tooltip.Trigger>{field}</Tooltip.Trigger>
       ) : (
-        // The mark alone is the trigger, until silk#38 (see above).
+        // The mark alone is the trigger (see above).
         <View style={styles.row}>
           {field}
           {/* Screen readers hear the hint as the switch's description. */}
