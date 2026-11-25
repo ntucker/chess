@@ -1,10 +1,9 @@
-import { Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
-import { useDeferredValue } from 'react';
+import { Pressable, Progress, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
+import { useDeferredValue, useMemo } from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { lostPercent, percent } from '@/analysis/quality';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
-import { MeterBar } from '@/components/MeterBar';
 import { Notation } from '@/components/Notation';
 import { HeadingTip } from '@/components/Tip';
 import { lineText, numberedMove } from '@/game/replay';
@@ -24,8 +23,8 @@ interface Props {
   readonly band: number | undefined;
   /** The lesson's progress, for each row's mark. */
   readonly progress: MarkedPositions;
-  /** What the list ranks and what its meters show, in a tooltip on its heading. */
-  readonly tip: string;
+  /** Whose games the counts are (`bandPlayers`), for the heading's tooltip. */
+  readonly players: string | undefined;
   /** The learner picks a row: the game plays its line, up to the cue. */
   readonly onPlay: (line: readonly Uci[]) => void;
   /**
@@ -44,15 +43,17 @@ interface Props {
  * it, as the move's row has it in the candidate list. Pressing a row plays
  * Act I and hands the learner the board at the cue.
  */
-export function OpportunityList({ lesson, band, progress, tip, onPlay, density }: Props) {
-  // Worked out after the screen shows, since a big lesson's list takes a moment.
-  const listing = useDeferredValue<Lesson | undefined>(lesson, undefined);
+export function OpportunityList({ lesson, band, progress, players, onPlay, density }: Props) {
+  // Worked out after the screen shows, and again after a change of lesson,
+  // band or progress, since a big lesson's walk takes a moment.
+  const asked = useMemo(() => ({ lesson, band, progress }), [lesson, band, progress]);
+  const shown = useDeferredValue<typeof asked | undefined>(asked, undefined);
   const labelled = useLabelled();
   const compact = density === 'compact';
   const styles = compact ? COMPACT : COMFORTABLE;
-  const rows = listing ? lessonOpportunities(listing, band) : [];
-  const marks = listing ? opportunityMarks(listing, progress, rows) : [];
-  const list = !listing ? null : rows.length ? (
+  const rows = shown ? lessonOpportunities(shown.lesson, shown.band) : [];
+  const marks = shown ? opportunityMarks(shown.lesson, shown.progress, rows) : [];
+  const list = !shown ? null : rows.length ? (
     rows.map((row, i) => (
       <Row
         key={markId(row.key, row.move.uci)}
@@ -69,7 +70,7 @@ export function OpportunityList({ lesson, band, progress, tip, onPlay, density }
   );
   return (
     <Stack style={compact ? STATIC.compact : labelled}>
-      <HeadingTip tip={tip} style={STATIC.heading}>
+      <HeadingTip tip={listTip(players)} style={STATIC.heading}>
         <Eyebrow>Opportunities</Eyebrow>
       </HeadingTip>
       {compact ? (
@@ -82,6 +83,12 @@ export function OpportunityList({ lesson, band, progress, tip, onPlay, density }
     </Stack>
   );
 }
+
+/** What the list ranks and what its rows' meters show, against `players` where counted. */
+const listTip = (players: string | undefined) =>
+  `The opponent's mistakes the guide marks, best first by what knowing each is worth per game${
+    players ? ` against ${players}` : ''
+  }. Each row: how often your games reach it, how often the mistake is played there, and what it gives away (# is mate). Tap one to play up to your cue.`;
 
 /** The payoff meter's full width: a mistake costing this much of the expected score, or mate. */
 const FULL_COST = 0.6;
@@ -106,12 +113,12 @@ function Row({
   const cost = move.mistake?.cost;
   // As the candidate list shows the mistake's cost.
   const lost = cost === undefined ? undefined : lostPercent(cost);
-  const payoff = mates ? '#' : lost ? `−${lost}` : '–';
+  const payoff = mates ? '#' : lost ? `\u2212${lost}` : '–';
   // Each meter's number and how full its bar is: reach, how often, payoff.
   const meters = [
-    { name: 'reach', label: percent(reach), fill: reach },
-    { name: 'share', label: share === undefined ? '–' : percent(share), fill: share ?? 0 },
-    { name: 'payoff', label: payoff, fill: mates ? 1 : Math.min((cost ?? 0) / FULL_COST, 1) },
+    { meter: 'reach', label: reach === undefined ? '–' : percent(reach), fill: reach ?? 0 },
+    { meter: 'share', label: share === undefined ? '–' : percent(share), fill: share ?? 0 },
+    { meter: 'payoff', label: payoff, fill: mates ? 1 : Math.min((cost ?? 0) / FULL_COST, 1) },
   ] as const;
   return (
     <Pressable
@@ -119,9 +126,9 @@ function Row({
       accessibilityLabel={[
         name ?? mistake,
         caption,
-        `reached in ${percent(reach)} of games`,
+        reach !== undefined && `reached in ${percent(reach)} of games`,
         share !== undefined && `played ${percent(share)} of the time`,
-        mates ? 'punished with mate' : cost !== undefined && `gives away ${percent(cost)}`,
+        mates ? 'punished with mate' : lost && `gives away ${lost}`,
         mark && SPOKEN_MARKS[mark],
       ]
         .filter(Boolean)
@@ -145,12 +152,12 @@ function Row({
         ) : null}
       </View>
       <View style={STATIC.meters} aria-hidden>
-        {meters.map(({ name, label, fill }) => (
-          <View key={name} style={styles.meter}>
+        {meters.map(({ meter, label, fill }) => (
+          <View key={meter} style={styles.meter}>
             <Text role="caption" tone="secondary" style={STATIC.mono}>
               {label}
             </Text>
-            <MeterBar fill={fill} color={color.tones.accent.solid} />
+            <Progress size="sm" value={fill} max={1} />
           </View>
         ))}
       </View>

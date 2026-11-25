@@ -191,7 +191,12 @@ export function findOpportunities({
       const { confirmed, from } = ways.reduce((most, way) =>
         played(way) > played(most) ? way : most,
       );
-      return { ...confirmed, reach: games(from), onGuide, score: games(cue) * confirmed.gain };
+      return {
+        ...confirmed,
+        reach: games(from),
+        onGuide,
+        score: findScore(games(cue), confirmed.gain),
+      };
     })
     .sort(byScore);
   const thin = [...thinKeys]
@@ -482,6 +487,12 @@ export function acceptedReplies(before: FinalAnalysis, after: FinalAnalysis, sid
 }
 
 /** Higher score first; on a tie, the more reached, then by line, so the order is stable. */
+/**
+ * A find's score: the share of games that reach its cue × its gain in the
+ * band, what knowing it is worth per game. The lesson's list ranks by it too.
+ */
+export const findScore = (cueReach: number, gain: number) => cueReach * gain;
+
 export const byScore = (a: Find, b: Find) =>
   b.score - a.score ||
   b.reach - a.reach ||

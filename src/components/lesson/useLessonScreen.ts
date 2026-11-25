@@ -9,9 +9,10 @@ import type { ScoresheetOpener } from '@/components/ScoresheetPage';
 import type { BoardColumn } from '@/components/Stage';
 import { type Color, colorName, opposite, playMove, readPositionKey } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
-import { listsTopMoves } from '@/lesson/guidance';
+import { listsOpportunities, listsTopMoves } from '@/lesson/guidance';
 import type { Lesson, PositionKey, Uci, VariationId } from '@/lesson/lesson';
 import { lessonsAfter, lessonsFrom, openingsLesson, withOpenings } from '@/lesson/openings';
+import { listsAnyOpportunity } from '@/lesson/opportunities';
 import {
   bandPlayers,
   type Candidate,
@@ -21,7 +22,6 @@ import {
   pathNames,
   shareSource,
 } from '@/lesson/select';
-import { marksOpportunities } from '@/lesson/opportunities';
 import { useLesson } from '@/lesson/useLesson';
 import type { Cue } from '@/opportunity/cue';
 import { describeOpponent } from '@/opponent/opponent';
@@ -32,8 +32,8 @@ import { useSettings } from '@/settings/SettingsProvider';
 import type { CandidateList } from './CandidateList';
 import type { ActsModel, OpportunityCard } from './CueActs';
 import { type IdeaAside, type IdeaCard, noNotesText } from './IdeaCard';
-import type { OpportunityList } from './OpportunityList';
 import type { LessonControls } from './LessonControls';
+import type { OpportunityList } from './OpportunityList';
 import type { TrapCard } from './TrapCard';
 import { describeStatus, OPENINGS_TITLE, type Status, shownEnding } from './status';
 
@@ -112,9 +112,10 @@ export interface LessonScreenModel {
   /** In Practice, whether the learner's move at a cue punished the mistake. */
   readonly opportunity: ComponentProps<typeof OpportunityCard> | null;
   /**
-   * The lesson's list of opportunities, where it marks any of the other side's
-   * mistakes: what ranks it, for the list to work out where it shows, since
-   * a big lesson's walk takes a moment and a phone shows it only on request.
+   * The list of the lesson's opportunities (in Explore, where the lesson marks
+   * any of the other side's mistakes), as its inputs: the list works the rows
+   * out itself, once it shows, since a big lesson's walk takes a moment.
+   * Not `opportunity`, the Practice card after the learner's move at a cue.
    */
   readonly opportunities: Omit<ComponentProps<typeof OpportunityList>, 'density'> | null;
   /** The game's moves. */
@@ -383,13 +384,13 @@ export function useLessonScreen({
           }
         : null,
     opportunities:
-      picked && marksOpportunities(picked)
+      picked && listsOpportunities(mode) && listsAnyOpportunity(picked)
         ? {
             // The file's own counts, which `withOpenings` drops where the openings are picked.
             lesson: picked,
             band: opponentBand(picked, opponent),
             progress,
-            tip: opportunitiesTip(bandPlayers(picked, opponent)),
+            players: bandPlayers(picked, opponent),
             onPlay: (line) => dispatchGame({ type: 'newGame', moves: line }),
           }
         : null,
@@ -418,12 +419,6 @@ export function useLessonScreen({
     onLeave: leave,
   };
 }
-
-/** What the list of opportunities ranks and what its meters show, against `players` where counted. */
-const opportunitiesTip = (players: string | undefined) =>
-  `The opponent's mistakes the guide marks, best first by what knowing each is worth per game${
-    players ? ` against ${players}` : ''
-  }. Each row: how often your games reach it, how often the mistake is played there, and what it gives away (# is mate). Tap one to play up to your cue.`;
 
 /**
  * What a cue's headline names that stays while the board is at it: the

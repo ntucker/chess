@@ -121,7 +121,10 @@ describe('PhoneLesson', () => {
 
   describe('with opportunities', () => {
     const onPlay = jest.fn<(line: readonly string[]) => void>();
-    const model = { ...MODEL, opportunities: { onPlay } } as unknown as LessonScreenModel;
+    const model = {
+      ...MODEL,
+      opportunities: { onPlay, lesson: {} },
+    } as unknown as LessonScreenModel;
 
     it('lists them one swipe before the lesson, only once their page shows, then keeps them', () => {
       render('lesson', model);
@@ -131,6 +134,20 @@ describe('PhoneLesson', () => {
       expect(hidden(pageOf('opportunities', 3))).toBe(false);
       render('lesson', model);
       expect(hidden(pageOf('opportunities', 3))).toBe(true);
+    });
+
+    it("waits for another lesson's page to show before listing that lesson", () => {
+      render('opportunities', model);
+      render('lesson', model);
+      mockListProps = undefined;
+      const next = {
+        ...model,
+        opportunities: { onPlay, lesson: {} },
+      } as unknown as LessonScreenModel;
+      render('lesson', next);
+      expect(mockListProps).toBeUndefined();
+      render('opportunities', next);
+      expect(mockListProps).toBeDefined();
     });
 
     it('plays a row picked and goes back to the lesson, where the cue shows', () => {

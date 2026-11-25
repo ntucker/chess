@@ -19,7 +19,6 @@ import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { Notation } from '@/components/Notation';
 import { type EngineVerdict, lostPercent, percent } from '@/analysis/quality';
 import { QualityBadge, TippedBadge, verdictText } from '@/components/QualityBadge';
-import { MeterBar } from '@/components/MeterBar';
 import { HeadingTip, Tip } from '@/components/Tip';
 import type { Mark } from '@/progress/progress';
 import { NARROW_CSS_LOADS, spokenOnly } from '@/theme/narrow';
@@ -414,7 +413,11 @@ function Row({
       {share === undefined ? null : (
         <View style={styles.share}>
           {/* A compact row has no room for the bar. */}
-          {styles.compact ? null : <MeterBar fill={share} color={tone} style={styles.track} />}
+          {styles.compact ? null : (
+            <View style={[styles.track, { backgroundColor: color.tones.neutral.subtle }]}>
+              <View style={[styles.fillBar, { width: `${share * 100}%`, backgroundColor: tone }]} />
+            </View>
+          )}
           <ShareTip tip={shareTip}>
             <Text role="caption" tone="secondary" style={styles.percent}>
               {percent(share)}
@@ -453,7 +456,8 @@ function ShareTip({ tip, children }: { readonly tip?: string; readonly children:
 }
 
 const STATIC = StyleSheet.create({
-  tipped: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
+  // As the heading's tip (`HeadingTip`), around the share alone.
+  tipped: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
 });
 
 /** A share's least width, which holds 100% in caption text: larger text widens it. */
@@ -522,7 +526,8 @@ const SAME = StyleSheet.create({
   risk: { textTransform: 'capitalize' },
   cost: { fontFamily: fonts.mono },
   share: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  track: { width: 52 },
+  track: { width: 52, height: 4, borderRadius: 2, overflow: 'hidden' },
+  fillBar: { height: '100%', borderRadius: 2 },
   percent: { minWidth: SHARE_WIDTH, textAlign: 'right', fontFamily: fonts.mono },
   evaluation: { minWidth: EVALUATION_WIDTH, textAlign: 'right', fontFamily: fonts.mono },
   mark: { width: MARK_SIZE, height: MARK_SIZE },

@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { type PhonePage, PhonePages } from '@/components/PhonePages';
 import { ScoresheetReview } from '@/components/ReviewLinks';
+import type { Lesson } from '@/lesson/lesson';
 import { FadingScroll } from '@/theme/Narrow';
 
 import { CandidateList, COMPACT_INSET } from '../CandidateList';
@@ -44,9 +45,13 @@ export function PhoneLesson({
   readonly scoresheetReachable: boolean;
 }) {
   const { moves, idea, aside, opportunities } = model;
-  // Once shown, the list stays, so swiping back to it is instant.
-  const [listed, setListed] = useState(false);
-  if (page === 'opportunities' && !listed) setListed(true);
+  // The lesson whose list has shown: it stays, so swiping back to it is instant,
+  // and another lesson's waits until its page shows.
+  const [listedFor, setListedFor] = useState<Lesson>();
+  if (page === 'opportunities' && opportunities && listedFor !== opportunities.lesson) {
+    setListedFor(opportunities.lesson);
+  }
+  const listed = !!opportunities && listedFor === opportunities.lesson;
   // The pane beside the moves: the idea, else past the guide the headline's why.
   const ideaPane = idea ? (
     <IdeaCard {...idea} density="compact" />

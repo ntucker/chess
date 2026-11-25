@@ -58,7 +58,9 @@ export function opportunityMarks(
   opportunities: readonly Pick<Opportunity, 'move' | 'next'>[],
 ): (Mark | undefined)[] {
   const sets = markSets(progress, lesson);
-  return opportunities.map(({ move, next }) => moveMark(lesson, sets, move, next, false));
+  // An opportunity is always the other side's move, never the learner's.
+  const learner = false;
+  return opportunities.map(({ move, next }) => moveMark(lesson, sets, move, next, learner));
 }
 
 /** A move's mark, to `next`: passed once clean runs pass every line end below it, else seen once shown. */

@@ -5,7 +5,7 @@ import { type MarkedPositions, positionHash } from '@/progress/progress';
 import type { Lesson, LessonMove, Mistake, PositionKey } from './lesson';
 import { keyAfter, readShippedLesson, SAMPLE, uci, uciLine } from './lesson.fixture';
 import { opportunityMarks } from './marks';
-import { lessonOpportunities, marksOpportunities } from './opportunities';
+import { lessonOpportunities, listsAnyOpportunity } from './opportunities';
 
 /** A move after `sans`, written in SAN, played in `games` games of the one band. */
 const move = (sans: string[], san: string, games: number, extra: Partial<LessonMove> = {}) => ({
@@ -68,7 +68,7 @@ const LESSON: Lesson = {
 describe('lessonOpportunities', () => {
   const list = lessonOpportunities(LESSON, 0);
 
-  it('ranks by reach × share × gain, the unscored after', () => {
+  it("ranks by the cue's reach × gain, the unscored after", () => {
     expect(list.map(({ san }) => san)).toEqual(['Qh5', 'Nxe5', 'c4']);
     const [qh5, nxe5, c4] = list;
     expect(qh5).toMatchObject({ reach: 0.5, share: 0.4, score: 0.5 * 0.4 * 0.5 });
@@ -84,15 +84,52 @@ describe('lessonOpportunities', () => {
     expect(qh5.next).toBe(at('e4', 'e5', 'Qh5'));
   });
 
-  it('leaves the shares and scores out without a band', () => {
+  it('leaves the reach, shares and scores out without a band', () => {
     const unbanded = lessonOpportunities(LESSON, undefined);
-    expect(unbanded.every(({ share, score }) => share === undefined && score === undefined)).toBe(
-      true,
-    );
+    expect(unbanded).toHaveLength(3);
+    expect(
+      unbanded.every(
+        ({ reach, share, score }) =>
+          reach === undefined && share === undefined && score === undefined,
+      ),
+    ).toBe(true);
   });
 
   it("lists none of the learner's own mistakes", () => {
-    expect(marksOpportunities({ ...LESSON, side: 'white' })).toBe(false);
+    expect(listsAnyOpportunity(LESSON)).toBe(true);
+    expect(listsAnyOpportunity({ ...LESSON, side: 'white' })).toBe(false);
+  });
+
+  it("leaves out a mistake only a learner's move off the book leads to", () => {
+    // 1...c5 isn't the book's move, so the guide never plays into 2.Qh5 there.
+    const offBook: Lesson = {
+      ...LESSON,
+      positions: {
+        [at()]: { variation, moves: [move([], 'e4', 100)], games: [100] },
+        [at('e4')]: {
+          variation,
+          moves: [move(['e4'], 'e5', 90, { book: true }), move(['e4'], 'c5', 10)],
+          games: [100],
+        },
+        [at('e4', 'c5')]: {
+          variation,
+          moves: [move(['e4', 'c5'], 'Qh5', 10, mistake({ gain: [0.5], cost: 0.3 }))],
+          games: [10],
+        },
+      },
+    };
+    expect(lessonOpportunities(offBook, 0)).toEqual([]);
+    expect(listsAnyOpportunity(offBook)).toBe(false);
+  });
+
+  it('shares the games equally among the moves where the band counts none', () => {
+    // Nothing counted at the start: 1.e4, the guide's only move there, takes every game.
+    const uncounted: Lesson = {
+      ...LESSON,
+      positions: { ...LESSON.positions, [at()]: { variation, moves: [{ uci: uci('e4') }] } },
+    };
+    const [qh5] = lessonOpportunities(uncounted, 0);
+    expect(qh5).toMatchObject({ san: 'Qh5', reach: 1 });
   });
 
   it('ranks the Stafford lesson, its 6.Bg5 mating', () => {

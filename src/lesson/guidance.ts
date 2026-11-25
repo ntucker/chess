@@ -218,6 +218,12 @@ const NO_OPPORTUNITIES: ReadonlySet<Uci> = new Set();
 /** Whether "Arrows" changes anything in `mode`: only in Explore. */
 export const movesSwitchApplies = (mode: LessonMode) => mode === 'explore';
 
+/**
+ * Whether the lesson's list of opportunities shows: in Explore, which
+ * reveals, since each row names a mistake Practice tests the learner on.
+ */
+export const listsOpportunities = (mode: LessonMode) => mode === 'explore';
+
 /** Whether Stockfish's top moves are listed: in Explore, past the guide's moves. */
 export const listsTopMoves = (view: LessonView, mode: LessonMode) =>
   mode === 'explore' && view.place !== 'inside';

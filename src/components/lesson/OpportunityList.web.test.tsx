@@ -36,7 +36,7 @@ function render<T>(props: Partial<Props>, read: (host: HTMLElement) => T): T {
             lesson={STAFFORD}
             band={BAND}
             progress={UNTOUCHED}
-            tip="What the list ranks"
+            players="Lichess players rated 1400–1599"
             onPlay={() => {}}
             density="comfortable"
             {...props}
