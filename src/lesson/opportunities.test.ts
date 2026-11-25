@@ -148,7 +148,7 @@ describe('lessonOpportunities', () => {
     expect(qh5).toMatchObject({ san: 'Qh5', reach: 1 });
   });
 
-  it('ranks the Stafford lesson for 1400 players, 5.Nc3 Bc5 6.d3 first', () => {
+  it("ranks the Stafford lesson's top three for 1400 players by worth, not reach", () => {
     const stafford = lessonOpportunities(readShippedLesson('stafford'), 2);
     expect(stafford.every(({ score }) => score !== undefined)).toBe(true);
     const after = (...sans: string[]) =>
@@ -160,7 +160,7 @@ describe('lessonOpportunities', () => {
       after('d3', 'Bc5', 'Bg5'),
     ]);
     // By what knowing each is worth, not by reach: 6.Bg5 comes more often.
-    expect(top[2].reach!).toBeGreaterThan(top[0].reach!);
+    expect(top[2].reach).toBeGreaterThan(top[0].reach ?? 1);
     expect(top.map(({ mates }) => mates)).toEqual([false, true, true]);
   });
 });

@@ -70,9 +70,9 @@ interface MarkedMistake {
 /**
  * Whether `lesson` has opportunities to list: one of the other side's marked
  * mistakes is played at its start or where the guide's moves reach
- * (`lessonOpportunities` lists those alone). The start is no guide move's
- * destination, so it is checked apart. The walk stops at the first, and is
- * read once per lesson.
+ * (`lessonOpportunities` lists those alone). The start is reached before
+ * any guide move is played, so it is checked apart. The walk stops at the
+ * first, and is read once per lesson.
  */
 export function listsAnyOpportunity(lesson: Lesson): boolean {
   let any = reachesMistake.get(lesson);
