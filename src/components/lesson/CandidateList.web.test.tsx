@@ -199,6 +199,7 @@ describe('CandidateList', () => {
       animated.length = 0;
       Element.prototype.animate = function (keyframes) {
         animated.push(Object.keys((keyframes as Keyframe[])[0]!).join());
+        // An EventTarget, since Silk listens for a lifted glide's finish.
         return Object.assign(new EventTarget(), {
           finished: Promise.resolve(),
           cancel: () => {},

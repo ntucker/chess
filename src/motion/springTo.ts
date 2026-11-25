@@ -9,11 +9,7 @@ interface SpringToOptions {
 }
 
 /** An animation from wherever the value is to `target` on `spring`. */
-export function springTo(
-  target: number,
-  spring: Spring,
-  { precision }: SpringToOptions = {},
-) {
+export function springTo(target: number, spring: Spring, { precision }: SpringToOptions = {}) {
   'worklet';
   return defineAnimation<AnimationObject<number>>(target, () => {
     'worklet';
