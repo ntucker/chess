@@ -20,6 +20,7 @@ import { useGame } from '@/game/useGame';
 import { describeOpponent } from '@/opponent/opponent';
 import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
 import { reviewHref } from '@/review/address';
+import { resigner } from '@/review/resigner';
 import { useSettings } from '@/settings/SettingsProvider';
 
 /**
@@ -107,7 +108,8 @@ export default function PlayScreen() {
               <ScoresheetTitle />
               <ScoresheetReview
                 href={review}
-                disabled={game.latest.result ? undefined : 'Review opens once the game ends.'}
+                started={moves.length > 0}
+                resigns={resigner(game.latest)}
               />
             </Inline>
             <Scoresheet plies={game.plies} marks={game.qualities} ply={ply} onGoto={goto} />

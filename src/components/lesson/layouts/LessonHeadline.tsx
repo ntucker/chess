@@ -18,7 +18,7 @@ export function LessonHeadline({
     <StatusHeadline
       {...headline}
       eyebrowInHeader
-      action={review.offered ? <ReviewGameButton href={review.href} /> : null}
+      action={review.offered ? <ReviewGameButton href={review.button.href} /> : null}
       news={news}
     />
   );

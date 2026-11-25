@@ -51,27 +51,41 @@ describe('ReviewGameButton', () => {
 });
 
 describe('ScoresheetReview', () => {
-  it('opens the review when it has one', () => {
+  it('opens the review of a finished game, with no tip', () => {
     mockPush.mockClear();
-    render(<ScoresheetReview href={HREF} />, (host) => {
+    render(<ScoresheetReview href={HREF} started />, (host) => {
       expect(reviewButton(host)?.getAttribute('aria-disabled')).toBeNull();
+      expect(host.textContent).not.toContain('resigned');
       act(() => reviewButton(host)!.click());
     });
     expect(mockPush).toHaveBeenCalledWith(HREF);
   });
 
-  it('shows disabled without one, and says why in its tip', () => {
+  it('opens before the game ends, saying the side to move resigns', () => {
     mockPush.mockClear();
-    render(<ScoresheetReview href={HREF} disabled="Review opens once the game ends." />, (host) => {
-      expect(reviewButton(host)?.getAttribute('aria-disabled')).toBe('true');
-      expect(host.textContent).toContain('Review opens once the game ends.');
+    render(<ScoresheetReview href={HREF} started resigns="white" />, (host) => {
+      expect(reviewButton(host)?.getAttribute('aria-disabled')).toBeNull();
+      expect(host.textContent).toContain('Review the game so far, as if White resigned.');
       act(() => reviewButton(host)!.click());
     });
+    expect(mockPush).toHaveBeenCalledWith(HREF);
+  });
+
+  it('shows disabled before the first move, and says why in its tip', () => {
+    mockPush.mockClear();
+    render(
+      <ScoresheetReview href={reviewHref([], 'white')} started={false} resigns="white" />,
+      (host) => {
+        expect(reviewButton(host)?.getAttribute('aria-disabled')).toBe('true');
+        expect(host.textContent).toContain('Review opens after the first move.');
+        act(() => reviewButton(host)!.click());
+      },
+    );
     expect(mockPush).not.toHaveBeenCalled();
   });
 
   it('draws only its icon when compact, keeping its spoken name', () => {
-    render(<ScoresheetReview href={HREF} compact />, (host) => {
+    render(<ScoresheetReview href={HREF} started compact />, (host) => {
       expect(reviewButton(host)?.textContent).toBe('');
     });
   });

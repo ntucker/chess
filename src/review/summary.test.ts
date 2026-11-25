@@ -28,7 +28,19 @@ describe('summaryHeadline', () => {
     });
   });
 
-  it('counts an unfinished game in moves, and the moves that could not be checked', () => {
+  it('scores a game reviewed before it ended as resigned by the side to move', () => {
+    // After 1.f3 e5 2.g4, Black to move resigns.
+    const plies = MATE.slice(0, 4);
+    const input = { plies, moves: moves.slice(0, 3), moments: [], accuracy: undefined };
+    expect(summaryHeadline({ ...input, learner: 'white' }).detail).toBe(
+      'You won by resignation in 2 moves. No moments to replay.',
+    );
+    expect(summaryHeadline({ ...input, learner: 'black' }).detail).toBe(
+      'You lost by resignation in 2 moves. No moments to replay.',
+    );
+  });
+
+  it('counts the moves that could not be checked', () => {
     const plies = MATE.slice(0, 4);
     expect(
       summaryHeadline({
@@ -40,7 +52,7 @@ describe('summaryHeadline', () => {
       }),
     ).toEqual({
       title: 'The reviews are in.',
-      detail: "2 moves. 1 moment to replay. 1 move couldn't be checked.",
+      detail: "You won by resignation in 2 moves. 1 moment to replay. 1 move couldn't be checked.",
     });
   });
 

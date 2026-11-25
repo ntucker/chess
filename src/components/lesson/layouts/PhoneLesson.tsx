@@ -71,9 +71,7 @@ export function PhoneLesson({
       onPage={onPage}
       scoresheet={{
         ...model.scoresheet,
-        reviewButton: (
-          <ScoresheetReview href={model.review.href} disabled={model.review.shut} compact />
-        ),
+        reviewButton: <ScoresheetReview {...model.review.button} compact />,
       }}
       scoresheetReachable={scoresheetReachable}
       // Room in the page's margin for the rows' highlight (`styles.bleed`), which the pager would clip.
