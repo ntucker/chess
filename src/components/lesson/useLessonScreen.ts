@@ -111,7 +111,11 @@ export interface LessonScreenModel {
   readonly acts: ActsModel | null;
   /** In Practice, whether the learner's move at a cue punished the mistake. */
   readonly opportunity: ComponentProps<typeof OpportunityCard> | null;
-  /** The lesson's list of opportunities, where it marks any of the other side's mistakes. */
+  /**
+   * The lesson's list of opportunities, where it marks any of the other side's
+   * mistakes: what ranks it, for the list to work out where it shows, since
+   * a big lesson's walk takes a moment and a phone shows it only on request.
+   */
   readonly opportunities: Omit<ComponentProps<typeof OpportunityList>, 'density'> | null;
   /** The game's moves. */
   readonly scoresheet: Omit<ComponentProps<typeof Scoresheet>, 'fill'>;
@@ -169,6 +173,7 @@ export function useLessonScreen({
     chooseMode,
   } = useLesson(lesson, store, { pending });
   const { mode } = modeState;
+  const [, dispatchGame] = store;
   const { auto } = useSettings();
   const learner = lesson.side;
   const rival = opposite(learner);
@@ -385,7 +390,7 @@ export function useLessonScreen({
             band: opponentBand(picked, opponent),
             progress,
             tip: opportunitiesTip(bandPlayers(picked, opponent)),
-            onPlay: (line) => store[1]({ type: 'newGame', moves: line }),
+            onPlay: (line) => dispatchGame({ type: 'newGame', moves: line }),
           }
         : null,
     trap: trap

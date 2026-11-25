@@ -1,5 +1,5 @@
 import { Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { percent } from '@/analysis/quality';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
@@ -108,11 +108,12 @@ function Row({
   const mistake = numberedMove(san, line.length);
   const cost = move.mistake?.cost;
   const payoff = mates ? '#' : cost === undefined ? '–' : `+${Math.round(cost * 100)}`;
-  const meters: readonly (readonly [string, number])[] = [
-    [percent(reach), reach],
-    [share === undefined ? '–' : percent(share), share ?? 0],
-    [payoff, mates ? 1 : Math.min((cost ?? 0) / FULL_COST, 1)],
-  ];
+  // Each meter's number and how full its bar is: reach, how often, payoff.
+  const meters = [
+    { name: 'reach', label: percent(reach), fill: reach },
+    { name: 'share', label: share === undefined ? '–' : percent(share), fill: share ?? 0 },
+    { name: 'payoff', label: payoff, fill: mates ? 1 : Math.min((cost ?? 0) / FULL_COST, 1) },
+  ] as const;
   return (
     <Pressable
       accessibilityRole="button"
@@ -145,8 +146,8 @@ function Row({
         ) : null}
       </View>
       <View style={STATIC.meters} aria-hidden>
-        {meters.map(([label, fill], i) => (
-          <View key={i} style={styles.meter}>
+        {meters.map(({ name, label, fill }) => (
+          <View key={name} style={styles.meter}>
             <Text role="caption" tone="secondary" style={STATIC.mono}>
               {label}
             </Text>
@@ -178,7 +179,7 @@ const STATIC = StyleSheet.create({
 });
 
 /** A density's row and meter sizes: a phone's rows are 44 tall, the touch size. */
-function densityStyles(meter: number, row: object) {
+function densityStyles(meter: number, row: ViewStyle) {
   return StyleSheet.create({
     row: { flexDirection: 'row', alignItems: 'center', gap: 10, outlineOffset: -2, ...row },
     meter: { width: meter, gap: 3 },
