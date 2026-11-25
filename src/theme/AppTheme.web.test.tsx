@@ -7,12 +7,15 @@ import { createRoot, type Root } from 'react-dom/client';
 import { SettingsProvider, useSettingsDispatch } from '@/settings/SettingsProvider';
 
 import { AppTheme } from './AppTheme';
+import { BAR_COLORS, barMeta } from './barColor';
 import { shownThemes } from './shownTheme';
 
 // The web path: the page's head pinned <html data-theme> to the saved theme
 // (schemeCss.ts's PRE_PAINT_SCRIPT), and the colors are CSS variables.
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root | undefined;
+/** Elements a test added to the page's head. */
+let added: Element[] = [];
 const html = document.documentElement;
 
 beforeEach(() => {
@@ -22,6 +25,8 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root?.unmount());
   root = undefined;
+  added.forEach((element) => element.remove());
+  added = [];
 });
 
 /** Renders the app's theme with Dark saved, as the page's head leaves it. */
@@ -72,5 +77,22 @@ describe('AppTheme on the web', () => {
     expect(html.dataset.theme).toBe('light');
     await choose('system');
     expect(html.dataset.theme).toBeUndefined();
+  });
+
+  it("colors the browser's bars as the learner's theme, or each scheme's own under System", async () => {
+    // The page's head, as src/app/+html.tsx writes it.
+    const bars = (['light', 'dark'] as const).map((scheme) =>
+      Object.assign(document.createElement('meta'), barMeta(scheme)),
+    );
+    document.head.append(...bars);
+    added = bars;
+    const colors = () => bars.map((bar) => bar.content);
+    const { choose } = await renderSavedDark();
+    await choose('light');
+    expect(colors()).toEqual([BAR_COLORS.light, BAR_COLORS.light]);
+    await choose('dark');
+    expect(colors()).toEqual([BAR_COLORS.dark, BAR_COLORS.dark]);
+    await choose('system');
+    expect(colors()).toEqual([BAR_COLORS.light, BAR_COLORS.dark]);
   });
 });

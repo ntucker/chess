@@ -2,6 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import { parseSettings } from '@/settings/settings';
 
+import { BAR_COLORS, BAR_IDS } from './barColor';
 import { PRE_PAINT_SCRIPT, SCHEME_CSS } from './schemeCss';
 // On the web the hook reads no context, so it can run outside a component.
 import { shownThemes, useSchemeColors as webSchemeColors } from './shownTheme';
@@ -90,9 +91,13 @@ describe('SCHEME_CSS', () => {
 });
 
 describe('PRE_PAINT_SCRIPT', () => {
-  /** <html data-theme> after the script runs with `text` saved as the settings. */
+  /**
+   * <html data-theme>, and the colors of the page's two theme-color metas
+   * (light's, then dark's), after the script runs with `text` saved as the settings.
+   */
   function run(text: string | null, storage: 'works' | 'blocked' = 'works') {
     const dataset: { theme?: string } = {};
+    const bars = { light: { content: BAR_COLORS.light }, dark: { content: BAR_COLORS.dark } };
     const localStorage = {
       getItem: (key: string) => {
         if (storage === 'blocked') throw new Error('SecurityError');
@@ -102,8 +107,10 @@ describe('PRE_PAINT_SCRIPT', () => {
     // Runs the script as the page's head does, against stand-ins for the page.
     new Function('localStorage', 'document', PRE_PAINT_SCRIPT)(localStorage, {
       documentElement: { dataset },
+      getElementById: (id: string) =>
+        id === BAR_IDS.light ? bars.light : id === BAR_IDS.dark ? bars.dark : null,
     });
-    return dataset.theme;
+    return { theme: dataset.theme, bars: [bars.light.content, bars.dark.content] };
   }
 
   it('picks the theme settings.ts reads, leaving System to the device', () => {
@@ -121,11 +128,20 @@ describe('PRE_PAINT_SCRIPT', () => {
     ];
     for (const text of saved) {
       const theme = parseSettings(text ?? '').theme;
-      expect([text, run(text)]).toEqual([text, theme === 'system' ? undefined : theme]);
+      expect([text, run(text).theme]).toEqual([text, theme === 'system' ? undefined : theme]);
     }
   });
 
+  it("colors the browser's bars as the theme chosen, leaving System's to the device", () => {
+    expect(run('{"theme":"dark"}').bars).toEqual([BAR_COLORS.dark, BAR_COLORS.dark]);
+    expect(run('{"theme":"light"}').bars).toEqual([BAR_COLORS.light, BAR_COLORS.light]);
+    expect(run('{"theme":"system"}').bars).toEqual([BAR_COLORS.light, BAR_COLORS.dark]);
+  });
+
   it('leaves the device to choose when storage is blocked', () => {
-    expect(run('{"theme":"dark"}', 'blocked')).toBeUndefined();
+    expect(run('{"theme":"dark"}', 'blocked')).toEqual({
+      theme: undefined,
+      bars: [BAR_COLORS.light, BAR_COLORS.dark],
+    });
   });
 });

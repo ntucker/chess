@@ -7,9 +7,10 @@
 // 1024 grid: the knight from the points in `KNIGHT`, the stage and curtains
 // from the shapes in `stage()` and `curtain()`.
 //
-// The SVGs in assets/brand need only Node and the app's own packages. The PNGs
-// in assets/images, and the Google Play listing's icon and feature graphic in
-// store/, are rendered with Playwright's Chromium (`yarn playwright install chromium` once).
+// The SVGs in assets/brand, and the web app manifest in public/, need only Node
+// and the app's own packages. The PNGs in assets/images and public/, and the
+// Google Play listing's icon and feature graphic in store/, are rendered with
+// Playwright's Chromium (`yarn playwright install chromium` once).
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -41,6 +42,8 @@ const color = {
   lightCore: oklch(0.973, 0.035, 91),
   lightMid: oklch(0.87, 0.119, 86),
   eye: oklch(0.25, 0.062, 309),
+  // The plum behind the Android launcher icon and splash screen (app.config.ts's STAGE).
+  stage: oklch(0.216, 0.054, 293),
   // The app's dark surface and text (src/theme/theme.ts), behind and in the feature graphic.
   surface: oklch(0.176, 0.037, 295),
   text: oklch(0.951, 0.017, 85),
@@ -312,6 +315,11 @@ const pngs = [
   },
   { file: 'assets/images/logo-mark.png', size: 160, svg: logo() },
   { file: 'assets/images/favicon.png', size: 48, svg: logo({ scale: 1.12, corner: 230 }) },
+  // The web app's icons (`manifest`): a phone masks the maskable one to its own shape,
+  // keeping at least the middle 80%, so the picture is smaller there.
+  { file: 'public/icon-192.png', size: 192, svg: logo(), opaque: true },
+  { file: 'public/icon-512.png', size: 512, svg: logo(), opaque: true },
+  { file: 'public/icon-maskable-512.png', size: 512, svg: logo({ scale: ANDROID }), opaque: true },
   // Google Play's listing: a square icon it rounds itself, and the banner atop the page.
   // Play asks for a 32-bit PNG, so the icon keeps an alpha channel though it has no transparent pixel.
   { file: 'store/icon-512.png', size: 512, svg: logo(), opaque: true, alpha: true },
@@ -340,8 +348,35 @@ p{margin:22px 0 0;font:400 32px/1.2 Sans;color:${brand.spotlight};letter-spacing
 </style>${tile}<div><h1>Opening<br>Night</h1><p>Learn your lines</p></div>`;
 }
 
-for (const [file, svg] of Object.entries(svgs)) writeFileSync(root + file, svg);
-console.log(`Wrote ${Object.keys(svgs).join(', ')}`);
+/**
+ * The web app manifest, which src/app/+html.tsx links: what a phone's "Add to
+ * Home screen" installs, opening without the browser's bars. Its addresses are
+ * relative to it, so it works under any base path (a pull request's preview too).
+ */
+const manifest = {
+  name: 'Opening Night',
+  short_name: 'Opening Night',
+  description: 'Learn your lines',
+  start_url: '.',
+  scope: '.',
+  display: 'standalone',
+  orientation: 'portrait',
+  // Behind the icon while the app starts, as the Android app's splash; the page then sets its bars' color.
+  background_color: color.stage,
+  theme_color: color.surface,
+  icons: [
+    { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
+    { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
+    { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+  ],
+};
+
+const texts = {
+  ...svgs,
+  'public/manifest.webmanifest': `${JSON.stringify(manifest, null, 2)}\n`,
+};
+for (const [file, text] of Object.entries(texts)) writeFileSync(root + file, text);
+console.log(`Wrote ${Object.keys(texts).join(', ')}`);
 
 const browser = await chromium.launch();
 for (const { file, size, svg, html, opaque, alpha } of pngs) {
