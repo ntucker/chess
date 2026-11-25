@@ -288,6 +288,13 @@ describe('lessonDrawings', () => {
     ]);
   });
 
+  it("lights a sliding opportunity's piece in the danger tone", () => {
+    const { shown } = explore(['e4'], 'c7c6');
+    const { next } = shown.preview!.candidate;
+    const drawings = lessonDrawings({ ...shown, opportunities: new Set(['c7c6']) }, next, 'black');
+    expect(drawings[0]).toEqual({ kind: 'glow', square: 'c6', tone: 'danger' });
+  });
+
   it('leaves out ideas about another position than the one shown', () => {
     const { view, shown } = explore(['e4'], 'c7c6');
     expect(lessonDrawings(shown, view.key, 'black')).toEqual([

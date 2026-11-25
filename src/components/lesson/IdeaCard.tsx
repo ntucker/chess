@@ -8,12 +8,11 @@ import {
 } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import type { EngineVerdict } from '@/analysis/quality';
 import type { Tone } from '@/board/drawing';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { Notation } from '@/components/Notation';
-import { verdictText } from '@/components/QualityBadge';
+import { verdictText, type VerdictWords } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import { Transport } from '@/components/Transport';
 import type { Color } from '@/game/replay';
@@ -146,7 +145,7 @@ function Lead({ children }: { readonly children: string }) {
  * has none, and Stockfish's verdict on it when there is one.
  * Example: "No notes on g6. Stockfish: Inaccuracy, 0.6 pawns worse for you."
  */
-export const noNotesText = (san: string, verdict?: Pick<EngineVerdict, 'quality' | 'change'>) =>
+export const noNotesText = (san: string, verdict?: VerdictWords) =>
   `No notes on ${san}.${verdict ? ` ${verdictText(verdict)}.` : ''}`;
 
 /** What stands in the idea card's place where it has nothing to show: a heading, as the card's, over `detail`. */

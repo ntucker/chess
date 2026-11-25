@@ -5,6 +5,7 @@ import { SilkProvider } from '@reactive/silk-native';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { NO_CHANGE } from '@/evaluation/evaluation';
 import type { Candidate } from '@/lesson/select';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
@@ -155,6 +156,16 @@ describe('CandidateList', () => {
       label: 'Nf3',
     });
     expect(read({ candidates: [mistake], verdicts })).toEqual({ cost: false, label: judged });
+    // A mistake Stockfish rates best gives away nothing, so it shows no cost.
+    const best = new Map([
+      [
+        'g1f3',
+        { quality: 'best', change: { label: '0.0', description: NO_CHANGE }, loss: 0.004 },
+      ] as const,
+    ]);
+    expect(
+      read({ candidates: [mistake], verdicts: best, opportunities: new Set(['g1f3']) }),
+    ).toEqual({ cost: false, label: 'Nf3, Stockfish: Best move' });
   });
 
   it('heads the rows with whose moves they are, on a wide panel', () => {

@@ -47,6 +47,13 @@ const LEAST_LOSS: readonly (readonly [number, MoveQuality])[] = [
 export const percent = (score: number) => `${Math.round(score * 100)}%`;
 
 /**
+ * The expected score a move gave away (0 to 1) as `percent` shows it, when
+ * that shows any: "26%" for 0.26, nothing for 0.004 or a gain.
+ */
+export const lostPercent = (loss: number) =>
+  Math.round(loss * 100) > 0 ? percent(loss) : undefined;
+
+/**
  * What `quality` means, in words for its badge's tooltip. Example: "gave
  * away 10% to 20% of the winning chances" for a mistake, from `LEAST_LOSS`.
  */
@@ -87,9 +94,10 @@ export function judgeMove(
 }
 
 /**
- * `judgeMove`'s label with the evaluation it judged the move by (see there):
- * its own line where `before` lists it, else `after`'s first line, but never
- * better for `mover` than the list's last move.
+ * `judgeMove`'s label with what it judged the move by (`moveLoss`): the
+ * expected score the move gives away for `mover`, and its evaluation, which
+ * is its own line where `before` lists it, else `after`'s first line, but
+ * never better for `mover` than the list's last move.
  */
 export function judgement(
   before: FinalAnalysis,

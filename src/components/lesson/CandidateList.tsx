@@ -17,7 +17,7 @@ import type { Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { Notation } from '@/components/Notation';
-import { type EngineVerdict, percent } from '@/analysis/quality';
+import { type EngineVerdict, lostPercent, percent } from '@/analysis/quality';
 import { QualityBadge, TippedBadge, verdictText } from '@/components/QualityBadge';
 import { InfoMark, Tip } from '@/components/Tip';
 import type { Mark } from '@/progress/progress';
@@ -121,7 +121,7 @@ export function CandidateList({
   candidates,
   engineBest,
   verdicts,
-  opportunities = NO_OPPORTUNITIES,
+  opportunities,
   rare,
   rareShown,
   onShowRare,
@@ -162,7 +162,7 @@ export function CandidateList({
             main={candidate === main}
             topEngine={candidate === engineBest}
             verdict={verdicts?.get(candidate.move.uci)}
-            opportunity={opportunities.has(candidate.move.uci)}
+            opportunity={opportunities?.has(candidate.move.uci) ?? false}
             pointed={candidate.move.uci === pointed}
             mark={marks.get(candidate.move.uci)}
             // Every row keeps room for a mark once one has one, so their shares line up.
@@ -216,8 +216,6 @@ export function CandidateList({
     </Stack>
   );
 }
-
-const NO_OPPORTUNITIES: ReadonlySet<Uci> = new Set();
 
 /** The rare toggle's key among the rows' moves. */
 const RARE_TOGGLE = 'rare-toggle';
@@ -318,8 +316,9 @@ function Row({
   const { color } = theme.semantic;
   const { move, san, engine } = candidate;
   const tone = toneColors[candidateTone(candidate, main, opportunity)];
-  // What the other side's mistake gives away, once Stockfish has judged it.
-  const cost = opportunity ? verdict?.loss : undefined;
+  // What the other side's mistake gives away, once Stockfish has judged it
+  // to give away anything: a move it rates best costs nothing to show.
+  const cost = opportunity && verdict ? lostPercent(verdict.loss) : undefined;
   // The board marks Stockfish's best, the top move listed beside the guide's.
   const hollow = candidate.rare || (engine && !main && !topEngine);
   const point = () => onPoint(move.uci);
@@ -386,7 +385,7 @@ function Row({
           {cost === undefined ? null : (
             <Tip tip={costTip(cost)}>
               <Text role="caption" tone="danger" style={styles.cost}>
-                {`\u2212${percent(cost)}`}
+                {`\u2212${cost}`}
               </Text>
             </Tip>
           )}
@@ -430,8 +429,8 @@ function Row({
 }
 
 /** What an opportunity's cost means, in its tooltip and its row's label. */
-const costTip = (loss: number) =>
-  `An opportunity: this mistake gives away ${percent(loss)} of the winning chances`;
+const costTip = (cost: string) =>
+  `An opportunity: this mistake gives away ${cost} of the winning chances`;
 
 /** What a row of Stockfish's among the guide's says it is. */
 const TOP_ENGINE_MOVE = 'top engine move';
