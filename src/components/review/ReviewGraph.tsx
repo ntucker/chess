@@ -223,7 +223,10 @@ function mix(from: readonly number[], to: readonly number[], progress: number): 
   return to.map((_, n) => shareAt(from, to, progress, n));
 }
 
-/** The area's outline, springing on `spring` to each new set of scores (or jumping, `still`), on the UI thread. */
+/**
+ * The area's outline, springing on `spring` to each new set of scores (or
+ * jumping, `still`), on the UI thread.
+ */
 function useSpringArea(shown: readonly number[], spring: Spring, still: boolean) {
   const scores = useSameNumbers(shown);
   const from = useSharedValue(scores);

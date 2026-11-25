@@ -1,5 +1,4 @@
-import { Text, useMotion, useReducedMotion, useTheme } from '@reactive/silk-native';
-import { sampleSpring, type Spring } from '@reactive/silk-core';
+import { springMotion, Text, useMotion, useReducedMotion, useTheme } from '@reactive/silk-native';
 import { oklch } from '@reactive/silk-core/color';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -7,7 +6,6 @@ import Animated, {
   type CSSAnimationKeyframes,
   type CSSAnimationTimingFunction,
   cubicBezier,
-  linear,
 } from 'react-native-reanimated';
 
 import { type Ending, endingWords, type Mood } from '@/game/ending';
@@ -247,15 +245,9 @@ const GLEAM = {
   to: { transform: [{ translateX: '560%' }, { skewX: '-20deg' }] },
 };
 
-/** `spring` played from rest, as a step's length and easing. */
-function springStep(spring: Spring) {
-  const { settleMs, progress } = sampleSpring(spring);
-  return { durationMs: settleMs, easing: linear(...progress) };
-}
-
 /** Springs for a win: the ground snaps open, and the title lands with more bounce. */
-const SNAP = springStep({ durationMs: 400, bounce: 0.3 });
-const LAND = springStep({ durationMs: 500, bounce: 0.4 });
+const SNAP = springMotion({ durationMs: 400, bounce: 0.3 });
+const LAND = springMotion({ durationMs: 500, bounce: 0.4 });
 const EASE_OUT = cubicBezier(0.2, 0, 0, 1);
 
 /** Each mood's steps, by the part that plays them; a part without one is simply there. */
