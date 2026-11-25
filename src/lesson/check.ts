@@ -359,7 +359,7 @@ export const verdictProblem = (
 ) => trapProblem(pos, mistakeLine(lesson, positionKey(pos), move), verdict);
 
 /** The index of the first of `moves` from `pos` that isn't a guide move where it is played, if any. */
-function offGuide(lesson: Lesson, pos: Chess, moves: readonly Uci[]): number | undefined {
+export function offGuide(lesson: Lesson, pos: Chess, moves: readonly Uci[]): number | undefined {
   const at = pos.clone();
   for (const [n, uci] of moves.entries()) {
     if (!guideMove(lesson, positionKey(at), uci)) return n;

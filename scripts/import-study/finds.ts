@@ -16,6 +16,7 @@
 import { isFinal } from '@/evaluation/evaluation';
 import { playLine, positionKey } from '@/game/replay';
 import type { Lesson, LessonMove, LessonPosition, PositionKey, Uci } from '@/lesson/lesson';
+import { offGuide } from '@/lesson/check';
 import { mistakeLine } from '@/lesson/mistakes';
 import { guideMove } from '@/lesson/select';
 import { cueGain, type Find } from '@/opportunity/finder';
@@ -101,13 +102,11 @@ function markedPositions(lesson: Lesson, find: Find): PositionKey[] {
     ...find.line,
     ...mistakeLine(lesson, mistakeKey, guideMove(lesson, mistakeKey, find.mistake)!),
   ];
+  const off = offGuide(lesson, startOf(lesson), path);
+  if (off !== undefined)
+    throw new Error(`The mark on ${find.mistake} plays ${path[off]}, which the tree lacks`);
   // Every position but the last, where no path move is played.
-  const keys = [...playLine(path, startOf(lesson))].slice(0, -1).map(({ key }) => key);
-  keys.forEach((key, i) => {
-    if (!guideMove(lesson, key, path[i]))
-      throw new Error(`The mark on ${find.mistake} plays ${path[i]}, which the tree lacks`);
-  });
-  return keys;
+  return [...playLine(path, startOf(lesson))].slice(0, -1).map(({ key }) => key);
 }
 
 type Entry = Omit<LessonPosition, 'moves'> & { moves: LessonMove[] };

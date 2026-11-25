@@ -398,7 +398,9 @@ with the planning thread 2026-11-25):
   games. On the Stafford lesson the two agree: every written 1400 gain equals the report's to the
   point (checked 2026-11-25 against `yarn opportunities stafford`).
 - The counts go on the line each mark plays (`mistakeLine`): the find's own path, except where the
-  guide already marked the mistake (a migrated trap), whose mark keeps the guide's line.
+  guide already marked the mistake (a migrated trap), whose mark keeps the guide's line. The counts
+  can change the guide's choices, so the step then keeps every mark's line as it was
+  (`keepMistakeLines`), and the line counted is the line played.
 - The step needs popularity: `--no-popularity` skips it, since gains are per rating band.
 - Costs and gains are stored to a thousandth.
 

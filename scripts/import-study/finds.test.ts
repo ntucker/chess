@@ -182,7 +182,7 @@ describe('addPathCounts', () => {
     expect([...asked].sort()).toEqual([keyAfter(), keyAfter('e4'), keyAfter('e4', 'e5')].sort());
   });
 
-  it('refuses a mark whose stored line plays past the tree', async () => {
+  it('refuses a mark whose stored line plays a move the tree lacks', async () => {
     const lesson = lessonWith({
       [keyAfter('e4', 'e5')]: at([
         { uci: uci('e4', 'e5', 'Nf3') },
@@ -199,6 +199,17 @@ describe('addPathCounts', () => {
     // The line goes 2...bxa6 3.Nf3, but the tree has no position after 2.Ba6.
     await expect(addPathCounts(withFinds(lesson, [BA6]), [BA6], explorer)).rejects.toThrow(
       'which the tree lacks',
+    );
+    // The position after 2.Ba6 is in the tree, but without 2...bxa6.
+    const withCue = {
+      ...lesson,
+      positions: {
+        ...lesson.positions,
+        [keyAfter('e4', 'e5', 'Ba6')]: at([{ uci: uci('e4', 'e5', 'Ba6', 'Nxa6'), book: true }]),
+      },
+    };
+    await expect(addPathCounts(withFinds(withCue, [BA6]), [BA6], explorer)).rejects.toThrow(
+      `plays ${uci('e4', 'e5', 'Ba6', 'bxa6')}, which the tree lacks`,
     );
   });
 });
