@@ -20,7 +20,7 @@ export interface SpringState {
 }
 
 /** Frame rate keyframes and `linear()` easings are sampled at */
-export const SAMPLE_RATE = 60;
+const SAMPLE_RATE = 60;
 
 /** px: a spring moving things on screen settles once what's left is invisible */
 export const SUBPIXEL = 0.25;

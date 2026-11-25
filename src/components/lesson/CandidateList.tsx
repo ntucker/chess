@@ -1,4 +1,13 @@
-import { a11yState, Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
+import {
+  a11yState,
+  MotionList,
+  MotionView,
+  Pressable,
+  Stack,
+  Surface,
+  Text,
+  useTheme,
+} from '@reactive/silk-native';
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 
@@ -16,7 +25,6 @@ import { NARROW_CSS_LOADS, spokenOnly } from '@/theme/narrow';
 import type { Density } from '@/theme/Narrow';
 import { fonts } from '@/theme/theme';
 import { toneColors } from '@/theme/drawingTones';
-import { MotionList, MotionView } from '@/motion/MotionList';
 
 import { MARK_SIZE, MarkLegend, ProgressMark, SPOKEN_MARKS } from './ProgressMark';
 

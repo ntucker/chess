@@ -1,6 +1,6 @@
 // Renders Silk, which ships ES modules: the web project's transformIgnorePatterns
 // (package.json) lets @reactive through Babel for it.
-import { describe, expect, it, jest } from '@jest/globals';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { SilkProvider } from '@reactive/silk-native';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -13,15 +13,22 @@ import { CandidateList } from './CandidateList';
 
 // Its font needs Expo's asset registry too.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
-// Records whether each change the rows' motion animates fades rows in and out.
-const mockFades: boolean[] = [];
-jest.mock('@/motion/reorder', () => ({
-  measure: () => new Map(),
-  reorder: (_before: unknown, _items: unknown, _spring: unknown, { fades }: { fades: boolean }) => {
-    mockFades.push(fades);
-  },
-}));
 
+// Silk's own tests cover how the list moves; these check what the list is told: one
+// object per mount of it (a new key mounts a new one), and its layoutDependency.
+const mockRenders: { list: object; dependency: unknown }[] = [];
+jest.mock('@reactive/silk-native', () => {
+  const silk = jest.requireActual<typeof import('@reactive/silk-native')>('@reactive/silk-native');
+  const { useState } = jest.requireActual<typeof import('react')>('react');
+  return {
+    ...silk,
+    MotionList: ({ layoutDependency, children }: Parameters<typeof silk.MotionList>[0]) => {
+      const [list] = useState(() => ({}));
+      mockRenders.push({ list, dependency: layoutDependency });
+      return children;
+    },
+  };
+});
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const candidate = (uci: string, san: string, rare?: boolean) =>
@@ -197,25 +204,39 @@ describe('CandidateList', () => {
     ]);
   });
 
-  it('fades rows for showing rare ones, not for leaving a position that showed them', () => {
-    const list = mount();
-    mockFades.length = 0;
-    list.show({ position: 'a' });
-    list.show({ position: 'a', rareShown: true });
-    expect(mockFades).toEqual([true]);
-    // the next position mounts its own list: nothing animates the swap
-    list.show({ position: 'b' });
-    expect(mockFades).toEqual([true]);
-    list.unmount();
-  });
+  describe('motion', () => {
+    beforeEach(() => {
+      mockRenders.length = 0;
+    });
+    /** Each render of the list: which mount it is (from 0), and the change it fades rows for. */
+    const renders = () => {
+      const mounts = [...new Set(mockRenders.map(({ list }) => list))];
+      return mockRenders.map(({ list, dependency }) => [mounts.indexOf(list), dependency]);
+    };
 
-  it('glides rows a deeper search re-ranks in one position, without fading', () => {
-    const other = candidate('d2d4', 'd4');
-    const list = mount();
-    mockFades.length = 0;
-    list.show({ candidates: [COMMON, other] });
-    list.show({ candidates: [other, COMMON] });
-    expect(mockFades).toEqual([false]);
-    list.unmount();
+    it('fades rows in for showing rare ones, and starts a new position afresh', () => {
+      const list = mount();
+      list.show({ position: 'a' });
+      list.show({ position: 'a', rareShown: true });
+      list.show({ position: 'b' });
+      list.unmount();
+      expect(renders()).toEqual([
+        [0, false],
+        [0, true],
+        [1, false],
+      ]);
+    });
+
+    it('keeps the list and its change when a deeper search re-ranks rows, so they glide unfaded', () => {
+      const other = candidate('d2d4', 'd4');
+      const list = mount();
+      list.show({ candidates: [COMMON, other] });
+      list.show({ candidates: [other, COMMON] });
+      list.unmount();
+      expect(renders()).toEqual([
+        [0, false],
+        [0, false],
+      ]);
+    });
   });
 });
