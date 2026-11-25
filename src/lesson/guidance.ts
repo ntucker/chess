@@ -4,7 +4,7 @@
  *
  * - Explore shows every note on the idea card. The board draws the
  *   candidates, and a note's ideas only when the learner points at it (but
- *   see "Moves on the board" below), since both would share the board's
+ *   see "Arrows" below), since both would share the board's
  *   colors; a previewed move draws its own ideas, and where no candidates
  *   are listed every note's ideas are.
  *   Only a note about the position on the board can be pointed at, and
@@ -27,7 +27,7 @@
  *   Where the moves pick the opening (`picking`: the start, and the moves
  *   lessons share), nobody replies, so their candidates and previews show
  *   in every mode.
- * - "Moves on the board" off keeps the candidates' arrows and Stockfish's
+ * - "Arrows" off keeps the candidates' arrows and Stockfish's
  *   best off the resting board in Explore, so the next moves show only once
  *   the learner points at a row or drags a piece; the list still shows them.
  *   The board draws the ideas of the move just played in their place.
@@ -50,7 +50,7 @@
  * - After a mistake or blunder of the learner's side, the reply that punishes
  *   it (`refutation` in src/analysis/quality.ts) is marked while nothing is
  *   previewed, pointed at, picked up or playing back, in every mode and with
- *   "moves on the board" on or off, since it judges the move just played.
+ *   "Arrows" on or off, since it judges the move just played.
  *   Never on the learner's turn: there it would be their own next move,
  *   drawn in the color of what goes wrong. Where the best move or a candidate
  *   is the same move, the refutation's arrow is drawn instead of theirs. Its
@@ -163,7 +163,7 @@ export interface Guidance {
    */
   readonly pointed?: Note;
   /**
-   * Stockfish's best move to mark, with "moves on the board" on, while nothing
+   * Stockfish's best move to mark, with "Arrows" on, while nothing
    * is previewed, pointed at or playing back, when `tagsBest` says so.
    * Past the guide's moves it is the first of `top`: both come from one analysis.
    */
@@ -186,7 +186,7 @@ export interface Guidance {
 
 const NO_VERDICTS: ReadonlyMap<Uci, EngineVerdict> = new Map();
 
-/** Whether "Moves on the board" changes anything in `mode`: only in Explore. */
+/** Whether "Arrows" changes anything in `mode`: only in Explore. */
 export const movesSwitchApplies = (mode: LessonMode) => mode === 'explore';
 
 /** Whether Stockfish's top moves are listed: in Explore, past the guide's moves. */

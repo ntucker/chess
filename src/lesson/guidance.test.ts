@@ -226,7 +226,7 @@ describe('guidance', () => {
     const engine = { best: 'g1f3', top: ['g1f3', 'c2c3', 'f1d3'], final: true };
     const refutation = 'g1f3';
 
-    it('marks it in every mode, with moves on the board on or off, in place of the best', () => {
+    it('marks it in every mode, with "Arrows" on or off, in place of the best', () => {
       for (const mode of ['explore', 'practice'] as const) {
         for (const showMoves of [true, false]) {
           const marked = shown(beyond, mode, { showMoves }, { engine, refutation });
@@ -448,7 +448,7 @@ describe('guidance', () => {
       expect(types(pointing.drawn)).toEqual(['structure', 'structure']);
     });
 
-    it('keeps the arrows off the resting board with "moves on the board" off, until pointed at', () => {
+    it('keeps the arrows off the resting board with "Arrows" off, until pointed at', () => {
       const off = { ...ALL_ON, showMoves: false };
       const resting = explore(ADVANCE, { switches: off });
       expect(resting.candidates).toEqual(explore(ADVANCE).candidates);
@@ -468,21 +468,21 @@ describe('guidance', () => {
       expect(types(pointing.drawn)).toEqual(['structure', 'structure']);
     });
 
-    it("draws the learner's move's ideas on the opponent's turn with 'moves on the board' off", () => {
+    it("draws the learner's move's ideas on the opponent's turn with 'Arrows' off", () => {
       const played = shown([...ADVANCE, 'Bf5'], 'explore', { auto: false, showMoves: false });
       const move = played.notes.find(({ before }) => before !== undefined);
       expect(played.drawnCandidates).toEqual([]);
       expect(played.drawn.map(({ idea }) => idea)).toEqual(move?.note.ideas);
     });
 
-    it("draws Practice's choices whatever 'moves on the board' says", () => {
+    it("draws Practice's choices whatever 'Arrows' says", () => {
       const line = [...ADVANCE, 'Bf5'];
       const off = shown(line, 'practice', { auto: false, showMoves: false });
       expect(off.drawnCandidates.length).toBeGreaterThan(0);
       expect(off).toEqual(shown(line, 'practice', { auto: false, showMoves: true }));
     });
 
-    it("keeps Stockfish's best off the resting board with 'moves on the board' off", () => {
+    it("keeps Stockfish's best off the resting board with 'Arrows' off", () => {
       expect(explore(ADVANCE).best).toBe('g8f6');
       expect(explore(ADVANCE, { switches: { ...ALL_ON, showMoves: false } }).best).toBeUndefined();
     });

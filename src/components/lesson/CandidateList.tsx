@@ -1,4 +1,3 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { a11yState, Pressable, Stack, Surface, Text, useTheme } from '@reactive/silk-native';
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
@@ -11,7 +10,7 @@ import { Eyebrow, useLabelled } from '@/components/Eyebrow';
 import { Notation } from '@/components/Notation';
 import { type EngineVerdict, percent } from '@/analysis/quality';
 import { QualityBadge, TippedBadge, verdictText } from '@/components/QualityBadge';
-import { Tip } from '@/components/Tip';
+import { InfoMark, Tip } from '@/components/Tip';
 import type { Mark } from '@/progress/progress';
 import { NARROW_CSS_LOADS, spokenOnly } from '@/theme/narrow';
 import type { Density } from '@/theme/Narrow';
@@ -422,18 +421,11 @@ function ShareTip({
   readonly marked?: boolean;
   readonly children: ReactNode;
 }) {
-  const { theme } = useTheme();
   if (!tip) return children;
   return (
     <Tip tip={tip} style={STATIC.tipped}>
       {children}
-      {marked ? (
-        <Ionicons
-          name="information-circle-outline"
-          size={INFO_SIZE}
-          color={theme.semantic.color.textSecondary}
-        />
-      ) : null}
+      {marked ? <InfoMark size={INFO_SIZE} /> : null}
     </Tip>
   );
 }

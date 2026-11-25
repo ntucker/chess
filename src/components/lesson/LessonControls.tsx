@@ -28,13 +28,15 @@ export function LessonControls({ mode, onMode }: Props) {
       <PillChoice label="Mode" options={MODES} value={mode} onChange={onMode} />
       <View style={styles.toggles}>
         <Toggle
-          label="Moves on the board"
+          label="Arrows"
+          hint="Draws the next moves on the board as arrows, before you point at one."
           checked={showMoves}
           disabled={movesSwitchApplies(mode) ? undefined : 'Only in Explore'}
           onChange={(on) => dispatch({ type: 'chosen', choice: { showMoves: on } })}
         />
         <Toggle
-          label="Warn me of traps"
+          label="Warn of traps"
+          hint="Draws a trap's moves on the board before you can fall into it."
           checked={showTraps}
           onChange={(on) => dispatch({ type: 'chosen', choice: { showTraps: on } })}
         />

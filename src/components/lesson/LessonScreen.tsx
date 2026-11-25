@@ -1,17 +1,13 @@
 import { AsyncBoundary, useFetch, useSuspense } from '@data-client/react';
-import { Spinner, Stack } from '@reactive/silk-native';
+import { Spinner } from '@reactive/silk-native';
 import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
-import { useSections } from '@/components/Eyebrow';
 import { StatusHeadline } from '@/components/GameStatus';
 import { NewVersionPage } from '@/components/NewVersion';
-import { OpponentChoice } from '@/components/OpponentChoice';
 import { OpponentPicker } from '@/components/OpponentPicker';
 import { ScoresheetOpener } from '@/components/ScoresheetDrawer';
-import { Sheet } from '@/components/Sheet';
-import { SourceFootnote } from '@/components/SourceLink';
 import { resetListener } from '@/components/resetListener';
 import { BoardColumn, BoardColumnPlaceholder, Stage } from '@/components/Stage';
 import { useBackToReview } from '@/components/useBackToReview';
@@ -26,8 +22,7 @@ import { useLayout } from '@/theme/Narrow';
 import { AutoPlay } from './AutoPlay';
 import { PhoneLesson } from './layouts/PhoneLesson';
 import { WideLesson } from './layouts/WideLesson';
-import { LessonControls } from './LessonControls';
-import { SideChoice } from './SideChoice';
+import { LessonSettings } from './LessonSettings';
 import { LOADING } from './status';
 import { SourceCredits } from './SourceCredits';
 import { type LessonScreenInput, useLessonScreen } from './useLessonScreen';
@@ -127,19 +122,17 @@ function Openings({
  * pre-renders, takes its parts from narrow.css.
  */
 function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picked'>) {
-  const sections = useSections();
   const phone = useLayout() === 'phone';
   // The progress loads beside the lesson, rather than once it has loaded.
   useFetch(getProgress);
   const picked = useSuspense(getLesson, id ?? null);
   const model = useLessonScreen({ id, picked, onPlayAs, ...input });
-  // A phone's settings sheet and scoresheet drawer, shut while the window is wide.
+  // A phone's settings sheet and scoresheet drawer, shut while the window is wide (the sheet unmounts).
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [scoresheetOpen, setScoresheetOpen] = useState(false);
-  const settingsShown = phone && settingsOpen;
   const scoresheetShown = phone && scoresheetOpen;
   const back = useBackToReview();
-  const lessonCredits = <SourceCredits sources={model.sources} />;
+  const openSettings = () => setSettingsOpen(true);
 
   return (
     <Stage
@@ -151,11 +144,12 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
         narrowButton: {
           icon: 'settings-outline',
           label: 'Settings',
-          onPress: () => setSettingsOpen(true),
+          onPress: openSettings,
+          holdsTheme: true,
         },
       }}
       // A wide page credits the lesson's sources at its foot, a phone in its settings sheet.
-      footer={phone ? undefined : lessonCredits}
+      footer={phone ? undefined : <SourceCredits sources={model.sources} />}
       board={
         <BoardColumn
           {...model.board}
@@ -164,6 +158,8 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
             detailControl: <OpponentPicker />,
             children: <AutoPlay />,
           }}
+          // The sheet closes with a drag down, so a flick up from the bar under the board opens it too.
+          onFlickUp={phone ? openSettings : undefined}
           stepperMiddle={
             <ScoresheetOpener
               san={model.stepper.san}
@@ -187,18 +183,16 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
           ) : (
             <WideLesson model={model} />
           )}
-          <Sheet open={settingsShown} title="Settings" onClose={() => setSettingsOpen(false)}>
-            <Stack style={sections}>
-              {/* A phone's name-bar discs are dots too small to find; this swaps sides from the sheet, in a lesson too. */}
-              <SideChoice side={model.learner} onChange={onPlayAs} />
-              <LessonControls {...model.settings} />
-              <Stack gap="1">
-                <OpponentChoice />
-                {lessonCredits}
-              </Stack>
-              <SourceFootnote />
-            </Stack>
-          </Sheet>
+          {phone ? (
+            <LessonSettings
+              open={settingsOpen}
+              onClose={() => setSettingsOpen(false)}
+              learner={model.learner}
+              onPlayAs={onPlayAs}
+              sources={model.sources}
+              {...model.settings}
+            />
+          ) : null}
         </>
       }
     />

@@ -9,7 +9,7 @@ import { Dimensions } from 'react-native';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
 
-import { ThemeSwitch } from './ThemeSwitch';
+import { ThemeChoice, ThemeSwitch } from './ThemeSwitch';
 
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 
@@ -283,5 +283,24 @@ describe('ThemeSwitch', () => {
       expect(localStorage.getItem('settings')).toBeNull();
       expect(choicesOpen()).toBe(false);
     });
+  });
+});
+
+describe('ThemeChoice', () => {
+  it('picks a theme by its icon, the one in use checked', async () => {
+    await act(async () =>
+      root.render(
+        <SilkProvider theme={themes.dark}>
+          <SettingsProvider>
+            <ThemeChoice />
+          </SettingsProvider>
+        </SilkProvider>,
+      ),
+    );
+    expect(radio("Device's theme").getAttribute('aria-checked')).toBe('true');
+    await act(async () => radio('Dark').click());
+    expect(saved()).toBe('dark');
+    expect(radio('Dark').getAttribute('aria-checked')).toBe('true');
+    expect(host.textContent).toBe('');
   });
 });

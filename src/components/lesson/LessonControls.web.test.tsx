@@ -1,6 +1,6 @@
 // Renders Silk, which ships ES modules: the web project's transformIgnorePatterns
 // (package.json) lets @reactive through Babel for it.
-import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { SilkProvider } from '@reactive/silk-native';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -10,6 +10,8 @@ import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
 
 import { LessonControls } from './LessonControls';
+
+jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -40,7 +42,11 @@ const render = (mode: LessonMode) =>
 
 const toggle = (label: string) =>
   host.querySelector<HTMLElement>(`[role="switch"][aria-label="${label}"]`)!;
-const moves = () => toggle('Moves on the board');
+const moves = () => toggle('Arrows');
+const labelOf = (label: string) =>
+  [...host.querySelectorAll<HTMLElement>('[data-field-label]')].find(
+    (node) => node.textContent === label,
+  )!;
 
 /** A press through react-native-web's responder system, which listens for mouse events. */
 function tap(element: HTMLElement) {
@@ -52,21 +58,24 @@ function tap(element: HTMLElement) {
 }
 
 describe('LessonControls', () => {
-  it('disables "Moves on the board" in Practice, keeping its value', async () => {
+  it('disables "Arrows" in Practice, keeping its value', async () => {
     await render('practice');
     expect(moves().getAttribute('aria-disabled')).toBe('true');
     expect(moves().getAttribute('aria-checked')).toBe('true');
     await act(async () => moves().click());
     expect(moves().getAttribute('aria-checked')).toBe('true');
-    expect(toggle('Warn me of traps').getAttribute('aria-disabled')).not.toBe('true');
+    expect(toggle('Warn of traps').getAttribute('aria-disabled')).not.toBe('true');
   });
 
-  it('says why "Moves on the board" is disabled, to screen readers too', async () => {
+  it('says why "Arrows" is disabled, or else what it does, to screen readers too', async () => {
+    const description = () => {
+      const described = moves().getAttribute('aria-describedby');
+      return described && document.getElementById(described)?.textContent;
+    };
     await render('practice');
-    const described = moves().getAttribute('aria-describedby');
-    expect(described && document.getElementById(described)?.textContent).toBe('Only in Explore');
+    expect(description()).toBe('Only in Explore');
     await render('explore');
-    expect(moves().getAttribute('aria-describedby')).toBeNull();
+    expect(description()).toMatch(/^Draws the next moves/);
   });
 
   it('shows why in a tooltip when the disabled switch is tapped', async () => {
@@ -79,7 +88,32 @@ describe('LessonControls', () => {
     expect(tip()).toBe('Only in Explore');
   });
 
-  it('lets "Moves on the board" change in Explore', async () => {
+  it("shows a switch's hint when its info icon is tapped", async () => {
+    const tip = () => document.querySelector('[role="tooltip"]')?.textContent;
+    await render('explore');
+    const [, trapsHint] = host.querySelectorAll<HTMLElement>('[data-testid="toggle-hint"]');
+    await act(async () => tap(trapsHint!));
+    expect(tip()).toMatch(/^Draws a trap's moves/);
+  });
+
+  it('toggles a hinted switch from its label, without its tooltip', async () => {
+    const tip = () => document.querySelector('[role="tooltip"]');
+    await render('explore');
+    const traps = toggle('Warn of traps');
+    await act(async () => tap(labelOf('Warn of traps')));
+    expect(traps.getAttribute('aria-checked')).toBe('true');
+    expect(tip()).toBeNull();
+  });
+
+  it("says why from a tap on the disabled switch's label too", async () => {
+    const tip = () => document.querySelector('[role="tooltip"]')?.textContent;
+    await render('practice');
+    await act(async () => tap(labelOf('Arrows')));
+    expect(tip()).toBe('Only in Explore');
+    expect(moves().getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('lets "Arrows" change in Explore', async () => {
     await render('explore');
     expect(moves().getAttribute('aria-disabled')).not.toBe('true');
     await act(async () => moves().click());

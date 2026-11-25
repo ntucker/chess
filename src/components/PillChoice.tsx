@@ -18,10 +18,18 @@ interface Props<T extends string> {
   readonly options: readonly PillOption<T>[];
   readonly value: T;
   readonly onChange: (value: T) => void;
+  /** Shows each option's icon alone, its label only for screen readers. */
+  readonly iconsOnly?: boolean;
 }
 
 /** A switch between a few options, in a sunken pill; the chosen one is raised. */
-export function PillChoice<T extends string>({ label, options, value, onChange }: Props<T>) {
+export function PillChoice<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+  iconsOnly,
+}: Props<T>) {
   const { theme } = useTheme();
   const { color, shadow } = theme.semantic;
   return (
@@ -38,10 +46,12 @@ export function PillChoice<T extends string>({ label, options, value, onChange }
           <Pressable
             key={option.value}
             accessibilityRole="radio"
+            accessibilityLabel={iconsOnly ? option.label : undefined}
             {...a11yState({ checked: selected })}
             onPress={() => onChange(option.value)}
             style={[
               styles.option,
+              iconsOnly ? styles.iconOption : styles.labelOption,
               selected && {
                 backgroundColor: color.surfaceRaised,
                 shadowColor: SHADOW_INK,
@@ -53,9 +63,11 @@ export function PillChoice<T extends string>({ label, options, value, onChange }
             ]}
           >
             {option.icon}
-            <Text role="label" tone={selected ? 'primary' : 'secondary'}>
-              {option.label}
-            </Text>
+            {iconsOnly ? null : (
+              <Text role="label" tone={selected ? 'primary' : 'secondary'}>
+                {option.label}
+              </Text>
+            )}
           </Pressable>
         );
       })}
@@ -66,7 +78,6 @@ export function PillChoice<T extends string>({ label, options, value, onChange }
 const styles = StyleSheet.create({
   track: { flexDirection: 'row', borderRadius: 999, padding: 3 },
   option: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -74,4 +85,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: 8,
   },
+  // Labelled options share the pill's width.
+  labelOption: { flex: 1 },
+  // A round slot as tall as a labelled option, and as wide. Set no `flex`: `flex: 1` natively
+  // and `flex: 0` on React Native Web each set a flex basis of 0, which overrides `width`.
+  iconOption: { width: 36 },
 });

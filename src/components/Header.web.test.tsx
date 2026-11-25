@@ -19,8 +19,8 @@ jest.mock('@/assets/images/logo-mark.png', () => 'logo-mark.png');
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-/** The narrow part around each of the header's buttons, by the button's label. */
-function buttonParts(props: Parameters<typeof Header>[0]) {
+/** Renders the header with `props`, hands its page to `read`, unmounts it and returns what `read` gave. */
+function withHeader<T>(props: Parameters<typeof Header>[0], read: (host: HTMLElement) => T): T {
   const host = document.createElement('div');
   const root = createRoot(host);
   act(() =>
@@ -32,15 +32,31 @@ function buttonParts(props: Parameters<typeof Header>[0]) {
       </SilkProvider>,
     ),
   );
-  const parts = Object.fromEntries(
-    [...host.querySelectorAll('[aria-label]')].map((button) => [
-      button.getAttribute('aria-label'),
-      button.closest('[data-narrow]')?.getAttribute('data-narrow'),
-    ]),
-  );
-  act(() => root.unmount());
-  return parts;
+  try {
+    return read(host);
+  } finally {
+    act(() => root.unmount());
+  }
 }
+
+/** The narrow part around `element`, if any. */
+const partOf = (element: Element | null) =>
+  element?.closest('[data-narrow]')?.getAttribute('data-narrow');
+
+/** The narrow part around each of the header's buttons, by the button's label. */
+const buttonParts = (props: Parameters<typeof Header>[0]) =>
+  withHeader(props, (host) =>
+    Object.fromEntries(
+      [...host.querySelectorAll('[aria-label]')].map((button) => [
+        button.getAttribute('aria-label'),
+        partOf(button),
+      ]),
+    ),
+  );
+
+/** The narrow part around the header's theme button. */
+const themePart = (props: Parameters<typeof Header>[0]) =>
+  withHeader(props, (host) => partOf(host.querySelector('[aria-label^="Theme:"]')));
 
 describe('Header', () => {
   it('keeps the source link on every page without settings', () => {
@@ -56,20 +72,10 @@ describe('Header', () => {
 
   it('starts over when the logo is pressed', () => {
     const onRestart = jest.fn();
-    const host = document.createElement('div');
-    const root = createRoot(host);
-    act(() =>
-      root.render(
-        <SilkProvider theme={themes.dark}>
-          <SettingsProvider>
-            <Header onRestart={onRestart} />
-          </SettingsProvider>
-        </SilkProvider>,
-      ),
+    withHeader({ onRestart }, (host) =>
+      act(() => (host.querySelector('[aria-label="Start over"]') as HTMLElement).click()),
     );
-    act(() => (host.querySelector('[aria-label="Start over"]') as HTMLElement).click());
     expect(onRestart).toHaveBeenCalledTimes(1);
-    act(() => root.unmount());
   });
 
   it('puts the settings button in the source link’s place on a narrow page', () => {
@@ -83,30 +89,22 @@ describe('Header', () => {
     });
   });
 
+  it("leaves out a narrow page's theme button when its narrow button holds the theme", () => {
+    const narrowButton = {
+      icon: 'settings-outline',
+      label: 'Settings',
+      onPress: () => {},
+    } as const;
+    expect(themePart({ narrowButton })).toBeUndefined();
+    expect(themePart({ narrowButton: { ...narrowButton, holdsTheme: true } })).toBe('wide-only');
+  });
+
   it('says whether what its narrow button opens is open', () => {
-    const expanded = (open?: boolean) => {
-      const host = document.createElement('div');
-      const root = createRoot(host);
-      act(() =>
-        root.render(
-          <SilkProvider theme={themes.dark}>
-            <SettingsProvider>
-              <Header
-                narrowButton={{
-                  icon: 'list',
-                  label: 'Scoresheet',
-                  onPress: () => {},
-                  expanded: open,
-                }}
-              />
-            </SettingsProvider>
-          </SilkProvider>,
-        ),
+    const expanded = (open?: boolean) =>
+      withHeader(
+        { narrowButton: { icon: 'list', label: 'Scoresheet', onPress: () => {}, expanded: open } },
+        (host) => host.querySelector('[aria-label="Scoresheet"]')?.getAttribute('aria-expanded'),
       );
-      const state = host.querySelector('[aria-label="Scoresheet"]')?.getAttribute('aria-expanded');
-      act(() => root.unmount());
-      return state;
-    };
     expect(expanded(true)).toBe('true');
     expect(expanded(false)).toBe('false');
     expect(expanded()).toBeNull();

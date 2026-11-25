@@ -13,6 +13,8 @@ interface Props {
   readonly open: boolean;
   /** The sheet's name, at its top and for screen readers. */
   readonly title: string;
+  /** A small control in the sheet's head, beside its title. */
+  readonly aside?: ReactNode;
   /**
    * The close button, a tap beside the sheet, Escape, Android's back button,
    * dragging the sheet down, or another screen coming on top of this one.
@@ -30,7 +32,7 @@ interface Props {
  * top moves the sheet; on the web a drag in the content is the browser's
  * scrolling, so only the head and handle drag it there.
  */
-export function Sheet({ open, title, onClose, children }: Props) {
+export function Sheet({ open, title, aside, onClose, children }: Props) {
   // A screen left underneath stays mounted, and the dialog would cover the one on top.
   const focused = useIsFocused();
   const close = useEffectEvent(onClose);
@@ -47,7 +49,10 @@ export function Sheet({ open, title, onClose, children }: Props) {
         style={[styles.sheet, { paddingBottom: bottom }]}
       >
         <Inline align="center" justify="between" wrap="nowrap" style={styles.head}>
-          <Dialog.Title>{title}</Dialog.Title>
+          <Inline gap="3" align="center" wrap="nowrap">
+            <Dialog.Title>{title}</Dialog.Title>
+            {aside}
+          </Inline>
           <HeaderButton
             icon="close"
             iconSize={CLOSE_ICON}

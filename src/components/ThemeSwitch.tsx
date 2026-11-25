@@ -6,13 +6,14 @@ import Animated from 'react-native-reanimated';
 
 import { hoversControl } from '@/board/pointer';
 import { HEADER_BUTTON_SIZE, HeaderButton } from '@/components/HeaderButton';
+import { PillChoice } from '@/components/PillChoice';
 import { usePressingFinger } from '@/components/usePressingFinger';
 import type { Point } from '@/motion/dom';
 import { springMotion, springs } from '@/motion/spring';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
 import { type Theme, THEMES } from '@/settings/settings';
 import { narrowStyles } from '@/theme/narrow';
-import { useNarrowStyles } from '@/theme/Narrow';
+import { useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
 import { timingFunction } from '@/theme/timingFunction';
 
 const CHOICES: Record<Theme, { label: string; icon: ComponentProps<typeof Ionicons>['name'] }> = {
@@ -86,13 +87,16 @@ function swiped(menu: Menu, { x, y }: Point) {
  * pen clicks one. A held finger swipes to one and lifts: the farther the
  * swipe, the farther the choice, and past either end the end one. Lifting
  * where it was held, or after moving well up or down, keeps the theme.
+ * With `wideOnly`, a narrow page leaves it out, for a page whose settings
+ * sheet holds the theme (`ThemeChoice`).
  */
-export function ThemeSwitch() {
+export function ThemeSwitch({ wideOnly }: { readonly wideOnly?: boolean }) {
   const { theme } = useSettings();
   const dispatch = useSettingsDispatch();
   const { color, shadow } = useTheme().theme.semantic;
   const reducedMotion = useReducedMotion();
   const styles = useNarrowStyles(STYLES);
+  const part = useNarrowPart();
   const [menu, setMenu] = useState<Menu>();
   // How far the choices last moved to stay in the window, kept once they
   // close so they don't jump while fading out.
@@ -145,7 +149,7 @@ export function ThemeSwitch() {
 
   return (
     <View
-      style={styles.root}
+      {...part(wideOnly && 'wide-only', styles.root)}
       onPointerEnter={({ nativeEvent }: PointerEvent) => {
         if (hoversControl(nativeEvent.pointerType)) open('hover');
       }}
@@ -242,6 +246,36 @@ export function ThemeSwitch() {
         </Animated.View>
       </Animated.View>
     </View>
+  );
+}
+
+/**
+ * The three themes as icons in a pill, the one in use raised: the settings
+ * sheet's choice, for a page whose narrow header leaves out `ThemeSwitch`.
+ */
+export function ThemeChoice() {
+  const { theme } = useSettings();
+  const dispatch = useSettingsDispatch();
+  const { color } = useTheme().theme.semantic;
+  const options = THEMES.map((choice) => ({
+    value: choice,
+    label: CHOICES[choice].label,
+    icon: (
+      <Ionicons
+        name={CHOICES[choice].icon}
+        size={ICON_SIZE}
+        color={choice === theme ? color.textPrimary : color.textSecondary}
+      />
+    ),
+  }));
+  return (
+    <PillChoice
+      label="Theme"
+      options={options}
+      value={theme}
+      onChange={(choice) => dispatch({ type: 'chosen', choice: { theme: choice } })}
+      iconsOnly
+    />
   );
 }
 
