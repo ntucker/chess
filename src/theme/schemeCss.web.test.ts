@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import { parseSettings } from '@/settings/settings';
 
-import { BAR_COLORS } from './barColor';
+import { BAR_COLORS, BAR_METAS } from './barColor';
 import { PRE_PAINT_SCRIPT, SCHEME_CSS } from './schemeCss';
 // On the web the hook reads no context, so it can run outside a component.
 import { shownThemes, useSchemeColors as webSchemeColors } from './shownTheme';
@@ -107,7 +107,7 @@ describe('PRE_PAINT_SCRIPT', () => {
     // Runs the script as the page's head does, against stand-ins for the page.
     new Function('localStorage', 'document', PRE_PAINT_SCRIPT)(localStorage, {
       documentElement: { dataset },
-      querySelectorAll: (selector: string) => (selector === 'meta[name=theme-color]' ? bars : []),
+      querySelectorAll: (selector: string) => (selector === BAR_METAS ? bars : []),
     });
     return { theme: dataset.theme, bars: bars.map((bar) => bar.content) };
   }
