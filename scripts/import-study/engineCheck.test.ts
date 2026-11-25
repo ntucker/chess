@@ -309,6 +309,22 @@ describe('fillBook', () => {
     });
   });
 
+  it("books Stockfish's own move beside a marked mistake that is the learner's only move", async () => {
+    const marked = { uci: uci('d4', 'e5'), mistake: { verdict: 'whiteClearly' as const } };
+    const lesson = {
+      ...unbooked,
+      positions: { ...unbooked.positions, [keyAfter('d4')]: at([marked]) },
+    };
+    delete lesson.positions[keyAfter('d4', 'd5')];
+    const naming = async (line: readonly string[], key: string) =>
+      scored((await evaluate(line, key)).lines[0].evaluation, uci('d4', 'd5'));
+    const filled = await fillBook(lesson, naming);
+    expect(filled.lesson.positions[keyAfter('d4')].moves).toEqual([
+      { uci: uci('d4', 'd5'), book: true },
+      marked,
+    ]);
+  });
+
   it('ends the line where the engine overrules every move the guide shows and names none', async () => {
     const lesson = {
       ...unbooked,

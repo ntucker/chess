@@ -142,6 +142,7 @@
 {"key":"r1bqk1nr/ppp2ppp/2np4/2b1p3/2B1P3/2P2N2/PP1P1PPP/RNBQK2R w KQkq -","search":"1x100000","evaluation":{"score":0.5749143902876699,"pawns":0.82,"best":"d2d4"}}
 {"key":"r1bqk1nr/ppp2ppp/2np4/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq -","search":"1x100000","evaluation":{"score":0.5147240615881282,"pawns":0.16,"best":"c2c3"}}
 {"key":"r1bqk1nr/ppp2ppp/2np4/2b1p3/2BPP3/2P2N2/PP3PPP/RNBQK2R b KQkq -","search":"1x100000","evaluation":{"score":0.5495449603745888,"pawns":0.54,"best":"c5b6"}}
+{"key":"r1bqk1nr/ppp2ppp/2np4/2b2N2/4P3/8/PPP2PPP/RNBQKB1R w KQkq -","search":"1x100000","evaluation":{"score":0.4815979155878063,"pawns":-0.2,"best":"b1c3"}}
 {"key":"r1bqk1nr/ppp2ppp/2np4/2b5/2BPP3/5N2/PP3PPP/RNBQK2R b KQkq -","search":"1x100000","evaluation":{"score":0.5631764176433595,"pawns":0.69,"best":"c5b6"}}
 {"key":"r1bqk1nr/ppp2ppp/2np4/2b5/2BpP3/2P2N2/PP3PPP/RNBQK2R w KQkq -","search":"1x100000","evaluation":{"score":0.5883532029754936,"pawns":0.97,"best":"c3d4"}}
 {"key":"r1bqk1nr/ppp2ppp/2np4/8/1bB1P3/2N2N2/PP3PPP/R1BQK2R w KQkq -","search":"1x100000","evaluation":{"score":0.48987566402915633,"pawns":-0.11,"best":"d1b3"}}

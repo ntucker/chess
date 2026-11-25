@@ -15,7 +15,7 @@ import { numberedLine, SAN } from '@/game/replay';
 
 import type { ChapterNotes, MoveNote } from '../extract';
 import type { StudyIdea } from '../mistakes';
-import type { StudyMove } from '../study';
+import { trapPosition, type StudyMove } from '../study';
 
 /** One comment as the model reads it. */
 export interface Comment {
@@ -37,6 +37,12 @@ export interface Comment {
   readonly chapterSummary?: true;
   /** The side the study was written for, when it is not the learner's: its "you" is the opponent. */
   readonly writtenFor?: Color;
+  /**
+   * Where the trap the comment warns about starts, when the lesson books the
+   * commented move (`StudyMove.trapStart`): the moves after it, numbered, the
+   * last being the trap's first move, and the position before that move.
+   */
+  readonly trapStart?: { readonly moves: string; readonly fen: string };
   /** Ideas the importer already read from this comment without AI. */
   readonly extracted: readonly StudyIdea[];
   /** Only when asked again: the model's earlier note texts the checker refused as notation. */
@@ -67,6 +73,7 @@ export function noteComment(moveNote: MoveNote, chapter: ChapterNotes): Comment 
       .flatMap((other) => other.note.ideas ?? []),
   ];
   const fenBefore = makeFen(move.before.toSetup());
+  const trapStart = summary ? undefined : trapStartOf(source);
   return {
     id: hash(`${fenBefore} ${move.uci} ${summary} ${comment}`),
     line: lineTo(move),
@@ -83,8 +90,16 @@ export function noteComment(moveNote: MoveNote, chapter: ChapterNotes): Comment 
     previousComment: fragment ? '' : previous,
     ...(summary && { chapterSummary: true as const }),
     ...(chapter.writtenFor && { writtenFor: chapter.writtenFor }),
+    ...(trapStart && { trapStart }),
     extracted,
   };
+}
+
+/** Where the trap `move`'s comment warns about starts, for the model (`Comment.trapStart`). */
+function trapStartOf(move: StudyMove): Comment['trapStart'] {
+  const pos = trapPosition(move);
+  if (!pos || !move.trapStart) return undefined;
+  return { moves: numberedLine(move.trapStart, move.ply + 1), fen: makeFen(pos.toSetup()) };
 }
 
 export const hash = (text: string) => createHash('sha256').update(text).digest('hex').slice(0, 16);

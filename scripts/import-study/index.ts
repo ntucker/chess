@@ -83,7 +83,14 @@ import { addPopularity, lichessExplorer, type LichessExplorer } from './populari
 import { indexedWith, readLessonFile, registered, writeIndex } from './register';
 import { report, sourceReport } from './report';
 import { nodeStockfish } from './stockfish';
-import { parseStudy, withoutLeadComments, withoutLines, withReplies, type Chapter } from './study';
+import {
+  parseStudy,
+  withoutLeadComments,
+  withoutLines,
+  withReplies,
+  withTrapStarts,
+  type Chapter,
+} from './study';
 import {
   credit,
   lessonInfo,
@@ -320,11 +327,15 @@ function writeLesson(file: string, lesson: Lesson) {
   console.log(`wrote ${file}: ${Buffer.byteLength(json)} bytes`);
 }
 
-/** The chapters `from` gives a lesson that teaches `side`, with the replies it names in words. */
+/**
+ * The chapters `from` gives a lesson that teaches `side`, with the replies it
+ * names in words and where its comments' traps start.
+ */
 async function sourceChapters(from: ChapterSource, side: Color): Promise<Chapter[]> {
   const chapters =
     'study' in from ? await studyChapters(from) : await wikibooksChapters(from, side);
-  return from.replies ? withReplies(chapters, from.replies) : chapters;
+  const replied = from.replies ? withReplies(chapters, from.replies) : chapters;
+  return from.trapStarts ? withTrapStarts(replied, from.trapStarts) : replied;
 }
 
 async function studyChapters(from: StudySource): Promise<Chapter[]> {
@@ -337,7 +348,7 @@ async function studyChapters(from: StudySource): Promise<Chapter[]> {
 }
 
 async function wikibooksChapters(from: WikibooksSource, side: Color): Promise<Chapter[]> {
-  const { replies: _replies, ...options } = from;
+  const { replies: _replies, trapStarts: _trapStarts, ...options } = from;
   return parseStudy(await wikibooksPgn(wikibooksPage, { ...options, learner: side }), () => true);
 }
 

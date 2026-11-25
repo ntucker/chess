@@ -2,8 +2,9 @@
  * The AI step: Sonnet rewrites every comment as short notes for the learner
  * and adds what the fixed formats missed as ideas the board draws. The
  * checker drops every idea that is false in its position; a comment whose
- * ideas were all dropped is asked again of Opus, and the answer keeping more
- * ideas wins. A comment whose note text the checker refuses as notation is
+ * ideas were all dropped, or whose trap that starts later (`Comment.trapStart`)
+ * it dropped or the model left out, is asked again of Opus, and the answer
+ * drawing that trap, else the one keeping more ideas, wins. A comment whose note text the checker refuses as notation is
  * asked again of Opus with that text, and the answer in words replaces it; if
  * Opus writes notation too, or gives no answer (a failed request, or a
  * `--no-model` run without one stored), the lesson checker refuses the import.
@@ -16,6 +17,7 @@
  * the lesson file it writes is committed, so the site build and the tests
  * never call a model.
  */
+import type { Chess } from 'chessops/chess';
 import { makeSan } from 'chessops/san';
 import { parseUci } from 'chessops/util';
 
@@ -26,16 +28,24 @@ import { noteShows, type AiModel, type NoteShows } from '@/lesson/lesson';
 import type { ChapterNotes, MoveNote, PositionNote } from '../extract';
 import type { StudyNote } from '../mistakes';
 import { topReasons } from '../report';
+import { trapPosition } from '../study';
 import { namedMoves, nextPly } from '../text';
 import type { Answer, AnswerIdea } from './answer';
 import { MODELS, type Ask } from './claude';
 import { noteComment, type Comment } from './comments';
 import { convertedNotes, notesOf, type Converted } from './notes';
-import { DRAW_MISTAKES, REWORD, SHORTEN, STANDALONE, WRITTEN_FOR_OPPONENT } from './prompt';
+import {
+  DRAW_MISTAKES,
+  REWORD,
+  SHORTEN,
+  STANDALONE,
+  TRAP_START,
+  WRITTEN_FOR_OPPONENT,
+} from './prompt';
 
 /** How many comments were asked again of Opus, by why, and what the rewording changed. */
 interface Retries {
-  /** The checker refused every idea. */
+  /** The checker refused every idea, or the trap of a comment whose trap starts later. */
   readonly retried: number;
   /** The checker refused note text as notation. */
   readonly reworded: number;
@@ -66,6 +76,8 @@ interface Job {
   readonly moveNote: MoveNote;
   /** Undefined for a note without a comment (an evaluation glyph alone). */
   readonly comment: Comment | undefined;
+  /** Where the comment's trap starts (`Comment.trapStart`): its trap notes go there. */
+  readonly trap?: Chess;
 }
 
 /** `extracted` with every commented move's notes rewritten by the model. */
@@ -74,10 +86,11 @@ export async function convertChapters(
   ask: Ask,
 ): Promise<{ extracted: ChapterNotes[]; report: ConvertReport }> {
   const jobs = extracted.map((chapter) =>
-    chapter.moveNotes.map((moveNote): Job => ({
-      moveNote,
-      comment: noteComment(moveNote, chapter),
-    })),
+    chapter.moveNotes.map((moveNote): Job => {
+      const comment = noteComment(moveNote, chapter);
+      const trap = comment?.trapStart && trapPosition(moveNote.source);
+      return { moveNote, comment, ...(trap && { trap }) };
+    }),
   );
   const comments = new Map<string, Comment>();
   for (const { comment } of jobs.flat()) if (comment) comments.set(comment.id, comment);
@@ -99,7 +112,7 @@ async function convertComments(
   comments: ReadonlyMap<string, Comment>,
   askModel: Ask,
 ): Promise<{ converted: Map<string, Converted>; retries: Retries }> {
-  const ask = withWrittenFor(askModel);
+  const ask = withAddenda(askModel);
   const converted = new Map<string, Converted>();
   /**
    * Asks `model` about `items` and puts each answer's notes in `converted`
@@ -112,14 +125,15 @@ async function convertComments(
     addendum?: string,
   ) => {
     const answers = await ask(model, items, addendum);
-    for (const { moveNote, comment } of jobs) {
+    for (const { moveNote, comment, trap } of jobs) {
       const answer = comment && answers.get(comment.id);
       if (!answer) continue;
+      const { move } = moveNote;
       const result = convertedNotes(
         comment,
         answer,
         model,
-        moveNote.move,
+        { before: move.before, after: move.after, ...(trap && { trap }) },
         moveNote.note.ideas ?? [],
       );
       if (notesOf(result).length === 0) continue;
@@ -130,9 +144,18 @@ async function convertComments(
   const keepsMore = (result: Converted, previous: Converted) => result.kept > previous.kept;
   await askAndKeep(MODELS.convert, [...comments.values()], keepsMore);
   const retry = [...converted]
-    .filter(([, result]) => allRefused(result))
+    .filter(([id, result]) => allRefused(result) || trapUndrawn(comments.get(id)!, result))
     .map(([id]) => comments.get(id)!);
-  if (retry.length > 0) await askAndKeep(MODELS.retry, retry, keepsMore);
+  // A later trap the first answer couldn't draw wins over more ideas elsewhere.
+  const drawsTrap = (result: Converted, previous: Converted, comment: Comment) =>
+    trapUndrawn(comment, previous) && !trapUndrawn(comment, result);
+  if (retry.length > 0)
+    await askAndKeep(
+      MODELS.retry,
+      retry,
+      (result, previous, comment) =>
+        keepsMore(result, previous) || drawsTrap(result, previous, comment),
+    );
   /** The comments whose answer has note texts `textsOf` picks out as refused, each with those texts. */
   const refusedBy = (textsOf: (result: Converted) => string[]) =>
     [...converted].flatMap(([id, result]) => {
@@ -240,20 +263,28 @@ function undrawnMistakes(comment: Comment, result: Converted): string[] {
 
 /**
  * `ask`, telling the model about comments written for the learner's opponent
- * (`Comment.writtenFor`). The others are asked as before, so their stored
+ * (`Comment.writtenFor`) and comments whose trap starts later
+ * (`Comment.trapStart`). The others are asked as before, so their stored
  * answers still match.
  */
-const withWrittenFor =
+const withAddenda =
   (ask: Ask): Ask =>
   async (model, comments, addendum = '') => {
-    const own = comments.filter((comment) => !comment.writtenFor);
-    const theirs = comments.filter((comment) => comment.writtenFor);
-    const answers = own.length > 0 ? await ask(model, own, addendum) : new Map<string, Answer>();
-    if (theirs.length > 0)
-      for (const entry of await ask(model, theirs, WRITTEN_FOR_OPPONENT + addendum))
-        answers.set(...entry);
+    const byAddenda = Map.groupBy(
+      comments,
+      (comment) =>
+        (comment.writtenFor ? WRITTEN_FOR_OPPONENT : '') + (comment.trapStart ? TRAP_START : ''),
+    );
+    const answers = new Map<string, Answer>();
+    for (const [prefix, group] of byAddenda)
+      for (const entry of await ask(model, group, prefix + addendum)) answers.set(...entry);
     return answers;
   };
+
+/** A comment whose trap starts later (`Comment.trapStart`) without a trap the checker kept. */
+const trapUndrawn = (comment: Comment, result: Converted) =>
+  comment.trapStart !== undefined &&
+  !result.trap.some((note) => note.ideas?.some((idea) => idea.type === 'trap'));
 
 /** The model wrote drawable ideas and the checker refused every one. */
 const allRefused = (result: Converted) =>
@@ -289,7 +320,7 @@ function convertedChapter(
   const moveNotes: MoveNote[] = [];
   const added: PositionNote[] = [];
   const joined = new Set<PositionNote>();
-  for (const { moveNote, comment } of jobs) {
+  for (const { moveNote, comment, trap } of jobs) {
     const result = comment && converted.get(comment.id);
     if (!result) {
       moveNotes.push(moveNote);
@@ -297,6 +328,7 @@ function convertedChapter(
     }
     const { move, source } = moveNote;
     moveNotes.push(...result.move.map((note) => ({ move, note, source })));
+    if (trap) added.push(...result.trap.map((note) => ({ pos: trap, note, source })));
     const [first, ...rest] = result.before;
     if (!first) continue;
     const key = positionKey(move.before);
@@ -353,7 +385,7 @@ export function convertReport({
     15,
   );
   return [
-    `converted comments: ${comments - unconverted} of ${comments} (asked again of ${MODELS.retry}: ${retried} with every idea refused, ${reworded} with notes in notation, ${unmoored} with notes pointing to the study, ${punished} with a mistake's punishment undrawn, ${shortened} with notes cut at the word limit)`,
+    `converted comments: ${comments - unconverted} of ${comments} (asked again of ${MODELS.retry}: ${retried} with every idea or a later trap refused, ${reworded} with notes in notation, ${unmoored} with notes pointing to the study, ${punished} with a mistake's punishment undrawn, ${shortened} with notes cut at the word limit)`,
     ...(reworded > 0
       ? [
           `  ideas the comments with notes in notation keep: ${rewordedIdeas.before} before, ${rewordedIdeas.after} after`,

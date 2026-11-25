@@ -48,6 +48,14 @@ export interface StudySource {
    * moves (`withReplies`): the line's moves in SAN from the start, then the reply.
    */
   readonly replies?: Readonly<Record<string, string>>;
+  /**
+   * Comments warning against a move the lesson books, for a trap that starts
+   * later (`withTrapStarts`): the commented line's moves in SAN from the start,
+   * then the moves after it up to the trap's first move. The model words the
+   * comment's note as a warning about that move, and writes the trap's note
+   * where it starts (`Comment.trapStart`).
+   */
+  readonly trapStarts?: Readonly<Record<string, string>>;
   /** Side lines the study plays that the lesson leaves out (`withoutLines`), by their moves in SAN from the start. */
   readonly leave?: readonly string[];
 }
@@ -57,7 +65,7 @@ export interface StudySource {
  * the lesson's side. Credited by its root page (`wikibooksCredit`).
  */
 export type WikibooksSource = Omit<WikibooksOptions, 'learner' | 'log'> &
-  Pick<StudySource, 'replies'>;
+  Pick<StudySource, 'replies' | 'trapStarts'>;
 
 export type ChapterSource = StudySource | WikibooksSource;
 
@@ -1445,6 +1453,10 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
       },
       {
         root: 'Chess_Opening_Theory/1._e4/1...e5/2._Nf3/2...Nc6/3._Bb5',
+        // Noah's Ark: the page warns against 8.d4, which the main study books, for 10.Qxd4.
+        trapStarts: {
+          'e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 d6 d4': 'Nxd4 Nxd4 exd4 Qxd4',
+        },
         rename: {
           // 3...a6, under which the main study names its own variations.
           'Morphy defence': '',
