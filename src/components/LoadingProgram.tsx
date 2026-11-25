@@ -16,13 +16,16 @@ const ROWS = [44, 32, 38, 28];
 
 /**
  * The panel beside the board while its page loads: the page's eyebrow over
- * the outline of a headline and the candidate list, pulsing in the stage's
- * plum, so the panel looks like itself before its words arrive.
+ * the outline of a headline and the candidate list, pulsing in the theme's
+ * neutral tone, so the panel looks like itself before its words arrive.
  */
 export function LoadingProgram({ eyebrow, label }: Props) {
   const part = useNarrowPart();
   const { theme } = useTheme();
-  const bone = { backgroundColor: theme.semantic.color.tones.neutral.subtle };
+  const { neutral } = theme.semantic.color.tones;
+  const bone = { backgroundColor: neutral.subtle };
+  // The list's sunken paper is about as dark as `subtle` in the light theme: a step darker shows on it.
+  const rowBone = { backgroundColor: neutral.subtleActive };
   return (
     <View
       accessible
@@ -40,9 +43,9 @@ export function LoadingProgram({ eyebrow, label }: Props) {
       <Surface elevation="sunken" border="subtle" radius="md" style={styles.list}>
         {ROWS.map((width, row) => (
           <View key={row} style={styles.row}>
-            <Skeleton shape="circle" style={[bone, styles.dot]} />
-            <Skeleton style={[bone, styles.san, { width }]} />
-            <Skeleton style={[bone, styles.track]} />
+            <Skeleton shape="circle" style={[rowBone, styles.dot]} />
+            <Skeleton style={[rowBone, styles.san, { width }]} />
+            <Skeleton style={[rowBone, styles.track]} />
           </View>
         ))}
       </Surface>
