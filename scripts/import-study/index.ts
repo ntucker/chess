@@ -11,7 +11,7 @@
  * the position the lesson reaches (./transpositions) → write the idea of each
  * book move nothing explains with AI (./explain) → drop variation names no
  * position carries (./emptyVariations) → on a recipe that sets `opportunities`,
- * write the opportunity finder's finds and their paths' counts (./finds) → add
+ * write the opportunity finder's finds and count the line each mark plays (./finds) → add
  * popularity → checkLesson → write
  * assets/lessons/<id>.json, register it in src/resources/lesson.ts and list
  * it in assets/lessons/index.json.

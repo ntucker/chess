@@ -170,7 +170,7 @@ function recordedCounts(key: PositionKey, counts: LichessCounts): MoveCounts {
  * the learner's. Where it asks, it replaces the counts already in `lesson`
  * and writes the games reaching the position (`LessonPosition.games`) from
  * the same answers, or none where an answer predates totals; elsewhere it
- * keeps what `lesson` has (`addPathCounts` measures a find's path), so a
+ * keeps what `lesson` has (`addPathCounts` measures the line each find's mark plays), so a
  * position without a choice has counts only where that step wrote them.
  * `date` says when the counts were fetched; it is asked once the crawl is done.
  *

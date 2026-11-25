@@ -17,6 +17,7 @@ import { isFinal } from '@/evaluation/evaluation';
 import { playLine, positionKey } from '@/game/replay';
 import type { Lesson, LessonMove, LessonPosition, PositionKey, Uci } from '@/lesson/lesson';
 import { mistakeLine } from '@/lesson/mistakes';
+import { guideMove } from '@/lesson/select';
 import { cueGain, type Find } from '@/opportunity/finder';
 import { LIMITS } from '@/opportunity/limits';
 import { type Context, walkTo } from '@/opportunity/walk';
@@ -88,14 +89,18 @@ async function gainByBand(
 }
 
 /**
- * The moves `find`'s mark plays in `lesson`, from the start: Act I, then the
- * mistake's line (`mistakeLine`). That is the find's best reply and Act III,
- * or the guide's line where the guide already marked the mistake.
+ * The moves `find`'s mark plays in `lesson` (which `withFinds` wrote it into),
+ * from the start: Act I, then the mistake's line (`mistakeLine`). That is the
+ * find's best reply and Act III, or the guide's line where the guide already
+ * marked the mistake. Popularity keeps each mark's line as it is here
+ * (`keepMistakeLines`), so these are the moves the shipped lesson plays.
  */
 function markedPath(lesson: Lesson, find: Find): Uci[] {
-  const at = [...playLine(find.line, startOf(lesson))].at(-1)!.key;
-  const mark = lesson.positions[at].moves.find((move) => move.uci === find.mistake)!;
-  return [...find.line, ...mistakeLine(lesson, at, mark)];
+  const mistakeKey = walkTo(lesson.start, find.line)!.key;
+  return [
+    ...find.line,
+    ...mistakeLine(lesson, mistakeKey, guideMove(lesson, mistakeKey, find.mistake)!),
+  ];
 }
 
 type Entry = Omit<LessonPosition, 'moves'> & { moves: LessonMove[] };
@@ -180,8 +185,11 @@ export async function addPathCounts(
   const keys = new Set<PositionKey>();
   for (const { find } of finds) {
     // Every position but the last, where no path move is played.
-    for (const { key } of [...playLine(markedPath(lesson, find), startOf(lesson))].slice(0, -1))
+    for (const { key } of [...playLine(markedPath(lesson, find), startOf(lesson))].slice(0, -1)) {
+      if (!lesson.positions[key])
+        throw new Error(`The mark on ${find.mistake} plays past the tree`);
       keys.add(key);
+    }
   }
   const positions = { ...lesson.positions };
   for (const key of keys) {

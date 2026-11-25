@@ -27,7 +27,7 @@ import { answersFile } from './jsonLines';
 import { type ExplorerAnswer, lichessExplorer } from './popularity';
 import { nodeStockfish } from './stockfish';
 
-/** The rating band the finder's limits were tuned in (`LIMITS`): the report's default, and the band the importer's finds come from. */
+/** The report's default rating band, the one the gate run of docs/plans/opportunities.md (piece B) set `LIMITS` in, and the band the importer's finds come from. */
 export const FIND_BAND = 1400;
 
 const ROOT = join(__dirname, '../..');
