@@ -1,7 +1,8 @@
 /**
  * The facts the lesson screen shows about the position on the board: where
  * it stands in the guide, its candidate moves, the notes for the idea card,
- * which moves were guide moves, and a trap the line fell into (`lessonView`);
+ * which moves were guide moves, a trap the line fell into and a cue it
+ * reached (`lessonView`);
  * and which candidate the learner's pointer previews (`preview`). Facts and
  * the preview rule only: what a mode or switch hides is ./guidance.ts.
  *
@@ -12,11 +13,12 @@ import type { SquareName } from 'chessops/types';
 
 import type { Drag } from '@/board/pointer';
 import { dropMove, parsePositionKey } from '@/game/replay';
+import { type Cue, lineCue } from '@/opportunity/cue';
 import type { Opponent } from '@/opponent/opponent';
 
 import { linePlace } from './cleanRun';
 import type { Lesson, LessonMove, PositionKey, Uci } from './lesson';
-import { type BoardNote, boardNote, type Trap } from './mistakes';
+import { type BoardNote, boardNote, followedMoves, type Trap } from './mistakes';
 import {
   type Candidate,
   candidates,
@@ -91,6 +93,10 @@ export interface LessonView {
   readonly guideMoves: readonly (LessonMove | undefined)[];
   /** The latest trap the line fell into, up to the board (see `landedTrap`). */
   readonly trap?: LandedTrap;
+  /** The latest cue the line reached, up to the board (see `lineCue`). */
+  readonly cue?: Cue;
+  /** The key of each position of the line: index `n` is the position after `n` moves. */
+  readonly keys: readonly PositionKey[];
 }
 
 export function lessonView({ lesson, line, ply, opponent }: LessonViewInput): LessonView {
@@ -113,6 +119,8 @@ export function lessonView({ lesson, line, ply, opponent }: LessonViewInput): Le
     playedFrom: ply === 0 ? [] : positionNotes(lesson, keys[ply - 1]),
     guideMoves,
     trap: landedTrap(lesson, line, ply, keys, guideMoves),
+    cue: lineCue(lesson, line, keys, guideMoves, ply),
+    keys,
   };
 }
 
@@ -222,11 +230,6 @@ function landedTrap(
   keys: readonly PositionKey[],
   guideMoves: readonly (LessonMove | undefined)[],
 ): LandedTrap | undefined {
-  // How many of `trap`'s moves the line plays from `ply` on.
-  const matchedMoves = (trap: Trap, ply: number) => {
-    const n = trap.moves.findIndex((uci, step) => uci !== line[ply + step]);
-    return n === -1 ? trap.moves.length : n;
-  };
   for (let ply = shownMoves - 1; ply >= 0; ply--) {
     for (const note of arrivalNotes(lesson, keys, guideMoves, ply)) {
       if (note.after !== keys[ply]) continue;
@@ -235,7 +238,7 @@ function landedTrap(
         // A one-move trap lands at its only move.
         const landing = Math.min(LANDING_MOVES, trap.moves.length);
         if (ply + landing > shownMoves) continue;
-        const matched = matchedMoves(trap, ply);
+        const matched = followedMoves(trap.moves, line, ply);
         if (matched >= landing)
           return { trap, note, ply, landed: keys[ply + landing], movesPlayed: matched };
       }

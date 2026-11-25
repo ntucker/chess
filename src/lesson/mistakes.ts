@@ -33,6 +33,12 @@ export interface Trap {
   readonly learnerFalls: boolean;
 }
 
+/** How many of `moves` `line` plays from its move `from` on: "Nxe5 c6 Bc4" on a line that played "Nxe5 c6 Nf3" plays 2. */
+export function followedMoves(moves: readonly Uci[], line: readonly Uci[], from: number): number {
+  const missed = moves.findIndex((uci, step) => uci !== line[from + step]);
+  return missed === -1 ? moves.length : missed;
+}
+
 /** What a note shown on the board draws: its ideas, with each mistake it names read as its trap. */
 export type BoardIdea = Exclude<Idea, MistakeIdea> | Trap;
 

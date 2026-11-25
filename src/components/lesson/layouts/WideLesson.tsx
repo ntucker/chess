@@ -6,6 +6,7 @@ import { Scoresheet, ScoresheetTitle } from '@/components/Scoresheet';
 import { ScoresheetReview } from '@/components/ReviewLinks';
 
 import { CandidateList } from '../CandidateList';
+import { ActsCard } from '../CueActs';
 import { IdeaCard } from '../IdeaCard';
 import { LessonControls } from '../LessonControls';
 import { PointingArea } from '../PointingArea';
@@ -14,8 +15,8 @@ import type { LessonScreenModel } from '../useLessonScreen';
 import { LessonHeadline } from './LessonHeadline';
 
 /**
- * The lesson's panel beside the board: the headline, any trap, the moves
- * over the idea, the scoresheet, then the settings.
+ * The lesson's panel beside the board: the headline, any trap or cue's acts,
+ * the moves over the idea, the scoresheet, then the settings.
  */
 export function WideLesson({ model }: { readonly model: LessonScreenModel }) {
   const labelled = useLabelled();
@@ -25,6 +26,7 @@ export function WideLesson({ model }: { readonly model: LessonScreenModel }) {
       <LessonHeadline model={model} />
       <Separator />
       {model.trap ? <TrapCard {...model.trap} /> : null}
+      {model.acts ? <ActsCard acts={model.acts} /> : null}
       {/* Leaving a row for the idea card keeps its preview, so its notes can be pointed at. */}
       {model.moves || model.idea ? (
         <PointingArea onLeave={model.onLeave} style={sections}>
