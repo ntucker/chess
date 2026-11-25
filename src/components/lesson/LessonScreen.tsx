@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { BrowserOnly } from '@/components/BrowserOnly';
 import { StatusHeadline } from '@/components/GameStatus';
+import { haptic } from '@/components/haptics';
 import { NewVersionPage } from '@/components/NewVersion';
 import { OpponentPicker } from '@/components/OpponentPicker';
 import { ScoresheetOpener } from '@/components/ScoresheetDrawer';
@@ -135,7 +136,15 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
   // Not before the first move; but a scoresheet showing stays, since a new game empties it.
   const scoresheetReachable = scoresheetShown || model.stepper.started;
   const back = useBackToReview();
-  const openSettings = () => setSettingsOpen(true);
+  const openSettings = () => {
+    haptic('sheetOpened');
+    setSettingsOpen(true);
+  };
+  // A page picked by the pill or a swipe ticks; Back (in `usePages`) doesn't: the system answers it.
+  const pick = (to: PhonePage) => {
+    haptic('pageSettled');
+    show(to);
+  };
 
   return (
     <Stage
@@ -169,7 +178,7 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
               ply={model.stepper.ply}
               disabled={!scoresheetReachable}
               open={scoresheetShown}
-              onToggle={() => show(scoresheetShown ? 'lesson' : 'scoresheet')}
+              onToggle={() => pick(scoresheetShown ? 'lesson' : 'scoresheet')}
             />
           }
         />
@@ -180,7 +189,7 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
             <PhoneLesson
               model={model}
               page={page}
-              onPage={show}
+              onPage={pick}
               scoresheetReachable={scoresheetReachable}
             />
           ) : (
