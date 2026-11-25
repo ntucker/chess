@@ -97,7 +97,7 @@ export interface BoardProps {
   readonly dom?: DOMProps;
 }
 
-/** How long after a paint it surely shows: Android's web view took up to ~0.5 s. */
+/** How long after a paint it surely shows: Android's web view took up to ~0.5 s (#255). */
 const SHOWN_MS = 1000;
 
 export default function Board({
@@ -254,19 +254,25 @@ export default function Board({
     // run after the first's paint) and then shown (`SHOWN_MS`).
     let paintFrame = 0;
     let shownTimer: ReturnType<typeof setTimeout> | undefined;
-    let paintReported = false;
+    let reporting = false;
+    let reported = false;
     const reportPaint = () => {
-      if (paintReported || !sized.current) return;
-      paintReported = true;
+      if (reporting || reported || !sized.current) return;
+      reporting = true;
       paintFrame = requestAnimationFrame(() => {
         paintFrame = requestAnimationFrame(() => {
           shownTimer = setTimeout(() => {
-            // Hidden again meanwhile: the next size reports it.
-            if (sized.current) handleDrawn();
-            else paintReported = false;
+            reported = true;
+            handleDrawn();
           }, SHOWN_MS);
         });
       });
+    };
+    // Hidden before the report goes out: the next size starts it again.
+    const stopReport = () => {
+      cancelAnimationFrame(paintFrame);
+      clearTimeout(shownTimer);
+      reporting = false;
     };
     const { width, height } = target.getBoundingClientRect();
     sized.current = width > 0 && height > 0;
@@ -278,6 +284,7 @@ export default function Board({
       if (!sized.current) {
         board.set({ drawable: { autoShapes: [] } });
         pending.current = true;
+        stopReport();
       }
       catchUp();
       reportPaint();
@@ -295,8 +302,7 @@ export default function Board({
     );
     const stopWatchingEnding = watchBoardPointer(target, showsEnding, handleEndingPointer);
     return () => {
-      cancelAnimationFrame(paintFrame);
-      clearTimeout(shownTimer);
+      stopReport();
       cancelAnimationFrame(frame.current);
       target.removeEventListener('pointerdown', notePick, { capture: true });
       stopWatching();
