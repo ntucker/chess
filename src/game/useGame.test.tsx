@@ -100,6 +100,16 @@ describe('useGame', () => {
     expect(maia.asked).toHaveLength(2);
   });
 
+  it('has the side to move until the game ends, and none once mated', async () => {
+    await render({ side: 'white', active: true });
+    expect(game().toMove).toBe('white');
+    await act(async () => game().play('f2f3'));
+    expect(game().toMove).toBe('black');
+    for (const uci of ['e7e5', 'g2g4', 'd8h4']) await act(async () => game().play(uci));
+    expect(game().latest.result?.reason).toBe('checkmate');
+    expect(game().toMove).toBeUndefined();
+  });
+
   it("is started once the player's side has moved, not the other side", async () => {
     await render({ side: 'black', active: true });
     await act(async () => game().play('e2e4'));
