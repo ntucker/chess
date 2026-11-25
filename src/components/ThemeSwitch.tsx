@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { a11yState, Pressable, useTheme } from '@reactive/silk-native';
+import { a11yState, Pressable, useMotion, useTheme } from '@reactive/silk-native';
 import { type ComponentProps, type ComponentRef, useRef, useState } from 'react';
 import { Dimensions, type PointerEvent, View } from 'react-native';
 import Animated from 'react-native-reanimated';
@@ -8,8 +8,6 @@ import { hoversControl } from '@/board/pointer';
 import { HEADER_BUTTON_SIZE, HeaderButton } from '@/components/HeaderButton';
 import { PillChoice } from '@/components/PillChoice';
 import { type Point, usePressingFinger } from '@/components/usePressingFinger';
-import { springs } from '@/motion/spring';
-import { useSpringTransition } from '@/motion/useSpringTransition';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
 import { type Theme, THEMES } from '@/settings/settings';
 import { narrowStyles } from '@/theme/narrow';
@@ -92,7 +90,11 @@ export function ThemeSwitch({ wideOnly }: { readonly wideOnly?: boolean }) {
   const { theme } = useSettings();
   const dispatch = useSettingsDispatch();
   const { color, shadow } = useTheme().theme.semantic;
-  const transition = useSpringTransition(springs.snappy);
+  const snappy = useMotion('snappy');
+  const transition = {
+    transitionDuration: snappy.durationMs,
+    transitionTimingFunction: snappy.easing,
+  };
   const styles = useNarrowStyles(STYLES);
   const part = useNarrowPart();
   const [menu, setMenu] = useState<Menu>();

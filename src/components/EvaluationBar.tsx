@@ -1,5 +1,5 @@
 import { useQuery } from '@data-client/react';
-import { a11yValue, Text, useReducedMotion, useTheme } from '@reactive/silk-native';
+import { a11yValue, Text, useMotion, useReducedMotion, useTheme } from '@reactive/silk-native';
 import { useIsFocused } from 'expo-router';
 import { useMemo } from 'react';
 import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
@@ -18,7 +18,6 @@ import { useNarrowPart } from '@/theme/Narrow';
 import { pieceColors } from '@/theme/pieceColors';
 import { useSchemeColors } from '@/theme/shownTheme';
 import { fonts } from '@/theme/theme';
-import { timingFunction } from '@/theme/timingFunction';
 
 interface Props {
   /** The moves (UCI) that reach the position on the board. */
@@ -84,9 +83,10 @@ function Bar({
   ...reading
 }: Partial<Reading> & Pick<Props, 'orientation' | 'style'>) {
   const { theme } = useTheme();
-  const { color, motion } = theme.semantic;
+  const { color } = theme.semantic;
   const schemeColors = useSchemeColors();
   const reducedMotion = useReducedMotion();
+  const fill = useMotion('slow');
   const part = useNarrowPart();
   const score = reading.score ?? 0.5;
   // White fills from whichever end is White's.
@@ -115,8 +115,8 @@ function Bar({
           // A Reanimated CSS transition, which StyleSheet's types don't know.
           {
             transitionProperty: 'height',
-            transitionDuration: reducedMotion ? 0 : motion.slow.durationMs,
-            transitionTimingFunction: timingFunction(motion.slow.easing),
+            transitionDuration: reducedMotion ? 0 : fill.durationMs,
+            transitionTimingFunction: fill.easing,
           },
         ]}
       />

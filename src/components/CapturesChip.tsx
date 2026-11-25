@@ -1,19 +1,19 @@
 import {
   Popover,
   Pressable,
+  springTo,
   Surface,
   Text,
   useReducedMotion,
   useTheme,
 } from '@reactive/silk-native';
+import type { Spring } from '@reactive/silk-core';
 import { type ComponentRef, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { type EntryExitAnimationFunction, withDelay } from 'react-native-reanimated';
 
 import { type Captures, pointsOf } from '@/game/material';
 import { type Color, colorName, COLORS, opposite, type TakenRole } from '@/game/replay';
-import { springs } from '@/motion/spring';
-import { springTo } from '@/motion/springTo';
 import { fonts } from '@/theme/theme';
 import { plural } from '@/words';
 
@@ -178,6 +178,7 @@ function CapturesCard({ captures }: { readonly captures: Captures }) {
   // reduced.
   const still = useReducedMotion();
   const fan = !WEB && !still;
+  const snappy = useTheme().theme.semantic.motion.snappy;
   return (
     <View style={styles.card}>
       {COLORS.map((side) => (
@@ -187,7 +188,7 @@ function CapturesCard({ captures }: { readonly captures: Captures }) {
           </Text>
           <View style={styles.fan}>
             {captures.taken[side].map((role, i) => (
-              <Animated.View key={i} entering={fan ? FAN[Math.min(i, FAN.length - 1)] : undefined}>
+              <Animated.View key={i} entering={fan ? fanIn(i, snappy) : undefined}>
                 <PieceGlyph role={role} color={opposite(side)} size={SIZE} />
               </Animated.View>
             ))}
@@ -236,26 +237,26 @@ function groupByRole(pieces: readonly TakenRole[]): [TakenRole, number][] {
 
 /** How far apart the card's pieces fan out of the chip, one after another. */
 const FAN_STAGGER_MS = 18;
-function fanIn(delay: number): EntryExitAnimationFunction {
+/** The most staggers a piece waits: the ninth piece and later start with the eighth. */
+const FAN_MOST_STAGGERS = 7;
+
+/** The `index`th piece's entrance on `spring`: a stagger after the one before. */
+function fanIn(index: number, spring: Spring): EntryExitAnimationFunction {
+  const delay = Math.min(index, FAN_MOST_STAGGERS) * FAN_STAGGER_MS;
   return () => {
     'worklet';
-    const spring = (to: number) => withDelay(delay, springTo(to, springs.snappy));
+    // The card builds no entrances when motion is reduced.
+    const play = (to: number) => withDelay(delay, springTo(to, spring, { reduceMotion: false }));
     return {
       // From a little smaller and to the left.
       initialValues: { opacity: 0, transform: [{ translateX: -6 }, { scale: 0.6 }] },
       animations: {
-        opacity: spring(1),
-        transform: [{ translateX: spring(0) }, { scale: spring(1) }],
+        opacity: play(1),
+        transform: [{ translateX: play(0) }, { scale: play(1) }],
       },
     };
   };
 }
-
-/**
- * The fan's entrances, by piece: each starts a stagger after the one before,
- * the last for any further. Built after `fanIn`, whose worklet must exist first.
- */
-const FAN = Array.from({ length: 8 }, (_, i) => fanIn(i * FAN_STAGGER_MS));
 
 const styles = StyleSheet.create({
   // flexShrink is a weight against the name's 1 in PlayerBar: kept far above
