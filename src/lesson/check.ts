@@ -172,6 +172,10 @@ function checkPosition(
   if (!(entry.variation in lesson.variations)) {
     report(`${at}.variation`, `${entry.variation} is not in variations`);
   }
+  const bands = lesson.popularity?.ratingBands;
+  if (entry.games && !bands) report(`${at}.games`, 'needs popularity in the lesson');
+  if (entry.games && bands && (entry.games.length !== bands.length || !entry.games.every(isCount)))
+    report(`${at}.games`, 'needs one whole count per rating band');
   checkNotes(lesson, entry.notes, pos, `${at}.notes`, report);
   const next: { key: string; book: boolean }[] = [];
   const seen = new Set<string>();
@@ -351,7 +355,7 @@ export const verdictProblem = (
 function offGuide(lesson: Lesson, pos: Chess, moves: readonly Uci[]): number | undefined {
   const at = pos.clone();
   for (const [n, uci] of moves.entries()) {
-    if (!lesson.positions[positionKey(at)]?.moves.some((move) => move.uci === uci)) return n;
+    if (!guideMove(lesson, positionKey(at), uci)) return n;
     playMove(at, uci);
   }
   return undefined;

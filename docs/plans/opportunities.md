@@ -291,11 +291,16 @@ limits it ran with. Set 2026-11-24 (Decisions).
   becomes guide-tree moves with the marker on its first move. A guide trap's line is the author's
   content and is kept exactly: every move of it goes into the tree where it isn't there yet, the
   learner's punishing moves as book moves where the guide books no other (as Act III writes them),
-  every other move as an ordinary one. The line a marked move starts is read from the tree
+  every other move as an ordinary one. Only a trap that keeps its mark writes moves: of two traps
+  with one first move, the first in file order, and none whose mark the engine check or the
+  checker takes off (the importer builds the lesson again keeping only the marks that survived,
+  until no other goes), so the lesson behaves as before apart from its kept traps. The line a
+  marked move starts is read from the tree
   (`mistakeLine`, `src/lesson/mistakes.ts`): the marker's `line` (the moves after it, each a guide
   move at its position) where stored, else at each position the first move by Act III's choice rule
-  (`guideOrder`: the learner's book move where it punishes, or the most played move off the book,
-  where it has none; the most played move elsewhere), ending where the tree does or on a
+  (`guideOrder`: the learner's book move where it punishes, or the most played unmarked move off
+  the book, where it has none; the opponent's most played unmarked move where it punishes; the
+  most played move where the erring side moves), ending where the tree does or on a
   repetition. `line` is stored exactly where that rule wouldn't give the intended line (it would
   play another branch, or go on past its end), and the importer keeps it so when popularity counts
   change the rule's pick. The same rule covers the lines the finder builds (D1, D3): an Act III that

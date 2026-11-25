@@ -60,12 +60,18 @@ import { lessonIndex } from '@/lesson/openings';
 import { convertChapters, convertReport } from './convert';
 import { claudeCli } from './convert/claude';
 import { withoutEmptyVariations } from './emptyVariations';
-import { engineCheck, ENGINES_OWN, fillBook, type EngineReport } from './engineCheck';
+import { engineCheck, ENGINES_OWN, type Evaluate, fillBook } from './engineCheck';
 import { explainBookMoves, explainCli, explainReport } from './explain';
 import { extractChapter } from './extract';
 import { lessonJson } from './lessonJson';
 import { mergeChapters, numberedChapterName, type ChapterName, type SourceTally } from './merge';
-import { keepMistakeLines, markMistakes, settleMistakes } from './mistakes';
+import {
+  keepMistakeLines,
+  markIds,
+  markMistakes,
+  settleMistakes,
+  type StudyLesson,
+} from './mistakes';
 import { addPopularity, lichessExplorer } from './popularity';
 import { indexedWith, readLessonFile, registered, writeIndex } from './register';
 import { report, sourceReport } from './report';
@@ -139,39 +145,45 @@ async function main() {
   const { extracted } = converted;
   console.log(convertReport(converted.report));
   const tally: SourceTally[] = [];
-  const marked = markMistakes(mergeChapters(info, chapters, extracted, chapterName, tally));
-  let lesson: Lesson = marked.lesson;
+  const merged = mergeChapters(info, chapters, extracted, chapterName, tally);
   // Tallies go by each source's place in the recipe, which can list a study twice; the lesson credits it once.
   console.log(sourceReport(study.from.map(credit), tally));
-  if (lesson.start !== INITIAL_FEN)
+  if (merged.start !== INITIAL_FEN)
     throw new Error('The engine plays lines from the standard start');
   const stockfish = await nodeStockfish(answersPath(info.id, '-stockfish'));
-  const filled = await fillBook(lesson, stockfish.evaluate);
-  lesson = filled.lesson;
-  const engineFile = join(CACHE, `${lesson.id}-engine.json`);
+  const engineFile = join(CACHE, `${merged.id}-engine.json`);
+  const gambit = study.engineCheck === 'gambit';
+  const check = (keep?: ReadonlySet<string>) =>
+    checkTraps(merged, keep, stockfish.evaluate, study.engineCheck ? { gambit } : undefined);
+  // Only the traps whose mark survives write their moves into the tree, so the
+  // lesson is built again keeping just those, until no other mark goes.
+  const allTraps = await check();
+  let { lesson, filled, engineReport, settled } = allTraps;
+  let survivors = markIds(lesson);
+  for (let pass = 2; ; pass++) {
+    ({ lesson, filled, engineReport, settled } = await check(survivors));
+    const kept = markIds(lesson);
+    if (kept.size === survivors.size) break;
+    console.log(`mistakes: pass ${pass} kept ${kept.size} of ${survivors.size} marks, so again`);
+    survivors = kept;
+  }
   const { filled: booked, ended } = filled.report;
   const enginesOwn = booked.filter(({ why }) => why === ENGINES_OWN).length;
   console.log(
     `book filled: ${booked.length} moves picked where the guide recommended none (${enginesOwn} the engine's own, no guide's), ${ended.length} lines ended where the engine overruled every move and named none (${engineFile})`,
   );
-  let engineReport: EngineReport | undefined;
-  if (study.engineCheck) {
-    const checked = await engineCheck(lesson, stockfish.evaluate, {
-      gambit: study.engineCheck === 'gambit',
-    });
-    lesson = checked.lesson;
-    engineReport = checked.report;
-    const { gambits, unbooked, unreachable, cut, dropped, refilled } = checked.report;
+  if (engineReport) {
+    const { gambits, unbooked, unreachable, cut, dropped, refilled } = engineReport;
     console.log(
       `engine check: ${gambits.length} gambit mistakes kept, ${unbooked.length} book moves overruled (${cut.length} cut, the guide's only move; ${refilled.filled.length} picked again among the guide's others, ${refilled.ended.length} ended where it overruled them all and named none), ${unreachable.length} more left unreachable, ${dropped.length} notes dropped`,
     );
   }
-  const settled = settleMistakes(lesson, marked.traps);
-  lesson = settled.lesson;
+  // The first build tried every trap, so it says why each lost its mark.
+  const { changed } = settled;
+  const { unmarked } = allTraps.settled;
   console.log(
-    `mistakes: ${marked.traps.length} traps marked, ${settled.changed.length} with the guide's line in place of the study's, ${settled.unmarked.length} whose mark went (${engineFile})`,
+    `mistakes: ${allTraps.traps.length} traps in the notes, ${survivors.size} marked, ${changed.length} with the guide's line in place of the study's, ${unmarked.length} whose mark went (${engineFile})`,
   );
-  const { changed, unmarked } = settled;
   writeFileSync(
     engineFile,
     `${JSON.stringify({ ...filled.report, ...engineReport, mistakes: { changed, unmarked } }, null, 2)}\n`,
@@ -207,6 +219,29 @@ async function main() {
   writeFileSync(registryFile, registry);
   writeIndex(indexFile, index);
   console.log(report(lesson, chapters, extracted));
+}
+
+/**
+ * `merged` with its traps marked (only those `keep` names, if given), its book
+ * filled, checked with Stockfish where `engine` is given, and its marks settled.
+ */
+async function checkTraps(
+  merged: StudyLesson,
+  keep: ReadonlySet<string> | undefined,
+  evaluate: Evaluate,
+  engine: { gambit: boolean } | undefined,
+) {
+  const marked = markMistakes(merged, keep);
+  const filled = await fillBook(marked.lesson, evaluate);
+  const checked = engine && (await engineCheck(filled.lesson, evaluate, engine));
+  const settled = settleMistakes(checked?.lesson ?? filled.lesson, marked.traps);
+  return {
+    lesson: settled.lesson,
+    traps: marked.traps,
+    filled,
+    engineReport: checked?.report,
+    settled,
+  };
 }
 
 /**

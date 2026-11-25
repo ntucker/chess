@@ -55,6 +55,8 @@ import type {
   Uci,
 } from '@/lesson/lesson';
 
+import { plyOf } from './text';
+
 /**
  * The engine's final analysis of the position after `line` from the lesson's
  * start, reached at `key`: its best move, when it names one, and how the
@@ -611,7 +613,7 @@ export function sans(lesson: Lesson, line: readonly Uci[]): string {
 /** The number of the lesson's first move as a ply (1 is White's first move). */
 export function startPly(lesson: Lesson): number {
   const start = startOf(lesson);
-  return 2 * start.fullmoves - (start.turn === 'white' ? 1 : 0);
+  return plyOf(start.fullmoves, start.turn === 'black');
 }
 
 async function filter<T>(items: readonly T[], keep: (item: T) => Promise<boolean>): Promise<T[]> {

@@ -19,6 +19,7 @@ import type {
   PositionKey,
   Uci,
 } from './lesson';
+import { sameLine } from './openings';
 import { guideMove } from './select';
 import { moveGames } from './share';
 
@@ -100,7 +101,7 @@ export function guideLine(lesson: Lesson, key: PositionKey, uci: Uci): Uci[] {
 
 /** Whether `line`, from `key`, is the one the guide's choice rule gives, so a mark stores none. */
 export const isGuideLine = (lesson: Lesson, key: PositionKey, line: readonly Uci[]) =>
-  String(guideLine(lesson, key, line[0])) === String(line);
+  sameLine(guideLine(lesson, key, line[0]), line);
 
 /** A mark's id: the position its move is played in, and the move. */
 export const markId = (key: PositionKey, uci: Uci) => `${key} ${uci}`;
@@ -113,11 +114,12 @@ function trapAt(lesson: Lesson, key: PositionKey, uci: Uci): Trap {
   let trap = byKey.get(id);
   if (!trap) {
     // checkLesson proves the reference names a marked guide move here.
-    const move = guideMove(lesson, key, uci) ?? { uci };
+    const move = guideMove(lesson, key, uci);
+    if (!move?.mistake) throw new Error(`No marked guide move ${uci} at ${key}`);
     trap = {
       type: 'trap',
       moves: mistakeLine(lesson, key, move),
-      ...(move.mistake?.verdict && { verdict: move.mistake.verdict }),
+      ...(move.mistake.verdict && { verdict: move.mistake.verdict }),
       learnerFalls: readPositionKey(key)!.turn === lesson.side,
     };
     byKey.set(id, trap);

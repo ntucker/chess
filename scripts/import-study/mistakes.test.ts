@@ -81,4 +81,38 @@ describe('markMistakes', () => {
     const guide = [{ uci: uci('e4', 'e5', 'Ba6', 'Nxa6'), book: true }];
     expect(movesAfterBa6(guide)).toEqual([...guide, { uci: uci('e4', 'e5', 'Ba6', 'bxa6') }]);
   });
+
+  it("writes no moves for a trap whose mark it isn't keeping, and drops the note naming it", () => {
+    const lesson = withTrap();
+    const { lesson: marked, traps } = markMistakes(lesson, new Set());
+    expect(marked.positions).toEqual({
+      ...lesson.positions,
+      [keyAfter('e4')]: at([{ uci: uci('e4', 'e5'), book: true }]),
+    });
+    expect(traps).toHaveLength(1);
+  });
+
+  it('writes the moves of only the first of two traps with one first move', () => {
+    const lesson = withTrap();
+    const note = lesson.positions[keyAfter('e4')].moves[0].notes![0];
+    const second: StudyIdea = {
+      type: 'trap',
+      moves: [uci('e4', 'e5', 'Ba6'), uci('e4', 'e5', 'Ba6', 'Nxa6')],
+      verdict: 'losesMaterial',
+    };
+    const twice = testLesson<StudyIdea>({
+      ...lesson.positions,
+      [keyAfter('e4')]: at([
+        { uci: uci('e4', 'e5'), book: true, notes: [{ ...note, ideas: [...note.ideas!, second] }] },
+      ]),
+    });
+    const { lesson: marked, traps } = markMistakes(twice);
+    expect(marked.positions[keyAfter('e4', 'e5', 'Ba6')].moves).toEqual([
+      { uci: uci('e4', 'e5', 'Ba6', 'bxa6'), book: true },
+    ]);
+    expect(marked.positions[keyAfter('e4')].moves[0].notes![0].ideas).toEqual([
+      { type: 'mistake', move: uci('e4', 'e5', 'Ba6') },
+    ]);
+    expect(traps).toHaveLength(2);
+  });
 });

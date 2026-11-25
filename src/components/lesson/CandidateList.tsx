@@ -132,9 +132,9 @@ export function CandidateList({
 }: Props) {
   const engineRows = engineBest ? [engineBest] : [];
   const rows = [...candidates, ...engineRows, ...(rareShown ? rare : [])];
-  // The guide's rows shown, whose shares are of each other's games.
+  // The guide's rows shown, whose shares are of the games at the position.
   const guideCount = candidates.length + (rareShown ? rare.length : 0);
-  // A lone move's share is always all of the games, so it isn't shown.
+  // A lone row's share is hidden: with nothing beside it, there is no choice to weigh.
   const showsShares = guideCount > 1 && rows.some(({ share }) => share !== undefined);
   const shownMarks = new Set(
     rows.map(({ move }) => marks.get(move.uci)).filter((mark) => mark !== undefined),

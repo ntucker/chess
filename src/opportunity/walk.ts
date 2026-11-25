@@ -47,10 +47,8 @@ export interface Answers {
   /** Stockfish's analysis of the position: the deepest the host has, final or not. */
   analysis(spot: Spot): Analysis | undefined;
   /**
-   * A lesson's moves here, most played first (`guideOrder` in
-   * src/lesson/mistakes.ts: at its own side's turn its book moves, or off the
-   * book every move it doesn't mark as a mistake; every move at the other's),
-   * where the host has some. The finder
+   * A lesson's moves here, most played first and chosen by the guide's rule
+   * (`guideOrder` in src/lesson/mistakes.ts), where the host has some. The finder
    * follows them for the punishing side, and Act III plays the first for the
    * erring side; elsewhere they come from Stockfish or the replies.
    */

@@ -531,6 +531,7 @@ describe('checkLesson', () => {
     const problems = checkLesson(
       withPosition(key, {
         variation: 'caro',
+        games: [5, 2.5],
         moves: [
           {
             uci: 'c7c6',
@@ -543,6 +544,7 @@ describe('checkLesson', () => {
       }),
     );
     expect(problems.map((p) => p.path)).toEqual([
+      `positions["${key}"].games`,
       `positions["${key}"].moves[0].games`,
       `positions["${key}"].moves[0].notes[0].ideas[0]`,
       `positions["${key}"].moves[1].uci`,
