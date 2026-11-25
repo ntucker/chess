@@ -16,14 +16,7 @@ const { addImports, appendContentsInsideDeclarationBlock } = AndroidConfig.CodeM
 /**
  * Keeps the app running when Android's font size changes. Without it,
  * Android recreates the activity, which starts the app's screens over and
- * drops the game.
- *
- * React Native lays its text out again at the new size only when it is told
- * of the change while the app is in front, so the activity also does it when
- * it comes back after a change made in the system settings. React Native tells
- * JavaScript of the new size only on resume, so the activity also does that for
- * a change made while the app is in front (RELAYOUT, which withMainActivityCode
- * adds to the activity).
+ * drops the game. RELAYOUT then shows the new size.
  */
 const withLiveFontScale: ConfigPlugin = (config) =>
   withAndroidManifest(config, (manifest) => {
@@ -35,6 +28,13 @@ const withLiveFontScale: ConfigPlugin = (config) =>
     return manifest;
   });
 
+/**
+ * React Native lays its text out again at a new font size only when it is told
+ * of the change while the app is in front, so the activity also does it when
+ * it comes back after a change made in the system settings. React Native tells
+ * JavaScript of the new size only on resume, so the activity also does that for
+ * a change made while the app is in front.
+ */
 const RELAYOUT = `
   /** The font scale React Native's views were last laid out at; 0 before the first. */
   private var laidOutFontScale = 0f
@@ -67,7 +67,7 @@ const RELAYOUT = `
   // change made while the app is in front needs telling too. app.config.test.ts
   // fails when a React Native upgrade breaks this.
   private fun tellJavaScriptOfFontScale() {
-    val deviceInfo = (application as? ReactApplication)?.reactHost?.currentReactContext
+    val deviceInfo = reactHost?.currentReactContext
       ?.getNativeModule("DeviceInfo")
     (deviceInfo as? LifecycleEventListener)?.onHostResume()
   }
@@ -182,7 +182,8 @@ const withMainActivityCode: ConfigPlugin = (config) =>
       throw new Error('withMainActivityCode: MainActivity must be Kotlin');
     }
     let source = activity.modResults.contents;
-    if (!source.includes('relayOutAtFontScale')) {
+    // Prebuild without --clean edits the MainActivity it made last time.
+    if (!source.includes('showThemeInSystemBars')) {
       source = addImports(
         source,
         [
@@ -193,7 +194,6 @@ const withMainActivityCode: ConfigPlugin = (config) =>
           'android.view.Window',
           'android.view.WindowInsetsController',
           'androidx.lifecycle.Lifecycle',
-          'com.facebook.react.ReactApplication',
           'com.facebook.react.ReactInstanceEventListener',
           'com.facebook.react.ReactRootView',
           'com.facebook.react.bridge.LifecycleEventListener',
