@@ -240,12 +240,13 @@ function FlickUp({
 /**
  * The board a page opens on, drawn still while the real one loads: the
  * position after `moves`, its last move lit, with `orientation` at the
- * bottom. No `moves` draws the squares alone, for a page that can't yet know
- * them. `turnsWithSavedSide` marks a pre-rendered board drawn for the default
+ * bottom. `moves` undefined draws the squares alone, for a page that can't
+ * yet know them (named outright, so an omitted one can't hide the pieces by
+ * mistake). `turnsWithSavedSide` marks a pre-rendered board drawn for the default
  * side, which the page's head turns for the side the learner saved (`savedSide.ts`).
  */
 export interface StillGame {
-  readonly moves?: readonly Uci[];
+  readonly moves: readonly Uci[] | undefined;
   readonly orientation: Color;
   readonly turnsWithSavedSide?: boolean;
 }

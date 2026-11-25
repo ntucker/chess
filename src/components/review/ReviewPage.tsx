@@ -48,7 +48,7 @@ export function ReviewPage(address: ReviewAddress) {
   return (
     <BrowserOnly
       // The export can't know the side: the squares alone, which look the same from either.
-      fallback={<ReviewLoading still={{ orientation: 'white' }} />}
+      fallback={<ReviewLoading still={{ moves: undefined, orientation: 'white' }} />}
     >
       <AddressedReview {...address} />
     </BrowserOnly>

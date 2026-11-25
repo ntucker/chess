@@ -64,7 +64,9 @@ export function LessonPage({
     <BrowserOnly
       fallback={
         id === undefined ? (
-          <LessonLoading still={{ orientation: DEFAULT_SETTINGS.side, turnsWithSavedSide: true }} />
+          <LessonLoading
+            still={{ moves: [], orientation: DEFAULT_SETTINGS.side, turnsWithSavedSide: true }}
+          />
         ) : (
           <LessonLoading
             eyebrow={index[id].title}
