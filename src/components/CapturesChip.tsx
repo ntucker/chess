@@ -28,6 +28,7 @@ const SIZE = 20;
 const OVERLAP = SIZE * 0.45;
 /** The most glyphs a chip draws: past it, each kind shows once with its count. */
 const MOST_GLYPHS = 4;
+const PILL_PADDING = 8;
 
 type Peek = 'hold' | 'hover';
 
@@ -91,7 +92,7 @@ function Chip({ captures, color, even }: Props & { readonly even: boolean }) {
           ) : (
             <>
               {lead > 0 ? (
-                <Text role="label" style={styles.lead}>
+                <Text role="label" numberOfLines={1} style={styles.lead}>
                   +{lead}
                 </Text>
               ) : null}
@@ -250,19 +251,25 @@ const FAN = Array.from({ length: 8 }, (_, i) => fanIn(i * FAN_STAGGER_MS));
 
 const styles = StyleSheet.create({
   // flexShrink is a weight against the name's 1 in PlayerBar: kept far above
-  // it so the chip gives way long before the name does.
-  chip: { flexShrink: 1000, minWidth: 0 },
+  // it so the chip gives way long before the name does. It stops at the
+  // pill's padding, which can't shrink and would run past it.
+  chip: { flexShrink: 1000, minWidth: 2 * PILL_PADDING },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 8,
+    paddingHorizontal: PILL_PADDING,
     height: SIZE + 6,
     // Surface's radii stop at lg: a pill is round end to end.
     borderRadius: 999,
+    // A bar too short even for the lead (a review's accuracy beside the
+    // stepper, at 360dp and large text) clips it to a blank pill, rather than
+    // the chip running past its line onto the controls.
+    overflow: 'hidden',
   },
-  lead: { fontFamily: fonts.mono, flexShrink: 0 },
-  pieces: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, overflow: 'hidden' },
+  // Gives way after the pieces, which shrink first by their far larger weight.
+  lead: { fontFamily: fonts.mono, flexShrink: 1, minWidth: 0 },
+  pieces: { flexDirection: 'row', alignItems: 'center', flexShrink: 1000, overflow: 'hidden' },
   group: { flexDirection: 'row', alignItems: 'center' },
   stacked: { marginLeft: -OVERLAP },
   nextGroup: { marginLeft: 2 },
