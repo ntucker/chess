@@ -207,7 +207,7 @@ export function findOpportunities({
   };
 }
 
-/** One move the walk took: between which positions, and its share of the games where it is played. */
+/** One move the walk took: between which positions, and its share of the games where it is played (1 for a chosen move). */
 export interface Move {
   readonly from: PositionKey;
   readonly to: PositionKey;

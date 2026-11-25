@@ -16,7 +16,7 @@ export interface Limits {
   /**
    * The walk goes on only from positions at least this share of games reach,
    * counted along the move order it arrived by: the walk is best-first by one
-   * path's reach, so it can't wait for the sum over move orders (`reachOf`)
+   * path's reach, so it can't wait for the reach over every way in (`reachOf`)
    * that a find reports.
    */
   readonly reachFloor: number;

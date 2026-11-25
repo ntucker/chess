@@ -48,9 +48,9 @@ plan doesn't depend on those links.
   say so.
 - Piece B's gate (2026-11-24, #210), left to the build thread by Nathaniel and agreed by the
   planning thread. Only finds on the guide count. Score is games reaching the cue × gain, with reach
-  summed over move orders, since 5.d3 Bc5 6.Nc3 and 5.Nc3 Bc5 6.d3 share a cue. `minGain` drops the
-  recaptures nearly everyone finds. The reach floor is 0.5%, since 1% missed 8.Ke1 Qh4+ on the
-  guide. Rules hold the details and `limits.ts` the values.
+  counting every way in (Rules), since 5.d3 Bc5 6.Nc3 and 5.Nc3 Bc5 6.d3 share a cue. `minGain`
+  drops the recaptures nearly everyone finds. The reach floor is 0.5%, since 1% missed 8.Ke1 Qh4+ on
+  the guide. Rules hold the details and `limits.ts` the values.
 
 ## Shape
 
@@ -249,7 +249,7 @@ Tests use hand-made fixture answers, including the Stafford 6.Bg5 find.
   guide's moves, else Stockfish's best. The walk stops where the game is over, below the reach floor
   (along the path it arrived by, since it is best-first by that), past the ply cap (counted in
   full), or at a thin position; Act III continues past a thin position (Rules). One find per cue; a
-  position reached again isn't walked again, but its other move orders add to its reach. Every move
+  position reached again isn't walked again, but its reach counts every way in (Rules). Every move
   goes through `legalChild` (`walk.ts`), which throws on an illegal one, since every source promises
   legal moves.
 - Its own floors and caps are named settings in `src/opportunity/limits.ts`, set at piece B's gate:
