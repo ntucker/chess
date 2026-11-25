@@ -9,20 +9,25 @@
   }
 }
 
-/* No flash over what a finger taps: each control draws its own pressed state. */
+/*
+ * No flash over what a finger taps: each control shows a press itself, by a
+ * pressed state or by what the tap changes at once.
+ */
 :root {
   -webkit-tap-highlight-color: transparent;
 }
 
 /*
- * A long press on the board, its bars or a chip in them picks nothing up:
- * no text selected, no callout. Holding is how these are used (a held step
- * button repeats, a held piece drags).
+ * A finger's long press on the board, its bars or a chip in them picks
+ * nothing up: no text selected, no callout. Holding is how these are used (a
+ * held step button repeats, a held piece drags). A mouse still selects.
  */
-[data-narrow='board-column'] {
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
+@media (pointer: coarse) {
+  [data-narrow='board-column'] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
 }
 
 /*

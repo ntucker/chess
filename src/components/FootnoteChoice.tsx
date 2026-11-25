@@ -102,11 +102,11 @@ function Option<T extends string | number>({
         onPress={onPress}
         style={styles.option}
       >
-        {({ hovered }) => (
+        {({ pressed, hovered }) => (
           <Text
             role="caption"
             style={{
-              color: selected || hovered ? color.textPrimary : color.textSecondary,
+              color: selected || pressed || hovered ? color.textPrimary : color.textSecondary,
               fontWeight: selected ? '600' : '400',
               textDecorationLine: hovered && !selected ? 'underline' : 'none',
             }}
