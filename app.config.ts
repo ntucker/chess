@@ -127,8 +127,6 @@ const SYSTEM_BAR_ICONS = `
       }
     }
 
-  private val reactHost get() = (application as? ReactApplication)?.reactHost
-
   override fun onAttachedToWindow() {
     super.onAttachedToWindow()
     reactHost?.addReactInstanceEventListener(reactContextListener)
