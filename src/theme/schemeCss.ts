@@ -3,7 +3,7 @@ import type { ColorScheme } from '@reactive/silk-core';
 import { readStorageScript } from '@/context/storage';
 import { SETTINGS_KEY, THEMES } from '@/settings/settings';
 
-import { BAR_COLORS, BAR_METAS } from './barColor';
+import { BAR_COLORS, BAR_IDS } from './barColor';
 import { cssVariables } from './cssVariables';
 
 // What each web page's head needs to show the learner's colors before its
@@ -40,4 +40,4 @@ const CHOSEN = THEMES.filter((theme) => theme !== 'system');
 export const PRE_PAINT_SCRIPT =
   `try{var t=JSON.parse(${readStorageScript(SETTINGS_KEY)}).theme;` +
   `if(${JSON.stringify(CHOSEN)}.indexOf(t)>=0){document.documentElement.dataset.theme=t;` +
-  `document.querySelectorAll(${JSON.stringify(BAR_METAS)}).forEach(function(m){m.content=${JSON.stringify(BAR_COLORS)}[t]})}}catch(e){}`;
+  `${JSON.stringify(Object.values(BAR_IDS))}.forEach(function(i){var m=document.getElementById(i);if(m)m.content=${JSON.stringify(BAR_COLORS)}[t]})}}catch(e){}`;

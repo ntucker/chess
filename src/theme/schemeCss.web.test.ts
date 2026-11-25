@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import { parseSettings } from '@/settings/settings';
 
-import { BAR_COLORS, BAR_METAS } from './barColor';
+import { BAR_COLORS, BAR_IDS } from './barColor';
 import { PRE_PAINT_SCRIPT, SCHEME_CSS } from './schemeCss';
 // On the web the hook reads no context, so it can run outside a component.
 import { shownThemes, useSchemeColors as webSchemeColors } from './shownTheme';
@@ -97,7 +97,7 @@ describe('PRE_PAINT_SCRIPT', () => {
    */
   function run(text: string | null, storage: 'works' | 'blocked' = 'works') {
     const dataset: { theme?: string } = {};
-    const bars = [{ content: BAR_COLORS.light }, { content: BAR_COLORS.dark }];
+    const bars = { light: { content: BAR_COLORS.light }, dark: { content: BAR_COLORS.dark } };
     const localStorage = {
       getItem: (key: string) => {
         if (storage === 'blocked') throw new Error('SecurityError');
@@ -107,9 +107,10 @@ describe('PRE_PAINT_SCRIPT', () => {
     // Runs the script as the page's head does, against stand-ins for the page.
     new Function('localStorage', 'document', PRE_PAINT_SCRIPT)(localStorage, {
       documentElement: { dataset },
-      querySelectorAll: (selector: string) => (selector === BAR_METAS ? bars : []),
+      getElementById: (id: string) =>
+        id === BAR_IDS.light ? bars.light : id === BAR_IDS.dark ? bars.dark : null,
     });
-    return { theme: dataset.theme, bars: bars.map((bar) => bar.content) };
+    return { theme: dataset.theme, bars: [bars.light.content, bars.dark.content] };
   }
 
   it('picks the theme settings.ts reads, leaving System to the device', () => {

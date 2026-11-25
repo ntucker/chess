@@ -2,7 +2,7 @@ import { ScrollViewStyleReset, useServerDocumentContext } from 'expo-router/html
 import type { ReactNode } from 'react';
 
 import { BASE_PATH } from '@/files/basePath';
-import { BAR_COLORS, barMedia } from '@/theme/barColor';
+import { barMeta } from '@/theme/barColor';
 import { PRE_PAINT_SCRIPT, SCHEME_CSS } from '@/theme/schemeCss';
 
 /**
@@ -21,8 +21,8 @@ export default function Root({ children }: { readonly children: ReactNode }) {
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-        <meta name="theme-color" media={barMedia('light')} content={BAR_COLORS.light} />
-        <meta name="theme-color" media={barMedia('dark')} content={BAR_COLORS.dark} />
+        <meta {...barMeta('light')} />
+        <meta {...barMeta('dark')} />
         <link rel="manifest" href={`${BASE_PATH}/manifest.webmanifest`} />
         <ScrollViewStyleReset />
         <style id="scheme" dangerouslySetInnerHTML={{ __html: SCHEME_CSS }} />

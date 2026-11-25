@@ -14,8 +14,16 @@ export const BAR_COLORS: Readonly<Record<ColorScheme, string>> = {
   dark: themes.dark.semantic.color.surface,
 };
 
-/** The `media` of a scheme's <meta name="theme-color">. */
-export const barMedia = (scheme: ColorScheme) => `(prefers-color-scheme: ${scheme})`;
+/** The id of each scheme's <meta name="theme-color">. */
+export const BAR_IDS: Readonly<Record<ColorScheme, string>> = {
+  light: 'bar-light',
+  dark: 'bar-dark',
+};
 
-/** Selects the page's <meta name="theme-color"> elements. */
-export const BAR_METAS = 'meta[name=theme-color]';
+/** The props of a scheme's <meta name="theme-color">, as the page's head writes it. */
+export const barMeta = (scheme: ColorScheme) => ({
+  id: BAR_IDS[scheme],
+  name: 'theme-color',
+  media: `(prefers-color-scheme: ${scheme})`,
+  content: BAR_COLORS[scheme],
+});

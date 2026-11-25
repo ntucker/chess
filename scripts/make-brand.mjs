@@ -42,6 +42,8 @@ const color = {
   lightCore: oklch(0.973, 0.035, 91),
   lightMid: oklch(0.87, 0.119, 86),
   eye: oklch(0.25, 0.062, 309),
+  // The plum behind the Android launcher icon and splash screen (app.config.ts's STAGE).
+  stage: oklch(0.216, 0.054, 293),
   // The app's dark surface and text (src/theme/theme.ts), behind and in the feature graphic.
   surface: oklch(0.176, 0.037, 295),
   text: oklch(0.951, 0.017, 85),
@@ -359,8 +361,8 @@ const manifest = {
   scope: '.',
   display: 'standalone',
   orientation: 'portrait',
-  // The dark stage, behind the icon while the app starts; the page then sets its bars' color.
-  background_color: color.surface,
+  // Behind the icon while the app starts, as the Android app's splash; the page then sets its bars' color.
+  background_color: color.stage,
   theme_color: color.surface,
   icons: [
     { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },

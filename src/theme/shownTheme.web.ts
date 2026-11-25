@@ -1,6 +1,6 @@
 import type { Theme as ThemeChoice } from '@/settings/settings';
 
-import { BAR_COLORS, BAR_METAS, barMedia } from './barColor';
+import { BAR_COLORS, BAR_IDS } from './barColor';
 import { cssVariables } from './cssVariables';
 
 // How the web shows the theme: every color a CSS variable (cssVariables.ts),
@@ -23,8 +23,8 @@ export function pinTheme(theme: ThemeChoice) {
   const { dataset } = document.documentElement;
   if (theme === 'system') delete dataset.theme;
   else dataset.theme = theme;
-  for (const meta of document.querySelectorAll<HTMLMetaElement>(BAR_METAS)) {
-    const own = meta.media === barMedia('dark') ? 'dark' : 'light';
-    meta.content = BAR_COLORS[theme === 'system' ? own : theme];
+  for (const scheme of ['light', 'dark'] as const) {
+    const meta = document.getElementById(BAR_IDS[scheme]) as HTMLMetaElement | null;
+    if (meta) meta.content = BAR_COLORS[theme === 'system' ? scheme : theme];
   }
 }
