@@ -3,6 +3,8 @@ import { Inline, Pressable, Surface, Text, useTheme } from '@reactive/silk-nativ
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import {
   type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   ScrollView,
   type ScrollViewInstance,
   StyleSheet,
@@ -252,7 +254,7 @@ function useRevealedRow(row: number) {
     scrollProps: {
       ref: scroll,
       scrollEventThrottle: 16,
-      onScroll: (event: { nativeEvent: { contentOffset: { y: number } } }) =>
+      onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) =>
         tracker.scrolled(event.nativeEvent.contentOffset.y),
       onLayout: (event: LayoutChangeEvent) => {
         tracker.resized(event.nativeEvent.layout.height);
