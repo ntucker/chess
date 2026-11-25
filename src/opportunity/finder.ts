@@ -54,8 +54,21 @@ export interface Find {
   readonly end: number;
   /** Whether the cue's best reply alone keeps the learner clearly better, against best defence. */
   readonly holds: boolean;
-  /** The share of games that reach the position: the erring side's shares along the line. */
+  /**
+   * The share of games that reach the position: the erring side's shares
+   * along each move order of fewest moves that reaches it, summed
+   * (`reachOf`). On the guide, the fewest of the move orders the guide plays
+   * for the punishing side.
+   */
   readonly reach: number;
+  /**
+   * Whether the guide's moves alone lead the punishing side here. Only such
+   * a find goes into a lesson; the rest are evidence for a later finder that
+   * opens anywhere.
+   */
+  readonly onGuide: boolean;
+  /** The guide's move at the cue where the cue doesn't accept it (`acceptedReplies`): a person looks at it. */
+  readonly guideReply?: Uci;
   /** The mistake's share of the games at its position. */
   readonly share: number;
   /** The expected score (0 to 1) the mistake gives away, from full searches; shown, not ranked. */
@@ -66,9 +79,16 @@ export interface Find {
   readonly gain: number;
   /** Set where the gain is an estimate: the cue is thin, or its measured replies cover under half. */
   readonly estimate?: true;
-  /** reach × share × gain: the expected score knowing the opportunity is worth per game. */
+  /**
+   * The share of games that reach the cue, by the move orders of fewest
+   * moves (`reachOf`; on the guide, the fewest the guide plays), × gain: the
+   * expected score knowing the opportunity is worth per game. With one move order, reach × share × gain.
+   */
   readonly score: number;
 }
+
+/** A find before the walk is done: what depends on every move order that reaches it comes last. */
+type Confirmed = Omit<Find, 'reach' | 'onGuide' | 'score'>;
 
 export interface FinderInput {
   /** Where the line starts, as a FEN. */
@@ -85,10 +105,12 @@ export interface FinderInput {
 export type ThinEnd = Pick<Node, 'line' | 'key' | 'reach'>;
 
 export interface FinderResult {
-  /** Best first (`byScore`), each leaving the learner clearly better where Act III ends. */
+  /** Finds on the guide, best first (`byScore`), each leaving the learner clearly better where Act III ends. */
   readonly finds: readonly Find[];
-  /** Finds where Act III ends short of clearly better (`keepScore`), best first. */
+  /** Finds on the guide where Act III ends short of clearly better (`keepScore`), best first. */
   readonly dropped: readonly Find[];
+  /** Finds off the guide, kept or not, best first: evidence only, never written into a lesson. */
+  readonly offGuide: readonly Find[];
   /** Where the walk ended thin, most reached first. */
   readonly thin: readonly ThinEnd[];
   /** The answers still missing, most useful first. Empty once the walk is done. */
@@ -102,10 +124,13 @@ export interface FinderResult {
  * screened with a sketch; one at or over the mistake limit is confirmed with
  * full searches of the positions before and after it, and becomes a find once
  * its cue's replies and its payoff are known. Other replies go on, as does the
- * punishing side's move (its own moves, else Stockfish's best). The walk stops
- * where the game is over, at thin positions, below the reach floor and past
- * the ply cap; a position reached again adds nothing, and so does a second
- * find of one cue.
+ * punishing side's move (its own moves, else Stockfish's best). A mistake
+ * whose punishment nearly everyone finds (gain under `minGain`) is no find,
+ * and the walk goes on past it. The walk stops where the game is over, at
+ * thin positions, below the reach floor and past the ply cap; a position
+ * reached again is not walked again, though another order of the same moves
+ * adds to its reach (`reachOf`), and a cue several mistakes lead to is one
+ * find.
  */
 export function findOpportunities({
   start,
@@ -132,54 +157,159 @@ export function findOpportunities({
   const frontier = new LikeliestFirst<Node>((node) => node.reach);
   frontier.push(opening);
   const visited = new Set<PositionKey>();
-  const finds = new Map<PositionKey, Find>();
-  const thin: ThinEnd[] = [];
+  const moves: Move[] = [];
+  const finds = new Map<PositionKey, { confirmed: Confirmed; from: PositionKey }[]>();
+  const thinKeys = new Map<PositionKey, readonly Uci[]>();
 
   for (let node = frontier.pop(); node; node = frontier.pop()) {
     if (visited.has(node.key) || node.line.length > lastPly || resultAt(node)) continue;
     visited.add(node.key);
     if (node.pos.turn === side) {
-      for (const uci of punishingMoves(node, context)) {
-        frontier.push(legalChild(node, uci, node.reach));
+      const { ucis, guided } = punishingMoves(node, context);
+      for (const uci of ucis) {
+        const next = legalChild(node, uci, node.reach);
+        moves.push({ from: node.key, to: next.key, share: 1, guided });
+        frontier.push(next);
       }
       continue;
     }
     const steps = erringSteps(node, context);
     if (steps === 'thin') {
-      thin.push({ line: node.line, key: node.key, reach: node.reach });
+      thinKeys.set(node.key, node.line);
       continue;
     }
-    for (const step of steps) {
-      if ('find' in step) {
-        if (!finds.has(step.cue)) finds.set(step.cue, step.find);
-      } else if (step.reach >= limits.reachFloor) frontier.push(step);
+    for (const { next, share, confirmed } of steps) {
+      moves.push({ from: node.key, to: next.key, share, guided: true });
+      if (confirmed) {
+        append(finds, next.key, { confirmed, from: node.key });
+      } else if (next.reach >= limits.reachFloor) frontier.push(next);
     }
   }
-  const sorted = [...finds.values()].sort(byScore);
+  const reach = reachOf(opening.key, moves);
+  const sorted = [...finds]
+    .map(([cue, ways]): Find => {
+      // On the guide if the guide's moves alone lead to one of its mistakes.
+      const onGuide = ways.some(({ from }) => reach(from, true) > 0);
+      const games = (key: PositionKey) => reach(key, onGuide);
+      // A cue several mistakes lead to is one find, shown by the one most games
+      // play (on the guide, one the guide leads to).
+      const played = ({ confirmed, from }: (typeof ways)[number]) => games(from) * confirmed.share;
+      const { confirmed, from } = ways.reduce((most, way) =>
+        played(way) > played(most) ? way : most,
+      );
+      return { ...confirmed, reach: games(from), onGuide, score: games(cue) * confirmed.gain };
+    })
+    .sort(byScore);
+  const thin = [...thinKeys]
+    .map(([key, line]) => ({ line, key, reach: reach(key, false) }))
+    .sort((a, b) => b.reach - a.reach);
   const kept = (find: Find) => find.end >= limits.keepScore;
+  const guided = sorted.filter((find) => find.onGuide);
   return {
-    finds: sorted.filter(kept),
-    dropped: sorted.filter((find) => !kept(find)),
+    finds: guided.filter(kept),
+    dropped: guided.filter((find) => !kept(find)),
+    offGuide: sorted.filter((find) => !find.onGuide),
     thin,
     requests,
   };
 }
 
-/** The punishing side's moves at `node`: the guide's, else Stockfish's best; none until known. */
-function punishingMoves(node: Node, { answers, ask }: Context): readonly Uci[] {
+/** One move the walk took: between which positions, and its share of the games where it is played. */
+export interface Move {
+  readonly from: PositionKey;
+  readonly to: PositionKey;
+  readonly share: number;
+  /** Whether a move order through it stays on the guide: the guide's punishing-side move, or any erring-side reply. */
+  readonly guided: boolean;
+}
+
+/**
+ * Each walked position's reach: the share of games that get there by a move
+ * order of fewest moves, summed over those orders (every order of the same
+ * moves). A game that gets there only by a repetition or a lost tempo isn't
+ * counted, so the start stays 1 and each game counts once. With `onGuide`,
+ * only guided moves count (`Move.guided`), fewest among them. Reach stays
+ * derived: nothing stores it.
+ */
+export function reachOf(start: PositionKey, moves: readonly Move[]) {
+  const all = gamesReaching(start, moves);
+  const guided = gamesReaching(
+    start,
+    moves.filter((move) => move.guided),
+  );
+  return (key: PositionKey, onGuide: boolean) => (onGuide ? guided : all).get(key) ?? 0;
+}
+
+/** The share of games that reach each position by `moves`, over move orders of fewest moves. */
+function gamesReaching(start: PositionKey, moves: readonly Move[]): Map<PositionKey, number> {
+  const games = new Map([[start, 1]]);
+  for (const move of fewestMoves(start, moves)) {
+    add(games, move.to, (games.get(move.from) ?? 0) * move.share);
+  }
+  return games;
+}
+
+/**
+ * The moves that go one deeper than the fewest moves to where they start,
+ * breadth-first from `start`: so each comes after every move into the
+ * position it leaves, and a sum over them in order is final where it is read.
+ */
+function fewestMoves(start: PositionKey, moves: readonly Move[]): Move[] {
+  const out = new Map<PositionKey, Move[]>();
+  for (const move of moves) append(out, move.from, move);
+  const order = [start];
+  const depth = new Map([[start, 0]]);
+  const fewest: Move[] = [];
+  for (const key of order) {
+    const next = depth.get(key)! + 1;
+    for (const move of out.get(key) ?? []) {
+      if (!depth.has(move.to)) {
+        depth.set(move.to, next);
+        order.push(move.to);
+      }
+      if (depth.get(move.to) === next) fewest.push(move);
+    }
+  }
+  return fewest;
+}
+
+/** Adds `amount` to `map`'s number at `key`, from 0 where there is none. */
+function add<K>(map: Map<K, number>, key: K, amount: number) {
+  map.set(key, (map.get(key) ?? 0) + amount);
+}
+
+/** Adds `value` to `map`'s list at `key`, starting the list where there is none. */
+function append<K, V>(map: Map<K, V[]>, key: K, value: V) {
+  const list = map.get(key);
+  if (list) list.push(value);
+  else map.set(key, [value]);
+}
+
+/**
+ * The punishing side's moves at `node`, and whether the guide gave them: the
+ * guide's, else Stockfish's best; none until known.
+ */
+function punishingMoves(
+  node: Node,
+  { answers, ask }: Context,
+): { ucis: readonly Uci[]; guided: boolean } {
   const guide = answers.guideMoves?.(node);
-  if (guide?.length) return guide;
+  if (guide?.length) return { ucis: guide, guided: true };
   const analysis = sketchOnly(answers.analysis(node));
   if (!analysis) {
     ask('sketch', node);
-    return [];
+    return { ucis: [], guided: false };
   }
   const best = analysis.lines[0]?.uci;
-  return best ? [best] : [];
+  return { ucis: best ? [best] : [], guided: false };
 }
 
-/** Where the erring side moves: a reply's position to walk on from, or a find keyed by its cue. */
-type ErringStep = Node | { readonly cue: PositionKey; readonly find: Find };
+/** A reply where the erring side moves: its position and share, and the find it makes once confirmed (else the walk goes on from it). */
+interface ErringStep {
+  readonly next: Node;
+  readonly share: number;
+  readonly confirmed?: Confirmed;
+}
 
 /**
  * The erring side's replies at `node` over the share floor, most played
@@ -206,18 +336,29 @@ function erringSteps(node: Node, context: Context): ErringStep[] | 'thin' {
     // A move that ends the game leaves nothing to punish, and no line to walk on.
     const cue = legalChild(node, uci, node.reach * share);
     if (resultAt(cue)) return [];
+    const walkOn = [{ next: cue, share }];
     const after = sketchOnly(answers.analysis(cue));
     if (!after) {
       ask('sketch', cue);
       return [];
     }
     const screened = moveLoss(before, after, uci, node.pos.turn);
-    if (!screened || screened.loss < MISTAKE_LOSS) return [cue];
-    const find = confirm({ node, before }, { cue, after }, share, context);
-    if (find === 'pending') return [];
-    return find ? [{ cue: cue.key, find }] : [cue];
+    if (!screened || screened.loss < MISTAKE_LOSS) return walkOn;
+    const confirmed = confirm({ node, before }, { cue, after }, share, context);
+    if (confirmed === 'pending') return [];
+    return confirmed && worthKnowing(confirmed, limits)
+      ? [{ next: cue, share, confirmed }]
+      : walkOn;
   });
 }
+
+/**
+ * Whether knowing the punishment is worth a find: its gain reaches
+ * `minGain`, or the gain is only an estimate (a thin cue, or too few of its
+ * replies measured), which isn't enough to rule it out.
+ */
+const worthKnowing = ({ gain, estimate }: Confirmed, { minGain }: Limits) =>
+  estimate || gain >= minGain;
 
 /**
  * The find the mistake into `cue` makes once full searches confirm it:
@@ -228,7 +369,7 @@ function confirm(
   { cue, after }: { cue: Node; after: Analysis },
   share: number,
   context: Context,
-): Find | undefined | 'pending' {
+): Confirmed | undefined | 'pending' {
   const { side, answers, limits, ask } = context;
   if (!isFinal(before)) ask('full', node);
   if (!isFinal(after)) ask('full', cue);
@@ -247,6 +388,7 @@ function confirm(
     ? undefined
     : replies.reduce((sum, uci) => sum + (played.shares[uci] ?? 0), 0);
   const { gain, covered } = gainIfKnown(played.shares, losses);
+  const guideReply = answers.guideMoves?.(cue)?.[0];
   return {
     line: node.line,
     mistake,
@@ -255,13 +397,12 @@ function confirm(
     disagreements: rest.disagreements,
     end: rest.end,
     holds: scoreFor(after.lines[0].evaluation, side) >= limits.keepScore,
-    reach: node.reach,
+    ...(guideReply !== undefined && !replies.includes(guideReply) && { guideReply }),
     share,
     cost,
     ...(found !== undefined && { found }),
     gain,
     ...((played.thin || covered < limits.estimateCoverage) && { estimate: true as const }),
-    score: node.reach * share * gain,
   };
 }
 

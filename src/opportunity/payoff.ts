@@ -61,12 +61,11 @@ export interface Payoff {
  * less than the mistake limit, else Stockfish's best (`end` reads the move it
  * plays); the erring side the guide's move, else its most played reply, else
  * Stockfish's best where the position is thin. It ends at mate (a mating
- * line plays out), when the punishing side is `materialUp` points ahead and
- * winning, when its second-best move is winning too, after `payoffMoves` of
- * its moves, where after an erring-side guide move the punishment wins less
- * than the mistake limit beside `before` (the guide holds a better defence, and
- * Act III adds no move to beat it), or when the game ends. It throws where a
- * move it plays is illegal (`legalChild`).
+ * line plays out), when the win is obvious (`obviouslyWon`), after
+ * `payoffMoves` of its moves, where after an erring-side guide move the
+ * punishment wins less than the mistake limit beside `before` (the guide
+ * holds a better defence, and Act III adds no move to beat it), or when the
+ * game ends. It throws where a move it plays is illegal (`legalChild`).
  */
 export function payoff(
   start: Node,
@@ -121,20 +120,21 @@ function fullAnalysis(node: Node, { answers, ask }: Context): FinalAnalysis | un
 }
 
 /**
- * Whether the punishing side's win at `node` is obvious: winning, with its
- * second-best move winning too or `materialUp` points ahead. A mating line
- * plays out instead. Like the review's `winning` (`src/review/refine.ts`), it
- * reads Stockfish's second line, at the finder's own `winScore`.
+ * Whether the punishing side's win at `node` is obvious: winning, at least
+ * level in material (so the learner has taken back what the punishment
+ * gave), with its second-best move winning too or `materialUp` points ahead.
+ * A mating line plays out instead. Like the review's `winning`
+ * (`src/review/refine.ts`), it reads Stockfish's second line, at the
+ * finder's own `winScore`.
  */
 function obviouslyWon(node: Node, final: FinalAnalysis, { side, limits }: Context): boolean {
   const [best, second] = final.lines;
   const winning = (line: typeof best | undefined) =>
     !!line && scoreFor(line.evaluation, side) >= limits.winScore;
   const mating = forSide(best.evaluation.mate ?? 0, side) > 0;
+  const material = balance(node.pos.board, side);
   return (
-    !mating &&
-    winning(best) &&
-    (winning(second) || balance(node.pos.board, side) >= limits.materialUp)
+    !mating && winning(best) && material >= 0 && (winning(second) || material >= limits.materialUp)
   );
 }
 
