@@ -36,7 +36,16 @@ let root: Root | undefined;
 /** What the hook answered on each render; the latest last. */
 const renders: LessonScreenModel[] = [];
 
-function Screen({ picked, start }: { readonly picked?: Lesson; readonly start: string[] }) {
+function Screen({
+  picked,
+  start,
+  pendingMove,
+}: {
+  readonly picked?: Lesson;
+  readonly start: string[];
+  /** A pick's move whose lesson has been loading long enough to say so. */
+  readonly pendingMove?: string;
+}) {
   renders.push(
     useLessonScreen({
       id: picked && 'caro-kann',
@@ -44,8 +53,9 @@ function Screen({ picked, start }: { readonly picked?: Lesson; readonly start: s
       side: 'black',
       onPlayAs,
       store: useReducer(gameReducer, start, startGame),
-      pending: false,
-      loading: false,
+      pending: pendingMove !== undefined,
+      pendingMove,
+      loading: pendingMove !== undefined,
     }),
   );
   return null;
@@ -53,11 +63,19 @@ function Screen({ picked, start }: { readonly picked?: Lesson; readonly start: s
 
 /** The screen after `sans`, at the start (`picked` none) or in the Caro-Kann sample. */
 const showAfter = (picked: Lesson | undefined, ...sans: string[]) =>
+  showWaiting(undefined, picked, ...sans);
+
+/** As `showAfter`, while the lesson `pendingMove` picked loads. */
+const showWaiting = (
+  pendingMove: string | undefined,
+  picked: Lesson | undefined,
+  ...sans: string[]
+) =>
   act(async () => {
     root = createRoot();
     root.render(
       <LessonIndexContext value={FIXTURE_INDEX}>
-        <Screen picked={picked} start={uciLine(...sans)} />
+        <Screen picked={picked} start={uciLine(...sans)} pendingMove={pendingMove} />
       </LessonIndexContext>,
     );
   });
@@ -137,6 +155,18 @@ describe('useLessonScreen', () => {
     expect(headline).not.toHaveProperty('pastGuide');
     expect(headline.failure).toBeUndefined();
     expect(headline.eyebrowLink).toBe(header.placeLink);
+  });
+
+  it("shows a pick's wait on its row, leaving the headline as it was", async () => {
+    await showWaiting('e2e4', undefined);
+    expect(shown().moves?.loadingMove).toBe('e2e4');
+    expect(shown().headline.title).toBe('Pick an opening.');
+  });
+
+  it("shows a pick's wait in the headline when no row is listed for it", async () => {
+    await showWaiting('h2h4', undefined);
+    expect(shown().moves?.loadingMove).toBeUndefined();
+    expect(shown().headline.title).toBe('Setting the stage…');
   });
 
   it('passes on how much of the headline a narrow page draws', async () => {

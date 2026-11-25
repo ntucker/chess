@@ -102,6 +102,17 @@ const SHARED = [
 ];
 
 describe('CandidateList', () => {
+  it('shows the wait on the row whose move picked the lesson loading, and on no other', () => {
+    const waits = (loadingMove?: string) =>
+      render({ candidates: SHARED, rare: [], loadingMove }, (host) =>
+        [...host.querySelectorAll('[role="button"]')].map(
+          (row) => row.querySelector('[role="progressbar"]')?.getAttribute('aria-label') ?? null,
+        ),
+      );
+    expect(waits('e2e4')).toEqual([null, 'Loading the lesson.']);
+    expect(waits()).toEqual([null, null]);
+  });
+
   it("says Stockfish's verdict on a row in its badge and its label", () => {
     const verdicts = new Map([
       [

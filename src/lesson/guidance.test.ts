@@ -12,6 +12,7 @@ import {
   listsOpportunities,
   notePlayback,
   type ShownIdea,
+  shownRows,
   verdictSearch,
 } from './guidance';
 import type { BoardIdea } from './mistakes';
@@ -880,6 +881,15 @@ describe('verdictSearch', () => {
 
   it('searches nothing where the list shows no verdicts', () => {
     expect(verdictSearch(shown(ADVANCE, 'practice'), false, true, none)).toBeUndefined();
+  });
+});
+
+describe('shownRows', () => {
+  it("lists the guide's rows, then Stockfish's best, then the rare ones only while shown", () => {
+    const [bf5, c5] = shown(ADVANCE, 'explore').candidates;
+    const rows = { candidates: [bf5], engineBest: c5, rare: [bf5] };
+    expect(shownRows({ ...rows, rareShown: false })).toEqual([bf5, c5]);
+    expect(shownRows({ ...rows, rareShown: true })).toEqual([bf5, c5, bf5]);
   });
 });
 

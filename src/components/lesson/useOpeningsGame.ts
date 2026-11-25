@@ -5,7 +5,14 @@ import { AT_ONCE } from '@/components/navigation';
 import { type GameAction, gameReducer, type GameState, startGame } from '@/game/game';
 import type { GameStore } from '@/game/useGame';
 import type { VariationId } from '@/lesson/lesson';
-import { lessonHref, type LessonIndex, lessonOf, sameLine, variationLine } from '@/lesson/openings';
+import {
+  lessonHref,
+  type LessonIndex,
+  lessonOf,
+  sameLine,
+  startsWith,
+  variationLine,
+} from '@/lesson/openings';
 import { addressMoves } from '@/review/address';
 import { LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { useSettings, useSettingsDispatch } from '@/settings/SettingsProvider';
@@ -197,6 +204,15 @@ export function useOpeningsGame(
   const shownSide = useDeferredValue(side);
   const shownLesson = lessonOf(index, shownSide, deferred.moves);
   const pending = picked !== undefined && shownLesson !== picked;
+  // A pick is a move played on the position shown: the game's next move after
+  // it. (Forward to a game one move on along the line the page shows names
+  // that move too, the one that led there.)
+  const pendingMove =
+    pending &&
+    game.ply === deferred.ply + 1 &&
+    startsWith(game.moves, deferred.moves.slice(0, deferred.ply))
+      ? game.moves[deferred.ply]
+      : undefined;
   const held: Dispatch<GameAction> = (action) => {
     if (!isInput(action)) dispatch(action);
   };
@@ -220,6 +236,8 @@ export function useOpeningsGame(
      * loading, and the page offers no moves.
      */
     pending,
+    /** The move that picked the lesson loading, played on the position the page shows. */
+    pendingMove,
   };
 }
 

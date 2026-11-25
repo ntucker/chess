@@ -102,7 +102,7 @@ function Openings({
   readonly moves?: string;
   readonly entry?: string;
 }) {
-  const { store, lesson, side, playAs, pending } = useOpeningsGame(
+  const { store, lesson, side, playAs, pending, pendingMove } = useOpeningsGame(
     address,
     variation,
     entry,
@@ -138,6 +138,7 @@ function Openings({
         onPlayAs={playAs}
         store={store}
         pending={pending}
+        pendingMove={pendingMove}
         loading={loading}
       />
     </AsyncBoundary>

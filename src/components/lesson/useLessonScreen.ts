@@ -9,7 +9,7 @@ import type { ScoresheetOpener } from '@/components/ScoresheetPage';
 import type { BoardColumn } from '@/components/Stage';
 import { type Color, colorName, opposite, playMove, readPositionKey } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
-import { listsOpportunities, listsTopMoves } from '@/lesson/guidance';
+import { listsOpportunities, listsTopMoves, shownRows } from '@/lesson/guidance';
 import type { Lesson, PositionKey, Uci, VariationId } from '@/lesson/lesson';
 import { lessonsAfter, lessonsFrom, openingsLesson, withOpenings } from '@/lesson/openings';
 import { listsAnyOpportunity } from '@/lesson/opportunities';
@@ -50,6 +50,8 @@ export interface LessonScreenInput {
   readonly store: GameStore;
   /** The game has moved on to a lesson still loading: the learner can't move. */
   readonly pending: boolean;
+  /** The move that picked the lesson loading. */
+  readonly pendingMove?: Uci;
   /** A lesson, or the next page, has been loading long enough to say so. */
   readonly loading: boolean;
 }
@@ -139,6 +141,7 @@ export function useLessonScreen({
   onPlayAs,
   store,
   pending,
+  pendingMove,
   loading,
 }: LessonScreenInput): LessonScreenModel {
   const ctrl = useController();
@@ -199,31 +202,6 @@ export function useLessonScreen({
     { result, atLatest: game.atLatest, playing: !!playback.playing },
     learner,
   );
-  const { pastGuide, news, ...headline } = describeStatus(view, {
-    picking,
-    loading,
-    title: lesson.title,
-    names,
-    rival: colorName(rival),
-    engine: described.name,
-    replying: game.replying,
-    viewing: !game.atLatest,
-    auto,
-    canPlay,
-    lineEnded: guidance.lineEnded,
-    startsRun,
-    practice:
-      modeState.mode === 'practice' ? { clean: modeState.clean, verdict: game.quality } : undefined,
-    ending,
-    cue,
-  });
-  // Where Stockfish's moves stand in for the guide's, a narrow page tells why
-  // in the idea pane's place. A failure keeps the headline's.
-  const aside =
-    pastGuide && listsTopMoves(view, mode) && !ideaCard && !game.error
-      ? { title: pastGuide, detail: headline.detail }
-      : null;
-
   // What the list of the rival's moves holds.
   const rivalMoves = !picking ? 'likely replies' : view.ply ? 'next move' : 'first move';
   /** Where the openings are picked, the lessons a move leads to. */
@@ -279,7 +257,7 @@ export function useLessonScreen({
 
   // The guide's moves, with any of Stockfish's after them, or past the
   // guide's moves Stockfish's alone.
-  const moves: LessonScreenModel['moves'] = guidance.candidates.length
+  const list = guidance.candidates.length
     ? {
         ...rowProps,
         heading: view.learnerToMove ? 'Your candidates' : rivalMoves,
@@ -314,6 +292,38 @@ export function useLessonScreen({
           main: guidance.top[0],
           onPoint: pointRow,
         }
+      : null;
+  // A pick's wait shows on its row, so the headline and the list stay put; a
+  // wait with no row shown for it (Back or Forward, a hidden rare move) is the headline's.
+  const loadingMove =
+    loading && list && shownRows(list).some(({ move }) => move.uci === pendingMove)
+      ? pendingMove
+      : undefined;
+  const moves: LessonScreenModel['moves'] = list && { ...list, loadingMove };
+
+  const { pastGuide, news, ...headline } = describeStatus(view, {
+    picking,
+    loading: loading && loadingMove === undefined,
+    title: lesson.title,
+    names,
+    rival: colorName(rival),
+    engine: described.name,
+    replying: game.replying,
+    viewing: !game.atLatest,
+    auto,
+    canPlay,
+    lineEnded: guidance.lineEnded,
+    startsRun,
+    practice:
+      modeState.mode === 'practice' ? { clean: modeState.clean, verdict: game.quality } : undefined,
+    ending,
+    cue,
+  });
+  // Where Stockfish's moves stand in for the guide's, a narrow page tells why
+  // in the idea pane's place. A failure keeps the headline's.
+  const aside =
+    pastGuide && listsTopMoves(view, mode) && !ideaCard && !game.error
+      ? { title: pastGuide, detail: headline.detail }
       : null;
 
   return {
