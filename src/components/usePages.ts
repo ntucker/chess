@@ -10,9 +10,10 @@ import { useCloseKeys } from '@/components/useCloseKeys';
  * `home`, Escape and Android's back return there while the screen is in
  * front. While not `shown` (a wide page, which lays the pages out
  * otherwise), the page reads as `home`, so nothing unseen takes Back; the
- * page picked comes back if the pages show again. A page in `missing` (one
- * the screen has nothing for now, such as a lesson's list of opportunities
- * where it marks none) reads as `home` the same way. A page `show` picks
+ * page picked comes back if the pages show again. A page picked that goes
+ * `missing` (one the screen has nothing for now, such as the list of
+ * opportunities in Practice or a lesson without one) is dropped for `home`,
+ * so it doesn't come back on its own when it returns. A page `show` picks
  * ticks on Android; Back doesn't, since the system answers it.
  */
 export function usePages<P extends string>(
@@ -21,6 +22,7 @@ export function usePages<P extends string>(
   missing: readonly P[] = [],
 ): { readonly page: P; readonly show: (page: P) => void } {
   const [picked, setPicked] = useState<P>(home);
+  if (picked !== home && missing.includes(picked)) setPicked(home);
   const page = shown && !missing.includes(picked) ? picked : home;
   useCloseKeys(page === home ? undefined : () => setPicked(home));
   const show = (to: P) => {

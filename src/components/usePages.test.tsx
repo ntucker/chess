@@ -90,10 +90,13 @@ it('reads as home while the pages are not shown, leaving back to the screen', ()
   expect(page()).toBe('scoresheet');
 });
 
-it('reads a page the screen has nothing for as home, leaving back to the screen', () => {
+it('drops a page picked that the screen has nothing for, leaving back to the screen', () => {
   const { page, show, render, back } = pages();
   show('scoresheet');
   render(true, ['scoresheet']);
   expect(page()).toBe('lesson');
   expect(back()).toEqual([]);
+  // It doesn't come back on its own with the page.
+  render(true);
+  expect(page()).toBe('lesson');
 });
