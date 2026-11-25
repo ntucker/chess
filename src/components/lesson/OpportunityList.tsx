@@ -18,7 +18,7 @@ import { type IconAction, IconActions } from '@/components/IconActions';
 import { Notation } from '@/components/Notation';
 import { HeadingTip, Tip } from '@/components/Tip';
 import { lastPosition, lastStep, lineText, numberedMove } from '@/game/replay';
-import type { Lesson, Uci } from '@/lesson/lesson';
+import type { Lesson, PositionKey, Uci } from '@/lesson/lesson';
 import { opportunityMarks } from '@/lesson/marks';
 import { markId } from '@/lesson/mistakes';
 import { lessonOpportunities, type Opportunity } from '@/lesson/opportunities';
@@ -103,7 +103,7 @@ export function OpportunityList({
       onPlay={onPlay}
     />
   ));
-  const listed = useMemo(() => new Set(rows.map(lineKey)), [rows]);
+  const listed = useMemo(() => new Set(rows.map(({ next }) => next)), [rows]);
   const found = <FinderPart finder={finder} listed={listed} styles={styles} onPlay={onPlay} />;
   return (
     <Stack style={compact ? STATIC.compact : labelled}>
@@ -127,9 +127,9 @@ export function OpportunityList({
 
 /**
  * The finder's part of the list: its heading, source chip and button
- * (`finderAction`), then its finds best first, but for any the lesson already
- * lists (`listed`, by the line through the mistake). A spinner shows while it
- * runs.
+ * (`finderAction`), then its finds best first (`unlisted`): any whose mistake
+ * leads to a position the lesson already lists (`listed`) or a better find
+ * reached is left out, however its line got there. A spinner shows while it runs.
  */
 function FinderPart({
   finder: { run, from, rating, onFind },
@@ -138,13 +138,13 @@ function FinderPart({
   onPlay,
 }: {
   readonly finder: FinderProps;
-  readonly listed: ReadonlySet<string>;
+  readonly listed: ReadonlySet<PositionKey>;
   readonly styles: Styles;
   readonly onPlay: (line: readonly Uci[]) => void;
 }) {
   // Each row replays its line: once per run's answer, not per render.
   const found = useMemo(() => run.finds.map(findRow), [run.finds]);
-  const rows = found.filter((row) => !listed.has(lineKey(row)));
+  const rows = useMemo(() => unlisted(found, listed), [found, listed]);
   // Done where it runs from: it found nothing, or an answer failed (the button retries).
   const done = from === 'here' && !run.running;
   const note = !done
@@ -174,7 +174,7 @@ function FinderPart({
         <IconActions actions={[finderAction(from, run, onFind)]} />
       </Inline>
       {rows.map((row) => (
-        <Row key={lineKey(row)} row={row} styles={styles} onPlay={onPlay} />
+        <Row key={row.cue} row={row} styles={styles} onPlay={onPlay} />
       ))}
       {note ? (
         <Text role="caption" tone="secondary" style={[styles.finder, STATIC.empty]}>
@@ -223,6 +223,8 @@ const FULL_COST = 0.6;
 interface ListRow {
   /** The moves from the start through the mistake, which a press plays. */
   readonly line: readonly Uci[];
+  /** The position the mistake leads to: what tells a find from the lesson's rows, since lines transpose. */
+  readonly cue: PositionKey;
   /** The mistake as the scoresheet names it. */
   readonly san: string;
   readonly name?: string;
@@ -236,14 +238,22 @@ interface ListRow {
   readonly hint: string;
 }
 
-/** A row's line through the mistake, as text: what tells a find from the lesson's rows. */
-const lineKey = ({ line }: { readonly line: readonly Uci[] }) => line.join(' ');
+/** The finds, best first, but for those reaching a position already `listed` or reached by a better find. */
+function unlisted(found: readonly ListRow[], listed: ReadonlySet<PositionKey>): ListRow[] {
+  const seen = new Set(listed);
+  return found.filter(({ cue }) => {
+    if (seen.has(cue)) return false;
+    seen.add(cue);
+    return true;
+  });
+}
 
 const lessonRow = (
-  { move, san, line, reach, share, mates }: Opportunity,
+  { move, san, line, next, reach, share, mates }: Opportunity,
   mark: Mark | undefined,
 ): ListRow => ({
   line,
+  cue: next,
   san,
   name: move.mistake?.name,
   reach,
@@ -257,9 +267,11 @@ const lessonRow = (
 /** A find as a row: its line through the mistake, and whether its punishment mates where Act III ends. */
 function findRow({ line, mistake, replies, payoff, reach, share, cost }: Find): ListRow {
   const through = [...line, mistake];
+  const { key, move } = lastStep(through);
   return {
     line: through,
-    san: lastStep(through).move!.san,
+    cue: key,
+    san: move!.san,
     reach,
     share,
     mates: lastPosition([...through, replies[0], ...payoff]).result?.reason === 'checkmate',
