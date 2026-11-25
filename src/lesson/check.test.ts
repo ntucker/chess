@@ -6,7 +6,14 @@ import { parseSan } from 'chessops/san';
 import { checkIdea, checkLesson, generatedIdeaProblem, trapProblem } from './check';
 import { parsePositionKey, positionKey } from '@/game/replay';
 
-import { type Idea, type Lesson, LESSON_FORMAT, type Note, type Purpose } from './lesson';
+import {
+  type Idea,
+  type Lesson,
+  LESSON_FORMAT,
+  type Mistake,
+  type Note,
+  type Purpose,
+} from './lesson';
 import { keyAfter, SAMPLE, uci } from './lesson.fixture';
 
 /** The position after `sans`, played from the start. */
@@ -594,14 +601,19 @@ describe('checkLesson', () => {
 
     it("holds the reply of the opponent's mark to be a book move where a clean run reaches its cue", () => {
       const lesson = marking({ uci: 'd7d5', book: true }, {}, [{ uci: 'h7h6' }]);
-      /** The lesson with the last of `sans` marked after `others`, its cue offering `replies`, and the mark's `line`. */
-      const withMark = (sans: string[], replies: Move[], others: Move[] = [], line?: string[]) => ({
+      /** The lesson with the last of `sans` marked `mistake` after `others`, its cue offering `replies`. */
+      const withMark = (
+        sans: string[],
+        replies: Move[],
+        others: Move[] = [],
+        mistake: Mistake = {},
+      ) => ({
         ...lesson,
         positions: {
           ...lesson.positions,
           [keyAfter(...sans.slice(0, -1))]: {
             variation: 'caro',
-            moves: [...others, { uci: uci(...sans), mistake: line ? { line } : {} }],
+            moves: [...others, { uci: uci(...sans), mistake }],
           },
           [keyAfter(...sans)]: { variation: 'caro', moves: replies },
         },
@@ -612,7 +624,7 @@ describe('checkLesson', () => {
           ['e4', 'c6', 'g4'],
           [{ uci: 'd7d5', book: true }, { uci: 'e7e5' }],
           [{ uci: 'd2d4' }],
-          line,
+          line && { line },
         );
       expect(checkLesson(withG4())).toEqual([]);
       expect(checkLesson(withG4(['e7e5']))).toEqual([
@@ -625,12 +637,14 @@ describe('checkLesson', () => {
       expect(checkLesson(withG4(['e7e6'])).map(({ path }) => path)).toEqual([
         `positions["${keyAfter('e4', 'c6')}"].moves[1].mistake.line[0]`,
       ]);
-      // An illegal move at the cue is reported, not thrown.
-      const illegal = withMark(['e4', 'c6', 'g4'], [{ uci: 'e7e8' }], [{ uci: 'd2d4' }]);
-      expect(checkLesson(illegal).map(({ path }) => path)).toEqual([
-        `positions["${keyAfter('e4', 'c6', 'g4')}"].moves[0].uci`,
-        `positions["${keyAfter('e4', 'c6', 'g4')}"]`,
-      ]);
+      // An illegal book move at the cue is reported, not thrown, whatever the mark holds.
+      for (const mistake of [{}, { verdict: 'losesMaterial' as const }, { line: ['e7e5'] }]) {
+        const replies = [{ uci: 'e7e8', book: true }, { uci: 'e7e5' }];
+        const illegal = withMark(['e4', 'c6', 'g4'], replies, [{ uci: 'd2d4' }], mistake);
+        expect(checkLesson(illegal).map(({ path }) => path)).toContain(
+          `positions["${keyAfter('e4', 'c6', 'g4')}"].moves[0].uci`,
+        );
+      }
       // Past Black's non-book 2...h6, no clean run reaches 3.g4?'s cue, so 3...h5 needn't be booked.
       expect(checkLesson(withMark(['e4', 'c6', 'd4', 'h6', 'g4'], [{ uci: 'h6h5' }]))).toEqual([]);
     });

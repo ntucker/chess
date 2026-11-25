@@ -208,9 +208,11 @@ function checkPosition(
     if (move.mistake) {
       checkMistake(lesson, pos, move, move.mistake, `${path}.mistake`, report);
       // Only a stored line can pick an unbooked reply: the guide's choice rule
-      // (`guideOrder`) plays a book move wherever the cue has one.
-      const reply = learner ? undefined : move.mistake.line?.[0];
-      if (reply !== undefined) cues.push({ path: `${path}.mistake`, cueKey: afterKey, reply });
+      // (`guideOrder`) plays a book move wherever the cue has one, and a cue
+      // with none is already reported as inside the book without one.
+      const [reply] = move.mistake.line ?? [];
+      if (!learner && reply !== undefined)
+        cues.push({ path: `${path}.mistake`, cueKey: afterKey, reply });
     }
     checkNotes(lesson, move.notes, after, `${path}.notes`, report);
   });
