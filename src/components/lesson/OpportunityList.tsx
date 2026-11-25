@@ -103,7 +103,7 @@ export function OpportunityList({
       onPlay={onPlay}
     />
   ));
-  const listed = useMemo(() => new Set(rows.map(({ line }) => line.join(' '))), [rows]);
+  const listed = useMemo(() => new Set(rows.map(lineKey)), [rows]);
   const found = <FinderPart finder={finder} listed={listed} styles={styles} onPlay={onPlay} />;
   return (
     <Stack style={compact ? STATIC.compact : labelled}>
@@ -143,10 +143,8 @@ function FinderPart({
   readonly onPlay: (line: readonly Uci[]) => void;
 }) {
   // Each row replays its line: once per run's answer, not per render.
-  const rows = useMemo(
-    () => run.finds.map(findRow).filter(({ line }) => !listed.has(line.join(' '))),
-    [run.finds, listed],
-  );
+  const found = useMemo(() => run.finds.map(findRow), [run.finds]);
+  const rows = found.filter((row) => !listed.has(lineKey(row)));
   const nothing = from === 'here' && !run.running && !rows.length;
   return (
     <View>
@@ -176,7 +174,7 @@ function FinderPart({
         />
       </Inline>
       {rows.map((row) => (
-        <Row key={row.line.join(' ')} row={row} styles={styles} onPlay={onPlay} />
+        <Row key={lineKey(row)} row={row} styles={styles} onPlay={onPlay} />
       ))}
       {nothing ? (
         <Text role="caption" tone="secondary" style={[styles.finder, STATIC.empty]}>
@@ -224,6 +222,9 @@ interface ListRow {
   /** What a press plays, for screen readers. */
   readonly hint: string;
 }
+
+/** A row's line through the mistake, as text: what tells a find from the lesson's rows. */
+const lineKey = ({ line }: { readonly line: readonly Uci[] }) => line.join(' ');
 
 const lessonRow = (
   { move, san, line, reach, share, mates }: Opportunity,

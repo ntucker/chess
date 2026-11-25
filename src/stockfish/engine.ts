@@ -247,10 +247,9 @@ export function createStockfish(defaultBudget: SearchBudget): Stockfish {
       if (!position.watchers.delete(watcher)) return;
       position.behind.delete(watcher);
       // Watched only from behind now: it gives up the place another watcher won it.
-      const behindOnly = position.watchers.size && position.watchers.size === position.behind.size;
-      if (behindOnly && wanted.get(key) === position) {
-        toFront(key, position);
-      }
+      const behindOnly =
+        position.watchers.size > 0 && position.watchers.size === position.behind.size;
+      if (behindOnly && wanted.get(key) === position) toFront(key, position);
       decideSoon();
     };
   }
