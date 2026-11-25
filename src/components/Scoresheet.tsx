@@ -13,12 +13,11 @@ import type { ReviewQuality } from '@/analysis/quality';
 import type { Ply } from '@/game/replay';
 import { fonts } from '@/theme/theme';
 
-import { type Frame, revealOffset, type Viewport } from './scoresheetReveal';
-
 import { Eyebrow } from './Eyebrow';
 import { Notation } from './Notation';
 import { NotationSwitch } from './NotationSwitch';
 import { QualityBadge } from './QualityBadge';
+import { type Frame, revealOffset, type Viewport } from './scoresheetReveal';
 
 interface Props {
   /** Every position of the game; `plies[n]` follows the nth move. */
@@ -48,7 +47,7 @@ export type Mark = ReviewQuality | Unjudged;
  * The moves as a two-column scoresheet (1. e4 e5), each with its mark, and
  * a move that fell into a trap marked; tap one to see it.
  */
-export function Scoresheet({ fill, ...moves }: Props) {
+export function Scoresheet({ fill, ...sheet }: Props) {
   return (
     <Surface
       elevation="sunken"
@@ -56,12 +55,12 @@ export function Scoresheet({ fill, ...moves }: Props) {
       radius="md"
       style={[styles.sheet, fill && styles.fill]}
     >
-      {moves.plies.length < 2 ? (
+      {sheet.plies.length < 2 ? (
         <Text role="bodySm" tone="secondary" style={styles.empty}>
           The moves will appear here.
         </Text>
       ) : (
-        <MoveRows {...moves} fill={fill} />
+        <MoveRows {...sheet} fill={fill} />
       )}
     </Surface>
   );
