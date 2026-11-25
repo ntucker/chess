@@ -327,8 +327,9 @@ limits it ran with. Set 2026-11-24 (Decisions).
   ratio. Also `countedReplies`' exception for a marked move without counts (Rules).
 - Checker rules for marked moves (legal; not a book move; `cost` at or over the floor when present;
   `line` made of guide moves and stored only where the choice rule plays another; a `losesMaterial`
-  verdict holds on the line; a
-  `mistake` idea names a marked move at its position). README for
+  verdict holds on the line; a `mistake` idea names a marked move at its position; an opponent's
+  mark whose cue a clean Practice run reaches (the book-move walk: learner book moves, any opponent
+  move) must book its line's reply). README for
   `assets/lessons/` and `AGENTS.md` updated.
 - No new finds: shipped lessons change only by the migration, rebuilt by the importer from committed
   answers.
@@ -346,8 +347,11 @@ offered Retry, Show the move and Skip; the revision removes all of it.
   as `LessonView.cue`): the latest marked guide move, up to the board, played by the side that
   isn't `Lesson.side`. It needs no note naming the mark, so finder marks work. It records the game's
   move at the cue (`tried`) and whether it punishes the mistake (`found`: the line's reply, or a
-  move the guide books there; a finder find books every accepted reply, Rules). A learner-falls
-  trap keeps the trap card and `LandedTrap`.
+  move the guide books there). A mark the study already made keeps its moves, so `withFinds` only
+  adds `cost` and `gain` there; a find on a new mark books every accepted reply (Rules). The
+  checker rule that a mark whose cue a clean Practice run reaches books its line's reply (piece C)
+  makes `found` and the clean run agree wherever the run is still clean. A learner-falls trap keeps
+  the trap card and `LandedTrap`.
 - Explore (`cueActs` in `guidance.ts`): the three acts and the "Your cue." headline beside every
   hint, as on any Explore position, from the cue along the line's moves the game plays, and as news
   of the line's end. A move off the line ends them at once and keeps only its ordinary move label.
