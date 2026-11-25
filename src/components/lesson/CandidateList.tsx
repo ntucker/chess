@@ -13,6 +13,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { candidateTone } from '@/lesson/drawings';
+import { shownRows } from '@/lesson/guidance';
 import type { PositionKey, Uci } from '@/lesson/lesson';
 import type { Candidate } from '@/lesson/select';
 import { hovers } from '@/board/pointer';
@@ -442,18 +443,6 @@ function Row({
     </Pressable>
   );
 }
-
-/** A list's rows, in order: the guide's, Stockfish's best after them, then the rare ones while shown. */
-export const shownRows = ({
-  candidates,
-  engineBest,
-  rare,
-  rareShown,
-}: Pick<Props, 'candidates' | 'engineBest' | 'rare' | 'rareShown'>) => [
-  ...candidates,
-  ...(engineBest ? [engineBest] : []),
-  ...(rareShown ? rare : []),
-];
 
 /** What an opportunity's cost means, in its tooltip and its row's label. */
 const costTip = (cost: string) =>

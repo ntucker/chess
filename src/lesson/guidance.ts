@@ -299,6 +299,19 @@ export function listedEngineMoves(
   return listsBest ? [best] : [];
 }
 
+/** A list's rows, in order: the guide's, Stockfish's best after them, then the rare ones while shown. */
+export const shownRows = ({
+  candidates,
+  engineBest,
+  rare,
+  rareShown,
+}: {
+  readonly candidates: readonly Candidate[];
+  readonly engineBest?: Candidate;
+  readonly rare: readonly Candidate[];
+  readonly rareShown: boolean;
+}) => [...candidates, ...(engineBest ? [engineBest] : []), ...(rareShown ? rare : [])];
+
 export function guidance(input: GuidanceInput): Guidance {
   const {
     view,

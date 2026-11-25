@@ -9,7 +9,7 @@ import type { ScoresheetOpener } from '@/components/ScoresheetPage';
 import type { BoardColumn } from '@/components/Stage';
 import { type Color, colorName, opposite, playMove, readPositionKey } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
-import { listsOpportunities, listsTopMoves } from '@/lesson/guidance';
+import { listsOpportunities, listsTopMoves, shownRows } from '@/lesson/guidance';
 import type { Lesson, PositionKey, Uci, VariationId } from '@/lesson/lesson';
 import { lessonsAfter, lessonsFrom, openingsLesson, withOpenings } from '@/lesson/openings';
 import { listsAnyOpportunity } from '@/lesson/opportunities';
@@ -29,7 +29,7 @@ import { getLesson, LessonIndexContext, type LessonId } from '@/resources/lesson
 import { reviewHref } from '@/review/address';
 import { useSettings } from '@/settings/SettingsProvider';
 
-import { type CandidateList, shownRows } from './CandidateList';
+import type { CandidateList } from './CandidateList';
 import type { ActsModel, OpportunityCard } from './CueActs';
 import { type IdeaAside, type IdeaCard, noNotesText } from './IdeaCard';
 import type { LessonControls } from './LessonControls';
