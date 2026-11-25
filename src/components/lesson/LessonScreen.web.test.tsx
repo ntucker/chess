@@ -3,6 +3,7 @@ import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 
+import { haptic } from '@/components/haptics';
 import { PHONE_QUERY, useLayout } from '@/theme/Narrow';
 
 import { LessonPage } from './LessonScreen';
@@ -24,6 +25,7 @@ jest.mock('./useLessonScreen', () => ({
 jest.mock('@/components/navigation', () => ({ useNavigating: () => false }));
 jest.mock('expo-router', () => ({ useIsFocused: () => true }));
 jest.mock('@/components/useBackToReview', () => ({ useBackToReview: () => undefined }));
+jest.mock('@/components/haptics', () => ({ haptic: jest.fn() }));
 
 let mockBoardMounts = 0;
 let mockStepper: { onToggle: () => void; disabled: boolean } | undefined;
@@ -178,8 +180,10 @@ describe('LessonScreen', () => {
     expect(mockFlickUp).toBeUndefined();
     await resize(true);
     expect(shown()).toBe('phone');
+    jest.mocked(haptic).mockClear();
     act(() => mockFlickUp!());
     expect(shown()).toBe('phone settings');
+    expect(haptic).toHaveBeenCalledWith('sheetOpened');
   });
 });
 

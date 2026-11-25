@@ -18,7 +18,7 @@ const FEELS = {
   sheetOpened: AndroidHaptics.Context_Click,
 } satisfies Record<string, AndroidHaptics>;
 
-export type HapticMoment = keyof typeof FEELS;
+type HapticMoment = keyof typeof FEELS;
 
 /**
  * Answers `moment` with its haptic. Android only, by choice: expo-haptics'
