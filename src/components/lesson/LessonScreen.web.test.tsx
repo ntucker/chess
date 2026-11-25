@@ -15,6 +15,10 @@ jest.mock('@data-client/react', () => ({
   useFetch: () => {},
   useSuspense: () => undefined,
 }));
+jest.mock('@/components/OpponentPicker', () => ({
+  OpponentPicker: () => null,
+  useOpponentDownload: () => undefined,
+}));
 jest.mock('./useOpeningsGame', () => ({
   useOpeningsGame: () => ({
     store: [{ moves: [], ply: 0 }, () => {}],

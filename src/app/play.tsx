@@ -9,7 +9,7 @@ import { useLabelled } from '@/components/Eyebrow';
 import { FootnoteLink } from '@/components/FootnoteLink';
 import { GameStatus } from '@/components/GameStatus';
 import { OpponentChoice } from '@/components/OpponentChoice';
-import { OpponentPicker } from '@/components/OpponentPicker';
+import { OpponentPicker, useOpponentDownload } from '@/components/OpponentPicker';
 import { ScoresheetReview } from '@/components/ReviewLinks';
 import { Scoresheet, ScoresheetTitle } from '@/components/Scoresheet';
 import { BoardColumn, Stage } from '@/components/Stage';
@@ -30,6 +30,7 @@ export default function PlayScreen() {
   const ctrl = useController();
   const { opponent, evaluationEngine } = useSettings();
   const described = describeOpponent(opponent);
+  const opponentDownload = useOpponentDownload();
   const labelled = useLabelled();
   const { store, side: playerColor, setSide: setPlayerColor } = usePlayAddress();
   const active = useIsFocused();
@@ -61,6 +62,7 @@ export default function PlayScreen() {
             name: described.name,
             detail: `${colorName(opposite(playerColor))} · ${described.lead.toLowerCase()}`,
             detailControl: <OpponentPicker />,
+            download: opponentDownload,
           }}
           board={{
             fen: current.fen,

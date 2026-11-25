@@ -15,7 +15,7 @@ import { describeOpponent } from '@/opponent/opponent';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
 
-import { OpponentPicker } from './OpponentPicker';
+import { OpponentPicker, useOpponentDownload } from './OpponentPicker';
 
 // Its font loads through Expo's asset registry, which the web preset doesn't resolve.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
@@ -32,6 +32,12 @@ function GrabReport() {
     reportDownload = report;
   }, [report]);
   return null;
+}
+
+/** What the opponent's disc would show of the download, as text. */
+function DownloadProbe() {
+  const download = useOpponentDownload();
+  return <span data-testid="disc">{download ? `${download.label} ${download.percent}` : ''}</span>;
 }
 
 /** Draws `picker` in the page, in place of the one before. */
@@ -314,7 +320,7 @@ describe('OpponentPicker', () => {
     expect(popover()).toBeNull();
   });
 
-  it("shows full Stockfish's download beside it while it runs", async () => {
+  it("says beside it when full Stockfish's download fails, leaving its progress to the disc", async () => {
     act(() => trigger().click());
     press('End');
     expect(trigger().textContent).toBe('Full Stockfish');
@@ -326,7 +332,8 @@ describe('OpponentPicker', () => {
         reportDownload(percent, failure);
       });
     await report(42);
-    expect(progress()).toBe('· 42% downloaded');
+    // The opponent's disc shows it (`useOpponentDownload`, PlayerBar).
+    expect(progress()).toBeUndefined();
     await report(0, 'retrying');
     expect(progress()).toBe('· retrying download');
     await report(0, 'newVersion');
@@ -336,5 +343,24 @@ describe('OpponentPicker', () => {
     expect(reload?.textContent).toBe('Reload');
     await report(100);
     expect(progress()).toBeUndefined();
+  });
+
+  it("gives the disc full Stockfish's download only while it is the opponent", async () => {
+    await show(
+      <>
+        <OpponentPicker />
+        <DownloadProbe />
+      </>,
+    );
+    const disc = () => host.querySelector('[data-testid="disc"]')!.textContent;
+    act(() => trigger().click());
+    press('End');
+    await act(async () => {
+      reportDownload(42);
+    });
+    expect(disc()).toBe('Full Stockfish 42');
+    // The download stays in the store once another opponent is picked.
+    press('Home');
+    expect(disc()).toBe('');
   });
 });

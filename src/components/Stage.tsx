@@ -103,7 +103,7 @@ interface BoardColumnProps {
   /** The opponent's name bar: who plays the other side and how, and any small control at its end. */
   readonly rival: Pick<
     ComponentProps<typeof PlayerBar>,
-    'name' | 'detail' | 'detailWideOnly' | 'detailControl' | 'children'
+    'name' | 'detail' | 'detailWideOnly' | 'detailControl' | 'download' | 'children'
   >;
   /** The player's name bar: anything to show before the move stepper at its end. */
   readonly player?: Pick<ComponentProps<typeof PlayerBar>, 'children'>;

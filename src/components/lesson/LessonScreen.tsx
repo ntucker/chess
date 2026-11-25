@@ -6,7 +6,7 @@ import { BrowserOnly } from '@/components/BrowserOnly';
 import { StatusHeadline } from '@/components/GameStatus';
 import { haptic } from '@/components/haptics';
 import { NewVersionPage } from '@/components/NewVersion';
-import { OpponentPicker } from '@/components/OpponentPicker';
+import { OpponentPicker, useOpponentDownload } from '@/components/OpponentPicker';
 import type { PhonePage } from '@/components/PhonePages';
 import { ScoresheetOpener } from '@/components/ScoresheetPage';
 import { resetListener } from '@/components/resetListener';
@@ -167,6 +167,7 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
   // Not before the first move; but a scoresheet showing stays, since a new game empties it.
   const scoresheetReachable = scoresheetShown || model.stepper.started;
   const back = useBackToReview();
+  const opponentDownload = useOpponentDownload();
   const openSettings = () => {
     haptic('sheetOpened');
     setSettingsOpen(true);
@@ -194,6 +195,7 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
           rival={{
             ...model.board.rival,
             detailControl: <OpponentPicker />,
+            download: opponentDownload,
             children: <AutoPlay />,
           }}
           // The sheet closes with a drag down, so a flick up from the bar under the board opens it too.
