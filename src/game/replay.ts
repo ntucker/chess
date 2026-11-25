@@ -1,7 +1,6 @@
 import { castlingSide, Chess } from 'chessops/chess';
 import { chessgroundDests, chessgroundMove } from 'chessops/compat';
 import { makeFen, parseFen } from 'chessops/fen';
-import { parsePgn } from 'chessops/pgn';
 import { makeSanAndPlay, parseSan } from 'chessops/san';
 import { SquareSet } from 'chessops/squareSet';
 import type { Color, NormalMove, Piece, Role, SquareName } from 'chessops/types';
@@ -264,19 +263,27 @@ export function sanToUci(pos: Chess, san: string): string | undefined {
 
 /**
  * Typed or pasted move text as UCI moves from `start` (the starting position
- * unless given; left as it was): the main line of a game in PGN movetext
- * (`parsePgn`: move numbers, comments, variations and the result skipped),
- * each move in SAN or UCI. Throws at the first move that isn't legal.
+ * unless given; left as it was): the main line of PGN movetext, each move in
+ * SAN or UCI. Tag pairs, comments, variations, NAGs, move numbers ("1.e4",
+ * "1...e5", "...e5"), annotations ("!?") and the result are skipped. Throws at
+ * the first word that isn't a legal move. (chessops' `parsePgn` would skip a
+ * mistyped move without a word, so a typo would quietly cut the line short.)
  */
 export function parseMoves(text: string, start = Chess.default()): string[] {
+  let movetext = text.replace(/\[[^\]]*\]|\{[^}]*\}|;[^\n]*|\$\d+/g, ' ');
+  // Variations nest: take out the innermost until none is left.
+  for (let inner = /\([^()]*\)/g; inner.test(movetext);) movetext = movetext.replace(inner, ' ');
   const pos = start.clone();
-  const [game] = parsePgn(text);
-  return Array.from(game?.moves.mainline() ?? [], ({ san }) => {
-    const uci = sanToUci(pos, san) ?? recordedMove(pos, san);
-    if (!uci) throw new Error(`Not a legal move here: ${san} (in "${text}")`);
-    playMove(pos, uci);
-    return uci;
-  });
+  return movetext
+    .split(/\s+/)
+    .map((word) => word.replace(/^\d*\.+/, '').replace(/[!?]+$/, ''))
+    .filter((word) => word && !/^(?:1-0|0-1|1\/2-1\/2|\*)$/.test(word))
+    .map((word) => {
+      const uci = sanToUci(pos, word) ?? recordedMove(pos, word);
+      if (!uci) throw new Error(`Not a legal move here: ${word} (in "${text}")`);
+      playMove(pos, uci);
+      return uci;
+    });
 }
 
 /** `lineMove` for a position already parsed. */

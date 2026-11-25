@@ -90,13 +90,13 @@ export const finderHost = (lesson: Lesson, band: number): Promise<FinderHost> =>
 export const positionHost = (band: number): Promise<FinderHost> =>
   host(band, join(ROOT, '.cache/opportunities/'));
 
-/** A host keeping its answers in `<files>{explorer,sketch,full}.jsonl`, with a lesson's `guideMoves` where it has one. */
+/** A host keeping its answers in `<prefix>{explorer,sketch,full}.jsonl`, with a lesson's `guideMoves` where it has one. */
 async function host(
   band: number,
-  files: string,
+  prefix: string,
   guideMoves?: Answers['guideMoves'],
 ): Promise<FinderHost> {
-  const path = (kind: string) => `${files}${kind}.jsonl`;
+  const path = (kind: 'explorer' | 'sketch' | 'full') => `${prefix}${kind}.jsonl`;
   const explorer = lichessExplorer({
     token: process.env.LICHESS_TOKEN,
     cacheFile: path('explorer'),
