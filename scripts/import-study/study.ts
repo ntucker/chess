@@ -251,8 +251,8 @@ export function withReplies(
  * `chapters` with each commented move `trapStarts` names, by the line's moves
  * in SAN from the start, knowing where its comment's trap starts: the moves
  * after it in SAN, the last being the trap's first move (`StudyMove.trapStart`).
- * Throws for a line no chapter plays or moves that are not legal after it, as
- * `withReplies` does.
+ * Throws for a line no chapter plays, or plays without a comment, or moves
+ * that are not legal after it, as `withReplies` does.
  */
 export function withTrapStarts(
   chapters: readonly Chapter[],
@@ -262,8 +262,11 @@ export function withTrapStarts(
   for (const [line, moves] of Object.entries(trapStarts)) {
     const ends = lineEnds(chapters, line);
     if (ends.length === 0) throw new Error(`No chapter plays ${line}, where a trap starts later`);
+    // A chapter that only leads to another's line plays it without comments.
+    const commented = ends.filter((end) => end.comment);
+    if (commented.length === 0) throw new Error(`${line} has no comment for its trap start`);
     const trapStart = moves.split(' ');
-    for (const end of ends) {
+    for (const end of commented) {
       if (!afterSans(end.after, trapStart)) throw new Error(`${moves} is not legal after ${line}`);
       edits.set(end, { trapStart });
     }

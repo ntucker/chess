@@ -313,8 +313,9 @@ limits it ran with. Set 2026-11-24 (Decisions).
   whose verdict its line contradicts (that mark goes with the notes naming it). A marked move of the learner's side is not a book move, so the checker's
   traversal (book moves for the learner, every opponent move) does not follow it; a position a book
   line also reaches still needs a book move, and there is no exemption for positions after a marked
-  move. Where the learner's only moves are marked, the book line ends there (`lineGoesOn`,
-  `src/lesson/cleanRun.ts`).
+  move. A marked move never satisfies or cancels the need for a book move: a learner position
+  inside the book whose other moves are all marked still needs one, which `fillBook` picks as
+  usual (`needsBookMove`, `src/lesson/cleanRun.ts`; decided with the planning thread in #224).
 - The app reads the new shape. The trap card, its playback and landing (`LandedTrap`) behave as
   before, except for the "show traps" scope in Decisions (before, it hid every trap). The marker
   takes over two call sites of the `Trap` idea: a landed trap still explains itself with show traps

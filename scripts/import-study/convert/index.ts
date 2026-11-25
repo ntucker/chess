@@ -2,7 +2,8 @@
  * The AI step: Sonnet rewrites every comment as short notes for the learner
  * and adds what the fixed formats missed as ideas the board draws. The
  * checker drops every idea that is false in its position; a comment whose
- * ideas were all dropped is asked again of Opus, and the answer keeping more
+ * ideas were all dropped, or whose trap that starts later was
+ * (`Comment.trapStart`), is asked again of Opus, and the answer keeping more
  * ideas wins. A comment whose note text the checker refuses as notation is
  * asked again of Opus with that text, and the answer in words replaces it; if
  * Opus writes notation too, or gives no answer (a failed request, or a
@@ -26,8 +27,8 @@ import { noteShows, type AiModel, type NoteShows } from '@/lesson/lesson';
 
 import type { ChapterNotes, MoveNote, PositionNote } from '../extract';
 import type { StudyNote } from '../mistakes';
-import { trapPosition } from '../study';
 import { topReasons } from '../report';
+import { trapPosition } from '../study';
 import { namedMoves, nextPly } from '../text';
 import type { Answer, AnswerIdea } from './answer';
 import { MODELS, type Ask } from './claude';
@@ -44,7 +45,7 @@ import {
 
 /** How many comments were asked again of Opus, by why, and what the rewording changed. */
 interface Retries {
-  /** The checker refused every idea. */
+  /** The checker refused every idea, or the trap of a comment whose trap starts later. */
   readonly retried: number;
   /** The checker refused note text as notation. */
   readonly reworded: number;
@@ -143,7 +144,7 @@ async function convertComments(
   const keepsMore = (result: Converted, previous: Converted) => result.kept > previous.kept;
   await askAndKeep(MODELS.convert, [...comments.values()], keepsMore);
   const retry = [...converted]
-    .filter(([, result]) => allRefused(result))
+    .filter(([id, result]) => allRefused(result) || trapUndrawn(comments.get(id)!, result))
     .map(([id]) => comments.get(id)!);
   if (retry.length > 0) await askAndKeep(MODELS.retry, retry, keepsMore);
   /** The comments whose answer has note texts `textsOf` picks out as refused, each with those texts. */
@@ -260,16 +261,21 @@ function undrawnMistakes(comment: Comment, result: Converted): string[] {
 const withAddenda =
   (ask: Ask): Ask =>
   async (model, comments, addendum = '') => {
-    const groups = Map.groupBy(
+    const byAddenda = Map.groupBy(
       comments,
       (comment) =>
         (comment.writtenFor ? WRITTEN_FOR_OPPONENT : '') + (comment.trapStart ? TRAP_START : ''),
     );
     const answers = new Map<string, Answer>();
-    for (const [own, group] of groups)
-      for (const entry of await ask(model, group, own + addendum)) answers.set(...entry);
+    for (const [prefix, group] of byAddenda)
+      for (const entry of await ask(model, group, prefix + addendum)) answers.set(...entry);
     return answers;
   };
+
+/** A comment whose trap starts later (`Comment.trapStart`) without a trap the checker kept. */
+const trapUndrawn = (comment: Comment, result: Converted) =>
+  comment.trapStart !== undefined &&
+  !result.trap.some((note) => note.ideas?.some((idea) => idea.type === 'trap'));
 
 /** The model wrote drawable ideas and the checker refused every one. */
 const allRefused = (result: Converted) =>
@@ -370,7 +376,7 @@ export function convertReport({
     15,
   );
   return [
-    `converted comments: ${comments - unconverted} of ${comments} (asked again of ${MODELS.retry}: ${retried} with every idea refused, ${reworded} with notes in notation, ${unmoored} with notes pointing to the study, ${punished} with a mistake's punishment undrawn, ${shortened} with notes cut at the word limit)`,
+    `converted comments: ${comments - unconverted} of ${comments} (asked again of ${MODELS.retry}: ${retried} with every idea or a later trap refused, ${reworded} with notes in notation, ${unmoored} with notes pointing to the study, ${punished} with a mistake's punishment undrawn, ${shortened} with notes cut at the word limit)`,
     ...(reworded > 0
       ? [
           `  ideas the comments with notes in notation keep: ${rewordedIdeas.before} before, ${rewordedIdeas.after} after`,

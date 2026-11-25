@@ -507,6 +507,20 @@ describe('convertChapters', () => {
       ]);
     });
 
+    it('asks again when the checker refuses its trap', async () => {
+      const wrong: AnswerNote = {
+        ...trap,
+        ideas: [{ type: 'trap', moves: ['Nxe5', 'Qg5'], verdict: 'losesMaterial' }],
+      };
+      const { ask, asked } = fakeAsk({
+        [MODELS.convert]: { Bc4: [wrong] },
+        [MODELS.retry]: { Bc4: [trap] },
+      });
+      const { report } = await convertChapters(chapters, ask);
+      expect(asked.map(([model]) => model)).toEqual([MODELS.convert, MODELS.retry]);
+      expect(report.retried).toBe(1);
+    });
+
     it('drops a trap note for a comment without one', async () => {
       const [plain] = parseStudy(
         '[Event "Italian"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bc4 { 3...Nd4 4.Nxe5?? Qg5 wins. } *\n',

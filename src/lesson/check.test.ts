@@ -563,8 +563,9 @@ describe('checkLesson', () => {
   describe('marked mistakes', () => {
     const afterD4 = afterC6.clone();
     afterD4.play(parseSan(afterD4, 'd4')!);
-    /** The lesson going on 2.d4, where Black's only move is `move`. */
-    const marking = (move: Lesson['positions'][string]['moves'][number], more = {}) => ({
+    type Move = Lesson['positions'][string]['moves'][number];
+    /** The lesson going on 2.d4, where Black has `move` and then `others`, a book move by default. */
+    const marking = (move: Move, more = {}, others: Move[] = [{ uci: 'e7e6', book: true }]) => ({
       ...withPosition(positionKey(afterC6), {
         ...lesson.positions[positionKey(afterC6)],
         moves: [{ uci: 'd2d4' }],
@@ -575,15 +576,20 @@ describe('checkLesson', () => {
           ...lesson.positions[positionKey(afterC6)],
           moves: [{ uci: 'd2d4' }],
         }).positions,
-        [positionKey(afterD4)]: { variation: 'caro', moves: [move] },
+        [positionKey(afterD4)]: { variation: 'caro', moves: [move, ...others] },
       },
     });
     const at = `positions["${positionKey(afterD4)}"].moves[0].mistake`;
 
-    it("ends the book line where the learner's only moves are marked mistakes", () => {
-      expect(checkLesson(marking({ uci: 'g7g5', mistake: { verdict: 'whiteWinning' } }))).toEqual(
-        [],
-      );
+    it("still needs a book move where the learner's only moves are marked mistakes", () => {
+      const mark = { uci: 'g7g5', mistake: { verdict: 'whiteWinning' as const } };
+      expect(checkLesson(marking(mark))).toEqual([]);
+      expect(checkLesson(marking(mark, {}, []))).toEqual([
+        {
+          path: `positions["${positionKey(afterD4)}"]`,
+          message: 'is inside the book but has no book move',
+        },
+      ]);
     });
 
     it('refuses a mark on a book move, and numbers out of range', () => {

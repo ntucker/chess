@@ -225,6 +225,9 @@ describe('withTrapStarts', () => {
     const chapters = parseStudy(pgn, () => true);
     expect(() => withTrapStarts(chapters, { 'e4 c5': 'Nf3' })).toThrow('No chapter plays e4 c5');
     expect(() => withTrapStarts(chapters, { [line]: 'Nd4 Qxe5' })).toThrow('Nd4 Qxe5 is not legal');
+    expect(() => withTrapStarts(chapters, { 'e4 e5 Nf3': 'Nc6' })).toThrow(
+      'e4 e5 Nf3 has no comment',
+    );
   });
 });
 
