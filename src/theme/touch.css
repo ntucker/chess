@@ -25,8 +25,11 @@
   -webkit-touch-callout: none;
 }
 
-/* A pull down at the top of the page doesn't reload it, as a phone browser would. */
+/*
+ * A pull down at the top of the page doesn't reload it, as a phone browser
+ * would. `contain` rather than `none` keeps the stretch an Android app shows.
+ */
 html,
 body {
-  overscroll-behavior-y: none;
+  overscroll-behavior-y: contain;
 }
