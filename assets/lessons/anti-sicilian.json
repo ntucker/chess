@@ -1002,16 +1002,16 @@
 "rnbqk1nr/pp2ppbp/3p2p1/2p5/2B1P3/2P2N2/PP1PQPPP/RNB1K2R b KQkq -":{"variation":"2-d6-3-bc4-3-g6","moves":[{"uci":"b8c6"}]},
 "r1bqk1nr/pp2ppbp/2np2p1/2p5/2B1P3/2P2N2/PP1PQPPP/RNB1K2R w KQkq -":{"variation":"2-d6-3-bc4-3-g6","moves":[{"uci":"h2h3","book":true,"notes":[{"text":"The same ideas apply here.","original":"Same stuff. :)","model":"claude-sonnet-5-5"}]}]},
 "r2n1bnr/pp1kpppp/8/3PN3/1Bq5/8/5PPP/R2QK2R b K -":{"variation":"portsmouth-gambit-4-d5","moves":[{"uci":"d7c7"}]},
-"r2n1bnr/ppk1pppp/8/3PN3/1Bq5/8/5PPP/R2QK2R w K -":{"variation":"portsmouth-gambit-4-d5","moves":[{"uci":"e5c4","book":true}]},
+"r2n1bnr/ppk1pppp/8/3PN3/1Bq5/8/5PPP/R2QK2R w K -":{"variation":"portsmouth-gambit-4-d5","moves":[{"uci":"e5c4","book":true,"notes":[{"text":"Your knight collects the queen that the fork won.","generated":true,"model":"claude-fable-5-2","ideas":[{"type":"imbalance","side":"white","kind":"material"}]}]}]},
 "r3kbnr/p2b1ppp/1qp1p3/8/QB6/5N2/P4PPP/1R2KB1R w Kkq -":{"variation":"portsmouth-gambit-4-d5","moves":[{"uci":"a2a3"}]},
 "r3kbnr/p2b1ppp/1qp1p3/8/QB6/P4N2/5PPP/1R2KB1R b Kkq -":{"variation":"portsmouth-gambit-4-d5","moves":[{"uci":"c6c5"}]},
 "r1b1kbnr/pp2nppp/8/3P4/1p4q1/3BBN2/P4PPP/RN1Q1RK1 b kq -":{"variation":"portsmouth-gambit-4-d5","moves":[{"uci":"e7d5","mistake":{"verdict":"whiteWinning"}}]},
-"r1b1kbnr/pp3ppp/8/3n4/1p4q1/3BBN2/P4PPP/RN1Q1RK1 w kq -":{"variation":"portsmouth-gambit-4-d5","moves":[{"uci":"d3b5","book":true}]},
+"r1b1kbnr/pp3ppp/8/3n4/1p4q1/3BBN2/P4PPP/RN1Q1RK1 w kq -":{"variation":"portsmouth-gambit-4-d5","moves":[{"uci":"d3b5","book":true,"notes":[{"text":"Your bishop checks and uncovers your queen's attack on the loose d5 knight.","generated":true,"model":"claude-fable-5-2","ideas":[{"type":"purpose","from":"b5","relation":"checks","targets":["e8"]},{"type":"purpose","from":"d1","relation":"attacks","targets":["d5"]}]}]}]},
 "rn1qkbnr/pp1bpppp/8/3P4/1QP5/5N2/P4PPP/RNB1KB1R b KQkq -":{"variation":"portsmouth-gambit-4-d5","moves":[{"uci":"e7e6","mistake":{"verdict":"whiteClearly"}}]},
-"rn1qkbnr/pp1b1ppp/4p3/3P4/1QP5/5N2/P4PPP/RNB1KB1R w KQkq -":{"variation":"portsmouth-gambit-4-d5","moves":[{"uci":"b4b7","book":true}]},
-"r3kbnr/1p1q2pp/5p2/1p2p3/Q3P3/2N5/PB3PPP/R3K2R w KQkq -":{"variation":"portsmouth-gambit-4-d6","moves":[{"uci":"a4a8","book":true}]},
+"rn1qkbnr/pp1b1ppp/4p3/3P4/1QP5/5N2/P4PPP/RNB1KB1R w KQkq -":{"variation":"portsmouth-gambit-4-d5","moves":[{"uci":"b4b7","book":true,"notes":[{"text":"Your queen grabs the pawn and attacks the undefended rook in the corner.","generated":true,"model":"claude-fable-5-2","ideas":[{"type":"purpose","from":"b7","relation":"attacks","targets":["a8"]},{"type":"threat","side":"white","move":"b7a8"}]}]}]},
+"r3kbnr/1p1q2pp/5p2/1p2p3/Q3P3/2N5/PB3PPP/R3K2R w KQkq -":{"variation":"portsmouth-gambit-4-d6","moves":[{"uci":"a4a8","book":true,"notes":[{"text":"Your queen takes the undefended rook, and with check too.","generated":true,"model":"claude-fable-5-2","ideas":[{"type":"purpose","from":"a8","relation":"checks","targets":["e8"]},{"type":"imbalance","side":"white","kind":"material"}]}]}]},
 "r1bq1rk1/pp1pnppB/2n1p3/4P3/3P4/5N2/P2N1PPP/R2QK2R b KQ -":{"variation":"3-nxb4","moves":[{"uci":"g8h7"}]},
-"r1bq1r2/pp1pnppk/2n1p3/4P3/3P4/5N2/P2N1PPP/R2QK2R w KQ -":{"variation":"3-nxb4","moves":[{"uci":"f3g5","book":true}]},
+"r1bq1r2/pp1pnppk/2n1p3/4P3/3P4/5N2/P2N1PPP/R2QK2R w KQ -":{"variation":"3-nxb4","moves":[{"uci":"f3g5","book":true,"notes":[{"text":"Your knight checks the king and opens the diagonal for your queen to join.","generated":true,"model":"claude-fable-5-2","ideas":[{"type":"purpose","from":"g5","relation":"checks","targets":["h7"]},{"type":"plan","side":"white","routes":[{"from":"d1","to":"h5","moves":1}]}]}]}]},
 "rn1qkbnr/pp2p1pp/3p4/2p3N1/4P1Q1/8/PPPP1PPP/RNB1K2R b KQ -":{"variation":"2-d6-3-bc4","moves":[{"uci":"g8f6","mistake":{"verdict":"whiteWinning"}}]},
-"rn1qkb1r/pp2p1pp/3p1n2/2p3N1/4P1Q1/8/PPPP1PPP/RNB1K2R w KQ -":{"variation":"2-d6-3-bc4","moves":[{"uci":"g4e6","book":true}]}
+"rn1qkb1r/pp2p1pp/3p1n2/2p3N1/4P1Q1/8/PPPP1PPP/RNB1K2R w KQ -":{"variation":"2-d6-3-bc4","moves":[{"uci":"g4e6","book":true,"notes":[{"text":"Your queen and knight both cover f7, where the knight lands next to fork queen and rook.","generated":true,"model":"claude-fable-5-2","ideas":[{"type":"purpose","from":"e6","relation":"controls","targets":["f7"]},{"type":"plan","side":"white","routes":[{"from":"g5","to":"f7","moves":1}],"goals":["d8","h8"]}]}]}]}
 }}
