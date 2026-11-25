@@ -36,7 +36,6 @@ const MODEL = {
   headline: {},
   scoresheet: {},
   review: { href: '/review', shut: false },
-  stepper: { started: true },
   onLeave: () => {},
 } as unknown as LessonScreenModel;
 
@@ -60,7 +59,7 @@ const render = (page: PhonePage, model = MODEL) =>
   act(() =>
     root.render(
       <SilkProvider theme={themes.dark}>
-        <PhoneLesson model={model} page={page} onPage={() => {}} />
+        <PhoneLesson model={model} page={page} onPage={() => {}} scoresheetReachable />
       </SilkProvider>,
     ),
   );

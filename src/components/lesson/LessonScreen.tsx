@@ -21,7 +21,7 @@ import { getProgress } from '@/resources/progress';
 import { useLayout } from '@/theme/Narrow';
 
 import { AutoPlay } from './AutoPlay';
-import { PhoneLesson, type PhonePage, scoresheetReachable } from './layouts/PhoneLesson';
+import { PhoneLesson, type PhonePage } from './layouts/PhoneLesson';
 import { WideLesson } from './layouts/WideLesson';
 import { LessonSettings } from './LessonSettings';
 import { LOADING } from './status';
@@ -132,6 +132,8 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { page, show } = usePages<PhonePage>('lesson', phone);
   const scoresheetShown = page === 'scoresheet';
+  // Not before the first move; but a scoresheet showing stays, since a new game empties it.
+  const scoresheetReachable = scoresheetShown || model.stepper.started;
   const back = useBackToReview();
   const openSettings = () => setSettingsOpen(true);
 
@@ -165,7 +167,7 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
             <ScoresheetOpener
               san={model.stepper.san}
               ply={model.stepper.ply}
-              disabled={!scoresheetReachable(page, model.stepper.started)}
+              disabled={!scoresheetReachable}
               open={scoresheetShown}
               onToggle={() => show(scoresheetShown ? 'lesson' : 'scoresheet')}
             />
@@ -175,7 +177,12 @@ function LessonScreen({ id, onPlayAs, ...input }: Omit<LessonScreenInput, 'picke
       program={
         <>
           {phone ? (
-            <PhoneLesson model={model} page={page} onPage={show} />
+            <PhoneLesson
+              model={model}
+              page={page}
+              onPage={show}
+              scoresheetReachable={scoresheetReachable}
+            />
           ) : (
             <WideLesson model={model} />
           )}

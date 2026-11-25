@@ -18,13 +18,6 @@ import { LessonHeadline } from './LessonHeadline';
 export type PhonePage = 'lesson' | 'scoresheet';
 
 /**
- * Whether the scoresheet's page can show (by the pill or a swipe): not
- * before the first move, but one showing stays, since a new game empties it.
- */
-export const scoresheetReachable = (page: PhonePage, started: boolean) =>
-  page === 'scoresheet' || started;
-
-/**
  * The lesson under the board on a phone: a short headline, then two pages
  * that the move pill or a sideways swipe slides between (`usePages` owns
  * which shows). One holds the moves and the idea in panes side by side,
@@ -37,10 +30,13 @@ export function PhoneLesson({
   model,
   page,
   onPage,
+  scoresheetReachable,
 }: {
   readonly model: LessonScreenModel;
   readonly page: PhonePage;
   readonly onPage: (page: PhonePage) => void;
+  /** Whether a swipe can reach the scoresheet's page, as the pill can. */
+  readonly scoresheetReachable: boolean;
 }) {
   const part = useNarrowPart();
   const sections = useSections();
@@ -70,7 +66,7 @@ export function PhoneLesson({
         onValueChange={(value) => onPage(value as PhonePage)}
         style={styles.pages}
       >
-        <Pager.Page value="lesson" style={[styles.page, sections]}>
+        <Pager.Page value={'lesson' satisfies PhonePage} style={[styles.page, sections]}>
           {model.trap ? <TrapCard {...model.trap} /> : null}
           {/* Leaving a row for the idea keeps its preview, so its notes can be pointed at. */}
           {/* Practice can hide both, and then the panes take no room. */}
@@ -93,8 +89,8 @@ export function PhoneLesson({
           ) : null}
         </Pager.Page>
         <Pager.Page
-          value="scoresheet"
-          disabled={!scoresheetReachable(page, model.stepper.started)}
+          value={'scoresheet' satisfies PhonePage}
+          disabled={!scoresheetReachable}
           style={styles.page}
         >
           <ScoresheetPage
@@ -102,7 +98,6 @@ export function PhoneLesson({
             reviewButton={
               <ScoresheetReview href={model.review.href} disabled={model.review.shut} compact />
             }
-            style={styles.fill}
           />
         </Pager.Page>
       </Pager.Root>
@@ -110,8 +105,8 @@ export function PhoneLesson({
   );
 }
 
-/** The panes' least height: a few moves. Below it the panel scrolls instead. */
-const PANES_FLOOR = 140;
+/** The pages' least height: a few moves. Below it the panel scrolls instead. */
+const PAGES_FLOOR = 140;
 
 const styles = StyleSheet.create({
   // They grow from their floor into what the panel leaves under the headline:
@@ -120,13 +115,12 @@ const styles = StyleSheet.create({
   pages: {
     flexGrow: 1,
     flexShrink: 1,
-    minHeight: PANES_FLOOR,
-    height: PANES_FLOOR,
+    minHeight: PAGES_FLOOR,
+    height: PAGES_FLOOR,
     marginHorizontal: -COMPACT_INSET,
   },
+  // A page and its panes take the pages' height and no more, so each pane scrolls within.
   page: { flexGrow: 1, flexShrink: 1, minHeight: 0, paddingHorizontal: COMPACT_INSET },
-  // The scoresheet takes its page's height and no more, scrolling its moves within.
-  fill: { flexGrow: 1, flexShrink: 1, minHeight: 0 },
   panes: { flexGrow: 1, flexShrink: 1, flexDirection: 'row', minHeight: 0 },
   // As wide as its rows need, up to half.
   moves: { flexGrow: 0, flexShrink: 0, maxWidth: '50%' },

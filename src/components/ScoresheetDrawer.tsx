@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { a11yState, Inline, Pressable, Text, useTheme } from '@reactive/silk-native';
 import type { ComponentProps, ReactNode } from 'react';
-import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { useLabelled } from '@/components/Eyebrow';
@@ -21,23 +21,22 @@ interface PageProps extends Omit<ComponentProps<typeof Scoresheet>, 'fill'> {
   readonly reviewButton?: ReactNode;
   /** What closes it, last in its head. */
   readonly closeButton?: ReactNode;
-  readonly style?: StyleProp<ViewStyle>;
 }
 
 /**
  * The scoresheet of a narrow page, under the board, so the board stays in
  * view while the learner taps through the moves: the table filling it,
  * under a head that holds the jumps to the first and latest move, which the
- * stepper leaves out there. The lesson shows it as a page beside its own
- * (`PhoneLesson`), the review as a drawer (`ScoresheetDrawer`).
+ * stepper leaves out there. It fills what holds it, the lesson's page beside
+ * its own (`PhoneLesson`) or the review's drawer (`ScoresheetDrawer`).
  */
-export function ScoresheetPage({ reviewButton, closeButton, style, ...scoresheet }: PageProps) {
+export function ScoresheetPage({ reviewButton, closeButton, ...scoresheet }: PageProps) {
   const { plies, ply, onGoto } = scoresheet;
   /** The ply of the latest move: `plies` begins with the start position. */
   const last = plies.length - 1;
   const labelled = useLabelled();
   return (
-    <View role="region" aria-label="Scoresheet" style={[labelled, style]}>
+    <View role="region" aria-label="Scoresheet" style={[labelled, styles.page]}>
       <Inline align="center" justify="between" wrap="nowrap">
         <ScoresheetTitle />
         <Inline align="center" gap="1" wrap="nowrap">
@@ -52,7 +51,7 @@ export function ScoresheetPage({ reviewButton, closeButton, style, ...scoresheet
   );
 }
 
-interface Props extends Omit<PageProps, 'closeButton' | 'style'> {
+interface Props extends Omit<PageProps, 'closeButton'> {
   /** Its close button, Escape, or Android's back. */
   readonly onClose: () => void;
 }
@@ -69,7 +68,6 @@ export function ScoresheetDrawer({ onClose, ...page }: Props) {
     <View {...part('scoresheet-drawer')}>
       <ScoresheetPage
         {...page}
-        style={styles.drawn}
         closeButton={
           <HeaderButton
             icon="chevron-down"
@@ -204,8 +202,8 @@ const OPENER_PADDING = 6;
 const CHEVRON_SIZE = 12;
 
 const styles = StyleSheet.create({
-  // The drawer's frame (`scoresheet-drawer`) sizes it; the page fills it.
-  drawn: { flexGrow: 1, flexShrink: 1, minHeight: 0 },
+  // As tall as what holds it and no taller, so its table scrolls within.
+  page: { flexGrow: 1, flexShrink: 1, minHeight: 0 },
   jump: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
   /*
    * Wide enough for "12…Nxd5" with its piece as an icon (six mono characters
