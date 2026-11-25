@@ -8,8 +8,8 @@
  * under it keeps its floor, no scroll view runs past a box that clips it
  * without scrolling, and the board is the same size on every page at one
  * screen size, whatever sits under it (pages with controls under the panel,
- * a footed panel, have their own size). Screenshots of each
- * state land in the output folder.
+ * a footed panel, have their own size). Screenshots of each state land in
+ * the output folder.
  *
  *   yarn expo export --platform web
  *   yarn check:layout [export folder, default dist] [screenshot folder, default layout-check]
@@ -39,6 +39,8 @@ const BOARD = 'cg-board';
  * cut to whole device pixels per square by chessground.
  */
 const FRAME = '#board-frame';
+/** Squares along a board's edge. */
+const SQUARES = 8;
 /** Rounding a browser's layout leaves between boxes that should match. */
 const SLACK = 1;
 
@@ -101,8 +103,9 @@ function serve() {
 }
 
 /**
- * The boxes the checks read, in CSS pixels, and the floors narrow.css sets,
- * read from the page so they can't drift from it.
+ * The boxes the checks read, in CSS pixels, with the frame's border and the
+ * device pixel ratio, and the floors narrow.css sets, read from the page so
+ * they can't drift from it.
  */
 function measure({ board, frame }) {
   const box = (selector) => document.querySelector(selector)?.getBoundingClientRect().toJSON();
@@ -118,7 +121,7 @@ function measure({ board, frame }) {
     // That view clips sideways, so what runs past the page's right edge widens only the page's scroll width.
     pageWidth: document.querySelector(part('page'))?.scrollWidth,
     board: box(board),
-    frame: box(frame),
+    frame: frameView?.getBoundingClientRect().toJSON(),
     frameBorder:
       frameStyle &&
       parseFloat(frameStyle.borderLeftWidth) + parseFloat(frameStyle.borderRightWidth),
@@ -177,8 +180,10 @@ function problems({
   if (frame.width < boardMin - SLACK) {
     issues.push(`the board's frame is ${frame.width}px, under ${boardMin}`);
   }
-  // Chessground fills the frame inside its border, in whole device pixels per square (render.js).
-  const filled = Math.floor(((frame.width - frameBorder) * pixelRatio) / 8) * (8 / pixelRatio);
+  // Chessground fills the frame inside its border, in whole device pixels per square, as
+  // @lichess-org/chessground's render.js rounds it.
+  const filled =
+    Math.floor(((frame.width - frameBorder) * pixelRatio) / SQUARES) * (SQUARES / pixelRatio);
   if (Math.abs(board.width - filled) > SLACK) {
     issues.push(`the board is ${board.width}px, ${filled}px would fill its frame`);
   }
