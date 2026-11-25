@@ -58,7 +58,10 @@ export const BOARD_COLUMN_MAX = BOARD_MAX + BESIDE_BOARD.wide;
  * below the header (3 × PAGE_SPACE), the header, and both name bars.
  */
 const AROUND_BOARD = PAGE_SPACE.times(3).plus(HEADER_HEIGHT).plus(BOARD_OFFSET).plus(BOARD_UNDER);
-/** The smallest the board shrinks to in a short window. */
+/**
+ * The smallest the board shrinks to in a short window: its frame's width.
+ * Chessground draws a few pixels smaller inside it (Stage.tsx's `BoardFrame`).
+ */
 const BOARD_MIN = narrowLength('board-min', 320);
 /** Height kept below the board column for the panel: none beside it, some below it on a narrow page. */
 const PANEL_RESERVE = narrowLength('panel-reserve', 0);
