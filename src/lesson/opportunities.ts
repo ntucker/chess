@@ -193,30 +193,32 @@ function* guideLevels(lesson: Lesson): Generator<readonly GuideStep[]> {
 }
 
 /**
- * The guide's level `depth` of `lesson` (`guideLevels`, from 0), none past
- * the last. Each lesson's walk runs once, and only as deep as asked, so the
- * check for a list and the list itself share it.
+ * The guide's levels of `lesson` (`guideLevels`), walked once per lesson and
+ * only as deep as a reader asks, so the check for a list and the list itself
+ * share one walk.
  */
-function levelAt(lesson: Lesson, depth: number): readonly GuideStep[] | undefined {
+function* sharedLevels(lesson: Lesson): Generator<readonly GuideStep[]> {
   let walk = walks.get(lesson);
   if (!walk) walks.set(lesson, (walk = { levels: [], rest: guideLevels(lesson) }));
-  while (walk.levels.length <= depth) {
-    const next = walk.rest.next();
-    if (next.done) return undefined;
-    walk.levels.push(next.value);
+  for (let depth = 0; ; depth++) {
+    if (depth === walk.levels.length) {
+      const next = walk.rest.next();
+      if (next.done) return;
+      walk.levels.push(next.value);
+    }
+    yield walk.levels[depth];
   }
-  return walk.levels[depth];
 }
-const walks = new WeakMap<
-  Lesson,
-  { levels: (readonly GuideStep[])[]; rest: Generator<readonly GuideStep[]> }
->();
+/** A lesson's guide levels walked so far, and the walk that goes on from there. */
+interface GuideWalk {
+  readonly levels: (readonly GuideStep[])[];
+  readonly rest: Generator<readonly GuideStep[]>;
+}
+const walks = new WeakMap<Lesson, GuideWalk>();
 
 /** Whether `found` holds for one of `lesson`'s guide levels, walking no further than it must. */
 function someLevel(lesson: Lesson, found: (level: readonly GuideStep[]) => boolean): boolean {
-  for (let depth = 0, level; (level = levelAt(lesson, depth)); depth++) {
-    if (found(level)) return true;
-  }
+  for (const level of sharedLevels(lesson)) if (found(level)) return true;
   return false;
 }
 
@@ -232,7 +234,7 @@ function levelsTo(
   const levels: (readonly GuideStep[])[] = [];
   const left = new Set(wanted);
   left.delete(startKey(lesson));
-  for (let depth = 0, level; (level = levelAt(lesson, depth)); depth++) {
+  for (const level of sharedLevels(lesson)) {
     levels.push(level);
     if (!left.size) break;
     for (const { to } of level) left.delete(to);

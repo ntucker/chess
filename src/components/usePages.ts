@@ -22,6 +22,8 @@ export function usePages<P extends string>(
   missing: readonly P[] = [],
 ): { readonly page: P; readonly show: (page: P) => void } {
   const [picked, setPicked] = useState<P>(home);
+  // Dropped while rendering, as React's state-from-props pattern does, so the
+  // page doesn't come back when the screen has it again (an effect would show it for a frame).
   if (picked !== home && missing.includes(picked)) setPicked(home);
   const page = shown && !missing.includes(picked) ? picked : home;
   useCloseKeys(page === home ? undefined : () => setPicked(home));
