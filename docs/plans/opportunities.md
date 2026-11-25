@@ -292,7 +292,7 @@ hint" branch); a `screen.ts` cue state holds the tries with Retry, Show the move
 passes only where it meets the Rules' accepted-reply test (piece A's `acceptedReplies`: best or
 good, still winning the cost floor over the score before the mistake; those replies are book moves
 where the punishing side is `Lesson.side`, Rules); Act III plays back through the lesson opponent; a
-haptic tick (a named moment in `src/components/haptics.ts`) marks the cue in Explore. Wide layout, and the
+haptic tick (`tickMove`, `src/components/haptics.ts`) marks the cue in Explore. Wide layout, and the
 phone layout on the redesign's two panes: three act rows on the left, one line and three icon
 buttons on the right. Waits on the phone redesign's panes. Starts with a design review of whether
 the cue is a third mode-like state in `screen.ts`, and records its outcome here before building. The
