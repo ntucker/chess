@@ -124,3 +124,7 @@ const VERDICTS: readonly (readonly [number, string])[] = [
  */
 export const verdictLine = (accuracy: number) =>
   VERDICTS.find(([least]) => Math.round(accuracy) >= least)![1];
+
+/** A side's `accuracy` as shown, rounded, for a sentence: "Your accuracy: 82 of 100". */
+export const accuracyWords = (whose: string, accuracy: number) =>
+  `${whose} accuracy: ${Math.round(accuracy)} of 100`;

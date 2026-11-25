@@ -266,9 +266,8 @@ const styles = StyleSheet.create({
     // Surface's radii stop at lg: a pill is round end to end.
     borderRadius: 999,
   },
-  // A bar too short even for the lead (a review's accuracy beside the
-  // stepper, at 360dp and large text) clips it to a blank pill, rather than
-  // the chip running past its line onto the controls.
+  // A bar too short even for the lead clips it to a blank pill, rather than
+  // the chip running past its line onto the controls beside it.
   content: {
     flexDirection: 'row',
     alignItems: 'center',

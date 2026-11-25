@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Eyebrow } from '@/components/Eyebrow';
 import { Tip } from '@/components/Tip';
+import { accuracyWords } from '@/review/accuracy';
 import type { Review } from '@/review/useReview';
 import { fonts } from '@/theme/theme';
 
@@ -25,7 +26,7 @@ export function AccuracyMark({ accuracy, whose, named }: Props) {
   const shown = Math.round(accuracy);
   return (
     <Tip
-      tip={`${whose} accuracy: ${shown} of 100, from how much of the winning chances each judged move gave away. Book and forced moves, and moves that couldn't be checked, don't count.`}
+      tip={`${accuracyWords(whose, accuracy)}, from how much of the winning chances each judged move gave away. Book and forced moves, and moves that couldn't be checked, don't count.`}
       focusable
     >
       <View style={styles.mark}>

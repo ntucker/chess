@@ -7,7 +7,7 @@ import { resultVerdict } from '@/game/ending';
 import { analyze, type Color, type Ply } from '@/game/replay';
 import { plural } from '@/words';
 
-import { LEAST_COUNTED, verdictLine } from './accuracy';
+import { accuracyWords, LEAST_COUNTED, verdictLine } from './accuracy';
 import type { ReviewMove } from './review';
 
 interface SummaryInput {
@@ -23,8 +23,9 @@ interface SummaryInput {
 /**
  * The verdict on the learner's accuracy (`verdictLine`) over how the game
  * went and how many moments it has. Example: "Warm applause." over "You won
- * in 34 moves. 3 moments to replay.", with the accuracy in its tooltip. With too few of their moves judged,
- * "A brief appearance.", with why there's no verdict in its tooltip.
+ * in 34 moves. 3 moments to replay.", with the accuracy in its tooltip. With
+ * too few of their moves judged, "A brief appearance.", with why there's no
+ * verdict in its tooltip.
  */
 export function summaryHeadline({ plies, moves, moments, accuracy, learner }: SummaryInput) {
   const game = gameLength(plies, learner);
@@ -44,8 +45,8 @@ export function summaryHeadline({ plies, moves, moments, accuracy, learner }: Su
     return { title: 'The reviews are in.', detail: `${game} ${replay}${lost}` };
   return {
     title: verdictLine(accuracy),
-    // A phone's bar has no room for the number, so the verdict carries it too.
-    titleTip: `Your accuracy: ${Math.round(accuracy)} of 100.`,
+    // The number behind the verdict: the only place a phone shows the learner's.
+    titleTip: `${accuracyWords('Your', accuracy)}.`,
     detail: `${game} ${replay}${lost}`,
   };
 }
