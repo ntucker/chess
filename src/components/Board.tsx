@@ -88,6 +88,11 @@ export interface BoardProps {
    * ending arrives reports nothing until it leaves.
    */
   readonly onEndingPointer?: (pointer: BoardPointer) => void;
+  /**
+   * The board has painted its first position (on Android, once its web view
+   * has booted), so a still board drawn under it while it loads can go.
+   */
+  readonly onDrawn?: () => void;
   readonly dom?: DOMProps;
 }
 
@@ -106,6 +111,7 @@ export default function Board({
   onDrag,
   onPress,
   onEndingPointer,
+  onDrawn,
 }: BoardProps) {
   const element = useRef<HTMLDivElement>(null);
   const api = useRef<Api>(null);
@@ -155,6 +161,7 @@ export default function Board({
   // before the ending arrives, so its lift is no tap.
   const showsEnding = useEffectEvent(() => act !== undefined);
   const handleEndingPointer = useEffectEvent((pointer: BoardPointer) => onEndingPointer?.(pointer));
+  const handleDrawn = useEffectEvent(() => onDrawn?.());
 
   // Chessground reuses piece elements as pieces move, so the lit, faded and
   // previewed pieces, and an ending's kings, are marked again whenever the
@@ -262,7 +269,12 @@ export default function Board({
       handleDrag,
     );
     const stopWatchingEnding = watchBoardPointer(target, showsEnding, handleEndingPointer);
+    // A frame's callbacks run before it paints, so the second frame's run after the first's paint.
+    let drawn = requestAnimationFrame(() => {
+      drawn = requestAnimationFrame(handleDrawn);
+    });
     return () => {
+      cancelAnimationFrame(drawn);
       cancelAnimationFrame(frame.current);
       target.removeEventListener('pointerdown', notePick, { capture: true });
       stopWatching();
@@ -297,7 +309,7 @@ export default function Board({
 
   return (
     // Square by its width, since the web view's page has no height to fill.
-    <div style={{ width: '100%', aspectRatio: '1 / 1', touchAction: 'none' }}>
+    <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', touchAction: 'none' }}>
       <style>{TINT_CSS}</style>
       <div ref={element} style={{ width: '100%', height: '100%' }} />
     </div>

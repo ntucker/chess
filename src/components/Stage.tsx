@@ -114,7 +114,7 @@ interface BoardColumnProps {
    */
   readonly onFlickUp?: () => void;
   /** The board, with the player's side (`orientation`) at the bottom. */
-  readonly board: Omit<BoardProps, 'dom' | 'ending' | 'onEndingPointer'>;
+  readonly board: Omit<BoardProps, 'dom' | 'ending' | 'onEndingPointer' | 'onDrawn'>;
   /** Swaps the sides: given, either name bar's disc is a button that does it. */
   readonly onSwap?: () => void;
   /** The move stepper's middle on a narrow page (`Transport`). */
@@ -171,6 +171,9 @@ export function BoardColumn({
   const endingFen = ending && board.fen;
   const [aside, setAside] = useState<CardAside>();
   if (aside && aside.at !== endingFen) setAside(undefined);
+  // Until the board has painted (a pre-rendered page before its script runs,
+  // Android's web view while it boots), the frame shows the game still.
+  const [drawn, setDrawn] = useState(false);
   return (
     <>
       <PlayerBar
@@ -190,8 +193,14 @@ export function BoardColumn({
           style={styles.evaluation}
         />
         <BoardFrame>
+          {drawn ? null : (
+            <View style={styles.under}>
+              <StillBoard moves={moves.slice(0, ply)} orientation={side} />
+            </View>
+          )}
           <Board
             {...board}
+            onDrawn={() => setDrawn(true)}
             onMove={(from, to) => {
               haptic('moveLanded');
               board.onMove(from, to);
@@ -336,6 +345,7 @@ const COLUMN_RAISE = BOARD_OFFSET.minus(WRAPPED_GAP);
 // The two start from their widths, not a flexBasis (NATIVE_PARTS in narrow.ts says why).
 const STYLES = narrowStyles((px) => ({
   fill: { flex: 1 },
+  under: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
   stage: {
     width: '100%',
     maxWidth: STAGE_MAX,
