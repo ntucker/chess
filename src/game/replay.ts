@@ -261,6 +261,39 @@ export function sanToUci(pos: Chess, san: string): string | undefined {
   return move && recordedMove(pos, makeUci(move));
 }
 
+/** A variation that holds no other: removed again and again until none is left. */
+const INNERMOST_VARIATION = /\([^()]*\)/g;
+
+/**
+ * The main line's words of PGN movetext, as typed or pasted: tag pairs,
+ * comments, variations, NAGs, move numbers ("1.e4", "1...e5", "...e5"),
+ * annotations ("!?") and the result left out.
+ */
+function movetextWords(text: string): string[] {
+  let movetext = text.replace(/\[[^\]]*\]|\{[^}]*\}|;[^\n]*|\$\d+/g, ' ');
+  while (movetext.match(INNERMOST_VARIATION)) movetext = movetext.replace(INNERMOST_VARIATION, ' ');
+  return movetext
+    .split(/\s+/)
+    .map((word) => word.replace(/^\d*\.+/, '').replace(/[!?]+$/, ''))
+    .filter((word) => word && !/^(?:1-0|0-1|1\/2-1\/2|\*)$/.test(word));
+}
+
+/**
+ * Typed or pasted move text as UCI moves from `start` (the starting position
+ * unless given; left as it was): the main line's words (`movetextWords`),
+ * each a move in SAN or UCI. Any other word throws, naming it, so a typo
+ * never quietly cuts the line short.
+ */
+export function parseMoves(text: string, start = Chess.default()): string[] {
+  const pos = start.clone();
+  return movetextWords(text).map((word) => {
+    const uci = sanToUci(pos, word) ?? recordedMove(pos, word);
+    if (!uci) throw new Error(`Not a legal move here: ${word} (in "${text}")`);
+    playMove(pos, uci);
+    return uci;
+  });
+}
+
 /** `lineMove` for a position already parsed. */
 export function recordedMove(pos: Chess, uci: string): string | undefined {
   const move = parseUci(uci);
