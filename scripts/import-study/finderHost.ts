@@ -8,17 +8,19 @@
  * token, as ./index.ts says), so a thin position ends the search for
  * mistakes. Stockfish's searches come from the app's engine in Node: sketches
  * stop at the first whole depth of `SKETCH_DEPTH`, full searches are the
- * app's (`APP_SEARCH`). Every answer is appended to the lesson's own files,
- * answers/<lesson>-opportunities-{explorer,sketch,full}.jsonl, which no other
- * step reads or prunes, so a rerun asks only about positions none has seen
- * and a stopped run resumes. Commit them.
+ * app's (`APP_SEARCH`). Every answer is appended to the run's own files, so a
+ * rerun asks only about positions none has seen and a stopped run resumes: a
+ * lesson's are answers/<lesson>-opportunities-{explorer,sketch,full}.jsonl,
+ * which no other step reads or prunes (commit them); a run from a position
+ * with no lesson (`positionHost`) shares .cache/opportunities/, which git
+ * ignores, since no lesson is rebuilt from it.
  */
 import { join } from 'node:path';
 
 import { type Analysis, sketched } from '@/evaluation/evaluation';
 import type { Lesson, PositionKey, Uci } from '@/lesson/lesson';
 import { guideOrder } from '@/lesson/mistakes';
-import { findOpportunities, type FinderResult } from '@/opportunity/finder';
+import { findOpportunities, type FinderInput, type FinderResult } from '@/opportunity/finder';
 import { MIN_GAMES } from '@/opportunity/limits';
 import { type Answers, type Replies, repliesFrom, type Request } from '@/opportunity/walk';
 import { APP_SEARCH, type Stockfish } from '@/stockfish/engine';
@@ -31,8 +33,9 @@ import { nodeStockfish } from './stockfish';
 export const FIND_BAND = 1400;
 
 const ROOT = join(__dirname, '../..');
-const answersPath = (id: string, kind: string) =>
-  join(ROOT, `scripts/import-study/answers/${id}-opportunities-${kind}.jsonl`);
+
+/** Where a run keeps each kind of answer. */
+type AnswersPath = (kind: 'explorer' | 'sketch' | 'full') => string;
 
 /** A sketch as its answers file keeps it. */
 interface SketchRow extends Pick<Analysis, 'lines' | 'depth'> {
@@ -71,17 +74,41 @@ export interface FinderHost {
  * `guideOrder` for `lesson.side` (so `lesson` must hold the counts the order
  * reads).
  */
-export async function finderHost(lesson: Lesson, band: number): Promise<FinderHost> {
+export const finderHost = (lesson: Lesson, band: number): Promise<FinderHost> =>
+  host(
+    band,
+    (kind) => join(ROOT, `scripts/import-study/answers/${lesson.id}-opportunities-${kind}.jsonl`),
+    // The run is for `lesson.side`: its book moves (off the book, its unmarked moves), and every move of the erring side.
+    ({ key }) => {
+      const played = guideOrder(lesson, key, lesson.side);
+      return played.length ? played.map((move) => move.uci) : undefined;
+    },
+  );
+
+/**
+ * The host for a run from any position in the explorer's `band`, with no
+ * lesson: no guide moves, so every find is off the guide. Its answers are
+ * shared by every such run, since each is keyed by its position.
+ */
+export const positionHost = (band: number): Promise<FinderHost> =>
+  host(band, (kind) => join(ROOT, `.cache/opportunities/${kind}.jsonl`));
+
+/** A host keeping its answers where `path` says, with a lesson's `guideMoves` where it has one. */
+async function host(
+  band: number,
+  path: AnswersPath,
+  guideMoves?: Answers['guideMoves'],
+): Promise<FinderHost> {
   const explorer = lichessExplorer({
     token: process.env.LICHESS_TOKEN,
-    cacheFile: answersPath(lesson.id, 'explorer'),
+    cacheFile: path('explorer'),
   });
   const sketches = answersFile<SketchRow>(
-    answersPath(lesson.id, 'sketch'),
+    path('sketch'),
     (row) => row.key,
     () => true,
   );
-  const engine = await nodeStockfish(answersPath(lesson.id, 'full'), APP_SEARCH);
+  const engine = await nodeStockfish(path('full'), APP_SEARCH);
   const replies = new Map<string, Replies>();
   const fulls = new Map<string, Analysis>();
 
@@ -91,11 +118,7 @@ export async function finderHost(lesson: Lesson, band: number): Promise<FinderHo
       const row = sketches.get(key);
       return fulls.get(key) ?? (row && { lines: row.lines, depth: row.depth, final: false });
     },
-    // The run is for `lesson.side`: its book moves (off the book, its unmarked moves), and every move of the erring side.
-    guideMoves: ({ key }) => {
-      const played = guideOrder(lesson, key, lesson.side);
-      return played.length ? played.map((move) => move.uci) : undefined;
-    },
+    ...(guideMoves && { guideMoves }),
   };
 
   let searched = 0;
@@ -159,9 +182,12 @@ export async function settle<T>(
   }
 }
 
-/** The finder's run over `lesson` for its side, from where it starts, once every answer is in. */
-export const runFinder = (host: FinderHost, lesson: Lesson): Promise<FinderResult> => {
-  const input = { start: lesson.start, line: [], side: lesson.side, answers: host.answers };
+/** The finder's run from `from` (a lesson's start and side, or any position), once every answer is in. */
+export const runFinder = (
+  host: FinderHost,
+  from: Pick<FinderInput, 'start' | 'line' | 'side'>,
+): Promise<FinderResult> => {
+  const input = { ...from, answers: host.answers };
   return settle(
     host,
     (ask) => {

@@ -51,7 +51,7 @@ export interface LessonFind {
 export async function lessonFinds(counted: Lesson, explorer: Explorer): Promise<LessonFind[]> {
   const host = await finderHost(counted, FIND_BAND);
   try {
-    const { finds } = await runFinder(host, counted);
+    const { finds } = await runFinder(host, { start: counted.start, line: [], side: counted.side });
     const written: LessonFind[] = [];
     for (const find of finds)
       written.push({ find, gain: await gainByBand(host, counted, find, explorer) });

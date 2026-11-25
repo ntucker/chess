@@ -1,65 +1,114 @@
 /**
- * The opportunities report: runs the finder (src/opportunity) over a lesson
- * for the learner's side and writes the finds, best first, as Markdown. It
- * changes no lesson file; piece B of docs/plans/opportunities.md.
+ * The opportunities report: runs the finder (src/opportunity) and writes the
+ * finds, best first, as Markdown. It changes no lesson file; piece B of
+ * docs/plans/opportunities.md.
  *
  *   yarn opportunities <lesson> [--band 1400] [--top 20] [--out report.md]
+ *   yarn opportunities --from "1.e4 e5 2.Nf3 Nf6" --side black [--band 1400] [--top 20] [--out report.md]
  *
- * Its answers come from the lesson's own answers files and lichess and
- * Stockfish (./finderHost.ts), so a rerun asks only about positions none has
- * seen; commit the files. A thin position ends the search for mistakes; the
- * report counts where.
+ * With a lesson it runs from the lesson's start for the lesson's side, and
+ * splits the finds the guide's moves reach from those it doesn't. With
+ * `--from` it runs from the position after those moves (SAN or UCI, from the
+ * standard start; move numbers optional) with no lesson, for `--side`, the
+ * side looking for opportunities, so every find is off the guide.
+ *
+ * Its answers come from its own answers files and lichess and Stockfish
+ * (./finderHost.ts), so a rerun asks only about positions none has seen: a
+ * lesson's are committed beside its other answers, a run from moves shares a
+ * cache git ignores. A thin position ends the search for mistakes; the report
+ * counts where.
  */
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { Chess } from 'chessops/chess';
+import { Chess } from 'chessops/chess';
+import { INITIAL_FEN } from 'chessops/fen';
 
 import { percent } from '@/analysis/quality';
-import { lineSans, numberedLine, parsePosition, playLine } from '@/game/replay';
+import {
+  type Color,
+  colorName,
+  lineSans,
+  numberedLine,
+  parsePosition,
+  playLine,
+  playMove,
+  recordedMove,
+  sanToUci,
+} from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import { type Find, type FinderResult, type ThinEnd } from '@/opportunity/finder';
 import { LIMITS, MIN_GAMES } from '@/opportunity/limits';
 import { keepsGuide } from '@/opportunity/payoff';
 
-import { FIND_BAND, finderHost, runFinder } from './finderHost';
+import { FIND_BAND, finderHost, positionHost, runFinder } from './finderHost';
 import { readLessonFile } from './register';
 
 const ROOT = join(__dirname, '../..');
 
-async function run(id: string, band: number, top: number, out: string | undefined) {
+interface Options {
+  readonly band: number;
+  readonly top: number;
+  readonly out: string | undefined;
+}
+
+async function reportLesson(id: string, { band, top, out }: Options) {
   const lesson = readLessonFile(join(ROOT, `assets/lessons/${id}.json`));
   const host = await finderHost(lesson, band);
-  const result = await runFinder(host, lesson);
-  host.stop();
-  const report = reportOf(lesson, band, result, top);
+  try {
+    const result = await runFinder(host, { start: lesson.start, line: [], side: lesson.side });
+    write(lessonReport(lesson, band, result, top), out);
+  } finally {
+    host.stop();
+  }
+}
+
+async function reportFrom(moves: string, side: Color, { band, top, out }: Options) {
+  const line = movesFrom(moves, Chess.default());
+  const host = await positionHost(band);
+  try {
+    const from = { start: INITIAL_FEN, line, side };
+    write(positionReport(from.line, from.side, band, await runFinder(host, from), top), out);
+  } finally {
+    host.stop();
+  }
+}
+
+const write = (report: string, out: string | undefined) => {
   if (out) writeFileSync(out, report);
   else console.log(report);
+};
+
+/**
+ * `text`'s moves as UCI, played from `start` (left as it was): SAN or UCI,
+ * with or without move numbers. Throws at the first move that isn't legal.
+ */
+function movesFrom(text: string, start: Chess): Uci[] {
+  const pos = start.clone();
+  const tokens = text
+    .replace(/\d+\.(\.\.)?/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+  return tokens.map((token) => {
+    const uci = sanToUci(pos, token.replace(/[!?]+$/, '')) ?? recordedMove(pos, token);
+    if (!uci) throw new Error(`Not a legal move here: ${token} (in "${text}")`);
+    playMove(pos, uci);
+    return uci;
+  });
 }
 
 const points = (score: number) => Math.round(score * 100);
 
-/**
- * The finds as a Markdown report: on the guide (the finds a lesson may
- * hold), the best `top` kept ones and every dropped one; then every find off
- * the guide, the evidence for a finder that opens anywhere.
- */
-function reportOf(
-  lesson: Lesson,
-  band: number,
-  { finds, dropped, offGuide: off, thin }: FinderResult,
-  top: number,
-): string {
-  const start = parsePosition(lesson.start)!;
+/** A report column: its name, and its cell for a find and its rank. */
+type Column = [name: string, cell: (find: Find, rank: number) => string | number];
+
+/** The columns every report has, for finds whose lines start at `start`. */
+function findColumns(start: Chess): Column[] {
   const sans = (line: readonly Uci[]) => lineSans(line, start);
   const numbered = (from: readonly Uci[], moves: readonly Uci[]) =>
     numberedLine(sans([...from, ...moves]).slice(from.length), from.length + 1);
-  const inGuide = (find: Find) => {
-    const key = [...playLine(find.line, start.clone())].at(-1)!.key;
-    return lesson.positions[key]?.moves.some((move) => move.uci === find.mistake) ? 'yes' : 'no';
-  };
   const cue = (find: Find) => [...find.line, find.mistake];
-  const columns: [name: string, cell: (find: Find, rank: number) => string | number][] = [
+  return [
     ['#', (_, rank) => rank + 1],
     ['After', (find) => numbered([], find.line) || '(start)'],
     ['Mistake', (find) => numbered(find.line, [find.mistake])],
@@ -73,40 +122,99 @@ function reportOf(
     ['Holds', (find) => (find.holds ? 'holds' : 'practical')],
     ['Punish with', (find) => find.replies.map((reply) => numbered(cue(find), [reply])).join(', ')],
     ['Then', (find) => numbered([...cue(find), find.replies[0]], find.payoff)],
-    ['In guide', inGuide],
   ];
+}
+
+/** `rows` as a Markdown table of `columns`, or "None.". */
+function findTable(columns: readonly Column[], rows: readonly Find[]): string[] {
   const tableRow = (cells: readonly (string | number)[]) => `| ${cells.join(' | ')} |`;
-  const row = (find: Find, rank: number) => tableRow(columns.map(([, cell]) => cell(find, rank)));
-  const header = [tableRow(columns.map(([name]) => name)), tableRow(columns.map(() => '---'))];
-  const table = (rows: readonly Find[]) =>
-    rows.length ? [...header, ...rows.map(row)] : ['None.'];
+  if (!rows.length) return ['None.'];
+  return [
+    tableRow(columns.map(([name]) => name)),
+    tableRow(columns.map(() => '---')),
+    ...rows.map((find, rank) => tableRow(columns.map(([, cell]) => cell(find, rank)))),
+  ];
+}
+
+/** What the columns mean, and the limits the run used. */
+const COLUMNS_AND_LIMITS = [
+  `A mistake whose punishment nearly everyone finds (gain under ${points(LIMITS.minGain)}) is no find. Share: how often the opponent plays the mistake there. Reach: how often games get there, summed over the move orders that do (on the guide, only those the guide plays). Cost: points of expected score (of 100) the mistake gives away. Found: how often players at the cue find a punishing reply. Gain: points a player at the cue scores more by knowing the punishment than by playing as the band does (~: an estimate, the cue is thin or its measured replies cover under ${percent(LIMITS.estimateCoverage)} of its games). Score: the games that reach the cue by any move order (reach × share when one does) × gain, in thousandths, which ranks. End: the punishing side's expected score where Act III ends, following the band's likely replies; a lesson keeps only finds ending at ${points(LIMITS.keepScore)} or more. Holds: the best reply alone keeps the punishing side at least ${points(LIMITS.keepScore)} against best defence; practical: only the band's likely replies get there.`,
+  '',
+  `Limits: minGames ${MIN_GAMES}, ${Object.entries(LIMITS)
+    .map(([name, value]) => `${name} ${value}`)
+    .join(', ')} (src/opportunity/limits.ts).`,
+];
+
+/**
+ * A lesson's finds as a Markdown report: on the guide (the finds a lesson may
+ * hold), the best `top` kept ones and every dropped one; then every find off
+ * the guide, the evidence for a finder that opens anywhere.
+ */
+function lessonReport(
+  lesson: Lesson,
+  band: number,
+  { finds, dropped, offGuide: off, thin }: FinderResult,
+  top: number,
+): string {
+  const start = parsePosition(lesson.start)!;
+  const inGuide = (find: Find) => {
+    const key = [...playLine(find.line, start.clone())].at(-1)!.key;
+    return lesson.positions[key]?.moves.some((move) => move.uci === find.mistake) ? 'yes' : 'no';
+  };
+  const columns: Column[] = [...findColumns(start), ['In guide', inGuide]];
   const guided = [...finds, ...dropped];
   return [
     `# Opportunities in ${lesson.title}, lichess ${band} band`,
     '',
-    `On the guide (the punishing side plays only the lesson's moves to get there): ${finds.length} finds kept, the best ${Math.min(top, finds.length)} below, then the ${dropped.length} dropped. Off the guide: ${off.length} more, listed last. A mistake whose punishment nearly everyone finds (gain under ${points(LIMITS.minGain)}) is no find. Share: how often the opponent plays the mistake there. Reach: how often games get there, summed over the move orders that do (on the guide, only those the guide plays). Cost: points of expected score (of 100) the mistake gives away. Found: how often players at the cue find a punishing reply. Gain: points a player at the cue scores more by knowing the punishment than by playing as the band does (~: an estimate, the cue is thin or its measured replies cover under ${percent(LIMITS.estimateCoverage)} of its games). Score: the games that reach the cue by any move order (reach × share when one does) × gain, in thousandths, which ranks. End: the learner's expected score where Act III ends, following the band's likely replies. Holds: the best reply alone keeps the learner at least ${points(LIMITS.keepScore)} against best defence; practical: only the band's likely replies get there. In guide: whether the lesson already lists the mistake.`,
+    `On the guide (the punishing side plays only the lesson's moves to get there): ${finds.length} finds kept, the best ${Math.min(top, finds.length)} below, then the ${dropped.length} dropped. Off the guide: ${off.length} more, listed last. In guide: whether the lesson already lists the mistake.`,
     '',
-    `Limits: minGames ${MIN_GAMES}, ${Object.entries(LIMITS)
-      .map(([name, value]) => `${name} ${value}`)
-      .join(', ')} (src/opportunity/limits.ts).`,
+    ...COLUMNS_AND_LIMITS,
     '',
-    ...table(finds.slice(0, top)),
+    ...findTable(columns, finds.slice(0, top)),
     '',
     `## Dropped: Act III ends under ${points(LIMITS.keepScore)}`,
     '',
-    ...table(dropped),
+    ...findTable(columns, dropped),
     '',
     '## Off the guide',
     '',
     "Kept and dropped alike: each needs a punishing-side move the lesson doesn't teach.",
     '',
-    ...table(off),
+    ...findTable(columns, off),
     '',
     thinSummary(thin),
     '',
     guideSummary(lesson, guided),
     '',
     guideReplySummary(lesson, guided),
+    '',
+  ].join('\n');
+}
+
+/**
+ * The finds from the position after `line` (from the standard start) for
+ * `side`, with no lesson, as a Markdown report: the best `top`, whatever
+ * Act III ends at, since no guide decides which a lesson would keep.
+ */
+function positionReport(
+  line: readonly Uci[],
+  side: Color,
+  band: number,
+  { offGuide: found, thin }: FinderResult,
+  top: number,
+): string {
+  const start = Chess.default();
+  const after = numberedLine(lineSans(line, start)) || 'the start';
+  return [
+    `# Opportunities for ${colorName(side)} after ${after}, lichess ${band} band`,
+    '',
+    `${found.length} finds, the best ${Math.min(top, found.length)} below. With no lesson, ${colorName(side)} plays Stockfish's best move wherever it moves.`,
+    '',
+    ...COLUMNS_AND_LIMITS,
+    '',
+    ...findTable(findColumns(start), found.slice(0, top)),
+    '',
+    thinSummary(thin),
     '',
   ].join('\n');
 }
@@ -185,19 +293,33 @@ function guideRow(start: Chess, line: readonly Uci[], guide: Uci, other: string)
 const uciSan = (start: Chess, line: readonly Uci[], uci: Uci) =>
   lineSans([...line, uci], start).at(-1);
 
+const USAGE = [
+  'Usage: yarn opportunities <lesson> [--band 1400] [--top 20] [--out report.md]',
+  '       yarn opportunities --from "<moves>" --side white|black [--band 1400] [--top 20] [--out report.md]',
+].join('\n');
+
 const args = process.argv.slice(2);
 const flag = (name: string) => {
   const at = args.indexOf(`--${name}`);
   return at < 0 ? undefined : args[at + 1];
 };
-const [id] = args;
-if (!id || id.startsWith('--')) {
-  console.error('Usage: yarn opportunities <lesson> [--band 1400] [--top 20] [--out report.md]');
+const fail = (message: string) => {
+  console.error(message);
   process.exit(1);
-}
-run(id, Number(flag('band') ?? FIND_BAND), Number(flag('top') ?? 20), flag('out')).catch(
-  (error: unknown) => {
-    console.error(error);
-    process.exit(1);
-  },
-);
+};
+const options: Options = {
+  band: Number(flag('band') ?? FIND_BAND),
+  top: Number(flag('top') ?? 20),
+  out: flag('out'),
+};
+const [id] = args;
+const moves = flag('from');
+const side = flag('side');
+const isColor = (name: string | undefined): name is Color => name === 'white' || name === 'black';
+const report =
+  moves !== undefined && isColor(side)
+    ? reportFrom(moves, side, options)
+    : moves === undefined && id && !id.startsWith('--')
+      ? reportLesson(id, options)
+      : fail(USAGE);
+report?.catch((error: unknown) => fail(String(error instanceof Error ? error.stack : error)));
