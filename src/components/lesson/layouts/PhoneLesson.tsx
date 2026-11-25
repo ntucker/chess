@@ -16,8 +16,8 @@ import { LessonHeadline } from './LessonHeadline';
 
 /**
  * The lesson under the board on a phone: a short headline, any trap's
- * warning or cue's card, then two pages that the move pill or a sideways swipe slides
- * between (`usePages` owns which shows). One holds the moves and the idea
+ * warning or cue's card, then two pages that the move pill or a sideways
+ * swipe slides between (`usePages` owns which shows). One holds the moves and the idea
  * in panes side by side, each scrolling on its own, with a hairline between
  * them; past the guide, where Stockfish's moves stand in, the idea's pane
  * tells why. The other is the scoresheet. Both stay mounted, so the panes

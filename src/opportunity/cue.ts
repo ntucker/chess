@@ -29,7 +29,8 @@ export interface Cue {
   readonly tried?: Uci;
   /**
    * `tried` punishes the mistake: it is the line's reply, or a move the guide
-   * books at the cue (every reply the finder accepts is booked).
+   * books at the cue (every reply the finder accepts is booked). False until
+   * a move is tried; read it with `tried`.
    */
   readonly found: boolean;
 }
@@ -100,7 +101,7 @@ export function payoffAt(cue: Cue, ply: number): PayoffStage {
 /**
  * The three acts of the cue the board is in, as Explore shows them beside
  * every hint: I Setup (reached), II Your cue (`replied` once the line's reply
- * is played), III Payoff.
+ * is played: a move off the line ends the acts), III Payoff.
  */
 export interface Acts {
   readonly cue: Cue;

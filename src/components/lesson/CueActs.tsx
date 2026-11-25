@@ -1,13 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Stack, Surface, Text, useTheme } from '@reactive/silk-native';
+import { Text, useTheme } from '@reactive/silk-native';
 import type { ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Notation } from '@/components/Notation';
 import type { Acts, PayoffStage } from '@/opportunity/cue';
 import { fonts } from '@/theme/theme';
 
 import { PastNote } from './IdeaCard';
+import { ToneCard } from './ToneCard';
 
 /** The guide's note on a cue's mistake, once its punishment lands, with its play-through. */
 type MistakeNote = ComponentProps<typeof PastNote>;
@@ -100,21 +100,11 @@ function ActChips({ acts }: { readonly acts: ActsStanding }) {
  * headline above names the mistake; every hint shows as usual.
  */
 export function ActsCard({ acts }: { readonly acts: ActsModel }) {
-  const { color } = useTheme().theme.semantic;
   return (
-    <Surface
-      radius="md"
-      border="subtle"
-      style={[
-        styles.card,
-        { borderColor: color.tones.accent.border, backgroundColor: color.tones.accent.subtle },
-      ]}
-    >
-      <Stack gap="3">
-        <ActChips acts={acts} />
-        {acts.note ? <PastNote {...acts.note} /> : null}
-      </Stack>
-    </Surface>
+    <ToneCard tone="accent">
+      <ActChips acts={acts} />
+      {acts.note ? <PastNote {...acts.note} /> : null}
+    </ToneCard>
   );
 }
 
@@ -137,36 +127,22 @@ interface OpportunityProps {
  * gives the cue another try.
  */
 export function OpportunityCard({ found, mistake, reply, tried, note }: OpportunityProps) {
-  const tone = useTheme().theme.semantic.color.tones[found ? 'success' : 'danger'];
   return (
-    <Surface
-      radius="md"
-      border="subtle"
-      style={[styles.card, { borderColor: tone.border, backgroundColor: tone.subtle }]}
+    <ToneCard
+      tone={found ? 'success' : 'danger'}
+      heading={{
+        icon: found ? 'checkmark-circle' : 'close-circle',
+        title: found
+          ? `You punished ${mistake} with ${tried}.`
+          : `${mistake} was a mistake: ${reply} punishes it.`,
+      }}
     >
-      <Stack gap="3">
-        <View style={styles.heading}>
-          <Ionicons
-            name={found ? 'checkmark-circle' : 'close-circle'}
-            size={18}
-            color={tone.text}
-          />
-          <Text role="headingSm" style={styles.title}>
-            <Notation>
-              {found
-                ? `You punished ${mistake} with ${tried}.`
-                : `${mistake} was a mistake: ${reply} punishes it.`}
-            </Notation>
-          </Text>
-        </View>
-        {note ? <PastNote {...note} /> : null}
-      </Stack>
-    </Surface>
+      {note ? <PastNote {...note} /> : null}
+    </ToneCard>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { padding: 16 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: {
     flexDirection: 'row',
@@ -179,6 +155,4 @@ const styles = StyleSheet.create({
   },
   numeral: { fontFamily: fonts.displayItalic, minWidth: 16 },
   name: { flexShrink: 1 },
-  heading: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  title: { flexShrink: 1 },
 });
