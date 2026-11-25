@@ -6,7 +6,13 @@ import { maiaEvaluation } from '@/maia/engine';
 import { liteStockfish } from '@/stockfish/engine';
 import { NO_RESTARTS } from '@/stockfish/testing';
 
-import { AnalysisManager, analysisError, getAnalysis, PositionAnalysis } from './analysis';
+import {
+  AnalysisManager,
+  analysisError,
+  getAnalysis,
+  getAnalysisBehind,
+  PositionAnalysis,
+} from './analysis';
 import { newController, waitForSearch } from './testing';
 
 // Maia runs on a worklet runtime, which Jest doesn't have, so it's scripted.
@@ -69,6 +75,26 @@ describe('getAnalysis', () => {
   });
 });
 
+describe('getAnalysisBehind', () => {
+  it('answers with the final analysis, searched behind a shown position', async () => {
+    const { controller, sent, engine, depth } = setUp();
+    controller.subscribe(getAnalysis, 'stockfish', ['e2e4']);
+    await waitForSearch(sent, 'e2e4');
+    const behind = controller.fetch(getAnalysisBehind, 'stockfish', ['e2e4', 'e7e5']);
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(sent).not.toContain('stop');
+    depth(10);
+    engine.receive('bestmove c7c5');
+    await waitForSearch(sent, 'e2e4 e7e5');
+    depth(10);
+    engine.receive('bestmove c7c5');
+    expect(await behind).toMatchObject({ depth: 10, final: true });
+    controller.unsubscribe(getAnalysis, 'stockfish', ['e2e4']);
+    await new Promise((resolve) => setTimeout(resolve));
+    engine.detach();
+  });
+});
+
 describe('PositionAnalysis', () => {
   it('only deepens: a shallower depth never replaces a deeper one, and nothing replaces a final one', () => {
     const controller = newController();
@@ -114,6 +140,25 @@ describe('AnalysisManager', () => {
     engine.detach();
   });
 
+  it('searches a position asked for behind only once the shown one is done, into the same record', async () => {
+    const { controller, sent, engine, depth, stored } = setUp();
+    controller.subscribe(getAnalysis, 'stockfish', ['e2e4']);
+    await waitForSearch(sent, 'e2e4');
+    controller.subscribe(getAnalysisBehind, 'stockfish', ['d2d4']);
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(sent).not.toContain('stop');
+    depth(10);
+    engine.receive('bestmove c7c5');
+    await waitForSearch(sent, 'd2d4');
+    engine.receive('info depth 9 multipv 1 score cp 20 nodes 9000 pv d7d5');
+    engine.receive('info depth 9 multipv 2 score cp 10 nodes 9000 pv g8f6');
+    engine.receive('info depth 9 multipv 3 score cp 0 nodes 9000 pv e7e6');
+    expect(stored('d2d4')).toMatchObject({ depth: 9, final: false });
+    controller.unsubscribe(getAnalysisBehind, 'stockfish', ['d2d4']);
+    await new Promise((resolve) => setTimeout(resolve));
+    engine.detach();
+  });
+
   it('stops searching a position no screen shows any more', async () => {
     const { controller, sent, engine } = setUp();
     controller.subscribe(getAnalysis, 'stockfish', ['e2e4']);
@@ -155,6 +200,21 @@ describe('AnalysisManager', () => {
     engine.receive('bestmove c7c5');
     expect(stored('e2e4')).toMatchObject({ depth: 10, final: true });
     expect(failed()).toBe(false);
+    engine.detach();
+  });
+
+  it('searches again a background search that gave up, once it is invalidated', async () => {
+    const { controller, sent, engine } = setUp();
+    controller.subscribe(getAnalysisBehind, 'stockfish', ['e2e4']);
+    await waitForSearch(sent, 'e2e4');
+    engine.receive('bestmove c7c5');
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(analysisError(controller, 'stockfish', ['e2e4'], controller.getState())).toBeDefined();
+    sent.length = 0;
+    await controller.invalidate(getAnalysis, 'stockfish', ['e2e4']);
+    await waitForSearch(sent, 'e2e4');
+    controller.unsubscribe(getAnalysisBehind, 'stockfish', ['e2e4']);
+    await new Promise((resolve) => setTimeout(resolve));
     engine.detach();
   });
 

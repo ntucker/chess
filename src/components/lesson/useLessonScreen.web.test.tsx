@@ -21,8 +21,12 @@ function mockStandIns() {
 jest.mock('@/analysis/useMoveQualities', () => mockStandIns().moveQualities);
 jest.mock('@/resources/analysis', () => mockStandIns().analysis);
 jest.mock('@/resources/opponent', () => mockStandIns().opponent);
-jest.mock('expo-router', () => mockStandIns().router);
+let mockFocused = true;
+jest.mock('expo-router', () => ({ useIsFocused: () => mockFocused }));
 jest.mock('@/stockfish/demand', () => mockStandIns().demand);
+// The finder finds nothing; what it is asked is recorded.
+const mockUseFinder = jest.fn((_ask: unknown) => ({ finds: [], running: false }));
+jest.mock('@/opportunity/useFinder', () => ({ useFinder: (ask: unknown) => mockUseFinder(ask) }));
 const mockFetchIfStale = jest.fn((..._args: unknown[]) => {});
 jest.mock('@data-client/react', () =>
   mockStandIns().dataClient(() => ({ fetch: async () => {}, fetchIfStale: mockFetchIfStale })),
@@ -92,6 +96,8 @@ afterEach(async () => {
   renders.length = 0;
   onPlayAs.mockClear();
   mockFetchIfStale.mockClear();
+  mockUseFinder.mockClear();
+  mockFocused = true;
 });
 
 describe('useLessonScreen', () => {
@@ -141,6 +147,32 @@ describe('useLessonScreen', () => {
     const row = moves!.candidates.find((candidate) => moves!.leadsTo(candidate))!;
     await act(async () => moves!.onPoint(row.move.uci));
     expect(shown().idea).toMatchObject({ title: `If ${row.san}`, leadsTo: moves!.leadsTo(row) });
+  });
+
+  it('lists opportunities in Explore, running the finder from where the learner asks', async () => {
+    await showAfter(CARO_KANN, 'e4', 'c6', 'd4');
+    const { finder } = shown().opportunities!;
+    expect(finder).toMatchObject({ from: 'none', rating: 1500 });
+    expect(mockUseFinder).toHaveBeenLastCalledWith(undefined);
+    await act(async () => finder.onFind());
+    expect(shown().opportunities!.finder).toMatchObject({ from: 'here' });
+    expect(mockUseFinder).toHaveBeenLastCalledWith({
+      line: uciLine('e4', 'c6', 'd4'),
+      side: 'black',
+      rating: 1500,
+      lesson: CARO_KANN,
+    });
+    // A screen pushed on top: the finder asks for nothing until it is in front again.
+    mockFocused = false;
+    await act(async () =>
+      root!.render(
+        <LessonIndexContext value={FIXTURE_INDEX}>
+          <Screen picked={CARO_KANN} start={uciLine('e4', 'c6', 'd4')} />
+        </LessonIndexContext>,
+      ),
+    );
+    expect(mockUseFinder).toHaveBeenLastCalledWith(undefined);
+    expect(shown().opportunities!.finder.from).toBe('here');
   });
 
   it("names the rival's moves as likely replies, with whose they are", async () => {

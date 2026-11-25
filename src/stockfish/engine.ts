@@ -99,10 +99,18 @@ export interface Connection {
   fail(message: string): void;
 }
 
+/** How a position is watched (`Stockfish.watch`). */
+export interface WatchOptions {
+  /** Waits behind every other position watched rather than going first. */
+  readonly behind?: boolean;
+}
+
 /** A position someone is watching. */
 interface Wanted {
   readonly line: readonly string[];
   readonly watchers: Set<Watcher>;
+  /** Those of `watchers` that wait behind every other position (`WatchOptions.behind`). */
+  readonly behind: Set<Watcher>;
   /** The deepest whole depth any search of it has finished. */
   deepest?: Analysis;
   /** How many engines failed while searching it. */
@@ -169,8 +177,13 @@ export interface Stockfish {
    * depths with the same lines every time: one that started again repeats
    * what it found before, and `watcher` hears only about depths deeper than
    * any it was told. Returns a function that stops watching.
+   *
+   * `behind` asks without becoming the newest: the position waits behind
+   * every other one watched, so a search the board waits on is never
+   * stopped for it (the opportunity finder's searches). A position already
+   * watched keeps its place until only such watchers are left.
    */
-  watch(line: readonly string[], watcher: Watcher): () => void;
+  watch(line: readonly string[], watcher: Watcher, options?: WatchOptions): () => void;
   /** The final analysis of the position after `line` (`watch`). */
   analysis(line: readonly string[]): Promise<FinalAnalysis>;
   /**
@@ -214,19 +227,39 @@ export function createStockfish(defaultBudget: SearchBudget): Stockfish {
     };
   }
 
-  function watch(line: readonly string[], watcher: Watcher): () => void {
+  function watch(line: readonly string[], watcher: Watcher, options?: WatchOptions): () => void {
     const key = line.join(' ');
-    const position = wanted.get(key) ?? { line, watchers: new Set(), failures: 0 };
-    // To the end, as the newest.
-    wanted.delete(key);
-    wanted.set(key, position);
+    const known = wanted.get(key);
+    const position = known ?? { line, watchers: new Set(), behind: new Set(), failures: 0 };
+    if (!options?.behind) {
+      // To the end, as the newest.
+      wanted.delete(key);
+      wanted.set(key, position);
+    } else {
+      position.behind.add(watcher);
+      if (!known) putBehind(key, position);
+    }
     position.watchers.add(watcher);
     decideSoon();
     return () => {
       // Dropped at the next decision unless watched again by then, as when a
       // screen's render swaps one request for another of the same position.
-      if (position.watchers.delete(watcher)) decideSoon();
+      if (!position.watchers.delete(watcher)) return;
+      position.behind.delete(watcher);
+      // Watched only from behind now: it gives up the place another watcher won it.
+      const behindOnly =
+        position.watchers.size > 0 && position.watchers.size === position.behind.size;
+      if (behindOnly && wanted.get(key) === position) putBehind(key, position);
+      decideSoon();
     };
+  }
+
+  /** Puts `position` first in `wanted`: the oldest, searched behind every other one. */
+  function putBehind(key: string, position: Wanted) {
+    const rest = [...wanted].filter(([other]) => other !== key);
+    wanted.clear();
+    wanted.set(key, position);
+    for (const [other, waiting] of rest) wanted.set(other, waiting);
   }
 
   /**

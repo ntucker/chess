@@ -5,7 +5,7 @@ import { type MarkedPositions, positionHash } from '@/progress/progress';
 import type { Lesson, LessonMove, Mistake, PositionKey } from './lesson';
 import { keyAfter, readShippedLesson, SAMPLE, uci, uciLine } from './lesson.fixture';
 import { opportunityMarks } from './marks';
-import { lessonOpportunities, listsAnyOpportunity } from './opportunities';
+import { lessonOpportunities } from './opportunities';
 
 /** A move after `sans`, written in SAN, played in `games` games of the one band. */
 const move = (sans: string[], san: string, games: number, extra: Partial<LessonMove> = {}) => ({
@@ -96,8 +96,8 @@ describe('lessonOpportunities', () => {
   });
 
   it("lists none of the learner's own mistakes", () => {
-    expect(listsAnyOpportunity(LESSON)).toBe(true);
-    expect(listsAnyOpportunity({ ...LESSON, side: 'white' })).toBe(false);
+    expect(lessonOpportunities(LESSON, 0)).not.toEqual([]);
+    expect(lessonOpportunities({ ...LESSON, side: 'white' }, 0)).toEqual([]);
   });
 
   it("leaves out a mistake only a learner's move off the book leads to", () => {
@@ -119,7 +119,6 @@ describe('lessonOpportunities', () => {
       },
     };
     expect(lessonOpportunities(offBook, 0)).toEqual([]);
-    expect(listsAnyOpportunity(offBook)).toBe(false);
   });
 
   it("lists a mistake on the lesson's first move, at its start", () => {
@@ -134,7 +133,6 @@ describe('lessonOpportunities', () => {
         [at('f3')]: { variation, moves: [move(['f3'], 'e5', 10, { book: true })], games: [10] },
       },
     };
-    expect(listsAnyOpportunity(first)).toBe(true);
     expect(lessonOpportunities(first, 0).map(({ line }) => line)).toEqual([[uci('f3')]]);
   });
 

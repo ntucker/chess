@@ -67,26 +67,6 @@ interface MarkedMistake {
   readonly move: LessonMove;
 }
 
-/**
- * Whether `lesson` has opportunities to list: one of the other side's marked
- * mistakes is played at its start or where the guide's moves reach
- * (`lessonOpportunities` lists those alone). The start is reached before
- * any guide move is played, so it is checked apart. The walk stops at the
- * first, and is read once per lesson.
- */
-export function listsAnyOpportunity(lesson: Lesson): boolean {
-  let any = reachesMistake.get(lesson);
-  if (any === undefined) {
-    const wanted = new Set(markedMistakes(lesson).map(({ key }) => key));
-    any =
-      wanted.has(startKey(lesson)) ||
-      (wanted.size > 0 && someLevel(lesson, (level) => level.some(({ to }) => wanted.has(to))));
-    reachesMistake.set(lesson, any);
-  }
-  return any;
-}
-const reachesMistake = new WeakMap<Lesson, boolean>();
-
 /** The position `lesson` starts from, where every guide line begins. */
 const startKey = (lesson: Lesson) => positionKey(parsePosition(lesson.start)!);
 
@@ -196,8 +176,7 @@ function* guideLevels(lesson: Lesson): Generator<readonly GuideStep[]> {
 
 /**
  * The guide's levels of `lesson` (`guideLevels`), walked once per lesson and
- * only as deep as a reader asks, so the check for a list and the list itself
- * share one walk.
+ * only as deep as a reader asks, so the list in each band shares one walk.
  */
 function* sharedLevels(lesson: Lesson): Generator<readonly GuideStep[]> {
   let walk = walks.get(lesson);
@@ -217,12 +196,6 @@ interface GuideWalk {
   readonly rest: Generator<readonly GuideStep[]>;
 }
 const walks = new WeakMap<Lesson, GuideWalk>();
-
-/** Whether `found` holds for one of `lesson`'s guide levels, walking no further than it must. */
-function someLevel(lesson: Lesson, found: (level: readonly GuideStep[]) => boolean): boolean {
-  for (const level of sharedLevels(lesson)) if (found(level)) return true;
-  return false;
-}
 
 /**
  * The guide's levels down to one past the deepest of `wanted` (so the moves

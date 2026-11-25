@@ -22,7 +22,7 @@ import {
 import { lastPosition } from '@/game/replay';
 import { maiaEvaluation } from '@/maia/engine';
 import { JUDGE_RATING } from '@/maia/maia';
-import { liteStockfish } from '@/stockfish/engine';
+import { liteStockfish, type WatchOptions } from '@/stockfish/engine';
 
 /**
  * How `engine` judges the position after `moves` (UCI, space-separated): one
@@ -69,9 +69,10 @@ function watchAnalysis(
   engine: EvaluationEngine,
   line: readonly string[],
   watcher: Watcher,
+  options?: WatchOptions,
 ): () => void {
   const { result } = lastPosition(line);
-  if (engine === 'stockfish' && !result) return liteStockfish.watch(line, watcher);
+  if (engine === 'stockfish' && !result) return liteStockfish.watch(line, watcher, options);
   let watching = true;
   (result ? Promise.resolve(resultEvaluation(result)) : maiaEvaluation(JUDGE_RATING, line)).then(
     (evaluation) => {
@@ -106,13 +107,35 @@ function watchAnalysis(
  * const { lines } = await ctrl.fetchIfStale(getAnalysis, 'stockfish', ['e2e4']);
  * ```
  */
-export const getAnalysis = new Endpoint(
-  async (engine: EvaluationEngine, line: readonly string[]) => ({
+export const getAnalysis = new Endpoint(searchedTo(), {
+  schema: PositionAnalysis,
+  name: 'getAnalysis',
+  dataExpiryLength: Infinity,
+});
+
+/**
+ * `getAnalysis` for a search that waits behind every other one (`behind` in
+ * `Stockfish.watch`): subscribed to, it runs only once nothing a screen
+ * shows is searching, and never stops a search the board waits on. Its
+ * analysis goes into the same `PositionAnalysis` as `getAnalysis`'s. For
+ * work in the background, like the opportunity finder's searches.
+ *
+ * ```ts
+ * useSubscription(getAnalysisBehind, ...(next ? (['stockfish', next] as const) : [null]));
+ * ```
+ */
+export const getAnalysisBehind = getAnalysis.extend({
+  name: 'getAnalysisBehind',
+  fetch: searchedTo({ behind: true }),
+});
+
+/** The fetch of `getAnalysis` and `getAnalysisBehind`: the final analysis, watched with `options`. */
+function searchedTo(options?: WatchOptions) {
+  return async (engine: EvaluationEngine, line: readonly string[]) => ({
     ...analysisKey(engine, line),
-    ...(await finalAnalysis((watcher) => watchAnalysis(engine, line, watcher))),
-  }),
-  { schema: PositionAnalysis, name: 'getAnalysis', dataExpiryLength: Infinity },
-);
+    ...(await finalAnalysis((watcher) => watchAnalysis(engine, line, watcher, options))),
+  });
+}
 
 /**
  * How `engine` judges the position after `line`, as far as it has got: for
@@ -166,6 +189,8 @@ export const analysisError = (
 interface Shown {
   readonly engine: EvaluationEngine;
   readonly line: readonly string[];
+  /** Searched behind every other position (`getAnalysisBehind`). */
+  readonly behind: boolean;
   /** How many screens show it. */
   count: number;
   /** Stops watching Stockfish's search. */
@@ -190,19 +215,24 @@ export class AnalysisManager implements Manager {
     return (next) => async (action) => {
       if (
         (action.type === actionTypes.SUBSCRIBE || action.type === actionTypes.UNSUBSCRIBE) &&
-        action.endpoint === getAnalysis
+        (action.endpoint === getAnalysis || action.endpoint === getAnalysisBehind)
       ) {
         const [engine, line] = action.args as [EvaluationEngine, readonly string[]];
-        if (action.type === actionTypes.SUBSCRIBE) this.show(action.key, engine, line);
+        const behind = action.endpoint === getAnalysisBehind;
+        if (action.type === actionTypes.SUBSCRIBE) this.show(action.key, engine, line, behind);
         else this.hide(action.key);
         return;
       }
       if (action.type !== actionTypes.INVALIDATE) return next(action);
       // Once its error is cleared, a search that gave up starts again for
-      // the screens still showing it.
+      // the screens still showing it, through either endpoint.
       await next(action);
-      const shown = this.shown.get(action.key);
-      if (shown && !shown.release && !this.paused) this.run(shown);
+      if (this.paused) return;
+      for (const shown of this.shown.values()) {
+        if (!shown.release && getAnalysis.key(shown.engine, shown.line) === action.key) {
+          this.run(shown);
+        }
+      }
     };
   };
 
@@ -219,8 +249,8 @@ export class AnalysisManager implements Manager {
     }
   }
 
-  protected show(key: string, engine: EvaluationEngine, line: readonly string[]) {
-    const shown = this.shown.get(key) ?? { engine, line, count: 0 };
+  protected show(key: string, engine: EvaluationEngine, line: readonly string[], behind: boolean) {
+    const shown = this.shown.get(key) ?? { engine, line, behind, count: 0 };
     this.shown.set(key, shown);
     if (++shown.count === 1 && !this.paused) this.run(shown);
   }
@@ -235,7 +265,7 @@ export class AnalysisManager implements Manager {
   /** Starts `shown`'s analysis, unless the store has its final one. */
   protected run(shown: Shown) {
     const { controller: ctrl } = this;
-    const { engine, line } = shown;
+    const { engine, line, behind } = shown;
     const key = analysisKey(engine, line);
     const state = ctrl.getState();
     if (isFinal(ctrl.get(PositionAnalysis, key, state))) return;
@@ -248,23 +278,28 @@ export class AnalysisManager implements Manager {
     let gaveUp = analysisError(ctrl, engine, line, state) !== undefined;
     // False once it fails, which can happen before `watchAnalysis` returns.
     let running = true;
-    const release = watchAnalysis(engine, line, {
-      update(analysis) {
-        if (gaveUp && !analysis.final) void ctrl.invalidate(getAnalysis, engine, line);
-        gaveUp = false;
-        const record = { ...key, ...analysis };
-        if (analysis.final) ctrl.setResponse(getAnalysis, engine, line, record);
-        else ctrl.set(PositionAnalysis, key, record);
+    const release = watchAnalysis(
+      engine,
+      line,
+      {
+        update(analysis) {
+          if (gaveUp && !analysis.final) void ctrl.invalidate(getAnalysis, engine, line);
+          gaveUp = false;
+          const record = { ...key, ...analysis };
+          if (analysis.final) ctrl.setResponse(getAnalysis, engine, line, record);
+          else ctrl.set(PositionAnalysis, key, record);
+        },
+        // The screen keeps the last depth it showed. The error goes into the
+        // store, so a screen can tell the search gave up (`analysisError`)
+        // until it's invalidated or searched again.
+        fail(error) {
+          running = false;
+          shown.release = undefined;
+          ctrl.setError(getAnalysis, engine, line, error);
+        },
       },
-      // The screen keeps the last depth it showed. The error goes into the
-      // store, so a screen can tell the search gave up (`analysisError`)
-      // until it's invalidated or searched again.
-      fail(error) {
-        running = false;
-        shown.release = undefined;
-        ctrl.setError(getAnalysis, engine, line, error);
-      },
-    });
+      { behind },
+    );
     if (running) shown.release = release;
   }
 }
