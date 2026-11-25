@@ -127,9 +127,9 @@ export function OpportunityList({
 
 /**
  * The finder's part of the list: its heading, source chip and button
- * (`finderAction`), then its finds best first, but for any whose mistake leads
- * to a position the lesson already lists (`listed`), however its line got
- * there. A spinner shows while it runs.
+ * (`finderAction`), then its finds best first, leaving out any whose mistake
+ * leads to a position the lesson already lists (`listed`), however its line
+ * got there. A spinner shows while it runs.
  */
 function FinderPart({
   finder: { run, from, rating, onFind },
@@ -144,6 +144,7 @@ function FinderPart({
 }) {
   // Each row replays its line: once per run's answer, not per render.
   const found = useMemo(() => run.finds.map(findRow), [run.finds]);
+  // Each find leads to its own position (the finder keeps one per position), so `next` keys its row.
   const rows = found.filter(({ next }) => !listed.has(next));
   // Done where it runs from: it found nothing, or an answer failed (the button retries).
   const done = from === 'here' && !run.running;
