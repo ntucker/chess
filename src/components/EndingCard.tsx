@@ -8,6 +8,7 @@ import { type Ending, endingWords, type Mood } from '@/game/ending';
 import { ACT_TIMES, type CardBand, cardBand } from '@/board/endingAct';
 import type { Color } from '@/game/replay';
 import { springMotion, springs } from '@/motion/spring';
+import { useSpringTransition } from '@/motion/useSpringTransition';
 import { useSchemeColors } from '@/theme/shownTheme';
 import type { SchemeColors } from '@/theme/theme';
 import { timingFunction } from '@/theme/timingFunction';
@@ -35,6 +36,8 @@ export function EndingCard({ ending, rival, orientation, aside = false }: Props)
   const { theme } = useTheme();
   const schemeColors = useSchemeColors();
   const reducedMotion = useReducedMotion();
+  // Put aside and back, like a toggle.
+  const fade = useSpringTransition(springs.snappy);
   // The board's width sets the type's size, so the banner fits a phone's board and fills a desktop's.
   const [width, setWidth] = useState(0);
   const { mood } = ending;
@@ -57,8 +60,7 @@ export function EndingCard({ ending, rival, orientation, aside = false }: Props)
         {
           opacity: aside ? 0 : 1,
           transitionProperty: 'opacity',
-          transitionDuration: reducedMotion ? 0 : FADE.durationMs,
-          transitionTimingFunction: timingFunction(FADE.easing),
+          ...fade,
         },
       ]}
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
@@ -243,8 +245,6 @@ const GLEAM = {
 
 /** Springs for a win: the ground snaps open, and the title lands with more bounce. */
 const SNAP = springMotion({ duration: 0.4, bounce: 0.3 });
-/** Put aside and back, like a toggle. */
-const FADE = springMotion(springs.snappy);
 const LAND = springMotion({ duration: 0.5, bounce: 0.4 });
 const EASE_OUT = 'cubic-bezier(0.2, 0, 0, 1)';
 

@@ -21,6 +21,7 @@ jest.mock('./useLessonScreen', () => ({
   useLessonScreen: () => ({ board: { rival: {} }, stepper: { started: true }, header: {} }),
 }));
 jest.mock('@/components/navigation', () => ({ useNavigating: () => false }));
+jest.mock('expo-router', () => ({ useIsFocused: () => true }));
 jest.mock('@/components/useBackToReview', () => ({ useBackToReview: () => undefined }));
 
 let mockBoardMounts = 0;
@@ -70,8 +71,8 @@ jest.mock('@/components/ScoresheetDrawer', () => ({
   },
 }));
 jest.mock('./layouts/PhoneLesson', () => ({
-  PhoneLesson: ({ scoresheetOpen }: { scoresheetOpen: boolean }) =>
-    `phone${scoresheetOpen ? ' scoresheet' : ''}`,
+  PhoneLesson: ({ page }: { page: string }) => `phone${page === 'scoresheet' ? ' scoresheet' : ''}`,
+  scoresheetReachable: () => true,
 }));
 jest.mock('./layouts/WideLesson', () => ({ WideLesson: () => 'wide' }));
 jest.mock('./LessonSettings', () => ({

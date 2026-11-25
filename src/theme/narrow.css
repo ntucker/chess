@@ -94,10 +94,10 @@
     gap: 8px;
   }
   /*
-   * A panel that a scoresheet drawer can fill (the lesson's and the
-   * review's) fills the space under the board, so what it holds can share
-   * that space: the lesson's panes (PhoneLesson.tsx) and the drawer each
-   * take what the headline leaves.
+   * A panel the scoresheet can fill (the lesson's pages, the review's
+   * drawer) fills the space under the board, so what it holds can share
+   * that space: the lesson's pages (PhoneLesson.tsx) and the review's drawer
+   * each take what the headline leaves.
    */
   :root [data-narrow='drawer-panel'] {
     flex: 1 0 auto;
