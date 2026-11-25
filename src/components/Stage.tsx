@@ -1,6 +1,6 @@
 import { Surface, useFlickGesture, useTheme } from '@reactive/silk-native';
 import { type ComponentProps, type ReactNode, useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 
 import { asideAfter, type CardAside } from '@/board/cardAside';
@@ -114,7 +114,7 @@ interface BoardColumnProps {
    */
   readonly onFlickUp?: () => void;
   /** The board, with the player's side (`orientation`) at the bottom. */
-  readonly board: Omit<BoardProps, 'dom' | 'ending' | 'onEndingPointer'>;
+  readonly board: Omit<BoardProps, 'dom' | 'ending' | 'onEndingPointer' | 'onDrawn'>;
   /** Swaps the sides: given, either name bar's disc is a button that does it. */
   readonly onSwap?: () => void;
   /** The move stepper's middle on a narrow page (`Transport`). */
@@ -171,6 +171,10 @@ export function BoardColumn({
   const endingFen = ending && board.fen;
   const [aside, setAside] = useState<CardAside>();
   if (aside && aside.at !== endingFen) setAside(undefined);
+  // Until the board shows (a pre-rendered page before its script runs,
+  // Android's web view while it boots), the frame shows the game still.
+  const [drawn, setDrawn] = useState(false);
+  const still = drawn ? undefined : { moves: moves.slice(0, ply), orientation: side };
   return (
     <>
       <PlayerBar
@@ -189,9 +193,10 @@ export function BoardColumn({
           reads={evaluationReads}
           style={styles.evaluation}
         />
-        <BoardFrame>
+        <BoardFrame still={still}>
           <Board
             {...board}
+            onDrawn={() => setDrawn(true)}
             onMove={(from, to) => {
               haptic('moveLanded');
               board.onMove(from, to);
@@ -264,7 +269,7 @@ export function BoardColumnPlaceholder({ still }: { readonly still?: StillGame }
       <View style={styles.namesBar} />
       <View style={styles.boardRow}>
         <View style={styles.evaluation} />
-        <BoardFrame>{still ? <StillBoard {...still} /> : null}</BoardFrame>
+        <BoardFrame still={still} />
       </View>
       <View style={styles.controlsBar} />
     </>
@@ -290,7 +295,14 @@ function StillBoard({ moves, orientation, turnsWithSavedSide }: StillGame) {
  * `--board-min`, which the layout check measures by its id. Chessground draws
  * a little smaller inside it: inside its border, in whole device pixels per square.
  */
-function BoardFrame({ children }: { readonly children: ReactNode }) {
+function BoardFrame({
+  still,
+  children,
+}: {
+  /** The game drawn still under `children`, while they load. */
+  readonly still?: StillGame;
+  readonly children?: ReactNode;
+}) {
   const { theme } = useTheme();
   const styles = useNarrowStyles(STYLES);
   return (
@@ -304,6 +316,11 @@ function BoardFrame({ children }: { readonly children: ReactNode }) {
       <View
         style={[styles.fill, { borderRadius: theme.semantic.radius.md - 1, overflow: 'hidden' }]}
       >
+        {still ? (
+          <View style={StyleSheet.absoluteFill}>
+            <StillBoard {...still} />
+          </View>
+        ) : null}
         {children}
       </View>
     </Surface>

@@ -88,8 +88,17 @@ export interface BoardProps {
    * ending arrives reports nothing until it leaves.
    */
   readonly onEndingPointer?: (pointer: BoardPointer) => void;
+  /**
+   * The board's first position is surely on screen (on Android, once its web
+   * view has booted and shown its paint), so a still board drawn under it while
+   * it loads can go.
+   */
+  readonly onDrawn?: () => void;
   readonly dom?: DOMProps;
 }
+
+/** How long after a paint it surely shows: Android's web view took up to ~0.5 s (#255). */
+const SHOWN_MS = 1000;
 
 export default function Board({
   fen,
@@ -106,6 +115,7 @@ export default function Board({
   onDrag,
   onPress,
   onEndingPointer,
+  onDrawn,
 }: BoardProps) {
   const element = useRef<HTMLDivElement>(null);
   const api = useRef<Api>(null);
@@ -155,6 +165,7 @@ export default function Board({
   // before the ending arrives, so its lift is no tap.
   const showsEnding = useEffectEvent(() => act !== undefined);
   const handleEndingPointer = useEffectEvent((pointer: BoardPointer) => onEndingPointer?.(pointer));
+  const handleDrawn = useEffectEvent(() => onDrawn?.());
 
   // Chessground reuses piece elements as pieces move, so the lit, faded and
   // previewed pieces, and an ending's kings, are marked again whenever the
@@ -238,8 +249,34 @@ export default function Board({
       drawable: { brushes: toneBrushes as DrawBrushes },
     });
     api.current = board;
+    // The first paint is reported once, after the board has painted at a
+    // size (a frame's callbacks run before it paints, so the second frame's
+    // run after the first's paint) and then shown (`SHOWN_MS`).
+    let paintFrame = 0;
+    let shownTimer: ReturnType<typeof setTimeout> | undefined;
+    let reporting = false;
+    let reported = false;
+    const reportPaint = () => {
+      if (reporting || reported || !sized.current) return;
+      reporting = true;
+      paintFrame = requestAnimationFrame(() => {
+        paintFrame = requestAnimationFrame(() => {
+          shownTimer = setTimeout(() => {
+            reported = true;
+            handleDrawn();
+          }, SHOWN_MS);
+        });
+      });
+    };
+    // Hidden before the report goes out: the next size starts it again.
+    const stopReport = () => {
+      cancelAnimationFrame(paintFrame);
+      clearTimeout(shownTimer);
+      reporting = false;
+    };
     const { width, height } = target.getBoundingClientRect();
     sized.current = width > 0 && height > 0;
+    reportPaint();
     // Made after chessground's own observer, which ResizeObserver notifies
     // first, so chessground has measured the board by the time this runs.
     const resizes = new ResizeObserver(([entry]) => {
@@ -247,8 +284,10 @@ export default function Board({
       if (!sized.current) {
         board.set({ drawable: { autoShapes: [] } });
         pending.current = true;
+        stopReport();
       }
       catchUp();
+      reportPaint();
     });
     resizes.observe(target);
     const stopWatching = watchDrag<Square>(
@@ -263,6 +302,7 @@ export default function Board({
     );
     const stopWatchingEnding = watchBoardPointer(target, showsEnding, handleEndingPointer);
     return () => {
+      stopReport();
       cancelAnimationFrame(frame.current);
       target.removeEventListener('pointerdown', notePick, { capture: true });
       stopWatching();
@@ -296,8 +336,9 @@ export default function Board({
   useEffect(() => markAfterDraw(), [position, marks, layer, act]);
 
   return (
-    // Square by its width, since the web view's page has no height to fill.
-    <div style={{ width: '100%', aspectRatio: '1 / 1', touchAction: 'none' }}>
+    // Square by its width, since the web view's page has no height to fill;
+    // positioned, so it paints over the still board under it (`BoardFrame`).
+    <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', touchAction: 'none' }}>
       <style>{TINT_CSS}</style>
       <div ref={element} style={{ width: '100%', height: '100%' }} />
     </div>

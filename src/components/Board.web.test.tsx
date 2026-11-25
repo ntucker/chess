@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
@@ -79,6 +79,105 @@ beforeEach(() => {
   root = createRoot(document.body.appendChild(document.createElement('div')));
 });
 afterEach(() => act(() => root.unmount()));
+
+describe('a board drawing its first position', () => {
+  // Timers are played by hand too; animation frames stay as above.
+  beforeEach(() => {
+    jest.useFakeTimers({ doNotFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+  /** Time passing by `ms`. */
+  const wait = (ms: number) => act(() => jest.advanceTimersByTime(ms));
+
+  it('says so once its paint surely shows, so a still board under it can go', () => {
+    let drawn = 0;
+    act(() => root.render(<Board {...board()} onDrawn={() => drawn++} />));
+    // Its first frame paints it; the next frame's callbacks come after that paint.
+    frame();
+    frame();
+    wait(999);
+    expect(drawn).toBe(0);
+    wait(1);
+    expect(drawn).toBe(1);
+    frame();
+    wait(1000);
+    expect(drawn).toBe(1);
+  });
+
+  it('waits for a size to draw in, as a web view still laying out has none', () => {
+    size = 0;
+    let drawn = 0;
+    act(() => root.render(<Board {...board()} onDrawn={() => drawn++} />));
+    frame();
+    frame();
+    wait(1000);
+    expect(drawn).toBe(0);
+    resize(320);
+    frame();
+    frame();
+    wait(1000);
+    expect(drawn).toBe(1);
+  });
+
+  it('waits again when hidden between its frames', () => {
+    let drawn = 0;
+    act(() => root.render(<Board {...board()} onDrawn={() => drawn++} />));
+    frame();
+    resize(0);
+    frame();
+    wait(1000);
+    expect(drawn).toBe(0);
+    resize(320);
+    frame();
+    frame();
+    wait(1000);
+    expect(drawn).toBe(1);
+  });
+
+  it('waits again when hidden during the wait for its paint to show', () => {
+    let drawn = 0;
+    act(() => root.render(<Board {...board()} onDrawn={() => drawn++} />));
+    frame();
+    frame();
+    resize(0);
+    wait(1000);
+    expect(drawn).toBe(0);
+    resize(320);
+    frame();
+    frame();
+    wait(1000);
+    expect(drawn).toBe(1);
+  });
+
+  it('waits the whole time again when shown again within the wait', () => {
+    let drawn = 0;
+    act(() => root.render(<Board {...board()} onDrawn={() => drawn++} />));
+    frame();
+    frame();
+    wait(500);
+    resize(0);
+    resize(320);
+    wait(500);
+    frame();
+    frame();
+    wait(999);
+    expect(drawn).toBe(0);
+    wait(1);
+    expect(drawn).toBe(1);
+  });
+
+  it('says nothing once gone', () => {
+    let drawn = 0;
+    act(() => root.render(<Board {...board()} onDrawn={() => drawn++} />));
+    frame();
+    frame();
+    act(() => root.render(null));
+    wait(1000);
+    expect(drawn).toBe(0);
+  });
+});
 
 describe('a board covered while chessground has a redraw queued', () => {
   it.each<[string, Drawing[], string]>([
