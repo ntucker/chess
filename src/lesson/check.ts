@@ -130,8 +130,8 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
   for (const [key, entry] of Object.entries(lesson.positions)) {
     const checked = checkPosition(lesson, key, entry, report);
     if (!checked) continue;
-    const { learner, next } = checked;
-    cues.set(key, checked.cues);
+    const { learner, next, cues: marks } = checked;
+    if (marks.length > 0) cues.set(key, marks);
     children.set(
       key,
       next.map(({ key: to }) => to),
@@ -153,7 +153,8 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
       report(`positions[${JSON.stringify(key)}]`, 'is inside the book but has no book move');
     // The cue card counts a mark's reply as punishing it (`Cue.found`), and a
     // clean run counts only book moves: where a clean run reaches the cue, the
-    // two must agree.
+    // two must agree. The guide's choice rule already picks a booked reply
+    // there, so this holds a stored line (`Mistake.line`) to one.
     for (const { path, cue, reply } of cues.get(key) ?? []) {
       if (!guideMove(lesson, cue, reply)?.book)
         report(path, `a clean run reaches its cue, so its reply ${reply} must be a book move`);
@@ -201,12 +202,13 @@ function checkPosition(
     seen.add(move.uci);
     const after = checkMove(lesson, pos, move, path, report);
     if (!after) return;
-    next.push({ key: positionKey(after), book: !!move.book });
+    const afterKey = positionKey(after);
+    next.push({ key: afterKey, book: !!move.book });
     if (move.mistake) {
       checkMistake(lesson, pos, move, move.mistake, `${path}.mistake`, report);
-      const reply = learner ? undefined : mistakeLine(lesson, key, move)[1];
-      if (reply !== undefined)
-        cues.push({ path: `${path}.mistake`, cue: positionKey(after), reply });
+      const reply = mistakeLine(lesson, key, move)[1];
+      if (!learner && reply !== undefined)
+        cues.push({ path: `${path}.mistake`, cue: afterKey, reply });
     }
     checkNotes(lesson, move.notes, after, `${path}.notes`, report);
   });
