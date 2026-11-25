@@ -3228,16 +3228,16 @@ __metadata:
 
 "@reactive/silk-core@file:./vendor/reactive-silk-core.tgz::locator=opening-night%40workspace%3A.":
   version: 0.0.0
-  resolution: "@reactive/silk-core@file:./vendor/reactive-silk-core.tgz#./vendor/reactive-silk-core.tgz::hash=b8e923&locator=opening-night%40workspace%3A."
+  resolution: "@reactive/silk-core@file:./vendor/reactive-silk-core.tgz#./vendor/reactive-silk-core.tgz::hash=c30011&locator=opening-night%40workspace%3A."
   dependencies:
     culori: "npm:^4.0.2"
-  checksum: 10c0/d094d326a627303f9de5a846a5d2e9924d61f0f9d676af7a6f7d85c852819e8660c7f4987bd8b800cf15bd90b4d73ce66f919b5929c96ed92459ddede2485b52
+  checksum: 10c0/b725c81954be2dd613a3fe0fcb1f8a0c02bdbdf53370a79fe5b9c62e5feb121d08689b6361d733f0e5077dddb0d99372456f70a1a641d553fa3a8dbc3620b846
   languageName: node
   linkType: hard
 
 "@reactive/silk-native@file:./vendor/reactive-silk-native.tgz::locator=opening-night%40workspace%3A.":
   version: 0.0.0
-  resolution: "@reactive/silk-native@file:./vendor/reactive-silk-native.tgz#./vendor/reactive-silk-native.tgz::hash=d11bd8&locator=opening-night%40workspace%3A."
+  resolution: "@reactive/silk-native@file:./vendor/reactive-silk-native.tgz#./vendor/reactive-silk-native.tgz::hash=045a46&locator=opening-night%40workspace%3A."
   dependencies:
     "@radix-ui/react-dismissable-layer": "npm:^1.1.18"
     "@radix-ui/react-focus-scope": "npm:^1.3.1"
@@ -3252,7 +3252,7 @@ __metadata:
   peerDependenciesMeta:
     react-dom:
       optional: true
-  checksum: 10c0/75821bb75ddc8bdcacd09fbe554ab8943e3ebb2997107e3a27eaadf1675345add1c139719a9d1e1d68e2e9cc78327920323603c75f27af53f1e6bf55104bf550
+  checksum: 10c0/9c10c0f734f151ec513e7c254620c66ab384d19a81ef5ba5e935e88f49531c73f23987becdadb4a564e8f87e87bb8dda955dd521600384596c4c2df0d50a524f
   languageName: node
   linkType: hard
 
