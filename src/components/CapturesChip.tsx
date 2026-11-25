@@ -86,20 +86,23 @@ function Chip({ captures, color, even }: Props & { readonly even: boolean }) {
         style={styles.chip}
       >
         <Surface elevation="raised" style={styles.pill}>
-          {even ? (
-            <Text role="label" style={styles.lead}>
-              =
-            </Text>
-          ) : (
-            <>
-              {lead > 0 ? (
-                <Text role="label" numberOfLines={1} style={styles.lead}>
-                  +{lead}
-                </Text>
-              ) : null}
-              <Pieces pieces={pieces} color={opposite(color)} />
-            </>
-          )}
+          {/* Clips inside the raised pill, whose shadow stays whole. */}
+          <View style={styles.content}>
+            {even ? (
+              <Text role="label" style={styles.lead}>
+                =
+              </Text>
+            ) : (
+              <>
+                {lead > 0 ? (
+                  <Text role="label" numberOfLines={1} style={styles.lead}>
+                    +{lead}
+                  </Text>
+                ) : null}
+                <Pieces pieces={pieces} color={opposite(color)} />
+              </>
+            )}
+          </View>
         </Surface>
       </Pressable>
       <Popover.Root
@@ -258,14 +261,20 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
     paddingHorizontal: PILL_PADDING,
     height: SIZE + 6,
     // Surface's radii stop at lg: a pill is round end to end.
     borderRadius: 999,
-    // A bar too short even for the lead (a review's accuracy beside the
-    // stepper, at 360dp and large text) clips it to a blank pill, rather than
-    // the chip running past its line onto the controls.
+  },
+  // A bar too short even for the lead (a review's accuracy beside the
+  // stepper, at 360dp and large text) clips it to a blank pill, rather than
+  // the chip running past its line onto the controls.
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
+    minWidth: 0,
     overflow: 'hidden',
   },
   // Gives way after the pieces, which shrink first by their far larger weight.
