@@ -1,4 +1,5 @@
 import { SilkProvider } from '@reactive/silk-native';
+import { NavigationBar } from 'expo-navigation-bar';
 import { ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { type ReactNode, useLayoutEffect, useRef } from 'react';
@@ -14,6 +15,9 @@ const NATIVE = process.env.EXPO_OS !== 'web';
 /**
  * Colors everything inside it light or dark: the learner's `theme` setting, or
  * the device's while it is `system`. Throws outside SettingsProvider.
+ *
+ * Android's status and navigation bars are see-through and the app draws under
+ * them, so their icons take the theme's contrast too: light icons on dark.
  */
 export function AppTheme({ children }: { readonly children: ReactNode }) {
   const { theme } = useSettings();
@@ -28,9 +32,11 @@ export function AppTheme({ children }: { readonly children: ReactNode }) {
     if (NATIVE || firstRunDone.current) pinTheme(theme);
     firstRunDone.current = true;
   }, [theme]);
+  const icons = colorScheme === 'dark' ? 'light' : 'dark';
   return (
     <SilkProvider theme={shownThemes[colorScheme]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style={icons} />
+      <NavigationBar style={icons} />
       <ThemeProvider value={navigationThemes[colorScheme]}>{children}</ThemeProvider>
     </SilkProvider>
   );

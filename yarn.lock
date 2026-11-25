@@ -6050,6 +6050,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"expo-navigation-bar@npm:~58.0.4":
+  version: 58.0.4
+  resolution: "expo-navigation-bar@npm:58.0.4"
+  dependencies:
+    debug: "npm:^4.3.2"
+  peerDependencies:
+    expo: "*"
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/943a984044777473da97c37f88a880f98c941bb17c5ca12ac73dd5153899ca7e1ccccba5caa7a427b9c4d9fdbcb9d4a7c60885a7be3045aadcfc3ce3af3b6432
+  languageName: node
+  linkType: hard
+
 "expo-router@npm:~58.0.32":
   version: 58.0.32
   resolution: "expo-router@npm:58.0.32"
@@ -9553,6 +9566,7 @@ __metadata:
     expo-font: "npm:~58.0.12"
     expo-haptics: "npm:~58.0.8"
     expo-linking: "npm:~58.0.17"
+    expo-navigation-bar: "npm:~58.0.4"
     expo-router: "npm:~58.0.32"
     expo-splash-screen: "npm:~58.0.14"
     expo-sqlite: "npm:~58.0.18"
