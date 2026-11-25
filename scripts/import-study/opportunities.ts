@@ -22,7 +22,8 @@ import type { Chess } from 'chessops/chess';
 import { percent } from '@/analysis/quality';
 import { type Analysis, sketched } from '@/evaluation/evaluation';
 import { lineSans, numberedLine, parsePosition, playLine, readPositionKey } from '@/game/replay';
-import { gamesPlayed, inCleanRun } from '@/lesson/cleanRun';
+import { inCleanRun } from '@/lesson/cleanRun';
+import { moveGames } from '@/lesson/share';
 import type { Lesson, Uci } from '@/lesson/lesson';
 import {
   type Find,
@@ -93,7 +94,7 @@ async function host(lesson: Lesson, band: number) {
       const moves = lesson.positions[key]?.moves ?? [];
       const played = moves
         .filter((move) => inCleanRun(move, learner))
-        .sort((a, b) => (gamesPlayed(b) ?? -1) - (gamesPlayed(a) ?? -1));
+        .sort((a, b) => (moveGames(b, 'all') ?? -1) - (moveGames(a, 'all') ?? -1));
       return played.length ? played.map((move) => move.uci) : undefined;
     },
   };

@@ -10,8 +10,9 @@ import { parseUci } from 'chessops/util';
 
 import { positionKey, readPositionKey } from '@/game/replay';
 
-import type { Lesson, LessonMove, PositionKey } from './lesson';
+import type { Lesson, LessonMove, LessonPosition, PositionKey } from './lesson';
 import { guidePosition } from './select';
+import { moveGames, moveShare, positionGames } from './share';
 
 /** Any opponent's move can be part of a clean run; of the learner's, only book moves. */
 export const inCleanRun = (move: LessonMove, learner: boolean) => !learner || move.book === true;
@@ -26,21 +27,27 @@ export const inCleanRun = (move: LessonMove, learner: boolean) => !learner || mo
  */
 const COUNTED_SHARE = 0.1;
 
-/** Of the guide's `moves` at a position, those a clean run plays and counts. */
-const countedMoves = (moves: readonly LessonMove[], learner: boolean) =>
-  learner ? moves.filter((move) => inCleanRun(move, learner)) : countedReplies(moves);
+/** Of the guide's moves at `entry`, those a clean run plays and counts. */
+const countedMoves = (entry: LessonPosition, learner: boolean) =>
+  learner
+    ? entry.moves.filter((move) => inCleanRun(move, learner))
+    : countedReplies(entry.moves, positionGames(entry, 'all'));
 
-/** The games a move was played in, over every rating band, if the guide counts them. */
-export const gamesPlayed = ({ games }: LessonMove) => games?.reduce((sum, n) => sum + n, 0);
-
-/** Of the opponent's replies at a position, those that count toward passing (`COUNTED_SHARE`). */
-export function countedReplies(moves: readonly LessonMove[]): readonly LessonMove[] {
-  const played = moves.map(gamesPlayed);
-  const total = played.reduce<number>((sum, n) => sum + (n ?? 0), 0);
+/**
+ * Of the opponent's replies at a position, those that count toward passing
+ * (`COUNTED_SHARE`, over every band); `total` is the games that reached it,
+ * where measured (`LessonPosition.games`).
+ */
+export function countedReplies(
+  moves: readonly LessonMove[],
+  total?: number,
+): readonly LessonMove[] {
+  const played = moves.map((move) => moveGames(move, 'all'));
+  const listed = played.reduce<number>((sum, n) => sum + (n ?? 0), 0);
   const most = Math.max(...played.map((n) => n ?? 0));
   return moves.filter((_, i) => {
-    const n = played[i];
-    return n === undefined || total === 0 || n === most || n / total >= COUNTED_SHARE;
+    const share = moveShare(played[i], listed, total);
+    return share === undefined || played[i] === most || share >= COUNTED_SHARE;
   });
 }
 
@@ -103,7 +110,7 @@ function cleanNext(lesson: Lesson, key: PositionKey, pos: Chess | undefined): re
   // playMove's checks and move names.
   const from = pos ?? readPositionKey(key)!;
   const learner = from.turn === lesson.side;
-  const steps = countedMoves(lesson.positions[key].moves, learner).map(({ uci }): WalkStep => {
+  const steps = countedMoves(lesson.positions[key], learner).map(({ uci }): WalkStep => {
     const after = from.clone();
     after.play(parseUci(uci)!);
     return [positionKey(after), after];

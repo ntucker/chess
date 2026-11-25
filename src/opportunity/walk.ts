@@ -16,6 +16,7 @@ import {
   recordedMove,
 } from '@/game/replay';
 import type { PositionKey, Uci } from '@/lesson/lesson';
+import { moveShare } from '@/lesson/share';
 
 import type { Limits } from './limits';
 
@@ -159,7 +160,7 @@ export function repliesFrom(key: PositionKey, counts: MoveCounts, minGames: numb
     shares: Object.fromEntries(
       Object.entries(counts)
         .filter(([uci]) => recordedMove(pos, uci) !== undefined)
-        .map(([uci, games]) => [uci, total && games / total]),
+        .map(([uci, games]) => [uci, moveShare(games, total) ?? 0]),
     ),
     thin: total < minGames,
   };

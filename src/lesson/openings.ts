@@ -20,7 +20,7 @@ import {
 } from '@/game/replay';
 import { positionHash } from '@/progress/progress';
 
-import { cleanLineEnds, gamesPlayed, inCleanRun } from './cleanRun';
+import { cleanLineEnds, inCleanRun } from './cleanRun';
 import { sourcesOf } from './credits';
 import {
   LESSON_FORMAT,
@@ -33,6 +33,7 @@ import {
 } from './lesson';
 import { LikeliestFirst, type Walked } from './likeliestFirst';
 import { lineKeys, type VariationOf } from './select';
+import { moveGames, moveShare, positionGames } from './share';
 
 /**
  * Moves from the start that pick a lesson: they follow its guide, and the
@@ -255,26 +256,25 @@ function sharesAt(lesson: Lesson, pos: Chess, bookOnly: boolean) {
   const here = lesson.positions[positionKey(pos)];
   if (!here) return [];
   const learner = pos.turn === lesson.side;
-  const moves =
-    learner && here.moves.some(({ book }) => book) && bookOnly
-      ? here.moves.filter(({ book }) => book)
-      : here.moves;
-  const shares = moveShares(moves);
+  const booked = learner && here.moves.some(({ book }) => book) && bookOnly;
+  const moves = booked ? here.moves.filter(({ book }) => book) : here.moves;
+  // The book moves share the learner's games among themselves, however rarely games play them.
+  const shares = moveShares(moves, booked ? undefined : positionGames(here, 'all'));
   return moves.map(({ uci }, i) => ({ uci, share: shares[i] }));
 }
 
 /**
  * Each move's share of the games played from its position, over every rating
- * band: a move without counts beside moves with them has almost none. Where
- * no move has counts, none is likelier, so the shorter line wins, and of two
- * as short, the one through the guide's earlier moves.
+ * band (`moveShare`, of `total` where measured): a move without counts beside
+ * moves with them has almost none. Where no move has counts, none is
+ * likelier, so the shorter line wins, and of two as short, the one through
+ * the guide's earlier moves.
  */
-function moveShares(moves: readonly LessonMove[]): number[] {
-  const games = moves.map((move) => gamesPlayed(move) ?? 0);
-  const total = games.reduce((sum, count) => sum + count, 0);
-  return total > 0
-    ? games.map((count) => Math.max(count, UNCOUNTED_GAMES) / total)
-    : moves.map(() => 1);
+function moveShares(moves: readonly LessonMove[], total?: number): number[] {
+  const games = moves.map((move) => moveGames(move, 'all') ?? 0);
+  const listed = games.reduce((sum, count) => sum + count, 0);
+  if (listed === 0) return moves.map(() => 1);
+  return games.map((count) => moveShare(Math.max(count, UNCOUNTED_GAMES), listed, total) ?? 0);
 }
 
 /**

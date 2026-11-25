@@ -33,6 +33,7 @@ import { parseUci } from 'chessops/util';
 import { positionKey, sanToUci } from '@/game/replay';
 import { type Evaluation, forSide } from '@/evaluation/evaluation';
 import type { Lesson, Uci } from '@/lesson/lesson';
+import { moveShare } from '@/lesson/share';
 import { APP_SEARCH } from '@/stockfish/engine';
 
 import { chunks, claudeJson, MODELS, PARALLEL, pool } from './convert/claude';
@@ -108,7 +109,9 @@ function opponentModel(theirs: Lesson, engine: Engine, source: string) {
     if (listed.length) return listed;
     const counts = Object.entries(await explorer.ask(key, SETTINGS.band));
     const games = counts.reduce((sum, [, n]) => sum + n, 0);
-    const common = counts.filter(([, n]) => n / games >= SETTINGS.share).map(([uci]) => uci);
+    const common = counts
+      .filter(([, n]) => (moveShare(n, games) ?? 0) >= SETTINGS.share)
+      .map(([uci]) => uci);
     if (games >= SETTINGS.minGames && common.length) return common;
     const best = (await engine.evaluate(ucis, key)).lines[0]?.uci;
     return best ? [best] : [];

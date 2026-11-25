@@ -20,6 +20,7 @@ import {
   type Variation,
   type VariationId,
 } from './lesson';
+import { moveGames, moveShare, positionGames } from './share';
 
 /**
  * Where a position stands in the guide. `inside`: the guide has moves here.
@@ -118,14 +119,14 @@ export function candidates(
   const pos = guide.place === 'inside' ? parsePositionKey(key) : undefined;
   if (guide.place !== 'inside' || !pos) return [];
 
-  const count = (move: LessonMove) => (band === undefined ? undefined : move.games?.[band]);
-  const total = guide.entry.moves.reduce((sum, move) => sum + (count(move) ?? 0), 0);
+  const count = (move: LessonMove) => (band === undefined ? undefined : moveGames(move, band));
+  const listed = guide.entry.moves.reduce((sum, move) => sum + (count(move) ?? 0), 0);
+  const total = band === undefined ? undefined : positionGames(guide.entry, band);
   const rows = guide.entry.moves.map((move): Candidate => {
     const row = candidateRow(lesson, pos, move);
     // checkLesson proves every guide move legal, so this is a broken file.
     if (!row) throw new Error(`Guide move ${move.uci} is illegal in ${key}`);
-    const games = count(move);
-    return { ...row, share: total > 0 && games !== undefined ? games / total : undefined };
+    return { ...row, share: moveShare(count(move), listed, total) };
   });
   // Array.sort is stable, so equal counts keep the file's order.
   rows.sort((a, b) => (count(b.move) ?? -1) - (count(a.move) ?? -1));

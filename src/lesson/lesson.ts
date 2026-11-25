@@ -136,6 +136,13 @@ export interface LessonPosition {
   readonly moves: readonly LessonMove[];
   /** What is worth knowing about this position however it was reached. */
   readonly notes?: readonly Note[];
+  /**
+   * How many lichess games reached this position, one count per entry of
+   * `Lesson.popularity.ratingBands`, in the same order: the explorer's own
+   * total, which counts moves the guide doesn't list. Absent means not
+   * measured, not zero.
+   */
+  readonly games?: readonly number[];
 }
 
 export interface LessonMove {
