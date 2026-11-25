@@ -94,10 +94,8 @@ export function judgeMove(
 }
 
 /**
- * `judgeMove`'s label, with the expected score the move gives away for
- * `mover` that decides it (`moveLoss`). The move's evaluation is its own line
- * where `before` lists it, else `after`'s first line, but never better for
- * `mover` than the list's last move.
+ * `judgeMove`'s label, with what decided it (`moveLoss`): the expected score
+ * the move gives away for `mover`, and the evaluation it was judged by.
  */
 export function judgement(
   before: FinalAnalysis,
