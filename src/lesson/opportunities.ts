@@ -76,12 +76,17 @@ export function listsAnyOpportunity(lesson: Lesson): boolean {
   let any = reachesMistake.get(lesson);
   if (any === undefined) {
     const wanted = new Set(markedMistakes(lesson).map(({ key }) => key));
-    any = wanted.size > 0 && someLevel(lesson, (level) => level.some(({ to }) => wanted.has(to)));
+    any =
+      wanted.has(startKey(lesson)) ||
+      (wanted.size > 0 && someLevel(lesson, (level) => level.some(({ to }) => wanted.has(to))));
     reachesMistake.set(lesson, any);
   }
   return any;
 }
 const reachesMistake = new WeakMap<Lesson, boolean>();
+
+/** The position `lesson` starts from, where every guide line begins. */
+const startKey = (lesson: Lesson) => positionKey(parsePosition(lesson.start)!);
 
 /**
  * The opportunities of `lesson` in `band` (an index into its rating bands,
@@ -226,7 +231,7 @@ function levelsTo(
 ): readonly (readonly GuideStep[])[] {
   const levels: (readonly GuideStep[])[] = [];
   const left = new Set(wanted);
-  left.delete(positionKey(parsePosition(lesson.start)!));
+  left.delete(startKey(lesson));
   for (let depth = 0, level; (level = levelAt(lesson, depth)); depth++) {
     levels.push(level);
     if (!left.size) break;
@@ -244,7 +249,7 @@ function levelsTo(
  * of the games that come that far.
  */
 function guideLines(lesson: Lesson, band: number | undefined, wanted: ReadonlySet<PositionKey>) {
-  const start = positionKey(parsePosition(lesson.start)!);
+  const start = startKey(lesson);
   // Each position reached: how deep, how likely its likeliest fewest-move line, and that line's last step.
   const reached = new Map<
     PositionKey,

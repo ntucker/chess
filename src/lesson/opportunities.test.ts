@@ -122,6 +122,22 @@ describe('lessonOpportunities', () => {
     expect(listsAnyOpportunity(offBook)).toBe(false);
   });
 
+  it("lists a mistake on the lesson's first move, at its start", () => {
+    const first: Lesson = {
+      ...LESSON,
+      positions: {
+        [at()]: {
+          variation,
+          moves: [move([], 'e4', 90), move([], 'f3', 10, mistake({ gain: [0.1], cost: 0.2 }))],
+          games: [100],
+        },
+        [at('f3')]: { variation, moves: [move(['f3'], 'e5', 10, { book: true })], games: [10] },
+      },
+    };
+    expect(listsAnyOpportunity(first)).toBe(true);
+    expect(lessonOpportunities(first, 0).map(({ line }) => line)).toEqual([[uci('f3')]]);
+  });
+
   it('shares the games equally among the moves where the band counts none', () => {
     // Nothing counted at the start: 1.e4, the guide's only move there, takes every game.
     const uncounted: Lesson = {
