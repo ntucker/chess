@@ -155,9 +155,9 @@ export function checkLesson(lesson: Lesson): LessonProblem[] {
     // clean run counts only book moves: where a clean run reaches the cue, the
     // two must agree. The guide's choice rule already picks a booked reply
     // there, so this holds a stored line (`Mistake.line`) to one.
-    // A reply the guide lacks is already reported on the mark's line.
     for (const { path, cueKey, reply } of cues.get(key) ?? []) {
       const move = guideMove(lesson, cueKey, reply);
+      // A reply the guide lacks is reported on the mark's line (`checkMistake`), not here.
       if (move && !move.book)
         report(path, `a clean run reaches its cue, so its reply ${reply} must be a book move`);
     }

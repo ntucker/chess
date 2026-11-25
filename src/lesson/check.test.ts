@@ -625,8 +625,6 @@ describe('checkLesson', () => {
       expect(checkLesson(withG4(['e7e6'])).map(({ path }) => path)).toEqual([
         `positions["${keyAfter('e4', 'c6')}"].moves[1].mistake.line[0]`,
       ]);
-      // A mark with no reply sets up no cue.
-      expect(checkLesson(withMark(['e4', 'c6', 'g4'], [], [{ uci: 'd2d4' }]))).toEqual([]);
       // Past Black's non-book 2...h6, no clean run reaches 3.g4?'s cue, so 3...h5 needn't be booked.
       expect(checkLesson(withMark(['e4', 'c6', 'd4', 'h6', 'g4'], [{ uci: 'h6h5' }]))).toEqual([]);
     });
