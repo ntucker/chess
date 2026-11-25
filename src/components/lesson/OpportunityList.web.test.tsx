@@ -202,7 +202,7 @@ describe('OpportunityList', () => {
     const retry = jest.fn();
     const finder = { ...DONE, run: { finds: [], running: false, retry } };
     const said = render({ finder }, (host) => {
-      act(() => host.querySelector<HTMLElement>(`[aria-label="${FIND_TIP}"]`)!.click());
+      act(() => host.querySelector<HTMLElement>(`[aria-label="Try again"]`)!.click());
       return host.textContent ?? '';
     });
     expect(said).toContain('The search stopped short: an engine failed.');

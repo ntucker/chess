@@ -91,13 +91,13 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
       answers,
     });
     // An answer that failed is not asked again: the walk goes on where it can.
-    const failed = ({ kind, spot }: (typeof requests)[number]) =>
+    const isFailed = ({ kind, spot }: (typeof requests)[number]) =>
       kind === 'replies'
         ? ctrl.getError(getMaiaShares, rating, spot.line, state) !== undefined
         : analysisError(ctrl, 'stockfish', spot.line, state) !== undefined;
     return {
-      asking: requests.filter((request) => !failed(request)),
-      failed: requests.filter(failed),
+      asking: requests.filter((request) => !isFailed(request)),
+      failed: requests.filter(isFailed),
       finds: [...finds, ...offGuide.filter((find) => keeps(find))].sort(byScore),
     };
   }, [ask, ctrl, state]);

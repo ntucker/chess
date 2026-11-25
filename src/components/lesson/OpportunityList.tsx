@@ -14,7 +14,7 @@ import { StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { lostPercent, percent } from '@/analysis/quality';
 import { Eyebrow, useLabelled } from '@/components/Eyebrow';
-import { IconActions } from '@/components/IconActions';
+import { type IconAction, IconActions } from '@/components/IconActions';
 import { Notation } from '@/components/Notation';
 import { HeadingTip, Tip } from '@/components/Tip';
 import { lastPosition, lastStep, lineText, numberedMove } from '@/game/replay';
@@ -126,11 +126,10 @@ export function OpportunityList({
 }
 
 /**
- * The finder's part of the list: its heading, source chip and the button that
- * runs it from the board's position (where it already runs from there, it
- * retries what failed, else it is disabled), then its finds best first, but
- * for any the lesson already lists (`listed`, by the line through the
- * mistake). A spinner shows while it runs.
+ * The finder's part of the list: its heading, source chip and button
+ * (`finderAction`), then its finds best first, but for any the lesson already
+ * lists (`listed`, by the line through the mistake). A spinner shows while it
+ * runs.
  */
 function FinderPart({
   finder: { run, from, rating, onFind },
@@ -172,15 +171,7 @@ function FinderPart({
           </Tip>
         ) : null}
         <View style={STATIC.grow} />
-        <IconActions
-          actions={[
-            {
-              icon: 'search',
-              tip: 'Find opportunities from this position',
-              onPress: from === 'here' ? run.retry : onFind,
-            },
-          ]}
-        />
+        <IconActions actions={[finderAction(from, run, onFind)]} />
       </Inline>
       {rows.map((row) => (
         <Row key={lineKey(row)} row={row} styles={styles} onPlay={onPlay} />
@@ -193,6 +184,19 @@ function FinderPart({
     </View>
   );
 }
+
+/**
+ * The finder's button: run it from the board's position, or where it already
+ * runs from there and stopped short, try the failed answers again; disabled
+ * while it runs or once it is done.
+ */
+function finderAction(from: FinderProps['from'], run: FinderRun, onFind: () => void): IconAction {
+  if (from !== 'here') return { icon: 'search', tip: FIND_TIP, onPress: onFind };
+  if (run.retry && !run.running) return { icon: 'refresh', tip: 'Try again', onPress: run.retry };
+  return { icon: 'search', tip: FIND_TIP };
+}
+
+const FIND_TIP = 'Find opportunities from this position';
 
 const SEARCHING_TIP = 'Searching on this device: the first finds take a few minutes.';
 
