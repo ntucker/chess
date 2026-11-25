@@ -32,6 +32,7 @@ import {
   type Context,
   legalChild,
   type Node,
+  type Replies,
   type Request,
   resultAt,
   type Spot,
@@ -398,12 +399,12 @@ function confirm(
   if (!played) ask('replies', cue);
   const best = legalChild(cue, replies[0], 0);
   const rest = payoff(best, { before, cue: after }, context);
-  const losses = played && replyLosses(cue, after, played.shares, context);
-  if (!played || !rest || !losses) return 'pending';
+  const known = played && cueGain(cue, after, played, context);
+  if (!played || !rest || !known) return 'pending';
   const found = played.thin
     ? undefined
     : replies.reduce((sum, uci) => sum + (played.shares[uci] ?? 0), 0);
-  const { gain, covered } = gainIfKnown(played.shares, losses);
+  const { gain, estimate } = known;
   const guideReply = answers.guideMoves?.(cue)?.[0];
   return {
     line: node.line,
@@ -418,8 +419,26 @@ function confirm(
     cost,
     ...(found !== undefined && { found }),
     gain,
-    ...((played.thin || covered < limits.estimateCoverage) && { estimate: true as const }),
+    ...(estimate && { estimate: true as const }),
   };
+}
+
+/**
+ * What knowing the cue is worth where its band plays `played` there
+ * (`gainIfKnown`), from `after`, the cue's final analysis, and whether that
+ * is an estimate (Rules); undefined while a reply awaits its full search.
+ * The importer calls it again for each band's replies at a find's cue.
+ */
+export function cueGain(
+  cue: Node,
+  after: FinalAnalysis,
+  played: Replies,
+  context: Context,
+): { readonly gain: number; readonly estimate: boolean } | undefined {
+  const losses = replyLosses(cue, after, played.shares, context);
+  if (!losses) return undefined;
+  const { gain, covered } = gainIfKnown(played.shares, losses);
+  return { gain, estimate: played.thin || covered < context.limits.estimateCoverage };
 }
 
 /**

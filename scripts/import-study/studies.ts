@@ -82,6 +82,12 @@ interface LessonRecipe {
    * mistakes that leave a playable position, as the gambit's point.
    */
   readonly engineCheck?: boolean | 'gambit';
+  /**
+   * Write the opportunity finder's kept finds into the lesson (./finds.ts,
+   * piece D1 of docs/plans/opportunities.md), from its committed
+   * answers/<id>-opportunities-*.jsonl.
+   */
+  readonly opportunities?: true;
   readonly info: Omit<LessonInfo, 'sources'>;
 }
 
@@ -1768,6 +1774,7 @@ export const STUDIES: Readonly<Record<string, LessonRecipe>> = {
       },
     ],
     engineCheck: 'gambit',
+    opportunities: true,
     info: { id: 'stafford', title: 'Stafford Gambit', side: 'black' },
   },
   lucchini: {

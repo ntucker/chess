@@ -107,7 +107,7 @@ function opponentModel(theirs: Lesson, engine: Engine, source: string) {
     const key = positionKey(pos);
     const listed = theirs.positions[key]?.moves.map((move) => move.uci) ?? [];
     if (listed.length) return listed;
-    const counts = Object.entries(await explorer.ask(key, SETTINGS.band));
+    const counts = Object.entries((await explorer.ask(key, SETTINGS.band)).counts);
     const games = counts.reduce((sum, [, n]) => sum + n, 0);
     const common = counts
       .filter(([, n]) => (moveShare(n, games) ?? 0) >= SETTINGS.share)

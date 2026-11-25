@@ -6,7 +6,12 @@
  * searches only new positions and books the moves the last import did.
  */
 import { type AnalysisLine, type Evaluation, settledAnalysis } from '@/evaluation/evaluation';
-import { type Connection, liteStockfish, type SearchBudget } from '@/stockfish/engine';
+import {
+  type Connection,
+  createStockfish,
+  type SearchBudget,
+  type Stockfish,
+} from '@/stockfish/engine';
 import { type NodeEngine, sendTo, startNodeEngine } from '@/stockfish/node';
 
 import type { Evaluate } from './engineCheck';
@@ -42,7 +47,11 @@ export async function nodeStockfish(
   /** Rewrites the answers file with only the positions this run evaluated. */
   saveUsed: () => void;
   stop: () => void;
+  /** Watches a position on this engine (`Stockfish.watch`), for a search the answers file doesn't keep. */
+  watch: Stockfish['watch'];
 }> {
+  // Its own queue, not the app's `liteStockfish`, so two of these can search side by side.
+  const stockfish = createStockfish(search);
   let engine: NodeEngine | undefined;
   let connection: Connection | undefined;
   let restarts = 0;
@@ -55,14 +64,10 @@ export async function nodeStockfish(
     engine?.terminate?.();
     const started = await startNodeEngine();
     engine = started;
-    connection = liteStockfish.attach(
-      sendTo(started),
-      {
-        ready() {},
-        failed: restart,
-      },
-      search,
-    );
+    connection = stockfish.attach(sendTo(started), {
+      ready() {},
+      failed: restart,
+    });
     const attached = connection;
     started.listener = (line) => attached.receive(line);
   };
@@ -83,7 +88,7 @@ export async function nodeStockfish(
       const { best, ...evaluation } = known.evaluation;
       return settledAnalysis(evaluation, best);
     }
-    const analysis = await liteStockfish.analysis(line);
+    const analysis = await stockfish.analysis(line);
     const [{ uci, evaluation }] = analysis.lines;
     cache.add({
       key,
@@ -102,6 +107,7 @@ export async function nodeStockfish(
       connection?.detach();
       engine?.terminate?.();
     },
+    watch: stockfish.watch,
   };
 }
 

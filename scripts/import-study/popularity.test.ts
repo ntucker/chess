@@ -11,7 +11,14 @@ import { extractChapter } from './extract';
 import { STUDY_PGN } from './fixture';
 import { mergeChapters } from './merge';
 import { markMistakes } from './mistakes';
-import { addPopularity, lichessExplorer, RATING_BANDS, type MoveCounts } from './popularity';
+import {
+  addPopularity,
+  type ExplorerAnswer,
+  lichessExplorer,
+  RATING_BANDS,
+  recount,
+  type MoveCounts,
+} from './popularity';
 import { type Chapter, parseStudy } from './study';
 
 const chapters = parseStudy(STUDY_PGN, () => true);
@@ -50,7 +57,7 @@ describe('addPopularity', () => {
     };
     const explorer = async (at: PositionKey, band: number) => {
       asked.push([at, band]);
-      return band === 1000 && at === AFTER_BF5 ? { g2g4: 1 } : counts[at];
+      return { counts: band === 1000 && at === AFTER_BF5 ? { g2g4: 1 } : counts[at] };
     };
     const result = await addPopularity(lesson, explorer, () => '2026-11-19');
 
@@ -78,6 +85,33 @@ describe('addPopularity', () => {
     expect(checkLesson(result)).toEqual(checkLesson(lesson));
   });
 
+  it("keeps counts where it doesn't ask, and writes the games reaching each position it asks about", async () => {
+    // Counts a find's path left on a position without a choice, and on one popularity asks about.
+    const measured = {
+      ...lesson,
+      positions: {
+        ...lesson.positions,
+        [key('e4')]: {
+          ...lesson.positions[key('e4')],
+          moves: [{ ...lesson.positions[key('e4')].moves[0], games: [1, 2, 3, 4, 5] }],
+          games: [2, 3, 4, 5, 6],
+        },
+        [AFTER_D5]: { ...lesson.positions[AFTER_D5], games: [9, 9, 9, 9, 9] },
+      },
+    };
+    const explorer = async (at: PositionKey): Promise<ExplorerAnswer> =>
+      at === AFTER_D5
+        ? { counts: { e4e5: 40, b1c3: 30 } }
+        : { counts: { d2d4: 50, b1c3: 5, c8f5: 20, c6c5: 10, g1f3: 30, e7e6: 9 }, total: 100 };
+    const result = await addPopularity(measured, explorer, () => '2026-11-25');
+
+    expect(result.positions[key('e4')]).toEqual(measured.positions[key('e4')]);
+    expect(result.positions[AFTER_C6].games).toEqual([100, 100, 100, 100, 100]);
+    // Its answer predates totals: the games reaching it are unknown, not the old ones.
+    expect(result.positions[AFTER_D5].games).toBeUndefined();
+    expect(checkLesson(result)).toEqual(checkLesson(lesson));
+  });
+
   it('asks about a position one move order reaches, though another counted 0 games', async () => {
     // Both chapters reach 3.Nc3 dxe4 4.Nxe4, where Black chooses; no game in the fake explorer plays 2.Nc3.
     const transposing = parseStudy(
@@ -87,15 +121,29 @@ describe('addPopularity', () => {
     );
     const small = lessonOf(transposing);
     const asked: PositionKey[] = [];
-    const explorer = async (at: PositionKey): Promise<MoveCounts> => {
+    const explorer = async (at: PositionKey): Promise<ExplorerAnswer> => {
       asked.push(at);
-      return at === AFTER_C6 ? { d2d4: 10 } : { c8f5: 5, g8f6: 5 };
+      return { counts: at === AFTER_C6 ? { d2d4: 10 } : { c8f5: 5, g8f6: 5 } };
     };
     await addPopularity(small, explorer, () => '2026-11-19');
 
     expect(
       asked.filter((at) => at === key('e4', 'c6', 'd4', 'd5', 'Nc3', 'dxe4', 'Nxe4')),
     ).toHaveLength(RATING_BANDS.length);
+  });
+});
+
+describe('recount', () => {
+  it('measures only the positions asked, from one answer per band with its total', async () => {
+    const asked: string[] = [];
+    const counted = await recount(lesson, [AFTER_E5], async (key, band, options) => {
+      asked.push(`${band} ${options?.total}`);
+      return { counts: { [lesson.positions[key].moves[0].uci]: band }, total: band * 2 };
+    });
+    expect(asked).toEqual(RATING_BANDS.map((band) => `${band} true`));
+    expect(counted.positions[AFTER_E5].games).toEqual(RATING_BANDS.map((band) => band * 2));
+    expect(counted.positions[AFTER_E5].moves[0].games).toEqual(RATING_BANDS);
+    expect(counted.positions[AFTER_C6]).toBe(lesson.positions[AFTER_C6]);
   });
 });
 
@@ -124,7 +172,7 @@ describe('lichessExplorer', () => {
       fetch,
       sleep,
     });
-    expect(await explorer.ask(key(), 1400)).toEqual({ e2e4: 10 });
+    expect((await explorer.ask(key(), 1400)).counts).toEqual({ e2e4: 10 });
     expect(explorer.answeredOn()).toBe('2026-11-21');
     expect(waits.filter((ms) => ms > 0)).toEqual([60_000, expect.any(Number)]);
     expect(requests[0][0].searchParams.get('ratings')).toBe('1400');
@@ -133,10 +181,42 @@ describe('lichessExplorer', () => {
     const resumed = lichessExplorer({ cacheFile, today: '2026-12-01', fetch, sleep });
     // Before any answer, the counts would be today's.
     expect(resumed.answeredOn()).toBe('2026-12-01');
-    expect(await resumed.ask(key(), 1400)).toEqual({ e2e4: 10 });
+    expect((await resumed.ask(key(), 1400)).counts).toEqual({ e2e4: 10 });
     expect(requests).toHaveLength(2);
     // The answer keeps the date lichess gave it, not the rerun's.
     expect(resumed.answeredOn()).toBe('2026-11-21');
+  });
+
+  it('asks again for a cached answer without the total when asked for one', async () => {
+    const cacheFile = join(mkdtempSync(join(tmpdir(), 'explorer-')), 'explorer.jsonl');
+    writeFileSync(cacheFile, `${JSON.stringify([`1400 ${key()}`, { e2e4: 10 }, '2026-11-20'])}\n`);
+    let requests = 0;
+    const fetch = (async () => {
+      requests++;
+      return answer(200, {
+        white: 6,
+        draws: 1,
+        black: 5,
+        moves: [{ uci: 'e2e4', white: 5, draws: 1, black: 5 }],
+      });
+    }) as typeof globalThis.fetch;
+    const open = () =>
+      lichessExplorer({ cacheFile, today: '2026-11-25', fetch, sleep: async () => {} });
+
+    expect(await open().ask(key(), 1400)).toEqual({ counts: { e2e4: 10 } });
+    expect(requests).toBe(0);
+    const explorer = open();
+    expect(await explorer.ask(key(), 1400, { total: true })).toEqual({
+      counts: { e2e4: 11 },
+      total: 12,
+    });
+    expect(explorer.answeredOn()).toBe('2026-11-25');
+    // The new answer replaces the old one, also for a rerun.
+    expect(await open().ask(key(), 1400, { total: true })).toEqual({
+      counts: { e2e4: 11 },
+      total: 12,
+    });
+    expect(requests).toBe(1);
   });
 
   it('dates the counts by the latest answer asked for', async () => {
@@ -168,10 +248,10 @@ describe('lichessExplorer', () => {
     const open = (fresh: boolean) =>
       lichessExplorer({ cacheFile, fresh, today: '2026-12-01', fetch, sleep: async () => {} });
     const recount = open(true);
-    expect(await recount.ask(key(), 1400)).toEqual({ e2e4: 30 });
+    expect((await recount.ask(key(), 1400)).counts).toEqual({ e2e4: 30 });
     recount.saveUsed();
     const after = open(false);
-    expect(await after.ask(key(), 1400)).toEqual({ e2e4: 30 });
+    expect((await after.ask(key(), 1400)).counts).toEqual({ e2e4: 30 });
     expect(after.answeredOn()).toBe('2026-12-01');
   });
 
@@ -188,11 +268,11 @@ describe('lichessExplorer', () => {
     }) as typeof globalThis.fetch;
     const openExplorer = () => lichessExplorer({ cacheFile, fetch, sleep: async () => {} });
     const explorer = openExplorer();
-    expect(await explorer.ask(key(), 1400)).toEqual({ e2e4: 10 });
-    expect(await explorer.ask(key(), 1600)).toEqual({ e2e4: 20 });
+    expect((await explorer.ask(key(), 1400)).counts).toEqual({ e2e4: 10 });
+    expect((await explorer.ask(key(), 1600)).counts).toEqual({ e2e4: 20 });
     const resumed = openExplorer();
-    expect(await resumed.ask(key(), 1400)).toEqual({ e2e4: 10 });
-    expect(await resumed.ask(key(), 1600)).toEqual({ e2e4: 20 });
+    expect((await resumed.ask(key(), 1400)).counts).toEqual({ e2e4: 10 });
+    expect((await resumed.ask(key(), 1600)).counts).toEqual({ e2e4: 20 });
     expect(requests).toBe(1);
   });
 
@@ -205,8 +285,8 @@ describe('lichessExplorer', () => {
     }) as typeof globalThis.fetch;
     const openExplorer = () => lichessExplorer({ cacheFile, fetch, sleep: async () => {} });
     const castles = key('e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Bc5');
-    expect(await openExplorer().ask(castles, 1400)).toEqual({ e1g1: 5 });
-    expect(await openExplorer().ask(castles, 1400)).toEqual({ e1g1: 5 });
+    expect((await openExplorer().ask(castles, 1400)).counts).toEqual({ e1g1: 5 });
+    expect((await openExplorer().ask(castles, 1400)).counts).toEqual({ e1g1: 5 });
     expect(requests).toBe(1);
   });
 });

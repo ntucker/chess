@@ -404,6 +404,31 @@ answer. Stafford only, with B's floors. The D1 PR lists the rows whose rare-row 
 status changed once the totals change shares, and each Act III override of a guide move
 (Rules). Merges after E and F, because new lines change what the Practice opponent plays.
 
+As built (`scripts/import-study/finds.ts`, on lessons whose recipe sets `opportunities`, settled
+with the planning thread 2026-11-25):
+
+- The finds are the kept on-guide finds of one band's run, 1400 (`FIND_BAND`, the report's, where
+  B's gate set the limits), so the lesson holds exactly the report's rows; a test pins them. A
+  mistake common only in another band is not written yet; that is a known limit. Each find's gain
+  is measured in every band, from that band's replies at the cue (and a full search of each reply
+  the cue's analysis doesn't list).
+- The finder picks guide moves by their counts (`guideOrder`), but the step runs before popularity,
+  so it reads a copy of the lesson counted from the cached explorer answers, as the report reads the
+  shipped file, and writes into the uncounted lesson.
+- The explorer answers with totals go into the lesson's popularity answers file
+  (`<id>-explorer.jsonl`), and one explorer serves the step and popularity in a run, so where
+  popularity asks about a path position it reads the same answer and its save keeps the step's.
+  The walk itself still reads B's `<id>-opportunities-explorer.jsonl`, whose answers have no total,
+  so the finder's shares are over the listed moves while the written gains are over each position's
+  games. On the Stafford lesson the two agree: every written 1400 gain equals the report's to the
+  point (checked 2026-11-25 against `yarn opportunities stafford`).
+- The counts go on the line each mark plays (`mistakeLine`): the find's own path, except where the
+  guide already marked the mistake (a migrated trap), whose mark keeps the guide's line. The counts
+  can change the guide's choices, so the step then keeps every mark's line as it was
+  (`keepMistakeLines`), and the line counted is the line played.
+- The step needs popularity: `--no-popularity` skips it, since gains are per rating band.
+- Costs and gains are stored to a thousandth.
+
 ### Piece D2: Names and notes
 
 The explain step writes each marker's `name` and one short note per Act III move of the punishing
