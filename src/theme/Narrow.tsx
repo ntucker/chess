@@ -57,20 +57,40 @@ export const PHONE_QUERY = `(max-width: ${SIDE_BY_SIDE_MIN - 0.02}px)`;
  * calling it outside `BrowserOnly` fails the export.
  */
 export const useLayout: () => ScreenLayout = NARROW_CSS_LOADS
-  ? () => (useSyncExternalStore(onPhoneChange, isPhone, noWindow) ? 'phone' : 'wide')
+  ? () => (useMedia(PHONE_MEDIA, noWindow) ? 'phone' : 'wide')
   : () => (useIsNarrowArea() ? 'phone' : 'wide');
 
-/** The query, made on first use: a module the export loads has no window. */
-let phoneQuery: MediaQueryList | undefined;
-const phoneMedia = () => (phoneQuery ??= matchMedia(PHONE_QUERY));
+/**
+ * Whether a narrow page is too short for the board at its smallest and the
+ * panel at its floor, so it scrolls (narrow.css on the web, natively
+ * `useNarrowPageHeight`). A pre-rendered page, which has no window, says it
+ * doesn't.
+ */
+export const useNarrowPageScrolls: () => boolean = NARROW_CSS_LOADS
+  ? () => useMedia(SHORT_MEDIA, () => false)
+  : () => useNativeArea().height < NARROW_PAGE_MIN;
 
-function onPhoneChange(change: () => void) {
-  const query = phoneMedia();
-  query.addEventListener('change', change);
-  return () => query.removeEventListener('change', change);
+/** A media query, matched on first use: a module the export loads has no window. */
+function media(query: string) {
+  let list: MediaQueryList | undefined;
+  const matched = () => (list ??= matchMedia(query));
+  return {
+    subscribe(change: () => void) {
+      const watched = matched();
+      watched.addEventListener('change', change);
+      return () => watched.removeEventListener('change', change);
+    },
+    matches: () => matched().matches,
+  };
 }
 
-const isPhone = () => phoneMedia().matches;
+const PHONE_MEDIA = media(PHONE_QUERY);
+const SHORT_MEDIA = media(`(max-height: ${NARROW_PAGE_MIN - 0.02}px)`);
+
+/** Whether `query` matches, and `server` before there's a window. */
+function useMedia(query: ReturnType<typeof media>, server: () => boolean) {
+  return useSyncExternalStore(query.subscribe, query.matches, server);
+}
 
 function noWindow(): never {
   throw new Error(
