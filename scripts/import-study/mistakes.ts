@@ -85,8 +85,11 @@ export function markMistakes(
   for (const { at, variation, trap, note } of studyTraps(lesson)) {
     traps.push({ at, moves: trap.moves, text: note.text });
     const id = markId(at, trap.moves[0]);
-    if (keep && !keep.has(id)) skipped.add(id);
-    if (marked.has(id) || skipped.has(id)) continue;
+    if (keep && !keep.has(id)) {
+      skipped.add(id);
+      continue;
+    }
+    if (marked.has(id)) continue;
     marked.add(id);
     placeTrap(positions, lesson.side, at, variation, trap.moves);
     const { moves } = positions[at];
@@ -196,6 +199,22 @@ export interface UnmarkedTrap {
   readonly reason?: string;
 }
 
+/**
+ * The lesson `build` makes, built again keeping only the marks that survived
+ * (by `markId`, so traps match marks by first move) until a build loses none of
+ * the marks it wrote (`tried`). Only marks that survive write moves into the
+ * tree, and a build can only lose marks, so this ends. Example: a first build
+ * whose engine check overrules one trap is followed by one without that trap.
+ */
+export async function buildKeepingMarks<
+  Built extends { readonly lesson: Lesson; readonly tried: ReadonlySet<string> },
+>(build: (keep?: ReadonlySet<string>) => Promise<Built>): Promise<Built> {
+  let built = await build();
+  for (let kept = markIds(built.lesson); kept.size < built.tried.size; kept = markIds(built.lesson))
+    built = await build(kept);
+  return built;
+}
+
 /** The marks in `lesson`, by `markId`. */
 export function markIds(lesson: Lesson): Set<string> {
   return new Set(
@@ -217,12 +236,7 @@ export function settleMistakes(
   lesson: Lesson,
   traps: readonly WrittenTrap[],
 ): { lesson: Lesson; changed: ChangedTrap[]; unmarked: UnmarkedTrap[] } {
-  const fitted = {
-    ...lesson,
-    positions: mapMoves(lesson, (move, key) =>
-      fitLine(lesson, key, move, mistakeLine(lesson, key, move)),
-    ),
-  };
+  const fitted = withLinesOf(lesson, lesson);
   const refused = new Map<string, string>();
   for (const [key, { moves }] of Object.entries(fitted.positions)) {
     for (const move of moves) {
@@ -236,13 +250,9 @@ export function settleMistakes(
   }
   // Taking a mark off can change the guide's choice where the line it was on goes (guideOrder
   // skips marked moves), so each kept mark's line is fitted again to the tree without it.
-  const unrefused = withoutMarks(fitted, new Set(refused.keys())).lesson;
-  const settled = {
-    ...unrefused,
-    positions: mapMoves(unrefused, (move, key) =>
-      fitLine(unrefused, key, move, mistakeLine(fitted, key, move)),
-    ),
-  };
+  const settled = refused.size
+    ? withLinesOf(withoutMarks(fitted, new Set(refused.keys())).lesson, fitted)
+    : fitted;
   const lines = linesTo(settled);
   const changed: ChangedTrap[] = [];
   const unmarked: UnmarkedTrap[] = [];
@@ -281,13 +291,19 @@ export function settleMistakes(
  * guide's choice. Example: a mark whose line followed the only reply then
  * counted keeps it, stored, once another reply turns out more played.
  */
-export function keepMistakeLines(before: Lesson, after: Lesson): Lesson {
+export const keepMistakeLines = (before: Lesson, after: Lesson): Lesson =>
+  withLinesOf(after, before);
+
+/**
+ * `lesson` with each mark's line, as `intended` (the same marks on another
+ * tree) reads it, stored only where the guide's choice rule doesn't give it.
+ */
+function withLinesOf(lesson: Lesson, intended: Lesson): Lesson {
   return {
-    ...after,
-    positions: mapMoves(after, (move, key) => {
-      const was = guideMove(before, key, move.uci);
-      return was?.mistake ? fitLine(after, key, move, mistakeLine(before, key, was)) : move;
-    }),
+    ...lesson,
+    positions: mapMoves(lesson, (move, key) =>
+      move.mistake ? fitLine(lesson, key, move, mistakeLine(intended, key, move)) : move,
+    ),
   };
 }
 

@@ -66,6 +66,7 @@ import { extractChapter } from './extract';
 import { lessonJson } from './lessonJson';
 import { mergeChapters, numberedChapterName, type ChapterName, type SourceTally } from './merge';
 import {
+  buildKeepingMarks,
   keepMistakeLines,
   markIds,
   markMistakes,
@@ -152,21 +153,16 @@ async function main() {
     throw new Error('The engine plays lines from the standard start');
   const stockfish = await nodeStockfish(answersPath(info.id, '-stockfish'));
   const engineFile = join(CACHE, `${merged.id}-engine.json`);
-  const gambit = study.engineCheck === 'gambit';
-  const check = (keep?: ReadonlySet<string>) =>
-    checkTraps(merged, keep, stockfish.evaluate, study.engineCheck ? { gambit } : undefined);
-  // Only the traps whose mark survives write their moves into the tree, so the
-  // lesson is built again keeping just those, until no other mark goes.
-  const allTraps = await check();
-  let { lesson, filled, engineReport, settled } = allTraps;
-  let survivors = markIds(lesson);
-  for (let pass = 2; ; pass++) {
-    ({ lesson, filled, engineReport, settled } = await check(survivors));
-    const kept = markIds(lesson);
-    if (kept.size === survivors.size) break;
-    console.log(`mistakes: pass ${pass} kept ${kept.size} of ${survivors.size} marks, so again`);
-    survivors = kept;
-  }
+  // Why each trap lost its mark, from the build that took it off.
+  const reasons = new Map<string, string>();
+  const built = await buildKeepingMarks(async (keep) => {
+    const traps = await checkTraps(merged, keep, stockfish.evaluate, study.engineCheck);
+    for (const { line, study, reason } of traps.settled.unmarked)
+      if (reason) reasons.set(`${line} ${study}`, reason);
+    return traps;
+  });
+  let { lesson } = built;
+  const { filled, engineReport, settled, traps } = built;
   const { filled: booked, ended } = filled.report;
   const enginesOwn = booked.filter(({ why }) => why === ENGINES_OWN).length;
   console.log(
@@ -178,11 +174,13 @@ async function main() {
       `engine check: ${gambits.length} gambit mistakes kept, ${unbooked.length} book moves overruled (${cut.length} cut, the guide's only move; ${refilled.filled.length} picked again among the guide's others, ${refilled.ended.length} ended where it overruled them all and named none), ${unreachable.length} more left unreachable, ${dropped.length} notes dropped`,
     );
   }
-  // The first build tried every trap, so it says why each lost its mark.
   const { changed } = settled;
-  const { unmarked } = allTraps.settled;
+  const unmarked = settled.unmarked.map((trap) => {
+    const reason = trap.reason ?? reasons.get(`${trap.line} ${trap.study}`);
+    return reason ? { ...trap, reason } : trap;
+  });
   console.log(
-    `mistakes: ${allTraps.traps.length} traps in the notes, ${survivors.size} marked, ${changed.length} with the guide's line in place of the study's, ${unmarked.length} whose mark went (${engineFile})`,
+    `mistakes: ${traps.length} traps in the notes, ${built.tried.size} marked, ${changed.length} with the guide's line in place of the study's, ${unmarked.length} whose mark went (${engineFile})`,
   );
   writeFileSync(
     engineFile,
@@ -229,14 +227,17 @@ async function checkTraps(
   merged: StudyLesson,
   keep: ReadonlySet<string> | undefined,
   evaluate: Evaluate,
-  engine: { gambit: boolean } | undefined,
+  engine: (typeof STUDIES)[string]['engineCheck'],
 ) {
   const marked = markMistakes(merged, keep);
   const filled = await fillBook(marked.lesson, evaluate);
-  const checked = engine && (await engineCheck(filled.lesson, evaluate, engine));
+  const checked = engine
+    ? await engineCheck(filled.lesson, evaluate, { gambit: engine === 'gambit' })
+    : undefined;
   const settled = settleMistakes(checked?.lesson ?? filled.lesson, marked.traps);
   return {
     lesson: settled.lesson,
+    tried: markIds(marked.lesson),
     traps: marked.traps,
     filled,
     engineReport: checked?.report,

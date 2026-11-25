@@ -172,10 +172,7 @@ function checkPosition(
   if (!(entry.variation in lesson.variations)) {
     report(`${at}.variation`, `${entry.variation} is not in variations`);
   }
-  const bands = lesson.popularity?.ratingBands;
-  if (entry.games && !bands) report(`${at}.games`, 'needs popularity in the lesson');
-  if (entry.games && bands && (entry.games.length !== bands.length || !entry.games.every(isCount)))
-    report(`${at}.games`, 'needs one whole count per rating band');
+  checkGames(lesson, entry.games, `${at}.games`, report);
   checkNotes(lesson, entry.notes, pos, `${at}.notes`, report);
   const next: { key: string; book: boolean }[] = [];
   const seen = new Set<string>();
@@ -290,11 +287,7 @@ function checkMove(
   const { games, risk } = move;
   if (move.book && pos.turn !== lesson.side)
     report(`${path}.book`, `only ${lesson.side}'s moves are book moves`);
-  const bands = lesson.popularity?.ratingBands;
-  if (games && !bands) report(`${path}.games`, 'needs popularity in the lesson');
-  if (games && bands && (games.length !== bands.length || !games.every(isCount))) {
-    report(`${path}.games`, 'needs one whole count per rating band');
-  }
+  checkGames(lesson, games, `${path}.games`, report);
   const riskProblem = risk === undefined ? undefined : notOneOf(RISKS, risk);
   if (riskProblem) report(`${path}.risk`, riskProblem);
   try {
@@ -307,6 +300,20 @@ function checkMove(
 }
 
 const isCount = (n: number) => Number.isInteger(n) && n >= 0;
+
+/** Checks game counts (a move's or a position's): one whole count per rating band. */
+function checkGames(
+  lesson: Lesson,
+  games: readonly number[] | undefined,
+  path: string,
+  report: Report,
+) {
+  if (!games) return;
+  const bands = lesson.popularity?.ratingBands;
+  if (!bands) report(path, 'needs popularity in the lesson');
+  else if (games.length !== bands.length || !games.every(isCount))
+    report(path, 'needs one whole count per rating band');
+}
 
 /**
  * Checks the marker on `move`, legal in `pos`: its numbers in range, its

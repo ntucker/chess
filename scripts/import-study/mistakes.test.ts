@@ -4,7 +4,7 @@ import type { LessonMove } from '@/lesson/lesson';
 import { keyAfter, uci } from '@/lesson/lesson.fixture';
 
 import { at, testLesson } from './fixture';
-import { markMistakes, type StudyIdea } from './mistakes';
+import { buildKeepingMarks, markIds, markMistakes, type StudyIdea } from './mistakes';
 
 /**
  * Black's lesson 1.e4 e5 2.Nf3, whose note on 1...e5 draws the trap 2.Ba6? bxa6,
@@ -114,5 +114,33 @@ describe('markMistakes', () => {
       { type: 'mistake', move: uci('e4', 'e5', 'Ba6') },
     ]);
     expect(traps).toHaveLength(2);
+  });
+});
+
+describe('buildKeepingMarks', () => {
+  const lesson = markMistakes(withTrap()).lesson;
+  const mark = [...markIds(lesson)][0];
+
+  it('builds once when every mark it wrote survives', async () => {
+    const asked: (ReadonlySet<string> | undefined)[] = [];
+    await buildKeepingMarks(async (keep) => {
+      asked.push(keep);
+      return { lesson, tried: new Set([mark]) };
+    });
+    expect(asked).toEqual([undefined]);
+  });
+
+  it('builds again keeping only the survivors, until none goes', async () => {
+    const unmarked = markMistakes(withTrap(), new Set()).lesson;
+    const asked: (ReadonlySet<string> | undefined)[] = [];
+    const built = await buildKeepingMarks(async (keep) => {
+      asked.push(keep);
+      // The first build writes the mark and then loses it; the second writes none.
+      return keep
+        ? { lesson: unmarked, tried: keep }
+        : { lesson: unmarked, tried: new Set([mark]) };
+    });
+    expect(asked).toEqual([undefined, new Set()]);
+    expect(built.lesson).toBe(unmarked);
   });
 });
