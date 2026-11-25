@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 
 const reactNative = dirname(require.resolve('react-native/package.json'));
 const read = (path: string) => readFileSync(join(reactNative, path), 'utf8');
-/** A file of React Native's Android library. */
+/** Reads a file of React Native's Android library, by its path under ReactAndroid/src/main. */
 const readAndroid = (path: string) => read(join('ReactAndroid/src/main', path));
 
 // app.config.ts's live font scale fix calls React Native's internal DeviceInfo
@@ -18,9 +18,7 @@ describe("React Native's DeviceInfo module", () => {
   });
 
   it('tells JavaScript of a new font scale on resume', () => {
-    const module = read(
-      'ReactAndroid/src/main/java/com/facebook/react/modules/deviceinfo/DeviceInfoModule.kt',
-    );
+    const module = readAndroid('java/com/facebook/react/modules/deviceinfo/DeviceInfoModule.kt');
     expect(module).toMatch(
       /class DeviceInfoModule\([^)]*\) :\s*NativeDeviceInfoSpec\([^)]*\), LifecycleEventListener/,
     );

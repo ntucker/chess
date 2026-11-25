@@ -16,7 +16,7 @@ const { addImports, appendContentsInsideDeclarationBlock } = AndroidConfig.CodeM
 /**
  * Keeps the app running when Android's font size changes. Without it,
  * Android recreates the activity, which starts the app's screens over and
- * drops the game. RELAYOUT then shows the new size.
+ * drops the game. RELAYOUT, below, lays the text out at the new size.
  */
 const withLiveFontScale: ConfigPlugin = (config) =>
   withAndroidManifest(config, (manifest) => {
@@ -98,10 +98,8 @@ const RELAYOUT = `
  * from its own configuration.
  *
  * The activity is the bars' only writer, for its window and each of React
- * Native's modal windows (the settings sheet): with expo-navigation-bar
- * styling the navigation bar beside React Native's StatusBar, its icons stopped
- * following the theme after a cold start, a device switch or a theme change in
- * the sheet. Nothing in JavaScript styles the bars.
+ * Native's modal windows (the settings sheet): two writers on one window undo
+ * each other, so nothing in JavaScript styles the bars (no StatusBar).
  */
 const SYSTEM_BAR_ICONS = `
   /** The windows of React Native's modals, which have bars of their own. */
@@ -182,7 +180,9 @@ const withMainActivityCode: ConfigPlugin = (config) =>
       throw new Error('withMainActivityCode: MainActivity must be Kotlin');
     }
     let source = activity.modResults.contents;
-    // Prebuild without --clean edits the MainActivity it made last time.
+    // Prebuild without --clean edits the MainActivity it made last time. One
+    // made before SYSTEM_BAR_ICONS gets RELAYOUT twice and fails to build,
+    // loudly rather than missing the bar code: prebuild with --clean.
     if (!source.includes('showThemeInSystemBars')) {
       source = addImports(
         source,
