@@ -3,12 +3,13 @@
  * Checks the exported web app's phone layout in a real browser, which the
  * jsdom tests can't: they have no layout engine. It serves the export, opens
  * each board page at three phone sizes, and checks that the page fits the
- * screen without scrolling, the board is whole and in view with its name
- * bars, the panel under it keeps its floor, no scroll view runs past a box
- * that clips it without scrolling, and the board is the same size on
- * every page at one screen size, whatever sits under it (pages with controls
- * under the panel, a footed panel, have their own size). Screenshots of each
- * state land in the output folder.
+ * screen without scrolling, the board's frame keeps its floor and the board
+ * fills it, the board is whole and in view with its name bars, the panel
+ * under it keeps its floor, no scroll view runs past a box that clips it
+ * without scrolling, and the board is the same size on every page at one
+ * screen size, whatever sits under it (pages with controls under the panel,
+ * a footed panel, have their own size). Screenshots of each state land in
+ * the output folder.
  *
  *   yarn expo export --platform web
  *   yarn check:layout [export folder, default dist] [screenshot folder, default layout-check]
@@ -32,6 +33,14 @@ const SCREENS = [
 ];
 /** The board, chessground's element. */
 const BOARD = 'cg-board';
+/**
+ * The board's frame (Stage.tsx), the box `--board-min` sets the floor of. The
+ * board inside it is a few pixels smaller: inside the frame's border, and
+ * cut to whole device pixels per square by chessground.
+ */
+const FRAME = '#board-frame';
+/** Squares along a board's edge. */
+const SQUARES = 8;
 /** Rounding a browser's layout leaves between boxes that should match. */
 const SLACK = 1;
 
@@ -55,8 +64,6 @@ const STATES = [
     name: 'review',
     path: '/review?moves=e2e4 e7e5 g1f3 b8c6&side=white',
     foot: true,
-    // Its board is 4px under the floor on short phones: #204. Drop this with the fix.
-    exempt: ['board-min'],
   },
 ];
 
@@ -96,14 +103,17 @@ function serve() {
 }
 
 /**
- * The boxes the checks read, in CSS pixels, and the floors narrow.css sets,
- * read from the page so they can't drift from it.
+ * The boxes the checks read, in CSS pixels, with the frame's border and the
+ * device pixel ratio, and the floors narrow.css sets, read from the page so
+ * they can't drift from it.
  */
-function measure(board) {
+function measure({ board, frame }) {
   const box = (selector) => document.querySelector(selector)?.getBoundingClientRect().toJSON();
   const part = (name) => `[data-narrow='${name}']`;
   const program = document.querySelector(`${part('program')}, ${part('footed-program')}`);
   const overflow = (element) => getComputedStyle(element).overflowY;
+  const frameView = document.querySelector(frame);
+  const frameStyle = frameView && getComputedStyle(frameView);
   return {
     screen: { width: innerWidth, height: innerHeight },
     // React Native Web scrolls a view inside the document, so the page's own box shows whether it fits.
@@ -111,6 +121,11 @@ function measure(board) {
     // That view clips sideways, so what runs past the page's right edge widens only the page's scroll width.
     pageWidth: document.querySelector(part('page'))?.scrollWidth,
     board: box(board),
+    frame: box(frame),
+    frameBorder:
+      frameStyle &&
+      parseFloat(frameStyle.borderLeftWidth) + parseFloat(frameStyle.borderRightWidth),
+    pixelRatio: devicePixelRatio,
     column: box(part('board-column')),
     program: program?.getBoundingClientRect().toJSON(),
     boardMin: parseFloat(
@@ -129,14 +144,24 @@ function measure(board) {
   };
 }
 
-/** What's wrong with one state's layout, in words, leaving out the `exempt` rules. */
-function problems(
-  { screen, page, pageWidth, board, column, program, boardMin, programFloor, scrollsPastClip },
-  exempt = [],
-) {
+/** What's wrong with one state's layout, in words. */
+function problems({
+  screen,
+  page,
+  pageWidth,
+  board,
+  frame,
+  frameBorder,
+  pixelRatio,
+  column,
+  program,
+  boardMin,
+  programFloor,
+  scrollsPastClip,
+}) {
   // A missing part or floor would skip its checks and pass: renaming one must fail here.
   const missing = [
-    ...Object.entries({ page, board, column, program })
+    ...Object.entries({ page, board, frame, column, program })
       .filter(([, box]) => !box)
       .map(([name]) => `no ${name}`),
     ...Object.entries({ '--board-min': boardMin, "the panel's min-height": programFloor })
@@ -152,8 +177,15 @@ function problems(
   if (Math.abs(board.width - board.height) > SLACK) {
     issues.push(`the board isn't square (${board.width}×${board.height})`);
   }
-  if (board.width < boardMin - SLACK && !exempt.includes('board-min')) {
-    issues.push(`the board is ${board.width}px, under ${boardMin}`);
+  if (frame.width < boardMin - SLACK) {
+    issues.push(`the board's frame is ${frame.width}px, under ${boardMin}`);
+  }
+  // Chessground fills the frame inside its border, in whole device pixels per square, as
+  // @lichess-org/chessground's render.js rounds it.
+  const filled =
+    Math.floor(((frame.width - frameBorder) * pixelRatio) / SQUARES) * (SQUARES / pixelRatio);
+  if (Math.abs(board.width - filled) > SLACK) {
+    issues.push(`the board is ${board.width}px, ${filled}px would fill its frame`);
   }
   if (board.left < -SLACK || board.right > screen.width + SLACK) {
     issues.push('the board runs off the side');
@@ -217,9 +249,8 @@ async function checkScreen(browser, origin, screen) {
     await state.act?.(page);
     if (!(await settle(page))) errors.push('the layout was still moving after a second');
     await page.screenshot({ path: join(shots, `${size}-${state.name}.png`) });
-    const layout = await page.evaluate(measure, BOARD);
-    for (const problem of [...problems(layout, state.exempt), ...errors])
-      failures.push(`${where}: ${problem}`);
+    const layout = await page.evaluate(measure, { board: BOARD, frame: FRAME });
+    for (const problem of [...problems(layout), ...errors]) failures.push(`${where}: ${problem}`);
     if (layout.board) {
       const { width } = layout.board;
       const foot = state.foot ?? false;
