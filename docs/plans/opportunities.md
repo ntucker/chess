@@ -121,10 +121,13 @@ The gate settings are in `limits.ts`, set at piece B's gate; `MIN_GAMES` sits be
 lichess host's `repliesFrom`. The cost floor is `MISTAKE_LOSS` (`quality.ts`), the app's mistake
 limit, and is not a gate setting.
 
-- **Reach** of a position: the share of games that reach it, from 1 where the finder opens: the erring
-  side's shares multiplied along each order of fewest moves into it, summed over those orders
-  (`reachOf`). Counting only fewest moves keeps a repetition or a lost tempo from counting a game
-  twice. A find on the guide counts only the orders the guide plays.
+- **Reach** of a position: the share of games that reach it when the punishing side steers toward
+  it, from 1 where the finder opens (`reachOf`). The erring side's replies add up, weighted by
+  share; where the punishing side has several moves (two book moves), it takes the one that gets
+  there most, since it chooses. Only orders of fewest moves count, so a repetition or a lost tempo
+  adds nothing. A find on the guide counts only the moves the guide plays. Each find assumes the
+  punishing side steers toward it, so finds after different book moves at one position each show
+  their full reach: they are alternatives, not additive. Reach is derived, never stored.
 - **On the guide**: a find is on the guide (`Find.onGuide`) when the guide's moves reach a position
   where the erring side plays a mistake into its cue. Only these are ranked, kept and written into
   lessons; the rest come back apart (`FinderResult.offGuide`), as evidence.

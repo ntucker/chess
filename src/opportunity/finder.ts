@@ -54,12 +54,7 @@ export interface Find {
   readonly end: number;
   /** Whether the cue's best reply alone keeps the learner clearly better, against best defence. */
   readonly holds: boolean;
-  /**
-   * The share of games that reach the position: the erring side's shares
-   * along each move order of fewest moves that reaches it, summed
-   * (`reachOf`). On the guide, the fewest of the move orders the guide plays
-   * for the punishing side.
-   */
+  /** The share of games that reach the position before the mistake (`reachOf`). */
   readonly reach: number;
   /**
    * Whether the guide's moves alone lead the punishing side here. Only such
@@ -80,9 +75,8 @@ export interface Find {
   /** Set where the gain is an estimate: the cue is thin, or its measured replies cover under half. */
   readonly estimate?: true;
   /**
-   * The share of games that reach the cue, by the move orders of fewest
-   * moves (`reachOf`; on the guide, the fewest the guide plays), × gain: the
-   * expected score knowing the opportunity is worth per game. With one move order, reach × share × gain.
+   * The share of games that reach the cue (`reachOf`) × gain: the expected
+   * score knowing the opportunity is worth per game.
    */
   readonly score: number;
 }
@@ -128,9 +122,8 @@ export interface FinderResult {
  * whose punishment nearly everyone finds (gain under `minGain`) is no find,
  * and the walk goes on past it. The walk stops where the game is over, at
  * thin positions, below the reach floor and past the ply cap; a position
- * reached again is not walked again, though another order of the same moves
- * adds to its reach (`reachOf`), and a cue several mistakes lead to is one
- * find.
+ * reached again is not walked again, though its reach counts every way in
+ * (`reachOf`), and a cue several mistakes lead to is one find.
  */
 export function findOpportunities({
   start,
@@ -168,7 +161,7 @@ export function findOpportunities({
       const { ucis, guided } = punishingMoves(node, context);
       for (const uci of ucis) {
         const next = legalChild(node, uci, node.reach);
-        moves.push({ from: node.key, to: next.key, share: 1, guided });
+        moves.push({ from: node.key, to: next.key, share: 1, guided, chosen: true });
         frontier.push(next);
       }
       continue;
@@ -179,7 +172,7 @@ export function findOpportunities({
       continue;
     }
     for (const { next, share, confirmed } of steps) {
-      moves.push({ from: node.key, to: next.key, share, guided: true });
+      moves.push({ from: node.key, to: next.key, share, guided: true, chosen: false });
       if (confirmed) {
         append(finds, next.key, { confirmed, from: node.key });
       } else if (next.reach >= limits.reachFloor) frontier.push(next);
@@ -221,38 +214,66 @@ export interface Move {
   readonly share: number;
   /** Whether a move order through it stays on the guide: the guide's punishing-side move, or any erring-side reply. */
   readonly guided: boolean;
+  /** The punishing side's move: chosen, not a share of games, so its position takes its most reached move, not their sum. */
+  readonly chosen: boolean;
 }
 
 /**
- * Each walked position's reach: the share of games that get there by a move
- * order of fewest moves, summed over those orders (every order of the same
- * moves). A game that gets there only by a repetition or a lost tempo isn't
- * counted, so the start stays 1 and each game counts once. With `onGuide`,
- * only guided moves count (`Move.guided`), fewest among them. Reach stays
- * derived: nothing stores it.
+ * Each walked position's reach: the share of games that get there when the
+ * punishing side steers toward it. Erring-side replies add up, weighted by
+ * share, while the punishing side plays whichever of its moves gets there
+ * most, so two book moves that meet again count their games once. Only move
+ * orders of fewest moves count, so a repetition or a lost tempo adds nothing
+ * and the start stays 1. With `onGuide`, only guided moves count
+ * (`Move.guided`), fewest among them. Reach stays derived: nothing stores it.
  */
 export function reachOf(start: PositionKey, moves: readonly Move[]) {
-  const all = gamesReaching(start, moves);
-  const guided = gamesReaching(
+  const all = reachOver(start, fewestMoves(start, moves));
+  const guided = reachOver(
     start,
-    moves.filter((move) => move.guided),
+    fewestMoves(
+      start,
+      moves.filter((move) => move.guided),
+    ),
   );
-  return (key: PositionKey, onGuide: boolean) => (onGuide ? guided : all).get(key) ?? 0;
+  return (key: PositionKey, onGuide: boolean) => (onGuide ? guided : all)(key);
 }
 
-/** The share of games that reach each position by `moves`, over move orders of fewest moves. */
-function gamesReaching(start: PositionKey, moves: readonly Move[]): Map<PositionKey, number> {
-  const games = new Map([[start, 1]]);
-  for (const move of fewestMoves(start, moves)) {
-    add(games, move.to, (games.get(move.from) ?? 0) * move.share);
+/** Each position's reach over `fewest`, worked out the first time it is asked for. */
+function reachOver(start: PositionKey, fewest: readonly Move[]) {
+  const known = new Map<PositionKey, number>();
+  return (key: PositionKey) => {
+    let reach = known.get(key);
+    if (reach === undefined) {
+      reach = steeredReach(start, key, fewest);
+      known.set(key, reach);
+    }
+    return reach;
+  };
+}
+
+/**
+ * The share of games that reach `target` from `start` when the punishing side
+ * steers toward it, worked back from `target` (1) over `fewest`, whose
+ * breadth-first order puts every move out of a position after every move into
+ * it: so read backwards, each position's moves come before any move into it.
+ */
+function steeredReach(start: PositionKey, target: PositionKey, fewest: readonly Move[]): number {
+  const reach = new Map([[target, 1]]);
+  for (let i = fewest.length - 1; i >= 0; i--) {
+    const move = fewest[i];
+    const through = (reach.get(move.to) ?? 0) * move.share;
+    if (!through) continue;
+    const before = reach.get(move.from) ?? 0;
+    reach.set(move.from, move.chosen ? Math.max(before, through) : before + through);
   }
-  return games;
+  return reach.get(start) ?? 0;
 }
 
 /**
  * The moves that go one deeper than the fewest moves to where they start,
- * breadth-first from `start`: so each comes after every move into the
- * position it leaves, and a sum over them in order is final where it is read.
+ * breadth-first from `start`, so each comes after every move into the
+ * position it leaves.
  */
 function fewestMoves(start: PositionKey, moves: readonly Move[]): Move[] {
   const out = new Map<PositionKey, Move[]>();
@@ -271,11 +292,6 @@ function fewestMoves(start: PositionKey, moves: readonly Move[]): Move[] {
     }
   }
   return fewest;
-}
-
-/** Adds `amount` to `map`'s number at `key`, from 0 where there is none. */
-function add<K>(map: Map<K, number>, key: K, amount: number) {
-  map.set(key, (map.get(key) ?? 0) + amount);
 }
 
 /** Adds `value` to `map`'s list at `key`, starting the list where there is none. */
