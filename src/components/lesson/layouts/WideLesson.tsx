@@ -39,7 +39,7 @@ export function WideLesson({ model }: { readonly model: LessonScreenModel }) {
       <Stack style={labelled}>
         <Inline align="center" justify="between" wrap="nowrap">
           <ScoresheetTitle />
-          <ScoresheetReview href={model.review.href} disabled={model.review.shut} />
+          <ScoresheetReview {...model.review.button} />
         </Inline>
         <Scoresheet {...model.scoresheet} />
       </Stack>

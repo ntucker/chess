@@ -105,10 +105,7 @@ export default function PlayScreen() {
           <Stack style={labelled}>
             <Inline align="center" justify="between" wrap="nowrap">
               <ScoresheetTitle />
-              <ScoresheetReview
-                href={review}
-                disabled={game.latest.result ? undefined : 'Review opens once the game ends.'}
-              />
+              <ScoresheetReview href={review} started={moves.length > 0} resigns={game.toMove} />
             </Inline>
             <Scoresheet plies={game.plies} marks={game.qualities} ply={ply} onGoto={goto} />
           </Stack>

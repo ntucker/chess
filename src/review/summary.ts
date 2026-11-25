@@ -51,11 +51,18 @@ export function summaryHeadline({ plies, moves, moments, accuracy, learner }: Su
   };
 }
 
-/** How long the game went, and how it ended for the learner: "You won in 34 moves.", "Drawn in 12 moves.", "34 moves." */
+/**
+ * How long the game went, and how it ended for the learner: "You won in 34
+ * moves.", "Drawn in 12 moves.", or, reviewed before it ended, "You lost by
+ * resignation in 9 moves."
+ */
 function gameLength(plies: readonly Ply[], learner: Color) {
   const length = plural(Math.ceil((plies.length - 1) / 2), 'move');
-  const { result } = analyze(plies.at(-1)!);
-  if (!result) return `${length}.`;
-  const { mood } = resultVerdict(result, learner);
+  const last = analyze(plies.at(-1)!);
+  // Reviewed before it ended: the side to move resigned.
+  if (!last.result) {
+    return `You ${last.turn === learner ? 'lost' : 'won'} by resignation in ${length}.`;
+  }
+  const { mood } = resultVerdict(last.result, learner);
   return mood === 'drawn' ? `Drawn in ${length}.` : `You ${mood} in ${length}.`;
 }

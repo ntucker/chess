@@ -1,8 +1,9 @@
 import { useController } from '@data-client/react';
 import { type ComponentProps, use, useMemo } from 'react';
 
-import type { Header } from '@/components/Header';
 import type { HeadlineProps } from '@/components/GameStatus';
+import type { Header } from '@/components/Header';
+import type { ScoresheetReview } from '@/components/ReviewLinks';
 import type { Scoresheet } from '@/components/Scoresheet';
 import type { ScoresheetOpener } from '@/components/ScoresheetPage';
 import type { BoardColumn } from '@/components/Stage';
@@ -10,13 +11,7 @@ import { type Color, colorName, opposite, playMove, readPositionKey } from '@/ga
 import type { GameStore } from '@/game/useGame';
 import { listsTopMoves } from '@/lesson/guidance';
 import type { Lesson, PositionKey, Uci, VariationId } from '@/lesson/lesson';
-import {
-  isPicking,
-  lessonsAfter,
-  lessonsFrom,
-  openingsLesson,
-  withOpenings,
-} from '@/lesson/openings';
+import { lessonsAfter, lessonsFrom, openingsLesson, withOpenings } from '@/lesson/openings';
 import {
   type Candidate,
   candidates,
@@ -37,7 +32,7 @@ import type { ActsModel, OpportunityCard } from './CueActs';
 import { type IdeaAside, type IdeaCard, noNotesText } from './IdeaCard';
 import type { LessonControls } from './LessonControls';
 import type { TrapCard } from './TrapCard';
-import { describeStatus, OPENINGS_TITLE, type Status, shownEnding, whyReviewShut } from './status';
+import { describeStatus, OPENINGS_TITLE, type Status, shownEnding } from './status';
 
 /** What the lesson screen is given: the address's lesson and the game held above it. */
 export interface LessonScreenInput {
@@ -87,12 +82,12 @@ export interface LessonScreenModel {
    */
   readonly status: Pick<Status, 'news' | 'pastGuide'>;
   /**
-   * The game's review: its address, why it is shut (none when open), and
-   * whether the headline offers it: once the game ends, if it is open.
+   * The game's review: the scoresheet's button, which opens it at any point
+   * after the first move, and whether the headline offers it: once the game
+   * ends.
    */
   readonly review: {
-    readonly href: ReturnType<typeof reviewHref>;
-    readonly shut?: string;
+    readonly button: ComponentProps<typeof ScoresheetReview>;
     readonly offered: boolean;
   };
   /**
@@ -187,19 +182,11 @@ export function useLessonScreen({
   const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
   const names = pathNames(view.variation);
   const { result } = game.latest;
+  const started = game.moves.length > 0;
   const ending = shownEnding(
     { result, atLatest: game.atLatest, playing: !!playback.playing },
     learner,
   );
-  // The whole game, not the move on the board: stepping back into the
-  // openings' first moves doesn't close the review of a game played past them.
-  const gamePicking = isPicking(index, learner, game.moves);
-  const reviewShut = whyReviewShut({
-    picking: gamePicking,
-    ended: !!result,
-    practice: mode === 'practice',
-    leftGuide: view.guideMoves.includes(undefined),
-  });
   const { pastGuide, news, ...headline } = describeStatus(view, {
     picking,
     loading,
@@ -340,7 +327,7 @@ export function useLessonScreen({
       // The side is the lesson's once one is picked.
       onSwap: picking ? () => onPlayAs(rival) : undefined,
     },
-    stepper: { san: game.plies[game.ply].move?.san, ply: game.ply, started: game.moves.length > 0 },
+    stepper: { san: game.plies[game.ply].move?.san, ply: game.ply, started },
     headline: {
       ...headline,
       failure: game.error && { who: described.name, error: game.error, onRetry: game.retry },
@@ -348,9 +335,12 @@ export function useLessonScreen({
     },
     status: { news, pastGuide },
     review: {
-      href: reviewHref(game.moves, learner, id),
-      shut: reviewShut,
-      offered: !!ending && !reviewShut,
+      button: {
+        href: reviewHref(game.moves, learner, id),
+        started,
+        resigns: game.toMove,
+      },
+      offered: !!ending,
     },
     aside,
     moves,

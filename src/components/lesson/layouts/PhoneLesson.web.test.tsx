@@ -38,7 +38,7 @@ const MODEL = {
   status: { news: 'all', pastGuide: false },
   headline: {},
   scoresheet: {},
-  review: { href: '/review', shut: false },
+  review: { button: { href: '/review', started: false }, offered: false },
   onLeave: () => {},
 } as unknown as LessonScreenModel;
 

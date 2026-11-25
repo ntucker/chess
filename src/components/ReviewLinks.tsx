@@ -3,6 +3,7 @@ import { Button, Inline } from '@reactive/silk-native';
 import { type Href, useRouter } from 'expo-router';
 
 import { Tip } from '@/components/Tip';
+import { type Color, colorName } from '@/game/replay';
 
 /** The review's mark: a line graph, as the review charts the game. */
 const ICON = 'analytics-outline';
@@ -21,26 +22,30 @@ export function ReviewGameButton({ href }: { readonly href: Href }) {
 }
 
 /**
- * The Review button by the scoresheet's title: opens the review at `href`,
- * or, given `disabled` (why it doesn't open yet, as `Toggle` takes it),
- * shows disabled with that in its tip. `compact` draws only its icon, for
- * a phone's scoresheet page's head; screen readers hear its name either way.
+ * The Review button by the scoresheet's title: opens the review at `href` at
+ * any point of the game once it has `started`. Before the game ends, its tip
+ * says who `resigns`: the side to move. Before the first move there is nothing to
+ * review, and it shows disabled. `compact` draws only its icon, for a phone's
+ * scoresheet page's head; screen readers hear its name either way.
  */
 export function ScoresheetReview({
   href,
-  disabled,
+  started,
+  resigns,
   compact,
 }: {
   readonly href: Href;
-  readonly disabled?: string;
+  readonly started: boolean;
+  readonly resigns?: Color;
   readonly compact?: boolean;
 }) {
   const router = useRouter();
+  const tip = reviewTip(started, resigns);
   const button = (
     <Button
       size="sm"
       variant="outline"
-      disabled={!!disabled}
+      disabled={!started}
       accessibilityLabel={LABEL}
       onPress={() => router.push(href)}
     >
@@ -48,11 +53,19 @@ export function ScoresheetReview({
       {compact ? null : ' Review'}
     </Button>
   );
-  if (!disabled) return button;
-  // Disabled, the button takes no focus, so the tip takes it to open from the keyboard.
+  if (!tip) return button;
+  // Disabled, the button takes no focus, so the tip takes it to open from the
+  // keyboard. Enabled, focus on the button inside opens it.
   return (
-    <Tip tip={disabled} focusable>
+    <Tip tip={tip} focusable={!started}>
       {button}
     </Tip>
   );
+}
+
+/** The scoresheet's Review button's tip: why it's disabled, or who resigns; none once the game has ended. */
+function reviewTip(started: boolean, resigns: Color | undefined) {
+  if (!started) return 'Review opens after the first move.';
+  if (resigns) return `Review the game so far, as if ${colorName(resigns)} resigned.`;
+  return undefined;
 }
