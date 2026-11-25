@@ -245,11 +245,22 @@ export function BoardColumnPlaceholder({ children }: { readonly children?: React
   );
 }
 
+/**
+ * The board's frame: the box the board column's width limit sizes, down to
+ * `--board-min`, which the layout check measures by its id. Chessground draws
+ * a little smaller inside it: inside its border, in whole device pixels per square.
+ */
 function BoardFrame({ children }: { readonly children: ReactNode }) {
   const { theme } = useTheme();
   const styles = useNarrowStyles(STYLES);
   return (
-    <Surface elevation="overlay" radius="md" border="subtle" style={styles.frame}>
+    <Surface
+      nativeID="board-frame"
+      elevation="overlay"
+      radius="md"
+      border="subtle"
+      style={styles.frame}
+    >
       <View
         style={[styles.fill, { borderRadius: theme.semantic.radius.md - 1, overflow: 'hidden' }]}
       >
