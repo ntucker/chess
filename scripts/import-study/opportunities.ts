@@ -4,20 +4,22 @@
  * docs/plans/opportunities.md.
  *
  *   yarn opportunities <lesson> [--band 1400] [--top 20] [--out report.md]
- *   yarn opportunities --from "1.e4 e5 2.Nf3 Nf6" --side black [--band 1400] [--top 20] [--out report.md]
+ *   yarn opportunities --from "1.e4 e5 2.Nf3 Nf6" --side black [--band 1400 | --maia 1500] [--top 20] [--out report.md]
  *
  * With a lesson it runs from the lesson's start for the lesson's side, and
  * splits the finds the guide's moves reach from those it doesn't. With
  * `--from` it runs from the position after those moves (from the standard
  * start, read by `parseMoves`) with no lesson, for `--side`, the side looking
  * for opportunities, and lists every find in one ranking, since with no guide
- * there is no split.
+ * there is no split. Its replies come from lichess's `--band`, or with
+ * `--maia` from Maia's estimate at that rating (lichess band b matches Maia
+ * b+100 best, since band 1400 is players rated 1400 to 1599).
  *
  * Its answers come from its own answers files and lichess and Stockfish
  * (./finderHost.ts), so a rerun asks only about positions none has seen: a
  * lesson's are committed beside its other answers, a run from moves shares a
- * cache git ignores. A thin position ends the search for mistakes; the report
- * counts where.
+ * cache git ignores. A thin lichess position ends the search for mistakes;
+ * the report counts where.
  */
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -37,11 +39,19 @@ import {
   playLine,
 } from '@/game/replay';
 import type { Lesson, Uci } from '@/lesson/lesson';
+import { MAIA_RATINGS } from '@/maia/ratings';
 import { byScore, type Find, type FinderResult, type ThinEnd } from '@/opportunity/finder';
 import { LIMITS, MIN_GAMES } from '@/opportunity/limits';
 import { keepsGuide } from '@/opportunity/payoff';
 
-import { FIND_BAND, finderHost, lessonStart, positionHost, runFinder } from './finderHost';
+import {
+  FIND_BAND,
+  finderHost,
+  lessonStart,
+  positionHost,
+  type ReplySource,
+  runFinder,
+} from './finderHost';
 import { readLessonFile } from './register';
 
 const ROOT = join(__dirname, '../..');
@@ -63,13 +73,13 @@ async function reportLesson(id: string, { band, top, out }: Options) {
   }
 }
 
-async function reportFrom(moves: string, side: Color, { band, top, out }: Options) {
+async function reportFrom(moves: string, side: Color, source: ReplySource, { top, out }: Options) {
   const start = Chess.default();
   const line = parseMoves(moves, start);
-  const host = await positionHost(band);
+  const host = await positionHost(source);
   try {
     const result = await runFinder(host, { start: makeFen(start.toSetup()), line, side });
-    write(positionReport(start, line, side, band, result, top), out);
+    write(positionReport(start, line, side, source, result, top), out);
   } finally {
     host.stop();
   }
@@ -119,9 +129,12 @@ function findTable(columns: readonly Column[], rows: readonly Find[]): string[] 
   ];
 }
 
-/** What the columns mean, and the limits the run used. */
-const COLUMNS_AND_LIMITS = [
-  `A mistake whose punishment nearly everyone finds (gain under ${points(LIMITS.minGain)}) is no find. Share: how often the opponent plays the mistake there. Reach: how often games get there, summed over the move orders that do (on the guide, only those the guide plays). Cost: points of expected score (of 100) the mistake gives away. Found: how often players at the cue find a punishing reply. Gain: points a player at the cue scores more by knowing the punishment than by playing as the band does (~: an estimate, the cue is thin or its measured replies cover under ${percent(LIMITS.estimateCoverage)} of its games). Score: the games that reach the cue by any move order (reach × share when one does) × gain, in thousandths, which ranks. End: the punishing side's expected score where Act III ends, following the band's likely replies; a lesson keeps only finds ending at ${points(LIMITS.keepScore)} or more. Holds: the best reply alone keeps the punishing side at least ${points(LIMITS.keepScore)} against best defence; practical: only the band's likely replies get there.`,
+/**
+ * What the columns mean, and the limits the run used; for a `lesson`, also
+ * what its guide changes (reach on the guide, the finds a lesson keeps).
+ */
+const columnsAndLimits = (lesson: boolean) => [
+  `A mistake whose punishment nearly everyone finds (gain under ${points(LIMITS.minGain)}) is no find. Share: how often the opponent plays the mistake there. Reach: how often games get there, summed over the move orders that do${lesson ? ' (on the guide, only those the guide plays)' : ''}. Cost: points of expected score (of 100) the mistake gives away. Found: how often players at the cue find a punishing reply. Gain: points a player at the cue scores more by knowing the punishment than by playing as the band does (~: an estimate, the cue is thin or its measured replies cover under ${percent(LIMITS.estimateCoverage)} of its games). Score: the games that reach the cue by any move order (reach × share when one does) × gain, in thousandths, which ranks. End: the punishing side's expected score where Act III ends, following the band's likely replies${lesson ? `; a lesson keeps only finds ending at ${points(LIMITS.keepScore)} or more` : ''}. Holds: the best reply alone keeps the punishing side at least ${points(LIMITS.keepScore)} against best defence; practical: only the band's likely replies get there.`,
   '',
   `Limits: minGames ${MIN_GAMES}, ${Object.entries(LIMITS)
     .map(([name, value]) => `${name} ${value}`)
@@ -151,7 +164,7 @@ function lessonReport(
     '',
     `On the guide (the punishing side plays only the lesson's moves to get there): ${finds.length} finds kept, the best ${Math.min(top, finds.length)} below, then the ${dropped.length} dropped. Off the guide: ${off.length} more, listed last. In guide: whether the lesson already lists the mistake.`,
     '',
-    ...COLUMNS_AND_LIMITS,
+    ...columnsAndLimits(true),
     '',
     ...findTable(columns, finds.slice(0, top)),
     '',
@@ -174,6 +187,15 @@ function lessonReport(
   ].join('\n');
 }
 
+/** Where `source`'s replies come from, for the report's title, and what that means for the run. */
+function describeSource(source: ReplySource): { title: string; note: string } {
+  if (source.from === 'lichess') return { title: `lichess ${source.band} band`, note: '' };
+  return {
+    title: `Maia ${source.rating} (estimates)`,
+    note: ` Shares are Maia ${source.rating}'s estimate of how people of that rating play, not counted games, so no position is thin and the walk goes on to the reach floor.`,
+  };
+}
+
 /**
  * The finds from the position after `line` from `start` for `side`, with no
  * lesson, as a Markdown report: the best `top`, whatever Act III ends at and
@@ -184,18 +206,19 @@ function positionReport(
   start: Chess,
   line: readonly Uci[],
   side: Color,
-  band: number,
+  source: ReplySource,
   { finds, dropped, offGuide, thin }: FinderResult,
   top: number,
 ): string {
   const found = [...finds, ...dropped, ...offGuide].sort(byScore);
   const after = numberedLine(lineSans(line, start)) || 'the start';
+  const { title, note } = describeSource(source);
   return [
-    `# Opportunities for ${colorName(side)} after ${after}, lichess ${band} band`,
+    `# Opportunities for ${colorName(side)} after ${after}, ${title}`,
     '',
-    `${found.length} finds, the best ${Math.min(top, found.length)} below. With no lesson, ${colorName(side)} plays Stockfish's best move wherever it moves.`,
+    `${found.length} finds, the best ${Math.min(top, found.length)} below. With no lesson, ${colorName(side)} plays Stockfish's best move wherever it moves.${note}`,
     '',
-    ...COLUMNS_AND_LIMITS,
+    ...columnsAndLimits(false),
     '',
     ...findTable(findColumns(start), found.slice(0, top)),
     '',
@@ -280,7 +303,7 @@ const uciSan = (start: Chess, line: readonly Uci[], uci: Uci) =>
 
 const USAGE = [
   'Usage: yarn opportunities <lesson> [--band 1400] [--top 20] [--out report.md]',
-  '       yarn opportunities --from "<moves>" --side white|black [--band 1400] [--top 20] [--out report.md]',
+  '       yarn opportunities --from "<moves>" --side white|black [--band 1400 | --maia 1500] [--top 20] [--out report.md]',
 ].join('\n');
 
 const args = process.argv.slice(2);
@@ -295,6 +318,17 @@ const options: Options = {
 };
 
 /**
+ * Where the arguments ask a run from moves to take its replies: Maia at
+ * `--maia`'s rating, which can't go with `--band`, else the lichess band.
+ * Undefined for a rating Maia doesn't have, or both flags.
+ */
+function sourceAsked(given: (name: string) => boolean): ReplySource | undefined {
+  if (!given('maia')) return { from: 'lichess', band: options.band };
+  const rating = MAIA_RATINGS.find((maia) => String(maia) === flag('maia'));
+  return rating && !given('band') ? { from: 'maia', rating } : undefined;
+}
+
+/**
  * Runs the report the arguments ask for: a lesson's, from its start for its
  * side; or, with no lesson, one after `--from` for `--side`. (A lesson run
  * from other moves would write ad-hoc answers into the lesson's committed
@@ -304,10 +338,13 @@ function main(): Promise<void> {
   const [id] = args;
   const lessonId = id && !id.startsWith('--') ? id : undefined;
   const given = (name: string) => args.includes(`--${name}`);
-  if (lessonId && !given('from') && !given('side')) return reportLesson(lessonId, options);
+  if (lessonId && !given('from') && !given('side') && !given('maia'))
+    return reportLesson(lessonId, options);
   const moves = flag('from');
   const side = COLORS.find((color) => color === flag('side'));
-  if (!lessonId && moves !== undefined && side) return reportFrom(moves, side, options);
+  const source = sourceAsked(given);
+  if (!lessonId && moves !== undefined && side && source)
+    return reportFrom(moves, side, source, options);
   console.error(USAGE);
   process.exit(1);
 }

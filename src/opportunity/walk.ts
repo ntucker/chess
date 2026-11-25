@@ -172,3 +172,13 @@ export function repliesFrom(
     thin: (total ?? listed) < minGames,
   };
 }
+
+/**
+ * Maia's shares at a position (`moveShares` in src/maia/maia.ts) as replies:
+ * an estimate of how people of its rating play, which is never thin, so a
+ * Maia run's walk ends only at the reach floor and the ply cap.
+ */
+export const maiaReplies = (shares: Readonly<Record<Uci, number>>): Replies => ({
+  shares,
+  thin: false,
+});

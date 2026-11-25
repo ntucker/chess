@@ -1,6 +1,7 @@
 import type { Evaluation } from '@/evaluation/evaluation';
+import type { Uci } from '@/lesson/lesson';
 
-import { bestMove, evaluation, prepareInput } from './maia';
+import { bestMove, evaluation, moveShares, prepareInput } from './maia';
 import type { MaiaRating } from './ratings';
 import { runNetwork } from './runNetwork';
 
@@ -14,6 +15,15 @@ import { runNetwork } from './runNetwork';
 export async function maiaMove(rating: MaiaRating, line: readonly string[]): Promise<string> {
   const { pos, planes } = prepareInput(line);
   return bestMove(pos, (await runNetwork(rating, planes)).policy);
+}
+
+/** How often Maia expects people of `rating` to play each legal move after `line` (`moveShares`). */
+export async function maiaShares(
+  rating: MaiaRating,
+  line: readonly string[],
+): Promise<Record<Uci, number>> {
+  const { pos, planes } = prepareInput(line);
+  return moveShares(pos, (await runNetwork(rating, planes)).policy);
 }
 
 /** How the position after `line` stands, as Maia judges it. */

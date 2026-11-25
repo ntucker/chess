@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { SquareSet } from 'chessops/squareSet';
 import { makeUci } from 'chessops/util';
 
-import { bestMove, evaluation, JUDGE_RATING, prepareInput } from './maia';
+import { bestMove, evaluation, JUDGE_RATING, moveShares, prepareInput } from './maia';
 import { forward, type MaiaNetwork, parseNetwork } from './network';
 import { POLICY_SLOTS, policySlot } from './policy';
 import REFERENCE from './reference-moves.json';
@@ -99,6 +99,32 @@ describe('bestMove', () => {
 
   it('rejects an illegal line', () => {
     expect(() => play('e2e5')).toThrow('Illegal move e2e5');
+  });
+});
+
+describe('moveShares', () => {
+  const shares = (line: string) => {
+    const { pos, policy } = think(maia1100, line);
+    return { pos, policy, shares: moveShares(pos, policy) };
+  };
+
+  it('gives every legal move a share, adding up to 1', () => {
+    const { shares: atStart } = shares('');
+    expect(Object.keys(atStart)).toHaveLength(20);
+    expect(Object.values(atStart).reduce((sum, share) => sum + share, 0)).toBeCloseTo(1, 6);
+  });
+
+  it('gives the move Maia plays the largest share', () => {
+    const { pos, policy, shares: after } = shares('e2e4');
+    const most = Object.entries(after).reduce((a, b) => (b[1] > a[1] ? b : a));
+    expect(most[0]).toBe(bestMove(pos, policy));
+  });
+
+  it('names a castle as the game records it, the king moving two squares', () => {
+    const line = 'd2d4 d7d5 c2c4 c7c6 b1c3 g8f6 e2e3 e7e6 g1f3 b8d7 f1d3 f8e7';
+    const { shares: after } = shares(line);
+    expect(after).toHaveProperty('e1g1');
+    expect(after).not.toHaveProperty('e1h1');
   });
 });
 
