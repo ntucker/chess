@@ -83,13 +83,22 @@ export function PlayerBar({
 }: Props) {
   const styles = useNarrowStyles(STYLES);
   const part = useNarrowPart();
+  const [tipOpen, setTipOpen] = useState(false);
+  // The tip goes with its download, so the next one starts with it shut.
+  if (tipOpen && !download) setTipOpen(false);
   const caption = {
     role: 'caption',
     tone: toMove ? 'accent' : 'secondary',
     numberOfLines: 1,
   } as const;
   const disc = (
-    <Disc color={color} toMove={toMove} swap={swap}>
+    <Disc
+      color={color}
+      toMove={toMove}
+      swap={swap}
+      // A tap on a disc that swaps the sides swaps them: a long press shows the tip.
+      onLongPress={download && (() => setTipOpen(true))}
+    >
       {download ? (
         <DownloadRing {...download} />
       ) : thinking ? (
@@ -106,7 +115,13 @@ export function PlayerBar({
     <View style={[styles.bar, style]}>
       {download ? (
         // On the disc as a whole, so a disc that swaps the sides keeps its press.
-        <Tip tip={`${download.label}: ${download.percent}% downloaded`}>{disc}</Tip>
+        <Tip
+          tip={`${download.label}: ${download.percent}% downloaded`}
+          open={tipOpen}
+          onOpenChange={setTipOpen}
+        >
+          {disc}
+        </Tip>
       ) : (
         disc
       )}
@@ -140,8 +155,11 @@ function Disc({
   color,
   toMove,
   swap,
+  onLongPress,
   children,
-}: Pick<Props, 'color' | 'toMove' | 'swap' | 'children'>) {
+}: Pick<Props, 'color' | 'toMove' | 'swap' | 'children'> & {
+  readonly onLongPress?: () => void;
+}) {
   const { theme } = useTheme();
   const { tones } = theme.semantic.color;
   const styles = useNarrowStyles(STYLES);
@@ -161,6 +179,7 @@ function Disc({
       accessibilityRole="button"
       accessibilityLabel={swap.label}
       onPress={swap.onPress}
+      onLongPress={onLongPress}
       // A narrow page's disc is a small dot: the press reaches past it.
       hitSlop={8}
       focusRing={false}

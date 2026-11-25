@@ -17,6 +17,9 @@ interface Props {
    * none, such as a disabled button: focus opens it as on a control.
    */
   readonly focusable?: boolean;
+  /** Whether it shows, for a caller that opens it another way too; left out, it keeps its own state. */
+  readonly open?: boolean;
+  readonly onOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -31,9 +34,9 @@ interface Props {
  * </Tip>
  * ```
  */
-export function Tip({ tip, children, style, focusable }: Props) {
+export function Tip({ tip, children, style, focusable, open, onOpenChange }: Props) {
   return (
-    <Tooltip.Root>
+    <Tooltip.Root open={open} onOpenChange={onOpenChange}>
       <Tooltip.Trigger style={style} focusable={focusable}>
         {children}
         <Text style={spokenOnly}>{tip}</Text>
