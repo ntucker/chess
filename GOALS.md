@@ -23,6 +23,7 @@ lesson, not just a giant book to read.
   native code (modules, config, worklets, Android-only branches), touch handling you write,
   platform-specific layout (flex tricks, a change to `NATIVE_PARTS`), new or changed behavior in the
   native file of a `.web` twin pair (the one without `.web`), the board's web view. Check only what
-  that change could affect. Code that only moved (even into a new file), text changes, web-only
-  files, and UI built from existing Silk components or `useNarrowPart` parts need only the web check.
+  that change could affect. A move after which Android runs the same code as before (even from a new
+  file), text changes, web-only files, and UI built from existing Silk components or `useNarrowPart`
+  parts need only the web check.
 - No iOS.
