@@ -6,10 +6,10 @@ import type { HeadlineProps } from '@/components/GameStatus';
 import type { Scoresheet } from '@/components/Scoresheet';
 import type { ScoresheetOpener } from '@/components/ScoresheetPage';
 import type { BoardColumn } from '@/components/Stage';
-import { type Color, colorName, opposite } from '@/game/replay';
+import { type Color, colorName, opposite, playMove, readPositionKey } from '@/game/replay';
 import type { GameStore } from '@/game/useGame';
 import { listsTopMoves } from '@/lesson/guidance';
-import type { Lesson, Uci, VariationId } from '@/lesson/lesson';
+import type { Lesson, PositionKey, Uci, VariationId } from '@/lesson/lesson';
 import {
   isPicking,
   lessonsAfter,
@@ -17,7 +17,14 @@ import {
   openingsLesson,
   withOpenings,
 } from '@/lesson/openings';
-import { type Candidate, captionName, pathNames, shareSource } from '@/lesson/select';
+import {
+  type Candidate,
+  candidates,
+  captionName,
+  opponentBand,
+  pathNames,
+  shareSource,
+} from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
 import { describeOpponent } from '@/opponent/opponent';
 import { getLesson, LessonIndexContext, type LessonId } from '@/resources/lesson';
@@ -25,6 +32,7 @@ import { reviewHref } from '@/review/address';
 import { useSettings } from '@/settings/SettingsProvider';
 
 import type { CandidateList } from './CandidateList';
+import type { ActsModel } from './CueActs';
 import { type IdeaAside, type IdeaCard, noNotesText } from './IdeaCard';
 import type { LessonControls } from './LessonControls';
 import type { TrapCard } from './TrapCard';
@@ -68,7 +76,7 @@ export interface LessonScreenModel {
   };
   readonly headline: Pick<
     HeadlineProps,
-    'eyebrow' | 'title' | 'detail' | 'failure' | 'eyebrowLink'
+    'eyebrow' | 'title' | 'titleTip' | 'detail' | 'failure' | 'eyebrowLink'
   >;
   /**
    * What the status says beyond the headline: how much of it a phone draws,
@@ -97,6 +105,11 @@ export interface LessonScreenModel {
   /** The notes of the position, or of the candidate pointed at. */
   readonly idea: Omit<ComponentProps<typeof IdeaCard>, 'density'> | null;
   readonly trap: ComponentProps<typeof TrapCard> | null;
+  /**
+   * The acts of the cue the board is in (Explore only), which take the trap
+   * card's place for the other side's mistake.
+   */
+  readonly acts: ActsModel | null;
   /** The game's moves. */
   readonly scoresheet: Omit<ComponentProps<typeof Scoresheet>, 'fill'>;
   readonly settings: Pick<ComponentProps<typeof LessonControls>, 'mode' | 'onMode'>;
@@ -150,6 +163,10 @@ export function useLessonScreen({
     modeState,
     startsRun,
     chooseMode,
+    acts,
+    retryCue,
+    showCue,
+    skipCue,
   } = useLesson(lesson, store, { pending });
   const { mode } = modeState;
   const { auto } = useSettings();
@@ -157,7 +174,19 @@ export function useLessonScreen({
   const rival = opposite(learner);
   const described = describeOpponent(opponent);
   const preview = guidance.preview?.candidate;
-  const { trap } = guidance;
+  // The acts explain the other side's mistake themselves, with the trap's note.
+  const opportunity = guidance.trap && acts && !guidance.trap.trap.learnerFalls;
+  const trap = opportunity ? undefined : guidance.trap;
+  const cue = acts && {
+    found: acts.found,
+    payoff: acts.payoff,
+    mistake: game.plies[acts.cue.ply].move!.san,
+    reply: sanAfter(acts.cue.key, acts.cue.line[1]),
+    tried: game.plies[acts.cue.ply + 1]?.move?.san,
+    share: candidates(lesson, acts.cue.before, opponentBand(lesson, opponent)).find(
+      ({ move }) => move.uci === acts.cue.line[0],
+    )?.share,
+  };
   // The card is for notes, or for the notes of a candidate pointed at.
   // Stockfish's moves have none of their own.
   const ideaCard = guidance.notes.length > 0 || guidance.candidates.length > 0;
@@ -192,6 +221,7 @@ export function useLessonScreen({
     practice:
       modeState.mode === 'practice' ? { clean: modeState.clean, verdict: game.quality } : undefined,
     ending,
+    cue,
   });
   // Where Stockfish's moves stand in for the guide's, a narrow page tells why
   // in the idea pane's place. A failure keeps the headline's.
@@ -344,6 +374,24 @@ export function useLessonScreen({
           onReach: reachCard,
         }
       : null,
+    acts:
+      acts && cue
+        ? {
+            found: acts.found,
+            payoff: acts.payoff,
+            line: headline.detail,
+            // Only where the board shows the try that didn't pass.
+            onRetry:
+              (acts.found === 'failed' || acts.found === 'unchecked') && view.ply > acts.cue.ply
+                ? retryCue
+                : undefined,
+            onShow: acts.found !== 'passed' && acts.found !== 'shown' ? showCue : undefined,
+            onSkip: acts.found !== 'passed' ? skipCue : undefined,
+            note: opportunity
+              ? { lesson, shown: guidance.trap!.note, learner, playback }
+              : undefined,
+          }
+        : null,
     trap: trap
       ? {
           lesson,
@@ -369,3 +417,6 @@ export function useLessonScreen({
     onLeave: leave,
   };
 }
+
+/** `uci` written as the scoresheet would, played at `key`: "Nxe4". */
+const sanAfter = (key: PositionKey, uci: Uci) => playMove(readPositionKey(key)!, uci)!.san;

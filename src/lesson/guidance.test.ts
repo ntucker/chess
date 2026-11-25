@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
 import {
+  type CueQuestion,
   guidance,
   type EngineView,
   type Guidance,
@@ -22,6 +23,7 @@ import {
   sampleView,
   TRAP,
   TRAP_PUNISHED,
+  uci,
   uciLine,
   WITH_RARE,
   withMistakeLine,
@@ -54,18 +56,20 @@ function shown(
     engine = ENGINE,
     picking = sans.length === 0,
     refutation,
+    cue,
   }: {
     pointer?: Pointer;
     lifted?: Candidate['from'];
     engine?: { best?: string; top?: string[]; final?: boolean };
     picking?: boolean;
     refutation?: string;
+    cue?: CueQuestion;
   } = {},
 ): Guidance {
   const view = sampleView(sans);
   const stockfish = engineView(sans, engine);
   // As useLesson does: a pointer previews only the rows the list shows.
-  const listed = listedEngineMoves(view, mode, picking, stockfish.top, stockfish.final);
+  const listed = listedEngineMoves(view, mode, picking, stockfish.top, stockfish.final, cue);
   return guidance({
     view,
     mode,
@@ -75,6 +79,7 @@ function shown(
     lifted,
     engine: stockfish,
     refutation,
+    cue,
   });
 }
 
@@ -89,6 +94,40 @@ const summary = (shown: Guidance) => ({
 });
 
 describe('guidance', () => {
+  describe('an open cue', () => {
+    const verdicts = (sans: string[], cue?: CueQuestion) =>
+      shown(sans, 'explore', {}, { cue, pointer: { at: 'row', uci: uci(...sans, 'Bf5') } });
+
+    it('hides every hint: candidates, previews, notes, best, top moves and verdicts', () => {
+      const asking = verdicts(ADVANCE, {});
+      expect(summary(asking)).toEqual({
+        candidates: [],
+        preview: undefined,
+        notes: [],
+        ideas: [],
+        best: undefined,
+        top: [],
+      });
+      expect(asking.verdicts).toBeUndefined();
+      expect(asking.drawnCandidates).toEqual([]);
+    });
+
+    it('lists and draws only the reply it reveals, with "Arrows" off too', () => {
+      const reveal = uci(...ADVANCE, 'c5');
+      const revealed = shown(ADVANCE, 'explore', { showMoves: false }, { cue: { reveal } });
+      expect(revealed.candidates.map(({ san }) => san)).toEqual(['c5']);
+      expect(revealed.drawnCandidates.map(({ san }) => san)).toEqual(['c5']);
+      expect(revealed.notes).toEqual([]);
+    });
+
+    it('lists no top moves past the guide', () => {
+      const off = [...ADVANCE, 'a6'];
+      const engine = { best: 'g1f3', top: ['g1f3'], final: true };
+      expect(shown(off, 'explore', {}, { engine }).top).toHaveLength(1);
+      expect(shown(off, 'explore', {}, { engine, cue: {} }).top).toEqual([]);
+    });
+  });
+
   describe('Explore', () => {
     it("shows everything on the learner's turn; Stockfish's best is tagged only when the guide lacks it", () => {
       expect(summary(shown(ADVANCE, 'explore'))).toEqual({

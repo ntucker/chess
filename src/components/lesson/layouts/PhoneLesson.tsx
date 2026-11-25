@@ -6,6 +6,7 @@ import { ScoresheetReview } from '@/components/ReviewLinks';
 import { FadingScroll } from '@/theme/Narrow';
 
 import { CandidateList, COMPACT_INSET } from '../CandidateList';
+import { ActRows, ActsNote, asking, CuePane } from '../CueActs';
 import { IdeaAside, IdeaCard } from '../IdeaCard';
 import { PointingArea } from '../PointingArea';
 import { headlineNews } from '../status';
@@ -19,7 +20,9 @@ import { LessonHeadline } from './LessonHeadline';
  * between (`usePages` owns which shows). One holds the moves and the idea
  * in panes side by side, each scrolling on its own, with a hairline between
  * them; past the guide, where Stockfish's moves stand in, the idea's pane
- * tells why. The other is the scoresheet. Both stay mounted, so the panes
+ * tells why; at a cue, the acts take the moves' pane, and the other pane
+ * asks the cue's question, then holds the guide's note on the mistake. The
+ * other is the scoresheet. Both stay mounted, so the panes
  * keep where they're scrolled to and the notes opened in them.
  */
 export function PhoneLesson({
@@ -34,16 +37,29 @@ export function PhoneLesson({
   /** Whether a swipe can reach the scoresheet's page, as the pill can. */
   readonly scoresheetReachable: boolean;
 }) {
-  const { moves, idea, aside } = model;
-  // The pane beside the moves: the idea, else past the guide the headline's why.
-  const ideaPane = idea ? (
-    <IdeaCard {...idea} density="compact" />
-  ) : aside ? (
-    // The headline tells it to screen readers.
-    <View aria-hidden>
-      <IdeaAside {...aside} />
+  const { idea, aside, acts } = model;
+  // At a cue the acts take the moves' pane, and the pane beside them asks
+  // the cue's question, then holds the guide's note on the mistake.
+  const moves = acts ? null : model.moves;
+  const actsPane = acts ? (
+    <View style={styles.acts}>
+      <ActRows acts={acts} direction="column" />
     </View>
   ) : null;
+  // The pane beside the moves: the idea, else past the guide the headline's why.
+  const ideaPane =
+    acts && asking(acts) ? (
+      <CuePane acts={acts} />
+    ) : acts?.note ? (
+      <ActsNote note={acts.note} />
+    ) : idea ? (
+      <IdeaCard {...idea} density="compact" />
+    ) : aside ? (
+      // The headline tells it to screen readers.
+      <View aria-hidden>
+        <IdeaAside {...aside} />
+      </View>
+    ) : null;
   return (
     <PhonePages
       head={
@@ -78,14 +94,19 @@ export function PhoneLesson({
     >
       {/* Leaving a row for the idea keeps its preview, so its notes can be pointed at. */}
       {/* Practice can hide both, and then the panes take no room. */}
-      {moves || ideaPane ? (
+      {moves || actsPane || ideaPane ? (
         <PointingArea onLeave={model.onLeave} style={styles.panes}>
           {moves ? (
             <FadingScroll style={[ideaPane ? styles.moves : styles.pane, styles.bleed]}>
               <CandidateList {...moves} density="compact" />
             </FadingScroll>
           ) : null}
-          {moves && ideaPane ? <Separator orientation="vertical" style={styles.hairline} /> : null}
+          {actsPane ? (
+            <FadingScroll style={ideaPane ? styles.moves : styles.pane}>{actsPane}</FadingScroll>
+          ) : null}
+          {(moves || actsPane) && ideaPane ? (
+            <Separator orientation="vertical" style={styles.hairline} />
+          ) : null}
           {ideaPane ? (
             <FadingScroll style={styles.pane} contentStyle={styles.idea}>
               {ideaPane}
@@ -108,4 +129,6 @@ const styles = StyleSheet.create({
   bleed: { marginLeft: -COMPACT_INSET },
   hairline: { marginTop: 6, marginBottom: 20, marginLeft: 6, marginRight: 14 },
   idea: { paddingTop: 2 },
+  // As wide as the rows' names, like the candidates' rows.
+  acts: { paddingTop: 2, minWidth: 128 },
 });

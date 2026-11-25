@@ -1,8 +1,9 @@
-import type { MoveQuality } from '@/analysis/quality';
+import { type MoveQuality, percent } from '@/analysis/quality';
 import type { HeadlineProps, News } from '@/components/GameStatus';
 import { endingHeadline, resultVerdict, type Verdict } from '@/game/ending';
 import type { Color, GameResult } from '@/game/replay';
 import type { LessonView } from '@/lesson/view';
+import type { Acts } from '@/opportunity/cue';
 import { qualityLooks } from '@/theme/moveQuality';
 
 /** The name of the screen where the openings are picked. */
@@ -48,10 +49,24 @@ interface StatusInput {
   readonly practice?: { readonly clean: boolean; readonly verdict?: MoveQuality };
   /** How the game ended for the learner, while the board shows its final position. */
   readonly ending?: Verdict;
+  /** The cue the board is in, in Explore (`cueHeadline`). */
+  readonly cue?: CueStatus;
+}
+
+/** A cue's acts with the moves its headline names, as the scoresheet writes them. */
+export interface CueStatus extends Pick<Acts, 'found' | 'payoff'> {
+  /** The other side's mistake: "Bg5". */
+  readonly mistake: string;
+  /** The line's reply, which punishes it: "Nxe4". */
+  readonly reply: string;
+  /** The learner's move at the cue, while the board shows it. */
+  readonly tried?: string;
+  /** How often players in the opponent's band play the mistake there (0 to 1), where counted. */
+  readonly share?: number;
 }
 
 /** The panel's headline, as `describeStatus` gives it. */
-export type Status = Pick<HeadlineProps, 'eyebrow' | 'title' | 'detail' | 'news'> & {
+export type Status = Pick<HeadlineProps, 'eyebrow' | 'title' | 'titleTip' | 'detail' | 'news'> & {
   /**
    * Where the headline tells that the guide has no moves here (off it, or at
    * a line's end), its title as a heading for the detail told apart from it.
@@ -85,6 +100,7 @@ export function describeStatus(
     startsRun,
     practice,
     ending,
+    cue,
   }: StatusInput,
 ): Status {
   if (loading) return { eyebrow: picking ? OPENINGS_TITLE : title, ...LOADING };
@@ -97,6 +113,8 @@ export function describeStatus(
     };
   const eyebrow = names.join(' · ') || title;
   if (ending) return { eyebrow, ...endingHeadline(ending, rival) };
+  // A phone tells it in the pane beside the acts instead.
+  if (cue) return { eyebrow, ...cueHeadline(cue), news: 'none' };
   // Beyond the guide with auto play off, nobody replies: the learner moves both sides.
   const playOn = auto ? `play on against ${engine}` : 'play on, moving both sides';
   if (lineEnded && practice?.clean)
@@ -225,3 +243,49 @@ const YOUR_MOVE = {
     restart: 'Playing here starts a new run from your first move.',
   },
 } as const;
+
+/**
+ * The headline of a cue's acts (src/opportunity/cue.ts): the question while
+ * it is open, then how the learner's try went, then the payoff. Example:
+ * "Your cue." over "Bg5 is a mistake. Find the move that punishes it."
+ */
+export function cueHeadline({
+  found,
+  payoff,
+  mistake,
+  reply,
+  tried = reply,
+  share,
+}: CueStatus): Pick<Status, 'title' | 'titleTip' | 'detail'> {
+  switch (found) {
+    case 'open':
+      return {
+        title: 'Your cue.',
+        titleTip:
+          share === undefined
+            ? undefined
+            : `About ${percent(share)} of players at your opponent's rating play ${mistake} here.`,
+        detail: `${mistake} is a mistake. Find the move that punishes it.`,
+      };
+    case 'shown':
+      return { title: 'Your cue.', detail: `${reply} punishes ${mistake}. Play it.` };
+    case 'pending':
+      return { title: 'Checking your move…', detail: `Does ${tried} punish ${mistake}?` };
+    case 'failed':
+      return {
+        title: 'Not this one.',
+        detail: `${tried} doesn't punish ${mistake}. Retry, or skip to play on.`,
+      };
+    case 'unchecked':
+      return {
+        title: 'Couldn’t check it.',
+        detail: `Stockfish gave up on ${tried}. Retry, or skip to play on.`,
+      };
+    case 'passed':
+      return payoff === 'done'
+        ? { title: 'Payoff complete.', detail: `That is what ${mistake} gave away.` }
+        : payoff === 'playing'
+          ? { title: 'The payoff.', detail: `Play on and cash in on ${mistake}.` }
+          : { title: 'Found it.', detail: `${tried} punishes ${mistake}.` };
+  }
+}

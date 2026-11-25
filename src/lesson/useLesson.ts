@@ -8,7 +8,13 @@
  * mistake, and the board. Where the opponent plays its own moves
  * (`opponentPlays`) the learner moves their own side; elsewhere, either.
  */
-import { StateContext, useController, useSubscription, useSuspense } from '@data-client/react';
+import {
+  type State,
+  StateContext,
+  useController,
+  useSubscription,
+  useSuspense,
+} from '@data-client/react';
 import { useIsFocused } from 'expo-router';
 import { use, useEffect, useMemo, useReducer } from 'react';
 
@@ -17,9 +23,11 @@ import type { Square } from '@/board/drawing';
 import type { Drag } from '@/board/pointer';
 import type { BoardProps } from '@/components/Board';
 import { dropMove, parsePositionKey } from '@/game/replay';
+import { haptic } from '@/components/haptics';
 import { type GameStore, useGame } from '@/game/useGame';
 import { finalOnly, isFinal } from '@/evaluation/evaluation';
 import { analysisError, getAnalysis, storedAnalyses, useAnalysis } from '@/resources/analysis';
+import { type Acts, cueActs, payoffReplies, tryVerdict } from '@/opportunity/cue';
 import { gameOpponent, useWarmOpponent } from '@/resources/opponent';
 import { hasMark, UNTOUCHED } from '@/progress/progress';
 import { LessonIndexContext } from '@/resources/lesson';
@@ -30,6 +38,7 @@ import { useNeedsStockfish } from '@/stockfish/demand';
 import { boardPress, boardSelect, lessonBoard } from './board';
 import { ideaPlayback } from './drawings';
 import {
+  type CueQuestion,
   guidance,
   type LessonMode,
   listedEngineMoves,
@@ -44,9 +53,9 @@ import { isPicking, pickingMoves } from './openings';
 import { lessonOpponent } from './opponent';
 import { samePointer } from './peek';
 import { beforeSideMoves, moveKinds, opponentPlays } from './practice';
-import { initialScreen, screenReducer } from './screen';
+import { type CueRecord, initialScreen, screenReducer } from './screen';
 import { bookMoves, type Candidate, engineCandidates } from './select';
-import { lessonView, type Pointer, preview, type ShownNote } from './view';
+import { type LessonView, lessonView, type Pointer, preview, type ShownNote } from './view';
 
 /** How long each board of a playback shows before the next. */
 const PLAYBACK_STEP_MS = 1100;
@@ -96,7 +105,10 @@ export function useLesson(
   useNeedsStockfish(focused);
   // Ready before the guide runs out, even with auto play off for now.
   useWarmOpponent(opponent, focused);
-  const [{ mode: modeState, peek, rareKey }, dispatch] = useReducer(screenReducer, initialScreen);
+  const [{ mode: modeState, peek, rareKey, cue: cueRecord }, dispatch] = useReducer(
+    screenReducer,
+    initialScreen,
+  );
   const { mode } = modeState;
   const everyProgress = useSuspense(getProgress);
   const progress = everyProgress[lesson.id] ?? UNTOUCHED;
@@ -108,14 +120,30 @@ export function useLesson(
   // Where the openings are picked, nobody replies: the learner plays both sides.
   const index = use(LessonIndexContext);
   const picking = isPicking(index, lesson.side, shownLine);
-  const rival = opponentPlays(mode, settings.auto, store[0], picking)
-    ? lessonOpponent(
-        lesson,
-        opponent,
-        gameOpponent(ctrl, opponent),
-        steering(lesson, progress, modeState),
-      )
-    : undefined;
+  const view = useMemo(
+    () => lessonView({ lesson, line: moves, ply: shownPly, opponent }),
+    [lesson, moves, shownPly, opponent],
+  );
+  const state = use(StateContext);
+  // A choice made at a cue lasts while the game's line still reaches the cue.
+  if (cueRecord && view.keys[cueRecord.ply] !== cueRecord.key) dispatch({ type: 'cueLeft' });
+  const acts = useActs(lesson, view, { moves, ply: shownPly }, mode === 'explore' && !picking, {
+    choice: cueRecord,
+    state,
+  });
+  const payoff = useMemo(() => view.cue && payoffReplies(view.cue), [view.cue]);
+  // A try at a cue that hasn't passed gets no reply (`Acts.held`); through
+  // the payoff the opponent plays the line's moves.
+  const rival =
+    opponentPlays(mode, settings.auto, store[0], picking) && !acts?.held
+      ? lessonOpponent(
+          lesson,
+          opponent,
+          gameOpponent(ctrl, opponent),
+          steering(lesson, progress, modeState) ??
+            (acts?.payoff === 'playing' ? payoff : undefined),
+        )
+      : undefined;
   const book = useMemo(() => bookMoves(lesson, moves), [lesson, moves]);
   const game = useGame(store, rival, {
     side: lesson.side,
@@ -126,16 +154,14 @@ export function useLesson(
   const { ply, plies, current } = game;
   // The store drops a move made while a lesson loads, so the board offers
   // none: chessground would show the dropped move until the lesson arrived.
-  const canMove = game.canMove && !pending;
+  // Nor while a try at a cue waits for its verdict: the next move would be
+  // the opponent's, held until then.
+  const canMove = game.canMove && !pending && !(acts?.held && acts.found === 'pending');
   // A move played before the learner's first starts a Practice run
   // (`modeReducer`); the moves that pick the opening are no move of theirs.
   const picks = useMemo(() => pickingMoves(index, lesson.side, moves), [index, lesson.side, moves]);
   const startsRun = beforeSideMoves(plies, lesson.side, ply, picks);
   const kinds = moveKinds(plies, lesson.side, book, picks);
-  const view = useMemo(
-    () => lessonView({ lesson, line: moves, ply, opponent }),
-    [lesson, moves, ply, opponent],
-  );
   // A Practice run counts the game's moves as the screen gets them, whoever
   // played them and however many landed at once.
   if (modeState.mode === 'practice' && modeState.line !== moves) {
@@ -181,8 +207,9 @@ export function useLesson(
   // Stockfish's best move for the board's position, whatever engine judges
   // the bar, and the rows of its moves the list shows, both from the
   // analysis the move labels read, deepening while it runs. Only Explore
-  // shows them, so Practice asks for nothing here.
-  const explore = focused && mode === 'explore';
+  // shows them, so Practice asks for nothing here; nor a try waiting for its
+  // verdict, whose searches would otherwise come after this newer one.
+  const explore = focused && mode === 'explore' && acts?.found !== 'pending';
   const analysis = useAnalysis('stockfish', explore ? shownLine : null);
   const lines = analysis?.lines;
   const engineRows = useMemo(
@@ -192,7 +219,6 @@ export function useLesson(
   const final = analysis?.final;
   // Stockfish's verdict on each guide candidate, from the same final analysis
   // and, for a move it doesn't list, the final analysis of where that leads.
-  const state = use(StateContext);
   const before = finalOnly(analysis);
   const lineAfter = (uci: Uci) => [...shownLine, uci];
   const afters = before
@@ -214,7 +240,11 @@ export function useLesson(
     () => new Map<Uci, EngineVerdict>(JSON.parse(judgedText) as typeof judged),
     [judgedText],
   );
-  const top = listedEngineMoves(view, mode, picking, engineRows, final);
+  // At an open cue every hint hides, but the reply once the learner asks for it.
+  const question: CueQuestion | undefined = acts?.live
+    ? { reveal: acts.found === 'shown' ? acts.cue.line[1] : undefined }
+    : undefined;
+  const top = listedEngineMoves(view, mode, picking, engineRows, final, question);
   const previewOf = (at: Pointer) => preview(lesson, view, at, top);
   const shown = guidance({
     view,
@@ -228,7 +258,13 @@ export function useLesson(
     playing: playing?.played,
     engine: { best: lines?.[0].uci, top: engineRows, final, verdicts },
     refutation: game.refutation,
+    cue: question,
   });
+  // The cue is felt as it lands: the mistake just played, at the game's latest move.
+  const landed = acts?.live && moves.length === acts.cue.ply ? acts.cue.key : undefined;
+  useEffect(() => {
+    if (landed) haptic('moveLanded');
+  }, [landed]);
   // The board's own move's label comes first: it needs the position before
   // too. If that search gave up, the label never comes, so don't wait for it.
   const labelled =
@@ -344,6 +380,22 @@ export function useLesson(
     play,
     /** Explore, or Practice with whether the run is clean. */
     modeState,
+    /** The acts of the cue the board is in, in Explore (src/opportunity/cue.ts). */
+    acts,
+    /** Back to the cue, to try another move. */
+    retryCue: () => {
+      if (acts) game.goto(acts.cue.ply);
+    },
+    /** Back to the cue, with its reply shown. */
+    showCue: () => {
+      if (!acts) return;
+      dispatch({ type: 'cue', ply: acts.cue.ply, key: acts.cue.key, choice: 'shown' });
+      game.goto(acts.cue.ply);
+    },
+    /** Leaves the cue's question: the hints come back, and the opponent replies to a try. */
+    skipCue: () => {
+      if (acts) dispatch({ type: 'cue', ply: acts.cue.ply, key: acts.cue.key, choice: 'skipped' });
+    },
     /** A move played on the board now starts a Practice run: no move of the learner's comes before. */
     startsRun,
     /** The learner chooses Explore or Practice. */
@@ -379,4 +431,55 @@ export function useLesson(
     /** The learner leaves the candidates and the idea card: their previews end. */
     leave: () => dispatch({ type: 'leave' }),
   };
+}
+
+/**
+ * The acts of the cue the board is in (`cueActs`), where `on` (Explore,
+ * past the openings' picking moves), with the verdict on the game's move at
+ * the cue from Stockfish's final answers in the store. It watches the
+ * position before the mistake only while a try waits on it: a newer watch
+ * would stop the board's search.
+ */
+function useActs(
+  lesson: Lesson,
+  view: LessonView,
+  { moves, ply }: { readonly moves: readonly Uci[]; readonly ply: number },
+  on: boolean,
+  { choice, state }: { readonly choice?: CueRecord; readonly state: State<unknown> },
+): Acts | undefined {
+  const ctrl = useController();
+  const cue = on ? view.cue : undefined;
+  const beforeLine = cue && moves.slice(0, cue.ply - 1);
+  const cueLine = cue && moves.slice(0, cue.ply);
+  const tried = cue && moves[cue.ply];
+  const [before, after] = cue
+    ? storedAnalyses(ctrl, 'stockfish', [beforeLine!, cueLine!], state).map(finalOnly)
+    : [];
+  const failed = (line?: readonly Uci[]) =>
+    !!line && analysisError(ctrl, 'stockfish', line, state) !== undefined;
+  const verdict =
+    cue && tried !== undefined
+      ? tryVerdict(lesson, cue, tried, {
+          before,
+          cue: after,
+          beforeFailed: failed(beforeLine),
+          cueFailed: failed(cueLine),
+        })
+      : undefined;
+  // Only a move the cue lists after its first waits on the position before.
+  const waitsOnBefore = verdict === 'pending' && after !== undefined;
+  useSubscription(
+    getAnalysis,
+    ...(waitsOnBefore ? (['stockfish', beforeLine!] as const) : ([null] as const)),
+  );
+  if (!cue) return undefined;
+  const chosen = choice?.ply === cue.ply && choice.key === cue.key ? choice.choice : undefined;
+  return cueActs({
+    cue,
+    moves,
+    ply,
+    verdict,
+    choice: chosen,
+    learnerToMove: view.learnerToMove,
+  });
 }

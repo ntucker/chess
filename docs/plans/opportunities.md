@@ -334,21 +334,40 @@ limits it ran with. Set 2026-11-24 (Decisions).
 
 ### Piece E: Cue and three acts
 
-In Explore, after the erring side plays a marked move into a cue, `guidance.ts` hides the
-candidates, Stockfish's best and verdicts until the learner tries (Practice's existing "hide every
-hint" branch); a `screen.ts` cue state holds the tries with Retry, Show the move and Skip, judged by
-`labelMove`, not `src/review/retry.ts` (tied to a finished game). A booked reply passes; any other
-passes only where it meets the Rules' accepted-reply test (piece A's `acceptedReplies`: best or
-good, still winning the cost floor over the score before the mistake; those replies are book moves
-where the punishing side is `Lesson.side`, Rules); Act III plays back through the lesson opponent; a
-haptic tick (`haptic('moveLanded')`, `src/components/haptics.ts`) marks the cue in Explore. Wide
-layout, and the phone layout on the redesign's two panes: three act rows on the left, one line and
-three icon buttons on the right. Waits on the phone redesign's panes. Starts with a design review of
-whether the cue is a third mode-like state in `screen.ts`, and records its outcome here before
-building. The starting proposal: a try is a board preview until it passes, then a move through
-`useGame` (the screen reducer does not own the game); Act III reuses peek's playback, which does not
-move the game; the three acts replace the trap card for a marked line, so landing stays the one
-trigger.
+In Explore, after the side the learner doesn't play plays a marked move, the learner answers it at
+the cue. Design review outcome (2026-11-25, agreed with the planning thread):
+
+- The cue is not a mode. It is derived from the line (`lineCue`, `src/opportunity/cue.ts`, carried
+  as `LessonView.cue`): the latest marked guide move, up to the board, played by the side that
+  isn't `Lesson.side`. It needs no note naming the mark, so finder marks work. A learner-falls trap
+  keeps the trap card and `LandedTrap`, as does Practice (piece F); in Explore the acts take an
+  opportunity's trap card's place and show its note once the punishment lands.
+- A try is a real game move through `useGame`, labelled by the existing badge. Its verdict
+  (`tryVerdict`) is derived each render: the line's own reply and a book move pass at once (49 of
+  the 105 shipped cues have no book move there); any other passes where the cue accepts it
+  (`acceptsReply` in `finder.ts`, the one predicate `acceptedReplies` is built on: the cue's first
+  line, or a listed move that labels best or good and still gains the mistake limit over the
+  position before), which needs the cue's final analysis and, for a listed move after the first,
+  the one before the mistake. A search given up leaves the try unchecked, shown as not passed.
+- While the board's latest move is a try at the cue that hasn't passed, the lesson opponent is held
+  (`Acts.held`: `useLesson` gives `useGame` no opponent), so a wrong try gets no reply and no effect
+  plays a pass. While the verdict is pending the board takes no move. Retry goes back to the cue;
+  the next move there replaces the try.
+- The one stored value is `ScreenState.cue`: the learner's choice at a cue (shown or skipped), with
+  the cue's ply and key, kept while the game's line still reaches it. The line can't tell either
+  choice. Show the move goes back to the cue and lists and draws only the line's reply. Skip leaves
+  the question: the hints come back and a held try gets its reply.
+- `guidance.ts` alone hides: at an open cue (`Acts.live`), the candidates, every note (the mistake's
+  own names its punishment), Stockfish's best and top moves and the verdicts.
+- Act III: the learner plays the punishing side with Explore's usual hints, and the lesson opponent
+  plays the line's moves (`payoffReplies`, since the band's most played can differ from the line).
+  The acts end at the line's end or where the game leaves it; an accepted reply other than the
+  line's has no Act III.
+- A haptic tick (`haptic('moveLanded')`) marks the cue as it lands at the game's latest move.
+- Wide: the acts as chips in a card where the trap card goes, with Retry, Show the move and Skip as
+  icon buttons while the cue asks, and the headline saying what to do. Phone, on the redesign's two
+  panes: the acts as rows in the moves pane, and in the other pane the headline's line and the
+  three icon buttons, then the guide's note once the punishment lands.
 
 ### Piece F: Practice and marks
 
