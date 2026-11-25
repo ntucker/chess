@@ -456,8 +456,8 @@ function ShareTip({ tip, children }: { readonly tip?: string; readonly children:
 }
 
 const STATIC = StyleSheet.create({
-  // As the heading's tip (`HeadingTip`), around the share alone.
-  tipped: { flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
+  // Around the share's number alone, as wide as it needs.
+  tipped: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
 });
 
 /** A share's least width, which holds 100% in caption text: larger text widens it. */

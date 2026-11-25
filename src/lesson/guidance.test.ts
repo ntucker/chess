@@ -9,6 +9,7 @@ import {
   type LessonMode,
   type LessonSwitches,
   listedEngineMoves,
+  listsOpportunities,
   notePlayback,
   type ShownIdea,
   verdictSearch,
@@ -879,5 +880,12 @@ describe('verdictSearch', () => {
 
   it('searches nothing where the list shows no verdicts', () => {
     expect(verdictSearch(shown(ADVANCE, 'practice'), false, true, none)).toBeUndefined();
+  });
+});
+
+describe('listsOpportunities', () => {
+  it('lists them in Explore alone, since Practice tests what they would name', () => {
+    expect(listsOpportunities('explore')).toBe(true);
+    expect(listsOpportunities('practice')).toBe(false);
   });
 });

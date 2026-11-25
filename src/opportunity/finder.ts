@@ -486,14 +486,24 @@ export function acceptedReplies(before: FinalAnalysis, after: FinalAnalysis, sid
   });
 }
 
-/** Higher score first; on a tie, the more reached, then by line, so the order is stable. */
 /**
  * A find's score: the share of games that reach its cue × its gain in the
  * band, what knowing it is worth per game. The lesson's list ranks by it too.
  */
 export const findScore = (cueReach: number, gain: number) => cueReach * gain;
 
-export const byScore = (a: Find, b: Find) =>
-  b.score - a.score ||
-  b.reach - a.reach ||
-  [...a.line, a.mistake].join(' ').localeCompare([...b.line, b.mistake].join(' '));
+/**
+ * Best first: the higher score (the unscored last), on a tie the more
+ * reached, then by the moves `through` the mistake, so the order is stable.
+ * The finder and the lesson's list rank alike.
+ */
+export const rankBy =
+  <T extends { readonly score?: number; readonly reach?: number }>(
+    through: (item: T) => readonly Uci[],
+  ) =>
+  (a: T, b: T) =>
+    (b.score ?? -1) - (a.score ?? -1) ||
+    (b.reach ?? -1) - (a.reach ?? -1) ||
+    through(a).join(' ').localeCompare(through(b).join(' '));
+
+export const byScore = rankBy<Find>(({ line, mistake }) => [...line, mistake]);

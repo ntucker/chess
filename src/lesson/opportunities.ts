@@ -8,7 +8,7 @@ import type { Chess } from 'chessops/chess';
 import { parseUci } from 'chessops/util';
 
 import { keyTurn, parsePosition, playMove, positionKey, readPositionKey } from '@/game/replay';
-import { findScore, type Move, reachOf } from '@/opportunity/finder';
+import { findScore, type Move, rankBy, reachOf } from '@/opportunity/finder';
 
 import type { Lesson, LessonMove, LessonPosition, PositionKey, Uci } from './lesson';
 import { guideOrder, mistakeLine } from './mistakes';
@@ -87,7 +87,7 @@ const reachesMistake = new WeakMap<Lesson, boolean>();
  * The opportunities of `lesson` in `band` (an index into its rating bands,
  * none where it has no counts), the scored ones best first, then the
  * unscored; ties go by reach, then by the line, as the finder ranks its finds
- * (`byScore`). Only mistakes the guide's moves reach from the start are
+ * (`rankBy`). Only mistakes the guide's moves reach from the start are
  * listed, as the finder keeps only those on the guide for a lesson. Worked
  * out once per lesson and band.
  */
@@ -141,11 +141,8 @@ function rankOpportunities(lesson: Lesson, band: number | undefined): Opportunit
   return found.sort(byRank);
 }
 
-/** Best first, as `byScore`: by score (the unscored last), then reach, then the line. */
-const byRank = (a: Opportunity, b: Opportunity) =>
-  (b.score ?? -1) - (a.score ?? -1) ||
-  (b.reach ?? -1) - (a.reach ?? -1) ||
-  a.line.join(' ').localeCompare(b.line.join(' '));
+/** Best first, as the finder ranks (`rankBy`); the line runs through the mistake. */
+const byRank = rankBy<Opportunity>(({ line }) => line);
 
 /** A move of the guide's walk (`guideLevels`): from one position to the next. */
 interface GuideStep {
@@ -190,36 +187,53 @@ function* guideLevels(lesson: Lesson): Generator<readonly GuideStep[]> {
   }
 }
 
+/**
+ * The guide's level `depth` of `lesson` (`guideLevels`, from 0), none past
+ * the last. Each lesson's walk runs once, and only as deep as asked, so the
+ * check for a list and the list itself share it.
+ */
+function levelAt(lesson: Lesson, depth: number): readonly GuideStep[] | undefined {
+  let walk = walks.get(lesson);
+  if (!walk) walks.set(lesson, (walk = { levels: [], rest: guideLevels(lesson) }));
+  while (walk.levels.length <= depth) {
+    const next = walk.rest.next();
+    if (next.done) return undefined;
+    walk.levels.push(next.value);
+  }
+  return walk.levels[depth];
+}
+const walks = new WeakMap<
+  Lesson,
+  { levels: (readonly GuideStep[])[]; rest: Generator<readonly GuideStep[]> }
+>();
+
 /** Whether `found` holds for one of `lesson`'s guide levels, walking no further than it must. */
 function someLevel(lesson: Lesson, found: (level: readonly GuideStep[]) => boolean): boolean {
-  for (const level of guideLevels(lesson)) if (found(level)) return true;
+  for (let depth = 0, level; (level = levelAt(lesson, depth)); depth++) {
+    if (found(level)) return true;
+  }
   return false;
 }
 
 /**
  * The guide's levels down to one past the deepest of `wanted` (so the moves
  * played there, the mistakes into their cues, count toward reach), or all of
- * them. They don't depend on the band, so each lesson's are walked once.
+ * them.
  */
 function levelsTo(
   lesson: Lesson,
   wanted: ReadonlySet<PositionKey>,
 ): readonly (readonly GuideStep[])[] {
-  let levels = walked.get(lesson);
-  if (!levels) {
-    const walking: (readonly GuideStep[])[] = [];
-    const left = new Set(wanted);
-    left.delete(positionKey(parsePosition(lesson.start)!));
-    for (const level of guideLevels(lesson)) {
-      walking.push(level);
-      if (!left.size) break;
-      for (const { to } of level) left.delete(to);
-    }
-    walked.set(lesson, (levels = walking));
+  const levels: (readonly GuideStep[])[] = [];
+  const left = new Set(wanted);
+  left.delete(positionKey(parsePosition(lesson.start)!));
+  for (let depth = 0, level; (level = levelAt(lesson, depth)); depth++) {
+    levels.push(level);
+    if (!left.size) break;
+    for (const { to } of level) left.delete(to);
   }
   return levels;
 }
-const walked = new WeakMap<Lesson, readonly (readonly GuideStep[])[]>();
 
 /**
  * The guide's levels (`levelsTo`) weighed in `band`: the moves `reachOf`
