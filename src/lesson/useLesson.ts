@@ -23,6 +23,8 @@ import { finalOnly, isFinal } from '@/evaluation/evaluation';
 import { analysisError, getAnalysis, storedAnalyses, useAnalysis } from '@/resources/analysis';
 import {
   type Acts,
+  type Cue,
+  type CueChoice,
   cueActs,
   inActs,
   payoffReplies,
@@ -155,7 +157,7 @@ export function useLesson(
     judge: 'stockfish',
     book,
     // The try's label waits for its verdict, whose searches come first.
-    labelled: !waiting,
+    labelling: !waiting,
   });
   const { ply, plies, current } = game;
   // The store drops a move made while a lesson loads, so the board offers
@@ -277,6 +279,8 @@ export function useLesson(
     if (landed && playedBefore.current < moves.length) haptic('moveLanded');
     playedBefore.current = moves.length;
   }, [landed, moves.length]);
+  const chooseAtCue = (at: Cue, choice: CueChoice) =>
+    dispatch({ type: 'cue', ply: at.ply, key: at.key, choice });
   // The board's own move's label comes first: it needs the position before
   // too. If that search gave up, the label never comes, so don't wait for it.
   const labelled =
@@ -401,12 +405,12 @@ export function useLesson(
     /** Back to the cue, with its reply shown. */
     showCue: () => {
       if (!acts) return;
-      dispatch({ type: 'cue', ply: acts.cue.ply, key: acts.cue.key, choice: 'shown' });
+      chooseAtCue(acts.cue, 'shown');
       game.goto(acts.cue.ply);
     },
     /** Leaves the cue's question: the hints come back, and the opponent replies to a try. */
     skipCue: () => {
-      if (acts) dispatch({ type: 'cue', ply: acts.cue.ply, key: acts.cue.key, choice: 'skipped' });
+      if (acts) chooseAtCue(acts.cue, 'skipped');
     },
     /** A move played on the board now starts a Practice run: no move of the learner's comes before. */
     startsRun,
@@ -474,10 +478,8 @@ function useActs(
   const inside = on && place && inActs(place) ? place : undefined;
   const cue = inside?.cue;
   // The lines to the position before the mistake, and to the cue.
-  const [beforeLine, cueLine] = cue
-    ? [moves.slice(0, cue.ply - 1), moves.slice(0, cue.ply)]
-    : [undefined, undefined];
-  const lines = beforeLine && cueLine ? [beforeLine, cueLine] : [];
+  const lines = cue ? [moves.slice(0, cue.ply - 1), moves.slice(0, cue.ply)] : [];
+  const [beforeLine, cueLine] = lines;
   const [before, after] = storedAnalyses(ctrl, 'stockfish', lines, state).map(finalOnly);
   const [beforeFailed = false, cueFailed = false] = lines.map(
     (line) => analysisError(ctrl, 'stockfish', line, state) !== undefined,
