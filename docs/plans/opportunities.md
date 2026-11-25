@@ -366,7 +366,9 @@ the cue. Design review outcome (2026-11-25, agreed with the planning thread):
   plays the line's moves (`payoffReplies`, since the band's most played can differ from the line).
   The acts end at the line's end or where the game leaves it; an accepted reply other than the
   line's has no Act III.
-- A haptic tick (`haptic('moveLanded')`) marks the cue as it lands at the game's latest move.
+- A haptic tick (`haptic('moveLanded')`) marks the cue when the opponent plays the mistake, not when
+  the screen opens at the cue or the board steps back onto it. A mistake the learner plays for the
+  other side ticks as their own move.
 - Wide: the acts as chips in a card where the trap card goes, with Retry, Show the move and Skip as
   icon buttons while the cue asks, and the headline saying what to do. Phone, on the redesign's two
   panes: the acts as rows in the moves pane, and in the other pane the headline's line and the

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals
 import { act, useReducer } from 'react';
 import { createRoot, type Root } from 'test-renderer';
 
+import { haptic } from '@/components/haptics';
 import type { FinalAnalysis } from '@/evaluation/evaluation';
 import { gameReducer, startGame } from '@/game/game';
 import { readPositionKey, sanToUci } from '@/game/replay';
@@ -37,8 +38,7 @@ jest.mock('@/resources/opponent', () => ({
 }));
 jest.mock('expo-router', () => mockStandIns().router);
 jest.mock('@/stockfish/demand', () => mockStandIns().demand);
-const mockHaptic = jest.fn();
-jest.mock('@/components/haptics', () => ({ haptic: (moment: string) => mockHaptic(moment) }));
+jest.mock('@/components/haptics', () => ({ haptic: jest.fn() }));
 jest.mock('@data-client/react', () => mockStandIns().dataClient(() => ({ fetch: async () => {} })));
 jest.mock('@/settings/SettingsProvider', () => mockStandIns().settingsProvider(() => mockSettings));
 
@@ -52,8 +52,8 @@ let root: Root | undefined;
 const renders: ReturnType<typeof useLesson>[] = [];
 const lesson = () => renders[renders.length - 1];
 
-function Lesson() {
-  renders.push(useLesson(BERLIN, useReducer(gameReducer, CUE, startGame), { pending: false }));
+function Lesson({ line = CUE }: { readonly line?: readonly string[] }) {
+  renders.push(useLesson(BERLIN, useReducer(gameReducer, line, startGame), { pending: false }));
   return null;
 }
 
@@ -63,12 +63,13 @@ const replyTime = () =>
     await new Promise((resolve) => setTimeout(resolve, 500));
   });
 
-async function atCue() {
+/** Opens the lesson at the cue, or at `line`. */
+async function atCue(line?: readonly string[]) {
   await act(async () => {
     root = createRoot();
     root.render(
       <LessonIndexContext value={FIXTURE_INDEX}>
-        <Lesson />
+        <Lesson line={line} />
       </LessonIndexContext>,
     );
   });
@@ -100,7 +101,7 @@ afterEach(async () => {
   root = undefined;
   renders.length = 0;
   mockFinals.clear();
-  mockHaptic.mockClear();
+  jest.mocked(haptic).mockClear();
 });
 
 describe('useLesson at a cue', () => {
@@ -132,8 +133,24 @@ describe('useLesson at a cue', () => {
     await act(async () => lesson().retryCue());
     expect(lesson().game.ply).toBe(9);
     expect(lesson().acts).toMatchObject({ found: 'open', live: true });
-    // Opening at the cue and coming back to it play no haptic: only the mistake being played does.
-    expect(mockHaptic).not.toHaveBeenCalled();
+  });
+
+  it('ticks when the opponent plays the mistake', async () => {
+    // A move before the cue, the opponent's most played is the mistake, 5.Nxe5.
+    await atCue(CUE.slice(0, -1));
+    await replyTime();
+    expect(lesson().game.moves).toEqual(CUE);
+    expect(haptic).toHaveBeenCalledTimes(1);
+    expect(haptic).toHaveBeenCalledWith('moveLanded');
+  });
+
+  it('stays still opening at the cue, and coming back to it', async () => {
+    await atCue();
+    expect(haptic).not.toHaveBeenCalled();
+    await play('a6');
+    jest.mocked(haptic).mockClear();
+    await act(async () => lesson().retryCue());
+    expect(haptic).not.toHaveBeenCalled();
   });
 
   it('lets the opponent answer once a wrong try is skipped', async () => {
