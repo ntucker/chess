@@ -197,4 +197,16 @@ describe('OpportunityList', () => {
       'No opportunity found',
     );
   });
+
+  it('says when the search stopped short, and retries it from the button', () => {
+    const retry = jest.fn();
+    const finder = { ...DONE, run: { finds: [], running: false, retry } };
+    const said = render({ finder }, (host) => {
+      act(() => host.querySelector<HTMLElement>(`[aria-label="${FIND_TIP}"]`)!.click());
+      return host.textContent ?? '';
+    });
+    expect(said).toContain('The search stopped short: an engine failed.');
+    expect(said).not.toContain('No opportunity found');
+    expect(retry).toHaveBeenCalledTimes(1);
+  });
 });

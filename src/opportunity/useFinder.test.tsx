@@ -127,15 +127,20 @@ describe('useFinder', () => {
     expect(mockWatched).toEqual([{ line: spot(7).line.join(' '), behind: true }]);
   });
 
-  it('leaves out an answer that failed, and ends the run when only failed ones are left', async () => {
+  it('leaves out an answer that failed, ends the run when only failed ones are left, and retries them', async () => {
     await render(ASK);
     await act(async () => {
       controllers[0].setError(getAnalysis, 'stockfish', STAFFORD, new Error('gave up'));
     });
-    expect(runs.at(-1)).toEqual({ finds: [], running: false });
+    expect(runs.at(-1)).toMatchObject({ finds: [], running: false });
     expect(mockNeeds.at(-1)).toBe(false);
+    // Retrying clears the error, and the search is asked for again.
+    mockWatched.length = 0;
+    await act(async () => runs.at(-1)!.retry!());
+    expect(runs.at(-1)).toMatchObject({ running: true, retry: undefined });
+    expect(mockWatched).toContainEqual({ line: STAFFORD.join(' '), behind: true });
 
-    // Maia's failure is left out the same way.
+    // Maia's failure is left out and retried the same way.
     mockShares.mockImplementationOnce(() => new Promise(() => {}));
     await analyse(STAFFORD, 'd2d3');
     expect(runs.at(-1)!.running).toBe(true);
@@ -143,5 +148,8 @@ describe('useFinder', () => {
       controllers[0].setError(getMaiaShares, 1500, [...STAFFORD, 'd2d3'], new Error('threw'));
     });
     expect(runs.at(-1)!.running).toBe(false);
+    mockShares.mockClear();
+    await act(async () => runs.at(-1)!.retry!());
+    expect(mockShares).toHaveBeenCalledWith(1500, [...STAFFORD, 'd2d3']);
   });
 });

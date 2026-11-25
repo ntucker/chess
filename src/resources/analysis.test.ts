@@ -75,6 +75,26 @@ describe('getAnalysis', () => {
   });
 });
 
+describe('getAnalysisBehind', () => {
+  it('answers with the final analysis, searched behind a shown position', async () => {
+    const { controller, sent, engine, depth } = setUp();
+    controller.subscribe(getAnalysis, 'stockfish', ['e2e4']);
+    await waitForSearch(sent, 'e2e4');
+    const behind = controller.fetch(getAnalysisBehind, 'stockfish', ['e2e4', 'e7e5']);
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(sent).not.toContain('stop');
+    depth(10);
+    engine.receive('bestmove c7c5');
+    await waitForSearch(sent, 'e2e4 e7e5');
+    depth(10);
+    engine.receive('bestmove c7c5');
+    expect(await behind).toMatchObject({ depth: 10, final: true });
+    controller.unsubscribe(getAnalysis, 'stockfish', ['e2e4']);
+    await new Promise((resolve) => setTimeout(resolve));
+    engine.detach();
+  });
+});
+
 describe('PositionAnalysis', () => {
   it('only deepens: a shallower depth never replaces a deeper one, and nothing replaces a final one', () => {
     const controller = newController();
@@ -180,6 +200,21 @@ describe('AnalysisManager', () => {
     engine.receive('bestmove c7c5');
     expect(stored('e2e4')).toMatchObject({ depth: 10, final: true });
     expect(failed()).toBe(false);
+    engine.detach();
+  });
+
+  it('searches again a background search that gave up, once it is invalidated', async () => {
+    const { controller, sent, engine } = setUp();
+    controller.subscribe(getAnalysisBehind, 'stockfish', ['e2e4']);
+    await waitForSearch(sent, 'e2e4');
+    engine.receive('bestmove c7c5');
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(analysisError(controller, 'stockfish', ['e2e4'], controller.getState())).toBeDefined();
+    sent.length = 0;
+    await controller.invalidate(getAnalysis, 'stockfish', ['e2e4']);
+    await waitForSearch(sent, 'e2e4');
+    controller.unsubscribe(getAnalysisBehind, 'stockfish', ['e2e4']);
+    await new Promise((resolve) => setTimeout(resolve));
     engine.detach();
   });
 

@@ -107,13 +107,11 @@ function watchAnalysis(
  * const { lines } = await ctrl.fetchIfStale(getAnalysis, 'stockfish', ['e2e4']);
  * ```
  */
-export const getAnalysis = new Endpoint(
-  async (engine: EvaluationEngine, line: readonly string[]) => ({
-    ...analysisKey(engine, line),
-    ...(await finalAnalysis((watcher) => watchAnalysis(engine, line, watcher))),
-  }),
-  { schema: PositionAnalysis, name: 'getAnalysis', dataExpiryLength: Infinity },
-);
+export const getAnalysis = new Endpoint(searchedTo(), {
+  schema: PositionAnalysis,
+  name: 'getAnalysis',
+  dataExpiryLength: Infinity,
+});
 
 /**
  * `getAnalysis` for a search that waits behind every other one (`behind` in
@@ -126,7 +124,18 @@ export const getAnalysis = new Endpoint(
  * useSubscription(getAnalysisBehind, ...(next ? (['stockfish', next] as const) : [null]));
  * ```
  */
-export const getAnalysisBehind = getAnalysis.extend({ name: 'getAnalysisBehind' });
+export const getAnalysisBehind = getAnalysis.extend({
+  name: 'getAnalysisBehind',
+  fetch: searchedTo({ behind: true }),
+});
+
+/** The fetch of `getAnalysis` and `getAnalysisBehind`: the final analysis, watched with `options`. */
+function searchedTo(options?: WatchOptions) {
+  return async (engine: EvaluationEngine, line: readonly string[]) => ({
+    ...analysisKey(engine, line),
+    ...(await finalAnalysis((watcher) => watchAnalysis(engine, line, watcher, options))),
+  });
+}
 
 /**
  * How `engine` judges the position after `line`, as far as it has got: for
@@ -216,10 +225,14 @@ export class AnalysisManager implements Manager {
       }
       if (action.type !== actionTypes.INVALIDATE) return next(action);
       // Once its error is cleared, a search that gave up starts again for
-      // the screens still showing it.
+      // the screens still showing it, through either endpoint.
       await next(action);
-      const shown = this.shown.get(action.key);
-      if (shown && !shown.release && !this.paused) this.run(shown);
+      if (this.paused) return;
+      for (const shown of this.shown.values()) {
+        if (!shown.release && getAnalysis.key(shown.engine, shown.line) === action.key) {
+          this.run(shown);
+        }
+      }
     };
   };
 

@@ -127,9 +127,10 @@ export function OpportunityList({
 
 /**
  * The finder's part of the list: its heading, source chip and the button that
- * runs it from the board's position (disabled while it runs from there), then
- * its finds best first, but for any the lesson already lists (`listed`, by
- * the line through the mistake). A spinner shows while it runs.
+ * runs it from the board's position (where it already runs from there, it
+ * retries what failed, else it is disabled), then its finds best first, but
+ * for any the lesson already lists (`listed`, by the line through the
+ * mistake). A spinner shows while it runs.
  */
 function FinderPart({
   finder: { run, from, rating, onFind },
@@ -145,7 +146,15 @@ function FinderPart({
   // Each row replays its line: once per run's answer, not per render.
   const found = useMemo(() => run.finds.map(findRow), [run.finds]);
   const rows = found.filter((row) => !listed.has(lineKey(row)));
-  const nothing = from === 'here' && !run.running && !found.length;
+  // Done where it runs from: it found nothing, or an answer failed (the button retries).
+  const done = from === 'here' && !run.running;
+  const note = !done
+    ? undefined
+    : run.retry
+      ? 'The search stopped short: an engine failed.'
+      : found.length
+        ? undefined
+        : 'No opportunity found from here.';
   return (
     <View>
       <Inline gap="2" align="center" style={[styles.finder, STATIC.finderHead]}>
@@ -168,7 +177,7 @@ function FinderPart({
             {
               icon: 'search',
               tip: 'Find opportunities from this position',
-              onPress: from === 'here' ? undefined : onFind,
+              onPress: from === 'here' ? run.retry : onFind,
             },
           ]}
         />
@@ -176,9 +185,9 @@ function FinderPart({
       {rows.map((row) => (
         <Row key={lineKey(row)} row={row} styles={styles} onPlay={onPlay} />
       ))}
-      {nothing ? (
+      {note ? (
         <Text role="caption" tone="secondary" style={[styles.finder, STATIC.empty]}>
-          No opportunity found from here.
+          {note}
         </Text>
       ) : null}
     </View>

@@ -9,6 +9,7 @@ import type { MaiaRating } from '@/maia/ratings';
 import {
   analysisError,
   analysisKey,
+  getAnalysis,
   getAnalysisBehind,
   PositionAnalysis,
 } from '@/resources/analysis';
@@ -37,9 +38,11 @@ export interface FinderRun {
   /**
    * Whether answers it can ask for are still missing: the run goes on. One
    * that failed (Stockfish gave up, Maia's network threw) is not asked again,
-   * so the run ends without what lies beyond it.
+   * so the run can end without what lies beyond it.
    */
   readonly running: boolean;
+  /** Asks again for the answers that failed; none while none has. */
+  readonly retry?: () => void;
 }
 
 /** How many of Maia's answers are asked for at once: its worker answers one after another. */
@@ -94,6 +97,7 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
         : analysisError(ctrl, 'stockfish', spot.line, state) !== undefined;
     return {
       asking: requests.filter((request) => !failed(request)),
+      failed: requests.filter(failed),
       finds: [...finds, ...offGuide.filter((find) => keeps(find))].sort(byScore),
     };
   }, [ask, ctrl, state]);
@@ -120,8 +124,20 @@ export function useFinder(ask: FinderAsk | undefined): FinderRun {
     }
   }, [ask, ctrl, wanted]);
 
+  const failed = result?.failed ?? [];
   return {
     finds: result?.finds ?? [],
     running: asking.length > 0,
+    // Clearing an answer's error asks for it again: Maia's through the effect, Stockfish's
+    // through the manager, which restarts a search that gave up once it is invalidated.
+    retry:
+      ask && failed.length
+        ? () => {
+            for (const { kind, spot } of failed) {
+              if (kind === 'replies') void ctrl.invalidate(getMaiaShares, ask.rating, spot.line);
+              else void ctrl.invalidate(getAnalysis, 'stockfish', spot.line);
+            }
+          }
+        : undefined,
   };
 }
