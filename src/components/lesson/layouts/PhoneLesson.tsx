@@ -6,7 +6,9 @@ import { ScoresheetReview } from '@/components/ReviewLinks';
 import { FadingScroll } from '@/theme/Narrow';
 
 import { CandidateList, COMPACT_INSET } from '../CandidateList';
-import { ActRows, asking, CuePane } from '../CueActs';
+import { unanswered } from '@/opportunity/cue';
+
+import { ActRows, CuePane } from '../CueActs';
 import { IdeaAside, IdeaCard, PastNote } from '../IdeaCard';
 import { PointingArea } from '../PointingArea';
 import { headlineNews } from '../status';
@@ -108,7 +110,7 @@ export function PhoneLesson({
  * headline's why.
  */
 function besideMoves({ acts, idea, aside }: LessonScreenModel) {
-  if (acts && asking(acts)) return <CuePane acts={acts} />;
+  if (acts && unanswered(acts.found)) return <CuePane acts={acts} />;
   if (acts?.note) return <PastNote {...acts.note} />;
   if (idea) return <IdeaCard {...idea} density="compact" />;
   if (!aside) return null;

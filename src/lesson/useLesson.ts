@@ -32,7 +32,6 @@ import { useNeedsStockfish } from '@/stockfish/demand';
 import { boardPress, boardSelect, lessonBoard } from './board';
 import { ideaPlayback } from './drawings';
 import {
-  askingMode,
   type CueGuidance,
   guidance,
   type LessonMode,
@@ -121,7 +120,10 @@ export function useLesson(
   );
   // A choice made at a cue lasts while the game's line still reaches the cue.
   if (cueRecord && view.keys[cueRecord.ply] !== cueRecord.key) dispatch({ type: 'cueLeft' });
-  const acts = useActs(lesson, view, moves, mode === 'explore' && !picking, cueRecord);
+  const acts = useActs(lesson, view, moves, cueRecord, {
+    on: mode === 'explore' && !picking,
+    focused,
+  });
   // A try at a cue waiting for its verdict: nothing moves until it comes.
   const waiting = acts?.found === 'pending';
   // Through the payoff the opponent plays the line's moves.
@@ -143,6 +145,8 @@ export function useLesson(
     active: focused,
     judge: 'stockfish',
     book,
+    // The try's label waits for its verdict, whose searches come first.
+    labelled: !waiting,
   });
   const { ply, plies, current } = game;
   // The store drops a move made while a lesson loads, so the board offers
@@ -201,7 +205,7 @@ export function useLesson(
   // the bar, and the rows of its moves the list shows, both from the
   // analysis the move labels read, deepening while it runs. Only Explore
   // shows them, so Practice asks for nothing here; nor a try waiting for its
-  // verdict, whose searches would otherwise come after this newer one.
+  // verdict, so the candidates' badges watch nothing newer than its searches.
   const boardSearch = focused && mode === 'explore' && !waiting;
   const analysis = useAnalysis('stockfish', boardSearch ? shownLine : null);
   const lines = analysis?.lines;
@@ -239,7 +243,7 @@ export function useLesson(
     open: acts.live,
     reveal: acts.found === 'shown' ? acts.cue.line[1] : undefined,
   };
-  const top = listedEngineMoves(view, askingMode(mode, cue), picking, engineRows, final);
+  const top = listedEngineMoves(view, mode, picking, engineRows, final, cue);
   const previewOf = (at: Pointer) => preview(lesson, view, at, top);
   const shown = guidance({
     view,
@@ -431,16 +435,17 @@ export function useLesson(
 /**
  * The acts of the cue the board is in (`cueActs`), where `on` (Explore,
  * past the openings' picking moves), with the verdict on the game's move at
- * the cue from Stockfish's final answers in the store. It watches the
- * position before the mistake only while a try waits on it: a newer watch
- * would stop the board's search.
+ * the cue from Stockfish's final answers in the store. While the verdict is
+ * pending and the screen is in front, it watches the search it waits on: the
+ * cue's, then, for a move the cue lists after its first, the position
+ * before the mistake's.
  */
 function useActs(
   lesson: Lesson,
   view: LessonView,
   moves: readonly Uci[],
-  on: boolean,
   record: CueRecord | undefined,
+  { on, focused }: { readonly on: boolean; readonly focused: boolean },
 ): Acts | undefined {
   const ctrl = useController();
   const state = use(StateContext);
@@ -456,7 +461,10 @@ function useActs(
   const inside = on && place && inActs(place) ? place : undefined;
   const cue = inside?.cue;
   // The lines to the position before the mistake, and to the cue.
-  const lines = cue ? [moves.slice(0, cue.ply - 1), moves.slice(0, cue.ply)] : [];
+  const [beforeLine, cueLine] = cue
+    ? [moves.slice(0, cue.ply - 1), moves.slice(0, cue.ply)]
+    : [undefined, undefined];
+  const lines = beforeLine && cueLine ? [beforeLine, cueLine] : [];
   const [before, after] = storedAnalyses(ctrl, 'stockfish', lines, state).map(finalOnly);
   const [beforeFailed = false, cueFailed = false] = lines.map(
     (line) => analysisError(ctrl, 'stockfish', line, state) !== undefined,
@@ -466,11 +474,10 @@ function useActs(
     cue && tried !== undefined
       ? tryVerdict(lesson, cue, tried, { before, cue: after, beforeFailed, cueFailed })
       : undefined;
-  // Only a move the cue lists after its first waits on the position before.
-  const waitsOnBefore = verdict === 'pending' && after !== undefined;
+  const waitsOn = focused && verdict === 'pending' ? (after ? beforeLine : cueLine) : undefined;
   useSubscription(
     getAnalysis,
-    ...(waitsOnBefore ? (['stockfish', lines[0]] as const) : ([null] as const)),
+    ...(waitsOn ? (['stockfish', waitsOn] as const) : ([null] as const)),
   );
   return inside && cueActs({ ...inside, verdict });
 }

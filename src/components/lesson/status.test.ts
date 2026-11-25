@@ -33,6 +33,30 @@ describe('describeStatus', () => {
     });
   });
 
+  it("asks at a cue, told beside a phone's acts until a try passes", () => {
+    const cue = { mistake: 'Nxe5', reply: 'c6', share: 0.31 } as const;
+    expect(
+      describeStatus(view('inside'), { ...INPUT, cue: { ...cue, found: 'open', payoff: 'ahead' } }),
+    ).toMatchObject({
+      title: 'Your cue.',
+      titleTip: "About 31% of players at your opponent's rating play Nxe5 here.",
+      detail: 'Nxe5 is a mistake. Find the move that punishes it.',
+      news: 'none',
+    });
+    expect(
+      describeStatus(view('inside'), {
+        ...INPUT,
+        cue: { ...cue, found: 'failed', payoff: 'ahead', tried: 'a6' },
+      }),
+    ).toMatchObject({ title: 'Not this one.', news: 'none' });
+    expect(
+      describeStatus(view('inside'), {
+        ...INPUT,
+        cue: { ...cue, found: 'passed', payoff: 'playing' },
+      }),
+    ).toMatchObject({ title: 'The payoff.', news: 'all' });
+  });
+
   it('leaves it out inside the guide', () => {
     expect(describeStatus(view('inside'), INPUT).pastGuide).toBeUndefined();
   });

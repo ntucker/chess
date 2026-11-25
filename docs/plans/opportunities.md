@@ -342,16 +342,18 @@ the cue. Design review outcome (2026-11-25, agreed with the planning thread):
   isn't `Lesson.side`. It needs no note naming the mark, so finder marks work. A learner-falls trap
   keeps the trap card and `LandedTrap`, as does Practice (piece F); in Explore the acts take an
   opportunity's trap card's place and show its note once the punishment lands.
-- A try is a real game move through `useGame`, labelled by the existing badge. Its verdict
+- A try is a real game move through `useGame`, labelled by the existing badge once its verdict
+  is in (the label's search waits, so the searches the verdict needs run first). Its verdict
   (`tryVerdict`) is derived each render: the line's own reply and a book move pass at once (49 of
   the 105 shipped cues have no book move there); any other passes where the cue accepts it
-  (`acceptsReply` in `finder.ts`, the one predicate `acceptedReplies` is built on: the cue's first
+  (`acceptsReply` in `accepts.ts`, the one predicate `acceptedReplies` is built on: the cue's first
   line, or a listed move that labels best or good and still gains the mistake limit over the
   position before), which needs the cue's final analysis and, for a listed move after the first,
   the one before the mistake. A search given up leaves the try unchecked, shown as not passed.
 - While the board's latest move is a try at the cue that hasn't passed, the lesson opponent is held
   (`Acts.held`: `useLesson` gives `useGame` no opponent), so a wrong try gets no reply and no effect
-  plays a pass. While the verdict is pending the board takes no move. Retry goes back to the cue;
+  plays a pass. While the verdict is pending the board takes no move, and only the search it
+  waits on is watched, while the screen is in front. Retry goes back to the cue;
   the next move there replaces the try.
 - The one stored value is `ScreenState.cue`: the learner's choice at a cue (shown or skipped), with
   the cue's ply and key, kept while the game's line still reaches it. The line can't tell either

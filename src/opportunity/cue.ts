@@ -12,7 +12,7 @@ import { followedMoves, mistakeLine } from '@/lesson/mistakes';
 import type { ReplyChoice } from '@/lesson/opponent';
 import { guideMove } from '@/lesson/select';
 
-import { acceptsReply } from './finder';
+import { acceptsReply } from './accepts';
 
 /**
  * A cue the line reached: the other side played a marked mistake, and the
@@ -125,6 +125,22 @@ export type CueChoice = 'shown' | 'skipped';
  */
 export type Found = 'open' | 'shown' | TryVerdict;
 
+/** Whether the cue's question still stands: no try has passed. Its controls show meanwhile. */
+export const unanswered = (found: Found) => found !== 'passed';
+
+/**
+ * Which of the cue's controls do something: Retry, back to the cue, after a
+ * try that didn't pass; Show the move until it is shown; Skip while the
+ * question stands.
+ */
+export function cueControls(found: Found) {
+  return {
+    retry: found === 'failed' || found === 'unchecked',
+    show: unanswered(found) && found !== 'shown',
+    skip: unanswered(found),
+  };
+}
+
 /**
  * Act III, once the cue is passed with the line's reply: still to come, being
  * played, played to the line's end, or none (the line ends at the reply, or
@@ -150,8 +166,7 @@ export interface Acts {
   readonly held: boolean;
 }
 
-/** Where the board stands in a game that reached `cue`. */
-export interface ActsPlace {
+export interface ActsInput {
   readonly cue: Cue;
   /** The game's moves. */
   readonly moves: readonly Uci[];
@@ -161,9 +176,6 @@ export interface ActsPlace {
   readonly choice?: CueChoice;
   /** The side to move at the board is the learner's. */
   readonly learnerToMove: boolean;
-}
-
-export interface ActsInput extends ActsPlace {
   /** The verdict on the game's move at the cue (`moves[cue.ply]`), where it has one. */
   readonly verdict?: TryVerdict;
 }
@@ -171,15 +183,18 @@ export interface ActsInput extends ActsPlace {
 /**
  * Whether the board is in `cue`'s acts: from the cue to the last move the
  * game plays along its line (a try off it counts one move), and, where the
- * game played the whole line, at the learner's turn right after, so the news
- * of its end stays until the learner moves (as `newsShown` in
- * src/lesson/guidance.ts). A skipped cue has none: the board is ordinary
- * Explore again.
+ * game played the whole line or a try off it passed, at the learner's turn
+ * right after, so the news stays until the learner moves (as `newsShown` in
+ * src/lesson/guidance.ts). Without a verdict a try off the line counts as
+ * passed, so the answer bounds the acts before the verdict is known. A
+ * skipped cue has none: the board is ordinary Explore again.
  */
-export function inActs({ cue, moves, ply, choice, learnerToMove }: ActsPlace): boolean {
+export function inActs({ cue, moves, ply, choice, learnerToMove, verdict }: ActsInput): boolean {
   if (choice === 'skipped' || ply < cue.ply) return false;
-  const last = cue.ply - 1 + Math.max(cue.followed, moves[cue.ply] === undefined ? 1 : 2);
-  const ended = cue.followed === cue.line.length;
+  const tried = moves[cue.ply];
+  const last = cue.ply - 1 + Math.max(cue.followed, tried === undefined ? 1 : 2);
+  const offLine = tried !== undefined && tried !== cue.line[1];
+  const ended = cue.followed === cue.line.length || (offLine && (verdict ?? 'passed') === 'passed');
   return ply <= last || (ply === last + 1 && ended && learnerToMove);
 }
 

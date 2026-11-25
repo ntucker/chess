@@ -215,7 +215,7 @@ const NO_VERDICTS: ReadonlyMap<Uci, EngineVerdict> = new Map();
  * find a move as Practice does on their turn, so it hides what Practice
  * hides there (the candidates, Stockfish's best, top moves and verdicts).
  */
-export const askingMode = (mode: LessonMode, cue: CueGuidance | undefined): LessonMode =>
+const askingMode = (mode: LessonMode, cue: CueGuidance | undefined): LessonMode =>
   cue?.open ? 'practice' : mode;
 
 /** Whether "Arrows" changes anything in `mode`: only in Explore. */
@@ -276,7 +276,8 @@ const tagsBest = (view: LessonView, final: boolean | undefined, uci: Uci) =>
  * and the strongest reply. Example: in the Urusov Gambit,
  * after 1.e4 e5 2.Bc4 Nf6 3.d4 exd4 4.Nf3, the guide lists only 4...Nxe4 and
  * Stockfish's 4...Bb4+ is listed after it. Where the moves pick the opening
- * the rows are openings, so none is added.
+ * the rows are openings, so none is added; at an open cue, none either
+ * (`askingMode`).
  */
 export function listedEngineMoves(
   view: LessonView,
@@ -284,11 +285,13 @@ export function listedEngineMoves(
   picking: boolean,
   top: readonly Candidate[],
   final: boolean | undefined,
+  cue: CueGuidance | undefined,
 ): readonly Candidate[] {
-  if (listsTopMoves(view, mode)) return top;
+  const applied = askingMode(mode, cue);
+  if (listsTopMoves(view, applied)) return top;
   const best = top.at(0);
   const listsBest =
-    mode === 'explore' &&
+    applied === 'explore' &&
     !picking &&
     !view.learnerToMove &&
     best !== undefined &&
@@ -346,7 +349,7 @@ export function guidance(input: GuidanceInput): Guidance {
     .filter(({ note }) => note.ideas?.some((idea) => drawsOnBoard(idea) && allowed(idea)))
     .map(({ note }) => note);
   const pointedNote = !playing && pointed && pointable.includes(pointed) ? pointed : undefined;
-  const top = listedEngineMoves(view, mode, picking, engine?.top ?? [], engine?.final);
+  const top = listedEngineMoves(view, input.mode, picking, engine?.top ?? [], engine?.final, cue);
   const board = boardShown({
     candidates,
     liftable: [...withRare, ...top],
@@ -384,7 +387,8 @@ export function guidance(input: GuidanceInput): Guidance {
     verdicts: explore && !picking ? (engine?.verdicts ?? NO_VERDICTS) : undefined,
     refutation,
     trap,
-    trapIn: trap && (cue && !trap.trap.learnerFalls ? 'acts' : 'card'),
+    // The cue's own mistake: the cue comes right after it.
+    trapIn: trap && (cue && view.cue?.ply === trap.ply + 1 ? 'acts' : 'card'),
     lineEnded: view.lineEnd !== undefined && newsShown(view, view.lineEnd),
   };
 }

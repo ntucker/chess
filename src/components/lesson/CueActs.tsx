@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { type IconAction, IconActions } from '@/components/IconActions';
 import { Notation } from '@/components/Notation';
-import type { Acts, Found, Payoff } from '@/opportunity/cue';
+import { type Acts, type Found, type Payoff, unanswered } from '@/opportunity/cue';
 import { fonts } from '@/theme/theme';
 
 import { PastNote } from './IdeaCard';
@@ -126,7 +126,7 @@ export function CueControls({
   onRetry,
   onShow,
   onSkip,
-}: Omit<ActsModel, 'line' | 'found' | 'payoff'>) {
+}: Pick<ActsModel, 'onRetry' | 'onShow' | 'onSkip'>) {
   const actions: readonly IconAction[] = [
     { icon: 'refresh', tip: 'Retry: back to the cue to try another move', onPress: onRetry },
     {
@@ -147,9 +147,6 @@ export function CueControls({
   );
 }
 
-/** Whether the cue's question still waits on the learner: its controls show. */
-export const asking = ({ found }: Pick<ActsModel, 'found'>) => found !== 'passed';
-
 /**
  * A cue's acts in the wide panel, where the trap card would be: the acts as
  * chips, then the cue's controls while it asks, or the guide's note once the
@@ -168,7 +165,7 @@ export function ActsCard({ acts }: { readonly acts: ActsModel }) {
     >
       <Stack gap="3">
         <ActRows acts={acts} direction="row" />
-        {asking(acts) ? <CueControls {...acts} /> : null}
+        {unanswered(acts.found) ? <CueControls {...acts} /> : null}
         {acts.note ? <PastNote {...acts.note} /> : null}
       </Stack>
     </Surface>

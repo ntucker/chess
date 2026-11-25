@@ -26,14 +26,14 @@ import {
   shareSource,
 } from '@/lesson/select';
 import { useLesson } from '@/lesson/useLesson';
-import type { Cue } from '@/opportunity/cue';
+import { type Cue, cueControls } from '@/opportunity/cue';
 import { describeOpponent } from '@/opponent/opponent';
 import { getLesson, LessonIndexContext, type LessonId } from '@/resources/lesson';
 import { reviewHref } from '@/review/address';
 import { useSettings } from '@/settings/SettingsProvider';
 
 import type { CandidateList } from './CandidateList';
-import { type ActsModel, asking } from './CueActs';
+import type { ActsModel } from './CueActs';
 import { type IdeaAside, type IdeaCard, noNotesText } from './IdeaCard';
 import type { LessonControls } from './LessonControls';
 import type { TrapCard } from './TrapCard';
@@ -176,6 +176,7 @@ export function useLessonScreen({
   const described = describeOpponent(opponent);
   const preview = guidance.preview?.candidate;
   const trap = guidance.trapIn === 'card' ? guidance.trap : undefined;
+  const controls = acts && cueControls(acts.found);
   const cueFacts = useCueFacts(lesson, acts?.cue, opponentBand(lesson, opponent));
   const cue = acts &&
     cueFacts && {
@@ -371,24 +372,21 @@ export function useLessonScreen({
           onReach: reachCard,
         }
       : null,
-    acts: acts
-      ? {
-          found: acts.found,
-          payoff: acts.payoff,
-          line: headline.detail,
-          // Only where the board shows the try that didn't pass.
-          onRetry:
-            (acts.found === 'failed' || acts.found === 'unchecked') && view.ply > acts.cue.ply
-              ? retryCue
-              : undefined,
-          onShow: asking(acts) && acts.found !== 'shown' ? showCue : undefined,
-          onSkip: asking(acts) ? skipCue : undefined,
-          note:
-            guidance.trapIn === 'acts' && guidance.trap
-              ? { lesson, shown: guidance.trap.note, learner, playback }
-              : undefined,
-        }
-      : null,
+    acts:
+      acts && controls
+        ? {
+            found: acts.found,
+            payoff: acts.payoff,
+            line: headline.detail,
+            onRetry: controls.retry ? retryCue : undefined,
+            onShow: controls.show ? showCue : undefined,
+            onSkip: controls.skip ? skipCue : undefined,
+            note:
+              guidance.trapIn === 'acts' && guidance.trap
+                ? { lesson, shown: guidance.trap.note, learner, playback }
+                : undefined,
+          }
+        : null,
     trap: trap
       ? {
           lesson,

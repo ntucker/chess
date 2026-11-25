@@ -1,7 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
 import {
-  askingMode,
   type CueGuidance,
   guidance,
   type EngineView,
@@ -70,13 +69,7 @@ function shown(
   const view = sampleView(sans);
   const stockfish = engineView(sans, engine);
   // As useLesson does: a pointer previews only the rows the list shows.
-  const listed = listedEngineMoves(
-    view,
-    askingMode(mode, cue),
-    picking,
-    stockfish.top,
-    stockfish.final,
-  );
+  const listed = listedEngineMoves(view, mode, picking, stockfish.top, stockfish.final, cue);
   return guidance({
     view,
     mode,

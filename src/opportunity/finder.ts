@@ -10,11 +10,10 @@
  * of them and asks again; there is no queue to keep in step. The import script
  * answers from lichess and Node Stockfish, the app from its store.
  */
-import { judgement, MISTAKE_LOSS, moveLoss } from '@/analysis/quality';
+import { MISTAKE_LOSS, moveLoss } from '@/analysis/quality';
 import {
   type Analysis,
   type FinalAnalysis,
-  forSide,
   isFinal,
   scoreFor,
   sketchOnly,
@@ -23,6 +22,7 @@ import type { Color } from '@/game/replay';
 import type { PositionKey, Uci } from '@/lesson/lesson';
 import { LikeliestFirst } from '@/lesson/likeliestFirst';
 
+import { acceptsReply } from './accepts';
 import { gainIfKnown } from './gain';
 import { type Limits, LIMITS } from './limits';
 import { type Disagreement, payoff } from './payoff';
@@ -451,30 +451,6 @@ function replyLosses(
  */
 export const acceptedReplies = (before: FinalAnalysis, after: FinalAnalysis, side: Color): Uci[] =>
   after.lines.flatMap(({ uci }) => (uci && acceptsReply(before, after, side, uci) ? [uci] : []));
-
-/**
- * Whether the cue accepts `uci`, a reply of the punishing `side`, by its
- * final analysis `after`: its first line always (so a cue has one even when
- * the searches before and after the mistake disagree a little); another move
- * it lists where that move labels best or good and still gains at least the
- * mistake limit beside `before`, the final analysis of the position before
- * the mistake; a move it doesn't list never. Undefined while `before` is
- * needed and missing: only a listed move after the first needs it.
- */
-export function acceptsReply(
-  before: FinalAnalysis | undefined,
-  after: FinalAnalysis,
-  side: Color,
-  uci: Uci,
-): boolean | undefined {
-  const rank = after.lines.findIndex((line) => line.uci === uci);
-  if (rank <= 0) return rank === 0;
-  if (!before) return undefined;
-  const quality = judgement(after, undefined, uci, side)?.quality;
-  const good = quality === 'best' || quality === 'good';
-  const base = forSide(before.lines[0].evaluation.score, side);
-  return good && forSide(after.lines[rank].evaluation.score, side) - base >= MISTAKE_LOSS;
-}
 
 /** Higher score first; on a tie, the more reached, then by line, so the order is stable. */
 export const byScore = (a: Find, b: Find) =>

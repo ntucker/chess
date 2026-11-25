@@ -3,7 +3,7 @@ import type { HeadlineProps, News } from '@/components/GameStatus';
 import { endingHeadline, resultVerdict, type Verdict } from '@/game/ending';
 import type { Color, GameResult } from '@/game/replay';
 import type { LessonView } from '@/lesson/view';
-import type { Acts } from '@/opportunity/cue';
+import { type Acts, unanswered } from '@/opportunity/cue';
 import { qualityLooks } from '@/theme/moveQuality';
 
 /** The name of the screen where the openings are picked. */
@@ -59,7 +59,7 @@ export interface CueStatus extends Pick<Acts, 'found' | 'payoff'> {
   readonly mistake: string;
   /** The line's reply, which punishes it: "Nxe4". */
   readonly reply: string;
-  /** The learner's move at the cue, while the board shows it. */
+  /** The learner's move at the cue, once played. */
   readonly tried?: string;
   /** How often players in the opponent's band play the mistake there (0 to 1), where counted. */
   readonly share?: number;
@@ -113,8 +113,11 @@ export function describeStatus(
     };
   const eyebrow = names.join(' · ') || title;
   if (ending) return { eyebrow, ...endingHeadline(ending, rival) };
-  // A phone tells it in the pane beside the acts instead.
-  if (cue) return { eyebrow, ...cueHeadline(cue), news: 'none' };
+  // While the question stands a phone tells it in the pane beside the acts
+  // instead, with the cue's controls; once answered, the headline tells it.
+  if (cue) {
+    return { eyebrow, ...cueHeadline(cue), news: unanswered(cue.found) ? 'none' : 'all' };
+  }
   // Beyond the guide with auto play off, nobody replies: the learner moves both sides.
   const playOn = auto ? `play on against ${engine}` : 'play on, moving both sides';
   if (lineEnded && practice?.clean)

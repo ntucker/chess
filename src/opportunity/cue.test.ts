@@ -8,7 +8,7 @@ import { mistakeLine } from '@/lesson/mistakes';
 import { candidates, lineKeys } from '@/lesson/select';
 import { lessonView } from '@/lesson/view';
 
-import { type CueAnalyses, cueActs, lineCue, payoffReplies, tryVerdict } from './cue';
+import { type CueAnalyses, cueActs, cueControls, lineCue, payoffReplies, tryVerdict } from './cue';
 
 // Black's Berlin: after 4.d3 Ne7, White's 5.Nxe5? is marked, and the line
 // punishes it with 5...c6 6.Bc4 Qa5+, forking king and knight. The guide
@@ -163,11 +163,24 @@ describe('cueActs', () => {
     ).toBeUndefined();
   });
 
-  it('has no payoff for an accepted reply other than the line’s', () => {
+  it('has no payoff for an accepted reply other than the line’s, but keeps its news through the answer', () => {
     const other = [...moves(9), played(cue.key, 'Nc6')];
     expect(
       cueActs({ ...input, cue: cueAt(other), moves: other, ply: 10, verdict: 'passed' }),
     ).toMatchObject({ found: 'passed', payoff: 'none' });
+    const answered = [...other, uciLine(...SETUP, 'Nxe5', 'Nc6', 'Nxc6').at(-1)!];
+    const after = { ...input, cue: cueAt(answered), moves: answered, ply: 11 };
+    expect(cueActs({ ...after, verdict: 'passed' })).toMatchObject({ found: 'passed' });
+    expect(cueActs({ ...after, ply: 12, verdict: 'passed' })).toBeUndefined();
+  });
+
+  it('offers Retry after a try that did not pass, Show until shown, Skip until passed', () => {
+    expect(cueControls('open')).toEqual({ retry: false, show: true, skip: true });
+    expect(cueControls('shown')).toEqual({ retry: false, show: false, skip: true });
+    expect(cueControls('failed')).toEqual({ retry: true, show: true, skip: true });
+    expect(cueControls('unchecked')).toMatchObject({ retry: true });
+    expect(cueControls('pending')).toMatchObject({ retry: false });
+    expect(cueControls('passed')).toEqual({ retry: false, show: false, skip: false });
   });
 });
 
