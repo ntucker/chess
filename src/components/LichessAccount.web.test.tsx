@@ -75,6 +75,8 @@ describe('LichessAccount', () => {
     await press();
     expect(mockPrompt).toHaveBeenCalled();
     expect(button().getAttribute('aria-label')).toBe('Sign out of lichess (learner)');
+    // The account's initial, so signed in never looks like signed out.
+    expect(button().textContent).toBe('L');
     expect(host.textContent).toContain('Signed in to lichess as learner');
 
     await press();
