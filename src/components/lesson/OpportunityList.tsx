@@ -123,13 +123,14 @@ export function OpportunityList({
     />
   ));
   const listed = useMemo(() => new Set(rows.map(({ next }) => next)), [rows]);
+  // The finder lists only what neither the lesson nor the saved finds list.
+  const taken = useMemo(() => new Set([...listed, ...savedCues]), [listed, savedCues]);
   const found = (
     <>
       <SavedPart saved={saved} listed={listed} styles={styles} onPlay={onPlay} />
       <FinderPart
         finder={finder}
-        listed={listed}
-        saved={savedCues}
+        listed={taken}
         onSave={saved.onSave}
         styles={styles}
         onPlay={onPlay}
@@ -210,21 +211,18 @@ const SAVED_TIP =
 /**
  * The finder's part of the list: its heading, source chip and button
  * (`finderAction`), then its finds best first, leaving out any whose mistake
- * leads to a position the lesson already lists (`listed`), however its line
- * got there, or that is saved (`saved`). Each row's bookmark saves it. A
- * spinner shows while it runs.
+ * leads to a position already listed (`listed`), however its line got
+ * there. Each row's bookmark saves it. A spinner shows while it runs.
  */
 function FinderPart({
   finder: { run, from, source, onFind },
   listed,
-  saved,
   onSave,
   styles,
   onPlay,
 }: {
   readonly finder: FinderProps;
   readonly listed: ReadonlySet<PositionKey>;
-  readonly saved: ReadonlySet<PositionKey>;
   readonly onSave: (find: Find) => void;
   readonly styles: Styles;
   readonly onPlay: (line: readonly Uci[]) => void;
@@ -232,7 +230,7 @@ function FinderPart({
   // Each row replays its line: once per run's answer, not per render.
   const found = useMemo(() => run.finds.map((find) => ({ find, row: findRow(find) })), [run.finds]);
   // Each find leads to its own position (the finder keeps one per position), so `next` keys its row.
-  const rows = found.filter(({ row: { next } }) => !listed.has(next) && !saved.has(next));
+  const rows = found.filter(({ row: { next } }) => !listed.has(next));
   // Done where it runs from: it found nothing, or an answer failed (the button retries).
   const done = from === 'here' && !run.running;
   const note = !done
@@ -521,7 +519,8 @@ function densityStyles(meter: number, row: ViewStyle) {
     row: { flexDirection: 'row', alignItems: 'center', gap: 10, outlineOffset: -2, ...row },
     meter: { width: meter, gap: 3 },
     finder: { paddingHorizontal: row.paddingHorizontal },
-    bookmark: { width: BOOKMARK_WIDTH, marginRight: row.paddingHorizontal && 6 },
+    // Inside the card's edge where the row has padding; at the page's edge on a phone.
+    bookmark: { width: BOOKMARK_WIDTH, marginRight: row.paddingHorizontal === undefined ? 0 : 6 },
   });
 }
 type Styles = ReturnType<typeof densityStyles>;

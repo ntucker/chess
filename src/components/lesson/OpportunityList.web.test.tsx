@@ -265,11 +265,8 @@ describe('OpportunityList', () => {
 
   it("lists the saved finds under their source after the lesson's, in place of the finder's", () => {
     const onUnsave = jest.fn();
-    const saved = {
-      ...NONE_SAVED,
-      finds: [savedFind(FIND, { from: 'lichess', band: 1400 })],
-      onUnsave,
-    };
+    const kept = savedFind(FIND, { from: 'lichess', band: 1400 });
+    const saved = { ...NONE_SAVED, finds: [kept], onUnsave };
     const finder = { ...DONE, run: { finds: [FIND, MATE], running: false } };
     const shown = render({ finder, saved }, (host) => {
       act(() => bookmarksIn(host, UNSAVE_TIP)[0].click());
@@ -279,7 +276,7 @@ describe('OpportunityList', () => {
         saves: bookmarksIn(host, SAVE_TIP),
       };
     });
-    expect(onUnsave).toHaveBeenCalledWith(cueOf(FIND));
+    expect(onUnsave).toHaveBeenCalledWith(cueOf(kept));
     expect(shown.text).toMatch(/Saved.*lichess 1400–1599.*From this position.*Maia 1500/);
     // The saved find, then the finder's other find alone.
     expect(shown.labels).toHaveLength(ranked.length + 2);

@@ -87,11 +87,8 @@ describe('bySource', () => {
 });
 
 describe('withSavedFinds', () => {
-  it('is the lesson itself with no finds, and the same lesson for the same finds', () => {
+  it('is the lesson itself with no finds', () => {
     expect(withSavedFinds(STAFFORD, [])).toBe(STAFFORD);
-    expect(withSavedFinds(STAFFORD, undefined)).toBe(STAFFORD);
-    const finds = [OFF_GUIDE];
-    expect(withSavedFinds(STAFFORD, finds)).toBe(withSavedFinds(STAFFORD, finds));
   });
 
   it("writes a find off the guide: the learner's moves unbooked, the mark playing back its line", () => {
@@ -117,10 +114,5 @@ describe('withSavedFinds', () => {
     const [first] = lessonOpportunities(STAFFORD, 2);
     const marked = { ...OFF_GUIDE, line: first.line.slice(0, -1), mistake: first.move.uci };
     expect(withSavedFinds(STAFFORD, [marked])).toBe(STAFFORD);
-  });
-
-  it("leaves out a find whose mistake the learner's side plays", () => {
-    const own = { ...OFF_GUIDE, line: NXE5.slice(0, 3), mistake: NXE5[3], replies: [NXE5[4]] };
-    expect(withSavedFinds(STAFFORD, [own])).toBe(STAFFORD);
   });
 });

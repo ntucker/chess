@@ -6,36 +6,27 @@
  * one source measured, which the network answers behind them don't outlive.
  * It is read and saved through src/resources/savedFinds.ts.
  */
-import { INITIAL_FEN } from 'chessops/fen';
+import { Chess } from 'chessops/chess';
 
-import { lastStep, parsePosition, positionKey } from '@/game/replay';
+import { isObject, parseStoredObject } from '@/context/storage';
+import { lastStep, positionKey } from '@/game/replay';
 import { type FindFragment, findPlays, writeFinds } from '@/lesson/finds';
 import type { Lesson, PositionKey, Uci } from '@/lesson/lesson';
+import { guideMove } from '@/lesson/select';
+import { RATING_BANDS } from '@/lichess/explorer';
 import { MAIA_RATINGS } from '@/maia/ratings';
-import { isObject, parseStoredObject } from '@/context/storage';
 
 import { type Find, rankBy } from './finder';
 import type { ReplySource } from './walk';
 
-/** A find as the device keeps it. */
-export interface SavedFind {
-  /** Act I: the moves from the starting position to where the opponent errs. */
-  readonly line: readonly Uci[];
-  readonly mistake: Uci;
-  /** The punishing replies the cue accepts, best first. */
-  readonly replies: readonly Uci[];
-  /** Act III: the moves after the best reply. */
-  readonly payoff: readonly Uci[];
-  /** What the mistake gives away, by Stockfish's full searches (`Find.cost`). */
-  readonly cost: number;
-  /** Whose replies measured the numbers below: they never rank beside another source's. */
+/**
+ * A find as the device keeps it: its moves and cost as the lesson's tree
+ * keeps them, and the numbers its one source measured.
+ */
+export interface SavedFind
+  extends Omit<FindFragment, 'gain'>, Pick<Find, 'reach' | 'share' | 'score'> {
+  /** Whose replies measured `reach`, `share` and `score`: they never rank beside another source's. */
   readonly source: ReplySource;
-  /** The share of games that reach the position before the mistake (`Find.reach`). */
-  readonly reach: number;
-  /** The mistake's share of the games at its position (`Find.share`). */
-  readonly share: number;
-  /** What knowing it is worth per game (`Find.score`). */
-  readonly score: number;
 }
 
 /** Every lesson's saved finds, by lesson id. */
@@ -47,9 +38,16 @@ export const savedFind = (
   source: ReplySource,
 ): SavedFind => ({ line, mistake, replies, payoff, cost, source, reach, share, score });
 
-/** The position `find`'s mistake leads to, its cue: one find is kept per cue, as the finder keeps one. */
-export const cueOf = ({ line, mistake }: Pick<SavedFind, 'line' | 'mistake'>): PositionKey =>
-  lastStep([...line, mistake]).key;
+/**
+ * The position `find`'s mistake leads to, its cue: one find is kept per cue,
+ * as the finder keeps one. Worked out once per find, since it replays the line.
+ */
+export function cueOf(find: SavedFind): PositionKey {
+  let cue = cues.get(find);
+  if (cue === undefined) cues.set(find, (cue = lastStep([...find.line, find.mistake]).key));
+  return cue;
+}
+const cues = new WeakMap<SavedFind, PositionKey>();
 
 /** `saved` with `find` among the lesson `lesson`'s, in place of one saved at its cue. */
 export function withSaved(saved: SavedFinds, lesson: string, find: SavedFind): SavedFinds {
@@ -88,7 +86,7 @@ export function parseSavedFinds(text: string): SavedFinds {
   );
 }
 
-const START = parsePosition(INITIAL_FEN)!;
+const START = Chess.default();
 
 /** `value` as a saved find, in a list for `flatMap`: empty where it isn't one. */
 function readFind(value: unknown): SavedFind[] {
@@ -106,7 +104,7 @@ function readFind(value: unknown): SavedFind[] {
   )
     return [];
   const find = { line, mistake, replies, payoff, cost, source, reach, share, score } as SavedFind;
-  return findPlays(START, undefined, find) ? [find] : [];
+  return findPlays(START, find) ? [find] : [];
 }
 
 const isMoves = (value: unknown): value is Uci[] =>
@@ -114,7 +112,7 @@ const isMoves = (value: unknown): value is Uci[] =>
 
 function isSource(value: unknown): value is ReplySource {
   if (!isObject(value)) return false;
-  if (value.from === 'lichess') return typeof value.band === 'number';
+  if (value.from === 'lichess') return (RATING_BANDS as readonly unknown[]).includes(value.band);
   return value.from === 'maia' && (MAIA_RATINGS as readonly unknown[]).includes(value.rating);
 }
 
@@ -123,35 +121,30 @@ function isSource(value: unknown): value is ReplySource {
  * each back as it plays its own marks. A find on a mistake the lesson already
  * marks is left to the lesson's own mark, with its counted numbers. The
  * numbers a source measured stay off the tree, where they would rank beside
- * the lesson's counted ones: the marks carry the cost alone. Worked out once
- * per lesson and list of finds; with none, it is `lesson` itself.
+ * the lesson's counted ones: the marks carry the cost alone. With none, it is
+ * `lesson` itself. A saved find's moves play (`parseSavedFinds`), and the
+ * finder runs for the lesson's side, so its mistake is the other side's.
  */
-export function withSavedFinds(lesson: Lesson, finds: readonly SavedFind[] | undefined): Lesson {
-  if (!finds?.length) return lesson;
-  let byFinds = merged.get(lesson);
-  if (!byFinds) merged.set(lesson, (byFinds = new WeakMap()));
-  let written = byFinds.get(finds);
-  if (!written) {
-    const fragments = finds.filter((find) => !marks(lesson, find)).map(fragment);
-    byFinds.set(finds, (written = writeFinds(lesson, fragments)));
-  }
-  return written;
-}
-const merged = new WeakMap<Lesson, WeakMap<readonly SavedFind[], Lesson>>();
+export const withSavedFinds = (lesson: Lesson, finds: readonly SavedFind[]): Lesson =>
+  writeFinds(
+    lesson,
+    // Without the source's numbers: the mark takes the cost alone.
+    finds
+      .filter((find) => !marks(lesson, find))
+      .map(({ line, mistake, replies, payoff, cost }) => ({
+        line,
+        mistake,
+        replies,
+        payoff,
+        cost,
+      })),
+  );
 
 /** Whether `lesson` already marks `find`'s mistake where it is played. */
 function marks(lesson: Lesson, { line, mistake }: SavedFind): boolean {
   const key = line.length ? lastStep(line).key : positionKey(START);
-  return !!lesson.positions[key]?.moves.some((move) => move.uci === mistake && move.mistake);
+  return !!guideMove(lesson, key, mistake)?.mistake;
 }
-
-const fragment = ({ line, mistake, replies, payoff, cost }: SavedFind): FindFragment => ({
-  line,
-  mistake,
-  replies,
-  payoff,
-  cost,
-});
 
 /** Saved finds best first within one source (`rankBy`). */
 const bestFirst = rankBy<SavedFind>(({ line, mistake }) => [...line, mistake]);

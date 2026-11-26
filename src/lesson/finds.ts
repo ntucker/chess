@@ -42,26 +42,25 @@ function upsert(entry: Entry, uci: Uci, edit: (move: LessonMove) => LessonMove =
 const booked = (move: LessonMove): LessonMove => ({ ...move, book: true });
 
 /**
- * Whether `find` plays from `start`: every move legal, each other reply legal
- * at the cue, and the mistake played by the side `learner` doesn't play,
- * where given.
+ * Whether `find` plays from `start`: every move legal, and each other reply
+ * legal at the cue. `writeFinds` takes only finds that do.
  */
 export function findPlays(
   start: Chess,
-  learner: Lesson['side'] | undefined,
   find: Pick<FindFragment, 'line' | 'mistake' | 'replies' | 'payoff'>,
 ): boolean {
   const pos = start.clone();
   if (!find.line.every((uci) => playMove(pos, uci))) return false;
-  if (pos.turn === learner || !playMove(pos, find.mistake)) return false;
+  if (!playMove(pos, find.mistake)) return false;
   const cue = pos.clone();
   if (!find.replies.slice(1).every((uci) => playMove(cue.clone(), uci))) return false;
   return [find.replies[0], ...find.payoff].every((uci) => uci !== undefined && playMove(pos, uci));
 }
 
 /**
- * `lesson` with each of `finds` in its tree, leaving out any that doesn't
- * play from its start (`findPlays`). Along Act I it adds the moves the guide
+ * `lesson` with each of `finds` in its tree, each one that plays from its
+ * start (`findPlays`) with the mistake by the side the learner doesn't play.
+ * Along Act I it adds the moves the guide
  * lacks, the learner's as ordinary moves, not book moves; it marks the
  * mistake with its cost and any gain; it books every reply the cue accepts
  * and the learner's Act III moves, and adds the opponent's Act III moves
@@ -72,13 +71,12 @@ export function findPlays(
  * line and verdict and only gains its cost and gain.
  */
 export function writeFinds(lesson: Lesson, finds: readonly FindFragment[]): Lesson {
+  if (!finds.length) return lesson;
   const start = parsePosition(lesson.start)!;
-  const written = finds.filter((find) => findPlays(start, lesson.side, find));
-  if (!written.length) return lesson;
   const positions: Record<PositionKey, Entry> = {};
   for (const [key, entry] of Object.entries(lesson.positions))
     positions[key] = { ...entry, moves: [...entry.moves] };
-  for (const find of written) {
+  for (const find of finds) {
     const pos = start.clone();
     let variation = positions[positionKey(pos)].variation;
     /** The entry for `pos`, made in the variation of the position before where the guide has none. */
