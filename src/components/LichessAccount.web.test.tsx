@@ -13,15 +13,21 @@ import { LichessAccount } from './LichessAccount';
 
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 // lichess's sign-in page answers with a code, or the learner closes it.
+const mockBuilding = { on: false, built: '' };
 const mockPrompt = jest.fn(async () => ({ type: 'success', params: { code: 'code' } }));
 jest.mock('expo-auth-session', () => ({
   ResponseType: { Code: 'code' },
-  // A request built from the hook's config, as expo-auth-session builds one.
-  useAuthRequest: ({ state }: { state?: string }) => [
-    { state, codeVerifier: `verifier ${state}`, redirectUri: 'http://localhost/lichess' },
-    null,
-    mockPrompt,
-  ],
+  // A request built from the hook's config, as expo-auth-session builds one, with its own state
+  // where the config gives none. While `mockBuilding`, the last request stays (it builds async).
+  useAuthRequest: ({ state = 'first' }: { state?: string }) => {
+    if (!mockBuilding.on) mockBuilding.built = state;
+    const built = mockBuilding.built;
+    return [
+      { state: built, codeVerifier: `verifier ${built}`, redirectUri: 'http://localhost/lichess' },
+      null,
+      mockPrompt,
+    ];
+  },
 }));
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -33,6 +39,7 @@ let root: Root;
 
 beforeEach(async () => {
   localStorage.clear();
+  mockBuilding.on = false;
   calls = [];
   globalThis.fetch = async (url: RequestInfo | URL, init?: RequestInit) => {
     calls.push({ url: String(url), init });
@@ -91,6 +98,13 @@ describe('LichessAccount', () => {
     expect(first.state).toEqual(expect.any(String));
     expect(second.state).not.toBe(first.state);
     expect(second.codeVerifier).toBe(`verifier ${second.state}`);
+  });
+
+  it('waits for the next request to be built before another press', async () => {
+    mockPrompt.mockResolvedValueOnce({ type: 'dismiss' } as never);
+    mockBuilding.on = true;
+    await press();
+    expect(button().getAttribute('aria-disabled')).toBe('true');
   });
 
   it('says on the button itself when signing in failed', async () => {

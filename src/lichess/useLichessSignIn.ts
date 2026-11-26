@@ -24,7 +24,7 @@ export type SignInState = 'idle' | 'signing-in' | 'failed';
  * saved account as it takes in another tab's (`AccountsSync`): here the
  * popup reads as closed at once, and the state goes back to idle. So the
  * learner can press again while the first popup is still on lichess: each
- * web press therefore gets a request of its own (`nextState`), whose saved
+ * web press therefore gets a request of its own (`randomState`), whose saved
  * sign-in replaces the earlier one, and the earlier popup's answer reads as
  * replaced (`finishSignIn`).
  *
@@ -35,8 +35,9 @@ export type SignInState = 'idle' | 'signing-in' | 'failed';
 export function useLichessSignIn() {
   const ctrl = useController();
   const [state, setState] = useState<SignInState>('idle');
-  const [oauthState, setOauthState] = useState(nextState);
-  // A new `state` makes useAuthRequest build a new request: a new verifier and sign-in address too.
+  // The request's own until a web press; then a new one for each, which makes useAuthRequest build
+  // a new request: a new verifier and sign-in address too.
+  const [oauthState, setOauthState] = useState<string>();
   const [request, , promptAsync] = useAuthRequest(
     {
       clientId: LICHESS_CLIENT_ID,
@@ -54,7 +55,7 @@ export function useLichessSignIn() {
     if (process.env.EXPO_OS === 'web') {
       const { state: answer, codeVerifier, redirectUri } = request;
       savePendingSignIn({ state: answer, codeVerifier, redirectUri });
-      setOauthState(nextState());
+      setOauthState(randomState());
     }
     try {
       const result = await promptAsync();
@@ -70,12 +71,16 @@ export function useLichessSignIn() {
       setState('failed');
     }
   };
-  return { signIn: request ? signIn : undefined, state };
+  // Not until the request for the latest state is built, so a press never reopens the last one.
+  const ready = request && (oauthState === undefined || request.state === oauthState);
+  return { signIn: ready ? signIn : undefined, state };
 }
 
 /**
- * The OAuth `state` for the next sign-in: a new random one on the web, where
- * one press's popup can outlast the next press (`useLichessSignIn`); on the
- * phone, where one sign-in runs at a time, the request's own.
+ * A new OAuth `state`, as random as expo-auth-session's own:
+ * `getRandomValues`, since `randomUUID` needs a secure page.
  */
-const nextState = () => (process.env.EXPO_OS === 'web' ? crypto.randomUUID() : undefined);
+const randomState = () =>
+  Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
