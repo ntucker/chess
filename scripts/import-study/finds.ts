@@ -186,7 +186,9 @@ export function withFinds(lesson: Lesson, finds: readonly LessonFind[]): Lesson 
  * A find's mark is counted on every position of the line it plays
  * (`markedPositions`); any other mark (a trap migrated from a study) on its
  * own position and its cue, where its share and its gains are read, since its
- * whole path would take the explorer hours more on the biggest lessons. The
+ * whole path would take the explorer hours more on the biggest lessons (a cue
+ * the tree has no position for, after a one-move trap, has nowhere to keep
+ * counts, so it isn't asked). The
  * counts can change the guide's choices, so each mark keeps the line it had
  * (`keepMistakeLines`): the line counted is the line played. Popularity, which
  * runs after, keeps the counts where it doesn't ask.
@@ -201,7 +203,8 @@ export async function addPathCounts(
     ...finds.flatMap(({ find }) => markedPositions(lesson, find)),
     ...markedMoves(lesson)
       .filter(({ key, move }) => !found.has(markId(key, move.uci)))
-      .flatMap(({ key, move }) => [key, positionKey(played(parsePositionKey(key)!, move.uci))]),
+      .flatMap(({ key, move }) => [key, positionKey(played(parsePositionKey(key)!, move.uci))])
+      .filter((key) => lesson.positions[key]),
   ]);
   return recountKeepingLines(lesson, keys, explorer);
 }

@@ -218,6 +218,21 @@ describe('addPathCounts', () => {
     expect(counted.positions[keyAfter('e4', 'e5', 'Ba6')].games).toEqual(RATING_BANDS.map(() => 9));
   });
 
+  it('asks nothing at the cue of a one-move trap, which the tree has no position for', async () => {
+    const lesson = lessonWith({
+      [keyAfter('e4', 'e5')]: at([
+        { uci: uci('e4', 'e5', 'Nf3') },
+        { uci: uci('e4', 'e5', 'Ba6'), mistake: { verdict: 'losesMaterial' } },
+      ]),
+    });
+    const asked = new Set<string>();
+    await addPathCounts(lesson, [], async (key) => {
+      asked.add(key);
+      return { counts: {}, total: 9 };
+    });
+    expect([...asked]).toEqual([keyAfter('e4', 'e5')]);
+  });
+
   it('refuses a mark whose stored line plays a move the tree lacks', async () => {
     const lesson = lessonWith({
       [keyAfter('e4', 'e5')]: at([
