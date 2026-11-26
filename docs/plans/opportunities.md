@@ -499,5 +499,5 @@ the cue) and ordinary moves where the guide has others (so the repertoire Practi
 guide's). All of a lesson's saved finds are written in one `writeFinds` call, each judged against the
 lesson as given, so their order doesn't change what is booked. Reach, share and score are stored with
 the find: the answers behind them don't outlive the session, and the score needs the cue's reach.
-The index's line ends stay the shipped lesson's, so the opening card's marks can disagree with the
-lesson's rows.
+The index's line ends stay the shipped lesson's, so the marks of the rows before a lesson is picked
+(`openingMarks`) can disagree with the lesson's own.
