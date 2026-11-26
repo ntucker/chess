@@ -56,21 +56,32 @@ export interface PendingSignIn {
  */
 const PENDING = storageKey('lichess-sign-in');
 
+/**
+ * How long a pending sign-in waits for lichess's answer. Long enough to sign
+ * in to lichess first; after it, the verifier left by a closed popup is never
+ * used.
+ */
+export const PENDING_LIFE = 10 * 60 * 1000;
+
 /** Keeps `pending` for the popup's `/lichess` page, in place of any earlier sign-in. */
 export const savePendingSignIn = (pending: PendingSignIn) =>
-  writeStorage(PENDING, JSON.stringify(pending));
+  writeStorage(PENDING, JSON.stringify({ ...pending, at: Date.now() }));
 
 /**
  * The sign-in waiting for the answer that repeats `state`, forgotten once
- * taken, so a code is traded once. None where no sign-in waits or another
- * one does: an answer whose state doesn't match is refused (OAuth's guard
- * against an answer the learner didn't ask for).
+ * taken, so a code is traded once. None where no sign-in waits, another one
+ * does (OAuth's guard against an answer the learner didn't ask for), or it
+ * waited longer than `PENDING_LIFE`.
  */
 export function takePendingSignIn(state: string): PendingSignIn | undefined {
   const pending = parseStoredObject(readStorage(PENDING) ?? '');
   if (pending.state !== state) return undefined;
+  // Forgotten: the storage module has no removal, and empty text reads as nothing waiting.
   writeStorage(PENDING, '');
-  return typeof pending.codeVerifier === 'string' && typeof pending.redirectUri === 'string'
+  const fresh = typeof pending.at === 'number' && Date.now() - pending.at < PENDING_LIFE;
+  return fresh &&
+    typeof pending.codeVerifier === 'string' &&
+    typeof pending.redirectUri === 'string'
     ? { state, codeVerifier: pending.codeVerifier, redirectUri: pending.redirectUri }
     : undefined;
 }

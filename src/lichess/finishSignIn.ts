@@ -7,7 +7,9 @@ import { takePendingSignIn } from './oauth';
 /** How a web sign-in ended in the popup: signed in as `username`, refused or failed, or nothing to finish. */
 export type SignInOutcome =
   | { readonly type: 'signed-in'; readonly username: string }
-  | { readonly type: 'refused' | 'failed' | 'none' };
+  | { readonly type: 'refused' }
+  | { readonly type: 'failed' }
+  | { readonly type: 'none' };
 
 /**
  * Finishes the web sign-in that lichess's answer (`search`, the popup's
@@ -25,7 +27,7 @@ export async function finishSignIn(ctrl: Controller, search: string): Promise<Si
   try {
     const { codeVerifier, redirectUri } = pending;
     const { lichess } = await ctrl.fetch(signInLichess, { code, codeVerifier, redirectUri });
-    return { type: 'signed-in', username: lichess?.username ?? '' };
+    return lichess ? { type: 'signed-in', username: lichess.username } : { type: 'failed' };
   } catch {
     return { type: 'failed' };
   }

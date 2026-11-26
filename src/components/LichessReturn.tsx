@@ -22,12 +22,12 @@ export function LichessReturn() {
   const ctrl = useController();
   const [outcome, setOutcome] = useState<SignInOutcome>();
   useEffect(() => {
-    void finishing(ctrl).then(setOutcome);
+    void finishing(ctrl).then((ended) => {
+      setOutcome(ended);
+      // The browser may refuse to close a window it no longer counts as opened by script: the page then says so.
+      if (ended.type === 'signed-in') window.close();
+    });
   }, [ctrl]);
-  useEffect(() => {
-    // The browser may refuse to close a window it no longer counts as opened by script: the page then says so.
-    if (outcome?.type === 'signed-in') window.close();
-  }, [outcome]);
   if (outcome?.type === 'none') return <Redirect href="/" />;
   return (
     <Page
@@ -37,12 +37,11 @@ export function LichessReturn() {
     >
       <View style={styles.content}>
         {outcome ? (
-          <PageIntro eyebrow="lichess" title={TITLES[outcome.type]}>
-            {outcome.type === 'signed-in'
-              ? `Signed in as ${outcome.username}. You can close this window.`
-              : outcome.type === 'refused'
-                ? 'lichess was not allowed to sign you in. Close this window, and try again from the person button if you like.'
-                : 'lichess could not sign you in. Close this window and try again from the person button.'}
+          <PageIntro
+            eyebrow="lichess"
+            title={outcome.type === 'signed-in' ? 'Signed in' : 'Not signed in'}
+          >
+            {outcomeText(outcome)}
           </PageIntro>
         ) : (
           <Stack gap="2" align="center">
@@ -54,12 +53,26 @@ export function LichessReturn() {
   );
 }
 
-const TITLES = { 'signed-in': 'Signed in', refused: 'Not signed in', failed: 'Not signed in' };
+/** What the popup says once the sign-in has ended (`none` goes home instead). */
+function outcomeText(outcome: Exclude<SignInOutcome, { type: 'none' }>): string {
+  switch (outcome.type) {
+    case 'signed-in':
+      return `Signed in as ${outcome.username}. You can close this window.`;
+    case 'refused':
+      return 'lichess was not allowed to sign you in. Close this window, and try again from the person button if you like.';
+    case 'failed':
+      return 'lichess could not sign you in. Close this window and try again from the person button.';
+  }
+}
 
-let finished: Promise<SignInOutcome> | undefined;
+/**
+ * This page's one `finishSignIn`. A second run would find the pending sign-in
+ * already taken and go home, so React running the effect twice (Strict Mode)
+ * shares the first run's answer.
+ */
+let signingIn: Promise<SignInOutcome> | undefined;
 
-/** `finishSignIn` for this page's address, once per page, however often React runs the effect that asks. */
-const finishing = (ctrl: Controller) => (finished ??= finishSignIn(ctrl, window.location.search));
+const finishing = (ctrl: Controller) => (signingIn ??= finishSignIn(ctrl, window.location.search));
 
 const styles = StyleSheet.create({
   content: { ...textColumn, maxWidth: 680, gap: 32 },

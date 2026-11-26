@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it } from '@jest/globals';
-import { Controller, NetworkManager } from '@data-client/react';
-import { initialState, prepareStore } from '@data-client/react/redux';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
+
+import { newController } from '@/resources/testing';
 
 import { finishSignIn } from './finishSignIn';
-import { savePendingSignIn, takePendingSignIn } from './oauth';
+import { PENDING_LIFE, savePendingSignIn, takePendingSignIn } from './oauth';
 
 const PENDING = {
   state: 'abc',
@@ -17,9 +17,9 @@ let answers: (() => Promise<Response>)[] = [];
 const json = (body: object) => async () =>
   ({ ok: true, status: 200, json: async () => body }) as Response;
 
-const newController = () =>
-  prepareStore(initialState, () => [new NetworkManager()], Controller).controller;
-
+afterEach(() => {
+  jest.useRealTimers();
+});
 beforeEach(() => {
   localStorage.clear();
   calls = [];
@@ -38,6 +38,13 @@ describe('a web sign-in waiting for lichess', () => {
     expect(takePendingSignIn('abc')).toEqual(PENDING);
     expect(takePendingSignIn('abc')).toBeUndefined();
     expect(takePendingSignIn('')).toBeUndefined();
+  });
+
+  it('is refused once it has waited too long', () => {
+    jest.useFakeTimers();
+    savePendingSignIn(PENDING);
+    jest.advanceTimersByTime(PENDING_LIFE);
+    expect(takePendingSignIn('abc')).toBeUndefined();
   });
 
   it('is replaced by a later sign-in', () => {
@@ -66,20 +73,25 @@ describe("the popup's answer from lichess", () => {
     expect(calls).toHaveLength(2);
   });
 
-  it('is refused without a code, fails when lichess refuses it, and is ignored with no sign-in waiting', async () => {
+  it('is refused where lichess answers with an error instead of a code', async () => {
     savePendingSignIn(PENDING);
     expect(await finishSignIn(newController(), '?error=access_denied&state=abc')).toEqual({
       type: 'refused',
     });
+    expect(calls).toEqual([]);
+  });
 
+  it('fails where lichess refuses the code, keeping nothing', async () => {
     savePendingSignIn(PENDING);
     answers = [async () => ({ ok: false, status: 400 }) as Response];
     expect(await finishSignIn(newController(), '?code=c&state=abc')).toEqual({ type: 'failed' });
+    expect(saved()).toBeNull();
+  });
 
+  it('has nothing to finish for an answer no sign-in waits for', async () => {
     savePendingSignIn(PENDING);
     expect(await finishSignIn(newController(), '?code=c&state=forged')).toEqual({ type: 'none' });
     expect(await finishSignIn(newController(), '')).toEqual({ type: 'none' });
-    expect(calls).toHaveLength(1);
-    expect(saved()).toBeNull();
+    expect(calls).toEqual([]);
   });
 });
