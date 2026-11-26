@@ -71,20 +71,23 @@ export function findPlays(
 /**
  * `lesson` with each of `finds` in its tree. Each find must play from the
  * lesson's start (`findPlays`; not checked here), with the mistake by the
- * side the learner doesn't play. Along Act I it adds the moves the guide
- * lacks, the learner's as ordinary moves where the guide has others there
- * (so the repertoire stays the guide's) and as book moves where the lesson
- * given has none (past a line's end, so a clean Practice run plays on to the
- * cue). Finds in one call are each judged against the lesson given; a later
- * call, on the lesson an earlier one wrote, leaves a learner move unbooked
- * where that earlier find booked another. It marks the
- * mistake with its cost and any gain; it books every reply the cue accepts
- * and the learner's Act III moves, and adds the opponent's Act III moves
- * where the guide has none. New positions take the variation of the one
- * before. Each new marker's line is stored only where the guide's choice
- * rule doesn't give it, and every older marker keeps the line it had. A
- * mistake the guide already marks (a trap migrated from a study) keeps its
- * line and verdict and only gains its cost and gain.
+ * side the learner doesn't play.
+ *
+ * Along Act I it adds the moves the guide lacks: the learner's as ordinary
+ * moves where the guide has others there (so the repertoire stays the
+ * guide's), and as book moves where the lesson given has none (past a line's
+ * end, so a clean Practice run plays on to the cue). It marks the mistake
+ * with its cost and any gain; it books every reply the cue accepts and the
+ * learner's Act III moves, and adds the opponent's Act III moves where the
+ * guide has none. New positions take the variation of the one before. Each
+ * new marker's line is stored only where the guide's choice rule doesn't
+ * give it, and every older marker keeps the line it had. A mistake the guide
+ * already marks (a trap migrated from a study) keeps its line and verdict and
+ * only gains its cost and gain.
+ *
+ * Finds in one call are each judged against the lesson given. A later call,
+ * on the lesson an earlier one wrote, leaves a learner move unbooked where
+ * that earlier find booked another.
  */
 export function writeFinds(lesson: Lesson, finds: readonly FindFragment[]): Lesson {
   if (!finds.length) return lesson;

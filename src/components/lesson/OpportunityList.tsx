@@ -32,6 +32,7 @@ import type { ReplySource } from '@/opportunity/walk';
 import type { Mark, MarkedPositions } from '@/progress/progress';
 import type { Density } from '@/theme/Narrow';
 import { fonts } from '@/theme/theme';
+import { touchTarget } from '@/theme/touch';
 
 import { MARK_SIZE, ProgressMark, SPOKEN_MARKS } from './ProgressMark';
 
@@ -495,7 +496,7 @@ function Bookmark({ action: { icon, tip, onPress } }: { readonly action: IconAct
         variant="ghost"
         onPress={onPress}
         accessibilityLabel={tip}
-        hitSlop={BOOKMARK_SLOP}
+        style={STATIC.bookmarkButton}
       >
         <Ionicons name={icon} size={17} />
       </Button>
@@ -523,23 +524,30 @@ const STATIC = StyleSheet.create({
   meters: { flexDirection: 'row', gap: 6 },
   line: { flexDirection: 'row', alignItems: 'center' },
   press: { flexGrow: 1, flexShrink: 1 },
+  // Grown in layout, not by hitSlop, which can't reach past the row on Android (touch.ts).
+  bookmarkButton: { minWidth: touchTarget, minHeight: touchTarget },
 });
 
-/** The room a row keeps for its bookmark. */
+/** The room a row keeps for its bookmark under a mouse; a finger's is `touchTarget` square. */
 const BOOKMARK_WIDTH = 34;
-/** Grows the small bookmark button (about 35 by 28) to a finger's 44, within its row. */
-const BOOKMARK_SLOP = { top: 8, bottom: 8, left: 5, right: 5 };
 
 /**
- * A density's row and meter sizes: a phone's rows are 44 tall, the touch
- * size. `bookmarkInset` keeps the bookmark off the card's edge.
+ * A density's row and meter sizes: a phone's rows are 44 tall under a mouse,
+ * and under a finger as tall as the bookmark's room (`touchTarget`).
+ * `bookmarkInset` keeps the bookmark off the card's edge.
  */
 function densityStyles(meter: number, row: ViewStyle, bookmarkInset: number) {
   return StyleSheet.create({
     row: { flexDirection: 'row', alignItems: 'center', gap: 10, outlineOffset: -2, ...row },
     meter: { width: meter, gap: 3 },
     finder: { paddingHorizontal: row.paddingHorizontal },
-    bookmark: { width: BOOKMARK_WIDTH, marginRight: bookmarkInset },
+    // Even where empty, so every row is as tall as one with a bookmark.
+    bookmark: {
+      width: BOOKMARK_WIDTH,
+      minWidth: touchTarget,
+      minHeight: touchTarget,
+      marginRight: bookmarkInset,
+    },
   });
 }
 type Styles = ReturnType<typeof densityStyles>;
