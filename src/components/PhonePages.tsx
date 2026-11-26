@@ -12,10 +12,11 @@ export type PhonePage<H extends string> = H | 'scoresheet';
 /**
  * A phone's panel under the board: `head` over pages side by side, any
  * `before` the screen's own (`home`), then the scoresheet, which the move
- * pill or a sideways swipe slides between (`usePages` owns which shows).
- * All stay mounted, so a page keeps where it's scrolled to. `bleed` widens
- * the pages into the page's margin by that much, and insets each page back,
- * for rows whose highlight reaches the edge.
+ * pill or a sideways swipe slides between (`usePages` owns which shows),
+ * with a dot for each at their foot. All stay mounted, so a page keeps
+ * where it's scrolled to. `bleed` widens the pages into the page's margin by
+ * that much, and insets each page back, for rows whose highlight reaches
+ * the edge.
  */
 export function PhonePages<H extends string>({
   head,
@@ -64,6 +65,8 @@ export function PhonePages<H extends string>({
         <Pager.Page value="scoresheet" disabled={!scoresheetReachable} style={pageStyle}>
           <ScoresheetPage {...scoresheet} />
         </Pager.Page>
+        {/* Over the pages' faded foot (`FadingScroll`), so a page a swipe away shows it's there. */}
+        <Pager.Indicator testID="page-dots" />
       </Pager.Root>
     </Stack>
   );

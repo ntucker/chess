@@ -114,6 +114,17 @@ describe('PhoneLesson', () => {
     }
   });
 
+  it('shows a dot for each page at their foot, so a page a swipe away reads as there', () => {
+    const dots = () => host.querySelector('[data-testid="page-dots"]')!.childElementCount;
+    render('lesson');
+    expect(dots()).toBe(2);
+    render('lesson', {
+      ...MODEL,
+      opportunities: { onPlay: () => {}, lesson: {} },
+    } as unknown as LessonScreenModel);
+    expect(dots()).toBe(3);
+  });
+
   it('leaves out the panes when there are neither moves nor an idea, as Practice can', () => {
     render('lesson', { ...MODEL, moves: null, idea: null });
     expect(pageOf('').childElementCount).toBe(0);
