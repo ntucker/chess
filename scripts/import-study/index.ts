@@ -61,6 +61,7 @@ import type { Color } from 'chessops/types';
 
 import { MISTAKE_LOSS } from '@/analysis/quality';
 import { checkLesson } from '@/lesson/check';
+import { withMeasures } from '@/lesson/finds';
 import type { Lesson } from '@/lesson/lesson';
 import { keepMistakeLines } from '@/lesson/mistakes';
 import { lessonIndex } from '@/lesson/openings';
@@ -87,7 +88,6 @@ import {
   measureMarks,
   recountCounted,
   withFinds,
-  withMeasures,
 } from './finds';
 import { addPopularity, lichessExplorer, type LichessExplorer } from './popularity';
 import { indexedWith, readLessonFile, registered, writeIndex } from './register';

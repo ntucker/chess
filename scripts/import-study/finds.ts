@@ -16,8 +16,8 @@ import { moveLoss } from '@/analysis/quality';
 import { isFinal } from '@/evaluation/evaluation';
 import { parsePositionKey, playLine, positionKey } from '@/game/replay';
 import { offGuide } from '@/lesson/check';
-import { type MarkScores, scored, writeFinds } from '@/lesson/finds';
-import type { Lesson, PositionKey, Uci } from '@/lesson/lesson';
+import { type MarkMeasure, writeFinds } from '@/lesson/finds';
+import type { Lesson, PositionKey } from '@/lesson/lesson';
 import { keepMistakeLines, markedMoves, markId, mistakeLine } from '@/lesson/mistakes';
 import { guideMove } from '@/lesson/select';
 import { cueGain, type Find } from '@/opportunity/finder';
@@ -65,13 +65,6 @@ export async function lessonFinds(counted: Lesson, explorer: Explorer): Promise<
   }
 }
 
-/** A marked move of a lesson, measured (`measureMarks`). */
-export interface MarkMeasure extends MarkScores {
-  /** The position the mistake is played in. */
-  readonly key: PositionKey;
-  readonly uci: Uci;
-}
-
 /**
  * Each of `lesson`'s marks without a cost (a trap migrated from a study),
  * measured as the finder measures a find: its cost from full searches of the
@@ -101,7 +94,8 @@ export async function measureMarks(lesson: Lesson, explorer: Explorer): Promise<
         const loss = moveLoss(above, below, move.uci, before.pos.turn)?.loss;
         if (loss === undefined)
           throw new Error(`Stockfish can't judge the mark ${move.uci} at ${key}`);
-        return loss;
+        // Two searches, so a trap Stockfish rates best can read a hair under 0; it gives away nothing.
+        return Math.max(0, loss);
       });
       measures.push({ key, uci: move.uci, cost, gain: await gainByBand(host, cue, explorer) });
     }
@@ -109,21 +103,6 @@ export async function measureMarks(lesson: Lesson, explorer: Explorer): Promise<
   } finally {
     host.stop();
   }
-}
-
-/** `lesson` with each of `measures` on its mark (`scored`). */
-export function withMeasures(lesson: Lesson, measures: readonly MarkMeasure[]): Lesson {
-  const positions = { ...lesson.positions };
-  for (const { key, uci, ...scores } of measures) {
-    const entry = positions[key];
-    positions[key] = {
-      ...entry,
-      moves: entry.moves.map((move) =>
-        move.uci === uci ? { ...move, mistake: scored(move.mistake!, scores) } : move,
-      ),
-    };
-  }
-  return { ...lesson, positions };
 }
 
 /**

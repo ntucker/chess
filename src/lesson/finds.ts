@@ -39,11 +39,33 @@ type Entry = Omit<LessonPosition, 'moves'> & { moves: LessonMove[] };
 const thousandths = (score: number) => Math.round(score * 1000) / 1000;
 
 /** `mistake` with `scores` as the lesson file keeps them, replacing any it had. */
-export const scored = (mistake: Mistake, { cost, gain }: MarkScores): Mistake => ({
+const scored = (mistake: Mistake, { cost, gain }: MarkScores): Mistake => ({
   ...mistake,
   cost: thousandths(cost),
   ...(gain && { gain: gain.map(thousandths) }),
 });
+
+/** A marked move of a lesson, measured (`measureMarks` in scripts/import-study/finds.ts). */
+export interface MarkMeasure extends MarkScores {
+  /** The position the mistake is played in. */
+  readonly key: PositionKey;
+  readonly uci: Uci;
+}
+
+/** `lesson` with each of `measures` on its mark (`scored`). */
+export function withMeasures(lesson: Lesson, measures: readonly MarkMeasure[]): Lesson {
+  const positions = { ...lesson.positions };
+  for (const { key, uci, ...scores } of measures) {
+    const entry = positions[key];
+    positions[key] = {
+      ...entry,
+      moves: entry.moves.map((move) =>
+        move.uci === uci ? { ...move, mistake: scored(move.mistake!, scores) } : move,
+      ),
+    };
+  }
+  return { ...lesson, positions };
+}
 
 /** Puts `uci` among `entry`'s moves as `edit` makes it, from the guide's move or else a new one. */
 function upsert(entry: Entry, uci: Uci, edit: (move: LessonMove) => LessonMove = (move) => move) {

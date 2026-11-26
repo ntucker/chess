@@ -1,8 +1,8 @@
 import { describe, expect, it } from '@jest/globals';
 
 import { cleanLineEnds } from './cleanRun';
-import { writeFinds } from './finds';
-import type { Lesson, PositionKey } from './lesson';
+import { withMeasures, writeFinds } from './finds';
+import type { Lesson, Mistake, PositionKey } from './lesson';
 import { keyAfter, SAMPLE, uci, uciLine } from './lesson.fixture';
 
 /** A Black lesson 1.e4 c6 2.d4, whose line ends there. */
@@ -88,5 +88,23 @@ describe('writeFinds', () => {
     expect(written.positions[keyAfter('e4', 'c6', 'd4', 'd5', 'e5')].moves).toEqual([
       { uci: uci('e4', 'c6', 'd4', 'd5', 'e5', 'c5'), book: true, found: true },
     ]);
+  });
+});
+
+describe('withMeasures', () => {
+  it("puts each measure on its mark to a thousandth, keeping the mark's verdict and line", () => {
+    const key = keyAfter('e4', 'c6');
+    const line = [uci('e4', 'c6', 'Qg4', 'd5')];
+    const marked = (mistake: Mistake): Lesson => {
+      const at = lesson().positions[key];
+      const moves = [...at.moves, { uci: uci('e4', 'c6', 'Qg4'), mistake }];
+      return { ...lesson(), positions: { ...lesson().positions, [key]: { ...at, moves } } };
+    };
+    const measured = withMeasures(marked({ verdict: 'losesMaterial', line }), [
+      { key, uci: uci('e4', 'c6', 'Qg4'), cost: 0.41234, gain: [0.1006, 0.2, 0.3, 0.4, 0.5] },
+    ]);
+    expect(measured).toEqual(
+      marked({ verdict: 'losesMaterial', line, cost: 0.412, gain: [0.101, 0.2, 0.3, 0.4, 0.5] }),
+    );
   });
 });

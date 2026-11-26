@@ -667,12 +667,13 @@ describe('checkLesson', () => {
 
     it("takes a study's trap at any cost Stockfish measures, but no find under a mistake", () => {
       const costProblems = (mistake: Mistake) =>
-        checkLesson(marking({ uci: 'g7g5', mistake }))
-          .map(({ path }) => path)
-          .filter((path) => path.endsWith('.cost'));
+        checkLesson(marking({ uci: 'g7g5', mistake })).filter(({ path }) => path.endsWith('.cost'));
+      const problem = (range: string) => [{ path: `${at}.cost`, message: `must be ${range}` }];
       expect(costProblems({ cost: 0.05, verdict: 'whiteWinning' })).toEqual([]);
-      expect(costProblems({ cost: -0.01, verdict: 'whiteWinning' })).toEqual([`${at}.cost`]);
-      expect(costProblems({ cost: 0.05 })).toEqual([`${at}.cost`]);
+      expect(costProblems({ cost: -0.01, verdict: 'whiteWinning' })).toEqual(
+        problem('from 0 to 1'),
+      );
+      expect(costProblems({ cost: 0.05 })).toEqual(problem('from 0.1 (a mistake) to 1'));
     });
 
     it('stores a line only of guide moves, and only where the guide would play another', () => {

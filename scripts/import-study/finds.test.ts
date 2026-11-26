@@ -7,7 +7,7 @@ import { mistakeLine } from '@/lesson/mistakes';
 import { lineSans, numberedLine, parsePosition, playLine, positionKey } from '@/game/replay';
 import { RATING_BANDS } from '@/lichess/explorer';
 
-import { addPathCounts, type LessonFind, recountCounted, withFinds, withMeasures } from './finds';
+import { addPathCounts, type LessonFind, recountCounted, withFinds } from './finds';
 import { at, testLesson } from './fixture';
 import { type Explorer } from './popularity';
 
@@ -249,33 +249,6 @@ describe('addPathCounts', () => {
     await expect(addPathCounts(withFinds(withCue, [BA6]), [BA6], explorer)).rejects.toThrow(
       `plays ${uci('e4', 'e5', 'Ba6', 'bxa6')}, which the tree lacks`,
     );
-  });
-});
-
-describe('withMeasures', () => {
-  it("puts each measure on its mark to a thousandth, keeping the mark's verdict and line", () => {
-    const line = uciLine('e4', 'e5', 'Ba6', 'Nxa6').slice(3);
-    const lesson = lessonWith({
-      [keyAfter('e4', 'e5')]: at([
-        { uci: uci('e4', 'e5', 'Nf3') },
-        { uci: uci('e4', 'e5', 'Ba6'), mistake: { verdict: 'losesMaterial', line } },
-      ]),
-    });
-    const measured = withMeasures(lesson, [
-      {
-        key: keyAfter('e4', 'e5'),
-        uci: uci('e4', 'e5', 'Ba6'),
-        cost: 0.41234,
-        gain: [0.1006, 0.2, 0.3, 0.4, 0.5],
-      },
-    ]);
-    expect(movesAt(measured, 'e4', 'e5')).toEqual([
-      { uci: uci('e4', 'e5', 'Nf3') },
-      {
-        uci: uci('e4', 'e5', 'Ba6'),
-        mistake: { verdict: 'losesMaterial', line, cost: 0.412, gain: [0.101, 0.2, 0.3, 0.4, 0.5] },
-      },
-    ]);
   });
 });
 

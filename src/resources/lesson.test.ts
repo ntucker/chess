@@ -6,7 +6,7 @@ import { NAMED_MOVE, parsePosition, positionKey } from '@/game/replay';
 import { checkLesson } from '@/lesson/check';
 import type { Lesson } from '@/lesson/lesson';
 import { readShippedLesson, shippedIds } from '@/lesson/lesson.fixture';
-import { markedMoves } from '@/lesson/mistakes';
+import { markedMoves, markId } from '@/lesson/mistakes';
 import { lessonIndex, meets } from '@/lesson/openings';
 
 import { LESSON_INDEX, type LessonId, LESSONS } from './lesson';
@@ -50,7 +50,7 @@ describe('shipped lessons', () => {
     const lesson = readShippedLesson(id);
     const unmeasured = markedMoves(lesson)
       .filter(({ move: { mistake } }) => mistake.cost === undefined || !mistake.gain)
-      .map(({ key, move }) => `${key} ${move.uci}`);
+      .map(({ key, move }) => markId(key, move.uci));
     expect(unmeasured).toEqual([]);
   });
 
