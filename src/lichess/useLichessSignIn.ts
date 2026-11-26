@@ -77,7 +77,7 @@ export function useLichessSignIn() {
 }
 
 /**
- * A new OAuth `state`, as random as expo-auth-session's own:
+ * A new OAuth `state` for a web press: 16 random bytes from
  * `getRandomValues`, since `randomUUID` needs a secure page.
  */
 const randomState = () =>

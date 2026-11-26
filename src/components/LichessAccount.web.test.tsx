@@ -37,6 +37,17 @@ const json = (body: object) => ({ ok: true, status: 200, json: async () => body 
 let host: HTMLElement;
 let root: Root;
 
+const render = () =>
+  act(async () =>
+    root.render(
+      <DataProvider>
+        <SilkProvider theme={themes.dark}>
+          <LichessAccount />
+        </SilkProvider>
+      </DataProvider>,
+    ),
+  );
+
 beforeEach(async () => {
   localStorage.clear();
   mockBuilding.on = false;
@@ -50,15 +61,7 @@ beforeEach(async () => {
   };
   host = document.createElement('div');
   root = createRoot(host);
-  await act(async () =>
-    root.render(
-      <DataProvider>
-        <SilkProvider theme={themes.dark}>
-          <LichessAccount />
-        </SilkProvider>
-      </DataProvider>,
-    ),
-  );
+  await render();
 });
 afterEach(() => act(() => root.unmount()));
 
@@ -105,6 +108,9 @@ describe('LichessAccount', () => {
     mockBuilding.on = true;
     await press();
     expect(button().getAttribute('aria-disabled')).toBe('true');
+    mockBuilding.on = false;
+    await render();
+    expect(button().getAttribute('aria-disabled')).not.toBe('true');
   });
 
   it('says on the button itself when signing in failed', async () => {
