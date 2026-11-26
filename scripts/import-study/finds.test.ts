@@ -218,7 +218,7 @@ describe('addPathCounts', () => {
     expect(counted.positions[keyAfter('e4', 'e5', 'Ba6')].games).toEqual(RATING_BANDS.map(() => 9));
   });
 
-  it('asks nothing at the cue of a one-move trap, which the tree has no position for', async () => {
+  it('asks nothing at a cue the tree has no position for, as after a one-move trap', async () => {
     const lesson = lessonWith({
       [keyAfter('e4', 'e5')]: at([
         { uci: uci('e4', 'e5', 'Nf3') },

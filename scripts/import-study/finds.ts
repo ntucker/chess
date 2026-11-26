@@ -184,14 +184,15 @@ export function withFinds(lesson: Lesson, finds: readonly LessonFind[]): Lesson 
  * each mark is judged by: each move's games and the games reaching the
  * position, per band, from one explorer answer each (asked with its total).
  * A find's mark is counted on every position of the line it plays
- * (`markedPositions`); any other mark (a trap migrated from a study) on its
- * own position and its cue, where its share and its gains are read, since its
- * whole path would take the explorer hours more on the biggest lessons (a cue
- * the tree has no position for, after a one-move trap, has nowhere to keep
- * counts, so it isn't asked). The
- * counts can change the guide's choices, so each mark keeps the line it had
- * (`keepMistakeLines`): the line counted is the line played. Popularity, which
- * runs after, keeps the counts where it doesn't ask.
+ * (`markedPositions`). Any other mark (a trap migrated from a study) is
+ * counted on its own position and its cue, where its share and its gains are
+ * read, since its whole path would take the explorer hours more on the
+ * biggest lessons; a cue the tree has no position for has nowhere to keep
+ * counts, so it isn't asked.
+ *
+ * The counts can change the guide's choices, so each mark keeps the line it
+ * had (`keepMistakeLines`): the line counted is the line played. Popularity,
+ * which runs after, keeps the counts where it doesn't ask.
  */
 export async function addPathCounts(
   lesson: Lesson,
