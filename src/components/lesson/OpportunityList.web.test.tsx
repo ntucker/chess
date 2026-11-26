@@ -149,9 +149,19 @@ describe('OpportunityList', () => {
   });
 
   it("names each meter's column in its tooltip, over rows only", () => {
-    const columns = ['Reached: how often', 'Played: how often', 'Payoff: the winning chances'];
+    const columns = [
+      'Reached: how often',
+      'Played: how often',
+      'Payoff: the winning chances the mistake gives away',
+    ];
     const shown = text({});
     for (const column of columns) expect(shown).toContain(column);
+    // Each takes keyboard focus, which opens its tip.
+    const focusable = render({}, (host) =>
+      [...host.querySelectorAll('[tabindex="0"]')].map((el) => el.textContent ?? ''),
+    );
+    for (const column of columns)
+      expect(focusable.some((tip) => tip.startsWith(column))).toBe(true);
     // A lesson that marks no mistake, with nothing saved or found: no rows, so no columns.
     const antiLondon = readShippedLesson('anti-london');
     const empty = text({ lesson: antiLondon });
@@ -253,10 +263,10 @@ describe('OpportunityList', () => {
     expect(searching).toContain('the first finds take a few minutes');
     expect(searching).not.toContain('No opportunity found');
     expect(text({})).toContain('No opportunity found from here.');
-    const elsewhere = render(
-      { finder: { ...DONE, from: 'elsewhere', run: { finds: [FIND], running: false } } },
-      (host) => ({ text: host.textContent ?? '', labels: labelsIn(host) }),
-    );
+    const elsewhere = render(foundAt(FIND.cost), (host) => ({
+      text: host.textContent ?? '',
+      labels: labelsIn(host),
+    }));
     expect(elsewhere.text).toContain('From another position');
     expect(elsewhere.labels.at(-1)).toMatch(/^7\.\.\.Bg4/);
     // A run whose only find the lesson already lists found something: no "nothing found".
