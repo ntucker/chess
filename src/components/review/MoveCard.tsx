@@ -13,7 +13,7 @@ import { qualityTip, TippedBadge } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import type { Uci } from '@/lesson/lesson';
 import type { ComparedMove, Comparison } from '@/review/comparison';
-import type { Answer, GuideAnswer, Try } from '@/review/retry';
+import { type Answer, answerOwner, type GuideAnswer, type Try } from '@/review/retry';
 import { fonts } from '@/theme/theme';
 
 interface Props {
@@ -181,9 +181,6 @@ function HiddenRow({ until }: { readonly until: NonNullable<Props['hidden']> }) 
   );
 }
 
-/** Whose move the guide's answer is, by its label. */
-const GUIDE_OWNER = { book: "the guide's", opportunity: "an opportunity's" } as const;
-
 /**
  * The guide's move, once revealed where the learner left the guide: its
  * badge (the guide's own, or an opportunity's), its name with the lesson's
@@ -197,7 +194,7 @@ function GuideLine({
 }: { readonly san: string } & Omit<GuideAnswer, 'uci'>) {
   const named = (
     <Text role="body">
-      <Notation>{`${san} is ${GUIDE_OWNER[quality]} move.`}</Notation>
+      <Notation>{`${san} is ${answerOwner(quality)} move.`}</Notation>
     </Text>
   );
   return (

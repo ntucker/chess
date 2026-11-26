@@ -68,19 +68,33 @@ export interface GuideAnswer {
  */
 export function guideAt(lesson: Lesson, line: readonly Uci[]) {
   const position = lesson.positions[lineKeys(line).at(-1)!];
-  const book = (position?.moves ?? []).filter((move) => move.book);
+  const book = (position?.moves ?? []).flatMap((move) => {
+    const quality = bookLabel(move);
+    return quality ? [{ move, quality }] : [];
+  });
   const [first] = book;
   const answer: GuideAnswer | undefined = first && {
-    uci: first.uci,
-    quality: bookLabel(first)!,
-    note: first.notes?.[0]?.text,
+    uci: first.move.uci,
+    quality: first.quality,
+    note: first.move.notes?.[0]?.text,
     practice: variationHref(
       lesson.id,
-      lesson.positions[lineKeys([...line, first.uci]).at(-1)!]?.variation ?? position.variation,
+      lesson.positions[lineKeys([...line, first.move.uci]).at(-1)!]?.variation ??
+        position.variation,
     ),
   };
-  return { book: new Map(book.map((move) => [move.uci, bookLabel(move)!])), answer };
+  return { book: new Map(book.map(({ move, quality }) => [move.uci, quality])), answer };
 }
+
+/** Whose move an answer is, by its label: the guide's, an opportunity's, or Stockfish's best. */
+const ANSWER_OWNERS = {
+  book: "the guide's",
+  opportunity: "an opportunity's",
+  best: "Stockfish's",
+} as const satisfies Record<Answer['quality'], string>;
+
+/** Whose move an answer labelled `quality` is, to go before "move": "the guide's", "an opportunity's" or "Stockfish's". */
+export const answerOwner = (quality: Answer['quality']) => ANSWER_OWNERS[quality];
 
 /** What a moment shows: everything the panel, the board and the actions need to retry it. */
 export interface Moment {

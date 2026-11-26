@@ -286,6 +286,26 @@ describe('ReviewPanel', () => {
     });
   });
 
+  it("names an opportunity's move as the opportunity's, not the guide's", () => {
+    const guide = {
+      uci: 'c7c5',
+      quality: 'opportunity',
+      practice: { pathname: '/lesson/x', params: {} },
+    } as const;
+    render(review(2, [0, 1, 2, 3], {}, { leftAt: 1, guide }), (host) => {
+      expect(host.textContent).toContain("Find an opportunity's move, or one stronger than 1…e5.");
+      expect(host.textContent).not.toContain("the guide's");
+    });
+    const screen = { shown: new Set([2]), board: 'answer' } as const;
+    render(review(2, [0, 1, 2, 3], {}, { leftAt: 1, guide, screen }), (host) => {
+      expect(heading(host)).toBe('Opportunity move.');
+      expect(host.textContent).toContain("An opportunity's move: 1…c5.");
+      expect(host.textContent).toContain("c5 is an opportunity's move.");
+      expect(host.textContent).toContain("Show best: an opportunity's move here");
+      expect(host.textContent).not.toMatch(/the guide's move/i);
+    });
+  });
+
   it("names a try that passes, and shows Stockfish's moves with Show best disabled", () => {
     const tries = new Map([[3, ['g1f3']]]);
     const view = review(3, [0, 1, 2, 3], {}, { learner: 'white', screen: { tries, board: 'try' } });

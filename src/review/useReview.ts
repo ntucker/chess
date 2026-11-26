@@ -1,7 +1,6 @@
 import { StateContext, useController, useSubscription } from '@data-client/react';
 import { use, useEffect, useMemo, useReducer } from 'react';
 
-import type { BookLabel } from '@/analysis/quality';
 import { finalOnly } from '@/evaluation/evaluation';
 import { captures } from '@/game/material';
 import { analyze, type Color, legalMoveCountAt, replay } from '@/game/replay';
@@ -27,9 +26,6 @@ import { DWELL_MS, reviewedGame, reviewReducer, startReview } from './screen';
 
 /** The review judges with Stockfish lite whatever the settings say, as lessons do. */
 export const REVIEW_ENGINE = 'stockfish';
-
-/** No guide moves to judge tries by, the same each render. */
-const NO_BOOK: ReadonlyMap<Uci, BookLabel> = new Map();
 
 /** What the review is of. */
 interface ReviewOf {
@@ -109,7 +105,7 @@ export function useReview({ moves, learner, lesson, active }: ReviewOf) {
     legal,
     learner,
     leftAt,
-    book: guide?.book ?? NO_BOOK,
+    book: guide?.book ?? new Map(),
     guide: ply - 1 === leftAt ? guide?.answer : undefined,
     screen,
     tryAnalyses: storedAnalyses(ctrl, REVIEW_ENGINE, tryLines, state).map(finalOnly),

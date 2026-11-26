@@ -156,8 +156,13 @@ export async function engineCheck(
       }
       const kept = await filter(move.notes ?? [], keepNote(after, line));
       const notes = gambitNote ? [...kept, gambitNote] : kept;
-      const { book: _book, notes: _notes, ...rest } = move;
-      moves.push({ ...rest, ...(book && { book }), ...(notes.length > 0 && { notes }) });
+      // An opportunity's mark (`found`) goes with the book flag it qualifies.
+      const { book: _book, found, notes: _notes, ...rest } = move;
+      moves.push({
+        ...rest,
+        ...(book && { book, ...(found && { found }) }),
+        ...(notes.length > 0 && { notes }),
+      });
     }
     const notes = await filter(position.notes ?? [], keepNote(at.pos, at.line));
     const { notes: _notes, ...rest } = position;
@@ -176,7 +181,7 @@ export async function engineCheck(
     if (reached.has(key) || !at) continue;
     positionsLeft[key] = {
       ...position,
-      moves: position.moves.map(({ book, ...move }) => {
+      moves: position.moves.map(({ book, found: _found, ...move }) => {
         if (book)
           report.unreachable.push({ line: sans(lesson, at.line), move: san(at.pos, move.uci) });
         return move;

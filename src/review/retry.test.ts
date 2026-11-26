@@ -192,6 +192,20 @@ describe('momentAt', () => {
       });
       expect(momentOf(leftGood, { tries: tried('b1c3') }).revealed).toBe(false);
     });
+
+    it("answers with an opportunity's move, and passes it, under its own label", () => {
+      const found = { ...guide, quality: 'opportunity' } as const;
+      const leftFound = {
+        ...leftGood,
+        book: new Map([['g1f3', 'opportunity']] as const),
+        guide: found,
+      };
+      expect(momentOf(leftFound).answer).toMatchObject({ quality: 'opportunity', guide: found });
+      expect(momentOf(leftFound, { tries: tried('g1f3') }).tries[0]).toMatchObject({
+        quality: 'opportunity',
+        passed: true,
+      });
+    });
   });
 });
 

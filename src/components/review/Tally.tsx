@@ -8,7 +8,7 @@ import { haptic } from '@/components/haptics';
 import { qualityTip, TippedBadge } from '@/components/QualityBadge';
 import { Sheet } from '@/components/Sheet';
 import { type Color, opposite } from '@/game/replay';
-import { LABELS_BEST_FIRST, type Tally } from '@/review/review';
+import { LABELS_BEST_FIRST, LISTED_WHEN_COUNTED, type Tally } from '@/review/review';
 import type { Review } from '@/review/useReview';
 import { NarrowOnly, useNarrowPart } from '@/theme/Narrow';
 import { qualityLooks } from '@/theme/moveQuality';
@@ -17,13 +17,10 @@ import { fonts } from '@/theme/theme';
 /** How many labels a row of a narrow page's grid holds. */
 const COLUMNS = 3;
 
-/**
- * The labels the tally lists for `sides`' counts: every label, but an
- * opportunity's move only where one was played, since most lessons have none.
- */
+/** The labels the tally lists for `sides`' counts: each, but one `LISTED_WHEN_COUNTED` only where counted. */
 const listedLabels = (...sides: Tally[]) =>
   LABELS_BEST_FIRST.filter(
-    (quality) => quality !== 'opportunity' || sides.some((counts) => counts[quality]),
+    (quality) => !LISTED_WHEN_COUNTED.has(quality) || sides.some((counts) => counts[quality]),
   );
 
 interface Props {

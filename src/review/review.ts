@@ -216,6 +216,9 @@ export const LABELS_BEST_FIRST = [
   'blunder',
 ] as const satisfies readonly ReviewQuality[];
 
+/** The labels the tally lists only where a move got them: most lessons have no opportunity. */
+export const LISTED_WHEN_COUNTED: ReadonlySet<ReviewQuality> = new Set(['opportunity']);
+
 /** How many moves got each label. */
 export type Tally = Readonly<Partial<Record<ReviewQuality, number>>>;
 

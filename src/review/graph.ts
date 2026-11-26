@@ -61,8 +61,10 @@ export function graphMarks(
  */
 export function guideEnd(book: BookLabels, learner: Color): number {
   const learners = (ply: number) => (ply % 2 === 0) === (learner === 'white');
-  const left = book.findIndex((recommended, ply) => learners(ply) && !recommended);
-  return book.slice(0, left === -1 ? undefined : left).findLastIndex(Boolean) + 1;
+  const left = book.findIndex((label, ply) => learners(ply) && label === undefined);
+  return (
+    book.slice(0, left === -1 ? undefined : left).findLastIndex((label) => label !== undefined) + 1
+  );
 }
 
 /** `n` to three decimals, which keeps an outline short. Above `topArea`: a worklet's helpers have to be defined before it. */
