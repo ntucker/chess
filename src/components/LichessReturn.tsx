@@ -22,7 +22,7 @@ export function LichessReturn() {
   const ctrl = useController();
   const [outcome, setOutcome] = useState<SignInOutcome>();
   useEffect(() => {
-    void finishing(ctrl).then((ended) => {
+    void finishSignInOnce(ctrl).then((ended) => {
       setOutcome(ended);
       // The browser may refuse to close a window it no longer counts as opened by script: the page then says so.
       if (ended.type === 'signed-in') window.close();
@@ -72,7 +72,8 @@ function outcomeText(outcome: Exclude<SignInOutcome, { type: 'none' }>): string 
  */
 let signingIn: Promise<SignInOutcome> | undefined;
 
-const finishing = (ctrl: Controller) => (signingIn ??= finishSignIn(ctrl, window.location.search));
+const finishSignInOnce = (ctrl: Controller) =>
+  (signingIn ??= finishSignIn(ctrl, window.location.search));
 
 const styles = StyleSheet.create({
   content: { ...textColumn, maxWidth: 680, gap: 32 },

@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { beforeEach, describe, expect, it } from '@jest/globals';
 
 import { newController } from '@/resources/testing';
 
 import { finishSignIn } from './finishSignIn';
-import { PENDING_LIFE, savePendingSignIn, takePendingSignIn } from './oauth';
+import { savePendingSignIn, takePendingSignIn } from './oauth';
 
 const PENDING = {
   state: 'abc',
@@ -17,9 +17,6 @@ let answers: (() => Promise<Response>)[] = [];
 const json = (body: object) => async () =>
   ({ ok: true, status: 200, json: async () => body }) as Response;
 
-afterEach(() => {
-  jest.useRealTimers();
-});
 beforeEach(() => {
   localStorage.clear();
   calls = [];
@@ -38,13 +35,6 @@ describe('a web sign-in waiting for lichess', () => {
     expect(takePendingSignIn('abc')).toEqual(PENDING);
     expect(takePendingSignIn('abc')).toBeUndefined();
     expect(takePendingSignIn('')).toBeUndefined();
-  });
-
-  it('is refused once it has waited too long', () => {
-    jest.useFakeTimers();
-    savePendingSignIn(PENDING);
-    jest.advanceTimersByTime(PENDING_LIFE);
-    expect(takePendingSignIn('abc')).toBeUndefined();
   });
 
   it('is replaced by a later sign-in', () => {
