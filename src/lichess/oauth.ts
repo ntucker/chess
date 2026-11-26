@@ -30,6 +30,10 @@ export const lichessRedirectUri = () =>
 
 const PHONE_RETURN = 'io.github.ntucker.openingnight://lichess';
 
-/** Whether `url` is lichess's answer to a sign-in on the phone (`lichessRedirectUri`). */
+/**
+ * Whether `url` leads to the `/lichess` route: lichess's answer to a sign-in
+ * on the phone (`lichessRedirectUri`). The router hands its address on in
+ * whole (as on the emulator) or as a path, so either form counts.
+ */
 export const isLichessReturn = (url: string) =>
-  url === PHONE_RETURN || url.startsWith(`${PHONE_RETURN}?`);
+  /^(?:io\.github\.ntucker\.openingnight:\/\/|\/)lichess\/?(?:[?#]|$)/.test(url);
