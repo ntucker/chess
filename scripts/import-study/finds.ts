@@ -187,8 +187,9 @@ export function withFinds(lesson: Lesson, finds: readonly LessonFind[]): Lesson 
  * (`markedPositions`). Any other mark (a trap migrated from a study) is
  * counted on its own position and its cue, where its share and its gains are
  * read, since its whole path would take the explorer hours more on the
- * biggest lessons; a cue the tree has no position for has nowhere to keep
- * counts, so it isn't asked.
+ * biggest lessons. A cue the tree has no position for has nowhere to keep
+ * counts, so it isn't asked here (`measureMarks` still reads its replies
+ * for the gains).
  *
  * The counts can change the guide's choices, so each mark keeps the line it
  * had (`keepMistakeLines`): the line counted is the line played. Popularity,
