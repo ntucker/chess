@@ -11,7 +11,15 @@ import { themes } from '@/theme/theme';
 
 import { LichessAccount } from './LichessAccount';
 
-jest.mock('@expo/vector-icons/Ionicons', () => () => null);
+// An icon shows as its name and color, so a test can tell the button's faces apart.
+const mockIcon = ({ name, color }: { name: string; color: string }) => (
+  <i data-icon={name} data-color={color} />
+);
+// Looked up at render: the mock factory runs before this module's consts are set.
+jest.mock(
+  '@expo/vector-icons/Ionicons',
+  () => (props: Parameters<typeof mockIcon>[0]) => mockIcon(props),
+);
 // lichess's sign-in page answers with a code, or the learner closes it.
 const mockBuilding = { on: false, built: '' };
 const mockPrompt = jest.fn(async () => ({ type: 'success', params: { code: 'code' } }));
@@ -67,14 +75,19 @@ afterEach(() => act(() => root.unmount()));
 
 const button = () => host.querySelector<HTMLElement>('[role="button"]')!;
 const press = () => act(async () => button().click());
+const icon = () => button().querySelector('i');
 
 describe('LichessAccount', () => {
   it('signs in from its button, then names the account and signs out from it', async () => {
     expect(button().getAttribute('aria-label')).toBe('Sign in with lichess');
+    expect(icon()?.dataset.icon).toBe('person-add-outline');
     expect(host.textContent).toContain('counts real games');
     await press();
     expect(mockPrompt).toHaveBeenCalled();
     expect(button().getAttribute('aria-label')).toBe('Sign out of lichess (learner)');
+    // The account's initial, so signed in never looks like signed out.
+    expect(button().textContent).toBe('L');
+    expect(icon()).toBeNull();
     expect(host.textContent).toContain('Signed in to lichess as learner');
 
     await press();
@@ -119,5 +132,7 @@ describe('LichessAccount', () => {
     expect(button().getAttribute('aria-label')).toBe(
       'Signing in with lichess failed. Press to try again.',
     );
+    expect(icon()?.dataset.icon).toBe('alert-circle-outline');
+    expect(icon()?.dataset.color).toBe(themes.dark.semantic.color.tones.danger.text);
   });
 });
