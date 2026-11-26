@@ -43,7 +43,7 @@ const booked = (move: LessonMove): LessonMove => ({ ...move, book: true });
 
 /**
  * Whether `find` plays from `start`: every move legal, and each other reply
- * legal at the cue. `writeFinds` takes only finds that do.
+ * legal at the cue. `writeFinds` takes only finds that do, and doesn't check.
  */
 export function findPlays(
   start: Chess,
@@ -58,9 +58,9 @@ export function findPlays(
 }
 
 /**
- * `lesson` with each of `finds` in its tree, each one that plays from its
- * start (`findPlays`) with the mistake by the side the learner doesn't play.
- * Along Act I it adds the moves the guide
+ * `lesson` with each of `finds` in its tree. Each find must play from the
+ * lesson's start (`findPlays`; not checked here), with the mistake by the
+ * side the learner doesn't play. Along Act I it adds the moves the guide
  * lacks, the learner's as ordinary moves, not book moves; it marks the
  * mistake with its cost and any gain; it books every reply the cue accepts
  * and the learner's Act III moves, and adds the opponent's Act III moves

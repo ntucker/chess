@@ -430,10 +430,13 @@ export function useLessonScreen({
             onPlay: (line) => dispatchGame({ type: 'newGame', moves: line }),
             saved: {
               finds: saved,
-              onSave: (find) =>
-                id &&
-                void ctrl.fetch(saveFind, { lesson: id, find: savedFind(find, finder.source) }),
-              onUnsave: (cue) => id && void ctrl.fetch(unsaveFind, { lesson: id, cue }),
+              onSave: (find) => {
+                if (id)
+                  void ctrl.fetch(saveFind, { lesson: id, find: savedFind(find, finder.source) });
+              },
+              onUnsave: (cue) => {
+                if (id) void ctrl.fetch(unsaveFind, { lesson: id, cue });
+              },
             },
             finder,
           }

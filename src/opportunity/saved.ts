@@ -92,20 +92,25 @@ const START = Chess.default();
 function readFind(value: unknown): SavedFind[] {
   if (!isObject(value)) return [];
   const { line, mistake, replies, payoff, cost, source, reach, share, score } = value;
-  const numbers = [cost, reach, share, score];
   if (
     !isMoves(line) ||
     typeof mistake !== 'string' ||
     !isMoves(replies) ||
     !replies.length ||
     !isMoves(payoff) ||
-    !numbers.every((n) => typeof n === 'number' && Number.isFinite(n)) ||
+    !isNumber(cost) ||
+    !isNumber(reach) ||
+    !isNumber(share) ||
+    !isNumber(score) ||
     !isSource(source)
   )
     return [];
-  const find = { line, mistake, replies, payoff, cost, source, reach, share, score } as SavedFind;
+  const find: SavedFind = { line, mistake, replies, payoff, cost, source, reach, share, score };
   return findPlays(START, find) ? [find] : [];
 }
+
+const isNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
 
 const isMoves = (value: unknown): value is Uci[] =>
   Array.isArray(value) && value.every((uci) => typeof uci === 'string');

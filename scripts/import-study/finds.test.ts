@@ -105,6 +105,22 @@ describe('withFinds', () => {
     expect(() => withFinds(lessonWith(), [d3])).toThrow('which the guide lacks there');
   });
 
+  it("takes a learner move an earlier find booked as the guide's", () => {
+    // 2...Nxa6, a reply 2.Ba6? books, then 3.Qh5? Nf6.
+    const qh5: LessonFind = {
+      ...BA6,
+      find: {
+        ...BA6.find,
+        line: uciLine('e4', 'e5', 'Ba6', 'Nxa6'),
+        mistake: uci('e4', 'e5', 'Ba6', 'Nxa6', 'Qh5'),
+        replies: [uci('e4', 'e5', 'Ba6', 'Nxa6', 'Qh5', 'Nf6')],
+        payoff: [],
+      },
+    };
+    const lesson = withFinds(lessonWith(), [BA6, qh5]);
+    expect(movesAt(lesson, 'e4', 'e5', 'Ba6', 'Nxa6')[0].mistake?.cost).toBe(0.432);
+  });
+
   it('only measures a mistake the guide already marks, keeping its line and verdict', () => {
     const marked: LessonMove = {
       uci: uci('e4', 'e5', 'Ba6'),

@@ -115,18 +115,16 @@ function markedPositions(lesson: Lesson, find: Find): PositionKey[] {
  * only finds on the guide go into a lesson.
  */
 export function withFinds(lesson: Lesson, finds: readonly LessonFind[]): Lesson {
-  for (const { find } of finds) {
-    let pos = startOf(lesson);
+  // One at a time, so a move an earlier find wrote (its booked Act III) counts as the guide's.
+  return finds.reduce((tree, { find, gain }) => {
+    let pos = startOf(tree);
     for (const uci of find.line) {
-      if (pos.turn === lesson.side && !guideMove(lesson, positionKey(pos), uci))
+      if (pos.turn === tree.side && !guideMove(tree, positionKey(pos), uci))
         throw new Error(`A find on the guide plays ${uci}, which the guide lacks there`);
       pos = played(pos, uci);
     }
-  }
-  return writeFinds(
-    lesson,
-    finds.map(({ find, gain }) => ({ ...find, gain })),
-  );
+    return writeFinds(tree, [{ ...find, gain }]);
+  }, lesson);
 }
 
 /**

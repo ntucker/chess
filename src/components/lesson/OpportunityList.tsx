@@ -108,7 +108,10 @@ export function OpportunityList({
   const labelled = useLabelled();
   const compact = density === 'compact';
   const styles = compact ? COMPACT : COMFORTABLE;
-  const rows = shown ? lessonOpportunities(shown.lesson, shown.band) : NONE;
+  const rows = useMemo(
+    () => (shown ? lessonOpportunities(shown.lesson, shown.band) : NONE),
+    [shown],
+  );
   const marks = shown ? opportunityMarks(shown.lesson, shown.progress, rows) : [];
   const savedCues = useMemo(() => new Set(saved.finds.map(cueOf)), [saved.finds]);
   // A lesson that marks none of the opponent's mistakes lists the saved and the finder's alone.
@@ -130,7 +133,7 @@ export function OpportunityList({
       <SavedPart saved={saved} listed={listed} styles={styles} onPlay={onPlay} />
       <FinderPart
         finder={finder}
-        listed={taken}
+        taken={taken}
         onSave={saved.onSave}
         styles={styles}
         onPlay={onPlay}
@@ -211,18 +214,18 @@ const SAVED_TIP =
 /**
  * The finder's part of the list: its heading, source chip and button
  * (`finderAction`), then its finds best first, leaving out any whose mistake
- * leads to a position already listed (`listed`), however its line got
- * there. Each row's bookmark saves it. A spinner shows while it runs.
+ * leads to a position the lesson's rows or the saved finds already list
+ * (`taken`), however its line got there. Each row's bookmark saves it. A spinner shows while it runs.
  */
 function FinderPart({
   finder: { run, from, source, onFind },
-  listed,
+  taken,
   onSave,
   styles,
   onPlay,
 }: {
   readonly finder: FinderProps;
-  readonly listed: ReadonlySet<PositionKey>;
+  readonly taken: ReadonlySet<PositionKey>;
   readonly onSave: (find: Find) => void;
   readonly styles: Styles;
   readonly onPlay: (line: readonly Uci[]) => void;
@@ -230,7 +233,7 @@ function FinderPart({
   // Each row replays its line: once per run's answer, not per render.
   const found = useMemo(() => run.finds.map((find) => ({ find, row: findRow(find) })), [run.finds]);
   // Each find leads to its own position (the finder keeps one per position), so `next` keys its row.
-  const rows = found.filter(({ row: { next } }) => !listed.has(next));
+  const rows = found.filter(({ row: { next } }) => !taken.has(next));
   // Done where it runs from: it found nothing, or an answer failed (the button retries).
   const done = from === 'here' && !run.running;
   const note = !done
@@ -261,7 +264,7 @@ function FinderPart({
           row={row}
           styles={styles}
           onPlay={onPlay}
-          bookmark={{ icon: 'bookmark-outline', tip: SAVE_TIP, onPress: () => onSave(find) }}
+          bookmark={saveAction(find, onSave)}
         />
       ))}
       {note ? (
@@ -291,7 +294,12 @@ const SEARCHING_TIP = 'Searching on this device: the first finds take a few minu
 const FINDER_TIP =
   "Looks for the opponent's likely mistakes from the board's position, on this device: Stockfish judges each reply players are likely to make. Each find joins the list once confirmed; the whole search takes a while.";
 
-const SAVE_TIP = 'Save this find: the lesson then plays it like its own';
+/** A finder row's bookmark that saves `find`. */
+const saveAction = (find: Find, onSave: (find: Find) => void): IconAction => ({
+  icon: 'bookmark-outline',
+  tip: 'Save this find: the lesson then plays it like its own',
+  onPress: () => onSave(find),
+});
 
 /** A row's bookmark that forgets the saved find at `cue`. */
 const unsaveAction = (cue: PositionKey, onUnsave: (cue: PositionKey) => void): IconAction => ({
@@ -513,17 +521,20 @@ const STATIC = StyleSheet.create({
 /** The room a row keeps for its bookmark. */
 const BOOKMARK_WIDTH = 34;
 
-/** A density's row and meter sizes: a phone's rows are 44 tall, the touch size. */
-function densityStyles(meter: number, row: ViewStyle) {
+/**
+ * A density's row and meter sizes: a phone's rows are 44 tall, the touch
+ * size. `bookmarkInset` keeps the bookmark off the card's edge.
+ */
+function densityStyles(meter: number, row: ViewStyle, bookmarkInset: number) {
   return StyleSheet.create({
     row: { flexDirection: 'row', alignItems: 'center', gap: 10, outlineOffset: -2, ...row },
     meter: { width: meter, gap: 3 },
     finder: { paddingHorizontal: row.paddingHorizontal },
-    // Inside the card's edge where the row has padding; at the page's edge on a phone.
-    bookmark: { width: BOOKMARK_WIDTH, marginRight: row.paddingHorizontal === undefined ? 0 : 6 },
+    bookmark: { width: BOOKMARK_WIDTH, marginRight: bookmarkInset },
   });
 }
 type Styles = ReturnType<typeof densityStyles>;
 
-const COMPACT = densityStyles(32, { minHeight: 44 });
-const COMFORTABLE = densityStyles(44, { paddingVertical: 8, paddingHorizontal: 14 });
+// A phone's rows run to the page's edge; a card's keep inside it.
+const COMPACT = densityStyles(32, { minHeight: 44 }, 0);
+const COMFORTABLE = densityStyles(44, { paddingVertical: 8, paddingHorizontal: 14 }, 6);
