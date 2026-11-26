@@ -64,9 +64,10 @@
  *   is the same move, the refutation's arrow is drawn instead of theirs. Its
  *   being a rare reply doesn't hide it: it still punishes.
  * - The label of the move just played (best, mistake...) is badged on its
- *   piece only in Explore with "Arrows" on, like Stockfish's best: Practice
- *   keeps the board free of judgments while playing, and the scoresheet and
- *   review still show every label.
+ *   piece only in Explore with "Arrows" on, like Stockfish's best
+ *   (`engineMarks`). It grades the move, and Practice keeps grades off the
+ *   board while the learner plays: the scoresheet and review show them. The
+ *   refutation above differs: it is the reply coming, not a grade.
  * - In Explore, each guide candidate carries Stockfish's verdict on it
  *   (`Guidance.verdicts`), the book move too, so the learner can tell a
  *   popular move from a good one. Practice keeps it hidden like every
@@ -382,8 +383,9 @@ export function guidance(input: GuidanceInput): Guidance {
   const refutation = resting && !view.learnerToMove ? input.refutation : undefined;
   // Where the list judges its moves: Stockfish's verdicts, and the opportunities.
   const judged = explore && !picking;
-  const best =
-    explore && movesShown && resting && engine?.best !== refutation ? engine?.best : undefined;
+  // Stockfish's marks on the board: its best move, and the label of the move just played.
+  const engineMarks = explore && movesShown;
+  const best = engineMarks && resting && engine?.best !== refutation ? engine?.best : undefined;
 
   const acts = cueActs(view, mode, picking);
   const opportunity =
@@ -414,7 +416,7 @@ export function guidance(input: GuidanceInput): Guidance {
         ? new Set(view.candidates.filter(({ move }) => move.mistake).map(({ move }) => move.uci))
         : NO_OPPORTUNITIES,
     refutation,
-    quality: explore && movesShown ? input.quality : undefined,
+    quality: engineMarks ? input.quality : undefined,
     trap,
     trapIn: trap && (withCue ? 'cue' : 'card'),
     acts,
