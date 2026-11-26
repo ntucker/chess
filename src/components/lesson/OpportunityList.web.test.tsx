@@ -148,8 +148,30 @@ describe('OpportunityList', () => {
     const shown = text({});
     for (const column of columns) expect(shown).toContain(column);
     // A lesson that marks no mistake, with nothing saved or found: no rows, so no columns.
-    const empty = text({ lesson: readShippedLesson('anti-london') });
+    const antiLondon = readShippedLesson('anti-london');
+    const empty = text({ lesson: antiLondon });
     for (const column of columns) expect(empty).not.toContain(column);
+    // Its saved or found finds alone are rows too.
+    const saved = { ...NONE_SAVED, finds: [savedFind(FIND, DONE.source)] };
+    expect(text({ lesson: antiLondon, saved })).toContain(columns[0]);
+    const found = { ...DONE, run: { finds: [FIND], running: false } };
+    expect(text({ lesson: antiLondon, finder: found })).toContain(columns[0]);
+  });
+
+  it("shows a dash for the payoff only where the mistake isn't judged", () => {
+    const payoff = (props: Partial<Props>) =>
+      render(props, (host) => rowsIn(host).at(-1)!.textContent);
+    const found = (cost: number) => ({
+      finder: {
+        ...DONE,
+        from: 'elsewhere' as const,
+        run: { finds: [{ ...FIND, cost }], running: false },
+      },
+    });
+    expect(payoff(found(0.17))).toMatch(/\u221217%$/);
+    expect(payoff(found(0.001))).toMatch(/0%$/);
+    // The London's marked mistakes came from its guide, with no cost measured yet.
+    expect(payoff({ lesson: readShippedLesson('london') })).toMatch(/\u2013$/);
   });
 
   it("plays a row's line when it is pressed", () => {

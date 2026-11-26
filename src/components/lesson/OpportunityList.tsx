@@ -370,8 +370,7 @@ type Meter = (typeof COLUMNS)[number]['meter'];
 
 /**
  * An icon over each meter's column (`COLUMNS`), its tooltip saying what the
- * column shows. On the heading's line, so it takes no room of its own; the
- * room after it is the rows' own after their meters, so it lines up with them.
+ * column shows. It sits on the heading's line, so it adds no line of its own.
  */
 function ColumnHeads({ styles }: { readonly styles: Styles }) {
   return (
