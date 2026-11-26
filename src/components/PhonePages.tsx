@@ -1,4 +1,4 @@
-import { Pager, Stack } from '@reactive/silk-native';
+import { Pager, Stack, useTheme } from '@reactive/silk-native';
 import type { ComponentProps, ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
 
@@ -12,10 +12,11 @@ export type PhonePage<H extends string> = H | 'scoresheet';
 /**
  * A phone's panel under the board: `head` over pages side by side, any
  * `before` the screen's own (`home`), then the scoresheet, which the move
- * pill or a sideways swipe slides between (`usePages` owns which shows).
- * All stay mounted, so a page keeps where it's scrolled to. `bleed` widens
- * the pages into the page's margin by that much, and insets each page back,
- * for rows whose highlight reaches the edge.
+ * pill or a sideways swipe slides between (`usePages` owns which shows),
+ * with a dot for each at their foot. All stay mounted, so a page keeps
+ * where it's scrolled to. `bleed` widens the pages into the page's margin by
+ * that much, and insets each page back, for rows whose highlight reaches
+ * the edge.
  */
 export function PhonePages<H extends string>({
   head,
@@ -44,6 +45,8 @@ export function PhonePages<H extends string>({
   const part = useNarrowPart();
   const sections = useSections();
   const pageStyle = [styles.page, { paddingHorizontal: bleed }];
+  const { theme } = useTheme();
+  const clearDots = { paddingBottom: DOTS_STEPS * theme.semantic.space[2] };
   return (
     <Stack {...part('pages-panel', sections)}>
       {head}
@@ -61,13 +64,26 @@ export function PhonePages<H extends string>({
         <Pager.Page value={home} style={pageStyle}>
           {children}
         </Pager.Page>
-        <Pager.Page value="scoresheet" disabled={!scoresheetReachable} style={pageStyle}>
+        {/* Its table doesn't fade at its foot, so it ends above the dots. */}
+        <Pager.Page
+          value="scoresheet"
+          disabled={!scoresheetReachable}
+          style={[pageStyle, clearDots]}
+        >
           <ScoresheetPage {...scoresheet} />
         </Pager.Page>
+        {/* Over the panes' faded foot (`FadingScroll`), so a page a swipe away shows it's there. */}
+        <Pager.Indicator testID="page-dots" />
       </Pager.Root>
     </Stack>
   );
 }
+
+/**
+ * The steps of space the dots take at the pages' foot: silk's indicator sits
+ * a step up and is a step tall, and a third step clears it.
+ */
+const DOTS_STEPS = 3;
 
 /** The pages' least height: a few lines. Below it the panel scrolls instead. */
 const PAGES_FLOOR = 140;
