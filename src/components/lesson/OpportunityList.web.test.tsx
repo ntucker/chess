@@ -143,6 +143,15 @@ describe('OpportunityList', () => {
     );
   });
 
+  it("names each meter's column in its tooltip, over rows only", () => {
+    const columns = ['Reached: how often', 'Played: how often', 'Payoff: the winning chances'];
+    const shown = text({});
+    for (const column of columns) expect(shown).toContain(column);
+    // A lesson that marks no mistake, with nothing saved or found: no rows, so no columns.
+    const empty = text({ lesson: readShippedLesson('anti-london') });
+    for (const column of columns) expect(empty).not.toContain(column);
+  });
+
   it("plays a row's line when it is pressed", () => {
     const onPlay = jest.fn<(line: readonly Uci[]) => void>();
     render({ onPlay }, (host) => {

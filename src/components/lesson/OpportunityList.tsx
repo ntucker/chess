@@ -141,11 +141,16 @@ export function OpportunityList({
       />
     </>
   );
+  // Some row shows: a saved or found row left out is one the lesson's rows or the saved list.
+  const anyRow = rows.length > 0 || saved.finds.length > 0 || finder.run.finds.length > 0;
   return (
     <Stack style={compact ? STATIC.compact : labelled}>
-      <HeadingTip tip={listTip(players)} style={STATIC.heading}>
-        <Eyebrow>Opportunities</Eyebrow>
-      </HeadingTip>
+      <View style={STATIC.headLine}>
+        <HeadingTip tip={listTip(players)} style={STATIC.heading}>
+          <Eyebrow>Opportunities</Eyebrow>
+        </HeadingTip>
+        {anyRow ? <ColumnHeads styles={styles} /> : null}
+      </View>
       {compact ? (
         <View>
           {list}
@@ -337,11 +342,55 @@ function sourceChip(source: ReplySource) {
   };
 }
 
-/** What the list ranks and what its rows' meters show, against `players` where counted. */
+/** What the list ranks, against `players` where counted; each meter's column says what it shows (`COLUMNS`). */
 const listTip = (players: string | undefined) =>
   `The opponent's mistakes the guide marks, best first by what knowing each is worth per game${
     players ? ` against ${players}` : ''
-  }. Each row: how often your games reach it, how often the mistake is played there, and what it gives away (# is mate). Tap one to play up to your cue.`;
+  }, or where that isn't measured yet, by how often your games reach it. Tap one to play up to your cue.`;
+
+/** The rows' three meters, left to right: each column's icon, and what it shows in its tooltip. */
+const COLUMNS = [
+  {
+    meter: 'reach',
+    icon: 'footsteps-outline',
+    tip: 'Reached: how often your games get to the position the mistake is played in. \u2013 means no games counted.',
+  },
+  {
+    meter: 'share',
+    icon: 'people-outline',
+    tip: 'Played: how often the opponent makes the mistake there. \u2013 means no count for this move.',
+  },
+  {
+    meter: 'payoff',
+    icon: 'trophy-outline',
+    tip: "Payoff: the winning chances the mistake gives you; # is mate. \u2013 means Stockfish hasn't judged it yet.",
+  },
+] as const;
+
+/**
+ * An icon over each meter's column (`COLUMNS`), its tooltip saying what the
+ * column shows. On the heading's line, so it takes no room of its own; the
+ * room after it is the rows' own after their meters, so it lines up with them.
+ */
+function ColumnHeads({ styles }: { readonly styles: Styles }) {
+  const { color } = useTheme().theme.semantic;
+  return (
+    <>
+      <View style={STATIC.grow} />
+      <View style={[STATIC.meters, styles.columns]}>
+        {COLUMNS.map(({ meter, icon, tip }) => (
+          <Tip key={meter} tip={tip} style={styles.column}>
+            <Ionicons name={icon} size={COLUMN_ICON} color={color.textSecondary} />
+          </Tip>
+        ))}
+      </View>
+      <View style={styles.bookmarkRoom} />
+    </>
+  );
+}
+
+/** A column's icon, as tall as the eyebrow's capitals beside it. */
+const COLUMN_ICON = 14;
 
 /** No rows, the same each render. */
 const NONE: readonly Opportunity[] = [];
@@ -431,7 +480,8 @@ function Row({
   const caption = name ? mistake : leadIn(line);
   // As the candidate list shows the mistake's cost.
   const lost = cost === undefined ? undefined : lostPercent(cost);
-  const payoff = mates ? '#' : lost ? `\u2212${lost}` : '–';
+  // A dash only where unjudged, as each column's tip says.
+  const payoff = mates ? '#' : cost === undefined ? '–' : lost ? `\u2212${lost}` : '0%';
   // Each meter's number and how full its bar is: reach, how often, payoff.
   const meters = [
     { meter: 'reach', label: reach === undefined ? '–' : percent(reach), fill: reach ?? 0 },
@@ -513,6 +563,7 @@ function leadIn(line: readonly Uci[]): string | undefined {
 const STATIC = StyleSheet.create({
   // As wide as its words, so its tip opens over them alone.
   heading: { alignSelf: 'flex-start' },
+  headLine: { flexDirection: 'row', alignItems: 'center' },
   finderHead: { paddingTop: 10, paddingBottom: 2 },
   grow: { flexGrow: 1 },
   compact: { gap: 4 },
@@ -531,27 +582,47 @@ const STATIC = StyleSheet.create({
 /** The room a row keeps for its bookmark under a mouse; a finger's is `touchTarget` square. */
 const BOOKMARK_WIDTH = 34;
 
+/** The card's border (Silk's `subtle`), which the rows sit inside of and the heading's line doesn't. */
+const CARD_BORDER = 1;
+
 /**
  * A density's row and meter sizes: a phone's rows are 44 tall under a mouse,
  * and under a finger as tall as the bookmark's room (`touchTarget`).
- * `bookmarkInset` keeps the bookmark off the card's edge.
+ * `inset` is the rows' side padding, and `bookmarkInset` keeps the bookmark
+ * off the card's edge, which `edge` (the card's border, if any) draws.
  */
-function densityStyles(meter: number, row: ViewStyle, bookmarkInset: number) {
+function densityStyles(
+  meter: number,
+  row: ViewStyle,
+  { inset, bookmarkInset, edge }: { inset: number; bookmarkInset: number; edge: number },
+) {
+  const bookmarkRoom = { width: BOOKMARK_WIDTH, minWidth: touchTarget, marginRight: bookmarkInset };
   return StyleSheet.create({
-    row: { flexDirection: 'row', alignItems: 'center', gap: 10, outlineOffset: -2, ...row },
-    meter: { width: meter, gap: 3 },
-    finder: { paddingHorizontal: row.paddingHorizontal },
-    // Even where empty, so every row keeps the same room and height as one with a bookmark.
-    bookmark: {
-      width: BOOKMARK_WIDTH,
-      minWidth: touchTarget,
-      minHeight: touchTarget,
-      marginRight: bookmarkInset,
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      outlineOffset: -2,
+      paddingHorizontal: inset,
+      ...row,
     },
+    meter: { width: meter, gap: 3 },
+    finder: { paddingHorizontal: inset },
+    // Even where empty, so every row keeps the same room and height as one with a bookmark.
+    bookmark: { ...bookmarkRoom, minHeight: touchTarget },
+    // The column heads (`ColumnHeads`) end where the rows' meters do.
+    bookmarkRoom: { ...bookmarkRoom, marginRight: bookmarkInset + edge },
+    columns: { marginRight: inset },
+    // Flush left, as its numbers and bars are.
+    column: { width: meter, alignItems: 'flex-start' },
   });
 }
 type Styles = ReturnType<typeof densityStyles>;
 
 // A phone's rows run to the page's edge; a card's keep inside it.
-const COMPACT = densityStyles(32, { minHeight: 44 }, 0);
-const COMFORTABLE = densityStyles(44, { paddingVertical: 8, paddingHorizontal: 14 }, 6);
+const COMPACT = densityStyles(32, { minHeight: 44 }, { inset: 0, bookmarkInset: 0, edge: 0 });
+const COMFORTABLE = densityStyles(
+  44,
+  { paddingVertical: 8 },
+  { inset: 14, bookmarkInset: 6, edge: CARD_BORDER },
+);
