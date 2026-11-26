@@ -61,7 +61,8 @@ export function PrivacyPolicy() {
           sites&apos; own policies.
         </Section>
         <Section heading="Children">
-          The app collects no information from anyone, including children under 13.
+          The app collects no information from anyone, including children under 13. Signing in with
+          lichess, described above, is the only time it sends anything, and only to lichess.
         </Section>
         <Section heading="Questions">
           Ask on the app&apos;s{' '}
