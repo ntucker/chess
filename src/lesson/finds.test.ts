@@ -37,9 +37,12 @@ describe('writeFinds', () => {
 
   it("leaves the learner's move unbooked where the guide books another", () => {
     const guided = writeFinds(lesson(), [PAST_END]);
-    const other = { ...PAST_END, line: uciLine('e4', 'c6', 'd4', 'd6') };
-    other.mistake = uci('e4', 'c6', 'd4', 'd6', 'Bd3');
-    other.replies = [uci('e4', 'c6', 'd4', 'd6', 'Bd3', 'Nf6')];
+    const other = {
+      ...PAST_END,
+      line: uciLine('e4', 'c6', 'd4', 'd6'),
+      mistake: uci('e4', 'c6', 'd4', 'd6', 'Bd3'),
+      replies: [uci('e4', 'c6', 'd4', 'd6', 'Bd3', 'Nf6')],
+    };
     const written = writeFinds(guided, [other]);
     expect(written.positions[keyAfter('e4', 'c6', 'd4')].moves).toEqual([
       { uci: uci('e4', 'c6', 'd4', 'd5'), book: true },
