@@ -145,7 +145,7 @@ export function OpportunityList({
   const anyRow = rows.length > 0 || saved.finds.length > 0 || finder.run.finds.length > 0;
   return (
     <Stack style={compact ? STATIC.compact : labelled}>
-      <View style={[STATIC.line, STATIC.wrap]}>
+      <View style={[STATIC.line, STATIC.headWrap]}>
         <HeadingTip tip={listTip(players)} style={STATIC.heading}>
           <Eyebrow>Opportunities</Eyebrow>
         </HeadingTip>
@@ -479,10 +479,14 @@ function Row({
   const mistake = numberedMove(san, line.length);
   // Without a name, the two moves before it tell apart one mistake played after several.
   const caption = name ? mistake : leadIn(line);
-  // As the candidate list shows the mistake's cost, "0%" where judged but that rounds to nothing.
-  const lost = cost === undefined ? undefined : (lostPercent(cost) ?? '0%');
-  // A dash only where unjudged, as each column's tip says.
-  const payoff = mates ? '#' : lost === undefined ? '–' : lost === '0%' ? lost : `\u2212${lost}`;
+  // A dash only where unjudged, as each column's tip says; "0%" where judged but it rounds to nothing.
+  const payoff = mates
+    ? '#'
+    : cost === undefined
+      ? '–'
+      : lostPercent(cost)
+        ? `\u2212${percent(cost)}`
+        : '0%';
   // Each meter's number and how full its bar is, in its column (`COLUMNS`).
   const meters: Record<Meter, { label: string; fill: number }> = {
     reach: { label: reach === undefined ? '–' : percent(reach), fill: reach ?? 0 },
@@ -498,7 +502,7 @@ function Row({
           caption,
           reach !== undefined && `reached in ${percent(reach)} of games`,
           share !== undefined && `played ${percent(share)} of the time`,
-          mates ? 'punished with mate' : lost && `gives away ${lost}`,
+          mates ? 'punished with mate' : cost !== undefined && `gives away ${percent(cost)}`,
           mark && SPOKEN_MARKS[mark],
         ]
           .filter(Boolean)
@@ -566,7 +570,7 @@ const STATIC = StyleSheet.create({
   // As wide as its words, so its tip opens over them alone.
   heading: { alignSelf: 'flex-start' },
   // The column heads take a line of their own where the panel is too narrow for both.
-  wrap: { flexWrap: 'wrap' },
+  headWrap: { flexWrap: 'wrap' },
   finderHead: { paddingTop: 10, paddingBottom: 2 },
   grow: { flexGrow: 1 },
   compact: { gap: 4 },
