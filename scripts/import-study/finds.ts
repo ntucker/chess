@@ -115,7 +115,8 @@ function markedPositions(lesson: Lesson, find: Find): PositionKey[] {
  * only finds on the guide go into a lesson.
  */
 export function withFinds(lesson: Lesson, finds: readonly LessonFind[]): Lesson {
-  // One at a time, so a move an earlier find wrote (its booked Act III) counts as the guide's.
+  // One at a time, so a move an earlier find wrote (its booked Act III) counts as the guide's;
+  // each write copies the lesson, which a study's few finds afford.
   return finds.reduce((tree, { find, gain }) => {
     let pos = startOf(tree);
     for (const uci of find.line) {

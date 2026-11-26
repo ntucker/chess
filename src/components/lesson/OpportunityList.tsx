@@ -215,7 +215,8 @@ const SAVED_TIP =
  * The finder's part of the list: its heading, source chip and button
  * (`finderAction`), then its finds best first, leaving out any whose mistake
  * leads to a position the lesson's rows or the saved finds already list
- * (`taken`), however its line got there. Each row's bookmark saves it. A spinner shows while it runs.
+ * (`taken`), however its line got there. Each row's bookmark saves it. A
+ * spinner shows while it runs.
  */
 function FinderPart({
   finder: { run, from, source, onFind },

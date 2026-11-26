@@ -46,7 +46,8 @@ const pastEnd = (lesson: Lesson, pos: Chess) => !lesson.positions[positionKey(po
 
 /**
  * Whether `find` plays from `start`: every move legal, and each other reply
- * legal at the cue. `writeFinds` takes only finds that do, and doesn't check.
+ * legal at the cue. Callers of `writeFinds` pass only finds that do; it
+ * doesn't check.
  */
 export function findPlays(
   start: Chess,
