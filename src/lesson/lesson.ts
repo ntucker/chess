@@ -199,9 +199,7 @@ export interface Mistake {
    * How much the move gives away: the mover's expected score (0 to 1) before
    * it, less after it, by Stockfish's full search. At least `MISTAKE_LOSS`
    * (src/analysis/quality.ts), except on a trap a study drew (one with a
-   * `verdict`), which holds what Stockfish measures: a practical trap can
-   * give away less than a mistake. Example: the Queen's Gambit's 10...Ne4,
-   * 0.054.
+   * `verdict`): a practical trap can give away less than a mistake.
    */
   readonly cost?: number;
   /**

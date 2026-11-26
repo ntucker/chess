@@ -69,7 +69,7 @@ import { lessonIndex } from '@/lesson/openings';
 import { convertChapters, convertReport } from './convert';
 import { claudeCli } from './convert/claude';
 import { withoutEmptyVariations } from './emptyVariations';
-import { engineCheck, ENGINES_OWN, type Evaluate, fillBook, linesTo, sans } from './engineCheck';
+import { engineCheck, ENGINES_OWN, type Evaluate, fillBook, sans } from './engineCheck';
 import { explainBookMoves, explainCli, explainReport } from './explain';
 import { extractChapter } from './extract';
 import { lessonJson } from './lessonJson';
@@ -237,11 +237,8 @@ async function main() {
   if (counting) {
     const measures = await measureMarks(lesson, explorer.ask);
     lesson = withMeasures(lesson, measures);
-    const lines = linesTo(lesson);
-    const cheap = measures.filter(({ cost }) => cost < MISTAKE_LOSS);
-    console.log(
-      `marks measured: ${measures.length}, ${cheap.length} cheaper than a mistake: ${cheap.map(({ key, uci, cost }) => `${sans(lesson, [...lines.get(key)!.line, uci])} (${cost.toFixed(3)})`).join('; ') || 'none'}`,
-    );
+    const cheap = measures.filter(({ cost }) => cost < MISTAKE_LOSS).length;
+    console.log(`marks measured: ${measures.length}, ${cheap} cheaper than a mistake`);
   }
   const explainer = explainCli({
     learner: info.side,

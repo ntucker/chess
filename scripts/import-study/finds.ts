@@ -84,25 +84,32 @@ export async function measureMarks(lesson: Lesson, explorer: Explorer): Promise<
     for (const { key, move } of unmeasured) {
       const before = walkTo(lesson.start, lines.get(key)!.line)!;
       const cue = walkTo(lesson.start, [...before.line, move.uci])!;
-      const cost = await settle(host, (ask) => {
-        const [above, below] = [before, cue].map((spot) => {
-          const analysis = host.answers.analysis(spot);
-          if (!isFinal(analysis)) ask({ kind: 'full', spot });
-          return analysis;
-        });
-        if (!isFinal(above) || !isFinal(below)) return undefined;
-        const loss = moveLoss(above, below, move.uci, before.pos.turn)?.loss;
-        if (loss === undefined)
-          throw new Error(`Stockfish can't judge the mark ${move.uci} at ${key}`);
-        // Two searches, so a trap Stockfish rates best can read a hair under 0; it gives away nothing.
-        return Math.max(0, loss);
-      });
+      const cost = await markCost(host, before, cue);
       measures.push({ key, uci: move.uci, cost, gain: await gainByBand(host, cue, explorer) });
     }
     return measures;
   } finally {
     host.stop();
   }
+}
+
+/** What the move from `before` to `cue` gives away for its mover, by full searches of both. */
+function markCost(host: FinderHost, before: Node, cue: Node): Promise<number> {
+  const uci = cue.line.at(-1)!;
+  return settle(host, (ask) => {
+    const fullAnalysis = (spot: Node) => {
+      const analysis = host.answers.analysis(spot);
+      if (!isFinal(analysis)) ask({ kind: 'full', spot });
+      return analysis;
+    };
+    const [above, below] = [fullAnalysis(before), fullAnalysis(cue)];
+    if (!isFinal(above) || !isFinal(below)) return undefined;
+    const loss = moveLoss(above, below, uci, before.pos.turn)?.loss;
+    if (loss === undefined)
+      throw new Error(`Stockfish can't judge the mark ${uci} at ${before.key}`);
+    // Two searches, so a trap Stockfish rates best can read a hair under 0; it gives away nothing.
+    return Math.max(0, loss);
+  });
 }
 
 /**

@@ -150,9 +150,7 @@ export function writeFinds(lesson: Lesson, finds: readonly FindFragment[]): Less
     const marked = here().moves.find((move) => move.uci === find.mistake)?.mistake;
     play(find.mistake, (move) => ({
       ...move,
-      mistake: marked
-        ? scored(marked, find)
-        : { ...scored({}, find), line: [find.replies[0], ...find.payoff] },
+      mistake: scored(marked ?? { line: [find.replies[0], ...find.payoff] }, find),
     }));
     if (marked) continue;
     const cue = here();
