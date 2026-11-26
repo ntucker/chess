@@ -86,15 +86,16 @@ export function guideAt(lesson: Lesson, line: readonly Uci[]) {
   return { book: new Map(book.map(({ move, quality }) => [move.uci, quality])), answer };
 }
 
-/** Whose move an answer is, by its label: the guide's, an opportunity's, or Stockfish's best. */
-const ANSWER_OWNERS = {
-  book: "the guide's",
-  opportunity: "an opportunity's",
-  best: "Stockfish's",
-} as const satisfies Record<Answer['quality'], string>;
-
-/** Whose move an answer labelled `quality` is, to go before "move": "the guide's", "an opportunity's" or "Stockfish's". */
-export const answerOwner = (quality: Answer['quality']) => ANSWER_OWNERS[quality];
+/**
+ * Whose move an answer labelled `quality` is, to go before "move": the
+ * guide's, an opportunity's, or Stockfish's best, in the middle of a sentence
+ * (`within`) or at its start.
+ */
+export const ANSWER_OWNERS = {
+  book: { within: "the guide's", start: "The guide's" },
+  opportunity: { within: "an opportunity's", start: "An opportunity's" },
+  best: { within: "Stockfish's", start: "Stockfish's" },
+} as const satisfies Record<Answer['quality'], { within: string; start: string }>;
 
 /** What a moment shows: everything the panel, the board and the actions need to retry it. */
 export interface Moment {

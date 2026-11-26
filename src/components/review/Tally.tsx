@@ -17,7 +17,10 @@ import { fonts } from '@/theme/theme';
 /** How many labels a row of a narrow page's grid holds. */
 const COLUMNS = 3;
 
-/** The labels the tally lists for `sides`' counts: each, but one `LISTED_WHEN_COUNTED` only where counted. */
+/**
+ * The labels the tally lists for `sides`' counts: every label, except that
+ * an opportunity's move (`LISTED_WHEN_COUNTED`) is listed only where counted.
+ */
 const listedLabels = (...sides: Tally[]) =>
   LABELS_BEST_FIRST.filter(
     (quality) => !LISTED_WHEN_COUNTED.has(quality) || sides.some((counts) => counts[quality]),

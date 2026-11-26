@@ -85,9 +85,9 @@ export function findPlays(
  * it is labelled as the opportunity's rather than the guide's. New
  * positions take the variation of the one before. Each new marker's line is
  * stored only where the guide's choice rule doesn't give it, and every older
- * marker keeps the line it had. A mistake the guide
- * already marks (a trap migrated from a study) keeps its line and verdict and
- * only gains its cost and gain.
+ * marker keeps the line it had. A mistake the guide already marks (a trap
+ * migrated from a study) keeps its line and verdict and only gains its cost
+ * and gain.
  *
  * Finds in one call are each judged against the lesson given. A later call,
  * on the lesson an earlier one wrote, leaves a learner move unbooked where

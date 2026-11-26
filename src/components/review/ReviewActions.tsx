@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { type IconAction, IconActions } from '@/components/IconActions';
 import { Tip } from '@/components/Tip';
-import { answerOwner } from '@/review/retry';
+import { ANSWER_OWNERS } from '@/review/retry';
 import { TOUCH_TARGET } from '@/theme/touch';
 
 import type { ReviewView } from './reviewView';
@@ -22,7 +22,9 @@ interface Action extends IconAction {
  */
 function retryActions({ moment, retry, showAnswer }: Props): readonly Action[] {
   const { answer } = moment;
-  const best = answer?.guide ? `${answerOwner(answer.quality)} move` : "Stockfish's best move";
+  const best = answer?.guide
+    ? `${ANSWER_OWNERS[answer.quality].within} move`
+    : "Stockfish's best move";
   return [
     {
       icon: 'refresh',

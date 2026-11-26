@@ -13,7 +13,7 @@ import { qualityTip, TippedBadge } from '@/components/QualityBadge';
 import { Tip } from '@/components/Tip';
 import type { Uci } from '@/lesson/lesson';
 import type { ComparedMove, Comparison } from '@/review/comparison';
-import { type Answer, answerOwner, type GuideAnswer, type Try } from '@/review/retry';
+import { type Answer, ANSWER_OWNERS, type GuideAnswer, type Try } from '@/review/retry';
 import { fonts } from '@/theme/theme';
 
 interface Props {
@@ -194,7 +194,7 @@ function GuideLine({
 }: { readonly san: string } & Omit<GuideAnswer, 'uci'>) {
   const named = (
     <Text role="body">
-      <Notation>{`${san} is ${answerOwner(quality)} move.`}</Notation>
+      <Notation>{`${san} is ${ANSWER_OWNERS[quality].within} move.`}</Notation>
     </Text>
   );
   return (

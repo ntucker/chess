@@ -244,6 +244,21 @@ describe('guideAt', () => {
     });
   });
 
+  it("answers with an opportunity's move under its own label where it is the first", () => {
+    const key = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -';
+    const found = {
+      ...lesson,
+      positions: {
+        ...lesson.positions,
+        [key]: { variation: 'main', moves: [{ uci: 'd7d5', book: true, found: true }] },
+      },
+    } as unknown as Lesson;
+    expect(guideAt(found, ['e2e4'])).toMatchObject({
+      book: new Map([['d7d5', 'opportunity']]),
+      answer: { uci: 'd7d5', quality: 'opportunity' },
+    });
+  });
+
   it('has nothing beyond the guide', () => {
     expect(guideAt(lesson, ['d2d4'])).toEqual({ book: new Map(), answer: undefined });
   });
