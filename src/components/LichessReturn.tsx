@@ -62,6 +62,8 @@ function outcomeText(outcome: Exclude<SignInOutcome, { type: 'none' }>): string 
       return 'lichess was not allowed to sign you in. Close this window, and try again from the person button if you like.';
     case 'failed':
       return 'lichess could not sign you in. Close this window and try again from the person button.';
+    case 'replaced':
+      return 'A newer sign-in replaced this one. Close this window, and finish signing in in the newer one.';
   }
 }
 

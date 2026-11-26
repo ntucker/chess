@@ -11,6 +11,7 @@ import { parsePosition, playMove, positionKey } from '@/game/replay';
 
 import type { Lesson, LessonMove, LessonPosition, PositionKey, Uci } from './lesson';
 import { keepMistakeLines } from './mistakes';
+import { guidePosition } from './select';
 
 /** An opportunity as a lesson's tree keeps it: its moves, and what the mark records. */
 export interface FindFragment {
@@ -42,16 +43,18 @@ function upsert(entry: Entry, uci: Uci, edit: (move: LessonMove) => LessonMove =
 const booked = (move: LessonMove): LessonMove => ({ ...move, book: true });
 
 /**
- * Whether `lesson`, as given, has no moves at `pos`: its line ended before
- * it, or never came. Read from the lesson given rather than the tree being
- * written, so finds that part there are each booked, whatever their order.
+ * Whether `lesson`, as given, has no moves at `pos` (`guidePosition`): its
+ * line ended before it, or never came. Read from the lesson given rather than
+ * the tree being written, so every find in one call that passes such a
+ * position books its learner move there, whatever the finds' order.
  */
-const pastEnd = (lesson: Lesson, pos: Chess) => !lesson.positions[positionKey(pos)]?.moves.length;
+const pastEnd = (lesson: Lesson, pos: Chess) =>
+  guidePosition(lesson, positionKey(pos)).place !== 'inside';
 
 /**
  * Whether `find` plays from `start`: every move legal, and each other reply
- * legal at the cue. Callers of `writeFinds` pass only finds that do; it
- * doesn't check.
+ * legal at the cue. `writeFinds` doesn't check this; its callers pass only
+ * finds that play.
  */
 export function findPlays(
   start: Chess,
@@ -70,8 +73,11 @@ export function findPlays(
  * lesson's start (`findPlays`; not checked here), with the mistake by the
  * side the learner doesn't play. Along Act I it adds the moves the guide
  * lacks, the learner's as ordinary moves where the guide has others there
- * (so the repertoire stays the guide's) and as book moves past the guide's
- * end (`pastEnd`, so a clean Practice run plays on to the cue); it marks the
+ * (so the repertoire stays the guide's) and as book moves where the lesson
+ * given has none (past a line's end, so a clean Practice run plays on to the
+ * cue). Finds in one call are each judged against the lesson given; a later
+ * call, on the lesson an earlier one wrote, leaves a learner move unbooked
+ * where that earlier find booked another. It marks the
  * mistake with its cost and any gain; it books every reply the cue accepts
  * and the learner's Act III moves, and adds the opponent's Act III moves
  * where the guide has none. New positions take the variation of the one

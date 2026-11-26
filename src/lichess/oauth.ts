@@ -60,6 +60,10 @@ const PENDING = storageKey('lichess-sign-in');
 export const savePendingSignIn = (pending: PendingSignIn) =>
   writeStorage(PENDING, JSON.stringify(pending));
 
+/** Whether a web sign-in waits for lichess's answer, whatever its state. */
+export const isSignInPending = () =>
+  typeof parseStoredObject(readStorage(PENDING) ?? '').state === 'string';
+
 /**
  * The sign-in waiting for the answer that repeats `state`, forgotten once
  * taken, so a code is traded once. None where no sign-in waits or another one

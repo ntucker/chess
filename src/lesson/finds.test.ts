@@ -35,7 +35,7 @@ describe('writeFinds', () => {
     expect(cleanLineEnds(written, keyAfter('e4'))).toEqual([keyAfter('e4', 'c6', 'd4', 'd5')]);
   });
 
-  it("leaves the learner's move unbooked where the guide books another, and books each find's past the end", () => {
+  it("leaves the learner's move unbooked where the guide, or an earlier call's find, books another; books each find's in one call", () => {
     const other = {
       ...PAST_END,
       line: uciLine('e4', 'c6', 'd4', 'd6'),

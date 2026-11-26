@@ -490,7 +490,13 @@ function Row({
 function Bookmark({ action: { icon, tip, onPress } }: { readonly action: IconAction }) {
   return (
     <Tip tip={tip}>
-      <Button size="sm" variant="ghost" onPress={onPress} accessibilityLabel={tip}>
+      <Button
+        size="sm"
+        variant="ghost"
+        onPress={onPress}
+        accessibilityLabel={tip}
+        hitSlop={BOOKMARK_SLOP}
+      >
         <Ionicons name={icon} size={17} />
       </Button>
     </Tip>
@@ -521,6 +527,8 @@ const STATIC = StyleSheet.create({
 
 /** The room a row keeps for its bookmark. */
 const BOOKMARK_WIDTH = 34;
+/** Grows the small bookmark button (about 35 by 28) to a finger's 44, within its row. */
+const BOOKMARK_SLOP = { top: 8, bottom: 8, left: 5, right: 5 };
 
 /**
  * A density's row and meter sizes: a phone's rows are 44 tall, the touch
