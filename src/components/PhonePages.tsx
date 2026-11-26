@@ -45,8 +45,8 @@ export function PhonePages<H extends string>({
   const part = useNarrowPart();
   const sections = useSections();
   const pageStyle = [styles.page, { paddingHorizontal: bleed }];
-  // The dots sit a step up from the foot and are a step tall: a third step clears them.
-  const clearDots = { paddingBottom: 3 * useTheme().theme.semantic.space[2] };
+  const { theme } = useTheme();
+  const clearDots = { paddingBottom: DOTS_STEPS * theme.semantic.space[2] };
   return (
     <Stack {...part('pages-panel', sections)}>
       {head}
@@ -78,6 +78,12 @@ export function PhonePages<H extends string>({
     </Stack>
   );
 }
+
+/**
+ * The steps of space the dots take at the pages' foot: silk's indicator sits
+ * a step up and is a step tall, and a third step clears it.
+ */
+const DOTS_STEPS = 3;
 
 /** The pages' least height: a few lines. Below it the panel scrolls instead. */
 const PAGES_FLOOR = 140;

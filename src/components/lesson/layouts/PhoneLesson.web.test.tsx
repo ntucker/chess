@@ -125,6 +125,12 @@ describe('PhoneLesson', () => {
     expect(dots()).toBe(3);
   });
 
+  it("ends the scoresheet's page above the dots, as its table doesn't fade at its foot", () => {
+    render('scoresheet');
+    expect(pageOf('scoresheet').style.paddingBottom).toBe('24px');
+    expect(pageOf('movesidea').style.paddingBottom).toBe('');
+  });
+
   it('leaves out the panes when there are neither moves nor an idea, as Practice can', () => {
     render('lesson', { ...MODEL, moves: null, idea: null });
     expect(pageOf('').childElementCount).toBe(0);
