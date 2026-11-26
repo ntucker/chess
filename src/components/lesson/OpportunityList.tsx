@@ -363,7 +363,7 @@ const COLUMNS = [
   {
     meter: 'payoff',
     icon: 'trophy-outline',
-    tip: "Payoff: the winning chances the mistake gives you; # is mate. \u2013 means Stockfish hasn't judged it yet.",
+    tip: "Payoff: the winning chances the mistake gives away; # is mate. \u2013 means Stockfish hasn't judged it yet.",
   },
 ] as const;
 type Meter = (typeof COLUMNS)[number]['meter'];
@@ -382,7 +382,7 @@ function ColumnHeads({ styles }: { readonly styles: Styles }) {
         <View style={STATIC.grow} />
         <View style={STATIC.meters}>
           {COLUMNS.map(({ meter, icon, tip }) => (
-            <Tip key={meter} tip={tip} style={styles.column}>
+            <Tip key={meter} tip={tip} style={styles.column} focusable>
               <InfoMark name={icon} size={HEADING_INFO_SIZE} />
             </Tip>
           ))}
