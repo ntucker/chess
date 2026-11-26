@@ -6,6 +6,7 @@ import { SilkProvider } from '@reactive/silk-native';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
+import { parseStoredObject, readStorage, storageKey } from '@/context/storage';
 import { themes } from '@/theme/theme';
 
 import { LichessAccount } from './LichessAccount';
@@ -15,8 +16,9 @@ jest.mock('@expo/vector-icons/Ionicons', () => () => null);
 const mockPrompt = jest.fn(async () => ({ type: 'success', params: { code: 'code' } }));
 jest.mock('expo-auth-session', () => ({
   ResponseType: { Code: 'code' },
-  useAuthRequest: () => [
-    { codeVerifier: 'verifier', redirectUri: 'http://localhost/lichess' },
+  // A request built from the hook's config, as expo-auth-session builds one.
+  useAuthRequest: ({ state }: { state?: string }) => [
+    { state, codeVerifier: `verifier ${state}`, redirectUri: 'http://localhost/lichess' },
     null,
     mockPrompt,
   ],
@@ -75,6 +77,20 @@ describe('LichessAccount', () => {
     await press();
     expect(calls).toEqual([]);
     expect(button().getAttribute('aria-label')).toBe('Sign in with lichess');
+  });
+
+  it('gives each press a sign-in of its own, which replaces the one an earlier press saved', async () => {
+    // On the web lichess's page cuts the popup off, so it reads as closed and the button comes back.
+    mockPrompt.mockResolvedValueOnce({ type: 'dismiss' } as never);
+    mockPrompt.mockResolvedValueOnce({ type: 'dismiss' } as never);
+    const pending = () => parseStoredObject(readStorage(storageKey('lichess-sign-in')) ?? '');
+    await press();
+    const first = pending();
+    await press();
+    const second = pending();
+    expect(first.state).toEqual(expect.any(String));
+    expect(second.state).not.toBe(first.state);
+    expect(second.codeVerifier).toBe(`verifier ${second.state}`);
   });
 
   it('says on the button itself when signing in failed', async () => {

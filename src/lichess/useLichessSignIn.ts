@@ -22,7 +22,11 @@ export type SignInState = 'idle' | 'signing-in' | 'failed';
  * answer itself (`savePendingSignIn`, src/components/LichessReturn.tsx),
  * since lichess's page cuts it off from this one, which then takes in the
  * saved account as it takes in another tab's (`AccountsSync`): here the
- * popup reads as closed at once, and the state goes back to idle.
+ * popup reads as closed at once, and the state goes back to idle. So the
+ * learner can press again while the first popup is still on lichess: each
+ * web press therefore gets a request of its own (`nextState`), whose saved
+ * sign-in replaces the earlier one, and the earlier popup's answer reads as
+ * replaced (`finishSignIn`).
  *
  * ```ts
  * const { signIn, state } = useLichessSignIn();
@@ -31,9 +35,12 @@ export type SignInState = 'idle' | 'signing-in' | 'failed';
 export function useLichessSignIn() {
   const ctrl = useController();
   const [state, setState] = useState<SignInState>('idle');
+  const [oauthState, setOauthState] = useState(nextState);
+  // A new `state` makes useAuthRequest build a new request: a new verifier and sign-in address too.
   const [request, , promptAsync] = useAuthRequest(
     {
       clientId: LICHESS_CLIENT_ID,
+      state: oauthState,
       redirectUri: lichessRedirectUri(),
       responseType: ResponseType.Code,
       scopes: [],
@@ -47,6 +54,7 @@ export function useLichessSignIn() {
     if (process.env.EXPO_OS === 'web') {
       const { state: answer, codeVerifier, redirectUri } = request;
       savePendingSignIn({ state: answer, codeVerifier, redirectUri });
+      setOauthState(nextState());
     }
     try {
       const result = await promptAsync();
@@ -64,3 +72,10 @@ export function useLichessSignIn() {
   };
   return { signIn: request ? signIn : undefined, state };
 }
+
+/**
+ * The OAuth `state` for the next sign-in: a new random one on the web, where
+ * one press's popup can outlast the next press (`useLichessSignIn`); on the
+ * phone, where one sign-in runs at a time, the request's own.
+ */
+const nextState = () => (process.env.EXPO_OS === 'web' ? crypto.randomUUID() : undefined);
