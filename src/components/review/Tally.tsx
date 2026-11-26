@@ -110,6 +110,10 @@ function TallyGrid({ counts }: { readonly counts: Tally }) {
               <Count count={counts[quality]} />
             </View>
           ))}
+          {/* A short last row keeps its cells in the columns above. */}
+          {Array.from({ length: COLUMNS - row.length }, (_, n) => (
+            <View key={n} style={styles.cell} />
+          ))}
         </View>
       ))}
     </View>

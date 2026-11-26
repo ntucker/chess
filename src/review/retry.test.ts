@@ -2,6 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import { legalMoveCountAt, replay } from '@/game/replay';
 import type { Lesson } from '@/lesson/lesson';
+import { withMoves } from '@/lesson/lesson.fixture';
 
 import { guideAt, type MomentOf, momentAt } from './retry';
 import { judgedMove, listing, waitingMove } from './review.fixture';
@@ -246,13 +247,7 @@ describe('guideAt', () => {
 
   it("answers with an opportunity's move under its own label where it is the first", () => {
     const key = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -';
-    const found = {
-      ...lesson,
-      positions: {
-        ...lesson.positions,
-        [key]: { variation: 'main', moves: [{ uci: 'd7d5', book: true, found: true }] },
-      },
-    } as unknown as Lesson;
+    const found = withMoves(lesson, key, () => [{ uci: 'd7d5', book: true, found: true }]);
     expect(guideAt(found, ['e2e4'])).toMatchObject({
       book: new Map([['d7d5', 'opportunity']]),
       answer: { uci: 'd7d5', quality: 'opportunity' },
