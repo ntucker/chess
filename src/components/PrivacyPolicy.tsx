@@ -9,7 +9,7 @@ import { SOURCE_URL } from '@/components/SourceLink';
 import { STAGE_MAX } from '@/components/Stage';
 
 /** When the policy below last changed. */
-const UPDATED = 'November 25, 2026';
+const UPDATED = 'November 26, 2026';
 
 const LICHESS_PRIVACY = 'https://lichess.org/privacy';
 
@@ -34,9 +34,10 @@ export function PrivacyPolicy() {
           tracking, and it sends nothing you do to anyone, except to lichess if you sign in with it.
         </PageIntro>
         <Section heading="What stays on your device">
-          Your settings and your progress through the lessons are saved on your device, in the
-          app&apos;s own storage (or, on the web, the browser&apos;s). They never leave it.
-          Uninstalling the app, or clearing the site&apos;s data in your browser, deletes them.
+          Your settings, your progress through the lessons and the opportunities you save are saved
+          on your device, in the app&apos;s own storage (or, on the web, the browser&apos;s). They
+          never leave it. Uninstalling the app, or clearing the site&apos;s data in your browser,
+          deletes them.
         </Section>
         <Section heading="Signing in with lichess">
           You can sign in with your lichess account, so the opportunity finder counts real lichess

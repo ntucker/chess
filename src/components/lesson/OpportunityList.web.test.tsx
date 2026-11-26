@@ -9,11 +9,12 @@ import type { Uci } from '@/lesson/lesson';
 import { readShippedLesson, uciLine } from '@/lesson/lesson.fixture';
 import { lessonOpportunities } from '@/lesson/opportunities';
 import type { Find } from '@/opportunity/finder';
+import { cueOf, savedFind } from '@/opportunity/saved';
 import { positionHash, UNTOUCHED } from '@/progress/progress';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { themes } from '@/theme/theme';
 
-import { type FinderProps, OpportunityList } from './OpportunityList';
+import { type FinderProps, OpportunityList, type SavedProps } from './OpportunityList';
 
 // Its font needs Expo's asset registry too.
 jest.mock('@expo/vector-icons/Ionicons', () => () => null);
@@ -32,6 +33,9 @@ const DONE: FinderProps = {
   source: { from: 'maia', rating: 1500 },
   onFind: () => {},
 };
+
+/** Nothing saved. */
+const NONE_SAVED: SavedProps = { finds: [], onSave: () => {}, onUnsave: () => {} };
 
 /** A find after the Stafford's 4...dxc6: 5.d3 Bc5 6.Be2 Qd4 7.O-O Bg4?, punished by 8.Bxg4. */
 const FIND: Find = {
@@ -76,6 +80,10 @@ const MATE: Find = {
 
 /** The finder's button, named by its tooltip. */
 const FIND_TIP = 'Find opportunities from this position';
+/** A row's bookmark, saving the find or forgetting it, named by its tooltip. */
+const SAVE_TIP = 'Save this find: the lesson then plays it like its own';
+const UNSAVE_TIP = 'Remove from saved';
+const CONTROLS = [FIND_TIP, SAVE_TIP, UNSAVE_TIP];
 
 /** Renders the Stafford lesson's list with `props`, and reads its host with `read`. */
 function render<T>(props: Partial<Props>, read: (host: HTMLElement) => T): T {
@@ -91,6 +99,7 @@ function render<T>(props: Partial<Props>, read: (host: HTMLElement) => T): T {
             progress={UNTOUCHED}
             players="Lichess players rated 1400–1599"
             onPlay={() => {}}
+            saved={NONE_SAVED}
             finder={DONE}
             density="comfortable"
             {...props}
@@ -104,11 +113,19 @@ function render<T>(props: Partial<Props>, read: (host: HTMLElement) => T): T {
   return result;
 }
 
-/** The aria-labels of the list's rows in `host`, leaving out the finder's button. */
-const labelsIn = (host: HTMLElement) =>
-  [...host.querySelectorAll('[role="button"]')]
-    .map((row) => row.getAttribute('aria-label'))
-    .filter((label) => label !== FIND_TIP);
+/** The list's rows in `host`, leaving out its buttons: the finder's and the bookmarks. */
+const rowsIn = (host: HTMLElement) =>
+  [...host.querySelectorAll<HTMLElement>('[role="button"]')].filter(
+    (row) => !CONTROLS.includes(row.getAttribute('aria-label')!),
+  );
+
+/** The aria-labels of the list's rows in `host`. */
+const labelsIn = (host: HTMLElement) => rowsIn(host).map((row) => row.getAttribute('aria-label'));
+
+/** The bookmarks in `host` named `tip`. */
+const bookmarksIn = (host: HTMLElement, tip: string) => [
+  ...host.querySelectorAll<HTMLElement>(`[aria-label="${tip}"]`),
+];
 
 const labels = (props: Partial<Props> = {}) => render(props, labelsIn);
 
@@ -143,9 +160,7 @@ describe('OpportunityList', () => {
     const onPlay = jest.fn<(line: readonly Uci[]) => void>();
     const finder = { ...DONE, run: { finds: [FIND, MATE], running: false } };
     const said = render({ finder, onPlay }, (host) => {
-      const rows = [...host.querySelectorAll<HTMLElement>('[role="button"]')].filter(
-        (row) => row.getAttribute('aria-label') !== FIND_TIP,
-      );
+      const rows = rowsIn(host);
       act(() => rows.at(-2)!.click());
       return rows.map((row) => row.getAttribute('aria-label'));
     });
@@ -236,5 +251,51 @@ describe('OpportunityList', () => {
     expect(said).toContain('The search stopped short: an engine failed.');
     expect(said).not.toContain('No opportunity found');
     expect(retry).toHaveBeenCalledTimes(1);
+  });
+
+  it("saves a finder's find from its bookmark, with the run's source", () => {
+    const onSave = jest.fn<(find: Find) => void>();
+    const finder = { ...DONE, run: { finds: [FIND], running: false } };
+    render({ finder, saved: { ...NONE_SAVED, onSave } }, (host) => {
+      expect(bookmarksIn(host, UNSAVE_TIP)).toHaveLength(0);
+      act(() => bookmarksIn(host, SAVE_TIP)[0].click());
+    });
+    expect(onSave).toHaveBeenCalledWith(FIND);
+  });
+
+  it("lists the saved finds under their source after the lesson's, in place of the finder's", () => {
+    const onUnsave = jest.fn();
+    const kept = savedFind(FIND, { from: 'lichess', band: 1400 });
+    const saved = { ...NONE_SAVED, finds: [kept], onUnsave };
+    const finder = { ...DONE, run: { finds: [FIND, MATE], running: false } };
+    const shown = render({ finder, saved }, (host) => {
+      act(() => bookmarksIn(host, UNSAVE_TIP)[0].click());
+      return {
+        text: host.textContent ?? '',
+        labels: labelsIn(host),
+        saves: bookmarksIn(host, SAVE_TIP),
+      };
+    });
+    expect(onUnsave).toHaveBeenCalledWith(cueOf(kept));
+    expect(shown.text).toMatch(/Saved.*lichess 1400–1599.*From this position.*Maia 1500/);
+    // The saved find, then the finder's other find alone.
+    expect(shown.labels).toHaveLength(ranked.length + 2);
+    expect(shown.labels.at(-2)).toMatch(/^7\.\.\.Bg4/);
+    expect(shown.labels.at(-1)).toMatch(/^3\.\.\.Nf6/);
+    expect(shown.saves).toHaveLength(1);
+  });
+
+  it('lets the lesson list a saved find it marks too, and forget it from its row', () => {
+    const [first] = ranked;
+    const again: Find = { ...FIND, line: first.line.slice(0, -1), mistake: first.line.at(-1)! };
+    const onUnsave = jest.fn();
+    const saved = { ...NONE_SAVED, finds: [savedFind(again, DONE.source)], onUnsave };
+    const shown = render({ saved }, (host) => {
+      act(() => bookmarksIn(host, UNSAVE_TIP)[0].click());
+      return { text: host.textContent ?? '', labels: labelsIn(host) };
+    });
+    expect(shown.labels).toHaveLength(ranked.length);
+    expect(shown.text).not.toContain('Saved');
+    expect(onUnsave).toHaveBeenCalledWith(first.next);
   });
 });

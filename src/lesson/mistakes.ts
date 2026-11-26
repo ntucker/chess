@@ -13,6 +13,7 @@ import type {
   Idea,
   Lesson,
   LessonMove,
+  LessonPosition,
   Mistake,
   MistakeIdea,
   Note,
@@ -161,3 +162,57 @@ export function boardNote(lesson: Lesson, note: Note, at: PositionKey): BoardNot
 
 /** `boardNote` answers by lesson and note: a note sits in one place, so it has one `at`. */
 const boardNotes = new WeakMap<Lesson, WeakMap<Note, BoardNote>>();
+
+/**
+ * `after` with each mark's line as `before` has it, which a change to the
+ * tree's counts (popularity) would otherwise move where the line is the
+ * guide's choice. Example: a mark whose line followed the only reply then
+ * counted keeps it, stored, once another reply turns out more played.
+ */
+export function keepMistakeLines(before: Lesson, after: Lesson): Lesson {
+  return withLinesOf(after, before);
+}
+
+/**
+ * `lesson` with each mark's line, as `intended` (the same marks on another
+ * tree) reads it, stored only where the guide's choice rule doesn't give it.
+ */
+export function withLinesOf(lesson: Lesson, intended: Lesson): Lesson {
+  return {
+    ...lesson,
+    positions: mapMoves(lesson, (move, key) =>
+      move.mistake ? fitLine(lesson, key, move, mistakeLine(intended, key, move)) : move,
+    ),
+  };
+}
+
+/**
+ * `move`, a mark at `key` whose line is `line`, with that line stored only
+ * where the guide's choice rule doesn't give it.
+ */
+function fitLine(
+  lesson: Lesson,
+  key: PositionKey,
+  move: LessonMove,
+  line: readonly Uci[],
+): LessonMove {
+  if (!move.mistake) return move;
+  const { line: _line, ...mark } = move.mistake;
+  return {
+    ...move,
+    mistake: isGuideLine(lesson, key, line) ? mark : { ...mark, line: line.slice(1) },
+  };
+}
+
+/** `lesson`'s positions with each move as `edit` makes it. */
+function mapMoves(
+  lesson: Lesson,
+  edit: (move: LessonMove, key: PositionKey) => LessonMove,
+): Record<PositionKey, LessonPosition> {
+  return Object.fromEntries(
+    Object.entries(lesson.positions).map(([key, entry]) => [
+      key,
+      { ...entry, moves: entry.moves.map((move) => edit(move, key)) },
+    ]),
+  );
+}

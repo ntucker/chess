@@ -1,4 +1,4 @@
-// localStorage on Android, where the app remembers its settings, progress and accounts
+// localStorage on Android, where the app remembers its settings, progress, accounts and saved finds
 // (src/context/storage.ts). The web has its own.
 import 'expo-sqlite/localStorage/install';
 
@@ -13,6 +13,7 @@ import { AccountsSync } from '@/resources/accounts';
 import { AnalysisManager } from '@/resources/analysis';
 import { LichessTokens } from '@/resources/lichessTokens';
 import { ProgressSync } from '@/resources/progress';
+import { SavedFindsSync } from '@/resources/savedFinds';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { StockfishWhileNeeded } from '@/stockfish/demand';
 import { FullStockfishHost } from '@/stockfish/FullStockfishHost';
@@ -23,6 +24,7 @@ import { FONT_FILES } from '@/theme/fontFiles';
 const managers = () => [
   new ProgressSync(),
   new AccountsSync(),
+  new SavedFindsSync(),
   new LichessTokens(),
   new AnalysisManager(),
   ...getDefaultManagers(),

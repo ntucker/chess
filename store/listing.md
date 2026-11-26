@@ -71,5 +71,6 @@ every image in `screenshots/`, in name order.
   the sign-in itself, then the opening explorer's counts for the positions the finder asks about,
   sent with the token the sign-in gave. The username and token stay on the device, and go only to
   lichess, the service the user chose to sign in to, which Play's form treats as a user-initiated
-  transfer rather than sharing.
+  transfer rather than sharing. The opportunities a user saves (their moves and the numbers the
+  finder measured) stay on the device, like settings and progress, and are never sent.
 - **Government apps**, **Financial features**, **Health**, **News**: not applicable (No).

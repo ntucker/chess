@@ -1,5 +1,7 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   Badge,
+  Button,
   Inline,
   Pressable,
   Progress,
@@ -24,6 +26,7 @@ import { markId } from '@/lesson/mistakes';
 import { lessonOpportunities, type Opportunity } from '@/lesson/opportunities';
 import { RATING_BANDS } from '@/lichess/explorer';
 import type { Find } from '@/opportunity/finder';
+import { bySource, cueOf, type SavedFind } from '@/opportunity/saved';
 import type { FinderRun } from '@/opportunity/useFinder';
 import type { ReplySource } from '@/opportunity/walk';
 import type { Mark, MarkedPositions } from '@/progress/progress';
@@ -42,13 +45,24 @@ interface Props {
   readonly players: string | undefined;
   /** The learner picks a row: the game plays its line, up to the cue. */
   readonly onPlay: (line: readonly Uci[]) => void;
-  /** The finder run from a position of the board (`useFinder`), whose finds follow the lesson's. */
+  /** The finds the learner saved on this lesson, which follow the lesson's own. */
+  readonly saved: SavedProps;
+  /** The finder run from a position of the board (`useFinder`), whose finds follow the saved ones. */
   readonly finder: FinderProps;
   /**
    * `compact`, a phone's page: the rows alone, which the page scrolls.
    * `comfortable`, a wide panel: a heading over the rows on a card.
    */
   readonly density: Density;
+}
+
+/** The learner's saved finds, and saving or forgetting one. */
+export interface SavedProps {
+  readonly finds: readonly SavedFind[];
+  /** Saves one of the finder's finds, with the numbers of its source. */
+  readonly onSave: (find: Find) => void;
+  /** Forgets the saved find at `cue` (`cueOf`). */
+  readonly onUnsave: (cue: PositionKey) => void;
 }
 
 /** The finder's part of the list. */
@@ -83,6 +97,7 @@ export function OpportunityList({
   progress,
   players,
   onPlay,
+  saved,
   finder,
   density,
 }: Props) {
@@ -93,19 +108,38 @@ export function OpportunityList({
   const labelled = useLabelled();
   const compact = density === 'compact';
   const styles = compact ? COMPACT : COMFORTABLE;
-  const rows = shown ? lessonOpportunities(shown.lesson, shown.band) : NONE;
+  const rows = useMemo(
+    () => (shown ? lessonOpportunities(shown.lesson, shown.band) : NONE),
+    [shown],
+  );
   const marks = shown ? opportunityMarks(shown.lesson, shown.progress, rows) : [];
-  // A lesson that marks none of the opponent's mistakes lists the finder's alone.
+  const savedCues = useMemo(() => new Set(saved.finds.map(cueOf)), [saved.finds]);
+  // A lesson that marks none of the opponent's mistakes lists the saved and the finder's alone.
   const list = rows.map((row, i) => (
     <Row
       key={markId(row.key, row.move.uci)}
       row={lessonRow(row, marks[i])}
       styles={styles}
       onPlay={onPlay}
+      // A find saved before the lesson marked it too: the lesson's row lists it, and forgets it.
+      bookmark={savedCues.has(row.next) ? unsaveAction(row.next, saved.onUnsave) : undefined}
     />
   ));
   const listed = useMemo(() => new Set(rows.map(({ next }) => next)), [rows]);
-  const found = <FinderPart finder={finder} listed={listed} styles={styles} onPlay={onPlay} />;
+  // The finder lists only what neither the lesson nor the saved finds list.
+  const taken = useMemo(() => new Set([...listed, ...savedCues]), [listed, savedCues]);
+  const found = (
+    <>
+      <SavedPart saved={saved} listed={listed} styles={styles} onPlay={onPlay} />
+      <FinderPart
+        finder={finder}
+        taken={taken}
+        onSave={saved.onSave}
+        styles={styles}
+        onPlay={onPlay}
+      />
+    </>
+  );
   return (
     <Stack style={compact ? STATIC.compact : labelled}>
       <HeadingTip tip={listTip(players)} style={STATIC.heading}>
@@ -127,27 +161,80 @@ export function OpportunityList({
 }
 
 /**
- * The finder's part of the list: its heading, source chip and button
- * (`finderAction`), then its finds best first, leaving out any whose mistake
- * leads to a position the lesson already lists (`listed`), however its line
- * got there. A spinner shows while it runs.
+ * The saved finds the lesson doesn't list (`listed`), one group per source
+ * (`bySource`) under its own heading and source chip, so no score ranks
+ * beside another source's. Each row's bookmark forgets it.
  */
-function FinderPart({
-  finder: { run, from, source, onFind },
+function SavedPart({
+  saved: { finds, onUnsave },
   listed,
   styles,
   onPlay,
 }: {
-  readonly finder: FinderProps;
+  readonly saved: SavedProps;
   readonly listed: ReadonlySet<PositionKey>;
   readonly styles: Styles;
   readonly onPlay: (line: readonly Uci[]) => void;
 }) {
+  // Each row replays its line: once per change of the saved finds, not per render.
+  const groups = useMemo(
+    () =>
+      bySource(finds)
+        .map(({ source, finds: group }) => ({
+          source,
+          rows: group.map(findRow).filter(({ next }) => !listed.has(next)),
+        }))
+        .filter(({ rows }) => rows.length),
+    [finds, listed],
+  );
+  return groups.map(({ source, rows }) => (
+    <View key={sourceChip(source).label}>
+      <Inline gap="2" align="center" style={[styles.finder, STATIC.finderHead]}>
+        <HeadingTip tip={SAVED_TIP}>
+          <Eyebrow>Saved</Eyebrow>
+        </HeadingTip>
+        <SourceChip source={source} />
+      </Inline>
+      {rows.map((row) => (
+        <Row
+          key={row.next}
+          row={row}
+          styles={styles}
+          onPlay={onPlay}
+          bookmark={unsaveAction(row.next, onUnsave)}
+        />
+      ))}
+    </View>
+  ));
+}
+
+const SAVED_TIP =
+  'Finds you saved, kept on this device. The lesson plays each one like its own: your cue, then the payoff.';
+
+/**
+ * The finder's part of the list: its heading, source chip and button
+ * (`finderAction`), then its finds best first, leaving out any whose mistake
+ * leads to a position the lesson's rows or the saved finds already list
+ * (`taken`), however its line got there. Each row's bookmark saves it. A
+ * spinner shows while it runs.
+ */
+function FinderPart({
+  finder: { run, from, source, onFind },
+  taken,
+  onSave,
+  styles,
+  onPlay,
+}: {
+  readonly finder: FinderProps;
+  readonly taken: ReadonlySet<PositionKey>;
+  readonly onSave: (find: Find) => void;
+  readonly styles: Styles;
+  readonly onPlay: (line: readonly Uci[]) => void;
+}) {
   // Each row replays its line: once per run's answer, not per render.
-  const found = useMemo(() => run.finds.map(findRow), [run.finds]);
+  const found = useMemo(() => run.finds.map((find) => ({ find, row: findRow(find) })), [run.finds]);
   // Each find leads to its own position (the finder keeps one per position), so `next` keys its row.
-  const rows = found.filter(({ next }) => !listed.has(next));
-  const chip = sourceChip(source);
+  const rows = found.filter(({ row: { next } }) => !taken.has(next));
   // Done where it runs from: it found nothing, or an answer failed (the button retries).
   const done = from === 'here' && !run.running;
   const note = !done
@@ -163,11 +250,7 @@ function FinderPart({
         <HeadingTip tip={FINDER_TIP}>
           <Eyebrow>{from === 'elsewhere' ? 'From another position' : 'From this position'}</Eyebrow>
         </HeadingTip>
-        <Tip tip={chip.tip}>
-          <Badge variant="soft" tone="neutral" size="sm">
-            {chip.label}
-          </Badge>
-        </Tip>
+        <SourceChip source={source} />
         {run.running ? (
           <Tip tip={SEARCHING_TIP}>
             <Spinner size="sm" tone="accent" label="Searching for opportunities" />
@@ -176,8 +259,14 @@ function FinderPart({
         <View style={STATIC.grow} />
         <IconActions actions={[finderAction(from, run, onFind)]} />
       </Inline>
-      {rows.map((row) => (
-        <Row key={row.next} row={row} styles={styles} onPlay={onPlay} />
+      {rows.map(({ find, row }) => (
+        <Row
+          key={row.next}
+          row={row}
+          styles={styles}
+          onPlay={onPlay}
+          bookmark={saveAction(find, onSave)}
+        />
       ))}
       {note ? (
         <Text role="caption" tone="secondary" style={[styles.finder, STATIC.empty]}>
@@ -206,7 +295,33 @@ const SEARCHING_TIP = 'Searching on this device: the first finds take a few minu
 const FINDER_TIP =
   "Looks for the opponent's likely mistakes from the board's position, on this device: Stockfish judges each reply players are likely to make. Each find joins the list once confirmed; the whole search takes a while.";
 
-/** The finder's source chip: whose replies, and what they are (counted games, or Maia's estimate). */
+/** A finder row's bookmark that saves `find`. */
+const saveAction = (find: Find, onSave: (find: Find) => void): IconAction => ({
+  icon: 'bookmark-outline',
+  tip: 'Save this find: the lesson then plays it like its own',
+  onPress: () => onSave(find),
+});
+
+/** A row's bookmark that forgets the saved find at `cue`. */
+const unsaveAction = (cue: PositionKey, onUnsave: (cue: PositionKey) => void): IconAction => ({
+  icon: 'bookmark',
+  tip: 'Remove from saved',
+  onPress: () => onUnsave(cue),
+});
+
+/** Names the source of a run's numbers, explained in its tooltip (`sourceChip`). */
+function SourceChip({ source }: { readonly source: ReplySource }) {
+  const chip = sourceChip(source);
+  return (
+    <Tip tip={chip.tip}>
+      <Badge variant="soft" tone="neutral" size="sm">
+        {chip.label}
+      </Badge>
+    </Tip>
+  );
+}
+
+/** A source chip's words: whose replies, and what they are (counted games, or Maia's estimate). */
 function sourceChip(source: ReplySource) {
   if (source.from === 'lichess') {
     const rated = bandRatings(RATING_BANDS, RATING_BANDS.indexOf(source.band));
@@ -269,7 +384,15 @@ const lessonRow = (
 });
 
 /** A find as a row: its line through the mistake, and whether its punishment mates where Act III ends. */
-function findRow({ line, mistake, replies, payoff, reach, share, cost }: Find): ListRow {
+function findRow({
+  line,
+  mistake,
+  replies,
+  payoff,
+  reach,
+  share,
+  cost,
+}: Pick<Find, 'line' | 'mistake' | 'replies' | 'payoff' | 'reach' | 'share' | 'cost'>): ListRow {
   const through = [...line, mistake];
   const { key, move } = lastStep(through);
   return {
@@ -284,14 +407,21 @@ function findRow({ line, mistake, replies, payoff, reach, share, cost }: Find): 
   };
 }
 
+/**
+ * A row: pressing it plays its line. Its bookmark, beside it, saves or
+ * forgets the find; every row keeps the bookmark's room, so the meters line
+ * up down the list.
+ */
 function Row({
   row,
   styles,
   onPlay,
+  bookmark,
 }: {
   readonly row: ListRow;
   readonly styles: Styles;
   readonly onPlay: (line: readonly Uci[]) => void;
+  readonly bookmark?: IconAction;
 }) {
   const { color } = useTheme().theme.semantic;
   const { san, line, name, reach, share, mates, cost, mark } = row;
@@ -308,47 +438,62 @@ function Row({
     { meter: 'payoff', label: payoff, fill: mates ? 1 : Math.min((cost ?? 0) / FULL_COST, 1) },
   ] as const;
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={[
-        name ?? mistake,
-        caption,
-        reach !== undefined && `reached in ${percent(reach)} of games`,
-        share !== undefined && `played ${percent(share)} of the time`,
-        mates ? 'punished with mate' : lost && `gives away ${lost}`,
-        mark && SPOKEN_MARKS[mark],
-      ]
-        .filter(Boolean)
-        .join(', ')}
-      accessibilityHint={row.hint}
-      onPress={() => onPlay(line)}
-      style={({ pressed }) => [
-        styles.row,
-        pressed && { backgroundColor: color.tones.neutral.subtle },
-      ]}
-    >
-      <View style={STATIC.mark}>{mark ? <ProgressMark mark={mark} /> : null}</View>
-      <View style={STATIC.title} aria-hidden>
-        <Text role="body" numberOfLines={1}>
-          {name ?? <Notation>{mistake}</Notation>}
-        </Text>
-        {caption ? (
-          <Text role="caption" tone="secondary" style={STATIC.mono} numberOfLines={1}>
-            <Notation>{caption}</Notation>
+    <View style={STATIC.line}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={[
+          name ?? mistake,
+          caption,
+          reach !== undefined && `reached in ${percent(reach)} of games`,
+          share !== undefined && `played ${percent(share)} of the time`,
+          mates ? 'punished with mate' : lost && `gives away ${lost}`,
+          mark && SPOKEN_MARKS[mark],
+        ]
+          .filter(Boolean)
+          .join(', ')}
+        accessibilityHint={row.hint}
+        onPress={() => onPlay(line)}
+        style={({ pressed }) => [
+          styles.row,
+          STATIC.press,
+          pressed && { backgroundColor: color.tones.neutral.subtle },
+        ]}
+      >
+        <View style={STATIC.mark}>{mark ? <ProgressMark mark={mark} /> : null}</View>
+        <View style={STATIC.title} aria-hidden>
+          <Text role="body" numberOfLines={1}>
+            {name ?? <Notation>{mistake}</Notation>}
           </Text>
-        ) : null}
-      </View>
-      <View style={STATIC.meters} aria-hidden>
-        {meters.map(({ meter, label, fill }) => (
-          <View key={meter} style={styles.meter}>
-            <Text role="caption" tone="secondary" style={STATIC.mono}>
-              {label}
+          {caption ? (
+            <Text role="caption" tone="secondary" style={STATIC.mono} numberOfLines={1}>
+              <Notation>{caption}</Notation>
             </Text>
-            <Progress size="sm" value={fill} max={1} />
-          </View>
-        ))}
-      </View>
-    </Pressable>
+          ) : null}
+        </View>
+        <View style={STATIC.meters} aria-hidden>
+          {meters.map(({ meter, label, fill }) => (
+            <View key={meter} style={styles.meter}>
+              <Text role="caption" tone="secondary" style={STATIC.mono}>
+                {label}
+              </Text>
+              <Progress size="sm" value={fill} max={1} />
+            </View>
+          ))}
+        </View>
+      </Pressable>
+      <View style={styles.bookmark}>{bookmark ? <Bookmark action={bookmark} /> : null}</View>
+    </View>
+  );
+}
+
+/** A row's bookmark: a small icon button named by its tooltip. */
+function Bookmark({ action: { icon, tip, onPress } }: { readonly action: IconAction }) {
+  return (
+    <Tip tip={tip}>
+      <Button size="sm" variant="ghost" onPress={onPress} accessibilityLabel={tip}>
+        <Ionicons name={icon} size={17} />
+      </Button>
+    </Tip>
   );
 }
 
@@ -370,17 +515,27 @@ const STATIC = StyleSheet.create({
   title: { flexGrow: 1, flexShrink: 1, gap: 1 },
   mono: { fontFamily: fonts.mono },
   meters: { flexDirection: 'row', gap: 6 },
+  line: { flexDirection: 'row', alignItems: 'center' },
+  press: { flexGrow: 1, flexShrink: 1 },
 });
 
-/** A density's row and meter sizes: a phone's rows are 44 tall, the touch size. */
-function densityStyles(meter: number, row: ViewStyle) {
+/** The room a row keeps for its bookmark. */
+const BOOKMARK_WIDTH = 34;
+
+/**
+ * A density's row and meter sizes: a phone's rows are 44 tall, the touch
+ * size. `bookmarkInset` keeps the bookmark off the card's edge.
+ */
+function densityStyles(meter: number, row: ViewStyle, bookmarkInset: number) {
   return StyleSheet.create({
     row: { flexDirection: 'row', alignItems: 'center', gap: 10, outlineOffset: -2, ...row },
     meter: { width: meter, gap: 3 },
     finder: { paddingHorizontal: row.paddingHorizontal },
+    bookmark: { width: BOOKMARK_WIDTH, marginRight: bookmarkInset },
   });
 }
 type Styles = ReturnType<typeof densityStyles>;
 
-const COMPACT = densityStyles(32, { minHeight: 44 });
-const COMFORTABLE = densityStyles(44, { paddingVertical: 8, paddingHorizontal: 14 });
+// A phone's rows run to the page's edge; a card's keep inside it.
+const COMPACT = densityStyles(32, { minHeight: 44 }, 0);
+const COMFORTABLE = densityStyles(44, { paddingVertical: 8, paddingHorizontal: 14 }, 6);
