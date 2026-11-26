@@ -541,7 +541,7 @@ function densityStyles(meter: number, row: ViewStyle, bookmarkInset: number) {
     row: { flexDirection: 'row', alignItems: 'center', gap: 10, outlineOffset: -2, ...row },
     meter: { width: meter, gap: 3 },
     finder: { paddingHorizontal: row.paddingHorizontal },
-    // Even where empty, so every row is as tall as one with a bookmark.
+    // Even where empty, so every row keeps the same room and height as one with a bookmark.
     bookmark: {
       width: BOOKMARK_WIDTH,
       minWidth: touchTarget,

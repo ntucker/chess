@@ -60,7 +60,7 @@ const PENDING = storageKey('lichess-sign-in');
 export const savePendingSignIn = (pending: PendingSignIn) =>
   writeStorage(PENDING, JSON.stringify(pending));
 
-/** The saved sign-in's fields, unchecked: none where nothing waits. */
+/** The saved sign-in's fields, unchecked: an empty object where nothing waits. */
 const readPendingSignIn = () => parseStoredObject(readStorage(PENDING) ?? '');
 
 /** Whether a web sign-in waits for lichess's answer, whatever its state. */
