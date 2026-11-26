@@ -78,6 +78,11 @@ const MATE: Find = {
   payoff: [],
 };
 
+/** The list with one find from elsewhere, `FIND` costing `cost`, as its last row. */
+const foundAt = (cost: number): Partial<Props> => ({
+  finder: { ...DONE, from: 'elsewhere', run: { finds: [{ ...FIND, cost }], running: false } },
+});
+
 /** The finder's button, named by its tooltip. */
 const FIND_TIP = 'Find opportunities from this position';
 /** A row's bookmark, saving the find or forgetting it, named by its tooltip. */
@@ -159,17 +164,7 @@ describe('OpportunityList', () => {
   });
 
   it('says the payoff a row gives away, as its cell shows it', () => {
-    const said = (cost: number) =>
-      render(
-        {
-          finder: {
-            ...DONE,
-            from: 'elsewhere',
-            run: { finds: [{ ...FIND, cost }], running: false },
-          },
-        },
-        labelsIn,
-      ).at(-1);
+    const said = (cost: number) => render(foundAt(cost), labelsIn).at(-1);
     expect(said(0.17)).toContain('gives away 17%');
     expect(said(0.001)).toContain('gives away 0%');
   });
@@ -177,15 +172,8 @@ describe('OpportunityList', () => {
   it("shows a dash for the payoff only where the mistake isn't judged", () => {
     const payoff = (props: Partial<Props>) =>
       render(props, (host) => rowsIn(host).at(-1)!.textContent);
-    const found = (cost: number) => ({
-      finder: {
-        ...DONE,
-        from: 'elsewhere' as const,
-        run: { finds: [{ ...FIND, cost }], running: false },
-      },
-    });
-    expect(payoff(found(0.17))).toMatch(/\u221217%$/);
-    expect(payoff(found(0.001))).toMatch(/0%$/);
+    expect(payoff(foundAt(0.17))).toMatch(/\u221217%$/);
+    expect(payoff(foundAt(0.001))).toMatch(/0%$/);
     // The London's marked mistakes came from its guide, with no cost measured yet.
     expect(payoff({ lesson: readShippedLesson('london') })).toMatch(/\u2013$/);
   });
