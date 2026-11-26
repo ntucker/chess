@@ -1,7 +1,7 @@
 /**
  * What the lesson's board shows: the game's position, with a previewed move
  * drawn played over it, or a board of an idea playing back, with guidance's
- * drawings.
+ * drawings and the label of the move just played.
  * Whether the learner points at a candidate list row or drags a piece over
  * a square, the preview comes from `preview` (./view.ts) through guidance,
  * so both show a candidate the same way. A piece clicked (`boardSelect`)
@@ -10,7 +10,6 @@
 import type { Square } from '@/board/drawing';
 import { lastMoveBadge } from '@/board/drawing';
 import type { BoardProps } from '@/components/Board';
-import type { MoveQuality } from '@/analysis/quality';
 import { type Color, pieceAt, type Position } from '@/game/replay';
 
 import { lessonDrawings, type PlaybackFrame, slidCandidate } from './drawings';
@@ -29,8 +28,6 @@ interface LessonBoardInput {
   readonly current: Position;
   /** Whether the learner may move on `current` now, for the side to move. */
   readonly canMove: boolean;
-  /** The label of the move that led to `current`, once it's judged. */
-  readonly quality?: MoveQuality;
   /** The board of the idea playing back, which replaces the game's. */
   readonly frame?: PlaybackFrame;
 }
@@ -50,7 +47,6 @@ export function lessonBoard({
   guidance,
   current,
   canMove,
-  quality,
   frame,
 }: LessonBoardInput): LessonBoard {
   const slid = slidCandidate(guidance);
@@ -67,7 +63,7 @@ export function lessonBoard({
       ? []
       : [
           ...lessonDrawings(guidance, shownKey(key, guidance.preview), side),
-          ...lastMoveBadge(slid ? undefined : current.move?.to, quality),
+          ...lastMoveBadge(slid ? undefined : current.move?.to, guidance.quality),
         ],
     check: shown.check,
   };

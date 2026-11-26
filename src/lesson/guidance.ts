@@ -63,6 +63,10 @@
  *   drawn in the color of what goes wrong. Where the best move or a candidate
  *   is the same move, the refutation's arrow is drawn instead of theirs. Its
  *   being a rare reply doesn't hide it: it still punishes.
+ * - The label of the move just played (best, mistake...) is badged on its
+ *   piece only in Explore with "Arrows" on, like Stockfish's best: Practice
+ *   keeps the board free of judgments while playing, and the scoresheet and
+ *   review still show every label.
  * - In Explore, each guide candidate carries Stockfish's verdict on it
  *   (`Guidance.verdicts`), the book move too, so the learner can tell a
  *   popular move from a good one. Practice keeps it hidden like every
@@ -75,7 +79,7 @@
  * guidance stays in lesson terms; lessonDrawings (./drawings.ts) turns it
  * into board shapes, and says which ideas draw nothing (`drawsOnBoard`).
  */
-import type { EngineVerdict } from '@/analysis/quality';
+import type { EngineVerdict, MoveQuality } from '@/analysis/quality';
 import { type Acts, type Cue, payoffAt } from '@/opportunity/cue';
 import type { Settings } from '@/settings/settings';
 
@@ -128,6 +132,8 @@ export interface GuidanceInput {
    * does, whoever played it.
    */
   readonly refutation?: Uci;
+  /** The label of the move into the shown position, once it's judged. */
+  readonly quality?: MoveQuality;
 }
 
 /** An idea to draw, and the position it is checked in. */
@@ -194,6 +200,8 @@ export interface Guidance {
   readonly opportunities: ReadonlySet<Uci>;
   /** The reply that punishes the move just played, where guidance marks it. */
   readonly refutation?: Uci;
+  /** The label of the move just played, where the board badges it: in Explore with "Arrows" on. */
+  readonly quality?: MoveQuality;
   /** A trap the line fell into, while it shows (see `trapShown`). */
   readonly trap?: LandedTrap;
   /**
@@ -406,6 +414,7 @@ export function guidance(input: GuidanceInput): Guidance {
         ? new Set(view.candidates.filter(({ move }) => move.mistake).map(({ move }) => move.uci))
         : NO_OPPORTUNITIES,
     refutation,
+    quality: explore && movesShown ? input.quality : undefined,
     trap,
     trapIn: trap && (withCue ? 'cue' : 'card'),
     acts,
