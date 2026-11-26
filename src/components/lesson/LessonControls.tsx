@@ -29,7 +29,7 @@ export function LessonControls({ mode, onMode }: Props) {
       <View style={styles.toggles}>
         <Toggle
           label="Arrows"
-          hint="Draws the next moves on the board as arrows, before you point at one."
+          hint="Draws the next moves on the board as arrows, before you point at one, and marks how good the move just played was."
           checked={showMoves}
           disabled={movesSwitchApplies(mode) ? undefined : 'Only in Explore'}
           onChange={(on) => dispatch({ type: 'chosen', choice: { showMoves: on } })}
