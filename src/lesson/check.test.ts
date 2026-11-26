@@ -757,6 +757,20 @@ describe('checkLesson', () => {
     ).toEqual([]);
   });
 
+  it("refuses an opportunity's mark on a move that isn't a book move", () => {
+    expect(
+      checkLesson(
+        withPosition(positionKey(start), {
+          variation: 'caro',
+          moves: [{ uci: 'e2e4', found: true }],
+        }),
+      ),
+    ).toContainEqual({
+      path: `positions["${positionKey(start)}"].moves[0].found`,
+      message: 'only book moves come from an opportunity',
+    });
+  });
+
   it('refuses book moves for the opponent and castling written as king takes rook', () => {
     const castlingFen = 'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1';
     const castling = Chess.fromSetup(parseFen(castlingFen).unwrap()).unwrap();

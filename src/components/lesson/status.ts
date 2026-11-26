@@ -118,7 +118,8 @@ export function describeStatus(
     return {
       eyebrow,
       title: 'Line complete.',
-      detail: 'A clean run: each of your moves from the book, and nothing taken back.',
+      detail:
+        'A clean run: each of your moves from the book or an opportunity, and nothing taken back.',
     };
   if (lineEnded)
     return {

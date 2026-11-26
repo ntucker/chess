@@ -1,5 +1,6 @@
 import { type Dispatch, useEffect, useEffectEvent } from 'react';
 
+import type { BookLabels } from '@/analysis/quality';
 import { useMoveQualities } from '@/analysis/useMoveQualities';
 import type { EvaluationEngine } from '@/evaluation/evaluation';
 
@@ -20,8 +21,8 @@ interface Options {
   readonly active: boolean;
   /** The engine that judges each move for its label. */
   readonly judge: EvaluationEngine;
-  /** Which of the game's moves a lesson's guide recommends: labelled `book`, never judged. */
-  readonly book?: readonly boolean[];
+  /** Each of the game's book moves' label in a lesson (`bookMoves`), never judged. */
+  readonly book?: BookLabels;
 }
 
 /**

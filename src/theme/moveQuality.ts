@@ -8,8 +8,8 @@ import type { ReviewQuality } from '@/analysis/quality';
 // imports nothing).
 // Greens for good moves, then gold, orange and red as the loss grows, as
 // chess.com and lichess color them; teal and blue for the review's Brilliant
-// and Great, and magenta for its Miss. Each disc holds its white glyph at 3:1
-// or more.
+// and Great, magenta for its Miss, and violet for an opportunity's move.
+// Each disc holds its white glyph at 3:1 or more.
 
 /** The badge's box: a 24 by 24 square, holding a disc of radius 12. */
 export const BADGE_BOX = 24;
@@ -66,6 +66,14 @@ export const qualityLooks: Readonly<Record<ReviewQuality, QualityLook>> = {
         'M5.5 8.2c2.2-1 4.4-.9 6.5.7 2.1-1.6 4.3-1.7 6.5-.7v8.6c-2.2-1-4.4-.9-6.5.7' +
         '-2.1-1.6-4.3-1.7-6.5-.7zM12 8.9v8.6',
     },
+  },
+  // Violet, between the review's blue and magenta, so it reads as neither the
+  // guide's book nor a grade; its glyph is the finder's magnifier.
+  opportunity: {
+    name: 'Opportunity move',
+    short: 'Opportunity',
+    color: oklch(0.56, 0.13, 300),
+    glyph: { d: 'M14.7 10.5a4.2 4.2 0 1 1-8.4 0a4.2 4.2 0 1 1 8.4 0M13.6 13.6l4 4' },
   },
   best: {
     name: 'Best move',

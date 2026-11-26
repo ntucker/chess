@@ -17,6 +17,15 @@ import { fonts } from '@/theme/theme';
 /** How many labels a row of a narrow page's grid holds. */
 const COLUMNS = 3;
 
+/**
+ * The labels the tally lists for `sides`' counts: every label, but an
+ * opportunity's move only where one was played, since most lessons have none.
+ */
+const listedLabels = (...sides: Tally[]) =>
+  LABELS_BEST_FIRST.filter(
+    (quality) => quality !== 'opportunity' || sides.some((counts) => counts[quality]),
+  );
+
 interface Props {
   readonly tally: Review['tally'];
   readonly learner: Color;
@@ -73,7 +82,7 @@ function TallyTable({ tally, learner }: Props) {
           </Eyebrow>
         ))}
       </View>
-      {LABELS_BEST_FIRST.map((quality) => (
+      {listedLabels(...sides).map((quality) => (
         <View key={quality} role="row" style={styles.row}>
           <Label quality={quality} dim={sides.every((counts) => !counts[quality])} />
           {sides.map((counts, n) => (
@@ -87,8 +96,9 @@ function TallyTable({ tally, learner }: Props) {
 
 /** One side's counts in `COLUMNS` columns, as a phone has room for. */
 function TallyGrid({ counts }: { readonly counts: Tally }) {
-  const rows = Array.from({ length: Math.ceil(LABELS_BEST_FIRST.length / COLUMNS) }, (_, row) =>
-    LABELS_BEST_FIRST.slice(row * COLUMNS, (row + 1) * COLUMNS),
+  const labels = listedLabels(counts);
+  const rows = Array.from({ length: Math.ceil(labels.length / COLUMNS) }, (_, row) =>
+    labels.slice(row * COLUMNS, (row + 1) * COLUMNS),
   );
   return (
     <View>

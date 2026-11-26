@@ -13,10 +13,21 @@ import {
 import { type Color, opposite } from '@/game/replay';
 
 /**
- * The labels, from best to worst. `book` is the opening guide's own move; it
- * comes from lesson data, so `judgeMove` never returns it.
+ * The labels, from best to worst. The first two are a lesson's book moves
+ * (`BookLabel`), which come from lesson data, so `judgeMove` never returns them.
  */
-export type MoveQuality = 'book' | 'best' | 'good' | 'inaccuracy' | 'mistake' | 'blunder';
+export type MoveQuality =
+  'book' | 'opportunity' | 'best' | 'good' | 'inaccuracy' | 'mistake' | 'blunder';
+
+/**
+ * A book move's label, never searched: `book` for the guide's own move, and
+ * `opportunity` for one an opportunity's line adds (`LessonMove.found`), so
+ * the learner can tell the guide's line from the finder's idea.
+ */
+export type BookLabel = 'book' | 'opportunity';
+
+/** Each move's `BookLabel` where it is a book move: `bookLabels[n]` for the nth move. */
+export type BookLabels = readonly (BookLabel | undefined)[];
 
 /**
  * The review's labels: `MoveQuality`'s, and three it refines a judged move's
@@ -59,6 +70,7 @@ export const lostPercent = (loss: number) =>
  */
 export function qualityRule(quality: MoveQuality): string {
   if (quality === 'book') return "the guide's own move";
+  if (quality === 'opportunity') return "a move of an opportunity's line, not the guide's";
   if (quality === 'best') return "Stockfish's top move, or one that gives nothing away";
   const at = LEAST_LOSS.findIndex(([, label]) => label === quality);
   const range =
@@ -204,8 +216,8 @@ export const isMistake = (quality: ReviewQuality | undefined) =>
 export interface GameMove {
   readonly uci: string;
   readonly mover: Color;
-  /** Whether the lesson's guide recommends it. */
-  readonly book?: boolean;
+  /** Its label where the lesson books it (`BookLabel`). */
+  readonly book?: BookLabel;
   /** How many moves were legal where it was played; without it a forced move waits for its search. */
   readonly legal?: number;
   /** Stockfish's final analyses of the positions before the move and after it, where there are. */
@@ -213,15 +225,15 @@ export interface GameMove {
   readonly after?: FinalAnalysis;
 }
 
-/** Why a move has its label: the guide's move, the only legal move, or `judgement`'s. */
+/** Why a move has its label: a book move, the only legal move, or `judgement`'s. */
 export type MoveLabel =
-  | { readonly status: 'book'; readonly quality: 'book' }
+  | { readonly status: 'book'; readonly quality: BookLabel }
   | { readonly status: 'forced'; readonly quality: 'best' }
   | { readonly status: 'judged'; readonly quality: MoveQuality; readonly evaluation: Evaluation };
 
 /**
- * A move's label, the one rule the game and the review share: `book`
- * for the guide's move, which is never searched; `best` for the only legal
+ * A move's label, the one rule the game and the review share: its
+ * `BookLabel` for a book move, which is never searched; `best` for the only legal
  * move, as Stockfish would rank it; else `judgement`'s, undefined while an
  * analysis it needs is missing.
  */
@@ -233,7 +245,7 @@ export function labelMove({
   before,
   after,
 }: GameMove): MoveLabel | undefined {
-  if (book) return { status: 'book', quality: 'book' };
+  if (book) return { status: 'book', quality: book };
   if (legal === 1) return { status: 'forced', quality: 'best' };
   const judged = before && judgement(before, after, uci, mover);
   return judged && { status: 'judged', quality: judged.quality, evaluation: judged.evaluation };

@@ -53,14 +53,14 @@ describe('withFinds', () => {
       { uci: uci('e4', 'e5', 'Ba6'), mistake: { cost: 0.432, gain: [0.312, 0.2, 0.1, 0.05, 0] } },
     ]);
     expect(movesAt(lesson, 'e4', 'e5', 'Ba6')).toEqual([
-      { uci: uci('e4', 'e5', 'Ba6', 'bxa6'), book: true },
-      { uci: uci('e4', 'e5', 'Ba6', 'Nxa6'), book: true },
+      { uci: uci('e4', 'e5', 'Ba6', 'bxa6'), book: true, found: true },
+      { uci: uci('e4', 'e5', 'Ba6', 'Nxa6'), book: true, found: true },
     ]);
     expect(movesAt(lesson, 'e4', 'e5', 'Ba6', 'bxa6')).toEqual([
       { uci: uci('e4', 'e5', 'Ba6', 'bxa6', 'Nf3') },
     ]);
     expect(movesAt(lesson, 'e4', 'e5', 'Ba6', 'bxa6', 'Nf3')).toEqual([
-      { uci: uci('e4', 'e5', 'Ba6', 'bxa6', 'Nf3', 'Nc6'), book: true },
+      { uci: uci('e4', 'e5', 'Ba6', 'bxa6', 'Nf3', 'Nc6'), book: true, found: true },
     ]);
     const marked = movesAt(lesson, 'e4', 'e5')[1];
     expect(mistakeLine(lesson, keyAfter('e4', 'e5'), marked)).toEqual(
@@ -127,7 +127,9 @@ describe('withFinds', () => {
       mistake: { verdict: 'losesMaterial' },
     };
     const lesson = lessonWith({
-      [keyAfter('e4', 'e5', 'Ba6')]: at([{ uci: uci('e4', 'e5', 'Ba6', 'Nxa6'), book: true }]),
+      [keyAfter('e4', 'e5', 'Ba6')]: at([
+        { uci: uci('e4', 'e5', 'Ba6', 'Nxa6'), book: true, found: true },
+      ]),
     });
     const withMark = {
       ...lesson,
@@ -222,7 +224,9 @@ describe('addPathCounts', () => {
       ...lesson,
       positions: {
         ...lesson.positions,
-        [keyAfter('e4', 'e5', 'Ba6')]: at([{ uci: uci('e4', 'e5', 'Ba6', 'Nxa6'), book: true }]),
+        [keyAfter('e4', 'e5', 'Ba6')]: at([
+          { uci: uci('e4', 'e5', 'Ba6', 'Nxa6'), book: true, found: true },
+        ]),
       },
     };
     await expect(addPathCounts(withFinds(withCue, [BA6]), [BA6], explorer)).rejects.toThrow(

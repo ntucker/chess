@@ -146,8 +146,12 @@ describe('refutation', () => {
 describe('labelMove', () => {
   const move = { uci: 'e2e4', mover: 'white' } as const;
 
-  it("labels the guide's move book and the only legal move best, without analyses", () => {
-    expect(labelMove({ ...move, book: true })).toEqual({ status: 'book', quality: 'book' });
+  it('labels a book move by its book label and the only legal move best, without analyses', () => {
+    expect(labelMove({ ...move, book: 'book' })).toEqual({ status: 'book', quality: 'book' });
+    expect(labelMove({ ...move, book: 'opportunity' })).toEqual({
+      status: 'book',
+      quality: 'opportunity',
+    });
     expect(labelMove({ ...move, legal: 1 })).toEqual({ status: 'forced', quality: 'best' });
   });
 

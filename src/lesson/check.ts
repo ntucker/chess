@@ -317,6 +317,7 @@ function checkMove(
   const { games, risk } = move;
   if (move.book && pos.turn !== lesson.side)
     report(`${path}.book`, `only ${lesson.side}'s moves are book moves`);
+  if (move.found && !move.book) report(`${path}.found`, 'only book moves come from an opportunity');
   checkGames(lesson, games, `${path}.games`, report);
   const riskProblem = risk === undefined ? undefined : notOneOf(RISKS, risk);
   if (riskProblem) report(`${path}.risk`, riskProblem);

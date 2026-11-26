@@ -23,7 +23,7 @@ const momentOf = (input: Partial<MomentOf> = {}, screen: Partial<MomentOf['scree
     analyses: [undefined, undefined, BEFORE, undefined],
     legal: LEGAL,
     learner: 'white',
-    book: [],
+    book: new Map(),
     tryAnalyses: [],
     tryFailed: [],
     ...input,
@@ -165,11 +165,15 @@ describe('momentAt', () => {
   });
 
   describe('where the learner left the guide', () => {
-    const guide = { uci: 'g1f3', practice: { pathname: '/lesson/x', params: {} } } as const;
+    const guide = {
+      uci: 'g1f3',
+      quality: 'book',
+      practice: { pathname: '/lesson/x', params: {} },
+    } as const;
     const leftGood = {
       moves: [judgedMove(0), judgedMove(1), judgedMove(2, 'good', 0.55, 0.53)],
       leftAt: 2,
-      book: ['g1f3'],
+      book: new Map([['g1f3', 'book']] as const),
       guide,
     };
 
@@ -195,10 +199,14 @@ describe('guideAt', () => {
   const lesson = {
     id: 'caro',
     positions: {
-      // After 1.e4: the guide's c6, and e5 as a move it doesn't recommend.
+      // After 1.e4: the guide's c6, an opportunity's d5, and e5 as a move it doesn't recommend.
       'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -': {
         variation: 'main',
-        moves: [{ uci: 'e7e5' }, { uci: 'c7c6', book: true, notes: [{ text: 'Solid.' }] }],
+        moves: [
+          { uci: 'e7e5' },
+          { uci: 'c7c6', book: true, notes: [{ text: 'Solid.' }] },
+          { uci: 'd7d5', book: true, found: true },
+        ],
       },
       'rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -': {
         variation: 'advance',
@@ -207,11 +215,15 @@ describe('guideAt', () => {
     },
   } as unknown as Lesson;
 
-  it("names the guide's book moves, and the first as the answer with its note and its line", () => {
+  it('names the book moves with their labels, and the first as the answer with its note and its line', () => {
     expect(guideAt(lesson, ['e2e4'])).toEqual({
-      book: ['c7c6'],
+      book: new Map([
+        ['c7c6', 'book'],
+        ['d7d5', 'opportunity'],
+      ]),
       answer: {
         uci: 'c7c6',
+        quality: 'book',
         note: 'Solid.',
         practice: { pathname: '/lesson/caro', params: { variation: 'advance' } },
       },
@@ -219,6 +231,6 @@ describe('guideAt', () => {
   });
 
   it('has nothing beyond the guide', () => {
-    expect(guideAt(lesson, ['d2d4'])).toEqual({ book: [], answer: undefined });
+    expect(guideAt(lesson, ['d2d4'])).toEqual({ book: new Map(), answer: undefined });
   });
 });

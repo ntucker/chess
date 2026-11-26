@@ -40,7 +40,9 @@ function upsert(entry: Entry, uci: Uci, edit: (move: LessonMove) => LessonMove =
   entry.moves[i < 0 ? entry.moves.length : i] = edit(entry.moves[i] ?? { uci });
 }
 
-const booked = (move: LessonMove): LessonMove => ({ ...move, book: true });
+/** `move` as a book move: the guide's stays as it is, and one the finder books is `found`. */
+const booked = (move: LessonMove): LessonMove =>
+  move.book ? move : { ...move, book: true, found: true };
 
 /**
  * Whether `lesson`, as given, has no moves at `pos` (`guidePosition`): its
@@ -79,7 +81,8 @@ export function findPlays(
  * end, so a clean Practice run plays on to the cue). It marks the mistake
  * with its cost and any gain; it books every reply the cue accepts and the
  * learner's Act III moves, and adds the opponent's Act III moves where the
- * guide has none. New positions take the variation of the one before. Each
+ * guide has none. Each move it books that the guide didn't is `found`, so it
+ * is labelled as the opportunity's rather than the guide's. New positions take the variation of the one before. Each
  * new marker's line is stored only where the guide's choice rule doesn't
  * give it, and every older marker keeps the line it had. A mistake the guide
  * already marks (a trap migrated from a study) keeps its line and verdict and

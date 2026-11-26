@@ -110,7 +110,12 @@ export function MoveCard({
           </Stack>
         ) : null}
         {guideMove ? (
-          <GuideLine san={guide.san} note={guideMove.note} practice={guideMove.practice} />
+          <GuideLine
+            san={guide.san}
+            quality={guideMove.quality}
+            note={guideMove.note}
+            practice={guideMove.practice}
+          />
         ) : null}
         {playOn ? <PlayOn href={playOn} /> : null}
       </Stack>
@@ -176,20 +181,28 @@ function HiddenRow({ until }: { readonly until: NonNullable<Props['hidden']> }) 
   );
 }
 
+/** Whose move the guide's answer is, by its label. */
+const GUIDE_OWNER = { book: "the guide's", opportunity: "an opportunity's" } as const;
+
 /**
  * The guide's move, once revealed where the learner left the guide: its
- * badge, its name with the lesson's idea note as the tooltip, and a link
- * that opens the lesson on that line.
+ * badge (the guide's own, or an opportunity's), its name with the lesson's
+ * idea note as the tooltip, and a link that opens the lesson on that line.
  */
-function GuideLine({ san, note, practice }: { readonly san: string } & Omit<GuideAnswer, 'uci'>) {
+function GuideLine({
+  san,
+  quality,
+  note,
+  practice,
+}: { readonly san: string } & Omit<GuideAnswer, 'uci'>) {
   const named = (
     <Text role="body">
-      <Notation>{`${san} is the guide's move.`}</Notation>
+      <Notation>{`${san} is ${GUIDE_OWNER[quality]} move.`}</Notation>
     </Text>
   );
   return (
     <View style={styles.guide}>
-      <TippedBadge quality="book" size={BADGE_SIZE} tip={qualityTip('book')} />
+      <TippedBadge quality={quality} size={BADGE_SIZE} tip={qualityTip(quality)} />
       {note ? <Tip tip={note}>{named}</Tip> : named}
       <Link href={practice}>
         <Text role="body" tone="accent" style={styles.link}>

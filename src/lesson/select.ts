@@ -6,6 +6,7 @@
 import type { Chess } from 'chessops/chess';
 import type { SquareName } from 'chessops/types';
 
+import type { BookLabel, BookLabels } from '@/analysis/quality';
 import { type AnalysisLine, type MoveChange, moveChange } from '@/evaluation/evaluation';
 import { parsePositionKey, playLine, playMove, positionKey } from '@/game/replay';
 import { isStockfish, type Opponent } from '@/opponent/opponent';
@@ -172,14 +173,14 @@ function rareLast(rows: readonly Candidate[]): Candidate[] {
 export const guideMove = (lesson: Lesson, key: PositionKey, uci: Uci): LessonMove | undefined =>
   lesson.positions[key]?.moves.find((move) => move.uci === uci);
 
-/** Whether the guide recommends `uci` at `key`: a book move. */
-const isBook = (lesson: Lesson, key: PositionKey, uci: Uci): boolean =>
-  guideMove(lesson, key, uci)?.book === true;
+/** `move`'s label where the lesson books it: the guide's book move, or an opportunity's (`found`). */
+export const bookLabel = (move: LessonMove | undefined): BookLabel | undefined =>
+  move?.book ? (move.found ? 'opportunity' : 'book') : undefined;
 
-/** Whether each move of `line` is a book move where it was played. */
-export function bookMoves(lesson: Lesson, line: readonly Uci[]): boolean[] {
+/** Each move of `line`'s `bookLabel` where it was played, undefined where it isn't a book move. */
+export function bookMoves(lesson: Lesson, line: readonly Uci[]): BookLabels {
   const keys = lineKeys(line);
-  return line.map((uci, n) => isBook(lesson, keys[n], uci));
+  return line.map((uci, n) => bookLabel(guideMove(lesson, keys[n], uci)));
 }
 
 /**
