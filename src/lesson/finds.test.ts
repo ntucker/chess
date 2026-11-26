@@ -3,7 +3,7 @@ import { describe, expect, it } from '@jest/globals';
 import { cleanLineEnds } from './cleanRun';
 import { withMeasures, writeFinds } from './finds';
 import type { Lesson, Mistake, PositionKey } from './lesson';
-import { keyAfter, SAMPLE, uci, uciLine } from './lesson.fixture';
+import { keyAfter, SAMPLE, uci, uciLine, withMoves } from './lesson.fixture';
 
 /** A Black lesson 1.e4 c6 2.d4, whose line ends there. */
 function lesson(): Lesson {
@@ -95,11 +95,8 @@ describe('withMeasures', () => {
   it("puts each measure on its mark to a thousandth, keeping the mark's verdict and line", () => {
     const key = keyAfter('e4', 'c6');
     const line = [uci('e4', 'c6', 'Qg4', 'd5')];
-    const marked = (mistake: Mistake): Lesson => {
-      const at = lesson().positions[key];
-      const moves = [...at.moves, { uci: uci('e4', 'c6', 'Qg4'), mistake }];
-      return { ...lesson(), positions: { ...lesson().positions, [key]: { ...at, moves } } };
-    };
+    const marked = (mistake: Mistake): Lesson =>
+      withMoves(lesson(), key, (moves) => [...moves, { uci: uci('e4', 'c6', 'Qg4'), mistake }]);
     const measured = withMeasures(marked({ verdict: 'losesMaterial', line }), [
       { key, uci: uci('e4', 'c6', 'Qg4'), cost: 0.41234, gain: [0.1006, 0.2, 0.3, 0.4, 0.5] },
     ]);

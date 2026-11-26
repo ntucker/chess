@@ -150,7 +150,10 @@ export function writeFinds(lesson: Lesson, finds: readonly FindFragment[]): Less
     const marked = here().moves.find((move) => move.uci === find.mistake)?.mistake;
     play(find.mistake, (move) => ({
       ...move,
-      mistake: scored(marked ?? { line: [find.replies[0], ...find.payoff] }, find),
+      // A new mark keeps the file's key order: its scores, then its line.
+      mistake: marked
+        ? scored(marked, find)
+        : { ...scored({}, find), line: [find.replies[0], ...find.payoff] },
     }));
     if (marked) continue;
     const cue = here();

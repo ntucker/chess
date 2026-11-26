@@ -17,7 +17,7 @@ import { isFinal } from '@/evaluation/evaluation';
 import { parsePositionKey, playLine, positionKey } from '@/game/replay';
 import { offGuide } from '@/lesson/check';
 import { type MarkMeasure, writeFinds } from '@/lesson/finds';
-import type { Lesson, PositionKey } from '@/lesson/lesson';
+import type { Lesson, PositionKey, Uci } from '@/lesson/lesson';
 import { keepMistakeLines, markedMoves, markId, mistakeLine } from '@/lesson/mistakes';
 import { guideMove } from '@/lesson/select';
 import { cueGain, type Find } from '@/opportunity/finder';
@@ -84,7 +84,7 @@ export async function measureMarks(lesson: Lesson, explorer: Explorer): Promise<
     for (const { key, move } of unmeasured) {
       const before = walkTo(lesson.start, lines.get(key)!.line)!;
       const cue = walkTo(lesson.start, [...before.line, move.uci])!;
-      const cost = await markCost(host, before, cue);
+      const cost = await markCost(host, before, cue, move.uci);
       measures.push({ key, uci: move.uci, cost, gain: await gainByBand(host, cue, explorer) });
     }
     return measures;
@@ -93,9 +93,8 @@ export async function measureMarks(lesson: Lesson, explorer: Explorer): Promise<
   }
 }
 
-/** What the move from `before` to `cue` gives away for its mover, by full searches of both. */
-function markCost(host: FinderHost, before: Node, cue: Node): Promise<number> {
-  const uci = cue.line.at(-1)!;
+/** What `uci`, the move from `before` to `cue`, gives away for its mover, by full searches of both. */
+function markCost(host: FinderHost, before: Node, cue: Node, uci: Uci): Promise<number> {
   return settle(host, (ask) => {
     const fullAnalysis = (spot: Node) => {
       const analysis = host.answers.analysis(spot);
