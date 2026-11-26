@@ -42,6 +42,13 @@ function upsert(entry: Entry, uci: Uci, edit: (move: LessonMove) => LessonMove =
 const booked = (move: LessonMove): LessonMove => ({ ...move, book: true });
 
 /**
+ * Whether `lesson`, as given, has no moves at `pos`: its line ended before
+ * it, or never came. Read from the lesson given rather than the tree being
+ * written, so finds that part there are each booked, whatever their order.
+ */
+const pastEnd = (lesson: Lesson, pos: Chess) => !lesson.positions[positionKey(pos)]?.moves.length;
+
+/**
  * Whether `find` plays from `start`: every move legal, and each other reply
  * legal at the cue. Callers of `writeFinds` pass only finds that do; it
  * doesn't check.
@@ -64,7 +71,7 @@ export function findPlays(
  * side the learner doesn't play. Along Act I it adds the moves the guide
  * lacks, the learner's as ordinary moves where the guide has others there
  * (so the repertoire stays the guide's) and as book moves past the guide's
- * end (so a clean Practice run plays on to the cue); it marks the
+ * end (`pastEnd`, so a clean Practice run plays on to the cue); it marks the
  * mistake with its cost and any gain; it books every reply the cue accepts
  * and the learner's Act III moves, and adds the opponent's Act III moves
  * where the guide has none. New positions take the variation of the one
@@ -92,12 +99,8 @@ export function writeFinds(lesson: Lesson, finds: readonly FindFragment[]): Less
       upsert(here(), uci, edit);
       playMove(pos, uci);
     };
-    for (const uci of find.line) {
-      // Past the guide's end (no moves here, an earlier find's included), the learner's move is
-      // booked, so a clean run plays on to the cue.
-      const pastEnd = !positions[positionKey(pos)]?.moves.length;
-      play(uci, pos.turn === lesson.side && pastEnd ? booked : undefined);
-    }
+    for (const uci of find.line)
+      play(uci, pos.turn === lesson.side && pastEnd(lesson, pos) ? booked : undefined);
     const marked = here().moves.find((move) => move.uci === find.mistake)?.mistake;
     const scores = {
       cost: thousandths(find.cost),

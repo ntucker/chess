@@ -35,21 +35,27 @@ describe('writeFinds', () => {
     expect(cleanLineEnds(written, keyAfter('e4'))).toEqual([keyAfter('e4', 'c6', 'd4', 'd5')]);
   });
 
-  it("leaves the learner's move unbooked where the guide, or an earlier find, books another", () => {
+  it("leaves the learner's move unbooked where the guide books another, and books each find's past the end", () => {
     const other = {
       ...PAST_END,
       line: uciLine('e4', 'c6', 'd4', 'd6'),
       mistake: uci('e4', 'c6', 'd4', 'd6', 'Bd3'),
       replies: [uci('e4', 'c6', 'd4', 'd6', 'Bd3', 'Nf6')],
     };
-    const expected = [
+    const guided = writeFinds(lesson(), [PAST_END]);
+    expect(writeFinds(guided, [other]).positions[keyAfter('e4', 'c6', 'd4')].moves).toEqual([
       { uci: uci('e4', 'c6', 'd4', 'd5'), book: true },
       { uci: uci('e4', 'c6', 'd4', 'd6') },
-    ];
-    const oneByOne = writeFinds(writeFinds(lesson(), [PAST_END]), [other]);
-    expect(oneByOne.positions[keyAfter('e4', 'c6', 'd4')].moves).toEqual(expected);
-    const together = writeFinds(lesson(), [PAST_END, other]);
-    expect(together.positions[keyAfter('e4', 'c6', 'd4')].moves).toEqual(expected);
+    ]);
+    // Written together past the end, both are booked, so a clean run must pass each, in either order.
+    for (const finds of [
+      [PAST_END, other],
+      [other, PAST_END],
+    ]) {
+      const moves = writeFinds(lesson(), finds).positions[keyAfter('e4', 'c6', 'd4')].moves;
+      expect(moves.every(({ book }) => book)).toBe(true);
+      expect(moves).toHaveLength(2);
+    }
   });
 
   it("leaves the opponent's moves past the guide's end unbooked", () => {
