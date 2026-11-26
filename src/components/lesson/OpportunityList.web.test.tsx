@@ -170,6 +170,8 @@ describe('OpportunityList', () => {
     });
     expect(payoff(found(0.17))).toMatch(/\u221217%$/);
     expect(payoff(found(0.001))).toMatch(/0%$/);
+    // Said as shown.
+    expect(render(found(0.001), labelsIn).at(-1)).toContain('gives away 0%');
     // The London's marked mistakes came from its guide, with no cost measured yet.
     expect(payoff({ lesson: readShippedLesson('london') })).toMatch(/\u2013$/);
   });

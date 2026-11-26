@@ -145,7 +145,7 @@ export function OpportunityList({
   const anyRow = rows.length > 0 || saved.finds.length > 0 || finder.run.finds.length > 0;
   return (
     <Stack style={compact ? STATIC.compact : labelled}>
-      <View style={STATIC.headLine}>
+      <View style={[STATIC.line, STATIC.wrap]}>
         <HeadingTip tip={listTip(players)} style={STATIC.heading}>
           <Eyebrow>Opportunities</Eyebrow>
         </HeadingTip>
@@ -372,10 +372,10 @@ type Meter = (typeof COLUMNS)[number]['meter'];
  * An icon over each meter's column (`COLUMNS`), its tooltip saying what the
  * column shows. It sits on the heading's line where both fit, so it adds no
  * line of its own; else it wraps to the next, still ending where a row does.
+ * One piece, so the bookmark's room never wraps apart from the icons.
  */
 function ColumnHeads({ styles }: { readonly styles: Styles }) {
   return (
-    // One piece, so the bookmark's room never wraps apart from the icons.
     <View style={[STATIC.line, STATIC.grow]}>
       {/* In a row's frame, so the icons sit where its meters do; never shrunk, as a row's meters aren't. */}
       <View style={[styles.frame, STATIC.grow]}>
@@ -479,10 +479,10 @@ function Row({
   const mistake = numberedMove(san, line.length);
   // Without a name, the two moves before it tell apart one mistake played after several.
   const caption = name ? mistake : leadIn(line);
-  // As the candidate list shows the mistake's cost.
-  const lost = cost === undefined ? undefined : lostPercent(cost);
+  // As the candidate list shows the mistake's cost, "0%" where judged but that rounds to nothing.
+  const lost = cost === undefined ? undefined : (lostPercent(cost) ?? '0%');
   // A dash only where unjudged, as each column's tip says.
-  const payoff = mates ? '#' : cost === undefined ? '–' : lost ? `\u2212${lost}` : '0%';
+  const payoff = mates ? '#' : lost === undefined ? '–' : lost === '0%' ? lost : `\u2212${lost}`;
   // Each meter's number and how full its bar is, in its column (`COLUMNS`).
   const meters: Record<Meter, { label: string; fill: number }> = {
     reach: { label: reach === undefined ? '–' : percent(reach), fill: reach ?? 0 },
@@ -498,7 +498,7 @@ function Row({
           caption,
           reach !== undefined && `reached in ${percent(reach)} of games`,
           share !== undefined && `played ${percent(share)} of the time`,
-          mates ? 'punished with mate' : cost !== undefined && `gives away ${lost ?? '0%'}`,
+          mates ? 'punished with mate' : lost && `gives away ${lost}`,
           mark && SPOKEN_MARKS[mark],
         ]
           .filter(Boolean)
@@ -566,7 +566,7 @@ const STATIC = StyleSheet.create({
   // As wide as its words, so its tip opens over them alone.
   heading: { alignSelf: 'flex-start' },
   // The column heads take a line of their own where the panel is too narrow for both.
-  headLine: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
+  wrap: { flexWrap: 'wrap' },
   finderHead: { paddingTop: 10, paddingBottom: 2 },
   grow: { flexGrow: 1 },
   compact: { gap: 4 },
