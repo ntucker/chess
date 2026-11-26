@@ -46,16 +46,21 @@ function AccountButton() {
   );
 }
 
-/** Signs in: its own component, so a signed-in learner's header never prepares a sign-in. */
+/**
+ * Signs in: its own component, so a signed-in learner's header never
+ * prepares a sign-in. A failed sign-in changes its icon too, since a phone
+ * shows the tip only on a press the button doesn't take.
+ */
 function SignInButton() {
   const { signIn, state } = useLichessSignIn();
+  const failed = state === 'failed';
   return (
-    <Tip tip={state === 'failed' ? FAILED_TIP : SIGN_IN_TIP}>
+    <Tip tip={failed ? FAILED_TIP : SIGN_IN_TIP}>
       <HeaderButton
-        icon="person-circle-outline"
+        icon={failed ? 'alert-circle-outline' : 'person-circle-outline'}
         iconSize={21}
         accessibilityRole="button"
-        accessibilityLabel="Sign in with lichess"
+        accessibilityLabel={failed ? FAILED_TIP : 'Sign in with lichess'}
         disabled={!signIn || state === 'signing-in'}
         onPress={() => void signIn?.()}
       />

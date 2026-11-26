@@ -1,4 +1,3 @@
-import { actionTypes, type Manager, type Middleware } from '@data-client/react';
 import { Endpoint, Entity } from '@data-client/rest';
 
 import {
@@ -9,7 +8,6 @@ import {
 } from '@/accounts/accounts';
 import { readStorage, storageKey, writeStorage } from '@/context/storage';
 import { fetchOk } from '@/files/fetchOk';
-import { ExplorerRefusal } from '@/lichess/explorer';
 import { LICHESS, LICHESS_CLIENT_ID } from '@/lichess/oauth';
 
 import { StorageSync } from './storageSync';
@@ -124,28 +122,6 @@ export class AccountsSync extends StorageSync {
   constructor() {
     super(KEY, (controller) => controller.setResponse(getAccounts, record(saved())));
   }
-}
-
-/**
- * Signs out of lichess when its explorer refuses the account's token (401:
- * the learner revoked it on lichess, or it expired), so the finder goes back
- * to Maia's estimates rather than failing at every position. Only a refusal
- * of the token saved now arrives as one (`getExplorerCounts`).
- */
-export class LichessRefusals implements Manager {
-  middleware: Middleware = (controller) => (next) => (action) => {
-    if (
-      action.type === actionTypes.SET_RESPONSE &&
-      action.error &&
-      action.response instanceof ExplorerRefusal &&
-      action.response.status === 401
-    ) {
-      void controller.fetch(signOutLichess);
-    }
-    return next(action);
-  };
-
-  cleanup() {}
 }
 
 /** lichess's answer at `path`, unchecked: the caller checks the fields it reads. */

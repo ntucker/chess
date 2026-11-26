@@ -20,9 +20,11 @@ export const LICHESS_DISCOVERY = { authorizationEndpoint: `${LICHESS}/oauth` };
  * Where lichess sends the learner back after signing in: the app's
  * `/lichess` route. On the web that is this build's own page (a pull
  * request's preview has its own), which hands the answer to the page that
- * opened it; on the phone, the app's address scheme.
+ * opened it. On the phone it is the app's package name as its address
+ * scheme (app.json), since lichess refuses a scheme that isn't a reverse
+ * domain, such as `openingnight`.
  */
 export const lichessRedirectUri = () =>
   process.env.EXPO_OS === 'web'
     ? `${window.location.origin}${BASE_PATH}/lichess`
-    : 'openingnight://lichess';
+    : 'io.github.ntucker.openingnight://lichess';

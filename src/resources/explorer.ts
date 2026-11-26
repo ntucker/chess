@@ -21,7 +21,7 @@ export interface ExplorerCounts {
  * the signed-in account's token. It fails when nobody is signed in, since
  * the explorer refuses requests without a token. Counts change slowly, so an
  * answer is kept for a day. A refusal (`ExplorerRefusal`, which signs out on
- * a 401: `LichessRefusals`) is passed on only while the token it refused is
+ * a 401: `LichessTokens`) is passed on only while the token it refused is
  * still the saved one, so a request queued before signing in again can't
  * sign out the new account.
  *
@@ -38,7 +38,7 @@ export const getExplorerCounts = new Endpoint(
       return { counts: recordedCounts(key, counts), total };
     } catch (error) {
       if (error instanceof ExplorerRefusal && lichessToken() !== token) {
-        throw new Error('lichess refused a token the learner has since replaced', {
+        throw new Error('lichess refused a token the learner has since signed out of', {
           cause: error,
         });
       }

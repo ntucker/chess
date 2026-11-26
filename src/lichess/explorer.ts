@@ -66,16 +66,16 @@ export function pacedExplorer({
 }: Options = {}): AskLichess {
   // When the next request may go: each caller takes the next free slot.
   let next = -Infinity;
-  // How many times lichess asked every caller to wait (a 429).
-  let pauses = 0;
+  // Until when lichess asked every caller to wait (a 429).
+  let pausedUntil = -Infinity;
   const paced = async (url: URL, token: string | undefined) => {
-    // A turn taken before a pause began is taken again after it.
-    for (let pause = -1; pause !== pauses;) {
-      pause = pauses;
-      const slot = Math.max(Date.now(), next);
+    let slot: number;
+    // A turn that falls in a pause begun since it was taken is taken again, after the pause.
+    do {
+      slot = Math.max(Date.now(), next, pausedUntil);
       next = slot + REQUEST_INTERVAL_MS;
       await sleep(slot - Date.now());
-    }
+    } while (slot < pausedUntil);
     return get(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
   };
   return async (key, band, token) => {
@@ -84,8 +84,7 @@ export function pacedExplorer({
       const response = await paced(url, token);
       if (response.status === 429) {
         // Every caller waits out the minute, those already waiting for a turn too.
-        pauses += 1;
-        next = Math.max(next, Date.now() + RETRY_AFTER_MS);
+        pausedUntil = Date.now() + RETRY_AFTER_MS;
         continue;
       }
       if (!response.ok) throw new ExplorerRefusal(response.status, `${band} ${key}`);

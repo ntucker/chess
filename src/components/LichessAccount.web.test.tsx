@@ -76,4 +76,12 @@ describe('LichessAccount', () => {
     expect(calls).toEqual([]);
     expect(button().getAttribute('aria-label')).toBe('Sign in with lichess');
   });
+
+  it('says on the button itself when signing in failed', async () => {
+    mockPrompt.mockResolvedValueOnce({ type: 'error' } as never);
+    await press();
+    expect(button().getAttribute('aria-label')).toBe(
+      'Signing in with lichess failed. Press to try again.',
+    );
+  });
 });

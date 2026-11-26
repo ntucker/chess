@@ -4,18 +4,17 @@ import { initialState, prepareStore } from '@data-client/react/redux';
 
 import { lineKeys } from '@/lesson/select';
 
-import {
-  AccountsSync,
-  getAccounts,
-  LichessRefusals,
-  signInLichess,
-  signOutLichess,
-} from './accounts';
+import { AccountsSync, getAccounts, signInLichess, signOutLichess } from './accounts';
 import { getExplorerCounts } from './explorer';
+import { LichessTokens } from './lichessTokens';
 
 /** After 1.e4 e5 2.Nf3 Nc6 3.Bc4 Nf6, where White may castle. */
 const CASTLES = lineKeys(['e2e4', 'e7e5', 'g1f3', 'b8c6', 'f1c4', 'g8f6']).at(-1)!;
-const GRANT = { code: 'code', codeVerifier: 'verifier', redirectUri: 'openingnight://lichess' };
+const GRANT = {
+  code: 'code',
+  codeVerifier: 'verifier',
+  redirectUri: 'io.github.ntucker.openingnight://lichess',
+};
 const saved = () => JSON.parse(localStorage.getItem('accounts') ?? 'null');
 
 /** lichess as the app asks it: each call recorded, answered by `answers` in turn. */
@@ -30,7 +29,7 @@ function newStore() {
   syncs.push(sync);
   const { controller } = prepareStore(
     initialState,
-    () => [sync, new LichessRefusals(), new NetworkManager()],
+    () => [sync, new LichessTokens(), new NetworkManager()],
     Controller,
   );
   sync.init();
@@ -67,7 +66,7 @@ describe('lichess account on the device', () => {
       grant_type: 'authorization_code',
       code: 'code',
       code_verifier: 'verifier',
-      redirect_uri: 'openingnight://lichess',
+      redirect_uri: 'io.github.ntucker.openingnight://lichess',
       client_id: 'opening-night',
     });
     expect(account.init!.headers).toEqual({ Authorization: 'Bearer lip_token' });
@@ -94,10 +93,12 @@ describe('lichess account on the device', () => {
     expect(saved()).toEqual({ version: 1 });
   });
 
-  it('keeps nothing when lichess refuses the code', async () => {
-    answers = [async () => ({ ok: false, status: 400 }) as Response];
+  it('keeps nothing when lichess refuses the code, or answers without a token', async () => {
+    answers = [async () => ({ ok: false, status: 400 }) as Response, json({})];
     const { controller } = newStore();
     await expect(controller.fetch(signInLichess, GRANT)).rejects.toThrow('HTTP 400');
+    await expect(controller.fetch(signInLichess, GRANT)).rejects.toThrow('without a token');
+    expect(calls).toHaveLength(2);
     expect(saved()).toBeNull();
   });
 
@@ -138,6 +139,15 @@ describe('lichess account on the device', () => {
     await expect(controller.fetch(getExplorerCounts, 1400, CASTLES)).rejects.toThrow('401');
     expect((await shown())?.lichess).toBeUndefined();
     expect(calls.at(-1)?.init?.method).toBe('DELETE');
+
+    // Signing in again forgets the refusal, so the finder asks with the new token.
+    const failed = () =>
+      controller.getError(getExplorerCounts, 1400, CASTLES, controller.getState());
+    expect(failed()).toBeDefined();
+    answers = [json({ access_token: 'lip_new' }), json({ username: 'learner' })];
+    await controller.fetch(signInLichess, GRANT);
+    await shown();
+    expect(failed()).toBeUndefined();
   });
 
   it('keeps an account signed in since when a request from before it is refused', async () => {
@@ -161,7 +171,7 @@ describe('lichess account on the device', () => {
     signedIn('lip_new');
     refuse();
 
-    await expect(asked).rejects.toThrow('since replaced');
+    await expect(asked).rejects.toThrow('since signed out of');
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(saved().lichess.token).toBe('lip_new');
     expect(calls.map((call) => call.init?.method)).not.toContain('DELETE');

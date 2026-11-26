@@ -9,8 +9,9 @@ import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { ScreenFailure } from '@/components/NewVersion';
-import { AccountsSync, LichessRefusals } from '@/resources/accounts';
+import { AccountsSync } from '@/resources/accounts';
 import { AnalysisManager } from '@/resources/analysis';
+import { LichessTokens } from '@/resources/lichessTokens';
 import { ProgressSync } from '@/resources/progress';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { StockfishWhileNeeded } from '@/stockfish/demand';
@@ -22,7 +23,7 @@ import { FONT_FILES } from '@/theme/fontFiles';
 const managers = () => [
   new ProgressSync(),
   new AccountsSync(),
-  new LichessRefusals(),
+  new LichessTokens(),
   new AnalysisManager(),
   ...getDefaultManagers(),
 ];
