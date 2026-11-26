@@ -16,6 +16,7 @@ import {
   recordedMove,
 } from '@/game/replay';
 import type { PositionKey, Uci } from '@/lesson/lesson';
+import type { MaiaRating } from '@/maia/ratings';
 import { moveShare } from '@/lesson/share';
 
 import type { Limits } from './limits';
@@ -39,6 +40,15 @@ export interface Spot {
   readonly line: readonly Uci[];
   readonly key: PositionKey;
 }
+
+/**
+ * Where a run's replies come from, for the whole run (a score never mixes
+ * sources): lichess's games in a rating band (`RATING_BANDS`), or Maia's
+ * estimate at a rating.
+ */
+export type ReplySource =
+  | { readonly from: 'lichess'; readonly band: number }
+  | { readonly from: 'maia'; readonly rating: MaiaRating };
 
 /** What the host knows so far. Each lookup is undefined until the host has the answer. */
 export interface Answers {

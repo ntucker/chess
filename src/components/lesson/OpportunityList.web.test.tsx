@@ -29,7 +29,7 @@ type Props = Parameters<typeof OpportunityList>[0];
 const DONE: FinderProps = {
   run: { finds: [], running: false },
   from: 'here',
-  rating: 1500,
+  source: { from: 'maia', rating: 1500 },
   onFind: () => {},
 };
 
@@ -215,6 +215,15 @@ describe('OpportunityList', () => {
     expect(text({ finder: { ...DONE, run: { finds: [again], running: false } } })).not.toContain(
       'No opportunity found',
     );
+  });
+
+  it("names the replies' source on its chip: Maia's estimate, or lichess's counted games", () => {
+    const shown = text({});
+    expect(shown).toContain('Maia 1500');
+    expect(shown).toContain('Sign in with lichess to count real games');
+    const counted = text({ finder: { ...DONE, source: { from: 'lichess', band: 1400 } } });
+    expect(counted).toContain('lichess 1400–1599');
+    expect(counted).toContain('Counted: how often lichess players rated 1400–1599');
   });
 
   it('says when the search stopped short, and retries it from the button', () => {

@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { checkLesson } from '@/lesson/check';
 import type { PositionKey } from '@/lesson/lesson';
 import { keyAfter as key, SAMPLE } from '@/lesson/lesson.fixture';
+import { RATING_BANDS } from '@/lichess/explorer';
 
 import { extractChapter } from './extract';
 import { STUDY_PGN } from './fixture';
@@ -15,7 +16,6 @@ import {
   addPopularity,
   type ExplorerAnswer,
   lichessExplorer,
-  RATING_BANDS,
   recount,
   type MoveCounts,
 } from './popularity';
@@ -174,7 +174,9 @@ describe('lichessExplorer', () => {
     });
     expect((await explorer.ask(key(), 1400)).counts).toEqual({ e2e4: 10 });
     expect(explorer.answeredOn()).toBe('2026-11-21');
-    expect(waits.filter((ms) => ms > 0)).toEqual([60_000, expect.any(Number)]);
+    const [wait, ...more] = waits.filter((ms) => ms > 0);
+    expect(wait).toBeGreaterThan(59_000);
+    expect(more).toEqual([]);
     expect(requests[0][0].searchParams.get('ratings')).toBe('1400');
     expect(requests[0][1]?.headers).toEqual({ Authorization: 'Bearer secret' });
 

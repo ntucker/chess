@@ -65,6 +65,11 @@ every image in `screenshots/`, in name order.
 - **Target audience**: 13 and over. Including under-13 age groups brings in the Families policy's
   extra requirements; the app suits children, but nothing in it is made for them.
 - **Data safety**: the app collects no user data and shares none. Answer "No" to "Does your app
-  collect or share any of the required user data types?" The only network request is Full
-  Stockfish's one-time download from GitHub Pages, which sends nothing about the user.
+  collect or share any of the required user data types?" The developer receives nothing. Two
+  network requests leave the device: Full Stockfish's one-time download from GitHub Pages, which
+  sends nothing about the user, and, only for a user who signs in with lichess, requests to lichess:
+  the sign-in itself, then the opening explorer's counts for the positions the finder asks about,
+  sent with the token the sign-in gave. The username and token stay on the device, and go only to
+  lichess, the service the user chose to sign in to, which Play's form treats as a user-initiated
+  transfer rather than sharing.
 - **Government apps**, **Financial features**, **Health**, **News**: not applicable (No).

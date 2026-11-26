@@ -24,12 +24,12 @@ import { join } from 'node:path';
 import { type Analysis, sketched } from '@/evaluation/evaluation';
 import type { Lesson, PositionKey, Uci } from '@/lesson/lesson';
 import { guideOrder } from '@/lesson/mistakes';
-import type { MaiaRating } from '@/maia/ratings';
 import { findOpportunities, type FinderInput, type FinderResult } from '@/opportunity/finder';
 import { MIN_GAMES } from '@/opportunity/limits';
 import {
   type Answers,
   maiaReplies,
+  type ReplySource,
   type Replies,
   repliesFrom,
   type Request,
@@ -94,14 +94,6 @@ export const finderHost = (lesson: Lesson, band: number): Promise<FinderHost> =>
       return played.length ? played.map((move) => move.uci) : undefined;
     },
   );
-
-/**
- * Where a run's replies come from, for the whole run (a score never mixes
- * sources): lichess's games in a rating band, or Maia's estimate at a rating.
- */
-export type ReplySource =
-  | { readonly from: 'lichess'; readonly band: number }
-  | { readonly from: 'maia'; readonly rating: MaiaRating };
 
 /**
  * The host for a run from any position with replies from `source`, with no

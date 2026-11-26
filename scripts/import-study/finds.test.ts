@@ -5,10 +5,11 @@ import type { Idea, Lesson, LessonMove, LessonPosition, PositionKey } from '@/le
 import { keyAfter, readShippedLesson, uci, uciLine } from '@/lesson/lesson.fixture';
 import { mistakeLine } from '@/lesson/mistakes';
 import { lineSans, numberedLine, parsePosition, playLine, positionKey } from '@/game/replay';
+import { RATING_BANDS } from '@/lichess/explorer';
 
 import { addPathCounts, type LessonFind, recountCounted, withFinds } from './finds';
 import { at, testLesson } from './fixture';
-import { type Explorer, RATING_BANDS } from './popularity';
+import { type Explorer } from './popularity';
 
 /** Black's lesson 1.e4 e5 2.Nf3, with `extra` positions. */
 const lessonWith = (extra: Record<PositionKey, LessonPosition> = {}): Lesson => ({

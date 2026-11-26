@@ -22,6 +22,7 @@ import { guideMove } from '@/lesson/select';
 import { cueGain, type Find } from '@/opportunity/finder';
 import { LIMITS } from '@/opportunity/limits';
 import { type Context, walkTo } from '@/opportunity/walk';
+import { RATING_BANDS } from '@/lichess/explorer';
 
 import { startOf } from './engineCheck';
 import {
@@ -34,7 +35,7 @@ import {
   settle,
 } from './finderHost';
 import { keepMistakeLines } from './mistakes';
-import { type Explorer, isCounted, RATING_BANDS, recount } from './popularity';
+import { type Explorer, isCounted, recount } from './popularity';
 import { played } from './study';
 
 /** A find to write into a lesson, and what knowing it is worth in each of `RATING_BANDS`. */

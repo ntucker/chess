@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { a11yState, Pressable, type PressableProps, useTheme } from '@reactive/silk-native';
 import type { ComponentProps, ComponentRef, ReactNode, Ref } from 'react';
-import type { View } from 'react-native';
+import { StyleSheet, type View } from 'react-native';
 
 import { narrowLength, narrowStyles } from '@/theme/narrow';
 import { useNarrowStyles } from '@/theme/Narrow';
@@ -31,6 +31,7 @@ interface Base extends Pick<
   | 'onPress'
   | 'onLongPress'
   | 'delayLongPress'
+  | 'disabled'
 > {
   /** Whether it is on, for a switch. */
   readonly checked?: boolean;
@@ -53,7 +54,9 @@ export function HeaderButton({ icon, iconSize, face, checked, ...pressable }: Pr
       {...(checked !== undefined && a11yState({ checked }))}
       style={({ pressed, hovered }) => [
         styles.button,
-        (pressed || hovered) && { backgroundColor: color.tones.neutral.subtle },
+        pressable.disabled
+          ? STATIC.disabled
+          : (pressed || hovered) && { backgroundColor: color.tones.neutral.subtle },
       ]}
     >
       {({ pressed, hovered }) => {
@@ -76,3 +79,8 @@ const STYLES = narrowStyles((px) => ({
     justifyContent: 'center',
   },
 }));
+
+const STATIC = StyleSheet.create({
+  /** As silk's controls show they do nothing now. */
+  disabled: { opacity: 0.4 },
+});

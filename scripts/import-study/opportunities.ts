@@ -43,15 +43,9 @@ import { MAIA_RATINGS } from '@/maia/ratings';
 import { byScore, type Find, type FinderResult, type ThinEnd } from '@/opportunity/finder';
 import { LIMITS, MIN_GAMES } from '@/opportunity/limits';
 import { keepsGuide } from '@/opportunity/payoff';
+import type { ReplySource } from '@/opportunity/walk';
 
-import {
-  FIND_BAND,
-  finderHost,
-  lessonStart,
-  positionHost,
-  type ReplySource,
-  runFinder,
-} from './finderHost';
+import { FIND_BAND, finderHost, lessonStart, positionHost, runFinder } from './finderHost';
 import { readLessonFile } from './register';
 
 const ROOT = join(__dirname, '../..');

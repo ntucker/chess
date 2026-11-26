@@ -96,7 +96,9 @@ describe('Header', () => {
       onPress: () => {},
     } as const;
     expect(themePart({ narrowButton })).toBeUndefined();
-    expect(themePart({ narrowButton: { ...narrowButton, holdsTheme: true } })).toBe('wide-only');
+    expect(themePart({ narrowButton: { ...narrowButton, holdsHeaderChoices: true } })).toBe(
+      'wide-only',
+    );
   });
 });
 

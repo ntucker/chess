@@ -1,7 +1,6 @@
-import type { Controller, Manager, Middleware } from '@data-client/react';
 import { Endpoint, Entity, Values } from '@data-client/rest';
 
-import { readStorage, storageKey, subscribeStorage, writeStorage } from '@/context/storage';
+import { readStorage, storageKey, writeStorage } from '@/context/storage';
 import type { PositionKey } from '@/lesson/lesson';
 import {
   type Mark,
@@ -12,6 +11,7 @@ import {
 } from '@/progress/progress';
 
 import { LESSONS } from './lesson';
+import { StorageSync } from './storageSync';
 
 /** Where the progress is saved, as JSON (`SavedProgress`). */
 const KEY = storageKey('progress');
@@ -81,31 +81,13 @@ export const addMark = new Endpoint(
 );
 
 /**
- * Takes in the progress another tab saves (the web's `storage` event), so
- * each tab shows the marks earned in all of them. Native has one window.
+ * Takes in the progress another tab saves, so each tab shows the marks
+ * earned in all of them (`StorageSync`). It sets getProgress's answer, not
+ * only its entities: a tab that hasn't read the progress yet then has it,
+ * rather than reading it again.
  */
-export class ProgressSync implements Manager {
-  private controller?: Controller;
-  private unsubscribe?: () => void;
-
-  middleware: Middleware = (controller) => {
-    this.controller = controller;
-    return (next) => next;
-  };
-
-  // What is saved now, not the event's value: this tab may have saved a newer
-  // mark since the other tab's save queued the event.
-  private load = () => {
-    // As getProgress's answer, not only its entities: a tab that hasn't read
-    // the progress yet then has it, rather than reading it again.
-    this.controller?.setResponse(getProgress, everyLesson(saved()));
-  };
-
-  init() {
-    this.unsubscribe = subscribeStorage(KEY, this.load);
-  }
-
-  cleanup() {
-    this.unsubscribe?.();
+export class ProgressSync extends StorageSync {
+  constructor() {
+    super(KEY, (controller) => controller.setResponse(getProgress, everyLesson(saved())));
   }
 }

@@ -1,25 +1,24 @@
 /**
  * How often lichess players make each guide move, per rating band, from the
- * lichess opening explorer (https://explorer.lichess.ovh). The explorer
- * refuses requests without a lichess token, and lichess asks for one request
- * at a time and a full minute's pause after a 429.
+ * lichess opening explorer (`src/lichess/explorer.ts`), keeping its answers
+ * in the lesson's answers file.
  */
 
-import { parsePosition, parsePositionKey, positionKey, recordedMove } from '@/game/replay';
+import { parsePosition, parsePositionKey, positionKey } from '@/game/replay';
 import type { Lesson, LessonMove, LessonPosition, PositionKey } from '@/lesson/lesson';
+import {
+  type LichessCounts,
+  pacedExplorer,
+  RATING_BANDS,
+  recordedCounts,
+  SPEEDS,
+} from '@/lichess/explorer';
 import type { MoveCounts } from '@/opportunity/walk';
 
 import { answersFile } from './jsonLines';
 import { played } from './study';
 
-/** The explorer's bands the app reads (see `ratingBandIndex`), each counting ratings up to the next. */
-export const RATING_BANDS = [1000, 1200, 1400, 1600, 1800];
-/** Bullet games are left out: they are played too fast to say what players choose. */
-const SPEEDS = ['blitz', 'rapid', 'classical'];
-
 export type { MoveCounts };
-/** Games per move as lichess writes moves (castling as the king taking its rook, `e1h1`). */
-type LichessCounts = Readonly<Record<string, number>>;
 
 /** What the explorer answered for a position in one band. */
 export interface ExplorerAnswer {
@@ -72,13 +71,8 @@ export interface LichessExplorer {
   readonly saveUsed: () => void;
 }
 
-/** The most moves the explorer lists for a position: more than any guide position has. */
-const MAX_MOVES = 100;
-const RETRY_AFTER_MS = 60_000;
 const ALL_BANDS: readonly boolean[] = RATING_BANDS.map(() => true);
 const NO_BANDS: readonly boolean[] = RATING_BANDS.map(() => false);
-/** Measured: one request every 2.5 s draws no 429s (about 24 a minute); faster ones do. */
-const REQUEST_INTERVAL_MS = 2_500;
 
 /**
  * The lichess explorer, answering from `cacheFile` first. The file keeps
@@ -99,12 +93,7 @@ export function lichessExplorer({
     () => !fresh,
   );
   let answeredOn: string | undefined;
-  let lastRequest = -Infinity;
-  const paced = async (url: URL) => {
-    await sleep(Math.max(0, lastRequest + REQUEST_INTERVAL_MS - Date.now()));
-    lastRequest = Date.now();
-    return get(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-  };
+  const askLichess = pacedExplorer({ fetch: get, sleep });
   const ask: Explorer = async (key, band, { total: needed = false } = {}) => {
     const id = `${band} ${key}`;
     const cached = cache.get(id);
@@ -114,54 +103,16 @@ export function lichessExplorer({
     return { counts: recordedCounts(key, counts), ...(total !== undefined && { total }) };
   };
   const fetched = async (id: string, key: PositionKey, band: number): Promise<ExplorerRow> => {
-    const url = new URL('https://explorer.lichess.ovh/lichess');
-    url.search = new URLSearchParams({
-      fen: `${key} 0 1`,
-      ratings: String(band),
-      speeds: SPEEDS.join(','),
-      moves: String(MAX_MOVES),
-      topGames: '0',
-      recentGames: '0',
-    }).toString();
-    for (;;) {
-      const response = await paced(url);
-      if (response.status === 429) {
-        await sleep(RETRY_AFTER_MS);
-        continue;
-      }
-      if (!response.ok) throw new Error(`Explorer answered ${response.status} for ${id}`);
-      const body = (await response.json()) as Games & { moves: (Games & { uci: string })[] };
-      const counts = Object.fromEntries(body.moves.map((move) => [move.uci, gameCount(move)]));
-      const row: ExplorerRow = [id, counts, today, gameCount(body)];
-      cache.add(row);
-      return row;
-    }
+    const { counts, total } = await askLichess(key, band, token);
+    const row: ExplorerRow = [id, counts, today, total];
+    cache.add(row);
+    return row;
   };
   return {
     ask,
     answeredOn: () => answeredOn ?? today,
     saveUsed: cache.saveUsed,
   };
-}
-
-/** The explorer's results for a position or a move. */
-interface Games {
-  readonly white: number;
-  readonly draws: number;
-  readonly black: number;
-}
-
-const gameCount = ({ white, draws, black }: Games) => white + draws + black;
-
-/**
- * `counts` with each move as lesson files write it (`recordedMove`). A move
- * `recordedMove` rejects keeps lichess's key, which no lesson move asks for.
- */
-function recordedCounts(key: PositionKey, counts: LichessCounts): MoveCounts {
-  const pos = parsePositionKey(key)!;
-  return Object.fromEntries(
-    Object.entries(counts).map(([uci, games]) => [recordedMove(pos, uci) ?? uci, games]),
-  );
 }
 
 /**

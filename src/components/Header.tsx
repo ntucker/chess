@@ -6,12 +6,13 @@ import { Image, View } from 'react-native';
 import { BackButton } from '@/components/BackButton';
 import { Eyebrow } from '@/components/Eyebrow';
 import { HeaderButton } from '@/components/HeaderButton';
+import { LichessAccount } from '@/components/LichessAccount';
 import { CHEVRON_WIDTH, type Destination, PlaceLink } from '@/components/PlaceLink';
-import { HEADER_HEIGHT } from '@/theme/sideBySide';
 import { SourceLink } from '@/components/SourceLink';
 import { ThemeSwitch } from '@/components/ThemeSwitch';
 import { NARROW_CSS_LOADS, narrowCalc, narrowLength, narrowStyles } from '@/theme/narrow';
 import { NarrowOnly, useNarrowPart, useNarrowStyles } from '@/theme/Narrow';
+import { HEADER_HEIGHT } from '@/theme/sideBySide';
 import { fonts } from '@/theme/theme';
 
 /** Where the page is: a name, such as the lesson's line, and its parent, such as the line it branches from. */
@@ -46,8 +47,8 @@ export interface NarrowButton {
   readonly icon: ComponentProps<typeof Ionicons>['name'];
   readonly label: string;
   readonly onPress: () => void;
-  /** What it opens holds the theme choice, so the narrow header leaves out its theme button. */
-  readonly holdsTheme?: boolean;
+  /** What it opens holds the theme choice and the lichess account, so the narrow header leaves out their buttons. */
+  readonly holdsHeaderChoices?: boolean;
 }
 
 /**
@@ -101,7 +102,10 @@ export function Header({ place, placeLink, back, narrowButton, onRestart }: Head
           </Text>
           <Separator orientation="vertical" style={styles.rule} />
         </Inline>
-        <ThemeSwitch wideOnly={narrowButton?.holdsTheme} />
+        <ThemeSwitch wideOnly={narrowButton?.holdsHeaderChoices} />
+        <View {...part(Boolean(narrowButton?.holdsHeaderChoices) && 'wide-only')}>
+          <LichessAccount />
+        </View>
         <View {...part(Boolean(narrowButton) && 'wide-only')}>
           <SourceLink />
         </View>

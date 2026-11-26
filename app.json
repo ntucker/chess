@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "openingnight",
+    "scheme": "io.github.ntucker.openingnight",
     "userInterfaceStyle": "automatic",
     "android": {
       "package": "io.github.ntucker.openingnight",

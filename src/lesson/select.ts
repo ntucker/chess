@@ -16,6 +16,7 @@ import {
   type LessonPosition,
   type PositionKey,
   ratingBandIndex,
+  bandRatings,
   type Uci,
   type Variation,
   type VariationId,
@@ -188,7 +189,10 @@ export function bookMoves(lesson: Lesson, line: readonly Uci[]): boolean[] {
  */
 export function opponentBand(lesson: Lesson, opponent: Opponent): number | undefined {
   if (!lesson.popularity) return undefined;
-  return ratingBandIndex(lesson.popularity, isStockfish(opponent) ? Infinity : opponent);
+  return ratingBandIndex(
+    lesson.popularity.ratingBands,
+    isStockfish(opponent) ? Infinity : opponent,
+  );
 }
 
 /** `words` read as a list: "blitz, rapid and classical". */
@@ -219,11 +223,7 @@ export function shareSource(lesson: Lesson, opponent: Opponent): string | undefi
 export function bandPlayers(lesson: Lesson, opponent: Opponent): string | undefined {
   const band = opponentBand(lesson, opponent);
   if (!lesson.popularity || band === undefined) return undefined;
-  const { ratingBands } = lesson.popularity;
-  const next = ratingBands[band + 1];
-  const rated =
-    next === undefined ? `${ratingBands[band]} and up` : `${ratingBands[band]}–${next - 1}`;
-  return `Lichess players rated ${rated}`;
+  return `Lichess players rated ${bandRatings(lesson.popularity.ratingBands, band)}`;
 }
 
 /** A variation with its id. */

@@ -1,4 +1,4 @@
-// localStorage on Android, where the app remembers its settings and progress
+// localStorage on Android, where the app remembers its settings, progress and accounts
 // (src/context/storage.ts). The web has its own.
 import 'expo-sqlite/localStorage/install';
 
@@ -9,7 +9,9 @@ import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { ScreenFailure } from '@/components/NewVersion';
+import { AccountsSync } from '@/resources/accounts';
 import { AnalysisManager } from '@/resources/analysis';
+import { LichessTokens } from '@/resources/lichessTokens';
 import { ProgressSync } from '@/resources/progress';
 import { SettingsProvider } from '@/settings/SettingsProvider';
 import { StockfishWhileNeeded } from '@/stockfish/demand';
@@ -18,7 +20,13 @@ import { StockfishHost } from '@/stockfish/StockfishHost';
 import { AppTheme } from '@/theme/AppTheme';
 import { FONT_FILES } from '@/theme/fontFiles';
 
-const managers = () => [new ProgressSync(), new AnalysisManager(), ...getDefaultManagers()];
+const managers = () => [
+  new ProgressSync(),
+  new AccountsSync(),
+  new LichessTokens(),
+  new AnalysisManager(),
+  ...getDefaultManagers(),
+];
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts(FONT_FILES);
