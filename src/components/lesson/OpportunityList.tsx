@@ -145,7 +145,7 @@ export function OpportunityList({
   const anyRow = rows.length > 0 || saved.finds.length > 0 || finder.run.finds.length > 0;
   return (
     <Stack style={compact ? STATIC.compact : labelled}>
-      <View style={STATIC.line}>
+      <View style={STATIC.headLine}>
         <HeadingTip tip={listTip(players)} style={STATIC.heading}>
           <Eyebrow>Opportunities</Eyebrow>
         </HeadingTip>
@@ -370,11 +370,13 @@ type Meter = (typeof COLUMNS)[number]['meter'];
 
 /**
  * An icon over each meter's column (`COLUMNS`), its tooltip saying what the
- * column shows. It sits on the heading's line, so it adds no line of its own.
+ * column shows. It sits on the heading's line where both fit, so it adds no
+ * line of its own; else it wraps to the next, still ending where a row does.
  */
 function ColumnHeads({ styles }: { readonly styles: Styles }) {
   return (
-    <>
+    // One piece, so the bookmark's room never wraps apart from the icons.
+    <View style={[STATIC.line, STATIC.grow]}>
       {/* In a row's frame, so the icons sit where its meters do; never shrunk, as a row's meters aren't. */}
       <View style={[styles.frame, STATIC.grow]}>
         <View style={STATIC.grow} />
@@ -387,7 +389,7 @@ function ColumnHeads({ styles }: { readonly styles: Styles }) {
         </View>
       </View>
       <View style={styles.bookmarkRoom} />
-    </>
+    </View>
   );
 }
 
@@ -496,7 +498,7 @@ function Row({
           caption,
           reach !== undefined && `reached in ${percent(reach)} of games`,
           share !== undefined && `played ${percent(share)} of the time`,
-          mates ? 'punished with mate' : lost && `gives away ${lost}`,
+          mates ? 'punished with mate' : cost !== undefined && `gives away ${lost ?? '0%'}`,
           mark && SPOKEN_MARKS[mark],
         ]
           .filter(Boolean)
@@ -563,6 +565,8 @@ function leadIn(line: readonly Uci[]): string | undefined {
 const STATIC = StyleSheet.create({
   // As wide as its words, so its tip opens over them alone.
   heading: { alignSelf: 'flex-start' },
+  // The column heads take a line of their own where the panel is too narrow for both.
+  headLine: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
   finderHead: { paddingTop: 10, paddingBottom: 2 },
   grow: { flexGrow: 1 },
   compact: { gap: 4 },
