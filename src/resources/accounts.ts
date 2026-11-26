@@ -71,6 +71,9 @@ export const signInLichess = new Endpoint(
   async ({ code, codeVerifier, redirectUri }: LichessGrant) => {
     const granted = await lichessJson<{ access_token: string }>('/api/token', {
       method: 'POST',
+      // Said outright: Expo's fetch on the phone sends a URLSearchParams body with no
+      // Content-Type, which a browser would add, and lichess then answers "grant_type required".
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code,

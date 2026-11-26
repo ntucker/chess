@@ -62,6 +62,8 @@ describe('lichess account on the device', () => {
 
     const [trade, account] = calls;
     expect(trade.url).toBe('https://lichess.org/api/token');
+    // Expo's fetch on the phone adds no Content-Type for a URLSearchParams body.
+    expect(trade.init!.headers).toEqual({ 'Content-Type': 'application/x-www-form-urlencoded' });
     expect(Object.fromEntries(trade.init!.body as URLSearchParams)).toEqual({
       grant_type: 'authorization_code',
       code: 'code',
