@@ -32,6 +32,7 @@ export interface ExplorerCounts {
  */
 export const getExplorerCounts = new Endpoint(
   async (band: number, key: PositionKey): Promise<ExplorerCounts> => {
+    // Ends with an answer, or a failure for the token saved now (or for none).
     for (;;) {
       const token = lichessToken();
       if (!token) throw new Error('Sign in with lichess to ask its explorer');

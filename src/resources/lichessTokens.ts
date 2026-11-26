@@ -13,8 +13,9 @@ import { getExplorerCounts } from './explorer';
  * on lichess, or it expired), so the finder goes back to Maia's estimates
  * rather than failing at every position; only a refusal of the token saved
  * now arrives as one (`getExplorerCounts`). And when an account is signed in,
- * here or in another tab, it forgets the answers that failed, so the finder
- * asks for them again (it never asks again for one that failed).
+ * here or in another tab, it forgets the answers that failed: the finder
+ * doesn't ask again for a failed answer by itself, so this lets it ask with
+ * the new token.
  */
 export class LichessTokens implements Manager {
   /** The explorer's failed answers by key, with what they asked. */
